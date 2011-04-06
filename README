@@ -7,19 +7,19 @@
 
                     HaRe, the Haskell Refactorer
                 a snapshot of our current prototype
-                             08/07/2009
+                             28/06/2010
       http://www.cs.kent.ac.uk/projects/refactor-fp/hare.html
 
 --------------------------------------------------------------------------------
 
 This snapshot includes most dependencies (version A below), and
 should build and work on Windows/Cygwin and Unix, with either gvim
-6.2 or with emacs 21.2.1. 
+6.2 or with emacs 21.4. 
 
-HaRe_08072009 (HaRe 0.5) is still a prototype, made available so
+HaRe_28062010 (HaRe 0.6) is still a prototype, made available so
 you can play with basic refactoring support for Haskell, and give us
-feedback or bug reports (see below for changes since HaRe 0.3 and
-known remaining issues). The major new feature in this 0.5 release -
+feedback or bug reports (see below for changes since HaRe 0.5 and
+known remaining issues). The major new feature in this 0.6 release -
 apart from bug fixes - is a number of new refactorings.
 WE DO NOT RECOMMEND TO USE THIS PROTOTYPE ON YOUR PRODUCTION SOURCES JUST YET!
 
@@ -29,10 +29,11 @@ WE DO NOT RECOMMEND TO USE THIS PROTOTYPE ON YOUR PRODUCTION SOURCES JUST YET!
 
 0 basics:
 
-  1. ghc-6.8-2
-  2. unix/gnu tools (or cygwin tools, if on windows)
-  3. vim or emacs (we've tested with gvim 6.2 and with emacs 21.2.1)
-  4. If you intend on running the test suite, HUnit-1.0.
+  1. ghc-6.12.1
+  2. hint-0.3.2.3 (available from cabal)
+  3. unix/gnu tools (or cygwin tools, if on windows)
+  4. vim or emacs (we've tested with gvim 6.2 and with emacs 21.4)
+  5. If you intend on running the test suite, HUnit-1.0.
 
 A [recommended] partial build 
   (fewer tools needed, but tied to particular snapshot):
@@ -83,7 +84,7 @@ file contains the lines
 
 before the line
     
-         source /Users/..../HaRe_08072009/editors/refactor.vim   
+         source /Users/..../HaRe_28062010/editors/refactor.vim   
 
 --------------- how to build   
 
@@ -258,10 +259,6 @@ before the line
   all known bugs have been fixed (windows vim users: it is 
   recommended to install vim in its standard location). 
 
-- no use of type info yet
-  => some of the existing refactorings are problematic wrt 
-     types, e.g., monomorphic vs polymorphic bindings
-
 - there is no standard for associating comments with
   semantic entities. we use heuristics to decide when
   to move/remove comments together with definitions
@@ -285,7 +282,7 @@ before the line
     --Comment3
 
     fun1 x =  x+1  --Comment4
-    --Comment 5 
+    --Comment5 
 
     ...
      
@@ -299,6 +296,12 @@ before the line
 - the Programatica frontend is currently limited to Haskell 98
 
 - the Programatica frontend does not work with no-source files.
+
+---------------change from 08/05/2009
+-- general
+   + make HaRe compatible with the latest version of GHC
+   + ported to hint library, as an abstraction for GHC API.
+   + bug fixes.
 
 ---------------change from 22/11/2006
 -- general
