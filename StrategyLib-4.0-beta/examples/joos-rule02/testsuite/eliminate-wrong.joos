@@ -1,0 +1,33 @@
+--
+-- We cannot eliminate the Dummy method because we refer to it.
+-- 
+
+eliminate
+
+in
+
+  public class Statement extends Object {
+
+    public Statement() {
+      super();
+    }
+
+    <
+    public void Dummy() {
+    }
+    >
+
+    public void printOwning(double amount) {
+
+      this.printBanner();
+
+      Dummy();
+
+      -- Print details
+      System_out.println("name:" + _name);
+      System_out.println("amount" + amount);
+
+    }
+
+  }
+

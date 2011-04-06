@@ -1,0 +1,4 @@
+main
+:q
+-- This invokes the main function in an interpreter session.
+

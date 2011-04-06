@@ -1,0 +1,53 @@
+Cases: 6  Tried: 0  Errors: 0  Failures: 0Cases: 6  Tried: 1  Errors: 0  Failures: 0Cases: 6  Tried: 2  Errors: 0  Failures: 0Cases: 6  Tried: 3  Errors: 0  Failures: 0Cases: 6  Tried: 4  Errors: 0  Failures: 0Cases: 6  Tried: 5  Errors: 0  Failures: 0                                          Cases: 6  Tried: 6  Errors: 0  Failures: 0
+e","../../tools/base/tests/HaskellLibraries/"]
+Adding Prelude from ../../tools/base/tests/HaskellLibraries//Prelude.hs
+Adding Ix from ../../tools/base/tests/HaskellLibraries//Ix.hs
+Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 18 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 18 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["foldPattern","SimpleIn1.hs","z","6","13","6","18"]
+Analyzing: SimpleIn1.hs
+modified: SimpleIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["foldPattern","SimplePatternIn1.hs","a","4","12","4","17"]
+Analyzing: SimplePatternIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["foldPattern","SimpleErrorIn1.hs",":","6","12","6","18"]
+message: CAUGHT EXCEPTION: The pattern entered does not occur with the pattern list or is not a pattern variable!
+CMD:["stop"]
+CMD:["foldPattern","WhereIn1.hs","x","6","18","6","24"]
+Analyzing: WhereIn1.hs
+modified: WhereIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["foldPattern","LetIn1.hs","z","6","24","6","30"]
+Analyzing: LetIn1.hs
+modified: LetIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["foldPattern","MultiDefIn1.hs","b_1","6","19","6","24"]
+Analyzing: MultiDefIn1.hs
+modified: MultiDefIn1.hs
+Completed.
+
+CMD:["stop"]

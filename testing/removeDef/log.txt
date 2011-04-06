@@ -1,0 +1,20 @@
+CMD:["new"]
+CMD:["stop"]
+CMD:["add","D3.hs","C3.hs","A3.hs","WhereIn1.hs","WhereIn2.hs","WhereIn3.hs","LocalWhereIn1.hs","LocalWhereIn2.hs","LetIn1.hs","LetIn2.hs","DoIn1.hs","ListCompIn1.hs","ListCompIn2.hs","ListCompIn3.hs","WhereIn4.hs","WhereIn5.hs","D1.hs","D2.hs","C2.hs","A2.hs"]
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Prelude, needed by D3 C3 A3 WhereIn1 WhereIn2
+                       WhereIn3 LocalWhereIn1 LocalWhereIn2 LetIn1 LetIn2
+                       DoIn1 ListCompIn1 ListCompIn2 ListCompIn3 WhereIn4
+                       WhereIn5 D1 D2 C2 A2
+CMD:["stop"]
+CMD:["chase","../../tools/base/tests/HaskellLibraries/"]
+pfe: interrupted
+CMD:["chase","."]
+The project contains 20 source files.
+(To list the files, use: pfe files)
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Prelude, needed by A2 A3 C2 C3 D1 D2 D3 DoIn1 LetIn1
+                       LetIn2 ListCompIn1 ListCompIn2 ListCompIn3
+                       LocalWhereIn1 LocalWhereIn2 WhereIn1 WhereIn2
+                       WhereIn3 WhereIn4 WhereIn5
+CMD:["stop"]

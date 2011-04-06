@@ -1,0 +1,98 @@
+Cases: 13  Tried: 0  Errors: 0  Failures: 0Cases: 13  Tried: 1  Errors: 0  Failures: 0Cases: 13  Tried: 2  Errors: 0  Failures: 0Cases: 13  Tried: 3  Errors: 0  Failures: 0Cases: 13  Tried: 4  Errors: 0  Failures: 0Cases: 13  Tried: 5  Errors: 0  Failures: 0Cases: 13  Tried: 6  Errors: 0  Failures: 0Cases: 13  Tried: 7  Errors: 0  Failures: 0Cases: 13  Tried: 8  Errors: 0  Failures: 0Cases: 13  Tried: 9  Errors: 0  Failures: 0Cases: 13  Tried: 10  Errors: 0  Failures: 0Cases: 13  Tried: 11  Errors: 0  Failures: 0Cases: 13  Tried: 12  Errors: 0  Failures: 0                                            Cases: 13  Tried: 13  Errors: 0  Failures: 0
+ls/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 25 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 25 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["refacAddField","A1.hs","_","a","4","15"]
+refacAddField
+Analyzing: A1.hs
+modified: A1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","A2.hs","_","String","3","15"]
+refacAddField
+Analyzing: A2.hs
+modified: A2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","A3.hs","_","String","3","15"]
+refacAddField
+modified: A3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","A4.hs","_","String","3","15"]
+refacAddField
+Analyzing: A4.hs
+modified: A4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","A5.hs","_","b","5","15"]
+refacAddField
+Analyzing: A5.hs
+modified: A5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","B1.hs","_","b","3","16"]
+refacAddField
+Analyzing: B1.hs
+modified: B1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","B2.hs","_","a","3","16"]
+refacAddField
+modified: B2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","List1.hs","_","String","3","13"]
+refacAddField
+modified: List1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","Lam1.hs","_","Int","3","13"]
+refacAddField
+Analyzing: Lam1.hs
+modified: Lam1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","Record1.hs","f44","String","3","10"]
+refacAddField
+Analyzing: Record1.hs
+modified: Record1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","Record2.hs","f44","a","3","10"]
+refacAddField
+Analyzing: Record2.hs
+modified: Record2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAddField","Record3.hs","f2","String","3","10"]
+refacAddField
+message: CAUGHT EXCEPTION: There is already a field declared with that name!
+CMD:["stop"]
+CMD:["refacAddField","Record4.hs","f2","3","10"]
+message: CAUGHT EXCEPTION: Please enter a field name ( _ to omit) and a field type!
+CMD:["stop"]

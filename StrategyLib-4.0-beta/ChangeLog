@@ -1,0 +1,24 @@
+Changes in StrategyLib version 5.0
+
+- Upgraded to GHC 6.4.1, which involved:
+  - importing qualified modules from hierarchical libraries
+  - adapting to renamings in Data.Dynamics
+
+Changes in StrategyLib version 4.0
+
+- moved Strafunski to sourceforge.
+- examples of using class Data see examples/twosorts-deriving
+- eliminated use of configuration, automake etc.
+- for makerules see subdir "scripts"
+- everything works fine with John Meacham's DrIFT 2.0.1
+- removed src/Monads.hs --- too many clashes ...
+- removed src/Breadthfirst.hs --- could become an example
+- removed src/Xml* for the moment, which was disabled anyway
+- some examples did not make it into the new distribution
+- added mchoicesTP to interface of StrategyPrimitives next to mchoicesTU
+- removed some weird functions from the interface of StrategyPrimitives:
+  - unTP          (not very useful in usercode anyway)
+  - unTU          (not very useful in usercode anyway)
+  - applyOnKidsTU (a bit untyped for certain models)
+  - applicable    (not needed in usercode)
+  - uniTP, uniTU  (not used anywhere, very expensive)

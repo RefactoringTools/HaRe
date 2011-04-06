@@ -1,0 +1,28 @@
+###############################################################################
+#
+# Check targets that run local example and recurse
+#
+
+check-hugs:
+	${MAKE} run-hugs
+	${MAKE} recurse target=check-hugs
+
+check-ghci:
+	${MAKE} run-ghci
+	${MAKE} recurse target=check-ghci
+
+check-ghc:
+	${MAKE} run-ghc
+	${MAKE} recurse target=check-ghc
+
+
+###############################################################################
+#
+# Reusable includes
+#
+
+include ${StrategyLib}/scripts/makerules.opts
+include ${StrategyLib}/scripts/makerules.run
+include ${StrategyLib}/scripts/makerules.drift
+include ${StrategyLib}/scripts/makerules.clean
+include ${StrategyLib}/scripts/makerules.recurse

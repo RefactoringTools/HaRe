@@ -1,0 +1,19 @@
+###############################################################################
+#
+# Alias for "gmake ${derive}"
+#
+
+derive: ${derive}
+
+
+###############################################################################
+#
+# This is how we generate Term instances for the default model.
+#
+
+%TermInstances.hs: %.hs
+	echo "module $*TermInstances where" > $@
+	echo "import $*" >> $@
+	echo "import TermRep" >> $@
+	DrIFT -g Term -g Typeable -r $< | \
+	  sed s/mkAppTy/mkTyConApp/g >> $@

@@ -1,0 +1,19 @@
+###############################################################################
+#
+# This target is needed for recursion into subdirectories.
+#
+
+#recurse:
+#	@for subdir in ${subdirs}; do	\
+#	  (cd $$subdir; ${MAKE} ${target});	\
+#	done
+
+SUBDIRS	= ${subdirs}
+
+.PHONY: recurse $(SUBDIRS)
+
+recurse: $(SUBDIRS)
+
+$(SUBDIRS):
+	$(MAKE) -C $@ ${target}
+

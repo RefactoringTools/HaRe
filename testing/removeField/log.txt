@@ -1,0 +1,129 @@
+Cases: 17  Tried: 0  Errors: 0  Failures: 0Cases: 17  Tried: 1  Errors: 0  Failures: 0Cases: 17  Tried: 2  Errors: 0  Failures: 0Cases: 17  Tried: 3  Errors: 0  Failures: 0Cases: 17  Tried: 4  Errors: 0  Failures: 0Cases: 17  Tried: 5  Errors: 0  Failures: 0Cases: 17  Tried: 6  Errors: 0  Failures: 0Cases: 17  Tried: 7  Errors: 0  Failures: 0Cases: 17  Tried: 8  Errors: 0  Failures: 0Cases: 17  Tried: 9  Errors: 0  Failures: 0Cases: 17  Tried: 10  Errors: 0  Failures: 0Cases: 17  Tried: 11  Errors: 0  Failures: 0Cases: 17  Tried: 12  Errors: 0  Failures: 0Cases: 17  Tried: 13  Errors: 0  Failures: 0Cases: 17  Tried: 14  Errors: 0  Failures: 0Cases: 17  Tried: 15  Errors: 0  Failures: 0Cases: 17  Tried: 16  Errors: 0  Failures: 0                                            Cases: 17  Tried: 17  Errors: 0  Failures: 0
+
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 29 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 29 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["refacRemoveField","A2.hs","3","3","15"]
+refacRemoveField
+Analyzing: A2.hs
+modified: A2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","A3.hs","2","3","15"]
+refacRemoveField
+Analyzing: A3.hs
+modified: A3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","A4.hs","2","3","15"]
+refacRemoveField
+Analyzing: A4.hs
+modified: A4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","A5.hs","2","3","16"]
+refacRemoveField
+modified: A5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","B1.hs","2","3","16"]
+refacRemoveField
+modified: B1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","B2.hs","2","3","16"]
+refacRemoveField
+Analyzing: B2.hs
+modified: B2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","List1.hs","1","3","13"]
+refacRemoveField
+Analyzing: List1.hs
+modified: List1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","Lam1.hs","1","3","13"]
+refacRemoveField
+Analyzing: Lam1.hs
+modified: Lam1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","Record1.hs","2","3","10"]
+refacRemoveField
+modified: Record1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","Type1.hs","1","3","15"]
+refacRemoveField
+Analyzing: Type1.hs
+modified: Type1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","Type2.hs","1","3","15"]
+refacRemoveField
+Analyzing: Type2.hs
+modified: Type2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","Type3.hs","1","3","15"]
+refacRemoveField
+Analyzing: Type3.hs
+modified: Type3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","Type4.hs","1","3","15"]
+refacRemoveField
+Analyzing: Type4.hs
+modified: Type4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","Type5.hs","1","3","15"]
+refacRemoveField
+Analyzing: Type5.hs
+modified: Type5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","Type6.hs","1","3","17"]
+refacRemoveField
+Analyzing: Type6.hs
+modified: Type6.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","Type7.hs","2","4","17"]
+refacRemoveField
+Analyzing: Type7.hs
+modified: Type7.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacRemoveField","A1.hs","4","3","15"]
+refacRemoveField
+message: CAUGHT EXCEPTION: Please select a valid field position for this constructor!
+CMD:["stop"]

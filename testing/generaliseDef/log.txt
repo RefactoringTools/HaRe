@@ -1,0 +1,18 @@
+CMD:["new"]
+CMD:["stop"]
+CMD:["add","D1.hs","D2.hs","A2.hs","D3.hs","A3.hs","D4.hs","A4.hs","D5.hs","A5.hs","FunIn1.hs","FunIn3.hs","FunIn6.hs","Sum1.hs","Sum2.hs","MultiOccur1.hs","MultiOccur2.hs","String.hs","FunIn2.hs","FunIn4.hs","FunIn5.hs","FunIn7.hs"]
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Prelude, needed by D1 D2 A2 D3 A3 D4 A4 D5 A5 FunIn1
+                       FunIn3 FunIn6 Sum1 Sum2 MultiOccur1 MultiOccur2
+                       String FunIn2 FunIn4 FunIn5 FunIn7
+CMD:["stop"]
+CMD:["chase","../../tools/base/tests/HaskellLibraries/"]
+pfe: interrupted
+CMD:["chase","."]
+The project contains 21 source files.
+(To list the files, use: pfe files)
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Prelude, needed by A2 A3 A4 A5 D1 D2 D3 D4 D5 FunIn1
+                       FunIn2 FunIn3 FunIn4 FunIn5 FunIn6 FunIn7 MultiOccur1
+                       MultiOccur2 String Sum1 Sum2
+CMD:["stop"]

@@ -1,0 +1,29 @@
+------------------------------------------------------------------------------
+
+ANALYSIS and TRANSFORMATION of HASKELL ITSELF
+
+1. HsTransform
+
+   This program performs some simple source-to-source
+   transformations on Haskell programs, namely:
+   
+   o Elimination of "do" expressions, 
+     see Haskell Report section 3.14
+     
+   o Introduction of "newtype" declarations,
+     in favour of particular "data" declarations.
+
+
+2. HsExtract
+
+   This program performs "Application Extraction" for Haskell.
+   Given a set of user modules and library modules it extracts
+   a set of modules that only contain functions reachable from
+   the top level functions of a given Top module.
+
+
+For both programs, we make use of the Haskell abstract syntax, parser, and
+pretty-printer as provided by the library package Language.Haskell.
+
+------------------------------------------------------------------------------
+

@@ -1,0 +1,364 @@
+Cases: 33  Tried: 0  Errors: 0  Failures: 0Cases: 33  Tried: 1  Errors: 0  Failures: 0Cases: 33  Tried: 2  Errors: 0  Failures: 0Cases: 33  Tried: 3  Errors: 0  Failures: 0Cases: 33  Tried: 4  Errors: 0  Failures: 0Cases: 33  Tried: 5  Errors: 0  Failures: 0Cases: 33  Tried: 6  Errors: 0  Failures: 0Cases: 33  Tried: 7  Errors: 0  Failures: 0Cases: 33  Tried: 8  Errors: 0  Failures: 0Cases: 33  Tried: 9  Errors: 0  Failures: 0Cases: 33  Tried: 10  Errors: 0  Failures: 0Cases: 33  Tried: 11  Errors: 0  Failures: 0Cases: 33  Tried: 12  Errors: 0  Failures: 0Cases: 33  Tried: 13  Errors: 0  Failures: 0Cases: 33  Tried: 14  Errors: 0  Failures: 0Cases: 33  Tried: 15  Errors: 0  Failures: 0Cases: 33  Tried: 16  Errors: 0  Failures: 0Cases: 33  Tried: 17  Errors: 0  Failures: 0Cases: 33  Tried: 18  Errors: 0  Failures: 0Cases: 33  Tried: 19  Errors: 0  Failures: 0Cases: 33  Tried: 20  Errors: 0  Failures: 0Cases: 33  Tried: 21  Errors: 0  Failures: 0Cases: 33  Tried: 22  Errors: 0  Failures: 0Cases: 33  Tried: 23  Errors: 0  Failures: 0Cases: 33  Tried: 24  Errors: 0  Failures: 0Cases: 33  Tried: 25  Errors: 0  Failures: 0Cases: 33  Tried: 26  Errors: 0  Failures: 0Cases: 33  Tried: 27  Errors: 0  Failures: 0Cases: 33  Tried: 28  Errors: 0  Failures: 0Cases: 33  Tried: 29  Errors: 0  Failures: 0Cases: 33  Tried: 30  Errors: 0  Failures: 0Cases: 33  Tried: 31  Errors: 0  Failures: 0Cases: 33  Tried: 32  Errors: 0  Failures: 0                                            Cases: 33  Tried: 33  Errors: 0  Failures: 0
+ols/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 45 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 45 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["introCase","SimpleIn1.hs","6","3"]
+introCasePattern
+modified: SimpleIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","MultiParamIn1.hs","5","12"]
+Analyzing: MultiParamIn1.hs
+introCasePattern
+modified: MultiParamIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","MultiParamIn2.hs","6","12"]
+Analyzing: MultiParamIn2.hs
+introCasePattern
+modified: MultiParamIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","MultiParamIn2.hs","5","11"]
+Analyzing: MultiParamIn2.hs
+introCasePattern
+modified: MultiParamIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","NameResolveIn1.hs","6","5"]
+introCasePattern
+modified: NameResolveIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","WhereIn1.hs","10","32"]
+Analyzing: WhereIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling WhereIn1         ( WhereIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: WhereIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","SubPatternIn1.hs","11","13"]
+Analyzing: SubPatternIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling SubPatternIn1    ( SubPatternIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: SubPatternIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","SubPatternIn2.hs","11","9"]
+Analyzing: SubPatternIn2.hs
+introCaseSubPattern
+[1 of 1] Compiling SubPatternIn2    ( SubPatternIn2.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: SubPatternIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","SubPatternIn3.hs","14","9"]
+Analyzing: SubPatternIn3.hs
+introCaseSubPattern
+[1 of 1] Compiling SubPatternIn3    ( SubPatternIn3.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: SubPatternIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","InfixIn1.hs","9","9"]
+Analyzing: InfixIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling Infix1           ( InfixIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: InfixIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","InfixIn2.hs","9","4"]
+introCaseSubPattern
+[1 of 1] Compiling InfixIn2         ( InfixIn2.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: InfixIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","InfixIn3.hs","13","9"]
+Analyzing: InfixIn3.hs
+introCaseSubPattern
+[1 of 1] Compiling InfixIn3         ( InfixIn3.hs, interpreted )
+
+InfixIn3.hs:21:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `j':
+                 j v (x@(C1 b_1)) = ...
+                 j v x = ...
+Load succeded.
+
+InfixIn3.hs:21:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `j':
+                 j v (x@(C1 b_1)) = ...
+                 j v x = ...
+Loading package base ... linking ... done.
+
+modified: InfixIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","InfixIn4.hs","9","4"]
+introCaseSubPattern
+[1 of 1] Compiling InfixIn4         ( InfixIn4.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: InfixIn4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","MainIn1.hs","11","9"]
+Analyzing: MainIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling Main             ( MainIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: MainIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","MultiModuleIn1.hs","6","8"]
+Analyzing: MultiModuleIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling MultiModuleIn1   ( MultiModuleIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: MultiModuleIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","InfixIn5.hs","8","6"]
+introCaseSubPattern
+[1 of 1] Compiling InfixIn5         ( InfixIn5.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: InfixIn5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","InfixIn6.hs","8","4"]
+introCaseSubPattern
+[1 of 1] Compiling InfixIn6         ( InfixIn6.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: InfixIn6.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","SubSubPatternIn1.hs","6","12"]
+Analyzing: SubSubPatternIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling SubSubPatternIn1 ( SubSubPatternIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: SubSubPatternIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","SubSubPatternIn2.hs","16","6"]
+Analyzing: SubSubPatternIn2.hs
+introCaseSubPattern
+[1 of 1] Compiling SubSubPatternIn2 ( SubSubPatternIn2.hs, interpreted )
+
+SubSubPatternIn2.hs:15:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `g': g x = ...
+Load succeded.
+
+SubSubPatternIn2.hs:15:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `g': g x = ...
+Loading package base ... linking ... done.
+
+modified: SubSubPatternIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","PolymorphicIn1.hs","5","6"]
+Analyzing: PolymorphicIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling PolymorhicIn1    ( PolymorphicIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: PolymorphicIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","PolymorphicIn2.hs","5","4"]
+introCaseSubPattern
+[1 of 1] Compiling PolymorhicIn2    ( PolymorphicIn2.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+message: CAUGHT EXCEPTION: Cannot instantiate new patterns for the selected pattern. It may be of a polymorphic type, or a Haskell defined type such as Int.
+CMD:["stop"]
+CMD:["introCase","B1.hs","6","7"]
+Analyzing: A1.hs
+Analyzing: B1.hs
+introCaseSubPattern
+[1 of 2] Compiling A1               ( A1.hs, interpreted )
+[2 of 2] Compiling B1               ( B1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: B1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","TreeIn1.hs","7","16"]
+introCaseSubPattern
+[1 of 1] Compiling TreeIn1          ( TreeIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: TreeIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","TreeIn2.hs","7","21"]
+Analyzing: TreeIn2.hs
+introCaseSubPattern
+[1 of 1] Compiling TreeIn2          ( TreeIn2.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: TreeIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","TreeIn3.hs","9","39"]
+Analyzing: TreeIn3.hs
+introCaseSubPattern
+[1 of 1] Compiling TreeIn3          ( TreeIn3.hs, interpreted )
+
+TreeIn3.hs:6:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `fringe': fringe (Branch left right) = ...
+Load succeded.
+
+TreeIn3.hs:6:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `fringe': fringe (Branch left right) = ...
+Loading package base ... linking ... done.
+
+modified: TreeIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","TreeIn4.hs","7","33"]
+Analyzing: TreeIn4.hs
+introCaseSubPattern
+[1 of 1] Compiling TreeIn4          ( TreeIn4.hs, interpreted )
+
+TreeIn4.hs:6:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `fringe': fringe (Branch left right) = ...
+Load succeded.
+
+TreeIn4.hs:6:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `fringe': fringe (Branch left right) = ...
+Loading package base ... linking ... done.
+
+message: CAUGHT EXCEPTION: Cannot instantiate new patterns for the selected pattern. It may be of a polymorphic type, or a Haskell defined type such as Int.
+CMD:["stop"]
+CMD:["introCase","TupleIn1.hs","5","7"]
+Analyzing: TupleIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling TupleIn1         ( TupleIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: TupleIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","AsPatIn1.hs","5","3"]
+Analyzing: AsPatIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling AsPatIn1         ( AsPatIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: AsPatIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","AsPatIn2.hs","5","3"]
+Analyzing: AsPatIn2.hs
+introCaseSubPattern
+[1 of 1] Compiling AsPatIn2         ( AsPatIn2.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: AsPatIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","LetIn1.hs","9","38"]
+Analyzing: LetIn1.hs
+introCaseSubPattern
+[1 of 1] Compiling LetIn1           ( LetIn1.hs, interpreted )
+Load succeded.
+Loading package base ... linking ... done.
+
+modified: LetIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introCase","NegativeIn1.hs","4","3"]
+introCasePattern
+message: CAUGHT EXCEPTION: Please define a type signature for the definition!
+CMD:["stop"]
+CMD:["introCase","NegativeIn2.hs","5","9"]
+Analyzing: NegativeIn2.hs
+message: CAUGHT EXCEPTION: Please select a pattern variable on the LHS of an equation!
+CMD:["stop"]
+CMD:["introCase","NegativeIn3.hs","5","5"]
+introCasePattern
+message: CAUGHT EXCEPTION: There are no constructors defined for the type of this pattern!
+CMD:["stop"]

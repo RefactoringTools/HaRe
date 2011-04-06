@@ -1,0 +1,442 @@
+Cases: 18  Tried: 0  Errors: 0  Failures: 0Cases: 18  Tried: 1  Errors: 0  Failures: 0Cases: 18  Tried: 2  Errors: 0  Failures: 0Cases: 18  Tried: 3  Errors: 0  Failures: 0Cases: 18  Tried: 4  Errors: 0  Failures: 0Cases: 18  Tried: 5  Errors: 0  Failures: 0Cases: 18  Tried: 6  Errors: 0  Failures: 0Cases: 18  Tried: 7  Errors: 0  Failures: 0Cases: 18  Tried: 8  Errors: 0  Failures: 0Cases: 18  Tried: 9  Errors: 0  Failures: 0Cases: 18  Tried: 10  Errors: 0  Failures: 0Cases: 18  Tried: 11  Errors: 0  Failures: 0Cases: 18  Tried: 12  Errors: 0  Failures: 0Cases: 18  Tried: 13  Errors: 0  Failures: 0Cases: 18  Tried: 14  Errors: 0  Failures: 0Cases: 18  Tried: 15  Errors: 0  Failures: 0Cases: 18  Tried: 16  Errors: 0  Failures: 0Cases: 18  Tried: 17  Errors: 0  Failures: 0                                            Cases: 18  Tried: 18  Errors: 0  Failures: 0
+ing PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 30 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 30 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["refacCacheMerge","A1.hs","4","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","A1.hs","7","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","A1.hs","g"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling A1               ( A1.hs, nothing )
+Load succeded.
+["Int  ->  String "],["Int  ->  String "]]
+modified: A1.hs
+Analyzing: A1.hs
+[1 of 1] Compiling A1               ( A1.hs, nothing )
+Load succeded.
+modified: A1.hs
+Analyzing: A1.hs
+modified: A1.hs
+Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Let1.hs","5","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Let1.hs","8","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Let1.hs","f3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Let1             ( Let1.hs, nothing )
+Load succeded.
+["Int "],["Int "]]
+modified: Let1.hs
+Analyzing: Let1.hs
+[1 of 1] Compiling Let1             ( Let1.hs, nothing )
+Load succeded.
+modified: Let1.hs
+modified: Let1.hs
+Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Simple2.hs","4","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Simple2.hs","6","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Simple2.hs","f3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Simple2          ( Simple2.hs, nothing )
+Load succeded.
+["Num a "," a  ->  a "],["Num a "," a  ->  a "]]
+modified: Simple2.hs
+Analyzing: Simple2.hs
+[1 of 1] Compiling Simple2          ( Simple2.hs, nothing )
+Load succeded.
+modified: Simple2.hs
+modified: Simple2.hs
+Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Where1.hs","4","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Where1.hs","9","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Where1.hs","f3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Where1           ( Where1.hs, nothing )
+Load succeded.
+["Int "],["Int "]]
+modified: Where1.hs
+Analyzing: Where1.hs
+[1 of 1] Compiling Where1           ( Where1.hs, nothing )
+Load succeded.
+modified: Where1.hs
+modified: Where1.hs
+Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Where3.hs","5","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Where3.hs","11","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Where3.hs","f3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Where3           ( Where3.hs, nothing )
+Load succeded.
+["[a] "],["[a] "]]
+modified: Where3.hs
+Analyzing: Where3.hs
+[1 of 1] Compiling Where3           ( Where3.hs, nothing )
+Load succeded.
+modified: Where3.hs
+modified: Where3.hs
+Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive1.hs","5","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive1.hs","10","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Recursive1.hs","g"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Recursive1       ( Recursive1.hs, nothing )
+Load succeded.
+["Int  ->  [a] "],["Int  ->  [a] "]]
+modified: Recursive1.hs
+Analyzing: Recursive1.hs
+[1 of 1] Compiling Recursive1       ( Recursive1.hs, nothing )
+Load succeded.
+modified: Recursive1.hs
+modified: Recursive1.hs
+Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive99.hs","4","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive99.hs","11","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Recursive99.hs","g"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Recursive99      ( Recursive99.hs, nothing )
+Load succeded.
+["Int  ->  String "],["Int  ->  String "]]
+modified: Recursive99.hs
+Analyzing: Recursive99.hs
+[1 of 1] Compiling Recursive99      ( Recursive99.hs, nothing )
+Load succeded.
+modified: Recursive99.hs
+modified: Recursive99.hs
+Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive11.hs","5","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive11.hs","16","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Recursive11.hs","f3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Recursive11      ( Recursive11.hs, nothing )
+Load succeded.
+["Int  ->  [a] "],["Int  ->  [a] "]]
+modified: Recursive11.hs
+Analyzing: Recursive11.hs
+[1 of 1] Compiling Recursive11      ( Recursive11.hs, nothing )
+Load succeded.
+modified: Recursive11.hs
+modified: Recursive11.hs
+Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Guards1.hs","4","1"]
+refacCacheMerge
+g1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Guards1.hs","13","1"]
+refacCacheMerge
+g2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Guards1.hs","g3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Guards1          ( Guards1.hs, nothing )
+Load succeded.
+["Int  ->  String "],["Int  ->  String "]]
+modified: Guards1.hs
+Analyzing: Guards1.hs
+[1 of 1] Compiling Guards1          ( Guards1.hs, nothing )
+Load succeded.
+modified: Guards1.hs
+modified: Guards1.hs
+Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Converge1.hs","4","1"]
+refacCacheMerge
+Analyzing: Converge1.hs
+f added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Converge1.hs","7","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Converge1.hs","g"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Converge1        ( Converge1.hs, nothing )
+Load succeded.
+["Char "],["Int "]]
+message: CAUGHT EXCEPTION: The types between the functions to be fused to do match. Please change the types first so that the arguments can converge.
+CMD:["stop"]
+CMD:["refacCacheMerge","Simple1.hs","4","1"]
+refacCacheMerge
+Analyzing: Simple1.hs
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Simple1.hs","7","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Simple1.hs","f3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Simple1          ( Simple1.hs, nothing )
+Load succeded.
+["Int "],["Int "]]
+message: CAUGHT EXCEPTION: The patterns between the functions are not the same set! The patterns must be the same and have the same type.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive9.hs","4","1"]
+refacCacheMerge
+Analyzing: Recursive9.hs
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive9.hs","11","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Recursive9.hs","f3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Recursive9       ( Recursive9.hs, nothing )
+Load succeded.
+["Int  ->  [Char] "],["Int  ->  String "]]
+message: CAUGHT EXCEPTION: The types between the functions to be fused to do match. Please change the types first so that the arguments can converge.
+CMD:["stop"]
+CMD:["refacCacheMerge","Where2.hs","4","1"]
+refacCacheMerge
+Analyzing: Where2.hs
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Where2.hs","9","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Where2.hs","g"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Where2           ( Where2.hs, nothing )
+Load succeded.
+["Int  ->  [a] "],["[a] "]]
+message: CAUGHT EXCEPTION: The types between the functions to be fused to do match. Please change the types first so that the arguments can converge.
+CMD:["stop"]
+CMD:["refacCacheMerge","Where4.hs","5","1"]
+refacCacheMerge
+Analyzing: Where4.hs
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Where4.hs","11","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Where4.hs","f3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Where4           ( Where4.hs, nothing )
+Load succeded.
+["[a] "],["[a] "]]
+message: CAUGHT EXCEPTION: Please rename rs as it conflicts during the merge.
+CMD:["stop"]
+CMD:["refacCacheMerge","Conflict1.hs","4","1"]
+refacCacheMerge
+Analyzing: Conflict1.hs
+f added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Conflict1.hs","8","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Conflict1.hs","F3"]
+refacMerge
+Cache flushed.
+message: CAUGHT EXCEPTION: The new name is invalid!
+
+CMD:["stop"]
+CMD:["refacCacheMerge","Conflict2.hs","4","1"]
+refacCacheMerge
+Analyzing: Conflict2.hs
+f added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Conflict2.hs","8","1"]
+refacCacheMerge
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Conflict2.hs","f3"]
+refacMerge
+Cache flushed.
+message: CAUGHT EXCEPTION: the use of the name: f3 is already in scope!
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive2.hs","5","1"]
+refacCacheMerge
+Analyzing: Recursive2.hs
+f1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive2.hs","10","1"]
+refacCacheMerge
+f2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Recursive2.hs","15","1"]
+refacCacheMerge
+f3 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Recursive2.hs","g"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Recursive2       ( Recursive2.hs, nothing )
+Load succeded.
+["Int  ->  [a] "],["Int  ->  [a] "],["Int "]]
+message: CAUGHT EXCEPTION: The types between the functions to be fused to do match. Please change the types first so that the arguments can converge.
+CMD:["stop"]
+CMD:["refacCacheMerge","Guards2.hs","4","1"]
+refacCacheMerge
+Analyzing: Guards2.hs
+g1 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacCacheMerge","Guards2.hs","13","1"]
+refacCacheMerge
+g2 added to cache.
+Completed
+RefacCacheMerge Completed.
+CMD:["stop"]
+CMD:["refacMerge","Guards2.hs","g3"]
+refacMerge
+Cache flushed.
+[[1 of 1] Compiling Guards2          ( Guards2.hs, nothing )
+Load succeded.
+["Int  ->  String "],["Int  ->  String "]]
+message: CAUGHT EXCEPTION: The guards between the two functions do not match!
+CMD:["stop"]

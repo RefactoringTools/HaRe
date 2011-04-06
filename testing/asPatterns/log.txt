@@ -1,0 +1,238 @@
+Cases: 27  Tried: 0  Errors: 0  Failures: 0Cases: 27  Tried: 1  Errors: 0  Failures: 0Cases: 27  Tried: 2  Errors: 0  Failures: 0Cases: 27  Tried: 3  Errors: 0  Failures: 0Cases: 27  Tried: 4  Errors: 0  Failures: 0Cases: 27  Tried: 5  Errors: 0  Failures: 0                                           ### Failure in: 5
+("refacAsPatterns",(["A6.hs"],["t","16","20","16","36"]))
+expected: True
+ but got: False
+Cases: 27  Tried: 6  Errors: 0  Failures: 1Cases: 27  Tried: 7  Errors: 0  Failures: 1Cases: 27  Tried: 8  Errors: 0  Failures: 1Cases: 27  Tried: 9  Errors: 0  Failures: 1                                           ### Failure in: 9
+("refacAsPatterns",(["D1.hs"],["new","16","24","16","41"]))
+expected: True
+ but got: False
+Cases: 27  Tried: 10  Errors: 0  Failures: 2Cases: 27  Tried: 11  Errors: 0  Failures: 2                                            ### Failure in: 11
+("refacAsPatterns",(["D3.hs"],["new","16","24","16","41"]))
+expected: True
+ but got: False
+Cases: 27  Tried: 12  Errors: 0  Failures: 3Cases: 27  Tried: 13  Errors: 0  Failures: 3Cases: 27  Tried: 14  Errors: 0  Failures: 3Cases: 27  Tried: 15  Errors: 0  Failures: 3Cases: 27  Tried: 16  Errors: 0  Failures: 3Cases: 27  Tried: 17  Errors: 0  Failures: 3Cases: 27  Tried: 18  Errors: 0  Failures: 3                                            ### Failure in: 18
+("refacAsPatterns",(["L1.hs"],["n","28","45","28","62"]))
+expected: True
+ but got: False
+Cases: 27  Tried: 19  Errors: 0  Failures: 4Cases: 27  Tried: 20  Errors: 0  Failures: 4Cases: 27  Tried: 21  Errors: 0  Failures: 4                                            ### Failure in: 21
+("refacAsPatterns",(["E3.hs"],["t","19","56","19","73"]))
+expected: True
+ but got: False
+Cases: 27  Tried: 22  Errors: 0  Failures: 5Cases: 27  Tried: 23  Errors: 0  Failures: 5Cases: 27  Tried: 24  Errors: 0  Failures: 5Cases: 27  Tried: 25  Errors: 0  Failures: 5Cases: 27  Tried: 26  Errors: 0  Failures: 5                                            Cases: 27  Tried: 27  Errors: 0  Failures: 5
+./../tools/base/tests/HaskellLibraries//PreludeList.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+           ../../tools/base/tests/HaskellLibraries//Prelude.hs
+           ../../tools/base/tests/HaskellLibraries//Ix.hs
+           ../../tools/base/tests/HaskellLibraries//Array.hs
+Analyzing: A1.hs
+Pattern does not occur on the rhs!
+modified: A1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","A2.hs","t","17","12","17","31"]
+refacAsPatterns
+Analyzing: A2.hs
+modified: A2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","A3.hs","t","16","12","16","30"]
+refacAsPatterns
+Analyzing: A3.hs
+modified: A3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","A4.hs","t","17","15","17","33"]
+refacAsPatterns
+Analyzing: A4.hs
+modified: A4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","A5.hs","t","16","20","16","37"]
+refacAsPatterns
+Analyzing: A5.hs
+modified: A5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","A6.hs","t","16","20","16","36"]
+refacAsPatterns
+Analyzing: A6.hs
+modified: A6.hs
+Completed.
+
+CMD:["stop"]
+16c16
+< insert val ((Empty : (t@(T val Empty Empty) : xs)))
+---
+> insert val (((Empty : t@(T val Empty Empty)) : xs))
+CMD:["refacAsPatterns","A7.hs","t","16","12","16","32"]
+refacAsPatterns
+Analyzing: A7.hs
+modified: A7.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","A8.hs","t","16","13","16","31"]
+refacAsPatterns
+Analyzing: A8.hs
+modified: A8.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","A9.hs","t","16","12","16","32"]
+refacAsPatterns
+Analyzing: A9.hs
+modified: A9.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","D1.hs","new","16","24","16","41"]
+refacAsPatterns
+Analyzing: D1.hs
+modified: D1.hs
+Completed.
+
+CMD:["stop"]
+16c16
+< insert val v2 = let f (new@(T val Empty Empty)) = newin f v2
+---
+> insert val v2 = let f (new@(T val Empty Empty)) = new in f v2
+CMD:["refacAsPatterns","D2.hs","new","19","35","19","52"]
+refacAsPatterns
+Analyzing: D2.hs
+modified: D2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","D3.hs","new","16","24","16","41"]
+refacAsPatterns
+Analyzing: D3.hs
+modified: D3.hs
+Completed.
+
+CMD:["stop"]
+16c16
+< insert val v2 = let f (new@(T val Empty Empty)) = new
+---
+> insert val v2 = let f (new@(T val Empty Empty)) = new 
+CMD:["refacAsPatterns","D4.hs","new","17","19","17","36"]
+refacAsPatterns
+Analyzing: D4.hs
+modified: D4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","D5.hs","new","17","19","17","36"]
+refacAsPatterns
+Analyzing: D5.hs
+modified: D5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","M1.hs","n","30","13","30","30"]
+refacAsPatterns
+Analyzing: M1.hs
+modified: M1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","M2.hs","n","30","15","30","32"]
+refacAsPatterns
+Analyzing: M2.hs
+modified: M2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","M3.hs","n","30","12","30","29"]
+refacAsPatterns
+Analyzing: M3.hs
+modified: M3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","M4.hs","n","28","19","28","35"]
+refacAsPatterns
+Analyzing: M4.hs
+modified: M4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","L1.hs","n","28","45","28","62"]
+refacAsPatterns
+Analyzing: L1.hs
+modified: L1.hs
+Completed.
+
+CMD:["stop"]
+23,24c23,29
+<                    _ ->  [n | n@(T val Empty Empty) <- insert 42
+<                                                            (buildtree [1, 2, 3])]
+---
+>                    _ ->  [v2]
+> 
+> 
+> main :: IO ()
+> main = do
+>            let f = [n | n@(T val Empty Empty) <- insert 42
+>                                                      (buildtree [1, 2, 3])]
+CMD:["refacAsPatterns","E1.hs","t","19","18","19","34"]
+refacAsPatterns
+Analyzing: E1.hs
+modified: E1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","E2.hs","t","16","40","16","58"]
+refacAsPatterns
+Analyzing: E2.hs
+modified: E2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","E3.hs","t","19","56","19","73"]
+refacAsPatterns
+Analyzing: E3.hs
+modified: E3.hs
+Completed.
+
+CMD:["stop"]
+16c16
+< insert val v2 = let f (T val Empty Empty) = (T val Empty Empty) 
+---
+> insert val v2 = let f (t@(T val Empty Empty)) = (T val Empty Empty) 
+19c19
+<                              res (t@(T val Empty Empty)) = t
+---
+>                              res (T val Empty Empty) = t
+CMD:["refacAsPatterns","E4.hs","t","31","29","31","46"]
+refacAsPatterns
+Analyzing: E4.hs
+modified: E4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacAsPatterns","F1.hs","val","31","29","31","46"]
+refacAsPatterns
+Analyzing: F1.hs
+message: CAUGHT EXCEPTION: the use of the name: val is already in scope!
+CMD:["stop"]
+CMD:["refacAsPatterns","F2.hs","a","31","29","31","45"]
+refacAsPatterns
+Analyzing: F2.hs
+message: CAUGHT EXCEPTION: the use of the name: a is already in scope!
+CMD:["stop"]
+CMD:["refacAsPatterns","F3.hs","insert","31","29","31","46"]
+refacAsPatterns
+Analyzing: F3.hs
+message: CAUGHT EXCEPTION: the use of the name: insert is already in scope!
+CMD:["stop"]
+CMD:["refacAsPatterns","F4.hs","Empty","31","29","31","45"]
+refacAsPatterns
+message: CAUGHT EXCEPTION: The new name is invalid!
+
+CMD:["stop"]

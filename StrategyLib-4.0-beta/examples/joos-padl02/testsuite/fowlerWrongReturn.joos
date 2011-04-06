@@ -1,0 +1,20 @@
+public class Fowler extends Object {
+
+  public Fowler() {
+    super();
+  }
+
+  public void printOwning(double amount) {
+    Name name;
+    this.printBanner();
+ 
+  << {
+    --Print banner
+    System_out.println("name:" + _name);
+    return;
+    System_out.println("amount" + amount);
+  } >>
+  }
+
+}
+

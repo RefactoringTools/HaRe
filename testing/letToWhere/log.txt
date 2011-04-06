@@ -1,0 +1,100 @@
+Cases: 15  Tried: 0  Errors: 0  Failures: 0Cases: 15  Tried: 1  Errors: 0  Failures: 0Cases: 15  Tried: 2  Errors: 0  Failures: 0Cases: 15  Tried: 3  Errors: 0  Failures: 0Cases: 15  Tried: 4  Errors: 0  Failures: 0Cases: 15  Tried: 5  Errors: 0  Failures: 0Cases: 15  Tried: 6  Errors: 0  Failures: 0Cases: 15  Tried: 7  Errors: 0  Failures: 0Cases: 15  Tried: 8  Errors: 0  Failures: 0Cases: 15  Tried: 9  Errors: 0  Failures: 0Cases: 15  Tried: 10  Errors: 0  Failures: 0Cases: 15  Tried: 11  Errors: 0  Failures: 0Cases: 15  Tried: 12  Errors: 0  Failures: 0Cases: 15  Tried: 13  Errors: 0  Failures: 0Cases: 15  Tried: 14  Errors: 0  Failures: 0                                            Cases: 15  Tried: 15  Errors: 0  Failures: 0
+es//Ix.hs
+Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 26 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 26 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["letToWhere","Test1.hs","3","9"]
+refacLetWhere
+Analyzing: Test1.hs
+modified: Test1.hs
+completed.
+CMD:["stop"]
+CMD:["letToWhere","Test2.hs","3","9"]
+refacLetWhere
+modified: Test2.hs
+completed.
+CMD:["stop"]
+CMD:["letToWhere","Test3.hs","4","16"]
+refacLetWhere
+Analyzing: Test3.hs
+modified: Test3.hs
+completed.
+CMD:["stop"]
+CMD:["letToWhere","MultiMatchesIn4.hs","5","18"]
+refacLetWhere
+Analyzing: MultiMatchesIn4.hs
+modified: MultiMatchesIn4.hs
+completed.
+CMD:["stop"]
+CMD:["letToWhere","MultiMatchesIn5.hs","3","18"]
+refacLetWhere
+modified: MultiMatchesIn5.hs
+completed.
+CMD:["stop"]
+CMD:["letToWhere","MultiMatchesIn6.hs","3","18"]
+refacLetWhere
+Analyzing: MultiMatchesIn6.hs
+modified: MultiMatchesIn6.hs
+completed.
+CMD:["stop"]
+CMD:["letToWhere","Monad1.hs","6","12"]
+refacLetWhere
+Analyzing: Monad1.hs
+modified: Monad1.hs
+completed.
+CMD:["stop"]
+CMD:["letToWhere","Monad2.hs","4","12"]
+refacLetWhere
+modified: Monad2.hs
+completed.
+CMD:["stop"]
+CMD:["letToWhere","Fail1.hs","3","1"]
+refacLetWhere
+Analyzing: Fail1.hs
+message: CAUGHT EXCEPTION: Please select a definition within a let clause
+CMD:["stop"]
+CMD:["letToWhere","Fail2.hs","3","7"]
+refacLetWhere
+Analyzing: Fail2.hs
+message: CAUGHT EXCEPTION: Please select a definition!
+CMD:["stop"]
+CMD:["letToWhere","MultiMatchesIn1.hs","11","9"]
+refacLetWhere
+Analyzing: MultiMatchesIn1.hs
+message: CAUGHT EXCEPTION: Lifting blah conflicts with a declared entity in the where clause. Please rename the entity first.
+CMD:["stop"]
+CMD:["letToWhere","MultiMatchesIn2.hs","5","18"]
+refacLetWhere
+Analyzing: MultiMatchesIn2.hs
+message: CAUGHT EXCEPTION: Lifting pow conflicts with a declared entity in the where clause. Please rename the entity first.
+CMD:["stop"]
+CMD:["letToWhere","MultiMatchesIn3.hs","3","18"]
+refacLetWhere
+Analyzing: MultiMatchesIn3.hs
+message: CAUGHT EXCEPTION: pow is/are not in scope within in the where clause.
+CMD:["stop"]
+CMD:["letToWhere","Monad2.hs","4","12"]
+refacLetWhere
+Analyzing: Monad2.hs
+modified: Monad2.hs
+completed.
+CMD:["stop"]
+CMD:["letToWhere","Monad4.hs","4","12"]
+refacLetWhere
+Analyzing: Monad4.hs
+message: CAUGHT EXCEPTION: pow is/are not in scope within in the where clause.
+CMD:["stop"]

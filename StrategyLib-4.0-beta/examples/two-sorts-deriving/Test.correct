@@ -1,0 +1,4 @@
+Just 1
+Just 2
+Just False
+Just (SortA1 (SortB 2 (SortA1 (SortB 3 (SortA1 (SortB 4 SortA2))))))

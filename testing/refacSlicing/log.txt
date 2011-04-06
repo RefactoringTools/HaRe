@@ -1,0 +1,182 @@
+Cases: 23  Tried: 0  Errors: 0  Failures: 0Cases: 23  Tried: 1  Errors: 0  Failures: 0Cases: 23  Tried: 2  Errors: 0  Failures: 0Cases: 23  Tried: 3  Errors: 0  Failures: 0Cases: 23  Tried: 4  Errors: 0  Failures: 0Cases: 23  Tried: 5  Errors: 0  Failures: 0Cases: 23  Tried: 6  Errors: 0  Failures: 0Cases: 23  Tried: 7  Errors: 0  Failures: 0Cases: 23  Tried: 8  Errors: 0  Failures: 0Cases: 23  Tried: 9  Errors: 0  Failures: 0Cases: 23  Tried: 10  Errors: 0  Failures: 0Cases: 23  Tried: 11  Errors: 0  Failures: 0Cases: 23  Tried: 12  Errors: 0  Failures: 0Cases: 23  Tried: 13  Errors: 0  Failures: 0Cases: 23  Tried: 14  Errors: 0  Failures: 0Cases: 23  Tried: 15  Errors: 0  Failures: 0Cases: 23  Tried: 16  Errors: 0  Failures: 0Cases: 23  Tried: 17  Errors: 0  Failures: 0Cases: 23  Tried: 18  Errors: 0  Failures: 0Cases: 23  Tried: 19  Errors: 0  Failures: 0Cases: 23  Tried: 20  Errors: 0  Failures: 0Cases: 23  Tried: 21  Errors: 0  Failures: 0Cases: 23  Tried: 22  Errors: 0  Failures: 0                                            Cases: 23  Tried: 23  Errors: 0  Failures: 0
+ies//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 35 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 35 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["refacSlicing","Test1.hs","3","8","3","11"]
+refacSlicing
+Analyzing: ../../tools/base/tests/HaskellLibraries//Maybe.hs
+           ../../tools/base/tests/HaskellLibraries//List.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+           ../../tools/base/tests/HaskellLibraries//Ratio.hs
+           ../../tools/base/tests/HaskellLibraries//Numeric.hs
+           ../../tools/base/tests/HaskellLibraries//Char.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+           ../../tools/base/tests/HaskellLibraries//Prelude.hs
+           ../../tools/base/tests/HaskellLibraries//Ix.hs
+           ../../tools/base/tests/HaskellLibraries//Array.hs
+Analyzing: Test1.hs
+modified: Test1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test2.hs","5","28","5","30"]
+refacSlicing
+Analyzing: Test2.hs
+modified: Test2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test3.hs","4","19","4","20"]
+refacSlicing
+Analyzing: Test3.hs
+modified: Test3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test4.hs","3","9","3","22"]
+refacSlicing
+Analyzing: Test4.hs
+modified: Test4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test5.hs","3","16","3","17"]
+refacSlicing
+Analyzing: Test5.hs
+modified: Test5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test6.hs","3","17","3","18"]
+refacSlicing
+Analyzing: Test6.hs
+modified: Test6.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test7.hs","4","28","4","29"]
+refacSlicing
+Analyzing: Test7.hs
+modified: Test7.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test8.hs","4","41","4","42"]
+refacSlicing
+Analyzing: Test8.hs
+modified: Test8.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test9.hs","4","43","4","48"]
+refacSlicing
+Analyzing: Test9.hs
+modified: Test9.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test10.hs","4","35","4","36"]
+refacSlicing
+Analyzing: Test10.hs
+modified: Test10.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test11.hs","3","28","3","33"]
+refacSlicing
+Analyzing: Test11.hs
+modified: Test11.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test12.hs","3","40","3","41"]
+refacSlicing
+Analyzing: Test12.hs
+modified: Test12.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test13.hs","3","21","3","24"]
+refacSlicing
+Analyzing: Test13.hs
+modified: Test13.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test14.hs","3","20","3","26"]
+refacSlicing
+Analyzing: Test14.hs
+modified: Test14.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test15.hs","4","15","4","20"]
+refacSlicing
+Analyzing: Test15.hs
+modified: Test15.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test16.hs","4","14","4","24"]
+refacSlicing
+Analyzing: Test16.hs
+modified: Test16.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test17.hs","4","15","4","24"]
+refacSlicing
+Analyzing: Test17.hs
+modified: Test17.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test18.hs","4","14","4","16"]
+refacSlicing
+Analyzing: Test18.hs
+modified: Test18.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test19.hs","3","5","3","6"]
+refacSlicing
+Analyzing: Test19.hs
+message: CAUGHT EXCEPTION: Program slicing can only be performed on an expression.
+CMD:["stop"]
+CMD:["refacSlicing","Test20.hs","3","5","3","6"]
+refacSlicing
+Analyzing: Test20.hs
+message: CAUGHT EXCEPTION: Program slicing can only be performed on an expression.
+CMD:["stop"]
+CMD:["refacSlicing","Test21.hs","4","18","4","20"]
+refacSlicing
+Analyzing: Test21.hs
+message: CAUGHT EXCEPTION: Program slicing can only be performed on an expression.
+CMD:["stop"]
+CMD:["refacSlicing","Test22.hs","5","8","5","9"]
+refacSlicing
+Analyzing: Test22.hs
+modified: Test22.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacSlicing","Test23.hs","4","21","4","22"]
+refacSlicing
+Analyzing: Test23.hs
+modified: Test23.hs
+Completed.
+
+CMD:["stop"]

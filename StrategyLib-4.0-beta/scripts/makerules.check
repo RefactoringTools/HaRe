@@ -1,0 +1,13 @@
+###############################################################################
+#
+# Check targets that recurse
+#
+
+check-hugs:
+	${MAKE} recurse target=check-hugs
+
+check-ghci:
+	${MAKE} recurse target=check-ghci
+
+check-ghc:
+	${MAKE} recurse target=check-ghc

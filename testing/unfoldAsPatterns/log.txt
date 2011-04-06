@@ -1,0 +1,244 @@
+Cases: 35  Tried: 0  Errors: 0  Failures: 0Cases: 35  Tried: 1  Errors: 0  Failures: 0Cases: 35  Tried: 2  Errors: 0  Failures: 0Cases: 35  Tried: 3  Errors: 0  Failures: 0Cases: 35  Tried: 4  Errors: 0  Failures: 0Cases: 35  Tried: 5  Errors: 0  Failures: 0Cases: 35  Tried: 6  Errors: 0  Failures: 0Cases: 35  Tried: 7  Errors: 0  Failures: 0Cases: 35  Tried: 8  Errors: 0  Failures: 0Cases: 35  Tried: 9  Errors: 0  Failures: 0Cases: 35  Tried: 10  Errors: 0  Failures: 0Cases: 35  Tried: 11  Errors: 0  Failures: 0Cases: 35  Tried: 12  Errors: 0  Failures: 0Cases: 35  Tried: 13  Errors: 0  Failures: 0Cases: 35  Tried: 14  Errors: 0  Failures: 0Cases: 35  Tried: 15  Errors: 0  Failures: 0Cases: 35  Tried: 16  Errors: 0  Failures: 0Cases: 35  Tried: 17  Errors: 0  Failures: 0Cases: 35  Tried: 18  Errors: 0  Failures: 0Cases: 35  Tried: 19  Errors: 0  Failures: 0Cases: 35  Tried: 20  Errors: 0  Failures: 0Cases: 35  Tried: 21  Errors: 0  Failures: 0Cases: 35  Tried: 22  Errors: 0  Failures: 0Cases: 35  Tried: 23  Errors: 0  Failures: 0Cases: 35  Tried: 24  Errors: 0  Failures: 0Cases: 35  Tried: 25  Errors: 0  Failures: 0Cases: 35  Tried: 26  Errors: 0  Failures: 0Cases: 35  Tried: 27  Errors: 0  Failures: 0Cases: 35  Tried: 28  Errors: 0  Failures: 0Cases: 35  Tried: 29  Errors: 0  Failures: 0Cases: 35  Tried: 30  Errors: 0  Failures: 0Cases: 35  Tried: 31  Errors: 0  Failures: 0Cases: 35  Tried: 32  Errors: 0  Failures: 0Cases: 35  Tried: 33  Errors: 0  Failures: 0Cases: 35  Tried: 34  Errors: 0  Failures: 0                                            Cases: 35  Tried: 35  Errors: 0  Failures: 0
+ use: pfe files)
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","A2.hs","19","18","19","20"]
+refacUnfoldAsPatterns
+Analyzing: A2.hs
+modified: A2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","A3.hs","17","40","17","42"]
+refacUnfoldAsPatterns
+Analyzing: A3.hs
+modified: A3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","A4.hs","18","55","18","56"]
+refacUnfoldAsPatterns
+Analyzing: A4.hs
+modified: A4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","A5.hs","17","55","17","56"]
+refacUnfoldAsPatterns
+Analyzing: A5.hs
+modified: A5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","A6.hs","17","54","17","56"]
+refacUnfoldAsPatterns
+Analyzing: A6.hs
+modified: A6.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","A7.hs","17","54","17","56"]
+refacUnfoldAsPatterns
+Analyzing: A7.hs
+modified: A7.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","A8.hs","16","43","16","45"]
+refacUnfoldAsPatterns
+Analyzing: A8.hs
+modified: A8.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","A9.hs","16","43","16","45"]
+refacUnfoldAsPatterns
+Analyzing: A9.hs
+modified: A9.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","D1.hs","16","50","16","54"]
+refacUnfoldAsPatterns
+Analyzing: D1.hs
+modified: D1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","D2.hs","19","61","19","65"]
+refacUnfoldAsPatterns
+Analyzing: D2.hs
+modified: D2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","D3.hs","16","50","16","55"]
+refacUnfoldAsPatterns
+Analyzing: D3.hs
+modified: D3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","D4.hs","17","45","17","49"]
+refacUnfoldAsPatterns
+Analyzing: D4.hs
+modified: D4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","D5.hs","19","51","19","54"]
+refacUnfoldAsPatterns
+Analyzing: D5.hs
+modified: D5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","M1.hs","31","28","31","30"]
+refacUnfoldAsPatterns
+Analyzing: M1.hs
+modified: M1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","M2.hs","31","28","31","30"]
+refacUnfoldAsPatterns
+Analyzing: M2.hs
+modified: M2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","M3.hs","32","38","32","40"]
+refacUnfoldAsPatterns
+Analyzing: M3.hs
+modified: M3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","M4.hs","28","51","28","53"]
+refacUnfoldAsPatterns
+Analyzing: M4.hs
+modified: M4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","L1.hs","28","21","28","22"]
+refacUnfoldAsPatterns
+Analyzing: L1.hs
+modified: L1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","E1.hs","17","41","17","42"]
+refacUnfoldAsPatterns
+Analyzing: E1.hs
+modified: E1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","E2.hs","17","55","17","56"]
+refacUnfoldAsPatterns
+Analyzing: E2.hs
+modified: E2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","E3.hs","17","40","17","43"]
+refacUnfoldAsPatterns
+Analyzing: E3.hs
+modified: E3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","E4.hs","32","38","32","40"]
+refacUnfoldAsPatterns
+Analyzing: E4.hs
+modified: E4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","E5.hs","28","21","28","22"]
+refacUnfoldAsPatterns
+Analyzing: E5.hs
+modified: E5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","P1.hs","28","25","28","44"]
+refacUnfoldAsPatterns
+modified: P1.hs
+Analyzing: P1.hs
+modified: P1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","P2.hs","16","20","16","39"]
+refacUnfoldAsPatterns
+Analyzing: P2.hs
+modified: P2.hs
+Analyzing: P2.hs
+modified: P2.hs
+Analyzing: P2.hs
+modified: P2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","P3.hs","16","20","16","41"]
+refacUnfoldAsPatterns
+modified: P3.hs
+Analyzing: P3.hs
+modified: P3.hs
+Analyzing: P3.hs
+modified: P3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","P4.hs","16","20","16","39"]
+refacUnfoldAsPatterns
+Analyzing: P4.hs
+modified: P4.hs
+Analyzing: P4.hs
+modified: P4.hs
+Analyzing: P4.hs
+modified: P4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","B1.hs","17","23","17","24"]
+refacUnfoldAsPatterns
+Analyzing: B1.hs
+message: CAUGHT EXCEPTION: Please rename: val as it conflicts with patterns of the same name.
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","B2.hs","16","11","16","27"]
+refacUnfoldAsPatterns
+Analyzing: B2.hs
+message: CAUGHT EXCEPTION: Please rename: val as it conflicts with patterns of the same name.
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","B3.hs","30","16","30","36"]
+refacUnfoldAsPatterns
+Analyzing: B3.hs
+message: CAUGHT EXCEPTION: Please rename: T as it conflicts with patterns of the same name.
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","B4.hs","32","28","32","30"]
+refacUnfoldAsPatterns
+Analyzing: B4.hs
+message: CAUGHT EXCEPTION: Please rename: T as it conflicts with patterns of the same name.
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","B5.hs","30","16","30","36"]
+refacUnfoldAsPatterns
+Analyzing: B5.hs
+message: CAUGHT EXCEPTION: Please rename: val as it conflicts with patterns of the same name.
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","B6.hs","32","38","32","30"]
+refacUnfoldAsPatterns
+Analyzing: B6.hs
+message: CAUGHT EXCEPTION: Pattern is not associated with an as-pattern. Check Pattern is highlight correctly!
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","B7.hs","19","13","19","33"]
+refacUnfoldAsPatterns
+Analyzing: B7.hs
+message: CAUGHT EXCEPTION: Please rename: val as it conflicts with patterns of the same name.
+CMD:["stop"]
+CMD:["refacUnfoldAsPatterns","B8.hs","20","33","20","34"]
+refacUnfoldAsPatterns
+Analyzing: B8.hs
+message: CAUGHT EXCEPTION: Please rename: val as it conflicts with patterns of the same name.
+CMD:["stop"]

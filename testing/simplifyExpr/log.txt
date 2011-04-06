@@ -1,0 +1,356 @@
+Cases: 30  Tried: 0  Errors: 0  Failures: 0Cases: 30  Tried: 1  Errors: 0  Failures: 0Cases: 30  Tried: 2  Errors: 0  Failures: 0Cases: 30  Tried: 3  Errors: 0  Failures: 0Cases: 30  Tried: 4  Errors: 0  Failures: 0Cases: 30  Tried: 5  Errors: 0  Failures: 0Cases: 30  Tried: 6  Errors: 0  Failures: 0Cases: 30  Tried: 7  Errors: 0  Failures: 0Cases: 30  Tried: 8  Errors: 0  Failures: 0Cases: 30  Tried: 9  Errors: 0  Failures: 0Cases: 30  Tried: 10  Errors: 0  Failures: 0Cases: 30  Tried: 11  Errors: 0  Failures: 0Cases: 30  Tried: 12  Errors: 0  Failures: 0Cases: 30  Tried: 13  Errors: 0  Failures: 0Cases: 30  Tried: 14  Errors: 0  Failures: 0Cases: 30  Tried: 15  Errors: 0  Failures: 0Cases: 30  Tried: 16  Errors: 0  Failures: 0Cases: 30  Tried: 17  Errors: 0  Failures: 0Cases: 30  Tried: 18  Errors: 0  Failures: 0Cases: 30  Tried: 19  Errors: 0  Failures: 0Cases: 30  Tried: 20  Errors: 0  Failures: 0Cases: 30  Tried: 21  Errors: 0  Failures: 0Cases: 30  Tried: 22  Errors: 0  Failures: 0Cases: 30  Tried: 23  Errors: 0  Failures: 0Cases: 30  Tried: 24  Errors: 0  Failures: 0Cases: 30  Tried: 25  Errors: 0  Failures: 0Cases: 30  Tried: 26  Errors: 0  Failures: 0Cases: 30  Tried: 27  Errors: 0  Failures: 0Cases: 30  Tried: 28  Errors: 0  Failures: 0Cases: 30  Tried: 29  Errors: 0  Failures: 0                                            Cases: 30  Tried: 30  Errors: 0  Failures: 0
+/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 42 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 42 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["simplifyExpr","SimpleIn1.hs","5","10","7","24"]
+SimplifyExpr
+"SimpleIn1"
+modified: SimpleIn1.hs
+Analyzing: SimpleIn1.hs
+["SimpleIn1.hs","f_1 []  ","SimpleIn1"]
+
+modified: SimpleIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","SimpleIn2.hs","5","14","7","26"]
+SimplifyExpr
+"SimpleIn2"
+Analyzing: SimpleIn2.hs
+modified: SimpleIn2.hs
+["SimpleIn2.hs","f_1 (undefined : undefined)  ","SimpleIn2"]
+
+modified: SimpleIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","SimpleIn3.hs","5","17","7","34"]
+SimplifyExpr
+"SimpleIn3"
+Analyzing: SimpleIn3.hs
+modified: SimpleIn3.hs
+["SimpleIn3.hs","f_1 (Just undefined)  ","SimpleIn3"]
+
+modified: SimpleIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","SimpleIn4.hs","5","18","7","33"]
+SimplifyExpr
+"SimpleIn4"
+Analyzing: SimpleIn4.hs
+modified: SimpleIn4.hs
+["SimpleIn4.hs","f_1 Nothing  ","SimpleIn4"]
+
+modified: SimpleIn4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","ListToMaybeIn1.hs","5","11","7","31"]
+SimplifyExpr
+"ListToMaybeIn1"
+Analyzing: ListToMaybeIn1.hs
+modified: ListToMaybeIn1.hs
+
+ListToMaybeIn1.hs:5:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `f': f x = ...
+["ListToMaybeIn1.hs","f_1 []  ","ListToMaybeIn1"]
+
+modified: ListToMaybeIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","ListToMaybeIn2.hs","8","20","10","31"]
+SimplifyExpr
+"ListToMaybeIn2"
+Analyzing: ListToMaybeIn2.hs
+modified: ListToMaybeIn2.hs
+
+ListToMaybeIn2.hs:5:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `f': f x = ...
+["ListToMaybeIn2.hs","f_1 (undefined : undefined)  ","ListToMaybeIn2"]
+
+modified: ListToMaybeIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","EitherIn1.hs","13","19","15","46"]
+SimplifyExpr
+"EitherIn1"
+Analyzing: EitherIn1.hs
+modified: EitherIn1.hs
+
+EitherIn1.hs:13:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `f': f x = ...
+["EitherIn1.hs","f_1 (Left undefined)  ","EitherIn1"]
+
+modified: EitherIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","EitherIn2.hs","16","20","18","47"]
+SimplifyExpr
+"EitherIn2"
+Analyzing: EitherIn2.hs
+modified: EitherIn2.hs
+
+EitherIn2.hs:13:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `f': f x = ...
+["EitherIn2.hs","f_1 (Right undefined)  ","EitherIn2"]
+
+modified: EitherIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","EqualsIn1.hs","6","9","9","28"]
+SimplifyExpr
+"EqualsIn1"
+Analyzing: EqualsIn1.hs
+modified: EqualsIn1.hs
+
+EqualsIn1.hs:5:0:
+    Warning: Pattern match(es) are overlapped
+             In the definition of `f': f x = ...
+["EqualsIn1.hs","f_1 []  ","EqualsIn1"]
+
+modified: EqualsIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","ListIn1.hs","6","11","8","15"]
+SimplifyExpr
+"ListIn1"
+Analyzing: ListIn1.hs
+modified: ListIn1.hs
+["ListIn1.hs","f_1 [1, 2]  ","ListIn1"]
+
+modified: ListIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","ListIn2.hs","6","13","9","1"]
+SimplifyExpr
+"ListIn2"
+modified: ListIn2.hs
+Analyzing: ListIn2.hs
+["ListIn2.hs","f_1 [42, 56]  ","ListIn2"]
+
+modified: ListIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","ListIn3.hs","6","13","8","15"]
+SimplifyExpr
+"ListIn3"
+modified: ListIn3.hs
+Analyzing: ListIn3.hs
+["ListIn3.hs","f_1 [42, 56]  ","ListIn3"]
+
+modified: ListIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","PatternIn1.hs","4","21","6","28"]
+SimplifyExpr
+"PatternIn1"
+modified: PatternIn1.hs
+Analyzing: PatternIn1.hs
+["PatternIn1.hs","f_1 undefined  ","PatternIn1"]
+
+modified: PatternIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","PatternIn2.hs","4","30","6","42"]
+SimplifyExpr
+"PatternIn2"
+modified: PatternIn2.hs
+Analyzing: PatternIn2.hs
+["PatternIn2.hs","f_1 (undefined : undefined)  ","PatternIn2"]
+
+modified: PatternIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","PatternIn3.hs","5","20","7","33"]
+SimplifyExpr
+"PatternIn3"
+modified: PatternIn3.hs
+Analyzing: PatternIn3.hs
+["PatternIn3.hs","sumSquares_1 undefined  ","PatternIn3"]
+
+modified: PatternIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","LambdaIn1.hs","5","20","7","32"]
+SimplifyExpr
+"LambdaIn1"
+Analyzing: LambdaIn1.hs
+modified: LambdaIn1.hs
+["LambdaIn1.hs","f_1 undefined (undefined : undefined)  ","LambdaIn1"]
+
+modified: LambdaIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","LambdaIn2.hs","5","28","8","1"]
+SimplifyExpr
+"LambdaIn2"
+Analyzing: LambdaIn2.hs
+modified: LambdaIn2.hs
+["LambdaIn2.hs","f_1 (undefined : undefined) (undefined : undefined)  ","LambdaIn2"]
+
+modified: LambdaIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","LambdaIn3.hs","4","19","6","30"]
+SimplifyExpr
+"LambdaIn3"
+modified: LambdaIn3.hs
+Analyzing: LambdaIn3.hs
+["LambdaIn3.hs","f_1  ","LambdaIn3"]
+
+modified: LambdaIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","GuardsIn1.hs","4","14","6","28"]
+SimplifyExpr
+"GuardsIn1"
+modified: GuardsIn1.hs
+Analyzing: GuardsIn1.hs
+["GuardsIn1.hs","f_1 undefined (undefined : undefined)  ","GuardsIn1"]
+
+modified: GuardsIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","GuardsIn2.hs","4","14","6","28"]
+SimplifyExpr
+"GuardsIn2"
+modified: GuardsIn2.hs
+Analyzing: GuardsIn2.hs
+["GuardsIn2.hs","f_1 1 (undefined : undefined)  ","GuardsIn2"]
+
+modified: GuardsIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","GuardsIn3.hs","5","13","6","38"]
+SimplifyExpr
+"GuardsIn3"
+modified: GuardsIn3.hs
+Analyzing: GuardsIn3.hs
+["GuardsIn3.hs","f_1 1 (undefined : undefined)  ","GuardsIn3"]
+
+modified: GuardsIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","GuardsIn4.hs","5","16","9","39"]
+SimplifyExpr
+"Guards4In"
+Analyzing: GuardsIn4.hs
+modified: GuardsIn4.hs
+Analyzing: GuardsIn4.hs
+["GuardsIn4.hs","f_1 (Left undefined)  ","Guards4In"]
+
+modified: GuardsIn4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","IfThenElseIn1.hs","5","14","6","30"]
+SimplifyExpr
+"IfThenElseIn1"
+message: CAUGHT EXCEPTION: Please highlight a case expression!
+CMD:["stop"]
+CMD:["simplifyExpr","MaybeIn1.hs","5","14","7","30"]
+SimplifyExpr
+"MaybeIn1"
+Analyzing: MaybeIn1.hs
+modified: MaybeIn1.hs
+["MaybeIn1.hs","f_1 (undefined : undefined)  ","MaybeIn1"]
+
+modified: MaybeIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","WhereIn1.hs","4","5","6","30"]
+SimplifyExpr
+"WhereIn1"
+Analyzing: WhereIn1.hs
+modified: WhereIn1.hs
+["WhereIn1.hs","f_1  ","WhereIn1"]
+
+modified: WhereIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","WhereIn2.hs","4","5","6","18"]
+SimplifyExpr
+"WhereIn2"
+modified: WhereIn2.hs
+Analyzing: WhereIn2.hs
+["WhereIn2.hs","f_1  ","WhereIn2"]
+
+modified: WhereIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","MonadIn1.hs","6","8","8","28"]
+SimplifyExpr
+"MonadIn1"
+modified: MonadIn1.hs
+Analyzing: MonadIn1.hs
+["MonadIn1.hs","f_1  ","MonadIn1"]
+
+modified: MonadIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","MonadIn2.hs","9","8","10","32"]
+SimplifyExpr
+"MonadIn2"
+Analyzing: MonadIn2.hs
+modified: MonadIn2.hs
+["MonadIn2.hs","f_1 (undefined, undefined, undefined)  ","MonadIn2"]
+
+modified: MonadIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","MonadIn3.hs","9","8","10","32"]
+SimplifyExpr
+"MonadIn3"
+Analyzing: MonadIn3.hs
+modified: MonadIn3.hs
+Analyzing: MonadIn3.hs
+["MonadIn3.hs","f_1 (undefined, undefined, undefined)  ","MonadIn3"]
+
+modified: MonadIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["simplifyExpr","WhereIn3.hs","6","23","8","39"]
+SimplifyExpr
+"WhereIn3"
+message: CAUGHT EXCEPTION: Please select a case in top-level expression scope!
+CMD:["stop"]

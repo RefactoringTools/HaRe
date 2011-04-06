@@ -1,0 +1,29 @@
+###############################################################################
+#
+# Here we use a very simple test target to run hugs in an example directory.
+#
+
+run-hugs: derive
+	hugs ${hugs-opts} Main.hs < ${StrategyLib}/scripts/TestMain
+	diff Test.log Test.correct
+
+
+###############################################################################
+#
+# Here we use a very simple test target to run ghci in an example directory.
+#
+
+run-ghci: derive
+	ghci ${ghc-opts} Main.hs < ${StrategyLib}/scripts/TestMain
+	diff Test.log Test.correct
+
+
+###############################################################################
+#
+# Here we use a test target to compile and run a program.
+#
+
+run-ghc: derive
+	ghc ${ghc-opts} --make Main.hs -o Main
+	./Main
+	diff Test.log Test.correct

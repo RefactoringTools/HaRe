@@ -1,0 +1,49 @@
+Cases: 5  Tried: 0  Errors: 0  Failures: 0Cases: 5  Tried: 1  Errors: 0  Failures: 0Cases: 5  Tried: 2  Errors: 0  Failures: 0Cases: 5  Tried: 3  Errors: 0  Failures: 0Cases: 5  Tried: 4  Errors: 0  Failures: 0                                          Cases: 5  Tried: 5  Errors: 0  Failures: 0
+ols/base/tests/HaskellLibraries//Prelude.hs
+Adding Ix from ../../tools/base/tests/HaskellLibraries//Ix.hs
+Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 17 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 17 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["refacInstantiate","Mod2.hs","8","1","0","l"]
+refacInstantiate
+Analyzing: Mod2.hs
+[(Pat (HsPId (HsVar (PNT (PN (UnQual "n") (S ("Mod2.hs",62,8,4))) Value (N (Just ("Mod2.hs",62,8,4)))))),"0"),(Pat (HsPId (HsVar (PNT (PN (UnQual "l") (S ("Mod2.hs",64,8,6))) Value (N (Just ("Mod2.hs",64,8,6)))))),"l")]
+modified: Mod2.hs
+CMD:["stop"]
+CMD:["refacInstantiate","Mod4.hs","7","1","_","hi"]
+refacInstantiate
+Analyzing: Mod4.hs
+[(Pat (HsPLit ("Mod4.hs",61,7,4) (HsInt 0)),"_"),(Pat (HsPId (HsVar (PNT (PN (UnQual "l") (S ("Mod4.hs",63,7,6))) Value (N (Just ("Mod4.hs",63,7,6)))))),"hi")]
+modified: Mod4.hs
+CMD:["stop"]
+CMD:["refacInstantiate","Mod5.hs","7","1","0","hi"]
+refacInstantiate
+Analyzing: Mod5.hs
+[(Pat (HsPLit ("Mod5.hs",61,7,4) (HsInt 0)),"0"),(Pat (HsPId (HsVar (PNT (PN (UnQual "l") (S ("Mod5.hs",63,7,6))) Value (N (Just ("Mod5.hs",63,7,6)))))),"hi")]
+modified: Mod5.hs
+CMD:["stop"]
+CMD:["refacInstantiate","Mod1.hs","8","1","0"]
+refacInstantiate
+Analyzing: Mod1.hs
+[(Pat (HsPId (HsVar (PNT (PN (UnQual "n") (S ("Mod1.hs",62,8,4))) Value (N (Just ("Mod1.hs",62,8,4)))))),"0")]
+modified: Mod1.hs
+CMD:["stop"]
+CMD:["refacInstantiate","Mod3.hs","7","1","n","l"]
+refacInstantiate
+Analyzing: Mod3.hs
+message: CAUGHT EXCEPTION: Can only instantiate an identifier!
+CMD:["stop"]

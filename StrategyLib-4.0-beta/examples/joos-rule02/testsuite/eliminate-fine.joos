@@ -1,0 +1,31 @@
+--
+-- This refactoring is feasible.
+--
+
+eliminate
+
+in
+
+  public class Statement extends Object {
+
+    public Statement() {
+      super();
+    }
+
+    <
+    public void Dummy() {
+    }
+    >
+
+    public void printOwning(double amount) {
+
+      this.printBanner();
+
+      -- Print details
+      System_out.println("name:" + _name);
+      System_out.println("amount" + amount);
+
+    }
+
+  }
+

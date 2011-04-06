@@ -1,0 +1,29 @@
+CMD:["new"]
+CMD:["stop"]
+CMD:["add","D1.hs","C1.hs","A1.hs","WhereIn1.hs","WhereIn3.hs","WhereIn4.hs","WhereIn5.hs","WhereIn6.hs","WhereIn7.hs","CaseIn1.hs","LetIn1.hs","PatBindIn1.hs","WhereIn2.hs","LetIn2.hs","PatBindIn4.hs","WhereIn8.hs","D2.hs","C2.hs","A2.hs","D3.hs"]
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Prelude, needed by D1 C1 A1 WhereIn1 WhereIn3
+                       WhereIn4 WhereIn5 WhereIn6 WhereIn7 CaseIn1 LetIn1
+                       PatBindIn1 WhereIn2 LetIn2 PatBindIn4 WhereIn8 D2 C2
+                       A2 D3
+CMD:["stop"]
+CMD:["chase","../../tools/base/tests/HaskellLibraries/"]
+Adding Prelude from ../../tools/base/tests/HaskellLibraries//Prelude.hs
+Adding Ix from ../../tools/base/tests/HaskellLibraries//Ix.hs
+Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 32 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 32 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]

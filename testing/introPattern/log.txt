@@ -1,0 +1,121 @@
+Cases: 17  Tried: 0  Errors: 0  Failures: 0Cases: 17  Tried: 1  Errors: 0  Failures: 0Cases: 17  Tried: 2  Errors: 0  Failures: 0Cases: 17  Tried: 3  Errors: 0  Failures: 0Cases: 17  Tried: 4  Errors: 0  Failures: 0Cases: 17  Tried: 5  Errors: 0  Failures: 0Cases: 17  Tried: 6  Errors: 0  Failures: 0Cases: 17  Tried: 7  Errors: 0  Failures: 0Cases: 17  Tried: 8  Errors: 0  Failures: 0Cases: 17  Tried: 9  Errors: 0  Failures: 0Cases: 17  Tried: 10  Errors: 0  Failures: 0Cases: 17  Tried: 11  Errors: 0  Failures: 0Cases: 17  Tried: 12  Errors: 0  Failures: 0Cases: 17  Tried: 13  Errors: 0  Failures: 0Cases: 17  Tried: 14  Errors: 0  Failures: 0Cases: 17  Tried: 15  Errors: 0  Failures: 0Cases: 17  Tried: 16  Errors: 0  Failures: 0                                            Cases: 17  Tried: 17  Errors: 0  Failures: 0
+ls/base/tests/HaskellLibraries//Ix.hs
+Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 29 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 29 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["introPattern","EitherIn1.hs","10","3"]
+introPattern
+modified: EitherIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","MultiParamIn1.hs","12","12"]
+Analyzing: MultiParamIn1.hs
+introPattern
+modified: MultiParamIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","MultiParamIn2.hs","12","12"]
+Analyzing: MultiParamIn2.hs
+introPattern
+modified: MultiParamIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","MultiParamIn3.hs","12","12"]
+Analyzing: MultiParamIn3.hs
+introPattern
+modified: MultiParamIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","MultiParamIn4.hs","13","14"]
+Analyzing: MultiParamIn4.hs
+introPattern
+modified: MultiParamIn4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","MultiParamIn5.hs","13","14"]
+Analyzing: MultiParamIn5.hs
+introPattern
+modified: MultiParamIn5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","TupleIn1.hs","5","3"]
+introPattern
+modified: TupleIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","TupleIn2.hs","7","3"]
+Analyzing: TupleIn2.hs
+introPattern
+modified: TupleIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","UnitIn1.hs","5","3"]
+introPattern
+modified: UnitIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","IrrefutableIn1.hs","6","4"]
+Analyzing: IrrefutableIn1.hs
+introPattern
+modified: IrrefutableIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","RecordIn1.hs","9","9"]
+Analyzing: RecordIn1.hs
+introPattern
+modified: RecordIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","WhereIn1.hs","16","12"]
+Analyzing: WhereIn1.hs
+introPattern
+modified: WhereIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["introPattern","A1.hs","13","9"]
+message: CAUGHT EXCEPTION: Please select a pattern variable on the LHS of an equation!
+CMD:["stop"]
+CMD:["introPattern","A2.hs","13","3"]
+Analyzing: A2.hs
+introPattern
+message: CAUGHT EXCEPTION: Please define a type signature for the definition!
+CMD:["stop"]
+CMD:["introPattern","EitherIn2.hs","10","3"]
+introPattern
+message: CAUGHT EXCEPTION: There are no constructors defined for the type of this pattern!
+CMD:["stop"]
+CMD:["introPattern","TypeVariable1.hs","6","3"]
+Analyzing: TypeVariable1.hs
+introPattern
+message: CAUGHT EXCEPTION: Please select a variable with a type constructor!
+CMD:["stop"]
+CMD:["introPattern","MultiEquationIn1.hs","6","12"]
+introPattern
+message: CAUGHT EXCEPTION: Pattern argument must be a variable in all defining equations!
+CMD:["stop"]

@@ -1,0 +1,23 @@
+CMD:["new"]
+CMD:["stop"]
+CMD:["add","D1.hs","A1.hs","D2.hs","A2.hs","FunIn1.hs","FunIn2.hs","FunIn3.hs","FunIn5.hs","FunIn6.hs","FunIn0.hs","FunIn4.hs","FunIn7.hs"]
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Prelude, needed by D1 A1 D2 A2 FunIn1 FunIn2 FunIn3
+                       FunIn5 FunIn6 FunIn0 FunIn4 FunIn7
+CMD:["stop"]
+CMD:["chase","../../tools/base/tests/HaskellLibraries/"]
+Adding Prelude from ../../tools/base/tests/HaskellLibraries//Prelude.hs
+Adding Ix from ../../tools/base/tests/HaskellLibraries//Ix.hs
+Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+pfe: interrupted
+CMD:["chase","."]
+The project contains 12 source files.
+(To list the files, use: pfe files)
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Prelude, needed by A1 A2 D1 D2 FunIn0 FunIn1 FunIn2
+                       FunIn3 FunIn4 FunIn5 FunIn6 FunIn7
+CMD:["stop"]

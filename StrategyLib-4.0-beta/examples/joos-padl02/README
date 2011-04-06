@@ -1,0 +1,16 @@
+------------------------------------------------------------------------------
+
+EXTRACT METHOD REFACTORING for JOOS
+
+This example is explained in the article
+"Typed Combinators for Generic Traversal".
+
+JOOS is a purely object-oriented subset of Java designed by Laurie Hendren.
+It is used for research experiments and education. The grammar has 24 
+non-terminals and 61 productions. The abstract Haskell syntax of JOOS
+was extracted from:
+
+    David A. Watt. JOOS action semantics. Version 1, available from
+    http://www.dcs.gla.ac.uk/~daw/publications/JOOS.ps, October 1997. 
+
+------------------------------------------------------------------------------

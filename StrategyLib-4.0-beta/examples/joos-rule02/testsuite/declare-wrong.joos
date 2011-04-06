@@ -1,0 +1,37 @@
+--
+-- This can't work because there is already a Dummy method in the way.
+--
+
+declare
+
+  public void Dummy() {
+  }
+
+in
+
+  public class Statement extends Object {
+
+    public Statement() {
+      super();
+    }
+
+    << 
+
+    public void Dummy() {
+    }
+
+    public void printOwning(double amount) {
+
+      this.printBanner();
+
+      -- Print details
+
+      System_out.println("name:" + _name);
+      System_out.println("amount" + amount);
+
+    }
+
+    >>
+
+  }
+

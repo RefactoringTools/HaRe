@@ -1,0 +1,154 @@
+Cases: 19  Tried: 0  Errors: 0  Failures: 0Cases: 19  Tried: 1  Errors: 0  Failures: 0                                           ### Failure in: 1
+("unfoldDef",(["A3.hs"],["9","32"]))
+expected: True
+ but got: False
+Cases: 19  Tried: 2  Errors: 0  Failures: 1Cases: 19  Tried: 3  Errors: 0  Failures: 1Cases: 19  Tried: 4  Errors: 0  Failures: 1Cases: 19  Tried: 5  Errors: 0  Failures: 1Cases: 19  Tried: 6  Errors: 0  Failures: 1Cases: 19  Tried: 7  Errors: 0  Failures: 1Cases: 19  Tried: 8  Errors: 0  Failures: 1Cases: 19  Tried: 9  Errors: 0  Failures: 1Cases: 19  Tried: 10  Errors: 0  Failures: 1Cases: 19  Tried: 11  Errors: 0  Failures: 1Cases: 19  Tried: 12  Errors: 0  Failures: 1Cases: 19  Tried: 13  Errors: 0  Failures: 1Cases: 19  Tried: 14  Errors: 0  Failures: 1Cases: 19  Tried: 15  Errors: 0  Failures: 1                                            ### Failure in: 15
+("unfoldDef",(["ComplexPatIn1.hs"],["14","13"]))
+expected: True
+ but got: False
+Cases: 19  Tried: 16  Errors: 0  Failures: 2                                            ### Failure in: 16
+("unfoldDef",(["ComplexPatIn2.hs"],["14","22"]))
+expected: True
+ but got: False
+Cases: 19  Tried: 17  Errors: 0  Failures: 3Cases: 19  Tried: 18  Errors: 0  Failures: 3                                            Cases: 19  Tried: 19  Errors: 0  Failures: 3
+ing Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 31 source files.
+(To list the files, use: pfe files)
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    C3, needed by A3
+    D1, needed by C1
+    D2, needed by C2
+CMD:["stop"]
+CMD:["chase","."]
+Adding C3 from C3.hs
+Adding D3 from D3.hs
+Adding D1 from D1.hs
+Adding D2 from D2.hs
+The project contains 35 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["unfoldDef","C1.hs","7","22"]
+Analyzing: ../../tools/base/tests/HaskellLibraries//Maybe.hs
+           ../../tools/base/tests/HaskellLibraries//List.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+           ../../tools/base/tests/HaskellLibraries//Ratio.hs
+           ../../tools/base/tests/HaskellLibraries//Numeric.hs
+           ../../tools/base/tests/HaskellLibraries//Char.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+           ../../tools/base/tests/HaskellLibraries//Prelude.hs
+           ../../tools/base/tests/HaskellLibraries//Ix.hs
+           ../../tools/base/tests/HaskellLibraries//Array.hs
+Analyzing: D1.hs
+Analyzing: C1.hs
+modified: C1.hs
+CMD:["stop"]
+CMD:["unfoldDef","A3.hs","9","32"]
+Analyzing: D3.hs
+Analyzing: C3.hs
+Analyzing: A3.hs
+modified: A3.hs
+CMD:["stop"]
+10c10
+<                                     (x : xs) -> (sq x) + (sumSquares1 xs)
+---
+>                                     ((x : xs)) -> (sq x) + (sumSquares1 xs)
+CMD:["unfoldDef","FunIn1.hs","12","27"]
+Analyzing: FunIn1.hs
+modified: FunIn1.hs
+CMD:["stop"]
+CMD:["unfoldDef","FunIn2.hs","12","21"]
+Analyzing: FunIn2.hs
+modified: FunIn2.hs
+CMD:["stop"]
+CMD:["unfoldDef","FunIn3.hs","13","24"]
+Analyzing: FunIn3.hs
+modified: FunIn3.hs
+CMD:["stop"]
+CMD:["unfoldDef","PartialIn1.hs","12","25"]
+Analyzing: PartialIn1.hs
+modified: PartialIn1.hs
+CMD:["stop"]
+CMD:["unfoldDef","MultiMatchesIn1.hs","9","17"]
+Analyzing: MultiMatchesIn1.hs
+modified: MultiMatchesIn1.hs
+CMD:["stop"]
+CMD:["unfoldDef","MultiMatchesIn2.hs","9","17"]
+Analyzing: MultiMatchesIn2.hs
+modified: MultiMatchesIn2.hs
+CMD:["stop"]
+CMD:["unfoldDef","WithLocalDeclIn1.hs","9","17"]
+Analyzing: WithLocalDeclIn1.hs
+modified: WithLocalDeclIn1.hs
+CMD:["stop"]
+CMD:["unfoldDef","WithLocalDeclIn2.hs","9","17"]
+Analyzing: WithLocalDeclIn2.hs
+modified: WithLocalDeclIn2.hs
+CMD:["stop"]
+CMD:["unfoldDef","WithRenamingIn1.hs","9","20"]
+Analyzing: WithRenamingIn1.hs
+modified: WithRenamingIn1.hs
+CMD:["stop"]
+CMD:["unfoldDef","WithRenamingIn2.hs","9","19"]
+Analyzing: WithRenamingIn2.hs
+modified: WithRenamingIn2.hs
+CMD:["stop"]
+CMD:["unfoldDef","WithRenamingIn3.hs","9","20"]
+Analyzing: WithRenamingIn3.hs
+modified: WithRenamingIn3.hs
+CMD:["stop"]
+CMD:["unfoldDef","GuardIn1.hs","9","18"]
+Analyzing: GuardIn1.hs
+modified: GuardIn1.hs
+CMD:["stop"]
+CMD:["unfoldDef","ComplexParamIn1.hs","9","18"]
+Analyzing: ComplexParamIn1.hs
+modified: ComplexParamIn1.hs
+CMD:["stop"]
+CMD:["unfoldDef","ComplexPatIn1.hs","14","13"]
+Analyzing: ComplexPatIn1.hs
+modified: ComplexPatIn1.hs
+CMD:["stop"]
+14,17c14,18
+< foo x = h + (head $ (zip [1 .. x] [3 .. 15])) + (snd tup)  where t::Int
+<                                                                  h::Int
+<                                                                  tup :: (Int,Int)
+<                                                                  tup@(h,t) = head $ zip [1..x] [3..15]
+---
+> foo x = h + (let tup@(h, t) = head $ (zip [1 .. x] [3 .. 15])
+>              in t) + (snd tup)  where t::Int
+>                                       h::Int
+>                                       tup :: (Int,Int)
+>                                       tup@(h,t) = head $ zip [1..x] [3..15]
+CMD:["unfoldDef","ComplexPatIn2.hs","14","22"]
+Analyzing: ComplexPatIn2.hs
+modified: ComplexPatIn2.hs
+CMD:["stop"]
+14,17c14,18
+< foo x = h + t + (snd (head $ (zip [1 .. x] [3 .. 15])))  where t::Int
+<                                                                h::Int
+<                                                                tup :: (Int,Int)
+<                                                                tup@(h,t) = head $ zip [1..x] [3..15]
+---
+> foo x = h + t + (snd (let tup@(h, t) = head $ (zip [1 .. x] [3 .. 15])
+>                       in tup))  where t::Int
+>                                       h::Int
+>                                       tup :: (Int,Int)
+>                                       tup@(h,t) = head $ zip [1..x] [3..15]
+CMD:["unfoldDef","NegativeIn1.hs","14","18"]
+Analyzing: NegativeIn1.hs
+message: CAUGHT EXCEPTION: 
+Invalid cursor position!
+
+CMD:["stop"]
+CMD:["unfoldDef","C2.hs","8","22"]
+Analyzing: D2.hs
+Analyzing: C2.hs
+message: CAUGHT EXCEPTION: The free identifier: 'pow', used in the definition to be unfolded, is not in scope in the current module!
+CMD:["stop"]

@@ -1,0 +1,49 @@
+Cases: 3  Tried: 0  Errors: 0  Failures: 0,"C3.hs","C1.hs","A1.hs"]
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    B1, needed by A1
+    D1, needed by A1
+    Prelude, needed by C2 C3 C1 A1
+CMD:["stop"]
+CMD:["chase","../../tools/base/tests/HaskellLibraries/"]
+Adding Prelude from ../../tools/base/tests/HaskellLibraries//Prelude.hs
+Adding Ix from ../../tools/base/tests/HaskellLibraries//Ix.hs
+Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 16 source files.
+(To list the files, use: pfe files)
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    B1, needed by A1
+    D1, needed by A1
+CMD:["stop"]
+CMD:["chase","."]
+Adding B1 from B1.hs
+Adding D1 from D1.hs
+The project contains 18 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["rmFromExport","C2.hs","4","20"]
+Analyzing: ../../tools/base/tests/HaskellLibraries//Maybe.hs
+           ../../tools/base/tests/HaskellLibraries//List.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+           ../../tools/base/tests/HaskellLibraries//Ratio.hs
+           ../../tools/base/tests/HaskellLibraries//Numeric.hs
+           ../../tools/base/tests/HaskellLibraries//Char.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+           ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+           ../../tools/base/tests/HaskellLibraries//Prelude.hs
+           ../../tools/base/tests/HaskellLibraries//Ix.hs
+           ../../tools/base/tests/HaskellLibraries//Array.hs
+pfe: interrupted
+4c4
+< module C2(sumTree, myFringe, Tree(..), SameOrNot(..))  where 
+---
+> module C2(sumTree, Tree(..), SameOrNot(..))  where 

@@ -1,0 +1,10 @@
+###############################################################################
+#
+# Reminder
+# 
+
+nothing-to-do:
+	@echo
+	@echo " Note: there is no general \"all\" target"
+	@echo " (because there is nothing to be built)."
+	@echo

@@ -1,0 +1,339 @@
+Cases: 37  Tried: 0  Errors: 0  Failures: 0Cases: 37  Tried: 1  Errors: 0  Failures: 0Cases: 37  Tried: 2  Errors: 0  Failures: 0Cases: 37  Tried: 3  Errors: 0  Failures: 0Cases: 37  Tried: 4  Errors: 0  Failures: 0Cases: 37  Tried: 5  Errors: 0  Failures: 0Cases: 37  Tried: 6  Errors: 0  Failures: 0Cases: 37  Tried: 7  Errors: 0  Failures: 0Cases: 37  Tried: 8  Errors: 0  Failures: 0Cases: 37  Tried: 9  Errors: 0  Failures: 0Cases: 37  Tried: 10  Errors: 0  Failures: 0Cases: 37  Tried: 11  Errors: 0  Failures: 0Cases: 37  Tried: 12  Errors: 0  Failures: 0Cases: 37  Tried: 13  Errors: 0  Failures: 0Cases: 37  Tried: 14  Errors: 0  Failures: 0Cases: 37  Tried: 15  Errors: 0  Failures: 0Cases: 37  Tried: 16  Errors: 0  Failures: 0Cases: 37  Tried: 17  Errors: 0  Failures: 0Cases: 37  Tried: 18  Errors: 0  Failures: 0Cases: 37  Tried: 19  Errors: 0  Failures: 0Cases: 37  Tried: 20  Errors: 0  Failures: 0Cases: 37  Tried: 21  Errors: 0  Failures: 0Cases: 37  Tried: 22  Errors: 0  Failures: 0Cases: 37  Tried: 23  Errors: 0  Failures: 0Cases: 37  Tried: 24  Errors: 0  Failures: 0Cases: 37  Tried: 25  Errors: 0  Failures: 0Cases: 37  Tried: 26  Errors: 0  Failures: 0Cases: 37  Tried: 27  Errors: 0  Failures: 0Cases: 37  Tried: 28  Errors: 0  Failures: 0Cases: 37  Tried: 29  Errors: 0  Failures: 0Cases: 37  Tried: 30  Errors: 0  Failures: 0Cases: 37  Tried: 31  Errors: 0  Failures: 0Cases: 37  Tried: 32  Errors: 0  Failures: 0Cases: 37  Tried: 33  Errors: 0  Failures: 0Cases: 37  Tried: 34  Errors: 0  Failures: 0Cases: 37  Tried: 35  Errors: 0  Failures: 0Cases: 37  Tried: 36  Errors: 0  Failures: 0                                            Cases: 37  Tried: 37  Errors: 0  Failures: 0
+ellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 49 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 49 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["genFold","A1.hs","14","40","14","51"]
+genFold
+modified: A1.hs
+Analyzing: A1.hs
+modified: A1.hs
+modified: A1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","A2.hs","9","42","9","49"]
+genFold
+Analyzing: A2.hs
+modified: A2.hs
+modified: A2.hs
+modified: A2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RenameParamIn1.hs","7","46","7","53"]
+genFold
+modified: RenameParamIn1.hs
+Analyzing: RenameParamIn1.hs
+modified: RenameParamIn1.hs
+modified: RenameParamIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RenameParamIn2.hs","7","38","7","55"]
+genFold
+Analyzing: RenameParamIn2.hs
+modified: RenameParamIn2.hs
+Analyzing: RenameParamIn2.hs
+modified: RenameParamIn2.hs
+modified: RenameParamIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RenameParamIn3.hs","9","51","9","66"]
+genFold
+modified: RenameParamIn3.hs
+Analyzing: RenameParamIn3.hs
+modified: RenameParamIn3.hs
+modified: RenameParamIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RenameParamIn4.hs","20","45","20","65"]
+genFold
+modified: RenameParamIn4.hs
+Analyzing: RenameParamIn4.hs
+modified: RenameParamIn4.hs
+modified: RenameParamIn4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RenameParamIn5.hs","21","44","21","64"]
+genFold
+modified: RenameParamIn5.hs
+Analyzing: RenameParamIn5.hs
+modified: RenameParamIn5.hs
+modified: RenameParamIn5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RenameParamIn6.hs","13","28","13","46"]
+genFold
+modified: RenameParamIn6.hs
+Analyzing: RenameParamIn6.hs
+modified: RenameParamIn6.hs
+modified: RenameParamIn6.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","Fail1.hs","12","56","12","74"]
+genFold
+message: CAUGHT EXCEPTION: Please define an equation within a comment above the definition under scrutiny.
+CMD:["stop"]
+CMD:["genFold","Fail2.hs","7","56","7","74"]
+genFold
+Analyzing: Fail2.hs
+message: CAUGHT EXCEPTION: Please define an equation within a comment above the definition under scrutiny.
+CMD:["stop"]
+CMD:["genFold","TupleIn1.hs","7","48","7","60"]
+genFold
+modified: TupleIn1.hs
+Analyzing: TupleIn1.hs
+modified: TupleIn1.hs
+modified: TupleIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","SplitAtIn1.hs","10","35","10","56"]
+genFold
+modified: SplitAtIn1.hs
+Analyzing: SplitAtIn1.hs
+modified: SplitAtIn1.hs
+modified: SplitAtIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","SplitAtIn2.hs","10","40","10","56"]
+genFold
+modified: SplitAtIn2.hs
+Analyzing: SplitAtIn2.hs
+modified: SplitAtIn2.hs
+modified: SplitAtIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","ComplexIn1.hs","5","14","5","27"]
+genFold
+Analyzing: ComplexIn1.hs
+message: CAUGHT EXCEPTION: Error: the selected entity is a top level complex pattern binding!
+CMD:["stop"]
+CMD:["genFold","GuardsIn1.hs","21","30","21","53"]
+genFold
+Analyzing: GuardsIn1.hs
+modified: GuardsIn1.hs
+Analyzing: GuardsIn1.hs
+modified: GuardsIn1.hs
+Analyzing: GuardsIn1.hs
+modified: GuardsIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","GuardsIn2.hs","24","30","24","53"]
+genFold
+Analyzing: GuardsIn2.hs
+modified: GuardsIn2.hs
+Analyzing: GuardsIn2.hs
+modified: GuardsIn2.hs
+Analyzing: GuardsIn2.hs
+modified: GuardsIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","GuardsIn3.hs","13","48","13","59"]
+genFold
+modified: GuardsIn3.hs
+Analyzing: GuardsIn3.hs
+modified: GuardsIn3.hs
+modified: GuardsIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","GuardsIn4.hs","19","57","19","78"]
+genFold
+Analyzing: GuardsIn4.hs
+modified: GuardsIn4.hs
+Analyzing: GuardsIn4.hs
+modified: GuardsIn4.hs
+Analyzing: GuardsIn4.hs
+modified: GuardsIn4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","LeftSectionIn1.hs","7","42","7","53"]
+genFold
+modified: LeftSectionIn1.hs
+Analyzing: LeftSectionIn1.hs
+modified: LeftSectionIn1.hs
+modified: LeftSectionIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RightSectionIn1.hs","7","42","7","53"]
+genFold
+modified: RightSectionIn1.hs
+Analyzing: RightSectionIn1.hs
+modified: RightSectionIn1.hs
+modified: RightSectionIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","EnumFrom.hs","7","42","7","52"]
+genFold
+modified: EnumFrom.hs
+Analyzing: EnumFrom.hs
+modified: EnumFrom.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","EnumFrom2.hs","7","42","7","58"]
+genFold
+Analyzing: EnumFrom2.hs
+modified: EnumFrom2.hs
+modified: EnumFrom2.hs
+modified: EnumFrom2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","EnumFrom3.hs","7","42","7","56"]
+genFold
+modified: EnumFrom3.hs
+Analyzing: EnumFrom3.hs
+modified: EnumFrom3.hs
+modified: EnumFrom3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","EnumFrom4.hs","7","42","7","58"]
+genFold
+modified: EnumFrom4.hs
+Analyzing: EnumFrom4.hs
+modified: EnumFrom4.hs
+modified: EnumFrom4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","EnumFrom5.hs","7","42","7","60"]
+genFold
+modified: EnumFrom5.hs
+Analyzing: EnumFrom5.hs
+modified: EnumFrom5.hs
+modified: EnumFrom5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","IfFrom.hs","7","42","8","57"]
+genFold
+modified: IfFrom.hs
+Analyzing: IfFrom.hs
+modified: IfFrom.hs
+modified: IfFrom.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","ListComp1.hs","7","42","7","61"]
+genFold
+modified: ListComp1.hs
+Analyzing: ListComp1.hs
+modified: ListComp1.hs
+modified: ListComp1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","ListComp2.hs","7","42","7","61"]
+genFold
+modified: ListComp2.hs
+Analyzing: ListComp2.hs
+modified: ListComp2.hs
+modified: ListComp2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","Lambda1.hs","7","42","7","50"]
+genFold
+modified: Lambda1.hs
+Analyzing: Lambda1.hs
+modified: Lambda1.hs
+modified: Lambda1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RecordIn1.hs","10","42","10","50"]
+genFold
+modified: RecordIn1.hs
+Analyzing: RecordIn1.hs
+modified: RecordIn1.hs
+modified: RecordIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RecordIn2.hs","10","45","10","73"]
+genFold
+modified: RecordIn2.hs
+Analyzing: RecordIn2.hs
+modified: RecordIn2.hs
+modified: RecordIn2.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RecordIn3.hs","10","45","10","74"]
+genFold
+Analyzing: RecordIn3.hs
+modified: RecordIn3.hs
+modified: RecordIn3.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RecordIn4.hs","10","42","10","50"]
+genFold
+modified: RecordIn4.hs
+Analyzing: RecordIn4.hs
+modified: RecordIn4.hs
+modified: RecordIn4.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RecordIn5.hs","10","42","10","67"]
+genFold
+modified: RecordIn5.hs
+Analyzing: RecordIn5.hs
+modified: RecordIn5.hs
+modified: RecordIn5.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","RecordIn6.hs","10","44","10","69"]
+genFold
+Analyzing: RecordIn6.hs
+modified: RecordIn6.hs
+modified: RecordIn6.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","CaseIn1.hs","13","42","13","50"]
+genFold
+modified: CaseIn1.hs
+Analyzing: CaseIn1.hs
+modified: CaseIn1.hs
+modified: CaseIn1.hs
+Completed.
+
+CMD:["stop"]
+CMD:["genFold","CaseIn2.hs","15","42","15","50"]
+genFold
+modified: CaseIn2.hs
+Analyzing: CaseIn2.hs
+modified: CaseIn2.hs
+modified: CaseIn2.hs
+Completed.
+
+CMD:["stop"]

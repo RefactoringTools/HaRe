@@ -1,0 +1,51 @@
+###############################################################################
+#
+# Environment for makerules
+#
+
+StrategyLib = ../../..
+Model       = drift-default
+
+tests = introduce-fine.log              \
+	introduce-wrong-def.log \
+	eliminate-fine.log              \
+	eliminate-wrong.log             \
+	extract-fine.log                \
+	extract-wrong-assign.log        \
+	extract-wrong-return.log
+
+
+###############################################################################
+#
+# Reusable includes
+#
+
+include ${StrategyLib}/scripts/makerules.all
+include ${StrategyLib}/scripts/makerules.opts
+include ${StrategyLib}/scripts/makerules.clean
+include ${StrategyLib}/scripts/makerules.recurse
+
+
+###############################################################################
+#
+# Testsuite is only tested with runhugs.
+#
+
+check-hugs:
+	(cd ..; ${MAKE} derive)
+	rm -f *.log
+	${MAKE} ${tests}
+
+check-ghci:
+
+check-ghc:
+
+
+###############################################################################
+#
+# Rules for producing test logs
+#
+
+%.log: %.joos
+	runhugs	${hugs-opts} -P..: Main.hs $*.joos $*.log
+	diff $*.log $*.correct

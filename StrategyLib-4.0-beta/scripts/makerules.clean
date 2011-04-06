@@ -1,0 +1,22 @@
+###############################################################################
+#
+# These are the kind of files that are subject to normal clean-up.
+#
+
+clean:
+	@rm -f *~
+	@rm -f Main
+	@rm -f *.log
+	@rm -f *.hi
+	@rm -f *.o
+	@${MAKE} recurse target=clean
+
+
+###############################################################################
+#
+# Here we also remove files that could be derived with DrIFT.
+#
+
+very-clean: clean
+	@rm -f *TermInstances.hs
+	@${MAKE} recurse target=clean

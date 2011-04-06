@@ -1,0 +1,30 @@
+This a pure source distribution of Strafunski's StrategyLib.
+
+Everything should work out of the box.
+
+You can use the library if you have hugs or ghc installed.  If you
+want to generate Term instances for Datatypes, you will need
+DrIFT. For the examples included in the distribution, the generated
+files are however shipped, so that you don't need DrIFT if you just
+want to play with distribution.
+
+The distribution was tested with the following configuration:
+
+- ghci/ghc 6.2
+- ghci/ghc 6.0.1 (works too but not eariler versions)
+- hugs version November 2002 (don't use earlier versions)
+- DrIFT 2.0.1 (don't use earlier versions)
+- gmake 3.79.1 (most versions should do)
+- examples/twosorts-deriving needs an unreleased GHC version
+
+All these programs are expected to be in your path.
+
+Run "gmake check" to test the distribution if you like. There are also
+more specific targets for running examples. For example, the most
+simple example, i.e., "twosorts-drift-default" is ran with hugs as
+follows:
+
+> cd examples/twosorts-drift-default
+> gmake test-hugs
+
+For all other information see the file README.
