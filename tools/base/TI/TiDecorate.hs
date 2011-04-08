@@ -150,7 +150,7 @@ instance HasBaseStruct (TiDecl i) (DStruct i) where base    = Dec
 instance HasBaseStruct (TiExp i) (EStruct i)  where base    = Exp
 instance HasBaseStruct (TiPat i) (PStruct i)  where base    = Pat
 
-instance Rec (TiDecl i) (DStruct i) where rec = base; struct (Dec d) = d
+instance Rec (TiDecl i) (DStruct i) where r = base; struct (Dec d) = d
 instance GetBaseStruct (TiDecl i) (DStruct i) where basestruct = Just . struct
 
 instance HasId i (TiExp i) where

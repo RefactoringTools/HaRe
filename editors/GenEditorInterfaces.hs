@@ -158,12 +158,9 @@ pfeRefactoringCmds = do
     ,"import RefacRedunDec"
     ,"import RefacSlicing"
     ,"import RefacDeForest"
-    ,"import RefacPwPf"
     ,"import RefacUnGuard"
     ,"import RefacFunDef"
-    ,"import RefacDataNewType"
     -- ,"import RefacConDef"   
-    ,"import RefacDebug" 
     ,"import RefacAsPatterns" 
     ,"import RefacUnfoldAsPatterns" 
     ,"import RefacInstantiate"
@@ -178,6 +175,9 @@ pfeRefactoringCmds = do
     ,"import RefacGenFold"
     ,"import RefacGenCache"
     ,"import RefacIdentify"
+    -- TFP PAPER 2011
+    ,"import RefacEvalMon"
+    ,"import RefacAddEvalMonCache"
     ,""
     ]
   putStrLn "pfeRefactoringCmds ="
@@ -343,9 +343,6 @@ cmds editFuns = [Menu "Projects"
           ,editParameters editFuns "From if to case" "ifToCase"
             ifToCase $ fileNamePar $ regionPar $ 
             comment "From if to case" -}
-        ,editParameters editFuns "Transform pointwise to pointfree" "pwToPf"
-            pwToPf $ fileNamePar $ regionPar $ 
-            comment "Tries to convert a pointwise into a pointfree expression"
         ,editParameters editFuns "Converts guards to an if then else" "guardToIte"
             guardToIte $ fileNamePar $ positionPar $ 
             comment "Converts guards to an if then else"  
@@ -397,9 +394,6 @@ cmds editFuns = [Menu "Projects"
          ,editParameters editFuns "From concrete to abstract data type" "fromAlgebraicToADT" 
             createADTMod $ fileNamePar $ positionPar $ 
             comment "Transforms an algebraic data type to an ADT"
-         ,editParameters editFuns "Convert a data type into a newtype" "refacDataNewType"
-            refacDataNewType $ fileNamePar $ positionPar $
-            comment "Transforms a data type into a new type"
          ,editParameters editFuns "Add a new constructor to a data type" "refacAddCon"
             refacAddCon $ fileNamePar $ namePar "Enter text for constructor and parameters: " $ positionPar $ comment "Adds a new constructor to a data type"
          ,editParameters editFuns "Remove a constructor from a data type" "refacRmCon"
@@ -413,12 +407,6 @@ cmds editFuns = [Menu "Projects"
             refacAddField $ fileNamePar $ namePar "Type of Field : " $ positionPar $
             comment "Adds a field to a data type"
          ]
-      ,Menu "Debug"
-         [   
-           editParameters editFuns "Add a call to trace" "refacDebug"
-           refacDebug $ fileNamePar $ positionPar  $
-           comment "Adds a call to trace for the selected function"
-         ]
      ,Menu "Duplicate Code"
          [   
            editParameters editFuns "Duplicate Code Analysis" "duplicateCode"
@@ -429,10 +417,37 @@ cmds editFuns = [Menu "Projects"
           ,editParameters editFuns "Identify Class" "refacIdentify"
            refacIdentify $ fileNamePar $ regionPar $ comment "identifies a clone class"
          ]
+      ,Menu "Parallel"
+         [
+           editParameters editFuns "Introduce Eval Monad" "refacEvalMon"
+           refacEvalMon $ fileNamePar $ regionPar $ comment "Insert Eval Monad"
+          ,editParameters editFuns "Add Run Eval monad to buffer" "refacAddEvalMonCache"
+           refacAddEvalMonCache $ fileNamePar $ regionPar $ comment "Activate Eval Monad"
+         -- ,editParameters editFuns "Add pattern to runEval" "refacAddEvalMon"
+         --  refacAddEvalMon $ fileNamePar $ regionPar $ comment "Add pattern to buffered Eval Monad"
+         ]
        ,editParameters editFuns "undo" "undo"
           undo $ 
           comment "One step back in refactorer history"
        ]
+
+-- refacAddEvalMon :: String -> Int -> Int -> Int -> Int -> IO ()
+-- refacAddEvalMon f ls cs le ce = putStrLn $ 
+--    ">refacAddEvalMon filename: "++f
+--  ++" line: "++show ls++" column: "++show cs
+--  ++" line: "++show le++" column: "++show ce
+
+refacAddEvalMonCache :: String -> Int -> Int -> Int -> Int -> IO ()
+refacAddEvalMonCache f ls cs le ce = putStrLn $ 
+    ">refacAddEvalMonCache filename: "++f
+  ++" line: "++show ls++" column: "++show cs
+  ++" line: "++show le++" column: "++show ce
+
+refacEvalMon :: String -> Int -> Int -> Int -> Int -> IO ()
+refacEvalMon f ls cs le ce = putStrLn $ 
+    ">refacEvalMon filename: "++f
+  ++" line: "++show ls++" column: "++show cs
+  ++" line: "++show le++" column: "++show ce
 
 refacDupTrans :: String -> Int -> Int -> Int -> Int -> IO ()
 refacDupTrans f l c s n = putStrLn $ ">refacDupTrans: " ++ f++" line: "++show l++" column: "++show c

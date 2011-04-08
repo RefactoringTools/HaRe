@@ -30,11 +30,11 @@ newtype HsPatI i  = Pat (BasePatI  i)   deriving (Ord, Read, Eq, Show, Data, Typ
 newtype HsTypeI i = Typ (BaseTypeI i)   deriving (Ord, Eq, Show ,Data, Typeable)
 newtype HsKind    = Knd (K HsKind)      deriving (Ord,Eq, Show, Data, Typeable)
 
-instance Rec (HsDeclI i) (BaseDeclI i)      where rec = Dec; struct (Dec d) = d
-instance Rec (HsExpI i)  (BaseExpI i)       where rec = Exp; struct (Exp e) = e
-instance Rec (HsPatI i)  (PI i (HsPatI i))  where rec = Pat; struct (Pat p) = p
-instance Rec (HsTypeI i) (TI i (HsTypeI i)) where rec = Typ; struct (Typ t) = t
-instance Rec HsKind      (K HsKind)         where rec = Knd; struct (Knd k) = k
+instance Rec (HsDeclI i) (BaseDeclI i)      where r = Dec; struct (Dec d) = d
+instance Rec (HsExpI i)  (BaseExpI i)       where r = Exp; struct (Exp e) = e
+instance Rec (HsPatI i)  (PI i (HsPatI i))  where r = Pat; struct (Pat p) = p
+instance Rec (HsTypeI i) (TI i (HsTypeI i)) where r = Typ; struct (Typ t) = t
+instance Rec HsKind      (K HsKind)         where r = Knd; struct (Knd k) = k
 
 -- This makes all the convenience constructor functions available for
 -- the base syntax (There is some overlap with the Rec class, but for

@@ -1,4 +1,4 @@
-HARE_VERSION=HaRe 08/07/2009
+HARE_VERSION=HaRe 28/06/2010
 HAPPY=happy
 LEX_PARSE_DIR= tools/base/parse2
 PARSER_DIR= ${LEX_PARSE_DIR}/Parser
@@ -41,7 +41,8 @@ editors-all:
 	cd editors; make all HARE_VERSION="${HARE_VERSION}"
 
 mergediffs:
-	cp -r diffs/tools/* tools
+	# cp -r diffs/tools/* tools
+        rsync --exclude='.svn' diffs/tools/* tools 
 
 ${PARSER_DIR}/HsParser.hs: ${PARSER_DIR}/HsParser.y
 	cd ${PARSER_DIR}; ${HAPPY} HsParser.y

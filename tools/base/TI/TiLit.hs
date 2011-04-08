@@ -14,13 +14,13 @@ instance (TypeId i,ValueId i,Fresh i,
   tc = tcLit
 -}
 -- Overloaded literals:
-tcLit rec s l =
+tcLit r s l =
   case l of
     HsInt  _ -> instPrel_srcloc s "fromInteger" `tapp` tl
     HsFrac _ -> instPrel_srcloc s "fromRational" `tapp` tl
     _ -> tl
   where
-    tl = emap rec # tcLit0 l
+    tl = emap r # tcLit0 l
 
 -- Non-overloaded literals:
 tcLit0 lit = do t <- tLit lit

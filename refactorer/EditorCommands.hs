@@ -12,7 +12,7 @@ import IO(hPutStrLn
          ,Handle
          ,stdin
          ,stderr)
-import Control.Exception as Exception
+import Control.OldException as Exception
 import Foreign
 import Foreign.C
 import Network hiding (listenOn,connectTo,accept)

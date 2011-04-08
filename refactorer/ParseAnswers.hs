@@ -31,7 +31,7 @@ import SimpleGraphs(reverseGraph,reachable)
 import HsTokens
 import RefacTypeSyn
 import RefacLocUtils
-import GHC (Session)
+import GHC 
 import Data.Char
 import GHC.Unicode
 import AbstractIO

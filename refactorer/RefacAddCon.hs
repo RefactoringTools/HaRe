@@ -88,7 +88,9 @@ refacAddCon args
             let res' = locToPNT fileName (row, col) mod
                 res = pNTtoPN res'   
                  -- Parse the input file.
-            modInfo2@(inscps', exps', mod', tokList', ses) <- parseSourceFile2 (fileName ++ ".temp.hs") modName                                                
+            AbstractIO.putStrLn ("parsing ..." ++ fileName ++ ".temp.hs")
+            modInfo2@(inscps', exps', mod', tokList') <- parseSourceFileOld (fileName ++ ".temp.hs") 
+            AbstractIO.putStrLn "parsed."                                               
             let decs = hsDecls mod'
                 -- datDec = definingDecls [res] decs False True                
                  -- get the list of constructors from the data type
@@ -103,7 +105,7 @@ refacAddCon args
             let oldPnames = filter (/= newPN) pnames
                 position = findPos 0 newPN pnames
                 
-            ((_,m), (newToks, newMod)) <- applyRefac (addCon ses datName pnames newPN newPNT numParam oldPnames position inf (tail first) modName) 
+            ((_,m), (newToks, newMod)) <- applyRefac (addCon (fileName) datName pnames newPN newPNT numParam oldPnames position inf (tail first) modName) 
                                                                  (Just (inscps', exps', mod', tokList')) (fileName++"temp.hs")
             writeRefactoredFiles True [((fileName, m), (newToks, newMod))]           
             AbstractIO.removeFile (fileName ++ ".temp.hs")                         
@@ -306,11 +308,11 @@ countCon' co
       -- inCon _ = return []
       
        
-addCon ses datName pnames newPn newPNT numParam oldPnames  position inf xs modName (inscps, exps, mod)
+addCon fileName datName pnames newPn newPNT numParam oldPnames  position inf xs modName (inscps, exps, mod)
  = do
       newMod <- addDecl mod Nothing ([createFun xs newPn datName], Nothing) True
       -- unsafePerformIO.putStrLn $ show newMod
-      res <- findFuncs ses datName newMod pnames newPn newPNT numParam oldPnames position inf xs modName
+      res <- findFuncs fileName datName newMod pnames newPn newPNT numParam oldPnames position inf xs modName
       
    --   res2 <- findPatterns ses datName res pnames newPn newPNT numParam oldPnames position inf xs
       
@@ -346,7 +348,7 @@ findPosBefore newPN (x:y:ys)
  | otherwise  = findPosBefore newPN (y:ys)
 
 
-findFuncs ses datName t pnames newPn newPNT numParam oldPnames position inf (x:xs) modName
+findFuncs fileName datName t pnames newPn newPNT numParam oldPnames position inf (x:xs) modName
   =  applyTP (stop_tdTP (failTP `adhocTP` inFun)) t
     where
     inFun dec1 
@@ -499,15 +501,15 @@ findFuncs ses datName t pnames newPn newPNT numParam oldPnames position inf (x:x
                       (applyTU (once_tdTU (failTU `adhocTU` inMatch)) match)
                  inMatch (mat@(HsMatch loc1  pnt pats (HsBody e) ds)::HsMatchP)
                   = do
-                       let (_, y) = checkTypesInPat datName pats ses modName
+                       let (_, y) = checkTypesInPat datName pats modName fileName
                       -- error $ show y
-                       Just ((checkTypes2 datName (pNTtoName pnt) ses modName), y)
+                       Just ((checkTypes2 datName (pNTtoName pnt) modName fileName), y)
                  inMatch x@(_) = Nothing
 
     findFun a@(_) _ = return ((False, []), [([], "")])
       
     findCase dec@(Dec (HsFunBind loc matches)::HsDeclP) modName
-        = return $ findExp matches
+        = return (findExp matches)
            where findExp alt
                   = fromMaybe ((False, defaultExp))
                      (applyTU (once_tdTU (failTU `adhocTU` inExp)) alt)
@@ -519,8 +521,8 @@ findFuncs ses datName t pnames newPn newPNT numParam oldPnames position inf (x:x
                     = fromMaybe (False)
                       (applyTU (once_tdTU (failTU `adhocTU` inPat)) alt)
                    inPat (pat@(HsAlt loc (Pat (HsPId (HsCon p))) e ds)::HsAltP)
-                     = Just (checkTypes datName (pNTtoName p) ses modName)
-                   inPat (pat@(HsAlt loc (Pat (HsPId (HsVar _))) e ds)::HsAltP)
+                     = (Just (checkTypes datName (pNTtoName p) modName fileName))
+                   inPat e -- (pat@(HsAlt loc (Pat (HsPId (HsVar _))) e ds)::HsAltP)
                      = do
                          case exp of
                           Exp (HsCase (Exp (HsId (HsVar x))) alts)
@@ -533,10 +535,10 @@ findFuncs ses datName t pnames newPn newPNT numParam oldPnames position inf (x:x
                                                                  if length y /= 0
                                                                   then do 
                                                                    let b = definedPNs (head y)
-                                                                   Just (checkTypes datName (pNtoName (head b)) ses modName)
+                                                                   Just (checkTypes datName (pNtoName (head b)) modName fileName)
                                                                   else  Nothing
                           _ -> Nothing
-                   inPat _ = Nothing   
+                   -- inPat e = error (show e) -- Nothing   
                  -- inExp _ = Nothing           
     findCase pat@(_) _ =  return (False, defaultExp)
 flatternPat :: HsPatP -> [HsPatP] 

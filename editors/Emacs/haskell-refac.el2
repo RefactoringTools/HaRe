@@ -23,12 +23,12 @@
    When Haskell Refactoring mode is enabled, the \"Refactor\"
    menu provides access to a list of refactorings. These are
    implemented as commands of an external refactoring tool
-   (default C:\\cygwin\\home\\hl\\HaRe\\HaRe_06072009\\refactorer\\pfe, see option haskell-refac-refactorer).
+   (default /Users/chrisbrown/science2/jra/systems/HaRe/HaRe_28062010/refactorer/pfe, see option haskell-refac-refactorer).
    "
   ;; The initial value.
   nil
   ;; The indicator for the mode line.
-  " HaRe 23/05/2007 "
+  " HaRe 28/06/2010 "
   ;; The minor mode bindings.
   nil
 )
@@ -44,12 +44,12 @@
 
 (defgroup haskell-refac nil "Haskell refactoring options")
 
-(defcustom haskell-refac-refactorer "C:\\cygwin\\home\\hl\\HaRe\\HaRe_06072009\\refactorer\\pfe"
+(defcustom haskell-refac-refactorer "/Users/chrisbrown/science2/jra/systems/HaRe/HaRe_28062010/refactorer/pfe"
 	"*Path to Haskell refactoring tool"
 	:type 'file
 	:group 'haskell-refac)
 
-(defcustom haskell-refac-chasePaths (cons (expand-file-name ".") '("C:\\cygwin\\home\\hl\\HaRe\\HaRe_06072009\\tools\\base\\tests\\HaskellLibraries"))
+(defcustom haskell-refac-chasePaths (cons (expand-file-name ".") '("/Users/chrisbrown/science2/jra/systems/HaRe/HaRe_28062010/tools/base/tests/HaskellLibraries"))
 	"*List of directories to chase for missing files (including Prelude!)"
 	:type '(repeat directory)
 	:group 'haskell-refac)
@@ -110,7 +110,6 @@
    ["Add one parameter" haskell-refac-addOneParameter  :active t]
    ["Rm one parameter" haskell-refac-rmOneParameter  :active t]
    ["Move def to another module" haskell-refac-moveDefBtwMod  :active t]
-   ["Transform pointwise to pointfree" haskell-refac-pwToPf  :active t]
    ["Converts guards to an if then else" haskell-refac-guardToIte  :active t]
    ["Shortcut Deforestration" haskell-refac-deforest  :active t]
 )
@@ -130,21 +129,21 @@
    ["eliminate patterns" haskell-refac-elimPatterns  :active t]
    ["Create an ADT module" haskell-refac-createADTMod  :active t]
    ["From concrete to abstract data type" haskell-refac-fromAlgebraicToADT  :active t]
-   ["Convert a data type into a newtype" haskell-refac-refacDataNewType  :active t]
    ["Add a new constructor to a data type" haskell-refac-refacAddCon  :active t]
    ["Remove a constructor from a data type" haskell-refac-refacRmCon  :active t]
    ["Remove a field from a data type" haskell-refac-refacRemoveField  :active t]
    ["Add a field to a data type" haskell-refac-refacAddField  :active t]
 )
 
-("Debug"
-   ["Add a call to trace" haskell-refac-refacDebug  :active t]
-)
-
 ("Duplicate Code"
    ["Duplicate Code Analysis" haskell-refac-duplicateCode  :active t]
    ["Transform Duplicate Code" haskell-refac-goDup  :active t]
    ["Identify Class" haskell-refac-refacIdentify  :active t]
+)
+
+("Parallel"
+   ["Introduce Eval Monad" haskell-refac-refacEvalMon  :active t]
+   ["Add Run Eval monad to buffer" haskell-refac-refacAddEvalMonCache  :active t]
 )
 
    ["undo" haskell-refac-undo  :active t]
@@ -999,29 +998,6 @@
   ) )
 
 
-(defun haskell-refac-pwToPf ( start1 end1)
-  "pwToPf"
-  (interactive "r")
-  (let (modified)
-     (dolist (b (buffer-list) modified)
-       (let* ((n (buffer-name b)) (n1 (substring n 0 1)))
-        (if (and (not (or (string= " " n1) (string= "*" n1))) (buffer-modified-p b))
-          (setq modified (cons (buffer-name b) modified)))))
-     (if modified (message-box (format "there are modified buffers: %s" modified))
-       (process-send-string "haskell-refac-process" 
-         (concat
-         
-         "pwToPf " (mapconcat 'identity (append 
-		(list (if (buffer-file-name) (buffer-file-name) "<missing filename>"))
-		(list (number-to-string (line-no-pos start1))
-		(number-to-string (+ 1 (current-column-pos start1)))
-		(number-to-string (line-no-pos end1))
-		(number-to-string (+ 1 (current-column-pos end1))))) " ")
-         "\n"))
-     )
-  ) )
-
-
 (defun haskell-refac-guardToIte ()
   "guardToIte"
   (interactive "")
@@ -1282,26 +1258,6 @@
   ) )
 
 
-(defun haskell-refac-refacDataNewType ()
-  "refacDataNewType"
-  (interactive "")
-  (let (modified)
-     (dolist (b (buffer-list) modified)
-       (let* ((n (buffer-name b)) (n1 (substring n 0 1)))
-        (if (and (not (or (string= " " n1) (string= "*" n1))) (buffer-modified-p b))
-          (setq modified (cons (buffer-name b) modified)))))
-     (if modified (message-box (format "there are modified buffers: %s" modified))
-       (process-send-string "haskell-refac-process" 
-         (concat
-         
-         "refacDataNewType " (mapconcat 'identity (append 
-		(list (if (buffer-file-name) (buffer-file-name) "<missing filename>"))
-		(list (number-to-string (line-no)) (number-to-string (+ 1 (current-column))))) " ")
-         "\n"))
-     )
-  ) )
-
-
 (defun haskell-refac-refacAddCon ( name1)
   "refacAddCon"
   (interactive "sEnter text for constructor and parameters: \n")
@@ -1386,27 +1342,6 @@
 
 
 
-(defun haskell-refac-refacDebug ()
-  "refacDebug"
-  (interactive "")
-  (let (modified)
-     (dolist (b (buffer-list) modified)
-       (let* ((n (buffer-name b)) (n1 (substring n 0 1)))
-        (if (and (not (or (string= " " n1) (string= "*" n1))) (buffer-modified-p b))
-          (setq modified (cons (buffer-name b) modified)))))
-     (if modified (message-box (format "there are modified buffers: %s" modified))
-       (process-send-string "haskell-refac-process" 
-         (concat
-         
-         "refacDebug " (mapconcat 'identity (append 
-		(list (if (buffer-file-name) (buffer-file-name) "<missing filename>"))
-		(list (number-to-string (line-no)) (number-to-string (+ 1 (current-column))))) " ")
-         "\n"))
-     )
-  ) )
-
-
-
 (defun haskell-refac-duplicateCode ( name1)
   "duplicateCode"
   (interactive "sClone Token Size: \n")
@@ -1463,6 +1398,53 @@
          (concat
          
          "refacIdentify " (mapconcat 'identity (append 
+		(list (if (buffer-file-name) (buffer-file-name) "<missing filename>"))
+		(list (number-to-string (line-no-pos start1))
+		(number-to-string (+ 1 (current-column-pos start1)))
+		(number-to-string (line-no-pos end1))
+		(number-to-string (+ 1 (current-column-pos end1))))) " ")
+         "\n"))
+     )
+  ) )
+
+
+
+(defun haskell-refac-refacEvalMon ( start1 end1)
+  "refacEvalMon"
+  (interactive "r")
+  (let (modified)
+     (dolist (b (buffer-list) modified)
+       (let* ((n (buffer-name b)) (n1 (substring n 0 1)))
+        (if (and (not (or (string= " " n1) (string= "*" n1))) (buffer-modified-p b))
+          (setq modified (cons (buffer-name b) modified)))))
+     (if modified (message-box (format "there are modified buffers: %s" modified))
+       (process-send-string "haskell-refac-process" 
+         (concat
+         
+         "refacEvalMon " (mapconcat 'identity (append 
+		(list (if (buffer-file-name) (buffer-file-name) "<missing filename>"))
+		(list (number-to-string (line-no-pos start1))
+		(number-to-string (+ 1 (current-column-pos start1)))
+		(number-to-string (line-no-pos end1))
+		(number-to-string (+ 1 (current-column-pos end1))))) " ")
+         "\n"))
+     )
+  ) )
+
+
+(defun haskell-refac-refacAddEvalMonCache ( start1 end1)
+  "refacAddEvalMonCache"
+  (interactive "r")
+  (let (modified)
+     (dolist (b (buffer-list) modified)
+       (let* ((n (buffer-name b)) (n1 (substring n 0 1)))
+        (if (and (not (or (string= " " n1) (string= "*" n1))) (buffer-modified-p b))
+          (setq modified (cons (buffer-name b) modified)))))
+     (if modified (message-box (format "there are modified buffers: %s" modified))
+       (process-send-string "haskell-refac-process" 
+         (concat
+         
+         "refacAddEvalMonCache " (mapconcat 'identity (append 
 		(list (if (buffer-file-name) (buffer-file-name) "<missing filename>"))
 		(list (number-to-string (line-no-pos start1))
 		(number-to-string (+ 1 (current-column-pos start1)))

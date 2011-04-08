@@ -4,15 +4,15 @@ import Recursive
 import HasBaseStruct
 import BaseSyntax
 
-substE = substE' rec
+substE = substE' r
 
-substE' rec s e0 =
+substE' r s e0 =
     case mapEI id (subst s) id (esubst s) id id e0 of
       HsId (HsVar x) -> s x
       HsInfixApp e1 (HsVar x) e2 -> s x `hsApp` e1 `hsApp` e2
       HsLeftSection e (HsVar x) -> s x `hsApp` e
       HsRightSection (HsVar x) e -> error "SubstituteBaseStruct.subst HsRightSection"
-      e -> rec e
+      e -> r e
 
 instance MapExp e ds => MapExp e (DI i e p ds t c tp) where mapExp = mapExpD
 instance MapExp e ds => MapExp e (EI i e p ds t c)    where mapExp = mapExpE

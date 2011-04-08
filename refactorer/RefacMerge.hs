@@ -18,7 +18,7 @@ import System.IO.Unsafe
 import PrettyPrint
 import RefacTypeSyn
 import RefacLocUtils
-import GHC (Session)
+-- import GHC (Session)
 import Data.Char
 import GHC.Unicode
 import AbstractIO
@@ -58,7 +58,7 @@ refacMerge args
        modName1 <- fileNameToModName fileName
        let modName = modNameToStr modName1
        
-       modInfo@(inscps, exps, mod, tokList, ses1) <- parseSourceFile2 fileName modName
+       modInfo@(inscps, exps, mod, tokList) <- parseSourceFile fileName
        
        inscopeNames <- hsFDNamesFromInside mod
        unless (not (name `elem` ((\(x,y) -> x ++ y) inscopeNames)))
@@ -68,7 +68,6 @@ refacMerge args
        let n = (parseName fileContent mod)
        let extractedDecs = map fst (map extractDecs parse)
        
-       
        -- b is the boolean value for whether we
        -- are fusing together functions within a where clause or not.
        -- b == True  = not in where clause
@@ -77,26 +76,26 @@ refacMerge args
        
        -- let extractedDecs' = pad extractedDecs
        
-       newDecl <- doFusing extractedDecs b parse modName ses1 mod name
+       newDecl <- doFusing fileName extractedDecs b parse modName mod name
               
        if b 
          then do       
           res3 <- applyRefac (addDecls1 newDecl) (Just (inscps, exps, mod, tokList)) fileName
        
           writeRefactoredFiles True [res3]
-          (inscps2, exps2, mod2, tokList2, ses) <- parseSourceFile2 fileName modName              
+          (inscps2, exps2, mod2, tokList2) <- parseSourceFile fileName              
           let fusedDecl = declToName newDecl
           let newRefactoredDecls1 = hsDecls mod2
           let newRefactoredDecls2 = definingDecls (map (declToPName [fusedDecl]) newRefactoredDecls1) newRefactoredDecls1 False False
           -- AbstractIO.putStrLn "parsed again"              
-          sigs <- getSig ses modName fusedDecl
+          sigs <- getSig fileName modName fusedDecl
                     
           res <- applyRefac (addTypes (map (declToPName [fusedDecl]) newRefactoredDecls1) [sigs]) (Just (inscps2, exps2, mod2, tokList2)) fileName
           -- AbstractIO.putStrLn $ show res
           writeRefactoredFiles True [res]
-          (inscps5, exps5, mod5, tokList5, ses5) <- parseSourceFile2 fileName modName              
-          (mod',((tokList'',modified),_))<-(doCommenting ( (map (declToPName [fusedDecl]) newRefactoredDecls1))) fileName mod5 tokList5
-          writeRefactoredFiles True [((fileName, True), (tokList'', mod'))]
+          (inscps5, exps5, mod5, tokList5) <- parseSourceFile fileName              
+          --(mod',((tokList'',modified),_))<-(doCommenting ( (map (declToPName [fusedDecl]) newRefactoredDecls1))) fileName mod5 tokList5
+          --writeRefactoredFiles True [((fileName, True), (tokList'', mod'))]
        
           AbstractIO.putStrLn "Completed."
           
@@ -125,9 +124,9 @@ refacMerge args
 
           AbstractIO.putStrLn "Completed."
 
-doFusing extractedDecs b parse  modName ses1 mod name
+doFusing fileName extractedDecs b parse  modName mod name
  = do
-      (decl, newDecl) <- doFusing' b extractedDecs parse modName ses1 mod name
+      (decl, newDecl) <- doFusing' fileName b extractedDecs parse modName mod name
            
       -- we need to recurse into the where clauses and perform
       -- a fusion if necessary.
@@ -228,12 +227,12 @@ fuseWheres d@(Dec (HsFunBind loc0 ms)) modName mod ses1
         expAppName x = ""
  
 
-doFusing' b extractedDecs parse modName ses1 mod name
+doFusing' fileName b extractedDecs parse modName mod name
   = do
        let pairedDecs = pairMatches extractedDecs 
        if b 
         then do     
-          converged <- isConvergeArguments modName ses1 pairedDecs
+          converged <- isConvergeArguments fileName modName pairedDecs
           newRhs' <- mapM ( tidyLetClauses mod converged) pairedDecs
           let newDecl = createDecl newRhs' name
           decl' <- renameFusionInstances newDecl name (map declToPName2 (map extractDecs' parse)) 
@@ -294,7 +293,8 @@ tidyLetClauses mod True (m@(Guard p (g@(s,e1,_):gs) ds pnt) : es)
            let guardExp = filterGuardExp (g:gs)        
            -- let (decs, exps) = (filterLet (m:es), (filterExp (m:es)))
            let ds' = filterDec (m:es)
-           let dsNames = filter (/="") (map declToName ds')
+           let dsNames = filter (/="") (map declToName2 ds')
+           
            when (isDupDec dsNames) $ error ( "Please rename " ++ (getDupDec dsNames) ++ " as it conflicts during the merge." )
            
            when (all (/=(head guards2)) (tail guards2))
@@ -340,7 +340,7 @@ tidyLetClauses mod True (m@(Match p e ds pnt) : es)
        
            let (decs, exps) = (filterLet (m:es), filterExp (m:es))
            let ds' = filterDec (m:es)
-           let dsNames = (filter (/="") (map declToName ds'))
+           let dsNames = (filter (/="") (map declToName2 ds'))
            when (isDupDec dsNames) $ error ( "Please rename " ++ (getDupDec dsNames) ++ " as it conflicts during the merge." )
               
            if length decs > 0 
@@ -684,9 +684,9 @@ type PairFun = [ Fun ] -}
 
 -- convergeArguments :: (Monad m) => String -> GHC.Session -> PairFun -> m Bool
 isConvergeArguments _ _ [] = return False
-isConvergeArguments modName ses (ent:ents)
+isConvergeArguments fileName modName (ent:ents)
  = do -- entType <- typeOf modName ses ent
-      entsType <-typeOf modName ses ent
+      entsType <-typeOf fileName modName ent
       
       AbstractIO.putStrLn $ show entsType
       -- AbstractIO.putStrLn $ show (map hsPNs (settleTypes entsType))
@@ -704,15 +704,15 @@ settleType (Dec (HsTypeSig x _ y types))
     = (Dec (HsTypeSig x [] y types))
 
   
-typeOf :: (Monad m) => String -> GHC.Session -> [FunEntity] -> m [ [String] ]
-typeOf modName ses [] = return []
-typeOf modName ses (m:ms)
+typeOf :: (Monad m) => String -> String -> [FunEntity] -> m [ [String] ]
+typeOf fileName modName [] = return []
+typeOf fileName modName (m:ms)
   = do
-       sig <- getSigOmitLast ses modName (nameFromMatch m)
+       sig <- getSigOmitLast modName (nameFromMatch m) fileName
        let sig' = hsPNs (settleType sig)
        let sig'' = map pNtoName sig'
        
-       sigs <- typeOf modName ses ms
+       sigs <- typeOf fileName modName ms
        return (sig'' : sigs)
 
 nameFromMatch :: FunEntity -> String

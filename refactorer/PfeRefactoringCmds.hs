@@ -27,11 +27,8 @@ import RefacSwapArgs
 import RefacRedunDec
 import RefacSlicing
 import RefacDeForest
-import RefacPwPf
 import RefacUnGuard
 import RefacFunDef
-import RefacDataNewType
-import RefacDebug
 import RefacAsPatterns
 import RefacUnfoldAsPatterns
 import RefacInstantiate
@@ -46,6 +43,8 @@ import RefacSimplify
 import RefacGenFold
 import RefacGenCache
 import RefacIdentify
+import RefacEvalMon
+import RefacAddEvalMonCache
 
 
 pfeRefactoringCmds =
@@ -85,7 +84,6 @@ pfeRefactoringCmds =
   ,("addOneParameter",(args " <fileName> <name (name of new parameter? )> <line> <column>" addOneParameter, " Add parameter (default undefined)"))
   ,("rmOneParameter",(args " <fileName> <line> <column>" rmOneParameter, " Remove unused parameter"))
   ,("moveDefBtwMod",(args " <fileName> <name (name of the destination module? )> <line> <column>" moveDefBtwMod, " Move a definition from one module to another module"))
-  ,("pwToPf",(args " <fileName> <line> <column> <line> <column>" pwToPf, " Tries to convert a pointwise into a pointfree expression"))
   ,("guardToIte",(args " <fileName> <line> <column>" guardToIte, " Converts guards to an if then else"))
   ,("deforest",(args " <fileName>" deforest, " A (partial) implementation of the warm fusion algorithm"))
    -- menu Import/Export
@@ -101,15 +99,15 @@ pfeRefactoringCmds =
   ,("elimPatterns",(args " <fileName> <line> <column>" elimPatterns, " Eliminate pattern matchings"))
   ,("createADTMod",(args " <fileName> <line> <column>" createADTMod, " Create an new ADT module"))
   ,("fromAlgebraicToADT",(args " <fileName> <line> <column>" fromAlgebraicToADT, " Transforms an algebraic data type to an ADT"))
-  ,("refacDataNewType",(args " <fileName> <line> <column>" refacDataNewType, " Transforms a data type into a new type"))
   ,("refacAddCon",(args " <fileName> <name (Enter text for constructor and parameters: )> <line> <column>" refacAddCon, " Adds a new constructor to a data type"))
   ,("refacRmCon",(args " <fileName> <line> <column>" refacRmCon, " Removes constructor from a data type"))
   ,("refacRemoveField",(args " <fileName> <name (Enter position of field to be removed: )> <line> <column>" refacRemoveField, " Removes a field from a data type"))
   ,("refacAddField",(args " <fileName> <name (Type of Field : )> <line> <column>" refacAddField, " Adds a field to a data type"))
-   -- menu Debug
-  ,("refacDebug",(args " <fileName> <line> <column>" refacDebug, " Adds a call to trace for the selected function"))
    -- menu Duplicate Code
   ,("duplicateCode",(args " <fileName> <name (Clone Token Size: )>" duplicateCode, " Analysis a project for code duplication."))
   ,("refacDupTrans",(args " <fileName> <line> <column> <line> <column>" refacDupTrans, " Transforms duplicate code"))
   ,("refacIdentify",(args " <fileName> <line> <column> <line> <column>" refacIdentify, " identifies a clone class"))
+   -- menu Parallel
+  ,("refacEvalMon",(args " <fileName> <line> <column> <line> <column>" refacEvalMon, " Insert Eval Monad"))
+  ,("refacAddEvalMonCache",(args " <fileName> <line> <column> <line> <column>" refacAddEvalMonCache, " Activate Eval Monad"))
   ]

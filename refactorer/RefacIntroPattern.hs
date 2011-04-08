@@ -65,7 +65,7 @@ introPattern args
           col      = read (args!!2)::Int
       modName <-fileNameToModName fileName
       let modName1 = convertModName modName
-      (inscps, exps, mod, tokList, ses)<-parseSourceFile2 fileName modName1
+      (inscps, exps, mod, tokList)<-parseSourceFile fileName
       -- (inscps3, exps3, mod3, tokList3)<-parsePrelude 
       let pnt = locToPNT fileName (row, col) mod
       if not (checkInPat pnt mod)
@@ -76,7 +76,7 @@ introPattern args
                    then error "Please select a pattern variable on the LHS of an equation!"
                    else do
                            AbstractIO.putStrLn "introSubPattern"
-                           ((_,m), (newToks, newMod))<-applyRefac (doIntroPatterns' inscps ses pnt (modNameToStr modName)) 
+                           ((_,m), (newToks, newMod))<-applyRefac (doIntroPatterns' fileName inscps pnt (modNameToStr modName)) 
                                                        (Just (inscps, exps, mod, tokList)) fileName
                            writeRefactoredFiles False [((fileName,m), (newToks,newMod))]
                            AbstractIO.putStrLn "Completed.\n"
@@ -95,8 +95,8 @@ doIntroPatterns pnt (_,_,t)
  = do mod <- introPats pnt t
       return mod
       
-doIntroPatterns' inscps ses pnt modName (_,_,t)
- = do mod <- introPats' inscps ses pnt modName t
+doIntroPatterns' fileName inscps pnt modName (_,_,t)
+ = do mod <- introPats' fileName inscps pnt modName t
       return mod
    
 introPats pnt t
@@ -157,7 +157,7 @@ introPats pnt t
 -- ==========================================================================
 -- introduce sub pattern
 -- ==========================================================================
-introPats' inscps ses pnt modName t
+introPats' fileName inscps pnt modName t
   = applyTP (full_tdTP (idTP `adhocTP` inDec)) t
      where
        inDec (dec@(Dec (HsFunBind s matches))::HsDeclP)
@@ -178,7 +178,7 @@ introPats' inscps ses pnt modName t
                   let closureEquation = createClosure ((render.ppi) newTypeSig) (pNTtoName pnt) (pats !! position) position
 
                   -- res <- liftIO $ ghcTypeCheckPattern closureEquation "closure___" ses
-                  typeOfPat2 <- getSigAsString ses closureEquation (force $ ghcTypeCheckPattern closureEquation "closure___" modName ses)
+                  typeOfPat2 <- getSigAsString fileName closureEquation (force $ ghcTypeCheckPattern closureEquation "closure___" modName fileName)
                   
                   -- this is necessary to force the evaluation of the GHC compiler,
                   -- since it's wrapped up in a naughty unsafePerformIO...
@@ -237,7 +237,8 @@ introPats' inscps ses pnt modName t
        
        createClosure :: String -> String -> HsPatP -> Int -> String
        createClosure typeSig p pat pos
-         =  "closure___ " ++ "(" ++ ((render.ppi) pat) ++ "::" ++ ((typeAnnot typeSig)!!pos) ++ ") = " ++ p
+         =   "(\\(" ++ ((render.ppi) pat) ++ "::" ++ ((typeAnnot typeSig)!!pos) ++ ") -> " ++ p ++")"
+        -- =  "closure___ " ++ "(" ++ ((render.ppi) pat) ++ "::" ++ ((typeAnnot typeSig)!!pos) ++ ") = " ++ p
               where
        typeAnnot :: String -> [String]
        typeAnnot "" = []
@@ -460,7 +461,7 @@ introCase args
           col      = read (args!!2)::Int
       modName <-fileNameToModName fileName
       let modName1 = convertModName modName
-      (inscps, exps, mod, tokList, ses)<-parseSourceFile2 fileName modName1
+      (inscps, exps, mod, tokList)<-parseSourceFile fileName
       let pnt = locToPNT fileName (row, col) mod
       if not (checkInPat pnt mod)
         then do
@@ -468,7 +469,7 @@ introCase args
                    then error "Please select a pattern variable on the LHS of an equation!"
                    else do
                            AbstractIO.putStrLn "introCaseSubPattern"
-                           ((_,m), (newToks, newMod))<-applyRefac (doIntroCasePatterns' inscps ses pnt (modNameToStr modName)) 
+                           ((_,m), (newToks, newMod))<-applyRefac (doIntroCasePatterns' fileName inscps pnt (modNameToStr modName)) 
                                                        (Just (inscps, exps, mod, tokList)) fileName
                            writeRefactoredFiles False [((fileName,m), (newToks,newMod))]
                            AbstractIO.putStrLn "Completed.\n"
@@ -484,11 +485,11 @@ doIntroCasePatterns pnt (_,_,t)
  = do mod <- introPatsCase pnt t
       return mod
       
-doIntroCasePatterns' inscps ses pnt modName (_,_,t)
- = do mod <- introPatsCase' inscps ses pnt modName t
+doIntroCasePatterns' fileName inscps pnt modName (_,_,t)
+ = do mod <- introPatsCase' fileName inscps pnt modName t
       return mod
 
-introPatsCase' inscps ses pnt modName t
+introPatsCase' fileName inscps pnt modName t
   = applyTP (full_tdTP (idTP `adhocTP` inDec)) t
      where
        inDec (dec@(Dec (HsFunBind s matches))::HsDeclP)
@@ -509,7 +510,7 @@ introPatsCase' inscps ses pnt modName t
                   let closureEquation = createClosure ((render.ppi) newTypeSig) (pNTtoName pnt) (pats !! position) position
 
                   -- res <- liftIO $ ghcTypeCheckPattern closureEquation "closure___" ses
-                  typeOfPat2 <- getSigAsString ses closureEquation (force $ ghcTypeCheckPattern closureEquation "closure___" modName ses)
+                  typeOfPat2 <- getSigAsString fileName closureEquation (force $ ghcTypeCheckPattern closureEquation "closure___" modName fileName)
                   
                   -- this is necessary to force the evaluation of the GHC compiler,
                   -- since it's wrapped up in a naughty unsafePerformIO...
@@ -589,7 +590,8 @@ introPatsCase' inscps ses pnt modName t
        
        createClosure :: String -> String -> HsPatP -> Int -> String
        createClosure typeSig p pat pos
-         =  "closure___ " ++ "(" ++ ((render.ppi) pat) ++ "::" ++ ((typeAnnot typeSig)!!pos) ++ ") = " ++ p
+         =   "(\\(" ++ ((render.ppi) pat) ++ "::" ++ ((typeAnnot typeSig)!!pos) ++ ") -> " ++ p ++")"
+        -- =  "closure___ " ++ "(" ++ ((render.ppi) pat) ++ "::" ++ ((typeAnnot typeSig)!!pos) ++ ") = " ++ p
               where        
        typeAnnot :: String -> [String]
        typeAnnot "" = []

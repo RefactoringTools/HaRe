@@ -5,9 +5,9 @@ This module defines a general class for converting to/from a recursive type
 and its underlying structure.
 -}
 
-class Rec rec struct | rec->struct where
-  rec    :: struct -> rec
-  struct :: rec    -> struct
+class Rec r struct | r -> struct where
+  r    :: struct -> r
+  struct :: r    -> struct
 
-  mapRec :: (struct->struct) -> rec -> rec
-  mapRec f = rec . f . struct
+  mapRec :: (struct ->struct) -> r -> r
+  mapRec f = r . f . struct

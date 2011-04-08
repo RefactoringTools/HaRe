@@ -28,7 +28,6 @@ import System.IO.Unsafe
 
 import RefacTypeSyn
 import RefacLocUtils
-import GHC (Session)
 import Data.Char
 import GHC.Unicode
 import AbstractIO
@@ -53,7 +52,7 @@ refacSlicTuple args
        modName1 <- fileNameToModName fileName 
 
        let modName = modNameToStr modName1
-       modInfo@(inscps, exps, mod, tokList, ses) <- parseSourceFile2 fileName modName
+       modInfo@(inscps, exps, mod, tokList) <- parseSourceFile fileName
 
        -- Find the function that's been highlighted as the refactree
        case checkCursor fileName row col mod of
@@ -61,7 +60,7 @@ refacSlicTuple args
          Right decl ->
            do
               -- get the RHS
-              let (x@(listExp, rhs, wh, wh2, localDefs, p):xs) = getRHS answer ses decl  (locToPNT fileName (row, col) mod) False []  modName  
+              let (x@(listExp, rhs, wh, wh2, localDefs, p):xs) = getRHS fileName answer decl  (locToPNT fileName (row, col) mod) False []  modName  
                                                   
               let name = (locToPN fileName (row, col) mod)                      
               -- let newDecl2 = getNamesFromDecl decl   
@@ -101,7 +100,7 @@ refacSlicTuple args
               
                             
               writeRefactoredFiles True [res2]
-              (inscps2, exps2, mod2, tokList2, ses) <- parseSourceFile2 fileName modName
+              (inscps2, exps2, mod2, tokList2) <- parseSourceFile fileName
               
               let newRefactoredDecls1 = hsDecls mod2
               
@@ -114,7 +113,7 @@ refacSlicTuple args
               
 
               
-              sigs <- mapM (getSigAsString ses modName) (map declToName newRefactoredDecls2)
+              sigs <- mapM (getSigAsString fileName modName) (map declToName newRefactoredDecls2)
               
               -- AbstractIO.putStrLn $ show sigs
               
@@ -1335,8 +1334,8 @@ newDecl2 wher funRHS funName loc pnt mainPats pats rhs ds i = Dec (HsFunBind loc
 newDecl3 loc pnt pats rhs ds i = Dec (HsFunBind loc [HsMatch loc pnt pats (HsBody rhs) ds] )
 
 
-getRHS :: String -> GHC.Session -> HsDeclP -> PNT -> Bool -> [HsDeclP] -> String -> [([HsExpP], HsExpP, [HsDeclP], [HsDeclP], Bool, [HsPatP])]              
-getRHS a ses (Dec (HsPatBind loc p (HsBody e) ds)) pnt local localDefs modName
+getRHS :: String -> String -> HsDeclP -> PNT -> Bool -> [HsDeclP] -> String -> [([HsExpP], HsExpP, [HsDeclP], [HsDeclP], Bool, [HsPatP])]              
+getRHS fileName a (Dec (HsPatBind loc p (HsBody e) ds)) pnt local localDefs modName
  = res e
      where
       res e =
@@ -1349,7 +1348,7 @@ getRHS a ses (Dec (HsPatBind loc p (HsBody e) ds)) pnt local localDefs modName
                                             else [((shuffleRHS a es), e, ds, [], local, [p])]   
         (Exp (HsId (HsVar i)))     
              -> do
-                    let types = getTypes (pNTtoName (patToPNT p) ) ses modName
+                    let types = getTypes fileName (pNTtoName (patToPNT p) ) modName
                     let returnType = last types
                     if local == False
                       then do
@@ -1365,7 +1364,7 @@ getRHS a ses (Dec (HsPatBind loc p (HsBody e) ds)) pnt local localDefs modName
                                   then error "Definition does not appear on the RHS"
                                   else
                                    do
-                                    let ((listExp, rhs, wh, wh2, localDefs, p'):xs) = (getRHS a ses (head def) i True ds modName)
+                                    let ((listExp, rhs, wh, wh2, localDefs, p'):xs) = (getRHS fileName a (head def) i True ds modName)
                                     ((listExp, e, wh, wh2, True, p'):xs)
 
                             else
@@ -1381,7 +1380,7 @@ getRHS a ses (Dec (HsPatBind loc p (HsBody e) ds)) pnt local localDefs modName
                                then error "Definition not defined on RHS"
                                else
                                  do
-                                   let ((listExp, rhs, wh, wh2, localDefs, p'):xs) = (getRHS a ses (head def) i True ds modName)
+                                   let ((listExp, rhs, wh, wh2, localDefs, p'):xs) = (getRHS fileName a (head def) i True ds modName)
                                    ((listExp, e, wh, wh2, True, p'):xs)
                          else
                             error "Definition not definied on RHS"
@@ -1390,7 +1389,7 @@ getRHS a ses (Dec (HsPatBind loc p (HsBody e) ds)) pnt local localDefs modName
         _  -> [([e], e, ds,[], False, [p])]   
 
      
-getRHS a ses (Dec (HsFunBind loc ms)) pnt local localDefs modName
+getRHS fileName a (Dec (HsFunBind loc ms)) pnt local localDefs modName
  = findInMatch ms pnt
      where
        findInMatch [] _ = []
@@ -1413,7 +1412,7 @@ getRHS a ses (Dec (HsFunBind loc ms)) pnt local localDefs modName
                                                     else [((shuffleRHS a es), e, ds, [], local, ps)] -- [((shuffleRHS a es), e, ds, [], False)]                   
                    (Exp (HsId (HsVar i)))   
                       -> do
-                          let types = getTypes (pNTtoName i1) ses modName
+                          let types = getTypes fileName (pNTtoName i1) modName
                           let returnType = last types
                           if local == False
                             then do
@@ -1429,7 +1428,7 @@ getRHS a ses (Dec (HsFunBind loc ms)) pnt local localDefs modName
                                                      then error ("Definition does not appear on the RHS" ++ (show i))
                                                      else
                                                        do
-                                                        let ((listExp, rhs, wh, wh2, localDefs, p):xs) = (getRHS a ses (head def) i True ds modName)
+                                                        let ((listExp, rhs, wh, wh2, localDefs, p):xs) = (getRHS fileName a (head def) i True ds modName)
                                                         ((listExp, e, wh, wh2, True, p):xs)
                                                 else
                                                    error "Definition does not appear on the RHS"

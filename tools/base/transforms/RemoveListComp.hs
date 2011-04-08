@@ -16,12 +16,12 @@ class RmListComp i s | s->i where
 
 instance RmListComp i s => RmListComp i [s] where rmListComp = map . rmListComp
 
-rmListCompE concatMap e = rmListCompE' rec concatMap e
+rmListCompE concatMap e = rmListCompE' r concatMap e
 
-rmListCompE' rec cm e0 =
+rmListCompE' r cm e0 =
     case mapEI id (rmListComp cm) id (rmAllListComp cm) id id e0 of
       HsListComp stmt -> compileListComp cm stmt
-      e -> rec e
+      e -> r e
 
 {-+
 Translation of list comprehensions, as described in section 3.11

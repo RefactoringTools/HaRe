@@ -22,7 +22,7 @@ HS2HTML_DIR=${HS2HTML_DIR-$B/../hs2html}
 SRC_DIRS=$B:$MODSRC_DIRS:$BPARSE_DIRS:$HS2HTML_DIR
 
 #GHCFLAGS="-fno-allow-overlapping-instances -fglasgow-exts -package lang -package data -package text"
-GHCFLAGS="-fglasgow-exts -fno-allow-overlapping-instances" # -fno-th
+GHCFLAGS="-fglasgow-exts -XNoOverlappingInstances" # -fno-th
 
 ### Other useful GHC flags:
 # -Wall

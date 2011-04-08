@@ -20,7 +20,7 @@ instance (ScopeNames i e a1 a2,ScopeNames i e b1 b2)
   scopeNames ext (a,b) = (,) # scopeNames ext a <# scopeNames ext b
 
 
-scopeNamesRec ext s = rec # scopeNames ext (struct s)
+scopeNamesRec ext s = r # scopeNames ext (struct s)
 
 {-
 class ScopeNames i s | s->i where

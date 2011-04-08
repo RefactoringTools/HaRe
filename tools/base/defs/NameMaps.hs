@@ -82,8 +82,8 @@ instance (SeqNames m a1 a2,SeqNames m b1 b2)
   seqNames (a1,a2) = (,) # seqNames a1 <# seqNames a2
 
 accNamesRec f = accNames f . struct
-mapNames2Rec dctx f = rec . mapNames2 dctx f . struct
-seqNamesRec x = rec # seqNames (struct x)
+mapNames2Rec dctx f = r . mapNames2 dctx f . struct
+seqNamesRec x = r # seqNames (struct x)
 
 mapNamesM f = seqNames . mapNames f
 mapNames2M ctx f = seqNames . mapNames2 ctx f

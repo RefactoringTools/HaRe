@@ -49,7 +49,7 @@ instance Read ModuleName where
   readsPrec n s = [(Module m,r)|(m,r)<-readsPrec n s]
 -}
 
-{-#
+{-
 Identifiers
 ===========
 -}

@@ -40,10 +40,10 @@ refacTypeSig args
        let modName = convertModName modName1
 
        -- Parse the input file.
-       (inscps, exps, mod, tokList, ses) <- parseSourceFile2 fileName modName
+       (inscps, exps, mod, tokList) <- parseSourceFile fileName
        
        let newRefactoredDecls = hsDecls mod
-       sigs <- mapM (getSig ses modName) (filter (/="") (map declToName newRefactoredDecls))
+       sigs <- mapM (getSig fileName modName) (filter (/="") (map declToName newRefactoredDecls))
 
        res <- applyRefac (addTypes (dropWhile (\x -> x == defaultPN) (map (declToPName (map declToName newRefactoredDecls)) newRefactoredDecls)) sigs) (Just (inscps, exps, mod, tokList)) fileName
        -- ((_,m), (newToks, newMod)) <- applyRefac (addType ses modName ) (Just (inscps, exps, mod, tokList)) fileName
@@ -55,7 +55,7 @@ refacTypeSig args
         
        writeRefactoredFiles True [res]
        
-       (inscps5, exps5, mod5, tokList5, ses5) <- parseSourceFile2 fileName modName
+       (inscps5, exps5, mod5, tokList5) <- parseSourceFile fileName
 
               
        (mod',((tokList'',modified),_))<-(doCommenting (dropWhile (\x -> x == defaultPN) (map (declToPName (map declToName newRefactoredDecls)) newRefactoredDecls))) fileName mod5 tokList5
