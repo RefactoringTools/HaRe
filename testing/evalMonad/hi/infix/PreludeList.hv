@@ -1,0 +1,1 @@
+[(HsVar "elem",HsFixity HsAssocNone 4),(HsVar "notElem",HsFixity HsAssocNone 4),(HsVar "++",HsFixity HsAssocRight 5),(HsVar "!!",HsFixity HsAssocLeft 9)]

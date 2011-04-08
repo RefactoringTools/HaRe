@@ -1,0 +1,1 @@
+[(HsVar "<*>",HsFixity HsAssocLeft 4),(HsVar "<*",HsFixity HsAssocLeft 4),(HsVar "*>",HsFixity HsAssocLeft 4),(HsVar "<**>",HsFixity HsAssocLeft 4),(HsVar "<$>",HsFixity HsAssocLeft 4),(HsVar "<$",HsFixity HsAssocLeft 4),(HsVar "<|>",HsFixity HsAssocLeft 3)]

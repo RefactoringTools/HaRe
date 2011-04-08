@@ -1,0 +1,33 @@
+Cases: 1  Tried: 0  Errors: 0  Failures: 0                                          Cases: 1  Tried: 1  Errors: 0  Failures: 0
+llel.Strategies, needed by A1
+    Prelude, needed by A1
+CMD:["stop"]
+CMD:["chase","../../tools/base/tests/HaskellLibraries/"]
+Adding Prelude from ../../tools/base/tests/HaskellLibraries//Prelude.hs
+Adding Ix from ../../tools/base/tests/HaskellLibraries//Ix.hs
+Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 13 source files.
+(To list the files, use: pfe files)
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Control.Parallel.Strategies, needed by A1
+CMD:["stop"]
+CMD:["chase","."]
+The project contains 13 source files.
+(To list the files, use: pfe files)
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Control.Parallel.Strategies, needed by A1
+CMD:["stop"]
+CMD:["refacAddEvalMonCache","A1.hs","11","8","11","12"]
+refacAddEvalMonCache
+message: CAUGHT EXCEPTION: user error (Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Control.Parallel.Strategies, needed by A1)
+CMD:["stop"]
