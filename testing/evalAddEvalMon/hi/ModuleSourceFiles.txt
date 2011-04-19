@@ -10,6 +10,7 @@ PreludeIO /Users/chrisbrown/.cabal/share/HaRe-0.6.0.1//PreludeIO.hs
 PreludeList /Users/chrisbrown/.cabal/share/HaRe-0.6.0.1//PreludeList.hs
 PreludeText /Users/chrisbrown/.cabal/share/HaRe-0.6.0.1//PreludeText.hs
 Ratio /Users/chrisbrown/.cabal/share/HaRe-0.6.0.1//Ratio.hs
+A1 /Users/chrisbrown/hare/parallel/HaRe/testing/evalAddEvalMon/A1.hs
 Control.Applicative /Users/chrisbrown/hare/parallel/test/Control/Applicative.hs
 Control.Arrow /Users/chrisbrown/hare/parallel/test/Control/Arrow.hs
 Control.DeepSeq /Users/chrisbrown/hare/parallel/test/Control/DeepSeq.hs
@@ -46,5 +47,4 @@ System.IO /Users/chrisbrown/hare/parallel/test/System/IO.hs
 System.IO.Unsafe /Users/chrisbrown/hare/parallel/test/System/IO/Unsafe.hs
 Text.Read /Users/chrisbrown/hare/parallel/test/Text/Read.hs
 Unsafe.Coerce /Users/chrisbrown/hare/parallel/test/Unsafe/Coerce.hs
-A1 /Users/chrisbrown/science2/jra/systems/HaRe/HaRe_28062010/testing/evalAddEvalMon/A1.hs
 Control.Parallel.Strategies /Users/chrisbrown/science2/jra/systems/HaRe/HaRe_28062010/testing/evalMonad//Control/Parallel/Strategies.hs

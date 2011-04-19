@@ -23,7 +23,7 @@
    When Haskell Refactoring mode is enabled, the \"Refactor\"
    menu provides access to a list of refactorings. These are
    implemented as commands of an external refactoring tool
-   (default /Users/chrisbrown/science2/jra/systems/HaRe/HaRe_28062010/refactorer/pfe, see option haskell-refac-refactorer).
+   (default /Users/chrisbrown/hare/parallel/HaRe/refactorer/pfe, see option haskell-refac-refactorer).
    "
   ;; The initial value.
   nil
@@ -44,12 +44,12 @@
 
 (defgroup haskell-refac nil "Haskell refactoring options")
 
-(defcustom haskell-refac-refactorer "/Users/chrisbrown/science2/jra/systems/HaRe/HaRe_28062010/refactorer/pfe"
+(defcustom haskell-refac-refactorer "/Users/chrisbrown/hare/parallel/HaRe/refactorer/pfe"
 	"*Path to Haskell refactoring tool"
 	:type 'file
 	:group 'haskell-refac)
 
-(defcustom haskell-refac-chasePaths (cons (expand-file-name ".") '("/Users/chrisbrown/science2/jra/systems/HaRe/HaRe_28062010/tools/base/tests/HaskellLibraries"))
+(defcustom haskell-refac-chasePaths (cons (expand-file-name ".") '("/Users/chrisbrown/hare/parallel/HaRe/tools/base/tests/HaskellLibraries"))
 	"*List of directories to chase for missing files (including Prelude!)"
 	:type '(repeat directory)
 	:group 'haskell-refac)
