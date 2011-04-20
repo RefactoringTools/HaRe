@@ -30,6 +30,8 @@ refacAddEvalMonCache args
        
        let res = locToPat (beginRow, beginCol) (endRow, endCol) tokList mod 
 
+       AbstractIO.putStrLn ("Saving to " ++ evalFilePath)
+
        if res /= defaultPat
          then do AbstractIO.writeFile evalFilePath (show res)
                  AbstractIO.putStrLn "RefacAddEvalMonCache Completed."

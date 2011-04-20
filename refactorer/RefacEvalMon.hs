@@ -39,6 +39,8 @@ refacEvalMon args =
 
      fileContent <- AbstractIO.readFile evalFilePath 
 
+     AbstractIO.putStrLn ("Grabbing monad from " ++ evalFilePath)
+
      if (fileContent == []) 
        then do AbstractIO.putStrLn "No Active Eval Monad. Creating one..."
 
@@ -52,6 +54,8 @@ refacEvalMon args =
                AbstractIO.putStrLn "Using activated Eval Monad."
 
                let thePat = read (fileContent) :: HsPatP
+
+               AbstractIO.putStrLn ("thePat: " ++ (show thePat))
 
                ((_, m), (newToks, newMod)) <- applyRefac (doIntroduceWithActivePat pnt thePat) (Just (inscps, exps, mod, tokList)) fileName
 
@@ -101,8 +105,96 @@ addTheImport ss mod
 
 
 doIntroduceWPat pnt thePat t
-  = applyTP (once_buTP (failTP `adhocTP` inMatch) `choiceTP` failure) t
+  = applyTP (once_buTP (failTP `adhocTP` inCase
+                               `adhocTP` inLet
+                               `adhocTP` inPat
+                               `adhocTP` inMatch
+                               `adhocTP` inModule ) `choiceTP` failure) t
       where
+ 
+         inLet l@(Exp (HsLet decls e)::HsExpP)
+          | isDeclaredIn (pNTtoPN pnt) l 
+             = do 
+                  (f,d) <- hsFDNamesFromInside l
+                  let newName = mkNewName (pNTtoName pnt) (f++d) 2
+      
+                  l' <- replacePNTs l pnt (nameToPNT newName)
+ 
+                  let thePat2 = findPat thePat decls
+
+                  let newPat = augmentPat (nameToPNT newName) thePat2
+
+                  l'' <- update thePat2 newPat l'
+
+                  -- l'' <- addDecl l' {-(Just (pNTtoPN pnt))-} Nothing ([newDecl newName (pNTtoName pnt)], Nothing) False
+                  return l''
+
+         inLet _ = mzero
+
+
+         inCase (alt@(HsAlt loc p rhs ds)::HsAltP) 
+          | isDeclaredIn (pNTtoPN pnt)  alt 
+            = do (f,d) <- hsFDNamesFromInside alt
+                 let newName = mkNewName (pNTtoName pnt) (f++d) 2
+                
+                 alt'@(HsAlt loc' p' rhs' ds') <- replacePNTs alt pnt (nameToPNT newName)
+
+
+                 let thePat2 = findPat thePat ds
+
+                 let newPat = augmentPat (nameToPNT newName) thePat2
+
+                 -- we don't have  an binding to add new decl after, so just plonk into Where clause of case...
+                 -- alt'' <- addDecl alt' Nothing ([newDecl newName (pNTtoName pnt)], Nothing) False
+                 
+                 alt'' <- update thePat2 newPat alt'
+
+                 return alt''
+
+
+         inCase _ = mzero
+
+
+         inModule (mod::HsModuleP)
+          | isDeclaredIn (pNTtoPN pnt) mod
+            = do 
+              (f,d) <- hsFDNamesFromInside mod
+              let newName = mkNewName (pNTtoName pnt) (f++d) 2
+       
+              mod' <- replacePNTs mod pnt (nameToPNT newName)
+
+
+              let thePat2 = findPat thePat (hsDecls mod)
+
+              let newPat = augmentPat (nameToPNT newName) thePat2
+
+              mod'' <- update thePat2 newPat mod'
+
+              -- mod'' <- addDecl mod' Nothing ([newDecl newName (pNTtoName pnt)], Nothing) False
+
+              return mod''
+         inModule _ = mzero
+
+
+         inPat (pat@(Dec (HsPatBind l p rhs ds))::HsDeclP)
+           | thePat `myElem` ds
+           && isDeclaredIn (pNTtoPN pnt) pat
+               = do  (f,d) <- hsFDNamesFromInside pat
+                     let newName = mkNewName (pNTtoName pnt) (f++d) 2
+
+                     pat' <- replacePNTs pat pnt (nameToPNT newName)
+
+                     let thePat2 = findPat thePat ds
+
+                     let newPat = augmentPat (nameToPNT newName) thePat2
+
+                     pat'' <- update thePat2 newPat pat'
+
+                     return pat''
+
+         inPat _ = mzero
+
+
          inMatch (match@(HsMatch l name pats rhs ds)::HsMatchP)
            |  thePat `myElem` ds     -- = error (show match)
            && isDeclaredIn (pNTtoPN pnt) match   
@@ -120,7 +212,7 @@ doIntroduceWPat pnt thePat t
                     match'' <- update pat' newPat match'
 
                     return match''
-
+         inMatch s = mzero
          failure=idTP `adhocTP` mod
                  where mod (m::HsModuleP) = error "Cannot find the active eval monad!"   
  

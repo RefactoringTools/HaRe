@@ -3,8 +3,8 @@
 BASH="bash"
 HARE="../../refactorer/pfe"
 #HARE="..\\..\\refactorer\\pfe"
-cd ..
-ghc --make -i../HUnit-1.0 -o UTest UTest.hs
+#cd ..
+ghc --make -i../../../../HUnit-1.0 -o UTest ./UTestCache.hs
 rm *.o *.hi
 # avoid spurious error reports due to line-ending conventions..
 case `uname` in
@@ -12,6 +12,6 @@ case `uname` in
     unix2dos *.hs 
     ;;
 esac
-cd ./evalAddMonad
+# cd ./evalAddMonad
 echo "-- testing add to eval Monad"
-../UTest $BASH $HARE 2>&1 | tee log.txt
+./UTest $BASH $HARE 2>&1 | tee log.txt
