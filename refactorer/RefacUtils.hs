@@ -58,7 +58,7 @@ module RefacUtils(module Control.Monad.State, module StrategyLib, module RefacTy
     ,fileNameToModName, strToModName, modNameToStr, newProj, addFile, chase
 
     -- ** Locations
-    ,defineLoc, useLoc,locToPNT,locToPN,locToExp, locToExp2, locToPat, locToLocalPat, getStartEndLoc , isLocalPNT
+    ,defineLoc, useLoc,locToPNT,locToPN,locToExp, locToExp2, locToPat, locToPatBind, locToLocalPat, getStartEndLoc , isLocalPNT
 
  -- * Program transformation 
     -- ** Adding
@@ -2334,6 +2334,27 @@ locToExp2 beginPos endPos toks t
         atoms2Stmt (HsQualifierAtom e : ss)     = HsQualifier e # atoms2Stmt ss
         atoms2Stmt _ = fail "last statement in a 'do' expression must be an expression"
 
+
+locToPatBind::(Term t) => SimpPos
+                       -> SimpPos
+                       -> [PosToken]
+                       -> t
+                       -> HsPatP
+locToPatBind beginPos endPos toks t
+  = fromMaybe defaultPat $ applyTU (once_tdTU (failTU `adhocTU` pat)) t
+     where
+       pat ((Dec (HsPatBind l p rhs ds))::HsDeclP) 
+         | inScope p = Just p
+       pat _ = Nothing
+
+
+       inScope p 
+          = let (startLoc, endLoc) 
+                 = if patToPNT p /= defaultPNT 
+                    then let (SrcLoc _ _ row col) = useLoc (patToPNT p)
+                         in ((row,col), (row,col))
+                    else getStartEndLoc toks p
+            in (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && endLoc<=endPos 
 
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
 --  region specified by the start and end position. If no expression can be found, then return the defaultExp.

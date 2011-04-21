@@ -170,6 +170,22 @@ doIntroduceWPat pnt thePat thePar t
                              return mod''
          inModule _ = mzero
 
+         inPat  (pat@(Dec (HsPatBind l p rhs ds))::HsDeclP)
+           | (pNTtoPN pnt) `elem` (toPat ds)
+          && thePat `myElem` (hsDecls rhs)
+           = do  (f,d) <- hsFDNamesFromInside pat
+                 let newName = mkNewName (pNTtoName pnt) (f++d) 2
+
+                 pat' <- replacePNTs pat pnt (nameToPNT newName)
+
+                 let thePat2 = findPat thePat (hsDecls rhs)
+
+                 if thePat2 == Nothing
+                    then mzero
+                    else do let newPat = augmentPat (nameToPNT newName) (fromJust thePat2)
+
+                            pat'' <- update (fromJust thePat2) newPat pat'
+                            return pat''
 
          inPat (pat@(Dec (HsPatBind l p rhs ds))::HsDeclP)
            | thePat `myElem` ds
@@ -193,10 +209,19 @@ doIntroduceWPat pnt thePat thePar t
          -- could be the case that run eval in an inner scope on the RHS, but
          -- selected runEval is in the where clause, scoping over the RHS
          inMatch (match@(HsMatch l name pats rhs ds)::HsMatchP)
-           = error $ show ((pNTtoPN pnt), ds, isDeclaredIn (pNTtoPN pnt) ds)
-      --     |  isDeclaredIn (pNTtoPN pnt) ds 
-      --     && thePat `myElem` (hsDecls rhs)
-      --      = error $ show match
+          -- = error $ show ((pNTtoPN pnt), toPat ds)
+           |  (pNTtoPN pnt) `elem` (toPat ds) 
+           && thePat `myElem` (hsDecls rhs) 
+            = do (f,d) <- hsFDNamesFromInside match
+                 let newName = mkNewName (pNTtoName pnt) (f++d) 2
+                 match' <- replacePNTs match pnt (nameToPNT newName)
+                 let pat' = findPat thePat (hsDecls rhs)
+                 if pat' == Nothing 
+                    then mzero
+                    else do let newPat = augmentPat (nameToPNT newName) (fromJust pat')
+                            match'' <- update (fromJust pat') newPat match'
+                            return match''
+   
 
          inMatch (match@(HsMatch l name pats rhs ds)::HsMatchP)
            |  thePat `myElem` ds     -- = error (show match)
@@ -225,7 +250,18 @@ doIntroduceWPat pnt thePat thePar t
                 where newPat = addToPat pnt p
                       newRHS = addToRHS pnt rhs
 
+         toPat :: [HsDeclP] -> [PName]
+         -- toPat x = error $ show x
+         toPat [] = []
+         toPat ((Dec (HsPatBind loc p rhs ds)):xs) = patToPN p : toPat xs
+         toPat (_:xs) = toPat xs
+
+
          -- addToRHS p e = error (show e)
+
+         addToRHS p (HsBody (Exp (HsInfixApp e1 o (Exp (HsDo s)))))
+           = HsBody (Exp (HsInfixApp e1 o (Exp (HsDo (addToStatements p s))))) 
+
          addToRHS p (HsBody (Exp (HsApp e1 (Exp (HsParen (Exp (HsDo s))))))) 
            = HsBody (Exp (HsApp e1 (Exp (HsParen (Exp (HsDo (addToStatements p s)))))))
 

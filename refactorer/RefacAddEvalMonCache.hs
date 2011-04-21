@@ -28,12 +28,15 @@ refacAddEvalMonCache args
               
        (inscps, exps, mod, tokList) <- parseSourceFile fileName
        
-       let res = locToPat (beginRow, beginCol) (endRow, endCol) tokList mod 
+       let res = locToPatBind (beginRow, beginCol) (endRow, endCol) tokList mod 
+       -- error $ show (res)
 
-       AbstractIO.putStrLn ("Saving to " ++ evalFilePath)
+       if res == defaultPat 
+          then error "Please select a pattern binding with a runEval monad"
+          else do AbstractIO.putStrLn ("Saving to " ++ evalFilePath)
 
-       if res /= defaultPat
-         then do AbstractIO.writeFile evalFilePath (show res)
-                 AbstractIO.putStrLn "RefacAddEvalMonCache Completed."
-         else error "Please select a pattern binding!"
+                  if res /= defaultPat
+                     then do AbstractIO.writeFile evalFilePath (show res)
+                             AbstractIO.putStrLn "RefacAddEvalMonCache Completed."
+                     else error "Please select a pattern binding!"
          
