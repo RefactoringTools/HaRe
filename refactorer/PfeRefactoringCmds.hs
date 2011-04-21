@@ -110,4 +110,5 @@ pfeRefactoringCmds =
    -- menu Parallel
   ,("refacEvalMon",(args " <fileName> <line> <column> <line> <column>" refacEvalMon, " Insert Eval Monad"))
   ,("refacAddEvalMonCache",(args " <fileName> <line> <column> <line> <column>" refacAddEvalMonCache, " Activate Eval Monad"))
+  ,("refacClearEvalCache",(args " <fileName>" refacClearEvalCache, " clear active eval monad"))
   ]

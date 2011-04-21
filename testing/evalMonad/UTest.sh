@@ -4,7 +4,7 @@ BASH="bash"
 HARE="../../refactorer/pfe"
 #HARE="..\\..\\refactorer\\pfe"
 cd ..
-ghc --make -i../HUnit-1.0 -o UTest UTest.hs
+ghc --make -i../../../HUnit-1.0 -o UTest UTest.hs
 rm *.o *.hi
 # avoid spurious error reports due to line-ending conventions..
 case `uname` in

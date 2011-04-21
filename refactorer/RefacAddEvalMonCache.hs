@@ -1,4 +1,4 @@
-module RefacAddEvalMonCache (refacAddEvalMonCache) where
+module RefacAddEvalMonCache (refacAddEvalMonCache, refacClearEvalCache) where
 
 import PrettyPrint
 import PosSyntax
@@ -39,4 +39,12 @@ refacAddEvalMonCache args
                      then do AbstractIO.writeFile evalFilePath (show res)
                              AbstractIO.putStrLn "RefacAddEvalMonCache Completed."
                      else error "Please select a pattern binding!"
-         
+        
+refacClearEvalCache args 
+   = do
+         AbstractIO.putStrLn "refacClearEvalCache" 
+
+         AbstractIO.writeFile evalFilePath ""
+
+         AbstractIO.putStrLn "Completed."
+

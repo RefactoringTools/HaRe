@@ -143,7 +143,8 @@
 
 ("Parallel"
    ["Introduce Eval Monad" haskell-refac-refacEvalMon  :active t]
-   ["Add Run Eval monad to buffer" haskell-refac-refacAddEvalMonCache  :active t]
+   ["Activate an Evaluation Monad" haskell-refac-refacAddEvalMonCache  :active t]
+   ["Clear the active Evaluation Monad" haskell-refac-refacClearEvalCache  :active t]
 )
 
    ["undo" haskell-refac-undo  :active t]
@@ -1450,6 +1451,25 @@
 		(number-to-string (+ 1 (current-column-pos start1)))
 		(number-to-string (line-no-pos end1))
 		(number-to-string (+ 1 (current-column-pos end1))))) " ")
+         "\n"))
+     )
+  ) )
+
+
+(defun haskell-refac-refacClearEvalCache ()
+  "refacClearEvalCache"
+  (interactive "")
+  (let (modified)
+     (dolist (b (buffer-list) modified)
+       (let* ((n (buffer-name b)) (n1 (substring n 0 1)))
+        (if (and (not (or (string= " " n1) (string= "*" n1))) (buffer-modified-p b))
+          (setq modified (cons (buffer-name b) modified)))))
+     (if modified (message-box (format "there are modified buffers: %s" modified))
+       (process-send-string "haskell-refac-process" 
+         (concat
+         
+         "refacClearEvalCache " (mapconcat 'identity (append 
+		(list (if (buffer-file-name) (buffer-file-name) "<missing filename>"))) " ")
          "\n"))
      )
   ) )

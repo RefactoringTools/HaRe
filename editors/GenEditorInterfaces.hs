@@ -421,8 +421,12 @@ cmds editFuns = [Menu "Projects"
          [
            editParameters editFuns "Introduce Eval Monad" "refacEvalMon"
            refacEvalMon $ fileNamePar $ regionPar $ comment "Insert Eval Monad"
-          ,editParameters editFuns "Add Run Eval monad to buffer" "refacAddEvalMonCache"
+          ,editParameters editFuns "Activate an Evaluation Monad" "refacAddEvalMonCache"
            refacAddEvalMonCache $ fileNamePar $ regionPar $ comment "Activate Eval Monad"
+          ,editParameters editFuns "Clear the active Evaluation Monad" "refacClearEvalCache"
+           refacClearEvalCache $ fileNamePar $ comment "clear active eval monad"
+
+
          -- ,editParameters editFuns "Add pattern to runEval" "refacAddEvalMon"
          --  refacAddEvalMon $ fileNamePar $ regionPar $ comment "Add pattern to buffered Eval Monad"
          ]
@@ -436,6 +440,9 @@ cmds editFuns = [Menu "Projects"
 --    ">refacAddEvalMon filename: "++f
 --  ++" line: "++show ls++" column: "++show cs
 --  ++" line: "++show le++" column: "++show ce
+refacClearEvalCache :: String -> IO ()
+refacClearEvalCache f = putStrLn $ ">refacClearEvalCache filename: " ++ f
+
 
 refacAddEvalMonCache :: String -> Int -> Int -> Int -> Int -> IO ()
 refacAddEvalMonCache f ls cs le ce = putStrLn $ 

@@ -68,42 +68,49 @@ The project contains 70 source files.
 CMD:["stop"]
 CMD:["refacEvalMon","A1.hs","7","8","7","10"]
 Analyzing: A1.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: A1.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","A2.hs","6","4","6","6"]
 Analyzing: A2.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: A2.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","A3.hs","5","4","5","6"]
 Analyzing: A3.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: A3.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","A4.hs","12","1","12","7"]
 Analyzing: A4.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: A4.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","Fourier.hs","20","4","20","10"]
 Analyzing: Fourier.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: Fourier.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","B1.hs","9","5","9","10"]
 Analyzing: B1.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: B1.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","B2.hs","11","5","11","10"]
 Analyzing: B2.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 ([PN (UnQual "rpar") (G (PlainModule "unknown") "rpar" (N (Just ("__unknown__",0,0,0)))),PN (UnQual "runEval") (G (PlainModule "unknown") "runEval" (N (Just ("__unknown__",0,0,0))))],[PN (UnQual "rseq") (G (PlainModule "unknown") "rseq" (N (Just ("__unknown__",0,0,0))))])
 modified: B2.hs
@@ -111,36 +118,43 @@ refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","B3.hs","12","5","12","10"]
 Analyzing: B3.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 ([PN (UnQual "rpar") (G (PlainModule "unknown") "rpar" (N (Just ("__unknown__",0,0,0)))),PN (UnQual "runEval") (G (PlainModule "unknown") "runEval" (N (Just ("__unknown__",0,0,0))))],[PN (UnQual "rseq") (G (PlainModule "unknown") "rseq" (N (Just ("__unknown__",0,0,0)))),PN (UnQual "rpar") (G (PlainModule "unknown") "rpar" (N (Just ("__unknown__",0,0,0))))])
 modified: B3.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","Case1.hs","9","20","9","22"]
+Analyzing: Case1.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: Case1.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","Case2.hs","9","20","9","20"]
 Analyzing: Case2.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: Case2.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","Let1.hs","6","25","6","27"]
 Analyzing: Let1.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: Let1.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","Let2.hs","7","32","7","34"]
 Analyzing: Let2.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: Let2.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","Qualified2.hs","14","8","14","10"]
 Analyzing: Qualified2.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: Qualified2.hs
 refacEvalMon completed.
@@ -151,16 +165,19 @@ message: CAUGHT EXCEPTION: Cannot spark a function! Please select a pattern bind
 CMD:["stop"]
 CMD:["refacEvalMon","Lambda1.hs","4","12","4","13"]
 Analyzing: Lambda1.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 message: CAUGHT EXCEPTION: Cannot find the declaration for the highlighted expression!
 CMD:["stop"]
 CMD:["refacEvalMon","Do1.hs","9","11","9","13"]
 Analyzing: Do1.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 message: CAUGHT EXCEPTION: Cannot find the declaration for the highlighted expression!
 CMD:["stop"]
 CMD:["refacEvalMon","ListComp1.hs","5","15","5","16"]
 Analyzing: ListComp1.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 message: CAUGHT EXCEPTION: Cannot find the declaration for the highlighted expression!
 CMD:["stop"]
@@ -170,6 +187,7 @@ message: CAUGHT EXCEPTION: rpar and/or runEval are explicitly hidden. Please unh
 CMD:["stop"]
 CMD:["refacEvalMon","Qualified1.hs","9","8","9","10"]
 Analyzing: Qualified1.hs
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 message: CAUGHT EXCEPTION: Cannot find the declaration for the highlighted expression!
 CMD:["stop"]
