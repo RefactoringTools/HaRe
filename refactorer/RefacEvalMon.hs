@@ -57,7 +57,7 @@ refacEvalMon args =
 
                AbstractIO.putStrLn ("thePat: " ++ (show thePat))
 
-               ((_, m), (newToks, newMod)) <- applyRefac (doIntroduceWithActivePat pnt thePat) (Just (inscps, exps, mod, tokList)) fileName
+               ((_, m), (newToks, newMod)) <- applyRefac (doIntroduceWithActivePat pnt thePat thePar) (Just (inscps, exps, mod, tokList)) fileName
 
                writeRefactoredFiles False [((fileName, m), (newToks, newMod))]
  
@@ -95,23 +95,22 @@ doIntroduce pnt thePar theRunEval (_,_,t)
                mod' <- addTheImport [thePar, theRunEval] mod
                return mod'
 
-doIntroduceWithActivePat pnt thePat (_,_,t)
+doIntroduceWithActivePat pnt thePat thePar (_,_,t)
   = do
-        mod <- doIntroduceWPat pnt thePat t
+        mod <- doIntroduceWPat pnt thePat thePar t
         return mod
 
 addTheImport ss mod
   = addImport "" (strToModName "Control.Parallel.Strategies") (map nameToPN ss) mod
 
 
-doIntroduceWPat pnt thePat t
+doIntroduceWPat pnt thePat thePar t
   = applyTP (once_buTP (failTP `adhocTP` inCase
                                `adhocTP` inLet
                                `adhocTP` inPat
                                `adhocTP` inMatch
                                `adhocTP` inModule ) `choiceTP` failure) t
-      where
- 
+      where 
          inLet l@(Exp (HsLet decls e)::HsExpP)
           | isDeclaredIn (pNTtoPN pnt) l 
              = do 
@@ -121,13 +120,13 @@ doIntroduceWPat pnt thePat t
                   l' <- replacePNTs l pnt (nameToPNT newName)
  
                   let thePat2 = findPat thePat decls
+                  if thePat2 == Nothing
+                     then mzero
+                     else do let newPat = augmentPat (nameToPNT newName) (fromJust thePat2)
 
-                  let newPat = augmentPat (nameToPNT newName) thePat2
+                             l'' <- update (fromJust thePat2) newPat l'
 
-                  l'' <- update thePat2 newPat l'
-
-                  -- l'' <- addDecl l' {-(Just (pNTtoPN pnt))-} Nothing ([newDecl newName (pNTtoName pnt)], Nothing) False
-                  return l''
+                             return l''
 
          inLet _ = mzero
 
@@ -141,17 +140,14 @@ doIntroduceWPat pnt thePat t
 
 
                  let thePat2 = findPat thePat ds
+                 if thePat2 == Nothing
+                     then mzero
+                     else do let newPat = augmentPat (nameToPNT newName) (fromJust thePat2)
 
-                 let newPat = augmentPat (nameToPNT newName) thePat2
-
-                 -- we don't have  an binding to add new decl after, so just plonk into Where clause of case...
-                 -- alt'' <- addDecl alt' Nothing ([newDecl newName (pNTtoName pnt)], Nothing) False
-                 
-                 alt'' <- update thePat2 newPat alt'
-
-                 return alt''
-
-
+                             -- we don't have  an binding to add new decl after, so just plonk into Where clause of case...
+                                              
+                             alt'' <- update (fromJust thePat2) newPat alt'
+                             return alt''
          inCase _ = mzero
 
 
@@ -166,13 +162,12 @@ doIntroduceWPat pnt thePat t
 
               let thePat2 = findPat thePat (hsDecls mod)
 
-              let newPat = augmentPat (nameToPNT newName) thePat2
+              if thePat2 == Nothing
+                     then mzero
+                     else do let newPat = augmentPat (nameToPNT newName) (fromJust thePat2)
 
-              mod'' <- update thePat2 newPat mod'
-
-              -- mod'' <- addDecl mod' Nothing ([newDecl newName (pNTtoName pnt)], Nothing) False
-
-              return mod''
+                             mod'' <- update (fromJust thePat2) newPat mod'
+                             return mod''
          inModule _ = mzero
 
 
@@ -186,32 +181,40 @@ doIntroduceWPat pnt thePat t
 
                      let thePat2 = findPat thePat ds
 
-                     let newPat = augmentPat (nameToPNT newName) thePat2
+                     if thePat2 == Nothing
+                        then mzero
+                        else do let newPat = augmentPat (nameToPNT newName) (fromJust thePat2)
 
-                     pat'' <- update thePat2 newPat pat'
-
-                     return pat''
-
+                                pat'' <- update (fromJust thePat2) newPat pat'
+                                return pat''
          inPat _ = mzero
 
+
+         -- could be the case that run eval in an inner scope on the RHS, but
+         -- selected runEval is in the where clause, scoping over the RHS
+         inMatch (match@(HsMatch l name pats rhs ds)::HsMatchP)
+           = error $ show ((pNTtoPN pnt), ds, isDeclaredIn (pNTtoPN pnt) ds)
+      --     |  isDeclaredIn (pNTtoPN pnt) ds 
+      --     && thePat `myElem` (hsDecls rhs)
+      --      = error $ show match
 
          inMatch (match@(HsMatch l name pats rhs ds)::HsMatchP)
            |  thePat `myElem` ds     -- = error (show match)
            && isDeclaredIn (pNTtoPN pnt) match   
                = do (f,d) <- hsFDNamesFromInside match
                     let newName = mkNewName (pNTtoName pnt) (f++d) 2
-
                     match' <- replacePNTs match pnt (nameToPNT newName)
-
-
                     let pat' = findPat thePat ds
+                    if pat' == Nothing
+                     then mzero
+                     else do -- modify the pattern, - add the new binding as a tuple!
+                           let newPat = augmentPat (nameToPNT newName) (fromJust pat') 
+                           match'' <- update (fromJust pat') newPat match'
+                           return match''
 
-                    -- modify the pattern, - add the new binding as a tuple!
-                    let newPat = augmentPat (nameToPNT newName) pat' 
+         
 
-                    match'' <- update pat' newPat match'
 
-                    return match''
          inMatch s = mzero
          failure=idTP `adhocTP` mod
                  where mod (m::HsModuleP) = error "Cannot find the active eval monad!"   
@@ -237,7 +240,7 @@ doIntroduceWPat pnt thePat t
          addToStatements p (HsQualifier e s)     = HsQualifier e (addToStatements p s)
          addToStatements p (HsLetStmt ds s )     = HsLetStmt ds  (addToStatements p s)
          addToStatements p (HsLast e) 
-           = (HsGenerator loc0 (nameToPat $ pNTtoName p) (Exp (HsApp (nameToExp "rpar") (nameToExp (pNTtoName pnt))))
+           = (HsGenerator loc0 (nameToPat $ pNTtoName p) (Exp (HsApp {-(nameToExp "rpar")-} (nameToExp thePar) (nameToExp (pNTtoName pnt))))
                                                          (HsLast (updateTuple p e)))
         
          updateTuple p (Exp (HsApp e1 (Exp (HsTuple es)))) = Exp (HsApp e1 (Exp (HsTuple (es ++ [ pNtoExp (pNTtoPN p)] ))))
@@ -257,11 +260,11 @@ doIntroduceWPat pnt thePat t
          addToPat p _ = error "Active Eval Monad must be a tuple pattern binding or variable pattern binding!"
 
 
-         findPat :: HsPatP -> [HsDeclP] -> HsDeclP
-         findPat p [] = error "Cannot find active Eval Monad pattern binding!"
+         findPat :: HsPatP -> [HsDeclP] -> Maybe HsDeclP
+         findPat p [] = Nothing -- error "Cannot find active Eval Monad pattern binding!"
          findPat p ((Dec (HsFunBind s m)):ds) = findPat p ds
          findPat p (a@(Dec (HsPatBind l p2 rhs _)):ds)
-            | p == p2 = a 
+            | p == p2 = Just $ a 
             | otherwise = findPat p ds
          findPat p (_:ds) = findPat p ds
 

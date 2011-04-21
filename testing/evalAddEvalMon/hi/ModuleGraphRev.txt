@@ -7,7 +7,7 @@ Control.Monad Control.Parallel.Strategies Control.Applicative Control.Arrow Data
 Control.Monad.Fix Control.Arrow
 Control.Monad.Instances Control.Applicative Control.Monad.Fix
 Control.Parallel Control.Parallel.Strategies
-Control.Parallel.Strategies Let2
+Control.Parallel.Strategies Scope1
 Control.Seq Control.Parallel.Strategies
 Data.Array Control.DeepSeq Data.Foldable Data.Traversable
 Data.Bits Data.HashTable Data.IntMap Data.IntSet
@@ -37,7 +37,7 @@ Ix Array Char Prelude Data.Char
 List Array
 Maybe List
 Numeric Char PreludeText
-Prelude Array Char Ix List Maybe Numeric Prelude PreludeBuiltin PreludeIO PreludeList PreludeText Ratio Let2 Control.Parallel.Strategies Control.Applicative Control.Arrow Control.DeepSeq Control.Monad Control.Monad.Fix Control.Monad.Instances Control.Parallel Control.Seq Data.Array Data.Bits Data.Char Data.Complex Data.Either Data.Foldable Data.Function Data.Generics.Basics Data.Generics.Instances Data.HashTable Data.IORef Data.IntMap Data.IntSet Data.Ix Data.List Data.Map Data.Maybe Data.Monoid Data.Ratio Data.Traversable Data.Tree Data.Tuple Data.Typeable Data.Word System.IO System.IO.Unsafe Text.Read Unsafe.Coerce
+Prelude Array Char Ix List Maybe Numeric Prelude PreludeBuiltin PreludeIO PreludeList PreludeText Ratio Scope1 Control.Parallel.Strategies Control.Applicative Control.Arrow Control.DeepSeq Control.Monad Control.Monad.Fix Control.Monad.Instances Control.Parallel Control.Seq Data.Array Data.Bits Data.Char Data.Complex Data.Either Data.Foldable Data.Function Data.Generics.Basics Data.Generics.Instances Data.HashTable Data.IORef Data.IntMap Data.IntSet Data.Ix Data.List Data.Map Data.Maybe Data.Monoid Data.Ratio Data.Traversable Data.Tree Data.Tuple Data.Typeable Data.Word System.IO System.IO.Unsafe Text.Read Unsafe.Coerce
 PreludeBuiltin Char Prelude PreludeIO
 PreludeIO Prelude
 PreludeList Prelude

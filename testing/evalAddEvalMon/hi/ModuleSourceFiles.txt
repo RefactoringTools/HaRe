@@ -10,7 +10,7 @@ PreludeIO /Users/chrisbrown/.cabal/share/HaRe-0.6.0.1//PreludeIO.hs
 PreludeList /Users/chrisbrown/.cabal/share/HaRe-0.6.0.1//PreludeList.hs
 PreludeText /Users/chrisbrown/.cabal/share/HaRe-0.6.0.1//PreludeText.hs
 Ratio /Users/chrisbrown/.cabal/share/HaRe-0.6.0.1//Ratio.hs
-Let2 /Users/chrisbrown/hare/parallel/HaRe/testing/evalAddEvalMon/Let2.hs
+Scope1 /Users/chrisbrown/hare/parallel/HaRe/testing/evalAddEvalMon/Scope1.hs
 Control.Parallel.Strategies /Users/chrisbrown/hare/parallel/HaRe/testing/evalMonad//Control/Parallel/Strategies.hs
 Control.Applicative /Users/chrisbrown/hare/parallel/test/Control/Applicative.hs
 Control.Arrow /Users/chrisbrown/hare/parallel/test/Control/Arrow.hs
