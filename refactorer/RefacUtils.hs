@@ -1060,7 +1060,7 @@ addTypeSigDecl parent pn (decl, declToks) topLevel
         
          newSource  = if localDecls == []
                       then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
-                      else newFun'
+                      else newFun' ++ "\n"
             where
             newFun' = case newFunToks of 
                            Just ts -> concatMap tokenCon ts 
