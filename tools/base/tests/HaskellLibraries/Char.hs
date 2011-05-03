@@ -29,14 +29,10 @@ isSpace c     =  c == ' '   || c == '\t'  || c == '\n'  || c == '\r'  ||
                                c == '\f'  || c == '\v' || c=='\xa0'
 
 isUpper c     =
-        c >= 'A' && c <= 'Z' || 
-	c >= 'À' && c <= 'Ö' || 
-	c >= 'Ø' && c <= 'Þ'
+        c >= 'A' && c <= 'Z' 
 
 isLower c     =
-        c >= 'a' && c <= 'z' || 
-	c >= 'ß' && c <= 'ö' || 
-	c >= 'ø' && c <= 'ÿ'
+        c >= 'a' && c <= 'z'
 
 isAlpha c     =  isUpper c  ||  isLower c
 isDigit c     =  c >= '0'   &&  c <= '9'

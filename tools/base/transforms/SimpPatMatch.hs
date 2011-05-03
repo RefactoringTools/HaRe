@@ -26,12 +26,12 @@ class SimpPatMatch i s | s->i where
 instance SimpPatMatch i s => SimpPatMatch i [s] where
   simpPatMatch = map . simpPatMatch
 
-simpPatMatchE ids e = simpPatMatchE' ids rec e
+simpPatMatchE ids e = simpPatMatchE' ids r e
 
-simpPatMatchE' ids rec e0 =
+simpPatMatchE' ids r e0 =
     case mapEI id (simpPatMatch ids) id (simpAllPatMatch ids) id id e0 of
       HsCase e alts -> convMatch ids (compilePatMatch ids e alts)
-      e -> rec e
+      e -> r e
 
 {-+
 Pattern match simplification, as described in section 3.17.3

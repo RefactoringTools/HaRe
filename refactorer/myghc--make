@@ -7,17 +7,17 @@ SYSTEM=`uname`
 
 case `uname` in
   CYGWIN*)
-    ghc --make $GHCFLAGS -cpp -fno-cse -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -fno-monomorphism-restriction -package network -package ghc -i${SRC_DIRS} -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi Evaluate.hs -o evaluate
-    ghc --make $GHCFLAGS -cpp -ffi -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -fno-monomorphism-restriction -package ghc -package network -i${SRC_DIRS} -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi $*
+    ghc --make $GHCFLAGS -cpp -fno-cse -fglasgow-exts -XFunctionalDependencies -XMultiParamTypeClasses -XOverlappingInstances -XUndecidableInstances -XNoMonomorphismRestriction -package network -package ghc -i../editors/ -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi Evaluate.hs -o evaluate
+    ghc --make $GHCFLAGS -cpp -fglasgow-exts -XMultiParamTypeClasses -XFunctionalDependencies -XOverlappingInstances -XUndecidableInstances -XNoMonomorphismRestriction -package ghc -package network -i${SRC_DIRS} -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi $*
     ;;
   SunOS*)
-    ghc --make $GHCFLAGS -cpp -fno-cse -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -fno-monomorphism-restriction -package network -package ghc -i${SRC_DIRS} -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi Evaluate.hs -o evaluate
-    ghc --make $GHCFLAGS -cpp -ffi -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -fno-monomorphism-restriction -package ghc -package network -i${SRC_DIRS} -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi $*
+    ghc --make $GHCFLAGS -cpp -fno-cse -fglasgow-exts -XMultiParamTypeClasses -XOverlappingInstances -XFunctionalDependencies -XUndecidableInstances -XNoMonomorphismRestriction -package network -package ghc -i${SRC_DIRS} -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi Evaluate.hs -o evaluate
+    ghc --make $GHCFLAGS -cpp -fglasgow-exts -XMultiParamTypeClasses -XOverlappingInstances -XUndecidableInstances -XFunctionalDependencies -XNoMonomorphismRestriction -package ghc -package network -i${SRC_DIRS} -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi $*
     ;;
   *)
     # default case for unixish systems, confirmed for Mac OS X (10.2.6), Linux (Redhat, Mandrake)
-    ghc-6.8.2 --make $GHCFLAGS -cpp -fno-cse -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -fno-monomorphism-restriction -package network -package ghc -i../editors/  Evaluate.hs -o evaluate
-    ghc-6.8.2 --make $GHCFLAGS -cpp -fno-cse -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -fno-monomorphism-restriction -package network -package ghc -i${SRC_DIRS} -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi $*
+    ghc --make $GHCFLAGS -cpp -fno-cse -fglasgow-exts -XMultiParamTypeClasses -XOverlappingInstances -XUndecidableInstances -XFunctionalDependencies -XNoMonomorphismRestriction -package network -package ghc -i../editors/  Evaluate.hs -o evaluate
+    ghc --make $GHCFLAGS -cpp -fno-cse -fglasgow-exts -XMultiParamTypeClasses -XOverlappingInstances -XUndecidableInstances -XFunctionalDependencies -XNoMonomorphismRestriction -package network -package ghc -i${SRC_DIRS} -odir odir/$SYSTEM -hidir hidir/$SYSTEM -osuf o -hisuf hi $*
    
     ;;
 esac

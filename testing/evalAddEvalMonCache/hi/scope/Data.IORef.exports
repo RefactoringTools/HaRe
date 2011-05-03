@@ -1,0 +1,1 @@
+[("atomicModifyIORef",Ent (PlainModule "Data.IORef") (HsVar "atomicModifyIORef") Value),("modifyIORef",Ent (PlainModule "Data.IORef") (HsVar "modifyIORef") Value)]

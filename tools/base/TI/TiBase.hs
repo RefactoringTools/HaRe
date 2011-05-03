@@ -55,14 +55,14 @@ instance Eq i => HasLocalDef i (HsExpI i) (HsDeclI i) where letvar x e = mapRec 
 --instance ({-ValueId i,-}TypeVar i) => KindCheck i (HsDeclI i) () where kc = kc . struct
 instance TypeVar i => KindCheck i (HsDeclI i) () where kc = kc . struct
 
-instance HasId i (HsPatI i) where ident = rec . ident; isId = isId . struct
-instance HasId i (HsExpI i) where ident = rec . ident; isId = isId . struct
+instance HasId i (HsPatI i) where ident = r . ident; isId = isId . struct
+instance HasId i (HsExpI i) where ident = r . ident; isId = isId . struct
 
 --instance HasLit (SrcLoc->HsExpI i) where lit = flip hsLit
 --instance HasLit (SrcLoc->HsPatI i) where lit = flip hsPLit
 
 instance HasCoreSyntax i (HsPatI i) where
-  app (Pat p1) p2 = rec $ pApp p1 p2
+  app (Pat p1) p2 = r $ pApp p1 p2
   tuple = hsPTuple loc0 -- !! loc0
   list = hsPList loc0 -- !! loc0
 --paren = hsPParen

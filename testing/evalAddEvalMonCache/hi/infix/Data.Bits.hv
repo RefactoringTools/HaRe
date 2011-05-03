@@ -1,0 +1,1 @@
+[(HsVar ".|.",HsFixity HsAssocLeft 5),(HsVar "xor",HsFixity HsAssocLeft 6),(HsVar ".&.",HsFixity HsAssocLeft 7),(HsVar "shift",HsFixity HsAssocLeft 8),(HsVar "rotate",HsFixity HsAssocLeft 8),(HsVar "shiftL",HsFixity HsAssocLeft 8),(HsVar "shiftR",HsFixity HsAssocLeft 8),(HsVar "rotateL",HsFixity HsAssocLeft 8),(HsVar "rotateR",HsFixity HsAssocLeft 8)]

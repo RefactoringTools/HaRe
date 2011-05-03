@@ -17,7 +17,7 @@ import HsTypeStruct
 
 
 --pt :: String->Type
-pt :: (HasBaseStruct rec (TI i t), TypeCon i) => SrcName -> rec
+pt :: (HasBaseStruct r (TI i t), TypeCon i) => SrcName -> r
 pt n = hsTyCon . prelType $ n
 
 --tBool :: HasBaseStruct t (T t') => t

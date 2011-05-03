@@ -19,6 +19,6 @@ instance MapDeclM s ds => MapDeclM [s] ds where
 {- A convinient function, when the definition is in terms of
 the underlying structure. -}
 
-std_mapDeclM f = fmap rec . mapDeclM f . struct
+std_mapDeclM f = fmap r . mapDeclM f . struct
 
 mapDecls f m = removeId $ mapDeclM (return.map f) m

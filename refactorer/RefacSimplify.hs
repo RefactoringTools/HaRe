@@ -42,7 +42,7 @@ simplifyExpr args
      modName <-fileNameToModName fileName
      let modName1 = convertModName modName
      AbstractIO.putStrLn $ show modName1
-     (inscps, exps, mod, tokList, ses)<-parseSourceFile2 fileName modName1
+     (inscps, exps, mod, tokList)<-parseSourceFile fileName
      let subExp = locToExp (beginRow, beginCol) (endRow, endCol) tokList mod
      let (ty, pnt, pats, _, wh)
              = findDefNameAndExp tokList
@@ -62,7 +62,7 @@ simplifyExpr args
                -- need to reparse to capture added definition...
                (inscps2, exps2, mod2, tokList2)<-parseSourceFile fileName
                ((_,m'), (newToks', newMod')) <- applyRefac 
-                                                          (changeExpression fileName ses (modNameToStr modName) pnt subExp) 
+                                                          (changeExpression fileName (modNameToStr modName) pnt subExp) 
                                                           (Just (inscps2, exps2, mod2, tokList2)) fileName
                writeRefactoredFiles True [((fileName, m'), (newToks', newMod'))] 
                -- can we evaluate the result to get a further simplification?
@@ -141,12 +141,12 @@ evalExpression' f ses modName pnt e t
                                  update exp newExp exp
                                  return dec
        inDec x = return x
-changeExpression f ses modName pnt e (_,_,t) 
+changeExpression f modName pnt e (_,_,t) 
  = do
-      mod <- changeExpression' f ses modName pnt e t
+      mod <- changeExpression' f modName pnt e t
       return mod 
  
-changeExpression' f ses modName pnt e t
+changeExpression' f modName pnt e t
   = applyTP (full_tdTP (idTP `adhocTP` inDec)) t
      where
        inDec (dec@(Dec (HsFunBind s matches))::HsDeclP)
@@ -620,10 +620,11 @@ createFun name names pats newExp ds
        
        rewriteAlts i [] = []
        rewriteAlts i ((HsAlt s p (HsBody e) ds):as)
-         = (HsAlt s p (HsBody (Exp (HsApp (nameToExp "return") (nameToExp (show i))))) ds) : (rewriteAlts (i+1) as)
-    
+        -- = (HsAlt s p (HsBody (Exp (HsApp (nameToExp "return") (nameToExp (show i))))) ds) : (rewriteAlts (i+1) as)
+           = (HsAlt s p (HsBody (nameToExp (show i))) ds) : (rewriteAlts (i+1) as)
        rewriteAlts i ((HsAlt s p (HsGuard (e:es)) ds):as)
-          = (HsAlt s p (HsBody (Exp (HsApp (nameToExp "return") (nameToExp (show i))))) ds) : (rewriteAlts (i+1) as)
+        --  = (HsAlt s p (HsBody (Exp (HsApp (nameToExp "return") (nameToExp (show i))))) ds) : (rewriteAlts (i+1) as)
+           = (HsAlt s p (HsBody  (nameToExp (show i))) ds) : (rewriteAlts (i+1) as)
        -- rewriteAlts i ((HsAlt s p (HsGuard ( 
  
   
@@ -737,9 +738,11 @@ addExpression' pnt e t
        
        rewriteAlts i [] = []
        rewriteAlts i ((HsAlt s p (HsBody e) ds):as)
-         = (HsAlt s p (HsBody (Exp (HsApp (nameToExp "return") (nameToExp (show i))))) ds) : (rewriteAlts (i+1) as)
+        -- = (HsAlt s p (HsBody (Exp (HsApp (nameToExp "return") (nameToExp (show i))))) ds) : (rewriteAlts (i+1) as)
+         = (HsAlt s p (HsBody  (nameToExp (show i))) ds) : (rewriteAlts (i+1) as)
        rewriteAlts i ((HsAlt s p (HsGuard (e:es)) ds):as)
-          = (HsAlt s p (HsBody (Exp (HsApp (nameToExp "return") (nameToExp (show i))))) ds) : (rewriteAlts (i+1) as)
+        --  = (HsAlt s p (HsBody (Exp (HsApp (nameToExp "return") (nameToExp (show i))))) ds) : (rewriteAlts (i+1) as)
+         = (HsAlt s p (HsBody (nameToExp (show i))) ds) : (rewriteAlts (i+1) as)
 
        -- rewriteAlts i ((HsAlt s p (HsGuard (
  
@@ -753,11 +756,11 @@ getMatch pnt (match@(HsMatch loc name pats rhs ds):ms)
 
 ghcEvalExpr x y z = do
                        let res = unsafePerformIO $ rawSystem evaluate [x,y,z] --   :: String -> [String] -> IO ExitCode
-                       -- lift $ AbstractIO.putStrLn $ show res
+                       lift $ AbstractIO.putStrLn $ show res
                        res2 <- lift $ AbstractIO.readFile evaluate_result
                        case res of
                          (ExitFailure _) -> do
-                                               lift $ AbstractIO.putStrLn "The simplification could not be performed, some of the formals to the highlighted expression may not be well-defined."
+                                               error "The simplification could not be performed, some of the formals to the highlighted expression may not be well-defined."
                                                return "-1"
                          _  -> do --lift $ AbstractIO.putStrLn $ show res2
                                   return res2

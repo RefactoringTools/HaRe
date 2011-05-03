@@ -509,14 +509,14 @@ mergeMatches (HsMatch l1 i1 ps1 e1 [])
                       (HsMatch l2 i2 (p2':ps2) e2' [])
 
 -- C { ...}
-mergeMatches (HsMatch l1 i1 (Pat (rec@(HsPRec _ _)):ps1) e1 [])
+mergeMatches (HsMatch l1 i1 (Pat (r@(HsPRec _ _)):ps1) e1 [])
              (HsMatch l2 i2 ps2 e2 [])
-    = mergeMatches (HsMatch l1 i1 ((Pat (pRecToPApp rec)):ps1) e1 [])
+    = mergeMatches (HsMatch l1 i1 ((Pat (pRecToPApp r)):ps1) e1 [])
                    (HsMatch l2 i2 ps2 e2 [])
 mergeMatches (HsMatch l1 i1 ps1 e1 [])
-             (HsMatch l2 i2 (Pat (rec@(HsPRec _ _)):ps2) e2 [])
+             (HsMatch l2 i2 (Pat (r@(HsPRec _ _)):ps2) e2 [])
     = mergeMatches (HsMatch l1 i1 ps1 e1 [])
-                   (HsMatch l2 i2 ((Pat (pRecToPApp rec)):ps2) e2 [])
+                   (HsMatch l2 i2 ((Pat (pRecToPApp r)):ps2) e2 [])
                     
 
 -- 2 variables (different)

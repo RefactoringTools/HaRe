@@ -1,0 +1,51 @@
+Array Char Numeric
+Char Numeric PreludeList PreludeText Data.Char
+Complex Complex_Vectors Fourier
+Complex_Vectors Fourier
+Control.Applicative Control.Parallel.Strategies Data.Foldable Data.Map Data.Traversable Data.Tree
+Control.Arrow Control.Applicative Data.IntMap
+Control.DeepSeq Control.Parallel.Strategies Control.Seq
+Control.Monad Control.Applicative Control.Arrow Control.Parallel.Strategies Data.Foldable Data.Generics.Basics Data.HashTable Data.IntMap Data.Tree
+Control.Monad.Fix Control.Arrow
+Control.Monad.Instances Control.Applicative Control.Monad.Fix
+Control.Parallel Control.Parallel.Strategies
+Control.Parallel.Strategies B1 B2 B3 Hiding1 Qualified1 Qualified2
+Control.Seq Control.Parallel.Strategies
+Data.Array Control.DeepSeq Data.Foldable Data.Traversable
+Data.Bits Data.HashTable Data.IntMap Data.IntSet
+Data.Char Data.HashTable Data.List
+Data.Complex Control.DeepSeq
+Data.Either Data.Typeable
+Data.Foldable Control.Seq Data.IntMap Data.Map Data.Traversable Data.Tree
+Data.Function Control.Monad.Fix
+Data.Generics.Basics Data.Generics.Instances Data.Map
+Data.Generics.Instances Data.Map
+Data.HashTable Data.Typeable
+Data.IORef Data.HashTable
+Data.IntMap Control.DeepSeq
+Data.IntSet Control.DeepSeq Data.IntMap
+Data.Ix Control.Seq Data.Array
+Data.List Data.HashTable Data.IntSet Data.Map Data.Typeable
+Data.Map Control.DeepSeq Control.Seq
+Data.Maybe Control.Monad Data.Foldable Data.Generics.Basics Data.HashTable Data.List Data.Typeable
+Data.Monoid Control.Applicative Data.Foldable Data.IntMap Data.IntSet Data.Map Data.Traversable Data.Tree
+Data.Ratio Control.DeepSeq
+Data.Traversable Control.Parallel.Strategies Data.Map Data.Tree
+Data.Tree Control.DeepSeq
+Data.Tuple Data.HashTable
+Data.Typeable Data.Array Data.Complex Data.Generics.Basics Data.Generics.Instances Data.IntMap Data.IntSet Data.Map Data.Tree
+Data.Word Control.DeepSeq Data.IntMap Data.IntSet Data.Typeable
+Ix Array Char Prelude Data.Char
+List Array Fourier
+Maybe List
+Numeric Char PreludeText
+Prelude Array Char Complex Ix List Maybe Numeric Prelude PreludeBuiltin PreludeIO PreludeList PreludeText Ratio Control.Applicative Control.Arrow Control.DeepSeq Control.Monad Control.Monad.Fix Control.Monad.Instances Control.Parallel Control.Parallel.Strategies Control.Seq Data.Array Data.Bits Data.Char Data.Complex Data.Either Data.Foldable Data.Function Data.Generics.Basics Data.Generics.Instances Data.HashTable Data.IORef Data.IntMap Data.IntSet Data.Ix Data.List Data.Map Data.Maybe Data.Monoid Data.Ratio Data.Traversable Data.Tree Data.Tuple Data.Typeable Data.Word System.IO System.IO.Unsafe Text.Read Unsafe.Coerce A1 A2 A3 A4 B1 B2 B3 Case1 Case2 Complex_Vectors Do1 Fail1 Fourier Hiding1 Lambda1 Let1 Let2 ListComp1 Qualified1 Qualified2
+PreludeBuiltin Char Prelude PreludeIO
+PreludeIO Prelude
+PreludeList Prelude
+PreludeText Prelude
+Ratio Numeric Prelude Data.Ratio
+System.IO Control.Monad.Fix
+System.IO.Unsafe Data.HashTable
+Text.Read Data.Map
+Unsafe.Coerce Data.Typeable

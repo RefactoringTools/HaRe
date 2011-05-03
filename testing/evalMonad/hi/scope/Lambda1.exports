@@ -1,0 +1,1 @@
+[("f",Ent (PlainModule "Lambda1") (HsVar "f") Value),("fib",Ent (PlainModule "Lambda1") (HsVar "fib") Value),("g",Ent (PlainModule "Lambda1") (HsVar "g") Value)]

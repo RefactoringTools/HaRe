@@ -41,7 +41,7 @@ classAnswerPath    = "${RELEASE_ROOT}/refactorer/duplicate/classAnswer.txt"
 classTransformPath = "${RELEASE_ROOT}/refactorer/duplicate/classTransform.txt"
 mergeFilePath  = "${RELEASE_ROOT}/refactorer/merging/mergeCache.txt"
 ghcPath = "$GHC_PATH"
-
+evalFilePath = "${RELEASE_ROOT}/refactorer/evalMon/evalCache.txt"
 evaluate = "${RELEASE_ROOT}/refactorer/evaluate"
 evaluate_result = "${RELEASE_ROOT}/refactorer/evaluate_result"
 

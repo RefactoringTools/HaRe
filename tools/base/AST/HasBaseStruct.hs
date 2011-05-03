@@ -2,11 +2,11 @@ module HasBaseStruct where
 import BaseSyntaxStruct
 import SpecialNames
 
-class HasBaseStruct rec base | rec->base where
-  base :: base -> rec
+class HasBaseStruct r base | r->base where
+  base :: base -> r
 
-class GetBaseStruct rec base | rec->base where
-  basestruct :: rec -> Maybe base
+class GetBaseStruct r base | r->base where
+  basestruct :: r -> Maybe base
 
 
 --instance HasBaseStruct rec base => HasBaseStruct [rec] [base] where

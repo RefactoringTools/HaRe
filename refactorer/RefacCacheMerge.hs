@@ -18,7 +18,6 @@ import System.IO.Unsafe
 
 import RefacTypeSyn
 import RefacLocUtils
-import GHC (Session)
 import Data.Char
 import GHC.Unicode
 import AbstractIO

@@ -55,7 +55,7 @@ decorate (ds:>:(insts,dt)) = addDeclsType dt ds:>:(insts,dt)
 --sccD ds = [ds] -- dummy
 
 -- How to type check a (possibly recursive) group of declarations:
-tcDs rewrite rec ds0 =
+tcDs rewrite r ds0 =
     do -- Recursive type synonyms and suprtclass relations can cause the type
        -- checker to loop, so start by checking...
        checkRecursion ds0
@@ -72,7 +72,7 @@ tcDs rewrite rec ds0 =
 	   vkinfo = [v:>:(k,Tyvar)|v@(HsVar _):>:k<-ks]
        expl <- mapM checkTypeSigClash (collectTyped expls)
        -- ...and add them to the environment (if in a recursive group).
-       extendkts (kinfo++vkinfo) $ opt rec (extendts expl) $
+       extendkts (kinfo++vkinfo) $ opt r (extendts expl) $
 	do -- Extend the instance database with the declared instances
            (insts,ds) <- getInstances ks ds0
 	   checkInstances insts
@@ -82,9 +82,9 @@ tcDs rewrite rec ds0 =
 	       let (dsImpl,dsExpl) = partition (isImplicit ns) ds
 		   dsccs = sccD dsImpl
 		   ns:>:_=unzipTyped expl
-	       ds1:>:bs1 <- tcImplBGs rec expl dsccs
+	       ds1:>:bs1 <- tcImplBGs r expl dsccs
 	       -- ...and add them to the environment (if in a recursive group)
-	       opt rec (extendts bs1) $
+	       opt r (extendts bs1) $
 		do -- Infer the types of the explicitly typed declarations
 		   -- and check that they agree with their explicit types
 		   ds2:>:bs2 <- tcExplDs expl dsExpl
@@ -116,14 +116,14 @@ tcDs rewrite rec ds0 =
     isImplicit ns d = any (`notElem` ns) (definedValueNames d)
 
 -- Type check a sequence of implicitly typed binding groups:
-tcImplBGs rec expl [] = noDef>:[]
-tcImplBGs rec expl (ds:dss) =
-  do ds1:>:bs1 <- tcImplBG rec expl ds
-     ds2:>:bs2 <- extendts bs1 $ tcImplBGs rec expl dss
+tcImplBGs r expl [] = noDef>:[]
+tcImplBGs r expl (ds:dss) =
+  do ds1:>:bs1 <- tcImplBG r expl ds
+     ds2:>:bs2 <- extendts bs1 $ tcImplBGs r expl dss
      ds1 `appendDef` ds2>:bs1++bs2
 
-tcImplBG rec expl ds =
-    checkExplicit rec (srcLoc ds) expl =<< tcBG expl rec False ds
+tcImplBG r expl ds =
+    checkExplicit r (srcLoc ds) expl =<< tcBG expl r False ds
 
 -- Type check declarations with explicit type signatures
 -- pre: the explicitly given types have already been added to the environment
@@ -134,7 +134,7 @@ tcExplD expl d =
   checkExplicit False (srcLoc d) expl =<< tcBG expl False True [d]
 
 -- Typecheck one (mutually recursive) binding group:
-tcBG all_ebs rec isExpl ds =
+tcBG all_ebs r isExpl ds =
   addErrorContext $
   do (dns,ds'):>:bs' <-
        generalise' keepambig unr mapTs $
@@ -142,7 +142,7 @@ tcBG all_ebs rec isExpl ds =
 	  bs2 <- tintro ens
 	  let bs=bs1++bs2
 	      lbs = (map.fmap) mono bs1
-	  (:>:bs) # opt rec (extendts lbs) (mapM (tcDecl bs) ds)
+	  (:>:bs) # opt r (extendts lbs) (mapM (tcDecl bs) ds)
      (dns,concatDefs ds')>:bs'
   where
     ens=values `intersect` all_ens where all_ens:>:_=unzipTyped all_ebs
@@ -166,7 +166,7 @@ tcBG all_ebs rec isExpl ds =
 
 opt b f = if b then f else id
 
-checkExplicit rec loc explicit ((dns,d):>:inferred) =
+checkExplicit r loc explicit ((dns,d):>:inferred) =
     posContext' loc "type signature vs inferred type" $
     do let xs:>:_ = unzipTyped inferred
 	   ixs = xs \\ exs
@@ -175,9 +175,9 @@ checkExplicit rec loc explicit ((dns,d):>:inferred) =
            pick x = if x `elem` exs
 		    then head [ t |t@(y:>:_)<-explicit,x==y]
 		    else head [ t |t@(y:>:_)<-inferred,x==y]
-           -- abstract' adjusts monomorphic recurive calls:
+           -- abstract' adjusts monomorphic rcurive calls:
 	   abstract' ixs dns d =
-	       if rec
+	       if r
 	       then abstract dns (esubst addDicts d)
 	       else abstract dns d
 	     where

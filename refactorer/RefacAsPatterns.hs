@@ -21,7 +21,6 @@ import System.IO.Unsafe
 import PrettyPrint
 import RefacTypeSyn
 import RefacLocUtils
-import GHC (Session)
 import Data.Char
 import GHC.Unicode
 import AbstractIO

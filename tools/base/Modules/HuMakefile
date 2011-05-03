@@ -21,7 +21,7 @@ HS2HTML_DIR=$B/../hs2html
 # All sources needed to compile the test programs in this directory:
 SRC_DIRS=$B:$MODSRC_DIRS:$BPARSE_DIRS:$HS2HTML_DIR
 
-GHCFLAGS="-fno-allow-overlapping-instances -fallow-undecidable-instances -fglasgow-exts -package lang -package data"
+GHCFLAGS="-XNoOverlappingInstances -XUndecidableInstances -fglasgow-exts -package lang -package data"
 
 ### Other useful GHC flags:
 # -Wall

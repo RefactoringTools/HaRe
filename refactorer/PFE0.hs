@@ -58,7 +58,7 @@ import HsLexerPass1(Lexer)
 import HsLexMerge(mergeLex)
 
 import EditorCommands
-import qualified Control.Exception as CE (catch)
+import qualified Control.OldException as CE (catch)
 --------------------------------------------------------------------------------
 -- Types manipulated at PFE level 0:
 
@@ -199,7 +199,7 @@ runPFE0 ext pfeM lexerAndParser (opts,name,args0) = do
                   catchEnv (do initProject args0 
                                setBatchMode False
                                pfeM prg cmdArgs) 
-                    (\e->sendMsg True $ "CAUGHT EXCEPTION: "++show e)
+                    (\e ->sendMsg True $ "CAUGHT EXCEPTION: " ++ show e)
 
                   loop prg args
     catchEnv m f = do s <- getSt
@@ -536,7 +536,7 @@ moduleNode m = (getBaseName (hsModName m),{-set$-} map getBaseName (hsModImports
 --------------------------------------------------------------------------------
 
 t `newerThan` Nothing = True
-t `newerThan` Just t' = t>=t'
+t `newerThan` Just t' = t>t'
 
 set xs = sort (nub xs)
 
