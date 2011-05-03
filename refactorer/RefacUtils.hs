@@ -873,7 +873,7 @@ addLocalDecl parent (newFun, newFunToks)
         
          newSource  = if localDecls == []
                       then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
-                      else newFun'
+                      else newFun' ++ "\n"
             where
             offset1 = case newFunToks of 
                         Just ts -> lengthOfToks (takeWhile  isWhiteSpace  ts)   
