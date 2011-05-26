@@ -41,7 +41,7 @@ generaliseDef2 fileName newParamName beginPos endPos subExp inscps exps mod tokL
    if isVarId newParamName -- the parameter name is a valid name.
       then do modName <- RefacUtils.fileNameToModName fileName
               -- (inscps,exps,mod, tokList) <- parseSourceFile fileName 
-              let pnt = trace (show $ findDefName tokList beginPos endPos  mod) ((findDefName tokList beginPos endPos  mod))
+              let pnt = findDefName tokList beginPos endPos  mod
                   pn           = pNTtoPN pnt
               if pn == defaultPN || subExp == defaultExp
                 then error ("The highlighted source does not contain a rhs sub-expression, " ++
@@ -57,13 +57,13 @@ generaliseDef2 fileName newParamName beginPos endPos subExp inscps exps mod tokL
                                              in  Just =<< mkNewFunPName pn (hsDecls mod) modName inscpNames
                                         else Nothing
                                    subExp' = if isJust funPName then pNtoExp (fromJust funPName) else subExp 
-                               (mod',((tokList',m),_)) <- doGeneralise True pnt fileName subExp newParamName funPName mod tokList
+                               (mod',((tokList',m),_)) <- doGeneralise True True pnt fileName subExp newParamName funPName mod tokList
                                                                            
-                               refactoredClients   <- mapM (generaliseInClientMod pnt subExp' modName funPName)
+                               refactoredClients   <- mapM (generaliseInClientMod True pnt subExp' modName funPName)
                                                        $ zip info (map snd clients)
                                -- writeRefactoredFiles False $ ((fileName,m), (tokList',mod')):refactoredClients   
                                return (m, tokList', mod', refactoredClients)                     
-                       else do (mod',((tokList',m),_))<-doGeneralise True pnt fileName subExp newParamName Nothing mod tokList
+                       else do (mod',((tokList',m),_))<-doGeneralise True True pnt fileName subExp newParamName Nothing mod tokList
                                -- writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
                                return (m, tokList', mod', [])
       else error "Invalid parameter name!" 
@@ -94,12 +94,12 @@ generaliseDef args
                                              in  Just =<< mkNewFunPName pn (hsDecls mod) modName inscpNames
                                         else Nothing
                                    subExp' = if isJust funPName then pNtoExp (fromJust funPName) else subExp 
-                               (mod',((tokList',m),_)) <- doGeneralise False pnt fileName subExp newParamName funPName mod tokList
+                               (mod',((tokList',m),_)) <- doGeneralise False False pnt fileName subExp newParamName funPName mod tokList
                                                                            
-                               refactoredClients   <- mapM (generaliseInClientMod pnt subExp' modName funPName)
+                               refactoredClients   <- mapM (generaliseInClientMod False pnt subExp' modName funPName)
                                                        $ zip info (map snd clients)
                                writeRefactoredFiles False $ ((fileName,m), (tokList',mod')):refactoredClients                        
-                       else do (mod',((tokList',m),_))<-doGeneralise False pnt fileName subExp newParamName Nothing mod tokList
+                       else do (mod',((tokList',m),_))<-doGeneralise False False pnt fileName subExp newParamName Nothing mod tokList
                                writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
       else error "Invalid parameter name!" 
 --  where
@@ -146,7 +146,7 @@ findDefName toks beginPos endPos t
 
 
    -- Do generalisation in current module.
-doGeneralise flag pnt@(PNT pn _ _)  fileName subExp newParamName newFunPName mod tokList
+doGeneralise recursive flag pnt@(PNT pn _ _)  fileName subExp newParamName newFunPName mod tokList
      = runStateT (if isJust newFunPName
                     then do -- add the new function name to the export list
                             mod'<-addItemsToExport mod (Just pn) False (Left [pNtoName (fromJust newFunPName)]) 
@@ -219,7 +219,7 @@ doGeneralise flag pnt@(PNT pn _ _)  fileName subExp newParamName newFunPName mod
            --Check clashed names because of the adding of subExp as a actual parameter.
            parent''<- renamingCheck pn subExp $ replaceDecls parent' ds'''
            --Adding the actual parameter to each call site of the generalised function name.
-           addActualArg False pn subExp parent''
+           addActualArg recursive pn subExp parent''
         where
          doChecking decl   
           | flag == False
@@ -351,7 +351,7 @@ addActualArgInClientMod pn qual funName toBeQualified t
       
          funApp _ = mzero
         
-generaliseInClientMod pnt subExp serverModName newFunPName ((inscps, exps, mod,ts) ,fileName)
+generaliseInClientMod recursive pnt subExp serverModName newFunPName ((inscps, exps, mod,ts) ,fileName)
       = let qual  = hsQualifier  pnt inscps
             pn    = pNTtoPN pnt
         in if qual==[]
@@ -359,7 +359,7 @@ generaliseInClientMod pnt subExp serverModName newFunPName ((inscps, exps, mod,t
                  return ((fileName,unmodified), (ts,mod))
             else do (mod',((ts',m), _))
                        <- runStateT (if isNothing newFunPName 
-                                       then addActualArg False pn subExp mod
+                                       then addActualArg recursive pn subExp mod
                                        else do let funName=fromJust newFunPName
                                                mod' <- addItemsToImport serverModName (Just pn) (Left [pNtoName funName]) mod
                                                mod''<- addItemsToExport mod' (Just pn) False (Left [pNtoName funName]) 
