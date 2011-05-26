@@ -1,0 +1,1 @@
+[(HsVar "using",HsFixity HsAssocLeft 0),(HsVar "dot",HsFixity HsAssocRight 9)]

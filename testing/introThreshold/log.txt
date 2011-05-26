@@ -1,0 +1,165 @@
+Cases: 10  Tried: 0  Errors: 0  Failures: 0Cases: 10  Tried: 1  Errors: 0  Failures: 0Cases: 10  Tried: 2  Errors: 0  Failures: 0Cases: 10  Tried: 3  Errors: 0  Failures: 0Cases: 10  Tried: 4  Errors: 0  Failures: 0Cases: 10  Tried: 5  Errors: 0  Failures: 0Cases: 10  Tried: 6  Errors: 0  Failures: 0Cases: 10  Tried: 7  Errors: 0  Failures: 0Cases: 10  Tried: 8  Errors: 0  Failures: 0Cases: 10  Tried: 9  Errors: 0  Failures: 0                                           Cases: 10  Tried: 10  Errors: 0  Failures: 0
+pSeq1 DeepSeq2 Pat1 Capture1 Hidden1 Guards1
+CMD:["stop"]
+CMD:["chase","../../tools/base/tests/HaskellLibraries/"]
+Adding Prelude from ../../tools/base/tests/HaskellLibraries//Prelude.hs
+Adding Ix from ../../tools/base/tests/HaskellLibraries//Ix.hs
+Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
+Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
+Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
+Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
+Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
+Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
+Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
+Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
+Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
+Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
+The project contains 23 source files.
+(To list the files, use: pfe files)
+Source files missing for (add files with 'pfe add' or 'pfe chase'): 
+    Control.Parallel.Strategies, needed by A1 Capture1
+                                           DeepSeq1 DeepSeq2 Expr1 Guards1
+                                           Hidden1 Multi1 Pat1 Qualified1
+CMD:["stop"]
+CMD:["chase","."]
+Adding Control.Parallel.Strategies from ./Control/Parallel/Strategies.hs
+Adding Control.Applicative from ./Control/Applicative.hs
+Adding Control.Arrow from ./Control/Arrow.hs
+Adding Control.Monad from ./Control/Monad.hs
+Adding Data.Maybe from ./Data/Maybe.hs
+Adding Control.Monad.Fix from ./Control/Monad/Fix.hs
+Adding Control.Monad.Instances from ./Control/Monad/Instances.hs
+Adding Data.Function from ./Data/Function.hs
+Adding System.IO from ./System/IO.hs
+Adding Control.Monad from ./Control/Monad.hs
+Adding Control.Monad.Instances from ./Control/Monad/Instances.hs
+Adding Data.Monoid from ./Data/Monoid.hs
+Adding Control.DeepSeq from ./Control/DeepSeq.hs
+Adding Data.Array from ./Data/Array.hs
+Adding Data.Ix from ./Data/Ix.hs
+Adding Data.Typeable from ./Data/Typeable.hs
+Adding Data.Either from ./Data/Either.hs
+Adding Data.HashTable from ./Data/HashTable.hs
+Adding Data.Bits from ./Data/Bits.hs
+Adding Data.Char from ./Data/Char.hs
+Adding Data.IORef from ./Data/IORef.hs
+Adding Data.List from ./Data/List.hs
+Adding Data.Tuple from ./Data/Tuple.hs
+Adding System.IO.Unsafe from ./System/IO/Unsafe.hs
+Adding Data.List from ./Data/List.hs
+Adding Data.Word from ./Data/Word.hs
+Adding Unsafe.Coerce from ./Unsafe/Coerce.hs
+Adding Data.Complex from ./Data/Complex.hs
+Adding Data.IntMap from ./Data/IntMap.hs
+Adding Data.Foldable from ./Data/Foldable.hs
+Adding Data.IntSet from ./Data/IntSet.hs
+Adding Data.IntSet from ./Data/IntSet.hs
+Adding Data.Map from ./Data/Map.hs
+Adding Data.Generics.Basics from ./Data/Generics/Basics.hs
+Adding Data.Generics.Instances from ./Data/Generics/Instances.hs
+Adding Data.Traversable from ./Data/Traversable.hs
+Adding Text.Read from ./Text/Read.hs
+Adding Data.Ratio from ./Data/Ratio.hs
+Adding Data.Tree from ./Data/Tree.hs
+Adding Data.Word from ./Data/Word.hs
+Adding Control.Monad from ./Control/Monad.hs
+Adding Control.Parallel from ./Control/Parallel.hs
+Adding Control.Seq from ./Control/Seq.hs
+Adding Data.Traversable from ./Data/Traversable.hs
+The project contains 60 source files.
+(To list the files, use: pfe files)
+CMD:["stop"]
+CMD:["refacAddEvalMonCache","A1.hs","11","8","16","44"]
+refacAddEvalMonCache
+Analyzing: A1.hs
+Saving to /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
+RefacAddEvalMonCache Completed.
+CMD:["stop"]
+CMD:["refacIntroThreshold","A1.hs","20","t","5","5","5","7"]
+0
+([PN (UnQual "rseq") (G (PlainModule "unknown") "rseq" (N (Just ("__unknown__",0,0,0))))],[PN (UnQual "rpar") (G (PlainModule "unknown") "rpar" (N (Just ("__unknown__",0,0,0)))),PN (UnQual "runEval") (G (PlainModule "unknown") "runEval" (N (Just ("__unknown__",0,0,0))))])
+modified: A1.hs
+refacIntroThreshold Completed.
+CMD:["stop"]
+CMD:["refacAddEvalMonCache","Multi1.hs","11","8","16","44"]
+refacAddEvalMonCache
+Analyzing: Multi1.hs
+Saving to /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
+RefacAddEvalMonCache Completed.
+CMD:["stop"]
+CMD:["refacIntroThreshold","Multi1.hs","20","t","5","4","5","7"]
+Analyzing: Multi2.hs
+1
+modified: Multi1.hs
+modified: Multi2.hs
+refacIntroThreshold Completed.
+CMD:["stop"]
+CMD:["refacAddEvalMonCache","Expr1.hs","11","8","16","44"]
+refacAddEvalMonCache
+Analyzing: Expr1.hs
+Saving to /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
+RefacAddEvalMonCache Completed.
+CMD:["stop"]
+CMD:["refacIntroThreshold","Expr1.hs","20","t","7","16","7","32"]
+0
+modified: Expr1.hs
+refacIntroThreshold Completed.
+CMD:["stop"]
+CMD:["refacAddEvalMonCache","Qualified1.hs","11","8","16","44"]
+refacAddEvalMonCache
+Analyzing: Qualified1.hs
+Saving to /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
+RefacAddEvalMonCache Completed.
+CMD:["stop"]
+CMD:["refacIntroThreshold","Qualified1.hs","20","t","5","5","5","7"]
+0
+modified: Qualified1.hs
+refacIntroThreshold Completed.
+CMD:["stop"]
+CMD:["refacAddEvalMonCache","DeepSeq1.hs","11","8","17","1"]
+refacAddEvalMonCache
+Analyzing: DeepSeq1.hs
+Saving to /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
+RefacAddEvalMonCache Completed.
+CMD:["stop"]
+CMD:["refacIntroThreshold","DeepSeq1.hs","20","t","5","5","5","7"]
+0
+modified: DeepSeq1.hs
+refacIntroThreshold Completed.
+CMD:["stop"]
+CMD:["refacAddEvalMonCache","DeepSeq2.hs","11","8","17","1"]
+refacAddEvalMonCache
+Analyzing: DeepSeq2.hs
+Saving to /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
+RefacAddEvalMonCache Completed.
+CMD:["stop"]
+CMD:["refacIntroThreshold","DeepSeq2.hs","20","t","5","5","5","7"]
+0
+modified: DeepSeq2.hs
+refacIntroThreshold Completed.
+CMD:["stop"]
+CMD:["refacAddEvalMonCache","Pat1.hs","10","8","15","43"]
+refacAddEvalMonCache
+Analyzing: Pat1.hs
+Saving to /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
+RefacAddEvalMonCache Completed.
+CMD:["stop"]
+CMD:["refacIntroThreshold","Pat1.hs","20","t","6","5","6","20"]
+0
+([PN (UnQual "rseq") (G (PlainModule "unknown") "rseq" (N (Just ("__unknown__",0,0,0))))],[PN (UnQual "rpar") (G (PlainModule "unknown") "rpar" (N (Just ("__unknown__",0,0,0)))),PN (UnQual "runEval") (G (PlainModule "unknown") "runEval" (N (Just ("__unknown__",0,0,0))))])
+modified: Pat1.hs
+refacIntroThreshold Completed.
+CMD:["stop"]
+CMD:["refacIntroThreshold","Capture1.hs","20","n","5","5","5","7"]
+Analyzing: Capture1.hs
+message: CAUGHT EXCEPTION: The parameter name will cause name clash or semantics change, please choose another name!
+CMD:["stop"]
+CMD:["refacIntroThreshold","Hidden1.hs","20","t","5","4","5","7"]
+Analyzing: Hidden1.hs
+message: CAUGHT EXCEPTION: rseq, rpar and/or runEval are explicitly hidden. Please unhide and try again.
+CMD:["stop"]
+CMD:["refacIntroThreshold","Guards1.hs","20","t","5","4","5","7"]
+Analyzing: Guards1.hs
+0
+message: CAUGHT EXCEPTION: Cannot find the activated Eval Monad! Please activate a run eval monad within scope of the selected entity.
+CMD:["stop"]
