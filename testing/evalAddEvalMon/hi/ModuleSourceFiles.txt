@@ -60,6 +60,7 @@ Case2 Case2.hs
 Complex_Vectors Complex_Vectors.hs
 Fourier Fourier.hs
 Let1 Let1.hs
+ListComp1 ListComp1.hs
 Neg1 Neg1.hs
 Neg2 Neg2.hs
 Neg3 Neg3.hs

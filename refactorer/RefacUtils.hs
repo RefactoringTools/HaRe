@@ -1774,6 +1774,7 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
   = do let modifiedFiles = filter (\((f,m),_)->m==modified) files
        PFE0.addToHistory isSubRefactor (map (fst.fst) modifiedFiles)
        sequence_ (map modifyFile modifiedFiles)
+       -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
 
      where
        modifyFile ((fileName,_),(ts,_)) = do 
@@ -1782,7 +1783,13 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            -- (Julien) I have changed Unlit.writeHaskellFile into AbstractIO.writeFile (which is ok as long as we do not have literate Haskell files)
            editorCmds <-getEditorCmds 
            MT.lift (sendEditorModified editorCmds fileName)        
-
+       writeTestDataForFile ((fileName,_),(ts,mod)) = do
+           let source=concatMap (snd.snd) ts
+           seq (length source) $ writeFile (createNewFileName "_TokOut" fileName) source 
+           writeHaskellFile (createNewFileName "AST" fileName) ((render.ppi.rmPrelude) mod)   
+       createNewFileName str fileName 
+          =let (name, posfix)=span (/='.') fileName
+           in (name++str++posfix)
 
 --------------------------------------------------------------------------------------- 
 -----Remove the 'Prelude' imports added by Programatica------------------------------
@@ -3491,7 +3498,7 @@ instance HsDecls HsStmtP where
     isDeclaredIn pn (HsGenerator _ pat exp stmts) -- Claus
         =fromMaybe False (do (pf,pd) <-hsFreeAndDeclaredPNs pat
                              Just (elem pn pd))
-
+             
     isDeclaredIn pn (HsLetStmt decls stmts)
         =fromMaybe False (do (df,dd) <-hsFreeAndDeclaredPNs decls
                              Just (elem pn dd))

@@ -88,7 +88,6 @@ modified: A3.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","A4.hs","12","1","12","7"]
-Analyzing: A4.hs
 Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: A4.hs
@@ -132,7 +131,6 @@ modified: Case1.hs
 refacEvalMon completed.
 CMD:["stop"]
 CMD:["refacEvalMon","Case2.hs","9","20","9","20"]
-Analyzing: Case2.hs
 Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
 modified: Case2.hs
@@ -159,27 +157,26 @@ No Active Eval Monad. Creating one...
 modified: Qualified2.hs
 refacEvalMon completed.
 CMD:["stop"]
+CMD:["refacEvalMon","ListComp1.hs","8","22","8","23"]
+Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
+No Active Eval Monad. Creating one...
+modified: ListComp1.hs
+refacEvalMon completed.
+CMD:["stop"]
 CMD:["refacEvalMon","Fail1.hs","6","1","6","4"]
 Analyzing: Fail1.hs
 message: CAUGHT EXCEPTION: Cannot spark a function! Please select a pattern binding instead.
 CMD:["stop"]
 CMD:["refacEvalMon","Lambda1.hs","4","12","4","13"]
-Analyzing: Lambda1.hs
 Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
-message: CAUGHT EXCEPTION: Cannot find the declaration for the highlighted expression!
+message: CAUGHT EXCEPTION: Cannot extract lambda binding! Please lift the binding to a let/where clause first.
 CMD:["stop"]
 CMD:["refacEvalMon","Do1.hs","9","11","9","13"]
 Analyzing: Do1.hs
 Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
 No Active Eval Monad. Creating one...
-message: CAUGHT EXCEPTION: Cannot find the declaration for the highlighted expression!
-CMD:["stop"]
-CMD:["refacEvalMon","ListComp1.hs","5","15","5","16"]
-Analyzing: ListComp1.hs
-Grabbing monad from /Users/chrisbrown/hare/parallel/HaRe/editors/../refactorer/evalMon/evalCache.txt
-No Active Eval Monad. Creating one...
-message: CAUGHT EXCEPTION: Cannot find the declaration for the highlighted expression!
+message: CAUGHT EXCEPTION: Cannot parallelise monadic expressions, please de-monadify first.
 CMD:["stop"]
 CMD:["refacEvalMon","Hiding1.hs","9","8","9","10"]
 Analyzing: Hiding1.hs

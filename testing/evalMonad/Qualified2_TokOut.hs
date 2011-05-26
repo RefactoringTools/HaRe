@@ -19,5 +19,6 @@ fib n
                    (do n1_2 <- S.rpar n1
                        return n1_2)
 
+
 n1_2 = "bob"
 

@@ -29,6 +29,7 @@ ffth xs us
            runEval
                (do fftEvn_2 <- rpar fftEvn
                    return fftEvn_2)
+
     ----  Discrete Fourier Transform (fft generalized to non-binary orders)
 ffmus :: [ComplexF] -> [ComplexF] -> [ComplexF]
 ffmus ns ms =  zipWith (*) ns ms 

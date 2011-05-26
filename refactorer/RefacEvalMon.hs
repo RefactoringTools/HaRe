@@ -39,6 +39,8 @@ refacEvalMon args =
 
      fileContent <- AbstractIO.readFile evalFilePath 
 
+     -- AbstractIO.putStrLn $ show mod
+
      AbstractIO.putStrLn ("Grabbing monad from " ++ evalFilePath)
 
      if (fileContent == []) 
@@ -106,12 +108,12 @@ addTheImport ss mod
 
 doIntroduceWPat pnt thePat thePar t
   = applyTP (once_buTP (failTP `adhocTP` inCase
-                               `adhocTP` inLet
+                               `adhocTP` inExp
                                `adhocTP` inPat
                                `adhocTP` inMatch
                                `adhocTP` inModule ) `choiceTP` failure) t
       where 
-         inLet l@(Exp (HsLet decls e)::HsExpP)
+         inExp l@(Exp (HsLet decls e)::HsExpP)
           | isDeclaredIn (pNTtoPN pnt) l 
              = do 
                   (f,d) <- hsFDNamesFromInside l
@@ -128,7 +130,48 @@ doIntroduceWPat pnt thePat thePar t
 
                              return l''
 
-         inLet _ = mzero
+
+
+         inExp l@(Exp (HsListComp stmts)::HsExpP) 
+          | (pNTtoPN pnt) `elem` (findIn stmts)
+               = do
+                    (f,d) <- hsFDNamesFromInside l
+                    let newName = mkNewName (pNTtoName pnt) (f++d) 2
+        
+                    l' <- newStmts l pnt (nameToPNT newName)
+
+--                    l' <- replacePNTs l pnt (nameToPNT newName)
+
+                    let theLast = findLast stmts
+                        thePat2 = findPat thePat theLast
+                    if thePat2 == Nothing 
+                         then mzero
+                         else do let newPat = augmentPat (nameToPNT newName) (fromJust thePat2)
+
+                                 l'' <- update (fromJust thePat2) newPat l'
+                                 return l'' 
+           
+           where
+              newStmts (Exp (HsListComp s)) x y = do res <- newStmts' s x y
+                                                     return (Exp (HsListComp res))
+
+              newStmts' (HsLast e) pnt newName  = do l' <- replacePNTs e pnt newName
+                                                     return (HsLast l')
+              newStmts' (HsGenerator a b c s) x y = do  res <- newStmts' s x y
+                                                        return (HsGenerator a b c res)   
+              
+
+
+ {-     findLast :: HsStmtP -> [HsDeclP]
+         findLast (HsGenerator l p2 e s)  = (findLast s)
+         findLast (HsQualifier e s)       = (findLast s)
+         findLast (HsLetStmt ds s )       = (findLast s)
+         findLast (HsLast (Exp (HsLet ds e))) = ds
+         findLast _ = []        
+-}
+
+  
+         inExp _ = mzero
 
 
          inCase (alt@(HsAlt loc p rhs ds)::HsAltP) 
@@ -237,10 +280,11 @@ doIntroduceWPat pnt thePat thePar t
                            match'' <- update (fromJust pat') newPat match'
                            return match''
 
-         
-
-
          inMatch s = mzero
+
+
+        
+         
          failure=idTP `adhocTP` mod
                  where mod (m::HsModuleP) = error "Cannot find the active eval monad!"   
  
@@ -256,6 +300,24 @@ doIntroduceWPat pnt thePat thePar t
          toPat ((Dec (HsPatBind loc p rhs ds)):xs) = patToPN p : toPat xs
          toPat (_:xs) = toPat xs
 
+
+         findLast :: HsStmtP -> [HsDeclP]
+         findLast (HsGenerator l p2 e s)  = (findLast s)
+         findLast (HsQualifier e s)       = (findLast s)
+         findLast (HsLetStmt ds s )       = (findLast s)
+         findLast (HsLast (Exp (HsLet ds e))) = ds
+         findLast _ = []         
+
+         findIn :: HsStmtP -> [PName]
+         findIn (HsGenerator l p2 e s)  = res ++ findIn s
+                                            where res =  fromJust (do (pf,pd) <-hsFreeAndDeclaredPNs p2
+                                                                      Just pd)
+
+         findIn (HsQualifier e s)       = (findIn s)
+         -- findIn (HsLetStmt ds s )       = ds ++ findIn s
+         findIn (HsLast e) = fromJust (do (pf, pd) <- hsFreeAndDeclaredPNs e
+                                          Just pd)
+         findIn _ = []         
 
          -- addToRHS p e = error (show e)
 
@@ -313,14 +375,21 @@ doIntroduceWPat pnt thePat thePar t
          myElem p (_:ds) = myElem p ds
 
 doIntroduce' pnt thePar theRunEval t
-  = applyTP (once_buTP (failTP `adhocTP` inLambda
-                               `adhocTP` inListComp
-                               `adhocTP` inCase
-                               `adhocTP` inDo
-                               `adhocTP` inLet
-                               `adhocTP` inPat
+  = applyTP (once_buTP (failTP -- `adhocTP` inLambda
+                               -- `adhocTP` inListComp
+                               -- `adhocTP` inCase
+                               -- `adhocTP` inDo
+                               -- `adhocTP` inLet
+                               -- `adhocTP` inPat
+                               -- `adhocTP` inMatch
+                               `adhocTP` inModule 
                                `adhocTP` inMatch
-                               `adhocTP` inModule ) `choiceTP` failure) t
+                               `adhocTP` inPat
+                               `adhocTP` inExp
+                               -- `adhocTP` inLet
+                               -- `adhocTP` inDo
+                               `adhocTP` inCase
+                               ) `choiceTP` failure) t
      where
        inMatch (match@(HsMatch l name pats rhs ds)::HsMatchP)
          | isDeclaredIn (pNTtoPN pnt) match 
@@ -351,10 +420,39 @@ doIntroduce' pnt thePar theRunEval t
                    return pat''
        inPat _ = mzero
 
+       inExp (lam@(Exp (HsLambda p e))::HsExpP)
+         | isDeclaredIn (pNTtoPN pnt) e = error "Cannot extract lambda binding! Please lift the binding to a let/where clause first."
+       inExp lComp@(Exp (HsListComp stms)::HsExpP) 
+         | isDeclaredIn (pNTtoPN pnt) stms
+              = do -- add the definition as a let (or a where...?)
+                 
+                 (f,d) <- hsFDNamesFromInside lComp
+                 let newName = mkNewName (pNTtoName pnt) (f++d) 2
+                
+                 l' <- replacePNTs lComp pnt (nameToPNT newName)
+
+                 let newStmts = addToLast stms pnt newName
+                 -- error $ show newStmts
+                 l'' <- update l' (Exp (HsListComp newStmts)) l'
+                 return l''
+
+       inExp doSt@(Exp (HsDo sts)::HsExpP)
+         | isDeclaredIn (pNTtoPN pnt) sts = error "Cannot parallelise monadic expressions, please de-monadify first."
+       inExp l@(Exp (HsLet decls e)::HsExpP)
+         | isDeclaredIn (pNTtoPN pnt) l 
+             = do 
+                  (f,d) <- hsFDNamesFromInside l
+                  let newName = mkNewName (pNTtoName pnt) (f++d) 2
+      
+                  l' <- replacePNTs l pnt (nameToPNT newName)
+ 
+                  l'' <- addDecl l' {-(Just (pNTtoPN pnt))-} Nothing ([newDecl newName (pNTtoName pnt)], Nothing) False
+                  return l''
+       inExp _ = mzero
 
        inLambda (lam@(Exp (HsLambda p e))::HsExpP)
          | isDeclaredIn (pNTtoPN pnt) e = error "Cannot extract lambda binding! Please lift the binding to a let/where clause first."
-       inLambda _ = mzero
+       inLambda _ = error "here" -- mzero
 
        inCase (alt@(HsAlt loc p rhs ds)::HsAltP) 
          | isDeclaredIn (pNTtoPN pnt)  alt 
@@ -371,26 +469,27 @@ doIntroduce' pnt thePar theRunEval t
 
        inCase _ = mzero
 
-       inDo doSt@(Exp (HsDo sts)::HsExpP)
-         | isDeclaredIn (pNTtoPN pnt) sts = error "Cannot parallelise monadic expressions, please de-monadify first."
-       inDo _ = mzero
+       -- inDo doSt@(Exp (HsDo sts)::HsExpP)
+       --  | isDeclaredIn (pNTtoPN pnt) sts = error "Cannot parallelise monadic expressions, please de-monadify first."
+       -- inDo _ = mzero
 
-       inLet l@(Exp (HsLet decls e)::HsExpP)
-         | isDeclaredIn (pNTtoPN pnt) l 
-             = do 
-                  (f,d) <- hsFDNamesFromInside l
-                  let newName = mkNewName (pNTtoName pnt) (f++d) 2
+--       inLet l@(Exp (HsLet decls e)::HsExpP)
+  --       | isDeclaredIn (pNTtoPN pnt) l 
+    --         = do 
+      --            (f,d) <- hsFDNamesFromInside l
+        --          let newName = mkNewName (pNTtoName pnt) (f++d) 2
       
-                  l' <- replacePNTs l pnt (nameToPNT newName)
+          --        l' <- replacePNTs l pnt (nameToPNT newName)
  
-                  l'' <- addDecl l' {-(Just (pNTtoPN pnt))-} Nothing ([newDecl newName (pNTtoName pnt)], Nothing) False
-                  return l''
+          --        l'' <- addDecl l' {-(Just (pNTtoPN pnt))-} Nothing ([newDecl newName (pNTtoName pnt)], Nothing) False
+          --        return l''
 
-       inLet _ = mzero
+       -- inLet _ = mzero
 
-       inListComp lComp@(Exp (HsListComp stms)::HsExpP) 
-         | isDeclaredIn (pNTtoPN pnt) stms = error "Cannot parallelise binding in a list comprehension. Please extract binding to a let/where first."
-       inListComp _ = mzero
+       -- inListComp lComp@(Exp (HsListComp stms)::HsExpP)
+       --  = error $ show (pnt, lComp) 
+    --     | isDeclaredIn (pNTtoPN pnt) stms = error "Cannot parallelise binding in a list comprehension. Please extract binding to a let/where first."
+       -- inListComp _ = mzero
 
 
        inModule (mod::HsModuleP)
@@ -415,6 +514,14 @@ doIntroduce' pnt thePar theRunEval t
           where 
             e = (Exp (HsApp (nameToExp theRunEval) (Exp (HsDo sts))))
             sts = HsGenerator loc0 (pNtoPat $ nameToPN newPat) (Exp (HsApp (nameToExp thePar) (nameToExp origPat))) (HsLast (Exp (HsApp (nameToExp "return") (nameToExp newPat))))
+
+       addToLast :: HsStmtP -> PNT -> String -> HsStmtP
+       addToLast (HsGenerator l p2 e s) pnt n = HsGenerator l p2 e (addToLast s pnt n)
+       addToLast (HsQualifier e s) pnt n      = HsQualifier e (addToLast s pnt n)
+       addToLast (HsLetStmt ds s ) pnt n      = HsLetStmt ds  (addToLast s pnt n)
+       addToLast (HsLast e) pnt newName
+         = (HsLast (Exp (HsLet ([newDecl newName (pNTtoName pnt)]) e)))  
+
 
 replacePNTs t oldName newName
   = applyTP (full_tdTP (idTP `adhocTP` inPNT)) t

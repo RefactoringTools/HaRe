@@ -11,5 +11,6 @@ fib n | n <= 1    = 1
                                    =
                                        runEval
                                            (do n'_2 <- rpar n'
-                                               return n'_2)                        n2 = fib (n-2)
+                                               return n'_2)
+                        n2 = fib (n-2)
                     in n1 + n2 + 1

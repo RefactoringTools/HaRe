@@ -9,7 +9,7 @@ Control.Monad Control.Applicative Control.Arrow Control.Parallel.Strategies Data
 Control.Monad.Fix Control.Arrow
 Control.Monad.Instances Control.Applicative Control.Monad.Fix
 Control.Parallel Control.Parallel.Strategies
-Control.Parallel.Strategies A1 A2 A3 A4 B1 B2 B3 Case1 Case2 Fourier Let1 Neg1 Neg2 Neg3 Qualified2 Scope1 Scope2 Scope3 Triple1
+Control.Parallel.Strategies A1 A2 A3 A4 B1 B2 B3 Case1 Case2 Fourier Let1 ListComp1 Neg1 Neg2 Neg3 Qualified2 Scope1 Scope2 Scope3 Triple1
 Control.Seq Control.Parallel.Strategies
 Data.Array Control.DeepSeq Data.Foldable Data.Traversable
 Data.Bits Data.HashTable Data.IntMap Data.IntSet
@@ -39,7 +39,7 @@ Ix Array Char Prelude Data.Char
 List Array Fourier
 Maybe List
 Numeric Char PreludeText
-Prelude Array Char Complex Ix List Maybe Numeric Prelude PreludeBuiltin PreludeIO PreludeList PreludeText Ratio Control.Applicative Control.Arrow Control.DeepSeq Control.Monad Control.Monad.Fix Control.Monad.Instances Control.Parallel Control.Parallel.Strategies Control.Seq Data.Array Data.Bits Data.Char Data.Complex Data.Either Data.Foldable Data.Function Data.Generics.Basics Data.Generics.Instances Data.HashTable Data.IORef Data.IntMap Data.IntSet Data.Ix Data.List Data.Map Data.Maybe Data.Monoid Data.Ratio Data.Traversable Data.Tree Data.Tuple Data.Typeable Data.Word System.IO System.IO.Unsafe Text.Read Unsafe.Coerce A1 A2 A3 A4 B1 B2 B3 Case1 Case2 Complex_Vectors Fourier Let1 Neg1 Neg2 Neg3 Qualified2 Scope1 Scope2 Scope3 Triple1
+Prelude Array Char Complex Ix List Maybe Numeric Prelude PreludeBuiltin PreludeIO PreludeList PreludeText Ratio Control.Applicative Control.Arrow Control.DeepSeq Control.Monad Control.Monad.Fix Control.Monad.Instances Control.Parallel Control.Parallel.Strategies Control.Seq Data.Array Data.Bits Data.Char Data.Complex Data.Either Data.Foldable Data.Function Data.Generics.Basics Data.Generics.Instances Data.HashTable Data.IORef Data.IntMap Data.IntSet Data.Ix Data.List Data.Map Data.Maybe Data.Monoid Data.Ratio Data.Traversable Data.Tree Data.Tuple Data.Typeable Data.Word System.IO System.IO.Unsafe Text.Read Unsafe.Coerce A1 A2 A3 A4 B1 B2 B3 Case1 Case2 Complex_Vectors Fourier Let1 ListComp1 Neg1 Neg2 Neg3 Qualified2 Scope1 Scope2 Scope3 Triple1
 PreludeBuiltin Char Prelude PreludeIO
 PreludeIO Prelude
 PreludeList Prelude

@@ -14,5 +14,6 @@ fib n
                    (do n1_2 <- rpar n1
                        return n1_2)
 
+
 n1_2 = "bob"
 

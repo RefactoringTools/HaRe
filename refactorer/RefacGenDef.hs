@@ -1,6 +1,6 @@
 
 
-module RefacGenDef(generaliseDef) where
+module RefacGenDef(generaliseDef, generaliseDef2) where
 
 import PrettyPrint
 import PosSyntax
@@ -11,6 +11,7 @@ import PNT
 import TiPNT   
 import List 
 import RefacUtils
+import Debug.Trace
 
 {-A definition can be generialised by selecting a sub-expression of the RHS of the definition,
   and introducing that sub-expression as a new argument to the function/constant at each of its 
@@ -32,6 +33,42 @@ import RefacUtils
         in the client modules, we take the visble names both in the current module and in the client modules 
         into account when creating the new function name.
 -}
+generaliseDef2 fileName newParamName beginPos endPos subExp inscps exps mod tokList
+ = -- let fileName     = args!!0
+   --    newParamName = args!!1            
+   --    beginPos     = (read (args!!2), read (args!!3))::(Int,Int)
+   --    endPos       = (read (args!!4), read (args!!5)) :: (Int,Int)
+   if isVarId newParamName -- the parameter name is a valid name.
+      then do modName <- RefacUtils.fileNameToModName fileName
+              -- (inscps,exps,mod, tokList) <- parseSourceFile fileName 
+              let pnt = trace (show $ findDefName tokList beginPos endPos  mod) ((findDefName tokList beginPos endPos  mod))
+                  pn           = pNTtoPN pnt
+              if pn == defaultPN || subExp == defaultExp
+                then error ("The highlighted source does not contain a rhs sub-expression, " ++
+                       "or the selected sub-expression does not contain any identifiers so that the refactor could not locate it.")
+                            
+                else if isExported pnt exps 
+                       then do clients <- clientModsAndFiles modName  -- returns [(module name ,filename)]
+                               info    <- mapM parseSourceFile (map snd clients)   -- parse all the client modules
+                               let funPName
+                                    =if clients /= [] && hasFreeVars subExp  --THIS CONDITION MIGHT A LITTLE BIT LOOSE. 
+                                                                              --HOW ABOUT NONE OF THE CLIENTS USE IT?
+                                        then let inscpNames =map (\ (x,_,_,_)->x) $ concatMap inScopeInfo (map myfst info) -- calculate all visibe names
+                                             in  Just =<< mkNewFunPName pn (hsDecls mod) modName inscpNames
+                                        else Nothing
+                                   subExp' = if isJust funPName then pNtoExp (fromJust funPName) else subExp 
+                               (mod',((tokList',m),_)) <- doGeneralise True pnt fileName subExp newParamName funPName mod tokList
+                                                                           
+                               refactoredClients   <- mapM (generaliseInClientMod pnt subExp' modName funPName)
+                                                       $ zip info (map snd clients)
+                               -- writeRefactoredFiles False $ ((fileName,m), (tokList',mod')):refactoredClients   
+                               return (m, tokList', mod', refactoredClients)                     
+                       else do (mod',((tokList',m),_))<-doGeneralise True pnt fileName subExp newParamName Nothing mod tokList
+                               -- writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
+                               return (m, tokList', mod', [])
+      else error "Invalid parameter name!" 
+
+
 
 generaliseDef args
  = let fileName     = args!!0
@@ -57,24 +94,25 @@ generaliseDef args
                                              in  Just =<< mkNewFunPName pn (hsDecls mod) modName inscpNames
                                         else Nothing
                                    subExp' = if isJust funPName then pNtoExp (fromJust funPName) else subExp 
-                               (mod',((tokList',m),_)) <- doGeneralise pnt fileName subExp newParamName funPName mod tokList
+                               (mod',((tokList',m),_)) <- doGeneralise False pnt fileName subExp newParamName funPName mod tokList
                                                                            
                                refactoredClients   <- mapM (generaliseInClientMod pnt subExp' modName funPName)
                                                        $ zip info (map snd clients)
                                writeRefactoredFiles False $ ((fileName,m), (tokList',mod')):refactoredClients                        
-                       else do (mod',((tokList',m),_))<-doGeneralise pnt fileName subExp newParamName Nothing mod tokList
+                       else do (mod',((tokList',m),_))<-doGeneralise False pnt fileName subExp newParamName Nothing mod tokList
                                writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
       else error "Invalid parameter name!" 
-  where
+--  where
    
    --find the definition name whose sub-expression has been selected, and the selected sub-expression.
-   findDefNameAndExp toks beginPos endPos t 
+findDefNameAndExp toks beginPos endPos t 
     = fromMaybe (defaultPNT, defaultExp) (applyTU (once_tdTU (failTU `adhocTU` inMatch
                                                                      `adhocTU` inPat)) t)  --CAN NOT USE 'once_tdTU' here. 
 
      where  --The selected sub-expression is in the rhs of a match
            inMatch (match@(HsMatch loc1  pnt pats rhs ds)::HsMatchP)
              | locToExp beginPos endPos toks rhs /= defaultExp
+             
              = Just (pnt, locToExp beginPos endPos toks rhs)
            inMatch _ = Nothing
         
@@ -86,9 +124,29 @@ generaliseDef args
                 else error "A complex pattern binding can not be generalised!"
            inPat _ = Nothing
 
- 
+findDefName toks beginPos endPos t 
+    = fromMaybe defaultPNT (applyTU (once_tdTU (failTU `adhocTU` inMatch
+                                                                     `adhocTU` inPat)) t)  --CAN NOT USE 'once_tdTU' here. 
+
+     where  --The selected sub-expression is in the rhs of a match
+           inMatch (match@(HsMatch loc1  pnt pats rhs ds)::HsMatchP)
+             | locToExp beginPos endPos toks rhs /= defaultExp
+               || locToPat beginPos endPos toks pats /= defaultPat
+             = Just pnt
+           inMatch _ = Nothing
+        
+           --The selected sub-expression is in the rhs of a pattern-binding
+           inPat (pat@(Dec (HsPatBind loc1 ps rhs ds))::HsDeclP)
+             | locToExp beginPos endPos toks rhs /= defaultExp
+             = if isSimplePatBind pat
+                then Just $ patToPNT ps 
+                else error "A complex pattern binding can not be generalised!"
+           inPat _ = Nothing 
+
+
+
    -- Do generalisation in current module.
-   doGeneralise pnt@(PNT pn _ _) fileName subExp newParamName newFunPName mod tokList
+doGeneralise flag pnt@(PNT pn _ _)  fileName subExp newParamName newFunPName mod tokList
      = runStateT (if isJust newFunPName
                     then do -- add the new function name to the export list
                             mod'<-addItemsToExport mod (Just pn) False (Left [pNtoName (fromJust newFunPName)]) 
@@ -164,17 +222,21 @@ generaliseDef args
            addActualArg False pn subExp parent''
         where
          doChecking decl   
-          = do (expFreeVars,_) <- hsFreeAndDeclaredPNs subExp
-               (defFreeVars,_) <- hsFreeAndDeclaredPNs decl
-               if expFreeVars \\ defFreeVars /= [] 
-                 then do error "The selected expression should not contain locally declared variables!" 
-                 else do (f,d) <- hsFDsFromInside =<<  replaceExpByDefault subExp decl       
-                         d'   <- hsVisiblePNs  subExp decl                
-                         if elem newParamName $ map pNtoName (f `union` d `union` d')
-                          then error "The parameter name will cause name clash or semantics change, please choose another name!"
-                          else return ()
-                  
-           
+          | flag == False
+              = do (expFreeVars,_) <- hsFreeAndDeclaredPNs subExp
+                   (defFreeVars,_) <- hsFreeAndDeclaredPNs decl
+                   if expFreeVars \\ defFreeVars /= [] 
+                     then do error "The selected expression should not contain locally declared variables!" 
+                     else do (f,d) <- hsFDsFromInside =<<  replaceExpByDefault subExp decl       
+                             d'   <- hsVisiblePNs  subExp decl                
+                             if elem newParamName $ map pNtoName (f `union` d `union` d')
+                               then error "The parameter name will cause name clash or semantics change, please choose another name!"
+                               else return ()
+          | otherwise = do  (f,d) <- hsFDNamesFromInside decl
+                            if elem newParamName (f ++ d) 
+                               then error "The parameter name will cause name clash or semantics change, please choose another name!"
+                               else return ()
+         
          {- substitute the occurrence of an expression by the default expression,
             in order to get rid of the free variables in the generalised sub-expression -}
          replaceExpByDefault e = applyTP (once_tdTP (failTP `adhocTP` inExp)) 
@@ -224,7 +286,7 @@ generaliseDef args
          as the actual argument; otherwise add the highlighted expression as a actual paramter 
          to the generalised function at each of its call sites -}
     
-   addActualArg recursion pn subExp
+addActualArg recursion pn subExp
         = if recursion then applyTP (stop_tdTP (failTP `adhocTP` funApp))
                        else applyTP (stop_tdTP (failTP `adhocTP` inDecl
                                                        `adhocTP` funApp))
@@ -249,7 +311,7 @@ generaliseDef args
 
          funApp _ = mzero
 
-   doAddingActulaArg pnt pntExp subExp addParen
+doAddingActulaArg pnt pntExp subExp addParen
      = do let newExp = if isSimpleExp subExp || isParenExp subExp 
                          then if addParen then (Exp (HsParen (Exp (HsApp pntExp subExp)))) 
                                           else (Exp (HsApp pntExp subExp))
@@ -267,7 +329,7 @@ generaliseDef args
        isParenExp (Exp (HsParen _))=True
        isParenExp _=False
      
-   addActualArgInClientMod pn qual funName toBeQualified t
+addActualArgInClientMod pn qual funName toBeQualified t
       = applyTP (stop_tdTP (failTP `adhocTP`funApp)) t
        where 
          funApp (Exp (HsApp e  exp@(Exp (HsId (HsVar pnt@(PNT pname _ _ )))))::HsExpP)
@@ -289,7 +351,7 @@ generaliseDef args
       
          funApp _ = mzero
         
-   generaliseInClientMod pnt subExp serverModName newFunPName ((inscps, exps, mod,ts) ,fileName)
+generaliseInClientMod pnt subExp serverModName newFunPName ((inscps, exps, mod,ts) ,fileName)
       = let qual  = hsQualifier  pnt inscps
             pn    = pNTtoPN pnt
         in if qual==[]

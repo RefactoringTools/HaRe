@@ -178,6 +178,7 @@ pfeRefactoringCmds = do
     -- TFP PAPER 2011
     ,"import RefacEvalMon"
     ,"import RefacAddEvalMonCache"
+    ,"import RefacIntroThreshold"
     ,""
     ]
   putStrLn "pfeRefactoringCmds ="
@@ -419,7 +420,9 @@ cmds editFuns = [Menu "Projects"
          ]
       ,Menu "Parallel"
          [
-           editParameters editFuns "Introduce Eval Monad" "refacEvalMon"
+           editParameters editFuns "Introduce Threshold" "refacIntroThreshold"
+           refacIntroThreshold $ fileNamePar $ namePar "Enter threshold value: " $ namePar "Theshold parameter name: " $ regionPar $ comment "Turn parallelism on over a threshold limit"
+          ,editParameters editFuns "Introduce Eval Monad" "refacEvalMon"
            refacEvalMon $ fileNamePar $ regionPar $ comment "Insert Eval Monad"
           ,editParameters editFuns "Activate an Evaluation Monad" "refacAddEvalMonCache"
            refacAddEvalMonCache $ fileNamePar $ regionPar $ comment "Activate Eval Monad"
@@ -447,6 +450,12 @@ refacClearEvalCache f = putStrLn $ ">refacClearEvalCache filename: " ++ f
 refacAddEvalMonCache :: String -> Int -> Int -> Int -> Int -> IO ()
 refacAddEvalMonCache f ls cs le ce = putStrLn $ 
     ">refacAddEvalMonCache filename: "++f
+  ++" line: "++show ls++" column: "++show cs
+  ++" line: "++show le++" column: "++show ce
+
+refacIntroThreshold :: String -> String -> String -> Int -> Int -> Int -> Int -> IO ()
+refacIntroThreshold f z n ls cs le ce = putStrLn $ 
+    ">refacIntroThreshold filename: "++f ++ n ++ z
   ++" line: "++show ls++" column: "++show cs
   ++" line: "++show le++" column: "++show ce
 

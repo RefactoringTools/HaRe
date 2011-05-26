@@ -142,6 +142,7 @@
 )
 
 ("Parallel"
+   ["Introduce Threshold" haskell-refac-refacIntroThreshold  :active t]
    ["Introduce Eval Monad" haskell-refac-refacEvalMon  :active t]
    ["Activate an Evaluation Monad" haskell-refac-refacAddEvalMonCache  :active t]
    ["Clear the active Evaluation Monad" haskell-refac-refacClearEvalCache  :active t]
@@ -1408,6 +1409,31 @@
      )
   ) )
 
+
+
+(defun haskell-refac-refacIntroThreshold ( name1 name2 start3 end3)
+  "refacIntroThreshold"
+  (interactive "sEnter threshold value: \nsTheshold parameter name: \nr")
+  (let (modified)
+     (dolist (b (buffer-list) modified)
+       (let* ((n (buffer-name b)) (n1 (substring n 0 1)))
+        (if (and (not (or (string= " " n1) (string= "*" n1))) (buffer-modified-p b))
+          (setq modified (cons (buffer-name b) modified)))))
+     (if modified (message-box (format "there are modified buffers: %s" modified))
+       (process-send-string "haskell-refac-process" 
+         (concat
+         
+         "refacIntroThreshold " (mapconcat 'identity (append 
+		(list (if (buffer-file-name) (buffer-file-name) "<missing filename>"))
+		(list name1)
+		(list name2)
+		(list (number-to-string (line-no-pos start3))
+		(number-to-string (+ 1 (current-column-pos start3)))
+		(number-to-string (line-no-pos end3))
+		(number-to-string (+ 1 (current-column-pos end3))))) " ")
+         "\n"))
+     )
+  ) )
 
 
 (defun haskell-refac-refacEvalMon ( start1 end1)
