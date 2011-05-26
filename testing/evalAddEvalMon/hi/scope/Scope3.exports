@@ -1,0 +1,1 @@
+[("b",Ent (PlainModule "Scope3") (HsVar "b") Value),("computation",Ent (PlainModule "Scope3") (HsVar "computation") Value),("f",Ent (PlainModule "Scope3") (HsVar "f") Value),("g",Ent (PlainModule "Scope3") (HsVar "g") Value)]
