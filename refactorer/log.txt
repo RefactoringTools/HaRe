@@ -1,0 +1,6 @@
+[299 of 319] Compiling RefacIntroEvalDegree ( RefacIntroEvalDegree.hs, odir/Darwin/RefacIntroEvalDegree.o )
+[306 of 319] Compiling PfeRefactoringCmds ( PfeRefactoringCmds.hs, odir/Darwin/PfeRefactoringCmds.o )
+[319 of 319] Compiling Main             ( pfe.hs, odir/Darwin/Main.o )
+Linking pfe ...
+[5 of 5] Compiling Main             ( pfe_client.hs, odir/Darwin/Main.o )
+Linking pfe_client ...
