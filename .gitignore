@@ -7,6 +7,8 @@ editors/GenEditorInterfaces
 editors/Vim/refactor.vim
 editors/Emacs/haskell-refac.el
 editors/LocalSettings.hs:
+editors/Emacs/haskell-refac.el2
+editors/LocalSettings.hs
 
 refactorer/evaluate
 refactorer/evaluate_result
@@ -16,4 +18,5 @@ refactorer/PfeRefactoringCmds.hs
 
 testing/addCon/Case1.hs.temp.hs
 testing/addCon/Case2.hs.temp.hs
-
+testing/UTest
+testing/*/hi
