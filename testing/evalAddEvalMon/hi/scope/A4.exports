@@ -1,1 +1,0 @@
-[("bigFib",Ent (PlainModule "A4") (HsVar "bigFib") Value),("bigFib_2",Ent (PlainModule "A4") (HsVar "bigFib_2") Value),("closureY",Ent (PlainModule "A4") (HsVar "closureY") Value),("evenBiggerFib",Ent (PlainModule "A4") (HsVar "evenBiggerFib") Value),("fib",Ent (PlainModule "A4") (HsVar "fib") Value),("someComp",Ent (PlainModule "A4") (HsVar "someComp") Value)]

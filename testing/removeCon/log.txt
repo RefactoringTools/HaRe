@@ -1,144 +1,0 @@
-Cases: 20  Tried: 0  Errors: 0  Failures: 0Cases: 20  Tried: 1  Errors: 0  Failures: 0Cases: 20  Tried: 2  Errors: 0  Failures: 0Cases: 20  Tried: 3  Errors: 0  Failures: 0Cases: 20  Tried: 4  Errors: 0  Failures: 0Cases: 20  Tried: 5  Errors: 0  Failures: 0Cases: 20  Tried: 6  Errors: 0  Failures: 0Cases: 20  Tried: 7  Errors: 0  Failures: 0Cases: 20  Tried: 8  Errors: 0  Failures: 0Cases: 20  Tried: 9  Errors: 0  Failures: 0Cases: 20  Tried: 10  Errors: 0  Failures: 0Cases: 20  Tried: 11  Errors: 0  Failures: 0Cases: 20  Tried: 12  Errors: 0  Failures: 0Cases: 20  Tried: 13  Errors: 0  Failures: 0Cases: 20  Tried: 14  Errors: 0  Failures: 0Cases: 20  Tried: 15  Errors: 0  Failures: 0Cases: 20  Tried: 16  Errors: 0  Failures: 0Cases: 20  Tried: 17  Errors: 0  Failures: 0Cases: 20  Tried: 18  Errors: 0  Failures: 0Cases: 20  Tried: 19  Errors: 0  Failures: 0                                            Cases: 20  Tried: 20  Errors: 0  Failures: 0
-dding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
-Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
-Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
-Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
-Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
-Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
-Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
-The project contains 33 source files.
-(To list the files, use: pfe files)
-CMD:["stop"]
-CMD:["chase","."]
-The project contains 33 source files.
-(To list the files, use: pfe files)
-CMD:["stop"]
-CMD:["refacRmCon","Case1.hs","3","10"]
-Analyzing: Case1.hs
-modified: Case1.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Case2.hs","3","10"]
-Analyzing: Case2.hs
-modified: Case2.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Case3.hs","3","10"]
-Analyzing: Case3.hs
-modified: Case3.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Case4.hs","3","10"]
-Analyzing: Case4.hs
-modified: Case4.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Where1.hs","3","10"]
-Analyzing: Where1.hs
-modified: Where1.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Let1.hs","3","15"]
-Analyzing: Let1.hs
-modified: Let1.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Let2.hs","4","15"]
-Analyzing: Let2.hs
-modified: Let2.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Infix1.hs","3","11"]
-Analyzing: Infix1.hs
-modified: Infix1.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Pat2.hs","4","10"]
-Analyzing: Pat2.hs
-modified: Pat2.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Partial1.hs","3","14"]
-Analyzing: Partial1.hs
-modified: Partial1.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Infix2.hs","5","17"]
-Analyzing: Infix2.hs
-modified: Infix2.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Infix3.hs","5","17"]
-Analyzing: Infix3.hs
-modified: Infix3.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Infix4.hs","5","17"]
-Analyzing: Infix4.hs
-modified: Infix4.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Monad1.hs","3","15"]
-Analyzing: Monad1.hs
-modified: Monad1.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Show1.hs","3","11"]
-Analyzing: Show1.hs
-modified: Show1.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","M.hs","4","10"]
-Analyzing: M.hs
-Analyzing: M1.hs
-modified: M.hs
-modified: M1.hs
-
-Completed.
-
-CMD:["stop"]
-CMD:["refacRmCon","Fail1.hs","1","1"]
-Analyzing: Fail1.hs
-message: CAUGHT EXCEPTION: 
-Invalid cursor position!
-CMD:["stop"]
-CMD:["refacRmCon","Pat1.hs","3","15"]
-message: CAUGHT EXCEPTION: Refactoring cannot be performed as constructor is used in a pattern binding!
-CMD:["stop"]
-CMD:["refacRmCon","Monad2.hs","3","11"]
-Analyzing: Monad2.hs
-message: CAUGHT EXCEPTION: Refactoring cannot be performed as constructor is used in a pattern binding!
-CMD:["stop"]
-CMD:["refacRmCon","Export1.hs","3","14"]
-message: CAUGHT EXCEPTION: Removing constructor forces f in module Export1 to be removed. Please un-export it first.
-CMD:["stop"]

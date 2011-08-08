@@ -1,1 +1,0 @@
-[("par",Ent (PlainModule "Control.Parallel") (HsVar "par") Value),("pseq",Ent (PlainModule "Control.Parallel") (HsVar "pseq") Value),("seq",Ent (PlainModule "Prelude") (HsVar "seq") Value)]

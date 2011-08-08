@@ -1,157 +1,0 @@
-Cases: 21  Tried: 0  Errors: 0  Failures: 0Cases: 21  Tried: 1  Errors: 0  Failures: 0Cases: 21  Tried: 2  Errors: 0  Failures: 0Cases: 21  Tried: 3  Errors: 0  Failures: 0Cases: 21  Tried: 4  Errors: 0  Failures: 0Cases: 21  Tried: 5  Errors: 0  Failures: 0Cases: 21  Tried: 6  Errors: 0  Failures: 0Cases: 21  Tried: 7  Errors: 0  Failures: 0Cases: 21  Tried: 8  Errors: 0  Failures: 0Cases: 21  Tried: 9  Errors: 0  Failures: 0Cases: 21  Tried: 10  Errors: 0  Failures: 0Cases: 21  Tried: 11  Errors: 0  Failures: 0Cases: 21  Tried: 12  Errors: 0  Failures: 0Cases: 21  Tried: 13  Errors: 0  Failures: 0Cases: 21  Tried: 14  Errors: 0  Failures: 0Cases: 21  Tried: 15  Errors: 0  Failures: 0Cases: 21  Tried: 16  Errors: 0  Failures: 0Cases: 21  Tried: 17  Errors: 0  Failures: 0Cases: 21  Tried: 18  Errors: 0  Failures: 0Cases: 21  Tried: 19  Errors: 0  Failures: 0Cases: 21  Tried: 20  Errors: 0  Failures: 0                                            Cases: 21  Tried: 21  Errors: 0  Failures: 0
-ing Ix from ../../tools/base/tests/HaskellLibraries//Ix.hs
-Adding PreludeBuiltin from ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
-Adding PreludeIO from ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
-Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
-Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
-Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
-Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
-Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
-Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
-Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
-Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
-The project contains 32 source files.
-(To list the files, use: pfe files)
-CMD:["stop"]
-CMD:["chase","."]
-The project contains 32 source files.
-(To list the files, use: pfe files)
-CMD:["stop"]
-CMD:["subFunctionDef","FunIn1.hs","18","1","18","31"]
-subFunctionDef
-Analyzing: FunIn1.hs
-modified: FunIn1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","FunIn2.hs","15","1","15","27"]
-subFunctionDef
-Analyzing: FunIn2.hs
-modified: FunIn2.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","PartialIn1.hs","18","1","18","26"]
-subFunctionDef
-Analyzing: PartialIn1.hs
-modified: PartialIn1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","MultiMatchesIn1.hs","14","1","14","11"]
-subFunctionDef
-modified: MultiMatchesIn1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","MultiMatchesIn2.hs","13","12","13","22"]
-subFunctionDef
-Analyzing: MultiMatchesIn2.hs
-modified: MultiMatchesIn2.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","WithRenamingIn1.hs","11","1","11","11"]
-subFunctionDef
-Analyzing: WithRenamingIn1.hs
-modified: WithRenamingIn1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","GuardIn1.hs","11","1","13","20"]
-subFunctionDef
-modified: GuardIn1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","ComplexParamIn1.hs","12","1","12","13"]
-subFunctionDef
-Analyzing: ComplexParamIn1.hs
-modified: ComplexParamIn1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","ComplexParamIn2.hs","16","1","16","19"]
-subFunctionDef
-modified: ComplexParamIn2.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","ComplexParamIn3.hs","16","1","16","19"]
-subFunctionDef
-Analyzing: ComplexParamIn3.hs
-modified: ComplexParamIn3.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","ComplexPatIn1.hs","18","39","18","76"]
-subFunctionDef
-Analyzing: ComplexPatIn1.hs
-modified: ComplexPatIn1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","ComplexPatIn2.hs","18","39","18","75"]
-subFunctionDef
-Analyzing: ComplexPatIn2.hs
-modified: ComplexPatIn2.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","PatternMatch1.hs","10","1","12","16"]
-subFunctionDef
-Analyzing: PatternMatch1.hs
-modified: PatternMatch1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","PatternMatch1.hs","10","1","12","16"]
-subFunctionDef
-Analyzing: PatternMatch1.hs
-modified: PatternMatch1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","PatternMatch3.hs","10","1","12","16"]
-subFunctionDef
-modified: PatternMatch3.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","PatternMatch4.hs","10","1","12","23"]
-subFunctionDef
-Analyzing: PatternMatch4.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","PatternMatch5.hs","10","1","12","23"]
-subFunctionDef
-Analyzing: PatternMatch5.hs
-modified: PatternMatch5.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","PatternMatch6.hs","10","1","12","23"]
-subFunctionDef
-modified: PatternMatch6.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","PatternMatch7.hs","10","1","12","23"]
-subFunctionDef
-Analyzing: PatternMatch7.hs
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","DoExpr1.hs","10","1","12","20"]
-subFunctionDef
-Completed.
-
-CMD:["stop"]
-CMD:["subFunctionDef","DoExpr2.hs","10","1","12","20"]
-subFunctionDef
-Analyzing: DoExpr2.hs
-modified: DoExpr2.hs
-Completed.
-
-CMD:["stop"]
