@@ -1,8 +1,18 @@
 #!/bin/sh
+
+# Run testcases of a HaRe testsuite.
+
+# If an argument is provided, this has to be a valid directory containing testcases. Then only these tests will be run.
+# If no argument is provided, all testcases as listed in the $DIRS variable will be executed.
+
+
 #BASH="d:\\cygwin\\bin\\bash.exe"
 BASH="bash"
 HARE="../../refactorer/pfe"
 #HARE="..\\..\\refactorer\\pfe"
+
+HUNIT="./HUnit-1.0"
+
 DIRS_OLD="asPatterns  
       refacRedunDec 
       refacSlicing 
@@ -72,7 +82,15 @@ unfoldDef
 whereToLet
 "
 
-ghc --make -i./HUnit-1.0 -o UTest UTest.hs
+runTest () {
+   echo "-- testing $1"
+   cd $1 &&
+   ../UTest $BASH $HARE 2>&1 | tee log.txt &&
+   rm -r hi
+   cd ..
+}
+
+ghc --make -i"$HUNIT" -o UTest UTest.hs
 rm *.o *.hi
 
 # avoid spurious error reports due to line-ending conventions..
@@ -82,11 +100,12 @@ case `uname` in
     ;;
 esac
 
-for d in $DIRS
-do
-   echo "-- testing $d"
-   cd $d &&
-   ../UTest $BASH $HARE 2>&1 | tee log.txt &&
-   rm -r hi &&
-   cd ..
-done   
+# check if arguemnt is provided
+if [ -n "$1" ]; then
+    runTest $1
+else
+    for d in $DIRS
+    do
+        runTest "$d"
+    done   
+fi
