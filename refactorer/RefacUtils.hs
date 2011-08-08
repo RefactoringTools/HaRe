@@ -136,7 +136,7 @@ import LocalSettings
 import StrategyLib hiding (findFile, fail, (>>=), (>>), return, mfix, Monad, Functor, MonadFix, MonadPlus, fmap, (=<<),
                            sequence_, sequence, mapM_, mapM, liftM5, liftM4, liftM3, mzero, mplus, guard, filterM, msum,
                            join, mapAndUnzipM, zipWithM, zipWithM_, foldM, when, unless, liftM, liftM2, ap, MonadTrans, MonadIO,
-                           fix, lift, liftIO, StateT, runStateT, State, runState )
+                           fix, lift, liftIO, StateT, runStateT, State)
 import Control.Monad.State
 import TypeCheck
 
