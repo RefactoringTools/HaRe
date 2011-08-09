@@ -1,0 +1,1 @@
+[(HsVar "<=<",HsFixity HsAssocRight 1),(HsVar ">=>",HsFixity HsAssocRight 1)]
