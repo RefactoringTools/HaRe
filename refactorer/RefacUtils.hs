@@ -881,7 +881,7 @@ addLocalDecl parent (newFun, newFunToks)
             newFun' = case newFunToks of 
                            Just ts ->let offset = lengthOfToks (takeWhile isWhiteSpace ts) 
                                      in concatMap tokenCon (removeOffset offset ts) 
-                           Nothing -> prettyprint newFun 
+                           Nothing -> (prettyprint newFun) ++ "\n" 
             removeOffset offset toks 
                 = let groupedToks = groupTokensByLine toks
                   in  concatMap  (doRmWhites offset) groupedToks

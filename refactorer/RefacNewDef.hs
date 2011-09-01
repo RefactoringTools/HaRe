@@ -65,10 +65,10 @@ introNewDef args
                     =doIntroduce' alt  rhsIn replaceRhs  
            inAlt _=mzero
       
-           -- The sub-expression is in the stmts of a 'let'    
+                 -- The sub-expression is in the stmts of a 'let'    
            inStmt (stmt@(HsLetStmt ds stmts):: HsStmtP)
                 | inRegion stmts tokList beginPos endPos &&  locToExp beginPos endPos tokList stmts /= defaultExp
-                     =doIntroduce' stmt  stmtsIn replaceStmtsInDo  
+                     =doIntroduce'' stmt  stmtsIn replaceStmtsInDo  
            inStmt  _=mzero
 
            failure=idTP `adhocTP` mod
