@@ -1,0 +1,37 @@
+Name:                           HaRe
+Version:                        0.6.0.2
+Author:                         Chris Brown, Huiqing Li, Simon Thompson
+Maintainer:                     Chris Brown
+Stability:                      Provisional
+Bug-Reports:                    mailto:chrisb@cs.st-andrews.ac.uk
+License:                        BSD3
+License-File:                   LICENSE
+Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
+Description:                    A full Haskell 98 refactoring tool. HaRe supports the full Haskell 98 standard, implemented in Haskell and supporting Emacs and VIm. 
+Synopsis:                       the Haskell Refactorer.
+Category:                       Development, Refactoring
+Cabal-Version:                  >= 1.6
+Build-Type:                     Simple
+Data-Dir:                       misc
+Data-Files:                     haskell-refac.el, refactor.vim, Prelude.hs, *.hs, dupReport, dupAnswers, dupPositions, dupTransforms, dupClassAnswer, dupClassTransform, mergeCache, evaluateResult, genFoldCache
+
+
+Executable hare-evaluate
+        Main-Is:                refactorer/Evaluate.hs
+        GHC-Options:            -irefactorer -fno-cse -fglasgow-exts  
+        Build-Depends:          base >4 && <= 5, hint, filepath
+        Other-Modules:          Paths_HaRe
+
+Executable hare
+        Main-Is:                refactorer/pfe.hs
+        GHC-Options:            -itools/base/parse2/LexerSpec/:tools/base/parse2/LexerGen:tools/base/lib:tools/base/parse2/Lexer/:tools/base/tests/HbcLibraries:refactorer/:StrategyLib-4.0-beta/library/:StrategyLib-4.0-beta/src:StrategyLib-4.0-beta/models/deriving/:tools/base/parse2:tools/base/AST:tools/base/Modules:tools/base/pretty/:tools/base/defs/:tools/base/:tools/base/lib/Monads/:tools/base/parse2/Parser/:tools/base/syntax:tools/base/TI:tools/pfe:tools/base/transforms:tools/base/transforms/Deriving:tools/hs2html/ -fno-cse -fglasgow-exts  
+        Build-Depends:          base >=4 && <= 4.5.0.0, syb, network, ghc, haskell98, containers, hint, mtl, directory, pretty, process, filepath
+        Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
+        Other-Modules:          Paths_HaRe
+
+Executable hare-client
+        Main-Is:                refactorer/pfe_client.hs
+        GHC-Options:            -itools/base/parse2/LexerSpec/:tools/base/parse2/LexerGen:tools/base/lib:tools/base/parse2/Lexer/:tools/base/tests/HbcLibraries:refactorer/:StrategyLib-4.0-beta/library/:StrategyLib-4.0-beta/src:StrategyLib-4.0-beta/models/deriving/:tools/base/parse2:tools/base/AST:tools/base/Modules:tools/base/pretty/:tools/base/defs/:tools/base/:tools/base/lib/Monads/:tools/base/parse2/Parser/:tools/base/syntax:tools/base/TI:tools/pfe:tools/base/transforms:tools/base/transforms/Deriving:tools/hs2html/ -fno-cse -fglasgow-exts  
+        Build-Depends:          base >=4 && <= 4.5.0.0, syb, network, ghc, haskell98, containers, hint, mtl, directory, pretty, process, filepath
+        Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
+        Other-Modules:          Paths_HaRe
