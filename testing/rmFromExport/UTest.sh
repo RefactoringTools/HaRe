@@ -1,17 +1,5 @@
 #!/bin/sh
-#BASH="d:\\cygwin\\bin\\bash.exe"
-BASH="bash"
-HARE="../../refactorer/pfe"
-#HARE="..\\..\\refactorer\\pfe"
+
+TESTING_DIR="$(pwd)"
 cd ..
-ghc --make -i../../HUnit-1.0 -o UTest UTest.hs
-rm *.o *.hi
-# avoid spurious error reports due to line-ending conventions..
-case `uname` in
-  CYGWIN*) 
-    unix2dos *.hs 
-    ;;
-esac
-cd ./rmFromExport
-echo "-- testing rmFromExport"
-../UTest $BASH $HARE 2>&1 | tee log.txt
+./UTest.sh $TESTING_DIR

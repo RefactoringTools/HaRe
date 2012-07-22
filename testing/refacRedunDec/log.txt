@@ -1,132 +1,0 @@
-Cases: 17  Tried: 0  Errors: 0  Failures: 0Cases: 17  Tried: 1  Errors: 0  Failures: 0Cases: 17  Tried: 2  Errors: 0  Failures: 0Cases: 17  Tried: 3  Errors: 0  Failures: 0Cases: 17  Tried: 4  Errors: 0  Failures: 0Cases: 17  Tried: 5  Errors: 0  Failures: 0Cases: 17  Tried: 6  Errors: 0  Failures: 0Cases: 17  Tried: 7  Errors: 0  Failures: 0Cases: 17  Tried: 8  Errors: 0  Failures: 0Cases: 17  Tried: 9  Errors: 0  Failures: 0Cases: 17  Tried: 10  Errors: 0  Failures: 0Cases: 17  Tried: 11  Errors: 0  Failures: 0Cases: 17  Tried: 12  Errors: 0  Failures: 0Cases: 17  Tried: 13  Errors: 0  Failures: 0Cases: 17  Tried: 14  Errors: 0  Failures: 0Cases: 17  Tried: 15  Errors: 0  Failures: 0Cases: 17  Tried: 16  Errors: 0  Failures: 0                                            Cases: 17  Tried: 17  Errors: 0  Failures: 0
-Adding PreludeList from ../../tools/base/tests/HaskellLibraries//PreludeList.hs
-Adding Char from ../../tools/base/tests/HaskellLibraries//Char.hs
-Adding Array from ../../tools/base/tests/HaskellLibraries//Array.hs
-Adding List from ../../tools/base/tests/HaskellLibraries//List.hs
-Adding Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
-Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
-Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
-Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
-The project contains 29 source files.
-(To list the files, use: pfe files)
-CMD:["stop"]
-CMD:["chase","."]
-The project contains 29 source files.
-(To list the files, use: pfe files)
-CMD:["stop"]
-CMD:["refacSlicing","Test1.hs","3","4","3","7"]
-refacSlicing
-modified: Test1.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test2.hs","3","9","5","29"]
-refacSlicing
-Analyzing: Test2.hs
-modified: Test2.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test3.hs","3","9","5","20"]
-refacSlicing
-Analyzing: Test3.hs
-modified: Test3.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test4.hs","3","6","3","20"]
-refacSlicing
-Analyzing: Test4.hs
-modified: Test4.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test5.hs","3","5","3","26"]
-refacSlicing
-Analyzing: Test5.hs
-modified: Test5.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test6.hs","3","5","3","19"]
-refacSlicing
-modified: Test6.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test7.hs","3","9","4","31"]
-refacSlicing
-Analyzing: Test7.hs
-modified: Test7.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test8.hs","3","7","4","48"]
-refacSlicing
-Analyzing: Test8.hs
-modified: Test8.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test9.hs","3","7","4","44"]
-refacSlicing
-Analyzing: Test9.hs
-modified: Test9.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test10.hs","3","8","4","38"]
-refacSlicing
-Analyzing: Test10.hs
-modified: Test10.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test11.hs","3","5","3","28"]
-refacSlicing
-Analyzing: Test11.hs
-modified: Test11.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test12.hs","3","5","3","40"]
-refacSlicing
-Analyzing: Test12.hs
-modified: Test12.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test13.hs","3","4","3","26"]
-refacSlicing
-Analyzing: Test13.hs
-modified: Test13.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test14.hs","3","5","3","27"]
-refacSlicing
-Analyzing: Test14.hs
-modified: Test14.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test15.hs","3","7","9","1"]
-refacSlicing
-Analyzing: Test15.hs
-modified: Test15.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test16.hs","3","8","8","17"]
-refacSlicing
-modified: Test16.hs
-Completed.
-
-CMD:["stop"]
-CMD:["refacSlicing","Test17.hs","3","7","8","24"]
-refacSlicing
-Analyzing: Test17.hs
-modified: Test17.hs
-Completed.
-
-CMD:["stop"]

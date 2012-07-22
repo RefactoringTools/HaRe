@@ -1,216 +1,0 @@
-Cases: 28  Tried: 0  Errors: 0  Failures: 0                                           ### Failure in: 0
-("rename",(["D1.hs","B1.hs","C1.hs","A1.hs"],["AnotherTree","6","6"]))
-expected: True
- but got: False
-Cases: 28  Tried: 1  Errors: 0  Failures: 1                                           ### Failure in: 1
-("rename",(["D2.hs","B2.hs","C2.hs","A2.hs"],["SubTree","6","24"]))
-expected: True
- but got: False
-Cases: 28  Tried: 2  Errors: 0  Failures: 2Cases: 28  Tried: 3  Errors: 0  Failures: 2Cases: 28  Tried: 4  Errors: 0  Failures: 2Cases: 28  Tried: 5  Errors: 0  Failures: 2Cases: 28  Tried: 6  Errors: 0  Failures: 2Cases: 28  Tried: 7  Errors: 0  Failures: 2Cases: 28  Tried: 8  Errors: 0  Failures: 2Cases: 28  Tried: 9  Errors: 0  Failures: 2Cases: 28  Tried: 10  Errors: 0  Failures: 2Cases: 28  Tried: 11  Errors: 0  Failures: 2Cases: 28  Tried: 12  Errors: 0  Failures: 2Cases: 28  Tried: 13  Errors: 0  Failures: 2Cases: 28  Tried: 14  Errors: 0  Failures: 2Cases: 28  Tried: 15  Errors: 0  Failures: 2Cases: 28  Tried: 16  Errors: 0  Failures: 2Cases: 28  Tried: 17  Errors: 0  Failures: 2Cases: 28  Tried: 18  Errors: 0  Failures: 2Cases: 28  Tried: 19  Errors: 0  Failures: 2Cases: 28  Tried: 20  Errors: 0  Failures: 2Cases: 28  Tried: 21  Errors: 0  Failures: 2Cases: 28  Tried: 22  Errors: 0  Failures: 2Cases: 28  Tried: 23  Errors: 0  Failures: 2Cases: 28  Tried: 24  Errors: 0  Failures: 2Cases: 28  Tried: 25  Errors: 0  Failures: 2Cases: 28  Tried: 26  Errors: 0  Failures: 2Cases: 28  Tried: 27  Errors: 0  Failures: 2                                            Cases: 28  Tried: 28  Errors: 0  Failures: 2
-ng Maybe from ../../tools/base/tests/HaskellLibraries//Maybe.hs
-Adding Numeric from ../../tools/base/tests/HaskellLibraries//Numeric.hs
-Adding Ratio from ../../tools/base/tests/HaskellLibraries//Ratio.hs
-Adding PreludeText from ../../tools/base/tests/HaskellLibraries//PreludeText.hs
-The project contains 57 source files.
-(To list the files, use: pfe files)
-CMD:["stop"]
-CMD:["chase","."]
-The project contains 57 source files.
-(To list the files, use: pfe files)
-CMD:["stop"]
-CMD:["rename","D1.hs","AnotherTree","6","6"]
-PlainModule "D1"
-Analyzing: ../../tools/base/tests/HaskellLibraries//Maybe.hs
-           ../../tools/base/tests/HaskellLibraries//List.hs
-           ../../tools/base/tests/HaskellLibraries//PreludeText.hs
-           ../../tools/base/tests/HaskellLibraries//Ratio.hs
-           ../../tools/base/tests/HaskellLibraries//Numeric.hs
-           ../../tools/base/tests/HaskellLibraries//Char.hs
-           ../../tools/base/tests/HaskellLibraries//PreludeList.hs
-           ../../tools/base/tests/HaskellLibraries//PreludeIO.hs
-           ../../tools/base/tests/HaskellLibraries//PreludeBuiltin.hs
-           ../../tools/base/tests/HaskellLibraries//Prelude.hs
-           ../../tools/base/tests/HaskellLibraries//Ix.hs
-           ../../tools/base/tests/HaskellLibraries//Array.hs
-modified: D1.hs
-CMD:["stop"]
-11c11
-< myFringe:: Tree a -> [a]
----
-> myFringe:: AnotherTree a -> [a]
-9c9
-< myFringe:: Tree a -> [a]
----
-> myFringe:: AnotherTree a -> [a]
-7c7
-< main :: Tree Int ->Bool
----
-> main :: AnotherTree Int ->Bool
-CMD:["rename","D2.hs","SubTree","6","24"]
-PlainModule "D2"
-Analyzing: C2.hs
-Analyzing: A2.hs
-modified: D2.hs
-CMD:["stop"]
-13c13
-< myFringe (Branch left right) = myFringe right
----
-> myFringe (SubTree left right) = myFringe right
-11c11
-< myFringe (Branch left right) = myFringe left 
----
-> myFringe (SubTree left right) = myFringe left 
-CMD:["rename","D3.hs","Same","12","7"]
-PlainModule "D3"
-Analyzing: D3.hs
-Analyzing: B3.hs
-Analyzing: C3.hs
-Analyzing: A3.hs
-modified: D3.hs
-modified: B3.hs
-modified: C3.hs
-CMD:["stop"]
-CMD:["rename","D4.hs","isSameOrNot","13","4"]
-PlainModule "D4"
-Analyzing: D4.hs
-Analyzing: B4.hs
-Analyzing: C4.hs
-Analyzing: A4.hs
-modified: D4.hs
-modified: B4.hs
-modified: A4.hs
-modified: C4.hs
-CMD:["stop"]
-CMD:["rename","D5.hs","sum","24","1"]
-PlainModule "D5"
-Analyzing: D5.hs
-Analyzing: B5.hs
-Analyzing: C5.hs
-Analyzing: A5.hs
-modified: D5.hs
-modified: B5.hs
-modified: A5.hs
-modified: C5.hs
-CMD:["stop"]
-CMD:["rename","D7.hs","myFringe","10","1"]
-PlainModule "D7"
-Analyzing: D7.hs
-Analyzing: C7.hs
-modified: D7.hs
-modified: C7.hs
-CMD:["stop"]
-CMD:["rename","Field1.hs","pointx1","5","18"]
-PlainModule "Field1"
-Analyzing: Field1.hs
-modified: Field1.hs
-CMD:["stop"]
-CMD:["rename","Field3.hs","abs","9","1"]
-PlainModule "Field3"
-Analyzing: Field3.hs
-modified: Field3.hs
-CMD:["stop"]
-CMD:["rename","Field4.hs","value2","5","23"]
-PlainModule "Field4"
-Analyzing: Field4.hs
-modified: Field4.hs
-CMD:["stop"]
-CMD:["rename","IdIn1.hs","x1","11","1"]
-PlainModule "IdIn1"
-Analyzing: IdIn1.hs
-modified: IdIn1.hs
-CMD:["stop"]
-CMD:["rename","IdIn2.hs","x1","15","7"]
-PlainModule "IdIn2"
-Analyzing: IdIn2.hs
-modified: IdIn2.hs
-CMD:["stop"]
-CMD:["rename","ClassIn1.hs","MyReversable","7","7"]
-PlainModule "ClassIn1"
-Analyzing: ClassIn1.hs
-modified: ClassIn1.hs
-CMD:["stop"]
-CMD:["rename","ClassIn2.hs","reversable","8","3"]
-PlainModule "ClassIn2"
-Analyzing: ClassIn2.hs
-modified: ClassIn2.hs
-CMD:["stop"]
-CMD:["rename","ConstructorIn1.hs","MyBTree","8","6"]
-PlainModule "ConstructorIn1"
-Analyzing: ConstructorIn1.hs
-modified: ConstructorIn1.hs
-CMD:["stop"]
-CMD:["rename","ConstructorIn2.hs","Tree","8","24"]
-PlainModule "ConstructorIn2"
-Analyzing: ConstructorIn2.hs
-modified: ConstructorIn2.hs
-CMD:["stop"]
-CMD:["rename","ConstructorIn3.hs","b","9","12"]
-PlainModule "ConstructorIn3"
-Analyzing: ConstructorIn3.hs
-modified: ConstructorIn3.hs
-CMD:["stop"]
-CMD:["rename","LayoutIn1.hs","square","7","17"]
-PlainModule "LayoutIn1"
-Analyzing: LayoutIn1.hs
-modified: LayoutIn1.hs
-CMD:["stop"]
-CMD:["rename","LayoutIn2.hs","ls","8","7"]
-PlainModule "LayoutIn2"
-Analyzing: LayoutIn2.hs
-modified: LayoutIn2.hs
-CMD:["stop"]
-CMD:["rename","LayoutIn3.hs","anotherX","7","13"]
-PlainModule "LayoutIn3"
-Analyzing: LayoutIn3.hs
-modified: LayoutIn3.hs
-CMD:["stop"]
-CMD:["rename","LayoutIn4.hs","io","7","8"]
-PlainModule "LayoutIn4"
-Analyzing: LayoutIn4.hs
-modified: LayoutIn4.hs
-CMD:["stop"]
-CMD:["rename","IdIn3.hs","foo","10","1"]
-PlainModule "IdIn3"
-Analyzing: IdIn3.hs
-message: CAUGHT EXCEPTION: Name 'foo'  already existed
-
-CMD:["stop"]
-CMD:["rename","IdIn4.hs","Foo","12","1"]
-PlainModule "IdIn4"
-Analyzing: IdIn4.hs
-message: CAUGHT EXCEPTION: The new name should be an identifier!
-CMD:["stop"]
-CMD:["rename","IdIn5.hs","y","10","1"]
-PlainModule "IdIn5"
-Analyzing: IdIn5.hs
-message: CAUGHT EXCEPTION: Name 'y'  already existed, or rename 'x' to 'y' will change the program's semantics!
-
-CMD:["stop"]
-CMD:["rename","ClassIn3.hs","Eq1","16","10"]
-PlainModule "ClassIn3"
-Analyzing: ClassIn3.hs
-message: CAUGHT EXCEPTION: This idenifier is defined in module Prelude, please do renaming in that module!
-CMD:["stop"]
-CMD:["rename","Field2.hs","absPoint","5","18"]
-PlainModule "Field2"
-Analyzing: Field2.hs
-message: CAUGHT EXCEPTION: Name 'absPoint'  already existed
-
-CMD:["stop"]
-CMD:["rename","Qualifier.hs","sum","13","1"]
-PlainModule "Qualifier"
-Analyzing: Qualifier.hs
-message: CAUGHT EXCEPTION: The new name will cause ambiguous occurrence problem, please select another new name or qualify the use of ' sum' before renaming!
-
-CMD:["stop"]
-CMD:["rename","Main.hs","main1","11","1"]
-MainModule "Main.hs"
-Analyzing: Main.hs
-message: CAUGHT EXCEPTION: The 'main' function defined in a 'Main' module should not be renamed!
-CMD:["stop"]
-CMD:["rename","ConflictExport.hs","fringe","7","1"]
-PlainModule "ConflictExport"
-Analyzing: D6.hs
-Analyzing: ConflictExport.hs
-message: CAUGHT EXCEPTION: The new name will cause  conflicting exports, please select another new name!
-CMD:["stop"]

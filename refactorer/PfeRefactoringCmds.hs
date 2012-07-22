@@ -46,7 +46,6 @@ import RefacIdentify
 import RefacEvalMon
 import RefacAddEvalMonCache
 import RefacIntroThreshold
-import RefacIntroEvalDegree
 
 
 pfeRefactoringCmds =
@@ -114,5 +113,4 @@ pfeRefactoringCmds =
   ,("refacEvalMon",(args " <fileName> <line> <column> <line> <column>" refacEvalMon, " Insert Eval Monad"))
   ,("refacAddEvalMonCache",(args " <fileName> <line> <column> <line> <column>" refacAddEvalMonCache, " Activate Eval Monad"))
   ,("refacClearEvalCache",(args " <fileName>" refacClearEvalCache, " clear active eval monad"))
-  ,("refacDeepSeq",(args " <fileName> <line> <column> <line> <column>" refacDeepSeq, " inserts a deep seq evaluate degree"))
   ]

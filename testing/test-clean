@@ -1,22 +1,49 @@
-DIRS="renaming \
-      demote   \
-      liftOneLevel \
-      duplication \
-      liftToToplevel \
-      rmOneParameter \
-      addOneParameter \
-      introNewDef     \
-      removeDef   \
-      generaliseDef \
-      unfoldDef \
-      addToExport \
-      cleanImports \
-      fromConcreteToAbstract \
-      mkImpExplicit \
-      moveDefBtwMods \
-      rmFromExport \
-      pointWiseToPointfree 
-    "
+#!/bin/bash
+
+DIRS="addCon
+addField
+addOneParameter
+addToExport
+asPatterns
+cleanImports
+demote
+duplication
+evalAddEvalMon
+evalAddEvalMonCache
+evalMonad
+foldDef
+foldPatterns
+fromConcreteToAbstract
+generaliseDef
+generativeFold
+instantiate
+introCase
+introNewDef
+introPattern
+introThreshold
+letToWhere
+liftOneLevel
+liftToToplevel
+merging
+mkImpExplicit
+moveDefBtwMods
+pointwiseToPointfree
+refacDataNewType
+refacFunDef
+refacRedunDec
+refacSlicing
+removeCon
+removeDef
+removeField
+renaming
+rmFromExport
+rmOneParameter
+simplifyExpr
+subIntroPattern
+unfoldAsPatterns
+unfoldDef
+whereToLet
+"
 
 rm -f UTest
 rm -f UTest.exe
