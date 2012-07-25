@@ -1,5 +1,5 @@
 module Pfe3Metrics where
-import Maybe(mapMaybe)
+import Data.Maybe(mapMaybe)
 
 import PFE0(allModules,pput)
 import PFE3(parseModule)

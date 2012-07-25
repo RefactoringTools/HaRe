@@ -1,9 +1,9 @@
 -- Programatica Front-End Commands, level 0
 module Pfe0Cmds where
 import Prelude hiding (print,putStr,putStrLn,catch,readFile)
-import List((\\))
-import Monad(unless,when)
-import Maybe(fromJust)
+import Data.List((\\))
+import Control.Monad(unless,when)
+import Data.Maybe(fromJust)
 
 import PFE0
 

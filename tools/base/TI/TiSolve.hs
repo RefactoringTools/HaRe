@@ -3,7 +3,7 @@ Functions for unifying types, matching types, and expanding type synonyms.
 -}
 module TiSolve(TypeConstraint(..),solve,isVar,matches,matchEqns,expandSynonyms) where
 import Prelude hiding (lookup) -- for Hugs
-import Monad(mplus)
+import Control.Monad(mplus)
 import TiConstraints
 import TiTypes
 import TiNames

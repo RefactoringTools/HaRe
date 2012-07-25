@@ -3,9 +3,9 @@ module SCMs where
 import OpTypes
 import NewSCC
 --import Assoc
-import List(find)
+import Data.List(find)
 --import Maybe(fromMaybe)
-import Maybe(mapMaybe)
+import Data.Maybe(mapMaybe)
 import HsModule
 
 

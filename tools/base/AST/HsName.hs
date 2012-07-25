@@ -1,7 +1,7 @@
 module HsName where
 
-import Char(isAlpha,isUpper)
-import List(intersperse,isPrefixOf,isSuffixOf)
+import Data.Char(isAlpha,isUpper)
+import Data.List(intersperse,isPrefixOf,isSuffixOf)
 import PrettyPrint
 
 import Data.Generics
@@ -25,7 +25,7 @@ data ModuleName
 moduleName path "Main" = MainModule path
 moduleName  _   s      = PlainModule s
 
-plainModule s | s/="Main" = PlainModule s 
+plainModule s | s/="Main" = PlainModule s
 
 isMainModule (MainModule _) = True
 isMainModule _ = False
@@ -133,7 +133,7 @@ splitQualName' s = (m,n)
     chop ('.':s@(c:_)) = if isUpper c
 			 then []:chop s
 			 else []:[s]
-    chop (c:s) = 
+    chop (c:s) =
 	  case chop s of
 	    [] -> [[c]]
 	    s:ss -> (c:s):ss

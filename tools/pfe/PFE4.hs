@@ -7,8 +7,8 @@ module PFE4(
 import Prelude hiding (putStrLn,readFile,catch,ioError)
 
 --import Monad(when)
-import List(intersect)
-import Maybe(fromMaybe,isNothing)
+import Data.List(intersect)
+import Data.Maybe(fromMaybe,isNothing)
 
 import HsConstants(mod_Prelude,mod_Ix)
 import HsModule(HsModuleI,ModuleName(..),hsModName)

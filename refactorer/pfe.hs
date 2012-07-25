@@ -14,7 +14,7 @@ import SimpPatMatchBase()
 
 import TiDecorate(TiDecls) -- to choose result type from the type checker
 import HsModule
-import qualified IO
+import qualified System.IO as IO
 import Pfe0Cmds(addHelpCmd)
 import Pfe4Cmds(pfe4Cmds)
 import PFE4(PFE4Info)

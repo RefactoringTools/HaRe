@@ -13,7 +13,7 @@ specification with a discussion about names and entities.
 > ) where
 >
 > --import Set
-> import Maybe(isJust)
+> import Data.Maybe(isJust)
 > import Ents(Entity,isCon,isValue,owns)
 > import Names(Name,QName,ModName,
 >              getQualified, getQualifier, mkQual, mkUnqual)

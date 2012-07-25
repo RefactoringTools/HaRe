@@ -3,7 +3,7 @@ module ExceptM (module ExceptM, HasExcept(..)) where
 import MT
 import Control_Monad_Fix
 
-import Monad (liftM)
+import Control.Monad (liftM)
 
 {- use newtype to avoid conflicts with class instances! -}
 newtype ExceptM l r      = ExceptM {removeExcept :: Either l r}

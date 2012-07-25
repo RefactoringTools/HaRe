@@ -13,8 +13,8 @@ See Pretty.lhs for description of the combinators.
 module PrettyM (module PrettyM, module PrettyEnv, P.Mode, P.TextDetails) where
 
 import qualified Pretty as P
-import Ratio
-import Monad(liftM2,liftM)
+import Data.Ratio
+import Control.Monad(liftM2,liftM)
 import MUtils
 import PrettyEnv
 

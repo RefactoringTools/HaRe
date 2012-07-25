@@ -2,8 +2,9 @@ module EditorCommands where
 
 import MT(MT(..))
 
-import System(system,getArgs)
-import IO(hPutStrLn
+import System.Cmd(system)
+import System.Environment(getArgs)
+import System.IO(hPutStrLn
          ,hGetLine
          ,hClose
          ,hSetBuffering

@@ -15,7 +15,7 @@ module FixpointTheme where
 import StrategyPrelude
 import FlowTheme
 import TraversalTheme
-import Monad
+import Control.Monad
 
 
 ------------------------------------------------------------------------------

@@ -3,7 +3,7 @@ module TiSCC where
 import MUtils
 import NewSCC
 --import Grapheq
-import Maybe(fromJust,mapMaybe)
+import Data.Maybe(fromJust,mapMaybe)
 import TiDefinedNames(definedNamesSplit)
 import TiFreeNames
 

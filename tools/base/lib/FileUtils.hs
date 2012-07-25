@@ -3,7 +3,7 @@ import Prelude hiding (readFile,writeFile,
 		       putStr,putStrLn,getLine,readLn,print,
 		       catch,ioError)
 import qualified Prelude
-import Monad(unless)
+import Control.Monad(unless)
 import MUtils(( # ),done,read'',readAtEnd)
 import AbstractIO
 

@@ -3,9 +3,9 @@ module CmdLineParser3(
   run,usage,parseAll
   ) where
 import PrettyPrint hiding (kw)
-import Monad(msum,join,liftM,MonadPlus(..),ap)
-import Maybe(isJust)
-import System(getArgs)
+import Control.Monad(msum,join,liftM,MonadPlus(..),ap)
+import Data.Maybe(isJust)
+import System.Environment(getArgs)
 
 infixl 3 <@,`chk`,#@
 infix 2 :--

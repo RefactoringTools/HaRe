@@ -4,7 +4,7 @@ module WorkModule(WorkModuleI(..),Ent(..),ExpRel,
 		  ) where
 
 import Modules
-import Maybe(fromMaybe,fromJust)
+import Data.Maybe(fromMaybe,fromJust)
 --import Names
 import Ents
 

@@ -1,6 +1,6 @@
 module PrettyStd where
 import PrettyPrint2
-import Ratio
+import Data.Ratio
 
 -- Predefined instances:
 

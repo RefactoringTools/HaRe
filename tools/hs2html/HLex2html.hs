@@ -9,7 +9,7 @@ thus it does not include the #head# or #body# tags.
 module HLex2html({-hlex2html,-}hlex2html',simpleHlex2html) where
 import RefsTypes --hiding (isDef)
 import MUtils(apSnd)
-import Char(isSpace{-,isAlpha-},isAlphaNum)
+import Data.Char(isSpace{-,isAlpha-},isAlphaNum)
 import HsTokens
 import SrcLoc1
 import LitTxt(toHTMLblock)

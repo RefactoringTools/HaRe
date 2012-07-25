@@ -11,8 +11,8 @@ import SrcLoc1
 import Deriving(derive)
 import FreeNamesBase()
 
-import Maybe(mapMaybe)
-import List(nub,partition)
+import Data.Maybe(mapMaybe)
+import Data.List(nub,partition)
 import MUtils
 import PrettyPrint
 

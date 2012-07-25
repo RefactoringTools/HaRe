@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------------
--- | 
+-- |
 -- Maintainer	: Ralf Laemmel, Joost Visser
 -- Stability	: experimental
 -- Portability	: portable
@@ -9,13 +9,13 @@
 
 ------------------------------------------------------------------------------
 
-module MonadMaybe ( 
+module MonadMaybe (
 
  MaybeT(..)
 
 ) where
 
-import Monad
+import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.Trans
 import Control.Monad.Reader
@@ -23,7 +23,7 @@ import Control.Monad.Writer
 import Control.Monad.State
 import Control.Monad.RWS
 import Control.Monad.Cont
-import IO
+import System.IO
 import Control.Monad.Error
 
 ------------------------------------------------------------------------------

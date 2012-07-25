@@ -1,5 +1,5 @@
 module HsAssocUtil where
-import Maybe(fromMaybe)
+import Data.Maybe(fromMaybe)
 import HsAssocStruct
 
 {-

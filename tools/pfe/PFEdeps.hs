@@ -5,8 +5,8 @@ module PFEdeps(
    tdefinedNames,isDefaultDecl,isInstDecl,splitDecls)
  where
 import Prelude hiding (readFile,readIO)
-import Maybe(fromMaybe)
-import List(nub,sort)
+import Data.Maybe(fromMaybe)
+import Data.List(nub,sort)
 
 import HsModule
 import HsIdent(getHSName,HsIdentI(..))

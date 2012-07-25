@@ -13,7 +13,7 @@
 
 module MonadicFunctions where
 
-import Monad
+import Control.Monad
 
 
 ------------------------------------------------------------------------------

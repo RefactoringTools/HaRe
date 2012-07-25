@@ -7,7 +7,7 @@ import MUtils(apFst,pairWith)
 -- Part of the following code is from "Report on the Programming Language Haskell",
 -- version 1.2, appendix C.
 
-import Char
+import Data.Char
 
 readHaskellFile cpp path = optUnlit path =<< cppFile cpp path
 

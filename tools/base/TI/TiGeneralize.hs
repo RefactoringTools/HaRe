@@ -21,7 +21,7 @@ import HsConstants(mod_Prelude,tuple)
 import BaseSyntax(srcLoc,TI(..))
 import TypedIds(NameSpace(..))
 import PrettyPrint hiding (var)
-import List((\\),partition,nub)--,intersect
+import Data.List((\\),partition,nub)--,intersect
 import MUtils
 
 --import Debug.Trace(trace) -- debug

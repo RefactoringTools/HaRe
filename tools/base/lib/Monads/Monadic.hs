@@ -1,6 +1,6 @@
 module Monadic(module Monadic, module Monad) where
 
-import Monad
+import Control.Monad
 
 infixl 1 #, <#
 

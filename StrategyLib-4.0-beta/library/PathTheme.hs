@@ -16,7 +16,7 @@ import StrategyPrelude
 import OverloadingTheme
 import FlowTheme
 import TraversalTheme
-import Monad
+import Control.Monad
 
 
 ------------------------------------------------------------------------------

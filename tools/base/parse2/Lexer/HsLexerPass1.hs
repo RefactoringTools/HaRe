@@ -3,7 +3,7 @@ import HsLex(haskellLex)
 import HsLexUtils
 import HsLayoutPre(layoutPre,PosToken)
 import HsLexerPos
-import List(mapAccumL)
+import Data.List(mapAccumL)
 
 default(Int)
 

@@ -15,9 +15,9 @@ import TiSolve(expandSynonyms)
 
 import PrettyPrint
 import MUtils(( # ),( #. ),(@@),collectByFst,done,usort,concatMapM,mapBoth)
-import Monad(unless)
-import Maybe(mapMaybe)
-import List((\\),nub)
+import Control.Monad(unless)
+import Data.Maybe(mapMaybe)
+import Data.List((\\),nub)
 
 --import Debug.Trace(trace)
 ----mtrace s = trace s $ done

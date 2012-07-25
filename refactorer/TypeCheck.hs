@@ -1,11 +1,11 @@
 module TypeCheck where
 
-import System
+-- import System
 import Unsafe.Coerce
 import Control.Exception
 import System.IO.Unsafe
 import System.IO
-import List
+import Data.List
 --import PackageConfig    ( stringToPackageId )
 import GHC hiding (SrcLoc)
 import DynFlags (defaultDynFlags)

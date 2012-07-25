@@ -21,8 +21,8 @@ import RefacLocUtils
 import Data.Char
 import GHC.Unicode
 import AbstractIO
-import Maybe
-import List
+import Data.Maybe
+import Data.List
 import RefacUtils
 import RefacRedunDec
 import SlicingUtils

@@ -19,11 +19,11 @@ module ChaseImports (
  chaseFile, findFile
 ) where
 
-import Monad
-import IO
+import Control.Monad
+import System.IO
 import System.Directory
 import Control.Monad.Error () -- This import gives us (MonadPlus IO) !!
-
+import Control.OldException
 
 ------------------------------------------------------------------------------
 -- * Type synonym

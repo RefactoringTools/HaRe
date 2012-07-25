@@ -2,7 +2,7 @@ module QualNames where
 
 import HsName
 import HsIdent
-import Maybe(isJust)
+import Data.Maybe(isJust)
 
 class QualNames qn m n | qn -> m n, m n -> qn where
   getQualifier  :: qn -> Maybe m

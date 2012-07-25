@@ -29,7 +29,7 @@ module GetOpt (
    getOpt
    ) where
 
-import List(isPrefixOf)
+import Data.List(isPrefixOf)
 
 data ArgOrder a                  -- what to do with options after non-options:
    = RequireOrder                -- no option processing after first non-option

@@ -8,7 +8,7 @@ import UniqueNames
 import QualNames
 import SpecialNames
 
-import Char(isUpper)
+import Data.Char(isUpper)
 
 import Data.Generics
 

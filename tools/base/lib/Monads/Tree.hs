@@ -1,6 +1,6 @@
 module Tree where 
 
-import Monad
+import Control.Monad
 import Prelude hiding (sequence)    -- doesn't work in Hugs.
 import Control_Monad_Fix
 

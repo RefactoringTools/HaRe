@@ -14,7 +14,7 @@
  
 module KeyholeTheme where
 
-import Monad
+import Control.Monad
 import Control.Monad.Identity 
 import MonadicFunctions
 import StrategyPrelude

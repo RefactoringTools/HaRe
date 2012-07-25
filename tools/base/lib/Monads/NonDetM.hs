@@ -1,7 +1,7 @@
 module NonDetM (NonDetM, withStrat) where
 
 import Tree
-import Monad
+import Control.Monad
 import MT
 import Control_Monad_Fix
 

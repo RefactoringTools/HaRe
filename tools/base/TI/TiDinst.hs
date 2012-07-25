@@ -3,7 +3,7 @@ Some definitions to support type annotations and
 the dictionary translation for base language declarations (the D structure).
 -}
 module TiDinst where
-import Maybe(isJust)
+import Data.Maybe(isJust)
 
 import HsDeclStruct
 import HsDeclMaps(mapDI)

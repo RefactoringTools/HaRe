@@ -5,8 +5,8 @@ module PFE2(
   getAllExports,getExports,getModuleExports,getModuleExportsTime,getModuleTime
   ) where
 import Prelude hiding (readFile,putStrLn)
-import Maybe(isJust,isNothing,fromJust)
-import List(nub,intersect,(\\))
+import Data.Maybe(isJust,isNothing,fromJust)
+import Data.List(nub,intersect,(\\))
 
 import HsModule
 import WorkModule(analyzeSCM,expRel,ExpRel,readRel,showRel)

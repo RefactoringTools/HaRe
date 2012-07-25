@@ -3,8 +3,8 @@ Chase source files through imports, assuming module names and file names agree.
 -}
 module PfeChase where
 import Prelude hiding (putStrLn)
-import List(nub,partition,(\\))
-import Monad(unless,filterM)
+import Data.List(nub,partition,(\\))
+import Control.Monad(unless,filterM)
 
 import HsName(moduleName,ModuleName(..),isHierarchical)
 

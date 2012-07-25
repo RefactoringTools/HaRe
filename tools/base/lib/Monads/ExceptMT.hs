@@ -1,12 +1,12 @@
-module ExceptMT (HasExcept(..), MT(..), WithExcept, removeExcept, mapExcept) 
+module ExceptMT (HasExcept(..), MT(..), WithExcept, removeExcept, mapExcept)
   where
 
 import MT
-import Control_Monad_Fix 
+import Control_Monad_Fix
 
-import Monad(liftM,MonadPlus(..))
+import Control.Monad(liftM,MonadPlus(..))
 
-newtype WithExcept x m a   = E { removeExcept :: m (Either x a) } 
+newtype WithExcept x m a   = E { removeExcept :: m (Either x a) }
 iso f = E . f . removeExcept
 
 
@@ -21,15 +21,15 @@ instance Monad m => Functor (WithExcept x m) where
 instance Monad m => Monad (WithExcept x m) where
   return    = lift . return
   E m >>= f = E $ do x <- m
-                     case x of 
+                     case x of
                        Left x  -> return (Left x)
                        Right a -> removeExcept (f a)
-            
+
 instance MT (WithExcept x) where
   lift m    = E (m >>= return . Right)
 
 instance MonadPlus m => MonadPlus (WithExcept x m) where
-  mzero             = lift mzero   
+  mzero             = lift mzero
   E m1 `mplus` E m2 = E (m1 `mplus` m2)
 --------------------------------------------------------------------------------
 
@@ -51,7 +51,7 @@ instance Monad m => HasExcept (WithExcept x m) x where
 
 instance HasCont m => HasCont (WithExcept x m) where
   callcc f        = E $ callcc $ \k -> removeExcept $ f $ E . k . Right
-  
+
 
 instance HasBaseMonad m n => HasBaseMonad (WithExcept e m) n where
   inBase          = lift . inBase

@@ -2,20 +2,20 @@ module RefacDuplicates(detectDuplicates,detectSpecDuplicates) where
 
 import PrettyPrint
 import PosSyntax
-import Maybe
+import Data.Maybe
 import TypedIds
 
 import UniqueNames hiding (srcLoc)
 import PNT 
 import TiPNT 
 
-import List  
+import Data.List  
 import RefacUtils
 import PFE0 (findFile, getCurrentModuleGraph)
 import AbstractIO
 import Prelude hiding (putStrLn, putStr)
-import Char
-import Time
+import Data.Char
+import System.Time
 
 type Drip = (String, LocInfo)
 type ExpDrip = (HsExpP, LocInfo)

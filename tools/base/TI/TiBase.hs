@@ -13,7 +13,7 @@ import TiBaseStruct
 import TiDs()
 --import MUtils
 import PrettyPrint
-import List(partition)
+import Data.List(partition)
 --import Maybe(mapMaybe)
 
 --tstTcModule kbs tbs =

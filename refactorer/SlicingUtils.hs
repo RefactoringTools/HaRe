@@ -1,8 +1,8 @@
 module SlicingUtils where
 
 import AbstractIO
-import Maybe
-import List
+import Data.Maybe
+import Data.List
 import RefacUtils
 import RefacRedunDec
 

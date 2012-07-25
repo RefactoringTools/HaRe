@@ -1,8 +1,8 @@
 -- Thomas' misc utils (things that are missing in the standard libraries)
 module MUtils where
-import Monad(ap,unless,when)
-import List(groupBy,sortBy,sort)
-import Maybe(fromMaybe)
+import Control.Monad(ap,unless,when)
+import Data.List(groupBy,sortBy,sort)
+import Data.Maybe(fromMaybe)
 --import ExceptM()
 
 -- all eta expansions because of the stupid monomorphism restriction

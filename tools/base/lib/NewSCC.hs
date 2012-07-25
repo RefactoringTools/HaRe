@@ -1,15 +1,15 @@
 module NewSCC (sccEq,scc) where
 
-{- A module to find strongly connected components 
+{- A module to find strongly connected components
  - and perform a topological sort on them.
  - This is Lennart Augusstoson's code (from hbc?)
- - converted to Haskell by Iavor Diatchki.  
+ - converted to Haskell by Iavor Diatchki.
  -}
 
 import OpTypes
 import Products((><))
 import StateM
-import Maybe (fromJust,listToMaybe)
+import Data.Maybe (fromJust,listToMaybe)
 
 
 sccEq               :: EqOp a -> Graph a -> [Graph a]
@@ -33,7 +33,7 @@ scc         = sccEq (==)
 
 
 g :: EqOp a -> Graph a -> (a,[a]) -> StateM (Numbering a) [Graph a]
-g eq gG vv@(v,_)   = do 
+g eq gG vv@(v,_)   = do
     low <- getSt
     let found       = const (return [])
         notFound    = let (cs4, st) = searchC eq gG 1 low vv
@@ -45,17 +45,17 @@ g eq gG vv@(v,_)   = do
 
 searchC :: EqOp a -> Graph a ->
             Int -> Numbering a -> (a,[a]) -> ([Graph a], RW a)
-searchC eq g n low vv@(v, es) 
+searchC eq g n low vv@(v, es)
     | nonfailLkpEq eq v low' == min' =
             (cs' ++ [nstack],
              (n', map (id >< const maxBound) nstack ++ low', [], min'))
     | otherwise = (cs', (n', low', nstack, min'))
-    where    
+    where
     cs'     = concat cs2
     (cs2, (n', low', nstack, min'))
-        = let n1 = n + 1 
+        = let n1 = n + 1
               initSt = (n1, (v,n1) : low , [vv], n1)
-        in withStS initSt $ mapM (f eq g) es 
+        in withStS initSt $ mapM (f eq g) es
 
 
 

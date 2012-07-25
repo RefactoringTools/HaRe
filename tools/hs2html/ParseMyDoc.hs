@@ -2,12 +2,12 @@ module ParseMyDoc where
 
 import MyDoc
 
-import Monad
-import List
-import Maybe
-import Char
+import Control.Monad
+import Data.List
+import Data.Maybe
+import Data.Char
 
-import StateM 
+import StateM
 --import MUtils
 
 -- Constants
@@ -17,7 +17,7 @@ data CharClass = CodeChar | ItemChar | UnderChar
                 deriving Eq
 
 
-chars = 
+chars =
     [ (CodeChar, ['>', '|'])
     , (ItemChar, ['*', '-'])
     , (UnderChar, ['=', '-', '~'])
@@ -27,20 +27,20 @@ get x = fromJust (lookup x chars)
 
 
 -- Character classes
-is t c = c `elem` get t 
+is t c = c `elem` get t
 
 
 -- Line types
 codeL (n,x:xs)  = n == 0 && is CodeChar x
 codeL _         = False
 blankL (n,x)    = null x
-underL (n,x:xs) = is UnderChar x && all (== x) xs 
+underL (n,x:xs) = is UnderChar x && all (== x) xs
 underL _        = False
 itemL (n,x:y:_) = is ItemChar x && isSpace y
 itemL _         = False
 
 -- underline types
-lvl (_,x:_) 
+lvl (_,x:_)
     | is UnderChar x    = fromJust $ elemIndex x (get UnderChar)
     | otherwise         = error "not underline character"
 
@@ -60,8 +60,8 @@ grpEither = map grp . groupBy eq
     where
     eq x y          = eIf x (eIf y True False) (eIf y False True)
     grp xs@(x: _)   = eIf x (Left $ unL `map` xs) (Right $ unR `map` xs)
-    unL = either id undefined 
-    unR = either undefined id 
+    unL = either id undefined
+    unR = either undefined id
 
 
 parse =  map (eMap f id) . sepCodeAndText . map indent . lines
@@ -76,13 +76,13 @@ parse =  map (eMap f id) . sepCodeAndText . map indent . lines
 
 
 
-sepCodeAndText = grpEither . map identify 
+sepCodeAndText = grpEither . map identify
     where
     identify l@(n,txt)
         | codeL l   = Right (tail txt)
         | otherwise = Left l
 
-data St = St 
+data St = St
     { offset    :: Integer
     , curTxt    :: [String]
     , curItem   :: [Paragraph]
@@ -92,11 +92,11 @@ data St = St
 
 
 newList m txt = St
-    { offset    = m 
+    { offset    = m
     , curTxt    = [stripList txt]
     , curItem   = []
-    , curList   = [] 
-    } 
+    , curList   = []
+    }
 
 newItem txt st  = (endItem st) { curTxt = [stripList txt] }
 
@@ -107,7 +107,7 @@ newTxt txt st   = st { curTxt = txt : curTxt st }
 newLine st      = st { curTxt = [] : curTxt st }
 
 endTxt st
-    | null (curTxt st)  = st 
+    | null (curTxt st)  = st
     | otherwise = st
         { curTxt = []
         , curItem = toPar (curTxt st) : curItem st
@@ -120,11 +120,11 @@ endTxt st
     unl (x:y:zs)    = x ++ "\n" ++ y ++ unl zs
 -}
 
-endItem st = let s = endTxt st in 
+endItem st = let s = endTxt st in
     if null (curItem s) then s
     else s
     { curItem = []
-    , curList = toItm (curItem s) : curList s 
+    , curList = toItm (curItem s) : curList s
     }
     where
     toItm = reverse
@@ -137,7 +137,7 @@ endList (st:x:xs)   = x { curItem = l : curItem x } : xs
 
 endAllLists []  = error "endAllLists: []"
 endAllLists [x] = [endItem x]
-endAllLists xss = endAllLists (endList xss) 
+endAllLists xss = endAllLists (endList xss)
 
 
 proc [] _   = error "proc: [] _"
@@ -145,13 +145,13 @@ proc [] _   = error "proc: [] _"
 proc sts [] = reverse $ curList $ top (endAllLists sts)
 
 proc sts (l1:l2:ls)
-    | underL l2 
+    | underL l2
         = let [st]  = endAllLists sts
               st'   = newHeading (H (lvl l2, getTxt l1)) st
           in proc [st'] ls
 
 
-proc [st] (l:ls) 
+proc [st] (l:ls)
     | blankL l  = let st' = endItem st
                   in proc [newLine st'] ls
 
@@ -159,15 +159,15 @@ proc [st] (l:ls)
 proc stack (l:ls)
     | blankL l  = proc (apTop newLine stack) ls
     | m == n && itemL l = proc (apTop (newItem txt) stack) ls
-    | n >= m = if itemL l 
+    | n >= m = if itemL l
                 then proc (push (newList n txt) (apTop endTxt stack)) ls
                 else proc (apTop (newTxt txt) stack) ls
-    | otherwise = let x:xs = endList stack 
+    | otherwise = let x:xs = endList stack
                   in proc (apTop (newTxt txt) (endList stack)) ls
     where
     m   = offset (top stack)
     n   = getPos l
-    txt = getTxt l 
+    txt = getTxt l
 
 
 getPos = fst
@@ -181,7 +181,7 @@ apTop _ _       = error "apTop: []"
 
 
 
-dec = decorate Plain 
+dec = decorate Plain
 
 decorate _ [] = []
 decorate t (xs:xss)
@@ -191,7 +191,7 @@ decorate t (xs:xss)
 toAct '_' = act '_' Emph
 toAct '#' = act '#' Code
 toAct '$' = act '$' Math
-toAct x   = addChar x 
+toAct x   = addChar x
 
 chgTo s = do
     (ws,a,t) <- getSt
@@ -203,7 +203,7 @@ addChar c = do
 
 act c state = do
     (ws,a,s) <- getSt
-    case s of 
+    case s of
         Plain   -> chgTo state
         x
             | x == state    -> chgTo Plain

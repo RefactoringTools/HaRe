@@ -4,7 +4,7 @@ this module defines some type classes that capture what the type checker needs
 to do with identifiers.
 -}
 module TiNames where
-import Char(isAlphaNum)
+import Data.Char(isAlphaNum)
 import HsIdent
 import HsName(ModuleName)
 import HsConstants(mod_Prelude)

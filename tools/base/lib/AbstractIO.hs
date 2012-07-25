@@ -23,11 +23,11 @@ import Prelude hiding (readFile,writeFile, appendFile,
 		       getLine,readLn,getContents,
 		       catch,ioError,userError)
 import qualified Prelude
-import qualified Directory as D
-import qualified System as S
-import qualified IO
-import qualified Time
-import Time(ClockTime,CalendarTime)
+import qualified System.Directory as D
+-- import qualified System as S
+import qualified System.IO
+import qualified System.Time
+import System.Time(ClockTime,CalendarTime)
 import MT(MT(..))
 
 {-+

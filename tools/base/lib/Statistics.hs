@@ -1,9 +1,9 @@
 module Statistics where
-import List(sortBy)
+import Data.List(sortBy)
 import OpTypes(cmpBy)
-import Char(toUpper)
+import Data.Char(toUpper)
 import PrettyPrint
-import Array
+import Data.Array
 
 ppStatistics descv descu [] = empty
 ppStatistics descv descu xs =

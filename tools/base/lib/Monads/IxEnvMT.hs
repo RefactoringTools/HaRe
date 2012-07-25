@@ -3,7 +3,7 @@ module IxEnvMT (HasEnv(..), MT(..), at, Z, S, Top, Under, WithEnv, withEnv, mapE
 import MT
 import Control_Monad_Fix
 
-import Monad(liftM,MonadPlus(..))
+import Control.Monad(liftM,MonadPlus(..))
 
 
 newtype WithEnv e m a = E { unE :: e -> m a }
@@ -30,7 +30,7 @@ instance MT (WithEnv e) where
     lift        = E . const
 
 instance MonadPlus m => MonadPlus (WithEnv e m) where
-    mzero           = lift mzero 
+    mzero           = lift mzero
     E a `mplus` E b = E (\e -> a e `mplus` b e)
 --------------------------------------------------------------------------------
 

@@ -3,7 +3,7 @@ Some source transformations need to refer to entities defined in the Prelude
 or other standard library modules.
 -}
 module PFE_StdNames where
-import List(intersect)
+import Data.List(intersect)
 
 import TypedIds(NameSpace(..),namespace)
 import HsConstants(mod_Prelude,mod_Ix)

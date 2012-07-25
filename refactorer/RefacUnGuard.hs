@@ -169,7 +169,7 @@ before converting them into /if then else/'s.
 
 import RefacUtils
 import PrettyPrint (pp)
-import Maybe 
+import Data.Maybe 
 import Control.Monad.State 
 
 type Match = HsMatchI PNT (HsExpI PNT) (HsPatI PNT) [HsDeclI PNT]

@@ -14,8 +14,8 @@ and how we can detect ``bad'' solutions.
 >import NamesEntities
 >import ModSysAST
 > --import Modules
->import List (partition,nub)
->import Maybe(isNothing)
+>import Data.List (partition,nub)
+>import Data.Maybe(isNothing)
 
 >import Set60204
 

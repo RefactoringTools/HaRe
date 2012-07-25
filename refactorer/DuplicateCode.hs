@@ -25,7 +25,7 @@
 -----------------------------------------------------------------------------
 
 module DuplicateCode where
-import Time
+import System.Time
 import PrettyPrint
 import System.IO.Unsafe
 import PosSyntax hiding (ModuleName, HsName, SN)
@@ -43,8 +43,8 @@ import RefacLocUtils
 import Data.Char
 import GHC.Unicode
 import AbstractIO
-import Maybe
-import List
+import Data.Maybe
+import Data.List
 import RefacUtils
 import LocalSettings
 import Data.Function

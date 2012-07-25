@@ -3,7 +3,7 @@ module ContM (HasCont(..), runCont, ContM) where
 import MT
 
 
-import Monad
+import Control.Monad
 
 
 newtype ContM o i = C { ($$) :: (i -> o) -> o }

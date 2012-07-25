@@ -6,7 +6,7 @@ import PrettyPrint
 import HasBaseName
 --import NoEq
 import qualified SrcLoc1 as L
-import Maybe(fromMaybe)
+import Data.Maybe(fromMaybe)
 import Data.Generics
 
 -- Types to decorate identifiers to make them unique

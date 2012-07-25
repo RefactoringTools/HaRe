@@ -1,6 +1,6 @@
 module Vim.EditorFunctions where
 
-import Char(toUpper)
+import Data.Char(toUpper)
 import GenEditorInterfacesAux
 
 editor = Editor {
@@ -84,9 +84,9 @@ editor = Editor {
         gen_function (Menu _ es)   = unlines $ map gen_function es
         gen_command (Entry _ name c) = "command! "++capitalise name++" :echo Haskell_refac_"++name++"()"
         gen_command (Menu _ es)      = unlines $ map gen_command es
-        gen_menu_entry prefix (Menu name es)       = 
+        gen_menu_entry prefix (Menu name es)       =
             unlines $ map (gen_menu_entry $ prefix++concatMap escape (capitalise name)++".") es
-        gen_menu_entry prefix (Entry entry name c) = 
+        gen_menu_entry prefix (Entry entry name c) =
             "\tamenu Haskell(Refac)."
           ++prefix
           ++concatMap escape (capitalise entry)++" :"++capitalise name++"<cr>"

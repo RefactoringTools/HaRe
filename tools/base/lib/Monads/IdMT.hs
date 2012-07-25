@@ -2,7 +2,7 @@ module IdMT where
 
 import MT
 import Control_Monad_Fix
-import Monad(liftM)
+import Control.Monad(liftM)
 
 
 newtype With_ m a    = I { removeId :: m a }
@@ -12,17 +12,17 @@ instance MT With_ where
   lift              = I
 
 instance Monad m => Monad (With_ m) where
-  return            = lift . return 
+  return            = lift . return
   I m >>= f         = I (m >>= removeId . f)
 
 instance Monad m => Functor (With_ m) where
   fmap              = liftM
 
 instance HasBaseMonad m n => HasBaseMonad (With_ m) n where
-  inBase            = I . inBase 
+  inBase            = I . inBase
 
 instance HasEnv m ix e => HasEnv (With_ m) ix e where
-  getEnv            = I . getEnv 
+  getEnv            = I . getEnv
 
 instance HasState m ix e => HasState (With_ m) ix e where
   updSt ix          = I . updSt ix
@@ -42,7 +42,7 @@ instance HasRefs m r => HasRefs (With_ m) r where
   newRef            = I . newRef
   readRef           = I . readRef
   writeRef r        = I . writeRef r
-  
+
 instance MonadFix m => MonadFix (With_ m) where
   mfix f            = I (mfix (removeId . f))
 

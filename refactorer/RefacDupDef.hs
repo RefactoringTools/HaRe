@@ -4,9 +4,9 @@ module RefacDupDef(duplicateDef {-,duplicateDef1-}) where
 
 import PrettyPrint
 import PosSyntax
-import Maybe
+import Data.Maybe
 import TypedIds
-import List 
+import Data.List 
 import TiPNT 
 import RefacUtils 
 import SourceNames
