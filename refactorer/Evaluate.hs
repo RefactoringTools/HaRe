@@ -75,9 +75,9 @@ runEval args modName closure_call pac = runGhc (Just pac) $ do
    -- findModule :: GhcMonad m => ModuleName -> Maybe FastString -> m Module
    usermod <- findModule (mkModuleName modName) Nothing
    -- setContext [usermod] []
-   
+
    -- setContext :: GhcMonad m => [InteractiveImport] -> m ()
-   setContext [usermod]
+   setContext [IIModule usermod]
 
    r <- runStmt closure_call GHC.RunToCompletion
 
@@ -113,5 +113,3 @@ nameToString name = do
         --    _  -> return Nothing
         -- `finally`
         --   GHC.setSessionDynFlags cms dflags
-
-
