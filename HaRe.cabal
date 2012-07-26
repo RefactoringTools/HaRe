@@ -96,3 +96,8 @@ Executable hare-client
         Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array
         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
+
+Executable UTest
+  Main-Is:                      UTest.hs
+  Build-Depends:                base >= 4, HUnit, process
+  Hs-Source-Dirs:               testing

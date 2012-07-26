@@ -1,7 +1,7 @@
 
 module Main where
 
-import HUnit
+import Test.HUnit
 import System.IO
 -- import System hiding (system)
 -- import qualified System

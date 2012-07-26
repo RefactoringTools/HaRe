@@ -13,28 +13,28 @@ HARE="../../refactorer/pfe"
 
 HUNIT="./HUnit-1.0"
 
-DIRS_OLD="asPatterns  
-      refacRedunDec 
-      refacSlicing 
-      typeSigs 
-      renaming 
-      demote   
-      liftOneLevel 
-      duplication 
-      liftToToplevel 
-      rmOneParameter 
-      addOneParameter 
-      introNewDef     
-      removeDef   
-      generaliseDef 
-      unfoldDef 
-      addToExport 
-      cleanImports 
-      fromConcreteToAbstract 
-      mkImpExplicit 
-      moveDefBtwMods 
-      rmFromExport 
-      pointwiseToPointfree 
+DIRS_OLD="asPatterns
+      refacRedunDec
+      refacSlicing
+      typeSigs
+      renaming
+      demote
+      liftOneLevel
+      duplication
+      liftToToplevel
+      rmOneParameter
+      addOneParameter
+      introNewDef
+      removeDef
+      generaliseDef
+      unfoldDef
+      addToExport
+      cleanImports
+      fromConcreteToAbstract
+      mkImpExplicit
+      moveDefBtwMods
+      rmFromExport
+      pointwiseToPointfree
     "
 
 DIRS="addCon
@@ -90,12 +90,13 @@ runTest () {
    cd ..
 }
 
-ghc --make -i"$HUNIT" -o UTest UTest.hs
+#  ghc --make -i"$HUNIT" -o UTest UTest.hs
+ghc --make -o UTest UTest.hs
 rm *.o *.hi
 
 # avoid spurious error reports due to line-ending conventions..
 case `uname` in
-  CYGWIN*) 
+  CYGWIN*)
     unix2dos */*.hs */*/*.hs
     ;;
 esac
@@ -107,5 +108,5 @@ else
     for d in $DIRS
     do
         runTest "$d"
-    done   
+    done
 fi
