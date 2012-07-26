@@ -2,10 +2,14 @@
 module Main where
 
 import HUnit
-import IO
-import System hiding (system)
-import qualified System
-import List
+import System.IO
+-- import System hiding (system)
+-- import qualified System
+import qualified System.Cmd as System
+import System.Exit
+import System.Environment
+import Data.List
+
 
 data TestCases = TestCases {refactorCmd::String
                            ,positive::[([String],[String])]
@@ -13,11 +17,11 @@ data TestCases = TestCases {refactorCmd::String
   deriving (Show,Read)
 
 
-createNewFileName str fileName 
+createNewFileName str fileName
   =let (name, posfix)=span (/='.') fileName
    in (name++str++posfix)
 
-positiveTest system pfeCmd refactorCmd args 
+positiveTest system pfeCmd refactorCmd args
     =TestCase (do let inputFiles=fst args
                       tokExpOutputFiles=map (createNewFileName "_TokOut") inputFiles
                       --astExpOutputFiles=map (createNewFileName "_AstOut") inputFiles
@@ -28,13 +32,13 @@ positiveTest system pfeCmd refactorCmd args
                       inputOutputs1=zip inputFiles tokExpOutputFiles
                       --inputOutputs2=zip astActOutputFiles astExpOutputFiles
                   mapM (createTempFile system) inputTemps
-                  system ("echo " ++ concatMap (\t->t ++ " ") params ++ " |" ++ pfeCmd) 
+                  system ("echo " ++ concatMap (\t->t ++ " ") params ++ " |" ++ pfeCmd)
                   results1<-mapM (compareResult system) inputOutputs1
                   --results2<-mapM (compareResult system) inputOutputs2
                   mapM (recoverFiles system) inputTemps
                   mapM (rmTempFiles system) tempFiles
                   -- mapM (rmTempFiles system) astActOutputFiles
-                  assertEqual (show (refactorCmd,args)) True (all (==ExitSuccess) (results1)) -- ++results2)) 
+                  assertEqual (show (refactorCmd,args)) True (all (==ExitSuccess) (results1)) -- ++results2))
               )
 
 negativeTest system pfeCmd refactorCmd args
@@ -45,13 +49,13 @@ negativeTest system pfeCmd refactorCmd args
                       inputTemps =zip inputFiles tempFiles
                       inputOutputs=zip inputFiles tokExpOutputFiles
                   mapM (createTempFile system) inputTemps
-                  system ("echo " ++ concatMap (\t->t ++ " ") params ++ " |" ++ pfeCmd) 
+                  system ("echo " ++ concatMap (\t->t ++ " ") params ++ " |" ++ pfeCmd)
                   results<-mapM (compareResult system) inputOutputs
                   mapM (recoverFiles system) inputTemps
                   mapM (rmTempFiles system) tempFiles
-                  assertEqual (show (refactorCmd,args)) True (all (==ExitSuccess) results) 
+                  assertEqual (show (refactorCmd,args)) True (all (==ExitSuccess) results)
               )
-     
+
 createTempFile system (input, temp)=system ("cp "++ input++ " "++temp)
 
 compareResult system (input,output)=system ("diff "++input++ " " ++ output)
@@ -71,15 +75,15 @@ runTesting system hare refactorCmd positiveTests negativeTests
          system ("echo add " ++ files ++ " |" ++ hare)
          system ("echo chase ../../tools/base/tests/HaskellLibraries/ |" ++ hare)
          system ("echo chase . |" ++ hare)
-         runTestTT (testCases system hare refactorCmd positiveTests negativeTests) 
+         runTestTT (testCases system hare refactorCmd positiveTests negativeTests)
 
 
 
 main  = do
   [bash,hare] <- getArgs
-  f <- readFile "UTest.data" 
+  f <- readFile "UTest.data"
   let testcases = read f::TestCases
-  runTesting (system bash) hare 
+  runTesting (system bash) hare
              (refactorCmd testcases)
              (positive testcases)
              (negative testcases)
@@ -88,5 +92,5 @@ main  = do
 system bash cmd = --(hPutStrLn stderr cmd')>>
   (System.system cmd')
    where
-      -- cmd' = cmd 
+      -- cmd' = cmd
       cmd' = bash++" -c \""++cmd++" >> log.txt 2>>log.txt\""

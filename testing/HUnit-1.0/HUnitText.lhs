@@ -14,8 +14,8 @@ $Id: HUnitText.lhs,v 1.9 2002/02/21 16:50:27 heringto Exp $
 
 > import HUnitBase
 
-> import Monad (when)
-> import IO (Handle, stderr, hPutStr, hPutStrLn)
+> import Control.Monad (when)
+> import System.IO (Handle, stderr, hPutStr, hPutStrLn)
 
 
 As the general text-based test controller (`runTestText`) executes a
