@@ -17,7 +17,7 @@ Data-Files:                     haskell-refac.el, refactor.vim, Prelude.hs, *.hs
 
 
 Library
-        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array
+        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         GHC-Options:            -ieditors:tools/base/parse2/LexerSpec/:tools/base/parse2/LexerGen:tools/base/lib:tools/base/parse2/Lexer/:tools/base/tests/HbcLibraries:refactorer/:StrategyLib-4.0-beta/library/:StrategyLib-4.0-beta/src:StrategyLib-4.0-beta/models/deriving/:tools/base/parse2:tools/base/AST:tools/base/Modules:tools/base/pretty/:tools/base/defs/:tools/base/:tools/base/lib/Monads/:tools/base/parse2/Parser/:tools/base/syntax:tools/base/TI:tools/pfe:tools/base/transforms:tools/base/transforms/Deriving:tools/hs2html/ -fno-cse -fglasgow-exts
         Hs-Source-Dirs:         refactorer refactorer/PwPf
@@ -86,14 +86,14 @@ Executable hare-evaluate
 Executable hare
         Main-Is:                refactorer/pfe.hs
         GHC-Options:            -ieditors:tools/base/parse2/LexerSpec/:tools/base/parse2/LexerGen:tools/base/lib:tools/base/parse2/Lexer/:tools/base/tests/HbcLibraries:refactorer/:StrategyLib-4.0-beta/library/:StrategyLib-4.0-beta/src:StrategyLib-4.0-beta/models/deriving/:tools/base/parse2:tools/base/AST:tools/base/Modules:tools/base/pretty/:tools/base/defs/:tools/base/:tools/base/lib/Monads/:tools/base/parse2/Parser/:tools/base/syntax:tools/base/TI:tools/pfe:tools/base/transforms:tools/base/transforms/Deriving:tools/hs2html/ -fno-cse -fglasgow-exts
-        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array
+        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
 
 Executable hare-client
         Main-Is:                refactorer/pfe_client.hs
         GHC-Options:            -ieditors:tools/base/parse2/LexerSpec/:tools/base/parse2/LexerGen:tools/base/lib:tools/base/parse2/Lexer/:tools/base/tests/HbcLibraries:refactorer/:StrategyLib-4.0-beta/library/:StrategyLib-4.0-beta/src:StrategyLib-4.0-beta/models/deriving/:tools/base/parse2:tools/base/AST:tools/base/Modules:tools/base/pretty/:tools/base/defs/:tools/base/:tools/base/lib/Monads/:tools/base/parse2/Parser/:tools/base/syntax:tools/base/TI:tools/pfe:tools/base/transforms:tools/base/transforms/Deriving:tools/hs2html/ -fno-cse -fglasgow-exts
-        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array
+        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
 

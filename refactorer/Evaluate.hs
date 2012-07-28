@@ -18,7 +18,7 @@ import RdrName
 import Name
 import Control.Monad
 import Language.Haskell.Interpreter hiding (runGhc)
-import LocalSettings
+import LocalSettingsCabal (evaluate_result)
 
 main
  = -- defaultErrorHandler defaultDynFlags $
@@ -32,7 +32,7 @@ main
    -- error $ show (closure_call, modName, args)
    let newArgs =  args ++ ".hs"
 
-   let packageConf = ghcPath
+   -- ++AZ++ let packageConf = ghcPath
    -- (eval_res, x) <- runEval args modName closure_call packageConf
    x <- runInterpreter (runEvalHint args modName closure_call)
    case x of

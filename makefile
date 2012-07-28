@@ -1,4 +1,4 @@
-HARE_VERSION=HaRe 28/06/2010
+HARE_VERSION=HaRe 15/08/2012
 HAPPY=happy
 LEX_PARSE_DIR= tools/base/parse2
 PARSER_DIR= ${LEX_PARSE_DIR}/Parser
@@ -40,15 +40,19 @@ prepare: ${PARSER_DIR}/HsParser.hs refactorer/hidir/${SYSTEM} refactorer/odir/${
 editors-all:
 	cd editors; make all HARE_VERSION="${HARE_VERSION}"
 
+# This will be done autoamtically via cabal
 ${PARSER_DIR}/HsParser.hs: ${PARSER_DIR}/HsParser.y
 	cd ${PARSER_DIR}; ${HAPPY} HsParser.y
 
+# This will be managed by cabal
 refactorer/hidir/${SYSTEM}:
 	mkdir -p refactorer/hidir/${SYSTEM}
 
+# This will be managed by cabal
 refactorer/odir/${SYSTEM}:
 	mkdir -p refactorer/odir/${SYSTEM}
 
+# tools/base/parse2/LexerGen
 ${LEXERGEN_DIR}/HsLexerGen:
 	cd refactorer; ./myghc--make -i${LEXERGEN_IMPORTS} -i${LOCAL_IMPORTS} -o ../${LEXERGEN_DIR}/HsLexerGen ../${LEXERGEN_DIR}/HsLexerGen.hs
 

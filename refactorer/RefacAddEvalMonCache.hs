@@ -14,7 +14,7 @@ import MUtils(( # ))
 import AbstractIO
 import Debug.Trace
 import RefacMvDefBtwMod (addImport)
-import LocalSettings
+import LocalSettingsCabal (evalFilePath)
 
 
 refacAddEvalMonCache args
@@ -47,4 +47,3 @@ refacClearEvalCache args
          AbstractIO.writeFile evalFilePath ""
 
          AbstractIO.putStrLn "Completed."
-

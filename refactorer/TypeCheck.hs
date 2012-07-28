@@ -17,10 +17,15 @@ import SrcLoc
 import Control.Monad
 import Language.Haskell.Interpreter hiding (runGhc)
 
-import LocalSettings
+-- import LocalSettings
+import GHC.Paths ( libdir )
+--GHC.Paths is available via cabal install ghc-paths
 
-libdir = "/Library/Frameworks/GHC.framework/Versions/612/usr/lib/ghc-6.12.1"
+-- libdir = "/Library/Frameworks/GHC.framework/Versions/612/usr/lib/ghc-6.12.1"
 targetFile = "/Users/chrisbrown/hare/tests/A1.hs"
+
+
+
 
 ghcTypeCheck1 expr modName fileName =
   unsafePerformIO(
@@ -71,13 +76,13 @@ ghcTypeCheck args modName =
  unsafePerformIO (
   do
    let newArgs = args ++ ".hs"
-   let packageConf = ghcPath
+   -- ++AZ++ let packageConf = ghcPath
    -- ses     <- GHC.newSession {-JustTypecheck-} (Just (filter (/= '\n') packageConf))
    res <- doTypeCheck args modName
    return res)
 
 
-doTypeCheck args modName = runGhc (Just ghcPath) $ do
+doTypeCheck args modName = runGhc (Just libdir) $ do
    dflags0 <- GHC.getSessionDynFlags
 
    (dflags1,fileish_args,_) <- GHC.parseDynamicFlags dflags0 [noLoc "-fglasgow-exts"]
@@ -158,7 +163,7 @@ ghcTypeCheckx ses2 expr modName =
   unsafePerformIO(
    do
        putStrLn ("in ghcTypeCheck1" ++ modName ++ expr)
-       runGhc (Just ghcPath) $ do
+       runGhc (Just libdir) $ do
        ty <- exprType  (modName ++ "." ++ expr)
        -- case res of
        --  Nothing -> error "GHC failed to load module."

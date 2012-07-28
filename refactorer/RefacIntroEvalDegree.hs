@@ -14,7 +14,7 @@ import MUtils(( # ))
 import AbstractIO
 import Debug.Trace
 import RefacMvDefBtwMod (addImport)
-import LocalSettings
+-- import LocalSettings
 
 refacDeepSeq args =
     do let fileName = args!!0

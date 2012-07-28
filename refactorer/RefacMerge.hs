@@ -28,7 +28,7 @@ import RefacUtils
 import RefacRedunDec
 import SlicingUtils
 import System.Directory
-import LocalSettings
+import LocalSettingsCabal (mergeFilePath)
 
 data FunEntity = Guard [HsPatP] [(SrcLoc, HsExpP, HsExpP)] [HsDeclP] PNT | Match [HsPatP] HsExpP [HsDeclP] PNT | Null
                    deriving (Eq, Show)
@@ -845,5 +845,3 @@ findDefNameAndExp toks beginPos endPos t
                 then Just (patToPNT ps, locToExp2 beginPos endPos toks rhs)
                 else error "A complex pattern binding can not be generalised!"
            inPat _ = Nothing
-
-

@@ -28,10 +28,10 @@ import RefacUtils
 import RefacRedunDec
 import SlicingUtils
 import System.Directory
-import LocalSettings
+-- import LocalSettings
 
 refacInstantiate args
-  = do 
+  = do
        let fileName     = args!!0
            begin        = read (args!!1)::Int
            end          = read (args!!2)::Int
@@ -41,8 +41,8 @@ refacInstantiate args
        case findMatch fileName begin end mod of
          Nothing -> do error "You can only instantiate patterns on the LHS of a match!"
          Just (decl, pats) ->
-           do              
-              let pairedPats = pairPatWithInstance pats instantPatt              
+           do
+              let pairedPats = pairPatWithInstance pats instantPatt
               res <- findAndReplaceAllPat decl pairedPats
               case checkCursor fileName begin end mod of
                Left errMsg -> do error errMsg
@@ -50,17 +50,17 @@ refacInstantiate args
                  do
                   let newFun = addMatch fun res
                   ((_,m), (newToks, newMod)) <- applyRefac (addNewPat fun newFun) (Just (inscps, exps, mod, tokList)) fileName
-                  writeRefactoredFiles False [((fileName, m), (newToks, newMod))]           
+                  writeRefactoredFiles False [((fileName, m), (newToks, newMod))]
                   AbstractIO.putStrLn "Completed.\n"
-                  
+
 addMatch :: HsDeclP -> HsMatchP -> HsDeclP
 addMatch (Dec (HsFunBind x ms) ) m = (Dec (HsFunBind x (m : ms)))
 addMatch x _ = error "You can only instantiate patterns on the LHS of a match!"
 
-addNewPat fun newFun (_, _, mod) 
+addNewPat fun newFun (_, _, mod)
  = do
      newMod <- update fun newFun mod
-     return newMod             
+     return newMod
 
 pairPatWithInstance :: [HsPatP] -> [ String ] -> [ (HsPatP, String) ]
 pairPatWithInstance [] _ = []
@@ -90,11 +90,11 @@ findAndReplaceAllPat t (x:xs)
       return rest
 
 findAndReplacePat :: (Term t, Monad m) => t -> (HsPatP, String) -> m t
-findAndReplacePat t (p,s) 
+findAndReplacePat t (p,s)
   = applyTP (full_tdTP (idTP `adhocTP` inRhs)) t
   where
-   inRhs (pnt::PNT) 
-    | (patToPNT p) == pnt 
+   inRhs (pnt::PNT)
+    | (patToPNT p) == pnt
        = do return (nameToPNT s)
    inRhs x = return x
 findMatch :: Term t => String -> Int -> Int -> t -> Maybe (HsMatchP, [HsPatP])
@@ -113,14 +113,14 @@ checkCursor fileName row col mod
      Nothing -> Left ("Invalid cursor position. Please place cursor at the beginning of the definition!")
      Just decl -> Right decl
     where
-        locToPName 
-         = case res of 
+        locToPName
+         = case res of
              Nothing -> find (definesPNT (locToPNT fileName (row, col) mod)) (hsDecls mod)
              _ -> res
         res =  find (defines (locToPN fileName (row, col) mod)) (concat (map hsDecls (hsModDecls mod)))
-        
+
         definesPNT pnt d@(Dec (HsPatBind loc p e ds))
          = findPNT pnt d
-        definesPNT pnt d@(Dec (HsFunBind loc ms)) 
+        definesPNT pnt d@(Dec (HsFunBind loc ms))
          = findPNT pnt d
         definesPNT _ _ = False

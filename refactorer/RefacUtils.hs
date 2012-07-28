@@ -130,7 +130,7 @@ import HsTokens
 -------------------------
 import RefacTypeSyn
 import RefacLocUtils
-import LocalSettings
+import LocalSettingsCabal
 -------------------------
 --import DriftStructUtils
 import StrategyLib hiding (findFile, fail, (>>=), (>>), return, mfix, Monad, Functor, MonadFix, MonadPlus, fmap, (=<<),
@@ -4007,4 +4007,3 @@ findType pnt t
 
 nameToTypePNT :: String -> PNT
 nameToTypePNT id = (PNT (PN (UnQual id) (S loc0)) (Type (TypeInfo {defType = Nothing, constructors = [], fields = []})) (N (Just loc0)))
-
