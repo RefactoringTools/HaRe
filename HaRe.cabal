@@ -13,14 +13,63 @@ Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.6
 Build-Type:                     Simple
 Data-Dir:                       misc
-Data-Files:                     haskell-refac.el, refactor.vim, Prelude.hs, *.hs, dupReport, dupAnswers, dupPositions, dupTransforms, dupClassAnswer, dupClassTransform, mergeCache, evaluateResult, genFoldCache
+Data-Files:                     haskell-refac.el
+                                , refactor.vim
+                                , Prelude.hs
+                                , *.hs
+                                , dupReport
+                                , dupAnswers
+                                , dupPositions
+                                , dupTransforms
+                                , dupClassAnswer
+                                , dupClassTransform
+                                , mergeCache
+                                , evaluateResult
+                                , genFoldCache
 
 
 Library
-        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
+        Build-Depends:          base >=4
+                                , syb
+                                , network
+                                , ghc
+                                , containers
+                                , hint
+                                , mtl
+                                , directory
+                                , pretty
+                                , process
+                                , filepath
+                                , old-time
+                                , array
+                                , ghc-paths
         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
-        GHC-Options:            -ieditors:tools/base/parse2/LexerSpec/:tools/base/parse2/LexerGen:tools/base/lib:tools/base/parse2/Lexer/:tools/base/tests/HbcLibraries:refactorer/:StrategyLib-4.0-beta/library/:StrategyLib-4.0-beta/src:StrategyLib-4.0-beta/models/deriving/:tools/base/parse2:tools/base/AST:tools/base/Modules:tools/base/pretty/:tools/base/defs/:tools/base/:tools/base/lib/Monads/:tools/base/parse2/Parser/:tools/base/syntax:tools/base/TI:tools/pfe:tools/base/transforms:tools/base/transforms/Deriving:tools/hs2html/ -fno-cse -fglasgow-exts
-        Hs-Source-Dirs:         refactorer refactorer/PwPf
+        GHC-Options:             -fno-cse -fglasgow-exts
+        Hs-Source-Dirs:
+           StrategyLib-4.0-beta/library
+           StrategyLib-4.0-beta/models/deriving/
+           editors
+           refactorer
+           refactorer/PwPf
+           tools/base
+           tools/base/AST
+           tools/base/Modules
+           tools/base/TI
+           tools/base/defs
+           tools/base/lib
+           tools/base/lib/Monads
+           tools/base/parse2
+           tools/base/parse2/Lexer
+           -- tools/base/parse2/LexerGen
+           -- tools/base/parse2/LexerSpec
+           tools/base/parse2/Parser
+           tools/base/pretty
+           tools/base/syntax
+           -- tools/base/tests/HbcLibraries
+           -- tools/base/transforms
+           -- tools/base/transforms/Deriving
+           -- tools/hs2html
+           tools/pfe
         Other-Modules:          Paths_HaRe
         Exposed-modules:        PwPfConversion PWCore Pointfree GlobalPW
            DuplicateCode
