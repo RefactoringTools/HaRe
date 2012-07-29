@@ -125,23 +125,80 @@ Library
            TypeCheck
 
 
-
 Executable hare-evaluate
-        Main-Is:                refactorer/Evaluate.hs
-        GHC-Options:            -ieditors:refactorer -fno-cse -fglasgow-exts
+        -- Main-Is:                refactorer/Evaluate.hs
+        Main-Is:                Evaluate.hs
+        GHC-Options:            -fno-cse -fglasgow-exts
+        Hs-Source-Dirs:
+          editors
+          refactorer
         Build-Depends:          base >4, hint, filepath
         Other-Modules:          Paths_HaRe
 
 Executable hare
-        Main-Is:                refactorer/pfe.hs
-        GHC-Options:            -ieditors:tools/base/parse2/LexerSpec/:tools/base/parse2/LexerGen:tools/base/lib:tools/base/parse2/Lexer/:tools/base/tests/HbcLibraries:refactorer/:StrategyLib-4.0-beta/library/:StrategyLib-4.0-beta/src:StrategyLib-4.0-beta/models/deriving/:tools/base/parse2:tools/base/AST:tools/base/Modules:tools/base/pretty/:tools/base/defs/:tools/base/:tools/base/lib/Monads/:tools/base/parse2/Parser/:tools/base/syntax:tools/base/TI:tools/pfe:tools/base/transforms:tools/base/transforms/Deriving:tools/hs2html/ -fno-cse -fglasgow-exts
+        -- Main-Is:                refactorer/pfe.hs
+        Main-Is:                pfe.hs
+        GHC-Options:            -fno-cse -fglasgow-exts
+        Hs-Source-Dirs:
+          StrategyLib-4.0-beta/library/
+          StrategyLib-4.0-beta/models/deriving/
+          -- StrategyLib-4.0-beta/src
+          editors
+          refactorer/
+          tools/base/
+          tools/base/AST
+          tools/base/Modules
+          tools/base/TI
+          tools/base/defs/
+          tools/base/lib
+          tools/base/lib/Monads/
+          tools/base/parse2
+          tools/base/parse2/Lexer/
+          -- tools/base/parse2/LexerGen
+          -- tools/base/parse2/LexerSpec/
+          tools/base/parse2/Parser/
+          tools/base/pretty/
+          tools/base/syntax
+          -- tools/base/tests/HbcLibraries
+          tools/base/transforms
+          tools/base/transforms/Deriving
+          tools/hs2html/
+          tools/pfe
         Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
 
+
+
 Executable hare-client
-        Main-Is:                refactorer/pfe_client.hs
-        GHC-Options:            -ieditors:tools/base/parse2/LexerSpec/:tools/base/parse2/LexerGen:tools/base/lib:tools/base/parse2/Lexer/:tools/base/tests/HbcLibraries:refactorer/:StrategyLib-4.0-beta/library/:StrategyLib-4.0-beta/src:StrategyLib-4.0-beta/models/deriving/:tools/base/parse2:tools/base/AST:tools/base/Modules:tools/base/pretty/:tools/base/defs/:tools/base/:tools/base/lib/Monads/:tools/base/parse2/Parser/:tools/base/syntax:tools/base/TI:tools/pfe:tools/base/transforms:tools/base/transforms/Deriving:tools/hs2html/ -fno-cse -fglasgow-exts
+        -- Main-Is:                refactorer/pfe_client.hs
+        Main-Is:                pfe_client.hs
+        GHC-Options:            -fno-cse -fglasgow-exts
+        Hs-Source-Dirs:
+          -- StrategyLib-4.0-beta/library/
+          -- StrategyLib-4.0-beta/models/deriving/
+          -- StrategyLib-4.0-beta/src
+          -- editors
+          refactorer/
+          -- tools/base/
+          -- tools/base/AST
+          -- tools/base/Modules
+          -- tools/base/TI
+          -- tools/base/defs/
+          -- tools/base/lib
+          tools/base/lib/Monads/
+          -- tools/base/parse2
+          -- tools/base/parse2/Lexer/
+          -- tools/base/parse2/LexerGen
+          -- tools/base/parse2/LexerSpec/
+          -- tools/base/parse2/Parser/
+          -- tools/base/pretty/
+          -- tools/base/syntax
+          -- tools/base/tests/HbcLibraries
+          -- tools/base/transforms
+          -- tools/base/transforms/Deriving
+          -- tools/hs2html/
+          -- tools/pfe
         Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
