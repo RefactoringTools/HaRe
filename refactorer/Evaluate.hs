@@ -55,6 +55,7 @@ runEvalHint args modName closure_call
       return a
 
 
+-- NOTE ++AZ++ :this function not present in 0.6.0.2
 runEval args modName closure_call pac = runGhc (Just pac) $ do
    -- /usr/local/packages/ghc-6.6/lib/ghc-6.6
    --session     <- GHC.newSession {-JustTypecheck-} (Just (filter (/= '\n') packageConf))

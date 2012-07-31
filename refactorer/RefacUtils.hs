@@ -57,11 +57,13 @@ module RefacUtils(module Control.Monad.State, module StrategyLib, module RefacTy
     ,clientModsAndFiles,serverModsAndFiles,isAnExistingMod
     ,fileNameToModName, strToModName, modNameToStr, newProj, addFile, chase
 
+    -- ++AZ++locToPatBind is new since 0.6.0.2
     -- ** Locations
     ,defineLoc, useLoc,locToPNT,locToPN,locToExp, locToExp2, locToPat, locToPatBind, locToLocalPat, getStartEndLoc , isLocalPNT
 
  -- * Program transformation
     -- ** Adding
+    -- ++AZ++ addDeclInMod is new since 0.6.0.2
     ,addDecl, addDeclInMod ,addItemsToImport, addHiding, rmItemsFromImport, addItemsToExport, addTypeSigDecl
     ,addParamsToDecls, addGuardsToRhs, addImportDecl, duplicateDecl, moveDecl
     -- ** Rmoving

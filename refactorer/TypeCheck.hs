@@ -66,6 +66,7 @@ say = liftIO . putStrLn
 printInterpreterError :: InterpreterError -> IO ()
 printInterpreterError e = error $ "Ups... " ++ (show e)
 
+-- ++AZ++ these ghcXXX functions are new since 0.6.0.2
 ghcInit args
  = unsafePerformIO (
     do
@@ -171,6 +172,7 @@ ghcTypeCheckx ses2 expr modName =
                       -- ty' <- cleanType ty
        return $ showSDoc $ ppr ty
   )
+-- ++AZ++ end of these ghcXXX functions are new since 0.6.0.2
 
 ghcTypeCheckPattern closure closure_name modName fileName =
   unsafePerformIO(

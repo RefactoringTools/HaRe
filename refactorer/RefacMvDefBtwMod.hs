@@ -1,5 +1,6 @@
 
 
+-- ++AZ++ addImport is new since 0.6.0.2
 module RefacMvDefBtwMod(moveDefBtwMod, addImport) where
 
 import Data.Maybe
@@ -320,4 +321,3 @@ addQualifier pns qualifier t
           = do let pnt'=(PNT (PN (Qual (strToModName qualifier) s) l) ty loc)
                update pnt pnt' pnt
          rename x=return x
-

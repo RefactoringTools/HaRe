@@ -1,5 +1,5 @@
 
-
+-- ++AZ++note: generaliseDef2is new since 0.6.0.2
 module RefacGenDef(generaliseDef, generaliseDef2) where
 
 import PrettyPrint
@@ -33,6 +33,8 @@ import Debug.Trace
         in the client modules, we take the visble names both in the current module and in the client modules
         into account when creating the new function name.
 -}
+
+-- ++AZ++ this function is new since 0.6.0.2
 generaliseDef2 fileName newParamName beginPos endPos subExp inscps exps mod tokList
  = -- let fileName     = args!!0
    --    newParamName = args!!1
@@ -377,4 +379,3 @@ mkNewFunPName pn e modName inscopeNames
    =do  (f1,d1) <- hsFDsFromInside e
         let name=mkNewName ((pNtoName pn)++"_gen") (nub ((map pNtoName (f1 `union` d1)) `union` inscopeNames)) 0
         return (PN (UnQual name) (G modName name (N (Just loc0))))
-

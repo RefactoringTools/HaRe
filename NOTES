@@ -1,0 +1,11 @@
+Comparison of the hackage 0.6.0.2 version with this repo
+
+1. editors directory removed
+
+2. misc directory added
+
+3. testing directory (still here :) )
+
+4. Annotated the differences in ./refactorer
+
+5. TODO: check StrategyLib and tools directories
