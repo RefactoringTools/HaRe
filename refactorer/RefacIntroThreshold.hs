@@ -13,7 +13,7 @@ import MUtils(( # ))
 import AbstractIO
 import Debug.Trace
 import RefacMvDefBtwMod (addImport)
-import LocalSettingsCabal (evalFilePath)
+import LocalSettings (evalFilePath)
 import RefacGenDef (generaliseDef2)
 
 refacIntroThreshold args =

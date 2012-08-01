@@ -18,7 +18,7 @@ import RdrName
 import Name
 import Control.Monad
 import Language.Haskell.Interpreter hiding (runGhc)
-import LocalSettingsCabal (evaluate_result)
+import LocalSettings (evaluate_result)
 
 main
  = -- defaultErrorHandler defaultDynFlags $

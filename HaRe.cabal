@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.6.0.1
+Version:                        0.6.0.3
 Author:                         Chris Brown, Huiqing Li, Simon Thompson
 Maintainer:                     Chris Brown
 Stability:                      Provisional
@@ -48,7 +48,7 @@ Library
         Hs-Source-Dirs:
            StrategyLib-4.0-beta/library
            StrategyLib-4.0-beta/models/deriving/
-           editors
+           -- editors
            refactorer
            refactorer/PwPf
            tools/base
@@ -130,7 +130,7 @@ Executable hare-evaluate
         Main-Is:                Evaluate.hs
         GHC-Options:            -fno-cse -fglasgow-exts
         Hs-Source-Dirs:
-          editors
+          -- editors
           refactorer
         Build-Depends:          base >4, hint, filepath
         Other-Modules:          Paths_HaRe
@@ -143,7 +143,7 @@ Executable hare
           StrategyLib-4.0-beta/library/
           StrategyLib-4.0-beta/models/deriving/
           -- StrategyLib-4.0-beta/src
-          editors
+          -- editors
           refactorer/
           tools/base/
           tools/base/AST

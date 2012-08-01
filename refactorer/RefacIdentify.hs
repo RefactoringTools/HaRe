@@ -21,7 +21,7 @@ import Data.Maybe
 import Data.List
 import Data.Function
 import RefacUtils
-import LocalSettingsCabal (answerFilePath,transFilePath,classAnswerPath, classTransformPath)
+import LocalSettings (answerFilePath,transFilePath,classAnswerPath, classTransformPath)
 
 -- this module is used to identify the clone class we are interested in.
 -- we use the highlighted expression passed in, and write the clone class

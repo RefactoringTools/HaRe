@@ -20,7 +20,7 @@ import Data.Maybe
 import Data.List
 import Data.Function
 import RefacUtils
-import LocalSettingsCabal (classTransformPath,answerFilePath)
+import LocalSettings (classTransformPath,answerFilePath)
 import DuplicateCode (foldDo)
 
 type NameToCall    = String

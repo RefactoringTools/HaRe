@@ -38,7 +38,7 @@ import AbstractIO
 import Data.Maybe
 import Data.List
 import RefacUtils
-import LocalSettingsCabal
+import LocalSettings
 import PrettyPrint
 parseAnswers args
   = do

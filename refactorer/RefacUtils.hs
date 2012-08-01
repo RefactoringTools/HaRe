@@ -132,7 +132,7 @@ import HsTokens
 -------------------------
 import RefacTypeSyn
 import RefacLocUtils
-import LocalSettingsCabal
+import LocalSettings
 -------------------------
 --import DriftStructUtils
 import StrategyLib hiding (findFile, fail, (>>=), (>>), return, mfix, Monad, Functor, MonadFix, MonadPlus, fmap, (=<<),

@@ -14,7 +14,7 @@ import MUtils(( # ))
 import AbstractIO
 import Debug.Trace
 import RefacMvDefBtwMod (addImport)
-import LocalSettingsCabal (evalFilePath)
+import LocalSettings (evalFilePath)
 
 
 refacAddEvalMonCache args

@@ -22,7 +22,7 @@ import Data.Set (toList)
 import Data.List
 import System.IO.Unsafe
 import System.Cmd
-import LocalSettingsCabal (evaluate,evaluate_result)
+import LocalSettings(evaluate,evaluate_result)
 
 -- | An argument list for a function which of course is a list of paterns.
 type FunctionPats = [HsPatP]

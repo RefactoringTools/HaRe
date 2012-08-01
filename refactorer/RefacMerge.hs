@@ -28,7 +28,7 @@ import RefacUtils
 import RefacRedunDec
 import SlicingUtils
 import System.Directory
-import LocalSettingsCabal (mergeFilePath)
+import LocalSettings (mergeFilePath)
 
 data FunEntity = Guard [HsPatP] [(SrcLoc, HsExpP, HsExpP)] [HsDeclP] PNT | Match [HsPatP] HsExpP [HsDeclP] PNT | Null
                    deriving (Eq, Show)

@@ -27,7 +27,7 @@ import RefacUtils
 import RefacRedunDec
 import SlicingUtils
 
-import LocalSettingsCabal (mergeFilePath)
+import LocalSettings (mergeFilePath)
 
 refacCacheMerge args
   = do

@@ -22,7 +22,7 @@ import Data.Set (toList)
 import Data.List
 import System.IO.Unsafe
 import System.Cmd
-import LocalSettingsCabal (genFoldPath)
+import LocalSettings (genFoldPath)
 
 -- allows the selection of a function equation to
 -- be outputted as AST representation to a file.

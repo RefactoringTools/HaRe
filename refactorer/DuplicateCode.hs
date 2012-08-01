@@ -46,7 +46,7 @@ import AbstractIO
 import Data.Maybe
 import Data.List
 import RefacUtils
-import LocalSettingsCabal (reportFilePath,transFilePath,answerFilePath)
+import LocalSettings (reportFilePath,transFilePath,answerFilePath)
 import Data.Function
 import RefacGenFold (expToPat)
 
