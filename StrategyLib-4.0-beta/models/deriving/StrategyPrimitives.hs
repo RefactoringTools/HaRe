@@ -1,4 +1,5 @@
-{-# LANGUAGE DatatypeContexts #-}
+{-# LANGUAGE DatatypeContexts #-} -- ++AZ++introduced this comment since0.6.0.2
+
 {-----------------------------------------------------------------------------
 
 A model of functional strategies using Data.Generics as of >= GHC 6.2.
