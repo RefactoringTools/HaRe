@@ -8,10 +8,9 @@
 
 #BASH="d:\\cygwin\\bin\\bash.exe"
 BASH="bash"
-HARE="../../refactorer/pfe"
+#HARE="../../refactorer/pfe"
+HARE="../../dist/build/hare/hare"
 #HARE="..\\..\\refactorer\\pfe"
-
-HUNIT="./HUnit-1.0"
 
 DIRS_OLD="asPatterns
       refacRedunDec
@@ -90,7 +89,6 @@ runTest () {
    cd ..
 }
 
-#  ghc --make -i"$HUNIT" -o UTest UTest.hs
 ghc --make -o UTest UTest.hs
 rm *.o *.hi
 
