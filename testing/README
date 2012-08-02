@@ -5,7 +5,7 @@
 
 This directory contains some test cases for the refactorings developed in HaRe.
 
-For each refactoring, there is a sub-directory which contains all the test casesfor this refactorings. For example, the sun-directory for the 'renaming' refactoring is '/testing/renaming'.
+For each refactoring, there is a sub-directory which contains all the test casesfor this refactorings. For example, the sub-directory for the 'renaming' refactoring is '/testing/renaming'.
 
 -- How to run the test suite? 
 
@@ -28,7 +28,7 @@ succeeded and how many failed. If a test case fails, you can go to the correspon
 
 -- How to read the test cases?
 
-The orgnization of the test cases is specificed in the file 'UTest.data' in eachsub-directory refactoring. For example, the 'UTest.data' file in the 
+The organization of the test cases is specificed in the file 'UTest.data' in each sub-directory refactoring. For example, the 'UTest.data' file in the 
 'renaming' directory is like this:
 
  ********************************************************************
