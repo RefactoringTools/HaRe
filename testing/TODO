@@ -19,7 +19,9 @@ renaming : passes 28 of 28
 rmOneParameter : passes 10 of 10
 
 
-removeCon : fails 1 of 20
+removeCon : fails 1 of 20 - seems to be a whitespace issue in the
+   generated diff.
+
 refacFunDef : fails 1 of 20
 fromConcreteToAbstract : fails 1 of 1
 duplication : fails 1 of 12
@@ -51,6 +53,9 @@ addCon - fails all
 
 evalAddEvalMon : fails : Prelude.read: no parse
 evalAddEvalMonCache: fails : Prelude.read: no parse
-introThreshold : fails Prelude.read: no parse
+
+introThreshold : fails Prelude.read: no parse [problem is UTest.data
+   set up for caching test, but script does not call it]
+
 merging : fails Prelude.read: no parse
 
