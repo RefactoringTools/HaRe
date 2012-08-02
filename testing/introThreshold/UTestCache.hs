@@ -1,11 +1,11 @@
 
 module Main where
 
-import HUnit
-import IO
+import Test.HUnit
+import System.IO
 import System hiding (system)
 import qualified System
-import List
+import Data.List
 
 data TestCases = TestCases {cacheCmd::String
                            ,refactorCmd::String
