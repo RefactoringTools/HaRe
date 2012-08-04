@@ -2,10 +2,11 @@ module Main where
 
 import System.Environment
 import Control.Exception
-import System.IO.Unsafe
+-- import System.IO.Unsafe
 import System.IO
 import Data.List
-import Unsafe.Coerce
+-- import Unsafe.Coerce
+{-
 -- Package GHC stuff
 import GHC
 import DynFlags
@@ -16,25 +17,32 @@ import Outputable
 import SrcLoc
 import RdrName
 import Name
+-}
 import Control.Monad
-import Language.Haskell.Interpreter hiding (runGhc)
+--import Language.Haskell.Interpreter hiding (runGhc)
+import Language.Haskell.Interpreter
 import LocalSettings (evaluate_result)
+
+
+
 
 main
  = -- defaultErrorHandler defaultDynFlags $
    do
    ar <- getArgs
    putStrLn "here"
-   let args = ar !! 0
+   let args = ar !! 0   -- ++AZ+++ This seems to be a filename
        -- newArgs = (ar !! 1) ++ "hs"
-       closure_call = ar !! 1
+       closure_call = ar !! 1  -- ++AZ++ seems to be pretty print rendering of
        modName = ar !! 2
    -- error $ show (closure_call, modName, args)
    let newArgs =  args ++ ".hs"
 
    -- ++AZ++ let packageConf = ghcPath
    -- (eval_res, x) <- runEval args modName closure_call packageConf
+   -- x <- runInterpreter (runEvalHint args modName closure_call)
    x <- runInterpreter (runEvalHint args modName closure_call)
+   -- 
    case x of
      Left err -> printInterpreterError err
      Right x -> do putStrLn $ show (x)
@@ -45,17 +53,25 @@ printInterpreterError e = error $ "Ups... " ++ (show e)
 
 runEvalHint args modName closure_call
  = do
-      set [languageExtensions := [OverlappingInstances]]
+      -- ++AZ++ : if this line is in, the loadmodules fails with missing Prelude 
+      -- ++AZ++ set [languageExtensions := [OverlappingInstances]]
+
       loadModules [args]
+
       setTopLevelModules [modName]
-      setImportsQ [("Prelude", Nothing)]
       liftIO (putStrLn ("about to evaluate...>" ++ modName ++ "<"))
+      setImportsQ [("Prelude", Nothing)]
       let expr1 = (modName ++ "." ++ closure_call)
-      a <- eval expr1
+      -- eval :: MonadInterpreter m => String -> m StringSource
+      -- eval expr will evaluate show expr. It will succeed only if expr has type t and there is a Show instance for t.
+
+      a <- eval expr1 
+      liftIO (putStrLn ("done evaluation: got...>" ++ (show a) ++ "<")) -- ++AZ++
       return a
 
 
 -- NOTE ++AZ++ :this function not present in 0.6.0.2
+{-
 runEval args modName closure_call pac = runGhc (Just pac) $ do
    -- /usr/local/packages/ghc-6.6/lib/ghc-6.6
    --session     <- GHC.newSession {-JustTypecheck-} (Just (filter (/= '\n') packageConf))
@@ -114,3 +130,5 @@ nameToString name = do
         --    _  -> return Nothing
         -- `finally`
         --   GHC.setSessionDynFlags cms dflags
+
+-}

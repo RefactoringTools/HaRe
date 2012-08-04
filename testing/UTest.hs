@@ -74,6 +74,7 @@ runTesting system hare refactorCmd positiveTests negativeTests
          system ("echo new |" ++ hare)
          system ("echo add " ++ files ++ " |" ++ hare)
          system ("echo chase ../../tools/base/tests/HaskellLibraries/ |" ++ hare)
+         system ("echo chase ./evalAddEvalMon/ |" ++ hare) -- ++AZ++
          system ("echo chase . |" ++ hare)
          runTestTT (testCases system hare refactorCmd positiveTests negativeTests)
 

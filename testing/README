@@ -79,6 +79,7 @@ which means the refactoring should rename the identifier at the location (line= 
 the files: D1.hs , B1.hs, A1.hs.   
  
 For this refactoring, the source file before the refactoring are D1.hs , B1.hs and A1.hs.
+
 For the expected result for this refactoring:
 
 The files containing the program source from the token stream are: D1_TokOut.hs B1_TokOut.hs and A1_TokOut.hs.

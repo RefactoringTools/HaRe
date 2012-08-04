@@ -1,0 +1,5 @@
+-- Startup file for ghci
+
+:set -i./refactorer
+:set -i./dist/build/autogen
+:set -package ghc

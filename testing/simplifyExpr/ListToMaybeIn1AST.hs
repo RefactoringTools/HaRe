@@ -6,7 +6,6 @@ f x@[]
              [] -> Nothing
              (a : _) -> Just a)
 f x@((b_1 : b_2)) = listToMaybe x
-f x = listToMaybe x
  
 f_1 x@[]
     =   (case x of

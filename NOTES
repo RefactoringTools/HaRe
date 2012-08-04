@@ -9,3 +9,8 @@ Comparison of the hackage 0.6.0.2 version with this repo
 4. Annotated the differences in ./refactorer
 
 5. TODO: check StrategyLib and tools directories
+
+-------------------------
+
+Seems Language.Haskell.Interpreter will return an error if there are any warnings when loading a module.
+Will modify tests to avoid warnings, for now, but must address in future.

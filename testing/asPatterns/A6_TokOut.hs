@@ -13,8 +13,8 @@ buildtree [] = Empty
 buildtree (x:xs) = insert x (buildtree xs)
 
 insert :: Ord a => a -> [BTree a] -> BTree a
-insert val (((Empty : t@(T val Empty Empty)) : xs))
-    = T val Empty (result Empty) where result Empty = t
+insert val (((Empty : t@(T tval Empty Empty)) : xs))
+    = T tval Empty (result Empty) where result Empty = t
 insert val (T tval left right)
    | val > tval = T tval left (insert val right)
    | otherwise = T tval (insert val left) right

@@ -756,6 +756,7 @@ getMatch pnt (match@(HsMatch loc name pats rhs ds):ms)
 
 
 ghcEvalExpr x y z = do
+                       lift $ AbstractIO.putStrLn $ ("RefacSimplify.ghcEvalExpr:" ++ show ([x,y,z])) -- ++AZ++ 
                        let res = unsafePerformIO $ rawSystem evaluate [x,y,z] --   :: String -> [String] -> IO ExitCode
                        lift $ AbstractIO.putStrLn $ show res
                        res2 <- lift $ AbstractIO.readFile evaluate_result
@@ -763,7 +764,8 @@ ghcEvalExpr x y z = do
                          (ExitFailure _) -> do
                                                error "The simplification could not be performed, some of the formals to the highlighted expression may not be well-defined."
                                                return "-1"
-                         _  -> do --lift $ AbstractIO.putStrLn $ show res2
+                         -- ++AZ++ _  -> do --lift $ AbstractIO.putStrLn $ show res2
+                         _  -> do lift $ AbstractIO.putStrLn $ show res2
                                   return res2
 
 {-|

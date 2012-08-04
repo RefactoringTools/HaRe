@@ -23,12 +23,33 @@ removeCon : fails 1 of 20 - seems to be a whitespace issue in the
    generated diff.
 
 refacFunDef : fails 1 of 20
+  - Test20.hs input file is not well formed, GHC complains
+
 fromConcreteToAbstract : fails 1 of 1
+  - compound refactoring, must come back to it
+
 duplication : fails 1 of 12
+  - side condition test faulty, the refactoring should not be
+   attempted.
+   If it is done, results in GHC complaining about duplicate def for h
+   and t
+
 whereToLet : fails 1 of 10
+  - whitespace issue, blank lines
+
 foldPatterns : fails 1 of 6
+  - The SimpleIn1_TokOut.hs expected result file seems wrong 
+
 asPatterns : fails 2 of 27
+  - A6: parentheses arranged differently in result.
+        Note: file is not a valid haskell module
+  - E3: HaRe is given the target site, not definition. Does not
+        introduce it at the right point
+
 generaliseDef : fails 2 of 17
+  Sum2: replaces (+) with (c) instead of c
+  FunIn7: side condition testing fails, should not attempt refactor
+
 refacDataNewType : failed 2 of 5
 rmFromExport : fails 2 of 3
 unfoldDef : fails 3 of 19
@@ -48,7 +69,9 @@ evalMonad : fails 14 of 19
 removeField : fails 15 of 17
 introCase : fails 22 of 33
 subIntroPattern : fails 22 of 25
+
 simplifyExpr : fails 28 of 30
+
 addCon - fails all
 
 evalAddEvalMon : fails : Prelude.read: no parse
