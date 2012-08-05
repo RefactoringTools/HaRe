@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp  #-}
 {-+
 Instance declarations in the source code are assigned names and
 added to the instance database, which gets used during context reduction.

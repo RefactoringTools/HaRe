@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
 module Products where
 
 toPair1 p   = proj1 p

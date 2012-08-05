@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
 module IxStateM (HasState(..), StateM, withSt, withStS, mapState) where
 
 import MT

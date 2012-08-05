@@ -28,6 +28,23 @@ import PfeCleanCmd(pfeCleanCmd)
 -- import PfeInteractive(pfeiAllCmds,runSIO)
 import MapDeclMBase() -- for removing pattern bindings in PfeTransformCmds.
 --import RemoveIrrefPatsBase()
+-- ---------------------------------------------------------------------
+import Control.Monad.CatchIO -- ++AZ++
+import Control.Monad
+import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
+import IxStateMT
+import PFE0
+import SourceNames
+import HsName
+import PosSyntax
+import System.Time
+import Data.Set
+import Ents
+import PNT
+import PFEdeps
+-- ---------------------------------------------------------------------
+
 
 import PfeRefactoringCmds(pfeRefactoringCmds) 
 
@@ -46,3 +63,40 @@ pfeCmds = pfe4Cmds tcOutput++pfeTransformCmds
 tcOutput = id :: I (PFE4Info i2 (TiDecls i2))
 --tcOutput = id :: I [[HsModuleR]]
 type I a = a->a
+
+-- ---------------------------------------------------------------------
+
+instance (MonadCatchIO
+         (IxStateMT.WithState
+            (PFE0.State0
+               (SourceNames.SN [Char])
+               (SourceNames.SN HsName.HsName)
+               [PosSyntax.HsDecl],
+             ([(HsName.ModuleName, -- Might be PosSyntax.ModuleName
+                (System.Time.ClockTime,
+                 Data.Set.Set
+                   (SourceNames.SN [Char], Ents.Ent (SourceNames.SN [Char]))))],
+              (PFE4Info PNT.PNT (TiDecls PNT.PNT), (PFEdeps.Deps2 PNT.PNT, ()))))
+            IO)) where
+  catch = Control.Monad.CatchIO.catch
+  block = block
+  unblock = unblock
+  
+instance (MonadIO
+         (WithState
+            (State0 (SN [Char]) (SN HsName.HsName) [HsDecl],
+             ([(HsName.ModuleName,
+                (ClockTime, Set (SN [Char], Ent (SN [Char]))))],
+              (PFE4Info PNT (TiDecls PNT), (Deps2 PNT, ()))))
+            IO)) where
+  liftIO = liftIO
+  -- liftIO = undefined
+
+{-
+instance (MonadTrans
+         (WithState
+            (State0 (SN [Char]) (SN HsName.HsName) [HsDecl],
+             ([(HsName.ModuleName,
+                (ClockTime, Set (SN [Char], Ent (SN [Char]))))],
+              (PFE4Info PNT (TiDecls PNT), (Deps2 PNT, ())))))) where
+  -}

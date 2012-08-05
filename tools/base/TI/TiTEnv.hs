@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp #-}
 {-+
 Type environments.
 

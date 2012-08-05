@@ -132,6 +132,8 @@ Executable hare-evaluate
         Hs-Source-Dirs:
           -- editors
           refactorer
+          tools/base/lib
+          tools/base/lib/Monads/
         Build-Depends:          base >4, hint, filepath
         Other-Modules:          Paths_HaRe
 
@@ -164,7 +166,7 @@ Executable hare
           tools/base/transforms/Deriving
           tools/hs2html/
           tools/pfe
-        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
+        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths, MonadCatchIO-mtl, transformers
         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
 

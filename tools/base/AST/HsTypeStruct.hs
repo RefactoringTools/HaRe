@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
 module HsTypeStruct where
 
 import Data.Generics

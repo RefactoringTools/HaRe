@@ -23,6 +23,8 @@ import Data.List
 import System.IO.Unsafe
 import System.Cmd
 import LocalSettings(evaluate,evaluate_result)
+import Control.Monad.CatchIO
+import qualified Evaluate as Evaluate
 
 -- | An argument list for a function which of course is a list of paterns.
 type FunctionPats = [HsPatP]
@@ -103,6 +105,7 @@ evalExpression' f ses modName pnt e t
                   let newPats   = map createCall (pats++lambdas)
                       newName   = pNTtoName name
                   result <- ghcEvalExpr f ((newName ++ " " ++ (concatMapWithSpace (render.ppi) newPats))) modName
+                  -- result <- liftIO $ ghcEvalExpr f ((newName ++ " " ++ (concatMapWithSpace (render.ppi) newPats))) modName
                   case result of
                     "-1" -> return dec
                     _ -> do
@@ -755,7 +758,40 @@ getMatch pnt (match@(HsMatch loc name pats rhs ds):ms)
   | otherwise        = getMatch pnt ms
 
 
-ghcEvalExpr x y z = do
+-- ---------------------------------------------------------------------
+
+{-
+ghcEvalExpr
+  :: (Monad (t m), MonadTrans t,
+      AbstractIO.StdIO m,
+      AbstractIO.FileIO m) =>
+     String -> String -> String -> t m [Char]
+-}
+ghcEvalExpr
+  ::(Functor (t m), MonadCatchIO (t m), -- For evalExpr
+     Monad (t m), MonadTrans t,
+      AbstractIO.StdIO m,
+      AbstractIO.FileIO m) =>
+     String -> String -> String -> t m [Char]
+-- ghcEvalExpr :: String -> String -> String -> IO String
+ghcEvalExpr fileName closure_call modName = do
+  res <- Evaluate.evalExpr fileName closure_call modName
+  case res of
+    Left err -> do
+      -- Evaluate.printInterpreterError err
+      return ("-1")
+    Right x -> do
+      -- putStrLn $ show (x)
+      -- return x
+      return ("0")
+
+-- ---------------------------------------------------------------------
+      
+ghcEvalExprOld
+  :: (Monad (t m), MonadTrans t, AbstractIO.StdIO m,
+      AbstractIO.FileIO m) =>
+     String -> String -> String -> t m [Char]
+ghcEvalExprOld x y z = do
                        lift $ AbstractIO.putStrLn $ ("RefacSimplify.ghcEvalExpr:" ++ show ([x,y,z])) -- ++AZ++ 
                        let res = unsafePerformIO $ rawSystem evaluate [x,y,z] --   :: String -> [String] -> IO ExitCode
                        lift $ AbstractIO.putStrLn $ show res

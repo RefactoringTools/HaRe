@@ -1,3 +1,8 @@
+{-# OPTIONS_GHC -cpp  #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
+{-# LANGUAGE StandaloneDeriving,DeriveDataTypeable #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  FiniteMap

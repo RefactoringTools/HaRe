@@ -2,7 +2,10 @@ module PFEdeps(
    PFE5MT,runPFE5,clean5,getSt5ext,updSt5ext,setSt5ext,
    --Dep,Deps,deps0,
    tdepModules,tdepModules',depModules,depModules',
-   tdefinedNames,isDefaultDecl,isInstDecl,splitDecls)
+   tdefinedNames,isDefaultDecl,isInstDecl,splitDecls
+
+   , Deps2(..)                                          
+   )
  where
 import Prelude hiding (readFile,readIO)
 import Data.Maybe(fromMaybe)

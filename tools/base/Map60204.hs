@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp #-}
 module Map60204 where
 
 

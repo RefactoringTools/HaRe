@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
+-- XDeriveDataTypeable
 module HsLiteral where
 
 import Data.Generics

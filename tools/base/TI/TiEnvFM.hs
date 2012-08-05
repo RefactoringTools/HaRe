@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp  #-}
 {-+
 This module implements environments (symbol tables) as finite maps.
 Finite maps are not necessarily faster than simple association lists, since

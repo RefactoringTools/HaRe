@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 module IxEnvM (HasEnv(..), EnvM, withEnv) where
 
 import MT

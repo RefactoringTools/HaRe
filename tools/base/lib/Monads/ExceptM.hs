@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
 module ExceptM (module ExceptM, HasExcept(..)) where
 
 import MT

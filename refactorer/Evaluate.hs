@@ -1,6 +1,7 @@
-module Main where
+module Evaluate where
 
 import System.Environment
+import System.Exit
 import Control.Exception
 -- import System.IO.Unsafe
 import System.IO
@@ -19,12 +20,16 @@ import RdrName
 import Name
 -}
 import Control.Monad
+import Control.Monad.CatchIO
 --import Language.Haskell.Interpreter hiding (runGhc)
 import Language.Haskell.Interpreter
-import LocalSettings (evaluate_result)
-
-
-
+-- import LocalSettings (evaluate_result)
+import LocalSettings (evaluate,evaluate_result)
+-- ---------------------------------------------------------------------
+import qualified AbstractIO as AbstractIO
+import System.IO.Unsafe
+import System.Cmd
+-- ---------------------------------------------------------------------
 
 main
  = -- defaultErrorHandler defaultDynFlags $
@@ -44,19 +49,35 @@ main
    x <- runInterpreter (runEvalHint args modName closure_call)
    -- 
    case x of
-     Left err -> printInterpreterError err
+     Left err -> do
+                   printInterpreterError err
+                   exitFailure -- Make exit code explicit
      Right x -> do putStrLn $ show (x)
                    writeFile evaluate_result x
+                   exitSuccess -- Make exit code explicit
+
 
 printInterpreterError :: InterpreterError -> IO ()
 printInterpreterError e = error $ "Ups... " ++ (show e)
 
-runEvalHint args modName closure_call
+
+-- runInterpreter :: (MonadCatchIO m, Functor m) => InterpreterT m a -> m (Either InterpreterError a)
+evalExpr
+  :: (Functor m, MonadCatchIO m) =>
+     String -> String -> ModuleName -> m (Either InterpreterError String)
+evalExpr fileName closure_call modName = do
+   x <- runInterpreter (runEvalHint fileName modName closure_call)
+   return x
+
+
+runEvalHint
+  :: MonadInterpreter m => String -> ModuleName -> String -> m String
+runEvalHint fileName modName closure_call
  = do
       -- ++AZ++ : if this line is in, the loadmodules fails with missing Prelude 
       -- ++AZ++ set [languageExtensions := [OverlappingInstances]]
 
-      loadModules [args]
+      loadModules [fileName]
 
       setTopLevelModules [modName]
       liftIO (putStrLn ("about to evaluate...>" ++ modName ++ "<"))
@@ -132,3 +153,36 @@ nameToString name = do
         --   GHC.setSessionDynFlags cms dflags
 
 -}
+
+aztest = do
+  let
+    args = "./testing/simplifyExpr/SimpleIn1.hs"
+    modName = "SimpleIn1"
+    closure_call = "f_1 []"
+  x <- runInterpreter (runEvalHint args modName closure_call)
+  -- 
+  case x of
+     Left err -> printInterpreterError err
+     Right x -> do putStrLn $ show (x)
+                   writeFile evaluate_result x
+
+
+-- ---------------------------------------------------------------------
+
+ghcEvalExpr
+  :: (Monad (t m), MonadTrans t, AbstractIO.StdIO m,
+      AbstractIO.FileIO m) =>
+     String -> String -> String -> t m [Char]
+ghcEvalExpr x y z = do
+                       lift $ AbstractIO.putStrLn $ ("RefacSimplify.ghcEvalExpr:" ++ show ([x,y,z])) -- ++AZ++ 
+                       let res = unsafePerformIO $ rawSystem LocalSettings.evaluate [x,y,z] --   :: String -> [String] -> IO ExitCode
+                       lift $ AbstractIO.putStrLn $ show res
+                       res2 <- lift $ AbstractIO.readFile evaluate_result
+                       case res of
+                         (ExitFailure _) -> do
+                                               error "The simplification could not be performed, some of the formals to the highlighted expression may not be well-defined."
+                                               return "-1"
+                         -- ++AZ++ _  -> do --lift $ AbstractIO.putStrLn $ show res2
+                         _  -> do lift $ AbstractIO.putStrLn $ show res2
+                                  return res2
+
