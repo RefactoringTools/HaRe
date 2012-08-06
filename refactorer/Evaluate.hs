@@ -1,4 +1,5 @@
-module Evaluate where
+-- module Evaluate where
+module Main where
 
 import System.Environment
 import System.Exit
@@ -23,6 +24,7 @@ import Control.Monad
 import Control.Monad.CatchIO
 --import Language.Haskell.Interpreter hiding (runGhc)
 import Language.Haskell.Interpreter
+import Language.Haskell.Interpreter.Unsafe
 -- import LocalSettings (evaluate_result)
 import LocalSettings (evaluate,evaluate_result)
 -- ---------------------------------------------------------------------
@@ -46,7 +48,9 @@ main
    -- ++AZ++ let packageConf = ghcPath
    -- (eval_res, x) <- runEval args modName closure_call packageConf
    -- x <- runInterpreter (runEvalHint args modName closure_call)
-   x <- runInterpreter (runEvalHint args modName closure_call)
+   -- x <- runInterpreter (runEvalHint args modName closure_call)
+   x <- unsafeRunInterpreterWithArgs ["-w"] (runEvalHint args modName closure_call)
+                                     
    -- 
    case x of
      Left err -> do
@@ -66,8 +70,10 @@ evalExpr
   :: (Functor m, MonadCatchIO m) =>
      String -> String -> ModuleName -> m (Either InterpreterError String)
 evalExpr fileName closure_call modName = do
-   x <- runInterpreter (runEvalHint fileName modName closure_call)
-   return x
+   -- x <- runInterpreter (runEvalHint fileName modName closure_call)
+   -- return x
+   fc <- liftIO $ readFile fileName
+   return (Right $ fc)
 
 
 runEvalHint
@@ -80,16 +86,16 @@ runEvalHint fileName modName closure_call
       loadModules [fileName]
 
       setTopLevelModules [modName]
-      liftIO (putStrLn ("about to evaluate...>" ++ modName ++ "<"))
+
       setImportsQ [("Prelude", Nothing)]
       let expr1 = (modName ++ "." ++ closure_call)
+
       -- eval :: MonadInterpreter m => String -> m StringSource
       -- eval expr will evaluate show expr. It will succeed only if expr has type t and there is a Show instance for t.
 
       a <- eval expr1 
-      liftIO (putStrLn ("done evaluation: got...>" ++ (show a) ++ "<")) -- ++AZ++
+      -- liftIO (putStrLn ("done evaluation: got...>" ++ (show a) ++ "<")) -- ++AZ++
       return a
-
 
 -- NOTE ++AZ++ :this function not present in 0.6.0.2
 {-

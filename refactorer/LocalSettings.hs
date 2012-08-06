@@ -27,7 +27,7 @@ classTransformPath = unsafePerformIO $ getDataFileName "dupClassTransform"
 mergeFilePath      = unsafePerformIO $ getDataFileName "mergeCache"
 evalFilePath       = unsafePerformIO $ getDataFileName "evalCache.txt"
 
-evaluate = "hare_evaluate"
+evaluate = "hare-evaluate"
 evaluate_result = unsafePerformIO $ getDataFileName "evaluateResult"
 
 genFoldPath = unsafePerformIO $ getDataFileName "genFoldCache"

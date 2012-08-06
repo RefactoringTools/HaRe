@@ -24,7 +24,7 @@ import System.IO.Unsafe
 import System.Cmd
 import LocalSettings(evaluate,evaluate_result)
 import Control.Monad.CatchIO
-import qualified Evaluate as Evaluate
+-- import qualified Evaluate as Evaluate
 
 -- | An argument list for a function which of course is a list of paterns.
 type FunctionPats = [HsPatP]
@@ -767,32 +767,37 @@ ghcEvalExpr
       AbstractIO.FileIO m) =>
      String -> String -> String -> t m [Char]
 -}
-ghcEvalExpr
+{-
+ghcEvalExprNew
   ::(Functor (t m), MonadCatchIO (t m), -- For evalExpr
      Monad (t m), MonadTrans t,
       AbstractIO.StdIO m,
       AbstractIO.FileIO m) =>
      String -> String -> String -> t m [Char]
 -- ghcEvalExpr :: String -> String -> String -> IO String
-ghcEvalExpr fileName closure_call modName = do
+ghcEvalExprNew fileName closure_call modName = do
+  lift $ AbstractIO.putStrLn $ ("ghcEvalExpr[" ++ closure_call ++ "]1")
   res <- Evaluate.evalExpr fileName closure_call modName
+  lift $ AbstractIO.putStrLn $ ("ghcEvalExpr[" ++ closure_call ++ "]=" ++ show(res))
+  let res = Right "0"
   case res of
     Left err -> do
       -- Evaluate.printInterpreterError err
       return ("-1")
     Right x -> do
-      -- putStrLn $ show (x)
-      -- return x
-      return ("0")
-
+      -- AbstractIO.putStrLn $ show (x)
+      lift $ AbstractIO.putStrLn $ ("ghcEvalExpr[" ++ closure_call ++ "]=" ++ show (x))
+      return x
+      -- return ("0")
+-}
 -- ---------------------------------------------------------------------
       
-ghcEvalExprOld
+ghcEvalExpr
   :: (Monad (t m), MonadTrans t, AbstractIO.StdIO m,
       AbstractIO.FileIO m) =>
      String -> String -> String -> t m [Char]
-ghcEvalExprOld x y z = do
-                       lift $ AbstractIO.putStrLn $ ("RefacSimplify.ghcEvalExpr:" ++ show ([x,y,z])) -- ++AZ++ 
+ghcEvalExpr x y z = do
+                       lift $ AbstractIO.putStrLn $ ("RefacSimplify.ghcEvalExpr:" ++ evaluate ++ ":" ++ evaluate_result ++ ":" ++ show ([x,y,z])) -- ++AZ++ 
                        let res = unsafePerformIO $ rawSystem evaluate [x,y,z] --   :: String -> [String] -> IO ExitCode
                        lift $ AbstractIO.putStrLn $ show res
                        res2 <- lift $ AbstractIO.readFile evaluate_result

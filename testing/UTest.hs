@@ -35,8 +35,8 @@ positiveTest system pfeCmd refactorCmd args
                   system ("echo " ++ concatMap (\t->t ++ " ") params ++ " |" ++ pfeCmd)
                   results1<-mapM (compareResult system) inputOutputs1
                   --results2<-mapM (compareResult system) inputOutputs2
-                  -- ++AZ++ mapM (recoverFiles system) inputTemps
-                  -- ++AZ++ mapM (rmTempFiles system) tempFiles
+                  mapM (recoverFiles system) inputTemps
+                  mapM (rmTempFiles system) tempFiles
                   -- mapM (rmTempFiles system) astActOutputFiles
                   assertEqual (show (refactorCmd,args)) True (all (==ExitSuccess) (results1)) -- ++results2))
               )
