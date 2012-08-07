@@ -8,4 +8,3 @@ f x@(Left a) = case x of
                        | otherwise -> Left x
 
 
-

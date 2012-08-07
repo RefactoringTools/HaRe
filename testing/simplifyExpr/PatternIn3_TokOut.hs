@@ -7,5 +7,4 @@ sumSquares y =let x = 1 in
            sq x=x^pow
 
 
-
 pow = 2

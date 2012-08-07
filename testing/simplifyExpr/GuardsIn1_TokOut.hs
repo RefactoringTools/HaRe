@@ -5,7 +5,6 @@ f x y@(g:gs)
   | otherwise = gs
 
 
-
 g x@(y:ys) = case x of
               [] -> error "Error!"
               (x:xs) -> x

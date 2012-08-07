@@ -6,4 +6,3 @@ f x@1 y@(z:zs)
  | otherwise = [1,2]
 
 
-

@@ -8,7 +8,6 @@ f x@(Just y) = (case x of
                     (Just x) -> x)
 
 
-
 -- | The 'fromJust' function extracts the element out of a 'Just' and
 -- throws an error if its argument is 'Nothing'.
 fromJust          :: Maybe a -> a

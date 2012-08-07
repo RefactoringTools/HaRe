@@ -45,6 +45,12 @@ main
    -- error $ show (closure_call, modName, args)
    let newArgs =  args ++ ".hs"
 
+
+   fc <- readFile args                              -- ++AZ++
+   putStrLn ("File>>>>>\n" ++ fc ++ "\n<<<<<<<<\n") -- ++AZ++
+
+
+   
    -- ++AZ++ let packageConf = ghcPath
    -- (eval_res, x) <- runEval args modName closure_call packageConf
    -- x <- runInterpreter (runEvalHint args modName closure_call)
@@ -94,7 +100,7 @@ runEvalHint fileName modName closure_call
       -- eval expr will evaluate show expr. It will succeed only if expr has type t and there is a Show instance for t.
 
       a <- eval expr1 
-      -- liftIO (putStrLn ("done evaluation: got...>" ++ (show a) ++ "<")) -- ++AZ++
+      liftIO (putStrLn ("done evaluation: got...>" ++ (show a) ++ "<")) -- ++AZ++
       return a
 
 -- NOTE ++AZ++ :this function not present in 0.6.0.2
