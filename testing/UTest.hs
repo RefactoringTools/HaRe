@@ -3,8 +3,6 @@ module Main where
 
 import Test.HUnit
 import System.IO
--- import System hiding (system)
--- import qualified System
 import qualified System.Cmd as System
 import System.Exit
 import System.Environment
@@ -27,12 +25,16 @@ positiveTest system pfeCmd refactorCmd args
                       --astExpOutputFiles=map (createNewFileName "_AstOut") inputFiles
                       --astActOutputFiles=map (createNewFileName "AST") inputFiles
                       tempFiles = map (createNewFileName "_temp") inputFiles
+                      keepFiles = map (createNewFileName "_refac") inputFiles -- ++AZ++
                       params =refactorCmd: ((head inputFiles) : (snd args))
                       inputTemps =zip inputFiles tempFiles
                       inputOutputs1=zip inputFiles tokExpOutputFiles
                       --inputOutputs2=zip astActOutputFiles astExpOutputFiles
                   mapM (createTempFile system) inputTemps
                   system ("echo " ++ concatMap (\t->t ++ " ") params ++ " |" ++ pfeCmd)
+
+                  mapM (keepResult system) $ zip inputFiles keepFiles -- ++AZ++
+                  
                   results1<-mapM (compareResult system) inputOutputs1
                   --results2<-mapM (compareResult system) inputOutputs2
                   mapM (recoverFiles system) inputTemps
@@ -58,7 +60,11 @@ negativeTest system pfeCmd refactorCmd args
 
 createTempFile system (input, temp)=system ("cp "++ input++ " "++temp)
 
-compareResult system (input,output)=system ("diff "++input++ " " ++ output)
+keepResult system (input, keep)=system ("cp "++ input++ " "++keep)
+
+-- compareResult system (input,output)=system ("diff "++input++ " " ++ output)
+compareResult system (input,output)=system ("diff --strip-trailing-cr "++input++ " " ++ output) -- ++AZ++
+
 
 recoverFiles system (input ,temp)= system ("cp " ++ temp ++ " " ++input)
 
