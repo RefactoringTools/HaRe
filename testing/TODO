@@ -9,7 +9,7 @@ Passes
 
 addField - passes, and works in emacs
 addOneParameter - passes, and works in emacs
-cleanImports : passes
+cleanImports : passes 4 of 4
 foldDef : passes
 generativeFold: passes
 instantiate : passes
@@ -17,10 +17,14 @@ introPattern : passes
 removeDef : passes 17 of 17 
 renaming : passes 28 of 28
 rmOneParameter : passes 10 of 10
+removeCon : passes 20 of 20
+rmFromExport : passes 3 of 3
+whereToLet : passes 10 of 10
+mkImpExplicit : passes 5 of 5
+moveDefBtwMods : passes 9 of 9
+addToExport - passes 8 of 8
 
-
-removeCon : fails 1 of 20 - seems to be a whitespace issue in the
-   generated diff.
+-------------------------
 
 refacFunDef : fails 1 of 20
   - Test20.hs input file is not well formed, GHC complains
@@ -34,8 +38,6 @@ duplication : fails 1 of 12
    If it is done, results in GHC complaining about duplicate def for h
    and t
 
-whereToLet : fails 1 of 10
-  - whitespace issue, blank lines
 
 foldPatterns : fails 1 of 6
   - The SimpleIn1_TokOut.hs expected result file seems wrong 
@@ -50,17 +52,29 @@ generaliseDef : fails 2 of 17
   Sum2: replaces (+) with (c) instead of c
   FunIn7: side condition testing fails, should not attempt refactor
 
+
 refacDataNewType : failed 2 of 5
-rmFromExport : fails 2 of 3
-unfoldDef : fails 3 of 19
-mkImpExplicit : fails 5 of 5
-moveDefBtwMods : fails 6 of 9
-addToExport - fails 6 of 8
+  - seems to be unimplemented, or partially implemented
+    Getting an "Unrecognised arguments" exception from the refactorer
+
+unfoldDef : fails 2 of 19
+  - Seems to be an error in the complex patterns
+
 unfoldAsPatterns : fails 7 of 35
-refacRedunDec : fails 7 of 17
+  - seems to be a parsing error, does not recognise as pattern
+
+refacRedunDec : passes 17 of 17
+  - Note: I am sure Test1_tokOut.hs is wrong, the meaning is changed
+
+letToWhere : fails 7 of 15
+  - MultiMatchesIn4: invalid initial file
+  - MultiMatchesIn5: invalid initial file
+  - MultiMatchesIn6: invalid initial file
+
+---
+
 pointwiseToPointfree : failed 7 of 7
-demote : fails 8 of 16
-letToWhere : fails 9 of 15
+demote : fails 7 of 161
 refacSlicing : fails 10 of 23
 liftOneLevel : fails 12 of 14
 introNewDef : fails 13 of 15
@@ -69,16 +83,11 @@ evalMonad : fails 14 of 19
 removeField : fails 15 of 17
 introCase : fails 22 of 33
 subIntroPattern : fails 22 of 25
-
 simplifyExpr : fails 28 of 30
-
-addCon - fails all
-
+addCon - fails 4 of 12
 evalAddEvalMon : fails : Prelude.read: no parse
 evalAddEvalMonCache: fails : Prelude.read: no parse
-
 introThreshold : fails Prelude.read: no parse [problem is UTest.data
    set up for caching test, but script does not call it]
-
 merging : fails Prelude.read: no parse
 
