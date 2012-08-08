@@ -8,7 +8,9 @@ import C6
 
 myFringe:: Tree a -> [a]
 myFringe (Leaf x ) = [x]
-myFringe (Branch left right) = myFringe left fringe :: Tree a -> [a]
+myFringe (Branch left right) = myFringe left 
+
+fringe :: Tree a -> [a]
 fringe (Leaf x) = [x]
 fringe (Branch left right) = fringe left ++ fringe right                
    
