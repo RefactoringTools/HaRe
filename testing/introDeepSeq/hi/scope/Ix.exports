@@ -1,1 +1,0 @@
-[("Ix",Ent (PlainModule "Ix") (HsCon "Ix") (Class 1 ["range","index","inRange"])),("inRange",Ent (PlainModule "Ix") (HsVar "inRange") (MethodOf "Ix" 1 ["inRange"])),("index",Ent (PlainModule "Ix") (HsVar "index") (MethodOf "Ix" 1 ["index"])),("range",Ent (PlainModule "Ix") (HsVar "range") (MethodOf "Ix" 1 ["range"])),("rangeSize",Ent (PlainModule "Ix") (HsVar "rangeSize") Value)]

@@ -1,1 +1,0 @@
-[("Word",Ent (PlainModule "Data.Word") (HsCon "Word") (Type (TypeInfo {defType = Just Synonym, constructors = [], fields = []})))]

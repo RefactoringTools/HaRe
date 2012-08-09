@@ -1,1 +1,0 @@
-[("NFData",Ent (PlainModule "Control.DeepSeq") (HsCon "NFData") (Class 0 ["rnf"])),("deepseq",Ent (PlainModule "Control.DeepSeq") (HsVar "deepseq") Value),("rnf",Ent (PlainModule "Control.DeepSeq") (HsVar "rnf") (MethodOf "NFData" 0 ["rnf"]))]
