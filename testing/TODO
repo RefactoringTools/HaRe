@@ -76,11 +76,13 @@ letToWhere : fails 7 of 15
 refacSlicing : fails 1 of 23
   - Test11 produces incorrect result
 
+liftOneLevel : fails 1 of 14
+  - fails to test precondition properly and does refactor it should not
+
 ---
 
 pointwiseToPointfree : failed 7 of 7
 demote : fails 7 of 161
-liftOneLevel : fails 12 of 14
 introNewDef : fails 13 of 15
 liftToToplevel : fails 13 of 14
 evalMonad : fails 14 of 19

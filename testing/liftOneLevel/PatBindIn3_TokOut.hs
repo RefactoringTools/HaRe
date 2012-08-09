@@ -12,6 +12,7 @@ sumSquares x  = (sq x pow)  + (sq x pow)
 
 sq x pow = x^pow
 
+
 anotherFun 0 y = sq y
      where sq x = x^2
 

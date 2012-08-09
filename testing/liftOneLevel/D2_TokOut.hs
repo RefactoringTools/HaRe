@@ -11,3 +11,4 @@ sumSquares [] = 0
 
 sq pow x = x ^ pow
 
+

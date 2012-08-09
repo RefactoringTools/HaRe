@@ -11,3 +11,4 @@ fun x y z =inc (addthree x y z)
        where inc a =a +1
 
 addthree x y z=x+y+z
+
