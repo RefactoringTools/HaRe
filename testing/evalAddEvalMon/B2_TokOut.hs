@@ -11,8 +11,7 @@ qsort (x:xs) = lsort_2 ++ [x] ++ hsort_2
     lsort = qsort (filter (<) x xs)
     hsort = qsort (filter (>=) x xs)    
     (lsort_2, hsort_2)
-        =
-            runEval
+        =   runEval
                 (do lsort_2 <- rpar lsort
                     hsort_2 <- rpar hsort
                     return (lsort_2, hsort_2))

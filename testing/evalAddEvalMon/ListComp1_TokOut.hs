@@ -8,8 +8,7 @@ import Control.Parallel.Strategies (rpar, runEval)
 
 qsort (x:xs) = res
      where res =  [let (p_2, q_2)
-                           =
-                               runEval
+                           =   runEval
                                    (do p_2 <- rpar p
                                        q_2 <- rpar q
                                        return (p_2, q_2))

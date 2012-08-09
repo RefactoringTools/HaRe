@@ -27,6 +27,7 @@ simplifyExpr : passes 30 of 30
 removeField : passes 17 of 17
 introNewDef : passes 15 of 15
 merging : passes 18 of 18
+evalAddEvalMon : pases 20 of 20
 
 -------------------------
 
@@ -96,7 +97,6 @@ demote : fails 7 of 161
 evalMonad : fails 14 of 19
 introCase : fails 22 of 33
 subIntroPattern : fails 22 of 25
-evalAddEvalMon : fails : Prelude.read: no parse
 evalAddEvalMonCache: fails : Prelude.read: no parse
 introThreshold : fails Prelude.read: no parse [problem is UTest.data
    set up for caching test, but script does not call it]

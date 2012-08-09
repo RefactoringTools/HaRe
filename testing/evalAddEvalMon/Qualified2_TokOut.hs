@@ -14,8 +14,7 @@ fib n
        n1 = fib (n-1)
        n2 = fib (n-2)
        (n1_2, n2_2)
-           =
-               S.runEval
+           =   S.runEval
                    (do n1_2 <- S.rpar n1
                        n2_2 <- S.rpar n2
                        return (n1_2, n2_2))

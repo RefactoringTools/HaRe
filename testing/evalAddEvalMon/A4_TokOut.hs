@@ -20,8 +20,7 @@ someComp = bigFib_2 + evenBiggerFib_2 + 42
 
 closureY = bigFib_2 + 32
 (bigFib_2, evenBiggerFib_2)
-    =
-        runEval
+    =   runEval
             (do bigFib_2 <- rpar bigFib
                 evenBiggerFib_2 <- rpar evenBiggerFib
                 return (bigFib_2, evenBiggerFib_2))

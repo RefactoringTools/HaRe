@@ -12,8 +12,7 @@ fib n
                     
                     where
                       (n1_2, n2_2)
-                          =
-                              runEval
+                          =   runEval
                                   (do n1_2 <- rpar n1
                                       n2_2 <- rpar n2
                                       return (n1_2, n2_2))

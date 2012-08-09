@@ -25,8 +25,7 @@ ffth xs us
    odds = everyNth 2 . tail
    n = length xs
    (fftEvn_2, fftOdd_2)
-       =
-           runEval
+       =   runEval
                (do fftEvn_2 <- rpar fftEvn
                    fftOdd_2 <- rpar fftOdd
                    return (fftEvn_2, fftOdd_2))
