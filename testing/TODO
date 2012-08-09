@@ -25,6 +25,7 @@ moveDefBtwMods : passes 9 of 9
 addToExport - passes 8 of 8
 simplifyExpr : passes 30 of 30
 removeField : passes 17 of 17
+introNewDef : passes 15 of 15
 
 -------------------------
 
@@ -79,16 +80,20 @@ refacSlicing : fails 1 of 23
 liftOneLevel : fails 1 of 14
   - fails to test precondition properly and does refactor it should not
 
+addCon - fails 4 of 12
+  - Case1 fails with compile error during refactor
+  - Case2 fails with compile error during refactor
+  - Tuple1,Tuple2 fail with different results to expected
+
+
 ---
 
 pointwiseToPointfree : failed 7 of 7
 demote : fails 7 of 161
-introNewDef : fails 13 of 15
 liftToToplevel : fails 13 of 14
 evalMonad : fails 14 of 19
 introCase : fails 22 of 33
 subIntroPattern : fails 22 of 25
-addCon - fails 4 of 12
 evalAddEvalMon : fails : Prelude.read: no parse
 evalAddEvalMonCache: fails : Prelude.read: no parse
 introThreshold : fails Prelude.read: no parse [problem is UTest.data
