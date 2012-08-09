@@ -26,6 +26,7 @@ addToExport - passes 8 of 8
 simplifyExpr : passes 30 of 30
 removeField : passes 17 of 17
 introNewDef : passes 15 of 15
+merging : passes 18 of 18
 
 -------------------------
 
@@ -99,5 +100,5 @@ evalAddEvalMon : fails : Prelude.read: no parse
 evalAddEvalMonCache: fails : Prelude.read: no parse
 introThreshold : fails Prelude.read: no parse [problem is UTest.data
    set up for caching test, but script does not call it]
-merging : fails Prelude.read: no parse
+
 

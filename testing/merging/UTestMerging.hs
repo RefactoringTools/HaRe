@@ -1,11 +1,12 @@
 
 module Main where
 
-import HUnit
-import IO
-import System hiding (system)
-import qualified System
-import List
+import Test.HUnit
+import System.IO
+import qualified System.Cmd as System
+import System.Exit
+import System.Environment
+import Data.List
 
 data TestCases = TestCases {refactorCmd::String
                            ,refactorCacheCmd::String
@@ -24,6 +25,7 @@ positiveTest system pfeCmd refactorCmd refactorCacheCmd args
                       --astExpOutputFiles=map (createNewFileName "_AstOut") inputFiles
                       --astActOutputFiles=map (createNewFileName "AST") inputFiles
                       tempFiles = map (createNewFileName "_temp") inputFiles
+                      keepFiles = map (createNewFileName "_refac") inputFiles -- ++AZ++
                       params =refactorCmd: ((head inputFiles) : (third args))
                       caches = createCache refactorCacheCmd ((\(_,a,_)->a) args) (head inputFiles)
                       inputTemps =zip inputFiles tempFiles
@@ -31,7 +33,10 @@ positiveTest system pfeCmd refactorCmd refactorCacheCmd args
                       --inputOutputs2=zip astActOutputFiles astExpOutputFiles
                   mapM (createTempFile system) inputTemps
                   performCaches system pfeCmd caches
-                  system ("echo " ++ concatMap (\t->t ++ " ") params ++ " |" ++ pfeCmd) 
+                  system ("echo " ++ concatMap (\t->t ++ " ") params ++ " |" ++ pfeCmd)
+
+                  mapM (keepResult system) $ zip inputFiles keepFiles -- ++AZ++
+                  
                   results1<-mapM (compareResult system) inputOutputs1
                   --results2<-mapM (compareResult system) inputOutputs2
                   mapM (recoverFiles system) inputTemps
@@ -72,7 +77,10 @@ third (x,y,z) = z
      
 createTempFile system (input, temp)=system ("cp "++ input++ " "++temp)
 
-compareResult system (input,output)=system ("diff "++input++ " " ++ output)
+keepResult system (input, keep)=system ("cp "++ input++ " "++keep)
+
+-- compareResult system (input,output)=system ("diff "++input++ " " ++ output)
+compareResult system (input,output)=system ("diff --strip-trailing-cr "++input++ " " ++ output) -- ++AZ++
 
 recoverFiles system (input ,temp)= system ("cp " ++ temp ++ " " ++input)
 

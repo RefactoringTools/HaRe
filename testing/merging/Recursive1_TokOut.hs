@@ -1,11 +1,12 @@
 module Recursive1 where
 
 
-{- g :: Num t  =>  t  ->  [a]  ->  ([a], [a]) -}
+g :: (Eq a1, Num a1)  =>  a1  ->  [a]  ->  ([a], [a])
 g _ [] = ([], [])
 g 0 xs = ([], xs)
 g n ((x : xs))
     = (x : (fst $ g (n - 1) xs), snd $ g (n - 1) xs)
+
 -- source functions
 f1 :: Int -> [a] -> [a]
 f1 _ [] = []

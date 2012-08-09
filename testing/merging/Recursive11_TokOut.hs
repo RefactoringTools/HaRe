@@ -1,7 +1,7 @@
 module Recursive11 where
 
 
-{- f3 :: Int  ->  [a]  ->  ([a], [a]) -}
+f3 :: Int  ->  [a]  ->  ([a], [a])
 f3 n l
     = (g1 n l, g n l)
   where
@@ -13,6 +13,7 @@ f3 n l
       g n [] = []
       g 0 xs = xs
       g n ((x : xs)) = rs where rs = g (n - 1) xs
+
 -- Fusee
 f1 :: Int -> [a] -> [a]
 f1 n l = g1 n l
