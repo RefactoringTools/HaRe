@@ -73,11 +73,13 @@ letToWhere : fails 7 of 15
   - MultiMatchesIn5: invalid initial file
   - MultiMatchesIn6: invalid initial file
 
+refacSlicing : fails 1 of 23
+  - Test11 produces incorrect result
+
 ---
 
 pointwiseToPointfree : failed 7 of 7
 demote : fails 7 of 161
-refacSlicing : fails 10 of 23
 liftOneLevel : fails 12 of 14
 introNewDef : fails 13 of 15
 liftToToplevel : fails 13 of 14
