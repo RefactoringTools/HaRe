@@ -23,6 +23,8 @@ whereToLet : passes 10 of 10
 mkImpExplicit : passes 5 of 5
 moveDefBtwMods : passes 9 of 9
 addToExport - passes 8 of 8
+simplifyExpr : passes 30 of 30
+removeField : passes 17 of 17
 
 -------------------------
 
@@ -80,10 +82,8 @@ liftOneLevel : fails 12 of 14
 introNewDef : fails 13 of 15
 liftToToplevel : fails 13 of 14
 evalMonad : fails 14 of 19
-removeField : fails 15 of 17
 introCase : fails 22 of 33
 subIntroPattern : fails 22 of 25
-simplifyExpr : fails 28 of 30
 addCon - fails 4 of 12
 evalAddEvalMon : fails : Prelude.read: no parse
 evalAddEvalMonCache: fails : Prelude.read: no parse

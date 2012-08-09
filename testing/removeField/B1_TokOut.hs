@@ -7,4 +7,3 @@ data Data1 a = C1 a Int |
 
 g = (C1 1  3)
 
-

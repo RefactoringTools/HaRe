@@ -6,9 +6,7 @@ data Data a = C1 Int Char |
 
 f :: Data a -> Int
 f (C1  b c) = b
-
 f (C2 a)     = a
 f (C3 a)     = 42
 
 (C1  b c) = 89
-
