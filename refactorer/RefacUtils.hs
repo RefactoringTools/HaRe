@@ -1726,7 +1726,8 @@ parseSourceFile filename
 
 parsePrelude
    = do
-        name <- fileNameToModName (release_root ++ "/tools/base/tests/HaskellLibraries/Prelude.hs")
+        -- name <- fileNameToModName (release_root ++ "/tools/base/tests/HaskellLibraries/Prelude.hs")
+        name <- fileNameToModName (release_root ++ "/Prelude.hs")
         res <- ((checkScope  @@ parseModule') name)
         return res
 
