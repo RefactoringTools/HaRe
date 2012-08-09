@@ -85,12 +85,13 @@ addCon - fails 4 of 12
   - Case2 fails with compile error during refactor
   - Tuple1,Tuple2 fail with different results to expected
 
-
+liftToToplevel : fails 2 of 14
+  - PatBindIn1: tup@(h,t) problem as well
+  - PatBindIn2: should fail but does not
 ---
 
 pointwiseToPointfree : failed 7 of 7
 demote : fails 7 of 161
-liftToToplevel : fails 13 of 14
 evalMonad : fails 14 of 19
 introCase : fails 22 of 33
 subIntroPattern : fails 22 of 25

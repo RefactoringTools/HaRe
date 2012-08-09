@@ -9,5 +9,6 @@ sumSquares [] = 0
 
 sq x = x ^ pow
 
+
 pow = 2
 
