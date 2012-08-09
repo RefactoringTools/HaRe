@@ -79,7 +79,10 @@ runTesting system hare refactorCmd positiveTests negativeTests
      =do let files=concatMap (\t->t++" ") $ nub (concatMap fst positiveTests ++ concatMap fst negativeTests)
          system ("echo new |" ++ hare)
          system ("echo add " ++ files ++ " |" ++ hare)
-         system ("echo chase ../../tools/base/tests/HaskellLibraries/ |" ++ hare)
+         
+         -- system ("echo chase ../../tools/base/tests/HaskellLibraries/ |" ++ hare) -- ++AZ++
+         system ("echo chase ../HaskellLibraries/ |" ++ hare) -- ++AZ++
+         
          system ("echo chase . |" ++ hare)
          runTestTT (testCases system hare refactorCmd positiveTests negativeTests)
 

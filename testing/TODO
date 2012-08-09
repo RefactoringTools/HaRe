@@ -9,23 +9,26 @@ Passes
 
 addField - passes, and works in emacs
 addOneParameter - passes, and works in emacs
+addToExport - passes 8 of 8
 cleanImports : passes 4 of 4
 foldDef : passes
 generativeFold: passes
 instantiate : passes
+introNewDef : passes 15 of 15
 introPattern : passes
-removeDef : passes 17 of 17 
-renaming : passes 28 of 28
-rmOneParameter : passes 10 of 10
-removeCon : passes 20 of 20
-rmFromExport : passes 3 of 3
-whereToLet : passes 10 of 10
 mkImpExplicit : passes 5 of 5
 moveDefBtwMods : passes 9 of 9
-addToExport - passes 8 of 8
-simplifyExpr : passes 30 of 30
+removeCon : passes 20 of 20
+removeDef : passes 17 of 17 
 removeField : passes 17 of 17
-introNewDef : passes 15 of 15
+renaming : passes 28 of 28
+rmFromExport : passes 3 of 3
+rmOneParameter : passes 10 of 10
+simplifyExpr : passes 30 of 30
+whereToLet : passes 10 of 10
+
+Needs own test runner:
+introThreshold : passes 10 of 10
 merging : passes 18 of 18
 evalAddEvalMon : pases 20 of 20
 
@@ -98,7 +101,5 @@ evalMonad : fails 14 of 19 - seems to need a cache
 introCase : fails 22 of 33
 subIntroPattern : fails 22 of 25
 evalAddEvalMonCache: fails : Prelude.read: no parse
-introThreshold : fails Prelude.read: no parse [problem is UTest.data
-   set up for caching test, but script does not call it]
 
 
