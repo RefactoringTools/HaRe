@@ -20,3 +20,5 @@ testing/addCon/Case1.hs.temp.hs
 testing/addCon/Case2.hs.temp.hs
 testing/UTest
 testing/*/hi
+/testing/evalAddEvalMon/UTestCache
+/testing/introThreshold/UTestCache

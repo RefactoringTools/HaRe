@@ -9,8 +9,7 @@ fib t n
        n1 = fib 20 (n-1)
        n2 = fib 20 (n-2)
        (n1_2, n2_2)
-           =
-               CP.runEval
+           =   CP.runEval
                    (do n1_2 <- rpar_abs_1 n1
                        n2_2 <- rpar_abs_1 n2
                        return (n1_2, n2_2))

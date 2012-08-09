@@ -94,7 +94,7 @@ liftToToplevel : fails 2 of 14
 
 pointwiseToPointfree : failed 7 of 7
 demote : fails 7 of 161
-evalMonad : fails 14 of 19
+evalMonad : fails 14 of 19 - seems to need a cache
 introCase : fails 22 of 33
 subIntroPattern : fails 22 of 25
 evalAddEvalMonCache: fails : Prelude.read: no parse
