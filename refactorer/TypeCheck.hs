@@ -193,7 +193,7 @@ testPattern closure closure_name modName fileName =
       --
       --say "Put the Prelude, Data.Map and *SomeModule in scope"
       --say "Data.Map is qualified as M!"
-      set [languageExtensions := [ExistentialQuantification, ScopedTypeVariables]]
+      set [languageExtensions := [ImplicitPrelude,ExistentialQuantification, ScopedTypeVariables]]
       loadModules [fileName]
       setTopLevelModules [modName]
       setImportsQ [("Prelude", Nothing)]

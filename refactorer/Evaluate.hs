@@ -54,7 +54,8 @@ main
    -- ++AZ++ let packageConf = ghcPath
    -- (eval_res, x) <- runEval args modName closure_call packageConf
    -- x <- runInterpreter (runEvalHint args modName closure_call)
-   -- x <- runInterpreter (runEvalHint args modName closure_call)
+
+   -- Need to ignore warnings 
    x <- unsafeRunInterpreterWithArgs ["-w"] (runEvalHint args modName closure_call)
                                      
    -- 

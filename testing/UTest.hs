@@ -47,11 +47,15 @@ negativeTest system pfeCmd refactorCmd args
     =TestCase (do let inputFiles = fst args
                       tokExpOutputFiles=map (createNewFileName "_TokOut") inputFiles
                       tempFiles = map (createNewFileName "_temp") inputFiles
+                      keepFiles = map (createNewFileName "_refac") inputFiles -- ++AZ++
                       params =refactorCmd: ((head inputFiles) : (snd args))
                       inputTemps =zip inputFiles tempFiles
                       inputOutputs=zip inputFiles tokExpOutputFiles
                   mapM (createTempFile system) inputTemps
                   system ("echo " ++ concatMap (\t->t ++ " ") params ++ " |" ++ pfeCmd)
+
+                  mapM (keepResult system) $ zip inputFiles keepFiles -- ++AZ++
+                  
                   results<-mapM (compareResult system) inputOutputs
                   mapM (recoverFiles system) inputTemps
                   mapM (rmTempFiles system) tempFiles

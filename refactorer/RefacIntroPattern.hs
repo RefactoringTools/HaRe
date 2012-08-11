@@ -509,6 +509,7 @@ introPatsCase' fileName inscps pnt modName t
                       
                   let closureEquation = createClosure ((render.ppi) newTypeSig) (pNTtoName pnt) (pats !! position) position
 
+                  -- error $ "RefacIntroPattern.introPatsCase': ghcTypeCheckPattern params" ++ (show (closureEquation,"closure___",modName,fileName))-- ++AZ++    
                   -- res <- liftIO $ ghcTypeCheckPattern closureEquation "closure___" ses
                   typeOfPat2 <- getSigAsString fileName closureEquation (force $ ghcTypeCheckPattern closureEquation "closure___" modName fileName)
                   

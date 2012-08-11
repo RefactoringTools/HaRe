@@ -54,7 +54,6 @@ duplication : fails 1 of 12
    and t
 
 
-
 asPatterns : fails 2 of 27
   - A6: parentheses arranged differently in result.
         Note: file is not a valid haskell module
@@ -105,7 +104,9 @@ pointwiseToPointfree : failed 7 of 7
 ---
 
 demote : fails 7 of 16
-introCase : fails 22 of 33
+introCase : fails 4 of 33
+  - was a bug in hint-0.3.3.4 which diasables ImplicitPrelude when
+   extensions are set
 subIntroPattern : fails 22 of 25
 
 -- Parallel stuff?
