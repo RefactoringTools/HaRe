@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
+{-# OPTIONS_GHC -cpp  #-}
 {-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 module StateMT 
   (module IxStateMT, F.HasState, updSt, updSt_, getSt, setSt, setSt_) where

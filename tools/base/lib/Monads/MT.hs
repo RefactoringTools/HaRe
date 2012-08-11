@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
+{-# OPTIONS_GHC -cpp  #-}
 module MT where
 
 import Tree

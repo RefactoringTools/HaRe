@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
+{-# OPTIONS_GHC -cpp  #-}
 -- Labelled fields, used in patterns and expressions
 module HsFieldsStruct where
 
