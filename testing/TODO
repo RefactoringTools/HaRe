@@ -16,6 +16,9 @@ addOneParameter - passes, and works in emacs
 addToExport - passes 8 of 8
 cleanImports : passes 4 of 4
 foldDef : passes
+foldPatterns : passes 6 of 6
+  - The SimpleIn1_TokOut.hs expected result file seems wrong 
+    - on closer inspection the input file is wrong, modified to make sense
 generativeFold: passes
 instantiate : passes
 introNewDef : passes 15 of 15
@@ -51,8 +54,6 @@ duplication : fails 1 of 12
    and t
 
 
-foldPatterns : fails 1 of 6
-  - The SimpleIn1_TokOut.hs expected result file seems wrong 
 
 asPatterns : fails 2 of 27
   - A6: parentheses arranged differently in result.
@@ -97,13 +98,18 @@ addCon - fails 4 of 12
 liftToToplevel : fails 2 of 14
   - PatBindIn1: tup@(h,t) problem as well
   - PatBindIn2: should fail but does not
----
 
 pointwiseToPointfree : failed 7 of 7
-demote : fails 7 of 161
-evalMonad : fails 14 of 19 - seems to need a cache
+  - Seems to be an error in parsing arguments to the refactorer
+
+---
+
+demote : fails 7 of 16
 introCase : fails 22 of 33
 subIntroPattern : fails 22 of 25
-evalAddEvalMonCache: fails : Prelude.read: no parse
 
+-- Parallel stuff?
+evalMonad : fails 14 of 19 - seems to need a cache
+evalAddEvalMonCache: fails : Prelude.read: no parse
+  - seems to be an experiment?
 
