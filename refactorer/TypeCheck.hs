@@ -16,6 +16,7 @@ import SrcLoc
 --import AbstractIO
 import Control.Monad
 import Language.Haskell.Interpreter hiding (runGhc)
+import Language.Haskell.Interpreter.Unsafe
 
 -- import LocalSettings
 import GHC.Paths ( libdir )
@@ -34,7 +35,11 @@ ghcTypeCheck1 expr modName fileName =
       putStrLn expr
       putStrLn modName
       putStrLn fileName
-      r <- runInterpreter (testHint expr modName fileName)
+      
+      -- Need to ignore warnings 
+      -- r <- runInterpreter                   (testHint expr modName fileName)
+      r <- unsafeRunInterpreterWithArgs ["-w"] (testHint expr modName fileName)
+      
       case r of
          Left err -> do printInterpreterError err
                         return ""
@@ -177,7 +182,9 @@ ghcTypeCheckx ses2 expr modName =
 ghcTypeCheckPattern closure closure_name modName fileName =
   unsafePerformIO(
    do
-      r <- runInterpreter (testPattern closure closure_name modName fileName)
+      -- Need to ignore warnings
+      -- r <- runInterpreter (testPattern closure closure_name modName fileName)
+      r <- unsafeRunInterpreterWithArgs ["-w"] (testPattern closure closure_name modName fileName)
       case r of
          Left err -> do printInterpreterError err
                         return ""

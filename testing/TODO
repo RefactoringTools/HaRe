@@ -21,6 +21,9 @@ foldPatterns : passes 6 of 6
     - on closer inspection the input file is wrong, modified to make sense
 generativeFold: passes
 instantiate : passes
+introCase : passes 33 of 33
+  - was a bug in hint-0.3.3.4 which diasables ImplicitPrelude when
+   extensions are set. Logged.
 introNewDef : passes 15 of 15
 introPattern : passes
 mkImpExplicit : passes 5 of 5
@@ -104,9 +107,6 @@ pointwiseToPointfree : failed 7 of 7
 ---
 
 demote : fails 7 of 16
-introCase : fails 4 of 33
-  - was a bug in hint-0.3.3.4 which diasables ImplicitPrelude when
-   extensions are set
 subIntroPattern : fails 22 of 25
 
 -- Parallel stuff?

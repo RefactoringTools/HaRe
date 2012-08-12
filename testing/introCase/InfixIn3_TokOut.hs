@@ -1,3 +1,5 @@
+{-# LANGUAGE ExistentialQuantification #-}
+
 module InfixIn3 where
 
 data Inf a b = Nil | a :* b
