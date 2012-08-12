@@ -95,6 +95,7 @@ liftOneLevel : fails 1 of 14
 
 addCon - fails 4 of 12
   - Case1 fails with compile error during refactor
+    - trying to ascertain the type of a variable in a where clause
   - Case2 fails with compile error during refactor
   - Tuple1,Tuple2 fail with different results to expected
 
