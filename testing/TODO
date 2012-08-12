@@ -35,6 +35,7 @@ renaming : passes 28 of 28
 rmFromExport : passes 3 of 3
 rmOneParameter : passes 10 of 10
 simplifyExpr : passes 30 of 30
+subIntroPattern : passes 25 of 25
 whereToLet : passes 10 of 10
 
 Needs own test runner:
@@ -107,7 +108,6 @@ pointwiseToPointfree : failed 7 of 7
 ---
 
 demote : fails 7 of 16
-subIntroPattern : fails 22 of 25
 
 -- Parallel stuff?
 evalMonad : fails 14 of 19 - seems to need a cache
