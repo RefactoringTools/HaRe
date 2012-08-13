@@ -1,0 +1,32 @@
+Intention: Make use of existing tools to parse/pretty print, round
+   trip haskell code.
+
+Possible tools
+  GHC API
+  Buildwrapper
+  hint
+  haskell-src-exts
+
+Probably in combination
+
+Other things to look at
+  haskell-mode
+  ghc-mod
+
+Buildwrapper is already IDE-aware
+
+Can a lense be used to present the pfe parse tree as if it were the
+   GHC one?
+
+From "Technical Report - Porting HaRe to the GHC API":
+
+The porting process was centered on four modules, 
+  RefacLocUtils.hs,
+  RefacUtils.hs, 
+  RefacTypeSyn.hs and 
+  RefacUtils.hs
+
+
+Looks like ifToCase is a really simple start point: but no tests
+           refacDataNewType
+
