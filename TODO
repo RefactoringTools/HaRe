@@ -11,7 +11,7 @@ Probably in combination
 
 Other things to look at
   haskell-mode
-  ghc-mod
+  ghc-mod - uses ghc API directly
 
 Buildwrapper is already IDE-aware
 
@@ -26,7 +26,39 @@ The porting process was centered on four modules,
   RefacTypeSyn.hs and 
   RefacUtils.hs
 
+  RefacTypeUtils?
 
 Looks like ifToCase is a really simple start point: but no tests
            refacDataNewType
+
+-------------------
+
+Dependencies
+------------
+
+ghc-mod
+  ghc api
+  
+haskell-src-exts
+  buildwrapper (also ghc-api)
+
+buildwrapper
+  haskell-src-exts (also ghc-api)
+
+hint
+  haskell-src (and ghc-api)
+
+haskell-mode
+ - elisp only
+
+-----------------------------
+
+Tasks
+
+1. Understand round-tripping of source using GHC
+
+   - seems that printForUser might be the one...
+
+2. Get a handle on Data.Generics / SYB / Stafunski
+
 
