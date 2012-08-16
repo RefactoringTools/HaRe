@@ -30,6 +30,7 @@ import MUtils (( # ))
 import RefacLocUtils
 --import System
 import System.IO
+import System.IO.Unsafe
 import Data.Char
 
 -- | An argument list for a function which of course is a list of paterns.
@@ -503,6 +504,7 @@ findFuncs fileName datName t pnames newPn newPNT numParam oldPnames position inf
                   = do
                        let (_, y) = checkTypesInPat datName pats modName fileName
                       -- error $ show y
+                           
                        Just ((checkTypes2 datName (pNTtoName pnt) modName fileName), y)
                  inMatch x@(_) = Nothing
 

@@ -50,6 +50,7 @@ ghcTypeCheck1 expr modName fileName =
 testHint :: String -> String -> String -> InterpreterT IO String
 testHint expr modName fileName =
     do
+      say $ "TypeCheck.testHint:(expr,modName,fileName)=" ++ (show (expr,modName,fileName)) -- ++AZ++
       -- say "Load SomeModule.hs"
       loadModules [fileName]
       --

@@ -18,11 +18,24 @@ import Var(Var)
 import qualified OccName(occNameString)
 
 
+-----------------
+import qualified Data.Generics.Schemes as SYB
+import qualified Data.Generics.Aliases as SYB
+import qualified GHC.SYB.Utils         as SYB
+
+import qualified GHC
+import qualified DynFlags              as GHC
+import qualified Outputable            as GHC
+import qualified MonadUtils            as GHC
+ 
+import GHC.Paths ( libdir )
+ 
+-----------------
 
 
-
-targetFile = "./refactorer/B.hs"
+targetFile = "./refactorer/" ++ targetMod ++ ".hs"
 -- targetFile = "B.hs"
+targetMod = "B"
 
 
 
@@ -54,8 +67,18 @@ ifToCase args
 -- data HsExpr id
 --   ...
 --   HsIf (Maybe (SyntaxExpr id)) (LHsExpr id) (LHsExpr id) (LHsExpr id)
+--                                  ^1            ^2           ^3
 --   ...
+--  HsCase (LHsExpr id) (MatchGroup id)
+--            ^1
 
+-- data MatchGroup id
+--   MatchGroup [LMatch id] PostTcType	
+
+-- type LMatch id = Located (Match id)
+
+-- data Match id 
+--   Match [LPat id] (Maybe (LHsType id)) (GRHSs id)	 
 
 getStuff =
     defaultErrorHandler defaultLogAction $ do
@@ -85,7 +108,57 @@ getStuff =
         -- res <- getRichTokenStream (ms_mod modSum)
         -- return $ showRichTokenStream res
 
-        let ps = pm_parsed_source p
-        let res = showData Parser 4 ps
+        let ps = convertSource $ pm_parsed_source p
+        -- let res = showData Parser 4 ps
+        let res = showPpr ps
         return res
+
+convertSource ps =
+  ps
+
+-- -----------------------------------------------------------------------------------------
+-- From http://hpaste.org/65775
+{-
+   1. install first: ghc-paths, ghc-syb-utils
+   2. make a file Test1.hs in this dir with what you want to parse/transform
+   3 .run with: ghci -package ghc
+-}
+
+-- module Main where
+
+ 
+main = example
+
+example =
+   GHC.runGhc (Just libdir) $ do
+        dflags <- GHC.getSessionDynFlags
+        let dflags' = foldl GHC.xopt_set dflags
+                            [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
+        GHC.setSessionDynFlags dflags'
+        -- target <- GHC.guessTarget (targetMod ++ ".hs") Nothing
+        target <- GHC.guessTarget targetFile Nothing
+        GHC.setTargets [target]
+        GHC.load GHC.LoadAllTargets
+        modSum <- GHC.getModSummary $ GHC.mkModuleName targetMod
+        p <- GHC.parseModule modSum
+        let p' = processParsedMod shortenLists p
+        -- GHC.liftIO (putStrLn . showParsedModule $ p)
+        -- GHC.liftIO (putStrLn . showParsedModule $ p')
+        GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
+
+showParsedModule p = SYB.showData SYB.Parser 0 (GHC.pm_parsed_source p)
+
+processParsedMod f pm = pm { GHC.pm_parsed_source = ps' }
+  where
+   ps  = GHC.pm_parsed_source pm
+   -- ps' = SYB.everythingStaged SYB.Parser (SYB.mkT f) -- does not work yet
+   -- everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ r
+   
+   ps' :: GHC.ParsedSource
+   ps' = SYB.everywhere (SYB.mkT f) ps -- exception
+
+
+shortenLists :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
+shortenLists (GHC.ExplicitList t exprs) = GHC.ExplicitList t []
+shortenLists x                          = x
 
