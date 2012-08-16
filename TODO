@@ -57,8 +57,24 @@ Tasks
 
 1. Understand round-tripping of source using GHC
 
-   - seems that printForUser might be the one...
+
+    getRichTokenStream :: GhcMonad m => Module -> m [(Located Token, String)]
+
+      Give even more information on the source than getTokenStream
+      This function allows reconstructing the source completely with
+      showRichTokenStream.
+
+    showRichTokenStream :: [(Located Token, String)] -> StringSource
+
+      Take a rich token stream such as produced from
+      getRichTokenStream and return source code almost identical to the
+      original code (except for insignificant whitespace.)
+
+    Seems to work.
 
 2. Get a handle on Data.Generics / SYB / Stafunski
+
+3. Identify how to modify the GHC output, and push it out again
+
 
 
