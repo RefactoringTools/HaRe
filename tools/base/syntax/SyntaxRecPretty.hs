@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module SyntaxRecPretty where
 import SyntaxRec
 import PrettyPrint

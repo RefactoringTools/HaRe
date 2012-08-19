@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -cpp  #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module HsKindStruct where
 
 import Data.Generics

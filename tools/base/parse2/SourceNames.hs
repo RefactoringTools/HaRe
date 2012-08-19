@@ -1,3 +1,7 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module SourceNames where
 import HsName(Id,HsName(..),hsUnQual,ModuleName(..),moduleName)
 import SrcLoc1(SrcLoc,loc0,srcFile)

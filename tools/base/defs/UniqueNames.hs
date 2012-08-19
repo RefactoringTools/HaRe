@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module UniqueNames where
 import SrcLoc1(SrcLoc(..),loc0,HasSrcLoc)
 import SrcLocPretty()

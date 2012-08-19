@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 module EnvM (module IxEnvM, F.HasEnv, getEnv, inEnv, inModEnv) where
 
 import IxEnvM hiding (HasEnv(..))

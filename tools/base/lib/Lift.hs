@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 module Lift where
 import Data.Maybe(maybeToList)
 import PrettyPrint

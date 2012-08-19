@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 {-+
 This module defines instances for the
 identifier types #PN# and #PNT# in the classes needed by the type checker.

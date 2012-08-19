@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module HsName where
 
 import Data.Char(isAlpha,isUpper)

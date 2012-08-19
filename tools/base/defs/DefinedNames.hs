@@ -1,3 +1,7 @@
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE FunctionalDependencies  #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module DefinedNames(module DefinedNames,module TypedIds) where
 import TypedIds
 import HsIdent

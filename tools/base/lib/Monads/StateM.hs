@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 module StateM 
   (module IxStateM, F.HasState, updSt, updSt_, getSt, setSt, setSt_) where
 

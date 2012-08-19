@@ -1,4 +1,9 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module PNT where
+
 import HsName
 import HsIdent
 import UniqueNames(PN,OptSrcLoc(..),HasOrig(..))

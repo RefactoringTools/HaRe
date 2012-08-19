@@ -1,4 +1,6 @@
 {-# OPTIONS_GHC -cpp #-}
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 module ExceptM (module ExceptM, HasExcept(..)) where
 
 import MT

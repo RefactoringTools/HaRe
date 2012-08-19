@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -cpp  #-}
--- XDeriveDataTypeable
+{-# LANGUAGE DeriveDataTypeable #-}
 module HsLiteral where
 
 import Data.Generics

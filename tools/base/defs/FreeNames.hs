@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 module FreeNames(module FreeNames,NameSpace(..)) where
 
 import HsIdent

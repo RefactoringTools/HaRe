@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 ------------------------------------------------------------------------------
 -- |
 -- Maintainer	: Ralf Laemmel, Joost Visser

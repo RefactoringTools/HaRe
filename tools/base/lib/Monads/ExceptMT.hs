@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 module ExceptMT (HasExcept(..), MT(..), WithExcept, removeExcept, mapExcept)
   where
 

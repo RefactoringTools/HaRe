@@ -1,3 +1,6 @@
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE FunctionalDependencies  #-}
+{-# LANGUAGE FlexibleContexts  #-}
 module HasBaseStruct where
 import BaseSyntaxStruct
 import SpecialNames

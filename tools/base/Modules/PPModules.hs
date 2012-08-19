@@ -1,4 +1,6 @@
 {-# OPTIONS -cpp #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 module PPModules where
 
 --import Modules

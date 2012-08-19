@@ -1,3 +1,6 @@
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE FlexibleInstances  #-}
 module PrettyPrint2 where
 import qualified PrettyDoc as P(Doc)
 import PrettyDoc hiding (Doc)

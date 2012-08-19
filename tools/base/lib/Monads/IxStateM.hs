@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 module IxStateM (HasState(..), StateM, withSt, withStS, mapState) where
 
 import MT

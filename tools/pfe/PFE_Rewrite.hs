@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 {-+
 Sometimes we need to apply some rewrites before type checking,
 but we need to record what rewrite was applied so that cached results

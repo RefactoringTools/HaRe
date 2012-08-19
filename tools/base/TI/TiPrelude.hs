@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 {-+
 This module defines various auxiliary functions that are used by the type
 checker when it needs to refer to things defined in the Prelude, e.g., when

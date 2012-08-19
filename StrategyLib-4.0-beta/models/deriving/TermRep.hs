@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- 
 -- We use a little trick to turn the Data class into Strafunski's Term class.
 -- No idea if this is going to work.

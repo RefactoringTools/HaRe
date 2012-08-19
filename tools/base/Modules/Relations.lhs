@@ -1,3 +1,6 @@
+> {-# OPTIONS -fglasgow-exts #-}
+> {-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
+
 >module Relations where
 
 >import qualified Data.Map as M
@@ -76,13 +79,26 @@ Sometimes it is useful to apply a function to all elements in the
 domain or range of a relation.  This is the task of #mapDom# and
  #mapRng#, respectively.
 
->--mapDom :: (Ord b, Ord x) => 
+++AZ++ checking the 
+  Occurs check: cannot construct the infinite type: t1 = (t0, t1)
+problem on mapDom
+
+map' is Set.map
+map :: (Ord a, Ord b) => (a -> b) -> Set a -> Set b
+type Rel a b = S.Set (a,b)
+
+so map :: (Ord (a,b), Ord (c,d)) => (a -> c) -> Set (a,b) -> Set (c,d)
+
+>-- mapDom :: (Ord b, Ord x) => 
 >--  (a -> x) -> Rel a b -> Rel x b
->mapDom f = map' (\(x,y) -> (f x, y)) 
+>-- mapDom f r = listToRel $ map (\(x,y) -> (f x, y)) $ relToList r
+>mapDom f = map' (\(x,y) -> (f x, y))
+
 
 >--mapRng :: (Ord a, Ord x) => 
 >--  (b -> x) -> Rel a b -> Rel a x
->mapRng f = map' (\(x,y) -> (x, f y)) 
+>-- mapRng f r = listToRel $ map (\(x,y) -> (x, f y)) $ relToList r
+>mapRng f = map' (\(x,y) -> (x, f y))
 
 We also need to be able to compute the intersection and union of relations.
 Elements are related by the intersection of two relations, if they are

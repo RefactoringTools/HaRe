@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable  #-}
 module HsIdent where
 import SrcLoc1
 import Data.Generics

@@ -1,5 +1,6 @@
 {-# LANGUAGE DatatypeContexts #-} -- ++AZ++introduced this comment since0.6.0.2
-
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 {-----------------------------------------------------------------------------
 
 A model of functional strategies using Data.Generics as of >= GHC 6.2.

@@ -6,6 +6,8 @@ Having described the Haskell module system as a mechanism for
 namespace management, it is natural for us to begin its
 specification with a discussion about names and entities.
 
+> {-# LANGUAGE TypeSynonymInstances #-}
+> {-# LANGUAGE FlexibleInstances #-}
 > module NamesEntities (
 >   module NamesEntities,
 >   module Ents,

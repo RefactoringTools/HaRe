@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 ------------------------------------------------------------------------------
 -- | 
 -- Maintainer	: Ralf Laemmel, Joost Visser

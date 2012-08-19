@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable  #-}
 -- $Id: HsGuardsStruct.hs,v 1.1 2001/07/25 01:15:30 moran Exp $
 
 module HsGuardsStruct where

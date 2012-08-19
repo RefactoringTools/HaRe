@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module OutputM (module IxOutputM, F.HasOutput, outputTree, output, outputs) 
   where
 

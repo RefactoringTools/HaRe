@@ -1,3 +1,7 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module SyntaxRec(module SyntaxRec,module HasBaseStruct,module Recursive,module HsConstants) where
 import Data.Maybe(fromMaybe)
 import SrcLoc1

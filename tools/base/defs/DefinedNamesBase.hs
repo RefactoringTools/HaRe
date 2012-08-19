@@ -1,3 +1,5 @@
+{-# OPTIONS -fglasgow-exts #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 module DefinedNamesBase(module DefinedNames) where
 			-- all instances are exported anyway...
 import Syntax(HsDeclI,HsTypeI,HsPatI)

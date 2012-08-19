@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable  #-}
 module HsExpStruct where
 
 import SrcLoc1

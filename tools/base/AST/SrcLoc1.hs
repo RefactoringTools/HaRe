@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable  #-}
 module SrcLoc1(
     SrcLoc(..), -- source location data type
     HasSrcLoc(..), -- source location class

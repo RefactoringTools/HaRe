@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable  #-}
 -- $Id: HsPatStruct.hs,v 1.29 2005/05/31 02:25:25 hallgren Exp $
 
 module HsPatStruct where

@@ -1,3 +1,8 @@
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE DeriveDataTypeable  #-}
+
 module TypedIds where
 import Data.Maybe(isJust)
 import Data.Generics

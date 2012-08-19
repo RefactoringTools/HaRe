@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -cpp  #-}
+{-# OPTIONS -fglasgow-exts #-}
 {-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 {-+
 This module defines a number of classes that captures various forms of IO.

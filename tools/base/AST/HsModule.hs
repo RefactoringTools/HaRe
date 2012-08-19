@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module HsModule(module HsModule,ModuleName(..)) where
 import Data.List(sort,nub)
 import SrcLoc1

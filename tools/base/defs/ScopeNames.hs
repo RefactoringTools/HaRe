@@ -1,3 +1,7 @@
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE FunctionalDependencies  #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module ScopeNames where
 import EnvM
 import DefinedNames(TypedIdent)

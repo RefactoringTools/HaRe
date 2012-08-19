@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -cpp  #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 -- Labelled fields, used in patterns and expressions
 module HsFieldsStruct where
 

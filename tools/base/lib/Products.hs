@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp  #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Products where
 
 toPair1 p   = proj1 p

@@ -20,7 +20,9 @@
 :set -i./tools/pfe/
 :set -i./StrategyLib-4.0-beta/library
 :set -i../StrategyLib-4.0-beta/models/deriving
-
+:set -i./tools/base/transforms
+:set -i./tools/base/transforms/Deriving
+:set -i./tools/hs2html/
 
 :set -i../refactorer/
 :set -i../dist/build/autogen/
@@ -39,5 +41,15 @@
 :set -i../tools/pfe/
 :set -i../StrategyLib-4.0-beta/library
 :set -i../StrategyLib-4.0-beta/models/deriving
+:set -i../tools/base/transforms
+:set -i../tools/base/transforms/Deriving
+:set -i../tools/hs2html/
 
 :set -package ghc
+:set -fglasgow-exts 
+:set -XMultiParamTypeClasses
+:set -XOverlappingInstances
+:set -XUndecidableInstances
+:set -XFunctionalDependencies
+:set -XNoMonomorphismRestriction
+

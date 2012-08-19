@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 module IxOutputM 
   (HasOutput(..), OutputM, foldOutput, listOutput, mapOutput) where
 

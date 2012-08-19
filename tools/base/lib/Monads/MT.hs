@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp  #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 module MT where
 
 import Tree
