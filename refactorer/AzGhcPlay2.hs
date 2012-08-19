@@ -61,7 +61,7 @@ example =
         modSum <- GHC.getModSummary $ GHC.mkModuleName targetMod
         p <- GHC.parseModule modSum
         let p' = processParsedMod shortenLists p
-        -- GHC.liftIO (putStrLn . showParsedModule $ p)
+        GHC.liftIO (putStrLn . showParsedModule $ p)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
         GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
 
@@ -71,8 +71,17 @@ processParsedMod f pm = pm { GHC.pm_parsed_source = ps' }
   where
    ps  = GHC.pm_parsed_source pm
    ps' :: GHC.ParsedSource
---   ps' = SYB.everythingStaged SYB.Parser (SYB.mkT f') -- does not work yet
    ps' = everywhereStaged Parser (mkT f) ps
+
+
+-- This is the actual modification step
+shortenLists :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
+shortenLists (GHC.ExplicitList t exprs) = GHC.ExplicitList t []
+shortenLists x                          = x
+
+-- ifToCase (GHC.
+
+-- ---------------------------------------------------------------------
 
 newtype ID x = ID { unID :: x }
 
@@ -90,10 +99,6 @@ everywhereStaged s f = f . gmapT' (everywhereStaged s f)
                           k :: Data d => ID (d -> b) -> d -> ID b
                           k (ID c) x = ID (c (f x))
 
-
-shortenLists :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
-shortenLists (GHC.ExplicitList t exprs) = GHC.ExplicitList t []
-shortenLists x                          = x
 
 -------- from ghc-syb-utils below, fixed to avoid extra traps
 

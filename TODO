@@ -7,6 +7,8 @@ Possible tools
   hint
   haskell-src-exts
 
+  template haskell
+
 Probably in combination
 
 Other things to look at
@@ -78,3 +80,20 @@ Tasks
 
 
 
+-------------------
+
+Template haskell packages to investigate
+loch-th
+newtype-th
+test-framework-th
+th-build
+th-expand-syns
+th-extras
+th-fold
+th-instances
+th-kinds
+th-lift
+th-orphans
+th-sccs
+type-sub-th
+zeroth

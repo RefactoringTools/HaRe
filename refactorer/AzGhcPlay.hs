@@ -15,6 +15,8 @@ import Outputable
 import PprTyThing
 import SrcLoc
 import Var(Var)
+import RdrName
+import OccName
 import qualified OccName(occNameString)
 
 
@@ -74,9 +76,7 @@ ifToCase args
 
 -- data MatchGroup id
 --   MatchGroup [LMatch id] PostTcType	
-
 -- type LMatch id = Located (Match id)
-
 -- data Match id 
 --   Match [LPat id] (Maybe (LHsType id)) (GRHSs id)	 
 
@@ -108,13 +108,48 @@ getStuff =
         -- res <- getRichTokenStream (ms_mod modSum)
         -- return $ showRichTokenStream res
 
+        {-
         let ps = convertSource $ pm_parsed_source p
-        -- let res = showData Parser 4 ps
-        let res = showPpr ps
+        let res = showData Parser 4 ps
+        -- let res = showPpr ps
         return res
+        -}
+        let p' = processParsedMod ifToCase p
+        -- GHC.liftIO (putStrLn . showParsedModule $ p)
+        -- GHC.liftIO (putStrLn . showParsedModule $ p')
+        GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
+
 
 convertSource ps =
   ps
+
+ifToCase :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
+--  HsIf (Maybe (SyntaxExpr id)) (LHsExpr id) (LHsExpr id) (LHsExpr id)
+ifToCase (GHC.HsIf _se e1 e2 e3)
+  = GHC.HsCase e1 (MatchGroup
+                   [
+                     (noLoc $ Match
+                      [
+                        noLoc $ ConPatIn (noLoc $ mkRdrUnqual $ mkVarOcc "True") (PrefixCon [])
+                      ]
+                      Nothing
+                       ((GRHSs
+                         [
+                           noLoc $ GRHS [] e2
+                         ] EmptyLocalBinds))
+                      )
+                   , (noLoc $ Match
+                      [
+                        noLoc $ ConPatIn (noLoc $ mkRdrUnqual $ mkVarOcc "False") (PrefixCon [])
+                      ]
+                      Nothing
+                       ((GRHSs
+                         [
+                           noLoc $ GRHS [] e3
+                         ] EmptyLocalBinds))
+                      )
+                   ] undefined)
+ifToCase x                          = x
 
 -- -----------------------------------------------------------------------------------------
 -- From http://hpaste.org/65775
@@ -162,3 +197,198 @@ shortenLists :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
 shortenLists (GHC.ExplicitList t exprs) = GHC.ExplicitList t []
 shortenLists x                          = x
 
+-- ---------------------------------------------------------------------
+{-
+module B where
+foo x = if (odd x) then \"Odd\" else \"Even\"
+foo' x
+  = case (odd x) of {
+      True -> \"Odd\"
+      False -> \"Even\" }
+main = do { putStrLn $ show $ foo 5 }
+mary = [1, 2, 3]"
+*Main> :load "/home/alanz/mysrc/github/alanz/HaRe/refactorer/AzGhcPlay.hs"
+[1 of 1] Compiling Main             ( /home/alanz/mysrc/github/alanz/HaRe/refactorer/AzGhcPlay.hs, interpreted )
+Ok, modules loaded: Main.
+*Main> 
+*Main> 
+*Main> 
+*Main> getStuff
+"
+    (L {refactorer/B.hs:1:1} 
+     (HsModule 
+      (Just 
+       (L {refactorer/B.hs:1:8} {ModuleName: B})) 
+      (Nothing) 
+      [] 
+      [
+       (L {refactorer/B.hs:4:1-41} 
+        (ValD 
+         (FunBind 
+          (L {refactorer/B.hs:4:1-3} 
+           (Unqual {OccName: foo})) 
+          (False) 
+          (MatchGroup 
+           [
+            (L {refactorer/B.hs:4:1-41} 
+             (Match 
+              [
+               (L {refactorer/B.hs:4:5} 
+                (VarPat 
+                 (Unqual {OccName: x})))] 
+              (Nothing) 
+              (GRHSs 
+               [
+                (L {refactorer/B.hs:4:9-41} 
+                 (GRHS 
+                  [] 
+                  (L {refactorer/B.hs:4:9-41} 
+                   (HsIf 
+                    (Just 
+                     (HsLit 
+                      (HsString {FastString: \"noSyntaxExpr\"}))) 
+                    (L {refactorer/B.hs:4:12-18} 
+                     (HsPar 
+                      (L {refactorer/B.hs:4:13-17} 
+                       (HsApp 
+                        (L {refactorer/B.hs:4:13-15} 
+                         (HsVar 
+                          (Unqual {OccName: odd}))) 
+                        (L {refactorer/B.hs:4:17} 
+                         (HsVar 
+                          (Unqual {OccName: x}))))))) 
+                    (L {refactorer/B.hs:4:25-29} 
+                     (HsLit 
+                      (HsString {FastString: \"Odd\"}))) 
+                    (L {refactorer/B.hs:4:36-41} 
+                     (HsLit 
+                      (HsString {FastString: \"Even\"})))))))] 
+               (EmptyLocalBinds))))] {!type placeholder here?!}) 
+          (WpHole) {!NameSet placeholder here!} 
+          (Nothing)))),
+       (L {refactorer/B.hs:(6,1)-(8,17)} 
+        (ValD 
+         (FunBind 
+          (L {refactorer/B.hs:6:1-4} 
+           (Unqual {OccName: foo'})) 
+          (False) 
+          (MatchGroup 
+           [
+            (L {refactorer/B.hs:(6,1)-(8,17)} 
+             (Match 
+              [
+               (L {refactorer/B.hs:6:6} 
+                (VarPat 
+                 (Unqual {OccName: x})))] 
+              (Nothing) 
+              (GRHSs 
+               [
+                (L {refactorer/B.hs:(6,10)-(8,17)} 
+                 (GRHS 
+                  [] 
+                  (L {refactorer/B.hs:(6,10)-(8,17)} 
+                   (HsCase 
+                    (L {refactorer/B.hs:6:15-21} 
+                     (HsPar 
+                      (L {refactorer/B.hs:6:16-20} 
+                       (HsApp 
+                        (L {refactorer/B.hs:6:16-18} 
+                         (HsVar 
+                          (Unqual {OccName: odd}))) 
+                        (L {refactorer/B.hs:6:20} 
+                         (HsVar 
+                          (Unqual {OccName: x}))))))) 
+                    (MatchGroup 
+                     [
+                      (L {refactorer/B.hs:7:3-15} 
+                       (Match 
+                        [
+                         (L {refactorer/B.hs:7:3-6} 
+                          (ConPatIn 
+                           (L {refactorer/B.hs:7:3-6} 
+                            (Unqual {OccName: True})) 
+                           (PrefixCon 
+                            [])))] 
+                        (Nothing) 
+                        (GRHSs 
+                         [
+                          (L {refactorer/B.hs:7:11-15} 
+                           (GRHS 
+                            [] 
+                            (L {refactorer/B.hs:7:11-15} 
+                             (HsLit 
+                              (HsString {FastString: \"Odd\"})))))] 
+                         (EmptyLocalBinds)))),
+                      (L {refactorer/B.hs:8:3-17} 
+                       (Match 
+                        [
+                         (L {refactorer/B.hs:8:3-7} 
+                          (ConPatIn 
+                           (L {refactorer/B.hs:8:3-7} 
+                            (Unqual {OccName: False})) 
+                           (PrefixCon 
+                            [])))] 
+                        (Nothing) 
+                        (GRHSs 
+                         [
+                          (L {refactorer/B.hs:8:12-17} 
+                           (GRHS 
+                            [] 
+                            (L {refactorer/B.hs:8:12-17} 
+                             (HsLit 
+                              (HsString {FastString: \"Even\"})))))] 
+                         (EmptyLocalBinds))))] {!type placeholder here?!})))))] 
+               (EmptyLocalBinds))))] {!type placeholder here?!}) 
+          (WpHole) {!NameSet placeholder here!} 
+          (Nothing)))),
+       (L {refactorer/B.hs:(10,1)-(11,25)} 
+        (ValD 
+         (FunBind 
+          (L {refactorer/B.hs:10:1-4} 
+           (Unqual {OccName: main})) 
+          (False) 
+          (MatchGroup 
+           [
+            (L {refactorer/B.hs:(10,1)-(11,25)} 
+             (Match 
+              [] 
+              (Nothing) 
+              (GRHSs 
+               [
+                (L {refactorer/B.hs:(10,8)-(11,25)} 
+                 (GRHS 
+                  [] 
+                  (L {refactorer/B.hs:(10,8)-(11,25)} 
+                   (HsDo 
+                    (DoExpr) 
+                    [
+                     (L {refactorer/B.hs:11:3-25} 
+                      (ExprStmt 
+                       (L {refactorer/B.hs:11:3-25} 
+                        (OpApp 
+                         (L {refactorer/B.hs:11:3-17} 
+                          (OpApp 
+                           (L {refactorer/B.hs:11:3-10} 
+                            (HsVar 
+                             (Unqual {OccName: putStrLn}))) 
+                           (L {refactorer/B.hs:11:12} 
+                            (HsVar 
+                             (Unqual {OccName: $}))) {!fixity placeholder here?!} 
+                           (L {refactorer/B.hs:11:14-17} 
+                            (HsVar 
+                             (Unqual {OccName: show}))))) 
+                         (L {refactorer/B.hs:11:19} 
+                          (HsVar 
+                           (Unqual {OccName: $}))) {!fixity placeholder here?!} 
+                         (L {refactorer/B.hs:11:21-25} 
+                          (HsApp 
+                           (L {refactorer/B.hs:11:21-23} 
+                            (HsVar 
+                             (Unqual {OccName: foo}))) 
+                           (L {refactorer/B.hs:11:25} 
+                            (HsOverLit 
+                             (OverLit 
+                              (HsIntegral 
+                               (5)) 
+                              (*** Exception: noRebindableInfo
+   -}
