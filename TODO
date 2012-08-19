@@ -1,6 +1,11 @@
 Intention: Make use of existing tools to parse/pretty print, round
    trip haskell code.
 
+Resources
+  Tool support for refactoring haskell programs, Chris Brown
+  http://www.cs.kent.ac.uk/projects/refactor-fp/publications/ChrisThesis.pdf
+
+
 Possible tools
   GHC API
   Buildwrapper
@@ -97,3 +102,10 @@ th-orphans
 th-sccs
 type-sub-th
 zeroth
+
+--------------------------------------------
+
+The type for these kind of identifiers is called PNT (Programatica
+   Name Type) and is defined as follows:
+
+  data PNT = PNT (PN HsName Orig) (IdTy Pid) OptSrcLoc
