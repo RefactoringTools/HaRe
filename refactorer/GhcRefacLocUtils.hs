@@ -32,6 +32,10 @@ module GhcRefacLocUtils(
                      -}
   ) where
 
+import GhcRefacTypeSyn
+import SrcLoc1
+import SourceNames
+import HsName
 {-
 import RefacTypeSyn(SimpPos)
 import PosSyntax
@@ -40,17 +44,23 @@ import HsLexerPass1 hiding (notWhite)
 import HsTokens
 import PrettySymbols(rarrow)
 import HsLayoutPre (PosToken)
+-}
 import PrettyPrint
+{-
 import HsExpUtil
 import PNT
 
 import RefacTypeSyn
+-}
 import Data.Maybe
 import Data.List
+{-
 import SourceNames
 -------------------------
 --import DriftStructUtils
+-}
 import StrategyLib
+
 ------------------------
 import Control.Monad.State
 
@@ -65,6 +75,7 @@ type PosToken = (Token,(Pos,String))
 
 data Pos = Pos { char, line, column :: !Int } deriving (Show)
 -- it seems that the field char is used to handle special characters including the '\t'
+
 
 data Token
   = Varid | Conid | Varsym | Consym
@@ -92,19 +103,20 @@ modified   = True
 --- some default values----
 pos0=Pos 0 0 0
 simpPos0 = (0,0)
-
+{-
 extractComments :: (SimpPos, SimpPos) -> [PosToken] -> [PosToken]
 extractComments ((startPosl, startPosr), endPos) toks
    = let (toks1, toks21, toks22) = splitToks ((startPosl, startPosr), endPos) toks
       in toks1
 
 ------------------------------------------------
+-}
 ghead info []    = error $ "ghead "++info++" []"
 ghead ingp (h:_) = h
 
 glast info []    = error $ "glast " ++ info ++ " []"
 glast info h     = last h
-
+{-
 gtail info []   = error $ "gtail " ++ info ++ " []"
 gtail info h    = tail h
 
@@ -358,20 +370,25 @@ getOffset toks pos
     in if ts2==[]
          then error "HaRe error: position does not exist in the token stream!"
          else lengthOfLastLine ts1
+-}
 
---comment a token stream specified by the start and end position.
-commentToks::(SimpPos,SimpPos)->[PosToken]->[PosToken]
-commentToks (startPos,endPos) toks
-    = let (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
-          toks21' = case toks21 of
-                     []              -> toks21
-                     (t,(l,s)):[]    -> (t, (l, ("{-" ++ s ++ "-}"))):[]
-                     (t1,(l1,s1)):ts -> let lastTok@(t2, (l2, s2)) = glast "commentToks" ts
-                                            lastTok' = (t2, (l2, (s2++" -}")))
-                                        in (t1,(l1, ("{- "++s1))): (reverse (lastTok': gtail "commentToks" (reverse ts)))
-      in (toks1 ++ toks21' ++ toks22)
+-- ++AZ++ next bit commented out with --, otherwise ghci complains
 
+-- --comment a token stream specified by the start and end position.
+-- commentToks::(SimpPos,SimpPos)->[PosToken]->[PosToken]
+-- commentToks (startPos,endPos) toks
+--     = let (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
+--           toks21' = case toks21 of
+--                      []              -> toks21
+--                      (t,(l,s)):[]    -> (t, (l, ("{-" ++ s ++ "-}"))):[]
+--                      (t1,(l1,s1)):ts -> let lastTok@(t2, (l2, s2)) = glast "commentToks" ts
+--                                             lastTok' = (t2, (l2, (s2++" -}")))
+--                                         in (t1,(l1, ("{- "++s1))): (reverse (lastTok': gtail "commentToks" (reverse ts)))
+--       in (toks1 ++ toks21' ++ toks22)
+         
+-- ++AZ++ prev bit commented out with --, otherwise ghci complains
 
+{-
 insertTerms :: (SimpPos, SimpPos) -> [PosToken] -> String -> [PosToken]
 insertTerms ((startPosl, startPosr), endPos) toks com
     = let (toks1, toks21, toks22) = splitToks ((startPosl, startPosr), endPos) toks
@@ -538,7 +555,7 @@ whiteSpaceTokens (row, col) n
  = if n<=0
     then []
     else (mkToken Whitespace (row,col) " "):whiteSpaceTokens (row,col+1) (n-1)
-
+-}
 -------------------------------------------------------------------------------------------------
 --get all the source locations (use locations) in an AST phrase t in according the the occurrence order of identifiers.
 srcLocs::(Term t)=> t->[SimpPos]
@@ -563,7 +580,7 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
          literalInPat (Pat (HsPNeg (SrcLoc _  _ row col) _)) = return [(row,col)]
          literalInPat _ =return []
 
-
+{-
 class StartEndLocPat t where
 
    startEndLoc2 :: [PosToken]->t->[(SimpPos,SimpPos)]
@@ -661,13 +678,13 @@ getStartEndLoc2 toks t
                                                                   else endPos')
     in (startPos, endPos)  -}
 
-
+-}
 
 --given an AST phrase, 'startEndLoc' gets its start and end position in the program source.
 class StartEndLoc t where
 
    startEndLoc :: [PosToken]->t->(SimpPos,SimpPos)
-
+{-
 instance StartEndLoc HsModuleP where
   startEndLoc toks _  = (tokenPos (ghead "startEndLoc:HsModuleP" toks),
                          tokenPos (glast "startEndLoc:HsModuleP" toks))

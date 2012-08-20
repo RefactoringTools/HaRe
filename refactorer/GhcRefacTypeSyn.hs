@@ -1,4 +1,7 @@
-
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 module GhcRefacTypeSyn where
 
 
@@ -9,9 +12,8 @@ import qualified RdrName as GHC
 import qualified SrcLoc  as GHC
 
 
-import SrcLoc1
-
 import Data.Generics
+import SrcLoc1
 
 {-
 --Modules from Programatic: 
@@ -57,6 +59,9 @@ type SimpPos = (Int,Int)
 
 -- Additions for GHC
 type PosToken = (GHC.Located GHC.Token, String)
+
+data Pos = Pos { char, line, column :: !Int } deriving (Show)
+-- it seems that the field char is used to handle special characters including the '\t'
 
 type HsName = GHC.RdrName
 type PN     = GHC.RdrName
@@ -122,8 +127,10 @@ instance HasSrcLoc PNT where
 ------------------------------------------------------------------------
 -- From UniqueNames
 
+-- type SrcLoc = GHC.SrcSpan
+
 newtype OptSrcLoc = N (Maybe SrcLoc) deriving (Data, Typeable)
-noSrcLoc = N Nothing
+noSrcLoc = GHC.noSrcSpan
 srcLoc = N . Just
 optSrcLoc = N
 instance Eq  OptSrcLoc where _ == _ = True

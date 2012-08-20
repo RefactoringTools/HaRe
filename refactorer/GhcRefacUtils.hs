@@ -4,10 +4,10 @@ module GhcRefacUtils (
   ) where
 
 import GhcRefacTypeSyn
+import GhcRefacLocUtils
 import Data.Maybe
 -- import PNT
 import MUtils (( # ))
-import SrcLoc1
 
 import qualified BasicTypes as GHC
 import qualified GHC        as GHC
@@ -153,4 +153,8 @@ expToPNT _ = defaultPNT
 useLoc::PNT->SrcLoc
 useLoc (PNT pname _ (N (Just loc))) = loc
 useLoc (PNT _ _ _ )                 = loc0
+
+
+-- From SrcLoc1.hs
+loc0 = GHC.noSrcLoc
 

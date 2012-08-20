@@ -83,6 +83,8 @@ Tasks
 
 3. Identify how to modify the GHC output, and push it out again
 
+4. First use GHC types, then see about using SYB et al instead of
+   Strafunski
 
 
 -------------------
