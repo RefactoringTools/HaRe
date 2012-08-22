@@ -17,9 +17,10 @@ module GhcRefacLocUtils(
                      lastNonSpaceToken,firstNonSpaceToken,compressPreNewLns,compressEndNewLns,
                      lengthOfLastLine,
                      updateToks,
-                     getToks,replaceToks,deleteToks, doRmWhites,doAddWhites,
-                     srcLocs
-                     ,-} getStartEndLoc
+                     getToks,replaceToks,deleteToks, doRmWhites,doAddWhites
+                     
+                     , -} srcLocs
+                     , getStartEndLoc
                      {-    
                      , getStartEndLoc2,
                      startEndLoc,extendBothSides,extendForwards,extendBackwards,
@@ -31,6 +32,10 @@ module GhcRefacLocUtils(
                      extractComments, insertTerms
                      -}
   ) where
+
+import qualified SrcLoc  as GHC
+import qualified RdrName as GHC
+
 
 import GhcRefacTypeSyn
 import SrcLoc1
@@ -562,10 +567,20 @@ srcLocs::(Term t)=> t->[SimpPos]
 srcLocs t =(nub.srcLocs') t \\ [simpPos0]
    where srcLocs'=runIdentity.(applyTU (full_tdTU (constTU []
                                                   `adhocTU` pnt
-                                                  `adhocTU` sn
-                                                  `adhocTU` literalInExp
-                                                  `adhocTU` literalInPat)))
+                                                  -- az:TODO: `adhocTU` sn
+                                                  -- az:TODO: `adhocTU` literalInExp
+                                                  -- az:TODO: `adhocTU` literalInPat
+                                                  )))
 
+         -- Using Lo`cated RdrName as GHC equivalent
+         -- pnt (PNT pname _ (N (Just (SrcLoc _  _ row col))))=return [(row,col)]
+         pnt (GHC.L l (GHC.Unqual _)) = return $ getGhcLoc l
+         pnt (GHC.L l (GHC.Qual _ _)) = return $ getGhcLoc l
+         pnt (GHC.L l (GHC.Orig _ _)) = return $ getGhcLoc l
+         pnt (GHC.L l (GHC.Exact _))  = return $ getGhcLoc l
+         pnt _                        = return []
+
+{- ++AZ++ replace these with GHC versions
          pnt (PNT pname _ (N (Just (SrcLoc _  _ row col))))=return [(row,col)]
          pnt _=return []
 
@@ -579,6 +594,10 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
          literalInPat ((Pat (HsPLit (SrcLoc _ _ row col) _))::HsPatP) = return [(row,col)]
          literalInPat (Pat (HsPNeg (SrcLoc _  _ row col) _)) = return [(row,col)]
          literalInPat _ =return []
+   ++AZ++ end -}
+
+getGhcLoc (GHC.RealSrcSpan ss)    = [(GHC.srcSpanStartCol ss, GHC.srcSpanStartLine ss)]
+getGhcLoc (GHC.UnhelpfulSpan _) = []
 
 {-
 class StartEndLocPat t where

@@ -111,3 +111,7 @@ The type for these kind of identifiers is called PNT (Programatica
    Name Type) and is defined as follows:
 
   data PNT = PNT (PN HsName Orig) (IdTy Pid) OptSrcLoc
+
+
+GHC equivalent of PNT seems to be
+Located RdrName

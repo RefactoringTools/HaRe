@@ -43,7 +43,7 @@ import qualified RdrName    as GHC
 
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
 --  region specified by the start and end position. If no expression can be found, then return the defaultExp.
-locToExp::           SimpPos            -- ^ The start position.
+locToExp::(Term t) =>SimpPos            -- ^ The start position.
                   -> SimpPos            -- ^ The end position.
                   -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
                   -> t                  -- ^ The syntax phrase.

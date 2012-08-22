@@ -34,8 +34,10 @@ import GHC.Paths ( libdir )
  
 -----------------
 
+import GhcRefacLocUtils
 
-targetFile = "./refactorer/" ++ targetMod ++ ".hs"
+-- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
+targetFile = "./" ++ targetMod ++ ".hs"
 -- targetFile = "B.hs"
 targetMod = "B"
 
@@ -117,7 +119,11 @@ getStuff =
         let p' = processParsedMod ifToCase p
         -- GHC.liftIO (putStrLn . showParsedModule $ p)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
-        GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
+        -- GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
+
+        let ps  = GHC.pm_parsed_source p
+            
+        GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
 
 
 convertSource ps =
