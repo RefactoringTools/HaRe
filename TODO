@@ -115,3 +115,33 @@ The type for these kind of identifiers is called PNT (Programatica
 
 GHC equivalent of PNT seems to be
 Located RdrName
+
+----------------------------------------------
+
+Seems the holes in the GHC Staged result will require
+ a) Update Strafunski to deal with it; OR
+ b) Use Data.Generics, from ghc-syb-utils, to avoid the holes
+
+Equivalences
+
+TP = Type Preserving - used for transformations
+TU = Type Unifying - used to query
+
+applyTU - applies a type-unifying strategy
+
+full_tdTU - full traversal, top down
+
+adhocTU allows the function worker to be applied to all nodes in a
+   layered data type: it updates a strategy to add type-specific
+   behavior so that the function on the left can be applied unless the
+   function on the right succeeds.
+
+SO
+
+full_tdTU = everything :: (r -> r -> r) -> GenericQ r -> GenericQ r
+               Summarise all nodes in top-down, left-to-right order
+
+
+From GHC.SYB.Utils (ghc-syb-utils-0.2.1.0)
+everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ rSource
+   Like everything, but avoid known potholes, based on the Stage that generated the Ast. 
