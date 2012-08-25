@@ -20,6 +20,7 @@ module GhcRefacLocUtils(
                      getToks,replaceToks,deleteToks, doRmWhites,doAddWhites
                      
                      , -} srcLocs
+                     , ghcSrcLocs -- Test version     
                      , getStartEndLoc
                      {-    
                      , getStartEndLoc2,
@@ -35,7 +36,9 @@ module GhcRefacLocUtils(
 
 import qualified SrcLoc  as GHC
 import qualified RdrName as GHC
+import qualified GHC.SYB.Utils as GHC
 
+import qualified Data.Generics as SYB
 
 import GhcRefacTypeSyn
 import SrcLoc1
@@ -595,6 +598,42 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
          literalInPat (Pat (HsPNeg (SrcLoc _  _ row col) _)) = return [(row,col)]
          literalInPat _ =return []
    ++AZ++ end -}
+
+ghcSrcLocs::(Term t)=> t->[SimpPos]
+-- ghcSrcLocs::(SYB.Data t)=> t->[SimpPos]
+ghcSrcLocs t =(nub.srcLocs') t \\ [simpPos0]
+-- ghcSrcLocs t =srcLocs' t
+   where srcLocs'= GHC.everythingStaged GHC.Parser (++) [] ([] `SYB.mkQ` pnt) 
+   -- where srcLocs' t = SYB.everything (++) ([] `SYB.mkQ` pnt) t
+
+         pnt :: GHC.GenLocated GHC.SrcSpan GHC.RdrName -> [SimpPos]
+         pnt (GHC.L l (GHC.Unqual _)) = getGhcLoc l
+         pnt (GHC.L l (GHC.Qual _ _)) = getGhcLoc l
+         pnt (GHC.L l (GHC.Orig _ _)) = getGhcLoc l
+         pnt (GHC.L l (GHC.Exact _))  = getGhcLoc l
+         pnt _                        = []
+
+{-
+GHC.everythingStaged ::
+  forall r.
+  GHC.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> SYB.GenericQ r
+
+SYB.everything ::
+  forall r.
+               (r -> r -> r) ->      SYB.GenericQ r -> SYB.GenericQ r
+  	-- Defined in `Data.Generics.Schemes'
+-}
+
+{-
+main = print $ ( listify (\(_::Int) -> True)         mytree
+               , everything (++) ([] `mkQ` fromLeaf) mytree
+               )
+  where
+    fromLeaf :: Tree Int Int -> [Int]
+    fromLeaf (Leaf x) = [x]
+    fromLeaf _ = []
+-}
+
 
 getGhcLoc (GHC.RealSrcSpan ss)    = [(GHC.srcSpanStartCol ss, GHC.srcSpanStartLine ss)]
 getGhcLoc (GHC.UnhelpfulSpan _) = []

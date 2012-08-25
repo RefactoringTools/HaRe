@@ -138,7 +138,8 @@ adhocTU allows the function worker to be applied to all nodes in a
 
 SO
 
-full_tdTU = everything :: (r -> r -> r) -> GenericQ r -> GenericQ r
+full_tdTU (corresponds to)
+ everything :: (r -> r -> r) -> GenericQ r -> GenericQ r
                Summarise all nodes in top-down, left-to-right order
 
 

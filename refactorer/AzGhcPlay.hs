@@ -122,8 +122,12 @@ getStuff =
         -- GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
 
         let ps  = GHC.pm_parsed_source p
-            
-        GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
+
+        -- res <- getRichTokenStream (ms_mod modSum)
+        -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream res))
+        
+        GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
+        -- GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
 
 
 convertSource ps =
