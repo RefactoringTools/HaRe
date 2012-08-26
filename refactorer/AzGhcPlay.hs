@@ -117,7 +117,7 @@ getStuff =
         return res
         -}
         let p' = processParsedMod ifToCase p
-        GHC.liftIO (putStrLn . showParsedModule $ p)
+        -- GHC.liftIO (putStrLn . showParsedModule $ p)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
         -- GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
 
@@ -126,8 +126,8 @@ getStuff =
         -- res <- getRichTokenStream (ms_mod modSum)
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream res))
         
-        GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
-        -- GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
+        -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
+        GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
 
 
 convertSource ps =

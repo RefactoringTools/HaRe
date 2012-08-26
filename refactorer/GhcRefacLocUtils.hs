@@ -1,5 +1,3 @@
-
-
 module GhcRefacLocUtils(
                      {-
                      module HsTokens,
@@ -20,7 +18,7 @@ module GhcRefacLocUtils(
                      getToks,replaceToks,deleteToks, doRmWhites,doAddWhites
                      
                      , -} srcLocs
-                     , ghcSrcLocs -- Test version     
+                     -- , ghcSrcLocs -- Test version     
                      , getStartEndLoc
                      {-    
                      , getStartEndLoc2,
@@ -568,8 +566,8 @@ whiteSpaceTokens (row, col) n
 -}
 -------------------------------------------------------------------------------------------------
 --get all the source locations (use locations) in an AST phrase t in according the the occurrence order of identifiers.
-srcLocs::(Term t)=> t->[SimpPos]
-srcLocs t =(nub.srcLocs') t \\ [simpPos0]
+srcLocsOld::(Term t)=> t->[SimpPos]
+srcLocsOld t =(nub.srcLocs') t \\ [simpPos0]
    where srcLocs'=runIdentity.(applyTU (full_tdTU (constTU []
                                                   `adhocTU` pnt
                                                   -- az:TODO: `adhocTU` sn
@@ -598,19 +596,18 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
 
          literalInPat ((Pat (HsPLit (SrcLoc _ _ row col) _))::HsPatP) = return [(row,col)]
          literalInPat (Pat (HsPNeg (SrcLoc _  _ row col) _)) = return [(row,col)]
-         literalInPat _ =return []
+         literalInPat _ =return []`
    ++AZ++ end -}
 
-ghcSrcLocs::(Term t)=> t->[SimpPos]
--- ghcSrcLocs::(SYB.Data t)=> t->[SimpPos]
-ghcSrcLocs t =(nub.srcLocs') t \\ [simpPos0]
--- ghcSrcLocs t =srcLocs' t
+srcLocs::(Term t)=> t->[SimpPos]
+srcLocs t =(nub.srcLocs') t \\ [simpPos0]
    where srcLocs'= GHC.everythingStaged GHC.Parser (++) []
                    ([]
                     `SYB.mkQ` pnt
-                    `SYB.extQ` sn)
+                    `SYB.extQ` sn
+                    `SYB.extQ` literalInExp
+                    `SYB.extQ` literalInPat)
 
-   -- where srcLocs' t = SYB.everything (++) ([] `SYB.mkQ` pnt) t
 
          pnt :: GHC.GenLocated GHC.SrcSpan GHC.RdrName -> [SimpPos]
          pnt (GHC.L l (GHC.Unqual _)) = getGhcLoc l
@@ -619,13 +616,43 @@ ghcSrcLocs t =(nub.srcLocs') t \\ [simpPos0]
          pnt (GHC.L l (GHC.Exact _))  = getGhcLoc l
          pnt _                        = []
 
-
-         -- sn :: GHC.GenLocated GHC.SrcSpan GHC.RdrName -> [SimpPos]
          sn :: GHC.HsModule GHC.RdrName -> [SimpPos]
          sn (GHC.HsModule (Just (GHC.L l _)) _ _ _ _ _) = getGhcLoc l
          sn _ = []
 
-         
+         literalInExp :: GHC.LHsExpr GHC.RdrName -> [SimpPos]
+         literalInExp (GHC.L l (GHC.HsOverLit _)) = getGhcLoc l
+
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsChar _)))        = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsCharPrim _)))    = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsString _)))      = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsStringPrim _)))  = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInt _)))         = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsIntPrim _)))     = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsWordPrim _)))    = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInt64Prim _)))   = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsWord64Prim _)))  = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInteger _ _)))   = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsRat _ _)))       = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsFloatPrim _)))   = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsDoublePrim _ ))) = getGhcLoc l
+         literalInExp _ = []
+
+         literalInPat :: GHC.LPat GHC.RdrName -> [SimpPos]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsChar _)))        = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsCharPrim _)))    = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsString _)))      = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsStringPrim _)))  = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInt _)))         = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsIntPrim _)))     = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsWordPrim _)))    = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInt64Prim _)))   = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsWord64Prim _)))  = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInteger _ _)))   = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsRat _ _)))       = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsFloatPrim _)))   = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsDoublePrim _ ))) = getGhcLoc l
+         literalInPat _ = []
 
 {-
 GHC.everythingStaged ::
