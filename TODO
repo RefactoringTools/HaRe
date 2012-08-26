@@ -145,4 +145,5 @@ full_tdTU (corresponds to)
 
 From GHC.SYB.Utils (ghc-syb-utils-0.2.1.0)
 everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ rSource
-   Like everything, but avoid known potholes, based on the Stage that generated the Ast. 
+   Like everything, but avoid known potholes, based on the Stage that
+   generated the Ast. 

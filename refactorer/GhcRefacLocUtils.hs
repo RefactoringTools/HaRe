@@ -36,6 +36,8 @@ module GhcRefacLocUtils(
 
 import qualified SrcLoc  as GHC
 import qualified RdrName as GHC
+import qualified Module  as GHC
+import qualified HsSyn   as GHC
 import qualified GHC.SYB.Utils as GHC
 
 import qualified Data.Generics as SYB
@@ -603,7 +605,11 @@ ghcSrcLocs::(Term t)=> t->[SimpPos]
 -- ghcSrcLocs::(SYB.Data t)=> t->[SimpPos]
 ghcSrcLocs t =(nub.srcLocs') t \\ [simpPos0]
 -- ghcSrcLocs t =srcLocs' t
-   where srcLocs'= GHC.everythingStaged GHC.Parser (++) [] ([] `SYB.mkQ` pnt) 
+   where srcLocs'= GHC.everythingStaged GHC.Parser (++) []
+                   ([]
+                    `SYB.mkQ` pnt
+                    `SYB.extQ` sn)
+
    -- where srcLocs' t = SYB.everything (++) ([] `SYB.mkQ` pnt) t
 
          pnt :: GHC.GenLocated GHC.SrcSpan GHC.RdrName -> [SimpPos]
@@ -612,6 +618,14 @@ ghcSrcLocs t =(nub.srcLocs') t \\ [simpPos0]
          pnt (GHC.L l (GHC.Orig _ _)) = getGhcLoc l
          pnt (GHC.L l (GHC.Exact _))  = getGhcLoc l
          pnt _                        = []
+
+
+         -- sn :: GHC.GenLocated GHC.SrcSpan GHC.RdrName -> [SimpPos]
+         sn :: GHC.HsModule GHC.RdrName -> [SimpPos]
+         sn (GHC.HsModule (Just (GHC.L l _)) _ _ _ _ _) = getGhcLoc l
+         sn _ = []
+
+         
 
 {-
 GHC.everythingStaged ::
