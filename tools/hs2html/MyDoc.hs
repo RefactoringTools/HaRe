@@ -3,8 +3,8 @@ module MyDoc where
 import Text.PrettyPrint
 import EnvM
 import MUtils 
-import Monad
-import Char(isSpace)
+import Control.Monad
+import Data.Char(isSpace)
 
 
 type Heading    = (Int,String)

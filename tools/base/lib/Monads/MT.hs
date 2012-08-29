@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp  #-}
 module MT where
 
 import Tree

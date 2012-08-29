@@ -12,8 +12,8 @@
 
 module NameTheme where
 
-import Monad
-import List
+import Control.Monad
+import Data.List
 import StrategyPrelude
 import OverloadingTheme
 import FlowTheme

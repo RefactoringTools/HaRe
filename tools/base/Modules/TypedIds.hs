@@ -1,5 +1,5 @@
 module TypedIds where
-import Maybe(isJust)
+import Data.Maybe(isJust)
 import Data.Generics
 
 {-+

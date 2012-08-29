@@ -4,7 +4,7 @@ module IxOutputMT (HasOutput(..), MT(..), at, Z, S, Top, Under, WithOutput,
 import MT
 import Control_Monad_Fix
 
-import Monad(liftM,MonadPlus(..))
+import Control.Monad(liftM,MonadPlus(..))
 import Tree
 
 

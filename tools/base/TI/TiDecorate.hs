@@ -19,7 +19,7 @@ import PrettySymbols
 import TI hiding (Subst)
 import TiBase()
 import TiBaseStruct(tcE,tcP,tcD)
-import List(nub)
+import Data.List(nub)
 --import Maybe(mapMaybe)
 --import QualNames
 import MUtils(apSnd)

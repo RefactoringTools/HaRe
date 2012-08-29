@@ -1,7 +1,7 @@
 module Recursive99 where
 
 
-{- g :: Num t  => t  ->  [Char]  ->  ([Char], [Char] -})
+g   :: (Eq a, Num a)  =>  a  ->  [Char]  ->  ([Char], [Char])
 g _ "" = ("", "")
 g 0 xs = ("", xs)
 g n ((x : xs))
@@ -9,6 +9,7 @@ g n ((x : xs))
   where
       ls = fst $ g (n - 1) xs
       rs = snd $ g (n - 1) xs
+
 f1 :: Int -> String -> [Char]
 f1 _ "" = ""
 f1 0 xs = ""

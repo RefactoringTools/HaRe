@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp  #-}
 module HsAssocStruct where
 
 import Data.Generics

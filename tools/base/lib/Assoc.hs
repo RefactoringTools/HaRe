@@ -1,8 +1,8 @@
 module Assoc where
 
 import OpTypes
-import List(partition)
-import Maybe (listToMaybe)
+import Data.List(partition)
+import Data.Maybe (listToMaybe)
 import Products
 import EnvM
 
@@ -26,7 +26,7 @@ class (Prod2 p k v, Functor c) => AssocC c p k v where
 
 lkpEq eq i      = listToMaybe . lkpAllEq eq i
 lkpDefEq eq v k = maybe v id . lkpEq eq k
-nonfailLkpEq eq = lkpDefEq eq (error "nonfailLkp failed.") 
+nonfailLkpEq eq = lkpDefEq eq (error "nonfailLkp failed.")
 lkpAll x        = lkpAllEq (==) x
 lkp x           = lkpEq (==) x
 lkpDef x        = lkpDefEq (==) x

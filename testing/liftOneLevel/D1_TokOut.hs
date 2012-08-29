@@ -11,6 +11,7 @@ sumSquares [] = 0
 
 sq pow x = x ^ pow
 
+
 main = sumSquares [1..4]
 
 

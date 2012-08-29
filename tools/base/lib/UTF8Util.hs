@@ -1,5 +1,5 @@
 module UTF8Util where
-import IO(isUserError,ioeGetErrorString)
+import System.IO.Error(isUserError,ioeGetErrorString)
 import UTF8
 
 utf8 = encodeUTF8 -- . arrows

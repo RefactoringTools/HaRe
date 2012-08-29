@@ -1,6 +1,6 @@
 module PrettyStd where
 import PrettyPrint2
-import Ratio
+import Data.Ratio
 
 -- Predefined instances:
 
@@ -10,7 +10,7 @@ instance Printable Int     where wrap = ppi
 instance Printable Integer where wrap = ppi
 instance Printable Float   where wrap = ppi
 instance Printable Double  where wrap = ppi
-instance Integral a => Printable (Ratio a) where wrap = ppi
+instance (Integral a,Show a) => Printable (Ratio a) where wrap = ppi
 
 instance Printable a => Printable (Maybe a) where
     ppi (Just a) = ppi a

@@ -2,7 +2,7 @@ module TiDefinedNames(
   module TiDefinedNames,DefinedNames(..),MapDefinedNames(..))
 where
 import DefinedNames hiding (definedType)
-import Maybe(mapMaybe,listToMaybe)
+import Data.Maybe(mapMaybe,listToMaybe)
 import HsIdent
 import MUtils(( # ))
 

@@ -1,1 +1,0 @@
-[("MonadFix",Ent (PlainModule "Control.Monad.Fix") (HsCon "MonadFix") (Class 1 ["mfix"])),("fix",Ent (PlainModule "Data.Function") (HsVar "fix") Value),("mfix",Ent (PlainModule "Control.Monad.Fix") (HsVar "mfix") (MethodOf "MonadFix" 1 ["mfix"]))]

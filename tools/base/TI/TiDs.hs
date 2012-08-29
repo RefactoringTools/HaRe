@@ -1,7 +1,7 @@
 -- Type checking sequences of declarations
 module TiDs where
-import List(nub,(\\),intersect,partition)
-import Maybe(mapMaybe,fromMaybe)
+import Data.List(nub,(\\),intersect,partition)
+import Data.Maybe(mapMaybe,fromMaybe)
 
 import HasBaseStruct(HasBaseStruct(..),GetBaseStruct(..))
 import SrcLoc1(SrcLoc,HasSrcLoc(..))

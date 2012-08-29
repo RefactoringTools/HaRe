@@ -15,7 +15,6 @@ f x@(Right b_1) = either id id x
 f x = either id id x
 
 
-
 p x@(y:ys) = case x of
              [] -> 42
              (z:zs) -> zs

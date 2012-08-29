@@ -3,7 +3,7 @@
 >import Relations
 >import NamesEntities
 >import ModSysAST
->import Maybe (isNothing)
+>import Data.Maybe (isNothing)
 >import Set60204
  
 The semantics of imports and exports

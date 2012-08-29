@@ -9,8 +9,8 @@ module LexUtil (isIdent,isLower_,  -- Char -> Bool
 where
 
 import HsName(isSymbol)
-import Char(isDigit, isOctDigit, isHexDigit, digitToInt, isAlpha, isLower)
-import Ratio
+import Data.Char(isDigit, isOctDigit, isHexDigit, digitToInt, isAlpha, isLower)
+import Data.Ratio
 
 isIdent  c = isAlpha c || isDigit c || c == '\'' || c == '_'
 isLower_ c = isLower c || c == '_'
@@ -26,8 +26,8 @@ readNumber :: Integer -> String -> Integer
 readNumber radix ds = readInteger2 radix (const True) ds
 
 readInteger2 :: Integer -> (Char -> Bool) -> String -> Integer
-readInteger2 radix isDig ds 
-  = foldl1 (\n d -> n * radix + d) (map (fromIntegral . digitToInt) 
+readInteger2 radix isDig ds
+  = foldl1 (\n d -> n * radix + d) (map (fromIntegral . digitToInt)
 				    (takeWhile isDig ds))
 
 readRational :: String -> Rational

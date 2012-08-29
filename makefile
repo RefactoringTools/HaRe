@@ -1,4 +1,4 @@
-HARE_VERSION=HaRe 28/06/2010
+HARE_VERSION=HaRe 15/08/2012
 HAPPY=happy
 LEX_PARSE_DIR= tools/base/parse2
 PARSER_DIR= ${LEX_PARSE_DIR}/Parser
@@ -9,7 +9,7 @@ LEXERGEN_IMPORTS= ../${LEXERGEN_DIR}:../${LEXERSPEC_DIR}:../tools/base/tests/Hbc
 LOCAL_IMPORTS=../editors/
 SYSTEM= `uname`
 
-REFACTORER_FILES=refactorer/PfeRefactoringCmds.hs refactorer/pfe refactorer/pfe_client 
+REFACTORER_FILES=refactorer/PfeRefactoringCmds.hs refactorer/pfe refactorer/pfe_client
 
 all: prepare editors-all ${REFACTORER_FILES}
 
@@ -35,24 +35,24 @@ refactorer-clean:
 editors-clean:
 	cd editors; make clean
 
-prepare: mergediffs ${PARSER_DIR}/HsParser.hs refactorer/hidir/${SYSTEM} refactorer/odir/${SYSTEM} ${LEXERGEN_DIR}/HsLexerGen ${LEXER_DIR}/HsLex.hs  
+prepare: ${PARSER_DIR}/HsParser.hs refactorer/hidir/${SYSTEM} refactorer/odir/${SYSTEM} ${LEXERGEN_DIR}/HsLexerGen ${LEXER_DIR}/HsLex.hs
 
 editors-all:
 	cd editors; make all HARE_VERSION="${HARE_VERSION}"
 
-mergediffs:
-	# cp -r diffs/tools/* tools
-        rsync --exclude='.svn' diffs/tools/* tools 
-
+# This will be done autoamtically via cabal
 ${PARSER_DIR}/HsParser.hs: ${PARSER_DIR}/HsParser.y
 	cd ${PARSER_DIR}; ${HAPPY} HsParser.y
 
+# This will be managed by cabal
 refactorer/hidir/${SYSTEM}:
 	mkdir -p refactorer/hidir/${SYSTEM}
 
+# This will be managed by cabal
 refactorer/odir/${SYSTEM}:
 	mkdir -p refactorer/odir/${SYSTEM}
 
+# tools/base/parse2/LexerGen
 ${LEXERGEN_DIR}/HsLexerGen:
 	cd refactorer; ./myghc--make -i${LEXERGEN_IMPORTS} -i${LOCAL_IMPORTS} -o ../${LEXERGEN_DIR}/HsLexerGen ../${LEXERGEN_DIR}/HsLexerGen.hs
 
@@ -68,4 +68,3 @@ refactorer/pfe: editors/GenEditorInterfaces
 
 refactorer/pfe_client:
 	cd refactorer; rm -f hidir/${SYSTEM}/Main.hi; ./myghc--make -i${LOCAL_IMPORTS} -o pfe_client pfe_client.hs 2>&1 | tee -a log.txt
-

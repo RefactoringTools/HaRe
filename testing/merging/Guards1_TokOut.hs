@@ -1,7 +1,7 @@
 module Guards1 where
 
 
-{- g3 :: Num a  => a  ->  [Char]  ->  ([Char], [Char] -})
+g3  :: (Eq a, Num a)  =>  a  ->  [Char]  ->  ([Char], [Char])
 g3 n [] = ([], [])
 g3 n ((x : xs))
     | n == 0 = ("", xs)
@@ -9,6 +9,7 @@ g3 n ((x : xs))
   where
       ls = fst $ g3 (n - 1) xs
       rs = snd $ g3 (n - 1) xs
+
 g1 :: Int -> String -> String
 g1 n [] = []
 g1 n (x:xs)

@@ -6,7 +6,7 @@ import PrettyPrint
 import HasBaseName
 --import NoEq
 import qualified SrcLoc1 as L
-import Maybe(fromMaybe)
+import Data.Maybe(fromMaybe)
 import Data.Generics
 
 -- Types to decorate identifiers to make them unique
@@ -81,7 +81,7 @@ instance Printable Orig where
   ppi (S p) = ppIfDebug ("<<"<>p<>">>")
   ppi (G m _ _) = ppIfDebug ("<<"<>m<>">>")
   --ppi (Sn n (SrcLoc f r c)) = "«"<>r<>","<>c<>"»"
-  ppi _ = empty
+  ppi _ = PrettyPrint.empty
 
 subnum n = ppIfUnicode (subdigs (show n)) n
   where

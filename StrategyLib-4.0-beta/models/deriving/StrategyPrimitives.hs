@@ -1,3 +1,5 @@
+{-# LANGUAGE DatatypeContexts #-} -- ++AZ++introduced this comment since0.6.0.2
+
 {-----------------------------------------------------------------------------
 
 A model of functional strategies using Data.Generics as of >= GHC 6.2.
@@ -6,7 +8,7 @@ Strategy application, strategy update, and traversal are different from
 the original Strafunski model. Most other combinators (seqT?, ...) are
 retained as is.
 
------------------------------------------------------------------------------} 
+-----------------------------------------------------------------------------}
 
 module StrategyPrimitives (
 
@@ -84,11 +86,11 @@ adhocTU s f = MkTU (unTU s `extQ` f)
 
                                                -- Replace one monad by another
 
-msubstTP	:: (Monad m, Monad m') 
+msubstTP	:: (Monad m, Monad m')
 		=> (forall t . m t -> m' t) -> TP m -> TP m'
 msubstTP e f	=  MkTP (\x -> e ((unTP f) x))
 
-msubstTU	:: (Monad m, Monad m') 
+msubstTU	:: (Monad m, Monad m')
 		=> (m a -> m' a) -> TU a m -> TU a m'
 msubstTU e f	=  MkTU (\x -> e ((unTU f) x))
 
@@ -110,7 +112,7 @@ seqTU 		:: Monad m => TP m -> TU a m -> TU a m
 seqTU f g	=  MkTU ((unTP f) `mseq` (unTU g))
 
 passTU 		:: Monad m => TU a m -> (a -> TU b m) -> TU b m
-passTU f g	=  MkTU ((unTU f) `mlet` (\y -> unTU (g y))) 
+passTU f g	=  MkTU ((unTU f) `mlet` (\y -> unTU (g y)))
 
 
 
@@ -159,7 +161,7 @@ someTP s   =  MkTP (gmapMp (applyTP s))
 
 
 -- Simulate injection
-injTP      :: MonadPlus m => TP m -> TP m     
+injTP      :: MonadPlus m => TP m -> TP m
 injTP s    =  (MkTU (return . glength))
               `passTP`
               (\x -> if x == 1 then allTP s else paraTP (const mzero))

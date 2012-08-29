@@ -24,7 +24,7 @@ import PrettySymbols hiding (not)
 import PrettyUtil(ppContext,ppWhere)
 import Products((><))
 import OpTypes(cmpBy)
-import List(partition,sortBy)
+import Data.List(partition,sortBy)
 
 {-+
 The type checker can return different types, so to avoid an ambiguity when

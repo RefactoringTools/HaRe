@@ -1,5 +1,5 @@
 module SyntaxRec(module SyntaxRec,module HasBaseStruct,module Recursive,module HsConstants) where
-import Maybe(fromMaybe)
+import Data.Maybe(fromMaybe)
 import SrcLoc1
 import BaseSyntax
 import HasBaseStruct

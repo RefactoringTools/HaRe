@@ -8,8 +8,7 @@ f t
        n1 = f 20
        n2 = f 20
        (n1_2, n2_2)
-           =
-               runEval
+           =   runEval
                    (do n1_2 <- rpar_abs_1 n1
                        n2_2 <- rpar_abs_1 n2
                        return (n1_2, n2_2))

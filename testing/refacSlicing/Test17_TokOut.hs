@@ -1,7 +1,7 @@
 module Test17 where
 
 f x = (y + x)
-    
-    where
-      y = 10
+  
+  where
+    y = 10
            

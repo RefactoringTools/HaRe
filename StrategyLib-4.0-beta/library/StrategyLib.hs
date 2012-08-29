@@ -14,7 +14,7 @@
 
 module StrategyLib (
 
- module Monad,
+ module Control.Monad,
  module Control.Monad.Fix,
  module Control.Monad.Trans,
  Identity(..),
@@ -43,7 +43,7 @@ module StrategyLib (
 
 ) where
 
-import Monad
+import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.Trans
 import Control.Monad.Identity

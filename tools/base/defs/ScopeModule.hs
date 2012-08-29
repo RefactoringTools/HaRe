@@ -48,8 +48,8 @@ import PrettyPrint
 
 import OutputM
 import EnvM
-import List(partition,nub)
-import Maybe(fromJust)
+import Data.List(partition,nub)
+import Data.Maybe(fromJust)
 import MUtils(mapSnd)
 import OpTypes(ordBy)
 import FiniteMap1
@@ -61,9 +61,9 @@ scopeModule :: ... => ...
                    -> HsModuleI i (ds (SN HsName))
                    -> (HsModuleI i (ds PNT),[XRefInfo])
 -}
-scopeModule (wm,exports) mod 
+scopeModule (wm,exports) mod
     = mergeOutputM -- merge now to avoid having to sort later
-    . seqNames 
+    . seqNames
     . mapNames2 TopLevel (pickScope m envs HsVar, pickScope m envs HsCon)
     . addScope modenv
     . numberNames $ mod
@@ -215,7 +215,7 @@ addScope env m =
     --global (ni,idty) = (N i (G i),idty)
     --  where N i _ = getHSName ni
     --local (ni,idty) = (getHSName ni,idty)
- 
+
     extend new old = extenv old (filter notoldtyvar (mapSnd conv new))
       where
         --oldtyvars = [i|(HsVar i,Type {})<-old]
@@ -232,8 +232,8 @@ lookenv env i = lookupWithDefaultFM env [] (getBaseName i)
 
 --topenv :: WorkModuleI HsName Id -> [(HsIdentI (PName),IdTy (PId))]
 topenv wm = envMap [(origIdent qn m i,origt m t)|(qn,Ent m i t)<-inscpList wm]
-      where 
-        origt m = fmap (osub m) 
+      where
+        origt m = fmap (osub m)
         osub m n = origName n m n
 	    -- This generates references to names not necessarily in scope...
 
@@ -246,10 +246,10 @@ impenv ::
 --}
 impenv exprel =
     envMap [(origIdent (unq m n) m i,origt m t)|(n,Ent m i t)<-exprel]
-  where 
+  where
     unq m n = mkUnqual n `asTypeOf` mkQual m n
                       -- ^ this eliminates an ambiguite that was accepted by GHC
-    origt m = fmap (osub m) 
+    origt m = fmap (osub m)
     osub m n = origName n m n
 
 origIdent qn m = mapHsIdent (origName qn m)

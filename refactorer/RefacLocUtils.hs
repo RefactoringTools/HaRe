@@ -1,6 +1,6 @@
 
 
-module RefacLocUtils(module HsTokens,PosToken, simpPos, 
+module RefacLocUtils(module HsTokens,PosToken, simpPos,
                      SimpPos,unmodified,modified,simpPos0,ghead,glast,gfromJust,gtail,
 
                      tokenCol, tokenRow, tokenPos,tokenCon,tokenLen,lengthOfToks,
@@ -10,7 +10,7 @@ module RefacLocUtils(module HsTokens,PosToken, simpPos,
                      isOpenSquareBracket,isCloseSquareBracket,isOpenBrace,isConid,
                      isLit,isWhereOrLet,isWhere,isLet,isIn,isCase,isDo,isIf,isForall,
                      isHiding,isModule,isComma,isEqual,isLambda,isIrrefute,isBar,isMinus,
-                     endsWithNewLn,startsWithNewLn,hasNewLn,startsWithEmptyLn, 
+                     endsWithNewLn,startsWithNewLn,hasNewLn,startsWithEmptyLn,
                      lastNonSpaceToken,firstNonSpaceToken,compressPreNewLns,compressEndNewLns,
                      lengthOfLastLine,
                      updateToks,
@@ -19,7 +19,7 @@ module RefacLocUtils(module HsTokens,PosToken, simpPos,
                      startEndLoc,extendBothSides,extendForwards,extendBackwards,
                      startEndLocIncFowComment,startEndLocIncFowNewLn,startEndLocIncComments,
                      prettyprint ,deleteFromToks, prettyprintGuardsAlt,
-                     addFormalParams,  adjustOffset, -- try to remove it 
+                     addFormalParams,  adjustOffset, -- try to remove it
                      StartEndLoc, isArrow,-- swapInToks,
                      commentToks,tokenise, prettyprintPatList,groupTokensByLine, addLocInfo, getOffset, splitToks, insertComments,
                      extractComments, insertTerms
@@ -27,21 +27,21 @@ module RefacLocUtils(module HsTokens,PosToken, simpPos,
 
 import RefacTypeSyn(SimpPos)
 import PosSyntax
-import UniqueNames 
+import UniqueNames
 import HsLexerPass1 hiding (notWhite)
 import HsTokens
 import PrettySymbols(rarrow)
 import HsLayoutPre (PosToken)
 import PrettyPrint
 import HsExpUtil
-import PNT 
+import PNT
 
 import RefacTypeSyn
-import Maybe
-import List
+import Data.Maybe
+import Data.List
 import SourceNames
 -------------------------
---import DriftStructUtils  
+--import DriftStructUtils
 import StrategyLib
 ------------------------
 import Control.Monad.State
@@ -104,7 +104,7 @@ gfromJust info (Just h) = h
 gfromJust info Nothing = error $ "gfromJust " ++ info ++ " Nothing"
 
 --Some functions for fetching a specific field of a token
-tokenCol (_,(Pos _ _ c,_)) = c  
+tokenCol (_,(Pos _ _ c,_)) = c
 
 tokenRow (_,(Pos _ r _,_)) = r
 
@@ -124,7 +124,7 @@ notWhite  = not.isWhite
 isWhiteSpace (t,(_,s))       = t==Whitespace && s==" "
 isNewLn (t,(_,s))            = t==Whitespace && s=="\n"
 
-isCommentStart (t,(_,s))     = t==Commentstart && s=="--" 
+isCommentStart (t,(_,s))     = t==Commentstart && s=="--"
 isComment (t,(_,s))          = t==Comment || t ==NestedComment
 isNestedComment (t,(_,s))    = t==NestedComment
 isMultiLineComment (t,(_,s)) = t==NestedComment && (isJust (find (=='\n') s))
@@ -132,11 +132,11 @@ isMultiLineComment (t,(_,s)) = t==NestedComment && (isJust (find (=='\n') s))
 isOpenBracket  (t,(_,s))       = t==Special && s=="("
 isCloseBracket (t,(_,s))       = t==Special && s==")"
 
-isOpenSquareBracket  (t,(_,s)) = t==Special && s=="[" 
+isOpenSquareBracket  (t,(_,s)) = t==Special && s=="["
 isCloseSquareBracket (t,(_,s)) = t==Special && s=="]"
 
-isOpenBrace  (t,(_,s))         = t==Special && s=="{" 
-isCloseBrace (t,(_,s))         = t==Special && s=="}" 
+isOpenBrace  (t,(_,s))         = t==Special && s=="{"
+isCloseBrace (t,(_,s))         = t==Special && s=="}"
 
 isConid (t,(_,_))              = t==Conid
 isLit (t,(_,s)) = t==IntLit || t==FloatLit || t==CharLit || t==StringLit
@@ -153,15 +153,15 @@ isClass (t, (_,s)) = t == Reservedid && s=="class"
 isInstance (t, (_,s)) = t == Reservedid && s=="instance"
 isNewtype (t, (_,s)) = t == Reservedid && s=="newtype"
 
-isIn    (t,(_,s))  = t==Reservedid && s=="in" 
-isCase  (t,(_,s))  = t==Reservedid && s=="case"  
-isDo    (t,(_,s))  = t==Reservedid && s=="do"  
+isIn    (t,(_,s))  = t==Reservedid && s=="in"
+isCase  (t,(_,s))  = t==Reservedid && s=="case"
+isDo    (t,(_,s))  = t==Reservedid && s=="do"
 isIf    (t,(_,s))  = t==Reservedid && s=="if"
 isForall (t,(_,s)) = t==Reservedid && s=="forall"
-isHiding (t,(_,s)) = s=="hiding" 
+isHiding (t,(_,s)) = s=="hiding"
 isModule (t,(_,s)) = t==Reservedid && s=="module"
-  
-isComma (t,(_,s))    = t==Special && s=="," 
+
+isComma (t,(_,s))    = t==Special && s==","
 isEqual  (t,(_,s))   = t==Reservedop && s=="="
 isLambda (t,(_,s))   = t==Reservedop && s=="\\"
 isIrrefute (t,(_,s)) = t==Reservedop && s=="~"
@@ -173,12 +173,12 @@ isMinus (t,(_,s))    = t==Varsym && s=="-"
 
 --Returns True if the token ends with '\n'
 endsWithNewLn::PosToken->Bool
-endsWithNewLn   (_,(_,s)) =if s==[] then False 
+endsWithNewLn   (_,(_,s)) =if s==[] then False
                                     else (glast "endsWithNewLn"  s=='\n')
- 
+
 --Returns True if the token starts with `\n`.
 startsWithNewLn::PosToken->Bool
-startsWithNewLn (_,(_,s)) =if s==[] then False 
+startsWithNewLn (_,(_,s)) =if s==[] then False
                                     else ((ghead "starsWithNewLn" s)=='\n')
 
 --Returns True if there is a '\n' in the token.
@@ -200,31 +200,31 @@ lastNonSpaceToken toks=case dropWhile isWhiteSpace (reverse toks) of
 firstNonSpaceToken::[PosToken]->PosToken
 firstNonSpaceToken toks=case dropWhile isWhiteSpace toks of
                          [] ->defaultToken
-                         l -> ghead "firstNonSpaceToken" l  
+                         l -> ghead "firstNonSpaceToken" l
 
 -- remove the extra preceding  empty lines.
 compressPreNewLns::[PosToken]->[PosToken]
 compressPreNewLns toks= let (toks1, toks2) = break (not.(\t->isNewLn t || isWhiteSpace t)) toks
                             groupedToks    = groupTokensByLine toks1
-                        in if length groupedToks>1 then (last groupedToks)++toks2  
+                        in if length groupedToks>1 then (last groupedToks)++toks2
                                                    else toks
 
 --remove the following extra empty lines.
 compressEndNewLns::[PosToken]->[PosToken]
 compressEndNewLns toks=let (toks1, toks2) = break (not.(\t->isNewLn t || isWhiteSpace t)) (reverse toks)
                            groupedToks    = groupTokensByLine toks1
-                       in if length groupedToks>1 then reverse ((ghead "compressEndNewLns" groupedToks)++toks2) 
+                       in if length groupedToks>1 then reverse ((ghead "compressEndNewLns" groupedToks)++toks2)
                                                   else toks
 
-prettyprintPatList beginWithSpace t 
+prettyprintPatList beginWithSpace t
      = replaceTabBySpaces $ if beginWithSpace then format1 t else format2 t
- where 
+ where
    format1 t = foldl (\x y -> x++ " "++(render.ppi) y) "" t
 
-   format2 [] = "" 
+   format2 [] = ""
    format2 [p] = (render.ppi) p
    format2 (p:ps) = (render.ppi) p ++" " ++ format2 ps
-               
+
 prettyprint = replaceTabBySpaces.render.ppi
 
 prettyprintGuardsAlt = replaceTabBySpaces.render.(ppRhs rarrow)
@@ -243,40 +243,40 @@ mkToken::Token->SimpPos->String->PosToken
 mkToken t (row,col) c=(t,(Pos 0 row col,c))
 
 ---Restriction: the refactorer should not modify refactorer-modified/created tokens.
-defaultToken = (Whitespace, (pos0," "))      
-newLnToken   = (Whitespace, (pos0,"\n"))  
+defaultToken = (Whitespace, (pos0," "))
+newLnToken   = (Whitespace, (pos0,"\n"))
 
 
 tokenise  startPos _ _ [] = []
-tokenise  startPos colOffset withFirstLineIndent str 
-  = let str' = case lines str of 
+tokenise  startPos colOffset withFirstLineIndent str
+  = let str' = case lines str of
                     (ln:[]) -> addIndent ln ++ if glast "tokenise" str=='\n' then "\n" else ""
                     (ln:lns)-> addIndent ln ++ "\n" ++ concatMap (\n->replicate colOffset ' '++n++"\n") lns
         str'' = if glast "tokenise" str' == '\n' && glast "tokenise" str /='\n'
                   then genericTake (length str' -1) str'
-                  else str' 
+                  else str'
     in expandNewLnTokens $ lexerPass0' startPos str''
-   where 
-     addIndent ln = if withFirstLineIndent 
+   where
+     addIndent ln = if withFirstLineIndent
                       then replicate colOffset ' '++ ln
-                      else ln         
+                      else ln
      --preprocssing the token stream to expand the white spaces to individual tokens.
      expandNewLnTokens::[PosToken]->[PosToken]
      expandNewLnTokens ts = concatMap expand ts
        where
-        expand tok@(Whitespace,(pos,s)) = doExpanding pos s                
+        expand tok@(Whitespace,(pos,s)) = doExpanding pos s
         expand x = [x]
 
         doExpanding pos [] =[]
         doExpanding pos@(Pos c row col) (t:ts)
-          = case t of 
+          = case t of
              '\n'  -> (Whitespace, (pos,[t])):(doExpanding (Pos c (row+1) 1) ts)
              _     -> (Whitespace, (pos,[t])):(doExpanding (Pos c row (col+1)) ts)
 
 
 --Should add cases for literals.
 addLocInfo (decl, toks)
-    = runStateT (applyTP (full_tdTP (idTP `adhocTP` inPnt 
+    = runStateT (applyTP (full_tdTP (idTP `adhocTP` inPnt
                                           `adhocTP` inSN)) decl) toks
        where
          inPnt (PNT pname ty (N (Just loc)))
@@ -284,22 +284,22 @@ addLocInfo (decl, toks)
                  return (PNT pname ty (N (Just loc')))
          inPnt x = return x
 
-         inSN (SN (PlainModule modName) (SrcLoc _ _ row col)) 
+         inSN (SN (PlainModule modName) (SrcLoc _ _ row col))
              = do loc' <- findLoc modName
                   return (SN (PlainModule modName) loc')
-         inSN x = return x  
- 
+         inSN x = return x
+
 
          pNtoName (PN (UnQual i) _)=i
          pNtoName (PN (Qual (PlainModule modName) i) _) = modName++"."++i
-         pNtoName (PN (Qual (MainModule _) i) _)        = "Main."++i      
-         findLoc name  
+         pNtoName (PN (Qual (MainModule _) i) _)        = "Main."++i
+         findLoc name
           = do  let name' = if name =="Prelude.[]" || name == "[]"  then "["
-                               else if name=="Prelude.(,)" || name == "(,)" || name == "()"  then "(" 
-                                                                                             else name   ----Check this again. 
+                               else if name=="Prelude.(,)" || name == "(,)" || name == "()"  then "("
+                                                                                             else name   ----Check this again.
                     toks' = dropWhile (\t->tokenCon t /= name') toks
-                    (row, col) =if toks'==[] then error ("HaRe: Error in addLocInfo while looking for" ++ name' ++ " !")  
-                                              else tokenPos $ ghead "findLoc" toks' 
+                    (row, col) =if toks'==[] then error ("HaRe: Error in addLocInfo while looking for" ++ name' ++ " !")
+                                              else tokenPos $ ghead "findLoc" toks'
                 return (SrcLoc "unknown" 0 row col)
 
 
@@ -308,15 +308,15 @@ groupTokensByLine xs =let (xs', xs'') = break hasNewLn xs
                       in if xs''==[] then [xs']
                           else (xs'++ [ghead "groupTokensByLine" xs''])
                                 : groupTokensByLine (gtail "groupTokensByLine" xs'')
-                             
---Give a token stream covering multi-lines, calculate the length of the last line  
+
+--Give a token stream covering multi-lines, calculate the length of the last line
 lengthOfLastLine::[PosToken]->Int
 lengthOfLastLine toks
    = let (toks1,toks2)=break hasNewLn $ reverse toks
-     in  if toks2==[] 
+     in  if toks2==[]
           then sum (map tokenLen toks1)
           else sum (map tokenLen toks1)+lastLineLenOfToken (ghead "lengthOfLastLine"  toks2)
-  where 
+  where
    --Compute the length of a token, if the token covers multi-line, only count the last line.
    --What about tab keys?
    lastLineLenOfToken (_,(_,s))=(length.(takeWhile (\x->x/='\n')).reverse) s
@@ -342,14 +342,14 @@ splitToks (startPos, endPos) toks
                 (toks21, toks22) = break (\t -> tokenPos t== endPos') toks2
                 -- Should add error message for empty list?
             in  if toks22==[] then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
-                  else (toks1, toks21++[ghead "splitToks" toks22], gtail "splitToks" toks22) 
+                  else (toks1, toks21++[ghead "splitToks" toks22], gtail "splitToks" toks22)
 
 
 getOffset toks pos
   = let (ts1, ts2) = break (\t->tokenPos t == pos) toks
-    in if ts2==[] 
+    in if ts2==[]
          then error "HaRe error: position does not exist in the token stream!"
-         else lengthOfLastLine ts1   
+         else lengthOfLastLine ts1
 
 --comment a token stream specified by the start and end position.
 commentToks::(SimpPos,SimpPos)->[PosToken]->[PosToken]
@@ -359,7 +359,7 @@ commentToks (startPos,endPos) toks
                      []              -> toks21
                      (t,(l,s)):[]    -> (t, (l, ("{-" ++ s ++ "-}"))):[]
                      (t1,(l1,s1)):ts -> let lastTok@(t2, (l2, s2)) = glast "commentToks" ts
-                                            lastTok' = (t2, (l2, (s2++" -}"))) 
+                                            lastTok' = (t2, (l2, (s2++" -}")))
                                         in (t1,(l1, ("{- "++s1))): (reverse (lastTok': gtail "commentToks" (reverse ts)))
       in (toks1 ++ toks21' ++ toks22)
 
@@ -376,35 +376,35 @@ insertComments ((startPosl, startPosr), endPos) toks com
     = let (toks1, toks21, toks22) = splitToks ((startPosl, startPosr), endPos) toks
           toks21' = (Commentstart, ((Pos 0 startPosl startPosr) , "")) : [(Comment, ((Pos 0 startPosl startPosr), ("\n{- " ++ com ++ " -}\n")))]
       in (toks1 ++ toks21' ++ (toks21 ++ toks22))
-       
+
 ---  -} -}
 
 updateToks oldAST newAST printFun
    = do ((toks,_), (v1, v2)) <-get
         let (startPos, endPos) = getStartEndLoc toks oldAST
-            (toks1, _, _)      = splitToks (startPos, endPos) toks 
+            (toks1, _, _)      = splitToks (startPos, endPos) toks
             offset             = lengthOfLastLine toks1
             newToks = tokenise (Pos 0 v1 1) offset False $ printFun newAST  --check the startPos
             toks' = replaceToks toks startPos endPos newToks
-        if newToks ==[] then put ((toks', modified), (v1,v2)) 
-                        else put ((toks',modified), (tokenRow (glast "updateToks1" newToks) -10, v2))                
-                        
+        if newToks ==[] then put ((toks', modified), (v1,v2))
+                        else put ((toks',modified), (tokenRow (glast "updateToks1" newToks) -10, v2))
+
         -- error $ show (newToks, startPos, endPos)
         -- put ((toks', modified), (v1,v2))
         addLocInfo (newAST, newToks)
 
 ---REFACTORING: GENERALISE THIS FUNCTION.
-addFormalParams t newParams 
-  = do ((toks,_),(v1, v2))<-get   
+addFormalParams t newParams
+  = do ((toks,_),(v1, v2))<-get
        let (startPos,endPos) = getStartEndLoc toks t
-           tToks     = getToks (startPos, endPos) toks 
+           tToks     = getToks (startPos, endPos) toks
            (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t == endPos) toks
                         in (toks1' ++ [ghead "addFormalParams" toks2'], gtail "addFormalParams"  toks2')
            offset  = lengthOfLastLine toks1
            newToks = tokenise (Pos 0 v1 1) offset False (prettyprintPatList True newParams )
            toks'   = replaceToks toks startPos endPos (tToks++newToks)
        put ((toks',modified), ((tokenRow (glast "addFormalParams" newToks) -10), v2))
-       addLocInfo (newParams, newToks)    
+       addLocInfo (newParams, newToks)
 
 
 --Replace a list of tokens in the token stream by a new list of tokens, adjust the layout as well.
@@ -413,19 +413,19 @@ addFormalParams t newParams
 
 replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
 replaceToks toks startPos endPos newToks
-   = if toks22 == [] 
+   = if toks22 == []
         then toks1 ++ newToks
         else let {-(pos::(Int,Int)) = tokenPos (ghead "replaceToks" toks22)-} -- JULIEN
                  oldOffset = {-getOffset toks pos  -}  lengthOfLastLine (toks1++toks21) --JULIEN
                  newOffset = {-getOffset (toks1++newToks++ toks22) pos -} lengthOfLastLine (toks1++newToks) -- JULIEN
              in  toks1++ (newToks++ adjustLayout toks22 oldOffset newOffset)
-   where 
+   where
       (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
 
 
 {- Delete an syntax phrase from the token stream, this function (instead of the following one)
    should be the interface function for deleting tokens.
--}          
+-}
 -- deleteFromToks::( (MonadState (([PosToken], Bool), t1) m), StartEndLoc t,Printable t,Term t)=>t->m ()
 deleteFromToks t getLocFun
    =do ((toks,_),others)<-get
@@ -437,15 +437,15 @@ deleteFromToks t getLocFun
   then adjust the remaining token stream to preserve layout-}
 deleteToks::[PosToken]->SimpPos->SimpPos->[PosToken]
 deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
-  = case after of 
-      (_:_) ->    let nextPos =tokenPos $ ghead "deleteToks1" after 
+  = case after of
+      (_:_) ->    let nextPos =tokenPos $ ghead "deleteToks1" after
                       oldOffset = getOffset toks nextPos
-                      newOffset = getOffset (toks1++before++after) nextPos 
-                  in  toks1++before++adjustLayout (after++toks22) oldOffset newOffset 
-      _     -> if toks22 == [] 
+                      newOffset = getOffset (toks1++before++after) nextPos
+                  in  toks1++before++adjustLayout (after++toks22) oldOffset newOffset
+      _     -> if toks22 == []
                  then toks1++before
-                 else let toks22'=let nextOffset = getOffset toks (tokenPos (ghead "deleteToks2" toks22)) 
-                                  in if isMultiLineComment (lastNonSpaceToken toks21)   
+                 else let toks22'=let nextOffset = getOffset toks (tokenPos (ghead "deleteToks2" toks22))
+                                  in if isMultiLineComment (lastNonSpaceToken toks21)
                                        then whiteSpaceTokens (-1111, 0) (nextOffset-1) ++ toks22
                                        else toks22
                       in if endsWithNewLn (last (toks1++before)) || startsWithNewLn (ghead "deleteToks3" toks22')
@@ -453,82 +453,82 @@ deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
                            --avoiding layout adjustment by adding a `\n', sometimes may produce extra lines.
                              else  toks1++before++[newLnToken]++toks22'
                             --  else toks1 ++ before ++ toks22'
-     where 
-      
+     where
+
       (toks1, toks2) = let (ts1, ts2)   = break (\t->tokenPos t == startPos) toks
                            (ts11, ts12) = break hasNewLn (reverse ts1)
                        in (reverse ts12, reverse ts11 ++ ts2)
       (toks21, toks22)=let (ts1, ts2) = break (\t -> tokenPos t == endPos) toks2
                            (ts11, ts12) = break hasNewLn ts2
-                       in (ts1++ts11++if ts12==[] then [] else [ghead "deleteToks4" ts12], if ts12==[] then [] else gtail "deleteToks5"  ts12)  
+                       in (ts1++ts11++if ts12==[] then [] else [ghead "deleteToks4" ts12], if ts12==[] then [] else gtail "deleteToks5"  ts12)
 
       -- tokens before the tokens to be deleted at the same line
-      before = takeWhile (\t->tokenPos t/=startPos) toks21 
+      before = takeWhile (\t->tokenPos t/=startPos) toks21
 
       -- tokens after the tokens to be deleted at the same line.
       after = let t= dropWhile (\t->tokenPos t /=endPos) toks21
               in  if t == [] then error "Sorry, HaRe failed to finish this refactoring."
                              else  gtail "deleteToks6" t
-                  
-  
+
+
 -- Adjust the layout to compensate the change in the token stream.
 adjustLayout::[PosToken]->Int->Int->[PosToken]
 adjustLayout [] _ _ = []
-adjustLayout toks oldOffset newOffset 
+adjustLayout toks oldOffset newOffset
  | oldOffset == newOffset  = toks
 
 adjustLayout toks oldOffset newOffset
   = case layoutRuleApplies of
     True -> let (ts:ts') = groupTokensByLine  toks
-            in ts ++ addRmSpaces (newOffset-oldOffset) oldOffset  ts'  -- THIS IS PROBLEMETIC. 
-    _    -> toks  
-  where 
- 
-  layoutRuleApplies  
-    = let ts = dropWhile (\t-> (not.elem (tokenCon t)) keyWords) 
-               $ filter notWhite
-               $ takeWhile (not.hasNewLn) toks 
-      in case ts of
-         (_: t: _) -> tokenCon t /= "{" 
-         _         -> False          
+            in ts ++ addRmSpaces (newOffset-oldOffset) oldOffset  ts'  -- THIS IS PROBLEMETIC.
+    _    -> toks
+  where
 
-  keyWords = ["where","let","do","of"] 
+  layoutRuleApplies
+    = let ts = dropWhile (\t-> (not.elem (tokenCon t)) keyWords)
+               $ filter notWhite
+               $ takeWhile (not.hasNewLn) toks
+      in case ts of
+         (_: t: _) -> tokenCon t /= "{"
+         _         -> False
+
+  keyWords = ["where","let","do","of"]
 
   addRmSpaces n col [] = []
   addRmSpaces n col toks@(ts:ts')
     =case find notWhite ts of
-      Just t  -> if length (concatMap tokenCon ts1) >= col 
-                 then (addRmSpaces' n ts) ++ addRmSpaces n col ts' 
-                 else concat toks 
+      Just t  -> if length (concatMap tokenCon ts1) >= col
+                 then (addRmSpaces' n ts) ++ addRmSpaces n col ts'
+                 else concat toks
       _       -> ts ++ addRmSpaces n col ts'
-     where 
+     where
       (ts1, ts2) = break notWhite ts
 
   addRmSpaces' 0 ts = ts
   addRmSpaces' _ [] = []
-  addRmSpaces' n ts@(t:ts') 
-    = case n >0 of  
+  addRmSpaces' n ts@(t:ts')
+    = case n >0 of
        True -> whiteSpaceTokens (tokenRow t,0) n ++ ts   -- CHECK THIS.
-       _    -> if isWhiteSpace t 
+       _    -> if isWhiteSpace t
                then addRmSpaces' (n+1) ts'
                else error $ "Layout adjusting failed at line:"
-                           ++ show (tokenRow t)++ "." 
+                           ++ show (tokenRow t)++ "."
 
 -- remove at most n white space tokens from the beginning of ts
 doRmWhites::Int->[PosToken]->[PosToken]
-doRmWhites 0 ts=ts  
+doRmWhites 0 ts=ts
 doRmWhites n []=[]
 doRmWhites n toks@(t:ts)=if isWhiteSpace t then doRmWhites (n-1) ts
-                                           else toks 
+                                           else toks
 
 --add n white space tokens to the beginning of ts
 doAddWhites::Int->[PosToken]->[PosToken]
 doAddWhites n []=[]
 doAddWhites n ts@(t:_)= whiteSpacesToken (tokenRow t,0) n ++ts
 
-whiteSpaceTokens (row, col) n 
- = if n<=0 
-    then [] 
+whiteSpaceTokens (row, col) n
+ = if n<=0
+    then []
     else (mkToken Whitespace (row,col) " "):whiteSpaceTokens (row,col+1) (n-1)
 
 -------------------------------------------------------------------------------------------------
@@ -536,35 +536,35 @@ whiteSpaceTokens (row, col) n
 srcLocs::(Term t)=> t->[SimpPos]
 srcLocs t =(nub.srcLocs') t \\ [simpPos0]
    where srcLocs'=runIdentity.(applyTU (full_tdTU (constTU []
-                                                  `adhocTU` pnt  
+                                                  `adhocTU` pnt
                                                   `adhocTU` sn
                                                   `adhocTU` literalInExp
                                                   `adhocTU` literalInPat)))
-        
-         pnt (PNT pname _ (N (Just (SrcLoc _  _ row col))))=return [(row,col)]                
+
+         pnt (PNT pname _ (N (Just (SrcLoc _  _ row col))))=return [(row,col)]
          pnt _=return []
-          
-         sn (SN (PlainModule modName) (SrcLoc _ _ row col)) 
+
+         sn (SN (PlainModule modName) (SrcLoc _ _ row col))
              = return [(row, col)]
-         sn _ = return []  
-                     
+         sn _ = return []
+
          literalInExp ((Exp (HsLit (SrcLoc _  _ row col) _))::HsExpP) = return [(row,col)]
          literalInExp (Exp _) =return []
 
          literalInPat ((Pat (HsPLit (SrcLoc _ _ row col) _))::HsPatP) = return [(row,col)]
          literalInPat (Pat (HsPNeg (SrcLoc _  _ row col) _)) = return [(row,col)]
-         literalInPat _ =return []  
+         literalInPat _ =return []
 
-  
+
 class StartEndLocPat t where
 
    startEndLoc2 :: [PosToken]->t->[(SimpPos,SimpPos)]
-   -- startEndLoc3 :: [PosToken]->t->[(SimpPos,SimpPos)] 
-   
-   
+   -- startEndLoc3 :: [PosToken]->t->[(SimpPos,SimpPos)]
+
+
 instance StartEndLocPat [HsDeclP] where
    startEndLoc2 toks ds=if  ds==[] then [(simpPos0,simpPos0)]
-                                   else if length ds==1 
+                                   else if length ds==1
                                          then [startEndLoc toks (ghead "StartEndLoc:[HsDeclP]" ds)]
                                          else concat (map (startEndLoc2 toks) ds)
 
@@ -575,7 +575,7 @@ instance StartEndLocPat HsMatchP where
               (_,endLoc)  =if ds==[] then startEndLoc toks rhs
                                      else startEndLoc toks (glast "StartEndLoc:HsMatchP" ds)
           in [(startLoc,endLoc)]
-          
+
 instance StartEndLocPat HsDeclP where
 
    startEndLoc2 toks (Dec (HsTypeDecl (SrcLoc _ _ r c) tp t))
@@ -598,7 +598,7 @@ instance StartEndLocPat HsDeclP where
    startEndLoc2 toks (Dec (HsDefaultDecl _ ts))
       = let (startLoc, _) = startEndLoc toks (head ts)
             (_ , endLoc) = startEndLoc toks (last ts)
-        in [extendForwards toks startLoc endLoc isDefault]  
+        in [extendForwards toks startLoc endLoc isDefault]
 
    startEndLoc2 toks (Dec (HsInfixDecl _ _ is))
       = let (startLoc, _) = startEndLoc toks (head is)
@@ -613,62 +613,62 @@ instance StartEndLocPat HsDeclP where
              (_, endLoc)   = if ds ==[] then startEndLoc toks rhs
                                         else startEndLoc toks (glast "startEndLoc:HsDeclP5" ds)
              toks1 = dropWhile (\t->tokenPos t /= endLoc) toks
-	     endLoc1 = if toks1==[] 
-			  then endLoc 
+	     endLoc1 = if toks1==[]
+			  then endLoc
 			  else let toks2 = takeWhile (\t -> isSpecialTok t) toks1
                                in (tokenPos.glast "startEndLoc::HsMatchP") toks2
           in [(startLoc, endLoc1)]
-       where 
-         isSpecialTok t = isWhiteSpace t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t 
-                        || isCloseSquareBracket t 
+       where
+         isSpecialTok t = isWhiteSpace t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t
+                        || isCloseSquareBracket t
 
    startEndLoc2 toks (Dec (HsTypeSig _ is c t))
       = let (startLoc, _) = startEndLoc toks (ghead "startEndLoc:HsDeclP6" is)
             (_, endLoc)   = startEndLoc toks t
         in [(startLoc, endLoc)]
 
-              
+
    startEndLoc2 toks decl@(Dec (HsClassDecl loc c tp funDeps  ds))
       = let locs = srcLocs decl
             (startLoc, endLoc)
               = if locs == [] then (simpPos0, simpPos0)
-                 else (head locs, last locs)                           
+                 else (head locs, last locs)
         in [extendForwards toks startLoc endLoc isClass]
 
    startEndLoc2 toks decl@(Dec (HsInstDecl loc i c t ds))
      = let locs = srcLocs decl
            (startLoc, endLoc)
               = if locs == [] then (simpPos0, simpPos0)
-                 else (head locs, last locs)                           
-        in [extendForwards toks startLoc endLoc isInstance]          
-          
+                 else (head locs, last locs)
+        in [extendForwards toks startLoc endLoc isInstance]
+
 
 getStartEndLoc2::(Term t, StartEndLocPat t,Printable t)=>[PosToken]->t->[(SimpPos,SimpPos)]
-getStartEndLoc2 toks t 
+getStartEndLoc2 toks t
   = startEndLoc2 toks t
-     {-   locs = srcLocs t 
+     {-   locs = srcLocs t
         (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc2" locs
                                                                    else startPos',
                              if endPos' == simpPos0 && locs /= [] then glast "gerStartEndLoc2" locs
                                                                   else endPos')
     in (startPos, endPos)  -}
-  
-  
-         
+
+
+
 --given an AST phrase, 'startEndLoc' gets its start and end position in the program source.
 class StartEndLoc t where
 
    startEndLoc :: [PosToken]->t->(SimpPos,SimpPos)
 
 instance StartEndLoc HsModuleP where
-  startEndLoc toks _  = (tokenPos (ghead "startEndLoc:HsModuleP" toks), 
+  startEndLoc toks _  = (tokenPos (ghead "startEndLoc:HsModuleP" toks),
                          tokenPos (glast "startEndLoc:HsModuleP" toks))
 
 instance StartEndLoc HsExpP where
-    
+
   startEndLoc  toks (Exp e)=
       case e of
-  
+
         HsId ident@(HsVar (PNT pn _ _)) ->let (startLoc, endLoc) = startEndLoc toks ident
                                               {- To handle infix operator. for infix operators like (++), there
                                                   is no parenthesis in the syntax tree -}
@@ -679,9 +679,9 @@ instance StartEndLoc HsExpP where
                                            in  {-if toks1'/=[] && toks2'/=[] && isOpenBracket (head toks1')
                                                  && isCloseBracket (head toks2')
                                               then (tokenPos (head toks1'), tokenPos (head toks2'))
-                                              else-}  (startLoc, endLoc) 
+                                              else-}  (startLoc, endLoc)
         HsId  x                       ->startEndLoc toks x
-   
+
         HsLit (SrcLoc _ _ r c) _      -> ((r,c),(r,c))
 
         HsInfixApp e1 op e2           ->let (startLoc,_)=startEndLoc toks e1
@@ -690,7 +690,7 @@ instance StartEndLoc HsExpP where
 
         e@(HsApp e1 e2)               ->let (startLoc,endLoc)=startEndLoc toks e1
                                             (startLoc1, endLoc1 )=startEndLoc toks e2
-	                     
+
                                         in (startLoc, endLoc1)
 
         HsNegApp (SrcLoc _ _ r c) e     ->let (_,endLoc)=startEndLoc toks e
@@ -709,38 +709,38 @@ instance StartEndLoc HsExpP where
                                             let  (startLoc,endLoc)=startEndLoc toks e
                                             in extendForwards toks startLoc endLoc isLet
                                           else
-                                            let  (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsLet" ds) 
-                                                 (_,endLoc)  =startEndLoc toks e 
+                                            let  (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsLet" ds)
+                                                 (_,endLoc)  =startEndLoc toks e
                                             in extendForwards toks startLoc endLoc isLet
 
         HsCase e alts                 ->let (startLoc,_)=startEndLoc toks e
                                             (_,endLoc)  =startEndLoc toks (glast "HsCase" alts) --alts can not be empty.
                                         in extendForwards toks startLoc endLoc isCase
-                        
+
         HsDo stmts                    ->let (startLoc, endLoc)=startEndLoc toks  stmts
                                         in extendForwards toks startLoc endLoc isDo
 
-        HsTuple es                    ->if es==[] 
+        HsTuple es                    ->if es==[]
                                          then  (simpPos0,simpPos0)  --Empty tuple can cause problem.
                                          else let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsTuple" es)
                                                   (_,endLoc)  =startEndLoc toks (glast "startEndLoc:HsTuple" es)
-                                              in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket  
+                                              in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket
 
-        HsList es                     ->if es==[] 
+        HsList es                     ->if es==[]
                                          then (simpPos0,simpPos0)  --Empty list can cause problem.
-                                         else let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsList" es) 
+                                         else let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsList" es)
                                                   (_,endLoc)  =startEndLoc toks (glast "startEndLoc:HsList" es)
                                               in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
 
         HsParen e                     ->let (startLoc,(endLocR, endLocC))=startEndLoc toks  e
                                         in extendBothSides toks startLoc (endLocR, endLocC) isOpenBracket isCloseBracket
-									   
+
                                        --  in if expIsPNT e
 --                                              then (startLoc, (endLocR, endLocC+1))
---                                              else extendBothSides toks startLoc (endLocR, endLocC) isOpenBracket isCloseBracket 
+--                                              else extendBothSides toks startLoc (endLocR, endLocC) isOpenBracket isCloseBracket
 --                                           where
 --                                             expIsPNT (Exp (HsId (HsVar pnt)))=True
---                                             expIsPNT (Exp (HsParen e))=expIsPNT e  
+--                                             expIsPNT (Exp (HsParen e))=expIsPNT e
 --                                             expIsPNT _ =False
 
         HsLeftSection e op            ->let (startLoc,_)=startEndLoc toks e
@@ -753,72 +753,72 @@ instance StartEndLoc HsExpP where
 
         HsRecConstr loc i upds            ->let (startLoc,_)=startEndLoc toks i
                                                 (_,endLoc)  =startEndLoc toks (glast "startEndLoc:HsRecConstr" upds) --can 'upds' be empty?
-                                        in extendBackwards toks startLoc endLoc isCloseBrace 
-                                        
+                                        in extendBackwards toks startLoc endLoc isCloseBrace
+
         HsRecUpdate loc e upds            ->let (startLoc,_)=startEndLoc toks e
                                                 (_,endLoc)  =startEndLoc toks (glast "startEndLoc:HsRecUpdate" upds) --ditto
-                                        in extendBackwards toks startLoc endLoc isCloseBrace 
+                                        in extendBackwards toks startLoc endLoc isCloseBrace
 
         HsEnumFrom e                  ->let (startLoc,endLoc)=startEndLoc toks e
-                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket   
+                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
 
         HsEnumFromTo e1 e2            ->let (startLoc,_)=startEndLoc toks e1
                                             (_,  endLoc)=startEndLoc toks e2
-                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket   
+                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
 
         HsEnumFromThen e1 e2          ->let (startLoc,_)=startEndLoc toks e1
                                             (_,  endLoc)=startEndLoc toks e2
-                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket  
-                                  
+                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
+
         HsEnumFromThenTo e1 e2 e3     ->let (startLoc,_)=startEndLoc toks e1
                                             (_,  endLoc)=startEndLoc toks e3
-                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket  
-                                 
+                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
+
         HsListComp stmts              ->let (startLoc,endLoc)=startEndLoc toks stmts
-                                        in  extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket     
+                                        in  extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
 
         HsAsPat i e                   ->let (startLoc,_)=startEndLoc toks i
                                             (_,endLoc)=  startEndLoc toks e
-                                        in (startLoc,endLoc) 
+                                        in (startLoc,endLoc)
 
         HsIrrPat e                    ->let (startLoc,endLoc)=startEndLoc toks e
                                         in extendForwards toks startLoc endLoc isIrrefute
 
         HsWildCard                    ->(simpPos0,simpPos0)  -- wildcard can cause problem.
-  
-        
+
+
         HsExpTypeSig loc e c t        ->let (startLoc,_)=startEndLoc toks e
                                             (_, endLoc )=startEndLoc toks t
-                                        in (startLoc,endLoc)    
+                                        in (startLoc,endLoc)
 
 instance StartEndLoc HsTypeP where
 
    startEndLoc toks (Typ p)=
-      case p of 
+      case p of
         HsTyFun  t1  t2       ->   let (startLoc,e)=startEndLoc toks t1
                                        (_ , endLoc)=startEndLoc toks t2
-                                   in (startLoc,endLoc) 
+                                   in (startLoc,endLoc)
         --HsTyTuple [t]         ->
 
-        HsTyApp  t1 t2        ->   let (startLoc,endLoc)=startEndLoc toks  t1 
+        HsTyApp  t1 t2        ->   let (startLoc,endLoc)=startEndLoc toks  t1
                                        (startLoc1 , endLoc1)=startEndLoc toks  t2
-                                   in case t1 of 
+                                   in case t1 of
                                         (Typ (HsTyCon t)) -> if (render.ppi) t == "[]"
                                                    then extendBothSides toks startLoc1 endLoc1 isOpenSquareBracket isCloseSquareBracket
                                                    else (startLoc, endLoc1)
-                                        _  -> (startLoc, endLoc1)                                                       
-                                  
+                                        _  -> (startLoc, endLoc1)
+
         HsTyVar  i            ->   let (startLoc, endLoc) = startEndLoc toks i
                                    in  extendBothSides' toks startLoc endLoc isOpenBracket isCloseBracket
-        HsTyCon  i            ->   let (startLoc, endLoc) = startEndLoc toks i 
-                                   in if (render.ppi) i =="[]" 
-                                        then extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket               
-                                        else extendBothSides' toks startLoc endLoc isOpenBracket isCloseBracket 
+        HsTyCon  i            ->   let (startLoc, endLoc) = startEndLoc toks i
+                                   in if (render.ppi) i =="[]"
+                                        then extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
+                                        else extendBothSides' toks startLoc endLoc isOpenBracket isCloseBracket
 
         HsTyForall   is ts t   ->   case is of
                                      []  ->let (startLoc,endLoc)=startEndLoc toks t
                                            in  extendForwards toks startLoc endLoc isForall
-   
+
                                      l  -> let (startLoc, _) =startEndLoc toks  $ ghead "StartEndLoc:HsTypeP" is
                                                ( _ , endLoc) =startEndLoc toks t
                                            in extendForwards toks startLoc endLoc isForall
@@ -826,15 +826,15 @@ instance StartEndLoc HsTypeP where
 extendBothSides'  toks startLoc endLoc  forwardCondFun backwardCondFun
        =let (toks1,toks2)=break (\t->tokenPos t==startLoc) toks
             toks21=dropWhile (\t->tokenPos t<=endLoc) toks2
-            firstLoc=case (dropWhile isWhite (reverse toks1)) of 
+            firstLoc=case (dropWhile isWhite (reverse toks1)) of
                              [] -> startLoc    -- is this the correct default?
                              ls  -> if (forwardCondFun.ghead "extendBothSides:lastTok") ls  then tokenPos (head ls)
                                       else startLoc
             lastLoc =case (dropWhile isWhite toks21) of
                             [] ->endLoc   --is this a correct default?
                             ls -> if (backwardCondFun.ghead "extendBothSides:lastTok") ls then tokenPos (head ls)
-                                   else endLoc                   
-        in (firstLoc, lastLoc)  
+                                   else endLoc
+        in (firstLoc, lastLoc)
 
 instance StartEndLoc HsPatP where
 
@@ -845,7 +845,7 @@ instance StartEndLoc HsPatP where
        HsPLit (SrcLoc _ _ r c) _        ->((r,c),(r,c))
 
        HsPNeg (SrcLoc _ _  r c) p       ->((r,c),(r,c))
-   
+
        HsPInfixApp p1 op p2             ->let (startLoc,_)=startEndLoc toks  p1
                                               (_ , endLoc)=startEndLoc toks p2
                                           in (startLoc,endLoc)
@@ -858,28 +858,28 @@ instance StartEndLoc HsPatP where
                                              then  (simpPos0,simpPos0)  -- ****Update this using locations****.
                                              else let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsPTuple"  ps)
                                                       (_,endLoc)=startEndLoc toks (glast "startEndLoc:HsPTuple" ps)
-                                                  in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket  
+                                                  in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket
 
-       HsPList loc ps                     ->if ps==[] 
+       HsPList loc ps                     ->if ps==[]
                                             then (simpPos0,simpPos0)  -- ***Update this using locations*****
                                             else let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsPList" ps)
                                                      (_, endLoc) =startEndLoc toks (glast "startEndLoc:HsPList" ps)
-                                            in  extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket     
-                                        
+                                            in  extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
+
        HsPParen p                       ->let (startLoc,endLoc)=startEndLoc toks p
-                                          in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket  
- 
+                                          in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket
+
        HsPRec i upds                    ->let (startLoc,_)=startEndLoc toks i
                                               (_,endLoc)=startEndLoc toks (glast "startEndLoc:HsPRec" upds) --can upds be empty?
-                                          in extendBackwards toks startLoc endLoc isCloseBrace 
-                                         
+                                          in extendBackwards toks startLoc endLoc isCloseBrace
+
        HsPAsPat i p                     ->let (startLoc,_)=startEndLoc toks i
                                               (_,endLoc)=startEndLoc toks p
                                           in (startLoc,endLoc)
- 
+
        HsPIrrPat p                      ->let (startLoc,endLoc)=startEndLoc toks p
                                           in extendForwards toks startLoc endLoc isIrrefute
-                                       
+
        HsPWildCard                       ->(simpPos0,simpPos0)  -- wildcard can  cause problem.
 
 instance StartEndLoc [HsPatP] where
@@ -898,7 +898,7 @@ instance StartEndLoc [HsExpP] where
                                            in (startLoc,endLoc)
 instance StartEndLoc [HsDeclP] where
   startEndLoc toks ds=if  ds==[] then (simpPos0,simpPos0)
-                                 else if length ds==1 
+                                 else if length ds==1
                                         then startEndLoc toks (ghead "StartEndLoc:[HsDeclP]" ds)
                                         else  let (startLoc,_)=startEndLoc toks (ghead "StartEndLoc:[HsDeclP]" ds)
                                                   (_,endLoc) =startEndLoc toks (glast  "StartEndLoc:[HsDeclP]" ds)
@@ -908,26 +908,26 @@ instance StartEndLoc HsMatchP where
    startEndLoc toks t@(HsMatch loc i ps rhs ds)
          =let (startLoc,_)=startEndLoc toks i
               (_,endLoc)  =if ds==[] then startEndLoc toks rhs
-                                     else startEndLoc toks (glast "StartEndLoc:HsMatchP" ds)			  
-              locs = srcLocs t 
+                                     else startEndLoc toks (glast "StartEndLoc:HsMatchP" ds)
+              locs = srcLocs t
               (startLoc1,endLoc1) = (if startLoc == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
                                                                    else startLoc,
 				     if endLoc == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
-                                                                         else endLoc)			    
+                                                                         else endLoc)
               toks1 = gtail "startEndLoc:HsMatchP" (dropWhile (\t->tokenPos t /= endLoc1) toks)
               toks0 = getToks (startLoc1, endLoc1) toks
-	      endLoc2 = if toks1==[] 
-		 	  then endLoc1 
+	      endLoc2 = if toks1==[]
+		 	  then endLoc1
 			  else let toks2 = takeWhile (\t -> isSpecialTok t && needmore toks t ) toks1
                                in if toks2 == [] || all (\t-> isWhiteSpace t ) toks2
-				       then endLoc1 
+				       then endLoc1
                                        else (tokenPos.glast "startEndLoc::HsMatchP") toks2
-              
-          in (startLoc1, endLoc2) 
-        where 
-          isSpecialTok t = isWhiteSpace t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t 
-                          || isCloseSquareBracket t 
-          needmore toks t = case  isCloseBracket t of 
+
+          in (startLoc1, endLoc2)
+        where
+          isSpecialTok t = isWhiteSpace t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t
+                          || isCloseSquareBracket t
+          needmore toks t = case  isCloseBracket t of
                               True -> let openBrackets = length $ filter isOpenBracket toks
                                           closeBrackets = length $ filter isCloseBracket toks
                                       in closeBrackets < openBrackets
@@ -939,16 +939,16 @@ instance StartEndLoc HsMatchP where
 
 
 instance StartEndLoc HsStmtP where      -- Bug fixed. 20/05/2004
-   startEndLoc toks stmts=let s=getStmtList  stmts                           
-                              locs = map (startEndLoc toks) s 
+   startEndLoc toks stmts=let s=getStmtList  stmts
+                              locs = map (startEndLoc toks) s
                               (startLocs, endLocs) =(sort (map fst locs), sort (map snd locs))
                           in (ghead "StartEndLoc::HsStmtP" startLocs, glast "StartEndLoc::HsStmtP" endLocs)
-                              
+
 instance StartEndLoc (HsStmtAtom HsExpP HsPatP [HsDeclP])  where
 
     startEndLoc toks stmt=
-      case stmt of 
-           HsGeneratorAtom (SrcLoc _ _ r c) p e -> 
+      case stmt of
+           HsGeneratorAtom (SrcLoc _ _ r c) p e ->
                                   let (startLoc,_)=startEndLoc toks p
                                       (_,endLoc)  =startEndLoc toks e
                                   in (startLoc,endLoc)
@@ -963,15 +963,15 @@ instance StartEndLoc (HsStmtAtom HsExpP HsPatP [HsDeclP])  where
 instance (StartEndLoc i,StartEndLoc e)=>StartEndLoc (HsFieldI i e) where
     startEndLoc toks (HsField i e)=let (startLoc,_)=startEndLoc toks i
                                        (_,endLoc)=startEndLoc toks e
-                                   in (startLoc,endLoc) 
+                                   in (startLoc,endLoc)
 
-instance StartEndLoc HsAltP where   
+instance StartEndLoc HsAltP where
     startEndLoc toks (HsAlt l p rhs ds)=let (startLoc,_)=startEndLoc toks p
                                             (_,endLoc)=if ds==[] then startEndLoc toks rhs
                                                                  else startEndLoc toks (glast "StartEndLoc:HsAltP" ds)
                                         in (startLoc,endLoc)
 
-instance StartEndLoc RhsP where    
+instance StartEndLoc RhsP where
    startEndLoc toks (HsBody e)=startEndLoc toks e
 
    startEndLoc toks (HsGuard es)=if es==[] then (simpPos0,simpPos0)
@@ -979,7 +979,7 @@ instance StartEndLoc RhsP where
                                                     (_,_,e2)=glast "StartEndLoc:RhsP" es
                                                     (startLoc,_)=startEndLoc toks e1
                                                     (_,endLoc)=startEndLoc toks e2
-                                                in extendForwards toks startLoc endLoc isBar 
+                                                in extendForwards toks startLoc endLoc isBar
 
 instance StartEndLoc (HsIdentI PNT) where
     startEndLoc toks ident =
@@ -988,47 +988,47 @@ instance StartEndLoc (HsIdentI PNT) where
            HsCon i  ->startEndLoc toks i
 
 instance StartEndLoc [PNT] where
-    startEndLoc toks pnts 
+    startEndLoc toks pnts
        = if pnts==[] then (simpPos0, simpPos0)
            else let (startPos, _) = startEndLoc toks (head pnts)
                     (_,      endPos) = startEndLoc toks (last pnts)
-                in (startPos, endPos)                           
+                in (startPos, endPos)
 
 instance StartEndLoc (HsImportDeclI ModuleName PNT)  where
      startEndLoc toks (HsImportDecl (SrcLoc _ _ row col) modName qual  as Nothing)
         = let startPos=fst (startEndLoc toks modName)
               endPos = if isJust as then snd (startEndLoc toks (fromJust as))
                                     else snd (startEndLoc toks modName)
-          in extendForwards toks startPos endPos isImport 
-                                        
+          in extendForwards toks startPos endPos isImport
+
      startEndLoc toks (HsImportDecl (SrcLoc _ _ row col) modName qual as (Just (_, ents)))
          = let startPos = fst (startEndLoc toks modName)
                endPos = if ents == [] then if isJust as then  snd (startEndLoc toks (fromJust as))
                                                         else  snd (startEndLoc toks modName)
                                       else snd (startEndLoc toks (glast "startEndLocImport" ents))
-           in extendBothSides toks startPos endPos isImport isCloseBracket 
+           in extendBothSides toks startPos endPos isImport isCloseBracket
 
 
 instance StartEndLoc  [HsExportSpecI ModuleName PNT] where
-   startEndLoc toks es 
+   startEndLoc toks es
      = if es == [] then (simpPos0, simpPos0)
-                   else let (startLoc, _) = startEndLoc toks $ head es 
+                   else let (startLoc, _) = startEndLoc toks $ head es
                             (_, endLoc)   = startEndLoc toks $ last es
                         in (startLoc, endLoc)
-                        -- in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket 
+                        -- in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket
 
 
 instance StartEndLoc (HsExportSpecI ModuleName PNT) where
      startEndLoc toks (EntE ent) =startEndLoc toks ent
-    
+
      startEndLoc toks (ModuleE moduleName) = let (startPos, endPos) = startEndLoc toks moduleName
                                              in extendForwards toks startPos endPos isModule
 
-    
-              
+
+
 instance StartEndLoc(EntSpec PNT) where
       startEndLoc toks (Var i)=startEndLoc toks i   --- x (a variable identifier)
- 
+
       startEndLoc toks (Abs i) =startEndLoc toks i   -- T, C
 
       startEndLoc toks (AllSubs i) =let (startPos, endPos) =startEndLoc toks i -- T(..), C(..)
@@ -1036,50 +1036,50 @@ instance StartEndLoc(EntSpec PNT) where
       startEndLoc toks (ListSubs i ents)= let (startPos, _) = startEndLoc toks i --T (C_1, ...,C_n, f1,...f_n)
                                               (_, endPos)   = startEndLoc toks (glast "startEnPosListSubs" ents)
                                           in extendBackwards toks startPos endPos isCloseBracket
-                                        
+
 instance StartEndLoc ModuleName where
    startEndLoc toks (SN modName (SrcLoc _ _ row col)) = ((row,col), (row,col))
 
 instance StartEndLoc [EntSpec PNT] where
-      startEndLoc toks ents 
+      startEndLoc toks ents
         = if ents==[] then (simpPos0,simpPos0)
                       else let (startPos, _)=startEndLoc toks $ head ents
-                               (_,  endPos) =startEndLoc toks $ last ents 
+                               (_,  endPos) =startEndLoc toks $ last ents
                            in (startPos,endPos)
                 --         in extendBothSides toks startPos endPos isHiding isCloseBracket
 
-instance StartEndLoc PNT where    
+instance StartEndLoc PNT where
      startEndLoc toks pnt =
-        case pnt of 
+        case pnt of
           PNT pn  _ (N (Just (SrcLoc _ _ row col)))->((row,col),(row,col))
           _                                        ->(simpPos0,simpPos0)  {-Shouldn't cause any problems here, as in a normal
                                                                             AST, every PNT has a source location. -}
 
 
 instance (Eq i, Eq t, StartEndLoc i, StartEndLoc t,StartEndLoc [i]) =>StartEndLoc (HsConDeclI i t c) where
-   startEndLoc toks (HsConDecl _ is c i ds) 
+   startEndLoc toks (HsConDecl _ is c i ds)
       = let (startLoc, _) = startEndLoc toks is
-            (_, endLoc)   = if ds==[] then startEndLoc toks i 
+            (_, endLoc)   = if ds==[] then startEndLoc toks i
                                       else startEndLoc toks (last ds)
         in (startLoc, endLoc)
-   
-   startEndLoc toks (HsRecDecl _ is c i ds) 
+
+   startEndLoc toks (HsRecDecl _ is c i ds)
       = let (startLoc, _) = startEndLoc toks is
-            (_, endLoc)   = if ds==[] then startEndLoc toks i 
+            (_, endLoc)   = if ds==[] then startEndLoc toks i
                                       else startEndLoc toks (last ds)
         in (startLoc, endLoc)
- 
+
 instance (StartEndLoc t)=>StartEndLoc (HsBangType t) where
    startEndLoc toks (HsBangedType t) = startEndLoc toks t
 
    startEndLoc toks (HsUnBangedType t) = startEndLoc toks t
 
 instance (StartEndLoc t, StartEndLoc [i]) => StartEndLoc ([i], HsBangType t) where
-   
+
    startEndLoc toks (x,y)
      = let (startLoc, endLoc) = startEndLoc toks y
          in  extendBackwards toks startLoc endLoc isCloseBrace
-   
+
 
 
 instance StartEndLoc HsDeclP where
@@ -1104,7 +1104,7 @@ instance StartEndLoc HsDeclP where
    startEndLoc toks (Dec (HsDefaultDecl _ ts))
       = let (startLoc, _) = startEndLoc toks (head ts)
             (_ , endLoc) = startEndLoc toks (last ts)
-        in extendForwards toks startLoc endLoc isDefault  
+        in extendForwards toks startLoc endLoc isDefault
 
    startEndLoc toks (Dec (HsInfixDecl _ _ is))
       = let (startLoc, _) = startEndLoc toks (head is)
@@ -1113,30 +1113,30 @@ instance StartEndLoc HsDeclP where
 
    startEndLoc toks d@(Dec (HsFunBind _ ms))
       = let (startLoc, _) = startEndLoc toks (ghead "startEndLoc:HsDeclP3" ms)
-            (_,   endLoc) = if ms == [] then (simpPos0, simpPos0) 
+            (_,   endLoc) = if ms == [] then (simpPos0, simpPos0)
                                         else startEndLoc toks (glast "startEndLoc:HsDeclP4" ms)
         in (startLoc, endLoc)
    startEndLoc toks t@(Dec (HsPatBind _  p rhs ds))
        = let (startLoc, _) = startEndLoc toks p
              (_, endLoc)   = if ds ==[] then startEndLoc toks rhs
                                         else startEndLoc toks (glast "startEndLoc:HsDeclP5" ds)
-	     locs = srcLocs t 
+	     locs = srcLocs t
              (startLoc1,endLoc1) = (if startLoc == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
                                                                    else startLoc,
 				    if endLoc == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
-                                                                         else endLoc)			    
+                                                                         else endLoc)
              toks1 = gtail "startEndLoc:HsPatBind" (dropWhile (\t->tokenPos t /= endLoc1) toks)
-	     endLoc2 = if toks1==[] 
-		       then endLoc1 
+	     endLoc2 = if toks1==[]
+		       then endLoc1
                        else let toks2 = takeWhile (\t -> isSpecialTok t && needmore toks t) toks1
                             in if toks2 == [] || all (\t-> isWhiteSpace t) toks2
-			       then endLoc1 
+			       then endLoc1
                                else (tokenPos.glast "startEndLoc::HsMatchP") toks2
 	 in (startLoc1, endLoc2)
-    where 
-        isSpecialTok t = isWhiteSpace t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t 
-                      || isCloseSquareBracket t 
-        needmore toks t = case  isCloseBracket t of 
+    where
+        isSpecialTok t = isWhiteSpace t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t
+                      || isCloseSquareBracket t
+        needmore toks t = case  isCloseBracket t of
                             True -> let openBrackets = length $ filter isOpenBracket toks
                                         closeBrackets = length $ filter isCloseBracket toks
                                     in  closeBrackets < openBrackets
@@ -1146,36 +1146,36 @@ instance StartEndLoc HsDeclP where
                                               in  closeSqBrackets < openSqBrackets
                                       False -> True
 
-  
+
 
 
    startEndLoc toks (Dec (HsTypeSig _ is c t))
       = let (startLoc, _) = startEndLoc toks (ghead "startEndLoc:HsDeclP6" is)
             (_, endLoc)   = startEndLoc toks t
         in (startLoc, endLoc)
-              
+
    startEndLoc toks decl@(Dec (HsClassDecl loc c tp funDeps  ds))
       = let locs = srcLocs decl
             (startLoc, endLoc)
               = if locs == [] then (simpPos0, simpPos0)
-                 else (head locs, last locs)                           
+                 else (head locs, last locs)
         in extendForwards toks startLoc endLoc isClass
 
    startEndLoc toks decl@(Dec (HsInstDecl loc i c t ds))
      = let locs = srcLocs decl
            (startLoc, endLoc)
               = if locs == [] then (simpPos0, simpPos0)
-                 else (head locs, last locs)                           
+                 else (head locs, last locs)
         in extendForwards toks startLoc endLoc isInstance
 
-  
+
 {-
    startEndLoc toks (Dec (HsPrimitiveTypeDecl _ c tp))
      = let (startLoc, endLoc) = startEndLoc toks tp
-       in extendForward toks startLoc endLoc isData   
-          
+       in extendForward toks startLoc endLoc isData
 
-   startEndLoc toks (Dec (HsPrimitiveBind _ i t)) 
+
+   startEndLoc toks (Dec (HsPrimitiveBind _ i t))
      = let (startLoc, _) = startEndLoc toks i
            (_, endLoc)   = stratEndLoc toks t
        in  extendForward toks startLoc endLoc isPrimitive
@@ -1185,9 +1185,9 @@ instance StartEndLoc HsDeclP where
 --------------------------------------------------------------------------------------------------------
 -- This function should be the interface function for fetching start and end locations of a AST phrase in the source.
 getStartEndLoc::(Term t, StartEndLoc t,Printable t)=>[PosToken]->t->(SimpPos,SimpPos)
-getStartEndLoc toks t 
+getStartEndLoc toks t
   = let (startPos',endPos') = startEndLoc toks t
-        locs = srcLocs t 
+        locs = srcLocs t
         (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
                                                                    else startPos',
                              if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
@@ -1196,22 +1196,22 @@ getStartEndLoc toks t
 
  {- THECK : myppi.
       adjustLoc toks (startPos,endPos) t  -- to handle syntax phrase starts/ends with [], () ...
-    where  
+    where
       adjustLoc toks (startPos,endPos) t
-         = let astToks = filter (not.unwantedTok) $ tokenise  (Pos 0 0 1) 1 True $ (render.myppi) t 
+         = let astToks = filter (not.unwantedTok) $ tokenise  (Pos 0 0 1) 1 True $ (render.myppi) t
                (toks1,toks2, toks3) = splitToks (startPos, endPos) toks
-               toks2' = filter (not.unwantedTok) toks2               
+               toks2' = filter (not.unwantedTok) toks2
                (t1, t2) =(ghead "getStartEndLoc1" astToks, glast "getStartEndLoc2" astToks)
                startPos'= if sameToks t1 (ghead "getStartEndLoc3" toks2')
                            then startPos
                            else tokenPos $ ghead "getStartEndLoc4" $ dropWhile (\t-> not (sameToks t t1)) (reverse toks1)
                endPos'  = if sameToks t2 (glast "getStartEndLoc2" toks2')
                            then endPos
-                           else tokenPos $ ghead "getStartEndLoc5" $ dropWhile (\t-> not (sameToks t t2)) toks3 
+                           else tokenPos $ ghead "getStartEndLoc5" $ dropWhile (\t-> not (sameToks t t2)) toks3
            in (startPos', endPos')
 
-      unwantedTok t = isWhite t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t 
-                      || isCloseSquareBracket t || isComma t 
+      unwantedTok t = isWhite t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t
+                      || isCloseSquareBracket t || isComma t
 
       sameToks (t1, (l1, c1)) (t2, (l2, c2)) = t1 == t2 && c1 == c2
  -}
@@ -1220,16 +1220,16 @@ getStartEndLoc toks t
 extendBothSides  toks startLoc endLoc  forwardCondFun backwardCondFun
        =let (toks1,toks2)=break (\t->tokenPos t==startLoc) toks
             toks21=gtail ("extendBothSides" ++ (show (startLoc, endLoc, toks2))  ) $ dropWhile (\t->tokenPos t /=endLoc) toks2
-            firstLoc=case (dropWhile (not.forwardCondFun) (reverse toks1)) of 
+            firstLoc=case (dropWhile (not.forwardCondFun) (reverse toks1)) of
                              [] -> startLoc    -- is this the correct default?
-                             l  -> (tokenPos.ghead "extendBothSides:lastTok") l  
+                             l  -> (tokenPos.ghead "extendBothSides:lastTok") l
             lastLoc =case (dropWhile (not.backwardCondFun) toks21) of
                             [] ->endLoc   --is this a correct default?
-                            l -> (tokenPos.ghead "extendBothSides:lastTok") l                    
-        in (firstLoc, lastLoc)   
+                            l -> (tokenPos.ghead "extendBothSides:lastTok") l
+        in (firstLoc, lastLoc)
 
 extendForwards toks startLoc endLoc forwardCondFun
-       =let toks1=takeWhile (\t->tokenPos t /= startLoc) toks          
+       =let toks1=takeWhile (\t->tokenPos t /= startLoc) toks
             firstLoc=case (dropWhile (not.forwardCondFun) (reverse toks1)) of
                        [] ->startLoc  -- is this the correct default?
                        l -> (tokenPos.ghead "extendForwards") l
@@ -1240,10 +1240,10 @@ extendBackwards toks startLoc endLoc backwardCondFun
              lastLoc=case (dropWhile (not.backwardCondFun) toks1) of
                           [] ->endLoc -- is this the correct default?
                           l ->(tokenPos. ghead "extendBackwards") l
-         in (startLoc, lastLoc)     
-                                   
+         in (startLoc, lastLoc)
+
 ------------------Some functions for associating comments with syntax phrases.---------------------------
-{- Note: We assume that a comment before t belongs to t only if there is at most one blank line between them, 
+{- Note: We assume that a comment before t belongs to t only if there is at most one blank line between them,
          and a cooment after t belongs to t only it the comment starts at the last line of t.
 -}
 
@@ -1255,9 +1255,9 @@ startEndLocIncFowComment toks t
             toks1= gtail "startEndLocIncFowComment"  $ dropWhile (\t->tokenPos t/=endLoc) toks
             toks11 = let (ts1, ts2) = break hasNewLn toks1
                      in (ts1 ++ if ts2==[] then [] else [ghead "startEndLocInFowComment" ts2])
-         in  if toks11/=[] && all (\t->isWhite t || endsWithNewLn t) toks11 
+         in  if toks11/=[] && all (\t->isWhite t || endsWithNewLn t) toks11
              then (startLoc, tokenPos (glast "startEndLocIncFowComment" toks11))
-             else (startLoc, endLoc) 
+             else (startLoc, endLoc)
 
 
 {-get the start&end location of t in the token stream, then extend the end location to cover
@@ -1268,42 +1268,42 @@ startEndLocIncFowNewLn toks t
   =let (startLoc,endLoc)=getStartEndLoc toks t
        toks1 = dropWhile isWhiteSpace $ gtail "startEndLocIncFowNewLn"  $ dropWhile (\t->tokenPos t /=endLoc) toks
        nextTok= if toks1==[] then defaultToken else head toks1
-   in if isNewLn nextTok  
+   in if isNewLn nextTok
         then (startLoc, tokenPos nextTok)
         else (startLoc, endLoc)
- 
+
 {-get the start&end loation of t in the token stream, then extend the start and end location to
-  cover the preceding and folllowing comments. 
+  cover the preceding and folllowing comments.
 -}
 startEndLocIncComments::(Term t, StartEndLoc t,Printable t)=>[PosToken]->t->(SimpPos,SimpPos)
 startEndLocIncComments toks t
-  =let (startLoc,endLoc)=getStartEndLoc toks t 
+  =let (startLoc,endLoc)=getStartEndLoc toks t
        (toks11,toks12)= let (ts1,ts2) = break (\t->tokenPos t == startLoc) toks
                             (ts11, ts12) = break hasNewLn (reverse ts1)
                         in (reverse ts12, reverse ts11++ts2)
        toks12'=takeWhile (\t->tokenPos t /=startLoc) toks12
        startLoc'=
-         if all isWhite  toks12'  
+         if all isWhite  toks12'
            then  -- group the toks1 according to lines in a reverse order.
                  let  groupedToks=reverse $ groupTokensByLine toks11
                       -- empty lines right before t
-                      emptyLns=takeWhile (all (\t->isWhiteSpace t || isNewLn t )) groupedToks             
+                      emptyLns=takeWhile (all (\t->isWhiteSpace t || isNewLn t )) groupedToks
                       lastComment=if length emptyLns <=1  -- get the comment if there is any
-                                    then takeWhile (all isWhite) $ takeWhile (any isComment) $ dropWhile 
-                                               (all (\t->isWhiteSpace t || isNewLn t)) groupedToks    
-                                    else [] -- no comment 
+                                    then takeWhile (all isWhite) $ takeWhile (any isComment) $ dropWhile
+                                               (all (\t->isWhiteSpace t || isNewLn t)) groupedToks
+                                    else [] -- no comment
                       toks1'=if lastComment /=[] then concat $ reverse (emptyLns ++ lastComment)
                                                  else []
                  in if toks1'==[]
-                       then if toks12'/=[] 
+                       then if toks12'/=[]
                               then (tokenPos (ghead "startEndLocIncComments"  toks12'))  --there is no comment before t
-                              else startLoc 
+                              else startLoc
                        --there is a comment before t
-                       else tokenPos (ghead "startEndLocIncComments"  toks1') 
-           else startLoc          
+                       else tokenPos (ghead "startEndLocIncComments"  toks1')
+           else startLoc
        -- tokens after t
        toks2=gtail "startEndLocIncComments1"  $ dropWhile (\t->tokenPos t/=endLoc) toks
-       -- toks21 are those tokens that are in the same line with the last line of t 
+       -- toks21 are those tokens that are in the same line with the last line of t
        (toks21,tok22)= let (ts11, ts12) = break hasNewLn toks2
                        in (ts11 ++ if ts12==[] then [] else [ghead "startEndLocIncComments" ts12],
                                                              gtail "startEndLocIncComments2" ts12)
@@ -1311,7 +1311,7 @@ startEndLocIncComments toks t
         else if all (\t->isWhite t || endsWithNewLn t) toks21 --get the following white tokens in the same
                                                               --line of the last token of t
                then (startLoc', tokenPos (last toks21))
-               else (startLoc', endLoc)  
+               else (startLoc', endLoc)
 
 --Create a list of white space tokens.
 whiteSpacesToken::SimpPos->Int->[PosToken]
@@ -1321,14 +1321,14 @@ whiteSpacesToken (row,col) n
 
 -------------------------------------------------------------------------------------------------
 
-adjustOffset::Int->[PosToken]->Bool->[PosToken]           
-adjustOffset offset [] _ = []  
-adjustOffset offset toks firstLineIncluded  
+adjustOffset::Int->[PosToken]->Bool->[PosToken]
+adjustOffset offset [] _ = []
+adjustOffset offset toks firstLineIncluded
      = let groupedToks = groupBy (\x y->tokenRow x==tokenRow y) toks  --groupedToks/=[], no problem with 'head'
            --if firstLineIncluded is False, the offset of the first line won't be ajusted.
-       in if offset>=0 then if firstLineIncluded 
+       in if offset>=0 then if firstLineIncluded
                                then concatMap (doAddWhites offset) groupedToks
                                else ghead "adjustOffset" groupedToks ++ concatMap (doAddWhites offset) (tail groupedToks)
-                       else if firstLineIncluded 
+                       else if firstLineIncluded
                                then concatMap (doRmWhites  (-offset)) groupedToks
-                               else ghead "adjustOffset" groupedToks ++ concatMap (doRmWhites  (-offset)) (tail groupedToks) 
+                               else ghead "adjustOffset" groupedToks ++ concatMap (doRmWhites  (-offset)) (tail groupedToks)

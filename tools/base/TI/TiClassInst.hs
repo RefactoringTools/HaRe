@@ -1,7 +1,7 @@
 -- Type checking for class and instances declarations.
 module TiClassInst where
-import List((\\))
-import Maybe(fromMaybe)
+import Data.List((\\))
+import Data.Maybe(fromMaybe)
 
 import HasBaseStruct(hsClassDecl,hsInstDecl,hsId,hsLit,hsApp,hsPId,hsPatBind)
 import HsLiteral

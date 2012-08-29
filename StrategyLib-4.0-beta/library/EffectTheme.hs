@@ -26,7 +26,7 @@ module EffectTheme (
 ) where
 
 
-import Monad
+import Control.Monad
 import MonadRun
 import Control.Monad.Trans
 import StrategyPrelude

@@ -10,7 +10,7 @@ module OrigTiMonad(
    (>:),freshInt
   ) where
 import Prelude hiding (lookup) -- for Hugs
-import Monad(MonadPlus(..))
+import Control.Monad(MonadPlus(..))
 import HsIdent(HsIdentI)
 import HsName(ModuleName,Id,noModule)
 import TiTypes
@@ -62,7 +62,7 @@ instance Functor (IM i c) where
 
 instance Monad (IM i c) where
   return ans = IM $ \ env ids -> Right (Out ans (ids,empty))
- 
+
   IM m1 >>= xm2 =
      IM $ \ env ids0 ->
      case m1 env ids0 of

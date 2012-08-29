@@ -4,12 +4,12 @@ module RefacDataNewType (refacDataNewType) where
 import PrettyPrint
 import PosSyntax
 import AbstractIO
-import Maybe
+import Data.Maybe
 import TypedIds
 import UniqueNames hiding (srcLoc)
 import PNT
 import TiPNT
-import List
+import Data.List
 import RefacUtils
 import PFE0 (findFile)
 import MUtils (( # ))

@@ -3,8 +3,8 @@
 module RefacMoveDef(liftToTopLevel, liftOneLevel, demote,liftingInClientMod) where
 import Prelude hiding (putStrLn)
 import PrettyPrint
-import Maybe
-import List 
+import Data.Maybe
+import Data.List 
 import RefacUtils
 import HsName
 import AbstractIO

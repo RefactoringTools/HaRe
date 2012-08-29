@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp #-}
 module IxOutputM 
   (HasOutput(..), OutputM, foldOutput, listOutput, mapOutput) where
 

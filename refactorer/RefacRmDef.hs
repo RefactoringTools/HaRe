@@ -3,10 +3,10 @@
 module RefacRmDef(removeDef) where
 
 import PosSyntax
-import Maybe
+import Data.Maybe
 import TypedIds
 import UniqueNames
-import List 
+import Data.List 
 import TiPNT 
 import RefacUtils 
 import PNT

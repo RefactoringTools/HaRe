@@ -5,7 +5,7 @@
 
 This directory contains some test cases for the refactorings developed in HaRe.
 
-For each refactoring, there is a sub-directory which contains all the test casesfor this refactorings. For example, the sun-directory for the 'renaming' refactoring is '/testing/renaming'.
+For each refactoring, there is a sub-directory which contains all the test casesfor this refactorings. For example, the sub-directory for the 'renaming' refactoring is '/testing/renaming'.
 
 -- How to run the test suite? 
 
@@ -28,7 +28,7 @@ succeeded and how many failed. If a test case fails, you can go to the correspon
 
 -- How to read the test cases?
 
-The orgnization of the test cases is specificed in the file 'UTest.data' in eachsub-directory refactoring. For example, the 'UTest.data' file in the 
+The organization of the test cases is specificed in the file 'UTest.data' in each sub-directory refactoring. For example, the 'UTest.data' file in the 
 'renaming' directory is like this:
 
  ********************************************************************
@@ -79,6 +79,7 @@ which means the refactoring should rename the identifier at the location (line= 
 the files: D1.hs , B1.hs, A1.hs.   
  
 For this refactoring, the source file before the refactoring are D1.hs , B1.hs and A1.hs.
+
 For the expected result for this refactoring:
 
 The files containing the program source from the token stream are: D1_TokOut.hs B1_TokOut.hs and A1_TokOut.hs.

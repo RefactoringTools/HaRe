@@ -2,20 +2,20 @@ module RefacDuplicates(detectDuplicates,detectSpecDuplicates) where
 
 import PrettyPrint
 import PosSyntax
-import Maybe
+import Data.Maybe
 import TypedIds
 
 import UniqueNames hiding (srcLoc)
-import PNT 
-import TiPNT 
+import PNT
+import TiPNT
 
-import List  
+import Data.List as List
 import RefacUtils
 import PFE0 (findFile, getCurrentModuleGraph)
 import AbstractIO
 import Prelude hiding (putStrLn, putStr)
-import Char
-import Time
+import Data.Char
+import System.Time
 
 type Drip = (String, LocInfo)
 type ExpDrip = (HsExpP, LocInfo)
@@ -41,7 +41,7 @@ type LocInfo = (String, Int, Int)
 detectDuplicates args
  = do let fileName  = args!!0
       timeone <- AbstractIO.getClockTime
-      modName <- fileNameToModName fileName 
+      modName <- fileNameToModName fileName
 
       (inscps, exps, mod, tokList) <- parseSourceFile fileName
       putStrLn "\nComputing list of duplicates from the following files..."
@@ -54,7 +54,7 @@ detectDuplicates args
       let dups = getDuplicates expmods
       displayDuplicates dups
       putStrLn "Duplicate code refactoring complete!\n"
-      timetwo <- AbstractIO.getClockTime  
+      timetwo <- AbstractIO.getClockTime
       putStrLn $ show $ diffClockTimes timetwo timeone
 
 getDirectory :: String -> String
@@ -66,18 +66,18 @@ stripServers [] d = []
 stripServers (a@(x,y):xs)  d
  | d == getDirectory y = a : stripServers xs d
  | otherwise           = stripServers xs d
- 
+
 detectSpecDuplicates args
- = do let fileName   = args!!0            
+ = do let fileName   = args!!0
           beginRow   = read (args!!1)::Int
           beginCol   = read (args!!2)::Int
           endRow     = read (args!!3)::Int
           endCol     = read (args!!4)::Int
       timeone <- AbstractIO.getClockTime
-      modName <- fileNameToModName fileName 
+      modName <- fileNameToModName fileName
       (inscps, exps, mod, tokList) <- parseSourceFile fileName
-      let exp=findExp tokList (beginRow, beginCol) (endRow, endCol) mod 
-      if exp/=defaultExp 
+      let exp=findExp tokList (beginRow, beginCol) (endRow, endCol) mod
+      if exp/=defaultExp
         then  -- (mod',((tokList',_),_))<- detectDuplicates' fileName (beginRow,beginCol)(endRow,endCol) mod tokList
               -- writeRefactoredFiles [((fileName,True), (tokList',mod'))]
               do putStrLn "\nComputing list of duplicates from the following files..."
@@ -97,10 +97,10 @@ detectSpecDuplicates args
      =fromMaybe defaultExp (applyTU (once_tdTU (failTU `adhocTU` exp)) t)
        where exp (e::HsExpP)
                |inScope (getStartEndLoc toks e)=Just e
-             exp _ =Nothing                     
-             
+             exp _ =Nothing
+
              inScope (startLoc,endLoc)
-                =startLoc>=beginPos &&  endLoc<=endPos  
+                =startLoc>=beginPos &&  endLoc<=endPos
 
 
 
@@ -113,15 +113,15 @@ detectSpecDuplicates args
 makeBucket :: Term t => t -> Bucket
 makeBucket ast = ghead "makeBucket"  $ applyTU (stop_tdTU (failTU `adhocTU` addHash)) ast
     where addHash (a::HsExpP)= return [(showExp a,getSrcLoc a)]
-			      
+
 --Simple hash function, Takes a String and returns an Int
 --Currently not used, but left in just in case
 hashString :: String -> Int
-hashString = fromIntegral . foldr f 0 
+hashString = fromIntegral . foldr f 0
     where f c m = ord c + (m * 128) `rem` 1500007
- 
+
 --Takes an AST of Type Exp and returns its start location
-getSrcLoc :: (Term t) => t -> LocInfo 
+getSrcLoc :: (Term t) => t -> LocInfo
 getSrcLoc exp  = if length lexp == 0 then ("",0,0) else ghead "getSrcLoc" lexp
     where lexp = allSortedLocsRev exp
 
@@ -139,7 +139,7 @@ removeHashElement (x,y) xs = [(a,b) | (a,b) <- xs, a /= x]
 showExp :: HsExpP -> String
 showExp exp = case exp of
               (Exp (HsId (HsVar _))) -> "HsVar"
-	      (Exp (HsId (HsCon _))) -> "HsCon"		
+	      (Exp (HsId (HsCon _))) -> "HsCon"
               (Exp (HsLit _ _)) -> "HsLit"
               (Exp (HsInfixApp _ _ _)) -> "HsInfixApp"
               (Exp (HsApp _ _)) -> "HsApp"
@@ -177,13 +177,13 @@ genExpList ast = ghead "genExpList" $ applyTU (stop_tdTU ( failTU `adhocTU` isEx
 allSortedLocsRev t =(sort.nub.getSrcLocsRev) t
 
 --Modified version of getSrcLocs to include Filename
-getSrcLocsRev=runIdentity.(applyTU (full_tdTU (constTU [] `adhocTU` pnt  
+getSrcLocsRev=runIdentity.(applyTU (full_tdTU (constTU [] `adhocTU` pnt
                                                        `adhocTU` literalInExp
                                                        `adhocTU` literalInPat)))
-        where 
-            pnt (PNT pname _ (N (Just (SrcLoc f c row col))))=return [(f,row,col)]                
+        where
+            pnt (PNT pname _ (N (Just (SrcLoc f c row col))))=return [(f,row,col)]
             pnt _=return []
-                     
+
             literalInExp ((Exp (HsLit (SrcLoc f  c row col) _))::HsExpP) = return [(f,row,col)]
             literalInExp (Exp _) =return []
 
@@ -204,7 +204,7 @@ constructBucketGroup :: Bucket -> BucketGroup -> BucketGroup
 constructBucketGroup hshtbl dupl
 		= case hshtbl of
                       []  -> dupl
-                      (x:xs) -> if (dripOccurences x xs) > 1 
+                      (x:xs) -> if (dripOccurences x xs) > 1
 			        then (addAllOcc x xs dupl) ++ (constructBucketGroup (removeHashElement x xs) [])
 			        else dupl ++ (constructBucketGroup xs [])
 
@@ -240,7 +240,7 @@ populateBucketGroup expl (x:xs) = map (getExp expl) x : populateBucketGroup expl
 --Returns ExpBucket
 groupDupls ::  ExpBucket -> ExpBucket -> ExpBucket
 groupDupls  y []= y
-groupDupls  ys (x:xs) = let r = xmatches x xs 
+groupDupls  ys (x:xs) = let r = xmatches x xs
 		        in groupDupls (ys++r) (xs\\r)
     where xmatches x xs = x:filter (\y->(show (fst x)) == (show (fst y))) xs
 
@@ -258,7 +258,7 @@ verifyBucketGroup ast dupl = do let expast = populateBucketGroup ast dupl
 
 
 -- *******************************************************
--- ***** Module list related functions called by the ***** 
+-- ***** Module list related functions called by the *****
 -- ***** refactor interface                          *****
 -- *******************************************************
 
@@ -297,18 +297,17 @@ getDuplicates ast = verifyBucketGroup (genExpList ast) (constructBucketGroup (ma
 --name, and the start & finish locations of the Expression
 getSpecificDupls :: Term t => HsExpP -> t -> ExpBucketGroup
 getSpecificDupls exp ast =  [catMaybes $ ghead "getSpecificDupls" $ (applyTU (full_tdTU (constTU [] `adhocTU` findMatches)) ast)]
-    where findMatches (a::HsExpP)= if show(removeSrcLocs exp) == show(removeSrcLocs a) 
+    where findMatches (a::HsExpP)= if show(removeSrcLocs exp) == show(removeSrcLocs a)
 				   then return [Just (a,getSrcLoc a)]
 				   else return [Nothing]
 
 
 --Function to display duplicates returned by getDuplicates in a readable format
 displayDuplicates dupls = do putStrLn $ "The following duplicates have been identified (File,Line,Char):" ++ "\n"
-		             mapM putStrLn (map displayElement dupls)		       
-    where displayElement xs = if length xs == 1 
+		             mapM putStrLn (map displayElement dupls)
+    where displayElement xs = if length xs == 1
 			      then "No duplicates found.\n"
 			      else (render.ppi) (fst(ghead "displayElement" xs)) ++ " at location(s) " ++ show (nub [snd x | x <- xs]) ++ "\n"
 
 --Simple function to display the raw data output by getDuplicates
 displayDuplicates1 dupls =  putStrLn $ show dupls
-

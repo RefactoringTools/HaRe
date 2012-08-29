@@ -17,7 +17,7 @@ import Products((><))
 -- added by Huiqing Li
 import UniqueNames
 import PNT
-import Maybe
+import Data.Maybe
 import SourceNames
 import SrcLoc1
 import HsName hiding (ModuleName)

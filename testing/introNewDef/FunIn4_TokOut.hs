@@ -9,9 +9,11 @@ module FunIn4 where
 --this example aims to test the layout adjustment.
 
 foo x=xz*w where  z=3
-                  w=5  
-                  xz = (x * 5) * z  {-there is 
-a comment-}
+                  w=5  {-there is 
+a comment-}                      
+                  xz = (x * 5) * z
+                      
+
 
 main=foo 10
 

@@ -18,18 +18,18 @@ import PrettyPrint
 import PrettyPrint
 import PosSyntax
 import AbstractIO
-import Maybe
+import Data.Maybe
 import TypedIds
 import UniqueNames hiding (srcLoc)
 import PNT
 import TiPNT
-import List
+import Data.List
 import RefacTypeUtils
 import PFE0 (findFile)
 import MUtils (( # ))
 import RefacTypeLocUtils
-import System
-import IO
+-- import System
+import System.IO
 import TiDecorate
 
 -- | An argument list for a function which of course is a list of paterns.

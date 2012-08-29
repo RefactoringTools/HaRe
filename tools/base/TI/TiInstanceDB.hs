@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp  #-}
 {-+
 Instance declarations in the source code are assigned names and
 added to the instance database, which gets used during context reduction.
@@ -10,7 +11,7 @@ import TiTypes(Type,Pred,Subst(..),Types(..),funT,HsIdentI(..),Typing(..),
 	       Kinded,kinded,unQual,forall')
 import TiSolve()
 import Unification(match,unify)
-import Maybe(mapMaybe,isJust)
+import Data.Maybe(mapMaybe,isJust)
 --import HsIdent -- hmm
 import PrettyPrint
 import SpecialNames

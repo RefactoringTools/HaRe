@@ -6,7 +6,7 @@ import PrettyPrint
 import PrettyEnv
 import UTF8Util
 import MUtils(( # ))
-import List(isSuffixOf)
+import Data.List(isSuffixOf)
 import AbstractIO
 
 type PPOpts = (Bool,PPHsMode)

@@ -1,8 +1,8 @@
 module GenEditorInterfacesAux where
 
-import List
-import IO(hPutStrLn,stderr)
-import System(exitFailure)
+import Data.List
+import System.IO(hPutStrLn,stderr)
+import System.Exit(exitFailure)
 
 import LocalSettings
 
@@ -18,13 +18,13 @@ comment c       = Comment c
 fileNamePar     = FileNamePar True
 fileNameBasePar = FileNamePar False
 pathPar prompt  = PathPar prompt ""
-pathDefaultPar  = PathPar 
+pathDefaultPar  = PathPar
 positionPar     = PositionPar
 regionPar       = RegionPar
 namePar         = NamePar
 optionPar       = OptionPar
 
-data Editor = Editor{ 
+data Editor = Editor{
     editorName     :: String
   , initScriptPars :: String -> ScriptPars
   , duplicate      :: String
@@ -82,18 +82,18 @@ class EditPars p f where
 
 -- replace first occurrence of word (@@name@@) in line by value
 substituteWord []   (word,value) = []
-substituteWord line (word,value) = 
+substituteWord line (word,value) =
   case span (/='@') line of
-    (prefix,rest@('@':'@':line')) 
+    (prefix,rest@('@':'@':line'))
       | word `isPrefixOf` rest -> prefix ++ value ++ (rest \\ word)
-    (prefix,rest@('@':line')) 
+    (prefix,rest@('@':line'))
       -> prefix++"@"++substituteWord line' (word,value)
-    (prefix,rest) 
+    (prefix,rest)
       -> prefix++rest
 
 -- replace words (wordEnv) and lines (lineEnv) in line
 processLine wordEnv lineEnv line | not $ '@' `elem` line = [line]
-processLine wordEnv lineEnv line | '@' /= head line      = [foldl substituteWord line wordEnv] 
+processLine wordEnv lineEnv line | '@' /= head line      = [foldl substituteWord line wordEnv]
 processLine wordEnv lineEnv line | otherwise             = maybe [line] id $ lookup line lineEnv
 
 -- words to be replaced by words in template file

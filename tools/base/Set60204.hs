@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 module Set60204 where
 
 #if __GLASGOW_HASKELL__ >= 604 

@@ -1,7 +1,7 @@
 module PFE_HTML where
 import Prelude hiding(putStrLn,writeFile)
 --import Maybe(fromJust)
-import Monad(when,unless)
+import Control.Monad(when,unless)
 
 --import HsName(ModuleName(Module))
 --import ScopeModule(scopeModule)

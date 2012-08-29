@@ -13,7 +13,7 @@ import HsIdent
 import SrcLoc
 
 import MUtils
-import Monad(liftM)
+import Control.Monad(liftM)
 
 
 -- replaces listOutput, to handle generic lists of declarations

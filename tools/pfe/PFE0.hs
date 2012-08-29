@@ -21,9 +21,9 @@ module PFE0(
     moduleNode,newerThan
   ) where
 import Prelude hiding (readFile,writeFile,putStr,putStrLn,catch,ioError)
-import List(sort,nub,(\\))
-import Monad(when,unless)
-import Maybe(fromMaybe,fromJust,isJust)
+import Data.List(sort,nub,(\\))
+import Control.Monad(when,unless)
+import Data.Maybe(fromMaybe,fromJust,isJust)
 
 import HsModule
 import HsAssocStruct

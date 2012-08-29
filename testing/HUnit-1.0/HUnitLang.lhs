@@ -22,8 +22,10 @@ the imports and the implementations but not the interfaces.
 Imports
 -------
 
-> import List (isPrefixOf)
-> import IO (ioeGetErrorString, try)
+> import Data.List (isPrefixOf)
+> import System.IO.Error (ioeGetErrorString)
+> -- import Control.OldException (try)
+> import Control.OldException
 
 
 
@@ -60,7 +62,8 @@ Implementations
 
 > performTestCase action = do r <- try action
 >                             case r of Right () -> return Nothing
->                                       Left  e  -> return (Just (decode e))
+>                                       -- Left  e  -> return (Just (decode e))
+>                                       Left  e  -> return (Just (True,show e)) -- ++AZ++probably wrong thing
 >  where
 >   decode e = let s0 = ioeGetErrorString e
 >                  (_, s1) = dropPrefix hugsPrefix  s0

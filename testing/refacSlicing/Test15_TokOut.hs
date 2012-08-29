@@ -1,8 +1,7 @@
 module Test15 where
 
 f x =  y
-    where
-      y = 10
-    
+  where
+    y = 10
 
 

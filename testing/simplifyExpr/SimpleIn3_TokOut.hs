@@ -5,7 +5,6 @@ f :: Maybe a -> a
 f x@(Just y) = (y)
 
 
-
 -- | The 'fromJust' function extracts the element out of a 'Just' and
 -- throws an error if its argument is 'Nothing'.
 fromJust          :: Maybe a -> a

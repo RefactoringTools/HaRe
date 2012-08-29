@@ -1,5 +1,5 @@
 module DerivingOrd where
-import Maybe(mapMaybe)
+import Data.Maybe(mapMaybe)
 import DerivingUtils
 
 deriveOrd stdnames src t@(_,TypeInfo{constructors=cs}) =

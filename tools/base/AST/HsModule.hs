@@ -1,5 +1,5 @@
 module HsModule(module HsModule,ModuleName(..)) where
-import List(sort,nub)
+import Data.List(sort,nub)
 import SrcLoc1
 import HsName(ModuleName(..))
 import HsIdent(HsIdentI(..))

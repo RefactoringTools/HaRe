@@ -1,12 +1,10 @@
 module SimpleIn1 where
 
-import PreludeBuiltin
-
-f :: [a] -> a
-f y@(z:zs) = if y == [] then error "blah" else zs
 
 
-hd x = (case x of
-            (x : _) -> x
-            [] -> error "Prelude.head: empty list")
+f :: [Int] -> Int
+f y@(z:zs) = hd y + hd (tl y)
+
+
+hd x = head x
 tl x = tail x

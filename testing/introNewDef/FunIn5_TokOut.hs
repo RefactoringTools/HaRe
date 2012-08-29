@@ -11,9 +11,11 @@ module FunIn5 where
 
 
 foo x=zw +zw*5 where  z=3
-                      w=5  
-                      zw = z * w  {-there is 
-a comment-}
+                      w=5  {-there is 
+a comment-}                        
+                      zw = z * w
+                        
+
 
 main=foo 10
 

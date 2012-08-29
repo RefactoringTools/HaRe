@@ -1,5 +1,5 @@
 module Lift where
-import Maybe(maybeToList)
+import Data.Maybe(maybeToList)
 import PrettyPrint
 
 ---

@@ -20,7 +20,7 @@ $Id: HUnitBase.lhs,v 1.12 2002/02/14 19:31:57 heringto Exp $
 > )
 > where
 
-> import Monad (unless, foldM)
+> import Control.Monad (unless, foldM)
 
 
 Assertion Definition

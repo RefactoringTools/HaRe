@@ -16,7 +16,7 @@ to these functions.
 Most of this is not used at the moment.
 -}
 module TiClassInst2({-tcClassDecl,tcInstDecl,-}tcInstOrClassDecl'') where
-import List((\\))
+import Data.List((\\))
 
 --import HasBaseStruct(HasBaseStruct(..),hsTypeSig,hsClassDecl,hsInstDecl)
 import HasBaseStruct

@@ -8,8 +8,7 @@ import qualified Control.Parallel.Strategies as S
 -- should fail, as there are two possible qualifiers...
 
 f x = let (n1, n22_2, n33_2)
-              =
-                  S.runEval
+              =   S.runEval
                       (do n1' <- S.rpar n11
                           n22_2 <- S.rpar n22
                           n33_2 <- S.rpar n33

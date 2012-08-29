@@ -13,7 +13,7 @@ import SrcLocPretty
 import PrettyPrint(pp)
 import Control.Monad.Error
 --import Control.Monad(liftM,MonadPlus(..))
-import Monad
+import Control.Monad
 import ExceptM()
  --import IOExts(trace) -- for debugging only
 

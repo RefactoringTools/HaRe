@@ -7,4 +7,5 @@ data Expr = Var Int |
 errorData field dat function
     =   errorExpr
             ("the binding for " ++ field ++ " in a pattern binding involving " ++ dat ++ " has been removed in function " ++ function)
+
 f = (\(Var  y) -> errorExpr "x" "Var" "f" + y)

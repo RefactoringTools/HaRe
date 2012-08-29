@@ -1,7 +1,7 @@
 -- Kind checking for base langauge declarations (the D structure)
 module TiDkc where
-import List(nub,(\\))
-import Maybe(mapMaybe)
+import Data.List(nub,(\\))
+import Data.Maybe(mapMaybe)
 
 import HsDeclStruct
 import HsExpStruct(EI)

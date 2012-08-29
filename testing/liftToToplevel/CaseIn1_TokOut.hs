@@ -12,4 +12,5 @@ main x y z = case x of
                      where inc a =a+1
 
 addthree a b c=a+b+c
+
   

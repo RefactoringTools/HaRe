@@ -2,7 +2,7 @@
 -- Automatically generated code for a DFA follows:
 --Equal states: [[[2,3],[8,9],[5,31],[10,11],[36,37],[39,40]]]
 module HsLex (haskellLex) where
-import Char
+import Data.Char hiding (isSymbol) -- NOTE: AZ++may apply to HsLexUtils below instead...
 import HsLexUtils
 
 type Output = [(Token,String)]

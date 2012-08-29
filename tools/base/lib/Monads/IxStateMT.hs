@@ -1,10 +1,12 @@
+{-# OPTIONS_GHC -cpp  #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 module IxStateMT (HasState(..), MT, at, Z, S, Top, Under,
                   WithState, withSt, withStS, mapState) where
 
 import MT
 import Control_Monad_Fix
 
-import Monad(liftM,MonadPlus(..))
+import Control.Monad(liftM,MonadPlus(..))
 
 
 newtype WithState s m a = S { ($$) :: s -> m (a,s) }
@@ -15,7 +17,7 @@ withSt s = liftM fst . withStS s
 withStS :: s -> WithState s m a -> m (a,s)
 withStS s (S f) = f s
 
-mapState :: Monad m => 
+mapState :: Monad m =>
             (t -> s) -> (s -> t) -> WithState s m a -> WithState t m a
 mapState inF outF (S m) = S (liftM outF' . m . inF)
   where outF' (a,s) = (a, outF s)
@@ -24,7 +26,7 @@ mapState inF outF (S m) = S (liftM outF' . m . inF)
 
 --------------------------------------------------------------------------------
 instance Monad m => Functor (WithState s m) where
-  fmap        = liftM 
+  fmap        = liftM
 
 instance Monad m => Monad (WithState s m) where
   return x    = S (\s -> return (x,s))
@@ -79,4 +81,4 @@ instance MonadFix m => MonadFix (WithState s m) where
   mfix f = S (\s -> mfix $ \ ~(a,_) -> withStS s (f a))
 
 
-        
+

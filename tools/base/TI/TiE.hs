@@ -10,7 +10,7 @@ import TiFields
 import TiRhs
 --import TiPrelude
 import MUtils
-import Monad(join)--,liftM2
+import Control.Monad(join)--,liftM2
 
 instance HasId i (EI i e p ds t c) where
   ident = HsId

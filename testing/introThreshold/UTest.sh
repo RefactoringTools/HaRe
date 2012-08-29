@@ -1,17 +1,30 @@
 #!/bin/sh
-#BASH="d:\\cygwin\\bin\\bash.exe"
-BASH="bash"
-HARE="../../refactorer/pfe"
-#HARE="..\\..\\refactorer\\pfe"
+
+TESTING_DIR="$(pwd)"
 #cd ..
-ghc --make -i../../../../HUnit-1.0 -o UTest ./UTestCache.hs
+#./UTest.sh $TESTING_DIR
+
+
+BASH="bash"
+HARE="../../dist/build/hare/hare"
+
+runTest () {
+   echo "-- testing $1"
+   cd $1 &&
+   ./UTestCache $BASH $HARE 2>&1 | tee log.txt &&
+   rm -r hi
+   cd ..
+}
+
+ghc --make -o UTestCache UTestCache.hs
 rm *.o *.hi
+
 # avoid spurious error reports due to line-ending conventions..
 case `uname` in
-  CYGWIN*) 
-    unix2dos *.hs 
+  CYGWIN*)
+    unix2dos */*.hs */*/*.hs
     ;;
 esac
-# cd ./evalAddMonad
-echo "-- testing introduce thresholding"
-./UTest $BASH $HARE 2>&1 | tee log.txt
+
+runTest $TESTING_DIR
+

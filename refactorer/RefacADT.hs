@@ -4,9 +4,9 @@ module RefacADT(addFieldLabels,addDiscriminators,addConstructors,
                 elimNestedPatterns,elimPatterns,createADTMod,fromAlgebraicToADT,
                fromAlgebraicToADT1) where
 import Prelude hiding (putStrLn)
-import Maybe
-import List  
-import Char
+import Data.Maybe
+import Data.List  
+import Data.Char
 import PrettyPrint 
 import Prelude hiding (putStrLn)
 import AbstractIO (putStrLn)

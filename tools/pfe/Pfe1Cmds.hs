@@ -14,7 +14,7 @@ import HsLexMerge(mergeLex)
 import PrettyPrint
 import AbstractIO
 import MUtils
-import Maybe(mapMaybe)
+import Data.Maybe(mapMaybe)
 import PPModules() -- for PFE
 
 pfe1 ext = runPFE0Cmds ext pfe1Cmds

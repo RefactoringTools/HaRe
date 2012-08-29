@@ -1,5 +1,5 @@
 module SimpFunBind where
-import Maybe(isJust)
+import Data.Maybe(isJust)
 import HasBaseStruct
 --import BaseSyntaxStruct(EI,PI,DI)
 import SrcLoc1(HasSrcLoc,srcLoc)

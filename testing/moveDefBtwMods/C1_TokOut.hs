@@ -4,7 +4,9 @@ data Tree a = Leaf a | Branch (Tree a) (Tree a)
 
 fringe :: Tree a -> [a]
 fringe (Leaf x) = [x]
-fringe (Branch left right) = fringe left ++ fringe right                sumTree:: (Num a) => Tree a -> a
+fringe (Branch left right) = fringe left ++ fringe right                
+
+sumTree:: (Num a) => Tree a -> a
 sumTree (Leaf x ) = x
 sumTree (Branch left right) = sumTree left + sumTree right
 

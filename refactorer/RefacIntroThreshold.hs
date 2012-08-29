@@ -1,19 +1,19 @@
 module RefacIntroThreshold (refacIntroThreshold) where
 import PrettyPrint
 import PosSyntax
-import Maybe
+import Data.Maybe
 import TypedIds
 import UniqueNames hiding (srcLoc)
-import PNT 
-import TiPNT 
-import List  
+import PNT
+import TiPNT
+import Data.List
 import RefacUtils
 import PFE0 (findFile)
 import MUtils(( # ))
 import AbstractIO
 import Debug.Trace
 import RefacMvDefBtwMod (addImport)
-import LocalSettings
+import LocalSettings (evalFilePath)
 import RefacGenDef (generaliseDef2)
 
 refacIntroThreshold args =
@@ -31,11 +31,11 @@ refacIntroThreshold args =
      unless ( isHidden ["rseq", "rpar", "runEval"] (concat  (findImportsHiddenLists mod)) == [] )
           $ error "rseq, rpar and/or runEval are explicitly hidden. Please unhide and try again."
 
-     let theSeq = checkForQualifiers "rseq" inscps 
+     let theSeq = checkForQualifiers "rseq" inscps
          theRPar = checkForQualifiers "rpar" inscps
          expr = grabSelection (beginRow, beginCol) (endRow, endCol) tokList mod
 
-     fileContent <- AbstractIO.readFile evalFilePath     
+     fileContent <- AbstractIO.readFile evalFilePath
 
      unless (fileContent /= []) $ error "No active eval monad! Please activate an evaluation monad to continue!"
 
@@ -58,7 +58,7 @@ refacIntroThreshold args =
 checkForQualifiers r inscps
   = ck1 r inscps
  where
-      ck1 r i 
+      ck1 r i
        | isInScopeAndUnqualified r i = r
        | length res == 0 = r
        | length res > 1 = error (r ++ " is qualified more than once. " ++ r ++ " must only be qualified once or not at all to proceed.")
@@ -69,22 +69,22 @@ addTheImport ss mod
   = addImport "" (strToModName "Control.Parallel.Strategies") (map nameToPN ss) mod
 
 isHidden [] ys = []
-isHidden (x:xs) ys 
+isHidden (x:xs) ys
   | elem x ys = x : isHidden xs ys
   | otherwise = isHidden xs ys
 
-findImportsHiddenLists 
+findImportsHiddenLists
   = applyTU (full_tdTU (constTU [] `adhocTU` inImport))
     where
       inImport (HsImportDecl loc modName qual _ (Just (True, h))::HsImportDeclP) = return ((map (\(Var x) -> (pNTtoName x))) h)
       inImport _ = return []
 
-grabSelection pos1 pos2 toks mod 
+grabSelection pos1 pos2 toks mod
   | expr == defaultExp = if pat == defaultPat then error "Select pattern/sub-expr is not valid for thresholding!"
                                               else pNtoExp (patToPN pat)
-  | otherwise          = expr 
-    where 
-      expr = locToExp pos1 pos2 toks mod 
+  | otherwise          = expr
+    where
+      expr = locToExp pos1 pos2 toks mod
       pat = locToPat pos1 pos2 toks mod
 
 doIntroduce expr thresholdValue thresholdName runEval theRPar theSeq (_, _, t)
@@ -102,20 +102,20 @@ doIntroduce' expr thresholdValue thresholdName runEval theRPar theSeq t
     -- has to be a match: generalising already converted pattern bindings
     -- to a match
     inMatch (match@(HsMatch l name pats rhs ds)::HsMatchP)
-     |  findEntity expr match 
+     |  findEntity expr match
      && runEval `myElem` ds
        = do (f,d) <- hsFDNamesFromInside match
             -- error (show ((f++d), thresholdName))
             -- unless (not (thresholdName `elem` (f++d))) $ error "Error: name of threshold parameter is already used on RHS!"
             let runEval' = findPat runEval ds
-            if runEval' == Nothing 
+            if runEval' == Nothing
                then mzero
                else do
                        let  newName = mkNewName "rpar_abs" (f++d) 1
                             newRunEval = modifyRunEval expr thresholdValue thresholdName newName theRPar theSeq (fromJust runEval')
                        -- match' <- addDecl match Nothing ([newParAbs], Nothing) False
                        match'' <- update (fromJust runEval') newRunEval match
-                      
+
                        return match''
 
     inMatch _ = mzero
@@ -123,14 +123,14 @@ doIntroduce' expr thresholdValue thresholdName runEval theRPar theSeq t
     -- inModule (mod::HsModuleP)
     --  | isDeclaredIn (
 
-    failure = idTP `adhocTP` mod 
+    failure = idTP `adhocTP` mod
       where mod (m::HsModuleP) = error "Cannot find the activated Eval Monad! Please activate a run eval monad within scope of the selected entity."
 
     modifyRunEval expr thresholdValue thresholdName newName theRPar theSeq (pat@(Dec (HsPatBind l p rhs ds)))
      = Dec (HsPatBind l p (convertToSeq newName rhs) (ds++[mkParAbs newName theRPar theSeq]))   -- (Dec (HsPatBind l p (addGuards rhs) ds))
-      {-   where 
+      {-   where
 
-            
+
 
             addGuards (HsGuard es) = error "Cannot add threshold to an eval monad with guards already defined!"
             addGuards (HsBody e) = 	HsGuard [(loc0, theGuard, convertToSeq e), (loc0, nameToExp "otherwise", e)]
@@ -156,16 +156,14 @@ doIntroduce' expr thresholdValue thresholdName runEval theRPar theSeq t
     findPat p [] = Nothing -- error "Cannot find active Eval Monad pattern binding!"
     findPat p ((Dec (HsFunBind s m)):ds) = findPat p ds
     findPat p (a@(Dec (HsPatBind l p2 rhs _)):ds)
-      | p == p2 = Just $ a 
+      | p == p2 = Just $ a
       | otherwise = findPat p ds
     findPat p (_:ds) = findPat p ds
 
     myElem :: HsPatP -> [HsDeclP] -> Bool
     myElem p [] = False
     myElem p ((Dec (HsFunBind s m)):ds) = myElem p ds
-    myElem p ((Dec (HsPatBind l p2 rhs _)):ds) 
+    myElem p ((Dec (HsPatBind l p2 rhs _)):ds)
       | p == p2 = True
       | otherwise = myElem p ds
     myElem p (_:ds) = myElem p ds
-
-

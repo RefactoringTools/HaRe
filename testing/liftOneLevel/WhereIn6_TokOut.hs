@@ -14,6 +14,7 @@ sumSquares x y = sq x + sq y
                  sq z = z^pow
 
                  pow=2
+
                  
 anotherFun 0 y = sq y
      where sq x=x^2

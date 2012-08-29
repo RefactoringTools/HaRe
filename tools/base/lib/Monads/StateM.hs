@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -cpp #-}
 module StateM 
   (module IxStateM, F.HasState, updSt, updSt_, getSt, setSt, setSt_) where
 

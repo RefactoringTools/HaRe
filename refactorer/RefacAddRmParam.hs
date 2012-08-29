@@ -8,10 +8,10 @@ import UniqueNames hiding (srcLoc)
 import PNT 
 import TiPNT 
 
-import Maybe
-import List hiding (delete)
+import Data.Maybe
+import Data.List hiding (delete)
 import RefacUtils
-import Char
+import Data.Char
 
 -----------------------------------------------------------------------------------------------------
 {- An argument can be added to the definition of a function or constant. Adding an argument to a constant 

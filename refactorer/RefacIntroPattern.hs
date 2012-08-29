@@ -4,18 +4,18 @@ import TypeCheck
 import PrettyPrint
 import PosSyntax
 import AbstractIO
-import Maybe
+import Data.Maybe
 import TypedIds
 import UniqueNames hiding (srcLoc)
 import PNT
 import TiPNT
-import List
+import Data.List
 import RefacUtils hiding (getParams)
 import PFE0 (findFile, allFiles, allModules)
 import MUtils (( # ))
 import RefacLocUtils
-import System
-import IO
+-- import System
+import System.IO
 import Relations
 import Ents
 import Data.Set (toList)
@@ -509,6 +509,7 @@ introPatsCase' fileName inscps pnt modName t
                       
                   let closureEquation = createClosure ((render.ppi) newTypeSig) (pNTtoName pnt) (pats !! position) position
 
+                  -- error $ "RefacIntroPattern.introPatsCase': ghcTypeCheckPattern params" ++ (show (closureEquation,"closure___",modName,fileName))-- ++AZ++    
                   -- res <- liftIO $ ghcTypeCheckPattern closureEquation "closure___" ses
                   typeOfPat2 <- getSigAsString fileName closureEquation (force $ ghcTypeCheckPattern closureEquation "closure___" modName fileName)
                   

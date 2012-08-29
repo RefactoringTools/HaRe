@@ -1,5 +1,5 @@
 module SimpPatMatch(module SimpPatMatch,HasOrig,HasIdTy,HasSrcLoc,ValueId) where
-import Maybe(isJust,fromMaybe)
+import Data.Maybe(isJust,fromMaybe)
 import Substitute
 import Recursive
 import HasBaseStruct

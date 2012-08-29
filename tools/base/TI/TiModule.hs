@@ -5,8 +5,8 @@ of mutually recursive modules.
 -}
 module TiModule(tcModule,tcModuleGroup,representative,joinModules,
                 monomorphismRestriction) where
-import Maybe(mapMaybe,fromJust)
-import List(sort)
+import Data.Maybe(mapMaybe,fromJust)
+import Data.List(sort)
 
 import TiDefault(resolveToplevelAmbiguities)
 import TI
@@ -27,7 +27,7 @@ tcModule stdNames mod =
   tcModule' stdNames id (const (getBaseName (hsModName mod))) mod
 
 tcModule' stdNames rewrite modmap (HsModule s m es imps ds) =
-  withStdNames stdNames $ 
+  withStdNames stdNames $
   do integer <- prelTy "Integer"
      double <- prelTy "Double"
      let defaultDefaults = [integer,double]

@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -cpp  #-}
+{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
 module IxEnvM (HasEnv(..), EnvM, withEnv) where
 
 import MT

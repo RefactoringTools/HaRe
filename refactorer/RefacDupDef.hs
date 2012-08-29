@@ -4,9 +4,9 @@ module RefacDupDef(duplicateDef {-,duplicateDef1-}) where
 
 import PrettyPrint
 import PosSyntax
-import Maybe
+import Data.Maybe
 import TypedIds
-import List 
+import Data.List 
 import TiPNT 
 import RefacUtils 
 import SourceNames
@@ -114,6 +114,8 @@ doDuplicating pn newName (inscps, mod, tokList)
                 dv <- hsVisibleNames pn decls --dv: names may shadow new name
                 let inscpsNames = map ( \(x,_,_,_)-> x) $ inScopeInfo inscps
                     vars        = nub (f `union` d `union` dv)
+                -- error ("RefacDupDef.doDuplicating' ...(f,d,inscpsNames,vars)=" ++ (show (f,d,inscpsNames,vars))) -- ++AZ++
+                -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow    
                 if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity pn duplicatedDecls) 
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")

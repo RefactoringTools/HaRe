@@ -2,8 +2,8 @@
 Generic unification and matching
 -}
 module Unification where
-import Maybe(fromMaybe)
-import List(nub)
+import Data.Maybe(fromMaybe)
+import Data.List(nub)
 import MUtils(mapFst,mapSnd,mapBoth,apBoth)
 
 {-+
@@ -16,7 +16,7 @@ class (Show term,Eq var) => Unifiable term var | term -> var where
   subst :: Substitution var term -> term -> term
 
   showTerm :: term -> String -- for error reporting with fail
- 
+
   showTerm = show
 
 type Equation t = (t,t)

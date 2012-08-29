@@ -7,8 +7,10 @@ module FunIn1 where
 
 --In this example: Introduce a new definition to denote 'x*5*z*w'
 
-foo x=let x=12 
-          prod = ((x * 5) * z) * w  in prod
+foo x=let x=12          
+          prod = ((x * 5) * z) * w
+          
+ in prod
     where 
       z=3
       w=5

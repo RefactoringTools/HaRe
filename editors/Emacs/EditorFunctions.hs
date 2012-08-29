@@ -1,7 +1,7 @@
 module Emacs.EditorFunctions where
 
 import GenEditorInterfacesAux
-import LocalSettings
+import LocalSettingsCabal
 
 editor = Editor {
     editorName = "Emacs/XEmacs"
@@ -16,26 +16,26 @@ editor = Editor {
       ,"(interactive \"\")"
       ,"(progn"
       ,"(process-send-string \"haskell-refac-process\" (concat"
-      ,"   \"parseAnswers \" (mapconcat 'identity (append" 
-	  ,""	
+      ,"   \"parseAnswers \" (mapconcat 'identity (append"
+	  ,""
       ,"    (list \"\")) \"  \")"
       ,"   \"\\n\"))"
       ,"(let ((F (read-from-minibuffer \"choice?\"))    )  "
-      ,"(if (equal F  \"q\")" 
+      ,"(if (equal F  \"q\")"
       ,"   (process-send-string \"haskell-refac-process\" (concat"
       ,"    \"refacDupTrans \" (mapconcat 'identity (append"
 	  ,"      (list \"\")) \" \")"
       ,"   \"\\n\"))"
       ,"   (progn"
       ,"    (process-send-string \"haskell-refac-process\" (concat"
-      ,"     \"parseAnswers \" (mapconcat 'identity (append" 
-	  ,""	
+      ,"     \"parseAnswers \" (mapconcat 'identity (append"
+	  ,""
 	  ,"        (list F)) \" \")"
       ,"     \"\\n\"))"
       ,"     (haskell-refac-parseAnswers2)"
       ,"     \"\\n\")))"
       ,   ")"
-      ,")"  ] 
+      ,")"  ]
 
   , scriptFun = \(cname,es,ep,ei,n) (Comment comment) ->
       unlines
@@ -58,7 +58,7 @@ editor = Editor {
       ,"  ) )"
       ]
 
-  , optionParFun = \(cname,es,ep,ei,n) (OptionPar isList option ps) -> 
+  , optionParFun = \(cname,es,ep,ei,n) (OptionPar isList option ps) ->
       let optionString False prefix = "(list "++prefix++option++")"
           optionString True  prefix = prefix++option
       in (cname
@@ -67,7 +67,7 @@ editor = Editor {
          ,ei
          ,n+1)
 
-  , nameParFun = \(cname,es,ep,ei,n) (NamePar prompt ps) -> 
+  , nameParFun = \(cname,es,ep,ei,n) (NamePar prompt ps) ->
       let name = "name"++show n
       in (cname
          ,es++"\n\t\t(list "++name++")"
@@ -75,7 +75,7 @@ editor = Editor {
          ,ei++"s"++prompt++"\\n"
          ,n+1)
 
-  , pathParFun = \(cname,es,ep,ei,n) (PathPar prompt def ps) -> 
+  , pathParFun = \(cname,es,ep,ei,n) (PathPar prompt def ps) ->
       let name = "pathname"++show n
       in (cname
          ,es++"\n\t\t"++"(if (eq (length "++name++") 0)"
@@ -85,12 +85,12 @@ editor = Editor {
          ,ei++"s"++prompt++"["++(showNoQuotes def)++"]"++"\\n"
          ,n+1)
 
-  , fileNameParFun = \(cname,es,ep,ei,n) (FileNamePar keepExt ps) -> 
+  , fileNameParFun = \(cname,es,ep,ei,n) (FileNamePar keepExt ps) ->
       let modifier = if keepExt then "" else "Base"
           filename = "file"++modifier++"Name"++show n
       in if keepExt
          then (cname
-              ,es++"\n\t\t(list (if (buffer-file-name) (buffer-file-name) \"<missing filename>\"))" 
+              ,es++"\n\t\t(list (if (buffer-file-name) (buffer-file-name) \"<missing filename>\"))"
               ,ep
               ,ei
               ,n+1)
@@ -100,7 +100,7 @@ editor = Editor {
               ,ei
               ,n+1)
 
-  , positionParFun = \(cname,es,ep,ei,n) (PositionPar ps) -> 
+  , positionParFun = \(cname,es,ep,ei,n) (PositionPar ps) ->
       let line = "line"++show n
           col  = "column"++show n
       in (cname
@@ -109,7 +109,7 @@ editor = Editor {
          ,ei
          ,n+1)
 
-  , regionParFun = \(cname,es,ep,ei,n) (RegionPar ps) -> 
+  , regionParFun = \(cname,es,ep,ei,n) (RegionPar ps) ->
       let start = "start"++show n
           end   = "end"++show n
       in (cname
@@ -126,11 +126,11 @@ editor = Editor {
         lineEnv = [("@@FUNCTIONS@@",map gen_function cmds)
                   ,("@@MENU_ENTRIES@@",map gen_menu_entry cmds)
                   ]
-        gen_menu_entry (Menu name es)       = unlines 
+        gen_menu_entry (Menu name es)       = unlines
                           ["(\""++name++"\""
                           ,unlines (map gen_menu_entry es) ++ ")"
                           ]
-        gen_menu_entry (Entry entry name c) = 
+        gen_menu_entry (Entry entry name c) =
                           "   [\""++entry++"\" haskell-refac-"++name++"  :active t]"
         gen_function (Entry _ _ c) = script c
         gen_function (Menu _ es)   = unlines $ map gen_function es

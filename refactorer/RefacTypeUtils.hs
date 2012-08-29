@@ -100,9 +100,9 @@ module RefacTypeUtils(module DriftStructUtils, module StrategyLib, module RefacT
  )
 where
 import Prelude hiding (putStr,putStrLn,writeFile,readFile)
-import Maybe
-import List hiding (delete)
-import Char
+import Data.Maybe
+import Data.List hiding (delete)
+import Data.Char
 --------------------------------
 import PfeChase
 import PFE0 

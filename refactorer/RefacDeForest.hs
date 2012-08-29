@@ -4,14 +4,14 @@ module RefacDeForest(deforest) where
 
 import PrettyPrint
 import PosSyntax hiding(moduleName)
-import Maybe
+import Data.Maybe
 import TypedIds
 import ScopeModule
 import UniqueNames hiding (srcLoc)
 import PNT 
 import TiPNT 
 import PFE0
-import List  
+import Data.List  
 import RefacUtils
 import AbstractIO
 import Prelude hiding(putStrLn,putStr)

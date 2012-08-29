@@ -9,7 +9,7 @@ import Lists(partition,(\\\),nubBy)
 import OpTypes(eqBy)
 import MUtils
 import PrettyPrint
-import Monad(msum,unless)
+import Control.Monad(msum,unless)
 
 resolveToplevelAmbiguities ps = resolveAmbiguities' (tv ps) ps
  

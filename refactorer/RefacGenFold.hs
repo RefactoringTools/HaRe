@@ -2,31 +2,31 @@ module RefacGenFold where
 
 import PFE0
 import HsTokens
-import TypeCheck
+-- ++AZ++ import TypeCheck
 import PrettyPrint
 import PosSyntax
 import HsName
 import HsLexerPass1
 import AbstractIO
-import Maybe
+import Data.Maybe
 import TypedIds
 import UniqueNames hiding (srcLoc)
 import PNT
 import TiPNT
-import List
+import Data.List
 import RefacUtils hiding (getParams)
 import PFE0 (findFile, allFiles, allModules)
 import MUtils (( # ))
 import RefacLocUtils
-import System
-import IO
+--  import System
+import System.IO
 import Relations
 import Ents
 import Data.Set (toList)
 import Data.List
 import System.IO.Unsafe
 import System.Cmd
-import LocalSettings
+-- import LocalSettings
 import RefacSimplify
 import StateMT(WithState,withSt,withStS,getSt,setSt,updSt,updSt_)
 import qualified Control.Exception as CE (catch)
@@ -39,15 +39,15 @@ type WhereDecls = [HsDeclP]
 
 data PatFun = Mat | Patt | Er deriving (Eq, Show)
 
-genFold args 
+genFold args
  = do
-     let fileName = ghead "fileName'" args 
+     let fileName = ghead "fileName'" args
          beginRow         = read (args!!1)::Int
          beginCol         = read (args!!2)::Int
          endRow           = read (args!!3)::Int
          endCol           = read (args!!4)::Int
-     AbstractIO.putStrLn "genFold" 
-     
+     AbstractIO.putStrLn "genFold"
+
      modName <-fileNameToModName fileName
      let modName1 = convertModName modName
      (inscps, exps, mod, tokList)<-parseSourceFile fileName
@@ -57,29 +57,29 @@ genFold args
                                  (beginRow, beginCol)
                                  (endRow, endCol)
                                  mod
-          
+
      ((_,m), (newToks, (newMod, e))) <- applyRefac (addCommentDec pnt) (Just (inscps, exps, mod, tokList)) fileName
-          
-          
-          
+
+
+
      writeRefactoredFiles False [((fileName, m), (newToks, newMod))]
-          
+
      (inscps', exps', mod', tokList') <- parseSourceFile fileName
-     
-     
-     ((_,m'), (newToks', (newMod',parsed))) <- applyRefac (retrieveDecAndRemove pnt e) 
+
+
+     ((_,m'), (newToks', (newMod',parsed))) <- applyRefac (retrieveDecAndRemove pnt e)
                                                            (Just (inscps', exps', mod', tokList')) fileName
-               
-     let pnt' = declToPNT parsed          
-     -- undo the added entry!                                         
+
+     let pnt' = declToPNT parsed
+     -- undo the added entry!
      undoLatestInHistory
      (inscps2, exps2, mod2, tokList2)<-parseSourceFile fileName
-     ((_,m'''), (newToks''', newMod''')) <- applyRefac (changeExpression pnt pnt' parsed subExp) 
+     ((_,m'''), (newToks''', newMod''')) <- applyRefac (changeExpression pnt pnt' parsed subExp)
                                                         (Just (inscps2, exps2, mod2, tokList2)) fileName
      writeRefactoredFiles False  [((fileName, m'''), (newToks''', newMod'''))]
-     
-     
-     
+
+
+
      AbstractIO.putStrLn "Completed.\n"
 
 addCommentDec pnt (_,_,t)
@@ -88,7 +88,7 @@ addCommentDec pnt (_,_,t)
       let tksString = concatMap getName tks
       let commentDef = dropWhile (==' ') (parseComment (reverse tksString))
       if '=' `elem` commentDef
-       then do  
+       then do
          mod <- insertTerm (dropWhile (==' ') (reverse commentDef)) (pNTtoPN pnt) t
          return (mod, (dropWhile (==' ') (reverse commentDef)))
        else do
@@ -105,24 +105,24 @@ retrieveDec pnt exp t
               (applyTU (once_tdTU (failTU `adhocTU` inDec)) t)
       where
 
-      
+
         inDec d@(Dec (HsPatBind _ _ _ _))
-          | (render.ppi) d == exp 
+          | (render.ppi) d == exp
               = Just d
         inDec d@(Dec (HsFunBind l matches))
           | rendered matches exp
                = do
                   let x = rendered2 matches exp
                   Just (Dec (HsFunBind l [x]))
-        inDec d = Nothing 
+        inDec d = Nothing
 
         rendered [] _ = False
         rendered (m:ms) e
           | rmLine ( rmToks ((render.ppi) m)) == rmLine ( rmToks e ) = True
           | otherwise           = rendered ms e
-          
+
         rendered2 [] _ = error "Error in rendered2"
-        rendered2 (m:ms) e 
+        rendered2 (m:ms) e
           | rmLine ( rmToks ((render.ppi) m)) == rmLine ( rmToks e ) = m
           | otherwise           = rendered2 ms e
 
@@ -136,14 +136,14 @@ removeDec exp t
   = applyTP (stop_tdTP (idTP `adhocTP` inDec)) t
       where
         inDec (d::HsDeclP)
-          | (render.ppi) d == exp 
+          | (render.ppi) d == exp
               = do
-                   rmDecl (declToPName2 d) True [d] 
-                   return d 
+                   rmDecl (declToPName2 d) True [d]
+                   return d
         inDec d = return d
 
 
-     
+
 
 parseComment :: String -> String
 parseComment [] = []
@@ -156,21 +156,21 @@ parseComment' ('-':('{':xs)) = ""
 parseComment' (x:xs) = x : (parseComment' xs)
 
 getName :: PosToken -> String
-getName (_, ((Pos _ _ _), s)) = s 
+getName (_, ((Pos _ _ _), s)) = s
 
 changeExpression pnt pntComment d exp (_,_,t)
- = do 
+ = do
       mod <- changeExpression' pnt pntComment d exp t
-      return mod     
-      
+      return mod
+
 changeExpression' pnt pntComment d exp t
   = applyTP (stop_tdTP (failTP `adhocTP` (inExp d exp))) t
       where
         inExp (Dec (HsPatBind _ p (HsBody e2) ds)) exp (e::HsExpP)
-          | sameOccurrence exp e 
+          | sameOccurrence exp e
               = do
                   if rmAllLocs e2 == rmAllLocs e
-                    then do   
+                    then do
                       res <- update e (nameToExp (pNTtoName (patToPNT p))) e
                       return res
                     else do
@@ -182,7 +182,7 @@ changeExpression' pnt pntComment d exp t
                       let newExp = searchForRHS pnt exp t
                       let (pred, newParams) = rewriteExp pats newExp e2
                       if pred
-                         then do  
+                         then do
                           -- let patsConverd = map (render.ppi) newPats
                           res <- update e (createFunc pntComment (map patToExp newParams)) e
                           return res
@@ -196,7 +196,7 @@ rewriteExp pats e (Exp (HsParen e2)) = rewriteExp pats e e2
 rewriteExp pats (Exp (HsLit s x)) (Exp (HsLit s1 x2))
  | x == x2 = (True, pats)
 rewriteExp pats (Exp (HsId (HsCon x))) (Exp (HsId (HsCon y)))
- | x == y = (True, pats) 
+ | x == y = (True, pats)
 rewriteExp pats n m@(Exp (HsId (HsVar i2)))
  | checkPNTInPat pats i2 = (True, getPatFromPats pats n i2)
 rewriteExp pats n@(Exp (HsId (HsVar i1))) (Exp (HsId (HsVar i2)))
@@ -213,7 +213,7 @@ rewriteExp pats a@(Exp (HsInfixApp e1 o1 e2)) b@(Exp (HsInfixApp e3 o2 e4))
  | o1 == o2 && (pred1 && pred2) = (True, pats2)
      where
        (pred1, pats1) = rewriteExp pats e1 e3
-       (pred2, pats2) = rewriteExp pats1 e2 e4 
+       (pred2, pats2) = rewriteExp pats1 e2 e4
 rewriteExp pats a@(Exp (HsTuple e1)) b@(Exp (HsTuple e2))
  | length e1 == length e2 && pred = (True, pats2)
  | otherwise = (False, pats)
@@ -223,15 +223,15 @@ rewriteExp pats a@(Exp (HsList e1)) b@(Exp (HsList e2))
  | length e1 == length e2 = (True, pats2)
  | otherwise = (False, pats)
     where
-      (pred, pats2) = checkList pats e1 e2      
+      (pred, pats2) = checkList pats e1 e2
 rewriteExp pats a@(Exp (HsLeftSection e1 i1)) b@(Exp (HsLeftSection e2 i2))
  | i1 == i2 && pred1 = (True, pats1)
      where
-       (pred1, pats1) = rewriteExp pats e1 e2  
+       (pred1, pats1) = rewriteExp pats e1 e2
 rewriteExp pats a@(Exp (HsRightSection i1 e1)) b@(Exp (HsRightSection i2 e2))
  | i1 == i2 && pred1 = (True, pats1)
      where
-       (pred1, pats1) = rewriteExp pats e1 e2  
+       (pred1, pats1) = rewriteExp pats e1 e2
 rewriteExp pats a@(Exp (HsEnumFrom e1)) b@(Exp (HsEnumFrom e2))
  | pred1 = (True, pats1)
    where
@@ -240,12 +240,12 @@ rewriteExp pats a@(Exp (HsEnumFromTo e1 e2)) b@(Exp (HsEnumFromTo e3 e4))
  | pred1 && pred2 = (True, pats2)
     where
        (pred1, pats1) = rewriteExp pats e1 e3
-       (pred2, pats2) = rewriteExp pats1 e2 e4 
+       (pred2, pats2) = rewriteExp pats1 e2 e4
 rewriteExp pats a@(Exp (HsEnumFromThen e1 e2)) b2@(Exp (HsEnumFromThen e3 e4))
  | pred1 && pred2 = (True, pats2)
     where
        (pred1, pats1) = rewriteExp pats e1 e3
-       (pred2, pats2) = rewriteExp pats1 e2 e4 
+       (pred2, pats2) = rewriteExp pats1 e2 e4
 rewriteExp pats a@(Exp (HsEnumFromThenTo e1 e2 e3)) b@(Exp (HsEnumFromThenTo e4 e5 e6))
  | pred1 && pred2 && pred3 = (True, pats3)
     where
@@ -276,13 +276,13 @@ rewriteExp pats a@(Exp (HsLambda ps e1)) b@(Exp (HsLambda ps2 e2))
      (pred, pats1) = rewriteExp pats e1 (localRewriteExp e2 (localRewritePats ps ps2))
      localRewritePats [] ps = []
      localRewritePats ps [] = []
-     localRewritePats (p1:p1s) (p2:p2s) 
+     localRewritePats (p1:p1s) (p2:p2s)
         = (rewritePat p2 p1) : (localRewritePats p1s p2s)
-        
-     localRewriteExp e [] = e   
+
+     localRewriteExp e [] = e
      localRewriteExp e (p1:p1s)
        = let e1' = rewritePatsInExp p1 e  in localRewriteExp e1' p1s
-       
+
 rewriteExp pats a@(Exp (HsRecConstr s i fields1)) b@(Exp (HsRecConstr s2 i2 fields2))
  | i == i2 && pred = (True, pats1)
     where
@@ -307,9 +307,9 @@ rewriteExpFields pats ((HsField i1 e1):f1) ((HsField i2 e2):f2)
   | pred && (i1 == i2 && pred2) = (True, pats2)
   | otherwise = (False, pats)
      where
-       (pred, pats1) = rewriteExp pats e1 e2 
+       (pred, pats1) = rewriteExp pats e1 e2
        (pred2, pats2) = rewriteExpFields pats1 f1 f2
-  
+
 rewriteExpAlts pats [] _ = (True, pats)
 rewriteExpAlts pats _ [] = (True, pats)
 rewriteExpAlts pats ((HsAlt _ p1 (HsBody e1) ds1):alts1) ((HsAlt _ p2 (HsBody e2) ds2):alts2)
@@ -322,25 +322,25 @@ rewriteExpAlts pats ((HsAlt _ p1 (HsGuard gs1) ds1):alts1) ((HsAlt _ p2 (HsGuard
   | (wildCardAllPNs p1 == wildCardAllPNs p2 && pred2) = (True, pats2)
   | otherwise = (False, pats)
      where
-       -- (pred, pats1) = rewriteExp pats e1 e2 
+       -- (pred, pats1) = rewriteExp pats e1 e2
        (pred2, pats2) = rewriteExpGuards pats gs1 res
        res =  (rewritePatsInGuard (rewritePat p2 p1) gs2)
 rewriteExpAlts pats _ _ = (False, pats)
 
 rewriteExpGuards pats [] _ = (True, pats)
 rewriteExpGuards pats _ [] = (True, pats)
-rewriteExpGuards pats ((_ ,e1,e2):gs1) ((_, e3, e4):gs2)    
+rewriteExpGuards pats ((_ ,e1,e2):gs1) ((_, e3, e4):gs2)
   | pred1 && pred2 && pred3 = (True, pats3)
     where
      (pred1, pats1) = rewriteExp pats e1 e3
      (pred2, pats2) = rewriteExp pats1 e2 e4
-     (pred3, pats3) = rewriteExpGuards pats2 gs1 gs2     
-       
-       
+     (pred3, pats3) = rewriteExpGuards pats2 gs1 gs2
+
+
 rewriteExpStmts pats s1@(HsGenerator _ p1 e1 m1) s2@(HsGenerator _ p2 e2 m2)
  | wildCardAllPNs p1 == wildCardAllPNs p2 && pred1 && pred2 = (True, pats2)
   where
-   (pred1, pats1) =  rewriteExp pats e1 e2 
+   (pred1, pats1) =  rewriteExp pats e1 e2
    (pred2, pats2) = rewriteExpStmts pats1 m1 m2
 rewriteExpStmts pats (HsLast e1) (HsLast e2)
  | wildCardAllPNs e1 == wildCardAllPNs e2 = (True, pats)
@@ -348,16 +348,16 @@ rewriteExpStmts pats (HsLast e1) (HsLast e2)
 rewriteExpStmts pats (HsQualifier e1 stmts) (HsQualifier e2 stmts2)
  | pred1 && pred2 = (True, pats2)
   where
-   (pred1, pats1) =  rewriteExp pats e1 e2 
+   (pred1, pats1) =  rewriteExp pats e1 e2
    (pred2, pats2) = rewriteExpStmts pats1 stmts stmts2
 rewriteExpStmts pats (HsLetStmt ds1 stmts) (HsLetStmt ds2 stmts2)
  = rewriteExpStmts pats stmts stmts2
 rewriteExpStmts pats s1 s2 = (False, pats)
 
-changeAllNames :: PNT -> PNT -> PNT 
-changeAllNames pnt  t =runIdentity (applyTP (full_buTP (idTP `adhocTP` l)) t) 
-   where 
-         l ((PN (UnQual n) s)) 
+changeAllNames :: PNT -> PNT -> PNT
+changeAllNames pnt  t =runIdentity (applyTP (full_buTP (idTP `adhocTP` l)) t)
+   where
+         l ((PN (UnQual n) s))
            | n /= (pNTtoName pnt) =  return ((PN (UnQual (pNTtoName pnt)) s))
            | otherwise = return ((PN (UnQual n) s))
 
@@ -368,7 +368,7 @@ rewritePat a@(Pat (HsPId (HsCon x))) b@(Pat (HsPId (HsCon y)))
   = a
 rewritePat a@(Pat (HsPLit _ _)) b@(Pat (HsPLit _ _))
   = a
-rewritePat a@(Pat (HsPNeg _ _)) b@(Pat (HsPNeg _ _)) 
+rewritePat a@(Pat (HsPNeg _ _)) b@(Pat (HsPNeg _ _))
   = a
 rewritePat a@(Pat (HsPSucc _ _ _)) b@(Pat (HsPSucc _ _ _))
   = a
@@ -395,10 +395,10 @@ rewritePat' [] _ = []
 rewritePat' x [] = x
 rewritePat' (x:xs) (y:ys)
   = rewritePat x y : rewritePat' xs ys
- 
- 
+
+
 rewritePatsInExp :: HsPatP -> HsExpP -> HsExpP
-rewritePatsInExp p a@(Exp (HsId (HsVar x))) 
+rewritePatsInExp p a@(Exp (HsId (HsVar x)))
  | isTopLevelPNT x = a
  | otherwise
    = (Exp (HsId (HsVar newPNT)))
@@ -409,7 +409,7 @@ rewritePatsInExp p (Exp (HsInfixApp e1 o e2))
       where
         e1' = rewritePatsInExp p e1
         e2' = rewritePatsInExp p e2
-rewritePatsInExp p (Exp (HsApp e1 e2)) 
+rewritePatsInExp p (Exp (HsApp e1 e2))
   = (Exp (HsApp e1' e2'))
       where
         e1' = rewritePatsInExp p e1
@@ -444,7 +444,7 @@ rewritePatsInExp p (Exp (HsDo stmts))
 rewritePatsInExp p (Exp (HsTuple es))
   = (Exp (HsTuple es'))
      where
-      es' = map (rewritePatsInExp p) es        
+      es' = map (rewritePatsInExp p) es
 rewritePatsInExp p (Exp (HsList es))
   = (Exp (HsList es'))
      where
@@ -555,14 +555,14 @@ grabPNT x (y:ys)
 checkList :: [HsPatP] -> [HsExpP] -> [HsExpP] -> (Bool, [HsPatP])
 checkList pats [] [] = (True, pats)
 checkList pats [e] [l] = rewriteExp pats e l
-checkList pats (e:es) (l:ls) 
+checkList pats (e:es) (l:ls)
         | pred = checkList pats' es ls
         | otherwise = (False, pats')
            where
              (pred, pats') = rewriteExp pats e l
 checkPNTInPat :: [HsPatP] -> PNT -> Bool
 checkPNTInPat [] _ = False
-checkPNTInPat (p:ps) i 
+checkPNTInPat (p:ps) i
         | defineLoc i == (SrcLoc "__unknown__" 0 0 0) = False
         | defineLoc i == defineLoc (patToPNT p) = True
         | otherwise = checkPNTInPat ps i
@@ -594,19 +594,19 @@ patToExp (Pat (HsPWildCard)) = nameToExp "undefined"
 expToPat :: HsExpP -> [HsPatP]
 expToPat (Exp (HsId x)) = [Pat (HsPId x)]
 expToPat (Exp (HsLit s l)) = [Pat (HsPLit s l)]
-expToPat (Exp (HsInfixApp e1 (HsVar i) e2)) = [Pat (HsPInfixApp (ghead "expToPat" $ expToPat e1) 
+expToPat (Exp (HsInfixApp e1 (HsVar i) e2)) = [Pat (HsPInfixApp (ghead "expToPat" $ expToPat e1)
                                                              i (ghead "expToPat" $ expToPat e2))]
-expToPat (Exp (HsInfixApp e1 (HsCon i) e2)) = [Pat (HsPInfixApp (ghead "expToPat" $ expToPat e1) 
+expToPat (Exp (HsInfixApp e1 (HsCon i) e2)) = [Pat (HsPInfixApp (ghead "expToPat" $ expToPat e1)
                                                              i (ghead "expToPat" $ expToPat e2))]
 expToPat e@(Exp (HsApp e1 e2)) =    [Pat (HsPApp (nameToPNT " ")
                                                    (concatMap expToPat exps))]
                                where
-                                 exps = flatternApp e         
+                                 exps = flatternApp e
 expToPat (Exp (HsLambda ps e)) = ps
 expToPat (Exp (HsTuple es)) = concatMap expToPat es   --[Pat (HsPTuple loc0 (concatMap expToPat es))]
 expToPat (Exp (HsList es)) = concatMap expToPat es
 expToPat (Exp (HsParen e1)) = [Pat (HsPParen (ghead "expToPat" $ expToPat e1))]
-expToPat e = [] 
+expToPat e = []
 
 flatternApp :: HsExpP -> [HsExpP]
 flatternApp (Exp (HsApp e1 e2)) = flatternApp e1 ++ flatternApp e2
@@ -621,13 +621,13 @@ searchForRHS pnt exp t
          | findEntity e e2
             = do
                let newExp = symbolicallyTie exp e2 []
-               Just newExp               
-        
+               Just newExp
+
         inDec e (dec@(Dec (HsFunBind s matches))::HsDeclP)
          | findPNT pnt matches
           = do
                let match@(HsMatch loc name pats rhs ds) = getMatch pnt matches
-                   
+
                if findEntity e (extractRHS e rhs)
                   then do
                          let newExp = symbolicallyTie exp (extractRHS e rhs) pats
@@ -637,17 +637,17 @@ searchForRHS pnt exp t
         inDec _ d = mzero
 
 findGuard e [] = error "Cannot find highlight expression!"
-findGuard e ((_,_,x):xs) 
+findGuard e ((_,_,x):xs)
   | findEntity e x = x
   | otherwise = findGuard e xs
 extractRHS e (HsBody x) = x
 extractRHS e (HsGuard gs) = findGuard e gs
 
-symbolicallyTie exp (Exp (HsParen e)) pats = symbolicallyTie exp e pats 
+symbolicallyTie exp (Exp (HsParen e)) pats = symbolicallyTie exp e pats
 symbolicallyTie exp n@(Exp (HsCase e alts)) pats
      = symbolicallyTie' alts  -- (Exp (HsCase e [symbolicallyTie' alts]))
         where
-          symbolicallyTie' [] = error "Error in symbolic evaluation: expression does not occur on the RHS!" 
+          symbolicallyTie' [] = error "Error in symbolic evaluation: expression does not occur on the RHS!"
           symbolicallyTie' (a@(HsAlt l p (HsGuard gs) ds):as)
            | findEntity exp gs
             = zipPatExp e n a' pats
@@ -655,7 +655,7 @@ symbolicallyTie exp n@(Exp (HsCase e alts)) pats
             = zipPatExp e n a' pats
             where
               a' = (HsAlt l p (HsBody exp) ds)
-          symbolicallyTie' (a@(HsAlt l p (HsBody e2) ds):as) 
+          symbolicallyTie' (a@(HsAlt l p (HsBody e2) ds):as)
            | findEntity exp e2
                = zipPatExp e n a' pats
            | findEntity exp ds           -- selected definition is in where clause of a case alt.
@@ -663,25 +663,25 @@ symbolicallyTie exp n@(Exp (HsCase e alts)) pats
            | otherwise = symbolicallyTie' as
             where
               a' = (HsAlt l p (HsBody exp) ds)
-symbolicallyTie exp e pats = exp          
--- utility functions 
-getMatch :: PNT -> [HsMatchP] -> HsMatchP   
+symbolicallyTie exp e pats = exp
+-- utility functions
+getMatch :: PNT -> [HsMatchP] -> HsMatchP
 getMatch _ [] = error "Please select a case in top-level expression scope!"
 getMatch pnt (match@(HsMatch loc name pats rhs ds):ms)
   | useLoc pnt == useLoc name      = match
-  | otherwise        = getMatch pnt ms 
-     
+  | otherwise        = getMatch pnt ms
+
 convertModName (PlainModule s) = s
-convertModName m@(MainModule f) = modNameToStr m 
+convertModName m@(MainModule f) = modNameToStr m
 
 {-|
 Takes the position of the highlighted code and returns
 the function name, the list of arguments, the expression that has been
 highlighted by the user, and any where\/let clauses associated with the
-function. 
+function.
 -}
 
-findDefNameAndExp :: Term t => [PosToken] -- ^ The token stream for the 
+findDefNameAndExp :: Term t => [PosToken] -- ^ The token stream for the
                                           -- file to be
                                           -- refactored.
                   -> (Int, Int) -- ^ The beginning position of the highlighting.
@@ -691,7 +691,7 @@ findDefNameAndExp :: Term t => [PosToken] -- ^ The token stream for the
                      -- (the function name, the list of arguments,
                      -- the expression highlighted, any where\/let clauses
                      -- associated with the function).
-                     
+
 findDefNameAndExp toks beginPos endPos t
   = fromMaybe (Er, defaultPNT, [], [])
               (applyTU (once_buTU (failTU `adhocTU` inMatch `adhocTU` inPat)) t)
@@ -703,7 +703,7 @@ findDefNameAndExp toks beginPos endPos t
           = Just (Mat, pnt, pats, ds)
       inMatch (match@(HsMatch loc1  pnt pats rhs@(HsGuard e) ds)::HsMatchP)
         | locToExp beginPos endPos toks rhs /= defaultExp
-          = Just (Mat, pnt, pats, ds)          
+          = Just (Mat, pnt, pats, ds)
       inMatch _ = Nothing
 
 
@@ -711,14 +711,14 @@ findDefNameAndExp toks beginPos endPos t
       inPat (pat@(Dec (HsPatBind loc1 ps rhs ds))::HsDeclP)
         | locToExp beginPos endPos toks rhs /= defaultExp
             = if isSimplePatBind pat
-                 then Just (Patt, patToPNT ps, [], ds)    
+                 then Just (Patt, patToPNT ps, [], ds)
                  else Just (Patt, pnt, pats, ds)
-                    where 
+                    where
                       (_, pnt, pats, ds') = findDefining pat t
-                      findDefining pats t 
+                      findDefining pats t
                         = fromMaybe (error "Error: the selected entity is a top level complex pattern binding!")
                                     (applyTU (once_buTU (failTU `adhocTU` inMatch')) t)
-                                    
+
                       inMatch' (match@(HsMatch loc1  pnt pats rhs@(HsBody e) ds)::HsMatchP)
                          | pat `elem` ds = Just (Mat, pnt, pats, ds)
                          | findEntity pat e = Just (Mat, pnt, pats, ds)
@@ -726,6 +726,5 @@ findDefNameAndExp toks beginPos endPos t
                          | pat `elem` ds = Just (Mat, pnt, pats, ds)
                          | findEntity pat e = Just (Mat, pnt, pats, ds)
                       inMatch' _ = Nothing
-                    
-      inPat _ = Nothing
 
+      inPat _ = Nothing

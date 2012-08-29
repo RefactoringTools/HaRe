@@ -6,7 +6,9 @@ import C2 hiding (myFringe)
 
 fringe :: Tree a -> [a]
 fringe (Leaf x) = [x]
-fringe (Branch left right) = fringe left ++ fringe right                myFringe:: Tree a -> [a]
+fringe (Branch left right) = fringe left ++ fringe right                
+
+myFringe:: Tree a -> [a]
 myFringe (Leaf x ) = [x]
 myFringe (Branch left right) = myFringe right
 

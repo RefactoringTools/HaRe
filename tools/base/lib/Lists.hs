@@ -1,7 +1,7 @@
-module Lists (module Lists, module List) where
+module Lists (module Lists, module Data.List) where
 
 import OpTypes
-import List
+import Data.List
 import Products
 
 mergeOrd        :: OrdOp a -> [a] -> [a] -> [a]

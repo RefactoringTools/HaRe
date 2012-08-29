@@ -1,8 +1,9 @@
 module A1 where
 
 
-{- g :: Int  ->  [a]  ->  ([a], [a]) -}
+g :: Int  ->  [a]  ->  ([a], [a])
 g n l = (take n l, drop n l)
+
 f1 :: Int -> String -> String
 f1 n l = take n l
 

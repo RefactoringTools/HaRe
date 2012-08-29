@@ -1,6 +1,6 @@
 -- Generate selector functions for data constructors with labelled fields
 module FieldSelectors where
-import List(nub)
+import Data.List(nub)
 import HsDeclStruct
 import HasBaseStruct(hsPApp,hsPVar,hsPWildCard,hsEVar,hsFunBind)
 import HsGuardsStruct(HsRhs(..))

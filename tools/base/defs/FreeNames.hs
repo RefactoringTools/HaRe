@@ -2,7 +2,7 @@ module FreeNames(module FreeNames,NameSpace(..)) where
 
 import HsIdent
 import TypedIds(NameSpace(..),namespace)
-import List(nub)
+import Data.List(nub)
 import MUtils(mapSnd)
 import DefinedNames
 import Recursive

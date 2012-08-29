@@ -43,10 +43,10 @@ import RefacSimplify
 import RefacGenFold
 import RefacGenCache
 import RefacIdentify
+-- ++AZ++ Next three are new since 0.6.0.2
 import RefacEvalMon
 import RefacAddEvalMonCache
 import RefacIntroThreshold
-import RefacIntroEvalDegree
 
 
 pfeRefactoringCmds =
@@ -109,10 +109,11 @@ pfeRefactoringCmds =
   ,("duplicateCode",(args " <fileName> <name (Clone Token Size: )>" duplicateCode, " Analysis a project for code duplication."))
   ,("refacDupTrans",(args " <fileName> <line> <column> <line> <column>" refacDupTrans, " Transforms duplicate code"))
   ,("refacIdentify",(args " <fileName> <line> <column> <line> <column>" refacIdentify, " identifies a clone class"))
+
+-- ++AZ++ these are new since 0.6.0.2
    -- menu Parallel
   ,("refacIntroThreshold",(args " <fileName> <name (Enter threshold value: )> <name (Theshold parameter name: )> <line> <column> <line> <column>" refacIntroThreshold, " Turn parallelism on over a threshold limit"))
   ,("refacEvalMon",(args " <fileName> <line> <column> <line> <column>" refacEvalMon, " Insert Eval Monad"))
   ,("refacAddEvalMonCache",(args " <fileName> <line> <column> <line> <column>" refacAddEvalMonCache, " Activate Eval Monad"))
   ,("refacClearEvalCache",(args " <fileName>" refacClearEvalCache, " clear active eval monad"))
-  ,("refacDeepSeq",(args " <fileName> <line> <column> <line> <column>" refacDeepSeq, " inserts a deep seq evaluate degree"))
   ]

@@ -1,5 +1,5 @@
 module TiNameMaps(module TiNameMaps,AccNames(..)) where
-import List(nub)
+import Data.List(nub)
 
 import NameMaps(AccNames(..))
 import TypedIds(IdTy(..),TypeInfo(..),idTy)

@@ -16,7 +16,7 @@ import PFE0(Upd,moduleNode,findFile,lexAndPreparseSourceFile,getModuleInfixes,
 import PFE2--(getExports,getModuleExports)
 
 import MUtils
-import Monad(when)
+import Control.Monad(when)
 
 --------------------------------------------------------------------------------
 type PFE3MT n i ds ext m = PFE2MT n i ds ext m

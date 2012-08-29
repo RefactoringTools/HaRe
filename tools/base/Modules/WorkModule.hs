@@ -1,10 +1,11 @@
+{-# OPTIONS_GHC -cpp  #-}
 module WorkModule(WorkModuleI(..),Ent(..),ExpRel,
 		  analyzeModules, -- obsolete
 		  mkWM,inscpList,analyzeSCM,readRel,showRel
 		  ) where
 
 import Modules
-import Maybe(fromMaybe,fromJust)
+import Data.Maybe(fromMaybe,fromJust)
 --import Names
 import Ents
 

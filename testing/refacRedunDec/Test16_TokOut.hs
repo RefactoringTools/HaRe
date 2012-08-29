@@ -6,7 +6,7 @@ f x  = (case x of
                   y = 10
                   f = 25
             _ -> x)
-    
-    where
-      r = 56
+  
+  where
+    r = 56
             

@@ -13,9 +13,9 @@ buildtree [] = Empty
 buildtree (x:xs) = insert x (buildtree xs)
 
 insert :: Ord a => a -> [BTree a] -> BTree a
-insert val (Empty: T val Empty Empty: xs) = T val Empty (result Empty)
+insert val (Empty: T tval Empty Empty: xs) = T tval Empty (result Empty)
                     where
-                       result Empty = T val Empty Empty
+                       result Empty = T tval Empty Empty
 insert val (T tval left right)
    | val > tval = T tval left (insert val right)
    | otherwise = T tval (insert val left) right

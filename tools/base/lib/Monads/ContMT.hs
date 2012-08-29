@@ -2,7 +2,7 @@ module ContMT (HasCont(..), MT(..), at, Z, S,
                removeCont, runCont, WithCont) where
 
 import MT
-import Monad(liftM,MonadPlus(..))
+import Control.Monad(liftM,MonadPlus(..))
 import Control_Monad_Fix
 import ImpUtils
 

@@ -1,7 +1,7 @@
 module TiFreeNames(module TiFreeNames,FreeNames(..)) where
 import FreeNames
 import HsIdent
-import Maybe(mapMaybe)
+import Data.Maybe(mapMaybe)
 
 freeTypeNames x = mapMaybe freeTypeName . freeNames $ x
 freeValueNames x = mapMaybe freeValueName . freeNames $ x

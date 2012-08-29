@@ -2,21 +2,21 @@ module RefacIntroEvalDegree (refacDeepSeq) where
 
 import PrettyPrint
 import PosSyntax
-import Maybe
+import Data.Maybe
 import TypedIds
 import UniqueNames hiding (srcLoc)
-import PNT 
-import TiPNT 
-import List  
+import PNT
+import TiPNT
+import Data.List
 import RefacUtils
 import PFE0 (findFile)
 import MUtils(( # ))
 import AbstractIO
 import Debug.Trace
 import RefacMvDefBtwMod (addImport)
-import LocalSettings
+-- import LocalSettings
 
-refacDeepSeq args = 
+refacDeepSeq args =
     do let fileName = args!!0
            beginRow = read (args!!1)::Int
            beginCol = read (args!!2)::Int
@@ -28,14 +28,14 @@ refacDeepSeq args =
        unless ( isHidden ["rdeepseq", "dot"] (concat  (findImportsHiddenLists mod)) == [] )
           $ error "rdeepseq and/or dot are explicitly hidden. Please unhide and try again."
 
-       let theDeepSeq = checkForQualifiers "rdeepseq" inscps 
+       let theDeepSeq = checkForQualifiers "rdeepseq" inscps
            theDot = checkForQualifiers "dot" inscps
            expr = grabSelection (beginRow, beginCol) (endRow, endCol) tokList mod
 
-       
+
        ((_,m'), (newToks, newMod)) <- applyRefac (doIntroduceDeepSeq theDeepSeq theDot expr) (Just (inscps, exps, mod, tokList)) fileName
 
-       
+
        writeRefactoredFiles False [((fileName, m'), (newToks, newMod))]
 
 
@@ -44,7 +44,7 @@ refacDeepSeq args =
 checkForQualifiers r inscps
   = ck1 r inscps
  where
-      ck1 r i 
+      ck1 r i
        | isInScopeAndUnqualified r i = r
        | length res == 0 = r
        | length res > 1 = error (r ++ " is qualified more than once. " ++ r ++ " must only be qualified once or not at all to proceed.")
@@ -55,22 +55,22 @@ addTheImport ss mod
   = addImport "" (strToModName "Control.Parallel.Strategies") (map nameToPN ss) mod
 
 isHidden [] ys = []
-isHidden (x:xs) ys 
+isHidden (x:xs) ys
   | elem x ys = x : isHidden xs ys
   | otherwise = isHidden xs ys
 
-findImportsHiddenLists 
+findImportsHiddenLists
   = applyTU (full_tdTU (constTU [] `adhocTU` inImport))
     where
       inImport (HsImportDecl loc modName qual _ (Just (True, h))::HsImportDeclP) = return ((map (\(Var x) -> (pNTtoName x))) h)
       inImport _ = return []
 
-grabSelection pos1 pos2 toks mod 
+grabSelection pos1 pos2 toks mod
   | expr == defaultExp = if pat == defaultPat then error "Select pattern/sub-expr is not valid for thresholding!"
                                               else pNtoExp (patToPN pat)
-  | otherwise          = expr 
-    where 
-      expr = locToExp pos1 pos2 toks mod 
+  | otherwise          = expr
+    where
+      expr = locToExp pos1 pos2 toks mod
       pat = locToPat pos1 pos2 toks mod
 
 doIntroduceDeepSeq theRdeepSeq theDot e (_,_,t)
@@ -87,5 +87,5 @@ doIntroduce' theRdeepSeq theDot e t
      inExpr _ = mzero
 
 
-     failure = idTP `adhocTP` mod 
+     failure = idTP `adhocTP` mod
        where mod (m::HsModuleP) = error "Cannot find the select sub-expression! Please select a valid sub-expression."
