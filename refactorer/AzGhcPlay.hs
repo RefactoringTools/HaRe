@@ -35,6 +35,7 @@ import GHC.Paths ( libdir )
 -----------------
 
 import GhcRefacLocUtils
+import GhcRefacUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
 targetFile = "./" ++ targetMod ++ ".hs"
@@ -123,11 +124,13 @@ getStuff =
 
         let ps  = GHC.pm_parsed_source p
 
-        -- res <- getRichTokenStream (ms_mod modSum)
-        -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream res))
+        rts <- getRichTokenStream (ms_mod modSum)
+        -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
         
         -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
-        GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
+        -- GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
+
+        GHC.liftIO (putStrLn $ "locToExp=" ++ (showPpr $ locToExp (4,12) (4,16) rts ps))            
 
 
 convertSource ps =1
