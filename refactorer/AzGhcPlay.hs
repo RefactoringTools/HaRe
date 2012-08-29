@@ -130,7 +130,7 @@ getStuff =
         GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
 
 
-convertSource ps =
+convertSource ps =1
   ps
 
 ifToCase :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName

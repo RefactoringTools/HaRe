@@ -136,6 +136,9 @@ adhocTU allows the function worker to be applied to all nodes in a
    behavior so that the function on the left can be applied unless the
    function on the right succeeds.
 
+once_tdTU
+  Top-down traversal that performs its argument strategy at most once.
+
 SO
 
 full_tdTU (corresponds to)

@@ -781,8 +781,8 @@ getStartEndLoc2 toks t
 
 --given an AST phrase, 'startEndLoc' gets its start and end position in the program source.
 class StartEndLoc t where
-
    startEndLoc :: [PosToken]->t->(SimpPos,SimpPos)
+   
 {-
 instance StartEndLoc HsModuleP where
   startEndLoc toks _  = (tokenPos (ghead "startEndLoc:HsModuleP" toks),
@@ -1320,27 +1320,6 @@ getStartEndLoc toks t
                                                                   else endPos')
     in (startPos, endPos)
 
- {- THECK : myppi.
-      adjustLoc toks (startPos,endPos) t  -- to handle syntax phrase starts/ends with [], () ...
-    where
-      adjustLoc toks (startPos,endPos) t
-         = let astToks = filter (not.unwantedTok) $ tokenise  (Pos 0 0 1) 1 True $ (render.myppi) t
-               (toks1,toks2, toks3) = splitToks (startPos, endPos) toks
-               toks2' = filter (not.unwantedTok) toks2
-               (t1, t2) =(ghead "getStartEndLoc1" astToks, glast "getStartEndLoc2" astToks)
-               startPos'= if sameToks t1 (ghead "getStartEndLoc3" toks2')
-                           then startPos
-                           else tokenPos $ ghead "getStartEndLoc4" $ dropWhile (\t-> not (sameToks t t1)) (reverse toks1)
-               endPos'  = if sameToks t2 (glast "getStartEndLoc2" toks2')
-                           then endPos
-                           else tokenPos $ ghead "getStartEndLoc5" $ dropWhile (\t-> not (sameToks t t2)) toks3
-           in (startPos', endPos')
-
-      unwantedTok t = isWhite t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t
-                      || isCloseSquareBracket t || isComma t
-
-      sameToks (t1, (l1, c1)) (t2, (l2, c2)) = t1 == t2 && c1 == c2
- -}
 
 {-
 -- this function has problems whegtn they encounter sth. like [.....[p]]/
