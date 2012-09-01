@@ -5,6 +5,7 @@ Resources
   Tool support for refactoring haskell programs, Chris Brown
   http://www.cs.kent.ac.uk/projects/refactor-fp/publications/ChrisThesis.pdf
 
+  http://www.haskell.org/onlinereport/
 
 Possible tools
   GHC API
@@ -19,6 +20,9 @@ Probably in combination
 Other things to look at
   haskell-mode
   ghc-mod - uses ghc API directly
+
+  zippers, multirec
+    - to keep parse tree and token stream in sync when making changes
 
 Buildwrapper is already IDE-aware
 
@@ -150,3 +154,44 @@ From GHC.SYB.Utils (ghc-syb-utils-0.2.1.0)
 everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ rSource
    Like everything, but avoid known potholes, based on the Stage that
    generated the Ast. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------------------------------
+
+GHC structures
+
+data ParsedModule Source
+
+  The result of successful parsing.
+
+  Constructors
+    ParsedModule	 
+
+     pm_mod_summary :: ModSummary
+     pm_parsed_source :: ParsedSource
+     pm_extra_src_files :: [FilePath]
+
+---
+ 
+type ParsedSource = Located (HsModule RdrName)
+
+The ModSummary holds compiler housekeeping information
+
+We will work with the ParsedSource, so it is always Located.
+

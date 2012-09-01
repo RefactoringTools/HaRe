@@ -55,7 +55,7 @@ type InScopes=((Relations.Rel Names.QName (Ents.Ent PosName.Id)))
 
 type Exports =[(PosName.Id, Ent PosName.Id)]
 -}
-type SimpPos = (Int,Int)
+type SimpPos = (Int,Int) -- Line, column 
 
 -- Additions for GHC
 type PosToken = (GHC.Located GHC.Token, String)

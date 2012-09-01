@@ -63,35 +63,76 @@ adhocTU allows the function worker to be applied to all nodes in a
 layered data type: it updates a strategy to add type-specific behavior
 so that the function on the left can be applied unless the function on
 the right succeeds.
-
-
-
-
 -}
+
 
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
 --  region specified by the start and end position. If no expression can be found, then return the defaultExp.
-locToExp::(Term t) =>SimpPos            -- ^ The start position.
+locToExp:: (Term t) => SimpPos            -- ^ The start position.
                   -> SimpPos            -- ^ The end position.
                   -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
                   -> t                  -- ^ The syntax phrase.
-                  -> HsExpP             -- ^ The result.
+                  -- -> HsExpP             -- ^ The result.
+                  -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
+locToExp beginPos endPos toks t =
+  -- Easy with a zipper, just go down until in scope...
+  case res of
+    [x] -> x
+    [] -> GHC.L GHC.noSrcSpan defaultExp
+  where
+    res = everythingButStaged GHC.Parser (++) [] (([],False) `SYB.mkQ` exp) t
+
+    exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> ([GHC.Located (GHC.HsExpr GHC.RdrName)],Bool)
+    exp e
+      |inScope e = ([e], True)
+    exp _ = ([], False)
+    {-
+    exp (GHC.L l _) = case getGhcLoc l of
+      [(row,col)] 
+
+      ([],True)
+    -}
+    
+    inScope :: GHC.Located e -> Bool
+    inScope (GHC.L l _) =
+      let
+        (startLoc,endLoc) = case l of
+          (GHC.RealSrcSpan ss) ->
+            ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
+             (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
+          (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
+      in
+       (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
+
+
+
+{-
+-- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
+--  region specified by the start and end position. If no expression can be found, then return the defaultExp.
+locToExp::{- (Term t) => -}SimpPos            -- ^ The start position.
+                  -> SimpPos            -- ^ The end position.
+                  -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
+                  -> t                  -- ^ The syntax phrase.
+                  -- -> HsExpP             -- ^ The result.
+                  -> GHC.HsExpr GHC.RdrName -- ^ The result.
 locToExp beginPos endPos toks t =
   -- = fromMaybe defaultExp $ applyTU (once_tdTU (failTU `adhocTU` exp)) t
   case res of
     [x] -> x
     [] -> defaultExp
   where
-    res = everythingButStaged GHC.Parser (++) [] (([],False) `SYB.mkQ` exp1) t
+    res = everythingButStaged GHC.Parser (++) [] (([],False) `SYB.mkQ` exp) t
        
-    exp1 :: GHC.HsExpr GHC.RdrName -> ([HsExpP], Bool)
-    exp1 _ = ([], True)
+    -- exp1 :: GHC.HsExpr GHC.RdrName -> ([HsExpP], Bool)
+    -- exp1 _ = ([], True)
 
-{-
-    exp (e::HsExpP)
-      |inScope e = Just e
-    exp _ =Nothing
+    -- exp :: GHC.HsExpr GHC.RdrName -> ([HsExpP], Bool)
+    exp :: GHC.HsExpr GHC.RdrName -> ([GHC.HsExpr GHC.RdrName], Bool)
+    exp e
+      |inScope e = ([Just e], True)
+    exp _ = ([Nothing], False)
 
+    inScope :: GHC.HsExpr GHC.RdrName -> Bool
     inScope e
           = let (startLoc, endLoc)
                  = if expToPNT e /= defaultPNT
@@ -100,9 +141,6 @@ locToExp beginPos endPos toks t =
                     else getStartEndLoc toks e
             in (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
 -}
-
-
-
 
 {-                  
 locToExp beginPos endPos toks t
@@ -166,10 +204,11 @@ locToExp beginPos endPos toks t
 -}
 ---------------------------------------------------------------------------------------
 -- | Default identifier in the PNT format.
-defaultPNT::PNT
+defaultPNT:: GHC.RdrName
 -- defaultPNT = PNT defaultPN Value (N Nothing) :: PNT
 -- defaultPNT = GHC.mkRdrUnqual "nothing" :: PNT
-defaultPNT = PNT (mkRdrName "nothing") (N Nothing) :: PNT
+-- defaultPNT = PNT (mkRdrName "nothing") (N Nothing) :: PNT
+defaultPNT = (mkRdrName "nothing") 
 
 -- | Default expression.
 defaultExp::HsExpP
@@ -178,17 +217,18 @@ defaultExp=GHC.HsVar $ mkRdrName "nothing"
 
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
-{-
+
 -- | If an expression consists of only one identifier then return this identifier in the PNT format,
 --  otherwise return the default PNT.
-expToPNT::HsExpP -> PNT
+
+-- TODO: bring in data constructor constants too.
+expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
 expToPNT (GHC.HsVar pnt)                     = pnt
 expToPNT (GHC.HsIPVar (GHC.IPName pnt))      = pnt
-expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
-expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
-expToPNT (GHC.HsPar e) = expToPNT e
+-- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
+-- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
+expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
 expToPNT _ = defaultPNT
--}
 
 -- ---------------------------------------------------------------------
 -- | Return the identifier's source location.

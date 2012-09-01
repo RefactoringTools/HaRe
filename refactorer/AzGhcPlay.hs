@@ -126,12 +126,17 @@ getStuff =
 
         rts <- getRichTokenStream (ms_mod modSum)
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
+        -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ tokenLocs rts))
         
         -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
         -- GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
 
-        GHC.liftIO (putStrLn $ "locToExp=" ++ (showPpr $ locToExp (4,12) (4,16) rts ps))            
+        GHC.liftIO (putStrLn $ "locToExp=" ++ (showPpr $ locToExp (4,12) (4,16) rts ps))
+        GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,12) (4,16) rts ps))
+        GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,9) (4,22) rts ps))
+        return ()
 
+tokenLocs toks = map (\(L l _, s) -> (l,s)) toks
 
 convertSource ps =1
   ps

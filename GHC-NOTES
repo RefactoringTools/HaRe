@@ -1,0 +1,224 @@
+
+Parse tree of
+
+-------------------------------------
+module B where
+-- Test for refactor of if to case
+
+foo x = if (odd x) then "Odd" else "Even"
+
+foo' x = case (odd x) of
+  True -> "Odd"
+  False -> "Even"
+
+main = do
+  putStrLn $ show $ foo 5
+
+mary = [1,2,3]
+------------------------------------
+getStuff
+tokens=[
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 1, srcSpanSCol = 1, srcSpanECol = 7}),"module"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 1, srcSpanSCol = 8, srcSpanECol = 9}),"B"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 1, srcSpanSCol = 10, srcSpanECol = 15}),"where"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 2, srcSpanSCol = 1, srcSpanECol = 35}),"-- Test for refactor of if to case"),
+(RealSrcSpan (SrcSpanPoint {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanCol = 1}),""),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 1, srcSpanECol = 4}),"foo"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 5, srcSpanECol = 6}),"x"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 7, srcSpanECol = 8}),"="),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 9, srcSpanECol = 11}),"if"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 12, srcSpanECol = 13}),"("),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 13, srcSpanECol = 16}),"odd"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 17, srcSpanECol = 18}),"x"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 18, srcSpanECol = 19}),")"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 20, srcSpanECol = 24}),"then"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 25, srcSpanECol = 30}),"\"Odd\""),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 31, srcSpanECol = 35}),"else"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 4, srcSpanSCol = 36, srcSpanECol = 42}),"\"Even\""),
+(RealSrcSpan (SrcSpanPoint {srcSpanFile = "./B.hs", srcSpanLine = 6, srcSpanCol = 1}),""),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 6, srcSpanSCol = 1, srcSpanECol = 5}),"foo'"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 6, srcSpanSCol = 6, srcSpanECol = 7}),"x"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 6, srcSpanSCol = 8, srcSpanECol = 9}),"="),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 6, srcSpanSCol = 10, srcSpanECol = 14}),"case"),
+(RealSrcSpan (SrcSpanOneLine {srcSpanFile = "./B.hs", srcSpanLine = 6, srcSpanSCol = 15, srcSpanECol = 16}),"("),
+...
+-------------------------------------
+
+(L {B.hs:1:1} 
+ (HsModule 
+  (Just 
+   (L {B.hs:1:8} {ModuleName: B})) 
+  (Nothing) 
+  [] 
+  [
+   (L {B.hs:4:1-41} 
+    (ValD 
+     (FunBind 
+      (L {B.hs:4:1-3} 
+       (Unqual {OccName: foo})) 
+      (False) 
+      (MatchGroup 
+       [
+        (L {B.hs:4:1-41} 
+         (Match 
+          [
+           (L {B.hs:4:5} 
+            (VarPat 
+             (Unqual {OccName: x})))] 
+          (Nothing) 
+          (GRHSs 
+           [
+            (L {B.hs:4:9-41} 
+             (GRHS 
+              [] 
+              (L {B.hs:4:9-41} 
+               (HsIf 
+                (Just 
+                 (HsLit 
+                  (HsString {FastString: "noSyntaxExpr"}))) 
+                (L {B.hs:4:12-18} 
+                 (HsPar 
+                  (L {B.hs:4:13-17} 
+                   (HsApp 
+                    (L {B.hs:4:13-15} 
+                     (HsVar 
+                      (Unqual {OccName: odd}))) 
+                    (L {B.hs:4:17} 
+                     (HsVar 
+                      (Unqual {OccName: x}))))))) 
+                (L {B.hs:4:25-29} 
+                 (HsLit 
+                  (HsString {FastString: "Odd"}))) 
+                (L {B.hs:4:36-41} 
+                 (HsLit 
+                  (HsString {FastString: "Even"})))))))] 
+           (EmptyLocalBinds))))] {!type placeholder here?!}) 
+      (WpHole) {!NameSet placeholder here!} 
+      (Nothing)))),
+   (L {B.hs:(6,1)-(8,17)} 
+    (ValD 
+     (FunBind 
+      (L {B.hs:6:1-4} 
+       (Unqual {OccName: foo'})) 
+      (False) 
+      (MatchGroup 
+       [
+        (L {B.hs:(6,1)-(8,17)} 
+         (Match 
+          [
+           (L {B.hs:6:6} 
+            (VarPat 
+             (Unqual {OccName: x})))] 
+          (Nothing) 
+          (GRHSs 
+           [
+            (L {B.hs:(6,10)-(8,17)} 
+             (GRHS 
+              [] 
+              (L {B.hs:(6,10)-(8,17)} 
+               (HsCase 
+                (L {B.hs:6:15-21} 
+                 (HsPar 
+                  (L {B.hs:6:16-20} 
+                   (HsApp 
+                    (L {B.hs:6:16-18} 
+                     (HsVar 
+                      (Unqual {OccName: odd}))) 
+                    (L {B.hs:6:20} 
+                     (HsVar 
+                      (Unqual {OccName: x}))))))) 
+                (MatchGroup 
+                 [
+                  (L {B.hs:7:3-15} 
+                   (Match 
+                    [
+                     (L {B.hs:7:3-6} 
+                      (ConPatIn 
+                       (L {B.hs:7:3-6} 
+                        (Unqual {OccName: True})) 
+                       (PrefixCon 
+                        [])))] 
+                    (Nothing) 
+                    (GRHSs 
+                     [
+                      (L {B.hs:7:11-15} 
+                       (GRHS 
+                        [] 
+                        (L {B.hs:7:11-15} 
+                         (HsLit 
+                          (HsString {FastString: "Odd"})))))] 
+                     (EmptyLocalBinds)))),
+                  (L {B.hs:8:3-17} 
+                   (Match 
+                    [
+                     (L {B.hs:8:3-7} 
+                      (ConPatIn 
+                       (L {B.hs:8:3-7} 
+                        (Unqual {OccName: False})) 
+                       (PrefixCon 
+                        [])))] 
+                    (Nothing) 
+                    (GRHSs 
+                     [
+                      (L {B.hs:8:12-17} 
+                       (GRHS 
+                        [] 
+                        (L {B.hs:8:12-17} 
+                         (HsLit 
+                          (HsString {FastString: "Even"})))))] 
+                     (EmptyLocalBinds))))] {!type placeholder here?!})))))] 
+           (EmptyLocalBinds))))] {!type placeholder here?!}) 
+      (WpHole) {!NameSet placeholder here!} 
+      (Nothing)))),
+   (L {B.hs:(10,1)-(11,25)} 
+    (ValD 
+     (FunBind 
+      (L {B.hs:10:1-4} 
+       (Unqual {OccName: main})) 
+      (False) 
+      (MatchGroup 
+       [
+        (L {B.hs:(10,1)-(11,25)} 
+         (Match 
+          [] 
+          (Nothing) 
+          (GRHSs 
+           [
+            (L {B.hs:(10,8)-(11,25)} 
+             (GRHS 
+              [] 
+              (L {B.hs:(10,8)-(11,25)} 
+               (HsDo 
+                (DoExpr) 
+                [
+                 (L {B.hs:11:3-25} 
+                  (ExprStmt 
+                   (L {B.hs:11:3-25} 
+                    (OpApp 
+                     (L {B.hs:11:3-17} 
+                      (OpApp 
+                       (L {B.hs:11:3-10} 
+                        (HsVar 
+                         (Unqual {OccName: putStrLn}))) 
+                       (L {B.hs:11:12} 
+                        (HsVar 
+                         (Unqual {OccName: $}))) {!fixity placeholder here?!} 
+                       (L {B.hs:11:14-17} 
+                        (HsVar 
+                         (Unqual {OccName: show}))))) 
+                     (L {B.hs:11:19} 
+                      (HsVar 
+                       (Unqual {OccName: $}))) {!fixity placeholder here?!} 
+                     (L {B.hs:11:21-25} 
+                      (HsApp 
+                       (L {B.hs:11:21-23} 
+                        (HsVar 
+                         (Unqual {OccName: foo}))) 
+                       (L {B.hs:11:25} 
+                        (HsOverLit 
+                         (OverLit 
+                          (HsIntegral 
+                           (5)) 
+                          (<interactive>: panic! (the 'impossible' happened)
+  (GHC version 7.4.1 for i386-unknown-linux):
+	noRebindableInfo

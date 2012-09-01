@@ -18,7 +18,8 @@ module GhcRefacLocUtils(
                      getToks,replaceToks,deleteToks, doRmWhites,doAddWhites
                      
                      , -} srcLocs
-                     -- , ghcSrcLocs -- Test version     
+                     -- , ghcSrcLocs -- Test version
+                          , getGhcLoc
                      , getStartEndLoc
                      {-    
                      , getStartEndLoc2,
@@ -120,7 +121,7 @@ extractComments ((startPosl, startPosr), endPos) toks
 ------------------------------------------------
 -}
 ghead info []    = error $ "ghead "++info++" []"
-ghead ingp (h:_) = h
+ghead info (h:_) = h
 
 glast info []    = error $ "glast " ++ info ++ " []"
 glast info h     = last h
@@ -566,39 +567,6 @@ whiteSpaceTokens (row, col) n
 -}
 -------------------------------------------------------------------------------------------------
 --get all the source locations (use locations) in an AST phrase t in according the the occurrence order of identifiers.
-srcLocsOld::(Term t)=> t->[SimpPos]
-srcLocsOld t =(nub.srcLocs') t \\ [simpPos0]
-   where srcLocs'=runIdentity.(applyTU (full_tdTU (constTU []
-                                                  `adhocTU` pnt
-                                                  -- az:TODO: `adhocTU` sn
-                                                  -- az:TODO: `adhocTU` literalInExp
-                                                  -- az:TODO: `adhocTU` literalInPat
-                                                  )))
-
-         -- Using Lo`cated RdrName as GHC equivalent
-         -- pnt (PNT pname _ (N (Just (SrcLoc _  _ row col))))=return [(row,col)]
-         pnt (GHC.L l (GHC.Unqual _)) = return $ getGhcLoc l
-         pnt (GHC.L l (GHC.Qual _ _)) = return $ getGhcLoc l
-         pnt (GHC.L l (GHC.Orig _ _)) = return $ getGhcLoc l
-         pnt (GHC.L l (GHC.Exact _))  = return $ getGhcLoc l
-         pnt _                        = return []
-
-{- ++AZ++ replace these with GHC versions
-         pnt (PNT pname _ (N (Just (SrcLoc _  _ row col))))=return [(row,col)]
-         pnt _=return []
-
-         sn (SN (PlainModule modName) (SrcLoc _ _ row col))
-             = return [(row, col)]
-         sn _ = return []
-
-         literalInExp ((Exp (HsLit (SrcLoc _  _ row col) _))::HsExpP) = return [(row,col)]
-         literalInExp (Exp _) =return []
-
-         literalInPat ((Pat (HsPLit (SrcLoc _ _ row col) _))::HsPatP) = return [(row,col)]
-         literalInPat (Pat (HsPNeg (SrcLoc _  _ row col) _)) = return [(row,col)]
-         literalInPat _ =return []`
-   ++AZ++ end -}
-
 srcLocs::(Term t)=> t->[SimpPos]
 srcLocs t =(nub.srcLocs') t \\ [simpPos0]
    where srcLocs'= GHC.everythingStaged GHC.Parser (++) []
@@ -676,7 +644,7 @@ main = print $ ( listify (\(_::Int) -> True)         mytree
 -}
 
 
-getGhcLoc (GHC.RealSrcSpan ss)    = [(GHC.srcSpanStartCol ss, GHC.srcSpanStartLine ss)]
+getGhcLoc (GHC.RealSrcSpan ss)    = [(GHC.srcSpanStartLine ss, GHC.srcSpanStartCol ss)]
 getGhcLoc (GHC.UnhelpfulSpan _) = []
 
 {-
@@ -781,7 +749,99 @@ getStartEndLoc2 toks t
 
 --given an AST phrase, 'startEndLoc' gets its start and end position in the program source.
 class StartEndLoc t where
-   startEndLoc :: [PosToken]->t->(SimpPos,SimpPos)
+   startEndLoc :: [PosToken]-> t ->(SimpPos,SimpPos)
+
+
+instance StartEndLoc (GHC.HsExpr GHC.RdrName) where
+  -- TODO: do this properly
+  startEndLoc toks e =
+    case e of
+
+      GHC.HsVar id	-> ((0,0),(0,0))
+{-
+      GHC.HsIPVar (IPName id)	
+
+      GHC.HsOverLit (HsOverLit id)	
+
+      GHC.HsLit HsLit	
+
+      GHC.HsLam (MatchGroup id)	 
+
+      GHC.HsApp (LHsExpr id) (LHsExpr id)
+      
+      GHC.OpApp (LHsExpr id) (LHsExpr id) Fixity (LHsExpr id)
+      
+      GHC.NegApp (LHsExpr id) (SyntaxExpr id)
+      
+      GHC.HsPar (LHsExpr id)
+      
+      GHC.SectionL (LHsExpr id) (LHsExpr id)
+      
+      GHC.SectionR (LHsExpr id) (LHsExpr id)
+      
+      GHC.ExplicitTuple [HsTupArg id] Boxity
+      
+      GHC.HsCase (LHsExpr id) (MatchGroup id)
+      
+      GHC.HsIf (Maybe (SyntaxExpr id)) (LHsExpr id) (LHsExpr id) (LHsExpr id)
+      
+      GHC.HsLet (HsLocalBinds id) (LHsExpr id)
+      
+      GHC.HsDo (HsStmtContext Name) [LStmt id] PostTcType
+      
+      GHC.ExplicitList PostTcType [LHsExpr id]
+      
+      GHC.ExplicitPArr PostTcType [LHsExpr id]
+      
+      GHC.RecordCon (Located id) PostTcExpr (HsRecordBinds id)
+      
+      GHC.RecordUpd (LHsExpr id) (HsRecordBinds id) [DataCon] [PostTcType] [PostTcType]
+      
+      GHC.ExprWithTySig (LHsExpr id) (LHsType id)
+      
+      GHC.ExprWithTySigOut (LHsExpr id) (LHsType Name)
+      
+      GHC.ArithSeq PostTcExpr (ArithSeqInfo id)
+      
+      GHC.PArrSeq PostTcExpr (ArithSeqInfo id)
+      
+      GHC.HsSCC FastString (LHsExpr id)
+      
+      GHC.HsCoreAnn FastString (LHsExpr id)
+      
+      GHC.HsBracket (HsBracket id)
+      
+      GHC.HsBracketOut (HsBracket Name) [PendingSplice]
+      
+      GHC.HsSpliceE (HsSplice id)
+      
+      GHC.HsQuasiQuoteE (HsQuasiQuote id)
+      
+      GHC.HsProc (LPat id) (LHsCmdTop id)
+      
+      GHC.HsArrApp (LHsExpr id) (LHsExpr id) PostTcType HsArrAppType Bool
+      
+      GHC.HsArrForm (LHsExpr id) (Maybe Fixity) [LHsCmdTop id]
+      
+      GHC.HsTick (Tickish id) (LHsExpr id)
+      
+      GHC.HsBinTick Int Int (LHsExpr id)
+      
+      GHC.HsTickPragma (FastString, (Int, Int), (Int, Int)) (LHsExpr id)
+      
+      GHC.EWildPat
+      
+      GHC.EAsPat (Located id) (LHsExpr id)
+      
+      GHC.EViewPat (LHsExpr id) (LHsExpr id)
+      
+      GHC.ELazyPat (LHsExpr id)
+      
+      GHC.HsType (LHsType id)
+      
+      GHC.HsWrap HsWrapper (HsExpr id)	 
+-}
+
    
 {-
 instance StartEndLoc HsModuleP where
@@ -1310,7 +1370,9 @@ instance StartEndLoc HsDeclP where
 
 --------------------------------------------------------------------------------------------------------
 -- This function should be the interface function for fetching start and end locations of a AST phrase in the source.
-getStartEndLoc::(Term t, StartEndLoc t,Printable t)=>[PosToken]->t->(SimpPos,SimpPos)
+-- TODO: restore Printable t below
+-- getStartEndLoc::(Term t, StartEndLoc t,Printable t)=>[PosToken]->t->(SimpPos,SimpPos)
+getStartEndLoc::(Term t, StartEndLoc t)=>[PosToken]->t->(SimpPos,SimpPos)
 getStartEndLoc toks t
   = let (startPos',endPos') = startEndLoc toks t
         locs = srcLocs t

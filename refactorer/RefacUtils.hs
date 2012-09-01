@@ -2469,6 +2469,7 @@ locToExp beginPos endPos toks t
                     else getStartEndLoc toks e
             in (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && endLoc<=endPos
 
+        {-
         isQualifierOrLastAtom (HsQualifierAtom e) = True
         isQualifierOrLastAtom (HsLastAtom e)      = True
         isQualifierOrLastAtom _ = False
@@ -2479,7 +2480,8 @@ locToExp beginPos endPos toks t
         atoms2Stmt (HsLetStmtAtom ds : ss)      = HsLetStmt ds # atoms2Stmt ss
         atoms2Stmt (HsQualifierAtom e : ss)     = HsQualifier e # atoms2Stmt ss
         atoms2Stmt _ = fail "last statement in a 'do' expression must be an expression"
-
+        -}
+        
 ---------------------------------------------------------------------------------------
 -- | Collect the identifiers (in PName format) in a given syntax phrase.
 hsPNs::(Term t)=> t->[PName]
