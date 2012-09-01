@@ -6,7 +6,7 @@ import Data.Generics
 import GHC
 import GHC.SYB.Utils
 import NameSet
-
+import Control.Monad
 
 {-
 
@@ -76,3 +76,28 @@ somethingStaged :: Stage -> (Maybe u) -> GenericQ (Maybe u) -> GenericQ (Maybe u
 -- 
 somethingStaged stage z = everythingStaged stage orElse z
 
+
+{-
+-- | Apply a monadic transformation at least somewhere
+somewhere :: MonadPlus m => GenericM m -> GenericM m
+
+-- We try "f" in top-down manner, but descent into "x" when we fail
+-- at the root of the term. The transformation fails if "f" fails
+-- everywhere, say succeeds nowhere.
+-- 
+somewhere f x = f x `mplus` gmapMp (somewhere f) x
+-}
+
+-- | Apply a monadic transformation at least somewhere
+somewhereStaged :: MonadPlus m => Stage -> GenericM m -> GenericM m
+
+-- We try "f" in top-down manner, but descent into "x" when we fail
+-- at the root of the term. The transformation fails if "f" fails
+-- everywhere, say succeeds nowhere.
+-- 
+somewhereStaged stage f x 
+  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = mzero
+  | otherwise = f x `mplus` gmapMp (somewhereStaged stage f) x
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool

@@ -2,7 +2,11 @@
 module GhcRefacUtils
        (
          locToExp
+       , sameOccurrence
        , parseSourceFile
+       , applyRefac
+       , update  
+       , writeRefactoredFiles  
        ) where
 
 import GhcRefacTypeSyn
@@ -12,6 +16,12 @@ import Data.Maybe
 import SrcLoc1
 import TermRep
 import MUtils (( # ))
+import Control.Monad.State
+import Unlit
+import qualified AbstractIO as AbstractIO
+import qualified PFE0 as PFE0
+import qualified MT(lift)
+import EditorCommands
 
 import qualified BasicTypes    as GHC
 import qualified DynFlags      as GHC
@@ -104,6 +114,16 @@ locToExp beginPos endPos toks t =
 
 -- ---------------------------------------------------------------------
 
+-- TODO: AZ: pretty sure this can be simplified, depends if we need to
+--          manage transformed stuff too though.
+    
+-- | Return True if syntax phrases t1 and t2 refer to the same one.
+sameOccurrence:: (Term t, Eq t) => t -> t -> Bool
+sameOccurrence t1 t2
+ = t1==t2 && srcLocs t1 == srcLocs t2
+    
+-- ---------------------------------------------------------------------
+
 -- |Parse a Haskell source files, and returns a four-element tuple. The first element in the result is the inscope
 -- relation, the second element is the export relation, the third is the AST of the module and the forth element is
 -- the token stream of the module.
@@ -155,6 +175,105 @@ getExports (GHC.L _ hsmod) =
   case hsmod of
     GHC.HsModule _ (Just exports) _ _ _ _ -> exports
     _                                     -> []
+
+-- ---------------------------------------------------------------------
+
+applyRefac refac Nothing fileName
+  = do (inscps, exps, mod, toks)<-parseSourceFile fileName
+       (mod',((toks',m),_))<-runStateT (refac (inscps, exps, mod)) ((toks,False), (-1000,0))
+       return ((fileName,m),(toks',mod'))
+
+applyRefac refac (Just (inscps, exps, mod, toks)) fileName
+  = do (mod',((toks',m),_))<-runStateT (refac (inscps, exps, mod)) ((toks,False), (-1000,0))
+       return ((fileName,m),(toks', mod'))
+
+{-
+applyRefacToClientMods refac fileName
+   = do clients <- clientModsAndFiles =<< fileNameToModName fileName
+        mapM (applyRefac refac Nothing) (map snd clients)
+-}
+    
+-- ---------------------------------------------------------------------
+
+{- ++AZ++ trying to replace this with a generic alternative
+{- | The Update class, -}
+class (Term t, Term t1)=>Update t t1 where
+
+  -- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
+  update::(MonadPlus m, MonadState (([PosToken],Bool),(Int,Int)) m)=>  t     -- ^ The syntax phrase to be updated.
+                                                             -> t     -- ^ The new syntax phrase.
+                                                             -> t1    -- ^ The contex where the old syntax phrase occurs.
+                                                             -> m t1  -- ^ The result.
+-}
+
+-- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
+update::(MonadPlus m, MonadState (([PosToken],Bool),(Int,Int)) m) =>
+        t     -- ^ The syntax phrase to be updated.
+        -> t     -- ^ The new syntax phrase.
+        -> t1    -- ^ The contex where the old syntax phrase occurs.
+        -> m t1  -- ^ The result.
+-- update oldExp newExp contextExp
+update oldExp newExp  t
+   -- = applyTP (once_tdTP (failTP `adhocTP` inExp)) t
+   = somewhereStaged SYB.Parser (SYB.mkM inExp) t
+   where
+    inExp e
+     | e == oldExp && srcLocs e == srcLocs oldExp
+       = do (newExp', _) <- updateToks oldExp newExp prettyprint
+            return newExp'
+    inExp e = mzero
+
+
+
+-- ---------------------------------------------------------------------
+       
+-- | Write refactored program source to files.
+{-
+writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-refactoring
+         ->[((String,Bool),([PosToken],HsModuleP))]  --  ^ String: the file name; Bool: True means the file has been modified.[PosToken]: the token stream; HsModuleP: the module AST.
+         -> m ()
+-}
+
+-- OLD: type PosToken = (Token, (Pos, String))
+-- GHC: type PosToken = (GHC.Located GHC.Token, String)
+
+writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
+    -- The AST is not used.
+    -- isSubRefactor is used only for history (undo).
+  = do let modifiedFiles = filter (\((f,m),_) -> m == modified) files
+       PFE0.addToHistory isSubRefactor (map (fst.fst) modifiedFiles)
+       sequence_ (map modifyFile modifiedFiles)
+       -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
+
+     where
+       modifyFile ((fileName,_),(ts,_)) = do
+           -- let source = concatMap (snd.snd) ts
+           let source = GHC.showRichTokenStream ts
+               
+           -- (Julien personnal remark) seq forces the evaluation of
+           -- its first argument and returns its second argument. It
+           -- is unclear for me why (length source) evaluation is
+           -- forced.
+           seq (length source) (AbstractIO.writeFile fileName source) 
+           -- (Julien) I have changed Unlit.writeHaskellFile into
+           -- AbstractIO.writeFile (which is ok as long as we do not
+           -- have literate Haskell files)
+           
+           editorCmds <- PFE0.getEditorCmds
+           MT.lift (sendEditorModified editorCmds fileName)
+           
+       writeTestDataForFile ((fileName,_),(ts,mod)) = do
+           -- let source=concatMap (snd.snd) ts
+           let source = GHC.showRichTokenStream ts               
+           seq (length source) $ writeFile (createNewFileName "_TokOut" fileName) source
+           -- writeHaskellFile (createNewFileName "AST" fileName) ((render.ppi.rmPrelude) mod)
+           -- ++AZ++ writeHaskellFile (createNewFileName "AST" fileName) (SYB.showData SYB.Parser mod)
+
+       
+       
+       createNewFileName str fileName
+          =let (name, posfix)=span (/='.') fileName
+           in (name++str++posfix)
 
 ---------------------------------------------------------------------------------------
 -- | Default identifier in the PNT format.

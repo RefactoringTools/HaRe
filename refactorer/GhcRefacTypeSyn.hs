@@ -66,6 +66,8 @@ data Pos = Pos { char, line, column :: !Int } deriving (Show)
 type HsName = GHC.RdrName
 type PN     = GHC.RdrName
 
+type HsModuleP = GHC.HsModule GHC.RdrName
+
 
 -- ----------------------------------------------------
 -- From PNT
