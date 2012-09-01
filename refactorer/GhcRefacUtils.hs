@@ -70,7 +70,6 @@ so that the function on the left can be applied unless the function on
 the right succeeds.
 -}
 
-
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
 --  region specified by the start and end position. If no expression can be found, then return the defaultExp.
 locToExp:: (Term t) => SimpPos            -- ^ The start position.
@@ -81,16 +80,16 @@ locToExp:: (Term t) => SimpPos            -- ^ The start position.
                   -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
 locToExp beginPos endPos toks t =
   case res of
-    [x] -> x
-    [] -> GHC.L GHC.noSrcSpan defaultExp
-    _  -> error $ "locToExp:unexpected:" ++ (SYB.showData SYB.Parser 0 res)
+    Just x -> x
+    Nothing -> GHC.L GHC.noSrcSpan defaultExp
+    -- _  -> error $ "locToExp:unexpected:" ++ (SYB.showData SYB.Parser 0 res)
   where
-    res = everythingButStaged SYB.Parser (++) [] (([],False) `SYB.mkQ` exp) t
+    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` exp) t
 
-    exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> ([GHC.Located (GHC.HsExpr GHC.RdrName)],Bool)
+    exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> (Maybe (GHC.Located (GHC.HsExpr GHC.RdrName)))
     exp e
-      |inScope e = ([e], True)
-    exp _ = ([], False)
+      |inScope e = Just e
+    exp _ = Nothing
     
     inScope :: GHC.Located e -> Bool
     inScope (GHC.L l _) =

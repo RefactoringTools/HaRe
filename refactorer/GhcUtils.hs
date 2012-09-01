@@ -57,3 +57,22 @@ everythingButStaged stage k z f x
         fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
 
 
+
+{-
+-- | Look up a subterm by means of a maybe-typed filter
+something :: GenericQ (Maybe u) -> GenericQ (Maybe u)
+
+-- "something" can be defined in terms of "everything"
+-- when a suitable "choice" operator is used for reduction
+-- 
+something = everything orElse
+-}
+
+-- | Look up a subterm by means of a maybe-typed filter
+somethingStaged :: Stage -> (Maybe u) -> GenericQ (Maybe u) -> GenericQ (Maybe u)
+
+-- "something" can be defined in terms of "everything"
+-- when a suitable "choice" operator is used for reduction
+-- 
+somethingStaged stage z = everythingStaged stage orElse z
+
