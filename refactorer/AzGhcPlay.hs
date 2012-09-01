@@ -4,9 +4,9 @@
 import Bag
 import Bag(Bag,bagToList)
 import Data.Generics
-import DynFlags
+-- import DynFlags
 import FastString(FastString)
-import GHC
+-- import GHC
 import GHC.Paths ( libdir )
 import GHC.SYB.Utils
 import Name
@@ -84,26 +84,27 @@ ifToCase args
 --   Match [LPat id] (Maybe (LHsType id)) (GRHSs id)	 
 
 getStuff =
-    defaultErrorHandler defaultLogAction $ do
-      runGhc (Just libdir) $ do
-        dflags <- getSessionDynFlags
-        let dflags' = foldl xopt_set dflags
-                            [Opt_Cpp, Opt_ImplicitPrelude, Opt_MagicHash]
-        setSessionDynFlags dflags'
-        target <- guessTarget targetFile Nothing
-        setTargets [target]
-        load LoadAllTargets -- Loads and compiles, much as calling make
-        modSum <- getModSummary $ mkModuleName "B"
-        p <- parseModule modSum
+    GHC.defaultErrorHandler GHC.defaultLogAction $ do
+      GHC.runGhc (Just libdir) $ do
+        dflags <- GHC.getSessionDynFlags
+        let dflags' = foldl GHC.xopt_set dflags
+                            [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
+        GHC.setSessionDynFlags dflags'
+        target <- GHC.guessTarget targetFile Nothing
+        GHC.setTargets [target]
+        GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
+        p <- GHC.parseModule modSum
         
-        t <- typecheckModule p
-        d <- desugarModule t
-        l <- loadModule d
-        n <- getNamesInScope
-        c <- return $ coreModule d
+        t <- GHC.typecheckModule p
+        d <- GHC.desugarModule t
+        l <- GHC.loadModule d
+        n <- GHC.getNamesInScope
+        c <- return $ GHC.coreModule d
 
-        g <- getModuleGraph
-        -- mapM showModule g
+        g <- GHC.getModuleGraph
+        gs <- mapM GHC.showModule g
+        GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
         -- return $ (parsedSource d,"/n-----/n",  typecheckedSource d, "/n-=-=-=-=-=-=-/n", modInfoTyThings $ moduleInfo t)
         -- return $ (parsedSource d,"/n-----/n",  typecheckedSource d, "/n-=-=-=-=-=-=-/n")
         -- return $ (typecheckedSource d)
@@ -124,16 +125,17 @@ getStuff =
 
         let ps  = GHC.pm_parsed_source p
 
-        rts <- getRichTokenStream (ms_mod modSum)
+        rts <- GHC.getRichTokenStream (GHC.ms_mod modSum)
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ tokenLocs rts))
         
         -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
         -- GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
 
-        GHC.liftIO (putStrLn $ "locToExp=" ++ (showPpr $ locToExp (4,12) (4,16) rts ps))
-        GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,12) (4,16) rts ps))
-        GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,9) (4,22) rts ps))
+        -- GHC.liftIO (putStrLn $ "locToExp=" ++ (showPpr $ locToExp (4,12) (4,16) rts ps))
+        -- GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,12) (4,16) rts ps))
+        GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,43) rts ps))
+        GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
         return ()
 
 tokenLocs toks = map (\(L l _, s) -> (l,s)) toks
@@ -144,27 +146,27 @@ convertSource ps =1
 ifToCase :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
 --  HsIf (Maybe (SyntaxExpr id)) (LHsExpr id) (LHsExpr id) (LHsExpr id)
 ifToCase (GHC.HsIf _se e1 e2 e3)
-  = GHC.HsCase e1 (MatchGroup
+  = GHC.HsCase e1 (GHC.MatchGroup
                    [
-                     (noLoc $ Match
+                     (noLoc $ GHC.Match
                       [
-                        noLoc $ ConPatIn (noLoc $ mkRdrUnqual $ mkVarOcc "True") (PrefixCon [])
+                        noLoc $ GHC.ConPatIn (noLoc $ mkRdrUnqual $ mkVarOcc "True") (GHC.PrefixCon [])
                       ]
                       Nothing
-                       ((GRHSs
+                       ((GHC.GRHSs
                          [
-                           noLoc $ GRHS [] e2
-                         ] EmptyLocalBinds))
+                           noLoc $ GHC.GRHS [] e2
+                         ] GHC.EmptyLocalBinds))
                       )
-                   , (noLoc $ Match
+                   , (noLoc $ GHC.Match
                       [
-                        noLoc $ ConPatIn (noLoc $ mkRdrUnqual $ mkVarOcc "False") (PrefixCon [])
+                        noLoc $ GHC.ConPatIn (noLoc $ mkRdrUnqual $ mkVarOcc "False") (GHC.PrefixCon [])
                       ]
                       Nothing
-                       ((GRHSs
+                       ((GHC.GRHSs
                          [
-                           noLoc $ GRHS [] e3
-                         ] EmptyLocalBinds))
+                           noLoc $ GHC.GRHS [] e3
+                         ] GHC.EmptyLocalBinds))
                       )
                    ] undefined)
 ifToCase x                          = x

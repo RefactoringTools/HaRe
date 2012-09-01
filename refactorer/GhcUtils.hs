@@ -44,11 +44,12 @@ everythingStaged stage k z f x
 
 -}
 
--- TODO: pass this routine back to syb-utils
+-- TODO: pass this routine back to syb-utils (when it works properly)
+-- Question: how to handle partial results in the otherwise step?
 everythingButStaged :: Stage -> (r -> r -> r) -> r -> GenericQ (r,Bool) -> GenericQ r
 everythingButStaged stage k z f x
   | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = z
-  | stop = v
+  | stop == True = v
   | otherwise = foldl k v (gmapQ (everythingButStaged stage k z f) x)
   where (v, stop) = f x
         nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool

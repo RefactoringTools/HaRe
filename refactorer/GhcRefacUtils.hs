@@ -1,7 +1,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module GhcRefacUtils (
-  locToExp
-  ) where
+module GhcRefacUtils
+       (
+         locToExp
+       , parseSourceFile
+       ) where
 
 import GhcRefacTypeSyn
 import GhcRefacLocUtils
@@ -12,16 +14,19 @@ import TermRep
 import MUtils (( # ))
 
 import qualified BasicTypes    as GHC
+import qualified DynFlags      as GHC
+import qualified FastString    as GHC
 import qualified GHC           as GHC
-import qualified GHC.SYB.Utils as GHC
+import qualified GHC.Paths     as GHC
 import qualified HsSyn         as GHC
 import qualified Module        as GHC
+import qualified MonadUtils    as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
-import qualified FastString    as GHC
 
 import qualified Data.Generics as SYB
+import qualified GHC.SYB.Utils as SYB
 
 
 -- Term defined in ../StrategyLib-4.0-beta/models/deriving/TermRep.hs
@@ -75,23 +80,17 @@ locToExp:: (Term t) => SimpPos            -- ^ The start position.
                   -- -> HsExpP             -- ^ The result.
                   -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
 locToExp beginPos endPos toks t =
-  -- Easy with a zipper, just go down until in scope...
   case res of
     [x] -> x
     [] -> GHC.L GHC.noSrcSpan defaultExp
+    _  -> error $ "locToExp:unexpected:" ++ (SYB.showData SYB.Parser 0 res)
   where
-    res = everythingButStaged GHC.Parser (++) [] (([],False) `SYB.mkQ` exp) t
+    res = everythingButStaged SYB.Parser (++) [] (([],False) `SYB.mkQ` exp) t
 
     exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> ([GHC.Located (GHC.HsExpr GHC.RdrName)],Bool)
     exp e
       |inScope e = ([e], True)
     exp _ = ([], False)
-    {-
-    exp (GHC.L l _) = case getGhcLoc l of
-      [(row,col)] 
-
-      ([],True)
-    -}
     
     inScope :: GHC.Located e -> Bool
     inScope (GHC.L l _) =
@@ -104,104 +103,60 @@ locToExp beginPos endPos toks t =
       in
        (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
 
+-- ---------------------------------------------------------------------
 
-
+-- |Parse a Haskell source files, and returns a four-element tuple. The first element in the result is the inscope
+-- relation, the second element is the export relation, the third is the AST of the module and the forth element is
+-- the token stream of the module.
 {-
--- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
---  region specified by the start and end position. If no expression can be found, then return the defaultExp.
-locToExp::{- (Term t) => -}SimpPos            -- ^ The start position.
-                  -> SimpPos            -- ^ The end position.
-                  -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
-                  -> t                  -- ^ The syntax phrase.
-                  -- -> HsExpP             -- ^ The result.
-                  -> GHC.HsExpr GHC.RdrName -- ^ The result.
-locToExp beginPos endPos toks t =
-  -- = fromMaybe defaultExp $ applyTU (once_tdTU (failTU `adhocTU` exp)) t
-  case res of
-    [x] -> x
-    [] -> defaultExp
+parseSourceFile:: ( ) =>FilePath
+                      ->m (InScopes,Exports,HsModuleP,[PosToken])
+-}
+
+parseSourceFile ::
+  String
+  -> IO ([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource, [(GHC.Located GHC.Token, String)])
+parseSourceFile targetFile =
+  GHC.defaultErrorHandler GHC.defaultLogAction $ do
+    GHC.runGhc (Just GHC.libdir) $ do
+      dflags <- GHC.getSessionDynFlags
+      let dflags' = foldl GHC.xopt_set dflags
+                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
+      GHC.setSessionDynFlags dflags'
+      target <- GHC.guessTarget targetFile Nothing
+      GHC.setTargets [target]
+      GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
+      g <- GHC.getModuleGraph
+      -- modSum <- GHC.getModSummary $ mkModuleName "B"
+      let modSum = head g
+      p <- GHC.parseModule modSum
+      let inscopes = [] -- TODO: populate this
+          modAst = GHC.pm_parsed_source p
+          exports = getExports modAst
+      tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
+      return (inscopes,exports,modAst,tokens)
+      
+{-
+original
+
+parseSourceFile filename
+   = do
+        name <- fileNameToModName filename
+        res <- ((checkScope  @@ parseModule') name)
+        return res
+
   where
-    res = everythingButStaged GHC.Parser (++) [] (([],False) `SYB.mkQ` exp) t
-       
-    -- exp1 :: GHC.HsExpr GHC.RdrName -> ([HsExpP], Bool)
-    -- exp1 _ = ([], True)
+   checkScope (ts,(((wm,_),mod),refs))
+     = check (checkRefs refs) >> return (inscpRel wm, exports wm, mod, expandNewLnTokens ts)
 
-    -- exp :: GHC.HsExpr GHC.RdrName -> ([HsExpP], Bool)
-    exp :: GHC.HsExpr GHC.RdrName -> ([GHC.HsExpr GHC.RdrName], Bool)
-    exp e
-      |inScope e = ([Just e], True)
-    exp _ = ([Nothing], False)
-
-    inScope :: GHC.HsExpr GHC.RdrName -> Bool
-    inScope e
-          = let (startLoc, endLoc)
-                 = if expToPNT e /= defaultPNT
-                    then let (SrcLoc _ _ row col) = useLoc (expToPNT e)
-                         in ((row,col), (row,col))
-                    else getStartEndLoc toks e
-            in (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
+   check [] = done
+   check errs = fail $ pp $ "Scoping errors" $$ vcat errs
 -}
+getExports (GHC.L _ hsmod) =
+  case hsmod of
+    GHC.HsModule _ (Just exports) _ _ _ _ -> exports
+    _                                     -> []
 
-{-                  
-locToExp beginPos endPos toks t
-  = fromMaybe defaultExp $ applyTU (once_tdTU (failTU `adhocTU` exp)) t
-     where
-        exp (e::HsExpP)
-         |inScope e = Just e
-        exp _ =Nothing
-
-        inScope e
-          = let (startLoc, endLoc)
-                 = if expToPNT e /= defaultPNT
-                    then let (SrcLoc _ _ row col) = useLoc (expToPNT e)
-                         in ((row,col), (row,col))
-                    else getStartEndLoc toks e
-            in (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
--}
-
----------------------------------------------------------------------------------------
-{- Original
--- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
---  region specified by the start and end position. If no expression can be found, then return the defaultExp.
-locToExp::(Term t) => SimpPos            -- ^ The start position.
-                  -> SimpPos            -- ^ The end position.
-                  -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
-                  -> t                  -- ^ The syntax phrase.
-                  -> HsExpP             -- ^ The result.
-locToExp beginPos endPos toks t
-  = fromMaybe defaultExp $ applyTU (once_tdTU (failTU `adhocTU` exp)) t
-     where
-        {- exp (e@(Exp (HsDo stmts))::HsExpP)
-         | filter inScope2 (map (getStartEndLoc toks) (getStmtList stmts))/=[]
-         = do let atoms = filter (\atom->inScope (getStartEndLoc toks atom)) (getStmtList stmts)
-                  atoms'= reverse (dropWhile (not.isQualifierOrLastAtom) (reverse atoms))
-              if atoms'==[]
-                  then fail "Expession not selected"
-                  else do stmts' <-atoms2Stmt atoms'
-                          Just (Exp (HsDo stmts')) -}
-        exp (e::HsExpP)
-         |inScope e = Just e
-        exp _ =Nothing
-
-        inScope e
-          = let (startLoc, endLoc)
-                 = if expToPNT e /= defaultPNT
-                    then let (SrcLoc _ _ row col) = useLoc (expToPNT e)
-                         in ((row,col), (row,col))
-                    else getStartEndLoc toks e
-            in (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && endLoc<=endPos
-
-        isQualifierOrLastAtom (HsQualifierAtom e) = True
-        isQualifierOrLastAtom (HsLastAtom e)      = True
-        isQualifierOrLastAtom _ = False
-
-        atoms2Stmt [HsQualifierAtom e]          = return (HsLast e)
-        atoms2Stmt [HsLastAtom e]               = return (HsLast e)
-        atoms2Stmt (HsGeneratorAtom s p e : ss) = HsGenerator s p e # atoms2Stmt ss
-        atoms2Stmt (HsLetStmtAtom ds : ss)      = HsLetStmt ds # atoms2Stmt ss
-        atoms2Stmt (HsQualifierAtom e : ss)     = HsQualifier e # atoms2Stmt ss
-        atoms2Stmt _ = fail "last statement in a 'do' expression must be an expression"
--}
 ---------------------------------------------------------------------------------------
 -- | Default identifier in the PNT format.
 defaultPNT:: GHC.RdrName
