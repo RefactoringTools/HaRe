@@ -207,11 +207,13 @@ class (Term t, Term t1)=>Update t t1 where
 -}
 
 -- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
-update::(MonadPlus m, MonadState (([PosToken],Bool),(Int,Int)) m) =>
+{-       
+update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([PosToken],Bool),(Int,Int)) m) =>
         t     -- ^ The syntax phrase to be updated.
         -> t     -- ^ The new syntax phrase.
         -> t1    -- ^ The contex where the old syntax phrase occurs.
         -> m t1  -- ^ The result.
+-}
 -- update oldExp newExp contextExp
 update oldExp newExp  t
    -- = applyTP (once_tdTP (failTP `adhocTP` inExp)) t
@@ -222,6 +224,8 @@ update oldExp newExp  t
        = do (newExp', _) <- updateToks oldExp newExp prettyprint
             return newExp'
     inExp e = mzero
+
+    prettyprint x = GHC.showSDoc $ GHC.ppr x
 
 
 

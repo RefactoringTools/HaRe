@@ -169,7 +169,7 @@ tokenCol (GHC.L l _,_) = c where [(_,c)] = getGhcLoc l
 
 tokenRow (GHC.L l _,_) = r where [(r,_)] = getGhcLoc l
 
-tokenPos (GHC.L l _,_)     = getGhcLoc l
+tokenPos (GHC.L l _,_)     = head $ getGhcLoc l
 
 tokenCon (_,s)     = s
 
@@ -344,7 +344,9 @@ tokenise  startPos colOffset withFirstLineIndent str
                   else str'
     -- in expandNewLnTokens $ lexerPass0' startPos str''
     -- in expandNewLnTokens $ GHC.addSourceToTokens startPos
-        toks = liftIO $ lexStringToRichTokens startPos str''   
+        
+        -- ++AZ++ temporary toks = liftIO $ lexStringToRichTokens startPos str''
+        toks = []
     in toks
    where
      addIndent ln = if withFirstLineIndent
@@ -367,7 +369,7 @@ tokenise  startPos colOffset withFirstLineIndent str
 
 -- ---------------------------------------------------------------------
 
-lexStringToRichTokens :: RealSrcLoc -> String -> IO [Located Token]
+lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [GHC.Located GHC.Token]
 lexStringToRichTokens startLoc str = do
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
     GHC.runGhc (Just GHC.libdir) $ do
@@ -380,7 +382,7 @@ lexStringToRichTokens startLoc str = do
       let res = GHC.lexTokenStream (GHC.stringToStringBuffer str) startLoc dflags'
       case res of
         GHC.POk _ toks -> return toks 
-        GHC.PFailed srcSpan msg -> error $ "lexStringToRichTokens:" ++ (show $ GHC.ppr msg)
+        GHC.PFailed srcSpan msg -> error $ "lexStringToRichTokens:" -- ++ (show $ GHC.ppr msg)
 
 -- ---------------------------------------------------------------------
         
@@ -431,16 +433,22 @@ groupTokensByLine (xs) = let x = head xs
                                 : groupTokensByLine (gtail "groupTokensByLine" xs'')
 
 --Give a token stream covering multi-lines, calculate the length of the last line
+-- AZ: should be the last token start col, plus length of token.
 lengthOfLastLine::[PosToken]->Int
+lengthOfLastLine [] = 0
 lengthOfLastLine toks
-   = let (toks1,toks2)=break hasNewLn $ reverse toks
-     in  if toks2==[]
+   -- = let (toks1,toks2)=break hasNewLn $ reverse toks
+   = let rtoks = reverse toks
+         x = head rtoks
+         (toks1,toks2)=break (\x' -> tokenRow x /= tokenRow x') rtoks
+     -- in  if toks2==[]
+     in  if length toks2 == 0
           then sum (map tokenLen toks1)
-          else sum (map tokenLen toks1)+lastLineLenOfToken (ghead "lengthOfLastLine"  toks2)
+          else sum (map tokenLen toks1) + lastLineLenOfToken (ghead "lengthOfLastLine" toks2)
   where
    --Compute the length of a token, if the token covers multi-line, only count the last line.
    --What about tab keys?
-   lastLineLenOfToken (_,(_,s))=(length.(takeWhile (\x->x/='\n')).reverse) s
+   lastLineLenOfToken (_,s)=(length.(takeWhile (\x->x/='\n')).reverse) s
 
 {-
 
@@ -462,7 +470,7 @@ splitToks (startPos, endPos) toks
                 (toks1, toks2) = break (\t -> tokenPos t == startPos') toks
                 (toks21, toks22) = break (\t -> tokenPos t== endPos') toks2
                 -- Should add error message for empty list?
-            in  if toks22==[] then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
+            in  if length toks22==0 then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
                   else (toks1, toks21++[ghead "splitToks" toks22], gtail "splitToks" toks22)
 
 {-
@@ -505,6 +513,7 @@ insertComments ((startPosl, startPosr), endPos) toks com
 
 ---  - } - } 
 -}
+
 updateToks oldAST newAST printFun
    = do ((toks,_), (v1, v2)) <- get
         let (startPos, endPos) = getStartEndLoc toks oldAST
@@ -512,14 +521,16 @@ updateToks oldAST newAST printFun
             offset             = lengthOfLastLine toks1
             newToks = tokenise (Pos 0 v1 1) offset False $ printFun newAST  --check the startPos
             toks' = replaceToks toks startPos endPos newToks
-        if newToks ==[] then put ((toks', modified), (v1,v2))
-                        else put ((toks',modified), (tokenRow (glast "updateToks1" newToks) -10, v2))
+        if length newToks == 0
+          then put ((toks', modified), (v1,v2))
+          else put ((toks',modified), (tokenRow (glast "updateToks1" newToks) -10, v2))
 
         -- error $ show (newToks, startPos, endPos)
         -- put ((toks', modified), (v1,v2))
         
         -- ++AZ++ not needed with GHC
         -- addLocInfo (newAST, newToks)
+        return (newAST, newToks)
         
 {-
 ---REFACTORING: GENERALISE THIS FUNCTION.
@@ -542,7 +553,7 @@ addFormalParams t newParams
 
 replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
 replaceToks toks startPos endPos newToks
-   = if toks22 == []
+   = if length toks22 == 0
         then toks1 ++ newToks
         else let {-(pos::(Int,Int)) = tokenPos (ghead "replaceToks" toks22)-} -- JULIEN
                  oldOffset = {-getOffset toks pos  -}  lengthOfLastLine (toks1++toks21) --JULIEN
@@ -1471,6 +1482,19 @@ instance StartEndLoc HsDeclP where
 -- This function should be the interface function for fetching start and end locations of a AST phrase in the source.
 -- TODO: restore Printable t below
 -- getStartEndLoc::(Term t, StartEndLoc t,Printable t)=>[PosToken]->t->(SimpPos,SimpPos)
+-- xxxxxxx
+-- getStartEndLoc::(Term t)=>[PosToken]->t->(SimpPos,SimpPos)
+getStartEndLoc::(Term t)=>[PosToken]->GHC.GenLocated GHC.SrcSpan t ->(SimpPos,SimpPos)
+
+getStartEndLoc toks t
+  = let (startPos',endPos') = startEndLocGhc toks t
+        locs = srcLocs t
+        (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
+                                                                   else startPos',
+                             if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
+                                                                  else endPos')
+    in (startPos, endPos)
+{- ++AZ++ old version
 getStartEndLoc::(Term t, StartEndLoc t)=>[PosToken]->t->(SimpPos,SimpPos)
 getStartEndLoc toks t
   = let (startPos',endPos') = startEndLoc toks t
@@ -1480,6 +1504,19 @@ getStartEndLoc toks t
                              if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
                                                                   else endPos')
     in (startPos, endPos)
+-}
+
+-- ---------------------------------------------------------------------
+
+startEndLocGhc toks t@(GHC.L l _) =
+  case l of
+    (GHC.RealSrcSpan ss) ->
+      ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
+       (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
+    (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
+  
+-- ---------------------------------------------------------------------
+
 
 
 {-

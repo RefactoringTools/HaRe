@@ -15,7 +15,8 @@ import qualified OccName               as GHC
  
 import GHC.Paths ( libdir )
 import Control.Monad
- 
+import GhcUtils 
+
 -----------------
 
 -- import GhcRefacLocUtils
@@ -35,9 +36,9 @@ ifToCase args
     where 
 
      -- ifToCase exp (_, _, mod)= applyTP (once_buTP (failTP `adhocTP` inExp)) mod
-     ifToCase exp (_, _, mod)= somewhereStaged GHC.Parser (SYB.mkM inExp) mod
+     ifToCase exp (_, _, mod)= somewhereStaged SYB.Parser (SYB.mkM inExp) mod
        where 
-         inExp exp1@(GHC.HsIf _ _ _ _)
+         inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
            | sameOccurrence exp exp1       
            -- = let newExp =Exp (HsCase e [HsAlt loc0 (nameToPat "True") (HsBody e1) [],
            --                              HsAlt loc0 (nameToPat "False")(HsBody e2) []])
@@ -46,9 +47,9 @@ ifToCase args
          inExp _ = mzero
 
 
-ifToCaseTransform :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
-ifToCaseTransform (GHC.HsIf _se e1 e2 e3)
-  = GHC.HsCase e1 (GHC.MatchGroup
+ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName) -> GHC.Located (GHC.HsExpr GHC.RdrName)
+ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3))
+  = GHC.L l (GHC.HsCase e1 (GHC.MatchGroup
                    [
                      (GHC.noLoc $ GHC.Match
                       [
@@ -70,7 +71,7 @@ ifToCaseTransform (GHC.HsIf _se e1 e2 e3)
                            GHC.noLoc $ GHC.GRHS [] e3
                          ] GHC.EmptyLocalBinds))
                       )
-                   ] undefined)
+                   ] undefined))
 ifToCaseTransform x                          = x
 
                            
