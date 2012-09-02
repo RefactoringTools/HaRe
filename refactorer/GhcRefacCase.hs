@@ -37,7 +37,7 @@ ifToCase args
                       writeRefactoredFiles False [refactoredMod]
          _      -> error "You haven't selected an if-then-else  expression!"
     -- where 
-{-
+
 ifToCase' ::
   forall t (m :: * -> *).
   (MonadPlus m
@@ -46,48 +46,54 @@ ifToCase' ::
   =>
   GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.RdrName)
   -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> m GHC.ParsedSource
--}
 -- ifToCase' exp (_, _, mod)= applyTP (once_buTP (failTP `adhocTP` inExp)) mod
 ifToCase' exp (_, _, mod) = 
-
-   somewhereStaged SYB.Parser (SYB.mkM inExp) mod
-       -- where
-inExp :: (MonadPlus m,
-          MonadState (([PosToken], Bool), (Int, t10)) m ) => (GHC.Located (GHC.HsExpr GHC.RdrName)) -> m (GHC.Located (GHC.HsExpr GHC.RdrName)) 
+   
+   -- somewhereStaged SYB.Parser (SYB.mkM inExp) mod
+   -- SYB.everywhereM (SYB.mkM inExp) mod
+   everywhereMStaged SYB.Parser (SYB.mkM inExp) mod
+       where
+         inExp :: (MonadPlus m,
+                   MonadState (([PosToken], Bool), (Int, t10)) m ) => (GHC.Located (GHC.HsExpr GHC.RdrName)) -> m (GHC.Located (GHC.HsExpr GHC.RdrName))
+                 
          -- inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _)) =  (error "ifToCase' doing transform")
-inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
-           -- | sameOccurrence exp exp1       
+         inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
+           | sameOccurrence exp exp1       
            = let newExp = ifToCaseTransform exp1
              in update exp1 newExp exp1
-             -- in mzero    
-inExp _ = mzero
+
+         inExp e = return e
+         -- inExp _ = mzero
          
+         -- inExp _ = error "ifToCase'" -- ++AZ++
+
 
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName) -> GHC.Located (GHC.HsExpr GHC.RdrName)
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3))
-  = GHC.L l (GHC.HsCase e1 (GHC.MatchGroup
+  = GHC.L l (GHC.HsCase e1
+             (GHC.MatchGroup
+              [
+                (GHC.noLoc $ GHC.Match
+                 [
+                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "True") (GHC.PrefixCon [])
+                 ]
+                 Nothing
+                 ((GHC.GRHSs
                    [
-                     (GHC.noLoc $ GHC.Match
-                      [
-                        GHC.noLoc $ GHC.ConPatIn (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "True") (GHC.PrefixCon [])
-                      ]
-                      Nothing
-                       ((GHC.GRHSs
-                         [
-                           GHC.noLoc $ GHC.GRHS [] e2
-                         ] GHC.EmptyLocalBinds))
-                      )
-                   , (GHC.noLoc $ GHC.Match
-                      [
-                        GHC.noLoc $ GHC.ConPatIn (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "False") (GHC.PrefixCon [])
-                      ]
-                      Nothing
-                       ((GHC.GRHSs
-                         [
-                           GHC.noLoc $ GHC.GRHS [] e3
-                         ] GHC.EmptyLocalBinds))
-                      )
-                   ] undefined))
+                     GHC.noLoc $ GHC.GRHS [] e2
+                   ] GHC.EmptyLocalBinds))
+                )
+              , (GHC.noLoc $ GHC.Match
+                 [
+                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "False") (GHC.PrefixCon [])
+                 ]
+                 Nothing
+                 ((GHC.GRHSs
+                   [
+                     GHC.noLoc $ GHC.GRHS [] e3
+                   ] GHC.EmptyLocalBinds))
+                )
+              ] undefined))
 ifToCaseTransform x                          = x
 
                            

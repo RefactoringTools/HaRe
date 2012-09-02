@@ -322,8 +322,9 @@ locToExp beginPos endPos toks t =
 --          manage transformed stuff too though.
     
 -- | Return True if syntax phrases t1 and t2 refer to the same one.
-sameOccurrence:: (GHC.Located t) -> (GHC.Located t) -> Bool
+sameOccurrence :: (GHC.Located t) -> (GHC.Located t) -> Bool
 sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
+ -- = error $ "sameOccurrence:" ++ (show l1) ++ "," ++ (show l2) -- ++AZ++ debug
  = l1 == l2
    
 {- original
@@ -391,7 +392,7 @@ getExports (GHC.L _ hsmod) =
 applyRefac ::
   forall a.
   
-  (([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource) -- parsed file, a is the inscopes
+  (([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource) -- parsed file, a is the inscopes, still TBD
    -> StateT
         (([PosToken], Bool), (Int, Int)) IO GHC.ParsedSource) -- refactoring function
   -> Maybe
@@ -451,17 +452,19 @@ update ::
   -> m (GHC.GenLocated GHC.SrcSpan t) -- ^ The result.
 -- update oldExp newExp contextExp
 update oldExp newExp  t
+   -- = error "update: updated tokens" -- ++AZ++ debug
    -- = applyTP (once_tdTP (failTP `adhocTP` inExp)) t
-   = somewhereStaged SYB.Parser (SYB.mkM inExp) t
+   -- = somewhereStaged SYB.Parser (SYB.mkM inExp) t -- TODO: need monadic version?
+   = everywhereMStaged SYB.Parser (SYB.mkM inExp) t 
    where
     inExp e
-     -- ++AZ++ temporary | e == oldExp && srcLocs e == srcLocs oldExp
+      | sameOccurrence e oldExp       
        = do (newExp', _) <- updateToks oldExp newExp prettyprint
+            -- error "update: updated tokens" -- ++AZ++ debug
             return newExp'
-    -- ++AZ++ temp inExp e = mzero
+      | otherwise = return e      
 
     prettyprint x = GHC.showSDoc $ GHC.ppr x
-
 
 -- ---------------------------------------------------------------------
        

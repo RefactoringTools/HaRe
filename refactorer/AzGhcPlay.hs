@@ -37,6 +37,7 @@ import GHC.Paths ( libdir )
 import GhcRefacLocUtils
 import GhcRefacUtils
 import qualified GhcRefacCase as GhcRefacCase
+import GhcUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
 targetFile = "./" ++ targetMod ++ ".hs"
@@ -126,7 +127,7 @@ getStuff =
         let p' = processParsedMod ifToCase p
         -- GHC.liftIO (putStrLn . showParsedModule $ p)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
-        -- GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
+        GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
 
         let ps  = GHC.pm_parsed_source p
 
@@ -139,8 +140,8 @@ getStuff =
 
         -- GHC.liftIO (putStrLn $ "locToExp=" ++ (showPpr $ locToExp (4,12) (4,16) rts ps))
         -- GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,12) (4,16) rts ps))
-        GHC.liftIO (putStrLn $ "locToExp1=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,43) rts ps))
-        GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
+        -- GHC.liftIO (putStrLn $ "locToExp1=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,43) rts ps))
+        -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
         return ()
 
 tokenLocs toks = map (\(L l _, s) -> (l,s)) toks
@@ -216,6 +217,7 @@ processParsedMod f pm = pm { GHC.pm_parsed_source = ps' }
    
    ps' :: GHC.ParsedSource
    ps' = SYB.everywhere (SYB.mkT f) ps -- exception
+   -- ps' = everywhereStaged SYB.Parser (SYB.mkT f) ps 
 
 
 shortenLists :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
