@@ -137,6 +137,9 @@ data Token
   deriving (Show,Eq,Ord)
 -}
 
+
+showToks toks = show $ map (\t@(_,s) -> ((tokenRow t,tokenCol t),s)) toks
+
 --A flag used to indicate whether the token stream has been modified or not.
 unmodified = False
 modified   = True
@@ -468,9 +471,11 @@ splitToks (startPos, endPos) toks
        else let startPos'= if startPos==simpPos0 then endPos else startPos
                 endPos'  = if endPos == simpPos0 then startPos else endPos
                 (toks1, toks2) = break (\t -> tokenPos t == startPos') toks
-                (toks21, toks22) = break (\t -> tokenPos t== endPos') toks2
+                -- (toks21, toks22) = break (\t -> tokenPos t== endPos') toks2
+                (toks21, toks22) = break (\t -> tokenPos t >= endPos') toks2
                 -- Should add error message for empty list?
-            in  if length toks22==0 then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
+            -- in  if length toks22==0 then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
+            in  if length toks22==0 then error $ "Sorry, HaRe failed to finish this refactoring. >" ++ (show (startPos, endPos,startPos',endPos')) ++ "," ++ (showToks toks1) ++ "," ++ (showToks toks2)
                   else (toks1, toks21++[ghead "splitToks" toks22], gtail "splitToks" toks22)
 
 {-
