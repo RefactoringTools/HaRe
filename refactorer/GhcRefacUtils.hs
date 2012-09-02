@@ -382,6 +382,23 @@ getExports (GHC.L _ hsmod) =
 
 -- ---------------------------------------------------------------------
 
+applyRefac ::
+  forall a t t1.
+  (Num t1, Num t)
+  =>
+  (([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
+   -> StateT
+        (([(GHC.Located GHC.Token, String)], Bool), (t, t1)) IO GHC.ParsedSource) -- refactoring function
+  -> Maybe
+       ([a],
+        [GHC.LIE GHC.RdrName],
+        GHC.ParsedSource,
+        [(GHC.Located GHC.Token, String)]) -- Parsed file, if present
+  -> String -- File name
+  -> IO ((String, Bool), -- Filename, modified flag
+         ([(GHC.Located GHC.Token, String)], GHC.ParsedSource)) -- rich token stream, new AST
+
+
 applyRefac refac Nothing fileName
   = do (inscps, exps, mod, toks)<-parseSourceFile fileName
        (mod',((toks',m),_))<-runStateT (refac (inscps, exps, mod)) ((toks,False), (-1000,0))
@@ -449,6 +466,10 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
     -- The AST is not used.
     -- isSubRefactor is used only for history (undo).
   = do let modifiedFiles = filter (\((f,m),_) -> m == modified) files
+
+       AbstractIO.putStrLn $ "writeRefactoredFiles:files=[" ++ (show $ map (\((f,_),(ts,_)) -> (f,GHC.showRichTokenStream ts)) files) ++ "]" -- ++AZ++ debug
+       
+           
        -- TODO: restore the history function    
        -- ++AZ++ PFE0.addToHistory isSubRefactor (map (fst.fst) modifiedFiles)
        sequence_ (map modifyFile modifiedFiles)
@@ -458,7 +479,8 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
        modifyFile ((fileName,_),(ts,_)) = do
            -- let source = concatMap (snd.snd) ts
            let source = GHC.showRichTokenStream ts
-               
+
+           AbstractIO.putStrLn $ "writeRefactoredFiles:" ++ fileName ++ ":[" ++ source ++ "]" -- ++AZ++ debug
            -- (Julien personnal remark) seq forces the evaluation of
            -- its first argument and returns its second argument. It
            -- is unclear for me why (length source) evaluation is

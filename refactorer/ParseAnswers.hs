@@ -71,7 +71,8 @@ parseAnswer ((x,y,z):xs)
  = ( z , xs)
 
 
-force  :: Eq a => a -> aforce x = if x==x then x else x
+force  :: Eq a => a -> a
+force x = if x==x then x else x
 {-
 parseAnswer :: String -> (String, String)
 parseAnswer [] = ([], [])

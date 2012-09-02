@@ -15,14 +15,16 @@ import qualified OccName               as GHC
  
 import GHC.Paths ( libdir )
 import Control.Monad
+import Control.Monad.State
 import GhcUtils 
-
+import GhcRefacTypeSyn
+import Data.Data
 -----------------
 
 -- import GhcRefacLocUtils
 import GhcRefacUtils 
 
-
+ifToCase :: [String] -> IO () -- For now
 ifToCase args  
   = do let fileName = args!!0              
            beginPos = (read (args!!1), read (args!!2))::(Int,Int)
@@ -31,13 +33,22 @@ ifToCase args
        let exp = locToExp beginPos endPos toks mod
        case exp of
          (GHC.L _ (GHC.HsIf _ _ _ _))
-                -> do refactoredMod <- applyRefac (ifToCase exp) (Just modInfo) fileName
+                -> do refactoredMod <- applyRefac (ifToCase' exp) (Just modInfo) fileName
                       writeRefactoredFiles False [refactoredMod]
-         _   -> error "You haven't selected an if-then-else  expression!"
-    where 
+         _      -> error "You haven't selected an if-then-else  expression!"
+    -- where 
 
-     -- ifToCase exp (_, _, mod)= applyTP (once_buTP (failTP `adhocTP` inExp)) mod
-     ifToCase exp (_, _, mod)= somewhereStaged SYB.Parser (SYB.mkM inExp) mod
+
+ifToCase' ::
+  forall t (m :: * -> *).
+  (MonadPlus m
+  , MonadState (([PosToken], Bool), (Int, Int)) m
+  )
+  =>
+  GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.RdrName)
+  -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> m GHC.ParsedSource
+-- ifToCase' exp (_, _, mod)= applyTP (once_buTP (failTP `adhocTP` inExp)) mod
+ifToCase' exp (_, _, mod)= somewhereStaged SYB.Parser (SYB.mkM inExp) mod
        where 
          inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
            | sameOccurrence exp exp1       
