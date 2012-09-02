@@ -501,7 +501,9 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            -- its first argument and returns its second argument. It
            -- is unclear for me why (length source) evaluation is
            -- forced.
-           seq (length source) (AbstractIO.writeFile fileName source) 
+           -- seq (length source) (AbstractIO.writeFile fileName source) -- ++AZ++ TODO: restore this when ready for production
+           seq (length source) (AbstractIO.writeFile (fileName ++ ".refactored") source)
+           
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not
            -- have literate Haskell files)

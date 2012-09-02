@@ -337,6 +337,7 @@ newLnToken   = (Whitespace, (pos0,"\n"))
 
 -}
 
+tokenise :: forall t. t -> Int -> Bool -> [Char] -> [PosToken]
 tokenise  startPos _ _ [] = []
 tokenise  startPos colOffset withFirstLineIndent str
   = let str' = case lines str of
@@ -355,6 +356,7 @@ tokenise  startPos colOffset withFirstLineIndent str
      addIndent ln = if withFirstLineIndent
                       then replicate colOffset ' '++ ln
                       else ln
+                           
      {- ++AZ++ removed for now. Needed?                      
      --preprocssing the token stream to expand the white spaces to individual tokens.
      expandNewLnTokens::[PosToken]->[PosToken]
@@ -559,6 +561,7 @@ addFormalParams t newParams
 
 replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
 replaceToks toks startPos endPos newToks
+   -- = error $ "replaceToks: newToks=" ++ (showToks newToks) -- ++AZ++
    = if length toks22 == 0
         then toks1 ++ newToks
         else let {-(pos::(Int,Int)) = tokenPos (ghead "replaceToks" toks22)-} -- JULIEN
@@ -567,7 +570,8 @@ replaceToks toks startPos endPos newToks
              in  toks1++ (newToks++ adjustLayout toks22 oldOffset newOffset)
    where
       (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
-
+   
+     
 {-
 {- Delete an syntax phrase from the token stream, this function (instead of the following one)
    should be the interface function for deleting tokens.
