@@ -350,8 +350,8 @@ tokenise  startPos colOffset withFirstLineIndent str
     -- in expandNewLnTokens $ GHC.addSourceToTokens startPos
         
         -- toks = liftIO $ lexStringToRichTokens startPos str''
-        toks = lexStringToRichTokens startPos str''
-        -- toks = []
+        -- toks = lexStringToRichTokens startPos str''
+        toks = []
     in toks
     -- in error $ "tokenise:" ++ (showToks $ head toks)
    where
@@ -527,6 +527,11 @@ insertComments ((startPosl, startPosr), endPos) toks com
 ---  - } - } 
 -}
 
+updateToks ::
+  forall (m :: * -> *).
+  (MonadState (([PosToken], Bool), (Int, Int)) m) =>
+  GHC.ParsedSource
+  -> GHC.ParsedSource -> (GHC.ParsedSource -> [Char]) -> m (GHC.ParsedSource, [PosToken])
 updateToks oldAST newAST printFun
    = do ((toks,_), (v1, v2)) <- get
         -- error "in updateToks" -- ++AZ++
