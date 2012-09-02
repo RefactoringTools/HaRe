@@ -337,7 +337,7 @@ newLnToken   = (Whitespace, (pos0,"\n"))
 
 -}
 
-tokenise :: forall t. t -> Int -> Bool -> [Char] -> [PosToken]
+tokenise :: GHC.RealSrcLoc -> Int -> Bool -> [Char] -> [PosToken]
 tokenise  startPos _ _ [] = []
 tokenise  startPos colOffset withFirstLineIndent str
   = let str' = case lines str of
@@ -349,9 +349,11 @@ tokenise  startPos colOffset withFirstLineIndent str
     -- in expandNewLnTokens $ lexerPass0' startPos str''
     -- in expandNewLnTokens $ GHC.addSourceToTokens startPos
         
-        -- ++AZ++ temporary toks = liftIO $ lexStringToRichTokens startPos str''
-        toks = []
+        -- toks = liftIO $ lexStringToRichTokens startPos str''
+        toks = lexStringToRichTokens startPos str''
+        -- toks = []
     in toks
+    -- in error $ "tokenise:" ++ (showToks $ head toks)
    where
      addIndent ln = if withFirstLineIndent
                       then replicate colOffset ' '++ ln
@@ -374,7 +376,8 @@ tokenise  startPos colOffset withFirstLineIndent str
 
 -- ---------------------------------------------------------------------
 
-lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [GHC.Located GHC.Token]
+-- lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [GHC.Located GHC.Token]
+lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
 lexStringToRichTokens startLoc str = do
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
     GHC.runGhc (Just GHC.libdir) $ do
@@ -386,8 +389,11 @@ lexStringToRichTokens startLoc str = do
       -- lexTokenStream :: StringBuffer -> RealSrcLoc -> DynFlags -> ParseResult [Located Token]
       let res = GHC.lexTokenStream (GHC.stringToStringBuffer str) startLoc dflags'
       case res of
-        GHC.POk _ toks -> return toks 
+        -- GHC.POk _ toks -> return toks 
+        GHC.POk _ toks -> return $ GHC.addSourceToTokens startLoc (GHC.stringToStringBuffer str) toks 
         GHC.PFailed srcSpan msg -> error $ "lexStringToRichTokens:" -- ++ (show $ GHC.ppr msg)
+
+        -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
 
 -- ---------------------------------------------------------------------
         
@@ -527,7 +533,8 @@ updateToks oldAST newAST printFun
         let (startPos, endPos) = getStartEndLoc toks oldAST
             (toks1, _, _)      = splitToks (startPos, endPos) toks
             offset             = lengthOfLastLine toks1
-            newToks = tokenise (Pos 0 v1 1) offset False $ printFun newAST  --check the startPos
+            -- newToks = tokenise (Pos 0 v1 1) offset False $ printFun newAST  --check the startPos
+            newToks = tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
             toks' = replaceToks toks startPos endPos newToks
         if length newToks == 0
           then put ((toks', modified), (v1,v2))
