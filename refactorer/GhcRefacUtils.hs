@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module GhcRefacUtils
        (
          locToExp
@@ -19,10 +20,14 @@ import MUtils (( # ))
 import Control.Monad.State
 import Unlit
 import qualified AbstractIO as AbstractIO
-import qualified PFE0 as PFE0
+-- import qualified PFE0 as PFE0
 import qualified MT(lift)
-import EditorCommands
+--import EditorCommands
 
+import Data.List
+
+
+import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
 import qualified DynFlags      as GHC
 import qualified FastString    as GHC
@@ -34,10 +39,209 @@ import qualified MonadUtils    as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
+import qualified TcEvidence    as GHC
+import qualified TcType        as GHC
+import qualified TypeRep       as GHC
+import qualified Var           as GHC
+import qualified Coercion      as GHC
+import qualified ForeignCall   as GHC
+import qualified InstEnv       as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+-- ---------------------------------------------------------------------
+
+
+-- deriving instance Eq (GHC.Bag GHC.EvBind) => Eq (GHC.Bag GHC.EvBind)
+-- deriving instance Eq (GHC.LHsBindsLR GHC.Id GHC.Id) => Eq (GHC.LHsBindsLR GHC.Id GHC.Id)
+-- deriving instance Eq GHC.KindOrType => Eq GHC.KindOrType
+-- deriving instance Eq GHC.PostTcType => Eq GHC.PostTcType
+deriving instance Eq (GHC.ArithSeqInfo GHC.Id) => Eq (GHC.ArithSeqInfo GHC.Id)
+deriving instance Eq (GHC.ArithSeqInfo GHC.RdrName) => Eq (GHC.ArithSeqInfo GHC.RdrName)
+deriving instance Eq (GHC.ConDeclField GHC.Var) => Eq (GHC.ConDeclField GHC.Var)
+deriving instance Eq (GHC.FixitySig GHC.Name) => Eq (GHC.FixitySig GHC.Name)
+deriving instance Eq (GHC.FixitySig GHC.Var) => Eq (GHC.FixitySig GHC.Var)
+deriving instance Eq (GHC.GRHSs GHC.Var) => Eq (GHC.GRHSs GHC.Var)
+deriving instance Eq (GHC.HsBracket GHC.Id) => Eq (GHC.HsBracket GHC.Id)
+deriving instance Eq (GHC.HsBracket GHC.Name) => Eq (GHC.HsBracket GHC.Name)
+deriving instance Eq (GHC.HsBracket GHC.RdrName) => Eq (GHC.HsBracket GHC.RdrName)
+deriving instance Eq (GHC.HsCmdTop GHC.RdrName) => Eq (GHC.HsCmdTop GHC.RdrName)
+deriving instance Eq (GHC.HsCmdTop GHC.Var) => Eq (GHC.HsCmdTop GHC.Var)
+deriving instance Eq (GHC.HsConPatDetails GHC.Var) => Eq (GHC.HsConPatDetails GHC.Var)
+deriving instance Eq (GHC.HsExpr GHC.RdrName) => Eq (GHC.HsExpr GHC.RdrName)
+deriving instance Eq (GHC.HsIPBinds GHC.Id) => Eq (GHC.HsIPBinds GHC.Id)
+deriving instance Eq (GHC.HsLocalBinds GHC.Id) => Eq (GHC.HsLocalBinds GHC.Id)
+deriving instance Eq (GHC.HsLocalBinds GHC.RdrName) => Eq (GHC.HsLocalBinds GHC.RdrName)
+deriving instance Eq (GHC.HsQuasiQuote GHC.RdrName) => Eq (GHC.HsQuasiQuote GHC.RdrName)
+deriving instance Eq (GHC.HsQuasiQuote GHC.Var) => Eq (GHC.HsQuasiQuote GHC.Var)
+deriving instance Eq (GHC.HsRecFields GHC.Var (GHC.LPat GHC.Var)) => Eq (GHC.HsRecFields GHC.Var (GHC.LPat GHC.Var))
+deriving instance Eq (GHC.HsRecordBinds GHC.Id) => Eq (GHC.HsRecordBinds GHC.Id)
+deriving instance Eq (GHC.HsRecordBinds GHC.RdrName) => Eq (GHC.HsRecordBinds GHC.RdrName)
+deriving instance Eq (GHC.HsSplice GHC.RdrName) => Eq (GHC.HsSplice GHC.RdrName)
+deriving instance Eq (GHC.HsSplice GHC.Var) => Eq (GHC.HsSplice GHC.Var)
+deriving instance Eq (GHC.HsStmtContext GHC.Name) => Eq (GHC.HsStmtContext GHC.Name)
+deriving instance Eq (GHC.HsTupArg GHC.RdrName) => Eq (GHC.HsTupArg GHC.RdrName)
+deriving instance Eq (GHC.HsTyVarBndr GHC.Var) => Eq (GHC.HsTyVarBndr GHC.Var)
+deriving instance Eq (GHC.HsType GHC.Name) => Eq (GHC.HsType GHC.Name)
+deriving instance Eq (GHC.HsType GHC.RdrName) => Eq (GHC.HsType GHC.RdrName)
+deriving instance Eq (GHC.HsType GHC.Var) => Eq (GHC.HsType GHC.Var)
+deriving instance Eq (GHC.HsValBindsLR GHC.Id GHC.Id) => Eq (GHC.HsValBindsLR GHC.Id GHC.Id)
+deriving instance Eq (GHC.IPBind GHC.Var) => Eq (GHC.IPBind GHC.Var)
+deriving instance Eq (GHC.Match GHC.Var) => Eq (GHC.Match GHC.Var)
+deriving instance Eq (GHC.MatchGroup GHC.Id) => Eq (GHC.MatchGroup GHC.Id)
+deriving instance Eq (GHC.MatchGroup GHC.RdrName) => Eq (GHC.MatchGroup GHC.RdrName)
+deriving instance Eq (GHC.Pat GHC.RdrName) => Eq (GHC.Pat GHC.RdrName)
+deriving instance Eq (GHC.Pat GHC.Var) => Eq (GHC.Pat GHC.Var)
+deriving instance Eq (GHC.Sig GHC.Name) => Eq (GHC.Sig GHC.Name)
+deriving instance Eq (GHC.Sig GHC.Var) => Eq (GHC.Sig GHC.Var)
+deriving instance Eq (GHC.StmtLR GHC.RdrName GHC.RdrName) => Eq (GHC.StmtLR GHC.RdrName GHC.RdrName)
+deriving instance Eq (GHC.StmtLR GHC.Var GHC.Var) => Eq (GHC.StmtLR GHC.Var GHC.Var)
+deriving instance Eq GHC.EvBindsVar => Eq GHC.EvBindsVar
+deriving instance Eq GHC.EvTerm => Eq GHC.EvTerm
+deriving instance Eq GHC.HsArrAppType => Eq GHC.HsArrAppType
+deriving instance Eq GHC.HsExplicitFlag => Eq GHC.HsExplicitFlag
+deriving instance Eq GHC.HsTupleSort => Eq GHC.HsTupleSort
+deriving instance Eq GHC.HsTyWrapper => Eq GHC.HsTyWrapper
+deriving instance Eq GHC.HsWrapper => Eq GHC.HsWrapper
+deriving instance Eq GHC.PostTcExpr => Eq GHC.PostTcExpr
+deriving instance Eq GHC.TcCoercion => Eq GHC.TcCoercion 
+deriving instance Eq GHC.TcEvBinds => Eq GHC.TcEvBinds
+deriving instance Eq GHC.TcType => Eq GHC.TcType
+deriving instance Eq GHC.TransForm => Eq GHC.TransForm
+deriving instance Eq (GHC.HsTupArg GHC.Var) => Eq (GHC.HsTupArg GHC.Var)
+deriving instance Eq (GHC.HsConPatDetails GHC.RdrName) => Eq (GHC.HsConPatDetails GHC.RdrName)
+deriving instance Eq (GHC.HsRecFields GHC.RdrName (GHC.LPat GHC.RdrName)) => Eq (GHC.HsRecFields GHC.RdrName (GHC.LPat GHC.RdrName))
+
+deriving instance Eq(GHC.HsRecField GHC.RdrName (GHC.GenLocated GHC.SrcSpan (GHC.Pat GHC.RdrName))) => Eq (GHC.HsRecField GHC.RdrName (GHC.GenLocated GHC.SrcSpan (GHC.Pat GHC.RdrName)))
+
+deriving instance Eq (GHC.Match GHC.RdrName) => Eq (GHC.Match GHC.RdrName)
+deriving instance Eq (GHC.GRHSs GHC.RdrName) => Eq (GHC.GRHSs GHC.RdrName)
+deriving instance Eq (GHC.GRHS GHC.RdrName) => Eq (GHC.GRHS GHC.RdrName)
+deriving instance Eq (GHC.ConDeclField GHC.RdrName) => Eq (GHC.ConDeclField GHC.RdrName)
+deriving instance Eq (GHC.HsTyVarBndr GHC.RdrName) => Eq (GHC.HsTyVarBndr GHC.RdrName)
+deriving instance Eq (GHC.ConDeclField GHC.Name) => Eq (GHC.ConDeclField GHC.Name)
+deriving instance Eq (GHC.HsSplice GHC.Name) => Eq (GHC.HsSplice GHC.Name)
+deriving instance Eq (GHC.HsQuasiQuote GHC.Name) => Eq (GHC.HsQuasiQuote GHC.Name)
+deriving instance Eq (GHC.HsExpr GHC.Name) => Eq (GHC.HsExpr GHC.Name)
+deriving instance Eq (GHC.HsTyVarBndr GHC.Name) => Eq (GHC.HsTyVarBndr GHC.Name)
+
+deriving instance Eq (GHC.HsCmdTop GHC.Name) => Eq (GHC.HsCmdTop GHC.Name)
+deriving instance Eq (GHC.Pat GHC.Name) => Eq (GHC.Pat GHC.Name)
+deriving instance Eq (GHC.ArithSeqInfo GHC.Name) => Eq (GHC.ArithSeqInfo GHC.Name)
+deriving instance Eq (GHC.HsRecordBinds GHC.Name) => Eq (GHC.HsRecordBinds GHC.Name)
+deriving instance Eq (GHC.StmtLR GHC.Name GHC.Name) => Eq (GHC.StmtLR GHC.Name GHC.Name)
+deriving instance Eq (GHC.HsLocalBinds GHC.Name) => Eq (GHC.HsLocalBinds GHC.Name)
+deriving instance Eq (GHC.HsTupArg GHC.Name) => Eq (GHC.HsTupArg GHC.Name)
+deriving instance Eq (GHC.MatchGroup GHC.Name) => Eq (GHC.MatchGroup GHC.Name)
+
+deriving instance Eq (GHC.Match GHC.Name) => Eq (GHC.Match GHC.Name)
+deriving instance Eq (GHC.HsIPBinds GHC.Name) => Eq (GHC.HsIPBinds GHC.Name)
+deriving instance Eq (GHC.HsValBindsLR GHC.Name GHC.Name) => Eq (GHC.HsValBindsLR GHC.Name GHC.Name)
+deriving instance Eq (GHC.IPBind GHC.Name) => Eq (GHC.IPBind GHC.Name)
+deriving instance Eq (GHC.GRHSs GHC.Name) => Eq (GHC.GRHSs GHC.Name)
+
+deriving instance Eq (GHC.HsRecField GHC.Name (GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.Name))) => Eq (GHC.HsRecField GHC.Name (GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.Name)))
+
+deriving instance Eq (GHC.GRHS GHC.Name) => Eq (GHC.GRHS GHC.Name)
+deriving instance Eq (GHC.HsConPatDetails GHC.Name) => Eq (GHC.HsConPatDetails GHC.Name)
+deriving instance Eq (GHC.HsRecFields GHC.Name (GHC.LPat GHC.Name)) => Eq (GHC.HsRecFields GHC.Name (GHC.LPat GHC.Name))
+deriving instance Eq (GHC.HsRecField GHC.Name (GHC.GenLocated GHC.SrcSpan (GHC.Pat GHC.Name))) => Eq (GHC.HsRecField GHC.Name (GHC.GenLocated GHC.SrcSpan (GHC.Pat GHC.Name)))
+deriving instance Eq (GHC.HsMatchContext GHC.Name) => Eq (GHC.HsMatchContext GHC.Name)
+deriving instance Eq (GHC.HsRecField GHC.RdrName (GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.RdrName))) => Eq (GHC.HsRecField GHC.RdrName (GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.RdrName)))
+deriving instance Eq (GHC.HsRecField GHC.Var (GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.Var))) => Eq (GHC.HsRecField GHC.Var (GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.Var)))
+deriving instance Eq (GHC.HsRecField GHC.Var (GHC.GenLocated GHC.SrcSpan (GHC.Pat GHC.Var))) => Eq (GHC.HsRecField GHC.Var (GHC.GenLocated GHC.SrcSpan (GHC.Pat GHC.Var)))
+
+deriving instance Eq (GHC.HsIPBinds GHC.RdrName) => Eq (GHC.HsIPBinds GHC.RdrName)
+deriving instance Eq (GHC.HsValBindsLR GHC.RdrName GHC.RdrName) => Eq (GHC.HsValBindsLR GHC.RdrName GHC.RdrName)
+deriving instance Eq (GHC.Sig GHC.RdrName) => Eq (GHC.Sig GHC.RdrName)
+deriving instance Eq (GHC.IPBind GHC.RdrName) => Eq (GHC.IPBind GHC.RdrName)
+deriving instance Eq (GHC.HsGroup GHC.RdrName) => Eq (GHC.HsGroup GHC.RdrName)
+deriving instance Eq (GHC.HsDecl GHC.RdrName) => Eq (GHC.HsDecl GHC.RdrName)
+
+deriving instance Eq GHC.DocDecl => Eq GHC.DocDecl
+deriving instance Eq (GHC.SpliceDecl GHC.RdrName) => Eq (GHC.SpliceDecl GHC.RdrName)
+deriving instance Eq (GHC.VectDecl GHC.RdrName) => Eq (GHC.VectDecl GHC.RdrName)
+deriving instance Eq (GHC.RuleDecl GHC.RdrName) => Eq (GHC.RuleDecl GHC.RdrName)
+deriving instance Eq (GHC.AnnDecl GHC.RdrName) => Eq (GHC.AnnDecl GHC.RdrName)
+deriving instance Eq (GHC.WarnDecl GHC.RdrName) => Eq (GHC.WarnDecl GHC.RdrName)
+deriving instance Eq (GHC.ForeignDecl GHC.RdrName) => Eq (GHC.ForeignDecl GHC.RdrName)
+deriving instance Eq (GHC.DefaultDecl GHC.RdrName) => Eq (GHC.DefaultDecl GHC.RdrName)
+deriving instance Eq (GHC.HsBind GHC.RdrName) => Eq (GHC.HsBind GHC.RdrName)
+deriving instance Eq (GHC.DerivDecl GHC.RdrName) => Eq (GHC.DerivDecl GHC.RdrName)
+deriving instance Eq (GHC.InstDecl GHC.RdrName) => Eq (GHC.InstDecl GHC.RdrName)
+deriving instance Eq (GHC.TyClDecl GHC.RdrName) => Eq (GHC.TyClDecl GHC.RdrName)
+-- deriving instance Eq (GHC.LHsBinds GHC.RdrName) => Eq (GHC.LHsBinds GHC.RdrName)
+deriving instance Eq (GHC.ConDecl GHC.RdrName) => Eq (GHC.ConDecl GHC.RdrName)
+deriving instance Eq GHC.FamilyFlavour => Eq GHC.FamilyFlavour
+deriving instance Eq (GHC.ResType GHC.RdrName) => Eq (GHC.ResType GHC.RdrName)
+deriving instance Eq (GHC.HsConDeclDetails GHC.RdrName) => Eq (GHC.HsConDeclDetails GHC.RdrName)
+
+deriving instance Eq (GHC.ABExport GHC.RdrName) => Eq (GHC.ABExport GHC.RdrName)
+deriving instance Eq GHC.ForeignExport => Eq GHC.ForeignExport
+deriving instance Eq GHC.ForeignImport => Eq GHC.ForeignImport
+deriving instance Eq GHC.CImportSpec => Eq GHC.CImportSpec
+deriving instance Eq GHC.CExportSpec => Eq GHC.CExportSpec
+deriving instance Eq GHC.TcSpecPrags => Eq GHC.TcSpecPrags
+deriving instance Eq GHC.Coercion => Eq GHC.Coercion
+deriving instance Eq (GHC.AnnProvenance GHC.RdrName) => Eq (GHC.AnnProvenance GHC.RdrName)
+deriving instance Eq (GHC.RuleBndr GHC.RdrName) => Eq (GHC.RuleBndr GHC.RdrName)
+-- deriving instance Eq GHC.Instance => Eq GHC.Instance
+deriving instance Eq (GHC.FixitySig GHC.RdrName) => Eq (GHC.FixitySig GHC.RdrName)
+deriving instance Eq GHC.TcSpecPrag => Eq GHC.TcSpecPrag
+deriving instance Eq (GHC.HsGroup GHC.Name) => Eq (GHC.HsGroup GHC.Name)
+deriving instance Eq (GHC.HsGroup GHC.Id) => Eq (GHC.HsGroup GHC.Id)
+deriving instance Eq (GHC.HsDecl GHC.Var) => Eq (GHC.HsDecl GHC.Var)
+deriving instance Eq (GHC.HsDecl GHC.Name) => Eq (GHC.HsDecl GHC.Name)
+
+deriving instance Eq (GHC.SpliceDecl GHC.Name) => Eq (GHC.SpliceDecl GHC.Name)
+deriving instance Eq (GHC.VectDecl GHC.Name) => Eq (GHC.VectDecl GHC.Name)
+deriving instance Eq (GHC.RuleDecl GHC.Name) => Eq (GHC.RuleDecl GHC.Name)
+deriving instance Eq (GHC.AnnDecl GHC.Name) => Eq (GHC.AnnDecl GHC.Name)
+deriving instance Eq (GHC.WarnDecl GHC.Name) => Eq (GHC.WarnDecl GHC.Name)
+deriving instance Eq (GHC.ForeignDecl GHC.Name) => Eq (GHC.ForeignDecl GHC.Name)
+deriving instance Eq (GHC.DefaultDecl GHC.Name) => Eq (GHC.DefaultDecl GHC.Name)
+deriving instance Eq (GHC.HsBind GHC.Name) => Eq (GHC.HsBind GHC.Name)
+deriving instance Eq (GHC.DerivDecl GHC.Name) => Eq (GHC.DerivDecl GHC.Name)
+deriving instance Eq (GHC.InstDecl GHC.Name) => Eq (GHC.InstDecl GHC.Name)
+deriving instance Eq (GHC.TyClDecl GHC.Name) => Eq (GHC.TyClDecl GHC.Name)
+deriving instance Eq (GHC.ConDecl GHC.Name) => Eq (GHC.ConDecl GHC.Name)
+deriving instance Eq (GHC.ResType GHC.Name) => Eq (GHC.ResType GHC.Name)
+deriving instance Eq (GHC.HsConDeclDetails GHC.Name) => Eq (GHC.HsConDeclDetails GHC.Name)
+deriving instance Eq (GHC.ABExport GHC.Name) => Eq (GHC.ABExport GHC.Name)
+deriving instance Eq (GHC.AnnProvenance GHC.Name) => Eq (GHC.AnnProvenance GHC.Name)
+deriving instance Eq (GHC.RuleBndr GHC.Name) => Eq (GHC.RuleBndr GHC.Name)
+
+deriving instance Eq (GHC.SpliceDecl GHC.Var) => Eq (GHC.SpliceDecl GHC.Var)
+deriving instance Eq (GHC.VectDecl GHC.Var) => Eq (GHC.VectDecl GHC.Var)
+deriving instance Eq (GHC.RuleDecl GHC.Var) => Eq (GHC.RuleDecl GHC.Var)
+deriving instance Eq (GHC.AnnDecl GHC.Var) => Eq (GHC.AnnDecl GHC.Var)
+deriving instance Eq (GHC.WarnDecl GHC.Var) => Eq (GHC.WarnDecl GHC.Var)
+deriving instance Eq (GHC.ForeignDecl GHC.Var) => Eq (GHC.ForeignDecl GHC.Var)
+deriving instance Eq (GHC.DefaultDecl GHC.Var) => Eq (GHC.DefaultDecl GHC.Var)
+deriving instance Eq (GHC.HsBind GHC.Var) => Eq (GHC.HsBind GHC.Var)
+deriving instance Eq (GHC.DerivDecl GHC.Var) => Eq (GHC.DerivDecl GHC.Var)
+deriving instance Eq (GHC.InstDecl GHC.Var) => Eq (GHC.InstDecl GHC.Var)
+deriving instance Eq (GHC.TyClDecl GHC.Var) => Eq (GHC.TyClDecl GHC.Var)
+deriving instance Eq (GHC.ConDecl GHC.Var) => Eq (GHC.ConDecl GHC.Var)
+deriving instance Eq (GHC.ABExport GHC.Var) => Eq (GHC.ABExport GHC.Var)
+deriving instance Eq (GHC.AnnProvenance GHC.Var) => Eq (GHC.AnnProvenance GHC.Var)
+deriving instance Eq (GHC.RuleBndr GHC.Var) => Eq (GHC.RuleBndr GHC.Var)
+deriving instance Eq GHC.Instance => Eq GHC.Instance
+deriving instance Eq (GHC.ResType GHC.Var) => Eq (GHC.ResType GHC.Var)
+deriving instance Eq (GHC.HsConDeclDetails GHC.Var) => Eq (GHC.HsConDeclDetails GHC.Var)
+deriving instance Eq (GHC.GRHS GHC.Var) => Eq (GHC.GRHS GHC.Var)
+deriving instance Eq GHC.EvBind => Eq GHC.EvBind
+
+instance (Eq a) => Eq (GHC.Bag a) where
+  -- TODO: will this comparison work? Implicit order is assumed
+  (==) b1 b2 = (GHC.bagToList b1) == (GHC.bagToList b2)
+
+instance (Eq a, Eq b, Eq (GHC.HsBindLR a b)) => Eq (GHC.LHsBindsLR a b) where
+  -- TODO: will this comparison work? Implicit order is assumed
+  (==) b1 b2 = (GHC.bagToList b1) == (GHC.bagToList b2)
+
+-- ---------------------------------------------------------------------
 
 -- Term defined in ../StrategyLib-4.0-beta/models/deriving/TermRep.hs
 
@@ -237,15 +441,16 @@ writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-re
          ->[((String,Bool),([PosToken],HsModuleP))]  --  ^ String: the file name; Bool: True means the file has been modified.[PosToken]: the token stream; HsModuleP: the module AST.
          -> m ()
 -}
-
 -- OLD: type PosToken = (Token, (Pos, String))
 -- GHC: type PosToken = (GHC.Located GHC.Token, String)
 
-writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
+-- writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
+writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], GHC.ParsedSource))])
     -- The AST is not used.
     -- isSubRefactor is used only for history (undo).
   = do let modifiedFiles = filter (\((f,m),_) -> m == modified) files
-       PFE0.addToHistory isSubRefactor (map (fst.fst) modifiedFiles)
+       -- TODO: restore the history function    
+       -- ++AZ++ PFE0.addToHistory isSubRefactor (map (fst.fst) modifiedFiles)
        sequence_ (map modifyFile modifiedFiles)
        -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
 
@@ -262,9 +467,11 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not
            -- have literate Haskell files)
-           
+
+           {- ++AZ++ TODO: restore this
            editorCmds <- PFE0.getEditorCmds
            MT.lift (sendEditorModified editorCmds fileName)
+           -}
            
        writeTestDataForFile ((fileName,_),(ts,mod)) = do
            -- let source=concatMap (snd.snd) ts

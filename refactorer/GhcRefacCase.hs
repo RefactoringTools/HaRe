@@ -22,6 +22,7 @@ import GhcUtils
 -- import GhcRefacLocUtils
 import GhcRefacUtils 
 
+
 ifToCase args  
   = do let fileName = args!!0              
            beginPos = (read (args!!1), read (args!!2))::(Int,Int)
