@@ -37,8 +37,7 @@ ifToCase args
                       writeRefactoredFiles False [refactoredMod]
          _      -> error "You haven't selected an if-then-else  expression!"
     -- where 
-
-
+{-
 ifToCase' ::
   forall t (m :: * -> *).
   (MonadPlus m
@@ -47,17 +46,22 @@ ifToCase' ::
   =>
   GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.RdrName)
   -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> m GHC.ParsedSource
+-}
 -- ifToCase' exp (_, _, mod)= applyTP (once_buTP (failTP `adhocTP` inExp)) mod
-ifToCase' exp (_, _, mod)= somewhereStaged SYB.Parser (SYB.mkM inExp) mod
-       where 
-         inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
-           | sameOccurrence exp exp1       
-           -- = let newExp =Exp (HsCase e [HsAlt loc0 (nameToPat "True") (HsBody e1) [],
-           --                              HsAlt loc0 (nameToPat "False")(HsBody e2) []])
+ifToCase' exp (_, _, mod) = 
+
+   somewhereStaged SYB.Parser (SYB.mkM inExp) mod
+       -- where
+inExp :: (MonadPlus m,
+          MonadState (([PosToken], Bool), (Int, t10)) m ) => (GHC.Located (GHC.HsExpr GHC.RdrName)) -> m (GHC.Located (GHC.HsExpr GHC.RdrName)) 
+         -- inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _)) =  (error "ifToCase' doing transform")
+inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
+           -- | sameOccurrence exp exp1       
            = let newExp = ifToCaseTransform exp1
              in update exp1 newExp exp1
-         inExp _ = mzero
-
+             -- in mzero    
+inExp _ = mzero
+         
 
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName) -> GHC.Located (GHC.HsExpr GHC.RdrName)
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3))

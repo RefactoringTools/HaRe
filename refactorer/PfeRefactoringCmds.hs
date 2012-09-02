@@ -48,7 +48,18 @@ import RefacEvalMon
 import RefacAddEvalMonCache
 import RefacIntroThreshold
 
-
+{-
+pfeRefactoringCmds ::
+  [(String,          -- name of refactoring
+    (CmdLineParser3.P
+       (WithState
+          (PFE0State
+             (SN [Char]) Names.QName ds (PFE2.PFE2Info (SN [Char]), ext))
+          IO
+          ()),
+     String          -- Help text
+    ))]
+-}  
 pfeRefactoringCmds =
   [
    -- menu Names/Scopes

@@ -52,7 +52,7 @@ import qualified GHC.SYB.Utils as SYB
 
 -- ---------------------------------------------------------------------
 
-
+{-
 -- deriving instance Eq (GHC.Bag GHC.EvBind) => Eq (GHC.Bag GHC.EvBind)
 -- deriving instance Eq (GHC.LHsBindsLR GHC.Id GHC.Id) => Eq (GHC.LHsBindsLR GHC.Id GHC.Id)
 -- deriving instance Eq GHC.KindOrType => Eq GHC.KindOrType
@@ -240,6 +240,7 @@ instance (Eq a) => Eq (GHC.Bag a) where
 instance (Eq a, Eq b, Eq (GHC.HsBindLR a b)) => Eq (GHC.LHsBindsLR a b) where
   -- TODO: will this comparison work? Implicit order is assumed
   (==) b1 b2 = (GHC.bagToList b1) == (GHC.bagToList b2)
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -290,7 +291,6 @@ locToExp:: (Term t) => SimpPos            -- ^ The start position.
                   -> SimpPos            -- ^ The end position.
                   -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
                   -> t                  -- ^ The syntax phrase.
-                  -- -> HsExpP             -- ^ The result.
                   -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
 locToExp beginPos endPos toks t =
   case res of
@@ -322,10 +322,16 @@ locToExp beginPos endPos toks t =
 --          manage transformed stuff too though.
     
 -- | Return True if syntax phrases t1 and t2 refer to the same one.
+sameOccurrence:: (GHC.Located t) -> (GHC.Located t) -> Bool
+sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
+ = l1 == l2
+   
+{- original
 sameOccurrence:: (Term t, Eq t) => t -> t -> Bool
 sameOccurrence t1 t2
- = t1==t2 && srcLocs t1 == srcLocs t2
-    
+ = t1 == t2 && srcLocs t1 == srcLocs t2
+-}
+
 -- ---------------------------------------------------------------------
 
 -- |Parse a Haskell source files, and returns a four-element tuple. The first element in the result is the inscope
@@ -338,7 +344,7 @@ parseSourceFile:: ( ) =>FilePath
 
 parseSourceFile ::
   String
-  -> IO ([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource, [(GHC.Located GHC.Token, String)])
+  -> IO ([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource, [PosToken])
 parseSourceFile targetFile =
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
     GHC.runGhc (Just GHC.libdir) $ do
@@ -383,20 +389,19 @@ getExports (GHC.L _ hsmod) =
 -- ---------------------------------------------------------------------
 
 applyRefac ::
-  forall a t t1.
-  (Num t1, Num t)
-  =>
-  (([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
+  forall a.
+  
+  (([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource) -- parsed file, a is the inscopes
    -> StateT
-        (([(GHC.Located GHC.Token, String)], Bool), (t, t1)) IO GHC.ParsedSource) -- refactoring function
+        (([PosToken], Bool), (Int, Int)) IO GHC.ParsedSource) -- refactoring function
   -> Maybe
        ([a],
         [GHC.LIE GHC.RdrName],
         GHC.ParsedSource,
-        [(GHC.Located GHC.Token, String)]) -- Parsed file, if present
+        [PosToken]) -- Parsed file, if present
   -> String -- File name
   -> IO ((String, Bool), -- Filename, modified flag
-         ([(GHC.Located GHC.Token, String)], GHC.ParsedSource)) -- rich token stream, new AST
+         ([PosToken], GHC.ParsedSource)) -- updated rich token stream, new AST
 
 
 applyRefac refac Nothing fileName
@@ -435,19 +440,27 @@ update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([P
         -> t1    -- ^ The contex where the old syntax phrase occurs.
         -> m t1  -- ^ The result.
 -}
+
+update ::
+  forall t (m :: * -> *) t1.
+  (SYB.Data t, MonadPlus m,
+   MonadState (([PosToken], Bool), (Int, t1)) m, GHC.Outputable t) =>
+  GHC.GenLocated GHC.SrcSpan t        -- ^ The syntax phrase to be updated.
+  -> GHC.GenLocated GHC.SrcSpan t     -- ^ The new syntax phrase.
+  -> GHC.GenLocated GHC.SrcSpan t     -- ^ The contex where the old syntax phrase occurs.
+  -> m (GHC.GenLocated GHC.SrcSpan t) -- ^ The result.
 -- update oldExp newExp contextExp
 update oldExp newExp  t
    -- = applyTP (once_tdTP (failTP `adhocTP` inExp)) t
    = somewhereStaged SYB.Parser (SYB.mkM inExp) t
    where
     inExp e
-     | e == oldExp && srcLocs e == srcLocs oldExp
+     -- ++AZ++ temporary | e == oldExp && srcLocs e == srcLocs oldExp
        = do (newExp', _) <- updateToks oldExp newExp prettyprint
             return newExp'
-    inExp e = mzero
+    -- ++AZ++ temp inExp e = mzero
 
     prettyprint x = GHC.showSDoc $ GHC.ppr x
-
 
 
 -- ---------------------------------------------------------------------

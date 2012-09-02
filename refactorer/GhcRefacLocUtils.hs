@@ -516,6 +516,7 @@ insertComments ((startPosl, startPosr), endPos) toks com
 
 updateToks oldAST newAST printFun
    = do ((toks,_), (v1, v2)) <- get
+        error "in updateToks" -- ++AZ++
         let (startPos, endPos) = getStartEndLoc toks oldAST
             (toks1, _, _)      = splitToks (startPos, endPos) toks
             offset             = lengthOfLastLine toks1

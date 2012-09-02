@@ -1,5 +1,10 @@
-{-# OPTIONS -fglasgow-exts #-}
-{-# LANGUAGE MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction #-}
+{- # OPTIONS -fglasgow-exts # -}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE OverlappingInstances      #-}
+{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE FunctionalDependencies    #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+
 module CmdLineParser3(
   P((:--),Token),cmd,(!),(<@),( #@ ),chk,nil,many,arg,kw,opt,flag,named,
   run,usage,parseAll
