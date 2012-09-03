@@ -106,6 +106,7 @@ import StrategyLib
 
 ------------------------
 import Control.Monad.State
+import System.IO.Unsafe
 
 --In the token stream, locations are unique except the default locs.
 
@@ -542,10 +543,12 @@ updateToks oldAST newAST printFun
             (toks1, _, _)      = splitToks (startPos, endPos) toks
             offset             = lengthOfLastLine toks1
             -- newToks = tokenise (Pos 0 v1 1) offset False $ printFun newAST  --check the startPos
-            -- newToks = liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-            newToks = [] -- ++AZ++ debug
-            -- ++AZ++ toks' = replaceToks toks startPos endPos newToks
-            toks' = toks
+            newToks = unsafePerformIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
+            -- newToks = [] -- ++AZ++ debug
+            -- ++AZ++ 
+            toks' = replaceToks toks startPos endPos newToks
+            -- toks' = toks
+	-- error (showToks (newToks))
         if length newToks == 0
           then put ((toks', modified), (v1,v2))
           else put ((toks',modified), (tokenRow (glast "updateToks1" newToks) -10, v2))
@@ -555,8 +558,9 @@ updateToks oldAST newAST printFun
         
         -- ++AZ++ not needed with GHC
         -- addLocInfo (newAST, newToks)
-        error $ "updateToks:newToks=" ++ (showToks $ head newToks)
-        return (newAST, newToks)
+        -- error $ "updateToks:newToks=" ++ (showToks $ toks')
+	
+        return (newAST, newToks) 
         
 {-
 ---REFACTORING: GENERALISE THIS FUNCTION.
