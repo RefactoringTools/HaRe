@@ -415,25 +415,30 @@ newtype Refact a = Refact (StateT RefactState IO a)
 instance MonadIO Refact where
 	liftIO f = Refact (lift f)
 
-{-applyRefac
-	:: (ParseResult a -> Refact GHC.ParsedSource)
-	-> Maybe (ParseResult a, [PosToken])
-	-> FilePath
-	-> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
--}
-
 runRefact :: Refact a -> RefactState -> IO (a, RefactState)
 runRefact (Refact (StateT f)) s = f s
 
 
 instance Monad Refact where
-  -- return :: a -> m a
-
   x >>= y = Refact (StateT (\ st -> do (b, rs') <- runRefact x st
 				       runRefact (y b) rs'))
 
   return thing = Refact (StateT (\ st -> return (thing, st)))
 
+
+instance MonadPlus Refact where
+   mzero = Refact (StateT(\ st -> mzero))
+
+   x `mplus` y =  Refact (StateT ( \ st -> runRefact x st `mplus` runRefact y st))  -- Try one of the refactorings, x or y, with the same state plugged in
+
+applyRefac
+	:: (ParseResult a -> Refact GHC.ParsedSource)
+	-> Maybe (ParseResult a, [PosToken])
+	-> FilePath
+	-> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+
+
+{-
 applyRefac ::
   forall a.
   
@@ -448,16 +453,18 @@ applyRefac ::
   -> String -- File name
   -> IO ((String, Bool), -- Filename, modified flag
          ([PosToken], GHC.ParsedSource)) -- updated rich token stream, new AST
-
+-}
 
 applyRefac refac Nothing fileName
-  = do (inscps, exps, mod, toks)<-parseSourceFile fileName
-       (mod',((toks',m),_))<-runStateT (refac (inscps, exps, mod)) ((toks,False), (-1000,0))
+  = do (inscps, exps, mod, toks) <- parseSourceFile fileName
+       (mod',(RefSt toks' m _))  <- runRefact (refac (inscps, exps, mod)) (RefSt toks False (-1000,0))
        return ((fileName,m),(toks',mod'))
 
-applyRefac refac (Just (inscps, exps, mod, toks)) fileName
+{- applyRefac refac (Just (inscps, exps, mod, toks)) fileName
   = do (mod',((toks',m),_))<-runStateT (refac (inscps, exps, mod)) ((toks,False), (-1000,0))
        return ((fileName,m),(toks', mod'))
+-}
+
 
 {-
 applyRefacToClientMods refac fileName
