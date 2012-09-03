@@ -442,21 +442,25 @@ update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([P
         -> m t1  -- ^ The result.
 -}
 
+
 update ::
-  forall t (m :: * -> *) t1.
+  forall t (m :: * -> *) .
   (SYB.Data t, MonadPlus m,
-   MonadState (([PosToken], Bool), (Int, t1)) m, GHC.Outputable t) =>
+   MonadState (([PosToken], Bool), (Int, Int)) m, GHC.Outputable t) =>
   GHC.GenLocated GHC.SrcSpan t        -- ^ The syntax phrase to be updated.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The new syntax phrase.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The contex where the old syntax phrase occurs.
   -> m (GHC.GenLocated GHC.SrcSpan t) -- ^ The result.
 -- update oldExp newExp contextExp
-update oldExp newExp  t
+update oldExp newExp t
    -- = error "update: updated tokens" -- ++AZ++ debug
    -- = applyTP (once_tdTP (failTP `adhocTP` inExp)) t
    -- = somewhereStaged SYB.Parser (SYB.mkM inExp) t -- TODO: need monadic version?
    = everywhereMStaged SYB.Parser (SYB.mkM inExp) t 
    where
+    inExp :: (MonadState (([PosToken], Bool), (Int, Int)) m,
+              GHC.Outputable t) =>
+             GHC.GenLocated GHC.SrcSpan t -> m (GHC.GenLocated GHC.SrcSpan t)
     inExp e
       | sameOccurrence e oldExp       
        = do (newExp', _) <- updateToks oldExp newExp prettyprint
@@ -464,6 +468,7 @@ update oldExp newExp  t
             return newExp'
       | otherwise = return e      
 
+    prettyprint :: (GHC.Outputable a) => a -> String
     prettyprint x = GHC.showSDoc $ GHC.ppr x
 
 -- ---------------------------------------------------------------------

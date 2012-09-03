@@ -29,7 +29,9 @@ import qualified GHC
 import qualified DynFlags              as GHC
 import qualified Outputable            as GHC
 import qualified MonadUtils            as GHC
- 
+import qualified FastString            as GHC
+import qualified SrcLoc                as GHC
+
 import GHC.Paths ( libdir )
  
 -----------------
@@ -47,6 +49,12 @@ targetMod = "B"
 
 t1 = GhcRefacCase.ifToCase ["./refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./B.hs","4","7","4","43"]
+
+
+p1 = 
+  do
+    toks <- lexStringToRichTokens (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) "if (1) then x else y"
+    putStrLn $ showToks toks
 
 
 

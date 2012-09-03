@@ -7,6 +7,7 @@ module GhcRefacLocUtils(
                      {-                   
                      ,simpPos0,ghead,glast,gfromJust
                      -}
+                     , showToks                   
                      , gtail
                      , tokenCol, tokenRow
                      , tokenPos
@@ -45,6 +46,7 @@ module GhcRefacLocUtils(
                      commentToks
                      -}
                      , tokenise
+                     , lexStringToRichTokens  
                      -- , prettyprintPatList
                      , groupTokensByLine
                      -- , addLocInfo, getOffset
@@ -137,7 +139,7 @@ data Token
   deriving (Show,Eq,Ord)
 -}
 
-
+showToks :: [PosToken] -> String
 showToks toks = show $ map (\t@(_,s) -> ((tokenRow t,tokenCol t),s)) toks
 
 --A flag used to indicate whether the token stream has been modified or not.
@@ -337,8 +339,8 @@ newLnToken   = (Whitespace, (pos0,"\n"))
 
 -}
 
-tokenise :: GHC.RealSrcLoc -> Int -> Bool -> [Char] -> [PosToken]
-tokenise  startPos _ _ [] = []
+tokenise :: GHC.RealSrcLoc -> Int -> Bool -> [Char] -> IO [PosToken]
+tokenise  startPos _ _ [] = return []
 tokenise  startPos colOffset withFirstLineIndent str
   = let str' = case lines str of
                     (ln:[]) -> addIndent ln ++ if glast "tokenise" str=='\n' then "\n" else ""
@@ -350,8 +352,8 @@ tokenise  startPos colOffset withFirstLineIndent str
     -- in expandNewLnTokens $ GHC.addSourceToTokens startPos
         
         -- toks = liftIO $ lexStringToRichTokens startPos str''
-        -- toks = lexStringToRichTokens startPos str''
-        toks = []
+        toks = lexStringToRichTokens startPos str''
+        -- toks = []
     in toks
     -- in error $ "tokenise:" ++ (showToks $ head toks)
    where
@@ -527,11 +529,12 @@ insertComments ((startPosl, startPosr), endPos) toks com
 ---  - } - } 
 -}
 
+
 updateToks ::
-  forall (m :: * -> *).
-  (MonadState (([PosToken], Bool), (Int, Int)) m) =>
-  GHC.ParsedSource
-  -> GHC.ParsedSource -> (GHC.ParsedSource -> [Char]) -> m (GHC.ParsedSource, [PosToken])
+  forall (m :: * -> *) t.
+  (MonadState (([PosToken], Bool), (Int, Int)) m, SYB.Data t) =>
+  GHC.GenLocated GHC.SrcSpan t
+  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> m (GHC.GenLocated GHC.SrcSpan t, [PosToken])
 updateToks oldAST newAST printFun
    = do ((toks,_), (v1, v2)) <- get
         -- error "in updateToks" -- ++AZ++
@@ -539,8 +542,10 @@ updateToks oldAST newAST printFun
             (toks1, _, _)      = splitToks (startPos, endPos) toks
             offset             = lengthOfLastLine toks1
             -- newToks = tokenise (Pos 0 v1 1) offset False $ printFun newAST  --check the startPos
-            newToks = tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-            toks' = replaceToks toks startPos endPos newToks
+            -- newToks = liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
+            newToks = [] -- ++AZ++ debug
+            -- ++AZ++ toks' = replaceToks toks startPos endPos newToks
+            toks' = toks
         if length newToks == 0
           then put ((toks', modified), (v1,v2))
           else put ((toks',modified), (tokenRow (glast "updateToks1" newToks) -10, v2))
@@ -550,6 +555,7 @@ updateToks oldAST newAST printFun
         
         -- ++AZ++ not needed with GHC
         -- addLocInfo (newAST, newToks)
+        error $ "updateToks:newToks=" ++ (showToks $ head newToks)
         return (newAST, newToks)
         
 {-
