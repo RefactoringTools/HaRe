@@ -42,9 +42,10 @@ ifToCase' ::
   forall t (m :: * -> *).
   (MonadPlus m
   , MonadState (([PosToken], Bool), (Int, Int)) m
+  , MonadIO m
   )
   =>
-  GHC.GenLocated GHC.SrcSpan (GHC.HsExpr GHC.RdrName)
+  GHC.GenLocated GHC.SrcSpan HsExpP 
   -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> m GHC.ParsedSource
 -- ifToCase' exp (_, _, mod)= applyTP (once_buTP (failTP `adhocTP` inExp)) mod
 ifToCase' exp (_, _, mod) = 
@@ -54,7 +55,7 @@ ifToCase' exp (_, _, mod) =
    everywhereMStaged SYB.Parser (SYB.mkM inExp) mod
        where
          inExp :: (MonadPlus m,
-                   MonadState (([PosToken], Bool), (Int, t10)) m ) => (GHC.Located (GHC.HsExpr GHC.RdrName)) -> m (GHC.Located (GHC.HsExpr GHC.RdrName))
+                   MonadState (([PosToken], Bool), (Int, t10)) m ) => (GHC.Located HsExpP) -> m (GHC.Located HsExpP) 
                  
          -- inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _)) =  (error "ifToCase' doing transform")
          inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
@@ -68,7 +69,7 @@ ifToCase' exp (_, _, mod) =
          -- inExp _ = error "ifToCase'" -- ++AZ++
 
 
-ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName) -> GHC.Located (GHC.HsExpr GHC.RdrName)
+ifToCaseTransform :: GHC.Located HsExpP -> GHC.Located HsExpP 
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3))
   = GHC.L l (GHC.HsCase e1
              (GHC.MatchGroup

@@ -39,6 +39,7 @@ import GHC.Paths ( libdir )
 import GhcRefacLocUtils
 import GhcRefacUtils
 import qualified GhcRefacCase as GhcRefacCase
+-- import qualified GhcRefacRename as GhcRefacRename
 import GhcUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
@@ -49,6 +50,11 @@ targetMod = "B"
 
 t1 = GhcRefacCase.ifToCase ["./refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./B.hs","4","7","4","43"]
+
+
+-- added by Chris for renaming
+-- r1 = GhcRefacRename.rename ["./C.hs", "NewBlah", "4", "1"]
+
 
 
 p1 = 

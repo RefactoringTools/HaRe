@@ -285,6 +285,20 @@ so that the function on the left can be applied unless the function on
 the right succeeds.
 -}
 
+-- | From file name to module name.
+--fileNameToModName::( )=>String->PFE0MT n i ds ext m ModuleName
+
+{- fileNameToModName::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
+                   String->PFE0MT n i ds ext m ModuleName
+fileNameToModName fileName =
+  do gf <- getCurrentModuleGraph
+     let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
+         f = filter (\(m,f) -> f==fileName) fileAndMods
+     if f ==[] then error $ "Can't find module name"
+                    else return $ (fst.head) f
+-}
+
+
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
 --  region specified by the start and end position. If no expression can be found, then return the defaultExp.
 locToExp:: (Term t) => SimpPos            -- ^ The start position.
@@ -389,6 +403,37 @@ getExports (GHC.L _ hsmod) =
 
 -- ---------------------------------------------------------------------
 
+data RefactState = RefSt
+	{ rsTokenStream :: [PosToken]
+	, rsStreamAvailable :: Bool
+	, rsPosition :: (Int,Int)
+	}
+
+type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
+
+newtype Refact a = Refact (StateT RefactState IO a)
+instance MonadIO Refact where
+	liftIO f = Refact (lift f)
+
+{-applyRefac
+	:: (ParseResult a -> Refact GHC.ParsedSource)
+	-> Maybe (ParseResult a, [PosToken])
+	-> FilePath
+	-> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+-}
+
+runRefact :: Refact a -> RefactState -> IO (a, RefactState)
+runRefact (Refact (StateT f)) s = f s
+
+
+instance Monad Refact where
+  -- return :: a -> m a
+
+  x >>= y = Refact (StateT (\ st -> do (b, rs') <- runRefact x st
+				       runRefact (y b) rs'))
+
+  return thing = Refact (StateT (\ st -> return (thing, st)))
+
 applyRefac ::
   forall a.
   
@@ -446,7 +491,7 @@ update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([P
 update ::
   forall t (m :: * -> *) .
   (SYB.Data t, MonadPlus m,
-   MonadState (([PosToken], Bool), (Int, Int)) m, GHC.Outputable t) =>
+   MonadState (([PosToken], Bool), (Int, Int)) m, MonadIO m, GHC.Outputable t) =>
   GHC.GenLocated GHC.SrcSpan t        -- ^ The syntax phrase to be updated.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The new syntax phrase.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The contex where the old syntax phrase occurs.
