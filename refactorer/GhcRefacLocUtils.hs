@@ -533,8 +533,7 @@ insertComments ((startPosl, startPosr), endPos) toks com
 
 
 updateToks ::
- -- forall (m :: * -> *) t.
- ({-MonadState (([PosToken], Bool), (Int, Int)) m, MonadIO m,-} SYB.Data t) =>
+ (SYB.Data t) =>
   GHC.GenLocated GHC.SrcSpan t
   -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> Refact (GHC.GenLocated GHC.SrcSpan t, [PosToken])
 updateToks oldAST newAST printFun
@@ -542,25 +541,12 @@ updateToks oldAST newAST printFun
 	let offset             = lengthOfLastLine toks1
             (toks1, _, _)      = splitToks (startPos, endPos) toks
 	    (startPos, endPos) = getStartEndLoc toks oldAST
-        -- error "in updateToks" -- ++AZ++
         newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
         let 
-            -- newToks = tokenise (Pos 0 v1 1) offset False $ printFun newAST  --check the startPos
-            -- newToks = [] -- ++AZ++ debug
-            -- ++AZ++ 
             toks' = replaceToks toks startPos endPos newToks
-            -- toks' = toks
-	-- error (showToks (newToks))
         if length newToks == 0
           then put (RefSt toks' modified (v1,v2))
           else put (RefSt toks' modified (tokenRow (glast "updateToks1" newToks) -10, v2))
-
-        -- error $ show (newToks, startPos, endPos)
-        -- put ((toks', modified), (v1,v2))
-        
-        -- ++AZ++ not needed with GHC
-        -- addLocInfo (newAST, newToks)
-        -- error $ "updateToks:newToks=" ++ (showToks $ toks')
 	
         return (newAST, newToks) 
         

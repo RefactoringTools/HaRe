@@ -22,7 +22,6 @@ import GhcRefacMonad
 import Data.Data
 -----------------
 
--- import GhcRefacLocUtils
 import GhcRefacUtils 
 
 ifToCase :: [String] -> IO () -- For now
@@ -37,28 +36,17 @@ ifToCase args
                 -> do refactoredMod <- applyRefac (ifToCase' exp) (Just modInfo ) fileName
                       writeRefactoredFiles False [refactoredMod]
          _      -> error "You haven't selected an if-then-else  expression!"
-    -- where 
 
 ifToCase' ::
-  -- forall t (m :: * -> *).
-  -- (MonadPlus m
-  -- , MonadState (([PosToken], Bool), (Int, Int)) m
-  --, MonadIO m
-  -- )
-  -- =>
   GHC.GenLocated GHC.SrcSpan HsExpP 
   -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> Refact GHC.ParsedSource -- m GHC.ParsedSource
--- ifToCase' exp (_, _, mod)= applyTP (once_buTP (failTP `adhocTP` inExp)) mod
 ifToCase' exp (_, _, mod) = 
    
    -- somewhereStaged SYB.Parser (SYB.mkM inExp) mod
    -- SYB.everywhereM (SYB.mkM inExp) mod
    everywhereMStaged SYB.Parser (SYB.mkM inExp) mod
        where
-         -- inExp :: (MonadPlus m,
-         --          MonadState (([PosToken], Bool), (Int, t10)) m ) => (GHC.Located HsExpP) -> m (GHC.Located HsExpP) 
          inExp :: (GHC.Located HsExpP) -> Refact (GHC.Located HsExpP)        
-         -- inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _)) =  (error "ifToCase' doing transform")
          inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
            | sameOccurrence exp exp1       
            = let newExp = ifToCaseTransform exp1
@@ -67,7 +55,6 @@ ifToCase' exp (_, _, mod) =
          inExp e = return e
          -- inExp _ = mzero
          
-         -- inExp _ = error "ifToCase'" -- ++AZ++
 
 
 ifToCaseTransform :: GHC.Located HsExpP -> GHC.Located HsExpP 

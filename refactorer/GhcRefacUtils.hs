@@ -414,24 +414,6 @@ applyRefac
 	-> FilePath
 	-> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
 
-
-{-
-applyRefac ::
-  forall a.
-  
-  (([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource) -- parsed file, a is the inscopes, still TBD
-   -> StateT
-        (([PosToken], Bool), (Int, Int)) IO GHC.ParsedSource) -- refactoring function
-  -> Maybe
-       ([a],
-        [GHC.LIE GHC.RdrName],
-        GHC.ParsedSource,
-        [PosToken]) -- Parsed file, if present
-  -> String -- File name
-  -> IO ((String, Bool), -- Filename, modified flag
-         ([PosToken], GHC.ParsedSource)) -- updated rich token stream, new AST
--}
-
 applyRefac refac Nothing fileName
   = do ((inscps, exps, mod), toks) <- parseSourceFile fileName
        (mod',(RefSt toks' m _))  <- runRefact (refac (inscps, exps, mod)) (RefSt toks False (-1000,0))
@@ -474,18 +456,12 @@ update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([P
 
 update ::
  forall t .
- -- (SYB.Data t, MonadPlus m,
- --  MonadState (([PosToken], Bool), (Int, Int)) m, MonadIO m, GHC.Outputable t) =>
   (SYB.Data t, GHC.Outputable t) =>
   GHC.GenLocated GHC.SrcSpan t        -- ^ The syntax phrase to be updated.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The new syntax phrase.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The contex where the old syntax phrase occurs.
   -> Refact (GHC.GenLocated GHC.SrcSpan t) -- ^ The result.
--- update oldExp newExp contextExp
 update oldExp newExp t
-   -- = error "update: updated tokens" -- ++AZ++ debug
-   -- = applyTP (once_tdTP (failTP `adhocTP` inExp)) t
-   -- = somewhereStaged SYB.Parser (SYB.mkM inExp) t -- TODO: need monadic version?
    = everywhereMStaged SYB.Parser (SYB.mkM inExp) t 
    where
     inExp :: -- (MonadState (([PosToken], Bool), (Int, Int)) m,
