@@ -156,14 +156,6 @@ everywhere' f = gmapT (everywhere' f) . f
 -}
 
 -- ---------------------------------------------------------------------
-{-
--- | Monadic variation on everywhere
-everywhereM :: Monad m => GenericM m -> GenericM m
-
--- Bottom-up order is also reflected in order of do-actions
-everywhereM f x = do x' <- gmapM (everywhereM f) x
-                     f x'
--}
 
 -- | Monadic variation on everywhere
 everywhereMStaged :: Monad m => Stage -> GenericM m -> GenericM m

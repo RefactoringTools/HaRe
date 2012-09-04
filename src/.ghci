@@ -1,0 +1,6 @@
+-- ghci startup file
+
+:set -i./src
+:set -package ghc
+:set -hide-package monads-tf
+

@@ -125,72 +125,118 @@ Data-Files:                     haskell-refac.el
 --            TypeCheck
 
 
-Executable hare-evaluate
-        Main-Is:                Evaluate.hs
-        GHC-Options:            -fno-cse -fglasgow-exts
-        Hs-Source-Dirs:
-          refactorer
-          tools/base/lib
-          tools/base/lib/Monads/
-        Build-Depends:          base >4, hint, filepath
-        Other-Modules:          Paths_HaRe
+-- Executable hare-evaluate
+--         Main-Is:                Evaluate.hs
+--         GHC-Options:            -fno-cse -fglasgow-exts
+--         Hs-Source-Dirs:
+--           refactorer
+--           tools/base/lib
+--           tools/base/lib/Monads/
+--         Build-Depends:          base >4, hint, filepath
+--         Other-Modules:          Paths_HaRe
 
-Executable hare
-        Main-Is:                pfe.hs
-        GHC-Options:            -fno-cse -fglasgow-exts
-        Hs-Source-Dirs:
-          StrategyLib-4.0-beta/library/
-          StrategyLib-4.0-beta/models/deriving/
-          refactorer/
-          tools/base/
-          tools/base/AST
-          tools/base/Modules
-          tools/base/TI
-          tools/base/defs/
-          tools/base/lib
-          tools/base/lib/Monads/
-          tools/base/parse2
-          tools/base/parse2/Lexer/
-          tools/base/parse2/Parser/
-          tools/base/pretty/
-          tools/base/syntax
-          tools/base/transforms
-          tools/base/transforms/Deriving
-          tools/hs2html/
-          tools/pfe
+Library
         Build-Depends:          base >=4
                                 , syb
-                                , network
                                 , ghc
                                 , containers
-                                , hint
                                 , mtl
-                                , directory
                                 , pretty
-                                , process
-                                , filepath
-                                , old-time
+                                , ghc-paths
+        -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
+        -- GHC-Options:             -Wall
+        Hs-Source-Dirs:         src
+        Other-Modules:          Paths_HaRe
+        Exposed-modules:        
+           Language.Haskell.Refact.Case
+
+
+Executable ghc-hare
+        Main-Is:                Main.hs
+        -- GHC-Options:            -fno-cse -fglasgow-exts
+        -- GHC-Options:            -Wall
+        Hs-Source-Dirs:
+          ./src
+        Build-Depends:          base >=4
+                                , syb
+                                , cmdtheline
+                    --            , network
+                                , ghc
+                    --            , containers
+                    --            , hint
+                                , mtl
+                    --            , directory
+                                , pretty
+                    --            , process
+                    --            , filepath
+                    --            , old-time
                                 , array
                                 , ghc-paths
-                                , MonadCatchIO-mtl
-                                , transformers
+                    --            , MonadCatchIO-mtl
+                    --            , transformers
                                 , ghc-syb-utils
-        Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
+        -- ++AZ++ I prefer to put these in the individual files, as needed          
+        -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
 
 
 
-Executable hare-client
-        Main-Is:                pfe_client.hs
-        GHC-Options:            -fno-cse -fglasgow-exts
-        Hs-Source-Dirs:
-          refactorer/
-          tools/base/lib/Monads/
-        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
-        Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
-        Other-Modules:          Paths_HaRe
+-- Executable hare
+--         Main-Is:                pfe.hs
+--         GHC-Options:            -fno-cse -fglasgow-exts
+--         Hs-Source-Dirs:
+--           StrategyLib-4.0-beta/library/
+--           StrategyLib-4.0-beta/models/deriving/
+--           refactorer/
+--           tools/base/
+--           tools/base/AST
+--           tools/base/Modules
+--           tools/base/TI
+--           tools/base/defs/
+--           tools/base/lib
+--           tools/base/lib/Monads/
+--           tools/base/parse2
+--           tools/base/parse2/Lexer/
+--           tools/base/parse2/Parser/
+--           tools/base/pretty/
+--           tools/base/syntax
+--           tools/base/transforms
+--           tools/base/transforms/Deriving
+--           tools/hs2html/
+--           tools/pfe
+--         Build-Depends:          base >=4
+--                                 , syb
+--                                 , network
+--                                 , ghc
+--                                 , containers
+--                                 , hint
+--                                 , mtl
+--                                 , directory
+--                                 , pretty
+--                                 , process
+--                                 , filepath
+--                                 , old-time
+--                                 , array
+--                                 , ghc-paths
+--                                 , MonadCatchIO-mtl
+--                                 , transformers
+--                                 , ghc-syb-utils
+--         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
+--         Other-Modules:          Paths_HaRe
 
-Executable UTest
-  Main-Is:                      UTest.hs
-  Build-Depends:                base >= 4, HUnit, process
-  Hs-Source-Dirs:               testing
+
+
+-- Executable hare-client
+--         Main-Is:                pfe_client.hs
+--         GHC-Options:            -fno-cse -fglasgow-exts
+--         Hs-Source-Dirs:
+--           refactorer/
+--           tools/base/lib/Monads/
+--         Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
+--         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
+--         Other-Modules:          Paths_HaRe
+
+-- Executable UTest
+--   Main-Is:                      UTest.hs
+--   Build-Depends:                base >= 4, HUnit, process
+--   Hs-Source-Dirs:               testing

@@ -42,6 +42,7 @@ targetFile = "./" ++ targetMod ++ ".hs"
 -- targetFile = "B.hs"
 targetMod = "B"
 
+main = t1
 
 t1 = GhcRefacCase.ifToCase ["./refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./B.hs","4","7","4","43"]
@@ -197,7 +198,7 @@ ifToCase x                          = x
 -- module Main where
 
  
-main = example
+-- main = example
 
 example =
    GHC.runGhc (Just libdir) $ do

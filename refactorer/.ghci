@@ -1,6 +1,7 @@
 -- Startup file for ghci
 
 :set -hide-package MonadCatchIO-transformers
+:set -hide-package monads-tf
 
 :set -i./StrategyLib-4.0-beta/models/deriving
 :set -i./StrategyLib-4.0-beta/library
