@@ -16,15 +16,8 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.GhcUtils
 import Data.Maybe
-import SrcLoc1
-import TermRep
-import MUtils (( # ))
+
 import Control.Monad.State
-import Unlit
-import qualified AbstractIO as AbstractIO
--- import qualified PFE0 as PFE0
-import qualified MT(lift)
---import EditorCommands
 
 import Data.List
 
@@ -303,7 +296,7 @@ fileNameToModName fileName =
 
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
 --  region specified by the start and end position. If no expression can be found, then return the defaultExp.
-locToExp:: (Term t) => SimpPos            -- ^ The start position.
+locToExp:: (SYB.Data t) => SimpPos            -- ^ The start position.
                   -> SimpPos            -- ^ The end position.
                   -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
                   -> t                  -- ^ The syntax phrase.
@@ -495,7 +488,7 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
     -- isSubRefactor is used only for history (undo).
   = do let modifiedFiles = filter (\((f,m),_) -> m == modified) files
 
-       AbstractIO.putStrLn $ "writeRefactoredFiles:files=[" ++ (show $ map (\((f,_),(ts,_)) -> (f,GHC.showRichTokenStream ts)) files) ++ "]" -- ++AZ++ debug
+       putStrLn $ "writeRefactoredFiles:files=[" ++ (show $ map (\((f,_),(ts,_)) -> (f,GHC.showRichTokenStream ts)) files) ++ "]" -- ++AZ++ debug
        
            
        -- TODO: restore the history function    
@@ -508,13 +501,13 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            -- let source = concatMap (snd.snd) ts
            let source = GHC.showRichTokenStream ts
 
-           AbstractIO.putStrLn $ "writeRefactoredFiles:" ++ fileName ++ ":[" ++ source ++ "]" -- ++AZ++ debug
+           putStrLn $ "writeRefactoredFiles:" ++ fileName ++ ":[" ++ source ++ "]" -- ++AZ++ debug
            -- (Julien personnal remark) seq forces the evaluation of
            -- its first argument and returns its second argument. It
            -- is unclear for me why (length source) evaluation is
            -- forced.
            -- seq (length source) (AbstractIO.writeFile fileName source) -- ++AZ++ TODO: restore this when ready for production
-           seq (length source) (AbstractIO.writeFile (fileName ++ ".refactored") source)
+           seq (length source) (writeFile (fileName ++ ".refactored") source)
            
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not
@@ -566,13 +559,4 @@ expToPNT (GHC.HsIPVar (GHC.IPName pnt))      = pnt
 expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
 expToPNT _ = defaultPNT
 
--- ---------------------------------------------------------------------
--- | Return the identifier's source location.
-useLoc::PNT -> SrcLoc
-useLoc (PNT pname (N (Just loc))) = loc
-useLoc (PNT _ _ )                 = loc0
-
-
--- From SrcLoc1.hs
--- loc0 = GHC.noSrcLoc
 

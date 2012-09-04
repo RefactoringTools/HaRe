@@ -78,33 +78,10 @@ import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Monad
-import SrcLoc1
-import SourceNames
-import HsName
-{-
-import RefacTypeSyn(SimpPos)
-import PosSyntax
-import UniqueNames
-import HsLexerPass1 hiding (notWhite)
-import HsTokens
-import PrettySymbols(rarrow)
-import HsLayoutPre (PosToken)
--}
-import PrettyPrint
-{-
-import HsExpUtil
-import PNT
 
-import RefacTypeSyn
--}
+
 import Data.Maybe
 import Data.List
-{-
-import SourceNames
--------------------------
---import DriftStructUtils
--}
-import StrategyLib
 
 ------------------------
 import Control.Monad.State
@@ -698,7 +675,7 @@ whiteSpaceTokens (row, col) n
 -}
 -------------------------------------------------------------------------------------------------
 --get all the source locations (use locations) in an AST phrase t in according the the occurrence order of identifiers.
-srcLocs::(Term t)=> t->[SimpPos]
+srcLocs::(SYB.Data t)=> t->[SimpPos]
 srcLocs t =(nub.srcLocs') t \\ [simpPos0]
    where srcLocs'= SYB.everythingStaged SYB.Parser (++) []
                    ([]
@@ -1505,7 +1482,7 @@ instance StartEndLoc HsDeclP where
 -- getStartEndLoc::(Term t, StartEndLoc t,Printable t)=>[PosToken]->t->(SimpPos,SimpPos)
 -- xxxxxxx
 -- getStartEndLoc::(Term t)=>[PosToken]->t->(SimpPos,SimpPos)
-getStartEndLoc::(Term t)=>[PosToken]->GHC.GenLocated GHC.SrcSpan t ->(SimpPos,SimpPos)
+getStartEndLoc::(SYB.Data t)=>[PosToken]->GHC.GenLocated GHC.SrcSpan t ->(SimpPos,SimpPos)
 
 getStartEndLoc toks t
   = let (startPos',endPos') = startEndLocGhc toks t

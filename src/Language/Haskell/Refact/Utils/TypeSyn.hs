@@ -13,18 +13,8 @@ import qualified SrcLoc  as GHC
 
 
 import Data.Generics
-import SrcLoc1
 
 {-
---Modules from Programatic: 
-import PosSyntax
-import ScopeModule
-import HsName hiding (ModuleName)
-import PNT
-import Ents
-import PosName 
-import Relations
-import Names
 
 data NameSpace = ValueName | ClassName | TypeCon | DataCon | Other  deriving (Eq, Show)
 
@@ -72,16 +62,26 @@ type HsModuleP = GHC.HsModule GHC.RdrName
 -- ----------------------------------------------------
 -- From PNT
 
-type PName  = HsName
+-- CMB
+-- type PName  = HsName
+
+
 {-
 type PIdent = HsIdentI PName
 type PId    = PN Id
 -}
 --data PNT = PNT PName (IdTy PId) OptSrcLoc deriving (Show,Read, Data, Typeable)
-data PNT = PNT PName OptSrcLoc deriving (Data, Typeable)
 
-instance Eq  PNT where PNT i1 _  == PNT i2 _  = i1==i2
-instance Ord PNT where compare (PNT i1 _) (PNT i2 _) = compare i1 i2
+-- CMB
+-- data PNT = PNT PName OptSrcLoc deriving (Data, Typeable)
+
+-- CMB
+--instance Eq  PNT where PNT i1 _  == PNT i2 _  = i1==i2
+--instance Ord PNT where compare (PNT i1 _) (PNT i2 _) = compare i1 i2
+
+
+
+
 -- instance HasOrig PNT where orig (PNT pn _ _)  = orig pn
 -- instance HasOrig i => HasOrig (HsIdentI i) where orig = orig . getHSName
 
@@ -131,10 +131,10 @@ instance HasSrcLoc PNT where
 
 -- type SrcLoc = GHC.SrcSpan
 
-newtype OptSrcLoc = N (Maybe SrcLoc) deriving (Data, Typeable)
+{- newtype OptSrcLoc = N (Maybe GHC.SrcLoc) deriving (Data, Typeable)
 noSrcLoc = GHC.noSrcSpan
 srcLoc = N . Just
 optSrcLoc = N
 instance Eq  OptSrcLoc where _ == _ = True
 instance Ord OptSrcLoc where compare _ _ = EQ
-
+-}

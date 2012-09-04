@@ -24,9 +24,7 @@ import qualified Var           as GHC
 import qualified Coercion      as GHC
 import qualified ForeignCall   as GHC
 import qualified InstEnv       as GHC
-import SrcLoc1
-import TermRep
-import Unlit
+
 import Language.Haskell.Refact.Utils.TypeSyn
 
 

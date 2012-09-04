@@ -9,12 +9,7 @@ import FastString(FastString)
 -- import GHC
 import GHC.Paths ( libdir )
 import GHC.SYB.Utils
-import Name
-import NameSet(NameSet,nameSetToList)
-import Outputable
-import PprTyThing
-import SrcLoc
-import Var(Var)
+
 import RdrName
 import OccName
 import qualified OccName(occNameString)
@@ -141,7 +136,7 @@ getStuff =
         let p' = processParsedMod ifToCase p
         -- GHC.liftIO (putStrLn . showParsedModule $ p)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
-        GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
+        GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.pm_parsed_source p')
 
         let ps  = GHC.pm_parsed_source p
 
@@ -158,7 +153,7 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
         return ()
 
-tokenLocs toks = map (\(L l _, s) -> (l,s)) toks
+tokenLocs toks = map (\(GHC.L l _, s) -> (l,s)) toks
 
 convertSource ps =1
   ps
@@ -168,24 +163,24 @@ ifToCase :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
 ifToCase (GHC.HsIf _se e1 e2 e3)
   = GHC.HsCase e1 (GHC.MatchGroup
                    [
-                     (noLoc $ GHC.Match
+                     (GHC.noLoc $ GHC.Match
                       [
-                        noLoc $ GHC.ConPatIn (noLoc $ mkRdrUnqual $ mkVarOcc "True") (GHC.PrefixCon [])
+                        GHC.noLoc $ GHC.ConPatIn (GHC.noLoc $ mkRdrUnqual $ mkVarOcc "True") (GHC.PrefixCon [])
                       ]
                       Nothing
                        ((GHC.GRHSs
                          [
-                           noLoc $ GHC.GRHS [] e2
+                           GHC.noLoc $ GHC.GRHS [] e2
                          ] GHC.EmptyLocalBinds))
                       )
-                   , (noLoc $ GHC.Match
+                   , (GHC.noLoc $ GHC.Match
                       [
-                        noLoc $ GHC.ConPatIn (noLoc $ mkRdrUnqual $ mkVarOcc "False") (GHC.PrefixCon [])
+                        GHC.noLoc $ GHC.ConPatIn (GHC.noLoc $ mkRdrUnqual $ mkVarOcc "False") (GHC.PrefixCon [])
                       ]
                       Nothing
                        ((GHC.GRHSs
                          [
-                           noLoc $ GHC.GRHS [] e3
+                           GHC.noLoc $ GHC.GRHS [] e3
                          ] GHC.EmptyLocalBinds))
                       )
                    ] undefined)
@@ -219,7 +214,7 @@ example =
         let p' = processParsedMod shortenLists p
         -- GHC.liftIO (putStrLn . showParsedModule $ p)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
-        GHC.liftIO (putStrLn $ showPpr $ GHC.pm_parsed_source p')
+        GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.pm_parsed_source p')
 
 showParsedModule p = SYB.showData SYB.Parser 0 (GHC.pm_parsed_source p)
 
