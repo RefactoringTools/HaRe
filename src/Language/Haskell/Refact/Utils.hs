@@ -3,6 +3,7 @@
 module Language.Haskell.Refact.Utils
        (
          locToExp
+       , locToPNT
        , sameOccurrence
        , parseSourceFile
        , applyRefac
@@ -294,36 +295,7 @@ fileNameToModName fileName =
 -}
 
 
--- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
---  region specified by the start and end position. If no expression can be found, then return the defaultExp.
-locToExp:: (SYB.Data t) => SimpPos            -- ^ The start position.
-                  -> SimpPos            -- ^ The end position.
-                  -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
-                  -> t                  -- ^ The syntax phrase.
-                  -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
-locToExp beginPos endPos toks t =
-  case res of
-    Just x -> x
-    Nothing -> GHC.L GHC.noSrcSpan defaultExp
-    -- _  -> error $ "locToExp:unexpected:" ++ (SYB.showData SYB.Parser 0 res)
-  where
-    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` exp) t
 
-    exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> (Maybe (GHC.Located (GHC.HsExpr GHC.RdrName)))
-    exp e
-      |inScope e = Just e
-    exp _ = Nothing
-    
-    inScope :: GHC.Located e -> Bool
-    inScope (GHC.L l _) =
-      let
-        (startLoc,endLoc) = case l of
-          (GHC.RealSrcSpan ss) ->
-            ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
-             (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
-          (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
-      in
-       (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
 
 -- ---------------------------------------------------------------------
 
@@ -559,4 +531,54 @@ expToPNT (GHC.HsIPVar (GHC.IPName pnt))      = pnt
 expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
 expToPNT _ = defaultPNT
 
+-- |Find the identifier(in PNT format) whose start position is (row,col) in the
+-- file specified by the fileName, and returns defaultPNT is such an identifier does not exist.
 
+locToPNT::(SYB.Data t)=>String      -- ^ The file name
+                    ->(Int,Int) -- ^ The row and column number
+                    ->t         -- ^ The syntax phrase
+                    ->GHC.RdrName       -- ^ The result
+locToPNT  fileName (row, col) t
+  =  case res of
+		    Just x -> x
+		    Nothing -> defaultPNT
+            -- =(fromMaybe defaultPNT). applyTU (once_buTU (failTU `adhocTU` worker))
+       where
+	    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+        
+	    worker (pnt::GHC.RdrName) = error (GHC.showRdrName pnt) --  pnt@(PNT pname ty (N (Just (SrcLoc fileName1 _ row1 col1))))
+			-- |fileName1==fileName && (row1,col1) == (row,col) =Just pnt
+			
+	    worker _ =Nothing
+
+
+-- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
+--  region specified by the start and end position. If no expression can be found, then return the defaultExp.
+locToExp:: (SYB.Data t) => SimpPos            -- ^ The start position.
+		                  -> SimpPos            -- ^ The end position.
+		                  -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
+		                  -> t                  -- ^ The syntax phrase.
+		                  -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
+locToExp beginPos endPos toks t =
+     case res of
+		    Just x -> x
+		    Nothing -> GHC.L GHC.noSrcSpan defaultExp
+		    -- _  -> error $ "locToExp:unexpected:" ++ (SYB.showData SYB.Parser 0 res)
+		  where
+		    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` exp) t
+
+		    exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> (Maybe (GHC.Located (GHC.HsExpr GHC.RdrName)))
+		    exp e
+		      |inScope e = Just e
+		    exp _ = Nothing
+
+		    inScope :: GHC.Located e -> Bool
+		    inScope (GHC.L l _) =
+		      let
+		        (startLoc,endLoc) = case l of
+		          (GHC.RealSrcSpan ss) ->
+		            ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
+		             (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
+		          (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
+		      in
+		       (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)

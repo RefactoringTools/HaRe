@@ -3,6 +3,9 @@ module B where
 
 foo x = if (odd x) then "Odd" else "Even"
 
+bob x y = x + y
+
+
 foo' x = case (odd x) of
   True -> "Odd"
   False -> "Even"
