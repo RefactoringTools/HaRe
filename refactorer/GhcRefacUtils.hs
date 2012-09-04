@@ -8,10 +8,12 @@ module GhcRefacUtils
        , applyRefac
        , update  
        , writeRefactoredFiles  
+       , Refact
        ) where
 
 import GhcRefacTypeSyn
 import GhcRefacLocUtils
+import GhcRefacMonad
 import GhcUtils
 import Data.Maybe
 import SrcLoc1
@@ -359,7 +361,7 @@ parseSourceFile:: ( ) =>FilePath
 
 parseSourceFile ::
   String
-  -> IO ([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource, [PosToken])
+  -> IO (ParseResult a, [PosToken])  -- ([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource, [PosToken])
 parseSourceFile targetFile =
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
     GHC.runGhc (Just GHC.libdir) $ do
@@ -378,7 +380,7 @@ parseSourceFile targetFile =
           modAst = GHC.pm_parsed_source p
           exports = getExports modAst
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      return (inscopes,exports,modAst,tokens)
+      return ((inscopes,exports,modAst),tokens)
       
 {-
 original
@@ -403,33 +405,8 @@ getExports (GHC.L _ hsmod) =
 
 -- ---------------------------------------------------------------------
 
-data RefactState = RefSt
-	{ rsTokenStream :: [PosToken]
-	, rsStreamAvailable :: Bool
-	, rsPosition :: (Int,Int)
-	}
-
-type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
-
-newtype Refact a = Refact (StateT RefactState IO a)
-instance MonadIO Refact where
-	liftIO f = Refact (lift f)
-
-runRefact :: Refact a -> RefactState -> IO (a, RefactState)
-runRefact (Refact (StateT f)) s = f s
 
 
-instance Monad Refact where
-  x >>= y = Refact (StateT (\ st -> do (b, rs') <- runRefact x st
-				       runRefact (y b) rs'))
-
-  return thing = Refact (StateT (\ st -> return (thing, st)))
-
-
-instance MonadPlus Refact where
-   mzero = Refact (StateT(\ st -> mzero))
-
-   x `mplus` y =  Refact (StateT ( \ st -> runRefact x st `mplus` runRefact y st))  -- Try one of the refactorings, x or y, with the same state plugged in
 
 applyRefac
 	:: (ParseResult a -> Refact GHC.ParsedSource)
@@ -456,14 +433,14 @@ applyRefac ::
 -}
 
 applyRefac refac Nothing fileName
-  = do (inscps, exps, mod, toks) <- parseSourceFile fileName
+  = do ((inscps, exps, mod), toks) <- parseSourceFile fileName
        (mod',(RefSt toks' m _))  <- runRefact (refac (inscps, exps, mod)) (RefSt toks False (-1000,0))
        return ((fileName,m),(toks',mod'))
 
-{- applyRefac refac (Just (inscps, exps, mod, toks)) fileName
-  = do (mod',((toks',m),_))<-runStateT (refac (inscps, exps, mod)) ((toks,False), (-1000,0))
+applyRefac refac (Just ((inscps, exps, mod), toks)) fileName
+  = do (mod',(RefSt toks' m _))  <- runRefact (refac (inscps, exps, mod)) (RefSt toks False (-1000,0))
        return ((fileName,m),(toks', mod'))
--}
+
 
 
 {-
@@ -496,13 +473,14 @@ update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([P
 
 
 update ::
-  forall t (m :: * -> *) .
-  (SYB.Data t, MonadPlus m,
-   MonadState (([PosToken], Bool), (Int, Int)) m, MonadIO m, GHC.Outputable t) =>
+ forall t .
+ -- (SYB.Data t, MonadPlus m,
+ --  MonadState (([PosToken], Bool), (Int, Int)) m, MonadIO m, GHC.Outputable t) =>
+  (SYB.Data t, GHC.Outputable t) =>
   GHC.GenLocated GHC.SrcSpan t        -- ^ The syntax phrase to be updated.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The new syntax phrase.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The contex where the old syntax phrase occurs.
-  -> m (GHC.GenLocated GHC.SrcSpan t) -- ^ The result.
+  -> Refact (GHC.GenLocated GHC.SrcSpan t) -- ^ The result.
 -- update oldExp newExp contextExp
 update oldExp newExp t
    -- = error "update: updated tokens" -- ++AZ++ debug
@@ -510,9 +488,9 @@ update oldExp newExp t
    -- = somewhereStaged SYB.Parser (SYB.mkM inExp) t -- TODO: need monadic version?
    = everywhereMStaged SYB.Parser (SYB.mkM inExp) t 
    where
-    inExp :: (MonadState (([PosToken], Bool), (Int, Int)) m,
-              GHC.Outputable t) =>
-             GHC.GenLocated GHC.SrcSpan t -> m (GHC.GenLocated GHC.SrcSpan t)
+    inExp :: -- (MonadState (([PosToken], Bool), (Int, Int)) m,
+             ( GHC.Outputable t) =>
+             GHC.GenLocated GHC.SrcSpan t -> Refact (GHC.GenLocated GHC.SrcSpan t)
     inExp e
       | sameOccurrence e oldExp       
        = do (newExp', _) <- updateToks oldExp newExp prettyprint
@@ -536,6 +514,7 @@ writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-re
 
 -- writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
 writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], GHC.ParsedSource))])
+-- writeRefactoredFiles :: Bool -> [(RefactState, GHC.ParsedSource)]
     -- The AST is not used.
     -- isSubRefactor is used only for history (undo).
   = do let modifiedFiles = filter (\((f,m),_) -> m == modified) files

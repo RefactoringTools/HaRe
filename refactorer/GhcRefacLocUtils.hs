@@ -76,6 +76,7 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import GhcRefacTypeSyn
+import GhcRefacMonad
 import SrcLoc1
 import SourceNames
 import HsName
@@ -532,12 +533,12 @@ insertComments ((startPosl, startPosr), endPos) toks com
 
 
 updateToks ::
-  forall (m :: * -> *) t.
-  (MonadState (([PosToken], Bool), (Int, Int)) m, MonadIO m, SYB.Data t) =>
+ -- forall (m :: * -> *) t.
+ ({-MonadState (([PosToken], Bool), (Int, Int)) m, MonadIO m,-} SYB.Data t) =>
   GHC.GenLocated GHC.SrcSpan t
-  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> m (GHC.GenLocated GHC.SrcSpan t, [PosToken])
+  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> Refact (GHC.GenLocated GHC.SrcSpan t, [PosToken])
 updateToks oldAST newAST printFun
-   = do ((toks,_), (v1, v2)) <- get
+   = do (RefSt toks _ (v1, v2)) <- get
 	let offset             = lengthOfLastLine toks1
             (toks1, _, _)      = splitToks (startPos, endPos) toks
 	    (startPos, endPos) = getStartEndLoc toks oldAST
@@ -551,8 +552,8 @@ updateToks oldAST newAST printFun
             -- toks' = toks
 	-- error (showToks (newToks))
         if length newToks == 0
-          then put ((toks', modified), (v1,v2))
-          else put ((toks',modified), (tokenRow (glast "updateToks1" newToks) -10, v2))
+          then put (RefSt toks' modified (v1,v2))
+          else put (RefSt toks' modified (tokenRow (glast "updateToks1" newToks) -10, v2))
 
         -- error $ show (newToks, startPos, endPos)
         -- put ((toks', modified), (v1,v2))
