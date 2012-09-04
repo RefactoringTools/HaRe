@@ -53,6 +53,7 @@ type PosToken = (GHC.Located GHC.Token, String)
 data Pos = Pos { char, line, column :: !Int } deriving (Show)
 -- it seems that the field char is used to handle special characters including the '\t'
 
+type Export = GHC.LIE GHC.RdrName
 type HsName = GHC.RdrName
 type PN     = GHC.RdrName
 

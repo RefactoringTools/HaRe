@@ -1,15 +1,10 @@
 -- Sample refactoring based on ifToCase
-
-
 import Bag
 import Bag(Bag,bagToList)
 import Data.Generics
--- import DynFlags
 import FastString(FastString)
--- import GHC
 import GHC.Paths ( libdir )
 import GHC.SYB.Utils
-
 import RdrName
 import OccName
 import qualified OccName(occNameString)
@@ -34,7 +29,9 @@ import GHC.Paths ( libdir )
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
--- import qualified GhcRefacRename as GhcRefacRename
+import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
+
+
 import Language.Haskell.Refact.Utils.GhcUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
@@ -46,6 +43,7 @@ targetMod = "B"
 t1 = GhcRefacCase.ifToCase ["./refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./B.hs","4","7","4","43"]
 
+s1 = GhcSwapArgs.swapArgs ["../refactorer/B.hs","6","1"]
 
 -- added by Chris for renaming
 -- r1 = GhcRefacRename.rename ["./C.hs", "NewBlah", "4", "1"]
