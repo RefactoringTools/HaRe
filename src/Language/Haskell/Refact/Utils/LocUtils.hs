@@ -31,7 +31,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      lastNonSpaceToken,firstNonSpaceToken,compressPreNewLns,compressEndNewLns
                      -}
                      , lengthOfLastLine
-                     , updateToks
+                     , updateToks, updateToksList
                      -- , getToks,replaceToks,deleteToks, doRmWhites,doAddWhites
                      , srcLocs
                      -- , ghcSrcLocs -- Test version
@@ -48,7 +48,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -}
                      , tokenise
                      , lexStringToRichTokens  
-                     -- , prettyprintPatList
+                     , prettyprintPatList
                      , groupTokensByLine
                      -- , addLocInfo, getOffset
                      , splitToks
@@ -319,6 +319,22 @@ newLnToken   = (Whitespace, (pos0,"\n"))
 
 -}
 
+prettyprintPatList prpr beginWithSpace t
+     = replaceTabBySpaces $ if beginWithSpace then format1 t else format2 t
+ where
+   format1 t = foldl (\x y -> x++ " "++ prpr y) "" t
+
+   format2 [] = ""
+   format2 [p] = (prpr p) --  (render.ppi) p
+   format2 (p:ps) = (prpr p) ++" " ++ format2 ps
+
+--Replace Tab by white spaces. (1 Tab=8 white spaces)
+replaceTabBySpaces::String->String
+replaceTabBySpaces []=[]
+replaceTabBySpaces (s:ss)
+  =if s=='\t' then replicate 8 ' ' ++replaceTabBySpaces ss
+              else s:replaceTabBySpaces ss
+
 tokenise :: GHC.RealSrcLoc -> Int -> Bool -> [Char] -> IO [PosToken]
 tokenise  startPos _ _ [] = return []
 tokenise  startPos colOffset withFirstLineIndent str
@@ -465,7 +481,7 @@ splitToks (startPos, endPos) toks
                 (toks21, toks22) = break (\t -> tokenPos t >= endPos') toks2
                 -- Should add error message for empty list?
             -- in  if length toks22==0 then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
-            in  if length toks22==0 then error $ "Sorry, HaRe failed to finish this refactoring. >" ++ (show (startPos, endPos,startPos',endPos')) ++ "," ++ (showToks toks1) ++ "," ++ (showToks toks2)
+            in  if length toks22==0 then error $ "Sorry, HaRe failed to finish this refactoring. SplitToks >" ++ (show (startPos, endPos,startPos',endPos')) ++ "," ++ (showToks toks1) ++ "," ++ (showToks toks2)
                   else (toks1, toks21++[ghead "splitToks" toks22], gtail "splitToks" toks22)
 
 {-
@@ -508,18 +524,58 @@ insertComments ((startPosl, startPosr), endPos) toks com
 
 ---  - } - } 
 -}
+{-
+srcLocs::(Data t)=> t->[SimpPos]
+srcLocs t =(nub.srcLocs') t \\ [simpPos0]
+   where srcLocs' = everywhere (++) ([] `mkQ`  
 
 
-updateToks ::
- (SYB.Data t) =>
-  GHC.GenLocated GHC.SrcSpan t
-  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> Refact (GHC.GenLocated GHC.SrcSpan t, [PosToken])
+	srcLocs'=runIdentity.(applyTU (full_tdTU (constTU []
+                                                  `adhocTU` pnt
+                                                  `adhocTU` sn
+                                                  `adhocTU` literalInExp
+                                                  `adhocTU` literalInPat)))
+
+         pnt (PNT pname _ (N (Just (SrcLoc _  _ row col))))=return [(row,col)]
+         pnt _=return []
+
+         sn (SN (PlainModule modName) (SrcLoc _ _ row col))
+             = return [(row, col)]
+         sn _ = return []
+
+         literalInExp ((Exp (HsLit (SrcLoc _  _ row col) _))::HsExpP) = return [(row,col)]
+         literalInExp (Exp _) =return []
+
+         literalInPat ((Pat (HsPLit (SrcLoc _ _ row col) _))::HsPatP) = return [(row,col)]
+         literalInPat (Pat (HsPNeg (SrcLoc _  _ row col) _)) = return [(row,col)]
+         literalInPat _ =return []
+-}
+
+-- updateToks ::
+-- (SYB.Data t) =>
+--  GHC.GenLocated GHC.SrcSpan t
+--  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> Refact (GHC.GenLocated GHC.SrcSpan t, [PosToken])
 updateToks oldAST newAST printFun
    = do (RefSt toks _ (v1, v2)) <- get
 	let offset             = lengthOfLastLine toks1
             (toks1, _, _)      = splitToks (startPos, endPos) toks
 	    (startPos, endPos) = getStartEndLoc toks oldAST
         newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
+        let 
+            toks' = replaceToks toks startPos endPos newToks
+        if length newToks == 0
+          then put (RefSt toks' modified (v1,v2))
+          else put (RefSt toks' modified (tokenRow (glast "updateToks1" newToks) -10, v2))
+	
+        return (newAST, newToks) 
+
+updateToksList oldAST newAST printFun
+   = do (RefSt toks _ (v1, v2)) <- get
+	let offset             = lengthOfLastLine toks1
+            (toks1, _, _)      = splitToks (startPos, endPos) toks
+	    (startPos, endPos) = getStartEndLoc2 toks oldAST
+        newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
+        error (GHC.showRichTokenStream newToks) 
         let 
             toks' = replaceToks toks startPos endPos newToks
         if length newToks == 0
@@ -605,7 +661,7 @@ deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
 
       -- tokens after the tokens to be deleted at the same line.
       after = let t= dropWhile (\t->tokenPos t /=endPos) toks21
-              in  if t == [] then error "Sorry, HaRe failed to finish this refactoring."
+              in  if t == [] then error "Sorry, HaRe failed to finish this refactoring. DeleteToks"
                              else  gtail "deleteToks6" t
 
 -}
@@ -866,6 +922,19 @@ instance StartEndLoc (GHC.HsExpr GHC.RdrName) where
     case e of
 
       GHC.HsVar id	-> ((0,0),(0,0))
+
+instance StartEndLoc (GHC.Pat GHC.RdrName) where
+
+   startEndLoc toks p =
+	case p of
+	  GHC.VarPat id -> ((0,0),(0,0))
+
+instance StartEndLoc [GHC.Pat GHC.RdrName] where
+
+   startEndLoc toks ps = ((0,0),(0,0))
+
+
+
 {-
       GHC.HsIPVar (IPName id)	
 
@@ -1174,13 +1243,15 @@ instance StartEndLoc HsPatP where
 
        HsPWildCard                       ->(simpPos0,simpPos0)  -- wildcard can  cause problem.
 
-instance StartEndLoc [HsPatP] where
+nstance StartEndLoc [HsPatP] where
 
    startEndLoc toks ps = let locs=(nub.(map (startEndLoc toks))) ps \\ [(simpPos0,simpPos0)]
                          in if locs==[] then (simpPos0,simpPos0)
                                         else let (startLoc,_)=ghead "StartEndLoc:HsPatP" locs
                                                  (_,endLoc) =glast "StartEndLoc:HsPatP"  locs
                                              in (startLoc,endLoc)
+
+
 instance StartEndLoc [HsExpP] where
 
    startEndLoc toks es=let locs=(nub.(map (startEndLoc toks))) es \\ [(simpPos0,simpPos0)]
@@ -1492,6 +1563,21 @@ getStartEndLoc toks t
                              if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
                                                                   else endPos')
     in (startPos, endPos)
+
+getStartEndLoc2::(SYB.Data t)=>[PosToken]->[GHC.GenLocated GHC.SrcSpan t] ->(SimpPos,SimpPos)
+
+
+getStartEndLoc2 toks ts
+  = let (startPos',_) = startEndLocGhc toks (head ts)
+	(_ , endPos') = startEndLocGhc toks (last ts)
+        locs = srcLocs ts
+        (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
+                                                                   else startPos',
+                             if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
+                                                                  else endPos')
+    in (startPos, endPos)
+
+
 {- ++AZ++ old version
 getStartEndLoc::(Term t, StartEndLoc t)=>[PosToken]->t->(SimpPos,SimpPos)
 getStartEndLoc toks t

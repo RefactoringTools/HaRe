@@ -39,7 +39,7 @@ swapArgs args
        --               else  return []
        -- writeRefactoredFiles False (r:rs)      
        -- else error "\nInvalid cursor position!"
-       -- writeRefactoredFiles False [r]  
+       writeRefactoredFiles False [r]  
        -- putStrLn ("here" ++ (SYB.showData SYB.Parser 0 mod))  -- $ show [fileName, beginPos, endPos]
        putStrLn "Completd"
 
@@ -48,22 +48,27 @@ doSwap ::
   GHC.GenLocated GHC.SrcSpan GHC.RdrName  
   -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> Refact GHC.ParsedSource -- m GHC.ParsedSource
 doSwap pnt@(GHC.L s _) (_ , _, mod) 
-   = {-error (SYB.showData SYB.Parser 0 pnt) -- -} everywhereMStaged SYB.Parser (SYB.mkM inFun) mod -- this needs to be bottom up +++ CMB +++
+   = {-error (SYB.showData SYB.Parser 0 pnt) -- -} everywhereMStaged SYB.Parser (SYB.mkM inMatch) mod -- this needs to be bottom up +++ CMB +++
 	where
 		-- inFun ((GHC.FunBind name isInfix matches coerce localFree _)
-                inFun (GHC.L a (GHC.ValD i@(GHC.FunBind (GHC.L x b) bool matchgroup wphole c maybe)):: (GHC.Located HsDeclP))
+                {- inFun (GHC.L a (GHC.ValD i@(GHC.FunBind (GHC.L x b) bool matchgroup wphole c maybe)):: (GHC.Located HsDeclP))
 			| s == x = do matchgroup' <- swapInMatch matchgroup -- error (SYB.showData SYB.Parser 0 i) 
 			              return ((GHC.L a (GHC.ValD (GHC.FunBind (GHC.L x b) bool matchgroup' wphole c maybe))))
 		inFun f = return f
 
                 swapInMatch (GHC.MatchGroup (m:ms) l)  =  do m' <- swapInMatches m
-							     return (GHC.MatchGroup (m':ms) l)
-		swapInMatches i@(GHC.L x (GHC.Match pats nothing rhs)) 
-		  = -- error (SYB.showData SYB.Parser 0 pats) 
-			case pats of
+							     return (GHC.MatchGroup (m':ms) l) -}
+		inMatch i@(GHC.L x m@(GHC.Match pats nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )
+		  -- = error (SYB.showData SYB.Parser 0 pnt) 
+		   | GHC.srcSpanStart s == GHC.srcSpanStart x
+		   = 	case pats of
 				(p1:p2:ps) -> do -- pats'' <- update p2 p1 =<< update p1 p2 pats
-						 -- update p1 p2 pats
-						 return (GHC.L x (GHC.Match pats nothing rhs))
-
+						 pats' <- update pats (p2:p1:ps) i --pats
+						 -- error (SYB.showData SYB.Parser 0 pats') 
+						 -- p2' <- update p2 p1 p2
+						 return pats' -- (GHC.L x (GHC.Match pats' nothing rhs))
+                inMatch i = return i 
 -- pats nothing rhss ds)
 
+prettyprint :: (GHC.Outputable a) => a -> String
+prettyprint x = GHC.showSDoc $ GHC.ppr x

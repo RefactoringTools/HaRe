@@ -23,6 +23,7 @@ type HsPatP    =HsPatI PNT
 type HsExpP    =HsExpI PNT
 -}
 type HsExpP    = GHC.HsExpr GHC.RdrName
+type HsPatP    = GHC.Pat GHC.RdrName
 type HsDeclP   = GHC.HsDecl GHC.RdrName
 
 

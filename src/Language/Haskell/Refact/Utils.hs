@@ -419,29 +419,61 @@ update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([P
         -> m t1  -- ^ The result.
 -}
 
+class (SYB.Data t, SYB.Data t1)=>Update t t1 where
 
-update ::
+  -- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
+  update::  t     -- ^ The syntax phrase to be updated.
+         -> t     -- ^ The new syntax phrase.
+         -> t1    -- ^ The contex where the old syntax phrase occurs.
+         -> Refact t1  -- ^ The result.
+
+instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
+{- update ::
  forall t .
   (SYB.Data t, GHC.Outputable t) =>
   GHC.GenLocated GHC.SrcSpan t        -- ^ The syntax phrase to be updated.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The new syntax phrase.
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The contex where the old syntax phrase occurs.
-  -> Refact (GHC.GenLocated GHC.SrcSpan t) -- ^ The result.
-update oldExp newExp t
-   = everywhereMStaged SYB.Parser (SYB.mkM inExp) t 
-   where
-    inExp :: -- (MonadState (([PosToken], Bool), (Int, Int)) m,
-             ( GHC.Outputable t) =>
-             GHC.GenLocated GHC.SrcSpan t -> Refact (GHC.GenLocated GHC.SrcSpan t)
-    inExp e
-      | sameOccurrence e oldExp       
-       = do (newExp', _) <- updateToks oldExp newExp prettyprint
-            -- error "update: updated tokens" -- ++AZ++ debug
-            return newExp'
-      | otherwise = return e      
+  -> Refact (GHC.GenLocated GHC.SrcSpan t) -- ^ The result. -}
+    update oldExp newExp t
+   		= everywhereMStaged SYB.Parser (SYB.mkM inExp) t 
+   	where
+  	 -- inExp :: -- (MonadState (([PosToken], Bool), (Int, Int)) m,
+         --    ( GHC.Outputable t) =>
+         --    GHC.GenLocated GHC.SrcSpan t -> Refact (GHC.GenLocated GHC.SrcSpan t)
+   	 inExp (e::GHC.Located HsExpP)
+    	  | sameOccurrence e oldExp       
+     		  = do (newExp', _) <- updateToks oldExp newExp prettyprint
+           	 -- error "update: updated tokens" -- ++AZ++ debug
+                       return newExp'
+      	  | otherwise = return e      
 
-    prettyprint :: (GHC.Outputable a) => a -> String
-    prettyprint x = GHC.showSDoc $ GHC.ppr x
+    
+
+
+instance (SYB.Data t) => Update (GHC.Located HsPatP) t where
+	update oldPat newPat t  
+		= everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
+	 where
+           inPat (p::GHC.Located HsPatP) -- = error "here"
+		| sameOccurrence p oldPat 
+			= do (newPat', _) <- updateToksList [oldPat] [newPat] (prettyprintPatList prettyprint False)
+	                     return $ head newPat'
+                | otherwise = return p
+
+instance (SYB.Data t) =>Update [GHC.Located HsPatP] t where
+
+ update oldPat newPat  t
+   = everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
+   where
+    inPat (p::[GHC.Located HsPatP])
+     -- | map sameOccurrence p oldPat
+        = do  (newPat', _) <- updateToksList oldPat newPat (prettyprintPatList prettyprint False)
+              return newPat'
+    inPat p = return p 
+
+prettyprint :: (GHC.Outputable a) => a -> String
+prettyprint x = GHC.showSDoc $ GHC.ppr x
 
 -- ---------------------------------------------------------------------
        

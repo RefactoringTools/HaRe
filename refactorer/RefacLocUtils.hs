@@ -341,7 +341,7 @@ splitToks (startPos, endPos) toks
                 (toks1, toks2) = break (\t -> tokenPos t == startPos') toks
                 (toks21, toks22) = break (\t -> tokenPos t== endPos') toks2
                 -- Should add error message for empty list?
-            in  if toks22==[] then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
+            in  if toks22==[] then error "Sorry, HaRe failed to finish this refactoring. (splitToks)" -- (">" ++ (show (startPos, endPos) ++ show toks))
                   else (toks1, toks21++[ghead "splitToks" toks22], gtail "splitToks" toks22)
 
 
@@ -467,7 +467,7 @@ deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
 
       -- tokens after the tokens to be deleted at the same line.
       after = let t= dropWhile (\t->tokenPos t /=endPos) toks21
-              in  if t == [] then error "Sorry, HaRe failed to finish this refactoring."
+              in  if t == [] then error "Sorry, HaRe failed to finish this refactoring (deleteToks)."
                              else  gtail "deleteToks6" t
 
 
