@@ -572,11 +572,13 @@ updateToks oldAST newAST printFun
 updateToksList oldAST newAST printFun
    = do (RefSt toks _ (v1, v2)) <- get
 	let offset             = lengthOfLastLine toks1
-            (toks1, _, _)      = splitToks (startPos, endPos) toks
+            (toks1,toks2az, toks3az)      = splitToks (startPos, endPos) toks
 	    (startPos, endPos) = getStartEndLoc2 toks oldAST
         newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-        error (showToks newToks) 
-        -- error (SYB.showData SYB.Parser 0 endPos) 
+        -- error (GHC.showRichTokenStream newToks) 
+        -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks newToks))
+        -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks toks2az) ++ "\n" ++ (showToks toks3az))
+        error ("updateToksList:" ++ (showToks newToks))
         let 
             toks' = replaceToks toks startPos endPos newToks
         if length newToks == 0

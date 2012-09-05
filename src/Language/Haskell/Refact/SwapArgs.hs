@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.SwapArgs (swapArgs) where
 
 import qualified Data.Generics.Schemes as SYB

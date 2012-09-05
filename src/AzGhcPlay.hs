@@ -44,7 +44,12 @@ main = t1
 t1 = GhcRefacCase.ifToCase ["./refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./B.hs","4","7","4","43"]
 
+<<<<<<< HEAD
 s1 = GhcSwapArgs.swapArgs ["../refactorer/C.hs","3","1"]
+=======
+s1 = GhcSwapArgs.swapArgs ["../refactorer/B.hs","6","1"]
+s2 = GhcSwapArgs.swapArgs ["./refactorer/B.hs","6","1"]
+>>>>>>> alanz/ghc-api
 
 -- added by Chris for renaming
 -- r1 = GhcRefacRename.rename ["./C.hs", "NewBlah", "4", "1"]
