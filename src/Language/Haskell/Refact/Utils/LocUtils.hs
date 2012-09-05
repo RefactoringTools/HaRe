@@ -471,7 +471,7 @@ getToks (startPos,endPos) toks
 -- Split the token stream into three parts: the tokens before the startPos,
 -- the tokens between startPos and endPos, and the tokens after endPos.
 splitToks::(SimpPos, SimpPos)->[PosToken]->([PosToken],[PosToken],[PosToken])
-splitToks (startPos, endPos) toks
+splitToks (startPos, endPos) toks -- = error (SYB.showData SYB.Parser 0 endPos) 
    = if (startPos, endPos) == (simpPos0, simpPos0)
        then error "Invalid token stream position!"
        else let startPos'= if startPos==simpPos0 then endPos else startPos
@@ -479,11 +479,11 @@ splitToks (startPos, endPos) toks
                 (toks1, toks2) = break (\t -> tokenPos t == startPos') toks
                 -- (toks21, toks22) = break (\t -> tokenPos t== endPos') toks2
                 (toks21, toks22) = break (\t -> tokenPos t >= endPos') toks2
+            -- in error ((showToks toks1) ++ "\n" ++ (showToks toks21) ++ "\n" ++ (showToks toks22))
                 -- Should add error message for empty list?
             -- in  if length toks22==0 then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
             in  if length toks22==0 then error $ "Sorry, HaRe failed to finish this refactoring. SplitToks >" ++ (show (startPos, endPos,startPos',endPos')) ++ "," ++ (showToks toks1) ++ "," ++ (showToks toks2)
-                  else (toks1, toks21++[ghead "splitToks" toks22], gtail "splitToks" toks22)
-
+                   else (toks1, toks21++[ghead "splitToks" toks22], gtail "splitToks" toks22)
 {-
 getOffset toks pos
   = let (ts1, ts2) = break (\t->tokenPos t == pos) toks
@@ -575,7 +575,8 @@ updateToksList oldAST newAST printFun
             (toks1, _, _)      = splitToks (startPos, endPos) toks
 	    (startPos, endPos) = getStartEndLoc2 toks oldAST
         newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-        error (GHC.showRichTokenStream newToks) 
+        error (showToks newToks) 
+        -- error (SYB.showData SYB.Parser 0 endPos) 
         let 
             toks' = replaceToks toks startPos endPos newToks
         if length newToks == 0
@@ -605,7 +606,7 @@ addFormalParams t newParams
 
 replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
 replaceToks toks startPos endPos newToks
-   -- = error $ "replaceToks: newToks=" ++ (showToks newToks) -- ++AZ++
+ --   = error $ "replaceToks: newToks=" ++ (showToks newToks) -- ++AZ++
    = if length toks22 == 0
         then toks1 ++ newToks
         else let {-(pos::(Int,Int)) = tokenPos (ghead "replaceToks" toks22)-} -- JULIEN
