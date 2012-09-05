@@ -30,6 +30,6 @@ swapArgs args
        modInfo@((_, _, mod), toks) <- parseSourceFile fileName 
        -- putStrLn $ showParsedModule mod
        let pnt = locToPNT fileName (row, col) mod  
-       putStrLn "l" -- $ show [fileName, beginPos, endPos]
+       putStrLn ("here" ++ (SYB.showData SYB.Parser 0 pnt))  -- $ show [fileName, beginPos, endPos]
 
 showParsedModule p = SYB.showData SYB.Parser 0 (GHC.pm_parsed_source p)

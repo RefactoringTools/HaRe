@@ -42,6 +42,7 @@ import qualified Var           as GHC
 import qualified Coercion      as GHC
 import qualified ForeignCall   as GHC
 import qualified InstEnv       as GHC
+import qualified OccName       as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -505,11 +506,11 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
 
 ---------------------------------------------------------------------------------------
 -- | Default identifier in the PNT format.
-defaultPNT:: GHC.RdrName
+defaultPNT:: GHC.GenLocated GHC.SrcSpan GHC.RdrName   -- GHC.RdrName
 -- defaultPNT = PNT defaultPN Value (N Nothing) :: PNT
 -- defaultPNT = GHC.mkRdrUnqual "nothing" :: PNT
 -- defaultPNT = PNT (mkRdrName "nothing") (N Nothing) :: PNT
-defaultPNT = (mkRdrName "nothing") 
+defaultPNT = GHC.L GHC.noSrcSpan (mkRdrName "nothing") 
 
 -- | Default expression.
 defaultExp::HsExpP
@@ -523,13 +524,13 @@ mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 --  otherwise return the default PNT.
 
 -- TODO: bring in data constructor constants too.
-expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
+{- expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
 expToPNT (GHC.HsVar pnt)                     = pnt
 expToPNT (GHC.HsIPVar (GHC.IPName pnt))      = pnt
 -- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
 -- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
 expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
-expToPNT _ = defaultPNT
+expToPNT _ = defaultPNT -}
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT is such an identifier does not exist.
@@ -537,19 +538,31 @@ expToPNT _ = defaultPNT
 locToPNT::(SYB.Data t)=>String      -- ^ The file name
                     ->(Int,Int) -- ^ The row and column number
                     ->t         -- ^ The syntax phrase
-                    ->GHC.RdrName       -- ^ The result
+                    ->GHC.GenLocated GHC.SrcSpan GHC.RdrName       -- ^ The result
 locToPNT  fileName (row, col) t
-  =  case res of
-		    Just x -> x
-		    Nothing -> defaultPNT
+  = case res of
+         Just x -> x
+         Nothing -> defaultPNT
             -- =(fromMaybe defaultPNT). applyTU (once_buTU (failTU `adhocTU` worker))
        where
 	    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
         
-	    worker (pnt::GHC.RdrName) = error (GHC.showRdrName pnt) --  pnt@(PNT pname ty (N (Just (SrcLoc fileName1 _ row1 col1))))
+	    worker (pnt@(GHC.L s (GHC.Unqual name))::GHC.GenLocated GHC.SrcSpan t1) 
+              | inScope pnt = Just pnt
 			-- |fileName1==fileName && (row1,col1) == (row,col) =Just pnt
 			
 	    worker _ =Nothing
+
+            inScope :: GHC.Located e -> Bool
+	    inScope (GHC.L l _) =
+	      let
+	        (startLoc,endLoc) = case l of
+	          (GHC.RealSrcSpan ss) ->
+	            ((GHC.srcSpanStartLine ss),
+	             (GHC.srcSpanEndLine ss))
+	          (GHC.UnhelpfulSpan _) -> ((0),(0))
+	      in
+	       (startLoc==row) && (endLoc>= col)
 
 
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
