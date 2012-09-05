@@ -23,6 +23,9 @@ type HsPatP    =HsPatI PNT
 type HsExpP    =HsExpI PNT
 -}
 type HsExpP    = GHC.HsExpr GHC.RdrName
+type HsDeclP   = GHC.HsDecl GHC.RdrName
+
+
 {-
 type HsMatchP  =HsMatchI PNT (HsExpP) (HsPatP) [HsDeclP]
 -- type HsModuleP =HsModuleI (SN HsName.HsName) [HsDeclI PNT]  

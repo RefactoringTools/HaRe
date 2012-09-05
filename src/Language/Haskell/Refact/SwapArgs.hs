@@ -30,6 +30,40 @@ swapArgs args
        modInfo@((_, _, mod), toks) <- parseSourceFile fileName 
        -- putStrLn $ showParsedModule mod
        let pnt = locToPNT fileName (row, col) mod  
-       putStrLn ("here" ++ (SYB.showData SYB.Parser 0 pnt))  -- $ show [fileName, beginPos, endPos]
 
-showParsedModule p = SYB.showData SYB.Parser 0 (GHC.pm_parsed_source p)
+       --if isFunPNT pnt mod    -- Add this back in ++ CMB +++
+       -- then do 
+       r <- applyRefac (doSwap pnt) (Just modInfo) fileName
+       --        rs <-if isExported pnt exps 
+       --               then  applyRefacToClientMods (doSwap pnt) fileName
+       --               else  return []
+       -- writeRefactoredFiles False (r:rs)      
+       -- else error "\nInvalid cursor position!"
+       -- writeRefactoredFiles False [r]  
+       -- putStrLn ("here" ++ (SYB.showData SYB.Parser 0 mod))  -- $ show [fileName, beginPos, endPos]
+       putStrLn "Completd"
+
+
+doSwap ::
+  GHC.GenLocated GHC.SrcSpan GHC.RdrName  
+  -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> Refact GHC.ParsedSource -- m GHC.ParsedSource
+doSwap pnt@(GHC.L s _) (_ , _, mod) 
+   = {-error (SYB.showData SYB.Parser 0 pnt) -- -} everywhereMStaged SYB.Parser (SYB.mkM inFun) mod -- this needs to be bottom up +++ CMB +++
+	where
+		-- inFun ((GHC.FunBind name isInfix matches coerce localFree _)
+                inFun (GHC.L a (GHC.ValD i@(GHC.FunBind (GHC.L x b) bool matchgroup wphole c maybe)):: (GHC.Located HsDeclP))
+			| s == x = do matchgroup' <- swapInMatch matchgroup -- error (SYB.showData SYB.Parser 0 i) 
+			              return ((GHC.L a (GHC.ValD (GHC.FunBind (GHC.L x b) bool matchgroup' wphole c maybe))))
+		inFun f = return f
+
+                swapInMatch (GHC.MatchGroup (m:ms) l)  =  do m' <- swapInMatches m
+							     return (GHC.MatchGroup (m':ms) l)
+		swapInMatches i@(GHC.L x (GHC.Match pats nothing rhs)) 
+		  = -- error (SYB.showData SYB.Parser 0 pats) 
+			case pats of
+				(p1:p2:ps) -> do -- pats'' <- update p2 p1 =<< update p1 p2 pats
+						 -- update p1 p2 pats
+						 return (GHC.L x (GHC.Match pats nothing rhs))
+
+-- pats nothing rhss ds)
+
