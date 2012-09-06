@@ -4,8 +4,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 module Language.Haskell.Refact.Utils
-       (
-         locToExp
+       ( expToPNT
+       , locToExp
        , locToPNT
        , sameOccurrence
        , parseSourceFile
@@ -558,13 +558,13 @@ mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 --  otherwise return the default PNT.
 
 -- TODO: bring in data constructor constants too.
-{- expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
-expToPNT (GHC.HsVar pnt)                     = pnt
-expToPNT (GHC.HsIPVar (GHC.IPName pnt))      = pnt
+-- expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
+expToPNT a@(GHC.L x (GHC.HsVar pnt))                     = pnt
+-- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
 -- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
 -- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
-expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
-expToPNT _ = defaultPNT -}
+-- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
+expToPNT _ = defaultPNT 
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT is such an identifier does not exist.

@@ -15,3 +15,5 @@ main = do
 
 mary = [1,2,3]
 
+h = bob 1 2
+
