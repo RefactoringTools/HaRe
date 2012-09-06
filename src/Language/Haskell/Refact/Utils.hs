@@ -50,6 +50,7 @@ import qualified OccName       as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+import Debug.Trace
 -- ---------------------------------------------------------------------
 
 {-
@@ -451,28 +452,26 @@ instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
                        return newExp'
       	  | otherwise = return e      
 
-    
-
-
 instance (SYB.Data t) => Update (GHC.Located HsPatP) t where
-	update oldPat newPat t  
-		= everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
-	 where
-           inPat (p::GHC.Located HsPatP) -- = error "here"
-		| sameOccurrence p oldPat 
-			= do (newPat', _) <- updateToksList [oldPat] [newPat] (prettyprintPatList prettyprint False)
-	                     return $ head newPat'
-                | otherwise = return p
+    update oldPat newPat t  
+        = everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
+     where
+        inPat (p::GHC.Located HsPatP) -- = error "here"
+            | sameOccurrence p oldPat 
+                = do (newPat', _) <- updateToksList [oldPat] [newPat] (prettyprintPatList prettyprint False)
+                     return $ head newPat'
+            | otherwise = return p
 
 instance (SYB.Data t) =>Update [GHC.Located HsPatP] t where
-
  update oldPat newPat  t
    = everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
    where
     inPat (p::[GHC.Located HsPatP])
-     -- | map sameOccurrence p oldPat
-        = do  (newPat', _) <- updateToksList oldPat newPat (prettyprintPatList prettyprint False)
-              return newPat'
+     | and $ zipWith sameOccurrence p oldPat
+        =  do  liftIO $ putStrLn (">" ++ SYB.showData SYB.Parser 0 p ++ "<") 
+               (newPat', _) <- (updateToksList oldPat newPat (prettyprintPatList prettyprint False))
+               liftIO $ putStrLn (">" ++ SYB.showData SYB.Parser 0 newPat' ++ "<") 
+               return newPat'
     inPat p = return p 
 
 prettyprint :: (GHC.Outputable a) => a -> String
