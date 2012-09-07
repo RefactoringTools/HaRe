@@ -473,22 +473,82 @@ getToks (startPos,endPos) toks
 -- the tokens between startPos and endPos, and the tokens after endPos.
 splitToks::(SimpPos, SimpPos)->[PosToken]->([PosToken],[PosToken],[PosToken])
 splitToks (startPos, endPos) toks -- = error (SYB.showData SYB.Parser 0 endPos) 
-   = trace ("splitToks" ++ (showToks toks))
+   = -- trace ("splitToks" ++ (showToks toks))
    (if (startPos, endPos) == (simpPos0, simpPos0)
        then error "Invalid token stream position!"
        else let startPos'= if startPos==simpPos0 then endPos else startPos
                 endPos'  = if endPos == simpPos0 then startPos else endPos
-                (toks1, toks2) = break (\t -> tokenPos t >= startPos') toks
-		let (toks21, toks22) = (if toks2 == [] 
-						then trace ("+++++" ++ (showToks toks) ++ "++++++++" ) (break (\t -> tokenPos t >= endPos') (last toks1:toks2))
-                -- (toks21, toks22) = break (\t -> tokenPos t== endPos') toks2
-		        			else trace ("+++++" ++ (showToks toks) ++ "++++++++" ) (break (\t -> tokenPos t >= endPos') toks2) )
+                (toks1, toks2) = break (\t -> tokenPos t == startPos') toks
+                (toks21, toks22) = correctBreak startPos' endPos' toks1 toks2 toks
 
 	            -- in error ((showToks toks1) ++ "\n" ++ (showToks toks21) ++ "\n" ++ (showToks toks22))
                 -- Should add error message for empty list?
             -- in  if length toks22==0 then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
            -- in  if length toks22==0 then error $ "Sorry, HaRe failed to finish this refactoring. SplitToks >" ++ (show (startPos, endPos,startPos',endPos')) ++ "," ++ (showToks toks1) ++ "," ++ (showToks toks2)
-            in      (toks1, toks21++[ghead "splitToks" toks22], gtail "splitToks" toks22) )
+            in      (toks1, toks21 {-++[ghead "splitToks" toks22]-}, toks22) )
+  where 
+    correctBreak startPos' endPos' toks1 toks2 toks
+                       = if length toks2 == 0
+ 				 then let (toks1', toks2) = break (\t -> tokenPos t >= startPos') toks 
+				      in break (\t -> tokenPos t >= endPos') (drop 2 toks1++toks2)
+                -- (toks21, toks22) = break (\t -> tokenPos t== endPos') toks2
+		        	 else (break (\t -> tokenPos t >= endPos') toks2) 
+
+-- updateToks ::
+-- (SYB.Data t) =>
+--  GHC.GenLocated GHC.SrcSpan t
+--  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> Refact (GHC.GenLocated GHC.SrcSpan t, [PosToken])
+updateToks oldAST newAST printFun
+   = trace "updateToks" $ 
+     do (RefSt toks _ (v1, v2)) <- get
+	let offset             = lengthOfLastLine toks1
+            (toks1, _, _)      = splitToks (startPos, endPos) toks
+	    (startPos, endPos) = getStartEndLoc toks oldAST
+        newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
+        let 
+            toks' = replaceToks toks startPos endPos newToks
+        if length newToks == 0
+          then put (RefSt toks' modified (v1,v2))
+          else put (RefSt toks' modified (tokenRow (glast "updateToks1" newToks) -10, v2))
+	
+        return (newAST, newToks) 
+
+updateToksList oldAST newAST printFun
+   = trace "updateToksList" $ 
+     do (RefSt toks _ (v1, v2)) <- get
+        let offset                        = lengthOfLastLine toks1
+            (toks1,toks2az, toks3az)      = splitToks (startPos, endPos) toks
+            (startPos, endPos)            = getStartEndLoc2 toks oldAST
+        newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
+        -- error (GHC.showRichTokenStream newToks) 
+        -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks newToks))
+        -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks toks2az) ++ "\n" ++ (showToks toks3az))
+        -- error ("updateToksList:" ++ (showToks newToks))
+        let 
+            toks' = replaceToks toks startPos endPos newToks
+        if length newToks == 0
+          then put (RefSt toks' modified (v1,v2))
+          else put (RefSt toks' modified (tokenRow (glast "updateToks1" newToks) -10, v2))
+	
+        return (newAST, newToks) 
+
+--Replace a list of tokens in the token stream by a new list of tokens, adjust the layout as well.
+--To use this function make sure the start and end positions really exist in the token stream.
+--QN: what happens if the start or end position does not exist?
+
+replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
+replaceToks toks startPos endPos newToks
+  = -- error ("replaceToks:" ++ (showToks (toks1++ (newToks++toks22)))) -- (showToks toks1) ++ "\n" ++ (showToks toks21) ++ "\n" ++ (showToks toks22))
+ -- $ "replaceToks: newToks=" ++ (showToks newToks) -- ++AZ++
+    (if length toks22 == 0
+        then toks1 ++ newToks
+        else let {-(pos::(Int,Int)) = tokenPos (ghead "replaceToks" toks22)-} -- JULIEN
+                 oldOffset = {-getOffset toks pos  -}  lengthOfLastLine (toks1++toks21) --JULIEN
+                 newOffset = {-getOffset (toks1++newToks++ toks22) pos -} lengthOfLastLine (toks1++newToks) -- JULIEN
+             in  toks1++ (newToks++toks22))  -- adjustLayout toks22 oldOffset newOffset) ) 
+   where
+      (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
+
 {-
 getOffset toks pos
   = let (ts1, ts2) = break (\t->tokenPos t == pos) toks
@@ -556,43 +616,7 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
          literalInPat _ =return []
 -}
 
--- updateToks ::
--- (SYB.Data t) =>
---  GHC.GenLocated GHC.SrcSpan t
---  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> Refact (GHC.GenLocated GHC.SrcSpan t, [PosToken])
-updateToks oldAST newAST printFun
-   = trace "updateToks" $ 
-     do (RefSt toks _ (v1, v2)) <- get
-	let offset             = lengthOfLastLine toks1
-            (toks1, _, _)      = splitToks (startPos, endPos) toks
-	    (startPos, endPos) = getStartEndLoc toks oldAST
-        newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-        let 
-            toks' = replaceToks toks startPos endPos newToks
-        if length newToks == 0
-          then put (RefSt toks' modified (v1,v2))
-          else put (RefSt toks' modified (tokenRow (glast "updateToks1" newToks) -10, v2))
-	
-        return (newAST, newToks) 
 
-updateToksList oldAST newAST printFun
-   = trace "updateToksList" $ 
-     do (RefSt toks _ (v1, v2)) <- get
-	let offset             = lengthOfLastLine toks1
-            (toks1,toks2az, toks3az)      = splitToks (startPos, endPos) toks
-	    (startPos, endPos) = getStartEndLoc2 toks oldAST
-        newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-        -- error (GHC.showRichTokenStream newToks) 
-        -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks newToks))
-        -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks toks2az) ++ "\n" ++ (showToks toks3az))
-        -- error ("updateToksList:" ++ (showToks newToks))
-        let 
-            toks' = replaceToks toks startPos endPos newToks
-        if length newToks == 0
-          then put (RefSt toks' modified (v1,v2))
-          else put (RefSt toks' modified (tokenRow (glast "updateToks1" newToks) -10, v2))
-	
-        return (newAST, newToks) 
         
 {-
 ---REFACTORING: GENERALISE THIS FUNCTION.
@@ -609,22 +633,7 @@ addFormalParams t newParams
        addLocInfo (newParams, newToks)
 -}
 
---Replace a list of tokens in the token stream by a new list of tokens, adjust the layout as well.
---To use this function make sure the start and end positions really exist in the token stream.
---QN: what happens if the start or end position does not exist?
 
-replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
-replaceToks toks startPos endPos newToks
-  =  trace ("replaceToks:" ++ (showToks toks1) ++ "\n" ++ (showToks toks21) ++ "\n" ++ (showToks toks22))
- -- $ "replaceToks: newToks=" ++ (showToks newToks) -- ++AZ++
-    (if length toks22 == 0
-        then toks1 ++ newToks
-        else let {-(pos::(Int,Int)) = tokenPos (ghead "replaceToks" toks22)-} -- JULIEN
-                 oldOffset = {-getOffset toks pos  -}  lengthOfLastLine (toks1++toks21) --JULIEN
-                 newOffset = {-getOffset (toks1++newToks++ toks22) pos -} lengthOfLastLine (toks1++newToks) -- JULIEN
-             in  toks1++ (newToks++ adjustLayout toks22 oldOffset newOffset) )
-   where
-      (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
    
      
 {-
@@ -1576,17 +1585,15 @@ getStartEndLoc toks t
     in (startPos, endPos)
 
 getStartEndLoc2::(SYB.Data t)=>[PosToken]->[GHC.GenLocated GHC.SrcSpan t] ->(SimpPos,SimpPos)
-
-
-getStartEndLoc2 toks ts
+getStartEndLoc2 toks ts 
   = let (startPos',_) = startEndLocGhc toks (head ts)
-	(_ , endPos') = startEndLocGhc toks (last ts)
+        (_ , endPos') = startEndLocGhc toks (last ts)
         locs = srcLocs ts
         (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
                                                                    else startPos',
                              if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
                                                                   else endPos')
-    in (startPos, endPos)
+    in (startPos, endPos) 
 
 
 {- ++AZ++ old version

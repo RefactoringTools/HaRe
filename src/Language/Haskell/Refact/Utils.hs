@@ -4,8 +4,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 module Language.Haskell.Refact.Utils
-       (
-         locToExp
+       ( expToPNT
+       , locToExp
        , locToPNT
        , sameOccurrence
        , parseSourceFile
@@ -50,6 +50,7 @@ import qualified OccName       as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+import Debug.Trace
 -- ---------------------------------------------------------------------
 
 {-
@@ -451,28 +452,26 @@ instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
                        return newExp'
       	  | otherwise = return e      
 
-    
-
-
 instance (SYB.Data t) => Update (GHC.Located HsPatP) t where
-	update oldPat newPat t  
-		= everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
-	 where
-           inPat (p::GHC.Located HsPatP) -- = error "here"
-		| sameOccurrence p oldPat 
-			= do (newPat', _) <- updateToksList [oldPat] [newPat] (prettyprintPatList prettyprint False)
-	                     return $ head newPat'
-                | otherwise = return p
+    update oldPat newPat t  
+        = everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
+     where
+        inPat (p::GHC.Located HsPatP) -- = error "here"
+            | sameOccurrence p oldPat 
+                = do (newPat', _) <- updateToksList [oldPat] [newPat] (prettyprintPatList prettyprint False)
+                     return $ head newPat'
+            | otherwise = return p
 
 instance (SYB.Data t) =>Update [GHC.Located HsPatP] t where
-
  update oldPat newPat  t
    = everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
    where
     inPat (p::[GHC.Located HsPatP])
-     -- | map sameOccurrence p oldPat
-        = do  (newPat', _) <- updateToksList oldPat newPat (prettyprintPatList prettyprint False)
-              return newPat'
+     | and $ zipWith sameOccurrence p oldPat
+        =  do  liftIO $ putStrLn (">" ++ SYB.showData SYB.Parser 0 p ++ "<") 
+               (newPat', _) <- (updateToksList oldPat newPat (prettyprintPatList prettyprint False))
+               liftIO $ putStrLn (">" ++ SYB.showData SYB.Parser 0 newPat' ++ "<") 
+               return newPat'
     inPat p = return p 
 
 prettyprint :: (GHC.Outputable a) => a -> String
@@ -559,13 +558,13 @@ mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 --  otherwise return the default PNT.
 
 -- TODO: bring in data constructor constants too.
-{- expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
-expToPNT (GHC.HsVar pnt)                     = pnt
-expToPNT (GHC.HsIPVar (GHC.IPName pnt))      = pnt
+-- expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
+expToPNT a@(GHC.L x (GHC.HsVar pnt))                     = pnt
+-- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
 -- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
 -- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
-expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
-expToPNT _ = defaultPNT -}
+-- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
+expToPNT _ = defaultPNT 
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT is such an identifier does not exist.

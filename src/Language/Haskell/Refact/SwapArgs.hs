@@ -22,6 +22,9 @@ import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.LocUtils
+
+import Debug.Trace
 
 swapArgs :: [String] -> IO () -- For now
 swapArgs args
@@ -34,13 +37,15 @@ swapArgs args
 
        --if isFunPNT pnt mod    -- Add this back in ++ CMB +++
        -- then do 
-       r <- applyRefac (doSwap pnt) (Just modInfo) fileName
+       refactoredMod@(_, (t, s)) <- applyRefac (doSwap pnt) (Just modInfo) fileName
        --        rs <-if isExported pnt exps 
        --               then  applyRefacToClientMods (doSwap pnt) fileName
        --               else  return []
        -- writeRefactoredFiles False (r:rs)      
        -- else error "\nInvalid cursor position!"
-       writeRefactoredFiles False [r]  
+       
+       -- putStrLn (showToks t)
+       writeRefactoredFiles False [refactoredMod]  
        -- putStrLn ("here" ++ (SYB.showData SYB.Parser 0 mod))  -- $ show [fileName, beginPos, endPos]
        putStrLn "Completd"
 
@@ -49,27 +54,28 @@ doSwap ::
   GHC.GenLocated GHC.SrcSpan GHC.RdrName  
   -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> Refact GHC.ParsedSource -- m GHC.ParsedSource
 doSwap pnt@(GHC.L s _) (_ , _, mod) 
-   = {-error (SYB.showData SYB.Parser 0 pnt) -- -} everywhereMStaged SYB.Parser (SYB.mkM inMatch) mod -- this needs to be bottom up +++ CMB +++
-	where
-		-- inFun ((GHC.FunBind name isInfix matches coerce localFree _)
-                {- inFun (GHC.L a (GHC.ValD i@(GHC.FunBind (GHC.L x b) bool matchgroup wphole c maybe)):: (GHC.Located HsDeclP))
-			| s == x = do matchgroup' <- swapInMatch matchgroup -- error (SYB.showData SYB.Parser 0 i) 
-			              return ((GHC.L a (GHC.ValD (GHC.FunBind (GHC.L x b) bool matchgroup' wphole c maybe))))
-		inFun f = return f
-
-                swapInMatch (GHC.MatchGroup (m:ms) l)  =  do m' <- swapInMatches m
-							     return (GHC.MatchGroup (m':ms) l) -}
-		inMatch i@(GHC.L x m@(GHC.Match pats nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )
+    = {-error (SYB.showData SYB.Parser 0 pnt) -- -} everywhereMStaged SYB.Parser (SYB.mkM inMatch `SYB.extM` inExp) mod -- this needs to be bottom up +++ CMB +++
+    where
+        inMatch i@(GHC.L x m@(GHC.Match (p1:p2:ps) nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )
 		  -- = error (SYB.showData SYB.Parser 0 pnt) 
-		   | GHC.srcSpanStart s == GHC.srcSpanStart x
-		   = 	case pats of
-				(p1:p2:ps) -> do -- pats'' <- update p2 p1 =<< update p1 p2 pats
-						 pats' <- update pats (p2:p1:ps) i --pats
-						 -- error (SYB.showData SYB.Parser 0 pats') 
-						 -- p2' <- update p2 p1 p2
-						 return pats' -- (GHC.L x (GHC.Match pats' nothing rhs))
-                inMatch i = return i 
+            | GHC.srcSpanStart s == GHC.srcSpanStart x
+              = do liftIO $ putStrLn ("inMatch>" ++ SYB.showData SYB.Parser 0 (p1:p2:ps) ++ "<")
+                   p1' <- update p1 p2 p1 --pats
+                   p2' <- update p2 p1 p2
+                   return (GHC.L x (GHC.Match (p1':p2':ps) nothing rhs))
+        inMatch i = return i 
+        
+        inExp exp@((GHC.L x (GHC.HsApp (GHC.L y (GHC.HsApp e e1)) e2))::GHC.Located HsExpP)
+          | expToPNT e == pnt = update e2 e1 =<< update e1 e2 exp
+        inExp e = return e
+        -- In the call-site.
+   {- inExp exp@((Exp (HsApp (Exp (HsApp e e1)) e2))::HsExpP)
+      | expToPNT e == pnt     
+      = update e2 e1 =<< update e1 e2 exp     
+    inExp e = return e -}
 -- pats nothing rhss ds)
+
+-- expToPNT x = undefined
 
 prettyprint :: (GHC.Outputable a) => a -> String
 prettyprint x = GHC.showSDoc $ GHC.ppr x
