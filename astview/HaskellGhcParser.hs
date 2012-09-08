@@ -180,8 +180,8 @@ data2treeGhcStaged stage n =
 data2treeGhcStaged :: Data a => SYB.Stage -> Int -> a -> Tree String
 -- data2treeGhcStaged' :: Data a => SYB.Stage -> Int -> a -> String
 data2treeGhcStaged stage n = 
-  generic -- `ext1Q` list 
-          -- `extQ` string 
+  generic `ext1Q` list 
+          `extQ` string 
           -- `extQ` fastString 
           -- `extQ` gname 
           -- `extQ` occName 
@@ -190,23 +190,31 @@ data2treeGhcStaged stage n =
           -- `extQ` var 
           -- `extQ` dataCon
           -- `extQ` bagName `extQ` bagRdrName `extQ` bagVar 
-          -- `extQ` nameSet
-          -- `extQ` postTcType 
-          -- `extQ` fixity
+          `extQ` nameSet
+          `extQ` postTcType 
+          `extQ` fixity
   where generic :: Data a => a -> Tree String
-        generic t = Node (indent n ++ "(" ++ showConstr (toConstr t) ++ ")") 
-                      (gmapQ (data2treeGhcStaged stage (n+1)) t)
+        generic t = Node ("T:" ++ (showConstr (toConstr t))) (gmapQ (data2treeGhcStaged stage (n+1)) t)
 
         space "" = ""
         space s  = ' ':s
-        indent n' = "\n" ++ replicate n' ' ' 
+        -- indent n' = "\n" ++ replicate n' ' ' 
+        indent n' = ""
 
         -- string     = show :: String -> String
+        string     = const (Node ("show t") []) :: String -> Tree String
+        
 
         -- fastString = ("{FastString: "++) . (++"}") . show :: GHC.FastString -> String
 
         -- list l     = indent n ++ "[" 
         --                        ++ concat (intersperse "," (map (data2treeGhcStaged' stage (n+1)) l)) ++ "]"
+
+        -- list l     = Node (indent n ++ "[" 
+        --                         ++ concat (intersperse "," ["a","b"]{- (map (data2treeGhcStaged' stage (n+1)) l) -}) ++ "]") []
+
+        list l     = Node "list" ((map (data2treeGhcStaged stage (n+1)) l))
+
 
         -- gname      = ("{Name: "++) . (++"}") . GHC.showSDoc . GHC.ppr :: GHC.Name -> String
         -- occName    = ("{OccName: "++) . (++"}") .  GHC.occNameString 
@@ -224,19 +232,10 @@ data2treeGhcStaged stage n =
         bagVar     = ("{Bag(Located (HsBind Var)): "++) . (++"}") . list . GHC.bagToList 
         -}
 
-        {-
         nameSet | stage `elem` [SYB.Parser,SYB.TypeChecker] 
-                = const ("{!NameSet placeholder here!}") :: GHC.NameSet -> String
-                | otherwise     
-                = ("{NameSet: "++) . (++"}") . list . GHC.nameSetToList 
-
-        postTcType | stage<SYB.TypeChecker = const "{!type placeholder here?!}" :: GHC.PostTcType -> String
-                   | otherwise     = GHC.showSDoc . GHC.ppr :: GHC.Type -> String
-
-        fixity | stage<SYB.Renamer = const "{!fixity placeholder here?!}" :: GHC.Fixity -> String
-               | otherwise     = ("{Fixity: "++) . (++"}") . GHC.showSDoc . GHC.ppr :: GHC.Fixity -> String
-
-        -}
+                = const (Node ("{!NameSet placeholder here!}") []) :: GHC.NameSet -> Tree String
+        postTcType | stage<SYB.TypeChecker = const (Node "{!type placeholder here?!}" []) :: GHC.PostTcType -> Tree String
+        fixity | stage<SYB.Renamer = const (Node "{!fixity placeholder here?!}" []) :: GHC.Fixity -> Tree String
 
 
 -- ---------------------------------------------------------------------
@@ -284,7 +283,12 @@ parseSourceFile s =
 testParser :: Parser -> String -> IO ()
 testParser p s = putStrLn $ drawTree $ (tree p) s
 
-t = testParser haskellghc "main = putStrLn \"Hello World\""
+tsrc = "main = putStrLn \"Hello World\""
+
+t = testParser haskellghc tsrc
+
+
+p = putStrLn $ SYB.showData SYB.Parser 2 (parseHaskellGhc tsrc)
 
 
 
