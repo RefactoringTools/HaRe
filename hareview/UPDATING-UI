@@ -18,6 +18,7 @@ If the version on your machine does not work, do the following
 
     $ sudo apt-get install -y glade
     $ glade /vagrant/data/astview.glade &
+    [ Note: it may fail with an X error the first time you run it, it runs fine after that]
 
 The vagrant box has mounted the current directory in /vagrant, so any
 changes you save will update the underlying project.
