@@ -2,7 +2,7 @@
 module HaskellGhcParser where
 
 -- container
-import Data.Tree (Tree(Node,rootLabel))
+import Data.Tree (Tree(Node,rootLabel),drawTree)
 
 -- syb
 import Data.Generics (Data)
@@ -43,12 +43,12 @@ import Language.Haskell.Exts.Parser (ParseResult(ParseOk))
 import Language.Haskell.Exts.Syntax (Module)
 import Data.List
 
-haskellghc = Parser "Haskell" [".hs"] buildTreeHaskellExt
+haskellghc = Parser "Haskell" [".hs"] buildTreeHaskellGhc
 
-buildTreeHaskellExt :: String -> Tree String
-buildTreeHaskellExt s = case parseHaskellGhc s of
-     -- Right ast -> flat $ data2treeGhc (ast::GHC.Located (GHC.HsModule GHC.RdrName))
-     Right ast -> flat $ data2tree (ast::GHC.Located (GHC.HsModule GHC.RdrName))
+buildTreeHaskellGhc :: String -> Tree String
+buildTreeHaskellGhc s = case parseHaskellGhc s of
+     Right ast -> flat $ data2treeGhc (ast::GHC.Located (GHC.HsModule GHC.RdrName))
+     -- Right ast -> flat $ data2tree (ast::GHC.Located (GHC.HsModule GHC.RdrName))
      Left ParseError -> Node "ParseError" []
 
 -- parseHaskellGhc :: (Data a) => String -> Either ParseError a
@@ -62,15 +62,15 @@ parseHaskellGhc s = case (foo s) of
 -- | Trealise Data to Tree (from SYB 2, sec. 3.4 )
 --   bearing in mind the GHC parser stage holes
 data2treeGhc :: Data a => a -> Tree String
--- data2treeGhc = data2treeGhcStaged SYB.Parser
-data2treeGhc = data2tree
+data2treeGhc = data2treeGhcStaged SYB.Parser 0
+-- data2treeGhc = data2tree
 
 
 -- | Generic Data-based show, with special cases for GHC Ast types,
 --   and simplistic indentation-based layout (the 'Int' parameter); 
 --   showing abstract types abstractly and avoiding known potholes 
 --   (based on the 'Stage' that generated the Ast)
-data2treeGhcStaged stage n = const (Node "foo" [])
+-- data2treeGhcStaged stage n = const (Node "foo" [])
 {-
 data2treeGhcStaged :: Data a => SYB.Stage -> a -> Tree String
 -- showData :: Data a => Stage -> Int -> a -> String
@@ -177,9 +177,9 @@ data2treeGhcStaged stage n =
 --   and simplistic indentation-based layout (the 'Int' parameter); 
 --   showing abstract types abstractly and avoiding known potholes 
 --   (based on the 'Stage' that generated the Ast)
--- data2treeGhcStaged' :: Data a => SYB.Stage -> a -> Tree String
-data2treeGhcStaged' :: Data a => SYB.Stage -> Int -> a -> String
-data2treeGhcStaged' stage n = 
+data2treeGhcStaged :: Data a => SYB.Stage -> Int -> a -> Tree String
+-- data2treeGhcStaged' :: Data a => SYB.Stage -> Int -> a -> String
+data2treeGhcStaged stage n = 
   generic -- `ext1Q` list 
           -- `extQ` string 
           -- `extQ` fastString 
@@ -193,9 +193,9 @@ data2treeGhcStaged' stage n =
           -- `extQ` nameSet
           -- `extQ` postTcType 
           -- `extQ` fixity
-  where generic :: Data a => a -> String
-        generic t = indent n ++ "(" ++ showConstr (toConstr t)
-                 ++ space (concat (intersperse " " (gmapQ (data2treeGhcStaged' stage (n+1)) t))) ++ ")"
+  where generic :: Data a => a -> Tree String
+        generic t = Node (indent n ++ "(" ++ showConstr (toConstr t) ++ ")") 
+                      (gmapQ (data2treeGhcStaged stage (n+1)) t)
 
         space "" = ""
         space s  = ' ':s
@@ -205,8 +205,8 @@ data2treeGhcStaged' stage n =
 
         -- fastString = ("{FastString: "++) . (++"}") . show :: GHC.FastString -> String
 
-        list l     = indent n ++ "[" 
-                               ++ concat (intersperse "," (map (data2treeGhcStaged' stage (n+1)) l)) ++ "]"
+        -- list l     = indent n ++ "[" 
+        --                        ++ concat (intersperse "," (map (data2treeGhcStaged' stage (n+1)) l)) ++ "]"
 
         -- gname      = ("{Name: "++) . (++"}") . GHC.showSDoc . GHC.ppr :: GHC.Name -> String
         -- occName    = ("{OccName: "++) . (++"}") .  GHC.occNameString 
@@ -277,6 +277,14 @@ parseSourceFile s =
       return result
 
 
+-- ---------------------------------------------------------------------
+
+-- | A simple test function to launch parsers from ghci.
+--   When this works, astview should work too.
+testParser :: Parser -> String -> IO ()
+testParser p s = putStrLn $ drawTree $ (tree p) s
+
+t = testParser haskellghc "main = putStrLn \"Hello World\""
 
 
 
