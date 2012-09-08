@@ -62,13 +62,16 @@ parseHaskellGhc s = case (foo s) of
 -- | Trealise Data to Tree (from SYB 2, sec. 3.4 )
 --   bearing in mind the GHC parser stage holes
 data2treeGhc :: Data a => a -> Tree String
-data2treeGhc = data2treeGhcStaged SYB.Parser
+-- data2treeGhc = data2treeGhcStaged SYB.Parser
+data2treeGhc = data2tree
 
 
 -- | Generic Data-based show, with special cases for GHC Ast types,
 --   and simplistic indentation-based layout (the 'Int' parameter); 
 --   showing abstract types abstractly and avoiding known potholes 
 --   (based on the 'Stage' that generated the Ast)
+data2treeGhcStaged stage n = const (Node "foo" [])
+{-
 data2treeGhcStaged :: Data a => SYB.Stage -> a -> Tree String
 -- showData :: Data a => Stage -> Int -> a -> String
 data2treeGhcStaged stage n = 
@@ -82,10 +85,10 @@ data2treeGhcStaged stage n =
           -}
    {- (gdefault n)
           `ext1Q` -}
-   -- nameSet stage n
+   'mkQ' (nameSet stage n)
           {-
           `extQ` postTcType `extQ` -}
-   fixity n
+   -- fixity n
           {-
           `extQ` gdefault
           -}
@@ -116,7 +119,7 @@ data2treeGhcStaged stage n =
         fixity | stage<SYB.Renamer = const (Node "{!fixity placeholder here?!}" []) :: GHC.Fixity -> Tree String
                | otherwise     = const (Node ("{Fixity: ") []) :: GHC.Fixity -> Tree String
                -- | otherwise     = const (Node (("{Fixity: "++) . (++"}") . GHC.showSDoc . GHC.ppr) []) :: GHC.Fixity -> Tree String
-
+-}
 
 {-
 -- | Generic Data-based show, with special cases for GHC Ast types,
@@ -168,7 +171,75 @@ data2treeGhcStaged stage n =
 -}
 
 
+-- ---------------------------------------------------------------------
 
+-- | Generic Data-based show, with special cases for GHC Ast types,
+--   and simplistic indentation-based layout (the 'Int' parameter); 
+--   showing abstract types abstractly and avoiding known potholes 
+--   (based on the 'Stage' that generated the Ast)
+-- data2treeGhcStaged' :: Data a => SYB.Stage -> a -> Tree String
+data2treeGhcStaged' :: Data a => SYB.Stage -> Int -> a -> String
+data2treeGhcStaged' stage n = 
+  generic -- `ext1Q` list 
+          -- `extQ` string 
+          -- `extQ` fastString 
+          -- `extQ` gname 
+          -- `extQ` occName 
+          -- `extQ` moduleName 
+          -- `extQ` srcSpan 
+          -- `extQ` var 
+          -- `extQ` dataCon
+          -- `extQ` bagName `extQ` bagRdrName `extQ` bagVar 
+          -- `extQ` nameSet
+          -- `extQ` postTcType 
+          -- `extQ` fixity
+  where generic :: Data a => a -> String
+        generic t = indent n ++ "(" ++ showConstr (toConstr t)
+                 ++ space (concat (intersperse " " (gmapQ (data2treeGhcStaged' stage (n+1)) t))) ++ ")"
+
+        space "" = ""
+        space s  = ' ':s
+        indent n' = "\n" ++ replicate n' ' ' 
+
+        -- string     = show :: String -> String
+
+        -- fastString = ("{FastString: "++) . (++"}") . show :: GHC.FastString -> String
+
+        list l     = indent n ++ "[" 
+                               ++ concat (intersperse "," (map (data2treeGhcStaged' stage (n+1)) l)) ++ "]"
+
+        -- gname      = ("{Name: "++) . (++"}") . GHC.showSDoc . GHC.ppr :: GHC.Name -> String
+        -- occName    = ("{OccName: "++) . (++"}") .  GHC.occNameString 
+        -- moduleName = ("{ModuleName: "++) . (++"}") . GHC.showSDoc . GHC.ppr :: GHC.ModuleName -> String
+        -- srcSpan    = ("{"++) . (++"}") . GHC.showSDoc . GHC.ppr :: GHC.SrcSpan -> String
+        -- var        = ("{Var: "++) . (++"}") . GHC.showSDoc . GHC.ppr :: GHC.Var -> String
+        -- dataCon    = ("{DataCon: "++) . (++"}") . GHC.showSDoc . GHC.ppr :: GHC.DataCon -> String
+
+        {-
+        bagRdrName:: GHC.Bag (GHC.Located (GHC.HsBind GHC.RdrName)) -> String
+        bagRdrName = ("{Bag(Located (HsBind RdrName)): "++) . (++"}") . list . GHC.bagToList 
+        bagName   :: GHC.Bag (GHC.Located (GHC.HsBind GHC.Name)) -> String
+        bagName    = ("{Bag(Located (HsBind Name)): "++) . (++"}") . list . GHC.bagToList 
+        bagVar    :: GHC.Bag (GHC.Located (GHC.HsBind GHC.Var)) -> String
+        bagVar     = ("{Bag(Located (HsBind Var)): "++) . (++"}") . list . GHC.bagToList 
+        -}
+
+        {-
+        nameSet | stage `elem` [SYB.Parser,SYB.TypeChecker] 
+                = const ("{!NameSet placeholder here!}") :: GHC.NameSet -> String
+                | otherwise     
+                = ("{NameSet: "++) . (++"}") . list . GHC.nameSetToList 
+
+        postTcType | stage<SYB.TypeChecker = const "{!type placeholder here?!}" :: GHC.PostTcType -> String
+                   | otherwise     = GHC.showSDoc . GHC.ppr :: GHC.Type -> String
+
+        fixity | stage<SYB.Renamer = const "{!fixity placeholder here?!}" :: GHC.Fixity -> String
+               | otherwise     = ("{Fixity: "++) . (++"}") . GHC.showSDoc . GHC.ppr :: GHC.Fixity -> String
+
+        -}
+
+
+-- ---------------------------------------------------------------------
 
 
 
