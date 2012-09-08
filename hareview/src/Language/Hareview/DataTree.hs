@@ -1,4 +1,4 @@
-module Language.Astview.DataTree where
+module Language.Hareview.DataTree where
 
 -- syb
 import Data.Generics (Data

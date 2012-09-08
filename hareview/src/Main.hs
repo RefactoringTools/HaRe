@@ -15,13 +15,13 @@ import Graphics.UI.Gtk hiding (get)
 import Language.Haskell.Interpreter hiding ((:=),set,get)
 
 -- astview-utils
-import Language.Astview.Language
+import Language.Hareview.Language
 
 -- local
-import Language.Astview.GUIActions (actionEmptyGUI,actionLoadHeadless) 
-import Language.Astview.GUIData
-import Language.Astview.Registry (loadLanguages)
-import Language.Astview.GUI (buildAststate)
+import Language.Hareview.GUIActions (actionEmptyGUI,actionLoadHeadless) 
+import Language.Hareview.GUIData
+import Language.Hareview.Registry (loadLanguages)
+import Language.Hareview.GUI (buildAststate)
 
 
 -- --------------------------------------------------------

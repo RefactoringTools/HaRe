@@ -1,4 +1,4 @@
-module Language.Astview.Registry where
+module Language.Hareview.Registry where
 
 -- hint
 import Language.Haskell.Interpreter hiding ((:=),set)
@@ -7,11 +7,11 @@ import Language.Haskell.Interpreter hiding ((:=),set)
 -- import System.FilePath.Glob (compile,globDir)
 
 -- astview-utils
-import Language.Astview.Language (Language)
+import Language.Hareview.Language (Language)
 
 -- local
 -- import Paths_astview (getDataFileName,getDataDir) -- by cabal
-import Language.Astview.Languages.Languages
+import Language.Hareview.Languages.Languages
 
 loadLanguages :: IO [Language]
 loadLanguages = do

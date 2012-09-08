@@ -8,15 +8,15 @@ Beware, this file will be overwritten when updating the package.
 
 -}
 
-module Language.Astview.Languages.Parsers where
+module Language.Hareview.Languages.Parsers where
 
 -- container
 import Data.Tree (Tree(Node,rootLabel),drawTree)
 
 -- -- local imports
-import Language.Astview.Parser (Parser (..))
-import Language.Astview.DataTree (flat,data2tree)
-import Language.Astview.Languages.HaskellGhcParser  
+import Language.Hareview.Parser (Parser (..))
+import Language.Hareview.DataTree (flat,data2tree)
+import Language.Hareview.Languages.HaskellGhcParser  
 
 -- | Main export for dynamic interpretation by astview
 parsers :: [Parser]

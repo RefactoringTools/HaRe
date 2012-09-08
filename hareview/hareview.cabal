@@ -1,5 +1,5 @@
-Name:            astview
-Version:         0.2.1
+Name:            hareview
+Version:         0.0.1
 License:         BSD4
 License-File:    LICENSE
 Author:          
@@ -41,14 +41,14 @@ Data-Files:
                  data/EX4.hs.txt
 Library
   Hs-Source-Dirs:  src
-  Exposed-Modules: Language.Astview.Language
-                   Language.Astview.DataTree
+  Exposed-Modules: Language.Hareview.Language
+                   Language.Hareview.DataTree
 
-Executable         astview
+Executable         hareview
   Hs-Source-Dirs:  src
   Main-is:         Main.hs
-  Other-Modules:   Language.Astview.GUI,
-                   Language.Astview.Registry
+  Other-Modules:   Language.Hareview.GUI,
+                   Language.Hareview.Registry
 
   Build-Depends:   base>=4 && <5
                    , filepath

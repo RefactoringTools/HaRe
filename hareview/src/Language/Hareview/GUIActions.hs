@@ -2,10 +2,10 @@
  -
  -}
 
-module Language.Astview.GUIActions where
+module Language.Hareview.GUIActions where
 
 -- gui data types
-import Language.Astview.GUIData
+import Language.Hareview.GUIData
 
 -- base
 import Prelude hiding (writeFile)
@@ -37,10 +37,10 @@ import Graphics.UI.Gtk.SourceView
 import System.Cmd (rawSystem)
 
 -- astview-utils
-import Language.Astview.Language
+import Language.Hareview.Language
 
 -- generated on-the-fly by cabal
-import Paths_astview (getDataFileName,getDataDir)
+import Paths_hareview (getDataFileName,getDataDir)
 
 -- |suffix of window title
 suffix :: String

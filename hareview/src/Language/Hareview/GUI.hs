@@ -1,11 +1,11 @@
 {- contains the main GUI functions
  -
  -}
-module Language.Astview.GUI where
+module Language.Hareview.GUI where
 
 -- guiactions
-import Language.Astview.GUIData
-import Language.Astview.GUIActions 
+import Language.Hareview.GUIData
+import Language.Hareview.GUIActions 
 
 -- base
 import Control.Monad.Trans (liftIO)
@@ -27,10 +27,10 @@ import Graphics.UI.Gtk.Glade
 import Graphics.UI.Gtk.SourceView
 
 -- astview-utils
-import Language.Astview.Language
+import Language.Hareview.Language
 
 -- generated on-the-fly by cabal
-import Paths_astview (getDataFileName) 
+import Paths_hareview (getDataFileName) 
 
 -- | initiates aststate
 buildAststate :: Options -> [Language] -> IO (IORef AstState)

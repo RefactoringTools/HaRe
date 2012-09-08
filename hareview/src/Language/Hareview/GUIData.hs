@@ -2,7 +2,7 @@
 {- contains the GUI data types
  -
  -}
-module Language.Astview.GUIData where
+module Language.Hareview.GUIData where
 
 import Data.Tree (Tree(..))
 import Data.IORef
@@ -11,7 +11,7 @@ import Data.IORef
 import Graphics.UI.Gtk hiding (Language,get)
 import Graphics.UI.Gtk.SourceView (SourceBuffer) 
 
-import Language.Astview.Language (Language)
+import Language.Hareview.Language (Language)
 
 type AstAction a = IORef AstState -> IO a
 

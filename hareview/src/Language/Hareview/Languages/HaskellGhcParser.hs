@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.Astview.Languages.HaskellGhcParser where
+module Language.Hareview.Languages.HaskellGhcParser where
 
 -- container
 import Data.Tree (Tree(Node,rootLabel),drawTree)
@@ -34,9 +34,9 @@ import System.IO.Unsafe
 
 
 -- local imports
-import Language.Astview.Language
--- import Language.Astview.Parser as Astview
-import Language.Astview.DataTree
+import Language.Hareview.Language
+-- import Language.Hareview.Parser as Hareview
+import Language.Hareview.DataTree
 import Data.Tree (Tree(Node,rootLabel))
 
 import Language.Haskell.Exts (parseFileContents)

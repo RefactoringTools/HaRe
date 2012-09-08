@@ -1,19 +1,19 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Language.Astview.Languages.Haskell where
+module Language.Hareview.Languages.Haskell where
 
 -- container
 import Data.Tree (Tree(Node,rootLabel))
 
 -- local imports
-import Language.Astview.Language
+import Language.Hareview.Language
 
 import Language.Haskell.Exts 
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Exts.Syntax
 
-import Language.Astview.DataTree (data2tree)
+import Language.Hareview.DataTree (data2tree)
 
 haskellexts = Language 
   "Haskell" 

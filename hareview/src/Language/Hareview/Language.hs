@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification , DeriveDataTypeable #-}
 
 
-module Language.Astview.Language where
+module Language.Hareview.Language where
 
 import Data.Generics (Typeable)
 import Data.Tree (Tree(..))
