@@ -1,50 +1,11 @@
-Playing with astview to visualise the parse tree.
+Astview is a graphical viewer for abstract syntax trees. It is
+implemented on the basis of scrap-your-boilerplate (i.e.  data2tree)
+and works with all parsers that generate trees that are instances of
+the Data.Data class.  Custom parsers can be dynamically loaded (via
+package hint) at startup.
 
-cd /tmp
-cabal unpack astview
-cd cd astview-0.1.4/
-cabal configure && cabal build
+Copyright (c) Pascal Hof <pascal.hof@udo.edu> and Sebastian Menge
+<sebastian.menge@udo.edu>
 
-fix the error by changing l to (Just l) in line 312 of
-src/Language/Astview/GUI.hs
-
-cabal install
-[may have to cabal install astview-utils first]
-
------------------
-
-The files Parsers.hs and HaskellGhcParser.hs belong in 
-~/.cabal/share/astview-0.1.4/data
-
---------------------------------------------
-
-Test so long [not working, sedfaults] by
-
-user@host:path$ cd ~/.cabal/share/astview-0.1.4/data
-user@host:~/.cabal/share/astview-0.1.4/data$ ghci Parsers.hs
-
--- ghci package-messages stripped
-
-:set -package ghc
-:set -i./astview
-
-*Parsers> :info Parser
-data Parser
-  = Parser {name :: !String,
-            exts :: [String],
-            tree :: String -> Tree String}
-
--- show all registered parsers
-*Parsers> map name parsers                                            
-["Lines and Words","Haskell"]
-
--- get haskell parser
-*Parsers> let haskell = head $ reverse parsers                                 
-
--- build a sample tree of strings
-*Parsers> let sample = tree haskell "main = putStrLn \"Hello World\""
-
--- draw the tree
-*Parsers> putStrLn $ Data.Tree.drawTree sample
-
--- lengthy output follows
+Details on installation and configuration of custom parsers can be
+found in INSTALL
