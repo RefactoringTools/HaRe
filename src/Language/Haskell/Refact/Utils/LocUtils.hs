@@ -5,16 +5,16 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      PosToken,simpPos,
                      -}
                      SimpPos,unmodified,modified
-                     {-                   
+                     {-
                      ,simpPos0,ghead,glast,gfromJust
                      -}
-                     , showToks                   
+                     , showToks
                      , gtail
                      , tokenCol, tokenRow
                      , tokenPos
                      , tokenCon
                      , tokenLen
-                     {- 
+                     {-
                      ,lengthOfToks,
                      mkToken,defaultToken,newLnToken,whiteSpacesToken,whiteSpaceTokens
                      -}
@@ -36,8 +36,11 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , srcLocs
                      -- , ghcSrcLocs -- Test version
                      , getGhcLoc
+                     , getGhcLocEnd
+                     , getLocatedStart
+                     , getLocatedEnd
                      , getStartEndLoc
-                     {-    
+                     {-
                      , getStartEndLoc2,
                      startEndLoc,extendBothSides,extendForwards,extendBackwards,
                      startEndLocIncFowComment,startEndLocIncFowNewLn,startEndLocIncComments,
@@ -47,12 +50,12 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      commentToks
                      -}
                      , tokenise
-                     , lexStringToRichTokens  
+                     , lexStringToRichTokens
                      , prettyprintPatList
                      , groupTokensByLine
                      -- , addLocInfo, getOffset
                      , splitToks
-                     {-  
+                     {-
                      , insertComments,
                      extractComments, insertTerms
                      -}
@@ -151,11 +154,11 @@ gfromJust info (Just h) = h
 gfromJust info Nothing = error $ "gfromJust " ++ info ++ " Nothing"
 -}
 --Some functions for fetching a specific field of a token
-tokenCol (GHC.L l _,_) = c where [(_,c)] = getGhcLoc l 
+tokenCol (GHC.L l _,_) = c where (_,c) = getGhcLoc l 
 
-tokenRow (GHC.L l _,_) = r where [(r,_)] = getGhcLoc l
+tokenRow (GHC.L l _,_) = r where (r,_) = getGhcLoc l
 
-tokenPos (GHC.L l _,_)     = head $ getGhcLoc l
+tokenPos (GHC.L l _,_)     = getGhcLoc l
 
 tokenCon (_,s)     = s
 
@@ -254,8 +257,8 @@ hasNewLn (GHC.L l _,_) = case l of
 onSameLn :: PosToken -> PosToken -> Bool
 onSameLn (GHC.L l1 _,_) (GHC.L l2 _,_) = r1 == r2
   where
-    [(r1,_)] = getGhcLoc l1
-    [(r2,_)] = getGhcLoc l2
+    (r1,_) = getGhcLoc l1
+    (r2,_) = getGhcLoc l2
 
 {-
 --Returns True if a token stream starts with a newline token (apart from the white spaces tokens)
@@ -762,48 +765,48 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
 
 
          pnt :: GHC.GenLocated GHC.SrcSpan GHC.RdrName -> [SimpPos]
-         pnt (GHC.L l (GHC.Unqual _)) = getGhcLoc l
-         pnt (GHC.L l (GHC.Qual _ _)) = getGhcLoc l
-         pnt (GHC.L l (GHC.Orig _ _)) = getGhcLoc l
-         pnt (GHC.L l (GHC.Exact _))  = getGhcLoc l
+         pnt (GHC.L l (GHC.Unqual _)) = [getGhcLoc l]
+         pnt (GHC.L l (GHC.Qual _ _)) = [getGhcLoc l]
+         pnt (GHC.L l (GHC.Orig _ _)) = [getGhcLoc l]
+         pnt (GHC.L l (GHC.Exact _))  = [getGhcLoc l]
          pnt _                        = []
 
          sn :: GHC.HsModule GHC.RdrName -> [SimpPos]
-         sn (GHC.HsModule (Just (GHC.L l _)) _ _ _ _ _) = getGhcLoc l
+         sn (GHC.HsModule (Just (GHC.L l _)) _ _ _ _ _) = [getGhcLoc l]
          sn _ = []
 
          literalInExp :: GHC.LHsExpr GHC.RdrName -> [SimpPos]
-         literalInExp (GHC.L l (GHC.HsOverLit _)) = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsOverLit _)) = [getGhcLoc l]
 
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsChar _)))        = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsCharPrim _)))    = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsString _)))      = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsStringPrim _)))  = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInt _)))         = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsIntPrim _)))     = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsWordPrim _)))    = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInt64Prim _)))   = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsWord64Prim _)))  = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInteger _ _)))   = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsRat _ _)))       = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsFloatPrim _)))   = getGhcLoc l
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsDoublePrim _ ))) = getGhcLoc l
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsChar _)))        = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsCharPrim _)))    = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsString _)))      = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsStringPrim _)))  = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInt _)))         = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsIntPrim _)))     = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsWordPrim _)))    = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInt64Prim _)))   = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsWord64Prim _)))  = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInteger _ _)))   = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsRat _ _)))       = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsFloatPrim _)))   = [getGhcLoc l]
+         literalInExp (GHC.L l (GHC.HsLit (GHC.HsDoublePrim _ ))) = [getGhcLoc l]
          literalInExp _ = []
 
          literalInPat :: GHC.LPat GHC.RdrName -> [SimpPos]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsChar _)))        = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsCharPrim _)))    = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsString _)))      = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsStringPrim _)))  = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInt _)))         = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsIntPrim _)))     = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsWordPrim _)))    = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInt64Prim _)))   = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsWord64Prim _)))  = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInteger _ _)))   = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsRat _ _)))       = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsFloatPrim _)))   = getGhcLoc l
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsDoublePrim _ ))) = getGhcLoc l
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsChar _)))        = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsCharPrim _)))    = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsString _)))      = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsStringPrim _)))  = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInt _)))         = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsIntPrim _)))     = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsWordPrim _)))    = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInt64Prim _)))   = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsWord64Prim _)))  = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInteger _ _)))   = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsRat _ _)))       = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsFloatPrim _)))   = [getGhcLoc l]
+         literalInPat (GHC.L l (GHC.LitPat (GHC.HsDoublePrim _ ))) = [getGhcLoc l]
          literalInPat _ = []
 
 {-
@@ -828,8 +831,19 @@ main = print $ ( listify (\(_::Int) -> True)         mytree
 -}
 
 
-getGhcLoc (GHC.RealSrcSpan ss)    = [(GHC.srcSpanStartLine ss, GHC.srcSpanStartCol ss)]
-getGhcLoc (GHC.UnhelpfulSpan _) = []
+getGhcLoc :: GHC.SrcSpan -> (Int, Int)
+getGhcLoc (GHC.RealSrcSpan ss)  = (GHC.srcSpanStartLine ss, GHC.srcSpanStartCol ss)
+getGhcLoc (GHC.UnhelpfulSpan _) = (-1,-1)
+
+getGhcLocEnd :: GHC.SrcSpan -> (Int, Int)
+getGhcLocEnd (GHC.RealSrcSpan ss)  = (GHC.srcSpanEndLine ss, GHC.srcSpanEndCol ss)
+getGhcLocEnd (GHC.UnhelpfulSpan _) = (-1,-1)
+
+getLocatedStart :: GHC.GenLocated GHC.SrcSpan t -> (Int, Int)
+getLocatedStart (GHC.L l _) = getGhcLoc l
+
+getLocatedEnd :: GHC.GenLocated GHC.SrcSpan t -> (Int, Int)
+getLocatedEnd (GHC.L l _) = getGhcLocEnd l
 
 {-
 class StartEndLocPat t where
@@ -940,7 +954,6 @@ instance StartEndLoc (GHC.HsExpr GHC.RdrName) where
   -- TODO: do this properly
   startEndLoc toks e =
     case e of
-
       GHC.HsVar id	-> ((0,0),(0,0))
 
 instance StartEndLoc (GHC.Pat GHC.RdrName) where

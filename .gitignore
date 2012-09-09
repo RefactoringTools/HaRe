@@ -22,3 +22,10 @@ testing/UTest
 testing/addCon/Case1.hs.temp.hs
 testing/addCon/Case2.hs.temp.hs
 /hareview/.vagrant
+/old/editors/LocalSettings.hs
+/old/refactorer/B.hs.refactored
+/old/refactorer/evaluate_result
+/old/testing/addCon/Case1.hs.temp.hs
+/old/testing/addCon/Case2.hs.temp.hs
+/old/testing/evalAddEvalMon/UTestCache
+/old/testing/introThreshold/UTestCache

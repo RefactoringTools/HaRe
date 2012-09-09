@@ -8,10 +8,13 @@ module Language.Haskell.Refact.Utils
        , locToExp
        , locToPNT
        , sameOccurrence
+       , parseSourceStr
+       , unsafeParseSourceStr
        , parseSourceFile
+       , unsafeParseSourceFile
        , applyRefac
-       , update  
-       , writeRefactoredFiles  
+       , update
+       , writeRefactoredFiles
        , Refact
        ) where
 
@@ -20,6 +23,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.GhcUtils
 import Data.Maybe
+import System.IO.Unsafe 
 
 import Control.Monad.State
 
@@ -28,13 +32,20 @@ import Data.List
 
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
+import qualified Coercion      as GHC
 import qualified DynFlags      as GHC
+import qualified ErrUtils      as GHC
 import qualified FastString    as GHC
+import qualified ForeignCall   as GHC
+import qualified GHC
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
 import qualified HsSyn         as GHC
+import qualified InstEnv       as GHC
 import qualified Module        as GHC
 import qualified MonadUtils    as GHC
+import qualified NameSet       as GHC
+import qualified OccName       as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
@@ -42,10 +53,6 @@ import qualified TcEvidence    as GHC
 import qualified TcType        as GHC
 import qualified TypeRep       as GHC
 import qualified Var           as GHC
-import qualified Coercion      as GHC
-import qualified ForeignCall   as GHC
-import qualified InstEnv       as GHC
-import qualified OccName       as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -106,7 +113,7 @@ deriving instance Eq GHC.HsTupleSort => Eq GHC.HsTupleSort
 deriving instance Eq GHC.HsTyWrapper => Eq GHC.HsTyWrapper
 deriving instance Eq GHC.HsWrapper => Eq GHC.HsWrapper
 deriving instance Eq GHC.PostTcExpr => Eq GHC.PostTcExpr
-deriving instance Eq GHC.TcCoercion => Eq GHC.TcCoercion 
+deriving instance Eq GHC.TcCoercion => Eq GHC.TcCoercion
 deriving instance Eq GHC.TcEvBinds => Eq GHC.TcEvBinds
 deriving instance Eq GHC.TcType => Eq GHC.TcType
 deriving instance Eq GHC.TransForm => Eq GHC.TransForm
@@ -248,12 +255,12 @@ instance (Eq a, Eq b, Eq (GHC.HsBindLR a b)) => Eq (GHC.LHsBindsLR a b) where
 -- Term defined in ../StrategyLib-4.0-beta/models/deriving/TermRep.hs
 
 -- type PosToken = (Token, (Pos, String))
---   	-- Defined at ../tools/base/parse2/Lexer/HsLayoutPre.hs:14:6
+--       -- Defined at ../tools/base/parse2/Lexer/HsLayoutPre.hs:14:6
 -- data Pos
 --   = Pos {HsLexerPass1.char :: !Int, line :: !Int, column :: !Int}
---  	-- Defined at ../tools/base/parse2/Lexer/HsLexerPos.hs:3:6
+--      -- Defined at ../tools/base/parse2/Lexer/HsLexerPos.hs:3:6
 -- data Token
---  	-- Defined at ../tools/base/parse2/Lexer/HsTokens.hs:5:6
+--      -- Defined at ../tools/base/parse2/Lexer/HsTokens.hs:5:6
 
 -- GHC version
 -- getRichTokenStream :: GhcMonad m => Module -> m [(Located Token, String)]
@@ -262,13 +269,13 @@ instance (Eq a, Eq b, Eq (GHC.HsBindLR a b)) => Eq (GHC.LHsBindsLR a b) where
 --   forall t.
 --   (Term t, StartEndLoc t, Printable t) =>
 --   [PosToken] -> t -> (SimpPos, SimpPos)
---   	-- Defined at RefacLocUtils.hs:1188:1
+--       -- Defined at RefacLocUtils.hs:1188:1
 
--- type HsExpP = HsExpI PNT 	-- Defined at RefacTypeSyn.hs:17:6
+-- type HsExpP = HsExpI PNT     -- Defined at RefacTypeSyn.hs:17:6
 
 
 -- data PNT = PNT PName (IdTy PId) OptSrcLoc
---   	-- Defined at ../tools/base/defs/PNT.hs:23:6
+--       -- Defined at ../tools/base/defs/PNT.hs:23:6
 
 
 {- ++AZ++ commentary
@@ -306,13 +313,13 @@ fileNameToModName fileName =
 
 -- TODO: AZ: pretty sure this can be simplified, depends if we need to
 --          manage transformed stuff too though.
-    
+
 -- | Return True if syntax phrases t1 and t2 refer to the same one.
 sameOccurrence :: (GHC.Located t) -> (GHC.Located t) -> Bool
 sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
  -- = error $ "sameOccurrence:" ++ (show l1) ++ "," ++ (show l2) -- ++AZ++ debug
  = l1 == l2
-   
+
 {- original
 sameOccurrence:: (Term t, Eq t) => t -> t -> Bool
 sameOccurrence t1 t2
@@ -351,7 +358,43 @@ parseSourceFile targetFile =
           exports = getExports modAst
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       return ((inscopes,exports,modAst),tokens)
-      
+
+
+
+
+
+-- TODO: harvest the common GHC setup in parseSourceFile and
+-- parseSourceStr into a withGhc wrapper of some kind, or use the one
+-- from buildwrapper
+
+parseSourceStr ::
+  String
+  -> IO
+       (Either
+          GHC.ErrorMessages
+          (GHC.WarningMessages, GHC.Located (GHC.HsModule GHC.RdrName)))
+parseSourceStr s =
+  GHC.defaultErrorHandler GHC.defaultLogAction $ do
+    GHC.runGhc (Just GHC.libdir) $ do
+      dflags <- GHC.getSessionDynFlags
+      let dflags' = foldl GHC.xopt_set dflags
+                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
+      GHC.setSessionDynFlags dflags
+      let result = GHC.parser s  dflags' "filename.hs"
+          -- -> Either ErrorMessages (WarningMessages, Located (HsModule RdrName))	 
+      return result
+
+unsafeParseSourceFile :: String -> (ParseResult a, [PosToken])
+unsafeParseSourceFile fileName = unsafePerformIO $ parseSourceFile fileName
+
+unsafeParseSourceStr ::
+  String
+  -> Either
+       GHC.ErrorMessages
+       (GHC.WarningMessages, GHC.Located (GHC.HsModule GHC.RdrName))
+unsafeParseSourceStr s = unsafePerformIO $ parseSourceStr s
+
+
 {-
 original
 
@@ -379,10 +422,10 @@ getExports (GHC.L _ hsmod) =
 
 
 applyRefac
-	:: (ParseResult a -> Refact GHC.ParsedSource)
-	-> Maybe (ParseResult a, [PosToken])
-	-> FilePath
-	-> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+    :: (ParseResult a -> Refact GHC.ParsedSource)
+    -> Maybe (ParseResult a, [PosToken])
+    -> FilePath
+    -> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
 
 applyRefac refac Nothing fileName
   = do ((inscps, exps, mod), toks) <- parseSourceFile fileName
@@ -400,7 +443,7 @@ applyRefacToClientMods refac fileName
    = do clients <- clientModsAndFiles =<< fileNameToModName fileName
         mapM (applyRefac refac Nothing) (map snd clients)
 -}
-    
+
 -- ---------------------------------------------------------------------
 
 {- ++AZ++ trying to replace this with a generic alternative
@@ -415,7 +458,7 @@ class (Term t, Term t1)=>Update t t1 where
 -}
 
 -- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
-{-       
+{-
 update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([PosToken],Bool),(Int,Int)) m) =>
         t     -- ^ The syntax phrase to be updated.
         -> t     -- ^ The new syntax phrase.
@@ -440,45 +483,45 @@ instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
   -> GHC.GenLocated GHC.SrcSpan t     -- ^ The contex where the old syntax phrase occurs.
   -> Refact (GHC.GenLocated GHC.SrcSpan t) -- ^ The result. -}
     update oldExp newExp t
-   		= everywhereMStaged SYB.Parser (SYB.mkM inExp) t 
-   	where
-  	 -- inExp :: -- (MonadState (([PosToken], Bool), (Int, Int)) m,
+           = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
+       where
+       -- inExp :: -- (MonadState (([PosToken], Bool), (Int, Int)) m,
          --    ( GHC.Outputable t) =>
          --    GHC.GenLocated GHC.SrcSpan t -> Refact (GHC.GenLocated GHC.SrcSpan t)
-   	 inExp (e::GHC.Located HsExpP)
-    	  | sameOccurrence e oldExp       
-     		  = do (newExp', _) <- updateToks oldExp newExp prettyprint
-           	 -- error "update: updated tokens" -- ++AZ++ debug
-                       return newExp'
-      	  | otherwise = return e      
+        inExp (e::GHC.Located HsExpP)
+          | sameOccurrence e oldExp
+               = do (newExp', _) <- updateToks oldExp newExp prettyprint
+                -- error "update: updated tokens" -- ++AZ++ debug
+                    return newExp'
+          | otherwise = return e
 
 instance (SYB.Data t) => Update (GHC.Located HsPatP) t where
-    update oldPat newPat t  
-        = everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
+    update oldPat newPat t
+        = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
      where
         inPat (p::GHC.Located HsPatP) -- = error "here"
-            | sameOccurrence p oldPat 
+            | sameOccurrence p oldPat
                 = do (newPat', _) <- updateToksList [oldPat] [newPat] (prettyprintPatList prettyprint False)
                      return $ head newPat'
             | otherwise = return p
 
 instance (SYB.Data t) =>Update [GHC.Located HsPatP] t where
  update oldPat newPat  t
-   = everywhereMStaged SYB.Parser (SYB.mkM inPat) t 
+   = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
    where
     inPat (p::[GHC.Located HsPatP])
      | and $ zipWith sameOccurrence p oldPat
-        =  do  liftIO $ putStrLn (">" ++ SYB.showData SYB.Parser 0 p ++ "<") 
+        =  do  liftIO $ putStrLn (">" ++ SYB.showData SYB.Parser 0 p ++ "<")
                (newPat', _) <- (updateToksList oldPat newPat (prettyprintPatList prettyprint False))
                liftIO $ putStrLn (">" ++ SYB.showData SYB.Parser 0 newPat' ++ "<") 
                return newPat'
-    inPat p = return p 
+    inPat p = return p
 
 prettyprint :: (GHC.Outputable a) => a -> String
 prettyprint x = GHC.showSDoc $ GHC.ppr x
 
 -- ---------------------------------------------------------------------
-       
+
 -- | Write refactored program source to files.
 {-
 writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-refactoring
@@ -496,9 +539,9 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
   = do let modifiedFiles = filter (\((f,m),_) -> m == modified) files
 
        putStrLn $ "writeRefactoredFiles:files=[" ++ (show $ map (\((f,_),(ts,_)) -> (f,GHC.showRichTokenStream ts)) files) ++ "]" -- ++AZ++ debug
-       
-           
-       -- TODO: restore the history function    
+
+
+       -- TODO: restore the history function
        -- ++AZ++ PFE0.addToHistory isSubRefactor (map (fst.fst) modifiedFiles)
        sequence_ (map modifyFile modifiedFiles)
        -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
@@ -515,7 +558,7 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            -- forced.
            -- seq (length source) (AbstractIO.writeFile fileName source) -- ++AZ++ TODO: restore this when ready for production
            seq (length source) (writeFile (fileName ++ ".refactored") source)
-           
+
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not
            -- have literate Haskell files)
@@ -524,16 +567,16 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            editorCmds <- PFE0.getEditorCmds
            MT.lift (sendEditorModified editorCmds fileName)
            -}
-           
+
        writeTestDataForFile ((fileName,_),(ts,mod)) = do
            -- let source=concatMap (snd.snd) ts
-           let source = GHC.showRichTokenStream ts               
+           let source = GHC.showRichTokenStream ts
            seq (length source) $ writeFile (createNewFileName "_TokOut" fileName) source
            -- writeHaskellFile (createNewFileName "AST" fileName) ((render.ppi.rmPrelude) mod)
            -- ++AZ++ writeHaskellFile (createNewFileName "AST" fileName) (SYB.showData SYB.Parser mod)
 
-       
-       
+
+
        createNewFileName str fileName
           =let (name, posfix)=span (/='.') fileName
            in (name++str++posfix)
@@ -544,7 +587,7 @@ defaultPNT:: GHC.GenLocated GHC.SrcSpan GHC.RdrName   -- GHC.RdrName
 -- defaultPNT = PNT defaultPN Value (N Nothing) :: PNT
 -- defaultPNT = GHC.mkRdrUnqual "nothing" :: PNT
 -- defaultPNT = PNT (mkRdrName "nothing") (N Nothing) :: PNT
-defaultPNT = GHC.L GHC.noSrcSpan (mkRdrName "nothing") 
+defaultPNT = GHC.L GHC.noSrcSpan (mkRdrName "nothing")
 
 -- | Default expression.
 defaultExp::HsExpP
@@ -564,7 +607,7 @@ expToPNT a@(GHC.L x (GHC.HsVar pnt))                     = pnt
 -- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
 -- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
 -- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
-expToPNT _ = defaultPNT 
+expToPNT _ = defaultPNT
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT is such an identifier does not exist.
@@ -579,53 +622,53 @@ locToPNT  fileName (row, col) t
          Nothing -> defaultPNT
             -- =(fromMaybe defaultPNT). applyTU (once_buTU (failTU `adhocTU` worker))
        where
-	    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
-        
-	    worker (pnt@(GHC.L s (GHC.Unqual name))::GHC.GenLocated GHC.SrcSpan t1) 
-              | inScope pnt = Just pnt
-			-- |fileName1==fileName && (row1,col1) == (row,col) =Just pnt
-			
-	    worker _ =Nothing
+        res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
 
-            inScope :: GHC.Located e -> Bool
-	    inScope (GHC.L l _) =
-	      let
-	        (startLoc,endLoc) = case l of
-	          (GHC.RealSrcSpan ss) ->
-	            ((GHC.srcSpanStartLine ss),
-	             (GHC.srcSpanEndLine ss))
-	          (GHC.UnhelpfulSpan _) -> ((0),(0))
-	      in
-	       (startLoc==row) && (endLoc>= col)
+        worker (pnt@(GHC.L s (GHC.Unqual name))::GHC.GenLocated GHC.SrcSpan t1)
+              | inScope pnt = Just pnt
+            -- |fileName1==fileName && (row1,col1) == (row,col) =Just pnt
+
+        worker _ =Nothing
+
+        inScope :: GHC.Located e -> Bool
+        inScope (GHC.L l _) =
+          let
+            (startLoc,endLoc) = case l of
+              (GHC.RealSrcSpan ss) ->
+                ((GHC.srcSpanStartLine ss),
+                 (GHC.srcSpanEndLine ss))
+              (GHC.UnhelpfulSpan _) -> ((0),(0))
+          in
+           (startLoc==row) && (endLoc>= col)
 
 
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
 --  region specified by the start and end position. If no expression can be found, then return the defaultExp.
 locToExp:: (SYB.Data t) => SimpPos            -- ^ The start position.
-		                  -> SimpPos            -- ^ The end position.
-		                  -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
-		                  -> t                  -- ^ The syntax phrase.
-		                  -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
+                        -> SimpPos            -- ^ The end position.
+                -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
+                -> t                  -- ^ The syntax phrase.
+                -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
 locToExp beginPos endPos toks t =
-     case res of
-		    Just x -> x
-		    Nothing -> GHC.L GHC.noSrcSpan defaultExp
-		    -- _  -> error $ "locToExp:unexpected:" ++ (SYB.showData SYB.Parser 0 res)
-		  where
-		    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` exp) t
+  case res of
+     Just x -> x
+     Nothing -> GHC.L GHC.noSrcSpan defaultExp
+     -- _  -> error $ "locToExp:unexpected:" ++ (SYB.showData SYB.Parser 0 res)
+  where
+     res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` exp) t
 
-		    exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> (Maybe (GHC.Located (GHC.HsExpr GHC.RdrName)))
-		    exp e
-		      |inScope e = Just e
-		    exp _ = Nothing
+     exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> (Maybe (GHC.Located (GHC.HsExpr GHC.RdrName)))
+     exp e
+        |inScope e = Just e
+     exp _ = Nothing
 
-		    inScope :: GHC.Located e -> Bool
-		    inScope (GHC.L l _) =
-		      let
-		        (startLoc,endLoc) = case l of
-		          (GHC.RealSrcSpan ss) ->
-		            ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
-		             (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
-		          (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
-		      in
-		       (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
+     inScope :: GHC.Located e -> Bool
+     inScope (GHC.L l _) =
+       let
+         (startLoc,endLoc) = case l of
+           (GHC.RealSrcSpan ss) ->
+             ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
+              (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
+           (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
+       in
+        (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
