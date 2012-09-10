@@ -245,8 +245,8 @@ test-suite spec
   type:
       exitcode-stdio-1.0
   ghc-options:
-      -Wall 
-      -- -Werror
+      -- reinstate these later  -Wall 
+      -- reinstate these later  -Werror
   cpp-options:
       -DTEST
   main-is:

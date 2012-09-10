@@ -16,18 +16,22 @@ module Language.Haskell.Refact.Utils
        , update
        , writeRefactoredFiles
        , Refact
+       -- , fileNameToModName
+       , getModuleName
+       , isVarId
+       , defaultPN
+       , modIsExported
        ) where
 
-import Language.Haskell.Refact.Utils.TypeSyn
+import Control.Monad.State
+import Data.Char
+import Data.List
+import Data.Maybe
+import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.GhcUtils
-import Data.Maybe
-import System.IO.Unsafe 
-
-import Control.Monad.State
-
-import Data.List
+import Language.Haskell.Refact.Utils.TypeSyn
+import System.IO.Unsafe
 
 
 import qualified Bag           as GHC
@@ -305,7 +309,22 @@ fileNameToModName fileName =
      if f ==[] then error $ "Can't find module name"
                     else return $ (fst.head) f
 -}
+{- ++AZ++ may not need this, get it from modinfo
+-- | From file name to module name.
+fileNameToModName :: String -> PFE0MT n i ds ext m ModuleName
+fileNameToModName fileName =
+  do gf <- getCurrentModuleGraph
+     let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
+         f = filter (\(m,f) -> f==fileName) fileAndMods
+     if f ==[] then error $ "Can't find module name"
+                    else return $ (fst.head) f
+-}
 
+getModuleName :: GHC.ParsedSource -> Maybe String
+getModuleName (GHC.L _ mod) =
+  case (GHC.hsmodName mod) of
+    Nothing -> Nothing
+    Just (GHC.L _ modname) -> Just $ GHC.moduleNameString modname
 
 
 
@@ -338,7 +357,7 @@ parseSourceFile:: ( ) =>FilePath
 
 parseSourceFile ::
   String
-  -> IO (ParseResult a, [PosToken])  -- ([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource, [PosToken])
+  -> IO (ParseResult, [PosToken])  -- ([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource, [PosToken])
 parseSourceFile targetFile =
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
     GHC.runGhc (Just GHC.libdir) $ do
@@ -356,7 +375,7 @@ parseSourceFile targetFile =
       t <- GHC.typecheckModule p
 
       let pm = GHC.tm_parsed_module t
-          
+
       let inscopes = GHC.tm_typechecked_source t
           modAst = GHC.pm_parsed_source p
           exports = getExports modAst
@@ -385,7 +404,7 @@ parseSourceStr s =
           -- -> Either ErrorMessages (WarningMessages, Located (HsModule RdrName))	 
       return result
 
-unsafeParseSourceFile :: String -> (ParseResult a, [PosToken])
+unsafeParseSourceFile :: String -> (ParseResult, [PosToken])
 unsafeParseSourceFile fileName = unsafePerformIO $ parseSourceFile fileName
 
 unsafeParseSourceStr ::
@@ -423,8 +442,8 @@ getExports (GHC.L _ hsmod) =
 
 
 applyRefac
-    :: (ParseResult a -> Refact GHC.ParsedSource)
-    -> Maybe (ParseResult a, [PosToken])
+    :: (ParseResult -> Refact GHC.ParsedSource)
+    -> Maybe (ParseResult, [PosToken])
     -> FilePath
     -> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
 
@@ -590,6 +609,9 @@ defaultPNT:: GHC.GenLocated GHC.SrcSpan GHC.RdrName   -- GHC.RdrName
 -- defaultPNT = PNT (mkRdrName "nothing") (N Nothing) :: PNT
 defaultPNT = GHC.L GHC.noSrcSpan (mkRdrName "nothing")
 
+defaultPN :: PN
+defaultPN = mkRdrName "nothing"
+
 -- | Default expression.
 defaultExp::HsExpP
 -- defaultExp=Exp (HsId (HsVar defaultPNT))
@@ -610,9 +632,12 @@ expToPNT a@(GHC.L x (GHC.HsVar pnt))                     = pnt
 -- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
 expToPNT _ = defaultPNT
 
+
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT is such an identifier does not exist.
 
+-- TODO: ++AZ++ what is the fileName parameter actually for?
+-- TODO: ++AZ++ does not seem to find PNTs if not at start of line/expression.
 locToPNT::(SYB.Data t)=>String      -- ^ The file name
                     ->(Int,Int) -- ^ The row and column number
                     ->t         -- ^ The syntax phrase
@@ -673,3 +698,65 @@ locToExp beginPos endPos toks t =
            (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
        in
         (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
+
+-- ---------------------------------------------------------------------
+
+-- | Return True if a string is a lexically  valid variable name.
+isVarId::String->Bool
+isVarId id =isId id && isSmall (ghead "isVarId" id)
+     where isSmall c=isLower c || c=='_'
+
+-- | Return True if a string is a lexically valid constructor name.
+isConId::String->Bool
+isConId id =isId id && isUpper (ghead "isConId" id)
+
+-- | Return True if a string is a lexically valid operator name.
+isOperator::String->Bool
+isOperator id = id /= [] && isOpSym (ghead "isOperator" id) &&
+                isLegalOpTail (tail id) && not (isReservedOp id)
+   where
+    isOpSym id = elem id opSymbols
+       where opSymbols = ['!', '#', '$', '%', '&', '*', '+','.','/','<','=','>','?','@','\'','^','|','-','~']
+
+    isLegalOpTail tail = all isLegal tail
+       where isLegal c = isOpSym c || c==':'
+
+    isReservedOp id = elem id reservedOps
+       where reservedOps = ["..", ":","::","=","\"", "|","<-","@","~","=>"]
+
+{-Returns True if a string lexically is an identifier. *This function should not be exported.*
+-}
+isId::String->Bool
+isId id = id/=[] && isLegalIdTail (tail id) && not (isReservedId id)
+  where
+    isLegalIdTail tail=all isLegal tail
+        where isLegal c=isSmall c|| isUpper c || isDigit c || c=='\''
+
+    isReservedId id=elem id reservedIds
+      where reservedIds=["case", "class", "data", "default", "deriving","do","else" ,"if",
+                         "import", "in", "infix","infixl","infixr","instance","let","module",
+                         "newtype", "of","then","type","where","_"]
+
+    isSmall c=isLower c || c=='_'
+
+-- ---------------------------------------------------------------------
+
+-- | Return True if the current module is exported either by default
+-- or by specifying the module name in the export.
+modIsExported::HsModuleP   -- ^ The AST of the module
+               -> Bool     -- ^ The result
+modIsExported mod
+   = let exps    = GHC.hsmodExports mod -- Maybe [LIE name]
+         modName = GHC.hsmodName mod -- Maybe (Located ModuleName)
+
+         matchModName :: GHC.Located (GHC.IE GHC.RdrName) -> Bool
+         matchModName (GHC.L _ n) =
+           case modName of
+             Nothing -> False
+             Just (GHC.L _ mn) -> (GHC.moduleNameString mn) == GHC.showRdrName (GHC.ieName n)
+
+     in if isNothing exps
+           then True
+           -- else isJust $ find (==(ModuleE modName)) (fromJust exps)
+           else isJust $ find matchModName (fromJust exps)
+

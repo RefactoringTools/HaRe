@@ -30,7 +30,6 @@ type HsDeclP   = GHC.HsDecl GHC.RdrName
 {-
 type HsMatchP  =HsMatchI PNT (HsExpP) (HsPatP) [HsDeclP]
 -- type HsModuleP =HsModuleI (SN HsName.HsName) [HsDeclI PNT]  
-type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]  
 type HsImportDeclP=HsImportDeclI ModuleName PNT -- (SN HsName.HsName)
 type HsExportEntP = HsExportSpecI ModuleName PNT
 type RhsP      =HsRhs HsExpP 
@@ -61,6 +60,7 @@ type Export = GHC.LIE GHC.RdrName
 type HsName = GHC.RdrName
 type PN     = GHC.RdrName
 
+-- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]  
 type HsModuleP = GHC.HsModule GHC.RdrName
 
 
