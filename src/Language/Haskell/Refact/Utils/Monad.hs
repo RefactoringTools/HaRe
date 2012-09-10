@@ -34,7 +34,8 @@ data RefactState = RefSt
 	, rsPosition :: (Int,Int)
 	}
 
-type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
+-- type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
+type ParseResult inscope = (GHC.TypecheckedSource, [GHC.LIE GHC.RdrName], GHC.ParsedSource)
 
 newtype Refact a = Refact (StateT RefactState IO a)
 instance MonadIO Refact where

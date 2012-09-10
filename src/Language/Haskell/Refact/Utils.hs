@@ -353,14 +353,15 @@ parseSourceFile targetFile =
       -- modSum <- GHC.getModSummary $ mkModuleName "B"
       let modSum = head g
       p <- GHC.parseModule modSum
-      let inscopes = [] -- TODO: populate this
+      t <- GHC.typecheckModule p
+
+      let pm = GHC.tm_parsed_module t
+          
+      let inscopes = GHC.tm_typechecked_source t
           modAst = GHC.pm_parsed_source p
           exports = getExports modAst
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       return ((inscopes,exports,modAst),tokens)
-
-
-
 
 
 -- TODO: harvest the common GHC setup in parseSourceFile and

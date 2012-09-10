@@ -1,4 +1,4 @@
-module FooSpec (main, spec) where
+module UtilsSpec (main, spec) where
 
 import           Test.Hspec
 import           Test.QuickCheck
@@ -32,7 +32,7 @@ spec = do
 
   describe "sameOccurrence" $ do
     it "checks that a given syntax element is the same occurrence as another" $ do
-      reverse [1 :: Int, 2, 3] `shouldBe` [3, 2, 1]
+      pending "write this test"
 
     it "gives the original list, if applied twice" $ property $
       \xs -> reverse (reverse xs) == (xs :: [Int])

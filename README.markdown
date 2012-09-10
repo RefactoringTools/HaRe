@@ -12,6 +12,8 @@ To run the test suite do:
 
     cabal configure --enable-tests && cabal build && cabal test
 
+See http://hspec.github.com/ for details on hspec
+
 ## Contributors
 
  * Christopher Brown
