@@ -40,6 +40,7 @@ buildAststate opt langs = do
 
   -- load GladeXML
   Just xml <- xmlNew =<< getDataFileName ("data" </> "astview.glade")
+  -- Just xml <- xmlNew =<< getDataFileName ("data" </> "hareview.glade")
  
   -- get or create widgets
   window   <- xmlGetWidget xml castToWindow "mainWindow"

@@ -39,9 +39,9 @@ import Language.Hareview.Language
 import Language.Hareview.DataTree
 import Data.Tree (Tree(Node,rootLabel))
 
-import Language.Haskell.Exts (parseFileContents)
-import Language.Haskell.Exts.Parser (ParseResult(ParseOk))
-import Language.Haskell.Exts.Syntax (Module)
+-- import Language.Haskell.Exts (parseFileContents)
+-- import Language.Haskell.Exts.Parser (ParseResult(ParseOk))
+-- import Language.Haskell.Exts.Syntax (Module)
 import Data.List
 
 -- haskellghc = Parser "Haskell" [".hs"] buildTreeHaskellGhc

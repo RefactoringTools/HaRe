@@ -10,7 +10,7 @@ import Language.Haskell.Interpreter hiding ((:=),set)
 import Language.Hareview.Language (Language)
 
 -- local
--- import Paths_astview (getDataFileName,getDataDir) -- by cabal
+-- import Paths_hareview (getDataFileName,getDataDir) -- by cabal
 import Language.Hareview.Languages.Languages
 
 loadLanguages :: IO [Language]
