@@ -41,11 +41,11 @@ targetMod = "B"
 
 main = t1
 
-t1 = GhcRefacCase.ifToCase ["./refactorer/B.hs","4","7","4","43"]
-t2 = GhcRefacCase.ifToCase ["./B.hs","4","7","4","43"]
+t1 = GhcRefacCase.ifToCase ["./old/refactorer/B.hs","4","7","4","43"]
+t2 = GhcRefacCase.ifToCase ["./old/B.hs","4","7","4","43"]
 
-s1 = GhcSwapArgs.swapArgs ["../refactorer/B.hs","6","1"]
-s2 = GhcSwapArgs.swapArgs ["./refactorer/B.hs","6","1"]
+s1 = GhcSwapArgs.swapArgs ["../old/refactorer/B.hs","6","1"]
+s2 = GhcSwapArgs.swapArgs ["./old/refactorer/B.hs","6","1"]
 
 -- added by Chris for renaming
 -- r1 = GhcRefacRename.rename ["./C.hs", "NewBlah", "4", "1"]

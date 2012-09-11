@@ -1,4 +1,0 @@
--- ghci startup file
-
-:set -package ghc
-:set -i./astview

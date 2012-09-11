@@ -17,14 +17,13 @@ import GHC.Paths ( libdir )
 import Control.Monad
 import Control.Monad.State
 import Data.Data
------------------
 
 import Language.Haskell.Refact.Utils 
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Monad
 
--- import GhcRefacUtils 
+-- ---------------------------------------------------------------------
 
 ifToCase :: [String] -> IO () -- For now
 ifToCase args  

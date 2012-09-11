@@ -1,6 +1,11 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Language.Haskell.Refact.Utils.Monad (Refact, ParseResult, RefactState(RefSt), runRefact) where
+module Language.Haskell.Refact.Utils.Monad 
+       ( Refact
+       , ParseResult
+       , RefactState(RefSt)
+       , runRefact
+       ) where
 
 import Control.Monad.State
 
@@ -34,7 +39,12 @@ data RefactState = RefSt
 	, rsPosition :: (Int,Int)
 	}
 
-type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
+-- |Result of parsing a Haskell source file. The first element in the
+-- result is the inscope relation, the second element is the export
+-- relation and the third is the AST of the module.
+
+-- type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
+type ParseResult = (GHC.TypecheckedSource, [GHC.LIE GHC.RdrName], GHC.ParsedSource)
 
 newtype Refact a = Refact (StateT RefactState IO a)
 instance MonadIO Refact where
