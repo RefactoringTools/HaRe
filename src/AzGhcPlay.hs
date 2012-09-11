@@ -133,7 +133,7 @@ getStuff =
         -- let res = showPpr ps
         return res
         -}
-        let p' = processParsedMod ifToCase p
+        let p' = processParsedMod ifToCase t
         -- GHC.liftIO (putStrLn . showParsedModule $ p)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
         GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.pm_parsed_source p')
