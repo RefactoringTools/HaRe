@@ -8,7 +8,8 @@ module Language.Haskell.Refact.Utils.Monad
        ) where
 
 import Control.Monad.State
-
+import Exception
+import qualified Control.Monad.IO.Class as MU
 
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
@@ -71,3 +72,68 @@ instance MonadState RefactState (Refact) where
    get = Refact $ StateT ( \ st -> return (st, st))
 
    put newState = Refact $ StateT ( \ _ -> return ((), newState))
+
+
+-- ---------------------------------------------------------------------
+-- ++AZ++ trying to wrap this in GhcT, or vice versa
+-- For inspiration:
+-- https://github.com/bjpop/berp/blob/200fa0f26a4da7c6f6ff6fcdc29a2468a1c39e60/src/Berp/Interpreter/Monad.hs
+{-
+type Repl a = GhcT (StateT ReplState Compile) a
+
+data ReplState = ReplState { repl_inputState :: !InputState }
+
+runRepl :: Maybe FilePath -> Repl a -> IO a
+runRepl filePath comp = do
+   initInputState <- initializeInput defaultSettings
+   let initReplState = ReplState { repl_inputState = initInputState }
+   runCompileMonad $ (flip evalStateT) initReplState $ runGhcT filePath comp
+
+withInputState :: (InputState -> Repl a) -> Repl a
+withInputState f = do
+   state <- liftGhcT $ gets repl_inputState
+   f state
+
+-- Ugliness because GHC has its own MonadIO class
+instance MU.MonadIO m => MonadIO (GhcT m) where
+   liftIO = MU.liftIO
+
+instance MonadIO m => MU.MonadIO (StateT s m) where
+   liftIO = MT.liftIO
+
+instance ExceptionMonad m => ExceptionMonad (StateT s m) where
+    gcatch f h = StateT $ \s -> gcatch (runStateT f s) (\e -> runStateT (h e) s)
+    gblock = mapStateT gblock
+    gunblock = mapStateT gunblock
+-}
+
+-- ---------------------------------------------------------------------
+
+type RefactGhc a = GHC.GhcT (StateT RefactState IO) a
+
+--instance MonadIO RefactGhc where
+--	liftIO f = RefactGhc (lift f)
+instance GHC.MonadIO (StateT RefactState IO) where
+	liftIO f = MU.liftIO f
+
+instance ExceptionMonad m => ExceptionMonad (StateT s m) where
+    gcatch f h = StateT $ \s -> gcatch (runStateT f s) (\e -> runStateT (h e) s)
+    gblock = mapStateT gblock
+    gunblock = mapStateT gunblock
+
+
+runRefactGhc :: StateT (StateT RefactState IO a) IO a -> RefactGhc a -> IO a
+runRefactGhc initState comp = do
+    evalStateT initState $ GHC.runGhcT (Just GHC.libdir) comp
+
+runRefactGhc' :: RefactGhc a -> IO a
+runRefactGhc' comp = do
+    let initState = undefined
+    evalStateT initState $ GHC.runGhcT (Just GHC.libdir) comp
+
+
+--runGhc ::
+--  (Functor m, GHC.MonadIO m, ExceptionMonad m) => GHC.GhcT m a -> m a
+runGhc :: GHC.GhcT IO a -> IO a
+runGhc comp = -- do
+    GHC.runGhcT (Just GHC.libdir) comp

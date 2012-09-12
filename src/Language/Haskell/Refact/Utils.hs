@@ -624,8 +624,11 @@ mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 --  otherwise return the default PNT.
 
 -- TODO: bring in data constructor constants too.
+expToPNT ::
+  GHC.GenLocated GHC.SrcSpan (GHC.HsExpr PNT)
+  -> PNT
 -- expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
-expToPNT a@(GHC.L x (GHC.HsVar pnt))                     = pnt
+expToPNT (GHC.L x (GHC.HsVar pnt))                     = pnt
 -- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
 -- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
 -- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
@@ -759,4 +762,47 @@ modIsExported mod
            then True
            -- else isJust $ find (==(ModuleE modName)) (fromJust exps)
            else isJust $ find matchModName (fromJust exps)
+
+-- ---------------------------------------------------------------------
+{-
+-- clientModsAndFiles::( ) =>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
+clientModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
+                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
+clientModsAndFiles m =
+  do gf <- getCurrentModuleGraph
+     let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
+         g           = (reverseGraph.(map snd)) gf     
+         clientMods  = reachable g [m] \\ [m]
+         clients     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) clientMods
+     return clients
+
+-- | Return the server module and file names. The server modules of module, say  m, are those modules
+-- which are directly or indirectly imported by module m.
+-}
+--serverModsAndFiles::( )=>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
+
+-- ---------------------------------------------------------------------
+{-
+serverModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
+                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
+serverModsAndFiles m =
+   do gf <- getCurrentModuleGraph
+      let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
+          g           = (map snd) gf  
+          serverMods  = reachable g [m] \\ [m]
+          servers     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) serverMods
+      return servers
+-}
+-- | Return True if the given module name exists in the project.
+--isAnExistingMod::( ) =>ModuleName->PFE0MT n i ds ext m Bool
+
+-- ---------------------------------------------------------------------
+{-
+isAnExistingMod::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
+                  ModuleName->PFE0MT n i ds ext m Bool
+
+isAnExistingMod m 
+  =  do ms<-allModules
+        return (elem m ms)
+-}
 

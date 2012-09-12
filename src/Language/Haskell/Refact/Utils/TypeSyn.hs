@@ -60,6 +60,9 @@ type Export = GHC.LIE GHC.RdrName
 type HsName = GHC.RdrName
 type PN     = GHC.RdrName
 
+-- TODO ++AZ++ I think this should be the renamed version, with a unique ID.
+type PNT    = GHC.GenLocated GHC.SrcSpan GHC.RdrName
+
 -- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]  
 type HsModuleP = GHC.HsModule GHC.RdrName
 
