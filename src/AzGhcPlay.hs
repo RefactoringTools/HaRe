@@ -28,24 +28,25 @@ import GHC.Paths ( libdir )
 
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils
-import qualified Language.Haskell.Refact.Case as GhcRefacCase
-import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
+-- import qualified Language.Haskell.Refact.Case as GhcRefacCase
+-- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
 
 import Language.Haskell.Refact.Utils.GhcUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
-targetFile = "./" ++ targetMod ++ ".hs"
+targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
 -- targetFile = "B.hs"
 targetMod = "B"
 
-main = t1
+{- main = t1
 
 t1 = GhcRefacCase.ifToCase ["./old/refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./old/B.hs","4","7","4","43"]
 
 s1 = GhcSwapArgs.swapArgs ["../old/refactorer/B.hs","6","1"]
 s2 = GhcSwapArgs.swapArgs ["./old/refactorer/B.hs","6","1"]
+-}
 
 -- added by Chris for renaming
 -- r1 = GhcRefacRename.rename ["./C.hs", "NewBlah", "4", "1"]
@@ -135,8 +136,8 @@ getStuff =
         -}
         let p' = processParsedMod ifToCase t
         -- GHC.liftIO (putStrLn . showParsedModule $ p)
-        -- GHC.liftIO (putStrLn . showParsedModule $ p')
-        GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.pm_parsed_source p')
+        GHC.liftIO (putStrLn . showParsedModule $ p')
+        -- GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
 
         let ps  = GHC.pm_parsed_source p
 
@@ -210,21 +211,22 @@ example =
         GHC.setTargets [target]
         GHC.load GHC.LoadAllTargets
         modSum <- GHC.getModSummary $ GHC.mkModuleName targetMod
-        p <- GHC.parseModule modSum
+        p' <- GHC.parseModule modSum
+        p <- GHC.typecheckModule p'
         let p' = processParsedMod shortenLists p
         -- GHC.liftIO (putStrLn . showParsedModule $ p)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
-        GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.pm_parsed_source p')
+        GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
 
-showParsedModule p = SYB.showData SYB.Parser 0 (GHC.pm_parsed_source p)
+showParsedModule p = SYB.showData SYB.Parser 0 (GHC.tm_typechecked_source p)
 
-processParsedMod f pm = pm { GHC.pm_parsed_source = ps' }
+processParsedMod f pm = pm { GHC.tm_typechecked_source = ps' }
   where
-   ps  = GHC.pm_parsed_source pm
+   ps  = GHC.tm_typechecked_source pm
    -- ps' = SYB.everythingStaged SYB.Parser (SYB.mkT f) -- does not work yet
    -- everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ r
    
-   ps' :: GHC.ParsedSource
+   ps' :: GHC.TypecheckedSource
    ps' = SYB.everywhere (SYB.mkT f) ps -- exception
    -- ps' = everywhereStaged SYB.Parser (SYB.mkT f) ps 
 
