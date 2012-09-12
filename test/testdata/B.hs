@@ -3,7 +3,9 @@ module B where
 
 foo x = if (odd x) then "Odd" else "Even"
 
-bob x y = x + y
+bob x y = x + foo y
+    where
+        foo x = x + 1
 
 
 foo' x = case (odd x) of
