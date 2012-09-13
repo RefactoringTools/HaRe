@@ -29,7 +29,7 @@ import GHC.Paths ( libdir )
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.Monad
--- import qualified Language.Haskell.Refact.Case as GhcRefacCase
+import qualified Language.Haskell.Refact.CaseGhc as GhcRefacCase
 -- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
 import Control.Monad.State
@@ -41,11 +41,11 @@ targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
 -- targetFile = "B.hs"
 targetMod = "B"
 
-{- main = t1
+{- main = t1 -}
 
-t1 = GhcRefacCase.ifToCase ["./old/refactorer/B.hs","4","7","4","43"]
-t2 = GhcRefacCase.ifToCase ["./old/B.hs","4","7","4","43"]
-
+t1 = GhcRefacCase.ifToCaseGhc ["./old/refactorer/B.hs","4","7","4","43"]
+t2 = GhcRefacCase.ifToCaseGhc ["./old/B.hs","4","7","4","43"]
+{-
 s1 = GhcSwapArgs.swapArgs ["../old/refactorer/B.hs","6","1"]
 s2 = GhcSwapArgs.swapArgs ["./old/refactorer/B.hs","6","1"]
 -}
@@ -239,6 +239,7 @@ shortenLists x                          = x
 
 --
 -- ---------------------------------------------------------------------
+-- Test drive the RefactGhc monad transformer stack
 
 runR = do
   let

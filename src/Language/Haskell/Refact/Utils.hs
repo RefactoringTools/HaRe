@@ -14,6 +14,7 @@ module Language.Haskell.Refact.Utils
        , unsafeParseSourceFile
        , parseSourceFileGhc
        , applyRefac
+       , runRefac
        , update
        , writeRefactoredFiles
        , Refact
@@ -478,9 +479,6 @@ getExports (GHC.L _ hsmod) =
 
 -- ---------------------------------------------------------------------
 
-
-
-
 applyRefac
     :: (ParseResult -> Refact GHC.ParsedSource)
     -> Maybe (ParseResult, [PosToken])
@@ -495,6 +493,24 @@ applyRefac refac Nothing fileName
 applyRefac refac (Just ((inscps, exps, mod), toks)) fileName
   = do (mod',(RefSt toks' m _))  <- runRefact (refac (inscps, exps, mod)) (RefSt toks False (-1000,0))
        return ((fileName,m),(toks', mod'))
+
+
+-- ---------------------------------------------------------------------
+
+-- TODO: come up with a proper name for this, once we decide exactly what it does
+runRefac :: RefactGhc a -> IO a
+runRefac comp = do
+  let
+   initialState = RefSt 
+	{ rsTokenStream = [] -- :: [PosToken]
+	, rsStreamAvailable = False -- :: Bool
+	, rsPosition = (-1,-1) -- :: (Int,Int)
+        }
+  (res,_s) <- runRefactGhc initialState comp
+  -- putStrLn $ show (rsPosition s)
+  return res
+
+-- ---------------------------------------------------------------------
 
 
 
