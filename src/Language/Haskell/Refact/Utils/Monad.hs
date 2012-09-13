@@ -126,25 +126,10 @@ instance ExceptionMonad m => ExceptionMonad (StateT s m) where
     gunblock = mapStateT gunblock
 
 
-instance (ExceptionMonad Identity) where
-    gcatch = gcatch
-    gblock = gblock
-    gunblock = gunblock
-     
-instance (GHC.MonadIO (StateT RefactState Identity)) where
-  liftIO = MU.liftIO
-
-instance (MonadIO Identity) where
-  liftIO = MU.liftIO
-
--- runRefactGhc :: StateT (StateT RefactState IO a) IO a -> RefactGhc a -> IO a
--- runRefactGhc :: RefactState -> RefactGhc a -> IO a
--- runRefactGhc ::  t -> RefactGhc a -> (a, StateT RefactState IO a)
--- StateT (StateT RefactState IO a) Data.Functor.Identity.Identity a
 runRefactGhc ::
-  RefactState -> GHC.GhcT (StateT RefactState Identity) a -> (a, RefactState)
+  RefactState -> GHC.GhcT (StateT RefactState IO) a -> IO (a, RefactState)
 runRefactGhc initState comp = -- do
-    runIdentity $ runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState 
+    runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState 
 
 runRefactGhc' :: RefactGhc a -> IO a
 runRefactGhc' comp = do
