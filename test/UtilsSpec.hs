@@ -3,10 +3,14 @@ module UtilsSpec (main, spec) where
 import           Test.Hspec
 import           Test.QuickCheck
 
-import qualified RdrName as GHC
-import qualified SrcLoc  as GHC
+import qualified GHC      as GHC
+import qualified GhcMonad as GHC
+import qualified RdrName  as GHC
+import qualified SrcLoc   as GHC
 
+import Control.Monad.State
 import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.LocUtils
 
 main :: IO ()
@@ -88,6 +92,14 @@ spec = do
     it "needs a test or two" $ do
     pending "write this test"
 
+  -- -------------------------------------------------------------------
+
+  describe "runRefactGhc" $ do
+    it "contains a State monad" $ do
+      pending "call runRefactGhc, check that state is updated"
+    it "contains the GhcT monad" $ do
+      pending "call runRefactGhc, check that GHC functions can be called"
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 
@@ -98,3 +110,27 @@ parsedFileB = unsafeParseSourceFile fileName
 parsedFileNoMod = unsafeParseSourceFile fileName
   where
     fileName = "./test/testdata/NoMod.hs"
+
+
+
+runRefactGhcState comp' = do
+  let
+     -- initialState = ReplState { repl_inputState = initInputState }
+     initialState = RefSt 
+	{ rsTokenStream = [] -- :: [PosToken]
+	, rsStreamAvailable = False -- :: Bool
+	, rsPosition = (-1,-1) -- :: (Int,Int)
+        }
+  (_,s) <- runRefactGhc initialState comp
+  return s
+
+comp :: RefactGhc ()
+comp = do
+    s <- get
+    modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./old/refactorer/B.hs"
+    -- -- gs <- mapM GHC.showModule mod
+    g <- GHC.getModuleGraph
+    gs <- mapM GHC.showModule g
+    GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
+    put (s {rsPosition = (123,456)})
+    return ()

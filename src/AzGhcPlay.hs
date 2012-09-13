@@ -241,6 +241,7 @@ shortenLists x                          = x
 -- ---------------------------------------------------------------------
 -- Test drive the RefactGhc monad transformer stack
 
+runR :: IO ()
 runR = do
   let
    -- initialState = ReplState { repl_inputState = initInputState }
