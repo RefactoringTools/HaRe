@@ -82,7 +82,6 @@ import qualified GHC.SYB.Utils as SYB
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Monad
 
-
 import Data.Maybe
 import Data.List
 import Debug.Trace

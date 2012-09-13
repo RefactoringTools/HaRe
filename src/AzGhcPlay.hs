@@ -32,6 +32,7 @@ import Language.Haskell.Refact.Utils.Monad
 -- import qualified Language.Haskell.Refact.Case as GhcRefacCase
 -- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
+import Control.Monad.State
 
 import Language.Haskell.Refact.Utils.GhcUtils
 
@@ -247,15 +248,19 @@ runR = do
 	, rsStreamAvailable = False -- :: Bool
 	, rsPosition = (-1,-1) -- :: (Int,Int)
         }
-  runRefactGhc initialState comp
+  (_,s) <- runRefactGhc initialState comp
+  putStrLn $ show (rsPosition s)
+  return ()
 
 comp :: RefactGhc ()
 comp = do
+    s <- get
     modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./old/refactorer/B.hs"
     -- -- gs <- mapM GHC.showModule mod
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
+    put (s {rsPosition = (123,456)})
     return ()
 
 

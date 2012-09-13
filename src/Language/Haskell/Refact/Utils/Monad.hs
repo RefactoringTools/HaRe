@@ -20,6 +20,7 @@ import qualified BasicTypes    as GHC
 import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
+import qualified GhcMonad      as GHC
 import qualified GHC.Paths     as GHC
 import qualified HsSyn         as GHC
 import qualified Module        as GHC
@@ -31,18 +32,20 @@ import qualified TcEvidence    as GHC
 import qualified TcType        as GHC
 import qualified TypeRep       as GHC
 import qualified Var           as GHC
+import qualified Lexer         as GHC
 import qualified Coercion      as GHC
 import qualified ForeignCall   as GHC
 import qualified InstEnv       as GHC
+--import qualified Control.Monad.Ghc as GHC
 
 import Language.Haskell.Refact.Utils.TypeSyn
 
 
 data RefactState = RefSt
 	{ rsTokenStream :: [PosToken]
-	, rsStreamAvailable :: Bool
+        , rsStreamAvailable :: Bool
 	, rsPosition :: (Int,Int)
-	}
+	} 
 
 -- |Result of parsing a Haskell source file. The first element in the
 -- result is the inscope relation, the second element is the export
@@ -69,7 +72,8 @@ instance Monad Refact where
 instance MonadPlus Refact where
    mzero = Refact (StateT(\ st -> mzero))
 
-   x `mplus` y =  Refact (StateT ( \ st -> runRefact x st `mplus` runRefact y st))  -- Try one of the refactorings, x or y, with the same state plugged in
+   x `mplus` y =  Refact (StateT ( \ st -> runRefact x st `mplus` runRefact y st))  
+   -- ^Try one of the refactorings, x or y, with the same state plugged in
 
 
 instance MonadState RefactState (Refact) where
@@ -122,6 +126,27 @@ instance ExceptionMonad m => ExceptionMonad (StateT s m) where
     gcatch f h = StateT $ \s -> gcatch (runStateT f s) (\e -> runStateT (h e) s)
     gblock = mapStateT gblock
     gunblock = mapStateT gunblock
+{-
+instance (MonadState RefactState (RefactGhc a)) where
+    get = lift get
+    put = lift . put
+    state = lift . state
+-}
+instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
+    get = lift get
+    put = lift . put
+    state = lift . state
+
+instance (MonadTrans GHC.GhcT) where
+   lift = GHC.liftGhcT 
+  
+
+{-
+instance MonadState s m => MonadState s (IdentityT m) where
+    get = lift get
+    put = lift . put
+    state = lift . state
+-}
 
 runRefactGhc ::
   RefactState -> RefactGhc a -> IO (a, RefactState)

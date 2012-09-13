@@ -147,7 +147,7 @@ Library
         -- GHC-Options:             -Wall
         Hs-Source-Dirs:         src
         Other-Modules:          Paths_HaRe
-        Exposed-modules:        
+        Exposed-modules:
            Language.Haskell.Refact.Case
 
 
@@ -175,7 +175,8 @@ Executable ghc-hare
                     --            , MonadCatchIO-mtl
                     --            , transformers
                                 , ghc-syb-utils
-        -- ++AZ++ I prefer to put these in the individual files, as needed          
+                    --            , ghc-mtl
+        -- ++AZ++ I prefer to put these in the individual files, as needed
         -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
 
