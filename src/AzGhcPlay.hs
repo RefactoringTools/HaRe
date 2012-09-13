@@ -28,6 +28,7 @@ import GHC.Paths ( libdir )
 
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.Monad
 -- import qualified Language.Haskell.Refact.Case as GhcRefacCase
 -- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
@@ -235,6 +236,29 @@ shortenLists :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
 shortenLists (GHC.ExplicitList t exprs) = GHC.ExplicitList t []
 shortenLists x                          = x
 
+--
+-- ---------------------------------------------------------------------
+
+runR = do
+  let
+   -- initialState = ReplState { repl_inputState = initInputState }
+   initialState = RefSt 
+	{ rsTokenStream = [] -- :: [PosToken]
+	, rsStreamAvailable = False -- :: Bool
+	, rsPosition = (-1,-1) -- :: (Int,Int)
+        }
+  runRefactGhc initialState comp
+
+comp :: RefactGhc ()
+comp = do
+    modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./old/refactorer/B.hs"
+    -- -- gs <- mapM GHC.showModule mod
+    g <- GHC.getModuleGraph
+    gs <- mapM GHC.showModule g
+    GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
+    return ()
+
+
 -- ---------------------------------------------------------------------
 {-
 module B where
@@ -430,3 +454,4 @@ Ok, modules loaded: Main.
                                (5)) 
                               (*** Exception: noRebindableInfo
    -}
+

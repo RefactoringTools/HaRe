@@ -115,8 +115,6 @@ instance ExceptionMonad m => ExceptionMonad (StateT s m) where
 
 type RefactGhc a = GHC.GhcT (StateT RefactState IO) a
 
---instance MonadIO RefactGhc where
---	liftIO f = RefactGhc (lift f)
 instance GHC.MonadIO (StateT RefactState IO) where
 	liftIO f = MU.liftIO f
 
@@ -125,20 +123,8 @@ instance ExceptionMonad m => ExceptionMonad (StateT s m) where
     gblock = mapStateT gblock
     gunblock = mapStateT gunblock
 
-
 runRefactGhc ::
-  RefactState -> GHC.GhcT (StateT RefactState IO) a -> IO (a, RefactState)
+  RefactState -> RefactGhc a -> IO (a, RefactState)
 runRefactGhc initState comp = -- do
     runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState 
 
-runRefactGhc' :: RefactGhc a -> IO a
-runRefactGhc' comp = do
-    let initState = undefined
-    evalStateT (GHC.runGhcT (Just GHC.libdir) comp) initState 
-
-
---runGhc ::
---  (Functor m, GHC.MonadIO m, ExceptionMonad m) => GHC.GhcT m a -> m a
-runGhc :: GHC.GhcT IO a -> IO a
-runGhc comp = -- do
-    GHC.runGhcT (Just GHC.libdir) comp

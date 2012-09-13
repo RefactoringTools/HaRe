@@ -12,6 +12,7 @@ module Language.Haskell.Refact.Utils
        , unsafeParseSourceStr
        , parseSourceFile
        , unsafeParseSourceFile
+       , parseSourceFileGhc
        , applyRefac
        , update
        , writeRefactoredFiles
@@ -382,6 +383,45 @@ parseSourceFile targetFile =
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       return ((inscopes,exports,modAst),tokens)
 
+-- ---------------------------------------------------------------------
+
+-- Assuming we are in the Refact Monad
+-- parseSourceFileGhc ::
+--   GHC.GhcMonad m =>
+--   String
+--   -> m ((GHC.TypecheckedSource,
+--          [GHC.LIE GHC.RdrName],
+--          GHC.ParsedSource),
+--         [(GHC.Located GHC.Token, String)])
+parseSourceFileGhc :: 
+  String 
+  -> RefactGhc ((GHC.TypecheckedSource,
+         [GHC.LIE GHC.RdrName],
+         GHC.ParsedSource),
+        [(GHC.Located GHC.Token, String)])
+parseSourceFileGhc targetFile = do
+      dflags <- GHC.getSessionDynFlags
+      let dflags' = foldl GHC.xopt_set dflags
+                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
+      GHC.setSessionDynFlags dflags'
+      target <- GHC.guessTarget targetFile Nothing
+      GHC.setTargets [target]
+      GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
+      g <- GHC.getModuleGraph
+      -- modSum <- GHC.getModSummary $ mkModuleName "B"
+      let modSum = head g
+      p <- GHC.parseModule modSum
+      t <- GHC.typecheckModule p
+
+      let pm = GHC.tm_parsed_module t
+
+      let inscopes = GHC.tm_typechecked_source t
+          modAst = GHC.pm_parsed_source p
+          exports = getExports modAst
+      tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
+      return ((inscopes,exports,modAst),tokens)
+
+-- ---------------------------------------------------------------------
 
 -- TODO: harvest the common GHC setup in parseSourceFile and
 -- parseSourceStr into a withGhc wrapper of some kind, or use the one
