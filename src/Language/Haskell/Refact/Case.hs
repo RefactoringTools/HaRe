@@ -1,5 +1,3 @@
-
-
 module Language.Haskell.Refact.Case(ifToCase) where
 
 import qualified Data.Generics.Schemes as SYB
@@ -30,13 +28,21 @@ ifToCase args
   = do let fileName = args!!0              
            beginPos = (read (args!!1), read (args!!2))::(Int,Int)
            endPos   = (read (args!!3), read (args!!4))::(Int,Int)
-       modInfo@((_, _, mod), toks) <- parseSourceFile fileName 
+       -- putStrLn $ "ifToCase:" ++ (show args)  
+       runRefac (comp fileName beginPos endPos)
+       return ()
+
+comp :: String -> (Int,Int) -> (Int,Int) -> RefactGhc ()
+comp fileName beginPos endPos = do
+       modInfo@((_, _, mod), toks) <- parseSourceFileGhc fileName 
        let exp = locToExp beginPos endPos toks mod
        case exp of
          (GHC.L _ (GHC.HsIf _ _ _ _))
-                -> do refactoredMod <- applyRefac (ifToCase' exp) (Just modInfo ) fileName
-                      writeRefactoredFiles False [refactoredMod]
+                -> do refactoredMod <- liftIO $ applyRefac (ifToCase' exp) (Just modInfo ) fileName
+                      liftIO $ writeRefactoredFiles False [refactoredMod]
          _      -> error "You haven't selected an if-then-else  expression!"
+       return ()
+
 
 ifToCase' ::
   GHC.GenLocated GHC.SrcSpan HsExpP 
