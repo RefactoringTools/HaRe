@@ -96,9 +96,12 @@ spec = do
 
   describe "runRefactGhc" $ do
     it "contains a State monad" $ do
-      pending "call runRefactGhc, check that state is updated"
+      (_,s) <- runRefactGhcState comp
+      (rsPosition s) `shouldBe` (123,456)
     it "contains the GhcT monad" $ do
-      pending "call runRefactGhc, check that GHC functions can be called"
+      (r,_) <- runRefactGhcState comp
+      r `shouldBe` "[\"B                ( old/refactorer/B.hs, old/refactorer/B.o )\"]"
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions
@@ -112,7 +115,7 @@ parsedFileNoMod = unsafeParseSourceFile fileName
     fileName = "./test/testdata/NoMod.hs"
 
 
-
+-- runRefactGhcState :: RefactGhc a -> IO RefactState
 runRefactGhcState comp' = do
   let
      -- initialState = ReplState { repl_inputState = initInputState }
@@ -121,10 +124,10 @@ runRefactGhcState comp' = do
 	, rsStreamAvailable = False -- :: Bool
 	, rsPosition = (-1,-1) -- :: (Int,Int)
         }
-  (_,s) <- runRefactGhc initialState comp
-  return s
+  (r,s) <- runRefactGhc initialState comp
+  return (r,s)
 
-comp :: RefactGhc ()
+-- comp :: RefactGhc ()
 comp = do
     s <- get
     modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./old/refactorer/B.hs"
@@ -133,4 +136,5 @@ comp = do
     gs <- mapM GHC.showModule g
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
     put (s {rsPosition = (123,456)})
-    return ()
+    -- return ()
+    return (show gs)
