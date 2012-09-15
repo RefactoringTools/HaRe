@@ -32,14 +32,20 @@ The new name should not cause name clash/capture.
 
 -- ---------------------------------------------------------------------
 
+-- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
 duplicateDef :: [String] -> IO () -- For now
 duplicateDef args
  = do let fileName = ghead "filename" args
           newName  = args!!1
           row      = read (args!!2)::Int
           col      = read (args!!3)::Int
+      runRefac comp fileName newName (row,col)
+      return ()
+
+comp :: String -> String -> (Int,Int) -> RefactGhc ()
+comp fileName newName (row, col) = do
       if isVarId newName
-        then do (inscps, _, mod, tokList) <- parseSourceFile fileName
+        then do (inscps, _, mod, tokList) <- parseSourceFileGhc fileName
                 -- modName <-fileNameToModName fileName
                 let modName = getModuleName mod
                 -- let pn = pNTtoPN $ locToPNT fileName (row, col) mod

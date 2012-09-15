@@ -1,13 +1,15 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Language.Haskell.Refact.Utils.Monad 
+module Language.Haskell.Refact.Utils.Monad
        ( Refact -- ^ TODO: Deprecated, use RefactGhc
        , ParseResult
+       , RefactSettings(..)
        , RefactState(..)
        , runRefact -- ^ TODO: Deprecated, use runRefactGhc
        -- GHC monad stuff
        , RefactGhc
        , runRefactGhc
+       , getRefacSettings
        ) where
 
 import Control.Monad.State
@@ -39,12 +41,16 @@ import qualified InstEnv       as GHC
 
 import Language.Haskell.Refact.Utils.TypeSyn
 
+data RefactSettings = RefSet
+        { rsetImportPath :: [FilePath]
+        } deriving (Show)
 
 data RefactState = RefSt
-	{ rsTokenStream :: [PosToken]
+        { rsSettings :: RefactSettings
+        , rsTokenStream :: [PosToken]
         , rsStreamAvailable :: Bool
-	, rsPosition :: (Int,Int)
-	} 
+        -- , rsPosition :: (Int,Int)
+        }
 
 -- |Result of parsing a Haskell source file. The first element in the
 -- result is the inscope relation, the second element is the export
@@ -56,7 +62,7 @@ type ParseResult = (GHC.TypecheckedSource, [GHC.LIE GHC.RdrName], GHC.ParsedSour
 -- TODO: >>>>>> This section has been superseded ++AZ++
 newtype Refact a = Refact (StateT RefactState IO a)
 instance MonadIO Refact where
-	liftIO f = Refact (lift f)
+         liftIO f = Refact (lift f)
 
 runRefact :: Refact a -> RefactState -> IO (a, RefactState)
 runRefact (Refact (StateT f)) s = f s
@@ -64,7 +70,7 @@ runRefact (Refact (StateT f)) s = f s
 
 instance Monad Refact where
   x >>= y = Refact (StateT (\ st -> do (b, rs') <- runRefact x st
-				       runRefact (y b) rs'))
+                                       runRefact (y b) rs'))
 
   return thing = Refact (StateT (\ st -> return (thing, st)))
 
@@ -88,10 +94,10 @@ instance MonadState RefactState (Refact) where
 type RefactGhc a = GHC.GhcT (StateT RefactState IO) a
 
 instance (MonadIO (GHC.GhcT (StateT RefactState IO))) where
-	liftIO = GHC.liftIO
+         liftIO = GHC.liftIO
 
 instance GHC.MonadIO (StateT RefactState IO) where
-	liftIO f = MU.liftIO f
+         liftIO f = MU.liftIO f
 
 instance ExceptionMonad m => ExceptionMonad (StateT s m) where
     gcatch f h = StateT $ \s -> gcatch (runStateT f s) (\e -> runStateT (h e) s)
@@ -104,12 +110,17 @@ instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
     state = lift . state
 
 instance (MonadTrans GHC.GhcT) where
-   lift = GHC.liftGhcT 
+   lift = GHC.liftGhcT
 
 runRefactGhc ::
   RefactState -> RefactGhc a -> IO (a, RefactState)
 runRefactGhc initState comp = -- do
-    runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState 
+    runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
+
+getRefacSettings :: RefactGhc RefactSettings
+getRefacSettings = do
+  s <- get
+  return (rsSettings s)
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ trying to wrap this in GhcT, or vice versa

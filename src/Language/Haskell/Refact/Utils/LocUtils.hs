@@ -502,7 +502,7 @@ splitToks (startPos, endPos) toks -- = error (SYB.showData SYB.Parser 0 endPos)
 --  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> Refact (GHC.GenLocated GHC.SrcSpan t, [PosToken])
 updateToks oldAST newAST printFun
    = trace "updateToks" $ 
-     do (RefSt toks _ (v1, v2)) <- get
+     do (RefSt s toks _ ) <- get
 	let offset             = lengthOfLastLine toks1
             (toks1, _, _)      = splitToks (startPos, endPos) toks
 	    (startPos, endPos) = getStartEndLoc toks oldAST
@@ -510,14 +510,14 @@ updateToks oldAST newAST printFun
         let 
             toks' = replaceToks toks startPos endPos newToks
         if length newToks == 0
-          then put (RefSt toks' modified (v1,v2))
-          else put (RefSt toks' modified (tokenRow (glast "updateToks1" newToks) -10, v2))
+          then put (RefSt s toks' modified) -- TODO:how do we flag this? Do we have to?
+          else put (RefSt s toks' modified)
 	
         return (newAST, newToks) 
 
 updateToksList oldAST newAST printFun
    = trace "updateToksList" $ 
-     do (RefSt toks _ (v1, v2)) <- get
+     do (RefSt s toks _ ) <- get
         let offset                        = lengthOfLastLine toks1
             (toks1,toks2az, toks3az)      = splitToks (startPos, endPos) toks
             (startPos, endPos)            = getStartEndLoc2 toks oldAST
@@ -529,8 +529,8 @@ updateToksList oldAST newAST printFun
         let 
             toks' = replaceToks toks startPos endPos newToks
         if length newToks == 0
-          then put (RefSt toks' modified (v1,v2))
-          else put (RefSt toks' modified (tokenRow (glast "updateToks1" newToks) -10, v2))
+          then put (RefSt s toks' modified) -- TODO:how do we flag this? Do we have to?
+          else put (RefSt s toks' modified)
 	
         return (newAST, newToks) 
 

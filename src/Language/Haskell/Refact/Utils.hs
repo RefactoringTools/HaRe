@@ -22,6 +22,8 @@ module Language.Haskell.Refact.Utils
        , getModuleName
        , isVarId
        , defaultPN
+       , serverModsAndFiles
+       , getCurrentModuleGraph
        , modIsExported
        ) where
 
@@ -322,11 +324,12 @@ fileNameToModName fileName =
                     else return $ (fst.head) f
 -}
 
-getModuleName :: GHC.ParsedSource -> Maybe String
+-- | Extract the module name from the parsed source, if there is one
+getModuleName :: GHC.ParsedSource -> Maybe (GHC.ModuleName,String)
 getModuleName (GHC.L _ mod) =
   case (GHC.hsmodName mod) of
     Nothing -> Nothing
-    Just (GHC.L _ modname) -> Just $ GHC.moduleNameString modname
+    Just (GHC.L _ modname) -> Just $ (modname,GHC.moduleNameString modname)
 
 
 
@@ -386,25 +389,16 @@ parseSourceFile targetFile =
 
 -- ---------------------------------------------------------------------
 
--- Assuming we are in the Refact Monad
--- parseSourceFileGhc ::
---   GHC.GhcMonad m =>
---   String
---   -> m ((GHC.TypecheckedSource,
---          [GHC.LIE GHC.RdrName],
---          GHC.ParsedSource),
---         [(GHC.Located GHC.Token, String)])
-parseSourceFileGhc :: 
-  String 
-  -> RefactGhc ((GHC.TypecheckedSource,
-         [GHC.LIE GHC.RdrName],
-         GHC.ParsedSource),
-        [(GHC.Located GHC.Token, String)])
+-- | Parse a source file into a GHC session
+parseSourceFileGhc ::
+  String -> RefactGhc (ParseResult,[PosToken])
 parseSourceFileGhc targetFile = do
+      settings <- getRefacSettings
       dflags <- GHC.getSessionDynFlags
       let dflags' = foldl GHC.xopt_set dflags
                     [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-      GHC.setSessionDynFlags dflags'
+          dflags'' = dflags' { GHC.importPaths = rsetImportPath settings }
+      GHC.setSessionDynFlags dflags''
       target <- GHC.guessTarget targetFile Nothing
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
@@ -486,29 +480,38 @@ applyRefac
     -> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
 
 applyRefac refac Nothing fileName
-  = do ((inscps, exps, mod), toks) <- parseSourceFile fileName
-       (mod',(RefSt toks' m _))  <- runRefact (refac (inscps, exps, mod)) (RefSt toks False (-1000,0))
-       return ((fileName,m),(toks',mod'))
+  = do (pr, toks) <- parseSourceFile fileName
+       res <- applyRefac refac (Just (pr,toks)) fileName
+       return res
 
-applyRefac refac (Just ((inscps, exps, mod), toks)) fileName
-  = do (mod',(RefSt toks' m _))  <- runRefact (refac (inscps, exps, mod)) (RefSt toks False (-1000,0))
-       return ((fileName,m),(toks', mod'))
+applyRefac refac (Just (parsedFile,toks)) fileName = do
+    let settings = RefSet ["."]
+    (mod',(RefSt _ toks' m))  <- runRefact (refac parsedFile) (RefSt settings toks False)
+    return ((fileName,m),(toks', mod'))
 
 
 -- ---------------------------------------------------------------------
 
 -- TODO: come up with a proper name for this, once we decide exactly what it does
-runRefac :: RefactGhc a -> IO a
-runRefac comp = do
+--       I suspect it belongs in the monad...
+--       Should split into three, init, run, wrapup
+-- | Manage a single refactor session. Initialise the monad, apply the
+-- refactoring, write out the files.
+
+runRefac :: (Maybe RefactSettings)
+         -> RefactGhc ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+         -> IO ()
+runRefac settings comp = do
   let
-   initialState = RefSt 
-	{ rsTokenStream = [] -- :: [PosToken]
-	, rsStreamAvailable = False -- :: Bool
-	, rsPosition = (-1,-1) -- :: (Int,Int)
+   initialState = RefSt
+        { rsSettings = fromMaybe (RefSet ["."]) settings
+        , rsTokenStream = [] -- :: [PosToken]
+        , rsStreamAvailable = False -- :: Bool
         }
-  (res,_s) <- runRefactGhc initialState comp
+  (refactoredMod,_s) <- runRefactGhc initialState comp
   -- putStrLn $ show (rsPosition s)
-  return res
+  writeRefactoredFiles False [refactoredMod]
+  return ()
 
 -- ---------------------------------------------------------------------
 
@@ -650,8 +653,6 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            seq (length source) $ writeFile (createNewFileName "_TokOut" fileName) source
            -- writeHaskellFile (createNewFileName "AST" fileName) ((render.ppi.rmPrelude) mod)
            -- ++AZ++ writeHaskellFile (createNewFileName "AST" fileName) (SYB.showData SYB.Parser mod)
-
-
 
        createNewFileName str fileName
           =let (name, posfix)=span (/='.') fileName
@@ -820,10 +821,13 @@ modIsExported mod
            else isJust $ find matchModName (fromJust exps)
 
 -- ---------------------------------------------------------------------
+
+-- | Return the client modules and file names. The client modules of module, say  m, are those modules
+-- which directly or indirectly import module m.
 {-
 -- clientModsAndFiles::( ) =>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
-clientModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
-                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
+--clientModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
+--                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
 clientModsAndFiles m =
   do gf <- getCurrentModuleGraph
      let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
@@ -831,34 +835,44 @@ clientModsAndFiles m =
          clientMods  = reachable g [m] \\ [m]
          clients     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) clientMods
      return clients
-
--- | Return the server module and file names. The server modules of module, say  m, are those modules
--- which are directly or indirectly imported by module m.
 -}
---serverModsAndFiles::( )=>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
+
 
 -- ---------------------------------------------------------------------
-{-
-serverModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
-                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
-serverModsAndFiles m =
-   do gf <- getCurrentModuleGraph
-      let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
-          g           = (map snd) gf  
-          serverMods  = reachable g [m] \\ [m]
-          servers     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) serverMods
-      return servers
--}
+
+-- | Return the server module and file names. The server modules of
+-- module, say m, are those modules which are directly or indirectly
+-- imported by module m.
+-- This can only be called in a live GHC session
+serverModsAndFiles :: GHC.ModuleName -> RefactGhc [(GHC.ModuleName, String)]
+serverModsAndFiles m = do
+   gf <- getCurrentModuleGraph
+   let servers = undefined -- ++AZ++ TODO: write this
+   return servers
+
+instance (Show GHC.ModuleName) where
+  show = GHC.moduleNameString
+
+-- ---------------------------------------------------------------------
+
 -- | Return True if the given module name exists in the project.
 --isAnExistingMod::( ) =>ModuleName->PFE0MT n i ds ext m Bool
 
--- ---------------------------------------------------------------------
 {-
 isAnExistingMod::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
                   ModuleName->PFE0MT n i ds ext m Bool
 
-isAnExistingMod m 
+isAnExistingMod m
   =  do ms<-allModules
         return (elem m ms)
 -}
 
+-- ---------------------------------------------------------------------
+
+-- | Get the current module graph, provided we are in a live GHC session
+getCurrentModuleGraph :: RefactGhc GHC.ModuleGraph
+getCurrentModuleGraph = GHC.getModuleGraph
+
+sortCurrentModuleGraph ::  RefactGhc GHC.ModuleGraph
+sortCurrentModuleGraph = do
+  undefined

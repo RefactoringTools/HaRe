@@ -48,7 +48,7 @@ type InScopes=((Relations.Rel Names.QName (Ents.Ent PosName.Id)))
 
 type Exports =[(PosName.Id, Ent PosName.Id)]
 -}
-type SimpPos = (Int,Int) -- Line, column 
+type SimpPos = (Int,Int) -- Line, column
 
 -- Additions for GHC
 type PosToken = (GHC.Located GHC.Token, String)
@@ -63,7 +63,7 @@ type PN     = GHC.RdrName
 -- TODO ++AZ++ I think this should be the renamed version, with a unique ID.
 type PNT    = GHC.GenLocated GHC.SrcSpan GHC.RdrName
 
--- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]  
+-- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]
 type HsModuleP = GHC.HsModule GHC.RdrName
 
 
@@ -146,3 +146,4 @@ optSrcLoc = N
 instance Eq  OptSrcLoc where _ == _ = True
 instance Ord OptSrcLoc where compare _ _ = EQ
 -}
+

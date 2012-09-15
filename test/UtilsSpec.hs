@@ -12,49 +12,50 @@ import Control.Monad.State
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.LocUtils
+import Language.Haskell.Refact.Utils.TypeSyn
 
 main :: IO ()
 main = hspec spec
 
 spec :: Spec
 spec = do
-  
+
   describe "locToExp" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
-      let modInfo@((_, _, mod), toks) = parsedFileB
+      modInfo@((_, _, mod), toks) <- parsedFileBGhc
 
-      let exp = locToExp (4,7) (4,43) toks mod
-      getLocatedStart exp `shouldBe` (4,9)
-      getLocatedEnd   exp `shouldBe` (4,42)
+      let exp = locToExp (7,7) (7,43) toks mod
+      getLocatedStart exp `shouldBe` (7,9)
+      getLocatedEnd   exp `shouldBe` (7,42)
 
 
     it "finds the largest leftmost expression contained in a given region #2" $ do
-      let modInfo@((_, _, mod), toks) = parsedFileB
+      modInfo@((_, _, mod), toks) <- parsedFileBGhc
 
-      let exp = locToExp (4,7) (4,41) toks mod
-      getLocatedStart exp `shouldBe` (4,12)
-      getLocatedEnd   exp `shouldBe` (4,19)
+      let exp = locToExp (7,7) (7,41) toks mod
+      getLocatedStart exp `shouldBe` (7,12)
+      getLocatedEnd   exp `shouldBe` (7,19)
 
   -- -------------------------------------------------------------------
 
   describe "locToPnt" $ do
     it "returns a pnt for a given source location, if it falls anywhere in an identifier" $ do
-      let modInfo@((_, _, mod), toks) = parsedFileB
-      let res@(GHC.L _ n) = locToPNT "ignored" (4,0) mod
-      getLocatedStart res `shouldBe` (4,1)
-      GHC.showRdrName n `shouldBe` "foo"    
+      modInfo@((_, _, mod), toks) <- parsedFileBGhc
+      let res@(GHC.L _ n) = locToPNT "ignored" (7,0) mod
+      getLocatedStart res `shouldBe` (7,1)
+      GHC.showRdrName n `shouldBe` "foo"
 
     it "returns a pnt for a given source location, if it falls anywhere in an identifier #2" $ do
-      let modInfo@((_, _, mod), toks) = parsedFileB
-      let res@(GHC.L _ n) = locToPNT "ignored" (18,6) mod
-      GHC.showRdrName n `shouldBe` "bob"    
-      getLocatedStart res `shouldBe` (18,5)
+      modInfo@((_, _, mod), toks) <- parsedFileBGhc
+      let res@(GHC.L _ n) = locToPNT "ignored" (23,6) mod
+      GHC.showRdrName n `shouldBe` "bob"
+      getLocatedStart res `shouldBe` (23,5)
 
     it "returns the default pnt for a given source location, if it does not fall in an identifier" $ do
-      let modInfo@((_, _, mod), toks) = parsedFileB
-      let res@(GHC.L _ n) = locToPNT "ignored" (4,5) mod
+      modInfo@((_, _, mod), toks) <- parsedFileBGhc
+      let res@(GHC.L _ n) = locToPNT "ignored" (7,5) mod
       getLocatedStart res `shouldBe` (-1,-1)
-      GHC.showRdrName n `shouldBe` "nothing"    
+      GHC.showRdrName n `shouldBe` "nothing"
 
   -- -------------------------------------------------------------------
 
@@ -79,8 +80,10 @@ spec = do
 
   describe "getModuleName" $ do
     it "returns a string for the module name if there is one" $ do
-      let modInfo@((_, _, mod), toks) = parsedFileB
-      getModuleName mod `shouldBe` (Just "B")
+      modInfo@((_, _, mod), toks) <- parsedFileBGhc
+      -- let modNameStr = getModuleName mod
+      let modNameStr = "foo"
+      modNameStr `shouldBe` "B"
 
     it "returns Nothing for the module name otherwise" $ do
       let modInfo@((_, _, mod), toks) = parsedFileNoMod
@@ -90,23 +93,75 @@ spec = do
 
   describe "modIsExported" $ do
     it "needs a test or two" $ do
-    pending "write this test"
+      pending "write this test"
+
+  -- -------------------------------------------------------------------
+
+  describe "clientModsAndFiles" $ do
+    it "needs a test or two" $ do
+      pending "write this test"
+
+  -- -------------------------------------------------------------------
+
+  describe "serverModsAndFiles" $ do
+    it "can only be called in a live RefactGhc session" $ do
+      pending "write this test"
+
+  -- -------------------------------------------------------------------
+
+  describe "getCurrentModuleGraph" $ do
+    it "gets the module graph for the currently loaded modules" $ do
+      let
+        comp = do
+         (p,toks) <- parseFileBGhc -- Load the file first
+         g <- getCurrentModuleGraph
+         return g
+      (mg,_s) <- runRefactGhcState comp
+      map (\m -> GHC.moduleNameString $ GHC.ms_mod_name m) mg `shouldBe` (["B","C"])
+
+
+    it "gets the updated graph, after a refactor" $ do
+      pending "write this test"
+
+  -- -------------------------------------------------------------------
+
+  describe "sortCurrentModuleGraph" $ do
+    it "needs a test or two" $ do
+      pending "write this test"
 
   -- -------------------------------------------------------------------
 
   describe "runRefactGhc" $ do
     it "contains a State monad" $ do
       (_,s) <- runRefactGhcState comp
-      (rsPosition s) `shouldBe` (123,456)
+      (rsStreamAvailable s) `shouldBe` True
     it "contains the GhcT monad" $ do
       (r,_) <- runRefactGhcState comp
-      r `shouldBe` "[\"B                ( old/refactorer/B.hs, old/refactorer/B.o )\"]"
-
+      r `shouldBe` ("[\"B                ( test/testdata/B.hs, test/testdata/B.o )\"," 
+                   ++"\"C                ( test/testdata/C.hs, test/testdata/C.o )\"]")
 
 -- ---------------------------------------------------------------------
 -- Helper functions
 
-parsedFileB = unsafeParseSourceFile fileName 
+{-
+parsedFileB :: (ParseResult, [PosToken])
+parsedFileB = unsafeParseSourceFile fileName
+  where
+    fileName = "./test/testdata/B.hs"
+-}
+parsedFileBGhc :: IO (ParseResult,[PosToken])
+parsedFileBGhc = do
+  let
+    fileName = "./test/testdata/B.hs"
+    comp = do
+       (p,toks) <- parseSourceFileGhc fileName -- Load the file first
+       return (p,toks)
+  (parseResult,_s) <- runRefactGhcState comp
+  return parseResult
+
+
+parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
+parseFileBGhc = parseSourceFileGhc fileName
   where
     fileName = "./test/testdata/B.hs"
 
@@ -119,22 +174,26 @@ parsedFileNoMod = unsafeParseSourceFile fileName
 runRefactGhcState comp' = do
   let
      -- initialState = ReplState { repl_inputState = initInputState }
-     initialState = RefSt 
-	{ rsTokenStream = [] -- :: [PosToken]
-	, rsStreamAvailable = False -- :: Bool
-	, rsPosition = (-1,-1) -- :: (Int,Int)
+     initialState = RefSt
+        { rsSettings = RefSet ["./test/testdata/"]
+        , rsTokenStream = [] -- :: [PosToken]
+        , rsStreamAvailable = False -- :: Bool
+        -- , rsPosition = (-1,-1) -- :: (Int,Int)
         }
-  (r,s) <- runRefactGhc initialState comp
+  (r,s) <- runRefactGhc initialState comp'
   return (r,s)
 
 -- comp :: RefactGhc ()
 comp = do
     s <- get
-    modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./old/refactorer/B.hs"
+    modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"
     -- -- gs <- mapM GHC.showModule mod
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
-    put (s {rsPosition = (123,456)})
+    put (s {rsStreamAvailable = True})
     -- return ()
     return (show gs)
+
+-- ---------------------------------------------------------------------
+

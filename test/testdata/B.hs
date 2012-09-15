@@ -1,6 +1,9 @@
 module B where
 -- Test for refactor of if to case
 
+import Data.List -- For testing module graph
+import C         -- For testing module graph
+
 foo x = if (odd x) then "Odd" else "Even"
 
 bob x y = x + foo y
@@ -18,4 +21,5 @@ main = do
 mary = [1,2,3]
 
 h = bob 1 2
+
 
