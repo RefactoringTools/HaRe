@@ -3,10 +3,11 @@ module UtilsSpec (main, spec) where
 import           Test.Hspec
 import           Test.QuickCheck
 
-import qualified GHC      as GHC
-import qualified GhcMonad as GHC
-import qualified RdrName  as GHC
-import qualified SrcLoc   as GHC
+import qualified GHC        as GHC
+import qualified GhcMonad   as GHC
+import qualified Outputable as GHC
+import qualified RdrName    as GHC
+import qualified SrcLoc     as GHC
 
 import Control.Monad.State
 import Language.Haskell.Refact.Utils
@@ -53,7 +54,7 @@ spec = do
 
     it "returns the default pnt for a given source location, if it does not fall in an identifier" $ do
       modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      let res@(GHC.L _ n) = locToPNT "ignored" (7,5) mod
+      let res@(GHC.L _ n) = locToPNT "ignored" (7,6) mod
       getLocatedStart res `shouldBe` (-1,-1)
       GHC.showRdrName n `shouldBe` "nothing"
 
@@ -81,8 +82,8 @@ spec = do
   describe "getModuleName" $ do
     it "returns a string for the module name if there is one" $ do
       modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      -- let modNameStr = getModuleName mod
-      let modNameStr = "foo"
+      let (Just (modname,modNameStr)) = getModuleName mod
+      -- let modNameStr = "foo"
       modNameStr `shouldBe` "B"
 
     it "returns Nothing for the module name otherwise" $ do
@@ -103,9 +104,34 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "clienModsAndFiles" $ do
+    it "can only be called in a live RefactGhc session" $ do
+      pending "write this test"
+
+    it "gets modules which directly or indirectly import by a module" $ do
+      let
+        comp = do
+         (p,toks) <- parseFileBGhc -- Load the file first
+         g <- clientModsAndFiles $ GHC.mkModuleName "C"
+         return g
+      (mg,_s) <- runRefactGhcState comp
+      GHC.showPpr mg `shouldBe` "([], [import (implicit) Prelude, import C, import Data.List])"
+
+  -- -------------------------------------------------------------------
+
   describe "serverModsAndFiles" $ do
     it "can only be called in a live RefactGhc session" $ do
       pending "write this test"
+
+    it "gets modules which are directly or indirectly imported by a module" $ do
+      let
+        comp = do
+         (p,toks) <- parseFileBGhc -- Load the file first
+         g <- serverModsAndFiles $ GHC.mkModuleName "B"
+         return g
+      (mg,_s) <- runRefactGhcState comp
+      GHC.showPpr mg `shouldBe` "([], [import (implicit) Prelude, import C, import Data.List])"
+
 
   -- -------------------------------------------------------------------
 
@@ -127,7 +153,14 @@ spec = do
 
   describe "sortCurrentModuleGraph" $ do
     it "needs a test or two" $ do
-      pending "write this test"
+      let
+        comp = do
+         (p,toks) <- parseFileBGhc -- Load the file first
+         g <- sortCurrentModuleGraph
+         return g
+      (mg,_s) <- runRefactGhcState comp
+      GHC.showPpr mg `shouldBe` "[NONREC\n    ModSummary {\n       ms_hs_date = Sat Sep 15 14:39:05 SAST 2012\n       ms_mod = main:C,\n       ms_textual_imps = [import (implicit) Prelude]\n       ms_srcimps = []\n    },\n NONREC\n    ModSummary {\n       ms_hs_date = Sat Sep 15 14:43:57 SAST 2012\n       ms_mod = main:B,\n       ms_textual_imps = [import (implicit) Prelude, import C,\n                          import Data.List]\n       ms_srcimps = []\n    }]"
+
 
   -- -------------------------------------------------------------------
 
@@ -171,7 +204,7 @@ parsedFileNoMod = unsafeParseSourceFile fileName
 
 
 -- runRefactGhcState :: RefactGhc a -> IO RefactState
-runRefactGhcState comp' = do
+runRefactGhcState paramcomp = do
   let
      -- initialState = ReplState { repl_inputState = initInputState }
      initialState = RefSt
@@ -180,10 +213,11 @@ runRefactGhcState comp' = do
         , rsStreamAvailable = False -- :: Bool
         -- , rsPosition = (-1,-1) -- :: (Int,Int)
         }
-  (r,s) <- runRefactGhc initialState comp'
+  (r,s) <- runRefactGhc initialState paramcomp
   return (r,s)
 
--- comp :: RefactGhc ()
+
+comp :: RefactGhc String
 comp = do
     s <- get
     modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"

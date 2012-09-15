@@ -22,8 +22,10 @@ module Language.Haskell.Refact.Utils
        , getModuleName
        , isVarId
        , defaultPN
+       , clientModsAndFiles
        , serverModsAndFiles
        , getCurrentModuleGraph
+       , sortCurrentModuleGraph
        , modIsExported
        ) where
 
@@ -41,6 +43,7 @@ import System.IO.Unsafe
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
 import qualified Coercion      as GHC
+import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified ErrUtils      as GHC
 import qualified FastString    as GHC
@@ -822,33 +825,42 @@ modIsExported mod
 
 -- ---------------------------------------------------------------------
 
--- | Return the client modules and file names. The client modules of module, say  m, are those modules
--- which directly or indirectly import module m.
-{-
+-- | Return the client modules and file names. The client modules of
+-- module, say m, are those modules which directly or indirectly
+-- import module m.
+
+
 -- clientModsAndFiles::( ) =>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
 --clientModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
 --                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
-clientModsAndFiles m =
-  do gf <- getCurrentModuleGraph
-     let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
-         g           = (reverseGraph.(map snd)) gf     
-         clientMods  = reachable g [m] \\ [m]
-         clients     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) clientMods
-     return clients
--}
+clientModsAndFiles ::
+        GHC.ModuleName
+        -> RefactGhc [GHC.Located (GHC.ImportDecl GHC.RdrName)]
+
+clientModsAndFiles m = undefined
+  -- do gf <- getCurrentModuleGraph
+  --    let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
+  --        g           = (reverseGraph.(map snd)) gf
+  --        clientMods  = reachable g [m] \\ [m]
+  --        clients     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) clientMods
+  --    return clients
+
 
 
 -- ---------------------------------------------------------------------
 
 -- | Return the server module and file names. The server modules of
 -- module, say m, are those modules which are directly or indirectly
--- imported by module m.
--- This can only be called in a live GHC session
-serverModsAndFiles :: GHC.ModuleName -> RefactGhc [(GHC.ModuleName, String)]
+-- imported by module m. This can only be called in a live GHC session
+serverModsAndFiles ::
+        GHC.ModuleName
+        -> RefactGhc ([GHC.Located (GHC.ImportDecl GHC.RdrName)], -- ^ Source imports
+                      [GHC.Located (GHC.ImportDecl GHC.RdrName)]) -- ^ Textual imports
 serverModsAndFiles m = do
-   gf <- getCurrentModuleGraph
-   let servers = undefined -- ++AZ++ TODO: write this
-   return servers
+   ms <- GHC.getModSummary m
+   return (GHC.ms_srcimps ms, GHC.ms_textual_imps ms)
+
+-- ---------------------------------------------------------------------
 
 instance (Show GHC.ModuleName) where
   show = GHC.moduleNameString
@@ -873,6 +885,15 @@ isAnExistingMod m
 getCurrentModuleGraph :: RefactGhc GHC.ModuleGraph
 getCurrentModuleGraph = GHC.getModuleGraph
 
-sortCurrentModuleGraph ::  RefactGhc GHC.ModuleGraph
+sortCurrentModuleGraph :: RefactGhc [GHC.SCC GHC.ModSummary]
 sortCurrentModuleGraph = do
-  undefined
+  -- g <- GHC.getModuleGraph
+  g <- getCurrentModuleGraph
+  let scc = GHC.topSortModuleGraph False g Nothing
+  return scc
+
+-- getSubGraph optms = concat # getSortedSubGraph optms
+-- getSortedSubGraph optms = flip optSubGraph optms # sortCurrentModuleGraph
+-- allModules = moduleList # sortCurrentModuleGraph
+-- moduleList g = [m|scc<-g,(_,(m,_))<-scc]
+

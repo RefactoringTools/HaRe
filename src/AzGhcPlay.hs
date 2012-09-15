@@ -246,12 +246,13 @@ runR = do
   let
    -- initialState = ReplState { repl_inputState = initInputState }
    initialState = RefSt 
-	{ rsTokenStream = [] -- :: [PosToken]
+	{ rsSettings = RefSet ["."]
+        , rsTokenStream = [] -- :: [PosToken]
 	, rsStreamAvailable = False -- :: Bool
-	, rsPosition = (-1,-1) -- :: (Int,Int)
+	-- , rsPosition = (-1,-1) -- :: (Int,Int)
         }
   (_,s) <- runRefactGhc initialState comp
-  putStrLn $ show (rsPosition s)
+  -- putStrLn $ show (rsPosition s)
   return ()
 
 comp :: RefactGhc ()
@@ -262,7 +263,7 @@ comp = do
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
-    put (s {rsPosition = (123,456)})
+    -- put (s {rsPosition = (123,456)})
     return ()
 
 
