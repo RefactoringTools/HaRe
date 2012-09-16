@@ -1,5 +1,8 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Language.Haskell.Refact.Utils.GhcModuleGraph
   (
+  getModulesAsGraph
   ) where
 
 -- GHC imports
@@ -45,9 +48,63 @@ import Data.Maybe
 import Data.List
 import qualified Data.List as List
 
+{-
+
+--------------------------------------------------
+graph:
+
+Vertices:
+  (ModSummary {main:Main,},1,[3])
+  (ModSummary {main:S1,},  2, [])
+  (ModSummary {main:M3,},  3,[4])
+  (ModSummary {main:M2,},  4,[2])
+
+Edges:
+  (ModSummary {main:Main,},1,[3]) -> (ModSummary {main:M3,},3,[4])
+  (ModSummary {main:M3,},  3,[4]) -> (ModSummary {main:M2,},4,[2])
+  (ModSummary {main:M2,},  4,[2]) -> (ModSummary {main:S1,},2,[])
+
+
+transposeG:
+
+Vertices:
+  (ModSummary {main:Main,}, 1,[3])
+  (ModSummary {main:S1,},   2, [])
+  (ModSummary {main:M3,},   3,[4])
+  (ModSummary {main:M2,},   4,[2])
+Edges:
+  (ModSummary {main:S1,},   2, []) -> (ModSummary {main:M2,},   4,[2])
+  (ModSummary {main:M3,},   3,[4]) -> (ModSummary {main:Main,}, 1,[3])
+  (ModSummary {main:M2,},   4,[2]) -> (ModSummary {main:M3,},   3,[4])
+
+
+-}
 -- ---------------------------------------------------------------------
 
--- This bit is from the GHC source
+getModulesAsGraph
+  :: Bool -> [ModSummary] -> Maybe ModuleName -> Graph SummaryNode
+getModulesAsGraph drop_hs_boot_nodes summaries mb_root_mod
+  = initial_graph
+  -- = map (fmap summaryNodeSummary) $ stronglyConnCompG initial_graph
+  where
+    (graph, lookup_node) = moduleGraphNodes drop_hs_boot_nodes summaries
+
+    initial_graph = case mb_root_mod of
+        Nothing -> graph
+        Just root_mod ->
+            -- restrict the graph to just those modules reachable from
+            -- the specified module.  We do this by building a graph with
+            -- the full set of nodes, and determining the reachable set from
+            -- the specified node.
+            let root | Just node <- lookup_node HsSrcFile root_mod, graph `hasVertexG` node = node
+                     | otherwise = ghcError (ProgramError "module does not exist")
+            in graphFromEdgedVertices (seq root (reachableG graph root))
+
+
+
+
+-- ---------------------------------------------------------------------
+-- This bit is from the GHC source >>>>>>>
 type SummaryNode = (ModSummary, Int, [Int])
 
 topSortModuleGraph drop_hs_boot_nodes summaries mb_root_mod

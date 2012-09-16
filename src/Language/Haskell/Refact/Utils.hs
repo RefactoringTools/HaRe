@@ -33,6 +33,7 @@ import Control.Monad.State
 import Data.Char
 import Data.List
 import Data.Maybe
+import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -833,18 +834,22 @@ modIsExported mod
 -- clientModsAndFiles::( ) =>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
 --clientModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
 --                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
-clientModsAndFiles ::
-        GHC.ModuleName
-        -> RefactGhc [GHC.Located (GHC.ImportDecl GHC.RdrName)]
+-- clientModsAndFiles ::
+--         GHC.ModuleName
+--         -> RefactGhc [GHC.Located (GHC.ImportDecl GHC.RdrName)]
 
-clientModsAndFiles m = undefined
+clientModsAndFiles m = do
+  ms <- GHC.getModuleGraph
+  let mg = getModulesAsGraph False ms (Just m)
+  let rg = GHC.transposeG mg
+      -- clientMods = GHC.reachableG rg (GHC.getModSummary m) 
+  return rg
   -- do gf <- getCurrentModuleGraph
   --    let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
   --        g           = (reverseGraph.(map snd)) gf
   --        clientMods  = reachable g [m] \\ [m]
   --        clients     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) clientMods
   --    return clients
-
 
 
 -- ---------------------------------------------------------------------

@@ -99,20 +99,15 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "clientModsAndFiles" $ do
-    it "needs a test or two" $ do
-      pending "write this test"
-
-  -- -------------------------------------------------------------------
-
-  describe "clienModsAndFiles" $ do
     it "can only be called in a live RefactGhc session" $ do
       pending "write this test"
 
     it "gets modules which directly or indirectly import by a module" $ do
       let
         comp = do
-         (p,toks) <- parseFileBGhc -- Load the file first
-         g <- clientModsAndFiles $ GHC.mkModuleName "C"
+         (p,toks) <- parseFileMGhc -- Load the file first
+         g <- clientModsAndFiles $ GHC.mkModuleName "Main"
+         -- g <- sortCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp
       GHC.showPpr mg `shouldBe` "([], [import (implicit) Prelude, import C, import Data.List])"
@@ -176,16 +171,29 @@ spec = do
 -- ---------------------------------------------------------------------
 -- Helper functions
 
+parsedFileBGhc :: IO (ParseResult,[PosToken])
+parsedFileBGhc = parsedFileGhc "./test/testdata/B.hs"
+
+parsedFileMGhc :: IO (ParseResult,[PosToken])
+parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
+
+
 {-
-parsedFileB :: (ParseResult, [PosToken])
-parsedFileB = unsafeParseSourceFile fileName
-  where
-    fileName = "./test/testdata/B.hs"
--}
 parsedFileBGhc :: IO (ParseResult,[PosToken])
 parsedFileBGhc = do
   let
     fileName = "./test/testdata/B.hs"
+    comp = do
+       (p,toks) <- parseSourceFileGhc fileName -- Load the file first
+       return (p,toks)
+  (parseResult,_s) <- runRefactGhcState comp
+  return parseResult
+-}
+
+
+parsedFileGhc :: String -> IO (ParseResult,[PosToken])
+parsedFileGhc fileName = do
+  let
     comp = do
        (p,toks) <- parseSourceFileGhc fileName -- Load the file first
        return (p,toks)
@@ -197,6 +205,11 @@ parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
 parseFileBGhc = parseSourceFileGhc fileName
   where
     fileName = "./test/testdata/B.hs"
+
+parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
+parseFileMGhc = parseSourceFileGhc fileName
+  where
+    fileName = "./test/testdata/M.hs"
 
 parsedFileNoMod = unsafeParseSourceFile fileName
   where
