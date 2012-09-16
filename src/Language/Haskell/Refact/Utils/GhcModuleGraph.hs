@@ -2,7 +2,8 @@
 
 module Language.Haskell.Refact.Utils.GhcModuleGraph
   (
-  getModulesAsGraph
+    getModulesAsGraph
+  , summaryNodeSummary
   ) where
 
 -- GHC imports

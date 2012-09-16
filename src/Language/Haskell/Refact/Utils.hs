@@ -840,16 +840,17 @@ modIsExported mod
 
 clientModsAndFiles m = do
   ms <- GHC.getModuleGraph
-  let mg = getModulesAsGraph False ms (Just m)
-  let rg = GHC.transposeG mg
-      -- clientMods = GHC.reachableG rg (GHC.getModSummary m) 
-  return rg
-  -- do gf <- getCurrentModuleGraph
-  --    let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
-  --        g           = (reverseGraph.(map snd)) gf
-  --        clientMods  = reachable g [m] \\ [m]
-  --        clients     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) clientMods
-  --    return clients
+  modsum <- GHC.getModSummary m
+  let mg = getModulesAsGraph False ms Nothing
+      rg = GHC.transposeG mg
+      modNode = fromJust $ find (\(msum,_,_) -> mycomp msum modsum) (GHC.verticesG rg)
+      clientMods = filter (\msum -> not (mycomp msum modsum))
+                 $ map summaryNodeSummary $ GHC.reachableG rg modNode
+
+  return clientMods
+
+-- TODO : find decent name and place for this.
+mycomp ms1 ms2 = (GHC.ms_mod ms1) == (GHC.ms_mod ms2)
 
 
 -- ---------------------------------------------------------------------
