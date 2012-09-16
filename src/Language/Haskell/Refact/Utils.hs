@@ -809,7 +809,7 @@ isId id = id/=[] && isLegalIdTail (tail id) && not (isReservedId id)
 -- or by specifying the module name in the export.
 modIsExported::HsModuleP   -- ^ The AST of the module
                -> Bool     -- ^ The result
-modIsExported mod
+modIsExported (GHC.L _ mod)
    = let exps    = GHC.hsmodExports mod -- Maybe [LIE name]
          modName = GHC.hsmodName mod -- Maybe (Located ModuleName)
 
@@ -830,10 +830,7 @@ modIsExported mod
 -- module, say m, are those modules which directly or indirectly
 -- import module m.
 
-
--- clientModsAndFiles::( ) =>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
---clientModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
---                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
+-- TODO: deal with an anonymous main module, by taking Maybe GHC.ModuleName
 clientModsAndFiles
   :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
 clientModsAndFiles m = do

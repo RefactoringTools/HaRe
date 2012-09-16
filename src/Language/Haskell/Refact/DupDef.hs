@@ -15,6 +15,7 @@ import GHC.Paths ( libdir )
 import Control.Monad
 import Control.Monad.State
 import Data.Data
+import Data.Maybe
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -39,30 +40,36 @@ duplicateDef args
           newName  = args!!1
           row      = read (args!!2)::Int
           col      = read (args!!3)::Int
-      runRefac comp fileName newName (row,col)
+      runRefac Nothing (comp fileName newName (row,col))
       return ()
 
-comp :: String -> String -> (Int,Int) -> RefactGhc ()
+comp :: String -> String -> (Int,Int) 
+     -> RefactGhc ((FilePath, Bool),([PosToken], GHC.ParsedSource))
 comp fileName newName (row, col) = do
       if isVarId newName
-        then do (inscps, _, mod, tokList) <- parseSourceFileGhc fileName
+        then do ((_,_,mod), tokList) <- parseSourceFileGhc fileName
                 -- modName <-fileNameToModName fileName
-                let modName = getModuleName mod
+                -- let modName = getModuleName mod
+                let (Just (modName,_)) = getModuleName mod
                 -- let pn = pNTtoPN $ locToPNT fileName (row, col) mod
-                let pn = locToPNT fileName (row, col) mod
+                let (GHC.L _ pn) = locToPNT fileName (row, col) mod
                 if (pn /= defaultPN)
-                  then do (mod',((tokList',m),_))<- doDuplicating pn newName (inscps, mod, tokList)
+                  then do (mod',((tokList',m),_))<- doDuplicating pn newName (mod, tokList)
                           if modIsExported mod
                            then do clients <- clientModsAndFiles modName
-                                   refactoredClients <- mapM (refactorInClientMod modName 
-                                                              (findNewPName newName mod')) clients
-                                   writeRefactoredFiles False $ ((fileName,m),(tokList',mod')):refactoredClients 
-                           else  writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
+                                   -- TODO: uncomment and complete this
+                                   -- refactoredClients <- mapM (refactorInClientMod modName 
+                                   --                            (findNewPName newName mod')) clients
+                                   let refactoredClients = [] -- ++AZ++ temporary
+                                   -- writeRefactoredFiles False $ ((fileName,m),(tokList',mod')):refactoredClients 
+                                   return $ ((fileName,m),(tokList',mod')):refactoredClients 
+                           -- else  writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
+                           else  return [((fileName,m), (tokList',mod'))]
                   else error "Invalid cursor position!"
         else error $ "Invalid new function name:" ++ newName ++ "!"
 
 
-doDuplicating pn newName (inscps, mod, tokList)
+doDuplicating pn newName (mod, tokList)
    = undefined
 {-
 doDuplicating pn newName (inscps, mod, tokList)
@@ -129,8 +136,9 @@ doDuplicating pn newName (inscps, mod, tokList)
                    else do newBinding<-duplicateDecl decls pn newName
                            return (replaceDecls parent (reverse before++ newBinding++ reverse after)) 
 
+-}
 
-
+{-
 --Find the the new definition name in PName format.
 findNewPName name
   =(fromMaybe defaultPN). applyTU (once_buTU (failTU `adhocTU` worker))
@@ -138,8 +146,9 @@ findNewPName name
         worker  pname
            |pNtoName pname == name = Just pname
         worker _ =mzero
+-}
 
-
+{-
 --Do refactoring in the client module.
 -- that is to hide the identifer in the import declaration if it will cause any problem in the client module.
 refactorInClientMod serverModName newPName (modName, fileName)
@@ -153,7 +162,9 @@ refactorInClientMod serverModName newPName (modName, fileName)
      needToBeHided name exps mod
          =usedWithoutQual name (hsModDecls mod)
           || causeNameClashInExports newPName name mod exps
+-}
 
+{-
 --Check here:
 --get the module name or alias name by which the duplicated definition will be imported automatically.
 willBeUnQualImportedBy::HsName.ModuleName->HsModuleP->Maybe [HsName.ModuleName]

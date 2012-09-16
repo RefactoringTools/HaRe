@@ -64,8 +64,8 @@ type PN     = GHC.RdrName
 type PNT    = GHC.GenLocated GHC.SrcSpan GHC.RdrName
 
 -- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]
-type HsModuleP = GHC.HsModule GHC.RdrName
-
+type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)
+ 
 
 -- ----------------------------------------------------
 -- From PNT
