@@ -834,10 +834,8 @@ modIsExported mod
 -- clientModsAndFiles::( ) =>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
 --clientModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
 --                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
--- clientModsAndFiles ::
---         GHC.ModuleName
---         -> RefactGhc [GHC.Located (GHC.ImportDecl GHC.RdrName)]
-
+clientModsAndFiles
+  :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
 clientModsAndFiles m = do
   ms <- GHC.getModuleGraph
   modsum <- GHC.getModSummary m
@@ -858,13 +856,27 @@ mycomp ms1 ms2 = (GHC.ms_mod ms1) == (GHC.ms_mod ms2)
 -- | Return the server module and file names. The server modules of
 -- module, say m, are those modules which are directly or indirectly
 -- imported by module m. This can only be called in a live GHC session
-serverModsAndFiles ::
-        GHC.ModuleName
-        -> RefactGhc ([GHC.Located (GHC.ImportDecl GHC.RdrName)], -- ^ Source imports
-                      [GHC.Located (GHC.ImportDecl GHC.RdrName)]) -- ^ Textual imports
+
+serverModsAndFiles
+  :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
 serverModsAndFiles m = do
-   ms <- GHC.getModSummary m
-   return (GHC.ms_srcimps ms, GHC.ms_textual_imps ms)
+  ms <- GHC.getModuleGraph
+  modsum <- GHC.getModSummary m
+  let mg = getModulesAsGraph False ms Nothing
+      modNode = fromJust $ find (\(msum,_,_) -> mycomp msum modsum) (GHC.verticesG mg)
+      serverMods = filter (\msum -> not (mycomp msum modsum))
+                 $ map summaryNodeSummary $ GHC.reachableG mg modNode
+
+  return serverMods
+
+
+   -- do gf <- getCurrentModuleGraph
+   --    let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
+   --        g           = (map snd) gf
+   --        serverMods  = reachable g [m] \\ [m]
+   --        servers     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) serverMods
+   --    return servers
+
 
 -- ---------------------------------------------------------------------
 

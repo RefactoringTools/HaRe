@@ -127,14 +127,23 @@ spec = do
     it "can only be called in a live RefactGhc session" $ do
       pending "write this test"
 
-    it "gets modules which are directly or indirectly imported by a module" $ do
+    it "gets modules which are directly or indirectly imported by a module #1" $ do
       let
         comp = do
-         (p,toks) <- parseFileBGhc -- Load the file first
-         g <- serverModsAndFiles $ GHC.mkModuleName "B"
+         (p,toks) <- parseFileMGhc -- Load the main file first
+         g <- serverModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
-      GHC.showPpr mg `shouldBe` "([], [import (implicit) Prelude, import C, import Data.List])"
+      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[]"
+
+    it "gets modules which are directly or indirectly imported by a module #2" $ do
+      let
+        comp = do
+         (p,toks) <- parseFileMGhc -- Load the main file first
+         g <- serverModsAndFiles $ GHC.mkModuleName "M3"
+         return g
+      (mg,_s) <- runRefactGhcState comp
+      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:S1]"
 
 
   -- -------------------------------------------------------------------
