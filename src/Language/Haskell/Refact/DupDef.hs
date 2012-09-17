@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.DupDef(duplicateDef) where
 
 import qualified Data.Generics.Schemes as SYB
@@ -25,7 +26,7 @@ import Language.Haskell.Refact.Utils.Monad
 
 {-
 
-This refactoring duplicates a defintion(function binding or simple
+This refactoring duplicates a definition(function binding or simple
 pattern binding) at same level with a new name provided by the user.
 The new name should not cause name clash/capture.
 
@@ -43,8 +44,8 @@ duplicateDef args
       runRefac Nothing (comp fileName newName (row,col))
       return ()
 
-comp :: String -> String -> (Int,Int) 
-     -> RefactGhc ((FilePath, Bool),([PosToken], GHC.ParsedSource))
+comp :: String -> String -> (Int,Int)
+     -> RefactGhc [((FilePath, Bool),([PosToken], GHC.ParsedSource))]
 comp fileName newName (row, col) = do
       if isVarId newName
         then do ((_,_,mod), tokList) <- parseSourceFileGhc fileName
@@ -54,7 +55,10 @@ comp fileName newName (row, col) = do
                 -- let pn = pNTtoPN $ locToPNT fileName (row, col) mod
                 let (GHC.L _ pn) = locToPNT fileName (row, col) mod
                 if (pn /= defaultPN)
-                  then do (mod',((tokList',m),_))<- doDuplicating pn newName (mod, tokList)
+                  -- then do (mod',((tokList',m),_))<- doDuplicating pn newName (mod, tokList)
+                  -- then do ((fileName',m),(tokList',mod')) <- doDuplicating pn newName (mod, tokList)
+                  -- then do ((fileName',m),(tokList',mod')) <- liftIO $ applyRefac (doDuplicating pn newName) (mod, tokList)
+                  then do ((fileName',m),(tokList',mod')) <- undefined
                           if modIsExported mod
                            then do clients <- clientModsAndFiles modName
                                    -- TODO: uncomment and complete this
@@ -62,15 +66,28 @@ comp fileName newName (row, col) = do
                                    --                            (findNewPName newName mod')) clients
                                    let refactoredClients = [] -- ++AZ++ temporary
                                    -- writeRefactoredFiles False $ ((fileName,m),(tokList',mod')):refactoredClients 
-                                   return $ ((fileName,m),(tokList',mod')):refactoredClients 
+                                   return $ ((fileName',m),(tokList',mod')):refactoredClients 
                            -- else  writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
                            else  return [((fileName,m), (tokList',mod'))]
                   else error "Invalid cursor position!"
         else error $ "Invalid new function name:" ++ newName ++ "!"
 
 
+{- ++AZ++
+doDuplicating :: PN -> String -> (GHC.ParsedSource, [PosToken])
+              -> RefactGhc ((FilePath, Bool),([PosToken], GHC.ParsedSource))
 doDuplicating pn newName (mod, tokList)
-   = undefined
+   = everywhereMStaged SYB.Parser (SYB.mkM dupInMod) mod
+        where
+        --1. The definition to be duplicated is at top level.
+        -- dupInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
+        dupInMod :: (GHC.Located (GHC.HsDecl GHC.RdrName))
+                 -> Refact (GHC.Located (GHC.HsDecl GHC.RdrName))
+        dupInMod (mod@(GHC.L l (GHC.ValD bind)))
+          -- |findFunOrPatBind  pn ds /= [] = doDuplicating' inscps mod pn
+          |findFunOrPatBind  pn bind /= [] = doDuplicating' mod pn
+        dupInMod _ =mzero
+++AZ++ -}
 {-
 doDuplicating pn newName (inscps, mod, tokList)
    = runStateT (applyTP ((once_tdTP (failTP `adhocTP` dupInMod
@@ -116,9 +133,12 @@ doDuplicating pn newName (inscps, mod, tokList)
           where
             mod (m::HsModuleP)
               = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
+-}
+        -- findFunOrPatBind pn ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDecls [pn] ds True False
+        -- findFunOrPatBind pn ds = undefined
 
-        findFunOrPatBind pn ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDecls [pn] ds True False
-
+        -- doDuplicating' {- inscps -}  parent pn = undefined
+{-
         doDuplicating' inscps parent pn
            = do let decls           = hsDecls parent
                     duplicatedDecls = definingDecls [pn] decls True False

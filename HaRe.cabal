@@ -143,6 +143,7 @@ Library
                                 , mtl
                                 , pretty
                                 , ghc-paths
+                                , old-time
         -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         -- GHC-Options:             -Wall
         Hs-Source-Dirs:         src
@@ -175,6 +176,7 @@ Executable ghc-hare
                     --            , MonadCatchIO-mtl
                     --            , transformers
                                 , ghc-syb-utils
+                                , old-time
                     --            , ghc-mtl
         -- ++AZ++ I prefer to put these in the individual files, as needed
         -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
@@ -273,4 +275,4 @@ test-suite spec
     , stringbuilder
     , silently
     , filepath
-
+    , old-time

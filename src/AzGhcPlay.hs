@@ -37,8 +37,8 @@ import Control.Monad.State
 import Language.Haskell.Refact.Utils.GhcUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
-targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
--- targetFile = "B.hs"
+
+targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
 targetMod = "B"
 
 {- main = t1 -}
@@ -107,7 +107,10 @@ getStuff =
         dflags <- GHC.getSessionDynFlags
         let dflags' = foldl GHC.xopt_set dflags
                             [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-        GHC.setSessionDynFlags dflags'
+
+            dflags'' = dflags' { GHC.importPaths = ["./test/testdata/","../test/testdata/"] }
+
+        GHC.setSessionDynFlags dflags''
         target <- GHC.guessTarget targetFile Nothing
         GHC.setTargets [target]
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
@@ -122,7 +125,7 @@ getStuff =
 
         g <- GHC.getModuleGraph
         gs <- mapM GHC.showModule g
-        GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
+        -- GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
         -- return $ (parsedSource d,"/n-----/n",  typecheckedSource d, "/n-=-=-=-=-=-=-/n", modInfoTyThings $ moduleInfo t)
         -- return $ (parsedSource d,"/n-----/n",  typecheckedSource d, "/n-=-=-=-=-=-=-/n")
         -- return $ (typecheckedSource d)
@@ -138,7 +141,7 @@ getStuff =
         -}
         let p' = processParsedMod ifToCase t
         -- GHC.liftIO (putStrLn . showParsedModule $ p)
-        GHC.liftIO (putStrLn . showParsedModule $ p')
+        -- GHC.liftIO (putStrLn . showParsedModule $ p')
         -- GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
 
         let ps  = GHC.pm_parsed_source p
@@ -154,9 +157,26 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,12) (4,16) rts ps))
         -- GHC.liftIO (putStrLn $ "locToExp1=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,43) rts ps))
         -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
+
+        GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
+        GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+
+        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
+        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
+
+        -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (SYB.showData SYB.Parser 0 $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
+        -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (GHC.showPpr $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
+        -- GHC.liftIO (putStrLn $ "moduleInfo.TopLevelScope=" ++ (GHC.showPpr $ GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info t))
         return ()
 
 tokenLocs toks = map (\(GHC.L l _, s) -> (l,s)) toks
+
+
+instance (Show GHC.TyThing) where
+  show (GHC.AnId anId) = "(AnId " ++ (show anId) ++ ")"
+  show _               = "(Another TyThing)"
+
+-- instance (Show GHC.Name) where
 
 convertSource ps =1
   ps

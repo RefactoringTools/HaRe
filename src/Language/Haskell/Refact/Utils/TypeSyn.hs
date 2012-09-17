@@ -58,10 +58,17 @@ data Pos = Pos { char, line, column :: !Int } deriving (Show)
 
 type Export = GHC.LIE GHC.RdrName
 type HsName = GHC.RdrName
+
+-- ---------------------------------------------------------------------
+
+-- |The PN is the name as it occurs to the parser, and
+-- corresponds with the GHC.RdrName
 type PN     = GHC.RdrName
 
--- TODO ++AZ++ I think this should be the renamed version, with a unique ID.
-type PNT    = GHC.GenLocated GHC.SrcSpan GHC.RdrName
+-- | The PNT is the unique name, after GHC renaming. It corresponds
+-- with GHC.Name
+type PNT    = GHC.GenLocated GHC.SrcSpan GHC.Name
+
 
 -- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]
 type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)

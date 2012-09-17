@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+
 module Language.Haskell.Refact.Utils
        ( expToPNT
        , locToExp
@@ -69,7 +70,10 @@ import qualified Var           as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+-- import Data.Generics
+
 import Debug.Trace
+
 -- ---------------------------------------------------------------------
 
 {-
@@ -503,7 +507,7 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
 -- refactoring, write out the files.
 
 runRefac :: (Maybe RefactSettings)
-         -> RefactGhc ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+         -> RefactGhc [((FilePath, Bool), ([PosToken], GHC.ParsedSource))]
          -> IO ()
 runRefac settings comp = do
   let
@@ -512,9 +516,9 @@ runRefac settings comp = do
         , rsTokenStream = [] -- :: [PosToken]
         , rsStreamAvailable = False -- :: Bool
         }
-  (refactoredMod,_s) <- runRefactGhc initialState comp
+  (refactoredMods,_s) <- runRefactGhc initialState comp
   -- putStrLn $ show (rsPosition s)
-  writeRefactoredFiles False [refactoredMod]
+  writeRefactoredFiles False refactoredMods
   return ()
 
 -- ---------------------------------------------------------------------
@@ -687,14 +691,15 @@ mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 -- TODO: bring in data constructor constants too.
 expToPNT ::
   GHC.GenLocated GHC.SrcSpan (GHC.HsExpr PNT)
-  -> PNT
--- expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
-expToPNT (GHC.L x (GHC.HsVar pnt))                     = pnt
+  -> Maybe PNT
+
+-- Will have to look this up ....
+expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just pnt
 -- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
 -- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
 -- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
 -- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
-expToPNT _ = defaultPNT
+expToPNT _ = Nothing
 
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
