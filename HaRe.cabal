@@ -277,3 +277,4 @@ test-suite spec
     , silently
     , filepath
     , old-time
+    , Diff
