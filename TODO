@@ -168,6 +168,10 @@ Tokens
 GHC has no token for whitespace. All spacing information is in the
    srcloc.  Need to check the implications.
 
+----------
+
+Thought: do refactoring on RenamedSource, not ParsedSource. Need to
+   rework token stream anyway, and at least the names are resolved.
 
 
 

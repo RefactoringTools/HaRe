@@ -24,7 +24,7 @@ spec = do
 
   describe "ifToCase" $ do
     it "converts an if expression to a case expression" $ do
-     pending "do refactoring"
+      ifToCase ["./test/testdata/Case/B.hs","4","7","4","43"]
 
   -- -------------------------------------------------------------------
 
