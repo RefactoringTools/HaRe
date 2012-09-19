@@ -113,7 +113,7 @@ instance ExceptionMonad m => ExceptionMonad (StateT s m) where
 instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
     get = lift get
     put = lift . put
-    state = lift . state
+    -- state = lift . state
 
 instance (MonadTrans GHC.GhcT) where
    lift = GHC.liftGhcT
