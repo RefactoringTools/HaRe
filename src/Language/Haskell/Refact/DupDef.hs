@@ -45,7 +45,7 @@ duplicateDef args
       return ()
 
 comp :: String -> String -> (Int,Int)
-     -> RefactGhc [((FilePath, Bool),([PosToken], GHC.ParsedSource))]
+     -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
       if isVarId newName
         then do ((_,_,mod), tokList) <- parseSourceFileGhc fileName
