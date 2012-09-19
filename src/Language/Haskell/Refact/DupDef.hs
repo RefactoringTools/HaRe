@@ -41,7 +41,7 @@ duplicateDef args
           newName  = args!!1
           row      = read (args!!2)::Int
           col      = read (args!!3)::Int
-      runRefac Nothing (comp fileName newName (row,col))
+      runRefacSession Nothing (comp fileName newName (row,col))
       return ()
 
 comp :: String -> String -> (Int,Int)

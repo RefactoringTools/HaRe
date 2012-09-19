@@ -180,7 +180,7 @@ spec = do
   describe "runRefactGhc" $ do
     it "contains a State monad" $ do
       (_,s) <- runRefactGhcState comp
-      (rsStreamAvailable s) `shouldBe` True
+      (rsStreamModified s) `shouldBe` True
     it "contains the GhcT monad" $ do
       (r,_) <- runRefactGhcState comp
       r `shouldBe` ("[\"B                ( test/testdata/B.hs, test/testdata/B.o )\"," 
@@ -241,7 +241,7 @@ runRefactGhcState paramcomp = do
      initialState = RefSt
         { rsSettings = RefSet ["./test/testdata/"]
         , rsTokenStream = [] -- :: [PosToken]
-        , rsStreamAvailable = False -- :: Bool
+        , rsStreamModified = False -- :: Bool
         -- , rsPosition = (-1,-1) -- :: (Int,Int)
         }
   (r,s) <- runRefactGhc paramcomp initialState
@@ -256,7 +256,7 @@ comp = do
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
-    put (s {rsStreamAvailable = True})
+    put (s {rsStreamModified = True})
     -- return ()
     return (show gs)
 

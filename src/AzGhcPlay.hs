@@ -268,7 +268,7 @@ runR = do
    initialState = RefSt 
 	{ rsSettings = RefSet ["."]
         , rsTokenStream = [] -- :: [PosToken]
-	, rsStreamAvailable = False -- :: Bool
+	, rsStreamModified = False -- :: Bool
 	-- , rsPosition = (-1,-1) -- :: (Int,Int)
         }
   (_,s) <- runRefactGhc comp initialState

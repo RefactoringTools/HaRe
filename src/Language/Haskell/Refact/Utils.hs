@@ -15,7 +15,7 @@ module Language.Haskell.Refact.Utils
        , unsafeParseSourceFile
        , parseSourceFileGhc
        , applyRefac -- ^ deprecated, replaced by runRefac
-       , runRefac
+       , runRefacSession
        , update
        , writeRefactoredFiles
        -- , Refact -- ^ deprecated
@@ -481,47 +481,72 @@ getExports (GHC.L _ hsmod) =
 
 -- ---------------------------------------------------------------------
 
--- TODO: should this be in the IO monad, or RefactGhc?
-applyRefac
-    :: (ParseResult -> RefactGhc GHC.ParsedSource)
-    -> Maybe (ParseResult, [PosToken])
-    -> FilePath
-    -> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
-    -- -> RefactGhc ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
-
-applyRefac refac Nothing fileName
-  = do (pr, toks) <- parseSourceFile fileName  -- TODO: move this into the RefactGhc monad, so it shares a session
-       res <- applyRefac refac (Just (pr,toks)) fileName
-       return res
-
-applyRefac refac (Just (parsedFile,toks)) fileName = do
-    let settings = RefSet ["."]
-    (mod',(RefSt _ toks' m))  <- runRefactGhc (refac parsedFile) (RefSt settings toks False)
-    return ((fileName,m),(toks', mod'))
-
-
--- ---------------------------------------------------------------------
-
 -- TODO: come up with a proper name for this, once we decide exactly what it does
 --       I suspect it belongs in the monad...
 --       Should split into three, init, run, wrapup
--- | Manage a single refactor session. Initialise the monad, apply the
--- refactoring, write out the files.
 
-runRefac :: (Maybe RefactSettings)
+-- | Manage a whole refactor session. Initialise the monad, parse the
+-- source files, apply the refactorings, write out the files.
+--
+-- It is intended that this forms the umbrella function, in which
+-- applyRefac is called
+--
+
+runRefacSession :: (Maybe RefactSettings)
          -> RefactGhc [((FilePath, Bool), ([PosToken], GHC.ParsedSource))]
          -> IO ()
-runRefac settings comp = do
+runRefacSession settings comp = do
   let
    initialState = RefSt
         { rsSettings = fromMaybe (RefSet ["."]) settings
         , rsTokenStream = [] -- :: [PosToken]
-        , rsStreamAvailable = False -- :: Bool
+        , rsStreamModified = False -- :: Bool
         }
   (refactoredMods,_s) <- runRefactGhc comp initialState
   -- putStrLn $ show (rsPosition s)
   writeRefactoredFiles False refactoredMods
   return ()
+
+-- ---------------------------------------------------------------------
+
+-- TODO: should this be in the IO monad, or RefactGhc?
+
+-- TODO: the module should be stored in the state, and returned if it
+-- has been modified in a prior refactoring, instead of being parsed
+-- afresh each time.
+
+-- | Apply a refactoring (or part of a refactoring) to a single module
+applyRefac
+    :: (ParseResult -> RefactGhc GHC.ParsedSource) -- ^ The refactoring
+    -> Maybe (ParseResult, [PosToken])             -- ^ parse of module, if available
+    -> FilePath                                    -- ^ filename, if not
+    -- -> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+    -> RefactGhc ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+
+applyRefac refac Nothing fileName
+  = do (pr, toks) <- parseSourceFileGhc fileName  -- TODO: move this into the RefactGhc monad, so it shares a session
+       res <- applyRefac refac (Just (pr,toks)) fileName
+       return res
+
+applyRefac refac (Just (parsedFile,toks)) fileName = do
+    let settings = RefSet ["."]
+    -- (mod',(RefSt _ toks' m))  <- runRefactGhc (refac parsedFile) (RefSt settings toks False)
+
+    -- TODO: currently a temporary, poor man's surrounding state
+    -- management: store state now, set it to fresh, run refac, then
+    -- restore the state. Fix this to store the modules in some kind of cache.
+    (RefSt settings ts m) <- get
+    put (RefSt settings toks False)
+
+    mod' <- refac parsedFile
+    (RefSt _ toks' m) <- get
+    -- (mod',(RefSt _ toks' m))  <- runRefactGhc (refac parsedFile) (RefSt settings toks False)
+
+    -- Replace state with original, probably not needed
+    put (RefSt settings ts m)
+
+    return ((fileName,m),(toks', mod'))
+
 
 -- ---------------------------------------------------------------------
 

@@ -38,7 +38,6 @@ import qualified Lexer         as GHC
 import qualified Coercion      as GHC
 import qualified ForeignCall   as GHC
 import qualified InstEnv       as GHC
---import qualified Control.Monad.Ghc as GHC
 
 import Language.Haskell.Refact.Utils.TypeSyn
 
@@ -50,9 +49,9 @@ data RefactSettings = RefSet
 -- | State for refactoring a single file. Holds/hides the token
 -- stream, which gets updated transparently at key points.
 data RefactState = RefSt
-        { rsSettings :: RefactSettings
-        , rsTokenStream :: [PosToken]
-        , rsStreamAvailable :: Bool
+        { rsSettings :: RefactSettings -- Session level settings
+        , rsTokenStream :: [PosToken]  -- Token stream for the current module
+        , rsStreamModified :: Bool     -- current module has updated the token stream
         -- , rsPosition :: (Int,Int)
         }
 

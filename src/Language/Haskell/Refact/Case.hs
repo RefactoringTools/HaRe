@@ -29,7 +29,7 @@ ifToCase args
   = do let fileName = args!!0
            beginPos = (read (args!!1), read (args!!2))::(Int,Int)
            endPos   = (read (args!!3), read (args!!4))::(Int,Int)
-       runRefac Nothing (comp fileName beginPos endPos)
+       runRefacSession Nothing (comp fileName beginPos endPos)
        return ()
 
 
@@ -42,8 +42,8 @@ comp fileName beginPos endPos = do
        let exp = locToExp beginPos endPos toks ast
        case exp of
          (GHC.L _ (GHC.HsIf _ _ _ _))
-                -> do refactoredMod <- liftIO $ applyRefac (ifToCase' exp) (Just modInfo ) fileName
-                      liftIO $ writeRefactoredFiles False [refactoredMod]
+                -> do refactoredMod <- applyRefac (ifToCase' exp) (Just modInfo ) fileName
+                      -- liftIO $ writeRefactoredFiles False [refactoredMod]
                       return [refactoredMod] -- TODO: get rid of the write
                 -- -> do mod' <- ifToCase' exp modInfo
                 --       return [((fileName,True),(toks,mod'))]
