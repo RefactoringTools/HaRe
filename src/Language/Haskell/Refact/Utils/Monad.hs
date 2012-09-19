@@ -1,15 +1,16 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 module Language.Haskell.Refact.Utils.Monad
-       ( Refact -- ^ TODO: Deprecated, use RefactGhc
-       , ParseResult
+       ( ParseResult
        , RefactSettings(..)
        , RefactState(..)
-       , runRefact -- ^ TODO: Deprecated, use runRefactGhc
        -- GHC monad stuff
        , RefactGhc
        , runRefactGhc
        , getRefacSettings
+
+       -- , Refact -- ^ TODO: Deprecated, use RefactGhc
+       -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
        ) where
 
 import Control.Monad.State
@@ -45,6 +46,9 @@ data RefactSettings = RefSet
         { rsetImportPath :: [FilePath]
         } deriving (Show)
 
+
+-- | State for refactoring a single file. Holds/hides the token
+-- stream, which gets updated transparently at key points.
 data RefactState = RefSt
         { rsSettings :: RefactSettings
         , rsTokenStream :: [PosToken]
@@ -54,12 +58,14 @@ data RefactState = RefSt
 
 -- |Result of parsing a Haskell source file. The first element in the
 -- result is the inscope relation, the second element is the export
--- relation and the third is the AST of the module.
+-- relation and the third is the AST of the module. This is likely to
+-- change as we learn more
 
 -- type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
 type ParseResult = (GHC.TypecheckedSource, [GHC.LIE GHC.RdrName], GHC.ParsedSource)
 
 -- TODO: >>>>>> This section has been superseded ++AZ++
+{-
 newtype Refact a = Refact (StateT RefactState IO a)
 instance MonadIO Refact where
          liftIO f = Refact (lift f)
@@ -85,6 +91,7 @@ instance MonadState RefactState (Refact) where
    get = Refact $ StateT ( \ st -> return (st, st))
 
    put newState = Refact $ StateT ( \ _ -> return ((), newState))
+-}
 -- TODO: <<<<< This section has been superseded ++AZ++
 
 
@@ -113,8 +120,8 @@ instance (MonadTrans GHC.GhcT) where
    lift = GHC.liftGhcT
 
 runRefactGhc ::
-  RefactState -> RefactGhc a -> IO (a, RefactState)
-runRefactGhc initState comp = -- do
+  RefactGhc a -> RefactState -> IO (a, RefactState)
+runRefactGhc comp initState = do
     runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
 
 getRefacSettings :: RefactGhc RefactSettings

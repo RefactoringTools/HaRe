@@ -244,7 +244,7 @@ runRefactGhcState paramcomp = do
         , rsStreamAvailable = False -- :: Bool
         -- , rsPosition = (-1,-1) -- :: (Int,Int)
         }
-  (r,s) <- runRefactGhc initialState paramcomp
+  (r,s) <- runRefactGhc paramcomp initialState
   return (r,s)
 
 

@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 module Language.Haskell.Refact.Utils.LocUtils(
                      {-
                      module HsTokens,
@@ -500,9 +502,14 @@ splitToks (startPos, endPos) toks -- = error (SYB.showData SYB.Parser 0 endPos)
 -- (SYB.Data t) =>
 --  GHC.GenLocated GHC.SrcSpan t
 --  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> Refact (GHC.GenLocated GHC.SrcSpan t, [PosToken])
+updateToks ::
+  (SYB.Data t, MonadIO m, MonadState RefactState m) =>
+  GHC.GenLocated GHC.SrcSpan t 
+  -> GHC.GenLocated GHC.SrcSpan t 
+  -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> m (GHC.GenLocated GHC.SrcSpan t, [PosToken])
 updateToks oldAST newAST printFun
    = trace "updateToks" $ 
-     do (RefSt s toks _ ) <- get
+     do (RefSt s toks _) <- get
 	let offset             = lengthOfLastLine toks1
             (toks1, _, _)      = splitToks (startPos, endPos) toks
 	    (startPos, endPos) = getStartEndLoc toks oldAST
@@ -517,7 +524,7 @@ updateToks oldAST newAST printFun
 
 updateToksList oldAST newAST printFun
    = trace "updateToksList" $ 
-     do (RefSt s toks _ ) <- get
+     do (RefSt s toks _) <- get
         let offset                        = lengthOfLastLine toks1
             (toks1,toks2az, toks3az)      = splitToks (startPos, endPos) toks
             (startPos, endPos)            = getStartEndLoc2 toks oldAST

@@ -271,7 +271,7 @@ runR = do
 	, rsStreamAvailable = False -- :: Bool
 	-- , rsPosition = (-1,-1) -- :: (Int,Int)
         }
-  (_,s) <- runRefactGhc initialState comp
+  (_,s) <- runRefactGhc comp initialState
   -- putStrLn $ show (rsPosition s)
   return ()
 

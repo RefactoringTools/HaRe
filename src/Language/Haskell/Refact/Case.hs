@@ -10,13 +10,13 @@ import qualified Outputable            as GHC
 import qualified MonadUtils            as GHC
 import qualified RdrName               as GHC
 import qualified OccName               as GHC
- 
+
 import GHC.Paths ( libdir )
 import Control.Monad
 import Control.Monad.State
 import Data.Data
 
-import Language.Haskell.Refact.Utils 
+import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Monad
@@ -32,29 +32,38 @@ ifToCase args
        runRefac Nothing (comp fileName beginPos endPos)
        return ()
 
+
+-- type ParsedSource = Located (HsModule RdrName)
+-- type HsExpP       = GHC.HsExpr GHC.RdrName
+
 comp :: String -> SimpPos -> SimpPos -> RefactGhc [((FilePath, Bool), ([PosToken], GHC.ParsedSource))]
 comp fileName beginPos endPos = do
-       modInfo@((_, _, mod), toks) <- parseSourceFileGhc fileName
-       let exp = locToExp beginPos endPos toks mod
+       modInfo@((_, _, ast), toks) <- parseSourceFileGhc fileName
+       let exp = locToExp beginPos endPos toks ast
        case exp of
          (GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do refactoredMod <- liftIO $ applyRefac (ifToCase' exp) (Just modInfo ) fileName
-                      -- liftIO $ writeRefactoredFiles False [refactoredMod]
-                      return [refactoredMod]
+                      liftIO $ writeRefactoredFiles False [refactoredMod]
+                      return [refactoredMod] -- TODO: get rid of the write
+                -- -> do mod' <- ifToCase' exp modInfo
+                --       return [((fileName,True),(toks,mod'))]
          _      -> error "You haven't selected an if-then-else  expression!"
        -- return ()
 
 
 ifToCase' ::
   GHC.GenLocated GHC.SrcSpan HsExpP
-  -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> Refact GHC.ParsedSource
+  -- -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> Refact GHC.ParsedSource
+  -- -> (ParseResult,[PosToken]) -> Refact GHC.ParsedSource
+  -> ParseResult -> RefactGhc GHC.ParsedSource
+
 ifToCase' exp (_, _, mod) =
 
    -- somewhereStaged SYB.Parser (SYB.mkM inExp) mod
    -- SYB.everywhereM (SYB.mkM inExp) mod
    everywhereMStaged SYB.Parser (SYB.mkM inExp) mod
        where
-         inExp :: (GHC.Located HsExpP) -> Refact (GHC.Located HsExpP)
+         inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
          inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
            | sameOccurrence exp exp1
            = let newExp = ifToCaseTransform exp1

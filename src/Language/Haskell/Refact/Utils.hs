@@ -14,11 +14,11 @@ module Language.Haskell.Refact.Utils
        , parseSourceFile
        , unsafeParseSourceFile
        , parseSourceFileGhc
-       , applyRefac
+       , applyRefac -- ^ deprecated, replaced by runRefac
        , runRefac
        , update
        , writeRefactoredFiles
-       , Refact
+       -- , Refact -- ^ deprecated
        -- , fileNameToModName
        , getModuleName
        , isVarId
@@ -481,20 +481,22 @@ getExports (GHC.L _ hsmod) =
 
 -- ---------------------------------------------------------------------
 
+-- TODO: should this be in the IO monad, or RefactGhc?
 applyRefac
-    :: (ParseResult -> Refact GHC.ParsedSource)
+    :: (ParseResult -> RefactGhc GHC.ParsedSource)
     -> Maybe (ParseResult, [PosToken])
     -> FilePath
     -> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+    -- -> RefactGhc ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
 
 applyRefac refac Nothing fileName
-  = do (pr, toks) <- parseSourceFile fileName
+  = do (pr, toks) <- parseSourceFile fileName  -- TODO: move this into the RefactGhc monad, so it shares a session
        res <- applyRefac refac (Just (pr,toks)) fileName
        return res
 
 applyRefac refac (Just (parsedFile,toks)) fileName = do
     let settings = RefSet ["."]
-    (mod',(RefSt _ toks' m))  <- runRefact (refac parsedFile) (RefSt settings toks False)
+    (mod',(RefSt _ toks' m))  <- runRefactGhc (refac parsedFile) (RefSt settings toks False)
     return ((fileName,m),(toks', mod'))
 
 
@@ -516,7 +518,7 @@ runRefac settings comp = do
         , rsTokenStream = [] -- :: [PosToken]
         , rsStreamAvailable = False -- :: Bool
         }
-  (refactoredMods,_s) <- runRefactGhc initialState comp
+  (refactoredMods,_s) <- runRefactGhc comp initialState
   -- putStrLn $ show (rsPosition s)
   writeRefactoredFiles False refactoredMods
   return ()
@@ -559,7 +561,7 @@ class (SYB.Data t, SYB.Data t1)=>Update t t1 where
   update::  t     -- ^ The syntax phrase to be updated.
          -> t     -- ^ The new syntax phrase.
          -> t1    -- ^ The contex where the old syntax phrase occurs.
-         -> Refact t1  -- ^ The result.
+         -> RefactGhc t1  -- ^ The result.
 
 instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
 {- update ::
@@ -592,7 +594,7 @@ instance (SYB.Data t) => Update (GHC.Located HsPatP) t where
                      return $ head newPat'
             | otherwise = return p
 
-instance (SYB.Data t) =>Update [GHC.Located HsPatP] t where
+instance (SYB.Data t) => Update [GHC.Located HsPatP] t where
  update oldPat newPat  t
    = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
    where
@@ -612,12 +614,12 @@ prettyprint x = GHC.showSDoc $ GHC.ppr x
 -- | Write refactored program source to files.
 {-
 writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-refactoring
-         ->[((String,Bool),([PosToken],HsModuleP))]  --  ^ String: the file name; Bool: True means the file has been modified.[PosToken]: the token stream; HsModuleP: the module AST.
+         ->[((String,Bool),([PosToken],HsModuleP))]
+            --  ^ String: the file name; Bool: True means the file has
+            --  been modified.[PosToken]: the token stream; HsModuleP:
+            --  the module AST.
          -> m ()
 -}
--- OLD: type PosToken = (Token, (Pos, String))
--- GHC: type PosToken = (GHC.Located GHC.Token, String)
-
 -- writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
 writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], GHC.ParsedSource))])
 -- writeRefactoredFiles :: Bool -> [(RefactState, GHC.ParsedSource)]
