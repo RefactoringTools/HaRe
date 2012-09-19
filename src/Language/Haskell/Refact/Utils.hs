@@ -14,10 +14,14 @@ module Language.Haskell.Refact.Utils
        , parseSourceFile
        , unsafeParseSourceFile
        , parseSourceFileGhc
-       , applyRefac -- ^ deprecated, replaced by runRefac
+
+       -- * The bits that do the work
        , runRefacSession
+       , applyRefac
+       , ApplyRefacResult(..)
+
        , update
-       , writeRefactoredFiles
+       -- , writeRefactoredFiles
        -- , Refact -- ^ deprecated
        -- , fileNameToModName
        , getModuleName
@@ -481,9 +485,10 @@ getExports (GHC.L _ hsmod) =
 
 -- ---------------------------------------------------------------------
 
--- TODO: come up with a proper name for this, once we decide exactly what it does
---       I suspect it belongs in the monad...
---       Should split into three, init, run, wrapup
+-- | The result of a refactoring is the file, a flag as to whether it
+-- was modified, the updated token stream, and the updated AST
+type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+
 
 -- | Manage a whole refactor session. Initialise the monad, parse the
 -- source files, apply the refactorings, write out the files.
@@ -491,9 +496,8 @@ getExports (GHC.L _ hsmod) =
 -- It is intended that this forms the umbrella function, in which
 -- applyRefac is called
 --
-
 runRefacSession :: (Maybe RefactSettings)
-         -> RefactGhc [((FilePath, Bool), ([PosToken], GHC.ParsedSource))]
+         -> RefactGhc [ApplyRefacResult] -- TODO: should this be a list of refactorings?
          -> IO ()
 runRefacSession settings comp = do
   let
@@ -509,8 +513,6 @@ runRefacSession settings comp = do
 
 -- ---------------------------------------------------------------------
 
--- TODO: should this be in the IO monad, or RefactGhc?
-
 -- TODO: the module should be stored in the state, and returned if it
 -- has been modified in a prior refactoring, instead of being parsed
 -- afresh each time.
@@ -520,8 +522,7 @@ applyRefac
     :: (ParseResult -> RefactGhc GHC.ParsedSource) -- ^ The refactoring
     -> Maybe (ParseResult, [PosToken])             -- ^ parse of module, if available
     -> FilePath                                    -- ^ filename, if not
-    -- -> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
-    -> RefactGhc ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+    -> RefactGhc ApplyRefacResult
 
 applyRefac refac Nothing fileName
   = do (pr, toks) <- parseSourceFileGhc fileName  -- TODO: move this into the RefactGhc monad, so it shares a session
@@ -530,7 +531,6 @@ applyRefac refac Nothing fileName
 
 applyRefac refac (Just (parsedFile,toks)) fileName = do
     let settings = RefSet ["."]
-    -- (mod',(RefSt _ toks' m))  <- runRefactGhc (refac parsedFile) (RefSt settings toks False)
 
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
@@ -540,7 +540,6 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
 
     mod' <- refac parsedFile
     (RefSt _ toks' m) <- get
-    -- (mod',(RefSt _ toks' m))  <- runRefactGhc (refac parsedFile) (RefSt settings toks False)
 
     -- Replace state with original, probably not needed
     put (RefSt settings ts m)

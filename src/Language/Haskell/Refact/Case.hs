@@ -43,12 +43,8 @@ comp fileName beginPos endPos = do
        case exp of
          (GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do refactoredMod <- applyRefac (ifToCase' exp) (Just modInfo ) fileName
-                      -- liftIO $ writeRefactoredFiles False [refactoredMod]
-                      return [refactoredMod] -- TODO: get rid of the write
-                -- -> do mod' <- ifToCase' exp modInfo
-                --       return [((fileName,True),(toks,mod'))]
+                      return [refactoredMod]
          _      -> error "You haven't selected an if-then-else  expression!"
-       -- return ()
 
 
 ifToCase' ::
