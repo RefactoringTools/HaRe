@@ -23,7 +23,7 @@ import Language.Haskell.Refact.Utils.Monad
 
 -- ---------------------------------------------------------------------
 
--- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
+-- TODO: This boilerplate will be moved to the coordinator, just the refac session will be exposed
 ifToCase :: [String] -> IO () -- For now
 ifToCase args
   = do let fileName = args!!0
@@ -32,11 +32,7 @@ ifToCase args
        runRefacSession Nothing (comp fileName beginPos endPos)
        return ()
 
-
--- type ParsedSource = Located (HsModule RdrName)
--- type HsExpP       = GHC.HsExpr GHC.RdrName
-
-comp :: String -> SimpPos -> SimpPos -> RefactGhc [((FilePath, Bool), ([PosToken], GHC.ParsedSource))]
+comp :: String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
        modInfo@((_, _, ast), toks) <- parseSourceFileGhc fileName
        let exp = locToExp beginPos endPos toks ast
@@ -49,10 +45,8 @@ comp fileName beginPos endPos = do
 
 ifToCase' ::
   GHC.GenLocated GHC.SrcSpan HsExpP
-  -- -> (t, [GHC.LIE GHC.RdrName], GHC.ParsedSource) -> Refact GHC.ParsedSource
-  -- -> (ParseResult,[PosToken]) -> Refact GHC.ParsedSource
-  -> ParseResult -> RefactGhc GHC.ParsedSource
-
+  -> ParseResult
+  -> RefactGhc GHC.ParsedSource
 ifToCase' exp (_, _, mod) =
 
    -- somewhereStaged SYB.Parser (SYB.mkM inExp) mod

@@ -507,7 +507,6 @@ runRefacSession settings comp = do
         , rsStreamModified = False -- :: Bool
         }
   (refactoredMods,_s) <- runRefactGhc comp initialState
-  -- putStrLn $ show (rsPosition s)
   writeRefactoredFiles False refactoredMods
   return ()
 
