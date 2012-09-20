@@ -43,6 +43,7 @@ import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.TypeUtils
 import System.IO.Unsafe
 
 
@@ -691,24 +692,6 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
           =let (name, posfix)=span (/='.') fileName
            in (name++str++posfix)
 
----------------------------------------------------------------------------------------
--- | Default identifier in the PNT format.
-defaultPNT:: GHC.GenLocated GHC.SrcSpan GHC.RdrName   -- GHC.RdrName
--- defaultPNT = PNT defaultPN Value (N Nothing) :: PNT
--- defaultPNT = GHC.mkRdrUnqual "nothing" :: PNT
--- defaultPNT = PNT (mkRdrName "nothing") (N Nothing) :: PNT
-defaultPNT = GHC.L GHC.noSrcSpan (mkRdrName "nothing")
-
-defaultPN :: PN
-defaultPN = mkRdrName "nothing"
-
--- | Default expression.
-defaultExp::HsExpP
--- defaultExp=Exp (HsId (HsVar defaultPNT))
-defaultExp=GHC.HsVar $ mkRdrName "nothing"
-
-mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
-
 
 -- | If an expression consists of only one identifier then return this identifier in the PNT format,
 --  otherwise return the default PNT.
@@ -726,40 +709,6 @@ expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just pnt
 -- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
 expToPNT _ = Nothing
 
-
--- |Find the identifier(in PNT format) whose start position is (row,col) in the
--- file specified by the fileName, and returns defaultPNT is such an identifier does not exist.
-
--- TODO: ++AZ++ what is the fileName parameter actually for?
--- TODO: ++AZ++ does not seem to find PNTs if not at start of line/expression.
-locToPNT::(SYB.Data t)=>String      -- ^ The file name
-                    ->(Int,Int) -- ^ The row and column number
-                    ->t         -- ^ The syntax phrase
-                    ->GHC.GenLocated GHC.SrcSpan GHC.RdrName       -- ^ The result
-locToPNT  fileName (row, col) t
-  = case res of
-         Just x -> x
-         Nothing -> defaultPNT
-            -- =(fromMaybe defaultPNT). applyTU (once_buTU (failTU `adhocTU` worker))
-       where
-        res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
-
-        worker (pnt@(GHC.L s (GHC.Unqual name))::GHC.GenLocated GHC.SrcSpan t1)
-              | inScope pnt = Just pnt
-            -- |fileName1==fileName && (row1,col1) == (row,col) =Just pnt
-
-        worker _ =Nothing
-
-        inScope :: GHC.Located e -> Bool
-        inScope (GHC.L l _) =
-          let
-            (startLoc,endLoc) = case l of
-              (GHC.RealSrcSpan ss) ->
-                ((GHC.srcSpanStartLine ss),
-                 (GHC.srcSpanEndLine ss))
-              (GHC.UnhelpfulSpan _) -> ((0),(0))
-          in
-           (startLoc==row) && (endLoc>= col)
 
 
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the

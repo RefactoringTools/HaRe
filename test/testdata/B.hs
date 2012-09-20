@@ -16,7 +16,7 @@ foo' x = case (odd x) of
   False -> "Even"
 
 main = do
-  putStrLn $ show $ foo 5
+  putStrLn $ show $ (foo (5 + C.baz))
 
 mary = [1,2,3]
 

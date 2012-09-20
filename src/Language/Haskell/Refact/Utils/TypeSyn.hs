@@ -57,22 +57,31 @@ data Pos = Pos { char, line, column :: !Int } deriving (Show)
 -- it seems that the field char is used to handle special characters including the '\t'
 
 type Export = GHC.LIE GHC.RdrName
+
+-- ---------------------------------------------------------------------
+-- From old/tools/base/defs/PNT.hs
+
+-- |The PN is the name as it occurs to the parser, and
+-- corresponds with the GHC.RdrName
+-- type PN     = GHC.RdrName
+newtype PName = PN HsName deriving (Eq)
+
+-- | The PNT is the unique name, after GHC renaming. It corresponds to GHC.Name
+-- data PNT = PNT GHC.Name deriving (Data,Typeable) -- Note: GHC.Name has SrcLoc in it already
+-- ++AZ++ : will run with Located RdrName for now, will see when we need the Unique name
+data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable) 
+
+
+-- | HsName is a name as it is found in the source
+-- This seems to be quite a close correlation
 type HsName = GHC.RdrName
 
 -- ---------------------------------------------------------------------
 
--- |The PN is the name as it occurs to the parser, and
--- corresponds with the GHC.RdrName
-type PN     = GHC.RdrName
-
--- | The PNT is the unique name, after GHC renaming. It corresponds
--- with GHC.Name
-type PNT    = GHC.GenLocated GHC.SrcSpan GHC.Name
-
-
 -- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]
 type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)
  
+
 
 -- ----------------------------------------------------
 -- From PNT

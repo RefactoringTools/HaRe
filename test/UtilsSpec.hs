@@ -3,6 +3,8 @@ module UtilsSpec (main, spec) where
 import           Test.Hspec
 import           Test.QuickCheck
 
+import           TestUtils
+
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
 import qualified Outputable as GHC
@@ -14,6 +16,8 @@ import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TypeSyn
+
+-- ---------------------------------------------------------------------
 
 main :: IO ()
 main = hspec spec
@@ -42,19 +46,19 @@ spec = do
   describe "locToPnt" $ do
     it "returns a pnt for a given source location, if it falls anywhere in an identifier" $ do
       modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      let res@(GHC.L _ n) = locToPNT "ignored" (7,0) mod
+      let (PNT res@(GHC.L _ n)) = locToPNT "ignored" (7,0) mod
       getLocatedStart res `shouldBe` (7,1)
       GHC.showRdrName n `shouldBe` "foo"
 
     it "returns a pnt for a given source location, if it falls anywhere in an identifier #2" $ do
       modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      let res@(GHC.L _ n) = locToPNT "ignored" (23,6) mod
+      let (PNT res@(GHC.L _ n)) = locToPNT "ignored" (23,6) mod
       GHC.showRdrName n `shouldBe` "bob"
       getLocatedStart res `shouldBe` (23,5)
 
     it "returns the default pnt for a given source location, if it does not fall in an identifier" $ do
       modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      let res@(GHC.L _ n) = locToPNT "ignored" (7,6) mod
+      let (PNT res@(GHC.L _ n)) = locToPNT "ignored" (7,6) mod
       getLocatedStart res `shouldBe` (-1,-1)
       GHC.showRdrName n `shouldBe` "nothing"
 
@@ -195,30 +199,6 @@ parsedFileBGhc = parsedFileGhc "./test/testdata/B.hs"
 parsedFileMGhc :: IO (ParseResult,[PosToken])
 parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
 
-
-{-
-parsedFileBGhc :: IO (ParseResult,[PosToken])
-parsedFileBGhc = do
-  let
-    fileName = "./test/testdata/B.hs"
-    comp = do
-       (p,toks) <- parseSourceFileGhc fileName -- Load the file first
-       return (p,toks)
-  (parseResult,_s) <- runRefactGhcState comp
-  return parseResult
--}
-
-
-parsedFileGhc :: String -> IO (ParseResult,[PosToken])
-parsedFileGhc fileName = do
-  let
-    comp = do
-       (p,toks) <- parseSourceFileGhc fileName -- Load the file first
-       return (p,toks)
-  (parseResult,_s) <- runRefactGhcState comp
-  return parseResult
-
-
 parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
 parseFileBGhc = parseSourceFileGhc fileName
   where
@@ -232,20 +212,6 @@ parseFileMGhc = parseSourceFileGhc fileName
 parsedFileNoMod = unsafeParseSourceFile fileName
   where
     fileName = "./test/testdata/NoMod.hs"
-
-
--- runRefactGhcState :: RefactGhc a -> IO RefactState
-runRefactGhcState paramcomp = do
-  let
-     -- initialState = ReplState { repl_inputState = initInputState }
-     initialState = RefSt
-        { rsSettings = RefSet ["./test/testdata/"]
-        , rsTokenStream = [] -- :: [PosToken]
-        , rsStreamModified = False -- :: Bool
-        -- , rsPosition = (-1,-1) -- :: (Int,Int)
-        }
-  (r,s) <- runRefactGhc paramcomp initialState
-  return (r,s)
 
 
 comp :: RefactGhc String

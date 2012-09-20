@@ -118,6 +118,14 @@ instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
 instance (MonadTrans GHC.GhcT) where
    lift = GHC.liftGhcT
 
+{-
+instance MonadPlus (RefactGhc a) where
+   mzero = RefactGhc (StateT(\ st -> mzero))
+
+   -- x `mplus` y =  RefactGhc (StateT ( \ st -> runRefact x st `mplus` runRefact y st))  
+   -- ^Try one of the refactorings, x or y, with the same state plugged in
+-}
+
 runRefactGhc ::
   RefactGhc a -> RefactState -> IO (a, RefactState)
 runRefactGhc comp initState = do

@@ -38,19 +38,17 @@ comp fileName beginPos endPos = do
        let exp = locToExp beginPos endPos toks ast
        case exp of
          (GHC.L _ (GHC.HsIf _ _ _ _))
-                -> do refactoredMod <- applyRefac (ifToCase' exp) (Just modInfo ) fileName
+                -> do refactoredMod <- applyRefac (doIfToCase exp) (Just modInfo ) fileName
                       return [refactoredMod]
          _      -> error "You haven't selected an if-then-else  expression!"
 
 
-ifToCase' ::
+doIfToCase ::
   GHC.GenLocated GHC.SrcSpan HsExpP
   -> ParseResult
   -> RefactGhc GHC.ParsedSource
-ifToCase' exp (_, _, mod) =
+doIfToCase exp (_, _, mod) =
 
-   -- somewhereStaged SYB.Parser (SYB.mkM inExp) mod
-   -- SYB.everywhereM (SYB.mkM inExp) mod
    everywhereMStaged SYB.Parser (SYB.mkM inExp) mod
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
@@ -60,7 +58,6 @@ ifToCase' exp (_, _, mod) =
              in update exp1 newExp exp1
 
          inExp e = return e
-         -- inExp _ = mzero
 
 
 

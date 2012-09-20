@@ -21,8 +21,9 @@ import Data.Maybe
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.TypeUtils
 
 {-
 
@@ -44,21 +45,18 @@ duplicateDef args
       runRefacSession Nothing (comp fileName newName (row,col))
       return ()
 
-comp :: String -> String -> (Int,Int)
+comp :: String -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
       if isVarId newName
-        then do ((_,_,mod), tokList) <- parseSourceFileGhc fileName
+        then do modInfo@((_,_,mod), tokList) <- parseSourceFileGhc fileName
                 -- modName <-fileNameToModName fileName
                 -- let modName = getModuleName mod
                 let (Just (modName,_)) = getModuleName mod
                 -- let pn = pNTtoPN $ locToPNT fileName (row, col) mod
-                let (GHC.L _ pn) = locToPNT fileName (row, col) mod
+                let pn = pNTtoPN $ locToPNT fileName (row, col) mod
                 if (pn /= defaultPN)
-                  -- then do (mod',((tokList',m),_))<- doDuplicating pn newName (mod, tokList)
-                  -- then do ((fileName',m),(tokList',mod')) <- doDuplicating pn newName (mod, tokList)
-                  -- then do ((fileName',m),(tokList',mod')) <- liftIO $ applyRefac (doDuplicating pn newName) (mod, tokList)
-                  then do ((fileName',m),(tokList',mod')) <- undefined
+                  then do ((fileName',m),(tokList',mod')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                           if modIsExported mod
                            then do clients <- clientModsAndFiles modName
                                    -- TODO: uncomment and complete this
@@ -73,21 +71,24 @@ comp fileName newName (row, col) = do
         else error $ "Invalid new function name:" ++ newName ++ "!"
 
 
-{- ++AZ++
-doDuplicating :: PN -> String -> (GHC.ParsedSource, [PosToken])
-              -> RefactGhc ((FilePath, Bool),([PosToken], GHC.ParsedSource))
-doDuplicating pn newName (mod, tokList)
-   = everywhereMStaged SYB.Parser (SYB.mkM dupInMod) mod
+-- type PN     = GHC.RdrName
+
+doDuplicating :: PName -> String -> ParseResult
+              -> RefactGhc GHC.ParsedSource
+doDuplicating pn newName (_,_,mod) =
+
+   everywhereMStaged SYB.Parser (SYB.mkM dupInMod) mod
         where
         --1. The definition to be duplicated is at top level.
         -- dupInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
         dupInMod :: (GHC.Located (GHC.HsDecl GHC.RdrName))
-                 -> Refact (GHC.Located (GHC.HsDecl GHC.RdrName))
+                 -> RefactGhc (GHC.Located (GHC.HsDecl GHC.RdrName))
         dupInMod (mod@(GHC.L l (GHC.ValD bind)))
           -- |findFunOrPatBind  pn ds /= [] = doDuplicating' inscps mod pn
-          |findFunOrPatBind  pn bind /= [] = doDuplicating' mod pn
-        dupInMod _ =mzero
-++AZ++ -}
+          |findFunOrPatBind pn bind /= [] = doDuplicating' mod pn
+        -- dupInMod _ =mzero
+        dupInMod mod = return mod
+
 {-
 doDuplicating pn newName (inscps, mod, tokList)
    = runStateT (applyTP ((once_tdTP (failTP `adhocTP` dupInMod
@@ -134,10 +135,11 @@ doDuplicating pn newName (inscps, mod, tokList)
             mod (m::HsModuleP)
               = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
 -}
+        findFunOrPatBind :: PName -> b -> [Int] -- TODO: fix this typedef, the [Int] is bogus
         -- findFunOrPatBind pn ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDecls [pn] ds True False
-        -- findFunOrPatBind pn ds = undefined
+        findFunOrPatBind pn ds = undefined
 
-        -- doDuplicating' {- inscps -}  parent pn = undefined
+        doDuplicating' {- inscps -}  parent pn = undefined
 {-
         doDuplicating' inscps parent pn
            = do let decls           = hsDecls parent
