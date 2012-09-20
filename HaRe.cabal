@@ -160,7 +160,7 @@ Executable ghc-hare
           ./src
         Build-Depends:          base >=4
                                 , syb
-                                , cmdtheline
+                                , cmdtheline >= 0.2.1
                     --            , network
                                 , ghc
                     --            , containers
