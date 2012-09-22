@@ -5,18 +5,19 @@ import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
-import qualified GHC
 import qualified DynFlags              as GHC
-import qualified Outputable            as GHC
+import qualified FastString            as GHC
+import qualified GHC
 import qualified MonadUtils            as GHC
-import qualified RdrName               as GHC
 import qualified OccName               as GHC
+import qualified Outputable            as GHC
+import qualified RdrName               as GHC
 
-import GHC.Paths ( libdir )
 import Control.Monad
 import Control.Monad.State
 import Data.Data
 import Data.Maybe
+import GHC.Paths ( libdir )
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -54,7 +55,7 @@ comp fileName newName (row, col) = do
                 -- let modName = getModuleName mod
                 let (Just (modName,_)) = getModuleName mod
                 -- let pn = pNTtoPN $ locToPNT fileName (row, col) mod
-                let pn = pNTtoPN $ locToPNT fileName (row, col) mod
+                let pn = pNTtoPN $ locToPNT (GHC.mkFastString fileName) (row, col) mod
                 if (pn /= defaultPN)
                   then do ((fileName',m),(tokList',mod')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                           if modIsExported mod

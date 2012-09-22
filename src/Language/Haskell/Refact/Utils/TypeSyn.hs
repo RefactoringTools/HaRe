@@ -6,10 +6,14 @@ module Language.Haskell.Refact.Utils.TypeSyn where
 
 
 -- Modules from GHC
-import qualified GHC     as GHC
-import qualified HsExpr  as GHC
-import qualified RdrName as GHC
-import qualified SrcLoc  as GHC
+import qualified FastString as GHC
+import qualified GHC        as GHC
+import qualified GhcMonad   as GHC
+import qualified HsExpr     as GHC
+import qualified Outputable as GHC
+import qualified RdrName    as GHC
+import qualified SrcLoc     as GHC
+
 
 
 import Data.Generics
@@ -71,6 +75,8 @@ newtype PName = PN HsName deriving (Eq)
 -- ++AZ++ : will run with Located RdrName for now, will see when we need the Unique name
 data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable) 
 
+instance Show PNT where
+  show (PNT (GHC.L l name)) = "(PNT " ++ (GHC.showPpr l) ++ " " ++ (GHC.showRdrName name) ++ ")"
 
 -- | HsName is a name as it is found in the source
 -- This seems to be quite a close correlation

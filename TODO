@@ -210,3 +210,16 @@ The ModSummary holds compiler housekeeping information
 
 We will work with the ParsedSource, so it is always Located.
 
+
+Bring in no-code flage to GHC when type checking
+
+--
+
+NOTE: GHC SrcSpan columns
+
+1. Are 0 based. So what an editor calls col 1, is col 0 for GHC
+2. Extend one beyond the last char. So the end col of a tok is the
+   same as the start col of the next one
+3. HaRe internally will work with GHC cols, the translation must
+   happen in the API wrapper to it. Buildwrapper does something
+   similar.

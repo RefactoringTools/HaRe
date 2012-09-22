@@ -2,7 +2,7 @@
 ----------------------------------------------------------------------------------------------------------------
 -- Module      : TypeUtils
 
--- Maintainer  : refactor-fp\@kent.ac.uk  
+-- Maintainer  : refactor-fp\@kent.ac.uk
 -- |
 --
 -- This module contains a collection of program analysis and transformation functions (the API) that work
@@ -25,12 +25,12 @@
 ------------------------------------------------------------------------------------------------------------------
 {-
 module RefacTypeUtils(module DriftStructUtils, module StrategyLib, module RefacTITypeSyn, module PosSyntax,
-                  module SourceNames, module UniqueNames, module PNT, 
+                  module SourceNames, module UniqueNames, module PNT,
                   module Ents, module Relations, module QualNames, module TypedIds 
 -}
 module Language.Haskell.Refact.Utils.TypeUtils
        ( dummy
- -- * Program Analysis 
+ -- * Program Analysis
     -- ** Imports and exports
    -- ,inScopeInfo, isInScopeAndUnqualified, hsQualifier, {-This function should be removed-} rmPrelude 
    -- ,exportInfo, isExported, isExplicitlyExported, modIsExported
@@ -40,7 +40,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,hsClassMembers, HsDecls(hsDecls,isDeclaredIn, replaceDecls)
     -- ,hsFreeAndDeclaredPNs,hsFreeAndDeclaredNames
     -- ,hsVisiblePNs, hsVisibleNames
-    -- ,hsFDsFromInside, hsFDNamesFromInside 
+    -- ,hsFDsFromInside, hsFDNamesFromInside
 
     -- ** Property checking
     -- ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isTopLevelPNT
@@ -49,19 +49,19 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,usedWithoutQual,canBeQualified, hasFreeVars,isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
     -- ,findPNs, findEntity
-    -- ,sameOccurrence   
+    -- ,sameOccurrence
     -- ,defines,definesTypeSig, isTypeSigOf
-    -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)  
-   
-    
+    -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
+
+
     -- ** Modules and files
     -- ,clientModsAndFiles,serverModsAndFiles,isAnExistingMod
     -- ,fileNameToModName, strToModName, modNameToStr
 
     -- ** Locations
-    {- ,defineLoc, useLoc-},locToPNT --,locToPN,locToExp, getStartEndLoc  
+    {- ,defineLoc, useLoc-},locToPNT --,locToPN,locToExp, getStartEndLoc
 
- -- * Program transformation 
+ -- * Program transformation
     -- ** Adding
     -- ,addDecl ,addItemsToImport, addHiding, rmItemsFromImport, addItemsToExport
     -- ,addParamsToDecls, addGuardsToRhs, addImportDecl, duplicateDecl, moveDecl
@@ -79,7 +79,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
    -- ,toRelativeLocs, rmLocs
     -- ** Default values
    ,defaultPN,defaultPNT {-,defaultModName-},defaultExp-- ,defaultPat, defaultExpUnTyped
-  
+
     -- ** Identifiers, expressions, patterns and declarations
     ,pNTtoPN -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
     -- ,expToPNT, expToPN, nameToExp,pNtoExp,patToPNT, patToPN, nameToPat,pNtoPat
@@ -87,7 +87,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,simplifyDecl
     -- ** Others
    -- ,mkNewName, applyRefac, applyRefacToClientMods
-                   
+
     -- The following functions are not in the the API yet.
     -- ,getDeclToks, causeNameClashInExports, inRegion , ghead, glast, gfromJust, unmodified, prettyprint,
     -- getDeclAndToks
@@ -95,6 +95,9 @@ module Language.Haskell.Refact.Utils.TypeUtils
 -- * Typed AST traversals (added by CMB)
     -- * Miscellous
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
+
+-- * Debug stuff
+  , allPNT
 
  ) where
 
@@ -118,9 +121,9 @@ import qualified DynFlags      as GHC
 import qualified ErrUtils      as GHC
 import qualified FastString    as GHC
 import qualified ForeignCall   as GHC
-import qualified GHC
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
+import qualified HsPat         as GHC
 import qualified HsSyn         as GHC
 import qualified InstEnv       as GHC
 import qualified Module        as GHC
@@ -190,13 +193,13 @@ definingDecls pns ds incTypeSig recursive=concatMap defines ds
         |(hsPNs p) `intersect` pns /=[] = [decl]
       defines' decl@(TiDecorate.Dec (HsTypeSig loc is c tp))     --handle cases like  a,b::Int 
         |(map pNTtoPN is) `intersect` pns /=[]
-        =if incTypeSig 
+        =if incTypeSig
            then [(TiDecorate.Dec (HsTypeSig loc (filter (\x->isJust (find (==pNTtoPN x) pns)) is) c tp))]
            else []
       defines' decl@(TiDecorate.Dec (HsDataDecl loc c tp cons i))
        = if checkCons cons == True then [decl]
                                    else []
-                                     
+
              where
                checkCons [] = False
                checkCons ((HsConDecl loc i c (PNT pname _ _) t):ms)
@@ -210,40 +213,83 @@ definingDecls pns ds incTypeSig recursive=concatMap defines ds
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
 
--- TODO: ++AZ++ what is the fileName parameter actually for?
--- TODO: ++AZ++ does not seem to find PNTs if not at start of line/expression.
-locToPNT::(SYB.Data t)=>FilePath  -- ^ The file name
-                    ->(Int,Int)   -- ^ The row and column number
-                    ->t           -- ^ The syntax phrase
-                    ->PNT         -- ^ The result
+locToPNT::(SYB.Data t)=>GHC.FastString -- ^ The file name
+                    ->SimpPos          -- ^ The row and column number
+                    ->t                -- ^ The syntax phrase
+                    ->PNT              -- ^ The result
 -- TODO: return a Maybe, rather than encoding failure in defaultPNT
-locToPNT  fileName (row, col) t
+locToPNT  fileName (row,col) t
   = case res of
          Just x -> x
          Nothing -> defaultPNT
-            -- =(fromMaybe defaultPNT). applyTU (once_buTU (failTU `adhocTU` worker))
        where
-        res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+        res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
-        -- worker (pnt@(GHC.L s (GHC.Unqual name)):: (GHC.Located (t1)))
-        worker (pnt:: (GHC.Located GHC.RdrName))
-              | inScope pnt = Just (PNT pnt)
-              -- | True = Just defaultPNT
-            -- |fileName1==fileName && (row1,col1) == (row,col) =Just pnt
-
+        worker (pnt@(GHC.L l _) :: (GHC.Located GHC.RdrName))
+          | inScope l = Just (PNT pnt)
         worker _ = Nothing
 
-        -- TODO: check that the given point falls within the identifier
+        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
+          | inScope l = Just (PNT (GHC.L l name))
+        workerBind _ = Nothing
+
+        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
+          | inScope l = Just (PNT (GHC.L l name))
+        workerExpr _ = Nothing
+
+        inScope :: GHC.SrcSpan -> Bool
+        inScope l =
+          case l of
+            (GHC.UnhelpfulSpan _) -> False
+            (GHC.RealSrcSpan ss)  ->
+              (GHC.srcSpanFile ss == fileName) &&
+              (GHC.srcSpanStartLine ss == row) &&
+              (col >= (GHC.srcSpanStartCol ss)) &&
+              (col <= (GHC.srcSpanEndCol ss))
+
+------------------------------------------------------------------------------------
+
+-- |Find the identifier(in PNT format) whose start position is (row,col) in the
+-- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
+
+allPNT::(SYB.Data t)=>GHC.FastString -- ^ The file name
+                    ->SimpPos          -- ^ The row and column number
+                    ->t                -- ^ The syntax phrase
+                    ->[PNT]              -- ^ The result
+-- TODO: return a Maybe, rather than encoding failure in defaultPNT
+allPNT  fileName (row,col) t
+  = res
+       where
+        -- res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+        res = SYB.everythingStaged SYB.Parser (++) []
+            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+
+        worker (pnt :: (GHC.Located GHC.RdrName))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(PNT pnt)]
+        worker _ = []
+
+        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(PNT (GHC.L l name))]
+        workerBind _ = []
+
+        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(PNT (GHC.L l name))]
+        workerExpr _ = []
+
         inScope :: GHC.Located e -> Bool
         inScope (GHC.L l _) =
-          let
-            (startLoc,endLoc) = case l of
-              (GHC.RealSrcSpan ss) ->
-                ((GHC.srcSpanStartLine ss),
-                 (GHC.srcSpanEndLine ss))
-              (GHC.UnhelpfulSpan _) -> ((0),(0))
-          in
-           (startLoc==row) && (endLoc>= col)
+          case l of
+            (GHC.UnhelpfulSpan _) -> False
+            (GHC.RealSrcSpan ss)  ->
+              (GHC.srcSpanFile ss == fileName) &&
+              (GHC.srcSpanStartLine ss == row) &&
+              (col >= (GHC.srcSpanStartCol ss)) &&
+              (col <= (GHC.srcSpanEndCol ss))
+
+
 
 
 ------------------------------------------------------------------------------------

@@ -7,7 +7,6 @@
 module Language.Haskell.Refact.Utils
        ( expToPNT
        , locToExp
-       , locToPNT
        , sameOccurrence
        , parseSourceStr
        , unsafeParseSourceStr
