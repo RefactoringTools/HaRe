@@ -44,7 +44,7 @@ type HsAltP    =HsAlt HsExpP HsPatP [HsDeclP]
 type HsStmtP   =HsStmt HsExpP HsPatP [HsDeclP]
 type HsStmtAtomP = HsStmtAtom HsExpP HsPatP [HsDeclP]
 type HsFieldP  =HsFieldI PNT HsExpP
-type HsTypeP   = HsTypeI PNT 
+type HsTypeP   = HsTypeI PNT
 type EntSpecP  = EntSpec PNT
 type HsConDeclP = HsConDeclI PNT HsTypeP [HsTypeP]
 type HsConDeclP' = HsConDeclI PNT (TI PNT HsTypeP) [TI PNT HsTypeP]
@@ -88,7 +88,7 @@ type HsName = GHC.RdrName
 
 -- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]
 type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)
- 
+
 
 
 -- ----------------------------------------------------

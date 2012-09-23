@@ -22,4 +22,7 @@ mary = [1,2,3]
 
 h z = bob z 2
 
+data D = A | B String | C
+
+
 

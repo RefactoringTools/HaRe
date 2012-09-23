@@ -8,6 +8,7 @@ import           TestUtils
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
+import qualified OccName    as GHC
 import qualified Outputable as GHC
 import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
@@ -60,7 +61,7 @@ spec = do
     it "lists all PNTs" $ do
       modInfo@((_, _, mod), toks) <- parsedFileBGhc
       let res = allPNT bFileName (7,6) mod
-      show res `shouldBe` "[(PNT test/testdata/B.hs:7:1-3 foo),(PNT test/testdata/B.hs:7:5 x),(PNT test/testdata/B.hs:7:13-15 odd),(PNT test/testdata/B.hs:7:17 x),(PNT test/testdata/B.hs:9:1-3 bob),(PNT test/testdata/B.hs:9:5 x),(PNT test/testdata/B.hs:9:7 y),(PNT test/testdata/B.hs:9:11 x),(PNT test/testdata/B.hs:9:13 +),(PNT test/testdata/B.hs:9:15-17 foo),(PNT test/testdata/B.hs:9:19 y),(PNT test/testdata/B.hs:11:9-11 foo),(PNT test/testdata/B.hs:11:13 x),(PNT test/testdata/B.hs:11:17 x),(PNT test/testdata/B.hs:11:19 +),(PNT test/testdata/B.hs:14:1-4 foo'),(PNT test/testdata/B.hs:14:6 x),(PNT test/testdata/B.hs:14:16-18 odd),(PNT test/testdata/B.hs:14:20 x),(PNT test/testdata/B.hs:15:3-6 True),(PNT test/testdata/B.hs:16:3-7 False),(PNT test/testdata/B.hs:18:1-4 main),(PNT test/testdata/B.hs:19:3-10 putStrLn),(PNT test/testdata/B.hs:19:12 $),(PNT test/testdata/B.hs:19:14-17 show),(PNT test/testdata/B.hs:19:19 $),(PNT test/testdata/B.hs:19:22-24 foo),(PNT test/testdata/B.hs:19:29 +),(PNT test/testdata/B.hs:19:31-35 C.baz),(PNT test/testdata/B.hs:21:1-4 mary),(PNT test/testdata/B.hs:23:1 h),(PNT test/testdata/B.hs:23:3 z),(PNT test/testdata/B.hs:23:7-9 bob),(PNT test/testdata/B.hs:23:11 z)]"
+      show res `shouldBe` "[(PNT test/testdata/B.hs:7:1-3 foo),(PNT test/testdata/B.hs:7:5 x),(PNT test/testdata/B.hs:7:13-15 odd),(PNT test/testdata/B.hs:7:17 x),(PNT test/testdata/B.hs:9:1-3 bob),(PNT test/testdata/B.hs:9:5 x),(PNT test/testdata/B.hs:9:7 y),(PNT test/testdata/B.hs:9:11 x),(PNT test/testdata/B.hs:9:13 +),(PNT test/testdata/B.hs:9:15-17 foo),(PNT test/testdata/B.hs:9:19 y),(PNT test/testdata/B.hs:11:9-11 foo),(PNT test/testdata/B.hs:11:13 x),(PNT test/testdata/B.hs:11:17 x),(PNT test/testdata/B.hs:11:19 +),(PNT test/testdata/B.hs:14:1-4 foo'),(PNT test/testdata/B.hs:14:6 x),(PNT test/testdata/B.hs:14:16-18 odd),(PNT test/testdata/B.hs:14:20 x),(PNT test/testdata/B.hs:15:3-6 True),(PNT test/testdata/B.hs:16:3-7 False),(PNT test/testdata/B.hs:18:1-4 main),(PNT test/testdata/B.hs:19:3-10 putStrLn),(PNT test/testdata/B.hs:19:12 $),(PNT test/testdata/B.hs:19:14-17 show),(PNT test/testdata/B.hs:19:19 $),(PNT test/testdata/B.hs:19:22-24 foo),(PNT test/testdata/B.hs:19:29 +),(PNT test/testdata/B.hs:19:31-35 C.baz),(PNT test/testdata/B.hs:21:1-4 mary),(PNT test/testdata/B.hs:23:1 h),(PNT test/testdata/B.hs:23:3 z),(PNT test/testdata/B.hs:23:7-9 bob),(PNT test/testdata/B.hs:23:11 z),(PNT test/testdata/B.hs:25:6 D),(PNT test/testdata/B.hs:25:10 A),(PNT test/testdata/B.hs:25:14 B),(PNT test/testdata/B.hs:25:25 C)]"
 
   -- -------------------------------------------------------------------
 
@@ -86,11 +87,30 @@ spec = do
       GHC.showPpr res `shouldBe` "[c :: Integer, c = 7]"
 
     it "finds in a patbind" $ do
-      pending "need to test and implement"
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (mkRdrName "tup"))] ds False False
+      GHC.showPpr res `shouldBe` "[tup@(h, t) = head $ zip [1 .. 10] [3 .. 15]]"
+
+    it "finds in a patbind, with type signature" $ do
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (mkRdrName "tup"))] ds True False
+      GHC.showPpr res `shouldBe` "[tup :: (Int, Int), tup@(h, t) = head $ zip [1 .. 10] [3 .. 15]]"
 
     it "finds in a data decl" $ do
-      pending "need to test and implement"
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (GHC.mkRdrUnqual (GHC.mkDataOcc "A")))] ds True False
+      GHC.showPpr res `shouldBe` "[data D = A | B String | C]"
 
+{-
+        (ConDecl 
+         (L {test/testdata/B.hs:7:10} 
+          (Unqual {OccName: A})) 
+-}
+
+
+
+    it "finds recursively in sub-binds" $ do
+      pending "need to test and implement"
 
 
 -- ---------------------------------------------------------------------

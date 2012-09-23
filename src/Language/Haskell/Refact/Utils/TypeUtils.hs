@@ -36,7 +36,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
    -- ,exportInfo, isExported, isExplicitlyExported, modIsExported
 
     -- ** Variable analysis
-    -- ,hsPNs,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
+    ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     -- ,hsClassMembers, HsDecls(hsDecls,isDeclaredIn, replaceDecls)
     -- ,hsFreeAndDeclaredPNs,hsFreeAndDeclaredNames
     -- ,hsVisiblePNs, hsVisibleNames
@@ -171,6 +171,30 @@ defaultExp=GHC.HsVar $ mkRdrName "nothing"
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
 -- ---------------------------------------------------------------------
+-- | Collect the identifiers (in PName format) in a given syntax phrase.
+
+-- type HsName = GHC.RdrName
+-- newtype PName = PN HsName deriving (Eq)
+
+hsPNs::(SYB.Data t)=> t -> [PName]
+-- hsPNs=(nub.ghead "hsPNs").applyTU (full_tdTU (constTU [] `adhocTU` inPnt))
+hsPNs t = (nub.ghead "hsPNs") res
+  where
+     res = SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inPnt) t
+
+     -- inPnt (PNT pname ty loc) = return [pname]
+     inPnt (pname :: GHC.RdrName) = return [(PN pname)]
+
+
+
+{-
+-- | Collect the identifiers (in PNT format) in a given syntax phrase.
+hsPNTs ::(Term t)=>t->[PNT]
+hsPNTs =(nub.ghead "hsPNTs").applyTU (full_tdTU (constTU [] `adhocTU` inPnt))
+   where
+     inPnt pnt@(PNT _  _ _) = return [pnt]
+-}
+-- ---------------------------------------------------------------------
 
 -- |Find those declarations(function\/pattern binding and type
 -- signature) which define the specified PNames. incTypeSig indicates
@@ -185,7 +209,7 @@ definingDecls::[PName]   -- ^ The specified identifiers.
 definingDecls pns ds incTypeSig recursive = concatMap defines ds
   where
    defines decl
-     =if recursive
+     = if recursive
         -- then ghead "defines" $ applyTU (stop_tdTU (failTU `adhocTU` inDecl)) decl
         then undefined
         else defines' decl
@@ -200,6 +224,9 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
       -- ValD - binds
       defines' decl@(GHC.L l (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
         |isJust (find (==(PN pname)) pns) = [decl]
+
+      defines' decl@(GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _)))    ---CONSIDER AGAIN----
+        |(hsPNs p) `intersect` pns /= [] = [decl]
       defines' decl@(GHC.L l (GHC.ValD _))                                    = []
 
       -- SigD - type signatures
@@ -210,8 +237,20 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
            else []
       defines' decl@(GHC.L l (GHC.SigD        _ {- (GHC.Sig id) -}))          = []
 
+      -- TyClD - Type definitions
+      defines' decl@(GHC.L l (GHC.TyClD (GHC.TyData _ _ name _ _ _ cons _)))
+       = if checkCons cons == True then [decl]
+                                   else []
+
+             where
+               checkCons [] = False
+               checkCons ((GHC.L _ (GHC.ConDecl (GHC.L _ pname) _ _ _ _ _ _ _)):ms)
+                 | isJust (find (==(PN pname)) pns) = True
+                 | otherwise = checkCons ms
 
       defines' decl@(GHC.L l (GHC.TyClD       _ {- (GHC.TyClDecl id) -}))     = []
+
+
       defines' decl@(GHC.L l (GHC.InstD       _ {- (GHC.InstDecl id) -}))     = []
       defines' decl@(GHC.L l (GHC.DerivD      _ {- (GHC.DerivDecl id) -}))    = []
       defines' decl@(GHC.L l (GHC.DefD        _ {- (GHC.DefaultDecl id) -}))  = []
@@ -223,28 +262,6 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
       defines' decl@(GHC.L l (GHC.SpliceD     _ {- (GHC.SpliceDecl id) -}))   = []
       defines' decl@(GHC.L l (GHC.DocD        _ {- (GHC.DocDecl) -}))         = []
       defines' decl@(GHC.L l (GHC.QuasiQuoteD _ {- (GHC.HsQuasiQuote id) -})) = []
-
-      {-
-      defines' decl@(TiDecorate.Dec (HsFunBind _ ((HsMatch _ (PNT pname _ _) _ _ _):ms))) 
-        |isJust (find (==pname) pns) = [decl]
-      defines' decl@(TiDecorate.Dec (HsPatBind loc p rhs ds))    ---CONSIDER AGAIN----
-        |(hsPNs p) `intersect` pns /=[] = [decl]
-      defines' decl@(TiDecorate.Dec (HsTypeSig loc is c tp))     --handle cases like  a,b::Int 
-        |(map pNTtoPN is) `intersect` pns /=[]
-        =if incTypeSig
-           then [(TiDecorate.Dec (HsTypeSig loc (filter (\x->isJust (find (==pNTtoPN x) pns)) is) c tp))]
-           else []
-      defines' decl@(TiDecorate.Dec (HsDataDecl loc c tp cons i))
-       = if checkCons cons == True then [decl]
-                                   else []
-
-             where
-               checkCons [] = False
-               checkCons ((HsConDecl loc i c (PNT pname _ _) t):ms)
-                 | isJust (find (==pname) pns) = True
-                 | otherwise = checkCons ms
-      defines' _ =[]
-      -}
 
 {-
 
@@ -329,10 +346,10 @@ locToPNT  fileName (row,col) t
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
 
-allPNT::(SYB.Data t)=>GHC.FastString -- ^ The file name
+allPNT::(SYB.Data t)=>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
-                    ->[PNT]              -- ^ The result
+                    ->[PNT]            -- ^ The result
 -- TODO: return a Maybe, rather than encoding failure in defaultPNT
 allPNT  fileName (row,col) t
   = res
