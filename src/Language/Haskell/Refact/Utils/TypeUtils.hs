@@ -5,21 +5,28 @@
 -- Maintainer  : refactor-fp\@kent.ac.uk
 -- |
 --
--- This module contains a collection of program analysis and transformation functions (the API) that work
--- over the Type Decorated AST. Most of the functions defined in the module are taken directly from the API,
--- but in some cases are modified to work with the type decorated AST.
+-- This module contains a collection of program analysis and
+-- transformation functions (the API) that work over the Type
+-- Decorated AST. Most of the functions defined in the module are
+-- taken directly from the API, but in some cases are modified to work
+-- with the type decorated AST.
 --
--- In particular some new functions have been added to make type decorated AST traversals easier.
+-- In particular some new functions have been added to make type
+-- decorated AST traversals easier.
 --
--- In HaRe, in order to preserve the
--- comments and layout of refactored programs, a refactoring modifies not only the AST but also the token stream, and
--- the program source after the refactoring is extracted from the token stream rather than the AST, for the comments
--- and layout information is kept in the token steam instead of the AST. As a consequence, a program transformation
--- function from this API modifies both the AST and the token stream (unless explicitly stated). So when you build 
--- your own program transformations, try to use the API to do the transformation, as this can liberate you from 
--- caring about the token stream.
+-- In HaRe, in order to preserve the comments and layout of refactored
+-- programs, a refactoring modifies not only the AST but also the
+-- token stream, and the program source after the refactoring is
+-- extracted from the token stream rather than the AST, for the
+-- comments and layout information is kept in the token steam instead
+-- of the AST. As a consequence, a program transformation function
+-- from this API modifies both the AST and the token stream (unless
+-- explicitly stated). So when you build your own program
+-- transformations, try to use the API to do the transformation, as
+-- this can liberate you from caring about the token stream.
 --
--- This type decorated API is still in development. Any suggestions and comments are very much welcome.
+-- This type decorated API is still in development. Any suggestions
+-- and comments are very much welcome.
 
 
 ------------------------------------------------------------------------------------------------------------------
@@ -45,7 +52,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Property checking
     -- ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isTopLevelPNT
     -- ,isQualifiedPN,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon,isTypeSig
-    ,isFunBind {- ,isPatBind -} -- ,isSimplePatBind
+    ,isFunBind {- ,isPatBind -} ,isSimplePatBind
     -- ,isComplexPatBind,isFunOrPatBind,isClassDecl,isInstDecl,isDirectRecursiveDef
     -- ,usedWithoutQual,canBeQualified, hasFreeVars,isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
@@ -219,13 +226,14 @@ isPatBind::HsDeclP->Bool
 isPatBind (TiDecorate.Dec (HsPatBind _ _ _ _))=True
 isPatBind _=False
 -}
-{-
+
 -- | Return True if a declaration is a pattern binding which only defines a variable value.
-isSimplePatBind::HsDeclP->Bool
-isSimplePatBind decl=case decl of
-     TiDecorate.Dec (HsPatBind _ p _ _)->patToPN p /=defaultPN
-     _ ->False
--}
+isSimplePatBind :: HsDeclP -> Bool
+isSimplePatBind decl = case decl of
+     (GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _))) -> hsPNs p /= []
+     -- TiDecorate.Dec (HsPatBind _ p _ _) -> patToPN p /=defaultPN
+     _ -> False
+
 {-
 -- | Return True if a declaration is a pattern binding but not a simple one.
 isComplexPatBind::HsDeclP->Bool

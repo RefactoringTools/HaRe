@@ -128,10 +128,16 @@ spec = do
 
   describe "isSimplePatBind" $ do
     it "returns False if not a simple pat bind" $ do
-      pending "write this test"
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let [decl] = definingDecls [(PN (mkRdrName "toplevel"))] ds False False
+      isSimplePatBind decl  `shouldBe` False
 
     it "returns True if a simple pat bind" $ do
-      pending "write this test"
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
+      isSimplePatBind decl  `shouldBe` True
+
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions
