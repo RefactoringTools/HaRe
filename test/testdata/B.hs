@@ -24,5 +24,8 @@ h z = bob z 2
 
 data D = A | B String | C
 
+subdecl x = zz x
+  where
+    zz n = n + 1
 
 

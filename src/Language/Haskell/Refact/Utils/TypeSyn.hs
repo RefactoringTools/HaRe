@@ -34,10 +34,10 @@ type HsDeclP   = GHC.LHsDecl GHC.RdrName
 
 {-
 type HsMatchP  =HsMatchI PNT (HsExpP) (HsPatP) [HsDeclP]
--- type HsModuleP =HsModuleI (SN HsName.HsName) [HsDeclI PNT]  
+-- type HsModuleP =HsModuleI (SN HsName.HsName) [HsDeclI PNT]
 type HsImportDeclP=HsImportDeclI ModuleName PNT -- (SN HsName.HsName)
 type HsExportEntP = HsExportSpecI ModuleName PNT
-type RhsP      =HsRhs HsExpP 
+type RhsP      =HsRhs HsExpP
 type GuardP    =(SrcLoc, HsExpP, HsExpP)
 type HsAltP    =HsAlt HsExpP HsPatP [HsDeclP]
 --type HsConDeclP=HsConDeclI PNT (HsTypeI PNT)

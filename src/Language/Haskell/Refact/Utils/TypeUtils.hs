@@ -44,7 +44,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Property checking
     -- ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isTopLevelPNT
-    -- ,isQualifiedPN,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon,isTypeSig,isFunBind,isPatBind,isSimplePatBind
+    -- ,isQualifiedPN,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon,isTypeSig
+    ,isFunBind {- ,isPatBind -} -- ,isSimplePatBind
     -- ,isComplexPatBind,isFunOrPatBind,isClassDecl,isInstDecl,isDirectRecursiveDef
     -- ,usedWithoutQual,canBeQualified, hasFreeVars,isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
@@ -194,6 +195,67 @@ hsPNTs =(nub.ghead "hsPNTs").applyTU (full_tdTU (constTU [] `adhocTU` inPnt))
    where
      inPnt pnt@(PNT _  _ _) = return [pnt]
 -}
+
+-------------------------------------------------------------------------------
+{-
+-- | Return True if a PNT is a type constructor.
+isTypeCon :: PNT -> Bool
+isTypeCon (PNT pn (Type typeInfo) _) = defType typeInfo == Just TypedIds.Data
+isTypeCon _ = False
+
+-- | Return True if a declaration is a type signature declaration.
+isTypeSig ::HsDeclP->Bool
+isTypeSig (TiDecorate.Dec (HsTypeSig loc is c tp))=True
+isTypeSig _=False
+-}
+-- | Return True if a declaration is a function definition.
+isFunBind::HsDeclP -> Bool
+isFunBind (GHC.L l (GHC.ValD (GHC.FunBind _ _ _ _ _ _))) = True
+-- isFunBind (TiDecorate.Dec (HsFunBind loc matches)) = True
+isFunBind _ =False
+{-
+-- | Returns True if a declaration is a pattern binding.
+isPatBind::HsDeclP->Bool
+isPatBind (TiDecorate.Dec (HsPatBind _ _ _ _))=True
+isPatBind _=False
+-}
+{-
+-- | Return True if a declaration is a pattern binding which only defines a variable value.
+isSimplePatBind::HsDeclP->Bool
+isSimplePatBind decl=case decl of
+     TiDecorate.Dec (HsPatBind _ p _ _)->patToPN p /=defaultPN
+     _ ->False
+-}
+{-
+-- | Return True if a declaration is a pattern binding but not a simple one.
+isComplexPatBind::HsDeclP->Bool
+isComplexPatBind decl=case decl of
+     TiDecorate.Dec (HsPatBind _ p _ _)->patToPN p ==defaultPN
+     _ -> False
+
+-- | Return True if a declaration is a function\/pattern definition.
+isFunOrPatBind::HsDeclP->Bool
+isFunOrPatBind decl=isFunBind decl || isPatBind decl
+
+-- | Return True if a declaration is a Class declaration.
+isClassDecl :: HsDeclP ->Bool
+isClassDecl (TiDecorate.Dec (HsClassDecl _ _ _ _ _)) = True
+isClassDecl _ = False
+
+-- | Return True if a declaration is a Class instance declaration.
+isInstDecl :: HsDeclP -> Bool
+isInstDecl (TiDecorate.Dec (HsInstDecl _ _ _ _ _)) = True
+isInstDecl _ = False
+
+-- | Return True if a function is a directly recursive function.
+isDirectRecursiveDef::HsDeclP->Bool
+isDirectRecursiveDef (TiDecorate.Dec (HsFunBind loc ms))
+   = any isUsedInDef ms
+  where
+   isUsedInDef (HsMatch loc1 fun pats rhs ds)
+     = findEntity (pNTtoPN fun) rhs
+isDirectRecursiveDef _ = False
+-}
 -- ---------------------------------------------------------------------
 
 -- |Find those declarations(function\/pattern binding and type
@@ -209,15 +271,16 @@ definingDecls::[PName]   -- ^ The specified identifiers.
 definingDecls pns ds incTypeSig recursive = concatMap defines ds
   where
    defines decl
-     = if recursive
+     = if recursive -- TODO: original seems to stop on first match? Should continue
         -- then ghead "defines" $ applyTU (stop_tdTU (failTU `adhocTU` inDecl)) decl
-        then undefined
+        then SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inDecl) decl
         else defines' decl
      where
-      inDecl (d::HsDeclP)
+      inDecl (d::GHC.LHsDecl GHC.RdrName {- HsDeclP -} )
         -- |defines' d /= [] =return $ defines' d
-        | length (defines' d) /= 0 = return $ defines' d -- TODO: horribly inefficient
-      inDecl _=mzero
+        -- | length (defines' d) /= 0 = defines' d -- TODO: horribly inefficient
+        | True = defines' d -- TODO: horribly inefficient
+      inDecl _ = []
 
       defines' :: HsDeclP -> [HsDeclP]
 
