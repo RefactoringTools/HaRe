@@ -14,6 +14,10 @@ import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.LocUtils
 
+import TestUtils
+
+-- ---------------------------------------------------------------------
+
 main :: IO ()
 main = hspec spec
 
@@ -23,6 +27,9 @@ spec = do
   describe "duplicateDef" $ do
     it "duplicates a definition at the same level" $ do
      duplicateDef ["./test/testdata/DupDef/Dd1.hs","tl2","3","1"]
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+                          "./test/testdata/DupDef/Dd1.hs.expected"
+     diff `shouldBe` []
 
   -- -------------------------------------------------------------------
 

@@ -25,7 +25,6 @@ module Language.Haskell.Refact.Utils
        -- , fileNameToModName
        , getModuleName
        , isVarId
-       , defaultPN
        , clientModsAndFiles
        , serverModsAndFiles
        , getCurrentModuleGraph

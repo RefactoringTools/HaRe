@@ -54,7 +54,6 @@ comp fileName newName (row, col) = do
                 -- modName <-fileNameToModName fileName
                 -- let modName = getModuleName mod
                 let (Just (modName,_)) = getModuleName mod
-                -- let pn = pNTtoPN $ locToPNT fileName (row, col) mod
                 let pn = pNTtoPN $ locToPNT (GHC.mkFastString fileName) (row, col) mod
                 if (pn /= defaultPN)
                   then do ((fileName',m),(tokList',mod')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
@@ -82,11 +81,10 @@ doDuplicating pn newName (_,_,mod) =
         where
         --1. The definition to be duplicated is at top level.
         -- dupInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
-        dupInMod :: (GHC.Located (GHC.HsDecl GHC.RdrName))
-                 -> RefactGhc (GHC.Located (GHC.HsDecl GHC.RdrName))
-        dupInMod (mod@(GHC.L l (GHC.ValD bind)))
+        dupInMod :: (GHC.Located (GHC.HsModule GHC.RdrName))-> RefactGhc (GHC.Located (GHC.HsModule GHC.RdrName))
+        dupInMod (mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
           -- |findFunOrPatBind  pn ds /= [] = doDuplicating' inscps mod pn
-          |findFunOrPatBind pn bind /= [] = doDuplicating' mod pn
+          |findFunOrPatBind pn ds /= [] = doDuplicating' mod pn
         -- dupInMod _ =mzero
         dupInMod mod = return mod
 
@@ -136,7 +134,7 @@ doDuplicating pn newName (inscps, mod, tokList)
             mod (m::HsModuleP)
               = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
 -}
-        findFunOrPatBind :: PName -> b -> [Int] -- TODO: fix this typedef, the [Int] is bogus
+        findFunOrPatBind :: PName -> [GHC.LHsDecl GHC.RdrName] -> [Int] -- TODO: fix this typedef, the [Int] is bogus
         -- findFunOrPatBind pn ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDecls [pn] ds True False
         findFunOrPatBind pn ds = undefined
 

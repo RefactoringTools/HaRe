@@ -80,13 +80,15 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Default values
    ,defaultPN,defaultPNT {-,defaultModName-},defaultExp-- ,defaultPat, defaultExpUnTyped
 
+
     -- ** Identifiers, expressions, patterns and declarations
     ,pNTtoPN -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
     -- ,expToPNT, expToPN, nameToExp,pNtoExp,patToPNT, patToPN, nameToPat,pNtoPat
-    -- ,definingDecls, definedPNs
+    ,definingDecls -- , definedPNs
     -- ,simplifyDecl
     -- ** Others
    -- ,mkNewName, applyRefac, applyRefacToClientMods
+    , mkRdrName
 
     -- The following functions are not in the the API yet.
     -- ,getDeclToks, causeNameClashInExports, inRegion , ghead, glast, gfromJust, unmodified, prettyprint,
@@ -116,6 +118,7 @@ import System.IO.Unsafe
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
 import qualified Coercion      as GHC
+import qualified HsDecls       as GHC
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified ErrUtils      as GHC
@@ -150,7 +153,7 @@ dummy = 1
 
 -- | Default identifier in the PNT format.
 -- defaultPNT:: GHC.GenLocated GHC.SrcSpan GHC.RdrName   -- GHC.RdrName
-defaultPNT:: PNT 
+defaultPNT:: PNT
 -- defaultPNT = PNT defaultPN Value (N Nothing) :: PNT
 -- defaultPNT = GHC.mkRdrUnqual "nothing" :: PNT
 -- defaultPNT = PNT (mkRdrName "nothing") (N Nothing) :: PNT
@@ -168,15 +171,86 @@ mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
 -- ---------------------------------------------------------------------
 
+-- |Find those declarations(function\/pattern binding and type
+-- signature) which define the specified PNames. incTypeSig indicates
+-- whether the corresponding type signature will be included.
+
+definingDecls::[PName]   -- ^ The specified identifiers.
+            ->[HsDeclP]  -- ^ A collection of declarations.
+            ->Bool       -- ^ True means to include the type signature.
+            ->Bool       -- ^ True means to look at the local declarations as well. 
+            ->[HsDeclP]  -- ^ The result.
+-- definingDecls pns ds incTypeSig recursive = undefined
+definingDecls pns ds incTypeSig recursive = concatMap defines ds
+  where
+   defines decl
+     =if recursive
+        -- then ghead "defines" $ applyTU (stop_tdTU (failTU `adhocTU` inDecl)) decl
+        then undefined
+        else defines' decl
+     where
+      inDecl (d::HsDeclP)
+        -- |defines' d /= [] =return $ defines' d
+        | length (defines' d) /= 0 = return $ defines' d -- TODO: horribly inefficient
+      inDecl _=mzero
+
+      defines' :: HsDeclP -> [HsDeclP]
+
+      {-
+      defines' decl@(TiDecorate.Dec (HsFunBind _ ((HsMatch _ (PNT pname _ _) _ _ _):ms))) 
+        |isJust (find (==pname) pns) = [decl]
+      -}
+      defines' decl@(GHC.L l (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
+        |isJust (find (==(PN pname)) pns) = [decl]
+
+
+      defines' decl@(GHC.L l (GHC.TyClD       _ {- (GHC.TyClDecl id) -}))     = []
+      defines' decl@(GHC.L l (GHC.InstD       _ {- (GHC.InstDecl id) -}))     = []
+      defines' decl@(GHC.L l (GHC.DerivD      _ {- (GHC.DerivDecl id) -}))    = []
+
+
+
+      defines' decl@(GHC.L l (GHC.SigD        _ {- (GHC.Sig id) -}))          = []
+      defines' decl@(GHC.L l (GHC.DefD        _ {- (GHC.DefaultDecl id) -}))  = []
+      defines' decl@(GHC.L l (GHC.ForD        _ {- (GHC.ForeignDecl id) -}))  = []
+      defines' decl@(GHC.L l (GHC.WarningD    _ {- (GHC.WarnDecl id) -}))     = []
+      defines' decl@(GHC.L l (GHC.AnnD        _ {- (GHC.AnnDecl id) -}))      = []
+      defines' decl@(GHC.L l (GHC.RuleD       _ {- (GHC.RuleDecl id) -}))     = []
+      defines' decl@(GHC.L l (GHC.VectD       _ {- (GHC.VectDecl id) -}))     = []
+      defines' decl@(GHC.L l (GHC.SpliceD     _ {- (GHC.SpliceDecl id) -}))   = []
+      defines' decl@(GHC.L l (GHC.DocD        _ {- (GHC.DocDecl) -}))         = []
+      defines' decl@(GHC.L l (GHC.QuasiQuoteD _ {- (GHC.HsQuasiQuote id) -})) = []
+
+      {-
+      defines' decl@(TiDecorate.Dec (HsFunBind _ ((HsMatch _ (PNT pname _ _) _ _ _):ms))) 
+        |isJust (find (==pname) pns) = [decl]
+      defines' decl@(TiDecorate.Dec (HsPatBind loc p rhs ds))    ---CONSIDER AGAIN----
+        |(hsPNs p) `intersect` pns /=[] = [decl]
+      defines' decl@(TiDecorate.Dec (HsTypeSig loc is c tp))     --handle cases like  a,b::Int 
+        |(map pNTtoPN is) `intersect` pns /=[]
+        =if incTypeSig
+           then [(TiDecorate.Dec (HsTypeSig loc (filter (\x->isJust (find (==pNTtoPN x) pns)) is) c tp))]
+           else []
+      defines' decl@(TiDecorate.Dec (HsDataDecl loc c tp cons i))
+       = if checkCons cons == True then [decl]
+                                   else []
+
+             where
+               checkCons [] = False
+               checkCons ((HsConDecl loc i c (PNT pname _ _) t):ms)
+                 | isJust (find (==pname) pns) = True
+                 | otherwise = checkCons ms
+      defines' _ =[]
+      -}
+
 {-
--- |Find those declarations(function\/pattern binding and type signature) which define the specified PNames.
---incTypeSig indicates whether the corresponding type signature will be included.
+
 definingDecls::[PName]         -- ^ The specified identifiers.
             ->[HsDeclP]        -- ^ A collection of declarations.
             ->Bool             -- ^ True means to include the type signature.
             ->Bool             -- ^ True means to look at the local declarations as well. 
             ->[HsDeclP]        -- ^ The result.
-definingDecls pns ds incTypeSig recursive=concatMap defines ds  
+definingDecls pns ds incTypeSig recursive=concatMap defines ds
   where
    defines decl
      =if recursive
@@ -185,7 +259,7 @@ definingDecls pns ds incTypeSig recursive=concatMap defines ds
      where
       inDecl (d::HsDeclP)
         |defines' d /=[] =return $ defines' d
-      inDecl _=mzero 
+      inDecl _=mzero
 
       defines' decl@(TiDecorate.Dec (HsFunBind _ ((HsMatch _ (PNT pname _ _) _ _ _):ms))) 
         |isJust (find (==pname) pns) = [decl]
