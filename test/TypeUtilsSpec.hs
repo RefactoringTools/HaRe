@@ -65,10 +65,33 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "definingDecls" $ do
+    it "returns [] if not found" $ do
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (mkRdrName "notdefine"))] ds True False
+      GHC.showPpr res `shouldBe` "[]"
+
     it "finds declarations at the top level" $ do
       modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (mkRdrName "toplevel"))] ds False False
+      GHC.showPpr res `shouldBe` "[toplevel x = c * x]"
+
+    it "includes the typedef if requested" $ do
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
       let res = definingDecls [(PN (mkRdrName "toplevel"))] ds True False
-      GHC.showPpr res `shouldBe` "foo"
+      GHC.showPpr res `shouldBe` "[toplevel :: Integer -> Integer, toplevel x = c * x]"
+
+    it "strips other names from typedef" $ do
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (mkRdrName "c"))] ds True False
+      GHC.showPpr res `shouldBe` "[c :: Integer, c = 7]"
+
+    it "finds in a patbind" $ do
+      pending "need to test and implement"
+
+    it "finds in a data decl" $ do
+      pending "need to test and implement"
+
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions

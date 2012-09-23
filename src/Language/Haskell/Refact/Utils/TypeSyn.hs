@@ -71,10 +71,11 @@ type Export = GHC.LIE GHC.RdrName
 -- type PN     = GHC.RdrName
 newtype PName = PN HsName deriving (Eq)
 
--- | The PNT is the unique name, after GHC renaming. It corresponds to GHC.Name
--- data PNT = PNT GHC.Name deriving (Data,Typeable) -- Note: GHC.Name has SrcLoc in it already
+-- | The PNT is the unique name, after GHC renaming. It corresponds to
+-- GHC.Name data PNT = PNT GHC.Name deriving (Data,Typeable) -- Note:
+-- GHC.Name has SrcLoc in it already
 -- ++AZ++ : will run with Located RdrName for now, will see when we need the Unique name
-data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable) 
+data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable)
 
 instance Show PNT where
   show (PNT (GHC.L l name)) = "(PNT " ++ (GHC.showPpr l) ++ " " ++ (GHC.showRdrName name) ++ ")"

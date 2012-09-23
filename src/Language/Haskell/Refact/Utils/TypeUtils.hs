@@ -83,6 +83,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Identifiers, expressions, patterns and declarations
     ,pNTtoPN -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
+    ,ghcToPN,lghcToPN
     -- ,expToPNT, expToPN, nameToExp,pNtoExp,patToPNT, patToPN, nameToPat,pNtoPat
     ,definingDecls -- , definedPNs
     -- ,simplifyDecl
@@ -196,21 +197,23 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
 
       defines' :: HsDeclP -> [HsDeclP]
 
-      {-
-      defines' decl@(TiDecorate.Dec (HsFunBind _ ((HsMatch _ (PNT pname _ _) _ _ _):ms))) 
-        |isJust (find (==pname) pns) = [decl]
-      -}
+      -- ValD - binds
       defines' decl@(GHC.L l (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
         |isJust (find (==(PN pname)) pns) = [decl]
+      defines' decl@(GHC.L l (GHC.ValD _))                                    = []
+
+      -- SigD - type signatures
+      defines' decl@(GHC.L l (GHC.SigD (GHC.TypeSig is tp)))
+        |(map lghcToPN is) `intersect` pns /=[]
+        = if incTypeSig
+           then [(GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->isJust (find (==lghcToPN x) pns)) is) tp)))]
+           else []
+      defines' decl@(GHC.L l (GHC.SigD        _ {- (GHC.Sig id) -}))          = []
 
 
       defines' decl@(GHC.L l (GHC.TyClD       _ {- (GHC.TyClDecl id) -}))     = []
       defines' decl@(GHC.L l (GHC.InstD       _ {- (GHC.InstDecl id) -}))     = []
       defines' decl@(GHC.L l (GHC.DerivD      _ {- (GHC.DerivDecl id) -}))    = []
-
-
-
-      defines' decl@(GHC.L l (GHC.SigD        _ {- (GHC.Sig id) -}))          = []
       defines' decl@(GHC.L l (GHC.DefD        _ {- (GHC.DefaultDecl id) -}))  = []
       defines' decl@(GHC.L l (GHC.ForD        _ {- (GHC.ForeignDecl id) -}))  = []
       defines' decl@(GHC.L l (GHC.WarningD    _ {- (GHC.WarnDecl id) -}))     = []
@@ -371,6 +374,12 @@ allPNT  fileName (row,col) t
 -- NOTE: the PNT holds the GHC.Name value, it must be converted to a GHC.RdrName
 pNTtoPN :: PNT -> PName
 pNTtoPN (PNT (GHC.L _ n)) = PN n
+
+ghcToPN :: GHC.RdrName -> PName
+ghcToPN rdr = PN rdr
+
+lghcToPN :: GHC.Located GHC.RdrName -> PName
+lghcToPN (GHC.L _ rdr) = PN rdr
 
 {- ++AZ++ this with deal with an actual GHC.Name
 pNTtoPN (PNT pname) = case (GHC.nameModule_maybe pname) of
