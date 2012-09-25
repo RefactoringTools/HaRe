@@ -1,4 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 ----------------------------------------------------------------------------------------------------------------
 -- Module      : TypeUtils
 
@@ -44,10 +46,10 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Variable analysis
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
-    -- ,hsClassMembers, HsDecls(hsDecls,isDeclaredIn, replaceDecls)
-    -- ,hsFreeAndDeclaredPNs,hsFreeAndDeclaredNames
+    {- ,hsClassMembers -} , HsDecls(hsDecls,isDeclaredIn{- ,replaceDecls -})
+    -- ,hsFreeAndDeclaredPNs -- ,hsFreeAndDeclaredNames
     -- ,hsVisiblePNs, hsVisibleNames
-    -- ,hsFDsFromInside, hsFDNamesFromInside
+    -- ,hsFDsFromInside -- , hsFDNamesFromInside
 
     -- ** Property checking
     -- ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isTopLevelPNT
@@ -58,7 +60,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,findPNT,findPN      -- Try to remove this.
     -- ,findPNs, findEntity
     -- ,sameOccurrence
-    -- ,defines,definesTypeSig, isTypeSigOf
+    ,defines -- ,definesTypeSig, isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
 
 
@@ -178,6 +180,376 @@ defaultExp=GHC.HsVar $ mkRdrName "nothing"
 
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
+{-
+------------------------------------------------------------------------
+-- | Collect the free and declared variables (in the PName format) in
+-- a given syntax phrase t. In the result, the first list contains the
+-- free variables, and the second list contains the declared
+-- variables.
+hsFreeAndDeclaredPNs:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
+hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
+                          return (nub f, nub d)
+   where
+          {-
+          hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
+                                                         `adhocTU` pat
+                                                         `adhocTU` match
+                                                         `adhocTU` patBind
+                                                         `adhocTU` alt
+                                                         `adhocTU` decls
+                                                         `adhocTU` stmts
+                                                         `adhocTU` recDecl))
+          -}
+
+          hsFreeAndDeclared' = SYB.everythingStaged SYB.Parser (++) []
+                             ([] `SYB.mkQ` exp) t
+
+          -- TODO: After renaming, HsBindLR has field bind_fvs
+          --       containing locally bound free vars
+
+          exp (TiDecorate.Exp (HsId (HsVar (PNT pn _ _))))=return ([pn],[])
+          exp (TiDecorate.Exp (HsId (HsCon (PNT pn _ _))))=return ([pn],[])
+          exp (TiDecorate.Exp (HsInfixApp e1 (HsVar (PNT pn _ _)) e2))
+              = addFree pn (hsFreeAndDeclaredPNs [e1,e2])
+          exp (TiDecorate.Exp (HsLambda pats body))
+              = do (pf,pd) <-hsFreeAndDeclaredPNs pats
+                   (bf,_)  <-hsFreeAndDeclaredPNs body
+                   return ((bf `union` pf) \\ pd, [])
+          exp (TiDecorate.Exp (HsLet decls exp))
+              = do (df,dd)<- hsFreeAndDeclaredPNs decls
+                   (ef,_)<- hsFreeAndDeclaredPNs exp
+                   return ((df `union` (ef \\ dd)),[])
+          exp (TiDecorate.Exp (HsRecConstr _  (PNT pn _ _) e))
+               = addFree  pn  (hsFreeAndDeclaredPNs e)   --Need Testing
+          exp (TiDecorate.Exp (HsAsPat (PNT pn _ _) e))
+              = addFree  pn  (hsFreeAndDeclaredPNs e)
+          exp _ = mzero
+-}
+{-
+
+          pat (TiDecorate.Pat (HsPId (HsVar (PNT pn _ _))))=return ([],[pn])
+          pat (TiDecorate.Pat (HsPInfixApp p1 (PNT pn _ _) p2))=addFree pn (hsFreeAndDeclaredPNs [p1,p2])
+          pat (TiDecorate.Pat (HsPApp (PNT pn _ _) pats))=addFree pn (hsFreeAndDeclaredPNs pats)
+          pat (TiDecorate.Pat (HsPRec (PNT pn _ _) fields))=addFree pn (hsFreeAndDeclaredPNs fields)
+          pat _ =mzero
+
+
+          match ((HsMatch _ (PNT fun _ _)  pats rhs  decls)::HsMatchP)
+            = do (pf,pd) <- hsFreeAndDeclaredPNs pats
+                 (rf,rd) <- hsFreeAndDeclaredPNs rhs
+                 (df,dd) <- hsFreeAndDeclaredPNs decls
+                 return ((pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))),[fun])
+
+         -------Added by Huiqing Li-------------------------------------------------------------------
+
+          patBind ((TiDecorate.Dec (HsPatBind _ pat (HsBody rhs) decls))::HsDeclP)
+             =do (pf,pd) <- hsFreeAndDeclaredPNs pat
+                 (rf,rd) <- hsFreeAndDeclaredPNs rhs
+                 (df,dd) <- hsFreeAndDeclaredPNs decls
+                 return (pf `union` ((rf `union` df) \\(dd `union` pd)),pd)
+          patBind _=mzero
+         ------------------------------------------------------------------------------------------- 
+
+          alt ((HsAlt _ pat exp decls)::(HsAlt (HsExpP) (HsPatP) HsDeclsP))
+             = do (pf,pd) <- hsFreeAndDeclaredPNs pat
+                  (ef,ed) <- hsFreeAndDeclaredPNs exp
+                  (df,dd) <- hsFreeAndDeclaredPNs decls
+                  return (pf `union` (((ef \\ dd) `union` df) \\ pd),[])
+
+
+          decls (ds :: [HsDeclP])
+             =do (f,d) <-hsFreeAndDeclaredList ds
+                 return (f\\d,d)
+
+          stmts ((HsGenerator _ pat exp stmts) :: HsStmt (HsExpP) (HsPatP) HsDeclsP) -- Claus
+             =do (pf,pd) <-hsFreeAndDeclaredPNs pat
+                 (ef,ed) <-hsFreeAndDeclaredPNs exp
+                 (sf,sd) <-hsFreeAndDeclaredPNs stmts
+                 return (pf `union` ef `union` (sf\\pd),[]) -- pd) -- Check this 
+
+          stmts ((HsLetStmt decls stmts) :: HsStmt (HsExpP) (HsPatP) HsDeclsP)
+             =do (df,dd) <-hsFreeAndDeclaredPNs decls
+                 (sf,sd) <-hsFreeAndDeclaredPNs stmts
+                 return (df `union` (sf \\dd),[])
+          stmts _ =mzero
+
+
+          recDecl ((HsRecDecl _ _ _ _ is) :: HsConDeclI PNT (HsTypeI PNT) [HsTypeI PNT])
+                =do let d=map pNTtoPN $ concatMap fst is
+                    return ([],d)
+          recDecl _ =mzero
+
+
+          addFree free mfd=do (f,d)<-mfd
+                              return ([free] `union` f, d)
+
+          hsFreeAndDeclaredList l=do fds<-mapM hsFreeAndDeclaredPNs l
+                                     return (foldr union [] (map fst fds),
+                                             foldr union [] (map snd fds))
+++AZ++ -}
+
+{-
+hsFreeAndDeclaredPNs:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
+hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
+                          return (nub f, nub d)
+   where 
+          hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
+                                                         `adhocTU` pat
+                                                         `adhocTU` match
+                                                         `adhocTU` patBind
+                                                         `adhocTU` alt
+                                                         `adhocTU` decls
+                                                         `adhocTU` stmts
+                                                         `adhocTU` recDecl))  
+                          
+          exp (TiDecorate.Exp (HsId (HsVar (PNT pn _ _))))=return ([pn],[])
+          exp (TiDecorate.Exp (HsId (HsCon (PNT pn _ _))))=return ([pn],[])
+          exp (TiDecorate.Exp (HsInfixApp e1 (HsVar (PNT pn _ _)) e2))
+              =addFree pn (hsFreeAndDeclaredPNs [e1,e2])
+          exp (TiDecorate.Exp (HsLambda pats body))
+              = do (pf,pd) <-hsFreeAndDeclaredPNs pats
+                   (bf,_) <-hsFreeAndDeclaredPNs body
+                   return ((bf `union` pf) \\ pd, [])
+          exp (TiDecorate.Exp (HsLet decls exp))
+              = do (df,dd)<- hsFreeAndDeclaredPNs decls
+                   (ef,_)<- hsFreeAndDeclaredPNs exp 
+                   return ((df `union` (ef \\ dd)),[])
+          exp (TiDecorate.Exp (HsRecConstr _  (PNT pn _ _) e))
+               =addFree  pn  (hsFreeAndDeclaredPNs e)   --Need Testing
+          exp (TiDecorate.Exp (HsAsPat (PNT pn _ _) e))
+              =addFree  pn  (hsFreeAndDeclaredPNs e)  
+          exp _ = mzero
+
+          
+          pat (TiDecorate.Pat (HsPId (HsVar (PNT pn _ _))))=return ([],[pn])
+          pat (TiDecorate.Pat (HsPInfixApp p1 (PNT pn _ _) p2))=addFree pn (hsFreeAndDeclaredPNs [p1,p2])
+          pat (TiDecorate.Pat (HsPApp (PNT pn _ _) pats))=addFree pn (hsFreeAndDeclaredPNs pats)
+          pat (TiDecorate.Pat (HsPRec (PNT pn _ _) fields))=addFree pn (hsFreeAndDeclaredPNs fields)
+          pat _ =mzero
+                               
+
+          match ((HsMatch _ (PNT fun _ _)  pats rhs  decls)::HsMatchP)
+            = do (pf,pd) <- hsFreeAndDeclaredPNs pats
+                 (rf,rd) <- hsFreeAndDeclaredPNs rhs
+                 (df,dd) <- hsFreeAndDeclaredPNs decls
+                 return ((pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))),[fun])
+
+         -------Added by Huiqing Li-------------------------------------------------------------------
+
+          patBind ((TiDecorate.Dec (HsPatBind _ pat (HsBody rhs) decls))::HsDeclP)
+             =do (pf,pd) <- hsFreeAndDeclaredPNs pat
+                 (rf,rd) <- hsFreeAndDeclaredPNs rhs
+                 (df,dd) <- hsFreeAndDeclaredPNs decls
+                 return (pf `union` ((rf `union` df) \\(dd `union` pd)),pd)
+          patBind _=mzero
+         ------------------------------------------------------------------------------------------- 
+
+          alt ((HsAlt _ pat exp decls)::(HsAlt (HsExpP) (HsPatP) HsDeclsP))
+             = do (pf,pd) <- hsFreeAndDeclaredPNs pat
+                  (ef,ed) <- hsFreeAndDeclaredPNs exp
+                  (df,dd) <- hsFreeAndDeclaredPNs decls
+                  return (pf `union` (((ef \\ dd) `union` df) \\ pd),[])
+
+
+          decls (ds :: [HsDeclP])
+             =do (f,d) <-hsFreeAndDeclaredList ds
+                 return (f\\d,d)
+          
+          stmts ((HsGenerator _ pat exp stmts) :: HsStmt (HsExpP) (HsPatP) HsDeclsP) -- Claus
+             =do (pf,pd) <-hsFreeAndDeclaredPNs pat
+                 (ef,ed) <-hsFreeAndDeclaredPNs exp
+                 (sf,sd) <-hsFreeAndDeclaredPNs stmts
+                 return (pf `union` ef `union` (sf\\pd),[]) -- pd) -- Check this 
+
+          stmts ((HsLetStmt decls stmts) :: HsStmt (HsExpP) (HsPatP) HsDeclsP)
+             =do (df,dd) <-hsFreeAndDeclaredPNs decls
+                 (sf,sd) <-hsFreeAndDeclaredPNs stmts
+                 return (df `union` (sf \\dd),[])
+          stmts _ =mzero
+
+          recDecl ((HsRecDecl _ _ _ _ is) :: HsConDeclI PNT (HsTypeI PNT) [HsTypeI PNT])
+                =do let d=map pNTtoPN $ concatMap fst is
+                    return ([],d)
+          recDecl _ =mzero
+            
+       
+          addFree free mfd=do (f,d)<-mfd
+                              return ([free] `union` f, d)
+
+          hsFreeAndDeclaredList l=do fds<-mapM hsFreeAndDeclaredPNs l
+                                     return (foldr union [] (map fst fds),
+                                             foldr union [] (map snd fds))
+-}
+
+
+{-
+-- |The same as `hsFreeAndDeclaredPNs` except that the returned variables are in the String format.           
+hsFreeAndDeclaredNames::(Term t, MonadPlus m)=> t->m([String],[String])
+hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
+                             return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
+-}
+------------------------------------------------------------------------
+{- ++AZ++ come back to this
+-- |`hsFDsFromInside` is different from `hsFreeAndDeclaredPNs` in
+-- that: given an syntax phrase t, `hsFDsFromInside` returns not only
+-- the declared variables that are visible from outside of t, but also
+-- those declared variables that are visible to the main expression
+-- inside t.
+
+-- hsFDsFromInside:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
+hsFDsFromInside:: (SYB.Data t, Monad m) => t-> m ([PName],[PName])
+hsFDsFromInside t = do (f,d) <- hsFDsFromInside' t
+                       return (nub f, nub d)
+   where
+     {-
+     hsFDsFromInside' = applyTU (once_tdTU (failTU  `adhocTU` mod
+                                                    -- `adhocTU` decls
+                                                     `adhocTU` decl
+                                                     `adhocTU` match
+                                                     `adhocTU` exp
+                                                     `adhocTU` alt
+                                                     `adhocTU` stmts ))
+     -}
+
+     hsFDsFromInside' = SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` mod) t
+
+
+     mod ((HsModule loc modName exps imps ds)::HsModuleP)
+        = hsFreeAndDeclaredPNs ds  
+++AZ++ -}
+{- ++AZ++
+ {-    decls (ds::[HsDeclP])                    --CHECK THIS.
+       = hsFreeAndDeclaredPNs decls 
+-}
+     match ((HsMatch loc1 (PNT fun _ _) pats rhs ds) ::HsMatchP)
+       = do (pf, pd) <-hsFreeAndDeclaredPNs pats
+            (rf, rd) <-hsFreeAndDeclaredPNs rhs
+            (df, dd) <-hsFreeAndDeclaredPNs ds
+            return (nub (pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))), 
+                    nub (pd `union` rd `union` dd `union` [fun]))
+
+     decl ((TiDecorate.Dec (HsPatBind loc p rhs ds))::HsDeclP)
+      = do (pf, pd)<-hsFreeAndDeclaredPNs p
+           (rf, rd)<-hsFreeAndDeclaredPNs rhs
+           (df, dd)<-hsFreeAndDeclaredPNs ds 
+           return (nub (pf `union` ((rf `union` df) \\ (dd `union` pd))),
+                   nub ((pd `union` rd `union` dd)))
+
+     decl (TiDecorate.Dec (HsFunBind loc matches))
+         =do fds <-mapM hsFDsFromInside matches
+             return (nub (concatMap fst fds), nub(concatMap snd fds))
+   
+     decl _ = mzero 
+ 
+     exp ((TiDecorate.Exp (HsLet decls exp))::HsExpP)
+          = do (df,dd)<- hsFreeAndDeclaredPNs decls
+               (ef,_)<- hsFreeAndDeclaredPNs exp 
+               return (nub (df `union` (ef \\ dd)), nub dd)
+     exp (TiDecorate.Exp (HsLambda pats body))
+            = do (pf,pd) <-hsFreeAndDeclaredPNs pats
+                 (bf,_) <-hsFreeAndDeclaredPNs body
+                 return (nub ((bf `union` pf) \\ pd), nub pd)      
+     exp _ = mzero
+
+     alt ((HsAlt _ pat exp decls)::HsAltP)
+         = do (pf,pd) <- hsFreeAndDeclaredPNs pat
+              (ef,ed) <- hsFreeAndDeclaredPNs exp
+              (df,dd) <- hsFreeAndDeclaredPNs decls
+              return (nub (pf `union` (((ef \\ dd) `union` df) \\ pd)), nub (pd `union` dd))      
+
+     stmts ((HsLetStmt decls stmts)::HsStmtP)
+          = do (df,dd) <-hsFreeAndDeclaredPNs decls
+               (sf,sd) <-hsFreeAndDeclaredPNs stmts
+               return (nub (df `union` (sf \\dd)),[]) -- dd)
+
+     stmts (HsGenerator _ pat exp stmts) 
+          = do (pf,pd) <-hsFreeAndDeclaredPNs pat
+               (ef,ed) <-hsFreeAndDeclaredPNs exp
+               (sf,sd) <-hsFreeAndDeclaredPNs stmts
+               return (nub (pf `union` ef `union` (sf\\pd)),[]) -- pd)
+     
+     stmts _ = mzero    
+++AZ++ -}
+
+-- -----
+
+{-
+hsFDsFromInside:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
+hsFDsFromInside t = do (f,d)<-hsFDsFromInside' t
+                       return (nub f, nub d)
+   where 
+     hsFDsFromInside' = applyTU (once_tdTU (failTU  `adhocTU` mod
+                                                    -- `adhocTU` decls
+                                                     `adhocTU` decl
+                                                     `adhocTU` match
+                                                     `adhocTU` exp
+                                                     `adhocTU` alt
+                                                     `adhocTU` stmts ))
+                                                    
+
+     mod ((HsModule loc modName exps imps ds)::HsModuleP)
+        = hsFreeAndDeclaredPNs ds  
+
+ {-    decls (ds::[HsDeclP])                    --CHECK THIS.
+       = hsFreeAndDeclaredPNs decls 
+-}
+     match ((HsMatch loc1 (PNT fun _ _) pats rhs ds) ::HsMatchP)
+       = do (pf, pd) <-hsFreeAndDeclaredPNs pats
+            (rf, rd) <-hsFreeAndDeclaredPNs rhs
+            (df, dd) <-hsFreeAndDeclaredPNs ds
+            return (nub (pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))), 
+                    nub (pd `union` rd `union` dd `union` [fun]))
+
+     decl ((TiDecorate.Dec (HsPatBind loc p rhs ds))::HsDeclP)
+      = do (pf, pd)<-hsFreeAndDeclaredPNs p
+           (rf, rd)<-hsFreeAndDeclaredPNs rhs
+           (df, dd)<-hsFreeAndDeclaredPNs ds 
+           return (nub (pf `union` ((rf `union` df) \\ (dd `union` pd))),
+                   nub ((pd `union` rd `union` dd)))
+
+     decl (TiDecorate.Dec (HsFunBind loc matches))
+         =do fds <-mapM hsFDsFromInside matches
+             return (nub (concatMap fst fds), nub(concatMap snd fds))
+   
+     decl _ = mzero 
+ 
+     exp ((TiDecorate.Exp (HsLet decls exp))::HsExpP)
+          = do (df,dd)<- hsFreeAndDeclaredPNs decls
+               (ef,_)<- hsFreeAndDeclaredPNs exp 
+               return (nub (df `union` (ef \\ dd)), nub dd)
+     exp (TiDecorate.Exp (HsLambda pats body))
+            = do (pf,pd) <-hsFreeAndDeclaredPNs pats
+                 (bf,_) <-hsFreeAndDeclaredPNs body
+                 return (nub ((bf `union` pf) \\ pd), nub pd)      
+     exp _ = mzero
+
+     alt ((HsAlt _ pat exp decls)::HsAltP)
+         = do (pf,pd) <- hsFreeAndDeclaredPNs pat
+              (ef,ed) <- hsFreeAndDeclaredPNs exp
+              (df,dd) <- hsFreeAndDeclaredPNs decls
+              return (nub (pf `union` (((ef \\ dd) `union` df) \\ pd)), nub (pd `union` dd))      
+
+     stmts ((HsLetStmt decls stmts)::HsStmtP)
+          = do (df,dd) <-hsFreeAndDeclaredPNs decls
+               (sf,sd) <-hsFreeAndDeclaredPNs stmts
+               return (nub (df `union` (sf \\dd)),[]) -- dd)
+
+     stmts (HsGenerator _ pat exp stmts) 
+          = do (pf,pd) <-hsFreeAndDeclaredPNs pat
+               (ef,ed) <-hsFreeAndDeclaredPNs exp
+               (sf,sd) <-hsFreeAndDeclaredPNs stmts
+               return (nub (pf `union` ef `union` (sf\\pd)),[]) -- pd)
+     
+     stmts _ = mzero    
+-}
+
+{-
+-- | The same as `hsFDsFromInside` except that the returned variables are in the String format
+hsFDNamesFromInside::(Term t, MonadPlus m)=>t->m ([String],[String])
+hsFDNamesFromInside t =do (f,d)<-hsFDsFromInside t
+                          return ((nub.map pNtoName) f, (nub.map pNtoName) d)
+-}
+
 -- ---------------------------------------------------------------------
 -- | Collect the identifiers (in PName format) in a given syntax phrase.
 
@@ -263,6 +635,167 @@ isDirectRecursiveDef (TiDecorate.Dec (HsFunBind loc ms))
    isUsedInDef (HsMatch loc1 fun pats rhs ds)
      = findEntity (pNTtoPN fun) rhs
 isDirectRecursiveDef _ = False
+-}
+-------------------------------------------------------------------------------
+
+{- | The HsDecls class -}
+class (SYB.Data t) => HsDecls t where
+
+    -- | Return the declarations that are directly enclosed in the
+    -- given syntax phrase.
+    hsDecls :: t -> [HsDeclP]
+
+    -- | Replace the directly enclosed declaration list by the given
+    --  declaration list. Note: This function does not modify the
+    --  token stream.
+    -- replaceDecls :: t -> HsDeclsP -> t -- ++AZ++ TODO: what are HsDeclsP?
+
+    -- | Return True if the specified identifier is declared in the
+    -- given syntax phrase.
+    isDeclaredIn :: PName -> t -> Bool
+
+instance HsDecls GHC.ParsedSource where
+   hsDecls (GHC.L _ (GHC.HsModule _ _ _ ds _ _)) = ds
+
+   isDeclaredIn pn (GHC.L _ (GHC.HsModule _ _ _ ds _ _))
+     = length (definingDecls [pn] ds False False) /= 0
+
+{-
+instance HsDecls HsMatchP where
+    hsDecls (HsMatch loc1 fun pats rhs ds@(Decs x y))=x
+
+    replaceDecls (HsMatch loc1 fun pats rhs ds) ds'
+      =(HsMatch loc1 fun pats rhs ds')
+
+    isDeclaredIn  pn match@(HsMatch loc1 (PNT fun _ _) pats rhs ds)
+       =fromMaybe False ( do (_,d)<-hsFDsFromInside match
+                             Just (elem pn (d \\ [fun])))
+instance HsDecls HsDeclP where
+    hsDecls (TiDecorate.Dec (HsPatBind loc p rhs ds@(Decs x y)))=x
+    hsDecls (TiDecorate.Dec (HsFunBind loc matches))=concatMap hsDecls matches
+    hsDecls _ =[]
+
+    replaceDecls (TiDecorate.Dec (HsPatBind loc p rhs ds)) ds'
+        =TiDecorate.Dec (HsPatBind loc p rhs ds')
+    replaceDecls x ds' =x
+
+    isDeclaredIn pn (TiDecorate.Dec (HsPatBind loc p rhs ds))
+      = fromMaybe False (do (_, rd)<-hsFreeAndDeclaredPNs rhs
+                            (_, dd)<-hsFreeAndDeclaredPNs ds
+                            Just (elem pn (rd `union` dd)))
+    isDeclaredIn pn _ =False
+
+instance HsDecls HsDeclsP where
+    hsDecls ds@(Decs x y) = concatMap hsDecls x
+    replaceDecls ds _ = ds
+    isDeclaredIn _ ds@(Decs x y) = False
+
+instance HsDecls [HsDeclP] where
+    hsDecls ds= concatMap hsDecls ds
+    replaceDecls ds _ = ds             -- This should not happen.
+    isDeclaredIn _ ds = False            -- This should not happen.
+
+instance HsDecls HsModuleP where
+    hsDecls (HsModule loc modName exps imps ds@(Decs x y))=x
+
+    replaceDecls (HsModule loc modName exps imps ds) ds'
+       = HsModule loc modName exps imps ds'
+
+    isDeclaredIn pn (HsModule loc modName exps imps ds)
+       =fromMaybe False  (do (rf,rd)<-hsFreeAndDeclaredPNs ds
+                             Just (elem pn rd))   
+
+instance HsDecls RhsP where
+    hsDecls rhs=fromMaybe [] (applyTU (stop_tdTU (failTU `adhocTU` inLet
+                                                                        `adhocTU` inAlt
+                                                                        `adhocTU` inStmt)) rhs) 
+             where inLet ((TiDecorate.Exp (HsLet ds@(Decs x y) e)) ::HsExpP)=Just x
+                   inLet _ =mzero
+
+                   inAlt ((HsAlt _ p rhs ds@(Decs x y))::HsAlt HsExpP HsPatP HsDeclsP)=Just x
+
+                   inStmt ((HsLetStmt ds@(Decs x y) _)::HsStmt HsExpP HsPatP HsDeclsP)=Just x
+                   inStmt _=mzero
+
+    replaceDecls rhs _ = rhs           -- This should not happen.
+    isDeclaredIn _ _  = False            -- This should not happen.
+
+instance HsDecls HsExpP where
+    hsDecls rhs=fromMaybe [] (applyTU (stop_tdTU (failTU `adhocTU` inLet
+                                                         `adhocTU` inAlt                  
+                                                         `adhocTU` inStmt)) rhs) 
+             where inLet ((TiDecorate.Exp (HsLet ds@(Decs x y) e)) ::HsExpP)=Just x
+                   inLet (TiDecorate.Exp (HsListComp (HsLetStmt ds@(Decs x y) stmts)))=Just x
+                   inLet (TiDecorate.Exp (HsDo (HsLetStmt ds@(Decs x y) stmts)))=Just x
+                   inLet _ =Nothing
+
+                   inAlt ((HsAlt _ p rhs ds@(Decs x y))::HsAlt HsExpP HsPatP HsDeclsP)=Just x
+
+                   inStmt ((HsLetStmt ds@(Decs x y) _)::HsStmt HsExpP HsPatP HsDeclsP)=Just x
+                   inStmt _=Nothing 
+    
+    replaceDecls (TiDecorate.Exp (HsLet ds e)) ds'
+            =if ds'== Decs [] ([], [])
+                then e 
+                else (TiDecorate.Exp (HsLet ds' e))
+                     
+    replaceDecls (TiDecorate.Exp (HsListComp (HsLetStmt ds stmts))) ds'@(Decs x y)
+            =if x==[] && isLast stmts 
+               then (TiDecorate.Exp (HsList [fromJust (expInLast stmts)]))
+               else (TiDecorate.Exp (HsListComp (HsLetStmt ds' stmts)))
+       where
+         isLast (HsLast e)=True
+         isLast _=False
+         
+         expInLast (HsLast e)=Just e
+         expInLast _=Nothing
+
+    replaceDecls (TiDecorate.Exp (HsDo (HsLetStmt ds stmts))) ds'@(Decs x y)
+            =if x==[] 
+                then (TiDecorate.Exp (HsDo stmts))
+                else (TiDecorate.Exp (HsDo (HsLetStmt ds' stmts)))
+    replaceDecls x ds'=x
+
+
+    isDeclaredIn pn (TiDecorate.Exp (HsLambda pats body))
+            = fromMaybe False (do (pf,pd) <-hsFreeAndDeclaredPNs pats
+                                  Just (elem pn  pd))
+
+    isDeclaredIn pn (TiDecorate.Exp (HsLet decls e))        
+           =fromMaybe False (do (df,dd)<- hsFreeAndDeclaredPNs decls
+                                Just (elem pn dd))
+        
+    isDeclaredIn pn _=False 
+                   
+
+instance HsDecls HsStmtP where
+    hsDecls (HsLetStmt ds@(Decs x y) stmts)=x
+    hsDecls  _ = []
+    
+    replaceDecls (HsLetStmt ds stmts) ds'@(Decs x y)
+     = if x/=[] then  HsLetStmt ds' stmts         
+                  else stmts
+
+    isDeclaredIn pn (HsGenerator _ pat exp stmts) -- Claus
+        =fromMaybe False (do (pf,pd) <-hsFreeAndDeclaredPNs pat
+                             Just (elem pn pd))
+
+    isDeclaredIn pn (HsLetStmt decls stmts)
+        =fromMaybe False (do (df,dd) <-hsFreeAndDeclaredPNs decls
+                             Just (elem pn dd))
+
+    isDeclaredIn pn _=False
+
+instance HsDecls HsAltP where
+    hsDecls (HsAlt _ p rhs ds@(Decs x y))=x
+
+    replaceDecls (HsAlt loc p rhs ds) ds'=HsAlt loc p rhs ds'
+
+    isDeclaredIn pn (HsAlt _ pat exp decls)
+       =fromMaybe False ( do (pf,pd) <- hsFreeAndDeclaredPNs pat
+                             (df,dd) <- hsFreeAndDeclaredPNs decls
+                             Just (elem pn (pd `union` dd)))
+    
 -}
 -- ---------------------------------------------------------------------
 
@@ -373,6 +906,55 @@ definingDecls pns ds incTypeSig recursive=concatMap defines ds
       defines' _ =[]
 -}
 
+-- ---------------------------------------------------------------------
+
+-- | Return True if the  function\/pattern binding defines the specified identifier.
+defines::PName->HsDeclP->Bool
+-- defines pn decl@(TiDecorate.Dec (HsFunBind loc ((HsMatch loc1 (PNT pname ty loc2) pats rhs ds):ms))) 
+--  = pname == pn
+-- defines pn decl@(TiDecorate.Dec (HsPatBind loc p rhs ds))
+--  = elem pn (hsPNs p)
+defines pn (GHC.L l (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
+ = PN pname == pn
+defines pn (GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _)))
+ = elem pn (hsPNs p)
+defines _ _= False
+
+{-
+-- | Return True if the declaration defines the type signature of the specified identifier.
+definesTypeSig :: PName -> HsDeclP -> Bool
+definesTypeSig pn (TiDecorate.Dec (HsTypeSig loc is c tp))=elem pn (map pNTtoPN is)  
+definesTypeSig _  _ =False
+
+
+-- | Return True if the declaration defines the type signature of the specified identifier.
+isTypeSigOf :: PNT -> HsDeclP -> Bool
+isTypeSigOf pnt (TiDecorate.Dec (HsTypeSig loc is c tp))= elem pnt is
+isTypeSigOf _  _ =False
+
+
+-- | Return the list of identifiers (in PName format) defined by a function\/pattern binding.
+definedPNs::HsDeclP->[PName]
+definedPNs (TiDecorate.Dec (HsFunBind _ ((HsMatch _ (PNT pname _ _) _ _ _):_))) =[pname]
+definedPNs (TiDecorate.Dec (HsPatBind _ p _ _)) =hsPNs p
+definedPNs (TiDecorate.Dec (HsDataDecl _ _ _ cons _) )
+   = getCons cons
+       where
+         getCons [] = []
+         getCons ((HsConDecl _ _ _ (PNT pname _ _) _):ms)
+           = pname : (getCons ms)
+         getCons ((HsRecDecl _ _ _ (PNT pname _ _) _):ms)
+           = pname : (getCons ms)
+         getCons _ = []
+definedPNs _=[]
+
+
+-- |Return True if the given syntax phrase contains any free variables.
+hasFreeVars::(Term t)=>t->Bool
+hasFreeVars t = fromMaybe False (do (f,_)<-hsFreeAndDeclaredPNs t
+                                    if f/=[] then Just True
+                                             else Nothing)
+-}
 ------------------------------------------------------------------------------------
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the

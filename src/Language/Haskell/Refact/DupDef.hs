@@ -83,8 +83,8 @@ doDuplicating pn newName (_,_,mod) =
         -- dupInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
         dupInMod :: (GHC.Located (GHC.HsModule GHC.RdrName))-> RefactGhc (GHC.Located (GHC.HsModule GHC.RdrName))
         dupInMod (mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
-          -- |findFunOrPatBind  pn ds /= [] = doDuplicating' inscps mod pn
-          |findFunOrPatBind pn ds /= [] = doDuplicating' mod pn
+          -- |findFunOrPatBind pn ds /= [] = doDuplicating' mod pn
+          | length (findFunOrPatBind pn ds) == 0 = doDuplicating' mod pn
         -- dupInMod _ =mzero
         dupInMod mod = return mod
 
@@ -134,16 +134,17 @@ doDuplicating pn newName (inscps, mod, tokList)
             mod (m::HsModuleP)
               = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
 -}
-        findFunOrPatBind :: PName -> [GHC.LHsDecl GHC.RdrName] -> [Int] -- TODO: fix this typedef, the [Int] is bogus
-        -- findFunOrPatBind pn ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDecls [pn] ds True False
-        findFunOrPatBind pn ds = undefined
+        findFunOrPatBind pn ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDecls [pn] ds True False
 
-        doDuplicating' {- inscps -}  parent pn = undefined
-{-
-        doDuplicating' inscps parent pn
+        doDuplicating' :: GHC.ParsedSource -> PName -> RefactGhc GHC.ParsedSource
+        -- doDuplicating' {- inscps -}  parent pn = undefined
+        doDuplicating' {- inscps -}  parent pn
            = do let decls           = hsDecls parent
                     duplicatedDecls = definingDecls [pn] decls True False
                     (after,before)  = break (defines pn) (reverse decls)
+                return parent -- ++AZ++ to keep GHC happy
+
+{-
                 (f,d) <- hsFDNamesFromInside parent
                  --f: names that might be shadowd by the new name, d: names that might clash with the new name
                 dv <- hsVisibleNames pn decls --dv: names may shadow new name
@@ -156,7 +157,6 @@ doDuplicating pn newName (inscps, mod, tokList)
                                ++ "duplicating, please select another name!")
                    else do newBinding<-duplicateDecl decls pn newName
                            return (replaceDecls parent (reverse before++ newBinding++ reverse after)) 
-
 -}
 
 {-
