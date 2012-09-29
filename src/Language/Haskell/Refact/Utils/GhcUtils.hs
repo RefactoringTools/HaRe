@@ -8,6 +8,15 @@ import GHC.SYB.Utils
 import NameSet
 import Control.Monad
 
+-- For Lens stuff
+import Control.Lens
+import Control.Applicative
+import Control.Lens
+import Control.Lens.Plated
+import Data.Data
+-- import Data.Data.Lens(uniplate,biplate,template,tinplate)
+import Unsafe.Coerce
+
 {-
 
 From Data.Generics
@@ -177,3 +186,119 @@ everywhereStaged stage f = f . gmapT (everywhere f)
         postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
         fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
 -}
+
+-- ---------------------------------------------------------------------
+-- Lens stuff
+
+-- | Naïve 'Traversal' using 'Data'. This does not attempt to optimize the traversal.
+--
+-- This is primarily useful when the children are immediately obvious, and for benchmarking.
+--
+-- @
+-- 'tinplate' :: ('Data' a, 'Typeable' b) => 'Simple' 'Traversal' a b
+-- @
+tinplate :: (Data a, Typeable b) => Simple Traversal a b
+tinplate f = gfoldl (step f) pure
+{-# INLINE tinplate #-}
+
+step :: (Applicative f, Typeable b, Data d) => (b -> f b) -> f (d -> e) -> d -> f e
+step f w d = w <*> case cast d of
+  Just b  -> unsafeCoerce <$> f b
+  Nothing -> tinplate f d
+{-# INLINE step #-}
+
+
+-- | Naïve 'Traversal' using 'Data', avoiding GHC holes for
+-- ParsedSource. This does not attempt to optimize the traversal.
+--
+--
+-- @
+-- 'ghcplate' :: ('Data' a, 'Typeable' b) => 'Simple' 'Traversal' a b
+-- @
+
+-- Simple Traversal a b ::: Traversal a a b b
+-- type   Traversal a b c d =  forall f. Applicative f => (c -> f d) -> a -> f b
+-- Simple Traversal a a b b :::forall f. Applicative f => (b -> f b) -> a -> f a
+
+-- ghcplate :: (Data a, Typeable b) => c -> Simple Traversal a b
+--ghcplate :: (Data a, Typeable b, Applicative f) =>
+--
+--                                                     c -> (b -> f b) -> a -> f a
+{-
+ghcplate :: (Data a, Typeable b, Applicative f) =>
+   ((b -> f b) -> f (d -> a) -> a -> f a)
+                                                         -> (b -> f b) -> a -> f a
+-}
+ghcplate ::
+  (Data a, Typeable b, Applicative c) => c1 -> (b -> c b) -> a -> c a
+ghcplate k f = gfoldl (stepghc' k f) pure
+{-# INLINE ghcplate #-}
+
+-- Need b ~ b2
+{-
+               ghcplate :: (Data a, Typeable b1, Applicative f) =>
+                           ((b1 -> f a1) -> f (a -> b) -> a -> f b)
+                           -> (b1 -> f a1) -> a -> f a
+               stepghc' :: (Data a, Typeable b1, Applicative f) =>
+                           ((b1 -> f a1) -> f (a -> b) -> a -> f b)
+                           -> (b1 -> f a1) -> f (a -> b) -> a -> f b
+-}
+
+stepghc' ::
+  (Data d, Typeable b, Applicative f) =>
+  c -> (b -> f b) -> f (d -> e) -> d -> f e
+
+{-
+stepghc' ::
+  (Data d, Typeable b, Applicative f) =>
+  ((b -> f b) -> f (d -> e) -> d -> f e)
+    -> (b -> f b) -> f (d -> e) -> d -> f e
+-}
+stepghc' k f w d 
+  -- We need (f e) as the result. 
+  -- | isGhcHole d = unhole k f w d  -- TODO: get a value for this, probably via a class
+  | isGhcHole d = (unhole k f w d)  -- TODO: get a value for this, probably via a class
+  | otherwise = w <*> case cast d of
+  Just b  -> unsafeCoerce <$> f b
+  Nothing -> ghcplate k f d
+
+unhole ::
+  (Data d, Typeable b, Applicative f) =>
+  c -> (b -> f b) -> f (d -> e) -> d -> f e
+unhole k f w d = undefined
+
+{-
+--                  forall d b. Data d =>                       c (d -> b) -> d -> c b
+-- stepghc :: (Applicative f, Typeable b, Data d) => (b -> f b) -> f (d -> e) -> d -> f e
+stepghc ::    (Applicative f, Typeable b, Data d) =>
+                                                b -> (b -> f d) -> f (d -> e) -> d -> f e
+stepghc k f w d 
+  | isGhcHole d = w <*> f k  -- TODO: get a value for this, probably via a class
+  | otherwise = w <*> case cast d of
+  Just b  -> unsafeCoerce <$> f b
+  Nothing -> ghcplate k f d
+{-# INLINE stepghc #-}
+-}
+
+isGhcHole :: Typeable a => a -> Bool
+isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
+  where 
+    isNameSet n = case (cast n)::(Maybe NameSet) of
+      Just _ -> True
+      Nothing -> False
+
+    isPostTcType n = case (cast n)::(Maybe PostTcType) of
+      Just _ -> True
+      Nothing -> False
+
+    isFixity n = case (cast n)::(Maybe GHC.Fixity) of
+      Just _ -> True
+      Nothing -> False
+
+
+-- gfoldl :: Data a => 
+-- (forall d b. Data d => c (d -> b) -> d -> c b) -- nonempty constructor (immediate subterm)
+-- -> (forall g. g -> c g)                        -- empty constructor 
+-- -> a                                           -- thing to be folded
+-- -> c a
+--

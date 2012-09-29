@@ -1051,18 +1051,6 @@ allPNT  fileName (row,col) t
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
-
-instance Plated GHC.ParsedSource where
-  plate = template
-  -- plate = uniplate
-  -- plate = tinplate
-
-instance Plated (GHC.Located GHC.RdrName) where
-  plate = template
-  -- plate = uniplate
-  -- plate = tinplate
-
-
 allPNTLens ::(SYB.Data t, SYB.Typeable t)=>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
@@ -1072,74 +1060,16 @@ allPNTLens ::(SYB.Data t, SYB.Typeable t)=>GHC.FastString   -- ^ The file name
 allPNTLens fileName (row,col) t
   = res
        where
-        res = []
-        -- res = pnts t
+        -- res = []
+        res = pnts t
 
-{-
-pnts :: (Plated t, SYB.Data t, SYB.Typeable t) => t -> [[PNT]]
--- pnts :: GHC.ParsedSource -> [[PNT]]
--- pnts t = [PNT pnt | pnt :: (GHC.Located GHC.RdrName) <- universe t]
-pnts t = [ppp x | x <- universe t]
+        pnts :: (SYB.Data a) => a -> [PNT]
+        -- pnts = foldMapOf template getPNT 
+        pnts = foldMapOf (ghcplate []) getPNT 
+        -- pnts = foldMapOf biplate getPNT 
 
-
-bb a = a ^. to ppp
-bbb a = a ^.. traverse.to ppp
--}
-{-
-ppp :: (SYB.Data t, SYB.Typeable t) => t -> [PNT]
--- ppp :: GHC.ParsedSource -> [PNT]
-ppp (pnt :: (GHC.Located GHC.RdrName)) = [(PNT pnt)]
-ppp _ = []
--}
---constants :: Expr -> [Int]
--- constants x = nub [y | Val y <- universe x]
- 
- 
- 
-
-rr :: (SYB.Typeable t) => t -> [PNT]
--- rr t = toListOf (tinplate www)  t
-rr t = undefined
-
-fff a = a ^..traverse.traverse
-
-www :: a -> b
-www = undefined
-
-xxx = toListOf -- (tinplate www)
-
-ff a = para ww []
-
-ww :: String -> [[String]] -> [String]
-ww (s::String) (r :: [[String]]) = (s:(concat r))
-
--- para :: Plated a => (a -> [r] -> r) -> a -> rSource
--- Perform a fold-like computation on each value, technically a paramorphism. 
-
-
--- ff a t =  a (^..) (tinplate t) traverse
--- gg a = a ^.. traverseOf (tinplate a) traverse
-
-
--- Allows gg ("hello","there",["sports","lovers"])
--- gg a = mapMOf_ tinplate putStrLn a
-
--- hh a = traverseOf tinplate worker a
-
--- ii a = tinplate worker a
-
-
-
-
-w :: [Char] -> [Char]
-w s = undefined
-
-worker (s :: [Char]) = [s]
-
-dd = ("hello","there",["sports","lovers"])
-
--- jj = dd ^.. tinplate . w
-
+getPNT pnt@(GHC.L l name) = [PNT pnt]
+-- getPNT 
 
   {-
         -- res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 -- Sample refactoring based on ifToCase
 import Bag
 import Bag(Bag,bagToList)
@@ -34,6 +35,7 @@ import qualified Language.Haskell.Refact.Case as GhcRefacCase
 -- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
 import Control.Monad.State
+
 import Control.Lens
 import Control.Applicative
 import Control.Lens
@@ -235,43 +237,26 @@ data Baz a = Baz a deriving (Data,Typeable,Show)
 
 td = Foo (Bar Nothing (Baz "Mary") [Baz "a",Baz "b",Baz "c"] "d")
 
-instance Plated (Foo) where
-   -- plate = uniplate
-   plate = tinplate
-
-instance (Data a) => Plated (Bar a) where
-  -- plate = uniplate
-  plate = tinplate
-
-
--- foo :: Simple Traversal a b
-foo :: (Data a,Typeable b) => Simple Traversal a (Baz b)
-foo = tinplate
+getBaz (Baz b) = [Baz b]
 
 qq :: (Data a) => a -> [Baz String]
-qq = foldMapOf foo getBaz
+qq = foldMapOf template getBaz
 
 gg = qq td
 
--- para :: Plated a => (a -> [r] -> r) -> a -> r
 
--- 1.a Construct a getter on Foo for all Baz String
+-- filtered :: (Gettable f, Applicative f) => (c -> Bool) -> LensLike f a b c d -> LensLike f a b c d
+hh = filtered isBaz foo
 
+-- ii :: (Data a) => a -> [Baz String]
+-- ii = foldMapOf hh getBaz
 
--- (a -> c) form
--- getBaz :: (Data a) => a -> [Baz a]
-getBaz (Baz b) = [Baz b]
--- getBaz _       = []
+-- template :: (Data a, Typeable b) => Simple Traversal a b
+foo :: (Data a, Typeable a) => Simple Traversal a a
+foo = template
 
--- (c -> r) -> a -> r form
--- getBaz' :: (Data a) => (Baz a -> r) -> a -> r
--- getBaz' cont a 
-
-
-
--- 2. Investigate universe*
-
-
+isBaz (Baz a) = True
+isBaz _ = False
 
 
 
