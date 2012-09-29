@@ -19,6 +19,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+import System.Environment
 
 main :: IO ()
 main = hspec spec
@@ -168,4 +169,13 @@ dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
 parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
 parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+
+-- ----------------------------------------------------
+
+-- Runners
+
+t = withArgs ["--match", "isFunBind"] main
+
+
+
 

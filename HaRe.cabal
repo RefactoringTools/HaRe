@@ -177,6 +177,8 @@ Executable ghc-hare
                     --            , transformers
                                 , ghc-syb-utils
                                 , old-time
+                                , lens >= 3.0
+                                , ghc-prim
                     --            , ghc-mtl
         -- ++AZ++ I prefer to put these in the individual files, as needed
         -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
@@ -278,3 +280,6 @@ test-suite spec
     , filepath
     , old-time
     , Diff
+    , lens >= 3.0
+    , ghc-prim
+

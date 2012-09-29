@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -- Sample refactoring based on ifToCase
 import Bag
 import Bag(Bag,bagToList)
@@ -33,6 +34,12 @@ import qualified Language.Haskell.Refact.Case as GhcRefacCase
 -- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
 import Control.Monad.State
+import Control.Lens
+import Control.Applicative
+import Control.Lens
+import Control.Lens.Plated
+import Data.Data
+import Data.Data.Lens(uniplate,biplate,template,tinplate)
 
 import Language.Haskell.Refact.Utils.GhcUtils
 
@@ -209,6 +216,64 @@ ifToCase (GHC.HsIf _se e1 e2 e3)
                       )
                    ] undefined)
 ifToCase x                          = x
+
+-- -----------------------------------------------------------------------------------------
+
+-- Playing with Lens
+
+-- 1. Investigate foldMapOf :: Getter a c -> (c ->r) -> a -> r
+
+data Foo = Foo { fa:: Bar String }  deriving (Data,Typeable,Show)
+
+data Bar a = Bar { ba :: Maybe a
+                 , bb :: Baz a
+                 , bc :: [Baz a]
+                 , dc :: a
+                 } deriving (Data,Typeable,Show)
+
+data Baz a = Baz a deriving (Data,Typeable,Show)
+
+td = Foo (Bar Nothing (Baz "Mary") [Baz "a",Baz "b",Baz "c"] "d")
+
+instance Plated (Foo) where
+   -- plate = uniplate
+   plate = tinplate
+
+instance (Data a) => Plated (Bar a) where
+  -- plate = uniplate
+  plate = tinplate
+
+
+-- foo :: Simple Traversal a b
+foo :: (Data a,Typeable b) => Simple Traversal a (Baz b)
+foo = tinplate
+
+qq :: (Data a) => a -> [Baz String]
+qq = foldMapOf foo getBaz
+
+gg = qq td
+
+-- para :: Plated a => (a -> [r] -> r) -> a -> r
+
+-- 1.a Construct a getter on Foo for all Baz String
+
+
+-- (a -> c) form
+-- getBaz :: (Data a) => a -> [Baz a]
+getBaz (Baz b) = [Baz b]
+-- getBaz _       = []
+
+-- (c -> r) -> a -> r form
+-- getBaz' :: (Data a) => (Baz a -> r) -> a -> r
+-- getBaz' cont a 
+
+
+
+-- 2. Investigate universe*
+
+
+
+
 
 -- -----------------------------------------------------------------------------------------
 -- From http://hpaste.org/65775

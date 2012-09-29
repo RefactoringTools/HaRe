@@ -111,6 +111,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
 -- * Debug stuff
   , allPNT
+  , allPNTLens
 
  ) where
 
@@ -156,6 +157,14 @@ import qualified Var           as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+-- Lens
+import Control.Lens hiding (Rep)
+import Control.Lens.Plated
+import Control.Lens.Traversal
+import Control.Lens.Traversal
+import Data.Data.Lens hiding (tinplate)
+import GHC.Generics hiding (from, to)
+import GHC.Generics.Lens
 
 -- Until exports are correct
 dummy = 1
@@ -1035,6 +1044,133 @@ allPNT  fileName (row,col) t
               (GHC.srcSpanStartLine ss == row) &&
               (col >= (GHC.srcSpanStartCol ss)) &&
               (col <= (GHC.srcSpanEndCol ss))
+
+
+
+------------------------------------------------------------------------------------
+
+-- |Find the identifier(in PNT format) whose start position is (row,col) in the
+-- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
+
+instance Plated GHC.ParsedSource where
+  plate = template
+  -- plate = uniplate
+  -- plate = tinplate
+
+instance Plated (GHC.Located GHC.RdrName) where
+  plate = template
+  -- plate = uniplate
+  -- plate = tinplate
+
+
+allPNTLens ::(SYB.Data t, SYB.Typeable t)=>GHC.FastString   -- ^ The file name
+                    ->SimpPos          -- ^ The row and column number
+                    ->t                -- ^ The syntax phrase
+                    ->[PNT]            -- ^ The result
+
+-- TODO: return a Maybe, rather than encoding failure in defaultPNT
+allPNTLens fileName (row,col) t
+  = res
+       where
+        res = []
+        -- res = pnts t
+
+{-
+pnts :: (Plated t, SYB.Data t, SYB.Typeable t) => t -> [[PNT]]
+-- pnts :: GHC.ParsedSource -> [[PNT]]
+-- pnts t = [PNT pnt | pnt :: (GHC.Located GHC.RdrName) <- universe t]
+pnts t = [ppp x | x <- universe t]
+
+
+bb a = a ^. to ppp
+bbb a = a ^.. traverse.to ppp
+-}
+{-
+ppp :: (SYB.Data t, SYB.Typeable t) => t -> [PNT]
+-- ppp :: GHC.ParsedSource -> [PNT]
+ppp (pnt :: (GHC.Located GHC.RdrName)) = [(PNT pnt)]
+ppp _ = []
+-}
+--constants :: Expr -> [Int]
+-- constants x = nub [y | Val y <- universe x]
+ 
+ 
+ 
+
+rr :: (SYB.Typeable t) => t -> [PNT]
+-- rr t = toListOf (tinplate www)  t
+rr t = undefined
+
+fff a = a ^..traverse.traverse
+
+www :: a -> b
+www = undefined
+
+xxx = toListOf -- (tinplate www)
+
+ff a = para ww []
+
+ww :: String -> [[String]] -> [String]
+ww (s::String) (r :: [[String]]) = (s:(concat r))
+
+-- para :: Plated a => (a -> [r] -> r) -> a -> rSource
+-- Perform a fold-like computation on each value, technically a paramorphism. 
+
+
+-- ff a t =  a (^..) (tinplate t) traverse
+-- gg a = a ^.. traverseOf (tinplate a) traverse
+
+
+-- Allows gg ("hello","there",["sports","lovers"])
+-- gg a = mapMOf_ tinplate putStrLn a
+
+-- hh a = traverseOf tinplate worker a
+
+-- ii a = tinplate worker a
+
+
+
+
+w :: [Char] -> [Char]
+w s = undefined
+
+worker (s :: [Char]) = [s]
+
+dd = ("hello","there",["sports","lovers"])
+
+-- jj = dd ^.. tinplate . w
+
+
+  {-
+        -- res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+        res = SYB.everythingStaged SYB.Parser (++) []
+            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+
+        worker (pnt :: (GHC.Located GHC.RdrName))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(PNT pnt)]
+        worker _ = []
+
+        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(PNT (GHC.L l name))]
+        workerBind _ = []
+
+        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(PNT (GHC.L l name))]
+        workerExpr _ = []
+
+        inScope :: GHC.Located e -> Bool
+        inScope (GHC.L l _) =
+          case l of
+            (GHC.UnhelpfulSpan _) -> False
+            (GHC.RealSrcSpan ss)  ->
+              (GHC.srcSpanFile ss == fileName) &&
+              (GHC.srcSpanStartLine ss == row) &&
+              (col >= (GHC.srcSpanStartCol ss)) &&
+              (col <= (GHC.srcSpanEndCol ss))
+  -}
 
 
 
