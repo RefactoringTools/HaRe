@@ -1065,7 +1065,7 @@ allPNTLens fileName (row,col) t
 
         pnts :: (SYB.Data a) => a -> [PNT]
         -- pnts = foldMapOf template getPNT 
-        pnts = foldMapOf (ghcplate []) getPNT 
+        pnts = foldMapOf ghcplate getPNT 
         -- pnts = foldMapOf biplate getPNT 
 
 getPNT pnt@(GHC.L l name) = [PNT pnt]

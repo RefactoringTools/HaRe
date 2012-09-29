@@ -190,24 +190,6 @@ everywhereStaged stage f = f . gmapT (everywhere f)
 -- ---------------------------------------------------------------------
 -- Lens stuff
 
--- | Naïve 'Traversal' using 'Data'. This does not attempt to optimize the traversal.
---
--- This is primarily useful when the children are immediately obvious, and for benchmarking.
---
--- @
--- 'tinplate' :: ('Data' a, 'Typeable' b) => 'Simple' 'Traversal' a b
--- @
-tinplate :: (Data a, Typeable b) => Simple Traversal a b
-tinplate f = gfoldl (step f) pure
-{-# INLINE tinplate #-}
-
-step :: (Applicative f, Typeable b, Data d) => (b -> f b) -> f (d -> e) -> d -> f e
-step f w d = w <*> case cast d of
-  Just b  -> unsafeCoerce <$> f b
-  Nothing -> tinplate f d
-{-# INLINE step #-}
-
-
 -- | Naïve 'Traversal' using 'Data', avoiding GHC holes for
 -- ParsedSource. This does not attempt to optimize the traversal.
 --
@@ -216,36 +198,18 @@ step f w d = w <*> case cast d of
 -- 'ghcplate' :: ('Data' a, 'Typeable' b) => 'Simple' 'Traversal' a b
 -- @
 
--- Simple Traversal a b ::: Traversal a a b b
--- type   Traversal a b c d =  forall f. Applicative f => (c -> f d) -> a -> f b
--- Simple Traversal a a b b :::forall f. Applicative f => (b -> f b) -> a -> f a
-
--- ghcplate :: (Data a, Typeable b) => c -> Simple Traversal a b
---ghcplate :: (Data a, Typeable b, Applicative f) =>
---
---                                                     c -> (b -> f b) -> a -> f a
-{-
-ghcplate :: (Data a, Typeable b, Applicative f) =>
-   ( f (d -> a) -> a -> f a)
-                                                         -> (b -> f b) -> a -> f a
--}
---ghcplate ::
---  (Data a, Typeable b, Applicative c) => c1 -> (b -> c b) -> a -> c a
---ghcplate :: (Data a, Typeable b, Applicative c) =>
---                           (c (a -> a) -> a -> c a)
---                                              -> (b -> c b) -> a -> c a
-ghcplate k f = gfoldl (stepghc' k f) pure
+ghcplate :: (Data a, Typeable b) => Simple Traversal a b
+ghcplate f = gfoldl (stepghc f) pure
 {-# INLINE ghcplate #-}
 
-
-stepghc' ::
+stepghc ::
   (Data d, Typeable b, Applicative f) =>
-  c -> (b -> f b) -> f (d -> e) -> d -> f e
-stepghc' k f w d 
+  (b -> f b) -> f (d -> e) -> d -> f e
+stepghc f w d 
   | isGhcHole d = ($d) <$> w 
   | otherwise = w <*> case cast d of
-  Just b  -> unsafeCoerce <$> f b
-  Nothing -> ghcplate k f d
+      Just b  -> unsafeCoerce <$> f b
+      Nothing -> ghcplate f d
 
 isGhcHole :: Typeable a => a -> Bool
 isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
