@@ -237,54 +237,15 @@ ghcplate :: (Data a, Typeable b, Applicative f) =>
 ghcplate k f = gfoldl (stepghc' k f) pure
 {-# INLINE ghcplate #-}
 
--- Need b ~ b2
-{-
-               ghcplate :: (Data a, Typeable b1, Applicative f) =>
-                           ((b1 -> f a1) -> f (a -> b) -> a -> f b)
-                           -> (b1 -> f a1) -> a -> f a
-               stepghc' :: (Data a, Typeable b1, Applicative f) =>
-                           ((b1 -> f a1) -> f (a -> b) -> a -> f b)
-                           -> (b1 -> f a1) -> f (a -> b) -> a -> f b
--}
 
 stepghc' ::
   (Data d, Typeable b, Applicative f) =>
   c -> (b -> f b) -> f (d -> e) -> d -> f e
-
-{-
-stepghc' ::
-  (Data d, Typeable b, Applicative f) =>
-      (              f (d -> e) -> d -> f e)
-    -> (b -> f b) -> f (d -> e) -> d -> f e
---         f            w          d
--}
 stepghc' k f w d 
-  -- We need (f e) as the result. 
-  -- | isGhcHole d = unhole k f w d  -- TODO: get a value for this, probably via a class
-  | isGhcHole d = ($d) <$> w -- undefined -- (k f w d)  -- TODO: get a value for this, probably via a class
+  | isGhcHole d = ($d) <$> w 
   | otherwise = w <*> case cast d of
   Just b  -> unsafeCoerce <$> f b
   Nothing -> ghcplate k f d
-
-{-
-unhole ::
-  (Data d, Typeable b, Applicative f) =>
-  c -> (b -> f b) -> f (d -> e) -> d -> f e
--}
-unhole k f w d = undefined
-
-{-
---                  forall d b. Data d =>                       c (d -> b) -> d -> c b
--- stepghc :: (Applicative f, Typeable b, Data d) => (b -> f b) -> f (d -> e) -> d -> f e
-stepghc ::    (Applicative f, Typeable b, Data d) =>
-                                                b -> (b -> f d) -> f (d -> e) -> d -> f e
-stepghc k f w d 
-  | isGhcHole d = w <*> f k  -- TODO: get a value for this, probably via a class
-  | otherwise = w <*> case cast d of
-  Just b  -> unsafeCoerce <$> f b
-  Nothing -> ghcplate k f d
-{-# INLINE stepghc #-}
--}
 
 isGhcHole :: Typeable a => a -> Bool
 isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
