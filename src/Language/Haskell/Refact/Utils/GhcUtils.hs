@@ -226,11 +226,14 @@ step f w d = w <*> case cast d of
 --                                                     c -> (b -> f b) -> a -> f a
 {-
 ghcplate :: (Data a, Typeable b, Applicative f) =>
-   ((b -> f b) -> f (d -> a) -> a -> f a)
+   ( f (d -> a) -> a -> f a)
                                                          -> (b -> f b) -> a -> f a
 -}
-ghcplate ::
-  (Data a, Typeable b, Applicative c) => c1 -> (b -> c b) -> a -> c a
+--ghcplate ::
+--  (Data a, Typeable b, Applicative c) => c1 -> (b -> c b) -> a -> c a
+--ghcplate :: (Data a, Typeable b, Applicative c) =>
+--                           (c (a -> a) -> a -> c a)
+--                                              -> (b -> c b) -> a -> c a
 ghcplate k f = gfoldl (stepghc' k f) pure
 {-# INLINE ghcplate #-}
 
@@ -251,20 +254,23 @@ stepghc' ::
 {-
 stepghc' ::
   (Data d, Typeable b, Applicative f) =>
-  ((b -> f b) -> f (d -> e) -> d -> f e)
+      (              f (d -> e) -> d -> f e)
     -> (b -> f b) -> f (d -> e) -> d -> f e
+--         f            w          d
 -}
 stepghc' k f w d 
   -- We need (f e) as the result. 
   -- | isGhcHole d = unhole k f w d  -- TODO: get a value for this, probably via a class
-  | isGhcHole d = (unhole k f w d)  -- TODO: get a value for this, probably via a class
+  | isGhcHole d = ($d) <$> w -- undefined -- (k f w d)  -- TODO: get a value for this, probably via a class
   | otherwise = w <*> case cast d of
   Just b  -> unsafeCoerce <$> f b
   Nothing -> ghcplate k f d
 
+{-
 unhole ::
   (Data d, Typeable b, Applicative f) =>
   c -> (b -> f b) -> f (d -> e) -> d -> f e
+-}
 unhole k f w d = undefined
 
 {-
