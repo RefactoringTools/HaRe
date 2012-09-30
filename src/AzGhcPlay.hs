@@ -154,7 +154,7 @@ getStuff =
         -- GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
 
         let ps  = GHC.pm_parsed_source p
-        GHC.liftIO (putStrLn $ SYB.showData SYB.Parser 0 ps)
+        -- GHC.liftIO (putStrLn $ SYB.showData SYB.Parser 0 ps)
 
         rts <- GHC.getRichTokenStream (GHC.ms_mod modSum)
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
@@ -177,6 +177,13 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (SYB.showData SYB.Parser 0 $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (GHC.showPpr $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
         -- GHC.liftIO (putStrLn $ "moduleInfo.TopLevelScope=" ++ (GHC.showPpr $ GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info t))
+
+        -- Investigating TypeCheckedModule, in t
+        --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
+        --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+
+        GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
+        GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
         return ()
 
 tokenLocs toks = map (\(GHC.L l _, s) -> (l,s)) toks

@@ -61,7 +61,8 @@ data RefactState = RefSt
 -- change as we learn more
 
 -- type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
-type ParseResult = (GHC.TypecheckedSource, [GHC.LIE GHC.RdrName], GHC.ParsedSource)
+-- type ParseResult = (GHC.TypecheckedSource, [GHC.LIE GHC.RdrName], GHC.ParsedSource)
+type ParseResult = (GHC.TypecheckedSource, Maybe GHC.RenamedSource, GHC.ParsedSource)
 
 -- TODO: >>>>>> This section has been superseded ++AZ++
 {-

@@ -373,7 +373,7 @@ parseSourceFile:: ( ) =>FilePath
 
 parseSourceFile ::
   String
-  -> IO (ParseResult, [PosToken])  -- ([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource, [PosToken])
+  -> IO (ParseResult, [PosToken])  
 parseSourceFile targetFile =
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
     GHC.runGhc (Just GHC.libdir) $ do
@@ -392,11 +392,13 @@ parseSourceFile targetFile =
 
       let pm = GHC.tm_parsed_module t
 
-      let inscopes = GHC.tm_typechecked_source t
-          modAst = GHC.pm_parsed_source p
-          exports = getExports modAst
+      let typechecked = GHC.tm_typechecked_source t
+          renamed     = GHC.tm_renamed_source t
+          parsed      = GHC.pm_parsed_source pm
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      return ((inscopes,exports,modAst),tokens)
+      -- return ((inscopes,exports,modAst),tokens)
+      return ((typechecked,renamed,parsed),tokens)
+
 
 -- ---------------------------------------------------------------------
 
@@ -421,11 +423,12 @@ parseSourceFileGhc targetFile = do
 
       let pm = GHC.tm_parsed_module t
 
-      let inscopes = GHC.tm_typechecked_source t
-          modAst = GHC.pm_parsed_source p
-          exports = getExports modAst
+      let typechecked = GHC.tm_typechecked_source t
+          renamed     = GHC.tm_renamed_source t
+          parsed      = GHC.pm_parsed_source pm
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      return ((inscopes,exports,modAst),tokens)
+      -- return ((inscopes,exports,modAst),tokens)
+      return ((typechecked,renamed,parsed),tokens)
 
 -- ---------------------------------------------------------------------
 
