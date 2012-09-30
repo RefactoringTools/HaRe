@@ -46,6 +46,7 @@ runRefactGhcState paramcomp = do
      -- initialState = ReplState { repl_inputState = initInputState }
      initialState = RefSt
         { rsSettings = RefSet ["./test/testdata/"]
+        , rsUniqState = 1
         , rsTokenStream = [] -- :: [PosToken]
         , rsStreamModified = False -- :: Bool
         -- , rsPosition = (-1,-1) -- :: (Int,Int)

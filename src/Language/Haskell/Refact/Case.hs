@@ -8,6 +8,7 @@ import qualified GHC
 import qualified DynFlags              as GHC
 import qualified Outputable            as GHC
 import qualified MonadUtils            as GHC
+import qualified Name                  as GHC
 import qualified RdrName               as GHC
 import qualified OccName               as GHC
 
@@ -35,8 +36,8 @@ ifToCase args
 comp :: String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
        modInfo@((_, _, ast), toks) <- parseSourceFileGhc fileName
-       let exp = locToExp beginPos endPos toks ast
-       case exp of
+       let expr = locToExp beginPos endPos toks ast
+       case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do refactoredMod <- applyRefac (doIfToCase exp1) (Just modInfo ) fileName
                       return [refactoredMod]
@@ -44,24 +45,24 @@ comp fileName beginPos endPos = do
 
 
 doIfToCase ::
-  GHC.GenLocated GHC.SrcSpan HsExpP
+  GHC.Located (GHC.HsExpr GHC.Name)
   -> ParseResult
   -> RefactGhc GHC.ParsedSource
-doIfToCase exp (_, _, mod) =
+doIfToCase expr (_,Just rs,ps) =
 
-   everywhereMStaged SYB.Parser (SYB.mkM inExp) mod
+   everywhereMStaged SYB.Parser (SYB.mkM inExp) ps -- rs
        where
-         inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
+         inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
          inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
-           | sameOccurrence exp exp1
+           | sameOccurrence expr exp1
            = let newExp = ifToCaseTransform exp1
              in update exp1 newExp exp1
 
          inExp e = return e
 
 
-
-ifToCaseTransform :: GHC.Located HsExpP -> GHC.Located HsExpP
+ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> GHC.Located (GHC.HsExpr GHC.Name)
+{- ++AZ++ temporary
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3))
   = GHC.L l (GHC.HsCase e1
              (GHC.MatchGroup
@@ -87,6 +88,7 @@ ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3))
                    ] GHC.EmptyLocalBinds))
                 )
               ] undefined))
+++AZ++ end -}
 ifToCaseTransform x                          = x
 
 

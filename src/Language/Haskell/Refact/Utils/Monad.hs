@@ -50,6 +50,7 @@ data RefactSettings = RefSet
 -- stream, which gets updated transparently at key points.
 data RefactState = RefSt
         { rsSettings :: RefactSettings -- Session level settings
+        , rsUniqState :: Int -- ^ Current Unique creator value, incremented every time it is used
         , rsTokenStream :: [PosToken]  -- Token stream for the current module
         , rsStreamModified :: Bool     -- current module has updated the token stream
         -- , rsPosition :: (Int,Int)

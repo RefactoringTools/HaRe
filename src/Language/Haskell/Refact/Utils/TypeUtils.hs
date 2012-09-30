@@ -60,7 +60,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,usedWithoutQual,canBeQualified, hasFreeVars,isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
     -- ,findPNs, findEntity
-    -- ,sameOccurrence
+    ,sameOccurrence
     ,defines -- ,definesTypeSig, isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
 
@@ -99,8 +99,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,definingDecls -- , definedPNs
     -- ,simplifyDecl
     -- ** Others
-   -- ,mkNewName, applyRefac, applyRefacToClientMods
-    , mkRdrName
+   -- , applyRefac, applyRefacToClientMods
+    , mkRdrName, mkNewName
 
     -- The following functions are not in the the API yet.
     -- ,getDeclToks, causeNameClashInExports, inRegion , ghead, glast, gfromJust, unmodified, prettyprint,
@@ -153,6 +153,7 @@ import qualified SrcLoc        as GHC
 import qualified TcEvidence    as GHC
 import qualified TcType        as GHC
 import qualified TypeRep       as GHC
+import qualified Unique        as GHC
 import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
@@ -190,6 +191,21 @@ defaultExp::HsExpP
 defaultExp=GHC.HsVar $ mkRdrName "nothing"
 
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
+
+-- | Make a new GHC.Name, using the Unique Int sequence stored in the
+-- RefactState
+
+mkNewName :: String -> RefactGhc GHC.Name
+mkNewName name = do
+  s <- get
+  u <- gets rsUniqState
+  put s { rsUniqState = (u+1) }
+
+  let un = GHC.mkUnique 'C' (u+1)
+      n = GHC.mkSystemName un (GHC.mkVarOcc name)
+
+  return n
+
 
 {-
 ------------------------------------------------------------------------
@@ -915,6 +931,23 @@ definingDecls pns ds incTypeSig recursive=concatMap defines ds
                  | isJust (find (==pname) pns) = True
                  | otherwise = checkCons ms
       defines' _ =[]
+-}
+
+-- ---------------------------------------------------------------------
+
+-- TODO: AZ: pretty sure this can be simplified, depends if we need to
+--          manage transformed stuff too though.
+
+-- | Return True if syntax phrases t1 and t2 refer to the same one.
+sameOccurrence :: (GHC.Located t) -> (GHC.Located t) -> Bool
+sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
+ -- = error $ "sameOccurrence:" ++ (show l1) ++ "," ++ (show l2) -- ++AZ++ debug
+ = l1 == l2
+
+{- original
+sameOccurrence:: (Term t, Eq t) => t -> t -> Bool
+sameOccurrence t1 t2
+ = t1 == t2 && srcLocs t1 == srcLocs t2
 -}
 
 -- ---------------------------------------------------------------------

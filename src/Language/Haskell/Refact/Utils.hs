@@ -346,23 +346,6 @@ getModuleName (GHC.L _ mod) =
 
 -- ---------------------------------------------------------------------
 
--- TODO: AZ: pretty sure this can be simplified, depends if we need to
---          manage transformed stuff too though.
-
--- | Return True if syntax phrases t1 and t2 refer to the same one.
-sameOccurrence :: (GHC.Located t) -> (GHC.Located t) -> Bool
-sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
- -- = error $ "sameOccurrence:" ++ (show l1) ++ "," ++ (show l2) -- ++AZ++ debug
- = l1 == l2
-
-{- original
-sameOccurrence:: (Term t, Eq t) => t -> t -> Bool
-sameOccurrence t1 t2
- = t1 == t2 && srcLocs t1 == srcLocs t2
--}
-
--- ---------------------------------------------------------------------
-
 -- |Parse a Haskell source files, and returns a four-element tuple. The first element in the result is the inscope
 -- relation, the second element is the export relation, the third is the AST of the module and the forth element is
 -- the token stream of the module.
@@ -505,6 +488,7 @@ runRefacSession settings comp = do
   let
    initialState = RefSt
         { rsSettings = fromMaybe (RefSet ["."]) settings
+        , rsUniqState = 1
         , rsTokenStream = [] -- :: [PosToken]
         , rsStreamModified = False -- :: Bool
         }
@@ -536,14 +520,14 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
     -- restore the state. Fix this to store the modules in some kind of cache.
-    (RefSt settings ts m) <- get
-    put (RefSt settings toks False)
+    (RefSt settings u ts m) <- get
+    put (RefSt settings u toks False)
 
     mod' <- refac parsedFile
-    (RefSt _ toks' m) <- get
+    (RefSt _ u' toks' m) <- get
 
     -- Replace state with original, probably not needed
-    put (RefSt settings ts m)
+    put (RefSt settings u' ts m)
 
     return ((fileName,m),(toks', mod'))
 
@@ -560,48 +544,32 @@ applyRefacToClientMods refac fileName
 
 -- ---------------------------------------------------------------------
 
-{- ++AZ++ trying to replace this with a generic alternative
-{- | The Update class, -}
-class (Term t, Term t1)=>Update t t1 where
-
-  -- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
-  update::(MonadPlus m, MonadState (([PosToken],Bool),(Int,Int)) m)=>  t     -- ^ The syntax phrase to be updated.
-                                                             -> t     -- ^ The new syntax phrase.
-                                                             -> t1    -- ^ The contex where the old syntax phrase occurs.
-                                                             -> m t1  -- ^ The result.
--}
-
--- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
-{-
-update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([PosToken],Bool),(Int,Int)) m) =>
-        t     -- ^ The syntax phrase to be updated.
-        -> t     -- ^ The new syntax phrase.
-        -> t1    -- ^ The contex where the old syntax phrase occurs.
-        -> m t1  -- ^ The result.
--}
+{- ++AZ++ TODO: replace this with a single function -}
 
 class (SYB.Data t, SYB.Data t1)=>Update t t1 where
 
-  -- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
+  -- | Update the occurrence of one syntax phrase in a given scope by
+  -- another syntax phrase of the same type
   update::  t     -- ^ The syntax phrase to be updated.
          -> t     -- ^ The new syntax phrase.
          -> t1    -- ^ The contex where the old syntax phrase occurs.
          -> RefactGhc t1  -- ^ The result.
 
-instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
-{- update ::
- forall t .
-  (SYB.Data t, GHC.Outputable t) =>
-  GHC.GenLocated GHC.SrcSpan t        -- ^ The syntax phrase to be updated.
-  -> GHC.GenLocated GHC.SrcSpan t     -- ^ The new syntax phrase.
-  -> GHC.GenLocated GHC.SrcSpan t     -- ^ The contex where the old syntax phrase occurs.
-  -> Refact (GHC.GenLocated GHC.SrcSpan t) -- ^ The result. -}
+instance (SYB.Data t) => Update (GHC.Located (GHC.HsExpr GHC.Name)) t where
     update oldExp newExp t
            = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
        where
-       -- inExp :: -- (MonadState (([PosToken], Bool), (Int, Int)) m,
-         --    ( GHC.Outputable t) =>
-         --    GHC.GenLocated GHC.SrcSpan t -> Refact (GHC.GenLocated GHC.SrcSpan t)
+        inExp (e::GHC.Located (GHC.HsExpr GHC.Name))
+          | sameOccurrence e oldExp
+               = do (newExp', _) <- updateToks oldExp newExp prettyprint
+                -- error "update: updated tokens" -- ++AZ++ debug
+                    return newExp'
+          | otherwise = return e
+
+instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
+    update oldExp newExp t
+           = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
+       where
         inExp (e::GHC.Located HsExpP)
           | sameOccurrence e oldExp
                = do (newExp', _) <- updateToks oldExp newExp prettyprint

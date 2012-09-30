@@ -509,7 +509,7 @@ updateToks ::
   -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> m (GHC.GenLocated GHC.SrcSpan t, [PosToken])
 updateToks oldAST newAST printFun
    = trace "updateToks" $ 
-     do (RefSt s toks _) <- get
+     do (RefSt s u toks _) <- get
 	let offset             = lengthOfLastLine toks1
             (toks1, _, _)      = splitToks (startPos, endPos) toks
 	    (startPos, endPos) = getStartEndLoc toks oldAST
@@ -517,14 +517,14 @@ updateToks oldAST newAST printFun
         let 
             toks' = replaceToks toks startPos endPos newToks
         if length newToks == 0
-          then put (RefSt s toks' modified) -- TODO:how do we flag this? Do we have to?
-          else put (RefSt s toks' modified)
+          then put (RefSt s u toks' modified) -- TODO:how do we flag this? Do we have to?
+          else put (RefSt s u toks' modified)
 	
         return (newAST, newToks) 
 
 updateToksList oldAST newAST printFun
    = trace "updateToksList" $ 
-     do (RefSt s toks _) <- get
+     do (RefSt s u toks _) <- get
         let offset                        = lengthOfLastLine toks1
             (toks1,toks2az, toks3az)      = splitToks (startPos, endPos) toks
             (startPos, endPos)            = getStartEndLoc2 toks oldAST
@@ -536,8 +536,8 @@ updateToksList oldAST newAST printFun
         let 
             toks' = replaceToks toks startPos endPos newToks
         if length newToks == 0
-          then put (RefSt s toks' modified) -- TODO:how do we flag this? Do we have to?
-          else put (RefSt s toks' modified)
+          then put (RefSt s u toks' modified) -- TODO:how do we flag this? Do we have to?
+          else put (RefSt s u toks' modified)
 	
         return (newAST, newToks) 
 

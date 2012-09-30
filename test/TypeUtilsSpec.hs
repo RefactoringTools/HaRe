@@ -137,13 +137,13 @@ spec = do
       let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
       isSimplePatBind decl  `shouldBe` True
 
--- ---------------------------------------------------------------------
+  -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredPNs" $ do
     it "does something useful" $ do
       pending "Complete this"
 
--- ---------------------------------------------------------------------
+  -- ---------------------------------------------------------------------
 
   describe "hsFDsFromInside" $ do
     it "does something useful" $ do
@@ -153,7 +153,16 @@ spec = do
     it "does something useful" $ do
       pending "Complete this"
 
+  -- ---------------------------------------------
 
+  describe "mkNewName" $ do
+    it "Creates a new GHC.Name" $ do
+      let
+        comp = do
+         name <- mkNewName "foo"
+         return name
+      (n,s) <- runRefactGhcState comp
+      GHC.showPpr n `shouldBe` "foo"
 
 -- ---------------------------------------------------------------------
 -- Helper functions
