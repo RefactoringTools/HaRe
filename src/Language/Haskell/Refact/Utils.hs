@@ -712,37 +712,6 @@ expToPNT _ = Nothing
 
 
 
--- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
---  region specified by the start and end position. If no expression can be found, then return the defaultExp.
-locToExp:: (SYB.Data t) => SimpPos            -- ^ The start position.
-                        -> SimpPos            -- ^ The end position.
-                -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
-                -> t                  -- ^ The syntax phrase.
-                -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
-locToExp beginPos endPos toks t =
-  case res of
-     Just x -> x
-     Nothing -> GHC.L GHC.noSrcSpan defaultExp
-     -- _  -> error $ "locToExp:unexpected:" ++ (SYB.showData SYB.Parser 0 res)
-  where
-     res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` exp) t
-
-     exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> (Maybe (GHC.Located (GHC.HsExpr GHC.RdrName)))
-     exp e
-        |inScope e = Just e
-     exp _ = Nothing
-
-     inScope :: GHC.Located e -> Bool
-     inScope (GHC.L l _) =
-       let
-         (startLoc,endLoc) = case l of
-           (GHC.RealSrcSpan ss) ->
-             ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
-              (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
-           (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
-       in
-        (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
-
 -- ---------------------------------------------------------------------
 
 -- | Return True if a string is a lexically  valid variable name.

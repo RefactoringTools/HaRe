@@ -49,7 +49,7 @@ getFreeVariables t = res
 
     -- bind :: (SYB.Data a, SYB.Typeable a) => a -> [GHC.NameSet]
     bind ((GHC.FunBind _ _ _ _ fvs _)::(GHC.HsBindLR GHC.Name GHC.Name)) = [fvs]
-    bind ((GHC.PatBind _ _ _ fvs _)::(GHC.HsBindLR GHC.Name GHC.Name)) = [fvs]
+    bind ((GHC.PatBind _ _ _ fvs _)  ::(GHC.HsBindLR GHC.Name GHC.Name)) = [fvs]
     bind _ = []
 
 

@@ -37,8 +37,8 @@ comp fileName beginPos endPos = do
        modInfo@((_, _, ast), toks) <- parseSourceFileGhc fileName
        let exp = locToExp beginPos endPos toks ast
        case exp of
-         (GHC.L _ (GHC.HsIf _ _ _ _))
-                -> do refactoredMod <- applyRefac (doIfToCase exp) (Just modInfo ) fileName
+         Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
+                -> do refactoredMod <- applyRefac (doIfToCase exp1) (Just modInfo ) fileName
                       return [refactoredMod]
          _      -> error "You haven't selected an if-then-else  expression!"
 

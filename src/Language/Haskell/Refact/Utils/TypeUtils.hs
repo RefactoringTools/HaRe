@@ -70,7 +70,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,fileNameToModName, strToModName, modNameToStr
 
     -- ** Locations
-    {- ,defineLoc, useLoc-},locToPNT --,locToPN,locToExp, getStartEndLoc
+    {- ,defineLoc, useLoc-},locToPNT {-,locToPN -},locToExp -- , getStartEndLoc
 
  -- * Program transformation
     -- ** Adding
@@ -1131,8 +1131,37 @@ getPNTBind _ = []
               (col <= (GHC.srcSpanEndCol ss))
   -}
 
+-- ---------------------------------------------------------------------
+-- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
+--  region specified by the start and end position. If no expression can be found, then return the defaultExp.
+locToExp:: (SYB.Data t,SYB.Typeable n) => 
+                   SimpPos    -- ^ The start position.
+                -> SimpPos    -- ^ The end position.
+                -> [PosToken] -- ^ The token stream which should at least contain the tokens for t.
+                -> t          -- ^ The syntax phrase.
+                -> Maybe (GHC.Located (GHC.HsExpr n)) -- ^ The result.
+locToExp beginPos endPos _toks t = res
+  -- case res of
+  --    Just x -> x
+  --    Nothing -> GHC.L GHC.noSrcSpan defaultExp
+  where
+     res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` expr) t
 
+     expr :: GHC.Located (GHC.HsExpr n) -> (Maybe (GHC.Located (GHC.HsExpr n)))
+     expr e
+        |inScope e = Just e
+     expr _ = Nothing
 
+     inScope :: GHC.Located e -> Bool
+     inScope (GHC.L l _) =
+       let
+         (startLoc,endLoc) = case l of
+           (GHC.RealSrcSpan ss) ->
+             ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
+              (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
+           (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
+       in
+        (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
 
 ------------------------------------------------------------------------------------
 -- | From PNT to PName.

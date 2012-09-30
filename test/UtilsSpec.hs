@@ -9,6 +9,7 @@ import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
+import qualified Name       as GHC
 import qualified Outputable as GHC
 import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
@@ -30,19 +31,25 @@ spec = do
 
   describe "locToExp" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
-      modInfo@((_, _, mod), toks) <- parsedFileBGhc
+      ((_, _, mod), toks) <- parsedFileBGhc
 
-      let exp = locToExp (7,7) (7,43) toks mod
-      getLocatedStart exp `shouldBe` (7,9)
-      getLocatedEnd   exp `shouldBe` (7,42)
-
+      let (Just expr) = locToExp (7,7) (7,43) toks mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+      getLocatedStart expr `shouldBe` (7,9)
+      getLocatedEnd   expr `shouldBe` (7,42)
 
     it "finds the largest leftmost expression contained in a given region #2" $ do
-      modInfo@((_, _, mod), toks) <- parsedFileBGhc
+      ((_, _, mod), toks) <- parsedFileBGhc
 
-      let exp = locToExp (7,7) (7,41) toks mod
-      getLocatedStart exp `shouldBe` (7,12)
-      getLocatedEnd   exp `shouldBe` (7,19)
+      let (Just expr) = locToExp (7,7) (7,41) toks mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+      getLocatedStart expr `shouldBe` (7,12)
+      getLocatedEnd   expr `shouldBe` (7,19)
+
+    it "finds the largest leftmost expression in RenamedSource" $ do
+      ((_, renamed, _), toks) <- parsedFileBGhc
+
+      let (Just expr) = locToExp (7,7) (7,41) toks renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
+      getLocatedStart expr `shouldBe` (7,12)
+      getLocatedEnd   expr `shouldBe` (7,19)
 
   -- -------------------------------------------------------------------
  
