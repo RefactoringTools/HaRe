@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 ----------------------------------------------------------------------------------------------------------------
 -- Module      : TypeUtils
 
@@ -158,6 +159,7 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 -- Lens
+import Control.Applicative
 import Control.Lens hiding (Rep)
 import Control.Lens.Plated
 import Control.Lens.Traversal
@@ -1063,12 +1065,39 @@ allPNTLens fileName (row,col) t
         -- res = []
         res = pnts t
 
-        pnts :: (SYB.Data a) => a -> [PNT]
-        -- pnts = foldMapOf template getPNT 
-        pnts = foldMapOf ghcplate getPNT 
-        -- pnts = foldMapOf biplate getPNT 
+        pnts :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
+        -- pnts = foldMapOf ghcplate getPNT 
+
+        -- foldMapOf :: Monoid r => Simple Traversal a c -> (c -> r) -> a -> r
+        pnts = foldMapOf mytraverse pntQ
+        -- pnts = foldMapOf mytraverse getPNT
+        -- pnts = foldMapOf ghcplate getPNT
+        -- pnts = foldOf mytraverse 
+        -- pnts = foldMapOf ghcplate getPNTBind
+
+
+mytraverse :: (SYB.Data a) => Simple Traversal a [PNT]
+mytraverse = ghcplate 
+
+-- ghcplate ::
+--   (Data a, Typeable b, Applicative c) => (b -> c b) -> a -> c a
+
+-- foo :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
+foo = undefined
+
+-- mytraverse :: (SYB.Data a, SYB.Data b, SYB.Typeable b) => Simple Traversal a b
+-- mytraverse :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
+--mytraverse = ghcplate pntQ
+
+-- pntQ :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
+pntQ = (          [] `SYB.mkQ` getPNT `SYB.extQ` getPNTBind)
 
 getPNT pnt@(GHC.L l name) = [PNT pnt]
+
+getPNTBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
+       = [(PNT (GHC.L l name))]
+getPNTBind _ = []
+
 -- getPNT 
 
   {-

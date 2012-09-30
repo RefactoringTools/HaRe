@@ -5,6 +5,7 @@ import           Test.QuickCheck
 
 import           TestUtils
 
+import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
@@ -157,8 +158,7 @@ spec = do
          g <- sortCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp
-      GHC.showPpr mg `shouldBe` "[NONREC\n    ModSummary {\n       ms_hs_date = Sat Sep 15 14:39:05 SAST 2012\n       ms_mod = main:C,\n       ms_textual_imps = [import (implicit) Prelude]\n       ms_srcimps = []\n    },\n NONREC\n    ModSummary {\n       ms_hs_date = Sat Sep 22 12:50:42 SAST 2012\n       ms_mod = main:B,\n       ms_textual_imps = [import (implicit) Prelude, import C,\n                          import Data.List]\n       ms_srcimps = []\n    }]"
-
+      (GHC.showPpr $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:C, main:B]"
   -- -------------------------------------------------------------------
 
   describe "runRefactGhc" $ do

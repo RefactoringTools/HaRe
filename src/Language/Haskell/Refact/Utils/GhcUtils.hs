@@ -197,8 +197,9 @@ everywhereStaged stage f = f . gmapT (everywhere f)
 -- @
 -- 'ghcplate' :: ('Data' a, 'Typeable' b) => 'Simple' 'Traversal' a b
 -- @
-
-ghcplate :: (Data a, Typeable b) => Simple Traversal a b
+--ghcplate ::
+--  (Data a, Typeable b, Applicative c) => (b -> c b) -> a -> c a
+ghcplate :: (Data a, Typeable a, Typeable b) => Simple Traversal a b
 ghcplate f = gfoldl (stepghc f) pure
 {-# INLINE ghcplate #-}
 
