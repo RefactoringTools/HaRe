@@ -231,3 +231,9 @@ NOTE: GHC SrcSpan columns
    happen in the API wrapper to it. Buildwrapper does something
    similar.
 
+
+------------------------------------------
+
+Look at implementing hlint suggestions as refactorings
+http://community.haskell.org/~ndm/hlint/hlint-report.htm
+[as suggested by robstewartuk]
