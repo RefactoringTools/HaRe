@@ -8,6 +8,7 @@ import           TestUtils
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
+import qualified Name       as GHC
 import qualified OccName    as GHC
 import qualified Outputable as GHC
 import qualified RdrName    as GHC
@@ -159,10 +160,15 @@ spec = do
     it "Creates a new GHC.Name" $ do
       let
         comp = do
-         name <- mkNewName "foo"
-         return name
-      (n,s) <- runRefactGhcState comp
-      GHC.showPpr n `shouldBe` "foo"
+         name1 <- mkNewName "foo"
+         name2 <- mkNewName "bar"
+         return (name1,name2)
+      ((n1,n2),s) <- runRefactGhcState comp
+      GHC.getOccString n1 `shouldBe` "foo"
+      GHC.showPpr n1 `shouldBe` "foo_C2"
+      GHC.getOccString n2 `shouldBe` "bar"
+      GHC.showPpr n2 `shouldBe` "bar_C3"
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions

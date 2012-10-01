@@ -19,8 +19,10 @@ import Data.Data
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.TypeUtils
 
 -- ---------------------------------------------------------------------
 
@@ -48,8 +50,12 @@ doIfToCase ::
   GHC.Located (GHC.HsExpr GHC.Name)
   -> ParseResult
   -> RefactGhc GHC.ParsedSource
-doIfToCase expr (_,Just rs,ps) =
+doIfToCase expr (_,Just rs,ps) = do
+   
+   newExp <- ifToCaseTransform expr
+   update expr newExp ps -- expr
 
+   {-
    everywhereMStaged SYB.Parser (SYB.mkM inExp) ps -- rs
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
@@ -59,11 +65,43 @@ doIfToCase expr (_,Just rs,ps) =
              in update exp1 newExp exp1
 
          inExp e = return e
+   -}
 
+ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
+ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
+  trueName  <- mkNewName "True"
+  falseName <- mkNewName "False"
+  let ret = GHC.L l (GHC.HsCase e1
+             (GHC.MatchGroup
+              [
+                (GHC.noLoc $ GHC.Match
+                 [
+                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc trueName) {- (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "True") -} (GHC.PrefixCon [])
+                 ]
+                 Nothing
+                 ((GHC.GRHSs
+                   [
+                     GHC.noLoc $ GHC.GRHS [] e2
+                   ] GHC.EmptyLocalBinds))
+                )
+              , (GHC.noLoc $ GHC.Match
+                 [
+                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc falseName) {- (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "False") -} (GHC.PrefixCon [])
+                 ]
+                 Nothing
+                 ((GHC.GRHSs
+                   [
+                     GHC.noLoc $ GHC.GRHS [] e3
+                   ] GHC.EmptyLocalBinds))
+                )
+              ] undefined))
+  return ret
+ifToCaseTransform x = return x
 
-ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> GHC.Located (GHC.HsExpr GHC.Name)
-{- ++AZ++ temporary
-ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3))
+-- ---------------------------------------------------------------------
+
+ifToCaseTransformPs :: GHC.Located (GHC.HsExpr GHC.RdrName) -> GHC.Located (GHC.HsExpr GHC.RdrName)
+ifToCaseTransformPs (GHC.L l (GHC.HsIf _se e1 e2 e3))
   = GHC.L l (GHC.HsCase e1
              (GHC.MatchGroup
               [
@@ -88,8 +126,7 @@ ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3))
                    ] GHC.EmptyLocalBinds))
                 )
               ] undefined))
-++AZ++ end -}
-ifToCaseTransform x                          = x
+ifToCaseTransformPs x                          = x
 
 
 

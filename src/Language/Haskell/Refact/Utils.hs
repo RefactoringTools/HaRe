@@ -555,16 +555,21 @@ class (SYB.Data t, SYB.Data t1)=>Update t t1 where
          -> t1    -- ^ The contex where the old syntax phrase occurs.
          -> RefactGhc t1  -- ^ The result.
 
-instance (SYB.Data t) => Update (GHC.Located (GHC.HsExpr GHC.Name)) t where
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.HsExpr n)) t where
     update oldExp newExp t
            = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
        where
-        inExp (e::GHC.Located (GHC.HsExpr GHC.Name))
+        inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
                = do (newExp', _) <- updateToks oldExp newExp prettyprint
                 -- error "update: updated tokens" -- ++AZ++ debug
                     return newExp'
           | otherwise = return e
+
+
+-- ---------------------------------------------------------------------
+-- TODO: ++AZ++ get rid of the following instances, merge them into a
+-- single function above
 
 instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
     update oldExp newExp t
