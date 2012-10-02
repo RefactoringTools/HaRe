@@ -48,7 +48,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Variable analysis
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , HsDecls(hsDecls,isDeclaredIn{- ,replaceDecls -})
-    -- ,hsFreeAndDeclaredPNs -- ,hsFreeAndDeclaredNames
+    ,hsFreeAndDeclaredPNs -- ,hsFreeAndDeclaredNames
     -- ,hsVisiblePNs, hsVisibleNames
     -- ,hsFDsFromInside -- , hsFDNamesFromInside
 
@@ -207,15 +207,16 @@ mkNewName name = do
   return n
 
 
-{-
+
 ------------------------------------------------------------------------
 -- | Collect the free and declared variables (in the PName format) in
 -- a given syntax phrase t. In the result, the first list contains the
 -- free variables, and the second list contains the declared
 -- variables.
-hsFreeAndDeclaredPNs:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
-hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
-                          return (nub f, nub d)
+hsFreeAndDeclaredPNs:: (SYB.Data t, MonadPlus m) => t -> m ([PName],[PName])
+hsFreeAndDeclaredPNs t = do
+  let (f,d) = hsFreeAndDeclared'
+  return (nub f, nub d)
    where
           {-
           hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
@@ -228,12 +229,19 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
                                                          `adhocTU` recDecl))
           -}
 
-          hsFreeAndDeclared' = SYB.everythingStaged SYB.Parser (++) []
-                             ([] `SYB.mkQ` exp) t
+          hsFreeAndDeclared' :: ([PName],[PName])
+          -- hsFreeAndDeclared' = ([],[])
 
-          -- TODO: After renaming, HsBindLR has field bind_fvs
-          --       containing locally bound free vars
+          hsFreeAndDeclared' = SYB.everythingStaged SYB.Parser
+                             (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
+                             ([],[])
+                             (([],[]) `SYB.mkQ` expr) t
 
+          -- TODO: ++AZ++ After renaming, HsBindLR has field bind_fvs
+          -- containing locally bound free vars
+
+          expr (GHC.HsVar pn) = ([PN pn],[])
+{- ++AZ++ WIP start
           exp (TiDecorate.Exp (HsId (HsVar (PNT pn _ _))))=return ([pn],[])
           exp (TiDecorate.Exp (HsId (HsCon (PNT pn _ _))))=return ([pn],[])
           exp (TiDecorate.Exp (HsInfixApp e1 (HsVar (PNT pn _ _)) e2))
@@ -251,7 +259,10 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
           exp (TiDecorate.Exp (HsAsPat (PNT pn _ _) e))
               = addFree  pn  (hsFreeAndDeclaredPNs e)
           exp _ = mzero
--}
+++AZ++ WIP end -}
+
+
+
 {-
 
           pat (TiDecorate.Pat (HsPId (HsVar (PNT pn _ _))))=return ([],[pn])
@@ -305,11 +316,11 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
                 =do let d=map pNTtoPN $ concatMap fst is
                     return ([],d)
           recDecl _ =mzero
-
+-}
 
           addFree free mfd=do (f,d)<-mfd
                               return ([free] `union` f, d)
-
+{-
           hsFreeAndDeclaredList l=do fds<-mapM hsFreeAndDeclaredPNs l
                                      return (foldr union [] (map fst fds),
                                              foldr union [] (map snd fds))

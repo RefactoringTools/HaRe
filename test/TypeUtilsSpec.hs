@@ -142,7 +142,8 @@ spec = do
 
   describe "hsFreeAndDeclaredPNs" $ do
     it "does something useful" $ do
-      pending "Complete this"
+      -- pending "Complete this"
+      "carry on here" `shouldBe` "here"
 
   -- ---------------------------------------------------------------------
 
