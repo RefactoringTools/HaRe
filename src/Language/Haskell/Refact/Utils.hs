@@ -570,7 +570,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
 -- ---------------------------------------------------------------------
 -- TODO: ++AZ++ get rid of the following instances, merge them into a
 -- single function above
-
+{-
 instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
     update oldExp newExp t
            = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
@@ -581,6 +581,7 @@ instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
                 -- error "update: updated tokens" -- ++AZ++ debug
                     return newExp'
           | otherwise = return e
+-}
 
 instance (SYB.Data t) => Update (GHC.Located HsPatP) t where
     update oldPat newPat t

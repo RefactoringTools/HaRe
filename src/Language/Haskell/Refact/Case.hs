@@ -12,6 +12,9 @@ import qualified Name                  as GHC
 import qualified RdrName               as GHC
 import qualified OccName               as GHC
 
+import qualified Data.Generics as SYB
+import qualified GHC.SYB.Utils as SYB
+
 import GHC.Paths ( libdir )
 import Control.Monad
 import Control.Monad.State
@@ -43,29 +46,30 @@ comp fileName beginPos endPos = do
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do refactoredMod <- applyRefac (doIfToCase exp1) (Just modInfo ) fileName
                       return [refactoredMod]
-         _      -> error "You haven't selected an if-then-else  expression!"
-
+         _      -> error $ "You haven't selected an if-then-else  expression!" --  ++ (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
 
 doIfToCase ::
-  GHC.Located (GHC.HsExpr GHC.Name)
+  -- (SYB.Typeable n) => 
+  GHC.Located (GHC.HsExpr GHC.RdrName)
   -> ParseResult
   -> RefactGhc GHC.ParsedSource
 doIfToCase expr (_,Just rs,ps) = do
    
+   {-
    newExp <- ifToCaseTransform expr
    update expr newExp ps -- expr
-
-   {-
+   -}
+   
    everywhereMStaged SYB.Parser (SYB.mkM inExp) ps -- rs
        where
-         inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
+         inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
          inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
            | sameOccurrence expr exp1
-           = let newExp = ifToCaseTransform exp1
+           = let newExp = ifToCaseTransformPs exp1
              in update exp1 newExp exp1
 
          inExp e = return e
-   -}
+   
 
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do

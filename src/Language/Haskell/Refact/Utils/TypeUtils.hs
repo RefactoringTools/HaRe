@@ -941,14 +941,8 @@ definingDecls pns ds incTypeSig recursive=concatMap defines ds
 -- | Return True if syntax phrases t1 and t2 refer to the same one.
 sameOccurrence :: (GHC.Located t) -> (GHC.Located t) -> Bool
 sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
- -- = error $ "sameOccurrence:" ++ (show l1) ++ "," ++ (show l2) -- ++AZ++ debug
  = l1 == l2
 
-{- original
-sameOccurrence:: (Term t, Eq t) => t -> t -> Bool
-sameOccurrence t1 t2
- = t1 == t2 && srcLocs t1 == srcLocs t2
--}
 
 -- ---------------------------------------------------------------------
 
