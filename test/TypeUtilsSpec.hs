@@ -141,9 +141,21 @@ spec = do
   -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredPNs" $ do
-    it "does something useful" $ do
-      -- pending "Complete this"
-      "carry on here" `shouldBe` "here"
+    {-
+    it "Finds declared HsVar" $ do
+      let 
+          comp = do
+            modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
+            r <- hsFreeAndDeclaredPNs mod
+            return r
+      (res,s) <- runRefactGhcState comp
+      (GHC.showPpr res)  `shouldBe` "foo"
+    -}
+    it "Finds declared HsVar" $ do
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
+      res <- hsFreeAndDeclaredPNs mod
+      (show res)  `shouldBe` "foo"
+
 
   -- ---------------------------------------------------------------------
 
@@ -185,6 +197,9 @@ dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
 parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
 parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+
+parsedFileDeclareGhc :: IO (ParseResult,[PosToken])
+parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
 
 -- ----------------------------------------------------
 

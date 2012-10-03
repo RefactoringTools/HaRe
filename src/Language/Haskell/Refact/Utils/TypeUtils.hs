@@ -230,7 +230,6 @@ hsFreeAndDeclaredPNs t = do
           -}
 
           hsFreeAndDeclared' :: ([PName],[PName])
-          -- hsFreeAndDeclared' = ([],[])
 
           hsFreeAndDeclared' = SYB.everythingStaged SYB.Parser
                              (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
@@ -241,6 +240,7 @@ hsFreeAndDeclaredPNs t = do
           -- containing locally bound free vars
 
           expr (GHC.HsVar pn) = ([PN pn],[])
+          expr _ = ([],[])
 {- ++AZ++ WIP start
           exp (TiDecorate.Exp (HsId (HsVar (PNT pn _ _))))=return ([pn],[])
           exp (TiDecorate.Exp (HsId (HsCon (PNT pn _ _))))=return ([pn],[])
