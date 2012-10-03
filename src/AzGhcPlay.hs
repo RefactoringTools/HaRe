@@ -17,11 +17,14 @@ import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
-import qualified GHC
+import qualified CoreFVs               as GHC
+import qualified CoreSyn               as GHC
 import qualified DynFlags              as GHC
-import qualified Outputable            as GHC
-import qualified MonadUtils            as GHC
 import qualified FastString            as GHC
+import qualified GHC                   as GHC
+import qualified HscTypes              as GHC
+import qualified MonadUtils            as GHC
+import qualified Outputable            as GHC
 import qualified SrcLoc                as GHC
 
 import GHC.Paths ( libdir )
@@ -130,6 +133,7 @@ getStuff =
         d <- GHC.desugarModule t
         l <- GHC.loadModule d
         n <- GHC.getNamesInScope
+        -- c <- return $ GHC.coreModule d
         c <- return $ GHC.coreModule d
 
         g <- GHC.getModuleGraph
@@ -182,11 +186,29 @@ getStuff =
         --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
         --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
 
-        GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
-        GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
+        -- GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
+        -- GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
+
+
+        -- Core module -------------------------------------------------
+        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : cm_binds(showData)=" ++ (SYB.showData SYB.TypeChecker 0 $ GHC.mg_binds c))
+
+        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : cm_binds(showData)=" ++ (SYB.showData SYB.TypeChecker 0 $ GHC.exprsFreeVars $ getBinds $ GHC.mg_binds c))
+        GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeVars cm_binds(showData)=" ++ (GHC.showPpr $ GHC.exprsFreeVars $ getBinds $ GHC.mg_binds c))
+        GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeIds cm_binds(showPpr)=" ++ (GHC.showPpr $ map GHC.exprFreeIds $ getBinds $ GHC.mg_binds c))
+
+        GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : bindFreeVars cm_binds(showPpr)=" ++ (GHC.showPpr $ map GHC.bindFreeVars $ GHC.mg_binds c))
+
+
         return ()
 
 tokenLocs toks = map (\(GHC.L l _, s) -> (l,s)) toks
+
+getBinds :: [GHC.CoreBind] -> [GHC.CoreExpr]
+getBinds xs = map (\(_,x) -> x) $ concatMap getBind xs
+  where
+    getBind (GHC.NonRec b e) = [(b,e)]
+    getBind (GHC.Rec bs) = bs
 
 
 instance (Show GHC.TyThing) where
