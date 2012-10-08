@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Language.Haskell.Refact.Utils.TypeSyn where
 
@@ -10,6 +11,7 @@ import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
 import qualified HsExpr     as GHC
+import qualified Name       as GHC
 import qualified Outputable as GHC
 import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
@@ -82,6 +84,9 @@ data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable)
 
 instance Show PNT where
   show (PNT (GHC.L l name)) = "(PNT " ++ (GHC.showPpr l) ++ " " ++ (GHC.showRdrName name) ++ ")"
+
+instance Show (GHC.GenLocated GHC.SrcSpan GHC.Name) where
+  show (GHC.L l name) = "(" ++ (GHC.showPpr l) ++ " " ++ (GHC.showPpr $ GHC.nameUnique name) ++ " " ++ (GHC.showPpr name) ++ ")"
 
 -- | HsName is a name as it is found in the source
 -- This seems to be quite a close correlation

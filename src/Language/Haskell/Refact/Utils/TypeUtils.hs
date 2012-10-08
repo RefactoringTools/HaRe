@@ -113,6 +113,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 -- * Debug stuff
   , allPNT
   , allPNTLens
+  , allNames
 
  ) where
 
@@ -1073,6 +1074,49 @@ allPNT  fileName (row,col) t
         workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
           -- | inScope pnt = [(PNT pnt)]
           | True = [(PNT (GHC.L l name))]
+        workerExpr _ = []
+
+        inScope :: GHC.Located e -> Bool
+        inScope (GHC.L l _) =
+          case l of
+            (GHC.UnhelpfulSpan _) -> False
+            (GHC.RealSrcSpan ss)  ->
+              (GHC.srcSpanFile ss == fileName) &&
+              (GHC.srcSpanStartLine ss == row) &&
+              (col >= (GHC.srcSpanStartCol ss)) &&
+              (col <= (GHC.srcSpanEndCol ss))
+
+
+
+------------------------------------------------------------------------------------
+
+-- |Find the identifier(in PNT format) whose start position is (row,col) in the
+-- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
+
+allNames::(SYB.Data t)=>GHC.FastString   -- ^ The file name
+                    ->SimpPos          -- ^ The row and column number
+                    ->t                -- ^ The syntax phrase
+                    ->[GHC.Located GHC.Name]            -- ^ The result
+allNames  fileName (row,col) t
+  = res
+       where
+        res = SYB.everythingStaged SYB.Parser (++) []
+            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+
+        worker (pnt :: (GHC.Located GHC.Name))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [pnt]
+        worker _ = []
+
+        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(GHC.L l name)]
+        workerBind _ = []
+
+
+        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(GHC.L l name)]
         workerExpr _ = []
 
         inScope :: GHC.Located e -> Bool
