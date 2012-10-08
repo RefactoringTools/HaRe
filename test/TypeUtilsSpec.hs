@@ -205,7 +205,7 @@ parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs
 
 -- Runners
 
-t = withArgs ["--match", "isFunBind"] main
+t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
 
 
 
