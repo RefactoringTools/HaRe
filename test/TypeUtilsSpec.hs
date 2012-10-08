@@ -8,6 +8,7 @@ import           TestUtils
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
+import qualified Name       as GHC
 import qualified OccName    as GHC
 import qualified Outputable as GHC
 import qualified RdrName    as GHC
@@ -19,6 +20,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+import System.Environment
 
 main :: IO ()
 main = hspec spec
@@ -136,13 +138,26 @@ spec = do
       let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
       isSimplePatBind decl  `shouldBe` True
 
--- ---------------------------------------------------------------------
+  -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredPNs" $ do
-    it "does something useful" $ do
-      pending "Complete this"
+    {-
+    it "Finds declared HsVar" $ do
+      let 
+          comp = do
+            modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
+            r <- hsFreeAndDeclaredPNs mod
+            return r
+      (res,s) <- runRefactGhcState comp
+      (GHC.showPpr res)  `shouldBe` "foo"
+    -}
+    it "Finds declared HsVar" $ do
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
+      res <- hsFreeAndDeclaredPNs mod
+      (show res)  `shouldBe` "foo"
 
--- ---------------------------------------------------------------------
+
+  -- ---------------------------------------------------------------------
 
   describe "hsFDsFromInside" $ do
     it "does something useful" $ do
@@ -152,6 +167,20 @@ spec = do
     it "does something useful" $ do
       pending "Complete this"
 
+  -- ---------------------------------------------
+
+  describe "mkNewName" $ do
+    it "Creates a new GHC.Name" $ do
+      let
+        comp = do
+         name1 <- mkNewName "foo"
+         name2 <- mkNewName "bar"
+         return (name1,name2)
+      ((n1,n2),s) <- runRefactGhcState comp
+      GHC.getOccString n1 `shouldBe` "foo"
+      GHC.showPpr n1 `shouldBe` "foo_C2"
+      GHC.getOccString n2 `shouldBe` "bar"
+      GHC.showPpr n2 `shouldBe` "bar_C3"
 
 
 -- ---------------------------------------------------------------------
@@ -168,4 +197,16 @@ dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
 parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
 parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+
+parsedFileDeclareGhc :: IO (ParseResult,[PosToken])
+parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
+
+-- ----------------------------------------------------
+
+-- Runners
+
+t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
+
+
+
 

@@ -8,6 +8,15 @@ import GHC.SYB.Utils
 import NameSet
 import Control.Monad
 
+-- For Lens stuff
+import Control.Lens
+import Control.Applicative
+import Control.Lens
+import Control.Lens.Plated
+import Data.Data
+-- import Data.Data.Lens(uniplate,biplate,template,tinplate)
+import Unsafe.Coerce
+
 {-
 
 From Data.Generics
@@ -177,3 +186,51 @@ everywhereStaged stage f = f . gmapT (everywhere f)
         postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
         fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
 -}
+
+-- ---------------------------------------------------------------------
+-- Lens stuff
+
+-- | Naïve 'Traversal' using 'Data', avoiding GHC holes for
+-- ParsedSource. This does not attempt to optimize the traversal.
+--
+--
+-- @
+-- 'ghcplate' :: ('Data' a, 'Typeable' b) => 'Simple' 'Traversal' a b
+-- @
+--ghcplate ::
+--  (Data a, Typeable b, Applicative c) => (b -> c b) -> a -> c a
+ghcplate :: (Data a, Typeable a, Typeable b) => Simple Traversal a b
+ghcplate f = gfoldl (stepghc f) pure
+{-# INLINE ghcplate #-}
+
+stepghc ::
+  (Data d, Typeable b, Applicative f) =>
+  (b -> f b) -> f (d -> e) -> d -> f e
+stepghc f w d 
+  | isGhcHole d = ($d) <$> w 
+  | otherwise = w <*> case cast d of
+      Just b  -> unsafeCoerce <$> f b
+      Nothing -> ghcplate f d
+
+isGhcHole :: Typeable a => a -> Bool
+isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
+  where 
+    isNameSet n = case (cast n)::(Maybe NameSet) of
+      Just _ -> True
+      Nothing -> False
+
+    isPostTcType n = case (cast n)::(Maybe PostTcType) of
+      Just _ -> True
+      Nothing -> False
+
+    isFixity n = case (cast n)::(Maybe GHC.Fixity) of
+      Just _ -> True
+      Nothing -> False
+
+
+-- gfoldl :: Data a => 
+-- (forall d b. Data d => c (d -> b) -> d -> c b) -- nonempty constructor (immediate subterm)
+-- -> (forall g. g -> c g)                        -- empty constructor 
+-- -> a                                           -- thing to be folded
+-- -> c a
+--

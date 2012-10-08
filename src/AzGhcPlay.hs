@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 -- Sample refactoring based on ifToCase
 import Bag
 import Bag(Bag,bagToList)
@@ -17,11 +19,14 @@ import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
-import qualified GHC
+import qualified CoreFVs               as GHC
+import qualified CoreSyn               as GHC
 import qualified DynFlags              as GHC
-import qualified Outputable            as GHC
-import qualified MonadUtils            as GHC
 import qualified FastString            as GHC
+import qualified GHC                   as GHC
+import qualified HscTypes              as GHC
+import qualified MonadUtils            as GHC
+import qualified Outputable            as GHC
 import qualified SrcLoc                as GHC
 import Var
 
@@ -36,6 +41,13 @@ import qualified Language.Haskell.Refact.Case as GhcRefacCase
 -- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
 import Control.Monad.State
+
+import Control.Lens
+import Control.Applicative
+import Control.Lens
+import Control.Lens.Plated
+import Data.Data
+import Data.Data.Lens(uniplate,biplate,template,tinplate)
 
 import Language.Haskell.Refact.Utils.GhcUtils
 
@@ -124,6 +136,7 @@ getStuff =
         d <- GHC.desugarModule t
         l <- GHC.loadModule d
         n <- GHC.getNamesInScope
+        -- c <- return $ GHC.coreModule d
         c <- return $ GHC.coreModule d
 
         g <- GHC.getModuleGraph
@@ -148,7 +161,7 @@ getStuff =
         -- GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
 
         let ps  = GHC.pm_parsed_source p
-        GHC.liftIO (putStrLn $ SYB.showData SYB.Parser 0 ps)
+        -- GHC.liftIO (putStrLn $ SYB.showData SYB.Parser 0 ps)
 
         rts <- GHC.getRichTokenStream (GHC.ms_mod modSum)
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
@@ -171,6 +184,25 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (SYB.showData SYB.Parser 0 $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (GHC.showPpr $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
         -- GHC.liftIO (putStrLn $ "moduleInfo.TopLevelScope=" ++ (GHC.showPpr $ GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info t))
+
+        -- Investigating TypeCheckedModule, in t
+        --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
+        --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+
+        -- GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
+        -- GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
+
+
+        -- Core module -------------------------------------------------
+        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : cm_binds(showData)=" ++ (SYB.showData SYB.TypeChecker 0 $ GHC.mg_binds c))
+
+        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : cm_binds(showData)=" ++ (SYB.showData SYB.TypeChecker 0 $ GHC.exprsFreeVars $ getBinds $ GHC.mg_binds c))
+        GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeVars cm_binds(showData)=" ++ (GHC.showPpr $ GHC.exprsFreeVars $ getBinds $ GHC.mg_binds c))
+        GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeIds cm_binds(showPpr)=" ++ (GHC.showPpr $ map GHC.exprFreeIds $ getBinds $ GHC.mg_binds c))
+
+        GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : bindFreeVars cm_binds(showPpr)=" ++ (GHC.showPpr $ map GHC.bindFreeVars $ GHC.mg_binds c))
+
+
         return ()
 
 processVarUniques t = SYB.everywhereMStaged SYB.TypeChecker (SYB.mkM showUnique) t
@@ -182,6 +214,12 @@ processVarUniques t = SYB.everywhereMStaged SYB.TypeChecker (SYB.mkM showUnique)
 
 
 tokenLocs toks = map (\(GHC.L l _, s) -> (l,s)) toks
+
+getBinds :: [GHC.CoreBind] -> [GHC.CoreExpr]
+getBinds xs = map (\(_,x) -> x) $ concatMap getBind xs
+  where
+    getBind (GHC.NonRec b e) = [(b,e)]
+    getBind (GHC.Rec bs) = bs
 
 
 instance (Show GHC.TyThing) where
@@ -220,6 +258,47 @@ ifToCase (GHC.HsIf _se e1 e2 e3)
                       )
                    ] undefined)
 ifToCase x                          = x
+
+-- -----------------------------------------------------------------------------------------
+
+-- Playing with Lens
+
+-- 1. Investigate foldMapOf :: Getter a c -> (c ->r) -> a -> r
+
+data Foo = Foo { fa:: Bar String }  deriving (Data,Typeable,Show)
+
+data Bar a = Bar { ba :: Maybe a
+                 , bb :: Baz a
+                 , bc :: [Baz a]
+                 , dc :: a
+                 } deriving (Data,Typeable,Show)
+
+data Baz a = Baz a deriving (Data,Typeable,Show)
+
+td = Foo (Bar Nothing (Baz "Mary") [Baz "a",Baz "b",Baz "c"] "d")
+
+getBaz (Baz b) = [Baz b]
+
+qq :: (Data a) => a -> [Baz String]
+qq = foldMapOf template getBaz
+
+gg = qq td
+
+
+-- filtered :: (Gettable f, Applicative f) => (c -> Bool) -> LensLike f a b c d -> LensLike f a b c d
+hh = filtered isBaz foo
+
+-- ii :: (Data a) => a -> [Baz String]
+-- ii = foldMapOf hh getBaz
+
+-- template :: (Data a, Typeable b) => Simple Traversal a b
+foo :: (Data a, Typeable a) => Simple Traversal a a
+foo = template
+
+isBaz (Baz a) = True
+isBaz _ = False
+
+
 
 -- -----------------------------------------------------------------------------------------
 -- From http://hpaste.org/65775
@@ -279,6 +358,7 @@ runR = do
    -- initialState = ReplState { repl_inputState = initInputState }
    initialState = RefSt 
 	{ rsSettings = RefSet ["."]
+        , rsUniqState = 1
         , rsTokenStream = [] -- :: [PosToken]
 	, rsStreamModified = False -- :: Bool
 	-- , rsPosition = (-1,-1) -- :: (Int,Int)

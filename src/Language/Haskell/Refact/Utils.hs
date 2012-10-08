@@ -346,23 +346,6 @@ getModuleName (GHC.L _ mod) =
 
 -- ---------------------------------------------------------------------
 
--- TODO: AZ: pretty sure this can be simplified, depends if we need to
---          manage transformed stuff too though.
-
--- | Return True if syntax phrases t1 and t2 refer to the same one.
-sameOccurrence :: (GHC.Located t) -> (GHC.Located t) -> Bool
-sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
- -- = error $ "sameOccurrence:" ++ (show l1) ++ "," ++ (show l2) -- ++AZ++ debug
- = l1 == l2
-
-{- original
-sameOccurrence:: (Term t, Eq t) => t -> t -> Bool
-sameOccurrence t1 t2
- = t1 == t2 && srcLocs t1 == srcLocs t2
--}
-
--- ---------------------------------------------------------------------
-
 -- |Parse a Haskell source files, and returns a four-element tuple. The first element in the result is the inscope
 -- relation, the second element is the export relation, the third is the AST of the module and the forth element is
 -- the token stream of the module.
@@ -373,7 +356,7 @@ parseSourceFile:: ( ) =>FilePath
 
 parseSourceFile ::
   String
-  -> IO (ParseResult, [PosToken])  -- ([a], [GHC.LIE GHC.RdrName], GHC.ParsedSource, [PosToken])
+  -> IO (ParseResult, [PosToken])  
 parseSourceFile targetFile =
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
     GHC.runGhc (Just GHC.libdir) $ do
@@ -392,11 +375,13 @@ parseSourceFile targetFile =
 
       let pm = GHC.tm_parsed_module t
 
-      let inscopes = GHC.tm_typechecked_source t
-          modAst = GHC.pm_parsed_source p
-          exports = getExports modAst
+      let typechecked = GHC.tm_typechecked_source t
+          renamed     = GHC.tm_renamed_source t
+          parsed      = GHC.pm_parsed_source pm
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      return ((inscopes,exports,modAst),tokens)
+      -- return ((inscopes,exports,modAst),tokens)
+      return ((typechecked,renamed,parsed),tokens)
+
 
 -- ---------------------------------------------------------------------
 
@@ -421,11 +406,12 @@ parseSourceFileGhc targetFile = do
 
       let pm = GHC.tm_parsed_module t
 
-      let inscopes = GHC.tm_typechecked_source t
-          modAst = GHC.pm_parsed_source p
-          exports = getExports modAst
+      let typechecked = GHC.tm_typechecked_source t
+          renamed     = GHC.tm_renamed_source t
+          parsed      = GHC.pm_parsed_source pm
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      return ((inscopes,exports,modAst),tokens)
+      -- return ((inscopes,exports,modAst),tokens)
+      return ((typechecked,renamed,parsed),tokens)
 
 -- ---------------------------------------------------------------------
 
@@ -502,6 +488,7 @@ runRefacSession settings comp = do
   let
    initialState = RefSt
         { rsSettings = fromMaybe (RefSet ["."]) settings
+        , rsUniqState = 1
         , rsTokenStream = [] -- :: [PosToken]
         , rsStreamModified = False -- :: Bool
         }
@@ -533,14 +520,14 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
     -- restore the state. Fix this to store the modules in some kind of cache.
-    (RefSt settings ts m) <- get
-    put (RefSt settings toks False)
+    (RefSt settings u ts m) <- get
+    put (RefSt settings u toks False)
 
     mod' <- refac parsedFile
-    (RefSt _ toks' m) <- get
+    (RefSt _ u' toks' m) <- get
 
     -- Replace state with original, probably not needed
-    put (RefSt settings ts m)
+    put (RefSt settings u' ts m)
 
     return ((fileName,m),(toks', mod'))
 
@@ -557,54 +544,44 @@ applyRefacToClientMods refac fileName
 
 -- ---------------------------------------------------------------------
 
-{- ++AZ++ trying to replace this with a generic alternative
-{- | The Update class, -}
-class (Term t, Term t1)=>Update t t1 where
-
-  -- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
-  update::(MonadPlus m, MonadState (([PosToken],Bool),(Int,Int)) m)=>  t     -- ^ The syntax phrase to be updated.
-                                                             -> t     -- ^ The new syntax phrase.
-                                                             -> t1    -- ^ The contex where the old syntax phrase occurs.
-                                                             -> m t1  -- ^ The result.
--}
-
--- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
-{-
-update::(GHC.Outputable t,Term t,Term t1,Eq t,Eq t1,MonadPlus m, MonadState (([PosToken],Bool),(Int,Int)) m) =>
-        t     -- ^ The syntax phrase to be updated.
-        -> t     -- ^ The new syntax phrase.
-        -> t1    -- ^ The contex where the old syntax phrase occurs.
-        -> m t1  -- ^ The result.
--}
+{- ++AZ++ TODO: replace this with a single function -}
 
 class (SYB.Data t, SYB.Data t1)=>Update t t1 where
 
-  -- | Update the occurrence of one syntax phrase in a given scope by another syntax phrase of the same type.
+  -- | Update the occurrence of one syntax phrase in a given scope by
+  -- another syntax phrase of the same type
   update::  t     -- ^ The syntax phrase to be updated.
          -> t     -- ^ The new syntax phrase.
          -> t1    -- ^ The contex where the old syntax phrase occurs.
          -> RefactGhc t1  -- ^ The result.
 
-instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
-{- update ::
- forall t .
-  (SYB.Data t, GHC.Outputable t) =>
-  GHC.GenLocated GHC.SrcSpan t        -- ^ The syntax phrase to be updated.
-  -> GHC.GenLocated GHC.SrcSpan t     -- ^ The new syntax phrase.
-  -> GHC.GenLocated GHC.SrcSpan t     -- ^ The contex where the old syntax phrase occurs.
-  -> Refact (GHC.GenLocated GHC.SrcSpan t) -- ^ The result. -}
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.HsExpr n)) t where
     update oldExp newExp t
            = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
        where
-       -- inExp :: -- (MonadState (([PosToken], Bool), (Int, Int)) m,
-         --    ( GHC.Outputable t) =>
-         --    GHC.GenLocated GHC.SrcSpan t -> Refact (GHC.GenLocated GHC.SrcSpan t)
+        inExp (e::GHC.Located (GHC.HsExpr n))
+          | sameOccurrence e oldExp
+               = do (newExp', _) <- updateToks oldExp newExp prettyprint
+                -- error "update: updated tokens" -- ++AZ++ debug
+                    return newExp'
+          | otherwise = return e
+
+
+-- ---------------------------------------------------------------------
+-- TODO: ++AZ++ get rid of the following instances, merge them into a
+-- single function above
+{-
+instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
+    update oldExp newExp t
+           = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
+       where
         inExp (e::GHC.Located HsExpP)
           | sameOccurrence e oldExp
                = do (newExp', _) <- updateToks oldExp newExp prettyprint
                 -- error "update: updated tokens" -- ++AZ++ debug
                     return newExp'
           | otherwise = return e
+-}
 
 instance (SYB.Data t) => Update (GHC.Located HsPatP) t where
     update oldPat newPat t
@@ -708,37 +685,6 @@ expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just pnt
 expToPNT _ = Nothing
 
 
-
--- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
---  region specified by the start and end position. If no expression can be found, then return the defaultExp.
-locToExp:: (SYB.Data t) => SimpPos            -- ^ The start position.
-                        -> SimpPos            -- ^ The end position.
-                -> [PosToken]         -- ^ The token stream which should at least contain the tokens for t.
-                -> t                  -- ^ The syntax phrase.
-                -> GHC.Located (GHC.HsExpr GHC.RdrName) -- ^ The result.
-locToExp beginPos endPos toks t =
-  case res of
-     Just x -> x
-     Nothing -> GHC.L GHC.noSrcSpan defaultExp
-     -- _  -> error $ "locToExp:unexpected:" ++ (SYB.showData SYB.Parser 0 res)
-  where
-     res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` exp) t
-
-     exp :: GHC.Located (GHC.HsExpr GHC.RdrName) -> (Maybe (GHC.Located (GHC.HsExpr GHC.RdrName)))
-     exp e
-        |inScope e = Just e
-     exp _ = Nothing
-
-     inScope :: GHC.Located e -> Bool
-     inScope (GHC.L l _) =
-       let
-         (startLoc,endLoc) = case l of
-           (GHC.RealSrcSpan ss) ->
-             ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
-              (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
-           (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
-       in
-        (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
 
 -- ---------------------------------------------------------------------
 

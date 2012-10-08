@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 ----------------------------------------------------------------------------------------------------------------
 -- Module      : TypeUtils
 
@@ -47,7 +48,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Variable analysis
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , HsDecls(hsDecls,isDeclaredIn{- ,replaceDecls -})
-    -- ,hsFreeAndDeclaredPNs -- ,hsFreeAndDeclaredNames
+    ,hsFreeAndDeclaredPNs -- ,hsFreeAndDeclaredNames
     -- ,hsVisiblePNs, hsVisibleNames
     -- ,hsFDsFromInside -- , hsFDNamesFromInside
 
@@ -59,7 +60,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,usedWithoutQual,canBeQualified, hasFreeVars,isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
     -- ,findPNs, findEntity
-    -- ,sameOccurrence
+    ,sameOccurrence
     ,defines -- ,definesTypeSig, isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
 
@@ -69,7 +70,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,fileNameToModName, strToModName, modNameToStr
 
     -- ** Locations
-    {- ,defineLoc, useLoc-},locToPNT --,locToPN,locToExp, getStartEndLoc
+    {- ,defineLoc, useLoc-},locToPNT {-,locToPN -},locToExp -- , getStartEndLoc
 
  -- * Program transformation
     -- ** Adding
@@ -98,8 +99,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,definingDecls -- , definedPNs
     -- ,simplifyDecl
     -- ** Others
-   -- ,mkNewName, applyRefac, applyRefacToClientMods
-    , mkRdrName
+   -- , applyRefac, applyRefacToClientMods
+    , mkRdrName, mkNewName
 
     -- The following functions are not in the the API yet.
     -- ,getDeclToks, causeNameClashInExports, inRegion , ghead, glast, gfromJust, unmodified, prettyprint,
@@ -111,6 +112,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
 -- * Debug stuff
   , allPNT
+  , allPNTLens
 
  ) where
 
@@ -151,11 +153,21 @@ import qualified SrcLoc        as GHC
 import qualified TcEvidence    as GHC
 import qualified TcType        as GHC
 import qualified TypeRep       as GHC
+import qualified Unique        as GHC
 import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+-- Lens
+import Control.Applicative
+import Control.Lens hiding (Rep)
+import Control.Lens.Plated
+import Control.Lens.Traversal
+import Control.Lens.Traversal
+import Data.Data.Lens hiding (tinplate)
+import GHC.Generics hiding (from, to)
+import GHC.Generics.Lens
 
 -- Until exports are correct
 dummy = 1
@@ -180,15 +192,31 @@ defaultExp=GHC.HsVar $ mkRdrName "nothing"
 
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
-{-
+-- | Make a new GHC.Name, using the Unique Int sequence stored in the
+-- RefactState
+
+mkNewName :: String -> RefactGhc GHC.Name
+mkNewName name = do
+  s <- get
+  u <- gets rsUniqState
+  put s { rsUniqState = (u+1) }
+
+  let un = GHC.mkUnique 'C' (u+1)
+      n = GHC.mkSystemName un (GHC.mkVarOcc name)
+
+  return n
+
+
+
 ------------------------------------------------------------------------
 -- | Collect the free and declared variables (in the PName format) in
 -- a given syntax phrase t. In the result, the first list contains the
 -- free variables, and the second list contains the declared
 -- variables.
-hsFreeAndDeclaredPNs:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
-hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
-                          return (nub f, nub d)
+hsFreeAndDeclaredPNs:: (SYB.Data t, MonadPlus m) => t -> m ([PName],[PName])
+hsFreeAndDeclaredPNs t = do
+  let (f,d) = hsFreeAndDeclared'
+  return (nub f, nub d)
    where
           {-
           hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
@@ -201,12 +229,19 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
                                                          `adhocTU` recDecl))
           -}
 
-          hsFreeAndDeclared' = SYB.everythingStaged SYB.Parser (++) []
-                             ([] `SYB.mkQ` exp) t
+          hsFreeAndDeclared' :: ([PName],[PName])
 
-          -- TODO: After renaming, HsBindLR has field bind_fvs
-          --       containing locally bound free vars
+          hsFreeAndDeclared' = SYB.everythingStaged SYB.Parser
+                             (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
+                             ([],[])
+                             (([],[]) `SYB.mkQ` expr) t
 
+          -- TODO: ++AZ++ After renaming, HsBindLR has field bind_fvs
+          -- containing locally bound free vars
+
+          expr (GHC.HsVar pn) = ([PN pn],[])
+          expr _ = ([],[])
+{- ++AZ++ WIP start
           exp (TiDecorate.Exp (HsId (HsVar (PNT pn _ _))))=return ([pn],[])
           exp (TiDecorate.Exp (HsId (HsCon (PNT pn _ _))))=return ([pn],[])
           exp (TiDecorate.Exp (HsInfixApp e1 (HsVar (PNT pn _ _)) e2))
@@ -224,7 +259,10 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
           exp (TiDecorate.Exp (HsAsPat (PNT pn _ _) e))
               = addFree  pn  (hsFreeAndDeclaredPNs e)
           exp _ = mzero
--}
+++AZ++ WIP end -}
+
+
+
 {-
 
           pat (TiDecorate.Pat (HsPId (HsVar (PNT pn _ _))))=return ([],[pn])
@@ -278,11 +316,11 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
                 =do let d=map pNTtoPN $ concatMap fst is
                     return ([],d)
           recDecl _ =mzero
-
+-}
 
           addFree free mfd=do (f,d)<-mfd
                               return ([free] `union` f, d)
-
+{-
           hsFreeAndDeclaredList l=do fds<-mapM hsFreeAndDeclaredPNs l
                                      return (foldr union [] (map fst fds),
                                              foldr union [] (map snd fds))
@@ -908,6 +946,17 @@ definingDecls pns ds incTypeSig recursive=concatMap defines ds
 
 -- ---------------------------------------------------------------------
 
+-- TODO: AZ: pretty sure this can be simplified, depends if we need to
+--          manage transformed stuff too though.
+
+-- | Return True if syntax phrases t1 and t2 refer to the same one.
+sameOccurrence :: (GHC.Located t) -> (GHC.Located t) -> Bool
+sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
+ = l1 == l2
+
+
+-- ---------------------------------------------------------------------
+
 -- | Return True if the  function\/pattern binding defines the specified identifier.
 defines::PName->HsDeclP->Bool
 -- defines pn decl@(TiDecorate.Dec (HsFunBind loc ((HsMatch loc1 (PNT pname ty loc2) pats rhs ds):ms))) 
@@ -1038,6 +1087,119 @@ allPNT  fileName (row,col) t
 
 
 
+------------------------------------------------------------------------------------
+
+-- |Find the identifier(in PNT format) whose start position is (row,col) in the
+-- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
+allPNTLens ::(SYB.Data t, SYB.Typeable t)=>GHC.FastString   -- ^ The file name
+                    ->SimpPos          -- ^ The row and column number
+                    ->t                -- ^ The syntax phrase
+                    ->[PNT]            -- ^ The result
+
+-- TODO: return a Maybe, rather than encoding failure in defaultPNT
+allPNTLens fileName (row,col) t
+  = res
+       where
+        -- res = []
+        res = pnts t
+
+        pnts :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
+        -- pnts = foldMapOf ghcplate getPNT 
+
+        -- foldMapOf :: Monoid r => Simple Traversal a c -> (c -> r) -> a -> r
+        pnts = foldMapOf mytraverse pntQ
+        -- pnts = foldMapOf mytraverse getPNT
+        -- pnts = foldMapOf ghcplate getPNT
+        -- pnts = foldOf mytraverse 
+        -- pnts = foldMapOf ghcplate getPNTBind
+
+
+mytraverse :: (SYB.Data a) => Simple Traversal a [PNT]
+mytraverse = ghcplate 
+
+-- ghcplate ::
+--   (Data a, Typeable b, Applicative c) => (b -> c b) -> a -> c a
+
+-- foo :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
+foo = undefined
+
+-- mytraverse :: (SYB.Data a, SYB.Data b, SYB.Typeable b) => Simple Traversal a b
+-- mytraverse :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
+--mytraverse = ghcplate pntQ
+
+-- pntQ :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
+pntQ = (          [] `SYB.mkQ` getPNT `SYB.extQ` getPNTBind)
+
+getPNT pnt@(GHC.L l name) = [PNT pnt]
+
+getPNTBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
+       = [(PNT (GHC.L l name))]
+getPNTBind _ = []
+
+-- getPNT 
+
+  {-
+        -- res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+        res = SYB.everythingStaged SYB.Parser (++) []
+            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+
+        worker (pnt :: (GHC.Located GHC.RdrName))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(PNT pnt)]
+        worker _ = []
+
+        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(PNT (GHC.L l name))]
+        workerBind _ = []
+
+        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
+          -- | inScope pnt = [(PNT pnt)]
+          | True = [(PNT (GHC.L l name))]
+        workerExpr _ = []
+
+        inScope :: GHC.Located e -> Bool
+        inScope (GHC.L l _) =
+          case l of
+            (GHC.UnhelpfulSpan _) -> False
+            (GHC.RealSrcSpan ss)  ->
+              (GHC.srcSpanFile ss == fileName) &&
+              (GHC.srcSpanStartLine ss == row) &&
+              (col >= (GHC.srcSpanStartCol ss)) &&
+              (col <= (GHC.srcSpanEndCol ss))
+  -}
+
+-- ---------------------------------------------------------------------
+-- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
+--  region specified by the start and end position. If no expression can be found, then return the defaultExp.
+locToExp:: (SYB.Data t,SYB.Typeable n) => 
+                   SimpPos    -- ^ The start position.
+                -> SimpPos    -- ^ The end position.
+                -> [PosToken] -- ^ The token stream which should at least contain the tokens for t.
+                -> t          -- ^ The syntax phrase.
+                -> Maybe (GHC.Located (GHC.HsExpr n)) -- ^ The result.
+locToExp beginPos endPos _toks t = res
+  -- case res of
+  --    Just x -> x
+  --    Nothing -> GHC.L GHC.noSrcSpan defaultExp
+  where
+     res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` expr) t
+
+     expr :: GHC.Located (GHC.HsExpr n) -> (Maybe (GHC.Located (GHC.HsExpr n)))
+     expr e
+        |inScope e = Just e
+     expr _ = Nothing
+
+     inScope :: GHC.Located e -> Bool
+     inScope (GHC.L l _) =
+       let
+         (startLoc,endLoc) = case l of
+           (GHC.RealSrcSpan ss) ->
+             ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
+              (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
+           (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
+       in
+        (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
 
 ------------------------------------------------------------------------------------
 -- | From PNT to PName.

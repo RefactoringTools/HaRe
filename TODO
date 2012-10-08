@@ -182,11 +182,6 @@ Thought: do refactoring on RenamedSource, not ParsedSource. Need to
 
 
 
-
-
-
-
-
 -------------------------------------
 
 GHC structures
@@ -210,6 +205,18 @@ The ModSummary holds compiler housekeeping information
 
 We will work with the ParsedSource, so it is always Located.
 
+NOTE: GHC stages
+ 1. Parser  : end up with ValDecl of (HsBind RdrName) which becomes
+   (HsBindLR RdrName)
+ 2. Renamer : end up with            (HsValBinds Name) which becomes
+   (HsBindLR Name)
+ 3. TypeChecker : end up with
+   (HsBindLR Id)
+
+RdrName : straight from the parser, no resolution
+Name: have had their scoping and binding resolved, have a unique identifier
+Id : Name but also has Type, and some additional info
+Var: synonym for Id, but has Kind info not Type info
 
 Bring in no-code flage to GHC when type checking
 
@@ -223,3 +230,10 @@ NOTE: GHC SrcSpan columns
 3. HaRe internally will work with GHC cols, the translation must
    happen in the API wrapper to it. Buildwrapper does something
    similar.
+
+
+------------------------------------------
+
+Look at implementing hlint suggestions as refactorings
+http://community.haskell.org/~ndm/hlint/hlint-report.htm
+[as suggested by robstewartuk]

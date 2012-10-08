@@ -34,3 +34,5 @@ testing/UTest
 testing/addCon/Case1.hs.temp.hs
 testing/addCon/Case2.hs.temp.hs
 /src/#Main.hs#
+/spec.tix
+/hspec-failures
