@@ -31,22 +31,24 @@ import GHC.Paths ( libdir )
 
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils
--- import qualified Language.Haskell.Refact.Case as GhcRefacCase
+import Language.Haskell.Refact.Utils.Monad
+import qualified Language.Haskell.Refact.Case as GhcRefacCase
 -- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
+import Control.Monad.State
 
 import Language.Haskell.Refact.Utils.GhcUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
-targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
--- targetFile = "B.hs"
+
+targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
 targetMod = "B"
 
-{- main = t1
+{- main = t1 -}
 
 t1 = GhcRefacCase.ifToCase ["./old/refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./old/B.hs","4","7","4","43"]
-
+{-
 s1 = GhcSwapArgs.swapArgs ["../old/refactorer/B.hs","6","1"]
 s2 = GhcSwapArgs.swapArgs ["./old/refactorer/B.hs","6","1"]
 -}
@@ -108,7 +110,10 @@ getStuff =
         dflags <- GHC.getSessionDynFlags
         let dflags' = foldl GHC.xopt_set dflags
                             [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-        GHC.setSessionDynFlags dflags'
+
+            dflags'' = dflags' { GHC.importPaths = ["./test/testdata/","../test/testdata/"] }
+
+        GHC.setSessionDynFlags dflags''
         target <- GHC.guessTarget targetFile Nothing
         GHC.setTargets [target]
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
@@ -123,7 +128,7 @@ getStuff =
 
         g <- GHC.getModuleGraph
         gs <- mapM GHC.showModule g
-        GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
+        -- GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
         -- return $ (parsedSource d,"/n-----/n",  typecheckedSource d, "/n-=-=-=-=-=-=-/n", modInfoTyThings $ moduleInfo t)
         -- return $ (parsedSource d,"/n-----/n",  typecheckedSource d, "/n-=-=-=-=-=-=-/n")
         -- return $ (typecheckedSource d)
@@ -138,15 +143,12 @@ getStuff =
         return res
         -}
         let p' = processParsedMod ifToCase t
-        -- GHC.liftIO (putStrLn . showParsedModule $ p)
-        GHC.liftIO (putStrLn . showParsedModule $ p')
+        -- GHC.liftIO (putStrLn . showParsedModule $ t)
+        -- GHC.liftIO (putStrLn . showParsedModule $ p')
         -- GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
 
         let ps  = GHC.pm_parsed_source p
-        
-        _ <- processVarUniques t
-        
-        -- GHC.liftIO (putStrLn . showParsedModule results)
+        GHC.liftIO (putStrLn $ SYB.showData SYB.Parser 0 ps)
 
         rts <- GHC.getRichTokenStream (GHC.ms_mod modSum)
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
@@ -159,6 +161,16 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "locToExp=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,12) (4,16) rts ps))
         -- GHC.liftIO (putStrLn $ "locToExp1=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,43) rts ps))
         -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
+
+        -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
+        -- GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+
+        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
+        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
+
+        -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (SYB.showData SYB.Parser 0 $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
+        -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (GHC.showPpr $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
+        -- GHC.liftIO (putStrLn $ "moduleInfo.TopLevelScope=" ++ (GHC.showPpr $ GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info t))
         return ()
 
 processVarUniques t = SYB.everywhereMStaged SYB.TypeChecker (SYB.mkM showUnique) t
@@ -170,6 +182,13 @@ processVarUniques t = SYB.everywhereMStaged SYB.TypeChecker (SYB.mkM showUnique)
 
 
 tokenLocs toks = map (\(GHC.L l _, s) -> (l,s)) toks
+
+
+instance (Show GHC.TyThing) where
+  show (GHC.AnId anId) = "(AnId " ++ (show anId) ++ ")"
+  show _               = "(Another TyThing)"
+
+-- instance (Show GHC.Name) where
 
 convertSource ps =1
   ps
@@ -249,6 +268,36 @@ processParsedMod f pm = pm { GHC.tm_typechecked_source = ps' }
 shortenLists :: GHC.HsExpr GHC.RdrName -> GHC.HsExpr GHC.RdrName
 shortenLists (GHC.ExplicitList t exprs) = GHC.ExplicitList t []
 shortenLists x                          = x
+
+--
+-- ---------------------------------------------------------------------
+-- Test drive the RefactGhc monad transformer stack
+
+runR :: IO ()
+runR = do
+  let
+   -- initialState = ReplState { repl_inputState = initInputState }
+   initialState = RefSt 
+	{ rsSettings = RefSet ["."]
+        , rsTokenStream = [] -- :: [PosToken]
+	, rsStreamModified = False -- :: Bool
+	-- , rsPosition = (-1,-1) -- :: (Int,Int)
+        }
+  (_,s) <- runRefactGhc comp initialState
+  -- putStrLn $ show (rsPosition s)
+  return ()
+
+comp :: RefactGhc ()
+comp = do
+    s <- get
+    modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./old/refactorer/B.hs"
+    -- -- gs <- mapM GHC.showModule mod
+    g <- GHC.getModuleGraph
+    gs <- mapM GHC.showModule g
+    GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
+    -- put (s {rsPosition = (123,456)})
+    return ()
+
 
 -- ---------------------------------------------------------------------
 {-
@@ -445,3 +494,4 @@ Ok, modules loaded: Main.
                                (5)) 
                               (*** Exception: noRebindableInfo
    -}
+

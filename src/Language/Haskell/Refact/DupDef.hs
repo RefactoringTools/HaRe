@@ -1,30 +1,34 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.DupDef(duplicateDef) where
 
 import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
-import qualified GHC
 import qualified DynFlags              as GHC
-import qualified Outputable            as GHC
+import qualified FastString            as GHC
+import qualified GHC
 import qualified MonadUtils            as GHC
-import qualified RdrName               as GHC
 import qualified OccName               as GHC
+import qualified Outputable            as GHC
+import qualified RdrName               as GHC
 
-import GHC.Paths ( libdir )
 import Control.Monad
 import Control.Monad.State
 import Data.Data
+import Data.Maybe
+import GHC.Paths ( libdir )
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.TypeUtils
 
 {-
 
-This refactoring duplicates a defintion(function binding or simple
+This refactoring duplicates a definition(function binding or simple
 pattern binding) at same level with a new name provided by the user.
 The new name should not cause name clash/capture.
 
@@ -32,32 +36,58 @@ The new name should not cause name clash/capture.
 
 -- ---------------------------------------------------------------------
 
+-- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
 duplicateDef :: [String] -> IO () -- For now
 duplicateDef args
  = do let fileName = ghead "filename" args
           newName  = args!!1
           row      = read (args!!2)::Int
           col      = read (args!!3)::Int
+      runRefacSession Nothing (comp fileName newName (row,col))
+      return ()
+
+comp :: String -> String -> SimpPos
+     -> RefactGhc [ApplyRefacResult]
+comp fileName newName (row, col) = do
       if isVarId newName
-        then do (inscps, _, mod, tokList) <- parseSourceFile fileName
+        then do modInfo@((_,_,mod), tokList) <- parseSourceFileGhc fileName
                 -- modName <-fileNameToModName fileName
-                let modName = getModuleName mod
-                -- let pn = pNTtoPN $ locToPNT fileName (row, col) mod
-                let pn = locToPNT fileName (row, col) mod
+                -- let modName = getModuleName mod
+                let (Just (modName,_)) = getModuleName mod
+                let pn = pNTtoPN $ locToPNT (GHC.mkFastString fileName) (row, col) mod
                 if (pn /= defaultPN)
-                  then do (mod',((tokList',m),_))<- doDuplicating pn newName (inscps, mod, tokList)
+                  then do ((fileName',m),(tokList',mod')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                           if modIsExported mod
                            then do clients <- clientModsAndFiles modName
-                                   refactoredClients <- mapM (refactorInClientMod modName 
-                                                              (findNewPName newName mod')) clients
-                                   writeRefactoredFiles False $ ((fileName,m),(tokList',mod')):refactoredClients 
-                           else  writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
+                                   -- TODO: uncomment and complete this
+                                   -- refactoredClients <- mapM (refactorInClientMod modName 
+                                   --                            (findNewPName newName mod')) clients
+                                   let refactoredClients = [] -- ++AZ++ temporary
+                                   -- writeRefactoredFiles False $ ((fileName,m),(tokList',mod')):refactoredClients 
+                                   return $ ((fileName',m),(tokList',mod')):refactoredClients 
+                           -- else  writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
+                           else  return [((fileName,m), (tokList',mod'))]
                   else error "Invalid cursor position!"
         else error $ "Invalid new function name:" ++ newName ++ "!"
 
 
-doDuplicating pn newName (inscps, mod, tokList)
-   = undefined
+-- type PN     = GHC.RdrName
+
+doDuplicating :: PName -> String -> ParseResult
+              -> RefactGhc GHC.ParsedSource
+doDuplicating pn newName (_,_,mod) =
+
+   everywhereMStaged SYB.Parser (SYB.mkM dupInMod) mod
+        where
+        --1. The definition to be duplicated is at top level.
+        -- dupInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
+        dupInMod :: (GHC.Located (GHC.HsModule GHC.RdrName))-> RefactGhc (GHC.Located (GHC.HsModule GHC.RdrName))
+        dupInMod (mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
+          -- |findFunOrPatBind pn ds /= [] = doDuplicating' mod pn
+          | length (findFunOrPatBind pn ds) == 0 = doDuplicating' mod pn
+        -- dupInMod _ =mzero
+        dupInMod mod = return mod
+
 {-
 doDuplicating pn newName (inscps, mod, tokList)
    = runStateT (applyTP ((once_tdTP (failTP `adhocTP` dupInMod
@@ -103,13 +133,18 @@ doDuplicating pn newName (inscps, mod, tokList)
           where
             mod (m::HsModuleP)
               = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
-
+-}
         findFunOrPatBind pn ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDecls [pn] ds True False
 
-        doDuplicating' inscps parent pn
+        doDuplicating' :: GHC.ParsedSource -> PName -> RefactGhc GHC.ParsedSource
+        -- doDuplicating' {- inscps -}  parent pn = undefined
+        doDuplicating' {- inscps -}  parent pn
            = do let decls           = hsDecls parent
                     duplicatedDecls = definingDecls [pn] decls True False
                     (after,before)  = break (defines pn) (reverse decls)
+                return parent -- ++AZ++ to keep GHC happy
+
+{-
                 (f,d) <- hsFDNamesFromInside parent
                  --f: names that might be shadowd by the new name, d: names that might clash with the new name
                 dv <- hsVisibleNames pn decls --dv: names may shadow new name
@@ -122,9 +157,9 @@ doDuplicating pn newName (inscps, mod, tokList)
                                ++ "duplicating, please select another name!")
                    else do newBinding<-duplicateDecl decls pn newName
                            return (replaceDecls parent (reverse before++ newBinding++ reverse after)) 
+-}
 
-
-
+{-
 --Find the the new definition name in PName format.
 findNewPName name
   =(fromMaybe defaultPN). applyTU (once_buTU (failTU `adhocTU` worker))
@@ -132,8 +167,9 @@ findNewPName name
         worker  pname
            |pNtoName pname == name = Just pname
         worker _ =mzero
+-}
 
-
+{-
 --Do refactoring in the client module.
 -- that is to hide the identifer in the import declaration if it will cause any problem in the client module.
 refactorInClientMod serverModName newPName (modName, fileName)
@@ -147,7 +183,9 @@ refactorInClientMod serverModName newPName (modName, fileName)
      needToBeHided name exps mod
          =usedWithoutQual name (hsModDecls mod)
           || causeNameClashInExports newPName name mod exps
+-}
 
+{-
 --Check here:
 --get the module name or alias name by which the duplicated definition will be imported automatically.
 willBeUnQualImportedBy::HsName.ModuleName->HsModuleP->Maybe [HsName.ModuleName]

@@ -3,23 +3,32 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+
 module Language.Haskell.Refact.Utils
        ( expToPNT
        , locToExp
-       , locToPNT
        , sameOccurrence
        , parseSourceStr
        , unsafeParseSourceStr
        , parseSourceFile
        , unsafeParseSourceFile
+       , parseSourceFileGhc
+
+       -- * The bits that do the work
+       , runRefacSession
        , applyRefac
+       , ApplyRefacResult(..)
+
        , update
-       , writeRefactoredFiles
-       , Refact
+       -- , writeRefactoredFiles
+       -- , Refact -- ^ deprecated
        -- , fileNameToModName
        , getModuleName
        , isVarId
-       , defaultPN
+       , clientModsAndFiles
+       , serverModsAndFiles
+       , getCurrentModuleGraph
+       , sortCurrentModuleGraph
        , modIsExported
        ) where
 
@@ -27,16 +36,19 @@ import Control.Monad.State
 import Data.Char
 import Data.List
 import Data.Maybe
+import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.TypeUtils
 import System.IO.Unsafe
 
 
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
 import qualified Coercion      as GHC
+import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified ErrUtils      as GHC
 import qualified FastString    as GHC
@@ -61,7 +73,10 @@ import qualified Var           as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+-- import Data.Generics
+
 import Debug.Trace
+
 -- ---------------------------------------------------------------------
 
 {-
@@ -320,11 +335,12 @@ fileNameToModName fileName =
                     else return $ (fst.head) f
 -}
 
-getModuleName :: GHC.ParsedSource -> Maybe String
+-- | Extract the module name from the parsed source, if there is one
+getModuleName :: GHC.ParsedSource -> Maybe (GHC.ModuleName,String)
 getModuleName (GHC.L _ mod) =
   case (GHC.hsmodName mod) of
     Nothing -> Nothing
-    Just (GHC.L _ modname) -> Just $ GHC.moduleNameString modname
+    Just (GHC.L _ modname) -> Just $ (modname,GHC.moduleNameString modname)
 
 
 
@@ -382,6 +398,36 @@ parseSourceFile targetFile =
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       return ((inscopes,exports,modAst),tokens)
 
+-- ---------------------------------------------------------------------
+
+-- | Parse a source file into a GHC session
+parseSourceFileGhc ::
+  String -> RefactGhc (ParseResult,[PosToken])
+parseSourceFileGhc targetFile = do
+      settings <- getRefacSettings
+      dflags <- GHC.getSessionDynFlags
+      let dflags' = foldl GHC.xopt_set dflags
+                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
+          dflags'' = dflags' { GHC.importPaths = rsetImportPath settings }
+      GHC.setSessionDynFlags dflags''
+      target <- GHC.guessTarget targetFile Nothing
+      GHC.setTargets [target]
+      GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
+      g <- GHC.getModuleGraph
+      -- modSum <- GHC.getModSummary $ mkModuleName "B"
+      let modSum = head g
+      p <- GHC.parseModule modSum
+      t <- GHC.typecheckModule p
+
+      let pm = GHC.tm_parsed_module t
+
+      let inscopes = GHC.tm_typechecked_source t
+          modAst = GHC.pm_parsed_source p
+          exports = getExports modAst
+      tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
+      return ((inscopes,exports,modAst),tokens)
+
+-- ---------------------------------------------------------------------
 
 -- TODO: harvest the common GHC setup in parseSourceFile and
 -- parseSourceStr into a withGhc wrapper of some kind, or use the one
@@ -438,23 +484,68 @@ getExports (GHC.L _ hsmod) =
 
 -- ---------------------------------------------------------------------
 
+-- | The result of a refactoring is the file, a flag as to whether it
+-- was modified, the updated token stream, and the updated AST
+type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
 
 
+-- | Manage a whole refactor session. Initialise the monad, parse the
+-- source files, apply the refactorings, write out the files.
+--
+-- It is intended that this forms the umbrella function, in which
+-- applyRefac is called
+--
+runRefacSession :: (Maybe RefactSettings)
+         -> RefactGhc [ApplyRefacResult] -- TODO: should this be a list of refactorings?
+         -> IO ()
+runRefacSession settings comp = do
+  let
+   initialState = RefSt
+        { rsSettings = fromMaybe (RefSet ["."]) settings
+        , rsTokenStream = [] -- :: [PosToken]
+        , rsStreamModified = False -- :: Bool
+        }
+  (refactoredMods,_s) <- runRefactGhc comp initialState
+  writeRefactoredFiles False refactoredMods
+  return ()
 
+-- ---------------------------------------------------------------------
+
+-- TODO: the module should be stored in the state, and returned if it
+-- has been modified in a prior refactoring, instead of being parsed
+-- afresh each time.
+
+-- | Apply a refactoring (or part of a refactoring) to a single module
 applyRefac
-    :: (ParseResult -> Refact GHC.ParsedSource)
-    -> Maybe (ParseResult, [PosToken])
-    -> FilePath
-    -> IO ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+    :: (ParseResult -> RefactGhc GHC.ParsedSource) -- ^ The refactoring
+    -> Maybe (ParseResult, [PosToken])             -- ^ parse of module, if available
+    -> FilePath                                    -- ^ filename, if not
+    -> RefactGhc ApplyRefacResult
 
 applyRefac refac Nothing fileName
-  = do ((inscps, exps, mod), toks) <- parseSourceFile fileName
-       (mod',(RefSt toks' m _))  <- runRefact (refac (inscps, exps, mod)) (RefSt toks False (-1000,0))
-       return ((fileName,m),(toks',mod'))
+  = do (pr, toks) <- parseSourceFileGhc fileName  -- TODO: move this into the RefactGhc monad, so it shares a session
+       res <- applyRefac refac (Just (pr,toks)) fileName
+       return res
 
-applyRefac refac (Just ((inscps, exps, mod), toks)) fileName
-  = do (mod',(RefSt toks' m _))  <- runRefact (refac (inscps, exps, mod)) (RefSt toks False (-1000,0))
-       return ((fileName,m),(toks', mod'))
+applyRefac refac (Just (parsedFile,toks)) fileName = do
+    let settings = RefSet ["."]
+
+    -- TODO: currently a temporary, poor man's surrounding state
+    -- management: store state now, set it to fresh, run refac, then
+    -- restore the state. Fix this to store the modules in some kind of cache.
+    (RefSt settings ts m) <- get
+    put (RefSt settings toks False)
+
+    mod' <- refac parsedFile
+    (RefSt _ toks' m) <- get
+
+    -- Replace state with original, probably not needed
+    put (RefSt settings ts m)
+
+    return ((fileName,m),(toks', mod'))
+
+
+-- ---------------------------------------------------------------------
 
 
 
@@ -492,7 +583,7 @@ class (SYB.Data t, SYB.Data t1)=>Update t t1 where
   update::  t     -- ^ The syntax phrase to be updated.
          -> t     -- ^ The new syntax phrase.
          -> t1    -- ^ The contex where the old syntax phrase occurs.
-         -> Refact t1  -- ^ The result.
+         -> RefactGhc t1  -- ^ The result.
 
 instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
 {- update ::
@@ -525,7 +616,7 @@ instance (SYB.Data t) => Update (GHC.Located HsPatP) t where
                      return $ head newPat'
             | otherwise = return p
 
-instance (SYB.Data t) =>Update [GHC.Located HsPatP] t where
+instance (SYB.Data t) => Update [GHC.Located HsPatP] t where
  update oldPat newPat  t
    = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
    where
@@ -545,12 +636,12 @@ prettyprint x = GHC.showSDoc $ GHC.ppr x
 -- | Write refactored program source to files.
 {-
 writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-refactoring
-         ->[((String,Bool),([PosToken],HsModuleP))]  --  ^ String: the file name; Bool: True means the file has been modified.[PosToken]: the token stream; HsModuleP: the module AST.
+         ->[((String,Bool),([PosToken],HsModuleP))]
+            --  ^ String: the file name; Bool: True means the file has
+            --  been modified.[PosToken]: the token stream; HsModuleP:
+            --  the module AST.
          -> m ()
 -}
--- OLD: type PosToken = (Token, (Pos, String))
--- GHC: type PosToken = (GHC.Located GHC.Token, String)
-
 -- writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
 writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], GHC.ParsedSource))])
 -- writeRefactoredFiles :: Bool -> [(RefactState, GHC.ParsedSource)]
@@ -595,29 +686,9 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            -- writeHaskellFile (createNewFileName "AST" fileName) ((render.ppi.rmPrelude) mod)
            -- ++AZ++ writeHaskellFile (createNewFileName "AST" fileName) (SYB.showData SYB.Parser mod)
 
-
-
        createNewFileName str fileName
           =let (name, posfix)=span (/='.') fileName
            in (name++str++posfix)
-
----------------------------------------------------------------------------------------
--- | Default identifier in the PNT format.
-defaultPNT:: GHC.GenLocated GHC.SrcSpan GHC.RdrName   -- GHC.RdrName
--- defaultPNT = PNT defaultPN Value (N Nothing) :: PNT
--- defaultPNT = GHC.mkRdrUnqual "nothing" :: PNT
--- defaultPNT = PNT (mkRdrName "nothing") (N Nothing) :: PNT
-defaultPNT = GHC.L GHC.noSrcSpan (mkRdrName "nothing")
-
-defaultPN :: PN
-defaultPN = mkRdrName "nothing"
-
--- | Default expression.
-defaultExp::HsExpP
--- defaultExp=Exp (HsId (HsVar defaultPNT))
-defaultExp=GHC.HsVar $ mkRdrName "nothing"
-
-mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
 
 -- | If an expression consists of only one identifier then return this identifier in the PNT format,
@@ -626,49 +697,16 @@ mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 -- TODO: bring in data constructor constants too.
 expToPNT ::
   GHC.GenLocated GHC.SrcSpan (GHC.HsExpr PNT)
-  -> PNT
--- expToPNT:: GHC.HsExpr GHC.RdrName -> GHC.RdrName
-expToPNT (GHC.L x (GHC.HsVar pnt))                     = pnt
+  -> Maybe PNT
+
+-- Will have to look this up ....
+expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just pnt
 -- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
 -- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
 -- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
 -- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
-expToPNT _ = defaultPNT
+expToPNT _ = Nothing
 
-
--- |Find the identifier(in PNT format) whose start position is (row,col) in the
--- file specified by the fileName, and returns defaultPNT is such an identifier does not exist.
-
--- TODO: ++AZ++ what is the fileName parameter actually for?
--- TODO: ++AZ++ does not seem to find PNTs if not at start of line/expression.
-locToPNT::(SYB.Data t)=>String      -- ^ The file name
-                    ->(Int,Int) -- ^ The row and column number
-                    ->t         -- ^ The syntax phrase
-                    ->GHC.GenLocated GHC.SrcSpan GHC.RdrName       -- ^ The result
-locToPNT  fileName (row, col) t
-  = case res of
-         Just x -> x
-         Nothing -> defaultPNT
-            -- =(fromMaybe defaultPNT). applyTU (once_buTU (failTU `adhocTU` worker))
-       where
-        res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
-
-        worker (pnt@(GHC.L s (GHC.Unqual name))::GHC.GenLocated GHC.SrcSpan t1)
-              | inScope pnt = Just pnt
-            -- |fileName1==fileName && (row1,col1) == (row,col) =Just pnt
-
-        worker _ =Nothing
-
-        inScope :: GHC.Located e -> Bool
-        inScope (GHC.L l _) =
-          let
-            (startLoc,endLoc) = case l of
-              (GHC.RealSrcSpan ss) ->
-                ((GHC.srcSpanStartLine ss),
-                 (GHC.srcSpanEndLine ss))
-              (GHC.UnhelpfulSpan _) -> ((0),(0))
-          in
-           (startLoc==row) && (endLoc>= col)
 
 
 -- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
@@ -748,7 +786,7 @@ isId id = id/=[] && isLegalIdTail (tail id) && not (isReservedId id)
 -- or by specifying the module name in the export.
 modIsExported::HsModuleP   -- ^ The AST of the module
                -> Bool     -- ^ The result
-modIsExported mod
+modIsExported (GHC.L _ mod)
    = let exps    = GHC.hsmodExports mod -- Maybe [LIE name]
          modName = GHC.hsmodName mod -- Maybe (Located ModuleName)
 
@@ -764,45 +802,90 @@ modIsExported mod
            else isJust $ find matchModName (fromJust exps)
 
 -- ---------------------------------------------------------------------
-{-
--- clientModsAndFiles::( ) =>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
-clientModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
-                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
-clientModsAndFiles m =
-  do gf <- getCurrentModuleGraph
-     let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
-         g           = (reverseGraph.(map snd)) gf     
-         clientMods  = reachable g [m] \\ [m]
-         clients     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) clientMods
-     return clients
 
--- | Return the server module and file names. The server modules of module, say  m, are those modules
--- which are directly or indirectly imported by module m.
--}
---serverModsAndFiles::( )=>ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
+-- | Return the client modules and file names. The client modules of
+-- module, say m, are those modules which directly or indirectly
+-- import module m.
+
+-- TODO: deal with an anonymous main module, by taking Maybe GHC.ModuleName
+clientModsAndFiles
+  :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
+clientModsAndFiles m = do
+  ms <- GHC.getModuleGraph
+  modsum <- GHC.getModSummary m
+  let mg = getModulesAsGraph False ms Nothing
+      rg = GHC.transposeG mg
+      modNode = fromJust $ find (\(msum,_,_) -> mycomp msum modsum) (GHC.verticesG rg)
+      clientMods = filter (\msum -> not (mycomp msum modsum))
+                 $ map summaryNodeSummary $ GHC.reachableG rg modNode
+
+  return clientMods
+
+-- TODO : find decent name and place for this.
+mycomp ms1 ms2 = (GHC.ms_mod ms1) == (GHC.ms_mod ms2)
+
 
 -- ---------------------------------------------------------------------
-{-
-serverModsAndFiles::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
-                     ModuleName->PFE0MT n i ds ext m [(ModuleName, String)]
-serverModsAndFiles m =
-   do gf <- getCurrentModuleGraph
-      let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
-          g           = (map snd) gf  
-          serverMods  = reachable g [m] \\ [m]
-          servers     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) serverMods
-      return servers
--}
+
+-- | Return the server module and file names. The server modules of
+-- module, say m, are those modules which are directly or indirectly
+-- imported by module m. This can only be called in a live GHC session
+
+serverModsAndFiles
+  :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
+serverModsAndFiles m = do
+  ms <- GHC.getModuleGraph
+  modsum <- GHC.getModSummary m
+  let mg = getModulesAsGraph False ms Nothing
+      modNode = fromJust $ find (\(msum,_,_) -> mycomp msum modsum) (GHC.verticesG mg)
+      serverMods = filter (\msum -> not (mycomp msum modsum))
+                 $ map summaryNodeSummary $ GHC.reachableG mg modNode
+
+  return serverMods
+
+
+   -- do gf <- getCurrentModuleGraph
+   --    let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
+   --        g           = (map snd) gf
+   --        serverMods  = reachable g [m] \\ [m]
+   --        servers     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) serverMods
+   --    return servers
+
+
+-- ---------------------------------------------------------------------
+
+instance (Show GHC.ModuleName) where
+  show = GHC.moduleNameString
+
+-- ---------------------------------------------------------------------
+
 -- | Return True if the given module name exists in the project.
 --isAnExistingMod::( ) =>ModuleName->PFE0MT n i ds ext m Bool
 
--- ---------------------------------------------------------------------
 {-
 isAnExistingMod::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
                   ModuleName->PFE0MT n i ds ext m Bool
 
-isAnExistingMod m 
+isAnExistingMod m
   =  do ms<-allModules
         return (elem m ms)
 -}
+
+-- ---------------------------------------------------------------------
+
+-- | Get the current module graph, provided we are in a live GHC session
+getCurrentModuleGraph :: RefactGhc GHC.ModuleGraph
+getCurrentModuleGraph = GHC.getModuleGraph
+
+sortCurrentModuleGraph :: RefactGhc [GHC.SCC GHC.ModSummary]
+sortCurrentModuleGraph = do
+  -- g <- GHC.getModuleGraph
+  g <- getCurrentModuleGraph
+  let scc = GHC.topSortModuleGraph False g Nothing
+  return scc
+
+-- getSubGraph optms = concat # getSortedSubGraph optms
+-- getSortedSubGraph optms = flip optSubGraph optms # sortCurrentModuleGraph
+-- allModules = moduleList # sortCurrentModuleGraph
+-- moduleList g = [m|scc<-g,(_,(m,_))<-scc]
 

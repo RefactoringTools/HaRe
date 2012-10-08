@@ -6,10 +6,14 @@ module Language.Haskell.Refact.Utils.TypeSyn where
 
 
 -- Modules from GHC
-import qualified GHC     as GHC
-import qualified HsExpr  as GHC
-import qualified RdrName as GHC
-import qualified SrcLoc  as GHC
+import qualified FastString as GHC
+import qualified GHC        as GHC
+import qualified GhcMonad   as GHC
+import qualified HsExpr     as GHC
+import qualified Outputable as GHC
+import qualified RdrName    as GHC
+import qualified SrcLoc     as GHC
+
 
 
 import Data.Generics
@@ -24,22 +28,23 @@ type HsExpP    =HsExpI PNT
 -}
 type HsExpP    = GHC.HsExpr GHC.RdrName
 type HsPatP    = GHC.Pat GHC.RdrName
-type HsDeclP   = GHC.HsDecl GHC.RdrName
+-- type HsDeclP   = GHC.HsDecl GHC.RdrName
+type HsDeclP   = GHC.LHsDecl GHC.RdrName
 
 
 {-
 type HsMatchP  =HsMatchI PNT (HsExpP) (HsPatP) [HsDeclP]
--- type HsModuleP =HsModuleI (SN HsName.HsName) [HsDeclI PNT]  
+-- type HsModuleP =HsModuleI (SN HsName.HsName) [HsDeclI PNT]
 type HsImportDeclP=HsImportDeclI ModuleName PNT -- (SN HsName.HsName)
 type HsExportEntP = HsExportSpecI ModuleName PNT
-type RhsP      =HsRhs HsExpP 
+type RhsP      =HsRhs HsExpP
 type GuardP    =(SrcLoc, HsExpP, HsExpP)
 type HsAltP    =HsAlt HsExpP HsPatP [HsDeclP]
 --type HsConDeclP=HsConDeclI PNT (HsTypeI PNT)
 type HsStmtP   =HsStmt HsExpP HsPatP [HsDeclP]
 type HsStmtAtomP = HsStmtAtom HsExpP HsPatP [HsDeclP]
 type HsFieldP  =HsFieldI PNT HsExpP
-type HsTypeP   = HsTypeI PNT 
+type HsTypeP   = HsTypeI PNT
 type EntSpecP  = EntSpec PNT
 type HsConDeclP = HsConDeclI PNT HsTypeP [HsTypeP]
 type HsConDeclP' = HsConDeclI PNT (TI PNT HsTypeP) [TI PNT HsTypeP]
@@ -48,7 +53,7 @@ type InScopes=((Relations.Rel Names.QName (Ents.Ent PosName.Id)))
 
 type Exports =[(PosName.Id, Ent PosName.Id)]
 -}
-type SimpPos = (Int,Int) -- Line, column 
+type SimpPos = (Int,Int) -- Line, column
 
 -- Additions for GHC
 type PosToken = (GHC.Located GHC.Token, String)
@@ -57,14 +62,33 @@ data Pos = Pos { char, line, column :: !Int } deriving (Show)
 -- it seems that the field char is used to handle special characters including the '\t'
 
 type Export = GHC.LIE GHC.RdrName
+
+-- ---------------------------------------------------------------------
+-- From old/tools/base/defs/PNT.hs
+
+-- |The PN is the name as it occurs to the parser, and
+-- corresponds with the GHC.RdrName
+-- type PN     = GHC.RdrName
+newtype PName = PN HsName deriving (Eq)
+
+-- | The PNT is the unique name, after GHC renaming. It corresponds to
+-- GHC.Name data PNT = PNT GHC.Name deriving (Data,Typeable) -- Note:
+-- GHC.Name has SrcLoc in it already
+-- ++AZ++ : will run with Located RdrName for now, will see when we need the Unique name
+data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable)
+
+instance Show PNT where
+  show (PNT (GHC.L l name)) = "(PNT " ++ (GHC.showPpr l) ++ " " ++ (GHC.showRdrName name) ++ ")"
+
+-- | HsName is a name as it is found in the source
+-- This seems to be quite a close correlation
 type HsName = GHC.RdrName
-type PN     = GHC.RdrName
 
--- TODO ++AZ++ I think this should be the renamed version, with a unique ID.
-type PNT    = GHC.GenLocated GHC.SrcSpan GHC.RdrName
+-- ---------------------------------------------------------------------
 
--- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]  
-type HsModuleP = GHC.HsModule GHC.RdrName
+-- type HsModuleP =HsModuleI ModuleName PNT [HsDeclI PNT]
+type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)
+
 
 
 -- ----------------------------------------------------
@@ -146,3 +170,4 @@ optSrcLoc = N
 instance Eq  OptSrcLoc where _ == _ = True
 instance Ord OptSrcLoc where compare _ _ = EQ
 -}
+

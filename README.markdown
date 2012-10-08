@@ -14,6 +14,8 @@ To run the test suite do:
 
 See http://hspec.github.com/ for details on hspec
 
+see http://travis-ci.org/#alanz/HaRe for continuous build results
+
 ## Contributors
 
  * Christopher Brown

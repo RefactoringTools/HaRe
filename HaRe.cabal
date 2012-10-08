@@ -143,11 +143,12 @@ Library
                                 , mtl
                                 , pretty
                                 , ghc-paths
+                                , old-time
         -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         -- GHC-Options:             -Wall
         Hs-Source-Dirs:         src
         Other-Modules:          Paths_HaRe
-        Exposed-modules:        
+        Exposed-modules:
            Language.Haskell.Refact.Case
 
 
@@ -159,7 +160,7 @@ Executable ghc-hare
           ./src
         Build-Depends:          base >=4
                                 , syb
-                                , cmdtheline
+                                , cmdtheline >= 0.2.1
                     --            , network
                                 , ghc
                     --            , containers
@@ -175,7 +176,9 @@ Executable ghc-hare
                     --            , MonadCatchIO-mtl
                     --            , transformers
                                 , ghc-syb-utils
-        -- ++AZ++ I prefer to put these in the individual files, as needed          
+                                , old-time
+                    --            , ghc-mtl
+        -- ++AZ++ I prefer to put these in the individual files, as needed
         -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
 
@@ -247,6 +250,7 @@ test-suite spec
   ghc-options:
       -- reinstate these later  -Wall 
       -- reinstate these later  -Werror
+      -fhpc
   cpp-options:
       -DTEST
   main-is:
@@ -272,4 +276,5 @@ test-suite spec
     , stringbuilder
     , silently
     , filepath
-
+    , old-time
+    , Diff

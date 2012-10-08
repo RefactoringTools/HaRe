@@ -119,9 +119,11 @@ The type for these kind of identifiers is called PNT (Programatica
 
   data PNT = PNT (PN HsName Orig) (IdTy Pid) OptSrcLoc
 
+the PNT is a uniquely identified name, and is equivalent to the GHC
+   Name in the RenamedSource
 
-GHC equivalent of PNT seems to be
-Located RdrName
+the PN is the equivalent of the GHC RdrName
+
 
 ----------------------------------------------
 
@@ -166,6 +168,10 @@ Tokens
 GHC has no token for whitespace. All spacing information is in the
    srcloc.  Need to check the implications.
 
+----------
+
+Thought: do refactoring on RenamedSource, not ParsedSource. Need to
+   rework token stream anyway, and at least the names are resolved.
 
 
 
@@ -204,3 +210,16 @@ The ModSummary holds compiler housekeeping information
 
 We will work with the ParsedSource, so it is always Located.
 
+
+Bring in no-code flage to GHC when type checking
+
+--
+
+NOTE: GHC SrcSpan columns
+
+1. Are 0 based. So what an editor calls col 1, is col 0 for GHC
+2. Extend one beyond the last char. So the end col of a tok is the
+   same as the start col of the next one
+3. HaRe internally will work with GHC cols, the translation must
+   happen in the API wrapper to it. Buildwrapper does something
+   similar.
