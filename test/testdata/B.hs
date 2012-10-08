@@ -3,7 +3,7 @@ module B where
 
 foo x = if (odd x) then "Odd" else "Even"
 
-bob x y = x + foo y
+bob x y = let foo x = x + 2 in (let foo x = x+1 in  x + foo y)
     where
         foo x = x + 1
 

@@ -11,6 +11,8 @@ import qualified OccName(occNameString)
 
 
 -----------------
+import Language.Haskell.Refact.Utils.GhcUtils as SYB
+
 import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
@@ -21,6 +23,7 @@ import qualified Outputable            as GHC
 import qualified MonadUtils            as GHC
 import qualified FastString            as GHC
 import qualified SrcLoc                as GHC
+import Var
 
 import GHC.Paths ( libdir )
  
@@ -140,6 +143,10 @@ getStuff =
         -- GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
 
         let ps  = GHC.pm_parsed_source p
+        
+        _ <- processVarUniques t
+        
+        -- GHC.liftIO (putStrLn . showParsedModule results)
 
         rts <- GHC.getRichTokenStream (GHC.ms_mod modSum)
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
@@ -153,6 +160,14 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "locToExp1=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,43) rts ps))
         -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
         return ()
+
+processVarUniques t = SYB.everywhereMStaged SYB.TypeChecker (SYB.mkM showUnique) t
+    where
+        showUnique (var :: Var)
+           = do GHC.liftIO $ putStrLn (GHC.showPpr (varUnique var))
+                return var
+        showUnique x = return x
+
 
 tokenLocs toks = map (\(GHC.L l _, s) -> (l,s)) toks
 
@@ -218,7 +233,7 @@ example =
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
         GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
 
-showParsedModule p = SYB.showData SYB.Parser 0 (GHC.tm_typechecked_source p)
+showParsedModule p = SYB.showData SYB.TypeChecker 0 (GHC.tm_typechecked_source p)
 
 processParsedMod f pm = pm { GHC.tm_typechecked_source = ps' }
   where
