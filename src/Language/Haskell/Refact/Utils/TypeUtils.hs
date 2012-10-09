@@ -71,6 +71,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Locations
     {- ,defineLoc, useLoc-},locToPNT {-,locToPN -},locToExp -- , getStartEndLoc
+    ,locToName
 
  -- * Program transformation
     -- ** Adding
@@ -1062,19 +1063,46 @@ allPNT  fileName (row,col) t
             ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
         worker (pnt :: (GHC.Located GHC.RdrName))
-          -- | inScope pnt = [(PNT pnt)]
           | True = [(PNT pnt)]
         worker _ = []
 
         workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
-          -- | inScope pnt = [(PNT pnt)]
           | True = [(PNT (GHC.L l name))]
         workerBind _ = []
 
-        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
-          -- | inScope pnt = [(PNT pnt)]
+        workerExpr (GHC.L l (GHC.HsVar name) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
           | True = [(PNT (GHC.L l name))]
         workerExpr _ = []
+
+
+------------------------------------------------------------------------------------
+
+-- |Find the identifier(in GHC.Name format) whose start position is
+-- (row,col) in the file specified by the fileName, and returns
+-- `Nothing` if such an identifier does not exist.
+
+locToName::(SYB.Data t)=>GHC.FastString   -- ^ The file name
+                    ->SimpPos          -- ^ The row and column number
+                    ->t                -- ^ The syntax phrase
+                    -> Maybe (GHC.Located GHC.Name)            -- ^ The result
+locToName fileName (row,col) t
+  = res
+       where
+        res = somethingStaged SYB.Renamer Nothing
+            (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+
+        worker (pnt :: (GHC.Located GHC.Name))
+          | inScope pnt = Just pnt
+        worker _ = Nothing
+
+        workerBind pnt@(GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
+          | inScope pnt = Just (GHC.L l name)
+        workerBind _ = Nothing
+
+
+        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+          | inScope pnt = Just (GHC.L l name)
+        workerExpr _ = Nothing
 
         inScope :: GHC.Located e -> Bool
         inScope (GHC.L l _) =

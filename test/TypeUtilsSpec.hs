@@ -67,9 +67,31 @@ spec = do
  
   -- -------------------------------------------------------------------
 
+  describe "locToName" $ do
+    it "returns a GHC.Name for a given source location, if it falls anywhere in an identifier" $ do
+      ((_,renamed,_), _toks) <- parsedFileBGhc
+      let Just (res@(GHC.L l n)) = locToName bFileName (7,3) renamed
+      GHC.showPpr l `shouldBe` "test/testdata/B.hs:7:1-3"
+      getLocatedStart res `shouldBe` (7,1)
+      GHC.showPpr n `shouldBe` "B.foo"
+
+    it "returns a pnt for a given source location, if it falls anywhere in an identifier #2" $ do
+      modInfo@((_, renamed,_),_toks) <- parsedFileBGhc
+      let Just (res@(GHC.L l n)) = locToName bFileName (23,8) renamed
+      GHC.showPpr n `shouldBe` "B.bob"
+      GHC.showPpr l `shouldBe` "test/testdata/B.hs:23:7-9"
+      getLocatedStart res `shouldBe` (23,7)
+
+    it "returns Nothing for a given source location, if it does not fall in an identifier" $ do
+      modInfo@((_, renamed,_),_toks) <- parsedFileBGhc
+      let res = locToName bFileName (7,7) renamed
+      res `shouldBe` Nothing
+
+  -- -------------------------------------------------------------------
+
   describe "allNames" $ do 
     it "lists all Names" $ do
-      modInfo@((_, renamed,_), toks) <- parsedFileBGhc
+      ((_, renamed,_), _toks) <- parsedFileBGhc
       let res = allNames bFileName (7,6) renamed
       let res' = map (\(GHC.L l n) -> (GHC.showPpr $ GHC.nameUnique n,GHC.showPpr (l, n))) res
 
