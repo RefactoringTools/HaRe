@@ -50,23 +50,23 @@ comp :: String -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
       if isVarId newName
-        then do modInfo@((_,_,mod), tokList) <- parseSourceFileGhc fileName
+        then do modInfo@((_,_,parsed), tokList) <- parseSourceFileGhc fileName
                 -- modName <-fileNameToModName fileName
-                -- let modName = getModuleName mod
-                let (Just (modName,_)) = getModuleName mod
-                let pn = pNTtoPN $ locToPNT (GHC.mkFastString fileName) (row, col) mod
+                -- let modName = getModuleName parsed
+                let (Just (modName,_)) = getModuleName parsed
+                let pn = pNTtoPN $ locToPNT (GHC.mkFastString fileName) (row, col) parsed
                 if (pn /= defaultPN)
-                  then do ((fileName',m),(tokList',mod')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
-                          if modIsExported mod
+                  then do ((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                          if modIsExported parsed
                            then do clients <- clientModsAndFiles modName
                                    -- TODO: uncomment and complete this
                                    -- refactoredClients <- mapM (refactorInClientMod modName 
-                                   --                            (findNewPName newName mod')) clients
+                                   --                            (findNewPName newName parsed')) clients
                                    let refactoredClients = [] -- ++AZ++ temporary
-                                   -- writeRefactoredFiles False $ ((fileName,m),(tokList',mod')):refactoredClients 
-                                   return $ ((fileName',m),(tokList',mod')):refactoredClients 
-                           -- else  writeRefactoredFiles False [((fileName,m), (tokList',mod'))]
-                           else  return [((fileName,m), (tokList',mod'))]
+                                   -- writeRefactoredFiles False $ ((fileName,m),(tokList',parsed')):refactoredClients 
+                                   return $ ((fileName',m),(tokList',parsed')):refactoredClients 
+                           -- else  writeRefactoredFiles False [((fileName,m), (tokList',parsed'))]
+                           else  return [((fileName,m), (tokList',parsed'))]
                   else error "Invalid cursor position!"
         else error $ "Invalid new function name:" ++ newName ++ "!"
 
@@ -75,32 +75,32 @@ comp fileName newName (row, col) = do
 
 doDuplicating :: PName -> String -> ParseResult
               -> RefactGhc GHC.ParsedSource
-doDuplicating pn newName (_,_,mod) =
+doDuplicating pn newName (_,_,parsed) =
 
-   everywhereMStaged SYB.Parser (SYB.mkM dupInMod) mod
+   everywhereMStaged SYB.Parser (SYB.mkM dupInMod) parsed
         where
         --1. The definition to be duplicated is at top level.
-        -- dupInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
+        -- dupInMod (parsed@(HsModule loc name exps imps ds):: HsModuleP)
         dupInMod :: (GHC.Located (GHC.HsModule GHC.RdrName))-> RefactGhc (GHC.Located (GHC.HsModule GHC.RdrName))
-        dupInMod (mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
-          -- |findFunOrPatBind pn ds /= [] = doDuplicating' mod pn
-          | length (findFunOrPatBind pn ds) == 0 = doDuplicating' mod pn
+        dupInMod (parsed@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
+          -- |findFunOrPatBind pn ds /= [] = doDuplicating' parsed pn
+          | length (findFunOrPatBind pn ds) == 0 = doDuplicating' parsed pn
         -- dupInMod _ =mzero
-        dupInMod mod = return mod
+        dupInMod parsed = return parsed
 
 {-
-doDuplicating pn newName (inscps, mod, tokList)
+doDuplicating pn newName (inscps, parsed, tokList)
    = runStateT (applyTP ((once_tdTP (failTP `adhocTP` dupInMod
                                             `adhocTP` dupInMatch
                                             `adhocTP` dupInPat
                                             `adhocTP` dupInLet
                                             `adhocTP` dupInAlt
-                                            `adhocTP` dupInLetStmt)) `choiceTP` failure) mod)
+                                            `adhocTP` dupInLetStmt)) `choiceTP` failure) parsed)
                                      ((tokList,unmodified), (-1000))  -- the (-1000) should be deleted.
         where
         --1. The definition to be duplicated is at top level.
-        dupInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
-          |findFunOrPatBind  pn ds/=[]=doDuplicating' inscps mod pn
+        dupInMod (parsed@(HsModule loc name exps imps ds):: HsModuleP)
+          |findFunOrPatBind  pn ds/=[]=doDuplicating' inscps parsed pn
         dupInMod _ =mzero
 
         --2. The definition to be duplicated is a local declaration in a match
@@ -129,9 +129,9 @@ doDuplicating pn newName (inscps, mod, tokList)
         dupInLetStmt _=mzero
 
 
-        failure=idTP `adhocTP` mod
+        failure=idTP `adhocTP` parsed
           where
-            mod (m::HsModuleP)
+            parsed (m::HsModuleP)
               = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
 -}
         findFunOrPatBind pn ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDecls [pn] ds True False
@@ -173,24 +173,24 @@ findNewPName name
 --Do refactoring in the client module.
 -- that is to hide the identifer in the import declaration if it will cause any problem in the client module.
 refactorInClientMod serverModName newPName (modName, fileName)
-  = do (inscps, exps,mod ,ts) <- parseSourceFile fileName
-       let modNames = willBeUnQualImportedBy serverModName mod
-       if isJust modNames && needToBeHided (pNtoName newPName) exps mod
-        then do (mod', ((ts',m),_))<-runStateT (addHiding serverModName mod [newPName]) ((ts,unmodified),fileName)
-                return ((fileName,m), (ts',mod'))
-        else return ((fileName,unmodified),(ts,mod))
+  = do (inscps, exps,parsed ,ts) <- parseSourceFile fileName
+       let modNames = willBeUnQualImportedBy serverModName parsed
+       if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
+        then do (parsed', ((ts',m),_))<-runStateT (addHiding serverModName parsed [newPName]) ((ts,unmodified),fileName)
+                return ((fileName,m), (ts',parsed'))
+        else return ((fileName,unmodified),(ts,parsed))
    where
-     needToBeHided name exps mod
-         =usedWithoutQual name (hsModDecls mod)
-          || causeNameClashInExports newPName name mod exps
+     needToBeHided name exps parsed
+         =usedWithoutQual name (hsModDecls parsed)
+          || causeNameClashInExports newPName name parsed exps
 -}
 
 {-
 --Check here:
 --get the module name or alias name by which the duplicated definition will be imported automatically.
 willBeUnQualImportedBy::HsName.ModuleName->HsModuleP->Maybe [HsName.ModuleName]
-willBeUnQualImportedBy modName mod
-   = let imps = hsModImports mod
+willBeUnQualImportedBy modName parsed
+   = let imps = hsModImports parsed
          ms   = filter (\(HsImportDecl _ (SN modName1 _) qualify  as h)->modName==modName1 && (not qualify) && 
                           (isNothing h || (isJust h && ((fst (fromJust h))==True)))) imps
          in if ms==[] then Nothing
