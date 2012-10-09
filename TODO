@@ -199,8 +199,6 @@ data ParsedModule Source
 
 ---
  
-type ParsedSource = Located (HsModule RdrName)
-
 The ModSummary holds compiler housekeeping information
 
 We will work with the ParsedSource, so it is always Located.
@@ -220,7 +218,44 @@ Var: synonym for Id, but has Kind info not Type info
 
 Bring in no-code flage to GHC when type checking
 
+----------
+type ParsedSource = Located (HsModule RdrName)
+
+HsModule RdrName has
+  hsmodDecls :: [LHsDecl RdrName]
+
+LHsDecl RdrName = Located (HsDecl RdrName)
+
+HsDecl RdrName has
+  ValD (HsBind RdrName)
+
+HsBind RdrName = HsBindLR RdrName RdrName
+  -- Same as bottom of RenamedSource
+
+----------
+
+RenamedSource
+  (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
+
+HsGroup has 
+  hs_valds :: HsValBinds Name
+
+HsValBinds has
+  ValBindsIn (LHsBindsLR Name Name) [LSig Name]	 
+  ValBindsOut [(RecFlag, LHsBinds Name)] [LSig Name]
+
+LHsBindsLR Name Name = Bag (LHsBindLR Name Name)
+
+(LHsBindLR Name Name) = Located (HsBindLR Name Name)
+
+HsBindLR Name Name has
+  FunBind
+  PatBind
+  VarBind
+  AbsBinds
+
 --
+
 
 NOTE: GHC SrcSpan columns
 

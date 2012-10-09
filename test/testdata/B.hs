@@ -15,9 +15,11 @@ foo' x = case (odd x) of
   True -> "Odd"
   False -> "Even"
 
+main :: IO ()
 main = do
   putStrLn $ show $ (foo (5 + C.baz))
 
+mary :: [Integer]
 mary = [1,2,3]
 
 h z = bob z 2

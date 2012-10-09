@@ -98,6 +98,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,ghcToPN,lghcToPN
     -- ,expToPNT, expToPN, nameToExp,pNtoExp,patToPNT, patToPN, nameToPat,pNtoPat
     ,definingDecls -- , definedPNs
+    ,definingDeclsNames
+
     -- ,simplifyDecl
     -- ** Others
    -- , applyRefac, applyRefacToClientMods
@@ -574,13 +576,13 @@ hsFDsFromInside t = do (f,d)<-hsFDsFromInside' t
                (sf,sd) <-hsFreeAndDeclaredPNs stmts
                return (nub (df `union` (sf \\dd)),[]) -- dd)
 
-     stmts (HsGenerator _ pat exp stmts) 
+     stmts (HsGenerator _ pat exp stmts)
           = do (pf,pd) <-hsFreeAndDeclaredPNs pat
                (ef,ed) <-hsFreeAndDeclaredPNs exp
                (sf,sd) <-hsFreeAndDeclaredPNs stmts
                return (nub (pf `union` ef `union` (sf\\pd)),[]) -- pd)
-     
-     stmts _ = mzero    
+
+     stmts _ = mzero
 -}
 
 {-
@@ -604,6 +606,15 @@ hsPNs t = (nub.ghead "hsPNs") res
 
      -- inPnt (PNT pname ty loc) = return [pname]
      inPnt (pname :: GHC.RdrName) = return [(PN pname)]
+
+-- ---------------------------------------------------------------------
+
+hsNamess::(SYB.Data t)=> t -> [GHC.Name]
+hsNamess t = (nub.ghead "hsNamess") res
+  where
+     res = SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inName) t
+
+     inName (pname :: GHC.Name) = return [pname]
 
 
 
@@ -743,7 +754,7 @@ instance HsDecls HsModuleP where
 
     isDeclaredIn pn (HsModule loc modName exps imps ds)
        =fromMaybe False  (do (rf,rd)<-hsFreeAndDeclaredPNs ds
-                             Just (elem pn rd))   
+                             Just (elem pn rd))
 
 instance HsDecls RhsP where
     hsDecls rhs=fromMaybe [] (applyTU (stop_tdTU (failTU `adhocTU` inLet
@@ -762,8 +773,8 @@ instance HsDecls RhsP where
 
 instance HsDecls HsExpP where
     hsDecls rhs=fromMaybe [] (applyTU (stop_tdTU (failTU `adhocTU` inLet
-                                                         `adhocTU` inAlt                  
-                                                         `adhocTU` inStmt)) rhs) 
+                                                         `adhocTU` inAlt
+                                                         `adhocTU` inStmt)) rhs)
              where inLet ((TiDecorate.Exp (HsLet ds@(Decs x y) e)) ::HsExpP)=Just x
                    inLet (TiDecorate.Exp (HsListComp (HsLetStmt ds@(Decs x y) stmts)))=Just x
                    inLet (TiDecorate.Exp (HsDo (HsLetStmt ds@(Decs x y) stmts)))=Just x
@@ -772,26 +783,26 @@ instance HsDecls HsExpP where
                    inAlt ((HsAlt _ p rhs ds@(Decs x y))::HsAlt HsExpP HsPatP HsDeclsP)=Just x
 
                    inStmt ((HsLetStmt ds@(Decs x y) _)::HsStmt HsExpP HsPatP HsDeclsP)=Just x
-                   inStmt _=Nothing 
-    
+                   inStmt _=Nothing
+
     replaceDecls (TiDecorate.Exp (HsLet ds e)) ds'
             =if ds'== Decs [] ([], [])
-                then e 
+                then e
                 else (TiDecorate.Exp (HsLet ds' e))
-                     
+
     replaceDecls (TiDecorate.Exp (HsListComp (HsLetStmt ds stmts))) ds'@(Decs x y)
-            =if x==[] && isLast stmts 
+            =if x==[] && isLast stmts
                then (TiDecorate.Exp (HsList [fromJust (expInLast stmts)]))
                else (TiDecorate.Exp (HsListComp (HsLetStmt ds' stmts)))
        where
          isLast (HsLast e)=True
          isLast _=False
-         
+
          expInLast (HsLast e)=Just e
          expInLast _=Nothing
 
     replaceDecls (TiDecorate.Exp (HsDo (HsLetStmt ds stmts))) ds'@(Decs x y)
-            =if x==[] 
+            =if x==[]
                 then (TiDecorate.Exp (HsDo stmts))
                 else (TiDecorate.Exp (HsDo (HsLetStmt ds' stmts)))
     replaceDecls x ds'=x
@@ -801,19 +812,19 @@ instance HsDecls HsExpP where
             = fromMaybe False (do (pf,pd) <-hsFreeAndDeclaredPNs pats
                                   Just (elem pn  pd))
 
-    isDeclaredIn pn (TiDecorate.Exp (HsLet decls e))        
+    isDeclaredIn pn (TiDecorate.Exp (HsLet decls e))
            =fromMaybe False (do (df,dd)<- hsFreeAndDeclaredPNs decls
                                 Just (elem pn dd))
-        
-    isDeclaredIn pn _=False 
-                   
+
+    isDeclaredIn pn _=False
+
 
 instance HsDecls HsStmtP where
     hsDecls (HsLetStmt ds@(Decs x y) stmts)=x
     hsDecls  _ = []
-    
+
     replaceDecls (HsLetStmt ds stmts) ds'@(Decs x y)
-     = if x/=[] then  HsLetStmt ds' stmts         
+     = if x/=[] then  HsLetStmt ds' stmts
                   else stmts
 
     isDeclaredIn pn (HsGenerator _ pat exp stmts) -- Claus
@@ -835,7 +846,7 @@ instance HsDecls HsAltP where
        =fromMaybe False ( do (pf,pd) <- hsFreeAndDeclaredPNs pat
                              (df,dd) <- hsFreeAndDeclaredPNs decls
                              Just (elem pn (pd `union` dd)))
-    
+
 -}
 -- ---------------------------------------------------------------------
 
@@ -906,6 +917,90 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
       defines' decl@(GHC.L l (GHC.SpliceD     _ {- (GHC.SpliceDecl id) -}))   = []
       defines' decl@(GHC.L l (GHC.DocD        _ {- (GHC.DocDecl) -}))         = []
       defines' decl@(GHC.L l (GHC.QuasiQuoteD _ {- (GHC.HsQuasiQuote id) -})) = []
+
+-- ---------------------------------------------------------------------
+
+-- |Find those declarations(function\/pattern binding and type
+-- signature) which define the specified GHC.Names. incTypeSig indicates
+-- whether the corresponding type signature will be included.
+
+definingDeclsNames:: (SYB.Data t) =>
+            [GHC.Name] -- ^ The specified identifiers.
+            ->t                -- ^ A collection of declarations.
+            ->Bool       -- ^ True means to include the type signature.
+            ->Bool       -- ^ True means to look at the local declarations as well. 
+            ->[GHC.LHsBindLR GHC.Name GHC.Name]  -- ^ The result.
+definingDeclsNames pns ds incTypeSig recursive = defines ds
+  where
+   defines decl
+     = if recursive -- TODO: original seems to stop on first match? Should continue
+        -- then ghead "defines" $ applyTU (stop_tdTU (failTU `adhocTU` inDecl)) decl
+        -- then SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inDecl) decl
+        then []
+        -- else defines' decl
+        else SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
+     where
+
+      defines' decl@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
+        |isJust (find (==(pname)) pns) = [decl]
+        -- | True = [decl]
+
+      defines' decl@(GHC.L l (GHC.PatBind p rhs ty fvs _))
+        |(hsNamess p) `intersect` pns /= [] = [decl]
+
+
+      {-
+      defines' decl@(GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _)))    ---CONSIDER AGAIN----
+        |(hsPNs p) `intersect` pns /= [] = [decl]
+      defines' decl@(GHC.L l (GHC.ValD _))                                    = []
+      -}
+
+      -- TODO: the type signature is a different type, move it to its
+      --       own function, if it is required
+      {-
+      defines' sig@(GHC.L _ (GHC.TypeSig [GHC.L _ n] s))
+        | incTypeSig = [sig]
+      -}
+
+      {-
+      -- SigD - type signatures
+      defines' decl@(GHC.L l (GHC.SigD (GHC.TypeSig is tp)))
+        |(map lghcToPN is) `intersect` pns /=[]
+        = if incTypeSig
+           then [(GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->isJust (find (==lghcToPN x) pns)) is) tp)))]
+           else []
+      defines' decl@(GHC.L l (GHC.SigD        _ {- (GHC.Sig id) -}))          = []
+
+      -- TyClD - Type definitions
+      defines' decl@(GHC.L l (GHC.TyClD (GHC.TyData _ _ name _ _ _ cons _)))
+       = if checkCons cons == True then [decl]
+                                   else []
+
+             where
+               checkCons [] = False
+               checkCons ((GHC.L _ (GHC.ConDecl (GHC.L _ pname) _ _ _ _ _ _ _)):ms)
+                 | isJust (find (==(PN pname)) pns) = True
+                 | otherwise = checkCons ms
+
+      defines' decl@(GHC.L l (GHC.TyClD       _ {- (GHC.TyClDecl id) -}))     = []
+
+
+      defines' decl@(GHC.L l (GHC.InstD       _ {- (GHC.InstDecl id) -}))     = []
+      defines' decl@(GHC.L l (GHC.DerivD      _ {- (GHC.DerivDecl id) -}))    = []
+      defines' decl@(GHC.L l (GHC.DefD        _ {- (GHC.DefaultDecl id) -}))  = []
+      defines' decl@(GHC.L l (GHC.ForD        _ {- (GHC.ForeignDecl id) -}))  = []
+      defines' decl@(GHC.L l (GHC.WarningD    _ {- (GHC.WarnDecl id) -}))     = []
+      defines' decl@(GHC.L l (GHC.AnnD        _ {- (GHC.AnnDecl id) -}))      = []
+      defines' decl@(GHC.L l (GHC.RuleD       _ {- (GHC.RuleDecl id) -}))     = []
+      defines' decl@(GHC.L l (GHC.VectD       _ {- (GHC.VectDecl id) -}))     = []
+      defines' decl@(GHC.L l (GHC.SpliceD     _ {- (GHC.SpliceDecl id) -}))   = []
+      defines' decl@(GHC.L l (GHC.DocD        _ {- (GHC.DocDecl) -}))         = []
+      defines' decl@(GHC.L l (GHC.QuasiQuoteD _ {- (GHC.HsQuasiQuote id) -})) = []
+      -}
+
+      defines' _ = []
+
+-- ---------------------------------------------------------------------
 
 {-
 

@@ -93,7 +93,8 @@ spec = do
     it "lists all Names" $ do
       ((_, renamed,_), _toks) <- parsedFileBGhc
       let res = allNames bFileName (7,6) renamed
-      let res' = map (\(GHC.L l n) -> (GHC.showPpr $ GHC.nameUnique n,GHC.showPpr (l, n))) res
+      -- let res' = map (\(GHC.L l n) -> (GHC.showPpr $ GHC.nameUnique n,GHC.showPpr (l, n))) res
+      let res' = map (\(GHC.L l n) -> (GHC.showPpr $ GHC.nameUnique n,GHC.showPpr (l, GHC.getSrcSpan n, n))) res
 
       -- Map.insertWith :: Ord k => (a -> a -> a) -> k -> a -> Map k a -> Map k a
       let res'' = foldl' (\m (k,a) -> Map.insertWith (++) k a m) Map.empty res'
@@ -190,6 +191,84 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "definingDeclsNames" $ do
+    it "returns [] if not found" $ do
+      ((_,renamed,_), _toks) <- parsedFileDd1Ghc
+      let Just ((GHC.L _ n)) = locToName dd1FileName (16,6) renamed
+      let res = definingDeclsNames [n] renamed False False
+      GHC.showPpr res `shouldBe` "[]"
+
+    it "finds declarations at the top level" $ do
+      ((_,renamed,_), _toks) <- parsedFileDd1Ghc
+      let Just (GHC.L _ n) = locToName dd1FileName (3,3) renamed
+      let res = definingDeclsNames [n] renamed False False
+      GHC.showPpr res `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+
+    {-
+    it "includes the typedef if requested" $ do
+      ((_,renamed,_), _toks) <- parsedFileDd1Ghc
+      let Just (GHC.L _ n) = locToName dd1FileName (3,3) renamed
+      let res = definingDeclsNames [n] renamed True False
+      GHC.showPpr res `shouldBe` "[toplevel :: Integer -> Integer,DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+    -} 
+
+    {-
+    it "strips other names from typedef" $ do
+      {-
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (mkRdrName "c"))] ds True False
+      GHC.showPpr res `shouldBe` "[c :: Integer, c = 7]"
+      -}
+      pending "Convert to definingDeclsNames"
+    -}
+
+    it "finds in a patbind" $ do
+      ((_,renamed,_), _toks) <- parsedFileDd1Ghc
+      let Just (GHC.L _ n) = locToName dd1FileName (14,1) renamed
+      let res = definingDeclsNames [n] renamed False False
+      GHC.showPpr res `shouldBe` "[DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. 15]]"
+
+
+    {-
+    it "finds in a patbind, with type signature" $ do
+      {-
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (mkRdrName "tup"))] ds True False
+      GHC.showPpr res `shouldBe` "[tup :: (Int, Int), tup@(h, t) = head $ zip [1 .. 10] [3 .. 15]]"
+      -}
+      pending "Convert to definingDeclsNames"
+    -}
+
+    it "finds in a data decl" $ do
+      ((_,renamed,_), _toks) <- parsedFileDd1Ghc
+      let Just (GHC.L _ n) = locToName dd1FileName (16,6) renamed
+      let res = definingDeclsNames [n] renamed False False
+      GHC.showPpr res `shouldBe` "[data D]"
+      {-
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (GHC.mkRdrUnqual (GHC.mkDataOcc "A")))] ds True False
+      GHC.showPpr res `shouldBe` "[data D = A | B String | C]"
+      -}
+
+
+    it "finds recursively in sub-binds" $ do
+      {-
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (mkRdrName "zz"))] ds False True
+      GHC.showPpr res `shouldBe` "[zz n = n + 1]" -- TODO: Currently fails, will come back to it
+      -}
+      pending "Currently fails, will come back to it"
+
+    it "only finds recursively in sub-binds if asked" $ do
+      {-
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let res = definingDecls [(PN (mkRdrName "zz"))] ds False False
+      GHC.showPpr res `shouldBe` "[]"
+      -}
+      pending "Convert to definingDeclsNames"
+
+  -- -------------------------------------------------------------------
+
   describe "isFunBind" $ do
     it "Returns False if not a function definition" $ do
       modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
@@ -282,7 +361,8 @@ parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs
 -- Runners
 
 -- t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
-t = withArgs ["--match", "allNames"] main
+-- t = withArgs ["--match", "allNames"] main
+t = withArgs ["--match", "definingDeclsNames"] main
 
 
 

@@ -203,7 +203,7 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeVars cm_binds(showData)=" ++ (GHC.showPpr $ GHC.exprsFreeVars $ getBinds $ GHC.mg_binds c))
         -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeIds cm_binds(showPpr)=" ++ (GHC.showPpr $ map GHC.exprFreeIds $ getBinds $ GHC.mg_binds c))
 
-        GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : bindFreeVars cm_binds(showPpr)=" ++ (GHC.showPpr $ map GHC.bindFreeVars $ GHC.mg_binds c))
+        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : bindFreeVars cm_binds(showPpr)=" ++ (GHC.showPpr $ map GHC.bindFreeVars $ GHC.mg_binds c))
 
 
         return ()

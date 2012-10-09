@@ -50,13 +50,15 @@ comp :: String -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
       if isVarId newName
-        then do modInfo@((_,_,parsed), tokList) <- parseSourceFileGhc fileName
+        then do modInfo@((_,renamed,parsed), tokList) <- parseSourceFileGhc fileName
                 -- modName <-fileNameToModName fileName
                 -- let modName = getModuleName parsed
                 let (Just (modName,_)) = getModuleName parsed
-                let pn = pNTtoPN $ locToPNT (GHC.mkFastString fileName) (row, col) parsed
-                if (pn /= defaultPN)
-                  then do ((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                -- let pn = pNTtoPN $ locToPNT (GHC.mkFastString fileName) (row, col) parsed
+                let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
+                case maybePn of
+                  Just pn ->
+                       do ((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                           if modIsExported parsed
                            then do clients <- clientModsAndFiles modName
                                    -- TODO: uncomment and complete this
@@ -67,13 +69,13 @@ comp fileName newName (row, col) = do
                                    return $ ((fileName',m),(tokList',parsed')):refactoredClients 
                            -- else  writeRefactoredFiles False [((fileName,m), (tokList',parsed'))]
                            else  return [((fileName,m), (tokList',parsed'))]
-                  else error "Invalid cursor position!"
+                  Nothing -> error "Invalid cursor position!"
         else error $ "Invalid new function name:" ++ newName ++ "!"
 
 
 -- type PN     = GHC.RdrName
 
-doDuplicating :: PName -> String -> ParseResult
+doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
               -> RefactGhc GHC.ParsedSource
 doDuplicating pn newName (_,_,parsed) =
 
