@@ -22,6 +22,9 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.Environment
 
+import qualified Data.Map as Map
+import Data.List
+
 main :: IO ()
 main = hspec spec
 
@@ -69,7 +72,48 @@ spec = do
       modInfo@((_, renamed,_), toks) <- parsedFileBGhc
       let res = allNames bFileName (7,6) renamed
       let res' = map (\(GHC.L l n) -> (GHC.showPpr $ GHC.nameUnique n,GHC.showPpr (l, n))) res
-      show res' `shouldBe` "TODO:partition the names in res' according to common key"
+
+      -- Map.insertWith :: Ord k => (a -> a -> a) -> k -> a -> Map k a -> Map k a
+      let res'' = foldl' (\m (k,a) -> Map.insertWith (++) k a m) Map.empty res'
+
+      (sort $ Map.elems res'') `shouldBe` 
+                 ["(test/testdata/B.hs:11:17, x)(test/testdata/B.hs:11:13, x)"
+                 ,"(test/testdata/B.hs:11:9-11, foo)"
+                 ,"(test/testdata/B.hs:14:1-4, B.foo')"
+                 ,"(test/testdata/B.hs:14:20, x)(test/testdata/B.hs:14:6, x)"
+                 ,"(test/testdata/B.hs:15:3-6, GHC.Types.True)"
+                 ,"(test/testdata/B.hs:16:3-7, GHC.Types.False)"
+                 ,"(test/testdata/B.hs:18:1-4, B.main)"
+                 ,"(test/testdata/B.hs:19:14-17, GHC.Show.show)"
+                 ,"(test/testdata/B.hs:19:19, GHC.Base.$)(test/testdata/B.hs:19:12, GHC.Base.$)"
+                 ,"(test/testdata/B.hs:19:22-24, B.foo)(test/testdata/B.hs:7:1-3, B.foo)"
+                 ,"(test/testdata/B.hs:19:29, GHC.Num.+)(test/testdata/B.hs:11:19, GHC.Num.+)"
+                    ++"(test/testdata/B.hs:9:55, GHC.Num.+)(test/testdata/B.hs:9:46, GHC.Num.+)"
+                    ++"(test/testdata/B.hs:9:25, GHC.Num.+)(test/testdata/B.hs:29:14, GHC.Num.+)"
+                 ,"(test/testdata/B.hs:19:3-10, System.IO.putStrLn)"
+                 ,"(test/testdata/B.hs:19:31-35, C.baz)"
+                 ,"(test/testdata/B.hs:21:1-4, B.mary)"
+                 ,"(test/testdata/B.hs:23:1, B.h)"
+                 ,"(test/testdata/B.hs:23:11, z)(test/testdata/B.hs:23:3, z)"
+                 ,"(test/testdata/B.hs:23:7-9, B.bob)(test/testdata/B.hs:9:1-3, B.bob)"
+                 ,"(test/testdata/B.hs:25:10, B.A)"
+                 ,"(test/testdata/B.hs:25:14, B.B)"
+                 ,"(test/testdata/B.hs:25:25, B.C)"
+                 ,"(test/testdata/B.hs:25:6, B.D)"
+                 ,"(test/testdata/B.hs:27:1-7, B.subdecl)"
+                 ,"(test/testdata/B.hs:27:16, x)(test/testdata/B.hs:27:9, x)"
+                 ,"(test/testdata/B.hs:29:12, n)(test/testdata/B.hs:29:8, n)"
+                 ,"(test/testdata/B.hs:29:5-6, zz)(test/testdata/B.hs:27:13-14, zz)"
+                 ,"(test/testdata/B.hs:7:13-15, GHC.Real.odd)(test/testdata/B.hs:14:16-18, GHC.Real.odd)"
+                 ,"(test/testdata/B.hs:7:17, x)(test/testdata/B.hs:7:5, x)"
+                 ,"(test/testdata/B.hs:9:15-17, foo)"
+                 ,"(test/testdata/B.hs:9:23, x)(test/testdata/B.hs:9:19, x)"
+                 ,"(test/testdata/B.hs:9:45, x)(test/testdata/B.hs:9:41, x)"
+                 ,"(test/testdata/B.hs:9:53, x)(test/testdata/B.hs:9:5, x)"
+                 ,"(test/testdata/B.hs:9:57-59, foo)(test/testdata/B.hs:9:37-39, foo)"
+                 ,"(test/testdata/B.hs:9:61, y)(test/testdata/B.hs:9:7, y)"
+                 ]
+
 
   -- -------------------------------------------------------------------
 
@@ -215,7 +259,8 @@ parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs
 
 -- Runners
 
-t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
+-- t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
+t = withArgs ["--match", "allNames"] main
 
 
 
