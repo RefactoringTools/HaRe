@@ -1,10 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.DupDef(duplicateDef) where
 
-import qualified Data.Generics.Schemes as SYB
-import qualified Data.Generics.Aliases as SYB
-import qualified GHC.SYB.Utils         as SYB
+import qualified Data.Generics as SYB
+import qualified GHC.SYB.Utils as SYB
 
+import qualified Bag                   as GHC
 import qualified DynFlags              as GHC
 import qualified FastString            as GHC
 import qualified GHC
@@ -77,7 +77,7 @@ comp fileName newName (row, col) = do
 
 doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
               -> RefactGhc GHC.ParsedSource
-doDuplicating pn newName (_,_,parsed) =
+doDuplicating pn newName (_,Just renamed,parsed) =
 
    everywhereMStaged SYB.Parser (SYB.mkM dupInMod) parsed
         where
@@ -86,7 +86,7 @@ doDuplicating pn newName (_,_,parsed) =
         dupInMod :: (GHC.Located (GHC.HsModule GHC.RdrName))-> RefactGhc (GHC.Located (GHC.HsModule GHC.RdrName))
         dupInMod (parsed@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
           -- |findFunOrPatBind pn ds /= [] = doDuplicating' parsed pn
-          | length (findFunOrPatBind pn ds) == 0 = doDuplicating' parsed pn
+          | length (findFunOrPatBind pn ds) == 0 = doDuplicating' renamed parsed pn
         -- dupInMod _ =mzero
         dupInMod parsed = return parsed
 
@@ -136,15 +136,17 @@ doDuplicating pn newName (inscps, parsed, tokList)
             parsed (m::HsModuleP)
               = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
 -}
-        findFunOrPatBind pn ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDecls [pn] ds True False
 
-        doDuplicating' :: GHC.ParsedSource -> PName -> RefactGhc GHC.ParsedSource
-        -- doDuplicating' {- inscps -}  parent pn = undefined
-        doDuplicating' {- inscps -}  parent pn
-           = do let decls           = hsDecls parent
-                    duplicatedDecls = definingDecls [pn] decls True False
-                    (after,before)  = break (defines pn) (reverse decls)
-                return parent -- ++AZ++ to keep GHC happy
+        findFunOrPatBind :: (SYB.Data t) => GHC.Located GHC.Name -> t -> [GHC.LHsBind GHC.Name]
+        findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
+
+        -- doDuplicating' :: GHC.ParsedSource -> GHC.Located GHC.Name -> RefactGhc GHC.ParsedSource
+        doDuplicating' parentr parentp pn@(GHC.L _ n)
+           = do let -- decls           = hsDecls parent -- TODO: reinstate this
+                    decls = GHC.bagToList $ getDecls parentr  
+                    duplicatedDecls = definingDeclsNames [n] decls True False
+                    (after,before)  = break (defines n) (reverse decls)
+                return parentp -- ++AZ++ to keep GHC happy
 
 {-
                 (f,d) <- hsFDNamesFromInside parent
@@ -152,7 +154,6 @@ doDuplicating pn newName (inscps, parsed, tokList)
                 dv <- hsVisibleNames pn decls --dv: names may shadow new name
                 let inscpsNames = map ( \(x,_,_,_)-> x) $ inScopeInfo inscps
                     vars        = nub (f `union` d `union` dv)
-                -- error ("RefacDupDef.doDuplicating' ...(f,d,inscpsNames,vars)=" ++ (show (f,d,inscpsNames,vars))) -- ++AZ++
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow    
                 if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity pn duplicatedDecls) 
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "

@@ -256,7 +256,11 @@ HsBindLR Name Name has
 
 --
 
+Look at using 
 
+  modInfoLookupName :: GhcMonad m => ModuleInfo -> Name -> m (Maybe TyThing)
+
+------
 NOTE: GHC SrcSpan columns
 
 1. Are 0 based. So what an editor calls col 1, is col 0 for GHC

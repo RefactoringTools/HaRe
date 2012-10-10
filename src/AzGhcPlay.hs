@@ -179,14 +179,16 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
 
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
-        GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+        -- GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
 
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
 
+        -- ModuleInfo ----------------------------------------------------------------
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (SYB.showData SYB.Parser 0 $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
-        -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (GHC.showPpr $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
+        GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (GHC.showPpr $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
         -- GHC.liftIO (putStrLn $ "moduleInfo.TopLevelScope=" ++ (GHC.showPpr $ GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info t))
+
 
         -- Investigating TypeCheckedModule, in t
         --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))

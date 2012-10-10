@@ -140,6 +140,27 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "getName" $ do 
+    it "gets a qualified Name at the top level" $ do
+      ((_, renamed,_), _toks) <- parsedFileBGhc
+      let Just n = getName "B.foo'" renamed
+      (GHC.showPpr n) `shouldBe` "B.foo'"
+      (GHC.showPpr $ GHC.getSrcSpan n) `shouldBe` "test/testdata/B.hs:14:1-4"
+
+    it "gets any instance of an unqualified Name" $ do
+      ((_, renamed,_), _toks) <- parsedFileBGhc
+      let Just n = getName "foo" renamed
+      (GHC.showPpr n) `shouldBe` "foo"
+      (GHC.showPpr $ GHC.getSrcSpan n) `shouldBe` "test/testdata/B.hs:9:15-17"
+
+    it "returns Nothing if the Name is not found" $ do
+      ((_, renamed,_), _toks) <- parsedFileBGhc
+      let res = getName "baz" renamed
+      (GHC.showPpr res) `shouldBe` "Nothing"
+
+
+  -- -------------------------------------------------------------------
+
   describe "definingDecls" $ do
     it "returns [] if not found" $ do
       modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
@@ -271,17 +292,20 @@ spec = do
 
   describe "isFunBind" $ do
     it "Returns False if not a function definition" $ do
-      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
-      let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
+      modInfo@((_, renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      -- let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
+      let Just tup = getName "DupDef.Dd1.tup" renamed
+      let [decl] = definingDeclsNames [tup] renamed False False
       isFunBind decl  `shouldBe` False
 
     it "Returns True if a function definition" $ do
-      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
-      let [decl] = definingDecls [(PN (mkRdrName "toplevel"))] ds False False
+      modInfo@((_, renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let Just toplevel = getName "DupDef.Dd1.toplevel" renamed
+      let [decl] = definingDeclsNames [toplevel] renamed False False
       isFunBind decl  `shouldBe` True
 
   -- -------------------------------------------------------------------
-
+{- ++AZ++
   describe "isSimplePatBind" $ do
     it "returns False if not a simple pat bind" $ do
       modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
@@ -292,7 +316,7 @@ spec = do
       modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
       let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
       isSimplePatBind decl  `shouldBe` True
-
+-}
   -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredPNs" $ do
@@ -362,8 +386,9 @@ parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs
 
 -- t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
 -- t = withArgs ["--match", "allNames"] main
-t = withArgs ["--match", "definingDeclsNames"] main
+-- t = withArgs ["--match", "definingDeclsNames"] main
 
+t = withArgs ["--match", "getName"] main
 
 
 

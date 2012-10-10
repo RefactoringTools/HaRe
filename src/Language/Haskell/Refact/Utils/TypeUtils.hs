@@ -48,6 +48,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Variable analysis
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , HsDecls(hsDecls,isDeclaredIn{- ,replaceDecls -})
+    ,getDecls
     ,hsFreeAndDeclaredPNs -- ,hsFreeAndDeclaredNames
     -- ,hsVisiblePNs, hsVisibleNames
     -- ,hsFDsFromInside -- , hsFDNamesFromInside
@@ -72,6 +73,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Locations
     {- ,defineLoc, useLoc-},locToPNT {-,locToPN -},locToExp -- , getStartEndLoc
     ,locToName
+    ,getName
 
  -- * Program transformation
     -- ** Adding
@@ -595,16 +597,11 @@ hsFDNamesFromInside t =do (f,d)<-hsFDsFromInside t
 -- ---------------------------------------------------------------------
 -- | Collect the identifiers (in PName format) in a given syntax phrase.
 
--- type HsName = GHC.RdrName
--- newtype PName = PN HsName deriving (Eq)
-
 hsPNs::(SYB.Data t)=> t -> [PName]
--- hsPNs=(nub.ghead "hsPNs").applyTU (full_tdTU (constTU [] `adhocTU` inPnt))
 hsPNs t = (nub.ghead "hsPNs") res
   where
      res = SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inPnt) t
 
-     -- inPnt (PNT pname ty loc) = return [pname]
      inPnt (pname :: GHC.RdrName) = return [(PN pname)]
 
 -- ---------------------------------------------------------------------
@@ -638,11 +635,16 @@ isTypeSig ::HsDeclP->Bool
 isTypeSig (TiDecorate.Dec (HsTypeSig loc is c tp))=True
 isTypeSig _=False
 -}
+
 -- | Return True if a declaration is a function definition.
-isFunBind::HsDeclP -> Bool
-isFunBind (GHC.L l (GHC.ValD (GHC.FunBind _ _ _ _ _ _))) = True
--- isFunBind (TiDecorate.Dec (HsFunBind loc matches)) = True
+isFunBind::GHC.LHsBind t -> Bool
+isFunBind (GHC.L _l (GHC.FunBind _ _ _ _ _ _)) = True
 isFunBind _ =False
+-- isFunBind::HsDeclP -> Bool
+-- isFunBind (GHC.L l (GHC.ValD (GHC.FunBind _ _ _ _ _ _))) = True
+-- isFunBind _ =False
+
+
 {-
 -- | Returns True if a declaration is a pattern binding.
 isPatBind::HsDeclP->Bool
@@ -650,12 +652,18 @@ isPatBind (TiDecorate.Dec (HsPatBind _ _ _ _))=True
 isPatBind _=False
 -}
 
--- | Return True if a declaration is a pattern binding which only defines a variable value.
-isSimplePatBind :: HsDeclP -> Bool
+-- | Return True if a declaration is a pattern binding which only
+-- defines a variable value.
+isSimplePatBind :: (SYB.Data t) => GHC.LHsBind t-> Bool
 isSimplePatBind decl = case decl of
-     (GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _))) -> hsPNs p /= []
-     -- TiDecorate.Dec (HsPatBind _ p _ _) -> patToPN p /=defaultPN
+     (GHC.L _l (GHC.PatBind p _rhs _ty _fvs _)) -> hsPNs p /= []
      _ -> False
+-- isSimplePatBind :: HsDeclP -> Bool
+-- isSimplePatBind decl = case decl of
+--      (GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _))) -> hsPNs p /= []
+--      _ -> False
+
+
 
 {-
 -- | Return True if a declaration is a pattern binding but not a simple one.
@@ -710,6 +718,11 @@ instance HsDecls GHC.ParsedSource where
 
    isDeclaredIn pn (GHC.L _ (GHC.HsModule _ _ _ ds _ _))
      = length (definingDecls [pn] ds False False) /= 0
+
+getDecls :: GHC.RenamedSource -> GHC.LHsBinds GHC.Name
+getDecls renamed@(group, _, _, _) = case (GHC.hs_valds group) of
+   GHC.ValBindsIn    binds _sigs -> binds
+   GHC.ValBindsOut rbinds _sigs -> GHC.unionManyBags $ map (\(_,b) -> b) rbinds
 
 {-
 instance HsDecls HsMatchP where
@@ -929,7 +942,7 @@ definingDeclsNames:: (SYB.Data t) =>
             ->t                -- ^ A collection of declarations.
             ->Bool       -- ^ True means to include the type signature.
             ->Bool       -- ^ True means to look at the local declarations as well. 
-            ->[GHC.LHsBindLR GHC.Name GHC.Name]  -- ^ The result.
+            ->[GHC.LHsBind GHC.Name]  -- ^ The result.
 definingDeclsNames pns ds incTypeSig recursive = defines ds
   where
    defines decl
@@ -941,12 +954,12 @@ definingDeclsNames pns ds incTypeSig recursive = defines ds
         else SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
      where
 
-      defines' decl@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
-        |isJust (find (==(pname)) pns) = [decl]
+      defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
+        |isJust (find (==(pname)) pns) = [decl']
         -- | True = [decl]
 
-      defines' decl@(GHC.L l (GHC.PatBind p rhs ty fvs _))
-        |(hsNamess p) `intersect` pns /= [] = [decl]
+      defines' decl'@(GHC.L l (GHC.PatBind p rhs ty fvs _))
+        |(hsNamess p) `intersect` pns /= [] = [decl']
 
 
       {-
@@ -1054,17 +1067,22 @@ sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
 
 -- ---------------------------------------------------------------------
 
--- | Return True if the  function\/pattern binding defines the specified identifier.
-defines::PName->HsDeclP->Bool
--- defines pn decl@(TiDecorate.Dec (HsFunBind loc ((HsMatch loc1 (PNT pname ty loc2) pats rhs ds):ms))) 
---  = pname == pn
--- defines pn decl@(TiDecorate.Dec (HsPatBind loc p rhs ds))
---  = elem pn (hsPNs p)
-defines pn (GHC.L l (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
- = PN pname == pn
-defines pn (GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _)))
- = elem pn (hsPNs p)
+-- | Return True if the function\/pattern binding defines the
+-- specified identifier.
+defines:: GHC.Name -> GHC.LHsBind GHC.Name -> Bool
+defines n (GHC.L l (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
+ = pname == n
+defines n (GHC.L l (GHC.PatBind p rhs ty fvs _))
+ = elem n (hsNamess p)
 defines _ _= False
+-- defines::PName->HsDeclP->Bool
+-- defines pn (GHC.L l (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
+--  = PN pname == pn
+-- defines pn (GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _)))
+--  = elem pn (hsPNs p)
+-- defines _ _= False
+
+
 
 {-
 -- | Return True if the declaration defines the type signature of the specified identifier.
@@ -1211,10 +1229,11 @@ locToName fileName (row,col) t
 
 
 
-------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
--- |Find the identifier(in PNT format) whose start position is (row,col) in the
--- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
+-- |Find the identifier(in PNT format) whose start position is
+-- (row,col) in the file specified by the fileName, and returns
+-- defaultPNT if such an identifier does not exist.
 
 allNames::(SYB.Data t)=>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
@@ -1253,6 +1272,37 @@ allNames  fileName (row,col) t
               (col <= (GHC.srcSpanEndCol ss))
 
 
+--------------------------------------------------------------------------------
+
+-- |Find the identifier with the given name. This looks through the
+-- given syntax phrase for the first GHC.Name which matches. Because
+-- it is Renamed source, the GHC.Name will include its defining
+-- location. Returns Nothing if the name is not found.
+
+getName::(SYB.Data t)=>
+                      String           -- ^ The name to find
+                    ->t                -- ^ The syntax phrase
+                    ->Maybe GHC.Name   -- ^ The result
+getName str t
+  = res
+       where
+        res = somethingStaged SYB.Renamer Nothing
+            (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+
+        worker (pnt@(GHC.L _ n) :: (GHC.Located GHC.Name))
+          | GHC.showPpr n == str = Just n
+        worker _ = Nothing
+
+        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
+          | GHC.showPpr name == str = Just name
+        workerBind _ = Nothing
+
+
+        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+          | GHC.showPpr name == str = Just name
+        workerExpr _ = Nothing
+
+
 
 ------------------------------------------------------------------------------------
 
@@ -1271,18 +1321,18 @@ allPNTLens fileName (row,col) t
         res = pnts t
 
         pnts :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
-        -- pnts = foldMapOf ghcplate getPNT 
+        -- pnts = foldMapOf ghcplate getPNT
 
         -- foldMapOf :: Monoid r => Simple Traversal a c -> (c -> r) -> a -> r
         pnts = foldMapOf mytraverse pntQ
         -- pnts = foldMapOf mytraverse getPNT
         -- pnts = foldMapOf ghcplate getPNT
-        -- pnts = foldOf mytraverse 
+        -- pnts = foldOf mytraverse
         -- pnts = foldMapOf ghcplate getPNTBind
 
 
 mytraverse :: (SYB.Data a) => Simple Traversal a [PNT]
-mytraverse = ghcplate 
+mytraverse = ghcplate
 
 -- ghcplate ::
 --   (Data a, Typeable b, Applicative c) => (b -> c b) -> a -> c a
@@ -1303,7 +1353,7 @@ getPNTBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
        = [(PNT (GHC.L l name))]
 getPNTBind _ = []
 
--- getPNT 
+-- getPNT
 
   {-
         -- res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
