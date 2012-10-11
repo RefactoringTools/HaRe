@@ -398,7 +398,7 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
           decls (ds :: [HsDeclP])
              =do (f,d) <-hsFreeAndDeclaredList ds
                  return (f\\d,d)
-          
+
           stmts ((HsGenerator _ pat exp stmts) :: HsStmt (HsExpP) (HsPatP) HsDeclsP) -- Claus
              =do (pf,pd) <-hsFreeAndDeclaredPNs pat
                  (ef,ed) <-hsFreeAndDeclaredPNs exp
@@ -415,8 +415,8 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
                 =do let d=map pNTtoPN $ concatMap fst is
                     return ([],d)
           recDecl _ =mzero
-            
-       
+
+
           addFree free mfd=do (f,d)<-mfd
                               return ([free] `union` f, d)
 
@@ -459,11 +459,11 @@ hsFDsFromInside t = do (f,d) <- hsFDsFromInside' t
 
 
      mod ((HsModule loc modName exps imps ds)::HsModuleP)
-        = hsFreeAndDeclaredPNs ds  
+        = hsFreeAndDeclaredPNs ds
 ++AZ++ -}
 {- ++AZ++
  {-    decls (ds::[HsDeclP])                    --CHECK THIS.
-       = hsFreeAndDeclaredPNs decls 
+       = hsFreeAndDeclaredPNs decls
 -}
      match ((HsMatch loc1 (PNT fun _ _) pats rhs ds) ::HsMatchP)
        = do (pf, pd) <-hsFreeAndDeclaredPNs pats
@@ -475,44 +475,44 @@ hsFDsFromInside t = do (f,d) <- hsFDsFromInside' t
      decl ((TiDecorate.Dec (HsPatBind loc p rhs ds))::HsDeclP)
       = do (pf, pd)<-hsFreeAndDeclaredPNs p
            (rf, rd)<-hsFreeAndDeclaredPNs rhs
-           (df, dd)<-hsFreeAndDeclaredPNs ds 
+           (df, dd)<-hsFreeAndDeclaredPNs ds
            return (nub (pf `union` ((rf `union` df) \\ (dd `union` pd))),
                    nub ((pd `union` rd `union` dd)))
 
      decl (TiDecorate.Dec (HsFunBind loc matches))
          =do fds <-mapM hsFDsFromInside matches
              return (nub (concatMap fst fds), nub(concatMap snd fds))
-   
-     decl _ = mzero 
- 
+
+     decl _ = mzero
+
      exp ((TiDecorate.Exp (HsLet decls exp))::HsExpP)
           = do (df,dd)<- hsFreeAndDeclaredPNs decls
-               (ef,_)<- hsFreeAndDeclaredPNs exp 
+               (ef,_)<- hsFreeAndDeclaredPNs exp
                return (nub (df `union` (ef \\ dd)), nub dd)
      exp (TiDecorate.Exp (HsLambda pats body))
             = do (pf,pd) <-hsFreeAndDeclaredPNs pats
                  (bf,_) <-hsFreeAndDeclaredPNs body
-                 return (nub ((bf `union` pf) \\ pd), nub pd)      
+                 return (nub ((bf `union` pf) \\ pd), nub pd)
      exp _ = mzero
 
      alt ((HsAlt _ pat exp decls)::HsAltP)
          = do (pf,pd) <- hsFreeAndDeclaredPNs pat
               (ef,ed) <- hsFreeAndDeclaredPNs exp
               (df,dd) <- hsFreeAndDeclaredPNs decls
-              return (nub (pf `union` (((ef \\ dd) `union` df) \\ pd)), nub (pd `union` dd))      
+              return (nub (pf `union` (((ef \\ dd) `union` df) \\ pd)), nub (pd `union` dd))
 
      stmts ((HsLetStmt decls stmts)::HsStmtP)
           = do (df,dd) <-hsFreeAndDeclaredPNs decls
                (sf,sd) <-hsFreeAndDeclaredPNs stmts
                return (nub (df `union` (sf \\dd)),[]) -- dd)
 
-     stmts (HsGenerator _ pat exp stmts) 
+     stmts (HsGenerator _ pat exp stmts)
           = do (pf,pd) <-hsFreeAndDeclaredPNs pat
                (ef,ed) <-hsFreeAndDeclaredPNs exp
                (sf,sd) <-hsFreeAndDeclaredPNs stmts
                return (nub (pf `union` ef `union` (sf\\pd)),[]) -- pd)
-     
-     stmts _ = mzero    
+
+     stmts _ = mzero
 ++AZ++ -}
 
 -- -----

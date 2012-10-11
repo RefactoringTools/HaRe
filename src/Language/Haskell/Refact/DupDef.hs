@@ -144,6 +144,7 @@ doDuplicating pn newName (inscps, parsed, tokList)
         doDuplicating' parentr parentp pn@(GHC.L _ n)
            = do let -- decls           = hsDecls parent -- TODO: reinstate this
                     decls = GHC.bagToList $ getDecls parentr  
+                    -- TODO: There is an assumption that the decls are in lexical order. Hmm.
                     duplicatedDecls = definingDeclsNames [n] decls True False
                     (after,before)  = break (defines n) (reverse decls)
                 return parentp -- ++AZ++ to keep GHC happy
