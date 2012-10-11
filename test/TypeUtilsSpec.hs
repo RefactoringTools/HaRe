@@ -366,9 +366,10 @@ spec = do
       (GHC.showPpr res)  `shouldBe` "foo"
     -}
     it "Finds declared HsVar" $ do
-      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
-      res <- hsFreeAndDeclaredPNs mod
-      (show res)  `shouldBe` "foo"
+      -- modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
+      ((_,renamed,_), toks) <- parsedFileDeclareGhc
+      let res = hsFreeAndDeclaredPNs renamed
+      (GHC.showPpr res)  `shouldBe` "foo"
 
 
   -- ---------------------------------------------------------------------

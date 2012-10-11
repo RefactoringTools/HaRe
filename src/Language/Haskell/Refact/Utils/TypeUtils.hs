@@ -51,7 +51,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,getDecls
     ,hsFreeAndDeclaredPNs -- ,hsFreeAndDeclaredNames
     -- ,hsVisiblePNs, hsVisibleNames
-    -- ,hsFDsFromInside -- , hsFDNamesFromInside
+    ,hsFDsFromInside -- , hsFDNamesFromInside
 
     -- ** Property checking
     -- ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isTopLevelPNT
@@ -215,15 +215,16 @@ mkNewName name = do
 
 
 ------------------------------------------------------------------------
--- | Collect the free and declared variables (in the PName format) in
+-- | Collect the free and declared variables (in the GHC.Name format) in
 -- a given syntax phrase t. In the result, the first list contains the
 -- free variables, and the second list contains the declared
 -- variables.
-hsFreeAndDeclaredPNs:: (SYB.Data t, MonadPlus m) => t -> m ([PName],[PName])
-hsFreeAndDeclaredPNs t = do
-  let (f,d) = hsFreeAndDeclared'
-  return (nub f, nub d)
+-- Expects RenamedSource
+-- hsFreeAndDeclaredPNs:: (SYB.Data t, MonadPlus m) => t -> m ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNs t = (nub f, nub d)
    where
+          (f,d) = hsFreeAndDeclared'
           {-
           hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
                                                          `adhocTU` pat
@@ -235,17 +236,19 @@ hsFreeAndDeclaredPNs t = do
                                                          `adhocTU` recDecl))
           -}
 
-          hsFreeAndDeclared' :: ([PName],[PName])
+          hsFreeAndDeclared' :: ([GHC.Name],[GHC.Name])
 
           hsFreeAndDeclared' = SYB.everythingStaged SYB.Parser
                              (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
                              ([],[])
                              (([],[]) `SYB.mkQ` expr) t
 
-          -- TODO: ++AZ++ After renaming, HsBindLR has field bind_fvs
-          -- containing locally bound free vars
+          -- TODO: ++AZ++ Note:After renaming, HsBindLR has field bind_fvs
+          --       containing locally bound free vars
 
-          expr (GHC.HsVar pn) = ([PN pn],[])
+          expr (GHC.HsVar n) = ([n],[])
+          expr (GHC.OpApp e1 (GHC.L _ (GHC.HsVar n)) _ e2)
+              = addFree n (hsFreeAndDeclaredPNs [e1,e2])
           expr _ = ([],[])
 {- ++AZ++ WIP start
           exp (TiDecorate.Exp (HsId (HsVar (PNT pn _ _))))=return ([pn],[])
@@ -324,8 +327,8 @@ hsFreeAndDeclaredPNs t = do
           recDecl _ =mzero
 -}
 
-          addFree free mfd=do (f,d)<-mfd
-                              return ([free] `union` f, d)
+          addFree :: GHC.Name -> ([GHC.Name],[GHC.Name]) -> ([GHC.Name],[GHC.Name]) 
+          addFree free (f,d) = ([free] `union` f, d)
 {-
           hsFreeAndDeclaredList l=do fds<-mapM hsFreeAndDeclaredPNs l
                                      return (foldr union [] (map fst fds),
@@ -433,18 +436,20 @@ hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
                              return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
 -}
 ------------------------------------------------------------------------
-{- ++AZ++ come back to this
+
 -- |`hsFDsFromInside` is different from `hsFreeAndDeclaredPNs` in
 -- that: given an syntax phrase t, `hsFDsFromInside` returns not only
 -- the declared variables that are visible from outside of t, but also
 -- those declared variables that are visible to the main expression
 -- inside t.
+-- NOTE: Works on ParsedSource
 
 -- hsFDsFromInside:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
-hsFDsFromInside:: (SYB.Data t, Monad m) => t-> m ([PName],[PName])
-hsFDsFromInside t = do (f,d) <- hsFDsFromInside' t
-                       return (nub f, nub d)
+-- hsFDsFromInside:: (SYB.Data t, Monad m) => t-> m ([GHC.Name],[GHC.Name])
+hsFDsFromInside:: (SYB.Data t) => t-> ([GHC.Name],[GHC.Name])
+hsFDsFromInside t = (nub f, nub d)
    where
+     (f,d) = hsFDsFromInside' 
      {-
      hsFDsFromInside' = applyTU (once_tdTU (failTU  `adhocTU` mod
                                                     -- `adhocTU` decls
@@ -454,14 +459,112 @@ hsFDsFromInside t = do (f,d) <- hsFDsFromInside' t
                                                      `adhocTU` alt
                                                      `adhocTU` stmts ))
      -}
+     hsFDsFromInside' :: ([GHC.Name],[GHC.Name])
+     hsFDsFromInside' = SYB.everythingStaged SYB.Parser
+                  (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
+                  ([],[]) 
+                  (([],[]) `SYB.mkQ` renamed 
+                           `SYB.extQ` match 
+                           `SYB.extQ` decl 
+                           `SYB.extQ` expr
+                           `SYB.extQ` stmts) t
 
-     hsFDsFromInside' = SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` mod) t
+     renamed ((group,_,_,_)::GHC.RenamedSource)
+        = hsFreeAndDeclaredPNs $ GHC.hs_valds group
+
+ {-    decls (ds::[HsDeclP])                    --CHECK THIS.
+       = hsFreeAndDeclaredPNs decls
+-}
+     -- Match [LPat id] (Maybe (LHsType id)) (GRHSs id)	 
+     match ((GHC.Match pats _type rhs):: GHC.Match GHC.Name ) =
+       let
+         (pf, pd) = hsFreeAndDeclaredPNs pats
+         (rf, rd) = hsFreeAndDeclaredPNs rhs
+       in
+         (nub (pf `union` (rf \\ pd)),
+          nub (pd `union` rd))
+
+
+     decl ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name) =
+       let
+         fds = map hsFDsFromInside matches
+       in
+         (nub (concatMap fst fds), nub(concatMap snd fds))
+
+     decl ((GHC.PatBind p rhs _ _ _) :: GHC.HsBind GHC.Name) =
+       let
+         (pf, pd) = hsFreeAndDeclaredPNs p
+         (rf, rd) = hsFreeAndDeclaredPNs rhs
+       in
+         (nub (pf `union` (rf \\ pd)),
+          nub (pd `union` rd))
+
+     decl ((GHC.VarBind p rhs _) :: GHC.HsBind GHC.Name) =
+       let
+         (pf, pd) = hsFreeAndDeclaredPNs p
+         (rf, rd) = hsFreeAndDeclaredPNs rhs
+       in
+         (nub (pf `union` (rf \\ pd)),
+          nub (pd `union` rd))
+
+
+     expr ((GHC.HsLet decls e) :: GHC.HsExpr GHC.Name) =
+       let
+         (df,dd) = hsFreeAndDeclaredPNs decls
+         (ef,_)  = hsFreeAndDeclaredPNs e
+       in
+         (nub (df `union` (ef \\ dd)), nub dd)
+
+     expr ((GHC.HsLam (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name) =
+       hsFreeAndDeclaredPNs matches
+
+     expr ((GHC.HsCase e (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name) =
+       let
+         (ef,_)  = hsFreeAndDeclaredPNs e
+         (df,dd) = hsFreeAndDeclaredPNs matches
+       in
+         (nub (df `union` (ef \\ dd)), nub dd)
+
+     stmts ((GHC.BindStmt pat e1 e2 e3) :: GHC.Stmt GHC.Name) =
+       let
+         (pf,pd) = hsFreeAndDeclaredPNs pat
+         (ef,ed) = hsFreeAndDeclaredPNs e1
+         (df,dd) = hsFreeAndDeclaredPNs [e2,e3]
+       in
+         (nub (pf `union` (((ef \\ dd) `union` df) \\ pd)), nub (pd `union` dd))
+
+     stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
+       hsFreeAndDeclaredPNs binds
+
+{- ++AZ++
+     stmts (HsGenerator _ pat exp stmts)
+          = do (pf,pd) <-hsFreeAndDeclaredPNs pat
+               (ef,ed) <-hsFreeAndDeclaredPNs exp
+               (sf,sd) <-hsFreeAndDeclaredPNs stmts
+               return (nub (pf `union` ef `union` (sf\\pd)),[]) -- pd)
+
+     stmts _ = mzero
+++AZ++ -}
+
+-- -----
+
+{-
+hsFDsFromInside:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
+hsFDsFromInside t = do (f,d)<-hsFDsFromInside' t
+                       return (nub f, nub d)
+   where
+     hsFDsFromInside' = applyTU (once_tdTU (failTU  `adhocTU` mod
+                                                    -- `adhocTU` decls
+                                                     `adhocTU` decl
+                                                     `adhocTU` match
+                                                     `adhocTU` exp
+                                                     `adhocTU` alt
+                                                     `adhocTU` stmts ))
 
 
      mod ((HsModule loc modName exps imps ds)::HsModuleP)
         = hsFreeAndDeclaredPNs ds
-++AZ++ -}
-{- ++AZ++
+
  {-    decls (ds::[HsDeclP])                    --CHECK THIS.
        = hsFreeAndDeclaredPNs decls
 -}
@@ -488,78 +591,6 @@ hsFDsFromInside t = do (f,d) <- hsFDsFromInside' t
      exp ((TiDecorate.Exp (HsLet decls exp))::HsExpP)
           = do (df,dd)<- hsFreeAndDeclaredPNs decls
                (ef,_)<- hsFreeAndDeclaredPNs exp
-               return (nub (df `union` (ef \\ dd)), nub dd)
-     exp (TiDecorate.Exp (HsLambda pats body))
-            = do (pf,pd) <-hsFreeAndDeclaredPNs pats
-                 (bf,_) <-hsFreeAndDeclaredPNs body
-                 return (nub ((bf `union` pf) \\ pd), nub pd)
-     exp _ = mzero
-
-     alt ((HsAlt _ pat exp decls)::HsAltP)
-         = do (pf,pd) <- hsFreeAndDeclaredPNs pat
-              (ef,ed) <- hsFreeAndDeclaredPNs exp
-              (df,dd) <- hsFreeAndDeclaredPNs decls
-              return (nub (pf `union` (((ef \\ dd) `union` df) \\ pd)), nub (pd `union` dd))
-
-     stmts ((HsLetStmt decls stmts)::HsStmtP)
-          = do (df,dd) <-hsFreeAndDeclaredPNs decls
-               (sf,sd) <-hsFreeAndDeclaredPNs stmts
-               return (nub (df `union` (sf \\dd)),[]) -- dd)
-
-     stmts (HsGenerator _ pat exp stmts)
-          = do (pf,pd) <-hsFreeAndDeclaredPNs pat
-               (ef,ed) <-hsFreeAndDeclaredPNs exp
-               (sf,sd) <-hsFreeAndDeclaredPNs stmts
-               return (nub (pf `union` ef `union` (sf\\pd)),[]) -- pd)
-
-     stmts _ = mzero
-++AZ++ -}
-
--- -----
-
-{-
-hsFDsFromInside:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
-hsFDsFromInside t = do (f,d)<-hsFDsFromInside' t
-                       return (nub f, nub d)
-   where 
-     hsFDsFromInside' = applyTU (once_tdTU (failTU  `adhocTU` mod
-                                                    -- `adhocTU` decls
-                                                     `adhocTU` decl
-                                                     `adhocTU` match
-                                                     `adhocTU` exp
-                                                     `adhocTU` alt
-                                                     `adhocTU` stmts ))
-                                                    
-
-     mod ((HsModule loc modName exps imps ds)::HsModuleP)
-        = hsFreeAndDeclaredPNs ds  
-
- {-    decls (ds::[HsDeclP])                    --CHECK THIS.
-       = hsFreeAndDeclaredPNs decls 
--}
-     match ((HsMatch loc1 (PNT fun _ _) pats rhs ds) ::HsMatchP)
-       = do (pf, pd) <-hsFreeAndDeclaredPNs pats
-            (rf, rd) <-hsFreeAndDeclaredPNs rhs
-            (df, dd) <-hsFreeAndDeclaredPNs ds
-            return (nub (pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))), 
-                    nub (pd `union` rd `union` dd `union` [fun]))
-
-     decl ((TiDecorate.Dec (HsPatBind loc p rhs ds))::HsDeclP)
-      = do (pf, pd)<-hsFreeAndDeclaredPNs p
-           (rf, rd)<-hsFreeAndDeclaredPNs rhs
-           (df, dd)<-hsFreeAndDeclaredPNs ds 
-           return (nub (pf `union` ((rf `union` df) \\ (dd `union` pd))),
-                   nub ((pd `union` rd `union` dd)))
-
-     decl (TiDecorate.Dec (HsFunBind loc matches))
-         =do fds <-mapM hsFDsFromInside matches
-             return (nub (concatMap fst fds), nub(concatMap snd fds))
-   
-     decl _ = mzero 
- 
-     exp ((TiDecorate.Exp (HsLet decls exp))::HsExpP)
-          = do (df,dd)<- hsFreeAndDeclaredPNs decls
-               (ef,_)<- hsFreeAndDeclaredPNs exp 
                return (nub (df `union` (ef \\ dd)), nub dd)
      exp (TiDecorate.Exp (HsLambda pats body))
             = do (pf,pd) <-hsFreeAndDeclaredPNs pats
@@ -721,7 +752,7 @@ instance HsDecls GHC.ParsedSource where
 
 getDecls :: GHC.RenamedSource -> GHC.LHsBinds GHC.Name
 getDecls renamed@(group, _, _, _) = case (GHC.hs_valds group) of
-   GHC.ValBindsIn    binds _sigs -> binds
+   GHC.ValBindsIn   binds _sigs -> binds
    GHC.ValBindsOut rbinds _sigs -> GHC.unionManyBags $ map (\(_,b) -> b) rbinds
 
 {-
