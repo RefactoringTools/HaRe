@@ -149,7 +149,7 @@ doDuplicating pn newName (inscps, parsed, tokList)
                     (after,before)  = break (defines n) (reverse decls)
 
                     (f,d) = hsFDNamesFromInside parentr
-                 --f: names that might be shadowd by the new name, d: names that might clash with the new name
+                    --f: names that might be shadowd by the new name, d: names that might clash with the new name
 
                 return parentp -- ++AZ++ to keep GHC happy
 {-

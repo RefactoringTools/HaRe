@@ -512,7 +512,7 @@ updateToks oldAST newAST printFun
      do (RefSt s u toks _) <- get
 	let offset             = lengthOfLastLine toks1
             (toks1, _, _)      = splitToks (startPos, endPos) toks
-	    (startPos, endPos) = getStartEndLoc toks oldAST
+	    (startPos, endPos) = getStartEndLoc oldAST
         newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
         let 
             toks' = replaceToks toks startPos endPos newToks
@@ -952,6 +952,7 @@ getStartEndLoc2 toks t
 -}
 
 --given an AST phrase, 'startEndLoc' gets its start and end position in the program source.
+-- TODO: ++AZ++ get rid of this class
 class StartEndLoc t where
    startEndLoc :: [PosToken]-> t ->(SimpPos,SimpPos)
 
@@ -1592,21 +1593,32 @@ instance StartEndLoc HsDeclP where
 -- getStartEndLoc::(Term t, StartEndLoc t,Printable t)=>[PosToken]->t->(SimpPos,SimpPos)
 -- xxxxxxx
 -- getStartEndLoc::(Term t)=>[PosToken]->t->(SimpPos,SimpPos)
-getStartEndLoc::(SYB.Data t)=>[PosToken]->GHC.GenLocated GHC.SrcSpan t ->(SimpPos,SimpPos)
-
-getStartEndLoc toks t
-  = let (startPos',endPos') = startEndLocGhc toks t
+-- getStartEndLoc::(SYB.Data t)=>GHC.GenLocated GHC.SrcSpan t ->(SimpPos,SimpPos)
+getStartEndLoc::(SYB.Data t)=>t ->(SimpPos,SimpPos)
+getStartEndLoc t
+  = let (startPos',endPos') = (simpPos0,simpPos0)
         locs = srcLocs t
         (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
                                                                    else startPos',
                              if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
                                                                   else endPos')
     in (startPos, endPos)
+{-
+getStartEndLoc t
+  = let (startPos',endPos') = startEndLocGhc t
+        locs = srcLocs t
+        (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
+                                                                   else startPos',
+                             if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
+                                                                  else endPos')
+    in (startPos, endPos)
+-}
+
 
 getStartEndLoc2::(SYB.Data t)=>[PosToken]->[GHC.GenLocated GHC.SrcSpan t] ->(SimpPos,SimpPos)
 getStartEndLoc2 toks ts 
-  = let (startPos',_) = startEndLocGhc toks (head ts)
-        (_ , endPos') = startEndLocGhc toks (last ts)
+  = let (startPos',_) = startEndLocGhc (head ts)
+        (_ , endPos') = startEndLocGhc (last ts)
         locs = srcLocs ts
         (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
                                                                    else startPos',
@@ -1629,7 +1641,8 @@ getStartEndLoc toks t
 
 -- ---------------------------------------------------------------------
 
-startEndLocGhc toks t@(GHC.L l _) =
+startEndLocGhc :: GHC.Located b -> (SimpPos,SimpPos)
+startEndLocGhc t@(GHC.L l _) =
   case l of
     (GHC.RealSrcSpan ss) ->
       ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),

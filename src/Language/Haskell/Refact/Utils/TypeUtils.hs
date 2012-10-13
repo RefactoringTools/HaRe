@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+
 ----------------------------------------------------------------------------------------------------------------
 -- Module      : TypeUtils
 
@@ -39,17 +40,17 @@ module RefacTypeUtils(module DriftStructUtils, module StrategyLib, module RefacT
                   module Ents, module Relations, module QualNames, module TypedIds 
 -}
 module Language.Haskell.Refact.Utils.TypeUtils
-       ( dummy
+       (
  -- * Program Analysis
     -- ** Imports and exports
    -- ,inScopeInfo, isInScopeAndUnqualified, hsQualifier, {-This function should be removed-} rmPrelude 
    -- ,exportInfo, isExported, isExplicitlyExported, modIsExported
 
     -- ** Variable analysis
-    ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
+    hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , HsDecls(hsDecls,isDeclaredIn{- ,replaceDecls -})
     ,getDecls
-    ,hsFreeAndDeclaredPNs -- ,hsFreeAndDeclaredNames
+    ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
     -- ,hsVisiblePNs, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
 
@@ -164,6 +165,7 @@ import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
+import qualified Unsafe.Coerce as SYB
 
 -- Lens
 import Control.Applicative
@@ -228,7 +230,7 @@ hsFreeAndDeclaredPNs t = (nub f, nub d)
 
           hsFreeAndDeclared' :: ([GHC.Name],[GHC.Name])
 
-          hsFreeAndDeclared' = SYB.everythingStaged SYB.Parser
+          hsFreeAndDeclared' = SYB.everythingStaged SYB.Renamer
                              (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
                              ([],[])
                              (([],[]) `SYB.mkQ` expr
@@ -408,12 +410,207 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
 -}
 
 
+
+-- |The same as `hsFreeAndDeclaredPNs` except that the returned
+-- variables are in the String format.
+hsFreeAndDeclaredNames::(SYB.Data t) => t -> ([String],[String])
+hsFreeAndDeclaredNames t = ((nub.map GHC.showPpr) f1, (nub.map GHC.showPpr) d1)
+  where
+    (f1,d1) = hsFreeAndDeclaredPNs t
+
+-- hsFreeAndDeclaredNames::(Term t, MonadPlus m)=> t->m([String],[String])
+-- hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
+--                              return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
+
 {-
--- |The same as `hsFreeAndDeclaredPNs` except that the returned variables are in the String format.           
-hsFreeAndDeclaredNames::(Term t, MonadPlus m)=> t->m([String],[String])
-hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
-                             return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
+------------------------------------------------------------------------------------------
+-- | Same as `hsVisiblePNs' except that the returned identifiers are in String format.
+hsVisibleNames:: (Term t1, Term t2, FindEntity t1, MonadPlus m) => t1 -> t2 -> m [String]
+hsVisibleNames e t =do d<-hsVisiblePNs e t
+                       return ((nub.map pNtoName) d)
 -}
+
+-- | Given syntax phrases e and t, if e occurs in t, then return those
+-- vairables which are declared in t and accessible to e, otherwise
+-- return [].
+hsVisiblePNs :: (SYB.Data t1, SYB.Data t2) =>
+   t1 -> t2 -> [GHC.Name]
+{-
+hsVisiblePNs e t = applyTU (full_tdTU (constTU [] `adhocTU` mod
+                                                  `adhocTU` exp
+                                                  `adhocTU` match
+                                                  `adhocTU` patBind
+                                                  `adhocTU` alt
+                                                  `adhocTU` stmts)) t
+-}
+
+hsVisiblePNs e t = SYB.everythingStaged SYB.Renamer (++) []
+                  ([] `SYB.mkQ` mod) t
+
+      where
+          mod ((group,_,_,_) :: GHC.RenamedSource)
+            | findEntity e group = dd
+           where
+             (_df,dd) = hsFreeAndDeclaredPNs group
+          mod _ = []
+
+{-
+          mod ((HsModule loc modName exps imps decls)::HsModuleP)
+            |findEntity e decls
+           =do (df,dd)<-hsFreeAndDeclaredPNs decls
+               return dd
+          mod _=return []
+
+          exp ((Exp (HsLambda pats body))::HsExpP)
+            |findEntity e body
+             = do (pf,pd) <-hsFreeAndDeclaredPNs pats
+                  return pd
+
+          exp (Exp (HsLet decls e1))
+             |findEntity e e1 || findEntity e decls
+             = do (df,dd)<- hsFreeAndDeclaredPNs decls
+                  return dd
+          exp _ =return []
+
+          match (m@(HsMatch _ (PNT fun _ _)  pats rhs  decls)::HsMatchP)
+            |findEntity e rhs || findEntity e decls
+            = do (pf,pd) <- hsFreeAndDeclaredPNs pats
+                 (df,dd) <- hsFreeAndDeclaredPNs decls
+                 return  (pd `union` dd `union` [fun])
+          match _=return []
+
+          patBind (p@(Dec (HsPatBind _ pat rhs decls))::HsDeclP)
+            |findEntity e rhs || findEntity e decls
+             =do (pf,pd) <- hsFreeAndDeclaredPNs pat
+                 (df,dd) <- hsFreeAndDeclaredPNs decls
+                 return (pd `union` dd)
+          patBind _=return []
+
+          alt ((HsAlt _ pat exp decls)::HsAltP)
+             |findEntity e exp || findEntity e decls
+             = do (pf,pd) <- hsFreeAndDeclaredPNs pat
+                  (df,dd) <- hsFreeAndDeclaredPNs decls
+                  return (pd `union` dd)
+          alt _=return []
+
+          stmts ((HsGenerator _ pat exp stmts) :: HsStmtP)
+            |findEntity e stmts
+             =do (pf,pd) <-hsFreeAndDeclaredPNs pat
+                 return pd
+
+          stmts (HsLetStmt decls stmts)
+            |findEntity e decls || findEntity e stmts
+             =do (df,dd) <-hsFreeAndDeclaredPNs decls
+                 return dd
+          stmts _ =return []
+
+-}
+{- ++ original ++
+-- | Given syntax phrases e and t, if e occurs in  t, then return those vairables
+--  which are declared in t and accessible to e, otherwise return [].
+hsVisiblePNs :: (Term t1, Term t2, FindEntity t1, MonadPlus m) => t1 -> t2 -> m [PName]
+hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
+                                                  `adhocTU` exp
+                                                  `adhocTU` match
+                                                  `adhocTU` patBind
+                                                  `adhocTU` alt
+                                                  `adhocTU` stmts)) t
+      where
+          mod ((HsModule loc modName exps imps decls)::HsModuleP)
+            |findEntity e decls
+           =do (df,dd)<-hsFreeAndDeclaredPNs decls
+               return dd
+          mod _=return []
+
+          exp ((Exp (HsLambda pats body))::HsExpP)
+            |findEntity e body
+             = do (pf,pd) <-hsFreeAndDeclaredPNs pats
+                  return pd
+
+          exp (Exp (HsLet decls e1))
+             |findEntity e e1 || findEntity e decls
+             = do (df,dd)<- hsFreeAndDeclaredPNs decls
+                  return dd
+          exp _ =return []
+
+          match (m@(HsMatch _ (PNT fun _ _)  pats rhs  decls)::HsMatchP)
+            |findEntity e rhs || findEntity e decls
+            = do (pf,pd) <- hsFreeAndDeclaredPNs pats
+                 (df,dd) <- hsFreeAndDeclaredPNs decls
+                 return  (pd `union` dd `union` [fun])
+          match _=return []
+
+          patBind (p@(Dec (HsPatBind _ pat rhs decls))::HsDeclP)
+            |findEntity e rhs || findEntity e decls
+             =do (pf,pd) <- hsFreeAndDeclaredPNs pat
+                 (df,dd) <- hsFreeAndDeclaredPNs decls
+                 return (pd `union` dd)
+          patBind _=return []
+
+          alt ((HsAlt _ pat exp decls)::HsAltP)
+             |findEntity e exp || findEntity e decls
+             = do (pf,pd) <- hsFreeAndDeclaredPNs pat
+                  (df,dd) <- hsFreeAndDeclaredPNs decls
+                  return (pd `union` dd)
+          alt _=return []
+
+          stmts ((HsGenerator _ pat exp stmts) :: HsStmtP)
+            |findEntity e stmts
+             =do (pf,pd) <-hsFreeAndDeclaredPNs pat
+                 return pd
+
+          stmts (HsLetStmt decls stmts)
+            |findEntity e decls || findEntity e stmts
+             =do (df,dd) <-hsFreeAndDeclaredPNs decls
+                 return dd
+          stmts _ =return []
+
+-}
+
+------------------------------------------------------------------------
+
+-- | Returns True is a syntax phrase, say a, is part of another syntax
+-- phrase, say b.
+-- Expects to be at least Parser output
+findEntity:: (SYB.Data a, SYB.Data b)=> a -> b -> Bool
+findEntity a b = fromMaybe False res
+  where
+    -- ++AZ++ do a generic traversal, and see if it matches.
+    res = somethingStaged SYB.Parser Nothing worker b
+
+    worker :: (SYB.Typeable b, SYB.Data b) => b -> Maybe Bool
+    worker b = if SYB.typeOf a == SYB.typeOf b
+                 then Just (getStartEndLoc b == getStartEndLoc a)
+                 else Nothing
+{-
+    worker :: ( SYB.Typeable a{-, SYB.Typeable b-})
+      => Maybe Bool
+      -- -> (b -> r)
+      -> a
+      -> Maybe Bool
+    worker a = case SYB.cast a of
+               Just b -> Just True
+               Nothing -> r
+-}
+
+{-
+-- | Make a generic query;
+--   start from a type-specific case;
+--   return a constant otherwise
+--
+mkQ :: ( Typeable a
+       , Typeable b
+       )
+    => r
+    -> (b -> r)
+    -> a
+    -> r
+(r `mkQ` br) a = case cast a of
+                        Just b  -> br b
+                        Nothing -> r
+-}
+
+
 ------------------------------------------------------------------------
 
 -- |`hsFDsFromInside` is different from `hsFreeAndDeclaredPNs` in
@@ -437,7 +634,7 @@ hsFDsFromInside t = (nub f, nub d)
                                                      `adhocTU` stmts ))
      -}
      hsFDsFromInside' :: ([GHC.Name],[GHC.Name])
-     hsFDsFromInside' = SYB.everythingStaged SYB.Parser
+     hsFDsFromInside' = SYB.everythingStaged SYB.Renamer
                   (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
                   ([],[])
                   (([],[]) `SYB.mkQ` renamed
@@ -624,7 +821,7 @@ hsPNs t = (nub.ghead "hsPNs") res
 hsNamess::(SYB.Data t)=> t -> [GHC.Name]
 hsNamess t = (nub.ghead "hsNamess") res
   where
-     res = SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inName) t
+     res = SYB.everythingStaged SYB.Renamer (++) [] ([] `SYB.mkQ` inName) t
 
      inName (pname :: GHC.Name) = return [pname]
 
