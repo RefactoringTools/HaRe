@@ -147,11 +147,12 @@ doDuplicating pn newName (inscps, parsed, tokList)
                     -- TODO: There is an assumption that the decls are in lexical order. Hmm.
                     duplicatedDecls = definingDeclsNames [n] decls True False
                     (after,before)  = break (defines n) (reverse decls)
-                return parentp -- ++AZ++ to keep GHC happy
 
-{-
-                (f,d) <- hsFDNamesFromInside parent
+                    (f,d) = hsFDNamesFromInside parentr
                  --f: names that might be shadowd by the new name, d: names that might clash with the new name
+
+                return parentp -- ++AZ++ to keep GHC happy
+{-
                 dv <- hsVisibleNames pn decls --dv: names may shadow new name
                 let inscpsNames = map ( \(x,_,_,_)-> x) $ inScopeInfo inscps
                     vars        = nub (f `union` d `union` dv)

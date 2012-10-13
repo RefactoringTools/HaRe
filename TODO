@@ -10,6 +10,9 @@ Resources
   Generating token stream from a buffer
   http://www.haskell.org/pipermail/cvs-ghc/2008-September/045023.html
 
+  Overview of Syntax Elements used in the original
+  http://hackage.haskell.org/packages/archive/haskell-src/1.0.1.4/doc/html/Language-Haskell-Syntax.html
+
 Possible tools
   GHC API
   Buildwrapper

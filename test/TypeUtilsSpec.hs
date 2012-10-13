@@ -134,44 +134,6 @@ spec = do
                  ,"(test/testdata/B.hs:9:57-59, test/testdata/B.hs:9:37-39, foo)(test/testdata/B.hs:9:37-39, test/testdata/B.hs:9:37-39, foo)"
                  ,"(test/testdata/B.hs:9:61, test/testdata/B.hs:9:7, y)(test/testdata/B.hs:9:7, test/testdata/B.hs:9:7, y)"
                  ]
-{-
-                 ["(test/testdata/B.hs:11:17, x)(test/testdata/B.hs:11:13, x)"
-                 ,"(test/testdata/B.hs:11:9-11, foo)"
-                 ,"(test/testdata/B.hs:14:1-4, B.foo')"
-                 ,"(test/testdata/B.hs:14:20, x)(test/testdata/B.hs:14:6, x)"
-                 ,"(test/testdata/B.hs:15:3-6, GHC.Types.True)"
-                 ,"(test/testdata/B.hs:16:3-7, GHC.Types.False)"
-                 ,"(test/testdata/B.hs:18:1-4, B.main)"
-                 ,"(test/testdata/B.hs:19:14-17, GHC.Show.show)"
-                 ,"(test/testdata/B.hs:19:19, GHC.Base.$)(test/testdata/B.hs:19:12, GHC.Base.$)"
-                 ,"(test/testdata/B.hs:19:22-24, B.foo)(test/testdata/B.hs:7:1-3, B.foo)"
-                 ,"(test/testdata/B.hs:19:29, GHC.Num.+)(test/testdata/B.hs:11:19, GHC.Num.+)"
-                    ++"(test/testdata/B.hs:9:55, GHC.Num.+)(test/testdata/B.hs:9:46, GHC.Num.+)"
-                    ++"(test/testdata/B.hs:9:25, GHC.Num.+)(test/testdata/B.hs:29:14, GHC.Num.+)"
-                 ,"(test/testdata/B.hs:19:3-10, System.IO.putStrLn)"
-                 ,"(test/testdata/B.hs:19:31-35, C.baz)"
-                 ,"(test/testdata/B.hs:21:1-4, B.mary)"
-                 ,"(test/testdata/B.hs:23:1, B.h)"
-                 ,"(test/testdata/B.hs:23:11, z)(test/testdata/B.hs:23:3, z)"
-                 ,"(test/testdata/B.hs:23:7-9, B.bob)(test/testdata/B.hs:9:1-3, B.bob)"
-                 ,"(test/testdata/B.hs:25:10, B.A)"
-                 ,"(test/testdata/B.hs:25:14, B.B)"
-                 ,"(test/testdata/B.hs:25:25, B.C)"
-                 ,"(test/testdata/B.hs:25:6, B.D)"
-                 ,"(test/testdata/B.hs:27:1-7, B.subdecl)"
-                 ,"(test/testdata/B.hs:27:16, x)(test/testdata/B.hs:27:9, x)"
-                 ,"(test/testdata/B.hs:29:12, n)(test/testdata/B.hs:29:8, n)"
-                 ,"(test/testdata/B.hs:29:5-6, zz)(test/testdata/B.hs:27:13-14, zz)"
-                 ,"(test/testdata/B.hs:7:13-15, GHC.Real.odd)(test/testdata/B.hs:14:16-18, GHC.Real.odd)"
-                 ,"(test/testdata/B.hs:7:17, x)(test/testdata/B.hs:7:5, x)"
-                 ,"(test/testdata/B.hs:9:15-17, foo)"
-                 ,"(test/testdata/B.hs:9:23, x)(test/testdata/B.hs:9:19, x)"
-                 ,"(test/testdata/B.hs:9:45, x)(test/testdata/B.hs:9:41, x)"
-                 ,"(test/testdata/B.hs:9:53, x)(test/testdata/B.hs:9:5, x)"
-                 ,"(test/testdata/B.hs:9:57-59, foo)(test/testdata/B.hs:9:37-39, foo)"
-                 ,"(test/testdata/B.hs:9:61, y)(test/testdata/B.hs:9:7, y)"
-                 ]
--}
 
   -- -------------------------------------------------------------------
 
@@ -355,22 +317,20 @@ spec = do
   -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredPNs" $ do
-    {-
     it "Finds declared HsVar" $ do
-      let 
-          comp = do
-            modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
-            r <- hsFreeAndDeclaredPNs mod
-            return r
-      (res,s) <- runRefactGhcState comp
-      (GHC.showPpr res)  `shouldBe` "foo"
-    -}
-    it "Finds declared HsVar" $ do
-      -- modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
-      ((_,renamed,_), toks) <- parsedFileDeclareGhc
+      ((_,renamed,_), _toks) <- parsedFileDeclareGhc
       let res = hsFreeAndDeclaredPNs renamed
-      (GHC.showPpr res)  `shouldBe` "foo"
-
+          -- m = GHC.mkModule () (GHC.MkModuleName ""FreeAndDeclared.Declare")
+      -- (GHC.showPpr $ map (\n -> (n, GHC.isSystemName n)) (fst res)) `shouldBe` "foo"
+      -- (GHC.showPpr $ map (\n -> (n, GHC.isInternalName n)) (fst res)) `shouldBe` "foo" -- Seems to be from own source, non top-level
+      -- (GHC.showPpr $ map (\n -> (n, GHC.isExternalName n)) (fst res)) `shouldBe` "foo" -- Exported somewhere?
+      -- (GHC.showPpr $ map (\n -> (n, GHC.isWiredInName n)) (fst res)) `shouldBe` "foo" 
+      -- (GHC.showPpr $ map (\n -> (n, GHC.nameIsLocalOrFrom m n)) (fst res)) `shouldBe` "foo" 
+      (GHC.showPpr $ map (\n -> (n, GHC.nameModule_maybe n)) (fst res)) `shouldBe` "foo" 
+{-
+      (GHC.showPpr res)  `shouldBe` "([System.IO.getChar, GHC.Base.>>=, GHC.Base.fail,\n  System.IO.putStrLn, GHC.Base.return, a, b, y, GHC.Base.$,\n  GHC.List.head, GHC.List.zip, GHC.Num.fromInteger, GHC.Num.*,\n  FreeAndDeclared.Declare.c, x],\n"
+      ++ " [FreeAndDeclared.Declare.main, a, FreeAndDeclared.Declare.unF, a,\n  b, FreeAndDeclared.Declare.unD, y, FreeAndDeclared.Declare.h,\n  FreeAndDeclared.Declare.t, FreeAndDeclared.Declare.d,\n  FreeAndDeclared.Declare.c, FreeAndDeclared.Declare.toplevel, x])"
+-}
 
   -- ---------------------------------------------------------------------
 
@@ -420,11 +380,11 @@ parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs
 
 -- Runners
 
--- t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
+t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
 -- t = withArgs ["--match", "allNames"] main
 -- t = withArgs ["--match", "definingDeclsNames"] main
 
-t = withArgs ["--match", "getName"] main
+-- t = withArgs ["--match", "getName"] main
 
 
 

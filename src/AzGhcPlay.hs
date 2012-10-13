@@ -55,7 +55,7 @@ import Language.Haskell.Refact.Utils.GhcUtils
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
 
 targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
-targetMod = "B"
+targetMod = "FreeAndDeclared/Declare"
 
 {- main = t1 -}
 
@@ -130,9 +130,10 @@ getStuff =
         target <- GHC.guessTarget targetFile Nothing
         GHC.setTargets [target]
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
-        modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
+        -- modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
         p <- GHC.parseModule modSum
-        
+
         t <- GHC.typecheckModule p
         d <- GHC.desugarModule t
         l <- GHC.loadModule d
