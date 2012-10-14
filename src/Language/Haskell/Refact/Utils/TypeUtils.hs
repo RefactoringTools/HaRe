@@ -43,13 +43,13 @@ module Language.Haskell.Refact.Utils.TypeUtils
        (
  -- * Program Analysis
     -- ** Imports and exports
-   -- ,inScopeInfo, isInScopeAndUnqualified, hsQualifier, {-This function should be removed-} rmPrelude 
+   inScopeInfo, isInScopeAndUnqualified -- , hsQualifier, {-This function should be removed-} rmPrelude 
    -- ,exportInfo, isExported, isExplicitlyExported, modIsExported
 
     -- ** Variable analysis
-    hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
+    ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , HsDecls(hsDecls,isDeclaredIn{- ,replaceDecls -})
-    ,getDecls
+    ,getDecls, getDeclsP, replaceDecls
     ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
     ,hsVisiblePNs, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
@@ -61,9 +61,9 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,isComplexPatBind,isFunOrPatBind,isClassDecl,isInstDecl,isDirectRecursiveDef
     -- ,usedWithoutQual,canBeQualified, hasFreeVars,isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
-    -- ,findPNs, findEntity
+    {-,findPNs -}, findEntity
     ,sameOccurrence
-    ,defines -- ,definesTypeSig, isTypeSigOf
+    ,defines, definesP -- ,definesTypeSig, isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
 
 
@@ -79,7 +79,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program transformation
     -- ** Adding
     -- ,addDecl ,addItemsToImport, addHiding, rmItemsFromImport, addItemsToExport
-    -- ,addParamsToDecls, addGuardsToRhs, addImportDecl, duplicateDecl, moveDecl
+    {- ,addParamsToDecls, addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
     -- ** Rmoving
     -- ,rmDecl, rmTypeSig, commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -177,8 +177,58 @@ import Data.Data.Lens hiding (tinplate)
 import GHC.Generics hiding (from, to)
 import GHC.Generics.Lens
 
--- Until exports are correct
-dummy = 1
+-- ---------------------------------------------------------------------
+-- |Process the inscope relation returned from the parsing and module
+-- analysis pass, and return a list of four-element tuples. Each tuple
+-- contains an identifier name, the identifier's namespace info, the
+-- identifier's defining module name and its qualifier name.
+--
+-- The same identifier may have multiple entries in the result because
+-- it may have different qualifiers. This makes it easier to decide
+-- whether the identifier can be used unqualifiedly by just checking
+-- whether there is an entry for it with the qualifier field being
+-- Nothing.
+--
+inScopeInfo :: InScopes                                          -- ^ The inscope relation .
+           ->[(String, GHC.NameSpace, GHC.ModuleName, Maybe GHC.ModuleName)] -- ^ The result
+inScopeInfo names = nub $  map getEntInfo $ names
+  where
+     getEntInfo name
+       =(GHC.showPpr name,
+         GHC.occNameSpace $ GHC.nameOccName name,
+         GHC.moduleName $ GHC.nameModule name,
+         getQualMaybe $ GHC.nameRdrName name)
+
+     getQualMaybe rdrName = case rdrName of
+       GHC.Qual modName _occName -> Just modName
+       _                         -> Nothing
+
+     -- getEntInfo (qual, ent@(Ent modName ident _))
+     --   =(identToName ident, hasNameSpace ent,  modName, getQualifier qual)
+
+{-
+-- | Process the export relation returned from the parsing and module analysis pass, and
+--   return a list of trhee-element tuples. Each tuple contains an identifier name, the
+--   identifier's namespace info, and the identifier's define module.
+exportInfo::Exports                             -- ^ The export relation.
+          -> [(String, NameSpace, ModuleName)]  -- ^ The result
+exportInfo exports = nub $ map getEntInfo  exports
+  where
+    getEntInfo (_, ent@(Ent modName ident _))
+      =(identToName ident, hasNameSpace ent,  modName)
+-}
+
+-- | Return True if the identifier is inscope and can be used without
+-- a qualifier.
+isInScopeAndUnqualified::String       -- ^ The identifier name.
+                       ->InScopes     -- ^ The inscope relation
+                       ->Bool         -- ^ The result.
+isInScopeAndUnqualified n names
+ = isJust $ find (\ (x, _,_, qual) -> x == n && isNothing qual ) $ inScopeInfo names
+
+-- isInScopeAndUnqualified id inScopeRel
+--  = isJust $ find (\ (x, _,_, qual) -> x == id && isNothing qual ) $ inScopeInfo inScopeRel
+
 
 -- ---------------------------------------------------------------------
 
@@ -922,10 +972,20 @@ instance HsDecls GHC.ParsedSource where
    isDeclaredIn pn (GHC.L _ (GHC.HsModule _ _ _ ds _ _))
      = length (definingDecls [pn] ds False False) /= 0
 
+-- | Replace the directly enclosed declaration list by the given
+--  declaration list. Note: This function does not modify the
+--  token stream.
+replaceDecls :: [HsDeclP] -> [HsDeclP] -> [HsDeclP]
+replaceDecls t decls = undefined
+
 getDecls :: GHC.RenamedSource -> GHC.LHsBinds GHC.Name
 getDecls renamed@(group, _, _, _) = case (GHC.hs_valds group) of
    GHC.ValBindsIn   binds _sigs -> binds
    GHC.ValBindsOut rbinds _sigs -> GHC.unionManyBags $ map (\(_,b) -> b) rbinds
+
+getDeclsP :: GHC.ParsedSource -> [HsDeclP]
+getDeclsP parsed@(GHC.L _ hsMod) = GHC.hsmodDecls hsMod
+
 
 {-
 instance HsDecls HsMatchP where
@@ -1273,11 +1333,19 @@ sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
 -- | Return True if the function\/pattern binding defines the
 -- specified identifier.
 defines:: GHC.Name -> GHC.LHsBind GHC.Name -> Bool
-defines n (GHC.L l (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
+defines n (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
  = pname == n
-defines n (GHC.L l (GHC.PatBind p rhs ty fvs _))
+defines n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))
  = elem n (hsNamess p)
 defines _ _= False
+
+definesP::PName->HsDeclP->Bool
+definesP pn (GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
+ = PN pname == pn
+definesP pn (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _)))
+ = elem pn (hsPNs p)
+definesP _ _= False
+
 -- defines::PName->HsDeclP->Bool
 -- defines pn (GHC.L l (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
 --  = PN pname == pn
@@ -1588,6 +1656,74 @@ getPNTBind _ = []
               (col >= (GHC.srcSpanStartCol ss)) &&
               (col <= (GHC.srcSpanEndCol ss))
   -}
+
+-- ---------------------------------------------------------------------
+
+-- | Duplicate a functon\/pattern binding declaration under a new name
+-- right after the original one.
+-- ++AZ++ Note: requires ParsedSource. Hmm, does it, since toke stream ....
+duplicateDecl::
+    [HsDeclP] -- ^ The declaration list
+  ->PName     -- ^ The identifier whose definition is to be duplicated
+  ->String               -- ^ The new name
+  ->RefactGhc [HsDeclP]  -- ^ The result
+{- there maybe fun/simple pattern binding and type signature in the
+duplicated decls function binding, and type signature are handled
+differently here: the comment and layout in function binding are
+preserved.The type signature is output ted by pretty printer, so the
+comments and layout are NOT preserved.
+ -}
+duplicateDecl decls pn newFunName = undefined
+
+{- ++ original ++
+{- ********* IMPORTANT : THIS FUNCTION SHOULD BE UPDATED TO THE NEW TOKEN STREAM METHOD ****** -}
+-- | Duplicate a functon\/pattern binding declaration under a new name right after the original one.
+duplicateDecl::(MonadState (([PosToken],Bool),t1) m)
+                 =>[HsDeclP]            -- ^ The declaration list
+                 ->PName                -- ^ The identifier whose definition is going to be duplicated
+                 ->String               -- ^ The new name
+                 ->m [HsDeclP]          -- ^ The result
+{-there maybe fun/simple pattern binding and type signature in the duplicated decls
+  function binding, and type signature are handled differently here: the comment and layout
+  in function binding are preserved.The type signature is output ted by pretty printer, so
+  the comments and layout are NOT preserved.
+ -}
+duplicateDecl decls pn newFunName
+ = do ((toks,_), others)<-get
+      let (startPos, endPos) =startEndLocIncComments toks funBinding
+          {-take those tokens before (and include) the function binding and its following
+            white tokens before the 'new line' token. (some times the function may be followed by 
+            comments) -}
+          toks1 = let (ts1, ts2) =break (\t->tokenPos t==endPos) toks in ts1++[ghead "duplicateDecl" ts2]
+          --take those token after (and include) the function binding
+          toks2 = dropWhile (\t->tokenPos t/=startPos || isNewLn t) toks
+      put((toks2,modified), others)
+      --rename the function name to the new name, and update token stream as well
+      funBinding'<-renamePN pn Nothing newFunName True funBinding
+      --rename function name in type signature  without adjusting the token stream
+      typeSig'  <- renamePN pn Nothing newFunName False typeSig
+      ((toks2,_), others)<-get
+      let offset = getOffset toks (fst (startEndLoc toks funBinding))
+          newLineTok = if toks1/=[] && endsWithNewLn (glast "doDuplicating" toks1)
+                         then [newLnToken]
+                         else [newLnToken,newLnToken]
+          toks'= if typeSig/=[]
+                 then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks2))
+                          sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
+                          t = mkToken Whitespace (0,0) sigSource
+                      in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks2)
+                 else (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
+      put ((toks',modified),others)
+      return (typeSig'++funBinding')
+     where
+       declsToDup = definingDecls [pn] decls True False
+       funBinding = filter isFunOrPatBind declsToDup     --get the fun binding.
+       typeSig    = filter isTypeSig declsToDup      --get the type signature.
+
+
+-}
+
+
 
 -- ---------------------------------------------------------------------
 -- | Given the syntax phrase (and the token stream), find the

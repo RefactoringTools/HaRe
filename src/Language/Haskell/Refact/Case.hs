@@ -41,7 +41,7 @@ ifToCase args
 comp :: String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
        modInfo@((_, _, ast), toks) <- parseSourceFileGhc fileName
-       let expr = locToExp beginPos endPos toks ast
+       let expr = locToExp beginPos endPos ast
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do refactoredMod <- applyRefac (doIfToCase exp1) (Just modInfo ) fileName

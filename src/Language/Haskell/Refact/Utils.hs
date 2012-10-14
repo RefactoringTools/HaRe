@@ -373,6 +373,10 @@ parseSourceFile targetFile =
       p <- GHC.parseModule modSum
       t <- GHC.typecheckModule p
 
+      GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
+      inscopeNames    <- GHC.getNamesInScope
+      -- inscopeRdrNames <- GHC.getRdrNamesInScope
+
       let pm = GHC.tm_parsed_module t
 
       let typechecked = GHC.tm_typechecked_source t
@@ -380,7 +384,8 @@ parseSourceFile targetFile =
           parsed      = GHC.pm_parsed_source pm
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       -- return ((inscopes,exports,modAst),tokens)
-      return ((typechecked,renamed,parsed),tokens)
+      -- return ((typechecked,renamed,parsed),tokens)
+      return ((inscopeNames,renamed,parsed),tokens)
 
 
 -- ---------------------------------------------------------------------
@@ -395,7 +400,8 @@ parseSourceFileGhc targetFile = do
                     [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
           dflags'' = dflags' { GHC.importPaths = rsetImportPath settings }
       GHC.setSessionDynFlags dflags''
-      target <- GHC.guessTarget targetFile Nothing
+      -- target <- GHC.guessTarget targetFile Nothing
+      target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- Force interpretation, for inscopes
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
       g <- GHC.getModuleGraph
@@ -404,6 +410,10 @@ parseSourceFileGhc targetFile = do
       p <- GHC.parseModule modSum
       t <- GHC.typecheckModule p
 
+      GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
+      inscopeNames    <- GHC.getNamesInScope
+      -- inscopeRdrNames <- GHC.getRdrNamesInScope
+
       let pm = GHC.tm_parsed_module t
 
       let typechecked = GHC.tm_typechecked_source t
@@ -411,7 +421,8 @@ parseSourceFileGhc targetFile = do
           parsed      = GHC.pm_parsed_source pm
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       -- return ((inscopes,exports,modAst),tokens)
-      return ((typechecked,renamed,parsed),tokens)
+      -- return ((typechecked,renamed,parsed),tokens)
+      return ((inscopeNames,renamed,parsed),tokens)
 
 -- ---------------------------------------------------------------------
 

@@ -16,6 +16,7 @@ import qualified RdrName               as GHC
 import Control.Monad
 import Control.Monad.State
 import Data.Data
+import Data.List
 import Data.Maybe
 import GHC.Paths ( libdir )
 
@@ -77,7 +78,7 @@ comp fileName newName (row, col) = do
 
 doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
               -> RefactGhc GHC.ParsedSource
-doDuplicating pn newName (_,Just renamed,parsed) =
+doDuplicating pn newName (inscopes,Just renamed,parsed) =
 
    everywhereMStaged SYB.Parser (SYB.mkM dupInMod) parsed
         where
@@ -86,7 +87,7 @@ doDuplicating pn newName (_,Just renamed,parsed) =
         dupInMod :: (GHC.Located (GHC.HsModule GHC.RdrName))-> RefactGhc (GHC.Located (GHC.HsModule GHC.RdrName))
         dupInMod (parsed@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
           -- |findFunOrPatBind pn ds /= [] = doDuplicating' parsed pn
-          | length (findFunOrPatBind pn ds) == 0 = doDuplicating' renamed parsed pn
+          | length (findFunOrPatBind pn ds) == 0 = doDuplicating' inscopes renamed parsed pn
         -- dupInMod _ =mzero
         dupInMod parsed = return parsed
 
@@ -141,28 +142,31 @@ doDuplicating pn newName (inscps, parsed, tokList)
         findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
 
         -- doDuplicating' :: GHC.ParsedSource -> GHC.Located GHC.Name -> RefactGhc GHC.ParsedSource
-        doDuplicating' parentr parentp pn@(GHC.L _ n)
+        doDuplicating' :: InScopes -> GHC.RenamedSource -> GHC.ParsedSource -> GHC.Located GHC.Name -> RefactGhc GHC.ParsedSource
+        doDuplicating' inscps parentr parentp@(GHC.L lp hsMod) ln@(GHC.L _ n)
            = do let -- decls           = hsDecls parent -- TODO: reinstate this
-                    decls = GHC.bagToList $ getDecls parentr  
+                    declsr = GHC.bagToList $ getDecls parentr  
+                    declsp = getDeclsP parentp
+                    pn = (PN $ GHC.nameRdrName n)
                     -- TODO: There is an assumption that the decls are in lexical order. Hmm.
-                    duplicatedDecls = definingDeclsNames [n] decls True False
-                    (after,before)  = break (defines n) (reverse decls)
+                    duplicatedDecls = definingDeclsNames [n] declsr True False
+                    (after,before)  = break (definesP pn) (reverse declsp)
 
                     (f,d) = hsFDNamesFromInside parentr
                     --f: names that might be shadowd by the new name, d: names that might clash with the new name
 
-                    dv = hsVisibleNames pn decls --dv: names may shadow new name
-                return parentp -- ++AZ++ to keep GHC happy
-{-
-                let inscpsNames = map ( \(x,_,_,_)-> x) $ inScopeInfo inscps
+                    dv = hsVisibleNames ln declsr --dv: names may shadow new name
+                    -- inscpsNames = map ( \(x,_,_,_)-> x) $ inScopeInfo inscps
                     vars        = nub (f `union` d `union` dv)
+
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow    
-                if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity pn duplicatedDecls) 
+                if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity ln duplicatedDecls) 
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
-                   else do newBinding<-duplicateDecl decls pn newName
-                           return (replaceDecls parent (reverse before++ newBinding++ reverse after)) 
--}
+                   else do newBinding <- duplicateDecl declsp pn newName
+                           let newDecls = replaceDecls declsp (reverse before++ newBinding++ reverse after)
+                           return (GHC.L lp (hsMod {GHC.hsmodDecls = newDecls}))
+
 
 {-
 --Find the the new definition name in PName format.

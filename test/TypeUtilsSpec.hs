@@ -363,7 +363,13 @@ spec = do
       let [decl] = definingDeclsNames [tup] renamed False False
       (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "foo"
 
+  -- ---------------------------------------------
 
+  describe "inScopeInfo" $ do
+    it "returns 4 element tuples for in scope names" $do
+      ((inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
+      let info = inScopeInfo inscopes
+      (show $ head info) `shouldBe` "foo"
 
   -- ---------------------------------------------
 

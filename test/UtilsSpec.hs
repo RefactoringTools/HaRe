@@ -33,21 +33,21 @@ spec = do
     it "finds the largest leftmost expression contained in a given region #1" $ do
       ((_, _, mod), toks) <- parsedFileBGhc
 
-      let (Just expr) = locToExp (7,7) (7,43) toks mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+      let (Just expr) = locToExp (7,7) (7,43) mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,9)
       getLocatedEnd   expr `shouldBe` (7,42)
 
     it "finds the largest leftmost expression contained in a given region #2" $ do
       ((_, _, mod), toks) <- parsedFileBGhc
 
-      let (Just expr) = locToExp (7,7) (7,41) toks mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+      let (Just expr) = locToExp (7,7) (7,41) mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,12)
       getLocatedEnd   expr `shouldBe` (7,19)
 
     it "finds the largest leftmost expression in RenamedSource" $ do
       ((_, renamed, _), toks) <- parsedFileBGhc
 
-      let (Just expr) = locToExp (7,7) (7,41) toks renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
+      let (Just expr) = locToExp (7,7) (7,41) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
       getLocatedStart expr `shouldBe` (7,12)
       getLocatedEnd   expr `shouldBe` (7,19)
 
