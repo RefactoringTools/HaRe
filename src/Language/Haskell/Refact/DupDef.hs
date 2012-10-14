@@ -151,9 +151,9 @@ doDuplicating pn newName (inscps, parsed, tokList)
                     (f,d) = hsFDNamesFromInside parentr
                     --f: names that might be shadowd by the new name, d: names that might clash with the new name
 
+                    dv = hsVisibleNames pn decls --dv: names may shadow new name
                 return parentp -- ++AZ++ to keep GHC happy
 {-
-                dv <- hsVisibleNames pn decls --dv: names may shadow new name
                 let inscpsNames = map ( \(x,_,_,_)-> x) $ inScopeInfo inscps
                     vars        = nub (f `union` d `union` dv)
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow    

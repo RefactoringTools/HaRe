@@ -342,6 +342,29 @@ spec = do
     it "does something useful" $ do
       pending "Complete this"
 
+  -- ---------------------------------------------------------------------
+
+  describe "hsVisibleNames" $ do
+    it "does something useful" $ do
+      pending "Complete this"
+
+  describe "hsVisiblePNs" $ do
+    it "Returns [] if e does not occur in t" $ do
+      ((_, renamed, parsed), toks) <- parsedFileDd1Ghc
+      let Just tl1  = locToExp (4,13) (4,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      let Just tup = getName "DupDef.Dd1.tup" renamed
+      let [decl] = definingDeclsNames [tup] renamed False False
+      (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "[]"
+
+    it "Returns visible vars if e does occur in t" $ do
+      ((_, renamed, parsed), toks) <- parsedFileDd1Ghc
+      let Just tl1  = locToExp (14,1) (14,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      let Just tup = getName "DupDef.Dd1.tup" renamed
+      let [decl] = definingDeclsNames [tup] renamed False False
+      (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "foo"
+
+
+
   -- ---------------------------------------------
 
   describe "mkNewName" $ do

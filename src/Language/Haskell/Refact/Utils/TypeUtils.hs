@@ -51,7 +51,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     {- ,hsClassMembers -} , HsDecls(hsDecls,isDeclaredIn{- ,replaceDecls -})
     ,getDecls
     ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
-    -- ,hsVisiblePNs, hsVisibleNames
+    ,hsVisiblePNs, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
 
     -- ** Property checking
@@ -422,89 +422,90 @@ hsFreeAndDeclaredNames t = ((nub.map GHC.showPpr) f1, (nub.map GHC.showPpr) d1)
 -- hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
 --                              return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
 
-{-
-------------------------------------------------------------------------------------------
--- | Same as `hsVisiblePNs' except that the returned identifiers are in String format.
-hsVisibleNames:: (Term t1, Term t2, FindEntity t1, MonadPlus m) => t1 -> t2 -> m [String]
-hsVisibleNames e t =do d<-hsVisiblePNs e t
-                       return ((nub.map pNtoName) d)
--}
+
+--------------------------------------------------------------------------------
+-- | Same as `hsVisiblePNs' except that the returned identifiers are
+-- in String format.
+hsVisibleNames:: (SYB.Data t1, SYB.Data t2) => t1 -> t2 -> [String]
+hsVisibleNames e t = ((nub.map GHC.showPpr) d)
+  where
+    d =hsVisiblePNs e t
+
+-- hsVisibleNames:: (Term t1, Term t2, FindEntity t1, MonadPlus m) => t1 -> t2 -> m [String]
+-- hsVisibleNames e t =do d<-hsVisiblePNs e t
+--                        return ((nub.map pNtoName) d)
+
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
--- vairables which are declared in t and accessible to e, otherwise
+-- variables which are declared in t and accessible to e, otherwise
 -- return [].
 hsVisiblePNs :: (SYB.Data t1, SYB.Data t2) =>
    t1 -> t2 -> [GHC.Name]
-{-
-hsVisiblePNs e t = applyTU (full_tdTU (constTU [] `adhocTU` mod
-                                                  `adhocTU` exp
-                                                  `adhocTU` match
-                                                  `adhocTU` patBind
-                                                  `adhocTU` alt
-                                                  `adhocTU` stmts)) t
--}
-
 hsVisiblePNs e t = SYB.everythingStaged SYB.Renamer (++) []
-                  ([] `SYB.mkQ` mod) t
+                  ([] `SYB.mkQ`  top
+                      `SYB.extQ` expr
+                      `SYB.extQ` decl
+                      `SYB.extQ` match
+                      `SYB.extQ` stmts) t
 
       where
-          mod ((group,_,_,_) :: GHC.RenamedSource)
-            | findEntity e group = dd
+          top ((groups,_,_,_) :: GHC.RenamedSource)
+            | findEntity e groups = dd
            where
-             (_df,dd) = hsFreeAndDeclaredPNs group
-          mod _ = []
+             (_df,dd) = hsFreeAndDeclaredPNs groups
+          top _ = []
 
-{-
-          mod ((HsModule loc modName exps imps decls)::HsModuleP)
-            |findEntity e decls
-           =do (df,dd)<-hsFreeAndDeclaredPNs decls
-               return dd
-          mod _=return []
+          expr ((GHC.HsLam (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name)
+            | findEntity e matches = dd
+           where
+             (_df,dd) = hsFreeAndDeclaredPNs matches
 
-          exp ((Exp (HsLambda pats body))::HsExpP)
-            |findEntity e body
-             = do (pf,pd) <-hsFreeAndDeclaredPNs pats
-                  return pd
+          expr ((GHC.HsLet decls e1) :: GHC.HsExpr GHC.Name)
+             |findEntity e e1 || findEntity e decls = dd
+           where
+             (_df,dd) = hsFreeAndDeclaredPNs decls
 
-          exp (Exp (HsLet decls e1))
-             |findEntity e e1 || findEntity e decls
-             = do (df,dd)<- hsFreeAndDeclaredPNs decls
-                  return dd
-          exp _ =return []
+          -- This is the equivalent of HsAlt
+          expr ((GHC.HsCase _ (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name)
+            | findEntity e matches = dd
+           where
+             (_df,dd) = hsFreeAndDeclaredPNs matches
 
-          match (m@(HsMatch _ (PNT fun _ _)  pats rhs  decls)::HsMatchP)
-            |findEntity e rhs || findEntity e decls
-            = do (pf,pd) <- hsFreeAndDeclaredPNs pats
-                 (df,dd) <- hsFreeAndDeclaredPNs decls
-                 return  (pd `union` dd `union` [fun])
-          match _=return []
+          expr _ = []
 
-          patBind (p@(Dec (HsPatBind _ pat rhs decls))::HsDeclP)
-            |findEntity e rhs || findEntity e decls
-             =do (pf,pd) <- hsFreeAndDeclaredPNs pat
-                 (df,dd) <- hsFreeAndDeclaredPNs decls
-                 return (pd `union` dd)
-          patBind _=return []
+          decl ((GHC.FunBind _ _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name) 
+            | findEntity e matches = dd
+           where
+             (_df,dd) = hsFreeAndDeclaredPNs matches
 
-          alt ((HsAlt _ pat exp decls)::HsAltP)
-             |findEntity e exp || findEntity e decls
-             = do (pf,pd) <- hsFreeAndDeclaredPNs pat
-                  (df,dd) <- hsFreeAndDeclaredPNs decls
-                  return (pd `union` dd)
-          alt _=return []
+          decl ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
+            |findEntity e rhs = (pd `union` dd)
+           where
+             (_pf,pd) = hsFreeAndDeclaredPNs pat
+             (_df,dd) = hsFreeAndDeclaredPNs rhs
 
-          stmts ((HsGenerator _ pat exp stmts) :: HsStmtP)
-            |findEntity e stmts
-             =do (pf,pd) <-hsFreeAndDeclaredPNs pat
-                 return pd
+          decl _ = []
 
-          stmts (HsLetStmt decls stmts)
-            |findEntity e decls || findEntity e stmts
-             =do (df,dd) <-hsFreeAndDeclaredPNs decls
-                 return dd
-          stmts _ =return []
+          -- Pick up from HsAlt etc
+          match ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
+            |findEntity e rhs = (pd `union` dd)
+           where
+             (_pf,pd) = hsFreeAndDeclaredPNs pats
+             (_df,dd) = hsFreeAndDeclaredPNs rhs
+          match _ = []
 
--}
+          stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name)
+            | findEntity e binds = dd
+           where
+             (_df,dd) = hsFreeAndDeclaredPNs binds
+
+          stmts ((GHC.BindStmt pat rhs _ _) :: GHC.Stmt GHC.Name)
+            | findEntity e rhs = dd
+           where
+             (_df,dd) = hsFreeAndDeclaredPNs pat
+
+          stmts _ = []
+
 {- ++ original ++
 -- | Given syntax phrases e and t, if e occurs in  t, then return those vairables
 --  which are declared in t and accessible to e, otherwise return [].
@@ -681,7 +682,6 @@ hsFDsFromInside t = (nub f, nub d)
          (nub (pf `union` (rf \\ pd)),
           nub (pd `union` rd))
 
-
      expr ((GHC.HsLet decls e) :: GHC.HsExpr GHC.Name) =
        let
          (df,dd) = hsFreeAndDeclaredPNs decls
@@ -701,24 +701,15 @@ hsFDsFromInside t = (nub f, nub d)
 
      stmts ((GHC.BindStmt pat e1 e2 e3) :: GHC.Stmt GHC.Name) =
        let
-         (pf,pd) = hsFreeAndDeclaredPNs pat
-         (ef,ed) = hsFreeAndDeclaredPNs e1
-         (df,dd) = hsFreeAndDeclaredPNs [e2,e3]
+         (pf,pd)  = hsFreeAndDeclaredPNs pat
+         (ef,_ed) = hsFreeAndDeclaredPNs e1
+         (df,dd)  = hsFreeAndDeclaredPNs [e2,e3]
        in
          (nub (pf `union` (((ef \\ dd) `union` df) \\ pd)), nub (pd `union` dd))
 
      stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
        hsFreeAndDeclaredPNs binds
 
-{- ++AZ++
-     stmts (HsGenerator _ pat exp stmts)
-          = do (pf,pd) <-hsFreeAndDeclaredPNs pat
-               (ef,ed) <-hsFreeAndDeclaredPNs exp
-               (sf,sd) <-hsFreeAndDeclaredPNs stmts
-               return (nub (pf `union` ef `union` (sf\\pd)),[]) -- pd)
-
-     stmts _ = mzero
-++AZ++ -}
 
 -- -----
 
@@ -1599,18 +1590,16 @@ getPNTBind _ = []
   -}
 
 -- ---------------------------------------------------------------------
--- | Given the syntax phrase (and the token stream), find the largest-leftmost expression contained in the
---  region specified by the start and end position. If no expression can be found, then return the defaultExp.
-locToExp:: (SYB.Data t,SYB.Typeable n) => 
+-- | Given the syntax phrase (and the token stream), find the
+-- largest-leftmost expression contained in the region specified by
+-- the start and end position. If no expression can be found, then
+-- return the defaultExp.
+locToExp:: (SYB.Data t,SYB.Typeable n) =>
                    SimpPos    -- ^ The start position.
                 -> SimpPos    -- ^ The end position.
-                -> [PosToken] -- ^ The token stream which should at least contain the tokens for t.
                 -> t          -- ^ The syntax phrase.
                 -> Maybe (GHC.Located (GHC.HsExpr n)) -- ^ The result.
-locToExp beginPos endPos _toks t = res
-  -- case res of
-  --    Just x -> x
-  --    Nothing -> GHC.L GHC.noSrcSpan defaultExp
+locToExp beginPos endPos t = res
   where
      res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` expr) t
 
