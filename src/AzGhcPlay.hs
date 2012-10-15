@@ -126,7 +126,11 @@ getStuff =
 
             dflags'' = dflags' { GHC.importPaths = ["./test/testdata/","../test/testdata/"] }
 
-        GHC.setSessionDynFlags dflags''
+            dflags''' = dflags'' { GHC.hscTarget = GHC.HscInterpreted,
+                                   GHC.ghcLink =  GHC.LinkInMemory }
+ 
+        GHC.setSessionDynFlags dflags'''
+
         target <- GHC.guessTarget targetFile Nothing
         GHC.setTargets [target]
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make

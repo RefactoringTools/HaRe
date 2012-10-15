@@ -356,14 +356,19 @@ parseSourceFile:: ( ) =>FilePath
 
 parseSourceFile ::
   String
-  -> IO (ParseResult, [PosToken])  
+  -> IO (ParseResult, [PosToken])
 parseSourceFile targetFile =
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
     GHC.runGhc (Just GHC.libdir) $ do
       dflags <- GHC.getSessionDynFlags
       let dflags' = foldl GHC.xopt_set dflags
                     [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-      GHC.setSessionDynFlags dflags'
+
+          -- Enable GHCi style in-memory linking
+          dflags'' = dflags' { GHC.hscTarget = GHC.HscInterpreted,
+                               GHC.ghcLink   =  GHC.LinkInMemory }
+
+      GHC.setSessionDynFlags dflags''
       target <- GHC.guessTarget targetFile Nothing
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
@@ -399,7 +404,12 @@ parseSourceFileGhc targetFile = do
       let dflags' = foldl GHC.xopt_set dflags
                     [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
           dflags'' = dflags' { GHC.importPaths = rsetImportPath settings }
-      GHC.setSessionDynFlags dflags''
+
+          -- Enable GHCi style in-memory linking
+          dflags''' = dflags'' { GHC.hscTarget = GHC.HscInterpreted,
+                                 GHC.ghcLink   =  GHC.LinkInMemory }
+
+      GHC.setSessionDynFlags dflags'''
       -- target <- GHC.guessTarget targetFile Nothing
       target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- Force interpretation, for inscopes
       GHC.setTargets [target]

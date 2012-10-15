@@ -112,7 +112,7 @@ spec = do
                  ,"(test/testdata/B.hs:20:22-24, test/testdata/B.hs:7:1-3, B.foo)(test/testdata/B.hs:7:1-3, test/testdata/B.hs:7:1-3, B.foo)"
                  ,"(test/testdata/B.hs:20:29, <no location info>, GHC.Num.+)(test/testdata/B.hs:11:19, <no location info>, GHC.Num.+)(test/testdata/B.hs:9:55, <no location info>, GHC.Num.+)(test/testdata/B.hs:9:46, <no location info>, GHC.Num.+)(test/testdata/B.hs:9:25, <no location info>, GHC.Num.+)(test/testdata/B.hs:31:14, <no location info>, GHC.Num.+)"
                  ,"(test/testdata/B.hs:20:3-10,\n <no location info>,\n System.IO.putStrLn)"
-                 ,"(test/testdata/B.hs:20:31-35, <no location info>, C.baz)"
+                 ,"(test/testdata/B.hs:20:31-35, test/testdata/C.hs:4:1-3, C.baz)"
                  ,"(test/testdata/B.hs:22:1-4, test/testdata/B.hs:23:1-4, B.mary)(test/testdata/B.hs:23:1-4, test/testdata/B.hs:23:1-4, B.mary)"
                  ,"(test/testdata/B.hs:25:1, test/testdata/B.hs:25:1, B.h)"
                  ,"(test/testdata/B.hs:25:11, test/testdata/B.hs:25:3, z)(test/testdata/B.hs:25:3, test/testdata/B.hs:25:3, z)"

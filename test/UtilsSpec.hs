@@ -174,8 +174,9 @@ spec = do
       (rsStreamModified s) `shouldBe` True
     it "contains the GhcT monad" $ do
       (r,_) <- runRefactGhcState comp
-      r `shouldBe` ("[\"B                ( test/testdata/B.hs, test/testdata/B.o )\"," 
-                   ++"\"C                ( test/testdata/C.hs, test/testdata/C.o )\"]")
+      r `shouldBe` ("[\"B                ( test/testdata/B.hs, interpreted )\""
+                ++  ",\"C                ( test/testdata/C.hs, interpreted )\"]")
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions
