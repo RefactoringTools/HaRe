@@ -175,10 +175,14 @@ getStuff =
 
         -- _ <- processVarUniques t
 
+        -- Tokens ------------------------------------------------------
         rts <- GHC.getRichTokenStream (GHC.ms_mod modSum)
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ tokenLocs rts))
+        -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ map (\(GHC.L _ tok,s) -> (tok,s)) rts)) 
+        GHC.liftIO (putStrLn $ "tokens=" ++ (showToks rts))
         
+
         -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
         -- GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
 
@@ -188,7 +192,7 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
 
         -- Inscopes ----------------------------------------------------
-        GHC.liftIO (putStrLn $ "\ninscopes(showData)=" ++ (SYB.showData SYB.Parser 0 $ inscopes))
+        -- GHC.liftIO (putStrLn $ "\ninscopes(showData)=" ++ (SYB.showData SYB.Parser 0 $ inscopes))
 
         -- RenamedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))

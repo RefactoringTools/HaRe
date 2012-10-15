@@ -63,6 +63,7 @@ type SimpPos = (Int,Int) -- Line, column
 
 -- Additions for GHC
 type PosToken = (GHC.Located GHC.Token, String)
+-- type PosToken = (GHC.GenLocated GHC.SrcSpan GHC.Token, String)
 
 data Pos = Pos { char, line, column :: !Int } deriving (Show)
 -- it seems that the field char is used to handle special characters including the '\t'

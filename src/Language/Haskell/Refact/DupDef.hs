@@ -74,8 +74,6 @@ comp fileName newName (row, col) = do
         else error $ "Invalid new function name:" ++ newName ++ "!"
 
 
--- type PN     = GHC.RdrName
-
 doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
               -> RefactGhc GHC.ParsedSource
 doDuplicating pn newName (inscopes,Just renamed,parsed) =
@@ -139,16 +137,15 @@ doDuplicating pn newName (inscps, parsed, tokList)
 -}
 
         findFunOrPatBind :: (SYB.Data t) => GHC.Located GHC.Name -> t -> [GHC.LHsBind GHC.Name]
-        findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBind d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
+        findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
 
         -- doDuplicating' :: GHC.ParsedSource -> GHC.Located GHC.Name -> RefactGhc GHC.ParsedSource
         doDuplicating' :: InScopes -> GHC.RenamedSource -> GHC.ParsedSource -> GHC.Located GHC.Name -> RefactGhc GHC.ParsedSource
         doDuplicating' inscps parentr parentp@(GHC.L lp hsMod) ln@(GHC.L _ n)
            = do let -- decls           = hsDecls parent -- TODO: reinstate this
-                    declsr = GHC.bagToList $ getDecls parentr  
+                    declsr = GHC.bagToList $ getDecls parentr
                     declsp = getDeclsP parentp
                     pn = (PN $ GHC.nameRdrName n)
-                    -- TODO: There is an assumption that the decls are in lexical order. Hmm.
                     duplicatedDecls = definingDeclsNames [n] declsr True False
                     (after,before)  = break (definesP pn) (reverse declsp)
 

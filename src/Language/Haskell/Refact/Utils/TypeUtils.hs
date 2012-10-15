@@ -57,8 +57,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Property checking
     -- ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isTopLevelPNT
     -- ,isQualifiedPN,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon,isTypeSig
-    ,isFunBind {- ,isPatBind -} ,isSimplePatBind
-    -- ,isComplexPatBind,isFunOrPatBind,isClassDecl,isInstDecl,isDirectRecursiveDef
+    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
+    {- ,isComplexPatBind -},isFunOrPatBindP -- ,isClassDecl,isInstDecl,isDirectRecursiveDef
     -- ,usedWithoutQual,canBeQualified, hasFreeVars,isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
     {-,findPNs -}, findEntity
@@ -85,7 +85,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
     -- ** Updating
     -- ,Update(update)
-    -- ,qualifyPName,rmQualifier,renamePN,replaceNameInPN,autoRenameLocalVar
+    {- ,qualifyPName,rmQualifier -} ,renamePN -- ,replaceNameInPN,autoRenameLocalVar
 
 -- * Miscellous
     -- ** Parsing, writing and showing
@@ -890,20 +890,23 @@ isTypeSig _=False
 -}
 
 -- | Return True if a declaration is a function definition.
-isFunBind::GHC.LHsBind t -> Bool
-isFunBind (GHC.L _l (GHC.FunBind _ _ _ _ _ _)) = True
-isFunBind _ =False
--- isFunBind::HsDeclP -> Bool
--- isFunBind (GHC.L l (GHC.ValD (GHC.FunBind _ _ _ _ _ _))) = True
--- isFunBind _ =False
+isFunBindP::HsDeclP -> Bool
+isFunBindP (GHC.L l (GHC.ValD (GHC.FunBind _ _ _ _ _ _))) = True
+isFunBindP _ =False
 
+isFunBindR::GHC.LHsBind t -> Bool
+isFunBindR (GHC.L _l (GHC.FunBind _ _ _ _ _ _)) = True
+isFunBindR _ =False
 
-{-
 -- | Returns True if a declaration is a pattern binding.
-isPatBind::HsDeclP->Bool
-isPatBind (TiDecorate.Dec (HsPatBind _ _ _ _))=True
-isPatBind _=False
--}
+isPatBindP::HsDeclP->Bool
+isPatBindP (GHC.L _ (GHC.ValD (GHC.PatBind _ _ _ _ _))) = True
+isPatBindP _=False
+
+isPatBindR::GHC.LHsBind t -> Bool
+isPatBindR (GHC.L _ (GHC.PatBind _ _ _ _ _)) = True
+isPatBindR _=False
+
 
 -- | Return True if a declaration is a pattern binding which only
 -- defines a variable value.
@@ -924,11 +927,12 @@ isComplexPatBind::HsDeclP->Bool
 isComplexPatBind decl=case decl of
      TiDecorate.Dec (HsPatBind _ p _ _)->patToPN p ==defaultPN
      _ -> False
-
+-}
 -- | Return True if a declaration is a function\/pattern definition.
-isFunOrPatBind::HsDeclP->Bool
-isFunOrPatBind decl=isFunBind decl || isPatBind decl
+isFunOrPatBindP::HsDeclP->Bool
+isFunOrPatBindP decl = isFunBindP decl || isPatBindP decl
 
+{-
 -- | Return True if a declaration is a Class declaration.
 isClassDecl :: HsDeclP ->Bool
 isClassDecl (TiDecorate.Dec (HsClassDecl _ _ _ _ _)) = True
@@ -1661,7 +1665,7 @@ getPNTBind _ = []
 
 -- | Duplicate a functon\/pattern binding declaration under a new name
 -- right after the original one.
--- ++AZ++ Note: requires ParsedSource. Hmm, does it, since toke stream ....
+-- ++AZ++ Note: requires ParsedSource. Hmm, does it, since token stream ....
 duplicateDecl::
     [HsDeclP] -- ^ The declaration list
   ->PName     -- ^ The identifier whose definition is to be duplicated
@@ -1673,7 +1677,80 @@ differently here: the comment and layout in function binding are
 preserved.The type signature is output ted by pretty printer, so the
 comments and layout are NOT preserved.
  -}
-duplicateDecl decls pn newFunName = undefined
+duplicateDecl decls pn newFunName
+ = do others <- get
+      let toks = rsTokenStream others
+      let (startPos, endPos) = startEndLocIncComments toks funBinding
+          {-take those tokens before (and include) the function binding and its following
+            white tokens before the 'new line' token. (some times the function may be followed by 
+            comments) -}
+          toks1 = let (ts1, ts2) =break (\t->tokenPos t==endPos) toks in ts1++[ghead "duplicateDecl" ts2]
+          --take those token after (and include) the function binding
+          toks2 = dropWhile (\t->tokenPos t/=startPos {- || isNewLn t -}) toks
+      -- put((toks2,modified), others)
+      put $ others {rsTokenStream = toks2, rsStreamModified = True }
+
+      --rename the function name to the new name, and update token stream as well
+      funBinding' <- renamePN pn Nothing newFunName True funBinding
+      --rename function name in type signature  without adjusting the token stream
+      {- ++AZ++ WIP
+      typeSig'  <- renamePN pn Nothing newFunName False typeSig
+      ((toks2,_), others)<-get
+      let offset = getOffset toks (fst (startEndLoc toks funBinding))
+          newLineTok = if toks1/=[] && endsWithNewLn (glast "doDuplicating" toks1)
+                         then [newLnToken]
+                         else [newLnToken,newLnToken]
+          toks'= if typeSig/=[]
+                 then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks2))
+                          sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
+                          t = mkToken Whitespace (0,0) sigSource
+                      in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks2)
+                 else (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
+      put ((toks',modified),others)
+      return (typeSig'++funBinding')
+      ++AZ++ WIP end -}
+      return [] -- ++AZ++ keep ghc happy so long
+     where
+       declsToDup = definingDecls [pn] decls True False
+       funBinding = filter isFunOrPatBindP declsToDup     --get the fun binding.
+       -- typeSig    = filter isTypeSig declsToDup      --get the type signature.
+
+{-
+duplicateDecl decls pn newFunName
+ = do ((toks,_), others)<-get
+      let (startPos, endPos) =startEndLocIncComments toks funBinding
+          {-take those tokens before (and include) the function binding and its following
+            white tokens before the 'new line' token. (some times the function may be followed by 
+            comments) -}
+          toks1 = let (ts1, ts2) =break (\t->tokenPos t==endPos) toks in ts1++[ghead "duplicateDecl" ts2]
+          --take those token after (and include) the function binding
+          toks2 = dropWhile (\t->tokenPos t/=startPos || isNewLn t) toks
+      put((toks2,modified), others)
+      --rename the function name to the new name, and update token stream as well
+      funBinding'<-renamePN pn Nothing newFunName True funBinding
+      --rename function name in type signature  without adjusting the token stream
+      typeSig'  <- renamePN pn Nothing newFunName False typeSig
+      ((toks2,_), others)<-get
+      let offset = getOffset toks (fst (startEndLoc toks funBinding))
+          newLineTok = if toks1/=[] && endsWithNewLn (glast "doDuplicating" toks1)
+                         then [newLnToken]
+                         else [newLnToken,newLnToken]
+          toks'= if typeSig/=[]
+                 then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks2))
+                          sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
+                          t = mkToken Whitespace (0,0) sigSource
+                      in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks2)
+                 else (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
+      put ((toks',modified),others)
+      return (typeSig'++funBinding')
+     where
+       declsToDup = definingDecls [pn] decls True False
+       funBinding = filter isFunOrPatBind declsToDup     --get the fun binding.
+       typeSig    = filter isTypeSig declsToDup      --get the type signature.
+
+
+-}
+
 
 {- ++ original ++
 {- ********* IMPORTANT : THIS FUNCTION SHOULD BE UPDATED TO THE NEW TOKEN STREAM METHOD ****** -}
@@ -1723,6 +1800,150 @@ duplicateDecl decls pn newFunName
 
 -}
 
+{-
+------------------------------------------------------------------------------------------ 
+-- | Replace the name (and qualifier if specified) by a new name (and qualifier) in a PName.
+--   The function does not modify the token stream.
+replaceNameInPN::Maybe ModuleName    -- ^ The new qualifier
+                 ->PName             -- ^ The old PName
+                 ->String            -- ^ The new name 
+                 ->PName             -- ^ The result 
+replaceNameInPN qualifier (PN (UnQual s)(UniqueNames.S loc))  newName
+  = if isJust qualifier then (PN (Qual (fromJust qualifier) newName) (UniqueNames.S loc))
+                        else (PN (UnQual newName) (UniqueNames.S loc)) 
+replaceNameInPN qualifier (PN (Qual modName  s)(UniqueNames.S loc))  newName
+  = if isJust qualifier  then (PN (Qual (fromJust qualifier) newName)(UniqueNames.S loc))
+                         else (PN (Qual modName newName) (UniqueNames.S loc))
+replaceNameInPN qualifier (PN (UnQual s) (G modName s1 loc))  newName
+  = if isJust qualifier then (PN (Qual (fromJust qualifier)  newName) (G modName newName loc))
+                        else (PN (UnQual newName) (G modName newName loc)) 
+replaceNameInPN qualifier (PN (Qual modName s) (G modName1 s1 loc))  newName
+  =if isJust qualifier then (PN (Qual (fromJust qualifier) newName) (G modName1 newName loc)) 
+                       else (PN (Qual modName newName) (G modName1 newName loc))
+-}
+
+-- | Rename each occurrences of the identifier in the given syntax
+-- phrase with the new name. If the Bool parameter is True, then
+-- modify both the AST and the token stream, otherwise only modify the
+-- AST.
+
+-- TODO: ++AZ++ this only makes sense for Renamed Source. Damn.
+renamePN::(SYB.Data t)
+           =>PName               -- ^ The identifier to be renamed.
+             ->Maybe GHC.ModuleName  -- ^ The qualifier
+             ->String            -- ^ The new name
+             ->Bool              -- ^ True means modifying the token stream as well.
+             ->t                 -- ^ The syntax phrase
+             ->RefactGhc t
+
+renamePN oldPN qualifier newName updateToks t
+  = return t
+{-
+  -- = applyTP (full_tdTP (adhocTP idTP rename)) t
+  = everywhereMStaged SYB.Parser (SYB.mkT rename) t
+  where
+    -- rename  pnt@(PNT pn ty (N (Just (SrcLoc fileName c  row col))))
+    rename :: (GHC.Located GHC.RdrName) -> RefactGhc (GHC.Located GHC.RdrName)
+    rename  pnt@(GHC.L l (GHC.Unqual x))
+     | (pn ==oldPN) && (srcLoc oldPN == srcLoc pn)
+     = do if updateToks
+           then  do ((toks,_),others)<-get
+                    let toks'=replaceToks toks (row,col) (row,col)
+                              [mkToken Varid  (row,col) ((render.ppi) (replaceName pn  newName))]
+                    put ((toks', modified),others)
+                    return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
+           else return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
+      where
+        replaceName = if isJust qualifier && canBeQualified pnt t
+                        then replaceNameInPN qualifier
+                        else replaceNameInPN Nothing
+    rename x = return x
+-}
+
+{- ++original
+-- | Rename each occurrences of the identifier in the given syntax phrase with the new name.
+--   If the Bool parameter is True, then modify both the AST and the token stream, otherwise only modify the AST.
+
+{-
+renamePN::(Term t)
+           =>PName               -- ^ The identifier to be renamed.
+             ->Maybe ModuleName  -- ^ The qualifier
+             ->String            -- ^ The new name
+             ->Bool              -- ^ True means modifying the token stream as well.
+             ->t                 -- ^ The syntax phrase
+             ->m t  
+-}
+
+renamePN::((MonadState (([PosToken], Bool), t1) m),Term t)
+           =>PName               -- ^ The identifier to be renamed.
+             ->Maybe ModuleName  -- ^ The qualifier
+             ->String            -- ^ The new name 
+             ->Bool              -- ^ True means modifying the token stream as well.
+             ->t                 -- ^ The syntax phrase
+             ->m t  
+
+renamePN oldPN qualifier newName updateToks t
+  = applyTP (full_tdTP (adhocTP idTP rename)) t
+  where
+    rename  pnt@(PNT pn ty (N (Just (SrcLoc fileName c  row col))))
+     | (pn ==oldPN) && (srcLoc oldPN == srcLoc pn)
+     = do if updateToks  
+           then  do ((toks,_),others)<-get                           
+                    let toks'=replaceToks toks (row,col) (row,col)
+                              [mkToken Varid  (row,col) ((render.ppi) (replaceName pn  newName))]
+                    put ((toks', modified),others)
+                    return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
+           else return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
+      where 
+        replaceName = if isJust qualifier && canBeQualified pnt t 
+                        then replaceNameInPN qualifier
+                        else replaceNameInPN Nothing       
+    rename x = return x 
+
+++original end -}
+
+{-  
+-- | Return True if the identifier can become qualified.
+canBeQualified::(Term t)=>PNT->t->Bool
+canBeQualified pnt t
+  = isTopLevelPNT pnt && isUsedInRhs pnt t && not (findPntInImp pnt t) 
+  where 
+    findPntInImp pnt 
+      = (fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` inImp)))
+      where 
+       inImp ((HsImportDecl loc modName qual  as h)::HsImportDeclP)
+        |findEntity pnt h = Just True
+       inImp _ = Nothing
+  
+ 
+-- | Return True if the identifier(in PNT format) occurs in the given syntax phrase.
+findPNT::(Term t)=>PNT->t->Bool  
+findPNT pnt 
+  = (fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` worker)))
+  where
+    worker (pnt1::PNT)
+      | sameOccurrence pnt pnt1 =Just True
+    worker _ =Nothing  
+
+-- | Return True if the identifier (in PName format) occurs in the given syntax phrase.
+findPN::(Term t)=>PName->t->Bool
+findPN pn 
+  =(fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` worker)))
+     where 
+        worker (pn1::PName)
+           |pn == pn1 && srcLoc pn == srcLoc pn1 = Just True 
+        worker _ =Nothing 
+
+-- | Return True if any of the specified PNames ocuur in the given syntax phrase.
+findPNs::(Term t)=>[PName]->t->Bool 
+findPNs pns 
+   =(fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` worker)))
+     where 
+        worker (pn1::PName)
+           |elem pn1 pns = Just True
+        worker _ =Nothing  
+
+-}
 
 
 -- ---------------------------------------------------------------------

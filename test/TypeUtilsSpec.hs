@@ -287,19 +287,19 @@ spec = do
 
   -- -------------------------------------------------------------------
 
-  describe "isFunBind" $ do
+  describe "isFunBindR" $ do
     it "Returns False if not a function definition" $ do
       modInfo@((_, renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
       -- let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
       let Just tup = getName "DupDef.Dd1.tup" renamed
       let [decl] = definingDeclsNames [tup] renamed False False
-      isFunBind decl  `shouldBe` False
+      isFunBindR decl  `shouldBe` False
 
     it "Returns True if a function definition" $ do
       modInfo@((_, renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
       let Just toplevel = getName "DupDef.Dd1.toplevel" renamed
       let [decl] = definingDeclsNames [toplevel] renamed False False
-      isFunBind decl  `shouldBe` True
+      isFunBindR decl  `shouldBe` True
 
   -- -------------------------------------------------------------------
 {- ++AZ++
@@ -385,6 +385,12 @@ spec = do
       GHC.showPpr n1 `shouldBe` "foo_C2"
       GHC.getOccString n2 `shouldBe` "bar"
       GHC.showPpr n2 `shouldBe` "bar_C3"
+
+  -- ---------------------------------------------
+
+  describe "duplicateDecl" $ do
+    it "Creates a new GHC.Name" $ do
+      pending "write this test"
 
 
 -- ---------------------------------------------------------------------
