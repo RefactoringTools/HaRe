@@ -500,8 +500,8 @@ getToks (startPos,endPos) toks
 -- startPos, the tokens between startPos and endPos, and the tokens
 -- after endPos.
 splitToks::(SimpPos, SimpPos)->[PosToken]->([PosToken],[PosToken],[PosToken])
-splitToks (startPos, endPos) toks 
-   = -- trace ("splitToks" ++ (showToks toks))
+splitToks (startPos, endPos) toks
+   = -- trace ("splitToks" ++ (show (startPos,endPos)) ++ (showToks toks))
    (if (startPos, endPos) == (simpPos0, simpPos0)
        then error "Invalid token stream position!"
        else let startPos'= if startPos==simpPos0 then endPos   else startPos
@@ -516,7 +516,7 @@ splitToks (startPos, endPos) toks
       = if length toks2 == 0
            then let (toks1', toks2) = break (\t -> tokenPos t >= startPos') toks 
                 in break (\t -> tokenPos t >= endPos') (drop 2 toks1++toks2)
-           else (break (\t -> tokenPos t >= endPos') toks2)
+           else (break (\t -> tokenPos t > endPos') toks2)
 
 -- ---------------------------------------------------------------------
 

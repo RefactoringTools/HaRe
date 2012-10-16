@@ -43,12 +43,31 @@ spec = do
       (show $ getStartEndLoc decl) `shouldBe` "((19,1),(19,13))"
 
       (show (startPos,endPos)) `shouldBe` "((18,1),(20,1))"
-      
+
   -- -------------------------------------------------------------------
 
   describe "updateToks" $ do
     it "needs a test or two" $ do
       pending "write this test"
+
+  -- -------------------------------------------------------------------
+
+  describe "splitToks" $ do
+    it "Split the tokens into a front, middle and end" $ do
+      ((_,renamed,_),toks) <- parsedFileCaseBGhc
+      let Just expr = locToExp (4,7) (4,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
+          (_front,middle,_back) = splitToks ((4,9),(4,36)) toks
+      (showToks middle) `shouldBe`
+               "[(((4,9),(4,11)),ITif,\"if\")," ++
+               "(((4,12),(4,13)),IToparen,\"(\")," ++
+               "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
+               "(((4,17),(4,18)),ITvarid \"x\",\"x\")," ++
+               "(((4,18),(4,19)),ITcparen,\")\")," ++
+               "(((4,20),(4,24)),ITthen,\"then\")," ++
+               "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
+               "(((4,31),(4,35)),ITelse,\"else\")," ++
+               "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
+      (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n         if (odd x) then \"Odd\" else \"Even\""
 
   -- -------------------------------------------------------------------
 
@@ -64,6 +83,12 @@ bFileName = GHC.mkFastString "./test/testdata/B.hs"
 
 parsedFileBGhc :: IO (ParseResult,[PosToken])
 parsedFileBGhc = parsedFileGhc "./test/testdata/B.hs"
+
+caseBFileName :: GHC.FastString
+caseBFileName = GHC.mkFastString "./test/testdata/Case/B.hs"
+
+parsedFileCaseBGhc :: IO (ParseResult,[PosToken])
+parsedFileCaseBGhc = parsedFileGhc "./test/testdata/Case/B.hs"
 
 parsedFileMGhc :: IO (ParseResult,[PosToken])
 parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
