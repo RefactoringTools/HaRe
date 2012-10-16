@@ -29,7 +29,7 @@ main = hspec spec
 spec :: Spec
 spec = do
 
-  describe "locToExp" $ do
+  describe "locToExp on ParsedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
       ((_, _, mod), toks) <- parsedFileBGhc
 
@@ -51,8 +51,16 @@ spec = do
       getLocatedStart expr `shouldBe` (7,12)
       getLocatedEnd   expr `shouldBe` (7,19)
 
+  describe "locToExp on RenamedSource" $ do
+    it "finds the largest leftmost expression contained in a given region #1" $ do
+      ((_, Just renamed, _), toks) <- parsedFileBGhc
+
+      let (Just expr) = locToExp (7,7) (7,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
+      getLocatedStart expr `shouldBe` (7,9)
+      getLocatedEnd   expr `shouldBe` (7,42)
+
   -- -------------------------------------------------------------------
- 
+
   describe "sameOccurrence" $ do
     it "checks that a given syntax element is the same occurrence as another" $ do
       pending "write this test"

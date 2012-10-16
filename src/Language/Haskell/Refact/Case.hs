@@ -40,8 +40,8 @@ ifToCase args
 
 comp :: String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
-       modInfo@((_, _, ast), toks) <- parseSourceFileGhc fileName
-       let expr = locToExp beginPos endPos ast
+       modInfo@((_, renamed, ast), toks) <- parseSourceFileGhc fileName
+       let expr = locToExp beginPos endPos renamed -- ast
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do refactoredMod <- applyRefac (doIfToCase exp1) (Just modInfo ) fileName
@@ -49,24 +49,24 @@ comp fileName beginPos endPos = do
          _      -> error $ "You haven't selected an if-then-else  expression!" --  ++ (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
 
 doIfToCase ::
-  -- (SYB.Typeable n) => 
-  GHC.Located (GHC.HsExpr GHC.RdrName)
+  GHC.Located (GHC.HsExpr GHC.Name)
   -> ParseResult
-  -> RefactGhc GHC.ParsedSource
+  -> RefactGhc RefactResult
 doIfToCase expr (_,Just rs,ps) = do
    
-   {-
-   newExp <- ifToCaseTransform expr
-   update expr newExp ps -- expr
-   -}
-   
-   everywhereMStaged SYB.Parser (SYB.mkM inExp) ps -- rs
+   everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs -- ps -- rs
        where
-         inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
+         inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
+
          inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
            | sameOccurrence expr exp1
-           = let newExp = ifToCaseTransformPs exp1
-             in update exp1 newExp exp1
+           -- = let newExp = ifToCaseTransformPs exp1
+           -- = let newExp = ifToCaseTransform exp1
+           --   in update exp1 newExp exp1
+           = do
+               newExp <- ifToCaseTransform exp1
+               update exp1 newExp exp1
+               return newExp
 
          inExp e = return e
    

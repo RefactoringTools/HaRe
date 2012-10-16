@@ -493,54 +493,62 @@ getToks (startPos,endPos) toks
          (toks21, toks22)=break (\t->tokenPos t==endPos) toks2
      in (toks21++ [ghead "getToks" toks22])   -- Should add error message for empty list?
 -}
--- Split the token stream into three parts: the tokens before the startPos,
--- the tokens between startPos and endPos, and the tokens after endPos.
+
+-- ---------------------------------------------------------------------
+
+-- | Split the token stream into three parts: the tokens before the
+-- startPos, the tokens between startPos and endPos, and the tokens
+-- after endPos.
 splitToks::(SimpPos, SimpPos)->[PosToken]->([PosToken],[PosToken],[PosToken])
-splitToks (startPos, endPos) toks -- = error (SYB.showData SYB.Parser 0 endPos)
+splitToks (startPos, endPos) toks 
    = -- trace ("splitToks" ++ (showToks toks))
    (if (startPos, endPos) == (simpPos0, simpPos0)
        then error "Invalid token stream position!"
-       else let startPos'= if startPos==simpPos0 then endPos else startPos
+       else let startPos'= if startPos==simpPos0 then endPos   else startPos
                 endPos'  = if endPos == simpPos0 then startPos else endPos
                 (toks1, toks2) = break (\t -> tokenPos t == startPos') toks
                 (toks21, toks22) = correctBreak startPos' endPos' toks1 toks2 toks
 
             -- in error ((showToks toks1) ++ "\n" ++ (showToks toks21) ++ "\n" ++ (showToks toks22))
-            -- Should add error message for empty list?
-            -- in  if length toks22==0 then error "Sorry, HaRe failed to finish this refactoring." -- (">" ++ (show (startPos, endPos) ++ show toks))
-            -- in  if length toks22==0 then error $ "Sorry, HaRe failed to finish this refactoring. SplitToks >" ++ (show (startPos, endPos,startPos',endPos')) ++ "," ++ (showToks toks1) ++ "," ++ (showToks toks2)
             in      (toks1, toks21 {-++[ghead "splitToks" toks22]-}, toks22) )
   where
     correctBreak startPos' endPos' toks1 toks2 toks
-                       = if length toks2 == 0
-                                 then let (toks1', toks2) = break (\t -> tokenPos t >= startPos') toks 
-                                      in break (\t -> tokenPos t >= endPos') (drop 2 toks1++toks2)
-                -- (toks21, toks22) = break (\t -> tokenPos t== endPos') toks2
-                                 else (break (\t -> tokenPos t >= endPos') toks2)
+      = if length toks2 == 0
+           then let (toks1', toks2) = break (\t -> tokenPos t >= startPos') toks 
+                in break (\t -> tokenPos t >= endPos') (drop 2 toks1++toks2)
+           else (break (\t -> tokenPos t >= endPos') toks2)
 
--- updateToks ::
--- (SYB.Data t) =>
---  GHC.GenLocated GHC.SrcSpan t
---  -> GHC.GenLocated GHC.SrcSpan t -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> Refact (GHC.GenLocated GHC.SrcSpan t, [PosToken])
-updateToks ::
-  (SYB.Data t, MonadIO m, MonadState RefactState m) =>
-  GHC.GenLocated GHC.SrcSpan t
-  -> GHC.GenLocated GHC.SrcSpan t
-  -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -> m (GHC.GenLocated GHC.SrcSpan t, [PosToken])
+-- ---------------------------------------------------------------------
+
+updateToks :: (SYB.Data t)
+  => GHC.GenLocated GHC.SrcSpan t -- ^ Old element
+  -> GHC.GenLocated GHC.SrcSpan t -- ^ New element
+  -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -- ^ pretty printer
+  -- -> RefactGhc (GHC.GenLocated GHC.SrcSpan t, [PosToken]) -- ^ Updated element and toks
+  -> RefactGhc () -- ^ Updates the RefactState
 updateToks oldAST newAST printFun
-   = trace "updateToks" $
-     do (RefSt s u toks _) <- get
-        let offset             = lengthOfLastLine toks1
-            (toks1, _, _)      = splitToks (startPos, endPos) toks
-            (startPos, endPos) = getStartEndLoc oldAST
-        newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-        let
-            toks' = replaceToks toks startPos endPos newToks
-        if length newToks == 0
-          then put (RefSt s u toks' modified) -- TODO:how do we flag this? Do we have to?
-          else put (RefSt s u toks' modified)
+  = trace "updateToks" $
+    do
+       st <- get
+       let toks = rsTokenStream st
+       let (startPos, endPos) = getStartEndLoc oldAST
+           (toks1, _, _)      = splitToks (startPos, endPos) toks
+           offset             = lengthOfLastLine toks1
 
-        return (newAST, newToks)
+       newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) 
+                           offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
+       let
+          toks' = replaceToks toks startPos endPos newToks
+       if length newToks == 0
+         -- then put (RefSt s u toks' modified) -- TODO:how do we flag this? Do we have to?
+         then put $ st { rsTokenStream = toks', rsStreamModified = modified} -- TODO:how do we flag this? Do we have to?
+         -- else put (RefSt s u toks' modified)
+         else put $ st { rsTokenStream = toks', rsStreamModified = modified}
+
+       -- return (newAST, newToks)
+       return ()
+
+-- ---------------------------------------------------------------------
 
 updateToksList oldAST newAST printFun
    = trace "updateToksList" $
@@ -778,11 +786,12 @@ whiteSpaceTokens (row, col) n
     then []
     else (mkToken Whitespace (row,col) " "):whiteSpaceTokens (row,col+1) (n-1)
 -}
--------------------------------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------
 
 -- | get all the source locations (use locations) in an AST phrase t
 -- according the the occurrence order of identifiers.
-srcLocs::(SYB.Data t)=> t->[SimpPos]
+srcLocs::(SYB.Data t) => t -> [SimpPos]
 srcLocs t =(nub.srcLocs') t \\ [simpPos0]
    where srcLocs'= SYB.everythingStaged SYB.Parser (++) []
                    ([]
@@ -791,74 +800,18 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
                     `SYB.extQ` literalInExp
                     `SYB.extQ` literalInPat)
 
-
-         pnt :: GHC.GenLocated GHC.SrcSpan GHC.RdrName -> [SimpPos]
-         pnt (GHC.L l (GHC.Unqual _)) = [getGhcLoc l]
-         pnt (GHC.L l (GHC.Qual _ _)) = [getGhcLoc l]
-         pnt (GHC.L l (GHC.Orig _ _)) = [getGhcLoc l]
-         pnt (GHC.L l (GHC.Exact _))  = [getGhcLoc l]
+         pnt :: GHC.GenLocated GHC.SrcSpan GHC.Name -> [SimpPos]
          pnt (GHC.L l _)              = [getGhcLoc l]
 
          sn :: GHC.HsModule GHC.RdrName -> [SimpPos]
          sn (GHC.HsModule (Just (GHC.L l _)) _ _ _ _ _) = [getGhcLoc l]
          sn _ = []
 
-         literalInExp :: GHC.LHsExpr GHC.RdrName -> [SimpPos]
-         literalInExp (GHC.L l (GHC.HsOverLit _)) = [getGhcLoc l]
-
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsChar _)))        = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsCharPrim _)))    = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsString _)))      = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsStringPrim _)))  = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInt _)))         = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsIntPrim _)))     = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsWordPrim _)))    = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInt64Prim _)))   = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsWord64Prim _)))  = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsInteger _ _)))   = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsRat _ _)))       = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsFloatPrim _)))   = [getGhcLoc l]
-         literalInExp (GHC.L l (GHC.HsLit (GHC.HsDoublePrim _ ))) = [getGhcLoc l]
+         literalInExp :: GHC.LHsExpr GHC.Name -> [SimpPos]
          literalInExp (GHC.L l _) = [getGhcLoc l]
 
-         literalInPat :: GHC.LPat GHC.RdrName -> [SimpPos]
-         {-
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsChar _)))        = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsCharPrim _)))    = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsString _)))      = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsStringPrim _)))  = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInt _)))         = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsIntPrim _)))     = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsWordPrim _)))    = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInt64Prim _)))   = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsWord64Prim _)))  = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsInteger _ _)))   = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsRat _ _)))       = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsFloatPrim _)))   = [getGhcLoc l]
-         literalInPat (GHC.L l (GHC.LitPat (GHC.HsDoublePrim _ ))) = [getGhcLoc l]
-         -}
+         literalInPat :: GHC.LPat GHC.Name -> [SimpPos]
          literalInPat (GHC.L l _) = [getGhcLoc l]
-
-{-
-GHC.everythingStaged ::
-  forall r.
-  GHC.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> SYB.GenericQ r
-
-SYB.everything ::
-  forall r.
-               (r -> r -> r) ->      SYB.GenericQ r -> SYB.GenericQ r
-        -- Defined in `Data.Generics.Schemes'
--}
-
-{-
-main = print $ ( listify (\(_::Int) -> True)         mytree
-               , everything (++) ([] `mkQ` fromLeaf) mytree
-               )
-  where
-    fromLeaf :: Tree Int Int -> [Int]
-    fromLeaf (Leaf x) = [x]
-    fromLeaf _ = []
--}
 
 
 getGhcLoc :: GHC.SrcSpan -> (Int, Int)

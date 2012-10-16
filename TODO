@@ -279,3 +279,17 @@ NOTE: GHC SrcSpan columns
 Look at implementing hlint suggestions as refactorings
 http://community.haskell.org/~ndm/hlint/hlint-report.htm
 [as suggested by robstewartuk]
+
+
+------------------------------------------
+
+Decision: will use renamed source and tokens for refactoring. No
+parsedsource. at all
+
+Mechanics
+  - Need Renamed Source for exact Name resolution
+  - Need Parsed Source for decent pretty print
+  - Need Token Stream for good output of changed file
+
+  Must sort out pretty printer, to not have to use ParsedSource
+

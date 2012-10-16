@@ -46,10 +46,15 @@ spec = do
       
   -- -------------------------------------------------------------------
 
-  describe "foo" $ do
+  describe "updateToks" $ do
     it "needs a test or two" $ do
       pending "write this test"
 
+  -- -------------------------------------------------------------------
+
+  describe "foo" $ do
+    it "needs a test or two" $ do
+      pending "write this test"
 
 -- ---------------------------------------------------------------------
 -- Helper functions

@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Language.Haskell.Refact.Utils
        ( expToPNT
@@ -493,7 +494,7 @@ getExports (GHC.L _ hsmod) =
 
 -- | The result of a refactoring is the file, a flag as to whether it
 -- was modified, the updated token stream, and the updated AST
-type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.ParsedSource))
+type ApplyRefacResult = ((FilePath, Bool), ([PosToken], RefactResult))
 
 
 -- | Manage a whole refactor session. Initialise the monad, parse the
@@ -525,9 +526,9 @@ runRefacSession settings comp = do
 
 -- | Apply a refactoring (or part of a refactoring) to a single module
 applyRefac
-    :: (ParseResult -> RefactGhc GHC.ParsedSource) -- ^ The refactoring
-    -> Maybe (ParseResult, [PosToken])             -- ^ parse of module, if available
-    -> FilePath                                    -- ^ filename, if not
+    :: (ParseResult -> RefactGhc RefactResult) -- ^ The refactoring
+    -> Maybe (ParseResult, [PosToken])         -- ^ parse of module, if available
+    -> FilePath                                -- ^ filename, if not
     -> RefactGhc ApplyRefacResult
 
 applyRefac refac Nothing fileName
@@ -548,7 +549,7 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     (RefSt _ u' toks' m) <- get
 
     -- Replace state with original, probably not needed
-    put (RefSt settings u' ts m)
+    -- put (RefSt settings u' ts m)
 
     return ((fileName,m),(toks', mod'))
 
@@ -567,7 +568,29 @@ applyRefacToClientMods refac fileName
 
 {- ++AZ++ TODO: replace this with a single function -}
 
-class (SYB.Data t, SYB.Data t1)=>Update t t1 where
+{-
+-- | Update the occurrence of one syntax phrase in a given scope by
+-- another syntax phrase
+updateR :: (SYB.Data t,SYB.Data t1, GHC.OutputableBndr t)
+         => t     -- ^ The syntax phrase to be updated.
+         -> t     -- ^ The new syntax phrase.
+         -> t1    -- ^ The contex where the old syntax phrase occurs.
+         -> RefactGhc t1  -- ^ The result.
+updateR old new t
+  = everywhereMStaged SYB.Renamer (SYB.mkM inExp) t
+       where
+        inExp :: GHC.Located t -> RefactGhc (GHC.Located t)
+        -- inExp (e::(GHC.OutputableBndr n, SYB.Data n) => GHC.Located n)
+        -- inExp (e@(GHC.L l _)::(GHC.OutputableBndr n, SYB.Data n) => GHC.Located n)
+        inExp (e@(GHC.L l _))
+          | sameOccurrence e old
+               = do (new', _) <- updateToks old new prettyprint
+                -- error "update: updated tokens" -- ++AZ++ debug
+                    return new'
+          | otherwise = return e
+-}
+
+class (SYB.Data t, SYB.Data t1) => Update t t1 where
 
   -- | Update the occurrence of one syntax phrase in a given scope by
   -- another syntax phrase of the same type
@@ -582,9 +605,9 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
        where
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
-               = do (newExp', _) <- updateToks oldExp newExp prettyprint
+               = do _ <- updateToks oldExp newExp prettyprint
                 -- error "update: updated tokens" -- ++AZ++ debug
-                    return newExp'
+                    return newExp
           | otherwise = return e
 
 
@@ -641,7 +664,7 @@ writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-re
          -> m ()
 -}
 -- writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
-writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], GHC.ParsedSource))])
+writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], RefactResult))])
 -- writeRefactoredFiles :: Bool -> [(RefactState, GHC.ParsedSource)]
     -- The AST is not used.
     -- isSubRefactor is used only for history (undo).

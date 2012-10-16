@@ -75,10 +75,10 @@ comp fileName newName (row, col) = do
 
 
 doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
-              -> RefactGhc GHC.ParsedSource
+              -> RefactGhc RefactResult
 doDuplicating pn newName (inscopes,Just renamed,parsed) =
 
-   everywhereMStaged SYB.Parser (SYB.mkM dupInMod) parsed
+   everywhereMStaged SYB.Parser (SYB.mkM dupInMod) renamed -- parsed
         where
         --1. The definition to be duplicated is at top level.
         -- dupInMod (parsed@(HsModule loc name exps imps ds):: HsModuleP)
