@@ -10,6 +10,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      {-
                      ,simpPos0,ghead,glast,gfromJust
                      -}
+                     , emptyList
                      , showToks
                      , ghead, glast, gtail
                      , tokenCol, tokenRow

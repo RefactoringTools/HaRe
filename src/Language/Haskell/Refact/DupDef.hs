@@ -78,16 +78,20 @@ doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
               -> RefactGhc RefactResult
 doDuplicating pn newName (inscopes,Just renamed,parsed) =
 
-   everywhereMStaged SYB.Parser (SYB.mkM dupInMod) renamed -- parsed
+   everywhereMStaged SYB.Renamer (SYB.mkM dupInMod) renamed -- parsed
         where
         --1. The definition to be duplicated is at top level.
         -- dupInMod (parsed@(HsModule loc name exps imps ds):: HsModuleP)
-        dupInMod :: (GHC.Located (GHC.HsModule GHC.RdrName))-> RefactGhc (GHC.Located (GHC.HsModule GHC.RdrName))
-        dupInMod (parsed@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
+        dupInMod :: (GHC.HsGroup GHC.Name)-> RefactGhc (GHC.HsGroup GHC.Name)
+        dupInMod group
           -- |findFunOrPatBind pn ds /= [] = doDuplicating' parsed pn
-          | length (findFunOrPatBind pn ds) == 0 = doDuplicating' inscopes renamed parsed pn
-        -- dupInMod _ =mzero
-        dupInMod parsed = return parsed
+          | not $ emptyList (findFunOrPatBind pn (GHC.hs_valds group)) = doDuplicating' inscopes renamed pn
+        dupInMod group = return group
+        -- dupInMod :: (GHC.Located (GHC.HsModule GHC.RdrName))-> RefactGhc (GHC.Located (GHC.HsModule GHC.RdrName))
+        -- dupInMod (parsed@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
+        --   -- |findFunOrPatBind pn ds /= [] = doDuplicating' parsed pn
+        --   | length (findFunOrPatBind pn ds) == 0 = doDuplicating' inscopes renamed parsed pn
+        -- dupInMod parsed = return parsed
 
 {-
 doDuplicating pn newName (inscps, parsed, tokList)
@@ -140,14 +144,14 @@ doDuplicating pn newName (inscps, parsed, tokList)
         findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
 
         -- doDuplicating' :: GHC.ParsedSource -> GHC.Located GHC.Name -> RefactGhc GHC.ParsedSource
-        doDuplicating' :: InScopes -> GHC.RenamedSource -> GHC.ParsedSource -> GHC.Located GHC.Name -> RefactGhc GHC.ParsedSource
-        doDuplicating' inscps parentr parentp@(GHC.L lp hsMod) ln@(GHC.L _ n)
+        doDuplicating' :: InScopes -> GHC.RenamedSource -> GHC.Located GHC.Name -> RefactGhc (GHC.HsGroup GHC.Name)
+        doDuplicating' inscps parentr@(g,_is,_es,_ds) ln@(GHC.L _ n)
            = do let -- decls           = hsDecls parent -- TODO: reinstate this
                     declsr = GHC.bagToList $ getDecls parentr
-                    declsp = getDeclsP parentp
+                    -- declsp = getDeclsP parentp
                     pn = (PN $ GHC.nameRdrName n)
                     duplicatedDecls = definingDeclsNames [n] declsr True False
-                    (after,before)  = break (definesP pn) (reverse declsp)
+                    -- (after,before)  = break (definesP pn) (reverse declsp)
 
                     (f,d) = hsFDNamesFromInside parentr
                     --f: names that might be shadowd by the new name, d: names that might clash with the new name
@@ -160,9 +164,11 @@ doDuplicating pn newName (inscps, parsed, tokList)
                 if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity ln duplicatedDecls) 
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
-                   else do newBinding <- duplicateDecl declsp pn newName
-                           let newDecls = replaceDecls declsp (reverse before++ newBinding++ reverse after)
-                           return (GHC.L lp (hsMod {GHC.hsmodDecls = newDecls}))
+                   else do newBinding <- duplicateDecl declsr n newName
+                           -- let newDecls = replaceDecls declsr (reverse before++ newBinding++ reverse after)
+                           let newDecls = replaceDecls declsr (declsr ++ newBinding)
+                           -- return (GHC.L lp (hsMod {GHC.hsmodDecls = newDecls}))
+                           return $ g { GHC.hs_valds = (GHC.ValBindsIn (GHC.listToBag newDecls) []) } -- ++AZ++ what about GHC.ValBindsOut?
 
 
 {-
