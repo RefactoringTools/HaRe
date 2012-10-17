@@ -80,7 +80,7 @@ instance Show PName where
 -- GHC.Name data PNT = PNT GHC.Name deriving (Data,Typeable) -- Note:
 -- GHC.Name has SrcLoc in it already
 -- ++AZ++ : will run with Located RdrName for now, will see when we need the Unique name
-data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable)
+data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable,Eq)
 
 instance Show PNT where
   show (PNT (GHC.L l name)) = "(PNT " ++ (GHC.showPpr l) ++ " " ++ (GHC.showRdrName name) ++ ")"

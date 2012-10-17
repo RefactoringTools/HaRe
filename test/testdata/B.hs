@@ -2,7 +2,7 @@ module B where
 -- Test for refactor of if to case
 
 import Data.List -- For testing module graph
-import C         -- For testing module graph
+-- import C         -- For testing module graph
 
 foo x = if (odd x) then "Odd" else "Even"
 
@@ -17,7 +17,7 @@ foo' x = case (odd x) of
 
 main :: IO ()
 main = do
-  putStrLn $ show $ (foo (5 + C.baz))
+  putStrLn $ show $ (foo (5 + 42))
 
 mary :: [Integer]
 mary = [1,2,3]

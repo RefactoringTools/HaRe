@@ -6,6 +6,7 @@
 
 module Language.Haskell.Refact.Utils
        ( expToPNT
+       , expToName
        , locToExp
        , sameOccurrence
        , parseSourceStr
@@ -672,18 +673,20 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
 --  otherwise return the default PNT.
 
 -- TODO: bring in data constructor constants too.
-expToPNT ::
-  GHC.GenLocated GHC.SrcSpan (GHC.HsExpr PNT)
-  -> Maybe PNT
+-- expToPNT ::
+--  GHC.GenLocated GHC.SrcSpan (GHC.HsExpr PNT)
+--  -> Maybe PNT
 
 -- Will have to look this up ....
-expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just pnt
+expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just (PNT (GHC.L x pnt))
 -- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
 -- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
 -- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
 -- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
 expToPNT _ = Nothing
 
+expToName (GHC.L l (GHC.HsVar name)) = Just (GHC.L l name)
+expToName _ = Nothing
 
 
 -- ---------------------------------------------------------------------
