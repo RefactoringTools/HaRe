@@ -1347,6 +1347,7 @@ rmDecl pn incSig t = applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
 
 {- ********* IMPORTANT : THIS FUNCTION SHOULD BE UPDATED TO THE NEW TOKEN STREAM METHOD ****** -}
 -- | Duplicate a functon\/pattern binding declaration under a new name right after the original one.
+
 duplicateDecl::(MonadState (([PosToken],Bool),t1) m)
                  =>[HsDeclP]            -- ^ The declaration list
                  ->PName                -- ^ The identifier whose definition is going to be duplicated

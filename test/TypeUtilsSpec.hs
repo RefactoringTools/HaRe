@@ -40,18 +40,18 @@ spec = do
 
   describe "locToPnt" $ do
     it "returns a pnt for a given source location, if it falls anywhere in an identifier" $ do
-      modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      let (PNT res@(GHC.L l n)) = locToPNT bFileName (7,3) mod
+      ((_, _, parsed), toks) <- parsedFileBGhc
+      let (PNT res@(GHC.L l n)) = locToPNT bFileName (7,3) parsed
       GHC.showPpr l `shouldBe` "test/testdata/B.hs:7:1-3"
       getLocatedStart res `shouldBe` (7,1)
       GHC.showRdrName n `shouldBe` "foo"
 
     it "returns a pnt for a given source location, if it falls anywhere in an identifier #2" $ do
-      modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      let (PNT res@(GHC.L l n)) = locToPNT bFileName (23,8) mod
+      ((_, _, parsed), toks) <- parsedFileBGhc
+      let (PNT res@(GHC.L l n)) = locToPNT bFileName (25,8) parsed
       GHC.showRdrName n `shouldBe` "bob"
-      GHC.showPpr l `shouldBe` "test/testdata/B.hs:23:7-9"
-      getLocatedStart res `shouldBe` (23,7)
+      GHC.showPpr l `shouldBe` "test/testdata/B.hs:25:7-9"
+      getLocatedStart res `shouldBe` (25,7)
 
     it "returns the default pnt for a given source location, if it does not fall in an identifier" $ do
       modInfo@((_, _, mod), toks) <- parsedFileBGhc
@@ -62,7 +62,7 @@ spec = do
     it "lists all PNTs" $ do
       modInfo@((_, _, mod), toks) <- parsedFileBGhc
       let res = allPNT bFileName (7,6) mod
-      show res `shouldBe`  "[(PNT test/testdata/B.hs:7:1-3 foo),(PNT test/testdata/B.hs:7:5 x),(PNT test/testdata/B.hs:7:13-15 odd),(PNT test/testdata/B.hs:7:17 x),(PNT test/testdata/B.hs:9:1-3 bob),(PNT test/testdata/B.hs:9:5 x),(PNT test/testdata/B.hs:9:7 y),(PNT test/testdata/B.hs:9:15-17 foo),(PNT test/testdata/B.hs:9:19 x),(PNT test/testdata/B.hs:9:23 x),(PNT test/testdata/B.hs:9:25 +),(PNT test/testdata/B.hs:9:37-39 foo),(PNT test/testdata/B.hs:9:41 x),(PNT test/testdata/B.hs:9:45 x),(PNT test/testdata/B.hs:9:46 +),(PNT test/testdata/B.hs:9:53 x),(PNT test/testdata/B.hs:9:55 +),(PNT test/testdata/B.hs:9:57-59 foo),(PNT test/testdata/B.hs:9:61 y),(PNT test/testdata/B.hs:11:9-11 foo),(PNT test/testdata/B.hs:11:13 x),(PNT test/testdata/B.hs:11:17 x),(PNT test/testdata/B.hs:11:19 +),(PNT test/testdata/B.hs:14:1-4 foo'),(PNT test/testdata/B.hs:14:6 x),(PNT test/testdata/B.hs:14:16-18 odd),(PNT test/testdata/B.hs:14:20 x),(PNT test/testdata/B.hs:15:3-6 True),(PNT test/testdata/B.hs:16:3-7 False),(PNT test/testdata/B.hs:18:1-4 main),(PNT test/testdata/B.hs:19:3-10 putStrLn),(PNT test/testdata/B.hs:19:12 $),(PNT test/testdata/B.hs:19:14-17 show),(PNT test/testdata/B.hs:19:19 $),(PNT test/testdata/B.hs:19:22-24 foo),(PNT test/testdata/B.hs:19:29 +),(PNT test/testdata/B.hs:19:31-35 C.baz),(PNT test/testdata/B.hs:21:1-4 mary),(PNT test/testdata/B.hs:23:1 h),(PNT test/testdata/B.hs:23:3 z),(PNT test/testdata/B.hs:23:7-9 bob),(PNT test/testdata/B.hs:23:11 z),(PNT test/testdata/B.hs:25:6 D),(PNT test/testdata/B.hs:25:10 A),(PNT test/testdata/B.hs:25:14 B),(PNT test/testdata/B.hs:25:25 C),(PNT test/testdata/B.hs:27:1-7 subdecl),(PNT test/testdata/B.hs:27:9 x),(PNT test/testdata/B.hs:27:13-14 zz),(PNT test/testdata/B.hs:27:16 x),(PNT test/testdata/B.hs:29:5-6 zz),(PNT test/testdata/B.hs:29:8 n),(PNT test/testdata/B.hs:29:12 n),(PNT test/testdata/B.hs:29:14 +)]"
+      show res `shouldBe`  "[(PNT test/testdata/B.hs:7:1-3 foo),(PNT test/testdata/B.hs:7:5 x),(PNT test/testdata/B.hs:7:13-15 odd),(PNT test/testdata/B.hs:7:17 x),(PNT test/testdata/B.hs:9:1-3 bob),(PNT test/testdata/B.hs:9:5 x),(PNT test/testdata/B.hs:9:7 y),(PNT test/testdata/B.hs:9:15-17 foo),(PNT test/testdata/B.hs:9:19 x),(PNT test/testdata/B.hs:9:23 x),(PNT test/testdata/B.hs:9:25 +),(PNT test/testdata/B.hs:9:37-39 foo),(PNT test/testdata/B.hs:9:41 x),(PNT test/testdata/B.hs:9:45 x),(PNT test/testdata/B.hs:9:46 +),(PNT test/testdata/B.hs:9:53 x),(PNT test/testdata/B.hs:9:55 +),(PNT test/testdata/B.hs:9:57-59 foo),(PNT test/testdata/B.hs:9:61 y),(PNT test/testdata/B.hs:11:9-11 foo),(PNT test/testdata/B.hs:11:13 x),(PNT test/testdata/B.hs:11:17 x),(PNT test/testdata/B.hs:11:19 +),(PNT test/testdata/B.hs:14:1-4 foo'),(PNT test/testdata/B.hs:14:6 x),(PNT test/testdata/B.hs:14:16-18 odd),(PNT test/testdata/B.hs:14:20 x),(PNT test/testdata/B.hs:15:3-6 True),(PNT test/testdata/B.hs:16:3-7 False),(PNT test/testdata/B.hs:18:1-4 main),(PNT test/testdata/B.hs:19:1-4 main),(PNT test/testdata/B.hs:20:3-10 putStrLn),(PNT test/testdata/B.hs:20:12 $),(PNT test/testdata/B.hs:20:14-17 show),(PNT test/testdata/B.hs:20:19 $),(PNT test/testdata/B.hs:20:22-24 foo),(PNT test/testdata/B.hs:20:29 +),(PNT test/testdata/B.hs:20:31-35 C.baz),(PNT test/testdata/B.hs:22:1-4 mary),(PNT test/testdata/B.hs:23:1-4 mary),(PNT test/testdata/B.hs:25:1 h),(PNT test/testdata/B.hs:25:3 z),(PNT test/testdata/B.hs:25:7-9 bob),(PNT test/testdata/B.hs:25:11 z),(PNT test/testdata/B.hs:27:6 D),(PNT test/testdata/B.hs:27:10 A),(PNT test/testdata/B.hs:27:14 B),(PNT test/testdata/B.hs:27:25 C),(PNT test/testdata/B.hs:29:1-7 subdecl),(PNT test/testdata/B.hs:29:9 x),(PNT test/testdata/B.hs:29:13-14 zz),(PNT test/testdata/B.hs:29:16 x),(PNT test/testdata/B.hs:31:5-6 zz),(PNT test/testdata/B.hs:31:8 n),(PNT test/testdata/B.hs:31:12 n),(PNT test/testdata/B.hs:31:14 +)]"
 
  
   -- -------------------------------------------------------------------
@@ -75,15 +75,15 @@ spec = do
       getLocatedStart res `shouldBe` (7,1)
       GHC.showPpr n `shouldBe` "B.foo"
 
-    it "returns a pnt for a given source location, if it falls anywhere in an identifier #2" $ do
-      modInfo@((_, renamed,_),_toks) <- parsedFileBGhc
-      let Just (res@(GHC.L l n)) = locToName bFileName (23,8) renamed
+    it "returns a GHC.Name for a given source location, if it falls anywhere in an identifier #2" $ do
+      ((_, renamed,_),_toks) <- parsedFileBGhc
+      let Just (res@(GHC.L l n)) = locToName bFileName (25,8) renamed
       GHC.showPpr n `shouldBe` "B.bob"
-      GHC.showPpr l `shouldBe` "test/testdata/B.hs:23:7-9"
-      getLocatedStart res `shouldBe` (23,7)
+      GHC.showPpr l `shouldBe` "test/testdata/B.hs:25:7-9"
+      getLocatedStart res `shouldBe` (25,7)
 
     it "returns Nothing for a given source location, if it does not fall in an identifier" $ do
-      modInfo@((_, renamed,_),_toks) <- parsedFileBGhc
+      ((_, renamed,_),_toks) <- parsedFileBGhc
       let res = locToName bFileName (7,7) renamed
       res `shouldBe` Nothing
 
@@ -100,42 +100,60 @@ spec = do
       let res'' = foldl' (\m (k,a) -> Map.insertWith (++) k a m) Map.empty res'
 
       (sort $ Map.elems res'') `shouldBe` 
-                 ["(test/testdata/B.hs:11:17, x)(test/testdata/B.hs:11:13, x)"
-                 ,"(test/testdata/B.hs:11:9-11, foo)"
-                 ,"(test/testdata/B.hs:14:1-4, B.foo')"
-                 ,"(test/testdata/B.hs:14:20, x)(test/testdata/B.hs:14:6, x)"
-                 ,"(test/testdata/B.hs:15:3-6, GHC.Types.True)"
-                 ,"(test/testdata/B.hs:16:3-7, GHC.Types.False)"
-                 ,"(test/testdata/B.hs:18:1-4, B.main)"
-                 ,"(test/testdata/B.hs:19:14-17, GHC.Show.show)"
-                 ,"(test/testdata/B.hs:19:19, GHC.Base.$)(test/testdata/B.hs:19:12, GHC.Base.$)"
-                 ,"(test/testdata/B.hs:19:22-24, B.foo)(test/testdata/B.hs:7:1-3, B.foo)"
-                 ,"(test/testdata/B.hs:19:29, GHC.Num.+)(test/testdata/B.hs:11:19, GHC.Num.+)"
-                    ++"(test/testdata/B.hs:9:55, GHC.Num.+)(test/testdata/B.hs:9:46, GHC.Num.+)"
-                    ++"(test/testdata/B.hs:9:25, GHC.Num.+)(test/testdata/B.hs:29:14, GHC.Num.+)"
-                 ,"(test/testdata/B.hs:19:3-10, System.IO.putStrLn)"
-                 ,"(test/testdata/B.hs:19:31-35, C.baz)"
-                 ,"(test/testdata/B.hs:21:1-4, B.mary)"
-                 ,"(test/testdata/B.hs:23:1, B.h)"
-                 ,"(test/testdata/B.hs:23:11, z)(test/testdata/B.hs:23:3, z)"
-                 ,"(test/testdata/B.hs:23:7-9, B.bob)(test/testdata/B.hs:9:1-3, B.bob)"
-                 ,"(test/testdata/B.hs:25:10, B.A)"
-                 ,"(test/testdata/B.hs:25:14, B.B)"
-                 ,"(test/testdata/B.hs:25:25, B.C)"
-                 ,"(test/testdata/B.hs:25:6, B.D)"
-                 ,"(test/testdata/B.hs:27:1-7, B.subdecl)"
-                 ,"(test/testdata/B.hs:27:16, x)(test/testdata/B.hs:27:9, x)"
-                 ,"(test/testdata/B.hs:29:12, n)(test/testdata/B.hs:29:8, n)"
-                 ,"(test/testdata/B.hs:29:5-6, zz)(test/testdata/B.hs:27:13-14, zz)"
-                 ,"(test/testdata/B.hs:7:13-15, GHC.Real.odd)(test/testdata/B.hs:14:16-18, GHC.Real.odd)"
-                 ,"(test/testdata/B.hs:7:17, x)(test/testdata/B.hs:7:5, x)"
-                 ,"(test/testdata/B.hs:9:15-17, foo)"
-                 ,"(test/testdata/B.hs:9:23, x)(test/testdata/B.hs:9:19, x)"
-                 ,"(test/testdata/B.hs:9:45, x)(test/testdata/B.hs:9:41, x)"
-                 ,"(test/testdata/B.hs:9:53, x)(test/testdata/B.hs:9:5, x)"
-                 ,"(test/testdata/B.hs:9:57-59, foo)(test/testdata/B.hs:9:37-39, foo)"
-                 ,"(test/testdata/B.hs:9:61, y)(test/testdata/B.hs:9:7, y)"
+                 ["(test/testdata/B.hs:11:17, test/testdata/B.hs:11:13, x)(test/testdata/B.hs:11:13, test/testdata/B.hs:11:13, x)"
+                 ,"(test/testdata/B.hs:11:9-11, test/testdata/B.hs:11:9-11, foo)"
+                 ,"(test/testdata/B.hs:14:1-4, test/testdata/B.hs:14:1-4, B.foo')"
+                 ,"(test/testdata/B.hs:14:20, test/testdata/B.hs:14:6, x)(test/testdata/B.hs:14:6, test/testdata/B.hs:14:6, x)"
+                 ,"(test/testdata/B.hs:15:3-6, <wired into compiler>, GHC.Types.True)"
+                 ,"(test/testdata/B.hs:16:3-7, <wired into compiler>, GHC.Types.False)"
+                 ,"(test/testdata/B.hs:18:1-4, test/testdata/B.hs:19:1-4, B.main)(test/testdata/B.hs:19:1-4, test/testdata/B.hs:19:1-4, B.main)"
+                 ,"(test/testdata/B.hs:20:14-17, <no location info>, GHC.Show.show)"
+                 ,"(test/testdata/B.hs:20:19, <no location info>, GHC.Base.$)(test/testdata/B.hs:20:12, <no location info>, GHC.Base.$)"
+                 ,"(test/testdata/B.hs:20:22-24, test/testdata/B.hs:7:1-3, B.foo)(test/testdata/B.hs:7:1-3, test/testdata/B.hs:7:1-3, B.foo)"
+                 ,"(test/testdata/B.hs:20:29, <no location info>, GHC.Num.+)(test/testdata/B.hs:11:19, <no location info>, GHC.Num.+)(test/testdata/B.hs:9:55, <no location info>, GHC.Num.+)(test/testdata/B.hs:9:46, <no location info>, GHC.Num.+)(test/testdata/B.hs:9:25, <no location info>, GHC.Num.+)(test/testdata/B.hs:31:14, <no location info>, GHC.Num.+)"
+                 ,"(test/testdata/B.hs:20:3-10,\n <no location info>,\n System.IO.putStrLn)"
+                 ,"(test/testdata/B.hs:20:31-35, test/testdata/C.hs:4:1-3, C.baz)"
+                 ,"(test/testdata/B.hs:22:1-4, test/testdata/B.hs:23:1-4, B.mary)(test/testdata/B.hs:23:1-4, test/testdata/B.hs:23:1-4, B.mary)"
+                 ,"(test/testdata/B.hs:25:1, test/testdata/B.hs:25:1, B.h)"
+                 ,"(test/testdata/B.hs:25:11, test/testdata/B.hs:25:3, z)(test/testdata/B.hs:25:3, test/testdata/B.hs:25:3, z)"
+                 ,"(test/testdata/B.hs:25:7-9, test/testdata/B.hs:9:1-3, B.bob)(test/testdata/B.hs:9:1-3, test/testdata/B.hs:9:1-3, B.bob)"
+                 ,"(test/testdata/B.hs:27:10, test/testdata/B.hs:27:10, B.A)"
+                 ,"(test/testdata/B.hs:27:14, test/testdata/B.hs:27:14, B.B)"
+                 ,"(test/testdata/B.hs:27:25, test/testdata/B.hs:27:25, B.C)"
+                 ,"(test/testdata/B.hs:27:6, test/testdata/B.hs:27:6, B.D)"
+                 ,"(test/testdata/B.hs:29:1-7, test/testdata/B.hs:29:1-7, B.subdecl)"
+                 ,"(test/testdata/B.hs:29:16, test/testdata/B.hs:29:9, x)(test/testdata/B.hs:29:9, test/testdata/B.hs:29:9, x)"
+                 ,"(test/testdata/B.hs:31:12, test/testdata/B.hs:31:8, n)(test/testdata/B.hs:31:8, test/testdata/B.hs:31:8, n)"
+                 ,"(test/testdata/B.hs:31:5-6, test/testdata/B.hs:31:5-6, zz)(test/testdata/B.hs:29:13-14, test/testdata/B.hs:31:5-6, zz)"
+                 ,"(test/testdata/B.hs:7:13-15, <no location info>, GHC.Real.odd)(test/testdata/B.hs:14:16-18, <no location info>, GHC.Real.odd)"
+                 ,"(test/testdata/B.hs:7:17, test/testdata/B.hs:7:5, x)(test/testdata/B.hs:7:5, test/testdata/B.hs:7:5, x)"
+                 ,"(test/testdata/B.hs:9:15-17, test/testdata/B.hs:9:15-17, foo)"
+                 ,"(test/testdata/B.hs:9:23, test/testdata/B.hs:9:19, x)(test/testdata/B.hs:9:19, test/testdata/B.hs:9:19, x)"
+                 ,"(test/testdata/B.hs:9:45, test/testdata/B.hs:9:41, x)(test/testdata/B.hs:9:41, test/testdata/B.hs:9:41, x)"
+                 ,"(test/testdata/B.hs:9:53, test/testdata/B.hs:9:5, x)(test/testdata/B.hs:9:5, test/testdata/B.hs:9:5, x)"
+                 ,"(test/testdata/B.hs:9:57-59, test/testdata/B.hs:9:37-39, foo)(test/testdata/B.hs:9:37-39, test/testdata/B.hs:9:37-39, foo)"
+                 ,"(test/testdata/B.hs:9:61, test/testdata/B.hs:9:7, y)(test/testdata/B.hs:9:7, test/testdata/B.hs:9:7, y)"
                  ]
+
+  -- -------------------------------------------------------------------
+
+  describe "getName" $ do 
+    it "gets a qualified Name at the top level" $ do
+      ((_, renamed,_), _toks) <- parsedFileBGhc
+      let Just n = getName "B.foo'" renamed
+      (GHC.showPpr n) `shouldBe` "B.foo'"
+      (GHC.showPpr $ GHC.getSrcSpan n) `shouldBe` "test/testdata/B.hs:14:1-4"
+
+    it "gets any instance of an unqualified Name" $ do
+      ((_, renamed,_), _toks) <- parsedFileBGhc
+      let Just n = getName "foo" renamed
+      (GHC.showPpr n) `shouldBe` "foo"
+      (GHC.showPpr $ GHC.getSrcSpan n) `shouldBe` "test/testdata/B.hs:9:15-17"
+
+    it "returns Nothing if the Name is not found" $ do
+      ((_, renamed,_), _toks) <- parsedFileBGhc
+      let res = getName "baz" renamed
+      (GHC.showPpr res) `shouldBe` "Nothing"
 
 
   -- -------------------------------------------------------------------
@@ -269,19 +287,22 @@ spec = do
 
   -- -------------------------------------------------------------------
 
-  describe "isFunBind" $ do
+  describe "isFunBindR" $ do
     it "Returns False if not a function definition" $ do
-      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
-      let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
-      isFunBind decl  `shouldBe` False
+      modInfo@((_, renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      -- let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
+      let Just tup = getName "DupDef.Dd1.tup" renamed
+      let [decl] = definingDeclsNames [tup] renamed False False
+      isFunBindR decl  `shouldBe` False
 
     it "Returns True if a function definition" $ do
-      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
-      let [decl] = definingDecls [(PN (mkRdrName "toplevel"))] ds False False
-      isFunBind decl  `shouldBe` True
+      modInfo@((_, renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      let Just toplevel = getName "DupDef.Dd1.toplevel" renamed
+      let [decl] = definingDeclsNames [toplevel] renamed False False
+      isFunBindR decl  `shouldBe` True
 
   -- -------------------------------------------------------------------
-
+{- ++AZ++
   describe "isSimplePatBind" $ do
     it "returns False if not a simple pat bind" $ do
       modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
@@ -292,25 +313,24 @@ spec = do
       modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
       let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
       isSimplePatBind decl  `shouldBe` True
-
+-}
   -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredPNs" $ do
-    {-
     it "Finds declared HsVar" $ do
-      let 
-          comp = do
-            modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
-            r <- hsFreeAndDeclaredPNs mod
-            return r
-      (res,s) <- runRefactGhcState comp
-      (GHC.showPpr res)  `shouldBe` "foo"
-    -}
-    it "Finds declared HsVar" $ do
-      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDeclareGhc
-      res <- hsFreeAndDeclaredPNs mod
-      (show res)  `shouldBe` "foo"
-
+      ((_,renamed,_), _toks) <- parsedFileDeclareGhc
+      let res = hsFreeAndDeclaredPNs renamed
+          -- m = GHC.mkModule () (GHC.MkModuleName ""FreeAndDeclared.Declare")
+      -- (GHC.showPpr $ map (\n -> (n, GHC.isSystemName n)) (fst res)) `shouldBe` "foo"
+      -- (GHC.showPpr $ map (\n -> (n, GHC.isInternalName n)) (fst res)) `shouldBe` "foo" -- Seems to be from own source, non top-level
+      -- (GHC.showPpr $ map (\n -> (n, GHC.isExternalName n)) (fst res)) `shouldBe` "foo" -- Exported somewhere?
+      -- (GHC.showPpr $ map (\n -> (n, GHC.isWiredInName n)) (fst res)) `shouldBe` "foo" 
+      -- (GHC.showPpr $ map (\n -> (n, GHC.nameIsLocalOrFrom m n)) (fst res)) `shouldBe` "foo" 
+      (GHC.showPpr $ map (\n -> (n, GHC.nameModule_maybe n)) (fst res)) `shouldBe` "foo" 
+{-
+      (GHC.showPpr res)  `shouldBe` "([System.IO.getChar, GHC.Base.>>=, GHC.Base.fail,\n  System.IO.putStrLn, GHC.Base.return, a, b, y, GHC.Base.$,\n  GHC.List.head, GHC.List.zip, GHC.Num.fromInteger, GHC.Num.*,\n  FreeAndDeclared.Declare.c, x],\n"
+      ++ " [FreeAndDeclared.Declare.main, a, FreeAndDeclared.Declare.unF, a,\n  b, FreeAndDeclared.Declare.unD, y, FreeAndDeclared.Declare.h,\n  FreeAndDeclared.Declare.t, FreeAndDeclared.Declare.d,\n  FreeAndDeclared.Declare.c, FreeAndDeclared.Declare.toplevel, x])"
+-}
 
   -- ---------------------------------------------------------------------
 
@@ -321,6 +341,35 @@ spec = do
   describe "hsFDNamesFromInside" $ do
     it "does something useful" $ do
       pending "Complete this"
+
+  -- ---------------------------------------------------------------------
+
+  describe "hsVisibleNames" $ do
+    it "does something useful" $ do
+      pending "Complete this"
+
+  describe "hsVisiblePNs" $ do
+    it "Returns [] if e does not occur in t" $ do
+      ((_, renamed, parsed), toks) <- parsedFileDd1Ghc
+      let Just tl1  = locToExp (4,13) (4,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      let Just tup = getName "DupDef.Dd1.tup" renamed
+      let [decl] = definingDeclsNames [tup] renamed False False
+      (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "[]"
+
+    it "Returns visible vars if e does occur in t" $ do
+      ((_, renamed, parsed), toks) <- parsedFileDd1Ghc
+      let Just tl1  = locToExp (14,1) (14,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      let Just tup = getName "DupDef.Dd1.tup" renamed
+      let [decl] = definingDeclsNames [tup] renamed False False
+      (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "foo"
+
+  -- ---------------------------------------------
+
+  describe "inScopeInfo" $ do
+    it "returns 4 element tuples for in scope names" $do
+      ((inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
+      let info = inScopeInfo inscopes
+      (show $ head info) `shouldBe` "foo"
 
   -- ---------------------------------------------
 
@@ -336,6 +385,12 @@ spec = do
       GHC.showPpr n1 `shouldBe` "foo_C2"
       GHC.getOccString n2 `shouldBe` "bar"
       GHC.showPpr n2 `shouldBe` "bar_C3"
+
+  -- ---------------------------------------------
+
+  describe "duplicateDecl" $ do
+    it "Creates a new GHC.Name" $ do
+      pending "write this test"
 
 
 -- ---------------------------------------------------------------------
@@ -360,10 +415,11 @@ parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs
 
 -- Runners
 
--- t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
+t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
 -- t = withArgs ["--match", "allNames"] main
-t = withArgs ["--match", "definingDeclsNames"] main
+-- t = withArgs ["--match", "definingDeclsNames"] main
 
+-- t = withArgs ["--match", "getName"] main
 
 
 

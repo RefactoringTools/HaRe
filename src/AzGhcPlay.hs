@@ -54,8 +54,8 @@ import Language.Haskell.Refact.Utils.GhcUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
 
-targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
-targetMod = "B"
+targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
+targetMod = "FreeAndDeclared/Declare"
 
 {- main = t1 -}
 
@@ -129,19 +129,28 @@ getStuff =
 
             dflags'' = dflags' { GHC.importPaths = ["./test/testdata/","../test/testdata/"] }
 
-        GHC.setSessionDynFlags dflags''
+            dflags''' = dflags'' { GHC.hscTarget = GHC.HscInterpreted,
+                                   GHC.ghcLink =  GHC.LinkInMemory }
+ 
+        GHC.setSessionDynFlags dflags'''
+
         target <- GHC.guessTarget targetFile Nothing
         GHC.setTargets [target]
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
-        modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
+        -- modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
         p <- GHC.parseModule modSum
-        
+
         t <- GHC.typecheckModule p
         d <- GHC.desugarModule t
         l <- GHC.loadModule d
         n <- GHC.getNamesInScope
         -- c <- return $ GHC.coreModule d
         c <- return $ GHC.coreModule d
+
+        GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
+        inscopes <- GHC.getNamesInScope
+
 
         g <- GHC.getModuleGraph
         gs <- mapM GHC.showModule g
@@ -169,10 +178,14 @@ getStuff =
 
         -- _ <- processVarUniques t
 
+        -- Tokens ------------------------------------------------------
         rts <- GHC.getRichTokenStream (GHC.ms_mod modSum)
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ tokenLocs rts))
+        -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ map (\(GHC.L _ tok,s) -> (tok,s)) rts)) 
+        GHC.liftIO (putStrLn $ "tokens=" ++ (showToks rts))
         
+
         -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
         -- GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
 
@@ -181,15 +194,21 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "locToExp1=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,43) rts ps))
         -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
 
+        -- Inscopes ----------------------------------------------------
+        -- GHC.liftIO (putStrLn $ "\ninscopes(showData)=" ++ (SYB.showData SYB.Parser 0 $ inscopes))
+
+        -- RenamedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
-        GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+        --GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
 
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
 
+        -- ModuleInfo ----------------------------------------------------------------
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (SYB.showData SYB.Parser 0 $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (GHC.showPpr $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
         -- GHC.liftIO (putStrLn $ "moduleInfo.TopLevelScope=" ++ (GHC.showPpr $ GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info t))
+
 
         -- Investigating TypeCheckedModule, in t
         --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))

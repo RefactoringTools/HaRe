@@ -15,4 +15,18 @@ tup@(h,t) = head $ zip [1..10] [3..15]
 
 data D = A | B String | C
 
+-- Retrieve the String from a B
+unD (B y) = y
+-- But no others.
+
+-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714
+data F = G | (:|) String String
+
+unF (a :| b) = (a,b)
+
+-- Main routine
+main = do
+  a <- getChar
+  putStrLn "foo"
+
 

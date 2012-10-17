@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Language.Haskell.Refact.Utils.Monad
        ( ParseResult
+       , RefactResult
        , RefactSettings(..)
        , RefactState(..)
        -- GHC monad stuff
@@ -63,7 +64,10 @@ data RefactState = RefSt
 
 -- type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
 -- type ParseResult = (GHC.TypecheckedSource, [GHC.LIE GHC.RdrName], GHC.ParsedSource)
-type ParseResult = (GHC.TypecheckedSource, Maybe GHC.RenamedSource, GHC.ParsedSource)
+-- type ParseResult = (GHC.TypecheckedSource, Maybe GHC.RenamedSource, GHC.ParsedSource)
+type ParseResult = (InScopes, Maybe GHC.RenamedSource, GHC.ParsedSource) 
+
+type RefactResult = GHC.RenamedSource
 
 -- TODO: >>>>>> This section has been superseded ++AZ++
 {-

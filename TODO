@@ -10,6 +10,9 @@ Resources
   Generating token stream from a buffer
   http://www.haskell.org/pipermail/cvs-ghc/2008-September/045023.html
 
+  Overview of Syntax Elements used in the original
+  http://hackage.haskell.org/packages/archive/haskell-src/1.0.1.4/doc/html/Language-Haskell-Syntax.html
+
 Possible tools
   GHC API
   Buildwrapper
@@ -256,7 +259,11 @@ HsBindLR Name Name has
 
 --
 
+Look at using 
 
+  modInfoLookupName :: GhcMonad m => ModuleInfo -> Name -> m (Maybe TyThing)
+
+------
 NOTE: GHC SrcSpan columns
 
 1. Are 0 based. So what an editor calls col 1, is col 0 for GHC
@@ -272,3 +279,17 @@ NOTE: GHC SrcSpan columns
 Look at implementing hlint suggestions as refactorings
 http://community.haskell.org/~ndm/hlint/hlint-report.htm
 [as suggested by robstewartuk]
+
+
+------------------------------------------
+
+Decision: will use renamed source and tokens for refactoring. No
+parsedsource. at all
+
+Mechanics
+  - Need Renamed Source for exact Name resolution
+  - Need Parsed Source for decent pretty print
+  - Need Token Stream for good output of changed file
+
+  Must sort out pretty printer, to not have to use ParsedSource
+

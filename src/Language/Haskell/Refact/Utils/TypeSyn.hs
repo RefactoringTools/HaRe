@@ -32,7 +32,9 @@ type HsExpP    = GHC.HsExpr GHC.RdrName
 type HsPatP    = GHC.Pat GHC.RdrName
 -- type HsDeclP   = GHC.HsDecl GHC.RdrName
 type HsDeclP   = GHC.LHsDecl GHC.RdrName
+-- type HsDeclP   = GHC.LHsBind GHC.Name
 
+type HsDeclsP = GHC.HsGroup GHC.Name
 
 {-
 type HsMatchP  =HsMatchI PNT (HsExpP) (HsPatP) [HsDeclP]
@@ -51,14 +53,17 @@ type EntSpecP  = EntSpec PNT
 type HsConDeclP = HsConDeclI PNT HsTypeP [HsTypeP]
 type HsConDeclP' = HsConDeclI PNT (TI PNT HsTypeP) [TI PNT HsTypeP]
 type ENT =Ents.Ent PosName.Id
-type InScopes=((Relations.Rel Names.QName (Ents.Ent PosName.Id)))
-
-type Exports =[(PosName.Id, Ent PosName.Id)]
 -}
+-- type InScopes=((Relations.Rel Names.QName (Ents.Ent PosName.Id)))
+type InScopes = [GHC.Name]
+
+--type Exports =[(PosName.Id, Ent PosName.Id)]
+
 type SimpPos = (Int,Int) -- Line, column
 
 -- Additions for GHC
 type PosToken = (GHC.Located GHC.Token, String)
+-- type PosToken = (GHC.GenLocated GHC.SrcSpan GHC.Token, String)
 
 data Pos = Pos { char, line, column :: !Int } deriving (Show)
 -- it seems that the field char is used to handle special characters including the '\t'
@@ -67,6 +72,10 @@ type Export = GHC.LIE GHC.RdrName
 
 -- ---------------------------------------------------------------------
 -- From old/tools/base/defs/PNT.hs
+
+-- | HsName is a name as it is found in the source
+-- This seems to be quite a close correlation
+type HsName = GHC.RdrName
 
 -- |The PN is the name as it occurs to the parser, and
 -- corresponds with the GHC.RdrName
@@ -88,9 +97,16 @@ instance Show PNT where
 instance Show (GHC.GenLocated GHC.SrcSpan GHC.Name) where
   show (GHC.L l name) = "(" ++ (GHC.showPpr l) ++ " " ++ (GHC.showPpr $ GHC.nameUnique name) ++ " " ++ (GHC.showPpr name) ++ ")"
 
--- | HsName is a name as it is found in the source
--- This seems to be quite a close correlation
-type HsName = GHC.RdrName
+instance Show GHC.NameSpace where
+  show ns
+    | ns == GHC.tcName = "TcClsName"
+    | ns == GHC.dataName = "DataName"
+    | ns == GHC.varName = "VarName"
+    | ns == GHC.tvName = "TvName"
+    | otherwise = "UnknownNamespace"
+
+instance GHC.Outputable GHC.NameSpace where
+  ppr x = GHC.text $ show x
 
 -- ---------------------------------------------------------------------
 
