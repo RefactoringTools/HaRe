@@ -160,11 +160,12 @@ doDuplicating pn newName (inscps, parsed, tokList)
                     -- inscpsNames = map ( \(x,_,_,_)-> x) $ inScopeInfo inscps
                     vars        = nub (f `union` d `union` dv)
 
+                newNameGhc <- mkNewName newName
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow    
                 if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity ln duplicatedDecls) 
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
-                   else do newBinding <- duplicateDecl declsr n newName
+                   else do newBinding <- duplicateDecl declsr n newNameGhc
                            -- let newDecls = replaceDecls declsr (reverse before++ newBinding++ reverse after)
                            let newDecls = replaceDecls declsr (declsr ++ newBinding)
                            -- return (GHC.L lp (hsMod {GHC.hsmodDecls = newDecls}))

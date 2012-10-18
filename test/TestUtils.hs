@@ -54,4 +54,5 @@ runRefactGhcState paramcomp = do
   (r,s) <- runRefactGhc paramcomp initialState
   return (r,s)
 
+-- EOF
   

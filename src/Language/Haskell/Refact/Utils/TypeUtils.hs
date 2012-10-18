@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
-----------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Module      : TypeUtils
 
 -- Maintainer  : refactor-fp\@kent.ac.uk
@@ -33,7 +33,7 @@
 -- and comments are very much welcome.
 
 
-------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 {-
 module RefacTypeUtils(module DriftStructUtils, module StrategyLib, module RefacTITypeSyn, module PosSyntax,
                   module SourceNames, module UniqueNames, module PNT,
@@ -1668,11 +1668,11 @@ getPNTBind _ = []
 -- ---------------------------------------------------------------------
 
 -- | Duplicate a functon\/pattern binding declaration under a new name
--- right after the original one.
+-- right after the original one. Also updates the token stream.
 duplicateDecl::
-    [GHC.LHsBind GHC.Name] -- ^ The declaration list
+    [GHC.LHsBind GHC.Name]  -- ^ The declaration list
   ->GHC.Name                -- ^ The identifier whose definition is to be duplicated
-  ->String                  -- ^ The new name
+  ->GHC.Name                -- ^ The new name (possibly qualified)
   ->RefactGhc [GHC.LHsBind GHC.Name]  -- ^ The result
 {- there maybe fun/simple pattern binding and type signature in the
 duplicated decls function binding, and type signature are handled
@@ -1687,31 +1687,35 @@ duplicateDecl decls n newFunName
           {-take those tokens before (and include) the function
             binding and its following white tokens before the 'new line' token.
             (some times the function may be followed by comments) -}
-          toks1 = let (ts1, ts2) =break (\t->tokenPos t==endPos) toks in ts1++[ghead "duplicateDecl" ts2]
+          toks1 = let (ts1, ts2) =break (\t -> tokenPos t==endPos) toks in ts1++[ghead "duplicateDecl" ts2]
           --take those token after (and include) the function binding
           toks2 = dropWhile (\t->tokenPos t/=startPos {- || isNewLn t -}) toks
       -- put((toks2,modified), others)
       put $ others {rsTokenStream = toks2, rsStreamModified = True }
 
       --rename the function name to the new name, and update token stream as well
-      funBinding' <- renamePN n Nothing newFunName True funBinding
+      funBinding' <- renamePN n newFunName True funBinding
       --rename function name in type signature  without adjusting the token stream
-      {- ++AZ++ WIP
-      typeSig'  <- renamePN pn Nothing newFunName False typeSig
-      ((toks2,_), others)<-get
-      let offset = getOffset toks (fst (startEndLoc toks funBinding))
-          newLineTok = if toks1/=[] && endsWithNewLn (glast "doDuplicating" toks1)
+      -- typeSig'  <- renamePN pn Nothing newFunName False typeSig
+      -- ((toks2,_), others)<-get
+      let offset = getOffset toks (fst (getStartEndLoc funBinding))
+          newLineTok = if ((not (emptyList toks1)) {-&& endsWithNewLn (glast "doDuplicating" toks1 -})
                          then [newLnToken]
                          else [newLnToken,newLnToken]
-          toks'= if typeSig/=[]
+
+
+          -- toks' = (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
+          toks' = (toks1++newLineTok++toks2)
+          {- toks'= if typeSig/=[]
                  then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks2))
                           sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
                           t = mkToken Whitespace (0,0) sigSource
                       in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks2)
-                 else (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
-      put ((toks',modified),others)
-      return (typeSig'++funBinding')
-      ++AZ++ WIP end -}
+                 else  (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
+          -}
+      -- put ((toks',modified),others)
+      put $ others { rsTokenStream = toks', rsStreamModified = modified}
+      -- return (typeSig'++funBinding')
       return funBinding'
      where
        declsToDup = definingDeclsNames [n] decls True False
@@ -1831,39 +1835,40 @@ replaceNameInPN qualifier (PN (Qual modName s) (G modName1 s1 loc))  newName
 -- phrase with the new name. If the Bool parameter is True, then
 -- modify both the AST and the token stream, otherwise only modify the
 -- AST.
-
 renamePN::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
-   ->Maybe GHC.ModuleName -- ^ The qualifier
-   ->String               -- ^ The new name
+   -- ->Maybe GHC.ModuleName -- ^ The qualifier
+   -- ->String               -- ^ The new name
+   ->GHC.Name             -- ^ The new name, including possible qualifier
    ->Bool                 -- ^ True means modifying the token stream as well.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
 
-renamePN oldPN qualifier newName updateToks t
-  = GHC.trace ("implement renamePN")
-    return t
-{-
+renamePN oldPN newName updateToks t
   -- = applyTP (full_tdTP (adhocTP idTP rename)) t
-  = everywhereMStaged SYB.Parser (SYB.mkT rename) t
+  = everywhereMStaged SYB.Renamer (SYB.mkM rename) t
   where
     -- rename  pnt@(PNT pn ty (N (Just (SrcLoc fileName c  row col))))
-    rename :: (GHC.Located GHC.RdrName) -> RefactGhc (GHC.Located GHC.RdrName)
-    rename  pnt@(GHC.L l (GHC.Unqual x))
-     | (pn ==oldPN) && (srcLoc oldPN == srcLoc pn)
+    rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
+    rename  pnt@(GHC.L l n)
+     -- | (pn ==oldPN) && (srcLoc oldPN == srcLoc pn)
+     -- | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     | True
      = do if updateToks
-           then  do ((toks,_),others)<-get
+           then  do {- ((toks,_),others)<-get
                     let toks'=replaceToks toks (row,col) (row,col)
                               [mkToken Varid  (row,col) ((render.ppi) (replaceName pn  newName))]
-                    put ((toks', modified),others)
-                    return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
-           else return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
-      where
-        replaceName = if isJust qualifier && canBeQualified pnt t
-                        then replaceNameInPN qualifier
-                        else replaceNameInPN Nothing
-    rename x = return x
--}
+                    put ((toks', modified),others) -}
+                    -- return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
+                    return pnt
+           -- else return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
+           else return (GHC.L l newName)
+      -- where
+        -- replaceName = if isJust qualifier && canBeQualified pnt t
+        --                 then replaceNameInPN qualifier
+        --                 else replaceNameInPN Nothing
+    -- rename x = return x
+
 
 {- ++original
 -- | Rename each occurrences of the identifier in the given syntax phrase with the new name.
