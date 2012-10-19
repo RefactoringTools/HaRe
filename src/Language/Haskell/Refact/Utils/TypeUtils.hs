@@ -149,6 +149,7 @@ import qualified HsDecls       as GHC
 import qualified HsPat         as GHC
 import qualified HsSyn         as GHC
 import qualified InstEnv       as GHC
+import qualified Lexer         as GHC
 import qualified Module        as GHC
 import qualified MonadUtils    as GHC
 import qualified Name          as GHC
@@ -1843,31 +1844,28 @@ renamePN::(SYB.Data t)
    ->Bool                 -- ^ True means modifying the token stream as well.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
-
-renamePN oldPN newName updateToks t
-  -- = applyTP (full_tdTP (adhocTP idTP rename)) t
+renamePN oldPN newName updateTokens t
   = everywhereMStaged SYB.Renamer (SYB.mkM rename) t
   where
-    -- rename  pnt@(PNT pn ty (N (Just (SrcLoc fileName c  row col))))
     rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
     rename  pnt@(GHC.L l n)
-     -- | (pn ==oldPN) && (srcLoc oldPN == srcLoc pn)
-     -- | (GHC.nameUnique n == GHC.nameUnique oldPN)
-     | True
-     = do if updateToks
-           then  do {- ((toks,_),others)<-get
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do if updateTokens
+           then  do 
+                    st <- get
+                    let toks = rsTokenStream st
+                    let toks'=replaceToks toks (getLocatedStart pnt) (getLocatedEnd pnt)
+                              [((GHC.L l (GHC.ITvarid (GHC.occNameFS $ GHC.getOccName newName))), GHC.showPpr newName)]
+                    put $ st { rsTokenStream = toks', rsStreamModified = modified }
+                    {- ((toks,_),others)<-get
                     let toks'=replaceToks toks (row,col) (row,col)
                               [mkToken Varid  (row,col) ((render.ppi) (replaceName pn  newName))]
                     put ((toks', modified),others) -}
                     -- return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
-                    return pnt
+                    return (GHC.L l newName)
            -- else return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
            else return (GHC.L l newName)
-      -- where
-        -- replaceName = if isJust qualifier && canBeQualified pnt t
-        --                 then replaceNameInPN qualifier
-        --                 else replaceNameInPN Nothing
-    -- rename x = return x
+    rename x = return x
 
 
 {- ++original

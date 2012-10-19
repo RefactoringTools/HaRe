@@ -35,7 +35,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -}
                      , lengthOfLastLine
                      , updateToks, updateToksList
-                     -- , getToks,replaceToks,deleteToks, doRmWhites,doAddWhites
+                     -- , getToks
+                     , replaceToks -- ,deleteToks, doRmWhites,doAddWhites
                      , srcLocs
                      -- , ghcSrcLocs -- Test version
                      , getGhcLoc

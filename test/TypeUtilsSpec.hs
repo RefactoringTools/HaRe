@@ -441,8 +441,8 @@ spec = do
 
       (nb,s) <- runRefactGhc comp initialState
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
-      (GHC.showPpr nb) `shouldBe` "foo"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
+      (GHC.showPpr nb) `shouldBe` "[DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. 15],\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n bar2_C3 x = DupDef.Dd1.c GHC.Num.* x]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n bar2_C3 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
       (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "bar"
       (showToks $ rsTokenStream s) `shouldBe` "bar"
 
