@@ -5,6 +5,7 @@ import           Test.QuickCheck
 
 import           TestUtils
 
+import qualified Bag        as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
@@ -389,8 +390,61 @@ spec = do
   -- ---------------------------------------------
 
   describe "duplicateDecl" $ do
-    it "Creates a new GHC.Name" $ do
-      pending "write this test"
+    it "Duplicates a RenamedSource bind, and updates the token stream" $ do
+      ((_,Just renamed@(g,_is,_es,_ds), parsed), toks) <- parsedFileDd1Ghc
+      let declsr = GHC.bagToList $ getDecls renamed
+      let Just (GHC.L _ n) = locToName dd1FileName (3, 1) renamed
+      let
+        comp = do
+         newName <- mkNewName "bar"
+         newName2 <- mkNewName "bar2"
+         newBinding <- duplicateDecl declsr n newName2
+         
+         return newBinding
+      let
+        initialState = RefSt
+           { rsSettings = RefSet ["./test/testdata/"]
+           , rsUniqState = 1
+           , rsTokenStream = toks
+           , rsStreamModified = False -- :: Bool
+           }
+
+      (nb,s) <- runRefactGhc comp initialState
+      (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
+      (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "bar"
+      (showToks $ rsTokenStream s) `shouldBe` "bar"
+      (GHC.showPpr nb) `shouldBe` "foo"
+
+
+  -- ---------------------------------------------
+
+  describe "renamePN" $ do
+    it "Replace a Name with another, updating tokens" $ do
+      ((_,Just renamed@(g,_is,_es,_ds), parsed), toks) <- parsedFileDd1Ghc
+      let declsr = GHC.bagToList $ getDecls renamed
+      let Just (GHC.L _ n) = locToName dd1FileName (3, 1) renamed
+      let
+        comp = do
+         newName <- mkNewName "bar"
+         newName2 <- mkNewName "bar2"
+         new <- renamePN n newName2 True declsr
+         
+         return new
+      let
+        initialState = RefSt
+           { rsSettings = RefSet ["./test/testdata/"]
+           , rsUniqState = 1
+           , rsTokenStream = toks
+           , rsStreamModified = False -- :: Bool
+           }
+
+      (nb,s) <- runRefactGhc comp initialState
+      (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
+      (GHC.showPpr nb) `shouldBe` "foo"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
+      (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "bar"
+      (showToks $ rsTokenStream s) `shouldBe` "bar"
 
 
 -- ---------------------------------------------------------------------

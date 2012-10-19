@@ -19,7 +19,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , tokenLen
                      {-
                      ,lengthOfToks,
-                     mkToken,defaultToken,newLnToken,whiteSpacesToken,whiteSpaceTokens
+                     mkToken,defaultToken-},newLnToken{-,whiteSpacesToken,whiteSpaceTokens
                      -}
                      , isWhite
                      , notWhite
@@ -56,7 +56,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , lexStringToRichTokens
                      , prettyprintPatList
                      , groupTokensByLine
-                     -- , addLocInfo, getOffset
+                     -- , addLocInfo
+                     , getOffset
                      , splitToks
                      {-
                      , insertComments,
@@ -337,8 +338,13 @@ mkToken t (row,col) c=(t,(Pos 0 row col,c))
 ---Restriction: the refactorer should not modify refactorer-modified/created tokens.
 defaultToken = (Whitespace, (pos0," "))
 newLnToken   = (Whitespace, (pos0,"\n"))
-
 -}
+newLnToken :: PosToken
+newLnToken = (GHC.L ghcPos0 GHC.ITvocurly,"\n")
+
+ghcPos0 = GHC.mkSrcSpan p0 p0
+  where
+   p0 = GHC.mkSrcLoc (GHC.mkFastString "") 0 0
 
 prettyprintPatList prpr beginWithSpace t
      = replaceTabBySpaces $ if beginWithSpace then format1 t else format2 t
@@ -587,6 +593,13 @@ replaceToks toks startPos endPos newToks
    where
       (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
 
+-- ---------------------------------------------------------------------
+
+getOffset toks pos
+  = let (ts1, ts2) = break (\t->tokenPos t == pos) toks
+    in if (emptyList ts2)
+         then error "HaRe error: position does not exist in the token stream!"
+         else lengthOfLastLine ts1
 {-
 getOffset toks pos
   = let (ts1, ts2) = break (\t->tokenPos t == pos) toks
@@ -594,6 +607,8 @@ getOffset toks pos
          then error "HaRe error: position does not exist in the token stream!"
          else lengthOfLastLine ts1
 -}
+
+-- ---------------------------------------------------------------------
 
 -- ++AZ++ next bit commented out with --, otherwise ghci complains
 
