@@ -27,15 +27,10 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
-{-
-
-This refactoring duplicates a definition(function binding or simple
-pattern binding) at same level with a new name provided by the user.
-The new name should not cause name clash/capture.
-
--}
-
 -- ---------------------------------------------------------------------
+-- | This refactoring duplicates a definition(function binding or
+-- simple pattern binding) at same level with a new name provided by
+-- the user. The new name should not cause name clash/capture.
 
 -- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
 duplicateDef :: [String] -> IO () -- For now
@@ -59,17 +54,18 @@ comp fileName newName (row, col) = do
                 let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
                 case maybePn of
                   Just pn ->
-                       do ((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                       do refactoredMod@((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                           if modIsExported parsed
+                          -- if False
                            then do clients <- clientModsAndFiles modName
                                    -- TODO: uncomment and complete this
                                    -- refactoredClients <- mapM (refactorInClientMod modName 
                                    --                            (findNewPName newName parsed')) clients
                                    let refactoredClients = [] -- ++AZ++ temporary
                                    -- writeRefactoredFiles False $ ((fileName,m),(tokList',parsed')):refactoredClients 
-                                   return $ ((fileName',m),(tokList',parsed')):refactoredClients 
+                                   return $ refactoredMod:refactoredClients
                            -- else  writeRefactoredFiles False [((fileName,m), (tokList',parsed'))]
-                           else  return [((fileName,m), (tokList',parsed'))]
+                           else  return [refactoredMod]
                   Nothing -> error "Invalid cursor position!"
         else error $ "Invalid new function name:" ++ newName ++ "!"
 
@@ -143,8 +139,8 @@ doDuplicating pn newName (inscps, parsed, tokList)
         findFunOrPatBind :: (SYB.Data t) => GHC.Located GHC.Name -> t -> [GHC.LHsBind GHC.Name]
         findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
 
-        -- doDuplicating' :: GHC.ParsedSource -> GHC.Located GHC.Name -> RefactGhc GHC.ParsedSource
-        doDuplicating' :: InScopes -> GHC.RenamedSource -> GHC.Located GHC.Name -> RefactGhc (GHC.HsGroup GHC.Name)
+        doDuplicating' :: InScopes -> GHC.RenamedSource -> GHC.Located GHC.Name
+                       -> RefactGhc (GHC.HsGroup GHC.Name)
         doDuplicating' inscps parentr@(g,_is,_es,_ds) ln@(GHC.L _ n)
            = do let -- decls           = hsDecls parent -- TODO: reinstate this
                     declsr = GHC.bagToList $ getDecls parentr

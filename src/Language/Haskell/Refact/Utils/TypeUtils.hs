@@ -253,14 +253,13 @@ mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
 -- | Make a new GHC.Name, using the Unique Int sequence stored in the
 -- RefactState
-
 mkNewName :: String -> RefactGhc GHC.Name
 mkNewName name = do
   s <- get
   u <- gets rsUniqState
   put s { rsUniqState = (u+1) }
 
-  let un = GHC.mkUnique 'C' (u+1)
+  let un = GHC.mkUnique 'H' (u+1) -- H for HaRe :)
       n = GHC.mkSystemName un (GHC.mkVarOcc name)
 
   return n
@@ -749,6 +748,8 @@ hsFDsFromInside t = (nub f, nub d)
          (df,dd) = hsFreeAndDeclaredPNs matches
        in
          (nub (df `union` (ef \\ dd)), nub dd)
+
+     expr _ = ([],[])
 
      stmts ((GHC.BindStmt pat e1 e2 e3) :: GHC.Stmt GHC.Name) =
        let
@@ -1681,6 +1682,14 @@ differently here: the comment and layout in function binding are
 preserved.The type signature is outputted by pretty printer, so the
 comments and layout are NOT preserved.
  -}
+
+{-
+  TODO ++AZ++ the manipulations below are crying out for some kind of
+  zipper or other similar structure to keep the declarations and token
+  stream together, so that the manipulation can proceed in a natural
+  way. Main target for phase 2
+ -}
+
 duplicateDecl decls n newFunName
  = do others <- get
       let toks = rsTokenStream others
@@ -1688,17 +1697,22 @@ duplicateDecl decls n newFunName
           {-take those tokens before (and include) the function
             binding and its following white tokens before the 'new line' token.
             (some times the function may be followed by comments) -}
-          toks1 = let (ts1, ts2) =break (\t -> tokenPos t==endPos) toks in ts1++[ghead "duplicateDecl" ts2]
+          toks1 = ts1++[ghead "duplicateDecl" ts2]
+                    where (ts1, ts2) = break (\t -> tokenPos t==endPos) toks
           --take those token after (and include) the function binding
           toks2 = dropWhile (\t->tokenPos t/=startPos {- || isNewLn t -}) toks
       -- put((toks2,modified), others)
       put $ others {rsTokenStream = toks2, rsStreamModified = True }
 
-      --rename the function name to the new name, and update token stream as well
+      --rename the function name to the new name, and update token
+      --stream (toks2, just updated) as well, in the monad
       funBinding' <- renamePN n newFunName True funBinding
       --rename function name in type signature  without adjusting the token stream
       -- typeSig'  <- renamePN pn Nothing newFunName False typeSig
-      -- ((toks2,_), others)<-get
+      -- Get the updated token stream
+      st <- get
+      let toks2 = rsTokenStream st
+
       let offset = getOffset toks (fst (getStartEndLoc funBinding))
           newLineTok = if ((not (emptyList toks1)) {-&& endsWithNewLn (glast "doDuplicating" toks1 -})
                          then [newLnToken]
@@ -1859,9 +1873,11 @@ renamePN oldPN newName updateTokens t
            else return (GHC.L l newName)
     rename x = return x
 
+-- ---------------------------------------------------------------------
+
 newNameTok l newName =
   ((GHC.L l (GHC.ITvarid (GHC.occNameFS $ GHC.getOccName newName))),
-   GHC.showPpr newName)
+   (GHC.occNameString $ GHC.getOccName newName))
 
 -- ---------------------------------------------------------------------
 

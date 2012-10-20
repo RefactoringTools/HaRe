@@ -383,9 +383,9 @@ spec = do
          return (name1,name2)
       ((n1,n2),s) <- runRefactGhcState comp
       GHC.getOccString n1 `shouldBe` "foo"
-      GHC.showPpr n1 `shouldBe` "foo_C2"
+      GHC.showPpr n1 `shouldBe` "foo_H2"
       GHC.getOccString n2 `shouldBe` "bar"
-      GHC.showPpr n2 `shouldBe` "bar_C3"
+      GHC.showPpr n2 `shouldBe` "bar_H3"
 
   -- ---------------------------------------------
 
@@ -412,17 +412,16 @@ spec = do
       (nb,s) <- runRefactGhc comp initialState
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
-      (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "bar"
-      (showToks $ rsTokenStream s) `shouldBe` "bar"
-      (GHC.showPpr nb) `shouldBe` "foo"
-
+      (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n\n\n\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
+      -- (showToks $ rsTokenStream s) `shouldBe` "bar"
+      (GHC.showPpr nb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
 
   -- ---------------------------------------------
 
   describe "renamePN" $ do
     it "Replace a Name with another, updating tokens" $ do
       -- ((_,Just renamed@(_g,_is,_es,_ds), parsed), toks) <- parsedFileDd1Ghc
-      ((_,Just renamed, parsed), toks) <- parsedFileDd1Ghc
+      ((_,Just renamed,_parsed), toks) <- parsedFileDd1Ghc
       let declsr = GHC.bagToList $ getDecls renamed
       let Just (GHC.L l n) = locToName dd1FileName (3, 1) renamed
       let
@@ -441,10 +440,10 @@ spec = do
 
       ((nb,nn),s) <- runRefactGhc comp initialState
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
-      (showToks $ [newNameTok l nn]) `shouldBe` "[(((3,1),(3,9)),ITvarid \"bar2\",\"bar2_C2\")]"
+      (showToks $ [newNameTok l nn]) `shouldBe` "[(((3,1),(3,9)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
-      (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n bar2_C2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
-      (GHC.showPpr nb) `shouldBe` "[DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. 15],\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n bar2_C2 x = DupDef.Dd1.c GHC.Num.* x]"
+      (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
+      (GHC.showPpr nb) `shouldBe` "[DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. 15],\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n bar2_H2 x = DupDef.Dd1.c GHC.Num.* x]"
 
 
 -- ---------------------------------------------------------------------
