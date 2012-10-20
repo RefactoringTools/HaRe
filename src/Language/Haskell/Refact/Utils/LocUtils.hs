@@ -344,8 +344,7 @@ newLnToken :: PosToken
 newLnToken = (GHC.L ghcPos0 GHC.ITvocurly,"\n")
 
 ghcPos0 = GHC.mkSrcSpan p0 p0
-  where
-   p0 = GHC.mkSrcLoc (GHC.mkFastString "") 0 0
+  where p0 = GHC.mkSrcLoc (GHC.mkFastString "") 1 1
 
 prettyprintPatList prpr beginWithSpace t
      = replaceTabBySpaces $ if beginWithSpace then format1 t else format2 t

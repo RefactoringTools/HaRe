@@ -36,3 +36,4 @@ testing/addCon/Case2.hs.temp.hs
 /src/#Main.hs#
 /spec.tix
 /hspec-failures
+/test/testdata/DupDef/Dd1.hs.tokens

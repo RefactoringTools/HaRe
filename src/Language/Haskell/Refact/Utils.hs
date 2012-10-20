@@ -681,7 +681,9 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
      where
        modifyFile ((fileName,_),(ts,_)) = do
            -- let source = concatMap (snd.snd) ts
-           let source = GHC.showRichTokenStream ts
+
+           let ts' = bypassGHCBug7351 ts
+           let source = GHC.showRichTokenStream ts'
 
            putStrLn $ "writeRefactoredFiles:" ++ fileName ++ ":[" ++ source ++ "]" -- ++AZ++ debug
            -- (Julien personnal remark) seq forces the evaluation of
@@ -690,6 +692,8 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            -- forced.
            -- seq (length source) (AbstractIO.writeFile fileName source) -- ++AZ++ TODO: restore this when ready for production
            seq (length source) (writeFile (fileName ++ ".refactored") source)
+
+           writeFile (fileName ++ ".tokens") (showToks ts')
 
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not
@@ -711,6 +715,16 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
           =let (name, posfix)=span (/='.') fileName
            in (name++str++posfix)
 
+-- http://hackage.haskell.org/trac/ghc/ticket/7351
+bypassGHCBug7351 :: [PosToken] -> [PosToken]
+bypassGHCBug7351 ts = map go ts
+  where
+   go :: (GHC.Located GHC.Token, String) -> (GHC.Located GHC.Token, String)
+   go rt@(GHC.L (GHC.UnhelpfulSpan _) _t,_s) = rt
+   go    (GHC.L (GHC.RealSrcSpan l) t,s) = (GHC.L (fixCol l) t,s)
+
+   fixCol l = GHC.mkSrcSpan (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanStartLine l) ((GHC.srcSpanStartCol l) - 1)) 
+                            (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanEndLine l) ((GHC.srcSpanEndCol l) - 1)) 
 
 -- | If an expression consists of only one identifier then return this identifier in the PNT format,
 --  otherwise return the default PNT.

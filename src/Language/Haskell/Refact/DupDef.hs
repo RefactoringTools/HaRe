@@ -145,7 +145,6 @@ doDuplicating pn newName (inscps, parsed, tokList)
            = do let -- decls           = hsDecls parent -- TODO: reinstate this
                     declsr = GHC.bagToList $ getDecls parentr
                     -- declsp = getDeclsP parentp
-                    pn = (PN $ GHC.nameRdrName n)
                     duplicatedDecls = definingDeclsNames [n] declsr True False
                     -- (after,before)  = break (definesP pn) (reverse declsp)
 

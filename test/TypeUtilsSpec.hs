@@ -413,8 +413,8 @@ spec = do
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
       (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n\n\n\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
-      -- (showToks $ rsTokenStream s) `shouldBe` "bar"
       (GHC.showPpr nb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
+      -- (showToks $ rsTokenStream s) `shouldBe` "bar"
 
   -- ---------------------------------------------
 
