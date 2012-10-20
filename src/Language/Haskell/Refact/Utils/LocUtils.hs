@@ -577,9 +577,12 @@ updateToksList oldAST newAST printFun
 
         return (newAST, newToks)
 
---Replace a list of tokens in the token stream by a new list of tokens, adjust the layout as well.
---To use this function make sure the start and end positions really exist in the token stream.
---QN: what happens if the start or end position does not exist?
+-- ---------------------------------------------------------------------
+
+-- |Replace a list of tokens in the token stream by a new list of
+-- tokens, adjust the layout as well. To use this function make sure
+-- the start and end positions really exist in the token stream. QN:
+-- what happens if the start or end position does not exist?
 
 replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
 replaceToks toks startPos endPos newToks

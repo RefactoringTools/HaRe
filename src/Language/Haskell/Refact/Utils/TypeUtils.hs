@@ -120,7 +120,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
   , allPNT
   , allPNTLens
   , allNames
-
+  , newNameTok
  ) where
 
 import Control.Monad.State
@@ -1838,8 +1838,6 @@ replaceNameInPN qualifier (PN (Qual modName s) (G modName1 s1 loc))  newName
 -- AST.
 renamePN::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
-   -- ->Maybe GHC.ModuleName -- ^ The qualifier
-   -- ->String               -- ^ The new name
    ->GHC.Name             -- ^ The new name, including possible qualifier
    ->Bool                 -- ^ True means modifying the token stream as well.
    ->t                    -- ^ The syntax phrase
@@ -1851,64 +1849,19 @@ renamePN oldPN newName updateTokens t
     rename  pnt@(GHC.L l n)
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do if updateTokens
-           then  do 
+           then  do
                     st <- get
                     let toks = rsTokenStream st
-                    let toks'=replaceToks toks (getLocatedStart pnt) (getLocatedEnd pnt)
-                              [((GHC.L l (GHC.ITvarid (GHC.occNameFS $ GHC.getOccName newName))), GHC.showPpr newName)]
+                    let (row,col) = (getLocatedStart pnt)
+                    let toks'= replaceToks toks (row,col) (row,col) [newNameTok l newName]
                     put $ st { rsTokenStream = toks', rsStreamModified = modified }
-                    {- ((toks,_),others)<-get
-                    let toks'=replaceToks toks (row,col) (row,col)
-                              [mkToken Varid  (row,col) ((render.ppi) (replaceName pn  newName))]
-                    put ((toks', modified),others) -}
-                    -- return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
                     return (GHC.L l newName)
-           -- else return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
            else return (GHC.L l newName)
     rename x = return x
 
-
-{- ++original
--- | Rename each occurrences of the identifier in the given syntax phrase with the new name.
---   If the Bool parameter is True, then modify both the AST and the token stream, otherwise only modify the AST.
-
-{-
-renamePN::(Term t)
-           =>PName               -- ^ The identifier to be renamed.
-             ->Maybe ModuleName  -- ^ The qualifier
-             ->String            -- ^ The new name
-             ->Bool              -- ^ True means modifying the token stream as well.
-             ->t                 -- ^ The syntax phrase
-             ->m t
--}
-
-renamePN::((MonadState (([PosToken], Bool), t1) m),Term t)
-           =>PName               -- ^ The identifier to be renamed.
-             ->Maybe ModuleName  -- ^ The qualifier
-             ->String            -- ^ The new name
-             ->Bool              -- ^ True means modifying the token stream as well.
-             ->t                 -- ^ The syntax phrase
-             ->m t
-
-renamePN oldPN qualifier newName updateToks t
-  = applyTP (full_tdTP (adhocTP idTP rename)) t
-  where
-    rename  pnt@(PNT pn ty (N (Just (SrcLoc fileName c  row col))))
-     | (pn ==oldPN) && (srcLoc oldPN == srcLoc pn)
-     = do if updateToks
-           then  do ((toks,_),others)<-get
-                    let toks'=replaceToks toks (row,col) (row,col)
-                              [mkToken Varid  (row,col) ((render.ppi) (replaceName pn  newName))]
-                    put ((toks', modified),others)
-                    return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
-           else return (PNT (replaceName pn newName) ty (N (Just (SrcLoc fileName c  row col))))
-      where
-        replaceName = if isJust qualifier && canBeQualified pnt t
-                        then replaceNameInPN qualifier
-                        else replaceNameInPN Nothing
-    rename x = return x
-
-++original end -}
+newNameTok l newName =
+  ((GHC.L l (GHC.ITvarid (GHC.occNameFS $ GHC.getOccName newName))),
+   GHC.showPpr newName)
 
 -- ---------------------------------------------------------------------
 
