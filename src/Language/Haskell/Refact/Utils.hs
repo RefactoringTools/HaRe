@@ -9,10 +9,6 @@ module Language.Haskell.Refact.Utils
        ( expToPNT
        , locToExp
        , sameOccurrence
-       , parseSourceStr
-       , unsafeParseSourceStr
-       , parseSourceFile
-       , unsafeParseSourceFile
        , parseSourceFileGhc
 
        -- * The bits that do the work
@@ -343,57 +339,6 @@ getModuleName (GHC.L _ mod) =
     Nothing -> Nothing
     Just (GHC.L _ modname) -> Just $ (modname,GHC.moduleNameString modname)
 
-
-
--- ---------------------------------------------------------------------
-
--- |Parse a Haskell source files, and returns a four-element tuple. The first element in the result is the inscope
--- relation, the second element is the export relation, the third is the AST of the module and the forth element is
--- the token stream of the module.
-{-
-parseSourceFile:: ( ) =>FilePath
-                      ->m (InScopes,Exports,HsModuleP,[PosToken])
--}
-
-parseSourceFile ::
-  String
-  -> IO (ParseResult, [PosToken])
-parseSourceFile targetFile =
-  GHC.defaultErrorHandler GHC.defaultLogAction $ do
-    GHC.runGhc (Just GHC.libdir) $ do
-      dflags <- GHC.getSessionDynFlags
-      let dflags' = foldl GHC.xopt_set dflags
-                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-
-          -- Enable GHCi style in-memory linking
-          dflags'' = dflags' { GHC.hscTarget = GHC.HscInterpreted,
-                               GHC.ghcLink   =  GHC.LinkInMemory }
-
-      GHC.setSessionDynFlags dflags''
-      target <- GHC.guessTarget targetFile Nothing
-      GHC.setTargets [target]
-      GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
-      g <- GHC.getModuleGraph
-      -- modSum <- GHC.getModSummary $ mkModuleName "B"
-      let modSum = head g
-      p <- GHC.parseModule modSum
-      t <- GHC.typecheckModule p
-
-      GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
-      inscopeNames    <- GHC.getNamesInScope
-      -- inscopeRdrNames <- GHC.getRdrNamesInScope
-
-      let pm = GHC.tm_parsed_module t
-
-      let typechecked = GHC.tm_typechecked_source t
-          renamed     = GHC.tm_renamed_source t
-          parsed      = GHC.pm_parsed_source pm
-      tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      -- return ((inscopes,exports,modAst),tokens)
-      -- return ((typechecked,renamed,parsed),tokens)
-      return ((inscopeNames,renamed,parsed),tokens)
-
-
 -- ---------------------------------------------------------------------
 
 -- | Parse a source file into a GHC session
@@ -401,14 +346,14 @@ parseSourceFileGhc ::
   String -> RefactGhc (ParseResult,[PosToken])
 parseSourceFileGhc targetFile = do
       settings <- getRefacSettings
-      dflags <- GHC.getSessionDynFlags
+      dflags   <- GHC.getSessionDynFlags
       let dflags' = foldl GHC.xopt_set dflags
                     [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
           dflags'' = dflags' { GHC.importPaths = rsetImportPath settings }
 
           -- Enable GHCi style in-memory linking
           dflags''' = dflags'' { GHC.hscTarget = GHC.HscInterpreted,
-                                 GHC.ghcLink   =  GHC.LinkInMemory }
+                                 GHC.ghcLink   = GHC.LinkInMemory }
 
       GHC.setSessionDynFlags dflags'''
       -- target <- GHC.guessTarget targetFile Nothing
@@ -435,56 +380,7 @@ parseSourceFileGhc targetFile = do
       -- return ((typechecked,renamed,parsed),tokens)
       return ((inscopeNames,renamed,parsed),tokens)
 
--- ---------------------------------------------------------------------
 
--- TODO: harvest the common GHC setup in parseSourceFile and
--- parseSourceStr into a withGhc wrapper of some kind, or use the one
--- from buildwrapper
-
-parseSourceStr ::
-  String
-  -> IO
-       (Either
-          GHC.ErrorMessages
-          (GHC.WarningMessages, GHC.Located (GHC.HsModule GHC.RdrName)))
-parseSourceStr s =
-  GHC.defaultErrorHandler GHC.defaultLogAction $ do
-    GHC.runGhc (Just GHC.libdir) $ do
-      dflags <- GHC.getSessionDynFlags
-      let dflags' = foldl GHC.xopt_set dflags
-                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-      GHC.setSessionDynFlags dflags
-      let result = GHC.parser s  dflags' "filename.hs"
-          -- -> Either ErrorMessages (WarningMessages, Located (HsModule RdrName))	 
-      return result
-
-unsafeParseSourceFile :: String -> (ParseResult, [PosToken])
-unsafeParseSourceFile fileName = unsafePerformIO $ parseSourceFile fileName
-
-unsafeParseSourceStr ::
-  String
-  -> Either
-       GHC.ErrorMessages
-       (GHC.WarningMessages, GHC.Located (GHC.HsModule GHC.RdrName))
-unsafeParseSourceStr s = unsafePerformIO $ parseSourceStr s
-
-
-{-
-original
-
-parseSourceFile filename
-   = do
-        name <- fileNameToModName filename
-        res <- ((checkScope  @@ parseModule') name)
-        return res
-
-  where
-   checkScope (ts,(((wm,_),mod),refs))
-     = check (checkRefs refs) >> return (inscpRel wm, exports wm, mod, expandNewLnTokens ts)
-
-   check [] = done
-   check errs = fail $ pp $ "Scoping errors" $$ vcat errs
--}
 getExports (GHC.L _ hsmod) =
   case hsmod of
     GHC.HsModule _ (Just exports) _ _ _ _ -> exports

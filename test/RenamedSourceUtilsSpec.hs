@@ -62,7 +62,7 @@ parseFileMGhc = parseSourceFileGhc fileName
   where
     fileName = "./test/testdata/M.hs"
 
-parsedFileNoMod = unsafeParseSourceFile fileName
+parsedFileNoMod = parsedFileGhc fileName
   where
     fileName = "./test/testdata/NoMod.hs"
 

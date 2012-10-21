@@ -88,7 +88,7 @@ spec = do
       modNameStr `shouldBe` "B"
 
     it "returns Nothing for the module name otherwise" $ do
-      let modInfo@((_, _, mod), toks) = parsedFileNoMod
+      modInfo@((_, _, mod), toks) <- parsedFileNoMod
       getModuleName mod `shouldBe` Nothing
 
   -- -------------------------------------------------------------------
@@ -208,7 +208,8 @@ parseFileMGhc = parseSourceFileGhc fileName
   where
     fileName = "./test/testdata/M.hs"
 
-parsedFileNoMod = unsafeParseSourceFile fileName
+-- parsedFileNoMod = unsafeParseSourceFile fileName
+parsedFileNoMod = parsedFileGhc fileName
   where
     fileName = "./test/testdata/NoMod.hs"
 
