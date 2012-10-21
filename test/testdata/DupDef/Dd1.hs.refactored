@@ -5,7 +5,7 @@ toplevel x = c * x
 
 
 
-tl2 x = c * x
+c x = c * x
 
 c,d :: Integer
 c = 7

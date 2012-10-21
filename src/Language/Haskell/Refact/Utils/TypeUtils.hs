@@ -43,7 +43,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
        (
  -- * Program Analysis
     -- ** Imports and exports
-   inScopeInfo, isInScopeAndUnqualified -- , hsQualifier, {-This function should be removed-} rmPrelude 
+   inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc -- , hsQualifier, {-This function should be removed-} rmPrelude 
    -- ,exportInfo, isExported, isExplicitlyExported, modIsExported
 
     -- ** Variable analysis
@@ -123,6 +123,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
   , newNameTok
  ) where
 
+import Exception
+-- import Control.Exception
 import Control.Monad.State
 import Data.Char
 import Data.List
@@ -230,6 +232,31 @@ isInScopeAndUnqualified n names
 -- isInScopeAndUnqualified id inScopeRel
 --  = isJust $ find (\ (x, _,_, qual) -> x == id && isNothing qual ) $ inScopeInfo inScopeRel
 
+-- | Return True if the identifier is inscope and can be used without
+-- a qualifier. The identifier name string may have a qualifier already
+isInScopeAndUnqualifiedGhc :: String         -- ^ The identifier name.
+                           -> RefactGhc Bool -- ^ The result.
+isInScopeAndUnqualifiedGhc n = do
+  -- (ExceptionMonad m, Exception e)
+  -- namesOr <- (gtry (GHC.parseName n)) :: (Exception e) => Either e [GHC.Name] -- TODO: throws an exception if name not found
+  names <- ghandle handler (GHC.parseName n)
+  nameInfo <- mapM GHC.lookupName names
+  let nameList = filter isId $ catMaybes nameInfo
+  return $ nameList /= []
+  -- case namesOr of
+  --   Left e -> return False
+  --   Right names -> do
+  --     nameInfo <- mapM GHC.lookupName names
+  --     let nameList = filter isId $ catMaybes nameInfo
+  --     return $ nameList /= []
+
+  where
+    isId (GHC.AnId _) = True
+    isId _            = False
+
+    -- handler:: (Exception e,GHC.GhcMonad m) => e -> m [GHC.Name]
+    handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
+    handler _ = return []
 
 -- ---------------------------------------------------------------------
 
@@ -479,7 +506,7 @@ hsFreeAndDeclaredNames t = ((nub.map GHC.showPpr) f1, (nub.map GHC.showPpr) d1)
 hsVisibleNames:: (SYB.Data t1, SYB.Data t2) => t1 -> t2 -> [String]
 hsVisibleNames e t = ((nub.map GHC.showPpr) d)
   where
-    d =hsVisiblePNs e t
+    d = hsVisiblePNs e t
 
 -- hsVisibleNames:: (Term t1, Term t2, FindEntity t1, MonadPlus m) => t1 -> t2 -> m [String]
 -- hsVisibleNames e t =do d<-hsVisiblePNs e t

@@ -351,7 +351,7 @@ spec = do
 
   describe "hsVisiblePNs" $ do
     it "Returns [] if e does not occur in t" $ do
-      ((_, renamed, parsed), toks) <- parsedFileDd1Ghc
+      ((_, renamed,_parsed),_toks) <- parsedFileDd1Ghc
       let Just tl1  = locToExp (4,13) (4,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       let Just tup = getName "DupDef.Dd1.tup" renamed
       let [decl] = definingDeclsNames [tup] renamed False False
@@ -367,10 +367,38 @@ spec = do
   -- ---------------------------------------------
 
   describe "inScopeInfo" $ do
-    it "returns 4 element tuples for in scope names" $do
+    it "returns 4 element tuples for in scope names" $ do
       ((inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
       let info = inScopeInfo inscopes
       (show $ head info) `shouldBe` "foo"
+      -- (show $ info) `shouldBe` "foo"
+
+  -- ---------------------------------------------
+
+  describe "isInScopeAndUnqualified" $ do
+    it "True if the identifier is in scope and unqualified" $ do
+      ((inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
+      let info = inScopeInfo inscopes
+      (show $ head info) `shouldBe` "foo"
+-- inScopeInfo for c is
+-- (\"DupDef.Dd1.c\",VarName,DupDef.Dd1,Nothing)
+
+  -- ---------------------------------------------
+
+  describe "isInScopeAndUnqualifiedGhc" $ do
+    it "True if the identifier is in scope and unqualified" $ do
+      ((_inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
+      let
+        comp = do
+         (p,toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         res1 <- isInScopeAndUnqualifiedGhc "c"
+         res2 <- isInScopeAndUnqualifiedGhc "DupDef.Dd1.c"
+         res3 <- isInScopeAndUnqualifiedGhc "nonexistent"
+         return (res1,res2,res3)
+      ((r1,r2,r3),s) <- runRefactGhcState comp
+      r1 `shouldBe` True
+      r2 `shouldBe` True
+      r3 `shouldBe` False
 
   -- ---------------------------------------------
 
@@ -412,7 +440,7 @@ spec = do
       (nb,s) <- runRefactGhc comp initialState
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
-      (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n\n\n\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
+      (GHC.showRichTokenStream $ rsTokenStream s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x \n\n\n\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..15]\n\n data D = A | B String | C\n\n\n "
       (GHC.showPpr nb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
       -- (showToks $ rsTokenStream s) `shouldBe` "bar"
 

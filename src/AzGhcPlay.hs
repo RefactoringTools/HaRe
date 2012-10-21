@@ -147,7 +147,7 @@ getStuff =
 
         GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
         inscopes <- GHC.getNamesInScope
-
+        
 
         g <- GHC.getModuleGraph
         gs <- mapM GHC.showModule g
@@ -180,7 +180,7 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ tokenLocs rts))
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ map (\(GHC.L _ tok,s) -> (tok,s)) rts)) 
-        GHC.liftIO (putStrLn $ "tokens=" ++ (showToks rts))
+        -- GHC.liftIO (putStrLn $ "tokens=" ++ (showToks rts))
         
 
         -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
@@ -193,6 +193,9 @@ getStuff =
 
         -- Inscopes ----------------------------------------------------
         -- GHC.liftIO (putStrLn $ "\ninscopes(showData)=" ++ (SYB.showData SYB.Parser 0 $ inscopes))
+        names <- GHC.parseName "G.mkT"
+        GHC.liftIO (putStrLn $ "\nparseName=" ++ (GHC.showPpr $ names))
+
 
         -- RenamedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))

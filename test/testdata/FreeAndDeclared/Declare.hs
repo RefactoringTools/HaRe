@@ -1,5 +1,7 @@
 module FreeAndDeclared.Declare where
 
+import qualified Data.Generics as G
+
 toplevel :: Integer -> Integer
 toplevel x = c * x
  
@@ -29,4 +31,5 @@ main = do
   a <- getChar
   putStrLn "foo"
 
+mkT = "no clash with Data.Generics"
 

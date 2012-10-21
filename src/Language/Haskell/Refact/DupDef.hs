@@ -149,7 +149,8 @@ doDuplicating pn newName (inscps, parsed, tokList)
                     -- (after,before)  = break (definesP pn) (reverse declsp)
 
                     (f,d) = hsFDNamesFromInside parentr
-                    --f: names that might be shadowd by the new name, d: names that might clash with the new name
+                    --f: names that might be shadowd by the new name,
+                    --d: names that might clash with the new name
 
                     dv = hsVisibleNames ln declsr --dv: names may shadow new name
                     -- inscpsNames = map ( \(x,_,_,_)-> x) $ inScopeInfo inscps
@@ -157,7 +158,9 @@ doDuplicating pn newName (inscps, parsed, tokList)
 
                 newNameGhc <- mkNewName newName
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow    
-                if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity ln duplicatedDecls) 
+                nameAlreadyInScope <- isInScopeAndUnqualifiedGhc newName
+                -- if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity ln duplicatedDecls) 
+                if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls) 
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
                    else do newBinding <- duplicateDecl declsr n newNameGhc
