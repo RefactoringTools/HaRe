@@ -74,7 +74,9 @@ doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
               -> RefactGhc RefactResult
 doDuplicating pn newName (inscopes,Just renamed,parsed) =
 
-   everywhereMStaged SYB.Renamer (SYB.mkM dupInMod) renamed -- parsed
+   everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
+                                  -- SYB.extM dupInMatch
+                                 ) renamed
         where
         --1. The definition to be duplicated is at top level.
         -- dupInMod (parsed@(HsModule loc name exps imps ds):: HsModuleP)
@@ -82,6 +84,17 @@ doDuplicating pn newName (inscopes,Just renamed,parsed) =
         dupInMod group
           | not $ emptyList (findFunOrPatBind pn (GHC.hs_valds group)) = doDuplicating' inscopes renamed pn
         dupInMod group = return group
+
+        --2. The definition to be duplicated is a local declaration in a match
+        --  Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
+        {-
+        dupInMatch (match@(GHC.Match pats _typ rhs)::GHC.Match GHC.Name)
+          | not $ emptyList (findFunOrPatBind pn rhs) = doDuplicating' inscopes match pn
+        dupInMatch match = return match
+        -}
+        -- dupInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+        --   |findFunOrPatBind pn ds/=[]=doDuplicating' inscps match pn
+        -- dupInMatch _ =mzero
 
 {-
 doDuplicating pn newName (inscps, parsed, tokList)

@@ -26,22 +26,26 @@ spec :: Spec
 spec = do
   
   describe "duplicateDef" $ do
-    it "duplicates a definition at the same level" $ do
-     duplicateDef ["./test/testdata/DupDef/Dd1.hs","tl2","4","1"]
-     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
-                          "./test/testdata/DupDef/Dd1.hs.expected"
-     diff `shouldBe` []
-
-    it "check for a clash of the new name" $ do
+    it "checks for a clash of the new name" $ do
      res <- catchException (duplicateDef ["./test/testdata/DupDef/Dd1.hs","c","4","1"])
      -- let res = "foo"
      (show res) `shouldBe` "Just \"The new name'c' will cause name clash/capture or ambiguity problem after duplicating, please select another name!\""
 
-  -- -------------------------------------------------------------------
+    it "checks for no definition selected" $ do
+     res <- catchException (duplicateDef ["./test/testdata/DupDef/Dd1.hs","c","5","1"])
+     -- let res = "foo"
+     (show res) `shouldBe` "Just \"Invalid cursor position!\""
 
-  describe "second thing" $ do
-    it "does something good" $ do
-      pending "real soon now"
+    it "checks for invalid new name" $ do
+     res <- catchException (duplicateDef ["./test/testdata/DupDef/Dd1.hs","$c","5","1"])
+     -- let res = "foo"
+     (show res) `shouldBe` "Just \"Invalid new function name:$c!\""
+
+    it "duplicates a definition at the top level" $ do
+     duplicateDef ["./test/testdata/DupDef/Dd1.hs","tl2","4","1"]
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+                          "./test/testdata/DupDef/Dd1.hs.expected"
+     diff `shouldBe` []
 
 -- ---------------------------------------------------------------------
 -- Helper functions

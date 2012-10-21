@@ -48,7 +48,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Variable analysis
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
-    {- ,hsClassMembers -} , HsDecls(hsDecls,isDeclaredIn{- ,replaceDecls -})
+    {- ,hsClassMembers -} , HsBinds(..)
     ,getDecls, getDeclsP, replaceDecls
     ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
     ,hsVisiblePNs, hsVisibleNames
@@ -981,6 +981,7 @@ isDirectRecursiveDef _ = False
 -}
 -------------------------------------------------------------------------------
 
+{- ++AZ++ This class is being removed
 {- | The HsDecls class -}
 class (SYB.Data t) => HsDecls t where
 
@@ -1002,6 +1003,7 @@ instance HsDecls GHC.ParsedSource where
 
    isDeclaredIn pn (GHC.L _ (GHC.HsModule _ _ _ ds _ _))
      = length (definingDecls [pn] ds False False) /= 0
+++AZ++ end -}
 
 -- | Replace the directly enclosed declaration list by the given
 --  declaration list. Note: This function does not modify the
@@ -1016,6 +1018,24 @@ getDecls renamed@(group, _, _, _) = case (GHC.hs_valds group) of
 
 getDeclsP :: GHC.ParsedSource -> [HsDeclP]
 getDeclsP parsed@(GHC.L _ hsMod) = GHC.hsmodDecls hsMod
+
+-- This class replaces the HsDecls one
+class (SYB.Data t) => HsBinds t where
+
+    -- | Return the declarations that are directly enclosed in the
+    -- given syntax phrase.
+    hsBinds :: t -> [GHC.LHsBind GHC.Name]
+
+    -- | Replace the directly enclosed declaration list by the given
+    --  declaration list. Note: This function does not modify the
+    --  token stream.
+    -- replaceBinds :: t -> GHC.LhsBind GHC.Name -> t 
+
+    -- | Return True if the specified identifier is declared in the
+    -- given syntax phrase.
+    isDeclaredIn :: GHC.Name -> t -> Bool
+
+
 
 
 {-
