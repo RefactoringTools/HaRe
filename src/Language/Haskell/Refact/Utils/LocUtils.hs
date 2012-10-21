@@ -836,12 +836,89 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
 
 -- ---------------------------------------------------------------------
 
+getGhcLoc :: GHC.SrcSpan -> (Int, Int)
+getGhcLoc (GHC.RealSrcSpan ss)  = (GHC.srcSpanStartLine ss, GHC.srcSpanStartCol ss)
+getGhcLoc (GHC.UnhelpfulSpan _) = (-1,-1)
+
+getGhcLocEnd :: GHC.SrcSpan -> (Int, Int)
+getGhcLocEnd (GHC.RealSrcSpan ss)  = (GHC.srcSpanEndLine ss, GHC.srcSpanEndCol ss)
+getGhcLocEnd (GHC.UnhelpfulSpan _) = (-1,-1)
+
+getLocatedStart :: GHC.GenLocated GHC.SrcSpan t -> (Int, Int)
+getLocatedStart (GHC.L l _) = getGhcLoc l
+
+getLocatedEnd :: GHC.GenLocated GHC.SrcSpan t -> (Int, Int)
+getLocatedEnd (GHC.L l _) = getGhcLocEnd l
+
+-- ---------------------------------------------------------------------
+
+{-
+--given an AST phrase, 'startEndLoc' gets its start and end position in the program source.
+-- TODO: ++AZ++ get rid of this class
+class StartEndLoc t where
+   startEndLoc :: [PosToken]-> t ->(SimpPos,SimpPos)
+
+
+instance StartEndLoc (GHC.HsExpr GHC.RdrName) where
+  -- TODO: do this properly
+  startEndLoc toks e =
+    case e of
+      GHC.HsVar id	-> ((0,0),(0,0))
+
+instance StartEndLoc (GHC.Pat GHC.RdrName) where
+
+   startEndLoc toks p =
+	case p of
+	  GHC.VarPat id -> ((0,0),(0,0))
+
+instance StartEndLoc [GHC.Pat GHC.RdrName] where
+
+   startEndLoc toks ps = ((0,0),(0,0))
+-}
+
+-- ---------------------------------------------------------------------
+{-
+-- | Get the start and end location of the given AST phrase in the
+-- original source
+getStartEndLoc::(SYB.Data t)=> t -> (SimpPos,SimpPos)
+getStartEndLoc t
+  = let (startPos',endPos') = (simpPos0,simpPos0)
+        locs = srcLocs t
+        (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
+                                                                   else startPos',
+                             if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
+                                                                  else endPos')
+    in (startPos, endPos)
+{-
+getStartEndLoc t
+  = let (startPos',endPos') = startEndLocGhc t
+        locs = srcLocs t
+        (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
+                                                                   else startPos',
+                             if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
+                                                                  else endPos')
+    in (startPos, endPos)
+-}
+-}
+-- ---------------------------------------------------------------------
+
+getStartEndLoc :: (SYB.Data t) => t -> (SimpPos,SimpPos)
+getStartEndLoc t =
+  let
+    ss = getSrcSpan t
+  in
+    case ss of
+      Just l -> startEndLocGhc (GHC.L l ss)
+      Nothing -> ((0,0),(0,0))
+
+-- ---------------------------------------------------------------------
+
 -- | Get the first SrcSpan found, in top down traversal
 getSrcSpan::(SYB.Data t) => t -> Maybe GHC.SrcSpan
 getSrcSpan t = res t
   where
     res = somethingStaged SYB.Renamer Nothing
-            (Nothing 
+            (Nothing
                     `SYB.mkQ` bind
                     `SYB.extQ` pnt
                     `SYB.extQ` sn
@@ -864,781 +941,17 @@ getSrcSpan t = res t
     literalInPat :: GHC.LPat GHC.Name -> Maybe GHC.SrcSpan
     literalInPat (GHC.L l _) = Just l
 
-
-getGhcLoc :: GHC.SrcSpan -> (Int, Int)
-getGhcLoc (GHC.RealSrcSpan ss)  = (GHC.srcSpanStartLine ss, GHC.srcSpanStartCol ss)
-getGhcLoc (GHC.UnhelpfulSpan _) = (-1,-1)
-
-getGhcLocEnd :: GHC.SrcSpan -> (Int, Int)
-getGhcLocEnd (GHC.RealSrcSpan ss)  = (GHC.srcSpanEndLine ss, GHC.srcSpanEndCol ss)
-getGhcLocEnd (GHC.UnhelpfulSpan _) = (-1,-1)
-
-getLocatedStart :: GHC.GenLocated GHC.SrcSpan t -> (Int, Int)
-getLocatedStart (GHC.L l _) = getGhcLoc l
-
-getLocatedEnd :: GHC.GenLocated GHC.SrcSpan t -> (Int, Int)
-getLocatedEnd (GHC.L l _) = getGhcLocEnd l
-
-{-
-class StartEndLocPat t where
-
-   startEndLoc2 :: [PosToken]->t->[(SimpPos,SimpPos)]
-   -- startEndLoc3 :: [PosToken]->t->[(SimpPos,SimpPos)]
-
-
-instance StartEndLocPat [HsDeclP] where
-   startEndLoc2 toks ds=if  ds==[] then [(simpPos0,simpPos0)]
-                                   else if length ds==1
-                                         then [startEndLoc toks (ghead "StartEndLoc:[HsDeclP]" ds)]
-                                         else concat (map (startEndLoc2 toks) ds)
-
-
-instance StartEndLocPat HsMatchP where
-   startEndLoc2 toks (HsMatch loc i ps rhs ds)
-         =let (startLoc,_)=startEndLoc toks i
-              (_,endLoc)  =if ds==[] then startEndLoc toks rhs
-                                     else startEndLoc toks (glast "StartEndLoc:HsMatchP" ds)
-          in [(startLoc,endLoc)]
-
-instance StartEndLocPat HsDeclP where
-
-   startEndLoc2 toks (Dec (HsTypeDecl (SrcLoc _ _ r c) tp t))
-      = let (startLoc, _) = startEndLoc toks tp
-            (_ , endLoc)  = startEndLoc toks t
-        in [extendForwards toks startLoc endLoc isType]
-
-   startEndLoc2 toks (Dec (HsDataDecl loc c tp decls is))
-        = let (startLoc, _) = startEndLoc toks tp
-              (_, endLoc)  = if is == [] then startEndLoc toks (glast "StartEndLoc:HsDeclP1" decls)
-                                        else startEndLoc toks is
-          in [extendForwards toks startLoc endLoc isData]
-
-   startEndLoc2 toks (Dec (HsNewTypeDecl loc c tp decls is))
-        = let (startLoc, _) = startEndLoc toks tp
-              (_, endLoc) = if is == [] then startEndLoc toks decls
-                                        else startEndLoc toks is
-          in [extendForwards toks startLoc endLoc isNewtype]
-
-   startEndLoc2 toks (Dec (HsDefaultDecl _ ts))
-      = let (startLoc, _) = startEndLoc toks (head ts)
-            (_ , endLoc) = startEndLoc toks (last ts)
-        in [extendForwards toks startLoc endLoc isDefault]
-
-   startEndLoc2 toks (Dec (HsInfixDecl _ _ is))
-      = let (startLoc, _) = startEndLoc toks (head is)
-            (_, endLoc)   = startEndLoc toks (last is)
-        in [extendForwards toks startLoc endLoc isFixty]
-
-   startEndLoc2 toks d@(Dec (HsFunBind _ ms))
-      = map (startEndLoc toks) ms
-
-   startEndLoc2 toks (Dec (HsPatBind _  p rhs ds))
-       = let (startLoc, _) = startEndLoc toks p
-             (_, endLoc)   = if ds ==[] then startEndLoc toks rhs
-                                        else startEndLoc toks (glast "startEndLoc:HsDeclP5" ds)
-             toks1 = dropWhile (\t->tokenPos t /= endLoc) toks
-	     endLoc1 = if toks1==[]
-			  then endLoc
-			  else let toks2 = takeWhile (\t -> isSpecialTok t) toks1
-                               in (tokenPos.glast "startEndLoc::HsMatchP") toks2
-          in [(startLoc, endLoc1)]
-       where
-         isSpecialTok t = isWhiteSpace t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t
-                        || isCloseSquareBracket t
-
-   startEndLoc2 toks (Dec (HsTypeSig _ is c t))
-      = let (startLoc, _) = startEndLoc toks (ghead "startEndLoc:HsDeclP6" is)
-            (_, endLoc)   = startEndLoc toks t
-        in [(startLoc, endLoc)]
-
-
-   startEndLoc2 toks decl@(Dec (HsClassDecl loc c tp funDeps  ds))
-      = let locs = srcLocs decl
-            (startLoc, endLoc)
-              = if locs == [] then (simpPos0, simpPos0)
-                 else (head locs, last locs)
-        in [extendForwards toks startLoc endLoc isClass]
-
-   startEndLoc2 toks decl@(Dec (HsInstDecl loc i c t ds))
-     = let locs = srcLocs decl
-           (startLoc, endLoc)
-              = if locs == [] then (simpPos0, simpPos0)
-                 else (head locs, last locs)
-        in [extendForwards toks startLoc endLoc isInstance]
-
-
-getStartEndLoc2::(Term t, StartEndLocPat t,Printable t)=>[PosToken]->t->[(SimpPos,SimpPos)]
-getStartEndLoc2 toks t
-  = startEndLoc2 toks t
-     {-   locs = srcLocs t
-        (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc2" locs
-                                                                   else startPos',
-                             if endPos' == simpPos0 && locs /= [] then glast "gerStartEndLoc2" locs
-                                                                  else endPos')
-    in (startPos, endPos)  -}
-
--}
-
---given an AST phrase, 'startEndLoc' gets its start and end position in the program source.
--- TODO: ++AZ++ get rid of this class
-class StartEndLoc t where
-   startEndLoc :: [PosToken]-> t ->(SimpPos,SimpPos)
-
-
-instance StartEndLoc (GHC.HsExpr GHC.RdrName) where
-  -- TODO: do this properly
-  startEndLoc toks e =
-    case e of
-      GHC.HsVar id	-> ((0,0),(0,0))
-
-instance StartEndLoc (GHC.Pat GHC.RdrName) where
-
-   startEndLoc toks p =
-	case p of
-	  GHC.VarPat id -> ((0,0),(0,0))
-
-instance StartEndLoc [GHC.Pat GHC.RdrName] where
-
-   startEndLoc toks ps = ((0,0),(0,0))
-
-
-
-{-
-      GHC.HsIPVar (IPName id)	
-
-      GHC.HsOverLit (HsOverLit id)	
-
-      GHC.HsLit HsLit	
-
-      GHC.HsLam (MatchGroup id)	 
-
-      GHC.HsApp (LHsExpr id) (LHsExpr id)
-      
-      GHC.OpApp (LHsExpr id) (LHsExpr id) Fixity (LHsExpr id)
-      
-      GHC.NegApp (LHsExpr id) (SyntaxExpr id)
-      
-      GHC.HsPar (LHsExpr id)
-      
-      GHC.SectionL (LHsExpr id) (LHsExpr id)
-      
-      GHC.SectionR (LHsExpr id) (LHsExpr id)
-      
-      GHC.ExplicitTuple [HsTupArg id] Boxity
-      
-      GHC.HsCase (LHsExpr id) (MatchGroup id)
-      
-      GHC.HsIf (Maybe (SyntaxExpr id)) (LHsExpr id) (LHsExpr id) (LHsExpr id)
-      
-      GHC.HsLet (HsLocalBinds id) (LHsExpr id)
-      
-      GHC.HsDo (HsStmtContext Name) [LStmt id] PostTcType
-      
-      GHC.ExplicitList PostTcType [LHsExpr id]
-      
-      GHC.ExplicitPArr PostTcType [LHsExpr id]
-      
-      GHC.RecordCon (Located id) PostTcExpr (HsRecordBinds id)
-      
-      GHC.RecordUpd (LHsExpr id) (HsRecordBinds id) [DataCon] [PostTcType] [PostTcType]
-      
-      GHC.ExprWithTySig (LHsExpr id) (LHsType id)
-      
-      GHC.ExprWithTySigOut (LHsExpr id) (LHsType Name)
-      
-      GHC.ArithSeq PostTcExpr (ArithSeqInfo id)
-      
-      GHC.PArrSeq PostTcExpr (ArithSeqInfo id)
-      
-      GHC.HsSCC FastString (LHsExpr id)
-      
-      GHC.HsCoreAnn FastString (LHsExpr id)
-      
-      GHC.HsBracket (HsBracket id)
-      
-      GHC.HsBracketOut (HsBracket Name) [PendingSplice]
-      
-      GHC.HsSpliceE (HsSplice id)
-      
-      GHC.HsQuasiQuoteE (HsQuasiQuote id)
-      
-      GHC.HsProc (LPat id) (LHsCmdTop id)
-      
-      GHC.HsArrApp (LHsExpr id) (LHsExpr id) PostTcType HsArrAppType Bool
-      
-      GHC.HsArrForm (LHsExpr id) (Maybe Fixity) [LHsCmdTop id]
-      
-      GHC.HsTick (Tickish id) (LHsExpr id)
-      
-      GHC.HsBinTick Int Int (LHsExpr id)
-      
-      GHC.HsTickPragma (FastString, (Int, Int), (Int, Int)) (LHsExpr id)
-      
-      GHC.EWildPat
-      
-      GHC.EAsPat (Located id) (LHsExpr id)
-      
-      GHC.EViewPat (LHsExpr id) (LHsExpr id)
-      
-      GHC.ELazyPat (LHsExpr id)
-      
-      GHC.HsType (LHsType id)
-      
-      GHC.HsWrap HsWrapper (HsExpr id)	 
--}
-
-
-{-
-instance StartEndLoc HsModuleP where
-  startEndLoc toks _  = (tokenPos (ghead "startEndLoc:HsModuleP" toks),
-                         tokenPos (glast "startEndLoc:HsModuleP" toks))
-
-instance StartEndLoc HsExpP where
-
-  startEndLoc  toks (Exp e)=
-      case e of
-
-        HsId ident@(HsVar (PNT pn _ _)) ->let (startLoc, endLoc) = startEndLoc toks ident
-                                              {- To handle infix operator. for infix operators like (++), there
-                                                  is no parenthesis in the syntax tree -}
-                                             {-  (toks1,toks2) = break (\t->tokenPos t==startLoc) toks
-                                              toks1' = dropWhile isWhite (reverse toks1)
-                                              toks2' = dropWhile isWhite (gtail "startEndLoc:HsExpP"
-                                                          (dropWhile (\t->tokenPos t /=endLoc) toks2)) -}
-                                           in  {-if toks1'/=[] && toks2'/=[] && isOpenBracket (head toks1')
-                                                 && isCloseBracket (head toks2')
-                                              then (tokenPos (head toks1'), tokenPos (head toks2'))
-                                              else-}  (startLoc, endLoc)
-        HsId  x                       ->startEndLoc toks x
-
-        HsLit (SrcLoc _ _ r c) _      -> ((r,c),(r,c))
-
-        HsInfixApp e1 op e2           ->let (startLoc,_)=startEndLoc toks e1
-                                            (_, endLoc) =startEndLoc toks e2
-                                        in (startLoc,endLoc)
-
-        e@(HsApp e1 e2)               ->let (startLoc,endLoc)=startEndLoc toks e1
-                                            (startLoc1, endLoc1 )=startEndLoc toks e2
-
-                                        in (startLoc, endLoc1)
-
-        HsNegApp (SrcLoc _ _ r c) e     ->let (_,endLoc)=startEndLoc toks e
-                                          in ((r,c), endLoc)
-
-        HsLambda ps e                 ->let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsLambda" ps)  --ps can not be empty
-                                            (_,endLoc)  =startEndLoc toks e
-                                        in extendForwards toks startLoc endLoc isLambda
-
-        HsIf e1 e2 e3                 ->let (startLoc, _)=startEndLoc toks e1
-                                            (_, endLoc)=startEndLoc toks e3
-                                        in extendForwards toks  startLoc endLoc isIf
-
-        HsLet ds e                    ->if ds==[]
-                                          then
-                                            let  (startLoc,endLoc)=startEndLoc toks e
-                                            in extendForwards toks startLoc endLoc isLet
-                                          else
-                                            let  (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsLet" ds)
-                                                 (_,endLoc)  =startEndLoc toks e
-                                            in extendForwards toks startLoc endLoc isLet
-
-        HsCase e alts                 ->let (startLoc,_)=startEndLoc toks e
-                                            (_,endLoc)  =startEndLoc toks (glast "HsCase" alts) --alts can not be empty.
-                                        in extendForwards toks startLoc endLoc isCase
-
-        HsDo stmts                    ->let (startLoc, endLoc)=startEndLoc toks  stmts
-                                        in extendForwards toks startLoc endLoc isDo
-
-        HsTuple es                    ->if es==[]
-                                         then  (simpPos0,simpPos0)  --Empty tuple can cause problem.
-                                         else let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsTuple" es)
-                                                  (_,endLoc)  =startEndLoc toks (glast "startEndLoc:HsTuple" es)
-                                              in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket
-
-        HsList es                     ->if es==[]
-                                         then (simpPos0,simpPos0)  --Empty list can cause problem.
-                                         else let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsList" es)
-                                                  (_,endLoc)  =startEndLoc toks (glast "startEndLoc:HsList" es)
-                                              in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
-
-        HsParen e                     ->let (startLoc,(endLocR, endLocC))=startEndLoc toks  e
-                                        in extendBothSides toks startLoc (endLocR, endLocC) isOpenBracket isCloseBracket
-
-                                       --  in if expIsPNT e
---                                              then (startLoc, (endLocR, endLocC+1))
---                                              else extendBothSides toks startLoc (endLocR, endLocC) isOpenBracket isCloseBracket
---                                           where
---                                             expIsPNT (Exp (HsId (HsVar pnt)))=True
---                                             expIsPNT (Exp (HsParen e))=expIsPNT e
---                                             expIsPNT _ =False
-
-        HsLeftSection e op            ->let (startLoc,_)=startEndLoc toks e
-                                            (_, endLoc )=startEndLoc toks op
-                                        in (startLoc,endLoc)
-
-        HsRightSection op e           ->let (startLoc,_)=startEndLoc toks op
-                                            (_, endLoc )=startEndLoc toks op
-                                        in (startLoc,endLoc)
-
-        HsRecConstr loc i upds            ->let (startLoc,_)=startEndLoc toks i
-                                                (_,endLoc)  =startEndLoc toks (glast "startEndLoc:HsRecConstr" upds) --can 'upds' be empty?
-                                        in extendBackwards toks startLoc endLoc isCloseBrace
-
-        HsRecUpdate loc e upds            ->let (startLoc,_)=startEndLoc toks e
-                                                (_,endLoc)  =startEndLoc toks (glast "startEndLoc:HsRecUpdate" upds) --ditto
-                                        in extendBackwards toks startLoc endLoc isCloseBrace
-
-        HsEnumFrom e                  ->let (startLoc,endLoc)=startEndLoc toks e
-                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
-
-        HsEnumFromTo e1 e2            ->let (startLoc,_)=startEndLoc toks e1
-                                            (_,  endLoc)=startEndLoc toks e2
-                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
-
-        HsEnumFromThen e1 e2          ->let (startLoc,_)=startEndLoc toks e1
-                                            (_,  endLoc)=startEndLoc toks e2
-                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
-
-        HsEnumFromThenTo e1 e2 e3     ->let (startLoc,_)=startEndLoc toks e1
-                                            (_,  endLoc)=startEndLoc toks e3
-                                        in extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
-
-        HsListComp stmts              ->let (startLoc,endLoc)=startEndLoc toks stmts
-                                        in  extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
-
-        HsAsPat i e                   ->let (startLoc,_)=startEndLoc toks i
-                                            (_,endLoc)=  startEndLoc toks e
-                                        in (startLoc,endLoc)
-
-        HsIrrPat e                    ->let (startLoc,endLoc)=startEndLoc toks e
-                                        in extendForwards toks startLoc endLoc isIrrefute
-
-        HsWildCard                    ->(simpPos0,simpPos0)  -- wildcard can cause problem.
-
-
-        HsExpTypeSig loc e c t        ->let (startLoc,_)=startEndLoc toks e
-                                            (_, endLoc )=startEndLoc toks t
-                                        in (startLoc,endLoc)
-
-instance StartEndLoc HsTypeP where
-
-   startEndLoc toks (Typ p)=
-      case p of
-        HsTyFun  t1  t2       ->   let (startLoc,e)=startEndLoc toks t1
-                                       (_ , endLoc)=startEndLoc toks t2
-                                   in (startLoc,endLoc)
-        --HsTyTuple [t]         ->
-
-        HsTyApp  t1 t2        ->   let (startLoc,endLoc)=startEndLoc toks  t1
-                                       (startLoc1 , endLoc1)=startEndLoc toks  t2
-                                   in case t1 of
-                                        (Typ (HsTyCon t)) -> if (render.ppi) t == "[]"
-                                                   then extendBothSides toks startLoc1 endLoc1 isOpenSquareBracket isCloseSquareBracket
-                                                   else (startLoc, endLoc1)
-                                        _  -> (startLoc, endLoc1)
-
-        HsTyVar  i            ->   let (startLoc, endLoc) = startEndLoc toks i
-                                   in  extendBothSides' toks startLoc endLoc isOpenBracket isCloseBracket
-        HsTyCon  i            ->   let (startLoc, endLoc) = startEndLoc toks i
-                                   in if (render.ppi) i =="[]"
-                                        then extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
-                                        else extendBothSides' toks startLoc endLoc isOpenBracket isCloseBracket
-
-        HsTyForall   is ts t   ->   case is of
-                                     []  ->let (startLoc,endLoc)=startEndLoc toks t
-                                           in  extendForwards toks startLoc endLoc isForall
-
-                                     l  -> let (startLoc, _) =startEndLoc toks  $ ghead "StartEndLoc:HsTypeP" is
-                                               ( _ , endLoc) =startEndLoc toks t
-                                           in extendForwards toks startLoc endLoc isForall
-
-extendBothSides'  toks startLoc endLoc  forwardCondFun backwardCondFun
-       =let (toks1,toks2)=break (\t->tokenPos t==startLoc) toks
-            toks21=dropWhile (\t->tokenPos t<=endLoc) toks2
-            firstLoc=case (dropWhile isWhite (reverse toks1)) of
-                             [] -> startLoc    -- is this the correct default?
-                             ls  -> if (forwardCondFun.ghead "extendBothSides:lastTok") ls  then tokenPos (head ls)
-                                      else startLoc
-            lastLoc =case (dropWhile isWhite toks21) of
-                            [] ->endLoc   --is this a correct default?
-                            ls -> if (backwardCondFun.ghead "extendBothSides:lastTok") ls then tokenPos (head ls)
-                                   else endLoc
-        in (firstLoc, lastLoc)
-
-instance StartEndLoc HsPatP where
-
-  startEndLoc toks (Pat p)=
-     case p of
-       HsPId i                          ->startEndLoc toks i
-
-       HsPLit (SrcLoc _ _ r c) _        ->((r,c),(r,c))
-
-       HsPNeg (SrcLoc _ _  r c) p       ->((r,c),(r,c))
-
-       HsPInfixApp p1 op p2             ->let (startLoc,_)=startEndLoc toks  p1
-                                              (_ , endLoc)=startEndLoc toks p2
-                                          in (startLoc,endLoc)
-
-       HsPApp i ps                      ->let (startLoc,_)=startEndLoc toks  i
-                                              (_,endLoc)=startEndLoc toks (glast "StartEndLoc:HsPatP" ps)
-                                          in (startLoc,endLoc)
-
-       HsPTuple loc ps                  -> if ps==[]
-                                             then  (simpPos0,simpPos0)  -- ****Update this using locations****.
-                                             else let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsPTuple"  ps)
-                                                      (_,endLoc)=startEndLoc toks (glast "startEndLoc:HsPTuple" ps)
-                                                  in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket
-
-       HsPList loc ps                     ->if ps==[]
-                                            then (simpPos0,simpPos0)  -- ***Update this using locations*****
-                                            else let (startLoc,_)=startEndLoc toks (ghead "startEndLoc:HsPList" ps)
-                                                     (_, endLoc) =startEndLoc toks (glast "startEndLoc:HsPList" ps)
-                                            in  extendBothSides toks startLoc endLoc isOpenSquareBracket isCloseSquareBracket
-
-       HsPParen p                       ->let (startLoc,endLoc)=startEndLoc toks p
-                                          in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket
-
-       HsPRec i upds                    ->let (startLoc,_)=startEndLoc toks i
-                                              (_,endLoc)=startEndLoc toks (glast "startEndLoc:HsPRec" upds) --can upds be empty?
-                                          in extendBackwards toks startLoc endLoc isCloseBrace
-
-       HsPAsPat i p                     ->let (startLoc,_)=startEndLoc toks i
-                                              (_,endLoc)=startEndLoc toks p
-                                          in (startLoc,endLoc)
-
-       HsPIrrPat p                      ->let (startLoc,endLoc)=startEndLoc toks p
-                                          in extendForwards toks startLoc endLoc isIrrefute
-
-       HsPWildCard                       ->(simpPos0,simpPos0)  -- wildcard can  cause problem.
-
-nstance StartEndLoc [HsPatP] where
-
-   startEndLoc toks ps = let locs=(nub.(map (startEndLoc toks))) ps \\ [(simpPos0,simpPos0)]
-                         in if locs==[] then (simpPos0,simpPos0)
-                                        else let (startLoc,_)=ghead "StartEndLoc:HsPatP" locs
-                                                 (_,endLoc) =glast "StartEndLoc:HsPatP"  locs
-                                             in (startLoc,endLoc)
-
-
-instance StartEndLoc [HsExpP] where
-
-   startEndLoc toks es=let locs=(nub.(map (startEndLoc toks))) es \\ [(simpPos0,simpPos0)]
-                       in if locs==[] then (simpPos0,simpPos0)
-                                      else let (startLoc,_)=ghead "StartEndLoc:HsExp" locs
-                                               (_,endLoc) =glast "startEndLoc:HsExp" locs
-                                           in (startLoc,endLoc)
-instance StartEndLoc [HsDeclP] where
-  startEndLoc toks ds=if  ds==[] then (simpPos0,simpPos0)
-                                 else if length ds==1
-                                        then startEndLoc toks (ghead "StartEndLoc:[HsDeclP]" ds)
-                                        else  let (startLoc,_)=startEndLoc toks (ghead "StartEndLoc:[HsDeclP]" ds)
-                                                  (_,endLoc) =startEndLoc toks (glast  "StartEndLoc:[HsDeclP]" ds)
-                                              in (startLoc,endLoc)
-
-instance StartEndLoc HsMatchP where
-   startEndLoc toks t@(HsMatch loc i ps rhs ds)
-         =let (startLoc,_)=startEndLoc toks i
-              (_,endLoc)  =if ds==[] then startEndLoc toks rhs
-                                     else startEndLoc toks (glast "StartEndLoc:HsMatchP" ds)
-              locs = srcLocs t
-              (startLoc1,endLoc1) = (if startLoc == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
-                                                                   else startLoc,
-				     if endLoc == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
-                                                                         else endLoc)
-              toks1 = gtail "startEndLoc:HsMatchP" (dropWhile (\t->tokenPos t /= endLoc1) toks)
-              toks0 = getToks (startLoc1, endLoc1) toks
-	      endLoc2 = if toks1==[]
-		 	  then endLoc1
-			  else let toks2 = takeWhile (\t -> isSpecialTok t && needmore toks t ) toks1
-                               in if toks2 == [] || all (\t-> isWhiteSpace t ) toks2
-				       then endLoc1
-                                       else (tokenPos.glast "startEndLoc::HsMatchP") toks2
-
-          in (startLoc1, endLoc2)
-        where
-          isSpecialTok t = isWhiteSpace t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t
-                          || isCloseSquareBracket t
-          needmore toks t = case  isCloseBracket t of
-                              True -> let openBrackets = length $ filter isOpenBracket toks
-                                          closeBrackets = length $ filter isCloseBracket toks
-                                      in closeBrackets < openBrackets
-                              False -> case isCloseSquareBracket t of
-                                       True -> let openSqBrackets = length $ filter isOpenSquareBracket toks
-                                                   closeSqBrackets = length $ filter isCloseSquareBracket toks
-                                               in closeSqBrackets < openSqBrackets
-                                       false -> True
-
-
-instance StartEndLoc HsStmtP where      -- Bug fixed. 20/05/2004
-   startEndLoc toks stmts=let s=getStmtList  stmts
-                              locs = map (startEndLoc toks) s
-                              (startLocs, endLocs) =(sort (map fst locs), sort (map snd locs))
-                          in (ghead "StartEndLoc::HsStmtP" startLocs, glast "StartEndLoc::HsStmtP" endLocs)
-
-instance StartEndLoc (HsStmtAtom HsExpP HsPatP [HsDeclP])  where
-
-    startEndLoc toks stmt=
-      case stmt of
-           HsGeneratorAtom (SrcLoc _ _ r c) p e ->
-                                  let (startLoc,_)=startEndLoc toks p
-                                      (_,endLoc)  =startEndLoc toks e
-                                  in (startLoc,endLoc)
-           HsQualifierAtom e   -> startEndLoc toks e
-           HsLetStmtAtom ds    -> if ds==[]
-                                   then (simpPos0,simpPos0)
-                                   else let (startLoc,_)= startEndLoc toks (ghead "StartEndLoc:HsStmtAtom" ds)
-                                            (_,endLoc)  = startEndLoc toks (glast "StartEndLoc:HsStmtAtom" ds)
-                                        in (startLoc,endLoc)
-           HsLastAtom e        ->startEndLoc toks e
-
-instance (StartEndLoc i,StartEndLoc e)=>StartEndLoc (HsFieldI i e) where
-    startEndLoc toks (HsField i e)=let (startLoc,_)=startEndLoc toks i
-                                       (_,endLoc)=startEndLoc toks e
-                                   in (startLoc,endLoc)
-
-instance StartEndLoc HsAltP where
-    startEndLoc toks (HsAlt l p rhs ds)=let (startLoc,_)=startEndLoc toks p
-                                            (_,endLoc)=if ds==[] then startEndLoc toks rhs
-                                                                 else startEndLoc toks (glast "StartEndLoc:HsAltP" ds)
-                                        in (startLoc,endLoc)
-
-instance StartEndLoc RhsP where
-   startEndLoc toks (HsBody e)=startEndLoc toks e
-
-   startEndLoc toks (HsGuard es)=if es==[] then (simpPos0,simpPos0)
-                                           else let (_,e1,_)=ghead "StartEndLoc:RhsP" es
-                                                    (_,_,e2)=glast "StartEndLoc:RhsP" es
-                                                    (startLoc,_)=startEndLoc toks e1
-                                                    (_,endLoc)=startEndLoc toks e2
-                                                in extendForwards toks startLoc endLoc isBar
-
-instance StartEndLoc (HsIdentI PNT) where
-    startEndLoc toks ident =
-       case ident of
-           HsVar i  ->startEndLoc toks i
-           HsCon i  ->startEndLoc toks i
-
-instance StartEndLoc [PNT] where
-    startEndLoc toks pnts
-       = if pnts==[] then (simpPos0, simpPos0)
-           else let (startPos, _) = startEndLoc toks (head pnts)
-                    (_,      endPos) = startEndLoc toks (last pnts)
-                in (startPos, endPos)
-
-instance StartEndLoc (HsImportDeclI ModuleName PNT)  where
-     startEndLoc toks (HsImportDecl (SrcLoc _ _ row col) modName qual  as Nothing)
-        = let startPos=fst (startEndLoc toks modName)
-              endPos = if isJust as then snd (startEndLoc toks (fromJust as))
-                                    else snd (startEndLoc toks modName)
-          in extendForwards toks startPos endPos isImport
-
-     startEndLoc toks (HsImportDecl (SrcLoc _ _ row col) modName qual as (Just (_, ents)))
-         = let startPos = fst (startEndLoc toks modName)
-               endPos = if ents == [] then if isJust as then  snd (startEndLoc toks (fromJust as))
-                                                        else  snd (startEndLoc toks modName)
-                                      else snd (startEndLoc toks (glast "startEndLocImport" ents))
-           in extendBothSides toks startPos endPos isImport isCloseBracket
-
-
-instance StartEndLoc  [HsExportSpecI ModuleName PNT] where
-   startEndLoc toks es
-     = if es == [] then (simpPos0, simpPos0)
-                   else let (startLoc, _) = startEndLoc toks $ head es
-                            (_, endLoc)   = startEndLoc toks $ last es
-                        in (startLoc, endLoc)
-                        -- in extendBothSides toks startLoc endLoc isOpenBracket isCloseBracket
-
-
-instance StartEndLoc (HsExportSpecI ModuleName PNT) where
-     startEndLoc toks (EntE ent) =startEndLoc toks ent
-
-     startEndLoc toks (ModuleE moduleName) = let (startPos, endPos) = startEndLoc toks moduleName
-                                             in extendForwards toks startPos endPos isModule
-
-
-
-instance StartEndLoc(EntSpec PNT) where
-      startEndLoc toks (Var i)=startEndLoc toks i   --- x (a variable identifier)
-
-      startEndLoc toks (Abs i) =startEndLoc toks i   -- T, C
-
-      startEndLoc toks (AllSubs i) =let (startPos, endPos) =startEndLoc toks i -- T(..), C(..)
-                                    in extendBackwards toks startPos endPos isCloseBracket
-      startEndLoc toks (ListSubs i ents)= let (startPos, _) = startEndLoc toks i --T (C_1, ...,C_n, f1,...f_n)
-                                              (_, endPos)   = startEndLoc toks (glast "startEnPosListSubs" ents)
-                                          in extendBackwards toks startPos endPos isCloseBracket
-
-instance StartEndLoc ModuleName where
-   startEndLoc toks (SN modName (SrcLoc _ _ row col)) = ((row,col), (row,col))
-
-instance StartEndLoc [EntSpec PNT] where
-      startEndLoc toks ents
-        = if ents==[] then (simpPos0,simpPos0)
-                      else let (startPos, _)=startEndLoc toks $ head ents
-                               (_,  endPos) =startEndLoc toks $ last ents
-                           in (startPos,endPos)
-                --         in extendBothSides toks startPos endPos isHiding isCloseBracket
-
-instance StartEndLoc PNT where
-     startEndLoc toks pnt =
-        case pnt of
-          PNT pn  _ (N (Just (SrcLoc _ _ row col)))->((row,col),(row,col))
-          _                                        ->(simpPos0,simpPos0)  {-Shouldn't cause any problems here, as in a normal
-                                                                            AST, every PNT has a source location. -}
-
-
-instance (Eq i, Eq t, StartEndLoc i, StartEndLoc t,StartEndLoc [i]) =>StartEndLoc (HsConDeclI i t c) where
-   startEndLoc toks (HsConDecl _ is c i ds)
-      = let (startLoc, _) = startEndLoc toks is
-            (_, endLoc)   = if ds==[] then startEndLoc toks i
-                                      else startEndLoc toks (last ds)
-        in (startLoc, endLoc)
-
-   startEndLoc toks (HsRecDecl _ is c i ds)
-      = let (startLoc, _) = startEndLoc toks is
-            (_, endLoc)   = if ds==[] then startEndLoc toks i
-                                      else startEndLoc toks (last ds)
-        in (startLoc, endLoc)
-
-instance (StartEndLoc t)=>StartEndLoc (HsBangType t) where
-   startEndLoc toks (HsBangedType t) = startEndLoc toks t
-
-   startEndLoc toks (HsUnBangedType t) = startEndLoc toks t
-
-instance (StartEndLoc t, StartEndLoc [i]) => StartEndLoc ([i], HsBangType t) where
-
-   startEndLoc toks (x,y)
-     = let (startLoc, endLoc) = startEndLoc toks y
-         in  extendBackwards toks startLoc endLoc isCloseBrace
-
-
-
-instance StartEndLoc HsDeclP where
-
-   startEndLoc toks (Dec (HsTypeDecl (SrcLoc _ _ r c) tp t))
-      = let (startLoc, _) = startEndLoc toks tp
-            (_ , endLoc)  = startEndLoc toks t
-        in extendForwards toks startLoc endLoc isType
-
-   startEndLoc toks (Dec (HsDataDecl loc c tp decls is))
-        = let (startLoc, _) = startEndLoc toks tp
-              (_, endLoc)  = if is == [] then startEndLoc toks (glast "StartEndLoc:HsDeclP1" decls)
-                                        else startEndLoc toks is
-          in extendForwards toks startLoc endLoc isData
-
-   startEndLoc toks (Dec (HsNewTypeDecl loc c tp decls is))
-        = let (startLoc, _) = startEndLoc toks tp
-              (_, endLoc) = if is == [] then startEndLoc toks decls
-                                        else startEndLoc toks is
-          in extendForwards toks startLoc endLoc isNewtype
-
-   startEndLoc toks (Dec (HsDefaultDecl _ ts))
-      = let (startLoc, _) = startEndLoc toks (head ts)
-            (_ , endLoc) = startEndLoc toks (last ts)
-        in extendForwards toks startLoc endLoc isDefault
-
-   startEndLoc toks (Dec (HsInfixDecl _ _ is))
-      = let (startLoc, _) = startEndLoc toks (head is)
-            (_, endLoc)   = startEndLoc toks (last is)
-        in extendForwards toks startLoc endLoc isFixty
-
-   startEndLoc toks d@(Dec (HsFunBind _ ms))
-      = let (startLoc, _) = startEndLoc toks (ghead "startEndLoc:HsDeclP3" ms)
-            (_,   endLoc) = if ms == [] then (simpPos0, simpPos0)
-                                        else startEndLoc toks (glast "startEndLoc:HsDeclP4" ms)
-        in (startLoc, endLoc)
-   startEndLoc toks t@(Dec (HsPatBind _  p rhs ds))
-       = let (startLoc, _) = startEndLoc toks p
-             (_, endLoc)   = if ds ==[] then startEndLoc toks rhs
-                                        else startEndLoc toks (glast "startEndLoc:HsDeclP5" ds)
-	     locs = srcLocs t
-             (startLoc1,endLoc1) = (if startLoc == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
-                                                                   else startLoc,
-				    if endLoc == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
-                                                                         else endLoc)
-             toks1 = gtail "startEndLoc:HsPatBind" (dropWhile (\t->tokenPos t /= endLoc1) toks)
-	     endLoc2 = if toks1==[]
-		       then endLoc1
-                       else let toks2 = takeWhile (\t -> isSpecialTok t && needmore toks t) toks1
-                            in if toks2 == [] || all (\t-> isWhiteSpace t) toks2
-			       then endLoc1
-                               else (tokenPos.glast "startEndLoc::HsMatchP") toks2
-	 in (startLoc1, endLoc2)
-    where
-        isSpecialTok t = isWhiteSpace t  || isCloseBracket t || isOpenBracket t || isOpenSquareBracket t
-                      || isCloseSquareBracket t
-        needmore toks t = case  isCloseBracket t of
-                            True -> let openBrackets = length $ filter isOpenBracket toks
-                                        closeBrackets = length $ filter isCloseBracket toks
-                                    in  closeBrackets < openBrackets
-                            False -> case isCloseSquareBracket t of
-                                      True -> let openSqBrackets = length $ filter isOpenSquareBracket toks
-                                                  closeSqBrackets = length $ filter isCloseSquareBracket toks
-                                              in  closeSqBrackets < openSqBrackets
-                                      False -> True
-
-
-
-
-   startEndLoc toks (Dec (HsTypeSig _ is c t))
-      = let (startLoc, _) = startEndLoc toks (ghead "startEndLoc:HsDeclP6" is)
-            (_, endLoc)   = startEndLoc toks t
-        in (startLoc, endLoc)
-
-   startEndLoc toks decl@(Dec (HsClassDecl loc c tp funDeps  ds))
-      = let locs = srcLocs decl
-            (startLoc, endLoc)
-              = if locs == [] then (simpPos0, simpPos0)
-                 else (head locs, last locs)
-        in extendForwards toks startLoc endLoc isClass
-
-   startEndLoc toks decl@(Dec (HsInstDecl loc i c t ds))
-     = let locs = srcLocs decl
-           (startLoc, endLoc)
-              = if locs == [] then (simpPos0, simpPos0)
-                 else (head locs, last locs)
-        in extendForwards toks startLoc endLoc isInstance
-
-
-{-
-   startEndLoc toks (Dec (HsPrimitiveTypeDecl _ c tp))
-     = let (startLoc, endLoc) = startEndLoc toks tp
-       in extendForward toks startLoc endLoc isData
-
-
-   startEndLoc toks (Dec (HsPrimitiveBind _ i t))
-     = let (startLoc, _) = startEndLoc toks i
-           (_, endLoc)   = stratEndLoc toks t
-       in  extendForward toks startLoc endLoc isPrimitive
--}
-
----------------End of the class StartEndLoc----------------------------------------
--}
-
 -- ---------------------------------------------------------------------
 
--- | Get the start and end location of the given AST phrase in the
--- original source
-getStartEndLoc::(SYB.Data t)=>t ->(SimpPos,SimpPos)
-getStartEndLoc t
-  = let (startPos',endPos') = (simpPos0,simpPos0)
-        locs = srcLocs t
-        (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
-                                                                   else startPos',
-                             if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
-                                                                  else endPos')
-    in (startPos, endPos)
-{-
-getStartEndLoc t
-  = let (startPos',endPos') = startEndLocGhc t
-        locs = srcLocs t
-        (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
-                                                                   else startPos',
-                             if endPos' == simpPos0 && locs /= [] then glast "getStartEndLoc" locs
-                                                                  else endPos')
-    in (startPos, endPos)
--}
+startEndLocGhc :: GHC.Located b -> (SimpPos,SimpPos)
+startEndLocGhc t@(GHC.L l _) =
+  case l of
+    (GHC.RealSrcSpan ss) ->
+      ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
+       (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
+    (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
 
+-- ---------------------------------------------------------------------
 
 getStartEndLoc2::(SYB.Data t)=>[PosToken]->[GHC.GenLocated GHC.SrcSpan t] ->(SimpPos,SimpPos)
 getStartEndLoc2 toks ts
@@ -1663,16 +976,6 @@ getStartEndLoc toks t
                                                                   else endPos')
     in (startPos, endPos)
 -}
-
--- ---------------------------------------------------------------------
-
-startEndLocGhc :: GHC.Located b -> (SimpPos,SimpPos)
-startEndLocGhc t@(GHC.L l _) =
-  case l of
-    (GHC.RealSrcSpan ss) ->
-      ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
-       (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
-    (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
 
 -- ---------------------------------------------------------------------
 
