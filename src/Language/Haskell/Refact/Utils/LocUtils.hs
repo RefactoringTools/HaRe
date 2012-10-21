@@ -38,6 +38,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -- , getToks
                      , replaceToks -- ,deleteToks, doRmWhites,doAddWhites
                      , srcLocs
+                     , getSrcSpan
                      -- , ghcSrcLocs -- Test version
                      , getGhcLoc
                      , getGhcLocEnd
@@ -84,8 +85,9 @@ import qualified StringBuffer  as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.TypeSyn
 
 import Data.Maybe
 import Data.List
@@ -831,6 +833,36 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
 
          literalInPat :: GHC.LPat GHC.Name -> [SimpPos]
          literalInPat (GHC.L l _) = [getGhcLoc l]
+
+-- ---------------------------------------------------------------------
+
+-- | Get the first SrcSpan found, in top down traversal
+getSrcSpan::(SYB.Data t) => t -> Maybe GHC.SrcSpan
+getSrcSpan t = res t
+  where
+    res = somethingStaged SYB.Renamer Nothing
+            (Nothing 
+                    `SYB.mkQ` bind
+                    `SYB.extQ` pnt
+                    `SYB.extQ` sn
+                    `SYB.extQ` literalInExp
+                    `SYB.extQ` literalInPat)
+
+    bind :: GHC.GenLocated GHC.SrcSpan (GHC.HsBind GHC.Name) -> Maybe GHC.SrcSpan
+    bind (GHC.L l _)              = Just l
+
+    pnt :: GHC.GenLocated GHC.SrcSpan GHC.Name -> Maybe GHC.SrcSpan
+    pnt (GHC.L l _)              = Just l
+
+    sn :: GHC.HsModule GHC.RdrName -> Maybe GHC.SrcSpan
+    sn (GHC.HsModule (Just (GHC.L l _)) _ _ _ _ _) = Just l
+    sn _ = Nothing
+
+    literalInExp :: GHC.LHsExpr GHC.Name -> Maybe GHC.SrcSpan
+    literalInExp (GHC.L l _) = Just l
+
+    literalInPat :: GHC.LPat GHC.Name -> Maybe GHC.SrcSpan
+    literalInPat (GHC.L l _) = Just l
 
 
 getGhcLoc :: GHC.SrcSpan -> (Int, Int)

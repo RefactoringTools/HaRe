@@ -61,7 +61,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     {- ,isComplexPatBind -},isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl,isDirectRecursiveDef
     -- ,usedWithoutQual,canBeQualified, hasFreeVars,isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
-    {-,findPNs -}, findEntity
+    {-,findPNs -}, findEntity, findEntity'
     ,sameOccurrence
     ,defines, definesP -- ,definesTypeSig, isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
@@ -658,8 +658,24 @@ findEntity a b = fromMaybe False res
 
     worker :: (SYB.Typeable b, SYB.Data b) => b -> Maybe Bool
     worker b = if SYB.typeOf a == SYB.typeOf b
-                 then Just (getStartEndLoc b == getStartEndLoc a)
+                 -- then Just (getStartEndLoc b == getStartEndLoc a)
+                 then Just True -- ++AZ++ test for now
                  else Nothing
+
+findEntity':: (SYB.Data a, SYB.Data b)
+              => a -> b -> Maybe (SimpPos,SimpPos)
+findEntity' a b = res
+  where
+    -- ++AZ++ do a generic traversal, and see if it matches.
+    res = somethingStaged SYB.Parser Nothing worker b
+
+    worker :: (SYB.Typeable c,SYB.Data c) 
+           => c -> Maybe (SimpPos,SimpPos)
+    worker b = if SYB.typeOf a == SYB.typeOf b
+                 -- then Just (getStartEndLoc b == getStartEndLoc a)
+                 then Just (getStartEndLoc b)
+                 else Nothing
+
 {-
     worker :: ( SYB.Typeable a{-, SYB.Typeable b-})
       => Maybe Bool
@@ -671,22 +687,6 @@ findEntity a b = fromMaybe False res
                Nothing -> r
 -}
 
-{-
--- | Make a generic query;
---   start from a type-specific case;
---   return a constant otherwise
---
-mkQ :: ( Typeable a
-       , Typeable b
-       )
-    => r
-    -> (b -> r)
-    -> a
-    -> r
-(r `mkQ` br) a = case cast a of
-                        Just b  -> br b
-                        Nothing -> r
--}
 
 
 ------------------------------------------------------------------------

@@ -5,6 +5,7 @@ import           Test.QuickCheck
 
 import           TestUtils
 
+import qualified Bag        as GHC
 import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
@@ -105,6 +106,16 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "getSrcSpan" $ do
+    it "Finds the top SrcSpan" $ do
+      ((_,Just renamed,_parsed), toks) <- parsedFileDd1Ghc
+      let declsr = GHC.bagToList $ getDecls renamed
+          ss = getSrcSpan declsr
+      (GHC.showPpr declsr) `shouldBe` "[DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. 15],\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+      (GHC.showPpr ss) `shouldBe` "Just test/testdata/DupDef/Dd1.hs:14:1-38"
+
+  -- -------------------------------------------------------------------
+
   describe "foo" $ do
     it "needs a test or two" $ do
       pending "write this test"
@@ -141,6 +152,8 @@ parsedFileNoMod = parsedFileGhc fileName
   where
     fileName = "./test/testdata/NoMod.hs"
 
+parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
+parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 
 comp :: RefactGhc String
 comp = do

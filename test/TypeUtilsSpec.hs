@@ -474,6 +474,30 @@ spec = do
       (GHC.showPpr nb) `shouldBe` "[DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. 15],\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n bar2_H2 x = DupDef.Dd1.c GHC.Num.* x]"
 
 
+  -- ---------------------------------------------
+
+  describe "findEntity" $ do
+    it "Returns true if a syntax phrase is part of another" $ do
+      let
+        comp = do
+
+         ((_,Just parentr,_parsed),_toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
+         let (Just (ln@(GHC.L _ n))) = mn
+
+         let declsr = GHC.bagToList $ getDecls parentr
+             duplicatedDecls = definingDeclsNames [n] declsr True False
+
+             -- res = findEntity ln duplicatedDecls
+             res = findEntity' ln duplicatedDecls
+
+         return (res,duplicatedDecls,ln)
+      ((r,d,l),_s) <- runRefactGhcState comp
+      (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+      -- (show l) `shouldBe` "foo"
+      (show r) `shouldBe` "foo"
+
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 

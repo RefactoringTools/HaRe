@@ -51,7 +51,7 @@ runRefactGhcState paramcomp = do
         , rsStreamModified = False -- :: Bool
         -- , rsPosition = (-1,-1) -- :: (Int,Int)
         }
-  (r,s) <- runRefactGhc paramcomp initialState
+  (r,s) <- runRefactGhc (initGhcSession >>paramcomp) initialState
   return (r,s)
 
 -- EOF

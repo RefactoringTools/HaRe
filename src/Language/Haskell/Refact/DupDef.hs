@@ -80,14 +80,8 @@ doDuplicating pn newName (inscopes,Just renamed,parsed) =
         -- dupInMod (parsed@(HsModule loc name exps imps ds):: HsModuleP)
         dupInMod :: (GHC.HsGroup GHC.Name)-> RefactGhc (GHC.HsGroup GHC.Name)
         dupInMod group
-          -- |findFunOrPatBind pn ds /= [] = doDuplicating' parsed pn
           | not $ emptyList (findFunOrPatBind pn (GHC.hs_valds group)) = doDuplicating' inscopes renamed pn
         dupInMod group = return group
-        -- dupInMod :: (GHC.Located (GHC.HsModule GHC.RdrName))-> RefactGhc (GHC.Located (GHC.HsModule GHC.RdrName))
-        -- dupInMod (parsed@(GHC.L l (GHC.HsModule name exps imps ds _ _)))
-        --   -- |findFunOrPatBind pn ds /= [] = doDuplicating' parsed pn
-        --   | length (findFunOrPatBind pn ds) == 0 = doDuplicating' inscopes renamed parsed pn
-        -- dupInMod parsed = return parsed
 
 {-
 doDuplicating pn newName (inscps, parsed, tokList)
@@ -159,6 +153,12 @@ doDuplicating pn newName (inscps, parsed, tokList)
                 newNameGhc <- mkNewName newName
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow    
                 nameAlreadyInScope <- isInScopeAndUnqualifiedGhc newName
+
+                -- liftIO $ putStrLn ("DupDef: nameAlreadyInScope =" ++ (show nameAlreadyInScope)) -- ++AZ++ debug
+                liftIO $ putStrLn ("DupDef: ln =" ++ (show ln)) -- ++AZ++ debug
+                -- liftIO $ putStrLn ("DupDef: duplicatedDecls =" ++ (GHC.showPpr duplicatedDecls)) -- ++AZ++ debug
+                liftIO $ putStrLn ("DupDef: duplicatedDecls =" ++ (SYB.showData SYB.Renamer 0 $ duplicatedDecls)) -- ++AZ++ debug
+
                 -- if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity ln duplicatedDecls) 
                 if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls) 
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
