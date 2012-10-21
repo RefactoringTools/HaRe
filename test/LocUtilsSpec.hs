@@ -32,18 +32,22 @@ spec = do
 
   describe "startEndLocIncComments" $ do
     it "get start&end loc, including leading and trailing comments" $ do
-      ((_,_,parsed), toks) <- parsedFileDeclareGhc
-      let declsp = getDeclsP parsed
-      let decls = filter isFunOrPatBindP declsp
+      ((_,Just renamed,_), toks) <- parsedFileDeclareGhc
 
-      let decl = head $ drop 4 decls
+      let declsr = GHC.bagToList $ getDecls renamed
+
+      let decls = filter isFunOrPatBindR declsr
+
+      let decl = head $ drop 3 decls
       let (startPos,endPos) = startEndLocIncComments toks decl
 
-      (GHC.showPpr decl) `shouldBe` "unD (B y) = y"
+      -- (GHC.showPpr decls) `shouldBe` "unD (B y) = y"
 
-      (show $ getStartEndLoc decl) `shouldBe` "((19,1),(19,13))"
+      (GHC.showPpr decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
-      (show (startPos,endPos)) `shouldBe` "((18,1),(20,1))"
+      (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
+
+      (show (startPos,endPos)) `shouldBe` "((20,1),(22,1))"
 
   -- -------------------------------------------------------------------
 

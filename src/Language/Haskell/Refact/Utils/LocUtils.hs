@@ -165,6 +165,7 @@ tokenCol (GHC.L l _,_) = c where (_,c) = getGhcLoc l
 
 tokenRow (GHC.L l _,_) = r where (r,_) = getGhcLoc l
 
+tokenPos :: (GHC.GenLocated GHC.SrcSpan t1, t) -> SimpPos
 tokenPos (GHC.L l _,_)     = getGhcLoc l
 
 tokenCon (_,s)     = s
@@ -455,13 +456,7 @@ addLocInfo (decl, toks)
 
 -}
 
-{- Old
-groupTokensByLine [] = []
-groupTokensByLine xs =let (xs', xs'') = break hasNewLn xs
-                      in if xs''==[] then [xs']
-                          else (xs'++ [ghead "groupTokensByLine" xs''])
-                                : groupTokensByLine (gtail "groupTokensByLine" xs'')
--}
+-- ---------------------------------------------------------------------
 
 groupTokensByLine :: [PosToken] -> [[PosToken]]
 groupTokensByLine [] = []
@@ -474,6 +469,16 @@ groupTokensByLine (xs) = let x = head xs
                       -- in if xs''==[] then [xs']
                       --     else (xs'++ [ghead "groupTokensByLine" xs''])
                       --           : groupTokensByLine (gtail "groupTokensByLine" xs'')
+
+{- Old
+groupTokensByLine [] = []
+groupTokensByLine xs =let (xs', xs'') = break hasNewLn xs
+                      in if xs''==[] then [xs']
+                          else (xs'++ [ghead "groupTokensByLine" xs''])
+                                : groupTokensByLine (gtail "groupTokensByLine" xs'')
+-}
+
+-- ---------------------------------------------------------------------
 
 --Give a token stream covering multi-lines, calculate the length of the last line
 -- AZ: should be the last token start col, plus length of token.
@@ -1056,7 +1061,7 @@ startEndLocIncComments toks t
 -- toks12' : just the blank lines
 
 -- TODO: ++AZ++ simplify this, the GHC token stream makes it easier
-  =let (startLoc,endLoc)=getStartEndLoc t
+  =let (startLoc,endLoc) = getStartEndLoc t
        (toks11,toks12)= let (ts1,ts2)    = break (\tok->tokenPos tok == startLoc) toks
                             -- (ts11, ts12) = break hasNewLn (reverse ts1)
                             (ts11, ts12) = break (\tok->tokenRow tok == fst startLoc) (reverse ts1)
@@ -1065,11 +1070,11 @@ startEndLocIncComments toks t
        startLoc'=
          if all isWhite toks12'
            then  -- group the toks1 according to lines in a reverse order.
-                 let  groupedToks=reverse $ groupTokensByLine toks11
+                 let  groupedToks = reverse $ groupTokensByLine toks11
                       -- empty lines right before t
                       -- emptyLns=takeWhile (all (\t->isWhiteSpace t || isNewLn t )) groupedToks
                       emptyLns=[] -- ++AZ++
-                      lastComment=if length emptyLns <=1  -- get the comment if there is any
+                      lastComment=if length emptyLns <= 1  -- get the comment if there is any
                                     then takeWhile (all isWhite) $ takeWhile (any isComment) $ groupedToks -- dropWhile
                                              --  (all (\t->isWhiteSpace t || isNewLn t)) groupedToks
                                     else [] -- no comment
@@ -1083,9 +1088,9 @@ startEndLocIncComments toks t
                        else tokenPos (ghead "startEndLocIncComments"  toks1')
            else startLoc
        -- tokens after t
-       toks2=gtail "startEndLocIncComments1"  $ dropWhile (\t->tokenPos t/=endLoc) toks
+       toks2 = gtail "startEndLocIncComments1" $ dropWhile (\tok->(tokenPos tok) < endLoc) toks
        -- toks21 are those tokens that are in the same line with the last line of t
-       (toks21,tok22)= let (ts11, ts12) = break hasNewLn toks2
+       (toks21,_tok22)= let (ts11, ts12) = break hasNewLn toks2
                        in (ts11 ++ if (emptyList ts12) then [] else [ghead "startEndLocIncComments" ts12],
                                                              gtail "startEndLocIncComments2" ts12)
     in if (emptyList toks21) then (startLoc',endLoc)  -- no following comments.

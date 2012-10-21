@@ -157,7 +157,8 @@ doDuplicating pn newName (inscps, parsed, tokList)
                 -- liftIO $ putStrLn ("DupDef: nameAlreadyInScope =" ++ (show nameAlreadyInScope)) -- ++AZ++ debug
                 liftIO $ putStrLn ("DupDef: ln =" ++ (show ln)) -- ++AZ++ debug
                 -- liftIO $ putStrLn ("DupDef: duplicatedDecls =" ++ (GHC.showPpr duplicatedDecls)) -- ++AZ++ debug
-                liftIO $ putStrLn ("DupDef: duplicatedDecls =" ++ (SYB.showData SYB.Renamer 0 $ duplicatedDecls)) -- ++AZ++ debug
+                -- liftIO $ putStrLn ("DupDef: duplicatedDecls =" ++ (SYB.showData SYB.Renamer 0 $ duplicatedDecls)) -- ++AZ++ debug
+                -- liftIO $ putStrLn ("DupDef: declsr =" ++ (SYB.showData SYB.Renamer 0 $ declsr)) -- ++AZ++ debug
 
                 -- if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity ln duplicatedDecls) 
                 if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls) 

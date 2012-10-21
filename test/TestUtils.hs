@@ -2,6 +2,7 @@ module TestUtils
        ( compareFiles
        , parsedFileGhc
        , runRefactGhcState
+       , catchException
        ) where
 
 
@@ -13,6 +14,7 @@ import qualified SrcLoc     as GHC
 
 import Control.Monad.State
 import Data.Algorithm.Diff
+import Exception
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -53,6 +55,16 @@ runRefactGhcState paramcomp = do
         }
   (r,s) <- runRefactGhc (initGhcSession >>paramcomp) initialState
   return (r,s)
+
+-- ---------------------------------------------------------------------
+
+catchException :: (IO t) -> IO (Maybe String)
+catchException f = do
+  res <- handle handler (f >> return Nothing)
+  return res
+  where
+    handler:: SomeException -> IO (Maybe String)
+    handler e = return (Just (show e))
 
 -- EOF
   

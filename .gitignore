@@ -37,3 +37,5 @@ testing/addCon/Case2.hs.temp.hs
 /spec.tix
 /hspec-failures
 /test/testdata/DupDef/Dd1.hs.tokens
+/test/testdata/Case/B.hs.tokens
+/test/testdata/DupDef/Dd1.hs.refactored

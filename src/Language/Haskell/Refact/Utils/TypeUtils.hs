@@ -243,12 +243,6 @@ isInScopeAndUnqualifiedGhc n = do
   nameInfo <- mapM GHC.lookupName names
   let nameList = filter isId $ catMaybes nameInfo
   return $ nameList /= []
-  -- case namesOr of
-  --   Left e -> return False
-  --   Right names -> do
-  --     nameInfo <- mapM GHC.lookupName names
-  --     let nameList = filter isId $ catMaybes nameInfo
-  --     return $ nameList /= []
 
   where
     isId (GHC.AnId _) = True
@@ -1725,7 +1719,7 @@ duplicateDecl decls n newFunName
             binding and its following white tokens before the 'new line' token.
             (some times the function may be followed by comments) -}
           toks1 = ts1++[ghead "duplicateDecl" ts2]
-                    where (ts1, ts2) = break (\t -> tokenPos t==endPos) toks
+                    where (ts1, ts2) = break (\t -> (tokenPos t) > endPos) toks
           --take those token after (and include) the function binding
           toks2 = dropWhile (\t->tokenPos t/=startPos {- || isNewLn t -}) toks
       -- put((toks2,modified), others)
