@@ -1019,6 +1019,11 @@ getDecls renamed@(group, _, _, _) = case (GHC.hs_valds group) of
 getDeclsP :: GHC.ParsedSource -> [HsDeclP]
 getDeclsP parsed@(GHC.L _ hsMod) = GHC.hsmodDecls hsMod
 
+getValBinds :: GHC.HsValBinds t -> [GHC.LHsBind t]
+getValBinds binds = case binds of
+    GHC.ValBindsIn   binds _sigs -> GHC.bagToList binds
+    GHC.ValBindsOut rbinds _sigs -> GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
+
 -- This class replaces the HsDecls one
 class (SYB.Data t) => HsBinds t where
 
@@ -1029,14 +1034,30 @@ class (SYB.Data t) => HsBinds t where
     -- | Replace the directly enclosed declaration list by the given
     --  declaration list. Note: This function does not modify the
     --  token stream.
-    -- replaceBinds :: t -> GHC.LhsBind GHC.Name -> t 
+    replaceBinds :: t -> [GHC.LHsBind GHC.Name] -> t 
 
     -- | Return True if the specified identifier is declared in the
     -- given syntax phrase.
     isDeclaredIn :: GHC.Name -> t -> Bool
 
+instance HsBinds (GHC.HsGroup GHC.Name) where
+
+  hsBinds grp = getValBinds (GHC.hs_valds grp) 
 
 
+instance HsBinds (GHC.Match GHC.Name) where
+
+  -- hsBinds :: GHC.RenamedSource -> GHC.LHsBinds GHC.Name
+  hsBinds (GHC.Match _ _ (GHC.GRHSs _ binds)) = case binds of
+    GHC.HsValBinds b    -> getValBinds b
+    GHC.HsIPBinds _     -> []	 
+    GHC.EmptyLocalBinds -> []
+
+  replaceBinds (GHC.Match p t (GHC.GRHSs rhs binds)) newBinds 
+    -- = (GHC.Match p t (GHC.GRHSs rhs binds'))
+    = (GHC.Match p t (GHC.GRHSs rhs binds))
+      where
+        binds' = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag newBinds) []))
 
 {-
 instance HsDecls HsMatchP where
@@ -1743,6 +1764,9 @@ duplicateDecl decls n newFunName
           --take those token after (and include) the function binding
           toks2 = dropWhile (\t->tokenPos t/=startPos {- || isNewLn t -}) toks
       -- put((toks2,modified), others)
+
+      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:" ++ (show (startPos,endPos))) -- ++AZ++ debug
+      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:toks1=" ++ (showToks toks1)) -- ++AZ++ debug
       put $ others {rsTokenStream = toks2, rsStreamModified = True }
 
       --rename the function name to the new name, and update token
@@ -1753,6 +1777,7 @@ duplicateDecl decls n newFunName
       -- Get the updated token stream
       st <- get
       let toks2 = rsTokenStream st
+      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:toks2=" ++ (showToks toks2)) -- ++AZ++ debug
 
       let offset = getOffset toks (fst (getStartEndLoc funBinding))
           newLineTok = if ((not (emptyList toks1)) {-&& endsWithNewLn (glast "doDuplicating" toks1 -})

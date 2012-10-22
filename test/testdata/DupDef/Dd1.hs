@@ -15,4 +15,8 @@ tup@(h,t) = head $ zip [1..10] [3..15]
 
 data D = A | B String | C
 
+ff y = y + zz
+  where
+    zz = 1
+
 

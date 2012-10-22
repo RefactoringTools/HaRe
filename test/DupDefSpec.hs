@@ -47,6 +47,12 @@ spec = do
                           "./test/testdata/DupDef/Dd1.hs.expected"
      diff `shouldBe` []
 
+    it "duplicates a definition in a match" $ do
+     duplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","20","5"]
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+                          "./test/testdata/DupDef/Dd1.hs.expected.mm"
+     diff `shouldBe` []
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 

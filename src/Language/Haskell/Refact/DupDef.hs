@@ -75,26 +75,20 @@ doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
 doDuplicating pn newName (inscopes,Just renamed,parsed) =
 
    everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
-                                  -- SYB.extM dupInMatch
+                                  -- `SYB.extM` dupInMatch
                                  ) renamed
         where
         --1. The definition to be duplicated is at top level.
-        -- dupInMod (parsed@(HsModule loc name exps imps ds):: HsModuleP)
-        dupInMod :: (GHC.HsGroup GHC.Name)-> RefactGhc (GHC.HsGroup GHC.Name)
-        dupInMod group
-          | not $ emptyList (findFunOrPatBind pn (GHC.hs_valds group)) = doDuplicating' inscopes renamed pn
-        dupInMod group = return group
+        -- dupInMod :: (GHC.HsGroup GHC.Name)-> RefactGhc (GHC.HsGroup GHC.Name)
+        dupInMod (grp :: (GHC.HsGroup GHC.Name))
+          | not $ emptyList (findFunOrPatBind pn (GHC.hs_valds grp)) = doDuplicating' inscopes grp pn
+        dupInMod grp = return grp
 
         --2. The definition to be duplicated is a local declaration in a match
-        --  Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
-        {-
         dupInMatch (match@(GHC.Match pats _typ rhs)::GHC.Match GHC.Name)
           | not $ emptyList (findFunOrPatBind pn rhs) = doDuplicating' inscopes match pn
         dupInMatch match = return match
-        -}
-        -- dupInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-        --   |findFunOrPatBind pn ds/=[]=doDuplicating' inscps match pn
-        -- dupInMatch _ =mzero
+
 
 {-
 doDuplicating pn newName (inscps, parsed, tokList)
@@ -146,12 +140,13 @@ doDuplicating pn newName (inscps, parsed, tokList)
         findFunOrPatBind :: (SYB.Data t) => GHC.Located GHC.Name -> t -> [GHC.LHsBind GHC.Name]
         findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
 
-        doDuplicating' :: InScopes -> GHC.RenamedSource -> GHC.Located GHC.Name
-                       -> RefactGhc (GHC.HsGroup GHC.Name)
-        doDuplicating' inscps parentr@(g,_is,_es,_ds) ln@(GHC.L _ n)
+        doDuplicating' :: (HsBinds t) => InScopes -> t -> GHC.Located GHC.Name
+                       -> RefactGhc (t)
+        doDuplicating' inscps parentr ln@(GHC.L _ n)
            = do let -- decls           = hsDecls parent -- TODO: reinstate this
-                    declsr = GHC.bagToList $ getDecls parentr
-                    -- declsp = getDeclsP parentp
+                    -- declsr = GHC.bagToList $ getDecls parentr
+                    declsr = hsBinds parentr
+
                     duplicatedDecls = definingDeclsNames [n] declsr True False
                     -- (after,before)  = break (definesP pn) (reverse declsp)
 
@@ -178,10 +173,14 @@ doDuplicating pn newName (inscps, parsed, tokList)
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
                    else do newBinding <- duplicateDecl declsr n newNameGhc
+                           -- liftIO $ putStrLn ("DupDef: newBinding =" ++ (GHC.showPpr newBinding)) -- ++AZ++ debug
+                           -- liftIO $ putStrLn ("DupDef: declsr =" ++ (GHC.showPpr declsr)) -- ++AZ++ debu
+
                            -- let newDecls = replaceDecls declsr (reverse before++ newBinding++ reverse after)
                            let newDecls = replaceDecls declsr (declsr ++ newBinding)
                            -- return (GHC.L lp (hsMod {GHC.hsmodDecls = newDecls}))
-                           return $ g { GHC.hs_valds = (GHC.ValBindsIn (GHC.listToBag newDecls) []) } -- ++AZ++ what about GHC.ValBindsOut?
+                           -- return $ g { GHC.hs_valds = (GHC.ValBindsIn (GHC.listToBag newDecls) []) } -- ++AZ++ what about GHC.ValBindsOut?
+                           return $ replaceBinds parentr newDecls
 
 
 {-
