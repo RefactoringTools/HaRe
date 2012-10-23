@@ -76,21 +76,24 @@ doDuplicating pn newName (inscopes,Just renamed,parsed) =
 
    everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
                                   `SYB.extM` dupInMatch
+                                  `SYB.extM` dupInPat
                                  ) renamed
         where
         --1. The definition to be duplicated is at top level.
         -- dupInMod :: (GHC.HsGroup GHC.Name)-> RefactGhc (GHC.HsGroup GHC.Name)
         dupInMod (grp :: (GHC.HsGroup GHC.Name))
-          -- | not $ emptyList (findFunOrPatBind pn (GHC.hs_valds grp)) = doDuplicating' inscopes grp pn
           | not $ emptyList (findFunOrPatBind pn (hsBinds grp)) = doDuplicating' inscopes grp pn
         dupInMod grp = return grp
 
         --2. The definition to be duplicated is a local declaration in a match
-        dupInMatch (match@(GHC.Match pats _typ rhs)::GHC.Match GHC.Name)
-          -- | not $ emptyList (findFunOrPatBind pn rhs) = doDuplicating' inscopes match pn
+        dupInMatch (match@(GHC.Match _pats _typ rhs)::GHC.Match GHC.Name)
           | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes match pn
         dupInMatch match = return match
 
+        --3. The definition to be duplicated is a local declaration in a pattern binding
+        dupInPat (pat@(GHC.PatBind _p rhs _typ _fvs _) :: GHC.HsBind GHC.Name)
+          | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes pat pn
+        dupInPat pat = return pat
 
 {-
 doDuplicating pn newName (inscps, parsed, tokList)

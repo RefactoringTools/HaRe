@@ -1061,6 +1061,9 @@ instance HsBinds (GHC.Match GHC.Name) where
       where
         binds' = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag newBinds) []))
 
+instance HsBinds (GHC.HsBind GHC.Name) where
+  hsBinds = undefined
+
 {-
 instance HsDecls HsMatchP where
     hsDecls (HsMatch loc1 fun pats rhs ds@(Decs x y))=x

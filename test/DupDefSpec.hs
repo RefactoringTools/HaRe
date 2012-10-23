@@ -48,10 +48,18 @@ spec = do
      diff `shouldBe` []
 
     it "duplicates a definition in a match" $ do
-     duplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","20","5"]
+     duplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","22","5"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
+
+
+    it "duplicates a definition in a pattern match" $ do
+     duplicateDef ["./test/testdata/DupDef/Dd1.hs","gg","16","5"]
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+                          "./test/testdata/DupDef/Dd1.hs.expected.gg"
+     diff `shouldBe` []
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions

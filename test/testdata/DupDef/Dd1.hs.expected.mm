@@ -11,13 +11,17 @@ d = 9
 tup :: (Int, Int)
 h :: Int
 t :: Int
-tup@(h,t) = head $ zip [1..10] [3..15]
+tup@(h,t) = head $ zip [1..10] [3..ff]
+  where
+    ff = 15
 
 data D = A | B String | C
 
 ff y = y + zz
   where
     zz = 1
+
+
 
 
 
