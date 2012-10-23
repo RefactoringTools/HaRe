@@ -194,12 +194,12 @@ getStuff =
         -- Inscopes ----------------------------------------------------
         -- GHC.liftIO (putStrLn $ "\ninscopes(showData)=" ++ (SYB.showData SYB.Parser 0 $ inscopes))
         names <- GHC.parseName "G.mkT"
-        GHC.liftIO (putStrLn $ "\nparseName=" ++ (GHC.showPpr $ names))
+        -- GHC.liftIO (putStrLn $ "\nparseName=" ++ (GHC.showPpr $ names))
 
 
         -- RenamedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
-        --GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+        GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
 
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))

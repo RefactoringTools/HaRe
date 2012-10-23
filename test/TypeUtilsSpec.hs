@@ -212,15 +212,15 @@ spec = do
 
   describe "definingDeclsNames" $ do
     it "returns [] if not found" $ do
-      ((_,renamed,_), _toks) <- parsedFileDd1Ghc
+      ((_,Just renamed,_), _toks) <- parsedFileDd1Ghc
       let Just ((GHC.L _ n)) = locToName dd1FileName (16,6) renamed
-      let res = definingDeclsNames [n] renamed False False
+      let res = definingDeclsNames [n] (hsBinds renamed) False False
       GHC.showPpr res `shouldBe` "[]"
 
     it "finds declarations at the top level" $ do
-      ((_,renamed,_), _toks) <- parsedFileDd1Ghc
+      ((_,Just renamed,_), _toks) <- parsedFileDd1Ghc
       let Just (GHC.L _ n) = locToName dd1FileName (3,3) renamed
-      let res = definingDeclsNames [n] renamed False False
+      let res = definingDeclsNames [n] (hsBinds renamed) False False
       GHC.showPpr res `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
 
     {-
@@ -242,9 +242,9 @@ spec = do
     -}
 
     it "finds in a patbind" $ do
-      ((_,renamed,_), _toks) <- parsedFileDd1Ghc
+      ((_,Just renamed,_), _toks) <- parsedFileDd1Ghc
       let Just (GHC.L _ n) = locToName dd1FileName (14,1) renamed
-      let res = definingDeclsNames [n] renamed False False
+      let res = definingDeclsNames [n] (hsBinds renamed) False False
       GHC.showPpr res `shouldBe` "[DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. 15]]"
 
 
@@ -259,9 +259,9 @@ spec = do
     -}
 
     it "finds in a data decl" $ do
-      ((_,renamed,_), _toks) <- parsedFileDd1Ghc
+      ((_,Just renamed,_), _toks) <- parsedFileDd1Ghc
       let Just (GHC.L _ n) = locToName dd1FileName (16,6) renamed
-      let res = definingDeclsNames [n] renamed False False
+      let res = definingDeclsNames [n] (hsBinds renamed) False False
       GHC.showPpr res `shouldBe` "[data D]"
       {-
       modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
@@ -290,16 +290,16 @@ spec = do
 
   describe "isFunBindR" $ do
     it "Returns False if not a function definition" $ do
-      modInfo@((_, renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      modInfo@((_,Just renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
       -- let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
       let Just tup = getName "DupDef.Dd1.tup" renamed
-      let [decl] = definingDeclsNames [tup] renamed False False
+      let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       isFunBindR decl  `shouldBe` False
 
     it "Returns True if a function definition" $ do
-      modInfo@((_, renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      modInfo@((_,Just renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
       let Just toplevel = getName "DupDef.Dd1.toplevel" renamed
-      let [decl] = definingDeclsNames [toplevel] renamed False False
+      let [decl] = definingDeclsNames [toplevel] (hsBinds renamed) False False
       isFunBindR decl  `shouldBe` True
 
   -- -------------------------------------------------------------------
@@ -351,17 +351,17 @@ spec = do
 
   describe "hsVisiblePNs" $ do
     it "Returns [] if e does not occur in t" $ do
-      ((_, renamed,_parsed),_toks) <- parsedFileDd1Ghc
+      ((_,Just renamed,_parsed),_toks) <- parsedFileDd1Ghc
       let Just tl1  = locToExp (4,13) (4,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       let Just tup = getName "DupDef.Dd1.tup" renamed
-      let [decl] = definingDeclsNames [tup] renamed False False
+      let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "[]"
 
     it "Returns visible vars if e does occur in t" $ do
-      ((_, renamed, parsed), toks) <- parsedFileDd1Ghc
+      ((_,Just renamed, parsed), toks) <- parsedFileDd1Ghc
       let Just tl1  = locToExp (14,1) (14,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       let Just tup = getName "DupDef.Dd1.tup" renamed
-      let [decl] = definingDeclsNames [tup] renamed False False
+      let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "foo"
 
   -- ---------------------------------------------

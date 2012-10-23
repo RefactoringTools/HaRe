@@ -1040,21 +1040,23 @@ class (SYB.Data t) => HsBinds t where
     -- given syntax phrase.
     isDeclaredIn :: GHC.Name -> t -> Bool
 
-instance HsBinds (GHC.HsGroup GHC.Name) where
+instance HsBinds (GHC.RenamedSource) where
+  hsBinds (grp,_,_,_) = getValBinds (GHC.hs_valds grp) 
 
+
+instance HsBinds (GHC.HsGroup GHC.Name) where
   hsBinds grp = getValBinds (GHC.hs_valds grp) 
 
-
-instance HsBinds (GHC.Match GHC.Name) where
-
-  -- hsBinds :: GHC.RenamedSource -> GHC.LHsBinds GHC.Name
-  hsBinds (GHC.Match _ _ (GHC.GRHSs _ binds)) = case binds of
+instance HsBinds (GHC.GRHSs GHC.Name) where
+  hsBinds (GHC.GRHSs _ lb) = case lb of
     GHC.HsValBinds b    -> getValBinds b
     GHC.HsIPBinds _     -> []	 
     GHC.EmptyLocalBinds -> []
 
+instance HsBinds (GHC.Match GHC.Name) where
+  hsBinds (GHC.Match _ _ grhs) = hsBinds grhs
+
   replaceBinds (GHC.Match p t (GHC.GRHSs rhs binds)) newBinds 
-    -- = (GHC.Match p t (GHC.GRHSs rhs binds'))
     = (GHC.Match p t (GHC.GRHSs rhs binds))
       where
         binds' = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag newBinds) []))
@@ -1272,23 +1274,27 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
 -- signature) which define the specified GHC.Names. incTypeSig indicates
 -- whether the corresponding type signature will be included.
 
-definingDeclsNames:: (SYB.Data t) =>
+definingDeclsNames:: -- (SYB.Data t) =>
             [GHC.Name] -- ^ The specified identifiers.
-            ->t                -- ^ A collection of declarations.
+            -- ->t                -- ^ A collection of declarations.
+            ->[GHC.LHsBind GHC.Name] -- ^ A collection of declarations.
             ->Bool       -- ^ True means to include the type signature.
             ->Bool       -- ^ True means to look at the local declarations as well. 
             ->[GHC.LHsBind GHC.Name]  -- ^ The result.
-definingDeclsNames pns ds incTypeSig recursive = defines ds
+definingDeclsNames pns ds incTypeSig recursive = concatMap defines ds
   where
    defines decl
-     = if recursive -- TODO: original seems to stop on first match? Should continue
-        -- then ghead "defines" $ applyTU (stop_tdTU (failTU `adhocTU` inDecl)) decl
-        -- then SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inDecl) decl
-        then []
-        -- else defines' decl
-        else SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
+     = if recursive 
+        -- then ghead "defines" $ SYB.everythingStaged SYB.Renamer (++) [] (([]::([GHC.LHsBind GHC.Name]))  `SYB.mkQ` inDecl) decl
+        then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` inDecl) decl
+        else defines' decl
      where
+      inDecl :: (GHC.LHsBind GHC.Name) -> [GHC.LHsBind GHC.Name]
+      inDecl (d::(GHC.LHsBind GHC.Name))
+        | not $ emptyList (defines' d) = defines' d
+      inDecl _ = []
 
+      defines' :: (GHC.LHsBind GHC.Name) -> [GHC.LHsBind GHC.Name]
       defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
         |isJust (find (==(pname)) pns) = [decl']
         -- | True = [decl]

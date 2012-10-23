@@ -75,18 +75,20 @@ doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
 doDuplicating pn newName (inscopes,Just renamed,parsed) =
 
    everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
-                                  -- `SYB.extM` dupInMatch
+                                  `SYB.extM` dupInMatch
                                  ) renamed
         where
         --1. The definition to be duplicated is at top level.
         -- dupInMod :: (GHC.HsGroup GHC.Name)-> RefactGhc (GHC.HsGroup GHC.Name)
         dupInMod (grp :: (GHC.HsGroup GHC.Name))
-          | not $ emptyList (findFunOrPatBind pn (GHC.hs_valds grp)) = doDuplicating' inscopes grp pn
+          -- | not $ emptyList (findFunOrPatBind pn (GHC.hs_valds grp)) = doDuplicating' inscopes grp pn
+          | not $ emptyList (findFunOrPatBind pn (hsBinds grp)) = doDuplicating' inscopes grp pn
         dupInMod grp = return grp
 
         --2. The definition to be duplicated is a local declaration in a match
         dupInMatch (match@(GHC.Match pats _typ rhs)::GHC.Match GHC.Name)
-          | not $ emptyList (findFunOrPatBind pn rhs) = doDuplicating' inscopes match pn
+          -- | not $ emptyList (findFunOrPatBind pn rhs) = doDuplicating' inscopes match pn
+          | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes match pn
         dupInMatch match = return match
 
 
@@ -137,7 +139,7 @@ doDuplicating pn newName (inscps, parsed, tokList)
               = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
 -}
 
-        findFunOrPatBind :: (SYB.Data t) => GHC.Located GHC.Name -> t -> [GHC.LHsBind GHC.Name]
+        -- findFunOrPatBind :: (SYB.Data t) => GHC.Located GHC.Name -> t -> [GHC.LHsBind GHC.Name]
         findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
 
         doDuplicating' :: (HsBinds t) => InScopes -> t -> GHC.Located GHC.Name
