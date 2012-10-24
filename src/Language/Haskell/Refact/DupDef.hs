@@ -55,6 +55,11 @@ comp fileName newName (row, col) = do
                 case maybePn of
                   Just pn ->
                        do refactoredMod@((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                          st <- get
+                          case (rsStreamModified st) of
+                            False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
+                            True -> return ()
+
                           if modIsExported parsed
                           -- if False
                            then do clients <- clientModsAndFiles modName
@@ -77,6 +82,8 @@ doDuplicating pn newName (inscopes,Just renamed,parsed) =
    everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
                                   `SYB.extM` dupInMatch
                                   `SYB.extM` dupInPat
+                                  `SYB.extM` dupInLet
+                                  `SYB.extM` dupInLetStmt
                                  ) renamed
         where
         --1. The definition to be duplicated is at top level.
@@ -94,6 +101,27 @@ doDuplicating pn newName (inscopes,Just renamed,parsed) =
         dupInPat (pat@(GHC.PatBind _p rhs _typ _fvs _) :: GHC.HsBind GHC.Name)
           | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes pat pn
         dupInPat pat = return pat
+
+        --4: The defintion to be duplicated is a local decl in a Let expression
+        dupInLet (letExp@(GHC.HsLet ds e):: GHC.HsExpr GHC.Name)
+          | not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letExp pn
+        dupInLet letExp = return letExp
+
+        --5. The defintion to be duplicated is a local decl in a case alternative.
+        -- Note: The local declarations in a case alternative are covered in #2 above.
+
+        --6.The definition to be duplicated is a local decl in a Let statement.
+        dupInLetStmt (letStmt@(GHC.LetStmt ds):: GHC.Stmt GHC.Name)
+           -- |findFunOrPatBind pn ds /=[]=doDuplicating' inscps letStmt pn
+           |not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letStmt pn
+        dupInLetStmt letStmt = return letStmt
+
+{-
+        failure=idTP `adhocTP` parsed
+          where
+            parsed (m::HsModuleP)
+              = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
+-}
 
 {-
 doDuplicating pn newName (inscps, parsed, tokList)

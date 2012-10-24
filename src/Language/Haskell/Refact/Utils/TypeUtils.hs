@@ -1047,22 +1047,37 @@ instance HsBinds (GHC.RenamedSource) where
 instance HsBinds (GHC.HsGroup GHC.Name) where
   hsBinds grp = getValBinds (GHC.hs_valds grp) 
 
-instance HsBinds (GHC.GRHSs GHC.Name) where
-  hsBinds (GHC.GRHSs _ lb) = case lb of
+instance HsBinds (GHC.HsLocalBinds GHC.Name) where
+  hsBinds lb = case lb of
     GHC.HsValBinds b    -> getValBinds b
     GHC.HsIPBinds _     -> []	 
     GHC.EmptyLocalBinds -> []
+
+instance HsBinds (GHC.GRHSs GHC.Name) where
+  hsBinds (GHC.GRHSs _ lb) = hsBinds lb
 
 instance HsBinds (GHC.Match GHC.Name) where
   hsBinds (GHC.Match _ _ grhs) = hsBinds grhs
 
   replaceBinds (GHC.Match p t (GHC.GRHSs rhs binds)) newBinds 
-    = (GHC.Match p t (GHC.GRHSs rhs binds))
+    = (GHC.Match p t (GHC.GRHSs rhs binds'))
       where
         binds' = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag newBinds) []))
 
+
 instance HsBinds (GHC.HsBind GHC.Name) where
-  hsBinds = undefined
+  hsBinds (GHC.PatBind _p rhs _typ _fvs _) = hsBinds rhs
+
+  replaceBinds (GHC.PatBind p (GHC.GRHSs rhs binds) typ fvs pt) newBinds 
+    = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt) 
+      where
+        binds' = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag newBinds) []))
+
+instance HsBinds (GHC.HsExpr GHC.Name) where
+  hsBinds (GHC.HsLet ds _) = hsBinds ds
+
+instance HsBinds (GHC.Stmt GHC.Name) where
+  hsBinds (GHC.LetStmt ds) = hsBinds ds
 
 {-
 instance HsDecls HsMatchP where
