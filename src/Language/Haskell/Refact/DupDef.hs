@@ -107,7 +107,7 @@ doDuplicating pn newName (inscopes,Just renamed,parsed) =
           | not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letExp pn
         dupInLet letExp = return letExp
 
-        --5. The defintion to be duplicated is a local decl in a case alternative.
+        --5. The definition to be duplicated is a local decl in a case alternative.
         -- Note: The local declarations in a case alternative are covered in #2 above.
 
         --6.The definition to be duplicated is a local decl in a Let statement.

@@ -21,30 +21,6 @@ ff y = y + zz
   where
     zz = 1
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    mm = 1
-
 l z =
   let
     ll = 34
@@ -52,5 +28,36 @@ l z =
 
 dd q = do
   let ss = 5
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      sss = 5
   return (ss + q)
 

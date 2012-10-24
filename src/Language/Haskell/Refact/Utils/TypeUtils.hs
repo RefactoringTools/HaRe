@@ -783,6 +783,7 @@ hsFDsFromInside t = (nub f, nub d)
      stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
        hsFreeAndDeclaredPNs binds
 
+     stmts _ = ([],[])
 
 -- -----
 
