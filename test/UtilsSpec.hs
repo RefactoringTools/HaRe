@@ -182,7 +182,7 @@ spec = do
     it "retrieves a module from an existing module graph" $ do
       let
         comp = do
-          loadModuleGraphGhc "./test/testdata/M.hs"
+          loadModuleGraphGhc $ Just "./test/testdata/M.hs"
           m <- getModuleGhc "./test/testdata/S1.hs"
           g <- clientModsAndFiles $ GHC.mkModuleName "S1"
 
@@ -201,6 +201,19 @@ spec = do
       (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
       GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[]"
+
+    it "retrieves a module from an existing module graph #2" $ do
+      let
+        comp = do
+          loadModuleGraphGhc $ Just "./test/testdata/DupDef/Dd2.hs"
+          m <- getModuleGhc "./test/testdata/DupDef/Dd1.hs"
+          g <- clientModsAndFiles $ GHC.mkModuleName "DupDef.Dd1"
+
+          return (m,g)
+      (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
+      (show $ getModuleName parsed) `shouldBe` "Just (DupDef.Dd1,\"DupDef.Dd1\")"
+      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:DupDef.Dd2]"
+
 
   -- -------------------------------------------------------------------
 

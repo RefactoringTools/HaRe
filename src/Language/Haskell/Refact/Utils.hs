@@ -23,7 +23,7 @@ module Language.Haskell.Refact.Utils
        , update
        -- , writeRefactoredFiles
        -- , Refact -- ^ deprecated
-       -- , fileNameToModName
+       , fileNameToModName
        , getModuleName
        , isVarId
        , clientModsAndFiles
@@ -109,43 +109,22 @@ import Debug.Trace
 --       -- Defined at ../tools/base/defs/PNT.hs:23:6
 
 
-{- ++AZ++ commentary
-
-
-once_tdTU traverses the tree in a top-down manner, terminating when
-the pattern match to worker succeeds.
-
-failTU is a polymorphic strategy that always fails (by using mzero
-from the MonadPlus class) regardless of the given term.
-
-adhocTU allows the function worker to be applied to all nodes in a
-layered data type: it updates a strategy to add type-specific behavior
-so that the function on the left can be applied unless the function on
-the right succeeds.
--}
+-- ---------------------------------------------------------------------
 
 -- | From file name to module name.
---fileNameToModName::( )=>String->PFE0MT n i ds ext m ModuleName
+fileNameToModName :: FilePath -> RefactGhc GHC.ModuleName
+fileNameToModName fileName = do
+  graph <- GHC.getModuleGraph
 
-{- fileNameToModName::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
-                   String->PFE0MT n i ds ext m ModuleName
-fileNameToModName fileName =
-  do gf <- getCurrentModuleGraph
-     let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
-         f = filter (\(m,f) -> f==fileName) fileAndMods
-     if f ==[] then error $ "Can't find module name"
-                    else return $ (fst.head) f
--}
-{- ++AZ++ may not need this, get it from modinfo
--- | From file name to module name.
-fileNameToModName :: String -> PFE0MT n i ds ext m ModuleName
-fileNameToModName fileName =
-  do gf <- getCurrentModuleGraph
-     let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
-         f = filter (\(m,f) -> f==fileName) fileAndMods
-     if f ==[] then error $ "Can't find module name"
-                    else return $ (fst.head) f
--}
+  let mm = filter (\(mfn,_ms) -> mfn == Just fileName) $
+        map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
+
+  case mm of
+    [] -> error $ "Can't find module name"
+    _ ->  return $ GHC.moduleName $ GHC.ms_mod $ snd $ head mm
+
+
+-- ---------------------------------------------------------------------
 
 -- | Extract the module name from the parsed source, if there is one
 getModuleName :: GHC.ParsedSource -> Maybe (GHC.ModuleName,String)
@@ -178,12 +157,17 @@ initGhcSession = do
 
 -- | Load a module graph into the GHC session, starting from main
 loadModuleGraphGhc ::
-  String -> RefactGhc ()
-loadModuleGraphGhc targetFile = do
-      target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- Force interpretation, for inscopes
+  Maybe FilePath -> RefactGhc ()
+loadModuleGraphGhc maybeTargetFile = do
+  case maybeTargetFile of
+    Just targetFile -> do
+      -- Prefix with * to force interpretation, for inscopes
+      target <- GHC.guessTarget ("*" ++ targetFile) Nothing
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets
       return ()
+    Nothing -> return ()
+  return ()
 
 -- ---------------------------------------------------------------------
 
@@ -302,7 +286,7 @@ applyRefac
     -> RefactGhc ApplyRefacResult
 
 applyRefac refac Nothing fileName
-  = do (pr, toks) <- parseSourceFileGhc fileName  -- TODO: move this into the RefactGhc monad, so it shares a session
+  = do (pr, toks) <- getModuleGhc fileName  -- TODO: move this into the RefactGhc monad, so it shares a session
        res <- applyRefac refac (Just (pr,toks)) fileName
        return res
 
@@ -317,9 +301,6 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
 
     mod' <- refac parsedFile
     (RefSt _ u' toks' m) <- get
-
-    -- Replace state with original, probably not needed
-    -- put (RefSt settings u' ts m)
 
     return ((fileName,m),(toks', mod'))
 

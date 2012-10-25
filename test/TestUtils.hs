@@ -2,6 +2,7 @@ module TestUtils
        ( compareFiles
        , parsedFileGhc
        , runRefactGhcState
+       , defaultSettings
        , catchException
        ) where
 
@@ -58,6 +59,11 @@ runRefactGhcState paramcomp = do
 
 -- ---------------------------------------------------------------------
 
+defaultSettings :: Maybe RefactSettings
+defaultSettings = Just $ RefSet ["./test/testdata/"]
+
+-- ---------------------------------------------------------------------
+
 catchException :: (IO t) -> IO (Maybe String)
 catchException f = do
   res <- handle handler (f >> return Nothing)
@@ -65,6 +71,7 @@ catchException f = do
   where
     handler:: SomeException -> IO (Maybe String)
     handler e = return (Just (show e))
+
 
 -- EOF
   

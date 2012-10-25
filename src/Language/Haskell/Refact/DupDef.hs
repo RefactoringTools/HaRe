@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.Haskell.Refact.DupDef(duplicateDef) where
+module Language.Haskell.Refact.DupDef(duplicateDef, doDuplicateDef) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -33,25 +33,28 @@ import Language.Haskell.Refact.Utils.TypeUtils
 -- the user. The new name should not cause name clash/capture.
 
 -- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
-duplicateDef :: [String] -> IO () -- For now
-duplicateDef args
+doDuplicateDef :: [String] -> IO () -- For now
+doDuplicateDef args
  = do let fileName = ghead "filename" args
           newName  = args!!1
           row      = read (args!!2)::Int
           col      = read (args!!3)::Int
-      runRefacSession Nothing (comp fileName newName (row,col))
+      duplicateDef Nothing  Nothing fileName newName (row,col)
       return ()
 
+-- | The API entry point
+duplicateDef :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO ()
+duplicateDef settings maybeMainFile fileName newName (row,col) =
+  runRefacSession settings (comp maybeMainFile fileName newName (row,col))
 
-comp :: String -> String -> SimpPos
+
+comp :: Maybe FilePath -> FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
-comp fileName newName (row, col) = do
+comp maybeMainFile fileName newName (row, col) = do
       if isVarId newName
-        then do modInfo@((_,renamed,parsed), tokList) <- parseSourceFileGhc fileName
-                -- modName <-fileNameToModName fileName
-                -- let modName = getModuleName parsed
+        then do loadModuleGraphGhc maybeMainFile
+                modInfo@((_,renamed,parsed), _tokList) <- getModuleGhc fileName
                 let (Just (modName,_)) = getModuleName parsed
-                -- let pn = pNTtoPN $ locToPNT (GHC.mkFastString fileName) (row, col) parsed
                 let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
                 case maybePn of
                   Just pn ->
@@ -62,7 +65,6 @@ comp fileName newName (row, col) = do
                             True -> return ()
 
                           if modIsExported parsed
-                          -- if False
                            then do clients <- clientModsAndFiles modName
                                    liftIO $ putStrLn ("DupDef: clients=" ++ (GHC.showPpr clients)) -- ++AZ++ debug
                                    -- TODO: uncomment and complete this
@@ -71,7 +73,6 @@ comp fileName newName (row, col) = do
                                    let refactoredClients = [] -- ++AZ++ temporary
                                    -- writeRefactoredFiles False $ ((fileName,m),(tokList',parsed')):refactoredClients 
                                    return $ refactoredMod:refactoredClients
-                           -- else  writeRefactoredFiles False [((fileName,m), (tokList',parsed'))]
                            else  return [refactoredMod]
                   Nothing -> error "Invalid cursor position!"
         else error $ "Invalid new function name:" ++ newName ++ "!"

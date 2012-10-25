@@ -25,53 +25,59 @@ main = hspec spec
 spec :: Spec
 spec = do
   
-  describe "duplicateDef" $ do
+  describe "doDuplicateDef" $ do
     it "checks for a clash of the new name" $ do
-     res <- catchException (duplicateDef ["./test/testdata/DupDef/Dd1.hs","c","4","1"])
+     res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","c","4","1"])
      -- let res = "foo"
      (show res) `shouldBe` "Just \"The new name'c' will cause name clash/capture or ambiguity problem after duplicating, please select another name!\""
 
     it "checks for no definition selected" $ do
-     res <- catchException (duplicateDef ["./test/testdata/DupDef/Dd1.hs","c","5","1"])
+     res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","c","5","1"])
      (show res) `shouldBe` "Just \"Invalid cursor position!\""
 
     it "checks for invalid new name" $ do
-     res <- catchException (duplicateDef ["./test/testdata/DupDef/Dd1.hs","$c","5","1"])
+     res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","$c","5","1"])
      (show res) `shouldBe` "Just \"Invalid new function name:$c!\""
 
     it "notifies if no definition selected" $ do
-     res <- catchException (duplicateDef ["./test/testdata/DupDef/Dd1.hs","ccc","14","13"])
+     res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","ccc","14","13"])
      (show res) `shouldBe` "Just \"The selected identifier is not a function/simple pattern name, or is not defined in this module \""
 
 
     it "duplicates a definition at the top level" $ do
-     duplicateDef ["./test/testdata/DupDef/Dd1.hs","tl2","4","1"]
+     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","tl2","4","1"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected"
      diff `shouldBe` []
 
     it "duplicates a definition in a match" $ do
-     duplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","22","5"]
+     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","22","5"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
 
     it "duplicates a definition in a pattern match" $ do
-     duplicateDef ["./test/testdata/DupDef/Dd1.hs","gg","16","5"]
+     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","gg","16","5"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.gg"
      diff `shouldBe` []
 
     it "duplicates a definition in a let expression" $ do
-     duplicateDef ["./test/testdata/DupDef/Dd1.hs","lll","26","5"]
+     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","lll","26","5"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.ll"
      diff `shouldBe` []
 
     it "duplicates a definition in a let statement" $ do
-     duplicateDef ["./test/testdata/DupDef/Dd1.hs","sss","30","7"]
+     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","sss","30","7"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.dd"
+     diff `shouldBe` []
+
+    it "hides the new definition if it will cause problems in client mods" $ do
+     duplicateDef defaultSettings (Just "./test/testdata/DupDef/Dd2.hs") "./test/testdata/DupDef/Dd1.hs" "mm" (22,5)
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+                          "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
 
 
