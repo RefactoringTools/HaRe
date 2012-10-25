@@ -158,6 +158,7 @@ spec = do
          return g
       (mg,_s) <- runRefactGhcState comp
       map (\m -> GHC.moduleNameString $ GHC.ms_mod_name m) mg `shouldBe` (["B","C"])
+      map (\m -> show $ GHC.ml_hs_file $ GHC.ms_location m) mg `shouldBe` (["Just \"./test/testdata/B.hs\"","Just \"./test/testdata/C.hs\""])
 
 
     it "gets the updated graph, after a refactor" $ do
@@ -174,6 +175,33 @@ spec = do
          return g
       (mg,_s) <- runRefactGhcState comp
       (GHC.showPpr $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:C, main:B]"
+
+  -- -------------------------------------------------------------------
+
+  describe "getModuleGhc" $ do
+    it "retrieves a module from an existing module graph" $ do
+      let
+        comp = do
+          loadModuleGraphGhc "./test/testdata/M.hs"
+          m <- getModuleGhc "./test/testdata/S1.hs"
+          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
+
+          return (m,g)
+      (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
+      (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
+      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+
+    it "loads the module and dependents if no existing module graph" $ do
+      let
+        comp = do
+          m <- getModuleGhc "./test/testdata/S1.hs"
+          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
+
+          return (m,g)
+      (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
+      (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
+      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[]"
+
   -- -------------------------------------------------------------------
 
   describe "runRefactGhc" $ do

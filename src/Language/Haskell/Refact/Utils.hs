@@ -9,6 +9,10 @@ module Language.Haskell.Refact.Utils
        ( expToPNT
        , locToExp
        , sameOccurrence
+
+       -- * Managing the GHC / project environment
+       , loadModuleGraphGhc
+       , getModuleGhc
        , parseSourceFileGhc
 
        -- * The bits that do the work
@@ -152,6 +156,9 @@ getModuleName (GHC.L _ mod) =
 
 -- ---------------------------------------------------------------------
 
+-- | Initialise the GHC session, when starting a refactoring.
+--   This should never be called directly.
+
 initGhcSession :: RefactGhc ()
 initGhcSession = do
       settings <- getRefacSettings
@@ -169,7 +176,52 @@ initGhcSession = do
 
 -- ---------------------------------------------------------------------
 
--- | Parse a source file into a GHC session
+-- | Load a module graph into the GHC session, starting from main
+loadModuleGraphGhc ::
+  String -> RefactGhc ()
+loadModuleGraphGhc targetFile = do
+      target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- Force interpretation, for inscopes
+      GHC.setTargets [target]
+      GHC.load GHC.LoadAllTargets
+      return ()
+
+-- ---------------------------------------------------------------------
+
+-- | Return the info for a module, once the module graph has been loaded
+
+getModuleGhc ::
+  String -> RefactGhc (ParseResult,[PosToken])
+getModuleGhc targetFile = do
+  graph <- GHC.getModuleGraph
+
+  let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
+       map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
+
+  case mm of
+    [(_,modSum)] -> getModuleDetails modSum
+    _            -> parseSourceFileGhc targetFile
+
+-- ---------------------------------------------------------------------
+
+getModuleDetails :: GHC.ModSummary -> RefactGhc (ParseResult,[PosToken])
+getModuleDetails modSum = do
+      p <- GHC.parseModule modSum
+      t <- GHC.typecheckModule p
+
+      GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
+      inscopeNames    <- GHC.getNamesInScope
+
+      let pm = GHC.tm_parsed_module t
+
+      let typechecked = GHC.tm_typechecked_source t
+          renamed     = GHC.tm_renamed_source t
+          parsed      = GHC.pm_parsed_source pm
+      tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
+      return ((inscopeNames,renamed,parsed),tokens)
+
+-- ---------------------------------------------------------------------
+
+-- | Parse a single source file into a GHC session
 parseSourceFileGhc ::
   String -> RefactGhc (ParseResult,[PosToken])
 parseSourceFileGhc targetFile = do
@@ -180,6 +232,11 @@ parseSourceFileGhc targetFile = do
       GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
       g <- GHC.getModuleGraph
       let modSum = head g
+
+      getModuleDetails modSum
+
+
+{-
       p <- GHC.parseModule modSum
       t <- GHC.typecheckModule p
 
@@ -195,7 +252,7 @@ parseSourceFileGhc targetFile = do
       -- return ((inscopes,exports,modAst),tokens)
       -- return ((typechecked,renamed,parsed),tokens)
       return ((inscopeNames,renamed,parsed),tokens)
-
+-}
 
 getExports (GHC.L _ hsmod) =
   case hsmod of
@@ -209,14 +266,15 @@ getExports (GHC.L _ hsmod) =
 type ApplyRefacResult = ((FilePath, Bool), ([PosToken], RefactResult))
 
 
--- | Manage a whole refactor session. Initialise the monad, parse the
--- source files, apply the refactorings, write out the files.
+-- | Manage a whole refactor session. Initialise the monad, load the
+-- whole project if required, and then apply the individual
+-- refactorings, and write out the resulting files.
 --
 -- It is intended that this forms the umbrella function, in which
 -- applyRefac is called
 --
 runRefacSession :: (Maybe RefactSettings)
-         -> RefactGhc [ApplyRefacResult] -- TODO: should this be a list of refactorings?
+         -> RefactGhc [ApplyRefacResult]
          -> IO ()
 runRefacSession settings comp = do
   let

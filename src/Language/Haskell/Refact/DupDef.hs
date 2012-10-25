@@ -42,6 +42,7 @@ duplicateDef args
       runRefacSession Nothing (comp fileName newName (row,col))
       return ()
 
+
 comp :: String -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
@@ -63,6 +64,7 @@ comp fileName newName (row, col) = do
                           if modIsExported parsed
                           -- if False
                            then do clients <- clientModsAndFiles modName
+                                   liftIO $ putStrLn ("DupDef: clients=" ++ (GHC.showPpr clients)) -- ++AZ++ debug
                                    -- TODO: uncomment and complete this
                                    -- refactoredClients <- mapM (refactorInClientMod modName 
                                    --                            (findNewPName newName parsed')) clients
@@ -116,62 +118,10 @@ doDuplicating pn newName (inscopes,Just renamed,parsed) =
            |not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letStmt pn
         dupInLetStmt letStmt = return letStmt
 
-{-
-        failure=idTP `adhocTP` parsed
-          where
-            parsed (m::HsModuleP)
-              = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
--}
-
-{-
-doDuplicating pn newName (inscps, parsed, tokList)
-   = runStateT (applyTP ((once_tdTP (failTP `adhocTP` dupInMod
-                                            `adhocTP` dupInMatch
-                                            `adhocTP` dupInPat
-                                            `adhocTP` dupInLet
-                                            `adhocTP` dupInAlt
-                                            `adhocTP` dupInLetStmt)) `choiceTP` failure) parsed)
-                                     ((tokList,unmodified), (-1000))  -- the (-1000) should be deleted.
-        where
-        --1. The definition to be duplicated is at top level.
-        dupInMod (parsed@(HsModule loc name exps imps ds):: HsModuleP)
-          |findFunOrPatBind  pn ds/=[]=doDuplicating' inscps parsed pn
-        dupInMod _ =mzero
-
-        --2. The definition to be duplicated is a local declaration in a match
-        dupInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-          |findFunOrPatBind pn ds/=[]=doDuplicating' inscps match pn
-        dupInMatch _ =mzero
-
-        --3. The definition to be duplicated is a local declaration in a pattern binding
-        dupInPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
-          |findFunOrPatBind pn ds/=[]=doDuplicating' inscps pat pn
-        dupInPat _=mzero
-
-        --4: The defintion to be duplicated is a local decl in a Let expression
-        dupInLet (letExp@(Exp (HsLet ds e))::HsExpP)
-          |findFunOrPatBind pn  ds/=[]=doDuplicating' inscps letExp pn
-        dupInLet _=mzero
-
-        --5. The defintion to be duplicated is a local decl in a case alternative.
-        dupInAlt (alt@(HsAlt loc p rhs ds)::(HsAlt (HsExpP) (HsPatP) [HsDeclP]))
-          |findFunOrPatBind pn ds/=[]=doDuplicating'  inscps alt pn
-        dupInAlt _=mzero
-
-        --6.The definition to be duplicated is a local decl in a Let statement.
-        dupInLetStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP]))
-           |findFunOrPatBind pn  ds /=[]=doDuplicating' inscps letStmt pn
-        dupInLetStmt _=mzero
-
-
-        failure=idTP `adhocTP` parsed
-          where
-            parsed (m::HsModuleP)
-              = error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
--}
 
         -- findFunOrPatBind :: (SYB.Data t) => GHC.Located GHC.Name -> t -> [GHC.LHsBind GHC.Name]
         findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
+
 
         doDuplicating' :: (HsBinds t) => InScopes -> t -> GHC.Located GHC.Name
                        -> RefactGhc (t)
