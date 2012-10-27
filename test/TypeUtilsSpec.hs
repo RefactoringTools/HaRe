@@ -497,6 +497,44 @@ spec = do
       (show r) `shouldBe` "foo"
 
 
+  -- ---------------------------------------------
+
+  describe "modIsExported" $ do
+    it "Returns True if the module is explicitly exported" $ do
+      ((_,_renamed,parsed), _toks) <- parsedFileDeclareGhc
+
+      (modIsExported parsed) `shouldBe` True
+
+    it "Returns True if the module is exported by default" $ do
+      ((_,_renamed,parsed), _toks) <- parsedFileDeclare1Ghc
+
+      (modIsExported parsed) `shouldBe` True
+
+    it "Returns False if the module is explicitly not exported" $ do
+      ((_,_renamed,parsed), _toks) <- parsedFileDeclare2Ghc
+
+      (modIsExported parsed) `shouldBe` False
+
+  -- ---------------------------------------------
+
+  describe "addHiding" $ do
+    it "Add a hiding entry to the imports" $ do
+      let
+        comp = do
+
+         ((_,Just renamed,parsed),_toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) renamed
+         let (Just (ln@(GHC.L _ n))) = mn
+
+         let Just (modName,_) = getModuleName parsed
+         n1 <- mkNewName "n1"
+         n2 <- mkNewName "n2"
+         res <- addHiding modName renamed [n1,n2]
+
+         return (res)
+      ((r,d,l),_s) <- runRefactGhcState comp
+      "write this" `shouldBe` "now"
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 
@@ -514,6 +552,12 @@ parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 
 parsedFileDeclareGhc :: IO (ParseResult,[PosToken])
 parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
+
+parsedFileDeclare1Ghc :: IO (ParseResult,[PosToken])
+parsedFileDeclare1Ghc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare1.hs"
+
+parsedFileDeclare2Ghc :: IO (ParseResult,[PosToken])
+parsedFileDeclare2Ghc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare2.hs"
 
 -- ----------------------------------------------------
 

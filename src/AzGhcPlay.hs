@@ -20,6 +20,7 @@ import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
+import Var
 import qualified CoreFVs               as GHC
 import qualified CoreSyn               as GHC
 import qualified DynFlags              as GHC
@@ -29,15 +30,16 @@ import qualified HscTypes              as GHC
 import qualified MonadUtils            as GHC
 import qualified Outputable            as GHC
 import qualified SrcLoc                as GHC
-import Var
+import qualified StringBuffer          as GHC
 
 import GHC.Paths ( libdir )
  
 -----------------
 
-import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.TypeUtils
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
 -- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
@@ -172,7 +174,7 @@ getStuff =
 
         let ps  = GHC.pm_parsed_source p
         -- GHC.liftIO (putStrLn $ SYB.showData SYB.Parser 0 ps)
-
+        -- GHC.liftIO (putStrLn $ show (modIsExported ps))
         -- _ <- processVarUniques t
 
         -- Tokens ------------------------------------------------------
@@ -181,7 +183,11 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ tokenLocs rts))
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ map (\(GHC.L _ tok,s) -> (tok,s)) rts)) 
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showToks rts))
-        
+
+        -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
+        let tt = GHC.addSourceToTokens (GHC.mkRealSrcLoc (GHC.mkFastString "f") 1 1) (GHC.stringToStringBuffer "hiding (a,b)") []
+        GHC.liftIO (putStrLn $ "new tokens=" ++ (showToks tt))
+  
 
         -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
         -- GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
@@ -191,15 +197,20 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "locToExp1=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,43) rts ps))
         -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
 
+
         -- Inscopes ----------------------------------------------------
         -- GHC.liftIO (putStrLn $ "\ninscopes(showData)=" ++ (SYB.showData SYB.Parser 0 $ inscopes))
         names <- GHC.parseName "G.mkT"
         -- GHC.liftIO (putStrLn $ "\nparseName=" ++ (GHC.showPpr $ names))
 
 
+        -- ParsedSource -----------------------------------------------
+        -- GHC.liftIO (putStrLn $ "parsedSource(Ppr)=" ++ (GHC.showPpr $ GHC.pm_parsed_source p))
+        -- GHC.liftIO (putStrLn $ "\nparsedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.pm_parsed_source p))
+
         -- RenamedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
-        GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+        -- GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
 
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))

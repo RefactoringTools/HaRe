@@ -10,6 +10,10 @@ module Language.Haskell.Refact.Utils.Monad
        , runRefactGhc
        , getRefacSettings
 
+       -- * Conveniences for state access
+       , fetchToks
+       , putToks
+
        -- , Refact -- ^ TODO: Deprecated, use RefactGhc
        -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
        ) where
@@ -141,6 +145,16 @@ getRefacSettings :: RefactGhc RefactSettings
 getRefacSettings = do
   s <- get
   return (rsSettings s)
+
+-- ---------------------------------------------------------------------
+
+fetchToks :: RefactGhc [PosToken]
+fetchToks = gets rsTokenStream
+
+putToks :: [PosToken] -> Bool -> RefactGhc ()
+putToks toks isModified = do
+  st <- get
+  put $ st {rsTokenStream = toks, rsStreamModified = isModified}
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ trying to wrap this in GhcT, or vice versa

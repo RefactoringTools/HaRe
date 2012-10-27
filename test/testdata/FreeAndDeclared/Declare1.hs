@@ -1,4 +1,4 @@
-module FreeAndDeclared.Declare (module FreeAndDeclared.Declare) where
+module FreeAndDeclared.Declare1 where
 
 import qualified Data.Generics as G
 

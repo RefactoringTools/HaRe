@@ -58,7 +58,8 @@ comp maybeMainFile fileName newName (row, col) = do
                 let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
                 case maybePn of
                   Just pn ->
-                       do refactoredMod@((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                       -- do refactoredMod@((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                       do refactoredMod <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                           st <- get
                           case (rsStreamModified st) of
                             False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
@@ -71,7 +72,6 @@ comp maybeMainFile fileName newName (row, col) = do
                                    -- refactoredClients <- mapM (refactorInClientMod modName 
                                    --                            (findNewPName newName parsed')) clients
                                    let refactoredClients = [] -- ++AZ++ temporary
-                                   -- writeRefactoredFiles False $ ((fileName,m),(tokList',parsed')):refactoredClients 
                                    return $ refactoredMod:refactoredClients
                            else  return [refactoredMod]
                   Nothing -> error "Invalid cursor position!"
@@ -177,6 +177,25 @@ findNewPName name
         worker _ =mzero
 -}
 
+-- Do refactoring in the client module.
+-- That is to hide the identifer in the import declaration if it will
+-- cause any problem in the client module.
+
+refactorInClientMod serverModName newPName (modName, fileName)
+  = do (inscopes,renamed,parsed ,ts) <- getModuleGhc fileName
+       let modNames = willBeUnQualImportedBy serverModName parsed
+       -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
+       if isJust modNames && needToBeHided newPName renamed
+        then do (parsed', ((ts',m),_))<-runStateT (addHiding serverModName parsed [newPName]) ((ts,unmodified),fileName)
+                return ((fileName,m), (ts',parsed'))
+        else return ((fileName,unmodified),(ts,parsed))
+   where
+     needToBeHided name exps
+         = usedWithoutQual name exps
+          || causeNameClashInExports newPName name parsed exps
+
+
+
 {-
 --Do refactoring in the client module.
 -- that is to hide the identifer in the import declaration if it will cause any problem in the client module.
@@ -193,7 +212,31 @@ refactorInClientMod serverModName newPName (modName, fileName)
           || causeNameClashInExports newPName name parsed exps
 -}
 
-{-
+
+
+--Check here:
+-- | get the module name or alias name by which the duplicated
+-- definition will be imported automatically.
+willBeUnQualImportedBy :: GHC.ModuleName -> GHC.RenamedSource -> Maybe [GHC.ModuleName]
+willBeUnQualImportedBy modName renamed@(_,imps,_,_)
+   = let
+         ms = filter (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) qualify _source _safe isQualified _isImplicit as h))
+                    -> modName == modName1
+                       && not isQualified
+                              && (isNothing h  -- not hiding
+                                  ||
+                                   (isJust h && ((fst (fromJust h))==True))
+                                  ))
+                      imps
+         in if (emptyList ms) then Nothing
+                      else Just $ nub $ map getModName ms
+
+         where getModName (GHC.L _ (GHC.ImportDecl modName1 qualify _source _safe isQualified _isImplicit as h))
+                 = if isJust as then (fromJust as)
+                                else modName
+               -- simpModName (SN m loc) = m
+
+{- ++AZ++ original
 --Check here:
 --get the module name or alias name by which the duplicated definition will be imported automatically.
 willBeUnQualImportedBy::HsName.ModuleName->HsModuleP->Maybe [HsName.ModuleName]

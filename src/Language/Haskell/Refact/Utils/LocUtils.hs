@@ -17,9 +17,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , tokenPos
                      , tokenCon
                      , tokenLen
-                     {-
-                     ,lengthOfToks,
-                     mkToken,defaultToken-},newLnToken{-,whiteSpacesToken,whiteSpaceTokens
+                     -- ,lengthOfToks
+                     , mkToken {-,defaultToken-},newLnToken{-,whiteSpacesToken,whiteSpaceTokens
                      -}
                      , isWhite
                      , notWhite
@@ -35,7 +34,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -}
                      , lengthOfLastLine
                      , updateToks, updateToksList
-                     -- , getToks
+                     , getToks
                      , replaceToks -- ,deleteToks, doRmWhites,doAddWhites
                      , srcLocs
                      , getSrcSpan
@@ -334,11 +333,16 @@ replaceTabBySpaces (s:ss)
   =if s=='\t' then replicate 8 ' ' ++replaceTabBySpaces ss
               else s:replaceTabBySpaces ss
 
-
+-}
 --Compose a new token using the given arguments.
-mkToken::Token->SimpPos->String->PosToken
-mkToken t (row,col) c=(t,(Pos 0 row col,c))
+mkToken::GHC.Token->SimpPos->String->PosToken
+mkToken t (row,col) c= ((GHC.L l t),c)
+  where 
+    filename = (GHC.mkFastString "f")
+    l = GHC.mkSrcSpan (GHC.mkSrcLoc filename row col) (GHC.mkSrcLoc filename row (col + (length c) ))
 
+
+{-
 ---Restriction: the refactorer should not modify refactorer-modified/created tokens.
 defaultToken = (Whitespace, (pos0," "))
 newLnToken   = (Whitespace, (pos0,"\n"))
@@ -498,15 +502,14 @@ lengthOfLastLine toks
    --What about tab keys?
    lastLineLenOfToken (_,s)=(length.(takeWhile (\x->x/='\n')).reverse) s
 
-{-
+-- ---------------------------------------------------------------------
 
---get a token stream specified by the start and end position.
+-- | get a token stream specified by the start and end position.
 getToks::(SimpPos,SimpPos)->[PosToken]->[PosToken]
 getToks (startPos,endPos) toks
     =let (_,toks2)=break (\t->tokenPos t==startPos) toks
          (toks21, toks22)=break (\t->tokenPos t==endPos) toks2
      in (toks21++ [ghead "getToks" toks22])   -- Should add error message for empty list?
--}
 
 -- ---------------------------------------------------------------------
 

@@ -30,7 +30,6 @@ module Language.Haskell.Refact.Utils
        , serverModsAndFiles
        , getCurrentModuleGraph
        , sortCurrentModuleGraph
-       , modIsExported
 
        -- * For testing
        , initGhcSession
@@ -535,27 +534,6 @@ isId id = id/=[] && isLegalIdTail (tail id) && not (isReservedId id)
                          "newtype", "of","then","type","where","_"]
 
     isSmall c=isLower c || c=='_'
-
--- ---------------------------------------------------------------------
-
--- | Return True if the current module is exported either by default
--- or by specifying the module name in the export.
-modIsExported::HsModuleP   -- ^ The AST of the module
-               -> Bool     -- ^ The result
-modIsExported (GHC.L _ mod)
-   = let exps    = GHC.hsmodExports mod -- Maybe [LIE name]
-         modName = GHC.hsmodName mod -- Maybe (Located ModuleName)
-
-         matchModName :: GHC.Located (GHC.IE GHC.RdrName) -> Bool
-         matchModName (GHC.L _ n) =
-           case modName of
-             Nothing -> False
-             Just (GHC.L _ mn) -> (GHC.moduleNameString mn) == GHC.showRdrName (GHC.ieName n)
-
-     in if isNothing exps
-           then True
-           -- else isJust $ find (==(ModuleE modName)) (fromJust exps)
-           else isJust $ find matchModName (fromJust exps)
 
 -- ---------------------------------------------------------------------
 
