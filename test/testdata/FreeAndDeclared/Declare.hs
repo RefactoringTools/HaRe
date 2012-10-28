@@ -33,3 +33,5 @@ main = do
 
 mkT = "no clash with Data.Generics"
 
+ff z = G.gshow z
+

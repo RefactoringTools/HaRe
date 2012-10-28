@@ -185,8 +185,8 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showToks rts))
 
         -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
-        let tt = GHC.addSourceToTokens (GHC.mkRealSrcLoc (GHC.mkFastString "f") 1 1) (GHC.stringToStringBuffer "hiding (a,b)") []
-        GHC.liftIO (putStrLn $ "new tokens=" ++ (showToks tt))
+        -- let tt = GHC.addSourceToTokens (GHC.mkRealSrcLoc (GHC.mkFastString "f") 1 1) (GHC.stringToStringBuffer "hiding (a,b)") []
+        -- GHC.liftIO (putStrLn $ "new tokens=" ++ (showToks tt))
   
 
         -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
@@ -206,7 +206,7 @@ getStuff =
 
         -- ParsedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "parsedSource(Ppr)=" ++ (GHC.showPpr $ GHC.pm_parsed_source p))
-        -- GHC.liftIO (putStrLn $ "\nparsedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.pm_parsed_source p))
+        GHC.liftIO (putStrLn $ "\nparsedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.pm_parsed_source p))
 
         -- RenamedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))

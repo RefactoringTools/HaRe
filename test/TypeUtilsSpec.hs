@@ -5,6 +5,10 @@ import           Test.QuickCheck
 
 import           TestUtils
 
+import qualified Data.Generics.Schemes as SYB
+import qualified Data.Generics.Aliases as SYB
+import qualified GHC.SYB.Utils         as SYB
+
 import qualified Bag        as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
@@ -522,18 +526,54 @@ spec = do
       let
         comp = do
 
-         ((_,Just renamed,parsed),_toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
-         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) renamed
+         ((_,Just renamed1,parsed1),_toks1) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         ((_,Just renamed2,parsed2),_toks2) <- parseSourceFileGhc "./test/testdata/DupDef/Dd2.hs"
+         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) renamed1
          let (Just (ln@(GHC.L _ n))) = mn
 
-         let Just (modName,_) = getModuleName parsed
+         let Just (modName,_) = getModuleName parsed1
          n1 <- mkNewName "n1"
          n2 <- mkNewName "n2"
-         res <- addHiding modName renamed [n1,n2]
+         res <- addHiding modName renamed2 [n1,n2]
 
          return (res)
-      ((r,d,l),_s) <- runRefactGhcState comp
-      "write this" `shouldBe` "now"
+      ((r),s) <- runRefactGhcState comp
+      let toks = rsTokenStream s
+      -- (GHC.showPpr r) `shouldBe` "foo"
+      (GHC.showRichTokenStream toks) `shouldBe` "now"
+      
+  -- ---------------------------------------------
+
+  describe "usedWithoutQual" $ do
+    it "Returns True if the identifier is used unqualified" $ do
+      ((_,Just renamed,parsed), _toks) <- parsedFileDd1Ghc
+      let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (14,21) renamed
+
+      -- (SYB.showData SYB.Renamer 0 $ renamed) `shouldBe` "foo"
+      (GHC.getOccString name) `shouldBe` "zip"
+      (GHC.showPpr n) `shouldBe` "GHC.List.zip"
+      (usedWithoutQual name renamed) `shouldBe` True
+
+    it "Returns False if the identifier is used qualified" $ do
+      ((_,Just renamed,parsed), _toks) <- parsedFileDeclareGhc
+      let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) renamed
+      let PNT np@(GHC.L _ namep) = locToPNT (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
+
+      (myShow namep) `shouldBe` "Qual:G:gshow"
+      (myShow $ GHC.getRdrName name) `shouldBe` "G.gshow.bar.baz1"
+      (GHC.showRdrName $ GHC.getRdrName name) `shouldBe` "G.gshow.bar.baz2"
+      -- (GHC.showPpr $ GHC.occNameFS $ GHC.getOccName name) `shouldBe` "G.gshow"
+      -- (GHC.getOccString name) `shouldBe` "G.gshow"
+      (GHC.showPpr n) `shouldBe` "Data.Generics.Text.gshow"
+      (usedWithoutQual name renamed) `shouldBe` False
+
+myShow :: GHC.RdrName -> String
+myShow n = case n of
+  GHC.Unqual on  -> ("Unqual:" ++ (GHC.showPpr on))
+  GHC.Qual ms on -> ("Qual:" ++ (GHC.showPpr ms) ++ ":" ++ (GHC.showPpr on))
+  GHC.Orig ms on -> ("Orig:" ++ (GHC.showPpr ms) ++ ":" ++ (GHC.showPpr on))
+  GHC.Exact en   -> ("Exact:" ++ (GHC.showPpr en))
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions

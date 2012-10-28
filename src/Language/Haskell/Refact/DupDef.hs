@@ -59,7 +59,7 @@ comp maybeMainFile fileName newName (row, col) = do
                 case maybePn of
                   Just pn ->
                        -- do refactoredMod@((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
-                       do refactoredMod <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                       do refactoredMod@((fp,ismod),(toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                           st <- get
                           case (rsStreamModified st) of
                             False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
@@ -68,10 +68,9 @@ comp maybeMainFile fileName newName (row, col) = do
                           if modIsExported parsed
                            then do clients <- clientModsAndFiles modName
                                    liftIO $ putStrLn ("DupDef: clients=" ++ (GHC.showPpr clients)) -- ++AZ++ debug
-                                   -- TODO: uncomment and complete this
-                                   -- refactoredClients <- mapM (refactorInClientMod modName 
-                                   --                            (findNewPName newName parsed')) clients
-                                   let refactoredClients = [] -- ++AZ++ temporary
+                                   refactoredClients <- mapM (refactorInClientMod modName 
+                                                             (findNewPName newName renamed')) clients
+                                   -- let refactoredClients = [] -- ++AZ++ temporary
                                    return $ refactoredMod:refactoredClients
                            else  return [refactoredMod]
                   Nothing -> error "Invalid cursor position!"
@@ -167,34 +166,49 @@ doDuplicating pn newName (inscopes,Just renamed,parsed) =
                            return $ replaceBinds parentr newDecls
 
 
-{-
---Find the the new definition name in PName format.
-findNewPName name
-  =(fromMaybe defaultPN). applyTU (once_buTU (failTU `adhocTU` worker))
-     where
-        worker  pname
-           |pNtoName pname == name = Just pname
-        worker _ =mzero
--}
+
+-- | Find the the new definition name in GHC.Name format.
+findNewPName :: String -> GHC.RenamedSource -> GHC.Name
+findNewPName name renamed = fromJust res
+  where
+     res = somethingStaged SYB.Renamer Nothing
+            (Nothing `SYB.mkQ` worker) renamed
+
+     worker  (pname::GHC.Name)
+        | (GHC.occNameString $ GHC.getOccName pname) == name = Just pname
+     worker _ = Nothing
 
 -- Do refactoring in the client module.
 -- That is to hide the identifer in the import declaration if it will
 -- cause any problem in the client module.
 
-refactorInClientMod serverModName newPName (modName, fileName)
-  = do (inscopes,renamed,parsed ,ts) <- getModuleGhc fileName
-       let modNames = willBeUnQualImportedBy serverModName parsed
+refactorInClientMod :: GHC.ModuleName -> GHC.Name -> GHC.ModSummary
+                    -> RefactGhc ApplyRefacResult
+refactorInClientMod serverModName newPName modSummary
+  = do
+       let fileName = fromJust $ GHC.ml_hs_file $ GHC.ms_location modSummary
+       modInfo@((inscopes,Just renamed,parsed),ts) <- getModuleGhc fileName
+       let modNames = willBeUnQualImportedBy serverModName renamed
        -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
-       if isJust modNames && needToBeHided newPName renamed
-        then do (parsed', ((ts',m),_))<-runStateT (addHiding serverModName parsed [newPName]) ((ts,unmodified),fileName)
-                return ((fileName,m), (ts',parsed'))
-        else return ((fileName,unmodified),(ts,parsed))
+       if isJust modNames && needToBeHided newPName renamed parsed
+        -- then do (parsed', ((ts',m),_))<-runStateT (addHiding serverModName parsed [newPName]) ((ts,unmodified),fileName)
+        -- then do refactoredMod <- applyRefac (addHiding serverModName parsed [newPName]) (Just modInfo) fileName
+        then do refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
+                return refactoredMod
+        else return ((fileName,unmodified),(ts,renamed))
    where
-     needToBeHided name exps
+     needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> Bool
+     needToBeHided name exps parsed
          = usedWithoutQual name exps
-          || causeNameClashInExports newPName name parsed exps
+          || causeNameClashInExports name exps
 
 
+
+doDuplicatingClient :: GHC.ModuleName -> [GHC.Name] -> ParseResult
+              -> RefactGhc RefactResult
+doDuplicatingClient serverModName newPNames (inscopes,Just renamed,parsed) = do
+  renamed' <- addHiding serverModName renamed newPNames
+  return renamed'
 
 {-
 --Do refactoring in the client module.

@@ -56,10 +56,10 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Property checking
     -- ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isTopLevelPNT
-    -- ,isQualifiedPN,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon,isTypeSig
+    ,isQualifiedPN -- ,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     {- ,isComplexPatBind -},isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl,isDirectRecursiveDef
-    ,usedWithoutQual -- ,canBeQualified, hasFreeVars,isUsedInRhs
+    ,usedWithoutQual {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
     {-,findPNs -}, findEntity, findEntity'
     ,sameOccurrence
@@ -72,7 +72,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,fileNameToModName, strToModName, modNameToStr
 
     -- ** Locations
-    {- ,defineLoc, useLoc-},locToPNT {-,locToPN -},locToExp -- , getStartEndLoc
+    ,defineLoc, useLoc,locToPNT {-,locToPN -},locToExp -- , getStartEndLoc
     ,locToName
     ,getName
 
@@ -355,14 +355,14 @@ isExplicitlyExported pn mod
 -- ---------------------------------------------------------------------
 
 causeNameClashInExports::GHC.Name      -- ^ The original name??
-                        -> String      -- ^ The identifier name
+                        -- -> String      -- ^ The identifier name
                         ->GHC.RenamedSource  -- ^ The AST of the module
                         -- ->Exports    -- ^ The export relation of the module
                         ->Bool       -- ^ The result
 
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
-causeNameClashInExports  pn newName mod -- exps
+causeNameClashInExports  pn {- newName -} mod -- exps
   = undefined
 {-
   = let modNames=nub (concatMap (\(x, Ent modName _ _)->if show x==show newName
@@ -759,9 +759,32 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 -- | Return True if the identifier is unqualifiedly used in the given
 -- syntax phrase.
 
-usedWithoutQual::(SYB.Data t) => String -> t -> Bool
-usedWithoutQual name t
-   = undefined
+usedWithoutQual :: GHC.Name -> GHC.RenamedSource -> Bool
+usedWithoutQual name renamed = fromMaybe False res
+  where
+     res = somethingStaged SYB.Renamer Nothing
+            (Nothing `SYB.mkQ` worker
+            `SYB.extQ` workerBind
+            `SYB.extQ` workerExpr
+            ) renamed
+
+     worker  (pname :: GHC.Located GHC.Name) =
+       checkName pname
+
+     workerBind pnt@(GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name))) =
+       checkName (GHC.L l name)
+     workerBind _ = Nothing
+
+     workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+       = checkName (GHC.L l name)
+     workerExpr _ = Nothing
+
+     checkName (pname@(GHC.L l pn)::GHC.Located GHC.Name)
+        | ((GHC.nameUnique pn) == (GHC.nameUnique name)) &&
+          isUsedInRhs pname renamed &&
+          not (isQualifiedPN pn)   = Just True
+     checkName _ = Nothing
+
    {-
    =(fromMaybe False) (applyTU (once_tdTU (failTU `adhocTU` worker)) t)
       where
@@ -1045,6 +1068,17 @@ isTypeSig (TiDecorate.Dec (HsTypeSig loc is c tp))=True
 isTypeSig _=False
 -}
 
+-- |Return True if a PName is a qualified PName.
+--  AZ:NOTE: this tests the use instance, the underlying name may be qualified.
+--           e.g. used name is zip, GHC.List.zip
+isQualifiedPN :: GHC.Name -> Bool
+isQualifiedPN name = GHC.isQual $ GHC.nameRdrName name
+{-
+  = case (GHC.nameModule_maybe name) of
+      Just _ -> True
+      _      -> False
+-}
+
 -- | Return True if a declaration is a function definition.
 isFunBindP::HsDeclP -> Bool
 isFunBindP (GHC.L l (GHC.ValD (GHC.FunBind _ _ _ _ _ _))) = True
@@ -1174,16 +1208,16 @@ class (SYB.Data t) => HsBinds t where
     isDeclaredIn :: GHC.Name -> t -> Bool
 
 instance HsBinds (GHC.RenamedSource) where
-  hsBinds (grp,_,_,_) = getValBinds (GHC.hs_valds grp) 
+  hsBinds (grp,_,_,_) = getValBinds (GHC.hs_valds grp)
 
 
 instance HsBinds (GHC.HsGroup GHC.Name) where
-  hsBinds grp = getValBinds (GHC.hs_valds grp) 
+  hsBinds grp = getValBinds (GHC.hs_valds grp)
 
 instance HsBinds (GHC.HsLocalBinds GHC.Name) where
   hsBinds lb = case lb of
     GHC.HsValBinds b    -> getValBinds b
-    GHC.HsIPBinds _     -> []	 
+    GHC.HsIPBinds _     -> []
     GHC.EmptyLocalBinds -> []
 
 instance HsBinds (GHC.GRHSs GHC.Name) where
@@ -1192,7 +1226,7 @@ instance HsBinds (GHC.GRHSs GHC.Name) where
 instance HsBinds (GHC.Match GHC.Name) where
   hsBinds (GHC.Match _ _ grhs) = hsBinds grhs
 
-  replaceBinds (GHC.Match p t (GHC.GRHSs rhs binds)) newBinds 
+  replaceBinds (GHC.Match p t (GHC.GRHSs rhs binds)) newBinds
     = (GHC.Match p t (GHC.GRHSs rhs binds'))
       where
         binds' = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag newBinds) []))
@@ -1201,8 +1235,8 @@ instance HsBinds (GHC.Match GHC.Name) where
 instance HsBinds (GHC.HsBind GHC.Name) where
   hsBinds (GHC.PatBind _p rhs _typ _fvs _) = hsBinds rhs
 
-  replaceBinds (GHC.PatBind p (GHC.GRHSs rhs binds) typ fvs pt) newBinds 
-    = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt) 
+  replaceBinds (GHC.PatBind p (GHC.GRHSs rhs binds) typ fvs pt) newBinds
+    = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt)
       where
         binds' = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag newBinds) []))
 
@@ -1354,13 +1388,11 @@ instance HsDecls HsAltP where
 -- |Find those declarations(function\/pattern binding and type
 -- signature) which define the specified PNames. incTypeSig indicates
 -- whether the corresponding type signature will be included.
-
-definingDecls::[PName]   -- ^ The specified identifiers.
-            ->[HsDeclP]  -- ^ A collection of declarations.
-            ->Bool       -- ^ True means to include the type signature.
-            ->Bool       -- ^ True means to look at the local declarations as well. 
-            ->[HsDeclP]  -- ^ The result.
--- definingDecls pns ds incTypeSig recursive = undefined
+definingDecls::[PName]  -- ^ The specified identifiers.
+            ->[HsDeclP] -- ^ A collection of declarations.
+            ->Bool      -- ^ True means to include the type signature.
+            ->Bool      -- ^ True means to look at the local declarations as well. 
+            ->[HsDeclP] -- ^ The result.
 definingDecls pns ds incTypeSig recursive = concatMap defines ds
   where
    defines decl
@@ -1435,7 +1467,7 @@ definingDeclsNames:: -- (SYB.Data t) =>
 definingDeclsNames pns ds incTypeSig recursive = concatMap defines ds
   where
    defines decl
-     = if recursive 
+     = if recursive
         -- then ghead "defines" $ SYB.everythingStaged SYB.Renamer (++) [] (([]::([GHC.LHsBind GHC.Name]))  `SYB.mkQ` inDecl) decl
         then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` inDecl) decl
         else defines' decl
@@ -1688,7 +1720,7 @@ allPNT  fileName (row,col) t
         workerExpr _ = []
 
 
-------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- |Find the identifier(in GHC.Name format) whose start position is
 -- (row,col) in the file specified by the fileName, and returns
@@ -1697,7 +1729,7 @@ allPNT  fileName (row,col) t
 locToName::(SYB.Data t)=>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
-                    -> Maybe (GHC.Located GHC.Name)            -- ^ The result
+                    -> Maybe (GHC.Located GHC.Name)  -- ^ The result
 locToName fileName (row,col) t
   = res
        where
@@ -1711,7 +1743,6 @@ locToName fileName (row,col) t
         workerBind pnt@(GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
           | inScope pnt = Just (GHC.L l name)
         workerBind _ = Nothing
-
 
         workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
           | inScope pnt = Just (GHC.L l name)
@@ -2013,26 +2044,26 @@ addHiding serverModName (g,imps,e,d) pns = do
     imps' <- mapM inImport imps
     return (g,imps',e,d)
   where
-
-
     inImport :: GHC.LImportDecl GHC.Name -> RefactGhc (GHC.LImportDecl GHC.Name)
     inImport imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) qualify _source _safe isQualified _isImplicit as h))
       | serverModName == modName  && not isQualified
        = case h of
-           Nothing ->do toks <- fetchToks
-                        let (_,endPos) = getStartEndLoc imp
-                            ((GHC.L _ t),s) = ghead "addHiding" $ getToks (endPos,endPos) toks 
-                            newToken=mkToken t endPos (s++" hiding ("++showEntities GHC.showPpr pns++")")
-                            toks'=replaceToks toks endPos endPos [newToken]
-                        putToks toks' True
-                        return (replaceHiding imp (Just (True, map mkNewEnt pns )))
-           Just (True, ents) ->do toks <- fetchToks
-                                  let (_,endPos)=getStartEndLoc imp
-                                      ((GHC.L _ t),s) = ghead "addHiding" $ getToks (endPos,endPos) toks
-                                      newToken=mkToken t endPos (","++showEntities GHC.showPpr pns ++s)
-                                      toks'=replaceToks toks endPos endPos [newToken]
-                                  putToks toks' True
-                                  return (replaceHiding imp  (Just (True, (map mkNewEnt  pns)++ents))) 
+           Nothing -> do
+             toks <- fetchToks
+             let (_,endPos) = getStartEndLoc imp
+                 ((GHC.L _ t),s) = ghead "addHiding" $ getToks (endPos,endPos) toks 
+                 newToken=mkToken t endPos (s++" hiding ("++showEntities GHC.showPpr pns++")")
+                 toks'=replaceToks toks endPos endPos [newToken]
+             putToks toks' True
+             return (replaceHiding imp (Just (True, map mkNewEnt pns )))
+           Just (True, ents) -> do
+             toks <- fetchToks
+             let (_,endPos)=getStartEndLoc imp
+                 ((GHC.L _ t),s) = ghead "addHiding" $ getToks (endPos,endPos) toks
+                 newToken=mkToken t endPos (","++showEntities GHC.showPpr pns ++s)
+                 toks'=replaceToks toks endPos endPos [newToken]
+             putToks toks' True
+             return (replaceHiding imp  (Just (True, (map mkNewEnt  pns)++ents))) 
            Just (False, ent)  -> return imp
     inImport x = return x
 
@@ -2459,8 +2490,63 @@ canBeQualified pnt t
        inImp ((HsImportDecl loc modName qual  as h)::HsImportDeclP)
         |findEntity pnt h = Just True
        inImp _ = Nothing
+-}
 
 
+-- ---------------------------------------------------------------------
+
+-- | Return the identifier's defining location.
+-- defineLoc::PNT->SrcLoc
+defineLoc :: GHC.Located GHC.Name -> GHC.SrcLoc
+defineLoc (GHC.L _ name) = GHC.nameSrcLoc name
+
+-- | Return the identifier's source location.
+-- useLoc::PNT->SrcLoc
+useLoc:: (GHC.Located GHC.Name) -> GHC.SrcLoc
+-- useLoc (GHC.L l _) = getGhcLoc l
+useLoc (GHC.L l _) = GHC.srcSpanStart l
+
+-- ---------------------------------------------------------------------
+
+-- | Return True if the identifier is used in the RHS if a
+-- function\/pattern binding.
+isUsedInRhs::(SYB.Data t) => (GHC.Located GHC.Name) -> t -> Bool
+isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
+  where
+    notInLhs = fromMaybe False $ somethingStaged SYB.Renamer Nothing
+            (Nothing `SYB.mkQ` inMatch `SYB.extQ` inDecl) t
+     where
+      inMatch ((GHC.FunBind name _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name)
+      -- inMatch ((HsMatch loc1 name pats rhs ds)::HsMatchP)
+         | isJust (find (sameOccurrence pnt) [name]) = Just True
+      inMatch _ = Nothing
+
+      inDecl ((GHC.TypeSig is _) :: GHC.Sig GHC.Name)
+      -- inDecl ((TiDecorate.Dec (HsTypeSig loc is c tp))::HsDeclP)
+        |isJust (find (sameOccurrence pnt) is)   = Just True
+      inDecl _ = Nothing
+
+{- ++AZ++ original
+-- | Return True if the identifier is used in the RHS if a function\/pattern binding.
+isUsedInRhs::(Term t)=>PNT->t->Bool
+isUsedInRhs pnt t= useLoc pnt /= defineLoc pnt  && not (notInLhs pnt t)
+  where
+    notInLhs pnt
+     = (fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` inMatch
+                                                     `adhocTU` inDecl)))
+     where
+      inMatch ((HsMatch loc1 name pats rhs ds)::HsMatchP)
+         | isJust (find (sameOccurrence pnt) [name]) = Just True
+      inMatch _ =Nothing
+
+      inDecl ((TiDecorate.Dec (HsTypeSig loc is c tp))::HsDeclP)
+        |isJust (find (sameOccurrence pnt) is)   = Just True
+      inDecl _ =Nothing
+-}
+
+-- ---------------------------------------------------------------------
+
+{-
 -- | Return True if the identifier(in PNT format) occurs in the given syntax phrase.
 findPNT::(Term t)=>PNT->t->Bool
 findPNT pnt
@@ -2521,7 +2607,7 @@ locToExp beginPos endPos t = res
        in
         (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
 
-------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- | From PNT to PName.
 -- NOTE: the PNT holds the GHC.Name value, it must be converted to a GHC.RdrName
 pNTtoPN :: PNT -> PName
