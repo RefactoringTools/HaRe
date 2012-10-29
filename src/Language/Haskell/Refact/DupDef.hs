@@ -70,7 +70,6 @@ comp maybeMainFile fileName newName (row, col) = do
                                    liftIO $ putStrLn ("DupDef: clients=" ++ (GHC.showPpr clients)) -- ++AZ++ debug
                                    refactoredClients <- mapM (refactorInClientMod modName 
                                                              (findNewPName newName renamed')) clients
-                                   -- let refactoredClients = [] -- ++AZ++ temporary
                                    return $ refactoredMod:refactoredClients
                            else  return [refactoredMod]
                   Nothing -> error "Invalid cursor position!"
@@ -187,10 +186,10 @@ refactorInClientMod :: GHC.ModuleName -> GHC.Name -> GHC.ModSummary
 refactorInClientMod serverModName newPName modSummary
   = do
        let fileName = fromJust $ GHC.ml_hs_file $ GHC.ms_location modSummary
-       modInfo@((inscopes,Just renamed,parsed),ts) <- getModuleGhc fileName
+       modInfo@((_inscopes,Just renamed,parsed),ts) <- getModuleGhc fileName
        let modNames = willBeUnQualImportedBy serverModName renamed
        -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
-       mustHide <- needToBeHided newPName renamed parsed
+       mustHide <- needToBeHided newPName renamed
        if isJust modNames && mustHide
         -- then do (parsed', ((ts',m),_))<-runStateT (addHiding serverModName parsed [newPName]) ((ts,unmodified),fileName)
         -- then do refactoredMod <- applyRefac (addHiding serverModName parsed [newPName]) (Just modInfo) fileName
@@ -198,8 +197,8 @@ refactorInClientMod serverModName newPName modSummary
                 return refactoredMod
         else return ((fileName,unmodified),(ts,renamed))
    where
-     needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
-     needToBeHided name exps parsed = do
+     needToBeHided :: GHC.Name -> GHC.RenamedSource -> RefactGhc Bool
+     needToBeHided name exps = do
          usedUnqal <- usedWithoutQual name exps
          return $ usedUnqal || causeNameClashInExports name exps
 

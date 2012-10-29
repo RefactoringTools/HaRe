@@ -325,7 +325,7 @@ modIsExported mod
 
 -- ---------------------------------------------------------------------
 
-isExported = undefined
+isExported = error "isExported undefined"
 {- ++AZ++ original
 -- | Return True if the identifier is exported either implicitly or explicitly.
 isExported::PNT         -- ^ The identifier.
@@ -363,7 +363,7 @@ causeNameClashInExports::GHC.Name      -- ^ The original name??
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
 causeNameClashInExports  pn {- newName -} mod -- exps
-  = undefined
+  = error "causeNameClashInExports undefined"
 {-
   = let modNames=nub (concatMap (\(x, Ent modName _ _)->if show x==show newName
                                                         then [modName]
@@ -1182,7 +1182,7 @@ instance HsDecls GHC.ParsedSource where
 --  declaration list. Note: This function does not modify the
 --  token stream.
 replaceDecls :: [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name]
-replaceDecls t decls = undefined
+replaceDecls t decls = decls
 
 getDecls :: GHC.RenamedSource -> GHC.LHsBinds GHC.Name
 getDecls renamed@(group, _, _, _) = case (GHC.hs_valds group) of
