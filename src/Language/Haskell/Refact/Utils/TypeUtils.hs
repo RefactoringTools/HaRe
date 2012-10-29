@@ -759,8 +759,15 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 -- | Return True if the identifier is unqualifiedly used in the given
 -- syntax phrase.
 
-usedWithoutQual :: GHC.Name -> GHC.RenamedSource -> Bool
-usedWithoutQual name renamed = fromMaybe False res
+usedWithoutQual :: GHC.Name -> GHC.RenamedSource -> RefactGhc Bool
+usedWithoutQual name renamed = do
+  case res of
+     Just (GHC.L l _) -> do
+       toks <- fetchToks
+       
+       let (_,s) = ghead "usedWithoutQual"  $ getToks (getGhcLoc l, getGhcLocEnd l) toks
+       return $ not $ elem '.' s
+     Nothing -> return False
   where
      res = somethingStaged SYB.Renamer Nothing
             (Nothing `SYB.mkQ` worker
@@ -771,18 +778,17 @@ usedWithoutQual name renamed = fromMaybe False res
      worker  (pname :: GHC.Located GHC.Name) =
        checkName pname
 
-     workerBind pnt@(GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name))) =
-       checkName (GHC.L l name)
+     workerBind (GHC.L l (GHC.VarPat n) :: (GHC.Located (GHC.Pat GHC.Name))) =
+       checkName (GHC.L l n)
      workerBind _ = Nothing
 
-     workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-       = checkName (GHC.L l name)
+     workerExpr ((GHC.L l (GHC.HsVar n)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+       = checkName (GHC.L l n)
      workerExpr _ = Nothing
 
-     checkName (pname@(GHC.L l pn)::GHC.Located GHC.Name)
+     checkName (pname@(GHC.L _l pn)::GHC.Located GHC.Name)
         | ((GHC.nameUnique pn) == (GHC.nameUnique name)) &&
-          isUsedInRhs pname renamed &&
-          not (isQualifiedPN pn)   = Just True
+          isUsedInRhs pname renamed = Just pname 
      checkName _ = Nothing
 
    {-
@@ -1071,8 +1077,8 @@ isTypeSig _=False
 -- |Return True if a PName is a qualified PName.
 --  AZ:NOTE: this tests the use instance, the underlying name may be qualified.
 --           e.g. used name is zip, GHC.List.zip
-isQualifiedPN :: GHC.Name -> Bool
-isQualifiedPN name = GHC.isQual $ GHC.nameRdrName name
+isQualifiedPN :: GHC.Name -> RefactGhc Bool
+isQualifiedPN name = return $ GHC.isQual $ GHC.nameRdrName name
 {-
   = case (GHC.nameModule_maybe name) of
       Just _ -> True
@@ -1865,15 +1871,6 @@ allPNTLens fileName (row,col) t
 mytraverse :: (SYB.Data a) => Simple Traversal a [PNT]
 mytraverse = ghcplate
 
--- ghcplate ::
---   (Data a, Typeable b, Applicative c) => (b -> c b) -> a -> c a
-
--- foo :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
-foo = undefined
-
--- mytraverse :: (SYB.Data a, SYB.Data b, SYB.Typeable b) => Simple Traversal a b
--- mytraverse :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
---mytraverse = ghcplate pntQ
 
 -- pntQ :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
 pntQ = (          [] `SYB.mkQ` getPNT `SYB.extQ` getPNTBind)

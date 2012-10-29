@@ -2,6 +2,7 @@ module TestUtils
        ( compareFiles
        , parsedFileGhc
        , runRefactGhcState
+       , initialState
        , defaultSettings
        , catchException
        ) where
@@ -43,6 +44,16 @@ parsedFileGhc fileName = do
 
 -- ---------------------------------------------------------------------
 
+initialState = RefSt
+  { rsSettings = RefSet ["./test/testdata/"]
+  , rsUniqState = 1
+  , rsTokenStream = []
+  , rsStreamModified = False
+  }
+
+
+-- ---------------------------------------------------------------------
+
 runRefactGhcState :: RefactGhc t -> IO (t, RefactState)
 runRefactGhcState paramcomp = do
   let
@@ -54,7 +65,7 @@ runRefactGhcState paramcomp = do
         , rsStreamModified = False -- :: Bool
         -- , rsPosition = (-1,-1) -- :: (Int,Int)
         }
-  (r,s) <- runRefactGhc (initGhcSession >>paramcomp) initialState
+  (r,s) <- runRefactGhc (initGhcSession >> paramcomp) initialState
   return (r,s)
 
 -- ---------------------------------------------------------------------

@@ -190,17 +190,18 @@ refactorInClientMod serverModName newPName modSummary
        modInfo@((inscopes,Just renamed,parsed),ts) <- getModuleGhc fileName
        let modNames = willBeUnQualImportedBy serverModName renamed
        -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
-       if isJust modNames && needToBeHided newPName renamed parsed
+       mustHide <- needToBeHided newPName renamed parsed
+       if isJust modNames && mustHide
         -- then do (parsed', ((ts',m),_))<-runStateT (addHiding serverModName parsed [newPName]) ((ts,unmodified),fileName)
         -- then do refactoredMod <- applyRefac (addHiding serverModName parsed [newPName]) (Just modInfo) fileName
         then do refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
                 return refactoredMod
         else return ((fileName,unmodified),(ts,renamed))
    where
-     needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> Bool
-     needToBeHided name exps parsed
-         = usedWithoutQual name exps
-          || causeNameClashInExports name exps
+     needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
+     needToBeHided name exps parsed = do
+         usedUnqal <- usedWithoutQual name exps
+         return $ usedUnqal || causeNameClashInExports name exps
 
 
 

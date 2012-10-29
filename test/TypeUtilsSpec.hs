@@ -546,26 +546,36 @@ spec = do
 
   describe "usedWithoutQual" $ do
     it "Returns True if the identifier is used unqualified" $ do
-      ((_,Just renamed,parsed), _toks) <- parsedFileDd1Ghc
-      let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (14,21) renamed
+      ((_,Just renamed,parsed), toks) <- parsedFileDd1Ghc
+      let
+        comp = do
+          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (14,21) renamed
+          res <- usedWithoutQual name renamed
+          return (res,n,name)
 
-      -- (SYB.showData SYB.Renamer 0 $ renamed) `shouldBe` "foo"
-      (GHC.getOccString name) `shouldBe` "zip"
-      (GHC.showPpr n) `shouldBe` "GHC.List.zip"
-      (usedWithoutQual name renamed) `shouldBe` True
+      ((r,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }
+
+      (GHC.getOccString n2) `shouldBe` "zip"
+      (GHC.showPpr n1) `shouldBe` "GHC.List.zip"
+      r `shouldBe` True
 
     it "Returns False if the identifier is used qualified" $ do
-      ((_,Just renamed,parsed), _toks) <- parsedFileDeclareGhc
-      let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) renamed
-      let PNT np@(GHC.L _ namep) = locToPNT (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
+      ((_,Just renamed,parsed), toks) <- parsedFileDeclareGhc
+      let
+        comp = do
+          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) renamed
+          let PNT np@(GHC.L _ namep) = locToPNT (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
+          res <- usedWithoutQual name renamed
+          return (res,namep,name,n)
+      ((r,np,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }
 
-      (myShow namep) `shouldBe` "Qual:G:gshow"
-      (myShow $ GHC.getRdrName name) `shouldBe` "G.gshow.bar.baz1"
-      (GHC.showRdrName $ GHC.getRdrName name) `shouldBe` "G.gshow.bar.baz2"
+      (myShow np) `shouldBe` "Qual:G:gshow"
+      (myShow $ GHC.getRdrName n1) `shouldBe` "Exact:Data.Generics.Text.gshow"
+      (GHC.showRdrName $ GHC.getRdrName n1) `shouldBe` "Data.Generics.Text.gshow"
       -- (GHC.showPpr $ GHC.occNameFS $ GHC.getOccName name) `shouldBe` "G.gshow"
       -- (GHC.getOccString name) `shouldBe` "G.gshow"
-      (GHC.showPpr n) `shouldBe` "Data.Generics.Text.gshow"
-      (usedWithoutQual name renamed) `shouldBe` False
+      (GHC.showPpr n2) `shouldBe` "Data.Generics.Text.gshow"
+      r `shouldBe` False
 
 myShow :: GHC.RdrName -> String
 myShow n = case n of
