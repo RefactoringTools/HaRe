@@ -38,7 +38,7 @@ spec = do
 
       let decls = filter isFunOrPatBindR declsr
 
-      let decl = head $ drop 3 decls
+      let decl = head $ drop 4 decls
       let (startPos,endPos) = startEndLocIncComments toks decl
 
       -- (GHC.showPpr decls) `shouldBe` "unD (B y) = y"

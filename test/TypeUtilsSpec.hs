@@ -500,6 +500,26 @@ spec = do
       -- (show l) `shouldBe` "foo"
       (show r) `shouldBe` "foo"
 
+    it "Returns false if a syntax phrase is not part of another" $ do
+      let
+        comp = do
+
+         ((_,Just parentr,_parsed),_toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
+         let (Just (ln@(GHC.L _ n))) = mn
+
+         let declsr = GHC.bagToList $ getDecls parentr
+             duplicatedDecls = definingDeclsNames [n] declsr True False
+
+             res = findEntity ln duplicatedDecls
+             -- res = findEntity' ln duplicatedDecls
+
+         return (res,duplicatedDecls,ln)
+      ((r,d,l),_s) <- runRefactGhcState comp
+      (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+      -- (show l) `shouldBe` "foo"
+      (show r) `shouldBe` "foo"
+
 
   -- ---------------------------------------------
 
@@ -577,12 +597,25 @@ spec = do
       (GHC.showPpr n2) `shouldBe` "Data.Generics.Text.gshow"
       r `shouldBe` False
 
+  -- ---------------------------------------------
+
+  describe "isExplicitlyExported" $ do
+    it "Returns True if the identifier is explicitly exported" $ do
+      pending "write this "
+
+    it "Returns False if the identifier is not explicitly exported" $ do
+      pending "write this "
+
+
+
+  -- ---------------------------------------
 myShow :: GHC.RdrName -> String
 myShow n = case n of
   GHC.Unqual on  -> ("Unqual:" ++ (GHC.showPpr on))
   GHC.Qual ms on -> ("Qual:" ++ (GHC.showPpr ms) ++ ":" ++ (GHC.showPpr on))
   GHC.Orig ms on -> ("Orig:" ++ (GHC.showPpr ms) ++ ":" ++ (GHC.showPpr on))
   GHC.Exact en   -> ("Exact:" ++ (GHC.showPpr en))
+
 
 
 -- ---------------------------------------------------------------------

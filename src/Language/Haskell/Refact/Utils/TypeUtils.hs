@@ -44,7 +44,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program Analysis
     -- ** Imports and exports
    inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc -- , hsQualifier, {-This function should be removed-} rmPrelude 
-   {-,exportInfo -}, isExported {- , isExplicitlyExported -}, modIsExported
+   {-,exportInfo -}, isExported, isExplicitlyExported, modIsExported
 
     -- ** Variable analysis
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
@@ -342,7 +342,14 @@ isExported pnt@(PNT pn t1 _) exps
 
 -- ---------------------------------------------------------------------
 
-{-
+-- | Return True if an identifier is explicitly exported by the module.
+isExplicitlyExported::GHC.Name           -- ^ The identifier
+                     ->GHC.RenamedSource -- ^ The AST of the module
+                     ->Bool              -- ^ The result
+isExplicitlyExported pn (_g,_imps,exps,_docs)
+  = findEntity pn exps
+
+{- ++AZ++ original
 -- | Return True if an identifier is explicitly exported by the module.
 isExplicitlyExported::PName          -- ^ The identifier
                      ->HsModuleP    -- ^ The AST of the module
@@ -354,17 +361,16 @@ isExplicitlyExported pn mod
 
 -- ---------------------------------------------------------------------
 
+-- | ++AZ++ What does this actually do?
 causeNameClashInExports::GHC.Name      -- ^ The original name??
                         -- -> String      -- ^ The identifier name
-                        ->GHC.RenamedSource  -- ^ The AST of the module
-                        -- ->Exports    -- ^ The export relation of the module
+                        -> GHC.RenamedSource  -- ^ The AST of the module
                         ->Bool       -- ^ The result
 
-
 -- Note that in the abstract representation of exps, there is no qualified entities.
-causeNameClashInExports  pn {- newName -} mod -- exps
+causeNameClashInExports  pn {- newName -} mod@(_g,_imps,Just exps,_doc) -- exps
   = error "causeNameClashInExports undefined"
-{-
+{- ++AZ++ WIP
   = let modNames=nub (concatMap (\(x, Ent modName _ _)->if show x==show newName
                                                         then [modName]
                                                         else []) exps)
@@ -612,7 +618,7 @@ hsFreeAndDeclaredNames t = ((nub.map GHC.showPpr) f1, (nub.map GHC.showPpr) d1)
 --------------------------------------------------------------------------------
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
-hsVisibleNames:: (SYB.Data t1, SYB.Data t2) => t1 -> t2 -> [String]
+hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2) => t1 -> t2 -> [String]
 hsVisibleNames e t = ((nub.map GHC.showPpr) d)
   where
     d = hsVisiblePNs e t
@@ -625,7 +631,7 @@ hsVisibleNames e t = ((nub.map GHC.showPpr) d)
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisiblePNs :: (SYB.Data t1, SYB.Data t2) =>
+hsVisiblePNs :: (FindEntity t1, SYB.Data t1, SYB.Data t2) =>
    t1 -> t2 -> [GHC.Name]
 hsVisiblePNs e t = SYB.everythingStaged SYB.Renamer (++) []
                   ([] `SYB.mkQ`  top
@@ -802,49 +808,6 @@ usedWithoutQual name renamed = do
 
 -- ---------------------------------------------------------------------
 
--- | Returns True is a syntax phrase, say a, is part of another syntax
--- phrase, say b.
--- Expects to be at least Parser output
-findEntity:: (SYB.Data a, SYB.Data b)=> a -> b -> Bool
-findEntity a b = fromMaybe False res
-  where
-    -- ++AZ++ do a generic traversal, and see if it matches.
-    res = somethingStaged SYB.Parser Nothing worker b
-
-    worker :: (SYB.Typeable b, SYB.Data b) => b -> Maybe Bool
-    worker b = if SYB.typeOf a == SYB.typeOf b
-                 -- then Just (getStartEndLoc b == getStartEndLoc a)
-                 then Just True -- ++AZ++ test for now
-                 else Nothing
-
-findEntity':: (SYB.Data a, SYB.Data b)
-              => a -> b -> Maybe (SimpPos,SimpPos)
-findEntity' a b = res
-  where
-    -- ++AZ++ do a generic traversal, and see if it matches.
-    res = somethingStaged SYB.Parser Nothing worker b
-
-    worker :: (SYB.Typeable c,SYB.Data c)
-           => c -> Maybe (SimpPos,SimpPos)
-    worker b = if SYB.typeOf a == SYB.typeOf b
-                 -- then Just (getStartEndLoc b == getStartEndLoc a)
-                 then Just (getStartEndLoc b)
-                 else Nothing
-
-{-
-    worker :: ( SYB.Typeable a{-, SYB.Typeable b-})
-      => Maybe Bool
-      -- -> (b -> r)
-      -> a
-      -> Maybe Bool
-    worker a = case SYB.cast a of
-               Just b -> Just True
-               Nothing -> r
--}
-
-
-
-------------------------------------------------------------------------
 
 -- |`hsFDsFromInside` is different from `hsFreeAndDeclaredPNs` in
 -- that: given an syntax phrase t, `hsFDsFromInside` returns not only
@@ -1389,6 +1352,90 @@ instance HsDecls HsAltP where
                              Just (elem pn (pd `union` dd)))
 
 -}
+
+-- ---------------------------------------------------------------------
+
+class (SYB.Data a, SYB.Typeable a) => FindEntity a where
+
+  -- | Returns True is a syntax phrase, say a, is part of another
+  -- syntax phrase, say b.
+  findEntity:: (SYB.Data b, SYB.Typeable b) => a -> b -> Bool
+
+-- ---------------------------------------------------------------------
+
+instance FindEntity GHC.Name where
+
+  findEntity n t = fromMaybe False res
+   where
+    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (name::GHC.Name)
+      | n == name = Just True
+    worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
+instance FindEntity (GHC.Located GHC.Name) where
+
+  findEntity n t = fromMaybe False res
+   where
+    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (name::GHC.Located GHC.Name)
+      | n == name = Just True
+    worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
+instance FindEntity (GHC.Located (GHC.HsExpr GHC.Name)) where
+
+  findEntity n t = error "findEntity (GHC.Located (GHC.HsExpr GHC.Name)) undefined"
+
+-- ---------------------------------------------------------------------
+
+{-
+-- | Returns True is a syntax phrase, say a, is part of another syntax
+-- phrase, say b.
+-- Expects to be at least Parser output
+findEntity:: (SYB.Data a, SYB.Data b)=> a -> b -> Bool
+findEntity a b = fromMaybe False res
+  where
+    res = somethingStaged SYB.Parser Nothing worker b
+
+    worker :: (SYB.Typeable b, SYB.Data b) => b -> Maybe Bool
+    worker b = if SYB.typeOf a == SYB.typeOf b
+                 -- then Just (getStartEndLoc b == getStartEndLoc a)
+                 then Just True -- ++AZ++ test for now
+                 else Nothing
+-}
+findEntity':: (SYB.Data a, SYB.Data b)
+              => a -> b -> Maybe (SimpPos,SimpPos)
+findEntity' a b = res
+  where
+    -- ++AZ++ do a generic traversal, and see if it matches.
+    res = somethingStaged SYB.Parser Nothing worker b
+
+    worker :: (SYB.Typeable c,SYB.Data c)
+           => c -> Maybe (SimpPos,SimpPos)
+    worker x = if SYB.typeOf a == SYB.typeOf x
+                 -- then Just (getStartEndLoc b == getStartEndLoc a)
+                 then Just (getStartEndLoc x)
+                 else Nothing
+
+{-
+    worker :: ( SYB.Typeable a{-, SYB.Typeable b-})
+      => Maybe Bool
+      -- -> (b -> r)
+      -> a
+      -> Maybe Bool
+    worker a = case SYB.cast a of
+               Just b -> Just True
+               Nothing -> r
+-}
+
+
+
+
 -- ---------------------------------------------------------------------
 
 -- |Find those declarations(function\/pattern binding and type
