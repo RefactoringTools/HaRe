@@ -364,25 +364,33 @@ isExplicitlyExported pn mod
 -- | ++AZ++ What does this actually do?
 causeNameClashInExports::GHC.Name      -- ^ The original name??
                         -- -> String      -- ^ The identifier name
+                        -> GHC.ModuleName     -- ^ The identity of the module
                         -> GHC.RenamedSource  -- ^ The AST of the module
                         ->Bool       -- ^ The result
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
-causeNameClashInExports  pn {- newName -} mod@(_g,_imps,Just exps,_doc) -- exps
-  = error "causeNameClashInExports undefined"
-{- ++AZ++ WIP
-  = let modNames=nub (concatMap (\(x, Ent modName _ _)->if show x==show newName
-                                                        then [modName]
-                                                        else []) exps)
+causeNameClashInExports  pn {- newName -} modName mod@(_g,imps,Just exps,_doc) -- exps
+  -- = error "causeNameClashInExports undefined"
+
+  = let varExps = filter isImpVar exps
+        modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if GHC.showPpr x== GHC.showPpr pn
+                                                        then [GHC.moduleName $ GHC.nameModule x]
+                                                        else []) varExps)
     in (isExplicitlyExported pn mod) &&
         ( any (modIsUnQualifedImported mod) modNames
-            || elem (let (SN modName1 _) =hsModName mod
-                     in modName1)  modNames)
+            || elem modName modNames)
  where
+    isImpVar (GHC.L _ x) = case x of
+      GHC.IEVar _ -> True
+      _           -> False
+
     modIsUnQualifedImported mod modName
-     =let imps =hsModImports mod
-      in isJust $ find (\(HsImportDecl _ (SN modName1 _) qualify  _ h)->modName==modName1 && (not qualify)) imps
--}
+     =let -- imps =hsModImports mod
+       -- imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) qualify _source _safe isQualified _isImplicit as h))
+      in isJust $ find (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) qualify _source _safe isQualified _isImplicit as h)) 
+                                -> modName1 == modName && (not isQualified)) imps
+      -- in isJust $ find (\(HsImportDecl _ (SN modName1 _) qualify  _ h) -> modName == modName1 && (not qualify)) imps
+
 
 {- ++AZ++ Original
 causeNameClashInExports::String      -- ^ The identifier name

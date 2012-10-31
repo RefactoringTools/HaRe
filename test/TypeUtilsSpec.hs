@@ -606,6 +606,15 @@ spec = do
     it "Returns False if the identifier is not explicitly exported" $ do
       pending "write this "
 
+  -- ---------------------------------------------
+
+  describe "causeNameClashInExports" $ do
+    it "Returns False if there is no clash" $ do
+      pending "write this "
+
+    it "Returns True if clash of type xx" $ do
+      pending "write this "
+
 
 
   -- ---------------------------------------

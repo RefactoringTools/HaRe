@@ -200,7 +200,7 @@ refactorInClientMod serverModName newPName modSummary
      needToBeHided :: GHC.Name -> GHC.RenamedSource -> RefactGhc Bool
      needToBeHided name exps = do
          usedUnqal <- usedWithoutQual name exps
-         return $ usedUnqal || causeNameClashInExports name exps
+         return $ usedUnqal || causeNameClashInExports name serverModName exps
 
 
 
