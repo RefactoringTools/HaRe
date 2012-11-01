@@ -349,16 +349,6 @@ isExplicitlyExported::GHC.Name           -- ^ The identifier
 isExplicitlyExported pn (_g,_imps,exps,_docs)
   = findEntity pn exps
 
-{- ++AZ++ original
--- | Return True if an identifier is explicitly exported by the module.
-isExplicitlyExported::PName          -- ^ The identifier
-                     ->HsModuleP    -- ^ The AST of the module
-                     ->Bool         -- ^ The result
-isExplicitlyExported pn mod
-  = findEntity pn $ hsModExports mod
-
--}
-
 -- ---------------------------------------------------------------------
 
 -- | ++AZ++ What does this actually do?
@@ -369,10 +359,11 @@ causeNameClashInExports::GHC.Name      -- ^ The original name??
                         ->Bool       -- ^ The result
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
-causeNameClashInExports  pn {- newName -} modName mod@(_g,imps,Just exps,_doc) -- exps
+causeNameClashInExports  pn {- newName -} modName mod@(_g,imps,maybeExps,_doc) -- exps
   -- = error "causeNameClashInExports undefined"
 
-  = let varExps = filter isImpVar exps
+  = let exps = fromMaybe [] maybeExps
+        varExps = filter isImpVar exps
         modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if GHC.showPpr x== GHC.showPpr pn
                                                         then [GHC.moduleName $ GHC.nameModule x]
                                                         else []) varExps)
