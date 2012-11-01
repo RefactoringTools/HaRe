@@ -13,12 +13,16 @@ module Language.Haskell.Refact.Utils.Monad
        -- * Conveniences for state access
        , fetchToks
        , putToks
+       , getRefactInscopes
+       , getRefactRenamed
+       , getRefactParsed
 
        -- , Refact -- ^ TODO: Deprecated, use RefactGhc
        -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
        ) where
 
 import Control.Monad.State
+import Data.Maybe
 import Exception
 import qualified Control.Monad.IO.Class as MU
 
@@ -54,11 +58,13 @@ data RefactSettings = RefSet
 -- | State for refactoring a single file. Holds/hides the token
 -- stream, which gets updated transparently at key points.
 data RefactState = RefSt
-        { rsSettings :: RefactSettings -- Session level settings
+        { rsSettings :: RefactSettings -- ^Session level settings
         , rsUniqState :: Int -- ^ Current Unique creator value, incremented every time it is used
-        , rsTokenStream :: [PosToken]  -- Token stream for the current module
-        , rsStreamModified :: Bool     -- current module has updated the token stream
-        -- , rsPosition :: (Int,Int)
+
+        -- The current module being refactored
+        , rsTypecheckedMod :: GHC.TypecheckedModule
+        , rsTokenStream :: [PosToken]  -- ^Token stream for the current module
+        , rsStreamModified :: Bool     -- ^current module has updated the token stream
         }
 
 -- |Result of parsing a Haskell source file. The first element in the
@@ -66,42 +72,10 @@ data RefactState = RefSt
 -- relation and the third is the AST of the module. This is likely to
 -- change as we learn more
 
--- type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
--- type ParseResult = (GHC.TypecheckedSource, [GHC.LIE GHC.RdrName], GHC.ParsedSource)
--- type ParseResult = (GHC.TypecheckedSource, Maybe GHC.RenamedSource, GHC.ParsedSource)
-type ParseResult = (InScopes, Maybe GHC.RenamedSource, GHC.ParsedSource) 
+-- type ParseResult = (InScopes, Maybe GHC.RenamedSource, GHC.ParsedSource) 
+type ParseResult = GHC.TypecheckedModule
 
 type RefactResult = GHC.RenamedSource
-
--- TODO: >>>>>> This section has been superseded ++AZ++
-{-
-newtype Refact a = Refact (StateT RefactState IO a)
-instance MonadIO Refact where
-         liftIO f = Refact (lift f)
-
-runRefact :: Refact a -> RefactState -> IO (a, RefactState)
-runRefact (Refact (StateT f)) s = f s
-
-
-instance Monad Refact where
-  x >>= y = Refact (StateT (\ st -> do (b, rs') <- runRefact x st
-                                       runRefact (y b) rs'))
-
-  return thing = Refact (StateT (\ st -> return (thing, st)))
-
-
-instance MonadPlus Refact where
-   mzero = Refact (StateT(\ st -> mzero))
-
-   x `mplus` y =  Refact (StateT ( \ st -> runRefact x st `mplus` runRefact y st))  
-   -- ^Try one of the refactorings, x or y, with the same state plugged in
-
-instance MonadState RefactState (Refact) where
-   get = Refact $ StateT ( \ st -> return (st, st))
-
-   put newState = Refact $ StateT ( \ _ -> return ((), newState))
--}
--- TODO: <<<<< This section has been superseded ++AZ++
 
 
 -- ---------------------------------------------------------------------
@@ -155,6 +129,25 @@ putToks :: [PosToken] -> Bool -> RefactGhc ()
 putToks toks isModified = do
   st <- get
   put $ st {rsTokenStream = toks, rsStreamModified = isModified}
+
+-- ---------------------------------------------------------------------
+
+-- type ParseResult = (InScopes, Maybe GHC.RenamedSource, GHC.ParsedSource) 
+getRefactInscopes :: RefactGhc InScopes
+getRefactInscopes = GHC.getNamesInScope
+
+getRefactRenamed :: RefactGhc GHC.RenamedSource
+getRefactRenamed = do
+  t <- gets rsTypecheckedMod
+  return $ fromJust $ GHC.tm_renamed_source t
+
+getRefactParsed :: RefactGhc GHC.ParsedSource
+getRefactParsed = do
+  t <- gets rsTypecheckedMod
+  let pm = GHC.tm_parsed_module t
+  return $ GHC.pm_parsed_source pm
+
+-- ---------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ trying to wrap this in GhcT, or vice versa

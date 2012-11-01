@@ -16,6 +16,7 @@ import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
 
 import Control.Monad.State
+import Data.Maybe
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -33,8 +34,9 @@ spec = do
 
   describe "getFreeVariables" $ do
     it "gets the free variables for a given syntax element" $ do
-      ((_,Just renamed,_), toks) <- parsedFileBGhc
-
+      -- ((_,Just renamed,_), toks) <- parsedFileBGhc
+      (t, toks) <- parsedFileBGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
       let fvs = getFreeVariables renamed
       (GHC.showPpr $ GHC.nameSetToList $ GHC.unionManyNameSets fvs) `shouldBe` "[B.foo, B.bob]"
 
@@ -70,7 +72,8 @@ parsedFileNoMod = parsedFileGhc fileName
 comp :: RefactGhc String
 comp = do
     s <- get
-    modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"
+    -- modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"
+    modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/B.hs"
     -- -- gs <- mapM GHC.showModule mod
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g

@@ -353,6 +353,7 @@ newLnToken = (GHC.L ghcPos0 GHC.ITvocurly,"\n")
 ghcPos0 = GHC.mkSrcSpan p0 p0
   where p0 = GHC.mkSrcLoc (GHC.mkFastString "") 1 1
 
+prettyprintPatList :: (t -> String) -> Bool -> [t] -> String
 prettyprintPatList prpr beginWithSpace t
      = replaceTabBySpaces $ if beginWithSpace then format1 t else format2 t
  where
@@ -363,6 +364,7 @@ prettyprintPatList prpr beginWithSpace t
    format2 (p:ps) = (prpr p) ++" " ++ format2 ps
 
 --Replace Tab by white spaces. (1 Tab=8 white spaces)
+-- TODO: need to be aware of underlying tab stops, advance to next one only
 replaceTabBySpaces::String->String
 replaceTabBySpaces []=[]
 replaceTabBySpaces (s:ss)
@@ -546,8 +548,10 @@ updateToks :: (SYB.Data t)
 updateToks oldAST newAST printFun
   = trace "updateToks" $
     do
-       st <- get
-       let toks = rsTokenStream st
+       -- st <- get
+       -- let toks = rsTokenStream st
+       toks <- fetchToks
+
        let (startPos, endPos) = getStartEndLoc oldAST
            (toks1, _, _)      = splitToks (startPos, endPos) toks
            offset             = lengthOfLastLine toks1
@@ -556,23 +560,33 @@ updateToks oldAST newAST printFun
                            offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
        let
           toks' = replaceToks toks startPos endPos newToks
+       putToks toks' modified
+       {-
        if length newToks == 0
          -- then put (RefSt s u toks' modified) -- TODO:how do we flag this? Do we have to?
          then put $ st { rsTokenStream = toks', rsStreamModified = modified} -- TODO:how do we flag this? Do we have to?
          -- else put (RefSt s u toks' modified)
          else put $ st { rsTokenStream = toks', rsStreamModified = modified}
+       -}
 
        -- return (newAST, newToks)
        return ()
 
 -- ---------------------------------------------------------------------
 
+updateToksList :: (SYB.Data t)
+  => GHC.GenLocated GHC.SrcSpan t -- ^ Old element
+  -> GHC.GenLocated GHC.SrcSpan t -- ^ New element
+  -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -- ^ pretty printer
+  -> RefactGhc (GHC.GenLocated GHC.SrcSpan t, [PosToken]) -- ^ Updated element and toks
+  -- -> RefactGhc () -- ^ Updates the RefactState
 updateToksList oldAST newAST printFun
    = trace "updateToksList" $
-     do (RefSt s u toks _) <- get
+     do -- (RefSt s u toks _) <- get
+        toks <- fetchToks
         let offset                        = lengthOfLastLine toks1
             (toks1,toks2az, toks3az)      = splitToks (startPos, endPos) toks
-            (startPos, endPos)            = getStartEndLoc2 toks oldAST
+            (startPos, endPos)            = getStartEndLoc2 toks [oldAST]
         newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
         -- error (GHC.showRichTokenStream newToks)
         -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks newToks))
@@ -580,9 +594,12 @@ updateToksList oldAST newAST printFun
         -- error ("updateToksList:" ++ (showToks newToks))
         let
             toks' = replaceToks toks startPos endPos newToks
+        putToks toks' modified
+        {-
         if length newToks == 0
           then put (RefSt s u toks' modified) -- TODO:how do we flag this? Do we have to?
           else put (RefSt s u toks' modified)
+        -}
 
         return (newAST, newToks)
 

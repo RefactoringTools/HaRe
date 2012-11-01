@@ -200,7 +200,8 @@ getModuleDetails modSum = do
           renamed     = GHC.tm_renamed_source t
           parsed      = GHC.pm_parsed_source pm
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      return ((inscopeNames,renamed,parsed),tokens)
+      -- return ((inscopeNames,renamed,parsed),tokens)
+      return (t,tokens)
 
 -- ---------------------------------------------------------------------
 
@@ -264,6 +265,7 @@ runRefacSession settings comp = do
    initialState = RefSt
         { rsSettings = fromMaybe (RefSet ["."]) settings
         , rsUniqState = 1
+        -- , rsTypecheckedMod ??
         , rsTokenStream = [] -- :: [PosToken]
         , rsStreamModified = False -- :: Bool
         }
@@ -295,11 +297,11 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
     -- restore the state. Fix this to store the modules in some kind of cache.
-    (RefSt settings u ts m) <- get
-    put (RefSt settings u toks False)
+    (RefSt settings u pf ts m) <- get
+    put (RefSt settings u parsedFile toks False)
 
     mod' <- refac parsedFile
-    (RefSt _ u' toks' m) <- get
+    (RefSt _ u' pf' toks' m) <- get
 
     return ((fileName,m),(toks', mod'))
 
@@ -377,13 +379,14 @@ instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
           | otherwise = return e
 -}
 
+{- ++AZ++ comment out for now, see what breaks
 instance (SYB.Data t) => Update (GHC.Located HsPatP) t where
     update oldPat newPat t
         = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
      where
         inPat (p::GHC.Located HsPatP) -- = error "here"
             | sameOccurrence p oldPat
-                = do (newPat', _) <- updateToksList [oldPat] [newPat] (prettyprintPatList prettyprint False)
+                = do (newPat', _) <- updateToksList [oldPat] newPat (prettyprintPatList prettyprint False)
                      return $ head newPat'
             | otherwise = return p
 
@@ -398,6 +401,7 @@ instance (SYB.Data t) => Update [GHC.Located HsPatP] t where
                liftIO $ putStrLn (">" ++ SYB.showData SYB.Parser 0 newPat' ++ "<") 
                return newPat'
     inPat p = return p
+--++AZ++ comment out for now ends -}
 
 prettyprint :: (GHC.Outputable a) => a -> String
 -- prettyprint x = GHC.showSDoc $ GHC.ppr x

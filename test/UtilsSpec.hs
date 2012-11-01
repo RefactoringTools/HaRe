@@ -15,6 +15,7 @@ import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
 
 import Control.Monad.State
+import Data.Maybe
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.LocUtils
@@ -31,21 +32,27 @@ spec = do
 
   describe "locToExp on ParsedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
-      ((_, _, mod), toks) <- parsedFileBGhc
+      -- ((_, _, mod), toks) <- parsedFileBGhc
+      (t, toks) <- parsedFileBGhc
+      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just expr) = locToExp (7,7) (7,43) mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,9)
       getLocatedEnd   expr `shouldBe` (7,42)
 
     it "finds the largest leftmost expression contained in a given region #2" $ do
-      ((_, _, mod), toks) <- parsedFileBGhc
+      -- ((_, _, mod), toks) <- parsedFileBGhc
+      (t, toks) <- parsedFileBGhc
+      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just expr) = locToExp (7,7) (7,41) mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,12)
       getLocatedEnd   expr `shouldBe` (7,19)
 
     it "finds the largest leftmost expression in RenamedSource" $ do
-      ((_, renamed, _), toks) <- parsedFileBGhc
+      -- ((_, renamed, _), toks) <- parsedFileBGhc
+      (t, toks) <- parsedFileBGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
 
       let (Just expr) = locToExp (7,7) (7,41) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
       getLocatedStart expr `shouldBe` (7,12)
@@ -53,7 +60,9 @@ spec = do
 
   describe "locToExp on RenamedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
-      ((_, Just renamed, _), toks) <- parsedFileBGhc
+      -- ((_, Just renamed, _), toks) <- parsedFileBGhc
+      (t, toks) <- parsedFileBGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
 
       let (Just expr) = locToExp (7,7) (7,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
       getLocatedStart expr `shouldBe` (7,9)
@@ -82,13 +91,18 @@ spec = do
 
   describe "getModuleName" $ do
     it "returns a string for the module name if there is one" $ do
-      modInfo@((_, _, mod), toks) <- parsedFileBGhc
+      -- modInfo@((_, _, mod), toks) <- parsedFileBGhc
+      modInfo@(t, toks) <- parsedFileBGhc
+      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
       let (Just (modname,modNameStr)) = getModuleName mod
       -- let modNameStr = "foo"
       modNameStr `shouldBe` "B"
 
     it "returns Nothing for the module name otherwise" $ do
-      modInfo@((_, _, mod), toks) <- parsedFileNoMod
+      -- modInfo@((_, _, mod), toks) <- parsedFileNoMod
+      modInfo@(t, toks) <- parsedFileNoMod
+      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       getModuleName mod `shouldBe` Nothing
 
   -- -------------------------------------------------------------------
@@ -187,7 +201,10 @@ spec = do
           g <- clientModsAndFiles $ GHC.mkModuleName "S1"
 
           return (m,g)
-      (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
+      -- (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
+      (( ( (t,_)), mg ), _s) <- runRefactGhcState comp
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
       GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
 
@@ -198,7 +215,10 @@ spec = do
           g <- clientModsAndFiles $ GHC.mkModuleName "S1"
 
           return (m,g)
-      (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
+      -- (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
+      (( ( (t,_)), mg ), _s) <- runRefactGhcState comp
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
       GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[]"
 
@@ -210,7 +230,9 @@ spec = do
           g <- clientModsAndFiles $ GHC.mkModuleName "DupDef.Dd1"
 
           return (m,g)
-      (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
+      -- (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
+      (( ( (t,_)), mg ), _s) <- runRefactGhcState comp
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (show $ getModuleName parsed) `shouldBe` "Just (DupDef.Dd1,\"DupDef.Dd1\")"
       GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:DupDef.Dd2]"
 
@@ -258,8 +280,9 @@ parsedFileNoMod = parsedFileGhc fileName
 comp :: RefactGhc String
 comp = do
     s <- get
-    modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"
-    -- -- gs <- mapM GHC.showModule mod
+    -- modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"
+    modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/B.hs"
+
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))

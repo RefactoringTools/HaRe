@@ -16,6 +16,7 @@ import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
 
 import Control.Monad.State
+import Data.Maybe
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.LocUtils
@@ -32,7 +33,9 @@ spec = do
 
   describe "startEndLocIncComments" $ do
     it "get start&end loc, including leading and trailing comments" $ do
-      ((_,Just renamed,_), toks) <- parsedFileDeclareGhc
+      -- ((_,Just renamed,_), toks) <- parsedFileDeclareGhc
+      (t, toks) <- parsedFileDeclareGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = GHC.bagToList $ getDecls renamed
 
@@ -59,7 +62,9 @@ spec = do
 
   describe "splitToks" $ do
     it "Split the tokens into a front, middle and end" $ do
-      ((_,renamed,_),toks) <- parsedFileCaseBGhc
+      (t,toks) <- parsedFileCaseBGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
       let Just expr = locToExp (4,7) (4,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
           (_front,middle,_back) = splitToks ((4,9),(4,36)) toks
       (showToks middle) `shouldBe`
@@ -78,7 +83,9 @@ spec = do
 
   describe "replaceToks" $ do
     it "Replaces a set of tokens in a token stream" $ do
-      ((_,renamed,_),toks) <- parsedFileCaseBGhc
+      (t,toks) <- parsedFileCaseBGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
       let Just expr = locToExp (4,7) (4,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
           (front,middle,_back) = splitToks ((4,9),(4,36)) toks
       (showToks middle) `shouldBe`
@@ -112,7 +119,8 @@ spec = do
 
   describe "getSrcSpan" $ do
     it "Finds the top SrcSpan" $ do
-      ((_,Just renamed,_parsed), toks) <- parsedFileDd1Ghc
+      (t, toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
       let declsr = GHC.bagToList $ getDecls renamed
           ss = getSrcSpan declsr
       (GHC.showPpr declsr) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) },\n DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z,\n DupDef.Dd1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1,\n DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff = 15,\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
@@ -122,7 +130,8 @@ spec = do
 
   describe "getToks" $ do
     it "get a token stream from the middle of tokens" $ do
-      ((_,renamed,_),toks) <- parsedFileCaseBGhc
+      (t,toks) <- parsedFileCaseBGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
       let
           middle = getToks ((4,9),(4,36)) toks
       (showToks middle) `shouldBe`
@@ -181,8 +190,9 @@ parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 comp :: RefactGhc String
 comp = do
     s <- get
-    modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"
-    -- -- gs <- mapM GHC.showModule mod
+    -- modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"
+    modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/B.hs"
+
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))

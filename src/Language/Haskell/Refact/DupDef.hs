@@ -53,13 +53,19 @@ comp :: Maybe FilePath -> FilePath -> String -> SimpPos
 comp maybeMainFile fileName newName (row, col) = do
       if isVarId newName
         then do loadModuleGraphGhc maybeMainFile
-                modInfo@((_,renamed,parsed), _tokList) <- getModuleGhc fileName
+                modInfo@(t, _tokList) <- getModuleGhc fileName
+                let pm = GHC.tm_parsed_module t
+                    renamed     = GHC.tm_renamed_source t
+                    parsed      = GHC.pm_parsed_source pm
+
                 let (Just (modName,_)) = getModuleName parsed
                 let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
                 case maybePn of
                   Just pn ->
                        -- do refactoredMod@((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
-                       do refactoredMod@((fp,ismod),(toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                       do
+                          refactoredMod@((fp,ismod),(toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                       -- do refactoredMod@((fp,ismod),(toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                           st <- get
                           case (rsStreamModified st) of
                             False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
@@ -76,9 +82,21 @@ comp maybeMainFile fileName newName (row, col) = do
         else error $ "Invalid new function name:" ++ newName ++ "!"
 
 
-doDuplicating :: GHC.Located GHC.Name -> String -> ParseResult
+
+doDuplicating :: GHC.Located GHC.Name -> String
+              -> ParseResult
               -> RefactGhc RefactResult
-doDuplicating pn newName (inscopes,Just renamed,parsed) =
+doDuplicating pn newName t = do
+   inscopes <- getRefactInscopes
+   renamed  <- getRefactRenamed
+   parsed   <- getRefactParsed
+   reallyDoDuplicating pn newName inscopes renamed
+
+
+reallyDoDuplicating :: GHC.Located GHC.Name -> String
+              -> InScopes -> GHC.RenamedSource
+              -> RefactGhc RefactResult
+reallyDoDuplicating pn newName inscopes renamed =
 
    everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
                                   `SYB.extM` dupInMatch
@@ -86,6 +104,7 @@ doDuplicating pn newName (inscopes,Just renamed,parsed) =
                                   `SYB.extM` dupInLet
                                   `SYB.extM` dupInLetStmt
                                  ) renamed
+
         where
         --1. The definition to be duplicated is at top level.
         -- dupInMod :: (GHC.HsGroup GHC.Name)-> RefactGhc (GHC.HsGroup GHC.Name)
@@ -177,16 +196,18 @@ findNewPName name renamed = fromJust res
         | (GHC.occNameString $ GHC.getOccName pname) == name = Just pname
      worker _ = Nothing
 
--- Do refactoring in the client module.
--- That is to hide the identifer in the import declaration if it will
--- cause any problem in the client module.
 
+-- | Do refactoring in the client module. That is to hide the
+-- identifer in the import declaration if it will cause any problem in
+-- the client module.
 refactorInClientMod :: GHC.ModuleName -> GHC.Name -> GHC.ModSummary
                     -> RefactGhc ApplyRefacResult
 refactorInClientMod serverModName newPName modSummary
   = do
        let fileName = fromJust $ GHC.ml_hs_file $ GHC.ms_location modSummary
-       modInfo@((_inscopes,Just renamed,parsed),ts) <- getModuleGhc fileName
+       -- modInfo@((_inscopes,Just renamed,parsed),ts) <- getModuleGhc fileName
+       modInfo@(t,ts) <- getModuleGhc fileName
+       renamed <- getRefactRenamed
        let modNames = willBeUnQualImportedBy serverModName renamed
        -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
        mustHide <- needToBeHided newPName renamed
@@ -206,7 +227,9 @@ refactorInClientMod serverModName newPName modSummary
 
 doDuplicatingClient :: GHC.ModuleName -> [GHC.Name] -> ParseResult
               -> RefactGhc RefactResult
-doDuplicatingClient serverModName newPNames (inscopes,Just renamed,parsed) = do
+-- doDuplicatingClient serverModName newPNames (inscopes,Just renamed,parsed) = do
+doDuplicatingClient serverModName newPNames _t = do
+  renamed  <- getRefactRenamed
   renamed' <- addHiding serverModName renamed newPNames
   return renamed'
 
