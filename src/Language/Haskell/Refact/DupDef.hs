@@ -64,10 +64,10 @@ comp maybeMainFile fileName newName (row, col) = do
                   Just pn ->
                        -- do refactoredMod@((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                        do
-                          refactoredMod@((fp,ismod),(toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                          refactoredMod@((_fp,ismod),(toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                        -- do refactoredMod@((fp,ismod),(toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
-                          st <- get
-                          case (rsStreamModified st) of
+                          streamModified <- getRefactStreamModified
+                          case (streamModified) of
                             False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
                             True -> return ()
 
@@ -84,9 +84,8 @@ comp maybeMainFile fileName newName (row, col) = do
 
 
 doDuplicating :: GHC.Located GHC.Name -> String
-              -> ParseResult
-              -> RefactGhc RefactResult
-doDuplicating pn newName t = do
+              -> RefactGhc ()
+doDuplicating pn newName = do
    inscopes <- getRefactInscopes
    renamed  <- getRefactRenamed
    parsed   <- getRefactParsed
@@ -95,8 +94,8 @@ doDuplicating pn newName t = do
 
 reallyDoDuplicating :: GHC.Located GHC.Name -> String
               -> InScopes -> GHC.RenamedSource
-              -> RefactGhc RefactResult
-reallyDoDuplicating pn newName inscopes renamed =
+              -> RefactGhc ()
+reallyDoDuplicating pn newName inscopes renamed = do
 
    everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
                                   `SYB.extM` dupInMatch
@@ -104,6 +103,7 @@ reallyDoDuplicating pn newName inscopes renamed =
                                   `SYB.extM` dupInLet
                                   `SYB.extM` dupInLetStmt
                                  ) renamed
+   return ()
 
         where
         --1. The definition to be duplicated is at top level.
@@ -225,13 +225,13 @@ refactorInClientMod serverModName newPName modSummary
 
 
 
-doDuplicatingClient :: GHC.ModuleName -> [GHC.Name] -> ParseResult
-              -> RefactGhc RefactResult
+doDuplicatingClient :: GHC.ModuleName -> [GHC.Name] 
+              -> RefactGhc ()
 -- doDuplicatingClient serverModName newPNames (inscopes,Just renamed,parsed) = do
-doDuplicatingClient serverModName newPNames _t = do
+doDuplicatingClient serverModName newPNames = do
   renamed  <- getRefactRenamed
   renamed' <- addHiding serverModName renamed newPNames
-  return renamed'
+  return ()
 
 {-
 --Do refactoring in the client module.

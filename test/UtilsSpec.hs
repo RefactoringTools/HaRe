@@ -242,7 +242,8 @@ spec = do
   describe "runRefactGhc" $ do
     it "contains a State monad" $ do
       (_,s) <- runRefactGhcState comp
-      (rsStreamModified s) `shouldBe` True
+      (rsUniqState s) `shouldBe` 100
+
     it "contains the GhcT monad" $ do
       (r,_) <- runRefactGhcState comp
       r `shouldBe` ("[\"B                ( test/testdata/B.hs, interpreted )\""
@@ -276,19 +277,18 @@ parsedFileNoMod = parsedFileGhc fileName
   where
     fileName = "./test/testdata/NoMod.hs"
 
-
 comp :: RefactGhc String
 comp = do
     s <- get
-    -- modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"
     modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/B.hs"
 
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
-    put (s {rsStreamModified = True})
-    -- return ()
+
+    put (s {rsUniqState = 100})
     return (show gs)
+
 
 -- ---------------------------------------------------------------------
 

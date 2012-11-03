@@ -190,14 +190,16 @@ parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 comp :: RefactGhc String
 comp = do
     s <- get
-    -- modInfo@((_, _, mod), toks) <- parseSourceFileGhc "./test/testdata/B.hs"
     modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/B.hs"
 
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
-    put (s {rsStreamModified = True})
-    -- return ()
+
+    let Just tm = rsModule s
+    let tm' = tm {rsStreamModified = True}
+    put (s {rsModule = Just tm'})
+
     return (show gs)
 
 -- ---------------------------------------------------------------------

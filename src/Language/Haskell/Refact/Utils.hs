@@ -209,8 +209,6 @@ getModuleDetails modSum = do
 parseSourceFileGhc ::
   String -> RefactGhc (ParseResult,[PosToken])
 parseSourceFileGhc targetFile = do
-      -- initGhcSession
-      -- target <- GHC.guessTarget targetFile Nothing
       target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- Force interpretation, for inscopes
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
@@ -219,24 +217,6 @@ parseSourceFileGhc targetFile = do
 
       getModuleDetails modSum
 
-
-{-
-      p <- GHC.parseModule modSum
-      t <- GHC.typecheckModule p
-
-      GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
-      inscopeNames    <- GHC.getNamesInScope
-
-      let pm = GHC.tm_parsed_module t
-
-      let typechecked = GHC.tm_typechecked_source t
-          renamed     = GHC.tm_renamed_source t
-          parsed      = GHC.pm_parsed_source pm
-      tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      -- return ((inscopes,exports,modAst),tokens)
-      -- return ((typechecked,renamed,parsed),tokens)
-      return ((inscopeNames,renamed,parsed),tokens)
--}
 
 getExports (GHC.L _ hsmod) =
   case hsmod of
@@ -247,7 +227,8 @@ getExports (GHC.L _ hsmod) =
 
 -- | The result of a refactoring is the file, a flag as to whether it
 -- was modified, the updated token stream, and the updated AST
-type ApplyRefacResult = ((FilePath, Bool), ([PosToken], RefactResult))
+-- type ApplyRefacResult = ((FilePath, Bool), ([PosToken], RefactResult))
+type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.RenamedSource))
 
 
 -- | Manage a whole refactor session. Initialise the monad, load the
@@ -265,9 +246,7 @@ runRefacSession settings comp = do
    initialState = RefSt
         { rsSettings = fromMaybe (RefSet ["."]) settings
         , rsUniqState = 1
-        -- , rsTypecheckedMod ??
-        , rsTokenStream = [] -- :: [PosToken]
-        , rsStreamModified = False -- :: Bool
+        , rsModule = Nothing
         }
   (refactoredMods,_s) <- runRefactGhc (initGhcSession >> comp) initialState
   writeRefactoredFiles False refactoredMods
@@ -281,9 +260,9 @@ runRefacSession settings comp = do
 
 -- | Apply a refactoring (or part of a refactoring) to a single module
 applyRefac
-    :: (ParseResult -> RefactGhc RefactResult) -- ^ The refactoring
-    -> Maybe (ParseResult, [PosToken])         -- ^ parse of module, if available
-    -> FilePath                                -- ^ filename, if not
+    :: RefactGhc ()                     -- ^ The refactoring
+    -> Maybe (ParseResult, [PosToken])  -- ^ parse of module, if available
+    -> FilePath                         -- ^ filename, if not
     -> RefactGhc ApplyRefacResult
 
 applyRefac refac Nothing fileName
@@ -297,12 +276,20 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
     -- restore the state. Fix this to store the modules in some kind of cache.
-    (RefSt settings u pf ts m) <- get
-    put (RefSt settings u parsedFile toks False)
+    (RefSt settings u _) <- get
 
-    mod' <- refac parsedFile
-    (RefSt _ u' pf' toks' m) <- get
+    let rs = RefMod { rsTypecheckedMod = parsedFile
+                    , rsTokenStream = toks
+                    , rsStreamModified = False
+                    }
+    put (RefSt settings u (Just rs))
 
+    -- mod' <- refac parsedFile
+    refac  -- Run the refactoring, updating the state as required
+    -- (RefSt _ u' pf' toks' m) <- get
+    mod'  <- getRefactRenamed
+    toks' <- fetchToks
+    m     <- getRefactStreamModified
     return ((fileName,m),(toks', mod'))
 
 
@@ -419,7 +406,7 @@ writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-re
          -> m ()
 -}
 -- writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
-writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], RefactResult))])
+writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], GHC.RenamedSource))])
 -- writeRefactoredFiles :: Bool -> [(RefactState, GHC.ParsedSource)]
     -- The AST is not used.
     -- isSubRefactor is used only for history (undo).

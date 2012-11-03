@@ -2,9 +2,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Language.Haskell.Refact.Utils.Monad
        ( ParseResult
-       , RefactResult
+       -- , RefactResult
        , RefactSettings(..)
        , RefactState(..)
+       , RefactModule(..)
+       , initRefactModule
        -- GHC monad stuff
        , RefactGhc
        , runRefactGhc
@@ -13,6 +15,7 @@ module Language.Haskell.Refact.Utils.Monad
        -- * Conveniences for state access
        , fetchToks
        , putToks
+       , getRefactStreamModified
        , getRefactInscopes
        , getRefactRenamed
        , getRefactParsed
@@ -54,17 +57,19 @@ data RefactSettings = RefSet
         { rsetImportPath :: [FilePath]
         } deriving (Show)
 
+data RefactModule = RefMod
+        { rsTypecheckedMod :: GHC.TypecheckedModule
+        , rsTokenStream :: [PosToken]  -- ^Token stream for the current module
+        , rsStreamModified :: Bool     -- ^current module has updated the token stream
+        }
 
 -- | State for refactoring a single file. Holds/hides the token
 -- stream, which gets updated transparently at key points.
 data RefactState = RefSt
         { rsSettings :: RefactSettings -- ^Session level settings
         , rsUniqState :: Int -- ^ Current Unique creator value, incremented every time it is used
-
         -- The current module being refactored
-        , rsTypecheckedMod :: GHC.TypecheckedModule
-        , rsTokenStream :: [PosToken]  -- ^Token stream for the current module
-        , rsStreamModified :: Bool     -- ^current module has updated the token stream
+        , rsModule :: Maybe RefactModule
         }
 
 -- |Result of parsing a Haskell source file. The first element in the
@@ -75,7 +80,7 @@ data RefactState = RefSt
 -- type ParseResult = (InScopes, Maybe GHC.RenamedSource, GHC.ParsedSource) 
 type ParseResult = GHC.TypecheckedModule
 
-type RefactResult = GHC.RenamedSource
+-- type RefactResult = GHC.RenamedSource
 
 
 -- ---------------------------------------------------------------------
@@ -123,14 +128,23 @@ getRefacSettings = do
 -- ---------------------------------------------------------------------
 
 fetchToks :: RefactGhc [PosToken]
-fetchToks = gets rsTokenStream
+fetchToks = do
+  Just tm <- gets rsModule
+  return $ rsTokenStream tm
 
 putToks :: [PosToken] -> Bool -> RefactGhc ()
 putToks toks isModified = do
   st <- get
-  put $ st {rsTokenStream = toks, rsStreamModified = isModified}
+  let Just tm = rsModule st
+  let rsModule' = Just (tm {rsTokenStream = toks, rsStreamModified = isModified})
+  put $ st { rsModule = rsModule' }
 
 -- ---------------------------------------------------------------------
+
+getRefactStreamModified :: RefactGhc Bool
+getRefactStreamModified = do
+  Just tm <- gets rsModule
+  return $ rsStreamModified tm
 
 -- type ParseResult = (InScopes, Maybe GHC.RenamedSource, GHC.ParsedSource) 
 getRefactInscopes :: RefactGhc InScopes
@@ -138,16 +152,26 @@ getRefactInscopes = GHC.getNamesInScope
 
 getRefactRenamed :: RefactGhc GHC.RenamedSource
 getRefactRenamed = do
-  t <- gets rsTypecheckedMod
-  return $ fromJust $ GHC.tm_renamed_source t
+  Just tm <- gets rsModule
+  return $ fromJust $ GHC.tm_renamed_source $ rsTypecheckedMod tm
 
 getRefactParsed :: RefactGhc GHC.ParsedSource
 getRefactParsed = do
-  t <- gets rsTypecheckedMod
+  Just tm <- gets rsModule
+  let t  = rsTypecheckedMod tm
+
   let pm = GHC.tm_parsed_module t
   return $ GHC.pm_parsed_source pm
 
 -- ---------------------------------------------------------------------
+
+initRefactModule
+  :: GHC.TypecheckedModule -> [PosToken] -> Maybe RefactModule
+initRefactModule tm toks 
+  = Just (RefMod { rsTypecheckedMod = tm
+                 , rsTokenStream = toks
+                 , rsStreamModified = False
+                 })
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ trying to wrap this in GhcT, or vice versa

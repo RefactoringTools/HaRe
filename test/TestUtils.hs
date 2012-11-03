@@ -3,6 +3,7 @@ module TestUtils
        , parsedFileGhc
        , runRefactGhcState
        , initialState
+       , toksFromState
        , defaultSettings
        , catchException
        ) where
@@ -44,13 +45,20 @@ parsedFileGhc fileName = do
 
 -- ---------------------------------------------------------------------
 
+initialState :: RefactState
 initialState = RefSt
   { rsSettings = RefSet ["./test/testdata/"]
   , rsUniqState = 1
-  , rsTokenStream = []
-  , rsStreamModified = False
+  , rsModule = Nothing
   }
 
+-- ---------------------------------------------------------------------
+
+toksFromState :: RefactState -> [PosToken]
+toksFromState st =
+  case (rsModule st) of
+    Just tm -> rsTokenStream tm
+    Nothing -> []
 
 -- ---------------------------------------------------------------------
 
@@ -61,11 +69,7 @@ runRefactGhcState paramcomp = do
      initialState = RefSt
         { rsSettings = RefSet ["./test/testdata/"]
         , rsUniqState = 1
-
-        -- , rsTypecheckedMod = ??
-        , rsTokenStream = [] -- :: [PosToken]
-        , rsStreamModified = False -- :: Bool
-        -- , rsPosition = (-1,-1) -- :: (Int,Int)
+        , rsModule = Nothing
         }
   (r,s) <- runRefactGhc (initGhcSession >> paramcomp) initialState
   return (r,s)

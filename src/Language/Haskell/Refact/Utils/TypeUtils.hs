@@ -2318,8 +2318,8 @@ comments and layout are NOT preserved.
  -}
 
 duplicateDecl decls n newFunName
- = do others <- get
-      let toks = rsTokenStream others
+ = do 
+      toks <- fetchToks 
       let (startPos, endPos) = startEndLocIncComments toks funBinding
           {-take those tokens before (and include) the function
             binding and its following white tokens before the 'new line' token.
@@ -2332,7 +2332,8 @@ duplicateDecl decls n newFunName
 
       -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:" ++ (show (startPos,endPos))) -- ++AZ++ debug
       -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:toks1=" ++ (showToks toks1)) -- ++AZ++ debug
-      put $ others {rsTokenStream = toks2, rsStreamModified = True }
+      -- put $ others {rsTokenStream = toks2, rsStreamModified = True }
+      putToks toks2 True
 
       --rename the function name to the new name, and update token
       --stream (toks2, just updated) as well, in the monad
@@ -2340,9 +2341,10 @@ duplicateDecl decls n newFunName
       --rename function name in type signature  without adjusting the token stream
       -- typeSig'  <- renamePN pn Nothing newFunName False typeSig
       -- Get the updated token stream
-      st <- get
-      let toks2 = rsTokenStream st
-      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:toks2=" ++ (showToks toks2)) -- ++AZ++ debug
+
+      toks3 <- fetchToks
+      
+      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:toks3=" ++ (showToks toks3)) -- ++AZ++ debug
 
       let offset = getOffset toks (fst (getStartEndLoc funBinding))
           newLineTok = if ((not (emptyList toks1)) {-&& endsWithNewLn (glast "doDuplicating" toks1 -})
@@ -2350,17 +2352,18 @@ duplicateDecl decls n newFunName
                          else [newLnToken,newLnToken]
 
 
-          -- toks' = (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
-          toks' = (toks1++newLineTok++toks2)
+          -- toks' = (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks3) 
+          toks' = (toks1++newLineTok++toks3)
           {- toks'= if typeSig/=[]
-                 then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks2))
+                 then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks3))
                           sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
                           t = mkToken Whitespace (0,0) sigSource
-                      in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks2)
-                 else  (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
+                      in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks3)
+                 else  (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks3) 
           -}
       -- put ((toks',modified),others)
-      put $ others { rsTokenStream = toks', rsStreamModified = modified}
+      -- put $ others { rsTokenStream = toks', rsStreamModified = modified}
+      putToks toks' True
       -- return (typeSig'++funBinding')
       return funBinding'
      where
@@ -2495,11 +2498,10 @@ renamePN oldPN newName updateTokens t
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do if updateTokens
            then  do
-                    st <- get
-                    let toks = rsTokenStream st
+                    toks <- fetchToks
                     let (row,col) = (getLocatedStart pnt)
                     let toks'= replaceToks toks (row,col) (row,col) [newNameTok l newName]
-                    put $ st { rsTokenStream = toks', rsStreamModified = modified }
+                    putToks toks' True
                     return (GHC.L l newName)
            else return (GHC.L l newName)
     rename x = return x

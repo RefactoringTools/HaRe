@@ -53,19 +53,19 @@ comp fileName beginPos endPos = do
 
 doIfToCase ::
   GHC.Located (GHC.HsExpr GHC.Name)
-  -> ParseResult
-  -> RefactGhc RefactResult
-doIfToCase expr _t = do
+  -> RefactGhc ()
+doIfToCase expr = do
   rs <- getRefactRenamed
   reallyDoIfToCase expr rs
 
 reallyDoIfToCase ::
   GHC.Located (GHC.HsExpr GHC.Name)
   -> GHC.RenamedSource
-  -> RefactGhc RefactResult
+  -> RefactGhc ()
 reallyDoIfToCase expr rs = do
    
    everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
+   return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
 
@@ -80,7 +80,6 @@ reallyDoIfToCase expr rs = do
                return newExp
 
          inExp e = return e
-   
 
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
