@@ -43,7 +43,7 @@ comp :: String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
        -- modInfo@((_, renamed, ast), toks) <- parseSourceFileGhc fileName
        modInfo@(t, toks) <- parseSourceFileGhc fileName
-       let renamed = fromJust $ GHC.tm_renamed_source t
+       let renamed = gfromJust "ifToCase" $ GHC.tm_renamed_source t
        let expr = locToExp beginPos endPos renamed
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))

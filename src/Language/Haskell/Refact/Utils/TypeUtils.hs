@@ -109,7 +109,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , mkRdrName, mkNewName
 
     -- The following functions are not in the the API yet.
-    {- ,getDeclToks -}, causeNameClashInExports -- , inRegion , ghead, glast, gfromJust, unmodified, prettyprint,
+    {- ,getDeclToks -}, causeNameClashInExports {- , inRegion -}  -- , unmodified, prettyprint,
     -- getDeclAndToks
 
 -- * Typed AST traversals (added by CMB)
@@ -309,7 +309,7 @@ modIsExported (GHC.L _ mod)
 
      in if isNothing exps
            then True
-           else isJust $ find matchModName (fromJust exps)
+           else isJust $ find matchModName (gfromJust "modIsExported" exps)
 
 {- ++AZ++ original
 -- | Return True if the current module is exported either by default or by specifying the module name in the export.
@@ -406,8 +406,7 @@ causeNameClashInExports  pn newName mod exps
 
 -}
 
-
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- | Collect the free and declared variables (in the GHC.Name format)
 -- in a given syntax phrase t. In the result, the first list contains
 -- the free variables, and the second list contains the declared
@@ -768,6 +767,7 @@ usedWithoutQual :: GHC.Name -> GHC.RenamedSource -> RefactGhc Bool
 usedWithoutQual name renamed = do
   case res of
      Just (GHC.L l _) -> do
+       liftIO $ putStrLn ("usedWithoutQual") -- ++AZ++ debug
        toks <- fetchToks
        
        let (_,s) = ghead "usedWithoutQual"  $ getToks (getGhcLoc l, getGhcLocEnd l) toks

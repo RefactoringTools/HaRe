@@ -8,11 +8,10 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -}
                      SimpPos,unmodified,modified
                      {-
-                     ,simpPos0,ghead,glast,gfromJust
+                     ,simpPos0
                      -}
                      , emptyList
                      , showToks
-                     , ghead, glast, gtail
                      , tokenCol, tokenRow
                      , tokenPos
                      , tokenCon
@@ -146,18 +145,6 @@ extractComments ((startPosl, startPosr), endPos) toks
       in toks1
 
 ------------------------------------------------
--}
-ghead info []    = error $ "ghead "++info++" []"
-ghead info (h:_) = h
-
-glast info []    = error $ "glast " ++ info ++ " []"
-glast info h     = last h
-
-gtail info []   = error $ "gtail " ++ info ++ " []"
-gtail info h    = tail h
-{-
-gfromJust info (Just h) = h
-gfromJust info Nothing = error $ "gfromJust " ++ info ++ " Nothing"
 -}
 --Some functions for fetching a specific field of a token
 tokenCol (GHC.L l _,_) = c where (_,c) = getGhcLoc l

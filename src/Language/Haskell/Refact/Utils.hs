@@ -192,15 +192,15 @@ getModuleDetails modSum = do
       t <- GHC.typecheckModule p
 
       GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
-      inscopeNames    <- GHC.getNamesInScope
 
       let pm = GHC.tm_parsed_module t
 
-      let typechecked = GHC.tm_typechecked_source t
-          renamed     = GHC.tm_renamed_source t
-          parsed      = GHC.pm_parsed_source pm
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      -- return ((inscopeNames,renamed,parsed),tokens)
+      mtm <- gets rsModule
+      case mtm of
+        Just _tm -> error "getModuleDetails: trying to load a module without finishing with active one"
+        Nothing -> putParsedModule t tokens
+
       return (t,tokens)
 
 -- ---------------------------------------------------------------------
@@ -290,6 +290,10 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     mod'  <- getRefactRenamed
     toks' <- fetchToks
     m     <- getRefactStreamModified
+
+    -- Clear the refactoring state
+    put (RefSt settings u Nothing)
+
     return ((fileName,m),(toks', mod'))
 
 

@@ -63,9 +63,8 @@ comp maybeMainFile fileName newName (row, col) = do
                 case maybePn of
                   Just pn ->
                        do
-                          refactoredMod@((_fp,_ismod),(_toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
-                          streamModified <- getRefactStreamModified
-                          case (streamModified) of
+                          refactoredMod@((_fp,ismod),(_toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                          case (ismod) of
                             False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
                             True -> return ()
 
@@ -95,12 +94,13 @@ reallyDoDuplicating :: GHC.Located GHC.Name -> String
               -> RefactGhc ()
 reallyDoDuplicating pn newName inscopes renamed = do
 
-   everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
+   renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
                                   `SYB.extM` dupInMatch
                                   `SYB.extM` dupInPat
                                   `SYB.extM` dupInLet
                                   `SYB.extM` dupInLetStmt
                                  ) renamed
+   putRefactRenamed renamed'
    return ()
 
         where
@@ -185,7 +185,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
 
 -- | Find the the new definition name in GHC.Name format.
 findNewPName :: String -> GHC.RenamedSource -> GHC.Name
-findNewPName name renamed = fromJust res
+findNewPName name renamed = gfromJust "findNewPName" res
   where
      res = somethingStaged SYB.Renamer Nothing
             (Nothing `SYB.mkQ` worker) renamed
@@ -202,18 +202,19 @@ refactorInClientMod :: GHC.ModuleName -> GHC.Name -> GHC.ModSummary
                     -> RefactGhc ApplyRefacResult
 refactorInClientMod serverModName newPName modSummary
   = do
-       let fileName = fromJust $ GHC.ml_hs_file $ GHC.ms_location modSummary
+       let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
        modInfo@(t,ts) <- getModuleGhc fileName
-       putParsedModule t ts
 
        renamed <- getRefactRenamed
+
        let modNames = willBeUnQualImportedBy serverModName renamed
        -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
        mustHide <- needToBeHided newPName renamed
        if isJust modNames && mustHide
         -- then do (parsed', ((ts',m),_))<-runStateT (addHiding serverModName parsed [newPName]) ((ts,unmodified),fileName)
         -- then do refactoredMod <- applyRefac (addHiding serverModName parsed [newPName]) (Just modInfo) fileName
-        then do refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
+        then do
+                refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
                 return refactoredMod
         else return ((fileName,unmodified),(ts,renamed))
    where

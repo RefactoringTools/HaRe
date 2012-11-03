@@ -18,6 +18,7 @@ module Language.Haskell.Refact.Utils.Monad
        , getRefactStreamModified
        , getRefactInscopes
        , getRefactRenamed
+       , putRefactRenamed
        , getRefactParsed
        , putParsedModule
 
@@ -153,12 +154,25 @@ getRefactInscopes = GHC.getNamesInScope
 
 getRefactRenamed :: RefactGhc GHC.RenamedSource
 getRefactRenamed = do
-  Just tm <- gets rsModule
-  return $ fromJust $ GHC.tm_renamed_source $ rsTypecheckedMod tm
+  mtm <- gets rsModule
+  let tm = gfromJust "getRefactRenamed" mtm
+  return $ gfromJust "getRefactRenamed2" $ GHC.tm_renamed_source $ rsTypecheckedMod tm
+
+putRefactRenamed :: GHC.RenamedSource -> RefactGhc ()
+putRefactRenamed renamed = do
+  st <- get
+  mrm <- gets rsModule
+  let rm = gfromJust "putRefactRenamed" mrm
+  let tm = rsTypecheckedMod rm
+  let tm' = tm { GHC.tm_renamed_source = Just renamed }
+  let rm' = rm { rsTypecheckedMod = tm' }
+  put $ st {rsModule = Just rm'}
+
 
 getRefactParsed :: RefactGhc GHC.ParsedSource
 getRefactParsed = do
-  Just tm <- gets rsModule
+  mtm <- gets rsModule
+  let tm = gfromJust "getRefactParsed" mtm
   let t  = rsTypecheckedMod tm
 
   let pm = GHC.tm_parsed_module t
