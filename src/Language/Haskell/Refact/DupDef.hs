@@ -173,7 +173,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
                                ++ "duplicating, please select another name!")
                    else do newBinding <- duplicateDecl declsr n newNameGhc
                            -- liftIO $ putStrLn ("DupDef: newBinding =" ++ (GHC.showPpr newBinding)) -- ++AZ++ debug
-                           -- liftIO $ putStrLn ("DupDef: declsr =" ++ (GHC.showPpr declsr)) -- ++AZ++ debu
+                           -- liftIO $ putStrLn ("DupDef: declsr =" ++ (GHC.showPpr declsr)) -- ++AZ++ debug
 
                            -- let newDecls = replaceDecls declsr (reverse before++ newBinding++ reverse after)
                            let newDecls = replaceDecls declsr (declsr ++ newBinding)
@@ -230,6 +230,7 @@ doDuplicatingClient :: GHC.ModuleName -> [GHC.Name]
 doDuplicatingClient serverModName newPNames = do
   renamed  <- getRefactRenamed
   renamed' <- addHiding serverModName renamed newPNames
+  putRefactRenamed renamed'
   return ()
 
 {-

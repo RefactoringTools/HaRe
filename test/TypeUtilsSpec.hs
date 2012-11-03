@@ -651,29 +651,32 @@ spec = do
       let
         comp = do
 
-         -- ((_,Just renamed1,parsed1),_toks1) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
-         (t1,_toks1) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
-         -- ((_,Just renamed2,parsed2),_toks2) <- parseSourceFileGhc "./test/testdata/DupDef/Dd2.hs"
-         (t2, _toks2) <- parseSourceFileGhc "./test/testdata/DupDef/Dd2.hs"
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         clearParsedModule
+         (t2, toks2) <- parseSourceFileGhc "./test/testdata/DupDef/Dd2.hs"
+         -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
          let renamed2 = fromJust $ GHC.tm_renamed_source t2
 
          let parsed1 = GHC.pm_parsed_source $ GHC.tm_parsed_module t1
-         let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
+         -- let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
 
          let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) renamed1
-         let (Just (ln@(GHC.L _ n))) = mn
+         let (Just (GHC.L _ n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
-         n1 <- mkNewName "n1"
-         n2 <- mkNewName "n2"
-         res <- addHiding modName renamed2 [n1,n2]
+         n1   <- mkNewName "n1"
+         n2   <- mkNewName "n2"
+         res  <- addHiding modName renamed2 [n1,n2]
+         toks <- fetchToks
 
-         return (res)
-      ((r),s) <- runRefactGhcState comp
-      let toks = toksFromState s
-      -- (GHC.showPpr r) `shouldBe` "foo"
-      (GHC.showRichTokenStream toks) `shouldBe` "now"
+         return (res,toks,renamed2,toks2)
+      ((r,t,r2,tk2),s) <- runRefactGhcState comp
+      -- (GHC.showRichTokenStream tk2) `shouldBe` "abc"
+      -- (GHC.showPpr r2) `shouldBe` "foo2"
+      -- (GHC.showPpr r) `shouldBe` "foo r"
+      (showToks t) `shouldBe` "foo"
+      (GHC.showRichTokenStream t) `shouldBe` "now"
       
   -- ---------------------------------------------
 

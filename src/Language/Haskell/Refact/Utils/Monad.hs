@@ -21,6 +21,7 @@ module Language.Haskell.Refact.Utils.Monad
        , putRefactRenamed
        , getRefactParsed
        , putParsedModule
+       , clearParsedModule
 
        -- , Refact -- ^ TODO: Deprecated, use RefactGhc
        -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
@@ -183,6 +184,12 @@ putParsedModule
 putParsedModule tm toks = do
   st <- get
   put $ st { rsModule = initRefactModule tm toks }
+
+clearParsedModule :: RefactGhc ()
+clearParsedModule = do
+  st <- get
+  put $ st { rsModule = Nothing }
+
 
 -- ---------------------------------------------------------------------
 

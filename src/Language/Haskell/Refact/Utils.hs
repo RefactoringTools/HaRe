@@ -212,9 +212,14 @@ parseSourceFileGhc targetFile = do
       target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- Force interpretation, for inscopes
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
-      g <- GHC.getModuleGraph
-      let modSum = head g
 
+      graph <- GHC.getModuleGraph
+
+      let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
+           map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
+
+      -- let modSum = head g
+      let [(_,modSum)] = mm
       getModuleDetails modSum
 
 
@@ -284,15 +289,13 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
                     }
     put (RefSt settings u (Just rs))
 
-    -- mod' <- refac parsedFile
     refac  -- Run the refactoring, updating the state as required
-    -- (RefSt _ u' pf' toks' m) <- get
     mod'  <- getRefactRenamed
     toks' <- fetchToks
     m     <- getRefactStreamModified
 
     -- Clear the refactoring state
-    put (RefSt settings u Nothing)
+    clearParsedModule
 
     return ((fileName,m),(toks', mod'))
 

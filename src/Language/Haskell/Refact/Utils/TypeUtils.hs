@@ -2093,10 +2093,11 @@ addHiding serverModName (g,imps,e,d) pns = do
        = case h of
            Nothing -> do
              toks <- fetchToks
-             let (_,endPos) = getStartEndLoc imp
-                 ((GHC.L _ t),s) = ghead "addHiding" $ getToks (endPos,endPos) toks 
+             let (startPos,endPos) = getStartEndLoc imp
+                 ((GHC.L _ t),s) = ghead "addHiding" $ getToks (startPos,endPos) toks 
                  newToken=mkToken t endPos (s++" hiding ("++showEntities GHC.showPpr pns++")")
-                 toks'=replaceToks toks endPos endPos [newToken]
+                 toks'= replaceToks toks endPos endPos [newToken]
+             -- error ("addHiding: newToken=" ++ (showToks [newToken]) ++ " endPos=" ++ (show endPos)) -- ++AZ++ debug
              putToks toks' True
              return (replaceHiding imp (Just (True, map mkNewEnt pns )))
            Just (True, ents) -> do

@@ -494,11 +494,12 @@ lengthOfLastLine toks
 -- ---------------------------------------------------------------------
 
 -- | get a token stream specified by the start and end position.
-getToks::(SimpPos,SimpPos)->[PosToken]->[PosToken]
-getToks (startPos,endPos) toks
-    =let (_,toks2)=break (\t->tokenPos t==startPos) toks
-         (toks21, toks22)=break (\t->tokenPos t==endPos) toks2
-     in (toks21++ [ghead "getToks" toks22])   -- Should add error message for empty list?
+getToks :: (SimpPos,SimpPos) -> [PosToken] -> [PosToken]
+getToks (startPos,endPos) toks =
+  -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks=" ++ (showToks toks)
+  let (_,toks2) = break (\t->tokenPos t == startPos) toks
+      (toks21,toks22) = break (\t -> tokenPos t >= endPos) toks2
+  in (toks21++ [ghead "getToks" toks22])   -- Should add error message for empty list?
 
 -- ---------------------------------------------------------------------
 
@@ -598,9 +599,8 @@ updateToksList oldAST newAST printFun
 -- what happens if the start or end position does not exist?
 
 replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
-replaceToks toks startPos endPos newToks
-  = -- error ("replaceToks:" ++ (showToks (toks1++ (newToks++toks22)))) -- (showToks toks1) ++ "\n" ++ (showToks toks21) ++ "\n" ++ (showToks toks22))
- -- $ "replaceToks: newToks=" ++ (showToks newToks) -- ++AZ++
+replaceToks toks startPos endPos newToks =
+ -- error $ "replaceToks: startPos=" ++ (show startPos)
     (if length toks22 == 0
         then toks1 ++ newToks
         else let {-(pos::(Int,Int)) = tokenPos (ghead "replaceToks" toks22)-} -- JULIEN
@@ -935,7 +935,9 @@ getSrcSpan t = res t
                     `SYB.extQ` pnt
                     `SYB.extQ` sn
                     `SYB.extQ` literalInExp
-                    `SYB.extQ` literalInPat)
+                    `SYB.extQ` literalInPat
+                    `SYB.extQ` importDecl
+            )
 
     bind :: GHC.GenLocated GHC.SrcSpan (GHC.HsBind GHC.Name) -> Maybe GHC.SrcSpan
     bind (GHC.L l _)              = Just l
@@ -952,6 +954,9 @@ getSrcSpan t = res t
 
     literalInPat :: GHC.LPat GHC.Name -> Maybe GHC.SrcSpan
     literalInPat (GHC.L l _) = Just l
+
+    importDecl :: GHC.LImportDecl GHC.Name -> Maybe GHC.SrcSpan
+    importDecl (GHC.L l _) = Just l
 
 -- ---------------------------------------------------------------------
 
