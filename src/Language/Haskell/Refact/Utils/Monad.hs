@@ -19,6 +19,7 @@ module Language.Haskell.Refact.Utils.Monad
        , getRefactInscopes
        , getRefactRenamed
        , getRefactParsed
+       , putParsedModule
 
        -- , Refact -- ^ TODO: Deprecated, use RefactGhc
        -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
@@ -162,6 +163,12 @@ getRefactParsed = do
 
   let pm = GHC.tm_parsed_module t
   return $ GHC.pm_parsed_source pm
+
+putParsedModule
+  :: GHC.TypecheckedModule -> [PosToken] -> RefactGhc ()
+putParsedModule tm toks = do
+  st <- get
+  put $ st { rsModule = initRefactModule tm toks }
 
 -- ---------------------------------------------------------------------
 

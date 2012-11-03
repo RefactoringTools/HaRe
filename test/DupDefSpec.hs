@@ -24,7 +24,7 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  
+
   describe "doDuplicateDef" $ do
     it "checks for a clash of the new name" $ do
      res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","c","4","1"])

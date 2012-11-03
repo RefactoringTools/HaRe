@@ -62,10 +62,8 @@ comp maybeMainFile fileName newName (row, col) = do
                 let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
                 case maybePn of
                   Just pn ->
-                       -- do refactoredMod@((fileName',m),(tokList',parsed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                        do
-                          refactoredMod@((_fp,ismod),(toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
-                       -- do refactoredMod@((fp,ismod),(toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                          refactoredMod@((_fp,_ismod),(_toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
                           streamModified <- getRefactStreamModified
                           case (streamModified) of
                             False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
@@ -205,8 +203,9 @@ refactorInClientMod :: GHC.ModuleName -> GHC.Name -> GHC.ModSummary
 refactorInClientMod serverModName newPName modSummary
   = do
        let fileName = fromJust $ GHC.ml_hs_file $ GHC.ms_location modSummary
-       -- modInfo@((_inscopes,Just renamed,parsed),ts) <- getModuleGhc fileName
        modInfo@(t,ts) <- getModuleGhc fileName
+       putParsedModule t ts
+
        renamed <- getRefactRenamed
        let modNames = willBeUnQualImportedBy serverModName renamed
        -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
@@ -225,9 +224,8 @@ refactorInClientMod serverModName newPName modSummary
 
 
 
-doDuplicatingClient :: GHC.ModuleName -> [GHC.Name] 
+doDuplicatingClient :: GHC.ModuleName -> [GHC.Name]
               -> RefactGhc ()
--- doDuplicatingClient serverModName newPNames (inscopes,Just renamed,parsed) = do
 doDuplicatingClient serverModName newPNames = do
   renamed  <- getRefactRenamed
   renamed' <- addHiding serverModName renamed newPNames

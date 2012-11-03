@@ -576,8 +576,8 @@ spec = do
       let
         comp = do
 
-         -- ((_,Just parentr,_parsed),_toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
-         (_t, _toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         putParsedModule t toks
          parentr <- getRefactRenamed
 
          let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
@@ -600,7 +600,8 @@ spec = do
         comp = do
 
          -- ((_,Just parentr,_parsed),_toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
-         (_t, _toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         putParsedModule t toks
          parentr <- getRefactRenamed
 
          let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
@@ -682,6 +683,7 @@ spec = do
       let
         comp = do
           (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+          putParsedModule t toks
           renamed <- getRefactRenamed
 
           let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (14,21) renamed
@@ -700,6 +702,7 @@ spec = do
       let
         comp = do
           (t, toks) <- parseSourceFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
+          putParsedModule t toks
           renamed <- getRefactRenamed
           parsed <- getRefactParsed
 
