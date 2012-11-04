@@ -79,6 +79,9 @@ spec = do
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
+     diff2 <- compareFiles "./test/testdata/DupDef/Dd2.hs.refactored"
+                           "./test/testdata/DupDef/Dd2.hs.expected"
+     diff2 `shouldBe` []
 
 
 -- ---------------------------------------------------------------------

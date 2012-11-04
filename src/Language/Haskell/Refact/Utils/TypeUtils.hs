@@ -2597,7 +2597,7 @@ useLoc (GHC.L l _) = GHC.srcSpanStart l
 isUsedInRhs::(SYB.Data t) => (GHC.Located GHC.Name) -> t -> Bool
 isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
   where
-    notInLhs = fromMaybe False $ somethingStaged SYB.Renamer Nothing
+    notInLhs = fromMaybe False $ somethingStaged SYB.Parser Nothing
             (Nothing `SYB.mkQ` inMatch `SYB.extQ` inDecl) t
      where
       inMatch ((GHC.FunBind name _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind t)
