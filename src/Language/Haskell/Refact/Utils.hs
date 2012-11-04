@@ -33,6 +33,7 @@ module Language.Haskell.Refact.Utils
 
        -- * For testing
        , initGhcSession
+       , prettyprint
        ) where
 
 import Control.Monad.State
@@ -68,6 +69,7 @@ import qualified OccName       as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
+import qualified StaticFlags   as GHC
 import qualified TcEvidence    as GHC
 import qualified TcType        as GHC
 import qualified TypeRep       as GHC
@@ -142,7 +144,8 @@ initGhcSession = do
       settings <- getRefacSettings
       dflags   <- GHC.getSessionDynFlags
       let dflags' = foldl GHC.xopt_set dflags
-                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
+                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash
+                    ]
           dflags'' = dflags' { GHC.importPaths = rsetImportPath settings }
 
           -- Enable GHCi style in-memory linking

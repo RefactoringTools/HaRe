@@ -59,7 +59,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isQualifiedPN -- ,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     {- ,isComplexPatBind -},isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl,isDirectRecursiveDef
-    ,usedWithoutQual {- ,canBeQualified, hasFreeVars -},isUsedInRhs
+    ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
     {-,findPNs -}, findEntity, findEntity'
     ,sameOccurrence
@@ -791,9 +791,43 @@ usedWithoutQual name renamed = do
        = checkName (GHC.L l n)
      workerExpr _ = Nothing
 
+     -- ----------------
+
      checkName (pname@(GHC.L _l pn)::GHC.Located GHC.Name)
         | ((GHC.nameUnique pn) == (GHC.nameUnique name)) &&
           isUsedInRhs pname renamed = Just pname 
+     checkName _ = Nothing
+
+-- | Return True if the identifier is unqualifiedly used in the given
+-- syntax phrase.
+usedWithoutQualR :: GHC.Name -> GHC.ParsedSource -> Bool
+usedWithoutQualR name parsed = fromMaybe False res
+  where
+     res = somethingStaged SYB.Parser Nothing
+            (Nothing `SYB.mkQ` worker
+            `SYB.extQ` workerBind
+            `SYB.extQ` workerExpr
+            ) parsed
+
+     worker  (pname :: GHC.Located GHC.RdrName) =
+       checkName pname
+
+     workerBind (GHC.L l (GHC.VarPat n) :: (GHC.Located (GHC.Pat GHC.RdrName))) =
+       checkName (GHC.L l n)
+     workerBind _ = Nothing
+
+     workerExpr ((GHC.L l (GHC.HsVar n)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
+       = checkName (GHC.L l n)
+     workerExpr _ = Nothing
+
+     -- ----------------
+
+     checkName (pname@(GHC.L l pn)::GHC.Located GHC.RdrName)
+        -- | ((GHC.nameUnique pn) == (GHC.nameUnique name)) &&
+        | ((GHC.rdrNameOcc pn) == (GHC.nameOccName name)) &&
+          -- isUsedInRhs pname parsed &&
+          isUsedInRhs (GHC.L l name) parsed &&
+          GHC.isUnqual pn     = Just True
      checkName _ = Nothing
 
    {-
@@ -2522,7 +2556,7 @@ newNameTok l newName =
 -- | Show a list of entities, the parameter f is a function that
 -- specifies how to format an entity.
 showEntities:: (t->String) -> [t] ->String
-showEntities f [] = ""
+showEntities _ [] = ""
 showEntities f [pn] = f pn
 showEntities f (pn:pns) =f pn ++ "," ++ showEntities f pns
 
@@ -2566,33 +2600,13 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
     notInLhs = fromMaybe False $ somethingStaged SYB.Renamer Nothing
             (Nothing `SYB.mkQ` inMatch `SYB.extQ` inDecl) t
      where
-      inMatch ((GHC.FunBind name _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name)
-      -- inMatch ((HsMatch loc1 name pats rhs ds)::HsMatchP)
+      inMatch ((GHC.FunBind name _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind t)
          | isJust (find (sameOccurrence pnt) [name]) = Just True
       inMatch _ = Nothing
 
-      inDecl ((GHC.TypeSig is _) :: GHC.Sig GHC.Name)
-      -- inDecl ((TiDecorate.Dec (HsTypeSig loc is c tp))::HsDeclP)
+      inDecl ((GHC.TypeSig is _) :: GHC.Sig t)
         |isJust (find (sameOccurrence pnt) is)   = Just True
       inDecl _ = Nothing
-
-{- ++AZ++ original
--- | Return True if the identifier is used in the RHS if a function\/pattern binding.
-isUsedInRhs::(Term t)=>PNT->t->Bool
-isUsedInRhs pnt t= useLoc pnt /= defineLoc pnt  && not (notInLhs pnt t)
-  where
-    notInLhs pnt
-     = (fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` inMatch
-                                                     `adhocTU` inDecl)))
-     where
-      inMatch ((HsMatch loc1 name pats rhs ds)::HsMatchP)
-         | isJust (find (sameOccurrence pnt) [name]) = Just True
-      inMatch _ =Nothing
-
-      inDecl ((TiDecorate.Dec (HsTypeSig loc is c tp))::HsDeclP)
-        |isJust (find (sameOccurrence pnt) is)   = Just True
-      inDecl _ =Nothing
--}
 
 -- ---------------------------------------------------------------------
 

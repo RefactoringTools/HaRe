@@ -142,8 +142,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
         doDuplicating' :: (HsBinds t) => InScopes -> t -> GHC.Located GHC.Name
                        -> RefactGhc (t)
         doDuplicating' inscps parentr ln@(GHC.L _ n)
-           = do let -- decls           = hsDecls parent -- TODO: reinstate this
-                    -- declsr = GHC.bagToList $ getDecls parentr
+           = do let 
                     declsr = hsBinds parentr
 
                     duplicatedDecls = definingDeclsNames [n] declsr True False
@@ -202,27 +201,30 @@ refactorInClientMod :: GHC.ModuleName -> GHC.Name -> GHC.ModSummary
                     -> RefactGhc ApplyRefacResult
 refactorInClientMod serverModName newPName modSummary
   = do
+       liftIO $ putStrLn ("refactorInClientMod: (serverModName,newPName)=" ++ (GHC.showPpr (serverModName,newPName))) -- ++AZ++ debug
        let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
        modInfo@(t,ts) <- getModuleGhc fileName
 
        renamed <- getRefactRenamed
+       parsed <- getRefactParsed
 
        let modNames = willBeUnQualImportedBy serverModName renamed
+       liftIO $ putStrLn ("refactorInClientMod: (modNames)=" ++ (GHC.showPpr (modNames))) -- ++AZ++ debug
+
        -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
-       mustHide <- needToBeHided newPName renamed
+       mustHide <- needToBeHided newPName renamed parsed
+       liftIO $ putStrLn ("refactorInClientMod: (mustHide)=" ++ (GHC.showPpr (mustHide))) -- ++AZ++ debug
        if isJust modNames && mustHide
-        -- then do (parsed', ((ts',m),_))<-runStateT (addHiding serverModName parsed [newPName]) ((ts,unmodified),fileName)
-        -- then do refactoredMod <- applyRefac (addHiding serverModName parsed [newPName]) (Just modInfo) fileName
         then do
                 refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
                 return refactoredMod
         else return ((fileName,unmodified),(ts,renamed))
    where
-     needToBeHided :: GHC.Name -> GHC.RenamedSource -> RefactGhc Bool
-     needToBeHided name exps = do
-         usedUnqal <- usedWithoutQual name exps
-         return $ usedUnqal || causeNameClashInExports name serverModName exps
-
+     needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
+     needToBeHided name exps parsed = do
+         let usedUnqual = usedWithoutQualR name parsed
+         liftIO $ putStrLn ("refactorInClientMod: (usedUnqual)=" ++ (GHC.showPpr (usedUnqual))) -- ++AZ++ debug
+         return $ usedUnqual || causeNameClashInExports name serverModName exps
 
 
 doDuplicatingClient :: GHC.ModuleName -> [GHC.Name]
