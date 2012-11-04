@@ -2088,27 +2088,31 @@ addHiding serverModName (g,imps,e,d) pns = do
     return (g,imps',e,d)
   where
     inImport :: GHC.LImportDecl GHC.Name -> RefactGhc (GHC.LImportDecl GHC.Name)
-    inImport imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) qualify _source _safe isQualified _isImplicit as h))
+    inImport imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit as h))
       | serverModName == modName  && not isQualified
        = case h of
            Nothing -> do
              toks <- fetchToks
              let (startPos,endPos) = getStartEndLoc imp
-                 ((GHC.L _ t),s) = ghead "addHiding" $ getToks (startPos,endPos) toks 
-                 newToken=mkToken t endPos (s++" hiding ("++showEntities GHC.showPpr pns++")")
-                 toks'= replaceToks toks endPos endPos [newToken]
-             -- error ("addHiding: newToken=" ++ (showToks [newToken]) ++ " endPos=" ++ (show endPos)) -- ++AZ++ debug
+                 ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
+                 start = getGhcLoc l
+                 end   = getGhcLocEnd l
+                 newToken = mkToken t start (s++" hiding ("++showEntities GHC.showPpr pns++")")
+                 toks'= replaceToks toks start end [newToken]
+             -- error ("addHiding: newToken=" ++ (showToks [newToken]) ++ " (start,end)=" ++ (show (start,end)) ++ "(startPos,endPos)=" ++ (show (startPos,endPos)) ++ " toks=" ++ (showToks toks)) -- ++AZ++ debug
              putToks toks' True
              return (replaceHiding imp (Just (True, map mkNewEnt pns )))
            Just (True, ents) -> do
              toks <- fetchToks
-             let (_,endPos)=getStartEndLoc imp
-                 ((GHC.L _ t),s) = ghead "addHiding" $ getToks (endPos,endPos) toks
-                 newToken=mkToken t endPos (","++showEntities GHC.showPpr pns ++s)
-                 toks'=replaceToks toks endPos endPos [newToken]
+             let (startPos,endPos) = getStartEndLoc imp
+                 ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
+                 start = getGhcLoc l
+                 end   = getGhcLocEnd l
+                 newToken=mkToken t start (","++showEntities GHC.showPpr pns ++s)
+                 toks'=replaceToks toks start end [newToken]
              putToks toks' True
              return (replaceHiding imp  (Just (True, (map mkNewEnt  pns)++ents))) 
-           Just (False, ent)  -> return imp
+           Just (False, _ent)  -> return imp
     inImport x = return x
 
     mkNewEnt :: GHC.Name -> GHC.LIE GHC.Name
@@ -2117,7 +2121,7 @@ addHiding serverModName (g,imps,e,d) pns = do
        filename = (GHC.mkFastString "f")
        l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
 
-    replaceHiding (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as h)) h1 =
+    replaceHiding (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as _h)) h1 =
          (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as h1))
 
 {- ++AZ++ original

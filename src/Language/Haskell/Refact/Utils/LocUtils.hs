@@ -497,9 +497,10 @@ lengthOfLastLine toks
 getToks :: (SimpPos,SimpPos) -> [PosToken] -> [PosToken]
 getToks (startPos,endPos) toks =
   -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks=" ++ (showToks toks)
-  let (_,toks2) = break (\t->tokenPos t == startPos) toks
-      (toks21,toks22) = break (\t -> tokenPos t >= endPos) toks2
-  in (toks21++ [ghead "getToks" toks22])   -- Should add error message for empty list?
+  let (_,toks2) = break (\t -> tokenPos t >= startPos) toks
+      (toks21,toks22) = break (\t -> tokenPos t > endPos) toks2
+  -- in (toks21++ [ghead "getToks" toks22])   -- Should add error message for empty list?
+  in (toks21)   -- Should add error message for empty list?
 
 -- ---------------------------------------------------------------------
 
