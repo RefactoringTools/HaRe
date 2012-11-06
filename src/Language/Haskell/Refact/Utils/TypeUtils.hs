@@ -109,7 +109,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , mkRdrName, mkNewName
 
     -- The following functions are not in the the API yet.
-    {- ,getDeclToks -}, causeNameClashInExports {- , inRegion -}  -- , unmodified, prettyprint,
+    {- ,getDeclToks -}, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
     -- getDeclAndToks
 
 -- * Typed AST traversals (added by CMB)
@@ -405,6 +405,12 @@ causeNameClashInExports  pn newName mod exps
       in isJust $ find (\(HsImportDecl _ (SN modName1 _) qualify  _ h)->modName==modName1 && (not qualify)) imps
 
 -}
+
+-- ---------------------------------------------------------------------
+
+prettyprint :: (GHC.Outputable a) => a -> String
+-- prettyprint x = GHC.showSDoc $ GHC.ppr x
+prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
 
 -- ---------------------------------------------------------------------
 -- | Collect the free and declared variables (in the GHC.Name format)
@@ -1186,10 +1192,11 @@ instance HsDecls GHC.ParsedSource where
 replaceDecls :: [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name]
 replaceDecls t decls = decls
 
-getDecls :: GHC.RenamedSource -> GHC.LHsBinds GHC.Name
+-- getDecls :: GHC.RenamedSource -> GHC.LHsBinds GHC.Name
+getDecls :: GHC.RenamedSource -> [GHC.LHsBind GHC.Name]
 getDecls renamed@(group, _, _, _) = case (GHC.hs_valds group) of
-   GHC.ValBindsIn   binds _sigs -> binds
-   GHC.ValBindsOut rbinds _sigs -> GHC.unionManyBags $ map (\(_,b) -> b) rbinds
+   GHC.ValBindsIn   binds _sigs -> GHC.bagToList $ binds
+   GHC.ValBindsOut rbinds _sigs -> GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
 
 getDeclsP :: GHC.ParsedSource -> [HsDeclP]
 getDeclsP parsed@(GHC.L _ hsMod) = GHC.hsmodDecls hsMod
@@ -1209,7 +1216,7 @@ class (SYB.Data t) => HsBinds t where
     -- | Replace the directly enclosed declaration list by the given
     --  declaration list. Note: This function does not modify the
     --  token stream.
-    replaceBinds :: t -> [GHC.LHsBind GHC.Name] -> t 
+    replaceBinds :: t -> [GHC.LHsBind GHC.Name] -> t
 
     -- | Return True if the specified identifier is declared in the
     -- given syntax phrase.
@@ -1218,6 +1225,8 @@ class (SYB.Data t) => HsBinds t where
 instance HsBinds (GHC.RenamedSource) where
   hsBinds (grp,_,_,_) = getValBinds (GHC.hs_valds grp)
 
+instance HsBinds (GHC.HsValBinds GHC.Name) where
+  hsBinds vb = getValBinds vb
 
 instance HsBinds (GHC.HsGroup GHC.Name) where
   hsBinds grp = getValBinds (GHC.hs_valds grp)
@@ -1253,6 +1262,10 @@ instance HsBinds (GHC.HsExpr GHC.Name) where
 
 instance HsBinds (GHC.Stmt GHC.Name) where
   hsBinds (GHC.LetStmt ds) = hsBinds ds
+
+-- ---------------------------------------------------------------------
+
+
 
 {-
 instance HsDecls HsMatchP where
@@ -1579,14 +1592,13 @@ definingDeclsNames pns ds incTypeSig recursive = concatMap defines ds
 -- ---------------------------------------------------------------------
 
 -- |Find those type signatures for the specified GHC.Names.
-definingSigsNames:: (SYB.Data t) =>
+definingSigsNames :: (SYB.Data t) =>
             [GHC.Name] -- ^ The specified identifiers.
             ->t        -- ^ A collection of declarations.
-            ->Bool  -- ^ True means to look at the local declarations as well.
             ->[GHC.LSig GHC.Name]  -- ^ The result.
-definingSigsNames pns ds recursive = defines ds
+definingSigsNames pns ds = def ds
   where
-   defines decl
+   def decl
      = SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` inSig) decl
      where
       inSig :: (GHC.LSig GHC.Name) -> [GHC.LSig GHC.Name]
@@ -2312,8 +2324,9 @@ deleteEnt toks (startPos, endPos)
 
 -- | Duplicate a functon\/pattern binding declaration under a new name
 -- right after the original one. Also updates the token stream.
-duplicateDecl::
-    [GHC.LHsBind GHC.Name]  -- ^ The declaration list
+duplicateDecl::(SYB.Data t) =>
+  [GHC.LHsBind GHC.Name]  -- ^ The declaration list
+  ->t                      -- ^ Any signatures are in here
   ->GHC.Name                -- ^ The identifier whose definition is to be duplicated
   ->GHC.Name                -- ^ The new name (possibly qualified)
   ->RefactGhc [GHC.LHsBind GHC.Name]  -- ^ The result
@@ -2330,9 +2343,9 @@ comments and layout are NOT preserved.
   stream together, so that the manipulation can proceed in a natural
   way. Main target for phase 2
  -}
-duplicateDecl decls n newFunName
- = do 
-      toks <- fetchToks 
+duplicateDecl decls sigs n newFunName
+ = do
+      toks <- fetchToks
       let (startPos, endPos) = startEndLocIncComments toks funBinding
           {-take those tokens before (and include) the function
             binding and its following white tokens before the 'new line' token.
@@ -2349,14 +2362,14 @@ duplicateDecl decls n newFunName
       --stream (toks2, just updated) as well, in the monad
       funBinding' <- renamePN n newFunName True funBinding
       --rename function name in type signature  without adjusting the token stream
-      -- TODO: reinstate/implement this
+
       -- typeSig'  <- renamePN pn Nothing newFunName False typeSig
-      -- typeSig'  <- renamePN n newFunName False typeSig
+      typeSig'  <- renamePN n newFunName False typeSig
 
       -- Get the updated token stream
 
       toks3 <- fetchToks
-      
+
       let offset = getOffset toks (fst (getStartEndLoc funBinding))
           newLineTok = if ((not (emptyList toks1)) {-&& endsWithNewLn (glast "doDuplicating" toks1 -})
                          then [newLnToken]
@@ -2364,8 +2377,21 @@ duplicateDecl decls n newFunName
 
 
           -- toks' = (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks3) 
-          toks' = (toks1++newLineTok++toks3)
-          -- TODO: implement this part
+          -- toks' = (toks1++newLineTok++toks3)
+
+          toks'= if (not $ emptyList typeSig)
+                 then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks3))
+                          (GHC.L l t,s) = glast "doDuplicating" toks1
+                          start = getGhcLoc l
+                          -- newToken = mkToken t start (showEntities GHC.showPpr typeSig')
+                          newToken = mkToken t start (prettyprint $ ghead "duplicateDecl" typeSig')
+
+                          -- sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
+                          -- t = mkToken Whitespace (0,0) sigSource
+                      -- in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks3)
+                      in  (toks1++newLineTok++[newToken]++newLineTok++toks3)
+                 else  (toks1++newLineTok++toks3)
+
           {- toks'= if typeSig/=[]
                  then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks3))
                           sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
@@ -2377,9 +2403,11 @@ duplicateDecl decls n newFunName
       -- return (typeSig'++funBinding')
       return funBinding'
      where
+       -- decls      = hsBinds valBinds
        declsToDup = definingDeclsNames [n] decls True False
        funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
        -- typeSig    = filter isTypeSig       declsToDup     --get the type signature.
+       typeSig = definingSigsNames [n] sigs
 
 {-
 duplicateDecl decls pn newFunName

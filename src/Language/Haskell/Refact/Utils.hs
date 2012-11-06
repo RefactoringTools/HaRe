@@ -400,9 +400,6 @@ instance (SYB.Data t) => Update [GHC.Located HsPatP] t where
     inPat p = return p
 --++AZ++ comment out for now ends -}
 
-prettyprint :: (GHC.Outputable a) => a -> String
--- prettyprint x = GHC.showSDoc $ GHC.ppr x
-prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
 
 -- ---------------------------------------------------------------------
 

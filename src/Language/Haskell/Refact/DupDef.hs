@@ -135,8 +135,9 @@ reallyDoDuplicating pn newName inscopes renamed = do
         doDuplicating' :: (HsBinds t) => InScopes -> t -> GHC.Located GHC.Name
                        -> RefactGhc (t)
         doDuplicating' inscps parentr ln@(GHC.L _ n)
-           = do let 
+           = do let
                     declsr = hsBinds parentr
+                    -- sigs   = allSigs parentr
 
                     duplicatedDecls = definingDeclsNames [n] declsr True False
                     -- (after,before)  = break (definesP pn) (reverse declsp)
@@ -150,7 +151,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
                     vars        = nub (f `union` d `union` dv)
 
                 newNameGhc <- mkNewName newName
-                -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow    
+                -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow
                 nameAlreadyInScope <- isInScopeAndUnqualifiedGhc newName
 
                 -- liftIO $ putStrLn ("DupDef: nameAlreadyInScope =" ++ (show nameAlreadyInScope)) -- ++AZ++ debug
@@ -163,7 +164,8 @@ reallyDoDuplicating pn newName inscopes renamed = do
                 if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls) 
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
-                   else do newBinding <- duplicateDecl declsr n newNameGhc
+                   -- else do newBinding <- duplicateDecl declsr n newNameGhc
+                   else do newBinding <- duplicateDecl declsr parentr n newNameGhc
                            -- liftIO $ putStrLn ("DupDef: newBinding =" ++ (GHC.showPpr newBinding)) -- ++AZ++ debug
                            -- liftIO $ putStrLn ("DupDef: declsr =" ++ (GHC.showPpr declsr)) -- ++AZ++ debug
 

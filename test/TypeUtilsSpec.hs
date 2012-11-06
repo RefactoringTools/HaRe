@@ -363,7 +363,7 @@ spec = do
 
       let Just ((GHC.L _ n)) = locToName dd1FileName (21,1) renamed
       GHC.showPpr n `shouldBe` "DupDef.Dd1.ff"
-      let res = definingSigsNames [n] renamed False
+      let res = definingSigsNames [n] renamed
       GHC.showPpr res `shouldBe` "[]"
 
     it "finds signatures at the top level" $ do
@@ -372,7 +372,7 @@ spec = do
 
       let Just ((GHC.L _ n)) = locToName dd1FileName (4,1) renamed
       GHC.showPpr n `shouldBe` "DupDef.Dd1.toplevel"
-      let res = definingSigsNames [n] renamed False
+      let res = definingSigsNames [n] renamed
       GHC.showPpr res `shouldBe` "[DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
 
     it "returns only the single signature where there are others too" $ do
@@ -381,7 +381,7 @@ spec = do
 
       let Just ((GHC.L _ n)) = locToName dd1FileName (7,1) renamed
       GHC.showPpr n `shouldBe` "DupDef.Dd1.c"
-      let res = definingSigsNames [n] renamed False
+      let res = definingSigsNames [n] renamed
       GHC.showPpr res `shouldBe`  "[DupDef.Dd1.c :: GHC.Integer.Type.Integer]"
 
     it "finds signatures at lower levels" $ do
@@ -390,7 +390,7 @@ spec = do
 
       let Just ((GHC.L _ n)) = locToName dd1FileName (16,5) renamed
       GHC.showPpr n `shouldBe` "ff"
-      let res = definingSigsNames [n] renamed False
+      let res = definingSigsNames [n] renamed
       GHC.showPpr res `shouldBe` "[ff :: GHC.Types.Int]"
 
     it "finds multiple signatures" $ do
@@ -406,7 +406,7 @@ spec = do
       let Just ((GHC.L _ n3)) = locToName dd1FileName (4,1) renamed
       GHC.showPpr n3 `shouldBe` "DupDef.Dd1.toplevel"
 
-      let res = definingSigsNames [n1,n2,n3] renamed False
+      let res = definingSigsNames [n1,n2,n3] renamed
       GHC.showPpr res `shouldBe` "[ff :: GHC.Types.Int,\n DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
 
 
@@ -573,14 +573,15 @@ spec = do
       let renamed@(g,_is,_es,_ds) = fromJust $ GHC.tm_renamed_source t
 
 
-      let declsr = GHC.bagToList $ getDecls renamed
+      let declsr = getDecls renamed
       let Just (GHC.L _ n) = locToName dd1FileName (3, 1) renamed
       let
         comp = do
          newName <- mkNewName "bar"
          newName2 <- mkNewName "bar2"
-         newBinding <- duplicateDecl declsr n newName2
-         
+         -- newBinding <- duplicateDecl declsr n newName2
+         newBinding <- duplicateDecl declsr renamed n newName2
+
          return newBinding
       let
         initialState = RefSt
@@ -592,7 +593,7 @@ spec = do
       (nb,s) <- runRefactGhc comp initialState
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n  \n\n\n\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n  \n\n\n\n\n\n bar2_H3 :: Integer -> Integer \n\n\n\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (GHC.showPpr nb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
 
   -- ---------------------------------------------
@@ -604,13 +605,13 @@ spec = do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = GHC.bagToList $ getDecls renamed
+      let declsr = getDecls renamed
       let Just (GHC.L l n) = locToName dd1FileName (3, 1) renamed
       let
         comp = do
          newName <- mkNewName "bar2"
          new <- renamePN n newName True declsr
-         
+
          return (new,newName)
       let
         initialState = RefSt
@@ -641,7 +642,7 @@ spec = do
          let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
          let (Just (ln@(GHC.L _ n))) = mn
 
-         let declsr = GHC.bagToList $ getDecls parentr
+         let declsr = getDecls parentr
              duplicatedDecls = definingDeclsNames [n] declsr True False
 
              -- res = findEntity ln duplicatedDecls
@@ -665,7 +666,7 @@ spec = do
          let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
          let (Just (ln@(GHC.L _ n))) = mn
 
-         let declsr = GHC.bagToList $ getDecls parentr
+         let declsr = getDecls parentr
              duplicatedDecls = definingDeclsNames [n] declsr True False
 
              res = findEntity ln duplicatedDecls

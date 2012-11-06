@@ -7,6 +7,12 @@ toplevel x = c * x
 
 
 
+
+
+tl2_H2 :: Integer -> Integer
+
+
+
 tl2 x = c * x
 
 c,d :: Integer
