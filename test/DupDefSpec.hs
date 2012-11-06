@@ -51,31 +51,31 @@ spec = do
      diff `shouldBe` []
 
     it "duplicates a definition in a match" $ do
-     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","22","5"]
+     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","23","5"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
 
     it "duplicates a definition in a pattern match" $ do
-     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","gg","16","5"]
+     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","gg","17","5"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.gg"
      diff `shouldBe` []
 
     it "duplicates a definition in a let expression" $ do
-     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","lll","26","5"]
+     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","lll","27","5"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.ll"
      diff `shouldBe` []
 
     it "duplicates a definition in a let statement" $ do
-     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","sss","30","7"]
+     doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","sss","31","7"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.dd"
      diff `shouldBe` []
 
     it "hides the new definition if it will cause problems in client mods" $ do
-     duplicateDef defaultSettings (Just "./test/testdata/DupDef/Dd2.hs") "./test/testdata/DupDef/Dd1.hs" "mm" (22,5)
+     duplicateDef defaultSettings (Just "./test/testdata/DupDef/Dd2.hs") "./test/testdata/DupDef/Dd1.hs" "mm" (23,5)
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
