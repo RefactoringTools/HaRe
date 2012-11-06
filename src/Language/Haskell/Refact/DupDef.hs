@@ -4,21 +4,14 @@ module Language.Haskell.Refact.DupDef(duplicateDef, doDuplicateDef) where
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import qualified Bag                   as GHC
-import qualified DynFlags              as GHC
 import qualified FastString            as GHC
 import qualified GHC
-import qualified MonadUtils            as GHC
 import qualified OccName               as GHC
 import qualified Outputable            as GHC
-import qualified RdrName               as GHC
 
-import Control.Monad
 import Control.Monad.State
-import Data.Data
 import Data.List
 import Data.Maybe
-import GHC.Paths ( libdir )
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils

@@ -356,6 +356,64 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "definingSigsNames" $ do
+    it "returns [] if not found" $ do
+      (t, _toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just ((GHC.L _ n)) = locToName dd1FileName (21,1) renamed
+      GHC.showPpr n `shouldBe` "DupDef.Dd1.ff"
+      let res = definingSigsNames [n] renamed False
+      GHC.showPpr res `shouldBe` "[]"
+
+    it "finds signatures at the top level" $ do
+      (t, _toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just ((GHC.L _ n)) = locToName dd1FileName (4,1) renamed
+      GHC.showPpr n `shouldBe` "DupDef.Dd1.toplevel"
+      let res = definingSigsNames [n] renamed False
+      GHC.showPpr res `shouldBe` "[DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
+
+    it "returns only the single signature where there are others too" $ do
+      (t, _toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just ((GHC.L _ n)) = locToName dd1FileName (7,1) renamed
+      GHC.showPpr n `shouldBe` "DupDef.Dd1.c"
+      let res = definingSigsNames [n] renamed False
+      GHC.showPpr res `shouldBe`  "[DupDef.Dd1.c :: GHC.Integer.Type.Integer]"
+
+    it "finds signatures at lower levels" $ do
+      (t, _toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just ((GHC.L _ n)) = locToName dd1FileName (16,5) renamed
+      GHC.showPpr n `shouldBe` "ff"
+      let res = definingSigsNames [n] renamed False
+      GHC.showPpr res `shouldBe` "[ff :: GHC.Types.Int]"
+
+    it "finds multiple signatures" $ do
+      (t, _toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just ((GHC.L _ n1)) = locToName dd1FileName (21,1) renamed
+      GHC.showPpr n1 `shouldBe` "DupDef.Dd1.ff"
+
+      let Just ((GHC.L _ n2)) = locToName dd1FileName (16,5) renamed
+      GHC.showPpr n2 `shouldBe` "ff"
+
+      let Just ((GHC.L _ n3)) = locToName dd1FileName (4,1) renamed
+      GHC.showPpr n3 `shouldBe` "DupDef.Dd1.toplevel"
+
+      let res = definingSigsNames [n1,n2,n3] renamed False
+      GHC.showPpr res `shouldBe` "[ff :: GHC.Types.Int,\n DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
+
+
+
+
+  -- -------------------------------------------------------------------
+
   describe "isFunBindR" $ do
     it "Returns False if not a function definition" $ do
       -- modInfo@((_,Just renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc

@@ -56,7 +56,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Property checking
     -- ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isTopLevelPNT
-    ,isQualifiedPN -- ,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon,isTypeSig
+    ,isQualifiedPN {- ,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     {- ,isComplexPatBind -},isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl,isDirectRecursiveDef
     ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
@@ -101,7 +101,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,ghcToPN,lghcToPN
     -- ,expToPNT, expToPN, nameToExp,pNtoExp,patToPNT, patToPN, nameToPat,pNtoPat
     ,definingDecls -- , definedPNs
-    ,definingDeclsNames
+    ,definingDeclsNames, definingSigsNames
 
     -- ,simplifyDecl
     -- ** Others
@@ -1058,6 +1058,17 @@ hsPNTs =(nub.ghead "hsPNTs").applyTU (full_tdTU (constTU [] `adhocTU` inPnt))
 -}
 
 -------------------------------------------------------------------------------
+-- |Return True if a PName is a qualified PName.
+--  AZ:NOTE: this tests the use instance, the underlying name may be qualified.
+--           e.g. used name is zip, GHC.List.zip
+isQualifiedPN :: GHC.Name -> RefactGhc Bool
+isQualifiedPN name = return $ GHC.isQual $ GHC.nameRdrName name
+{-
+  = case (GHC.nameModule_maybe name) of
+      Just _ -> True
+      _      -> False
+-}
+
 {-
 -- | Return True if a PNT is a type constructor.
 isTypeCon :: PNT -> Bool
@@ -1070,16 +1081,11 @@ isTypeSig (TiDecorate.Dec (HsTypeSig loc is c tp))=True
 isTypeSig _=False
 -}
 
--- |Return True if a PName is a qualified PName.
---  AZ:NOTE: this tests the use instance, the underlying name may be qualified.
---           e.g. used name is zip, GHC.List.zip
-isQualifiedPN :: GHC.Name -> RefactGhc Bool
-isQualifiedPN name = return $ GHC.isQual $ GHC.nameRdrName name
-{-
-  = case (GHC.nameModule_maybe name) of
-      Just _ -> True
-      _      -> False
--}
+-- | Return True if a declaration is a type signature declaration.
+-- isTypeSig ::HsDeclP->Bool
+-- isTypeSig (TiDecorate.Dec (HsTypeSig loc is c tp))=True
+isTypeSig (GHC.L _ (GHC.TypeSig _ _)) = True
+isTypeSig _ = False
 
 -- | Return True if a declaration is a function definition.
 isFunBindP::HsDeclP -> Bool
@@ -1539,10 +1545,9 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
 
 -- ---------------------------------------------------------------------
 
--- |Find those declarations(function\/pattern binding and type
--- signature) which define the specified GHC.Names. incTypeSig indicates
--- whether the corresponding type signature will be included.
-
+-- |Find those declarations(function\/pattern binding) which define
+-- the specified GHC.Names. incTypeSig indicates whether the
+-- corresponding type signature will be included.
 definingDeclsNames:: -- (SYB.Data t) =>
             [GHC.Name] -- ^ The specified identifiers.
             -- ->t                -- ^ A collection of declarations.
@@ -1554,7 +1559,6 @@ definingDeclsNames pns ds incTypeSig recursive = concatMap defines ds
   where
    defines decl
      = if recursive
-        -- then ghead "defines" $ SYB.everythingStaged SYB.Renamer (++) [] (([]::([GHC.LHsBind GHC.Name]))  `SYB.mkQ` inDecl) decl
         then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` inDecl) decl
         else defines' decl
      where
@@ -1566,62 +1570,33 @@ definingDeclsNames pns ds incTypeSig recursive = concatMap defines ds
       defines' :: (GHC.LHsBind GHC.Name) -> [GHC.LHsBind GHC.Name]
       defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
         |isJust (find (==(pname)) pns) = [decl']
-        -- | True = [decl]
 
       defines' decl'@(GHC.L l (GHC.PatBind p rhs ty fvs _))
         |(hsNamess p) `intersect` pns /= [] = [decl']
 
-
-      {-
-      defines' decl@(GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _)))    ---CONSIDER AGAIN----
-        |(hsPNs p) `intersect` pns /= [] = [decl]
-      defines' decl@(GHC.L l (GHC.ValD _))                                    = []
-      -}
-
-      -- TODO: the type signature is a different type, move it to its
-      --       own function, if it is required
-      {-
-      defines' sig@(GHC.L _ (GHC.TypeSig [GHC.L _ n] s))
-        | incTypeSig = [sig]
-      -}
-
-      {-
-      -- SigD - type signatures
-      defines' decl@(GHC.L l (GHC.SigD (GHC.TypeSig is tp)))
-        |(map lghcToPN is) `intersect` pns /=[]
-        = if incTypeSig
-           then [(GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->isJust (find (==lghcToPN x) pns)) is) tp)))]
-           else []
-      defines' decl@(GHC.L l (GHC.SigD        _ {- (GHC.Sig id) -}))          = []
-
-      -- TyClD - Type definitions
-      defines' decl@(GHC.L l (GHC.TyClD (GHC.TyData _ _ name _ _ _ cons _)))
-       = if checkCons cons == True then [decl]
-                                   else []
-
-             where
-               checkCons [] = False
-               checkCons ((GHC.L _ (GHC.ConDecl (GHC.L _ pname) _ _ _ _ _ _ _)):ms)
-                 | isJust (find (==(PN pname)) pns) = True
-                 | otherwise = checkCons ms
-
-      defines' decl@(GHC.L l (GHC.TyClD       _ {- (GHC.TyClDecl id) -}))     = []
-
-
-      defines' decl@(GHC.L l (GHC.InstD       _ {- (GHC.InstDecl id) -}))     = []
-      defines' decl@(GHC.L l (GHC.DerivD      _ {- (GHC.DerivDecl id) -}))    = []
-      defines' decl@(GHC.L l (GHC.DefD        _ {- (GHC.DefaultDecl id) -}))  = []
-      defines' decl@(GHC.L l (GHC.ForD        _ {- (GHC.ForeignDecl id) -}))  = []
-      defines' decl@(GHC.L l (GHC.WarningD    _ {- (GHC.WarnDecl id) -}))     = []
-      defines' decl@(GHC.L l (GHC.AnnD        _ {- (GHC.AnnDecl id) -}))      = []
-      defines' decl@(GHC.L l (GHC.RuleD       _ {- (GHC.RuleDecl id) -}))     = []
-      defines' decl@(GHC.L l (GHC.VectD       _ {- (GHC.VectDecl id) -}))     = []
-      defines' decl@(GHC.L l (GHC.SpliceD     _ {- (GHC.SpliceDecl id) -}))   = []
-      defines' decl@(GHC.L l (GHC.DocD        _ {- (GHC.DocDecl) -}))         = []
-      defines' decl@(GHC.L l (GHC.QuasiQuoteD _ {- (GHC.HsQuasiQuote id) -})) = []
-      -}
-
       defines' _ = []
+
+-- ---------------------------------------------------------------------
+
+-- |Find those type signatures for the specified GHC.Names.
+definingSigsNames:: (SYB.Data t) =>
+            [GHC.Name] -- ^ The specified identifiers.
+            ->t        -- ^ A collection of declarations.
+            ->Bool  -- ^ True means to look at the local declarations as well.
+            ->[GHC.LSig GHC.Name]  -- ^ The result.
+definingSigsNames pns ds recursive = defines ds
+  where
+   defines decl
+     = SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` inSig) decl
+     where
+      inSig :: (GHC.LSig GHC.Name) -> [GHC.LSig GHC.Name]
+      inSig (GHC.L l (GHC.TypeSig ns t))
+       | defines' ns /= [] = [(GHC.L l (GHC.TypeSig (defines' ns) t))]
+      inSig _ = []
+
+      defines' (p::[GHC.Located GHC.Name])
+        = filter (\(GHC.L _ n) -> n `elem` pns) p
+
 
 -- ---------------------------------------------------------------------
 
@@ -2355,7 +2330,6 @@ comments and layout are NOT preserved.
   stream together, so that the manipulation can proceed in a natural
   way. Main target for phase 2
  -}
-
 duplicateDecl decls n newFunName
  = do 
       toks <- fetchToks 
@@ -2367,24 +2341,22 @@ duplicateDecl decls n newFunName
                     where (ts1, ts2) = break (\t -> (tokenPos t) > endPos) toks
           --take those token after (and include) the function binding
           toks2 = dropWhile (\t->tokenPos t/=startPos {- || isNewLn t -}) toks
-      -- put((toks2,modified), others)
 
-      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:" ++ (show (startPos,endPos))) -- ++AZ++ debug
       -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:toks1=" ++ (showToks toks1)) -- ++AZ++ debug
-      -- put $ others {rsTokenStream = toks2, rsStreamModified = True }
       putToks toks2 True
 
       --rename the function name to the new name, and update token
       --stream (toks2, just updated) as well, in the monad
       funBinding' <- renamePN n newFunName True funBinding
       --rename function name in type signature  without adjusting the token stream
+      -- TODO: reinstate/implement this
       -- typeSig'  <- renamePN pn Nothing newFunName False typeSig
+      -- typeSig'  <- renamePN n newFunName False typeSig
+
       -- Get the updated token stream
 
       toks3 <- fetchToks
       
-      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:toks3=" ++ (showToks toks3)) -- ++AZ++ debug
-
       let offset = getOffset toks (fst (getStartEndLoc funBinding))
           newLineTok = if ((not (emptyList toks1)) {-&& endsWithNewLn (glast "doDuplicating" toks1 -})
                          then [newLnToken]
@@ -2393,6 +2365,7 @@ duplicateDecl decls n newFunName
 
           -- toks' = (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks3) 
           toks' = (toks1++newLineTok++toks3)
+          -- TODO: implement this part
           {- toks'= if typeSig/=[]
                  then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks3))
                           sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
@@ -2400,15 +2373,13 @@ duplicateDecl decls n newFunName
                       in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks3)
                  else  (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks3) 
           -}
-      -- put ((toks',modified),others)
-      -- put $ others { rsTokenStream = toks', rsStreamModified = modified}
       putToks toks' True
       -- return (typeSig'++funBinding')
       return funBinding'
      where
        declsToDup = definingDeclsNames [n] decls True False
        funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
-       -- typeSig    = filter isTypeSig declsToDup      --get the type signature.
+       -- typeSig    = filter isTypeSig       declsToDup     --get the type signature.
 
 {-
 duplicateDecl decls pn newFunName

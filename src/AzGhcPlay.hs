@@ -388,7 +388,7 @@ shortenLists x                          = x
 --
 -- ---------------------------------------------------------------------
 -- Test drive the RefactGhc monad transformer stack
-
+{-
 runR :: IO ()
 runR = do
   let
@@ -414,7 +414,7 @@ comp = do
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
     -- put (s {rsPosition = (123,456)})
     return ()
-
+-}
 
 -- ---------------------------------------------------------------------
 {-
