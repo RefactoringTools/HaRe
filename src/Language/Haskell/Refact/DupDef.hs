@@ -137,7 +137,6 @@ reallyDoDuplicating pn newName inscopes renamed = do
         doDuplicating' inscps parentr ln@(GHC.L _ n)
            = do let
                     declsr = hsBinds parentr
-                    -- sigs   = allSigs parentr
 
                     duplicatedDecls = definingDeclsNames [n] declsr True False
                     -- (after,before)  = break (definesP pn) (reverse declsp)
@@ -147,7 +146,6 @@ reallyDoDuplicating pn newName inscopes renamed = do
                     --d: names that might clash with the new name
 
                     dv = hsVisibleNames ln declsr --dv: names may shadow new name
-                    -- inscpsNames = map ( \(x,_,_,_)-> x) $ inScopeInfo inscps
                     vars        = nub (f `union` d `union` dv)
 
                 newNameGhc <- mkNewName newName
@@ -156,23 +154,12 @@ reallyDoDuplicating pn newName inscopes renamed = do
 
                 -- liftIO $ putStrLn ("DupDef: nameAlreadyInScope =" ++ (show nameAlreadyInScope)) -- ++AZ++ debug
                 liftIO $ putStrLn ("DupDef: ln =" ++ (show ln)) -- ++AZ++ debug
-                -- liftIO $ putStrLn ("DupDef: duplicatedDecls =" ++ (GHC.showPpr duplicatedDecls)) -- ++AZ++ debug
-                -- liftIO $ putStrLn ("DupDef: duplicatedDecls =" ++ (SYB.showData SYB.Renamer 0 $ duplicatedDecls)) -- ++AZ++ debug
-                -- liftIO $ putStrLn ("DupDef: declsr =" ++ (SYB.showData SYB.Renamer 0 $ declsr)) -- ++AZ++ debug
 
-                -- if elem newName vars || (isInScopeAndUnqualified newName inscps && findEntity ln duplicatedDecls) 
                 if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls) 
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
-                   -- else do newBinding <- duplicateDecl declsr n newNameGhc
                    else do newBinding <- duplicateDecl declsr parentr n newNameGhc
-                           -- liftIO $ putStrLn ("DupDef: newBinding =" ++ (GHC.showPpr newBinding)) -- ++AZ++ debug
-                           -- liftIO $ putStrLn ("DupDef: declsr =" ++ (GHC.showPpr declsr)) -- ++AZ++ debug
-
-                           -- let newDecls = replaceDecls declsr (reverse before++ newBinding++ reverse after)
                            let newDecls = replaceDecls declsr (declsr ++ newBinding)
-                           -- return (GHC.L lp (hsMod {GHC.hsmodDecls = newDecls}))
-                           -- return $ g { GHC.hs_valds = (GHC.ValBindsIn (GHC.listToBag newDecls) []) } -- ++AZ++ what about GHC.ValBindsOut?
                            return $ replaceBinds parentr newDecls
 
 

@@ -100,14 +100,14 @@ spec = do
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n         if (odd x) then \"Odd\" else \"Even\""
       (showToks [(head front)]) `shouldBe` "[(((1,1),(1,7)),ITmodule,\"module\")]"
-      
+
       let newToks = replaceToks middle (4,17) (4,17) [(head front)]
       (showToks newToks) `shouldBe`
                "[(((4,9),(4,11)),ITif,\"if\")," ++
                "(((4,12),(4,13)),IToparen,\"(\")," ++
                "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
                -- "(((4,17),(4,18)),ITvarid \"x\",\"x\")," ++
-               "(((1,1),(1,7)),ITmodule,\"module\")," ++ 
+               "(((1,1),(1,7)),ITmodule,\"module\")," ++
                "(((4,18),(4,19)),ITcparen,\")\")," ++
                "(((4,20),(4,24)),ITthen,\"then\")," ++
                "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
@@ -130,8 +130,7 @@ spec = do
 
   describe "getToks" $ do
     it "get a token stream from the middle of tokens" $ do
-      (t,toks) <- parsedFileCaseBGhc
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      (_t,toks) <- parsedFileCaseBGhc
       let
           middle = getToks ((4,9),(4,36)) toks
       (showToks middle) `shouldBe`
@@ -145,6 +144,27 @@ spec = do
                "(((4,31),(4,35)),ITelse,\"else\")," ++
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n         if (odd x) then \"Odd\" else \"Even\""
+
+  -- -------------------------------------------------------------------
+
+  describe "newLnToken" $ do
+    it "Bumps to next line" $ do
+      (_t,toks) <- parsedFileCaseBGhc
+      let
+          middle = getToks ((4,9),(4,36)) toks
+      (showToks middle) `shouldBe`
+               "[(((4,9),(4,11)),ITif,\"if\")," ++
+               "(((4,12),(4,13)),IToparen,\"(\")," ++
+               "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
+               "(((4,17),(4,18)),ITvarid \"x\",\"x\")," ++
+               "(((4,18),(4,19)),ITcparen,\")\")," ++
+               "(((4,20),(4,24)),ITthen,\"then\")," ++
+               "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
+               "(((4,31),(4,35)),ITelse,\"else\")," ++
+               "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
+      (showToks [newLnToken (head middle)]) `shouldBe` "[(((5,1),(5,1)),ITvocurly,\"\")]"
+
+
 
   -- -------------------------------------------------------------------
 

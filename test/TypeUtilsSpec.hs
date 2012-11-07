@@ -568,32 +568,43 @@ spec = do
 
   describe "duplicateDecl" $ do
     it "Duplicates a RenamedSource bind, and updates the token stream" $ do
-      -- ((_,Just renamed@(g,_is,_es,_ds), parsed), toks) <- parsedFileDd1Ghc
       (t, toks) <- parsedFileDd1Ghc
-      let renamed@(g,_is,_es,_ds) = fromJust $ GHC.tm_renamed_source t
-
+      let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = getDecls renamed
       let Just (GHC.L _ n) = locToName dd1FileName (3, 1) renamed
       let
         comp = do
-         newName <- mkNewName "bar"
+         _newName <- mkNewName "bar"
          newName2 <- mkNewName "bar2"
-         -- newBinding <- duplicateDecl declsr n newName2
          newBinding <- duplicateDecl declsr renamed n newName2
 
          return newBinding
-      let
-        initialState = RefSt
-           { rsSettings = RefSet ["./test/testdata/"]
-           , rsUniqState = 1
-           , rsModule = initRefactModule t toks
-           }
-
-      (nb,s) <- runRefactGhc comp initialState
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n  \n\n\n\n\n\n bar2_H3 :: Integer -> Integer \n\n\n\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n \n bar2_H3 :: Integer -> Integer\n  bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showPpr nb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
+
+  -- ---------------------------------------------
+
+    it "Duplicates a bind with a signature, and an offset" $ do
+      (t, toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = getDecls renamed
+      let Just (GHC.L _ n) = locToName dd1FileName (17, 5) renamed
+      -- let Just (GHC.L _ n) = locToName dd1FileName (23, 5) renamed
+      let
+        comp = do
+         newName2 <- mkNewName "gg"
+         newBinding <- duplicateDecl declsr renamed n newName2
+
+         return newBinding
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showPpr n) `shouldBe` "ff"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "ffff"
       (GHC.showPpr nb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
 
   -- ---------------------------------------------
@@ -864,7 +875,7 @@ parsedFileDeclare2Ghc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare2.
 
 -- Runners
 
-t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
+-- t = withArgs ["--match", "hsFreeAndDeclaredPNs"] main
 -- t = withArgs ["--match", "allNames"] main
 -- t = withArgs ["--match", "definingDeclsNames"] main
 

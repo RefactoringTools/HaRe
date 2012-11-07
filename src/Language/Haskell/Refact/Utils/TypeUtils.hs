@@ -775,7 +775,7 @@ usedWithoutQual name renamed = do
      Just (GHC.L l _) -> do
        liftIO $ putStrLn ("usedWithoutQual") -- ++AZ++ debug
        toks <- fetchToks
-       
+
        let (_,s) = ghead "usedWithoutQual"  $ getToks (getGhcLoc l, getGhcLocEnd l) toks
        return $ not $ elem '.' s
      Nothing -> return False
@@ -801,7 +801,7 @@ usedWithoutQual name renamed = do
 
      checkName (pname@(GHC.L _l pn)::GHC.Located GHC.Name)
         | ((GHC.nameUnique pn) == (GHC.nameUnique name)) &&
-          isUsedInRhs pname renamed = Just pname 
+          isUsedInRhs pname renamed = Just pname
      checkName _ = Nothing
 
 -- | Return True if the identifier is unqualifiedly used in the given
@@ -2353,7 +2353,7 @@ duplicateDecl decls sigs n newFunName
           toks1 = ts1++[ghead "duplicateDecl" ts2]
                     where (ts1, ts2) = break (\t -> (tokenPos t) > endPos) toks
           --take those token after (and include) the function binding
-          toks2 = dropWhile (\t->tokenPos t/=startPos {- || isNewLn t -}) toks
+          toks2 = dropWhile (\t -> tokenPos t /= startPos {- || isNewLn t -}) toks
 
       -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:toks1=" ++ (showToks toks1)) -- ++AZ++ debug
       putToks toks2 True
@@ -2367,13 +2367,12 @@ duplicateDecl decls sigs n newFunName
       typeSig'  <- renamePN n newFunName False typeSig
 
       -- Get the updated token stream
-
       toks3 <- fetchToks
 
       let offset = getOffset toks (fst (getStartEndLoc funBinding))
           newLineTok = if ((not (emptyList toks1)) {-&& endsWithNewLn (glast "doDuplicating" toks1 -})
-                         then [newLnToken]
-                         else [newLnToken,newLnToken]
+                         then [newLnToken (last toks1)]
+                         else [newLnToken (last toks1), newLnToken (last toks1)]
 
 
           -- toks' = (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks3) 
@@ -2381,15 +2380,22 @@ duplicateDecl decls sigs n newFunName
 
           toks'= if (not $ emptyList typeSig)
                  then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks3))
-                          (GHC.L l t,s) = glast "doDuplicating" toks1
-                          start = getGhcLoc l
-                          -- newToken = mkToken t start (showEntities GHC.showPpr typeSig')
-                          newToken = mkToken t start (prettyprint $ ghead "duplicateDecl" typeSig')
+                          -- (GHC.L l t,s) = glast "doDuplicating" toks1
+                          (GHC.L lf t,s) = ghead "doDuplicating" $ getToks (getStartEndLoc funBinding) toks
+                          (GHC.L ll _,_) = head newLineTok
+                          (_,col) = getGhcLoc lf
+                          (line,_) = getGhcLoc ll
+                          -- (_line,col) = (fst (getStartEndLoc funBinding))
+
+                          -- newToken = mkToken t start (prettyprint $ ghead "duplicateDecl" typeSig')
+                          newToken = mkToken t (line,col) (prettyprint $ ghead "duplicateDecl" typeSig')
+                          newLineTokAfter = [newLnToken newToken]
 
                           -- sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
                           -- t = mkToken Whitespace (0,0) sigSource
                       -- in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks3)
-                      in  (toks1++newLineTok++[newToken]++newLineTok++toks3)
+                      -- in  (toks1++newLineTok++[newToken]++newLineTok++toks3)
+                      in  (toks1++newLineTok++[newToken]++newLineTokAfter++toks3)
                  else  (toks1++newLineTok++toks3)
 
           {- toks'= if typeSig/=[]
@@ -2399,14 +2405,17 @@ duplicateDecl decls sigs n newFunName
                       in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks3)
                  else  (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks3) 
           -}
+
+      liftIO $ putStrLn ("TypeUtils.duplicateDecl:(offset)=" ++ (show offset)) -- ++AZ++ debug 12
+      liftIO $ putStrLn ("TypeUtils.duplicateDecl:(fst (getStartEndLoc funBinding))=" ++ (show (fst $ getStartEndLoc funBinding))) -- ++AZ++ debug 12
+      liftIO $ putStrLn ("TypeUtils.duplicateDecl:(last toks1)=" ++ (showToks [last toks1])) -- ++AZ++ debug 19
+      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:newLineTok=" ++ (showToks newLineTok)) -- ++AZ++ debug
       putToks toks' True
-      -- return (typeSig'++funBinding')
+      -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
       return funBinding'
      where
-       -- decls      = hsBinds valBinds
        declsToDup = definingDeclsNames [n] decls True False
        funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
-       -- typeSig    = filter isTypeSig       declsToDup     --get the type signature.
        typeSig = definingSigsNames [n] sigs
 
 {-

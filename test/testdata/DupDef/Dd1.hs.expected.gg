@@ -17,41 +17,7 @@ tup@(h,t) = head $ zip [1..10] [3..ff]
     ff = 15
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-gg_H2 :: Int
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    gg_H2 :: Int
     gg = 15
 
 data D = A | B String | C

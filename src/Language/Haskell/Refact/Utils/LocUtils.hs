@@ -321,9 +321,10 @@ replaceTabBySpaces (s:ss)
               else s:replaceTabBySpaces ss
 
 -}
---Compose a new token using the given arguments.
-mkToken::GHC.Token->SimpPos->String->PosToken
-mkToken t (row,col) c= ((GHC.L l t),c)
+
+-- |Compose a new token using the given arguments.
+mkToken::GHC.Token -> SimpPos -> String -> PosToken
+mkToken t (row,col) c = ((GHC.L l t),c)
   where 
     filename = (GHC.mkFastString "f")
     l = GHC.mkSrcSpan (GHC.mkSrcLoc filename row col) (GHC.mkSrcLoc filename row (col + (length c) ))
@@ -334,8 +335,17 @@ mkToken t (row,col) c= ((GHC.L l t),c)
 defaultToken = (Whitespace, (pos0," "))
 newLnToken   = (Whitespace, (pos0,"\n"))
 -}
-newLnToken :: PosToken
-newLnToken = (GHC.L ghcPos0 GHC.ITvocurly,"\n")
+newLnToken :: PosToken -> PosToken
+newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
+-- newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"NL")
+  where
+   l' =  case l of
+     GHC.RealSrcSpan ss -> 
+       let
+         loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 1
+       in 
+         GHC.mkSrcSpan loc loc
+     _ -> l
 
 ghcPos0 = GHC.mkSrcSpan p0 p0
   where p0 = GHC.mkSrcLoc (GHC.mkFastString "") 1 1
@@ -473,7 +483,7 @@ groupTokensByLine xs =let (xs', xs'') = break hasNewLn xs
 
 -- ---------------------------------------------------------------------
 
---Give a token stream covering multi-lines, calculate the length of the last line
+-- |Given a token stream covering multi-lines, calculate the length of the last line
 -- AZ: should be the last token start col, plus length of token.
 lengthOfLastLine::[PosToken]->Int
 lengthOfLastLine [] = 0
@@ -613,18 +623,13 @@ replaceToks toks startPos endPos newToks =
 
 -- ---------------------------------------------------------------------
 
+-- | Get the end of the line before the pos
 getOffset toks pos
   = let (ts1, ts2) = break (\t->tokenPos t == pos) toks
     in if (emptyList ts2)
          then error "HaRe error: position does not exist in the token stream!"
          else lengthOfLastLine ts1
-{-
-getOffset toks pos
-  = let (ts1, ts2) = break (\t->tokenPos t == pos) toks
-    in if ts2==[]
-         then error "HaRe error: position does not exist in the token stream!"
-         else lengthOfLastLine ts1
--}
+
 
 -- ---------------------------------------------------------------------
 
