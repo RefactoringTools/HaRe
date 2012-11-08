@@ -47,9 +47,11 @@ comp maybeMainFile fileName newName (row, col) = do
       if isVarId newName
         then do loadModuleGraphGhc maybeMainFile
                 modInfo@(t, _tokList) <- getModuleGhc fileName
-                let pm = GHC.tm_parsed_module t
-                    renamed     = GHC.tm_renamed_source t
-                    parsed      = GHC.pm_parsed_source pm
+                -- let pm = GHC.tm_parsed_module t
+                --     renamed     = GHC.tm_renamed_source t
+                --     parsed      = GHC.pm_parsed_source pm
+                renamed <- getRefactRenamed
+                parsed  <- getRefactParsed
 
                 let (Just (modName,_)) = getModuleName parsed
                 let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
