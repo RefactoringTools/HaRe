@@ -410,8 +410,6 @@ spec = do
       GHC.showPpr res `shouldBe` "[ff :: GHC.Types.Int,\n DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
 
 
-
-
   -- -------------------------------------------------------------------
 
   describe "isFunBindR" $ do
@@ -437,6 +435,29 @@ spec = do
       isFunBindR decl  `shouldBe` True
 
   -- -------------------------------------------------------------------
+
+  describe "isFunOrPatName" $ do
+    it "Return True if a PName is a function/pattern name defined in t" $ do
+      (t, _toks) <- parsedFileDd1Ghc
+      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just tup = getName "DupDef.Dd1.tup" renamed
+      isFunOrPatName tup renamed  `shouldBe` True
+
+    it "Return False if a PName is a function/pattern name defined in t" $ do
+      (t, _toks)   <- parsedFileDd1Ghc
+      (t2, toks2) <- parsedFileDd2Ghc
+      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let renamed  = fromJust $ GHC.tm_renamed_source t
+      let renamed2 = fromJust $ GHC.tm_renamed_source t2
+
+      let Just tup = getName "DupDef.Dd1.tup" renamed
+      isFunOrPatName tup renamed2  `shouldBe` False
+
+
+  -- -------------------------------------------------------------------
+
 {- ++AZ++
   describe "isSimplePatBind" $ do
     it "returns False if not a simple pat bind" $ do
@@ -882,6 +903,9 @@ dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
 parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
 parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+
+parsedFileDd2Ghc :: IO (ParseResult,[PosToken])
+parsedFileDd2Ghc = parsedFileGhc "./test/testdata/DupDef/Dd2.hs"
 
 parsedFileDeclareGhc :: IO (ParseResult,[PosToken])
 parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"

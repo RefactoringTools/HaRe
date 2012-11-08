@@ -29,7 +29,7 @@ import Language.Haskell.Refact.Utils.TypeUtils
 
 data Direction = UptoTopLevel | UpOneLevel | Down
 
-{--------This function handles refactorings involving moving a defintion--------
+{--------This function handles refactorings involving moving a definition--------
  According to the Haskell's  syntax, a declaration may occur in one of the following six contexts:
   1. A top level declaration in the module:
             HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds
@@ -59,6 +59,7 @@ liftToTopLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos 
 liftToTopLevel settings maybeMainFile fileName (row,col) =
   runRefacSession settings (compLiftToTopLevel maybeMainFile fileName (row,col))
 
+
 compLiftToTopLevel :: Maybe FilePath -> FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftToTopLevel maybeMainFile fileName (row,col) = do
@@ -73,7 +74,9 @@ compLiftToTopLevel maybeMainFile fileName (row,col) = do
       let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
       case maybePn of
         -- Just pn -> liftToTopLevel' modName fileName (inscps, mod, toks) pnt
-        Just pn ->  error "ff" -- refactoredMod <- applyRefac (liftToTopLevel' pn modName) (Just modInfo) fileName
+        Just pn ->  do
+            refactoredMod <- applyRefac (liftToTopLevel' modName fileName pn) (Just modInfo) fileName
+            return [refactoredMod]
         _       ->  error "\nInvalid cursor position!\n"
 
 
@@ -160,8 +163,22 @@ move direction args
 
 -}
 
-liftToTopLevel' :: GHC.ModuleName -> FilePath -> GHC.Name -> RefactGhc ()
-liftToTopLevel' modName fileName pn = do
+liftToTopLevel' :: GHC.ModuleName -> FilePath -> GHC.Located GHC.Name -> RefactGhc ()
+liftToTopLevel' modName fileName pn@(GHC.L _ n) = do
+  renamed <- getRefactRenamed
+
+  {-
+  if isLocalFunOrPatName pn mod
+      then do ((mod',declPns),((toks',m),_))<-runStateT liftToMod ((toks,unmodified),(-1000,0))
+              if modIsExported mod
+               then do clients<-clientModsAndFiles modName
+                       refactoredClients <- mapM (liftingInClientMod modName declPns) clients
+                       writeRefactoredFiles False $ ((fileName,m),(toks',mod')):refactoredClients
+               else do writeRefactoredFiles False [((fileName,m), (toks',mod'))]
+      else error "\nThe identifier is not a local function/pattern name!"
+  -}
+
+
   return ()
 
 {-
@@ -890,13 +907,13 @@ replaceExpWithUpdToks  decls subst
                  |(expToPN e/=defaultPN) &&  (expToPN e)==(fst subst)
                      =update e (snd subst) e
                worker x=return x
+-}
 
-
---return True if pn is a local function/pattern name
+-- | return True if pn is a local function/pattern name
 isLocalFunOrPatName pn scope
- =isLocalPN pn && isFunOrPatName pn scope
+ = isLocalPN pn && isFunOrPatName pn scope
 
-
+{-
 -- |removeTypeSig removes the signature declaraion for pn from the decl list.
 removeTypeSig ::PName->[HsDeclP]->[HsDeclP]
 removeTypeSig pn decls=concatMap (removeTypeSig' pn) decls

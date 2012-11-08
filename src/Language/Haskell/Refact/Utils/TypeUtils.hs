@@ -55,8 +55,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,hsFDsFromInside, hsFDNamesFromInside
 
     -- ** Property checking
-    -- ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isTopLevelPNT
-    ,isQualifiedPN {- ,isFunPNT, isFunName, isPatName, isFunOrPatName,isTypeCon-} ,isTypeSig
+    {- ,isVarId,isConId,isOperator,isTopLevelPN -},isLocalPN -- ,isTopLevelPNT
+    ,isQualifiedPN {- ,isFunPNT, isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     {- ,isComplexPatBind -},isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl,isDirectRecursiveDef
     ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
@@ -1066,6 +1066,63 @@ hsPNTs =(nub.ghead "hsPNTs").applyTU (full_tdTU (constTU [] `adhocTU` inPnt))
      inPnt pnt@(PNT _  _ _) = return [pnt]
 -}
 
+-----------------------------------------------------------------------------
+{-
+-- |Return True if a PName is a toplevel PName.
+isTopLevelPN::PName->Bool
+isTopLevelPN (PN i (G _ _ _))=True
+isTopLevelPN _ =False
+-}
+
+-- |Return True if a PName is a local PName.
+isLocalPN::GHC.Name->Bool
+isLocalPN = error "undefined isLocalPN"
+-- isLocalPN (PN i (UniqueNames.S _)) = True
+-- isLocalPN _ = False
+
+{-
+-- |Return True if a PName is a qualified PName.
+isQualifiedPN::PName->Bool
+isQualifiedPN (PN (Qual mod id) _)=True
+isQualifiedPN _ =False 
+
+-- |Return True if an PNT is a toplevel PNT.
+isTopLevelPNT::PNT->Bool
+isTopLevelPNT = isTopLevelPN.pNTtoPN
+-}
+
+-- |Return True if a PName is a function\/pattern name defined in t.
+isFunOrPatName::(SYB.Data t) => GHC.Name -> t -> Bool
+isFunOrPatName pn 
+   =isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) 
+     where
+        -- worker (decl::HsDeclP)
+        worker (decl::GHC.LHsBind GHC.Name)
+           | defines pn decl = Just True
+        worker _ = Nothing
+
+{-
+-- |Return True if a PNT is a function name defined in t.
+isFunPNT::(Term t)=>PNT -> t -> Bool
+isFunPNT pnt t = isFunName (pNTtoPN pnt) t 
+
+isFunName::(Term t)=>PName->t->Bool
+isFunName pn 
+   =isJust.(applyTU (once_tdTU (failTU `adhocTU` worker)))
+     where
+        worker (decl::HsDeclP)
+           | isFunBind decl && defines pn decl =Just True
+        worker _ =Nothing
+
+-- |Return True if a PName is a pattern name defined in t.
+isPatName::(Term t)=>PName->t->Bool
+isPatName pn 
+   =isJust.(applyTU (once_tdTU (failTU `adhocTU` worker)))
+     where
+        worker (decl::HsDeclP)
+           | isPatBind decl && defines pn decl =Just True
+        worker _ =Nothing
+-}
 -------------------------------------------------------------------------------
 -- |Return True if a PName is a qualified PName.
 --  AZ:NOTE: this tests the use instance, the underlying name may be qualified.
