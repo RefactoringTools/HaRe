@@ -566,9 +566,25 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "prettyprint" $ do
+    it "Prints a GHC.Name ready for parsing into tokens" $ do
+      let
+        comp = do
+         name1 <- mkNewName "foo"
+         name2 <- mkNewName "bar"
+         return (name1,name2)
+      ((n1,n2),s) <- runRefactGhcState comp
+      GHC.getOccString n1 `shouldBe` "foo"
+      GHC.showPpr n1 `shouldBe` "foo"
+      GHC.getOccString n2 `shouldBe` "bar"
+      GHC.showPpr n2 `shouldBe` "bar"
+      prettyprint n1 `shouldBe` "foo"
+
+  -- ---------------------------------------------
+
   describe "duplicateDecl" $ do
     it "Duplicates a RenamedSource bind, and updates the token stream" $ do
-      (t, toks) <- parsedFileDd1Ghc
+      (t, toks) <-parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = getDecls renamed
@@ -583,8 +599,8 @@ spec = do
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n \n bar2_H3 :: Integer -> Integer\n  bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-      (GHC.showPpr nb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n \n bar2 :: Integer -> Integer\n  bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showPpr nb) `shouldBe` "[bar2 x = DupDef.Dd1.c GHC.Num.* x]"
 
   -- ---------------------------------------------
 
@@ -593,26 +609,36 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = getDecls renamed
-      let Just (GHC.L _ n) = locToName dd1FileName (17, 5) renamed
+      let Just (GHC.L l n) = locToName dd1FileName (17, 5) renamed
+      (GHC.showPpr n) `shouldBe` "ff"
+      -- (GHC.showPpr declsr) `shouldBe` "loc"
+
       -- let Just (GHC.L _ n) = locToName dd1FileName (23, 5) renamed
       let
         comp = do
          newName2 <- mkNewName "gg"
-         newBinding <- duplicateDecl declsr renamed n newName2
 
-         return newBinding
-      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+         let
+           declsToDup = definingDeclsNames [n] declsr True False
+           funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
+
+         -- newBinding <- duplicateDecl declsr renamed n newName2
+
+         -- return newBinding
+         return (funBinding,declsToDup)
+      ((nb,dd),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "ff"
+      (GHC.showPpr dd) `shouldBe` "ff"
+      (GHC.showPpr nb) `shouldBe` "ff"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "ffff"
       (GHC.showPpr nb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
+
 
   -- ---------------------------------------------
 
   describe "renamePN" $ do
     it "Replace a Name with another, updating tokens" $ do
-      -- ((_,Just renamed@(_g,_is,_es,_ds), parsed), toks) <- parsedFileDd1Ghc
-      -- ((_,Just renamed,_parsed), toks) <- parsedFileDd1Ghc
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -625,18 +651,13 @@ spec = do
 
          return (new,newName)
       let
-        initialState = RefSt
-           { rsSettings = RefSet ["./test/testdata/"]
-           , rsUniqState = 1
-           , rsModule = initRefactModule t toks
-           }
 
-      ((nb,nn),s) <- runRefactGhc comp initialState
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (showToks $ [newNameTok l nn]) `shouldBe` "[(((3,1),(3,9)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-      (GHC.showPpr nb) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) },\n DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z,\n DupDef.Dd1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1,\n DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15,\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n bar2_H2 x = DupDef.Dd1.c GHC.Num.* x]"
+      (GHC.showPpr nb) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) },\n DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z,\n DupDef.Dd1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1,\n DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15,\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n bar2 x = DupDef.Dd1.c GHC.Num.* x]"
 
 
   -- ---------------------------------------------
@@ -742,7 +763,7 @@ spec = do
 
          return (res,toks,renamed2,toks2)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1 hiding (n1_H2,n2_H3)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
+      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1 hiding (n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
     it "Add a hiding entry to the imports with an existing hiding" $ do
       let
@@ -769,7 +790,7 @@ spec = do
 
          return (res,toks,renamed2,toks2)
       ((_r,t,_r2,_tk2),_s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd3 where\n\n import DupDef.Dd1 hiding (dd,n1_H2,n2_H3)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
+      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd3 where\n\n import DupDef.Dd1 hiding (dd,n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
       
   -- ---------------------------------------------
 

@@ -56,8 +56,11 @@ import Language.Haskell.Refact.Utils.GhcUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
 
+-- targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
+-- targetMod = "FreeAndDeclared/Declare"
+
 targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
-targetMod = "FreeAndDeclared/Declare"
+targetMod = "DupDef/Dd1"
 
 {- main = t1 -}
 
@@ -137,7 +140,8 @@ getStuff =
         GHC.setTargets [target]
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
-        modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
+        -- modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "DupDef.Dd1"
         p <- GHC.parseModule modSum
 
         t <- GHC.typecheckModule p
@@ -167,7 +171,7 @@ getStuff =
         -- let res = showPpr ps
         return res
         -}
-        let p' = processParsedMod ifToCase t
+        -- let p' = processParsedMod ifToCase t
         -- GHC.liftIO (putStrLn . showParsedModule $ t)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
         -- GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
@@ -200,7 +204,7 @@ getStuff =
 
         -- Inscopes ----------------------------------------------------
         -- GHC.liftIO (putStrLn $ "\ninscopes(showData)=" ++ (SYB.showData SYB.Parser 0 $ inscopes))
-        names <- GHC.parseName "G.mkT"
+        -- names <- GHC.parseName "G.mkT"
         -- GHC.liftIO (putStrLn $ "\nparseName=" ++ (GHC.showPpr $ names))
 
 

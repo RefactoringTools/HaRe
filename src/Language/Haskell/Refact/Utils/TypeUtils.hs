@@ -282,7 +282,8 @@ mkNewName name = do
   put s { rsUniqState = (u+1) }
 
   let un = GHC.mkUnique 'H' (u+1) -- H for HaRe :)
-      n = GHC.mkSystemName un (GHC.mkVarOcc name)
+      -- n = GHC.mkSystemName un (GHC.mkVarOcc name)
+      n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
 
   return n
 
@@ -411,6 +412,8 @@ causeNameClashInExports  pn newName mod exps
 prettyprint :: (GHC.Outputable a) => a -> String
 -- prettyprint x = GHC.showSDoc $ GHC.ppr x
 prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
+-- prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllThe
+
 
 -- ---------------------------------------------------------------------
 -- | Collect the free and declared variables (in the GHC.Name format)
@@ -2368,6 +2371,10 @@ duplicateDecl decls sigs n newFunName
 
       -- Get the updated token stream
       toks3 <- fetchToks
+
+      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:(fst (getStartEndLoc funBinding))=" ++ (show (fst $ getStartEndLoc funBinding))) -- ++AZ++ debug 12
+      -- error ("TypeUtils.duplicateDecl:(funBinding)=" ++ (GHC.showPpr funBinding)) -- ++AZ++ debug 12
+      -- error ("TypeUtils.duplicateDecl:(fst (getStartEndLoc funBinding))=" ++ (show (fst $ getStartEndLoc funBinding))) -- ++AZ++ debug 12
 
       let offset = getOffset toks (fst (getStartEndLoc funBinding))
           newLineTok = if ((not (emptyList toks1)) {-&& endsWithNewLn (glast "doDuplicating" toks1 -})
