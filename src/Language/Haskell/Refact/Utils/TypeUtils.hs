@@ -58,7 +58,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     {- ,isVarId,isConId,isOperator,isTopLevelPN -},isLocalPN -- ,isTopLevelPNT
     ,isQualifiedPN {- ,isFunPNT, isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
-    {- ,isComplexPatBind -},isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
+    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
     ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     ,findPNT -- ,findPN      -- Try to remove this.
     {-,findPNs -}, findEntity, findEntity'
@@ -79,7 +79,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program transformation
     -- ** Adding
     {- ,addDecl ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
-    {- ,addParamsToDecls, addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
+    ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
     -- ** Rmoving
     -- ,rmDecl, rmTypeSig, commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -99,7 +99,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Identifiers, expressions, patterns and declarations
     ,pNTtoPN -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
     ,ghcToPN,lghcToPN
-    -- ,expToPNT, expToPN, nameToExp,pNtoExp,patToPNT, patToPN, nameToPat,pNtoPat
+    {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     ,definingDecls, definedPNs
     ,definingDeclsNames, definingSigsNames
 
@@ -126,10 +126,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
 import Exception
 -- import Control.Exception
 import Control.Monad.State
-import Data.Char
 import Data.List
 import Data.Maybe
-import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -404,14 +402,6 @@ causeNameClashInExports  pn newName mod exps
       in isJust $ find (\(HsImportDecl _ (SN modName1 _) qualify  _ h)->modName==modName1 && (not qualify)) imps
 
 -}
-
--- ---------------------------------------------------------------------
-
-prettyprint :: (GHC.Outputable a) => a -> String
--- prettyprint x = GHC.showSDoc $ GHC.ppr x
-prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
--- prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllThe
-
 
 -- ---------------------------------------------------------------------
 -- | Collect the free and declared variables (in the GHC.Name format)
@@ -1181,15 +1171,12 @@ isSimplePatBind decl = case decl of
 --      (GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _))) -> hsPNs p /= []
 --      _ -> False
 
-
-
-{-
 -- | Return True if a declaration is a pattern binding but not a simple one.
-isComplexPatBind::HsDeclP->Bool
-isComplexPatBind decl=case decl of
-     TiDecorate.Dec (HsPatBind _ p _ _)->patToPN p ==defaultPN
+isComplexPatBind::GHC.LHsBind GHC.Name -> Bool
+isComplexPatBind decl = case decl of
+     (GHC.L _l (GHC.PatBind p _rhs _ty _fvs _)) -> patToPNT p /= Nothing
      _ -> False
--}
+
 -- | Return True if a declaration is a function\/pattern definition.
 isFunOrPatBindP::HsDeclP->Bool
 isFunOrPatBindP decl = isFunBindP decl || isPatBindP decl
@@ -2233,6 +2220,155 @@ addHiding serverModName mod pns
 -}
 -- ---------------------------------------------------------------------
 
+addParamsToDecls::
+        [GHC.LHsBind GHC.Name] -- ^ A declaration list where the function is defined and\/or used.
+      ->GHC.Name    -- ^ The function name.
+      ->[GHC.Name]  -- ^ The parameters to be added.
+      ->Bool        -- ^ Modify the token stream or not.
+      ->RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
+
+addParamsToDecls decls pn paramPNames modifyToks
+ -- = error  "undefined addParamsToDecls"
+   = if (paramPNames/=[])
+        then mapM addParamToDecl decls
+        else return decls
+  where
+   addParamToDecl :: GHC.LHsBind GHC.Name -> RefactGhc (GHC.LHsBind GHC.Name)
+   -- addParamToDecl (TiDecorate.Dec (HsFunBind loc matches@((HsMatch _ fun pats rhs ds):ms)))
+   addParamToDecl (GHC.L l1 (GHC.FunBind fun@(GHC.L l2 pname) i (GHC.MatchGroup matches ptt) co fvs t))
+    | pname == pn
+    = do matches' <-mapM addParamtoMatch matches
+         -- return (TiDecorate.Dec (HsFunBind loc matches'))
+         return (GHC.L l1 (GHC.FunBind (GHC.L l2 pname) i (GHC.MatchGroup matches' ptt) co fvs t))
+      where
+       -- addParamtoMatch (HsMatch loc fun pats rhs  decls)
+       addParamtoMatch (GHC.L l (GHC.Match pats mtyp rhs))
+        = do rhs' <- addActualParamsToRhs pn paramPNames rhs
+             let pats' = map GHC.noLoc $ map pNtoPat paramPNames
+             pats'' <- if modifyToks then do _<-addFormalParams fun pats'
+                                             return pats'
+                                     else return pats'
+             -- return (HsMatch loc  fun  (pats'++pats)  rhs' decls)
+             return (GHC.L l (GHC.Match (pats'++pats) mtyp rhs'))
+
+
+   -- addParamToDecl (TiDecorate.Dec (HsPatBind loc p rhs ds))
+   addParamToDecl (GHC.L l1 (GHC.PatBind (GHC.L l2 pat@(GHC.VarPat p)) rhs ty fvs t))
+     | p == pn
+       = do rhs'<-addActualParamsToRhs pn paramPNames rhs
+            let pats' = map GHC.noLoc $ map pNtoPat paramPNames
+            pats'' <- if modifyToks  then do _ <- addFormalParams pat pats'
+                                             return pats'
+                                     else return pats'
+            -- return (TiDecorate.Dec (HsFunBind loc [HsMatch loc (patToPNT p) pats' rhs ds]))
+            return (GHC.L l1 (GHC.PatBind (GHC.L l2 pat) rhs ty fvs t))
+   addParamToDecl x=return x
+
+   addActualParamsToRhs :: (SYB.Typeable t, SYB.Data t) =>
+                        GHC.Name -> [GHC.Name] -> t -> RefactGhc t
+   addActualParamsToRhs pn paramPNames rhs = do
+    r <- everywhereMStaged SYB.Renamer (SYB.mkM worker) rhs
+    return r
+    -- = applyTP (stop_tdTP (failTP `adhocTP` worker))
+     where
+       -- worker :: (SYB.Data t, SYB.Typeable t) => t -> RefactGhc t
+       -- worker exp@(TiDecorate.Exp (HsId (HsVar (PNT pname ty loc))))
+
+       worker exp@(GHC.HsVar pname)
+        | pname==pn
+         = do -- let newExp=TiDecorate.Exp (HsParen (foldl addParamToExp exp (map pNtoExp paramPNames)))
+              let newExp=exp -- TiDecorate.Exp (HsParen (foldl addParamToExp exp (map pNtoExp paramPNames)))
+              if modifyToks then do -- (newExp', _) <- updateToks exp newExp prettyprint
+                                    -- return newExp'
+                                    return newExp
+                            else return newExp
+       worker x = return x
+
+       -- addParamToExp  exp param=(TiDecorate.Exp (HsApp exp param))
+       addParamToExp  exp param= error "undefined addParamToExp"
+
+
+
+{-
+   addActualParamsToRhs pn paramPNames
+    = applyTP (stop_tdTP (failTP `adhocTP` worker))
+     where
+       worker exp@(TiDecorate.Exp (HsId (HsVar (PNT pname ty loc))))
+        | pname==pn
+         = do let newExp=TiDecorate.Exp (HsParen (foldl addParamToExp exp (map pNtoExp paramPNames)))
+              if modifyToks then do (newExp', _) <- updateToks exp newExp prettyprint
+                                    return newExp'
+                            else return newExp
+       worker x =mzero
+
+       addParamToExp  exp param=(TiDecorate.Exp (HsApp exp param))
+-}
+
+
+{- ++AZ++ original
+{-
+addParamsToDecls::(MonadPlus m)
+               => [HsDeclP]   -- ^ A declaration list where the function is defined and\/or used.
+                  ->PName     -- ^ The function name.
+                  ->[PName]   -- ^ The parameters to be added.
+                  ->Bool      -- ^ Modify the token stream or not.
+                  ->m [HsDeclP] -- ^ The result.
+-}
+
+addParamsToDecls::(MonadPlus m, (MonadState (([PosToken], Bool), (Int,Int)) m))
+               => [HsDeclP]   -- ^ A declaration list where the function is defined and\/or used.
+                  ->PName     -- ^ The function name.
+                  ->[PName]   -- ^ The parameters to be added.
+                  ->Bool      -- ^ Modify the token stream or not.
+                  ->m [HsDeclP] -- ^ The result.
+
+addParamsToDecls decls pn paramPNames modifyToks
+   = if (paramPNames/=[])
+        then mapM addParamToDecl decls
+        else return decls
+  where
+   addParamToDecl (TiDecorate.Dec (HsFunBind loc matches@((HsMatch _ fun pats rhs ds):ms)))
+    | pNTtoPN fun == pn
+    = do matches'<-mapM addParamtoMatch matches
+         return (TiDecorate.Dec (HsFunBind loc matches'))
+      where
+       addParamtoMatch (HsMatch loc  fun  pats rhs  decls)
+        = do rhs'<-addActualParamsToRhs pn paramPNames rhs
+             let pats' = map pNtoPat paramPNames
+             pats'' <- if modifyToks then do (p, _)<-addFormalParams fun pats'
+                                             return p
+                                     else return pats'
+             return (HsMatch loc  fun  (pats'++pats)  rhs' decls)
+
+   addParamToDecl (TiDecorate.Dec (HsPatBind loc p rhs ds))
+     |patToPN p == pn
+       = do rhs'<-addActualParamsToRhs pn paramPNames rhs
+            let pats' = map pNtoPat paramPNames
+            pats'' <- if modifyToks  then do (p, _) <-addFormalParams p pats'
+                                             return p
+                                     else return pats'
+            return (TiDecorate.Dec (HsFunBind loc [HsMatch loc (patToPNT p) pats' rhs ds]))
+   addParamToDecl x=return x
+
+   addActualParamsToRhs pn paramPNames
+    = applyTP (stop_tdTP (failTP `adhocTP` worker))
+     where
+       worker exp@(TiDecorate.Exp (HsId (HsVar (PNT pname ty loc))))
+        | pname==pn
+         = do let newExp=TiDecorate.Exp (HsParen (foldl addParamToExp exp (map pNtoExp paramPNames)))
+              if modifyToks then do (newExp', _) <- updateToks exp newExp prettyprint
+                                    return newExp'
+                            else return newExp
+       worker x =mzero
+
+       addParamToExp  exp param=(TiDecorate.Exp (HsApp exp param))
+
+
+
+-}
+
+
+
 
 -- | Remove those specified items from the entity list in the import declaration.
 {-
@@ -2758,6 +2894,33 @@ ghcToPN rdr = PN rdr
 
 lghcToPN :: GHC.Located GHC.RdrName -> PName
 lghcToPN (GHC.L _ rdr) = PN rdr
+
+-- | If a pattern consists of only one identifier then return this
+-- identifier, otherwise return Nothing
+patToPNT::GHC.LPat GHC.Name -> Maybe GHC.Name
+patToPNT (GHC.L _ (GHC.VarPat n)) = Just n
+patToPNT _ = Nothing
+
+{-
+-- | If a pattern consists of only one identifier then returns this identifier in the PName format,
+--   otherwise returns the default PName.
+patToPN::HsPatP->PName
+patToPN=pNTtoPN.patToPNT
+-}
+
+-- | Compose a pattern from a pName.
+pNtoPat :: GHC.Name -> GHC.Pat GHC.Name
+pNtoPat pname = GHC.VarPat pname
+    -- =let loc=srcLoc pname
+    --  in (TiDecorate.Pat (HsPId (HsVar (PNT pname Value (N (Just loc))))))
+
+{-
+-- | Compose a pattern from a pName.
+pNtoPat :: PName -> HsPatP
+pNtoPat pname
+    =let loc=srcLoc pname
+     in (TiDecorate.Pat (HsPId (HsVar (PNT pname Value (N (Just loc))))))
+-}
 
 {- ++AZ++ this with deal with an actual GHC.Name
 pNTtoPN (PNT pname) = case (GHC.nameModule_maybe pname) of

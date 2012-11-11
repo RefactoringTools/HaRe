@@ -203,7 +203,7 @@ liftToTopLevel' modName _modInfo _fileName pn@(GHC.L _ n) = do
                       pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
                       let (_,dd) = hsFreeAndDeclaredPNs renamed
                       if pns==[]
-                        then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl pn dd parent liftedDecls
+                        then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl n dd parent liftedDecls
                                 let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
                                                                 else liftedDecls'
                                 mod'<-moveDecl1 (replaceDecls declsr (before++parent'++after))
@@ -323,8 +323,11 @@ pnsNeedRenaming dest parent liftedDecls pns
      pNtoName (PN (Qual (PlainModule modName) i ) orig)=modName ++ "." ++ i
 -}
 
-
-{-
+--can not simply use PNameToExp, PNameToPat here because of the location information. 
+addParamsToParent pn [] t = return t
+addParamsToParent pn params t
+  = error "undefined addParamsToParent"
+{- ++AZ++ original
 --can not simply use PNameToExp, PNameToPat here because of the location information. 
 addParamsToParent pn [] t = return t
 addParamsToParent pn params t
@@ -339,7 +342,9 @@ addParamsToParent pn params t
 
           addParamToExp  exp param
               =(Exp (HsApp exp param))
+-}
 
+{-
 --Do refactoring in the client module.
 -- that is to hide the identifer in the import declaration if it will cause any problem in the client module.
 
@@ -619,7 +624,17 @@ liftedToTopLevel pnt@(PNT pn _ _) (mod@(HsModule loc name exps imps ds):: HsModu
 -}
 
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls
-  = error "undefined addParamsToParentAndLiftedDecl"
+  =do  let (ef,_) = hsFreeAndDeclaredPNs parent
+       let (lf,_) = hsFreeAndDeclaredPNs liftedDecls
+       let newParams=((nub lf)\\ (nub ef)) \\ dd  --parameters (in PName format) to be added to pn because of lifting
+       if newParams/=[]
+         then if  (any isComplexPatBind liftedDecls)
+                then error "This pattern binding cannot be lifted, as it uses some other local bindings!"
+                else do parent'<-{-addParamsToDecls parent pn newParams True-} addParamsToParent pn newParams parent
+                        liftedDecls'<-addParamsToDecls liftedDecls pn newParams True 
+                        return (parent', liftedDecls',True)
+         else return (parent,liftedDecls,False)
+
 {- ++AZ++ original
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls
   =do  (ef,_)<-hsFreeAndDeclaredPNs parent

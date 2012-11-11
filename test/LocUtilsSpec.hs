@@ -147,6 +147,25 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "addFormalParams" $ do
+    it "adds new parameters to a token stream??" $ do
+      (_t,toks) <- parsedFileCaseBGhc
+      let
+          middle = getToks ((4,9),(4,36)) toks
+      (showToks middle) `shouldBe`
+               "[(((4,9),(4,11)),ITif,\"if\")," ++
+               "(((4,12),(4,13)),IToparen,\"(\")," ++
+               "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
+               "(((4,17),(4,18)),ITvarid \"x\",\"x\")," ++
+               "(((4,18),(4,19)),ITcparen,\")\")," ++
+               "(((4,20),(4,24)),ITthen,\"then\")," ++
+               "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
+               "(((4,31),(4,35)),ITelse,\"else\")," ++
+               "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
+      (GHC.showRichTokenStream middle) `shouldBe` "blah"
+
+  -- -------------------------------------------------------------------
+
   describe "newLnToken" $ do
     it "Bumps to next line" $ do
       (_t,toks) <- parsedFileCaseBGhc

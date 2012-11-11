@@ -48,12 +48,14 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      startEndLoc,extendBothSides,extendForwards,extendBackwards,
                      startEndLocIncFowComment,startEndLocIncFowNewLn -},startEndLocIncComments {-,
                      prettyprint ,deleteFromToks, prettyprintGuardsAlt,
-                     addFormalParams,  adjustOffset, -- try to remove it
+                     -}
+                     , addFormalParams {- ,  adjustOffset, -- try to remove it
                      StartEndLoc, isArrow,-- swapInToks,
                      commentToks
                      -}
                      , tokenise
                      , lexStringToRichTokens
+                     , prettyprint
                      , prettyprintPatList
                      , groupTokensByLine
                      -- , addLocInfo
@@ -350,6 +352,15 @@ newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
 ghcPos0 = GHC.mkSrcSpan p0 p0
   where p0 = GHC.mkSrcLoc (GHC.mkFastString "") 1 1
 
+-- ---------------------------------------------------------------------
+
+prettyprint :: (GHC.Outputable a) => a -> String
+-- prettyprint x = GHC.showSDoc $ GHC.ppr x
+prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
+-- prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllThe
+
+-- ---------------------------------------------------------------------
+
 prettyprintPatList :: (t -> String) -> Bool -> [t] -> String
 prettyprintPatList prpr beginWithSpace t
      = replaceTabBySpaces $ if beginWithSpace then format1 t else format2 t
@@ -547,8 +558,6 @@ updateToks :: (SYB.Data t)
 updateToks oldAST newAST printFun
   = trace "updateToks" $
     do
-       -- st <- get
-       -- let toks = rsTokenStream st
        toks <- fetchToks
 
        let (startPos, endPos) = getStartEndLoc oldAST
@@ -601,6 +610,41 @@ updateToksList oldAST newAST printFun
         -}
 
         return (newAST, newToks)
+
+-- ---------------------------------------------------------------------
+
+addFormalParams :: (SYB.Data t, SYB.Typeable t) =>
+                t -> [GHC.Located (GHC.Pat GHC.Name)] -> RefactGhc ()
+addFormalParams t newParams
+  -- = error "undefined addFormalParams"
+  = do toks <- fetchToks
+       let (startPos,endPos) = getStartEndLoc t
+           tToks     = getToks (startPos, endPos) toks
+           (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t == endPos) toks
+                        in (toks1' ++ [ghead "addFormalParams" toks2'], gtail "addFormalParams"  toks2')
+           offset  = lengthOfLastLine toks1
+           -- newToks = tokenise (Pos 0 v1 1) offset False (prettyprintPatList True newParams )
+       newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False (prettyprint newParams)
+       let toks'   = replaceToks toks startPos endPos (tToks++newToks)
+       -- put ((toks',modified), ((tokenRow (glast "addFormalParams" newToks) -10), v2))
+       putToks toks' modified
+       -- addLocInfo (newParams, newToks)
+       return ()
+
+{- ++AZ++ original
+---REFACTORING: GENERALISE THIS FUNCTION.
+addFormalParams t newParams
+  = do ((toks,_),(v1, v2))<-get
+       let (startPos,endPos) = getStartEndLoc toks t
+           tToks     = getToks (startPos, endPos) toks
+           (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t == endPos) toks
+                        in (toks1' ++ [ghead "addFormalParams" toks2'], gtail "addFormalParams"  toks2')
+           offset  = lengthOfLastLine toks1
+           newToks = tokenise (Pos 0 v1 1) offset False (prettyprintPatList True newParams )
+           toks'   = replaceToks toks startPos endPos (tToks++newToks)
+       put ((toks',modified), ((tokenRow (glast "addFormalParams" newToks) -10), v2))
+       addLocInfo (newParams, newToks)
+-}
 
 -- ---------------------------------------------------------------------
 
