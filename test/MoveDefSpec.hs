@@ -26,12 +26,12 @@ spec :: Spec
 spec = do
 
   describe "doLiftToTopLevel" $ do
-    {-
-    it "checks for a clash of the new name" $ do
-     res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","c","4","1"])
+    it "Cannot lift a top level declaration" $ do
+     res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","4","1"])
      -- let res = "foo"
-     (show res) `shouldBe` "Just \"The new name'c' will cause name clash/capture or ambiguity problem after duplicating, please select another name!\""
+     (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
 
+    {-
     it "checks for no definition selected" $ do
      res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","c","5","1"])
      (show res) `shouldBe` "Just \"Invalid cursor position!\""
@@ -46,7 +46,7 @@ spec = do
     -}
 
     it "lifts a definition to the top level" $ do
-     doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","4","1"]
+     doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","17","5"]
      diff <- compareFiles "./test/testdata/MoveDef/Md1.hs.refactored"
                           "./test/testdata/MoveDef/Md1.hs.expected"
      diff `shouldBe` []

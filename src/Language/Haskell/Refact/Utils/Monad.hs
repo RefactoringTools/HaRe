@@ -79,11 +79,7 @@ data RefactState = RefSt
 -- result is the inscope relation, the second element is the export
 -- relation and the third is the AST of the module. This is likely to
 -- change as we learn more
-
--- type ParseResult = (InScopes, Maybe GHC.RenamedSource, GHC.ParsedSource) 
 type ParseResult = GHC.TypecheckedModule
-
--- type RefactResult = GHC.RenamedSource
 
 
 -- ---------------------------------------------------------------------

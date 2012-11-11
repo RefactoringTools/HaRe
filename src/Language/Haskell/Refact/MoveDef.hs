@@ -75,8 +75,7 @@ compLiftToTopLevel maybeMainFile fileName (row,col) = do
       case maybePn of
         -- Just pn -> liftToTopLevel' modName fileName (inscps, mod, toks) pnt
         Just pn ->  do
-            refactoredMod <- applyRefac (liftToTopLevel' modName fileName pn) (Just modInfo) fileName
-            return [refactoredMod]
+            liftToTopLevel' modName modInfo fileName pn
         _       ->  error "\nInvalid cursor position!\n"
 
 
@@ -163,23 +162,57 @@ move direction args
 
 -}
 
-liftToTopLevel' :: GHC.ModuleName -> FilePath -> GHC.Located GHC.Name -> RefactGhc ()
-liftToTopLevel' modName fileName pn@(GHC.L _ n) = do
+liftToTopLevel' :: GHC.ModuleName -> (ParseResult,[PosToken]) -> FilePath
+                -> GHC.Located GHC.Name
+                -> RefactGhc [ApplyRefacResult]
+liftToTopLevel' modName _modInfo _fileName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
+  parsed  <- getRefactParsed
+  if isLocalFunOrPatName n renamed
+      then do -- ((mod',declPns),((toks',m),_))<-runStateT liftToMod ((toks,unmodified),(-1000,0))
+              refactoredMod <- applyRefac (liftToMod) (Just _modInfo) _fileName
 
-  {-
-  if isLocalFunOrPatName pn mod
-      then do ((mod',declPns),((toks',m),_))<-runStateT liftToMod ((toks,unmodified),(-1000,0))
-              if modIsExported mod
+              if modIsExported parsed
                then do clients<-clientModsAndFiles modName
-                       refactoredClients <- mapM (liftingInClientMod modName declPns) clients
-                       writeRefactoredFiles False $ ((fileName,m),(toks',mod')):refactoredClients
-               else do writeRefactoredFiles False [((fileName,m), (toks',mod'))]
+                       -- TODO: Complete this
+                       -- refactoredClients <- mapM (liftingInClientMod modName declPns) clients
+                       -- writeRefactoredFiles False $ ((fileName,m),(toks',mod')):refactoredClients
+                       return (refactoredMod:[])
+               else do return [refactoredMod]
       else error "\nThe identifier is not a local function/pattern name!"
-  -}
 
+    where
+          {-step1: divide the module's top level declaration list into three parts:
+            'parent' is the top level declaration containing the lifted declaration,
+            'before' and `after` are those declarations before and after 'parent'.
+            step2: get the declarations to be lifted from parent, bind it to liftedDecls 
+            step3: remove the lifted declarations from parent and extra arguments may be introduce.
+            step4. test whether there are any names need to be renamed.
+          -}
+       liftToMod = do renamed <- getRefactRenamed
+                      let declsr = hsBinds renamed
+                      let (before,parent,after) = divideDecls declsr pn
+                      {- ++AZ++ : hsBinds does not return class or instance definitions
+                      when (isClassDecl $ ghead "liftToMod" parent)
+                            $ error "Sorry, the refactorer cannot lift a definition from a class declaration!"
+                      when (isInstDecl $ ghead "liftToMod" parent)
+                            $ error "Sorry, the refactorer cannot lift a definition from an instance declaration!"
+                      -}
+                      let liftedDecls = definingDeclsNames [n] parent True True
+                          declaredPns = nub $ concatMap definedPNs liftedDecls
+                      pns <- pnsNeedRenaming parent liftedDecls declaredPns
+                      let (_,dd) = hsFreeAndDeclaredPNs renamed
+                      if pns==[]
+                        then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl pn dd parent liftedDecls
+                                let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
+                                                                else liftedDecls'
+                                mod'<-moveDecl1 (replaceDecls declsr (before++parent'++after))
+                                       (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) [pn] True
+                                -- return (mod', declaredPns)
+                                return ()
 
-  return ()
+                        else askRenamingMsg pns "lifting"
+
 
 {-
 liftToTopLevel' modName fileName (inscps, mod, toks) pnt@(PNT pn _ _)
@@ -217,29 +250,44 @@ liftToTopLevel' modName fileName (inscps, mod, toks) pnt@(PNT pn _ _)
                                        (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) [pn] True
                                 return (mod', declaredPns)
                         else askRenamingMsg pns "lifting"
+-}
 
-
+moveDecl1 t defName pns topLevel
+  = error "undefined moveDecl1"
+{- ++AZ++ original
 moveDecl1 t defName pns topLevel
    = do ((toks, _),_)<-get
         let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" pns) True toks t
         --error$ show (declToMove, toksToMove)
         t' <- rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) t pns
         addDecl t' defName (declToMove, Just toksToMove) topLevel
+-}
 
-
+{-
 --get all the declarations define in the scope of t
 allDeclsIn t = fromMaybe [] (applyTU (full_tdTU (constTU [] `adhocTU` decl)) t)
                where decl (d::HsDeclP)
                        |isFunBind d || isPatBind d || isTypeSig d = Just [d]
                      decl _ = Just []
+-}
 
+
+askRenamingMsg pns str
+  = error ("The identifier(s):" ++ prettyprint pns ++
+           " will cause name clash/capture or ambiguity occurrence problem after "
+           ++ str ++", please do renaming first!")
+{- ++AZ++ original
 askRenamingMsg pns str
   = error ("The identifier(s):" ++ showEntities showPNwithLoc pns ++
            " will cause name clash/capture or ambiguity occurrence problem after "
            ++ str ++", please do renaming first!")
+-}
 
---Get the subset of 'pns' that need to be renamed before lifting.
-pnsNeedRenaming inscps dest parent liftedDecls pns
+-- |Get the subset of 'pns' that need to be renamed before lifting.
+pnsNeedRenaming :: GHC.LHsBind GHC.Name -> t -> [GHC.Name] -> RefactGhc [GHC.Name]
+pnsNeedRenaming parent liftedDecls pns
+   = error "undefined pnsNeedRenaming"
+{- -- ++AZ++ original
    =do r<-mapM pnsNeedRenaming' pns
        return (concat r)
   where
@@ -255,7 +303,10 @@ pnsNeedRenaming inscps dest parent liftedDecls pns
      --This pNtoName takes into account the qualifier.
      pNtoName (PN (UnQual i) orig)=i
      pNtoName (PN (Qual (PlainModule modName) i ) orig)=modName ++ "." ++ i
+-}
 
+
+{-
 --can not simply use PNameToExp, PNameToPat here because of the location information. 
 addParamsToParent pn [] t = return t
 addParamsToParent pn params t
@@ -547,7 +598,11 @@ liftedToTopLevel pnt@(PNT pn _ _) (mod@(HsModule loc name exps imps ds):: HsModu
               declaredPns  = nub $ concatMap definedPNs liftedDecls
           in (True, declaredPns)
      else (False, [])
+-}
 
+addParamsToParentAndLiftedDecl pn dd parent liftedDecls
+  = error "undefined addParamsToParentAndLiftedDecl"
+{- ++AZ++ original
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls
   =do  (ef,_)<-hsFreeAndDeclaredPNs parent
        (lf,_)<-hsFreeAndDeclaredPNs liftedDecls
@@ -559,7 +614,9 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
                         liftedDecls'<-addParamsToDecls liftedDecls pn newParams True 
                         return (parent', liftedDecls',True)
          else return (parent,liftedDecls,False)
+-}
 
+{-
 --------------------------------End of Lifting-----------------------------------------
 
 {-Refactoring : demote a function/pattern binding(simpe or complex) to the declaration where it is used.
@@ -922,12 +979,22 @@ removeTypeSig pn decls=concatMap (removeTypeSig' pn) decls
                  then []
                  else [Dec (HsTypeSig loc (filter (\x-> (pNTtoPN x)/=pn) is) c tp)]
             removeTypeSig' pn x=[x]
+-}
 
 
--- |Divide a declaration list into three parts (before, parent, after) according to the PNT,
--- where 'parent' is the first decl containing the PNT, 'before' are those decls before 'parent'
--- and 'after' are those decls after 'parent'.
+-- |Divide a declaration list into three parts (before, parent, after)
+-- according to the PNT, where 'parent' is the first decl containing
+-- the PNT, 'before' are those decls before 'parent' and 'after' are
+-- those decls after 'parent'.
 
+-- divideDecls::[HsDeclP]->PNT->([HsDeclP],[HsDeclP],[HsDeclP])
+divideDecls ds pnt
+  = undefined
+  -- = let (before,after)=break (\x->findPNT pnt x) ds
+  --   in if (after/=[])
+  --        then (before, [ghead "divideDecls" after], tail after)
+  --        else (ds,[],[])
+{-
 divideDecls::[HsDeclP]->PNT->([HsDeclP],[HsDeclP],[HsDeclP])
 divideDecls ds pnt
   = let (before,after)=break (\x->findPNT pnt x) ds

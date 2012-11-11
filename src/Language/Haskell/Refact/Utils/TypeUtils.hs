@@ -58,7 +58,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     {- ,isVarId,isConId,isOperator,isTopLevelPN -},isLocalPN -- ,isTopLevelPNT
     ,isQualifiedPN {- ,isFunPNT, isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
-    {- ,isComplexPatBind -},isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl,isDirectRecursiveDef
+    {- ,isComplexPatBind -},isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
     ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     -- ,findPNT,findPN      -- Try to remove this.
     {-,findPNs -}, findEntity, findEntity'
@@ -100,7 +100,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,pNTtoPN -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
     ,ghcToPN,lghcToPN
     -- ,expToPNT, expToPN, nameToExp,pNtoExp,patToPNT, patToPN, nameToPat,pNtoPat
-    ,definingDecls -- , definedPNs
+    ,definingDecls, definedPNs
     ,definingDeclsNames, definingSigsNames
 
     -- ,simplifyDecl
@@ -1075,8 +1075,8 @@ isTopLevelPN _ =False
 -}
 
 -- |Return True if a PName is a local PName.
-isLocalPN::GHC.Name->Bool
-isLocalPN = error "undefined isLocalPN"
+isLocalPN::GHC.Name -> Bool
+isLocalPN = GHC.isInternalName
 -- isLocalPN (PN i (UniqueNames.S _)) = True
 -- isLocalPN _ = False
 
@@ -1210,7 +1210,8 @@ isClassDecl _ = False
 isInstDecl :: HsDeclP -> Bool
 isInstDecl (TiDecorate.Dec (HsInstDecl _ _ _ _ _)) = True
 isInstDecl _ = False
-
+-}
+{-
 -- | Return True if a function is a directly recursive function.
 isDirectRecursiveDef::HsDeclP->Bool
 isDirectRecursiveDef (TiDecorate.Dec (HsFunBind loc ms))
@@ -1269,18 +1270,19 @@ getValBinds binds = case binds of
 -- This class replaces the HsDecls one
 class (SYB.Data t) => HsBinds t where
 
-    -- | Return the declarations that are directly enclosed in the
+    -- | Return the binds that are directly enclosed in the
     -- given syntax phrase.
     hsBinds :: t -> [GHC.LHsBind GHC.Name]
 
-    -- | Replace the directly enclosed declaration list by the given
-    --  declaration list. Note: This function does not modify the
+    -- | Replace the directly enclosed bind list by the given
+    --  bind list. Note: This function does not modify the
     --  token stream.
     replaceBinds :: t -> [GHC.LHsBind GHC.Name] -> t
 
     -- | Return True if the specified identifier is declared in the
     -- given syntax phrase.
     isDeclaredIn :: GHC.Name -> t -> Bool
+
 
 instance HsBinds (GHC.RenamedSource) where
   hsBinds (grp,_,_,_) = getValBinds (GHC.hs_valds grp)
@@ -1628,7 +1630,7 @@ definingDeclsNames:: -- (SYB.Data t) =>
             ->Bool       -- ^ True means to include the type signature.
             ->Bool       -- ^ True means to look at the local declarations as well. 
             ->[GHC.LHsBind GHC.Name]  -- ^ The result.
-definingDeclsNames pns ds incTypeSig recursive = concatMap defines ds
+definingDeclsNames pns ds _incTypeSig recursive = concatMap defines ds
   where
    defines decl
      = if recursive
@@ -1760,24 +1762,17 @@ definesTypeSig _  _ =False
 isTypeSigOf :: PNT -> HsDeclP -> Bool
 isTypeSigOf pnt (TiDecorate.Dec (HsTypeSig loc is c tp))= elem pnt is
 isTypeSigOf _  _ =False
-
+-}
 
 -- | Return the list of identifiers (in PName format) defined by a function\/pattern binding.
-definedPNs::HsDeclP->[PName]
-definedPNs (TiDecorate.Dec (HsFunBind _ ((HsMatch _ (PNT pname _ _) _ _ _):_))) =[pname]
-definedPNs (TiDecorate.Dec (HsPatBind _ p _ _)) =hsPNs p
-definedPNs (TiDecorate.Dec (HsDataDecl _ _ _ cons _) )
-   = getCons cons
-       where
-         getCons [] = []
-         getCons ((HsConDecl _ _ _ (PNT pname _ _) _):ms)
-           = pname : (getCons ms)
-         getCons ((HsRecDecl _ _ _ (PNT pname _ _) _):ms)
-           = pname : (getCons ms)
-         getCons _ = []
-definedPNs _=[]
+definedPNs::GHC.LHsBind GHC.Name -> [GHC.Name]
+definedPNs (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)) = [pname]
+definedPNs (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _)) = (hsNamess p)
+definedPNs (GHC.L _ (GHC.VarBind pname _rhs _)) = [pname]
+-- TODO: what about GHC.AbsBinds?
+definedPNs  _ = []
 
-
+{-
 -- |Return True if the given syntax phrase contains any free variables.
 hasFreeVars::(Term t)=>t->Bool
 hasFreeVars t = fromMaybe False (do (f,_)<-hsFreeAndDeclaredPNs t

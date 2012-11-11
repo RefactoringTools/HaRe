@@ -530,6 +530,29 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "isLocalPN" $ do
+    it "returns True if the name is local to the module" $ do
+      (t, _toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let Just (GHC.L _ n) = locToName dd1FileName (17, 5) renamed
+      (GHC.showPpr n) `shouldBe` "ff"
+      isLocalPN n `shouldBe` True
+
+    it "returns False if the name is not local to the module" $ do
+      (t, _toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let Just (GHC.L _ n) = locToName dd1FileName (21, 1) renamed
+      (GHC.showPpr n) `shouldBe` "DupDef.Dd1.ff"
+      isLocalPN n `shouldBe` False
+
+  -- ---------------------------------------------
+
+  describe "definedPNs" $ do
+    it "foo" $ do
+      pending "write this test"
+
+  -- ---------------------------------------------
+
   describe "inScopeInfo" $ do
     it "returns 4 element tuples for in scope names" $ do
       pending "is this still needed?"
