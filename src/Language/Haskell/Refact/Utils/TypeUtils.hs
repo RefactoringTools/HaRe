@@ -60,7 +60,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     {- ,isComplexPatBind -},isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
     ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
-    -- ,findPNT,findPN      -- Try to remove this.
+    ,findPNT -- ,findPN      -- Try to remove this.
     {-,findPNs -}, findEntity, findEntity'
     ,sameOccurrence
     ,defines, definesP -- ,definesTypeSig, isTypeSigOf
@@ -238,8 +238,6 @@ isInScopeAndUnqualified n names
 isInScopeAndUnqualifiedGhc :: String         -- ^ The identifier name.
                            -> RefactGhc Bool -- ^ The result.
 isInScopeAndUnqualifiedGhc n = do
-  -- (ExceptionMonad m, Exception e)
-  -- namesOr <- (gtry (GHC.parseName n)) :: (Exception e) => Either e [GHC.Name] -- TODO: throws an exception if name not found
   names <- ghandle handler (GHC.parseName n)
   nameInfo <- mapM GHC.lookupName names
   let nameList = filter isId $ catMaybes nameInfo
@@ -2677,6 +2675,15 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
 
 -- ---------------------------------------------------------------------
 
+-- | Return True if the identifier(in PNT format) occurs in the given syntax phrase.
+findPNT::(SYB.Data t)=> GHC.Located GHC.Name -> t -> Bool
+findPNT pnt@(GHC.L _ pn)
+   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) 
+     where
+        worker (n::GHC.Name)
+           | GHC.nameUnique pn == GHC.nameUnique n = Just True
+        worker _ = Nothing
+
 {-
 -- | Return True if the identifier(in PNT format) occurs in the given syntax phrase.
 findPNT::(Term t)=>PNT->t->Bool
@@ -2686,7 +2693,9 @@ findPNT pnt
     worker (pnt1::PNT)
       | sameOccurrence pnt pnt1 =Just True
     worker _ =Nothing
+-}
 
+{-
 -- | Return True if the identifier (in PName format) occurs in the given syntax phrase.
 findPN::(Term t)=>PName->t->Bool
 findPN pn

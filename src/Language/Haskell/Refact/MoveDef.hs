@@ -200,7 +200,7 @@ liftToTopLevel' modName _modInfo _fileName pn@(GHC.L _ n) = do
                       -}
                       let liftedDecls = definingDeclsNames [n] parent True True
                           declaredPns = nub $ concatMap definedPNs liftedDecls
-                      pns <- pnsNeedRenaming parent liftedDecls declaredPns
+                      pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
                       let (_,dd) = hsFreeAndDeclaredPNs renamed
                       if pns==[]
                         then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl pn dd parent liftedDecls
@@ -284,9 +284,27 @@ askRenamingMsg pns str
 -}
 
 -- |Get the subset of 'pns' that need to be renamed before lifting.
-pnsNeedRenaming :: GHC.LHsBind GHC.Name -> t -> [GHC.Name] -> RefactGhc [GHC.Name]
-pnsNeedRenaming parent liftedDecls pns
-   = error "undefined pnsNeedRenaming"
+pnsNeedRenaming :: (SYB.Data t1) =>
+  t1 -> [GHC.LHsBind GHC.Name] -> t2 -> [GHC.Name] -> RefactGhc [GHC.Name]
+pnsNeedRenaming dest parent liftedDecls pns
+   =do r <- mapM pnsNeedRenaming' pns
+       return (concat r)
+  where
+     pnsNeedRenaming' pn
+       = do let (f,d) = hsFDsFromInside dest --f: free variable names that may be shadowed by pn
+                                             --d: declaread variables names that may clash with pn
+            let vs = hsVisiblePNs pn parent  --vs: declarad varaibles that may shadow pn
+            let -- inscpNames = map (\(x,_,_,_)->x) $ inScopeInfo inscps
+                vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
+            -- if elem (pNtoName pn) vars  || isInScopeAndUnqualified (pNtoName pn) inscps && findEntity pn dest
+            isInScope <- isInScopeAndUnqualifiedGhc (pNtoName pn)
+            if elem (pNtoName pn) vars  || isInScope && findEntity pn dest
+
+               then return [pn]
+               else return []
+     --This pNtoName takes into account the qualifier.
+     pNtoName = GHC.showPpr
+
 {- -- ++AZ++ original
    =do r<-mapM pnsNeedRenaming' pns
        return (concat r)
@@ -987,13 +1005,15 @@ removeTypeSig pn decls=concatMap (removeTypeSig' pn) decls
 -- the PNT, 'before' are those decls before 'parent' and 'after' are
 -- those decls after 'parent'.
 
+-- ++AZ++ : Not sure if this is meaningful with renamed source.
+
 -- divideDecls::[HsDeclP]->PNT->([HsDeclP],[HsDeclP],[HsDeclP])
 divideDecls ds pnt
-  = undefined
-  -- = let (before,after)=break (\x->findPNT pnt x) ds
-  --   in if (after/=[])
-  --        then (before, [ghead "divideDecls" after], tail after)
-  --        else (ds,[],[])
+  -- = error "undefined divideDecls"
+  = let (before,after)=break (\x->findPNT pnt x) ds
+    in if (not $ emptyList after)
+         then (before, [ghead "divideDecls" after], tail after)
+         else (ds,[],[])
 {-
 divideDecls::[HsDeclP]->PNT->([HsDeclP],[HsDeclP],[HsDeclP])
 divideDecls ds pnt

@@ -31,11 +31,11 @@ spec = do
      -- let res = "foo"
      (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
 
-    {-
-    it "checks for no definition selected" $ do
-     res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","c","5","1"])
-     (show res) `shouldBe` "Just \"Invalid cursor position!\""
+    it "checks for name clashes" $ do
+     res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","17","5"])
+     (show res) `shouldBe` "Just \"The identifier(s):[ff] will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
 
+    {-
     it "checks for invalid new name" $ do
      res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","$c","5","1"])
      (show res) `shouldBe` "Just \"Invalid new function name:$c!\""
@@ -46,7 +46,7 @@ spec = do
     -}
 
     it "lifts a definition to the top level" $ do
-     doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","17","5"]
+     doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","23","5"]
      diff <- compareFiles "./test/testdata/MoveDef/Md1.hs.refactored"
                           "./test/testdata/MoveDef/Md1.hs.expected"
      diff `shouldBe` []
