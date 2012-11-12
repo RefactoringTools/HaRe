@@ -10,6 +10,7 @@ import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
+import qualified Lexer      as GHC
 import qualified Name       as GHC
 import qualified Outputable as GHC
 import qualified RdrName    as GHC
@@ -51,6 +52,34 @@ spec = do
       (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
 
       (show (startPos,endPos)) `shouldBe` "((20,1),(22,1))"
+
+  -- -------------------------------------------------------------------
+
+  describe "tokenise" $ do
+    it "converts a string to Haskell tokens" $ do
+      let startLoc = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 3 4)
+      toks <- tokenise startLoc 0 False "x y\n  z"
+      (showToks toks) `shouldBe` ("[(((3,4),(3,5)),ITvarid \"x\",\"x\")," ++
+                                   "(((3,6),(3,7)),ITvarid \"y\",\"y\")," ++
+                                   "(((4,3),(4,4)),ITvarid \"z\",\"z\")]")
+
+    it "indents the string of tokens if required" $ do
+      let startLoc = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 3 4)
+      toks <- tokenise startLoc 5 True "x y\n  z"
+      (showToks toks) `shouldBe` ("[(((3,9),(3,10)),ITvarid \"x\",\"x\")," ++
+                                   "(((3,11),(3,12)),ITvarid \"y\",\"y\")," ++
+                                   "(((4,8),(4,9)),ITvarid \"z\",\"z\")]")
+
+  -- -------------------------------------------------------------------
+
+  describe "lexStringToRichTokens" $ do
+    it "parses a string to Haskell tokens" $ do
+      let startLoc = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 3 4)
+      toks <- lexStringToRichTokens startLoc "toplevel x y z"
+      (showToks toks) `shouldBe` ("[(((3,4),(3,12)),ITvarid \"toplevel\",\"toplevel\")," ++ 
+                                   "(((3,13),(3,14)),ITvarid \"x\",\"x\")," ++ 
+                                   "(((3,15),(3,16)),ITvarid \"y\",\"y\")," ++ 
+                                   "(((3,17),(3,18)),ITvarid \"z\",\"z\")]")
 
   -- -------------------------------------------------------------------
 
@@ -149,20 +178,44 @@ spec = do
 
   describe "addFormalParams" $ do
     it "adds new parameters to a token stream??" $ do
-      (_t,toks) <- parsedFileCaseBGhc
       let
-          middle = getToks ((4,9),(4,36)) toks
-      (showToks middle) `shouldBe`
-               "[(((4,9),(4,11)),ITif,\"if\")," ++
-               "(((4,12),(4,13)),IToparen,\"(\")," ++
-               "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
-               "(((4,17),(4,18)),ITvarid \"x\",\"x\")," ++
-               "(((4,18),(4,19)),ITcparen,\")\")," ++
-               "(((4,20),(4,24)),ITthen,\"then\")," ++
-               "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
-               "(((4,31),(4,35)),ITelse,\"else\")," ++
-               "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
-      (GHC.showRichTokenStream middle) `shouldBe` "blah"
+        comp = do
+
+         (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         putParsedModule t toks
+         parentr <- getRefactRenamed
+
+         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
+         let (Just (ln@(GHC.L _ n))) = mn
+
+         n1   <- mkNewName "n1"
+         n2   <- mkNewName "n2"
+
+         let declsr = getDecls parentr
+             tlDecls = definingDeclsNames [n] declsr True False
+             pats = [GHC.noLoc (GHC.VarPat n1), GHC.noLoc (GHC.VarPat n2)]
+
+         addFormalParams tlDecls pats
+
+         return (tlDecls,ln)
+      ((d,l),s) <- runRefactGhcState comp
+      (GHC.showPpr l) `shouldBe` "DupDef.Dd1.toplevel";
+      (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n  toplevel :: Integer -> Integer\n  toplevel x = c * x n1 n2\n\n  c , d :: Integer\n  c = 7\n  d = 9\n\n -- Pattern bind\n  tup :: ( Int , Int )\n  h :: Int\n  t :: Int\n  tup @ ( h , t ) = head $ zip [ 1 .. 10 ] [ 3 .. ff ]\n   where\n      ff :: Int\n      ff = 15\n\n   data D = A | B String | C\n\n  ff y = y + zz\n   where\n      zz = 1\n\n   l z =\n   let\n      ll = 34\n    in ll + z\n\n  dd q = do\n    let  ss = 5\n     return ( ss + q )\n\n  "
+
+
+
+  -- -------------------------------------------------------------------
+
+  describe "reAlignToks" $ do
+    it "spaces tokens out if they overlap" $ do
+      let toks = [mkToken GHC.ITsemi (1,1) "v1"
+                 ,mkToken GHC.ITsemi (1,1) "v2"
+                 ,mkToken GHC.ITsemi (1,1) "v3"
+                 ]
+      (showToks toks) `shouldBe` "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,1),(1,3)),ITsemi,\"v2\"),(((1,1),(1,3)),ITsemi,\"v3\")]"
+      (showToks $ reAlignToks toks) `shouldBe` "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,4),(1,6)),ITsemi,\"v2\"),(((1,7),(1,9)),ITsemi,\"v3\")]"
 
   -- -------------------------------------------------------------------
 
@@ -182,7 +235,6 @@ spec = do
                "(((4,31),(4,35)),ITelse,\"else\")," ++
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
       (showToks [newLnToken (head middle)]) `shouldBe` "[(((5,1),(5,1)),ITvocurly,\"\")]"
-
 
 
   -- -------------------------------------------------------------------

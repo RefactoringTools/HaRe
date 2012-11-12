@@ -53,6 +53,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      StartEndLoc, isArrow,-- swapInToks,
                      commentToks
                      -}
+                     , reAlignToks
                      , tokenise
                      , lexStringToRichTokens
                      , prettyprint
@@ -327,7 +328,7 @@ replaceTabBySpaces (s:ss)
 -- |Compose a new token using the given arguments.
 mkToken::GHC.Token -> SimpPos -> String -> PosToken
 mkToken t (row,col) c = ((GHC.L l t),c)
-  where 
+  where
     filename = (GHC.mkFastString "f")
     l = GHC.mkSrcSpan (GHC.mkSrcLoc filename row col) (GHC.mkSrcLoc filename row (col + (length c) ))
 
@@ -342,10 +343,10 @@ newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
 -- newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"NL")
   where
    l' =  case l of
-     GHC.RealSrcSpan ss -> 
+     GHC.RealSrcSpan ss ->
        let
          loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 1
-       in 
+       in
          GHC.mkSrcSpan loc loc
      _ -> l
 
@@ -369,7 +370,7 @@ prettyprintPatList prpr beginWithSpace t
 
    format2 [] = ""
    format2 [p] = (prpr p) --  (render.ppi) p
-   format2 (p:ps) = (prpr p) ++" " ++ format2 ps
+   format2 (p:ps) = (prpr p) ++ " " ++ format2 ps
 
 --Replace Tab by white spaces. (1 Tab=8 white spaces)
 -- TODO: need to be aware of underlying tab stops, advance to next one only
@@ -379,21 +380,24 @@ replaceTabBySpaces (s:ss)
   =if s=='\t' then replicate 8 ' ' ++replaceTabBySpaces ss
               else s:replaceTabBySpaces ss
 
-tokenise :: GHC.RealSrcLoc -> Int -> Bool -> [Char] -> IO [PosToken]
+-- ---------------------------------------------------------------------
+
+-- | Convert a string into a set of Haskell tokens, following the
+-- given position, with each line indented by a given column offset if
+-- required
+-- TODO: replace 'colOffset withFirstLineIndent' with a Maybe Int ++AZ++
+tokenise :: GHC.RealSrcLoc -> Int -> Bool -> String -> IO [PosToken]
 tokenise  startPos _ _ [] = return []
 tokenise  startPos colOffset withFirstLineIndent str
   = let str' = case lines str of
                     (ln:[]) -> addIndent ln ++ if glast "tokenise" str=='\n' then "\n" else ""
                     (ln:lns)-> addIndent ln ++ "\n" ++ concatMap (\n->replicate colOffset ' '++n++"\n") lns
-        str'' = if glast "tokenise" str' == '\n' && glast "tokenise" str /='\n'
+                    []      -> []
+        str'' = if glast "tokenise" str' == '\n' && glast "tokenise" str /= '\n'
                   then genericTake (length str' -1) str'
                   else str'
-    -- in expandNewLnTokens $ lexerPass0' startPos str''
-    -- in expandNewLnTokens $ GHC.addSourceToTokens startPos
-
-        -- toks = liftIO $ lexStringToRichTokens startPos str''
         toks = lexStringToRichTokens startPos str''
-        -- toks = []
+
     in toks
     -- in error $ "tokenise:" ++ (showToks $ head toks)
    where
@@ -401,7 +405,7 @@ tokenise  startPos colOffset withFirstLineIndent str
                       then replicate colOffset ' '++ ln
                       else ln
 
-     {- ++AZ++ removed for now. Needed?
+     {- ++AZ++ removed for now. Needed? NOPE
      --preprocssing the token stream to expand the white spaces to individual tokens.
      expandNewLnTokens::[PosToken]->[PosToken]
      expandNewLnTokens ts = concatMap expand ts
@@ -418,7 +422,7 @@ tokenise  startPos colOffset withFirstLineIndent str
 
 -- ---------------------------------------------------------------------
 
--- lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [GHC.Located GHC.Token]
+
 lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
 lexStringToRichTokens startLoc str = do
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
@@ -431,9 +435,8 @@ lexStringToRichTokens startLoc str = do
       -- lexTokenStream :: StringBuffer -> RealSrcLoc -> DynFlags -> ParseResult [Located Token]
       let res = GHC.lexTokenStream (GHC.stringToStringBuffer str) startLoc dflags'
       case res of
-        -- GHC.POk _ toks -> return toks
         GHC.POk _ toks -> return $ GHC.addSourceToTokens startLoc (GHC.stringToStringBuffer str) toks 
-        GHC.PFailed srcSpan msg -> error $ "lexStringToRichTokens:" -- ++ (show $ GHC.ppr msg)
+        GHC.PFailed _srcSpan msg -> error $ "lexStringToRichTokens:" -- ++ (show $ GHC.ppr msg)
 
         -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
 
@@ -613,21 +616,30 @@ updateToksList oldAST newAST printFun
 
 -- ---------------------------------------------------------------------
 
+-- | Add tokens corresponding to the new parameters to the end of the
+-- syntax element provided
 addFormalParams :: (SYB.Data t, SYB.Typeable t) =>
                 t -> [GHC.Located (GHC.Pat GHC.Name)] -> RefactGhc ()
 addFormalParams t newParams
-  -- = error "undefined addFormalParams"
   = do toks <- fetchToks
        let (startPos,endPos) = getStartEndLoc t
            tToks     = getToks (startPos, endPos) toks
-           (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t == endPos) toks
-                        in (toks1' ++ [ghead "addFormalParams" toks2'], gtail "addFormalParams"  toks2')
+           (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t >= endPos) toks
+                        -- in (toks1' ++ [ghead "addFormalParams" toks2'], gtail "addFormalParams"  toks2')
+                        in (toks1',toks2')
            offset  = lengthOfLastLine toks1
+           ((GHC.L l _),_) = (last toks1)
+
+           (r,c) = getGhcLocEnd l
            -- newToks = tokenise (Pos 0 v1 1) offset False (prettyprintPatList True newParams )
-       newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False (prettyprint newParams)
-       let toks'   = replaceToks toks startPos endPos (tToks++newToks)
-       -- put ((toks',modified), ((tokenRow (glast "addFormalParams" newToks) -10), v2))
-       putToks toks' modified
+       -- error ("addFormalParams: (last toks1)=" ++ (showToks toks1)) -- ++AZ++ debug
+       -- error ("addFormalParams: (pp thing)=" ++ (GHC.showPpr (GHC.mkRealSrcLoc (GHC.mkFastString "foo") r (c+1)))) -- ++AZ++ debug
+       -- error ("addFormalParams: (startPos,endPos)=" ++ (show (startPos,endPos))) -- ++AZ++ debug
+       newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") r (c+1)) 0 False 
+                                    (prettyprintPatList prettyprint True newParams)
+       let toks' = replaceToks toks startPos endPos (tToks++newToks)
+           toks'' = reAlignToks toks' -- ++AZ++ TODO: reduce the scope of the re-align, expensive
+       putToks toks'' modified
        -- addLocInfo (newParams, newToks)
        return ()
 
@@ -650,8 +662,8 @@ addFormalParams t newParams
 
 -- |Replace a list of tokens in the token stream by a new list of
 -- tokens, adjust the layout as well. To use this function make sure
--- the start and end positions really exist in the token stream. QN:
--- what happens if the start or end position does not exist?
+-- the start and end positions really exist in the token stream.
+-- QN: what happens if the start or end position does not exist?
 
 replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
 replaceToks toks startPos endPos newToks =
@@ -664,6 +676,27 @@ replaceToks toks startPos endPos newToks =
              in  toks1++ (newToks++toks22))  -- adjustLayout toks22 oldOffset newOffset) ) 
    where
       (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
+
+-- ---------------------------------------------------------------------
+
+-- | Make sure all tokens have at least one space between them
+reAlignToks :: [PosToken] -> [PosToken]
+reAlignToks [] = []
+reAlignToks [t] = [t]
+reAlignToks (tok1@((GHC.L l1 t1),s1):tok2@((GHC.L l2 t2),s2):ts)
+  = tok1:reAlignToks (tok2':ts)
+   where
+     (sr1,sc1) = getGhcLoc l1
+     (er1,ec1) = getGhcLocEnd l1
+     (sr2,sc2) = getGhcLoc l2
+     (er2,ec2) = getGhcLocEnd l2
+     ((sr,sc),(er,ec)) = if (er1 == sr2 && ec1 >= sc2)
+              then ((sr2,ec1+1),(er2,ec1+ec2-sc2+1))
+              else ((sr2,sc2),(er2,ec2))
+     fname = GHC.mkFastString "foo"
+     l2' = GHC.mkRealSrcSpan (GHC.mkRealSrcLoc fname sr sc)
+                             (GHC.mkRealSrcLoc fname er ec)
+     tok2' = ((GHC.L (GHC.RealSrcSpan l2') t2),s2)
 
 -- ---------------------------------------------------------------------
 
@@ -805,8 +838,9 @@ deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
                              else  gtail "deleteToks6" t
 
 -}
--- Adjust the layout to compensate the change in the token stream.
-adjustLayout::[PosToken]->Int->Int->[PosToken]
+
+-- | Adjust the layout to compensate the change in the token stream.
+adjustLayout:: [PosToken] -> Int -> Int -> [PosToken]
 adjustLayout [] _ _ = []
 adjustLayout toks oldOffset newOffset = toks -- ++AZ++ temporary while plumbing the rest
 {- ++AZ++ TODO: restore and fix this

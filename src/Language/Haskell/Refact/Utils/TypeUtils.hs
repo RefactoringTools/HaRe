@@ -1072,7 +1072,7 @@ isLocalPN = GHC.isInternalName
 -- |Return True if a PName is a qualified PName.
 isQualifiedPN::PName->Bool
 isQualifiedPN (PN (Qual mod id) _)=True
-isQualifiedPN _ =False 
+isQualifiedPN _ =False
 
 -- |Return True if an PNT is a toplevel PNT.
 isTopLevelPNT::PNT->Bool
@@ -1081,8 +1081,8 @@ isTopLevelPNT = isTopLevelPN.pNTtoPN
 
 -- |Return True if a PName is a function\/pattern name defined in t.
 isFunOrPatName::(SYB.Data t) => GHC.Name -> t -> Bool
-isFunOrPatName pn 
-   =isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) 
+isFunOrPatName pn
+   =isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
      where
         -- worker (decl::HsDeclP)
         worker (decl::GHC.LHsBind GHC.Name)
@@ -1092,10 +1092,10 @@ isFunOrPatName pn
 {-
 -- |Return True if a PNT is a function name defined in t.
 isFunPNT::(Term t)=>PNT -> t -> Bool
-isFunPNT pnt t = isFunName (pNTtoPN pnt) t 
+isFunPNT pnt t = isFunName (pNTtoPN pnt) t
 
 isFunName::(Term t)=>PName->t->Bool
-isFunName pn 
+isFunName pn
    =isJust.(applyTU (once_tdTU (failTU `adhocTU` worker)))
      where
         worker (decl::HsDeclP)
@@ -1104,7 +1104,7 @@ isFunName pn
 
 -- |Return True if a PName is a pattern name defined in t.
 isPatName::(Term t)=>PName->t->Bool
-isPatName pn 
+isPatName pn
    =isJust.(applyTU (once_tdTU (failTU `adhocTU` worker)))
      where
         worker (decl::HsDeclP)
@@ -2245,7 +2245,7 @@ addParamsToDecls decls pn paramPNames modifyToks
        addParamtoMatch (GHC.L l (GHC.Match pats mtyp rhs))
         = do rhs' <- addActualParamsToRhs pn paramPNames rhs
              let pats' = map GHC.noLoc $ map pNtoPat paramPNames
-             pats'' <- if modifyToks then do _<-addFormalParams fun pats'
+             pats'' <- if modifyToks then do _ <- addFormalParams fun pats'
                                              return pats'
                                      else return pats'
              -- return (HsMatch loc  fun  (pats'++pats)  rhs' decls)
