@@ -60,7 +60,7 @@ import Language.Haskell.Refact.Utils.GhcUtils
 -- targetMod = "FreeAndDeclared/Declare"
 
 targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
-targetMod = "DupDef/Dd1"
+targetMod = "MoveDef/Md1"
 
 {- main = t1 -}
 
@@ -141,7 +141,7 @@ getStuff =
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
-        modSum <- GHC.getModSummary $ GHC.mkModuleName "DupDef.Dd1"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "MoveDef.Md1"
         p <- GHC.parseModule modSum
 
         t <- GHC.typecheckModule p

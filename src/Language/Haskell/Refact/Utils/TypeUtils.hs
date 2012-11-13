@@ -2228,7 +2228,6 @@ addParamsToDecls::
       ->RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
 
 addParamsToDecls decls pn paramPNames modifyToks
- -- = error  "undefined addParamsToDecls"
    = if (paramPNames/=[])
         then mapM addParamToDecl decls
         else return decls
@@ -2251,7 +2250,6 @@ addParamsToDecls decls pn paramPNames modifyToks
              -- return (HsMatch loc  fun  (pats'++pats)  rhs' decls)
              return (GHC.L l (GHC.Match (pats'++pats) mtyp rhs'))
 
-
    -- addParamToDecl (TiDecorate.Dec (HsPatBind loc p rhs ds))
    addParamToDecl (GHC.L l1 (GHC.PatBind (GHC.L l2 pat@(GHC.VarPat p)) rhs ty fvs t))
      | p == pn
@@ -2271,9 +2269,36 @@ addParamsToDecls decls pn paramPNames modifyToks
     return r
     -- = applyTP (stop_tdTP (failTP `adhocTP` worker))
      where
-       -- worker :: (SYB.Data t, SYB.Typeable t) => t -> RefactGhc t
-       -- worker exp@(TiDecorate.Exp (HsId (HsVar (PNT pname ty loc))))
+       worker :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
+{-
+       worker (GHC.L l1 (GHC.HsApp e1 e2))
+        -- | pname == pn
+        | True
+         = do
+              error ("got here:addActualParamsToRhs:" ++ (GHC.showPpr (e1,e2)))
+-}
+       worker (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) e2))
+        -- | pname == pn
+        | True
+         = do
+              -- error "got here:addActualParamsToRhs"
+              let newExp = (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) (foldl addParamToExp e2 paramPNames)))
+              if modifyToks then do _ <- updateToks e2 newExp prettyprint
+                                    -- return newExp'
+                                    return newExp
+                            else return newExp
+       -- worker x = do
+       --    liftIO $ putStrLn ("addActualParamsToRhs:" ++ (GHC.showPpr x))
+       --    return x
+       worker x = return x
 
+       addParamToExp :: (GHC.LHsExpr GHC.Name) -> GHC.Name -> (GHC.LHsExpr GHC.Name)
+       -- addParamToExp  exp param=(TiDecorate.Exp (HsApp exp param))
+       addParamToExp  exp param = GHC.noLoc (GHC.HsApp exp (GHC.noLoc (GHC.HsVar param)))
+
+
+
+       {-
        worker exp@(GHC.HsVar pname)
         | pname==pn
          = do -- let newExp=TiDecorate.Exp (HsParen (foldl addParamToExp exp (map pNtoExp paramPNames)))
@@ -2283,10 +2308,81 @@ addParamsToDecls decls pn paramPNames modifyToks
                                     return newExp
                             else return newExp
        worker x = return x
+       -}
 
-       -- addParamToExp  exp param=(TiDecorate.Exp (HsApp exp param))
-       addParamToExp  exp param= error "undefined addParamToExp"
+{-
+zz ab = 1 + toplevel ab
 
+       (L {test/testdata/DupDef/Dd1.hs:34:1-23}
+        (FunBind
+         (L {test/testdata/DupDef/Dd1.hs:34:1-2} {Name: DupDef.Dd1.zz})
+         (False)
+         (MatchGroup
+          [
+           (L {test/testdata/DupDef/Dd1.hs:34:1-23}
+            (Match
+             [
+              (L {test/testdata/DupDef/Dd1.hs:34:4-5}
+               (VarPat {Name: ab}))]
+             (Nothing)
+             (GRHSs
+              [
+               (L {test/testdata/DupDef/Dd1.hs:34:9-23}
+                (GRHS
+                 []
+                 (L {test/testdata/DupDef/Dd1.hs:34:9-23}
+                  (OpApp
+                   (L {test/testdata/DupDef/Dd1.hs:34:9}
+                    (HsOverLit
+                     (OverLit
+                      (HsIntegral
+                       (1))
+                      (False)
+                      (HsVar {Name: GHC.Num.fromInteger}) {!type placeholder here?!})))
+                   (L {test/testdata/DupDef/Dd1.hs:34:11}
+                    (HsVar {Name: GHC.Num.+})) {!fixity placeholder here?!}
+                   (L {test/testdata/DupDef/Dd1.hs:34:13-23}
+                    (HsApp
+                     (L {test/testdata/DupDef/Dd1.hs:34:13-20}
+                      (HsVar {Name: DupDef.Dd1.toplevel}))
+                     (L {test/testdata/DupDef/Dd1.hs:34:22-23}
+                      (HsVar {Name: ab}))))))))]
+              (EmptyLocalBinds))))] {!type placeholder here?!})
+         (WpHole) {!NameSet placeholder here!}
+         (Nothing)))
+
+----------
+
+zz ab = toplevel ab
+
+       (L {test/testdata/DupDef/Dd1.hs:34:1-19}
+        (FunBind
+         (L {test/testdata/DupDef/Dd1.hs:34:1-2} {Name: DupDef.Dd1.zz})
+         (False)
+         (MatchGroup
+          [
+           (L {test/testdata/DupDef/Dd1.hs:34:1-19}
+            (Match
+             [
+              (L {test/testdata/DupDef/Dd1.hs:34:4-5}
+               (VarPat {Name: ab}))]
+             (Nothing)
+             (GRHSs
+              [
+               (L {test/testdata/DupDef/Dd1.hs:34:9-19}
+                (GRHS
+                 []
+                 (L {test/testdata/DupDef/Dd1.hs:34:9-19}
+                  (HsApp
+                   (L {test/testdata/DupDef/Dd1.hs:34:9-16}
+                    (HsVar {Name: DupDef.Dd1.toplevel}))
+                   (L {test/testdata/DupDef/Dd1.hs:34:18-19}
+                    (HsVar {Name: ab}))))))]
+              (EmptyLocalBinds))))] {!type placeholder here?!})
+         (WpHole) {!NameSet placeholder here!}
+         (Nothing)))
+
+-}
 
 
 {-

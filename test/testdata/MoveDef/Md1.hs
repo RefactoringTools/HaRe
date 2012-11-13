@@ -31,3 +31,5 @@ dd q = do
   let ss = 5
   return (ss + q)
 
+zz a = 1 + toplevel a
+
