@@ -252,8 +252,20 @@ liftToTopLevel' modName fileName (inscps, mod, toks) pnt@(PNT pn _ _)
                         else askRenamingMsg pns "lifting"
 -}
 
+moveDecl1 :: -- (SYB.Data t)
+             [GHC.LHsBind GHC.Name] -- t 
+          -> Maybe GHC.Name -> [GHC.Located GHC.Name] -> Bool 
+          -> RefactGhc t
 moveDecl1 t defName pns topLevel
-  = error "undefined moveDecl1"
+   -- = error "undefined moveDecl1"
+   = do toks <- fetchToks
+        let ns = map GHC.unLoc pns
+        let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" pns) True toks t
+        --error$ show (declToMove, toksToMove)
+        t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
+        addDecl t' defName (declToMove, Just toksToMove) topLevel
+
+
 {- ++AZ++ original
 moveDecl1 t defName pns topLevel
    = do ((toks, _),_)<-get

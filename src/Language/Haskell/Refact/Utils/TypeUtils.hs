@@ -78,7 +78,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
  -- * Program transformation
     -- ** Adding
-    {- ,addDecl ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
+    ,addDecl {- ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
     ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
     -- ** Rmoving
     ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
@@ -110,7 +110,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- The following functions are not in the the API yet.
     {- ,getDeclToks -}, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
-    -- getDeclAndToks
+    , getDeclAndToks -- ++AZ++ Zipper?
 
 -- * Typed AST traversals (added by CMB)
     -- * Miscellous
@@ -2139,6 +2139,140 @@ addItemsToImport serverModName pn ids t
 
 -- ---------------------------------------------------------------------
 
+-- | Adding a declaration to the declaration list of the given syntax
+-- phrase(so far only adding function\/pattern binding has been
+-- tested). If the second argument is Nothing, then the declaration
+-- will be added to the beginning of the declaration list, but after
+-- the data type declarations is there is any.
+addDecl:: -- (SYB.Data t)
+           [GHC.LHsBind GHC.Name] -- t            -- ^ The AST.
+         -> Maybe GHC.Name -- ^ If this is Just, then the declaration will be added right after this identifier's definition.
+        -> ([HsDeclP], Maybe [PosToken]) -- ^ The declaration to be added, in both AST and Token stream format (optional).
+        -> Bool              -- ^ True means the declaration is a toplevel declaration.
+        -> RefactGhc t
+
+addDecl parent pn (decl, declToks) topLevel
+  = error "undefined addDecl"
+
+{- ++original++
+-- | Adding a declaration to the declaration list of the given syntax phrase(so far only adding function\/pattern binding
+--  has been tested).  If the second argument is Nothing, then the declaration will be added to the beginning of the
+-- declaration list, but after the data type declarations is there is any.
+{-addDecl::( ) =>t                -- ^ The AST.
+   -> Maybe PName     -- ^ If this is Just, then the declaration will be added right after this identifier's definition.
+   ->([HsDeclP], Maybe [PosToken])  -- ^ The declaration to be added, in both AST and Token stream format (optional).
+   ->Bool               -- ^ True means the declaration is a toplevel declaration.
+   ->m t
+-}
+
+addDecl::((MonadState (([PosToken],Bool),(Int,Int)) m), StartEndLoc t, HsDecls t, Printable t)
+                    =>t-> Maybe PName
+                    ->([HsDeclP], Maybe [PosToken])
+                    ->Bool
+                    ->m t
+
+addDecl parent pn (decl, declToks) topLevel
+ = if isJust pn
+     then appendDecl parent (fromJust pn) (decl, declToks)
+     else if topLevel
+            then addTopLevelDecl (decl, declToks) parent
+            else addLocalDecl parent (decl,declToks)
+ where
+
+  {- Add a definition to the beginning of the definition declaration list, but after the data type declarations
+     if there is any. The definition will be pretty-printed if its token stream is not provided. -}
+  addTopLevelDecl (decl, declToks) parent
+    = do let decls = hsDecls parent
+             (decls1,decls2)=break (\x->isFunOrPatBind x || isTypeSig x) decls
+         ((toks,_),(v1, v2))<-get
+         let loc1 = if decls2/=[]  -- there are function/pattern binding decls.
+                    then let ((startRow,_),_) = startEndLocIncComments toks (ghead "addTopLevelDecl"  decls2)
+                         in  (startRow, 1)
+                    else simpPos0  -- no function/pattern binding decls in the module.
+             (toks1, toks2) = if loc1==simpPos0  then (toks, [])
+                                 else break (\t->tokenPos t==loc1) toks
+
+             declStr = case declToks of
+                        Just ts -> concatMap tokenCon ts
+                        Nothing -> prettyprint decl++"\n\n"
+             colOffset = if decls ==[] then 1 else getOffset toks $ fst (getStartEndLoc toks (head decls))
+             newToks = tokenise (Pos 0 v1 1) colOffset True declStr
+             toks' = toks1 ++ newToks ++ toks2
+     --    error $ show decl
+
+         put ((toks',modified),((tokenRow (glast "addTopLevelDecl" newToks) -10), v2))
+         (decl',_) <- addLocInfo (decl, newToks)
+     --    error $ show decl
+         return (replaceDecls parent (Decs (decls1++decl'++decls2) ([], [])))
+
+  appendDecl parent pn (decl, declToks)
+    = do ((toks,_),(v1, v2))<-get
+         -- error (show parent ++ "----" ++ show pn ++ "-----" ++ show (decl, declToks))
+         let (startPos,endPos) = startEndLocIncFowComment toks (ghead "appendDecl1" after)
+             -- divide the toks into three parts.
+             (toks1, toks2, toks3) = splitToks' (startPos, endPos) toks
+              --get the toks defining pn
+             defToks = dropWhile (\t->tokenPos t /=startPos) toks2
+             offset = getOffset toks $ fst (getStartEndLoc toks (ghead "appendDecl2" decls))
+             declStr = case declToks of
+                          Just ts -> concatMap tokenCon ts
+                          Nothing -> prettyprint decl
+             newToks = tokenise (Pos 0 v1 1) offset True declStr
+             toks' = if  endsWithNewLn  (glast "appendDecl2" toks2)
+                      then  toks1++ toks2 ++ (newLnToken: newToks) ++ [newLnToken]++ compressPreNewLns toks3
+                      else  replaceToks toks startPos endPos (defToks++[newLnToken,newLnToken]++newToks)
+    --     (decl',_) <- addLocInfo (decl, newToks)
+         put ((toks',modified),((tokenRow (glast "appendDecl2" newToks) -10), v2))
+         return (replaceDecls parent (Decs (before ++ [ghead "appendDecl14" after]++ decl++ tail after) ([], [])))
+      where
+        decls = hsDecls parent
+        (before,after) = break (defines pn) decls -- Need to handle the case that 'after' is empty?
+        splitToks' (startPos, endPos) toks
+           = let (ts1, ts2, ts3) = splitToks ( startPos, endPos) toks
+                 (ts11, ts12) = break hasNewLn (reverse ts1)
+             in (reverse ts12, reverse ts11++ts2, ts3)
+
+  -- This function need to be tested.
+  addLocalDecl parent (newFun, newFunToks)
+    =do
+        ((toks,_), (v1, v2))<-get
+        let (startPos@(_,startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
+              =if localDecls==[] then startEndLocIncFowComment toks parent    --The 'where' clause is empty
+                                 else startEndLocIncFowComment toks localDecls
+            toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
+            ts1=takeWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t)  toks1
+            --nextTokPos is only used to test whether there is a 'In' or a nested comment. 
+            nextTokPos= case (dropWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t) toks1) of
+                           [] -> simpPos0
+                           l  -> (tokenPos.ghead "addLocalFunInToks") l
+            needNewLn=if nextTokPos==simpPos0  --used to decide whether add a new line character before a introduced fun.
+                      then if toks1==[] then True
+                                        else (not.endsWithNewLn) (last ts1)
+                      else endRow'==fst nextTokPos
+            --endPos@(endRow,_)=if ts1==[] then endPos'
+            --                             else tokenPos (last ts1)
+            offset = if localDecls == [] then getOffset toks startPos + 4 else getOffset toks startPos
+            newToks = tokenise (Pos 0 v1 1) offset True
+                          $ if needNewLn then "\n"++newSource else newSource++"\n"
+            oldToks'=getToks (startPos,endPos') toks
+            toks'=replaceToks toks startPos endPos' (oldToks'++newToks)
+        (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
+        put ((toks',modified),((tokenRow (glast "appendDecl2" newToks) -10), v2))
+        return (replaceDecls parent (Decs (hsDecls parent ++ newFun') ([], [])))
+    where
+         localDecls = hsDecls parent
+
+         newSource  = if localDecls == []
+                      then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
+                      else newFun'
+            where
+            newFun' = case newFunToks of
+                           Just ts -> concatMap tokenCon ts
+                           Nothing -> prettyprint newFun
+
+++original end++ -}
+-- ---------------------------------------------------------------------
+
 -- | add items to the hiding list of an import declaration which
 -- imports the specified module.
 addHiding::
@@ -2804,14 +2938,14 @@ rmDecl::
         ->Bool        -- ^ True means including the type signature.
         ->[GHC.LHsBind GHC.Name]            -- ^ The declaration list.
         -> RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
-
+-- TODO: in GHC Type Signature is not in binds, remove the Bool.
 rmDecl pn incSig t
   = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   -- = applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
   where
     inDecls (decls::[GHC.LHsBind GHC.Name])
       | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
-      = do let (decls1, decls2) = break (defines pn) decls
+      = do let (_decls1, decls2) = break (defines pn) decls
                decl = ghead "rmDecl" decls2
            -- error $ (render.ppi) t -- ecl ++ (show decl)
            topLevel <- isTopLevelPN pn
@@ -3281,4 +3415,84 @@ pNtoName (PN (Qual modName i) orig)=i
 pNTtoName::PNT->String
 pNTtoName=pNtoName.pNTtoPN
 -}
-----------------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------
+
+-- Get the toks for a declaration, and adjust its offset to 0.
+getDeclAndToks pn incSig toks t
+    = error "undefined getDeclAndToks"
+{- ++WIP++
+    = ghead "getDeclAndToks" $ applyTU (stop_tdTU (failTU `adhocTU` inDecls)) t
+  where
+    inDecls decls
+      |snd (break (defines pn) decls) /=[]
+      = return $ getDeclAndToks' pn incSig decls toks
+    inDecls x = mzero
+
+    getDeclAndToks' pn incSig decls toks
+     = let typeSig = if (not incSig)
+                      then Nothing
+                      else let (decls1,decls2) =break (definesTypeSig pn) decls
+                           in if decls2==[] then Nothing else Just (ghead "getDeclAndToks" decls2) 
+           (decls1', decls2') = break (defines pn) decls
+           decl = if decls2' == [] then error "getDeclAndToks:: declaration does not exisit"
+                                   else ghead "getDeclAndToks2" decls2'
+           offset = getOffset toks (fst (startEndLoc toks decl))
+           declToks =removeOffset offset $ getToks' decl toks
+           sigToks = case typeSig of
+                       Nothing  -> []
+                       Just (sig@(TiDecorate.Dec (HsTypeSig _ [i] _ _)))-> removeOffset offset $ getToks' sig toks
+                       Just (TiDecorate.Dec (HsTypeSig loc is c ty))-> let sig' =(TiDecorate.Dec (HsTypeSig loc0 [nameToPNT (pNtoName pn)] c ty))
+                                                            in  tokenise (Pos 0 (-1111) 1) 0 True $ prettyprint sig'++"\n" 
+       in  (if isJust typeSig then [fromJust typeSig, decl] else [decl], (sigToks ++ declToks))
+
+    getToks' decl toks
+      = let (startPos, endPos) = startEndLocIncComments toks decl
+            (toks1, _) =let(ts1, (t:ts2'))= break (\t -> tokenPos t == endPos) toks
+                        in (ts1++[t], ts2')
+        in dropWhile (\t -> tokenPos t /= startPos || isNewLn t) toks1
+
+    removeOffset offset toks
+     = let groupedToks = groupTokensByLine toks
+       in  concatMap  (doRmWhites offset) groupedToks
+++WIP++ -}
+
+{- ++AZ++ original
+-- Get the toks for a declaration, and adjust its offset to 0.
+getDeclAndToks pn incSig toks t
+    = ghead "getDeclAndToks" $ applyTU (stop_tdTU (failTU `adhocTU` inDecls)) t
+  where
+    inDecls decls
+      |snd (break (defines pn) decls) /=[]
+      = return $ getDeclAndToks' pn incSig decls toks
+    inDecls x = mzero
+
+    getDeclAndToks' pn incSig decls toks
+     = let typeSig = if (not incSig)
+                      then Nothing
+                      else let (decls1,decls2) =break (definesTypeSig pn) decls
+                           in if decls2==[] then Nothing else Just (ghead "getDeclAndToks" decls2) 
+           (decls1', decls2') = break (defines pn) decls
+           decl = if decls2' == [] then error "getDeclAndToks:: declaration does not exisit"
+                                   else ghead "getDeclAndToks2" decls2'
+           offset = getOffset toks (fst (startEndLoc toks decl))
+           declToks =removeOffset offset $ getToks' decl toks
+           sigToks = case typeSig of
+                       Nothing  -> []
+                       Just (sig@(TiDecorate.Dec (HsTypeSig _ [i] _ _)))-> removeOffset offset $ getToks' sig toks
+                       Just (TiDecorate.Dec (HsTypeSig loc is c ty))-> let sig' =(TiDecorate.Dec (HsTypeSig loc0 [nameToPNT (pNtoName pn)] c ty))
+                                                            in  tokenise (Pos 0 (-1111) 1) 0 True $ prettyprint sig'++"\n" 
+       in  (if isJust typeSig then [fromJust typeSig, decl] else [decl], (sigToks ++ declToks))
+
+    getToks' decl toks
+      = let (startPos, endPos) = startEndLocIncComments toks decl
+            (toks1, _) =let(ts1, (t:ts2'))= break (\t -> tokenPos t == endPos) toks
+                        in (ts1++[t], ts2')
+        in dropWhile (\t -> tokenPos t /= startPos || isNewLn t) toks1
+
+    removeOffset offset toks
+     = let groupedToks = groupTokensByLine toks
+       in  concatMap  (doRmWhites offset) groupedToks
+
+-}
+-- ---------------------------------------------------------------------

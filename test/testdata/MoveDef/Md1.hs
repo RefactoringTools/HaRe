@@ -18,6 +18,7 @@ tup@(h,t) = head $ zip [1..10] [3..ff]
 
 data D = A | B String | C
 
+ff :: Int -> Int
 ff y = y + zz
   where
     zz = 1
