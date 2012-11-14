@@ -55,7 +55,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,hsFDsFromInside, hsFDNamesFromInside
 
     -- ** Property checking
-    {- ,isVarId,isConId,isOperator,isTopLevelPN -},isLocalPN -- ,isTopLevelPNT
+    {- ,isVarId,isConId,isOperator -},isTopLevelPN,isLocalPN -- ,isTopLevelPNT
     ,isQualifiedPN {- ,isFunPNT, isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
@@ -81,7 +81,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     {- ,addDecl ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
     ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
     -- ** Rmoving
-    -- ,rmDecl, rmTypeSig, commentOutTypeSig, rmParams
+    ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
     -- ** Updating
     -- ,Update(update)
@@ -1055,12 +1055,15 @@ hsPNTs =(nub.ghead "hsPNTs").applyTU (full_tdTU (constTU [] `adhocTU` inPnt))
 -}
 
 -----------------------------------------------------------------------------
-{-
+
 -- |Return True if a PName is a toplevel PName.
-isTopLevelPN::PName->Bool
-isTopLevelPN (PN i (G _ _ _))=True
-isTopLevelPN _ =False
--}
+isTopLevelPN::GHC.Name -> RefactGhc Bool
+isTopLevelPN n = do
+  typechecked <- getTypecheckedModule
+  let maybeNames = GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info typechecked
+  let names = fromMaybe [] maybeNames
+  return $ n `elem` names
+
 
 -- |Return True if a PName is a local PName.
 isLocalPN::GHC.Name -> Bool
@@ -1655,7 +1658,6 @@ definingSigsNames pns ds = def ds
 
       defines' (p::[GHC.Located GHC.Name])
         = filter (\(GHC.L _ n) -> n `elem` pns) p
-
 
 -- ---------------------------------------------------------------------
 
@@ -2791,6 +2793,249 @@ duplicateDecl decls pn newFunName
 
 
 -}
+
+-- ---------------------------------------------------------------------
+
+-- | Remove the declaration (and the type signature is the second
+-- parameter is True) that defines the given identifier from the
+-- declaration list.
+rmDecl::
+          GHC.Name    -- ^ The identifier whose definition is to be removed.
+        ->Bool        -- ^ True means including the type signature.
+        ->[GHC.LHsBind GHC.Name]            -- ^ The declaration list.
+        -> RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
+
+rmDecl pn incSig t
+  = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
+  -- = applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
+  where
+    inDecls (decls::[GHC.LHsBind GHC.Name])
+      | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
+      = do let (decls1, decls2) = break (defines pn) decls
+               decl = ghead "rmDecl" decls2
+           -- error $ (render.ppi) t -- ecl ++ (show decl)
+           topLevel <- isTopLevelPN pn
+           case topLevel of
+                     True   -> if incSig then rmTopLevelDecl decl =<< rmTypeSig pn decls
+                                         else rmTopLevelDecl decl decls
+                     False  -> if incSig then rmLocalDecl decl =<< rmTypeSig pn decls
+                                         else rmLocalDecl decl decls
+    inDecls x = return x
+
+    rmTopLevelDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
+                -> RefactGhc [GHC.LHsBind GHC.Name]
+    rmTopLevelDecl decl decls
+      =do toks <- fetchToks
+          let (startLoc, endLoc)=startEndLocIncComments toks decl
+              toks'= deleteToks toks startLoc endLoc
+          putToks toks' modified
+          let (decls1, decls2) = break (defines pn) decls
+              decls2' = gtail "rmLocalDecl" decls2
+          return $ (decls1 ++ decls2')
+          -- return (decls \\ [decl])
+
+  {- The difference between removing a top level declaration and a
+     local declaration is: if the local declaration to be removed is
+     the only declaration in current declaration list, then the 'where'/
+     'let'/'in' enclosing this declaration should also be removed. Whereas,
+     when a only top level decl is removed, the 'where' can not be removed.
+  -}
+
+    -- |Remove a location declaration that defines pn.
+    rmLocalDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
+                -> RefactGhc [GHC.LHsBind GHC.Name]
+    rmLocalDecl decl decls
+     = do
+         toks <- fetchToks
+         let (startPos,endPos) = getStartEndLoc decl   --startEndLoc toks decl
+             (startPos',endPos')=startEndLocIncComments toks decl
+             --(startPos',endPos')=startEndLocIncFowComment toks decl
+             toks'=if length decls==1  --only one decl, which means the accompaning 'where',
+                                       --'let' or'in' should be removed too.
+                   then let (toks1,toks2)=break (\t->tokenPos t==startPos) toks --devide the token stream.
+                              --get the  'where' or 'let' token
+                            rvToks1 = dropWhile (not.isWhereOrLet) (reverse toks1)
+                            --There must be a 'where' or 'let', so rvToks1 can not be empty.
+                            whereOrLet=ghead "rmLocalFunPatBind:whereOrLet" rvToks1
+                            --drop the 'where' 'or 'let' token
+                            toks1'=takeWhile (\t->tokenPos t/=tokenPos whereOrLet) toks1
+                            --remove the declaration from the token stream.
+                            toks2'=gtail "rmLocalDecl" $ dropWhile (\t->tokenPos t/=endPos') toks2
+                            --get the remained tokens after the removed declaration.
+                            remainedToks=dropWhile isWhite toks2'
+                        in if (emptyList remainedToks)
+                             then --the removed declaration is the last decl in the file.
+                                  (compressEndNewLns toks1'++ compressPreNewLns toks2')
+                             else if --remainedToks/=[], so no problem with head.
+                                    isIn (ghead "rmLocalDecl:isIn"  remainedToks)
+                                         || isComma (ghead "rmLocalDecl:isComma" remainedToks)
+                                        --There is a 'In' after the removed declaration.
+                                   then if isWhere whereOrLet
+                                           then deleteToks toks (tokenPos whereOrLet) endPos'
+                                           else deleteToks toks (tokenPos whereOrLet)
+                                                   $ tokenPos (ghead "rmLocalDecl:tokenPos" remainedToks)
+                                        --delete the decl and adjust the layout
+                                   else if isCloseSquareBracket (ghead "rmLocalDecl:isCloseSquareBracker" remainedToks) &&
+                                           (isBar.(ghead "rmLocalDecl:isBar")) (dropWhile isWhite (tail rvToks1))
+                                         then deleteToks toks (tokenPos((ghead "rmLocalDecl")
+                                                        (dropWhile isWhite (tail rvToks1)))) endPos'
+                                         else deleteToks toks (tokenPos whereOrLet) endPos'
+                        --there are more than one decls
+                   else  deleteToks toks startPos' endPos'
+         putToks toks' modified --Change the above endPos' to endPos will not delete the following comments.
+         -- return $ (decls \\ [decl])
+
+         let (decls1, decls2) = break (defines pn) decls
+             decls2' = gtail "rmLocalDecl" decls2
+         return $ (decls1 ++ decls2')
+
+
+{- ++ original ++
+
+{-
+rmDecl::(MonadState (([PosToken],Bool),t1) m)
+        =>PName       -- ^ The identifier whose definition is to be removed.
+        ->Bool        -- ^ True means including the type signature.
+        ->[HsDeclP]   -- ^ The declaration list.
+        -> m [HsDeclP]-- ^ The result.
+-}
+rmDecl pn incSig t = applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
+  where
+    inDecls (decls::[HsDeclP])
+      | snd (break (defines pn) decls) /=[]
+      = do let (decls1, decls2) = break (defines pn) decls
+               decl = ghead "rmDecl" decls2
+           -- error $ (render.ppi) t -- ecl ++ (show decl)
+           case isTopLevelPN  pn of
+                     True   -> if incSig then rmTopLevelDecl decl =<< rmTypeSig pn decls
+                                         else rmTopLevelDecl decl decls
+                     False  -> if incSig then rmLocalDecl decl =<< rmTypeSig pn decls
+                                         else rmLocalDecl decl decls
+    inDecls x = mzero
+    rmTopLevelDecl decl decls
+      =do ((toks,_),others)<-get
+          let (startLoc, endLoc)=startEndLocIncComments toks decl
+              toks'=deleteToks toks startLoc endLoc
+          put ((toks',modified),others)
+          return (decls \\ [decl])
+
+  {- The difference between removing a top level declaration and a local declaration is:
+     if the local declaration to be removed is the only declaration in current declaration list,
+     then the 'where'/ 'let'/'in' enclosing this declaration should also be removed.
+     Whereas, when a only top level decl is removed, the 'where' can not be removed.
+   -}
+   -- |Remove a location declaration that defines pn.
+    rmLocalDecl decl decls
+     =do ((toks,_),others)<-get
+         let (startPos,endPos)=getStartEndLoc toks decl   --startEndLoc toks decl
+             (startPos',endPos')=startEndLocIncComments toks decl
+             --(startPos',endPos')=startEndLocIncFowComment toks decl
+             toks'=if length decls==1  --only one decl, which means the accompaning 'where',
+                                       --'let' or'in' should be removed too.
+                   then let (toks1,toks2)=break (\t->tokenPos t==startPos) toks --devide the token stream.
+                              --get the  'where' or 'let' token
+                            rvToks1=dropWhile (not.isWhereOrLet) (reverse toks1)
+                            --There must be a 'where' or 'let', so rvToks1 can not be empty.
+                            whereOrLet=ghead "rmLocalFunPatBind:whereOrLet" rvToks1
+                            --drop the 'where' 'or 'let' token
+                            toks1'=takeWhile (\t->tokenPos t/=tokenPos whereOrLet) toks1
+                            --remove the declaration from the token stream.
+                            toks2'=gtail "rmLocalDecl" $ dropWhile (\t->tokenPos t/=endPos') toks2
+                            --get the remained tokens after the removed declaration.
+                            remainedToks=dropWhile isWhite toks2'
+                        in if remainedToks==[]
+                             then --the removed declaration is the last decl in the file.
+                                  (compressEndNewLns toks1'++ compressPreNewLns toks2')
+                             else if --remainedToks/=[], so no problem with head.
+                                    isIn (ghead "rmLocalDecl:isIn"  remainedToks)
+                                         || isComma (ghead "rmLocalDecl:isComma" remainedToks)
+                                        --There is a 'In' after the removed declaration.
+                                   then if isWhere whereOrLet
+                                           then deleteToks toks (tokenPos whereOrLet) endPos'
+                                           else deleteToks toks (tokenPos whereOrLet)
+                                                   $ tokenPos (ghead "rmLocalDecl:tokenPos" remainedToks)
+                                        --delete the decl and adjust the layout
+                                   else if isCloseSquareBracket (ghead "rmLocalDecl:isCloseSquareBracker" remainedToks) &&
+                                           (isBar.(ghead "rmLocalDecl:isBar")) (dropWhile isWhite (tail rvToks1))
+                                         then deleteToks toks (tokenPos((ghead "rmLocalDecl")
+                                                        (dropWhile isWhite (tail rvToks1)))) endPos'
+                                         else deleteToks toks (tokenPos whereOrLet) endPos'
+                        --there are more than one decls
+                   else  deleteToks toks startPos' endPos'
+         put ((toks',modified),others)  --Change the above endPos' to endPos will not delete the following comments.
+         return $ (decls \\ [decl])
+-}
+
+-- ---------------------------------------------------------------------
+
+
+-- | Remove the type signature that defines the given identifier's
+-- type from the declaration list.
+rmTypeSig ::
+        GHC.Name   -- ^ The identifier whose type signature is to be removed.
+      ->[GHC.LHsBind GHC.Name]            -- ^ The declaration list
+      ->RefactGhc [GHC.LHsBind GHC.Name]  -- ^ The result
+rmTypeSig pn  t
+  = error "undefined rmTypeSig"
+{- ++WIP++
+  = applyTP (full_tdTP (idTP `adhocTP` inDecls)) t
+  where
+   inDecls (decls::[HsDeclP])
+      | snd (break (definesTypeSig pn) decls) /=[]
+     = do ((toks,_), others) <- get
+          let (decls1,decls2)= break  (definesTypeSig pn) decls
+              (toks',decls')=
+               let sig@(TiDecorate.Dec (HsTypeSig loc is c tp))=ghead "rmTypeSig" decls2  -- as decls2/=[], no problem with head
+                   (startPos,endPos)=getStartEndLoc toks sig
+               in if length is>1
+                     then let newSig=(TiDecorate.Dec (HsTypeSig loc (filter (\x-> (pNTtoPN x)/=pn) is) c tp))
+                              pnt = ghead "rmTypeSig" (filter (\x-> pNTtoPN x == pn) is)
+                              (startPos1, endPos1) = let (startPos1', endPos1') = getStartEndLoc toks pnt
+                                                     in if fromJust (elemIndex pnt is) >0
+                                                        then extendForwards toks startPos1' endPos1' isComma
+                                                        else extendBackwards toks startPos1' endPos1' isComma
+                          in (deleteToks toks startPos1 endPos1,(decls1++[newSig]++tail decls2))
+                     else  ((deleteToks toks startPos endPos),(decls1++tail decls2)) 
+          put ((toks',modified),others)
+          return decls'
+   inDecls x = return x
+++WIP end ++ -}
+
+
+{- ++ original ++
+
+-- | Remove the type signature that defines the given identifier's type from the declaration list.
+{-rmTypeSig::(MonadState (([PosToken],Bool),t1) m)
+            => PName       -- ^ The identifier whose type signature is to be removed.
+            ->[HsDeclP]    -- ^ The declaration list
+            ->m [HsDeclP]  -- ^ The result -}
+
+rmTypeSig pn  t = applyTP (full_tdTP (idTP `adhocTP` inDecls)) t
+  where
+   inDecls (decls::[HsDeclP])
+      | snd (break (definesTypeSig pn) decls) /=[]
+     = do ((toks,_), others) <- get
+          let (decls1,decls2)= break  (definesTypeSig pn) decls
+              (toks',decls')=
+               let sig@(TiDecorate.Dec (HsTypeSig loc is c tp))=ghead "rmTypeSig" decls2  -- as decls2/=[], no problem with head
+                   (startPos,endPos)=getStartEndLoc toks sig
+               in if length is>1
+                     then let newSig=(TiDecorate.Dec (HsTypeSig loc (filter (\x-> (pNTtoPN x)/=pn) is) c tp))
+                              pnt = ghead "rmTypeSig" (filter (\x-> pNTtoPN x == pn) is)
+                              (startPos1, endPos1) = let (startPos1', endPos1') = getStartEndLoc toks pnt
+                                                     in if fromJust (elemIndex pnt is) >0
+                                                        then extendForwards toks startPos1' endPos1' isComma
+                                                        else extendBackwards toks startPos1' endPos1' isComma
+                          in (deleteToks toks startPos1 endPos1,(decls1++[newSig]++tail decls2))
+                     else  ((deleteToks toks startPos endPos),(decls1++tail decls2)) 
+          put ((toks',modified),others)
+          return decls'
+   inDecls x = return x
+
+
+++ original end ++ -}
+
+-- ---------------------------------------------------------------------
 
 {-
 ------------------------------------------------------------------------------------------ 

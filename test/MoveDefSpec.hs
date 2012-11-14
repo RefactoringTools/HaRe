@@ -28,7 +28,6 @@ spec = do
   describe "doLiftToTopLevel" $ do
     it "Cannot lift a top level declaration" $ do
      res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","4","1"])
-     -- let res = "foo"
      (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
 
     it "checks for name clashes" $ do

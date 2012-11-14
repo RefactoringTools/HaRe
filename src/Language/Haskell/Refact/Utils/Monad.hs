@@ -15,6 +15,7 @@ module Language.Haskell.Refact.Utils.Monad
        -- * Conveniences for state access
        , fetchToks
        , putToks
+       , getTypecheckedModule
        , getRefactStreamModified
        , getRefactInscopes
        , getRefactRenamed
@@ -140,12 +141,16 @@ putToks toks isModified = do
 
 -- ---------------------------------------------------------------------
 
+getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
+getTypecheckedModule = do
+  Just tm <- gets rsModule
+  return $ rsTypecheckedMod tm
+
 getRefactStreamModified :: RefactGhc Bool
 getRefactStreamModified = do
   Just tm <- gets rsModule
   return $ rsStreamModified tm
 
--- type ParseResult = (InScopes, Maybe GHC.RenamedSource, GHC.ParsedSource) 
 getRefactInscopes :: RefactGhc InScopes
 getRefactInscopes = GHC.getNamesInScope
 

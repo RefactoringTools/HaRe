@@ -17,24 +17,23 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , tokenCon
                      , tokenLen
                      -- ,lengthOfToks
-                     , mkToken {-,defaultToken-},newLnToken{-,whiteSpacesToken,whiteSpaceTokens
-                     -}
+                     , mkToken {-,defaultToken-},newLnToken{-,whiteSpacesToken -},whiteSpaceTokens
                      , isWhite
                      , notWhite
                      , isWhiteSpace
                      {-
                      ,isNewLn,isCommentStart -},isComment {-,
-                     isNestedComment,isMultiLineComment,isOpenBracket,isCloseBracket,
-                     isOpenSquareBracket,isCloseSquareBracket,isOpenBrace,isConid,
-                     isLit,isWhereOrLet,isWhere,isLet,isIn,isCase,isDo,isIf,isForall,
-                     isHiding,isModule,isComma,isEqual,isLambda,isIrrefute,isBar,isMinus,
-                     endsWithNewLn,startsWithNewLn,hasNewLn,startsWithEmptyLn,
-                     lastNonSpaceToken,firstNonSpaceToken,compressPreNewLns,compressEndNewLns
-                     -}
+                     isNestedComment,isMultiLineComment,isOpenBracket,isCloseBracket, -}
+                     ,isOpenSquareBracket,isCloseSquareBracket {- ,isOpenBrace,isConid,
+                     isLit -},isWhereOrLet,isWhere,isLet,isIn {- ,isCase,isDo,isIf,isForall,
+                     isHiding,isModule-} ,isComma {-,isEqual,isLambda,isIrrefute -},isBar --,isMinus,
+                     ,endsWithNewLn,startsWithNewLn {- ,hasNewLn,startsWithEmptyLn,
+                     lastNonSpaceToken,firstNonSpaceToken -} ,compressPreNewLns,compressEndNewLns
+
                      , lengthOfLastLine
                      , updateToks, updateToksList
                      , getToks
-                     , replaceToks -- ,deleteToks, doRmWhites,doAddWhites
+                     , replaceToks,deleteToks -- , doRmWhites,doAddWhites
                      , srcLocs
                      , getSrcSpan
                      -- , ghcSrcLocs -- Test version
@@ -205,23 +204,42 @@ isComment ((GHC.L _ _),s)                         = False
 
 {-
 isNestedComment (t,(_,s))    = t==NestedComment
-isMultiLineComment (t,(_,s)) = t==NestedComment && (isJust (find (=='\n') s))
-
+-}
+isMultiLineComment :: PosToken -> Bool
+isMultiLineComment ((GHC.L _ t),s) = case t of -- ==NestedComment && (isJust (find (=='\n') s))
+                                        GHC.ITblockComment _ -> (isJust (find (=='\n') s))
+                                        _                    -> False
+{-
 isOpenBracket  (t,(_,s))       = t==Special && s=="("
 isCloseBracket (t,(_,s))       = t==Special && s==")"
-
-isOpenSquareBracket  (t,(_,s)) = t==Special && s=="["
-isCloseSquareBracket (t,(_,s)) = t==Special && s=="]"
-
+-}
+isOpenSquareBracket :: PosToken -> Bool
+isOpenSquareBracket  ((GHC.L _ t),_s) = case t of
+                                   GHC.ITobrack -> True
+                                   _            -> False
+isCloseSquareBracket :: PosToken -> Bool
+isCloseSquareBracket ((GHC.L _ t),_s) = case t of
+                                   GHC.ITcbrack -> True
+                                   _            -> False
+{-
 isOpenBrace  (t,(_,s))         = t==Special && s=="{"
 isCloseBrace (t,(_,s))         = t==Special && s=="}"
 
 isConid (t,(_,_))              = t==Conid
 isLit (t,(_,s)) = t==IntLit || t==FloatLit || t==CharLit || t==StringLit
-
-isWhereOrLet  t   = isWhere t || isLet t
-isWhere (t,(_,s)) = t==Reservedid && s=="where"
-isLet   (t,(_,s)) = t==Reservedid && s=="let"
+-}
+-- isWhereOrLet  t   = isWhere t || isLet t
+isWhereOrLet :: PosToken -> Bool
+isWhereOrLet t = isWhere t || isLet t
+isWhere :: PosToken -> Bool
+isWhere ((GHC.L _ t),_s) =  case t of
+                       GHC.ITwhere -> True
+                       _           -> False
+isLet :: PosToken -> Bool
+isLet   ((GHC.L _ t),_s) =  case t of
+                       GHC.ITlet -> True
+                       _         -> False
+{-
 isImport (t, (_,s))= t == Reservedid && s=="import"
 isType (t, (_,s))= t  == Reservedid && s=="type"
 isData (t, (_,s))= t == Reservedid && s=="data"
@@ -230,35 +248,51 @@ isDefault (t, (_,s)) = t == Reservedid && s=="default"
 isClass (t, (_,s)) = t == Reservedid && s=="class"
 isInstance (t, (_,s)) = t == Reservedid && s=="instance"
 isNewtype (t, (_,s)) = t == Reservedid && s=="newtype"
-
-isIn    (t,(_,s))  = t==Reservedid && s=="in"
+-}
+isIn :: PosToken -> Bool
+isIn    ((GHC.L _ t),_s) = case t of
+                      GHC.ITin -> True
+                      _        -> False
+{-
 isCase  (t,(_,s))  = t==Reservedid && s=="case"
 isDo    (t,(_,s))  = t==Reservedid && s=="do"
 isIf    (t,(_,s))  = t==Reservedid && s=="if"
 isForall (t,(_,s)) = t==Reservedid && s=="forall"
 isHiding (t,(_,s)) = s=="hiding"
 isModule (t,(_,s)) = t==Reservedid && s=="module"
-
-isComma (t,(_,s))    = t==Special && s==","
+-}
+isComma :: PosToken -> Bool
+isComma ((GHC.L _ t),_s) = case t of
+                         GHC.ITcomma -> True
+                         _           -> False
+{-
 isEqual  (t,(_,s))   = t==Reservedop && s=="="
 isLambda (t,(_,s))   = t==Reservedop && s=="\\"
 isIrrefute (t,(_,s)) = t==Reservedop && s=="~"
-isBar   (t,(_,s))    = t==Reservedop && s=="|"
+-}
+isBar :: PosToken -> Bool
+isBar   ((GHC.L _ t),_s) = case t of -- "|"
+                         GHC.ITvbar -> True
+                         _          -> False
+{-
 isArrow (t,(_,s))    = t==Reservedop && s=="->"
 isMinus (t,(_,s))    = t==Varsym && s=="-"
+-}
 
 -----------------------------------------------------------------
 
---Returns True if the token ends with '\n'
+-- |Returns True if the token ends with '\n'
+-- ++AZ++: is this meaningful?
 endsWithNewLn::PosToken->Bool
-endsWithNewLn   (_,(_,s)) =if s==[] then False
-                                    else (glast "endsWithNewLn"  s=='\n')
+endsWithNewLn  (_,s) =if s==[] then False
+                               else (glast "endsWithNewLn"  s=='\n')
 
---Returns True if the token starts with `\n`.
+-- |Returns True if the token starts with `\n`.
+-- ++AZ++: is this meaningful?
 startsWithNewLn::PosToken->Bool
-startsWithNewLn (_,(_,s)) =if s==[] then False
-                                    else ((ghead "starsWithNewLn" s)=='\n')
--}
+startsWithNewLn (_,s) =if s==[] then False
+                                else ((ghead "starsWithNewLn" s)=='\n')
+
 --Returns True if there is a '\n' in the token.
 hasNewLn :: PosToken -> Bool
 hasNewLn (GHC.L l _,_) = case l of
@@ -275,33 +309,42 @@ onSameLn (GHC.L l1 _,_) (GHC.L l2 _,_) = r1 == r2
 --Returns True if a token stream starts with a newline token (apart from the white spaces tokens)
 startsWithEmptyLn::[PosToken]->Bool
 startsWithEmptyLn toks=isJust (find isNewLn $ takeWhile (\t->isWhiteSpace t || isNewLn t) toks)
+-}
 
--- get the last non-space token in a token stream.
-lastNonSpaceToken::[PosToken]->PosToken
+-- |get the last non-space token in a token stream.
+lastNonSpaceToken::[PosToken] -> PosToken
 lastNonSpaceToken toks=case dropWhile isWhiteSpace (reverse toks) of
-                         [] ->defaultToken
-                         l -> ghead "lastNonSpaceToken" l
-
+                         [] -> defaultToken
+                         l  -> ghead "lastNonSpaceToken" l
+{-
 --get the first non-space token in a token stream.
 firstNonSpaceToken::[PosToken]->PosToken
 firstNonSpaceToken toks=case dropWhile isWhiteSpace toks of
                          [] ->defaultToken
                          l -> ghead "firstNonSpaceToken" l
+-}
 
--- remove the extra preceding  empty lines.
-compressPreNewLns::[PosToken]->[PosToken]
+-- | Remove the extra preceding  empty lines.
+compressPreNewLns::[PosToken] -> [PosToken]
+compressPreNewLns toks = toks
+{- ++AZ++: is this still needed?
 compressPreNewLns toks= let (toks1, toks2) = break (not.(\t->isNewLn t || isWhiteSpace t)) toks
                             groupedToks    = groupTokensByLine toks1
                         in if length groupedToks>1 then (last groupedToks)++toks2
                                                    else toks
+-}
 
---remove the following extra empty lines.
+
+-- |Remove the following extra empty lines.
 compressEndNewLns::[PosToken]->[PosToken]
+compressEndNewLns toks = toks
+{- ++AZ++: is this still needed?
 compressEndNewLns toks=let (toks1, toks2) = break (not.(\t->isNewLn t || isWhiteSpace t)) (reverse toks)
                            groupedToks    = groupTokensByLine toks1
                        in if length groupedToks>1 then reverse ((ghead "compressEndNewLns" groupedToks)++toks2)
                                                   else toks
-
+-}
+{-
 prettyprintPatList beginWithSpace t
      = replaceTabBySpaces $ if beginWithSpace then format1 t else format2 t
  where
@@ -333,9 +376,14 @@ mkToken t (row,col) c = ((GHC.L l t),c)
     l = GHC.mkSrcSpan (GHC.mkSrcLoc filename row col) (GHC.mkSrcLoc filename row (col + (length c) ))
 
 
-{-
+
 ---Restriction: the refactorer should not modify refactorer-modified/created tokens.
-defaultToken = (Whitespace, (pos0," "))
+defaultToken :: PosToken
+defaultToken = (GHC.noLoc (GHC.ITlineComment "defaultToken"), "defaultToken")
+
+-- defaultToken = (Whitespace, (pos0," "))
+
+{-
 newLnToken   = (Whitespace, (pos0,"\n"))
 -}
 newLnToken :: PosToken -> PosToken
@@ -799,7 +847,51 @@ deleteFromToks t getLocFun
        let (startPos,endPos)=getLocFun toks t
            toks'=deleteToks toks startPos endPos
        put ((toks',modified),others)
+-}
 
+-- ---------------------------------------------------------------------
+
+-- |Delete a sequence of tokens specified by the start position and
+-- end position from the token stream, then adjust the remaining token
+-- stream to preserve layout
+deleteToks:: [PosToken] -> SimpPos -> SimpPos -> [PosToken]
+deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
+  = case after of
+      (_:_) ->    let nextPos =tokenPos $ ghead "deleteToks1" after
+                      oldOffset = getOffset toks nextPos
+                      newOffset = getOffset (toks1++before++after) nextPos
+                  in  toks1++before++adjustLayout (after++toks22) oldOffset newOffset
+      _     -> if (emptyList toks22)
+                 then toks1++before
+                 else let toks22'=let nextOffset = getOffset toks (tokenPos (ghead "deleteToks2" toks22))
+                                  in if isMultiLineComment (lastNonSpaceToken toks21)
+                                       then whiteSpaceTokens (-1111, 0) (nextOffset-1) ++ toks22
+                                       else toks22
+                      in if endsWithNewLn (last (toks1++before)) || startsWithNewLn (ghead "deleteToks3" toks22')
+                           then  toks1++before++toks22'
+                           --avoiding layout adjustment by adding a `\n', sometimes may produce extra lines.
+                             else  toks1++before++[newLnToken (last before)]++toks22'
+                            --  else toks1 ++ before ++ toks22'
+     where
+
+      (toks1, toks2) = let (ts1, ts2)   = break (\t->tokenPos t >= startPos) toks
+                           (ts11, ts12) = break hasNewLn (reverse ts1)
+                       in (reverse ts12, reverse ts11 ++ ts2)
+      (toks21, toks22)=let (ts1, ts2) = break (\t -> tokenPos t >= endPos) toks2
+                           (ts11, ts12) = break hasNewLn ts2
+                       in (ts1++ts11++if (emptyList ts12) then [] else [ghead "deleteToks4" ts12], if (emptyList ts12) then [] else gtail "deleteToks5"  ts12)
+
+      -- NOTE: toks === toks1 ++ toks21 ++ toks22, where toks21 are the ones to be deleted
+
+      -- tokens before the tokens to be deleted at the same line
+      before = takeWhile (\t->tokenPos t<startPos) toks21
+
+      -- tokens after the tokens to be deleted at the same line.
+      after = let t= dropWhile (\t -> tokenPos t < endPos) toks21
+              in  if (emptyList t) then error "Sorry, HaRe failed to finish this refactoring. DeleteToks"
+                                   else gtail "deleteToks6" t
+
+{- ++ original ++
 {-Delete a sequence of tokens specified by the start position and end position from the token stream,
   then adjust the remaining token stream to preserve layout-}
 deleteToks::[PosToken]->SimpPos->SimpPos->[PosToken]
@@ -838,6 +930,8 @@ deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
                              else  gtail "deleteToks6" t
 
 -}
+
+-- ---------------------------------------------------------------------
 
 -- | Adjust the layout to compensate the change in the token stream.
 adjustLayout:: [PosToken] -> Int -> Int -> [PosToken]
@@ -897,7 +991,11 @@ doRmWhites n toks@(t:ts)=if isWhiteSpace t then doRmWhites (n-1) ts
 doAddWhites::Int->[PosToken]->[PosToken]
 doAddWhites n []=[]
 doAddWhites n ts@(t:_)= whiteSpacesToken (tokenRow t,0) n ++ts
+-}
 
+-- ++AZ++ : not sure if this is still needed
+whiteSpaceTokens (row, col) n = []
+{-
 whiteSpaceTokens (row, col) n
  = if n<=0
     then []
