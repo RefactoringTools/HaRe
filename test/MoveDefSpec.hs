@@ -45,7 +45,7 @@ spec = do
     -}
 
     it "lifts a definition to the top level" $ do
-     doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","23","5"]
+     doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","24","5"]
      diff <- compareFiles "./test/testdata/MoveDef/Md1.hs.refactored"
                           "./test/testdata/MoveDef/Md1.hs.expected"
      diff `shouldBe` []

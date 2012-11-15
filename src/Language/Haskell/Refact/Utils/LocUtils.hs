@@ -44,8 +44,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , getStartEndLoc
                      {-
                      , getStartEndLoc2,
-                     startEndLoc,extendBothSides,extendForwards,extendBackwards,
-                     startEndLocIncFowComment,startEndLocIncFowNewLn -},startEndLocIncComments {-,
+                     startEndLoc,extendBothSides -},extendForwards,extendBackwards
+                     {- ,startEndLocIncFowComment,startEndLocIncFowNewLn -},startEndLocIncComments {-,
                      prettyprint ,deleteFromToks, prettyprintGuardsAlt,
                      -}
                      , addFormalParams {- ,  adjustOffset, -- try to remove it
@@ -1098,12 +1098,14 @@ getStartEndLoc t
 
 getStartEndLoc :: (SYB.Data t) => t -> (SimpPos,SimpPos)
 getStartEndLoc t =
+  -- error $ "getStartEndLoc:" ++ (SYB.showData SYB.Renamer 0 t)
   let
     ss = getSrcSpan t
   in
     case ss of
       Just l -> startEndLocGhc (GHC.L l ss)
       Nothing -> ((0,0),(0,0))
+
 
 -- ---------------------------------------------------------------------
 
@@ -1114,6 +1116,7 @@ getSrcSpan t = res t
     res = somethingStaged SYB.Renamer Nothing
             (Nothing
                     `SYB.mkQ` bind
+                    `SYB.extQ` sig
                     `SYB.extQ` pnt
                     `SYB.extQ` sn
                     `SYB.extQ` literalInExp
@@ -1123,6 +1126,9 @@ getSrcSpan t = res t
 
     bind :: GHC.GenLocated GHC.SrcSpan (GHC.HsBind GHC.Name) -> Maybe GHC.SrcSpan
     bind (GHC.L l _)              = Just l
+
+    sig :: (GHC.LSig GHC.Name) -> Maybe GHC.SrcSpan
+    sig (GHC.L l _)              = Just l
 
     pnt :: GHC.GenLocated GHC.SrcSpan GHC.Name -> Maybe GHC.SrcSpan
     pnt (GHC.L l _)              = Just l
@@ -1192,7 +1198,10 @@ extendBothSides  toks startLoc endLoc  forwardCondFun backwardCondFun
                             [] ->endLoc   --is this a correct default?
                             l -> (tokenPos.ghead "extendBothSides:lastTok") l
         in (firstLoc, lastLoc)
+-}
 
+extendForwards :: [PosToken] -> SimpPos -> SimpPos -> (PosToken -> Bool)
+  -> (SimpPos,SimpPos)
 extendForwards toks startLoc endLoc forwardCondFun
        =let toks1=takeWhile (\t->tokenPos t /= startLoc) toks
             firstLoc=case (dropWhile (not.forwardCondFun) (reverse toks1)) of
@@ -1200,6 +1209,8 @@ extendForwards toks startLoc endLoc forwardCondFun
                        l -> (tokenPos.ghead "extendForwards") l
         in (firstLoc, endLoc)
 
+extendBackwards :: [PosToken] -> SimpPos -> SimpPos -> (PosToken -> Bool)
+  -> (SimpPos,SimpPos)
 extendBackwards toks startLoc endLoc backwardCondFun
        = let toks1= gtail "extendBackwards"  $ dropWhile (\t->tokenPos t /=endLoc) toks
              lastLoc=case (dropWhile (not.backwardCondFun) toks1) of
@@ -1207,6 +1218,7 @@ extendBackwards toks startLoc endLoc backwardCondFun
                           l ->(tokenPos. ghead "extendBackwards") l
          in (startLoc, lastLoc)
 
+{-
 ------------------Some functions for associating comments with syntax phrases.---------------------------
 {- Note: We assume that a comment before t belongs to t only if there is at most one blank line between them,
          and a cooment after t belongs to t only it the comment starts at the last line of t.
