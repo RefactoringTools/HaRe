@@ -2144,15 +2144,130 @@ addItemsToImport serverModName pn ids t
 -- tested). If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: -- (SYB.Data t)
-           [GHC.LHsBind GHC.Name] -- t            -- ^ The AST.
-         -> Maybe GHC.Name -- ^ If this is Just, then the declaration will be added right after this identifier's definition.
-        -> ([HsDeclP], Maybe [PosToken]) -- ^ The declaration to be added, in both AST and Token stream format (optional).
+addDecl:: (SYB.Data t,HsBinds t)
+        =>t  -- [GHC.LHsBind GHC.Name] -- t            -- ^ The AST.
+        -> Maybe GHC.Name -- ^ If this is Just, then the declaration will be added right after this identifier's definition.
+        -> ([GHC.LHsBind GHC.Name], Maybe [PosToken]) -- ^ The declaration to be added, in both AST and Token stream format (optional).
         -> Bool              -- ^ True means the declaration is a toplevel declaration.
-        -> RefactGhc t
+        -> RefactGhc t --[GHC.LHsBind GHC.Name]
 
 addDecl parent pn (decl, declToks) topLevel
-  = error "undefined addDecl"
+ -- = error "undefined addDecl"
+ = if isJust pn
+     then appendDecl parent (fromJust pn) (decl, declToks)
+     else if topLevel
+            then addTopLevelDecl (decl, declToks) parent
+            else addLocalDecl parent (decl,declToks)
+ where
+
+  {- Add a definition to the beginning of the definition declaration list, but after the data type declarations
+     if there is any. The definition will be pretty-printed if its token stream is not provided. -}
+  addTopLevelDecl :: (SYB.Data t, HsBinds t)
+                  => ([GHC.LHsBind GHC.Name], Maybe [PosToken]) -> t -> RefactGhc t
+  addTopLevelDecl (decl, declToks) parent
+    = do let decls = hsBinds parent
+             (decls1,decls2)=break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
+         toks <- fetchToks
+         let loc1 = if (not $ emptyList decls2)  -- there are function/pattern binding decls.
+                    then let ((startRow,_),_) = startEndLocIncComments toks (ghead "addTopLevelDecl"  decls2)
+                         in  (startRow, 1)
+                    else simpPos0  -- no function/pattern binding decls in the module.
+             (toks1, toks2) = if loc1==simpPos0  then (toks, [])
+                                 else break (\t->tokenPos t==loc1) toks
+
+             declStr = case declToks of
+                        Just ts -> concatMap tokenCon ts
+                        Nothing -> prettyprint decl++"\n\n"
+             colOffset = if (emptyList decls) then 1 else getOffset toks $ fst (getStartEndLoc (head decls))
+         newToks <- liftIO $ tokenise (realSrcLocFromTok $ last toks1) colOffset True declStr
+         let toks' = toks1 ++ newToks ++ toks2
+     --    error $ show decl
+
+         -- put ((toks',modified),((tokenRow (glast "addTopLevelDecl" newToks) -10), v2))
+         putToks toks' modified
+         (decl',_) <- addLocInfo (decl, newToks)
+     --    error $ show decl
+         -- return (replaceDecls parent (Decs (decls1++decl'++decls2) ([], [])))
+         return (replaceBinds parent (decls1++decl'++decls2))
+
+  appendDecl :: (SYB.Data t, HsBinds t)
+      => t
+      -> GHC.Name
+      -> ([GHC.LHsBind GHC.Name], Maybe [PosToken])
+      -> RefactGhc t
+  appendDecl parent pn (decl, declToks)
+    = do toks <- fetchToks
+         -- error (show parent ++ "----" ++ show pn ++ "-----" ++ show (decl, declToks))
+         let (startPos,endPos) = startEndLocIncFowComment toks (ghead "appendDecl1" after)
+             -- divide the toks into three parts.
+             (toks1, toks2, toks3) = splitToks' (startPos, endPos) toks
+              --get the toks defining pn
+             defToks = dropWhile (\t->tokenPos t /=startPos) toks2
+             offset = getOffset toks $ fst (getStartEndLoc (ghead "appendDecl2" decls))
+             declStr = case declToks of
+                          Just ts -> concatMap tokenCon ts
+                          Nothing -> prettyprint decl
+         newToks <- liftIO $ tokenise (realSrcLocFromTok $ last toks1) offset True declStr
+         let nlToken = newLnToken (last toks1)
+             toks' = if  endsWithNewLn  (glast "appendDecl2" toks2)
+                      then  toks1++ toks2 ++ (nlToken: newToks) ++ [nlToken]++ compressPreNewLns toks3
+                      else  replaceToks toks startPos endPos (defToks++[nlToken,nlToken]++newToks)
+    --     (decl',_) <- addLocInfo (decl, newToks)
+         -- put ((toks',modified),((tokenRow (glast "appendDecl2" newToks) -10), v2))
+         putToks toks' modified
+         -- return (replaceDecls parent (Decs (before ++ [ghead "appendDecl14" after]++ decl++ tail after) ([], [])))
+         return (replaceBinds parent ((before ++ [ghead "appendDecl14" after]++ decl++ tail after) ))
+      where
+        decls = hsBinds parent
+        (before,after) = break (defines pn) decls -- Need to handle the case that 'after' is empty?
+        splitToks' (startPos, endPos) toks
+           = let (ts1, ts2, ts3) = splitToks ( startPos, endPos) toks
+                 (ts11, ts12) = break hasNewLn (reverse ts1)
+             in (reverse ts12, reverse ts11++ts2, ts3)
+
+  -- This function need to be tested.
+  addLocalDecl :: (SYB.Data t, HsBinds t)
+               => t -> ([GHC.LHsBind GHC.Name], Maybe [PosToken])
+               -> RefactGhc t
+  addLocalDecl parent (newFun, newFunToks)
+    =do
+        toks <- fetchToks
+        let (startPos@(_,startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
+              =if (emptyList localDecls) then startEndLocIncFowComment toks parent    --The 'where' clause is empty
+                                 else startEndLocIncFowComment toks localDecls
+            toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
+            ts1=takeWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t)  toks1
+            --nextTokPos is only used to test whether there is a 'In' or a nested comment. 
+            nextTokPos= case (dropWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t) toks1) of
+                           [] -> simpPos0
+                           l  -> (tokenPos.ghead "addLocalFunInToks") l
+            needNewLn=if nextTokPos==simpPos0  --used to decide whether add a new line character before a introduced fun.
+                      then if (emptyList toks1) then True
+                                        else (not.endsWithNewLn) (last ts1)
+                      else endRow'==fst nextTokPos
+            --endPos@(endRow,_)=if ts1==[] then endPos'
+            --                             else tokenPos (last ts1)
+            offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
+        newToks <- liftIO $ tokenise (realSrcLocFromTok $ last toks1) offset True
+                          $ if needNewLn then "\n"++newSource else newSource++"\n"
+        let oldToks'=getToks (startPos,endPos') toks
+            toks'=replaceToks toks startPos endPos' (oldToks'++newToks)
+        (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
+        -- put ((toks',modified),((tokenRow (glast "appendDecl2" newToks) -10), v2))
+        putToks toks' modified
+        return (replaceBinds parent ((hsBinds parent ++ newFun') ))
+    where
+         localDecls = hsBinds parent
+
+         newSource  = if (emptyList localDecls)
+                      then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
+                      else newFun'
+            where
+            newFun' = case newFunToks of
+                           Just ts -> concatMap tokenCon ts
+                           Nothing -> prettyprint newFun
+
+
 
 {- ++original++
 -- | Adding a declaration to the declaration list of the given syntax phrase(so far only adding function\/pattern binding
@@ -3106,10 +3221,9 @@ rmDecl pn incSig t = applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
 -- | Remove the type signature that defines the given identifier's
 -- type from the declaration list.
 rmTypeSig :: (SYB.Data t) =>
-        GHC.Name   -- ^ The identifier whose type signature is to be removed.
-      -- ->[GHC.LHsBind GHC.Name]            -- ^ The declarations
+        GHC.Name    -- ^ The identifier whose type signature is to be removed.
       ->t           -- ^ The declarations
-      ->RefactGhc t  -- ^ The result
+      ->RefactGhc t -- ^ The result
 rmTypeSig pn t
   = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   where

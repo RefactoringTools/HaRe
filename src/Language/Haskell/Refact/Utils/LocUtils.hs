@@ -7,9 +7,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      PosToken,simpPos,
                      -}
                      SimpPos,unmodified,modified
-                     {-
-                     ,simpPos0
-                     -}
+                     , simpPos0
                      , emptyList
                      , showToks
                      , tokenCol, tokenRow
@@ -18,16 +16,17 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , tokenLen
                      -- ,lengthOfToks
                      , mkToken {-,defaultToken-},newLnToken{-,whiteSpacesToken -},whiteSpaceTokens
+                     , realSrcLocFromTok
                      , isWhite
                      , notWhite
                      , isWhiteSpace
                      {-
                      ,isNewLn,isCommentStart -},isComment {-,
-                     isNestedComment,isMultiLineComment,isOpenBracket,isCloseBracket, -}
+                     isNestedComment-},isMultiLineComment {-,isOpenBracket,isCloseBracket, -}
                      ,isOpenSquareBracket,isCloseSquareBracket {- ,isOpenBrace,isConid,
                      isLit -},isWhereOrLet,isWhere,isLet,isIn {- ,isCase,isDo,isIf,isForall,
                      isHiding,isModule-} ,isComma {-,isEqual,isLambda,isIrrefute -},isBar --,isMinus,
-                     ,endsWithNewLn,startsWithNewLn {- ,hasNewLn,startsWithEmptyLn,
+                     ,endsWithNewLn,startsWithNewLn,hasNewLn {- ,startsWithEmptyLn,
                      lastNonSpaceToken,firstNonSpaceToken -} ,compressPreNewLns,compressEndNewLns
 
                      , lengthOfLastLine
@@ -45,7 +44,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      {-
                      , getStartEndLoc2,
                      startEndLoc,extendBothSides -},extendForwards,extendBackwards
-                     {- ,startEndLocIncFowComment,startEndLocIncFowNewLn -},startEndLocIncComments {-,
+                     , startEndLocIncFowComment{- ,startEndLocIncFowNewLn -},startEndLocIncComments {-,
                      prettyprint ,deleteFromToks, prettyprintGuardsAlt,
                      -}
                      , addFormalParams {- ,  adjustOffset, -- try to remove it
@@ -58,7 +57,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , prettyprint
                      , prettyprintPatList
                      , groupTokensByLine
-                     -- , addLocInfo
+                     , addLocInfo
                      , getOffset
                      , splitToks
                      {-
@@ -398,8 +397,16 @@ newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
          GHC.mkSrcSpan loc loc
      _ -> l
 
-ghcPos0 = GHC.mkSrcSpan p0 p0
-  where p0 = GHC.mkSrcLoc (GHC.mkFastString "") 1 1
+
+ghcSpan0 = GHC.mkSrcSpan ghcPos0 ghcPos0
+
+ghcPos0 = GHC.mkSrcLoc (GHC.mkFastString "") 1 1
+
+-- ---------------------------------------------------------------------
+
+realSrcLocFromTok :: PosToken -> GHC.RealSrcLoc
+realSrcLocFromTok (GHC.L (GHC.RealSrcSpan span) _,_) = GHC.realSrcSpanStart span
+realSrcLocFromTok (GHC.L _ _,_) = GHC.mkRealSrcLoc (GHC.mkFastString "") 1 1
 
 -- ---------------------------------------------------------------------
 
@@ -542,6 +549,45 @@ groupTokensByLine xs =let (xs', xs'') = break hasNewLn xs
                           else (xs'++ [ghead "groupTokensByLine" xs''])
                                 : groupTokensByLine (gtail "groupTokensByLine" xs'')
 -}
+
+-- ---------------------------------------------------------------------
+
+--Should add cases for literals.
+addLocInfo (decl, toks)
+  = error "undefined addLocInfo"
+
+{- ++original++
+--Should add cases for literals.
+addLocInfo (decl, toks)
+    = runStateT (applyTP (full_tdTP (idTP `adhocTP` inPnt
+                                          `adhocTP` inSN)) decl) toks
+       where
+         inPnt (PNT pname ty (N (Just loc)))
+            = do loc' <- findLoc (pNtoName pname)
+                 return (PNT pname ty (N (Just loc')))
+         inPnt x = return x
+
+         inSN (SN (PlainModule modName) (SrcLoc _ _ row col))
+             = do loc' <- findLoc modName
+                  return (SN (PlainModule modName) loc')
+         inSN x = return x
+
+
+         pNtoName (PN (UnQual i) _)=i
+         pNtoName (PN (Qual (PlainModule modName) i) _) = modName++"."++i
+         pNtoName (PN (Qual (MainModule _) i) _)        = "Main."++i
+         findLoc name
+          = do  let name' = if name =="Prelude.[]" || name == "[]"  then "["
+                               else if name=="Prelude.(,)" || name == "(,)" || name == "()"  then "("
+                                                                                             else name   ----Check this again.
+                    toks' = dropWhile (\t->tokenCon t /= name') toks
+                    (row, col) =if toks'==[] then error ("HaRe: Error in addLocInfo while looking for" ++ name' ++ " !")
+                                              else tokenPos $ ghead "findLoc" toks'
+                return (SrcLoc "unknown" 0 row col)
+
+
+
+++original end -}
 
 -- ---------------------------------------------------------------------
 
@@ -1223,6 +1269,14 @@ extendBackwards toks startLoc endLoc backwardCondFun
 {- Note: We assume that a comment before t belongs to t only if there is at most one blank line between them,
          and a cooment after t belongs to t only it the comment starts at the last line of t.
 -}
+-}
+
+
+startEndLocIncFowComment::(SYB.Data t)=>[PosToken]->t->(SimpPos,SimpPos)
+startEndLocIncFowComment toks t
+ = error "undefined startEndLocIncFowComment"
+
+{- ++original++
 
 {-Get the start&end location of syntax phrase t, then extend the end location to cover the comment/white spaces
   or new line which starts in the same line as the end location-}
@@ -1235,8 +1289,9 @@ startEndLocIncFowComment toks t
          in  if toks11/=[] && all (\t->isWhite t || endsWithNewLn t) toks11
              then (startLoc, tokenPos (glast "startEndLocIncFowComment" toks11))
              else (startLoc, endLoc)
+++ original end -}
 
-
+{-
 {-get the start&end location of t in the token stream, then extend the end location to cover
   the following '\n' if there is no other characters (except white space) between t and the '\n'
 -}
