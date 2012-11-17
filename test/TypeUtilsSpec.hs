@@ -814,17 +814,17 @@ spec = do
   describe "addDecl" $ do
     it "Adds a top level declaration" $ do
       (t, toks) <- parsedFileMd1Ghc
-      let renamed = fromJust $ GHC.tm_renamed_source t
-
-      let declsr = getDecls renamed
-      let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
       let
         comp = do
-         newDecls <- addDecl n False declsr
+         renamed <- getRefactRenamed
+         nn <- mkNewName "nn"
+         nn2 <- mkNewName "nn2"
+         let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
+         newDecls <- addDecl renamed Nothing ([newDecl],Nothing) True
 
          return newDecls
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (GHC.showPpr n) `shouldBe` "MoveDef.Md1.ff"
+      -- (GHC.showPpr n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n\n\n\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n "

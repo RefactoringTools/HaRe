@@ -1312,6 +1312,11 @@ instance HsBinds (GHC.HsExpr GHC.Name) where
 
 instance HsBinds (GHC.Stmt GHC.Name) where
   hsBinds (GHC.LetStmt ds) = hsBinds ds
+  replaceBinds = error "replaceBinds (GHC.Stmt GHC.Name) undefined"
+
+instance HsBinds ([GHC.LHsBind GHC.Name]) where
+  hsBinds x = x
+  replaceBinds _old new = new
 
 -- ---------------------------------------------------------------------
 
@@ -3048,11 +3053,12 @@ duplicateDecl decls pn newFunName
 -- | Remove the declaration (and the type signature is the second
 -- parameter is True) that defines the given identifier from the
 -- declaration list.
-rmDecl::
-          GHC.Name    -- ^ The identifier whose definition is to be removed.
+rmDecl:: (SYB.Data t)
+        =>GHC.Name    -- ^ The identifier whose definition is to be removed.
         ->Bool        -- ^ True means including the type signature.
-        ->[GHC.LHsBind GHC.Name]            -- ^ The declaration list.
-        -> RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
+        ->t -- [GHC.LHsBind GHC.Name]            -- ^ The declaration list.
+        -- -> RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
+        -> RefactGhc t -- ^ The result.
 -- TODO: in GHC Type Signature is not in binds, remove the Bool.
 rmDecl pn incSig t
   = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
