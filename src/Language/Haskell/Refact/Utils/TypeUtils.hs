@@ -3082,15 +3082,15 @@ duplicateDecl decls pn newFunName
 -- parameter is True) that defines the given identifier from the
 -- declaration list.
 rmDecl:: (SYB.Data t)
-        =>GHC.Name    -- ^ The identifier whose definition is to be removed.
-        ->Bool        -- ^ True means including the type signature.
-        ->t -- [GHC.LHsBind GHC.Name]            -- ^ The declaration list.
-        -- -> RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
+        =>GHC.Name     -- ^ The identifier whose definition is to be removed.
+        ->Bool         -- ^ True means including the type signature.
+        ->t            -- ^ The declaration list.
         -> RefactGhc t -- ^ The result.
--- TODO: in GHC Type Signature is not in binds, remove the Bool.
-rmDecl pn incSig t
-  = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
-  -- = applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
+rmDecl pn incSig t = do
+  t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
+  t'' <- if incSig then rmTypeSig pn t'
+                   else return t'
+  return t''
   where
     inDecls (decls::[GHC.LHsBind GHC.Name])
       | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
@@ -3099,10 +3099,8 @@ rmDecl pn incSig t
            -- error $ (render.ppi) t -- ecl ++ (show decl)
            topLevel <- isTopLevelPN pn
            case topLevel of
-                     True   -> if incSig then rmTopLevelDecl decl =<< rmTypeSig pn decls
-                                         else rmTopLevelDecl decl decls
-                     False  -> if incSig then rmLocalDecl decl =<< rmTypeSig pn decls
-                                         else rmLocalDecl decl decls
+                     True   -> rmTopLevelDecl decl decls
+                     False  -> rmLocalDecl decl decls
     inDecls x = return x
 
     rmTopLevelDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
@@ -3255,9 +3253,9 @@ rmDecl pn incSig t = applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
 -- | Remove the type signature that defines the given identifier's
 -- type from the declaration list.
 rmTypeSig :: (SYB.Data t) =>
-        GHC.Name    -- ^ The identifier whose type signature is to be removed.
-      ->t           -- ^ The declarations
-      ->RefactGhc t -- ^ The result
+         GHC.Name    -- ^ The identifier whose type signature is to be removed.
+      -> t           -- ^ The declarations
+      -> RefactGhc t -- ^ The result
 rmTypeSig pn t
   = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   where
