@@ -110,7 +110,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- The following functions are not in the the API yet.
     {- ,getDeclToks -}, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
-    , getDeclAndToks -- ++AZ++ Zipper?
+    , getDeclAndToks,getSigAndToks -- ++AZ++ Zipper?
 
 -- * Typed AST traversals (added by CMB)
     -- * Miscellous
@@ -2150,7 +2150,7 @@ addItemsToImport serverModName pn ids t
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
 addDecl:: (SYB.Data t,HsBinds t)
-        =>t  -- [GHC.LHsBind GHC.Name] -- t            -- ^ The AST.
+        => t              -- ^ The AST.
         -> Maybe GHC.Name -- ^ If this is Just, then the declaration will be added right after this identifier's definition.
         -> ([GHC.LHsBind GHC.Name], Maybe [PosToken]) -- ^ The declaration to be added, in both AST and Token stream format (optional).
         -> Bool              -- ^ True means the declaration is a toplevel declaration.
@@ -3538,43 +3538,54 @@ pNTtoName=pNtoName.pNTtoPN
 -- ---------------------------------------------------------------------
 
 -- Get the toks for a declaration, and adjust its offset to 0.
-getDeclAndToks pn incSig toks t
-    = error "undefined getDeclAndToks"
-{- ++WIP++
-    = ghead "getDeclAndToks" $ applyTU (stop_tdTU (failTU `adhocTU` inDecls)) t
+getDeclAndToks :: (SYB.Data t)
+     => GHC.Located GHC.Name -> Bool -> [PosToken] -> t
+     -> ([GHC.LHsBind GHC.Name],[PosToken])
+getDeclAndToks (GHC.L _ pn) incSig toks t
+    -- = error "undefined getDeclAndToks"
+    = ghead "getDeclAndToks" $ SYB.everythingStaged SYB.Renamer (++) []
+        ([] `SYB.mkQ` inDecls) t
+    -- = ghead "getDeclAndToks" $ applyTU (stop_tdTU (failTU `adhocTU` inDecls)) t
   where
-    inDecls decls
-      |snd (break (defines pn) decls) /=[]
+    inDecls (decls::[GHC.LHsBind GHC.Name])
+      |not $ emptyList (snd (break (defines pn) decls))
       = return $ getDeclAndToks' pn incSig decls toks
-    inDecls x = mzero
+    inDecls x = []
 
     getDeclAndToks' pn incSig decls toks
+     = let typeSig = Nothing
+     {-
      = let typeSig = if (not incSig)
                       then Nothing
                       else let (decls1,decls2) =break (definesTypeSig pn) decls
                            in if decls2==[] then Nothing else Just (ghead "getDeclAndToks" decls2) 
+     -}
            (decls1', decls2') = break (defines pn) decls
-           decl = if decls2' == [] then error "getDeclAndToks:: declaration does not exisit"
-                                   else ghead "getDeclAndToks2" decls2'
-           offset = getOffset toks (fst (startEndLoc toks decl))
-           declToks =removeOffset offset $ getToks' decl toks
+           decl = if (emptyList decls2') then error "getDeclAndToks:: declaration does not exisit"
+                                         else ghead "getDeclAndToks2" decls2'
+           -- offset = getOffset toks (fst (startEndLoc toks decl))
+           offset   = getOffset toks (fst (getStartEndLoc decl))
+           declToks = removeOffset offset $ getToks' decl toks
+           sigToks = []
+           {-
            sigToks = case typeSig of
                        Nothing  -> []
                        Just (sig@(TiDecorate.Dec (HsTypeSig _ [i] _ _)))-> removeOffset offset $ getToks' sig toks
                        Just (TiDecorate.Dec (HsTypeSig loc is c ty))-> let sig' =(TiDecorate.Dec (HsTypeSig loc0 [nameToPNT (pNtoName pn)] c ty))
                                                             in  tokenise (Pos 0 (-1111) 1) 0 True $ prettyprint sig'++"\n" 
+           -}
        in  (if isJust typeSig then [fromJust typeSig, decl] else [decl], (sigToks ++ declToks))
 
     getToks' decl toks
       = let (startPos, endPos) = startEndLocIncComments toks decl
-            (toks1, _) =let(ts1, (t:ts2'))= break (\t -> tokenPos t == endPos) toks
-                        in (ts1++[t], ts2')
-        in dropWhile (\t -> tokenPos t /= startPos || isNewLn t) toks1
+            (toks1, _) =let(ts1,(t:ts2'))= break (\t -> tokenPos t >= endPos) toks
+                        in (ts1, ts2')
+        in dropWhile (\t -> tokenPos t < startPos {- || isNewLn t -}) toks1
 
     removeOffset offset toks
      = let groupedToks = groupTokensByLine toks
        in  concatMap  (doRmWhites offset) groupedToks
-++WIP++ -}
+
 
 {- ++AZ++ original
 -- Get the toks for a declaration, and adjust its offset to 0.
@@ -3614,4 +3625,13 @@ getDeclAndToks pn incSig toks t
        in  concatMap  (doRmWhites offset) groupedToks
 
 -}
+
+-- ---------------------------------------------------------------------
+
+-- Get the toks for a declaration, and adjust its offset to 0.
+getSigAndToks :: GHC.Located GHC.Name -> [PosToken] -> t
+     -> (GHC.LSig GHC.Name,[PosToken])
+getSigAndToks pn toks t
+    = error "undefined getSigAndToks"
+
 -- ---------------------------------------------------------------------

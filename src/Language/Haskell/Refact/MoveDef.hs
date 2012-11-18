@@ -253,7 +253,7 @@ liftToTopLevel' modName fileName (inscps, mod, toks) pnt@(PNT pn _ _)
 -}
 
 moveDecl1 :: (HsBinds t)
-          => t --   [GHC.LHsBind GHC.Name] -- t
+          => t 
           -> Maybe GHC.Name
           -> [GHC.Located GHC.Name]
           -> Bool
@@ -265,8 +265,6 @@ moveDecl1 t defName pns topLevel
         let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" pns) True toks t
         --error$ show (declToMove, toksToMove)
         t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
-        -- t'' <- foldM (flip rmTypeSig) t ns
-        -- t' <- rmDecl (ghead "moveDecl3"  ns) False t''
         addDecl t' defName (declToMove, Just toksToMove) topLevel
 
 

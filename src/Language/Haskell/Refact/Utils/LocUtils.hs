@@ -32,7 +32,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , lengthOfLastLine
                      , updateToks, updateToksList
                      , getToks
-                     , replaceToks,deleteToks -- , doRmWhites,doAddWhites
+                     , replaceToks,deleteToks,doRmWhites -- ,doAddWhites
                      , srcLocs
                      , getSrcSpan
                      -- , ghcSrcLocs -- Test version
@@ -497,39 +497,6 @@ lexStringToRichTokens startLoc str = do
 
 -- ---------------------------------------------------------------------
 
-{-
---Should add cases for literals.
-addLocInfo (decl, toks)
-    = runStateT (applyTP (full_tdTP (idTP `adhocTP` inPnt
-                                          `adhocTP` inSN)) decl) toks
-       where
-         inPnt (PNT pname ty (N (Just loc)))
-            = do loc' <- findLoc (pNtoName pname)
-                 return (PNT pname ty (N (Just loc')))
-         inPnt x = return x
-
-         inSN (SN (PlainModule modName) (SrcLoc _ _ row col))
-             = do loc' <- findLoc modName
-                  return (SN (PlainModule modName) loc')
-         inSN x = return x
-
-
-         pNtoName (PN (UnQual i) _)=i
-         pNtoName (PN (Qual (PlainModule modName) i) _) = modName++"."++i
-         pNtoName (PN (Qual (MainModule _) i) _)        = "Main."++i
-         findLoc name
-          = do  let name' = if name =="Prelude.[]" || name == "[]"  then "["
-                               else if name=="Prelude.(,)" || name == "(,)" || name == "()"  then "("
-                                                                                             else name   ----Check this again.
-                    toks' = dropWhile (\t->tokenCon t /= name') toks
-                    (row, col) =if toks'==[] then error ("HaRe: Error in addLocInfo while looking for" ++ name' ++ " !")
-                                              else tokenPos $ ghead "findLoc" toks'
-                return (SrcLoc "unknown" 0 row col)
-
--}
-
--- ---------------------------------------------------------------------
-
 groupTokensByLine :: [PosToken] -> [[PosToken]]
 groupTokensByLine [] = []
 groupTokensByLine (xs) = let x = head xs
@@ -553,8 +520,39 @@ groupTokensByLine xs =let (xs', xs'') = break hasNewLn xs
 -- ---------------------------------------------------------------------
 
 --Should add cases for literals.
-addLocInfo (decl, toks)
-  = error "undefined addLocInfo"
+addLocInfo :: ([GHC.LHsBind GHC.Name],[PosToken]) 
+           -> RefactGhc ([GHC.LHsBind GHC.Name],[PosToken])
+addLocInfo (decl, toks) = return (decl, toks) 
+  -- = error "undefined addLocInfo"
+{-++AZ++ Need to see it this is actually needed....
+  --  = runStateT (applyTP (full_tdTP (idTP `adhocTP` inPnt
+  --                                        `adhocTP` inSN)) decl) toks
+   = everywhereMStaged SYB.Renamer (SYB.mkM inPnt `SYB.extM` inSN)
+       where
+         inPnt (PNT pname ty (N (Just loc)))
+            = do loc' <- findLoc (pNtoName pname)
+                 return (PNT pname ty (N (Just loc')))
+         inPnt x = return x
+
+         inSN (SN (PlainModule modName) (SrcLoc _ _ row col))
+             = do loc' <- findLoc modName
+                  return (SN (PlainModule modName) loc')
+         inSN x = return x
+
+         pNtoName (PN (UnQual i) _)=i
+         pNtoName (PN (Qual (PlainModule modName) i) _) = modName++"."++i
+         pNtoName (PN (Qual (MainModule _) i) _)        = "Main."++i
+
+         findLoc name
+          = do  let name' = if name =="Prelude.[]" || name == "[]"  then "["
+                               else if name=="Prelude.(,)" || name == "(,)" || name == "()"  then "("
+                                                                                             else name   ----Check this again.
+                    toks' = dropWhile (\t->tokenCon t /= name') toks
+                    (row, col) =if toks'==[] then error ("HaRe: Error in addLocInfo while looking for" ++ name' ++ " !")
+                                              else tokenPos $ ghead "findLoc" toks'
+                return (SrcLoc "unknown" 0 row col)
+++AZ++ end -}
+
 
 {- ++original++
 --Should add cases for literals.
@@ -1025,14 +1023,17 @@ adjustLayout toks oldOffset newOffset
                            ++ show (tokenRow t)++ "."
 ++AZ++ -}
 
-{-
--- remove at most n white space tokens from the beginning of ts
-doRmWhites::Int->[PosToken]->[PosToken]
-doRmWhites 0 ts=ts
-doRmWhites n []=[]
-doRmWhites n toks@(t:ts)=if isWhiteSpace t then doRmWhites (n-1) ts
-                                           else toks
+-- | remove at most n white space tokens from the beginning of ts
+doRmWhites::Int -> [PosToken] -> [PosToken]
+doRmWhites 0 ts = ts
+doRmWhites n [] = []
+doRmWhites _ ts = ts
+-- ++AZ++ IS this still needed?
+-- doRmWhites n toks@(t:ts)=if isWhiteSpace t then doRmWhites (n-1) ts
+--                                            else toks
 
+
+{-
 --add n white space tokens to the beginning of ts
 doAddWhites::Int->[PosToken]->[PosToken]
 doAddWhites n []=[]

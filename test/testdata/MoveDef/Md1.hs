@@ -34,3 +34,10 @@ dd q = do
 
 zz1 a = 1 + toplevel a
 
+-- General Comment
+-- |haddock comment
+tlFunc :: Integer -> Integer
+tlFunc x = c * x
+-- Comment at end
+
+

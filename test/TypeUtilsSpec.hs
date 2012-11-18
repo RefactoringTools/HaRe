@@ -991,7 +991,6 @@ spec = do
 
   describe "usedWithoutQual" $ do
     it "Returns True if the identifier is used unqualified" $ do
-      -- ((_,Just renamed,parsed), toks) <- parsedFileDd1Ghc
       let
         comp = do
           (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
@@ -1010,7 +1009,6 @@ spec = do
       r `shouldBe` True
 
     it "Returns False if the identifier is used qualified" $ do
-      -- ((_,Just renamed,parsed), toks) <- parsedFileDeclareGhc
       let
         comp = do
           (t, toks) <- parseSourceFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
@@ -1051,7 +1049,26 @@ spec = do
     it "Returns True if clash of type xx" $ do
       pending "write this "
 
+  -- --------------------------------------
 
+  describe "getDeclAndToks" $ do
+    it "Returns a declaration and its associated tokens" $ do
+      let
+        comp = do
+          (t, toks) <- parseSourceFileGhc "./test/testdata/MoveDef/Md1.hs"
+          putParsedModule t toks
+          renamed <- getRefactRenamed
+
+          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Md1.hs") (40,4) renamed
+          let res = getDeclAndToks n True toks renamed
+          return (res,n,name)
+
+      (((d,t),n1,n2),s) <- runRefactGhcState comp 
+      (GHC.showPpr n1) `shouldBe` "MoveDef.Md1.tlFunc"
+      (GHC.showPpr d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
+      (show $ getStartEndLoc d) `shouldBe` "((40,1),(40,17))"
+      (show $ startEndLocIncComments (toksFromState s) d) `shouldBe` "((40,1),(40,17))"
+      (showToks t) `shouldBe` "[(((40,1),(40,1)),ITsemi,\"\"),(((40,1),(40,7)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,8),(40,9)),ITvarid \"x\",\"x\"),(((40,10),(40,11)),ITequal,\"=\"),(((40,12),(40,13)),ITvarid \"c\",\"c\"),(((40,14),(40,15)),ITstar,\"*\"),(((40,16),(40,17)),ITvarid \"x\",\"x\")]"
 
   -- ---------------------------------------
 myShow :: GHC.RdrName -> String
