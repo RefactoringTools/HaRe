@@ -60,6 +60,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , addLocInfo
                      , getOffset
                      , splitToks
+                     , splitOnNewLn
                      {-
                      , insertComments,
                      extractComments, insertTerms
@@ -304,6 +305,17 @@ onSameLn (GHC.L l1 _,_) (GHC.L l2 _,_) = r1 == r2
     (r1,_) = getGhcLoc l1
     (r2,_) = getGhcLoc l2
 
+splitOnNewLn :: [PosToken] -> ([PosToken],[PosToken])
+splitOnNewLn xs = go [] xs
+  where
+    go [] [] = ([],[])
+    go ss [] = (ss,[])
+    go [] xs = go [head xs] (tail xs)
+    go ss xs 
+      | onSameLn (glast "splitOnNewLn" ss) (head xs) = go (ss ++ [head xs]) (tail xs)
+      | otherwise = (ss,xs)
+
+
 {-
 --Returns True if a token stream starts with a newline token (apart from the white spaces tokens)
 startsWithEmptyLn::[PosToken]->Bool
@@ -520,8 +532,8 @@ groupTokensByLine xs =let (xs', xs'') = break hasNewLn xs
 -- ---------------------------------------------------------------------
 
 --Should add cases for literals.
-addLocInfo :: ([GHC.LHsBind GHC.Name],[PosToken]) 
-           -> RefactGhc ([GHC.LHsBind GHC.Name],[PosToken])
+addLocInfo :: (GHC.LHsBind GHC.Name,[PosToken]) 
+           -> RefactGhc (GHC.LHsBind GHC.Name,[PosToken])
 addLocInfo (decl, toks) = return (decl, toks) 
   -- = error "undefined addLocInfo"
 {-++AZ++ Need to see it this is actually needed....
@@ -1272,10 +1284,20 @@ extendBackwards toks startLoc endLoc backwardCondFun
 -}
 -}
 
+-- |Get the start&end location of syntax phrase t, then extend the end
+-- location to cover the comment/white spaces or new line which starts
+-- in the same line as the end location
 
 startEndLocIncFowComment::(SYB.Data t)=>[PosToken]->t->(SimpPos,SimpPos)
 startEndLocIncFowComment toks t
- = error "undefined startEndLocIncFowComment"
+ -- = error "undefined startEndLocIncFowComment"
+       =let (startLoc,endLoc)=getStartEndLoc t
+            toks1= gtail "startEndLocIncFowComment" $ dropWhile (\t->tokenPos t<endLoc) toks
+            toks11 = let (ts1, ts2) = break hasNewLn toks1
+                     in (ts1 ++ if (emptyList ts2) then [] else [ghead "startEndLocInFowComment" ts2])
+         in  if (not $ emptyList  toks11) && all (\t->isWhite t || endsWithNewLn t) toks11
+             then (startLoc, tokenPos (glast "startEndLocIncFowComment" toks11))
+             else (startLoc, endLoc)
 
 {- ++original++
 

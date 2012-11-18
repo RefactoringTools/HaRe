@@ -106,7 +106,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,simplifyDecl
     -- ** Others
    -- , applyRefac, applyRefacToClientMods
-    , mkRdrName, mkNewName
+    , mkRdrName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
     {- ,getDeclToks -}, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
@@ -281,6 +281,20 @@ mkNewName name = do
       -- n = GHC.mkSystemName un (GHC.mkVarOcc name)
       n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
 
+  return n
+
+mkNewToplevelName :: GHC.Module -> String -> GHC.SrcSpan -> RefactGhc GHC.Name
+mkNewToplevelName modid name defLoc = do
+  s <- get
+  u <- gets rsUniqState
+  put s { rsUniqState = (u+1) }
+
+  let un = GHC.mkUnique 'H' (u+1) -- H for HaRe :)
+      -- n = GHC.mkSystemName un (GHC.mkVarOcc name)
+      -- n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
+
+        -- mkExternalName :: Unique -> Module -> OccName -> SrcSpan -> Name
+      n = GHC.mkExternalName un modid (GHC.mkVarOcc name) defLoc
   return n
 
 -- ---------------------------------------------------------------------
@@ -1275,6 +1289,16 @@ class (SYB.Data t) => HsBinds t where
 instance HsBinds (GHC.RenamedSource) where
   hsBinds (grp,_,_,_) = getValBinds (GHC.hs_valds grp)
 
+  replaceBinds (grp,imps,exps,docs) binds = (grp',imps,exps,docs)
+    where
+      vb = GHC.hs_valds grp
+      vb' = case vb of
+        GHC.ValBindsIn oldbinds sigs -> GHC.ValBindsIn (GHC.listToBag binds) sigs
+        -- ++AZ++ does it matter we are throwing away the recursive flag?
+        GHC.ValBindsOut rbinds sigs  -> GHC.ValBindsIn (GHC.listToBag binds) sigs
+      grp' = grp {GHC.hs_valds = vb'}
+
+
 instance HsBinds (GHC.HsValBinds GHC.Name) where
   hsBinds vb = getValBinds vb
 
@@ -2152,12 +2176,11 @@ addItemsToImport serverModName pn ids t
 addDecl:: (SYB.Data t,HsBinds t)
         => t              -- ^ The AST.
         -> Maybe GHC.Name -- ^ If this is Just, then the declaration will be added right after this identifier's definition.
-        -> ([GHC.LHsBind GHC.Name], Maybe [PosToken]) -- ^ The declaration to be added, in both AST and Token stream format (optional).
+        -> (GHC.LHsBind GHC.Name, Maybe [PosToken]) -- ^ The declaration to be added, in both AST and Token stream format (optional).
         -> Bool              -- ^ True means the declaration is a toplevel declaration.
         -> RefactGhc t --[GHC.LHsBind GHC.Name]
 
 addDecl parent pn (decl, declToks) topLevel
- -- = error "undefined addDecl"
  = if isJust pn
      then appendDecl parent (fromJust pn) (decl, declToks)
      else if topLevel
@@ -2165,26 +2188,30 @@ addDecl parent pn (decl, declToks) topLevel
             else addLocalDecl parent (decl,declToks)
  where
 
-  {- Add a definition to the beginning of the definition declaration list, but after the data type declarations
-     if there is any. The definition will be pretty-printed if its token stream is not provided. -}
+  -- Add a definition to the beginning of the definition declaration
+  -- list, but after the data type declarations if there is any. The
+  -- definition will be pretty-printed if its token stream is not
+  -- provided.
   addTopLevelDecl :: (SYB.Data t, HsBinds t)
-                  => ([GHC.LHsBind GHC.Name], Maybe [PosToken]) -> t -> RefactGhc t
+                  => (GHC.LHsBind GHC.Name, Maybe [PosToken]) -> t -> RefactGhc t
   addTopLevelDecl (decl, declToks) parent
     = do let decls = hsBinds parent
-             (decls1,decls2)=break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
+             (decls1,decls2) = break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
          toks <- fetchToks
          let loc1 = if (not $ emptyList decls2)  -- there are function/pattern binding decls.
                     then let ((startRow,_),_) = startEndLocIncComments toks (ghead "addTopLevelDecl"  decls2)
                          in  (startRow, 1)
                     else simpPos0  -- no function/pattern binding decls in the module.
              (toks1, toks2) = if loc1==simpPos0  then (toks, [])
-                                 else break (\t->tokenPos t==loc1) toks
+                                 else break (\t -> tokenPos t >= loc1) toks
 
              declStr = case declToks of
                         Just ts -> concatMap tokenCon ts
-                        Nothing -> prettyprint decl++"\n\n"
-             colOffset = if (emptyList decls) then 1 else getOffset toks $ fst (getStartEndLoc (head decls))
-         newToks <- liftIO $ tokenise (realSrcLocFromTok $ last toks1) colOffset True declStr
+                        Nothing -> "\n"++(prettyprint decl)++"\n\n"
+                        -- Nothing -> (prettyprint decl)++"\n\n"
+             -- colOffset = if (emptyList decls) then 1 else getOffset toks $ fst (getStartEndLoc (head decls))
+             colOffset = 0
+         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addTopLevelDecl" toks1) colOffset True declStr
          let toks' = toks1 ++ newToks ++ toks2
      --    error $ show decl
 
@@ -2193,12 +2220,12 @@ addDecl parent pn (decl, declToks) topLevel
          (decl',_) <- addLocInfo (decl, newToks)
      --    error $ show decl
          -- return (replaceDecls parent (Decs (decls1++decl'++decls2) ([], [])))
-         return (replaceBinds parent (decls1++decl'++decls2))
+         return (replaceBinds parent (decls1++[decl']++decls2))
 
   appendDecl :: (SYB.Data t, HsBinds t)
       => t
       -> GHC.Name
-      -> ([GHC.LHsBind GHC.Name], Maybe [PosToken])
+      -> (GHC.LHsBind GHC.Name, Maybe [PosToken])
       -> RefactGhc t
   appendDecl parent pn (decl, declToks)
     = do toks <- fetchToks
@@ -2212,8 +2239,8 @@ addDecl parent pn (decl, declToks) topLevel
              declStr = case declToks of
                           Just ts -> concatMap tokenCon ts
                           Nothing -> prettyprint decl
-         newToks <- liftIO $ tokenise (realSrcLocFromTok $ last toks1) offset True declStr
-         let nlToken = newLnToken (last toks1)
+         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "appendDecl" toks1) offset True declStr
+         let nlToken = newLnToken (glast "appendDecl3" toks1)
              toks' = if  endsWithNewLn  (glast "appendDecl2" toks2)
                       then  toks1++ toks2 ++ (nlToken: newToks) ++ [nlToken]++ compressPreNewLns toks3
                       else  replaceToks toks startPos endPos (defToks++[nlToken,nlToken]++newToks)
@@ -2221,18 +2248,19 @@ addDecl parent pn (decl, declToks) topLevel
          -- put ((toks',modified),((tokenRow (glast "appendDecl2" newToks) -10), v2))
          putToks toks' modified
          -- return (replaceDecls parent (Decs (before ++ [ghead "appendDecl14" after]++ decl++ tail after) ([], [])))
-         return (replaceBinds parent ((before ++ [ghead "appendDecl14" after]++ decl++ tail after) ))
+         return (replaceBinds parent ((before ++ [ghead "appendDecl14" after]++[decl]++ tail after) ))
       where
         decls = hsBinds parent
         (before,after) = break (defines pn) decls -- Need to handle the case that 'after' is empty?
         splitToks' (startPos, endPos) toks
-           = let (ts1, ts2, ts3) = splitToks ( startPos, endPos) toks
-                 (ts11, ts12) = break hasNewLn (reverse ts1)
+           = let (ts1, ts2, ts3) = splitToks (startPos, endPos) toks
+                 -- (ts11, ts12) = break hasNewLn (reverse ts1)
+                 (ts11, ts12) = splitOnNewLn (reverse ts1)
              in (reverse ts12, reverse ts11++ts2, ts3)
 
   -- This function need to be tested.
   addLocalDecl :: (SYB.Data t, HsBinds t)
-               => t -> ([GHC.LHsBind GHC.Name], Maybe [PosToken])
+               => t -> (GHC.LHsBind GHC.Name, Maybe [PosToken])
                -> RefactGhc t
   addLocalDecl parent (newFun, newFunToks)
     =do
@@ -2248,19 +2276,19 @@ addDecl parent pn (decl, declToks) topLevel
                            l  -> (tokenPos.ghead "addLocalFunInToks") l
             needNewLn=if nextTokPos==simpPos0  --used to decide whether add a new line character before a introduced fun.
                       then if (emptyList toks1) then True
-                                        else (not.endsWithNewLn) (last ts1)
+                                        else (not.endsWithNewLn) (glast "addLocalDecl" ts1)
                       else endRow'==fst nextTokPos
             --endPos@(endRow,_)=if ts1==[] then endPos'
             --                             else tokenPos (last ts1)
             offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
-        newToks <- liftIO $ tokenise (realSrcLocFromTok $ last toks1) offset True
+        newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addLocalDecl 2" toks1) offset True
                           $ if needNewLn then "\n"++newSource else newSource++"\n"
         let oldToks'=getToks (startPos,endPos') toks
             toks'=replaceToks toks startPos endPos' (oldToks'++newToks)
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
         -- put ((toks',modified),((tokenRow (glast "appendDecl2" newToks) -10), v2))
         putToks toks' modified
-        return (replaceBinds parent ((hsBinds parent ++ newFun') ))
+        return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
     where
          localDecls = hsBinds parent
 
@@ -3085,7 +3113,7 @@ rmDecl pn incSig t
               toks'= deleteToks toks startLoc endLoc
           putToks toks' modified
           let (decls1, decls2) = break (defines pn) decls
-              decls2' = gtail "rmLocalDecl" decls2
+              decls2' = gtail "rmLocalDecl 1" decls2
           return $ (decls1 ++ decls2')
           -- return (decls \\ [decl])
 
@@ -3115,7 +3143,7 @@ rmDecl pn incSig t
                             --drop the 'where' 'or 'let' token
                             toks1'=takeWhile (\t->tokenPos t/=tokenPos whereOrLet) toks1
                             --remove the declaration from the token stream.
-                            toks2'=gtail "rmLocalDecl" $ dropWhile (\t->tokenPos t/=endPos') toks2
+                            toks2'=gtail "rmLocalDecl 2" $ dropWhile (\t->tokenPos t<endPos') toks2
                             --get the remained tokens after the removed declaration.
                             remainedToks=dropWhile isWhite toks2'
                         in if (emptyList remainedToks)
@@ -3141,7 +3169,7 @@ rmDecl pn incSig t
          -- return $ (decls \\ [decl])
 
          let (decls1, decls2) = break (defines pn) decls
-             decls2' = gtail "rmLocalDecl" decls2
+             decls2' = gtail "rmLocalDecl 3" decls2
          return $ (decls1 ++ decls2')
 
 

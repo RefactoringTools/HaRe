@@ -265,7 +265,7 @@ moveDecl1 t defName pns topLevel
         let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" pns) True toks t
         --error$ show (declToMove, toksToMove)
         t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
-        addDecl t' defName (declToMove, Just toksToMove) topLevel
+        addDecl t' defName (ghead "moveDecl1 2" declToMove, Just toksToMove) topLevel
 
 
 {- ++AZ++ original
