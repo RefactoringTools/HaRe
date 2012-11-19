@@ -683,30 +683,29 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = getDecls renamed
-      let Just (GHC.L l n) = locToName dd1FileName (17, 5) renamed
+      let Just (GHC.L l n) = locToName dd1FileName (17, 6) renamed
       (GHC.showPpr n) `shouldBe` "ff"
-      -- (GHC.showPpr declsr) `shouldBe` "loc"
-
-      -- let Just (GHC.L _ n) = locToName dd1FileName (23, 5) renamed
       let
         comp = do
          newName2 <- mkNewName "gg"
 
          let
-           declsToDup = definingDeclsNames [n] declsr True False
+           declsToDup = definingDeclsNames [n] declsr True True
            funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
 
-         -- newBinding <- duplicateDecl declsr renamed n newName2
+         newBinding <- duplicateDecl declsToDup renamed n newName2
 
          -- return newBinding
-         return (funBinding,declsToDup)
-      ((nb,dd),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+         return (funBinding,declsToDup,newBinding)
+      ((fb,dd,newb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "ff"
-      (GHC.showPpr dd) `shouldBe` "ff"
-      (GHC.showPpr nb) `shouldBe` "ff"
+      (GHC.showPpr dd) `shouldBe` "[ff = 15]"
+      (GHC.showPpr fb) `shouldBe` "[ff = 15]"
+      (show $ getStartEndLoc fb) `shouldBe` "((17,5),(17,12))"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "ffff"
-      (GHC.showPpr nb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
+      (GHC.showPpr newb) `shouldBe` "[ff = 15]"
+      (GHC.showPpr fb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
 
 
   -- ---------------------------------------------
@@ -1067,8 +1066,8 @@ spec = do
       (GHC.showPpr n1) `shouldBe` "MoveDef.Md1.tlFunc"
       (GHC.showPpr d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
       (show $ getStartEndLoc d) `shouldBe` "((40,1),(40,17))"
-      (show $ startEndLocIncComments (toksFromState s) d) `shouldBe` "((40,1),(40,17))"
-      (showToks t) `shouldBe` "[(((40,1),(40,1)),ITsemi,\"\"),(((40,1),(40,7)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,8),(40,9)),ITvarid \"x\",\"x\"),(((40,10),(40,11)),ITequal,\"=\"),(((40,12),(40,13)),ITvarid \"c\",\"c\"),(((40,14),(40,15)),ITstar,\"*\"),(((40,16),(40,17)),ITvarid \"x\",\"x\")]"
+      (show $ startEndLocIncComments (toksFromState s) d) `shouldBe` "((40,1),(41,18))"
+      (showToks t) `shouldBe` "[(((40,1),(40,1)),ITsemi,\"\"),(((40,1),(40,7)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,8),(40,9)),ITvarid \"x\",\"x\"),(((40,10),(40,11)),ITequal,\"=\"),(((40,12),(40,13)),ITvarid \"c\",\"c\"),(((40,14),(40,15)),ITstar,\"*\"),(((40,16),(40,17)),ITvarid \"x\",\"x\"),(((41,1),(41,18)),ITlineComment \"-- Comment at end\",\"-- Comment at end\")]"
 
   -- ---------------------------------------
 myShow :: GHC.RdrName -> String

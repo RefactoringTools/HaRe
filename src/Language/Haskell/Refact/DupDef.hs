@@ -113,7 +113,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
         dupInPat pat = return pat
 
         --4: The defintion to be duplicated is a local decl in a Let expression
-        dupInLet (letExp@(GHC.HsLet ds e):: GHC.HsExpr GHC.Name)
+        dupInLet (letExp@(GHC.HsLet ds _e):: GHC.HsExpr GHC.Name)
           | not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letExp pn
         dupInLet letExp = return letExp
 
