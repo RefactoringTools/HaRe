@@ -11,7 +11,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , emptyList
                      , showToks
                      , tokenCol, tokenRow
-                     , tokenPos
+                     , tokenPos, tokenPosEnd
                      , tokenCon
                      , tokenLen
                      -- ,lengthOfToks
@@ -156,6 +156,9 @@ tokenRow (GHC.L l _,_) = r where (r,_) = getGhcLoc l
 tokenPos :: (GHC.GenLocated GHC.SrcSpan t1, t) -> SimpPos
 tokenPos (GHC.L l _,_)     = getGhcLoc l
 
+tokenPosEnd :: (GHC.GenLocated GHC.SrcSpan t1, t) -> SimpPos
+tokenPosEnd (GHC.L l _,_)     = getGhcLocEnd l
+
 tokenCon (_,s)     = s
 
 tokenLen (_,s)     = length s   --check this again! need to handle the tab key.
@@ -201,6 +204,9 @@ isComment ((GHC.L _ (GHC.ITdocOptionsOld _)),s)   = True
 isComment ((GHC.L _ (GHC.ITlineComment _)),s)     = True
 isComment ((GHC.L _ (GHC.ITblockComment _)),s)    = True
 isComment ((GHC.L _ _),s)                         = False
+
+isEmpty ((GHC.L _ (GHC.ITsemi)), "") = True
+isEmpty _                           = False
 
 {-
 isNestedComment (t,(_,s))    = t==NestedComment
@@ -624,11 +630,12 @@ lengthOfLastLine toks
 -- | get a token stream specified by the start and end position.
 getToks :: (SimpPos,SimpPos) -> [PosToken] -> [PosToken]
 getToks (startPos,endPos) toks =
-  -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks=" ++ (showToks toks)
-  let (_,toks2) = break (\t -> tokenPos t >= startPos) toks
-      (toks21,toks22) = break (\t -> tokenPos t > endPos) toks2
-  -- in (toks21++ [ghead "getToks" toks22])   -- Should add error message for empty list?
-  in (toks21)   -- Should add error message for empty list?
+  -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks=" ++ (showToks toks) -- ++AZ++ debug
+  let (_,toks2)        = break (\t -> tokenPos t >= startPos) toks
+      (toks21,_toks22) = break (\t -> tokenPos t >  endPos) toks2
+  in 
+    (toks21)   -- Should add error message for empty list?
+    -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks21=" ++ (showToks toks21) -- ++AZ++ debug
 
 -- ---------------------------------------------------------------------
 
@@ -806,7 +813,7 @@ reAlignToks (tok1@((GHC.L l1 t1),s1):tok2@((GHC.L l2 t2),s2):ts)
 
 -- | Get the end of the line before the pos
 getOffset toks pos
-  = let (ts1, ts2) = break (\t->tokenPos t == pos) toks
+  = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
     in if (emptyList ts2)
          then error "HaRe error: position does not exist in the token stream!"
          else lengthOfLastLine ts1
@@ -1333,8 +1340,19 @@ startEndLocIncFowNewLn toks t
 -- the start and end location to cover the preceding and following
 -- comments.
 startEndLocIncComments::(SYB.Data t) => [PosToken] -> t -> (SimpPos,SimpPos)
-startEndLocIncComments toks t
-
+startEndLocIncComments toks t =
+  let
+    (startLoc,endLoc)  = getStartEndLoc t
+    (begin,middle,end) = splitToks (startLoc,endLoc) toks
+    lead = reverse $ takeWhile (\tok -> isComment tok || isEmpty tok) $ reverse begin
+    lead' = if ((nonEmptyList lead) && (isEmpty $ head lead)) then (tail lead) else lead
+    trail = takeWhile (\tok -> isComment tok || isEmpty tok) $ end
+    trail' = if ((nonEmptyList trail) && (isEmpty $ last trail)) then (init trail) else trail
+    middle' = lead' ++ middle ++ trail'
+  in
+    ((tokenPos $ head middle'),(tokenPosEnd $ last middle'))
+    
+{- ++AZ++ re-doing this ...
 -- ts1 : lead in toks
 -- ts2 : start of t to end of file
 -- ts11 : reversed leading blank lines of t
@@ -1344,11 +1362,14 @@ startEndLocIncComments toks t
 -- toks12 : blank lines, t, to end of file
 -- toks12' : just the blank lines
 
--- TODO: ++AZ++ simplify this, the GHC token stream makes it easier
+-- ITsemi with ""
+-- ITlineComment
+-- isComment
+
   =let (startLoc,endLoc) = getStartEndLoc t
        (toks11,toks12)= let (ts1,ts2)    = break (\tok->tokenPos tok == startLoc) toks
                             -- (ts11, ts12) = break hasNewLn (reverse ts1)
-                            (ts11, ts12) = break (\tok->tokenRow tok == fst startLoc) (reverse ts1)
+                            (ts11, ts12) = break (\tok->tokenRow tok /= fst startLoc) (reverse ts1)
                         in (reverse ts12, reverse ts11++ts2)
        toks12'=takeWhile (\tok->tokenPos tok /=startLoc) toks12
        startLoc'=
@@ -1382,9 +1403,7 @@ startEndLocIncComments toks t
                                                               --line of the last token of t
                then (startLoc', tokenPos (last toks21))
                else (startLoc', endLoc)
-
-emptyList [] = True
-emptyList _  = False
+-- ++AZ++ redoing end -}
 
 
 {- ++original
@@ -1429,6 +1448,15 @@ startEndLocIncComments toks t
                then (startLoc', tokenPos (last toks21))
                else (startLoc', endLoc)
 -}
+-- ----------------------------------------------------------------------
+
+-- |Get around lack of instance Eq when simply testing for empty list
+emptyList [] = True
+emptyList _  = False
+
+nonEmptyList [] = False
+nonEmptyList _  = True
+
 -- ---------------------------------------------------------------------
 {-
 --Create a list of white space tokens.

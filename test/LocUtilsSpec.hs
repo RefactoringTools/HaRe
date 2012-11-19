@@ -34,7 +34,6 @@ spec = do
 
   describe "startEndLocIncComments" $ do
     it "get start&end loc, including leading and trailing comments" $ do
-      -- ((_,Just renamed,_), toks) <- parsedFileDeclareGhc
       (t, toks) <- parsedFileDeclareGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -45,13 +44,37 @@ spec = do
       let decl = head $ drop 4 decls
       let (startPos,endPos) = startEndLocIncComments toks decl
 
-      -- (GHC.showPpr decls) `shouldBe` "unD (B y) = y"
-
       (GHC.showPpr decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
-      (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
+      (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe` 
+             ("[(((18,1),(18,1)),ITsemi,\"\")," ++
+             "(((18,1),(18,5)),ITdata,\"data\")," ++
+             "(((18,6),(18,7)),ITconid \"D\",\"D\")," ++
+             "(((18,8),(18,9)),ITequal,\"=\")," ++
+             "(((18,10),(18,11)),ITconid \"A\",\"A\")," ++
+             "(((18,12),(18,13)),ITvbar,\"|\")," ++
+             "(((18,14),(18,15)),ITconid \"B\",\"B\")," ++
+             "(((18,16),(18,22)),ITconid \"String\",\"String\")," ++
+             "(((18,23),(18,24)),ITvbar,\"|\")," ++
+             "(((18,25),(18,26)),ITconid \"C\",\"C\")," ++
+             "(((20,1),(20,32)),ITlineComment \"-- Retrieve the String from a B\",\"-- Retrieve the String from a B\")," ++
+             "(((21,1),(21,1)),ITsemi,\"\")," ++
+             "(((21,1),(21,4)),ITvarid \"unD\",\"unD\")," ++
+             "(((21,5),(21,6)),IToparen,\"(\")," ++
+             "(((21,6),(21,7)),ITconid \"B\",\"B\")," ++
+             "(((21,8),(21,9)),ITvarid \"y\",\"y\")," ++
+             "(((21,9),(21,10)),ITcparen,\")\")," ++
+             "(((21,11),(21,12)),ITequal,\"=\")," ++
+             "(((21,13),(21,14)),ITvarid \"y\",\"y\")," ++
+             "(((22,1),(22,18)),ITlineComment \"-- But no others.\",\"-- But no others.\")," ++
+             "(((24,1),(24,73)),ITlineComment \"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\"," ++
+                                             "\"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\")," ++
+             "(((25,1),(25,1)),ITsemi,\"\")," ++
+             "(((25,1),(25,5)),ITdata,\"data\")]")
 
-      (show (startPos,endPos)) `shouldBe` "((20,1),(22,1))"
+
+      (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
+      (show   (startPos,endPos)) `shouldBe` "((20,1),(24,73))"
 
   -- -------------------------------------------------------------------
 
@@ -236,6 +259,17 @@ spec = do
                "(((4,31),(4,35)),ITelse,\"else\")," ++
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n         if (odd x) then \"Odd\" else \"Even\""
+
+    it "get a token stream from the middle of tokens 2" $ do
+      (_t,toks) <- parsedFileDd1Ghc
+      let
+          middle = getToks ((17,5),(17,23)) toks
+      (showToks middle) `shouldBe`
+               "[(((17,5),(17,5)),ITsemi,\"\")," ++
+               "(((17,5),(17,7)),ITvarid \"ff\",\"ff\")," ++
+               "(((17,8),(17,9)),ITequal,\"=\")," ++
+               "(((17,10),(17,12)),ITinteger 15,\"15\")]"
+      (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n     ff = 15"
 
   -- -------------------------------------------------------------------
 
