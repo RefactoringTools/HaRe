@@ -423,7 +423,7 @@ ghcPos0 = GHC.mkSrcLoc (GHC.mkFastString "") 1 1
 -- ---------------------------------------------------------------------
 
 realSrcLocFromTok :: PosToken -> GHC.RealSrcLoc
-realSrcLocFromTok (GHC.L (GHC.RealSrcSpan span) _,_) = GHC.realSrcSpanStart span
+realSrcLocFromTok (GHC.L (GHC.RealSrcSpan srcspan) _,_) = GHC.realSrcSpanStart srcspan
 realSrcLocFromTok (GHC.L _ _,_) = GHC.mkRealSrcLoc (GHC.mkFastString "") 1 1
 
 -- ---------------------------------------------------------------------

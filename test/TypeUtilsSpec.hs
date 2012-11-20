@@ -323,8 +323,8 @@ spec = do
       pending "Convert to definingDeclsNames"
     -}
 
+    {- ++AZ++ a data decl is not part of the binds
     it "finds in a data decl" $ do
-      -- ((_,Just renamed,_), _toks) <- parsedFileDd1Ghc
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -336,7 +336,7 @@ spec = do
       let res = definingDecls [(PN (GHC.mkRdrUnqual (GHC.mkDataOcc "A")))] ds True False
       GHC.showPpr res `shouldBe` "[data D = A | B String | C]"
       -}
-
+    -}
 
     it "finds recursively in sub-binds" $ do
       {-
@@ -507,6 +507,8 @@ spec = do
     it "does something useful" $ do
       pending "Complete this"
 
+  -- ---------------------------------------------------------------------
+
   describe "hsVisiblePNs" $ do
     it "Returns [] if e does not occur in t" $ do
       -- ((_,Just renamed,_parsed),_toks) <- parsedFileDd1Ghc
@@ -518,15 +520,34 @@ spec = do
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "[]"
 
+    -- -----------------------------------------------------------------
+
     it "Returns visible vars if e does occur in t" $ do
-      -- ((_,Just renamed, parsed), toks) <- parsedFileDd1Ghc
       (t,_toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just tl1  = locToExp (14,1) (14,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-      let Just tup = getName "DupDef.Dd1.tup" renamed
+      let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      (GHC.showPpr tl1) `shouldBe` "ll GHC.Num.+ z"
+
+      let Just tup = getName "DupDef.Dd1.l" renamed
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
-      (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "foo"
+      (GHC.showPpr decl) `shouldBe` "DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z"
+
+      (GHC.showPpr $ hsVisiblePNs tl1 decl) `shouldBe` "[z, ll]"
+
+    -- -----------------------------------------------------------------
+
+    it "Returns visible vars if e does occur in t #2" $ do
+      (t,_toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      (GHC.showPpr tl1) `shouldBe` "ll GHC.Num.+ z"
+
+      let Just rhs  = locToExp (26,1) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      (GHC.showPpr rhs) `shouldBe` "let ll = 34 in ll GHC.Num.+ z"
+
+      (GHC.showPpr $ hsVisiblePNs tl1 rhs) `shouldBe` "[ll]"
 
   -- ---------------------------------------------
 
@@ -703,9 +724,9 @@ spec = do
       (GHC.showPpr fb) `shouldBe` "[ff = 15]"
       (show $ getStartEndLoc fb) `shouldBe` "((17,5),(17,12))"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "ffff"
-      (GHC.showPpr newb) `shouldBe` "[ff = 15]"
-      (GHC.showPpr fb) `shouldBe` "[bar2_H3 x = DupDef.Dd1.c GHC.Num.* x]"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n \n     gg :: Int\n      gg = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showPpr newb) `shouldBe` "[gg = 15]"
+      (GHC.showPpr fb) `shouldBe` "[ff = 15]"
 
 
   -- ---------------------------------------------
@@ -860,31 +881,6 @@ spec = do
     it "Returns true if a syntax phrase is part of another" $ do
       let
         comp = do
-
-         (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
-         putParsedModule t toks
-         parentr <- getRefactRenamed
-
-         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
-         let (Just (ln@(GHC.L _ n))) = mn
-
-         let declsr = getDecls parentr
-             duplicatedDecls = definingDeclsNames [n] declsr True False
-
-             -- res = findEntity ln duplicatedDecls
-             res = findEntity' ln duplicatedDecls
-
-         return (res,duplicatedDecls,ln)
-      ((r,d,l),_s) <- runRefactGhcState comp
-      (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
-      -- (show l) `shouldBe` "foo"
-      (show r) `shouldBe` "foo"
-
-    it "Returns false if a syntax phrase is not part of another" $ do
-      let
-        comp = do
-
-         -- ((_,Just parentr,_parsed),_toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
          (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
          putParsedModule t toks
          parentr <- getRefactRenamed
@@ -902,7 +898,81 @@ spec = do
       ((r,d,l),_s) <- runRefactGhcState comp
       (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       -- (show l) `shouldBe` "foo"
-      (show r) `shouldBe` "foo"
+      -- (show r) `shouldBe` "foo"
+      r `shouldBe` True
+
+    -- -----------------------------------------------------------------
+
+    it "Returns false if a syntax phrase is not part of another" $ do
+      let
+        comp = do
+         (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         putParsedModule t toks
+         parentr <- getRefactRenamed
+
+         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
+         let (Just (ln@(GHC.L _ n))) = mn
+
+         let mltup = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (11,1) parentr
+         let (Just (ltup@(GHC.L _ tup))) = mltup
+
+         let declsr = getDecls parentr
+             duplicatedDecls = definingDeclsNames [n] declsr True False
+
+             res = findEntity tup duplicatedDecls
+             -- res = findEntity' ln duplicatedDecls
+
+         return (res,duplicatedDecls,ln)
+      ((r,d,l),_s) <- runRefactGhcState comp
+      (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+      -- (show l) `shouldBe` "foo"
+      -- (show r) `shouldBe` "foo"
+      r `shouldBe` False
+
+    -- -----------------------------------------------------------------
+
+    it "Finds an entity in [HsBind Name]" $ do
+      pending "write this test"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds an entity in (MatchGroup matches _)" $ do
+      pending "write this test"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds an entity in (HsLet decls _)" $ do
+      pending "write this test"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds an entity in (HsLet _ e1)" $ do
+      pending "write this test"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds an entity in (HsLet decls _)" $ do
+      pending "write this test"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds an entity in (PatBind pat rhs _ _ _)" $ do
+      pending "write this test"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds an entity in (Match _ _ rhs)" $ do
+      pending "write this test"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds an entity in (LetStmt binds)" $ do
+      pending "write this test"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds an entity in (BindStmt _ rhs _ _)" $ do
+      pending "write this test"
 
 
   -- ---------------------------------------------

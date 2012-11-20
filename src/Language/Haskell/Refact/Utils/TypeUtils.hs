@@ -640,9 +640,9 @@ hsVisibleNames e t = ((nub.map GHC.showPpr) d)
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisiblePNs :: (FindEntity t1, SYB.Data t1, SYB.Data t2) =>
-   t1 -> t2 -> [GHC.Name]
-hsVisiblePNs e t = SYB.everythingStaged SYB.Renamer (++) []
+hsVisiblePNs :: (FindEntity e1, SYB.Data e1, SYB.Data t1) =>
+   e1 -> t1 -> [GHC.Name]
+hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
                   ([] `SYB.mkQ`  top
                       `SYB.extQ` expr
                       `SYB.extQ` decl
@@ -651,33 +651,40 @@ hsVisiblePNs e t = SYB.everythingStaged SYB.Renamer (++) []
 
       where
           top ((groups,_,_,_) :: GHC.RenamedSource)
-            | findEntity e groups = dd
+            -- | findEntity e groups = dd -- ++AZ++:TODO: Should be GHC.HsBinds GHC.Name, not groups
+            | findEntity e (GHC.hs_valds groups) = dd -- ++AZ++:TODO: Should be GHC.HsBinds GHC.Name, not groups
            where
-             (_df,dd) = hsFreeAndDeclaredPNs groups
+             (_df,dd) = hsFreeAndDeclaredPNs (GHC.hs_valds groups)
           top _ = []
 
+          {- ++AZ++ included in (GHC.Match ...) below
           expr ((GHC.HsLam (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name)
             | findEntity e matches = dd
            where
              (_df,dd) = hsFreeAndDeclaredPNs matches
-
+          ++AZ++ end -}
+ 
           expr ((GHC.HsLet decls e1) :: GHC.HsExpr GHC.Name)
              |findEntity e e1 || findEntity e decls = dd
            where
              (_df,dd) = hsFreeAndDeclaredPNs decls
 
+          {- ++AZ++ included in (GHC.Match ...) below
           -- This is the equivalent of HsAlt
           expr ((GHC.HsCase _ (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name)
             | findEntity e matches = dd
            where
              (_df,dd) = hsFreeAndDeclaredPNs matches
+          ++AZ++ end -}
 
           expr _ = []
 
+          {- ++AZ++ included in (GHC.Match ...) below
           decl ((GHC.FunBind _ _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name) 
             | findEntity e matches = dd
            where
              (_df,dd) = hsFreeAndDeclaredPNs matches
+          ++AZ++ end -}
 
           decl ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
             |findEntity e rhs = (pd `union` dd)
@@ -1520,7 +1527,15 @@ instance FindEntity (GHC.Located GHC.Name) where
 
 instance FindEntity (GHC.Located (GHC.HsExpr GHC.Name)) where
 
-  findEntity n t = error "findEntity (GHC.Located (GHC.HsExpr GHC.Name)) undefined"
+  -- findEntity n t = error "findEntity (GHC.Located (GHC.HsExpr GHC.Name)) undefined"
+  findEntity e t = fromMaybe False res
+   where
+    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (expr::GHC.Located (GHC.HsExpr GHC.Name))
+      -- | e == expr = Just True
+      | sameOccurrence e expr = Just True
+    worker _ = Nothing
 
 -- ---------------------------------------------------------------------
 
@@ -1663,7 +1678,7 @@ definingDeclsNames pns ds _incTypeSig recursive = concatMap defines ds
       defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
         |isJust (find (==(pname)) pns) = [decl']
 
-      defines' decl'@(GHC.L l (GHC.PatBind p rhs ty fvs _))
+      defines' decl'@(GHC.L _l (GHC.PatBind p _rhs _ty _fvs _))
         |(hsNamess p) `intersect` pns /= [] = [decl']
 
       defines' _ = []
@@ -2968,9 +2983,9 @@ duplicateDecl decls sigs n newFunName
                  else  (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks3) 
           -}
 
-      liftIO $ putStrLn ("TypeUtils.duplicateDecl:(offset)=" ++ (show offset)) -- ++AZ++ debug 12
-      liftIO $ putStrLn ("TypeUtils.duplicateDecl:(fst (getStartEndLoc funBinding))=" ++ (show (fst $ getStartEndLoc funBinding))) -- ++AZ++ debug 12
-      liftIO $ putStrLn ("TypeUtils.duplicateDecl:(last toks1)=" ++ (showToks [last toks1])) -- ++AZ++ debug 19
+      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:(offset)=" ++ (show offset)) -- ++AZ++ debug 12
+      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:(fst (getStartEndLoc funBinding))=" ++ (show (fst $ getStartEndLoc funBinding))) -- ++AZ++ debug 12
+      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:(last toks1)=" ++ (showToks [last toks1])) -- ++AZ++ debug 19
       -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:newLineTok=" ++ (showToks newLineTok)) -- ++AZ++ debug
       putToks toks' True
       -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
