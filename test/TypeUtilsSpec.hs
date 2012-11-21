@@ -474,22 +474,46 @@ spec = do
 
   describe "hsFreeAndDeclaredPNs" $ do
     it "Finds declared HsVar" $ do
-      -- ((_,renamed,_), _toks) <- parsedFileDeclareGhc
       (t, _toks) <- parsedFileDeclareGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let res = hsFreeAndDeclaredPNs renamed
-          -- m = GHC.mkModule () (GHC.MkModuleName ""FreeAndDeclared.Declare")
-      -- (GHC.showPpr $ map (\n -> (n, GHC.isSystemName n)) (fst res)) `shouldBe` "foo"
-      -- (GHC.showPpr $ map (\n -> (n, GHC.isInternalName n)) (fst res)) `shouldBe` "foo" -- Seems to be from own source, non top-level
-      -- (GHC.showPpr $ map (\n -> (n, GHC.isExternalName n)) (fst res)) `shouldBe` "foo" -- Exported somewhere?
-      -- (GHC.showPpr $ map (\n -> (n, GHC.isWiredInName n)) (fst res)) `shouldBe` "foo" 
-      -- (GHC.showPpr $ map (\n -> (n, GHC.nameIsLocalOrFrom m n)) (fst res)) `shouldBe` "foo" 
-      (GHC.showPpr $ map (\n -> (n, GHC.nameModule_maybe n)) (fst res)) `shouldBe` "foo" 
-{-
-      (GHC.showPpr res)  `shouldBe` "([System.IO.getChar, GHC.Base.>>=, GHC.Base.fail,\n  System.IO.putStrLn, GHC.Base.return, a, b, y, GHC.Base.$,\n  GHC.List.head, GHC.List.zip, GHC.Num.fromInteger, GHC.Num.*,\n  FreeAndDeclared.Declare.c, x],\n"
-      ++ " [FreeAndDeclared.Declare.main, a, FreeAndDeclared.Declare.unF, a,\n  b, FreeAndDeclared.Declare.unD, y, FreeAndDeclared.Declare.h,\n  FreeAndDeclared.Declare.t, FreeAndDeclared.Declare.d,\n  FreeAndDeclared.Declare.c, FreeAndDeclared.Declare.toplevel, x])"
--}
+
+      -- Free Vars
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[(Data.Generics.Text.gshow, (-1, -1)), (z, (36, 4)),\n (System.IO.getChar, (-1, -1)), (GHC.Base.>>=, (-1, -1)),\n (GHC.Base.fail, (-1, -1)), (System.IO.putStrLn, (-1, -1)),\n (GHC.Base.return, (-1, -1)), (a, (27, 6)), (b, (27, 11)),\n (y, (21, 8)), (GHC.Base.$, (-1, -1)), (GHC.List.head, (-1, -1)),\n (GHC.List.zip, (-1, -1)), (GHC.Num.fromInteger, (-1, -1)),\n (GHC.Num.*, (-1, -1)), (FreeAndDeclared.Declare.c, (9, 1)),\n (x, (6, 10))]"
+
+      -- Declared Vars
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` "[(FreeAndDeclared.Declare.ff, (36, 1)), (z, (36, 4)),\n (FreeAndDeclared.Declare.mkT, (34, 1)),\n (FreeAndDeclared.Declare.main, (30, 1)), (a, (31, 3)),\n (FreeAndDeclared.Declare.unF, (27, 1)), (a, (27, 6)),\n (b, (27, 11)), (FreeAndDeclared.Declare.unD, (21, 1)),\n (y, (21, 8)), (FreeAndDeclared.Declare.h, (16, 6)),\n (FreeAndDeclared.Declare.t, (16, 8)),\n (FreeAndDeclared.Declare.d, (10, 1)),\n (FreeAndDeclared.Declare.c, (9, 1)),\n (FreeAndDeclared.Declare.toplevel, (6, 1)), (x, (6, 10))]"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds free and declared in a single bind" $ do
+      (t, _toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just tup = getName "DupDef.Dd1.ff" renamed
+      let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
+
+      let res = hsFreeAndDeclaredPNs decl
+
+      -- Free Vars
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+                   "[(GHC.Num.+, (-1, -1)), " ++
+                    "(y, (21, 4)), " ++
+                    "(zz, (23, 5)),\n " ++ -- ++AZ++: pretty sure zz is declared
+                    "(GHC.Num.fromInteger, (-1, -1))]"
+
+      -- Declared Vars
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+                   "[(DupDef.Dd1.ff, (21, 1)), " ++
+                    "(y, (21, 4)), " ++  -- ++AZ++: pretty sure y is a free var
+                    "(zz, (23, 5))]"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds free and declared in a single bind" $ do
+      pending "fix the prior test"
+
 
   -- ---------------------------------------------------------------------
 
