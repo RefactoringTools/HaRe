@@ -10,7 +10,7 @@ Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
 Description:                    A full Haskell 98 refactoring tool. HaRe supports the full Haskell 98 standard, implemented in Haskell and supporting Emacs and VIm.
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
-Cabal-Version:                  >= 1.6
+Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 Data-Dir:                       misc
 Data-Files:                     haskell-refac.el
@@ -144,8 +144,16 @@ Library
                                 , pretty
                                 , ghc-paths
                                 , old-time
-        -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
+                                , lens >= 3.0
+                                , ghc-prim
+                                , ghc-syb-utils
+                                , transformers
+                                , filepath
+                                , directory
         -- GHC-Options:             -Wall
+        -- We want to run coverage reports on the library
+        GHC-Options:             -fhpc
+
         Hs-Source-Dirs:         src
         Other-Modules:          Paths_HaRe
         Exposed-modules:
@@ -163,18 +171,18 @@ Executable ghc-hare
                                 , cmdtheline >= 0.2.1
                     --            , network
                                 , ghc
-                    --            , containers
+                                , containers
                     --            , hint
                                 , mtl
-                    --            , directory
+                                , directory
                                 , pretty
                     --            , process
-                    --            , filepath
+                                , filepath
                     --            , old-time
                                 , array
                                 , ghc-paths
                     --            , MonadCatchIO-mtl
-                    --            , transformers
+                                , transformers
                                 , ghc-syb-utils
                                 , old-time
                                 , lens >= 3.0
@@ -252,13 +260,14 @@ test-suite spec
   ghc-options:
       -- reinstate these later  -Wall 
       -- reinstate these later  -Werror
-      -fhpc
+      -- -fhpc
+      -- -fhpc -hpcdir dist/hpc/app-1.0
   cpp-options:
       -DTEST
   main-is:
       Spec.hs
   Hs-Source-Dirs:         
-      src
+    src
     , test
   build-depends:
     --   base >= 4 && <= 5
@@ -266,12 +275,10 @@ test-suite spec
     -- , QuickCheck
       base        >= 4.0  && < 4.7
     , ghc         >= 6.12 && < 7.8
-    , syb
     , deepseq
     , directory
     , process
     , ghc-paths   == 0.1.*
-    , transformers
     , HUnit       == 1.2.*
     , hspec       >= 1.3
     , QuickCheck  >= 2.5
@@ -282,4 +289,11 @@ test-suite spec
     , Diff
     , lens >= 3.0
     , ghc-prim
+    , mtl
+    , syb
+    , ghc-syb-utils
+    , transformers
+    , containers
+
+    , HaRe >= 0.6.0.3
 
