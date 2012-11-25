@@ -125,6 +125,9 @@ Data-Dir:                       misc
 --            TypeCheck
 
 
+flag hpc
+  default: False
+
 Library
         Build-Depends:          base >=4
                                 , syb
@@ -140,9 +143,12 @@ Library
                                 , transformers
                                 , filepath
                                 , directory
+
         -- GHC-Options:             -Wall
         -- We want to run coverage reports on the library
-        GHC-Options:             -fhpc
+        if flag(hpc)
+          ghc-options: -fhpc
+          -- GHC-Options:             -fhpc
 
         Hs-Source-Dirs:         src
         Other-Modules:          Paths_HaRe
@@ -158,6 +164,7 @@ Library
            , Language.Haskell.Refact.Utils.RenamedSourceUtils
            , Language.Haskell.Refact.Utils.TypeSyn
            , Language.Haskell.Refact.Utils.TypeUtils
+   
 
 
 Executable ghc-hare
