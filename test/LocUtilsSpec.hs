@@ -333,6 +333,11 @@ spec = do
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
       (showToks [newLnToken (head middle)]) `shouldBe` "[(((5,1),(5,1)),ITvocurly,\"\")]"
 
+  -- -------------------------------------------------------------------
+
+  describe "lengthOfLastLine" $ do
+    it "needs a test or two" $ do
+      pending "write this test"
 
   -- -------------------------------------------------------------------
 

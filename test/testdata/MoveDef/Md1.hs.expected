@@ -20,8 +20,8 @@ data D = A | B String | C
 
 ff :: Int -> Int
 ff y = y + zz
-
 zz=1
+
 
 l z =
   let

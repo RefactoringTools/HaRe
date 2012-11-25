@@ -327,7 +327,7 @@ gg = qq td
 
 
 -- filtered :: (Gettable f, Applicative f) => (c -> Bool) -> LensLike f a b c d -> LensLike f a b c d
-hh = filtered isBaz foo
+-- hh = filtered isBaz foo
 
 -- ii :: (Data a) => a -> [Baz String]
 -- ii = foldMapOf hh getBaz

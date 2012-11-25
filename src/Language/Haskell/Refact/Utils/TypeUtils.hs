@@ -2250,12 +2250,17 @@ addDecl parent pn (decl, declToks) topLevel
              (toks1, toks2, toks3) = splitToks' (startPos, endPos) toks
               --get the toks defining pn
              defToks = dropWhile (\t->tokenPos t /=startPos) toks2
-             offset = getOffset toks $ fst (getStartEndLoc (ghead "appendDecl2" decls))
+             offset = if topLevel 
+                        then 0
+                        else getOffset toks $ fst (getStartEndLoc (ghead "appendDecl2" decls))
+
              declStr = case declToks of
                           Just ts -> concatMap tokenCon ts
                           Nothing -> prettyprint decl
-         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "appendDecl" toks1) offset True declStr
-         let nlToken = newLnToken (glast "appendDecl3" toks1)
+             nlToken = newLnToken (glast "appendDecl3" toks2)
+         -- error ("appendDecl: (offset,startEndLoc)=" ++ (show (offset, (getStartEndLoc (ghead "appendDecl2" decls))))) -- ++AZ++ debug
+         newToks <- liftIO $ tokenise (realSrcLocFromTok nlToken) offset True declStr
+         let -- 
              toks' = if  endsWithNewLn  (glast "appendDecl2" toks2)
                       then  toks1++ toks2 ++ (nlToken: newToks) ++ [nlToken]++ compressPreNewLns toks3
                       else  replaceToks toks startPos endPos (defToks++[nlToken,nlToken]++newToks)

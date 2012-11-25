@@ -253,11 +253,12 @@ liftToTopLevel' modName fileName (inscps, mod, toks) pnt@(PNT pn _ _)
 -}
 
 moveDecl1 :: (HsBinds t)
-          => t 
-          -> Maybe GHC.Name
-          -> [GHC.Located GHC.Name]
-          -> Bool
-          -> RefactGhc t
+  => t -- ^ The syntax element to update
+  -> Maybe GHC.Name -- ^ If specified, add defn after this one
+  -- TODO: make this next parameter a single value, not a list, after module complete
+  -> [GHC.Located GHC.Name] -- ^ The first one is the decl to move
+  -> Bool -- ^True if moving to the top level
+  -> RefactGhc t -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName pns topLevel
    -- = error "undefined moveDecl1"
    = do toks <- fetchToks
