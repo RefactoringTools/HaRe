@@ -85,7 +85,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
     -- ** Updating
     -- ,Update(update)
-    {- ,qualifyPName,rmQualifier -} ,renamePN -- ,replaceNameInPN,autoRenameLocalVar
+    {- ,qualifyPName-},rmQualifier,renamePN -- ,replaceNameInPN,autoRenameLocalVar
 
 -- * Miscellous
     -- ** Parsing, writing and showing
@@ -3309,6 +3309,62 @@ replaceNameInPN qualifier (PN (UnQual s) (G modName s1 loc))  newName
 replaceNameInPN qualifier (PN (Qual modName s) (G modName1 s1 loc))  newName
   =if isJust qualifier then (PN (Qual (fromJust qualifier) newName) (G modName1 newName loc)) 
                        else (PN (Qual modName newName) (G modName1 newName loc))
+-}
+
+-- ---------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------------
+
+{-
+-- | Add a qualifier to an identifier if it is not qualified.
+qualifyPName::ModuleName  -- ^ The qualifier.
+              ->PName     -- ^ The identifier.
+              ->PName     -- ^ The result.
+qualifyPName qual pn 
+ = case pn of 
+      PN (UnQual n) ty -> PN (Qual qual n ) ty
+      _                -> pn
+-}
+
+-- ---------------------------------------------------------------------
+
+-- | Remove the qualifier from the given identifiers in the given syntax phrase.
+rmQualifier:: (SYB.Data t) 
+             =>[GHC.Name]       -- ^ The identifiers.
+               ->t           -- ^ The syntax phrase.
+               ->RefactGhc t -- ^ The result.
+rmQualifier pns t = 
+  error "undefined rmQualifier"
+{- ++AZ++ WIP
+  everywhereMStaged SYB.Renamer (SYB.mkM rename) t
+    where
+     rename (pnt@(GHC.L l pn)::GHC.Located GHC.Name)
+       | elem pn pns
+       = do do toks <- fetchToks
+               -- let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
+               let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
+               putToks toks' modified
+               return (PNT (PN (UnQual s) l) ty loc)
+     rename x = return  x
+-}
+
+
+{- ++ original ++
+-- | Remove the qualifier from the given identifiers in the given syntax phrase.
+rmQualifier::((MonadState (([PosToken], Bool), t1) m),Term t)
+             =>[PName]  -- ^ The identifiers.
+               ->t      -- ^ The syntax phrase.
+               ->m t    -- ^ The result.
+rmQualifier pns t 
+  = applyTP (full_tdTP (adhocTP idTP rename )) t
+   where 
+     rename pnt@(PNT  pn@(PN (Qual modName  s) l) ty loc@(N (Just (SrcLoc fileName _ row col))))
+       | elem pn pns
+       = do do ((toks,_), others)<-get
+               let toks' =replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
+               put ((toks', modified), others)
+               return (PNT (PN (UnQual s) l) ty loc)
+     rename x = return  x
 -}
 
 -- ---------------------------------------------------------------------

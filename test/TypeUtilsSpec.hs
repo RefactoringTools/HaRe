@@ -1186,6 +1186,14 @@ spec = do
       (showToks t) `shouldBe` "[(((40,1),(40,1)),ITsemi,\"\"),(((40,1),(40,7)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,8),(40,9)),ITvarid \"x\",\"x\"),(((40,10),(40,11)),ITequal,\"=\"),(((40,12),(40,13)),ITvarid \"c\",\"c\"),(((40,14),(40,15)),ITstar,\"*\"),(((40,16),(40,17)),ITvarid \"x\",\"x\"),(((41,1),(41,18)),ITlineComment \"-- Comment at end\",\"-- Comment at end\")]"
 
   -- ---------------------------------------
+
+  describe "rmQualifier" $ do
+    it "Removes the qualifiers from a list of identifiers in a given syntax phrase" $ do
+      "a" `shouldBe` "b"
+
+  -- ---------------------------------------
+
+  
 myShow :: GHC.RdrName -> String
 myShow n = case n of
   GHC.Unqual on  -> ("Unqual:" ++ (GHC.showPpr on))
