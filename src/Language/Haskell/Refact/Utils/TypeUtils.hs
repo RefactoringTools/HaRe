@@ -34,11 +34,6 @@
 
 
 --------------------------------------------------------------------------------
-{-
-module RefacTypeUtils(module DriftStructUtils, module StrategyLib, module RefacTITypeSyn, module PosSyntax,
-                  module SourceNames, module UniqueNames, module PNT,
-                  module Ents, module Relations, module QualNames, module TypedIds 
--}
 module Language.Haskell.Refact.Utils.TypeUtils
        (
  -- * Program Analysis
@@ -60,12 +55,12 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
     ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
-    ,findPNT -- ,findPN      -- Try to remove this.
-    {-,findPNs -}, findEntity, findEntity'
+    ,findPNT,findPN
+    ,findPNs, findEntity, findEntity'
     ,sameOccurrence
     ,defines, definesP,definesTypeSig -- , isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
-
+    ,sameBind
 
     -- ** Modules and files
     -- ,clientModsAndFiles,serverModsAndFiles,isAnExistingMod
@@ -79,7 +74,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program transformation
     -- ** Adding
     ,addDecl {- ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
-    ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
+    ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl, moveDecl
     -- ** Rmoving
     ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -89,7 +84,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
 -- * Miscellous
     -- ** Parsing, writing and showing
-   {- ,parseSourceFile,writeRefactoredFiles-}, showEntities -- ,showPNwithLoc, newProj, addFile, chase
+   {- ,parseSourceFile,writeRefactoredFiles-}, showEntities,showPNwithLoc -- , newProj, addFile, chase
     -- ** Locations
    -- ,toRelativeLocs, rmLocs
     -- ** Default values
@@ -102,10 +97,11 @@ module Language.Haskell.Refact.Utils.TypeUtils
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     ,definingDecls, definedPNs
     ,definingDeclsNames, definingSigsNames
-
+    , allNames
     -- ,simplifyDecl
+
     -- ** Others
-   -- , applyRefac, applyRefacToClientMods
+    -- , applyRefac, applyRefacToClientMods
     , mkRdrName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
@@ -119,7 +115,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
 -- * Debug stuff
   , allPNT
   , allPNTLens
-  , allNames
   , newNameTok
  ) where
 
@@ -248,6 +243,15 @@ isInScopeAndUnqualifiedGhc n = do
     -- handler:: (Exception e,GHC.GhcMonad m) => e -> m [GHC.Name]
     handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
     handler _ = return []
+
+-- ---------------------------------------------------------------------
+
+-- | Show a PName in a format like: 'pn'(at row:r, col: c).
+showPNwithLoc::GHC.Located GHC.Name->String
+showPNwithLoc pn@(GHC.L l n)
+  = let (r,c) = getGhcLoc l
+    -- in  " '"++pNtoName pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
+    in  " '"++GHC.showPpr pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
 
 -- ---------------------------------------------------------------------
 
@@ -1810,7 +1814,19 @@ hasFreeVars t = fromMaybe False (do (f,_)<-hsFreeAndDeclaredPNs t
                                     if f/=[] then Just True
                                              else Nothing)
 -}
-------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+sameBind :: GHC.LHsBind GHC.Name -> GHC.LHsBind GHC.Name -> Bool
+sameBind b1 b2 = (definedPNs b1) == (definedPNs b2)
+{-
+sameBind b1 b2 = (definesNames b1) == (definesNames b2)
+  where
+    definesNames (GHC.L _ (GHC.PatBind p _rhs _ _ _))             = hsNamess p
+    definesNames (GHC.L _ (GHC.FunBind (GHC.L _ name) _ _ _ _ _)) = [name]
+    definesNames (GHC.L _ (GHC.VarBind name _ _))                 = [name]
+-}
+--------------------------------------------------------------------------------
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
@@ -1921,45 +1937,28 @@ locToName fileName (row,col) t
 
 --------------------------------------------------------------------------------
 
--- |Find the identifier(in PNT format) whose start position is
--- (row,col) in the file specified by the fileName, and returns
--- defaultPNT if such an identifier does not exist.
-
-allNames::(SYB.Data t)=>GHC.FastString   -- ^ The file name
-                    ->SimpPos          -- ^ The row and column number
-                    ->t                -- ^ The syntax phrase
-                    ->[GHC.Located GHC.Name]            -- ^ The result
-allNames  fileName (row,col) t
+-- |Find all Located Names in the given Syntax phrase.
+allNames::(SYB.Data t)
+       =>t                      -- ^ The syntax phrase
+       ->[GHC.Located GHC.Name] -- ^ The result
+allNames t
   = res
        where
         res = SYB.everythingStaged SYB.Parser (++) []
             ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
         worker (pnt :: (GHC.Located GHC.Name))
-          -- | inScope pnt = [(PNT pnt)]
-          | True = [pnt]
-        worker _ = []
+          = [pnt]
+        -- worker _ = []
 
         workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
-          -- | inScope pnt = [(PNT pnt)]
-          | True = [(GHC.L l name)]
+          = [(GHC.L l name)]
         workerBind _ = []
 
-
-        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-          -- | inScope pnt = [(PNT pnt)]
-          | True = [(GHC.L l name)]
+        workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+          = [(GHC.L l name)]
         workerExpr _ = []
 
-        inScope :: GHC.Located e -> Bool
-        inScope (GHC.L l _) =
-          case l of
-            (GHC.UnhelpfulSpan _) -> False
-            (GHC.RealSrcSpan ss)  ->
-              (GHC.srcSpanFile ss == fileName) &&
-              (GHC.srcSpanStartLine ss == row) &&
-              (col >= (GHC.srcSpanStartCol ss)) &&
-              (col <= (GHC.srcSpanEndCol ss))
 
 
 --------------------------------------------------------------------------------
@@ -3050,6 +3049,46 @@ duplicateDecl decls pn newFunName
 -}
 
 -- ---------------------------------------------------------------------
+--------------------------------TRY TO REMOVE THIS FUNCTION---------------------
+
+
+moveDecl:: (SYB.Data t,SYB.Data t2)
+     => [GHC.Name]     -- ^ The identifier(s) whose defining declaration is to be moved. List is used to handle pattern bindings where multiple identifiers are defined.
+     -> t              -- ^ The syntax phrase where the declaration is going to be moved to.
+     -> Bool           -- ^ True mean the function\/pattern binding being moved is going to be at the same level with t. Otherwise it will be a local declaration of t.
+     -- -> [HsDeclP]      -- ^ The declaration list where the definition\/pattern binding originally exists.
+     -- -> [GHC.LHsBind GHC.Name]      -- ^ The declaration list where the definition\/pattern binding originally exists.
+     -> t2             -- ^ The declaration list where the definition\/pattern binding originally exists.
+     -> Bool           -- ^ True means the type signature will not be discarded.
+     -> RefactGhc t    -- ^ The result.
+
+moveDecl pns dest sameLevel decls incSig
+   = error "undefined moveDecl"
+
+{- ++AZ++ original
+{-
+moveDecl::(CanHaveWhereClause t,DeclStartLoc t, Term t,Printable t,MonadPlus m,
+           MonadState (([PosToken],Bool),(Int, Int)) m)
+     => [PName]        -- ^ The identifier(s) whose defining declaration is to be moved. List is used to handle pattern bindings where multiple identifiers are defined.
+     -> t              -- ^ The syntax phrase where the declaration is going to be moved to.
+     -> Bool           -- ^ True mean the function\/pattern binding being moved is going to be at the same level with t. Otherwise it will be a local declaration of t.
+     -> [HsDeclP]      -- ^ The declaration list where the definition\/pattern binding originally exists.
+     -> Bool           -- ^ True means the type signature will not be discarded.
+     -> m t            -- ^ The result.
+-}
+moveDecl pns dest sameLevel decls incSig
+   = do ((ts,_),_)<-get
+        let defToks' =(getDeclToks (ghead "moveDecl:0" pns) True decls ts)
+            defToks  =whiteSpaceTokens (tokenRow (ghead "moveDecl" defToks'),0)
+                                       -- do not use tokenCol here. should count the whilte spaces.
+                                       (tokenCol (ghead "moveDecl2" defToks') -1) ++ defToks'
+            movedDecls = definingDecls pns decls True False
+        decls'<-rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) decls pns
+        addDecl dest Nothing (movedDecls, Just defToks) False
+
+-}
+
+-- ---------------------------------------------------------------------
 
 -- | Remove the declaration (and the type signature is the second
 -- parameter is True) that defines the given identifier from the
@@ -3334,19 +3373,21 @@ rmQualifier:: (SYB.Data t)
                ->t           -- ^ The syntax phrase.
                ->RefactGhc t -- ^ The result.
 rmQualifier pns t = 
-  error "undefined rmQualifier"
-{- ++AZ++ WIP
+  -- error "undefined rmQualifier"
   everywhereMStaged SYB.Renamer (SYB.mkM rename) t
     where
      rename (pnt@(GHC.L l pn)::GHC.Located GHC.Name)
        | elem pn pns
        = do do toks <- fetchToks
                -- let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
-               let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
+               let s = GHC.showPpr pn -- ++TODO: replace this with the appropriate formulation
+               let (row,col) = getGhcLoc l
+               let toks' = replaceToks toks (row,col) (row,col) [mkToken (GHC.ITvarid (GHC.mkFastString s)) (row,col) s]
                putToks toks' modified
-               return (PNT (PN (UnQual s) l) ty loc)
+          
+               return (GHC.L l (GHC.mkInternalName (GHC.nameUnique pn) (GHC.mkVarOcc s) l))
      rename x = return  x
--}
+
 
 
 {- ++ original ++
@@ -3460,35 +3501,37 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
 
 -- ---------------------------------------------------------------------
 
--- | Return True if the identifier(in PNT format) occurs in the given syntax phrase.
-findPNT::(SYB.Data t)=> GHC.Located GHC.Name -> t -> Bool
-findPNT pnt@(GHC.L _ pn)
-   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) 
+-- | Return True if the identifier occurs in the given syntax phrase.
+findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
+findPNT (GHC.L _ pn)
+   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
      where
         worker (n::GHC.Name)
            | GHC.nameUnique pn == GHC.nameUnique n = Just True
         worker _ = Nothing
 
-{-
--- | Return True if the identifier(in PNT format) occurs in the given syntax phrase.
-findPNT::(Term t)=>PNT->t->Bool
-findPNT pnt
-  = (fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` worker)))
-  where
-    worker (pnt1::PNT)
-      | sameOccurrence pnt pnt1 =Just True
-    worker _ =Nothing
--}
+-- | Return True if the identifier occurs in the given syntax phrase.
+findPN::(SYB.Data t)=> GHC.Name -> t -> Bool
+findPN pn
+   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
+     where
+        worker (n::GHC.Name)
+           | GHC.nameUnique pn == GHC.nameUnique n = Just True
+        worker _ = Nothing
+
+-- | Return True if any of the specified PNames ocuur in the given syntax phrase.
+findPNs::(SYB.Data t)=> [GHC.Name] -> t -> Bool
+findPNs pns
+   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
+     where
+        uns = map GHC.nameUnique pns
+
+        worker (n::GHC.Name)
+           | elem (GHC.nameUnique n) uns = Just True
+        worker _ = Nothing
+
 
 {-
--- | Return True if the identifier (in PName format) occurs in the given syntax phrase.
-findPN::(Term t)=>PName->t->Bool
-findPN pn
-  =(fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` worker)))
-     where
-        worker (pn1::PName)
-           |pn == pn1 && srcLoc pn == srcLoc pn1 = Just True
-        worker _ =Nothing
 
 -- | Return True if any of the specified PNames ocuur in the given syntax phrase.
 findPNs::(Term t)=>[PName]->t->Bool

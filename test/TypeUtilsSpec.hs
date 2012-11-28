@@ -120,7 +120,7 @@ spec = do
       -- ((_, renamed,_), _toks) <- parsedFileBGhc
       (t, _toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let res = allNames bFileName (7,6) renamed
+      let res = allNames renamed
       -- let res' = map (\(GHC.L l n) -> (GHC.showPpr $ GHC.nameUnique n,GHC.showPpr (l, n))) res
       let res' = map (\(GHC.L l n) -> (GHC.showPpr $ GHC.nameUnique n,GHC.showPpr (l, GHC.getSrcSpan n, n))) res
 
@@ -1189,7 +1189,22 @@ spec = do
 
   describe "rmQualifier" $ do
     it "Removes the qualifiers from a list of identifiers in a given syntax phrase" $ do
-      "a" `shouldBe` "b"
+      let
+        comp = do
+          (t, toks) <- parseSourceFileGhc "./test/testdata/MoveDef/Md1.hs"
+          putParsedModule t toks
+          renamed <- getRefactRenamed
+
+          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Md1.hs") (40,4) renamed
+          let (decl,_toks) = getDeclAndToks n True toks renamed
+
+          res <- rmQualifier [name] decl
+          return (res,decl,n,name)
+
+      ((t,d,n1,n2),s) <- runRefactGhcState comp 
+      (GHC.showPpr n1) `shouldBe` "MoveDef.Md1.tlFunc"
+      (GHC.showPpr d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
+      "a" `shouldBe` "what?"
 
   -- ---------------------------------------
 
