@@ -1,4 +1,4 @@
-module FreeAndDeclared.Declare (module FreeAndDeclared.Declare) where
+module FreeAndDeclared.Declare2 () where
 
 import qualified Data.Generics as G
 
@@ -32,6 +32,4 @@ main = do
   putStrLn "foo"
 
 mkT = "no clash with Data.Generics"
-
-ff z = G.gshow z
 

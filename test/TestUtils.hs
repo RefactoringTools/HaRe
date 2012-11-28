@@ -2,6 +2,10 @@ module TestUtils
        ( compareFiles
        , parsedFileGhc
        , runRefactGhcState
+       , initialState
+       , toksFromState
+       , defaultSettings
+       , catchException
        ) where
 
 
@@ -13,6 +17,7 @@ import qualified SrcLoc     as GHC
 
 import Control.Monad.State
 import Data.Algorithm.Diff
+import Exception
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -40,6 +45,23 @@ parsedFileGhc fileName = do
 
 -- ---------------------------------------------------------------------
 
+initialState :: RefactState
+initialState = RefSt
+  { rsSettings = RefSet ["./test/testdata/"]
+  , rsUniqState = 1
+  , rsModule = Nothing
+  }
+
+-- ---------------------------------------------------------------------
+
+toksFromState :: RefactState -> [PosToken]
+toksFromState st =
+  case (rsModule st) of
+    Just tm -> rsTokenStream tm
+    Nothing -> []
+
+-- ---------------------------------------------------------------------
+
 runRefactGhcState :: RefactGhc t -> IO (t, RefactState)
 runRefactGhcState paramcomp = do
   let
@@ -47,12 +69,26 @@ runRefactGhcState paramcomp = do
      initialState = RefSt
         { rsSettings = RefSet ["./test/testdata/"]
         , rsUniqState = 1
-        , rsTokenStream = [] -- :: [PosToken]
-        , rsStreamModified = False -- :: Bool
-        -- , rsPosition = (-1,-1) -- :: (Int,Int)
+        , rsModule = Nothing
         }
-  (r,s) <- runRefactGhc paramcomp initialState
+  (r,s) <- runRefactGhc (initGhcSession >> paramcomp) initialState
   return (r,s)
+
+-- ---------------------------------------------------------------------
+
+defaultSettings :: Maybe RefactSettings
+defaultSettings = Just $ RefSet ["./test/testdata/"]
+
+-- ---------------------------------------------------------------------
+
+catchException :: (IO t) -> IO (Maybe String)
+catchException f = do
+  res <- handle handler (f >> return Nothing)
+  return res
+  where
+    handler:: SomeException -> IO (Maybe String)
+    handler e = return (Just (show e))
+
 
 -- EOF
   

@@ -10,22 +10,22 @@ Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
 Description:                    A full Haskell 98 refactoring tool. HaRe supports the full Haskell 98 standard, implemented in Haskell and supporting Emacs and VIm.
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
-Cabal-Version:                  >= 1.6
+Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 Data-Dir:                       misc
-Data-Files:                     haskell-refac.el
-                                , refactor.vim
-                                , Prelude.hs
-                                , *.hs
-                                , dupReport
-                                , dupAnswers
-                                , dupPositions
-                                , dupTransforms
-                                , dupClassAnswer
-                                , dupClassTransform
-                                , mergeCache
-                                , evaluateResult
-                                , genFoldCache
+-- Data-Files:                     haskell-refac.el
+--                                 , refactor.vim
+--                                 , Prelude.hs
+--                                 , *.hs
+--                                 , dupReport
+--                                 , dupAnswers
+--                                 , dupPositions
+--                                 , dupTransforms
+--                                 , dupClassAnswer
+--                                 , dupClassTransform
+--                                 , mergeCache
+--                                 , evaluateResult
+--                                 , genFoldCache
 
 
 -- Library
@@ -125,15 +125,8 @@ Data-Files:                     haskell-refac.el
 --            TypeCheck
 
 
--- Executable hare-evaluate
---         Main-Is:                Evaluate.hs
---         GHC-Options:            -fno-cse -fglasgow-exts
---         Hs-Source-Dirs:
---           refactorer
---           tools/base/lib
---           tools/base/lib/Monads/
---         Build-Depends:          base >4, hint, filepath
---         Other-Modules:          Paths_HaRe
+flag hpc
+  default: False
 
 Library
         Build-Depends:          base >=4
@@ -144,17 +137,38 @@ Library
                                 , pretty
                                 , ghc-paths
                                 , old-time
-        -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
+                                , lens >= 3.0
+                                , ghc-prim
+                                , ghc-syb-utils
+                                , transformers
+                                , filepath
+                                , directory
+
         -- GHC-Options:             -Wall
+        -- We want to run coverage reports on the library
+        if flag(hpc)
+          ghc-options: -fhpc
+          -- GHC-Options:             -fhpc
+
         Hs-Source-Dirs:         src
         Other-Modules:          Paths_HaRe
         Exposed-modules:
-           Language.Haskell.Refact.Case
+             Language.Haskell.Refact.Case
+           , Language.Haskell.Refact.DupDef
+           , Language.Haskell.Refact.MoveDef
+           , Language.Haskell.Refact.Utils
+           , Language.Haskell.Refact.Utils.GhcModuleGraph
+           , Language.Haskell.Refact.Utils.GhcUtils
+           , Language.Haskell.Refact.Utils.LocUtils
+           , Language.Haskell.Refact.Utils.Monad
+           , Language.Haskell.Refact.Utils.RenamedSourceUtils
+           , Language.Haskell.Refact.Utils.TypeSyn
+           , Language.Haskell.Refact.Utils.TypeUtils
+   
 
 
 Executable ghc-hare
         Main-Is:                Main.hs
-        -- GHC-Options:            -fno-cse -fglasgow-exts
         -- GHC-Options:            -Wall
         Hs-Source-Dirs:
           ./src
@@ -163,88 +177,25 @@ Executable ghc-hare
                                 , cmdtheline >= 0.2.1
                     --            , network
                                 , ghc
-                    --            , containers
+                                , containers
                     --            , hint
                                 , mtl
-                    --            , directory
+                                , directory
                                 , pretty
                     --            , process
-                    --            , filepath
+                                , filepath
                     --            , old-time
                                 , array
                                 , ghc-paths
                     --            , MonadCatchIO-mtl
-                    --            , transformers
+                                , transformers
                                 , ghc-syb-utils
                                 , old-time
                                 , lens >= 3.0
                                 , ghc-prim
                     --            , ghc-mtl
-        -- ++AZ++ I prefer to put these in the individual files, as needed
-        -- Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
         Other-Modules:          Paths_HaRe
 
-
-
--- Executable hare
---         Main-Is:                pfe.hs
---         GHC-Options:            -fno-cse -fglasgow-exts
---         Hs-Source-Dirs:
---           StrategyLib-4.0-beta/library/
---           StrategyLib-4.0-beta/models/deriving/
---           refactorer/
---           tools/base/
---           tools/base/AST
---           tools/base/Modules
---           tools/base/TI
---           tools/base/defs/
---           tools/base/lib
---           tools/base/lib/Monads/
---           tools/base/parse2
---           tools/base/parse2/Lexer/
---           tools/base/parse2/Parser/
---           tools/base/pretty/
---           tools/base/syntax
---           tools/base/transforms
---           tools/base/transforms/Deriving
---           tools/hs2html/
---           tools/pfe
---         Build-Depends:          base >=4
---                                 , syb
---                                 , network
---                                 , ghc
---                                 , containers
---                                 , hint
---                                 , mtl
---                                 , directory
---                                 , pretty
---                                 , process
---                                 , filepath
---                                 , old-time
---                                 , array
---                                 , ghc-paths
---                                 , MonadCatchIO-mtl
---                                 , transformers
---                                 , ghc-syb-utils
---         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
---         Other-Modules:          Paths_HaRe
-
-
-
--- Executable hare-client
---         Main-Is:                pfe_client.hs
---         GHC-Options:            -fno-cse -fglasgow-exts
---         Hs-Source-Dirs:
---           refactorer/
---           tools/base/lib/Monads/
---         Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
---         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
---         Other-Modules:          Paths_HaRe
-
--- Executable UTest
---   Main-Is:                      UTest.hs
---   Build-Depends:                base >= 4, HUnit, process
---   Hs-Source-Dirs:               testing
 
 test-suite spec
   type:
@@ -252,34 +203,37 @@ test-suite spec
   ghc-options:
       -- reinstate these later  -Wall 
       -- reinstate these later  -Werror
-      -fhpc
+      -- -fhpc
+      -- -fhpc -hpcdir dist/hpc/app-1.0
   cpp-options:
       -DTEST
   main-is:
       Spec.hs
   Hs-Source-Dirs:         
-      src
-    , test
+    -- src
+    test
   build-depends:
-    --   base >= 4 && <= 5
-    -- , hspec       >= 1.3
-    -- , QuickCheck
       base        >= 4.0  && < 4.7
-    , ghc         >= 6.12 && < 7.8
-    , syb
+    , Diff
+    , HUnit       == 1.2.*
+    , QuickCheck  >= 2.5
+    , containers
     , deepseq
     , directory
-    , process
-    , ghc-paths   == 0.1.*
-    , transformers
-    , HUnit       == 1.2.*
-    , hspec       >= 1.3
-    , QuickCheck  >= 2.5
-    , stringbuilder
-    , silently
     , filepath
-    , old-time
-    , Diff
-    , lens >= 3.0
+    , ghc         >= 6.12 && < 7.8
+    , ghc-paths   == 0.1.*
     , ghc-prim
+    , ghc-syb-utils
+    , hspec       >= 1.3
+    , lens >= 3.0
+    , mtl
+    , old-time
+    , process
+    , silently
+    , stringbuilder
+    , syb
+    , transformers
+
+    , HaRe >= 0.6.0.3
 

@@ -1,4 +1,4 @@
-module DupDef.Dd1 where
+module MoveDef.Md1 where
 
 toplevel :: Integer -> Integer
 toplevel x = c * x
@@ -18,6 +18,7 @@ tup@(h,t) = head $ zip [1..10] [3..ff]
 
 data D = A | B String | C
 
+ff :: Int -> Int
 ff y = y + zz
   where
     zz = 1
@@ -30,4 +31,13 @@ l z =
 dd q = do
   let ss = 5
   return (ss + q)
+
+zz1 a = 1 + toplevel a
+
+-- General Comment
+-- |haddock comment
+tlFunc :: Integer -> Integer
+tlFunc x = c * x
+-- Comment at end
+
 

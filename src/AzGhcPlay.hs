@@ -20,6 +20,7 @@ import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
+import Var
 import qualified CoreFVs               as GHC
 import qualified CoreSyn               as GHC
 import qualified DynFlags              as GHC
@@ -29,15 +30,16 @@ import qualified HscTypes              as GHC
 import qualified MonadUtils            as GHC
 import qualified Outputable            as GHC
 import qualified SrcLoc                as GHC
-import Var
+import qualified StringBuffer          as GHC
 
 import GHC.Paths ( libdir )
  
 -----------------
 
-import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.TypeUtils
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
 import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
@@ -54,8 +56,11 @@ import Language.Haskell.Refact.Utils.GhcUtils
 
 -- targetFile = "./refactorer/" ++ targetMod ++ ".hs"
 
+-- targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
+-- targetMod = "FreeAndDeclared/Declare"
+
 targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
-targetMod = "FreeAndDeclared/Declare"
+targetMod = "MoveDef/Md1"
 
 {- main = t1 -}
 
@@ -138,7 +143,8 @@ getStuff =
         GHC.setTargets [target]
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
-        modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
+        -- modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "MoveDef.Md1"
         p <- GHC.parseModule modSum
 
         t <- GHC.typecheckModule p
@@ -150,7 +156,7 @@ getStuff =
 
         GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
         inscopes <- GHC.getNamesInScope
-
+        
 
         g <- GHC.getModuleGraph
         gs <- mapM GHC.showModule g
@@ -168,14 +174,14 @@ getStuff =
         -- let res = showPpr ps
         return res
         -}
-        let p' = processParsedMod ifToCase t
+        -- let p' = processParsedMod ifToCase t
         -- GHC.liftIO (putStrLn . showParsedModule $ t)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
         -- GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
 
         let ps  = GHC.pm_parsed_source p
         -- GHC.liftIO (putStrLn $ SYB.showData SYB.Parser 0 ps)
-
+        -- GHC.liftIO (putStrLn $ show (modIsExported ps))
         -- _ <- processVarUniques t
 
         -- Tokens ------------------------------------------------------
@@ -183,8 +189,12 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (showRichTokenStream rts))
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ tokenLocs rts))
         -- GHC.liftIO (putStrLn $ "tokens=" ++ (show $ map (\(GHC.L _ tok,s) -> (tok,s)) rts)) 
-        GHC.liftIO (putStrLn $ "tokens=" ++ (showToks rts))
-        
+        -- GHC.liftIO (putStrLn $ "tokens=" ++ (showToks rts))
+
+        -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
+        -- let tt = GHC.addSourceToTokens (GHC.mkRealSrcLoc (GHC.mkFastString "f") 1 1) (GHC.stringToStringBuffer "hiding (a,b)") []
+        -- GHC.liftIO (putStrLn $ "new tokens=" ++ (showToks tt))
+  
 
         -- GHC.liftIO (putStrLn $ "ghcSrcLocs=" ++ (show $ ghcSrcLocs ps))
         -- GHC.liftIO (putStrLn $ "srcLocs=" ++ (show $ srcLocs ps))
@@ -194,12 +204,20 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "locToExp1=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,43) rts ps))
         -- GHC.liftIO (putStrLn $ "locToExp2=" ++ (SYB.showData SYB.Parser 0 $ locToExp (4,8) (4,40) rts ps))
 
+
         -- Inscopes ----------------------------------------------------
         -- GHC.liftIO (putStrLn $ "\ninscopes(showData)=" ++ (SYB.showData SYB.Parser 0 $ inscopes))
+        -- names <- GHC.parseName "G.mkT"
+        -- GHC.liftIO (putStrLn $ "\nparseName=" ++ (GHC.showPpr $ names))
+
+
+        -- ParsedSource -----------------------------------------------
+        -- GHC.liftIO (putStrLn $ "parsedSource(Ppr)=" ++ (GHC.showPpr $ GHC.pm_parsed_source p))
+        -- GHC.liftIO (putStrLn $ "\nparsedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.pm_parsed_source p))
 
         -- RenamedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
-        --GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+        GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
 
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
@@ -312,7 +330,7 @@ gg = qq td
 
 
 -- filtered :: (Gettable f, Applicative f) => (c -> Bool) -> LensLike f a b c d -> LensLike f a b c d
-hh = filtered isBaz foo
+-- hh = filtered isBaz foo
 
 -- ii :: (Data a) => a -> [Baz String]
 -- ii = foldMapOf hh getBaz
@@ -377,7 +395,7 @@ shortenLists x                          = x
 --
 -- ---------------------------------------------------------------------
 -- Test drive the RefactGhc monad transformer stack
-
+{-
 runR :: IO ()
 runR = do
   let
@@ -403,7 +421,7 @@ comp = do
     GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
     -- put (s {rsPosition = (123,456)})
     return ()
-
+-}
 
 -- ---------------------------------------------------------------------
 {-

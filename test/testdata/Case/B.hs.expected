@@ -1,24 +1,23 @@
 module B where
- -- Test for refactor of if to case
+-- Test for refactor of if to case
 
- foo x =case (odd x) of {
-                                          True -> "Odd"
-                                          False -> "Even" }
-
-
-
- bob x y = x + y
+foo x =case (odd x) of {
+                                         True -> "Odd"
+                                         False -> "Even" }
 
 
- foo' x = case (odd x) of
-   True -> "Odd"
-   False -> "Even"
 
- main = do
-   putStrLn $ show $ foo 5
+bob x y = x + y
 
- mary = [1,2,3]
 
- h = bob 1 2
+foo' x = case (odd x) of
+  True -> "Odd"
+  False -> "Even"
 
- 
+main = do
+  putStrLn $ show $ foo 5
+
+mary = [1,2,3]
+
+h = bob 1 2
+

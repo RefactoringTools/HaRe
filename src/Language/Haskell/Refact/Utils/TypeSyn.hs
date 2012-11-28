@@ -195,3 +195,22 @@ instance Eq  OptSrcLoc where _ == _ = True
 instance Ord OptSrcLoc where compare _ _ = EQ
 -}
 
+
+-- ---------------------------------------------------------------------
+-- Putting these here for the time being, to avoid import loops
+
+
+ghead info []    = error $ "ghead "++info++" []"
+ghead info (h:_) = h
+
+glast info []    = error $ "glast " ++ info ++ " []"
+glast info h     = last h
+
+gtail info []   = error $ "gtail " ++ info ++ " []"
+gtail info h    = tail h
+
+gfromJust info (Just h) = h
+gfromJust info Nothing = error $ "gfromJust " ++ info ++ " Nothing"
+
+
+-- ---------------------------------------------------------------------

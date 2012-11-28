@@ -146,24 +146,16 @@ everywhereStaged stage f = f . gmapT (everywhere f)
 -}
 
 -- ---------------------------------------------------------------------
-
 {-
--- | Apply a transformation everywhere in top-down manner
-everywhere' :: (forall a. Data a => a -> a)
-            -> (forall a. Data a => a -> a)
+-- From SYB
 
--- Arguments of (.) are flipped compared to everywhere
-everywhere' f = gmapT (everywhere' f) . f
+-- | Monadic variation on everywhere
+everywhereM :: Monad m => GenericM m -> GenericM m
+
+-- Bottom-up order is also reflected in order of do-actions
+everywhereM f x = do x' <- gmapM (everywhereM f) x
+                     f x'
 -}
-{-
--- | Apply a transformation everywhere in top-down manner
-everywhere' :: (forall a. Data a => a -> a)
-            -> (forall a. Data a => a -> a)
-
--- Arguments of (.) are flipped compared to everywhere
-everywhere' f = gmapT (everywhere' f) . f
--}
-
 -- ---------------------------------------------------------------------
 
 -- | Monadic variation on everywhere
@@ -186,6 +178,26 @@ everywhereStaged stage f = f . gmapT (everywhere f)
         postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
         fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
 -}
+
+-- ---------------------------------------------------------------------
+
+{-
+-- | Apply a transformation everywhere in top-down manner
+everywhere' :: (forall a. Data a => a -> a)
+            -> (forall a. Data a => a -> a)
+
+-- Arguments of (.) are flipped compared to everywhere
+everywhere' f = gmapT (everywhere' f) . f
+-}
+{-
+-- | Apply a transformation everywhere in top-down manner
+everywhere' :: (forall a. Data a => a -> a)
+            -> (forall a. Data a => a -> a)
+
+-- Arguments of (.) are flipped compared to everywhere
+everywhere' f = gmapT (everywhere' f) . f
+-}
+
 
 -- ---------------------------------------------------------------------
 -- Lens stuff

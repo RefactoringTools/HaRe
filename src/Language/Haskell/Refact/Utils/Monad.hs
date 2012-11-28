@@ -2,19 +2,34 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Language.Haskell.Refact.Utils.Monad
        ( ParseResult
-       , RefactResult
+       -- , RefactResult
        , RefactSettings(..)
        , RefactState(..)
+       , RefactModule(..)
+       , initRefactModule
        -- GHC monad stuff
        , RefactGhc
        , runRefactGhc
        , getRefacSettings
+
+       -- * Conveniences for state access
+       , fetchToks
+       , putToks
+       , getTypecheckedModule
+       , getRefactStreamModified
+       , getRefactInscopes
+       , getRefactRenamed
+       , putRefactRenamed
+       , getRefactParsed
+       , putParsedModule
+       , clearParsedModule
 
        -- , Refact -- ^ TODO: Deprecated, use RefactGhc
        -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
        ) where
 
 import Control.Monad.State
+import Data.Maybe
 import Exception
 import qualified Control.Monad.IO.Class as MU
 
@@ -46,58 +61,26 @@ data RefactSettings = RefSet
         { rsetImportPath :: [FilePath]
         } deriving (Show)
 
+data RefactModule = RefMod
+        { rsTypecheckedMod :: GHC.TypecheckedModule
+        , rsTokenStream :: [PosToken]  -- ^Token stream for the current module
+        , rsStreamModified :: Bool     -- ^current module has updated the token stream
+        }
 
 -- | State for refactoring a single file. Holds/hides the token
 -- stream, which gets updated transparently at key points.
 data RefactState = RefSt
-        { rsSettings :: RefactSettings -- Session level settings
+        { rsSettings :: RefactSettings -- ^Session level settings
         , rsUniqState :: Int -- ^ Current Unique creator value, incremented every time it is used
-        , rsTokenStream :: [PosToken]  -- Token stream for the current module
-        , rsStreamModified :: Bool     -- current module has updated the token stream
-        -- , rsPosition :: (Int,Int)
+        -- The current module being refactored
+        , rsModule :: Maybe RefactModule
         }
 
 -- |Result of parsing a Haskell source file. The first element in the
 -- result is the inscope relation, the second element is the export
 -- relation and the third is the AST of the module. This is likely to
 -- change as we learn more
-
--- type ParseResult inscope = ([inscope], [GHC.LIE GHC.RdrName], GHC.ParsedSource)
--- type ParseResult = (GHC.TypecheckedSource, [GHC.LIE GHC.RdrName], GHC.ParsedSource)
--- type ParseResult = (GHC.TypecheckedSource, Maybe GHC.RenamedSource, GHC.ParsedSource)
-type ParseResult = (InScopes, Maybe GHC.RenamedSource, GHC.ParsedSource) 
-
-type RefactResult = GHC.RenamedSource
-
--- TODO: >>>>>> This section has been superseded ++AZ++
-{-
-newtype Refact a = Refact (StateT RefactState IO a)
-instance MonadIO Refact where
-         liftIO f = Refact (lift f)
-
-runRefact :: Refact a -> RefactState -> IO (a, RefactState)
-runRefact (Refact (StateT f)) s = f s
-
-
-instance Monad Refact where
-  x >>= y = Refact (StateT (\ st -> do (b, rs') <- runRefact x st
-                                       runRefact (y b) rs'))
-
-  return thing = Refact (StateT (\ st -> return (thing, st)))
-
-
-instance MonadPlus Refact where
-   mzero = Refact (StateT(\ st -> mzero))
-
-   x `mplus` y =  Refact (StateT ( \ st -> runRefact x st `mplus` runRefact y st))  
-   -- ^Try one of the refactorings, x or y, with the same state plugged in
-
-instance MonadState RefactState (Refact) where
-   get = Refact $ StateT ( \ st -> return (st, st))
-
-   put newState = Refact $ StateT ( \ _ -> return ((), newState))
--}
--- TODO: <<<<< This section has been superseded ++AZ++
+type ParseResult = GHC.TypecheckedModule
 
 
 -- ---------------------------------------------------------------------
@@ -141,6 +124,83 @@ getRefacSettings :: RefactGhc RefactSettings
 getRefacSettings = do
   s <- get
   return (rsSettings s)
+
+-- ---------------------------------------------------------------------
+
+fetchToks :: RefactGhc [PosToken]
+fetchToks = do
+  Just tm <- gets rsModule
+  return $ rsTokenStream tm
+
+putToks :: [PosToken] -> Bool -> RefactGhc ()
+putToks toks isModified = do
+  st <- get
+  let Just tm = rsModule st
+  let rsModule' = Just (tm {rsTokenStream = toks, rsStreamModified = isModified})
+  put $ st { rsModule = rsModule' }
+
+-- ---------------------------------------------------------------------
+
+getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
+getTypecheckedModule = do
+  Just tm <- gets rsModule
+  return $ rsTypecheckedMod tm
+
+getRefactStreamModified :: RefactGhc Bool
+getRefactStreamModified = do
+  Just tm <- gets rsModule
+  return $ rsStreamModified tm
+
+getRefactInscopes :: RefactGhc InScopes
+getRefactInscopes = GHC.getNamesInScope
+
+getRefactRenamed :: RefactGhc GHC.RenamedSource
+getRefactRenamed = do
+  mtm <- gets rsModule
+  let tm = gfromJust "getRefactRenamed" mtm
+  return $ gfromJust "getRefactRenamed2" $ GHC.tm_renamed_source $ rsTypecheckedMod tm
+
+putRefactRenamed :: GHC.RenamedSource -> RefactGhc ()
+putRefactRenamed renamed = do
+  st <- get
+  mrm <- gets rsModule
+  let rm = gfromJust "putRefactRenamed" mrm
+  let tm = rsTypecheckedMod rm
+  let tm' = tm { GHC.tm_renamed_source = Just renamed }
+  let rm' = rm { rsTypecheckedMod = tm' }
+  put $ st {rsModule = Just rm'}
+
+
+getRefactParsed :: RefactGhc GHC.ParsedSource
+getRefactParsed = do
+  mtm <- gets rsModule
+  let tm = gfromJust "getRefactParsed" mtm
+  let t  = rsTypecheckedMod tm
+
+  let pm = GHC.tm_parsed_module t
+  return $ GHC.pm_parsed_source pm
+
+putParsedModule
+  :: GHC.TypecheckedModule -> [PosToken] -> RefactGhc ()
+putParsedModule tm toks = do
+  st <- get
+  put $ st { rsModule = initRefactModule tm toks }
+
+clearParsedModule :: RefactGhc ()
+clearParsedModule = do
+  st <- get
+  put $ st { rsModule = Nothing }
+
+
+-- ---------------------------------------------------------------------
+
+initRefactModule
+  :: GHC.TypecheckedModule -> [PosToken] -> Maybe RefactModule
+initRefactModule tm toks 
+  = Just (RefMod { rsTypecheckedMod = tm
+                 , rsTokenStream = toks
+                 , rsStreamModified = False
+                 })
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ trying to wrap this in GhcT, or vice versa

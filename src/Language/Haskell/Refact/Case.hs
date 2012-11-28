@@ -19,6 +19,7 @@ import GHC.Paths ( libdir )
 import Control.Monad
 import Control.Monad.State
 import Data.Data
+import Data.Maybe
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -40,8 +41,10 @@ ifToCase args
 
 comp :: String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
-       modInfo@((_, renamed, ast), toks) <- parseSourceFileGhc fileName
-       let expr = locToExp beginPos endPos renamed -- ast
+       -- modInfo@((_, renamed, ast), toks) <- parseSourceFileGhc fileName
+       modInfo@(t, toks) <- parseSourceFileGhc fileName
+       let renamed = gfromJust "ifToCase" $ GHC.tm_renamed_source t
+       let expr = locToExp beginPos endPos renamed
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do refactoredMod <- applyRefac (doIfToCase exp1) (Just modInfo ) fileName
@@ -50,11 +53,19 @@ comp fileName beginPos endPos = do
 
 doIfToCase ::
   GHC.Located (GHC.HsExpr GHC.Name)
-  -> ParseResult
-  -> RefactGhc RefactResult
-doIfToCase expr (_,Just rs,ps) = do
+  -> RefactGhc ()
+doIfToCase expr = do
+  rs <- getRefactRenamed
+  reallyDoIfToCase expr rs
+
+reallyDoIfToCase ::
+  GHC.Located (GHC.HsExpr GHC.Name)
+  -> GHC.RenamedSource
+  -> RefactGhc ()
+reallyDoIfToCase expr rs = do
    
-   everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs -- ps -- rs
+   everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
+   return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
 
@@ -69,7 +80,6 @@ doIfToCase expr (_,Just rs,ps) = do
                return newExp
 
          inExp e = return e
-   
 
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
