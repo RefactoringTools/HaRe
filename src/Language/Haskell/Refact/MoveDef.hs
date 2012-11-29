@@ -266,7 +266,6 @@ moveDecl1 :: (HsBinds t)
   -> Bool -- ^True if moving to the top level
   -> RefactGhc t -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName pns topLevel
-   -- = error "undefined moveDecl1"
    = do toks <- fetchToks
         let ns = map GHC.unLoc pns
         let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" pns) True toks t
@@ -757,7 +756,7 @@ doDemoting  pn = do
        -- demoteInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
        demoteInMod (mod :: GHC.RenamedSource)
          | not $ emptyList (definingDeclsNames [pn] (hsBinds mod) False False)
-         = do mod'<-rmQualifier [pn] mod
+         = do mod' <- rmQualifier [pn] mod
               doDemoting' mod' pn
        demoteInMod x = return x
 
@@ -916,6 +915,7 @@ doDemoting' t pn
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
       else error "This function can not be demoted as it is used in current level!\n"
+      -- else error ("doDemoting': declaredPns=" ++ (GHC.showPpr declaredPns))
     where
           ---find how many matches/pattern bindings use  'pn'-------
           uses pns
@@ -1114,7 +1114,8 @@ class (SYB.Data t) => UsedByRhs t where
 
 instance UsedByRhs GHC.RenamedSource where
 
-   usedByRhs renamed = error "undefined UsedByRhs GHC.RenamedSource"
+   -- usedByRhs renamed pns = or $ map (findPNs pns) $ hsBinds renamed
+   usedByRhs renamed pns = False
 
 
 {- ++ original
@@ -1284,9 +1285,10 @@ replaceExpWithUpdToks  decls subst
 isLocalFunOrPatName pn scope
  = isLocalPN pn && isFunOrPatName pn scope
 
--- |removeTypeSig removes the signature declaraion for pn from the decl list.
+-- |removeTypeSig removes the signature declaration for pn from the decl list.
 -- removeTypeSig :: GHC.Name->[HsDeclP]->[HsDeclP]
-removeTypeSig pn decls = error "undefined removeTypeSig"
+removeTypeSig pn decls = decls
+  -- ++ AZ++ TODO: make use of rmTypeSig pn decls from TypeUtils
 
 {- ++ original
 -- |removeTypeSig removes the signature declaraion for pn from the decl list.

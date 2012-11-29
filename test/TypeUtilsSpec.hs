@@ -853,6 +853,27 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "moveDecl" $ do
+    it "moves a declaration from one syntax element to another" $ do
+      (t, toks) <- parsedFileD1Ghc
+      let
+        comp = do
+         renamed <- getRefactRenamed
+         let Just (GHC.L l ssq) = locToName d1FileName (6, 1) renamed
+         let Just (GHC.L l sq) = locToName d1FileName (9, 1) renamed
+         let declsr = getDecls renamed
+             ssqDecls = definingDeclsNames [ssq] declsr True False
+             sqDecls  = definingDeclsNames [sq]  declsr True False
+
+         newDecls <- moveDecl [sq] ssqDecls False sqDecls True
+
+         return (ssq,sq,ssqDecls,sqDecls,newDecls)
+      ((s1,s2,d1,d2,nd),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showRichTokenStream $ toks) `shouldBe` ""
+      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` ""
+      (GHC.showPpr nd) `shouldBe` ""
+
   -- ---------------------------------------------
 
   describe "addDecl" $ do
@@ -1185,6 +1206,24 @@ spec = do
       (show $ startEndLocIncComments (toksFromState s) d) `shouldBe` "((40,1),(41,18))"
       (showToks t) `shouldBe` "[(((40,1),(40,1)),ITsemi,\"\"),(((40,1),(40,7)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,8),(40,9)),ITvarid \"x\",\"x\"),(((40,10),(40,11)),ITequal,\"=\"),(((40,12),(40,13)),ITvarid \"c\",\"c\"),(((40,14),(40,15)),ITstar,\"*\"),(((40,16),(40,17)),ITvarid \"x\",\"x\"),(((41,1),(41,18)),ITlineComment \"-- Comment at end\",\"-- Comment at end\")]"
 
+  -- --------------------------------------
+
+  describe "getDeclToks" $ do
+    it "Returns a the tokens associated with a declaration" $ do
+      let
+        comp = do
+          (t, toks) <- parseSourceFileGhc "./test/testdata/Demote/D1.hs"
+          putParsedModule t toks
+          renamed <- getRefactRenamed
+
+          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/DeMote/D1.hs") (9,1) renamed
+          let res = getDeclToks name False (hsBinds renamed) toks
+          return (res,n,name)
+
+      ((dt,n1,n2),s) <- runRefactGhcState comp 
+      (GHC.showPpr n1) `shouldBe` "MoveDef.Md1.tlFunc"
+      (showToks dt) `shouldBe` "[(((40,1),(40,1)),ITsemi,\"\"),(((40,1),(40,7)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,8),(40,9)),ITvarid \"x\",\"x\"),(((40,10),(40,11)),ITequal,\"=\"),(((40,12),(40,13)),ITvarid \"c\",\"c\"),(((40,14),(40,15)),ITstar,\"*\"),(((40,16),(40,17)),ITvarid \"x\",\"x\"),(((41,1),(41,18)),ITlineComment \"-- Comment at end\",\"-- Comment at end\")]"
+
   -- ---------------------------------------
 
   describe "rmQualifier" $ do
@@ -1250,6 +1289,14 @@ parsedFileMd1Ghc = parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
 
 md1FileName :: GHC.FastString
 md1FileName = GHC.mkFastString "./test/testdata/MoveDef/Md1.hs"
+
+-- -----------
+
+parsedFileD1Ghc :: IO (ParseResult,[PosToken])
+parsedFileD1Ghc = parsedFileGhc "./test/testdata/Demote/D1.hs"
+
+d1FileName :: GHC.FastString
+d1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
 
 -- ----------------------------------------------------
 

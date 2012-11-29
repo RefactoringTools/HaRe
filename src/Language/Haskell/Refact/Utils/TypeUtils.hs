@@ -105,8 +105,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , mkRdrName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
-    {- ,getDeclToks -}, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
-    , getDeclAndToks,getSigAndToks -- ++AZ++ Zipper?
+    ,getDeclToks, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
+    ,getDeclAndToks,getSigAndToks -- ++AZ++ Zipper?
 
 -- * Typed AST traversals (added by CMB)
     -- * Miscellous
@@ -3053,17 +3053,41 @@ duplicateDecl decls pn newFunName
 
 
 moveDecl:: (SYB.Data t,SYB.Data t2)
-     => [GHC.Name]     -- ^ The identifier(s) whose defining declaration is to be moved. List is used to handle pattern bindings where multiple identifiers are defined.
-     -> t              -- ^ The syntax phrase where the declaration is going to be moved to.
-     -> Bool           -- ^ True mean the function\/pattern binding being moved is going to be at the same level with t. Otherwise it will be a local declaration of t.
-     -- -> [HsDeclP]      -- ^ The declaration list where the definition\/pattern binding originally exists.
-     -- -> [GHC.LHsBind GHC.Name]      -- ^ The declaration list where the definition\/pattern binding originally exists.
-     -> t2             -- ^ The declaration list where the definition\/pattern binding originally exists.
-     -> Bool           -- ^ True means the type signature will not be discarded.
+     => [GHC.Name]     -- ^ The identifier(s) whose defining
+                       -- declaration is to be moved. List is used to
+                       -- handle pattern bindings where multiple
+                       -- identifiers are defined.
+     -> t              -- ^ The syntax phrase where the declaration is
+                       -- going to be moved to.
+     -> Bool           -- ^ True mean the function\/pattern binding
+                       -- being moved is going to be at the same level
+                       -- with t. Otherwise it will be a local
+                       -- declaration of t.
+     -- -> [HsDeclP]      -- ^ The declaration list where the
+                       -- definition\/pattern binding originally
+                       -- exists.
+     -- -> [GHC.LHsBind GHC.Name]      -- ^ The declaration list where
+                                    -- the definition\/pattern binding
+                                    -- originally exists.
+     -> t2             -- ^ The declaration list where the
+                       -- definition\/pattern binding originally
+                       -- exists.
+     -> Bool           -- ^ True means the type signature will not be
+                       -- discarded.
      -> RefactGhc t    -- ^ The result.
 
 moveDecl pns dest sameLevel decls incSig
    = error "undefined moveDecl"
+   {- ++AZ++ WIP, sort out getDeclToks first 
+   = do ts <- fetchToks
+        let defToks' =(getDeclToks (ghead "moveDecl:0" pns) True decls ts)
+            defToks  =whiteSpaceTokens (tokenRow (ghead "moveDecl" defToks'),0)
+                                       -- do not use tokenCol here. should count the whilte spaces.
+                                       (tokenCol (ghead "moveDecl2" defToks') -1) ++ defToks'
+            movedDecls = definingDecls pns decls True False
+        decls'<-rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) decls pns
+        addDecl dest Nothing (movedDecls, Just defToks) False
+   ++WIP end++ -}
 
 {- ++AZ++ original
 {-
@@ -3632,6 +3656,51 @@ pNtoName (PN (Qual modName i) orig)=i
 pNTtoName::PNT->String
 pNTtoName=pNtoName.pNTtoPN
 -}
+
+-- ---------------------------------------------------------------------
+
+{-
+-- THIS FUNCTION SHOULD NOT BE IN THE API.
+-- | Get the list of tokens which represent the declaration that defines pn.
+getDeclToks :: PName           -- ^ The identifier. 
+              -> Bool          -- ^ True means type signature should be included.
+              -> [HsDeclP]     -- ^ The declaration list in which the identifier is defined.
+              -> [PosToken]    -- ^ The input token stream.
+              -> [PosToken]    -- ^ The result.
+-}
+-- | Get the list of tokens which represent the declaration that defines pn.
+getDeclToks :: GHC.Name        -- ^ The identifier. 
+              -> Bool          -- ^ True means type signature should be included.
+              -> [GHC.LHsBind GHC.Name] -- ^ The declaration list in which the identifier is defined.
+              -> [PosToken]    -- ^ The input token stream.
+              -> [PosToken]    -- ^ The result.
+---  IMPORTANT: GET RID OF THE -1111*****************
+-- ++AZ++ TODO: the last two params are swapped in getDeclAndToks
+getDeclToks pn incSig decls toks 
+  = let -- (decls1,decls2) = break (definesTypeSig pn) decls
+        -- typeSig = if decls2==[] then Nothing else Just (ghead "getDeclToks1" decls2) --There may or may not type signature.
+        (decls1', decls2') = break (defines pn) decls
+        decl = if (emptyList decls2') then error "getDeclToks:: declaration does not exist"
+                                else ghead "getDeclToks2" decls2'
+        declToks = getToks' decl toks
+        sigToks = [] -- ++AZ++
+        {- ++AZ++ TODO: sort this out, sig not in decls
+        sigToks 
+         = case typeSig of 
+            Nothing  -> []
+            Just (sig@(TiDecorate.Dec (HsTypeSig _ [i] _ _)))-> getToks' sig toks
+            Just (TiDecorate.Dec (HsTypeSig loc is c ty))-> let sig' =(TiDecorate.Dec (HsTypeSig loc0 [nameToPNT (pNtoName pn)] c ty))
+                                                 in  tokenise (Pos 0 (-1111) 1) 0 True $ prettyprint sig'++"\n"   
+        -}
+    in if incSig then sigToks ++ declToks  else declToks 
+   where   
+     getToks' decl toks
+          = let (startPos, endPos) = startEndLocIncComments toks decl
+                (toks1, _) =let(ts1, (t:ts2'))= break (\t -> tokenPos t == endPos) toks
+                            in (ts1++[t], ts2')
+            in dropWhile (\t -> tokenPos t /= startPos {- || isNewLn t -}) toks1
+
+
 
 -- ---------------------------------------------------------------------
 
