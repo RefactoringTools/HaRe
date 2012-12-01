@@ -667,7 +667,7 @@ hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
            where
              (_df,dd) = hsFreeAndDeclaredPNs matches
           ++AZ++ end -}
- 
+
           expr ((GHC.HsLet decls e1) :: GHC.HsExpr GHC.Name)
              |findEntity e e1 || findEntity e decls = dd
            where
@@ -1304,17 +1304,18 @@ instance HsBinds (GHC.RenamedSource) where
     where
       vb = GHC.hs_valds grp
       vb' = case vb of
-        GHC.ValBindsIn oldbinds sigs -> GHC.ValBindsIn (GHC.listToBag binds) sigs
-        -- ++AZ++ does it matter we are throwing away the recursive flag?
-        GHC.ValBindsOut rbinds sigs  -> GHC.ValBindsIn (GHC.listToBag binds) sigs
+        GHC.ValBindsIn _oldbinds sigs -> GHC.ValBindsIn (GHC.listToBag binds) sigs
+        -- ++AZ++ does it matter that we are throwing away the recursive flag?
+        GHC.ValBindsOut _rbinds sigs  -> GHC.ValBindsIn (GHC.listToBag binds) sigs
       grp' = grp {GHC.hs_valds = vb'}
-
 
 instance HsBinds (GHC.HsValBinds GHC.Name) where
   hsBinds vb = getValBinds vb
+  replaceBinds = error "undefined replaceBinds (GHC.HsValBinds GHC.Name)"
 
 instance HsBinds (GHC.HsGroup GHC.Name) where
   hsBinds grp = getValBinds (GHC.hs_valds grp)
+  replaceBinds = error "undefined replaceBinds (GHC.HsGroup GHC.Name)"
 
 instance HsBinds (GHC.HsLocalBinds GHC.Name) where
   hsBinds lb = case lb of
@@ -1324,6 +1325,12 @@ instance HsBinds (GHC.HsLocalBinds GHC.Name) where
 
 instance HsBinds (GHC.GRHSs GHC.Name) where
   hsBinds (GHC.GRHSs _ lb) = hsBinds lb
+
+instance HsBinds (GHC.MatchGroup GHC.Name) where
+  hsBinds (GHC.MatchGroup matches _) = hsBinds matches
+
+instance HsBinds [GHC.LMatch GHC.Name] where
+  hsBinds ms = concatMap (\m -> hsBinds $ GHC.unLoc m) ms
 
 instance HsBinds (GHC.Match GHC.Name) where
   hsBinds (GHC.Match _ _ grhs) = hsBinds grhs
@@ -1349,9 +1356,22 @@ instance HsBinds (GHC.Stmt GHC.Name) where
   hsBinds (GHC.LetStmt ds) = hsBinds ds
   replaceBinds = error "replaceBinds (GHC.Stmt GHC.Name) undefined"
 
+
+instance HsBinds (GHC.LHsBind GHC.Name) where
+  hsBinds (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) = hsBinds matches
+  hsBinds (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsBinds rhs
+  hsBinds (GHC.L _ (GHC.VarBind _ rhs _))           = hsBinds rhs
+  hsBinds (GHC.L _ (GHC.AbsBinds _ _ _ _ _))        = []
+
 instance HsBinds ([GHC.LHsBind GHC.Name]) where
   hsBinds x = x
+  -- hsBinds xs = concatMap hsBinds xs
   replaceBinds _old new = new
+  -- replaceBinds old new = error ("replaceBinds (old,new)=" ++ (GHC.showPpr (old,new)))
+
+instance HsBinds (GHC.LHsExpr GHC.Name) where
+  hsBinds (GHC.L _ (GHC.HsLet binds ex)) = hsBinds binds
+  hsBinds _                              = []
 
 -- ---------------------------------------------------------------------
 
@@ -2189,9 +2209,14 @@ addItemsToImport serverModName pn ids t
 -- the data type declarations is there is any.
 addDecl:: (SYB.Data t,HsBinds t)
         => t              -- ^ The AST.
-        -> Maybe GHC.Name -- ^ If this is Just, then the declaration will be added right after this identifier's definition.
-        -> (GHC.LHsBind GHC.Name, Maybe [PosToken]) -- ^ The declaration to be added, in both AST and Token stream format (optional).
-        -> Bool              -- ^ True means the declaration is a toplevel declaration.
+        -> Maybe GHC.Name -- ^ If this is Just, then the declaration
+                          -- will be added right after this
+                          -- identifier's definition.
+        -> (GHC.LHsBind GHC.Name, Maybe [PosToken])
+             -- ^ The declaration to be added, in both AST and Token
+             -- stream format (optional).
+        -> Bool              -- ^ True means the declaration is a
+                             -- toplevel declaration.
         -> RefactGhc t --[GHC.LHsBind GHC.Name]
 
 addDecl parent pn (decl, declToks) topLevel
@@ -2249,7 +2274,7 @@ addDecl parent pn (decl, declToks) topLevel
              (toks1, toks2, toks3) = splitToks' (startPos, endPos) toks
               --get the toks defining pn
              defToks = dropWhile (\t->tokenPos t /=startPos) toks2
-             offset = if topLevel 
+             offset = if topLevel
                         then 0
                         else getOffset toks $ fst (getStartEndLoc (ghead "appendDecl2" decls))
 
@@ -2259,7 +2284,7 @@ addDecl parent pn (decl, declToks) topLevel
              nlToken = newLnToken (glast "appendDecl3" toks2)
          -- error ("appendDecl: (offset,startEndLoc)=" ++ (show (offset, (getStartEndLoc (ghead "appendDecl2" decls))))) -- ++AZ++ debug
          newToks <- liftIO $ tokenise (realSrcLocFromTok nlToken) offset True declStr
-         let -- 
+         let --
              toks' = if  endsWithNewLn  (glast "appendDecl2" toks2)
                       then  toks1++ toks2 ++ (nlToken: newToks) ++ [nlToken]++ compressPreNewLns toks3
                       else  replaceToks toks startPos endPos (defToks++[nlToken,nlToken]++newToks)
@@ -2284,23 +2309,38 @@ addDecl parent pn (decl, declToks) topLevel
   addLocalDecl parent (newFun, newFunToks)
     =do
         toks <- fetchToks
+        -- error ("addLocalDecl:localDecls=" ++ (GHC.showPpr localDecls)) -- ++AZ++ debug
         let (startPos@(_,startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
-              =if (emptyList localDecls) then startEndLocIncFowComment toks parent    --The 'where' clause is empty
-                                 else startEndLocIncFowComment toks localDecls
-            toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
+              =if (emptyList localDecls)
+                   then startEndLocIncFowComment toks parent    --The 'where' clause is empty
+                   else startEndLocIncFowComment toks localDecls
+            -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
+            -- ++AZ++ toks1 : tokens after the insertion point
+            --        ts1: toks1 with whitespace, comments etc removed.
+            toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t<=endPos') toks
             ts1=takeWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t)  toks1
             --nextTokPos is only used to test whether there is a 'In' or a nested comment. 
             nextTokPos= case (dropWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t) toks1) of
                            [] -> simpPos0
                            l  -> (tokenPos.ghead "addLocalFunInToks") l
             needNewLn=if nextTokPos==simpPos0  --used to decide whether add a new line character before a introduced fun.
-                      then if (emptyList toks1) then True
-                                        else (not.endsWithNewLn) (glast "addLocalDecl" ts1)
+                      then if (emptyList toks1)
+                              then True
+                              else (not.endsWithNewLn) (glast "addLocalDecl" ts1)
                       else endRow'==fst nextTokPos
             --endPos@(endRow,_)=if ts1==[] then endPos'
             --                             else tokenPos (last ts1)
-            offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
-        newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addLocalDecl 2" toks1) offset True
+            -- ++AZ++ temp offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
+            offset = if (emptyList localDecls)
+                        then getOffset toks startPos + 4
+                        else getOffset toks startPos
+            nlToken = newLnToken (ghead "addLocalDecl2" toks1)
+
+        -- error ("addLocalDecl: (head toks1) =" ++ (showToks $ [head toks1])) -- ++AZ++ debug
+        -- error ("addLocalDecl: (needNewLn,nextTokPos) =" ++ (GHC.showPpr (needNewLn,nextTokPos))) -- ++AZ++ debug
+
+        newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addLocalDecl3" toks1) offset True
+        -- newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
                           $ if needNewLn then "\n"++newSource else newSource++"\n"
         let oldToks'=getToks (startPos,endPos') toks
             toks'=replaceToks toks startPos endPos' (oldToks'++newToks)
@@ -3052,7 +3092,7 @@ duplicateDecl decls pn newFunName
 --------------------------------TRY TO REMOVE THIS FUNCTION---------------------
 
 
-moveDecl:: (SYB.Data t,SYB.Data t2)
+moveDecl:: (HsBinds t)
      => [GHC.Name]     -- ^ The identifier(s) whose defining
                        -- declaration is to be moved. List is used to
                        -- handle pattern bindings where multiple
@@ -3066,10 +3106,10 @@ moveDecl:: (SYB.Data t,SYB.Data t2)
      -- -> [HsDeclP]      -- ^ The declaration list where the
                        -- definition\/pattern binding originally
                        -- exists.
-     -- -> [GHC.LHsBind GHC.Name]      -- ^ The declaration list where
+     -> [GHC.LHsBind GHC.Name]      -- ^ The declaration list where
                                     -- the definition\/pattern binding
                                     -- originally exists.
-     -> t2             -- ^ The declaration list where the
+     -- -> t2             -- ^ The declaration list where the
                        -- definition\/pattern binding originally
                        -- exists.
      -> Bool           -- ^ True means the type signature will not be
@@ -3077,17 +3117,17 @@ moveDecl:: (SYB.Data t,SYB.Data t2)
      -> RefactGhc t    -- ^ The result.
 
 moveDecl pns dest sameLevel decls incSig
-   = error "undefined moveDecl"
-   {- ++AZ++ WIP, sort out getDeclToks first 
+   -- = error "undefined moveDecl"
+   {- ++AZ++ WIP, sort out getDeclToks first -}
    = do ts <- fetchToks
         let defToks' =(getDeclToks (ghead "moveDecl:0" pns) True decls ts)
             defToks  =whiteSpaceTokens (tokenRow (ghead "moveDecl" defToks'),0)
                                        -- do not use tokenCol here. should count the whilte spaces.
                                        (tokenCol (ghead "moveDecl2" defToks') -1) ++ defToks'
-            movedDecls = definingDecls pns decls True False
+            movedDecls = definingDeclsNames pns decls True False
         decls'<-rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) decls pns
-        addDecl dest Nothing (movedDecls, Just defToks) False
-   ++WIP end++ -}
+        addDecl dest Nothing (ghead "moveDecl" movedDecls, Just defToks) False
+   {- ++WIP end++ -}
 
 {- ++AZ++ original
 {-
@@ -3694,12 +3734,11 @@ getDeclToks pn incSig decls toks
         -}
     in if incSig then sigToks ++ declToks  else declToks 
    where   
-     getToks' decl toks
-          = let (startPos, endPos) = startEndLocIncComments toks decl
-                (toks1, _) =let(ts1, (t:ts2'))= break (\t -> tokenPos t == endPos) toks
-                            in (ts1++[t], ts2')
-            in dropWhile (\t -> tokenPos t /= startPos {- || isNewLn t -}) toks1
-
+    getToks' decl toks
+      = let (startPos, endPos) = startEndLocIncComments toks decl
+            (toks1, _) =let(ts1,(t:ts2'))= break (\t -> tokenPos t >= endPos) toks
+                        in (ts1, ts2')
+        in dropWhile (\t -> tokenPos t < startPos {- || isNewLn t -}) toks1
 
 
 -- ---------------------------------------------------------------------

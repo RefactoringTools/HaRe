@@ -313,6 +313,8 @@ onSameLn (GHC.L l1 _,_) (GHC.L l2 _,_) = r1 == r2
 
 splitOnNewLn :: [PosToken] -> ([PosToken],[PosToken])
 splitOnNewLn xs = go [] xs
+  -- ++AZ++ : TODO: is this simpler? : (toks1,toks2)=break (\x' -> tokenRow x /= tokenRow x') rtoks
+
   where
     go [] [] = ([],[])
     go ss [] = (ss,[])
@@ -811,12 +813,24 @@ reAlignToks (tok1@((GHC.L l1 t1),s1):tok2@((GHC.L l2 t2),s2):ts)
 
 -- ---------------------------------------------------------------------
 
+{- ++AZ++ this definition does not make sense
 -- | Get the end of the line before the pos
 getOffset toks pos
   = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
     in if (emptyList ts2)
          then error "HaRe error: position does not exist in the token stream!"
          else lengthOfLastLine ts1
+-}
+
+-- | Get the start of the line before the pos, i.e. the current indent
+getOffset :: [PosToken] -> SimpPos -> Int
+getOffset toks pos
+  = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
+    in if (emptyList ts2)
+         then error "HaRe error: position does not exist in the token stream!"
+         else let (sl,_) = splitOnNewLn $ reverse ts1
+              in tokenCol (glast "getOffset" sl)
+              -- in error ("getOffset: sl=" ++ (showToks sl)) -- ++AZ++
 
 
 -- ---------------------------------------------------------------------

@@ -755,9 +755,13 @@ doDemoting  pn = do
        --1. demote from top level
        -- demoteInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
        demoteInMod (mod :: GHC.RenamedSource)
-         | not $ emptyList (definingDeclsNames [pn] (hsBinds mod) False False)
-         = do mod' <- rmQualifier [pn] mod
-              doDemoting' mod' pn
+         | not $ emptyList decls
+         = do decls' <- rmQualifier [pn] decls
+              demoted <- doDemoting' decls' pn
+              let mod' = replaceBinds mod demoted
+              return mod'
+         where
+           decls = (definingDeclsNames [pn] (hsBinds mod) False False)
        demoteInMod x = return x
 
 {-
@@ -1116,6 +1120,16 @@ instance UsedByRhs GHC.RenamedSource where
 
    -- usedByRhs renamed pns = or $ map (findPNs pns) $ hsBinds renamed
    usedByRhs renamed pns = False
+
+
+instance UsedByRhs [GHC.LHsBind GHC.Name] where
+  usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
+
+instance UsedByRhs (GHC.LHsBind GHC.Name) where
+  usedByRhs (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) pns = findPNs pns matches
+  usedByRhs (GHC.L _ (GHC.PatBind _ rhs _ _ _))       pns = findPNs pns rhs
+  usedByRhs (GHC.L _ (GHC.VarBind _ rhs _))           pns = findPNs pns rhs
+  usedByRhs (GHC.L _ (GHC.AbsBinds _ _ _ _ _))        pns = False
 
 
 {- ++ original

@@ -341,6 +341,17 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "getOffset" $ do
+    it "Get the start of the line prior to the current pos" $ do
+      (_t,toks) <- parsedFileCaseBGhc
+      getOffset toks (12,1) `shouldBe` 3
+
+    it "Get the start of the line prior to the current pos2" $ do
+      (_t,toks) <- parsedFileCaseBGhc
+      getOffset toks (17,1) `shouldBe` 1
+
+  -- -------------------------------------------------------------------
+
   describe "foo" $ do
     it "needs a test or two" $ do
       pending "write this test"
