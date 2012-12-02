@@ -61,6 +61,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,defines, definesP,definesTypeSig -- , isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
     ,sameBind
+    ,usedByRhs,UsedByRhs(..)
 
     -- ** Modules and files
     -- ,clientModsAndFiles,serverModsAndFiles,isAnExistingMod
@@ -75,7 +76,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Adding
     ,addDecl {- ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
     ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl, moveDecl
-    -- ** Rmoving
+    -- ** Removing
     ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
     -- ** Updating
@@ -1846,6 +1847,55 @@ sameBind b1 b2 = (definesNames b1) == (definesNames b2)
     definesNames (GHC.L _ (GHC.FunBind (GHC.L _ name) _ _ _ _ _)) = [name]
     definesNames (GHC.L _ (GHC.VarBind name _ _))                 = [name]
 -}
+-- ---------------------------------------------------------------------
+
+class (SYB.Data t) => UsedByRhs t where
+
+    -- | Return True if any of the GHC.Name's appear in the given
+    -- syntax element
+    usedByRhs:: t -> [GHC.Name] -> Bool
+
+instance UsedByRhs GHC.RenamedSource where
+
+   -- Defined like this in the original
+   usedByRhs renamed pns = False
+
+
+instance UsedByRhs [GHC.LHsBind GHC.Name] where
+  usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
+
+instance UsedByRhs (GHC.LHsBind GHC.Name) where
+  usedByRhs (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) pns = findPNs pns matches
+  usedByRhs (GHC.L _ (GHC.PatBind _ rhs _ _ _))       pns = findPNs pns rhs
+  usedByRhs (GHC.L _ (GHC.VarBind _ rhs _))           pns = findPNs pns rhs
+  usedByRhs (GHC.L _ (GHC.AbsBinds _ _ _ _ _))        pns = False
+
+
+{- ++ original
+class (Term t) =>UsedByRhs t where
+
+    usedByRhs:: t->[PName]->Bool
+
+instance UsedByRhs HsExpP where
+    usedByRhs (Exp (HsLet ds e)) pns = or $ map (flip findPN e) pns
+
+instance UsedByRhs HsAltP where
+    usedByRhs (HsAlt _ _ rhs _) pns  =or $ map (flip findPN rhs) pns
+
+instance UsedByRhs HsStmtP where
+    usedByRhs (HsLetStmt _ stmt) pns =or $ map (flip findPN stmt) pns
+
+instance UsedByRhs HsMatchP where
+    usedByRhs (HsMatch loc1 fun pats rhs ds) pns =or $ map (flip findPN rhs) pns
+
+instance UsedByRhs  HsDeclP where
+    usedByRhs (Dec (HsPatBind loc p rhs ds)) pns =or $ map (flip findPN rhs) pns
+    usedByRhs _ pn=False
+
+instance UsedByRhs HsModuleP where
+    usedByRhs mod pns=False
+-}
+
 --------------------------------------------------------------------------------
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the

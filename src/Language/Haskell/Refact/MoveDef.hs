@@ -754,14 +754,15 @@ doDemoting  pn = do
     where
        --1. demote from top level
        -- demoteInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
-       demoteInMod (mod :: GHC.RenamedSource)
+       demoteInMod (renamed :: GHC.RenamedSource)
          | not $ emptyList decls
-         = do decls' <- rmQualifier [pn] decls
+         = do -- decls' <- rmQualifier [pn] decls
+              decls' <- rmQualifier [pn] (hsBinds renamed)
               demoted <- doDemoting' decls' pn
-              let mod' = replaceBinds mod demoted
-              return mod'
+              let renamed' = replaceBinds renamed demoted
+              return renamed'
          where
-           decls = (definingDeclsNames [pn] (hsBinds mod) False False)
+           decls = (definingDeclsNames [pn] (hsBinds renamed) False False)
        demoteInMod x = return x
 
 {-
@@ -890,6 +891,7 @@ doDemoting' t pn
                       {- From 'hsDecls t' to 'hsDecls t \\ demotedDecls'.
                          Bug fixed 06/09/2004 to handle direct recursive function.
                        -}
+              error ("doDemoting':(pn,origDecls)=" ++ (GHC.showPpr (pn,origDecls))) -- ++AZ++
               case  length uselist  of
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function
@@ -918,8 +920,12 @@ doDemoting' t pn
                                     return (replaceBinds t ds'')
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
-      else error "This function can not be demoted as it is used in current level!\n"
-      -- else error ("doDemoting': declaredPns=" ++ (GHC.showPpr declaredPns))
+       -- else error "This function can not be demoted as it is used in current level!\n"
+       -- else error ("doDemoting': demotedDecls'=" ++ (GHC.showPpr demotedDecls')) -- ++AZ++
+       -- else error ("doDemoting': declaredPns=" ++ (GHC.showPpr declaredPns)) -- ++AZ++
+       else error ("doDemoting': (declaredPns,(usedByRhs t declaredPns))=" ++ (GHC.showPpr (declaredPns,(usedByRhs t declaredPns)))) -- ++AZ++
+
+
     where
           ---find how many matches/pattern bindings use  'pn'-------
           uses pns
@@ -1112,50 +1118,6 @@ doDemoting' t pn
 
 -- ---------------------------------------------------------------------
 
-class (SYB.Data t) => UsedByRhs t where
-
-    usedByRhs:: t -> [GHC.Name] -> Bool
-
-instance UsedByRhs GHC.RenamedSource where
-
-   -- usedByRhs renamed pns = or $ map (findPNs pns) $ hsBinds renamed
-   usedByRhs renamed pns = False
-
-
-instance UsedByRhs [GHC.LHsBind GHC.Name] where
-  usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
-
-instance UsedByRhs (GHC.LHsBind GHC.Name) where
-  usedByRhs (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) pns = findPNs pns matches
-  usedByRhs (GHC.L _ (GHC.PatBind _ rhs _ _ _))       pns = findPNs pns rhs
-  usedByRhs (GHC.L _ (GHC.VarBind _ rhs _))           pns = findPNs pns rhs
-  usedByRhs (GHC.L _ (GHC.AbsBinds _ _ _ _ _))        pns = False
-
-
-{- ++ original
-class (Term t) =>UsedByRhs t where
-
-    usedByRhs:: t->[PName]->Bool
-
-instance UsedByRhs HsExpP where
-    usedByRhs (Exp (HsLet ds e)) pns = or $ map (flip findPN e) pns
-
-instance UsedByRhs HsAltP where
-    usedByRhs (HsAlt _ _ rhs _) pns  =or $ map (flip findPN rhs) pns
-
-instance UsedByRhs HsStmtP where
-    usedByRhs (HsLetStmt _ stmt) pns =or $ map (flip findPN stmt) pns
-
-instance UsedByRhs HsMatchP where
-    usedByRhs (HsMatch loc1 fun pats rhs ds) pns =or $ map (flip findPN rhs) pns
-
-instance UsedByRhs  HsDeclP where
-    usedByRhs (Dec (HsPatBind loc p rhs ds)) pns =or $ map (flip findPN rhs) pns
-    usedByRhs _ pn=False
-
-instance UsedByRhs HsModuleP where
-    usedByRhs mod pns=False
--}
 
 
 

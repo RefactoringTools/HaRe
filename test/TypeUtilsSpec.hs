@@ -1274,6 +1274,31 @@ spec = do
 
   -- ---------------------------------------
 
+  describe "usedByRhs" $ do
+    it "Returns True if a given identifier is used in the RHS of a syntax element" $ do
+      let
+        comp = do
+          (t, toks) <- parseSourceFileGhc "./test/testdata/MoveDef/Demote.hs"
+          putParsedModule t toks
+          renamed <- getRefactRenamed
+
+          let Just (GHC.L _ tl)   = locToName (GHC.mkFastString "./test/testdata/MoveDef/Demote.hs") (4,1) renamed
+          let Just (GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Demote.hs") (7,1) renamed
+          let decls = (definingDeclsNames [tl] (hsBinds renamed) False False)
+          decls' <- rmQualifier [name] decls
+
+          -- let res = usedByRhs decls [name]
+          let res = usedByRhs decls' [name]
+
+          return (res,decls,tl,name)
+
+      ((r,d,n1,n2),s) <- runRefactGhcState comp 
+      (GHC.showPpr n1) `shouldBe` "MoveDef.Demote.toplevel"
+      (GHC.showPpr n2) `shouldBe` "MoveDef.Demote.c"
+      (GHC.showPpr d) `shouldBe` "[MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x]"
+      r `shouldBe` True
+
+  -- ---------------------------------------
   
 myShow :: GHC.RdrName -> String
 myShow n = case n of
