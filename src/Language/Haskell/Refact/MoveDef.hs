@@ -708,7 +708,7 @@ demote' modName fileName modInfo@(mod,toks) (GHC.L _ pn) = do
                   if isTl && modIsExported parsed
                     then do let demotedDecls'= definingDeclsNames [pn] (hsBinds renamed) True False
                                 declaredPns  = nub $ concatMap definedPNs demotedDecls'
-                            clients<-clientModsAndFiles modName
+                            -- clients<-clientModsAndFiles modName
                             -- TODO: Complete this
                             -- refactoredClients <-mapM (demotingInClientMod declaredPns) clients
                             -- writeRefactoredFiles False $ ((fileName,m),(toks',mod')):refactoredClients
@@ -740,7 +740,10 @@ doDemoting  pn = do
   renamed <- getRefactRenamed
   renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM demoteInMod
                                             ) renamed
+  -- error ("doDemoting:renamed'=" ++ (GHC.showPpr renamed'))
   putRefactRenamed renamed'
+  -- ren <- getRefactRenamed
+  -- error ("doDemoting:ren=" ++ (GHC.showPpr ren))
   return ()
 {-
  =runStateT (applyTP ((once_tdTP (failTP `adhocTP` demoteInMod
@@ -760,6 +763,7 @@ doDemoting  pn = do
               decls' <- rmQualifier [pn] (hsBinds renamed)
               demoted <- doDemoting' decls' pn
               let renamed' = replaceBinds renamed demoted
+              -- error ("demoteInMod:renamed'=" ++ (GHC.showPpr renamed'))
               return renamed'
          where
            decls = (definingDeclsNames [pn] (hsBinds renamed) False False)
@@ -876,14 +880,15 @@ doDemoting  pn fileName mod toks
 
 -}
 
-doDemoting' :: (HsBinds t, UsedByRhs t) => t -> GHC.Name -> RefactGhc t
+doDemoting' :: (HsBinds t, UsedByRhs t, GHC.Outputable t) => t -> GHC.Name -> RefactGhc t
 doDemoting' t pn
  -- = error "undefined doDemoting'"
  = let origDecls = hsBinds t
        demotedDecls'= definingDeclsNames [pn] origDecls True False
        declaredPns = nub $ concatMap definedPNs demotedDecls'
        demotedDecls = definingDeclsNames declaredPns origDecls True False
-   in if not (usedByRhs t declaredPns)
+   -- in if not (usedByRhs t declaredPns) -- ++AZ++ this only works because the top level is hard coded to False.
+   in if (usedByRhs t declaredPns)
        then do -- find how many matches/pattern bindings (except the binding defining pn) use 'pn'
               -- uselist <- uses declaredPns (hsBinds t\\demotedDecls)
               let -- uselist = uses declaredPns (hsBinds t\\demotedDecls)
@@ -891,7 +896,7 @@ doDemoting' t pn
                       {- From 'hsDecls t' to 'hsDecls t \\ demotedDecls'.
                          Bug fixed 06/09/2004 to handle direct recursive function.
                        -}
-              error ("doDemoting':(pn,origDecls)=" ++ (GHC.showPpr (pn,origDecls))) -- ++AZ++
+              -- error ("doDemoting':(pn,origDecls,uselist)=" ++ (GHC.showPpr (pn,origDecls,uselist))) -- ++AZ++
               case  length uselist  of
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function
@@ -916,8 +921,12 @@ doDemoting' t pn
                                        ++" after demoting, please do renaming first!")  
                                  --ds'<-foldM (flip (autoRenameLocalVar True)) ds clashedNames
                             else  --duplicate demoted declarations to the right place.
-                                 do ds'' <- duplicateDecls declaredPns origDecls
-                                    return (replaceBinds t ds'')
+                                 do 
+                                    ds'' <- duplicateDecls declaredPns origDecls
+                                    -- let res = replaceBinds t ds''
+                                    -- error ("doDemoting':(ds'',res)=" ++ (GHC.showPpr (ds'',res))) -- ++AZ++
+                                    -- return res 
+                                    return (replaceBinds t ds'') 
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
        -- else error "This function can not be demoted as it is used in current level!\n"

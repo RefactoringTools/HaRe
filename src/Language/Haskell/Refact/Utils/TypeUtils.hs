@@ -1324,8 +1324,17 @@ instance HsBinds (GHC.HsLocalBinds GHC.Name) where
     GHC.HsIPBinds _     -> []
     GHC.EmptyLocalBinds -> []
 
+  replaceBinds (GHC.HsValBinds b) new    = (GHC.HsValBinds (replaceBinds b new))
+  -- replaceBinds (GHC.GRHSs rhss (GHC.HsIPBinds b)) new     = (GHC.GRHSs rhss (GHC.HsIPBinds (replaceBinds b new)))
+  replaceBinds (GHC.HsIPBinds b) new     = error "undefined replaceBinds HsIPBinds"
+  replaceBinds (GHC.EmptyLocalBinds) new = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag new) []))
+
 instance HsBinds (GHC.GRHSs GHC.Name) where
   hsBinds (GHC.GRHSs _ lb) = hsBinds lb
+
+  replaceBinds (GHC.GRHSs rhss b) new = (GHC.GRHSs rhss (replaceBinds b new))
+
+
 
 instance HsBinds (GHC.MatchGroup GHC.Name) where
   hsBinds (GHC.MatchGroup matches _) = hsBinds matches
