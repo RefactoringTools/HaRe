@@ -34,13 +34,17 @@ swapArgs args
   = do let fileName = args!!0              
            row = (read (args!!1)::Int)
            col = (read (args!!2)::Int)
-       runRefacSession Nothing (comp fileName (row,col))
+       runRefacSession Nothing (comp Nothing fileName (row,col))
        
        
-comp :: String -> SimpPos
+comp :: Maybe FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]	
-comp fileName (row, col) = do
-       modInfo@((_, renamed, mod), toks) <- parseSourceFileGhc fileName 
+comp maybeMainFile fileName (row, col) = do
+       loadModuleGraphGhc maybeMainFile
+       modInfo@(t, _tokList) <- getModuleGhc fileName
+       renamed <- getRefactRenamed
+       parsed  <- getRefactParsed
+       -- modInfo@((_, renamed, mod), toks) <- parseSourceFileGhc fileName 
        -- putStrLn $ showParsedModule mod
        -- let pnt = locToPNT fileName (row, col) mod  
 
@@ -67,12 +71,28 @@ comp fileName (row, col) = do
 
 
 doSwap ::
- PNT -> (GHC.Located GHC.Name) -> ParseResult
-              -> RefactGhc GHC.ParsedSource -- m GHC.ParsedSource
-doSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n) (_ , _, mod) 
-    = everywhereMStaged SYB.Parser (SYB.mkM inMatch `SYB.extM` inExp) mod -- this needs to be bottom up +++ CMB +++
+ PNT -> (GHC.Located GHC.Name) -> RefactGhc () -- m GHC.ParsedSource
+doSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n) = do
+    inscopes <- getRefactInscopes
+    renamed  <- getRefactRenamed
+    parsed   <- getRefactParsed
+    reallyDoSwap pnt name renamed
+
+reallyDoSwap :: PNT -> (GHC.Located GHC.Name) -> GHC.RenamedSource -> RefactGhc ()
+reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n) renamed = do
+    renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM inMod) renamed --  `SYB.extM` inExp) renamed -- this needs to be bottom up +++ CMB +++
+    putRefactRenamed renamed'
+    return ()
+    
     where
-        inMatch i@(GHC.L x m@(GHC.Match (p1:p2:ps) nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )
+         -- 1. The definition is at top level...
+         inMod (func@(GHC.FunBind name2@(GHC.L x _) infixity matches _ locals tick)::(GHC.HsBindLR GHC.Name GHC.Name ))
+            | name == name2 = error "Found it!"
+         inMod func = return func
+         
+
+    
+{-        inMatch i@(GHC.L x m@(GHC.Match (p1:p2:ps) nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )
 		  -- = error (SYB.showData SYB.Parser 0 pnt) 
             | GHC.srcSpanStart s == GHC.srcSpanStart x
               = do liftIO $ putStrLn ("inMatch>" ++ SYB.showData SYB.Parser 0 (p1:p2:ps) ++ "<")
@@ -82,8 +102,8 @@ doSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n) (_ , _, mod)
         inMatch i = return i 
         
         inExp exp@((GHC.L x (GHC.HsApp (GHC.L y (GHC.HsApp e e1)) e2))::GHC.Located (GHC.HsExpr GHC.RdrName))
-          {- | (fromJust $ expToName e) == (GHC.L s (GHC.nameRdrName n))-} = error (SYB.showData SYB.Parser 0 (GHC.L s (GHC.nameRdrName n)))  -- update e2 e1 =<< update e1 e2 exp
-        inExp e = return e
+          {- | (fromJust $ expToName e) == (GHC.L s (GHC.nameRdrName n))-} -- = error (SYB.showData SYB.Parser 0 (GHC.L s (GHC.nameRdrName n)))  -- update e2 e1 =<< update e1 e2 exp
+       -- inExp e = return e -}
         -- In the call-site.
    {- inExp exp@((Exp (HsApp (Exp (HsApp e e1)) e2))::HsExpP)
       | expToPNT e == pnt     
