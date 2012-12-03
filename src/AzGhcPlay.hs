@@ -59,8 +59,8 @@ import Language.Haskell.Refact.Utils.GhcUtils
 -- targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
 -- targetMod = "FreeAndDeclared/Declare"
 
-targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
-targetMod = "MoveDef/Md1"
+targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
+targetMod = "SwapArgs/B"
 
 {- main = t1 -}
 
@@ -132,7 +132,7 @@ getStuff =
         let dflags' = foldl GHC.xopt_set dflags
                             [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
 
-            dflags'' = dflags' { GHC.importPaths = ["./test/testdata/","../test/testdata/"] }
+            dflags'' = dflags' { GHC.importPaths = ["../test/testdata/","../test/testdata/"] }
 
             dflags''' = dflags'' { GHC.hscTarget = GHC.HscInterpreted,
                                    GHC.ghcLink =  GHC.LinkInMemory }
@@ -144,7 +144,7 @@ getStuff =
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
-        modSum <- GHC.getModSummary $ GHC.mkModuleName "MoveDef.Md1"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "SwapArgs.B"
         p <- GHC.parseModule modSum
 
         t <- GHC.typecheckModule p

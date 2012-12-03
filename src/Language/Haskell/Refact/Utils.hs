@@ -360,6 +360,16 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
                     return newExp
           | otherwise = return e
 
+{- instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.HsPat n)) t where
+    update oldPat newPat t
+           = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
+        where
+          inPat (p::GHC.Located (GHC.HsPat n))
+            | sameOccurrence p oldPat
+                = do _ <- updateToks oldPat newPat prettyprint
+                     return newPat
+            | otherwise = return p -}
+
 
 -- ---------------------------------------------------------------------
 -- TODO: ++AZ++ get rid of the following instances, merge them into a

@@ -6,6 +6,7 @@ import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
 import qualified FastString            as GHC
+import qualified Name          as GHC
 import qualified GHC
 import qualified DynFlags              as GHC
 import qualified Outputable            as GHC
@@ -79,15 +80,16 @@ doSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n) = do
     reallyDoSwap pnt name renamed
 
 reallyDoSwap :: PNT -> (GHC.Located GHC.Name) -> GHC.RenamedSource -> RefactGhc ()
-reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n) renamed = do
+reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n1) renamed = do
     renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM inMod) renamed --  `SYB.extM` inExp) renamed -- this needs to be bottom up +++ CMB +++
     putRefactRenamed renamed'
     return ()
     
     where
          -- 1. The definition is at top level...
-         inMod (func@(GHC.FunBind name2@(GHC.L x _) infixity matches _ locals tick)::(GHC.HsBindLR GHC.Name GHC.Name ))
-            | name == name2 = error "Found it!"
+         inMod (func@(GHC.FunBind (GHC.L x n2) infixity matches _ locals tick)::(GHC.HsBindLR GHC.Name GHC.Name ))
+            | GHC.nameUnique n1 == GHC.nameUnique n2 = do liftIO $ putStrLn ("inMatch>" ++ SYB.showData SYB.Parser 0 (GHC.L x n2) ++ "<")
+                                                          return func
          inMod func = return func
          
 
