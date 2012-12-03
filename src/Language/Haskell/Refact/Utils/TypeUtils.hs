@@ -2439,9 +2439,11 @@ addDecl parent pn (decl, declToks) topLevel
 
         newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addLocalDecl3" toks1) offset True
         -- newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
-                          $ if needNewLn then "\n"++newSource else newSource++"\n"
+                          -- $ if needNewLn then "\n"++newSource else newSource++"\n"
+                          $ if needNewLn then newSource++"\n" else newSource++"\n"
+        let nlToken2 = newLnToken (glast "addLocalDecl4" newToks)
         let oldToks'=getToks (startPos,endPos') toks
-            toks'=replaceToks toks startPos endPos' (oldToks'++newToks)
+            toks'=replaceToks toks startPos endPos' (oldToks'++newToks++[nlToken2])
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
         -- put ((toks',modified),((tokenRow (glast "appendDecl2" newToks) -10), v2))
         putToks toks' modified
@@ -2450,9 +2452,9 @@ addDecl parent pn (decl, declToks) topLevel
          localDecls = hsBinds parent
 
          newSource  = if (emptyList localDecls)
-                      then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
-                      else newFun'
-            where
+                       then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
+                       else (" " ++ newFun'++"\n")
+           where
             newFun' = case newFunToks of
                            Just ts -> concatMap tokenCon ts
                            Nothing -> prettyprint newFun
