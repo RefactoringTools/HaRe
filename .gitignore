@@ -43,3 +43,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/DupDef/Dd2.hs.tokens
 /test/testdata/MoveDef/Md1.hs.refactored
 /test/testdata/MoveDef/Md1.hs.tokens
+/test/testdata/MoveDef/Md1.hs.orig
