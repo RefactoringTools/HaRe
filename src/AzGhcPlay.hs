@@ -357,16 +357,17 @@ isBaz _ = False
  
 -- main = example
 
+example :: IO ()
 example =
    GHC.runGhc (Just libdir) $ do
         dflags <- GHC.getSessionDynFlags
         let dflags' = foldl GHC.xopt_set dflags
                             [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-        GHC.setSessionDynFlags dflags'
+        _ <- GHC.setSessionDynFlags dflags'
         -- target <- GHC.guessTarget (targetMod ++ ".hs") Nothing
         target <- GHC.guessTarget targetFile Nothing
         GHC.setTargets [target]
-        GHC.load GHC.LoadAllTargets
+        _ <- GHC.load GHC.LoadAllTargets
         modSum <- GHC.getModSummary $ GHC.mkModuleName targetMod
         p' <- GHC.parseModule modSum
         p <- GHC.typecheckModule p'

@@ -235,5 +235,6 @@ test-suite spec
     , syb
     , transformers
 
+    -- Note: flymake under ghc-mod will not work if this is in
     , HaRe >= 0.6.0.3
 

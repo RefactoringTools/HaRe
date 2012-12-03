@@ -34,11 +34,6 @@
 
 
 --------------------------------------------------------------------------------
-{-
-module RefacTypeUtils(module DriftStructUtils, module StrategyLib, module RefacTITypeSyn, module PosSyntax,
-                  module SourceNames, module UniqueNames, module PNT,
-                  module Ents, module Relations, module QualNames, module TypedIds 
--}
 module Language.Haskell.Refact.Utils.TypeUtils
        (
  -- * Program Analysis
@@ -60,12 +55,13 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
     ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
-    ,findPNT -- ,findPN      -- Try to remove this.
-    {-,findPNs -}, findEntity, findEntity'
+    ,findPNT,findPN
+    ,findPNs, findEntity, findEntity'
     ,sameOccurrence
     ,defines, definesP,definesTypeSig -- , isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
-
+    ,sameBind
+    ,usedByRhs,UsedByRhs(..)
 
     -- ** Modules and files
     -- ,clientModsAndFiles,serverModsAndFiles,isAnExistingMod
@@ -79,8 +75,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program transformation
     -- ** Adding
     ,addDecl {- ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
-    ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
-    -- ** Rmoving
+    ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl, moveDecl
+    -- ** Removing
     ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
     -- ** Updating
@@ -89,7 +85,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
 -- * Miscellous
     -- ** Parsing, writing and showing
-   {- ,parseSourceFile,writeRefactoredFiles-}, showEntities -- ,showPNwithLoc, newProj, addFile, chase
+   {- ,parseSourceFile,writeRefactoredFiles-}, showEntities,showPNwithLoc -- , newProj, addFile, chase
     -- ** Locations
    -- ,toRelativeLocs, rmLocs
     -- ** Default values
@@ -102,15 +98,16 @@ module Language.Haskell.Refact.Utils.TypeUtils
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     ,definingDecls, definedPNs
     ,definingDeclsNames, definingSigsNames
-
+    , allNames
     -- ,simplifyDecl
+
     -- ** Others
-   -- , applyRefac, applyRefacToClientMods
+    -- , applyRefac, applyRefacToClientMods
     , mkRdrName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
-    {- ,getDeclToks -}, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
-    , getDeclAndToks,getSigAndToks -- ++AZ++ Zipper?
+    ,getDeclToks, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
+    ,getDeclAndToks,getSigAndToks -- ++AZ++ Zipper?
 
 -- * Typed AST traversals (added by CMB)
     -- * Miscellous
@@ -119,7 +116,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
 -- * Debug stuff
   , allPNT
   , allPNTLens
-  , allNames
   , newNameTok
  ) where
 
@@ -248,6 +244,15 @@ isInScopeAndUnqualifiedGhc n = do
     -- handler:: (Exception e,GHC.GhcMonad m) => e -> m [GHC.Name]
     handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
     handler _ = return []
+
+-- ---------------------------------------------------------------------
+
+-- | Show a PName in a format like: 'pn'(at row:r, col: c).
+showPNwithLoc::GHC.Located GHC.Name->String
+showPNwithLoc pn@(GHC.L l n)
+  = let (r,c) = getGhcLoc l
+    -- in  " '"++pNtoName pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
+    in  " '"++GHC.showPpr pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
 
 -- ---------------------------------------------------------------------
 
@@ -663,7 +668,7 @@ hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
            where
              (_df,dd) = hsFreeAndDeclaredPNs matches
           ++AZ++ end -}
- 
+
           expr ((GHC.HsLet decls e1) :: GHC.HsExpr GHC.Name)
              |findEntity e e1 || findEntity e decls = dd
            where
@@ -1300,17 +1305,18 @@ instance HsBinds (GHC.RenamedSource) where
     where
       vb = GHC.hs_valds grp
       vb' = case vb of
-        GHC.ValBindsIn oldbinds sigs -> GHC.ValBindsIn (GHC.listToBag binds) sigs
-        -- ++AZ++ does it matter we are throwing away the recursive flag?
-        GHC.ValBindsOut rbinds sigs  -> GHC.ValBindsIn (GHC.listToBag binds) sigs
+        GHC.ValBindsIn _oldbinds sigs -> GHC.ValBindsIn (GHC.listToBag binds) sigs
+        -- ++AZ++ does it matter that we are throwing away the recursive flag?
+        GHC.ValBindsOut _rbinds sigs  -> GHC.ValBindsIn (GHC.listToBag binds) sigs
       grp' = grp {GHC.hs_valds = vb'}
-
 
 instance HsBinds (GHC.HsValBinds GHC.Name) where
   hsBinds vb = getValBinds vb
+  replaceBinds = error "undefined replaceBinds (GHC.HsValBinds GHC.Name)"
 
 instance HsBinds (GHC.HsGroup GHC.Name) where
   hsBinds grp = getValBinds (GHC.hs_valds grp)
+  replaceBinds = error "undefined replaceBinds (GHC.HsGroup GHC.Name)"
 
 instance HsBinds (GHC.HsLocalBinds GHC.Name) where
   hsBinds lb = case lb of
@@ -1318,8 +1324,23 @@ instance HsBinds (GHC.HsLocalBinds GHC.Name) where
     GHC.HsIPBinds _     -> []
     GHC.EmptyLocalBinds -> []
 
+  replaceBinds (GHC.HsValBinds b) new    = (GHC.HsValBinds (replaceBinds b new))
+  -- replaceBinds (GHC.GRHSs rhss (GHC.HsIPBinds b)) new     = (GHC.GRHSs rhss (GHC.HsIPBinds (replaceBinds b new)))
+  replaceBinds (GHC.HsIPBinds b) new     = error "undefined replaceBinds HsIPBinds"
+  replaceBinds (GHC.EmptyLocalBinds) new = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag new) []))
+
 instance HsBinds (GHC.GRHSs GHC.Name) where
   hsBinds (GHC.GRHSs _ lb) = hsBinds lb
+
+  replaceBinds (GHC.GRHSs rhss b) new = (GHC.GRHSs rhss (replaceBinds b new))
+
+
+
+instance HsBinds (GHC.MatchGroup GHC.Name) where
+  hsBinds (GHC.MatchGroup matches _) = hsBinds matches
+
+instance HsBinds [GHC.LMatch GHC.Name] where
+  hsBinds ms = concatMap (\m -> hsBinds $ GHC.unLoc m) ms
 
 instance HsBinds (GHC.Match GHC.Name) where
   hsBinds (GHC.Match _ _ grhs) = hsBinds grhs
@@ -1345,9 +1366,22 @@ instance HsBinds (GHC.Stmt GHC.Name) where
   hsBinds (GHC.LetStmt ds) = hsBinds ds
   replaceBinds = error "replaceBinds (GHC.Stmt GHC.Name) undefined"
 
+
+instance HsBinds (GHC.LHsBind GHC.Name) where
+  hsBinds (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) = hsBinds matches
+  hsBinds (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsBinds rhs
+  hsBinds (GHC.L _ (GHC.VarBind _ rhs _))           = hsBinds rhs
+  hsBinds (GHC.L _ (GHC.AbsBinds _ _ _ _ _))        = []
+
 instance HsBinds ([GHC.LHsBind GHC.Name]) where
   hsBinds x = x
+  -- hsBinds xs = concatMap hsBinds xs
   replaceBinds _old new = new
+  -- replaceBinds old new = error ("replaceBinds (old,new)=" ++ (GHC.showPpr (old,new)))
+
+instance HsBinds (GHC.LHsExpr GHC.Name) where
+  hsBinds (GHC.L _ (GHC.HsLet binds ex)) = hsBinds binds
+  hsBinds _                              = []
 
 -- ---------------------------------------------------------------------
 
@@ -1810,7 +1844,68 @@ hasFreeVars t = fromMaybe False (do (f,_)<-hsFreeAndDeclaredPNs t
                                     if f/=[] then Just True
                                              else Nothing)
 -}
-------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+sameBind :: GHC.LHsBind GHC.Name -> GHC.LHsBind GHC.Name -> Bool
+sameBind b1 b2 = (definedPNs b1) == (definedPNs b2)
+{-
+sameBind b1 b2 = (definesNames b1) == (definesNames b2)
+  where
+    definesNames (GHC.L _ (GHC.PatBind p _rhs _ _ _))             = hsNamess p
+    definesNames (GHC.L _ (GHC.FunBind (GHC.L _ name) _ _ _ _ _)) = [name]
+    definesNames (GHC.L _ (GHC.VarBind name _ _))                 = [name]
+-}
+-- ---------------------------------------------------------------------
+
+class (SYB.Data t) => UsedByRhs t where
+
+    -- | Return True if any of the GHC.Name's appear in the given
+    -- syntax element
+    usedByRhs:: t -> [GHC.Name] -> Bool
+
+instance UsedByRhs GHC.RenamedSource where
+
+   -- Defined like this in the original
+   usedByRhs renamed pns = False
+
+
+instance UsedByRhs [GHC.LHsBind GHC.Name] where
+  usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
+
+instance UsedByRhs (GHC.LHsBind GHC.Name) where
+  usedByRhs (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) pns = findPNs pns matches
+  usedByRhs (GHC.L _ (GHC.PatBind _ rhs _ _ _))       pns = findPNs pns rhs
+  usedByRhs (GHC.L _ (GHC.VarBind _ rhs _))           pns = findPNs pns rhs
+  usedByRhs (GHC.L _ (GHC.AbsBinds _ _ _ _ _))        pns = False
+
+
+{- ++ original
+class (Term t) =>UsedByRhs t where
+
+    usedByRhs:: t->[PName]->Bool
+
+instance UsedByRhs HsExpP where
+    usedByRhs (Exp (HsLet ds e)) pns = or $ map (flip findPN e) pns
+
+instance UsedByRhs HsAltP where
+    usedByRhs (HsAlt _ _ rhs _) pns  =or $ map (flip findPN rhs) pns
+
+instance UsedByRhs HsStmtP where
+    usedByRhs (HsLetStmt _ stmt) pns =or $ map (flip findPN stmt) pns
+
+instance UsedByRhs HsMatchP where
+    usedByRhs (HsMatch loc1 fun pats rhs ds) pns =or $ map (flip findPN rhs) pns
+
+instance UsedByRhs  HsDeclP where
+    usedByRhs (Dec (HsPatBind loc p rhs ds)) pns =or $ map (flip findPN rhs) pns
+    usedByRhs _ pn=False
+
+instance UsedByRhs HsModuleP where
+    usedByRhs mod pns=False
+-}
+
+--------------------------------------------------------------------------------
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
@@ -1921,45 +2016,28 @@ locToName fileName (row,col) t
 
 --------------------------------------------------------------------------------
 
--- |Find the identifier(in PNT format) whose start position is
--- (row,col) in the file specified by the fileName, and returns
--- defaultPNT if such an identifier does not exist.
-
-allNames::(SYB.Data t)=>GHC.FastString   -- ^ The file name
-                    ->SimpPos          -- ^ The row and column number
-                    ->t                -- ^ The syntax phrase
-                    ->[GHC.Located GHC.Name]            -- ^ The result
-allNames  fileName (row,col) t
+-- |Find all Located Names in the given Syntax phrase.
+allNames::(SYB.Data t)
+       =>t                      -- ^ The syntax phrase
+       ->[GHC.Located GHC.Name] -- ^ The result
+allNames t
   = res
        where
         res = SYB.everythingStaged SYB.Parser (++) []
             ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
         worker (pnt :: (GHC.Located GHC.Name))
-          -- | inScope pnt = [(PNT pnt)]
-          | True = [pnt]
-        worker _ = []
+          = [pnt]
+        -- worker _ = []
 
         workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
-          -- | inScope pnt = [(PNT pnt)]
-          | True = [(GHC.L l name)]
+          = [(GHC.L l name)]
         workerBind _ = []
 
-
-        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-          -- | inScope pnt = [(PNT pnt)]
-          | True = [(GHC.L l name)]
+        workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+          = [(GHC.L l name)]
         workerExpr _ = []
 
-        inScope :: GHC.Located e -> Bool
-        inScope (GHC.L l _) =
-          case l of
-            (GHC.UnhelpfulSpan _) -> False
-            (GHC.RealSrcSpan ss)  ->
-              (GHC.srcSpanFile ss == fileName) &&
-              (GHC.srcSpanStartLine ss == row) &&
-              (col >= (GHC.srcSpanStartCol ss)) &&
-              (col <= (GHC.srcSpanEndCol ss))
 
 
 --------------------------------------------------------------------------------
@@ -2190,9 +2268,14 @@ addItemsToImport serverModName pn ids t
 -- the data type declarations is there is any.
 addDecl:: (SYB.Data t,HsBinds t)
         => t              -- ^ The AST.
-        -> Maybe GHC.Name -- ^ If this is Just, then the declaration will be added right after this identifier's definition.
-        -> (GHC.LHsBind GHC.Name, Maybe [PosToken]) -- ^ The declaration to be added, in both AST and Token stream format (optional).
-        -> Bool              -- ^ True means the declaration is a toplevel declaration.
+        -> Maybe GHC.Name -- ^ If this is Just, then the declaration
+                          -- will be added right after this
+                          -- identifier's definition.
+        -> (GHC.LHsBind GHC.Name, Maybe [PosToken])
+             -- ^ The declaration to be added, in both AST and Token
+             -- stream format (optional).
+        -> Bool              -- ^ True means the declaration is a
+                             -- toplevel declaration.
         -> RefactGhc t --[GHC.LHsBind GHC.Name]
 
 addDecl parent pn (decl, declToks) topLevel
@@ -2250,7 +2333,7 @@ addDecl parent pn (decl, declToks) topLevel
              (toks1, toks2, toks3) = splitToks' (startPos, endPos) toks
               --get the toks defining pn
              defToks = dropWhile (\t->tokenPos t /=startPos) toks2
-             offset = if topLevel 
+             offset = if topLevel
                         then 0
                         else getOffset toks $ fst (getStartEndLoc (ghead "appendDecl2" decls))
 
@@ -2260,7 +2343,7 @@ addDecl parent pn (decl, declToks) topLevel
              nlToken = newLnToken (glast "appendDecl3" toks2)
          -- error ("appendDecl: (offset,startEndLoc)=" ++ (show (offset, (getStartEndLoc (ghead "appendDecl2" decls))))) -- ++AZ++ debug
          newToks <- liftIO $ tokenise (realSrcLocFromTok nlToken) offset True declStr
-         let -- 
+         let --
              toks' = if  endsWithNewLn  (glast "appendDecl2" toks2)
                       then  toks1++ toks2 ++ (nlToken: newToks) ++ [nlToken]++ compressPreNewLns toks3
                       else  replaceToks toks startPos endPos (defToks++[nlToken,nlToken]++newToks)
@@ -2285,23 +2368,38 @@ addDecl parent pn (decl, declToks) topLevel
   addLocalDecl parent (newFun, newFunToks)
     =do
         toks <- fetchToks
+        -- error ("addLocalDecl:localDecls=" ++ (GHC.showPpr localDecls)) -- ++AZ++ debug
         let (startPos@(_,startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
-              =if (emptyList localDecls) then startEndLocIncFowComment toks parent    --The 'where' clause is empty
-                                 else startEndLocIncFowComment toks localDecls
-            toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
+              =if (emptyList localDecls)
+                   then startEndLocIncFowComment toks parent    --The 'where' clause is empty
+                   else startEndLocIncFowComment toks localDecls
+            -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
+            -- ++AZ++ toks1 : tokens after the insertion point
+            --        ts1: toks1 with whitespace, comments etc removed.
+            toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t<=endPos') toks
             ts1=takeWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t)  toks1
             --nextTokPos is only used to test whether there is a 'In' or a nested comment. 
             nextTokPos= case (dropWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t) toks1) of
                            [] -> simpPos0
                            l  -> (tokenPos.ghead "addLocalFunInToks") l
             needNewLn=if nextTokPos==simpPos0  --used to decide whether add a new line character before a introduced fun.
-                      then if (emptyList toks1) then True
-                                        else (not.endsWithNewLn) (glast "addLocalDecl" ts1)
+                      then if (emptyList toks1)
+                              then True
+                              else (not.endsWithNewLn) (glast "addLocalDecl" ts1)
                       else endRow'==fst nextTokPos
             --endPos@(endRow,_)=if ts1==[] then endPos'
             --                             else tokenPos (last ts1)
-            offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
-        newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addLocalDecl 2" toks1) offset True
+            -- ++AZ++ temp offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
+            offset = if (emptyList localDecls)
+                        then getOffset toks startPos + 4
+                        else getOffset toks startPos
+            nlToken = newLnToken (ghead "addLocalDecl2" toks1)
+
+        -- error ("addLocalDecl: (head toks1) =" ++ (showToks $ [head toks1])) -- ++AZ++ debug
+        -- error ("addLocalDecl: (needNewLn,nextTokPos) =" ++ (GHC.showPpr (needNewLn,nextTokPos))) -- ++AZ++ debug
+
+        newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addLocalDecl3" toks1) offset True
+        -- newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
                           $ if needNewLn then "\n"++newSource else newSource++"\n"
         let oldToks'=getToks (startPos,endPos') toks
             toks'=replaceToks toks startPos endPos' (oldToks'++newToks)
@@ -3050,6 +3148,70 @@ duplicateDecl decls pn newFunName
 -}
 
 -- ---------------------------------------------------------------------
+--------------------------------TRY TO REMOVE THIS FUNCTION---------------------
+
+
+moveDecl:: (HsBinds t)
+     => [GHC.Name]     -- ^ The identifier(s) whose defining
+                       -- declaration is to be moved. List is used to
+                       -- handle pattern bindings where multiple
+                       -- identifiers are defined.
+     -> t              -- ^ The syntax phrase where the declaration is
+                       -- going to be moved to.
+     -> Bool           -- ^ True mean the function\/pattern binding
+                       -- being moved is going to be at the same level
+                       -- with t. Otherwise it will be a local
+                       -- declaration of t.
+     -- -> [HsDeclP]      -- ^ The declaration list where the
+                       -- definition\/pattern binding originally
+                       -- exists.
+     -> [GHC.LHsBind GHC.Name]      -- ^ The declaration list where
+                                    -- the definition\/pattern binding
+                                    -- originally exists.
+     -- -> t2             -- ^ The declaration list where the
+                       -- definition\/pattern binding originally
+                       -- exists.
+     -> Bool           -- ^ True means the type signature will not be
+                       -- discarded.
+     -> RefactGhc t    -- ^ The result.
+
+moveDecl pns dest sameLevel decls incSig
+   -- = error "undefined moveDecl"
+   {- ++AZ++ WIP, sort out getDeclToks first -}
+   = do ts <- fetchToks
+        let defToks' =(getDeclToks (ghead "moveDecl:0" pns) True decls ts)
+            defToks  =whiteSpaceTokens (tokenRow (ghead "moveDecl" defToks'),0)
+                                       -- do not use tokenCol here. should count the whilte spaces.
+                                       (tokenCol (ghead "moveDecl2" defToks') -1) ++ defToks'
+            movedDecls = definingDeclsNames pns decls True False
+        decls'<-rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) decls pns
+        addDecl dest Nothing (ghead "moveDecl" movedDecls, Just defToks) False
+   {- ++WIP end++ -}
+
+{- ++AZ++ original
+{-
+moveDecl::(CanHaveWhereClause t,DeclStartLoc t, Term t,Printable t,MonadPlus m,
+           MonadState (([PosToken],Bool),(Int, Int)) m)
+     => [PName]        -- ^ The identifier(s) whose defining declaration is to be moved. List is used to handle pattern bindings where multiple identifiers are defined.
+     -> t              -- ^ The syntax phrase where the declaration is going to be moved to.
+     -> Bool           -- ^ True mean the function\/pattern binding being moved is going to be at the same level with t. Otherwise it will be a local declaration of t.
+     -> [HsDeclP]      -- ^ The declaration list where the definition\/pattern binding originally exists.
+     -> Bool           -- ^ True means the type signature will not be discarded.
+     -> m t            -- ^ The result.
+-}
+moveDecl pns dest sameLevel decls incSig
+   = do ((ts,_),_)<-get
+        let defToks' =(getDeclToks (ghead "moveDecl:0" pns) True decls ts)
+            defToks  =whiteSpaceTokens (tokenRow (ghead "moveDecl" defToks'),0)
+                                       -- do not use tokenCol here. should count the whilte spaces.
+                                       (tokenCol (ghead "moveDecl2" defToks') -1) ++ defToks'
+            movedDecls = definingDecls pns decls True False
+        decls'<-rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) decls pns
+        addDecl dest Nothing (movedDecls, Just defToks) False
+
+-}
+
+-- ---------------------------------------------------------------------
 
 -- | Remove the declaration (and the type signature is the second
 -- parameter is True) that defines the given identifier from the
@@ -3334,19 +3496,21 @@ rmQualifier:: (SYB.Data t)
                ->t           -- ^ The syntax phrase.
                ->RefactGhc t -- ^ The result.
 rmQualifier pns t = 
-  error "undefined rmQualifier"
-{- ++AZ++ WIP
+  -- error "undefined rmQualifier"
   everywhereMStaged SYB.Renamer (SYB.mkM rename) t
     where
      rename (pnt@(GHC.L l pn)::GHC.Located GHC.Name)
        | elem pn pns
        = do do toks <- fetchToks
                -- let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
-               let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
+               let s = GHC.showPpr pn -- ++TODO: replace this with the appropriate formulation
+               let (row,col) = getGhcLoc l
+               let toks' = replaceToks toks (row,col) (row,col) [mkToken (GHC.ITvarid (GHC.mkFastString s)) (row,col) s]
                putToks toks' modified
-               return (PNT (PN (UnQual s) l) ty loc)
+          
+               return (GHC.L l (GHC.mkInternalName (GHC.nameUnique pn) (GHC.mkVarOcc s) l))
      rename x = return  x
--}
+
 
 
 {- ++ original ++
@@ -3460,35 +3624,37 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
 
 -- ---------------------------------------------------------------------
 
--- | Return True if the identifier(in PNT format) occurs in the given syntax phrase.
-findPNT::(SYB.Data t)=> GHC.Located GHC.Name -> t -> Bool
-findPNT pnt@(GHC.L _ pn)
-   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) 
+-- | Return True if the identifier occurs in the given syntax phrase.
+findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
+findPNT (GHC.L _ pn)
+   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
      where
         worker (n::GHC.Name)
            | GHC.nameUnique pn == GHC.nameUnique n = Just True
         worker _ = Nothing
 
-{-
--- | Return True if the identifier(in PNT format) occurs in the given syntax phrase.
-findPNT::(Term t)=>PNT->t->Bool
-findPNT pnt
-  = (fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` worker)))
-  where
-    worker (pnt1::PNT)
-      | sameOccurrence pnt pnt1 =Just True
-    worker _ =Nothing
--}
+-- | Return True if the identifier occurs in the given syntax phrase.
+findPN::(SYB.Data t)=> GHC.Name -> t -> Bool
+findPN pn
+   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
+     where
+        worker (n::GHC.Name)
+           | GHC.nameUnique pn == GHC.nameUnique n = Just True
+        worker _ = Nothing
+
+-- | Return True if any of the specified PNames ocuur in the given syntax phrase.
+findPNs::(SYB.Data t)=> [GHC.Name] -> t -> Bool
+findPNs pns
+   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
+     where
+        uns = map GHC.nameUnique pns
+
+        worker (n::GHC.Name)
+           | elem (GHC.nameUnique n) uns = Just True
+        worker _ = Nothing
+
 
 {-
--- | Return True if the identifier (in PName format) occurs in the given syntax phrase.
-findPN::(Term t)=>PName->t->Bool
-findPN pn
-  =(fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` worker)))
-     where
-        worker (pn1::PName)
-           |pn == pn1 && srcLoc pn == srcLoc pn1 = Just True
-        worker _ =Nothing
 
 -- | Return True if any of the specified PNames ocuur in the given syntax phrase.
 findPNs::(Term t)=>[PName]->t->Bool
@@ -3589,6 +3755,50 @@ pNtoName (PN (Qual modName i) orig)=i
 pNTtoName::PNT->String
 pNTtoName=pNtoName.pNTtoPN
 -}
+
+-- ---------------------------------------------------------------------
+
+{-
+-- THIS FUNCTION SHOULD NOT BE IN THE API.
+-- | Get the list of tokens which represent the declaration that defines pn.
+getDeclToks :: PName           -- ^ The identifier. 
+              -> Bool          -- ^ True means type signature should be included.
+              -> [HsDeclP]     -- ^ The declaration list in which the identifier is defined.
+              -> [PosToken]    -- ^ The input token stream.
+              -> [PosToken]    -- ^ The result.
+-}
+-- | Get the list of tokens which represent the declaration that defines pn.
+getDeclToks :: GHC.Name        -- ^ The identifier. 
+              -> Bool          -- ^ True means type signature should be included.
+              -> [GHC.LHsBind GHC.Name] -- ^ The declaration list in which the identifier is defined.
+              -> [PosToken]    -- ^ The input token stream.
+              -> [PosToken]    -- ^ The result.
+---  IMPORTANT: GET RID OF THE -1111*****************
+-- ++AZ++ TODO: the last two params are swapped in getDeclAndToks
+getDeclToks pn incSig decls toks 
+  = let -- (decls1,decls2) = break (definesTypeSig pn) decls
+        -- typeSig = if decls2==[] then Nothing else Just (ghead "getDeclToks1" decls2) --There may or may not type signature.
+        (decls1', decls2') = break (defines pn) decls
+        decl = if (emptyList decls2') then error "getDeclToks:: declaration does not exist"
+                                else ghead "getDeclToks2" decls2'
+        declToks = getToks' decl toks
+        sigToks = [] -- ++AZ++
+        {- ++AZ++ TODO: sort this out, sig not in decls
+        sigToks 
+         = case typeSig of 
+            Nothing  -> []
+            Just (sig@(TiDecorate.Dec (HsTypeSig _ [i] _ _)))-> getToks' sig toks
+            Just (TiDecorate.Dec (HsTypeSig loc is c ty))-> let sig' =(TiDecorate.Dec (HsTypeSig loc0 [nameToPNT (pNtoName pn)] c ty))
+                                                 in  tokenise (Pos 0 (-1111) 1) 0 True $ prettyprint sig'++"\n"   
+        -}
+    in if incSig then sigToks ++ declToks  else declToks 
+   where   
+    getToks' decl toks
+      = let (startPos, endPos) = startEndLocIncComments toks decl
+            (toks1, _) =let(ts1,(t:ts2'))= break (\t -> tokenPos t >= endPos) toks
+                        in (ts1, ts2')
+        in dropWhile (\t -> tokenPos t < startPos {- || isNewLn t -}) toks1
+
 
 -- ---------------------------------------------------------------------
 

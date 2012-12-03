@@ -120,7 +120,7 @@ spec = do
       -- ((_, renamed,_), _toks) <- parsedFileBGhc
       (t, _toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let res = allNames bFileName (7,6) renamed
+      let res = allNames renamed
       -- let res' = map (\(GHC.L l n) -> (GHC.showPpr $ GHC.nameUnique n,GHC.showPpr (l, n))) res
       let res' = map (\(GHC.L l n) -> (GHC.showPpr $ GHC.nameUnique n,GHC.showPpr (l, GHC.getSrcSpan n, n))) res
 
@@ -853,6 +853,27 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "moveDecl" $ do
+    it "moves a declaration from one syntax element to another" $ do
+      (t, toks) <- parsedFileD1Ghc
+      let
+        comp = do
+         renamed <- getRefactRenamed
+         let Just (GHC.L l ssq) = locToName d1FileName (6, 1) renamed
+         let Just (GHC.L l sq) = locToName d1FileName (9, 1) renamed
+         let declsr = getDecls renamed
+             ssqDecls = definingDeclsNames [ssq] declsr True False
+             sqDecls  = definingDeclsNames [sq]  declsr True False
+
+         newDecls <- moveDecl [sq] ssqDecls False sqDecls True
+
+         return (ssq,sq,ssqDecls,sqDecls,newDecls)
+      ((s1,s2,d1,d2,nd),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n sumSquares [] = 0\n\n sq x = x ^pow\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+      (showToks $ take 40 $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` ""
+      (GHC.showPpr nd) `shouldBe` ""
+
   -- ---------------------------------------------
 
   describe "addDecl" $ do
@@ -893,6 +914,33 @@ spec = do
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n nn = nn2\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (GHC.showPpr nb) `shouldBe` "(MoveDef.Md1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x\n MoveDef.Md1.c, MoveDef.Md1.d :: GHC.Integer.Type.Integer\n MoveDef.Md1.c = 7\n MoveDef.Md1.d = 9\n MoveDef.Md1.tup :: (GHC.Types.Int, GHC.Types.Int)\n MoveDef.Md1.h :: GHC.Types.Int\n MoveDef.Md1.t :: GHC.Types.Int\n MoveDef.Md1.tup@(MoveDef.Md1.h, MoveDef.Md1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15\n MoveDef.Md1.ff :: GHC.Types.Int -> GHC.Types.Int\n MoveDef.Md1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1\n MoveDef.Md1.l z = let ll = 34 in ll GHC.Num.+ z\n MoveDef.Md1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) }\n MoveDef.Md1.zz1 a = 1 GHC.Num.+ MoveDef.Md1.toplevel a\n MoveDef.Md1.tlFunc ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x\n nn = nn2\n \n data MoveDef.Md1.D\n     = MoveDef.Md1.A | MoveDef.Md1.B GHC.Base.String | MoveDef.Md1.C,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+
+
+    -- -------------------------------------------
+
+    it "Adds a local declaration" $ do
+      (t, toks) <- parsedFileMd1Ghc
+      let
+        comp = do
+
+         renamed <- getRefactRenamed
+
+         let Just (GHC.L l tl) = locToName md1FileName (4, 1) renamed
+         let declsr = getDecls renamed
+             tlDecls = definingDeclsNames [tl] declsr True False
+
+         nn  <- mkNewName "nn"
+         nn2 <- mkNewName "nn2"
+         let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
+         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing) False
+
+         return (tlDecls,newDecls)
+      ((tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showPpr tl) `shouldBe` "[MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x]"
+      -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n      where\n        nn = nn2\n\n  c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       (GHC.showPpr nb) `shouldBe` "(MoveDef.Md1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x\n MoveDef.Md1.c, MoveDef.Md1.d :: GHC.Integer.Type.Integer\n MoveDef.Md1.c = 7\n MoveDef.Md1.d = 9\n MoveDef.Md1.tup :: (GHC.Types.Int, GHC.Types.Int)\n MoveDef.Md1.h :: GHC.Types.Int\n MoveDef.Md1.t :: GHC.Types.Int\n MoveDef.Md1.tup@(MoveDef.Md1.h, MoveDef.Md1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15\n MoveDef.Md1.ff :: GHC.Types.Int -> GHC.Types.Int\n MoveDef.Md1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1\n MoveDef.Md1.l z = let ll = 34 in ll GHC.Num.+ z\n MoveDef.Md1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) }\n MoveDef.Md1.zz1 a = 1 GHC.Num.+ MoveDef.Md1.toplevel a\n MoveDef.Md1.tlFunc ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x\n nn = nn2\n \n data MoveDef.Md1.D\n     = MoveDef.Md1.A | MoveDef.Md1.B GHC.Base.String | MoveDef.Md1.C,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
@@ -1185,14 +1233,72 @@ spec = do
       (show $ startEndLocIncComments (toksFromState s) d) `shouldBe` "((40,1),(41,18))"
       (showToks t) `shouldBe` "[(((40,1),(40,1)),ITsemi,\"\"),(((40,1),(40,7)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,8),(40,9)),ITvarid \"x\",\"x\"),(((40,10),(40,11)),ITequal,\"=\"),(((40,12),(40,13)),ITvarid \"c\",\"c\"),(((40,14),(40,15)),ITstar,\"*\"),(((40,16),(40,17)),ITvarid \"x\",\"x\"),(((41,1),(41,18)),ITlineComment \"-- Comment at end\",\"-- Comment at end\")]"
 
+  -- --------------------------------------
+
+  describe "getDeclToks" $ do
+    it "Returns a the tokens associated with a declaration" $ do
+      let
+        comp = do
+          (t, toks) <- parseSourceFileGhc "./test/testdata/Demote/D1.hs"
+          putParsedModule t toks
+          renamed <- getRefactRenamed
+
+          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/Demote/D1.hs") (9,1) renamed
+          let res = getDeclToks name False (hsBinds renamed) toks
+          return (res,n,name)
+
+      ((dt,n1,n2),s) <- runRefactGhcState comp 
+      (GHC.showPpr n1) `shouldBe` "Demote.D1.sq"
+      (showToks dt) `shouldBe` "[(((9,1),(9,1)),ITsemi,\"\"),(((9,1),(9,3)),ITvarid \"sq\",\"sq\"),(((9,4),(9,5)),ITvarid \"x\",\"x\"),(((9,6),(9,7)),ITequal,\"=\"),(((9,8),(9,9)),ITvarid \"x\",\"x\"),(((9,10),(9,11)),ITvarsym \"^\",\"^\"),(((9,11),(9,14)),ITvarid \"pow\",\"pow\")]"
+
   -- ---------------------------------------
 
   describe "rmQualifier" $ do
     it "Removes the qualifiers from a list of identifiers in a given syntax phrase" $ do
-      "a" `shouldBe` "b"
+      let
+        comp = do
+          (t, toks) <- parseSourceFileGhc "./test/testdata/MoveDef/Md1.hs"
+          putParsedModule t toks
+          renamed <- getRefactRenamed
+
+          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Md1.hs") (40,4) renamed
+          let (decl,_toks) = getDeclAndToks n True toks renamed
+
+          res <- rmQualifier [name] decl
+          return (res,decl,n,name)
+
+      ((t,d,n1,n2),s) <- runRefactGhcState comp 
+      (GHC.showPpr n1) `shouldBe` "MoveDef.Md1.tlFunc"
+      (GHC.showPpr d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
+      "a" `shouldBe` "what?"
 
   -- ---------------------------------------
 
+  describe "usedByRhs" $ do
+    it "Returns True if a given identifier is used in the RHS of a syntax element" $ do
+      let
+        comp = do
+          (t, toks) <- parseSourceFileGhc "./test/testdata/MoveDef/Demote.hs"
+          putParsedModule t toks
+          renamed <- getRefactRenamed
+
+          let Just (GHC.L _ tl)   = locToName (GHC.mkFastString "./test/testdata/MoveDef/Demote.hs") (4,1) renamed
+          let Just (GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Demote.hs") (7,1) renamed
+          let decls = (definingDeclsNames [tl] (hsBinds renamed) False False)
+          decls' <- rmQualifier [name] decls
+
+          -- let res = usedByRhs decls [name]
+          let res = usedByRhs decls' [name]
+
+          return (res,decls,tl,name)
+
+      ((r,d,n1,n2),s) <- runRefactGhcState comp 
+      (GHC.showPpr n1) `shouldBe` "MoveDef.Demote.toplevel"
+      (GHC.showPpr n2) `shouldBe` "MoveDef.Demote.c"
+      (GHC.showPpr d) `shouldBe` "[MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x]"
+      r `shouldBe` True
+
+  -- ---------------------------------------
   
 myShow :: GHC.RdrName -> String
 myShow n = case n of
@@ -1235,6 +1341,14 @@ parsedFileMd1Ghc = parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
 
 md1FileName :: GHC.FastString
 md1FileName = GHC.mkFastString "./test/testdata/MoveDef/Md1.hs"
+
+-- -----------
+
+parsedFileD1Ghc :: IO (ParseResult,[PosToken])
+parsedFileD1Ghc = parsedFileGhc "./test/testdata/Demote/D1.hs"
+
+d1FileName :: GHC.FastString
+d1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
 
 -- ----------------------------------------------------
 
