@@ -1335,12 +1335,32 @@ instance HsBinds (GHC.GRHSs GHC.Name) where
   replaceBinds (GHC.GRHSs rhss b) new = (GHC.GRHSs rhss (replaceBinds b new))
 
 
+-- ---------------------------------------------------------------------
 
 instance HsBinds (GHC.MatchGroup GHC.Name) where
   hsBinds (GHC.MatchGroup matches _) = hsBinds matches
 
+  replaceBinds (GHC.MatchGroup matches a) newBinds
+               = (GHC.MatchGroup (replaceBinds matches newBinds) a)
+
+-- ---------------------------------------------------------------------
+
 instance HsBinds [GHC.LMatch GHC.Name] where
   hsBinds ms = concatMap (\m -> hsBinds $ GHC.unLoc m) ms
+
+  replaceBinds [] _        = error "empty match list in replaceBinds [GHC.LMatch GHC.Name]"
+  replaceBinds ms newBinds = (replaceBinds (head ms) newBinds):(tail ms)
+
+-- ---------------------------------------------------------------------
+
+instance HsBinds (GHC.LMatch GHC.Name) where
+  hsBinds m = hsBinds $ GHC.unLoc m
+
+  replaceBinds (GHC.L l m) newBinds = (GHC.L l (replaceBinds m newBinds))
+
+
+-- ---------------------------------------------------------------------
+
 
 instance HsBinds (GHC.Match GHC.Name) where
   hsBinds (GHC.Match _ _ grhs) = hsBinds grhs
@@ -1367,15 +1387,35 @@ instance HsBinds (GHC.Stmt GHC.Name) where
   replaceBinds = error "replaceBinds (GHC.Stmt GHC.Name) undefined"
 
 
+-- ---------------------------------------------------------------------
+
+instance HsBinds (GHC.LHsBinds GHC.Name) where
+  hsBinds binds = hsBinds $ GHC.bagToList binds
+
+-- ---------------------------------------------------------------------
+
 instance HsBinds (GHC.LHsBind GHC.Name) where
   hsBinds (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) = hsBinds matches
   hsBinds (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsBinds rhs
   hsBinds (GHC.L _ (GHC.VarBind _ rhs _))           = hsBinds rhs
-  hsBinds (GHC.L _ (GHC.AbsBinds _ _ _ _ _))        = []
+  hsBinds (GHC.L _ (GHC.AbsBinds _ _ _ _ binds))    = hsBinds binds
+
+
+  replaceBinds (GHC.L l (GHC.FunBind a b matches c d e)) newBinds
+               = (GHC.L l (GHC.FunBind a b (replaceBinds matches newBinds) c d e))
+  replaceBinds (GHC.L l (GHC.PatBind a rhs b c d)) newBinds
+               = (GHC.L l (GHC.PatBind a (replaceBinds rhs newBinds) b c d))
+  replaceBinds (GHC.L l (GHC.VarBind a rhs b)) newBinds
+               = (GHC.L l (GHC.VarBind a (replaceBinds rhs newBinds) b))
+  replaceBinds (GHC.L l (GHC.AbsBinds a b c d binds)) newBinds
+               = (GHC.L l (GHC.AbsBinds a b c d (replaceBinds binds newBinds)))
+
+-- ---------------------------------------------------------------------
 
 instance HsBinds ([GHC.LHsBind GHC.Name]) where
-  hsBinds x = x
-  -- hsBinds xs = concatMap hsBinds xs
+  -- hsBinds x = x
+  hsBinds xs = concatMap hsBinds xs -- As in original
+
   replaceBinds _old new = new
   -- replaceBinds old new = error ("replaceBinds (old,new)=" ++ (GHC.showPpr (old,new)))
 
@@ -2361,14 +2401,13 @@ addDecl parent pn (decl, declToks) topLevel
                  (ts11, ts12) = splitOnNewLn (reverse ts1)
              in (reverse ts12, reverse ts11++ts2, ts3)
 
-  -- This function need to be tested.
   addLocalDecl :: (SYB.Data t, HsBinds t)
                => t -> (GHC.LHsBind GHC.Name, Maybe [PosToken])
                -> RefactGhc t
   addLocalDecl parent (newFun, newFunToks)
     =do
         toks <- fetchToks
-        -- error ("addLocalDecl:localDecls=" ++ (GHC.showPpr localDecls)) -- ++AZ++ debug
+        -- error ("addLocalDecl:(parent,localDecls)=" ++ (GHC.showPpr (parent,localDecls))) -- ++AZ++ debug
         let (startPos@(_,startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
               =if (emptyList localDecls)
                    then startEndLocIncFowComment toks parent    --The 'where' clause is empty
