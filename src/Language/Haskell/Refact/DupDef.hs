@@ -158,7 +158,8 @@ reallyDoDuplicating pn newName inscopes renamed = do
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
                    else do newBinding <- duplicateDecl declsr parentr n newNameGhc
-                           let newDecls = replaceDecls declsr (declsr ++ newBinding)
+                           -- let newDecls = replaceDecls declsr (declsr ++ newBinding)
+                           let newDecls = replaceBinds declsr (declsr ++ newBinding)
                            return $ replaceBinds parentr newDecls
 
 

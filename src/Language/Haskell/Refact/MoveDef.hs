@@ -198,6 +198,7 @@ liftToTopLevel' modName _modInfo _fileName pn@(GHC.L _ n) = do
        liftToMod = do renamed <- getRefactRenamed
                       let declsr = hsBinds renamed
                       let (before,parent,after) = divideDecls declsr pn
+                      -- error ("liftToMod:(before,parent,after)=" ++ (GHC.showPpr (before,parent,after))) -- ++AZ++
                       {- ++AZ++ : hsBinds does not return class or instance definitions
                       when (isClassDecl $ ghead "liftToMod" parent)
                             $ error "Sorry, the refactorer cannot lift a definition from a class declaration!"
@@ -212,7 +213,10 @@ liftToTopLevel' modName _modInfo _fileName pn@(GHC.L _ n) = do
                         then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl n dd parent liftedDecls
                                 let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
                                                                 else liftedDecls'
-                                mod'<-moveDecl1 (replaceDecls declsr (before++parent'++after))
+
+                                -- error ("liftToMod:newBinds=" ++ (GHC.showPpr (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
+                                -- mod'<-moveDecl1 (replaceDecls declsr (before++parent'++after))
+                                mod'<-moveDecl1 (replaceBinds renamed (before++parent'++after))
                                        (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) [pn] True
                                 -- return (mod', declaredPns)
                                 return ()
@@ -258,7 +262,7 @@ liftToTopLevel' modName fileName (inscps, mod, toks) pnt@(PNT pn _ _)
                         else askRenamingMsg pns "lifting"
 -}
 
-moveDecl1 :: (HsBinds t)
+moveDecl1 :: (HsBinds t, GHC.Outputable t)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
   -- TODO: make this next parameter a single value, not a list, after module complete
@@ -267,10 +271,12 @@ moveDecl1 :: (HsBinds t)
   -> RefactGhc t -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName pns topLevel
    = do toks <- fetchToks
+        -- error ("moveDecl1:defName=" ++ (GHC.showPpr defName)) -- ++AZ++ 
         let ns = map GHC.unLoc pns
         let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" pns) True toks t
         --error$ show (declToMove, toksToMove)
         t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
+        -- error ("moveDecl1:(defName,ns,t')=" ++ (GHC.showPpr (defName,ns,t'))) -- ++AZ++
         addDecl t' defName (ghead "moveDecl1 2" declToMove, Just toksToMove) topLevel
 
 
