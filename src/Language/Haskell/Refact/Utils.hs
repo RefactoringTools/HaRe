@@ -366,19 +366,19 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t
         where
           inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
-                = do _ <- zipUpdateToks updateToks [oldPat] [newPat] prettyprint
+                = do _ <- {- zipUpdateToks -} updateToks oldPat newPat prettyprint
                      return newPat
             | otherwise = return p
 
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update [GHC.LPat n] t where
+{- instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update [GHC.LPat n] t where
     update oldPat newPat t
            = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
         where
           inPat (p::[GHC.LPat n])
             | and $ zipWith sameOccurrence p oldPat
-                = do _ <- zipUpdateToks updateToks oldPat newPat prettyprint
+                = do _ <- {- zipUpdateToks -} updateToks oldPat newPat prettyprint
                      return newPat
-            | otherwise = return p
+            | otherwise = return p -}
 
 zipUpdateToks f [] [] c = return []
 zipUpdateToks f [] _ _  = return []
