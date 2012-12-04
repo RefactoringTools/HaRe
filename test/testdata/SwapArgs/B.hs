@@ -6,9 +6,12 @@ import Data.List -- For testing module graph
 
 foo x = if (odd x) then "Odd" else "Even"
 
-bob x y = let foo x = x + 2 in (let foo x = x+1 in  x + foo y)
-    where
-        foo x = x + 1
+bob :: a -> b -> Int
+bob x y = 1 + 2
+
+-- let foo x = x + 2 in (let foo x = x+1 in  x + foo y)
+--    where
+--        foo x = x + 1
 
 
 foo' x = case (odd x) of

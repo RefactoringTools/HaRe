@@ -679,16 +679,17 @@ updateToks oldAST newAST printFun
   = trace "updateToks" $
     do
        toks <- fetchToks
-
        let (startPos, endPos) = getStartEndLoc oldAST
-           (toks1, _, toks2)      = splitToks (startPos, endPos) toks
+       -- error $ show (startPos, endPos)
+
+       let (toks1, _, toks2)  = splitToks (startPos, endPos) toks
            offset             = lengthOfLastLine toks1
 
        -- newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) 
        --                    offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
        -- tokenise  startPos colOffset withFirstLineIndent str
        -- error (show (realSrcLocEndTok $ glast "Update Toks" toks1) )
-       -- error (show offset)
+       -- error (showToks toks1)
        newToks <- liftIO $ tokenise (realSrcLocEndTok $ glast "Update Toks" toks1) 1 True (printFun newAST)
        -- error $ show (showToks toks1, showToks newToks)
        -- let toks' = replaceToks toks startPos endPos newToks
@@ -1211,6 +1212,7 @@ getSrcSpan t = res t
                     `SYB.extQ` literalInExp
                     `SYB.extQ` literalInPat
                     `SYB.extQ` importDecl
+                    `SYB.extQ` ty
             )
 
     bind :: GHC.GenLocated GHC.SrcSpan (GHC.HsBind GHC.Name) -> Maybe GHC.SrcSpan
@@ -1218,6 +1220,9 @@ getSrcSpan t = res t
 
     sig :: (GHC.LSig GHC.Name) -> Maybe GHC.SrcSpan
     sig (GHC.L l _)              = Just l
+    
+    ty :: (GHC.LHsType GHC.Name) -> Maybe GHC.SrcSpan
+    ty (GHC.L l _) = Just l
 
     pnt :: GHC.GenLocated GHC.SrcSpan GHC.Name -> Maybe GHC.SrcSpan
     pnt (GHC.L l _)              = Just l

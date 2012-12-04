@@ -369,6 +369,17 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t
                 = do _ <- {- zipUpdateToks -} updateToks oldPat newPat prettyprint
                      return newPat
             | otherwise = return p
+            
+            
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n) t where
+     update oldTy newTy t
+           = everywhereMStaged SYB.Parser (SYB.mkM inTyp) t
+        where
+          inTyp (t::GHC.LHsType n)
+            | sameOccurrence t oldTy
+                = do _ <- {- zipUpdateToks -} updateToks oldTy newTy prettyprint
+                     return newTy
+            | otherwise = return t
 
 {- instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update [GHC.LPat n] t where
     update oldPat newPat t

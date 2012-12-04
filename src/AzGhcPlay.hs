@@ -67,7 +67,7 @@ targetMod = "SwapArgs/B"
 t1 = GhcRefacCase.ifToCase ["./old/refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./old/B.hs","4","7","4","43"]
 
-s1 = GhcSwapArgs.swapArgs ["../test/testdata/B.hs","9","1"]
+s1 = GhcSwapArgs.swapArgs ["../test/testdata/SwapArgs/B.hs","10","1"]
 
 {-
 s1 = GhcSwapArgs.swapArgs ["../old/refactorer/B.hs","6","1"]

@@ -81,7 +81,7 @@ doSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n) = do
 
 reallyDoSwap :: PNT -> (GHC.Located GHC.Name) -> GHC.RenamedSource -> RefactGhc ()
 reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n1) renamed = do
-    renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM inMod `SYB.extM` inExp) renamed -- this needs to be bottom up +++ CMB +++
+    renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM inMod `SYB.extM` inExp `SYB.extM` inType) renamed -- this needs to be bottom up +++ CMB +++
     putRefactRenamed renamed'
     return ()
     
@@ -101,7 +101,25 @@ reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n1) renamed = do
          inExp e = return e
          
          -- 3. Type signature...
+         inType ty@(GHC.L x (GHC.TypeSig [GHC.L x2 name] types)::GHC.LSig GHC.Name)
+           | GHC.nameUnique name == GHC.nameUnique n1 
+                = do let (t1:t2:ts) = tyFunToList types
+                     t1' <- update t1 t2 t1
+                     t2' <- update t2 t1 t2
+                     return (GHC.L x (GHC.TypeSig [GHC.L x2 name] (tyListToFun (t1':t2:ts))))
+           
+         inType ty@(GHC.L x (GHC.TypeSig (n:ns) types)::GHC.LSig GHC.Name)
+           | GHC.nameUnique n1 `elem` (map (\(GHC.L _ n) -> GHC.nameUnique n) (n:ns))
+            = error "Error in swapping arguments in type signature: signauture bound to muliple entities!"
+            
+         inType ty = return ty
 
+         tyFunToList (GHC.L _ (GHC.HsForAllTy _ _ _ (GHC.L _ (GHC.HsFunTy t1 t2)))) = t1 : (tyFunToList t2)
+         tyFunToList (GHC.L _ (GHC.HsFunTy t1 t2)) = t1 : (tyFunToList t2)
+         tyFunToList t = [t]
+
+         tyListToFun (t1:ts) = GHC.noLoc (GHC.HsFunTy t1 (tyListToFun ts))
+         tyListToFun [t1] = t1
 
          updateMatches [] = return []
          updateMatches (i@(GHC.L x m@(GHC.Match pats nothing rhs)::GHC.Located (GHC.Match GHC.Name)):matches)
