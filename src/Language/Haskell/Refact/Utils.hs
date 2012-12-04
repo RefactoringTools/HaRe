@@ -360,17 +360,32 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
                     return newExp
           | otherwise = return e
 
-{- instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.HsPat n)) t where
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.LPat n)) t where
     update oldPat newPat t
            = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
         where
-          inPat (p::GHC.Located (GHC.HsPat n))
+          inPat (p::GHC.Located (GHC.LPat n))
             | sameOccurrence p oldPat
-                = do _ <- updateToks oldPat newPat prettyprint
+                = do _ <- zipUpdateToks updateToks [oldPat] [newPat] prettyprint
                      return newPat
-            | otherwise = return p -}
+            | otherwise = return p
 
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update [GHC.Located (GHC.LPat n)] t where
+    update oldPat newPat t
+           = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
+        where
+          inPat (p::[GHC.Located (GHC.LPat n)])
+            | and $ zipWith sameOccurrence p oldPat
+                = do _ <- zipUpdateToks updateToks oldPat newPat prettyprint
+                     return newPat
+            | otherwise = return p
 
+zipUpdateToks f [] [] c = return []
+zipUpdateToks f [] _ _  = return []
+zipUpdateToks f _ [] _  = return []
+zipUpdateToks f (a:as) (b:bs) c = do res <- f a b c 
+                                     rest <- zipUpdateToks f as bs c  
+                                     return (res:rest)
 -- ---------------------------------------------------------------------
 -- TODO: ++AZ++ get rid of the following instances, merge them into a
 -- single function above
@@ -502,7 +517,7 @@ expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just (PNT (GHC.L x pnt)
 -- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
 expToPNT _ = Nothing
 
-expToName (GHC.L l (GHC.HsVar name)) = Just (GHC.L l name)
+expToName (GHC.L l (GHC.HsVar name)) = Just name
 expToName _ = Nothing
 
 

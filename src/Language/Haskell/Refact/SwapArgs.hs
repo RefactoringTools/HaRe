@@ -81,17 +81,35 @@ doSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n) = do
 
 reallyDoSwap :: PNT -> (GHC.Located GHC.Name) -> GHC.RenamedSource -> RefactGhc ()
 reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n1) renamed = do
-    renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM inMod) renamed --  `SYB.extM` inExp) renamed -- this needs to be bottom up +++ CMB +++
+    renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM inMod `SYB.extM` inExp) renamed -- this needs to be bottom up +++ CMB +++
     putRefactRenamed renamed'
     return ()
     
     where
          -- 1. The definition is at top level...
-         inMod (func@(GHC.FunBind (GHC.L x n2) infixity matches _ locals tick)::(GHC.HsBindLR GHC.Name GHC.Name ))
-            | GHC.nameUnique n1 == GHC.nameUnique n2 = do liftIO $ putStrLn ("inMatch>" ++ SYB.showData SYB.Parser 0 (GHC.L x n2) ++ "<")
-                                                          return func
+         inMod (func@(GHC.FunBind (GHC.L x n2) infixity (GHC.MatchGroup matches p) a locals tick)::(GHC.HsBindLR GHC.Name GHC.Name ))
+            | GHC.nameUnique n1 == GHC.nameUnique n2 
+                    = do liftIO $ putStrLn ("inMatch>" ++ SYB.showData SYB.Parser 0 (GHC.L x n2) ++ "<")
+                         newMatches <- updateMatches matches
+                         return (GHC.FunBind (GHC.L x n2) infixity (GHC.MatchGroup newMatches p) a locals tick)
          inMod func = return func
          
+         -- 2. All call sites of the function...
+         inExp exp@((GHC.L x (GHC.HsApp (GHC.L y (GHC.HsApp e e1)) e2))::GHC.Located (GHC.HsExpr GHC.Name))
+            | GHC.nameUnique (fromJust $ expToName e) == GHC.nameUnique n1 =  do liftIO $ putStrLn "Blah"
+                                                                                 return exp
+         inExp e = return e
+         
+         -- 3. Type signature...
+
+
+         updateMatches [] = return []
+         updateMatches (i@(GHC.L x m@(GHC.Match pats nothing rhs)::GHC.Located (GHC.Match GHC.Name)):matches)
+           = case pats of
+               (p1:p2:ps) -> do p1' <- update p1 p2 p1 --pats
+                                p2' <- update p2 p1 p2
+                                matches' <- updateMatches matches
+                                return ((GHC.L x (GHC.Match (p1':p2':ps) nothing rhs)):matches')
 
     
 {-        inMatch i@(GHC.L x m@(GHC.Match (p1:p2:ps) nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )
