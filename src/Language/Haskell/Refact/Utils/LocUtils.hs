@@ -428,6 +428,10 @@ realSrcLocFromTok :: PosToken -> GHC.RealSrcLoc
 realSrcLocFromTok (GHC.L (GHC.RealSrcSpan srcspan) _,_) = GHC.realSrcSpanStart srcspan
 realSrcLocFromTok (GHC.L _ _,_) = GHC.mkRealSrcLoc (GHC.mkFastString "") 1 1
 
+realSrcLocEndTok :: PosToken -> GHC.RealSrcLoc
+realSrcLocEndTok (GHC.L (GHC.RealSrcSpan srcspan) _,_) = GHC.realSrcSpanEnd srcspan
+realSrcLocEndTok (GHC.L _ _,_) = GHC.mkRealSrcLoc (GHC.mkFastString "") 1 1
+
 -- ---------------------------------------------------------------------
 
 prettyprint :: (GHC.Outputable a) => a -> String
@@ -677,13 +681,18 @@ updateToks oldAST newAST printFun
        toks <- fetchToks
 
        let (startPos, endPos) = getStartEndLoc oldAST
-           (toks1, _, _)      = splitToks (startPos, endPos) toks
+           (toks1, _, toks2)      = splitToks (startPos, endPos) toks
            offset             = lengthOfLastLine toks1
 
-       newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) 
-                           offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-       let
-          toks' = replaceToks toks startPos endPos newToks
+       -- newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) 
+       --                    offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
+       -- tokenise  startPos colOffset withFirstLineIndent str
+       -- error (show (realSrcLocEndTok $ glast "Update Toks" toks1) )
+       -- error (show offset)
+       newToks <- liftIO $ tokenise (realSrcLocEndTok $ glast "Update Toks" toks1) 1 True (printFun newAST)
+       -- error $ show (showToks toks1, showToks newToks)
+       -- let toks' = replaceToks toks startPos endPos newToks
+       let toks' = toks1 ++ newToks ++ toks2
        putToks toks' modified
        {-
        if length newToks == 0
