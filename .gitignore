@@ -46,3 +46,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/MoveDef/Md1.hs.orig
 /test/testdata/SwapArgs/B.hs.refactored
 /test/testdata/SwapArgs/B.hs.tokens
+/old/refactorer/Paths_HaRe.hs
