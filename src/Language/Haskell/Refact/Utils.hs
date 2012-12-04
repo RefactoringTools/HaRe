@@ -360,21 +360,21 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
                     return newExp
           | otherwise = return e
 
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.LPat n)) t where
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t where
     update oldPat newPat t
            = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
         where
-          inPat (p::GHC.Located (GHC.LPat n))
+          inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
                 = do _ <- zipUpdateToks updateToks [oldPat] [newPat] prettyprint
                      return newPat
             | otherwise = return p
 
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update [GHC.Located (GHC.LPat n)] t where
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update [GHC.LPat n] t where
     update oldPat newPat t
            = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
         where
-          inPat (p::[GHC.Located (GHC.LPat n)])
+          inPat (p::[GHC.LPat n])
             | and $ zipWith sameOccurrence p oldPat
                 = do _ <- zipUpdateToks updateToks oldPat newPat prettyprint
                      return newPat

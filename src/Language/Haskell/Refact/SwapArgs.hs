@@ -96,8 +96,8 @@ reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n1) renamed = do
          
          -- 2. All call sites of the function...
          inExp exp@((GHC.L x (GHC.HsApp (GHC.L y (GHC.HsApp e e1)) e2))::GHC.Located (GHC.HsExpr GHC.Name))
-            | GHC.nameUnique (fromJust $ expToName e) == GHC.nameUnique n1 =  do liftIO $ putStrLn "Blah"
-                                                                                 return exp
+            | GHC.nameUnique (fromJust $ expToName e) == GHC.nameUnique n1 
+                   =  update e2 e1 =<< update e1 e2 exp
          inExp e = return e
          
          -- 3. Type signature...
@@ -106,10 +106,11 @@ reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n1) renamed = do
          updateMatches [] = return []
          updateMatches (i@(GHC.L x m@(GHC.Match pats nothing rhs)::GHC.Located (GHC.Match GHC.Name)):matches)
            = case pats of
-               (p1:p2:ps) -> do p1' <- update p1 p2 p1 --pats
-                                p2' <- update p2 p1 p2
+               (p1:p2:ps) -> do -- p1' <- update p1 p2 p1
+                                -- p2' <- update p2 p1 p2
+                                pats''<-update p2 p1 =<< update p1 p2 pats
                                 matches' <- updateMatches matches
-                                return ((GHC.L x (GHC.Match (p1':p2':ps) nothing rhs)):matches')
+                                return ((GHC.L x (GHC.Match pats'' nothing rhs)):matches')
 
     
 {-        inMatch i@(GHC.L x m@(GHC.Match (p1:p2:ps) nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )
