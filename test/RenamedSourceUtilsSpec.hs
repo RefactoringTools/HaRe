@@ -34,11 +34,10 @@ spec = do
 
   describe "getFreeVariables" $ do
     it "gets the free variables for a given syntax element" $ do
-      -- ((_,Just renamed,_), toks) <- parsedFileBGhc
       (t, toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
       let fvs = getFreeVariables renamed
-      (GHC.showPpr $ GHC.nameSetToList $ GHC.unionManyNameSets fvs) `shouldBe` "[B.foo, B.bob]"
+      (GHC.showPpr $ GHC.nameSetToList $ GHC.unionManyNameSets fvs) `shouldBe` "[TypeUtils.B.foo, TypeUtils.B.bob]"
 
 
 
@@ -46,10 +45,10 @@ spec = do
 -- Helper functions
 
 bFileName :: GHC.FastString
-bFileName = GHC.mkFastString "./test/testdata/B.hs"
+bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
 
 parsedFileBGhc :: IO (ParseResult,[PosToken])
-parsedFileBGhc = parsedFileGhc "./test/testdata/B.hs"
+parsedFileBGhc = parsedFileGhc "./test/testdata/TypeUtils/B.hs"
 
 parsedFileMGhc :: IO (ParseResult,[PosToken])
 parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
@@ -72,7 +71,7 @@ parsedFileNoMod = parsedFileGhc fileName
 comp :: RefactGhc String
 comp = do
     s <- get
-    modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/B.hs"
+    modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/TypeUtils/B.hs"
 
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
