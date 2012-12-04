@@ -766,11 +766,13 @@ doDemoting  pn = do
        demoteInMod (renamed :: GHC.RenamedSource)
          | not $ emptyList decls
          = do -- decls' <- rmQualifier [pn] decls
-              decls' <- rmQualifier [pn] (hsBinds renamed)
+              -- decls' <- rmQualifier [pn] (hsBinds renamed)
+              decls' <- rmQualifier [pn] renamed
               demoted <- doDemoting' decls' pn
-              let renamed' = replaceBinds renamed demoted
+              -- let renamed' = replaceBinds renamed demoted
               -- error ("demoteInMod:renamed'=" ++ (GHC.showPpr renamed'))
-              return renamed'
+              -- return renamed'
+              return demoted
          where
            decls = (definingDeclsNames [pn] (hsBinds renamed) False False)
        demoteInMod x = return x
@@ -894,7 +896,7 @@ doDemoting' t pn
        declaredPns = nub $ concatMap definedPNs demotedDecls'
        demotedDecls = definingDeclsNames declaredPns origDecls True False
    -- in if not (usedByRhs t declaredPns) -- ++AZ++ this only works because the top level is hard coded to False.
-   in if (usedByRhs t declaredPns)
+   in if not (usedByRhs t declaredPns)
        then do -- find how many matches/pattern bindings (except the binding defining pn) use 'pn'
               -- uselist <- uses declaredPns (hsBinds t\\demotedDecls)
               let -- uselist = uses declaredPns (hsBinds t\\demotedDecls)
@@ -938,7 +940,7 @@ doDemoting' t pn
        -- else error "This function can not be demoted as it is used in current level!\n"
        -- else error ("doDemoting': demotedDecls'=" ++ (GHC.showPpr demotedDecls')) -- ++AZ++
        -- else error ("doDemoting': declaredPns=" ++ (GHC.showPpr declaredPns)) -- ++AZ++
-       else error ("doDemoting': (declaredPns,(usedByRhs t declaredPns))=" ++ (GHC.showPpr (declaredPns,(usedByRhs t declaredPns)))) -- ++AZ++
+       else error ("doDemoting': (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns))=" ++ (GHC.showPpr (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns)))) -- ++AZ++
 
 
     where

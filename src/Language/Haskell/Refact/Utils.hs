@@ -408,7 +408,7 @@ instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
         inExp (e::GHC.Located HsExpP)
           | sameOccurrence e oldExp
                = do (newExp', _) <- updateToks oldExp newExp prettyprint
-                -- error "update: updated tokens" -- ++AZ++ debug
+                -- error "update: up`dated tokens" -- ++AZ++ debug
                     return newExp'
           | otherwise = return e
 -}

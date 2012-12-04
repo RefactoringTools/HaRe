@@ -71,9 +71,6 @@ reallyDoIfToCase expr rs = do
 
          inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
            | sameOccurrence expr exp1
-           -- = let newExp = ifToCaseTransformPs exp1
-           -- = let newExp = ifToCaseTransform exp1
-           --   in update exp1 newExp exp1
            = do
                newExp <- ifToCaseTransform exp1
                update exp1 newExp exp1
@@ -81,6 +78,7 @@ reallyDoIfToCase expr rs = do
 
          inExp e = return e
 
+-- TODO: rearrange the structure and preserve the comments in the original, e.g. in e1,e2,e3
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
   trueName  <- mkNewName "True"
@@ -90,7 +88,7 @@ ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
               [
                 (GHC.noLoc $ GHC.Match
                  [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc trueName) {- (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "True") -} (GHC.PrefixCon [])
+                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc trueName) (GHC.PrefixCon [])
                  ]
                  Nothing
                  ((GHC.GRHSs
@@ -100,7 +98,7 @@ ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
                 )
               , (GHC.noLoc $ GHC.Match
                  [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc falseName) {- (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "False") -} (GHC.PrefixCon [])
+                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc falseName) (GHC.PrefixCon [])
                  ]
                  Nothing
                  ((GHC.GRHSs

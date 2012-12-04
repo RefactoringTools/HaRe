@@ -695,13 +695,6 @@ updateToks oldAST newAST printFun
        -- let toks' = replaceToks toks startPos endPos newToks
        let toks' = toks1 ++ newToks ++ toks2
        putToks toks' modified
-       {-
-       if length newToks == 0
-         -- then put (RefSt s u toks' modified) -- TODO:how do we flag this? Do we have to?
-         then put $ st { rsTokenStream = toks', rsStreamModified = modified} -- TODO:how do we flag this? Do we have to?
-         -- else put (RefSt s u toks' modified)
-         else put $ st { rsTokenStream = toks', rsStreamModified = modified}
-       -}
 
        -- return (newAST, newToks)
        return ()
