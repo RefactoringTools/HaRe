@@ -697,11 +697,11 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
 
 -}
 
-demote' :: 
-     GHC.ModuleName 
-  -> FilePath 
-  -> (ParseResult,[PosToken]) 
-  -> GHC.Located GHC.Name 
+demote' ::
+     GHC.ModuleName
+  -> FilePath
+  -> (ParseResult,[PosToken])
+  -> GHC.Located GHC.Name
   -> RefactGhc [ApplyRefacResult]
 demote' modName fileName modInfo@(mod,toks) (GHC.L _ pn) = do
   renamed <- getRefactRenamed
@@ -713,7 +713,7 @@ demote' modName fileName modInfo@(mod,toks) (GHC.L _ pn) = do
           then error "This definition can not be demoted, as it is explicitly exported by the current module!"
           else do -- (mod',((toks',m),_))<-doDemoting pn fileName mod toks
                   refactoredMod <- applyRefac (doDemoting pn) (Just modInfo) fileName
-                  isTl <- isTopLevelPN pn
+                  -- isTl <- isTopLevelPN pn
                   if isTl && modIsExported parsed
                     then do let demotedDecls'= definingDeclsNames [pn] (hsBinds renamed) True False
                                 declaredPns  = nub $ concatMap definedPNs demotedDecls'
@@ -768,7 +768,7 @@ doDemoting  pn = do
        -- demoteInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
        demoteInMod (renamed :: GHC.RenamedSource)
          | not $ emptyList decls
-         = do 
+         = do
               -- decls' <- rmQualifier [pn] renamed
               demoted <- doDemoting' renamed pn
               return demoted
@@ -889,7 +889,6 @@ doDemoting  pn fileName mod toks
 
 doDemoting' :: (HsBinds t, UsedByRhs t, GHC.Outputable t) => t -> GHC.Name -> RefactGhc t
 doDemoting' t pn
- -- = error "undefined doDemoting'"
  = let origDecls = hsBinds t
        demotedDecls'= definingDeclsNames [pn] origDecls True False
        declaredPns = nub $ concatMap definedPNs demotedDecls'
@@ -916,7 +915,10 @@ doDemoting' t pn
                          --get those varaibles declared at where the demotedDecls will be demoted to
                          -- dl  <-mapM (flip declaredNamesInTargetPlace ds) declaredPns
                          let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
-                         --make sure free variable in 'f' do not clash with variables in 'dl', 
+                         --make sure free variable in 'f' do not clash with variables in 'dl',
+
+                         -- error ("doDemoting':(ds,dl)=" ++ (GHC.showPpr (ds,dl))) -- ++AZ++
+
                          --otherwise do renaming.
                          -- let clashedNames=filter (\x-> elem (pNtoName x) (map pNtoName f)) $ (nub.concat) dl
                          let clashedNames=filter (\x-> elem (id x) (map id f)) $ (nub.concat) dl
@@ -928,12 +930,16 @@ doDemoting' t pn
                                        ++" after demoting, please do renaming first!")  
                                  --ds'<-foldM (flip (autoRenameLocalVar True)) ds clashedNames
                             else  --duplicate demoted declarations to the right place.
-                                 do 
-                                    ds'' <- duplicateDecls declaredPns origDecls
+                                 do
+                                    -- error ("doDemoting':(declaredPns,demotedDecls)=" ++ (GHC.showPpr (declaredPns,demotedDecls))) -- ++AZ++
+                                    -- ds'' <- duplicateDecls declaredPns origDecls
+                                    ds'' <- duplicateDecls declaredPns (ghead "doDemoting'" demotedDecls) ds
                                     -- let res = replaceBinds t ds''
-                                    -- error ("doDemoting':(ds'',res)=" ++ (GHC.showPpr (ds'',res))) -- ++AZ++
-                                    -- return res 
-                                    return (replaceBinds t ds'') 
+                                    -- newBinds <- moveDecl1 origDecls Nothing declaredPns False
+                                    -- newBinds <- addDecl [ddd] Nothing declaredPns False
+                                    -- error ("doDemoting':(ds'',declaredPns)=" ++ (GHC.showPpr (ds'',declaredPns))) -- ++AZ++
+                                    -- return res
+                                    return (replaceBinds t ds'')
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
        -- else error "This function can not be demoted as it is used in current level!\n"
@@ -966,9 +972,10 @@ doDemoting' t pn
 
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).
-          duplicateDecls :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
+          -- duplicateDecls :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
+          duplicateDecls :: [GHC.Name] -> GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
           -- duplicateDecls :: (SYB.Data t) =>[GHC.Name] -> t -> RefactGhc [GHC.LHsBind GHC.Name]
-          duplicateDecls pns decls
+          duplicateDecls pns demoted decls
              = do everywhereMStaged SYB.Renamer (SYB.mkM dupInMatch
                                                 `SYB.extM` dupInPat) decls
              {-
@@ -986,7 +993,8 @@ doDemoting' t pn
                       -- moveDecl pns pats False decls False
                       do
                         -- rhs' <- moveDecl pns rhs False decls False
-                        rhs' <- moveDecl1 rhs Nothing pns False
+                        -- rhs' <- moveDecl1 rhs Nothing pns False
+                        rhs' <- addDecl rhs Nothing (demoted,Nothing) False
                         return (GHC.Match pats mt rhs')
                       -- If fold parameters.
                       --foldParams pns match decls

@@ -73,7 +73,7 @@ spec = do
 
     -- -----------------------------------------------------------------
 
-    it "demotes a definition from the top level" $ do
+    it "demotes a definition from the top level D1" $ do
      doDemote ["./test/testdata/Demote/D1.hs","9","1"]
      diff <- compareFiles "./test/testdata/Demote/D1.hs.refactored"
                           "./test/testdata/Demote/D1.hs.expected"
