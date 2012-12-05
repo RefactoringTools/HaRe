@@ -217,7 +217,7 @@ liftToTopLevel' modName _modInfo _fileName pn@(GHC.L _ n) = do
                                 -- error ("liftToMod:newBinds=" ++ (GHC.showPpr (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
                                 -- mod'<-moveDecl1 (replaceDecls declsr (before++parent'++after))
                                 mod'<-moveDecl1 (replaceBinds renamed (before++parent'++after))
-                                       (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) [pn] True
+                                       (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) [GHC.unLoc pn] True
                                 -- return (mod', declaredPns)
                                 return ()
 
@@ -262,18 +262,21 @@ liftToTopLevel' modName fileName (inscps, mod, toks) pnt@(PNT pn _ _)
                         else askRenamingMsg pns "lifting"
 -}
 
-moveDecl1 :: (HsBinds t, GHC.Outputable t)
+-- TODO: move this to TypeUtils, as moveDecl
+moveDecl1 :: (HsBinds t)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
-  -- TODO: make this next parameter a single value, not a list, after module complete
-  -> [GHC.Located GHC.Name] -- ^ The first one is the decl to move
-  -> Bool -- ^True if moving to the top level
-  -> RefactGhc t -- ^ The updated syntax element (and tokens in monad)
-moveDecl1 t defName pns topLevel
+
+     -- TODO: make this next parameter a single value, not a list,
+     -- after module complete
+  -> [GHC.Name]     -- ^ The first one is the decl to move
+  -> Bool           -- ^True if moving to the top level
+  -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
+moveDecl1 t defName ns topLevel
    = do toks <- fetchToks
-        -- error ("moveDecl1:defName=" ++ (GHC.showPpr defName)) -- ++AZ++ 
-        let ns = map GHC.unLoc pns
-        let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" pns) True toks t
+        -- error ("moveDecl1:defName=" ++ (GHC.showPpr defName)) -- ++AZ++
+        -- let ns = map GHC.unLoc pns
+        let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" ns) True toks t
         --error$ show (declToMove, toksToMove)
         t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
         -- error ("moveDecl1:(defName,ns,t')=" ++ (GHC.showPpr (defName,ns,t'))) -- ++AZ++
@@ -765,13 +768,9 @@ doDemoting  pn = do
        -- demoteInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
        demoteInMod (renamed :: GHC.RenamedSource)
          | not $ emptyList decls
-         = do -- decls' <- rmQualifier [pn] decls
-              -- decls' <- rmQualifier [pn] (hsBinds renamed)
-              decls' <- rmQualifier [pn] renamed
-              demoted <- doDemoting' decls' pn
-              -- let renamed' = replaceBinds renamed demoted
-              -- error ("demoteInMod:renamed'=" ++ (GHC.showPpr renamed'))
-              -- return renamed'
+         = do 
+              -- decls' <- rmQualifier [pn] renamed
+              demoted <- doDemoting' renamed pn
               return demoted
          where
            decls = (definingDeclsNames [pn] (hsBinds renamed) False False)
@@ -986,7 +985,8 @@ doDemoting' t pn
                    =  --If not fold parameters.
                       -- moveDecl pns pats False decls False
                       do
-                        rhs' <- moveDecl pns rhs False decls False
+                        -- rhs' <- moveDecl pns rhs False decls False
+                        rhs' <- moveDecl1 rhs Nothing pns False
                         return (GHC.Match pats mt rhs')
                       -- If fold parameters.
                       --foldParams pns match decls
@@ -999,7 +999,8 @@ doDemoting' t pn
                     | (not $ findPNs pns pat) && findPNs pns rhs
                    -- =  moveDecl pns pat False decls False
                    = do
-                       rhs' <- moveDecl pns rhs False decls False
+                       -- rhs' <- moveDecl pns rhs False decls False
+                       rhs' <- moveDecl1 rhs Nothing pns False
                        return (GHC.PatBind pat rhs' ty fvs ticks)
                  -- dupInPat _ =mzero
                  dupInPat x = return x

@@ -685,7 +685,7 @@ spec = do
       (t, toks) <-parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = getDecls renamed
+      let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName dd1FileName (3, 1) renamed
       let
         comp = do
@@ -706,7 +706,7 @@ spec = do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = getDecls renamed
+      let declsr = hsBinds renamed
       let Just (GHC.L l n) = locToName dd1FileName (17, 6) renamed
       (GHC.showPpr n) `shouldBe` "ff"
       let
@@ -739,7 +739,7 @@ spec = do
       (t, toks) <- parsedFileMd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = getDecls renamed
+      let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName md1FileName (3, 1) renamed
       let
         comp = do
@@ -762,7 +762,7 @@ spec = do
       (t, toks) <- parsedFileMd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = getDecls renamed
+      let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
       let
         comp = do
@@ -780,7 +780,7 @@ spec = do
       (t, toks) <- parsedFileMd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = getDecls renamed
+      let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
       let
         comp = do
@@ -831,16 +831,16 @@ spec = do
 
 
   -- ---------------------------------------------
-
+{-
   describe "moveDecl" $ do
     it "moves a declaration from one syntax element to another" $ do
       (t, toks) <- parsedFileD1Ghc
       let
         comp = do
          renamed <- getRefactRenamed
-         let Just (GHC.L l ssq) = locToName d1FileName (6, 1) renamed
-         let Just (GHC.L l sq) = locToName d1FileName (9, 1) renamed
-         let declsr = getDecls renamed
+         let Just (GHC.L _ ssq) = locToName d1FileName (6, 1) renamed
+         let Just (GHC.L _ sq) = locToName d1FileName (9, 1) renamed
+         let declsr = hsBinds renamed
              ssqDecls = definingDeclsNames [ssq] declsr True False
              sqDecls  = definingDeclsNames [sq]  declsr True False
 
@@ -848,11 +848,13 @@ spec = do
 
          return (ssq,sq,ssqDecls,sqDecls,newDecls)
       ((s1,s2,d1,d2,nd),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showPpr d1) `shouldBe` "[Demote.D1.sumSquares (x : xs)\n   = Demote.D1.sq x GHC.Num.+ Demote.D1.sumSquares xs\n Demote.D1.sumSquares [] = 0]"
+      (GHC.showPpr s2) `shouldBe` "Demote.D1.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n sumSquares [] = 0\n\n sq x = x ^pow\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
       (showToks $ take 40 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` ""
       (GHC.showPpr nd) `shouldBe` ""
-
+-}
   -- ---------------------------------------------
 
   describe "addDecl" $ do
@@ -906,7 +908,7 @@ spec = do
          renamed <- getRefactRenamed
 
          let Just (GHC.L _ tl) = locToName md1FileName (4, 1) renamed
-         let declsr = getDecls renamed
+         let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
          nn  <- mkNewName "nn"
@@ -933,7 +935,7 @@ spec = do
          renamed <- getRefactRenamed
 
          let Just (GHC.L _ tl) = locToName md2FileName (4, 1) renamed
-         let declsr = getDecls renamed
+         let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
          nn  <- mkNewName "nn"
@@ -957,7 +959,7 @@ spec = do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = getDecls renamed
+      let declsr = hsBinds renamed
       let Just (GHC.L l n) = locToName dd1FileName (3, 1) renamed
       let
         comp = do
@@ -988,7 +990,7 @@ spec = do
          let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
          let (Just (ln@(GHC.L _ n))) = mn
 
-         let declsr = getDecls parentr
+         let declsr = hsBinds parentr
              duplicatedDecls = definingDeclsNames [n] declsr True False
 
              res = findEntity ln duplicatedDecls
@@ -1016,7 +1018,7 @@ spec = do
          let mltup = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (11,1) parentr
          let (Just (ltup@(GHC.L _ tup))) = mltup
 
-         let declsr = getDecls parentr
+         let declsr = hsBinds parentr
              duplicatedDecls = definingDeclsNames [n] declsr True False
 
              res = findEntity tup duplicatedDecls
@@ -1229,7 +1231,7 @@ spec = do
           renamed <- getRefactRenamed
 
           let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Md1.hs") (40,4) renamed
-          let res = getDeclAndToks n True toks renamed
+          let res = getDeclAndToks name True toks renamed
           return (res,n,name)
 
       (((d,t),n1,n2),s) <- runRefactGhcState comp 
@@ -1268,7 +1270,7 @@ spec = do
           renamed <- getRefactRenamed
 
           let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Md1.hs") (40,4) renamed
-          let (decl,_toks) = getDeclAndToks n True toks renamed
+          let (decl,_toks) = getDeclAndToks name True toks renamed
 
           res <- rmQualifier [name] decl
           return (res,decl,n,name)

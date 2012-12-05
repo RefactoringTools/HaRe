@@ -44,7 +44,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Variable analysis
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , HsBinds(..)
-    ,getDecls, getDeclsP -- , replaceDecls
     ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
     ,hsVisiblePNs, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
@@ -75,7 +74,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program transformation
     -- ** Adding
     ,addDecl {- ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
-    ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl, moveDecl
+    ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
     -- ** Removing
     ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -1267,15 +1266,6 @@ instance HsDecls GHC.ParsedSource where
 replaceDecls :: [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name]
 replaceDecls t decls = decls
 
--- getDecls :: GHC.RenamedSource -> GHC.LHsBinds GHC.Name
-getDecls :: GHC.RenamedSource -> [GHC.LHsBind GHC.Name]
-getDecls renamed@(group, _, _, _) = case (GHC.hs_valds group) of
-   GHC.ValBindsIn   binds _sigs -> GHC.bagToList $ binds
-   GHC.ValBindsOut rbinds _sigs -> GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
-
-getDeclsP :: GHC.ParsedSource -> [HsDeclP]
-getDeclsP parsed@(GHC.L _ hsMod) = GHC.hsmodDecls hsMod
-
 getValBinds :: GHC.HsValBinds t -> [GHC.LHsBind t]
 getValBinds binds = case binds of
     GHC.ValBindsIn   binds _sigs -> GHC.bagToList binds
@@ -1898,6 +1888,7 @@ sameBind b1 b2 = (definesNames b1) == (definesNames b2)
 -}
 -- ---------------------------------------------------------------------
 
+-- TODO: is this the same is isUsedInRhs?
 class (SYB.Data t) => UsedByRhs t where
 
     -- | Return True if any of the GHC.Name's appear in the given
@@ -1908,6 +1899,7 @@ instance UsedByRhs GHC.RenamedSource where
 
    -- Defined like this in the original
    usedByRhs renamed pns = False
+   -- usedByRhs renamed pns = usedByRhs (hsBinds renamed) pns -- ++AZ++
 
 
 instance UsedByRhs [GHC.LHsBind GHC.Name] where
@@ -3191,8 +3183,9 @@ duplicateDecl decls pn newFunName
 
 -- ---------------------------------------------------------------------
 --------------------------------TRY TO REMOVE THIS FUNCTION---------------------
+-- ++AZ++ why?
 
-
+{-
 moveDecl:: (HsBinds t)
      => [GHC.Name]     -- ^ The identifier(s) whose defining
                        -- declaration is to be moved. List is used to
@@ -3204,12 +3197,10 @@ moveDecl:: (HsBinds t)
                        -- being moved is going to be at the same level
                        -- with t. Otherwise it will be a local
                        -- declaration of t.
-     -- -> [HsDeclP]      -- ^ The declaration list where the
-                       -- definition\/pattern binding originally
-                       -- exists.
-     -> [GHC.LHsBind GHC.Name]      -- ^ The declaration list where
-                                    -- the definition\/pattern binding
-                                    -- originally exists.
+     -> [GHC.LHsBind GHC.Name] -- ^ The declaration list where the
+                               -- definition\/pattern binding
+                               -- originally exists.
+
      -- -> t2             -- ^ The declaration list where the
                        -- definition\/pattern binding originally
                        -- exists.
@@ -3217,18 +3208,16 @@ moveDecl:: (HsBinds t)
                        -- discarded.
      -> RefactGhc t    -- ^ The result.
 
-moveDecl pns dest sameLevel decls incSig
-   -- = error "undefined moveDecl"
-   {- ++AZ++ WIP, sort out getDeclToks first -}
+moveDecl pns dest _sameLevel decls incSig
    = do ts <- fetchToks
         let defToks' =(getDeclToks (ghead "moveDecl:0" pns) True decls ts)
             defToks  =whiteSpaceTokens (tokenRow (ghead "moveDecl" defToks'),0)
                                        -- do not use tokenCol here. should count the whilte spaces.
                                        (tokenCol (ghead "moveDecl2" defToks') -1) ++ defToks'
             movedDecls = definingDeclsNames pns decls True False
-        decls'<-rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) decls pns
+        decls'<-rmDecl (ghead "moveDecl3"  pns) False =<< foldM (flip rmTypeSig) decls pns
         addDecl dest Nothing (ghead "moveDecl" movedDecls, Just defToks) False
-   {- ++WIP end++ -}
+-}
 
 {- ++AZ++ original
 {-
@@ -3820,11 +3809,17 @@ getDeclToks :: GHC.Name        -- ^ The identifier.
 getDeclToks pn incSig decls toks
   = let -- (decls1,decls2) = break (definesTypeSig pn) decls
         -- typeSig = if decls2==[] then Nothing else Just (ghead "getDeclToks1" decls2) --There may or may not type signature.
+        {- ++AZ++ call existing fun instead
         (decls1', decls2') = break (defines pn) decls
         decl = if (emptyList decls2') then error "getDeclToks:: declaration does not exist"
                                 else ghead "getDeclToks2" decls2'
-        declToks = getToks' decl toks
-        sigToks = [] -- ++AZ++
+        -}
+        decl = ghead "getDeclToks1" $ definingDeclsNames [pn] decls False False
+        sig  = ghead "getDeclToks2" $ definingSigsNames [pn] decls 
+        -- declToks = getToks' decl toks
+        declToks = getToksForDecl decl toks
+        sigToks  = getToksForDecl sig toks
+        -- sigToks = [] -- ++AZ++
         {- ++AZ++ TODO: sort this out, sig not in decls
         sigToks
          = case typeSig of
@@ -3834,8 +3829,19 @@ getDeclToks pn incSig decls toks
                                                  in  tokenise (Pos 0 (-1111) 1) 0 True $ prettyprint sig'++"\n"   
         -}
     in if incSig then sigToks ++ declToks  else declToks
+   {-
    where
     getToks' decl toks
+      = let (startPos, endPos) = startEndLocIncComments toks decl
+            (toks1, _) =let(ts1,(t:ts2'))= break (\t -> tokenPos t >= endPos) toks
+                        in (ts1, ts2')
+        in dropWhile (\t -> tokenPos t < startPos {- || isNewLn t -}) toks1
+   -}
+-- ---------------------------------------------------------------------
+
+getToksForDecl :: SYB.Data t => 
+  t -> [PosToken] -> [PosToken]
+getToksForDecl decl toks
       = let (startPos, endPos) = startEndLocIncComments toks decl
             (toks1, _) =let(ts1,(t:ts2'))= break (\t -> tokenPos t >= endPos) toks
                         in (ts1, ts2')
@@ -3845,11 +3851,18 @@ getDeclToks pn incSig decls toks
 -- ---------------------------------------------------------------------
 
 -- Get the toks for a declaration, and adjust its offset to 0.
-getDeclAndToks :: (SYB.Data t)
-     => GHC.Located GHC.Name -> Bool -> [PosToken] -> t
+getDeclAndToks :: (HsBinds t)
+     => GHC.Name -> Bool -> [PosToken] -> t
      -> ([GHC.LHsBind GHC.Name],[PosToken])
-getDeclAndToks (GHC.L _ pn) incSig toks t
-    -- = error "undefined getDeclAndToks"
+getDeclAndToks pn incSig toks t =
+  let
+    decls = definingDeclsNames [pn] (hsBinds t) True True
+    declToks = getToksForDecl decls toks
+    -- TODO: removeOffset on declToks
+  in (decls,declToks)
+
+{- ++AZ++ : compose this out of existing API functions
+
     = ghead "getDeclAndToks" $ SYB.everythingStaged SYB.Renamer (++) []
         ([] `SYB.mkQ` inDecls) t
     -- = ghead "getDeclAndToks" $ applyTU (stop_tdTU (failTU `adhocTU` inDecls)) t
@@ -3892,6 +3905,7 @@ getDeclAndToks (GHC.L _ pn) incSig toks t
     removeOffset offset toks
      = let groupedToks = groupTokensByLine toks
        in  concatMap  (doRmWhites offset) groupedToks
+ ++AZ++ : compose this out of existing API functions end -}
 
 
 {- ++AZ++ original
