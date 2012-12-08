@@ -1,0 +1,11 @@
+module MoveDef.Demote where
+
+toplevel :: Integer -> Integer
+toplevel x = c * x
+     where
+       c = 7
+
+
+d = 9
+
+

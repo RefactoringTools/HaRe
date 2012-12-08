@@ -2401,14 +2401,18 @@ addDecl parent pn (decl, declToks) topLevel
     =do
         toks <- fetchToks
         -- error ("addLocalDecl:(parent,localDecls)=" ++ (GHC.showPpr (parent,localDecls))) -- ++AZ++ debug
-        let (startPos@(_,startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
+        let (startPos@(_,_startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
               =if (emptyList localDecls)
-                   then startEndLocIncFowComment toks parent    --The 'where' clause is empty
-                   else startEndLocIncFowComment toks localDecls
+
+                   then getStartEndLoc parent    --The 'where' clause is empty
+                   else getStartEndLoc localDecls
+                   -- then startEndLocIncFowComment toks parent    --The 'where' clause is empty
+                   -- else startEndLocIncFowComment toks localDecls
             -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
             -- ++AZ++ toks1 : tokens after the insertion point
             --        ts1: toks1 with whitespace, comments etc removed.
-            toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t<=endPos') toks
+            -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t<endPos') toks
+            toks1=dropWhile (\t->tokenPosEnd t<endPos') toks
             ts1=takeWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t)  toks1
             --nextTokPos is only used to test whether there is a 'In' or a nested comment. 
             nextTokPos= case (dropWhile (\t->isWhite t && ((not.isMultiLineComment) t) && (not.hasNewLn) t) toks1) of
@@ -2423,14 +2427,15 @@ addDecl parent pn (decl, declToks) topLevel
             --                             else tokenPos (last ts1)
             -- ++AZ++ temp offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
             offset = if (emptyList localDecls)
-                        then getOffset toks startPos + 4
+                        then (getOffset toks startPos) + 3 -- off by one on start col
                         else getOffset toks startPos
             nlToken = newLnToken (ghead "addLocalDecl2" toks1)
 
-        -- error ("addLocalDecl: (head toks1) =" ++ (showToks $ [head toks1])) -- ++AZ++ debug
+        -- error ("addLocalDecl: (endPos',offset),(head toks1)) =" ++ (show (endPos',offset)) ++ "," ++ (showToks $ [head toks1])) -- ++AZ++ debug
         -- error ("addLocalDecl: (needNewLn,nextTokPos) =" ++ (GHC.showPpr (needNewLn,nextTokPos))) -- ++AZ++ debug
 
-        newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addLocalDecl3" toks1) offset True
+        -- newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addLocalDecl3" toks1) offset True
+        newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
         -- newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
                           -- $ if needNewLn then "\n"++newSource else newSource++"\n"
                           $ if needNewLn then newSource++"\n" else newSource++"\n"

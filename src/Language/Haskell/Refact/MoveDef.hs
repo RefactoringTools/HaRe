@@ -769,7 +769,6 @@ doDemoting  pn = do
        demoteInMod (renamed :: GHC.RenamedSource)
          | not $ emptyList decls
          = do
-              -- decls' <- rmQualifier [pn] renamed
               demoted <- doDemoting' renamed pn
               return demoted
          where
@@ -892,10 +891,13 @@ doDemoting' t pn
  = let origDecls = hsBinds t
        demotedDecls'= definingDeclsNames [pn] origDecls True False
        declaredPns = nub $ concatMap definedPNs demotedDecls'
-       demotedDecls = definingDeclsNames declaredPns origDecls True False
+       -- demotedDecls = definingDeclsNames declaredPns origDecls True False
    -- in if not (usedByRhs t declaredPns) -- ++AZ++ this only works because the top level is hard coded to False.
    in if not (usedByRhs t declaredPns)
-       then do -- find how many matches/pattern bindings (except the binding defining pn) use 'pn'
+       then do 
+              toks <- fetchToks
+              let (demotedDecls,demotedToks) = getDeclAndToks pn True toks t
+              -- find how many matches/pattern bindings (except the binding defining pn) use 'pn'
               -- uselist <- uses declaredPns (hsBinds t\\demotedDecls)
               let -- uselist = uses declaredPns (hsBinds t\\demotedDecls)
                   uselist = uses declaredPns (deleteFirstsBy sameBind (hsBinds t) demotedDecls)
@@ -908,10 +910,11 @@ doDemoting' t pn
                   1 -> --This function is only used by one friend function
                       do -- (f,d)<-hsFreeAndDeclaredPNs demotedDecls
                          let (f,d) = hsFreeAndDeclaredPNs demotedDecls
-                          -- remove demoted declarations
+                         -- remove demoted declarations
                          --Without updating the token stream.
                          -- let ds=foldl (flip removeTypeSig) (hsBinds t\\demotedDecls) declaredPns
-                         let ds=foldl (flip removeTypeSig) (deleteFirstsBy sameBind (hsBinds t) demotedDecls) declaredPns
+                         -- let ds=foldl (flip removeTypeSig) (deleteFirstsBy sameBind (hsBinds t) demotedDecls) declaredPns
+                         ds <- rmDecl pn True (hsBinds t)
                          --get those varaibles declared at where the demotedDecls will be demoted to
                          -- dl  <-mapM (flip declaredNamesInTargetPlace ds) declaredPns
                          let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
@@ -933,7 +936,7 @@ doDemoting' t pn
                                  do
                                     -- error ("doDemoting':(declaredPns,demotedDecls)=" ++ (GHC.showPpr (declaredPns,demotedDecls))) -- ++AZ++
                                     -- ds'' <- duplicateDecls declaredPns origDecls
-                                    ds'' <- duplicateDecls declaredPns (ghead "doDemoting'" demotedDecls) ds
+                                    ds'' <- duplicateDecls declaredPns (ghead "doDemoting'" demotedDecls) demotedToks ds
                                     -- let res = replaceBinds t ds''
                                     -- newBinds <- moveDecl1 origDecls Nothing declaredPns False
                                     -- newBinds <- addDecl [ddd] Nothing declaredPns False
@@ -943,7 +946,7 @@ doDemoting' t pn
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
        -- else error "This function can not be demoted as it is used in current level!\n"
-       -- else error ("doDemoting': demotedDecls'=" ++ (GHC.showPpr demotedDecls')) -- ++AZ++
+       -- else error ("doDemoting': demotedDecls=" ++ (GHC.showPpr demotedDecls)) -- ++AZ++
        -- else error ("doDemoting': declaredPns=" ++ (GHC.showPpr declaredPns)) -- ++AZ++
        else error ("doDemoting': (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns))=" ++ (GHC.showPpr (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns)))) -- ++AZ++
 
@@ -973,9 +976,9 @@ doDemoting' t pn
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).
           -- duplicateDecls :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
-          duplicateDecls :: [GHC.Name] -> GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
+          duplicateDecls :: [GHC.Name] -> GHC.LHsBind GHC.Name -> [PosToken] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
           -- duplicateDecls :: (SYB.Data t) =>[GHC.Name] -> t -> RefactGhc [GHC.LHsBind GHC.Name]
-          duplicateDecls pns demoted decls
+          duplicateDecls pns demoted dtoks decls
              = do everywhereMStaged SYB.Renamer (SYB.mkM dupInMatch
                                                 `SYB.extM` dupInPat) decls
              {-
@@ -994,7 +997,9 @@ doDemoting' t pn
                       do
                         -- rhs' <- moveDecl pns rhs False decls False
                         -- rhs' <- moveDecl1 rhs Nothing pns False
+                        -- TODO: work the tokens through
                         rhs' <- addDecl rhs Nothing (demoted,Nothing) False
+                        -- rhs' <- addDecl rhs Nothing (demoted,Just dtoks) False
                         return (GHC.Match pats mt rhs')
                       -- If fold parameters.
                       --foldParams pns match decls
@@ -1008,6 +1013,7 @@ doDemoting' t pn
                    -- =  moveDecl pns pat False decls False
                    = do
                        -- rhs' <- moveDecl pns rhs False decls False
+                       -- TODO: what wbout dtoks?
                        rhs' <- moveDecl1 rhs Nothing pns False
                        return (GHC.PatBind pat rhs' ty fvs ticks)
                  -- dupInPat _ =mzero
