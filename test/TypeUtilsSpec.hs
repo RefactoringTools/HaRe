@@ -1290,6 +1290,8 @@ spec = do
 
   describe "rmQualifier" $ do
     it "Removes the qualifiers from a list of identifiers in a given syntax phrase" $ do
+      pending "Is this function needed?"
+    {-
       let
         comp = do
           (t, toks) <- parseSourceFileGhc "./test/testdata/MoveDef/Md1.hs"
@@ -1306,6 +1308,7 @@ spec = do
       (GHC.showPpr n1) `shouldBe` "MoveDef.Md1.tlFunc"
       (GHC.showPpr d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
       "a" `shouldBe` "what?"
+    -}
 
   -- ---------------------------------------
 

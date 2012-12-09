@@ -8,9 +8,9 @@ module Demote.WhereIn1 where
 --This example also aims to test the adding of a 'where' claus.
 
 sumSquares x y = sq x + sq y
-     where
-       sq 0 = 0
-       sq z = z ^ pow
+    where
+      sq 0 = 0
+      sq z = z ^ pow
 
 
 pow=2

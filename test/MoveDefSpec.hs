@@ -61,9 +61,9 @@ spec = do
      res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","14","13"])
      (show res) `shouldBe` "Just \"\\nInvalid cursor position!\""
 
-    it "will not demotes if used at current level" $ do
-     res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","4","1"])
-     (show res) `shouldBe` "Just \"This function can not be demoted as it is used in current level!\\n\""
+    it "will not demote if nowhere to go" $ do
+     res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","8","1"])
+     (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
     it "demotes a definition from the top level" $ do
      doDemote ["./test/testdata/MoveDef/Demote.hs","7","1"]
@@ -89,6 +89,8 @@ spec = do
 
 
 {- Original test cases. These files are now in testdata/Demote
+
+-- TODO: reinstate these tests
 
 TestCases{refactorCmd="demote",
 positive=[(["D1.hs","C1.hs","A1.hs"],["9","1"]),

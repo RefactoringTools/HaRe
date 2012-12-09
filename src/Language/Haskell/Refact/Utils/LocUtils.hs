@@ -670,30 +670,31 @@ splitToks (startPos, endPos) toks
 -- ---------------------------------------------------------------------
 
 updateToks :: (SYB.Data t)
-  => GHC.GenLocated GHC.SrcSpan t -- ^ Old element
-  -> GHC.GenLocated GHC.SrcSpan t -- ^ New element
-  -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -- ^ pretty printer
-  -- -> RefactGhc (GHC.GenLocated GHC.SrcSpan t, [PosToken]) -- ^ Updated element and toks
+  => GHC.Located t -- ^ Old element
+  -> GHC.Located t -- ^ New element
+  -> (GHC.Located t -> [Char]) -- ^ pretty printer
+  -> Bool         -- ^ Add trailing newline if required
   -> RefactGhc () -- ^ Updates the RefactState
-updateToks oldAST newAST printFun
+updateToks oldAST newAST printFun addTrailingNl
   = trace "updateToks" $
     do
        toks <- fetchToks
        let (startPos, endPos) = getStartEndLoc oldAST
-       -- error $ show (startPos, endPos)
+       -- error $ show (startPos, endPos) -- ++AZ++
 
        let (toks1, _, toks2)  = splitToks (startPos, endPos) toks
            offset             = lengthOfLastLine toks1
 
-       -- newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) 
-       --                    offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-       -- tokenise  startPos colOffset withFirstLineIndent str
-       -- error (show (realSrcLocEndTok $ glast "Update Toks" toks1) )
-       -- error (showToks toks1)
-       newToks <- liftIO $ tokenise (realSrcLocEndTok $ glast "Update Toks" toks1) 1 True (printFun newAST)
-       -- error $ show (showToks toks1, showToks newToks)
-       -- let toks' = replaceToks toks startPos endPos newToks
-       let toks' = toks1 ++ newToks ++ toks2
+           astStr = (printFun newAST) 
+       -- error $ "updateToks:astStr=[" ++ (show (astStr)) ++ "]" -- ++AZ++
+       -- error $ "updateToks:(head toks2,(tokenRow (head toks2), tokenRow (head newToks))
+       newToks <- liftIO $ tokenise (realSrcLocEndTok $ glast "Update Toks" toks1) 1 True astStr
+       let nlt1 = newLnToken (glast "updateToks 3" newToks)
+           nlt2 = newLnToken nlt1
+       let newToks' = if (addTrailingNl && tokenRow (ghead "updateToks 1" toks2) <= tokenRow (glast "updateToks 2" newToks))
+                       then newToks ++ [nlt1,nlt2]
+                       else newToks
+       let toks' = toks1 ++ newToks' ++ toks2
        putToks toks' modified
 
        -- return (newAST, newToks)

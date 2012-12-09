@@ -775,6 +775,7 @@ doDemoting  pn = do
            decls = (definingDeclsNames [pn] (hsBinds renamed) False False)
        demoteInMod x = return x
 
+       -- TODO: the rest of these cases below
 {-
         --2. The demoted definition is a local decl in a match
        demoteInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
@@ -900,11 +901,13 @@ doDemoting' t pn
               -- find how many matches/pattern bindings (except the binding defining pn) use 'pn'
               -- uselist <- uses declaredPns (hsBinds t\\demotedDecls)
               let -- uselist = uses declaredPns (hsBinds t\\demotedDecls)
-                  uselist = uses declaredPns (deleteFirstsBy sameBind (hsBinds t) demotedDecls)
+                  otherBinds = (deleteFirstsBy sameBind (hsBinds t) demotedDecls)
+                  uselist = uses declaredPns otherBinds
                       {- From 'hsDecls t' to 'hsDecls t \\ demotedDecls'.
                          Bug fixed 06/09/2004 to handle direct recursive function.
                        -}
-              -- error ("doDemoting':(pn,origDecls,uselist)=" ++ (GHC.showPpr (pn,origDecls,uselist))) -- ++AZ++
+              -- error ("doDemoting':(pn,declaredPns,otherBinds,useList)=" ++ (GHC.showPpr (pn,declaredPns,otherBinds,uselist))) -- ++AZ++
+              -- error ("doDemoting':(pn,origDecls,demotedDecls,uselist)=" ++ (GHC.showPpr (pn,origDecls,demotedDecls,uselist))) -- ++AZ++
               case  length uselist  of
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function

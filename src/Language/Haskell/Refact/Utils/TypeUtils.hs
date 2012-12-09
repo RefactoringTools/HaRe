@@ -2343,13 +2343,10 @@ addDecl parent pn (decl, declToks) topLevel
              colOffset = 0
          newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addTopLevelDecl" toks1) colOffset True declStr
          let toks' = toks1 ++ newToks ++ toks2
-     --    error $ show decl
 
-         -- put ((toks',modified),((tokenRow (glast "addTopLevelDecl" newToks) -10), v2))
          putToks toks' modified
          (decl',_) <- addLocInfo (decl, newToks)
-     --    error $ show decl
-         -- return (replaceDecls parent (Decs (decls1++decl'++decls2) ([], [])))
+
          return (replaceBinds parent (decls1++[decl']++decls2))
 
   appendDecl :: (SYB.Data t, HsBinds t)
@@ -2724,7 +2721,7 @@ addParamsToDecls decls pn paramPNames modifyToks
          = do
               -- error "got here:addActualParamsToRhs"
               let newExp = (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) (foldl addParamToExp e2 paramPNames)))
-              if modifyToks then do _ <- updateToks e2 newExp prettyprint
+              if modifyToks then do _ <- updateToks e2 newExp prettyprint False
                                     -- return newExp'
                                     return newExp
                             else return newExp
@@ -3525,6 +3522,8 @@ qualifyPName qual pn
 -}
 
 -- ---------------------------------------------------------------------
+
+-- TODO: Is this function needed with GHC?
 
 -- | Remove the qualifier from the given identifiers in the given syntax phrase.
 rmQualifier:: (SYB.Data t) 

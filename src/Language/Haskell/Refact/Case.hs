@@ -41,8 +41,8 @@ ifToCase args
 
 comp :: String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
-       -- modInfo@((_, renamed, ast), toks) <- parseSourceFileGhc fileName
-       modInfo@(t, toks) <- parseSourceFileGhc fileName
+       -- TODO: bring in getModuleGhc
+       modInfo@(t, _toks) <- parseSourceFileGhc fileName
        let renamed = gfromJust "ifToCase" $ GHC.tm_renamed_source t
        let expr = locToExp beginPos endPos renamed
        case expr of
@@ -73,7 +73,8 @@ reallyDoIfToCase expr rs = do
            | sameOccurrence expr exp1
            = do
                newExp <- ifToCaseTransform exp1
-               update exp1 newExp exp1
+               -- _ <- update exp1 newExp exp1
+               updateToks exp1 newExp prettyprint True
                return newExp
 
          inExp e = return e
@@ -112,34 +113,7 @@ ifToCaseTransform x = return x
 
 -- ---------------------------------------------------------------------
 
-ifToCaseTransformPs :: GHC.Located (GHC.HsExpr GHC.RdrName) -> GHC.Located (GHC.HsExpr GHC.RdrName)
-ifToCaseTransformPs (GHC.L l (GHC.HsIf _se e1 e2 e3))
-  = GHC.L l (GHC.HsCase e1
-             (GHC.MatchGroup
-              [
-                (GHC.noLoc $ GHC.Match
-                 [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "True") (GHC.PrefixCon [])
-                 ]
-                 Nothing
-                 ((GHC.GRHSs
-                   [
-                     GHC.noLoc $ GHC.GRHS [] e2
-                   ] GHC.EmptyLocalBinds))
-                )
-              , (GHC.noLoc $ GHC.Match
-                 [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc $ GHC.mkRdrUnqual $ GHC.mkVarOcc "False") (GHC.PrefixCon [])
-                 ]
-                 Nothing
-                 ((GHC.GRHSs
-                   [
-                     GHC.noLoc $ GHC.GRHS [] e3
-                   ] GHC.EmptyLocalBinds))
-                )
-              ] undefined))
-ifToCaseTransformPs x                          = x
-
+-- EOF
 
 
 

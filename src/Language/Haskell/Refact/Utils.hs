@@ -355,7 +355,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
        where
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
-               = do _ <- updateToks oldExp newExp prettyprint
+               = do _ <- updateToks oldExp newExp prettyprint False
                 -- error "update: updated tokens" -- ++AZ++ debug
                     return newExp
           | otherwise = return e
@@ -366,7 +366,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t
         where
           inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
-                = do _ <- {- zipUpdateToks -} updateToks oldPat newPat prettyprint
+                = do _ <- {- zipUpdateToks -} updateToks oldPat newPat prettyprint False
                      return newPat
             | otherwise = return p
             
@@ -377,7 +377,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n
         where
           inTyp (t::GHC.LHsType n)
             | sameOccurrence t oldTy
-                = do _ <- {- zipUpdateToks -} updateToks oldTy newTy prettyprint
+                = do _ <- {- zipUpdateToks -} updateToks oldTy newTy prettyprint False
                      return newTy
             | otherwise = return t
 
