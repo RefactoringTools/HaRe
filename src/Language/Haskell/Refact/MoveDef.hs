@@ -748,6 +748,10 @@ doDemoting  pn = do
 
   renamed <- getRefactRenamed
   renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM demoteInMod
+                                             `SYB.extM` demoteInMatch
+                                             `SYB.extM` demoteInPat
+                                             `SYB.extM` demoteInLet
+                                             `SYB.extM` demoteInStmt
                                             ) renamed
   -- error ("doDemoting:renamed'=" ++ (GHC.showPpr renamed'))
   putRefactRenamed renamed'
@@ -775,38 +779,49 @@ doDemoting  pn = do
            decls = (definingDeclsNames [pn] (hsBinds renamed) False False)
        demoteInMod x = return x
 
-       -- TODO: the rest of these cases below
-{-
-        --2. The demoted definition is a local decl in a match
-       demoteInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-         | definingDecls [pn] ds False False/=[]
+       --2. The demoted definition is a local decl in a match
+       -- demoteInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+       demoteInMatch (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name)
+         -- | definingDecls [pn] ds False False/=[]
+         | not $ emptyList (definingDeclsNames [pn] (hsBinds rhs) False False)
          = doDemoting' match pn
-       demoteInMatch  _ =mzero
+       demoteInMatch  x = return x
 
        --3. The demoted definition is a local decl in a pattern binding
-       demoteInPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
-         | definingDecls [pn] ds False False /=[]
+       -- demoteInPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
+       demoteInPat (pat@((GHC.PatBind p rhs _ _ _))::GHC.HsBind GHC.Name)
+         -- | definingDecls [pn] ds False False /=[]
+         | not $ emptyList (definingDeclsNames [pn] (hsBinds rhs) False False)
           = doDemoting' pat pn
-       demoteInPat _ =mzero
+       demoteInPat x = return x
 
        --4: The demoted definition is a local decl in a Let expression
-       demoteInLet (letExp@(Exp (HsLet ds e))::HsExpP)
-         | definingDecls [pn] ds False False/=[]
+       -- demoteInLet (letExp@(Exp (HsLet ds e))::HsExpP)
+       demoteInLet (letExp@(GHC.HsLet ds e)::GHC.HsExpr GHC.Name)
+         -- | definingDecls [pn] ds False False/=[]
+         | not $ emptyList (definingDeclsNames [pn] (hsBinds ds) False False)
           = doDemoting' letExp pn
-       demoteInLet _=mzero
+       demoteInLet x = return x
 
+       -- TODO: the rest of these cases below
+{-
        --5. The demoted definition is a local decl in a case alternative.
        demoteInAlt (alt@(HsAlt loc p rhs ds)::(HsAlt (HsExpP) (HsPatP) [HsDeclP]))
          | definingDecls [pn] ds False False /=[]
           = doDemoting'  alt pn
        demoteInAlt _=mzero
+-}
 
        --6.The demoted definition is a local decl in a Let statement.
-       demoteInStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP]))
-         | definingDecls [pn] ds False False /=[]
+       -- demoteInStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP]))
+       demoteInStmt (letStmt@(GHC.LetStmt binds)::GHC.Stmt GHC.Name)
+         -- | definingDecls [pn] ds False False /=[]
+         | not $ emptyList (definingDeclsNames [pn] (hsBinds binds) False False)
           = doDemoting' letStmt pn
-       demoteInStmt _=mzero
+       demoteInStmt x =return x
 
+       -- TODO: the rest of these cases below
+{-
        failure=idTP `adhocTP` mod
              where
                mod (m::HsModuleP)
@@ -887,7 +902,7 @@ doDemoting  pn fileName mod toks
 
 -}
 
-doDemoting' :: (HsBinds t, UsedByRhs t, GHC.Outputable t) => t -> GHC.Name -> RefactGhc t
+doDemoting' :: (HsBinds t, UsedByRhs t) => t -> GHC.Name -> RefactGhc t
 doDemoting' t pn
  = let origDecls = hsBinds t
        demotedDecls'= definingDeclsNames [pn] origDecls True False
@@ -948,10 +963,10 @@ doDemoting' t pn
                                     return (replaceBinds t ds'')
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
-       -- else error "This function can not be demoted as it is used in current level!\n"
+       else error "This function can not be demoted as it is used in current level!\n"
        -- else error ("doDemoting': demotedDecls=" ++ (GHC.showPpr demotedDecls)) -- ++AZ++
        -- else error ("doDemoting': declaredPns=" ++ (GHC.showPpr declaredPns)) -- ++AZ++
-       else error ("doDemoting': (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns))=" ++ (GHC.showPpr (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns)))) -- ++AZ++
+       -- else error ("doDemoting': (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns))=" ++ (GHC.showPpr (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns)))) -- ++AZ++
 
 
     where

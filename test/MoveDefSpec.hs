@@ -81,11 +81,138 @@ spec = do
 
     -- -----------------------------------------------------------------
 
-    it "demotes a definition from the top level" $ do
+    it "demotes WhereIn1 12 1" $ do
      doDemote ["./test/testdata/Demote/WhereIn1.hs","12","1"]
      diff <- compareFiles "./test/testdata/Demote/WhereIn1.hs.refactored"
                           "./test/testdata/Demote/WhereIn1.hs.expected"
      diff `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
+    it "demotes WhereIn3 14 1" $ do
+     doDemote ["./test/testdata/Demote/WhereIn3.hs","14","1"]
+     diff <- compareFiles "./test/testdata/Demote/WhereIn3.hs.refactored"
+                          "./test/testdata/Demote/WhereIn3.hs.expected"
+     diff `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
+    it "demotes WhereIn4 14 1" $ do
+     pending "todo"
+{-
+     doDemote ["./test/testdata/Demote/WhereIn4.hs","14","1"]
+     diff <- compareFiles "./test/testdata/Demote/WhereIn4.hs.refactored"
+                          "./test/testdata/Demote/WhereIn4.hs.expected"
+     diff `shouldBe` []
+-}
+    -- -----------------------------------------------------------------
+
+    it "demotes WhereIn5 14 1" $ do
+     pending "todo"
+{-
+     doDemote ["./test/testdata/Demote/WhereIn5.hs","14","1"]
+     diff <- compareFiles "./test/testdata/Demote/WhereIn5.hs.refactored"
+                          "./test/testdata/Demote/WhereIn5.hs.expected"
+     diff `shouldBe` []
+-}
+    -- -----------------------------------------------------------------
+
+    it "demotes WhereIn6 13 1" $ do
+     pending "todo"
+{-
+     doDemote ["./test/testdata/Demote/WhereIn6.hs","13","1"]
+     diff <- compareFiles "./test/testdata/Demote/WhereIn6.hs.refactored"
+                          "./test/testdata/Demote/WhereIn6.hs.expected"
+     diff `shouldBe` []
+-}
+    -- -----------------------------------------------------------------
+
+    it "demotes WhereIn7 13 1" $ do
+     pending "todo"
+{-
+     doDemote ["./test/testdata/Demote/WhereIn7.hs","13","1"]
+     diff <- compareFiles "./test/testdata/Demote/WhereIn7.hs.refactored"
+                          "./test/testdata/Demote/WhereIn7.hs.expected"
+     diff `shouldBe` []
+-}
+    -- -----------------------------------------------------------------
+
+    it "demotes CaseIn1 16 1" $ do
+     pending "todo"
+{-
+     doDemote ["./test/testdata/Demote/CaseIn1.hs","16","1"]
+     diff <- compareFiles "./test/testdata/Demote/CaseIn1.hs.refactored"
+                          "./test/testdata/Demote/CaseIn1.hs.expected"
+     diff `shouldBe` []
+-}
+    -- -----------------------------------------------------------------
+
+    it "demotes LetIn1 12 22" $ do
+     pending "todo"
+{-
+     doDemote ["./test/testdata/Demote/LetIn1.hs","12","22"]
+     diff <- compareFiles "./test/testdata/Demote/LetIn1.hs.refactored"
+                          "./test/testdata/Demote/LetIn1.hs.expected"
+     diff `shouldBe` []
+-}
+    -- -----------------------------------------------------------------
+
+    it "demotes PatBindIn1 19 1" $ do
+       pending "todo"
+{-
+   doDemote ["./test/testdata/Demote/PatBindIn1.hs","19","1"]
+     diff <- compareFiles "./test/testdata/Demote/PatBindIn1.hs.refactored"
+                          "./test/testdata/Demote/PatBindIn1.hs.expected"
+     diff `shouldBe` []
+-}
+    -- -----------------------------------------------------------------
+
+    it "fails WhereIn2 14 1" $ do
+       pending "todo"
+{-
+   res <- catchException (doDemote ["./test/testdata/Demote/WhereIn2.hs","14","1"])
+     (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
+-}
+    -- -----------------------------------------------------------------
+
+    it "fails LetIn2 11 22" $ do
+     pending "todo"
+{-
+     res <- catchException (doDemote ["./test/testdata/Demote/LetIn2.hs","11","22"])
+     (show res) `shouldBe` "Just \"This function can not be demoted as it is used in current level!\\n\""
+-}
+    -- -----------------------------------------------------------------
+
+    it "fails PatBindIn4 18 1" $ do
+     pending "todo"
+{-
+     res <- catchException (doDemote ["./test/testdata/Demote/PatBindIn4.hs","18","1"])
+     (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
+-}
+    -- -----------------------------------------------------------------
+
+    it "fails WhereIn8 16 1" $ do
+     pending "todo"
+{-
+     res <- catchException (doDemote ["./test/testdata/Demote/WhereIn8.hs","16","1"])
+     (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
+-}
+    -- -----------------------------------------------------------------
+
+    it "fails D2 5 1" $ do
+     pending "todo"
+{-
+     res <- catchException (doDemote ["./test/testdata/Demote/D2.hs","5","1"])
+     (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
+-}
+    -- -----------------------------------------------------------------
+
+    it "fails D3 5 1" $ do
+     pending "todo"
+{-
+     res <- catchException (doDemote ["./test/testdata/Demote/D3.hs","5","1"])
+     (show res) `shouldBe` "Just \"This definition can not be demoted, as it is explicitly exported by the current module!\""
+-}
 
 
 {- Original test cases. These files are now in testdata/Demote

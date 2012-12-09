@@ -1901,16 +1901,28 @@ instance UsedByRhs GHC.RenamedSource where
    usedByRhs renamed pns = False
    -- usedByRhs renamed pns = usedByRhs (hsBinds renamed) pns -- ++AZ++
 
+instance UsedByRhs (GHC.Match GHC.Name) where
+  usedByRhs (GHC.Match _ _ rhs) pns = usedByRhs (hsBinds rhs) pns
 
 instance UsedByRhs [GHC.LHsBind GHC.Name] where
   usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
 
-instance UsedByRhs (GHC.LHsBind GHC.Name) where
-  usedByRhs (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) pns = findPNs pns matches
-  usedByRhs (GHC.L _ (GHC.PatBind _ rhs _ _ _))       pns = findPNs pns rhs
-  usedByRhs (GHC.L _ (GHC.VarBind _ rhs _))           pns = findPNs pns rhs
-  usedByRhs (GHC.L _ (GHC.AbsBinds _ _ _ _ _))        pns = False
+instance UsedByRhs (GHC.HsBind GHC.Name) where
+  usedByRhs (GHC.FunBind _ _ matches _ _ _) pns = findPNs pns matches
+  usedByRhs (GHC.PatBind _ rhs _ _ _)       pns = findPNs pns rhs
+  usedByRhs (GHC.VarBind _ rhs _)           pns = findPNs pns rhs
+  usedByRhs (GHC.AbsBinds _ _ _ _ _)        pns = False
 
+instance UsedByRhs (GHC.LHsBind GHC.Name) where
+  usedByRhs (GHC.L _ bind) pns = usedByRhs bind pns
+
+instance UsedByRhs (GHC.HsExpr GHC.Name) where
+  usedByRhs (GHC.HsLet lb _) pns = findPNs pns lb
+  usedByRhs e                pns = error $ "undefined usedByRhs:" ++ (GHC.showPpr e)
+
+instance UsedByRhs (GHC.Stmt GHC.Name) where
+  usedByRhs (GHC.LetStmt lb) pns = findPNs pns lb
+  usedByRhs s                pns = error $ "undefined usedByRhs:" ++ (GHC.showPpr s)
 
 {- ++ original
 class (Term t) =>UsedByRhs t where

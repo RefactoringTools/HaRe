@@ -53,3 +53,17 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Demote/WhereIn1.hs.tokens
 /test/testdata/MoveDef/Demote.hs.refactored
 /test/testdata/MoveDef/Demote.hs.tokens
+/test/testdata/Demote/D2.hs.refactored
+/test/testdata/Demote/D2.hs.tokens
+/test/testdata/Demote/PatBindIn1.hs.refactored
+/test/testdata/Demote/PatBindIn1.hs.tokens
+/test/testdata/Demote/PatBindIn4.hs.refactored
+/test/testdata/Demote/PatBindIn4.hs.tokens
+/test/testdata/Demote/WhereIn3.hs.refactored
+/test/testdata/Demote/WhereIn3.hs.tokens
+/test/testdata/Demote/WhereIn4.hs.refactored
+/test/testdata/Demote/WhereIn4.hs.tokens
+/test/testdata/Demote/WhereIn6.hs.refactored
+/test/testdata/Demote/WhereIn6.hs.tokens
+/test/testdata/Demote/WhereIn7.hs.refactored
+/test/testdata/Demote/WhereIn7.hs.tokens
