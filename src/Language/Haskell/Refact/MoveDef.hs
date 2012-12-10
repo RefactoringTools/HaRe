@@ -263,7 +263,7 @@ liftToTopLevel' modName fileName (inscps, mod, toks) pnt@(PNT pn _ _)
 -}
 
 -- TODO: move this to TypeUtils, as moveDecl
-moveDecl1 :: (HsBinds t)
+moveDecl1 :: (HsValBinds t)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
 
@@ -280,7 +280,7 @@ moveDecl1 t defName ns topLevel
         --error$ show (declToMove, toksToMove)
         t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
         -- error ("moveDecl1:(defName,ns,t')=" ++ (GHC.showPpr (defName,ns,t'))) -- ++AZ++
-        addDecl t' defName (ghead "moveDecl1 2" declToMove, Just toksToMove) topLevel
+        addDecl t' defName (ghead "moveDecl1 2" declToMove, Nothing,Just toksToMove) topLevel
 
 
 {- ++AZ++ original
@@ -902,7 +902,7 @@ doDemoting  pn fileName mod toks
 
 -}
 
-doDemoting' :: (HsBinds t, UsedByRhs t) => t -> GHC.Name -> RefactGhc t
+doDemoting' :: (HsValBinds t, UsedByRhs t) => t -> GHC.Name -> RefactGhc t
 doDemoting' t pn
  = let origDecls = hsBinds t
        demotedDecls'= definingDeclsNames [pn] origDecls True False
@@ -932,7 +932,11 @@ doDemoting' t pn
                          --Without updating the token stream.
                          -- let ds=foldl (flip removeTypeSig) (hsBinds t\\demotedDecls) declaredPns
                          -- let ds=foldl (flip removeTypeSig) (deleteFirstsBy sameBind (hsBinds t) demotedDecls) declaredPns
+
+                         -- TODO: reinstate second line, once type signature issue in duplicateDecls is resolved
                          ds <- rmDecl pn True (hsBinds t)
+                         -- ds <- rmDecl pn True t
+
                          --get those varaibles declared at where the demotedDecls will be demoted to
                          -- dl  <-mapM (flip declaredNamesInTargetPlace ds) declaredPns
                          let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
@@ -1016,7 +1020,7 @@ doDemoting' t pn
                         -- rhs' <- moveDecl pns rhs False decls False
                         -- rhs' <- moveDecl1 rhs Nothing pns False
                         -- TODO: work the tokens through
-                        rhs' <- addDecl rhs Nothing (demoted,Nothing) False
+                        rhs' <- addDecl rhs Nothing (demoted,Nothing,Nothing) False
                         -- rhs' <- addDecl rhs Nothing (demoted,Just dtoks) False
                         return (GHC.Match pats mt rhs')
                       -- If fold parameters.

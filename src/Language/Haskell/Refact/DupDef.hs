@@ -131,7 +131,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
         findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
 
 
-        doDuplicating' :: (HsBinds t) => InScopes -> t -> GHC.Located GHC.Name
+        doDuplicating' :: (HsValBinds t) => InScopes -> t -> GHC.Located GHC.Name
                        -> RefactGhc (t)
         doDuplicating' inscps parentr ln@(GHC.L _ n)
            = do let

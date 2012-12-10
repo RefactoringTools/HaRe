@@ -43,7 +43,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Variable analysis
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
-    {- ,hsClassMembers -} , HsBinds(..)
+    {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
     ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
     ,hsVisiblePNs, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
@@ -655,8 +655,8 @@ hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
 
       where
           top ((groups,_,_,_) :: GHC.RenamedSource)
-            -- | findEntity e groups = dd -- ++AZ++:TODO: Should be GHC.HsBinds GHC.Name, not groups
-            | findEntity e (GHC.hs_valds groups) = dd -- ++AZ++:TODO: Should be GHC.HsBinds GHC.Name, not groups
+            -- | findEntity e groups = dd -- ++AZ++:TODO: Should be GHC.HsValBinds GHC.Name, not groups
+            | findEntity e (GHC.hs_valds groups) = dd -- ++AZ++:TODO: Should be GHC.HsValBinds GHC.Name, not groups
            where
              (_df,dd) = hsFreeAndDeclaredPNs (GHC.hs_valds groups)
           top _ = []
@@ -1271,147 +1271,167 @@ getValBinds binds = case binds of
     GHC.ValBindsIn   binds _sigs -> GHC.bagToList binds
     GHC.ValBindsOut rbinds _sigs -> GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
 
+emptyValBinds :: GHC.HsValBinds GHC.Name
+emptyValBinds = GHC.ValBindsIn (GHC.listToBag []) []
+
+unionBinds :: [GHC.HsValBinds GHC.Name] ->  GHC.HsValBinds GHC.Name
+unionBinds [] = emptyValBinds
+unionBinds [x] = x
+unionBinds (x1:x2:xs) = unionBinds ((mergeBinds x1 x2):xs)
+  where
+    mergeBinds :: GHC.HsValBinds GHC.Name -> GHC.HsValBinds GHC.Name -> GHC.HsValBinds GHC.Name
+    mergeBinds (GHC.ValBindsIn b1 s1) (GHC.ValBindsIn b2 s2) = (GHC.ValBindsIn (GHC.unionBags b1 b2) (s1++s2))
+    mergeBinds (GHC.ValBindsOut b1 s1) (GHC.ValBindsOut b2 s2) = (GHC.ValBindsOut (b1++b2) (s1++s2))
+    mergeBinds x1@(GHC.ValBindsIn _ _) x2@(GHC.ValBindsOut _ _) = mergeBinds x2 x1
+    mergeBinds x1@(GHC.ValBindsOut b1 s1) x2@(GHC.ValBindsIn b2 s2) = (GHC.ValBindsOut (b1++[(GHC.NonRecursive,b2)]) (s1++s2))
+
+hsBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name]
+hsBinds t = case hsValBinds t of
+  GHC.ValBindsIn binds _sigs -> GHC.bagToList binds
+  GHC.ValBindsOut bs _sigs -> concatMap (\(_,b) -> GHC.bagToList b) bs
+
+replaceBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name] -> t
+replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) [])
+
 -- This class replaces the HsDecls one
-class (SYB.Data t) => HsBinds t where
+class (SYB.Data t) => HsValBinds t where
 
     -- | Return the binds that are directly enclosed in the
     -- given syntax phrase.
-    hsBinds :: t -> [GHC.LHsBind GHC.Name]
+    -- hsValBinds :: t -> [GHC.LHsBind GHC.Name]
+    hsValBinds :: t -> GHC.HsValBinds GHC.Name
 
     -- | Replace the directly enclosed bind list by the given
     --  bind list. Note: This function does not modify the
     --  token stream.
-    replaceBinds :: t -> [GHC.LHsBind GHC.Name] -> t
+    -- replaceBinds :: t -> [GHC.LHsBind GHC.Name] -> t
+    replaceValBinds :: t -> GHC.HsValBinds GHC.Name -> t
 
     -- | Return True if the specified identifier is declared in the
     -- given syntax phrase.
     isDeclaredIn :: GHC.Name -> t -> Bool
 
 
-instance HsBinds (GHC.RenamedSource) where
-  hsBinds (grp,_,_,_) = getValBinds (GHC.hs_valds grp)
+instance HsValBinds (GHC.RenamedSource) where
+  hsValBinds (grp,_,_,_) = (GHC.hs_valds grp)
 
-  replaceBinds (grp,imps,exps,docs) binds = (grp',imps,exps,docs)
+  replaceValBinds (grp,imps,exps,docs) binds = (grp',imps,exps,docs)
     where
-      vb = GHC.hs_valds grp
-      vb' = case vb of
-        GHC.ValBindsIn _oldbinds sigs -> GHC.ValBindsIn (GHC.listToBag binds) sigs
-        -- ++AZ++ does it matter that we are throwing away the recursive flag?
-        GHC.ValBindsOut _rbinds sigs  -> GHC.ValBindsIn (GHC.listToBag binds) sigs
-      grp' = grp {GHC.hs_valds = vb'}
+      grp' = grp {GHC.hs_valds = binds}
 
-instance HsBinds (GHC.HsValBinds GHC.Name) where
-  hsBinds vb = getValBinds vb
-  replaceBinds = error "undefined replaceBinds (GHC.HsValBinds GHC.Name)"
+instance HsValBinds (GHC.HsValBinds GHC.Name) where
+  hsValBinds vb = vb
+  replaceValBinds = error "undefined replaceValBinds (GHC.HsValBinds GHC.Name)"
 
-instance HsBinds (GHC.HsGroup GHC.Name) where
-  hsBinds grp = getValBinds (GHC.hs_valds grp)
-  replaceBinds = error "undefined replaceBinds (GHC.HsGroup GHC.Name)"
+instance HsValBinds (GHC.HsGroup GHC.Name) where
+  hsValBinds grp = (GHC.hs_valds grp)
+  replaceValBinds = error "undefined replaceValBinds (GHC.HsGroup GHC.Name)"
 
-instance HsBinds (GHC.HsLocalBinds GHC.Name) where
-  hsBinds lb = case lb of
-    GHC.HsValBinds b    -> getValBinds b
-    GHC.HsIPBinds _     -> []
-    GHC.EmptyLocalBinds -> []
+instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
+  hsValBinds lb = case lb of
+    GHC.HsValBinds b    -> b
+    GHC.HsIPBinds _     -> emptyValBinds
+    GHC.EmptyLocalBinds -> emptyValBinds
 
-  replaceBinds (GHC.HsValBinds b) new    = (GHC.HsValBinds (replaceBinds b new))
-  -- replaceBinds (GHC.GRHSs rhss (GHC.HsIPBinds b)) new     = (GHC.GRHSs rhss (GHC.HsIPBinds (replaceBinds b new)))
-  replaceBinds (GHC.HsIPBinds b) new     = error "undefined replaceBinds HsIPBinds"
-  replaceBinds (GHC.EmptyLocalBinds) new = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag new) []))
+  replaceValBinds (GHC.HsValBinds b) new    = (GHC.HsValBinds new)
+  replaceValBinds (GHC.HsIPBinds b) new     = error "undefined replaceValBinds HsIPBinds"
+  replaceValBinds (GHC.EmptyLocalBinds) new = (GHC.HsValBinds new)
 
-instance HsBinds (GHC.GRHSs GHC.Name) where
-  hsBinds (GHC.GRHSs _ lb) = hsBinds lb
+instance HsValBinds (GHC.GRHSs GHC.Name) where
+  hsValBinds (GHC.GRHSs _ lb) = hsValBinds lb
 
-  replaceBinds (GHC.GRHSs rhss b) new = (GHC.GRHSs rhss (replaceBinds b new))
+  replaceValBinds (GHC.GRHSs rhss b) new = (GHC.GRHSs rhss (replaceValBinds b new))
 
 
 -- ---------------------------------------------------------------------
 
-instance HsBinds (GHC.MatchGroup GHC.Name) where
-  hsBinds (GHC.MatchGroup matches _) = hsBinds matches
+instance HsValBinds (GHC.MatchGroup GHC.Name) where
+  hsValBinds (GHC.MatchGroup matches _) = hsValBinds matches
 
-  replaceBinds (GHC.MatchGroup matches a) newBinds
-               = (GHC.MatchGroup (replaceBinds matches newBinds) a)
-
--- ---------------------------------------------------------------------
-
-instance HsBinds [GHC.LMatch GHC.Name] where
-  hsBinds ms = concatMap (\m -> hsBinds $ GHC.unLoc m) ms
-
-  replaceBinds [] _        = error "empty match list in replaceBinds [GHC.LMatch GHC.Name]"
-  replaceBinds ms newBinds = (replaceBinds (head ms) newBinds):(tail ms)
+  replaceValBinds (GHC.MatchGroup matches a) newBinds
+               = (GHC.MatchGroup (replaceValBinds matches newBinds) a)
 
 -- ---------------------------------------------------------------------
 
-instance HsBinds (GHC.LMatch GHC.Name) where
-  hsBinds m = hsBinds $ GHC.unLoc m
+instance HsValBinds [GHC.LMatch GHC.Name] where
+  hsValBinds ms = unionBinds $ map (\m -> hsValBinds $ GHC.unLoc m) ms
 
-  replaceBinds (GHC.L l m) newBinds = (GHC.L l (replaceBinds m newBinds))
+  replaceValBinds [] _        = error "empty match list in replaceValBinds [GHC.LMatch GHC.Name]"
+  replaceValBinds ms newBinds = (replaceValBinds (head ms) newBinds):(tail ms)
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LMatch GHC.Name) where
+  hsValBinds m = hsValBinds $ GHC.unLoc m
+
+  replaceValBinds (GHC.L l m) newBinds = (GHC.L l (replaceValBinds m newBinds))
 
 
 -- ---------------------------------------------------------------------
 
 
-instance HsBinds (GHC.Match GHC.Name) where
-  hsBinds (GHC.Match _ _ grhs) = hsBinds grhs
+instance HsValBinds (GHC.Match GHC.Name) where
+  hsValBinds (GHC.Match _ _ grhs) = hsValBinds grhs
 
-  replaceBinds (GHC.Match p t (GHC.GRHSs rhs binds)) newBinds
+  replaceValBinds (GHC.Match p t (GHC.GRHSs rhs binds)) newBinds
     = (GHC.Match p t (GHC.GRHSs rhs binds'))
       where
-        binds' = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag newBinds) []))
+        binds' = (GHC.HsValBinds newBinds)
 
 
-instance HsBinds (GHC.HsBind GHC.Name) where
-  hsBinds (GHC.PatBind _p rhs _typ _fvs _) = hsBinds rhs
+instance HsValBinds (GHC.HsBind GHC.Name) where
+  hsValBinds (GHC.PatBind _p rhs _typ _fvs _) = hsValBinds rhs
 
-  replaceBinds (GHC.PatBind p (GHC.GRHSs rhs binds) typ fvs pt) newBinds
+  replaceValBinds (GHC.PatBind p (GHC.GRHSs rhs binds) typ fvs pt) newBinds
     = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt)
       where
-        binds' = (GHC.HsValBinds (GHC.ValBindsIn (GHC.listToBag newBinds) []))
+        binds' = (GHC.HsValBinds newBinds)
 
-instance HsBinds (GHC.HsExpr GHC.Name) where
-  hsBinds (GHC.HsLet ds _) = hsBinds ds
+instance HsValBinds (GHC.HsExpr GHC.Name) where
+  hsValBinds (GHC.HsLet ds _) = hsValBinds ds
 
-instance HsBinds (GHC.Stmt GHC.Name) where
-  hsBinds (GHC.LetStmt ds) = hsBinds ds
-  replaceBinds = error "replaceBinds (GHC.Stmt GHC.Name) undefined"
+instance HsValBinds (GHC.Stmt GHC.Name) where
+  hsValBinds (GHC.LetStmt ds) = hsValBinds ds
+  replaceValBinds = error "replaceValBinds (GHC.Stmt GHC.Name) undefined"
 
 
 -- ---------------------------------------------------------------------
 
-instance HsBinds (GHC.LHsBinds GHC.Name) where
-  hsBinds binds = hsBinds $ GHC.bagToList binds
+instance HsValBinds (GHC.LHsBinds GHC.Name) where
+  hsValBinds binds = hsValBinds $ GHC.bagToList binds
 
 -- ---------------------------------------------------------------------
 
-instance HsBinds (GHC.LHsBind GHC.Name) where
-  hsBinds (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) = hsBinds matches
-  hsBinds (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsBinds rhs
-  hsBinds (GHC.L _ (GHC.VarBind _ rhs _))           = hsBinds rhs
-  hsBinds (GHC.L _ (GHC.AbsBinds _ _ _ _ binds))    = hsBinds binds
+instance HsValBinds (GHC.LHsBind GHC.Name) where
+  hsValBinds (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) = hsValBinds matches
+  hsValBinds (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsValBinds rhs
+  hsValBinds (GHC.L _ (GHC.VarBind _ rhs _))           = hsValBinds rhs
+  hsValBinds (GHC.L _ (GHC.AbsBinds _ _ _ _ binds))    = hsValBinds binds
 
 
-  replaceBinds (GHC.L l (GHC.FunBind a b matches c d e)) newBinds
-               = (GHC.L l (GHC.FunBind a b (replaceBinds matches newBinds) c d e))
-  replaceBinds (GHC.L l (GHC.PatBind a rhs b c d)) newBinds
-               = (GHC.L l (GHC.PatBind a (replaceBinds rhs newBinds) b c d))
-  replaceBinds (GHC.L l (GHC.VarBind a rhs b)) newBinds
-               = (GHC.L l (GHC.VarBind a (replaceBinds rhs newBinds) b))
-  replaceBinds (GHC.L l (GHC.AbsBinds a b c d binds)) newBinds
-               = (GHC.L l (GHC.AbsBinds a b c d (replaceBinds binds newBinds)))
+  replaceValBinds (GHC.L l (GHC.FunBind a b matches c d e)) newBinds
+               = (GHC.L l (GHC.FunBind a b (replaceValBinds matches newBinds) c d e))
+  replaceValBinds (GHC.L l (GHC.PatBind a rhs b c d)) newBinds
+               = (GHC.L l (GHC.PatBind a (replaceValBinds rhs newBinds) b c d))
+  replaceValBinds (GHC.L l (GHC.VarBind a rhs b)) newBinds
+               = (GHC.L l (GHC.VarBind a (replaceValBinds rhs newBinds) b))
+  replaceValBinds (GHC.L l (GHC.AbsBinds a b c d binds)) newBinds
+               = (GHC.L l (GHC.AbsBinds a b c d (replaceValBinds binds newBinds)))
 
 -- ---------------------------------------------------------------------
 
-instance HsBinds ([GHC.LHsBind GHC.Name]) where
-  -- hsBinds x = x
-  hsBinds xs = concatMap hsBinds xs -- As in original
+instance HsValBinds ([GHC.LHsBind GHC.Name]) where
+  -- hsValBinds xs = concatMap hsValBinds xs -- As in original
+  hsValBinds xs = GHC.ValBindsIn (GHC.listToBag xs) []
 
-  replaceBinds _old new = new
-  -- replaceBinds old new = error ("replaceBinds (old,new)=" ++ (GHC.showPpr (old,new)))
+  replaceValBinds _old (GHC.ValBindsIn b _sigs) = GHC.bagToList b
+  replaceValBinds _old (GHC.ValBindsOut rbinds _sigs) = GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
 
-instance HsBinds (GHC.LHsExpr GHC.Name) where
-  hsBinds (GHC.L _ (GHC.HsLet binds ex)) = hsBinds binds
-  hsBinds _                              = []
+  -- replaceValBinds old new = error ("replaceValBinds (old,new)=" ++ (GHC.showPpr (old,new)))
+
+instance HsValBinds (GHC.LHsExpr GHC.Name) where
+  hsValBinds (GHC.L _ (GHC.HsLet binds ex)) = hsValBinds binds
+  hsValBinds _                              = emptyValBinds
 
 -- ---------------------------------------------------------------------
 
@@ -1899,10 +1919,17 @@ instance UsedByRhs GHC.RenamedSource where
 
    -- Defined like this in the original
    usedByRhs renamed pns = False
-   -- usedByRhs renamed pns = usedByRhs (hsBinds renamed) pns -- ++AZ++
+   -- usedByRhs renamed pns = usedByRhs (hsValBinds renamed) pns -- ++AZ++
+
+instance UsedByRhs (GHC.LHsBinds GHC.Name) where
+  usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) $ GHC.bagToList binds
+
+instance UsedByRhs (GHC.HsValBinds GHC.Name) where
+  usedByRhs (GHC.ValBindsIn binds _sigs) pns  = usedByRhs (GHC.bagToList binds) pns
+  usedByRhs (GHC.ValBindsOut binds _sigs) pns = or $ map (\(_,b) -> usedByRhs b pns) binds
 
 instance UsedByRhs (GHC.Match GHC.Name) where
-  usedByRhs (GHC.Match _ _ rhs) pns = usedByRhs (hsBinds rhs) pns
+  usedByRhs (GHC.Match _ _ rhs) pns = usedByRhs (hsValBinds rhs) pns
 
 instance UsedByRhs [GHC.LHsBind GHC.Name] where
   usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
@@ -2305,24 +2332,33 @@ addItemsToImport serverModName pn ids t
 
 -- ---------------------------------------------------------------------
 
+-- ++AZ++
+--  Thoughts on signatures
+--    1. Pass in a Maybe sig
+--    2. If Tokens are provided, they should include the signature
+--    3. Update the signature in the RenamedSource kept in the monad
+
+
 -- | Adding a declaration to the declaration list of the given syntax
 -- phrase(so far only adding function\/pattern binding has been
 -- tested). If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (SYB.Data t,HsBinds t)
+addDecl:: (SYB.Data t,HsValBinds t)
         => t              -- ^ The AST.
         -> Maybe GHC.Name -- ^ If this is Just, then the declaration
                           -- will be added right after this
                           -- identifier's definition.
-        -> (GHC.LHsBind GHC.Name, Maybe [PosToken])
-             -- ^ The declaration to be added, in both AST and Token
-             -- stream format (optional).
+        -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
+             -- ^ The declaration with optional signature to be added,
+             -- in both AST and Token stream format (optional). If
+             -- signature and tokens provided, the tokens should
+             -- include the signature too
         -> Bool              -- ^ True means the declaration is a
                              -- toplevel declaration.
         -> RefactGhc t --[GHC.LHsBind GHC.Name]
 
-addDecl parent pn (decl, declToks) topLevel
+addDecl parent pn (decl, _sig, declToks) topLevel
  = if isJust pn
      then appendDecl parent (fromJust pn) (decl, declToks)
      else if topLevel
@@ -2334,7 +2370,7 @@ addDecl parent pn (decl, declToks) topLevel
   -- list, but after the data type declarations if there is any. The
   -- definition will be pretty-printed if its token stream is not
   -- provided.
-  addTopLevelDecl :: (SYB.Data t, HsBinds t)
+  addTopLevelDecl :: (SYB.Data t, HsValBinds t)
                   => (GHC.LHsBind GHC.Name, Maybe [PosToken]) -> t -> RefactGhc t
   addTopLevelDecl (decl, declToks) parent
     = do let decls = hsBinds parent
@@ -2361,7 +2397,7 @@ addDecl parent pn (decl, declToks) topLevel
 
          return (replaceBinds parent (decls1++[decl']++decls2))
 
-  appendDecl :: (SYB.Data t, HsBinds t)
+  appendDecl :: (SYB.Data t, HsValBinds t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
       -> (GHC.LHsBind GHC.Name, Maybe [PosToken]) -- ^declaration and maybe tokens
@@ -2403,7 +2439,7 @@ addDecl parent pn (decl, declToks) topLevel
                  (ts11, ts12) = splitOnNewLn (reverse ts1)
              in (reverse ts12, reverse ts11++ts2, ts3)
 
-  addLocalDecl :: (SYB.Data t, HsBinds t)
+  addLocalDecl :: (SYB.Data t, HsValBinds t)
                => t -> (GHC.LHsBind GHC.Name, Maybe [PosToken])
                -> RefactGhc t
   addLocalDecl parent (newFun, newFunToks)
@@ -3200,7 +3236,7 @@ duplicateDecl decls pn newFunName
 -- ++AZ++ why?
 
 {-
-moveDecl:: (HsBinds t)
+moveDecl:: (HsValBinds t)
      => [GHC.Name]     -- ^ The identifier(s) whose defining
                        -- declaration is to be moved. List is used to
                        -- handle pattern bindings where multiple
@@ -3855,7 +3891,7 @@ getDeclToks pn incSig decls toks
    -}
 -- ---------------------------------------------------------------------
 
-getToksForDecl :: SYB.Data t => 
+getToksForDecl :: SYB.Data t =>
   t -> [PosToken] -> [PosToken]
 getToksForDecl decl toks
       = let (startPos, endPos) = startEndLocIncComments toks decl
@@ -3867,7 +3903,7 @@ getToksForDecl decl toks
 -- ---------------------------------------------------------------------
 
 -- Get the toks for a declaration, and adjust its offset to 0.
-getDeclAndToks :: (HsBinds t)
+getDeclAndToks :: (HsValBinds t)
      => GHC.Name -> Bool -> [PosToken] -> t
      -> ([GHC.LHsBind GHC.Name],[PosToken])
 getDeclAndToks pn incSig toks t =

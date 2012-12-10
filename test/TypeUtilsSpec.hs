@@ -866,7 +866,7 @@ spec = do
          nn  <- mkNewName "nn"
          nn2 <- mkNewName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl renamed Nothing (newDecl,Nothing) True
+         newDecls <- addDecl renamed Nothing (newDecl,Nothing,Nothing) True
 
          return newDecls
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -887,7 +887,7 @@ spec = do
          nn  <- mkNewName "nn"
          nn2 <- mkNewName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl renamed (Just n) (newDecl,Nothing) True
+         newDecls <- addDecl renamed (Just n) (newDecl,Nothing,Nothing) True
 
          return newDecls
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -914,7 +914,7 @@ spec = do
          nn  <- mkNewName "nn"
          nn2 <- mkNewName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
 
          return (tlDecls,newDecls)
       ((tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -941,7 +941,7 @@ spec = do
          nn  <- mkNewName "nn"
          nn2 <- mkNewName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
 
          return (tlDecls,newDecls)
       ((tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -968,7 +968,7 @@ spec = do
          nn  <- mkNewName "nn"
          nn2 <- mkNewName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
 
          return (tlDecls,newDecls)
       ((tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
