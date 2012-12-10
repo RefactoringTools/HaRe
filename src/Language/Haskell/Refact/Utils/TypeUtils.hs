@@ -1291,7 +1291,12 @@ hsBinds t = case hsValBinds t of
   GHC.ValBindsOut bs _sigs -> concatMap (\(_,b) -> GHC.bagToList b) bs
 
 replaceBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name] -> t
-replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) [])
+-- replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) [])
+replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) sigs)
+  where
+    sigs = case hsValBinds t of
+      GHC.ValBindsIn  _ s -> s
+      GHC.ValBindsOut _ s -> s
 
 -- This class replaces the HsDecls one
 class (SYB.Data t) => HsValBinds t where
@@ -2373,7 +2378,8 @@ addDecl parent pn (decl, _sig, declToks) topLevel
   addTopLevelDecl :: (SYB.Data t, HsValBinds t)
                   => (GHC.LHsBind GHC.Name, Maybe [PosToken]) -> t -> RefactGhc t
   addTopLevelDecl (decl, declToks) parent
-    = do let decls = hsBinds parent
+    = do let -- binds = hsValBinds parent
+             decls = hsBinds parent
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
          toks <- fetchToks
          let loc1 = if (not $ emptyList decls2)  -- there are function/pattern binding decls.
