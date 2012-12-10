@@ -413,6 +413,7 @@ newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
      GHC.RealSrcSpan ss ->
        let
          loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 1
+         -- loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 0
        in
          GHC.mkSrcSpan loc loc
      _ -> l

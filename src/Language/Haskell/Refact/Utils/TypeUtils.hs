@@ -88,7 +88,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Locations
    -- ,toRelativeLocs, rmLocs
     -- ** Default values
-   ,defaultPN,defaultPNT {-,defaultModName-},defaultExp-- ,defaultPat, defaultExpUnTyped
+   ,defaultPN,defaultPNT {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
 
 
     -- ** Identifiers, expressions, patterns and declarations
@@ -116,6 +116,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
   , allPNT
   , allPNTLens
   , newNameTok
+  -- , lookupNameGhc
  ) where
 
 import Exception
@@ -158,7 +159,7 @@ import qualified TcEvidence    as GHC
 import qualified TcType        as GHC
 import qualified TypeRep       as GHC
 import qualified Unique        as GHC
-import qualified Var           as GHC
+import qualified Var           as GHCV
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -245,7 +246,27 @@ isInScopeAndUnqualifiedGhc n = do
     handler _ = return []
 
 -- ---------------------------------------------------------------------
+{-
+-- | Return True if the identifier is inscope and can be used without
+-- a qualifier. The identifier name string may have a qualifier already
+lookupNameGhc :: String         -- ^ The identifier name.
+                           -> RefactGhc [GHC.Name] -- ^ The result.
+lookupNameGhc n = do
+  names <- ghandle handler (GHC.parseName n)
+  nameInfo <- mapM GHC.lookupName names
+  let nameList = map (\(GHC.AnId n) -> GHCV.varName n) $ filter isId $ catMaybes nameInfo
+  return nameList
 
+  where
+    isId (GHC.AnId _) = True
+    isId _            = False
+
+    -- handler:: (Exception e,GHC.GhcMonad m) => e -> m [GHC.Name]
+    handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
+    handler _ = return []
+-}
+
+-- ---------------------------------------------------------------------
 -- | Show a PName in a format like: 'pn'(at row:r, col: c).
 showPNwithLoc::GHC.Located GHC.Name->String
 showPNwithLoc pn@(GHC.L l n)
@@ -1270,6 +1291,12 @@ getValBinds :: GHC.HsValBinds t -> [GHC.LHsBind t]
 getValBinds binds = case binds of
     GHC.ValBindsIn   binds _sigs -> GHC.bagToList binds
     GHC.ValBindsOut rbinds _sigs -> GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
+
+getValBindSigs :: GHC.HsValBinds GHC.Name -> [GHC.LSig GHC.Name]
+getValBindSigs binds = case binds of
+    GHC.ValBindsIn  _ sigs -> sigs
+    GHC.ValBindsOut _ sigs -> sigs
+
 
 emptyValBinds :: GHC.HsValBinds GHC.Name
 emptyValBinds = GHC.ValBindsIn (GHC.listToBag []) []
@@ -2363,11 +2390,11 @@ addDecl:: (SYB.Data t,HsValBinds t)
                              -- toplevel declaration.
         -> RefactGhc t --[GHC.LHsBind GHC.Name]
 
-addDecl parent pn (decl, _sig, declToks) topLevel
+addDecl parent pn (decl, msig, declToks) topLevel
  = if isJust pn
-     then appendDecl parent (fromJust pn) (decl, declToks)
+     then appendDecl parent (fromJust pn) (decl, msig, declToks)
      else if topLevel
-            then addTopLevelDecl (decl, declToks) parent
+            then addTopLevelDecl (decl, msig, declToks) parent
             else addLocalDecl parent (decl,declToks)
  where
 
@@ -2376,9 +2403,10 @@ addDecl parent pn (decl, _sig, declToks) topLevel
   -- definition will be pretty-printed if its token stream is not
   -- provided.
   addTopLevelDecl :: (SYB.Data t, HsValBinds t)
-                  => (GHC.LHsBind GHC.Name, Maybe [PosToken]) -> t -> RefactGhc t
-  addTopLevelDecl (decl, declToks) parent
-    = do let -- binds = hsValBinds parent
+       => (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
+       -> t -> RefactGhc t
+  addTopLevelDecl (decl, maybeSig, declToks) parent
+    = do let binds = hsValBinds parent
              decls = hsBinds parent
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
          toks <- fetchToks
@@ -2388,27 +2416,70 @@ addDecl parent pn (decl, _sig, declToks) topLevel
                     else simpPos0  -- no function/pattern binding decls in the module.
              (toks1, toks2) = if loc1==simpPos0  then (toks, [])
                                  else break (\t -> tokenPos t >= loc1) toks
-
+         {-
              declStr = case declToks of
                         Just ts -> concatMap tokenCon ts
                         Nothing -> "\n"++(prettyprint decl)++"\n\n"
                         -- Nothing -> (prettyprint decl)++"\n\n"
+             sigStr  = case declToks of
+                        Just ts -> ""
+                        Nothing -> case maybeSig of
+                                     Just sig -> "\n"++(prettyprint sig)
+                                     Nothing -> ""
+
              -- colOffset = if (emptyList decls) then 1 else getOffset toks $ fst (getStartEndLoc (head decls))
              colOffset = 0
-         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addTopLevelDecl" toks1) colOffset True declStr
-         let toks' = toks1 ++ newToks ++ toks2
-
+         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addTopLevelDecl" toks1) colOffset True (sigStr ++ declStr)
+         let nlt1 = newLnToken (glast "updateToks 3" newToks)
+             nlt2 = newLnToken nlt1
+         -- TODO: the newLnToken adds an extra space on the following line, fix it
+         let toks' = toks1 ++ newToks ++ [nlt1,nlt2] ++ toks2
+         -}
+         (toks',newToks) <- makeNewToks toks1 toks2 (decl,maybeSig,declToks)
          putToks toks' modified
          (decl',_) <- addLocInfo (decl, newToks)
 
-         return (replaceBinds parent (decls1++[decl']++decls2))
+         case maybeSig of
+           Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
+           Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
+
+  -- TODO: Make this a top level general purpose function, similar to update.
+  makeNewToks :: [PosToken] -> [PosToken]
+              -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
+              -> RefactGhc ([PosToken],[PosToken])
+  makeNewToks toks1 toks2 (decl, maybeSig, declToks) = do
+         let
+             declStr = case declToks of
+                        Just ts -> concatMap tokenCon ts
+                        Nothing -> "\n"++(prettyprint decl)++"\n\n"
+                        -- Nothing -> (prettyprint decl)++"\n\n"
+             sigStr  = case declToks of
+                        Just _ts -> ""
+                        Nothing -> case maybeSig of
+                                     Just sig -> "\n"++(prettyprint sig)
+                                     Nothing -> ""
+
+             -- colOffset = if (emptyList decls) then 1 else getOffset toks $ fst (getStartEndLoc (head decls))
+             colOffset = 0
+         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addTopLevelDecl" toks1) colOffset True (sigStr ++ declStr)
+         let nlt1 = newLnToken (glast "makeNewToks 1" newToks)
+             nlt2 = newLnToken nlt1
+             nlToken = newLnToken (glast "makeNewToks 2" toks1)
+
+         -- TODO: the newLnToken adds an extra space on the following line, fix it
+         -- let toks' = toks1 ++ newToks ++ [nlt1,nlt2] ++ toks2
+         let toks' = if  endsWithNewLn  (glast "makeNewToks 3" toks1)
+                      then  toks1 ++ (nlToken: newToks) ++ [nlt1,nlt2]++ compressPreNewLns toks2
+                      else  toks1 ++ (nlToken: newToks) ++ [nlt1,nlt2]++ compressPreNewLns toks2
+
+         return (toks',newToks)
 
   appendDecl :: (SYB.Data t, HsValBinds t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
-      -> (GHC.LHsBind GHC.Name, Maybe [PosToken]) -- ^declaration and maybe tokens
+      -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken]) -- ^declaration and maybe sig/tokens
       -> RefactGhc t -- ^updated AST
-  appendDecl parent pn (decl, declToks)
+  appendDecl parent pn (decl, maybeSig, declToks)
     = do toks <- fetchToks
          -- error ("appendDecl:(before,after)=" ++ (GHC.showPpr (before,after))) -- ++AZ++ 
          -- error (show parent ++ "----" ++ show pn ++ "-----" ++ show (decl, declToks))
@@ -2420,7 +2491,7 @@ addDecl parent pn (decl, _sig, declToks) topLevel
              offset = if topLevel
                         then 0
                         else getOffset toks $ fst (getStartEndLoc (ghead "appendDecl2" decls))
-
+         {- ++AZ++ next part moved into makeNewToks
              declStr = case declToks of
                           Just ts -> concatMap tokenCon ts
                           Nothing -> prettyprint decl
@@ -2433,6 +2504,8 @@ addDecl parent pn (decl, _sig, declToks) topLevel
                       else  replaceToks toks startPos endPos (defToks++[nlToken,nlToken]++newToks)
     --     (decl',_) <- addLocInfo (decl, newToks)
          -- put ((toks',modified),((tokenRow (glast "appendDecl2" newToks) -10), v2))
+         -}
+         (toks',newToks) <- makeNewToks (toks1++toks2) toks3 (decl,maybeSig,declToks)
          putToks toks' modified
          -- return (replaceDecls parent (Decs (before ++ [ghead "appendDecl14" after]++ decl++ tail after) ([], [])))
          return (replaceBinds parent ((before ++ [ghead "appendDecl14" after]++[decl]++ tail after) ))
@@ -2484,6 +2557,9 @@ addDecl parent pn (decl, _sig, declToks) topLevel
 
         -- error ("addLocalDecl: (endPos',offset),(head toks1)) =" ++ (show (endPos',offset)) ++ "," ++ (showToks $ [head toks1])) -- ++AZ++ debug
         -- error ("addLocalDecl: (needNewLn,nextTokPos) =" ++ (GHC.showPpr (needNewLn,nextTokPos))) -- ++AZ++ debug
+
+
+        -- TODO: bring in makeNewToks here too
 
         -- newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addLocalDecl3" toks1) offset True
         newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
