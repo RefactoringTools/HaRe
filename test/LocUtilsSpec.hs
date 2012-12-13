@@ -78,6 +78,52 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "startEndLocIncFowComment" $ do
+    it "get start&end loc, including trailing comments" $ do
+      (t, toks) <- parsedFileDeclareGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+
+      let decls = filter isFunOrPatBindR declsr
+
+      let decl = head $ drop 4 decls
+      let (startPos,endPos) = startEndLocIncFowComment toks decl
+
+      (GHC.showPpr decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
+
+      (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe` 
+             ("[(((18,1),(18,1)),ITsemi,\"\")," ++
+             "(((18,1),(18,5)),ITdata,\"data\")," ++
+             "(((18,6),(18,7)),ITconid \"D\",\"D\")," ++
+             "(((18,8),(18,9)),ITequal,\"=\")," ++
+             "(((18,10),(18,11)),ITconid \"A\",\"A\")," ++
+             "(((18,12),(18,13)),ITvbar,\"|\")," ++
+             "(((18,14),(18,15)),ITconid \"B\",\"B\")," ++
+             "(((18,16),(18,22)),ITconid \"String\",\"String\")," ++
+             "(((18,23),(18,24)),ITvbar,\"|\")," ++
+             "(((18,25),(18,26)),ITconid \"C\",\"C\")," ++
+             "(((20,1),(20,32)),ITlineComment \"-- Retrieve the String from a B\",\"-- Retrieve the String from a B\")," ++
+             "(((21,1),(21,1)),ITsemi,\"\")," ++
+             "(((21,1),(21,4)),ITvarid \"unD\",\"unD\")," ++
+             "(((21,5),(21,6)),IToparen,\"(\")," ++
+             "(((21,6),(21,7)),ITconid \"B\",\"B\")," ++
+             "(((21,8),(21,9)),ITvarid \"y\",\"y\")," ++
+             "(((21,9),(21,10)),ITcparen,\")\")," ++
+             "(((21,11),(21,12)),ITequal,\"=\")," ++
+             "(((21,13),(21,14)),ITvarid \"y\",\"y\")," ++
+             "(((22,1),(22,18)),ITlineComment \"-- But no others.\",\"-- But no others.\")," ++
+             "(((24,1),(24,73)),ITlineComment \"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\"," ++
+                                             "\"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\")," ++
+             "(((25,1),(25,1)),ITsemi,\"\")," ++
+             "(((25,1),(25,5)),ITdata,\"data\")]")
+
+
+      (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
+      (show   (startPos,endPos)) `shouldBe` "((21,1),(24,73))"
+
+  -- -------------------------------------------------------------------
+
   describe "tokenise" $ do
     it "converts a string to Haskell tokens" $ do
       let startLoc = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 3 4)
@@ -341,14 +387,71 @@ spec = do
 
   -- -------------------------------------------------------------------
 
-  describe "getOffset" $ do
+  describe "getLineOffset" $ do
     it "Get the start of the line prior to the current pos" $ do
       (_t,toks) <- parsedFileCaseBGhc
-      getOffset toks (12,1) `shouldBe` 3
+      getLineOffset toks (12,1) `shouldBe` 3
 
     it "Get the start of the line prior to the current pos2" $ do
       (_t,toks) <- parsedFileCaseBGhc
-      getOffset toks (17,1) `shouldBe` 1
+      getLineOffset toks (17,1) `shouldBe` 1
+
+  -- -------------------------------------------------------------------
+
+  describe "getIndentOffset" $ do
+    it "Get the indent of the line prior to the current pos" $ do
+      (_t,toks) <- parsedFileCaseBGhc
+      getIndentOffset toks (12,1) `shouldBe` 2
+
+    -- ---------------------------------
+
+    it "Get the indent of the line prior to the current pos2" $ do
+      (_t,toks) <- parsedFileCaseBGhc
+      getIndentOffset toks (17,1) `shouldBe` 0
+
+    -- ---------------------------------
+
+    it "Get the indent after inline where clause" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      let middle = getToks ((6,1),(7,1)) toks
+      (showToks middle) `shouldBe`
+                "[(((6,3),(6,8)),ITwhere,\"where\")"++
+                ",(((6,9),(6,9)),ITvocurly,\"\")"++
+                ",(((6,9),(6,10)),ITvarid \"x\",\"x\")"++
+                ",(((6,11),(6,12)),ITequal,\"=\")"++
+                ",(((6,13),(6,14)),ITinteger 3,\"3\")]"
+      getIndentOffset toks (7,1) `shouldBe` 8
+
+    -- ---------------------------------
+
+    it "Get the indent after where clause" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      getIndentOffset toks (11,1) `shouldBe` 4
+
+    -- ---------------------------------
+
+    it "Get the indent after inline let clause" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      getIndentOffset toks (15,1) `shouldBe` 6
+
+    -- ---------------------------------
+
+    it "Get the indent after inline in clause" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      let middle = getToks ((15,1),(16,1)) toks
+      (showToks middle) `shouldBe`
+                "[(((15,3),(15,3)),ITvccurly,\"\")"++
+                ",(((15,3),(15,5)),ITin,\"in\")"++
+                ",(((15,10),(15,11)),ITvarid \"b\",\"b\")"++
+                ",(((15,12),(15,13)),ITvarsym \"+\",\"+\")"++
+                ",(((15,14),(15,17)),ITvarid \"bar\",\"bar\")]"
+      getIndentOffset toks (16,1) `shouldBe` 9
+
+    -- ---------------------------------
+
+    it "Get the indent after inline do clause" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      getIndentOffset toks (19,1) `shouldBe` 5
 
   -- -------------------------------------------------------------------
 
@@ -364,6 +467,12 @@ bFileName = GHC.mkFastString "./test/testdata/B.hs"
 
 parsedFileBGhc :: IO (ParseResult,[PosToken])
 parsedFileBGhc = parsedFileGhc "./test/testdata/B.hs"
+
+offsetFileName :: GHC.FastString
+offsetFileName = GHC.mkFastString "./test/testdata/Offset.hs"
+
+parsedFileOffsetGhc :: IO (ParseResult,[PosToken])
+parsedFileOffsetGhc = parsedFileGhc "./test/testdata/Offset.hs"
 
 caseBFileName :: GHC.FastString
 caseBFileName = GHC.mkFastString "./test/testdata/Case/B.hs"
@@ -410,3 +519,7 @@ comp = do
 
 parsedFileDeclareGhc :: IO (ParseResult,[PosToken])
 parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
+
+-- -----------
+
+-- EOF

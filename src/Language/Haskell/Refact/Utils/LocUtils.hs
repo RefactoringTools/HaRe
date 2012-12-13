@@ -58,7 +58,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , prettyprintPatList
                      , groupTokensByLine
                      , addLocInfo
-                     , getOffset
+                     , getIndentOffset
+                     , getLineOffset
                      , splitToks
                      , splitOnNewLn
                      {-
@@ -827,9 +828,38 @@ getOffset toks pos
          else lengthOfLastLine ts1
 -}
 
--- | Get the start of the line before the pos, i.e. the current indent
-getOffset :: [PosToken] -> SimpPos -> Int
-getOffset toks pos
+-- | Get the indent of the line before, taking into account in-line
+-- where, let, in and do tokens
+getIndentOffset :: [PosToken] -> SimpPos -> Int
+getIndentOffset toks pos
+  = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
+    in if (emptyList ts2)
+         then error "HaRe error: position does not exist in the token stream!"
+         else let (sl,_) = splitOnNewLn $ reverse ts1
+                -- sl is the reversed tokens of the previous line
+                  sls = filter (\t -> tokenLen t > 0) sl
+                  firstTok = (glast "getOffset" sls)
+              in if startLayout firstTok
+                  then if (length sls > 1)
+                          then tokenOffset (last $ init sls)
+                          else 4 + tokenOffset firstTok
+                  else tokenOffset firstTok
+              -- in error ("getOffset: sl=" ++ (showToks sl)) -- ++AZ++
+
+      where
+        tokenOffset t = (tokenCol t) - 1
+
+        startLayout ((GHC.L _ (GHC.ITdo)),_)    = True
+        startLayout ((GHC.L _ (GHC.ITin)),_)    = True
+        startLayout ((GHC.L _ (GHC.ITlet)),_)   = True
+        startLayout ((GHC.L _ (GHC.ITwhere)),_) = True
+        startLayout _  = False
+
+-- ---------------------------------------------------------------------
+
+-- | Get the start of the line before the pos,
+getLineOffset :: [PosToken] -> SimpPos -> Int
+getLineOffset toks pos
   = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
     in if (emptyList ts2)
          then error "HaRe error: position does not exist in the token stream!"
@@ -940,12 +970,12 @@ deleteToks:: [PosToken] -> SimpPos -> SimpPos -> [PosToken]
 deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
   = case after of
       (_:_) ->    let nextPos =tokenPos $ ghead "deleteToks1" after
-                      oldOffset = getOffset toks nextPos
-                      newOffset = getOffset (toks1++before++after) nextPos
+                      oldOffset = getIndentOffset toks nextPos
+                      newOffset = getIndentOffset (toks1++before++after) nextPos
                   in  toks1++before++adjustLayout (after++toks22) oldOffset newOffset
       _     -> if (emptyList toks22)
                  then toks1++before
-                 else let toks22'=let nextOffset = getOffset toks (tokenPos (ghead "deleteToks2" toks22))
+                 else let toks22'=let nextOffset = getIndentOffset toks (tokenPos (ghead "deleteToks2" toks22))
                                   in if isMultiLineComment (lastNonSpaceToken toks21)
                                        then whiteSpaceTokens (-1111, 0) (nextOffset-1) ++ toks22
                                        else toks22
@@ -1317,17 +1347,11 @@ extendBackwards toks startLoc endLoc backwardCondFun
 -- |Get the start&end location of syntax phrase t, then extend the end
 -- location to cover the comment/white spaces or new line which starts
 -- in the same line as the end location
-
 startEndLocIncFowComment::(SYB.Data t)=>[PosToken]->t->(SimpPos,SimpPos)
 startEndLocIncFowComment toks t
- -- = error "undefined startEndLocIncFowComment"
-       =let (startLoc,endLoc)=getStartEndLoc t
-            toks1= gtail "startEndLocIncFowComment" $ dropWhile (\t->tokenPos t<endLoc) toks
-            toks11 = let (ts1, ts2) = break hasNewLn toks1
-                     in (ts1 ++ if (emptyList ts2) then [] else [ghead "startEndLocInFowComment" ts2])
-         in  if (not $ emptyList  toks11) && all (\t->isWhite t || endsWithNewLn t) toks11
-             then (startLoc, tokenPos (glast "startEndLocIncFowComment" toks11))
-             else (startLoc, endLoc)
+  = let (startLoc,endLoc)=getStartEndLoc t
+        (_,endLocIncComments) = startEndLocIncComments toks t
+    in (startLoc, endLocIncComments)
 
 {- ++original++
 

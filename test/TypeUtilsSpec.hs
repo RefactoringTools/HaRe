@@ -1107,6 +1107,38 @@ spec = do
       (GHC.showPpr nb) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3\n      nn :: GHC.Types.Int\n      nn = nn2"
 
 
+    -- -------------------------------------------
+
+    it "Adds a local decl with type signature to an existing one, with a comment" $ do
+      (t, toks) <- parsedFileWhereIn3Ghc
+      let
+        comp = do
+
+         renamed <- getRefactRenamed
+
+         let Just (GHC.L _ tl) = locToName whereIn3FileName (10, 1) renamed
+         let declsr = hsBinds renamed
+             [tlDecls] = definingDeclsNames [tl] declsr True False
+
+         let Just (GHC.L _ sq) = locToName whereIn3FileName (14, 1) renamed
+
+         let [sqDecl] = definingDeclsNames [sq] (hsBinds renamed) False False
+             [sqSig]  = definingSigsNames  [sq] renamed
+ 
+
+         -- newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (sqDecl,Just sqSig,Nothing) False
+
+         return (sqSig,tlDecls,newDecls)
+      ((sigs,tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showPpr sigs) `shouldBe` "Demote.WhereIn3.sq ::\n  GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int"
+      (GHC.showPpr tl) `shouldBe` "Demote.WhereIn3.sumSquares x y\n  = Demote.WhereIn3.sq p x GHC.Num.+ Demote.WhereIn3.sq p y\n  where\n      p = 2"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2 {-There is a comment-}\n                sq :: Int -> Int -> Int\n                sq pow 0 = 0\n                sq pow z = z ^ pow --there is a comment\n\n\n sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (GHC.showPpr nb) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3\n      nn :: GHC.Types.Int\n      nn = nn2"
+
+
   -- ---------------------------------------------
 
   describe "renamePN" $ do
@@ -1531,6 +1563,14 @@ parsedFileD1Ghc = parsedFileGhc "./test/testdata/Demote/D1.hs"
 
 d1FileName :: GHC.FastString
 d1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
+
+-- -----------
+
+parsedFileWhereIn3Ghc :: IO (ParseResult,[PosToken])
+parsedFileWhereIn3Ghc = parsedFileGhc "./test/testdata/Demote/WhereIn3.hs"
+
+whereIn3FileName :: GHC.FastString
+whereIn3FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn3.hs"
 
 -- ----------------------------------------------------
 

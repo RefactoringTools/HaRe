@@ -2489,7 +2489,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
              defToks = dropWhile (\t->tokenPos t /=startPos) toks2
              offset = if topLevel
                         then 0
-                        else getOffset toks $ fst (getStartEndLoc (ghead "appendDecl2" decls))
+                        else getIndentOffset toks $ fst (getStartEndLoc (ghead "appendDecl2" decls))
          {- ++AZ++ next part moved into makeNewToks
              declStr = case declToks of
                           Just ts -> concatMap tokenCon ts
@@ -2565,8 +2565,12 @@ addDecl parent pn (decl, msig, declToks) topLevel
             --                             else tokenPos (last ts1)
             -- ++AZ++ temp offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
             offset = if (emptyList localDecls)
-                        then (getOffset toks startPos) + 3 -- off by one on start col
-                        else getOffset toks startPos
+                        then (getIndentOffset toks endPos') + 4 
+                        else getIndentOffset toks endPos'
+                        {-
+                        then (getIndentOffset toks startPos) -- + 3 -- off by one on start col
+                        else getIndentOffset toks startPos
+                        -}
             nlToken = newLnToken (ghead "addLocalDecl2" toks1)
 
         -- error ("addLocalDecl: (endPos',offset),(head toks1)) =" ++ (show (endPos',offset)) ++ "," ++ (showToks $ [head toks1])) -- ++AZ++ debug
@@ -2605,8 +2609,12 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          newSource  = if (emptyList localDecls)
                        then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
+                       else ("" ++ newFun'++"\n")
+                       {-
+                       then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
                        -- else (" " ++ newFun'++"\n")
                        else concatMap (\l-> " " ++l++"\n") (lines newFun')
+                       -}
            where
             newFun' = sigStr ++ newFunBody
             newFunBody = case newFunToks of
@@ -3253,7 +3261,7 @@ duplicateDecl decls sigs n newFunName
       -- error ("TypeUtils.duplicateDecl:(funBinding)=" ++ (GHC.showPpr funBinding)) -- ++AZ++ debug 12
       -- error ("TypeUtils.duplicateDecl:(fst (getStartEndLoc funBinding))=" ++ (show (fst $ getStartEndLoc funBinding))) -- ++AZ++ debug 12
 
-      let offset = getOffset toks (fst (getStartEndLoc funBinding))
+      let offset = getIndentOffset toks (fst (getStartEndLoc funBinding))
           newLineTok = if ((not (emptyList toks1)) {-&& endsWithNewLn (glast "doDuplicating" toks1 -})
                          then [newLnToken (last toks1)]
                          else [newLnToken (last toks1), newLnToken (last toks1)]
