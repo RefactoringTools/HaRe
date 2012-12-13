@@ -217,7 +217,8 @@ liftToTopLevel' modName _modInfo _fileName pn@(GHC.L _ n) = do
                                 -- error ("liftToMod:newBinds=" ++ (GHC.showPpr (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
                                 -- mod'<-moveDecl1 (replaceDecls declsr (before++parent'++after))
                                 mod'<-moveDecl1 (replaceBinds renamed (before++parent'++after))
-                                       (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) [GHC.unLoc pn] True
+                                       (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) 
+                                       [GHC.unLoc pn] True
                                 -- return (mod', declaredPns)
                                 return ()
 

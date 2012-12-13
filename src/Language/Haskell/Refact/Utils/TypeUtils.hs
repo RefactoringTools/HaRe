@@ -2481,7 +2481,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
     = do let binds = hsValBinds parent
          toks <- fetchToks
          -- error ("appendDecl:(before,after)=" ++ (GHC.showPpr (before,after))) -- ++AZ++ 
-         -- error (show parent ++ "----" ++ show pn ++ "-----" ++ show (decl, declToks))
+         -- error ("appendDecl:(pn,decl)=" ++ (GHC.showPpr (pn,decl))) -- ++AZ++
          let (startPos,endPos) = startEndLocIncFowComment toks (ghead "appendDecl1" after)
              -- divide the toks into three parts.
              (toks1, toks2, toks3) = splitToks' (startPos, endPos) toks
@@ -2495,7 +2495,6 @@ addDecl parent pn (decl, msig, declToks) topLevel
                           Just ts -> concatMap tokenCon ts
                           Nothing -> prettyprint decl
              nlToken = newLnToken (glast "appendDecl3" toks2)
-         -- error ("appendDecl: (offset,startEndLoc)=" ++ (show (offset, (getStartEndLoc (ghead "appendDecl2" decls))))) -- ++AZ++ debug
          newToks <- liftIO $ tokenise (realSrcLocFromTok nlToken) offset True declStr
          let --
              toks' = if  endsWithNewLn  (glast "appendDecl2" toks2)
@@ -2504,7 +2503,10 @@ addDecl parent pn (decl, msig, declToks) topLevel
     --     (decl',_) <- addLocInfo (decl, newToks)
          -- put ((toks',modified),((tokenRow (glast "appendDecl2" newToks) -10), v2))
          -}
-         (toks',newToks) <- makeNewToks offset (toks1++toks2) toks3 (decl,maybeSig,declToks)
+         -- error ("appendDecl: (offset,startEndLoc)=" ++ (show (offset, (getStartEndLoc (ghead "appendDecl2" decls))))) -- ++AZ++ debug
+         -- error ("appendDecl: ([last toks2, newLnToken (last toks2)])=" ++ (showToks [last toks2, newLnToken (last toks2)])) -- ++AZ++ debug
+         let nlToken = newLnToken (glast "appendDecl3" toks2)
+         (toks',newToks) <- makeNewToks offset (toks1++toks2++[nlToken]) toks3 (decl,maybeSig,declToks)
          putToks toks' modified
          -- return (replaceDecls parent (Decs (before ++ [ghead "appendDecl14" after]++ decl++ tail after) ([], [])))
 
