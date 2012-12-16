@@ -2539,11 +2539,10 @@ addDecl parent pn (decl, msig, declToks) topLevel
         -- error ("addLocalDecl:(parent,localDecls)=" ++ (GHC.showPpr (parent,localDecls))) -- ++AZ++ debug
         let (startPos@(_,_startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
               =if (emptyList localDecls)
-
-                   then getStartEndLoc parent    --The 'where' clause is empty
-                   else getStartEndLoc localDecls
-                   -- then startEndLocIncFowComment toks parent    --The 'where' clause is empty
-                   -- else startEndLocIncFowComment toks localDecls
+                   -- then getStartEndLoc parent    --The 'where' clause is empty
+                   -- else getStartEndLoc localDecls
+                   then startEndLocIncFowComment toks parent    --The 'where' clause is empty
+                   else startEndLocIncFowComment toks localDecls
             -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
             -- ++AZ++ toks1 : tokens after the insertion point
             --        ts1: toks1 with whitespace, comments etc removed.

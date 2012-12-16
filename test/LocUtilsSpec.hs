@@ -122,6 +122,42 @@ spec = do
       (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
       (show   (startPos,endPos)) `shouldBe` "((21,1),(24,73))"
 
+    -- -----------------------------------------------------------------
+
+    it "get start&end loc, including trailing comments, but not next from next decl" $ do
+      (t, toks) <- parsedFileDemoteGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+
+      let decls = filter isFunOrPatBindR declsr
+
+      let decl = head $ drop 2 decls
+      let (startPos,endPos) = startEndLocIncFowComment toks decl
+
+      (GHC.showPpr decls) `shouldBe` "[MoveDef.Demote.d = 9, MoveDef.Demote.c = 7,\n MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x]"
+      (GHC.showPpr decl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
+
+      (showToks $ getToks ((4,1),(8,1)) toks) `shouldBe` 
+             ("[(((4,1),(4,1)),ITsemi,\"\"),"++
+             "(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),"++
+             "(((4,10),(4,11)),ITvarid \"x\",\"x\"),"++
+             "(((4,12),(4,13)),ITequal,\"=\"),"++
+             "(((4,14),(4,15)),ITvarid \"c\",\"c\"),"++
+             "(((4,16),(4,17)),ITstar,\"*\"),"++
+             "(((4,18),(4,19)),ITvarid \"x\",\"x\"),"++
+             "(((6,1),(6,18)),ITlineComment \"-- c,d :: Integer\",\"-- c,d :: Integer\"),"++
+             "(((7,1),(7,1)),ITsemi,\"\"),"++
+             "(((7,1),(7,2)),ITvarid \"c\",\"c\"),"++
+             "(((7,3),(7,4)),ITequal,\"=\"),"++
+             "(((7,5),(7,6)),ITinteger 7,\"7\"),"++
+             "(((8,1),(8,1)),ITsemi,\"\"),"++
+             "(((8,1),(8,2)),ITvarid \"d\",\"d\")]")
+
+
+      (show $ getStartEndLoc decl) `shouldBe` "((4,1),(4,19))"
+      (show   (startPos,endPos)) `shouldBe` "((4,1),(4,19))"
+
   -- -------------------------------------------------------------------
 
   describe "tokenise" $ do
@@ -519,6 +555,14 @@ comp = do
 
 parsedFileDeclareGhc :: IO (ParseResult,[PosToken])
 parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
+
+-- -----------
+
+parsedFileDemoteGhc :: IO (ParseResult,[PosToken])
+parsedFileDemoteGhc = parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
+
+demoteFileName :: GHC.FastString
+demoteFileName = GHC.mkFastString "./test/testdata/MoveDef/Demote.hs"
 
 -- -----------
 

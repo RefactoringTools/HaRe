@@ -1386,17 +1386,46 @@ startEndLocIncFowNewLn toks t
 -- | Get the start&end location of t in the token stream, then extend
 -- the start and end location to cover the preceding and following
 -- comments.
+--
+-- Note: what about trailing comment with interving white space, where
+-- comment is "closer" to next non-comment token?
 startEndLocIncComments::(SYB.Data t) => [PosToken] -> t -> (SimpPos,SimpPos)
 startEndLocIncComments toks t =
   let
     (startLoc,endLoc)  = getStartEndLoc t
     (begin,middle,end) = splitToks (startLoc,endLoc) toks
+
     lead = reverse $ takeWhile (\tok -> isComment tok || isEmpty tok) $ reverse begin
     lead' = if ((nonEmptyList lead) && (isEmpty $ head lead)) then (tail lead) else lead
-    trail = takeWhile (\tok -> isComment tok || isEmpty tok) $ end
-    trail' = if ((nonEmptyList trail) && (isEmpty $ last trail)) then (init trail) else trail
+
+    -- trail = takeWhile (\tok -> isComment tok || isEmpty tok) $ end
+    (trail,trailrest) = break (\tok -> not (isComment tok || isEmpty tok)) end
+    
+    -- If whitespace line gap between then end of the middle and the
+    -- start of the tail is bigger than between the end of the trail
+    -- and the start of the trailrest, then let the trail belong to
+    -- the subsequent decl.
+
+    -- trail' = if ((nonEmptyList trail) && (isEmpty $ last trail)) then (init trail) else trail
+
+    trail'' = filter (\tok -> not $ isEmpty tok) trail
+    
+    endDiff = if (emptyList trailrest) || (emptyList trail'')
+            then 1000 
+            else (tokenRow $ head trailrest) - (tokenRow $ last trail'')
+
+    startDiff = if (emptyList middle) || (emptyList trail'')
+            then 1000 
+            else (tokenRow $ head trail) - (tokenRow $ last middle)
+
+    trail' = if (startDiff <= endDiff) 
+      then if ((nonEmptyList trail) && (isEmpty $ last trail)) 
+             then (init trail) else trail
+      else []
+
     middle' = lead' ++ middle ++ trail'
   in
+    -- error $ "startEndLocIncComments: (startDiff,endDiff)=" ++ (show (startDiff,endDiff)) -- ++AZ++
     ((tokenPos $ head middle'),(tokenPosEnd $ last middle'))
     
 {- ++AZ++ re-doing this ...
