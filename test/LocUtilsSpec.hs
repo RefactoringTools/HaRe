@@ -283,16 +283,18 @@ spec = do
                 "(((6,15),(6,16)),ITvarid \"y\",\"y\")]"
       (GHC.showRichTokenStream toks') `shouldBe` "module B where\n -- Test for refactor of if to case\n\n foo x = if (odd x) then \"Odd\" else \"Even\"\n\n bob x y = x + y"
 
+      -- ---------------------------------------------------------------
+
       let newToks = deleteToks toks' (4,9) (4,42)
       (showToks newToks) `shouldBe`
-               "[(((1,1),(1,7)),ITmodule,\"module\")," ++ 
+               "[(((1,1),(1,7)),ITmodule,\"module\")," ++
                 "(((1,8),(1,9)),ITconid \"B\",\"B\")," ++
-                "(((1,10),(1,15)),ITwhere,\"where\")," ++ 
+                "(((1,10),(1,15)),ITwhere,\"where\")," ++
                 "(((2,1),(2,35)),ITlineComment \"-- Test for refactor of if to case\",\"-- Test for refactor of if to case\")," ++
                 "(((4,1),(4,1)),ITvocurly,\"\")," ++
                 "(((4,1),(4,4)),ITvarid \"foo\",\"foo\")," ++
                 "(((4,5),(4,6)),ITvarid \"x\",\"x\")," ++
-                "(((4,7),(4,8)),ITequal,\"=\")," ++ 
+                "(((4,7),(4,8)),ITequal,\"=\")," ++
                 -- "(((4,9),(4,11)),ITif,\"if\")," ++
                 -- "(((4,12),(4,13)),IToparen,\"(\")," ++
                 -- "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
@@ -302,7 +304,7 @@ spec = do
                 -- "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
                 -- "(((4,31),(4,35)),ITelse,\"else\")," ++
                 -- "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")," ++
-                -- "(((6,1),(6,1)),ITsemi,\"\")," ++
+                "(((6,1),(6,1)),ITsemi,\"\")," ++
                 "(((6,1),(6,4)),ITvarid \"bob\",\"bob\")," ++
                 "(((6,5),(6,6)),ITvarid \"x\",\"x\")," ++
                 "(((6,7),(6,8)),ITvarid \"y\",\"y\")," ++
@@ -310,6 +312,65 @@ spec = do
                 "(((6,11),(6,12)),ITvarid \"x\",\"x\")," ++
                 "(((6,13),(6,14)),ITvarsym \"+\",\"+\")," ++
                 "(((6,15),(6,16)),ITvarid \"y\",\"y\")]"
+
+
+    -- ---------------------------------------------------------------
+
+    it "Deletes a set of tokens from a token stream2" $ do
+      (t,toks) <- parsedFileWhereIn3Ghc
+      -- let toks' = take 30 $ drop 25 toks
+      let toks' =
+           [
+           mkMySrcSpan (((11,10),(11,15)),(GHC.ITwhere),"where"),
+           mkMySrcSpan (((11,16),(11,16)),(GHC.ITvocurly),""),
+           mkMySrcSpan (((11,16),(11,17)),(GHC.ITvarid (GHC.mkFastString "p")),"p"),
+           mkMySrcSpan (((11,17),(11,18)),(GHC.ITequal),"="),
+           mkMySrcSpan (((11,18),(11,19)),(GHC.ITinteger 2),"2"),
+           mkMySrcSpan (((11,21),(11,43)),(GHC.ITblockComment ("There is a comment")),"{-There is a comment-}"),
+           mkMySrcSpan (((13,1),(13,1)),(GHC.ITvccurly),""),
+           mkMySrcSpan (((13,1),(13,1)),(GHC.ITsemi),""),
+           mkMySrcSpan (((13,1),(13,3)),(GHC.ITvarid (GHC.mkFastString "sq")),"sq"),
+           mkMySrcSpan (((13,4),(13,6)),(GHC.ITdcolon),"::"),
+           mkMySrcSpan (((13,7),(13,10)),(GHC.ITconid (GHC.mkFastString "Int")),"Int"),
+           mkMySrcSpan (((13,11),(13,13)),(GHC.ITrarrow),"->"),
+           mkMySrcSpan (((13,14),(13,17)),(GHC.ITconid (GHC.mkFastString "Int")),"Int"),
+           mkMySrcSpan (((13,18),(13,20)),(GHC.ITrarrow),"->"),
+           mkMySrcSpan (((13,21),(13,24)),(GHC.ITconid (GHC.mkFastString "Int")),"Int"),
+           mkMySrcSpan (((17,1),(17,11)),(GHC.ITvarid (GHC.mkFastString "anotherFun")),"anotherFun"),
+           mkMySrcSpan (((17,12),(17,13)),(GHC.ITinteger 0),"0"),
+           mkMySrcSpan (((17,14),(17,15)),(GHC.ITvarid (GHC.mkFastString "y")),"y"),
+           mkMySrcSpan (((17,16),(17,17)),(GHC.ITequal),"="),
+           mkMySrcSpan (((17,18),(17,20)),(GHC.ITvarid (GHC.mkFastString "sq")),"sq"),
+           mkMySrcSpan (((17,21),(17,22)),(GHC.ITvarid (GHC.mkFastString "y")),"y"),
+           mkMySrcSpan (((18,6),(18,11)),(GHC.ITwhere),"where")
+           ]
+      -- (showToks toks') `shouldBe` ""
+
+      let newToks = deleteToks toks' (13,1) (13,24)
+      (showToks newToks) `shouldBe`
+            ("[(((11,10),(11,15)),ITwhere,\"where\"),"++
+            "(((11,16),(11,16)),ITvocurly,\"\"),"++
+            "(((11,16),(11,17)),ITvarid \"p\",\"p\"),"++
+            "(((11,17),(11,18)),ITequal,\"=\"),"++
+            "(((11,18),(11,19)),ITinteger 2,\"2\"),"++
+            "(((11,21),(11,43)),ITblockComment \"There is a comment\",\"{-There is a comment-}\"),"++
+            -- "(((13,1),(13,1)),ITvccurly,\"\"),"++
+            -- "(((13,1),(13,1)),ITsemi,\"\"),"++
+            -- "(((13,1),(13,3)),ITvarid \"sq\",\"sq\"),"++
+            -- "(((13,4),(13,6)),ITdcolon,\"::\"),"++
+            -- "(((13,7),(13,10)),ITconid \"Int\",\"Int\"),"++
+            -- "(((13,11),(13,13)),ITrarrow,\"->\"),"++
+            -- "(((13,14),(13,17)),ITconid \"Int\",\"Int\"),"++
+            -- "(((13,18),(13,20)),ITrarrow,\"->\"),"++
+            -- "(((13,21),(13,24)),ITconid \"Int\",\"Int\"),"++
+            "(((17,1),(17,11)),ITvarid \"anotherFun\",\"anotherFun\"),"++
+            "(((17,12),(17,13)),ITinteger 0,\"0\"),"++
+            "(((17,14),(17,15)),ITvarid \"y\",\"y\"),"++
+            "(((17,16),(17,17)),ITequal,\"=\"),"++
+            "(((17,18),(17,20)),ITvarid \"sq\",\"sq\"),"++
+            "(((17,21),(17,22)),ITvarid \"y\",\"y\"),"++
+            "(((18,6),(18,11)),ITwhere,\"where\")]")
+
 
 
   -- -------------------------------------------------------------------
@@ -498,6 +559,15 @@ spec = do
 -- ---------------------------------------------------------------------
 -- Helper functions
 
+mkMySrcSpan :: ((SimpPos,SimpPos),GHC.Token,String) -> PosToken
+mkMySrcSpan (((r1,c1),(r2,c2)),tok,s) = (GHC.L span tok,s)
+  where
+    filename = whereIn3FileName
+    span = GHC.mkSrcSpan (GHC.mkSrcLoc filename r1 c1) (GHC.mkSrcLoc filename r2 c2)
+
+
+-- ---------------------------------------------------------------------
+
 bFileName :: GHC.FastString
 bFileName = GHC.mkFastString "./test/testdata/B.hs"
 
@@ -563,6 +633,14 @@ parsedFileDemoteGhc = parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
 
 demoteFileName :: GHC.FastString
 demoteFileName = GHC.mkFastString "./test/testdata/MoveDef/Demote.hs"
+
+-- -----------
+
+parsedFileWhereIn3Ghc :: IO (ParseResult,[PosToken])
+parsedFileWhereIn3Ghc = parsedFileGhc "./test/testdata/Demote/WhereIn3.hs"
+
+whereIn3FileName :: GHC.FastString
+whereIn3FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn3.hs"
 
 -- -----------
 

@@ -937,6 +937,7 @@ doDemoting' t pn
                          -- TODO: reinstate second line, once type signature issue in duplicateDecls is resolved
                          ds <- rmDecl pn True (hsBinds t)
                          -- ds <- rmDecl pn True t
+                         t' <- rmTypeSig pn t
 
                          --get those varaibles declared at where the demotedDecls will be demoted to
                          -- dl  <-mapM (flip declaredNamesInTargetPlace ds) declaredPns
@@ -965,7 +966,8 @@ doDemoting' t pn
                                     -- newBinds <- addDecl [ddd] Nothing declaredPns False
                                     -- error ("doDemoting':(ds'',declaredPns)=" ++ (GHC.showPpr (ds'',declaredPns))) -- ++AZ++
                                     -- return res
-                                    return (replaceBinds t ds'')
+                                    -- return (replaceBinds t ds'')
+                                    return (replaceBinds t' ds'')
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
        else error "This function can not be demoted as it is used in current level!\n"

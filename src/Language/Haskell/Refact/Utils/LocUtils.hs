@@ -973,6 +973,8 @@ deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
                       oldOffset = getIndentOffset toks nextPos
                       newOffset = getIndentOffset (toks1++before++after) nextPos
                   in  toks1++before++adjustLayout (after++toks22) oldOffset newOffset
+                  -- in error $ "deleteToks:newOffset=" ++ (show (newOffset)) -- ++AZ++
+                  -- in error $ "deleteToks:after=" ++ (showToks (after)) -- ++AZ++
       _     -> if (emptyList toks22)
                  then toks1++before
                  else let toks22'=let nextOffset = getIndentOffset toks (tokenPos (ghead "deleteToks2" toks22))
@@ -999,9 +1001,10 @@ deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
       before = takeWhile (\t->tokenPos t<startPos) toks21
 
       -- tokens after the tokens to be deleted at the same line.
-      after = let t= dropWhile (\t -> tokenPos t < endPos) toks21
+      after = let t= dropWhile (\t -> tokenPosEnd t <= endPos) toks21
               in  if (emptyList t) then error "Sorry, HaRe failed to finish this refactoring. DeleteToks"
-                                   else gtail "deleteToks6" t
+                                   -- else gtail "deleteToks6" t
+                                   else t
 
 {- ++ original ++
 {-Delete a sequence of tokens specified by the start position and end position from the token stream,

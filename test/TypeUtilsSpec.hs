@@ -813,6 +813,29 @@ spec = do
       (GHC.showPpr nb) `shouldBe` "(MoveDef.Md1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x\n MoveDef.Md1.c, MoveDef.Md1.d :: GHC.Integer.Type.Integer\n MoveDef.Md1.c = 7\n MoveDef.Md1.d = 9\n MoveDef.Md1.tup :: (GHC.Types.Int, GHC.Types.Int)\n MoveDef.Md1.h :: GHC.Types.Int\n MoveDef.Md1.t :: GHC.Types.Int\n MoveDef.Md1.tup@(MoveDef.Md1.h, MoveDef.Md1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15\n MoveDef.Md1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1\n MoveDef.Md1.l z = let ll = 34 in ll GHC.Num.+ z\n MoveDef.Md1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) }\n MoveDef.Md1.zz1 a = 1 GHC.Num.+ MoveDef.Md1.toplevel a\n MoveDef.Md1.tlFunc ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x\n \n data MoveDef.Md1.D\n     = MoveDef.Md1.A | MoveDef.Md1.B GHC.Base.String | MoveDef.Md1.C,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
       -- (GHC.showPpr renamed) `shouldBe` ""
 
+    -- -----------------------------------------------------------------
+
+    it "removes a type signature from the top level, after decl removed" $ do
+      (t, toks) <- parsedFileWhereIn3Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let Just (GHC.L _ n) = locToName whereIn3FileName (14, 1) renamed
+      let
+        comp = do
+         ds <- rmDecl n True (hsBinds renamed)
+         renamed' <- rmTypeSig n renamed
+         let renamed'' = (replaceBinds renamed' ds)
+         return renamed''
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showPpr n) `shouldBe` "Demote.WhereIn3.sq"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      -- (showToks $ take 40 $ drop 15 $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n\n\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (GHC.showPpr nb) `shouldBe` "(Demote.WhereIn3.sumSquares x y\n   = Demote.WhereIn3.sq p x GHC.Num.+ Demote.WhereIn3.sq p y\n   where\n       p = 2\n Demote.WhereIn3.anotherFun 0 y\n   = sq y\n   where\n       sq x = x GHC.Real.^ 2,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+      -- (GHC.showPpr renamed) `shouldBe` ""
+
+
+    -- -----------------------------------------------------------------
+
     it "removes a type signature from non-top level" $ do
       (t, toks) <- parsedFileMd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
