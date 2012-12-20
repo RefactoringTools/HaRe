@@ -105,8 +105,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , mkRdrName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
-    ,getDeclToks, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
-    ,getDeclAndToks,getSigAndToks -- ++AZ++ Zipper?
+    ,getDeclToks, getSigToks, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
+    ,getDeclAndToks,getSigAndToks
 
 -- * Typed AST traversals (added by CMB)
     -- * Miscellous
@@ -2450,7 +2450,9 @@ addDecl parent pn (decl, msig, declToks) topLevel
   makeNewToks colOffset toks1 toks2 (decl, maybeSig, declToks) = do
          let
              declStr = case declToks of
-                        Just ts -> concatMap tokenCon ts
+                        -- Just ts -> concatMap tokenCon ts
+                        -- Just ts -> GHC.showRichTokenStream ts
+                        Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
                         Nothing -> "\n"++(prettyprint decl)++"\n\n"
                         -- Nothing -> (prettyprint decl)++"\n\n"
              sigStr  = case declToks of
@@ -2564,7 +2566,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
             --                             else tokenPos (last ts1)
             -- ++AZ++ temp offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
             offset = if (emptyList localDecls)
-                        then (getIndentOffset toks endPos') + 4 
+                        then (getIndentOffset toks endPos') + 4
                         else getIndentOffset toks endPos'
                         {-
                         then (getIndentOffset toks startPos) -- + 3 -- off by one on start col
@@ -2576,6 +2578,8 @@ addDecl parent pn (decl, msig, declToks) topLevel
         -- error ("addLocalDecl: (needNewLn,nextTokPos) =" ++ (GHC.showPpr (needNewLn,nextTokPos))) -- ++AZ++ debug
 
         -- error ("addLocalDecl: (offset,last toks1) =" ++ (GHC.showPpr (offset)) ++ (showToks [last toks1])) -- ++AZ++ debug
+        -- error ("addLocalDecl: (offset,[last toks1,nlToken]) =" ++ (GHC.showPpr (offset)) ++ (showToks [last toks1,nlToken])) -- ++AZ++ debug
+        -- error ("addLocalDecl: (offset,(take 3 toks1) ++ [nlToken]) =" ++ (GHC.showPpr (offset)) ++ (showToks $ (take 3 toks1) ++ [nlToken])) -- ++AZ++ debug
 
         -- error ("foo here:newSource=" ++ (GHC.showPpr newSource)) -- ++AZ++
 
@@ -2587,6 +2591,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                           -- $ if needNewLn then "\n"++newSource else newSource++"\n"
                           $ if needNewLn then newSource++"\n" else newSource++"\n"
 
+        -- error ("addLocalDecl: (offset,newToks) =" ++ (GHC.showPpr (offset, realSrcLocFromTok nlToken)) ++ (showToks $ nlToken:newToks)) -- ++AZ++ debug
 
 
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
@@ -2617,7 +2622,8 @@ addDecl parent pn (decl, msig, declToks) topLevel
            where
             newFun' = sigStr ++ newFunBody
             newFunBody = case newFunToks of
-                           Just ts -> concatMap tokenCon ts
+                           -- Just ts -> concatMap tokenCon ts
+                           Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
                            Nothing -> prettyprint newFun
 
             sigStr  = case newFunToks of
@@ -3990,7 +3996,7 @@ getDeclToks pn incSig decls toks
                                 else ghead "getDeclToks2" decls2'
         -}
         decl = ghead "getDeclToks1" $ definingDeclsNames [pn] decls False False
-        sig  = ghead "getDeclToks2" $ definingSigsNames [pn] decls 
+        sig  = ghead "getDeclToks2" $ definingSigsNames [pn] decls
         -- declToks = getToks' decl toks
         declToks = getToksForDecl decl toks
         sigToks  = getToksForDecl sig toks
@@ -4124,10 +4130,49 @@ getDeclAndToks pn incSig toks t
 
 -- ---------------------------------------------------------------------
 
--- Get the toks for a declaration, and adjust its offset to 0.
-getSigAndToks :: GHC.Located GHC.Name -> [PosToken] -> t
-     -> (GHC.LSig GHC.Name,[PosToken])
-getSigAndToks pn toks t
-    = error "undefined getSigAndToks"
+-- | Get the tokens for a signature
+getSigToks :: (SYB.Data t) => GHC.Name -> t -> [PosToken]
+     -> [PosToken]
+getSigToks pn t toks
+  = case (getSigAndToks pn t toks) of
+    Just (_sig,sigToks) -> sigToks
+    Nothing -> []
 
 -- ---------------------------------------------------------------------
+
+-- | Get the signature and tokens for a declaration
+getSigAndToks :: (SYB.Data t) => GHC.Name -> t -> [PosToken]
+     -> Maybe (GHC.LSig GHC.Name,[PosToken])
+getSigAndToks pn t toks
+  = case (getSig pn t) of
+      Nothing -> Nothing
+      Just sig -> Just (sig, getToksForDecl sig toks)
+
+
+-- ---------------------------------------------------------------------
+
+-- | Get signature for a declaration
+getSig :: (SYB.Data t) => GHC.Name -> t
+     -> Maybe (GHC.LSig GHC.Name)
+getSig pn t = maybeSig
+  where
+   maybeSig = if (emptyList sigList)
+      then Nothing
+      else Just $ head sigList
+
+   sigList = SYB.everythingStaged SYB.Renamer (++) []
+              ([] `SYB.mkQ` inDecls) t
+
+   inDecls (sigs::[GHC.LSig GHC.Name])
+      | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
+     = let (decls1,decls2)= break (definesTypeSig pn) sigs
+           sig@(GHC.L l (GHC.TypeSig names typ)) = ghead "getSigsAndToks" decls2  -- as decls2/=[], no problem with head
+           sig' = if  length names > 1
+                   then (GHC.L l (GHC.TypeSig (filter (\(GHC.L _ x) -> x /= pn) names) typ))
+                   else sig
+       in [sig']
+   inDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+

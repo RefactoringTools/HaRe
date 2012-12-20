@@ -506,6 +506,7 @@ tokenise  startPos colOffset withFirstLineIndent str
 
 lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
 lexStringToRichTokens startLoc str = do
+  -- error $ "lexStringToRichTokens: (startLoc,str)=" ++ (GHC.showPpr (startLoc,str)) -- ++AZ
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
     GHC.runGhc (Just GHC.libdir) $ do
       dflags <- GHC.getSessionDynFlags

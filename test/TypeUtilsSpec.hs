@@ -1180,13 +1180,17 @@ spec = do
          let [sqDecl] = definingDeclsNames [sq] (hsBinds renamed) False False
              [sqSig]  = definingSigsNames  [sq] renamed
  
-         let toks = [] -- ++AZ++ get the tokens for the sqDecl/sqSig
+         let declToks = getDeclToks sq False (hsBinds renamed) toks
+             Just (_sig,sigToks) = getSigAndToks sq renamed toks 
+             toksToAdd = sigToks ++ declToks
 
          -- newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
-         newDecls <- addDecl tlDecls Nothing (sqDecl,Just sqSig,Just toks) False
+         newDecls <- addDecl tlDecls Nothing (sqDecl,Just sqSig,Just toksToAdd) False
 
-         return (sqSig,tlDecls,newDecls)
-      ((sigs,tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+         return (sqSig,tlDecls,newDecls,toksToAdd)
+      ((sigs,tl,nb,tta),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- (showToks tta) `shouldBe` ""
+      -- (showToks toks) `shouldBe` ""
       (GHC.showPpr sigs) `shouldBe` "Demote.WhereIn3.sq ::\n  GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int"
       (GHC.showPpr tl) `shouldBe` "Demote.WhereIn3.sumSquares x y\n  = Demote.WhereIn3.sq p x GHC.Num.+ Demote.WhereIn3.sq p y\n  where\n      p = 2"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
