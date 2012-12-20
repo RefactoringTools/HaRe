@@ -108,6 +108,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,getDeclToks, getSigToks, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
     ,getDeclAndToks,getSigAndToks
 
+    , removeOffset
+
 -- * Typed AST traversals (added by CMB)
     -- * Miscellous
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
@@ -4037,10 +4039,16 @@ getDeclAndToks :: (HsValBinds t)
      -> ([GHC.LHsBind GHC.Name],[PosToken])
 getDeclAndToks pn incSig toks t =
   let
-    decls = definingDeclsNames [pn] (hsBinds t) True True
-    declToks = getToksForDecl decls toks
-    -- TODO: removeOffset on declToks
-  in (decls,declToks)
+    decls     = definingDeclsNames [pn] (hsBinds t) True True
+    declToks  = getToksForDecl decls toks
+
+    declToks' = case declToks of
+                 [] -> []
+                 _  -> removeOffset offset declToks
+                         where
+                           (r,c) = tokenPos $ head declToks
+                           offset = c -- getIndentOffset declToks (r+1,c)
+  in (decls,declToks')
 
 {- ++AZ++ : compose this out of existing API functions
 
@@ -4126,6 +4134,34 @@ getDeclAndToks pn incSig toks t
      = let groupedToks = groupTokensByLine toks
        in  concatMap  (doRmWhites offset) groupedToks
 
+-}
+
+-- ---------------------------------------------------------------------
+
+-- | Remove at most `offset` whitespaces from each line in the tokens
+
+-- TODO: move this function to LocUtils.hs
+-- TODO: add a test for this
+removeOffset :: Int -> [PosToken] -> [PosToken]
+-- removeOffset offset toks = error $ "removeOffset:offset=" ++ (show offset) -- ++AZ++
+removeOffset offset toks = map (\(t,s) -> (adjust t,s)) toks
+  where
+    adjust (GHC.L l t) = (GHC.L l' t)
+      where
+        l' =  case l of
+          GHC.RealSrcSpan ss ->
+            let
+              locs = GHC.mkSrcLoc (GHC.srcSpanFile ss) (GHC.srcSpanStartLine ss) ((GHC.srcSpanStartCol ss) - offset)
+              loce = GHC.mkSrcLoc (GHC.srcSpanFile ss) (GHC.srcSpanEndLine ss) ((GHC.srcSpanEndCol ss) - offset)
+              -- loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 0
+            in
+              GHC.mkSrcSpan locs loce
+          _ -> l
+
+
+{- ++AZ++ original
+  let groupedToks = groupTokensByLine toks
+  in  concatMap  (doRmWhites offset) groupedToks
 -}
 
 -- ---------------------------------------------------------------------

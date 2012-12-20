@@ -839,7 +839,7 @@ getIndentOffset toks pos
          else let (sl,_) = splitOnNewLn $ reverse ts1
                 -- sl is the reversed tokens of the previous line
                   sls = filter (\t -> tokenLen t > 0) sl
-                  firstTok = (glast "getOffset" sls)
+                  firstTok = (glast "getIndentOffset" sls)
               in if startLayout firstTok
                   then if (length sls > 1)
                           then tokenOffset (last $ init sls)
@@ -865,7 +865,7 @@ getLineOffset toks pos
     in if (emptyList ts2)
          then error "HaRe error: position does not exist in the token stream!"
          else let (sl,_) = splitOnNewLn $ reverse ts1
-              in tokenCol (glast "getOffset" sl)
+              in tokenCol (glast "getLineOffset" sl)
               -- in error ("getOffset: sl=" ++ (showToks sl)) -- ++AZ++
 
 

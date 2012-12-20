@@ -276,13 +276,20 @@ moveDecl1 :: (HsValBinds t)
 moveDecl1 t defName ns topLevel
    = do toks <- fetchToks
         -- error ("moveDecl1:defName=" ++ (GHC.showPpr defName)) -- ++AZ++
+        -- error ("moveDecl1:ns=" ++ (GHC.showPpr ns)) -- ++AZ++
         -- let ns = map GHC.unLoc pns
-        let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" ns) True toks t
-        --error$ show (declToMove, toksToMove)
+        let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1 2" ns) True toks t
+        -- error ("moveDecl1:ns=" ++ (GHC.showPpr ns)) -- ++AZ++
+        let (sigToMove, sigToksToMove) =
+              case (getSigAndToks (ghead "moveDecl1 2" ns) t toks) of
+                Just (sig, sigToks) -> (Just sig, sigToks)
+                Nothing -> (Nothing,[])
+        -- error $ "moveDecl1:(toksToMove)=" ++ (showToks toksToMove) -- ++AZ++
+        -- error $ "moveDecl1:(sigToksToMove)=" ++ (showToks sigToksToMove) -- ++AZ++
+        -- error $ "moveDecl1:(sig)=" ++ (GHC.showPpr sigToMove) -- ++AZ++
         t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
         -- error ("moveDecl1:(defName,ns,t')=" ++ (GHC.showPpr (defName,ns,t'))) -- ++AZ++
-        addDecl t' defName (ghead "moveDecl1 2" declToMove, Nothing,Just toksToMove) topLevel
-
+        addDecl t' defName (ghead "moveDecl1 2" declToMove,sigToMove,Just (sigToksToMove ++ toksToMove)) topLevel
 
 {- ++AZ++ original
 moveDecl1 t defName pns topLevel
@@ -911,9 +918,14 @@ doDemoting' t pn
        -- demotedDecls = definingDeclsNames declaredPns origDecls True False
    -- in if not (usedByRhs t declaredPns) -- ++AZ++ this only works because the top level is hard coded to False.
    in if not (usedByRhs t declaredPns)
-       then do 
+       then do
               toks <- fetchToks
               let (demotedDecls,demotedToks) = getDeclAndToks pn True toks t
+              let (demotedSig, demotedSigToks) =
+                    case (getSigAndToks pn t toks) of
+                      Just (sig, sigToks) -> (Just sig, sigToks)
+                      Nothing -> (Nothing,[])
+
               -- find how many matches/pattern bindings (except the binding defining pn) use 'pn'
               -- uselist <- uses declaredPns (hsBinds t\\demotedDecls)
               let -- uselist = uses declaredPns (hsBinds t\\demotedDecls)
@@ -960,7 +972,7 @@ doDemoting' t pn
                                  do
                                     -- error ("doDemoting':(declaredPns,demotedDecls)=" ++ (GHC.showPpr (declaredPns,demotedDecls))) -- ++AZ++
                                     -- ds'' <- duplicateDecls declaredPns origDecls
-                                    ds'' <- duplicateDecls declaredPns (ghead "doDemoting'" demotedDecls) demotedToks ds
+                                    ds'' <- duplicateDecls declaredPns (ghead "doDemoting'" demotedDecls) demotedSig (Just (demotedSigToks ++ demotedToks)) ds
                                     -- let res = replaceBinds t ds''
                                     -- newBinds <- moveDecl1 origDecls Nothing declaredPns False
                                     -- newBinds <- addDecl [ddd] Nothing declaredPns False
@@ -1001,9 +1013,9 @@ doDemoting' t pn
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).
           -- duplicateDecls :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
-          duplicateDecls :: [GHC.Name] -> GHC.LHsBind GHC.Name -> [PosToken] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
+          duplicateDecls :: [GHC.Name] -> GHC.LHsBind GHC.Name -> Maybe (GHC.LSig GHC.Name) -> Maybe [PosToken] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
           -- duplicateDecls :: (SYB.Data t) =>[GHC.Name] -> t -> RefactGhc [GHC.LHsBind GHC.Name]
-          duplicateDecls pns demoted dtoks decls
+          duplicateDecls pns demoted dsig dtoks decls
              = do everywhereMStaged SYB.Renamer (SYB.mkM dupInMatch
                                                 `SYB.extM` dupInPat) decls
              {-
@@ -1023,7 +1035,12 @@ doDemoting' t pn
                         -- rhs' <- moveDecl pns rhs False decls False
                         -- rhs' <- moveDecl1 rhs Nothing pns False
                         -- TODO: work the tokens through
-                        rhs' <- addDecl rhs Nothing (demoted,Nothing,Nothing) False
+
+                        rhs' <- addDecl rhs Nothing (demoted,dsig,dtoks) False
+
+                        -- rhs' <- moveDecl1 rhs Nothing pns False
+
+
                         -- rhs' <- addDecl rhs Nothing (demoted,Just dtoks) False
                         return (GHC.Match pats mt rhs')
                       -- If fold parameters.
