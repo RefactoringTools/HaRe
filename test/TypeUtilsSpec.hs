@@ -1177,11 +1177,20 @@ spec = do
 
          let Just (GHC.L _ sq) = locToName whereIn3FileName (14, 1) renamed
 
+         {-
          let [sqDecl] = definingDeclsNames [sq] (hsBinds renamed) False False
              [sqSig]  = definingSigsNames  [sq] renamed
  
+
          let declToks = getDeclToks sq False (hsBinds renamed) toks
              Just (_sig,sigToks) = getSigAndToks sq renamed toks 
+             toksToAdd = sigToks ++ declToks
+         -}
+         let ([sqDecl],declToks) = getDeclAndToks sq True toks renamed
+         let (Just sqSig, sigToks) =
+               case (getSigAndToks sq renamed toks) of
+                 Just (sig, sigToks) -> (Just sig, sigToks)
+                 Nothing -> (Nothing,[])
              toksToAdd = sigToks ++ declToks
 
          -- newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
@@ -1486,7 +1495,7 @@ spec = do
       (GHC.showPpr d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
       (show $ getStartEndLoc d) `shouldBe` "((40,1),(40,17))"
       (show $ startEndLocIncComments (toksFromState s) d) `shouldBe` "((40,1),(41,18))"
-      (showToks t) `shouldBe` "[(((40,1),(40,1)),ITsemi,\"\"),(((40,1),(40,7)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,8),(40,9)),ITvarid \"x\",\"x\"),(((40,10),(40,11)),ITequal,\"=\"),(((40,12),(40,13)),ITvarid \"c\",\"c\"),(((40,14),(40,15)),ITstar,\"*\"),(((40,16),(40,17)),ITvarid \"x\",\"x\"),(((41,1),(41,18)),ITlineComment \"-- Comment at end\",\"-- Comment at end\")]"
+      (showToks t) `shouldBe` "[(((40,0),(40,0)),ITsemi,\"\"),(((40,0),(40,6)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,7),(40,8)),ITvarid \"x\",\"x\"),(((40,9),(40,10)),ITequal,\"=\"),(((40,11),(40,12)),ITvarid \"c\",\"c\"),(((40,13),(40,14)),ITstar,\"*\"),(((40,15),(40,16)),ITvarid \"x\",\"x\"),(((41,0),(41,17)),ITlineComment \"-- Comment at end\",\"-- Comment at end\")]"
 
   -- --------------------------------------
 

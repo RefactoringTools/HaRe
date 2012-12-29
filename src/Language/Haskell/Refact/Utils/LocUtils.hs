@@ -1402,6 +1402,14 @@ startEndLocIncComments toks t =
     lead = reverse $ takeWhile (\tok -> isComment tok || isEmpty tok) $ reverse begin
     lead' = if ((nonEmptyList lead) && (isEmpty $ head lead)) then (tail lead) else lead
 
+    leadLine = if (nonEmptyList lead')
+                 then reverse $ takeWhile (\tok -> tokenRow (head lead') <= tokenRow tok) $ reverse begin
+                 else []
+
+    lead'' = if (nonEmptyList lead' && nonEmptyList leadLine && not (isComment $ head leadLine))
+               then dropWhile (\tok -> tokenRow tok == tokenRow (head leadLine)) lead'
+               else lead'
+
     -- trail = takeWhile (\tok -> isComment tok || isEmpty tok) $ end
     (trail,trailrest) = break (\tok -> not (isComment tok || isEmpty tok)) end
     
@@ -1427,9 +1435,10 @@ startEndLocIncComments toks t =
              then (init trail) else trail
       else []
 
-    middle' = lead' ++ middle ++ trail'
+    middle' = lead'' ++ middle ++ trail'
   in
     -- error $ "startEndLocIncComments: (startDiff,endDiff)=" ++ (show (startDiff,endDiff)) -- ++AZ++
+    -- error ( "startEndLocIncComments: (leadLine)=" ++ (show $ tokenRow (head lead')) ++  (showToks leadLine) ) -- ++AZ++
     ((tokenPos $ head middle'),(tokenPosEnd $ last middle'))
     
 {- ++AZ++ re-doing this ...

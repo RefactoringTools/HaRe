@@ -4042,6 +4042,7 @@ getDeclAndToks pn incSig toks t =
     decls     = definingDeclsNames [pn] (hsBinds t) True True
     declToks  = getToksForDecl decls toks
 
+{-
     declToks' = case declToks of
                  [] -> []
                  _  -> removeOffset offset declToks
@@ -4049,6 +4050,9 @@ getDeclAndToks pn incSig toks t =
                            (r,c) = tokenPos $ head declToks
                            offset = c -- getIndentOffset declToks (r+1,c)
   in (decls,declToks')
+-}
+  in (decls, removeToksOffset declToks)
+
 
 {- ++AZ++ : compose this out of existing API functions
 
@@ -4138,6 +4142,19 @@ getDeclAndToks pn incSig toks t
 
 -- ---------------------------------------------------------------------
 
+-- | Normalise a set of tokens to start at the offset of the first one
+removeToksOffset :: [PosToken] -> [PosToken]
+removeToksOffset toks = toks'
+  where
+    toks' = case toks of
+              [] -> []
+              _  -> removeOffset offset toks
+                      where
+                        (r,c) = tokenPos $ head toks
+                        offset = c -- getIndentOffset toks (r+1,c)
+
+-- ---------------------------------------------------------------------
+
 -- | Remove at most `offset` whitespaces from each line in the tokens
 
 -- TODO: move this function to LocUtils.hs
@@ -4182,7 +4199,7 @@ getSigAndToks :: (SYB.Data t) => GHC.Name -> t -> [PosToken]
 getSigAndToks pn t toks
   = case (getSig pn t) of
       Nothing -> Nothing
-      Just sig -> Just (sig, getToksForDecl sig toks)
+      Just sig -> Just (sig, removeToksOffset $ getToksForDecl sig toks)
 
 
 -- ---------------------------------------------------------------------

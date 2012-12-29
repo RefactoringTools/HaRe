@@ -76,6 +76,58 @@ spec = do
       (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
       (show   (startPos,endPos)) `shouldBe` "((20,1),(24,73))"
 
+    -- -----------------------------------------------------------------
+
+    it "get start&end loc, including leading comments which belong" $ do
+      (t, toks) <- parsedFileWhereIn3Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+
+      let Just (GHC.L _ sq) = locToName whereIn3FileName (14, 1) renamed
+      let (Just sqSig, sigToks) =
+            case (getSigAndToks sq renamed toks) of
+              Just (sig, sigToks) -> (Just sig, sigToks)
+              Nothing -> (Nothing,[])
+
+
+      let decls = filter isFunOrPatBindR declsr
+
+      let decl = head $ drop 1 decls
+      let (startPos,endPos) = startEndLocIncComments toks sqSig
+
+      -- (GHC.showPpr decls) `shouldBe` ""
+      (GHC.showPpr sqSig) `shouldBe` "Demote.WhereIn3.sq ::\n  GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int"
+
+      (showToks $ getToks ((11,1),(15,1)) toks) `shouldBe` 
+             ("[(((11,10),(11,15)),ITwhere,\"where\"),"++
+             "(((11,16),(11,16)),ITvocurly,\"\"),"++
+             "(((11,16),(11,17)),ITvarid \"p\",\"p\"),"++
+             "(((11,17),(11,18)),ITequal,\"=\"),"++
+             "(((11,18),(11,19)),ITinteger 2,\"2\"),"++
+             "(((11,21),(11,43)),ITblockComment \"There is a comment\",\"{-There is a comment-}\"),"++
+             "(((13,1),(13,1)),ITvccurly,\"\"),"++
+             "(((13,1),(13,1)),ITsemi,\"\"),"++
+             "(((13,1),(13,3)),ITvarid \"sq\",\"sq\"),"++
+             "(((13,4),(13,6)),ITdcolon,\"::\"),"++
+             "(((13,7),(13,10)),ITconid \"Int\",\"Int\"),"++
+             "(((13,11),(13,13)),ITrarrow,\"->\"),"++
+             "(((13,14),(13,17)),ITconid \"Int\",\"Int\"),"++
+             "(((13,18),(13,20)),ITrarrow,\"->\"),"++
+             "(((13,21),(13,24)),ITconid \"Int\",\"Int\"),"++
+             "(((14,1),(14,1)),ITsemi,\"\"),"++
+             "(((14,1),(14,3)),ITvarid \"sq\",\"sq\"),"++
+             "(((14,4),(14,7)),ITvarid \"pow\",\"pow\"),"++
+             "(((14,8),(14,9)),ITinteger 0,\"0\"),"++
+             "(((14,10),(14,11)),ITequal,\"=\"),"++
+             "(((14,12),(14,13)),ITinteger 0,\"0\"),"++
+             "(((15,1),(15,1)),ITsemi,\"\"),"++
+             "(((15,1),(15,3)),ITvarid \"sq\",\"sq\")]")
+
+
+      (show $ getStartEndLoc sqSig) `shouldBe` "((13,1),(13,24))"
+      (show   (startPos,endPos)) `shouldBe` "((13,1),(13,24))"
+
   -- -------------------------------------------------------------------
 
   describe "startEndLocIncFowComment" $ do
