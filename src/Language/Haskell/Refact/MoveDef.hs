@@ -981,6 +981,7 @@ doDemoting' t pn
                                     -- return (replaceBinds t ds'')
                                     return (replaceBinds t' ds'')
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
+                  -- _ ->error $ "\nThis function/pattern binding is used by more than one friend bindings\n" ++ (show uselist) -- ++AZ++
 
        else error "This function can not be demoted as it is used in current level!\n"
        -- else error ("doDemoting': demotedDecls=" ++ (GHC.showPpr demotedDecls)) -- ++AZ++
@@ -1029,22 +1030,14 @@ doDemoting' t pn
                  dupInMatch ((GHC.Match pats mt rhs) :: GHC.Match GHC.Name)
                    -- | any (flip findPN match) pns && not (any (flip findPN name) pns)
                    | (not $ findPNs pns pats) && findPNs pns rhs
-                   =  --If not fold parameters.
-                      -- moveDecl pns pats False decls False
-                      do
-                        -- rhs' <- moveDecl pns rhs False decls False
-                        -- rhs' <- moveDecl1 rhs Nothing pns False
-                        -- TODO: work the tokens through
-
+                   =  do
+                        --If not fold parameters.
+                        -- moveDecl pns pats False decls False
                         rhs' <- addDecl rhs Nothing (demoted,dsig,dtoks) False
-
-                        -- rhs' <- moveDecl1 rhs Nothing pns False
-
-
-                        -- rhs' <- addDecl rhs Nothing (demoted,Just dtoks) False
                         return (GHC.Match pats mt rhs')
-                      -- If fold parameters.
-                      --foldParams pns match decls
+
+                        -- If fold parameters.
+                        -- foldParams pns match decls
                  -- dupInMatch _ =mzero
                  dupInMatch x = return x
 
@@ -1195,7 +1188,144 @@ doDemoting' t pn
 
 
 
+{- foldParams:remove parameters in the demotedDecls if possible
+   parameters: pn -- the function/pattern name to be demoted in PName format
+               match--where the demotedDecls will be demoted to
+               demotedDecls -- the declarations to be demoted.
+   example:
+    module Test where        demote 'sq'       module Test where
+    sumSquares x y               ===>          sumSquares x y =(sq 0) + (sq y)
+      = sq x 0+ sq x y                               where sq y=x ^ y
+    sq x y=x^y
+-}
+--PROBLEM: TYPE SIGNATURE SHOULD BE CHANGED.
+--- TEST THIS FUNCTION!!!
+foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls
+  = do return ()
+
 {-
+     =do let matches=concatMap matchesInDecls demotedDecls
+             pn=ghead "foldParams" pns    --pns /=[]
+         params<-allParams pn rhs []
+         if (length.nub.map length) params==1                  -- have same number of param 
+             && ((length matches)==1)      -- only one 'match' in the demoted declaration
+           then do let patsInDemotedDecls=(patsInMatch.(ghead "foldParams")) matches
+                       subst=mkSubst patsInDemotedDecls params
+                       fstSubst=map fst subst
+                       sndSubst=map snd subst
+                   rhs'<-rmParamsInParent pn sndSubst rhs
+                   ls<-mapM hsFreeAndDeclaredPNs sndSubst
+                   -- newNames contains the newly introduced names to the demoted decls---
+                   let newNames=(map pNtoName (concatMap fst ls)) \\ (map pNtoName fstSubst)
+                   --There may be name clashing because of introducing new names.
+                   clashedNames<-getClashedNames fstSubst newNames (ghead "foldParams" matches)
+                  {- --auotmatic renaming
+                   demotedDecls'<-foldM (flip (autoRenameLocalVar True)) demotedDecls clashedNames
+                   demotedDecls''<- foldM replaceExpWithUpdToks demotedDecls' subst 
+                   --remove substituted parameters in demoted declarations
+                   demotedDecls'''<-rmParamsInDemotedDecls fstSubst demotedDecls'' -}
+                   decls' <- foldInDemotedDecls pns clashedNames subst decls
+                   let demotedDecls''' = definingDecls pns decls' True False
+                   moveDecl pns (HsMatch loc1 name pats rhs' ds) False decls' False
+                   return (HsMatch loc1 name pats rhs' (ds++(filter (not.isTypeSig) demotedDecls''')))
+           else  do  moveDecl pns match False decls True
+                     return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding 
+
+    where
+
+       matchesInDecls ((Dec (HsFunBind loc matches))::HsDeclP)=matches
+       matchesInDecls x = []
+
+       patsInMatch ((HsMatch loc1 name pats rhs ds)::HsMatchP)
+         =pats
+
+       demotedDecls=definingDecls pns decls True False
+
+
+       foldInDemotedDecls  pns clashedNames subst decls
+          = applyTP (stop_tdTP (failTP `adhocTP` worker)) decls
+          where
+          worker (match@(HsMatch loc1 (PNT pname _ _) pats rhs ds)::HsMatchP)
+            | isJust (find (==pname) pns)
+            = do match' <- foldM (flip (autoRenameLocalVar True)) match clashedNames
+                 match'' <- foldM replaceExpWithUpdToks match' subst
+                 rmParamsInDemotedDecls (map fst subst) match''
+
+          worker _ = mzero
+
+
+      ------Get all of the paramaters supplied to pn ---------------------------
+            {- eg. sumSquares x1 y1 x2 y2 = rt x1 y1 + rt x2 y2
+                   rt x y = x+y
+              demote 'rt' to 'sumSquares',
+              'allParams pn rhs []'  returns [[x1,x2],[y1,y2]]
+                where pn is 'rt' and  rhs is 'rt x1 y1 + rt x2 y2'
+           -}
+       allParams pn rhs initial  -- pn: demoted function/pattern name.
+        =do p<-getOneParam pn rhs
+            --putStrLn (show p)
+            if p/=[] then do rhs'<-rmOneParam pn rhs
+                             allParams pn rhs' (initial++[p])
+                     else return initial
+        where
+           getOneParam pn
+              =applyTU (stop_tdTU (failTU `adhocTU` worker))
+                where
+                  worker (Exp (HsApp e1 e2))
+                   |(expToPN e1==pn) =return (rmLocs [e2])
+                  worker _ =mzero
+           rmOneParam pn
+              =applyTP (stop_tdTP (failTP `adhocTP` worker))
+                where
+                  worker (Exp (HsApp e1 e2 ))
+                    |expToPN e1==pn =return e1
+                  worker _ =mzero
+
+       -----------remove parameters in demotedDecls-------------------------------
+       rmParamsInDemotedDecls ps
+         =applyTP (once_tdTP (failTP `adhocTP` worker))
+            where worker ((HsMatch loc1 name pats rhs ds)::HsMatchP)
+                    = do let pats'=filter (\x->not ((patToPN x /=defaultPN) &&
+                                          elem (patToPN x) ps)) pats
+                         pats'<-update pats pats' pats
+                         return (HsMatch loc1 name pats' rhs ds)
+
+
+       ----------remove parameters in the parent functions' rhs-------------------
+       --Attention: PNT i1 _ _==PNT i2 _ _ = i1 =i2
+       rmParamsInParent  pn es
+         =applyTP (full_buTP (idTP `adhocTP` worker))
+            where worker exp@(Exp (HsApp e1 e2))
+                   | findPN pn e1 && elem e2 es
+                      =update exp e1 exp
+                  worker (exp@(Exp (HsParen e1)))
+                    |pn==expToPN e1
+                       =update exp e1 exp
+                  worker x =return x
+
+       getClashedNames oldNames newNames (match::HsMatchP)
+         = do  (f,d)<-hsFDsFromInside match
+               ds'<-mapM (flip hsVisiblePNs match) oldNames
+               -- return clashed names
+               return (filter (\x->elem (pNtoName x) newNames)  --Attention: nub
+                                   ( nub (d `union` (nub.concat) ds')))
+       ----- make Substitions between formal and actual parameters.-----------------
+       mkSubst pats params
+           = catMaybes (zipWith (\x y ->if (patToPN x/=defaultPN) && (length (nub y)==1)
+                            then Just (patToPN x,(ghead "mkSubst") y)
+                            else Nothing) pats params)
+
+
+--substitute an old expression by new expression
+replaceExpWithUpdToks  decls subst
+  = applyTP (full_buTP (idTP `adhocTP` worker)) decls
+         where worker (e::HsExpP)
+                 |(expToPN e/=defaultPN) &&  (expToPN e)==(fst subst)
+                     =update e (snd subst) e
+               worker x=return x
+-}
+
+{- ++ original
 
 {- foldParams:remove parameters in the demotedDecls if possible
    parameters: pn -- the function/pattern name to be demoted in PName format

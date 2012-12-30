@@ -1006,7 +1006,7 @@ spec = do
       (GHC.showPpr tl) `shouldBe` "MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x"
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n     where\n       nn = nn2\n\n \n  c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n     where\n       nn = nn2\n\n \n \n  c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       (GHC.showPpr nb) `shouldBe` "MoveDef.Md1.toplevel x\n  = MoveDef.Md1.c GHC.Num.* x\n  where\n      nn = nn2"
 
 
@@ -1039,7 +1039,7 @@ spec = do
       (GHC.showPpr tl) `shouldBe` "MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x"
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n     where\n       nn :: Int\n       nn = nn2\n\n \n  c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n     where\n       nn :: Int\n       nn = nn2\n\n \n \n  c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       (GHC.showPpr nb) `shouldBe` "MoveDef.Md1.toplevel x\n  = MoveDef.Md1.c GHC.Num.* x\n  where\n      nn :: GHC.Types.Int\n      nn = nn2"
 
 
@@ -1067,7 +1067,7 @@ spec = do
       -- (showToks $ take 30 $ toks) `shouldBe` ""
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n -- c,d :: Integer\n c = 7\n d = 9\n\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n     where\n       nn = nn2\n\n \n  -- c,d :: Integer\n c = 7\n d = 9\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n     where\n       nn = nn2\n\n \n \n  -- c,d :: Integer\n c = 7\n d = 9\n\n\n "
       (GHC.showPpr nb) `shouldBe` "MoveDef.Demote.toplevel x\n  = MoveDef.Demote.c GHC.Num.* x\n  where\n      nn = nn2"
 
     -- -------------------------------------------
@@ -1093,7 +1093,7 @@ spec = do
       (GHC.showPpr tl) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md2 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x * b\n   where\n     b = 3\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md2 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x * b\n   where\n     b = 3\n     nn = nn2\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md2 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x * b\n   where\n     b = 3\n     nn = nn2\n \n  c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       (GHC.showPpr nb) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3\n      nn = nn2"
 
     -- -------------------------------------------
@@ -1126,7 +1126,7 @@ spec = do
       (GHC.showPpr tl) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md2 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x * b\n   where\n     b = 3\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md2 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x * b\n   where\n     b = 3\n     nn :: Int\n     nn = nn2\n  c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md2 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x * b\n   where\n     b = 3\n     nn :: Int\n     nn = nn2\n \n  c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       (GHC.showPpr nb) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3\n      nn :: GHC.Types.Int\n      nn = nn2"
 
 
@@ -1158,7 +1158,7 @@ spec = do
       (GHC.showPpr tl) `shouldBe` "Demote.WhereIn3.sumSquares x y\n  = Demote.WhereIn3.sq p x GHC.Num.+ Demote.WhereIn3.sq p y\n  where\n      p = 2"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n                sq :: Int -> Int -> Int\n                sq pow 0 = 0\n                sq pow z = z ^ pow\n  sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n                sq :: Int -> Int -> Int\n                sq pow 0 = 0\n                sq pow z = z ^ pow\n \n  sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
       (GHC.showPpr nb) `shouldBe` "Demote.WhereIn3.sumSquares x y\n  = Demote.WhereIn3.sq p x GHC.Num.+ Demote.WhereIn3.sq p y\n  where\n      p = 2\n      Demote.WhereIn3.sq ::\n        GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int\n      Demote.WhereIn3.sq pow 0 = 0\n      Demote.WhereIn3.sq pow z = z GHC.Real.^ pow"
 
 
@@ -1204,8 +1204,8 @@ spec = do
       (GHC.showPpr tl) `shouldBe` "Demote.WhereIn3.sumSquares x y\n  = Demote.WhereIn3.sq p x GHC.Num.+ Demote.WhereIn3.sq p y\n  where\n      p = 2"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2 {-There is a comment-}\n                sq :: Int -> Int -> Int\n                sq pow 0 = 0\n                sq pow z = z ^ pow --there is a comment\n\n\n sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
-      (GHC.showPpr nb) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3\n      nn :: GHC.Types.Int\n      nn = nn2"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n                sq :: Int -> Int -> Int\n                sq pow 0 = 0\n                sq pow z = z^pow  --there is a comment\n \n  sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (GHC.showPpr nb) `shouldBe` "Demote.WhereIn3.sumSquares x y\n  = Demote.WhereIn3.sq p x GHC.Num.+ Demote.WhereIn3.sq p y\n  where\n      p = 2\n      Demote.WhereIn3.sq ::\n        GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int\n      Demote.WhereIn3.sq pow 0 = 0\n      Demote.WhereIn3.sq pow z = z GHC.Real.^ pow"
 
 
   -- ---------------------------------------------
@@ -1519,25 +1519,25 @@ spec = do
 
   describe "rmQualifier" $ do
     it "Removes the qualifiers from a list of identifiers in a given syntax phrase" $ do
-      pending "Is this function needed?"
-    {-
+      (t, toks) <- parsedFileWhereIn3Ghc
       let
         comp = do
-          (t, toks) <- parseSourceFileGhc "./test/testdata/MoveDef/Md1.hs"
-          putParsedModule t toks
           renamed <- getRefactRenamed
 
-          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Md1.hs") (40,4) renamed
-          let (decl,_toks) = getDeclAndToks name True toks renamed
+          let Just (GHC.L _ sq) = locToName whereIn3FileName (14, 1) renamed
 
-          res <- rmQualifier [name] decl
-          return (res,decl,n,name)
+          let ([sqDecl],declToks) = getDeclAndToks sq True toks renamed
 
-      ((t,d,n1,n2),s) <- runRefactGhcState comp 
-      (GHC.showPpr n1) `shouldBe` "MoveDef.Md1.tlFunc"
-      (GHC.showPpr d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
-      "a" `shouldBe` "what?"
-    -}
+          res <- rmQualifier [sq] sqDecl
+          return (res,sqDecl,sq)
+
+      ((r,d,n1),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showPpr n1) `shouldBe` "Demote.WhereIn3.sq"
+      (GHC.showPpr d) `shouldBe` "Demote.WhereIn3.sq pow 0 = 0\nDemote.WhereIn3.sq pow z = z GHC.Real.^ pow"
+      (GHC.showPpr r) `shouldBe` "sq pow 0 = 0\nsq pow z = z GHC.Real.^ pow"
+
+    it "Removes the qualifiers and updates the tokens" $ do
+      pending "Is this needed?"
 
   -- ---------------------------------------
 

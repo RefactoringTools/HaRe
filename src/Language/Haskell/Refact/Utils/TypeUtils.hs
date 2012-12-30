@@ -2543,8 +2543,6 @@ addDecl parent pn (decl, msig, declToks) topLevel
         -- error ("addLocalDecl:(parent,localDecls)=" ++ (GHC.showPpr (parent,localDecls))) -- ++AZ++ debug
         let (startPos@(_,_startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
               =if (emptyList localDecls)
-                   -- then getStartEndLoc parent    --The 'where' clause is empty
-                   -- else getStartEndLoc localDecls
                    then startEndLocIncFowComment toks parent    --The 'where' clause is empty
                    else startEndLocIncFowComment toks localDecls
             -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
@@ -2600,7 +2598,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         let nlToken2 = newLnToken (glast "addLocalDecl5" newToks)
         let oldToks'=getToks (startPos,endPos') toks
-            toks'=replaceToks toks startPos endPos' (oldToks'++newToks++[nlToken2])
+            toks'=replaceToks toks startPos endPos' (oldToks'++newToks++[nlToken2,newLnToken nlToken2])
 
         putToks toks' modified
 
@@ -3717,11 +3715,13 @@ rmQualifier pns t =
        | elem pn pns
        = do do toks <- fetchToks
                -- let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
-               let s = GHC.showPpr pn -- ++TODO: replace this with the appropriate formulation
+               let (rs,_) = break (=='.') $ reverse $ GHC.showPpr pn -- ++TODO: replace this with the appropriate formulation
+                   s = reverse rs
+               {- TODO: reinstate token update if required
                let (row,col) = getGhcLoc l
                let toks' = replaceToks toks (row,col) (row,col) [mkToken (GHC.ITvarid (GHC.mkFastString s)) (row,col) s]
                putToks toks' modified
-          
+               -}
                return (GHC.L l (GHC.mkInternalName (GHC.nameUnique pn) (GHC.mkVarOcc s) l))
      rename x = return  x
 
