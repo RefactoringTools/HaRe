@@ -930,11 +930,13 @@ doDemoting' t pn
               -- uselist <- uses declaredPns (hsBinds t\\demotedDecls)
               let -- uselist = uses declaredPns (hsBinds t\\demotedDecls)
                   otherBinds = (deleteFirstsBy sameBind (hsBinds t) demotedDecls)
-                  uselist = uses declaredPns otherBinds
+                  -- uselist = uses declaredPns otherBinds
                       {- From 'hsDecls t' to 'hsDecls t \\ demotedDecls'.
                          Bug fixed 06/09/2004 to handle direct recursive function.
                        -}
-              -- error ("doDemoting':(pn,declaredPns,otherBinds,useList)=" ++ (GHC.showPpr (pn,declaredPns,otherBinds,uselist))) -- ++AZ++
+                  uselist = concatMap (\r -> if (emptyList r) then [] else ["Used"])$ map (\b -> uses declaredPns [b]) otherBinds
+                  -- uselist' =map (\b -> uses declaredPns [b]) otherBinds
+              -- error ("doDemoting':(pn,declaredPns,otherBinds,useList,uselist')=" ++ (GHC.showPpr (pn,declaredPns,otherBinds,uselist,uselist'))) -- ++AZ++
               -- error ("doDemoting':(pn,origDecls,demotedDecls,uselist)=" ++ (GHC.showPpr (pn,origDecls,demotedDecls,uselist))) -- ++AZ++
               case  length uselist  of
                   0 ->do error "\n Nowhere to demote this function!\n"
@@ -946,9 +948,7 @@ doDemoting' t pn
                          -- let ds=foldl (flip removeTypeSig) (hsBinds t\\demotedDecls) declaredPns
                          -- let ds=foldl (flip removeTypeSig) (deleteFirstsBy sameBind (hsBinds t) demotedDecls) declaredPns
 
-                         -- TODO: reinstate second line, once type signature issue in duplicateDecls is resolved
                          ds <- rmDecl pn True (hsBinds t)
-                         -- ds <- rmDecl pn True t
                          t' <- rmTypeSig pn t
 
                          --get those varaibles declared at where the demotedDecls will be demoted to
@@ -991,6 +991,7 @@ doDemoting' t pn
 
     where
           ---find how many matches/pattern bindings use  'pn'-------
+          uses :: (SYB.Data t) => [GHC.Name] -> [t] -> [[String]]
           uses pns
                = SYB.everythingStaged SYB.Renamer (++) []
                    ([] `SYB.mkQ`  usedInMatch

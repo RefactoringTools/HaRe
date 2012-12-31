@@ -465,7 +465,7 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
        -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
 
      where
-       modifyFile ((fileName,_),(ts,_)) = do
+       modifyFile ((fileName,_),(ts,renamed)) = do
            -- let source = concatMap (snd.snd) ts
 
            let ts' = bypassGHCBug7351 ts
@@ -480,6 +480,8 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            seq (length source) (writeFile (fileName ++ ".refactored") source)
 
            writeFile (fileName ++ ".tokens") (showToks ts')
+           writeFile (fileName ++ ".renamed_out") (GHC.showPpr renamed)
+           writeFile (fileName ++ ".AST_out") (SYB.showData SYB.Renamer 0 renamed)
 
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not

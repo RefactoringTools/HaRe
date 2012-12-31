@@ -1343,7 +1343,7 @@ class (SYB.Data t) => HsValBinds t where
 
     -- | Return True if the specified identifier is declared in the
     -- given syntax phrase.
-    isDeclaredIn :: GHC.Name -> t -> Bool
+    -- isDeclaredIn :: GHC.Name -> t -> Bool
 
 
 instance HsValBinds (GHC.RenamedSource) where
@@ -1353,13 +1353,17 @@ instance HsValBinds (GHC.RenamedSource) where
     where
       grp' = grp {GHC.hs_valds = binds}
 
+
 instance HsValBinds (GHC.HsValBinds GHC.Name) where
   hsValBinds vb = vb
-  replaceValBinds = error "undefined replaceValBinds (GHC.HsValBinds GHC.Name)"
+  replaceValBinds _old new = new
 
 instance HsValBinds (GHC.HsGroup GHC.Name) where
   hsValBinds grp = (GHC.hs_valds grp)
-  replaceValBinds = error "undefined replaceValBinds (GHC.HsGroup GHC.Name)"
+
+  replaceValBinds (GHC.HsGroup b t i d f de fo w a r v doc) binds
+    = (GHC.HsGroup b' t i d f de fo w a r v doc)
+       where b' = replaceValBinds b binds
 
 instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
   hsValBinds lb = case lb of
@@ -1367,8 +1371,8 @@ instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
     GHC.HsIPBinds _     -> emptyValBinds
     GHC.EmptyLocalBinds -> emptyValBinds
 
-  replaceValBinds (GHC.HsValBinds b) new    = (GHC.HsValBinds new)
-  replaceValBinds (GHC.HsIPBinds b) new     = error "undefined replaceValBinds HsIPBinds"
+  replaceValBinds (GHC.HsValBinds _b) new    = (GHC.HsValBinds new)
+  replaceValBinds (GHC.HsIPBinds _b) new     = error "undefined replaceValBinds HsIPBinds"
   replaceValBinds (GHC.EmptyLocalBinds) new = (GHC.HsValBinds new)
 
 instance HsValBinds (GHC.GRHSs GHC.Name) where
@@ -1407,7 +1411,7 @@ instance HsValBinds (GHC.LMatch GHC.Name) where
 instance HsValBinds (GHC.Match GHC.Name) where
   hsValBinds (GHC.Match _ _ grhs) = hsValBinds grhs
 
-  replaceValBinds (GHC.Match p t (GHC.GRHSs rhs binds)) newBinds
+  replaceValBinds (GHC.Match p t (GHC.GRHSs rhs _binds)) newBinds
     = (GHC.Match p t (GHC.GRHSs rhs binds'))
       where
         binds' = (GHC.HsValBinds newBinds)
@@ -1424,9 +1428,13 @@ instance HsValBinds (GHC.HsBind GHC.Name) where
 instance HsValBinds (GHC.HsExpr GHC.Name) where
   hsValBinds (GHC.HsLet ds _) = hsValBinds ds
 
+  replaceValBinds (GHC.HsLet binds ex) new = (GHC.HsLet (replaceValBinds binds new) ex)
+  replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" ++ (GHC.showPpr old)
+
 instance HsValBinds (GHC.Stmt GHC.Name) where
   hsValBinds (GHC.LetStmt ds) = hsValBinds ds
-  replaceValBinds = error "replaceValBinds (GHC.Stmt GHC.Name) undefined"
+  replaceValBinds (GHC.LetStmt ds) new = (GHC.LetStmt (replaceValBinds ds new))
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (GHC.showPpr old)
 
 
 -- ---------------------------------------------------------------------
@@ -1464,7 +1472,7 @@ instance HsValBinds ([GHC.LHsBind GHC.Name]) where
   -- replaceValBinds old new = error ("replaceValBinds (old,new)=" ++ (GHC.showPpr (old,new)))
 
 instance HsValBinds (GHC.LHsExpr GHC.Name) where
-  hsValBinds (GHC.L _ (GHC.HsLet binds ex)) = hsValBinds binds
+  hsValBinds (GHC.L _ (GHC.HsLet binds _ex)) = hsValBinds binds
   hsValBinds _                              = emptyValBinds
 
 -- ---------------------------------------------------------------------

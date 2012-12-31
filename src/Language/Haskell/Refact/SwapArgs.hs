@@ -106,7 +106,7 @@ reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n1) renamed = do
                 = do let (t1:t2:ts) = tyFunToList types
                      t1' <- update t1 t2 t1
                      t2' <- update t2 t1 t2
-                     return (GHC.L x (GHC.TypeSig [GHC.L x2 name] (tyListToFun (t1':t2:ts))))
+                     return (GHC.L x (GHC.TypeSig [GHC.L x2 name] (tyListToFun (t1':t2':ts))))
            
          inType ty@(GHC.L x (GHC.TypeSig (n:ns) types)::GHC.LSig GHC.Name)
            | GHC.nameUnique n1 `elem` (map (\(GHC.L _ n) -> GHC.nameUnique n) (n:ns))
@@ -118,8 +118,8 @@ reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n1) renamed = do
          tyFunToList (GHC.L _ (GHC.HsFunTy t1 t2)) = t1 : (tyFunToList t2)
          tyFunToList t = [t]
 
-         tyListToFun (t1:ts) = GHC.noLoc (GHC.HsFunTy t1 (tyListToFun ts))
          tyListToFun [t1] = t1
+         tyListToFun (t1:ts) = GHC.noLoc (GHC.HsFunTy t1 (tyListToFun ts))
 
          updateMatches [] = return []
          updateMatches (i@(GHC.L x m@(GHC.Match pats nothing rhs)::GHC.Located (GHC.Match GHC.Name)):matches)
