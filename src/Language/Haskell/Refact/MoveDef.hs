@@ -1019,6 +1019,7 @@ doDemoting' t pn
           -- duplicateDecls :: (SYB.Data t) =>[GHC.Name] -> t -> RefactGhc [GHC.LHsBind GHC.Name]
           duplicateDecls pns demoted dsig dtoks decls
              = do everywhereMStaged SYB.Renamer (SYB.mkM dupInMatch
+             -- = do somewhereMStaged SYB.Renamer (SYB.mkM dupInMatch
                                                 `SYB.extM` dupInPat) decls
              {-
              = do applyTP (once_tdTP (failTP `adhocTP` dupInMatch
@@ -1028,17 +1029,19 @@ doDemoting' t pn
              -}
                where
                  -- dupInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-                 dupInMatch ((GHC.Match pats mt rhs) :: GHC.Match GHC.Name)
+                 dupInMatch (match@(GHC.Match pats mt rhs) :: GHC.Match GHC.Name)
                    -- | any (flip findPN match) pns && not (any (flip findPN name) pns)
                    | (not $ findPNs pns pats) && findPNs pns rhs
                    =  do
                         --If not fold parameters.
                         -- moveDecl pns pats False decls False
+                        {- ++AZ++ foldParams instead
                         rhs' <- addDecl rhs Nothing (demoted,dsig,dtoks) False
                         return (GHC.Match pats mt rhs')
-
+                        -}
                         -- If fold parameters.
-                        -- foldParams pns match decls
+                        match' <- foldParams pns match decls demoted
+                        return match'
                  -- dupInMatch _ =mzero
                  dupInMatch x = return x
 
@@ -1201,20 +1204,26 @@ doDemoting' t pn
 -}
 --PROBLEM: TYPE SIGNATURE SHOULD BE CHANGED.
 --- TEST THIS FUNCTION!!!
-foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls
-  = do return ()
+foldParams :: [GHC.Name] -> GHC.Match GHC.Name -> [GHC.LHsBind GHC.Name] -> GHC.LHsBind GHC.Name -> RefactGhc (GHC.Match GHC.Name)
+foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demotedDecls
+     -- = do return match
 
-{-
-     =do let matches=concatMap matchesInDecls demotedDecls
+     =do let matches=concatMap matchesInDecls [GHC.unLoc demotedDecls]
              pn=ghead "foldParams" pns    --pns /=[]
-         params<-allParams pn rhs []
+         params <- allParams pn rhs []
+         -- error $ "MoveDef.foldParams: (pns,decls)=" ++ (GHC.showPpr (pns,decls)) -- ++AZ++
+         -- error $ "MoveDef.foldParams: (demotedDecls)=" ++ (GHC.showPpr (demotedDecls)) -- ++AZ++
+         -- error $ "MoveDef.foldParams: (params,pn)=" ++ (GHC.showPpr (params,pn)) -- ++AZ++
+         -- error $ "MoveDef.foldParams: (length matches)=" ++ (GHC.showPpr (length matches)) -- ++AZ++
          if (length.nub.map length) params==1                  -- have same number of param 
              && ((length matches)==1)      -- only one 'match' in the demoted declaration
-           then do let patsInDemotedDecls=(patsInMatch.(ghead "foldParams")) matches
+           then do
+                   let patsInDemotedDecls=(patsInMatch.(ghead "foldParams")) matches
                        subst=mkSubst patsInDemotedDecls params
                        fstSubst=map fst subst
                        sndSubst=map snd subst
                    rhs'<-rmParamsInParent pn sndSubst rhs
+                   {-
                    ls<-mapM hsFreeAndDeclaredPNs sndSubst
                    -- newNames contains the newly introduced names to the demoted decls---
                    let newNames=(map pNtoName (concatMap fst ls)) \\ (map pNtoName fstSubst)
@@ -1229,20 +1238,26 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls
                    let demotedDecls''' = definingDecls pns decls' True False
                    moveDecl pns (HsMatch loc1 name pats rhs' ds) False decls' False
                    return (HsMatch loc1 name pats rhs' (ds++(filter (not.isTypeSig) demotedDecls''')))
-           else  do  moveDecl pns match False decls True
-                     return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding 
+                   -}
+                   return match
+           else  do  -- moveDecl pns match False decls True
+                     -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding 
+                     return match
 
+         -- return match
     where
 
-       matchesInDecls ((Dec (HsFunBind loc matches))::HsDeclP)=matches
-       matchesInDecls x = []
+       -- matchesInDecls ((Dec (HsFunBind loc matches))::HsDeclP)=matches
+       matchesInDecls (GHC.FunBind _ _ (GHC.MatchGroup matches _) _ _ _) = matches
+       matchesInDecls _x = []
 
-       patsInMatch ((HsMatch loc1 name pats rhs ds)::HsMatchP)
-         =pats
+       -- patsInMatch ((HsMatch loc1 name pats rhs ds)::HsMatchP)
+       --   =pats
+       patsInMatch (GHC.L _ (GHC.Match pats _ _)) = pats
 
-       demotedDecls=definingDecls pns decls True False
+       -- demotedDecls = map GHC.unLoc $ definingDeclsNames pns decls True False
 
-
+{-
        foldInDemotedDecls  pns clashedNames subst decls
           = applyTP (stop_tdTP (failTP `adhocTP` worker)) decls
           where
@@ -1253,7 +1268,7 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls
                  rmParamsInDemotedDecls (map fst subst) match''
 
           worker _ = mzero
-
+-}
 
       ------Get all of the paramaters supplied to pn ---------------------------
             {- eg. sumSquares x1 y1 x2 y2 = rt x1 y1 + rt x2 y2
@@ -1262,6 +1277,105 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls
               'allParams pn rhs []'  returns [[x1,x2],[y1,y2]]
                 where pn is 'rt' and  rhs is 'rt x1 y1 + rt x2 y2'
            -}
+
+       allParams :: GHC.Name -> GHC.GRHSs GHC.Name -> [[GHC.HsExpr GHC.Name]]
+                 -> RefactGhc [[GHC.HsExpr GHC.Name]]
+       allParams pn rhs initial  -- pn: demoted function/pattern name.
+        =do -- p<-getOneParam pn rhs
+            let p = getOneParam pn rhs
+            -- putStrLn (show p)
+            if (nonEmptyList p) then do rhs' <- rmOneParam pn rhs
+                                        -- error $ "allParams: rhs=" ++ (SYB.showData SYB.Renamer 0 rhs) -- ++AZ++
+                                        -- error $ "allParams: rhs'=" ++ (SYB.showData SYB.Renamer 0 rhs') -- ++AZ++
+                                        allParams pn rhs' (initial++[p])
+                     else return initial
+        where
+           getOneParam :: (SYB.Data t) => GHC.Name -> t -> [GHC.HsExpr GHC.Name]
+           getOneParam pn
+              = SYB.everythingStaged SYB.Renamer (++) []
+                   ([] `SYB.mkQ`  worker)
+              -- =applyTU (stop_tdTU (failTU `adhocTU` worker))
+                where
+                  worker :: GHC.HsExpr GHC.Name -> [GHC.HsExpr GHC.Name]
+                  worker (GHC.HsApp e1 e2)
+                   |(expToName e1==pn) = [GHC.unLoc e2]
+                  worker _ = []
+           rmOneParam :: (SYB.Data t) => GHC.Name -> t -> RefactGhc t
+           rmOneParam pn t
+              -- This genuinely needs to be done once only. Damn.
+              -- =applyTP (stop_tdTP (failTP `adhocTP` worker))
+             = do
+                _ <- clearRefactDone
+                everywhereMStaged' SYB.Renamer (SYB.mkM worker) t
+                where
+                  {-
+                  worker :: GHC.HsExpr GHC.Name -> RefactGhc (GHC.HsExpr GHC.Name)
+                  worker e@(GHC.HsApp e1 e2 ) = do -- The param being removed is e2
+                    done <- getRefactDone
+                    case (not done) && expToName e1==pn of
+                      True ->  do setRefactDone
+                                  return (GHC.unLoc e1)
+                      False -> return e
+                  worker x = return x
+                  -}
+                  worker (GHC.HsApp e1 e2 ) -- The param being removed is e2
+                    |expToName e1==pn = return (GHC.unLoc e1)
+                  worker x = return x
+{-
+              AST output
+
+                 addthree x y z
+
+              becomes
+
+                  (HsApp
+                    (L {test/testdata/Demote/WhereIn6.hs:10:17-28}
+                     (HsApp
+                      (L {test/testdata/Demote/WhereIn6.hs:10:17-26}
+                       (HsApp
+                        (L {test/testdata/Demote/WhereIn6.hs:10:17-24}
+                         (HsVar {Name: WhereIn6.addthree}))
+                        (L {test/testdata/Demote/WhereIn6.hs:10:26}
+                         (HsVar {Name: x}))))
+                      (L {test/testdata/Demote/WhereIn6.hs:10:28}
+                       (HsVar {Name: y}))))
+                    (L {test/testdata/Demote/WhereIn6.hs:10:30}
+                     (HsVar {Name: z})))
+
+-----
+                  (HsApp
+                     (HsApp
+                       (HsApp
+                         (HsVar {Name: WhereIn6.addthree}))
+                         (HsVar {Name: x}))))
+                       (HsVar {Name: y}))))
+                     (HsVar {Name: z})))
+
+-----
+
+                  sq p x
+
+               becomes
+
+                  (HsApp
+                   (HsApp
+                     (HsVar {Name: Demote.WhereIn4.sq}))
+                     (HsVar {Name: p}))))
+                   (HsVar {Name: x})))
+
+----
+                  sq x
+
+               becomes
+
+                  (HsApp
+                   (HsVar {Name: sq}))
+                   (HsVar {Name: x})))
+-}
+
+
+
+       {- ++AZ++ original
        allParams pn rhs initial  -- pn: demoted function/pattern name.
         =do p<-getOneParam pn rhs
             --putStrLn (show p)
@@ -1281,7 +1395,9 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls
                   worker (Exp (HsApp e1 e2 ))
                     |expToPN e1==pn =return e1
                   worker _ =mzero
+       -}
 
+{-
        -----------remove parameters in demotedDecls-------------------------------
        rmParamsInDemotedDecls ps
          =applyTP (once_tdTP (failTP `adhocTP` worker))
@@ -1290,11 +1406,25 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls
                                           elem (patToPN x) ps)) pats
                          pats'<-update pats pats' pats
                          return (HsMatch loc1 name pats' rhs ds)
-
+-}
 
        ----------remove parameters in the parent functions' rhs-------------------
        --Attention: PNT i1 _ _==PNT i2 _ _ = i1 =i2
+       rmParamsInParent :: GHC.Name -> [GHC.HsExpr GHC.Name] -> GHC.GRHSs GHC.Name 
+                        -> RefactGhc (GHC.GRHSs GHC.Name)
        rmParamsInParent  pn es
+         -- =applyTP (full_buTP (idTP `adhocTP` worker))
+         = everywhereMStaged SYB.Renamer (SYB.mkM worker)
+            where worker exp@(GHC.L _ (GHC.HsApp e1 e2))
+                   -- | findPN pn e1 && (elem (GHC.unLoc e2) es)
+                   | findPN pn e1 && (elem (GHC.showPpr (GHC.unLoc e2)) (map GHC.showPpr es))
+                      = update exp e1 exp
+                  worker (exp@(GHC.L _ (GHC.HsPar e1)))
+                    |pn==expToName e1
+                       = update exp e1 exp
+                  worker x =return x
+
+         {-
          =applyTP (full_buTP (idTP `adhocTP` worker))
             where worker exp@(Exp (HsApp e1 e2))
                    | findPN pn e1 && elem e2 es
@@ -1303,20 +1433,29 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls
                     |pn==expToPN e1
                        =update exp e1 exp
                   worker x =return x
-
+          -}
+{-
        getClashedNames oldNames newNames (match::HsMatchP)
          = do  (f,d)<-hsFDsFromInside match
                ds'<-mapM (flip hsVisiblePNs match) oldNames
                -- return clashed names
                return (filter (\x->elem (pNtoName x) newNames)  --Attention: nub
                                    ( nub (d `union` (nub.concat) ds')))
+       -}
        ----- make Substitions between formal and actual parameters.-----------------
+       mkSubst :: [GHC.LPat GHC.Name] -> [[GHC.HsExpr GHC.Name]] -> [(GHC.Name,GHC.HsExpr GHC.Name)]
        mkSubst pats params
+           = catMaybes (zipWith (\x y ->if (patToPNT x/=Nothing) && (length (nub $ map GHC.showPpr y)==1)
+                            then Just (fromJust $ patToPNT x,(ghead "mkSubst") y)
+                            else Nothing) pats params)
+           {-
            = catMaybes (zipWith (\x y ->if (patToPN x/=defaultPN) && (length (nub y)==1)
                             then Just (patToPN x,(ghead "mkSubst") y)
                             else Nothing) pats params)
+           -}
 
 
+{-
 --substitute an old expression by new expression
 replaceExpWithUpdToks  decls subst
   = applyTP (full_buTP (idTP `adhocTP` worker)) decls

@@ -93,7 +93,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Identifiers, expressions, patterns and declarations
     ,pNTtoPN -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
-    ,ghcToPN,lghcToPN
+    ,ghcToPN,lghcToPN, expToName
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     ,definingDecls, definedPNs
     ,definingDeclsNames, definingSigsNames
@@ -289,10 +289,17 @@ defaultPNT = PNT (GHC.L GHC.noSrcSpan (mkRdrName "nothing"))
 defaultPN :: PName
 defaultPN = PN (mkRdrName "nothing")
 
+defaultName :: GHC.Name
+defaultName = n
+  where
+    un = GHC.mkUnique 'H' 0 -- H for HaRe :)
+    n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc "nothing")
+
 -- | Default expression.
 defaultExp::HsExpP
 -- defaultExp=Exp (HsId (HsVar defaultPNT))
 defaultExp=GHC.HsVar $ mkRdrName "nothing"
+
 
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
@@ -3932,11 +3939,50 @@ ghcToPN rdr = PN rdr
 lghcToPN :: GHC.Located GHC.RdrName -> PName
 lghcToPN (GHC.L _ rdr) = PN rdr
 
+
+-- | If an expression consists of only one identifier then return this
+-- identifier in the GHC.Name format, otherwise return the default Name
+expToName:: GHC.Located (GHC.HsExpr GHC.Name) -> GHC.Name
+expToName (GHC.L _ (GHC.HsVar pnt)) = pnt
+expToName (GHC.L _ (GHC.HsPar e))   = expToName e
+expToName _ = defaultName
+
+{- From Utils,hs
+-- | If an expression consists of only one identifier then return this identifier in the PNT format,
+--  otherwise return the default PNT.
+
+-- TODO: bring in data constructor constants too.
+-- expToPNT ::
+--  GHC.GenLocated GHC.SrcSpan (GHC.HsExpr PNT)
+--  -> Maybe PNT
+
+-- Will have to look this up ....
+expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just (PNT (GHC.L x pnt))
+-- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
+-- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
+-- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
+-- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
+expToPNT _ = Nothing
+
+expToName (GHC.L l (GHC.HsVar name)) = Just name
+expToName _ = Nothing
+
+-}
+
+
+
+
+
+
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing
 patToPNT::GHC.LPat GHC.Name -> Maybe GHC.Name
 patToPNT (GHC.L _ (GHC.VarPat n)) = Just n
 patToPNT _ = Nothing
+
+
+
+
 
 {-
 -- | If a pattern consists of only one identifier then returns this identifier in the PName format,

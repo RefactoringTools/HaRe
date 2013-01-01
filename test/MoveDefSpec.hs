@@ -98,13 +98,10 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn4 14 1" $ do
-     pending "need to fold parameters"
-     {-
      doDemote ["./test/testdata/Demote/WhereIn4.hs","14","1"]
      diff <- compareFiles "./test/testdata/Demote/WhereIn4.hs.refactored"
                           "./test/testdata/Demote/WhereIn4.hs.expected"
      diff `shouldBe` []
-     -}
 
     -- -----------------------------------------------------------------
 
@@ -117,13 +114,13 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn6 13 1" $ do
-     pending "todo"
-{-
+     -- pending "todo"
+
      doDemote ["./test/testdata/Demote/WhereIn6.hs","13","1"]
      diff <- compareFiles "./test/testdata/Demote/WhereIn6.hs.refactored"
                           "./test/testdata/Demote/WhereIn6.hs.expected"
      diff `shouldBe` []
--}
+
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn7 13 1" $ do

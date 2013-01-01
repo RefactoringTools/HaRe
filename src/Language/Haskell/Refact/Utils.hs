@@ -6,9 +6,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Language.Haskell.Refact.Utils
-       ( expToPNT
-       , expToName
-       , locToExp
+       ( locToExp
        , sameOccurrence
 
        -- * Managing the GHC / project environment
@@ -255,6 +253,7 @@ runRefacSession settings comp = do
    initialState = RefSt
         { rsSettings = fromMaybe (RefSet ["."]) settings
         , rsUniqState = 1
+        , rsFlags = RefFlags False
         , rsModule = Nothing
         }
   (refactoredMods,_s) <- runRefactGhc (initGhcSession >> comp) initialState
@@ -285,13 +284,13 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
     -- restore the state. Fix this to store the modules in some kind of cache.
-    (RefSt settings u _) <- get
+    (RefSt settings u f _) <- get
 
     let rs = RefMod { rsTypecheckedMod = parsedFile
                     , rsTokenStream = toks
                     , rsStreamModified = False
                     }
-    put (RefSt settings u (Just rs))
+    put (RefSt settings u f (Just rs))
 
     refac  -- Run the refactoring, updating the state as required
     mod'  <- getRefactRenamed
@@ -513,26 +512,6 @@ bypassGHCBug7351 ts = map go ts
 
    fixCol l = GHC.mkSrcSpan (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanStartLine l) ((GHC.srcSpanStartCol l) - 1)) 
                             (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanEndLine l) ((GHC.srcSpanEndCol l) - 1)) 
-
--- | If an expression consists of only one identifier then return this identifier in the PNT format,
---  otherwise return the default PNT.
-
--- TODO: bring in data constructor constants too.
--- expToPNT ::
---  GHC.GenLocated GHC.SrcSpan (GHC.HsExpr PNT)
---  -> Maybe PNT
-
--- Will have to look this up ....
-expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just (PNT (GHC.L x pnt))
--- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
--- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
--- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
--- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
-expToPNT _ = Nothing
-
-expToName (GHC.L l (GHC.HsVar name)) = Just name
-expToName _ = Nothing
-
 
 -- ---------------------------------------------------------------------
 

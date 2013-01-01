@@ -96,7 +96,7 @@ reallyDoSwap pnt@(PNT (GHC.L _ _)) name@(GHC.L s n1) renamed = do
          
          -- 2. All call sites of the function...
          inExp exp@((GHC.L x (GHC.HsApp (GHC.L y (GHC.HsApp e e1)) e2))::GHC.Located (GHC.HsExpr GHC.Name))
-            | GHC.nameUnique (fromJust $ expToName e) == GHC.nameUnique n1 
+            | GHC.nameUnique (expToName e) == GHC.nameUnique n1 
                    =  update e2 e1 =<< update e1 e2 exp
          inExp e = return e
          

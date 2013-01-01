@@ -49,6 +49,7 @@ initialState :: RefactState
 initialState = RefSt
   { rsSettings = RefSet ["./test/testdata/"]
   , rsUniqState = 1
+  , rsFlags = RefFlags False
   , rsModule = Nothing
   }
 
@@ -69,6 +70,7 @@ runRefactGhcState paramcomp = do
      initialState = RefSt
         { rsSettings = RefSet ["./test/testdata/"]
         , rsUniqState = 1
+        , rsFlags = RefFlags False
         , rsModule = Nothing
         }
   (r,s) <- runRefactGhc (initGhcSession >> paramcomp) initialState

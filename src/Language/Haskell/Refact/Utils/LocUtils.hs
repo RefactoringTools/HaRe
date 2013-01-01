@@ -8,7 +8,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -}
                      SimpPos,unmodified,modified
                      , simpPos0
-                     , emptyList
+                     , emptyList, nonEmptyList
                      , showToks
                      , tokenCol, tokenRow
                      , tokenPos, tokenPosEnd

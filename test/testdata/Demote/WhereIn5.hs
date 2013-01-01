@@ -7,10 +7,10 @@ module Demote.WhereIn5 where
 --In this example, demote the top level 'pow' to 'sq'
 --This example aims to test demoting a function/pattern binding multi-levels.
 
-sumSquares x y = sq x + sq y       
+sumSquares x y = sq x + sq y
          where sq 0=0
                sq z=z^pow {-There 
-is a comment-}               
+is a comment-}
 pow=2
 
 anotherFun 0 y = sq y
