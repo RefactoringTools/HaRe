@@ -1,4 +1,4 @@
-module WhereIn6 where
+module Demote.WhereIn6 where
 
 --A definition can be demoted to the local 'where' binding of a friend declaration,
 --if it is only used by this friend declaration.

@@ -80,7 +80,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
     -- ** Updating
     -- ,Update(update)
-    {- ,qualifyPName-},rmQualifier,renamePN -- ,replaceNameInPN,autoRenameLocalVar
+    {- ,qualifyPName-},rmQualifier,renamePN {- ,replaceNameInPN -},autoRenameLocalVar
 
 -- * Miscellous
     -- ** Parsing, writing and showing
@@ -88,12 +88,13 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Locations
    -- ,toRelativeLocs, rmLocs
     -- ** Default values
-   ,defaultPN,defaultPNT {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
+   ,defaultPN,defaultPNT,defaultName {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
 
 
     -- ** Identifiers, expressions, patterns and declarations
     ,pNTtoPN -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
     ,ghcToPN,lghcToPN, expToName
+    ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     ,definingDecls, definedPNs
     ,definingDeclsNames, definingSigsNames
@@ -102,7 +103,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Others
     -- , applyRefac, applyRefacToClientMods
-    , mkRdrName,mkNewName,mkNewToplevelName
+    , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
     ,getDeclToks, getSigToks, causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
@@ -305,8 +306,8 @@ mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
 -- | Make a new GHC.Name, using the Unique Int sequence stored in the
 -- RefactState
-mkNewName :: String -> RefactGhc GHC.Name
-mkNewName name = do
+mkNewGhcName :: String -> RefactGhc GHC.Name
+mkNewGhcName name = do
   s <- get
   u <- gets rsUniqState
   put s { rsUniqState = (u+1) }
@@ -330,6 +331,22 @@ mkNewToplevelName modid name defLoc = do
         -- mkExternalName :: Unique -> Module -> OccName -> SrcSpan -> Name
       n = GHC.mkExternalName un modid (GHC.mkVarOcc name) defLoc
   return n
+
+---------------------------------------------------------------------------
+
+
+-- |Create a new name base on the old name. Suppose the old name is 'f', then
+--  the new name would be like 'f_i' where 'i' is an integer.
+mkNewName::String      -- ^ The old name
+          ->[String]   -- ^ The set of names which the new name cannot take
+          ->Int        -- ^ The posfix value
+          ->String     -- ^ The result
+mkNewName oldName fds suffix
+  =let newName=if suffix==0 then oldName
+                            else oldName++"_"++ show suffix
+   in if elem newName fds
+        then mkNewName oldName fds (suffix+1)
+        else newName
 
 -- ---------------------------------------------------------------------
 
@@ -674,8 +691,8 @@ hsVisibleNames e t = ((nub.map GHC.showPpr) d)
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisiblePNs :: (FindEntity e1, SYB.Data e1, SYB.Data t1) =>
-   e1 -> t1 -> [GHC.Name]
+hsVisiblePNs :: (FindEntity e1, SYB.Data e1, SYB.Data t1)
+             => e1 -> t1 -> [GHC.Name]
 hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
                   ([] `SYB.mkQ`  top
                       `SYB.extQ` expr
@@ -1352,6 +1369,10 @@ class (SYB.Data t) => HsValBinds t where
     -- given syntax phrase.
     -- isDeclaredIn :: GHC.Name -> t -> Bool
 
+-- ++AZ++ see if we can get away with one only..
+isDeclaredIn :: (HsValBinds t) => GHC.Name -> t -> Bool
+isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
+
 
 instance HsValBinds (GHC.RenamedSource) where
   hsValBinds (grp,_,_,_) = (GHC.hs_valds grp)
@@ -1789,8 +1810,7 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
 -- the specified GHC.Names. incTypeSig indicates whether the
 -- corresponding type signature will be included.
 definingDeclsNames:: -- (SYB.Data t) =>
-            [GHC.Name] -- ^ The specified identifiers.
-            -- ->t                -- ^ A collection of declarations.
+            [GHC.Name]   -- ^ The specified identifiers.
             ->[GHC.LHsBind GHC.Name] -- ^ A collection of declarations.
             ->Bool       -- ^ True means to include the type signature.
             ->Bool       -- ^ True means to look at the local declarations as well. 
@@ -3707,8 +3727,8 @@ replaceNameInPN qualifier (PN (Qual modName s) (G modName1 s1 loc))  newName
 qualifyPName::ModuleName  -- ^ The qualifier.
               ->PName     -- ^ The identifier.
               ->PName     -- ^ The result.
-qualifyPName qual pn 
- = case pn of 
+qualifyPName qual pn
+ = case pn of
       PN (UnQual n) ty -> PN (Qual qual n ) ty
       _                -> pn
 -}
@@ -3718,11 +3738,11 @@ qualifyPName qual pn
 -- TODO: Is this function needed with GHC?
 
 -- | Remove the qualifier from the given identifiers in the given syntax phrase.
-rmQualifier:: (SYB.Data t) 
+rmQualifier:: (SYB.Data t)
              =>[GHC.Name]       -- ^ The identifiers.
                ->t           -- ^ The syntax phrase.
                ->RefactGhc t -- ^ The result.
-rmQualifier pns t = 
+rmQualifier pns t =
   -- error "undefined rmQualifier"
   everywhereMStaged SYB.Renamer (SYB.mkM rename) t
     where
@@ -3748,9 +3768,9 @@ rmQualifier::((MonadState (([PosToken], Bool), t1) m),Term t)
              =>[PName]  -- ^ The identifiers.
                ->t      -- ^ The syntax phrase.
                ->m t    -- ^ The result.
-rmQualifier pns t 
+rmQualifier pns t
   = applyTP (full_tdTP (adhocTP idTP rename )) t
-   where 
+   where
      rename pnt@(PNT  pn@(PN (Qual modName  s) l) ty loc@(N (Just (SrcLoc fileName _ row col))))
        | elem pn pns
        = do do ((toks,_), others)<-get
@@ -3773,11 +3793,15 @@ renamePN::(SYB.Data t)
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
 renamePN oldPN newName updateTokens t
-  = everywhereMStaged SYB.Renamer (SYB.mkM rename) t
+  = everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
   where
     rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
     rename  pnt@(GHC.L l n)
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do let (row,col) = (getLocatedStart pnt)
+          newName <- worker (row,col) l n
+          return (GHC.L l newName)
+{-
      = do if updateTokens
            then  do
                     toks <- fetchToks
@@ -3786,7 +3810,25 @@ renamePN oldPN newName updateTokens t
                     putToks toks' True
                     return (GHC.L l newName)
            else return (GHC.L l newName)
+-}
     rename x = return x
+
+    renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
+    renameVar var@(GHC.L l (GHC.HsVar n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do let (row,col) = getLocatedStart var
+          newName <- worker (row,col) l n
+          return (GHC.L l (GHC.HsVar newName))
+    renameVar x = return x
+
+    worker (row,col) l n
+     = do if updateTokens
+           then  do
+                    toks <- fetchToks
+                    let toks'= replaceToks toks (row,col) (row,col) [newNameTok l newName]
+                    putToks toks' True
+                    return newName
+           else return newName
 
 -- ---------------------------------------------------------------------
 
@@ -3794,6 +3836,114 @@ newNameTok l newName =
   ((GHC.L l (GHC.ITvarid (GHC.occNameFS $ GHC.getOccName newName))),
    (GHC.occNameString $ GHC.getOccName newName))
 
+
+----------------------------------------------------------------------------------------
+-- | Check whether the specified identifier is declared in the given syntax phrase t,
+-- if so, rename the identifier by creating a new name automatically. If the Bool parameter 
+-- is True, the token stream will be modified, otherwise only the AST is modified. 
+
+autoRenameLocalVar:: (HsValBinds t)
+                    =>Bool          -- ^ True means modfiying the token stream as well.  
+                     ->GHC.Name     -- ^ The identifier.
+                     ->t            -- ^ The syntax phrase.
+                     -> RefactGhc t -- ^ The result.
+
+autoRenameLocalVar updateToks pn t
+  -- = everywhereMStaged SYB.Renamer (SYB.mkM renameInMatch)
+  = do if isDeclaredIn pn t
+         then do t' <- worker t
+                 return t'
+         else do return t
+{-
+  =applyTP (once_buTP (failTP `adhocTP` renameInMatch
+                              `adhocTP` renameInPat
+                              `adhocTP` renameInExp
+                              `adhocTP` renameInAlt
+                              `adhocTP` renameInStmts))
+-}
+
+      where
+         -- ++AZ++ : pretty sure we don't need all of these?
+         -- renameInMatch ((GHC.FunBind name _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind t)
+         renameInMatch (match@(GHC.L _ (GHC.Match pats typ rhs))::GHC.LMatch GHC.Name)
+         -- renameInMatch (match::HsMatchP)
+           |isDeclaredIn pn match=worker match
+         renameInMatch x = return x
+
+{-
+         renameInPat (pat::HsDeclP)
+          |isDeclaredIn pn pat=worker pat
+         renameInPat _ =mzero
+
+         renameInExp (exp::HsExpP)
+          |isDeclaredIn pn exp=worker exp
+         renameInExp _ =mzero
+
+         renameInAlt (alt::HsAltP)
+          |isDeclaredIn pn alt=worker alt
+         renameInAlt _ =mzero
+
+         renameInStmts (stmt::HsStmtP)
+          |isDeclaredIn pn stmt=worker stmt
+         renameInStmts _=mzero
+-}
+         worker t =do let (f,d) = hsFDNamesFromInside t
+                      let ds = hsVisibleNames pn (hsValBinds t)
+                      let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
+                      newName <- mkNewGhcName newNameStr
+                      if updateToks
+                        then renamePN pn newName True t
+                        else renamePN pn newName False t
+
+{- ++AZ++ original
+{-
+autoRenameLocalVar::(MonadPlus m, Term t)
+                    =>Bool         -- ^ True means modfiying the token stream as well.  
+                     ->PName       -- ^ The identifier.
+                     ->t           -- ^ The syntax phrase.
+                     -> m t        -- ^ The result.
+-}
+autoRenameLocalVar::(MonadPlus m, (MonadState (([PosToken], Bool), (Int,Int)) m), Term t)
+                    =>Bool         -- ^ True means modfiying the token stream as well.  
+                     ->PName       -- ^ The identifier.
+                     ->t           -- ^ The syntax phrase.
+                     -> m t        -- ^ The result.
+
+
+autoRenameLocalVar updateToks pn
+  =applyTP (once_buTP (failTP `adhocTP` renameInMatch
+                              `adhocTP` renameInPat
+                              `adhocTP` renameInExp
+                              `adhocTP` renameInAlt
+                              `adhocTP` renameInStmts))
+      where
+         renameInMatch (match::HsMatchP)
+           |isDeclaredIn pn match=worker match
+         renameInMatch _ =mzero
+
+         renameInPat (pat::HsDeclP)
+          |isDeclaredIn pn pat=worker pat
+         renameInPat _ =mzero
+
+         renameInExp (exp::HsExpP)
+          |isDeclaredIn pn exp=worker exp
+         renameInExp _ =mzero
+
+         renameInAlt (alt::HsAltP)
+          |isDeclaredIn pn alt=worker alt
+         renameInAlt _ =mzero
+
+         renameInStmts (stmt::HsStmtP)
+          |isDeclaredIn pn stmt=worker stmt
+         renameInStmts _=mzero
+
+         worker t =do (f,d)<-hsFDNamesFromInside t
+                      ds<-hsVisibleNames pn (hsDecls t)
+                      let newName=mkNewName (pNtoName pn) (nub (f `union` d `union` ds)) 1
+                      if updateToks
+                        then renamePN pn Nothing newName True t
+                        else renamePN pn Nothing newName False t
+-}
 -- ---------------------------------------------------------------------
 
 -- | Show a list of entities, the parameter f is a function that
@@ -3969,10 +4119,8 @@ expToName _ = Nothing
 
 -}
 
-
-
-
-
+nameToString :: GHC.Name -> String
+nameToString name = GHC.showPpr name
 
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing

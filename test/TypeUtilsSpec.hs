@@ -647,12 +647,12 @@ spec = do
 
   -- ---------------------------------------------
 
-  describe "mkNewName" $ do
+  describe "mkNewGhcName" $ do
     it "Creates a new GHC.Name" $ do
       let
         comp = do
-         name1 <- mkNewName "foo"
-         name2 <- mkNewName "bar"
+         name1 <- mkNewGhcName "foo"
+         name2 <- mkNewGhcName "bar"
          return (name1,name2)
       ((n1,n2),s) <- runRefactGhcState comp
       GHC.getOccString n1 `shouldBe` "foo"
@@ -668,8 +668,8 @@ spec = do
     it "Prints a GHC.Name ready for parsing into tokens" $ do
       let
         comp = do
-         name1 <- mkNewName "foo"
-         name2 <- mkNewName "bar"
+         name1 <- mkNewGhcName "foo"
+         name2 <- mkNewGhcName "bar"
          return (name1,name2)
       ((n1,n2),s) <- runRefactGhcState comp
       GHC.getOccString n1 `shouldBe` "foo"
@@ -689,8 +689,8 @@ spec = do
       let Just (GHC.L _ n) = locToName dd1FileName (3, 1) renamed
       let
         comp = do
-         _newName <- mkNewName "bar"
-         newName2 <- mkNewName "bar2"
+         _newName <- mkNewGhcName "bar"
+         newName2 <- mkNewGhcName "bar2"
          newBinding <- duplicateDecl declsr renamed n newName2
 
          return newBinding
@@ -711,7 +711,7 @@ spec = do
       (GHC.showPpr n) `shouldBe` "ff"
       let
         comp = do
-         newName2 <- mkNewName "gg"
+         newName2 <- mkNewGhcName "gg"
 
          let
            declsToDup = definingDeclsNames [n] declsr True True
@@ -743,8 +743,8 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (3, 1) renamed
       let
         comp = do
-         _newName <- mkNewName "bar"
-         newName2 <- mkNewName "bar2"
+         _newName <- mkNewGhcName "bar"
+         newName2 <- mkNewGhcName "bar2"
          newBinding <- addParamsToDecls declsr n [newName2] True
 
          return newBinding
@@ -886,8 +886,8 @@ spec = do
       let
         comp = do
          renamed <- getRefactRenamed
-         nn  <- mkNewName "nn"
-         nn2 <- mkNewName "nn2"
+         nn  <- mkNewGhcName "nn"
+         nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl renamed Nothing (newDecl,Nothing,Nothing) True
 
@@ -906,8 +906,8 @@ spec = do
       let
         comp = do
          renamed <- getRefactRenamed
-         nn  <- mkNewName "nn"
-         nn2 <- mkNewName "nn2"
+         nn  <- mkNewGhcName "nn"
+         nn2 <- mkNewGhcName "nn2"
          let (GHC.ValBindsOut _ vb) = hsValBinds renamed
          let hSig = head $ drop 3 vb
          let (GHC.L _ (GHC.TypeSig _ (GHC.L _ (GHC.HsTyVar intName)))) = hSig
@@ -941,8 +941,8 @@ spec = do
         comp = do
          renamed <- getRefactRenamed
          let Just (GHC.L l n) = locToName md1FileName (21, 1) renamed
-         nn  <- mkNewName "nn"
-         nn2 <- mkNewName "nn2"
+         nn  <- mkNewGhcName "nn"
+         nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl renamed (Just n) (newDecl,Nothing,Nothing) True
 
@@ -963,8 +963,8 @@ spec = do
         comp = do
          renamed <- getRefactRenamed
          let Just (GHC.L l n) = locToName md1FileName (21, 1) renamed
-         nn  <- mkNewName "nn"
-         nn2 <- mkNewName "nn2"
+         nn  <- mkNewGhcName "nn"
+         nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
 
          let (GHC.ValBindsOut _ vb) = hsValBinds renamed
@@ -996,8 +996,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewName "nn"
-         nn2 <- mkNewName "nn2"
+         nn  <- mkNewGhcName "nn"
+         nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
 
@@ -1023,8 +1023,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewName "nn"
-         nn2 <- mkNewName "nn2"
+         nn  <- mkNewGhcName "nn"
+         nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
 
          let (GHC.ValBindsOut _ vb) = hsValBinds renamed
@@ -1056,8 +1056,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewName "nn"
-         nn2 <- mkNewName "nn2"
+         nn  <- mkNewGhcName "nn"
+         nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
 
@@ -1083,8 +1083,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewName "nn"
-         nn2 <- mkNewName "nn2"
+         nn  <- mkNewGhcName "nn"
+         nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
 
@@ -1109,8 +1109,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewName "nn"
-         nn2 <- mkNewName "nn2"
+         nn  <- mkNewGhcName "nn"
+         nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
 
          let (GHC.ValBindsOut _ vb) = hsValBinds renamed
@@ -1219,7 +1219,7 @@ spec = do
       let Just (GHC.L l n) = locToName dd1FileName (3, 1) renamed
       let
         comp = do
-         newName <- mkNewName "bar2"
+         newName <- mkNewGhcName "bar2"
          new <- renamePN n newName True declsr
 
          return (new,newName)
@@ -1378,8 +1378,8 @@ spec = do
          let (Just (GHC.L _ n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
-         n1   <- mkNewName "n1"
-         n2   <- mkNewName "n2"
+         n1   <- mkNewGhcName "n1"
+         n2   <- mkNewGhcName "n2"
          res  <- addHiding modName renamed2 [n1,n2]
          toks <- fetchToks
 
@@ -1405,8 +1405,8 @@ spec = do
          let (Just (GHC.L _ n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
-         n1   <- mkNewName "n1"
-         n2   <- mkNewName "n2"
+         n1   <- mkNewGhcName "n1"
+         n2   <- mkNewGhcName "n2"
          res  <- addHiding modName renamed2 [n1,n2]
          toks <- fetchToks
 
@@ -1564,6 +1564,60 @@ spec = do
       (GHC.showPpr n2) `shouldBe` "MoveDef.Demote.c"
       (GHC.showPpr d) `shouldBe` "[MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x]"
       r `shouldBe` True
+
+  -- ---------------------------------------
+
+  describe "autoRenameLocalVar" $ do
+    it "Renames an identifier if it is used, no token update" $ do
+      let
+        comp = do
+          (t, toks) <- parseSourceFileGhc "./test/testdata/Demote/WhereIn4.hs"
+          putParsedModule t toks
+          renamed <- getRefactRenamed
+
+          let Just (GHC.L _ tl)   = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs") (11,1) renamed
+          let Just (GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs") (11,21) renamed
+          let decls = (definingDeclsNames [tl] (hsBinds renamed) False False)
+          decls' <- autoRenameLocalVar False name decls
+
+          return (decls',decls,tl,name)
+
+      ((r,d,n1,n2),s) <- runRefactGhcState comp
+      (GHC.showPpr n1) `shouldBe` "Demote.WhereIn4.sumSquares"
+      (GHC.showPpr n2) `shouldBe` "p"
+      (GHC.showPpr d) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n   where\n       p = 2]"
+      (GHC.showPpr r) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n   where\n       p_1 = 2]"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+
+
+    it "Renames an identifier if it is used and updates tokens" $ do
+      let
+        comp = do
+          (t, toks) <- parseSourceFileGhc "./test/testdata/Demote/WhereIn4.hs"
+          putParsedModule t toks
+          renamed <- getRefactRenamed
+
+          let Just (GHC.L _ tl)   = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs") (11,1) renamed
+          let Just (GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs") (11,21) renamed
+          let decls = (definingDeclsNames [tl] (hsBinds renamed) False False)
+          decls' <- autoRenameLocalVar True name decls
+
+          return (decls',decls,tl,name)
+
+      ((r,d,n1,n2),s) <- runRefactGhcState comp
+      (GHC.showPpr n1) `shouldBe` "Demote.WhereIn4.sumSquares"
+      (GHC.showPpr n2) `shouldBe` "p"
+      (GHC.showPpr d) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n   where\n       p = 2]"
+      (GHC.showPpr r) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n   where\n       p_1 = 2]"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p_1 x + sq p_1 y\n          where p_1=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+
+  -- ---------------------------------------
+
+  describe "mkNewName" $ do
+    it "Makes a new name that does not clash with existing ones" $ do
+      (mkNewName "f" ["f"] 0) `shouldBe` "f_1"
+      (mkNewName "f" ["g"] 0) `shouldBe` "f"
+      (mkNewName "f" ["g","f_1","f"] 0) `shouldBe` "f_2"
 
   -- ---------------------------------------
 

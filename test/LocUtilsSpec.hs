@@ -480,8 +480,8 @@ spec = do
          let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
          let (Just (ln@(GHC.L _ n))) = mn
 
-         n1   <- mkNewName "n1"
-         n2   <- mkNewName "n2"
+         n1   <- mkNewGhcName "n1"
+         n2   <- mkNewGhcName "n2"
 
          let declsr = hsBinds parentr
              tlDecls = definingDeclsNames [n] declsr True False

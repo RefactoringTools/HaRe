@@ -1223,10 +1223,11 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                        fstSubst=map fst subst
                        sndSubst=map snd subst
                    rhs'<-rmParamsInParent pn sndSubst rhs
-                   {-
-                   ls<-mapM hsFreeAndDeclaredPNs sndSubst
+                   -- ls<-mapM hsFreeAndDeclaredPNs sndSubst
+                   let ls = map hsFreeAndDeclaredPNs sndSubst
                    -- newNames contains the newly introduced names to the demoted decls---
-                   let newNames=(map pNtoName (concatMap fst ls)) \\ (map pNtoName fstSubst)
+                   -- let newNames=(map pNtoName (concatMap fst ls)) \\ (map pNtoName fstSubst)
+                   let newNames=((concatMap fst ls)) \\ (fstSubst)
                    --There may be name clashing because of introducing new names.
                    clashedNames<-getClashedNames fstSubst newNames (ghead "foldParams" matches)
                   {- --auotmatic renaming
@@ -1235,6 +1236,7 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    --remove substituted parameters in demoted declarations
                    demotedDecls'''<-rmParamsInDemotedDecls fstSubst demotedDecls'' -}
                    decls' <- foldInDemotedDecls pns clashedNames subst decls
+                   {-
                    let demotedDecls''' = definingDecls pns decls' True False
                    moveDecl pns (HsMatch loc1 name pats rhs' ds) False decls' False
                    return (HsMatch loc1 name pats rhs' (ds++(filter (not.isTypeSig) demotedDecls''')))
@@ -1256,6 +1258,21 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
        patsInMatch (GHC.L _ (GHC.Match pats _ _)) = pats
 
        -- demotedDecls = map GHC.unLoc $ definingDeclsNames pns decls True False
+
+       foldInDemotedDecls :: [GHC.Name] -> [GHC.Name] -> [(GHC.Name, GHC.HsExpr GHC.Name)] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name] 
+       foldInDemotedDecls  pns clashedNames subst decls 
+
+          -- = applyTP (stop_tdTP (failTP `adhocTP` worker)) decls
+          = everywhereMStaged SYB.Renamer (SYB.mkM worker) decls
+          where
+          -- worker (match@(HsMatch loc1 (PNT pname _ _) pats rhs ds)::HsMatchP)
+          worker (match@(GHC.FunBind (GHC.L _ pname) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name)
+            | isJust (find (==pname) pns)
+            = do match' <- foldM (flip (autoRenameLocalVar True)) match clashedNames
+                 match'' <- foldM replaceExpWithUpdToks match' subst
+                 rmParamsInDemotedDecls (map fst subst) match''
+
+          worker x = return x
 
 {-
        foldInDemotedDecls  pns clashedNames subst decls
@@ -1397,8 +1414,17 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                   worker _ =mzero
        -}
 
-{-
        -----------remove parameters in demotedDecls-------------------------------
+       rmParamsInDemotedDecls ps
+         -- =applyTP (once_tdTP (failTP `adhocTP` worker))
+         = everywhereMStaged SYB.Renamer (SYB.mkM worker) 
+            -- where worker ((HsMatch loc1 name pats rhs ds)::HsMatchP)
+            where worker (GHC.Match pats typ rhs)
+                    = do let pats'=filter (\x->not ((patToPNT x /= Nothing) &&
+                                          elem (fromJust $ patToPNT x) ps)) pats
+                         pats'<-update pats pats' pats
+                         return (GHC.Match pats' typ rhs)
+{-
        rmParamsInDemotedDecls ps
          =applyTP (once_tdTP (failTP `adhocTP` worker))
             where worker ((HsMatch loc1 name pats rhs ds)::HsMatchP)
@@ -1434,7 +1460,15 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                        =update exp e1 exp
                   worker x =return x
           -}
-{-
+
+
+       getClashedNames oldNames newNames match
+         = do  let (f,d) = hsFDsFromInside match
+               let ds' = map (flip hsVisiblePNs match) oldNames
+               -- return clashed names
+               return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub
+                                   ( nub (d `union` (nub.concat) ds')))
+       {-
        getClashedNames oldNames newNames (match::HsMatchP)
          = do  (f,d)<-hsFDsFromInside match
                ds'<-mapM (flip hsVisiblePNs match) oldNames
@@ -1454,6 +1488,18 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                             else Nothing) pats params)
            -}
 
+
+--substitute an old expression by new expression
+replaceExpWithUpdToks :: (SYB.Data t) 
+                      => t -> (GHC.Name, GHC.HsExpr GHC.Name)
+                      -> RefactGhc t
+replaceExpWithUpdToks  decls subst
+  -- = applyTP (full_buTP (idTP `adhocTP` worker)) decls
+  = everywhereMStaged' SYB.Renamer (SYB.mkM worker) decls 
+         where worker (e@(GHC.L l _)::GHC.LHsExpr GHC.Name)
+                 |(expToName e/=defaultName) &&  (expToName e)==(fst subst)
+                     =update e (GHC.L l (snd subst)) e
+               worker x=return x
 
 {-
 --substitute an old expression by new expression
