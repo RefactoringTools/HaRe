@@ -16,6 +16,10 @@ import qualified Outputable as GHC
 import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
 
+import qualified Data.Generics.Schemes as SYB
+import qualified Data.Generics.Aliases as SYB
+import qualified GHC.SYB.Utils         as SYB
+
 import Control.Monad.State
 import Data.Maybe
 import Language.Haskell.Refact.Utils
@@ -265,6 +269,19 @@ spec = do
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n         if (odd x) then \"Odd\" else \"Even\""
 
+    -- ---------------------------------------------
+
+    it "Split the tokens into a front, middle and end 2" $ do
+      (t,toks) <- parsedFileWhereIn6Ghc
+
+      let (_front,middle,_back) = splitToks ((13,10),(13,14)) toks
+      (showToks middle) `shouldBe`
+              "[(((13,10),(13,11)),ITvarid \"a\",\"a\"),"
+              ++"(((13,12),(13,13)),ITvarid \"b\",\"b\"),"
+              ++"(((13,14),(13,15)),ITvarid \"c\",\"c\")]"
+
+      (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n          a b c"
+
   -- -------------------------------------------------------------------
 
   describe "replaceToks" $ do
@@ -299,7 +316,6 @@ spec = do
                "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
                "(((4,31),(4,35)),ITelse,\"else\")," ++
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
-
 
   -- -------------------------------------------------------------------
 
@@ -435,6 +451,90 @@ spec = do
           ss = getSrcSpan declsr
       (GHC.showPpr declsr) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) },\n DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z,\n DupDef.Dd1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1,\n DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15,\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       (GHC.showPpr ss) `shouldBe` "Just test/testdata/DupDef/Dd1.hs:(30,1)-(32,17)"
+
+  -- -------------------------------------------------------------------
+
+  describe "getAllSrcLocs" $ do
+    it "gets all the srclocs in a syntax phrase" $ do
+      (t, toks) <- parsedFileDeclareGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+
+      let decls = filter isFunOrPatBindR declsr
+
+      let decl = head $ drop 4 decls
+      let (startPos,endPos) = startEndLocIncComments toks decl
+
+      (GHC.showPpr decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
+
+      (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe` 
+             ("[(((18,1),(18,1)),ITsemi,\"\")," ++
+             "(((18,1),(18,5)),ITdata,\"data\")," ++
+             "(((18,6),(18,7)),ITconid \"D\",\"D\")," ++
+             "(((18,8),(18,9)),ITequal,\"=\")," ++
+             "(((18,10),(18,11)),ITconid \"A\",\"A\")," ++
+             "(((18,12),(18,13)),ITvbar,\"|\")," ++
+             "(((18,14),(18,15)),ITconid \"B\",\"B\")," ++
+             "(((18,16),(18,22)),ITconid \"String\",\"String\")," ++
+             "(((18,23),(18,24)),ITvbar,\"|\")," ++
+             "(((18,25),(18,26)),ITconid \"C\",\"C\")," ++
+             "(((20,1),(20,32)),ITlineComment \"-- Retrieve the String from a B\",\"-- Retrieve the String from a B\")," ++
+             "(((21,1),(21,1)),ITsemi,\"\")," ++
+             "(((21,1),(21,4)),ITvarid \"unD\",\"unD\")," ++
+             "(((21,5),(21,6)),IToparen,\"(\")," ++
+             "(((21,6),(21,7)),ITconid \"B\",\"B\")," ++
+             "(((21,8),(21,9)),ITvarid \"y\",\"y\")," ++
+             "(((21,9),(21,10)),ITcparen,\")\")," ++
+             "(((21,11),(21,12)),ITequal,\"=\")," ++
+             "(((21,13),(21,14)),ITvarid \"y\",\"y\")," ++
+             "(((22,1),(22,18)),ITlineComment \"-- But no others.\",\"-- But no others.\")," ++
+             "(((24,1),(24,73)),ITlineComment \"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\"," ++
+                                             "\"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\")," ++
+             "(((25,1),(25,1)),ITsemi,\"\")," ++
+             "(((25,1),(25,5)),ITdata,\"data\")]")
+
+      (show $ getAllSrcLocs decl) `shouldBe` "[((21,1),(21,14)),((21,1),(21,4)),((21,5),(21,10)),((21,6),(21,9)),((21,6),(21,7)),((21,8),(21,9)),((21,13),(21,14))]"
+
+
+  -- -------------------------------------------------------------------
+
+  describe "getBiggestStartEndLoc" $ do
+    it "gets the smallest startpos and largest endpos in a syntax phrase" $ do
+      (t, toks) <- parsedFileWhereIn6Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+
+      let decls = filter isFunOrPatBindR declsr
+
+      let decl = head $ decls
+      let (startPos,endPos) = startEndLocIncComments toks decl
+
+      (GHC.showPpr decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
+      -- (SYB.showData SYB.Renamer 0 decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
+
+      let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup matches _)  _ _ _)) = decl
+      -- (SYB.showData SYB.Renamer 0 matches) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
+
+      (showToks $ getToks ((12,1),(25,1)) toks) `shouldBe` 
+             ("[(((13,1),(13,1)),ITvccurly,\"\"),"
+             ++"(((13,1),(13,1)),ITsemi,\"\"),"
+             ++"(((13,1),(13,9)),ITvarid \"addthree\",\"addthree\"),"
+             ++"(((13,10),(13,11)),ITvarid \"a\",\"a\"),"
+             ++"(((13,12),(13,13)),ITvarid \"b\",\"b\"),"
+             ++"(((13,14),(13,15)),ITvarid \"c\",\"c\"),"
+             ++"(((13,15),(13,16)),ITequal,\"=\"),"
+             ++"(((13,16),(13,17)),ITvarid \"a\",\"a\"),"
+             ++"(((13,17),(13,18)),ITvarsym \"+\",\"+\"),"
+             ++"(((13,18),(13,19)),ITvarid \"b\",\"b\"),"
+             ++"(((13,19),(13,20)),ITvarsym \"+\",\"+\"),"
+             ++"(((13,20),(13,21)),ITvarid \"c\",\"c\"),"
+             ++"(((16,1),(16,1)),ITsemi,\"\")]")
+
+      (show $ getBiggestStartEndLoc matches) `shouldBe` "((13,10),(13,21))"
+      (show   (startPos,endPos)) `shouldBe` "((13,1),(13,21))"
+
 
   -- -------------------------------------------------------------------
 
@@ -677,6 +777,9 @@ comp = do
 
 parsedFileDeclareGhc :: IO (ParseResult,[PosToken])
 parsedFileDeclareGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
+
+parsedFileWhereIn6Ghc :: IO (ParseResult,[PosToken])
+parsedFileWhereIn6Ghc = parsedFileGhc "./test/testdata/Demote/WhereIn6.hs"
 
 -- -----------
 

@@ -287,6 +287,7 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     (RefSt settings u f _) <- get
 
     let rs = RefMod { rsTypecheckedMod = parsedFile
+                    , rsOrigTokenStream = toks
                     , rsTokenStream = toks
                     , rsStreamModified = False
                     }
@@ -369,10 +370,6 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t
                      return newPat
             | otherwise = return p
 
-instance (SYB.Data t) => Update [GHC.LPat GHC.Name] t where
-    update oldPats newPats t = error "undefined Update [GHC.LPat GHC.Name] t"
-    -- TODO: need to work out start and end loc of tokens, for update
-            
 instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n) t where
      update oldTy newTy t
            = everywhereMStaged SYB.Parser (SYB.mkM inTyp) t

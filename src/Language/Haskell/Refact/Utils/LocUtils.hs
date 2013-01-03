@@ -30,17 +30,18 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      lastNonSpaceToken,firstNonSpaceToken -} ,compressPreNewLns,compressEndNewLns
 
                      , lengthOfLastLine
-                     , updateToks, updateToksList
+                     , updateToks, updateToksWithPos, updateToksList
                      , getToks
                      , replaceToks,deleteToks,doRmWhites -- ,doAddWhites
                      , srcLocs
-                     , getSrcSpan
+                     , getSrcSpan, getAllSrcLocs
                      -- , ghcSrcLocs -- Test version
                      , getGhcLoc
                      , getGhcLocEnd
                      , getLocatedStart
                      , getLocatedEnd
                      , getStartEndLoc
+                     , getBiggestStartEndLoc
                      {-
                      , getStartEndLoc2,
                      startEndLoc,extendBothSides -},extendForwards,extendBackwards
@@ -639,6 +640,7 @@ lengthOfLastLine toks
 -- | get a token stream specified by the start and end position.
 getToks :: (SimpPos,SimpPos) -> [PosToken] -> [PosToken]
 getToks (startPos,endPos) toks =
+  -- TODO: use splitToks
   -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks=" ++ (showToks toks) -- ++AZ++ debug
   let (_,toks2)        = break (\t -> tokenPos t >= startPos) toks
       (toks21,_toks22) = break (\t -> tokenPos t >  endPos) toks2
@@ -652,7 +654,13 @@ getToks (startPos,endPos) toks =
 -- startPos, the tokens between startPos and endPos, and the tokens
 -- after endPos.
 splitToks::(SimpPos, SimpPos)->[PosToken]->([PosToken],[PosToken],[PosToken])
-splitToks (startPos, endPos) toks
+splitToks (startPos, endPos) toks =
+  let (toks1,toks2)   = break (\t -> tokenPos t >= startPos) toks
+      (toks21,toks22) = break (\t -> tokenPos t >  endPos) toks2
+  in 
+    (toks1,toks21,toks22)
+
+{- ++AZ++ old, comlicated
    = -- trace ("splitToks" ++ (show (startPos,endPos)) ++ (showToks toks))
    (if (startPos, endPos) == (simpPos0, simpPos0)
        then error "Invalid token stream position!"
@@ -669,6 +677,7 @@ splitToks (startPos, endPos) toks
            then let (toks1', toks2) = break (\t -> tokenPos t >= startPos') toks 
                 in break (\t -> tokenPos t >= endPos') (drop 2 toks1++toks2)
            else (break (\t -> tokenPos t > endPos') toks2)
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -679,11 +688,22 @@ updateToks :: (SYB.Data t)
   -> Bool         -- ^ Add trailing newline if required
   -> RefactGhc () -- ^ Updates the RefactState
 updateToks oldAST newAST printFun addTrailingNl
-  = trace "updateToks" $
-    do
-       toks <- fetchToks
+  -- = trace "updateToks" $
+  = do
        let (startPos, endPos) = getStartEndLoc oldAST
+       updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
+
+
+updateToksWithPos :: (SYB.Data t)
+  => (SimpPos, SimpPos) -- ^Start and end pos of old element
+  -> t -- ^ New element
+  -> (t -> [Char]) -- ^ pretty printer
+  -> Bool         -- ^ Add trailing newline if required
+  -> RefactGhc () -- ^ Updates the RefactState
+updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
+  = do
        -- error $ show (startPos, endPos) -- ++AZ++
+       toks <- fetchToks
 
        let (toks1, _, toks2)  = splitToks (startPos, endPos) toks
            offset             = lengthOfLastLine toks1
@@ -700,7 +720,6 @@ updateToks oldAST newAST printFun addTrailingNl
        let toks' = toks1 ++ newToks' ++ toks2
        putToks toks' modified
 
-       -- return (newAST, newToks)
        return ()
 
 -- ---------------------------------------------------------------------
@@ -1225,6 +1244,14 @@ getStartEndLoc t =
       Just l -> startEndLocGhc (GHC.L l ss)
       Nothing -> ((0,0),(0,0))
 
+-- ---------------------------------------------------------------------
+
+getBiggestStartEndLoc :: (SYB.Data t) => t -> (SimpPos,SimpPos)
+getBiggestStartEndLoc t = (start,end)
+  where
+    locs  = getAllSrcLocs t
+    start = minimum $ map fst locs
+    end   = maximum $ map snd locs
 
 -- ---------------------------------------------------------------------
 
@@ -1268,6 +1295,49 @@ getSrcSpan t = res t
 
     importDecl :: GHC.LImportDecl GHC.Name -> Maybe GHC.SrcSpan
     importDecl (GHC.L l _) = Just l
+
+-- ---------------------------------------------------------------------
+
+-- | Get all the source locations in a given syntax fragment
+getAllSrcLocs::(SYB.Data t) => t -> [(SimpPos,SimpPos)]
+getAllSrcLocs t = res t
+  where
+    res = SYB.everythingStaged SYB.Renamer (++) []
+            ([]
+                    `SYB.mkQ` bind
+                    `SYB.extQ` sig
+                    `SYB.extQ` pnt
+                    `SYB.extQ` sn
+                    `SYB.extQ` literalInExp
+                    `SYB.extQ` literalInPat
+                    `SYB.extQ` importDecl
+                    `SYB.extQ` ty
+            )
+
+    bind :: GHC.GenLocated GHC.SrcSpan (GHC.HsBind GHC.Name) -> [(SimpPos,SimpPos)]
+    bind (GHC.L l _)              = [(getGhcLoc l,getGhcLocEnd l)]
+
+    sig :: (GHC.LSig GHC.Name) -> [(SimpPos,SimpPos)]
+    sig (GHC.L l _)              = [(getGhcLoc l,getGhcLocEnd l)]
+    
+    ty :: (GHC.LHsType GHC.Name) -> [(SimpPos,SimpPos)]
+    ty (GHC.L l _) = [(getGhcLoc l,getGhcLocEnd l)]
+
+    pnt :: GHC.GenLocated GHC.SrcSpan GHC.Name -> [(SimpPos,SimpPos)]
+    pnt (GHC.L l _)              = [(getGhcLoc l,getGhcLocEnd l)]
+
+    sn :: GHC.HsModule GHC.RdrName -> [(SimpPos,SimpPos)]
+    sn (GHC.HsModule (Just (GHC.L l _)) _ _ _ _ _) = [(getGhcLoc l,getGhcLocEnd l)]
+    sn _ = []
+
+    literalInExp :: GHC.LHsExpr GHC.Name -> [(SimpPos,SimpPos)]
+    literalInExp (GHC.L l _) = [(getGhcLoc l,getGhcLocEnd l)]
+
+    literalInPat :: GHC.LPat GHC.Name -> [(SimpPos,SimpPos)]
+    literalInPat (GHC.L l _) = [(getGhcLoc l,getGhcLocEnd l)]
+
+    importDecl :: GHC.LImportDecl GHC.Name -> [(SimpPos,SimpPos)]
+    importDecl (GHC.L l _) = [(getGhcLoc l,getGhcLocEnd l)]
 
 -- ---------------------------------------------------------------------
 

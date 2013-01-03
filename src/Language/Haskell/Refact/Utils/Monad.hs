@@ -15,6 +15,7 @@ module Language.Haskell.Refact.Utils.Monad
 
        -- * Conveniences for state access
        , fetchToks
+       , fetchOrigToks
        , putToks
        , getTypecheckedModule
        , getRefactStreamModified
@@ -69,7 +70,8 @@ data RefactSettings = RefSet
 
 data RefactModule = RefMod
         { rsTypecheckedMod :: GHC.TypecheckedModule
-        , rsTokenStream :: [PosToken]  -- ^Token stream for the current module
+        , rsOrigTokenStream :: [PosToken]  -- ^Original Token stream for the current module
+        , rsTokenStream     :: [PosToken]  -- ^Token stream for the current module, maybe modified
         , rsStreamModified :: Bool     -- ^current module has updated the token stream
         }
 
@@ -158,6 +160,11 @@ fetchToks = do
   Just tm <- gets rsModule
   return $ rsTokenStream tm
 
+fetchOrigToks :: RefactGhc [PosToken]
+fetchOrigToks = do
+  Just tm <- gets rsModule
+  return $ rsOrigTokenStream tm
+
 putToks :: [PosToken] -> Bool -> RefactGhc ()
 putToks toks isModified = do
   st <- get
@@ -240,6 +247,7 @@ initRefactModule
   :: GHC.TypecheckedModule -> [PosToken] -> Maybe RefactModule
 initRefactModule tm toks 
   = Just (RefMod { rsTypecheckedMod = tm
+                 , rsOrigTokenStream = toks
                  , rsTokenStream = toks
                  , rsStreamModified = False
                  })
