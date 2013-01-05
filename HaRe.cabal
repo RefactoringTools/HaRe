@@ -130,19 +130,20 @@ flag hpc
 
 Library
         Build-Depends:          base >=4
-                                , syb
-                                , ghc
                                 , containers
-                                , mtl
-                                , pretty
+                                , directory
+                                , filepath
+                                , ghc
                                 , ghc-paths
-                                , old-time
-                                , lens >= 3.0
                                 , ghc-prim
                                 , ghc-syb-utils
+                                , lens >= 3.0
+                                , mtl
+                                , old-time
+                                , pretty
+                                , syb
                                 , transformers
-                                , filepath
-                                , directory
+                                , uniplate
 
         -- GHC-Options:             -Wall
         -- We want to run coverage reports on the library
@@ -174,27 +175,22 @@ Executable ghc-hare
         Hs-Source-Dirs:
           ./src
         Build-Depends:          base >=4
-                                , syb
-                                , cmdtheline >= 0.2.1
-                    --            , network
-                                , ghc
-                                , containers
-                    --            , hint
-                                , mtl
-                                , directory
-                                , pretty
-                    --            , process
-                                , filepath
-                    --            , old-time
                                 , array
+                                , cmdtheline >= 0.2.1
+                                , containers
+                                , directory
+                                , filepath
+                                , ghc
                                 , ghc-paths
-                    --            , MonadCatchIO-mtl
-                                , transformers
-                                , ghc-syb-utils
-                                , old-time
-                                , lens >= 3.0
                                 , ghc-prim
-                    --            , ghc-mtl
+                                , ghc-syb-utils
+                                , lens >= 3.0
+                                , mtl
+                                , old-time
+                                , pretty
+                                , syb
+                                , transformers
+                                , uniplate
         Other-Modules:          Paths_HaRe
 
 
@@ -235,6 +231,7 @@ test-suite spec
     , stringbuilder
     , syb
     , transformers
+    , uniplate
 
     -- Note: flymake under ghc-mod will not work if this is in
     , HaRe >= 0.6.0.3
