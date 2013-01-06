@@ -135,6 +135,10 @@ showToks :: [PosToken] -> String
 showToks toks = show $ map (\(t@(GHC.L _ tok),s) ->
                  ((getLocatedStart t, getLocatedEnd t),tok,s)) toks
 
+instance Show (GHC.GenLocated GHC.SrcSpan GHC.Token) where
+  show t@(GHC.L l tok) = show ((getLocatedStart t, getLocatedEnd t),tok)
+
+
 --A flag used to indicate whether the token stream has been modified or not.
 unmodified = False
 modified   = True
@@ -706,7 +710,7 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
        toks <- fetchToks
 
        let (toks1, _, toks2)  = splitToks (startPos, endPos) toks
-           offset             = lengthOfLastLine toks1
+           -- offset             = lengthOfLastLine toks1
 
            astStr = (printFun newAST) 
        -- error $ "updateToks:astStr=[" ++ (show (astStr)) ++ "]" -- ++AZ++

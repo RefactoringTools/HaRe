@@ -42,7 +42,8 @@ Requirements for interface to GHC data structures
 
 Options
 
-  1. As is, but re-order everything. Problem comes with re-sequencing source locations in AST.
+  1. As is, but re-order everything. Problem comes with re-sequencing
+     source locations in AST.
 
   2. As is, but put new interface on tokens only, to somehow tie them up to the AST.
      Q: How to mark changed AST elements, and keep them indexed into the tokens structure.
@@ -53,10 +54,11 @@ Options
      Q: how would traversals work?
      Q: how would the structure be dumped at the end.
 
-  4. Variation on 2: Some kind of annotated token stream, with markers on it to
-     indicated tokens added to the original stream, removed from it,
-     or replacing others. This could be something like a list of edit
-     commands for an editor, and could be presented as such (perhaps).
+  4. Variation on 2: Some kind of annotated token stream, with markers
+     on it to indicated tokens added to the original stream, removed
+     from it, or replacing others. This could be something like a list
+     of edit commands for an editor, and could be presented as such
+     (perhaps).
 
 Observations
 
@@ -78,6 +80,12 @@ Observations
      to the start and end line/col pairs. Perhaps use either -ve
      values, or add an offset. Max value of an int is guaranteed to be
      at least 2^29-1 or 536,870,911. Anything above 1M will do.
+
+  6. The bind SrcLoc does not tie up directly with the token SrcLoc
+     due to surrounding comments
+
+  7. The surrounding indent can perhaps be managed within this
+     structure.
 
 
 
