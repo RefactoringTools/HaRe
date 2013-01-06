@@ -61,7 +61,8 @@ import Language.Haskell.Refact.Utils.GhcUtils
 
 --targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
 targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
-targetMod = "SwapArgs/B"
+-- targetMod = "SwapArgs/B"
+targetMod = "Demote/WhereIn5"
 
 {- main = t1 -}
 
@@ -145,7 +146,8 @@ getStuff =
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
-        modSum <- GHC.getModSummary $ GHC.mkModuleName "SwapArgs.B"
+        -- modSum <- GHC.getModSummary $ GHC.mkModuleName "SwapArgs.B"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "Demote.WhereIn5"
         p <- GHC.parseModule modSum
 
         t <- GHC.typecheckModule p
@@ -218,10 +220,10 @@ getStuff =
 
         -- RenamedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
-        GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+        -- GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Renamer 0 $ GHC.tm_renamed_source t))
 
-        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
-        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
+        GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
+        GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.TypeChecker 0 $ GHC.tm_typechecked_source t))
 
         -- ModuleInfo ----------------------------------------------------------------
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (SYB.showData SYB.Parser 0 $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))

@@ -3854,39 +3854,8 @@ autoRenameLocalVar updateToks pn t
          then do t' <- worker t
                  return t'
          else do return t
-{-
-  =applyTP (once_buTP (failTP `adhocTP` renameInMatch
-                              `adhocTP` renameInPat
-                              `adhocTP` renameInExp
-                              `adhocTP` renameInAlt
-                              `adhocTP` renameInStmts))
--}
 
       where
-         -- ++AZ++ : pretty sure we don't need all of these?
-         -- renameInMatch ((GHC.FunBind name _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind t)
-         renameInMatch (match@(GHC.L _ (GHC.Match pats typ rhs))::GHC.LMatch GHC.Name)
-         -- renameInMatch (match::HsMatchP)
-           |isDeclaredIn pn match=worker match
-         renameInMatch x = return x
-
-{-
-         renameInPat (pat::HsDeclP)
-          |isDeclaredIn pn pat=worker pat
-         renameInPat _ =mzero
-
-         renameInExp (exp::HsExpP)
-          |isDeclaredIn pn exp=worker exp
-         renameInExp _ =mzero
-
-         renameInAlt (alt::HsAltP)
-          |isDeclaredIn pn alt=worker alt
-         renameInAlt _ =mzero
-
-         renameInStmts (stmt::HsStmtP)
-          |isDeclaredIn pn stmt=worker stmt
-         renameInStmts _=mzero
--}
          worker t =do let (f,d) = hsFDNamesFromInside t
                       let ds = hsVisibleNames pn (hsValBinds t)
                       let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1

@@ -1236,7 +1236,8 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                        fstSubst=map fst subst
                        sndSubst=map snd subst
                    rhs'<-rmParamsInParent pn sndSubst rhs
-                   -- error $ "MoveDef.foldParams: (rhs')=" ++ (SYB.showData SYB.Renamer 0 rhs') -- ++AZ++
+                   -- toks <- fetchToks
+                   -- error $ "MoveDef.foldParams: (toks)=" ++ (showToks toks) -- ++AZ++
 
                    -- ls<-mapM hsFreeAndDeclaredPNs sndSubst
                    let ls = map hsFreeAndDeclaredPNs sndSubst
@@ -1254,6 +1255,8 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    -- error $ "MoveDef.foldParams: (decls)=" ++ (SYB.showData SYB.Renamer 0 decls) -- ++AZ++
 
                    decls' <- foldInDemotedDecls pns clashedNames subst decls
+                   toks <- fetchToks
+                   error $ "MoveDef.foldParams: (toks)=" ++ (showToks toks) -- ++AZ++
                    let demotedDecls''' = definingDeclsNames pns decls' True False
 
                    -- moveDecl pns (HsMatch loc1 name pats rhs' ds) False decls' False
@@ -1296,7 +1299,7 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
           -- worker (match@(HsMatch loc1 (PNT pname _ _) pats rhs ds)::HsMatchP)
           worker (match@(GHC.FunBind (GHC.L _ pname) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name)
             | isJust (find (==pname) pns)
-            = do match' <- foldM (flip (autoRenameLocalVar True)) match clashedNames
+            = do match'  <- foldM (flip (autoRenameLocalVar True)) match clashedNames
                  match'' <- foldM replaceExpWithUpdToks match' subst
                  rmParamsInDemotedDecls (map fst subst) match''
 

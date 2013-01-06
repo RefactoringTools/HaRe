@@ -480,7 +480,7 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
 
            writeFile (fileName ++ ".tokens") (showToks ts')
            writeFile (fileName ++ ".renamed_out") (GHC.showPpr renamed)
-           writeFile (fileName ++ ".AST_out") (SYB.showData SYB.Renamer 0 renamed)
+           writeFile (fileName ++ ".AST_out") $ (GHC.showPpr renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
 
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not
