@@ -17,6 +17,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -- ,lengthOfToks
                      , mkToken {-,defaultToken-},newLnToken{-,whiteSpacesToken -},whiteSpaceTokens
                      , realSrcLocFromTok
+                     , realSrcLocEndTok
                      , isWhite
                      , notWhite
                      , isWhiteSpace

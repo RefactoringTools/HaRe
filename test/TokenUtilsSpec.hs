@@ -1,4 +1,4 @@
-module SwapArgsSpec (main, spec) where
+module TokenUtilsSpec (main, spec) where
 
 import           Test.Hspec
 import           Test.QuickCheck
@@ -13,9 +13,11 @@ import qualified Name       as GHC
 import qualified Outputable as GHC
 import qualified SrcLoc     as GHC
 
-import Exception
 import Control.Monad.State
 import Data.Maybe
+import Data.Tree
+import Exception
+
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -55,13 +57,59 @@ spec = do
       (showToks declToks) `shouldBe` ""
       (show $ mTokenCache tm') `shouldBe` ""
 
+  -- ---------------------------------------------
 
+  describe "invariant 1" $ do
+    it "checks that a tree with empty tokens and empty subForest fails" $ do
+      (invariant [Node (Entry GHC.noSrcSpan []) []]) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry UnhelpfulSpan \"<no location info>\" []) []"]
 
+    -- -----------------------
+    it "checks that a tree nonempty tokens and empty subForest passes" $ do
+      (_t,toks) <- parsedFileTokenTestGhc
+      (invariant [Node (Entry GHC.noSrcSpan (take 3 toks)) []]) `shouldBe` []
 
+    -- -----------------------
+    it "checks that a tree with nonempty tokens and nonempty subForest fails" $ do
+      (_t,toks) <- parsedFileTokenTestGhc
+
+      (invariant [Node (Entry GHC.noSrcSpan (take 1 toks)) [emptyTree]]) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry UnhelpfulSpan \"<no location info>\" [((((1,1),(1,7)),ITmodule),\"module\")]) [Node {rootLabel = Entry (UnhelpfulSpan \"<no location info>\") [], subForest = []}]","FAIL: exactly one of toks or subforest must be empty: Node (Entry UnhelpfulSpan \"<no location info>\" []) []"]
+
+    -- -----------------------
+    it "checks that a tree with empty tokens and nonempty subForest passes" $ do
+      (_t,toks) <- parsedFileTokenTestGhc
+
+      (invariant [Node (Entry GHC.noSrcSpan []) [mkTreeFromTokens toks]]) `shouldBe` []
+
+    -- -----------------------
+    it "checks the subtrees too" $ do
+      (_t,toks) <- parsedFileTokenTestGhc
+
+      (invariant [Node (Entry GHC.noSrcSpan []) [emptyTree]]) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry UnhelpfulSpan \"<no location info>\" []) []"]
+
+  -- ---------------------------------------------
+
+  describe "mkTreeFromTokens" $ do
+    it "creates a tree from an empty token list" $ do
+      (show $ mkTreeFromTokens []) `shouldBe` "Node {rootLabel = Entry (UnhelpfulSpan \"<no location info>\") [], subForest = []}"
+
+    -- -----------------------
+
+    it "creates a tree from a list of tokens" $ do
+      (_t,toks) <- parsedFileTokenTestGhc
+      let toks' = take 2 $ drop 5 toks
+      let tree = mkTreeFromTokens toks'
+      (show toks') `shouldBe` "[((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")]"
+      (show tree) `shouldBe` "Node {rootLabel = Entry (RealSrcSpan (SrcSpanOneLine {srcSpanFile = \"./test/testdata/TokenTest.hs\", srcSpanLine = 5, srcSpanSCol = 1, srcSpanECol = 6})) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
 
 
 -- ---------------------------------------------------------------------
 -- Helper functions
+
+emptyTree :: Tree Entry
+emptyTree = Node (Entry GHC.noSrcSpan []) []
+
+
+-- ---------------------------------------------------------------------
 
 tokenTestFileName :: GHC.FastString
 tokenTestFileName = GHC.mkFastString "./test/testdata/TokenTest.hs"
