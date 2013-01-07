@@ -136,44 +136,76 @@ lookupSrcSpan forest span = res
 -- |Check the invariant for the token cache. Returns list of any errors found.
 -- Invariants:
 --   1. For each tree, either the rootLabel has a SrcSpan only, or the subForest /= [].
---   2. The trees making up the subForest of a given node fully include the parent SrcSpan.
---      i.e. the leaves contain all the tokens for a given SrcSpan.
+--   2a. The trees making up the subForest of a given node fully include the parent SrcSpan.
+--        i.e. the leaves contain all the tokens for a given SrcSpan.
+--   2b. The subForest is in SrcSpan order
 --   3. A given SrcSpan can only appear (or be included) in a single tree of the forest.
+-- NOTE: the tokens may extend before or after the SrcSpan, due to comments only
+-- NOTE2: this will have to be revisited when edits to the tokens are made
 invariant :: Forest Entry -> [String]
-invariant forest = res
+invariant forest = F.foldl checkOneTree [] forest
   where
-    res = F.foldl checkOneTree [] forest
-
     checkOneTree :: [String] -> Tree Entry -> [String]
     checkOneTree acc tree = acc ++ r
       where
-        -- r = F.foldl checkNode [] tree
         r = checkNode [] tree
 
     checkNode :: [String] -> Tree Entry -> [String]
-    checkNode acc node@(Node (Entry span toks)  sub) = acc ++ r ++ rsub
+    checkNode acc node@(Node (Entry _sspan toks)  sub) = acc ++ r ++ rinc ++ rsub
       where
-        r = if (emptyList toks && nonEmptyList sub) || (nonEmptyList toks && emptyList sub)
+        r = if (   emptyList toks && nonEmptyList sub) ||
+               (nonEmptyList toks &&    emptyList sub)
               then []
               else ["FAIL: exactly one of toks or subforest must be empty: " ++ (prettyshow node)]
         rsub = foldl' checkNode [] sub
+
+        rinc = checkInclusion node
+
+    -- |Check invariant 2, assuming 1 ok
+    checkInclusion      (Node _                    []) = []
+    checkInclusion node@(Node (Entry sspan toks)  sub) = rs ++ rseq
+      where
+        ((sr,sc),(er,ec)) = treeStartEnd node
+        subs = map treeStartEnd sub
+        ((ssr,ssc), _) = head subs
+        (_, (ser,sec)) = last subs
+
+        rs = if (sr == ssr) && (ec == sec)
+               then []
+               else ["FAIL: subForest start and end does not match entry: " ++ (prettyshow node)]
+
+        rseq = checkSequence node subs
+
+        checkSequence _ [] = []
+        checkSequence _ [x] = []
+        checkSequence node (s1@((rs1,cs1),(re1,ce1)):s2@((rs2,cs2),(re2,ce2)):ss) 
+          = r ++ checkSequence node (s2:ss)
+          where
+            -- r = if (cs1 < re1) && (ce1 < rs
+            r = ["fail, carry on here"]
+
+-- ---------------------------------------------------------------------
+
+-- |Get the start and end position of a Tree
+treeStartEnd :: Tree Entry -> (SimpPos,SimpPos)
+treeStartEnd (Node (Entry sspan _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 -- ---------------------------------------------------------------------
 
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
-prettyshow (Node (Entry span toks) sub)
-  = "Node (Entry " ++ (show span) ++ " " ++ (show toks) ++ ") " ++ (show sub)
+prettyshow (Node (Entry sspan toks) sub)
+  = "Node (Entry " ++ (show sspan) ++ " " ++ (show toks) ++ ") " ++ (show sub)
 
 -- ---------------------------------------------------------------------
 
 -- |Make a tree representing a particular set of tokens
 mkTreeFromTokens :: [PosToken] -> Tree Entry
 mkTreeFromTokens [] = Node (Entry GHC.noSrcSpan []) []
-mkTreeFromTokens toks = Node (Entry span toks) []
+mkTreeFromTokens toks = Node (Entry sspan toks) []
   where
    startLoc = realSrcLocFromTok $ head toks
    endLoc   = realSrcLocEndTok $ last toks
-   span     = GHC.RealSrcSpan $ GHC.mkRealSrcSpan startLoc endLoc
+   sspan    = GHC.RealSrcSpan $ GHC.mkRealSrcSpan startLoc endLoc
 
 -- EOF
