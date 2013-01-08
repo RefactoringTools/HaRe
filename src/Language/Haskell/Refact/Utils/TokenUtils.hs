@@ -10,11 +10,12 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , Module(..)
        , initModule
        , getTokensFor
-
+       , treeStartEnd
        -- * Internal, for testing
        , lookupSrcSpan
        , invariant
        , mkTreeFromTokens
+       , showTree
        ) where
 
 import qualified BasicTypes    as GHC
@@ -143,8 +144,23 @@ lookupSrcSpan forest span = res
 -- NOTE: the tokens may extend before or after the SrcSpan, due to comments only
 -- NOTE2: this will have to be revisited when edits to the tokens are made
 invariant :: Forest Entry -> [String]
-invariant forest = F.foldl checkOneTree [] forest
+invariant forest = rforest ++ rsub
   where
+    rforest = checkForest $ map treeStartEnd forest
+      where
+        checkForest [] = []
+        checkForest [x] = []
+        checkForest ((s1,e1):s@(s2,e2):ss)
+          = r ++ checkForest (s:ss)
+          where
+            r = if e1 < s2
+                 then []
+                 else ["FAIL: forest not in order: " ++
+                        show e1 ++ " not < " ++ show s2]
+
+
+    rsub = F.foldl checkOneTree [] forest
+
     checkOneTree :: [String] -> Tree Entry -> [String]
     checkOneTree acc tree = acc ++ r
       where
@@ -165,12 +181,12 @@ invariant forest = F.foldl checkOneTree [] forest
     checkInclusion      (Node _                    []) = []
     checkInclusion node@(Node (Entry sspan toks)  sub) = rs ++ rseq
       where
-        ((sr,sc),(er,ec)) = treeStartEnd node
+        (start,end) = treeStartEnd node
         subs = map treeStartEnd sub
-        ((ssr,ssc), _) = head subs
-        (_, (ser,sec)) = last subs
+        (sstart, _) = head subs
+        (_, send) = last subs
 
-        rs = if (sr == ssr) && (ec == sec)
+        rs = if (start == sstart) && (end == send)
                then []
                else ["FAIL: subForest start and end does not match entry: " ++ (prettyshow node)]
 
@@ -178,11 +194,14 @@ invariant forest = F.foldl checkOneTree [] forest
 
         checkSequence _ [] = []
         checkSequence _ [x] = []
-        checkSequence node (s1@((rs1,cs1),(re1,ce1)):s2@((rs2,cs2),(re2,ce2)):ss) 
-          = r ++ checkSequence node (s2:ss)
+        checkSequence node ((s1,e1):s@(s2,e2):ss)
+          = r ++ checkSequence node (s:ss)
           where
-            -- r = if (cs1 < re1) && (ce1 < rs
-            r = ["fail, carry on here"]
+            r = if e1 < s2
+                 then []
+                 else ["FAIL: subForest not in order: " ++
+                        show e1 ++ " not < " ++ show s2 ++
+                        ":" ++ prettyshow node]
 
 -- ---------------------------------------------------------------------
 
@@ -192,10 +211,20 @@ treeStartEnd (Node (Entry sspan _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 -- ---------------------------------------------------------------------
 
+showTree = prettyshow
+
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
 prettyshow (Node (Entry sspan toks) sub)
-  = "Node (Entry " ++ (show sspan) ++ " " ++ (show toks) ++ ") " ++ (show sub)
+  = "Node (Entry " ++ (show (getGhcLoc sspan, getGhcLocEnd sspan)) ++ " "
+     ++ (prettyToks toks) ++ ") "
+     ++ show (map prettyshow  sub)
+
+prettyToks :: [PosToken] -> String
+prettyToks [] = "[]"
+prettyToks toks@[x] = showToks toks
+prettyToks toks@[t1,t2] = showToks toks
+prettyToks toks = showToks [head toks] ++ ".." ++ showToks [last toks]
 
 -- ---------------------------------------------------------------------
 
