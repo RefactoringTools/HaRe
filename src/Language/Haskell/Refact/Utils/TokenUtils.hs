@@ -77,7 +77,9 @@ Invariants:
 -}
 
 -- | An entry in the data structure for a particular srcspan.
-data Entry = Entry GHC.SrcSpan [PosToken]
+data Entry = Entry GHC.SrcSpan -- ^The source span contained in this Node
+                   [PosToken]  -- ^The tokens for the SrcSpan if subtree is empty
+                   (Maybe (Tree Entry)) -- ^Parent Node if it exists
              deriving (Show)
 
 
@@ -103,7 +105,7 @@ initModule typeChecked tokens
   = Module
       { mTypecheckedMod = typeChecked
       , mOrigTokenStream = tokens
-      , mTokenCache = []
+      , mTokenCache = [mkTreeFromTokens tokens]
       }
 
 -- Initially work with non-monadic code, can build it into the
@@ -126,12 +128,28 @@ getTokensFor modu span = (modu', tokens)
 -- 1. It is not there
 -- 2. It is there, exactly
 -- 3. It is not there exactly, but is a sub-element of something that
--- is there. In this case return the smallest containing element.
-lookupSrcSpan :: Forest Entry -> GHC.SrcSpan -> Maybe Entry
-lookupSrcSpan forest span = res
+--    is there. In this case return the smallest containing element.
+-- This may be a list of trees, if the desired span crosses multiple
+-- trees.
+lookupSrcSpan :: Forest Entry -> GHC.SrcSpan -> [Tree Entry]
+lookupSrcSpan forest sspan = res
   where
-    res = Nothing
+    -- Assuming invariants hold, the forest is sorted,
+    -- So, move through trees until ones containing the span are
+    -- found.
+    -- If it is contained in a single tree, drill into it to find the
+    -- smallest set of trees containing the span
+    start = getGhcLoc sspan
+    end   = getGhcLocEnd sspan
+    res = filter inSpan forest
+    -- TODO: drill down if necessary into (head res) and (tail res)
 
+    inSpan tree = inStart || inMiddle || inEnd
+      where
+        (treeStart,treeEnd) = treeStartEnd tree
+        inStart  = start >= treeStart && start <= treeEnd
+        inMiddle = start <= treeStart && end   >= treeEnd
+        inEnd    = end   >= treeStart && end   <= treeEnd
 
 -- ---------------------------------------------------------------------
 -- |Check the invariant for the token cache. Returns list of any errors found.
@@ -149,11 +167,11 @@ invariant forest = rforest ++ rsub
     rforest = checkForest $ map treeStartEnd forest
       where
         checkForest [] = []
-        checkForest [x] = []
-        checkForest ((s1,e1):s@(s2,e2):ss)
+        checkForest [_x] = []
+        checkForest ((_s1,e1):s@(s2,e2):ss)
           = r ++ checkForest (s:ss)
           where
-            r = if e1 < s2
+            r = if e1 <= s2
                  then []
                  else ["FAIL: forest not in order: " ++
                         show e1 ++ " not < " ++ show s2]
@@ -167,7 +185,7 @@ invariant forest = rforest ++ rsub
         r = checkNode [] tree
 
     checkNode :: [String] -> Tree Entry -> [String]
-    checkNode acc node@(Node (Entry _sspan toks)  sub) = acc ++ r ++ rinc ++ rsub
+    checkNode acc node@(Node (Entry _sspan toks mp) sub) = acc ++ r ++ rinc ++ rsub
       where
         r = if (   emptyList toks && nonEmptyList sub) ||
                (nonEmptyList toks &&    emptyList sub)
@@ -179,7 +197,7 @@ invariant forest = rforest ++ rsub
 
     -- |Check invariant 2, assuming 1 ok
     checkInclusion      (Node _                    []) = []
-    checkInclusion node@(Node (Entry sspan toks)  sub) = rs ++ rseq
+    checkInclusion node@(Node (Entry sspan toks mp)  sub) = rs ++ rseq
       where
         (start,end) = treeStartEnd node
         subs = map treeStartEnd sub
@@ -197,7 +215,7 @@ invariant forest = rforest ++ rsub
         checkSequence node ((s1,e1):s@(s2,e2):ss)
           = r ++ checkSequence node (s:ss)
           where
-            r = if e1 < s2
+            r = if e1 <= s2
                  then []
                  else ["FAIL: subForest not in order: " ++
                         show e1 ++ " not < " ++ show s2 ++
@@ -207,7 +225,7 @@ invariant forest = rforest ++ rsub
 
 -- |Get the start and end position of a Tree
 treeStartEnd :: Tree Entry -> (SimpPos,SimpPos)
-treeStartEnd (Node (Entry sspan _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
+treeStartEnd (Node (Entry sspan _ _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 -- ---------------------------------------------------------------------
 
@@ -215,7 +233,7 @@ showTree = prettyshow
 
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
-prettyshow (Node (Entry sspan toks) sub)
+prettyshow (Node (Entry sspan toks mp) sub)
   = "Node (Entry " ++ (show (getGhcLoc sspan, getGhcLocEnd sspan)) ++ " "
      ++ (prettyToks toks) ++ ") "
      ++ show (map prettyshow  sub)
@@ -230,8 +248,8 @@ prettyToks toks = showToks [head toks] ++ ".." ++ showToks [last toks]
 
 -- |Make a tree representing a particular set of tokens
 mkTreeFromTokens :: [PosToken] -> Tree Entry
-mkTreeFromTokens [] = Node (Entry GHC.noSrcSpan []) []
-mkTreeFromTokens toks = Node (Entry sspan toks) []
+mkTreeFromTokens [] = Node (Entry GHC.noSrcSpan [] Nothing) []
+mkTreeFromTokens toks = Node (Entry sspan toks Nothing) []
   where
    startLoc = realSrcLocFromTok $ head toks
    endLoc   = realSrcLocEndTok $ last toks
