@@ -136,6 +136,51 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "splitForestOnSpan" $ do
+    it "splits a forest into (begin,middle,end) according to a span" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let tree1 = mkTreeFromTokens (take 20 toks)
+      let tree2 = mkTreeFromTokens (take 10 $ drop 20 toks)
+      let tree3 = mkTreeFromTokens (take 15 $ drop 30 toks)
+      let tree4 = mkTreeFromTokens (drop 45 toks)
+      let forest = [tree1,tree2,tree3,tree4]
+      (invariant forest) `shouldBe` []
+
+      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(8,8))"
+      (show $ treeStartEnd tree2) `shouldBe` "((8,9),(13,4))"
+      (show $ treeStartEnd tree3) `shouldBe` "((13,5),(17,4))"
+      (show $ treeStartEnd tree4) `shouldBe` "((17,5),(24,1))"
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(17,1)-(19,13)"
+
+      let (begin,middle,end) = splitForestOnSpan forest l
+      (map treeStartEnd begin) `shouldBe` [((1,1),(8,8)),((8,9),(13,4))]
+      (map treeStartEnd middle) `shouldBe` [((13,5),(17,4)),((17,5),(24,1))]
+      (map treeStartEnd end) `shouldBe` []
+
+  -- ---------------------------------------------
+
+  describe "insertSrcSpan" $ do
+    it "checks that the forest is split into two parts" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = [mkTreeFromTokens toks]
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(17,1)-(19,13)"
+
+      let forest' = insertSrcSpan forest l
+      (show $ map treeStartEnd forest') `shouldBe`
+               "[((1,1),(16,3)),"++
+               "((17,1),(19,13)),"++ -- our inserted span
+               "((19,14),(24,1))]"
+
+  -- ---------------------------------------------
+
   describe "invariant 1" $ do
     it "checks that a tree with empty tokens and empty subForest fails" $ do
       (invariant [Node (Entry GHC.noSrcSpan [] Nothing) []]) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]

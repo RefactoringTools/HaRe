@@ -11,7 +11,10 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , initModule
        , getTokensFor
        , treeStartEnd
+       , insertSrcSpan
+
        -- * Internal, for testing
+       , splitForestOnSpan
        , lookupSrcSpan
        , invariant
        , mkTreeFromTokens
@@ -76,6 +79,7 @@ Invariants:
 
 -}
 
+-- TODO: turn this into a record, with named accessors
 -- | An entry in the data structure for a particular srcspan.
 data Entry = Entry GHC.SrcSpan -- ^The source span contained in this Node
                    [PosToken]  -- ^The tokens for the SrcSpan if subtree is empty
@@ -123,6 +127,65 @@ getTokensFor modu span = (modu', tokens)
 
 -- ---------------------------------------------------------------------
 
+-- |Insert a SrcSpan into the forest, if it is not there already.
+-- Assumes the forest was populated with the tokens containing the
+-- SrcSpan already
+insertSrcSpan :: Forest Entry -> GHC.SrcSpan -> Forest Entry
+insertSrcSpan forest sspan = forest'
+  where
+    startPos = getGhcLoc sspan
+    endPos   = getGhcLocEnd sspan
+
+    (begin,middle,end) = splitForestOnSpan forest sspan
+    forest' = case middle of
+     []  -> error $ "forest does not contain span: " ++ (show (startPos,endPos))
+     [x] -> if treeStartEnd x == (startPos,endPos)
+              then forest   -- Already in the tree
+              else forest'' -- Need to check the subtree
+               where
+                 (Node (Entry _sspan toks mp) sub) = x
+                 forest'' = if (emptyList sub)
+                   then begin ++ [(Node (Entry _sspan   [] mp) subTree)] ++ end
+                   else begin ++ [(Node (Entry _sspan toks mp) sub')] ++ end
+                          where
+                            sub' = insertSrcSpan sub sspan
+
+                            -- Tokens here, must introduce sub-spans with split
+                            (startToks,middleToks,endToks) = splitToks (startPos,endPos) toks
+                            subTree = [mkTreeFromTokens startToks,
+                                       mkTreeFromTokens middleToks,
+                                       mkTreeFromTokens endToks]
+
+     _  ->  forest'' -- TODO: Multiple, Need to insert a new span "above" these.
+                     --       Hmm. is this possible?
+       where
+         forest'' = forest
+
+
+-- ---------------------------------------------------------------------
+
+-- |Split a forest of trees into a (begin,middle,end) according to a
+-- SrcSpan, such that no tokens are included in begin or end belonging
+-- to the SrcSpan, and all of middle has some part of the SrcSpan
+splitForestOnSpan :: Forest Entry -> GHC.SrcSpan 
+                  -> ([Tree Entry],[Tree Entry],[Tree Entry])
+splitForestOnSpan forest sspan = (beginTrees,middleTrees,endTrees)
+  where
+    start = getGhcLoc sspan
+    end   = getGhcLocEnd sspan
+
+    (beginTrees,rest)      = break inSpan forest
+    (middleTrees,endTrees) = break (\t -> not $ inSpan t) rest
+
+    inSpan tree = inStart || inMiddle || inEnd
+      where
+        (treeStart,treeEnd) = treeStartEnd tree
+        inStart  = start >= treeStart && start <= treeEnd
+        inMiddle = start <= treeStart && end   >= treeEnd
+        inEnd    = end   >= treeStart && end   <= treeEnd
+
+-- ---------------------------------------------------------------------
+
 -- | Look a SrcSpan up in the forest.
 -- There are three possibilities
 -- 1. It is not there
@@ -139,17 +202,10 @@ lookupSrcSpan forest sspan = res
     -- found.
     -- If it is contained in a single tree, drill into it to find the
     -- smallest set of trees containing the span
-    start = getGhcLoc sspan
-    end   = getGhcLocEnd sspan
-    res = filter inSpan forest
+
+    (_,res,_) = splitForestOnSpan forest sspan
     -- TODO: drill down if necessary into (head res) and (tail res)
 
-    inSpan tree = inStart || inMiddle || inEnd
-      where
-        (treeStart,treeEnd) = treeStartEnd tree
-        inStart  = start >= treeStart && start <= treeEnd
-        inMiddle = start <= treeStart && end   >= treeEnd
-        inEnd    = end   >= treeStart && end   <= treeEnd
 
 -- ---------------------------------------------------------------------
 -- |Check the invariant for the token cache. Returns list of any errors found.
