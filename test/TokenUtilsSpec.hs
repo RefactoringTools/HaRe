@@ -69,9 +69,9 @@ spec = do
       let forest = [tree1,tree2,tree3,tree4]
       (invariant forest) `shouldBe` []
 
-      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(5,12))"
-      (show $ treeStartEnd tree2) `shouldBe` "((6,3),(8,8))"
-      (show $ treeStartEnd tree3) `shouldBe` "((8,9),(13,4))"
+      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(5,11))"
+      (show $ treeStartEnd tree2) `shouldBe` "((6,3),(8,7))"
+      (show $ treeStartEnd tree3) `shouldBe` "((8,9),(13,1))"
       (show $ treeStartEnd tree4) `shouldBe` "((13,5),(24,1))"
 
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -92,9 +92,9 @@ spec = do
       let forest = [tree1,tree2,tree3,tree4]
       (invariant forest) `shouldBe` []
 
-      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(8,8))"
-      (show $ treeStartEnd tree2) `shouldBe` "((8,9),(13,4))"
-      (show $ treeStartEnd tree3) `shouldBe` "((13,5),(17,4))"
+      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(8,7))"
+      (show $ treeStartEnd tree2) `shouldBe` "((8,9),(13,1))"
+      (show $ treeStartEnd tree3) `shouldBe` "((13,5),(17,1))"
       (show $ treeStartEnd tree4) `shouldBe` "((17,5),(24,1))"
 
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -104,7 +104,7 @@ spec = do
 
       let r = lookupSrcSpan forest l
       (map showTree r) `shouldBe`
-               ["Node (Entry ((13,5),(17,4)) [(((13,5),(13,6)),ITvarid \"a\",\"a\")]..[(((17,1),(17,4)),ITvarid \"foo\",\"foo\")]) []",
+               ["Node (Entry ((13,5),(17,1)) [(((13,5),(13,6)),ITvarid \"a\",\"a\")]..[(((17,1),(17,4)),ITvarid \"foo\",\"foo\")]) []",
                 "Node (Entry ((17,5),(24,1)) [(((17,5),(17,6)),ITvarid \"x\",\"x\")]..[(((24,1),(24,1)),ITsemi,\"\")]) []"]
 
     -- -----------------------
@@ -114,9 +114,9 @@ spec = do
       let tree2 = mkTreeFromTokens (take  5 $ drop 45 toks)
       let tree3 = mkTreeFromTokens (take  5 $ drop 50 toks)
       let tree4 = mkTreeFromTokens (drop 55 toks)
-      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(17,4))"
+      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(17,1))"
       (show $ treeStartEnd tree2) `shouldBe` "((17,5),(18,6))"
-      (show $ treeStartEnd tree3) `shouldBe` "((18,6),(19,12))"
+      (show $ treeStartEnd tree3) `shouldBe` "((18,6),(19,6))"
       (show $ treeStartEnd tree4) `shouldBe` "((19,13),(24,1))"
       let forest = [tree1,tree2,tree3,tree4]
       (invariant forest) `shouldBe` []
@@ -128,9 +128,9 @@ spec = do
 
       let r = lookupSrcSpan forest l
       (show $ map treeStartEnd r) `shouldBe`
-               "[((1,1),(17,4)),"++
+               "[((1,1),(17,1)),"++
                "((17,5),(18,6)),"++
-               "((18,6),(19,12)),"++
+               "((18,6),(19,6)),"++
                "((19,13),(24,1))]"
 
 
@@ -146,9 +146,9 @@ spec = do
       let forest = [tree1,tree2,tree3,tree4]
       (invariant forest) `shouldBe` []
 
-      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(8,8))"
-      (show $ treeStartEnd tree2) `shouldBe` "((8,9),(13,4))"
-      (show $ treeStartEnd tree3) `shouldBe` "((13,5),(17,4))"
+      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(8,7))"
+      (show $ treeStartEnd tree2) `shouldBe` "((8,9),(13,1))"
+      (show $ treeStartEnd tree3) `shouldBe` "((13,5),(17,1))"
       (show $ treeStartEnd tree4) `shouldBe` "((17,5),(24,1))"
 
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -157,8 +157,8 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(17,1)-(19,13)"
 
       let (begin,middle,end) = splitForestOnSpan forest l
-      (map treeStartEnd begin) `shouldBe` [((1,1),(8,8)),((8,9),(13,4))]
-      (map treeStartEnd middle) `shouldBe` [((13,5),(17,4)),((17,5),(24,1))]
+      (map treeStartEnd begin) `shouldBe` [((1,1),(8,7)),((8,9),(13,1))]
+      (map treeStartEnd middle) `shouldBe` [((13,5),(17,1)),((17,5),(24,1))]
       (map treeStartEnd end) `shouldBe` []
 
   -- ---------------------------------------------
@@ -174,10 +174,11 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(17,1)-(19,13)"
 
       let forest' = insertSrcSpan forest l
-      (show $ map treeStartEnd forest') `shouldBe`
-               "[((1,1),(16,3)),"++
-               "((17,1),(19,13)),"++ -- our inserted span
-               "((19,14),(24,1))]"
+      (drawForestEntry forest') `shouldBe` 
+              "((1,1),(24,1))\n|\n"++
+              "+- ((1,1),(15,14))\n|\n"++
+              "+- ((17,1),(19,13))\n|\n"++ -- our inserted span
+              "`- ((24,1),(24,1))\n\n"
 
   -- ---------------------------------------------
 
@@ -222,10 +223,10 @@ spec = do
       let tree4 = mkTreeFromTokens (drop 10 toks)
       (showTree tree)  `shouldBe` "Node (Entry ((1,1),(24,1)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((24,1),(24,1)),ITsemi,\"\")]) []"
       (showTree tree2) `shouldBe` "Node (Entry ((1,8),(24,1)) [(((1,8),(1,17)),ITconid \"TokenTest\",\"TokenTest\")]..[(((24,1),(24,1)),ITsemi,\"\")]) []"
-      (showTree tree3) `shouldBe` "Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) []"
+      (showTree tree3) `shouldBe` "Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) []"
 
       (invariant [Node (Entry sspan [] Nothing) [tree2]]) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(24,1)) []) [\"Node (Entry ((1,8),(24,1)) [(((1,8),(1,17)),ITconid \\\"TokenTest\\\",\\\"TokenTest\\\")]..[(((24,1),(24,1)),ITsemi,\\\"\\\")]) []\"]"]
-      (invariant [Node (Entry sspan [] Nothing) [tree3]]) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(24,1)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\"]"]
+      (invariant [Node (Entry sspan [] Nothing) [tree3]]) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(24,1)) []) [\"Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\"]"]
 
       (invariant [Node (Entry sspan [] Nothing) [tree3,tree4]]) `shouldBe` []
 
@@ -237,13 +238,13 @@ spec = do
       let tree3 = mkTreeFromTokens (take 10 $ drop 20 toks)
       let tree4 = mkTreeFromTokens (drop 30 toks)
 
-      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(5,12))"
-      (show $ treeStartEnd tree2) `shouldBe` "((6,3),(8,8))"
-      (show $ treeStartEnd tree3) `shouldBe` "((8,9),(13,4))"
+      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(5,11))"
+      (show $ treeStartEnd tree2) `shouldBe` "((6,3),(8,7))"
+      (show $ treeStartEnd tree3) `shouldBe` "((8,9),(13,1))"
       (show $ treeStartEnd tree4) `shouldBe` "((13,5),(24,1))"
 
       (invariant [Node (Entry sspan [] Nothing) [tree1,tree2,tree3,tree4]]) `shouldBe` []
-      (invariant [Node (Entry sspan [] Nothing) [tree1,tree3,tree2,tree4]]) `shouldBe` ["FAIL: subForest not in order: (13,4) not < (6,3):Node (Entry ((1,1),(24,1)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(24,1)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((24,1),(24,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant [Node (Entry sspan [] Nothing) [tree1,tree3,tree2,tree4]]) `shouldBe` ["FAIL: subForest not in order: (13,1) not < (6,3):Node (Entry ((1,1),(24,1)) []) [\"Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,1)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,7)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(24,1)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((24,1),(24,1)),ITsemi,\\\"\\\")]) []\"]"]
 
   -- ---------------------------------------------
 
@@ -255,13 +256,13 @@ spec = do
       let tree3 = mkTreeFromTokens (take 10 $ drop 20 toks)
       let tree4 = mkTreeFromTokens (drop 30 toks)
 
-      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(5,12))"
-      (show $ treeStartEnd tree2) `shouldBe` "((6,3),(8,8))"
-      (show $ treeStartEnd tree3) `shouldBe` "((8,9),(13,4))"
+      (show $ treeStartEnd tree1) `shouldBe` "((1,1),(5,11))"
+      (show $ treeStartEnd tree2) `shouldBe` "((6,3),(8,7))"
+      (show $ treeStartEnd tree3) `shouldBe` "((8,9),(13,1))"
       (show $ treeStartEnd tree4) `shouldBe` "((13,5),(24,1))"
 
       (invariant [tree1,tree2,tree3,tree4]) `shouldBe` []
-      (invariant [tree1,tree3,tree2,tree4]) `shouldBe` ["FAIL: forest not in order: (13,4) not < (6,3)"]
+      (invariant [tree1,tree3,tree2,tree4]) `shouldBe` ["FAIL: forest not in order: (13,1) not < (6,3)"]
 
   -- ---------------------------------------------
 
@@ -276,7 +277,7 @@ spec = do
       let toks' = take 2 $ drop 5 toks
       let tree = mkTreeFromTokens toks'
       (show toks') `shouldBe` "[((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")]"
-      (show tree) `shouldBe` "Node {rootLabel = Entry (RealSrcSpan (SrcSpanOneLine {srcSpanFile = \"./test/testdata/TokenTest.hs\", srcSpanLine = 5, srcSpanSCol = 1, srcSpanECol = 6})) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")] Nothing, subForest = []}"
+      (show tree) `shouldBe` "Node {rootLabel = Entry (RealSrcSpan (SrcSpanOneLine {srcSpanFile = \"./test/testdata/TokenTest.hs\", srcSpanLine = 5, srcSpanSCol = 1, srcSpanECol = 5})) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")] Nothing, subForest = []}"
 
 
 -- ---------------------------------------------------------------------

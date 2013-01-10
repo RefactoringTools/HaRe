@@ -18,7 +18,13 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , lookupSrcSpan
        , invariant
        , mkTreeFromTokens
+       , showForest
        , showTree
+
+       -- * Based on Data.Tree
+       , drawTreeEntry
+       , drawForestEntry
+       , drawEntry
        ) where
 
 import qualified BasicTypes    as GHC
@@ -146,7 +152,7 @@ insertSrcSpan forest sspan = forest'
                  (Node (Entry _sspan toks mp) sub) = x
                  forest'' = if (emptyList sub)
                    then begin ++ [(Node (Entry _sspan   [] mp) subTree)] ++ end
-                   else begin ++ [(Node (Entry _sspan toks mp) sub')] ++ end
+                   else begin ++ [(Node (Entry _sspan toks mp)    sub')] ++ end
                           where
                             sub' = insertSrcSpan sub sspan
 
@@ -284,6 +290,43 @@ treeStartEnd :: Tree Entry -> (SimpPos,SimpPos)
 treeStartEnd (Node (Entry sspan _ _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 -- ---------------------------------------------------------------------
+{-
+-- showForest :: Forest Entry -> String
+showForest forest = map (showSubTree 0) forest
+  where
+    -- showSubTree :: Int -> Tree Entry -> String
+    showSubTree indent tree@(Node (Entry sspan toks mp) sub)
+      = (take indent (repeat ' '))
+        ++ (show (getGhcLoc sspan, getGhcLocEnd sspan)) ++ " "
+        ++ (case toks of
+             [] -> showSubTree (indent+2) sub
+             _  -> "toks")
+-}
+
+showForest forest = map showTree forest
+
+-- ---------------------------------------------------------------------
+-- | Neat 2-dimensional drawing of a tree.
+drawTreeEntry :: Tree Entry -> String
+drawTreeEntry  = unlines . drawEntry
+
+-- | Neat 2-dimensional drawing of a forest.
+drawForestEntry :: Forest Entry -> String
+drawForestEntry  = unlines . map drawTreeEntry
+
+drawEntry :: Tree Entry -> [String]
+drawEntry (Node (Entry sspan toks _mp) ts0) = (show (getGhcLoc sspan, getGhcLocEnd sspan)) : drawSubTrees ts0
+  where
+    drawSubTrees [] = []
+    drawSubTrees [t] =
+        "|" : shift "`- " "   " (drawEntry t)
+    drawSubTrees (t:ts) =
+        "|" : shift "+- " "|  " (drawEntry t) ++ drawSubTrees ts
+
+    shift first other = zipWith (++) (first : repeat other)
+
+-- ---------------------------------------------------------------------
+
 
 showTree = prettyshow
 
@@ -308,7 +351,8 @@ mkTreeFromTokens [] = Node (Entry GHC.noSrcSpan [] Nothing) []
 mkTreeFromTokens toks = Node (Entry sspan toks Nothing) []
   where
    startLoc = realSrcLocFromTok $ head toks
-   endLoc   = realSrcLocEndTok $ last toks
+   -- endLoc   = realSrcLocEndTok $ last toks
+   endLoc   = realSrcLocFromTok $ last toks -- SrcSpans count from start of token, not end
    sspan    = GHC.RealSrcSpan $ GHC.mkRealSrcSpan startLoc endLoc
 
 -- EOF
