@@ -182,6 +182,28 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "retrieveTokens" $ do
+    it "extracts all the tokens from the leaves of the trees, in order" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = [mkTreeFromTokens toks]
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(17,1)-(19,13)"
+
+      let forest' = insertSrcSpan forest l
+      (drawForestEntry forest') `shouldBe` 
+              "((1,1),(24,1))\n|\n"++
+              "+- ((1,1),(15,14))\n|\n"++
+              "+- ((17,1),(19,13))\n|\n"++ -- our inserted span
+              "`- ((24,1),(24,1))\n\n"
+
+      let toks' = retrieveTokens forest'
+      (show toks') `shouldBe` (show toks)
+
+  -- ---------------------------------------------
+
   describe "invariant 1" $ do
     it "checks that a tree with empty tokens and empty subForest fails" $ do
       (invariant [Node (Entry GHC.noSrcSpan [] Nothing) []]) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]

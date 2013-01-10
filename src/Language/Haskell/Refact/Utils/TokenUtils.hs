@@ -12,6 +12,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , getTokensFor
        , treeStartEnd
        , insertSrcSpan
+       , retrieveTokens
 
        -- * Internal, for testing
        , splitForestOnSpan
@@ -170,10 +171,24 @@ insertSrcSpan forest sspan = forest'
 
 -- ---------------------------------------------------------------------
 
+-- |Retrieve all the tokens at the leaves of the tree, in order
+retrieveTokens :: Forest Entry -> [PosToken]
+-- retrieveTokens forest = F.foldl accum [] forest
+retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) forest
+-- retrieveTokens forest =F.foldl accum [] forest
+  where
+    accum :: [PosToken] -> Entry -> [PosToken]
+    accum acc (Entry _ toks _) = acc ++ toks
+
+    -- accum :: [PosToken] -> Tree Entry -> [PosToken]
+    -- accum acc (Node (Entry _ toks _) _) = acc ++ toks
+
+-- ---------------------------------------------------------------------
+
 -- |Split a forest of trees into a (begin,middle,end) according to a
 -- SrcSpan, such that no tokens are included in begin or end belonging
 -- to the SrcSpan, and all of middle has some part of the SrcSpan
-splitForestOnSpan :: Forest Entry -> GHC.SrcSpan 
+splitForestOnSpan :: Forest Entry -> GHC.SrcSpan
                   -> ([Tree Entry],[Tree Entry],[Tree Entry])
 splitForestOnSpan forest sspan = (beginTrees,middleTrees,endTrees)
   where
