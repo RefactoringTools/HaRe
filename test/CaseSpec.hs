@@ -30,7 +30,6 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  
   describe "ifToCase" $ do
     it "converts an if expression to a case expression" $ do
       ifToCase ["./test/testdata/Case/B.hs","4","7","4","43"]

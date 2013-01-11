@@ -359,6 +359,17 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
                     return newExp
           | otherwise = return e
 
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located n) t where
+      update oldExp newExp t
+           = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
+       where
+        inExp (e::GHC.Located n)
+          | sameOccurrence e oldExp
+               = do _ <- updateToks oldExp newExp prettyprint
+                -- error "update: updated tokens" -- ++AZ++ debug
+                    return newExp
+          | otherwise = return e
+
 
 -- ---------------------------------------------------------------------
 -- TODO: ++AZ++ get rid of the following instances, merge them into a
