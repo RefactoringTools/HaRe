@@ -99,18 +99,56 @@ somewhere f x = f x `mplus` gmapMp (somewhere f) x
 -}
 
 -- | Apply a monadic transformation at least somewhere
-somewhereStaged :: MonadPlus m => Stage -> GenericM m -> GenericM m
+somewhereMStaged :: MonadPlus m => Stage -> GenericM m -> GenericM m
 
 -- We try "f" in top-down manner, but descent into "x" when we fail
 -- at the root of the term. The transformation fails if "f" fails
 -- everywhere, say succeeds nowhere.
 -- 
-somewhereStaged stage f x 
+somewhereMStaged stage f x 
   | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = mzero
-  | otherwise = f x `mplus` gmapMp (somewhereStaged stage f) x
+  | otherwise = f x `mplus` gmapMp (somewhereMStaged stage f) x
   where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
         postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
         fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+
+-- ---------------------------------------------------------------------
+
+-- | Monadic variation on everywhere
+everywhereMStaged :: Monad m => Stage -> GenericM m -> GenericM m
+
+-- Bottom-up order is also reflected in order of do-actions
+everywhereMStaged stage f x
+  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = return x
+  | otherwise = do x' <- gmapM (everywhereMStaged stage f) x
+                   f x'
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+
+
+                   
+{-
+everywhereStaged stage f = f . gmapT (everywhere f)
+  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) = mzero
+  | otherwise = f . gmapT (everywhere stage f)
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+-}
+
+-- | Monadic variation on everywhere'
+everywhereMStaged' :: Monad m => Stage -> GenericM m -> GenericM m
+
+-- Top-down order is also reflected in order of do-actions
+everywhereMStaged' stage f x
+  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = return x
+  | otherwise = do x' <- f x
+                   gmapM (everywhereMStaged' stage f) x'
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+
 
 -- ---------------------------------------------------------------------
 
@@ -155,28 +193,6 @@ everywhereM :: Monad m => GenericM m -> GenericM m
 -- Bottom-up order is also reflected in order of do-actions
 everywhereM f x = do x' <- gmapM (everywhereM f) x
                      f x'
--}
--- ---------------------------------------------------------------------
-
--- | Monadic variation on everywhere
-everywhereMStaged :: Monad m => Stage -> GenericM m -> GenericM m
-
--- Bottom-up order is also reflected in order of do-actions
-everywhereMStaged stage f x
-  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = return x
-  | otherwise = do x' <- gmapM (everywhereMStaged stage f) x
-                   f x'
-  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
-        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
-                   
-{-
-everywhereStaged stage f = f . gmapT (everywhere f)
-  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) = mzero
-  | otherwise = f . gmapT (everywhere stage f)
-  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
-        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
 -}
 
 -- ---------------------------------------------------------------------

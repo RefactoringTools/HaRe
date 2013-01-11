@@ -32,7 +32,6 @@ spec = do
 
   describe "locToExp on ParsedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
-      -- ((_, _, mod), toks) <- parsedFileBGhc
       (t, toks) <- parsedFileBGhc
       let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -97,7 +96,7 @@ spec = do
 
       let (Just (modname,modNameStr)) = getModuleName mod
       -- let modNameStr = "foo"
-      modNameStr `shouldBe` "B"
+      modNameStr `shouldBe` "TypeUtils.B"
 
     it "returns Nothing for the module name otherwise" $ do
       -- modInfo@((_, _, mod), toks) <- parsedFileNoMod
@@ -171,8 +170,9 @@ spec = do
          g <- getCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp
-      map (\m -> GHC.moduleNameString $ GHC.ms_mod_name m) mg `shouldBe` (["B","C"])
-      map (\m -> show $ GHC.ml_hs_file $ GHC.ms_location m) mg `shouldBe` (["Just \"./test/testdata/B.hs\"","Just \"./test/testdata/C.hs\""])
+      map (\m -> GHC.moduleNameString $ GHC.ms_mod_name m) mg `shouldBe` (["TypeUtils.B","TypeUtils.C"])
+      map (\m -> show $ GHC.ml_hs_file $ GHC.ms_location m) mg `shouldBe` (["Just \"./test/testdata/TypeUtils/B.hs\""
+                                                                           ,"Just \"./test/testdata/TypeUtils/C.hs\""])
 
 
     it "gets the updated graph, after a refactor" $ do
@@ -188,7 +188,7 @@ spec = do
          g <- sortCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp
-      (GHC.showPpr $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:C, main:B]"
+      (GHC.showPpr $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:TypeUtils.C, main:TypeUtils.B]"
 
   -- -------------------------------------------------------------------
 
@@ -246,18 +246,19 @@ spec = do
 
     it "contains the GhcT monad" $ do
       (r,_) <- runRefactGhcState comp
-      r `shouldBe` ("[\"B                ( test/testdata/B.hs, interpreted )\""
-                ++  ",\"C                ( test/testdata/C.hs, interpreted )\"]")
+      r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, interpreted )\""
+                  ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, interpreted )\"]")
+
 
 
 -- ---------------------------------------------------------------------
 -- Helper functions
 
 bFileName :: GHC.FastString
-bFileName = GHC.mkFastString "./test/testdata/B.hs"
+bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
 
 parsedFileBGhc :: IO (ParseResult,[PosToken])
-parsedFileBGhc = parsedFileGhc "./test/testdata/B.hs"
+parsedFileBGhc = parsedFileGhc "./test/testdata/TypeUtils/B.hs"
 
 parsedFileMGhc :: IO (ParseResult,[PosToken])
 parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
@@ -265,7 +266,7 @@ parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
 parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
 parseFileBGhc = parseSourceFileGhc fileName
   where
-    fileName = "./test/testdata/B.hs"
+    fileName = "./test/testdata/TypeUtils/B.hs"
 
 parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
 parseFileMGhc = parseSourceFileGhc fileName
@@ -280,7 +281,7 @@ parsedFileNoMod = parsedFileGhc fileName
 comp :: RefactGhc String
 comp = do
     s <- get
-    modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/B.hs"
+    modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/TypeUtils/B.hs"
 
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g

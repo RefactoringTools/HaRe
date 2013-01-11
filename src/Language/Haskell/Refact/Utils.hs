@@ -6,8 +6,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Language.Haskell.Refact.Utils
-       ( expToPNT
-       , locToExp
+       ( locToExp
        , sameOccurrence
 
        -- * Managing the GHC / project environment
@@ -254,6 +253,7 @@ runRefacSession settings comp = do
    initialState = RefSt
         { rsSettings = fromMaybe (RefSet ["."]) settings
         , rsUniqState = 1
+        , rsFlags = RefFlags False
         , rsModule = Nothing
         }
   (refactoredMods,_s) <- runRefactGhc (initGhcSession >> comp) initialState
@@ -284,13 +284,14 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
     -- restore the state. Fix this to store the modules in some kind of cache.
-    (RefSt settings u _) <- get
+    (RefSt settings u f _) <- get
 
     let rs = RefMod { rsTypecheckedMod = parsedFile
+                    , rsOrigTokenStream = toks
                     , rsTokenStream = toks
                     , rsStreamModified = False
                     }
-    put (RefSt settings u (Just rs))
+    put (RefSt settings u f (Just rs))
 
     refac  -- Run the refactoring, updating the state as required
     mod'  <- getRefactRenamed
@@ -354,23 +355,47 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
        where
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
-               = do _ <- updateToks oldExp newExp prettyprint
+               = do _ <- updateToks oldExp newExp prettyprint False
                 -- error "update: updated tokens" -- ++AZ++ debug
                     return newExp
           | otherwise = return e
 
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located n) t where
-      update oldExp newExp t
-           = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
-       where
-        inExp (e::GHC.Located n)
-          | sameOccurrence e oldExp
-               = do _ <- updateToks oldExp newExp prettyprint
-                -- error "update: updated tokens" -- ++AZ++ debug
-                    return newExp
-          | otherwise = return e
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t where
+    update oldPat newPat t
+           = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
+        where
+          inPat (p::GHC.LPat n)
+            | sameOccurrence p oldPat
+                = do _ <- {- zipUpdateToks -} updateToks oldPat newPat prettyprint False
+                     return newPat
+            | otherwise = return p
 
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n) t where
+     update oldTy newTy t
+           = everywhereMStaged SYB.Parser (SYB.mkM inTyp) t
+        where
+          inTyp (t::GHC.LHsType n)
+            | sameOccurrence t oldTy
+                = do _ <- {- zipUpdateToks -} updateToks oldTy newTy prettyprint False
+                     return newTy
+            | otherwise = return t
 
+{- instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update [GHC.LPat n] t where
+    update oldPat newPat t
+           = everywhereMStaged SYB.Parser (SYB.mkM inPat) t
+        where
+          inPat (p::[GHC.LPat n])
+            | and $ zipWith sameOccurrence p oldPat
+                = do _ <- {- zipUpdateToks -} updateToks oldPat newPat prettyprint
+                     return newPat
+            | otherwise = return p -}
+
+zipUpdateToks f [] [] c = return []
+zipUpdateToks f [] _ _  = return []
+zipUpdateToks f _ [] _  = return []
+zipUpdateToks f (a:as) (b:bs) c = do res <- f a b c 
+                                     rest <- zipUpdateToks f as bs c  
+                                     return (res:rest)
 -- ---------------------------------------------------------------------
 -- TODO: ++AZ++ get rid of the following instances, merge them into a
 -- single function above
@@ -382,7 +407,7 @@ instance (SYB.Data t) => Update (GHC.Located HsExpP) t where
         inExp (e::GHC.Located HsExpP)
           | sameOccurrence e oldExp
                = do (newExp', _) <- updateToks oldExp newExp prettyprint
-                -- error "update: updated tokens" -- ++AZ++ debug
+                -- error "update: up`dated tokens" -- ++AZ++ debug
                     return newExp'
           | otherwise = return e
 -}
@@ -439,7 +464,7 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
        -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
 
      where
-       modifyFile ((fileName,_),(ts,_)) = do
+       modifyFile ((fileName,_),(ts,renamed)) = do
            -- let source = concatMap (snd.snd) ts
 
            let ts' = bypassGHCBug7351 ts
@@ -454,6 +479,8 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            seq (length source) (writeFile (fileName ++ ".refactored") source)
 
            writeFile (fileName ++ ".tokens") (showToks ts')
+           writeFile (fileName ++ ".renamed_out") (GHC.showPpr renamed)
+           writeFile (fileName ++ ".AST_out") $ (GHC.showPpr renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
 
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not
@@ -485,24 +512,6 @@ bypassGHCBug7351 ts = map go ts
 
    fixCol l = GHC.mkSrcSpan (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanStartLine l) ((GHC.srcSpanStartCol l) - 1)) 
                             (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanEndLine l) ((GHC.srcSpanEndCol l) - 1)) 
-
--- | If an expression consists of only one identifier then return this identifier in the PNT format,
---  otherwise return the default PNT.
-
--- TODO: bring in data constructor constants too.
-expToPNT ::
-  GHC.GenLocated GHC.SrcSpan (GHC.HsExpr PNT)
-  -> Maybe PNT
-
--- Will have to look this up ....
-expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just pnt
--- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
--- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
--- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
--- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
-expToPNT _ = Nothing
-
-
 
 -- ---------------------------------------------------------------------
 

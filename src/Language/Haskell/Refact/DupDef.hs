@@ -113,7 +113,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
         dupInPat pat = return pat
 
         --4: The defintion to be duplicated is a local decl in a Let expression
-        dupInLet (letExp@(GHC.HsLet ds e):: GHC.HsExpr GHC.Name)
+        dupInLet (letExp@(GHC.HsLet ds _e):: GHC.HsExpr GHC.Name)
           | not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letExp pn
         dupInLet letExp = return letExp
 
@@ -131,7 +131,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
         findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
 
 
-        doDuplicating' :: (HsBinds t) => InScopes -> t -> GHC.Located GHC.Name
+        doDuplicating' :: (HsValBinds t) => InScopes -> t -> GHC.Located GHC.Name
                        -> RefactGhc (t)
         doDuplicating' inscps parentr ln@(GHC.L _ n)
            = do let
@@ -147,7 +147,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
                     dv = hsVisibleNames ln declsr --dv: names may shadow new name
                     vars        = nub (f `union` d `union` dv)
 
-                newNameGhc <- mkNewName newName
+                newNameGhc <- mkNewGhcName newName
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow
                 nameAlreadyInScope <- isInScopeAndUnqualifiedGhc newName
 
@@ -158,7 +158,8 @@ reallyDoDuplicating pn newName inscopes renamed = do
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
                    else do newBinding <- duplicateDecl declsr parentr n newNameGhc
-                           let newDecls = replaceDecls declsr (declsr ++ newBinding)
+                           -- let newDecls = replaceDecls declsr (declsr ++ newBinding)
+                           let newDecls = replaceBinds declsr (declsr ++ newBinding)
                            return $ replaceBinds parentr newDecls
 
 

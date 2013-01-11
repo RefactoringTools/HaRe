@@ -313,3 +313,21 @@ In layout mode
   -- Insert ITvccurly if line to the left of prior
 
 
+---------------------
+
+MatchGroup
+----------
+
+Although matches only ever occur on a FunBind in the original
+http://hackage.haskell.org/packages/archive/haskell-src/1.0.1.4/doc/html/Language-Haskell-Syntax.html#t:HsMatch, in GHC they appear as follows
+
+HsBinds
+  FunBind
+
+HsExpr
+ HsLam
+ HsCase
+ 
+[original has (HsLambda .. [HsPat] ..)
+          and (HsCase HsExp [HsAlt])
+]

@@ -41,7 +41,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeUtils
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
--- import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
+import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
 
 import Control.Monad.State
 
@@ -59,13 +59,18 @@ import Language.Haskell.Refact.Utils.GhcUtils
 -- targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
 -- targetMod = "FreeAndDeclared/Declare"
 
+--targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
 targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
-targetMod = "MoveDef/Md1"
+-- targetMod = "SwapArgs/B"
+targetMod = "Demote/WhereIn5"
 
 {- main = t1 -}
 
 t1 = GhcRefacCase.ifToCase ["./old/refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./old/B.hs","4","7","4","43"]
+
+s1 = GhcSwapArgs.swapArgs ["../test/testdata/SwapArgs/B.hs","10","1"]
+
 {-
 s1 = GhcSwapArgs.swapArgs ["../old/refactorer/B.hs","6","1"]
 s2 = GhcSwapArgs.swapArgs ["./old/refactorer/B.hs","6","1"]
@@ -141,7 +146,8 @@ getStuff =
         GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling make
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
-        modSum <- GHC.getModSummary $ GHC.mkModuleName "MoveDef.Md1"
+        -- modSum <- GHC.getModSummary $ GHC.mkModuleName "SwapArgs.B"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "Demote.WhereIn5"
         p <- GHC.parseModule modSum
 
         t <- GHC.typecheckModule p
@@ -214,10 +220,10 @@ getStuff =
 
         -- RenamedSource -----------------------------------------------
         -- GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
-        GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
+        -- GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Renamer 0 $ GHC.tm_renamed_source t))
 
-        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
-        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
+        GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
+        GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.TypeChecker 0 $ GHC.tm_typechecked_source t))
 
         -- ModuleInfo ----------------------------------------------------------------
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (SYB.showData SYB.Parser 0 $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
@@ -327,7 +333,7 @@ gg = qq td
 
 
 -- filtered :: (Gettable f, Applicative f) => (c -> Bool) -> LensLike f a b c d -> LensLike f a b c d
-hh = filtered isBaz foo
+-- hh = filtered isBaz foo
 
 -- ii :: (Data a) => a -> [Baz String]
 -- ii = foldMapOf hh getBaz
@@ -354,16 +360,17 @@ isBaz _ = False
  
 -- main = example
 
+example :: IO ()
 example =
    GHC.runGhc (Just libdir) $ do
         dflags <- GHC.getSessionDynFlags
         let dflags' = foldl GHC.xopt_set dflags
                             [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-        GHC.setSessionDynFlags dflags'
+        _ <- GHC.setSessionDynFlags dflags'
         -- target <- GHC.guessTarget (targetMod ++ ".hs") Nothing
         target <- GHC.guessTarget targetFile Nothing
         GHC.setTargets [target]
-        GHC.load GHC.LoadAllTargets
+        _ <- GHC.load GHC.LoadAllTargets
         modSum <- GHC.getModSummary $ GHC.mkModuleName targetMod
         p' <- GHC.parseModule modSum
         p <- GHC.typecheckModule p'
