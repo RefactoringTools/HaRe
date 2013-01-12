@@ -12,8 +12,10 @@ bib a b = x
 
 bab a b =
   let bar = 3
-  in     b + bar
+  in     b + bar -- ^trailing comment
 
+
+-- leading comment
 foo x y =
   do c <- getChar
      return c
