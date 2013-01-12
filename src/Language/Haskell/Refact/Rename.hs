@@ -71,7 +71,8 @@ reallyRenameAll rs = do
            -- = let newExp = ifToCaseTransform exp1
            --   in update exp1 newExp exp1
            = do
-               newExp <- mkNewName "ge"
+               fdNames <- hsFreeAndDeclaredPNs rs -- free and declared
+               newExp <- mkNewName "ge" fdNames 0 -- TODO: change empty list to list of declared names
                update exp1 (GHC.L x (GHC.HsVar newExp)) exp1
                return (GHC.L x (GHC.HsVar newExp))
 
@@ -83,7 +84,7 @@ reallyRenameAll rs = do
             -- = let newExp = ifToCaseTransform exp1
             --   in update exp1 newExp exp1
             = do
-                newName <- mkNewName "ge"
+                newName <- mkNewName "ge" [] 0 -- TODO: change empty list to list of names
                 update exp1 (GHC.L x (newName)) exp1
                 return (GHC.FunBind (GHC.L x newName) a b c fvs d)
 
