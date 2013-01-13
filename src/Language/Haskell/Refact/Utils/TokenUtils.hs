@@ -12,11 +12,13 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , getTokensFor
        , treeStartEnd
        , insertSrcSpan
+       , getSrcSpanFor
        , retrieveTokens
 
        -- * Internal, for testing
        , splitForestOnSpan
        , lookupSrcSpan
+       , invariantOk
        , invariant
        , mkTreeFromTokens
        , showForest
@@ -126,14 +128,30 @@ initModule typeChecked tokens
 
 -- | Get the (possible cached) tokens for a given source span, and
 -- cache their being fetched.
+-- NOTE: The SrcSpan may be one introduced by HaRe, rather than GHC.
+-- TODO: consider returning an Either. Although in reality the error
+--       should never happen
 getTokensFor :: Module -> GHC.SrcSpan -> (Module,[PosToken])
-getTokensFor modu span = (modu', tokens)
+getTokensFor modu sspan = (modu', tokens)
   where
-     modu' = modu
-     tokens = []
+     forest = if invariantOk (mTokenCache modu) -- TODO: remove this, expensive operation
+               then mTokenCache modu
+               else []
+     (forest',tree) = getSrcSpanFor forest sspan
+     modu' = modu { mTokenCache = forest' }
+
+     tokens = retrieveTokens [tree]
 
 -- ---------------------------------------------------------------------
+-- |Retrieve a tree containing a SrcSpan from the forest, inserting it
+-- if not already present
+getSrcSpanFor :: Forest Entry -> GHC.SrcSpan -> (Forest Entry, Tree Entry)
+getSrcSpanFor forest sspan = (forest',tree)
+  where
+    forest' = insertSrcSpan forest sspan -- Will NO-OP if already there
+    [tree]  = lookupSrcSpan forest' sspan
 
+-- ---------------------------------------------------------------------
 -- |Insert a SrcSpan into the forest, if it is not there already.
 -- Assumes the forest was populated with the tokens containing the
 -- SrcSpan already
@@ -224,9 +242,23 @@ lookupSrcSpan forest sspan = res
     -- If it is contained in a single tree, drill into it to find the
     -- smallest set of trees containing the span
 
-    (_,res,_) = splitForestOnSpan forest sspan
-    -- TODO: drill down if necessary into (head res) and (tail res)
+    (_,middle,_) = splitForestOnSpan forest sspan
+    res = case middle of
+           [Node _  []] -> middle
+           [Node _ sub] -> lookupSrcSpan sub sspan
+           _   -> middle
 
+
+-- ---------------------------------------------------------------------
+
+-- |Utility function to either return True or throw an error to report the problem
+invariantOk :: Forest Entry -> Bool
+invariantOk forest = ok
+  where
+    inv = invariant forest
+    ok = case inv of
+           [] -> True
+           _  -> error $ "Token Tree invariant fails:" ++ (intercalate "\n" inv)
 
 -- ---------------------------------------------------------------------
 -- |Check the invariant for the token cache. Returns list of any errors found.
