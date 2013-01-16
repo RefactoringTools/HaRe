@@ -35,27 +35,60 @@ main = hspec spec
 spec :: Spec
 spec = do
 
+
+
+  describe "case 1" $ do
+    it "gets a set of tokens, including comments" $ do
+      pending "1"
+    it "add a new set of tokens after the ones we have" $ do
+      pending "2"
+    it "gives us all the tokens in order after this" $ do
+      pending "3"
+
+
+
+
+  -- ---------------------------------------------
+
   describe "getTokens" $ do
     it "gets the tokens for a given srcloc, and caches them" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
+
       let tm = initModule t toks
       let (tm',declToks) = getTokensFor tm l
-      {-
-      let
-        comp = do
-         newName <- mkNewGhcName "bar2"
-
-         return (newName)
-      ((nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      -}
 
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (GHC.showPpr decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
-      (showToks declToks) `shouldBe` ""
-      (show $ mTokenCache tm') `shouldBe` ""
+      (showToks declToks) `shouldBe` "[(((19,1),(19,1)),ITsemi,\"\"),(((19,1),(19,4)),ITvarid \"foo\",\"foo\"),(((19,5),(19,6)),ITvarid \"x\",\"x\"),(((19,7),(19,8)),ITvarid \"y\",\"y\"),(((19,9),(19,10)),ITequal,\"=\"),(((20,3),(20,5)),ITdo,\"do\"),(((20,6),(20,6)),ITvocurly,\"\"),(((20,6),(20,7)),ITvarid \"c\",\"c\"),(((20,8),(20,10)),ITlarrow,\"<-\"),(((20,11),(20,18)),ITvarid \"getChar\",\"getChar\"),(((21,6),(21,6)),ITsemi,\"\"),(((21,6),(21,12)),ITvarid \"return\",\"return\"),(((21,13),(21,14)),ITvarid \"c\",\"c\")]"
+      (drawForestEntry $ mTokenCache tm') `shouldBe`
+            "((1,1),(26,1))\n|\n"++
+            "+- ((1,1),(18,1))\n|\n"++
+            "+- ((19,1),(21,13))\n|\n"++
+            "`- ((26,1),(26,1))\n\n"
+
+  -- ---------------------------------------------
+
+  describe "getSrcSpanFor" $ do
+    it "inserts a SrcSpan if it was not in the forest" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      let forest = [mkTreeFromTokens toks]
+
+      let (forest',tree) = getSrcSpanFor forest l
+
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (drawForestEntry forest') `shouldBe`
+            "((1,1),(26,1))\n|\n"++
+            "+- ((1,1),(18,1))\n|\n"++
+            "+- ((19,1),(21,13))\n|\n"++
+            "`- ((26,1),(26,1))\n\n"
+
+      (show $ treeStartEnd tree) `shouldBe` "((19,1),(21,13))"
 
   -- ---------------------------------------------
 
@@ -131,6 +164,27 @@ spec = do
                "((20,8),(21,6)),"++
                "((21,6),(26,1))]"
 
+    -- -----------------------
+    it "looks up a SrcSpan that is in a subtree of the forest" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+
+      let forest = insertSrcSpan [mkTreeFromTokens toks] l
+
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+
+      (drawForestEntry forest) `shouldBe`
+            "((1,1),(26,1))\n|\n"++
+            "+- ((1,1),(18,1))\n|\n"++
+            "+- ((19,1),(21,13))\n|\n"++
+            "`- ((26,1),(26,1))\n\n"
+
+      let r = lookupSrcSpan forest l
+      (show $ map treeStartEnd r) `shouldBe` "[((19,1),(21,13))]"
+
 
   -- ---------------------------------------------
 
@@ -172,7 +226,7 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
 
       let forest' = insertSrcSpan forest l
-      (drawForestEntry forest') `shouldBe` 
+      (drawForestEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(18,1))\n|\n"++
               "+- ((19,1),(21,13))\n|\n"++ -- our inserted span
