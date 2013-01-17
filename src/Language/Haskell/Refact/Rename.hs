@@ -66,13 +66,15 @@ reallyRenameAll rs = do
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
 
-         inExp exp1@(GHC.L x (GHC.HsVar _))
+         inExp exp1@(GHC.L x (GHC.HsVar name))
            -- = let newExp = ifToCaseTransformPs exp1
            -- = let newExp = ifToCaseTransform exp1
            --   in update exp1 newExp exp1
            = do
-               fdNames <- hsFreeAndDeclaredPNs rs -- free and declared
-               newExp <- mkNewName "ge" fdNames 0 -- TODO: change empty list to list of declared names
+               let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
+               let fd = map nameToString (free ++ declared)
+               let newStr = mkNewName "ge" fd 0 -- TODO: change empty list to list of declared names
+               let newExp = GHC.mkVarOcc newStr
                update exp1 (GHC.L x (GHC.HsVar newExp)) exp1
                return (GHC.L x (GHC.HsVar newExp))
 
