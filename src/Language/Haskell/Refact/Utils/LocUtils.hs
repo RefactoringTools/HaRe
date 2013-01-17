@@ -46,7 +46,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      {-
                      , getStartEndLoc2,
                      startEndLoc,extendBothSides -},extendForwards,extendBackwards
-                     , startEndLocIncFowComment{- ,startEndLocIncFowNewLn -},startEndLocIncComments {-,
+                     , startEndLocIncFowComment{- ,startEndLocIncFowNewLn -},startEndLocIncComments, startEndLocIncComments' {-,
                      prettyprint ,deleteFromToks, prettyprintGuardsAlt,
                      -}
                      , addFormalParams {- ,  adjustOffset, -- try to remove it
@@ -1469,9 +1469,12 @@ startEndLocIncFowNewLn toks t
 -- Note: what about trailing comment with interving white space, where
 -- comment is "closer" to next non-comment token?
 startEndLocIncComments::(SYB.Data t) => [PosToken] -> t -> (SimpPos,SimpPos)
-startEndLocIncComments toks t =
+startEndLocIncComments toks t = startEndLocIncComments' toks (getStartEndLoc t)
+
+
+startEndLocIncComments' :: [PosToken] -> (SimpPos,SimpPos) -> (SimpPos,SimpPos)
+startEndLocIncComments' toks (startLoc,endLoc) =
   let
-    (startLoc,endLoc)  = getStartEndLoc t
     (begin,middle,end) = splitToks (startLoc,endLoc) toks
 
     lead = reverse $ takeWhile (\tok -> isComment tok || isEmpty tok) $ reverse begin

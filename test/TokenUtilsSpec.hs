@@ -45,13 +45,10 @@ spec = do
     it "gives us all the tokens in order after this" $ do
       pending "3"
 
-
-
-
   -- ---------------------------------------------
 
   describe "getTokens" $ do
-    it "gets the tokens for a given srcloc, and caches them" $ do
+    it "gets the tokens for a given srcloc, and caches them in the tree" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -61,12 +58,17 @@ spec = do
       let (tm',declToks) = getTokensFor tm l
 
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
       (GHC.showPpr decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
-      (showToks declToks) `shouldBe` "[(((19,1),(19,1)),ITsemi,\"\"),(((19,1),(19,4)),ITvarid \"foo\",\"foo\"),(((19,5),(19,6)),ITvarid \"x\",\"x\"),(((19,7),(19,8)),ITvarid \"y\",\"y\"),(((19,9),(19,10)),ITequal,\"=\"),(((20,3),(20,5)),ITdo,\"do\"),(((20,6),(20,6)),ITvocurly,\"\"),(((20,6),(20,7)),ITvarid \"c\",\"c\"),(((20,8),(20,10)),ITlarrow,\"<-\"),(((20,11),(20,18)),ITvarid \"getChar\",\"getChar\"),(((21,6),(21,6)),ITsemi,\"\"),(((21,6),(21,12)),ITvarid \"return\",\"return\"),(((21,13),(21,14)),ITvarid \"c\",\"c\")]"
+      (showToks declToks) `shouldBe` "[(((18,1),(18,19)),ITlineComment \"-- leading comment\",\"-- leading comment\"),(((19,1),(19,1)),ITsemi,\"\"),(((19,1),(19,4)),ITvarid \"foo\",\"foo\"),(((19,5),(19,6)),ITvarid \"x\",\"x\"),(((19,7),(19,8)),ITvarid \"y\",\"y\"),(((19,9),(19,10)),ITequal,\"=\"),(((20,3),(20,5)),ITdo,\"do\"),(((20,6),(20,6)),ITvocurly,\"\"),(((20,6),(20,7)),ITvarid \"c\",\"c\"),(((20,8),(20,10)),ITlarrow,\"<-\"),(((20,11),(20,18)),ITvarid \"getChar\",\"getChar\"),(((21,6),(21,6)),ITsemi,\"\"),(((21,6),(21,12)),ITvarid \"return\",\"return\"),(((21,13),(21,14)),ITvarid \"c\",\"c\")]"
+
+      -- Note: Although the tokens include leading and following
+      -- comments, the SrcSpan must tie up with the original GHC
+      -- SrcSpan in the AST
       (drawForestEntry $ mTokenCache tm') `shouldBe`
             "((1,1),(26,1))\n|\n"++
-            "+- ((1,1),(18,1))\n|\n"++
-            "+- ((19,1),(21,13))\n|\n"++
+            "+- ((1,1),(15,18))\n|\n"++
+            "+- ((19,1),(21,14))\n|\n"++
             "`- ((26,1),(26,1))\n\n"
 
   -- ---------------------------------------------
@@ -82,13 +84,14 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest l
 
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
       (drawForestEntry forest') `shouldBe`
             "((1,1),(26,1))\n|\n"++
-            "+- ((1,1),(18,1))\n|\n"++
-            "+- ((19,1),(21,13))\n|\n"++
+            "+- ((1,1),(15,18))\n|\n"++
+            "+- ((19,1),(21,14))\n|\n"++
             "`- ((26,1),(26,1))\n\n"
 
-      (show $ treeStartEnd tree) `shouldBe` "((19,1),(21,13))"
+      (show $ treeStartEnd tree) `shouldBe` "((19,1),(21,14))"
 
   -- ---------------------------------------------
 
@@ -111,6 +114,7 @@ spec = do
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let r = lookupSrcSpan forest l
       (map showTree r) `shouldBe` ["Node (Entry ((13,5),(26,1)) [(((13,5),(13,6)),ITvarid \"a\",\"a\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"]
@@ -134,6 +138,7 @@ spec = do
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let r = lookupSrcSpan forest l
       (show $ map treeStartEnd r) `shouldBe` "[((13,5),(19,9)),((20,3),(26,1))]"
@@ -156,6 +161,7 @@ spec = do
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let r = lookupSrcSpan forest l
       (show $ map treeStartEnd r) `shouldBe`
@@ -175,15 +181,16 @@ spec = do
       let forest = insertSrcSpan [mkTreeFromTokens toks] l
 
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       (drawForestEntry forest) `shouldBe`
             "((1,1),(26,1))\n|\n"++
-            "+- ((1,1),(18,1))\n|\n"++
-            "+- ((19,1),(21,13))\n|\n"++
+            "+- ((1,1),(15,18))\n|\n"++
+            "+- ((19,1),(21,14))\n|\n"++
             "`- ((26,1),(26,1))\n\n"
 
       let r = lookupSrcSpan forest l
-      (show $ map treeStartEnd r) `shouldBe` "[((19,1),(21,13))]"
+      (show $ map treeStartEnd r) `shouldBe` "[((19,1),(21,14))]"
 
 
   -- ---------------------------------------------
@@ -207,6 +214,7 @@ spec = do
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let (begin,middle,end) = splitForestOnSpan forest l
       (map treeStartEnd begin) `shouldBe` [((1,1),(8,7)),((8,9),(13,1)),((13,5),(18,1))]
@@ -224,12 +232,13 @@ spec = do
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let forest' = insertSrcSpan forest l
       (drawForestEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
-              "+- ((1,1),(18,1))\n|\n"++
-              "+- ((19,1),(21,13))\n|\n"++ -- our inserted span
+              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n\n"
 
   -- ---------------------------------------------
@@ -243,12 +252,13 @@ spec = do
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let forest' = insertSrcSpan forest l
-      (drawForestEntry forest') `shouldBe` 
+      (drawForestEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
-              "+- ((1,1),(18,1))\n|\n"++
-              "+- ((19,1),(21,13))\n|\n"++ -- our inserted span
+              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n\n"
 
       let toks' = retrieveTokens forest'

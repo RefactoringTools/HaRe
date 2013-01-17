@@ -21,8 +21,10 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , invariantOk
        , invariant
        , mkTreeFromTokens
+       , mkTreeFromSpanTokens
        , showForest
        , showTree
+       , showSrcSpan
 
        -- * Based on Data.Tree
        , drawTreeEntry
@@ -175,10 +177,20 @@ insertSrcSpan forest sspan = forest'
                           where
                             sub' = insertSrcSpan sub sspan
 
-                            -- Tokens here, must introduce sub-spans with split
-                            (startToks,middleToks,endToks) = splitToks (startPos,endPos) toks
+                            -- Tokens here, must introduce sub-spans
+                            -- with split, taking cognizance of start
+                            -- and end comments
+                            (startLoc,endLoc) = startEndLocIncComments' toks (startPos,endPos)
+
+                            -- (startToks,middleToks,endToks) = splitToks (startPos,endPos) toks
+                            (startToks,middleToks,endToks) = splitToks (startLoc,endLoc) toks
+                            {-
                             subTree = [mkTreeFromTokens startToks,
                                        mkTreeFromTokens middleToks,
+                                       mkTreeFromTokens endToks]
+                            -}
+                            subTree = [mkTreeFromTokens startToks,
+                                       mkTreeFromSpanTokens sspan middleToks,
                                        mkTreeFromTokens endToks]
 
      _  ->  forest'' -- TODO: Multiple, Need to insert a new span "above" these.
@@ -277,7 +289,7 @@ invariant forest = rforest ++ rsub
       where
         checkForest [] = []
         checkForest [_x] = []
-        checkForest ((_s1,e1):s@(s2,e2):ss)
+        checkForest ((_s1,e1):s@(s2,_e2):ss)
           = r ++ checkForest (s:ss)
           where
             r = if e1 <= s2
@@ -294,7 +306,7 @@ invariant forest = rforest ++ rsub
         r = checkNode [] tree
 
     checkNode :: [String] -> Tree Entry -> [String]
-    checkNode acc node@(Node (Entry _sspan toks mp) sub) = acc ++ r ++ rinc ++ rsub
+    checkNode acc node@(Node (Entry _sspan toks _mp) sub) = acc ++ r ++ rinc ++ rsub
       where
         r = if (   emptyList toks && nonEmptyList sub) ||
                (nonEmptyList toks &&    emptyList sub)
@@ -320,7 +332,7 @@ invariant forest = rforest ++ rsub
         rseq = checkSequence node subs
 
         checkSequence _ [] = []
-        checkSequence _ [x] = []
+        checkSequence _ [_x] = []
         checkSequence node ((s1,e1):s@(s2,e2):ss)
           = r ++ checkSequence node (s:ss)
           where
@@ -350,6 +362,7 @@ showForest forest = map (showSubTree 0) forest
              _  -> "toks")
 -}
 
+showForest :: [Tree Entry] -> [String]
 showForest forest = map showTree forest
 
 -- ---------------------------------------------------------------------
@@ -362,7 +375,7 @@ drawForestEntry :: Forest Entry -> String
 drawForestEntry  = unlines . map drawTreeEntry
 
 drawEntry :: Tree Entry -> [String]
-drawEntry (Node (Entry sspan toks _mp) ts0) = (show (getGhcLoc sspan, getGhcLocEnd sspan)) : drawSubTrees ts0
+drawEntry (Node (Entry sspan _toks _mp) ts0) = (showSrcSpan sspan) : drawSubTrees ts0
   where
     drawSubTrees [] = []
     drawSubTrees [t] =
@@ -374,20 +387,20 @@ drawEntry (Node (Entry sspan toks _mp) ts0) = (show (getGhcLoc sspan, getGhcLocE
 
 -- ---------------------------------------------------------------------
 
-
+showTree :: Tree Entry -> String
 showTree = prettyshow
 
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
-prettyshow (Node (Entry sspan toks mp) sub)
-  = "Node (Entry " ++ (show (getGhcLoc sspan, getGhcLocEnd sspan)) ++ " "
+prettyshow (Node (Entry sspan toks _mp) sub)
+  = "Node (Entry " ++ (showSrcSpan sspan) ++ " "
      ++ (prettyToks toks) ++ ") "
      ++ show (map prettyshow  sub)
 
 prettyToks :: [PosToken] -> String
 prettyToks [] = "[]"
-prettyToks toks@[x] = showToks toks
-prettyToks toks@[t1,t2] = showToks toks
+prettyToks toks@[_x] = showToks toks
+prettyToks toks@[_t1,_t2] = showToks toks
 prettyToks toks = showToks [head toks] ++ ".." ++ showToks [last toks]
 
 -- ---------------------------------------------------------------------
@@ -398,8 +411,20 @@ mkTreeFromTokens [] = Node (Entry GHC.noSrcSpan [] Nothing) []
 mkTreeFromTokens toks = Node (Entry sspan toks Nothing) []
   where
    startLoc = realSrcLocFromTok $ head toks
-   -- endLoc   = realSrcLocEndTok $ last toks
    endLoc   = realSrcLocFromTok $ last toks -- SrcSpans count from start of token, not end
    sspan    = GHC.RealSrcSpan $ GHC.mkRealSrcSpan startLoc endLoc
+
+-- ---------------------------------------------------------------------
+
+-- |Make a tree representing a particular set of tokens
+mkTreeFromSpanTokens :: GHC.SrcSpan -> [PosToken] -> Tree Entry
+mkTreeFromSpanTokens sspan toks = Node (Entry sspan toks Nothing) []
+
+-- ---------------------------------------------------------------------
+
+showSrcSpan :: GHC.SrcSpan -> String
+showSrcSpan sspan = show (getGhcLoc sspan, (r,c))
+  where
+    (r,c) = getGhcLocEnd sspan
 
 -- EOF
