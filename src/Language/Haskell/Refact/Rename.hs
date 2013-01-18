@@ -11,6 +11,8 @@ import qualified MonadUtils            as GHC
 import qualified Name                  as GHC
 import qualified RdrName               as GHC
 import qualified OccName               as GHC
+import qualified Unique                as GHC
+import qualified FastString            as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -66,29 +68,36 @@ reallyRenameAll rs = do
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
 
-         inExp exp1@(GHC.L x (GHC.HsVar name))
+         inExp exp1@(GHC.L x (GHC.HsVar _))
            -- = let newExp = ifToCaseTransformPs exp1
            -- = let newExp = ifToCaseTransform exp1
            --   in update exp1 newExp exp1
            = do
                let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
-               let fd = map nameToString (free ++ declared)
-               let newStr = mkNewName "ge" fd 0 -- TODO: change empty list to list of declared names
-               let newExp = GHC.mkVarOcc newStr
-               update exp1 (GHC.L x (GHC.HsVar newExp)) exp1
-               return (GHC.L x (GHC.HsVar newExp))
+                   fd = map nameToString (free ++ declared)
+                   newNameStr = mkNewName "ge" fd 0 -- TODO: change empty list to list of declared names
+                   occName = GHC.mkVarOcc newNameStr
+                   unique = GHC.mkVarOccUnique $ GHC.mkFastString newNameStr
+                   newName = GHC.mkSystemName unique occName
+                   newExp = GHC.L x (GHC.HsVar newName)
+               update exp1 newExp exp1
+               return newExp
 
          inExp e = return e
          
          inFun :: (GHC.HsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.HsBindLR GHC.Name GHC.Name)
-         inFun (GHC.FunBind exp1@(GHC.L x y) a b c fvs d)
+         inFun (GHC.FunBind exp1@(GHC.L x y) a b c fvs d) 
             -- = let newExp = ifToCaseTransformPs exp1
             -- = let newExp = ifToCaseTransform exp1
             --   in update exp1 newExp exp1
             = do
-                newName <- mkNewName "ge" [] 0 -- TODO: change empty list to list of names
-                update exp1 (GHC.L x (newName)) exp1
-                return (GHC.FunBind (GHC.L x newName) a b c fvs d)
+                let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
+                    fd = map nameToString (free ++ declared)
+                    newStr = mkNewName "ge" fd 0 -- TODO: change empty list to list of declared names
+                    newExp = GHC.mkVarOcc newStr
+                    newExp' = GHC.mkSystemName (GHC.mkVarOccUnique (GHC.mkFastString newStr)) newExp
+                update exp1 (GHC.L x (GHC.HsVar newExp')) exp1
+                return (GHC.FunBind (GHC.L x newExp') a b c fvs d)
 
          inFun e = return e
           
