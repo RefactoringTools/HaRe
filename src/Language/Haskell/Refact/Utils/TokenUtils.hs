@@ -15,6 +15,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , getSrcSpanFor
        , retrieveTokens
 
+       , addNewSrcSpanAndToks
+
        -- * Internal, for testing
        , splitForestOnSpan
        , lookupSrcSpan
@@ -25,6 +27,10 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , showForest
        , showTree
        , showSrcSpan
+
+       , ForestLine(..)
+       , ghcLineToForestLine
+       , forestLineToGhcLine
 
        -- * Based on Data.Tree
        , drawTreeEntry
@@ -95,14 +101,63 @@ Invariants:
 data Entry = Entry GHC.SrcSpan -- ^The source span contained in this Node
                    [PosToken]  -- ^The tokens for the SrcSpan if subtree is empty
                    (Maybe (Tree Entry)) -- ^Parent Node if it exists
+                                        -- TODO: Tree Entry, or parent SrcSpan?
              deriving (Show)
 
 
+-- ---------------------------------------------------------------------
+-- ++AZ++ TODO: will we actuall need these?
 -- | Operations on the structure
 data Operations = OpAdded Entry          -- ^The entry that was added
                 | OpRemoved Entry        -- ^The Entry that was removed
                 | OpReplaced Entry Entry -- ^The first is old, second is new Entry
 
+
+-- ---------------------------------------------------------------------
+
+-- A data type for the line entries in a SrcSpan. This has the
+-- following properties
+--
+-- 1. It can be converted to and from the underlying Int in the
+--    original SrcSpan
+-- 2. It allows the insertion of an arbitrary line as the start of a
+--    new SrcSpan
+-- 3. It has an ordering relation, which honours the inserts which
+--    were made.
+--
+-- This is achieved by adding a field to the SrcSpan to indicate its
+-- insert relationship, encoded as 0 for the original, 1 for the
+-- first, 2 for the second and so on. 
+--
+-- This field is converted to and from the original line by being
+-- multiplied by a very large number and added to the original.
+-- 
+-- The guaranteed max value in Haskel for an Int is 2^29 - 1.
+-- This evaluates to 536870911,or 536.8 million.
+--
+-- It is extremely unlikely that a source file will have more than a
+-- million lines, or that we will have to insert more than 536
+-- SrcSpans after a given one,so we will choose our constant as 10^6
+forestConstant :: Int
+forestConstant = 1000000
+
+data ForestLine = ForestLine 
+                  { flInsertVersion :: Int
+                  , flLine :: Int
+                  }
+
+-- | Extract an encoded ForestLine from a GHC line
+ghcLineToForestLine :: Int -> ForestLine
+ghcLineToForestLine line = ForestLine v l
+  where
+    l = mod line forestConstant
+    v = div line forestConstant
+
+forestLineToGhcLine :: ForestLine -> Int
+forestLineToGhcLine fl = ((flInsertVersion fl) * forestConstant) + (flLine fl)
+
+
+-- ---------------------------------------------------------------------
 
 data Module = Module
         { mTypecheckedMod :: GHC.TypecheckedModule
@@ -212,6 +267,21 @@ retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) forest
 
     -- accum :: [PosToken] -> Tree Entry -> [PosToken]
     -- accum acc (Node (Entry _ toks _) _) = acc ++ toks
+
+-- ---------------------------------------------------------------------
+
+-- |Add a new SrcSpan and Tokens after a given one in the token stream
+-- and forest. This will be given a unique SrcSpan in return, which
+-- specifically indexes into the forest.
+addNewSrcSpanAndToks :: 
+  Forest Entry -- ^The forest to update
+  -> GHC.SrcSpan -- ^The new span comes after this one
+  -> GHC.SrcSpan -- ^Existing span for the tokens
+  -> [PosToken]  -- ^The new tokens belonging to the new SrcSpan
+  -> (Forest Entry -- ^Updated forest with the new span
+     , GHC.SrcSpan) -- ^Unique SrcSpan allocated in the forest to
+                    -- identify this span in its position
+addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest,newSpan)
 
 -- ---------------------------------------------------------------------
 

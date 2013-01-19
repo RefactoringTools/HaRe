@@ -266,6 +266,43 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "ghcLineToForestLine" $ do
+    it "converts a GHC line to a ForestLine" $ do
+      pending "write this test"
+
+  describe "forestLineToGhcLine" $ do
+    it "converts a ForestLine value to a GHC line" $ do
+      pending "write this test"
+
+  -- ---------------------------------------------
+
+  describe "addNewSrcSpanAndToks" $ do
+    it "Adds a new SrcSpan after an existing one in the forest." $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = [mkTreeFromTokens toks]
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+
+      let (forest',tree) = getSrcSpanFor forest l
+
+      let toks' = retrieveTokens [tree]
+      let (forest'',sspan) = addNewSrcSpanAndToks forest' l l toks'
+      (drawForestEntry forest'') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n\n"
+      (showSrcSpan sspan) `shouldBe` ""
+
+      let toksFinal = retrieveTokens forest''
+      (GHC.showRichTokenStream toksFinal) `shouldBe` ""
+
+  -- ---------------------------------------------
+
   describe "invariant 1" $ do
     it "checks that a tree with empty tokens and empty subForest fails" $ do
       (invariant [Node (Entry GHC.noSrcSpan [] Nothing) []]) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]
