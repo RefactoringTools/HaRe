@@ -42,6 +42,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeUtils
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
 import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
+import qualified Language.Haskell.Refact.Rename as GhcRefacRename
 
 import Control.Monad.State
 
@@ -77,7 +78,7 @@ s2 = GhcSwapArgs.swapArgs ["./old/refactorer/B.hs","6","1"]
 -}
 
 -- added by Chris for renaming
--- r1 = GhcRefacRename.rename ["./C.hs", "NewBlah", "4", "1"]
+r1 = GhcRefacRename.rename ["./C.hs", "NewBlah", "4", "1"]
 
 
 
