@@ -25,7 +25,7 @@ main = do
 mary :: [Integer]
 mary = [1,2,3]
 
-h z = bob z 2
+h z = (bob z)
 
 data D = A | B String | C
 
