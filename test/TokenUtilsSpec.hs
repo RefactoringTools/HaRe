@@ -268,11 +268,28 @@ spec = do
 
   describe "ghcLineToForestLine" $ do
     it "converts a GHC line to a ForestLine" $ do
-      pending "write this test"
+      (ghcLineToForestLine 34) `shouldBe` ForestLine 0 34
+      (ghcLineToForestLine   1000034) `shouldBe` ForestLine 1 34
+      (ghcLineToForestLine 530000034) `shouldBe` ForestLine 530 34
 
   describe "forestLineToGhcLine" $ do
     it "converts a ForestLine value to a GHC line" $ do
-      pending "write this test"
+      (forestLineToGhcLine $ ForestLine   0 34) `shouldBe`        34
+      (forestLineToGhcLine $ ForestLine   1 34) `shouldBe`   1000034
+      (forestLineToGhcLine $ ForestLine 530 34) `shouldBe` 530000034
+
+  -- ---------------------------------------------
+
+  describe "ForestLine Ord" $ do
+    it "implements Ord for ForestLine" $ do
+      compare (ForestLine 0 1) (ForestLine 0 3) `shouldBe` LT
+      compare (ForestLine 0 3) (ForestLine 1 3) `shouldBe` LT
+      compare (ForestLine 1 1) (ForestLine 2 3) `shouldBe` LT
+      compare (ForestLine 9 3) (ForestLine 0 4) `shouldBe` LT
+
+      compare (ForestLine 7 3) (ForestLine 7 3) `shouldBe` EQ
+
+      compare (ForestLine 0 4) (ForestLine 0 3) `shouldBe` GT
 
   -- ---------------------------------------------
 

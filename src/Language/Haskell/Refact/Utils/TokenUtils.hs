@@ -31,6 +31,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , ForestLine(..)
        , ghcLineToForestLine
        , forestLineToGhcLine
+       , insertForestLineInSrcSpan
 
        -- * Based on Data.Tree
        , drawTreeEntry
@@ -144,7 +145,7 @@ forestConstant = 1000000
 data ForestLine = ForestLine 
                   { flInsertVersion :: Int
                   , flLine :: Int
-                  }
+                  } deriving (Eq,Show)
 
 -- | Extract an encoded ForestLine from a GHC line
 ghcLineToForestLine :: Int -> ForestLine
@@ -156,6 +157,23 @@ ghcLineToForestLine line = ForestLine v l
 forestLineToGhcLine :: ForestLine -> Int
 forestLineToGhcLine fl = ((flInsertVersion fl) * forestConstant) + (flLine fl)
 
+instance Ord ForestLine where
+  -- Use line as the primary comparison, but break any ties with the version
+  compare (ForestLine v1 l1) (ForestLine v2 l2) =
+    if (l1 == l2)
+      then compare v1 v2
+      else compare l1 l2
+
+
+insertForestLineInSrcSpan :: ForestLine -> GHC.SrcSpan -> GHC.SrcSpan
+insertForestLineInSrcSpan fl@(ForestLine v l) sspan@(GHC.RealSrcSpan ss) = ss'
+  where
+    -- line = GHC.srcSpanStartLine ss
+    line = forestLineToGhcLine fl
+    locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) line (GHC.srcSpanStartCol ss)
+    ss' = GHC.mkSrcSpan locStart (GHC.srcSpanEnd sspan)
+
+insertForestLineInSrcSpan _ ss = error $ "insertForestLineInSrcSpan: expecting a RealSrcSpan, got:" ++ (GHC.showPpr ss)
 
 -- ---------------------------------------------------------------------
 
@@ -273,7 +291,7 @@ retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) forest
 -- |Add a new SrcSpan and Tokens after a given one in the token stream
 -- and forest. This will be given a unique SrcSpan in return, which
 -- specifically indexes into the forest.
-addNewSrcSpanAndToks :: 
+addNewSrcSpanAndToks ::
   Forest Entry -- ^The forest to update
   -> GHC.SrcSpan -- ^The new span comes after this one
   -> GHC.SrcSpan -- ^Existing span for the tokens
@@ -281,7 +299,13 @@ addNewSrcSpanAndToks ::
   -> (Forest Entry -- ^Updated forest with the new span
      , GHC.SrcSpan) -- ^Unique SrcSpan allocated in the forest to
                     -- identify this span in its position
-addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest,newSpan)
+addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest'',newSpan')
+  where
+    (forest',tree) = getSrcSpanFor forest oldSpan
+    (ghcl,c) = getGhcLoc newSpan
+    (ForestLine v l) = ghcLineToForestLine ghcl
+    newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
+    forest'' = forest' -- TODO: insert the new tree entry with span and toks
 
 -- ---------------------------------------------------------------------
 
