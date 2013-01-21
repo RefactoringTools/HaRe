@@ -308,10 +308,12 @@ spec = do
 
       let toks' = retrieveTokens [tree]
       let (forest'',sspan) = addNewSrcSpanAndToks forest' l l toks'
+      (invariant forest'') `shouldBe` []
       (drawForestEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,18))\n|\n"++
-              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
+              "+- ((19,1),(21,14))\n|\n"++ 
+              "+- ((1000019,1),(21,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n\n"
       (showSrcSpan sspan) `shouldBe` ""
 

@@ -101,8 +101,9 @@ Invariants:
 -- | An entry in the data structure for a particular srcspan.
 data Entry = Entry GHC.SrcSpan -- ^The source span contained in this Node
                    [PosToken]  -- ^The tokens for the SrcSpan if subtree is empty
-                   (Maybe (Tree Entry)) -- ^Parent Node if it exists
-                                        -- TODO: Tree Entry, or parent SrcSpan?
+                   (Maybe (Tree Entry)) -- ^Parent Node if it exists.
+                                        -- Only Nothing for the root
+                                        -- of a tree.
              deriving (Show)
 
 
@@ -128,11 +129,11 @@ data Operations = OpAdded Entry          -- ^The entry that was added
 --
 -- This is achieved by adding a field to the SrcSpan to indicate its
 -- insert relationship, encoded as 0 for the original, 1 for the
--- first, 2 for the second and so on. 
+-- first, 2 for the second and so on.
 --
 -- This field is converted to and from the original line by being
 -- multiplied by a very large number and added to the original.
--- 
+--
 -- The guaranteed max value in Haskel for an Int is 2^29 - 1.
 -- This evaluates to 536870911,or 536.8 million.
 --
@@ -142,7 +143,7 @@ data Operations = OpAdded Entry          -- ^The entry that was added
 forestConstant :: Int
 forestConstant = 1000000
 
-data ForestLine = ForestLine 
+data ForestLine = ForestLine
                   { flInsertVersion :: Int
                   , flLine :: Int
                   } deriving (Eq,Show)
@@ -305,7 +306,9 @@ addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest'',newSpan')
     (ghcl,c) = getGhcLoc newSpan
     (ForestLine v l) = ghcLineToForestLine ghcl
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
-    forest'' = forest' -- TODO: insert the new tree entry with span and toks
+    -- TODO: insert the new tree entry with span and toks
+    --       BUT: first need intact parent relation.
+    forest'' = forest' 
 
 -- ---------------------------------------------------------------------
 
@@ -374,6 +377,7 @@ invariantOk forest = ok
 --        i.e. the leaves contain all the tokens for a given SrcSpan.
 --   2b. The subForest is in SrcSpan order
 --   3. A given SrcSpan can only appear (or be included) in a single tree of the forest.
+--   4. The parent link for all sub-trees does exist, and actually points to the parent. 
 -- NOTE: the tokens may extend before or after the SrcSpan, due to comments only
 -- NOTE2: this will have to be revisited when edits to the tokens are made
 invariant :: Forest Entry -> [String]
@@ -400,7 +404,7 @@ invariant forest = rforest ++ rsub
         r = checkNode [] tree
 
     checkNode :: [String] -> Tree Entry -> [String]
-    checkNode acc node@(Node (Entry _sspan toks _mp) sub) = acc ++ r ++ rinc ++ rsub
+    checkNode acc node@(Node (Entry _sspan toks _mp) sub) = acc ++ r ++ rinc ++ rsub ++ rparents
       where
         r = if (   emptyList toks && nonEmptyList sub) ||
                (nonEmptyList toks &&    emptyList sub)
@@ -409,6 +413,8 @@ invariant forest = rforest ++ rsub
         rsub = foldl' checkNode [] sub
 
         rinc = checkInclusion node
+
+        rparents = checkParents node
 
     -- |Check invariant 2, assuming 1 ok
     checkInclusion      (Node _                    []) = []
@@ -435,6 +441,24 @@ invariant forest = rforest ++ rsub
                  else ["FAIL: subForest not in order: " ++
                         show e1 ++ " not < " ++ show s2 ++
                         ":" ++ prettyshow node]
+
+    -- |Check invariant 2, assuming 1 ok
+    checkParents :: Tree Entry -> [String]
+    checkParents      (Node _                    []) = []
+    checkParents node@(Node (Entry sspan toks mp)  sub) = rs
+      where
+        rs = concatMap check sub
+
+        check n =
+          case (getParent n) of
+            Nothing -> ["FAIL: parent missing for: " ++ (prettyshow n)]
+            Just pn ->
+               if treeStartEnd n == treeStartEnd pn
+                 then []
+                 else ["FAIL: wrong parent for: " ++ (prettyshow n)]
+
+        getParent (Node (Entry _ _ mp) _) = mp
+
 
 -- ---------------------------------------------------------------------
 
