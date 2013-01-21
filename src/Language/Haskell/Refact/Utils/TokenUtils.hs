@@ -194,7 +194,7 @@ initModule typeChecked tokens
   = Module
       { mTypecheckedMod = typeChecked
       , mOrigTokenStream = tokens
-      , mTokenCache = [mkTreeFromTokens tokens]
+      , mTokenCache = [mkTreeFromTokens Nothing tokens]
       }
 
 -- Initially work with non-monadic code, can build it into the
@@ -232,7 +232,11 @@ getSrcSpanFor forest sspan = (forest',tree)
 -- Assumes the forest was populated with the tokens containing the
 -- SrcSpan already
 insertSrcSpan :: Forest Entry -> GHC.SrcSpan -> Forest Entry
-insertSrcSpan forest sspan = forest'
+insertSrcSpan forest sspan = insertSrcSpan' Nothing forest sspan
+
+-- |Worker function, including actual parent as the tree is traversed
+insertSrcSpan' :: Maybe (Tree Entry) -> Forest Entry -> GHC.SrcSpan -> Forest Entry
+insertSrcSpan' mp forest sspan = forest'
   where
     startPos = getGhcLoc sspan
     endPos   = getGhcLocEnd sspan
@@ -249,7 +253,7 @@ insertSrcSpan forest sspan = forest'
                    then begin ++ [(Node (Entry _sspan   [] mp) subTree)] ++ end
                    else begin ++ [(Node (Entry _sspan toks mp)    sub')] ++ end
                           where
-                            sub' = insertSrcSpan sub sspan
+                            sub' = insertSrcSpan' (Just x) sub sspan
 
                             -- Tokens here, must introduce sub-spans
                             -- with split, taking cognizance of start
@@ -263,9 +267,9 @@ insertSrcSpan forest sspan = forest'
                                        mkTreeFromTokens middleToks,
                                        mkTreeFromTokens endToks]
                             -}
-                            subTree = [mkTreeFromTokens startToks,
-                                       mkTreeFromSpanTokens sspan middleToks,
-                                       mkTreeFromTokens endToks]
+                            subTree = [mkTreeFromTokens (Just x) startToks,
+                                       mkTreeFromSpanTokens (Just x) sspan middleToks,
+                                       mkTreeFromTokens (Just x) endToks]
 
      _  ->  forest'' -- TODO: Multiple, Need to insert a new span "above" these.
                      --       Hmm. is this possible?
@@ -524,9 +528,9 @@ prettyToks toks = showToks [head toks] ++ ".." ++ showToks [last toks]
 -- ---------------------------------------------------------------------
 
 -- |Make a tree representing a particular set of tokens
-mkTreeFromTokens :: [PosToken] -> Tree Entry
-mkTreeFromTokens [] = Node (Entry GHC.noSrcSpan [] Nothing) []
-mkTreeFromTokens toks = Node (Entry sspan toks Nothing) []
+mkTreeFromTokens :: Maybe (Tree Entry) -> [PosToken] -> Tree Entry
+mkTreeFromTokens _ [] = Node (Entry GHC.noSrcSpan [] Nothing) []
+mkTreeFromTokens mp toks = Node (Entry sspan toks mp) []
   where
    startLoc = realSrcLocFromTok $ head toks
    endLoc   = realSrcLocFromTok $ last toks -- SrcSpans count from start of token, not end
@@ -535,8 +539,8 @@ mkTreeFromTokens toks = Node (Entry sspan toks Nothing) []
 -- ---------------------------------------------------------------------
 
 -- |Make a tree representing a particular set of tokens
-mkTreeFromSpanTokens :: GHC.SrcSpan -> [PosToken] -> Tree Entry
-mkTreeFromSpanTokens sspan toks = Node (Entry sspan toks Nothing) []
+mkTreeFromSpanTokens :: Maybe (Tree Entry) -> GHC.SrcSpan -> [PosToken] -> Tree Entry
+mkTreeFromSpanTokens mp sspan toks = Node (Entry sspan toks mp) []
 
 -- ---------------------------------------------------------------------
 
