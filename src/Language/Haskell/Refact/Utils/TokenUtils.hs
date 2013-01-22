@@ -13,6 +13,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , treeStartEnd
        , insertSrcSpan
        , getSrcSpanFor
+       , getPathFor
        , retrieveTokens
 
        , addNewSrcSpanAndToks
@@ -27,6 +28,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , showForest
        , showTree
        , showSrcSpan
+       , ghcSpanStartEnd
 
        , ForestLine(..)
        , ghcLineToForestLine
@@ -216,8 +218,8 @@ getTokensFor modu sspan = (modu', tokens)
      tokens = retrieveTokens [tree]
 
 -- ---------------------------------------------------------------------
--- |Retrieve a tree containing a SrcSpan from the forest, inserting it
--- if not already present
+-- |Retrieve a path to the tree containing a SrcSpan from the forest,
+-- inserting it if not already present
 getSrcSpanFor :: Forest Entry -> GHC.SrcSpan -> (Forest Entry, Tree Entry)
 getSrcSpanFor forest sspan = (forest',tree)
   where
@@ -225,15 +227,33 @@ getSrcSpanFor forest sspan = (forest',tree)
     [tree]  = lookupSrcSpan forest' sspan
 
 -- ---------------------------------------------------------------------
+-- |Retrieve a path to the tree containing a SrcSpan from the forest,
+-- or return an empty list if it is not present
+getPathFor :: Forest Entry -> GHC.SrcSpan -> [Tree Entry]
+getPathFor forest sspan = getPathFor' [] forest sspan
+  where
+
+    getPathFor' :: [Tree Entry] -> Forest Entry -> GHC.SrcSpan -> [Tree Entry]
+    getPathFor' path f ss  = res
+      where
+        (_,middle,_) = splitForestOnSpan f ss
+        res = case middle of
+           [m@(Node _ [])] -> if ((ghcSpanStartEnd ss) == treeStartEnd m)
+                                 then (path++middle) else []
+           [Node _ sub] -> getPathFor' (path ++ middle) sub ss
+           _   -> (path ++ middle)
+
+
+-- ---------------------------------------------------------------------
 -- |Insert a SrcSpan into the forest, if it is not there already.
 -- Assumes the forest was populated with the tokens containing the
 -- SrcSpan already
 insertSrcSpan :: Forest Entry -> GHC.SrcSpan -> Forest Entry
-insertSrcSpan forest sspan = insertSrcSpan' Nothing forest sspan
+insertSrcSpan forest sspan = insertSrcSpan' forest sspan
 
 -- |Worker function, including actual parent as the tree is traversed
-insertSrcSpan' :: Maybe (Tree Entry) -> Forest Entry -> GHC.SrcSpan -> Forest Entry
-insertSrcSpan' mp forest sspan = forest'
+insertSrcSpan' :: Forest Entry -> GHC.SrcSpan -> Forest Entry
+insertSrcSpan' forest sspan = forest'
   where
     startPos = getGhcLoc sspan
     endPos   = getGhcLocEnd sspan
@@ -250,7 +270,7 @@ insertSrcSpan' mp forest sspan = forest'
                    then begin ++ [(Node (Entry _sspan   []) subTree)] ++ end
                    else begin ++ [(Node (Entry _sspan toks)    sub')] ++ end
                           where
-                            sub' = insertSrcSpan' (Just x) sub sspan
+                            sub' = insertSrcSpan' sub sspan
 
                             -- Tokens here, must introduce sub-spans
                             -- with split, taking cognizance of start
@@ -309,7 +329,7 @@ addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest'',newSpan')
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
     -- TODO: insert the new tree entry with span and toks
     --       BUT: first need intact parent relation.
-    forest'' = forest' 
+    forest'' = forest'
 
 -- ---------------------------------------------------------------------
 
@@ -520,6 +540,10 @@ mkTreeFromTokens toks = Node (Entry sspan toks) []
 -- |Make a tree representing a particular set of tokens
 mkTreeFromSpanTokens :: GHC.SrcSpan -> [PosToken] -> Tree Entry
 mkTreeFromSpanTokens sspan toks = Node (Entry sspan toks) []
+
+-- ---------------------------------------------------------------------
+
+ghcSpanStartEnd sspan = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 -- ---------------------------------------------------------------------
 

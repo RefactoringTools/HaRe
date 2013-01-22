@@ -243,6 +243,42 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "getPathFor" $ do
+    it "retrieves an empty path if the SrcSpan is not in the tree" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = [mkTreeFromTokens toks]
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+
+      (concatMap showTree $ getPathFor forest l) `shouldBe` ""
+
+    -- -----------------------------------
+    it "retrieves the path if the SrcSpan is in the tree" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = [mkTreeFromTokens toks]
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+      (show $ ghcSpanStartEnd l) `shouldBe` "((19,1),(21,14))"
+
+      let forest' = insertSrcSpan forest l
+      (drawForestEntry forest') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n\n"
+
+      (map treeStartEnd $ getPathFor forest' l) `shouldBe` [((1,1),(26,1)),((19,1),(21,14))]
+
+  -- ---------------------------------------------
+
   describe "retrieveTokens" $ do
     it "extracts all the tokens from the leaves of the trees, in order" $ do
       (t,toks) <- parsedFileTokenTestGhc
