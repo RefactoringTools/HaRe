@@ -101,9 +101,6 @@ Invariants:
 -- | An entry in the data structure for a particular srcspan.
 data Entry = Entry GHC.SrcSpan -- ^The source span contained in this Node
                    [PosToken]  -- ^The tokens for the SrcSpan if subtree is empty
-                   (Maybe (Tree Entry)) -- ^Parent Node if it exists.
-                                        -- Only Nothing for the root
-                                        -- of a tree.
              deriving (Show)
 
 
@@ -194,7 +191,7 @@ initModule typeChecked tokens
   = Module
       { mTypecheckedMod = typeChecked
       , mOrigTokenStream = tokens
-      , mTokenCache = [mkTreeFromTokens Nothing tokens]
+      , mTokenCache = [mkTreeFromTokens tokens]
       }
 
 -- Initially work with non-monadic code, can build it into the
@@ -248,10 +245,10 @@ insertSrcSpan' mp forest sspan = forest'
               then forest   -- Already in the tree
               else forest'' -- Need to check the subtree
                where
-                 (Node (Entry _sspan toks mp) sub) = x
+                 (Node (Entry _sspan toks) sub) = x
                  forest'' = if (emptyList sub)
-                   then begin ++ [(Node (Entry _sspan   [] mp) subTree)] ++ end
-                   else begin ++ [(Node (Entry _sspan toks mp)    sub')] ++ end
+                   then begin ++ [(Node (Entry _sspan   []) subTree)] ++ end
+                   else begin ++ [(Node (Entry _sspan toks)    sub')] ++ end
                           where
                             sub' = insertSrcSpan' (Just x) sub sspan
 
@@ -267,9 +264,9 @@ insertSrcSpan' mp forest sspan = forest'
                                        mkTreeFromTokens middleToks,
                                        mkTreeFromTokens endToks]
                             -}
-                            subTree = [mkTreeFromTokens (Just x) startToks,
-                                       mkTreeFromSpanTokens (Just x) sspan middleToks,
-                                       mkTreeFromTokens (Just x) endToks]
+                            subTree = [mkTreeFromTokens startToks,
+                                       mkTreeFromSpanTokens sspan middleToks,
+                                       mkTreeFromTokens endToks]
 
      _  ->  forest'' -- TODO: Multiple, Need to insert a new span "above" these.
                      --       Hmm. is this possible?
@@ -286,7 +283,7 @@ retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) forest
 -- retrieveTokens forest =F.foldl accum [] forest
   where
     accum :: [PosToken] -> Entry -> [PosToken]
-    accum acc (Entry _ toks _) = acc ++ toks
+    accum acc (Entry _ toks) = acc ++ toks
 
     -- accum :: [PosToken] -> Tree Entry -> [PosToken]
     -- accum acc (Node (Entry _ toks _) _) = acc ++ toks
@@ -408,7 +405,7 @@ invariant forest = rforest ++ rsub
         r = checkNode [] tree
 
     checkNode :: [String] -> Tree Entry -> [String]
-    checkNode acc node@(Node (Entry _sspan toks _mp) sub) = acc ++ r ++ rinc ++ rsub ++ rparents
+    checkNode acc node@(Node (Entry _sspan toks) sub) = acc ++ r ++ rinc ++ rsub
       where
         r = if (   emptyList toks && nonEmptyList sub) ||
                (nonEmptyList toks &&    emptyList sub)
@@ -418,11 +415,9 @@ invariant forest = rforest ++ rsub
 
         rinc = checkInclusion node
 
-        rparents = checkParents node
-
     -- |Check invariant 2, assuming 1 ok
     checkInclusion      (Node _                    []) = []
-    checkInclusion node@(Node (Entry sspan toks mp)  sub) = rs ++ rseq
+    checkInclusion node@(Node (Entry sspan toks)  sub) = rs ++ rseq
       where
         (start,end) = treeStartEnd node
         subs = map treeStartEnd sub
@@ -446,29 +441,13 @@ invariant forest = rforest ++ rsub
                         show e1 ++ " not < " ++ show s2 ++
                         ":" ++ prettyshow node]
 
-    -- |Check invariant 2, assuming 1 ok
-    checkParents :: Tree Entry -> [String]
-    checkParents      (Node _                    []) = []
-    checkParents node@(Node (Entry sspan toks mp)  sub) = rs
-      where
-        rs = concatMap check sub
-
-        check n =
-          case (getParent n) of
-            Nothing -> ["FAIL: parent missing for: " ++ (prettyshow n)]
-            Just pn ->
-               if treeStartEnd n == treeStartEnd pn
-                 then []
-                 else ["FAIL: wrong parent for: " ++ (prettyshow n)]
-
-        getParent (Node (Entry _ _ mp) _) = mp
 
 
 -- ---------------------------------------------------------------------
 
 -- |Get the start and end position of a Tree
 treeStartEnd :: Tree Entry -> (SimpPos,SimpPos)
-treeStartEnd (Node (Entry sspan _ _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
+treeStartEnd (Node (Entry sspan _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 -- ---------------------------------------------------------------------
 {-
@@ -497,7 +476,7 @@ drawForestEntry :: Forest Entry -> String
 drawForestEntry  = unlines . map drawTreeEntry
 
 drawEntry :: Tree Entry -> [String]
-drawEntry (Node (Entry sspan _toks _mp) ts0) = (showSrcSpan sspan) : drawSubTrees ts0
+drawEntry (Node (Entry sspan _toks) ts0) = (showSrcSpan sspan) : drawSubTrees ts0
   where
     drawSubTrees [] = []
     drawSubTrees [t] =
@@ -514,7 +493,7 @@ showTree = prettyshow
 
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
-prettyshow (Node (Entry sspan toks _mp) sub)
+prettyshow (Node (Entry sspan toks) sub)
   = "Node (Entry " ++ (showSrcSpan sspan) ++ " "
      ++ (prettyToks toks) ++ ") "
      ++ show (map prettyshow  sub)
@@ -528,9 +507,9 @@ prettyToks toks = showToks [head toks] ++ ".." ++ showToks [last toks]
 -- ---------------------------------------------------------------------
 
 -- |Make a tree representing a particular set of tokens
-mkTreeFromTokens :: Maybe (Tree Entry) -> [PosToken] -> Tree Entry
-mkTreeFromTokens _ [] = Node (Entry GHC.noSrcSpan [] Nothing) []
-mkTreeFromTokens mp toks = Node (Entry sspan toks mp) []
+mkTreeFromTokens :: [PosToken] -> Tree Entry
+mkTreeFromTokens [] = Node (Entry GHC.noSrcSpan []) []
+mkTreeFromTokens toks = Node (Entry sspan toks) []
   where
    startLoc = realSrcLocFromTok $ head toks
    endLoc   = realSrcLocFromTok $ last toks -- SrcSpans count from start of token, not end
@@ -539,8 +518,8 @@ mkTreeFromTokens mp toks = Node (Entry sspan toks mp) []
 -- ---------------------------------------------------------------------
 
 -- |Make a tree representing a particular set of tokens
-mkTreeFromSpanTokens :: Maybe (Tree Entry) -> GHC.SrcSpan -> [PosToken] -> Tree Entry
-mkTreeFromSpanTokens mp sspan toks = Node (Entry sspan toks mp) []
+mkTreeFromSpanTokens :: GHC.SrcSpan -> [PosToken] -> Tree Entry
+mkTreeFromSpanTokens sspan toks = Node (Entry sspan toks) []
 
 -- ---------------------------------------------------------------------
 
