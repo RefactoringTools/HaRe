@@ -232,7 +232,6 @@ getSrcSpanFor forest sspan = (forest',tree)
 getPathFor :: Forest Entry -> GHC.SrcSpan -> [Tree Entry]
 getPathFor forest sspan = getPathFor' [] forest sspan
   where
-
     getPathFor' :: [Tree Entry] -> Forest Entry -> GHC.SrcSpan -> [Tree Entry]
     getPathFor' path f ss  = res
       where
@@ -324,11 +323,19 @@ addNewSrcSpanAndToks ::
 addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest'',newSpan')
   where
     (forest',tree) = getSrcSpanFor forest oldSpan
+    parents = getPathFor forest' oldSpan
+    -- parents' is not empty because we have just inserted the span if nexessary
+
     (ghcl,c) = getGhcLoc newSpan
     (ForestLine v l) = ghcLineToForestLine ghcl
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
     -- TODO: insert the new tree entry with span and toks
     --       BUT: first need intact parent relation.
+    oldSpanParent@(Node _ subTree) = last $ init parents
+    -- Add the new span just after the old one, which should be in subTree
+    (f,s) = break (\t -> treeStartEnd t == treeStartEnd tree) subTree
+        
+
     forest'' = forest'
 
 -- ---------------------------------------------------------------------
