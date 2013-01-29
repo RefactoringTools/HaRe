@@ -1,3 +1,8 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 {- # LANGUAGE TypeOperators # -}
 {-
 
@@ -5,6 +10,13 @@ Playing with lens zippers, to understand how they can be used to
 manage a Data.Tree
 
 -}
+
+import Control.Applicative
+import Control.Lens.Combinators
+import Control.Lens.Indexed
+import Control.Lens.Type
+import Data.Functor.Identity
+import Control.Monad
 
 -- import Control.Applicative
 import Control.Lens
@@ -69,6 +81,28 @@ eg2 = zipper tree1
     -- rezip
     -- <&> view focus
 
+
+eg2' :: (Functor f, MonadPlus f) => f (Tree String)
+eg2' = zipper tree1
+    & downward  branches -- focus is now [aa,ab]
+    & fromWithin traverse & rightward
+    <&> focus .~ tree2
+    <&> rezip
+
+{- 
+*Main> fdt eg2'
+a
+|
++- aa
+|
+`- b
+   |
+   +- ba
+   |
+   `- bb
+*Main> 
+-}
+
 -- ------------------------
 -- Data.Tree.Lens provides
 
@@ -77,7 +111,7 @@ eg2 = zipper tree1
 --
 -- The branches are a list, 
 
-
+eg3 :: Tree [Char]
 eg3 = zipper tree1
       & downward branches
       & focus .~ [tree2]
@@ -96,6 +130,11 @@ eg4 = z1'
 
 -- p3 = df $ view focus eg3
 
+-- eg5 = zipper tree1 & downward branches & fromWithin traverse & rightward
+
+-- The following generates output on ghci, as expected
+-- zipper tree1 & downward branches & fromWithin traverse & rightward <&> view focus
+-- Node {rootLabel = "ab", subForest = [Node {rootLabel = "aba", subForest = []},Node {rootLabel = "abb", subForest = []}]}
 
 ------------------------------------------------------------------------
 -- how to search for a specific element in the tree?
@@ -116,7 +155,10 @@ focusOn' z key =
     z' = if key == rootLabel node
          then z
          else -- find the sub tree
+           where
+             
 -}
+
   
 
 
@@ -126,3 +168,20 @@ focusOn' z key =
 
 df = putStrLn . drawForest
 dt = putStrLn . drawTree
+
+-- |Draw a tree using fmap
+fdt ft = do
+  t <- fmap drawTree ft
+  putStr t
+
+
+-- --------------------------------------------------
+
+s = ["aa","ab","ac"]
+
+s1 = zipper s
+
+-- ss1 = s1 & fromWithin traverse & rightward <&> view focus
+
+
+
