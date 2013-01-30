@@ -164,6 +164,7 @@ Library
            , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
            , Language.Haskell.Refact.Utils.RenamedSourceUtils
+           , Language.Haskell.Refact.Utils.TokenUtils
            , Language.Haskell.Refact.Utils.TypeSyn
            , Language.Haskell.Refact.Utils.TypeUtils
    
@@ -211,7 +212,7 @@ test-suite spec
     test
   build-depends:
       base        >= 4.0  && < 4.7
-    , Diff
+    , Diff == 0.1.3
     , HUnit       == 1.2.*
     , QuickCheck  >= 2.5
     , containers

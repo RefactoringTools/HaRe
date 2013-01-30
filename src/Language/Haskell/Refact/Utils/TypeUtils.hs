@@ -170,7 +170,7 @@ import qualified Unsafe.Coerce as SYB
 
 -- Lens
 import Control.Applicative
-import Control.Lens hiding (Rep)
+import Control.Lens 
 import Control.Lens.Plated
 import Control.Lens.Traversal
 import Control.Lens.Traversal

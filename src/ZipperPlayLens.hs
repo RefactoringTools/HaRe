@@ -103,6 +103,45 @@ a
 *Main> 
 -}
 
+
+-- Look for a specific label in the subtree, and replace it
+eg5 :: (Functor f, MonadPlus f) => f (Tree String)
+eg5 = zipper tree1
+    & downward  branches -- focus is now [aa,ab]
+    & fromWithin traverse 
+    -- (&) :: a -> (a -> b) -> b
+    & rightward  
+    -- & rightward  
+    <&> focus .~ tree2
+    <&> rezip
+
+
+{-
+eg6 = ft
+  where
+    z  = zipper tree1 & downward  branches & fromWithin traverse 
+    ft = findSubTree z "ab"
+
+findSubTree
+  :: Zipper
+        (Zipper (Zipper Top Int (Tree [Char])) Int [Tree [Char]])
+        Int
+        (Tree [Char])
+  -> [Char]
+  -> Zipper
+        (Zipper (Zipper Top Int (Tree [Char])) Int [Tree [Char]])
+        Int
+        (Tree [Char])
+-- findSubTree z w = tree1
+findSubTree tr what = res
+      where 
+        ft = tr & view focus :: Tree [Char]
+        res = if (rootLabel ft == what) 
+          then tr 
+          else findSubTree (tr & rightward) what
+        -- res = tr
+-}
+
 -- ------------------------
 -- Data.Tree.Lens provides
 
