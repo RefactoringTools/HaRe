@@ -1693,6 +1693,18 @@ instance FindEntity (GHC.Located (GHC.HsExpr GHC.Name)) where
 
 -- ---------------------------------------------------------------------
 
+instance FindEntity (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) where
+  findEntity e t = fromMaybe False res
+   where
+    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (expr::(GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)))
+      -- | e == expr = Just True
+      | sameOccurrence e expr = Just True
+    worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
 {-
 -- | Returns True is a syntax phrase, say a, is part of another syntax
 -- phrase, say b.
