@@ -29,3 +29,7 @@ ite x = if x then g else (g)
 pat (Just m) = f
 pat (Nothing) = f
 
+-- where
+wher x = x + a
+    where
+      a = 2

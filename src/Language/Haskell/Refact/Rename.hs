@@ -14,6 +14,7 @@ import qualified OccName               as GHC
 import qualified Unique                as GHC
 import qualified FastString            as GHC
 import qualified HsPat                 as GHC
+import qualified NameSet               as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -47,7 +48,7 @@ comp :: String -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName newName beginPos = do
        -- modInfo@((_, renamed, ast), toks) <- parseSourceFileGhc fileName
        modInfo@(t, toks) <- parseSourceFileGhc fileName
-       let renamed = gfromJust "ifToCase" $ GHC.tm_renamed_source t
+       let renamed = gfromJust "renamed" $ GHC.tm_renamed_source t
        let name = locToName (GHC.mkFastString fileName) beginPos renamed
        let name' = eFromJust name ("There was no variable at " ++ (show beginPos))
        -- let expr = locToExp beginPos endPos renamed
@@ -61,20 +62,31 @@ eFromJust :: Maybe a -> String -> a
 eFromJust (Just a) _ = a
 eFromJust Nothing errorMessage = error errorMessage
 
+rename' :: (GHC.Located GHC.Name) -> String -> RefactGhc ()
 rename' (GHC.L _ name) newName = do
   rs <- getRefactRenamed
-  reallyRename rs name newName
+  parsed <- getRefactParsed
+  let (Just (_,modName)) = getModuleName parsed
+  reallyRename rs modName name newName
 
-reallyRename rs name newNameStr = do
+-- Unused
+-- Check whether newNameStr is free or declared in rs
+isFreeOrDeclared :: String -> GHC.RenamedSource -> Bool
+isFreeOrDeclared newNameStr rs =
+  let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
+      fd = map nameToString (free ++ declared)
+  -- in error (show (newNameStr,fd))
+  in newNameStr `elem` fd
+
+reallyRename :: GHC.RenamedSource -> String -> GHC.Name -> String -> RefactGhc ()
+reallyRename rs modName name newNameStr = do
    everywhereMStaged SYB.Renamer (SYB.mkM inExp `SYB.extM` inPat `SYB.extM` inFun) rs
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
          inExp exp1@(GHC.L x (GHC.HsVar n2))
           | GHC.nameUnique name == GHC.nameUnique n2
-           = do
-               let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
-                   fd = map nameToString (free ++ declared)
+           = do -- need to look at outer context
                newName <- mkNewGhcName newNameStr
                let newExp = GHC.L x (GHC.HsVar newName)
                update exp1 newExp exp1
@@ -85,9 +97,7 @@ reallyRename rs name newNameStr = do
          inPat :: (GHC.Located (GHC.Pat GHC.Name)) -> RefactGhc (GHC.Located (GHC.Pat GHC.Name))
          inPat exp1@(GHC.L x (GHC.VarPat n2))
            | GHC.nameUnique name == GHC.nameUnique n2
-            = do
-                let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
-                    fd = map nameToString (free ++ declared)
+            = do -- need to look at outer context
                 newName <- mkNewGhcName newNameStr
                 let newExp = GHC.L x (GHC.VarPat newName)
                 update exp1 newExp exp1
@@ -96,17 +106,31 @@ reallyRename rs name newNameStr = do
          inPat e = return e
          
          inFun :: (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name))
-         inFun fun1@(GHC.L y (GHC.FunBind (GHC.L x n2) a b c fvs d))
+         inFun fun1@(GHC.L y (GHC.FunBind (GHC.L x n2) fm b c fvs d))
             | GHC.nameUnique name == GHC.nameUnique n2
             = do
-                let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
-                    fd = map nameToString (free ++ declared)
-                newName <- mkNewGhcName newNameStr
-                let newFun = GHC.L y (GHC.FunBind (GHC.L x newName) a b c fvs d)
-                update fun1 newFun fun1
-                return newFun
+                -- filter out patterns, left with qualified, remove qualified names
+                let fd = hsVisibleNames fun1 rs -- free and declared
+                    modLength = length modName
+                    -- filter out names that do not start with modName
+                    global = filter (\x -> modName == take modLength x) fd
+                    --fd' = map (drop (modLength + 1)) global
+                    fdPN = hsVisiblePNs fun1 rs
+                    pnames = map PN fdPN
+                    fd' = filter (\x -> defines x fun1) fdPN
+                    fd'' = map nameToString fd'
+                error $ show fd''
+                if newNameStr `elem` fd'' then 
+                  error (newNameStr ++ " is already defined.") 
+                else do 
+                  newName <- mkNewGhcName newNameStr
+                  let newFun = GHC.L y (GHC.FunBind (GHC.L x newName) fm b c fvs d)
+                  update fun1 newFun fun1
+                  return newFun
 
          inFun e = return e
+         
+         
           
           -- bind ((GHC.FunBind _ _ _ _ fvs _)::(GHC.HsBindLR GHC.Name GHC.Name)) = [fvs]
           -- bind ((GHC.PatBind _ _ _ fvs _)  ::(GHC.HsBindLR GHC.Name GHC.Name)) = [fvs]
