@@ -69,15 +69,6 @@ rename' (GHC.L _ name) newName = do
   let (Just (_,modName)) = getModuleName parsed
   reallyRename rs modName name newName
 
--- Unused
--- Check whether newNameStr is free or declared in rs
-isFreeOrDeclared :: String -> GHC.RenamedSource -> Bool
-isFreeOrDeclared newNameStr rs =
-  let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
-      fd = map nameToString (free ++ declared)
-  -- in error (show (newNameStr,fd))
-  in newNameStr `elem` fd
-
 reallyRename :: GHC.RenamedSource -> String -> GHC.Name -> String -> RefactGhc ()
 reallyRename rs modName name newNameStr = do
    everywhereMStaged SYB.Renamer (SYB.mkM inExp `SYB.extM` inPat `SYB.extM` inFun) rs
@@ -116,10 +107,11 @@ reallyRename rs modName name newNameStr = do
                     global = filter (\x -> modName == take modLength x) fd
                     --fd' = map (drop (modLength + 1)) global
                     fdPN = hsVisiblePNs fun1 rs
-                    pnames = map PN fdPN
-                    fd' = filter (\x -> defines x fun1) fdPN
-                    fd'' = map nameToString fd'
-                error $ show fd''
+                    pnames = map (PN . GHC.nameRdrName) fdPN
+--                    fd' = filter (\x -> defines x fun1) fdPN
+                    fd' = definingDeclsNames fdPN [fun1] True True
+                    fd'' = map prettyprint2 fd'
+                error $ prettyprint2 fd'
                 if newNameStr `elem` fd'' then 
                   error (newNameStr ++ " is already defined.") 
                 else do 
@@ -129,9 +121,10 @@ reallyRename rs modName name newNameStr = do
                   return newFun
 
          inFun e = return e
-         
-         
           
           -- bind ((GHC.FunBind _ _ _ _ fvs _)::(GHC.HsBindLR GHC.Name GHC.Name)) = [fvs]
           -- bind ((GHC.PatBind _ _ _ fvs _)  ::(GHC.HsBindLR GHC.Name GHC.Name)) = [fvs]
           -- bind _ = []
+
+prettyprint2 :: (GHC.Outputable a) => a -> String
+prettyprint2 x = GHC.showSDoc $ GHC.ppr x
