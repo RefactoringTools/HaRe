@@ -29,6 +29,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , showTree
        , showSrcSpan
        , ghcSpanStartEnd
+       , insertNodeAfter
 
        , ForestLine(..)
        , ghcLineToForestLine
@@ -66,7 +67,9 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 
 import Data.List
+import Data.Maybe
 import Data.Tree
+import qualified Data.Tree.Zipper as Z
 
 -- ---------------------------------------------------------------------
 
@@ -278,11 +281,6 @@ insertSrcSpan' forest sspan = forest'
 
                             -- (startToks,middleToks,endToks) = splitToks (startPos,endPos) toks
                             (startToks,middleToks,endToks) = splitToks (startLoc,endLoc) toks
-                            {-
-                            subTree = [mkTreeFromTokens startToks,
-                                       mkTreeFromTokens middleToks,
-                                       mkTreeFromTokens endToks]
-                            -}
                             subTree = [mkTreeFromTokens startToks,
                                        mkTreeFromSpanTokens sspan middleToks,
                                        mkTreeFromTokens endToks]
@@ -331,12 +329,59 @@ addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest'',newSpan')
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
     -- TODO: insert the new tree entry with span and toks
     --       BUT: first need intact parent relation.
-    oldSpanParent@(Node _ subTree) = last $ init parents
-    -- Add the new span just after the old one, which should be in subTree
-    (f,s) = break (\t -> treeStartEnd t == treeStartEnd tree) subTree
-        
+    newNode = Node (Entry newSpan' toks) []
 
+    -- forest'' = insertNodeAfter tree newNode forest'
     forest'' = forest'
+
+-- ---------------------------------------------------------------------
+
+-- |Insert a new node after the designated one in the tree
+insertNodeAfter
+  :: Tree Entry -> Tree Entry -> Tree Entry -> Tree Entry
+insertNodeAfter oldNode newNode forest = forest'
+  where
+    -- (startPos,endPos) = treeStartEnd node
+    zf = openZipperToNode oldNode $ Z.fromTree forest
+    zp = gfromJust "insertNodeAfter" $ Z.parent zf
+    tp = Z.tree zp
+
+    -- now go through the children of the parent tree, and find the
+    -- right spot for the new node
+    (f,s) = break (\t -> treeStartEnd t == treeStartEnd oldNode) $ subForest tp
+    (f',s') = (f++[head s],tail s) -- break does not include the found point
+    subForest' = f' ++ [newNode] ++ s'
+
+    tp' = tp { subForest = subForest' }
+    forest' = Z.toTree $ Z.setTree tp' zp
+
+
+
+openZipperToNode
+  :: Tree Entry
+     -> Z.TreePos Z.Full Entry
+     -> Z.TreePos Z.Full Entry
+openZipperToNode node z
+  = if treeStartEnd (Z.tree z) == treeStartEnd node
+      then z
+      else z'
+        where
+          -- go through all of the children to find the one that
+          -- either is what we are looking for, or contains it
+          childrenAsZ = map fromJust
+                      $ iterate (\mz -> Z.next $ gfromJust "openZipperToNode" mz)
+                      $ Z.firstChild z
+          child = ghead "openZipperToNode" $ filter contains childrenAsZ
+          -- focus of child either IS the node we care about, or contains it
+          z' = if (treeStartEnd (Z.tree child)) == treeStartEnd node
+                 then child
+                 else openZipperToNode node child
+
+          contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
+            where
+              (startPos,endPos) = treeStartEnd $ Z.tree zn
+              (nodeStart,nodeEnd) = treeStartEnd node
+
 
 -- ---------------------------------------------------------------------
 

@@ -3,7 +3,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-{- # LANGUAGE TypeOperators # -}
+{-# LANGUAGE TypeOperators #-}
 {-
 
 Playing with lens zippers, to understand how they can be used to
@@ -23,6 +23,7 @@ import Control.Lens
 import Control.Lens.Zipper
 import Data.Tree
 import Data.Tree.Lens
+
 
 -- ---------------------------------------------------------------------
 
@@ -198,6 +199,13 @@ focusOn' z key =
              
 -}
 
+eg6:: Top :>> (Tree [Char]) :>> [(Tree [Char])]
+eg6 = z1
+  where
+    z = zipper tree1
+      & downward branches
+    -- z1 = view focus z
+    z1 = z
   
 
 

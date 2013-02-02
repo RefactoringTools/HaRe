@@ -253,7 +253,14 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
+      (map treeStartEnd $ getPathFor forest l) `shouldBe` []
       (concatMap showTree $ getPathFor forest l) `shouldBe` ""
+
+      let forest' = insertSrcSpan forest l
+
+      (map treeStartEnd $ getPathFor forest' l)
+           `shouldBe` [((1,1),(26,1)),((19,1),(21,14))]
+
 
     -- -----------------------------------
     it "retrieves the path if the SrcSpan is in the tree" $ do
@@ -328,6 +335,44 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "insertNodeAfter" $ do
+    it "Adds a new SrcSpan after a specified one in the forest." $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = [mkTreeFromTokens toks]
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+
+      let (forest',tree) = getSrcSpanFor forest l
+ 
+
+      let (ghcl,c) = getGhcLoc l
+      let (ForestLine v line) = ghcLineToForestLine ghcl
+      let newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) line) l
+
+      let toksNew = take 3 toks
+      let newNode = Node (Entry newSpan' toksNew) []
+      -- let newNode = Node (Entry l toks) []
+
+      let toks' = retrieveTokens [tree]
+      let forest'' = [insertNodeAfter tree newNode (head forest')]
+      (invariant forest'') `shouldBe` []
+      (drawForestEntry forest'') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++
+              "+- ((1000019,1),(21,14))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n\n"
+
+      let toksFinal = retrieveTokens forest''
+      (GHC.showRichTokenStream toksNew) `shouldBe` "module TokenTest where"
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c module TokenTest where\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n "
+
+  -- ---------------------------------------------
+
   describe "addNewSrcSpanAndToks" $ do
     it "Adds a new SrcSpan after an existing one in the forest." $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -347,7 +392,7 @@ spec = do
       (drawForestEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,18))\n|\n"++
-              "+- ((19,1),(21,14))\n|\n"++ 
+              "+- ((19,1),(21,14))\n|\n"++
               "+- ((1000019,1),(21,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n\n"
       (showSrcSpan sspan) `shouldBe` ""

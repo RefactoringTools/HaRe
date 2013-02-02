@@ -141,6 +141,7 @@ Library
                                 , mtl
                                 , old-time
                                 , pretty
+                                , rosezipper
                                 , syb
                                 , transformers
                                 , uniplate
@@ -189,6 +190,7 @@ Executable ghc-hare
                                 , mtl
                                 , old-time
                                 , pretty
+                                , rosezipper
                                 , syb
                                 , transformers
                                 , uniplate
@@ -230,6 +232,7 @@ test-suite spec
     , process
     , silently
     , stringbuilder
+    , rosezipper
     , syb
     , transformers
     , uniplate
