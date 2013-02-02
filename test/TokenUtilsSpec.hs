@@ -64,11 +64,11 @@ spec = do
       -- Note: Although the tokens include leading and following
       -- comments, the SrcSpan must tie up with the original GHC
       -- SrcSpan in the AST
-      (drawForestEntry $ mTokenCache tm') `shouldBe`
+      (drawTreeEntry $ mTokenCache tm') `shouldBe`
             "((1,1),(26,1))\n|\n"++
             "+- ((1,1),(15,18))\n|\n"++
             "+- ((19,1),(21,14))\n|\n"++
-            "`- ((26,1),(26,1))\n\n"
+            "`- ((26,1),(26,1))\n"
 
   -- ---------------------------------------------
 
@@ -78,17 +78,17 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
-      let forest = [mkTreeFromTokens toks]
+      let forest = mkTreeFromTokens toks
 
       let (forest',tree) = getSrcSpanFor forest l
 
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
-      (drawForestEntry forest') `shouldBe`
+      (drawTreeEntry forest') `shouldBe`
             "((1,1),(26,1))\n|\n"++
             "+- ((1,1),(15,18))\n|\n"++
             "+- ((19,1),(21,14))\n|\n"++
-            "`- ((26,1),(26,1))\n\n"
+            "`- ((26,1),(26,1))\n"
 
       (show $ treeStartEnd tree) `shouldBe` "((19,1),(21,14))"
 
@@ -101,7 +101,7 @@ spec = do
       let tree2 = mkTreeFromTokens (take 10 $ drop 10 toks)
       let tree3 = mkTreeFromTokens (take 10 $ drop 20 toks)
       let tree4 = mkTreeFromTokens (drop 30 toks)
-      let forest = [tree1,tree2,tree3,tree4]
+      let forest = mkTreeFromSubTrees [tree1,tree2,tree3,tree4]
       (invariant forest) `shouldBe` []
 
       (show $ treeStartEnd tree1) `shouldBe` "((1,1),(5,11))"
@@ -115,7 +115,7 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let r = lookupSrcSpan forest l
+      let r = lookupSrcSpan [forest] l
       (map showTree r) `shouldBe` ["Node (Entry ((13,5),(26,1)) [(((13,5),(13,6)),ITvarid \"a\",\"a\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"]
 
     -- -----------------------
@@ -125,7 +125,7 @@ spec = do
       let tree2 = mkTreeFromTokens (take 10 $ drop 20 toks)
       let tree3 = mkTreeFromTokens (take 20 $ drop 30 toks)
       let tree4 = mkTreeFromTokens (drop 50 toks)
-      let forest = [tree1,tree2,tree3,tree4]
+      let forest = mkTreeFromSubTrees [tree1,tree2,tree3,tree4]
       (invariant forest) `shouldBe` []
 
       (show $ treeStartEnd tree1) `shouldBe` "((1,1),(8,7))"
@@ -139,7 +139,7 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let r = lookupSrcSpan forest l
+      let r = lookupSrcSpan [forest] l
       (show $ map treeStartEnd r) `shouldBe` "[((13,5),(19,9)),((20,3),(26,1))]"
 
     -- -----------------------
@@ -153,7 +153,7 @@ spec = do
       (show $ treeStartEnd tree2) `shouldBe` "((19,7),(20,6))"
       (show $ treeStartEnd tree3) `shouldBe` "((20,8),(21,6))"
       (show $ treeStartEnd tree4) `shouldBe` "((21,6),(26,1))"
-      let forest = [tree1,tree2,tree3,tree4]
+      let forest = mkTreeFromSubTrees [tree1,tree2,tree3,tree4]
       (invariant forest) `shouldBe` []
 
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -162,7 +162,7 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let r = lookupSrcSpan forest l
+      let r = lookupSrcSpan [forest] l
       (show $ map treeStartEnd r) `shouldBe`
                "[((1,1),(19,5)),"++
                "((19,7),(20,6)),"++
@@ -177,18 +177,18 @@ spec = do
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
 
-      let forest = insertSrcSpan [mkTreeFromTokens toks] l
+      let forest = insertSrcSpan (mkTreeFromTokens toks) l
 
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      (drawForestEntry forest) `shouldBe`
+      (drawTreeEntry forest) `shouldBe`
             "((1,1),(26,1))\n|\n"++
             "+- ((1,1),(15,18))\n|\n"++
             "+- ((19,1),(21,14))\n|\n"++
-            "`- ((26,1),(26,1))\n\n"
+            "`- ((26,1),(26,1))\n"
 
-      let r = lookupSrcSpan forest l
+      let r = lookupSrcSpan [forest] l
       (show $ map treeStartEnd r) `shouldBe` "[((19,1),(21,14))]"
 
 
@@ -201,7 +201,7 @@ spec = do
       let tree2 = mkTreeFromTokens (take 10 $ drop 20 toks)
       let tree3 = mkTreeFromTokens (take 15 $ drop 30 toks)
       let tree4 = mkTreeFromTokens (drop 45 toks)
-      let forest = [tree1,tree2,tree3,tree4]
+      let forest = mkTreeFromSubTrees [tree1,tree2,tree3,tree4]
       (invariant forest) `shouldBe` []
 
       (show $ treeStartEnd tree1) `shouldBe` "((1,1),(8,7))"
@@ -215,7 +215,7 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let (begin,middle,end) = splitForestOnSpan forest l
+      let (begin,middle,end) = splitForestOnSpan (subForest forest) l
       (map treeStartEnd begin) `shouldBe` [((1,1),(8,7)),((8,9),(13,1)),((13,5),(18,1))]
       (map treeStartEnd middle) `shouldBe` [((19,1),(26,1))]
       (map treeStartEnd end) `shouldBe` []
@@ -225,7 +225,7 @@ spec = do
   describe "insertSrcSpan" $ do
     it "checks that the forest is split into two parts" $ do
       (t,toks) <- parsedFileTokenTestGhc
-      let forest = [mkTreeFromTokens toks]
+      let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -234,18 +234,18 @@ spec = do
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let forest' = insertSrcSpan forest l
-      (drawForestEntry forest') `shouldBe`
+      (drawTreeEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,18))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
-              "`- ((26,1),(26,1))\n\n"
+              "`- ((26,1),(26,1))\n"
 
   -- ---------------------------------------------
 
   describe "getPathFor" $ do
     it "retrieves an empty path if the SrcSpan is not in the tree" $ do
       (t,toks) <- parsedFileTokenTestGhc
-      let forest = [mkTreeFromTokens toks]
+      let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -265,7 +265,7 @@ spec = do
     -- -----------------------------------
     it "retrieves the path if the SrcSpan is in the tree" $ do
       (t,toks) <- parsedFileTokenTestGhc
-      let forest = [mkTreeFromTokens toks]
+      let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -275,11 +275,11 @@ spec = do
       (show $ ghcSpanStartEnd l) `shouldBe` "((19,1),(21,14))"
 
       let forest' = insertSrcSpan forest l
-      (drawForestEntry forest') `shouldBe`
+      (drawTreeEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,18))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
-              "`- ((26,1),(26,1))\n\n"
+              "`- ((26,1),(26,1))\n"
 
       (map treeStartEnd $ getPathFor forest' l) `shouldBe` [((1,1),(26,1)),((19,1),(21,14))]
 
@@ -288,7 +288,7 @@ spec = do
   describe "retrieveTokens" $ do
     it "extracts all the tokens from the leaves of the trees, in order" $ do
       (t,toks) <- parsedFileTokenTestGhc
-      let forest = [mkTreeFromTokens toks]
+      let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -297,11 +297,11 @@ spec = do
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let forest' = insertSrcSpan forest l
-      (drawForestEntry forest') `shouldBe`
+      (drawTreeEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,18))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
-              "`- ((26,1),(26,1))\n\n"
+              "`- ((26,1),(26,1))\n"
 
       let toks' = retrieveTokens forest'
       (show toks') `shouldBe` (show toks)
@@ -338,7 +338,7 @@ spec = do
   describe "insertNodeAfter" $ do
     it "Adds a new SrcSpan after a specified one in the forest." $ do
       (t,toks) <- parsedFileTokenTestGhc
-      let forest = [mkTreeFromTokens toks]
+      let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -357,15 +357,15 @@ spec = do
       let newNode = Node (Entry newSpan' toksNew) []
       -- let newNode = Node (Entry l toks) []
 
-      let toks' = retrieveTokens [tree]
-      let forest'' = [insertNodeAfter tree newNode (head forest')]
+      let toks' = retrieveTokens tree
+      let forest'' = insertNodeAfter tree newNode forest'
       (invariant forest'') `shouldBe` []
-      (drawForestEntry forest'') `shouldBe`
+      (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,18))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
               "+- ((1000019,1),(21,14))\n|\n"++ -- our inserted span
-              "`- ((26,1),(26,1))\n\n"
+              "`- ((26,1),(26,1))\n"
 
       let toksFinal = retrieveTokens forest''
       (GHC.showRichTokenStream toksNew) `shouldBe` "module TokenTest where"
@@ -376,7 +376,7 @@ spec = do
   describe "addNewSrcSpanAndToks" $ do
     it "Adds a new SrcSpan after an existing one in the forest." $ do
       (t,toks) <- parsedFileTokenTestGhc
-      let forest = [mkTreeFromTokens toks]
+      let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -386,36 +386,36 @@ spec = do
 
       let (forest',tree) = getSrcSpanFor forest l
 
-      let toks' = retrieveTokens [tree]
+      let toks' = retrieveTokens tree
       let (forest'',sspan) = addNewSrcSpanAndToks forest' l l toks'
       (invariant forest'') `shouldBe` []
-      (drawForestEntry forest'') `shouldBe`
+      (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,18))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
               "+- ((1000019,1),(21,14))\n|\n"++ -- our inserted span
-              "`- ((26,1),(26,1))\n\n"
-      (showSrcSpan sspan) `shouldBe` ""
+              "`- ((26,1),(26,1))\n"
+      (showSrcSpan sspan) `shouldBe` "((1000019,1),(21,14))"
 
       let toksFinal = retrieveTokens forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` ""
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
   -- ---------------------------------------------
 
   describe "invariant 1" $ do
     it "checks that a tree with empty tokens and empty subForest fails" $ do
-      (invariant [Node (Entry GHC.noSrcSpan []) []]) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]
+      (invariant $ Node (Entry GHC.noSrcSpan []) []) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]
 
     -- -----------------------
     it "checks that a tree nonempty tokens and empty subForest passes" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      (invariant [Node (Entry GHC.noSrcSpan (take 3 toks)) []]) `shouldBe` []
+      (invariant $ Node (Entry GHC.noSrcSpan (take 3 toks)) []) `shouldBe` []
 
     -- -----------------------
     it "checks that a tree with nonempty tokens and nonempty subForest fails" $ do
       (_t,toks) <- parsedFileTokenTestGhc
 
-      (invariant [Node (Entry GHC.noSrcSpan (take 1 toks)) [emptyTree]]) `shouldBe`
+      (invariant (Node (Entry GHC.noSrcSpan (take 1 toks)) [emptyTree])) `shouldBe`
                ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) [(((1,1),(1,7)),ITmodule,\"module\")]) [\"Node (Entry ((-1,-1),(-1,-1)) []) []\"]",
                 "FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]
 
@@ -424,13 +424,13 @@ spec = do
       (_t,toks) <- parsedFileTokenTestGhc
       let tree@(Node (Entry sspan _) _) = mkTreeFromTokens toks
 
-      (invariant [Node (Entry sspan []) [tree]]) `shouldBe` []
+      (invariant (Node (Entry sspan []) [tree])) `shouldBe` []
 
     -- -----------------------
     it "checks the subtrees too" $ do
       (_t,toks) <- parsedFileTokenTestGhc
 
-      (invariant [Node (Entry GHC.noSrcSpan []) [emptyTree]]) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]
+      (invariant (Node (Entry GHC.noSrcSpan []) [emptyTree])) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]
 
   -- ---------------------------------------------
 
@@ -445,10 +445,10 @@ spec = do
       (showTree tree2) `shouldBe` "Node (Entry ((1,8),(26,1)) [(((1,8),(1,17)),ITconid \"TokenTest\",\"TokenTest\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
       (showTree tree3) `shouldBe` "Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) []"
 
-      (invariant [Node (Entry sspan []) [tree2]]) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,8),(26,1)) [(((1,8),(1,17)),ITconid \\\"TokenTest\\\",\\\"TokenTest\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
-      (invariant [Node (Entry sspan []) [tree3]]) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\"]"]
+      (invariant (Node (Entry sspan []) [tree2])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,8),(26,1)) [(((1,8),(1,17)),ITconid \\\"TokenTest\\\",\\\"TokenTest\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan []) [tree3])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\"]"]
 
-      (invariant [Node (Entry sspan []) [tree3,tree4]]) `shouldBe` []
+      (invariant (Node (Entry sspan []) [tree3,tree4])) `shouldBe` []
 
     it "checks that a the subree is in span order" $ do
       (_t,toks) <- parsedFileTokenTestGhc
@@ -463,11 +463,11 @@ spec = do
       (show $ treeStartEnd tree3) `shouldBe` "((8,9),(13,1))"
       (show $ treeStartEnd tree4) `shouldBe` "((13,5),(26,1))"
 
-      (invariant [Node (Entry sspan []) [tree1,tree2,tree3,tree4]]) `shouldBe` []
-      (invariant [Node (Entry sspan []) [tree1,tree3,tree2,tree4]]) `shouldBe` ["FAIL: subForest not in order: (13,1) not < (6,3):Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,1)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,7)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(26,1)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan []) [tree1,tree2,tree3,tree4])) `shouldBe` []
+      (invariant (Node (Entry sspan []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: (13,1) not < (6,3):Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,1)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,7)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(26,1)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
 
   -- ---------------------------------------------
-
+{-
   describe "invariant 3" $ do
     it "checks that the forest is in order, hence no overlaps" $ do
       (_t,toks) <- parsedFileTokenTestGhc
@@ -483,7 +483,7 @@ spec = do
 
       (invariant [tree1,tree2,tree3,tree4]) `shouldBe` []
       (invariant [tree1,tree3,tree2,tree4]) `shouldBe` ["FAIL: forest not in order: (13,1) not < (6,3)"]
-
+-}
   -- ---------------------------------------------
 
   describe "mkTreeFromTokens" $ do
@@ -505,6 +505,17 @@ spec = do
 
 emptyTree :: Tree Entry
 emptyTree = Node (Entry GHC.noSrcSpan []) []
+
+mkTreeFromSubTrees :: [Tree Entry] -> Tree Entry
+mkTreeFromSubTrees [] = Node (Entry GHC.noSrcSpan []) []
+mkTreeFromSubTrees trees = Node (Entry sspan []) trees
+  where
+   (Node (Entry _ startToks) _) = head trees
+   (Node (Entry _ endToks) _) = last trees
+   startLoc = realSrcLocFromTok $ head startToks
+   endLoc   = realSrcLocFromTok $ last endToks -- SrcSpans count from start of token, not end
+   sspan    = GHC.RealSrcSpan $ GHC.mkRealSrcSpan startLoc endLoc
+
 
 
 -- ---------------------------------------------------------------------

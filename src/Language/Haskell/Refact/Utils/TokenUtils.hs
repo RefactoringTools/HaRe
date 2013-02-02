@@ -183,7 +183,7 @@ insertForestLineInSrcSpan _ ss = error $ "insertForestLineInSrcSpan: expecting a
 data Module = Module
         { mTypecheckedMod :: GHC.TypecheckedModule
         , mOrigTokenStream :: [PosToken]  -- ^Original Token stream for the current module
-        , mTokenCache :: Forest Entry -- ^Any modifications to the token stream. 
+        , mTokenCache :: Tree Entry -- ^Any modifications to the token stream.
         }
 
 -- Attempt 1. Build a Rose Tree from all SrcSpans in the file.
@@ -196,7 +196,7 @@ initModule typeChecked tokens
   = Module
       { mTypecheckedMod = typeChecked
       , mOrigTokenStream = tokens
-      , mTokenCache = [mkTreeFromTokens tokens]
+      , mTokenCache = mkTreeFromTokens tokens
       }
 
 -- Initially work with non-monadic code, can build it into the
@@ -214,26 +214,26 @@ getTokensFor modu sspan = (modu', tokens)
   where
      forest = if invariantOk (mTokenCache modu) -- TODO: remove this, expensive operation
                then mTokenCache modu
-               else []
+               else mTokenCache modu
      (forest',tree) = getSrcSpanFor forest sspan
      modu' = modu { mTokenCache = forest' }
 
-     tokens = retrieveTokens [tree]
+     tokens = retrieveTokens tree
 
 -- ---------------------------------------------------------------------
 -- |Retrieve a path to the tree containing a SrcSpan from the forest,
 -- inserting it if not already present
-getSrcSpanFor :: Forest Entry -> GHC.SrcSpan -> (Forest Entry, Tree Entry)
+getSrcSpanFor :: Tree Entry -> GHC.SrcSpan -> (Tree Entry, Tree Entry)
 getSrcSpanFor forest sspan = (forest',tree)
   where
     forest' = insertSrcSpan forest sspan -- Will NO-OP if already there
-    [tree]  = lookupSrcSpan forest' sspan
+    [tree]  = lookupSrcSpan [forest'] sspan
 
 -- ---------------------------------------------------------------------
 -- |Retrieve a path to the tree containing a SrcSpan from the forest,
 -- or return an empty list if it is not present
-getPathFor :: Forest Entry -> GHC.SrcSpan -> [Tree Entry]
-getPathFor forest sspan = getPathFor' [] forest sspan
+getPathFor :: Tree Entry -> GHC.SrcSpan -> [Tree Entry]
+getPathFor forest sspan = getPathFor' [] [forest] sspan
   where
     getPathFor' :: [Tree Entry] -> Forest Entry -> GHC.SrcSpan -> [Tree Entry]
     getPathFor' path f ss  = res
@@ -250,8 +250,8 @@ getPathFor forest sspan = getPathFor' [] forest sspan
 -- |Insert a SrcSpan into the forest, if it is not there already.
 -- Assumes the forest was populated with the tokens containing the
 -- SrcSpan already
-insertSrcSpan :: Forest Entry -> GHC.SrcSpan -> Forest Entry
-insertSrcSpan forest sspan = insertSrcSpan' forest sspan
+insertSrcSpan :: Tree Entry -> GHC.SrcSpan -> Tree Entry
+insertSrcSpan forest sspan = head $ insertSrcSpan' [forest] sspan
 
 -- |Worker function, including actual parent as the tree is traversed
 insertSrcSpan' :: Forest Entry -> GHC.SrcSpan -> Forest Entry
@@ -294,9 +294,9 @@ insertSrcSpan' forest sspan = forest'
 -- ---------------------------------------------------------------------
 
 -- |Retrieve all the tokens at the leaves of the tree, in order
-retrieveTokens :: Forest Entry -> [PosToken]
+retrieveTokens :: Tree Entry -> [PosToken]
 -- retrieveTokens forest = F.foldl accum [] forest
-retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) forest
+retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) [forest]
 -- retrieveTokens forest =F.foldl accum [] forest
   where
     accum :: [PosToken] -> Entry -> [PosToken]
@@ -311,11 +311,11 @@ retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) forest
 -- and forest. This will be given a unique SrcSpan in return, which
 -- specifically indexes into the forest.
 addNewSrcSpanAndToks ::
-  Forest Entry -- ^The forest to update
+  Tree Entry -- ^The forest to update
   -> GHC.SrcSpan -- ^The new span comes after this one
   -> GHC.SrcSpan -- ^Existing span for the tokens
   -> [PosToken]  -- ^The new tokens belonging to the new SrcSpan
-  -> (Forest Entry -- ^Updated forest with the new span
+  -> (Tree Entry -- ^Updated forest with the new span
      , GHC.SrcSpan) -- ^Unique SrcSpan allocated in the forest to
                     -- identify this span in its position
 addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest'',newSpan')
@@ -331,8 +331,7 @@ addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest'',newSpan')
     --       BUT: first need intact parent relation.
     newNode = Node (Entry newSpan' toks) []
 
-    -- forest'' = insertNodeAfter tree newNode forest'
-    forest'' = forest'
+    forest'' = insertNodeAfter tree newNode forest'
 
 -- ---------------------------------------------------------------------
 
@@ -434,7 +433,7 @@ lookupSrcSpan forest sspan = res
 -- ---------------------------------------------------------------------
 
 -- |Utility function to either return True or throw an error to report the problem
-invariantOk :: Forest Entry -> Bool
+invariantOk :: Tree Entry -> Bool
 invariantOk forest = ok
   where
     inv = invariant forest
@@ -453,23 +452,10 @@ invariantOk forest = ok
 --   4. The parent link for all sub-trees does exist, and actually points to the parent. 
 -- NOTE: the tokens may extend before or after the SrcSpan, due to comments only
 -- NOTE2: this will have to be revisited when edits to the tokens are made
-invariant :: Forest Entry -> [String]
-invariant forest = rforest ++ rsub
+invariant :: Tree Entry -> [String]
+invariant forest = rsub
   where
-    rforest = checkForest $ map treeStartEnd forest
-      where
-        checkForest [] = []
-        checkForest [_x] = []
-        checkForest ((_s1,e1):s@(s2,_e2):ss)
-          = r ++ checkForest (s:ss)
-          where
-            r = if e1 <= s2
-                 then []
-                 else ["FAIL: forest not in order: " ++
-                        show e1 ++ " not < " ++ show s2]
-
-
-    rsub = F.foldl checkOneTree [] forest
+    rsub = F.foldl checkOneTree [] [forest]
 
     checkOneTree :: [String] -> Tree Entry -> [String]
     checkOneTree acc tree = acc ++ r
