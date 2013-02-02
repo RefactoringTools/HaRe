@@ -21,6 +21,8 @@ import Exception
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadUtils
+import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 
 -- ---------------------------------------------------------------------
@@ -58,7 +60,7 @@ initialState = RefSt
 toksFromState :: RefactState -> [PosToken]
 toksFromState st =
   case (rsModule st) of
-    Just tm -> rsTokenStream tm
+    Just tm -> retrieveTokens $ rsTokenCache tm
     Nothing -> []
 
 -- ---------------------------------------------------------------------
