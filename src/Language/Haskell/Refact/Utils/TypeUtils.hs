@@ -2487,7 +2487,14 @@ addDecl parent pn (decl, msig, declToks) topLevel
              -- colOffset = if (emptyList decls) then 1 else getOffset toks $ fst (getStartEndLoc (head decls))
              colOffset = 0
          (toks',newToks) <- makeNewToks colOffset toks1 toks2 (decl,maybeSig,declToks)
-         putToks toks' modified
+
+         -- putToks toks' modified
+         let Just sspan = if (emptyList decls2)
+                            then getSrcSpan (last decls1)
+                            else getSrcSpan (head decls2)
+         putToksAfterSpan sspan newToks
+
+
          (decl',_) <- addLocInfo (decl, newToks)
 
          case maybeSig of
@@ -2501,11 +2508,8 @@ addDecl parent pn (decl, msig, declToks) topLevel
   makeNewToks colOffset toks1 toks2 (decl, maybeSig, declToks) = do
          let
              declStr = case declToks of
-                        -- Just ts -> concatMap tokenCon ts
-                        -- Just ts -> GHC.showRichTokenStream ts
                         Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
                         Nothing -> "\n"++(prettyprint decl)++"\n\n"
-                        -- Nothing -> (prettyprint decl)++"\n\n"
              sigStr  = case declToks of
                         Just _ts -> ""
                         Nothing -> case maybeSig of
@@ -2519,6 +2523,8 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          -- TODO: the newLnToken adds an extra space on the following line, fix it
          -- let toks' = toks1 ++ newToks ++ [nlt1,nlt2] ++ toks2
+
+         -- TODO: ++AZ++, make the newLn stuff part of newToks, to be able to play nice with TokenUtils
          let toks' = if  endsWithNewLn  (glast "makeNewToks 3" toks1)
                       then  toks1 ++ (nlToken: newToks) ++ [nlt1,nlt2]++ compressPreNewLns toks2
                       else  toks1 ++ (nlToken: newToks) ++ [nlt1,nlt2]++ compressPreNewLns toks2
@@ -2560,7 +2566,12 @@ addDecl parent pn (decl, msig, declToks) topLevel
          -- error ("appendDecl: ([last toks2, newLnToken (last toks2)])=" ++ (showToks [last toks2, newLnToken (last toks2)])) -- ++AZ++ debug
          let nlToken = newLnToken (glast "appendDecl3" toks2)
          (toks',newToks) <- makeNewToks offset (toks1++toks2++[nlToken]) toks3 (decl,maybeSig,declToks)
-         putToks toks' modified
+
+
+         -- putToks toks' modified
+         let Just sspan = getSrcSpan $ head after
+         putToksAfterSpan sspan newToks
+
          -- return (replaceDecls parent (Decs (before ++ [ghead "appendDecl14" after]++ decl++ tail after) ([], [])))
 
          (decl',_) <- addLocInfo (decl, newToks)
@@ -2594,10 +2605,6 @@ addDecl parent pn (decl, msig, declToks) topLevel
               =if (emptyList localDecls)
                    then startEndLocIncFowComment toks parent    --The 'where' clause is empty
                    else startEndLocIncFowComment toks localDecls
-            -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
-            -- ++AZ++ toks1 : tokens after the insertion point
-            --        ts1: toks1 with whitespace, comments etc removed.
-            -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t<endPos') toks
 
             -- Note: toks1 is the rest of the tokens.
             toks1=dropWhile (\t->tokenPosEnd t<endPos') toks
@@ -2611,16 +2618,10 @@ addDecl parent pn (decl, msig, declToks) topLevel
                               then True
                               else (not.endsWithNewLn) (glast "addLocalDecl" ts1)
                       else endRow'==fst nextTokPos
-            --endPos@(endRow,_)=if ts1==[] then endPos'
-            --                             else tokenPos (last ts1)
             -- ++AZ++ temp offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
             offset = if (emptyList localDecls)
                         then (getIndentOffset toks endPos') + 4
                         else getIndentOffset toks endPos'
-                        {-
-                        then (getIndentOffset toks startPos) -- + 3 -- off by one on start col
-                        else getIndentOffset toks startPos
-                        -}
             nlToken = newLnToken (ghead "addLocalDecl2" toks1)
 
         -- error ("addLocalDecl: (endPos',offset),(head toks1)) =" ++ (show (endPos',offset)) ++ "," ++ (showToks $ [head toks1])) -- ++AZ++ debug
@@ -2636,12 +2637,9 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         -- (_toks',newToks) <- makeNewToks offset [ghead "addLocalDecl 4" toks1] [] (decl,maybeSig,declToks)
         newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
-        -- newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
-                          -- $ if needNewLn then "\n"++newSource else newSource++"\n"
                           $ if needNewLn then newSource++"\n" else newSource++"\n"
 
         -- error ("addLocalDecl: (offset,newToks) =" ++ (GHC.showPpr (offset, realSrcLocFromTok nlToken)) ++ (showToks $ nlToken:newToks)) -- ++AZ++ debug
-
 
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
 
@@ -2649,11 +2647,11 @@ addDecl parent pn (decl, msig, declToks) topLevel
         let oldToks'=getToks (startPos,endPos') toks
             toks'=replaceToks toks startPos endPos' (oldToks'++newToks++[nlToken2,newLnToken nlToken2])
 
-        putToks toks' modified
+        -- putToks toks' modified
+        putToksAfterPos (startPos,endPos') (newToks++[nlToken2,newLnToken nlToken2])
 
         case maybeSig of
            Nothing  -> return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
-           -- Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent ++ [newFun']))) (sig:(getValBindSigs binds))))
 
         -- return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
@@ -2825,7 +2823,10 @@ addHiding serverModName (g,imps,e,d) pns = do
                  newToken = mkToken t start (s++" hiding ("++showEntities GHC.showPpr pns++")")
                  toks'= replaceToks toks start end [newToken]
              -- error ("addHiding: newToken=" ++ (showToks [newToken]) ++ " (start,end)=" ++ (show (start,end)) ++ "(startPos,endPos)=" ++ (show (startPos,endPos)) ++ " toks=" ++ (showToks toks)) -- ++AZ++ debug
-             putToks toks' True
+
+             -- putToks toks' True
+             putToksForPos (start,end) [newToken]
+
              return (replaceHiding imp (Just (True, map mkNewEnt pns )))
            Just (True, ents) -> do
              toks <- fetchToks
@@ -2835,7 +2836,10 @@ addHiding serverModName (g,imps,e,d) pns = do
                  end   = getGhcLocEnd l
                  newToken=mkToken t start (","++showEntities GHC.showPpr pns ++s)
                  toks'=replaceToks toks start end [newToken]
-             putToks toks' True
+
+             -- putToks toks' True
+             putToksForPos (start,end) [newToken]
+
              return (replaceHiding imp  (Just (True, (map mkNewEnt  pns)++ents))) 
            Just (False, _ent)  -> return imp
     inImport x = return x
@@ -3304,8 +3308,6 @@ duplicateDecl decls sigs n newFunName
       --stream (toks2, just updated) as well, in the monad
       funBinding' <- renamePN n newFunName True funBinding
       --rename function name in type signature  without adjusting the token stream
-
-      -- typeSig'  <- renamePN pn Nothing newFunName False typeSig
       typeSig'  <- renamePN n newFunName False typeSig
 
       -- Get the updated token stream
@@ -3361,53 +3363,6 @@ duplicateDecl decls sigs n newFunName
        typeSig = definingSigsNames [n] sigs
 
 
-{- ++ original ++
-{- ********* IMPORTANT : THIS FUNCTION SHOULD BE UPDATED TO THE NEW TOKEN STREAM METHOD ****** -}
--- | Duplicate a functon\/pattern binding declaration under a new name right after the original one.
-duplicateDecl::(MonadState (([PosToken],Bool),t1) m)
-                 =>[HsDeclP]            -- ^ The declaration list
-                 ->PName                -- ^ The identifier whose definition is going to be duplicated
-                 ->String               -- ^ The new name
-                 ->m [HsDeclP]          -- ^ The result
-{-there maybe fun/simple pattern binding and type signature in the duplicated decls
-  function binding, and type signature are handled differently here: the comment and layout
-  in function binding are preserved.The type signature is output ted by pretty printer, so
-  the comments and layout are NOT preserved.
- -}
-duplicateDecl decls pn newFunName
- = do ((toks,_), others)<-get
-      let (startPos, endPos) =startEndLocIncComments toks funBinding
-          {-take those tokens before (and include) the function binding and its following
-            white tokens before the 'new line' token. (some times the function may be followed by 
-            comments) -}
-          toks1 = let (ts1, ts2) =break (\t->tokenPos t==endPos) toks in ts1++[ghead "duplicateDecl" ts2]
-          --take those token after (and include) the function binding
-          toks2 = dropWhile (\t->tokenPos t/=startPos || isNewLn t) toks
-      put((toks2,modified), others)
-      --rename the function name to the new name, and update token stream as well
-      funBinding'<-renamePN pn Nothing newFunName True funBinding
-      --rename function name in type signature  without adjusting the token stream
-      typeSig'  <- renamePN pn Nothing newFunName False typeSig
-      ((toks2,_), others)<-get
-      let offset = getOffset toks (fst (startEndLoc toks funBinding))
-          newLineTok = if toks1/=[] && endsWithNewLn (glast "doDuplicating" toks1)
-                         then [newLnToken]
-                         else [newLnToken,newLnToken]
-          toks'= if typeSig/=[]
-                 then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks2))
-                          sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
-                          t = mkToken Whitespace (0,0) sigSource
-                      in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks2)
-                 else (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
-      put ((toks',modified),others)
-      return (typeSig'++funBinding')
-     where
-       declsToDup = definingDecls [pn] decls True False
-       funBinding = filter isFunOrPatBind declsToDup     --get the fun binding.
-       typeSig    = filter isTypeSig declsToDup      --get the type signature.
-
-
--}
 
 -- ---------------------------------------------------------------------
 --------------------------------TRY TO REMOVE THIS FUNCTION---------------------
@@ -3815,16 +3770,6 @@ renamePN oldPN newName updateTokens t
      = do let (row,col) = (getLocatedStart pnt)
           newName <- worker (row,col) l n
           return (GHC.L l newName)
-{-
-     = do if updateTokens
-           then  do
-                    toks <- fetchToks
-                    let (row,col) = (getLocatedStart pnt)
-                    let toks'= replaceToks toks (row,col) (row,col) [newNameTok l newName]
-                    putToks toks' True
-                    return (GHC.L l newName)
-           else return (GHC.L l newName)
--}
     rename x = return x
 
     renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
@@ -3840,7 +3785,10 @@ renamePN oldPN newName updateTokens t
            then  do
                     toks <- fetchToks
                     let toks'= replaceToks toks (row,col) (row,col) [newNameTok l newName]
-                    putToks toks' True
+
+                    -- putToks toks' True
+                    putToksForPos ((row,col),(row,col)) [newNameTok]
+
                     return newName
            else return newName
 

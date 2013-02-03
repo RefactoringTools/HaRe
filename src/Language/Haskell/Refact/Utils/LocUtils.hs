@@ -631,12 +631,12 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
        toks <- fetchToks
 
        let (toks1, _, toks2)  = splitToks (startPos, endPos) toks
-           -- offset             = lengthOfLastLine toks1
-
            astStr = (printFun newAST) 
        -- error $ "updateToks:astStr=[" ++ (show (astStr)) ++ "]" -- ++AZ++
        -- error $ "updateToks:(head toks2,(tokenRow (head toks2), tokenRow (head newToks))
        newToks <- liftIO $ tokenise (realSrcLocEndTok $ glast "Update Toks" toks1) 1 True astStr
+
+       {-
        let nlt1 = newLnToken (glast "updateToks 3" newToks)
            nlt2 = newLnToken nlt1
        let newToks' = if (addTrailingNl && tokenRow (ghead "updateToks 1" toks2) <= tokenRow (glast "updateToks 2" newToks))
@@ -644,6 +644,8 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
                        else newToks
        let toks' = toks1 ++ newToks' ++ toks2
        putToks toks' modified
+       -}
+       putToksForPos (startPos,endPos) newToks
 
        return ()
 
@@ -667,14 +669,13 @@ updateToksList oldAST newAST printFun
         -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks newToks))
         -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks toks2az) ++ "\n" ++ (showToks toks3az))
         -- error ("updateToksList:" ++ (showToks newToks))
+
+        {-
         let
             toks' = replaceToks toks startPos endPos newToks
         putToks toks' modified
-        {-
-        if length newToks == 0
-          then put (RefSt s u toks' modified) -- TODO:how do we flag this? Do we have to?
-          else put (RefSt s u toks' modified)
         -}
+        putToksForPos (startPos,endPos) newToks
 
         return (newAST, newToks)
 
@@ -701,10 +702,16 @@ addFormalParams t newParams
        -- error ("addFormalParams: (startPos,endPos)=" ++ (show (startPos,endPos))) -- ++AZ++ debug
        newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") r (c+1)) 0 False 
                                     (prettyprintPatList prettyprint True newParams)
+
+       {-
        let toks' = replaceToks toks startPos endPos (tToks++newToks)
            toks'' = reAlignToks toks' -- ++AZ++ TODO: reduce the scope of the re-align, expensive
        putToks toks'' modified
+       -}
+       putToksForPos (startPos,endPos) (tToks++newToks)
        -- addLocInfo (newParams, newToks)
+
+
        return ()
 
 {- ++AZ++ original

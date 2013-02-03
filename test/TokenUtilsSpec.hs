@@ -308,6 +308,45 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "updateTokensForSrcSpan" $ do
+    it "replaces the tokens for a given span, inserting the span if needed" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+
+      let forest' = updateTokensForSrcSpan forest l (take 3 toks)
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n"
+
+      let toks' = retrieveTokens forest'
+      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment module TokenTest where\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n "
+
+    -- --------------------------------------
+
+    it "replaces the tokens for a given span, removing any sub tree" $ do
+       pending "write this"
+
+  -- ---------------------------------------------
+
+  describe "posToSrcSpan" $ do
+    it "Converts a simple position to a SrcSpan in the context of a forest" $ do
+      (_t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let sspan = posToSrcSpan forest ((1,2),(3,5))
+      (GHC.showPpr sspan) `shouldBe` "test/testdata/TokenTest.hs:(1,2)-(3,4)"
+      (showSrcSpan sspan) `shouldBe` "((1,2),(3,5))"
+
+  -- ---------------------------------------------
+
   describe "ghcLineToForestLine" $ do
     it "converts a GHC line to a ForestLine" $ do
       (ghcLineToForestLine 34) `shouldBe` ForestLine 0 34
@@ -373,7 +412,7 @@ spec = do
 
   -- ---------------------------------------------
 
-  describe "addNewSrcSpanAndToks" $ do
+  describe "addNewSrcSpanAndToksAfter" $ do
     it "Adds a new SrcSpan after an existing one in the forest." $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
@@ -387,7 +426,36 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest l
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addNewSrcSpanAndToks forest' l l toks'
+      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l toks'
+      (invariant forest'') `shouldBe` []
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++
+              "+- ((1000019,1),(21,14))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n"
+      (showSrcSpan sspan) `shouldBe` "((1000019,1),(21,14))"
+
+      let toksFinal = retrieveTokens forest''
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+
+  -- ---------------------------------------------
+
+  describe "addToksAfterSrcSpan" $ do
+    it "Adds a new SrcSpan after an existing one in the forest." $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+
+      let (forest',tree) = getSrcSpanFor forest l
+
+      let toks' = retrieveTokens tree
+      let (forest'',sspan) = addToksAfterSrcSpan forest' l toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++

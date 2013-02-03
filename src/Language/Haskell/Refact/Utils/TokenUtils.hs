@@ -15,13 +15,18 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , Module(..)
        , initModule
        , getTokensFor
+       , updateTokensForSrcSpan
        , treeStartEnd
        , insertSrcSpan
        , getSrcSpanFor
        , getPathFor
        , retrieveTokens
 
-       , addNewSrcSpanAndToks
+       , addNewSrcSpanAndToksAfter
+       , addToksAfterSrcSpan
+
+       -- * Utility
+       , posToSrcSpan
 
        -- * Internal, for testing
        , splitForestOnSpan
@@ -235,7 +240,7 @@ initModule typeChecked tokens
 
 -- ---------------------------------------------------------------------
 
--- | Get the (possible cached) tokens for a given source span, and
+-- |Get the (possible cached) tokens for a given source span, and
 -- cache their being fetched.
 -- NOTE: The SrcSpan may be one introduced by HaRe, rather than GHC.
 -- TODO: consider returning an Either. Although in reality the error
@@ -250,6 +255,22 @@ getTokensFor modu sspan = (modu', tokens)
      modu' = modu { mTokenCache = forest' }
 
      tokens = retrieveTokens tree
+
+-- ---------------------------------------------------------------------
+
+-- |Replace the tokens for a given SrcSpan with new ones. The SrcSpan
+-- will be inserted into the tree if it is not already there
+updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> Tree Entry
+updateTokensForSrcSpan forest sspan toks = forest''
+  where
+    -- Make sure the sspan is in the tree
+    (forest',node@(Node (Entry s _) _)) = getSrcSpanFor forest sspan
+    zf = openZipperToNode node $ Z.fromTree forest'
+    -- ++AZ++ what if the given sourcespan is not a leaf node?
+    --        Should wipe out the structure below, as no longer valid
+    -- zf' = Z.setLabel (Entry s toks) zf
+    zf' = Z.setTree (Node (Entry s toks) []) zf
+    forest'' = Z.toTree zf'
 
 -- ---------------------------------------------------------------------
 -- |Retrieve a path to the tree containing a SrcSpan from the forest,
@@ -285,6 +306,7 @@ insertSrcSpan :: Tree Entry -> GHC.SrcSpan -> Tree Entry
 insertSrcSpan forest sspan = head $ insertSrcSpan' [forest] sspan
 
 -- |Worker function, including actual parent as the tree is traversed
+-- TODO: rework to use the zipper
 insertSrcSpan' :: Forest Entry -> GHC.SrcSpan -> Forest Entry
 insertSrcSpan' forest sspan = forest'
   where
@@ -341,7 +363,7 @@ retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) [forest]
 -- |Add a new SrcSpan and Tokens after a given one in the token stream
 -- and forest. This will be given a unique SrcSpan in return, which
 -- specifically indexes into the forest.
-addNewSrcSpanAndToks ::
+addNewSrcSpanAndToksAfter ::
   Tree Entry -- ^The forest to update
   -> GHC.SrcSpan -- ^The new span comes after this one
   -> GHC.SrcSpan -- ^Existing span for the tokens
@@ -349,7 +371,7 @@ addNewSrcSpanAndToks ::
   -> (Tree Entry -- ^Updated forest with the new span
      , GHC.SrcSpan) -- ^Unique SrcSpan allocated in the forest to
                     -- identify this span in its position
-addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest'',newSpan')
+addNewSrcSpanAndToksAfter forest oldSpan newSpan toks = (forest'',newSpan')
   where
     (forest',tree) = getSrcSpanFor forest oldSpan
     parents = getPathFor forest' oldSpan
@@ -363,6 +385,43 @@ addNewSrcSpanAndToks forest oldSpan newSpan toks = (forest'',newSpan')
     newNode = Node (Entry newSpan' toks) []
 
     forest'' = insertNodeAfter tree newNode forest'
+
+-- ---------------------------------------------------------------------
+
+-- |Add new tokens after the given SrcSpan, constructing a new SrcSpan
+-- in the process
+addToksAfterSrcSpan ::
+  Tree Entry -> GHC.SrcSpan -> [PosToken]
+  -> (Tree Entry, GHC.SrcSpan)
+addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
+  where
+    -- Need to strip leading and trailing comment from the toks
+    startTok = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
+    endTok   = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse toks
+
+    startPos = tokenPos    startTok
+    endPos   = tokenPosEnd endTok
+    newSpan = posToSrcSpan forest (startPos,endPos)
+    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan: newSpan=" ++ ( GHC.showPpr newSpan),newSpan)
+    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan toks
+
+-- ---------------------------------------------------------------------
+
+-- |Convert a simple (start,end) position to a SrcSpan belonging to
+-- the file in the tree
+posToSrcSpan :: Tree Entry -> (SimpPos,SimpPos) -> GHC.SrcSpan
+posToSrcSpan forest ((rs,cs),(re,ce)) = sspan
+  where
+    tok@(GHC.L l _,_) = head $ retrieveTokens forest -- ++AZ++ Ouch, performance??
+    sspan =  case l of
+      GHC.RealSrcSpan ss ->
+        let
+          locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) rs cs
+          locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) re ce
+        in
+          GHC.mkSrcSpan locStart locEnd
+      _ -> error "posToSrcSpan: invalid SrcSpan in first tok"
+
 
 -- ---------------------------------------------------------------------
 
@@ -948,5 +1007,6 @@ startEndLocGhc t@(GHC.L l _) =
        (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
     (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
 
+-- ---------------------------------------------------------------------
 
 -- EOF
