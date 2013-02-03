@@ -43,6 +43,8 @@ import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadUtils
+import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.IO.Unsafe
@@ -288,7 +290,7 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
 
     let rs = RefMod { rsTypecheckedMod = parsedFile
                     , rsOrigTokenStream = toks
-                    , rsTokenStream = toks
+                    , rsTokenCache = mkTreeFromTokens toks
                     , rsStreamModified = False
                     }
     put (RefSt settings u f (Just rs))

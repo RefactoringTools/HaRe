@@ -7,12 +7,13 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactState(..)
        , RefactModule(..)
        , RefactFlags(..)
-       , initRefactModule
+       -- , initRefactModule
        -- GHC monad stuff
        , RefactGhc
        , runRefactGhc
        , getRefacSettings
 
+       {- ++AZ++ moved to MonadUtils, to break import cycle
        -- * Conveniences for state access
        , fetchToks
        , fetchOrigToks
@@ -30,6 +31,7 @@ module Language.Haskell.Refact.Utils.Monad
        , getRefactDone
        , setRefactDone
        , clearRefactDone
+       -}
 
        -- , Refact -- ^ TODO: Deprecated, use RefactGhc
        -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
@@ -62,7 +64,12 @@ import qualified Coercion      as GHC
 import qualified ForeignCall   as GHC
 import qualified InstEnv       as GHC
 
+import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
+
+import Data.Tree
+
+-- ---------------------------------------------------------------------
 
 data RefactSettings = RefSet
         { rsetImportPath :: [FilePath]
@@ -71,7 +78,8 @@ data RefactSettings = RefSet
 data RefactModule = RefMod
         { rsTypecheckedMod :: GHC.TypecheckedModule
         , rsOrigTokenStream :: [PosToken]  -- ^Original Token stream for the current module
-        , rsTokenStream     :: [PosToken]  -- ^Token stream for the current module, maybe modified
+        -- , rsTokenStream     :: [PosToken]  -- ^Token stream for the current module, maybe modified
+        , rsTokenCache :: Tree Entry -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
         , rsStreamModified :: Bool     -- ^current module has updated the token stream
         }
 
@@ -154,6 +162,8 @@ getRefacSettings = do
   return (rsSettings s)
 
 -- ---------------------------------------------------------------------
+{- ++AZ++ moved to MonadUtils, to break import cycle
+
 
 fetchToks :: RefactGhc [PosToken]
 fetchToks = do
@@ -241,16 +251,7 @@ clearRefactDone = do
   st <- get
   put $ st { rsFlags = RefFlags False }
 
--- ---------------------------------------------------------------------
-
-initRefactModule
-  :: GHC.TypecheckedModule -> [PosToken] -> Maybe RefactModule
-initRefactModule tm toks 
-  = Just (RefMod { rsTypecheckedMod = tm
-                 , rsOrigTokenStream = toks
-                 , rsTokenStream = toks
-                 , rsStreamModified = False
-                 })
+++AZ++ end of move to MonadUtils -}
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ trying to wrap this in GhcT, or vice versa
