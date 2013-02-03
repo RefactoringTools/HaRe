@@ -182,9 +182,6 @@ Thought: do refactoring on RenamedSource, not ParsedSource. Need to
 
 
 
-
-
-
 -------------------------------------
 
 GHC structures
