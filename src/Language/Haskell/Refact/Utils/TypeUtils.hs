@@ -3787,7 +3787,7 @@ renamePN oldPN newName updateTokens t
                     let toks'= replaceToks toks (row,col) (row,col) [newNameTok l newName]
 
                     -- putToks toks' True
-                    putToksForPos ((row,col),(row,col)) [newNameTok]
+                    putToksForPos ((row,col),(row,col)) [newNameTok l newName]
 
                     return newName
            else return newName

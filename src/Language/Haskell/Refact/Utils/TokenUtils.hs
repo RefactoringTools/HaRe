@@ -279,7 +279,9 @@ getSrcSpanFor :: Tree Entry -> GHC.SrcSpan -> (Tree Entry, Tree Entry)
 getSrcSpanFor forest sspan = (forest',tree)
   where
     forest' = insertSrcSpan forest sspan -- Will NO-OP if already there
-    [tree]  = lookupSrcSpan [forest'] sspan
+    tree = case (lookupSrcSpan [forest'] sspan) of
+             [x] -> x
+             xx  -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show xx)
 
 -- ---------------------------------------------------------------------
 -- |Retrieve a path to the tree containing a SrcSpan from the forest,
@@ -303,8 +305,41 @@ getPathFor forest sspan = getPathFor' [] [forest] sspan
 -- Assumes the forest was populated with the tokens containing the
 -- SrcSpan already
 insertSrcSpan :: Tree Entry -> GHC.SrcSpan -> Tree Entry
-insertSrcSpan forest sspan = head $ insertSrcSpan' [forest] sspan
+insertSrcSpan forest sspan = forest'
+  where
+    z = openZipperToSpan sspan $ Z.fromTree forest
+    forest' = if treeStartEnd (Z.tree z) == spanStartEnd sspan
+      then forest -- Already in, exactly
+      else forest''
+        where
+          toks = if (Z.isLeaf z)
+            then 
+              -- If we are at a leaf, retrieve the toks
+              let (Entry _ t) = Z.label z in t
+            else
+              -- Have multiple sub-trees containing the tokens
+              retrieveTokens $ Z.toTree z
 
+          (startPos,endPos) = spanStartEnd sspan
+
+          -- Tokens here, must introduce sub-spans
+          -- with split, taking cognizance of start
+          -- and end comments
+          (startLoc,endLoc) = startEndLocIncComments' toks (startPos,endPos)
+
+          -- (startToks,middleToks,endToks) = splitToks (startPos,endPos) toks
+          (startToks,middleToks,endToks) = splitToks (startLoc,endLoc) toks
+          subTree = [mkTreeFromTokens startToks,
+                     mkTreeFromSpanTokens sspan middleToks,
+                     mkTreeFromTokens endToks]
+     
+          (Entry _sspan _) = Z.label z
+
+          z' = Z.setTree (Node (Entry _sspan []) subTree) z
+          forest'' = Z.toTree z'
+
+
+{-
 -- |Worker function, including actual parent as the tree is traversed
 -- TODO: rework to use the zipper
 insertSrcSpan' :: Forest Entry -> GHC.SrcSpan -> Forest Entry
@@ -343,20 +378,16 @@ insertSrcSpan' forest sspan = forest'
        where
          forest'' = forest
 
+-}
 
 -- ---------------------------------------------------------------------
 
 -- |Retrieve all the tokens at the leaves of the tree, in order
 retrieveTokens :: Tree Entry -> [PosToken]
--- retrieveTokens forest = F.foldl accum [] forest
 retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) [forest]
--- retrieveTokens forest =F.foldl accum [] forest
   where
     accum :: [PosToken] -> Entry -> [PosToken]
     accum acc (Entry _ toks) = acc ++ toks
-
-    -- accum :: [PosToken] -> Tree Entry -> [PosToken]
-    -- accum acc (Node (Entry _ toks _) _) = acc ++ toks
 
 -- ---------------------------------------------------------------------
 
@@ -444,8 +475,9 @@ insertNodeAfter oldNode newNode forest = forest'
     tp' = tp { subForest = subForest' }
     forest' = Z.toTree $ Z.setTree tp' zp
 
+-- ---------------------------------------------------------------------
 
-
+-- |Open a zipper so that its focus is the given node
 openZipperToNode
   :: Tree Entry
      -> Z.TreePos Z.Full Entry
@@ -470,6 +502,35 @@ openZipperToNode node z
             where
               (startPos,endPos) = treeStartEnd $ Z.tree zn
               (nodeStart,nodeEnd) = treeStartEnd node
+
+-- ---------------------------------------------------------------------
+
+-- |Open a zipper so that its focus has the given SrcSpan in its subtree
+openZipperToSpan
+  :: GHC.SrcSpan
+     -> Z.TreePos Z.Full Entry
+     -> Z.TreePos Z.Full Entry
+openZipperToSpan sspan z
+  = if treeStartEnd (Z.tree z) == spanStartEnd sspan || Z.isLeaf z
+      then z
+      else z'
+        where
+          -- go through all of the children to find the one that
+          -- either is what we are looking for, or contains it
+
+          childrenAsZ = map (gfromJust "openZipperToSpan")
+                      $ iterate (\mz -> Z.next $ gfromJust "openZipperToSpan" mz)
+                      $ Z.firstChild z
+          z' = case (filter contains childrenAsZ) of
+            [] -> z -- Not in subtree, this is as good as it gets
+            [x] -> -- exactly one, drill down
+                   openZipperToSpan sspan x
+            xs -> z -- Multiple, this is the spot
+
+          contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
+            where
+              (startPos,endPos) = treeStartEnd $ Z.tree zn
+              (nodeStart,nodeEnd) = spanStartEnd sspan
 
 
 -- ---------------------------------------------------------------------
@@ -596,6 +657,10 @@ invariant forest = rsub
 -- |Get the start and end position of a Tree
 treeStartEnd :: Tree Entry -> (SimpPos,SimpPos)
 treeStartEnd (Node (Entry sspan _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
+
+-- |Get the start and end position of a SrcSpan
+spanStartEnd :: GHC.SrcSpan -> (SimpPos,SimpPos)
+spanStartEnd sspan = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 -- ---------------------------------------------------------------------
 {-

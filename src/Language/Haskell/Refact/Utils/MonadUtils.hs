@@ -7,7 +7,7 @@ module Language.Haskell.Refact.Utils.MonadUtils
        -- * Conveniences for state access
        , fetchToks
        , fetchOrigToks
-       -- , putToks -- ^Deprecated
+       , putToks -- ^Deprecated
        , putToksForSpan
        , putToksForPos
        , putToksAfterSpan
@@ -81,16 +81,16 @@ fetchOrigToks = do
   Just tm <- gets rsModule
   return $ rsOrigTokenStream tm
 
--- |Replace the module tokens with a modified set. Deprecated
+-- |Replace the module tokens with a modified set. 
+-- Deprecated
 putToks :: [PosToken] -> Bool -> RefactGhc ()
 putToks toks isModified = do
-  error "MonadUtils.putToks: need to put toks into rsTokenCache"
-  {-
+  -- error "MonadUtils.putToks: need to put toks into rsTokenCache"
   st <- get
   let Just tm = rsModule st
-  let rsModule' = Just (tm {rsTokenStream = toks, rsStreamModified = isModified})
+  let rsModule' = Just (tm {rsTokenCache = mkTreeFromTokens toks, rsStreamModified = isModified})
   put $ st { rsModule = rsModule' }
-  -}
+
 
 -- |Replace the tokens for a given GHC.SrcSpan
 putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc ()

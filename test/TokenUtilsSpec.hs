@@ -234,10 +234,43 @@ spec = do
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let forest' = insertSrcSpan forest l
+      (invariant forest') `shouldBe` []
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,18))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n"
+
+    -- -----------------------
+
+    it "inserts a span above others, if it spans them" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+
+      let forest' = insertSrcSpan forest l
+      (invariant forest') `shouldBe` []
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n"
+
+      let l' = posToSrcSpan forest' ((13,1),(21,14))
+      (GHC.showPpr l') `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(21,13)"
+      (showSrcSpan l') `shouldBe` "((13,1),(21,14))"
+
+      let forest'' = insertSrcSpan forest' l'
+      (invariant forest'') `shouldBe` []
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((13,1),(21,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
 
   -- ---------------------------------------------
