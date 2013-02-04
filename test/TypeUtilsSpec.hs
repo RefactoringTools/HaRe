@@ -18,6 +18,7 @@ import qualified OccName    as GHC
 import qualified Outputable as GHC
 import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
+import qualified Module     as GHC
 
 import Control.Monad.State
 import Data.Maybe
@@ -1621,6 +1622,83 @@ spec = do
       (mkNewName "f" ["f"] 0) `shouldBe` "f_1"
       (mkNewName "f" ["g"] 0) `shouldBe` "f"
       (mkNewName "f" ["g","f_1","f"] 0) `shouldBe` "f_2"
+
+  -- ---------------------------------------
+
+  describe "addImportDecl" $ do
+    it "Add an import entry to a module with already existing, non conflicting imports and other declarations." $ do
+      let
+        comp = do
+
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         clearParsedModule
+         (t2, toks2) <- parseSourceFileGhc "./test/testdata/DupDef/Dd2.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+         let renamed2 = fromJust $ GHC.tm_renamed_source t2
+
+         let parsed1 = GHC.pm_parsed_source $ GHC.tm_parsed_module t1
+
+         let listModName  = GHC.mkModuleName "Data.List"
+         n1   <- mkNewGhcName "n1"
+         n2   <- mkNewGhcName "n2"
+         res  <- addImportDecl renamed2 listModName Nothing False False False Nothing False [] 
+         toks <- fetchToks
+
+         return (res,toks,renamed2,toks2)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1\n\n import Data.List\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
+
+    it "Add an import entry to a module with some declaration, but no explicit imports." $ do
+      let
+        comp = do
+
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/Simplest.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+
+         let listModName  = GHC.mkModuleName "Data.List"
+         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
+         toks <- fetchToks
+
+         return (res,toks,renamed1,_toks1)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module Simplest where\n\n import Data.List\n\n\n simple x = x\n "
+
+    it "Add an import entry to a module with explicit imports, but no declarations." $ do
+      let
+        comp = do
+
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/JustImports.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+
+         let listModName  = GHC.mkModuleName "Data.List"
+         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
+         toks <- fetchToks
+
+         return (res,toks,renamed1,_toks1)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n\n import Data.List\n "
+
+
+
+    it "Add an import entry to a module with no declarations and no explicit imports." $ do
+      let
+        comp = do
+
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/Empty.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+
+         let listModName  = GHC.mkModuleName "Data.List"
+         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
+         toks <- fetchToks
+
+         return (res,toks,renamed1,_toks1)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module Empty where\n\n \n\n import Data.List"
+
 
   -- ---------------------------------------
 

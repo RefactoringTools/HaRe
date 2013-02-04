@@ -74,7 +74,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program transformation
     -- ** Adding
     ,addDecl {- ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
-    ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
+    ,addParamsToDecls {- , addGuardsToRhs-}, addImportDecl, duplicateDecl -- , moveDecl
     -- ** Removing
     ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -2415,6 +2415,156 @@ addItemsToImport serverModName pn ids t
 
 -- ---------------------------------------------------------------------
 
+addImportDecl :: 
+    GHC.RenamedSource -> GHC.ModuleName -> Maybe GHC.FastString -> Bool -> Bool -> Bool ->
+        Maybe String -> Bool -> [GHC.Name] -> RefactGhc GHC.RenamedSource
+addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualify alias hide idNames
+  = do toks <- fetchToks
+       let (toks1, toks2)
+               =if length imps' > 0
+                   then let (startLoc, endLoc) = getStartEndLoc $ last imps'
+                            toks1 = getToks ((1,1),endLoc) toks
+                            toks2 = dropWhile (\t -> (tokenPos t) <= tokenPos (last toks1)) toks
+                        in (toks1, (ghead ("addImportDecl1"++show (startLoc, endLoc, (map tokenPos toks))) toks2): tail toks2)
+                   else if not $ isEmptyGroup groupedDecls
+                          then 
+                               let startLoc = fst $ startEndLocIncComments toks groupedDecls
+                                   (toks1, toks2) = break (\t ->tokenPos t==startLoc) toks
+                               in (toks1,  toks2)
+                          else (toks,[])
+           before = "\n\n"
+               
+           colOffset = if length imps' == 0 && isEmptyGroup groupedDecls 
+                        then 1
+                        else getIndentOffset toks 
+                                $ if length imps' > 0 then fst $ getStartEndLoc (ghead "addImportDecl4" imps')
+                                               else fst $ startEndLocIncComments toks  groupedDecls
+           loc' = realSrcLocFromTok $ (glast "addImportDecl5" toks1)
+       impToks <- liftIO $ tokenise loc' (colOffset-1) True
+                      $ before ++ (GHC.showPpr impDecl)
+       let toks' = toks1++impToks++ (map (increaseSrcSpan 2) toks2)
+       putToks toks' True
+       return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
+  where
+  
+     alias' = case alias of
+                  Just stringName -> Just $ GHC.mkModuleName stringName
+                  _               -> Nothing
+
+     impDecl = GHC.ImportDecl {
+                        GHC.ideclName        = mkNewLModuleName moduleName
+                        , GHC.ideclPkgQual   = pkgQual
+                        , GHC.ideclSource    = source
+                        , GHC.ideclSafe      = safe
+                        , GHC.ideclQualified = qualify
+                        , GHC.ideclImplicit  = False
+                        , GHC.ideclAs        = alias'
+                        , GHC.ideclHiding    =
+                                      (if idNames == [] && hide == False then
+                                            Nothing
+                                       else
+                                            (Just (hide, map mkNewEnt idNames)))
+                }
+     imps' = rmPreludeImports imp
+
+     mkNewLSomething :: a -> GHC.Located a
+     mkNewLSomething a = (GHC.L l a) where
+        filename = (GHC.mkFastString "f")
+        l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
+
+
+     mkNewLModuleName :: GHC.ModuleName -> GHC.Located GHC.ModuleName
+     mkNewLModuleName moduleName = mkNewLSomething moduleName
+
+increaseSrcSpan :: Int -> PosToken -> PosToken
+increaseSrcSpan amount posToken@(lt@(GHC.L l t), s) = (GHC.L newL t, s) where
+        filename = GHC.mkFastString "f"
+        newL = GHC.mkSrcSpan (GHC.mkSrcLoc filename startLine startCol) (GHC.mkSrcLoc filename endLine endCol)
+        (startLine, startCol) = add1 $ getLocatedStart lt
+        (endLine, endCol) = add1 $ getLocatedEnd lt
+        
+        add1 :: (Int, Int) -> (Int, Int)
+        add1 (x,y) = (x+amount,y)
+
+isEmptyGroup :: GHC.HsGroup id -> Bool
+isEmptyGroup x = (==0) $ sum $
+   [valds, tyclds, instds, derivds, fixds, defds, fords, warnds, annds, ruleds, vects, docs]
+  where
+    valds = size $ GHC.hs_valds x
+    
+    size :: GHC.HsValBindsLR idL idR -> Int
+    size (GHC.ValBindsIn lhsBinds sigs) = (length sigs) + (length . GHC.bagToList $ lhsBinds)
+    size (GHC.ValBindsOut recFlags lsigs) = (length lsigs) + (length recFlags)
+    
+    tyclds = length $ GHC.hs_tyclds x
+    
+    instds = length $ GHC.hs_instds x
+    
+    derivds = length $ GHC.hs_derivds x
+    
+    fixds = length $ GHC.hs_fixds x
+    
+    defds = length $ GHC.hs_defds x
+    
+    fords = length $ GHC.hs_fords x
+    
+    warnds = length $ GHC.hs_warnds x
+    
+    annds = length $ GHC.hs_annds x
+    
+    ruleds = length $ GHC.hs_ruleds x
+    
+    vects = length $ GHC.hs_vects x
+    
+    docs = length $ GHC.hs_docs x
+
+
+-- | Remove ImportDecl from the imports list, commonly returned from a RenamedSource type, so it can
+-- be further processed.
+--rmPreludeImports :: [GHC.Located (GHC.ImportDecl GHC.Name)] -> [GHC.Located (GHC.ImportDecl GHC.Name)]
+rmPreludeImports = filter isPrelude where
+            isPrelude = (/="Prelude") . GHC.moduleNameString . GHC.unLoc . GHC.ideclName . GHC.unLoc
+
+{-addImportDecl mod@(HsModule _ _ _ imp decls) moduleName qualify alias hide idNames
+  = do ((toks, _),(v,v1)) <- get
+       let (toks1, toks2)
+               =if imps' /= []
+                   then let (startLoc, endLoc) = startEndLocIncComments toks (last imps')
+                            (toks1, toks2)= break (\t->tokenPos t==endLoc) toks
+                        in (toks1 ++ [ghead "addImportDecl1" toks2], tail toks2)
+                   else if decls /=[]
+                          then let startLoc = fst $ startEndLocIncComments toks (ghead "addImportDecl1" decls)
+                                   (toks1, toks2) = break (\t ->tokenPos t==startLoc) toks
+                               in (toks1,  toks2)
+                          else (toks,[])
+           before = if toks1/=[] && endsWithNewLn (glast "addImportDecl1" toks1) then "" else "\n"
+           after  = if (toks2 /=[] && startsWithNewLn (ghead "addImportDecl1" toks2)) then "" else "\n"
+           colOffset = if imps'==[] && decls==[]
+                        then 1
+                        else getOffset toks
+                                $ if imps'/=[] then fst $ startEndLoc toks  (ghead "addImportDecl1" imps')
+                                               else fst $ startEndLoc toks  (ghead "addImportDecl1" decls)
+           impToks =tokenise (Pos 0 v1 1) (colOffset-1) True
+                      $ before++(render.ppi) impDecl++"\n" ++ after  --- refactorer this
+       (impDecl', _) <- addLocInfo (impDecl,impToks)
+       let toks' = toks1++impToks++toks2
+       put ((toks',modified), ((tokenRow (glast "addImportDecl1" impToks) - 10,v1)))  -- 10: step ; generalise this.
+       return (mod {hsModImports = imp ++ [impDecl']})
+  where
+     alias' = case alias of
+                  Just m -> Just $ SN (PlainModule m) loc0
+                  _      -> Nothing
+     impDecl = HsImportDecl loc0 (SN (PlainModule moduleName) loc0) qualify alias'
+                      (if idNames==[] && hide==False
+                          then Nothing
+                          else  (Just (hide, map nameToEnt idNames)))  -- what about "Main"
+     imps' = imp \\ prelimps
+     nameToEnt name = Var (nameToPNT name)-}
+
+
+
+-- ---------------------------------------------------------------------
+
 -- ++AZ++
 --  Thoughts on signatures
 --    1. Pass in a Maybe sig
@@ -2844,14 +2994,17 @@ addHiding serverModName (g,imps,e,d) pns = do
            Just (False, _ent)  -> return imp
     inImport x = return x
 
-    mkNewEnt :: GHC.Name -> GHC.LIE GHC.Name
-    mkNewEnt pn = (GHC.L l (GHC.IEVar pn))
-      where
-       filename = (GHC.mkFastString "f")
-       l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
-
     replaceHiding (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as _h)) h1 =
          (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as h1))
+
+
+mkNewEnt :: GHC.Name -> GHC.LIE GHC.Name
+mkNewEnt pn = (GHC.L l (GHC.IEVar pn))
+ where
+   filename = (GHC.mkFastString "f")
+   l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
+
+
 
 {- ++AZ++ original
 -- | add items to the hiding list of an import declaration which imports the specified module.
