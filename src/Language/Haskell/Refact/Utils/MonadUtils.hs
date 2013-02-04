@@ -72,12 +72,14 @@ import Data.Tree
 -- |fetch the possibly modified tokens. Deprecated
 fetchToks :: RefactGhc [PosToken]
 fetchToks = do
+  liftIO $ putStrLn "fetchToks"
   Just tm <- gets rsModule
   return $ retrieveTokens $ rsTokenCache tm
 
 -- |fetch the pristine token stream
 fetchOrigToks :: RefactGhc [PosToken]
 fetchOrigToks = do
+  liftIO $ putStrLn "fetchOrigToks"
   Just tm <- gets rsModule
   return $ rsOrigTokenStream tm
 
@@ -85,6 +87,7 @@ fetchOrigToks = do
 -- Deprecated
 putToks :: [PosToken] -> Bool -> RefactGhc ()
 putToks toks isModified = do
+  liftIO $ putStrLn "putToks"
   -- error "MonadUtils.putToks: need to put toks into rsTokenCache"
   st <- get
   let Just tm = rsModule st
@@ -95,6 +98,7 @@ putToks toks isModified = do
 -- |Replace the tokens for a given GHC.SrcSpan
 putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc ()
 putToksForSpan sspan toks = do
+  liftIO $ putStrLn $ "putToksForSpan " ++ (GHC.showPpr sspan)
   st <- get
   let Just tm = rsModule st
   let forest' = updateTokensForSrcSpan (rsTokenCache tm) sspan toks
@@ -104,6 +108,7 @@ putToksForSpan sspan toks = do
 -- |Replace the tokens for a given GHC.SrcSpan
 putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc ()
 putToksForPos pos toks = do
+  liftIO $ putStrLn $ "putToksForPos " ++ (show pos) ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
   let sspan = posToSrcSpan (rsTokenCache tm) pos
@@ -114,6 +119,7 @@ putToksForPos pos toks = do
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterSpan :: GHC.SrcSpan -> [PosToken] -> RefactGhc ()
 putToksAfterSpan oldSpan toks = do
+  liftIO $ putStrLn $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan)
   st <- get
   let Just tm = rsModule st
   let (forest',_) = addToksAfterSrcSpan (rsTokenCache tm) oldSpan toks
@@ -123,6 +129,7 @@ putToksAfterSpan oldSpan toks = do
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterPos :: (SimpPos,SimpPos) -> [PosToken] -> RefactGhc ()
 putToksAfterPos pos toks = do
+  liftIO $ putStrLn $ "putToksAfterPos " ++ (show pos)
   st <- get
   let Just tm = rsModule st
   let sspan = posToSrcSpan (rsTokenCache tm) pos

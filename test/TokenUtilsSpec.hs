@@ -269,7 +269,7 @@ spec = do
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
-              "+- ((1,1),(15,18))\n|\n"++
+              "+- ((1,1),(10,9))\n|\n"++
               "+- ((13,1),(21,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
 

@@ -313,11 +313,14 @@ insertSrcSpan forest sspan = forest'
       else forest''
         where
           toks = if (Z.isLeaf z)
-            then 
+            then
               -- If we are at a leaf, retrieve the toks
               let (Entry _ t) = Z.label z in t
             else
               -- Have multiple sub-trees containing the tokens
+
+              -- TODO: we are potentially discarding added info here,
+              -- with sub SrcSpans having markers in them
               retrieveTokens $ Z.toTree z
 
           (startPos,endPos) = spanStartEnd sspan
@@ -332,7 +335,7 @@ insertSrcSpan forest sspan = forest'
           subTree = [mkTreeFromTokens startToks,
                      mkTreeFromSpanTokens sspan middleToks,
                      mkTreeFromTokens endToks]
-     
+
           (Entry _sspan _) = Z.label z
 
           z' = Z.setTree (Node (Entry _sspan []) subTree) z
@@ -443,7 +446,7 @@ addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
 posToSrcSpan :: Tree Entry -> (SimpPos,SimpPos) -> GHC.SrcSpan
 posToSrcSpan forest ((rs,cs),(re,ce)) = sspan
   where
-    tok@(GHC.L l _,_) = head $ retrieveTokens forest -- ++AZ++ Ouch, performance??
+    tok@(GHC.L l _,_) = ghead "posToSrcSpan"  $ retrieveTokens forest -- ++AZ++ Ouch, performance??
     sspan =  case l of
       GHC.RealSrcSpan ss ->
         let
@@ -469,7 +472,7 @@ insertNodeAfter oldNode newNode forest = forest'
     -- now go through the children of the parent tree, and find the
     -- right spot for the new node
     (f,s) = break (\t -> treeStartEnd t == treeStartEnd oldNode) $ subForest tp
-    (f',s') = (f++[head s],tail s) -- break does not include the found point
+    (f',s') = (f++[ghead "insertNodeAfter" s],tail s) -- break does not include the found point
     subForest' = f' ++ [newNode] ++ s'
 
     tp' = tp { subForest = subForest' }
@@ -511,16 +514,14 @@ openZipperToSpan
      -> Z.TreePos Z.Full Entry
      -> Z.TreePos Z.Full Entry
 openZipperToSpan sspan z
-  = if treeStartEnd (Z.tree z) == spanStartEnd sspan || Z.isLeaf z
+  = if (treeStartEnd (Z.tree z) == spanStartEnd sspan) || (Z.isLeaf z)
       then z
       else z'
         where
           -- go through all of the children to find the one that
           -- either is what we are looking for, or contains it
 
-          childrenAsZ = map (gfromJust "openZipperToSpan")
-                      $ iterate (\mz -> Z.next $ gfromJust "openZipperToSpan" mz)
-                      $ Z.firstChild z
+          childrenAsZ = go [] (Z.firstChild z)
           z' = case (filter contains childrenAsZ) of
             [] -> z -- Not in subtree, this is as good as it gets
             [x] -> -- exactly one, drill down
@@ -532,6 +533,9 @@ openZipperToSpan sspan z
               (startPos,endPos) = treeStartEnd $ Z.tree zn
               (nodeStart,nodeEnd) = spanStartEnd sspan
 
+
+          go acc Nothing = acc
+          go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)
 
 -- ---------------------------------------------------------------------
 
@@ -630,7 +634,7 @@ invariant forest = rsub
       where
         (start,end) = treeStartEnd node
         subs = map treeStartEnd sub
-        (sstart, _) = head subs
+        (sstart, _) = ghead "invariant" subs
         (_, send) = last subs
 
         rs = if (start == sstart) && (end == send)
@@ -715,7 +719,7 @@ prettyToks :: [PosToken] -> String
 prettyToks [] = "[]"
 prettyToks toks@[_x] = showToks toks
 prettyToks toks@[_t1,_t2] = showToks toks
-prettyToks toks = showToks [head toks] ++ ".." ++ showToks [last toks]
+prettyToks toks = showToks [ghead "prettyToks" toks] ++ ".." ++ showToks [last toks]
 
 -- ---------------------------------------------------------------------
 
@@ -724,7 +728,7 @@ mkTreeFromTokens :: [PosToken] -> Tree Entry
 mkTreeFromTokens [] = Node (Entry GHC.noSrcSpan []) []
 mkTreeFromTokens toks = Node (Entry sspan toks) []
   where
-   startLoc = realSrcLocFromTok $ head toks
+   startLoc = realSrcLocFromTok $ ghead "mkTreeFromTokens" toks
    endLoc   = realSrcLocFromTok $ last toks -- SrcSpans count from start of token, not end
    sspan    = GHC.RealSrcSpan $ GHC.mkRealSrcSpan startLoc endLoc
 
@@ -806,7 +810,7 @@ startEndLocIncComments' toks (startLoc,endLoc) =
                  else []
 
     lead'' = if (nonEmptyList lead' && nonEmptyList leadLine && not (isComment $ head leadLine))
-               then dropWhile (\tok -> tokenRow tok == tokenRow (head leadLine)) lead'
+               then dropWhile (\tok -> tokenRow tok == tokenRow (ghead "startEndLocIncComments 1" leadLine)) lead'
                else lead'
 
     -- trail = takeWhile (\tok -> isComment tok || isEmpty tok) $ end
@@ -823,22 +827,25 @@ startEndLocIncComments' toks (startLoc,endLoc) =
 
     endDiff = if (emptyList trailrest) || (emptyList trail'')
             then 1000
-            else (tokenRow $ head trailrest) - (tokenRow $ last trail'')
+            else (tokenRow $ ghead "startEndLocIncComments 2" trailrest) - (tokenRow $ last trail'')
 
     startDiff = if (emptyList middle) || (emptyList trail'')
             then 1000
-            else (tokenRow $ head trail) - (tokenRow $ last middle)
+            else (tokenRow $ ghead "startEndLocIncComments 3" trail) - (tokenRow $ last middle)
 
     trail' = if (startDiff <= endDiff)
       then if ((nonEmptyList trail) && (isEmpty $ last trail))
-             then (init trail) else trail
+              then (init trail) else trail
       else []
 
     middle' = lead'' ++ middle ++ trail'
   in
     -- error $ "startEndLocIncComments: (startDiff,endDiff)=" ++ (show (startDiff,endDiff)) -- ++AZ++
     -- error ( "startEndLocIncComments: (leadLine)=" ++ (show $ tokenRow (head lead')) ++  (showToks leadLine) ) -- ++AZ++
-    ((tokenPos $ head middle'),(tokenPosEnd $ last middle'))
+    if (emptyList middle')
+      then error $ "startEndLocIncComments: (startLoc,endLoc) toks =" ++ (show (startLoc,endLoc)) ++ "," ++ (showToks toks)
+      -- then ((0,0),(0,0))
+      else ((tokenPos $ ghead "startEndLocIncComments 4" middle'),(tokenPosEnd $ last middle'))
 
 {- ++AZ++ re-doing this ...
 -- ts1 : lead in toks
@@ -1036,6 +1043,8 @@ getSrcSpan t = res t
 -- | Split the token stream into three parts: the tokens before the
 -- startPos, the tokens between startPos and endPos, and the tokens
 -- after endPos.
+-- Note: The startPos and endPos refer to the startPos of a token only.
+--       So a single token will have the same startPos and endPos
 splitToks::(SimpPos, SimpPos)->[PosToken]->([PosToken],[PosToken],[PosToken])
 splitToks (startPos, endPos) toks =
   let (toks1,toks2)   = break (\t -> tokenPos t >= startPos) toks

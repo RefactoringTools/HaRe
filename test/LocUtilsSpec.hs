@@ -335,6 +335,14 @@ spec = do
 
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n          a b c"
 
+    -- ---------------------------------------------
+
+    it "Split the tokens into a front, middle and end, for a single token" $ do
+      (t,toks) <- parsedFileWhereIn6Ghc
+
+      let (_front,middle,_back) = splitToks ((13,10),(13,10)) toks
+      (showToks middle) `shouldBe` "[(((13,10),(13,11)),ITvarid \"a\",\"a\")]"
+
   -- -------------------------------------------------------------------
 
   describe "replaceToks" $ do

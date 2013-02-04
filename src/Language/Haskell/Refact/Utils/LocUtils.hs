@@ -630,11 +630,12 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
        -- error $ show (startPos, endPos) -- ++AZ++
        toks <- fetchToks
 
-       let (toks1, _, toks2)  = splitToks (startPos, endPos) toks
+       let (toks1, middle, toks2)  = splitToks (startPos, endPos) toks
            astStr = (printFun newAST) 
        -- error $ "updateToks:astStr=[" ++ (show (astStr)) ++ "]" -- ++AZ++
        -- error $ "updateToks:(head toks2,(tokenRow (head toks2), tokenRow (head newToks))
-       newToks <- liftIO $ tokenise (realSrcLocEndTok $ glast "Update Toks" toks1) 1 True astStr
+       -- newToks <- liftIO $ tokenise (realSrcLocEndTok $ glast "Update Toks" toks1) 1 True astStr
+       newToks <- liftIO $ tokenise (realSrcLocEndTok $ ghead "Update Toks" middle) 1 True astStr
 
        {-
        let nlt1 = newLnToken (glast "updateToks 3" newToks)
