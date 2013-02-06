@@ -13,6 +13,8 @@ import qualified Name       as GHC
 import qualified Outputable as GHC
 import qualified SrcLoc     as GHC
 
+import qualified GHC.SYB.Utils as SYB
+
 import Control.Monad.State
 import Data.Maybe
 import Data.Tree
@@ -599,6 +601,43 @@ spec = do
       let tree = mkTreeFromTokens toks'
       (show toks') `shouldBe` "[((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")]"
       (show tree) `shouldBe` "Node {rootLabel = Entry (RealSrcSpan (SrcSpanOneLine {srcSpanFile = \"./test/testdata/TokenTest.hs\", srcSpanLine = 5, srcSpanSCol = 1, srcSpanECol = 5})) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
+
+  -- ---------------------------------------------
+
+  describe "syncAST" $ do
+    it "updates an AST and a treeto have the same SrcSpan structure" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head $ drop 1 decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
+      (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
+
+      let (forest',tree) = getSrcSpanFor forest l
+
+      let toks' = retrieveTokens tree
+      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l toks'
+      (invariant forest'') `shouldBe` []
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(10,9))\n|\n"++
+              "+- ((13,1),(15,17))\n|\n"++
+              "+- ((1000013,1),(15,17))\n|\n"++ -- our inserted span
+              "`- ((19,1),(26,1))\n"
+      (showSrcSpan sspan) `shouldBe` "((1000013,1),(15,17))"
+
+      let (decl',forest''') = syncAST decl sspan forest''
+
+      (GHC.showPpr decl') `shouldBe` "TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar"
+      (SYB.showData SYB.Renamer 0 decl') `shouldBe` ""
+
+      let toksFinal = retrieveTokens forest'''
+      (GHC.showRichTokenStream toksFinal) `shouldBe` ""
+
+
+
 
 
 -- ---------------------------------------------------------------------

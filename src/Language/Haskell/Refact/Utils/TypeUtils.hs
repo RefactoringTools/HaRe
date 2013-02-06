@@ -1,7 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 
 --------------------------------------------------------------------------------
 -- Module      : TypeUtils
@@ -174,7 +173,6 @@ import qualified Unsafe.Coerce as SYB
 import Control.Applicative
 import Control.Lens
 import Control.Lens.Plated
-import Control.Lens.Traversal
 import Control.Lens.Traversal
 import Data.Data.Lens hiding (tinplate)
 import GHC.Generics hiding (from, to)
@@ -2589,8 +2587,8 @@ rmPreludeImports = filter isPrelude where
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
 addDecl:: (SYB.Data t,HsValBinds t)
-        => t              -- ^ The AST.
-        -> Maybe GHC.Name -- ^ If this is Just, then the declaration
+        => t              -- ^The AST to be updated
+        -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
                           -- identifier's definition.
         -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
@@ -2610,14 +2608,14 @@ addDecl parent pn (decl, msig, declToks) topLevel
             else addLocalDecl parent (decl,msig,declToks)
  where
 
-  -- Add a definition to the beginning of the definition declaration
+  -- ^Add a definition to the beginning of the definition declaration
   -- list, but after the data type declarations if there is any. The
   -- definition will be pretty-printed if its token stream is not
   -- provided.
   addTopLevelDecl :: (SYB.Data t, HsValBinds t)
        => (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
        -> t -> RefactGhc t
-  addTopLevelDecl (decl, maybeSig, declToks) parent
+  addTopLevelDecl (decl, maybeSig, maybeDeclToks) parent
     = do let binds = hsValBinds parent
              decls = hsBinds parent
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
@@ -2628,45 +2626,27 @@ addDecl parent pn (decl, msig, declToks) topLevel
                     else simpPos0  -- no function/pattern binding decls in the module.
              (toks1, toks2) = if loc1==simpPos0  then (toks, [])
                                  else break (\t -> tokenPos t >= loc1) toks
-         {-
-             declStr = case declToks of
-                        Just ts -> concatMap tokenCon ts
-                        Nothing -> "\n"++(prettyprint decl)++"\n\n"
-                        -- Nothing -> (prettyprint decl)++"\n\n"
-             sigStr  = case declToks of
-                        Just ts -> ""
-                        Nothing -> case maybeSig of
-                                     Just sig -> "\n"++(prettyprint sig)
-                                     Nothing -> ""
 
-         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addTopLevelDecl" toks1) colOffset True (sigStr ++ declStr)
-         let nlt1 = newLnToken (glast "updateToks 3" newToks)
-             nlt2 = newLnToken nlt1
-         -- TODO: the newLnToken adds an extra space on the following line, fix it
-         let toks' = toks1 ++ newToks ++ [nlt1,nlt2] ++ toks2
-         -}
-             -- colOffset = if (emptyList decls) then 1 else getOffset toks $ fst (getStartEndLoc (head decls))
-             colOffset = 0
-         (toks',newToks) <- makeNewToks colOffset toks1 toks2 (decl,maybeSig,declToks)
+             colOffset = 0 -- Top level decl being added
+         newToks <- makeNewToks colOffset toks1 (decl,maybeSig,maybeDeclToks)
 
-         -- putToks toks' modified
          let Just sspan = if (emptyList decls2)
                             then getSrcSpan (last decls1)
                             else getSrcSpan (head decls2)
-         putToksAfterSpan sspan newToks
+         -- sspan' <- putToksAfterSpan sspan newToks
 
-
-         (decl',_) <- addLocInfo (decl, newToks)
+         -- (decl',_) <- addLocInfo (decl, newToks)
+         decl' <- putDeclToksAfterSpan sspan decl newToks
 
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
 
   -- TODO: Make this a top level general purpose function, similar to update.
-  makeNewToks :: Int -> [PosToken] -> [PosToken]
+  makeNewToks :: Int -> [PosToken]
               -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
-              -> RefactGhc ([PosToken],[PosToken])
-  makeNewToks colOffset toks1 toks2 (decl, maybeSig, declToks) = do
+              -> RefactGhc [PosToken]
+  makeNewToks colOffset toks1 (decl, maybeSig, declToks) = do
          let
              declStr = case declToks of
                         Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
@@ -2682,15 +2662,11 @@ addDecl parent pn (decl, msig, declToks) topLevel
              nlt2 = newLnToken nlt1
              nlToken = newLnToken (glast "makeNewToks 2" toks1)
 
-         -- TODO: the newLnToken adds an extra space on the following line, fix it
-         -- let toks' = toks1 ++ newToks ++ [nlt1,nlt2] ++ toks2
-
          -- TODO: ++AZ++, make the newLn stuff part of newToks, to be able to play nice with TokenUtils
-         let toks' = if  endsWithNewLn  (glast "makeNewToks 3" toks1)
-                      then  toks1 ++ (nlToken: newToks) ++ [nlt1,nlt2]++ compressPreNewLns toks2
-                      else  toks1 ++ (nlToken: newToks) ++ [nlt1,nlt2]++ compressPreNewLns toks2
+         --       Strictly, the nl stuff belongs in TokenUtils
+         let newToks' = (nlToken: newToks) ++ [nlt1,nlt2]
 
-         return (toks',newToks)
+         return newToks'
 
   appendDecl :: (SYB.Data t, HsValBinds t)
       => t        -- ^Original AST
@@ -2726,7 +2702,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
          -- error ("appendDecl: (offset,startEndLoc)=" ++ (show (offset, (getStartEndLoc (ghead "appendDecl2" decls))))) -- ++AZ++ debug
          -- error ("appendDecl: ([last toks2, newLnToken (last toks2)])=" ++ (showToks [last toks2, newLnToken (last toks2)])) -- ++AZ++ debug
          let nlToken = newLnToken (glast "appendDecl3" toks2)
-         (toks',newToks) <- makeNewToks offset (toks1++toks2++[nlToken]) toks3 (decl,maybeSig,declToks)
+         newToks <- makeNewToks offset (toks1++toks2++[nlToken]) (decl,maybeSig,declToks)
 
 
          -- putToks toks' modified
@@ -2796,7 +2772,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         -- TODO: bring in makeNewToks here too, at some future date :)
 
-        -- (_toks',newToks) <- makeNewToks offset [ghead "addLocalDecl 4" toks1] [] (decl,maybeSig,declToks)
+        -- newToks <- makeNewToks offset [ghead "addLocalDecl 4" toks1] [] (decl,maybeSig,declToks)
         newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
                           $ if needNewLn then newSource++"\n" else newSource++"\n"
 
