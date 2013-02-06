@@ -7,7 +7,6 @@
 --
 -- This module contains an API to manage a token stream.
 --
--- Its status is currently highly exploratory, and may disappear.
 --
 
 module Language.Haskell.Refact.Utils.TokenUtils(
@@ -843,8 +842,8 @@ startEndLocIncComments' toks (startLoc,endLoc) =
     -- error $ "startEndLocIncComments: (startDiff,endDiff)=" ++ (show (startDiff,endDiff)) -- ++AZ++
     -- error ( "startEndLocIncComments: (leadLine)=" ++ (show $ tokenRow (head lead')) ++  (showToks leadLine) ) -- ++AZ++
     if (emptyList middle')
-      then error $ "startEndLocIncComments: (startLoc,endLoc) toks =" ++ (show (startLoc,endLoc)) ++ "," ++ (showToks toks)
-      -- then ((0,0),(0,0))
+      -- then error $ "startEndLocIncComments: (startLoc,endLoc) toks =" ++ (show (startLoc,endLoc)) ++ "," ++ (showToks toks)
+      then ((0,0),(0,0))
       else ((tokenPos $ ghead "startEndLocIncComments 4" middle'),(tokenPosEnd $ last middle'))
 
 {- ++AZ++ re-doing this ...

@@ -172,7 +172,7 @@ import qualified Unsafe.Coerce as SYB
 
 -- Lens
 import Control.Applicative
-import Control.Lens 
+import Control.Lens
 import Control.Lens.Plated
 import Control.Lens.Traversal
 import Control.Lens.Traversal
@@ -2425,7 +2425,7 @@ addItemsToImport serverModName pn ids t
 
 -- ---------------------------------------------------------------------
 
-addImportDecl :: 
+addImportDecl ::
     GHC.RenamedSource -> GHC.ModuleName -> Maybe GHC.FastString -> Bool -> Bool -> Bool ->
         Maybe String -> Bool -> [GHC.Name] -> RefactGhc GHC.RenamedSource
 addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualify alias hide idNames
@@ -2437,18 +2437,19 @@ addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualif
                             toks2 = dropWhile (\t -> (tokenPos t) <= tokenPos (last toks1)) toks
                         in (toks1, (ghead ("addImportDecl1"++show (startLoc, endLoc, (map tokenPos toks))) toks2): tail toks2)
                    else if not $ isEmptyGroup groupedDecls
-                          then 
+                          then
                                let startLoc = fst $ startEndLocIncComments toks groupedDecls
                                    (toks1, toks2) = break (\t ->tokenPos t==startLoc) toks
                                in (toks1,  toks2)
                           else (toks,[])
            before = "\n\n"
-               
-           colOffset = if length imps' == 0 && isEmptyGroup groupedDecls 
+
+           colOffset = if length imps' == 0 && isEmptyGroup groupedDecls
                         then 1
-                        else getIndentOffset toks 
+                        else getIndentOffset toks
                                 $ if length imps' > 0 then fst $ getStartEndLoc (ghead "addImportDecl4" imps')
                                                else fst $ startEndLocIncComments toks  groupedDecls
+
            loc' = realSrcLocFromTok $ (glast "addImportDecl5" toks1)
        impToks <- liftIO $ tokenise loc' (colOffset-1) True
                       $ before ++ (GHC.showPpr impDecl)
@@ -2456,7 +2457,7 @@ addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualif
        putToks toks' True
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
-  
+
      alias' = case alias of
                   Just stringName -> Just $ GHC.mkModuleName stringName
                   _               -> Nothing
@@ -2492,7 +2493,7 @@ increaseSrcSpan amount posToken@(lt@(GHC.L l t), s) = (GHC.L newL t, s) where
         newL = GHC.mkSrcSpan (GHC.mkSrcLoc filename startLine startCol) (GHC.mkSrcLoc filename endLine endCol)
         (startLine, startCol) = add1 $ getLocatedStart lt
         (endLine, endCol) = add1 $ getLocatedEnd lt
-        
+
         add1 :: (Int, Int) -> (Int, Int)
         add1 (x,y) = (x+amount,y)
 
@@ -2501,31 +2502,31 @@ isEmptyGroup x = (==0) $ sum $
    [valds, tyclds, instds, derivds, fixds, defds, fords, warnds, annds, ruleds, vects, docs]
   where
     valds = size $ GHC.hs_valds x
-    
+
     size :: GHC.HsValBindsLR idL idR -> Int
     size (GHC.ValBindsIn lhsBinds sigs) = (length sigs) + (length . GHC.bagToList $ lhsBinds)
     size (GHC.ValBindsOut recFlags lsigs) = (length lsigs) + (length recFlags)
-    
+
     tyclds = length $ GHC.hs_tyclds x
-    
+
     instds = length $ GHC.hs_instds x
-    
+
     derivds = length $ GHC.hs_derivds x
-    
+
     fixds = length $ GHC.hs_fixds x
-    
+
     defds = length $ GHC.hs_defds x
-    
+
     fords = length $ GHC.hs_fords x
-    
+
     warnds = length $ GHC.hs_warnds x
-    
+
     annds = length $ GHC.hs_annds x
-    
+
     ruleds = length $ GHC.hs_ruleds x
-    
+
     vects = length $ GHC.hs_vects x
-    
+
     docs = length $ GHC.hs_docs x
 
 
