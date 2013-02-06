@@ -1705,6 +1705,16 @@ instance FindEntity (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) where
       | sameOccurrence e expr = Just True
     worker _ = Nothing
 
+instance FindEntity (GHC.Located (GHC.HsDecl GHC.Name)) where
+  findEntity d t = fromMaybe False res
+   where
+    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (decl::(GHC.Located (GHC.HsDecl GHC.Name)))
+      -- | e == expr = Just True
+      | sameOccurrence d decl = Just True
+    worker _ = Nothing
+
 -- ---------------------------------------------------------------------
 
 {-
