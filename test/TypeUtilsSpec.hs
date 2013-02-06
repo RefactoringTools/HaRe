@@ -1721,7 +1721,47 @@ spec = do
 
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe (fromJust)"
+      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe (fromJust)\n "
+
+-- Not sure if this should be a test
+{-    it "Try adding more than one item to an existing import entry with no items, using separate calls." $ do
+      let
+        comp = do
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/JustImports.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+
+         let modName  = GHC.mkModuleName "Data.Maybe"
+         itemName <- mkNewGhcName "fromJust"
+
+         res  <- addItemsToImport modName renamed1 [itemName] --listModName Nothing False False False Nothing False [] 
+
+         itemName2 <- mkNewGhcName "isJust"
+
+         res2 <- addItemsToImport modName res [itemName2]
+         toks <- fetchToks
+
+         return (res2,toks,renamed,_toks1)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe (fromJust,isJust)\n "
+-}
+
+    it "Try adding an item to an existing import entry with no items." $ do
+      let
+        comp = do
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/SelectivelyImports.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+
+         let modName  = GHC.mkModuleName "Data.Maybe"
+         itemName <- mkNewGhcName "isJust"
+
+         res  <- addItemsToImport modName renamed1 [itemName] --listModName Nothing False False False Nothing False [] 
+         toks <- fetchToks
+
+         return (res,toks,renamed1,_toks1)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module SelectivelyImports where\n\n import Data.Maybe (fromJust,isJust)\n\n __ = id\n "
 
 
 
