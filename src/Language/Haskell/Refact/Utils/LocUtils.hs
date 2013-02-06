@@ -788,6 +788,8 @@ getOffset toks pos
 -- | Get the indent of the line before, taking into account in-line
 -- where, let, in and do tokens
 getIndentOffset :: [PosToken] -> SimpPos -> Int
+getIndentOffset [] _pos    = 1
+getIndentOffset toks (0,0) = 1
 getIndentOffset toks pos
   = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
     in if (emptyList ts2)
@@ -801,7 +803,6 @@ getIndentOffset toks pos
                           then tokenOffset (last $ init sls)
                           else 4 + tokenOffset firstTok
                   else tokenOffset firstTok
-              -- in error ("getOffset: sl=" ++ (showToks sl)) -- ++AZ++
 
       where
         tokenOffset t = (tokenCol t) - 1
