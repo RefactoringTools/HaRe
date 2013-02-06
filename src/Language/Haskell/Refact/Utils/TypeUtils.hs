@@ -2435,7 +2435,7 @@ addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualif
                    then let (startLoc, endLoc) = getStartEndLoc $ last imps'
                             toks1 = getToks ((1,1),endLoc) toks
                             toks2 = dropWhile (\t -> (tokenPos t) <= tokenPos (last toks1)) toks
-                        in (toks1, (ghead ("addImportDecl1"++show (startLoc, endLoc, (map tokenPos toks))) toks2): tail toks2)
+                        in (toks1, toks2)
                    else if not $ isEmptyGroup groupedDecls
                           then
                                let startLoc = fst $ startEndLocIncComments toks groupedDecls
