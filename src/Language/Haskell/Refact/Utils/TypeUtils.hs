@@ -73,7 +73,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
  -- * Program transformation
     -- ** Adding
-    ,addDecl {- ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
+    ,addDecl, addItemsToImport, addHiding --, rmItemsFromImport, addItemsToExport
     ,addParamsToDecls {- , addGuardsToRhs-}, addImportDecl, duplicateDecl -- , moveDecl
     -- ** Removing
     ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
@@ -2384,7 +2384,7 @@ addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _
 --   specified module name. The second argument serves as a condition: if it is like : Just p, then do the adding 
 --   the if only 'p' occurs in the entity list; if it is Nothing, then do the adding as normal. This function
 --   does nothing if the import declaration does not have an explicit entity list.
-addItemsToImport:: GHC.ModuleName                  -- ^ The imported module name.
+{-addItemsToImport:: GHC.ModuleName                  -- ^ The imported module name.
                  ->Maybe GHC.Name                  -- ^ The condition identifier.
                  ->[GHC.Name]                      -- ^ The identifiers to add in GHC.Name format.
                  ->(GHC.RenamedSource)             -- ^ The given syntax phrase.
@@ -2431,7 +2431,7 @@ addItemsToImport serverModName pn ids (g, imp, e, d) = do
                                            , GHC.ideclHiding = (Just (b, ents++ents'))
                                          } ))
     inImport imp = return imp
-
+-}
 
 {-
 addItemsToImport::( )
@@ -3010,12 +3010,14 @@ addDecl parent pn (decl, declToks) topLevel
 
 -- | add items to the hiding list of an import declaration which
 -- imports the specified module.
-addHiding::
+addHiding a b c = addItemsToImport' a b c Hide
+
+addHiding'::
     GHC.ModuleName       -- ^ The imported module name
   ->GHC.RenamedSource    -- ^ The current module
   ->[GHC.Name]           -- ^ The items to be added
   ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
-addHiding serverModName (g,imps,e,d) pns = do
+addHiding' serverModName (g,imps,e,d) pns = do
     imps' <- mapM inImport imps
     return (g,imps',e,d)
   where
@@ -3056,12 +3058,81 @@ addHiding serverModName (g,imps,e,d) pns = do
     replaceHiding (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as _h)) h1 =
          (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as h1))
 
-
+-- | Creates a new entity for hiding a name in an ImportDecl.
 mkNewEnt :: GHC.Name -> GHC.LIE GHC.Name
 mkNewEnt pn = (GHC.L l (GHC.IEVar pn))
  where
    filename = (GHC.mkFastString "f")
    l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
+
+data ImportType = Hide | Import
+
+addItemsToImport a b c = addItemsToImport' a b c Import
+
+addItemsToImport'::
+    GHC.ModuleName       -- ^ The imported module name
+  ->GHC.RenamedSource    -- ^ The current module
+  ->[GHC.Name]           -- ^ The items to be added
+  ->ImportType           -- ^ Whether to hide the names or import them. -- using a new datatype for clarity. Could be just a Bool.
+  ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
+addItemsToImport' serverModName (g,imps,e,d) pns impType = do
+    imps' <- mapM inImport imps
+    return (g,imps',e,d)
+  where
+    inImport :: GHC.LImportDecl GHC.Name -> RefactGhc (GHC.LImportDecl GHC.Name)
+    inImport imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit as h))
+      | serverModName == modName  && not isQualified
+       = case h of
+           Nothing -> do
+             toks <- fetchToks
+             let (startPos,endPos) = getStartEndLoc imp
+                 ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
+                 start = getGhcLoc l
+                 end   = getGhcLocEnd l
+                 beginning = case impType of
+                          Hide   -> " hiding "
+                          Import -> " "
+                 newToken = mkToken t start (s++beginning++"("++showEntities GHC.showPpr pns++")")
+                 toks'= replaceToks toks start end [newToken]
+             -- error ("addHiding: newToken=" ++ (showToks [newToken]) ++ " (start,end)=" ++ (show (start,end)) ++ "(startPos,endPos)=" ++ (show (startPos,endPos)) ++ " toks=" ++ (showToks toks)) -- ++AZ++ debug
+
+             -- putToks toks' True
+             putToksForPos (start,end) [newToken]
+
+             return (replaceHiding imp (Just (isHide, map mkNewEnt pns )))
+           Just (True, ents) -> 
+             if isHide then 
+                 insertEnts imp ents
+             else return imp -- cannot change from 'hiding' to import selection.
+           Just (False, _ents)  -> 
+             if not isHide then 
+                 insertEnts imp _ents
+             else return imp -- cannot change from import selection to 'hiding'.
+
+    inImport x = return x
+      
+    isHide = case impType of 
+             Hide   -> True
+             Import -> False
+
+    insertEnts imp ents = do        
+            toks <- fetchToks
+            let (startPos,endPos) = getStartEndLoc imp
+                ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
+                start = getGhcLoc l
+                end   = getGhcLocEnd l
+                newToken=mkToken t start (","++showEntities GHC.showPpr pns ++s)
+                toks'=replaceToks toks start end [newToken]
+
+            -- putToks toks' True
+            putToksForPos (start,end) [newToken]
+
+            return (replaceHiding imp  (Just (isHide, (map mkNewEnt  pns)++ents))) 
+
+
+    replaceHiding (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as _h)) h1 =
+         (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as h1))
+
 
 
 

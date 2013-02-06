@@ -1702,6 +1702,28 @@ spec = do
 
   -- ---------------------------------------
 
+  describe "addItemsToImport" $ do
+    it "Try adding an item to an existing import entry with no items." $ do
+      let
+        comp = do
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/JustImports.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+
+         let modName  = GHC.mkModuleName "Data.Maybe"
+         itemName <- mkNewGhcName "fromJust"
+
+         res  <- addItemsToImport modName renamed1 [itemName] --listModName Nothing False False False Nothing False [] 
+         toks <- fetchToks
+
+         return (res,toks,renamed1,_toks1)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe (fromJust)"
+
+
+
+  -- ---------------------------------------
+
 myShow :: GHC.RdrName -> String
 myShow n = case n of
   GHC.Unqual on  -> ("Unqual:" ++ (GHC.showPpr on))
