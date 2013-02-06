@@ -2374,6 +2374,55 @@ addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _
 --   specified module name. The second argument serves as a condition: if it is like : Just p, then do the adding 
 --   the if only 'p' occurs in the entity list; if it is Nothing, then do the adding as normal. This function
 --   does nothing if the import declaration does not have an explicit entity list.
+addItemsToImport:: GHC.ModuleName                  -- ^ The imported module name.
+                 ->Maybe GHC.Name                  -- ^ The condition identifier.
+                 ->[GHC.Name]                      -- ^ The identifiers to add in GHC.Name format.
+                 ->(GHC.RenamedSource)             -- ^ The given syntax phrase.
+                 ->(RefactGhc (GHC.RenamedSource)) -- ^ The result.
+addItemsToImport serverModName pn ids (g, imp, e, d) = do
+    imps' <- mapM inImport imp
+    return (g, imps', e, d)
+
+  where
+--    inImport :: GHC.LImportDecl GHC.Name ->
+    inImport :: GHC.LImportDecl GHC.Name -> RefactGhc (GHC.LImportDecl GHC.Name)
+    inImport imp@(GHC.L loc (GHC.ImportDecl {
+                              GHC.ideclName = m@(GHC.L _ modName)
+                            , GHC.ideclPkgQual = iPkgQual
+                            , GHC.ideclSource = isrc
+                            , GHC.ideclSafe = isafe
+                            , GHC.ideclQualified = qual
+                            , GHC.ideclImplicit = implicit
+                            , GHC.ideclAs = as
+                            , GHC.ideclHiding = h
+                           }))
+      | serverModName == modName && (if isJust pn then findPN (fromJust pn) h else True)
+       = case h of
+           Nothing        -> return imp
+           Just (b, ents) -> do let ents'= map mkNewEnt ids
+                                --((toks,_),others)<-get
+                                toks <- fetchToks
+                                let (startPos,endPos) = getStartEndLoc (glast "addItemsToImport" ents)
+                                    --(t,(_,s)) = ghead "addItemsToImport" $ getToks (endPos,endPos) toks
+                                    ((GHC.L l t),s) = ghead "addItemsToImport" $ reverse $ getToks (startPos,endPos) toks
+                                    --newToken = mkToken t endPos (s++","++showEntities (render.ppi) ents')
+                                    newToken = mkToken t endPos (s++","++showEntities GHC.showPpr ents')
+                                    toks'=replaceToks toks endPos endPos [newToken]
+                                --put ((toks',modified),others)
+                                putToks toks' True
+                                return (GHC.L loc (GHC.ImportDecl {
+                                             GHC.ideclName = m
+                                           , GHC.ideclPkgQual = iPkgQual
+                                           , GHC.ideclSource = isrc
+                                           , GHC.ideclSafe = isafe
+                                           , GHC.ideclQualified = qual
+                                           , GHC.ideclImplicit = implicit
+                                           , GHC.ideclAs = as
+                                           , GHC.ideclHiding = (Just (b, ents++ents'))
+                                         } ))
+    inImport imp = return imp
+
+
 {-
 addItemsToImport::( )
                  =>ModuleName                  -- ^ The imported module name.
