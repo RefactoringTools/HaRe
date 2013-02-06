@@ -763,6 +763,18 @@ spec = do
       (_t,toks) <- parsedFileOffsetGhc
       getIndentOffset toks (19,1) `shouldBe` 5
 
+    -- ---------------------------------
+
+    it "Gets a sane indent for empty tokens" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      getIndentOffset [] (19,1) `shouldBe` 1
+
+    -- ---------------------------------
+
+    it "Gets a sane indent for (0,0)" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      getIndentOffset toks (0,0) `shouldBe` 1
+
   -- -------------------------------------------------------------------
 
   describe "foo" $ do

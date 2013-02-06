@@ -1649,6 +1649,7 @@ spec = do
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
       (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1\n\n import Data.List\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
+
     it "Add an import entry to a module with some declaration, but no explicit imports." $ do
       let
         comp = do
@@ -1664,6 +1665,7 @@ spec = do
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
       (GHC.showRichTokenStream t) `shouldBe` "module Simplest where\n\n import Data.List\n\n\n simple x = x\n "
+
 
     it "Add an import entry to a module with explicit imports, but no declarations." $ do
       let
@@ -1690,13 +1692,14 @@ spec = do
          (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/Empty.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
-
+       
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
          toks <- fetchToks
 
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+
       (GHC.showRichTokenStream t) `shouldBe` "module Empty where\n\n \n\n import Data.List"
 
 
@@ -1723,6 +1726,28 @@ spec = do
 
 
   -- ---------------------------------------
+foo 
+  = do
+      let
+        comp = do
+
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/Empty.hs"
+         -- clearParsedModule
+         let renamed1@(g,_,_,_) = fromJust $ GHC.tm_renamed_source t1
+
+         let ss = getSrcSpan g
+
+         let listModName  = GHC.mkModuleName "Data.List"
+         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
+         -- let res = 3
+         toks <- fetchToks
+
+         return (res,toks,renamed1,_toks1,ss)
+      ((_r,t,r2,tk2,ss'),s) <- runRefactGhcState comp
+      return (GHC.showPpr ss')
+      -- return (GHC.showRichTokenStream t)
+
+
 
 myShow :: GHC.RdrName -> String
 myShow n = case n of
