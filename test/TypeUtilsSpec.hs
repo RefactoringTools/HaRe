@@ -1706,7 +1706,7 @@ spec = do
   -- ---------------------------------------
 
   describe "addItemsToImport" $ do
-    it "Try adding an item to an existing import entry with no items." $ do
+    it "Add an item to an import entry with no items." $ do
       let
         comp = do
          (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/JustImports.hs"
@@ -1716,7 +1716,7 @@ spec = do
          let modName  = GHC.mkModuleName "Data.Maybe"
          itemName <- mkNewGhcName "fromJust"
 
-         res  <- addItemsToImport modName renamed1 [itemName] --listModName Nothing False False False Nothing False [] 
+         res  <- addItemsToImport modName renamed1 [itemName]  
          toks <- fetchToks
 
          return (res,toks,renamed1,_toks1)
@@ -1746,7 +1746,7 @@ spec = do
       (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe (fromJust,isJust)\n "
 -}
 
-    it "Try adding an item to an existing import entry with no items." $ do
+    it "Add an item to an import entry with existing items." $ do
       let
         comp = do
          (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/SelectivelyImports.hs"
@@ -1756,14 +1756,49 @@ spec = do
          let modName  = GHC.mkModuleName "Data.Maybe"
          itemName <- mkNewGhcName "isJust"
 
-         res  <- addItemsToImport modName renamed1 [itemName] --listModName Nothing False False False Nothing False [] 
+         res  <- addItemsToImport modName renamed1 [itemName]  
          toks <- fetchToks
 
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
       (GHC.showRichTokenStream t) `shouldBe` "module SelectivelyImports where\n\n import Data.Maybe (fromJust,isJust)\n\n __ = id\n "
 
+{- -- test after properly inserting conditional identifier
+    it "Add an item to an import entry with existing items, passing existing conditional identifier." $ do
+      let
+        comp = do
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/SelectivelyImports.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
+         let modName  = GHC.mkModuleName "Data.Maybe"
+         itemName <- mkNewGhcName "isJust"
+         conditionalId <- mkNewGhcName "fromJust"
+
+         res  <- addItemsToImport modName renamed1 [itemName] (Just conditionalId) 
+         toks <- fetchToks
+
+         return (res,toks,renamed1,_toks1)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module SelectivelyImports where\n\n import Data.Maybe (fromJust,isJust)\n\n __ = id\n "
+
+    it "Add an item to an import entry with existing items, passing missing conditional identifier" $ do
+      let
+        comp = do
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/SelectivelyImports.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+
+         let modName  = GHC.mkModuleName "Data.Maybe"
+         itemName <- mkNewGhcName "isJust"
+
+         res  <- addItemsToImport modName renamed1 [itemName] (Just itemName) 
+         toks <- fetchToks
+
+         return (res,toks,renamed1,_toks1)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module SelectivelyImports where\n\n import Data.Maybe (fromJust)\n\n __ = id\n "
+-}
 
   -- ---------------------------------------
 foo 
