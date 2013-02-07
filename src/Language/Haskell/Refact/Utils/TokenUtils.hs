@@ -60,6 +60,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , tokenCol, tokenRow
        , tokenPos, tokenPosEnd
        , tokenCon
+       , increaseSrcSpan
        , getLocatedStart
        , getLocatedEnd
        , getGhcLoc
@@ -444,6 +445,8 @@ addToksAfterSrcSpan ::
   -> (Tree Entry, GHC.SrcSpan)
 addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
   where
+    -- TODO: call addOffsetToToks to line this up with the oldSpan/newSpan locs    
+
     -- Need to strip leading and trailing comment from the toks
     startTok = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
     endTok   = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse toks
@@ -974,6 +977,24 @@ startEndLocIncComments toks t
 
 -- ---------------------------------------------------------------------
 
+-- |Add a constant line and column offset to a span of tokens
+addOffsetToToks :: SimpPos -> [PosToken] -> [PosToken]
+addOffsetToToks (r,c) toks = map (\t -> increaseSrcSpan (r,c) t) toks
+
+
+increaseSrcSpan :: SimpPos -> PosToken -> PosToken
+increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L l t), s) = (GHC.L newL t, s) where
+        -- filename = GHC.mkFastString "f"
+        filename = fileNameFromTok posToken
+        newL = GHC.mkSrcSpan (GHC.mkSrcLoc filename startLine startCol) (GHC.mkSrcLoc filename endLine endCol)
+        (startLine, startCol) = add1 $ getLocatedStart lt
+        (endLine, endCol)     = add1 $ getLocatedEnd   lt
+
+        add1 :: (Int, Int) -> (Int, Int)
+        add1 (x,y) = (x+lineAmount,y+colAmount)
+
+-- ---------------------------------------------------------------------
+
 -- isComment (t,(_,s))          = t==Comment || t ==NestedComment
 isComment ((GHC.L _ (GHC.ITdocCommentNext _)),s)  = True
 isComment ((GHC.L _ (GHC.ITdocCommentPrev _)),s)  = True
@@ -1010,6 +1031,10 @@ realSrcLocFromTok (GHC.L _ _,_) = GHC.mkRealSrcLoc (GHC.mkFastString "") 1 1
 realSrcLocEndTok :: PosToken -> GHC.RealSrcLoc
 realSrcLocEndTok (GHC.L (GHC.RealSrcSpan srcspan) _,_) = GHC.realSrcSpanEnd srcspan
 realSrcLocEndTok (GHC.L _ _,_) = GHC.mkRealSrcLoc (GHC.mkFastString "") 1 1
+
+fileNameFromTok :: PosToken -> GHC.FastString
+fileNameFromTok (GHC.L (GHC.RealSrcSpan srcspan) _,_) = GHC.srcSpanFile srcspan
+fileNameFromTok (GHC.L _ _,_) = GHC.mkFastString "f"
 
 -- ---------------------------------------------------------------------
 

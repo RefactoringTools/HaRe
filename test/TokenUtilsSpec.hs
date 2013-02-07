@@ -503,6 +503,9 @@ spec = do
       let toksFinal = retrieveTokens forest''
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
+    it "Re-positions the new tokens to fit in the new SrcSpan." $ do
+      "a" `shouldBe` "code this next"
+
   -- ---------------------------------------------
 
   describe "invariant 1" $ do

@@ -2447,7 +2447,7 @@ addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualif
            loc' = realSrcLocFromTok $ (glast "addImportDecl5" toks1)
        impToks <- liftIO $ tokenise loc' (colOffset-1) True
                       $ before ++ (GHC.showPpr impDecl)
-       let toks' = toks1++impToks++ (map (increaseSrcSpan 2) toks2)
+       let toks' = toks1++impToks++ (map (increaseSrcSpan (2,0)) toks2)
        putToks toks' True
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
@@ -2481,6 +2481,8 @@ addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualif
      mkNewLModuleName :: GHC.ModuleName -> GHC.Located GHC.ModuleName
      mkNewLModuleName moduleName = mkNewLSomething moduleName
 
+{-
+-- TODO: move this to TokenUtils
 increaseSrcSpan :: Int -> PosToken -> PosToken
 increaseSrcSpan amount posToken@(lt@(GHC.L l t), s) = (GHC.L newL t, s) where
         filename = GHC.mkFastString "f"
@@ -2490,6 +2492,7 @@ increaseSrcSpan amount posToken@(lt@(GHC.L l t), s) = (GHC.L newL t, s) where
 
         add1 :: (Int, Int) -> (Int, Int)
         add1 (x,y) = (x+amount,y)
+-}
 
 isEmptyGroup :: GHC.HsGroup id -> Bool
 isEmptyGroup x = (==0) $ sum $
@@ -2615,23 +2618,13 @@ addDecl parent pn (decl, msig, declToks) topLevel
     = do let binds = hsValBinds parent
              decls = hsBinds parent
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
-         toks <- fetchToks
-         let loc1 = if (not $ emptyList decls2)  -- there are function/pattern binding decls.
-                    then let ((startRow,_),_) = startEndLocIncComments toks (ghead "addTopLevelDecl"  decls2)
-                         in  (startRow, 1)
-                    else simpPos0  -- no function/pattern binding decls in the module.
-             (toks1, toks2) = if loc1==simpPos0  then (toks, [])
-                                 else break (\t -> tokenPos t >= loc1) toks
 
-             colOffset = 0 -- Top level decl being added
-         newToks <- makeNewToks colOffset toks1 (decl,maybeSig,maybeDeclToks)
+         newToks <- makeNewToks (decl,maybeSig,maybeDeclToks)
 
          let Just sspan = if (emptyList decls2)
                             then getSrcSpan (last decls1)
                             else getSrcSpan (head decls2)
-         -- sspan' <- putToksAfterSpan sspan newToks
 
-         -- (decl',_) <- addLocInfo (decl, newToks)
          decl' <- putDeclToksAfterSpan sspan decl newToks
 
          case maybeSig of
@@ -2639,10 +2632,11 @@ addDecl parent pn (decl, msig, declToks) topLevel
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
 
   -- TODO: Make this a top level general purpose function, similar to update.
-  makeNewToks :: Int -> [PosToken]
-              -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
+  -- NOTE: This function returns tokens originating at (0,0), to be
+  -- stitched in at the right place by TokenUtils
+  makeNewToks :: (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
               -> RefactGhc [PosToken]
-  makeNewToks colOffset toks1 (decl, maybeSig, declToks) = do
+  makeNewToks (decl, maybeSig, declToks) = do
          let
              declStr = case declToks of
                         Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
@@ -2653,16 +2647,10 @@ addDecl parent pn (decl, msig, declToks) topLevel
                                      Just sig -> "\n"++(prettyprint sig)
                                      Nothing -> ""
 
-         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addTopLevelDecl" toks1) colOffset True (sigStr ++ declStr)
-         let nlt1 = newLnToken (glast "makeNewToks 1" newToks)
-             nlt2 = newLnToken nlt1
-             nlToken = newLnToken (glast "makeNewToks 2" toks1)
+         newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
 
-         -- TODO: ++AZ++, make the newLn stuff part of newToks, to be able to play nice with TokenUtils
-         --       Strictly, the nl stuff belongs in TokenUtils
-         let newToks' = (nlToken: newToks) ++ [nlt1,nlt2]
+         return newToks
 
-         return newToks'
 
   appendDecl :: (SYB.Data t, HsValBinds t)
       => t        -- ^Original AST
@@ -2698,7 +2686,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
          -- error ("appendDecl: (offset,startEndLoc)=" ++ (show (offset, (getStartEndLoc (ghead "appendDecl2" decls))))) -- ++AZ++ debug
          -- error ("appendDecl: ([last toks2, newLnToken (last toks2)])=" ++ (showToks [last toks2, newLnToken (last toks2)])) -- ++AZ++ debug
          let nlToken = newLnToken (glast "appendDecl3" toks2)
-         newToks <- makeNewToks offset (toks1++toks2++[nlToken]) (decl,maybeSig,declToks)
+         newToks <- makeNewToks (decl,maybeSig,declToks)
 
 
          -- putToks toks' modified

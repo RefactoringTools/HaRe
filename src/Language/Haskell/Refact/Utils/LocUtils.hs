@@ -9,7 +9,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -- , showToks
                      , tokenLen
                      -- ,lengthOfToks
-                     , mkToken {-,defaultToken-},newLnToken{-,whiteSpacesToken -},whiteSpaceTokens
+                     , mkToken, mkZeroToken {-,defaultToken-},newLnToken{-,whiteSpacesToken -},whiteSpaceTokens
                      , realSrcLocFromTok
                      , isWhite
                      , notWhite
@@ -363,6 +363,8 @@ mkToken t (row,col) c = ((GHC.L l t),c)
     l = GHC.mkSrcSpan (GHC.mkSrcLoc filename row col) (GHC.mkSrcLoc filename row (col + (length c) ))
 
 
+mkZeroToken :: PosToken
+mkZeroToken = mkToken GHC.ITsemi (0,0) ""
 
 ---Restriction: the refactorer should not modify refactorer-modified/created tokens.
 defaultToken :: PosToken
@@ -756,6 +758,7 @@ replaceToks toks startPos endPos newToks =
 -- ---------------------------------------------------------------------
 
 -- | Make sure all tokens have at least one space between them
+-- TODO: pretty sure this can be simplified
 reAlignToks :: [PosToken] -> [PosToken]
 reAlignToks [] = []
 reAlignToks [t] = [t]
