@@ -1721,7 +1721,9 @@ spec = do
 
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe (fromJust)\n "
+      -- This is the correct behavior. If the import doesn't have an import list, creating 
+      -- one for an item effectively reduces the imported interface. 
+      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n "
 
 -- Not sure if this should be a test
 {-    it "Try adding more than one item to an existing import entry with no items, using separate calls." $ do

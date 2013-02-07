@@ -2953,7 +2953,7 @@ data ImportType = Hide     -- ^ Used for addHiding
                 | Import   -- ^ Used for addItemsToImport
 
 -- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
---   specified module name. 
+--   specified module name. This function does nothing if the import declaration does not have an explicit entity list. 
 addItemsToImport::
     GHC.ModuleName       -- ^ The imported module name
   ->GHC.RenamedSource    -- ^ The current module
@@ -2964,13 +2964,14 @@ addItemsToImport a b c = addItemsToImport' a b c Import
 
 -- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
 --   specified module name. If the ImportType argument is Hide, then the items will be added to the "hiding"
---   list. If it is Import, they will be added to the explicit import entries.
+--   list. If it is Import, they will be added to the explicit import entries. This function does nothing if 
+--   the import declaration does not have an explicit entity list and ImportType is Import.
 addItemsToImport'::
     GHC.ModuleName       -- ^ The imported module name
   ->GHC.RenamedSource    -- ^ The current module
   ->[GHC.Name]           -- ^ The items to be added
 --  ->Maybe GHC.Name       -- ^ The condition identifier.
-  ->ImportType           -- ^ Whether to hide the names or import them. -- using a new datatype for clarity. Could be just a Bool.
+  ->ImportType           -- ^ Whether to hide the names or import them. Uses special data for clarity.
   ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
 addItemsToImport' serverModName (g,imps,e,d) pns impType = do
     imps' <- mapM inImport imps
@@ -2994,7 +2995,9 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
       -> [GHC.LIE GHC.Name] 
       -> Bool
       -> RefactGhc ( GHC.LImportDecl GHC.Name )
-    insertEnts imp ents isNew = do        
+    insertEnts imp ents isNew = 
+        if isNew && not isHide then return imp
+        else do        
             toks <- fetchToks
             let (startPos,endPos) = getStartEndLoc imp
                 ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
