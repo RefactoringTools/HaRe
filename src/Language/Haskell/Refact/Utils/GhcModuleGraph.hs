@@ -108,6 +108,8 @@ getModulesAsGraph drop_hs_boot_nodes summaries mb_root_mod
 -- This bit is from the GHC source >>>>>>>
 type SummaryNode = (ModSummary, Int, [Int])
 
+topSortModuleGraph
+  :: Bool -> [ModSummary] -> Maybe ModuleName -> [SCC ModSummary]
 topSortModuleGraph drop_hs_boot_nodes summaries mb_root_mod
   = map (fmap summaryNodeSummary) $ stronglyConnCompG initial_graph
   where

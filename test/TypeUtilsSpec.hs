@@ -884,7 +884,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "addDecl" $ do
-    it "Adds a top level declaration" $ do
+    it "Adds a top level declaration without a type signature, in default pos" $ do
       (t, toks) <- parsedFileMd1Ghc
       let
         comp = do

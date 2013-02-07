@@ -27,6 +27,11 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        -- * Utility
        , posToSrcSpan
 
+
+       -- * AST tie up
+       , syncAST
+
+
        -- * Internal, for testing
        , splitForestOnSpan
        , lookupSrcSpan
@@ -90,7 +95,6 @@ import qualified GHC.SYB.Utils as SYB
 import qualified Data.Foldable as F
 
 import Language.Haskell.Refact.Utils.GhcUtils
--- import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -140,6 +144,18 @@ NOTE: To break a cyclical import, this definition is in its own file
 data Entry = Entry GHC.SrcSpan -- ^The source span contained in this Node
                    [PosToken]  -- ^The tokens for the SrcSpan if subtree is empty
              deriving (Show)
+-}
+
+{-
+
+Note : Need to
+
+1. Re-locate tokens according to their surrounding context. i.e. match
+   indent of enclosing structure, add leading/trailing newlines
+
+2. Required by 1: Sync the SrcSpans to the AST, in the context of layout
+
+
 -}
 
 deriving instance Show Entry => Show (Entry)
@@ -435,7 +451,6 @@ addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
     startPos = tokenPos    startTok
     endPos   = tokenPosEnd endTok
     newSpan = posToSrcSpan forest (startPos,endPos)
-    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan: newSpan=" ++ ( GHC.showPpr newSpan),newSpan)
     (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan toks
 
 -- ---------------------------------------------------------------------
@@ -740,6 +755,20 @@ mkTreeFromSpanTokens sspan toks = Node (Entry sspan toks) []
 -- ---------------------------------------------------------------------
 
 ghcSpanStartEnd sspan = (getGhcLoc sspan,getGhcLocEnd sspan)
+
+-- ---------------------------------------------------------------------
+
+-- |Synchronise a located AST fragment to use a newly created SrcSpan
+-- in the token tree.
+syncAST :: (SYB.Data t)
+  => GHC.Located t -- ^The AST (or fragment)
+  -> GHC.SrcSpan   -- ^The SrcSpan created in the Tree Entry
+  -> Tree Entry    -- ^Existing token tree
+  -> (GHC.Located t, Tree Entry) -- ^Updated AST and tokens
+syncAST ast@(GHC.L l t) sspan forest = (ast',forest')
+  where
+    ast' = (GHC.L sspan t)
+    forest' = forest
 
 -- ---------------------------------------------------------------------
 

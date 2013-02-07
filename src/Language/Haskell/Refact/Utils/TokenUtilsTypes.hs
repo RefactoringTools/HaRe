@@ -1,6 +1,7 @@
 -- |
 --
--- This module contains types shared between TokenUtils and Monad, and exists to break import cycles
+-- This module contains types shared between TokenUtils and Monad, and
+-- exists to break import cycles
 --
 --
 
