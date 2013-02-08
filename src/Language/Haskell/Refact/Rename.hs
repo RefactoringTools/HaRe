@@ -13,6 +13,8 @@ import qualified RdrName               as GHC
 import qualified OccName               as GHC
 import qualified Unique                as GHC
 import qualified FastString            as GHC
+import qualified HsPat                 as GHC
+import qualified NameSet               as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -27,6 +29,8 @@ import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadUtils
+import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
@@ -36,71 +40,93 @@ t1 = rename ["../old/refactorer/B.hs","4","7","4","43"]
 rename :: [String] -> IO () -- For now
 rename args
   = do let fileName = args!!0
-           beginPos = (read (args!!1), read (args!!2))::(Int,Int)
-           endPos   = (read (args!!3), read (args!!4))::(Int,Int)
-       runRefacSession Nothing (comp fileName beginPos endPos)
+           newName = args!!1
+           beginPos = (read (args!!2), read (args!!3))::(Int,Int)
+       runRefacSession Nothing (comp fileName newName beginPos)
        return ()
 
 -- body of refac
-comp :: String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName beginPos endPos = do
+comp :: String -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
+comp fileName newName beginPos = do
        -- modInfo@((_, renamed, ast), toks) <- parseSourceFileGhc fileName
        modInfo@(t, toks) <- parseSourceFileGhc fileName
-       let renamed = gfromJust "ifToCase" $ GHC.tm_renamed_source t
+       let renamed = gfromJust "renamed" $ GHC.tm_renamed_source t
+       let name = locToName (GHC.mkFastString fileName) beginPos renamed
+       let name' = eFromJust name ("There was no variable at " ++ (show beginPos))
        -- let expr = locToExp beginPos endPos renamed
 --       case expr of
 --         Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
-       refactoredMod <- applyRefac (renameAll) (Just modInfo ) fileName
+       refactoredMod <- applyRefac (rename' name' newName) (Just modInfo ) fileName
        return [refactoredMod]
        --  _      -> error $ "You haven't selected an if-then-else  expression!" --  ++ (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
 
+eFromJust :: Maybe a -> String -> a
+eFromJust (Just a) _ = a
+eFromJust Nothing errorMessage = error errorMessage
 
-renameAll ::
-  -- GHC.Located (GHC.HsExpr GHC.Name)
-  RefactGhc ()
-renameAll = do
+rename' :: (GHC.Located GHC.Name) -> String -> RefactGhc ()
+rename' (GHC.L _ name) newName = do
   rs <- getRefactRenamed
-  reallyRenameAll rs
+  parsed <- getRefactParsed
+  let (Just (_,modName)) = getModuleName parsed
+  reallyRename rs modName name newName
 
-reallyRenameAll rs = do
-   everywhereMStaged SYB.Renamer (SYB.mkM inFun `SYB.extM` inExp) rs
+reallyRename :: GHC.RenamedSource -> String -> GHC.Name -> String -> RefactGhc ()
+reallyRename rs modName name newNameStr = do
+   everywhereMStaged SYB.Renamer (SYB.mkM inExp `SYB.extM` inPat `SYB.extM` inFun) rs
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-
-         inExp exp1@(GHC.L x (GHC.HsVar _))
-           -- = let newExp = ifToCaseTransformPs exp1
-           -- = let newExp = ifToCaseTransform exp1
-           --   in update exp1 newExp exp1
-           = do
-               let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
-                   fd = map nameToString (free ++ declared)
-                   newNameStr = mkNewName "ge" fd 0 -- TODO: change empty list to list of declared names
-                   occName = GHC.mkVarOcc newNameStr
-                   unique = GHC.mkVarOccUnique $ GHC.mkFastString newNameStr
-                   newName = GHC.mkSystemName unique occName
-                   newExp = GHC.L x (GHC.HsVar newName)
+         inExp exp1@(GHC.L x (GHC.HsVar n2))
+          | GHC.nameUnique name == GHC.nameUnique n2
+           = do -- need to look at outer context
+               newName <- mkNewGhcName newNameStr
+               let newExp = GHC.L x (GHC.HsVar newName)
                update exp1 newExp exp1
                return newExp
 
          inExp e = return e
          
-         inFun :: (GHC.HsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.HsBindLR GHC.Name GHC.Name)
-         inFun (GHC.FunBind exp1@(GHC.L x y) a b c fvs d) 
-            -- = let newExp = ifToCaseTransformPs exp1
-            -- = let newExp = ifToCaseTransform exp1
-            --   in update exp1 newExp exp1
+         inPat :: (GHC.Located (GHC.Pat GHC.Name)) -> RefactGhc (GHC.Located (GHC.Pat GHC.Name))
+         inPat exp1@(GHC.L x (GHC.VarPat n2))
+           | GHC.nameUnique name == GHC.nameUnique n2
+            = do -- need to look at outer context
+                newName <- mkNewGhcName newNameStr
+                let newExp = GHC.L x (GHC.VarPat newName)
+                update exp1 newExp exp1
+                return newExp
+
+         inPat e = return e
+         
+         inFun :: (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name))
+         inFun fun1@(GHC.L y (GHC.FunBind (GHC.L x n2) fm b c fvs d))
+            | GHC.nameUnique name == GHC.nameUnique n2
             = do
-                let (free, declared) = hsFreeAndDeclaredPNs rs -- free and declared
-                    fd = map nameToString (free ++ declared)
-                    newStr = mkNewName "ge" fd 0 -- TODO: change empty list to list of declared names
-                    newExp = GHC.mkVarOcc newStr
-                    newExp' = GHC.mkSystemName (GHC.mkVarOccUnique (GHC.mkFastString newStr)) newExp
-                update exp1 (GHC.L x (GHC.HsVar newExp')) exp1
-                return (GHC.FunBind (GHC.L x newExp') a b c fvs d)
+                -- filter out patterns, left with qualified, remove qualified names
+                let fd = hsVisibleNames fun1 rs -- free and declared
+                    modLength = length modName
+                    -- filter out names that do not start with modName
+                    global = filter (\x -> modName == take modLength x) fd
+                    --fd' = map (drop (modLength + 1)) global
+                    fdPN = hsVisiblePNs fun1 rs
+                    pnames = map (PN . GHC.nameRdrName) fdPN
+--                    fd' = filter (\x -> defines x fun1) fdPN
+                    fd' = definingDeclsNames fdPN [fun1] True True
+                    fd'' = map prettyprint2 fd'
+                error $ prettyprint2 fd'
+                if newNameStr `elem` fd'' then 
+                  error (newNameStr ++ " is already defined.") 
+                else do 
+                  newName <- mkNewGhcName newNameStr
+                  let newFun = GHC.L y (GHC.FunBind (GHC.L x newName) fm b c fvs d)
+                  update fun1 newFun fun1
+                  return newFun
 
          inFun e = return e
           
           -- bind ((GHC.FunBind _ _ _ _ fvs _)::(GHC.HsBindLR GHC.Name GHC.Name)) = [fvs]
           -- bind ((GHC.PatBind _ _ _ fvs _)  ::(GHC.HsBindLR GHC.Name GHC.Name)) = [fvs]
           -- bind _ = []
+
+prettyprint2 :: (GHC.Outputable a) => a -> String
+prettyprint2 x = GHC.showSDoc $ GHC.ppr x

@@ -43,6 +43,8 @@ import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadUtils
+import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.IO.Unsafe
@@ -288,7 +290,7 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
 
     let rs = RefMod { rsTypecheckedMod = parsedFile
                     , rsOrigTokenStream = toks
-                    , rsTokenStream = toks
+                    , rsTokenCache = mkTreeFromTokens toks
                     , rsStreamModified = False
                     }
     put (RefSt settings u f (Just rs))
@@ -379,6 +381,16 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n
                 = do _ <- {- zipUpdateToks -} updateToks oldTy newTy prettyprint False
                      return newTy
             | otherwise = return t
+            
+instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1, SYB.Data n2) => Update (GHC.LHsBindLR n1 n2) t where
+       update oldBind newBind t
+             = everywhereMStaged SYB.Parser (SYB.mkM inBind) t
+          where
+            inBind (t::GHC.LHsBindLR n1 n2)
+              | sameOccurrence t oldBind
+                  = do _ <- {- zipUpdateToks -} updateToks oldBind newBind prettyprint False
+                       return newBind
+              | otherwise = return t
 
 {- instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update [GHC.LPat n] t where
     update oldPat newPat t

@@ -27,6 +27,8 @@ import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadUtils
+import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
@@ -1237,7 +1239,7 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                        sndSubst=map snd subst
                    rhs'<-rmParamsInParent pn sndSubst rhs
                    -- toks <- fetchToks
-                   -- error $ "MoveDef.foldParams: (toks)=" ++ (showToks toks) -- ++AZ++
+                   -- error $ "MoveDef.foldParams:1 (toks)=" ++ (showToks toks) -- ++AZ++
 
                    -- ls<-mapM hsFreeAndDeclaredPNs sndSubst
                    let ls = map hsFreeAndDeclaredPNs sndSubst
@@ -1253,6 +1255,9 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    demotedDecls'''<-rmParamsInDemotedDecls fstSubst demotedDecls'' -}
                    -- error $ "MoveDef.foldParams: (pns,clashedNames,subst))=" ++ (GHC.showPpr (pns,clashedNames,subst)) -- ++AZ++
                    -- error $ "MoveDef.foldParams: (decls)=" ++ (SYB.showData SYB.Renamer 0 decls) -- ++AZ++
+
+                   -- toks <- fetchToks
+                   -- error $ "MoveDef.foldParams:1 (toks)=" ++ (showToks toks) -- ++AZ++
 
                    decls' <- foldInDemotedDecls pns clashedNames subst decls
                    toks <- fetchToks

@@ -1,7 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 
 --------------------------------------------------------------------------------
 -- Module      : TypeUtils
@@ -73,8 +72,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
  -- * Program transformation
     -- ** Adding
-    ,addDecl {- ,addItemsToImport -}, addHiding --, rmItemsFromImport, addItemsToExport
-    ,addParamsToDecls {- , addGuardsToRhs, addImportDecl-}, duplicateDecl -- , moveDecl
+    ,addDecl, addItemsToImport, addHiding --, rmItemsFromImport, addItemsToExport
+    ,addParamsToDecls {- , addGuardsToRhs-}, addImportDecl, duplicateDecl -- , moveDecl
     -- ** Removing
     ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -130,6 +129,8 @@ import Data.Maybe
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadUtils
+import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import System.IO.Unsafe
 
@@ -170,9 +171,8 @@ import qualified Unsafe.Coerce as SYB
 
 -- Lens
 import Control.Applicative
-import Control.Lens hiding (Rep)
+import Control.Lens
 import Control.Lens.Plated
-import Control.Lens.Traversal
 import Control.Lens.Traversal
 import Data.Data.Lens hiding (tinplate)
 import GHC.Generics hiding (from, to)
@@ -1693,6 +1693,28 @@ instance FindEntity (GHC.Located (GHC.HsExpr GHC.Name)) where
 
 -- ---------------------------------------------------------------------
 
+instance FindEntity (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) where
+  findEntity e t = fromMaybe False res
+   where
+    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (expr::(GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)))
+      -- | e == expr = Just True
+      | sameOccurrence e expr = Just True
+    worker _ = Nothing
+
+instance FindEntity (GHC.Located (GHC.HsDecl GHC.Name)) where
+  findEntity d t = fromMaybe False res
+   where
+    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (decl::(GHC.Located (GHC.HsDecl GHC.Name)))
+      -- | e == expr = Just True
+      | sameOccurrence d decl = Just True
+    worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
 {-
 -- | Returns True is a syntax phrase, say a, is part of another syntax
 -- phrase, say b.
@@ -2356,10 +2378,6 @@ addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _
        False ->return mod
 -}
 
--- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
---   specified module name. The second argument serves as a condition: if it is like : Just p, then do the adding 
---   the if only 'p' occurs in the entity list; if it is Nothing, then do the adding as normal. This function
---   does nothing if the import declaration does not have an explicit entity list.
 {-
 addItemsToImport::( )
                  =>ModuleName                  -- ^ The imported module name.
@@ -2401,6 +2419,160 @@ addItemsToImport serverModName pn ids t
 
 -- ---------------------------------------------------------------------
 
+addImportDecl ::
+    GHC.RenamedSource -> GHC.ModuleName -> Maybe GHC.FastString -> Bool -> Bool -> Bool ->
+        Maybe String -> Bool -> [GHC.Name] -> RefactGhc GHC.RenamedSource
+addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualify alias hide idNames
+  = do toks <- fetchToks
+       let (toks1, toks2)
+               =if length imps' > 0
+                   then let (startLoc, endLoc) = getStartEndLoc $ last imps'
+                            toks1 = getToks ((1,1),endLoc) toks
+                            toks2 = dropWhile (\t -> (tokenPos t) <= tokenPos (last toks1)) toks
+                        in (toks1, toks2)
+                   else if not $ isEmptyGroup groupedDecls
+                          then
+                               let startLoc = fst $ startEndLocIncComments toks groupedDecls
+                                   (toks1, toks2) = break (\t ->tokenPos t==startLoc) toks
+                               in (toks1,  toks2)
+                          else (toks,[])
+           before = "\n\n"
+
+           colOffset = if length imps' == 0 && isEmptyGroup groupedDecls
+                        then 1
+                        else getIndentOffset toks
+                                $ if length imps' > 0 then fst $ getStartEndLoc (ghead "addImportDecl4" imps')
+                                               else fst $ startEndLocIncComments toks  groupedDecls
+
+           loc' = realSrcLocFromTok $ (glast "addImportDecl5" toks1)
+       impToks <- liftIO $ tokenise loc' (colOffset-1) True
+                      $ before ++ (GHC.showPpr impDecl)
+       let toks' = toks1++impToks++ (map (increaseSrcSpan (2,0)) toks2)
+       putToks toks' True
+       return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
+  where
+
+     alias' = case alias of
+                  Just stringName -> Just $ GHC.mkModuleName stringName
+                  _               -> Nothing
+
+     impDecl = GHC.ImportDecl {
+                        GHC.ideclName        = mkNewLModuleName moduleName
+                        , GHC.ideclPkgQual   = pkgQual
+                        , GHC.ideclSource    = source
+                        , GHC.ideclSafe      = safe
+                        , GHC.ideclQualified = qualify
+                        , GHC.ideclImplicit  = False
+                        , GHC.ideclAs        = alias'
+                        , GHC.ideclHiding    =
+                                      (if idNames == [] && hide == False then
+                                            Nothing
+                                       else
+                                            (Just (hide, map mkNewEnt idNames)))
+                }
+     imps' = rmPreludeImports imp
+
+     mkNewLSomething :: a -> GHC.Located a
+     mkNewLSomething a = (GHC.L l a) where
+        filename = (GHC.mkFastString "f")
+        l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
+
+
+     mkNewLModuleName :: GHC.ModuleName -> GHC.Located GHC.ModuleName
+     mkNewLModuleName moduleName = mkNewLSomething moduleName
+
+{-
+-- TODO: move this to TokenUtils
+increaseSrcSpan :: Int -> PosToken -> PosToken
+increaseSrcSpan amount posToken@(lt@(GHC.L l t), s) = (GHC.L newL t, s) where
+        filename = GHC.mkFastString "f"
+        newL = GHC.mkSrcSpan (GHC.mkSrcLoc filename startLine startCol) (GHC.mkSrcLoc filename endLine endCol)
+        (startLine, startCol) = add1 $ getLocatedStart lt
+        (endLine, endCol) = add1 $ getLocatedEnd lt
+
+        add1 :: (Int, Int) -> (Int, Int)
+        add1 (x,y) = (x+amount,y)
+-}
+
+isEmptyGroup :: GHC.HsGroup id -> Bool
+isEmptyGroup x = (==0) $ sum $
+   [valds, tyclds, instds, derivds, fixds, defds, fords, warnds, annds, ruleds, vects, docs]
+  where
+    valds = size $ GHC.hs_valds x
+
+    size :: GHC.HsValBindsLR idL idR -> Int
+    size (GHC.ValBindsIn lhsBinds sigs) = (length sigs) + (length . GHC.bagToList $ lhsBinds)
+    size (GHC.ValBindsOut recFlags lsigs) = (length lsigs) + (length recFlags)
+
+    tyclds = length $ GHC.hs_tyclds x
+
+    instds = length $ GHC.hs_instds x
+
+    derivds = length $ GHC.hs_derivds x
+
+    fixds = length $ GHC.hs_fixds x
+
+    defds = length $ GHC.hs_defds x
+
+    fords = length $ GHC.hs_fords x
+
+    warnds = length $ GHC.hs_warnds x
+
+    annds = length $ GHC.hs_annds x
+
+    ruleds = length $ GHC.hs_ruleds x
+
+    vects = length $ GHC.hs_vects x
+
+    docs = length $ GHC.hs_docs x
+
+
+-- | Remove ImportDecl from the imports list, commonly returned from a RenamedSource type, so it can
+-- be further processed.
+--rmPreludeImports :: [GHC.Located (GHC.ImportDecl GHC.Name)] -> [GHC.Located (GHC.ImportDecl GHC.Name)]
+rmPreludeImports = filter isPrelude where
+            isPrelude = (/="Prelude") . GHC.moduleNameString . GHC.unLoc . GHC.ideclName . GHC.unLoc
+
+{-addImportDecl mod@(HsModule _ _ _ imp decls) moduleName qualify alias hide idNames
+  = do ((toks, _),(v,v1)) <- get
+       let (toks1, toks2)
+               =if imps' /= []
+                   then let (startLoc, endLoc) = startEndLocIncComments toks (last imps')
+                            (toks1, toks2)= break (\t->tokenPos t==endLoc) toks
+                        in (toks1 ++ [ghead "addImportDecl1" toks2], tail toks2)
+                   else if decls /=[]
+                          then let startLoc = fst $ startEndLocIncComments toks (ghead "addImportDecl1" decls)
+                                   (toks1, toks2) = break (\t ->tokenPos t==startLoc) toks
+                               in (toks1,  toks2)
+                          else (toks,[])
+           before = if toks1/=[] && endsWithNewLn (glast "addImportDecl1" toks1) then "" else "\n"
+           after  = if (toks2 /=[] && startsWithNewLn (ghead "addImportDecl1" toks2)) then "" else "\n"
+           colOffset = if imps'==[] && decls==[]
+                        then 1
+                        else getOffset toks
+                                $ if imps'/=[] then fst $ startEndLoc toks  (ghead "addImportDecl1" imps')
+                                               else fst $ startEndLoc toks  (ghead "addImportDecl1" decls)
+           impToks =tokenise (Pos 0 v1 1) (colOffset-1) True
+                      $ before++(render.ppi) impDecl++"\n" ++ after  --- refactorer this
+       (impDecl', _) <- addLocInfo (impDecl,impToks)
+       let toks' = toks1++impToks++toks2
+       put ((toks',modified), ((tokenRow (glast "addImportDecl1" impToks) - 10,v1)))  -- 10: step ; generalise this.
+       return (mod {hsModImports = imp ++ [impDecl']})
+  where
+     alias' = case alias of
+                  Just m -> Just $ SN (PlainModule m) loc0
+                  _      -> Nothing
+     impDecl = HsImportDecl loc0 (SN (PlainModule moduleName) loc0) qualify alias'
+                      (if idNames==[] && hide==False
+                          then Nothing
+                          else  (Just (hide, map nameToEnt idNames)))  -- what about "Main"
+     imps' = imp \\ prelimps
+     nameToEnt name = Var (nameToPNT name)-}
+
+
+
+-- ---------------------------------------------------------------------
+
 -- ++AZ++
 --  Thoughts on signatures
 --    1. Pass in a Maybe sig
@@ -2414,8 +2586,8 @@ addItemsToImport serverModName pn ids t
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
 addDecl:: (SYB.Data t,HsValBinds t)
-        => t              -- ^ The AST.
-        -> Maybe GHC.Name -- ^ If this is Just, then the declaration
+        => t              -- ^The AST to be updated
+        -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
                           -- identifier's definition.
         -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
@@ -2435,81 +2607,50 @@ addDecl parent pn (decl, msig, declToks) topLevel
             else addLocalDecl parent (decl,msig,declToks)
  where
 
-  -- Add a definition to the beginning of the definition declaration
+  -- ^Add a definition to the beginning of the definition declaration
   -- list, but after the data type declarations if there is any. The
   -- definition will be pretty-printed if its token stream is not
   -- provided.
   addTopLevelDecl :: (SYB.Data t, HsValBinds t)
        => (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
        -> t -> RefactGhc t
-  addTopLevelDecl (decl, maybeSig, declToks) parent
+  addTopLevelDecl (decl, maybeSig, maybeDeclToks) parent
     = do let binds = hsValBinds parent
              decls = hsBinds parent
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
-         toks <- fetchToks
-         let loc1 = if (not $ emptyList decls2)  -- there are function/pattern binding decls.
-                    then let ((startRow,_),_) = startEndLocIncComments toks (ghead "addTopLevelDecl"  decls2)
-                         in  (startRow, 1)
-                    else simpPos0  -- no function/pattern binding decls in the module.
-             (toks1, toks2) = if loc1==simpPos0  then (toks, [])
-                                 else break (\t -> tokenPos t >= loc1) toks
-         {-
-             declStr = case declToks of
-                        Just ts -> concatMap tokenCon ts
-                        Nothing -> "\n"++(prettyprint decl)++"\n\n"
-                        -- Nothing -> (prettyprint decl)++"\n\n"
-             sigStr  = case declToks of
-                        Just ts -> ""
-                        Nothing -> case maybeSig of
-                                     Just sig -> "\n"++(prettyprint sig)
-                                     Nothing -> ""
 
-         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addTopLevelDecl" toks1) colOffset True (sigStr ++ declStr)
-         let nlt1 = newLnToken (glast "updateToks 3" newToks)
-             nlt2 = newLnToken nlt1
-         -- TODO: the newLnToken adds an extra space on the following line, fix it
-         let toks' = toks1 ++ newToks ++ [nlt1,nlt2] ++ toks2
-         -}
-             -- colOffset = if (emptyList decls) then 1 else getOffset toks $ fst (getStartEndLoc (head decls))
-             colOffset = 0
-         (toks',newToks) <- makeNewToks colOffset toks1 toks2 (decl,maybeSig,declToks)
-         putToks toks' modified
-         (decl',_) <- addLocInfo (decl, newToks)
+         newToks <- makeNewToks (decl,maybeSig,maybeDeclToks)
+
+         let Just sspan = if (emptyList decls2)
+                            then getSrcSpan (last decls1)
+                            else getSrcSpan (head decls2)
+
+         decl' <- putDeclToksAfterSpan sspan decl newToks
 
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
 
   -- TODO: Make this a top level general purpose function, similar to update.
-  makeNewToks :: Int -> [PosToken] -> [PosToken]
-              -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
-              -> RefactGhc ([PosToken],[PosToken])
-  makeNewToks colOffset toks1 toks2 (decl, maybeSig, declToks) = do
+  -- NOTE: This function returns tokens originating at (0,0), to be
+  -- stitched in at the right place by TokenUtils
+  makeNewToks :: (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
+              -> RefactGhc [PosToken]
+  makeNewToks (decl, maybeSig, declToks) = do
          let
              declStr = case declToks of
-                        -- Just ts -> concatMap tokenCon ts
-                        -- Just ts -> GHC.showRichTokenStream ts
                         Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
                         Nothing -> "\n"++(prettyprint decl)++"\n\n"
-                        -- Nothing -> (prettyprint decl)++"\n\n"
              sigStr  = case declToks of
                         Just _ts -> ""
                         Nothing -> case maybeSig of
                                      Just sig -> "\n"++(prettyprint sig)
                                      Nothing -> ""
 
-         newToks <- liftIO $ tokenise (realSrcLocFromTok $ glast "addTopLevelDecl" toks1) colOffset True (sigStr ++ declStr)
-         let nlt1 = newLnToken (glast "makeNewToks 1" newToks)
-             nlt2 = newLnToken nlt1
-             nlToken = newLnToken (glast "makeNewToks 2" toks1)
+         newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
 
-         -- TODO: the newLnToken adds an extra space on the following line, fix it
-         -- let toks' = toks1 ++ newToks ++ [nlt1,nlt2] ++ toks2
-         let toks' = if  endsWithNewLn  (glast "makeNewToks 3" toks1)
-                      then  toks1 ++ (nlToken: newToks) ++ [nlt1,nlt2]++ compressPreNewLns toks2
-                      else  toks1 ++ (nlToken: newToks) ++ [nlt1,nlt2]++ compressPreNewLns toks2
+         return newToks
 
-         return (toks',newToks)
 
   appendDecl :: (SYB.Data t, HsValBinds t)
       => t        -- ^Original AST
@@ -2545,8 +2686,13 @@ addDecl parent pn (decl, msig, declToks) topLevel
          -- error ("appendDecl: (offset,startEndLoc)=" ++ (show (offset, (getStartEndLoc (ghead "appendDecl2" decls))))) -- ++AZ++ debug
          -- error ("appendDecl: ([last toks2, newLnToken (last toks2)])=" ++ (showToks [last toks2, newLnToken (last toks2)])) -- ++AZ++ debug
          let nlToken = newLnToken (glast "appendDecl3" toks2)
-         (toks',newToks) <- makeNewToks offset (toks1++toks2++[nlToken]) toks3 (decl,maybeSig,declToks)
-         putToks toks' modified
+         newToks <- makeNewToks (decl,maybeSig,declToks)
+
+
+         -- putToks toks' modified
+         let Just sspan = getSrcSpan $ head after
+         putToksAfterSpan sspan newToks
+
          -- return (replaceDecls parent (Decs (before ++ [ghead "appendDecl14" after]++ decl++ tail after) ([], [])))
 
          (decl',_) <- addLocInfo (decl, newToks)
@@ -2580,10 +2726,6 @@ addDecl parent pn (decl, msig, declToks) topLevel
               =if (emptyList localDecls)
                    then startEndLocIncFowComment toks parent    --The 'where' clause is empty
                    else startEndLocIncFowComment toks localDecls
-            -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t/=endPos') toks
-            -- ++AZ++ toks1 : tokens after the insertion point
-            --        ts1: toks1 with whitespace, comments etc removed.
-            -- toks1=gtail "addLocalDecl1"  $ dropWhile (\t->tokenPos t<endPos') toks
 
             -- Note: toks1 is the rest of the tokens.
             toks1=dropWhile (\t->tokenPosEnd t<endPos') toks
@@ -2597,16 +2739,10 @@ addDecl parent pn (decl, msig, declToks) topLevel
                               then True
                               else (not.endsWithNewLn) (glast "addLocalDecl" ts1)
                       else endRow'==fst nextTokPos
-            --endPos@(endRow,_)=if ts1==[] then endPos'
-            --                             else tokenPos (last ts1)
             -- ++AZ++ temp offset = if (emptyList localDecls) then getOffset toks startPos + 4 else getOffset toks startPos
             offset = if (emptyList localDecls)
                         then (getIndentOffset toks endPos') + 4
                         else getIndentOffset toks endPos'
-                        {-
-                        then (getIndentOffset toks startPos) -- + 3 -- off by one on start col
-                        else getIndentOffset toks startPos
-                        -}
             nlToken = newLnToken (ghead "addLocalDecl2" toks1)
 
         -- error ("addLocalDecl: (endPos',offset),(head toks1)) =" ++ (show (endPos',offset)) ++ "," ++ (showToks $ [head toks1])) -- ++AZ++ debug
@@ -2620,14 +2756,11 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         -- TODO: bring in makeNewToks here too, at some future date :)
 
-        -- (_toks',newToks) <- makeNewToks offset [ghead "addLocalDecl 4" toks1] [] (decl,maybeSig,declToks)
+        -- newToks <- makeNewToks offset [ghead "addLocalDecl 4" toks1] [] (decl,maybeSig,declToks)
         newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
-        -- newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
-                          -- $ if needNewLn then "\n"++newSource else newSource++"\n"
                           $ if needNewLn then newSource++"\n" else newSource++"\n"
 
         -- error ("addLocalDecl: (offset,newToks) =" ++ (GHC.showPpr (offset, realSrcLocFromTok nlToken)) ++ (showToks $ nlToken:newToks)) -- ++AZ++ debug
-
 
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
 
@@ -2635,11 +2768,11 @@ addDecl parent pn (decl, msig, declToks) topLevel
         let oldToks'=getToks (startPos,endPos') toks
             toks'=replaceToks toks startPos endPos' (oldToks'++newToks++[nlToken2,newLnToken nlToken2])
 
-        putToks toks' modified
+        -- putToks toks' modified
+        putToksAfterPos (startPos,endPos') (newToks++[nlToken2,newLnToken nlToken2])
 
         case maybeSig of
            Nothing  -> return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
-           -- Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent ++ [newFun']))) (sig:(getValBindSigs binds))))
 
         -- return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
@@ -2794,43 +2927,84 @@ addHiding::
   ->GHC.RenamedSource    -- ^ The current module
   ->[GHC.Name]           -- ^ The items to be added
   ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
-addHiding serverModName (g,imps,e,d) pns = do
+addHiding a b c = addItemsToImport' a b c Hide
+
+-- | Creates a new entity for hiding a name in an ImportDecl.
+mkNewEnt :: GHC.Name -> GHC.LIE GHC.Name
+mkNewEnt pn = (GHC.L l (GHC.IEVar pn))
+ where
+   filename = (GHC.mkFastString "f")
+   l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
+
+-- | Represents the operation type we want to select on addItemsToImport'
+data ImportType = Hide     -- ^ Used for addHiding
+                | Import   -- ^ Used for addItemsToImport
+
+-- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
+--   specified module name. This function does nothing if the import declaration does not have an explicit entity list. 
+addItemsToImport::
+    GHC.ModuleName       -- ^ The imported module name
+  ->GHC.RenamedSource    -- ^ The current module
+  ->[GHC.Name]           -- ^ The items to be added
+--  ->Maybe GHC.Name       -- ^ The condition identifier.
+  ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
+addItemsToImport a b c = addItemsToImport' a b c Import
+
+-- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
+--   specified module name. If the ImportType argument is Hide, then the items will be added to the "hiding"
+--   list. If it is Import, they will be added to the explicit import entries. This function does nothing if 
+--   the import declaration does not have an explicit entity list and ImportType is Import.
+addItemsToImport'::
+    GHC.ModuleName       -- ^ The imported module name
+  ->GHC.RenamedSource    -- ^ The current module
+  ->[GHC.Name]           -- ^ The items to be added
+--  ->Maybe GHC.Name       -- ^ The condition identifier.
+  ->ImportType           -- ^ Whether to hide the names or import them. Uses special data for clarity.
+  ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
+addItemsToImport' serverModName (g,imps,e,d) pns impType = do
     imps' <- mapM inImport imps
     return (g,imps',e,d)
   where
+    isHide = case impType of 
+             Hide   -> True
+             Import -> False
+
     inImport :: GHC.LImportDecl GHC.Name -> RefactGhc (GHC.LImportDecl GHC.Name)
     inImport imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit as h))
-      | serverModName == modName  && not isQualified
+      | serverModName == modName  && not isQualified -- && (if isJust pn then findPN (fromJust pn) h else True)
        = case h of
-           Nothing -> do
-             toks <- fetchToks
-             let (startPos,endPos) = getStartEndLoc imp
-                 ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
-                 start = getGhcLoc l
-                 end   = getGhcLocEnd l
-                 newToken = mkToken t start (s++" hiding ("++showEntities GHC.showPpr pns++")")
-                 toks'= replaceToks toks start end [newToken]
-             -- error ("addHiding: newToken=" ++ (showToks [newToken]) ++ " (start,end)=" ++ (show (start,end)) ++ "(startPos,endPos)=" ++ (show (startPos,endPos)) ++ " toks=" ++ (showToks toks)) -- ++AZ++ debug
-             putToks toks' True
-             return (replaceHiding imp (Just (True, map mkNewEnt pns )))
-           Just (True, ents) -> do
-             toks <- fetchToks
-             let (startPos,endPos) = getStartEndLoc imp
-                 ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
-                 start = getGhcLoc l
-                 end   = getGhcLocEnd l
-                 newToken=mkToken t start (","++showEntities GHC.showPpr pns ++s)
-                 toks'=replaceToks toks start end [newToken]
-             putToks toks' True
-             return (replaceHiding imp  (Just (True, (map mkNewEnt  pns)++ents))) 
-           Just (False, _ent)  -> return imp
+           Nothing             -> insertEnts imp [] True
+           Just (isHide, ents) -> insertEnts imp ents False
+           _                   -> return imp 
     inImport x = return x
+      
+    insertEnts :: 
+      GHC.LImportDecl GHC.Name 
+      -> [GHC.LIE GHC.Name] 
+      -> Bool
+      -> RefactGhc ( GHC.LImportDecl GHC.Name )
+    insertEnts imp ents isNew = 
+        if isNew && not isHide then return imp
+        else do        
+            toks <- fetchToks
+            let (startPos,endPos) = getStartEndLoc imp
+                ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
+                start = getGhcLoc l
+                end   = getGhcLocEnd l
 
-    mkNewEnt :: GHC.Name -> GHC.LIE GHC.Name
-    mkNewEnt pn = (GHC.L l (GHC.IEVar pn))
-      where
-       filename = (GHC.mkFastString "f")
-       l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
+                beginning = 
+                        if isNew then 
+                            s ++ (if isHide then " hiding " else " ")++"("
+                        else ","
+                ending = if isNew then ")" else s
+
+                newToken=mkToken t start (beginning++showEntities GHC.showPpr pns ++ending)
+                toks'=replaceToks toks start end [newToken]
+
+            putToksForPos (start,end) [newToken]
+
+            return (replaceHiding imp  (Just (isHide, (map mkNewEnt  pns)++ents))) 
+
 
     replaceHiding (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as _h)) h1 =
          (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as h1))
@@ -3290,8 +3464,6 @@ duplicateDecl decls sigs n newFunName
       --stream (toks2, just updated) as well, in the monad
       funBinding' <- renamePN n newFunName True funBinding
       --rename function name in type signature  without adjusting the token stream
-
-      -- typeSig'  <- renamePN pn Nothing newFunName False typeSig
       typeSig'  <- renamePN n newFunName False typeSig
 
       -- Get the updated token stream
@@ -3347,53 +3519,6 @@ duplicateDecl decls sigs n newFunName
        typeSig = definingSigsNames [n] sigs
 
 
-{- ++ original ++
-{- ********* IMPORTANT : THIS FUNCTION SHOULD BE UPDATED TO THE NEW TOKEN STREAM METHOD ****** -}
--- | Duplicate a functon\/pattern binding declaration under a new name right after the original one.
-duplicateDecl::(MonadState (([PosToken],Bool),t1) m)
-                 =>[HsDeclP]            -- ^ The declaration list
-                 ->PName                -- ^ The identifier whose definition is going to be duplicated
-                 ->String               -- ^ The new name
-                 ->m [HsDeclP]          -- ^ The result
-{-there maybe fun/simple pattern binding and type signature in the duplicated decls
-  function binding, and type signature are handled differently here: the comment and layout
-  in function binding are preserved.The type signature is output ted by pretty printer, so
-  the comments and layout are NOT preserved.
- -}
-duplicateDecl decls pn newFunName
- = do ((toks,_), others)<-get
-      let (startPos, endPos) =startEndLocIncComments toks funBinding
-          {-take those tokens before (and include) the function binding and its following
-            white tokens before the 'new line' token. (some times the function may be followed by 
-            comments) -}
-          toks1 = let (ts1, ts2) =break (\t->tokenPos t==endPos) toks in ts1++[ghead "duplicateDecl" ts2]
-          --take those token after (and include) the function binding
-          toks2 = dropWhile (\t->tokenPos t/=startPos || isNewLn t) toks
-      put((toks2,modified), others)
-      --rename the function name to the new name, and update token stream as well
-      funBinding'<-renamePN pn Nothing newFunName True funBinding
-      --rename function name in type signature  without adjusting the token stream
-      typeSig'  <- renamePN pn Nothing newFunName False typeSig
-      ((toks2,_), others)<-get
-      let offset = getOffset toks (fst (startEndLoc toks funBinding))
-          newLineTok = if toks1/=[] && endsWithNewLn (glast "doDuplicating" toks1)
-                         then [newLnToken]
-                         else [newLnToken,newLnToken]
-          toks'= if typeSig/=[]
-                 then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks2))
-                          sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
-                          t = mkToken Whitespace (0,0) sigSource
-                      in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks2)
-                 else (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks2) 
-      put ((toks',modified),others)
-      return (typeSig'++funBinding')
-     where
-       declsToDup = definingDecls [pn] decls True False
-       funBinding = filter isFunOrPatBind declsToDup     --get the fun binding.
-       typeSig    = filter isTypeSig declsToDup      --get the type signature.
-
-
--}
 
 -- ---------------------------------------------------------------------
 --------------------------------TRY TO REMOVE THIS FUNCTION---------------------
@@ -3801,16 +3926,6 @@ renamePN oldPN newName updateTokens t
      = do let (row,col) = (getLocatedStart pnt)
           newName <- worker (row,col) l n
           return (GHC.L l newName)
-{-
-     = do if updateTokens
-           then  do
-                    toks <- fetchToks
-                    let (row,col) = (getLocatedStart pnt)
-                    let toks'= replaceToks toks (row,col) (row,col) [newNameTok l newName]
-                    putToks toks' True
-                    return (GHC.L l newName)
-           else return (GHC.L l newName)
--}
     rename x = return x
 
     renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
@@ -3826,7 +3941,10 @@ renamePN oldPN newName updateTokens t
            then  do
                     toks <- fetchToks
                     let toks'= replaceToks toks (row,col) (row,col) [newNameTok l newName]
-                    putToks toks' True
+
+                    -- putToks toks' True
+                    putToksForPos ((row,col),(row,col)) [newNameTok l newName]
+
                     return newName
            else return newName
 

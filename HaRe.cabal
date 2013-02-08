@@ -13,116 +13,6 @@ Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 Data-Dir:                       misc
--- Data-Files:                     haskell-refac.el
---                                 , refactor.vim
---                                 , Prelude.hs
---                                 , *.hs
---                                 , dupReport
---                                 , dupAnswers
---                                 , dupPositions
---                                 , dupTransforms
---                                 , dupClassAnswer
---                                 , dupClassTransform
---                                 , mergeCache
---                                 , evaluateResult
---                                 , genFoldCache
-
-
--- Library
---         Build-Depends:          base >=4
---                                 , syb
---                                 , network
---                                 , ghc
---                                 , containers
---                                 , hint
---                                 , mtl
---                                 , directory
---                                 , pretty
---                                 , process
---                                 , filepath
---                                 , old-time
---                                 , array
---                                 , ghc-paths
---         Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
---         GHC-Options:             -fno-cse -fglasgow-exts
---         Hs-Source-Dirs:
---            StrategyLib-4.0-beta/library
---            StrategyLib-4.0-beta/models/deriving/
---            -- editors
---            refactorer
---            refactorer/PwPf
---            tools/base
---            tools/base/AST
---            tools/base/Modules
---            tools/base/TI
---            tools/base/defs
---            tools/base/lib
---            tools/base/lib/Monads
---            tools/base/parse2
---            tools/base/parse2/Lexer
---            -- tools/base/parse2/LexerGen
---            -- tools/base/parse2/LexerSpec
---            tools/base/parse2/Parser
---            tools/base/pretty
---            tools/base/syntax
---            -- tools/base/tests/HbcLibraries
---            -- tools/base/transforms
---            -- tools/base/transforms/Deriving
---            -- tools/hs2html
---            tools/pfe
---         Other-Modules:          Paths_HaRe
---         Exposed-modules:        PwPfConversion PWCore Pointfree GlobalPW
---            DuplicateCode
---            EditorCommands
---            ParseAnswers
---            RefacAddCon
---            RefacAddEvalMonCache
---            RefacAddField
---            RefacAddRmParam
---            RefacADT
---            RefacAsPatterns
---            RefacCacheMerge
---            RefacCase
---            RefacCleanImps
---            RefacDataNewType
---            RefacDeForest
---            RefacDupDef
---            RefacDuplicates
---            RefacDupTrans
---            RefacEvalMon
---            RefacFunDef
---            RefacGenCache
---            RefacGenDef
---            RefacGenFold
---            RefacIdentify
---            RefacInstantiate
---            RefacIntroEvalDegree
---            RefacIntroPattern
---            RefacIntroThreshold
---            RefacLetWhere
---            RefacLocUtils
---            RefacMerge
---            RefacMoveDef
---            RefacMvDefBtwMod
---            RefacNewDef
---            RefacPwPf
---            RefacRedunDec
---            RefacRemoveField
---            RefacRenaming
---            RefacRmCon
---            RefacRmDef
---            RefacSimplify
---            RefacSlicing
---            RefacSlicTuple
---            RefacSwapArgs
---            RefacTypeSig
---            RefacTypeSyn
---            RefacUnfoldAsPatterns
---            RefacUnGuard
---            RefacUtils
---            RefacWhereLet
---            SlicingUtils
---            TypeCheck
 
 
 flag hpc
@@ -141,6 +31,7 @@ Library
                                 , mtl
                                 , old-time
                                 , pretty
+                                , rosezipper
                                 , syb
                                 , transformers
                                 , uniplate
@@ -163,7 +54,10 @@ Library
            , Language.Haskell.Refact.Utils.GhcUtils
            , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
+           , Language.Haskell.Refact.Utils.MonadUtils
            , Language.Haskell.Refact.Utils.RenamedSourceUtils
+           , Language.Haskell.Refact.Utils.TokenUtils
+           , Language.Haskell.Refact.Utils.TokenUtilsTypes
            , Language.Haskell.Refact.Utils.TypeSyn
            , Language.Haskell.Refact.Utils.TypeUtils
    
@@ -188,6 +82,7 @@ Executable ghc-hare
                                 , mtl
                                 , old-time
                                 , pretty
+                                , rosezipper
                                 , syb
                                 , transformers
                                 , uniplate
@@ -199,6 +94,7 @@ test-suite spec
       exitcode-stdio-1.0
   ghc-options:
       -- reinstate these later  -Wall 
+      -- -Wall
       -- reinstate these later  -Werror
       -- -fhpc
       -- -fhpc -hpcdir dist/hpc/app-1.0
@@ -211,7 +107,7 @@ test-suite spec
     test
   build-depends:
       base        >= 4.0  && < 4.7
-    , Diff
+    , Diff == 0.1.3
     , HUnit       == 1.2.*
     , QuickCheck  >= 2.5
     , containers
@@ -229,6 +125,7 @@ test-suite spec
     , process
     , silently
     , stringbuilder
+    , rosezipper
     , syb
     , transformers
     , uniplate

@@ -94,3 +94,11 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Demote/WhereIn6.hs.AST_out
 /test/testdata/Demote/WhereIn6.hs.renamed_out
 /test/testdata/SwapArgs/B.hs.AST_out
+/test/testdata/Demote/#D1.hs.tokens#
+/src/Ole.hs.AST_out
+/src/Ole.hs.renamed_out
+/src/Ole.hs.tokens
+/src/Ole.hs.tokens1
+/src/Ole.hs.refactored
+/src/ZipperLensGist.hs
+/src/ZipperPlayRose.hs

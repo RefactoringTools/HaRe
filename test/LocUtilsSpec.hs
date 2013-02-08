@@ -24,7 +24,9 @@ import Control.Monad.State
 import Data.Maybe
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadUtils
 import Language.Haskell.Refact.Utils.LocUtils
+import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
@@ -332,6 +334,14 @@ spec = do
               ++"(((13,14),(13,15)),ITvarid \"c\",\"c\")]"
 
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n          a b c"
+
+    -- ---------------------------------------------
+
+    it "Split the tokens into a front, middle and end, for a single token" $ do
+      (t,toks) <- parsedFileWhereIn6Ghc
+
+      let (_front,middle,_back) = splitToks ((13,10),(13,10)) toks
+      (showToks middle) `shouldBe` "[(((13,10),(13,11)),ITvarid \"a\",\"a\")]"
 
   -- -------------------------------------------------------------------
 
@@ -752,6 +762,18 @@ spec = do
     it "Get the indent after inline do clause" $ do
       (_t,toks) <- parsedFileOffsetGhc
       getIndentOffset toks (19,1) `shouldBe` 5
+
+    -- ---------------------------------
+
+    it "Gets a sane indent for empty tokens" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      getIndentOffset [] (19,1) `shouldBe` 1
+
+    -- ---------------------------------
+
+    it "Gets a sane indent for (0,0)" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      getIndentOffset toks (0,0) `shouldBe` 1
 
   -- -------------------------------------------------------------------
 

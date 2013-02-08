@@ -61,13 +61,13 @@ import Language.Haskell.Refact.Utils.GhcUtils
 -- targetMod = "FreeAndDeclared/Declare"
 
 --targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
-targetFile = "./test/testdata/" ++ targetMod ++ ".hs"
+targetFile = "./" ++ targetMod ++ ".hs"
 -- targetMod = "SwapArgs/B"
-targetMod = "Demote/WhereIn5"
+targetMod = "Ole"
 
 {- main = t1 -}
 
-t1 = GhcRefacCase.ifToCase ["./old/refactorer/B.hs","4","7","4","43"]
+t1 = GhcRefacCase.ifToCase ["../old/refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./old/B.hs","4","7","4","43"]
 
 s1 = GhcSwapArgs.swapArgs ["../test/testdata/SwapArgs/B.hs","10","1"]
@@ -78,8 +78,12 @@ s2 = GhcSwapArgs.swapArgs ["./old/refactorer/B.hs","6","1"]
 -}
 
 -- added by Chris for renaming
-r1 = GhcRefacRename.rename ["./C.hs", "NewBlah", "4", "1"]
-
+r1 = GhcRefacRename.rename ["./Ole.hs", "cas", "18", "1"]  -- lambda
+r2 = GhcRefacRename.rename ["./Ole.hs", "newBlah", "22", "16"] -- case of
+r3 = GhcRefacRename.rename ["./Ole.hs", "newBlah", "26", "19"] -- if else / par
+r4 = GhcRefacRename.rename ["./Ole.hs", "newBlah", "29", "12"] -- pattern binding
+r5 = GhcRefacRename.rename ["./Ole.hs", "newBlah", "14", "19"] -- let
+r6 = GhcRefacRename.rename ["./Ole.hs", "newBlah", "33", "14"] -- where clause
 
 
 p1 = 
@@ -148,7 +152,7 @@ getStuff =
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "B"
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "SwapArgs.B"
-        modSum <- GHC.getModSummary $ GHC.mkModuleName "Demote.WhereIn5"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "Ole"
         p <- GHC.parseModule modSum
 
         t <- GHC.typecheckModule p
