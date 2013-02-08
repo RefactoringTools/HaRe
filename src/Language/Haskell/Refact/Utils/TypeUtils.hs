@@ -163,6 +163,7 @@ import qualified TcType        as GHC
 import qualified TypeRep       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHCV
+import qualified UniqSet       as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -485,7 +486,8 @@ hsFreeAndDeclaredPNs t = (nub f, nub d)
           hsFreeAndDeclared' = SYB.everythingStaged SYB.Renamer
                              (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
                              ([],[])
-                             (([],[]) `SYB.mkQ` expr
+                             (([],[])  `SYB.mkQ` rhs
+                             `SYB.extQ` expr
                              `SYB.extQ` pattern
                              `SYB.extQ` match
                              `SYB.extQ` stmts) t
@@ -494,6 +496,12 @@ hsFreeAndDeclaredPNs t = (nub f, nub d)
           -- TODO: ++AZ++ Note:After renaming, HsBindLR has field bind_fvs
           --       containing locally bound free vars
 
+          rhs ((GHC.GRHSs g ds) :: GHC.GRHSs GHC.Name)
+           -- = error "blah"
+            = let (df,dd) = hsFreeAndDeclaredPNs g
+                  (ef,ed) = hsFreeAndDeclaredPNs ds
+              in (df ++ ef, dd ++ ed)
+          rhs _ = ([],[])
           -- expr --
           expr (GHC.HsVar n) = ([n],[])
 
@@ -526,20 +534,22 @@ hsFreeAndDeclaredPNs t = (nub f, nub d)
           pattern _ = ([],[])
 
           -- match and patBind, same type--
-          match ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name) =
-           let
-             (pf,_pd) = hsFreeAndDeclaredPNs matches
-           in
-             -- ((pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))),[fun])
-             (pf,[n])
+          match ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ ds _) :: GHC.HsBind GHC.Name)
+            = let
+                (pf,_pd) = hsFreeAndDeclaredPNs matches
+              in
+                -- ((pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))),[fun])
+                (pf,[n] ++ (GHC.uniqSetToList ds) ++ _pd)
+                -- error (show (map nameToString (GHC.uniqSetToList ds)))
 
           -- patBind --
-          match (GHC.PatBind pat rhs _ _ _) =
+          match (GHC.PatBind pat rhs _ ds _) =
             let
               (pf,pd)  = hsFreeAndDeclaredPNs pat
               (rf,_rd) = hsFreeAndDeclaredPNs rhs
             in
-              (pf `union` (rf \\pd),pd)
+              (pf `union` (rf \\pd),pd ++ GHC.uniqSetToList ds ++ _rd)
+               -- error (show (map nameToString (GHC.uniqSetToList ds)))
 
           match _ = ([],[])
 
@@ -961,6 +971,7 @@ hsFDsFromInside t = (nub f, nub d)
        let
          fds = map hsFDsFromInside matches
        in
+         -- error (show $ nameToString n)
          (nub (concatMap fst fds), nub(concatMap snd fds))
 
      decl ((GHC.PatBind p rhs _ _ _) :: GHC.HsBind GHC.Name) =
