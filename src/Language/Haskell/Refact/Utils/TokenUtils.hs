@@ -74,6 +74,9 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , startEndLocIncComments, startEndLocIncComments'
        , isComment
        , getSrcSpan
+       , getIndentOffset
+       , splitOnNewLn
+       , tokenLen
        ) where
 
 import qualified BasicTypes    as GHC
@@ -445,16 +448,28 @@ addToksAfterSrcSpan ::
   -> (Tree Entry, GHC.SrcSpan)
 addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
   where
-    -- TODO: call addOffsetToToks to line this up with the oldSpan/newSpan locs    
+    (_,tree) = getSrcSpanFor forest oldSpan
+    prevToks = retrieveTokens tree
+
+    -- colStart = getIndentOffset prevToks (tokenPos $ glast "addToksAfterSrcSpan" prevToks)
+    colStart = tokenCol $ ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
+    lineStart = (tokenRow (glast "addToksAfterSrcSpan" prevToks)) + 3
+
+    newTokStart = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
+    lineOffset = lineStart - (tokenRow newTokStart)
+    colOffset  = colStart - (tokenCol newTokStart)
+
+    toks' = addOffsetToToks (lineOffset,colOffset) toks
 
     -- Need to strip leading and trailing comment from the toks
-    startTok = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
-    endTok   = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse toks
+    startTok = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks'
+    endTok   = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse toks'
 
     startPos = tokenPos    startTok
     endPos   = tokenPosEnd endTok
     newSpan = posToSrcSpan forest (startPos,endPos)
-    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan toks
+    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan toks'
+    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show (lineOffset,colOffset)),oldSpan)
 
 -- ---------------------------------------------------------------------
 
@@ -1133,6 +1148,64 @@ startEndLocGhc t@(GHC.L l _) =
       ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
        (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
     (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
+
+-- | Get the indent of the line before, taking into account in-line
+-- where, let, in and do tokens
+getIndentOffset :: [PosToken] -> SimpPos -> Int
+getIndentOffset [] _pos    = 1
+getIndentOffset toks (0,0) = 1
+getIndentOffset toks pos
+  = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
+    in if (emptyList ts2)
+         then error "HaRe error: position does not exist in the token stream!"
+         else let (sl,_) = splitOnNewLn $ reverse ts1
+                -- sl is the reversed tokens of the previous line
+                  sls = filter (\t -> tokenLen t > 0) sl
+                  firstTok = (glast "getIndentOffset" sls)
+              in if startLayout firstTok
+                  then if (length sls > 1)
+                          then tokenOffset (last $ init sls)
+                          else 4 + tokenOffset firstTok
+                  else tokenOffset firstTok
+
+      where
+        tokenOffset t = (tokenCol t) - 1
+
+        startLayout ((GHC.L _ (GHC.ITdo)),_)    = True
+        startLayout ((GHC.L _ (GHC.ITin)),_)    = True
+        startLayout ((GHC.L _ (GHC.ITlet)),_)   = True
+        startLayout ((GHC.L _ (GHC.ITwhere)),_) = True
+        startLayout _  = False
+
+-- ---------------------------------------------------------------------
+
+splitOnNewLn :: [PosToken] -> ([PosToken],[PosToken])
+splitOnNewLn xs = go [] xs
+  -- ++AZ++ : TODO: is this simpler? : (toks1,toks2)=break (\x' -> tokenRow x /= tokenRow x') rtoks
+
+  where
+    go [] [] = ([],[])
+    go ss [] = (ss,[])
+    go [] xs = go [head xs] (tail xs)
+    go ss xs
+      | onSameLn (glast "splitOnNewLn" ss) (head xs) = go (ss ++ [head xs]) (tail xs)
+      | otherwise = (ss,xs)
+
+-- ---------------------------------------------------------------------
+
+tokenLen (_,s)     = length s   --check this again! need to handle the tab key.
+{-
+lengthOfToks::[PosToken]->Int
+lengthOfToks=length.(concatMap tokenCon)
+-}
+
+-- ---------------------------------------------------------------------
+
+onSameLn :: PosToken -> PosToken -> Bool
+onSameLn (GHC.L l1 _,_) (GHC.L l2 _,_) = r1 == r2
+  where
+    (r1,_) = getGhcLoc l1
+    (r2,_) = getGhcLoc l2
 
 -- ---------------------------------------------------------------------
 
