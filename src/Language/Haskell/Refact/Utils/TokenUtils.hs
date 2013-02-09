@@ -45,10 +45,13 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , ghcSpanStartEnd
        , insertNodeAfter
 
-       , ForestLine(..)
        , ghcLineToForestLine
        , forestLineToGhcLine
        , insertForestLineInSrcSpan
+       , srcSpanToForestSpan
+       , nullSpan
+       , simpPosToForestSpan
+       , showForestSpan
 
        -- * Based on Data.Tree
        , drawTreeEntry
@@ -200,10 +203,14 @@ data Operations = OpAdded Entry          -- ^The entry that was added
 forestConstant :: Int
 forestConstant = 1000000
 
+{-
+This has been moved to TokenUtilsTypes
+
 data ForestLine = ForestLine
                   { flInsertVersion :: Int
                   , flLine :: Int
                   } deriving (Eq,Show)
+-}
 
 -- | Extract an encoded ForestLine from a GHC line
 ghcLineToForestLine :: Int -> ForestLine
@@ -222,6 +229,20 @@ instance Ord ForestLine where
       then compare v1 v2
       else compare l1 l2
 
+-- |Strip out the version markers
+forestSpanToSimpPos :: ForestSpan -> (SimpPos,SimpPos)
+forestSpanToSimpPos ((ForestLine _ sr,sc),(ForestLine _ er,ec)) = ((sr,sc),(er,ec))
+
+simpPosToForestSpan :: (SimpPos,SimpPos) -> ForestSpan
+simpPosToForestSpan ((sr,sc),(er,ec)) = ((ghcLineToForestLine sr,sc),(ghcLineToForestLine er,ec))
+
+nullSpan :: ForestSpan
+nullSpan = ((ForestLine 0 0,0),(ForestLine 0 0,0))
+
+showForestSpan :: ForestSpan -> String
+showForestSpan ((sr,sc),(er,ec)) = show ((forestLineToGhcLine sr,sc),(forestLineToGhcLine er,ec))
+
+-- ---------------------------------------------------------------------
 
 insertForestLineInSrcSpan :: ForestLine -> GHC.SrcSpan -> GHC.SrcSpan
 insertForestLineInSrcSpan fl@(ForestLine v l) sspan@(GHC.RealSrcSpan ss) = ss'
@@ -232,6 +253,14 @@ insertForestLineInSrcSpan fl@(ForestLine v l) sspan@(GHC.RealSrcSpan ss) = ss'
     ss' = GHC.mkSrcSpan locStart (GHC.srcSpanEnd sspan)
 
 insertForestLineInSrcSpan _ ss = error $ "insertForestLineInSrcSpan: expecting a RealSrcSpan, got:" ++ (GHC.showPpr ss)
+
+-- ---------------------------------------------------------------------
+
+srcSpanToForestSpan :: GHC.SrcSpan -> ForestSpan
+srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToForestLine endRow,endCol))
+  where
+    (startRow,startCol) = getGhcLoc sspan
+    (endRow,endCol) = getGhcLocEnd sspan
 
 -- ---------------------------------------------------------------------
 
@@ -270,7 +299,7 @@ getTokensFor modu sspan = (modu', tokens)
      forest = if invariantOk (mTokenCache modu) -- TODO: remove this, expensive operation
                then mTokenCache modu
                else mTokenCache modu
-     (forest',tree) = getSrcSpanFor forest sspan
+     (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
      modu' = modu { mTokenCache = forest' }
 
      tokens = retrieveTokens tree
@@ -283,7 +312,7 @@ updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> Tree Entry
 updateTokensForSrcSpan forest sspan toks = forest''
   where
     -- Make sure the sspan is in the tree
-    (forest',node@(Node (Entry s _) _)) = getSrcSpanFor forest sspan
+    (forest',node@(Node (Entry s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
     zf = openZipperToNode node $ Z.fromTree forest'
     -- ++AZ++ what if the given sourcespan is not a leaf node?
     --        Should wipe out the structure below, as no longer valid
@@ -292,9 +321,9 @@ updateTokensForSrcSpan forest sspan toks = forest''
     forest'' = Z.toTree zf'
 
 -- ---------------------------------------------------------------------
--- |Retrieve a path to the tree containing a SrcSpan from the forest,
+-- |Retrieve a path to the tree containing a ForestSpan from the forest,
 -- inserting it if not already present
-getSrcSpanFor :: Tree Entry -> GHC.SrcSpan -> (Tree Entry, Tree Entry)
+getSrcSpanFor :: Tree Entry -> ForestSpan -> (Tree Entry, Tree Entry)
 getSrcSpanFor forest sspan = (forest',tree)
   where
     forest' = insertSrcSpan forest sspan -- Will NO-OP if already there
@@ -306,28 +335,28 @@ getSrcSpanFor forest sspan = (forest',tree)
 -- |Retrieve a path to the tree containing a SrcSpan from the forest,
 -- or return an empty list if it is not present
 getPathFor :: Tree Entry -> GHC.SrcSpan -> [Tree Entry]
-getPathFor forest sspan = getPathFor' [] [forest] sspan
+getPathFor forest sspan = getPathFor' [] [forest] (srcSpanToForestSpan sspan)
   where
-    getPathFor' :: [Tree Entry] -> Forest Entry -> GHC.SrcSpan -> [Tree Entry]
+    getPathFor' :: [Tree Entry] -> Forest Entry -> ForestSpan -> [Tree Entry]
     getPathFor' path f ss  = res
       where
         (_,middle,_) = splitForestOnSpan f ss
         res = case middle of
-           [m@(Node _ [])] -> if ((ghcSpanStartEnd ss) == treeStartEnd m)
+           [m@(Node _ [])] -> if (ss == treeStartEnd m)
                                  then (path++middle) else []
            [Node _ sub] -> getPathFor' (path ++ middle) sub ss
            _   -> (path ++ middle)
 
 
 -- ---------------------------------------------------------------------
--- |Insert a SrcSpan into the forest, if it is not there already.
+-- |Insert a ForestSpan into the forest, if it is not there already.
 -- Assumes the forest was populated with the tokens containing the
--- SrcSpan already
-insertSrcSpan :: Tree Entry -> GHC.SrcSpan -> Tree Entry
+-- ForestSpan already
+insertSrcSpan :: Tree Entry -> ForestSpan -> Tree Entry
 insertSrcSpan forest sspan = forest'
   where
     z = openZipperToSpan sspan $ Z.fromTree forest
-    forest' = if treeStartEnd (Z.tree z) == spanStartEnd sspan
+    forest' = if treeStartEnd (Z.tree z) == sspan
       then forest -- Already in, exactly
       else forest''
         where
@@ -342,12 +371,11 @@ insertSrcSpan forest sspan = forest'
               -- with sub SrcSpans having markers in them
               retrieveTokens $ Z.toTree z
 
-          (startPos,endPos) = spanStartEnd sspan
+          (tokStartPos,tokEndPos) = forestSpanToSimpPos sspan
 
-          -- Tokens here, must introduce sub-spans
-          -- with split, taking cognizance of start
-          -- and end comments
-          (startLoc,endLoc) = startEndLocIncComments' toks (startPos,endPos)
+          -- Tokens here, must introduce sub-spans with split, taking
+          -- cognizance of start and end comments
+          (startLoc,endLoc) = startEndLocIncComments' toks (tokStartPos,tokEndPos)
 
           -- (startToks,middleToks,endToks) = splitToks (startPos,endPos) toks
           (startToks,middleToks,endToks) = splitToks (startLoc,endLoc) toks
@@ -426,7 +454,7 @@ addNewSrcSpanAndToksAfter ::
                     -- identify this span in its position
 addNewSrcSpanAndToksAfter forest oldSpan newSpan toks = (forest'',newSpan')
   where
-    (forest',tree) = getSrcSpanFor forest oldSpan
+    (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
     parents = getPathFor forest' oldSpan
     -- parents' is not empty because we have just inserted the span if nexessary
 
@@ -435,7 +463,7 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan toks = (forest'',newSpan')
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
     -- TODO: insert the new tree entry with span and toks
     --       BUT: first need intact parent relation.
-    newNode = Node (Entry newSpan' toks) []
+    newNode = Node (Entry (srcSpanToForestSpan newSpan') toks) []
 
     forest'' = insertNodeAfter tree newNode forest'
 
@@ -448,7 +476,7 @@ addToksAfterSrcSpan ::
   -> (Tree Entry, GHC.SrcSpan)
 addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
   where
-    (_,tree) = getSrcSpanFor forest oldSpan
+    (_,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
     prevToks = retrieveTokens tree
 
     -- colStart = getIndentOffset prevToks (tokenPos $ glast "addToksAfterSrcSpan" prevToks)
@@ -462,14 +490,31 @@ addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
     toks' = addOffsetToToks (lineOffset,colOffset) toks
 
     -- Need to strip leading and trailing comment from the toks
+    {-
     startTok = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks'
     endTok   = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse toks'
 
     startPos = tokenPos    startTok
     endPos   = tokenPosEnd endTok
+    -}
+    (startPos,endPos) = nonCommentSpan toks'
+
     newSpan = posToSrcSpan forest (startPos,endPos)
     (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan toks'
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show (lineOffset,colOffset)),oldSpan)
+
+-- ---------------------------------------------------------------------
+
+-- |Extract the start and end position of a span, without any leading
+-- or trailing comments
+nonCommentSpan :: [PosToken] -> (SimpPos,SimpPos)
+nonCommentSpan toks = (startPos,endPos)
+  where
+    startTok = ghead "nonCommentSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
+    endTok   = ghead "nonCommentSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse toks
+
+    startPos = tokenPos    startTok
+    endPos   = tokenPosEnd endTok
 
 -- ---------------------------------------------------------------------
 
@@ -542,11 +587,11 @@ openZipperToNode node z
 
 -- |Open a zipper so that its focus has the given SrcSpan in its subtree
 openZipperToSpan
-  :: GHC.SrcSpan
+  :: ForestSpan
      -> Z.TreePos Z.Full Entry
      -> Z.TreePos Z.Full Entry
 openZipperToSpan sspan z
-  = if (treeStartEnd (Z.tree z) == spanStartEnd sspan) || (Z.isLeaf z)
+  = if (treeStartEnd (Z.tree z) == sspan) || (Z.isLeaf z)
       then z
       else z'
         where
@@ -563,7 +608,7 @@ openZipperToSpan sspan z
           contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
             where
               (startPos,endPos) = treeStartEnd $ Z.tree zn
-              (nodeStart,nodeEnd) = spanStartEnd sspan
+              (nodeStart,nodeEnd) = sspan
 
 
           go acc Nothing = acc
@@ -572,14 +617,13 @@ openZipperToSpan sspan z
 -- ---------------------------------------------------------------------
 
 -- |Split a forest of trees into a (begin,middle,end) according to a
--- SrcSpan, such that no tokens are included in begin or end belonging
--- to the SrcSpan, and all of middle has some part of the SrcSpan
-splitForestOnSpan :: Forest Entry -> GHC.SrcSpan
+-- ForestSpan, such that no tokens are included in begin or end belonging
+-- to the ForestSpan, and all of middle has some part of the ForestSpan
+splitForestOnSpan :: Forest Entry -> ForestSpan
                   -> ([Tree Entry],[Tree Entry],[Tree Entry])
 splitForestOnSpan forest sspan = (beginTrees,middleTrees,endTrees)
   where
-    start = getGhcLoc sspan
-    end   = getGhcLocEnd sspan
+    (start,end) = sspan
 
     (beginTrees,rest)      = break inSpan forest
     (middleTrees,endTrees) = break (\t -> not $ inSpan t) rest
@@ -601,7 +645,7 @@ splitForestOnSpan forest sspan = (beginTrees,middleTrees,endTrees)
 --    is there. In this case return the smallest containing element.
 -- This may be a list of trees, if the desired span crosses multiple
 -- trees.
-lookupSrcSpan :: Forest Entry -> GHC.SrcSpan -> [Tree Entry]
+lookupSrcSpan :: Forest Entry -> ForestSpan -> [Tree Entry]
 lookupSrcSpan forest sspan = res
   where
     -- Assuming invariants hold, the forest is sorted,
@@ -691,12 +735,18 @@ invariant forest = rsub
 -- ---------------------------------------------------------------------
 
 -- |Get the start and end position of a Tree
-treeStartEnd :: Tree Entry -> (SimpPos,SimpPos)
-treeStartEnd (Node (Entry sspan _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
+-- treeStartEnd :: Tree Entry -> (SimpPos,SimpPos)
+-- treeStartEnd (Node (Entry sspan _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
+treeStartEnd :: Tree Entry -> ForestSpan
+treeStartEnd (Node (Entry sspan _) _) = sspan
 
 -- |Get the start and end position of a SrcSpan
-spanStartEnd :: GHC.SrcSpan -> (SimpPos,SimpPos)
-spanStartEnd sspan = (getGhcLoc sspan,getGhcLocEnd sspan)
+-- spanStartEnd :: GHC.SrcSpan -> (SimpPos,SimpPos)
+-- spanStartEnd sspan = (getGhcLoc sspan,getGhcLocEnd sspan)
+spanStartEnd :: GHC.SrcSpan -> ForestSpan
+spanStartEnd sspan = ((ghcLineToForestLine sr,sc),(ghcLineToForestLine er,ec))
+  where
+    ((sr,sc),(er,ec)) = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 -- ---------------------------------------------------------------------
 {-
@@ -725,7 +775,7 @@ drawForestEntry :: Forest Entry -> String
 drawForestEntry  = unlines . map drawTreeEntry
 
 drawEntry :: Tree Entry -> [String]
-drawEntry (Node (Entry sspan _toks) ts0) = (showSrcSpan sspan) : drawSubTrees ts0
+drawEntry (Node (Entry sspan _toks) ts0) = (showForestSpan sspan) : drawSubTrees ts0
   where
     drawSubTrees [] = []
     drawSubTrees [t] =
@@ -743,7 +793,7 @@ showTree = prettyshow
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
 prettyshow (Node (Entry sspan toks) sub)
-  = "Node (Entry " ++ (showSrcSpan sspan) ++ " "
+  = "Node (Entry " ++ (showForestSpan sspan) ++ " "
      ++ (prettyToks toks) ++ ") "
      ++ show (map prettyshow  sub)
 
@@ -757,17 +807,20 @@ prettyToks toks = showToks [ghead "prettyToks" toks] ++ ".." ++ showToks [last t
 
 -- |Make a tree representing a particular set of tokens
 mkTreeFromTokens :: [PosToken] -> Tree Entry
-mkTreeFromTokens [] = Node (Entry GHC.noSrcSpan []) []
+mkTreeFromTokens [] = Node (Entry nullSpan []) []
 mkTreeFromTokens toks = Node (Entry sspan toks) []
   where
-   startLoc = realSrcLocFromTok $ ghead "mkTreeFromTokens" toks
-   endLoc   = realSrcLocFromTok $ last toks -- SrcSpans count from start of token, not end
-   sspan    = GHC.RealSrcSpan $ GHC.mkRealSrcSpan startLoc endLoc
+   startLoc = tokenPos $ ghead "mkTreeFromTokens" toks
+   endLoc   = tokenPosEnd $ last toks -- SrcSpans count from start of token, not end
+   -- sspan    = GHC.RealSrcSpan $ GHC.mkRealSrcSpan startLoc endLoc
+   (startLoc',endLoc') = nonCommentSpan toks
+   sspan    = simpPosToForestSpan (startLoc',endLoc')
+
 
 -- ---------------------------------------------------------------------
 
 -- |Make a tree representing a particular set of tokens
-mkTreeFromSpanTokens :: GHC.SrcSpan -> [PosToken] -> Tree Entry
+mkTreeFromSpanTokens :: ForestSpan -> [PosToken] -> Tree Entry
 mkTreeFromSpanTokens sspan toks = Node (Entry sspan toks) []
 
 -- ---------------------------------------------------------------------

@@ -7,6 +7,8 @@
 
 module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        Entry(..)
+       , ForestLine(..)
+       , ForestSpan(..)
        ) where
 
 import qualified SrcLoc        as GHC
@@ -46,8 +48,20 @@ Invariants:
 
 -- TODO: turn this into a record, with named accessors
 -- | An entry in the data structure for a particular srcspan.
-data Entry = Entry GHC.SrcSpan -- ^The source span contained in this Node
-                   [PosToken]  -- ^The tokens for the SrcSpan if subtree is empty
+data Entry = Entry ForestSpan -- ^The source span contained in this Node
+                   [PosToken] -- ^The tokens for the SrcSpan if subtree is empty
+
+-- ---------------------------------------------------------------------
+
+data ForestLine = ForestLine
+                  { flInsertVersion :: Int
+                  , flLine :: Int
+                  } deriving (Eq,Show)
+
+-- ---------------------------------------------------------------------
+
+-- |Match a SrcSpan, using a ForestLine as the marker
+type ForestSpan = ((ForestLine, Int),(ForestLine, Int)) 
 
 -- ---------------------------------------------------------------------
 
