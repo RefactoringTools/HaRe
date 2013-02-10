@@ -443,7 +443,7 @@ spec = do
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
-              "+- ((1000019,1),(21,14))\n|\n"++ -- our inserted span
+              "+- ((1000019,1),(1000021,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
 
       let toksFinal = retrieveTokens forest''
@@ -472,12 +472,12 @@ spec = do
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
-              "+- ((1000019,1),(21,14))\n|\n"++ -- our inserted span
+              "+- ((1000019,1),(1000021,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
-      (showSrcSpan sspan) `shouldBe` "((1000019,1),(21,14))"
+      (showSrcSpan sspan) `shouldBe` "((1000019,1),(1000021,14))"
 
       let toksFinal = retrieveTokens forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c"
 
   -- ---------------------------------------------
 
@@ -500,13 +500,13 @@ spec = do
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
-              "+- ((1000024,1),(26,14))\n|\n"++ -- our inserted span
+              "+- ((1000024,1),(1000027,1))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
-      (showSrcSpan sspan) `shouldBe` "((1000024,1),(26,14))"
+      (showSrcSpan sspan) `shouldBe` "((1000024,1),(1000027,1))"
       (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokens forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n  "
 
     it "Re-positions the new tokens to fit in the new SrcSpan." $ do
       "a" `shouldBe` "code this next"
@@ -515,7 +515,7 @@ spec = do
 
   describe "invariant 1" $ do
     it "checks that a tree with empty tokens and empty subForest fails" $ do
-      (invariant $ Node (Entry nullSpan []) []) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]
+      (invariant $ Node (Entry nullSpan []) []) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(0,0)) []) []"]
 
     -- -----------------------
     it "checks that a tree nonempty tokens and empty subForest passes" $ do
@@ -527,8 +527,8 @@ spec = do
       (_t,toks) <- parsedFileTokenTestGhc
 
       (invariant (Node (Entry nullSpan (take 1 toks)) [emptyTree])) `shouldBe`
-               ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) [(((1,1),(1,7)),ITmodule,\"module\")]) [\"Node (Entry ((-1,-1),(-1,-1)) []) []\"]",
-                "FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]
+               ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(0,0)) [(((1,1),(1,7)),ITmodule,\"module\")]) [\"Node (Entry ((0,0),(0,0)) []) []\"]",
+                "FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(0,0)) []) []"]
 
     -- -----------------------
     it "checks that a tree with empty tokens and nonempty subForest passes" $ do
@@ -541,7 +541,7 @@ spec = do
     it "checks the subtrees too" $ do
       (_t,toks) <- parsedFileTokenTestGhc
 
-      (invariant (Node (Entry nullSpan []) [emptyTree])) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((-1,-1),(-1,-1)) []) []"]
+      (invariant (Node (Entry nullSpan []) [emptyTree])) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(0,0)) []) []"]
 
   -- ---------------------------------------------
 
@@ -554,10 +554,10 @@ spec = do
       let tree4 = mkTreeFromTokens (drop 10 toks)
       (showTree tree)  `shouldBe` "Node (Entry ((1,1),(26,1)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
       (showTree tree2) `shouldBe` "Node (Entry ((1,8),(26,1)) [(((1,8),(1,17)),ITconid \"TokenTest\",\"TokenTest\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
-      (showTree tree3) `shouldBe` "Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) []"
+      (showTree tree3) `shouldBe` "Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) []"
 
       (invariant (Node (Entry sspan []) [tree2])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,8),(26,1)) [(((1,8),(1,17)),ITconid \\\"TokenTest\\\",\\\"TokenTest\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
-      (invariant (Node (Entry sspan []) [tree3])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\"]"]
+      (invariant (Node (Entry sspan []) [tree3])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\"]"]
 
       (invariant (Node (Entry sspan []) [tree3,tree4])) `shouldBe` []
 
@@ -575,7 +575,7 @@ spec = do
       (showForestSpan $ treeStartEnd tree4) `shouldBe` "((13,5),(26,1))"
 
       (invariant (Node (Entry sspan []) [tree1,tree2,tree3,tree4])) `shouldBe` []
-      (invariant (Node (Entry sspan []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: (13,1) not < (6,3):Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,11)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,1)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,7)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(26,1)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: (ForestLine {flInsertVersion = 0, flLine = 13},4) not < (ForestLine {flInsertVersion = 0, flLine = 6},3):Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(26,1)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
 
   -- ---------------------------------------------
 {-
@@ -597,9 +597,15 @@ spec = do
 -}
   -- ---------------------------------------------
 
+  describe "invariant 3" $ do
+    it "checks that all ForestSpans have the same version for start and end" $ do
+      pending "write this test (and function)"
+
+  -- ---------------------------------------------
+
   describe "mkTreeFromTokens" $ do
     it "creates a tree from an empty token list" $ do
-      (show $ mkTreeFromTokens []) `shouldBe` "Node {rootLabel = Entry (UnhelpfulSpan \"<no location info>\") [], subForest = []}"
+      (show $ mkTreeFromTokens []) `shouldBe` "Node {rootLabel = Entry ((ForestLine {flInsertVersion = 0, flLine = 0},0),(ForestLine {flInsertVersion = 0, flLine = 0},0)) [], subForest = []}"
 
     -- -----------------------
 
@@ -608,7 +614,7 @@ spec = do
       let toks' = take 2 $ drop 5 toks
       let tree = mkTreeFromTokens toks'
       (show toks') `shouldBe` "[((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")]"
-      (show tree) `shouldBe` "Node {rootLabel = Entry (RealSrcSpan (SrcSpanOneLine {srcSpanFile = \"./test/testdata/TokenTest.hs\", srcSpanLine = 5, srcSpanSCol = 1, srcSpanECol = 5})) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
+      (show tree) `shouldBe` "Node {rootLabel = Entry ((ForestLine {flInsertVersion = 0, flLine = 5},1),(ForestLine {flInsertVersion = 0, flLine = 5},6)) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
 
   -- ---------------------------------------------
 
@@ -630,16 +636,16 @@ spec = do
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
-              "+- ((1,1),(10,9))\n|\n"++
+              "+- ((1,1),(10,10))\n|\n"++
               "+- ((13,1),(15,17))\n|\n"++
-              "+- ((1000013,1),(15,17))\n|\n"++ -- our inserted span
+              "+- ((1000013,1),(1000015,17))\n|\n"++ -- our inserted span
               "`- ((19,1),(26,1))\n"
-      (showSrcSpan sspan) `shouldBe` "((1000013,1),(15,17))"
+      (showSrcSpan sspan) `shouldBe` "((1000013,1),(1000015,17))"
 
       let (decl',forest''') = syncAST decl sspan forest''
 
       (GHC.showPpr decl') `shouldBe` "TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar"
-      (SYB.showData SYB.Renamer 0 decl') `shouldBe` ""
+      (take 90 $ SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/TokenTest.hs:(1000013,1)-(1000015,16)} \n (FunBind \n  (L {test/testdata/"
 
       let toksFinal = retrieveTokens forest'''
       (GHC.showRichTokenStream toksFinal) `shouldBe` ""

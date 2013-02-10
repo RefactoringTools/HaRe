@@ -9,7 +9,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -- , showToks
                      -- , tokenLen
                      -- ,lengthOfToks
-                     , mkToken, mkZeroToken {-,defaultToken-},newLnToken{-,whiteSpacesToken -},whiteSpaceTokens
+                     , mkToken, mkZeroToken {-,defaultToken, whiteSpacesToken -},whiteSpaceTokens
                      , realSrcLocFromTok
                      , isWhite
                      , notWhite
@@ -348,22 +348,6 @@ defaultToken :: PosToken
 defaultToken = (GHC.noLoc (GHC.ITlineComment "defaultToken"), "defaultToken")
 
 -- defaultToken = (Whitespace, (pos0," "))
-
-{-
-newLnToken   = (Whitespace, (pos0,"\n"))
--}
-newLnToken :: PosToken -> PosToken
-newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
--- newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"NL")
-  where
-   l' =  case l of
-     GHC.RealSrcSpan ss ->
-       let
-         loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 1
-         -- loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 0
-       in
-         GHC.mkSrcSpan loc loc
-     _ -> l
 
 
 ghcSpan0 = GHC.mkSrcSpan ghcPos0 ghcPos0
