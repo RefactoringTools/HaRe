@@ -477,7 +477,8 @@ spec = do
       (showSrcSpan sspan) `shouldBe` "((1000019,1),(1000021,14))"
 
       let toksFinal = retrieveTokens forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c"
+      -- (showToks toksFinal) `shouldBe` ""
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n  "
 
   -- ---------------------------------------------
 
@@ -500,13 +501,13 @@ spec = do
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
-              "+- ((1000024,1),(1000027,1))\n|\n"++ -- our inserted span
+              "+- ((1000024,1),(1000028,1))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
-      (showSrcSpan sspan) `shouldBe` "((1000024,1),(1000027,1))"
+      (showSrcSpan sspan) `shouldBe` "((1000024,1),(1000028,1))"
       (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokens forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n  "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n \n\n  "
 
     it "Re-positions the new tokens to fit in the new SrcSpan." $ do
       "a" `shouldBe` "code this next"
@@ -648,7 +649,7 @@ spec = do
       (take 90 $ SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/TokenTest.hs:(1000013,1)-(1000015,16)} \n (FunBind \n  (L {test/testdata/"
 
       let toksFinal = retrieveTokens forest'''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` ""
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n\n  foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
 
 

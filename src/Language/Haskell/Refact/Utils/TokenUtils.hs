@@ -81,6 +81,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , splitOnNewLn
        , tokenLen
        , newLnToken
+       , newLinesToken
        ) where
 
 import qualified BasicTypes    as GHC
@@ -423,9 +424,11 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan toks = (forest'',newSpan')
     (ghcl,c) = getGhcLoc newSpan
     (ForestLine v l) = ghcLineToForestLine ghcl
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
-    -- TODO: insert the new tree entry with span and toks
-    --       BUT: first need intact parent relation.
-    newNode = Node (Entry (srcSpanToForestSpan newSpan') toks) []
+
+    prevToks = retrieveTokens tree
+    toks' = reAlignToks prevToks toks
+
+    newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
 
     forest'' = insertNodeAfter tree newNode forest'
 
@@ -441,22 +444,30 @@ addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
     (_,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
     prevToks = retrieveTokens tree
 
-    -- colStart = getIndentOffset prevToks (tokenPos $ glast "addToksAfterSrcSpan" prevToks)
-    colStart = tokenCol $ ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
-    lineStart = (tokenRow (glast "addToksAfterSrcSpan" prevToks)) + 3
-
-    newTokStart = ghead "addToksAfterSrcSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
-    lineOffset = lineStart - (tokenRow newTokStart)
-    colOffset  = colStart - (tokenCol newTokStart)
-
-    toks' = addOffsetToToks (lineOffset,colOffset) toks
-    toks'' = toks' ++ [(newLnToken $ glast "addToksAfterSrcSpan" toks')]
+    toks'' = reAlignToks prevToks toks
 
     (startPos,endPos) = nonCommentSpan toks''
 
     newSpan = posToSrcSpan forest (startPos,endPos)
     (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan toks''
-    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show (lineOffset,colOffset)),oldSpan)
+    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show ((lineOffset,lineStart,tokenRow $ head toks,tokenRow $ head toks'',tokenRow newTokStart,colOffset))),oldSpan)
+
+-- ---------------------------------------------------------------------
+
+reAlignToks :: [PosToken] -> [PosToken] -> [PosToken]
+reAlignToks prevToks toks = toks''
+  where
+    -- colStart = getIndentOffset prevToks (tokenPos $ glast "addToksAfterSrcSpan" prevToks)
+    colStart  = tokenCol $ ghead "reAlignToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
+    lineStart = (tokenRow (glast "reAlignToks" prevToks)) + 2
+
+    newTokStart = ghead "reAlignToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
+    -- lineOffset = lineStart - (tokenRow newTokStart)
+    lineOffset = lineStart - (tokenRow $ ghead "reAlignToks" toks)
+    colOffset  = colStart  - (tokenCol newTokStart)
+
+    toks' = addOffsetToToks (lineOffset,colOffset) toks
+    toks'' = toks' ++ [(newLinesToken 2 $ glast "reAlignToks" toks')]
 
 -- ---------------------------------------------------------------------
 
@@ -1037,7 +1048,6 @@ addOffsetToToks (r,c) toks = map (\t -> increaseSrcSpan (r,c) t) toks
 
 increaseSrcSpan :: SimpPos -> PosToken -> PosToken
 increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L l t), s) = (GHC.L newL t, s) where
-        -- filename = GHC.mkFastString "f"
         filename = fileNameFromTok posToken
         newL = GHC.mkSrcSpan (GHC.mkSrcLoc filename startLine startCol) (GHC.mkSrcLoc filename endLine endCol)
         (startLine, startCol) = add1 $ getLocatedStart lt
@@ -1248,14 +1258,17 @@ onSameLn (GHC.L l1 _,_) (GHC.L l2 _,_) = r1 == r2
 -- ---------------------------------------------------------------------
 
 newLnToken :: PosToken -> PosToken
-newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
--- newLnToken (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"NL")
+newLnToken tok = newLinesToken 1 tok
+
+-- ---------------------------------------------------------------------
+
+newLinesToken :: Int -> PosToken -> PosToken
+newLinesToken jump (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
   where
    l' =  case l of
      GHC.RealSrcSpan ss ->
        let
-         loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 1
-         -- loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 0
+         loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (jump + GHC.srcSpanEndLine ss) 1
        in
          GHC.mkSrcSpan loc loc
      _ -> l
