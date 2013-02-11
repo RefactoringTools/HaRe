@@ -2999,7 +2999,8 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
                 ending = if isNew then ")" else s
 
                 newToken=mkToken t start (beginning++showEntities GHC.showPpr pns ++ending)
-                toks'=replaceToks toks start end [newToken]
+                -- toks'=replaceToks toks start end [newToken]
+                toks'=replaceTok toks start newToken
 
             putToksForPos (start,end) [newToken]
 
@@ -3940,19 +3941,27 @@ renamePN oldPN newName updateTokens t
      = do if updateTokens
            then  do
                     toks <- fetchToks
-                    let toks'= replaceToks toks (row,col) (row,col) [newNameTok l newName]
-
-                    -- putToks toks' True
-                    putToksForPos ((row,col),(row,col)) [newNameTok l newName]
+                    let toks'= replaceTok toks (row,col) (newNameTok l newName)
+                    putToks toks' True
 
                     return newName
            else return newName
 
 -- ---------------------------------------------------------------------
 
+newNameTok :: GHC.SrcSpan -> GHC.Name -> PosToken
 newNameTok l newName =
-  ((GHC.L l (GHC.ITvarid (GHC.occNameFS $ GHC.getOccName newName))),
-   (GHC.occNameString $ GHC.getOccName newName))
+  ((GHC.L l' (GHC.ITvarid (GHC.occNameFS $ GHC.getOccName newName))),newNameStr)
+  where
+   newNameStr = (GHC.occNameString $ GHC.getOccName newName)
+   l' =  case l of
+     GHC.RealSrcSpan ss ->
+       let
+         locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) (GHC.srcSpanStartLine ss) (GHC.srcSpanStartCol ss) 
+         locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) (GHC.srcSpanEndLine ss) (length newNameStr + GHC.srcSpanStartCol ss) 
+       in
+         GHC.mkSrcSpan locStart locEnd
+     _ -> l
 
 
 ----------------------------------------------------------------------------------------

@@ -20,13 +20,17 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , getSrcSpanFor
        , getPathFor
        , retrieveTokens
-
        , addNewSrcSpanAndToksAfter
        , addToksAfterSrcSpan
 
+       -- * Token marking and re-alignment
+       , tokenFileMark
+       , markToken
+       , isMarked
+       , reAlignMarked
+
        -- * Utility
        , posToSrcSpan
-
 
        -- * AST tie up
        , syncAST
@@ -82,6 +86,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , tokenLen
        , newLnToken
        , newLinesToken
+       , groupTokensByLine
+       , reAlignToks
        ) where
 
 import qualified BasicTypes    as GHC
@@ -398,11 +404,52 @@ insertSrcSpan forest sspan = forest'
 -- ---------------------------------------------------------------------
 
 -- |Retrieve all the tokens at the leaves of the tree, in order
+-- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
+-- rows with tokenFileMark in a filename for a token
 retrieveTokens :: Tree Entry -> [PosToken]
-retrieveTokens forest = concat $ map (\t -> F.foldl accum [] t) [forest]
+retrieveTokens forest = reAlignMarked $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]
     accum acc (Entry _ toks) = acc ++ toks
+
+-- ---------------------------------------------------------------------
+
+-- |Used as a marker in the filename part of the SrcSpan on modified
+-- tokens, to trigger re-alignment when retrieving the tokens.
+tokenFileMark = GHC.mkFastString "HaRe"
+
+-- |Mark a token so that it can be use to trigger layout checking
+-- later when the toks are retrieved
+markToken :: PosToken -> PosToken
+markToken tok = tok'
+  where
+      (GHC.L l t,s) = tok
+      tok' = (GHC.L (GHC.RealSrcSpan l') t,s)
+
+      l' = case l of
+            GHC.RealSrcSpan ss ->
+                 GHC.mkRealSrcSpan
+                      (GHC.mkRealSrcLoc tokenFileMark (GHC.srcSpanStartLine ss)  (GHC.srcSpanStartCol ss))
+                      (GHC.mkRealSrcLoc tokenFileMark (GHC.srcSpanEndLine ss)  (GHC.srcSpanEndCol ss))
+
+            _ -> error $ "markToken: expecting a real SrcSpan, got" ++ (GHC.showPpr l)
+
+
+-- |Does a token have the file mark in it
+isMarked :: PosToken -> Bool
+isMarked (GHC.L l _,_) = 
+  case l of
+    GHC.RealSrcSpan ss -> GHC.srcSpanFile ss == tokenFileMark
+    _                  -> False
+
+-- ---------------------------------------------------------------------
+
+reAlignMarked :: [PosToken] -> [PosToken]
+reAlignMarked toks = concatMap alignOne $ groupTokensByLine toks
+  where
+    alignOne toksl = unmarked ++ (reAlignToks marked)
+     where
+       (unmarked,marked) = break isMarked toksl
 
 -- ---------------------------------------------------------------------
 
@@ -426,7 +473,7 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan toks = (forest'',newSpan')
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
 
     prevToks = retrieveTokens tree
-    toks' = reAlignToks prevToks toks
+    toks' = reIndentToks prevToks toks
 
     newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
 
@@ -444,7 +491,7 @@ addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
     (_,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
     prevToks = retrieveTokens tree
 
-    toks'' = reAlignToks prevToks toks
+    toks'' = reIndentToks prevToks toks
 
     (startPos,endPos) = nonCommentSpan toks''
 
@@ -454,20 +501,20 @@ addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
 
 -- ---------------------------------------------------------------------
 
-reAlignToks :: [PosToken] -> [PosToken] -> [PosToken]
-reAlignToks prevToks toks = toks''
+reIndentToks :: [PosToken] -> [PosToken] -> [PosToken]
+reIndentToks prevToks toks = toks''
   where
     -- colStart = getIndentOffset prevToks (tokenPos $ glast "addToksAfterSrcSpan" prevToks)
-    colStart  = tokenCol $ ghead "reAlignToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
-    lineStart = (tokenRow (glast "reAlignToks" prevToks)) + 2
+    colStart  = tokenCol $ ghead "reIndentToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
+    lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 2
 
-    newTokStart = ghead "reAlignToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
+    newTokStart = ghead "reIndentToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
     -- lineOffset = lineStart - (tokenRow newTokStart)
-    lineOffset = lineStart - (tokenRow $ ghead "reAlignToks" toks)
+    lineOffset = lineStart - (tokenRow $ ghead "reIndentToks" toks)
     colOffset  = colStart  - (tokenCol newTokStart)
 
     toks' = addOffsetToToks (lineOffset,colOffset) toks
-    toks'' = toks' ++ [(newLinesToken 2 $ glast "reAlignToks" toks')]
+    toks'' = toks' ++ [(newLinesToken 2 $ glast "reIndentToks" toks')]
 
 -- ---------------------------------------------------------------------
 
@@ -1272,6 +1319,42 @@ newLinesToken jump (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
        in
          GHC.mkSrcSpan loc loc
      _ -> l
+
+-- ---------------------------------------------------------------------
+
+groupTokensByLine :: [PosToken] -> [[PosToken]]
+groupTokensByLine [] = []
+groupTokensByLine (xs) = let x = head xs
+                             (xs', xs'') = break (\x' -> tokenRow x /= tokenRow x') xs
+                      in case xs'' of
+                        [] -> [xs']
+                        _ ->  (xs'++ [ghead "groupTokensByLine" xs''])
+                                : groupTokensByLine (gtail "groupTokensByLine" xs'')
+
+
+-- ---------------------------------------------------------------------
+
+-- | Make sure all tokens have at least one space between them
+-- TODO: pretty sure this can be simplified
+reAlignToks :: [PosToken] -> [PosToken]
+reAlignToks [] = []
+reAlignToks [t] = [t]
+reAlignToks (tok1@((GHC.L l1 t1),s1):tok2@((GHC.L l2 t2),s2):ts)
+  = tok1:reAlignToks (tok2':ts)
+   where
+     ((sr1,sc1),(er1,ec1)) = (getGhcLoc l1,getGhcLocEnd l1)
+     ((sr2,sc2),(er2,ec2)) = (getGhcLoc l2,getGhcLocEnd l2)
+
+     ((sr,sc),(er,ec)) = if (er1 == sr2 && ec1 >= sc2)
+              then ((sr2,ec1+1),(er2,ec1+1 + tokenLen tok2))
+              else ((sr2,sc2),(er2,ec2))
+
+     fname = case l2 of
+               GHC.RealSrcSpan ss -> GHC.srcSpanFile ss
+               _ -> GHC.mkFastString "foo"
+     l2' = GHC.mkRealSrcSpan (GHC.mkRealSrcLoc fname sr sc)
+                             (GHC.mkRealSrcLoc fname er ec)
+     tok2' = ((GHC.L (GHC.RealSrcSpan l2') t2),s2)
 
 -- ---------------------------------------------------------------------
 

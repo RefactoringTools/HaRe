@@ -380,6 +380,55 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "replaceTok" $ do
+    it "Replaces a single tokens in a token stream" $ do
+      (t,toks) <- parsedFileCaseBGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just expr = locToExp (4,7) (4,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
+          (front,middle,_back) = splitToks ((4,1),(4,20)) toks
+      (showToks middle) `shouldBe`
+               "[(((4,1),(4,1)),ITvocurly,\"\"),"++
+               "(((4,1),(4,4)),ITvarid \"foo\",\"foo\"),"++
+               "(((4,5),(4,6)),ITvarid \"x\",\"x\"),"++
+               "(((4,7),(4,8)),ITequal,\"=\"),"++
+               "(((4,9),(4,11)),ITif,\"if\")," ++
+               "(((4,12),(4,13)),IToparen,\"(\")," ++
+               "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
+               "(((4,17),(4,18)),ITvarid \"x\",\"x\")," ++
+               "(((4,18),(4,19)),ITcparen,\")\")," ++
+               "(((4,20),(4,24)),ITthen,\"then\")]"
+
+      (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n foo x = if (odd x) then"
+
+      let (GHC.L l t,n) = head $ tail middle
+ 
+      let newTok = (GHC.L l t,"marimba")
+      (showToks [newTok]) `shouldBe` "[(((4,1),(4,4)),ITvarid \"foo\",\"marimba\")]"
+
+      let newToks = replaceTok middle (4,1) newTok
+      (showToks newToks) `shouldBe`
+               "[(((4,1),(4,1)),ITvocurly,\"\"),"++
+
+               -- "(((4,1),(4,4)),ITvarid \"foo\",\"foo\"),"++
+               "(((4,1),(4,4)),ITvarid \"foo\",\"marimba\"),"++ -- the new tok
+
+               "(((4,5),(4,6)),ITvarid \"x\",\"x\"),"++
+               "(((4,7),(4,8)),ITequal,\"=\"),"++
+               "(((4,9),(4,11)),ITif,\"if\")," ++
+               "(((4,12),(4,13)),IToparen,\"(\")," ++
+               "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
+               "(((4,17),(4,18)),ITvarid \"x\",\"x\")," ++
+               "(((4,18),(4,19)),ITcparen,\")\")," ++
+               "(((4,20),(4,24)),ITthen,\"then\")]"
+
+      -- Check for token marker
+      let (GHC.L l _,_) = head $ tail newToks
+      (GHC.showPpr l) `shouldBe` "HaRe:4:1-3"
+      
+
+  -- -------------------------------------------------------------------
+
   describe "deleteToks" $ do
     it "Deletes a set of tokens from a token stream" $ do
       (t,toks) <- parsedFileCaseBGhc
@@ -655,7 +704,7 @@ spec = do
       (GHC.showPpr l) `shouldBe` "DupDef.Dd1.toplevel";
       (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n  toplevel :: Integer -> Integer\n  toplevel x = c * x n1 n2\n\n  c , d :: Integer\n  c = 7\n  d = 9\n\n -- Pattern bind\n  tup :: ( Int , Int )\n  h :: Int\n  t :: Int\n  tup @ ( h , t ) = head $ zip [ 1 .. 10 ] [ 3 .. ff ]\n   where\n      ff :: Int\n      ff = 15\n\n   data D = A | B String | C\n\n  ff y = y + zz\n   where\n      zz = 1\n\n   l z =\n   let\n      ll = 34\n    in ll + z\n\n  dd q = do\n    let  ss = 5\n     return ( ss + q )\n\n  "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x  n1 n2\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 
 
 
@@ -669,6 +718,21 @@ spec = do
                  ]
       (showToks toks) `shouldBe` "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,1),(1,3)),ITsemi,\"v2\"),(((1,1),(1,3)),ITsemi,\"v3\")]"
       (showToks $ reAlignToks toks) `shouldBe` "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,4),(1,6)),ITsemi,\"v2\"),(((1,7),(1,9)),ITsemi,\"v3\")]"
+
+    it "spaces tokens out if they overlap, over multiple lines" $ do
+      let toks = [mkToken GHC.ITsemi (1,1) "v1"
+                 ,mkToken GHC.ITsemi (1,1) "v2"
+                 ,mkToken GHC.ITsemi (1,1) "v3"
+                 ,mkToken GHC.ITsemi (2,1) "v4"
+                 ,mkToken GHC.ITsemi (2,9) "v5"
+                 ]
+      (showToks toks) `shouldBe` 
+            "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,1),(1,3)),ITsemi,\"v2\"),(((1,1),(1,3)),ITsemi,\"v3\"),"++
+            "(((2,1),(2,3)),ITsemi,\"v4\"),(((2,9),(2,11)),ITsemi,\"v5\")]"
+
+      (showToks $ reAlignToks toks) `shouldBe` 
+            "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,4),(1,6)),ITsemi,\"v2\"),(((1,7),(1,9)),ITsemi,\"v3\"),"++
+            "(((2,1),(2,3)),ITsemi,\"v4\"),(((2,9),(2,11)),ITsemi,\"v5\")]"
 
   -- -------------------------------------------------------------------
 

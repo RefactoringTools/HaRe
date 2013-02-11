@@ -26,7 +26,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , lengthOfLastLine
                      , updateToks, updateToksWithPos, updateToksList
                      , getToks
-                     , replaceToks,deleteToks,doRmWhites -- ,doAddWhites
+                     , replaceToks,replaceTok,deleteToks,doRmWhites -- ,doAddWhites
                      , srcLocs
                      , getSrcSpan, getAllSrcLocs
                      -- , ghcSrcLocs -- Test version
@@ -45,16 +45,16 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      StartEndLoc, isArrow,-- swapInToks,
                      commentToks
                      -}
-                     , reAlignToks
+                     -- , reAlignToks
                      , tokenise
                      , lexStringToRichTokens
                      , prettyprint
                      , prettyprintPatList
-                     , groupTokensByLine
+                     -- , groupTokensByLine
                      , addLocInfo
                      -- , getIndentOffset
                      , getLineOffset
-                     , splitToks
+                     -- , splitToks
                      -- , splitOnNewLn
                      {-
                      , insertComments,
@@ -444,32 +444,10 @@ lexStringToRichTokens startLoc str = do
 
 -- ---------------------------------------------------------------------
 
-groupTokensByLine :: [PosToken] -> [[PosToken]]
-groupTokensByLine [] = []
-groupTokensByLine (xs) = let x = head xs
-                             (xs', xs'') = break (\x' -> tokenRow x /= tokenRow x') xs
-                      in case xs'' of
-                        [] -> [xs']
-                        _ ->  (xs'++ [ghead "groupTokensByLine" xs''])
-                                : groupTokensByLine (gtail "groupTokensByLine" xs'')
-                      -- in if xs''==[] then [xs']
-                      --     else (xs'++ [ghead "groupTokensByLine" xs''])
-                      --           : groupTokensByLine (gtail "groupTokensByLine" xs'')
-
-{- Old
-groupTokensByLine [] = []
-groupTokensByLine xs =let (xs', xs'') = break hasNewLn xs
-                      in if xs''==[] then [xs']
-                          else (xs'++ [ghead "groupTokensByLine" xs''])
-                                : groupTokensByLine (gtail "groupTokensByLine" xs'')
--}
-
--- ---------------------------------------------------------------------
-
 --Should add cases for literals.
-addLocInfo :: (GHC.LHsBind GHC.Name,[PosToken]) 
+addLocInfo :: (GHC.LHsBind GHC.Name,[PosToken])
            -> RefactGhc (GHC.LHsBind GHC.Name,[PosToken])
-addLocInfo (decl, toks) = return (decl, toks) 
+addLocInfo (decl, toks) = return (decl, toks)
   -- = error "undefined addLocInfo"
 {-++AZ++ Need to see it this is actually needed....
   --  = runStateT (applyTP (full_tdTP (idTP `adhocTP` inPnt
@@ -563,7 +541,7 @@ getToks (startPos,endPos) toks =
   -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks=" ++ (showToks toks) -- ++AZ++ debug
   let (_,toks2)        = break (\t -> tokenPos t >= startPos) toks
       (toks21,_toks22) = break (\t -> tokenPos t >  endPos) toks2
-  in 
+  in
     (toks21)   -- Should add error message for empty list?
     -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks21=" ++ (showToks toks21) -- ++AZ++ debug
 
@@ -594,9 +572,9 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
        toks <- fetchToks
 
        let (toks1, middle, toks2)  = splitToks (startPos, endPos) toks
-           astStr = (printFun newAST) 
+           astStr = (printFun newAST)
 
-       let startTok = if (emptyList middle) 
+       let startTok = if (emptyList middle)
                        then glast "updateToksWithPos" toks1
                        else ghead "UpdateToksWithPos" middle
        -- error $ "updateToks:astStr=[" ++ (show (astStr)) ++ "]" -- ++AZ++
@@ -708,35 +686,38 @@ replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
 replaceToks toks startPos endPos newToks =
  -- error $ "replaceToks: startPos=" ++ (show startPos)
     (if length toks22 == 0
-        then toks1 ++ newToks
+        then toks1 ++ newToks'
         else let {-(pos::(Int,Int)) = tokenPos (ghead "replaceToks" toks22)-} -- JULIEN
                  oldOffset = {-getOffset toks pos  -}  lengthOfLastLine (toks1++toks21) --JULIEN
-                 newOffset = {-getOffset (toks1++newToks++ toks22) pos -} lengthOfLastLine (toks1++newToks) -- JULIEN
-             in  toks1++ (newToks++toks22))  -- adjustLayout toks22 oldOffset newOffset) ) 
+                 newOffset = {-getOffset (toks1++newToks'++ toks22) pos -} lengthOfLastLine (toks1++newToks) -- JULIEN
+             in  toks1 ++ (newToks' ++ toks22))  -- adjustLayout toks22 oldOffset newOffset) ) 
    where
       (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
+      newToks' = map markToken newToks
 
 -- ---------------------------------------------------------------------
 
--- | Make sure all tokens have at least one space between them
--- TODO: pretty sure this can be simplified
-reAlignToks :: [PosToken] -> [PosToken]
-reAlignToks [] = []
-reAlignToks [t] = [t]
-reAlignToks (tok1@((GHC.L l1 t1),s1):tok2@((GHC.L l2 t2),s2):ts)
-  = tok1:reAlignToks (tok2':ts)
+-- |Replace a single token in the token stream by a new token, adjust
+-- the layout to the end of the current line as well. To use this
+-- function make sure the start position really exists in the token
+-- stream.
+-- Note: does not re-align, else other later replacements may fail.
+replaceTok::[PosToken]->SimpPos->PosToken->[PosToken]
+replaceTok toks pos newTok =
+    if length toksSameLine == 0 && length toksRest == 0
+        then toks1 ++ [newTok]
+        else let
+               -- newToks = toks1 ++ (reAlignToks (newTok:toksSameLine)) ++ toksRest
+               newToks = toks1 ++ (newTok':toksSameLine) ++ toksRest
+             in newToks
    where
-     (sr1,sc1) = getGhcLoc l1
-     (er1,ec1) = getGhcLocEnd l1
-     (sr2,sc2) = getGhcLoc l2
-     (er2,ec2) = getGhcLocEnd l2
-     ((sr,sc),(er,ec)) = if (er1 == sr2 && ec1 >= sc2)
-              then ((sr2,ec1+1),(er2,ec1+ec2-sc2+1))
-              else ((sr2,sc2),(er2,ec2))
-     fname = GHC.mkFastString "foo"
-     l2' = GHC.mkRealSrcSpan (GHC.mkRealSrcLoc fname sr sc)
-                             (GHC.mkRealSrcLoc fname er ec)
-     tok2' = ((GHC.L (GHC.RealSrcSpan l2') t2),s2)
+      (toks1,toks2) = break (\t -> tokenPos t >= pos && tokenLen t > 0) toks
+      (toksSameLine,toksRest) = if emptyList toks2
+         then error $ "replaceTok(" ++ show pos ++ "): token not in stream"
+         else break (newRowFound (head $ tail toks2))  (tail toks2)
+
+      newRowFound t1 t2 = tokenRow t1 /= tokenRow t2
+      newTok' = markToken newTok
 
 -- ---------------------------------------------------------------------
 
