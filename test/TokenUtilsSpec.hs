@@ -490,7 +490,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l toks'
+      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l 0 toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
@@ -520,7 +520,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addToksAfterSrcSpan forest' l toks'
+      let (forest'',sspan) = addToksAfterSrcSpan forest' l 0 toks'
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
@@ -657,7 +657,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l toks'
+      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l 0 toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++

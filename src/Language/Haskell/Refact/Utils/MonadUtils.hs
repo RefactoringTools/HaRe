@@ -122,36 +122,36 @@ putToksForPos pos toks = do
   put $ st { rsModule = rsModule' }
 
 -- |Add tokens after a designated GHC.SrcSpan
-putToksAfterSpan :: GHC.SrcSpan -> [PosToken] -> RefactGhc GHC.SrcSpan
-putToksAfterSpan oldSpan toks = do
+putToksAfterSpan :: GHC.SrcSpan -> Int -> [PosToken] -> RefactGhc GHC.SrcSpan
+putToksAfterSpan oldSpan colIndent toks = do
   liftIO $ putStrLn $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan)
   st <- get
   let Just tm = rsModule st
-  let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) oldSpan toks
+  let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) oldSpan colIndent toks
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan
-putToksAfterPos :: (SimpPos,SimpPos) -> [PosToken] -> RefactGhc GHC.SrcSpan
-putToksAfterPos pos toks = do
+putToksAfterPos :: (SimpPos,SimpPos) -> Int -> [PosToken] -> RefactGhc GHC.SrcSpan
+putToksAfterPos pos colIndent toks = do
   liftIO $ putStrLn $ "putToksAfterPos " ++ (show pos)
   st <- get
   let Just tm = rsModule st
   let sspan = posToSrcSpan (rsTokenCache tm) pos
-  let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) sspan toks
+  let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) sspan colIndent toks
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST
 -- fragment to reflect it
-putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> [PosToken] -> RefactGhc (GHC.Located t)
-putDeclToksAfterSpan oldSpan t toks = do
+putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Int -> [PosToken] -> RefactGhc (GHC.Located t)
+putDeclToksAfterSpan oldSpan t colIndent toks = do
   liftIO $ putStrLn $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan)
   st <- get
   let Just tm = rsModule st
-  let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) oldSpan toks
+  let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) oldSpan colIndent toks
   let (t',forest'') = syncAST t newSpan forest'
   let rsModule' = Just (tm {rsTokenCache = forest'', rsStreamModified = True})
   put $ st { rsModule = rsModule' }

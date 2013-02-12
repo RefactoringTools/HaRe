@@ -460,11 +460,12 @@ addNewSrcSpanAndToksAfter ::
   Tree Entry -- ^The forest to update
   -> GHC.SrcSpan -- ^The new span comes after this one
   -> GHC.SrcSpan -- ^Existing span for the tokens
+  -> Int         -- ^Indent relative to the previous tokens
   -> [PosToken]  -- ^The new tokens belonging to the new SrcSpan
   -> (Tree Entry -- ^Updated forest with the new span
      , GHC.SrcSpan) -- ^Unique SrcSpan allocated in the forest to
                     -- identify this span in its position
-addNewSrcSpanAndToksAfter forest oldSpan newSpan toks = (forest'',newSpan')
+addNewSrcSpanAndToksAfter forest oldSpan newSpan colIndent toks = (forest'',newSpan')
   where
     (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
 
@@ -473,7 +474,7 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan toks = (forest'',newSpan')
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
 
     prevToks = retrieveTokens tree
-    toks' = reIndentToks prevToks toks
+    toks' = reIndentToks colIndent prevToks toks
 
     newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
 
@@ -484,34 +485,33 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan toks = (forest'',newSpan')
 -- |Add new tokens after the given SrcSpan, constructing a new SrcSpan
 -- in the process
 addToksAfterSrcSpan ::
-  Tree Entry -> GHC.SrcSpan -> [PosToken]
+  Tree Entry -> GHC.SrcSpan -> Int -> [PosToken]
   -> (Tree Entry, GHC.SrcSpan)
-addToksAfterSrcSpan forest oldSpan toks = (forest',newSpan')
+addToksAfterSrcSpan forest oldSpan colIndent toks = (forest',newSpan')
   where
     (_,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
     prevToks = retrieveTokens tree
 
-    toks'' = reIndentToks prevToks toks
+    toks'' = reIndentToks colIndent prevToks toks
 
     (startPos,endPos) = nonCommentSpan toks''
 
     newSpan = posToSrcSpan forest (startPos,endPos)
-    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan toks''
+    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan 0 toks''
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show ((lineOffset,lineStart,tokenRow $ head toks,tokenRow $ head toks'',tokenRow newTokStart,colOffset))),oldSpan)
 
 -- ---------------------------------------------------------------------
 
-reIndentToks :: [PosToken] -> [PosToken] -> [PosToken]
-reIndentToks prevToks toks = toks''
+reIndentToks :: Int -> [PosToken] -> [PosToken] -> [PosToken]
+reIndentToks colIndent prevToks toks = toks''
   where
-    -- colStart = getIndentOffset prevToks (tokenPos $ glast "addToksAfterSrcSpan" prevToks)
     colStart  = tokenCol $ ghead "reIndentToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
     lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 2
 
     newTokStart = ghead "reIndentToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
-    -- lineOffset = lineStart - (tokenRow newTokStart)
-    lineOffset = lineStart - (tokenRow $ ghead "reIndentToks" toks)
-    colOffset  = colStart  - (tokenCol newTokStart)
+
+    lineOffset =            lineStart - (tokenRow $ ghead "reIndentToks" toks)
+    colOffset  = colIndent + colStart  - (tokenCol newTokStart)
 
     toks' = addOffsetToToks (lineOffset,colOffset) toks
     toks'' = toks' ++ [(newLinesToken 2 $ glast "reIndentToks" toks')]
