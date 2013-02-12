@@ -1415,7 +1415,8 @@ spec = do
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
       (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1 hiding (n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
-    it "Add a hiding entry to the imports with an existing hiding" $ do
+
+    it "Adds a hiding entry to the imports with an existing hiding" $ do
       let
         comp = do
 

@@ -340,7 +340,7 @@ getSrcSpanFor forest sspan = (forest',tree)
     forest' = insertSrcSpan forest sspan -- Will NO-OP if already there
     tree = case (lookupSrcSpan [forest'] sspan) of
              [x] -> x
-             xx  -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show xx)
+             xx  -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show xx) ++ " for " ++ (drawTreeEntry forest)
 
 -- ---------------------------------------------------------------------
 -- |Retrieve a path to the tree containing a SrcSpan from the forest,
@@ -641,7 +641,7 @@ splitForestOnSpan forest sspan = (beginTrees,middleTrees,endTrees)
     (beginTrees,rest)      = break (\t -> not $ inBeginTrees t) forest
     (middleTrees,endTrees) = break (\t ->       inEndTrees t) rest
 
-    inBeginTrees tree = spanStart > treeEnd
+    inBeginTrees tree = spanStart >= treeEnd
       where
         (treeStart,treeEnd) = treeStartEnd tree
 

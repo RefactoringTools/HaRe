@@ -197,6 +197,30 @@ spec = do
       -- (show $ map treeStartEnd r) `shouldBe` "[((19,1),(21,14))]"
       (showForestSpan $ treeStartEnd r) `shouldBe` "((19,1),(21,14))"
 
+    -- -----------------------
+
+    it "looks up a SrcSpan with no gap before prior one" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/DupDef/Dd3.hs"
+
+      let forest = mkTreeFromTokens toks
+
+      let (GHC.L l _,_) = head $ drop 9 toks
+
+      (GHC.showPpr l) `shouldBe` "test/testdata/DupDef/Dd3.hs:3:29"
+      (showSrcSpan l) `shouldBe` "((3,29),(3,30))"
+
+      let forest' = insertSrcSpan forest (fs l)
+      (invariant forest') `shouldBe` []
+      (drawTreeEntry forest') `shouldBe`
+          "((1,1),(8,7))\n|\n"++
+          "+- ((1,1),(3,29))\n|\n"++
+          "+- ((3,29),(3,30))\n|\n"++
+          "`- ((6,1),(8,7))\n"
+
+      let subtrees = lookupSrcSpan [forest'] (fs l)
+      (map showForestSpan $ map treeStartEnd subtrees)
+           `shouldBe` ["((3,29),(3,30))"]
+
 
   -- ---------------------------------------------
 
