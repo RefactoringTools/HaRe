@@ -25,7 +25,7 @@ import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadUtils
+import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils

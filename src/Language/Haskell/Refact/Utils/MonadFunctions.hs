@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Language.Haskell.Refact.Utils.MonadUtils
+module Language.Haskell.Refact.Utils.MonadFunctions
        ( 
          initRefactModule
 
@@ -48,7 +48,7 @@ import qualified GhcMonad      as GHC
 import qualified GHC.Paths     as GHC
 import qualified HsSyn         as GHC
 import qualified Module        as GHC
-import qualified MonadUtils    as GHC
+-- import qualified MonadUtils    as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC

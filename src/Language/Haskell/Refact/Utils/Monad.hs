@@ -162,7 +162,7 @@ getRefacSettings = do
   return (rsSettings s)
 
 -- ---------------------------------------------------------------------
-{- ++AZ++ moved to MonadUtils, to break import cycle
+{- ++AZ++ moved to MonadFunctions, to break import cycle
 
 
 fetchToks :: RefactGhc [PosToken]
@@ -251,7 +251,7 @@ clearRefactDone = do
   st <- get
   put $ st { rsFlags = RefFlags False }
 
-++AZ++ end of move to MonadUtils -}
+++AZ++ end of move to MonadFunctions -}
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ trying to wrap this in GhcT, or vice versa
