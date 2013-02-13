@@ -24,7 +24,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      lastNonSpaceToken,firstNonSpaceToken -} ,compressPreNewLns,compressEndNewLns
 
                      , lengthOfLastLine
-                     , updateToks, updateToksWithPos, updateToksList
+                     , updateToks, updateToksWithPos
                      , getToks
                      , replaceToks,replaceTok,deleteToks,doRmWhites -- ,doAddWhites
                      , srcLocs
@@ -47,6 +47,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -}
                      -- , reAlignToks
                      , tokenise
+                     , basicTokenise
                      , lexStringToRichTokens
                      , prettyprint
                      , prettyprintPatList
@@ -388,7 +389,7 @@ replaceTabBySpaces (s:ss)
 -- required
 -- TODO: replace 'colOffset withFirstLineIndent' with a Maybe Int ++AZ++
 tokenise :: GHC.RealSrcLoc -> Int -> Bool -> String -> IO [PosToken]
-tokenise  startPos _ _ [] = return []
+tokenise  _ _ _ [] = return []
 tokenise  startPos colOffset withFirstLineIndent str
   = let str' = case lines str of
                     (ln:[]) -> addIndent ln ++ if glast "tokenise" str=='\n' then "\n" else ""
@@ -405,24 +406,17 @@ tokenise  startPos colOffset withFirstLineIndent str
      addIndent ln = if withFirstLineIndent
                       then replicate colOffset ' '++ ln
                       else ln
-
-     {- ++AZ++ removed for now. Needed? NOPE
-     --preprocssing the token stream to expand the white spaces to individual tokens.
-     expandNewLnTokens::[PosToken]->[PosToken]
-     expandNewLnTokens ts = concatMap expand ts
-       where
-        expand tok@(Whitespace,(pos,s)) = doExpanding pos s
-        expand x = [x]
-
-        doExpanding pos [] =[]
-        doExpanding pos@(Pos c row col) (t:ts)
-          = case t of
-             '\n'  -> (Whitespace, (pos,[t])):(doExpanding (Pos c (row+1) 1) ts)
-             _     -> (Whitespace, (pos,[t])):(doExpanding (Pos c row (col+1)) ts)
-     -}
-
+ 
 -- ---------------------------------------------------------------------
 
+-- |Convert a string into a set of Haskell tokens. It has default
+-- position and offset, since it will be stitched into place in TokenUtils
+basicTokenise :: String -> IO [PosToken]
+basicTokenise str = tokenise startPos 0 False str
+  where
+    startPos = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 1)
+
+-- ---------------------------------------------------------------------
 
 lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
 lexStringToRichTokens startLoc str = do
@@ -432,13 +426,13 @@ lexStringToRichTokens startLoc str = do
       dflags <- GHC.getSessionDynFlags
       let dflags' = foldl GHC.xopt_set dflags
                     [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-      GHC.setSessionDynFlags dflags'
+      _ <- GHC.setSessionDynFlags dflags'
 
       -- lexTokenStream :: StringBuffer -> RealSrcLoc -> DynFlags -> ParseResult [Located Token]
       let res = GHC.lexTokenStream (GHC.stringToStringBuffer str) startLoc dflags'
       case res of
         GHC.POk _ toks -> return $ GHC.addSourceToTokens startLoc (GHC.stringToStringBuffer str) toks 
-        GHC.PFailed _srcSpan msg -> error $ "lexStringToRichTokens:" -- ++ (show $ GHC.ppr msg)
+        GHC.PFailed _srcSpan _msg -> error $ "lexStringToRichTokens:" -- ++ (show $ GHC.ppr msg)
 
         -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
 
@@ -569,61 +563,21 @@ updateToksWithPos :: (SYB.Data t)
 updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
   = do
        -- error $ show (startPos, endPos) -- ++AZ++
+       {-
        toks <- fetchToks
 
-       let (toks1, middle, toks2)  = splitToks (startPos, endPos) toks
+       let (toks1, middle, _toks2)  = splitToks (startPos, endPos) toks
            astStr = (printFun newAST)
 
        let startTok = if (emptyList middle)
                        then glast "updateToksWithPos" toks1
                        else ghead "UpdateToksWithPos" middle
-       -- error $ "updateToks:astStr=[" ++ (show (astStr)) ++ "]" -- ++AZ++
-       -- error $ "updateToks:(head toks2,(tokenRow (head toks2), tokenRow (head newToks))
-       -- newToks <- liftIO $ tokenise (realSrcLocEndTok $ glast "Update Toks" toks1) 1 True astStr
        newToks <- liftIO $ tokenise (realSrcLocEndTok startTok) 1 True astStr
-
-       {-
-       let nlt1 = newLnToken (glast "updateToks 3" newToks)
-           nlt2 = newLnToken nlt1
-       let newToks' = if (addTrailingNl && tokenRow (ghead "updateToks 1" toks2) <= tokenRow (glast "updateToks 2" newToks))
-                       then newToks ++ [nlt1,nlt2]
-                       else newToks
-       let toks' = toks1 ++ newToks' ++ toks2
-       putToks toks' modified
        -}
+       newToks <- liftIO $ basicTokenise (printFun newAST)
        putToksForPos (startPos,endPos) newToks
 
        return ()
-
--- ---------------------------------------------------------------------
-
-updateToksList :: (SYB.Data t)
-  => GHC.GenLocated GHC.SrcSpan t -- ^ Old element
-  -> GHC.GenLocated GHC.SrcSpan t -- ^ New element
-  -> (GHC.GenLocated GHC.SrcSpan t -> [Char]) -- ^ pretty printer
-  -> RefactGhc (GHC.GenLocated GHC.SrcSpan t, [PosToken]) -- ^ Updated element and toks
-  -- -> RefactGhc () -- ^ Updates the RefactState
-updateToksList oldAST newAST printFun
-   = trace "updateToksList" $
-     do -- (RefSt s u toks _) <- get
-        toks <- fetchToks
-        let offset                        = lengthOfLastLine toks1
-            (toks1,toks2az, toks3az)      = splitToks (startPos, endPos) toks
-            (startPos, endPos)            = getStartEndLoc2 toks [oldAST]
-        newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) offset False $ printFun newAST  -- TODO: set filename as per loc in oldAST
-        -- error (GHC.showRichTokenStream newToks)
-        -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks newToks))
-        -- error ("updateToksList:" ++ (showToks toks1) ++ "\n" ++ (showToks toks2az) ++ "\n" ++ (showToks toks3az))
-        -- error ("updateToksList:" ++ (showToks newToks))
-
-        {-
-        let
-            toks' = replaceToks toks startPos endPos newToks
-        putToks toks' modified
-        -}
-        putToksForPos (startPos,endPos) newToks
-
-        return (newAST, newToks)
 
 -- ---------------------------------------------------------------------
 

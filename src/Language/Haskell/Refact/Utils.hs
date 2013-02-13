@@ -359,6 +359,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
           | sameOccurrence e oldExp
                = do _ <- updateToks oldExp newExp prettyprint False
                 -- error "update: updated tokens" -- ++AZ++ debug
+                    -- TODO: make sure to call syncAST
                     return newExp
           | otherwise = return e
 
@@ -368,7 +369,8 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t
         where
           inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
-                = do _ <- {- zipUpdateToks -} updateToks oldPat newPat prettyprint False
+                = do _ <- updateToks oldPat newPat prettyprint False
+                     -- TODO: make sure to call syncAST
                      return newPat
             | otherwise = return p
 
@@ -378,7 +380,8 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n
         where
           inTyp (t::GHC.LHsType n)
             | sameOccurrence t oldTy
-                = do _ <- {- zipUpdateToks -} updateToks oldTy newTy prettyprint False
+                = do _ <- updateToks oldTy newTy prettyprint False
+                     -- TODO: make sure to call syncAST
                      return newTy
             | otherwise = return t
             
@@ -388,7 +391,8 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1,
           where
             inBind (t::GHC.LHsBindLR n1 n2)
               | sameOccurrence t oldBind
-                  = do _ <- {- zipUpdateToks -} updateToks oldBind newBind prettyprint False
+                  = do _ <- updateToks oldBind newBind prettyprint False
+                       -- TODO: make sure to call syncAST
                        return newBind
               | otherwise = return t
 
@@ -402,12 +406,15 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1,
                      return newPat
             | otherwise = return p -}
 
+{-
 zipUpdateToks f [] [] c = return []
 zipUpdateToks f [] _ _  = return []
 zipUpdateToks f _ [] _  = return []
 zipUpdateToks f (a:as) (b:bs) c = do res <- f a b c 
                                      rest <- zipUpdateToks f as bs c  
                                      return (res:rest)
+-}
+
 -- ---------------------------------------------------------------------
 -- TODO: ++AZ++ get rid of the following instances, merge them into a
 -- single function above

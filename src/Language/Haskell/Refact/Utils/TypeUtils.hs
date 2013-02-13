@@ -2618,7 +2618,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                             then getSrcSpan (last decls1)
                             else getSrcSpan (head decls2)
 
-         decl' <- putDeclToksAfterSpan sspan decl 0 newToks
+         decl' <- putDeclToksAfterSpan sspan decl 0 0 newToks
 
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
@@ -2654,7 +2654,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
     = do let binds = hsValBinds parent
          newToks <- makeNewToks (decl,maybeSig,declToks)
          let Just sspan = getSrcSpan $ head after
-         decl' <- putDeclToksAfterSpan sspan decl 0 newToks
+         decl' <- putDeclToksAfterSpan sspan decl 0 0 newToks
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
@@ -2674,8 +2674,15 @@ addDecl parent pn (decl, msig, declToks) topLevel
     =do
 
         let binds = hsValBinds parent
-        toks <- fetchToks
-        let (startPos@(_,_startCol),endPos'@(endRow',_))  --endPos' does not include the following newline or comment.
+
+        let (startLoc,endLoc) 
+             = if (emptyList localDecls)
+                 then getStartEndLoc parent
+                 else getStartEndLoc localDecls
+        -- toks <- fetchToks
+
+        {-
+        let (startPos@(_,_startCol),endPos'@(_endRow',_))  --endPos' does not include the following newline or comment.
               =if (emptyList localDecls)
                    then startEndLocIncFowComment toks parent    --The 'where' clause is empty
                    else startEndLocIncFowComment toks localDecls
@@ -2695,20 +2702,30 @@ addDecl parent pn (decl, msig, declToks) topLevel
             offset = if (emptyList localDecls)
                         then (getIndentOffset toks endPos') + 4
                         else getIndentOffset toks endPos'
-            indent = if (emptyList localDecls) then 4 else 0
+
             nlToken = newLnToken (ghead "addLocalDecl2" toks1)
+        -}
+        -- newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
+        --                   $ if needNewLn then newSource++"\n" else newSource++"\n"
 
-        newToks <- liftIO $ tokenise (realSrcLocFromTok $ nlToken) offset True
-                          $ if needNewLn then newSource++"\n" else newSource++"\n"
-
+        newToks <- liftIO $ basicTokenise newSource
+        -- error $ "TypeUtils.addLocalDecl:newToks=" ++ (showToks newToks) -- ++AZ++
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
-
+        
+        {-
         let nlToken2 = newLnToken (glast "addLocalDecl5" newToks)
         let oldToks'=getToks (startPos,endPos') toks
             toks'=replaceToks toks startPos endPos' (oldToks'++newToks++[nlToken2,newLnToken nlToken2])
+        -}
+
+        let colIndent = if (emptyList localDecls) then 4 else 0
+            rowIndent = (-1)
 
         -- putToks toks' modified
-        putToksAfterPos (startPos,endPos') indent (newToks++[nlToken2,newLnToken nlToken2])
+        -- putToksAfterPos (startPos,endPos') indent (newToks++[nlToken2,newLnToken nlToken2])
+        -- _ <- putToksAfterPos (startPos,endPos') indent newToks
+        _ <- putToksAfterPos (startLoc,endLoc) rowIndent colIndent newToks
+
 
         case maybeSig of
            Nothing  -> return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
@@ -2721,15 +2738,9 @@ addDecl parent pn (decl, msig, declToks) topLevel
          newSource  = if (emptyList localDecls)
                        then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
                        else ("" ++ newFun'++"\n")
-                       {-
-                       then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
-                       -- else (" " ++ newFun'++"\n")
-                       else concatMap (\l-> " " ++l++"\n") (lines newFun')
-                       -}
            where
             newFun' = sigStr ++ newFunBody
             newFunBody = case newFunToks of
-                           -- Just ts -> concatMap tokenCon ts
                            Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
                            Nothing -> prettyprint newFun
 

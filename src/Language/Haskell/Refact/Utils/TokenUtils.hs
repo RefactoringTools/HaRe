@@ -88,6 +88,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , newLinesToken
        , groupTokensByLine
        , reAlignToks
+       , reSequenceToks
        ) where
 
 import qualified BasicTypes    as GHC
@@ -222,10 +223,10 @@ data ForestLine = ForestLine
 
 -- | Extract an encoded ForestLine from a GHC line
 ghcLineToForestLine :: Int -> ForestLine
-ghcLineToForestLine line = ForestLine v l
+ghcLineToForestLine l = ForestLine v l'
   where
-    l = mod line forestConstant
-    v = div line forestConstant
+    l' = mod l forestConstant
+    v = div l forestConstant
 
 forestLineToGhcLine :: ForestLine -> Int
 forestLineToGhcLine fl = ((flInsertVersion fl) * forestConstant) + (flLine fl)
@@ -416,6 +417,7 @@ retrieveTokens forest = reAlignMarked $ concat $ map (\t -> F.foldl accum [] t) 
 
 -- |Used as a marker in the filename part of the SrcSpan on modified
 -- tokens, to trigger re-alignment when retrieving the tokens.
+tokenFileMark :: GHC.FastString
 tokenFileMark = GHC.mkFastString "HaRe"
 
 -- |Mark a token so that it can be use to trigger layout checking
@@ -437,7 +439,7 @@ markToken tok = tok'
 
 -- |Does a token have the file mark in it
 isMarked :: PosToken -> Bool
-isMarked (GHC.L l _,_) = 
+isMarked (GHC.L l _,_) =
   case l of
     GHC.RealSrcSpan ss -> GHC.srcSpanFile ss == tokenFileMark
     _                  -> False
@@ -460,21 +462,22 @@ addNewSrcSpanAndToksAfter ::
   Tree Entry -- ^The forest to update
   -> GHC.SrcSpan -- ^The new span comes after this one
   -> GHC.SrcSpan -- ^Existing span for the tokens
+  -> Int         -- ^Indent relative to the previous line
   -> Int         -- ^Indent relative to the previous tokens
   -> [PosToken]  -- ^The new tokens belonging to the new SrcSpan
   -> (Tree Entry -- ^Updated forest with the new span
      , GHC.SrcSpan) -- ^Unique SrcSpan allocated in the forest to
                     -- identify this span in its position
-addNewSrcSpanAndToksAfter forest oldSpan newSpan colIndent toks = (forest'',newSpan')
+addNewSrcSpanAndToksAfter forest oldSpan newSpan rowIndent colIndent toks = (forest'',newSpan')
   where
     (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
 
-    (ghcl,c) = getGhcLoc newSpan
+    (ghcl,_c) = getGhcLoc newSpan
     (ForestLine v l) = ghcLineToForestLine ghcl
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
 
     prevToks = retrieveTokens tree
-    toks' = reIndentToks colIndent prevToks toks
+    toks' = reIndentToks rowIndent colIndent prevToks toks
 
     newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
 
@@ -485,35 +488,36 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan colIndent toks = (forest'',newS
 -- |Add new tokens after the given SrcSpan, constructing a new SrcSpan
 -- in the process
 addToksAfterSrcSpan ::
-  Tree Entry -> GHC.SrcSpan -> Int -> [PosToken]
+  Tree Entry -> GHC.SrcSpan -> Int -> Int -> [PosToken]
   -> (Tree Entry, GHC.SrcSpan)
-addToksAfterSrcSpan forest oldSpan colIndent toks = (forest',newSpan')
+addToksAfterSrcSpan forest oldSpan rowIndent colIndent toks = (forest',newSpan')
   where
     (_,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
     prevToks = retrieveTokens tree
 
-    toks'' = reIndentToks colIndent prevToks toks
+    toks'' = reIndentToks rowIndent colIndent prevToks toks
 
     (startPos,endPos) = nonCommentSpan toks''
 
     newSpan = posToSrcSpan forest (startPos,endPos)
-    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan 0 toks''
+    -- TODO: expensive reIndentToks being done twice now
+    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan rowIndent colIndent toks''
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show ((lineOffset,lineStart,tokenRow $ head toks,tokenRow $ head toks'',tokenRow newTokStart,colOffset))),oldSpan)
 
 -- ---------------------------------------------------------------------
 
-reIndentToks :: Int -> [PosToken] -> [PosToken] -> [PosToken]
-reIndentToks colIndent prevToks toks = toks''
+reIndentToks :: Int -> Int -> [PosToken] -> [PosToken] -> [PosToken]
+reIndentToks rowIndent colIndent prevToks toks = toks''
   where
     colStart  = tokenCol $ ghead "reIndentToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
     lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 2
 
     newTokStart = ghead "reIndentToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
 
-    lineOffset =            lineStart - (tokenRow $ ghead "reIndentToks" toks)
+    lineOffset = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
     colOffset  = colIndent + colStart  - (tokenCol newTokStart)
 
-    toks' = addOffsetToToks (lineOffset,colOffset) toks
+    toks'  = addOffsetToToks (lineOffset,colOffset) toks
     toks'' = toks' ++ [(newLinesToken 2 $ glast "reIndentToks" toks')]
 
 -- ---------------------------------------------------------------------
@@ -536,7 +540,7 @@ nonCommentSpan toks = (startPos,endPos)
 posToSrcSpan :: Tree Entry -> (SimpPos,SimpPos) -> GHC.SrcSpan
 posToSrcSpan forest ((rs,cs),(re,ce)) = sspan
   where
-    tok@(GHC.L l _,_) = ghead "posToSrcSpan"  $ retrieveTokens forest -- ++AZ++ Ouch, performance??
+    (GHC.L l _,_) = ghead "posToSrcSpan"  $ retrieveTokens forest -- ++AZ++ Ouch, performance??
     sspan =  case l of
       GHC.RealSrcSpan ss ->
         let
@@ -616,7 +620,7 @@ openZipperToSpan sspan z
             [] -> z -- Not in subtree, this is as good as it gets
             [x] -> -- exactly one, drill down
                    openZipperToSpan sspan x
-            xs -> z -- Multiple, this is the spot
+            _xs -> z -- Multiple, this is the spot
 
           contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
             where
@@ -643,11 +647,11 @@ splitForestOnSpan forest sspan = (beginTrees,middleTrees,endTrees)
 
     inBeginTrees tree = spanStart >= treeEnd
       where
-        (treeStart,treeEnd) = treeStartEnd tree
+        (_treeStart,treeEnd) = treeStartEnd tree
 
     inEndTrees tree = spanEnd <= treeStart
       where
-        (treeStart,treeEnd) = treeStartEnd tree
+        (treeStart,_treeEnd) = treeStartEnd tree
 
 
 
@@ -1355,6 +1359,13 @@ reAlignToks (tok1@((GHC.L l1 t1),s1):tok2@((GHC.L l2 t2),s2):ts)
      l2' = GHC.mkRealSrcSpan (GHC.mkRealSrcLoc fname sr sc)
                              (GHC.mkRealSrcLoc fname er ec)
      tok2' = ((GHC.L (GHC.RealSrcSpan l2') t2),s2)
+
+-- ---------------------------------------------------------------------
+
+-- |Adjust token stream to cater for changes in token length due to
+-- token renaming
+reSequenceToks :: [PosToken] -> [PosToken]
+reSequenceToks toks = toks
 
 -- ---------------------------------------------------------------------
 
