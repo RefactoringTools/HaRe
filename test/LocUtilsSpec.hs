@@ -46,7 +46,6 @@ spec = do
       let declsr = hsBinds renamed
 
       let decls = filter isFunOrPatBindR declsr
-
       let decl = head $ drop 4 decls
       let (startPos,endPos) = startEndLocIncComments toks decl
 
@@ -80,7 +79,7 @@ spec = do
 
 
       (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
-      (show   (startPos,endPos)) `shouldBe` "((20,1),(24,73))"
+      (show   (startPos,endPos)) `shouldBe` "((20,1),(22,18))"
 
     -- -----------------------------------------------------------------
 
@@ -229,11 +228,11 @@ spec = do
 
 
       (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
-      (show   (startPos,endPos)) `shouldBe` "((21,1),(24,73))"
+      (show   (startPos,endPos)) `shouldBe` "((21,1),(22,18))"
 
     -- -----------------------------------------------------------------
 
-    it "get start&end loc, including trailing comments, but not next from next decl" $ do
+    it "get start&end loc, including trailing comments, but not next from next decl 1" $ do
       (t, toks) <- parsedFileDemoteGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -267,6 +266,65 @@ spec = do
       (show $ getStartEndLoc decl) `shouldBe` "((4,1),(4,19))"
       (show   (startPos,endPos)) `shouldBe` "((4,1),(4,19))"
 
+    -- -----------------------------------------------------------------
+
+    it "get start&end loc, including trailing comments, but not next from next decl 2" $ do
+      (t, toks) <- parsedFileTokenTestGhc
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head $ tail decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
+      (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
+
+      let (startPos,endPos) = startEndLocIncFowComment toks decl
+
+      (GHC.showPpr decls) `shouldBe` "[TokenTest.foo x y\n   = do { c <- System.IO.getChar;\n          GHC.Base.return c },\n TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar,\n TokenTest.bib a b\n   = x\n   where\n       x = 3,\n TokenTest.bob a b\n   = x\n   where\n       x = 3]"
+      (GHC.showPpr decl) `shouldBe` "TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar"
+
+      (showToks $ getToks ((13,1),(19,1)) toks) `shouldBe` 
+             ("[(((13,1),(13,1)),ITvccurly,\"\"),"++
+              "(((13,1),(13,1)),ITsemi,\"\"),"++
+              "(((13,1),(13,4)),ITvarid \"bab\",\"bab\"),"++
+              "(((13,5),(13,6)),ITvarid \"a\",\"a\"),"++
+              "(((13,7),(13,8)),ITvarid \"b\",\"b\"),"++
+              "(((13,9),(13,10)),ITequal,\"=\"),"++
+              "(((14,3),(14,6)),ITlet,\"let\"),"++
+              "(((14,7),(14,7)),ITvocurly,\"\"),"++
+              "(((14,7),(14,10)),ITvarid \"bar\",\"bar\"),"++
+              "(((14,11),(14,12)),ITequal,\"=\"),"++
+              "(((14,13),(14,14)),ITinteger 3,\"3\"),"++
+              "(((15,3),(15,3)),ITvccurly,\"\"),"++
+              "(((15,3),(15,5)),ITin,\"in\"),"++
+              "(((15,10),(15,11)),ITvarid \"b\",\"b\"),"++
+              "(((15,12),(15,13)),ITvarsym \"+\",\"+\"),"++
+              "(((15,14),(15,17)),ITvarid \"bar\",\"bar\"),"++
+              "(((15,18),(15,38)),ITlineComment \"-- ^trailing comment\",\"-- ^trailing comment\"),"++
+              "(((18,1),(18,19)),ITlineComment \"-- leading comment\",\"-- leading comment\"),"++
+              "(((19,1),(19,1)),ITsemi,\"\"),(((19,1),(19,4)),ITvarid \"foo\",\"foo\")]")
+
+
+      (show $ getStartEndLoc decl) `shouldBe` "((13,1),(15,17))"
+      (show   (startPos,endPos)) `shouldBe` "((13,1),(15,38))"
+
+  -- -------------------------------------------------------------------
+
+  describe "divideComments" $ do
+    it "divides tokens falling between two declarations" $ do
+      (t, toks) <- parsedFileTokenTestGhc
+
+      let commentToks = getToks ((15,18),(18,19)) toks
+      let (first,second) = divideComments 15 19 commentToks
+
+      (showToks $ getToks ((15,14),(19,1)) toks) `shouldBe` 
+             ("[(((15,14),(15,17)),ITvarid \"bar\",\"bar\"),"++
+              "(((15,18),(15,38)),ITlineComment \"-- ^trailing comment\",\"-- ^trailing comment\"),"++
+              "(((18,1),(18,19)),ITlineComment \"-- leading comment\",\"-- leading comment\"),"++
+              "(((19,1),(19,1)),ITsemi,\"\"),(((19,1),(19,4)),ITvarid \"foo\",\"foo\")]")
+
+      (showToks first) `shouldBe` "[(((15,18),(15,38)),ITlineComment \"-- ^trailing comment\",\"-- ^trailing comment\")]"
+      (showToks second) `shouldBe` "[(((18,1),(18,19)),ITlineComment \"-- leading comment\",\"-- leading comment\")]"
+             
   -- -------------------------------------------------------------------
 
   describe "tokenise" $ do

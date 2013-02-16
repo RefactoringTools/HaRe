@@ -2629,7 +2629,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                             then getSrcSpan (last decls1)
                             else getSrcSpan (head decls2)
 
-         decl' <- putDeclToksAfterSpan sspan decl 0 0 newToks
+         decl' <- putDeclToksAfterSpan sspan decl 1 0 newToks
 
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
@@ -2665,7 +2665,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
     = do let binds = hsValBinds parent
          newToks <- makeNewToks (decl,maybeSig,declToks)
          let Just sspan = getSrcSpan $ head after
-         decl' <- putDeclToksAfterSpan sspan decl 0 0 newToks
+         decl' <- putDeclToksAfterSpan sspan decl 1 0 newToks
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
@@ -2730,7 +2730,8 @@ addDecl parent pn (decl, msig, declToks) topLevel
         -}
 
         let colIndent = if (emptyList localDecls) then 4 else 0
-            rowIndent = (-1)
+            -- rowIndent = (-1)
+            rowIndent = 0
 
         -- putToks toks' modified
         -- putToksAfterPos (startPos,endPos') indent (newToks++[nlToken2,newLnToken nlToken2])

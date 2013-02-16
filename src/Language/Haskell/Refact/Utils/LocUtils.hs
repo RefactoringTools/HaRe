@@ -589,26 +589,19 @@ addFormalParams t newParams
   = do toks <- fetchToks
        let (startPos,endPos) = getStartEndLoc t
            tToks     = getToks (startPos, endPos) toks
-           (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t >= endPos) toks
-                        -- in (toks1' ++ [ghead "addFormalParams" toks2'], gtail "addFormalParams"  toks2')
-                        in (toks1',toks2')
-           offset  = lengthOfLastLine toks1
-           ((GHC.L l _),_) = (last toks1)
+           -- (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t >= endPos) toks
+           --             in (toks1',toks2')
+           -- offset  = lengthOfLastLine toks1
+           -- ((GHC.L l _),_) = (last toks1)
 
-           (r,c) = getGhcLocEnd l
-           -- newToks = tokenise (Pos 0 v1 1) offset False (prettyprintPatList True newParams )
-       -- error ("addFormalParams: (last toks1)=" ++ (showToks toks1)) -- ++AZ++ debug
-       -- error ("addFormalParams: (pp thing)=" ++ (GHC.showPpr (GHC.mkRealSrcLoc (GHC.mkFastString "foo") r (c+1)))) -- ++AZ++ debug
-       -- error ("addFormalParams: (startPos,endPos)=" ++ (show (startPos,endPos))) -- ++AZ++ debug
-       newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") r (c+1)) 0 False 
-                                    (prettyprintPatList prettyprint True newParams)
+           -- (r,c) = getGhcLocEnd l
+       -- newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") r (c+1)) 0 False 
+       --                              (prettyprintPatList prettyprint True newParams)
 
-       {-
-       let toks' = replaceToks toks startPos endPos (tToks++newToks)
-           toks'' = reAlignToks toks' -- ++AZ++ TODO: reduce the scope of the re-align, expensive
-       putToks toks'' modified
-       -}
-       putToksForPos (startPos,endPos) (tToks++newToks)
+       newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
+
+       -- putToksForPos (startPos,endPos) (tToks++newToks)
+       putToksAfterPos (startPos,endPos) (-1) 0 newToks
        -- addLocInfo (newParams, newToks)
 
 
@@ -1149,50 +1142,14 @@ extendBackwards toks startLoc endLoc backwardCondFun
 -- |Get the start&end location of syntax phrase t, then extend the end
 -- location to cover the comment/white spaces or new line which starts
 -- in the same line as the end location
+-- TODO: deprecate this in favour of startEndLocIncComments
 startEndLocIncFowComment::(SYB.Data t)=>[PosToken]->t->(SimpPos,SimpPos)
 startEndLocIncFowComment toks t
   = let (startLoc,endLoc)=getStartEndLoc t
         (_,endLocIncComments) = startEndLocIncComments toks t
     in (startLoc, endLocIncComments)
 
-{- ++original++
-
-{-Get the start&end location of syntax phrase t, then extend the end location to cover the comment/white spaces
-  or new line which starts in the same line as the end location-}
-startEndLocIncFowComment::(Term t, Printable t,StartEndLoc t)=>[PosToken]->t->(SimpPos,SimpPos)
-startEndLocIncFowComment toks t
-       =let (startLoc,endLoc)=getStartEndLoc toks t
-            toks1= gtail "startEndLocIncFowComment"  $ dropWhile (\t->tokenPos t/=endLoc) toks
-            toks11 = let (ts1, ts2) = break hasNewLn toks1
-                     in (ts1 ++ if ts2==[] then [] else [ghead "startEndLocInFowComment" ts2])
-         in  if toks11/=[] && all (\t->isWhite t || endsWithNewLn t) toks11
-             then (startLoc, tokenPos (glast "startEndLocIncFowComment" toks11))
-             else (startLoc, endLoc)
-++ original end -}
-
 {-
-{-get the start&end location of t in the token stream, then extend the end location to cover
-  the following '\n' if there is no other characters (except white space) between t and the '\n'
--}
-startEndLocIncFowNewLn::(Term t, Printable t,StartEndLoc t)=>[PosToken]->t->(SimpPos,SimpPos)
-startEndLocIncFowNewLn toks t
-  =let (startLoc,endLoc)=getStartEndLoc toks t
-       toks1 = dropWhile isWhiteSpace $ gtail "startEndLocIncFowNewLn"  $ dropWhile (\t->tokenPos t /=endLoc) toks
-       nextTok= if toks1==[] then defaultToken else head toks1
-   in if isNewLn nextTok
-        then (startLoc, tokenPos nextTok)
-        else (startLoc, endLoc)
--}
--- ---------------------------------------------------------------------
-{-
---Create a list of white space tokens.
-whiteSpacesToken::SimpPos->Int->[PosToken]
-whiteSpacesToken (row,col) n
-  |n>0        = [(Whitespace,(Pos 0 row col,replicate n ' '))]
-  |otherwise  = []
-
--------------------------------------------------------------------------------------------------
-
 adjustOffset::Int->[PosToken]->Bool->[PosToken]
 adjustOffset offset [] _ = []
 adjustOffset offset toks firstLineIncluded

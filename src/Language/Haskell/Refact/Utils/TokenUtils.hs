@@ -79,6 +79,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , splitToks
        , emptyList, nonEmptyList
        , startEndLocIncComments, startEndLocIncComments'
+       , divideComments
        , isComment
        , getSrcSpan
        , getIndentOffset
@@ -483,8 +484,15 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan rowIndent colIndent toks = (for
 -- |Add new tokens after the given SrcSpan, constructing a new SrcSpan
 -- in the process
 addToksAfterSrcSpan ::
-  Tree Entry -> GHC.SrcSpan -> Int -> Int -> [PosToken]
-  -> (Tree Entry, GHC.SrcSpan)
+  Tree Entry  -- ^TokenTree to be modified
+  -> GHC.SrcSpan -- ^Preceding location for new tokens
+  -> Int -- ^How many lines to skip between the preceding tokens and the new
+         -- ones. 0 means on same line.
+  -> Int -- ^Indentation level relative to the indentation of the previous line.
+         -- Negative values will dedent
+  -> [PosToken] -- ^New tokens to be added
+  -> (Tree Entry, GHC.SrcSpan) -- ^ updated TokenTree and SrcSpan location for
+                               -- the new tokens in the TokenTree
 addToksAfterSrcSpan forest oldSpan rowIndent colIndent toks = (forest',newSpan')
   where
     (_,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
@@ -504,10 +512,12 @@ addToksAfterSrcSpan forest oldSpan rowIndent colIndent toks = (forest',newSpan')
 reIndentToks :: Int -> Int -> [PosToken] -> [PosToken] -> [PosToken]
 reIndentToks rowIndent colIndent prevToks toks = toks''
   where
-    colStart  = tokenCol $ ghead "reIndentToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
-    lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 2
+    colStart  = tokenCol $ ghead "reIndentToks"
+              $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
+    lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 1
 
-    newTokStart = ghead "reIndentToks" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
+    newTokStart = ghead "reIndentToks"
+                $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
 
     lineOffset = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
     colOffset  = colIndent + colStart  - (tokenCol newTokStart)
@@ -957,32 +967,20 @@ startEndLocIncComments' toks (startLoc,endLoc) =
                then dropWhile (\tok -> tokenRow tok == tokenRow (ghead "startEndLocIncComments 1" leadLine)) lead'
                else lead'
 
-    -- trail = takeWhile (\tok -> isComment tok || isEmpty tok) $ end
+    (leadinr,leadr) = break (\tok -> not (isComment tok || isEmpty tok)) $ reverse begin
+    leadr' = if (nonEmptyList leadinr) then dropWhile isEmpty leadr else []
+    prevLine  = if (emptyList leadinr) then 0 else (tokenRow $ head leadr')
+    firstLine = if (emptyList middle)  then 0 else (tokenRow $ head middle)
+    (_,leadComments) = divideComments prevLine firstLine $ reverse leadinr
+
     (trail,trailrest) = break (\tok -> not (isComment tok || isEmpty tok)) end
+    lastLine = if (emptyList middle)    then    0 else (tokenRow $ last middle)
+    nextLine = if (emptyList trailrest) then 1000 else (tokenRow $ head trailrest)
+    (trailComments,_) =  divideComments lastLine nextLine trail
 
-    -- If whitespace line gap between then end of the middle and the
-    -- start of the tail is bigger than between the end of the trail
-    -- and the start of the trailrest, then let the trail belong to
-    -- the subsequent decl.
-
-    -- trail' = if ((nonEmptyList trail) && (isEmpty $ last trail)) then (init trail) else trail
-
-    trail'' = filter (\tok -> not $ isEmpty tok) trail
-
-    endDiff = if (emptyList trailrest) || (emptyList trail'')
-            then 1000
-            else (tokenRow $ ghead "startEndLocIncComments 2" trailrest) - (tokenRow $ last trail'')
-
-    startDiff = if (emptyList middle) || (emptyList trail'')
-            then 1000
-            else (tokenRow $ ghead "startEndLocIncComments 3" trail) - (tokenRow $ last middle)
-
-    trail' = if (startDiff <= endDiff)
-      then if ((nonEmptyList trail) && (isEmpty $ last trail))
-              then (init trail) else trail
-      else []
-
-    middle' = lead'' ++ middle ++ trail'
+    -- middle' = lead'' ++ middle ++ trail'
+    -- middle' = lead'' ++ middle ++ trailComments
+    middle' = leadComments ++ middle ++ trailComments
   in
     -- error $ "startEndLocIncComments: (startDiff,endDiff)=" ++ (show (startDiff,endDiff)) -- ++AZ++
     -- error ( "startEndLocIncComments: (leadLine)=" ++ (show $ tokenRow (head lead')) ++  (showToks leadLine) ) -- ++AZ++
@@ -990,104 +988,53 @@ startEndLocIncComments' toks (startLoc,endLoc) =
       -- then error $ "startEndLocIncComments: (startLoc,endLoc) toks =" ++ (show (startLoc,endLoc)) ++ "," ++ (showToks toks)
       then ((0,0),(0,0))
       else ((tokenPos $ ghead "startEndLocIncComments 4" middle'),(tokenPosEnd $ last middle'))
+      -- else error $ "startEndLocIncComments: (prevLine,firstLine) reverse leadr =" ++ (show (prevLine,firstLine)) ++ "," ++ (showToks $ reverse leadr)
 
-{- ++AZ++ re-doing this ...
--- ts1 : lead in toks
--- ts2 : start of t to end of file
--- ts11 : reversed leading blank lines of t
--- ts12 : front of file to start of ts11
+-- ---------------------------------------------------------------------
 
--- toks11 : front of file to start of blank lines before t
--- toks12 : blank lines, t, to end of file
--- toks12' : just the blank lines
+-- |Split a set of comment tokens into the ones that belong with the startLine
+-- and those that belong with the endLine
+divideComments :: Int -> Int -> [PosToken] -> ([PosToken],[PosToken])
+divideComments startLine endLine toks = (first,second)
+ -- error $ "divideComments:groupGaps=" ++ (show groupGaps)
+ -- error $ "divideComments:(firsts,seconds)=" ++ (show (firsts,seconds))
+  where
+    groups = groupBy groupByAdjacent toks
+    groupLines = map (\ts -> ((tokenRow $ ghead "divideComments" ts,tokenRow $ glast "divideComments" ts),ts)) groups
+    groupLines' = [((startLine,startLine),[])] ++ groupLines ++ [((endLine,endLine),[])]
+    groupGaps = go [] groupLines'
+    -- groupGaps is now a list of gaps followed by the tokens. The
+    -- last gap has an empty token list, since there is one more gap
+    -- than token groups
 
--- ITsemi with ""
--- ITlineComment
--- isComment
+    -- e.g [(0,[comments1]),(3,[comments2]),(1,[]) captures
+    --  ---------------------
+    --      b + bar -- ^trailing comment
+    --
+    --
+    -- -- leading comment
+    -- foo x y =
+    -- ----------------------
 
-  =let (startLoc,endLoc) = getStartEndLoc t
-       (toks11,toks12)= let (ts1,ts2)    = break (\tok->tokenPos tok == startLoc) toks
-                            -- (ts11, ts12) = break hasNewLn (reverse ts1)
-                            (ts11, ts12) = break (\tok->tokenRow tok /= fst startLoc) (reverse ts1)
-                        in (reverse ts12, reverse ts11++ts2)
-       toks12'=takeWhile (\tok->tokenPos tok /=startLoc) toks12
-       startLoc'=
-         if all isWhite toks12'
-           then  -- group the toks1 according to lines in a reverse order.
-                 let  groupedToks = reverse $ groupTokensByLine toks11
-                      -- empty lines right before t
-                      -- emptyLns=takeWhile (all (\t->isWhiteSpace t || isNewLn t )) groupedToks
-                      emptyLns=[] -- ++AZ++
-                      lastComment=if length emptyLns <= 1  -- get the comment if there is any
-                                    then takeWhile (all isWhite) $ takeWhile (any isComment) $ groupedToks -- dropWhile
-                                             --  (all (\t->isWhiteSpace t || isNewLn t)) groupedToks
-                                    else [] -- no comment
-                      toks1'=if (not (emptyList lastComment)) then concat $ reverse (emptyLns ++ lastComment)
-                                                 else []
-                 in if (emptyList toks1')
-                       then if (not (emptyList toks12'))
-                              then (tokenPos (ghead "startEndLocIncComments"  toks12'))  --there is no comment before t
-                              else startLoc
-                       --there is a comment before t
-                       else tokenPos (ghead "startEndLocIncComments"  toks1')
-           else startLoc
-       -- tokens after t
-       toks2 = gtail "startEndLocIncComments1" $ dropWhile (\tok->(tokenPos tok) < endLoc) toks
-       -- toks21 are those tokens that are in the same line with the last line of t
-       (toks21,_tok22)= let (ts11, ts12) = break hasNewLn toks2
-                       in (ts11 ++ if (emptyList ts12) then [] else [ghead "startEndLocIncComments" ts12],
-                                                             gtail "startEndLocIncComments2" ts12)
-    in if (emptyList toks21) then (startLoc',endLoc)  -- no following comments.
-        else if all (\t->isWhite t {- || endsWithNewLn t -}) toks21 --get the following white tokens in the same
-                                                              --line of the last token of t
-               then (startLoc', tokenPos (last toks21))
-               else (startLoc', endLoc)
--- ++AZ++ redoing end -}
+    biggest = maximum $ map fst groupGaps
+
+    (firsts,seconds) = break (\(g,_) -> g >= biggest) groupGaps
+
+    first = concatMap snd firsts
+    second = concatMap snd seconds
+
+    -- Helpers
+    groupByAdjacent :: PosToken -> PosToken -> Bool
+    groupByAdjacent a b = 1 + tokenRow a == tokenRow b
+
+    go :: [(Int,[PosToken])] -> [((Int,Int),[PosToken])] -> [(Int,[PosToken])]
+    go acc []  = acc
+    go acc [_x] = acc
+    -- go acc [((_s1,e1),_t1),((s2,_e2),t2)] = acc ++ [((s2 - e1),t2)]
+    go acc (((_s1,e1),_t1):b@((s2,_e2),t2):xs) = go (acc ++ [((s2 - e1),t2)] ) (b:xs)
 
 
-{- ++original
-{-get the start&end location of t in the token stream, then extend the start and end location to
-  cover the preceding and folllowing comments.
--}
-startEndLocIncComments::(Term t, StartEndLoc t,Printable t)=>[PosToken]->t->(SimpPos,SimpPos)
-startEndLocIncComments toks t
-  =let (startLoc,endLoc)=getStartEndLoc toks t
-       (toks11,toks12)= let (ts1,ts2) = break (\t->tokenPos t == startLoc) toks
-                            (ts11, ts12) = break hasNewLn (reverse ts1)
-                        in (reverse ts12, reverse ts11++ts2)
-       toks12'=takeWhile (\t->tokenPos t /=startLoc) toks12
-       startLoc'=
-         if all isWhite  toks12'
-           then  -- group the toks1 according to lines in a reverse order.
-                 let  groupedToks=reverse $ groupTokensByLine toks11
-                      -- empty lines right before t
-                      emptyLns=takeWhile (all (\t->isWhiteSpace t || isNewLn t )) groupedToks
-                      lastComment=if length emptyLns <=1  -- get the comment if there is any
-                                    then takeWhile (all isWhite) $ takeWhile (any isComment) $ dropWhile
-                                               (all (\t->isWhiteSpace t || isNewLn t)) groupedToks
-                                    else [] -- no comment
-                      toks1'=if lastComment /=[] then concat $ reverse (emptyLns ++ lastComment)
-                                                 else []
-                 in if toks1'==[]
-                       then if toks12'/=[]
-                              then (tokenPos (ghead "startEndLocIncComments"  toks12'))  --there is no comment before t
-                              else startLoc
-                       --there is a comment before t
-                       else tokenPos (ghead "startEndLocIncComments"  toks1')
-           else startLoc
-       -- tokens after t
-       toks2=gtail "startEndLocIncComments1"  $ dropWhile (\t->tokenPos t/=endLoc) toks
-       -- toks21 are those tokens that are in the same line with the last line of t
-       (toks21,tok22)= let (ts11, ts12) = break hasNewLn toks2
-                       in (ts11 ++ if ts12==[] then [] else [ghead "startEndLocIncComments" ts12],
-                                                             gtail "startEndLocIncComments2" ts12)
-    in if toks21==[] then (startLoc',endLoc)  -- no following comments.
-        else if all (\t->isWhite t || endsWithNewLn t) toks21 --get the following white tokens in the same
-                                                              --line of the last token of t
-               then (startLoc', tokenPos (last toks21))
-               else (startLoc', endLoc)
--}
-
+    
 -- ---------------------------------------------------------------------
 
 -- |Add a constant line and column offset to a span of tokens
