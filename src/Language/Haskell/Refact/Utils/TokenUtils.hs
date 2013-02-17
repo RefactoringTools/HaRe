@@ -11,6 +11,7 @@
 
 module Language.Haskell.Refact.Utils.TokenUtils(
        Entry(..)
+       , Positioning(..)
        , Module(..)
        , initModule
        , getTokensFor
@@ -176,6 +177,16 @@ Note : Need to
 -}
 
 deriving instance Show Entry => Show (Entry)
+
+
+-- ---------------------------------------------------------------------
+
+-- |How new SrcSpans should be inserted in the Token tree, relative to
+-- the prior span
+data Positioning = PlaceAdjacent -- ^Only a single space between the
+                   -- end of the prior span and the new one
+                 | PlaceOffset Int Int -- ^Line and Col offset
+                   -- relative to the indent level of the prior span
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ TODO: will we actuall need these?
@@ -458,13 +469,16 @@ addNewSrcSpanAndToksAfter ::
   Tree Entry -- ^The forest to update
   -> GHC.SrcSpan -- ^The new span comes after this one
   -> GHC.SrcSpan -- ^Existing span for the tokens
+  -> Positioning
+  {-
   -> Int         -- ^Indent relative to the previous line
   -> Int         -- ^Indent relative to the previous tokens
+  -}
   -> [PosToken]  -- ^The new tokens belonging to the new SrcSpan
   -> (Tree Entry -- ^Updated forest with the new span
      , GHC.SrcSpan) -- ^Unique SrcSpan allocated in the forest to
                     -- identify this span in its position
-addNewSrcSpanAndToksAfter forest oldSpan newSpan rowIndent colIndent toks = (forest'',newSpan')
+addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
   where
     (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
 
@@ -473,7 +487,7 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan rowIndent colIndent toks = (for
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
 
     prevToks = retrieveTokens tree
-    toks' = reIndentToks rowIndent colIndent prevToks toks
+    toks' = reIndentToks pos prevToks toks
 
     newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
 
@@ -486,44 +500,62 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan rowIndent colIndent toks = (for
 addToksAfterSrcSpan ::
   Tree Entry  -- ^TokenTree to be modified
   -> GHC.SrcSpan -- ^Preceding location for new tokens
+  -> Positioning
+  {-
   -> Int -- ^How many lines to skip between the preceding tokens and the new
          -- ones. 0 means on same line.
   -> Int -- ^Indentation level relative to the indentation of the previous line.
          -- Negative values will dedent
+   -}
   -> [PosToken] -- ^New tokens to be added
   -> (Tree Entry, GHC.SrcSpan) -- ^ updated TokenTree and SrcSpan location for
                                -- the new tokens in the TokenTree
-addToksAfterSrcSpan forest oldSpan rowIndent colIndent toks = (forest',newSpan')
+addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
   where
     (_,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
     prevToks = retrieveTokens tree
 
-    toks'' = reIndentToks rowIndent colIndent prevToks toks
+    toks'' = reIndentToks pos prevToks toks
 
     (startPos,endPos) = nonCommentSpan toks''
 
     newSpan = posToSrcSpan forest (startPos,endPos)
     -- TODO: expensive reIndentToks being done twice now
-    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan rowIndent colIndent toks''
+    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks''
+    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks)=" ++ (showToks toks),oldSpan)
+    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(prevToks)=" ++ (showToks prevToks),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show ((lineOffset,lineStart,tokenRow $ head toks,tokenRow $ head toks'',tokenRow newTokStart,colOffset))),oldSpan)
 
 -- ---------------------------------------------------------------------
 
-reIndentToks :: Int -> Int -> [PosToken] -> [PosToken] -> [PosToken]
-reIndentToks rowIndent colIndent prevToks toks = toks''
+reIndentToks :: Positioning -> [PosToken] -> [PosToken] -> [PosToken]
+reIndentToks pos prevToks toks = toks''
   where
-    colStart  = tokenCol $ ghead "reIndentToks"
-              $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
-    lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 1
-
     newTokStart = ghead "reIndentToks"
                 $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
 
-    lineOffset = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
-    colOffset  = colIndent + colStart  - (tokenCol newTokStart)
+    (lineOffset,colOffset,endNewlines) = case pos of
+      PlaceAdjacent -> (lineOffset',colOffset',0)
+        where
+          colStart  = (tokenColEnd (glast "reIndentToks" prevToks)) + 1
+          lineStart = (tokenRow    (glast "reIndentToks" prevToks))
+
+          lineOffset' = lineStart - (tokenRow $ ghead "reIndentToks" toks)
+          colOffset'  = colStart  - (tokenCol newTokStart)
+
+      PlaceOffset rowIndent colIndent -> (lineOffset',colOffset',2)
+        where
+          colStart  = tokenCol $ ghead "reIndentToks"
+                    $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
+          lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 1
+
+          lineOffset' = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
+          colOffset'  = colIndent + colStart  - (tokenCol newTokStart)
 
     toks'  = addOffsetToToks (lineOffset,colOffset) toks
-    toks'' = toks' ++ [(newLinesToken 2 $ glast "reIndentToks" toks')]
+    toks'' = if endNewlines > 0
+               then toks' ++ [(newLinesToken endNewlines $ glast "reIndentToks" toks')]
+               else toks'
 
 -- ---------------------------------------------------------------------
 
@@ -945,8 +977,6 @@ getLocatedEnd (GHC.L l _) = getGhcLocEnd l
 -- the start and end location to cover the preceding and following
 -- comments.
 --
--- Note: what about trailing comment with interving white space, where
--- comment is "closer" to next non-comment token?
 startEndLocIncComments::(SYB.Data t) => [PosToken] -> t -> (SimpPos,SimpPos)
 startEndLocIncComments toks t = startEndLocIncComments' toks (getStartEndLoc t)
 
@@ -956,36 +986,22 @@ startEndLocIncComments' toks (startLoc,endLoc) =
   let
     (begin,middle,end) = splitToks (startLoc,endLoc) toks
 
-    lead = reverse $ takeWhile (\tok -> isComment tok || isEmpty tok) $ reverse begin
-    lead' = if ((nonEmptyList lead) && (isEmpty $ head lead)) then (tail lead) else lead
-
-    leadLine = if (nonEmptyList lead')
-                 then reverse $ takeWhile (\tok -> tokenRow (head lead') <= tokenRow tok) $ reverse begin
-                 else []
-
-    lead'' = if (nonEmptyList lead' && nonEmptyList leadLine && not (isComment $ head leadLine))
-               then dropWhile (\tok -> tokenRow tok == tokenRow (ghead "startEndLocIncComments 1" leadLine)) lead'
-               else lead'
-
     (leadinr,leadr) = break (\tok -> not (isComment tok || isEmpty tok)) $ reverse begin
-    leadr' = if (nonEmptyList leadinr) then dropWhile isEmpty leadr else []
+    leadr' = filter (\t -> not (isEmpty t)) leadr
     prevLine  = if (emptyList leadinr) then 0 else (tokenRow $ head leadr')
     firstLine = if (emptyList middle)  then 0 else (tokenRow $ head middle)
     (_,leadComments) = divideComments prevLine firstLine $ reverse leadinr
 
+
     (trail,trailrest) = break (\tok -> not (isComment tok || isEmpty tok)) end
+    trail' = filter (\t -> not (isEmpty t)) trail
     lastLine = if (emptyList middle)    then    0 else (tokenRow $ last middle)
     nextLine = if (emptyList trailrest) then 1000 else (tokenRow $ head trailrest)
-    (trailComments,_) =  divideComments lastLine nextLine trail
+    (trailComments,_) =  divideComments lastLine nextLine trail'
 
-    -- middle' = lead'' ++ middle ++ trail'
-    -- middle' = lead'' ++ middle ++ trailComments
     middle' = leadComments ++ middle ++ trailComments
   in
-    -- error $ "startEndLocIncComments: (startDiff,endDiff)=" ++ (show (startDiff,endDiff)) -- ++AZ++
-    -- error ( "startEndLocIncComments: (leadLine)=" ++ (show $ tokenRow (head lead')) ++  (showToks leadLine) ) -- ++AZ++
     if (emptyList middle')
-      -- then error $ "startEndLocIncComments: (startLoc,endLoc) toks =" ++ (show (startLoc,endLoc)) ++ "," ++ (showToks toks)
       then ((0,0),(0,0))
       else ((tokenPos $ ghead "startEndLocIncComments 4" middle'),(tokenPosEnd $ last middle'))
       -- else error $ "startEndLocIncComments: (prevLine,firstLine) reverse leadr =" ++ (show (prevLine,firstLine)) ++ "," ++ (showToks $ reverse leadr)
@@ -1030,11 +1046,9 @@ divideComments startLine endLine toks = (first,second)
     go :: [(Int,[PosToken])] -> [((Int,Int),[PosToken])] -> [(Int,[PosToken])]
     go acc []  = acc
     go acc [_x] = acc
-    -- go acc [((_s1,e1),_t1),((s2,_e2),t2)] = acc ++ [((s2 - e1),t2)]
     go acc (((_s1,e1),_t1):b@((s2,_e2),t2):xs) = go (acc ++ [((s2 - e1),t2)] ) (b:xs)
 
 
-    
 -- ---------------------------------------------------------------------
 
 -- |Add a constant line and column offset to a span of tokens
@@ -1055,7 +1069,6 @@ increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L _l t), s) = (GHC.L ne
 -- ---------------------------------------------------------------------
 
 isComment :: PosToken -> Bool
--- isComment (t,(_,s))          = t==Comment || t ==NestedComment
 isComment ((GHC.L _ (GHC.ITdocCommentNext _)),_s)  = True
 isComment ((GHC.L _ (GHC.ITdocCommentPrev _)),_s)  = True
 isComment ((GHC.L _ (GHC.ITdocCommentNamed _)),_s) = True
@@ -1073,6 +1086,9 @@ isEmpty _                           = False
 --Some functions for fetching a specific field of a token
 tokenCol :: PosToken -> Int
 tokenCol (GHC.L l _,_) = c where (_,c) = getGhcLoc l
+
+tokenColEnd :: PosToken -> Int
+tokenColEnd (GHC.L l _,_) = c where (_,c) = getGhcLocEnd l
 
 tokenRow :: PosToken -> Int
 tokenRow (GHC.L l _,_) = r where (r,_) = getGhcLoc l
@@ -1143,6 +1159,7 @@ getSrcSpan t = res t
     pnt :: GHC.GenLocated GHC.SrcSpan GHC.Name -> Maybe GHC.SrcSpan
     pnt (GHC.L l _)              = Just l
 
+    -- TODO: This is using GHC.RdrName, remove it
     sn :: GHC.HsModule GHC.RdrName -> Maybe GHC.SrcSpan
     sn (GHC.HsModule (Just (GHC.L l _)) _ _ _ _ _) = Just l
     sn _ = Nothing
@@ -1196,8 +1213,10 @@ startEndLocGhc (GHC.L l _) =
   case l of
     (GHC.RealSrcSpan ss) ->
       ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
-       (GHC.srcSpanEndLine ss,GHC.srcSpanEndCol ss))
+       (GHC.srcSpanEndLine ss,  GHC.srcSpanEndCol ss))
     (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
+
+-- ---------------------------------------------------------------------
 
 -- | Get the indent of the line before, taking into account in-line
 -- where, let, in and do tokens

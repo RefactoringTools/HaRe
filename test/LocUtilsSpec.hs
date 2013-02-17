@@ -184,6 +184,39 @@ spec = do
       (show $ getStartEndLoc decl) `shouldBe` "((19,1),(21,14))"
       (show   (startPos,endPos)) `shouldBe` "((18,1),(21,14))"
 
+    -- ---------------------------------
+
+    it "ignores trailing empty tokens" $ do
+      (t, toks) <- parsedFileWhereIn6Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+      let decls = filter isFunOrPatBindR declsr
+      let decl = head $ decls
+      (show $ getStartEndLoc decl) `shouldBe` "((13,1),(13,21))"
+      let (startPos,endPos) = startEndLocIncComments toks decl
+
+      (GHC.showPpr decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
+      -- (SYB.showData SYB.Renamer 0 decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
+      (showToks $ getToks ((13,1),(22,1)) toks) `shouldBe`
+             ("[(((13,1),(13,1)),ITvccurly,\"\"),"++
+              "(((13,1),(13,1)),ITsemi,\"\"),"++
+              "(((13,1),(13,9)),ITvarid \"addthree\",\"addthree\"),"++
+              "(((13,10),(13,11)),ITvarid \"a\",\"a\"),"++
+              "(((13,12),(13,13)),ITvarid \"b\",\"b\"),"++
+              "(((13,14),(13,15)),ITvarid \"c\",\"c\"),"++
+              "(((13,15),(13,16)),ITequal,\"=\"),"++
+              "(((13,16),(13,17)),ITvarid \"a\",\"a\"),"++
+              "(((13,17),(13,18)),ITvarsym \"+\",\"+\"),"++
+              "(((13,18),(13,19)),ITvarid \"b\",\"b\"),"++
+              "(((13,19),(13,20)),ITvarsym \"+\",\"+\"),"++
+              "(((13,20),(13,21)),ITvarid \"c\",\"c\"),"++
+              "(((16,1),(16,1)),ITsemi,\"\")]")
+
+
+      (show $ getStartEndLoc decl) `shouldBe` "((13,1),(13,21))"
+      (show   (startPos,endPos)) `shouldBe` "((13,1),(13,21))"
+
   -- -------------------------------------------------------------------
 
   describe "startEndLocIncFowComment" $ do
@@ -200,7 +233,7 @@ spec = do
 
       (GHC.showPpr decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
-      (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe` 
+      (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe`
              ("[(((18,1),(18,1)),ITsemi,\"\")," ++
              "(((18,1),(18,5)),ITdata,\"data\")," ++
              "(((18,6),(18,7)),ITconid \"D\",\"D\")," ++
@@ -613,7 +646,7 @@ spec = do
 
   describe "getSrcSpan" $ do
     it "Finds the top SrcSpan" $ do
-      (t, toks) <- parsedFileDd1Ghc
+      (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
       let declsr = hsBinds renamed
           ss = getSrcSpan declsr
@@ -681,6 +714,7 @@ spec = do
 
       (GHC.showPpr decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
       -- (SYB.showData SYB.Renamer 0 decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
+      (show   (startPos,endPos)) `shouldBe` "((13,1),(13,21))"
 
       let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup matches _)  _ _ _)) = decl
       -- (SYB.showData SYB.Renamer 0 matches) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
@@ -756,14 +790,21 @@ spec = do
              pats = [GHC.noLoc (GHC.VarPat n1), GHC.noLoc (GHC.VarPat n2)]
 
          addFormalParams tlDecls pats
-
-         return (tlDecls,ln)
-      ((d,l),s) <- runRefactGhcState comp
+         
+         forest <- getTokenTree
+         return (tlDecls,ln,forest)
+      ((d,l,f),s) <- runRefactGhcState comp
       (GHC.showPpr l) `shouldBe` "DupDef.Dd1.toplevel";
       (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x  n1 n2\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-
+      (drawTreeEntry f) `shouldBe`
+                "((1,1),(34,1))\n|\n"++
+                "+- ((1,1),(3,31))\n|\n"++
+                "+- ((4,1),(4,19))\n|\n"++
+                "+- ((1000004,20),(1000004,25))\n|\n"++
+                "`- ((6,1),(34,1))\n"
+      -- (showTree f) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x n1 n2\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 
 
   -- -------------------------------------------------------------------

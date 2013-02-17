@@ -586,41 +586,13 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
 addFormalParams :: (SYB.Data t, SYB.Typeable t) =>
                 t -> [GHC.Located (GHC.Pat GHC.Name)] -> RefactGhc ()
 addFormalParams t newParams
-  = do toks <- fetchToks
+  = do
        let (startPos,endPos) = getStartEndLoc t
-           tToks     = getToks (startPos, endPos) toks
-           -- (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t >= endPos) toks
-           --             in (toks1',toks2')
-           -- offset  = lengthOfLastLine toks1
-           -- ((GHC.L l _),_) = (last toks1)
-
-           -- (r,c) = getGhcLocEnd l
-       -- newToks <- liftIO $ tokenise (GHC.mkRealSrcLoc (GHC.mkFastString "foo") r (c+1)) 0 False 
-       --                              (prettyprintPatList prettyprint True newParams)
 
        newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
-
-       -- putToksForPos (startPos,endPos) (tToks++newToks)
-       putToksAfterPos (startPos,endPos) (-1) 0 newToks
-       -- addLocInfo (newParams, newToks)
-
+       _ <- putToksAfterPos (startPos,endPos) PlaceAdjacent newToks
 
        return ()
-
-{- ++AZ++ original
----REFACTORING: GENERALISE THIS FUNCTION.
-addFormalParams t newParams
-  = do ((toks,_),(v1, v2))<-get
-       let (startPos,endPos) = getStartEndLoc toks t
-           tToks     = getToks (startPos, endPos) toks
-           (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t == endPos) toks
-                        in (toks1' ++ [ghead "addFormalParams" toks2'], gtail "addFormalParams"  toks2')
-           offset  = lengthOfLastLine toks1
-           newToks = tokenise (Pos 0 v1 1) offset False (prettyprintPatList True newParams )
-           toks'   = replaceToks toks startPos endPos (tToks++newToks)
-       put ((toks',modified), ((tokenRow (glast "addFormalParams" newToks) -10), v2))
-       addLocInfo (newParams, newToks)
--}
 
 -- ---------------------------------------------------------------------
 
@@ -629,6 +601,7 @@ addFormalParams t newParams
 -- the start and end positions really exist in the token stream.
 -- QN: what happens if the start or end position does not exist?
 
+-- TODO: ++AZ++ pretty sure this should be deprecated
 replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
 replaceToks toks startPos endPos newToks =
  -- error $ "replaceToks: startPos=" ++ (show startPos)
