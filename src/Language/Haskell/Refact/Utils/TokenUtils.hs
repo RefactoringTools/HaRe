@@ -185,7 +185,8 @@ deriving instance Show Entry => Show (Entry)
 -- the prior span
 data Positioning = PlaceAdjacent -- ^Only a single space between the
                    -- end of the prior span and the new one
-                 | PlaceOffset Int Int -- ^Line and Col offset
+                 | PlaceOffset Int Int Int -- ^Line and Col offset for
+                   -- start, num lines to add at the end
                    -- relative to the indent level of the prior span
 
 -- ---------------------------------------------------------------------
@@ -543,7 +544,7 @@ reIndentToks pos prevToks toks = toks''
           lineOffset' = lineStart - (tokenRow $ ghead "reIndentToks" toks)
           colOffset'  = colStart  - (tokenCol newTokStart)
 
-      PlaceOffset rowIndent colIndent -> (lineOffset',colOffset',2)
+      PlaceOffset rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where
           colStart  = tokenCol $ ghead "reIndentToks"
                     $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks

@@ -75,7 +75,6 @@ reallyDoIfToCase expr rs = do
            | sameOccurrence expr exp1
            = do
                newExp <- ifToCaseTransform exp1
-               -- _ <- update exp1 newExp exp1
                updateToks exp1 newExp prettyprint True
                return newExp
 

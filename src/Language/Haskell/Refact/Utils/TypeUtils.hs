@@ -2433,19 +2433,19 @@ addItemsToImport serverModName pn ids t
 addImportDecl ::
     GHC.RenamedSource -> GHC.ModuleName -> Maybe GHC.FastString -> Bool -> Bool -> Bool ->
         Maybe String -> Bool -> [GHC.Name] -> RefactGhc GHC.RenamedSource
-addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualify alias hide idNames
+addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias hide idNames
   = do toks <- fetchToks
        let (toks1, toks2)
                =if length imps' > 0
-                   then let (startLoc, endLoc) = getStartEndLoc $ last imps'
-                            toks1 = getToks ((1,1),endLoc) toks
-                            toks2 = dropWhile (\t -> (tokenPos t) <= tokenPos (last toks1)) toks
-                        in (toks1, toks2)
+                   then let (_startLoc, endLoc) = getStartEndLoc $ last imps'
+                            toks1' = getToks ((1,1),endLoc) toks
+                            toks2' = dropWhile (\t -> (tokenPos t) <= tokenPos (last toks1')) toks
+                        in (toks1', toks2')
                    else if not $ isEmptyGroup groupedDecls
                           then
                                let startLoc = fst $ startEndLocIncComments toks groupedDecls
-                                   (toks1, toks2) = break (\t ->tokenPos t==startLoc) toks
-                               in (toks1,  toks2)
+                                   (toks1', toks2') = break (\t ->tokenPos t==startLoc) toks
+                               in (toks1',  toks2')
                           else (toks,[])
            before = "\n\n"
 
@@ -2468,7 +2468,7 @@ addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualif
                   _               -> Nothing
 
      impDecl = GHC.ImportDecl {
-                        GHC.ideclName        = mkNewLModuleName moduleName
+                        GHC.ideclName        = mkNewLModuleName modName
                         , GHC.ideclPkgQual   = pkgQual
                         , GHC.ideclSource    = source
                         , GHC.ideclSafe      = safe
@@ -2490,7 +2490,7 @@ addImportDecl mod@(groupedDecls,imp, b, c) moduleName pkgQual source safe qualif
 
 
      mkNewLModuleName :: GHC.ModuleName -> GHC.Located GHC.ModuleName
-     mkNewLModuleName moduleName = mkNewLSomething moduleName
+     mkNewLModuleName moduName = mkNewLSomething moduName
 
 {-
 -- TODO: move this to TokenUtils
@@ -2629,7 +2629,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                             then getSrcSpan (last decls1)
                             else getSrcSpan (head decls2)
 
-         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 1 0) newToks
+         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 1 0 2) newToks
 
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
@@ -2665,7 +2665,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
     = do let binds = hsValBinds parent
          newToks <- makeNewToks (decl,maybeSig,declToks)
          let Just sspan = getSrcSpan $ head after
-         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 1 0) newToks
+         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 1 0 2) newToks
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
@@ -2695,28 +2695,17 @@ addDecl parent pn (decl, msig, declToks) topLevel
         newToks <- liftIO $ basicTokenise newSource
         -- error $ "TypeUtils.addLocalDecl:newToks=" ++ (showToks newToks) -- ++AZ++
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
-        
-        {-
-        let nlToken2 = newLnToken (glast "addLocalDecl5" newToks)
-        let oldToks'=getToks (startPos,endPos') toks
-            toks'=replaceToks toks startPos endPos' (oldToks'++newToks++[nlToken2,newLnToken nlToken2])
-        -}
 
         let colIndent = if (emptyList localDecls) then 4 else 0
-            -- rowIndent = (-1)
             rowIndent = 0
 
-        -- putToks toks' modified
-        -- putToksAfterPos (startPos,endPos') indent (newToks++[nlToken2,newLnToken nlToken2])
-        -- _ <- putToksAfterPos (startPos,endPos') indent newToks
-        _ <- putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent) newToks
+        _ <- putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent 2) newToks
 
 
         case maybeSig of
            Nothing  -> return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent ++ [newFun']))) (sig:(getValBindSigs binds))))
 
-        -- return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
     where
          localDecls = hsBinds parent
 
