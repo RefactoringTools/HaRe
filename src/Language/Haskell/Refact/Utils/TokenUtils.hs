@@ -185,6 +185,8 @@ deriving instance Show Entry => Show (Entry)
 -- the prior span
 data Positioning = PlaceAdjacent -- ^Only a single space between the
                    -- end of the prior span and the new one
+                 | PlaceAbsolute Int Int -- ^Start at the specified
+                   -- line and col
                  | PlaceOffset Int Int Int -- ^Line and Col offset for
                    -- start, num lines to add at the end
                    -- relative to the indent level of the prior span
@@ -325,10 +327,12 @@ getTokensFor modu sspan = (modu', tokens)
      tokens = retrieveTokens tree
 
 -- ---------------------------------------------------------------------
-
+{- ++AZ++ old version
 -- |Replace the tokens for a given SrcSpan with new ones. The SrcSpan
 -- will be inserted into the tree if it is not already there
-updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> Tree Entry
+-- TODO: What about the change in size of thr SrcSpan? Solution is to
+-- replace the SrcSpan with a new one (marked), and return it
+updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (GHC.SrcSpan,Tree Entry)
 updateTokensForSrcSpan forest sspan toks = forest''
   where
     -- Make sure the sspan is in the tree
@@ -339,6 +343,38 @@ updateTokensForSrcSpan forest sspan toks = forest''
     -- zf' = Z.setLabel (Entry s toks) zf
     zf' = Z.setTree (Node (Entry s toks) []) zf
     forest'' = Z.toTree zf'
+-}
+
+-- |Replace the tokens for a given SrcSpan with new ones. The SrcSpan
+-- will be inserted into the tree if it is not already there
+-- TODO: What about the change in size of thr SrcSpan? Solution is to
+-- replace the SrcSpan with a new one (marked), and return it
+updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (Tree Entry,GHC.SrcSpan)
+updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
+  where
+    (forest',tree@(Node (Entry s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
+    prevToks = retrieveTokens tree
+
+    newTokStart = ghead "reIndentToks" prevToks
+
+    -- newTokStart = ghead "reIndentToks"
+    --             $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
+
+    -- toks'' = reIndentToks PlaceAdjacent [newTokStart] toks
+    toks'' = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
+
+    (startPos,endPos) = nonCommentSpan toks''
+
+    -- TODO: should we add a version?
+    newSpan = posToSrcSpan forest (startPos,endPos)
+
+    zf = openZipperToNode tree $ Z.fromTree forest'
+
+    zf' = Z.setTree (Node (Entry (srcSpanToForestSpan newSpan) toks'') []) zf
+    forest'' = Z.toTree zf'
+
+    -- (forest'',newSpan') = addNewSrcSpanAndToksAfter forest sspan newSpan pos toks''
+
 
 -- ---------------------------------------------------------------------
 -- |Retrieve a path to the tree containing a ForestSpan from the forest,
@@ -471,10 +507,6 @@ addNewSrcSpanAndToksAfter ::
   -> GHC.SrcSpan -- ^The new span comes after this one
   -> GHC.SrcSpan -- ^Existing span for the tokens
   -> Positioning
-  {-
-  -> Int         -- ^Indent relative to the previous line
-  -> Int         -- ^Indent relative to the previous tokens
-  -}
   -> [PosToken]  -- ^The new tokens belonging to the new SrcSpan
   -> (Tree Entry -- ^Updated forest with the new span
      , GHC.SrcSpan) -- ^Unique SrcSpan allocated in the forest to
@@ -502,12 +534,6 @@ addToksAfterSrcSpan ::
   Tree Entry  -- ^TokenTree to be modified
   -> GHC.SrcSpan -- ^Preceding location for new tokens
   -> Positioning
-  {-
-  -> Int -- ^How many lines to skip between the preceding tokens and the new
-         -- ones. 0 means on same line.
-  -> Int -- ^Indentation level relative to the indentation of the previous line.
-         -- Negative values will dedent
-   -}
   -> [PosToken] -- ^New tokens to be added
   -> (Tree Entry, GHC.SrcSpan) -- ^ updated TokenTree and SrcSpan location for
                                -- the new tokens in the TokenTree
@@ -523,7 +549,7 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
     newSpan = posToSrcSpan forest (startPos,endPos)
     -- TODO: expensive reIndentToks being done twice now
     (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks''
-    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks)=" ++ (showToks toks),oldSpan)
+    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks'')=" ++ (showToks toks''),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(prevToks)=" ++ (showToks prevToks),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show ((lineOffset,lineStart,tokenRow $ head toks,tokenRow $ head toks'',tokenRow newTokStart,colOffset))),oldSpan)
 
@@ -543,6 +569,11 @@ reIndentToks pos prevToks toks = toks''
 
           lineOffset' = lineStart - (tokenRow $ ghead "reIndentToks" toks)
           colOffset'  = colStart  - (tokenCol newTokStart)
+
+      PlaceAbsolute row col -> (lineOffset', colOffset', 0)
+        where
+          lineOffset' = row - (tokenRow $ ghead "reIndentToks" toks)
+          colOffset'  = col - (tokenCol $ ghead "reIndentToks" toks)
 
       PlaceOffset rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where

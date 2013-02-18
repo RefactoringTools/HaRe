@@ -2888,6 +2888,7 @@ addParamsToDecls decls pn paramPNames modifyToks
        = do rhs'<-addActualParamsToRhs pn paramPNames rhs
             let pats' = map GHC.noLoc $ map pNtoPat paramPNames
             pats'' <- if modifyToks  then do _ <- addFormalParams pat pats'
+                                             -- error "addParamToDecl" -- ++AZ++
                                              return pats'
                                      else return pats'
             -- return (TiDecorate.Dec (HsFunBind loc [HsMatch loc (patToPNT p) pats' rhs ds]))
@@ -2916,12 +2917,9 @@ addParamsToDecls decls pn paramPNames modifyToks
               -- error "got here:addActualParamsToRhs"
               let newExp = (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) (foldl addParamToExp e2 paramPNames)))
               if modifyToks then do _ <- updateToks e2 newExp prettyprint False
-                                    -- return newExp'
+                                    -- error "addActualParamsToRhs"
                                     return newExp
                             else return newExp
-       -- worker x = do
-       --    liftIO $ putStrLn ("addActualParamsToRhs:" ++ (GHC.showPpr x))
-       --    return x
        worker x = return x
 
        addParamToExp :: (GHC.LHsExpr GHC.Name) -> GHC.Name -> (GHC.LHsExpr GHC.Name)
@@ -3748,7 +3746,7 @@ renamePN oldPN newName updateTokens t
      = do if updateTokens
            then  do
                     toks <- fetchToks
-                    let toks'= replaceTok toks (row,col) (newNameTok l newName)
+                    let toks'= replaceTok toks (row,col) (markToken $ newNameTok l newName)
                     putToks toks' True
 
                     return newName

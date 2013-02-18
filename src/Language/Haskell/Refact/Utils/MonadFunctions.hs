@@ -102,26 +102,30 @@ putToks toks isModified = do
 -- TODO: ++AZ: these individual calls should happen via the TokenUtils
 --       API, have a simple get/put interface here only
 
--- |Replace the tokens for a given GHC.SrcSpan
-putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc ()
+-- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
+-- delimiting new tokens
+putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksForSpan sspan toks = do
   liftIO $ putStrLn $ "putToksForSpan " ++ (GHC.showPpr sspan)
   st <- get
   let Just tm = rsModule st
-  let forest' = updateTokensForSrcSpan (rsTokenCache tm) sspan toks
+  let (forest',newSpan) = updateTokensForSrcSpan (rsTokenCache tm) sspan toks
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
+  return newSpan
 
--- |Replace the tokens for a given GHC.SrcSpan
-putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc ()
+-- |Replace the tokens for a given GHC.SrcSpan, return GHC.SrcSpan
+-- they are placed in
+putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksForPos pos toks = do
   liftIO $ putStrLn $ "putToksForPos " ++ (show pos) ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
   let sspan = posToSrcSpan (rsTokenCache tm) pos
-  let forest' = updateTokensForSrcSpan (rsTokenCache tm) sspan toks
+  let (forest',newSpan) = updateTokensForSrcSpan (rsTokenCache tm) sspan toks
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
+  return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterSpan :: GHC.SrcSpan -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan

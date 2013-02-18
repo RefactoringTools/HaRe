@@ -556,24 +556,12 @@ updateToks oldAST newAST printFun addTrailingNl
 
 updateToksWithPos :: (SYB.Data t)
   => (SimpPos, SimpPos) -- ^Start and end pos of old element
-  -> t -- ^ New element
+  -> t             -- ^ New element
   -> (t -> [Char]) -- ^ pretty printer
-  -> Bool         -- ^ Add trailing newline if required
-  -> RefactGhc () -- ^ Updates the RefactState
+  -> Bool          -- ^ Add trailing newline if required
+  -> RefactGhc ()  -- ^ Updates the RefactState
 updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
   = do
-       -- error $ show (startPos, endPos) -- ++AZ++
-       {-
-       toks <- fetchToks
-
-       let (toks1, middle, _toks2)  = splitToks (startPos, endPos) toks
-           astStr = (printFun newAST)
-
-       let startTok = if (emptyList middle)
-                       then glast "updateToksWithPos" toks1
-                       else ghead "UpdateToksWithPos" middle
-       newToks <- liftIO $ tokenise (realSrcLocEndTok startTok) 1 True astStr
-       -}
        newToks <- liftIO $ basicTokenise (printFun newAST)
        putToksForPos (startPos,endPos) newToks
 
@@ -590,7 +578,8 @@ addFormalParams t newParams
        let (startPos,endPos) = getStartEndLoc t
 
        newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
-       _ <- putToksAfterPos (startPos,endPos) PlaceAdjacent newToks
+       -- error $ "addFormalParams:newToks=" ++ (showToks newToks) -- ++AZ++
+       _ <- putToksAfterPos (startPos,endPos) PlaceAdjacent $ map markToken newToks
 
        return ()
 

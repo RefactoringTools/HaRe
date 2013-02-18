@@ -383,16 +383,20 @@ spec = do
       let decl@(GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+      (GHC.showPpr decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
 
-      let forest' = updateTokensForSrcSpan forest l (take 3 toks)
+      let (forest',newSpan) = updateTokensForSrcSpan forest l (take 3 toks)
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/TokenTest.hs:18:1-22"
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
-              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
+              "+- ((18,1),(18,23))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
 
       let toks' = retrieveTokens forest'
-      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment module TokenTest where\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n "
+      -- (showToks toks ) `shouldBe` ""
+      -- (showToks toks') `shouldBe` ""
+      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n module TokenTest where\n\n\n\n\n\n\n\n "
 
     -- --------------------------------------
 
