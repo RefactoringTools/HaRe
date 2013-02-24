@@ -4,3 +4,5 @@ before_install:
     - "cabal install test-framework-hunit"
     - "cabal install QuickCheck"
     - "cabal install hspec"
+notifications:
+  irc: "irc.freenode.org#haskell-refactorer"
