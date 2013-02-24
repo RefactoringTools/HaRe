@@ -13,6 +13,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , putToksAfterSpan
        , putToksAfterPos
        , putDeclToksAfterSpan
+       , removeToksForSpan
+       , removeToksForPos
        -- , putNewSpanAndToks
        -- , putNewPosAndToks
        , getTypecheckedModule
@@ -162,6 +164,29 @@ putDeclToksAfterSpan oldSpan t pos toks = do
   let rsModule' = Just (tm {rsTokenCache = forest'', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return t'
+
+-- |Remove a GHC.SrcSpan and its associated tokens
+removeToksForSpan :: GHC.SrcSpan -> RefactGhc ()
+removeToksForSpan sspan = do
+  liftIO $ putStrLn $ "removeToksForSpan " ++ (GHC.showPpr sspan)
+  st <- get
+  let Just tm = rsModule st
+  let forest' = removeSrcSpan (rsTokenCache tm) (srcSpanToForestSpan sspan)
+  let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
+  put $ st { rsModule = rsModule' }
+  return ()
+
+-- |Remove a GHC.SrcSpan and its associated tokens
+removeToksForPos :: (SimpPos,SimpPos) -> RefactGhc ()
+removeToksForPos pos = do
+  liftIO $ putStrLn $ "removeToksForPos " ++ (show pos)
+  st <- get
+  let Just tm = rsModule st
+  let sspan = posToSrcSpan (rsTokenCache tm) pos
+  let forest' = removeSrcSpan (rsTokenCache tm) (srcSpanToForestSpan sspan)
+  let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
+  put $ st { rsModule = rsModule' }
+  return ()
 
 -- ---------------------------------------------------------------------
 

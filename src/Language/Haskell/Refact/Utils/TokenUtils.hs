@@ -18,6 +18,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , updateTokensForSrcSpan
        , treeStartEnd
        , insertSrcSpan
+       , removeSrcSpan         
        , getSrcSpanFor
        , getPathFor
        , retrieveTokens
@@ -444,7 +445,24 @@ insertSrcSpan forest sspan = forest'
           z' = Z.setTree (Node (Entry _sspan []) subTree) z
           forest'' = Z.toTree z'
 
+-- ---------------------------------------------------------------------
 
+-- | Removes a ForestSpan and its tokens from the forest.
+-- TODO: should it store the removed span somewhere else?
+
+removeSrcSpan :: Tree Entry -> ForestSpan -> Tree Entry
+removeSrcSpan forest sspan = forest''
+  where
+    forest' = insertSrcSpan forest sspan -- Make sure span is actually
+                                         -- in the tree
+    z = openZipperToSpan sspan $ Z.fromTree forest'
+    zp = gfromJust "removeSrcSpan" $ Z.parent z
+
+    pt = Z.tree zp
+    subTree = filter (\t -> not (treeStartEnd t == sspan)) $ subForest pt
+
+    z' = Z.setTree (pt { subForest = subTree}) zp
+    forest'' = Z.toTree z'
 
 -- ---------------------------------------------------------------------
 

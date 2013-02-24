@@ -306,6 +306,61 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "removeSrcSpan" $ do
+    it "removes a span from the forest" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+
+      let forest' = insertSrcSpan forest (fs l)
+      (invariant forest') `shouldBe` []
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,17))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n"
+
+      let forest'' = removeSrcSpan forest' (fs l)
+      (invariant forest'') `shouldBe` []
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,17))\n|\n"++
+              -- "+- ((19,1),(21,14))\n|\n"++ -- removed again
+              "`- ((26,1),(26,1))\n"
+
+      let toks' = retrieveTokens forest''
+      -- (showToks toks') `shouldBe` ""
+      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n\n\n\n\n\n\n\n\n "
+
+    -- ---------------------------------
+    it "removes a span and tokens that were not explicitly in the forest" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head $ drop 1 decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
+      (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
+
+      let forest' = removeSrcSpan forest (fs l)
+      (invariant forest') `shouldBe` []
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(10,10))\n|\n"++
+              "`- ((19,1),(26,1))\n"
+
+      let toks' = retrieveTokens forest'
+      -- (showToks toks') `shouldBe` ""
+      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n\n\n\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+
+  -- ---------------------------------------------
+
   describe "getPathFor" $ do
     it "retrieves an empty path if the SrcSpan is not in the tree" $ do
       (t,toks) <- parsedFileTokenTestGhc

@@ -3417,10 +3417,13 @@ rmDecl pn incSig t = do
     rmTopLevelDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
                 -> RefactGhc [GHC.LHsBind GHC.Name]
     rmTopLevelDecl decl decls
-      =do toks <- fetchToks
+      =do {-
+          toks <- fetchToks
           let (startLoc, endLoc)=startEndLocIncComments toks decl
               toks'= deleteToks toks startLoc endLoc
           putToks toks' modified
+          -}
+          removeToksForPos (getStartEndLoc decl)
           let (decls1, decls2) = break (defines pn) decls
               decls2' = gtail "rmLocalDecl 1" decls2
           return $ (decls1 ++ decls2')
