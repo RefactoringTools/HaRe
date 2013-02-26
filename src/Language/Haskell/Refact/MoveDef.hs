@@ -280,20 +280,12 @@ moveDecl1 :: (HsValBinds t)
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns topLevel
    = do toks <- fetchToks
-        -- error ("moveDecl1:defName=" ++ (GHC.showPpr defName)) -- ++AZ++
-        -- error ("moveDecl1:ns=" ++ (GHC.showPpr ns)) -- ++AZ++
-        -- let ns = map GHC.unLoc pns
         let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1 2" ns) True toks t
-        -- error ("moveDecl1:ns=" ++ (GHC.showPpr ns)) -- ++AZ++
         let (sigToMove, sigToksToMove) =
               case (getSigAndToks (ghead "moveDecl1 2" ns) t toks) of
                 Just (sig, sigToks) -> (Just sig, sigToks)
                 Nothing -> (Nothing,[])
-        -- error $ "moveDecl1:(toksToMove)=" ++ (showToks toksToMove) -- ++AZ++
-        -- error $ "moveDecl1:(sigToksToMove)=" ++ (showToks sigToksToMove) -- ++AZ++
-        -- error $ "moveDecl1:(sig)=" ++ (GHC.showPpr sigToMove) -- ++AZ++
         t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
-        -- error ("moveDecl1:(defName,ns,t')=" ++ (GHC.showPpr (defName,ns,t'))) -- ++AZ++
         addDecl t' defName (ghead "moveDecl1 2" declToMove,sigToMove,Just (sigToksToMove ++ toksToMove)) topLevel
 
 {- ++AZ++ original
@@ -947,7 +939,7 @@ doDemoting' t pn
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function
                       do -- (f,d)<-hsFreeAndDeclaredPNs demotedDecls
-                         let (f,d) = hsFreeAndDeclaredPNs demotedDecls
+                         let (f,_d) = hsFreeAndDeclaredPNs demotedDecls
                          -- remove demoted declarations
                          --Without updating the token stream.
                          -- let ds=foldl (flip removeTypeSig) (hsBinds t\\demotedDecls) declaredPns
@@ -976,6 +968,7 @@ doDemoting' t pn
                             else  --duplicate demoted declarations to the right place.
                                  do
                                     -- error ("doDemoting':(declaredPns,demotedDecls)=" ++ (GHC.showPpr (declaredPns,demotedDecls))) -- ++AZ++
+                                    -- error ("doDemoting':(origDecls)=" ++ (GHC.showPpr (origDecls))) -- ++AZ++
                                     -- ds'' <- duplicateDecls declaredPns origDecls
                                     ds'' <- duplicateDecls declaredPns (ghead "doDemoting'" demotedDecls) demotedSig (Just (demotedSigToks ++ demotedToks)) origDecls
                                     -- let res = replaceBinds t ds''
@@ -1050,6 +1043,7 @@ doDemoting' t pn
                         return (GHC.Match pats mt rhs')
                         -}
                         -- If fold parameters.
+                        -- error "dupInMatch" -- ++AZ++
                         match' <- foldParams pns match decls demoted dsig dtoks
                         return match'
                  -- dupInMatch _ =mzero
@@ -1063,6 +1057,7 @@ doDemoting' t pn
                    = do
                        -- rhs' <- moveDecl pns rhs False decls False
                        -- TODO: what wbout dtoks?
+                       -- error "dupInPat" -- ++AZ++
                        rhs' <- moveDecl1 rhs Nothing pns False
                        return (GHC.PatBind pat rhs' ty fvs ticks)
                  -- dupInPat _ =mzero
@@ -1261,7 +1256,7 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
 
                    decls' <- foldInDemotedDecls pns clashedNames subst decls
                    toks <- fetchToks
-                   error $ "MoveDef.foldParams: (toks)=" ++ (showToks toks) -- ++AZ++
+                   -- error $ "MoveDef.foldParams: (toks)=" ++ (showToks toks) -- ++AZ++
                    let demotedDecls''' = definingDeclsNames pns decls' True False
 
                    -- moveDecl pns (HsMatch loc1 name pats rhs' ds) False decls' False

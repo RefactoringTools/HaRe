@@ -558,7 +558,12 @@ addToksAfterSrcSpan ::
                                -- the new tokens in the TokenTree
 addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
   where
-    (_,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
+    (fwithspan,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
+
+    z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree fwithspan
+
+    -- TODO: get at least the previous line's tokens. Use z to do it,
+        -- but with a new function, and test it
     prevToks = retrieveTokens tree
 
     toks'' = reIndentToks pos prevToks toks

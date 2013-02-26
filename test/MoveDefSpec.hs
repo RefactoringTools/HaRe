@@ -65,7 +65,7 @@ spec = do
      res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","8","1"])
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
-    it "demotes a definition from the top level" $ do
+    it "demotes a definition from the top level 1" $ do
      doDemote ["./test/testdata/MoveDef/Demote.hs","7","1"]
      diff <- compareFiles "./test/testdata/MoveDef/Demote.hs.refactored"
                           "./test/testdata/MoveDef/Demote.hs.expected"

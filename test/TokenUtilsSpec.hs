@@ -650,6 +650,50 @@ spec = do
 
     -- ---------------------------------
 
+    it "Adds a new SrcSpan after an existing one, with an indent based on whole prior line." $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
+      let forest = mkTreeFromTokens toks
+
+      --  removeToksForPos ((7,1),(7,6))
+      let sspan = posToSrcSpan forest ((7,1),(7,6))
+      let forest' = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(8,6))\n|\n"++
+              "+- ((1,1),(4,19))\n|\n"++
+              "`- ((8,1),(8,6))\n"
+      (invariant forest') `shouldBe` []
+
+      --  putToksAfterPos ((4,14),(4,19))
+      let newToks = take 3 toks
+      let sspan' = posToSrcSpan forest' ((4,14),(4,19))
+      let position = PlaceOffset 0 4 2
+
+      let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
+      (drawTreeEntry finsert) `shouldBe`
+              "((1,1),(8,6))\n|\n"++
+              "+- ((1,1),(4,19))\n|  |\n"++
+              "|  +- ((1,1),(4,13))\n|  |\n"++
+              "|  `- ((4,14),(4,19))\n|\n"++
+              "`- ((8,1),(8,6))\n"
+
+      let newToks = take 3 toks
+      let (forest'',sspan'') = addToksAfterSrcSpan finsert (sspan') (PlaceOffset 1 4 2) newToks
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(8,6))\n|\n"++
+              "+- ((1,1),(4,19))\n|  |\n"++
+              "|  +- ((1,1),(4,13))\n|  |\n"++
+              "|  +- ((4,14),(4,19))\n|  |\n"++
+              "|  `- ((1000006,4),(1000008,1))\n|\n"++
+              "`- ((8,1),(8,6))\n"
+
+      (showSrcSpan sspan'') `shouldBe` "((1000006,4),(1000008,1))"
+      -- (invariant forest'') `shouldBe` []
+
+      let toksFinal = retrieveTokens forest''
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n    module MoveDef.Demote where\n\n \n\n  d = 9\n\n\n "
+
+    -- ---------------------------------
+
     it "Adds a new SrcSpan after deleting toks" $ do
       (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
