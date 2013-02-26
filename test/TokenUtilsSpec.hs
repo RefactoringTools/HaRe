@@ -648,6 +648,55 @@ spec = do
       let toksFinal = retrieveTokens forest''
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n     -- leading comment\n     foo x y =\n       do c <- getChar\n          return c\n\n \n\n  "
 
+    -- ---------------------------------
+
+    it "Adds a new SrcSpan after deleting toks" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
+      let forest = mkTreeFromTokens toks
+
+      --  removeToksForPos ((7,1),(7,6))
+      let sspan = posToSrcSpan forest ((7,1),(7,6))
+      let forest' = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(8,6))\n|\n"++
+              "+- ((1,1),(4,19))\n|\n"++
+              "`- ((8,1),(8,6))\n"
+      (invariant forest') `shouldBe` []
+
+      --  putToksAfterPos ((4,14),(4,19))
+      let newToks = take 3 toks
+      let sspan' = posToSrcSpan forest' ((4,14),(4,19))
+      let position = PlaceOffset 0 4 2
+
+      let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
+      (drawTreeEntry finsert) `shouldBe`
+              "((1,1),(8,6))\n|\n"++
+              "+- ((1,1),(4,19))\n|  |\n"++
+              "|  +- ((1,1),(4,13))\n|  |\n"++
+              "|  `- ((4,14),(4,19))\n|\n"++
+              "`- ((8,1),(8,6))\n"
+
+      let (f,t) = getSrcSpanFor forest' (srcSpanToForestSpan sspan')
+      (drawTreeEntry f) `shouldBe`
+              "((1,1),(8,6))\n|\n"++
+              "+- ((1,1),(4,19))\n|  |\n"++
+              "|  +- ((1,1),(4,13))\n|  |\n"++
+              "|  `- ((4,14),(4,19))\n|\n"++
+              "`- ((8,1),(8,6))\n"
+
+      let (forest'',newSpan) = addToksAfterSrcSpan forest' sspan' position newToks
+
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(8,6))\n|\n"++
+              "+- ((1,1),(4,19))\n|  |\n"++
+              "|  +- ((1,1),(4,13))\n|  |\n"++
+              "|  +- ((4,14),(4,19))\n|  |\n"++
+              "|  `- ((1000005,18),(1000007,1))\n|\n"++
+              "`- ((8,1),(8,6))\n"
+
+      (showSrcSpan newSpan) `shouldBe` "((1000005,18),(1000007,1))"
+      (invariant forest'') `shouldBe` []
+
   -- ---------------------------------------------
 
   describe "invariant 1" $ do

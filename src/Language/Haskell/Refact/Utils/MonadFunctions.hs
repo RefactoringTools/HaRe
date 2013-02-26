@@ -143,7 +143,7 @@ putToksAfterSpan oldSpan pos toks = do
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterPos :: (SimpPos,SimpPos) -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksAfterPos pos position toks = do
-  liftIO $ putStrLn $ "putToksAfterPos " ++ (show pos)
+  liftIO $ putStrLn $ "putToksAfterPos " ++ (show pos) ++ " at "  ++ (show position)
   st <- get
   let Just tm = rsModule st
   let sspan = posToSrcSpan (rsTokenCache tm) pos
@@ -186,6 +186,7 @@ removeToksForPos pos = do
   let forest' = removeSrcSpan (rsTokenCache tm) (srcSpanToForestSpan sspan)
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
+  liftIO $ putStrLn $ "removeToksForPos result:" ++ (show forest')
   return ()
 
 -- ---------------------------------------------------------------------

@@ -191,6 +191,7 @@ data Positioning = PlaceAdjacent -- ^Only a single space between the
                  | PlaceOffset Int Int Int -- ^Line and Col offset for
                    -- start, num lines to add at the end
                    -- relative to the indent level of the prior span
+                 deriving (Show)  
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ TODO: will we actuall need these?
@@ -439,10 +440,10 @@ insertSrcSpan forest sspan = forest'
           subTree = [mkTreeFromTokens startToks,
                      mkTreeFromSpanTokens sspan middleToks,
                      mkTreeFromTokens endToks]
-
+          subTree' = filter (\t -> treeStartEnd t /= nullSpan) subTree
           (Entry _sspan _) = Z.label z
 
-          z' = Z.setTree (Node (Entry _sspan []) subTree) z
+          z' = Z.setTree (Node (Entry _sspan []) subTree') z
           forest'' = Z.toTree z'
 
 -- ---------------------------------------------------------------------
