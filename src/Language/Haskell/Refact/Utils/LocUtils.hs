@@ -13,7 +13,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , realSrcLocFromTok
                      , isWhite
                      , notWhite
-                     , isWhiteSpace
+                     -- , isWhiteSpace
                      {-
                      ,isNewLn,isCommentStart -},isComment {-,
                      isNestedComment-},isMultiLineComment {-,isOpenBracket,isCloseBracket, -}
@@ -162,9 +162,6 @@ isWhite (GHC.L _ _                        ,_) = False
 
 notWhite  = not.isWhite
 
--- ++WARNING++ : there is no explicit Whitespace token in GHC.
--- isWhiteSpace (t,(_,s))       = t==Whitespace && s==" "
-isWhiteSpace _  = False
 
 {-
 isNewLn (t,(_,s))            = t==Whitespace && s=="\n"

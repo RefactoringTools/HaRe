@@ -11,6 +11,7 @@ sumSquares x y = sq x + sq y
     where
       sq 0 = 0
       sq z = z^pow
+    
 
 
 

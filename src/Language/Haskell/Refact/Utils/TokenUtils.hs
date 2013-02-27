@@ -18,7 +18,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , updateTokensForSrcSpan
        , treeStartEnd
        , insertSrcSpan
-       , removeSrcSpan         
+       , removeSrcSpan
        , getSrcSpanFor
        , getPathFor
        , retrieveTokens
@@ -50,6 +50,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , showSrcSpan
        , ghcSpanStartEnd
        , insertNodeAfter
+       , retrievePrevLineToks
+       , openZipperToSpan
 
        , ghcLineToForestLine
        , forestLineToGhcLine
@@ -82,6 +84,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , emptyList, nonEmptyList
        , startEndLocIncComments, startEndLocIncComments'
        , divideComments
+       , isWhiteSpace
+       , notWhiteSpace
        , isComment
        , getSrcSpan
        , getIndentOffset
@@ -191,7 +195,7 @@ data Positioning = PlaceAdjacent -- ^Only a single space between the
                  | PlaceOffset Int Int Int -- ^Line and Col offset for
                    -- start, num lines to add at the end
                    -- relative to the indent level of the prior span
-                 deriving (Show)  
+                 deriving (Show)
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ TODO: will we actuall need these?
@@ -478,6 +482,43 @@ retrieveTokens forest = reAlignMarked $ concat $ map (\t -> F.foldl accum [] t) 
 
 -- ---------------------------------------------------------------------
 
+-- |Starting from a point in the zipper, retrieve all tokens backwards
+-- until the line changes for a non-comment/non-empty token or
+-- beginning of file.
+
+retrievePrevLineToks :: Z.TreePos Z.Full Entry -> [PosToken]
+retrievePrevLineToks z = res' -- error $ "retrievePrevLineToks:done notWhite=" ++ (show (done notWhite)) -- ++AZ++
+  where
+    -- Assuming the zipper has been opened to the span we care about,
+    -- we will start with the tokens in the current tree, and work
+    -- back.
+    prevToks = retrieveTokens $ Z.tree z
+    nonWhiteToks = filter notWhiteSpace prevToks
+
+    endLine = tokenRow $ glast "retrievePrevLineToks" nonWhiteToks
+
+    notWhite = filter notWhiteSpace $ concat $ go z
+
+    -- Now keep moving back intil done
+    done toks = endLine /= (tokenRow $ ghead "retrievePrevLineToks"
+                                     $ filter notWhiteSpace toks)
+
+    res = concat $ dropWhile (\toks -> not (done toks)) $ go z
+    res' = dropWhile (\tok -> isWhiteSpace tok || tokenRow tok < endLine) res
+
+
+    go :: Z.TreePos Z.Full Entry -> [[PosToken]]
+    go z
+      | not (Z.isRoot z) = toks : (go $ fromJust (Z.parent z))
+      | otherwise = [toks]
+      where
+        toks = concatMap retrieveTokens $ Z.before z
+
+
+
+
+-- ---------------------------------------------------------------------
+
 -- |Used as a marker in the filename part of the SrcSpan on modified
 -- tokens, to trigger re-alignment when retrieving the tokens.
 tokenFileMark :: GHC.FastString
@@ -538,7 +579,15 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
     (ForestLine v l) = ghcLineToForestLine ghcl
     newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) l) newSpan
 
-    prevToks = retrieveTokens tree
+    -- TODO: this is the same as before, merge it
+    z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree forest'
+    prevToks = case (retrievePrevLineToks z) of
+                 [] -> retrieveTokens tree
+                 xs -> xs
+
+    -- prevToks = retrieveTokens tree
+
+
     toks' = reIndentToks pos prevToks toks
 
     newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
@@ -564,7 +613,10 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
 
     -- TODO: get at least the previous line's tokens. Use z to do it,
         -- but with a new function, and test it
-    prevToks = retrieveTokens tree
+    -- prevToks = retrieveTokens tree
+    prevToks = case (retrievePrevLineToks z) of
+                 [] -> retrieveTokens tree
+                 xs -> xs
 
     toks'' = reIndentToks pos prevToks toks
 
@@ -602,7 +654,8 @@ reIndentToks pos prevToks toks = toks''
       PlaceOffset rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where
           colStart  = tokenCol $ ghead "reIndentToks"
-                    $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
+                    -- $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
+                    $ dropWhile isWhiteSpace prevToks
           lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 1
 
           lineOffset' = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
@@ -620,8 +673,11 @@ reIndentToks pos prevToks toks = toks''
 nonCommentSpan :: [PosToken] -> (SimpPos,SimpPos)
 nonCommentSpan toks = (startPos,endPos)
   where
-    startTok = ghead "nonCommentSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
-    endTok   = ghead "nonCommentSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse toks
+    -- startTok = ghead "nonCommentSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
+    -- endTok   = ghead "nonCommentSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse toks
+
+    startTok = ghead "nonCommentSpan" $ dropWhile isWhiteSpace $ toks
+    endTok   = ghead "nonCommentSpan" $ dropWhile isWhiteSpace $ reverse toks
 
     startPos = tokenPos    startTok
     endPos   = tokenPosEnd endTok
@@ -1042,14 +1098,16 @@ startEndLocIncComments' toks (startLoc,endLoc) =
   let
     (begin,middle,end) = splitToks (startLoc,endLoc) toks
 
-    (leadinr,leadr) = break (\tok -> not (isComment tok || isEmpty tok)) $ reverse begin
+    -- (leadinr,leadr) = break (\tok -> not (isComment tok || isEmpty tok)) $ reverse begin
+    (leadinr,leadr) = break notWhiteSpace  $ reverse begin
     leadr' = filter (\t -> not (isEmpty t)) leadr
     prevLine  = if (emptyList leadinr) then 0 else (tokenRow $ head leadr')
     firstLine = if (emptyList middle)  then 0 else (tokenRow $ head middle)
     (_,leadComments) = divideComments prevLine firstLine $ reverse leadinr
 
 
-    (trail,trailrest) = break (\tok -> not (isComment tok || isEmpty tok)) end
+    -- (trail,trailrest) = break (\tok -> not (isComment tok || isEmpty tok)) end
+    (trail,trailrest) = break notWhiteSpace end
     trail' = filter (\t -> not (isEmpty t)) trail
     lastLine = if (emptyList middle)    then    0 else (tokenRow $ last middle)
     nextLine = if (emptyList trailrest) then 1000 else (tokenRow $ head trailrest)
@@ -1121,6 +1179,14 @@ increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L _l t), s) = (GHC.L ne
 
         add1 :: (Int, Int) -> (Int, Int)
         add1 (x,y) = (x+lineAmount,y+colAmount)
+
+-- ---------------------------------------------------------------------
+
+isWhiteSpace :: PosToken -> Bool
+isWhiteSpace tok = isComment tok || isEmpty tok
+
+notWhiteSpace :: PosToken -> Bool
+notWhiteSpace tok = not (isWhiteSpace tok)
 
 -- ---------------------------------------------------------------------
 

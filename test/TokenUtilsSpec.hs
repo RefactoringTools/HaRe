@@ -28,6 +28,8 @@ import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
+import qualified Data.Tree.Zipper as Z
+
 import TestUtils
 
 -- ---------------------------------------------------------------------
@@ -664,9 +666,7 @@ spec = do
       (invariant forest') `shouldBe` []
 
       --  putToksAfterPos ((4,14),(4,19))
-      let newToks = take 3 toks
       let sspan' = posToSrcSpan forest' ((4,14),(4,19))
-      let position = PlaceOffset 0 4 2
 
       let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry finsert) `shouldBe`
@@ -683,14 +683,15 @@ spec = do
               "+- ((1,1),(4,19))\n|  |\n"++
               "|  +- ((1,1),(4,13))\n|  |\n"++
               "|  +- ((4,14),(4,19))\n|  |\n"++
-              "|  `- ((1000006,4),(1000008,1))\n|\n"++
+              "|  `- ((1000006,5),(1000008,1))\n|\n"++
               "`- ((8,1),(8,6))\n"
 
-      (showSrcSpan sspan'') `shouldBe` "((1000006,4),(1000008,1))"
+      (showSrcSpan sspan'') `shouldBe` "((1000006,5),(1000008,1))"
       -- (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokens forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n    module MoveDef.Demote where\n\n \n\n  d = 9\n\n\n "
+      -- (showToks toksFinal) `shouldBe` ""
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n     module MoveDef.Demote where\n\n \n\n  d = 9\n\n\n "
 
     -- ---------------------------------
 
@@ -735,11 +736,50 @@ spec = do
               "+- ((1,1),(4,19))\n|  |\n"++
               "|  +- ((1,1),(4,13))\n|  |\n"++
               "|  +- ((4,14),(4,19))\n|  |\n"++
-              "|  `- ((1000005,18),(1000007,1))\n|\n"++
+              "|  `- ((1000005,5),(1000007,1))\n|\n"++
               "`- ((8,1),(8,6))\n"
 
-      (showSrcSpan newSpan) `shouldBe` "((1000005,18),(1000007,1))"
+      (showSrcSpan newSpan) `shouldBe` "((1000005,5),(1000007,1))"
       (invariant forest'') `shouldBe` []
+
+  -- ---------------------------------------------
+
+  describe "retrievePrevLineToks" $ do
+    it "Retrieves the previous non-empty line tokens from an open zipper" $ do
+      (_t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
+      let forest = mkTreeFromTokens toks
+
+      --  removeToksForPos ((7,1),(7,6))
+      let sspan = posToSrcSpan forest ((7,1),(7,6))
+      let forest' = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(8,6))\n|\n"++
+              "+- ((1,1),(4,19))\n|\n"++
+              "`- ((8,1),(8,6))\n"
+      (invariant forest') `shouldBe` []
+
+      --  putToksAfterPos ((4,14),(4,19))
+      let sspan' = posToSrcSpan forest' ((4,14),(4,19))
+
+      let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
+      (drawTreeEntry finsert) `shouldBe`
+              "((1,1),(8,6))\n|\n"++
+              "+- ((1,1),(4,19))\n|  |\n"++
+              "|  +- ((1,1),(4,13))\n|  |\n"++
+              "|  `- ((4,14),(4,19))\n|\n"++
+              "`- ((8,1),(8,6))\n"
+      -- (invariant forest'') `shouldBe` []
+
+      -- Now we have the test case set up. We want prior toks from
+      -- ((4,14),(4,19))
+      let tspan = posToSrcSpan forest ((4,14),(4,19))
+
+      let z = openZipperToSpan (srcSpanToForestSpan tspan) $ Z.fromTree finsert
+
+      let toksPrev = retrievePrevLineToks z
+
+      (GHC.showRichTokenStream toksPrev) `shouldBe` "\n\n\n toplevel x ="
+
 
   -- ---------------------------------------------
 
