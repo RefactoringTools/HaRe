@@ -1139,7 +1139,6 @@ spec = do
       (t, toks) <- parsedFileWhereIn3Ghc
       let
         comp = do
-
          renamed <- getRefactRenamed
 
          let Just (GHC.L _ tl) = locToName whereIn3FileName (10, 1) renamed

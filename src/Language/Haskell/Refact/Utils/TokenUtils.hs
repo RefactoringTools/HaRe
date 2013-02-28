@@ -195,6 +195,9 @@ data Positioning = PlaceAdjacent -- ^Only a single space between the
                  | PlaceOffset Int Int Int -- ^Line and Col offset for
                    -- start, num lines to add at the end
                    -- relative to the indent level of the prior span
+                 | PlaceIndent Int Int Int -- ^Line and Col offset for
+                   -- start, num lines to add at the end
+                   -- relative to the indent level of the prior line
                  deriving (Show)
 
 -- ---------------------------------------------------------------------
@@ -503,9 +506,13 @@ retrievePrevLineToks z = res' -- error $ "retrievePrevLineToks:done notWhite=" +
     done toks = endLine /= (tokenRow $ ghead "retrievePrevLineToks"
                                      $ filter notWhiteSpace toks)
 
-    res = concat $ dropWhile (\toks -> not (done toks)) $ go z
-    res' = dropWhile (\tok -> isWhiteSpace tok || tokenRow tok < endLine) res
-
+    -- res = concat $ dropWhile (\toks -> (emptyList toks) || (done toks)) $ reverse (prevToks : (go z))
+    res' = concat $ reverse (prevToks : (go z))
+    -- res' = dropWhile (\tok -> isWhiteSpace tok || tokenRow tok < endLine) res
+    -- res' = error $ "retrievePrevLineToks:res'=" ++ (show (dropWhile (\tok -> isWhiteSpace tok || tokenRow tok < endLine) res))
+    -- res' = error $ "retrievePrevLineToks:prevToks=" ++ (show prevToks)
+    -- res' = error $ "retrievePrevLineToks:prevToks=" ++ (show res)
+    -- res' = error $ "retrievePrevLineToks:(prevToks : (go z))=" ++ (show (prevToks : (go z)))
 
     go :: Z.TreePos Z.Full Entry -> [[PosToken]]
     go z
@@ -585,9 +592,6 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
                  [] -> retrieveTokens tree
                  xs -> xs
 
-    -- prevToks = retrieveTokens tree
-
-
     toks' = reIndentToks pos prevToks toks
 
     newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
@@ -611,9 +615,6 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
 
     z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree fwithspan
 
-    -- TODO: get at least the previous line's tokens. Use z to do it,
-        -- but with a new function, and test it
-    -- prevToks = retrieveTokens tree
     prevToks = case (retrievePrevLineToks z) of
                  [] -> retrieveTokens tree
                  xs -> xs
@@ -637,6 +638,8 @@ reIndentToks pos prevToks toks = toks''
     newTokStart = ghead "reIndentToks"
                 $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
 
+    prevOffset = getIndentOffset prevToks (tokenPos (glast "reIndentToks1" prevToks))
+
     (lineOffset,colOffset,endNewlines) = case pos of
       PlaceAdjacent -> (lineOffset',colOffset',0)
         where
@@ -654,12 +657,19 @@ reIndentToks pos prevToks toks = toks''
       PlaceOffset rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where
           colStart  = tokenCol $ ghead "reIndentToks"
-                    -- $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
                     $ dropWhile isWhiteSpace prevToks
           lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 1
 
           lineOffset' = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
           colOffset'  = colIndent + colStart  - (tokenCol newTokStart)
+
+      PlaceIndent rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
+        where
+          colStart = prevOffset
+          lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 1
+
+          lineOffset' = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
+          colOffset'  = colIndent + colStart  - (tokenCol newTokStart) + 1 -- ++AZ++ Why +1?
 
     toks'  = addOffsetToToks (lineOffset,colOffset) toks
     toks'' = if endNewlines > 0
@@ -1345,7 +1355,7 @@ startEndLocGhc (GHC.L l _) =
 getIndentOffset :: [PosToken] -> SimpPos -> Int
 getIndentOffset [] _pos    = 1
 getIndentOffset _toks (0,0) = 1
-getIndentOffset toks pos
+getIndentOffset toks pos 
   = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
     in if (emptyList ts2)
          then error "HaRe error: position does not exist in the token stream!"
@@ -1381,6 +1391,7 @@ splitOnNewLn toks = go [] toks
     go ss xs
       | onSameLn (glast "splitOnNewLn" ss) (head xs) = go (ss ++ [head xs]) (tail xs)
       | otherwise = (ss,xs)
+
 
 -- ---------------------------------------------------------------------
 

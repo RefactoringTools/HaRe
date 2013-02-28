@@ -544,7 +544,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 

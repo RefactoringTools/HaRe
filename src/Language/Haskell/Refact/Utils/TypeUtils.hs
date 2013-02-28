@@ -2683,14 +2683,12 @@ addDecl parent pn (decl, msig, declToks) topLevel
                -> RefactGhc t
   addLocalDecl parent (newFun, maybeSig, newFunToks)
     =do
-
         let binds = hsValBinds parent
 
         let (startLoc,endLoc) 
              = if (emptyList localDecls)
                  then getStartEndLoc parent
                  else getStartEndLoc localDecls
-        -- toks <- fetchToks
 
         newToks <- liftIO $ basicTokenise newSource
         -- error $ "TypeUtils.addLocalDecl:newToks=" ++ (showToks newToks) -- ++AZ++
@@ -2699,7 +2697,9 @@ addDecl parent pn (decl, msig, declToks) topLevel
         let colIndent = if (emptyList localDecls) then 4 else 0
             rowIndent = 0
 
-        _ <- putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent 2) newToks
+        -- error $ "TypeUtils.addLocalDecl:((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)=" ++ (show ((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)) -- ++AZ++
+
+        _ <- putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
 
 
         case maybeSig of
