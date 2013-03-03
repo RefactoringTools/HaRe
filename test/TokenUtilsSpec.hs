@@ -58,8 +58,8 @@ spec = do
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
 
-      let tm = initModule t toks
-      let (tm',declToks) = getTokensFor tm l
+      let forest = mkTreeFromTokens toks
+      let (tm',declToks) = getTokensFor forest l
 
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
@@ -69,7 +69,7 @@ spec = do
       -- Note: Although the tokens include leading and following
       -- comments, the SrcSpan must tie up with the original GHC
       -- SrcSpan in the AST
-      (drawTreeEntry $ mTokenCache tm') `shouldBe`
+      (drawTreeEntry tm') `shouldBe`
             "((1,1),(26,1))\n|\n"++
             "+- ((1,1),(15,17))\n|\n"++
             "+- ((19,1),(21,14))\n|\n"++
@@ -454,6 +454,49 @@ spec = do
       -- (showToks toks ) `shouldBe` ""
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n module TokenTest where\n\n\n\n\n\n\n\n "
+
+    -- --------------------------------------
+    it "replaces the tokens for a given span, and returns all the tokens later" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let (GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+
+      let (forest',tree) = getSrcSpanFor forest (fs l)
+
+      let toks' = retrieveTokens tree
+      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 1 0 2) toks'
+      (invariant forest'') `shouldBe` []
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,17))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++
+              "+- ((1000019,1),(1000021,14))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n"
+      (showSrcSpan sspan) `shouldBe` "((1000019,1),(1000021,14))"
+
+      let Just (GHC.L ln n) = locToName tokenTestFileName (19, 1) renamed
+      (GHC.showPpr n) `shouldBe` "TokenTest.foo"
+      (GHC.showPpr ln) `shouldBe` "test/testdata/TokenTest.hs:19:1-3"
+
+      let (_tree,toksForOp) = getTokensFor forest'' l
+
+      let (GHC.L _ ghcTok,_) = head toks
+      let newTok = mkToken ghcTok (19,1) "bbb"
+
+      let newToks = replaceTokNoReAlign toksForOp (19,1) newTok
+      (show newToks) `shouldBe`   "[((((18,1),(18,19)),ITlineComment \"-- leading comment\"),\"-- leading comment\"),((((19,1),(19,1)),ITsemi),\"\"),((((19,1),(19,4)),ITmodule),\"bbb\"),((((19,5),(19,6)),ITvarid \"x\"),\"x\"),((((19,7),(19,8)),ITvarid \"y\"),\"y\"),((((19,9),(19,10)),ITequal),\"=\"),((((20,3),(20,5)),ITdo),\"do\"),((((20,6),(20,6)),ITvocurly),\"\"),((((20,6),(20,7)),ITvarid \"c\"),\"c\"),((((20,8),(20,10)),ITlarrow),\"<-\"),((((20,11),(20,18)),ITvarid \"getChar\"),\"getChar\"),((((21,6),(21,6)),ITsemi),\"\"),((((21,6),(21,12)),ITvarid \"return\"),\"return\"),((((21,13),(21,14)),ITvarid \"c\"),\"c\")]"
+
+      let (forest''',newSpan) = updateTokensForSrcSpan forest'' l newToks
+
+      let toksFinal = retrieveTokens forest'''
+
+      -- (show toksFinal) `shouldBe` ""
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bbb x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n  "
 
     -- --------------------------------------
 

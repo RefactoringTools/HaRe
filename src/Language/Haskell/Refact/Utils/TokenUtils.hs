@@ -12,8 +12,8 @@
 module Language.Haskell.Refact.Utils.TokenUtils(
        Entry(..)
        , Positioning(..)
-       , Module(..)
-       , initModule
+       -- , Module(..)
+       -- , initModule
        , getTokensFor
        , updateTokensForSrcSpan
        , treeStartEnd
@@ -319,7 +319,7 @@ srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToF
     (endRow,endCol) = getGhcLocEnd sspan
 
 -- ---------------------------------------------------------------------
-
+{-
 data Module = Module
         { mTypecheckedMod :: GHC.TypecheckedModule
         , mOrigTokenStream :: [PosToken]  -- ^Original Token stream for the current module
@@ -333,6 +333,7 @@ initModule typeChecked tokens
       , mOrigTokenStream = tokens
       , mTokenCache = mkTreeFromTokens tokens
       }
+-}
 
 -- Initially work with non-monadic code, can build it into the
 -- RefactGhc monad later
@@ -344,44 +345,26 @@ initModule typeChecked tokens
 -- NOTE: The SrcSpan may be one introduced by HaRe, rather than GHC.
 -- TODO: consider returning an Either. Although in reality the error
 --       should never happen
-getTokensFor :: Module -> GHC.SrcSpan -> (Module,[PosToken])
-getTokensFor modu sspan = (modu', tokens)
+getTokensFor :: Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
+getTokensFor forest sspan = (forest'', tokens)
   where
-     forest = if invariantOk (mTokenCache modu) -- TODO: remove this, expensive operation
-               then mTokenCache modu
-               else mTokenCache modu
-     (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
-     modu' = modu { mTokenCache = forest' }
+     forest' = if invariantOk forest -- TODO: remove this, expensive operation
+               then forest
+               else error $ "getTokensFor:invariant failed:" ++ (show $ invariant forest)
+     (forest'',tree) = getSrcSpanFor forest' (srcSpanToForestSpan sspan)
 
      tokens = retrieveTokens tree
 
 -- ---------------------------------------------------------------------
-{- ++AZ++ old version
--- |Replace the tokens for a given SrcSpan with new ones. The SrcSpan
--- will be inserted into the tree if it is not already there
--- TODO: What about the change in size of thr SrcSpan? Solution is to
--- replace the SrcSpan with a new one (marked), and return it
-updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (GHC.SrcSpan,Tree Entry)
-updateTokensForSrcSpan forest sspan toks = forest''
-  where
-    -- Make sure the sspan is in the tree
-    (forest',node@(Node (Entry s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
-    zf = openZipperToNode node $ Z.fromTree forest'
-    -- ++AZ++ what if the given sourcespan is not a leaf node?
-    --        Should wipe out the structure below, as no longer valid
-    -- zf' = Z.setLabel (Entry s toks) zf
-    zf' = Z.setTree (Node (Entry s toks) []) zf
-    forest'' = Z.toTree zf'
--}
 
 -- |Replace the tokens for a given SrcSpan with new ones. The SrcSpan
 -- will be inserted into the tree if it is not already there
--- TODO: What about the change in size of thr SrcSpan? Solution is to
+-- TODO: What about the change in size of the SrcSpan? Solution is to
 -- replace the SrcSpan with a new one (marked), and return it
 updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (Tree Entry,GHC.SrcSpan)
 updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
   where
-    (forest',tree@(Node (Entry s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
+    (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
     prevToks = retrieveTokens tree
 
     newTokStart = ghead "reIndentToks" prevToks
@@ -414,7 +397,10 @@ getSrcSpanFor forest sspan = (forest',tree)
     forest' = insertSrcSpan forest sspan -- Will NO-OP if already there
     tree = case (lookupSrcSpan [forest'] sspan) of
              [x] -> x
-             xx  -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show xx) ++ " for " ++ (drawTreeEntry forest)
+             -- xx  -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show xx) ++ " for " ++ (drawTreeEntry forest)
+             xx  -> case (filter (\t -> forestSpanVersionNotSet (treeStartEnd t)) xx) of 
+                     [y] -> y
+                     yy -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show (xx,yy)) ++ " for " ++ (drawTreeEntry forest)
 
 -- ---------------------------------------------------------------------
 -- |Retrieve a path to the tree containing a SrcSpan from the forest,

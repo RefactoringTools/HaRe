@@ -5,18 +5,11 @@ module Language.Haskell.Refact.Utils.MonadFunctions
          initRefactModule
 
        -- * Conveniences for state access
-       , fetchToks
+
+       -- * Original API provided
+       , fetchToks -- ^Deprecated
        , fetchOrigToks
        , putToks -- ^Deprecated
-       , putToksForSpan
-       , putToksForPos
-       , putToksAfterSpan
-       , putToksAfterPos
-       , putDeclToksAfterSpan
-       , removeToksForSpan
-       , removeToksForPos
-       -- , putNewSpanAndToks
-       -- , putNewPosAndToks
        , getTypecheckedModule
        , getRefactStreamModified
        , getRefactInscopes
@@ -25,6 +18,18 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactParsed
        , putParsedModule
        , clearParsedModule
+
+       -- * TokenUtils API
+       , putToksForSpan
+       , getToksForSpan
+       , putToksForPos
+       , putToksAfterSpan
+       , putToksAfterPos
+       , putDeclToksAfterSpan
+       , removeToksForSpan
+       , removeToksForPos
+       -- , putNewSpanAndToks
+       -- , putNewPosAndToks
 
        -- * For debugging
        , getTokenTree
@@ -103,6 +108,18 @@ putToks toks isModified = do
 
 -- TODO: ++AZ: these individual calls should happen via the TokenUtils
 --       API, have a simple get/put interface here only
+
+-- |Get the current tokens for a given GHC.SrcSpan.
+getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
+getToksForSpan sspan = do
+  liftIO $ putStrLn $ "getToksForSpan " ++ (GHC.showPpr sspan)
+  st <- get
+  let Just tm = rsModule st
+  let (forest',toks) = getTokensFor (rsTokenCache tm) sspan 
+  let rsModule' = Just (tm {rsTokenCache = forest'})
+  put $ st { rsModule = rsModule' }
+  return toks
+
 
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens

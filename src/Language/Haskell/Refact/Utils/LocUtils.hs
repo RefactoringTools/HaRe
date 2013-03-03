@@ -26,7 +26,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , lengthOfLastLine
                      , updateToks, updateToksWithPos
                      , getToks
-                     , replaceToks,replaceTok,deleteToks,doRmWhites -- ,doAddWhites
+                     , replaceToks,replaceTok,replaceTokNoReAlign,deleteToks,doRmWhites -- ,doAddWhites
                      , srcLocs
                      , getSrcSpan, getAllSrcLocs
                      -- , ghcSrcLocs -- Test version
@@ -623,6 +623,19 @@ replaceTok toks pos newTok =
          else break (newRowFound (head $ tail toks2))  (tail toks2)
 
       newRowFound t1 t2 = tokenRow t1 /= tokenRow t2
+      newTok' = markToken newTok
+
+-- ---------------------------------------------------------------------
+
+-- |Replace a single token in the token stream by a new token, without
+-- adjusting the layout.
+-- Note: does not re-align, else other later replacements may fail.
+replaceTokNoReAlign::[PosToken]->SimpPos->PosToken->[PosToken]
+replaceTokNoReAlign toks pos newTok =
+    toks1 ++ [newTok'] ++ toksRest
+   where
+      (toks1,toks2) = break (\t -> tokenPos t >= pos && tokenLen t > 0) toks
+      toksRest = gtail "replaceTokNoReAlign" toks2
       newTok' = markToken newTok
 
 -- ---------------------------------------------------------------------

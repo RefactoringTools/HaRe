@@ -3730,9 +3730,14 @@ renamePN::(SYB.Data t)
    ->Bool                 -- ^ True means modifying the token stream as well.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
-renamePN oldPN newName updateTokens t
+renamePN oldPN newName updateTokens t 
+  -- = error $ "renamePN: sspan=" ++ (GHC.showPpr sspan) -- ++AZ++
+  -- Note: bottom-up traversal
   = everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
   where
+    maybeSspan = getSrcSpan t
+    sspan = gfromJust "renamePN" maybeSspan
+
     rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
     rename  pnt@(GHC.L l n)
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
@@ -3752,9 +3757,11 @@ renamePN oldPN newName updateTokens t
     worker (row,col) l n
      = do if updateTokens
            then  do
-                    toks <- fetchToks
-                    let toks'= replaceTok toks (row,col) (markToken $ newNameTok l newName)
-                    putToks toks' True
+                    -- toks <- fetchToks
+                    toks <- getToksForSpan sspan
+                    let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
+                    -- putToks toks' True
+                    _ <- putToksForSpan sspan toks'
 
                     return newName
            else return newName
