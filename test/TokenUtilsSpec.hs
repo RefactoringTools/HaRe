@@ -456,6 +456,7 @@ spec = do
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n module TokenTest where\n\n\n\n\n\n\n\n "
 
     -- --------------------------------------
+
     it "replaces the tokens for a given span, and returns all the tokens later" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
@@ -470,6 +471,7 @@ spec = do
 
       let toks' = retrieveTokens tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 1 0 2) toks'
+
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++

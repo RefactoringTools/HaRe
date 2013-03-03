@@ -700,6 +700,7 @@ spec = do
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      -- (show $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n \n bar2 :: Integer -> Integer\n  bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (GHC.showPpr nb) `shouldBe` "[bar2 x = DupDef.Dd1.c GHC.Num.* x]"
 
@@ -1268,7 +1269,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Replace a Name with another in limited scope, updating tokens" $ do
+    it "Replace a Name with another in limited scope, updating tokens 1" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -1307,6 +1308,62 @@ spec = do
       let
 
       ((nb,nn,tfo),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = forest'', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
+      -- (show tfo) `shouldBe` ""
+      (GHC.showPpr n) `shouldBe` "TokenTest.foo" 
+      (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n  "
+      (GHC.showPpr nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
+      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+
+    -- ---------------------------------
+
+    it "Replace a Name with another in limited scope, updating tokens 2" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+      let Just (GHC.L _ n) = locToName tokenTestFileName (19, 1) renamed
+      (GHC.showPpr n) `shouldBe` "TokenTest.foo"
+
+      let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
+
+      let toks' = retrieveTokens tree
+      -- let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 1 0 2) toks'
+      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 1 0 2) toks'
+      let (decl',forest''') = syncAST decl sspan forest'' 
+
+      (GHC.showPpr $ getSrcSpan decl') `shouldBe` "Just test/testdata/TokenTest.hs:(1000024,1)-(1000028,0)"
+
+      (invariant forest''') `shouldBe` []
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(15,17))\n|\n"++
+              "+- ((19,1),(21,14))\n|\n"++
+              "+- ((1000024,1),(1000028,1))\n|\n"++ -- our inserted span
+              "`- ((26,1),(26,1))\n"
+      (showSrcSpan sspan) `shouldBe` "((1000024,1),(1000028,1))"
+
+      -- (show $ getTokensFor forest''' sspan) `shouldBe` ""
+
+      let toksFinal = retrieveTokens forest'''
+      -- (showToks toksFinal) `shouldBe` ""
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n \n\n  "
+
+      let
+        comp = do
+         newName <- mkNewGhcName "bar2"
+         -- toksForOp <- getToksForSpan sspan -- The new span this time
+         new <- renamePN n newName True decl'
+
+         return (new,newName)
+      let
+
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = forest''', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       -- (show tfo) `shouldBe` ""
       (GHC.showPpr n) `shouldBe` "TokenTest.foo" 
       (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"

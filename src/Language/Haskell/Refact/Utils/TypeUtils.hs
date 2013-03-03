@@ -2584,6 +2584,28 @@ rmPreludeImports = filter isPrelude where
 
 -- ---------------------------------------------------------------------
 
+-- |Make a new set of tokens, originating at (0,0), for a given
+-- declaration and optional signature.
+-- NOTE: This function returns tokens originating at (0,0), to be
+-- stitched in at the right place by TokenUtils
+makeNewToks :: (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
+              -> RefactGhc [PosToken]
+makeNewToks (decl, maybeSig, declToks) = do
+   let
+     declStr = case declToks of
+                Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
+                Nothing -> "\n"++(prettyprint decl)++"\n\n"
+     sigStr  = case declToks of
+                Just _ts -> ""
+                Nothing -> case maybeSig of
+                             Just sig -> "\n"++(prettyprint sig)
+                             Nothing -> ""
+
+   newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
+   return newToks
+
+-- ---------------------------------------------------------------------
+
 -- | Adding a declaration to the declaration list of the given syntax
 -- phrase(so far only adding function\/pattern binding has been
 -- tested). If the second argument is Nothing, then the declaration
@@ -2634,27 +2656,6 @@ addDecl parent pn (decl, msig, declToks) topLevel
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
-
-  -- TODO: Make this a top level general purpose function, similar to update.
-  -- NOTE: This function returns tokens originating at (0,0), to be
-  -- stitched in at the right place by TokenUtils
-  makeNewToks :: (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
-              -> RefactGhc [PosToken]
-  makeNewToks (decl, maybeSig, declToks) = do
-         let
-             declStr = case declToks of
-                        Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
-                        Nothing -> "\n"++(prettyprint decl)++"\n\n"
-             sigStr  = case declToks of
-                        Just _ts -> ""
-                        Nothing -> case maybeSig of
-                                     Just sig -> "\n"++(prettyprint sig)
-                                     Nothing -> ""
-
-         newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
-
-         return newToks
-
 
   appendDecl :: (SYB.Data t, HsValBinds t)
       => t        -- ^Original AST
@@ -2772,7 +2773,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
     imps' <- mapM inImport imps
     return (g,imps',e,d)
   where
-    isHide = case impType of 
+    isHide = case impType of
              Hide   -> True
              Import -> False
 
@@ -2782,25 +2783,25 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
        = case h of
            Nothing             -> insertEnts imp [] True
            Just (isHide, ents) -> insertEnts imp ents False
-           _                   -> return imp 
+           _                   -> return imp
     inImport x = return x
-      
-    insertEnts :: 
-      GHC.LImportDecl GHC.Name 
-      -> [GHC.LIE GHC.Name] 
+
+    insertEnts ::
+      GHC.LImportDecl GHC.Name
+      -> [GHC.LIE GHC.Name]
       -> Bool
       -> RefactGhc ( GHC.LImportDecl GHC.Name )
-    insertEnts imp ents isNew = 
+    insertEnts imp ents isNew =
         if isNew && not isHide then return imp
-        else do        
+        else do
             toks <- fetchToks
             let (startPos,endPos) = getStartEndLoc imp
                 ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
                 start = getGhcLoc l
                 end   = getGhcLocEnd l
 
-                beginning = 
-                        if isNew then 
+                beginning =
+                        if isNew then
                             s ++ (if isHide then " hiding " else " ")++"("
                         else ","
                 ending = if isNew then ")" else s
@@ -3237,6 +3238,35 @@ deleteEnt toks (startPos, endPos)
 
 -- ---------------------------------------------------------------------
 
+-- | Duplicate a function\/pattern binding declaration under a new name
+-- right after the original one. Also updates the token stream.
+duplicateDecl::(SYB.Data t) =>
+  [GHC.LHsBind GHC.Name]  -- ^ The declaration list
+  ->t                     -- ^ Any signatures are in here
+  ->GHC.Name              -- ^ The identifier whose definition is to be duplicated
+  ->GHC.Name              -- ^ The new name (possibly qualified)
+  ->RefactGhc [GHC.LHsBind GHC.Name]  -- ^ The result
+duplicateDecl decls sigs n newFunName
+ = do
+
+      let Just sspan = getSrcSpan funBinding
+
+      toks <- getToksForSpan sspan
+      funBinding' <- putDeclToksAfterSpan sspan (head funBinding) (PlaceOffset 1 0 2) toks
+
+      --rename the function name to the new name, and update token
+      funBinding'' <- renamePN n newFunName True funBinding'
+      typeSig'  <- renamePN n newFunName False typeSig
+
+      -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
+      return [funBinding'']
+     where
+       declsToDup = definingDeclsNames [n] decls True False -- ++AZ++ should recursive be set true?
+       funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
+       typeSig = definingSigsNames [n] sigs
+
+
+{- Prior to using TokenUtils
 -- | Duplicate a functon\/pattern binding declaration under a new name
 -- right after the original one. Also updates the token stream.
 duplicateDecl::(SYB.Data t) =>
@@ -3245,12 +3275,6 @@ duplicateDecl::(SYB.Data t) =>
   ->GHC.Name              -- ^ The identifier whose definition is to be duplicated
   ->GHC.Name              -- ^ The new name (possibly qualified)
   ->RefactGhc [GHC.LHsBind GHC.Name]  -- ^ The result
-{- there maybe fun/simple pattern binding and type signature in the
-duplicated decls function binding, and type signature are handled
-differently here: the comment and layout in function binding are
-preserved.The type signature is outputted by pretty printer, so the
-comments and layout are NOT preserved.
- -}
 duplicateDecl decls sigs n newFunName
  = do
       toks <- fetchToks
@@ -3308,18 +3332,6 @@ duplicateDecl decls sigs n newFunName
                       in  (toks1++newLineTok++[newToken]++newLineTokAfter++toks3)
                  else  (toks1++newLineTok++toks3)
 
-          {- toks'= if typeSig/=[]
-                 then let offset = tokenCol ((ghead "doDuplicating") (dropWhile (\t->isWhite t) toks3))
-                          sigSource = concatMap (\s->replicate (offset-1) ' '++s++"\n")((lines.render.ppi) typeSig')
-                          t = mkToken Whitespace (0,0) sigSource
-                      in  (toks1++newLineTok++[t]++(whiteSpacesToken (0,0) (snd startPos-1))++toks3)
-                 else  (toks1++newLineTok++(whiteSpacesToken (0,0) (snd startPos-1))++toks3) 
-          -}
-
-      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:(offset)=" ++ (show offset)) -- ++AZ++ debug 12
-      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:(fst (getStartEndLoc funBinding))=" ++ (show (fst $ getStartEndLoc funBinding))) -- ++AZ++ debug 12
-      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:(last toks1)=" ++ (showToks [last toks1])) -- ++AZ++ debug 19
-      -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:newLineTok=" ++ (showToks newLineTok)) -- ++AZ++ debug
       putToks toks' True
       -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
       return funBinding'
@@ -3327,68 +3339,6 @@ duplicateDecl decls sigs n newFunName
        declsToDup = definingDeclsNames [n] decls True False -- ++AZ++ should recursive be set true?
        funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
        typeSig = definingSigsNames [n] sigs
-
-
-
--- ---------------------------------------------------------------------
---------------------------------TRY TO REMOVE THIS FUNCTION---------------------
--- ++AZ++ why?
-
-{-
-moveDecl:: (HsValBinds t)
-     => [GHC.Name]     -- ^ The identifier(s) whose defining
-                       -- declaration is to be moved. List is used to
-                       -- handle pattern bindings where multiple
-                       -- identifiers are defined.
-     -> t              -- ^ The syntax phrase where the declaration is
-                       -- going to be moved to.
-     -> Bool           -- ^ True mean the function\/pattern binding
-                       -- being moved is going to be at the same level
-                       -- with t. Otherwise it will be a local
-                       -- declaration of t.
-     -> [GHC.LHsBind GHC.Name] -- ^ The declaration list where the
-                               -- definition\/pattern binding
-                               -- originally exists.
-
-     -- -> t2             -- ^ The declaration list where the
-                       -- definition\/pattern binding originally
-                       -- exists.
-     -> Bool           -- ^ True means the type signature will not be
-                       -- discarded.
-     -> RefactGhc t    -- ^ The result.
-
-moveDecl pns dest _sameLevel decls incSig
-   = do ts <- fetchToks
-        let defToks' =(getDeclToks (ghead "moveDecl:0" pns) True decls ts)
-            defToks  =whiteSpaceTokens (tokenRow (ghead "moveDecl" defToks'),0)
-                                       -- do not use tokenCol here. should count the whilte spaces.
-                                       (tokenCol (ghead "moveDecl2" defToks') -1) ++ defToks'
-            movedDecls = definingDeclsNames pns decls True False
-        decls'<-rmDecl (ghead "moveDecl3"  pns) False =<< foldM (flip rmTypeSig) decls pns
-        addDecl dest Nothing (ghead "moveDecl" movedDecls, Just defToks) False
--}
-
-{- ++AZ++ original
-{-
-moveDecl::(CanHaveWhereClause t,DeclStartLoc t, Term t,Printable t,MonadPlus m,
-           MonadState (([PosToken],Bool),(Int, Int)) m)
-     => [PName]        -- ^ The identifier(s) whose defining declaration is to be moved. List is used to handle pattern bindings where multiple identifiers are defined.
-     -> t              -- ^ The syntax phrase where the declaration is going to be moved to.
-     -> Bool           -- ^ True mean the function\/pattern binding being moved is going to be at the same level with t. Otherwise it will be a local declaration of t.
-     -> [HsDeclP]      -- ^ The declaration list where the definition\/pattern binding originally exists.
-     -> Bool           -- ^ True means the type signature will not be discarded.
-     -> m t            -- ^ The result.
--}
-moveDecl pns dest sameLevel decls incSig
-   = do ((ts,_),_)<-get
-        let defToks' =(getDeclToks (ghead "moveDecl:0" pns) True decls ts)
-            defToks  =whiteSpaceTokens (tokenRow (ghead "moveDecl" defToks'),0)
-                                       -- do not use tokenCol here. should count the whilte spaces.
-                                       (tokenCol (ghead "moveDecl2" defToks') -1) ++ defToks'
-            movedDecls = definingDecls pns decls True False
-        decls'<-rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) decls pns
-        addDecl dest Nothing (movedDecls, Just defToks) False
-
 -}
 
 -- ---------------------------------------------------------------------
@@ -3588,7 +3538,7 @@ rmTypeSig pn t
                      then let newSig=(GHC.L l (GHC.TypeSig (filter (\(GHC.L _ x) -> x /= pn) names) typ))
                               pnt = ghead "rmTypeSig" (filter (\(GHC.L _ x) -> x == pn) names)
                               (startPos1, endPos1) = let (startPos1', endPos1') = getStartEndLoc pnt
-                                                     in if fromJust (elemIndex pnt names) >0
+                                                     in if gfromJust "rmTypeSig" (elemIndex pnt names) >0
                                                         then extendForwards  toks startPos1' endPos1' isComma
                                                         else extendBackwards toks startPos1' endPos1' isComma
                           in (deleteToks toks startPos1 endPos1,(decls1++[newSig]++tail decls2))
@@ -3724,13 +3674,15 @@ rmQualifier pns t
 -- phrase with the new name. If the Bool parameter is True, then
 -- modify both the AST and the token stream, otherwise only modify the
 -- AST.
+-- TODO: the syntax phrase is required to be GHC.Located, not sure how
+-- to specify this without breaking the everywhereMStaged call
 renamePN::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
    ->GHC.Name             -- ^ The new name, including possible qualifier
    ->Bool                 -- ^ True means modifying the token stream as well.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
-renamePN oldPN newName updateTokens t 
+renamePN oldPN newName updateTokens t
   -- = error $ "renamePN: sspan=" ++ (GHC.showPpr sspan) -- ++AZ++
   -- Note: bottom-up traversal
   = everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
@@ -3762,8 +3714,8 @@ renamePN oldPN newName updateTokens t
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     -- putToks toks' True
                     _ <- putToksForSpan sspan toks'
-
                     return newName
+                    -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (GHC.showPpr (row,col,l,sspan)) ++ (show toks) -- ++AZ++
            else return newName
 
 -- ---------------------------------------------------------------------

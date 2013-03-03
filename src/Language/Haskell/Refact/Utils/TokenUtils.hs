@@ -369,10 +369,6 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
 
     newTokStart = ghead "reIndentToks" prevToks
 
-    -- newTokStart = ghead "reIndentToks"
-    --             $ dropWhile (\tok -> isComment tok || isEmpty tok) $ prevToks
-
-    -- toks'' = reIndentToks PlaceAdjacent [newTokStart] toks
     toks'' = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
 
     (startPos,endPos) = nonCommentSpan toks''
@@ -384,6 +380,7 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
 
     zf' = Z.setTree (Node (Entry (srcSpanToForestSpan newSpan) toks'') []) zf
     forest'' = Z.toTree zf'
+    -- forest'' = error $ "updateTokensForSrcSpan: tree=" ++ (show tree) -- ++AZ++
 
     -- (forest'',newSpan') = addNewSrcSpanAndToksAfter forest sspan newSpan pos toks''
 
@@ -398,7 +395,8 @@ getSrcSpanFor forest sspan = (forest',tree)
     tree = case (lookupSrcSpan [forest'] sspan) of
              [x] -> x
              -- xx  -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show xx) ++ " for " ++ (drawTreeEntry forest)
-             xx  -> case (filter (\t -> forestSpanVersionNotSet (treeStartEnd t)) xx) of 
+             -- xx  -> case (filter (\t -> forestSpanVersionNotSet (treeStartEnd t)) xx) of 
+             xx  -> case (filter (\t -> (treeStartEnd t) == sspan) xx) of 
                      [y] -> y
                      yy -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show (xx,yy)) ++ " for " ++ (drawTreeEntry forest)
 
@@ -522,7 +520,7 @@ retrievePrevLineToks z = res' -- error $ "retrievePrevLineToks:done notWhite=" +
 
     go :: Z.TreePos Z.Full Entry -> [[PosToken]]
     go z
-      | not (Z.isRoot z) = toks : (go $ fromJust (Z.parent z))
+      | not (Z.isRoot z) = toks : (go $ gfromJust "retrievePrevLineToks" (Z.parent z))
       | otherwise = [toks]
       where
         toks = concatMap retrieveTokens $ Z.before z
@@ -745,14 +743,15 @@ openZipperToNode
      -> Z.TreePos Z.Full Entry
      -> Z.TreePos Z.Full Entry
 openZipperToNode node z
+  -- = error $ "openZipperToNode:(treeStartEnd (Z.tree z),z)="++(show (treeStartEnd (Z.tree z),z)) -- ++AZ++
   = if treeStartEnd (Z.tree z) == treeStartEnd node
       then z
       else z'
         where
           -- go through all of the children to find the one that
           -- either is what we are looking for, or contains it
-          childrenAsZ = map fromJust
-                      $ iterate (\mz -> Z.next $ gfromJust "openZipperToNode" mz)
+          childrenAsZ = map (\j -> gfromJust "openZipperToNode" j)
+                      $ iterate (\mz -> Z.next $ gfromJust ("openZipperToNode:" ++ (show z)) mz)
                       $ Z.firstChild z
           child = ghead "openZipperToNode" $ filter contains childrenAsZ
           -- focus of child either IS the node we care about, or contains it
@@ -764,6 +763,7 @@ openZipperToNode node z
             where
               (startPos,endPos) = treeStartEnd $ Z.tree zn
               (nodeStart,nodeEnd) = treeStartEnd node
+
 
 -- ---------------------------------------------------------------------
 
@@ -1281,10 +1281,9 @@ getSrcSpan t = res t
   where
     res = somethingStaged SYB.Renamer Nothing
             (Nothing
-                    `SYB.mkQ` bind
+                    `SYB.mkQ`  bind
                     `SYB.extQ` sig
                     `SYB.extQ` pnt
-                    `SYB.extQ` sn
                     `SYB.extQ` literalInExp
                     `SYB.extQ` literalInPat
                     `SYB.extQ` importDecl
@@ -1302,11 +1301,6 @@ getSrcSpan t = res t
 
     pnt :: GHC.GenLocated GHC.SrcSpan GHC.Name -> Maybe GHC.SrcSpan
     pnt (GHC.L l _)              = Just l
-
-    -- TODO: This is using GHC.RdrName, remove it
-    sn :: GHC.HsModule GHC.RdrName -> Maybe GHC.SrcSpan
-    sn (GHC.HsModule (Just (GHC.L l _)) _ _ _ _ _) = Just l
-    sn _ = Nothing
 
     literalInExp :: GHC.LHsExpr GHC.Name -> Maybe GHC.SrcSpan
     literalInExp (GHC.L l _) = Just l
