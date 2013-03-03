@@ -3263,6 +3263,10 @@ duplicateDecl decls sigs n newFunName
           -- take those token after (and include) the function binding
           toks2 = dropWhile (\t -> tokenPos t /= startPos {- || isNewLn t -}) toks
 
+      -- At this point
+      --   toks1 is from the start up to and including the decl,
+      --   toks2 is the binding to the end
+
       -- liftIO $ putStrLn ("TypeUtils.duplicateDecl:toks1=" ++ (showToks toks1)) -- ++AZ++ debug
       putToks toks2 True
 

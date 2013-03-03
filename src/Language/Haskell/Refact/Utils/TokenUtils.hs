@@ -875,6 +875,7 @@ invariantOk forest = ok
 --   2b. The subForest is in SrcSpan order
 --   3. A given SrcSpan can only appear (or be included) in a single tree of the forest.
 --   4. The parent link for all sub-trees does exist, and actually points to the parent. 
+--   5. There are no nullSpan entries in the tree
 -- NOTE: the tokens may extend before or after the SrcSpan, due to comments only
 -- NOTE2: this will have to be revisited when edits to the tokens are made
 invariant :: Tree Entry -> [String]
@@ -888,7 +889,7 @@ invariant forest = rsub
         r = checkNode [] tree
 
     checkNode :: [String] -> Tree Entry -> [String]
-    checkNode acc node@(Node (Entry _sspan toks) sub) = acc ++ r ++ rinc ++ rsubs
+    checkNode acc node@(Node (Entry sspan toks) sub) = acc ++ r ++ rinc ++ rsubs ++ rnull
       where
         r = if (   emptyList toks && nonEmptyList sub) ||
                (nonEmptyList toks &&    emptyList sub)
@@ -897,6 +898,10 @@ invariant forest = rsub
         rsubs = foldl' checkNode [] sub
 
         rinc = checkInclusion node
+
+        rnull = if (sspan == nullSpan) 
+                 then ["FAIL: null SrcSpan in tree: " ++ (prettyshow node)]
+                 else []
 
     -- |Check invariant 2, assuming 1 ok
     checkInclusion      (Node _                    []) = []
@@ -934,8 +939,6 @@ invariant forest = rsub
                  (True, True)   -> if vs < ve         -- both have version, lowest wins 
                                     then False
                                     else True
-
-
 
 
 -- ---------------------------------------------------------------------
