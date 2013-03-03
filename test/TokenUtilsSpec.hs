@@ -778,8 +778,7 @@ spec = do
 
       let toksPrev = retrievePrevLineToks z
 
-      (GHC.showRichTokenStream toksPrev) `shouldBe` "\n\n\n toplevel x ="
-
+      (GHC.showRichTokenStream toksPrev) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x"
 
   -- ---------------------------------------------
 

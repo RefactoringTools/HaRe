@@ -55,6 +55,10 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        , ghcLineToForestLine
        , forestLineToGhcLine
+       , forestPosVersionSet
+       , forestPosVersionNotSet
+       , forestSpanVersionSet
+       , forestSpanVersionNotSet
        , insertForestLineInSrcSpan
        , srcSpanToForestSpan
        , nullSpan
@@ -261,6 +265,22 @@ instance Ord ForestLine where
     if (l1 == l2)
       then compare v1 v2
       else compare l1 l2
+
+-- |Checks if the version is non-zero in either position
+forestSpanVersionSet :: ForestSpan -> Bool
+forestSpanVersionSet ((ForestLine sv _,_),(ForestLine ev _,_)) = sv /= 0 || ev /= 0
+
+-- |Checks if the version is zero in both positions
+forestSpanVersionNotSet :: ForestSpan -> Bool
+forestSpanVersionNotSet ((ForestLine sv _,_),(ForestLine ev _,_)) = sv == 0 && ev == 0
+
+-- |Checks if the version is non-zero 
+forestPosVersionSet :: ForestPos -> Bool
+forestPosVersionSet (ForestLine v _,_) = v /= 0
+
+-- |Checks if the version is zero
+forestPosVersionNotSet :: ForestPos -> Bool
+forestPosVersionNotSet (ForestLine v _,_) = v == 0
 
 -- |Strip out the version markers
 forestSpanToSimpPos :: ForestSpan -> (SimpPos,SimpPos)
@@ -911,8 +931,11 @@ invariant forest = rsub
         subs = map treeStartEnd sub
         (sstart, _) = ghead "invariant" subs
         (_, send) = last subs
+        -- Do not count any custom added srcspans at the end for this
+        -- test
+        -- TODO: is this a reasonable approach?
 
-        rs = if (start == sstart) && (end == send)
+        rs = if (start == sstart) && ((end == send) || (forestPosVersionSet send))
                then []
                else ["FAIL: subForest start and end does not match entry: " ++ (prettyshow node)]
 

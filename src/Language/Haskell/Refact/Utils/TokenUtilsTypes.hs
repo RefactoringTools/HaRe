@@ -8,10 +8,10 @@
 module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        Entry(..)
        , ForestLine(..)
+       , ForestPos(..)
        , ForestSpan(..)
        ) where
 
-import qualified SrcLoc        as GHC
 import Language.Haskell.Refact.Utils.TypeSyn
 
 
@@ -60,8 +60,11 @@ data ForestLine = ForestLine
 
 -- ---------------------------------------------------------------------
 
+type ForestPos = (ForestLine,Int)
+
+
 -- |Match a SrcSpan, using a ForestLine as the marker
-type ForestSpan = ((ForestLine, Int),(ForestLine, Int)) 
+type ForestSpan = (ForestPos,ForestPos)
 
 -- ---------------------------------------------------------------------
 
