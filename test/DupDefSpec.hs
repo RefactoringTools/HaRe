@@ -43,18 +43,19 @@ spec = do
      res <- catchException (doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","ccc","14","13"])
      (show res) `shouldBe` "Just \"The selected identifier is not a function/simple pattern name, or is not defined in this module \""
 
-
     it "duplicates a definition at the top level" $ do
      doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","tl2","4","1"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected"
      diff `shouldBe` []
 
+
     it "duplicates a definition in a match" $ do
      doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","23","5"]
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
+
 
     it "duplicates a definition in a pattern match" $ do
      doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","gg","17","5"]

@@ -24,6 +24,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , retrieveTokens
        , addNewSrcSpanAndToksAfter
        , addToksAfterSrcSpan
+       , addDeclToksAfterSrcSpan
 
        -- * Token marking and re-alignment
        , tokenFileMark
@@ -636,6 +637,25 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
 
 -- ---------------------------------------------------------------------
 
+-- |Add new tokens belonging to an AST fragment after a given SrcSpan,
+-- and re-sync the AST fragment to match the new location
+addDeclToksAfterSrcSpan :: (SYB.Data t) =>
+     Tree Entry  -- ^TokenTree to be modified
+  -> GHC.SrcSpan -- ^Preceding location for new tokens
+  -> Positioning
+  -> [PosToken] -- ^New tokens to be added
+  -> GHC.Located t  -- ^Declaration the tokens belong to, to be synced
+  -> (Tree Entry, GHC.SrcSpan,GHC.Located t) -- ^ updated TokenTree ,SrcSpan location for
+  -- -> (Tree Entry, GHC.SrcSpan,t) -- ^ updated TokenTree ,SrcSpan location for
+                               -- the new tokens in the TokenTree, and
+                               -- updated AST element
+addDeclToksAfterSrcSpan forest oldSpan pos toks t = (forest'',newSpan,t')
+  where
+    (forest',newSpan) = addToksAfterSrcSpan forest oldSpan pos toks
+    (t',forest'') = syncAST t newSpan forest'
+
+-- ---------------------------------------------------------------------
+
 reIndentToks :: Positioning -> [PosToken] -> [PosToken] -> [PosToken]
 reIndentToks pos prevToks toks = toks''
   where
@@ -1052,13 +1072,65 @@ ghcSpanStartEnd sspan = (getGhcLoc sspan,getGhcLocEnd sspan)
 -- in the token tree.
 syncAST :: (SYB.Data t)
   => GHC.Located t -- ^The AST (or fragment)
+  -- => t -- ^The AST (or fragment)
   -> GHC.SrcSpan   -- ^The SrcSpan created in the Tree Entry
   -> Tree Entry    -- ^Existing token tree
   -> (GHC.Located t, Tree Entry) -- ^Updated AST and tokens
-syncAST (GHC.L _l t) sspan forest = (ast',forest')
+  -- -> (t, Tree Entry) -- ^Updated AST and tokens
+-- syncAST (GHC.L _l t) sspan forest = (ast',forest')
+syncAST ast@(GHC.L l t) sspan forest = (ast',forest')
   where
-    ast' = (GHC.L sspan t)
+    -- ast' = (GHC.L sspan t)
     forest' = forest
+
+    (startRow,startCol) = getGhcLoc l
+    (newStartRow,newStartCol) = getGhcLoc sspan
+
+    rowOffset = newStartRow - startRow
+    colOffset = newStartCol - startCol
+
+    -- TODO: take cognizance of the ForestLines encoded in srcspans
+    -- when calculating the offsets etc
+    -- syncSpan s = addOffsetToSpan (rowOffset,colOffset) s
+    syncSpan s = s
+
+    ast' = everywhereStaged SYB.Renamer (
+              SYB.mkT hsbindlr
+              `SYB.extT` sig
+              `SYB.extT` ty
+              `SYB.extT` name
+              `SYB.extT` lhsexpr
+              `SYB.extT` lpat
+              `SYB.extT` limportdecl
+              ) ast
+
+    hsbindlr (GHC.L l b) = (GHC.L (syncSpan l) b) :: GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)
+
+    sig (GHC.L l s) = (GHC.L (syncSpan l) s) :: GHC.LSig GHC.Name
+
+    ty (GHC.L l typ) =  (GHC.L (syncSpan l) typ) :: (GHC.LHsType GHC.Name)
+
+    name (GHC.L l n) = (GHC.L (syncSpan l) n) :: GHC.Located GHC.Name
+
+    lhsexpr (GHC.L l e) = (GHC.L (syncSpan l) e) :: GHC.LHsExpr GHC.Name
+
+    lpat (GHC.L l p) = (GHC.L (syncSpan l) p) :: GHC.LPat GHC.Name
+
+    limportdecl (GHC.L l idl) = (GHC.L (syncSpan l) idl) :: GHC.LImportDecl GHC.Name
+
+-- ---------------------------------------------------------------------
+
+addOffsetToSpan :: (Int,Int) -> GHC.SrcSpan -> GHC.SrcSpan
+addOffsetToSpan (lineOffset,colOffset) sspan = sspan'
+  where
+   sspan' =  case sspan of
+     GHC.RealSrcSpan ss ->
+       let
+         locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) (lineOffset + GHC.srcSpanStartLine ss) (colOffset + GHC.srcSpanStartCol ss) 
+         locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) (lineOffset + GHC.srcSpanEndLine ss)  (colOffset + GHC.srcSpanEndCol ss) 
+       in
+         GHC.mkSrcSpan locStart locEnd
+     _ -> sspan
 
 -- ---------------------------------------------------------------------
 
@@ -1123,16 +1195,16 @@ startEndLocIncComments' toks (startLoc,endLoc) =
     -- (leadinr,leadr) = break (\tok -> not (isComment tok || isEmpty tok)) $ reverse begin
     (leadinr,leadr) = break notWhiteSpace  $ reverse begin
     leadr' = filter (\t -> not (isEmpty t)) leadr
-    prevLine  = if (emptyList leadinr) then 0 else (tokenRow $ head leadr')
-    firstLine = if (emptyList middle)  then 0 else (tokenRow $ head middle)
+    prevLine  = if (emptyList leadr') then 0 else (tokenRow $ ghead "startEndLocIncComments'1" leadr')
+    firstLine = if (emptyList middle) then 0 else (tokenRow $ ghead "startEndLocIncComments'1" middle)
     (_,leadComments) = divideComments prevLine firstLine $ reverse leadinr
 
 
     -- (trail,trailrest) = break (\tok -> not (isComment tok || isEmpty tok)) end
     (trail,trailrest) = break notWhiteSpace end
     trail' = filter (\t -> not (isEmpty t)) trail
-    lastLine = if (emptyList middle)    then    0 else (tokenRow $ last middle)
-    nextLine = if (emptyList trailrest) then 1000 else (tokenRow $ head trailrest)
+    lastLine = if (emptyList middle)    then    0 else (tokenRow $ glast "startEndLocIncComments'2" middle)
+    nextLine = if (emptyList trailrest) then 1000 else (tokenRow $ ghead "startEndLocIncComments'2" trailrest)
     (trailComments,_) =  divideComments lastLine nextLine trail'
 
     middle' = leadComments ++ middle ++ trailComments

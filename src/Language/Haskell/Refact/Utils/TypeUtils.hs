@@ -1434,7 +1434,7 @@ instance HsValBinds [GHC.LMatch GHC.Name] where
   hsValBinds ms = unionBinds $ map (\m -> hsValBinds $ GHC.unLoc m) ms
 
   replaceValBinds [] _        = error "empty match list in replaceValBinds [GHC.LMatch GHC.Name]"
-  replaceValBinds ms newBinds = (replaceValBinds (head ms) newBinds):(tail ms)
+  replaceValBinds ms newBinds = (replaceValBinds (ghead "replaceValBinds" ms) newBinds):(tail ms)
 
 -- ---------------------------------------------------------------------
 
@@ -2648,8 +2648,8 @@ addDecl parent pn (decl, msig, declToks) topLevel
          newToks <- makeNewToks (decl,maybeSig,maybeDeclToks)
 
          let Just sspan = if (emptyList decls2)
-                            then getSrcSpan (last decls1)
-                            else getSrcSpan (head decls2)
+                            then getSrcSpan (glast "addTopLevelDecl" decls1)
+                            else getSrcSpan (ghead "addTopLevelDecl" decls2)
 
          decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 1 0 2) newToks
 
@@ -2665,7 +2665,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
   appendDecl parent pn (decl, maybeSig, declToks)
     = do let binds = hsValBinds parent
          newToks <- makeNewToks (decl,maybeSig,declToks)
-         let Just sspan = getSrcSpan $ head after
+         let Just sspan = getSrcSpan $ ghead "appendDecl" after
          decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 1 0 2) newToks
 
          let decls1 = before ++ [ghead "appendDecl14" after]
@@ -3248,11 +3248,10 @@ duplicateDecl::(SYB.Data t) =>
   ->RefactGhc [GHC.LHsBind GHC.Name]  -- ^ The result
 duplicateDecl decls sigs n newFunName
  = do
-
       let Just sspan = getSrcSpan funBinding
 
       toks <- getToksForSpan sspan
-      funBinding' <- putDeclToksAfterSpan sspan (head funBinding) (PlaceOffset 1 0 2) toks
+      funBinding' <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" funBinding) (PlaceOffset 1 0 2) toks
 
       --rename the function name to the new name, and update token
       funBinding'' <- renamePN n newFunName True funBinding'

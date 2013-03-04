@@ -2,9 +2,14 @@
 module Language.Haskell.Refact.Utils.GhcUtils where
 
 
-import Data.Generics
+-- import qualified Data.Generics.Schemes as SYB
+-- import qualified Data.Generics.Aliases as SYB
+import qualified Data.Generics as SYB
+import qualified GHC.SYB.Utils as SYB
+
+-- import Data.Generics
 import GHC
-import GHC.SYB.Utils
+-- import GHC.SYB.Utils
 import NameSet
 import Control.Monad
 
@@ -55,15 +60,15 @@ everythingStaged stage k z f x
 
 -- TODO: pass this routine back to syb-utils (when it works properly)
 -- Question: how to handle partial results in the otherwise step?
-everythingButStaged :: Stage -> (r -> r -> r) -> r -> GenericQ (r,Bool) -> GenericQ r
+everythingButStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ (r,Bool) -> SYB.GenericQ r
 everythingButStaged stage k z f x
-  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = z
+  | (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x = z
   | stop == True = v
   | otherwise = foldl k v (gmapQ (everythingButStaged stage k z f) x)
   where (v, stop) = f x
-        nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
-        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+        nameSet    = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<SYB.TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<SYB.Renamer)                     :: GHC.Fixity -> Bool
 
 
 
@@ -78,12 +83,12 @@ something = everything orElse
 -}
 
 -- | Look up a subterm by means of a maybe-typed filter
-somethingStaged :: Stage -> (Maybe u) -> GenericQ (Maybe u) -> GenericQ (Maybe u)
+somethingStaged :: SYB.Stage -> (Maybe u) -> SYB.GenericQ (Maybe u) -> SYB.GenericQ (Maybe u)
 
 -- "something" can be defined in terms of "everything"
 -- when a suitable "choice" operator is used for reduction
 -- 
-somethingStaged stage z = everythingStaged stage orElse z
+somethingStaged stage z = everythingStaged stage SYB.orElse z
 
 -- ---------------------------------------------------------------------
 
@@ -99,32 +104,32 @@ somewhere f x = f x `mplus` gmapMp (somewhere f) x
 -}
 
 -- | Apply a monadic transformation at least somewhere
-somewhereMStaged :: MonadPlus m => Stage -> GenericM m -> GenericM m
+somewhereMStaged :: MonadPlus m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
 
 -- We try "f" in top-down manner, but descent into "x" when we fail
 -- at the root of the term. The transformation fails if "f" fails
 -- everywhere, say succeeds nowhere.
 -- 
 somewhereMStaged stage f x 
-  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = mzero
+  | (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x = mzero
   | otherwise = f x `mplus` gmapMp (somewhereMStaged stage f) x
-  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
-        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+  where nameSet    = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<SYB.TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<SYB.Renamer)                     :: GHC.Fixity -> Bool
 
 -- ---------------------------------------------------------------------
 
 -- | Monadic variation on everywhere
-everywhereMStaged :: Monad m => Stage -> GenericM m -> GenericM m
+everywhereMStaged :: Monad m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
 
 -- Bottom-up order is also reflected in order of do-actions
 everywhereMStaged stage f x
-  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = return x
+  | (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x = return x
   | otherwise = do x' <- gmapM (everywhereMStaged stage f) x
                    f x'
-  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
-        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+  where nameSet    = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<SYB.TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<SYB.Renamer)                     :: GHC.Fixity -> Bool
 
 
                    
@@ -138,16 +143,16 @@ everywhereStaged stage f = f . gmapT (everywhere f)
 -}
 
 -- | Monadic variation on everywhere'
-everywhereMStaged' :: Monad m => Stage -> GenericM m -> GenericM m
+everywhereMStaged' :: Monad m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
 
 -- Top-down order is also reflected in order of do-actions
 everywhereMStaged' stage f x
-  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = return x
+  | (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x = return x
   | otherwise = do x' <- f x
                    gmapM (everywhereMStaged' stage f) x'
-  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
-        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+  where nameSet    = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<SYB.TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<SYB.Renamer)                     :: GHC.Fixity -> Bool
 
 
 -- ---------------------------------------------------------------------
@@ -164,24 +169,10 @@ everywhere :: (forall a. Data a => a -> a)
 everywhere f = f . gmapT (everywhere f)
 -}
 
-{-
--- | Apply a transformation everywhere in bottom-up manner
--- Note type GenericT = forall a. Data a => a -> a
-everywhereStaged :: Stage
-                    -> (forall a. Data a => a -> a)
-                    -> (forall a. Data a => a -> a)
-
--- Use gmapT to recurse into immediate subterms;
--- recall: gmapT preserves the outermost constructor;
--- post-process recursively transformed result via f
--- 
-everywhereStaged stage f = f . gmapT (everywhere f)
-  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) = mzero
-  | otherwise = f . gmapT (everywhere stage f)
-  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
-        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
--}
+everywhereStaged ::  SYB.Stage -> (forall a. Data a => a -> a) -> forall a. Data a => a -> a
+everywhereStaged stage f x
+  | checkItemStage stage x = x
+  | otherwise = (f . gmapT (everywhereStaged stage f)) x
 
 -- ---------------------------------------------------------------------
 {-
@@ -262,3 +253,31 @@ isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
 -- -> a                                           -- thing to be folded
 -- -> c a
 --
+
+
+-- From frsoares
+
+-- | Checks whether the current item is undesirable for analysis in the current
+-- AST Stage.
+checkItemStage stage x = (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x
+  where nameSet = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<SYB.TypeChecker) :: GHC.PostTcType -> Bool
+        fixity = const (stage<SYB.Renamer) :: GHC.Fixity -> Bool
+
+-- | Staged variation of SYB.everything
+-- The stage must be provided to avoid trying to modify elements which
+-- may not be present at all stages of AST processing.
+everythingStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> SYB.GenericQ r
+everythingStaged stage k z f x
+  | checkItemStage stage x = z
+  | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
+
+
+-- listify :: Typeable r => (r -> Bool) -> GenericQ [r]
+-- listify p = everything (++) ([] `mkQ` (\x -> if p x then [x] else []))
+
+-- | Staged variation of SYB.listify
+-- The stage must be provided to avoid trying to modify elements which
+-- may not be present at all stages of AST processing.
+listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x | p x ]))
+

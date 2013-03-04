@@ -620,7 +620,7 @@ replaceTok toks pos newTok =
       (toks1,toks2) = break (\t -> tokenPos t >= pos && tokenLen t > 0) toks
       (toksSameLine,toksRest) = if emptyList toks2
          then error $ "replaceTok(" ++ show pos ++ "): token not in stream"
-         else break (newRowFound (head $ tail toks2))  (tail toks2)
+         else break (newRowFound (ghead "replaceTok" $ tail toks2))  (tail toks2)
 
       newRowFound t1 t2 = tokenRow t1 /= tokenRow t2
       newTok' = markToken newTok
@@ -635,7 +635,7 @@ replaceTokNoReAlign toks pos newTok =
     toks1 ++ [newTok'] ++ toksRest
    where
       (toks1,toks2) = break (\t -> tokenPos t >= pos && tokenLen t > 0) toks
-      toksRest = gtail "replaceTokNoReAlign" toks2
+      toksRest = if (emptyList toks2) then [] else (gtail "replaceTokNoReAlign" toks2)
       newTok' = markToken newTok
 
 -- ---------------------------------------------------------------------
@@ -1046,8 +1046,8 @@ getAllSrcLocs t = res t
 
 getStartEndLoc2::(SYB.Data t)=>[PosToken]->[GHC.GenLocated GHC.SrcSpan t] ->(SimpPos,SimpPos)
 getStartEndLoc2 toks ts
-  = let (startPos',_) = startEndLocGhc (head ts)
-        (_ , endPos') = startEndLocGhc (last ts)
+  = let (startPos',_) = startEndLocGhc (ghead "getStartEndLoc2" ts)
+        (_ , endPos') = startEndLocGhc (glast "getStartEndLoc2" ts)
         locs = srcLocs ts
         (startPos,endPos) = (if startPos' == simpPos0 && locs /=[] then ghead "getStartEndLoc" locs
                                                                    else startPos',

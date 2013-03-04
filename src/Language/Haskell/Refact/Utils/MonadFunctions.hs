@@ -172,12 +172,14 @@ putToksAfterPos pos position toks = do
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST
 -- fragment to reflect it
 putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc (GHC.Located t)
+-- putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc t
 putDeclToksAfterSpan oldSpan t pos toks = do
   liftIO $ putStrLn $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan)
   st <- get
   let Just tm = rsModule st
-  let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) oldSpan pos toks
-  let (t',forest'') = syncAST t newSpan forest'
+  -- let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) oldSpan pos toks
+  -- let (t',forest'') = syncAST t newSpan forest'
+  let (forest'',_newSpan, t') = addDeclToksAfterSrcSpan (rsTokenCache tm) oldSpan pos toks t
   let rsModule' = Just (tm {rsTokenCache = forest'', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return t'
