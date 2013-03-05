@@ -1078,23 +1078,23 @@ syncAST :: (SYB.Data t)
   -> (GHC.Located t, Tree Entry) -- ^Updated AST and tokens
   -- -> (t, Tree Entry) -- ^Updated AST and tokens
 -- syncAST (GHC.L _l t) sspan forest = (ast',forest')
-syncAST ast@(GHC.L l t) sspan forest = (ast',forest')
+syncAST ast@(GHC.L l _t) sspan forest = (GHC.L sspan xx,forest')
   where
     -- ast' = (GHC.L sspan t)
     forest' = forest
 
-    (startRow,startCol) = getGhcLoc l
-    (newStartRow,newStartCol) = getGhcLoc sspan
+    ((ForestLine _ startRow,startCol),_)       = srcSpanToForestSpan l
+    ((ForestLine _ newStartRow,newStartCol),_) = srcSpanToForestSpan sspan
 
     rowOffset = newStartRow - startRow
     colOffset = newStartCol - startCol
 
     -- TODO: take cognizance of the ForestLines encoded in srcspans
     -- when calculating the offsets etc
-    -- syncSpan s = addOffsetToSpan (rowOffset,colOffset) s
-    syncSpan s = s
+    syncSpan s = addOffsetToSpan (rowOffset,colOffset) s
+    -- syncSpan s = s
 
-    ast' = everywhereStaged SYB.Renamer (
+    (GHC.L _s xx) = everywhereStaged SYB.Renamer (
               SYB.mkT hsbindlr
               `SYB.extT` sig
               `SYB.extT` ty
@@ -1104,19 +1104,13 @@ syncAST ast@(GHC.L l t) sspan forest = (ast',forest')
               `SYB.extT` limportdecl
               ) ast
 
-    hsbindlr (GHC.L l b) = (GHC.L (syncSpan l) b) :: GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)
-
-    sig (GHC.L l s) = (GHC.L (syncSpan l) s) :: GHC.LSig GHC.Name
-
-    ty (GHC.L l typ) =  (GHC.L (syncSpan l) typ) :: (GHC.LHsType GHC.Name)
-
-    name (GHC.L l n) = (GHC.L (syncSpan l) n) :: GHC.Located GHC.Name
-
-    lhsexpr (GHC.L l e) = (GHC.L (syncSpan l) e) :: GHC.LHsExpr GHC.Name
-
-    lpat (GHC.L l p) = (GHC.L (syncSpan l) p) :: GHC.LPat GHC.Name
-
-    limportdecl (GHC.L l idl) = (GHC.L (syncSpan l) idl) :: GHC.LImportDecl GHC.Name
+    hsbindlr (GHC.L s b) = (GHC.L (syncSpan s) b) :: GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)
+    sig (GHC.L s n) = (GHC.L (syncSpan s) n) :: GHC.LSig GHC.Name
+    ty (GHC.L s typ) =  (GHC.L (syncSpan s) typ) :: (GHC.LHsType GHC.Name)
+    name (GHC.L s n) = (GHC.L (syncSpan s) n) :: GHC.Located GHC.Name
+    lhsexpr (GHC.L s e) = (GHC.L (syncSpan s) e) :: GHC.LHsExpr GHC.Name
+    lpat (GHC.L s p) = (GHC.L (syncSpan s) p) :: GHC.LPat GHC.Name
+    limportdecl (GHC.L s n) = (GHC.L (syncSpan s) n) :: GHC.LImportDecl GHC.Name
 
 -- ---------------------------------------------------------------------
 

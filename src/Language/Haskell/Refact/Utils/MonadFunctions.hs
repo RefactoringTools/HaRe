@@ -112,12 +112,12 @@ putToks toks isModified = do
 -- |Get the current tokens for a given GHC.SrcSpan.
 getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
 getToksForSpan sspan = do
-  liftIO $ putStrLn $ "getToksForSpan " ++ (GHC.showPpr sspan)
   st <- get
   let Just tm = rsModule st
   let (forest',toks) = getTokensFor (rsTokenCache tm) sspan 
   let rsModule' = Just (tm {rsTokenCache = forest'})
   put $ st { rsModule = rsModule' }
+  liftIO $ putStrLn $ "getToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
   return toks
 
 
@@ -174,11 +174,9 @@ putToksAfterPos pos position toks = do
 putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc (GHC.Located t)
 -- putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc t
 putDeclToksAfterSpan oldSpan t pos toks = do
-  liftIO $ putStrLn $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan)
+  liftIO $ putStrLn $ "putDeclToksAfterSpan " ++ (GHC.showPpr oldSpan) ++ ":" ++ (show (pos,toks))
   st <- get
   let Just tm = rsModule st
-  -- let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) oldSpan pos toks
-  -- let (t',forest'') = syncAST t newSpan forest'
   let (forest'',_newSpan, t') = addDeclToksAfterSrcSpan (rsTokenCache tm) oldSpan pos toks t
   let rsModule' = Just (tm {rsTokenCache = forest'', rsStreamModified = True})
   put $ st { rsModule = rsModule' }

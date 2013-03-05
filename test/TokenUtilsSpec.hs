@@ -51,7 +51,7 @@ spec = do
 
   -- ---------------------------------------------
 
-  describe "getTokens" $ do
+  describe "getTokensFor" $ do
     it "gets the tokens for a given srcloc, and caches them in the tree" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -74,6 +74,34 @@ spec = do
             "+- ((1,1),(15,17))\n|\n"++
             "+- ((19,1),(21,14))\n|\n"++
             "`- ((26,1),(26,1))\n"
+
+    -- ---------------------------------
+
+    it "gets the tokens for an added srcloc" $ do
+      (t,toks) <- parsedFileDupDefDd1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head $ drop 6 decls
+
+      let forest = mkTreeFromTokens toks
+      let (tm',declToks) = getTokensFor forest l
+
+      (GHC.showPpr l) `shouldBe` "test/testdata/DupDef/Dd1.hs:4:1-18"
+      (showSrcSpan l) `shouldBe` "((4,1),(4,19))"
+      (GHC.showPpr decl) `shouldBe` "DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x"
+      (showToks declToks) `shouldBe` "[(((4,1),(4,1)),ITsemi,\"\"),(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),(((4,10),(4,11)),ITvarid \"x\",\"x\"),(((4,12),(4,13)),ITequal,\"=\"),(((4,14),(4,15)),ITvarid \"c\",\"c\"),(((4,16),(4,17)),ITstar,\"*\"),(((4,18),(4,19)),ITvarid \"x\",\"x\")]"
+
+      let (tm'',newSpan,decl') = addDeclToksAfterSrcSpan tm' l (PlaceOffset 1 0 2) declToks decl
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:(1000006,1)-(1000008,0)"
+
+      (SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:(1000006,1)-(1000008,0)} \n (FunBind \n  (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel}) \n  (False) \n  (MatchGroup \n   [\n    (L {test/testdata/DupDef/Dd1.hs:4:1-18} \n     (Match \n      [\n       (L {test/testdata/DupDef/Dd1.hs:6:10} \n        (VarPat {Name: x}))] \n      (Nothing) \n      (GRHSs \n       [\n        (L {test/testdata/DupDef/Dd1.hs:4:14-18} \n         (GRHS \n          [] \n          (L {test/testdata/DupDef/Dd1.hs:6:14-18} \n           (OpApp \n            (L {test/testdata/DupDef/Dd1.hs:6:14} \n             (HsVar {Name: DupDef.Dd1.c})) \n            (L {test/testdata/DupDef/Dd1.hs:6:16} \n             (HsVar {Name: GHC.Num.*})) {Fixity: infixl 7} \n            (L {test/testdata/DupDef/Dd1.hs:6:18} \n             (HsVar {Name: x}))))))] \n       (EmptyLocalBinds))))] {!type placeholder here?!}) \n  (WpHole) {NameSet: \n  [{Name: DupDef.Dd1.c}]} \n  (Nothing)))"
+
+      (drawTreeEntry tm'') `shouldBe`
+            "((1,1),(34,1))\n|\n"++
+            "+- ((1,1),(3,31))\n|\n"++
+            "+- ((4,1),(4,19))\n|\n"++
+            "+- ((1000006,1),(1000008,1))\n|\n"++
+            "`- ((6,1),(34,1))\n"
 
   -- ---------------------------------------------
 
@@ -1013,3 +1041,12 @@ tokenTestFileName = GHC.mkFastString "./test/testdata/TokenTest.hs"
 parsedFileTokenTestGhc :: IO (ParseResult,[PosToken])
 parsedFileTokenTestGhc = parsedFileGhc "./test/testdata/TokenTest.hs"
 
+-- ---------------------------------------------------------------------
+
+dupDefDd1FileName :: GHC.FastString
+dupDefDd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
+
+parsedFileDupDefDd1 :: IO (ParseResult, [PosToken])
+parsedFileDupDefDd1 = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+
+-- ---------------------------------------------------------------------

@@ -3249,13 +3249,18 @@ duplicateDecl::(SYB.Data t) =>
 duplicateDecl decls sigs n newFunName
  = do
       let Just sspan = getSrcSpan funBinding
-
       toks <- getToksForSpan sspan
-      funBinding' <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" funBinding) (PlaceOffset 1 0 2) toks
 
-      --rename the function name to the new name, and update token
+      let Just sspanSig = getSrcSpan typeSig
+      toksSig  <- getToksForSpan sspanSig
+
+      typeSig' <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceOffset 1 0 1) toksSig
+      typeSig''     <- renamePN n newFunName True typeSig'
+
+
+      let (GHC.L newSpan _) = typeSig'
+      funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceOffset 0 0 1) toks
       funBinding'' <- renamePN n newFunName True funBinding'
-      typeSig'  <- renamePN n newFunName False typeSig
 
       -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
       return [funBinding'']
@@ -3709,6 +3714,7 @@ renamePN oldPN newName updateTokens t
      = do if updateTokens
            then  do
                     -- toks <- fetchToks
+                    liftIO $ putStrLn $ "renamePN.worker: sspan=" ++ (GHC.showPpr sspan) -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     -- putToks toks' True
