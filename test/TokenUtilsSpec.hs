@@ -77,7 +77,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "gets the tokens for an added srcloc" $ do
+    it "gets the tokens for an added srcloc 1" $ do
       (t,toks) <- parsedFileDupDefDd1
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -101,6 +101,67 @@ spec = do
             "+- ((1,1),(3,31))\n|\n"++
             "+- ((4,1),(4,19))\n|\n"++
             "+- ((1000006,1),(1000008,1))\n|\n"++
+            "`- ((6,1),(34,1))\n"
+
+    -- ---------------------------------
+
+    it "gets the tokens for an added srcloc with one line spacing" $ do
+      (t,toks) <- parsedFileDupDefDd1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let forest = mkTreeFromTokens toks
+
+      let decl@(GHC.L l _) = head $ drop 6 decls
+      let (tm',declToks) = getTokensFor forest l
+      (drawTreeEntry tm') `shouldBe`
+            "((1,1),(34,1))\n|\n"++
+            "+- ((1,1),(3,31))\n|\n"++
+            "+- ((4,1),(4,19))\n|\n"++
+            "`- ((6,1),(34,1))\n"
+
+      (GHC.showPpr l) `shouldBe` "test/testdata/DupDef/Dd1.hs:4:1-18"
+      (showSrcSpan l) `shouldBe` "((4,1),(4,19))"
+      (GHC.showPpr decl) `shouldBe` "DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x"
+      (showToks declToks) `shouldBe` "[(((4,1),(4,1)),ITsemi,\"\"),(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),(((4,10),(4,11)),ITvarid \"x\",\"x\"),(((4,12),(4,13)),ITequal,\"=\"),(((4,14),(4,15)),ITvarid \"c\",\"c\"),(((4,16),(4,17)),ITstar,\"*\"),(((4,18),(4,19)),ITvarid \"x\",\"x\")]"
+
+      let Just (GHC.L _ n) = locToName dupDefDd1FileName (4, 2) renamed
+      let typeSig = head $ definingSigsNames [n] renamed
+      let (GHC.L ln _) = typeSig
+      (showSrcSpan ln) `shouldBe` "((3,1),(3,31))"
+      let (tm'',sigToks) = getTokensFor tm' ln
+      (drawTreeEntry tm'') `shouldBe`
+            "((1,1),(34,1))\n|\n"++
+            "+- ((1,1),(3,31))\n|  |\n"++
+            "|  +- ((1,1),(1,24))\n|  |\n"++
+            "|  `- ((3,1),(3,31))\n|\n"++
+            "+- ((4,1),(4,19))\n|\n"++
+            "`- ((6,1),(34,1))\n"
+
+      let (tm''',newSpan,typeSig') = addDeclToksAfterSrcSpan tm'' l (PlaceOffset 1 0 0) sigToks typeSig
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
+
+      (SYB.showData SYB.Renamer 0 typeSig') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1000006:1-30} \n (TypeSig \n  [\n   (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel})] \n  (L {test/testdata/DupDef/Dd1.hs:6:13-30} \n   (HsFunTy \n    (L {test/testdata/DupDef/Dd1.hs:6:13-19} \n     (HsTyVar {Name: GHC.Integer.Type.Integer})) \n    (L {test/testdata/DupDef/Dd1.hs:6:24-30} \n     (HsTyVar {Name: GHC.Integer.Type.Integer}))))))"
+      
+      (drawTreeEntry tm''') `shouldBe`
+            "((1,1),(34,1))\n|\n"++
+            "+- ((1,1),(3,31))\n|  |\n"++
+            "|  +- ((1,1),(1,24))\n|  |\n"++
+            "|  `- ((3,1),(3,31))\n|\n"++
+            "+- ((4,1),(4,19))\n|\n"++
+            "+- ((1000006,1),(1000006,31))\n|\n"++
+            "`- ((6,1),(34,1))\n"
+
+      let (tm'''',newSpan',decl') = addDeclToksAfterSrcSpan tm''' newSpan (PlaceOffset 1 0 2) declToks decl
+      -- (GHC.showPpr newSpan') `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
+
+      (drawTreeEntry tm'''') `shouldBe`
+            "((1,1),(34,1))\n|\n"++
+            "+- ((1,1),(3,31))\n|  |\n"++
+            "|  +- ((1,1),(1,24))\n|  |\n"++
+            "|  `- ((3,1),(3,31))\n|\n"++
+            "+- ((4,1),(4,19))\n|\n"++
+            "+- ((1000006,1),(1000006,31))\n|\n"++
+            "+- ((1000007,1),(1000007,19))\n|\n"++
             "`- ((6,1),(34,1))\n"
 
   -- ---------------------------------------------

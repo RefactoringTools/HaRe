@@ -3254,9 +3254,8 @@ duplicateDecl decls sigs n newFunName
       let Just sspanSig = getSrcSpan typeSig
       toksSig  <- getToksForSpan sspanSig
 
-      typeSig' <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceOffset 1 0 1) toksSig
+      typeSig' <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceOffset 1 0 0) toksSig
       typeSig''     <- renamePN n newFunName True typeSig'
-
 
       let (GHC.L newSpan _) = typeSig'
       funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceOffset 0 0 1) toks
