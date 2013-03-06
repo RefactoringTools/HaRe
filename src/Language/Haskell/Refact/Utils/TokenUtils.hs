@@ -623,8 +623,11 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
     prevToks = case (retrievePrevLineToks z) of
                  [] -> retrieveTokens tree
                  xs -> xs
+    (_,(ForestLine _ endRow,_))       = srcSpanToForestSpan oldSpan
 
-    toks'' = reIndentToks pos prevToks toks
+    prevToks' = takeWhile (\t -> tokenRow t < endRow) prevToks
+
+    toks'' = reIndentToks pos prevToks' toks
 
     (startPos,endPos) = nonCommentSpan toks''
 
@@ -682,7 +685,7 @@ reIndentToks pos prevToks toks = toks''
         where
           colStart  = tokenCol $ ghead "reIndentToks"
                     $ dropWhile isWhiteSpace prevToks
-          lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 1
+          lineStart = (tokenRow (glast "reIndentToks" prevToks)) -- + 1
 
           lineOffset' = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
           colOffset'  = colIndent + colStart  - (tokenCol newTokStart)

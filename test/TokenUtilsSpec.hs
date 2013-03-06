@@ -137,7 +137,7 @@ spec = do
             "+- ((4,1),(4,19))\n|\n"++
             "`- ((6,1),(34,1))\n"
 
-      let (tm''',newSpan,typeSig') = addDeclToksAfterSrcSpan tm'' l (PlaceOffset 1 0 0) sigToks typeSig
+      let (tm''',newSpan,typeSig') = addDeclToksAfterSrcSpan tm'' l (PlaceOffset 3 0 0) sigToks typeSig
       (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
 
       (SYB.showData SYB.Renamer 0 typeSig') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1000006:1-30} \n (TypeSig \n  [\n   (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel})] \n  (L {test/testdata/DupDef/Dd1.hs:6:13-30} \n   (HsFunTy \n    (L {test/testdata/DupDef/Dd1.hs:6:13-19} \n     (HsTyVar {Name: GHC.Integer.Type.Integer})) \n    (L {test/testdata/DupDef/Dd1.hs:6:24-30} \n     (HsTyVar {Name: GHC.Integer.Type.Integer}))))))"
@@ -150,8 +150,20 @@ spec = do
             "+- ((4,1),(4,19))\n|\n"++
             "+- ((1000006,1),(1000006,31))\n|\n"++
             "`- ((6,1),(34,1))\n"
+      -- -- -- -- --
 
-      let (tm'''',newSpan',decl') = addDeclToksAfterSrcSpan tm''' newSpan (PlaceOffset 1 0 2) declToks decl
+      let (ff,tt) = getSrcSpanFor tm''' (fs newSpan)
+          z = openZipperToSpan (fs newSpan) $ Z.fromTree ff
+          prevToks = retrievePrevLineToks z
+
+          (_,(ForestLine _ endRow,_))       = srcSpanToForestSpan newSpan
+          prevToks' = takeWhile (\t -> tokenRow t < endRow) prevToks
+
+      (GHC.showRichTokenStream prevToks') `shouldBe` ""
+      (show prevToks') `shouldBe` ""
+      
+      -- --- -- --
+      let (tm'''',newSpan',decl') = addDeclToksAfterSrcSpan tm''' newSpan (PlaceOffset 2 0 2) declToks decl
       -- (GHC.showPpr newSpan') `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
 
       (drawTreeEntry tm'''') `shouldBe`
