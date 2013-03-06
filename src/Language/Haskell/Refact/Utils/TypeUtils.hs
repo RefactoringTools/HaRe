@@ -2651,7 +2651,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                             then getSrcSpan (glast "addTopLevelDecl" decls1)
                             else getSrcSpan (ghead "addTopLevelDecl" decls2)
 
-         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 1 0 2) newToks
+         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 2 0 2) newToks
 
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
@@ -2666,7 +2666,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
     = do let binds = hsValBinds parent
          newToks <- makeNewToks (decl,maybeSig,declToks)
          let Just sspan = getSrcSpan $ ghead "appendDecl" after
-         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 1 0 2) newToks
+         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 2 0 2) newToks
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
@@ -3254,11 +3254,11 @@ duplicateDecl decls sigs n newFunName
       let Just sspanSig = getSrcSpan typeSig
       toksSig  <- getToksForSpan sspanSig
 
-      typeSig' <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceOffset 1 0 0) toksSig
+      typeSig' <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceOffset 2 0 0) toksSig
       typeSig''     <- renamePN n newFunName True typeSig'
 
       let (GHC.L newSpan _) = typeSig'
-      funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceOffset 0 0 1) toks
+      funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceOffset 1 0 1) toks
       funBinding'' <- renamePN n newFunName True funBinding'
 
       -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
@@ -3713,7 +3713,8 @@ renamePN oldPN newName updateTokens t
      = do if updateTokens
            then  do
                     -- toks <- fetchToks
-                    liftIO $ putStrLn $ "renamePN.worker: sspan=" ++ (GHC.showPpr sspan) -- ++AZ++ debug
+                    liftIO $ putStrLn $ "renamePN.worker: (sspan,newName)=" ++ (GHC.showPpr (sspan,newName)) -- ++AZ++ debug
+                    drawTokenTree -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     -- putToks toks' True

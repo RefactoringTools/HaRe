@@ -31,6 +31,9 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.Environment
 
+import Data.Tree
+import qualified Data.Tree.Zipper as Z
+
 import qualified Data.Map as Map
 import Data.List
 
@@ -176,55 +179,55 @@ spec = do
 
   describe "definingDecls" $ do
     it "returns [] if not found" $ do
-      (t, toks) <- parsedFileDd1Ghc
-      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (t, _toks) <- parsedFileDd1Ghc
+      let (GHC.L _l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let res = definingDecls [(PN (mkRdrName "notdefine"))] ds True False
       GHC.showPpr res `shouldBe` "[]"
 
 
     it "finds declarations at the top level" $ do
-      (t, toks) <- parsedFileDd1Ghc
-      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (t, _toks) <- parsedFileDd1Ghc
+      let (GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let res = definingDecls [(PN (mkRdrName "toplevel"))] ds False False
       GHC.showPpr res `shouldBe` "[toplevel x = c * x]"
 
 
     it "includes the typedef if requested" $ do
-      (t, toks) <- parsedFileDd1Ghc
-      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (t, _toks) <- parsedFileDd1Ghc
+      let (GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let res = definingDecls [(PN (mkRdrName "toplevel"))] ds True False
       GHC.showPpr res `shouldBe` "[toplevel :: Integer -> Integer, toplevel x = c * x]"
 
 
     it "strips other names from typedef" $ do
-      (t, toks) <- parsedFileDd1Ghc
-      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (t, _toks) <- parsedFileDd1Ghc
+      let (GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let res = definingDecls [(PN (mkRdrName "c"))] ds True False
       GHC.showPpr res `shouldBe` "[c :: Integer, c = 7]"
 
 
     it "finds in a patbind" $ do
-      (t, toks) <- parsedFileDd1Ghc
-      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (t, _toks) <- parsedFileDd1Ghc
+      let (GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let res = definingDecls [(PN (mkRdrName "tup"))] ds False False
       GHC.showPpr res `shouldBe` "[tup@(h, t)\n   = head $ zip [1 .. 10] [3 .. ff]\n   where\n       ff :: Int\n       ff = 15]"
 
 
     it "finds in a patbind, with type signature" $ do
-      (t, toks) <- parsedFileDd1Ghc
-      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (t, _toks) <- parsedFileDd1Ghc
+      let (GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let res = definingDecls [(PN (mkRdrName "tup"))] ds True False
       GHC.showPpr res `shouldBe` "[tup :: (Int, Int),\n tup@(h, t)\n   = head $ zip [1 .. 10] [3 .. ff]\n   where\n       ff :: Int\n       ff = 15]"
 
 
     it "finds in a data decl" $ do
-      (t, toks) <- parsedFileDd1Ghc
-      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (t, _toks) <- parsedFileDd1Ghc
+      let (GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let res = definingDecls [(PN (GHC.mkRdrUnqual (GHC.mkDataOcc "A")))] ds True False
       GHC.showPpr res `shouldBe` "[data D = A | B String | C]"
@@ -240,8 +243,8 @@ spec = do
 
     it "only finds recursively in sub-binds if asked" $ do
       -- modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
-      modInfo@(t, toks) <- parsedFileDd1Ghc
-      let mod@(GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (t, _toks) <- parsedFileDd1Ghc
+      let (GHC.L l (GHC.HsModule name exps imps ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let res = definingDecls [(PN (mkRdrName "zz"))] ds False False
       GHC.showPpr res `shouldBe` "[]"
@@ -701,7 +704,7 @@ spec = do
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       -- (show $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2     :: Integer -> Integer\n \n bar2     x = c * x\n \n   c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2     :: Integer -> Integer\n bar2     x = c * x\n \n  c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (GHC.showPpr nb) `shouldBe` "[bar2 x = DupDef.Dd1.c GHC.Num.* x]"
 
   -- ---------------------------------------------
@@ -1284,7 +1287,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 1 0 2) toks'
+      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
@@ -1333,7 +1336,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 1 0 2) toks'
+      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
       let (decl',forest''') = syncAST decl sspan forest'' 
 
       (GHC.showPpr $ getSrcSpan decl') `shouldBe` "Just test/testdata/TokenTest.hs:(1000024,1)-(1000028,0)"
@@ -1370,6 +1373,109 @@ spec = do
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n \n\n  "
       (GHC.showPpr nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+
+    -- ---------------------------------
+
+    it "Replace a Name with another in limited scope, updating tokens 3" $ do
+      (t,toks) <- parsedFileDd1Ghc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head $ drop 6 decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/DupDef/Dd1.hs:4:1-18"
+      (showSrcSpan l) `shouldBe` "((4,1),(4,19))"
+      let Just (GHC.L _ n) = locToName dd1FileName(4, 1) renamed
+      (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
+
+      -- let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
+      let (forest',toks') = getTokensFor forest l
+
+      let typeSig = definingSigsNames [n] renamed
+      (GHC.showPpr typeSig) `shouldBe` "[DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
+
+      let Just sspanSig = getSrcSpan typeSig
+      (GHC.showPpr sspanSig) `shouldBe` "test/testdata/DupDef/Dd1.hs:3:1-30"
+
+      let (forest'',toksSig) = getTokensFor forest' sspanSig
+      (GHC.showRichTokenStream toksSig) `shouldBe` "\n\n toplevel :: Integer -> Integer"
+
+      -- typeSig'  <- putDeclToksAfterSpan l (head typeSig) (PlaceOffset 2 0 0) toksSig
+      let (forest''',newSpan,typeSig') = addDeclToksAfterSrcSpan forest'' l (PlaceOffset 2 0 0) toksSig (head typeSig) 
+      -- typeSig'' <- renamePN n "tl1" True typeSig'
+      -- (show forest''') `shouldBe` "" -- ++AZ++ : as expected
+
+      (invariant forest''') `shouldBe` []
+      (drawTreeEntry forest''') `shouldBe`
+              "((1,1),(34,1))\n|\n"++
+              "+- ((1,1),(3,31))\n|  |\n"++
+              "|  +- ((1,1),(1,24))\n|  |\n"++
+              "|  `- ((3,1),(3,31))\n|\n"++
+              "+- ((4,1),(4,19))\n|\n"++
+              "+- ((1000006,1),(1000006,31))\n|\n"++
+              "`- ((6,1),(34,1))\n"
+
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
+      (showSrcSpan newSpan) `shouldBe` "((1000006,1),(1000006,31))"
+
+      let (forest4',tree4) = getSrcSpanFor forest''' (srcSpanToForestSpan newSpan)
+      -- (show forest4') `shouldBe` "" -- Broken, tokens for 1000006,31
+                                    -- end at 6,20
+      -- (show tree4) `shouldBe` ""
+
+      let forest4'' = insertSrcSpan forest''' (srcSpanToForestSpan newSpan)
+      -- (show forest4'') `shouldBe` "" -- Broken, tokens for 1000006,31
+
+      -- TODO: It seems the openZipperToSpan is the actual failure point
+      let z = openZipperToSpan (srcSpanToForestSpan newSpan) $ Z.fromTree forest'''
+      let ztoks = retrieveTokens $ Z.toTree z
+      -- (show $ Z.tree z) `shouldBe` "" -- Looks good
+  
+      {-
+      let (tokStartPos,tokEndPos) = forestSpanToSimpPos (srcSpanToForestSpan newSpan)
+      let (startLoc,endLoc) = startEndLocIncComments' ztoks (tokStartPos,tokEndPos)
+      (show (tokStartPos,tokEndPos)) `shouldBe` "((6,1),(6,31))"
+      let (begin,middle,end) = splitToks (tokStartPos,tokEndPos) ztoks
+      (show middle) `shouldBe` "" -- Wrong value
+      let (toks1,toks2)   = break (\t -> tokenPos t >= startLoc) ztoks
+      -- (show toks2) `shouldBe` ""
+      let (toks21,toks22) = break (\t -> tokenPos t >  endLoc) toks2
+      (show $ map tokenPos toks2) `shouldBe` ""
+      (show toks21) `shouldBe` ""
+
+      (show middle) `shouldBe` ""
+      (show (startLoc,endLoc)) `shouldBe` "((6,1),(6,15))" -- NO!!
+      -}
+
+      let (forest4,toksSig1) = getTokensFor forest''' newSpan
+      (invariant forest4) `shouldBe` []
+      (drawTreeEntry forest4) `shouldBe`
+              "((1,1),(34,1))\n|\n"++
+              "+- ((1,1),(3,31))\n|  |\n"++
+              "|  +- ((1,1),(1,24))\n|  |\n"++
+              "|  `- ((3,1),(3,31))\n|\n"++
+              "+- ((4,1),(4,19))\n|\n"++
+              "+- ((1000006,1),(1000006,31))\n|\n"++
+              "`- ((6,1),(34,1))\n"
+
+      (GHC.showRichTokenStream toksSig1) `shouldBe` "\n\n\n\n\n toplevel :: Integer -> Integer"
+
+      let (forest5,newSpan2) = updateTokensForSrcSpan forest4 newSpan toksSig1
+      (invariant forest5) `shouldBe` []
+      (drawTreeEntry forest5) `shouldBe`
+              "((1,1),(34,1))\n|\n"++
+              "+- ((1,1),(3,31))\n|  |\n"++
+              "|  +- ((1,1),(1,24))\n|  |\n"++
+              "|  `- ((3,1),(3,31))\n|\n"++
+              "+- ((4,1),(4,19))\n|\n"++
+              "+- ((1000006,1),(1000006,31))\n|\n"++
+              "`- ((6,1),(34,1))\n"
+
+
+      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
+      let (decl',forest''') = syncAST decl sspan forest'' 
+
+      "a" `shouldBe` "a"
 
   -- ---------------------------------------------
 

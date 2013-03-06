@@ -53,6 +53,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , insertNodeAfter
        , retrievePrevLineToks
        , openZipperToSpan
+       , forestSpanToSimpPos
 
        , ghcLineToForestLine
        , forestLineToGhcLine
@@ -368,14 +369,17 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
     prevToks = retrieveTokens tree
 
+
     newTokStart = ghead "reIndentToks" prevToks
 
     toks'' = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
 
-    (startPos,endPos) = nonCommentSpan toks''
+    (startPos@(sl,sc),endPos@(el,ec)) = nonCommentSpan toks''
 
-    -- TODO: should we add a version?
-    newSpan = posToSrcSpan forest (startPos,endPos)
+    -- if the original sspan had a ForestLine version, preserve it
+    ((fls@(ForestLine vs _),_),(ForestLine ve _,_)) = srcSpanToForestSpan sspan
+    -- newPosSpan = ((ForestLine vs sl,sc),(ForestLine ve el,ec))
+    newSpan = insertForestLineInSrcSpan fls $ posToSrcSpan forest (startPos,endPos)
 
     zf = openZipperToNode tree $ Z.fromTree forest'
 
@@ -625,7 +629,8 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
                  xs -> xs
     (_,(ForestLine _ endRow,_))       = srcSpanToForestSpan oldSpan
 
-    prevToks' = takeWhile (\t -> tokenRow t < endRow) prevToks
+    -- prevToks' = takeWhile (\t -> tokenRow t < endRow) prevToks
+    prevToks' = reverse $ dropWhile (\t -> tokenRow t > endRow) $ reverse  prevToks
 
     toks'' = reIndentToks pos prevToks' toks
 
@@ -808,13 +813,15 @@ openZipperToSpan sspan z
             [] -> z -- Not in subtree, this is as good as it gets
             [x] -> -- exactly one, drill down
                    openZipperToSpan sspan x
-            _xs -> z -- Multiple, this is the spot
+            -- _xs -> z -- Multiple, this is the spot
+            xx  -> case (filter (\zt -> (treeStartEnd $ Z.tree zt) == sspan) xx) of 
+                    [y] -> openZipperToSpan sspan y
+                    yy -> z -- Multiple, this is the spot
 
           contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
             where
               (startPos,endPos) = treeStartEnd $ Z.tree zn
               (nodeStart,nodeEnd) = sspan
-
 
           go acc Nothing = acc
           go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)

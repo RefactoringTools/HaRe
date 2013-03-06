@@ -32,6 +32,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- , putNewPosAndToks
 
        -- * For debugging
+       , drawTokenTree
        , getTokenTree
 
        -- * State flags for managing generic traversals
@@ -125,7 +126,7 @@ getToksForSpan sspan = do
 -- delimiting new tokens
 putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksForSpan sspan toks = do
-  liftIO $ putStrLn $ "putToksForSpan " ++ (GHC.showPpr sspan)
+  liftIO $ putStrLn $ "putToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show toks)
   st <- get
   let Just tm = rsModule st
   let (forest',newSpan) = updateTokensForSrcSpan (rsTokenCache tm) sspan toks
@@ -204,6 +205,16 @@ removeToksForPos pos = do
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   liftIO $ putStrLn $ "removeToksForPos result:" ++ (show forest')
+  return ()
+
+-- ---------------------------------------------------------------------
+
+-- |Print the Token Tree for debug purposes
+drawTokenTree :: RefactGhc ()
+drawTokenTree = do
+  st <- get
+  let Just tm = rsModule st
+  liftIO $ putStrLn $ "current token tree:\n" ++ (drawTreeEntry (rsTokenCache tm))
   return ()
 
 -- ---------------------------------------------------------------------

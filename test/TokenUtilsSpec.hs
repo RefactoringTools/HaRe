@@ -91,7 +91,7 @@ spec = do
       (GHC.showPpr decl) `shouldBe` "DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x"
       (showToks declToks) `shouldBe` "[(((4,1),(4,1)),ITsemi,\"\"),(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),(((4,10),(4,11)),ITvarid \"x\",\"x\"),(((4,12),(4,13)),ITequal,\"=\"),(((4,14),(4,15)),ITvarid \"c\",\"c\"),(((4,16),(4,17)),ITstar,\"*\"),(((4,18),(4,19)),ITvarid \"x\",\"x\")]"
 
-      let (tm'',newSpan,decl') = addDeclToksAfterSrcSpan tm' l (PlaceOffset 1 0 2) declToks decl
+      let (tm'',newSpan,decl') = addDeclToksAfterSrcSpan tm' l (PlaceOffset 2 0 2) declToks decl
       (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:(1000006,1)-(1000008,0)"
 
       (SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:(1000006,1)-(1000008,0)} \n (FunBind \n  (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel}) \n  (False) \n  (MatchGroup \n   [\n    (L {test/testdata/DupDef/Dd1.hs:4:1-18} \n     (Match \n      [\n       (L {test/testdata/DupDef/Dd1.hs:6:10} \n        (VarPat {Name: x}))] \n      (Nothing) \n      (GRHSs \n       [\n        (L {test/testdata/DupDef/Dd1.hs:4:14-18} \n         (GRHS \n          [] \n          (L {test/testdata/DupDef/Dd1.hs:6:14-18} \n           (OpApp \n            (L {test/testdata/DupDef/Dd1.hs:6:14} \n             (HsVar {Name: DupDef.Dd1.c})) \n            (L {test/testdata/DupDef/Dd1.hs:6:16} \n             (HsVar {Name: GHC.Num.*})) {Fixity: infixl 7} \n            (L {test/testdata/DupDef/Dd1.hs:6:18} \n             (HsVar {Name: x}))))))] \n       (EmptyLocalBinds))))] {!type placeholder here?!}) \n  (WpHole) {NameSet: \n  [{Name: DupDef.Dd1.c}]} \n  (Nothing)))"
@@ -137,7 +137,7 @@ spec = do
             "+- ((4,1),(4,19))\n|\n"++
             "`- ((6,1),(34,1))\n"
 
-      let (tm''',newSpan,typeSig') = addDeclToksAfterSrcSpan tm'' l (PlaceOffset 3 0 0) sigToks typeSig
+      let (tm''',newSpan,typeSig') = addDeclToksAfterSrcSpan tm'' l (PlaceOffset 2 0 0) sigToks typeSig
       (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
 
       (SYB.showData SYB.Renamer 0 typeSig') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1000006:1-30} \n (TypeSig \n  [\n   (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel})] \n  (L {test/testdata/DupDef/Dd1.hs:6:13-30} \n   (HsFunTy \n    (L {test/testdata/DupDef/Dd1.hs:6:13-19} \n     (HsTyVar {Name: GHC.Integer.Type.Integer})) \n    (L {test/testdata/DupDef/Dd1.hs:6:24-30} \n     (HsTyVar {Name: GHC.Integer.Type.Integer}))))))"
@@ -151,30 +151,27 @@ spec = do
             "+- ((1000006,1),(1000006,31))\n|\n"++
             "`- ((6,1),(34,1))\n"
       -- -- -- -- --
-
+      {-
       let (ff,tt) = getSrcSpanFor tm''' (fs newSpan)
           z = openZipperToSpan (fs newSpan) $ Z.fromTree ff
           prevToks = retrievePrevLineToks z
 
           (_,(ForestLine _ endRow,_))       = srcSpanToForestSpan newSpan
-          prevToks' = takeWhile (\t -> tokenRow t < endRow) prevToks
+          prevToks' = reverse $ dropWhile (\t -> tokenRow t > endRow) $ reverse  prevToks
 
       (GHC.showRichTokenStream prevToks') `shouldBe` ""
       (show prevToks') `shouldBe` ""
-      
+      -}
       -- --- -- --
-      let (tm'''',newSpan',decl') = addDeclToksAfterSrcSpan tm''' newSpan (PlaceOffset 2 0 2) declToks decl
+      let (tm'''',newSpan',decl') = addDeclToksAfterSrcSpan tm''' newSpan (PlaceOffset 1 0 2) declToks decl
       -- (GHC.showPpr newSpan') `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
 
       (drawTreeEntry tm'''') `shouldBe`
             "((1,1),(34,1))\n|\n"++
-            "+- ((1,1),(3,31))\n|  |\n"++
-            "|  +- ((1,1),(1,24))\n|  |\n"++
-            "|  `- ((3,1),(3,31))\n|\n"++
-            "+- ((4,1),(4,19))\n|\n"++
+            "+- ((1,1),(4,19))\n|\n"++
             "+- ((1000006,1),(1000006,31))\n|\n"++
-            "+- ((1000007,1),(1000007,19))\n|\n"++
-            "`- ((6,1),(34,1))\n"
+            "+- ((1000007,1),(1000009,1))\n|\n"++
+            "`- ((6,21),(34,1))\n"
 
   -- ---------------------------------------------
 
@@ -571,7 +568,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 1 0 2) toks'
+      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
 
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
@@ -697,7 +694,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 1 0 2) toks'
+      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
@@ -727,7 +724,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 1 0 2) toks'
+      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
@@ -755,7 +752,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 1 0 2) toks'
+      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(10,10))\n|\n"++
@@ -783,7 +780,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 1 4 2) toks'
+      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 4 2) toks'
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
@@ -823,7 +820,7 @@ spec = do
               "`- ((8,1),(8,6))\n"
 
       let newToks = take 3 toks
-      let (forest'',sspan'') = addToksAfterSrcSpan finsert (sspan') (PlaceOffset 1 4 2) newToks
+      let (forest'',sspan'') = addToksAfterSrcSpan finsert (sspan') (PlaceOffset 2 4 2) newToks
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(8,6))\n|\n"++
               "+- ((1,1),(4,19))\n|  |\n"++
@@ -857,7 +854,7 @@ spec = do
       --  putToksAfterPos ((4,14),(4,19))
       let newToks = take 3 toks
       let sspan' = posToSrcSpan forest' ((4,14),(4,19))
-      let position = PlaceOffset 0 4 2
+      let position = PlaceOffset 1 4 2
 
       let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry finsert) `shouldBe`
@@ -1057,7 +1054,7 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let toks' = retrieveTokens tree
-      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 1 0 2) toks'
+      let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
