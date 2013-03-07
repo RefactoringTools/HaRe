@@ -314,6 +314,19 @@ insertForestLineInSrcSpan _ ss = error $ "insertForestLineInSrcSpan: expecting a
 
 -- ---------------------------------------------------------------------
 
+insertVersionsInSrcSpan :: Int -> Int -> GHC.SrcSpan -> GHC.SrcSpan
+insertVersionsInSrcSpan vs ve (GHC.RealSrcSpan ss) = ss'
+  where
+    lineStart = forestLineToGhcLine (ForestLine vs (GHC.srcSpanStartLine ss))
+    lineEnd   = forestLineToGhcLine (ForestLine ve (GHC.srcSpanEndLine ss))
+    locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineStart (GHC.srcSpanStartCol ss)
+    locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
+    ss' = GHC.mkSrcSpan locStart locEnd
+
+insertVersionsInSrcSpan _ _ ss = error $ "insertVersionsInSrcSpan: expecting a RealSrcSpan, got:" ++ (GHC.showPpr ss)
+
+-- ---------------------------------------------------------------------
+
 srcSpanToForestSpan :: GHC.SrcSpan -> ForestSpan
 srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToForestLine endRow,endCol))
   where
@@ -369,24 +382,25 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
     prevToks = retrieveTokens tree
 
-
     newTokStart = ghead "reIndentToks" prevToks
-
     toks'' = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
 
-    (startPos@(sl,sc),endPos@(el,ec)) = nonCommentSpan toks''
+    (startPos,endPos) = nonCommentSpan toks''
 
     -- if the original sspan had a ForestLine version, preserve it
     ((fls@(ForestLine vs _),_),(ForestLine ve _,_)) = srcSpanToForestSpan sspan
     -- newPosSpan = ((ForestLine vs sl,sc),(ForestLine ve el,ec))
-    newSpan = insertForestLineInSrcSpan fls $ posToSrcSpan forest (startPos,endPos)
+    newSpan = insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos) 
 
     zf = openZipperToNode tree $ Z.fromTree forest'
 
     zf' = Z.setTree (Node (Entry (srcSpanToForestSpan newSpan) toks'') []) zf
     forest'' = Z.toTree zf'
-    -- forest'' = error $ "updateTokensForSrcSpan: tree=" ++ (show tree) -- ++AZ++
+    -- forest'' = error $ "updateTokensForSrcSpan: toks''=" ++ (show toks'') -- ++AZ++
+    -- forest'' = error $ "updateTokensForSrcSpan: (posToSrcSpan forest (startPos,endPos))=" ++ (GHC.showPpr $ posToSrcSpan forest (startPos,endPos)) -- ++AZ++
 
+
+    -- forest'' = error $ "updateTokensForSrcSpan: tree=" ++ (show tree) -- ++AZ++
     -- (forest'',newSpan') = addNewSrcSpanAndToksAfter forest sspan newSpan pos toks''
 
 
