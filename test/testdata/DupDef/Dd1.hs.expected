@@ -3,9 +3,8 @@ module DupDef.Dd1 where
 toplevel :: Integer -> Integer
 toplevel x = c * x
 
-
-tl2 :: Integer -> Integer
-tl2 x = c * x
+tl2      :: Integer -> Integer
+tl2      x = c * x
 
 c,d :: Integer
 c = 7

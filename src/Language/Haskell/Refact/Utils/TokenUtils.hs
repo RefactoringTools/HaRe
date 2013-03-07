@@ -712,7 +712,7 @@ reIndentToks pos prevToks toks = toks''
       PlaceIndent rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where
           colStart = prevOffset
-          lineStart = (tokenRow (glast "reIndentToks" prevToks)) + 1
+          lineStart = (tokenRow (glast "reIndentToks" prevToks)) -- + 1
 
           lineOffset' = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
           colOffset'  = colIndent + colStart  - (tokenCol newTokStart) + 1 -- ++AZ++ Why +1?

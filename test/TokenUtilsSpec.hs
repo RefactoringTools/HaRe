@@ -176,6 +176,37 @@ spec = do
             "+- ((1000007,1),(1000009,1))\n|\n"++
             "`- ((6,1),(34,1))\n"
 
+    -- ---------------------------------
+
+    it "gets the tokens for an added indented srcloc" $ do
+      (t,toks) <- parsedFileDupDefDd1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let forest = mkTreeFromTokens toks
+
+      let Just (GHC.L _ n) = locToName dupDefDd1FileName (23, 5) renamed
+      (GHC.showPpr n) `shouldBe` "zz"
+
+      let sspan = posToSrcSpan forest ((23,5),(23,11))
+      (GHC.showPpr sspan) `shouldBe` "test/testdata/DupDef/Dd1.hs:23:5-10"
+
+      let (tm1,declToks) = getTokensFor forest sspan
+      (GHC.showRichTokenStream declToks) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n     zz = 1"
+      (drawTreeEntry tm1) `shouldBe`
+           "((1,1),(34,1))\n|\n"++
+           "+- ((1,1),(22,8))\n|\n"++
+           "+- ((23,5),(23,11))\n|\n"++
+           "`- ((25,1),(34,1))\n"
+
+      let (tm2,newSpan) = addToksAfterSrcSpan tm1 sspan (PlaceIndent 1 0 1) declToks
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:(1000024,5)-(1000025,0)"
+      (drawTreeEntry tm2) `shouldBe`
+           "((1,1),(34,1))\n|\n"++
+           "+- ((1,1),(22,8))\n|\n"++
+           "+- ((23,5),(23,11))\n|\n"++
+           "+- ((1000024,5),(1000025,1))\n|\n"++
+           "`- ((25,1),(34,1))\n"
+
   -- ---------------------------------------------
 
   describe "getSrcSpanFor" $ do

@@ -2696,7 +2696,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
 
         let colIndent = if (emptyList localDecls) then 4 else 0
-            rowIndent = 0
+            rowIndent = 1
 
         -- error $ "TypeUtils.addLocalDecl:((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)=" ++ (show ((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)) -- ++AZ++
 
@@ -3251,14 +3251,20 @@ duplicateDecl decls sigs n newFunName
       let Just sspan = getSrcSpan funBinding
       toks <- getToksForSpan sspan
 
-      let Just sspanSig = getSrcSpan typeSig
-      toksSig  <- getToksForSpan sspanSig
+      newSpan <- case typeSig of
+        [] -> return sspan
+        _  -> do
+          let Just sspanSig = getSrcSpan typeSig
+          toksSig  <- getToksForSpan sspanSig
 
-      typeSig' <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceOffset 2 0 0) toksSig
-      typeSig''     <- renamePN n newFunName True typeSig'
+          typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceIndent 2 0 0) toksSig
+          typeSig'' <- renamePN n newFunName True typeSig'
 
-      let (GHC.L newSpan _) = typeSig'
-      funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceOffset 1 0 1) toks
+          let (GHC.L sspanSig' _) = typeSig'
+
+          return sspanSig'
+
+      funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceIndent 1 0 1) toks
       funBinding'' <- renamePN n newFunName True funBinding'
 
       -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
