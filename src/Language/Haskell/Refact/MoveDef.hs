@@ -279,6 +279,27 @@ moveDecl1 :: (HsValBinds t)
   -> Bool           -- ^True if moving to the top level
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns topLevel
+   = do
+        let n = ghead "moveDecl1" ns
+        let funBinding = definingDeclsNames [n] (hsBinds t) True True
+        let typeSig = definingSigsNames [n] t
+
+        -- liftIO $ putStr $ "moveDecl1: (ns,funBinding)=" ++ (GHC.showPpr (ns,funBinding)) -- ++AZ++
+
+        (sigToMove,maybeToksSig) <- case typeSig of
+          [] -> return (Nothing,[])
+          _  -> do
+            let Just sspanSig = getSrcSpan typeSig
+            toksSig  <- getToksForSpan sspanSig
+            return (Just (ghead "moveDecl1 2" typeSig),toksSig)
+
+        let Just sspan = getSrcSpan funBinding
+        funToks <- getToksForSpan sspan
+
+        t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
+        addDecl t' defName (ghead "moveDecl1 2" funBinding,sigToMove,Just (maybeToksSig ++ funToks)) topLevel
+
+{- ++AZ++ before using TokenUtils
    = do toks <- fetchToks
         let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1 2" ns) True toks t
         let (sigToMove, sigToksToMove) =
@@ -287,15 +308,8 @@ moveDecl1 t defName ns topLevel
                 Nothing -> (Nothing,[])
         t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
         addDecl t' defName (ghead "moveDecl1 2" declToMove,sigToMove,Just (sigToksToMove ++ toksToMove)) topLevel
+--++AZ++ end -}
 
-{- ++AZ++ original
-moveDecl1 t defName pns topLevel
-   = do ((toks, _),_)<-get
-        let (declToMove, toksToMove) = getDeclAndToks (ghead "moveDecl1" pns) True toks t
-        --error$ show (declToMove, toksToMove)
-        t' <- rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) t pns
-        addDecl t' defName (declToMove, Just toksToMove) topLevel
--}
 
 {-
 --get all the declarations define in the scope of t

@@ -22,6 +22,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * TokenUtils API
        , putToksForSpan
        , getToksForSpan
+       , getToksBeforeSpan
        , putToksForPos
        , putToksAfterSpan
        , putToksAfterPos
@@ -119,6 +120,17 @@ getToksForSpan sspan = do
   let rsModule' = Just (tm {rsTokenCache = forest'})
   put $ st { rsModule = rsModule' }
   liftIO $ putStrLn $ "getToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
+  return toks
+
+-- |Get the current tokens preceding a given GHC.SrcSpan.
+getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
+getToksBeforeSpan sspan = do
+  st <- get
+  let Just tm = rsModule st
+  let (forest',toks) = getTokensBefore (rsTokenCache tm) sspan 
+  let rsModule' = Just (tm {rsTokenCache = forest'})
+  put $ st { rsModule = rsModule' }
+  liftIO $ putStrLn $ "getToksBeforeSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
   return toks
 
 

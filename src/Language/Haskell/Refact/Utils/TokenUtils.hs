@@ -15,6 +15,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        -- , Module(..)
        -- , initModule
        , getTokensFor
+       , getTokensBefore
        , updateTokensForSrcSpan
        , treeStartEnd
        , insertSrcSpan
@@ -34,6 +35,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        -- * Utility
        , posToSrcSpan
+       , posToSrcSpanTok
 
        -- * AST tie up
        , syncAST
@@ -369,6 +371,19 @@ getTokensFor forest sspan = (forest'', tokens)
      (forest'',tree) = getSrcSpanFor forest' (srcSpanToForestSpan sspan)
 
      tokens = retrieveTokens tree
+
+-- ---------------------------------------------------------------------
+
+-- |Get the (possible cached) tokens for a given source span, and
+-- cache their being fetched.
+-- NOTE: The SrcSpan may be one introduced by HaRe, rather than GHC.
+-- TODO: consider returning an Either. Although in reality the error
+--       should never happen
+getTokensBefore :: Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
+getTokensBefore forest sspan = (forest', prevToks)
+  where
+    (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
+    prevToks = retrieveTokens tree
 
 -- ---------------------------------------------------------------------
 
@@ -746,6 +761,23 @@ posToSrcSpan :: Tree Entry -> (SimpPos,SimpPos) -> GHC.SrcSpan
 posToSrcSpan forest ((rs,cs),(re,ce)) = sspan
   where
     (GHC.L l _,_) = ghead "posToSrcSpan"  $ retrieveTokens forest -- ++AZ++ Ouch, performance??
+    sspan =  case l of
+      GHC.RealSrcSpan ss ->
+        let
+          locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) rs cs
+          locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) re ce
+        in
+          GHC.mkSrcSpan locStart locEnd
+      _ -> error "posToSrcSpan: invalid SrcSpan in first tok"
+
+-- ---------------------------------------------------------------------
+
+-- |Convert a simple (start,end) position to a SrcSpan belonging to
+-- the file in the given token
+posToSrcSpanTok :: PosToken -> (SimpPos,SimpPos) -> GHC.SrcSpan
+posToSrcSpanTok tok ((rs,cs),(re,ce)) = sspan
+  where
+    (GHC.L l _,_) = tok
     sspan =  case l of
       GHC.RealSrcSpan ss ->
         let
