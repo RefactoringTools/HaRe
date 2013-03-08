@@ -3330,6 +3330,8 @@ rmDecl pn incSig t = do
      = do
          -- toks <- fetchToks
          -- let (startPos,endPos) = getStartEndLoc decl   --startEndLoc toks decl
+         prevToks <- getToksBeforeSpan sspan -- Need these before
+                                             -- sspan is deleted
          removeToksForPos (getStartEndLoc decl)
          -- ++AZ++: TODO: get rid of where clause, if no more decls
          -- here

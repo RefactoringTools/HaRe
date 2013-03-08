@@ -16,7 +16,6 @@ tup@(h,t) = head $ zip [1..10] [3..ff]
     ff :: Int
     ff = 15
 
-
     gg :: Int
     gg = 15
 
