@@ -472,6 +472,9 @@ spec = do
               "+- ((13,1),(21,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
 
+    it "does not delete existing versioned spans" $ do
+      "fail" `shouldBe` "does not delete existing versioned forestspans"
+
   -- ---------------------------------------------
 
   describe "removeSrcSpan" $ do
@@ -526,6 +529,56 @@ spec = do
       let toks' = retrieveTokens forest'
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n\n\n\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+
+    -- ---------------------------------
+    it "removes a span and tokens without destroying the forest" $ do
+      (t,toks) <- parsedFileDemoteD1
+      let forest = mkTreeFromTokens toks
+
+      let sspan = posToSrcSpan forest ((6,21),(6,41))
+      (GHC.showPpr sspan) `shouldBe` "test/testdata/Demote/D1.hs:6:21-40"
+      (showSrcSpan sspan) `shouldBe` "((6,21),(6,41))"
+
+      let forest1 = insertSrcSpan forest (fs sspan)
+
+      declToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "where\n  sq = x ^ pow\n"
+      -- putToksAfterPos ((6,21),(6,41)) at PlaceIndent 1 4 2
+      let (forest2,newSpan) = addToksAfterSrcSpan forest1 sspan (PlaceIndent 1 4 2) declToks
+
+      (invariant forest2) `shouldBe` []
+      (drawTreeEntry forest2) `shouldBe`
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(6,20))\n|\n"++
+               "+- ((6,21),(6,41))\n|\n"++
+               "+- ((1000007,5),(1000011,1))\n|\n"++
+               "`- ((7,1),(13,25))\n"
+
+      -- Context set up, now for the test.
+
+      let sspan2 = posToSrcSpan forest ((9,1),(9,14))
+      (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:9:1-13"
+      let forest3 = removeSrcSpan forest2 (fs sspan2)
+
+      (drawTreeEntry $ insertSrcSpan forest (fs sspan2)) `shouldBe`
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(6,20))\n|\n"++
+               "+- ((6,21),(6,41))\n|\n"++
+               "+- ((1000007,5),(1000011,1))\n|\n"++
+               "+- ((7,1),(8,20))\n|\n"++
+               "`- ((11,1),(13,25))\n"
+
+      (invariant forest3) `shouldBe` []
+      (drawTreeEntry forest3) `shouldBe`
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(6,20))\n|\n"++
+               "+- ((6,21),(6,41))\n|\n"++
+               "+- ((1000007,5),(1000011,1))\n|\n"++
+               "+- ((7,1),(8,20))\n|\n"++
+               "`- ((11,1),(13,25))\n"
+
+      let toks' = retrieveTokens forest3
+      -- (showToks toks') `shouldBe` ""
+      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n\n\n \n\n  sumSquares [] = 0\n\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
   -- ---------------------------------------------
 
@@ -1194,5 +1247,13 @@ moveDefMd1FileName = GHC.mkFastString "./test/testdata/MoveDef/Md1.hs"
 
 parsedFileMoveDefMd1 :: IO (ParseResult, [PosToken])
 parsedFileMoveDefMd1 = parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
+
+-- ---------------------------------------------------------------------
+
+demoteD1FileName  :: GHC.FastString
+demoteD1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
+
+parsedFileDemoteD1 :: IO (ParseResult, [PosToken])
+parsedFileDemoteD1 = parsedFileGhc "./test/testdata/Demote/D1.hs"
 
 -- ---------------------------------------------------------------------

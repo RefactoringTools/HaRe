@@ -3285,6 +3285,7 @@ rmDecl:: (SYB.Data t)
         ->t            -- ^ The declaration list.
         -> RefactGhc t -- ^ The result.
 rmDecl pn incSig t = do
+  liftIO $ putStr $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
   t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   t'' <- if incSig then rmTypeSig pn t'
                    else return t'
@@ -3304,7 +3305,10 @@ rmDecl pn incSig t = do
     rmTopLevelDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
                 -> RefactGhc [GHC.LHsBind GHC.Name]
     rmTopLevelDecl decl decls
-      =do {-
+      =do 
+          liftIO $ putStr $ "rmTopLevelDecl: " -- ++AZ++
+
+          {-
           toks <- fetchToks
           let (startLoc, endLoc)=startEndLocIncComments toks decl
               toks'= deleteToks toks startLoc endLoc
@@ -3340,7 +3344,7 @@ rmDecl pn incSig t = do
              -- Get rid of preceding where or let token
              -- prevToks <- getToksBeforeSpan sspan
              let startPos = getGhcLoc sspan
-                 (toks1,toks2)=break (\t->tokenPos t < startPos) $ reverse prevToks --divide the token stream.
+                 (_toks1,toks2)=break (\t->tokenPos t < startPos) $ reverse prevToks --divide the token stream.
                  --get the  'where' or 'let' token
                  rvToks1 = dropWhile (not.isWhereOrLet) toks2
                  --There must be a 'where' or 'let', so rvToks1 can not be empty.
@@ -3360,55 +3364,6 @@ rmDecl pn incSig t = do
              decls2' = gtail "rmLocalDecl 3" decls2
          return $ (decls1 ++ decls2')
 
-{- ++AZ++ before moving to TokenUtils:
-    -- |Remove a location declaration that defines pn.
-    rmLocalDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
-                -> RefactGhc [GHC.LHsBind GHC.Name]
-    rmLocalDecl decl decls
-     = do
-         toks <- fetchToks
-         let (startPos,endPos) = getStartEndLoc decl   --startEndLoc toks decl
-             (startPos',endPos')=startEndLocIncComments toks decl
-             --(startPos',endPos')=startEndLocIncFowComment toks decl
-             toks'=if length decls==1  --only one decl, which means the accompaning 'where',
-                                       --'let' or'in' should be removed too.
-                   then let (toks1,toks2)=break (\t->tokenPos t==startPos) toks --devide the token stream.
-                              --get the  'where' or 'let' token
-                            rvToks1 = dropWhile (not.isWhereOrLet) (reverse toks1)
-                            --There must be a 'where' or 'let', so rvToks1 can not be empty.
-                            whereOrLet=ghead "rmLocalFunPatBind:whereOrLet" rvToks1
-                            --drop the 'where' 'or 'let' token
-                            toks1'=takeWhile (\t->tokenPos t/=tokenPos whereOrLet) toks1
-                            --remove the declaration from the token stream.
-                            toks2'=gtail "rmLocalDecl 2" $ dropWhile (\t->tokenPos t<endPos') toks2
-                            --get the remained tokens after the removed declaration.
-                            remainedToks=dropWhile isWhite toks2'
-                        in if (emptyList remainedToks)
-                             then --the removed declaration is the last decl in the file.
-                                  (compressEndNewLns toks1'++ compressPreNewLns toks2')
-                             else if --remainedToks/=[], so no problem with head.
-                                    isIn (ghead "rmLocalDecl:isIn"  remainedToks)
-                                         || isComma (ghead "rmLocalDecl:isComma" remainedToks)
-                                        --There is a 'In' after the removed declaration.
-                                   then if isWhere whereOrLet
-                                           then deleteToks toks (tokenPos whereOrLet) endPos'
-                                           else deleteToks toks (tokenPos whereOrLet)
-                                                   $ tokenPos (ghead "rmLocalDecl:tokenPos" remainedToks)
-                                        --delete the decl and adjust the layout
-                                   else if isCloseSquareBracket (ghead "rmLocalDecl:isCloseSquareBracker" remainedToks) &&
-                                           (isBar.(ghead "rmLocalDecl:isBar")) (dropWhile isWhite (tail rvToks1))
-                                         then deleteToks toks (tokenPos((ghead "rmLocalDecl")
-                                                        (dropWhile isWhite (tail rvToks1)))) endPos'
-                                         else deleteToks toks (tokenPos whereOrLet) endPos'
-                        --there are more than one decls
-                   else  deleteToks toks startPos' endPos'
-         putToks toks' modified --Change the above endPos' to endPos will not delete the following comments.
-         -- return $ (decls \\ [decl])
-
-         let (decls1, decls2) = break (defines pn) decls
-             decls2' = gtail "rmLocalDecl 3" decls2
-         return $ (decls1 ++ decls2')
-++AZ++ end -}
 
 -- ---------------------------------------------------------------------
 

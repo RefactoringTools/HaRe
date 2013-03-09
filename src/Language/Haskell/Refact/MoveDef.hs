@@ -9,8 +9,6 @@ module Language.Haskell.Refact.MoveDef
   -- ,liftingInClientMod
   ) where
 
-import Prelude hiding (putStrLn)
-
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
@@ -792,6 +790,7 @@ doDemoting  pn = do
        demoteInMod (renamed :: GHC.RenamedSource)
          | not $ emptyList decls
          = do
+              liftIO $ putStrLn "MoveDef:demoteInMod" -- ++AZ++
               demoted <- doDemoting' renamed pn
               return demoted
          where
@@ -930,6 +929,8 @@ doDemoting' t pn
    -- in if not (usedByRhs t declaredPns) -- ++AZ++ this only works because the top level is hard coded to False.
    in if not (usedByRhs t declaredPns)
        then do
+              drawTokenTree -- ++AZ++ debug
+              -- TODO: make this next block something in TypeUtils
               toks <- fetchToks
               let (demotedDecls,demotedToks) = getDeclAndToks pn True toks t
               let (demotedSig, demotedSigToks) =
@@ -952,29 +953,32 @@ doDemoting' t pn
               case  length uselist  of
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function
-                      do -- (f,d)<-hsFreeAndDeclaredPNs demotedDecls
+                      do 
+                         drawTokenTree -- ++AZ++ debug
+                         liftIO $ putStrLn "MoveDef.doDemoting':target location found" -- ++AZ++
+                         -- (f,d)<-hsFreeAndDeclaredPNs demotedDecls
                          let (f,_d) = hsFreeAndDeclaredPNs demotedDecls
                          -- remove demoted declarations
                          --Without updating the token stream.
                          -- let ds=foldl (flip removeTypeSig) (hsBinds t\\demotedDecls) declaredPns
                          -- let ds=foldl (flip removeTypeSig) (deleteFirstsBy sameBind (hsBinds t) demotedDecls) declaredPns
 
-                         ds <- rmDecl pn True (hsBinds t)
-                         t' <- rmTypeSig pn t
+                         -- ++AZ++ moved to after the rest, so the tree is still available to start with
+                         -- ds <- rmDecl pn True (hsBinds t)
+                         -- t' <- rmTypeSig pn t
+                         let ds = hsBinds t
+                         let t' = t
 
                          --get those varaibles declared at where the demotedDecls will be demoted to
-                         -- dl  <-mapM (flip declaredNamesInTargetPlace ds) declaredPns
                          let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
                          --make sure free variable in 'f' do not clash with variables in 'dl',
 
                          -- error ("doDemoting':(ds,dl)=" ++ (GHC.showPpr (ds,dl))) -- ++AZ++
 
                          --otherwise do renaming.
-                         -- let clashedNames=filter (\x-> elem (pNtoName x) (map pNtoName f)) $ (nub.concat) dl
                          let clashedNames=filter (\x-> elem (id x) (map id f)) $ (nub.concat) dl
                          --rename clashed names to new names created automatically,update TOKEN STREAM as well.
                          if clashedNames/=[]
-                            -- then error ("The identifier(s):" ++ showEntities showPNwithLoc clashedNames ++
                             then error ("The identifier(s):" ++ GHC.showPpr clashedNames ++
                                        ", declared in where the definition will be demoted to, will cause name clash/capture"
                                        ++" after demoting, please do renaming first!")  
@@ -985,13 +989,18 @@ doDemoting' t pn
                                     -- error ("doDemoting':(origDecls)=" ++ (GHC.showPpr (origDecls))) -- ++AZ++
                                     -- ds'' <- duplicateDecls declaredPns origDecls
                                     ds'' <- duplicateDecls declaredPns (ghead "doDemoting'" demotedDecls) demotedSig (Just (demotedSigToks ++ demotedToks)) origDecls
-                                    -- let res = replaceBinds t ds''
-                                    -- newBinds <- moveDecl1 origDecls Nothing declaredPns False
-                                    -- newBinds <- addDecl [ddd] Nothing declaredPns False
-                                    -- error ("doDemoting':(ds'',declaredPns)=" ++ (GHC.showPpr (ds'',declaredPns))) -- ++AZ++
-                                    -- return res
-                                    -- return (replaceBinds t ds'')
-                                    return (replaceBinds t' ds'')
+
+                                    drawTokenTree -- ++AZ++ debug
+
+                                    -- Finally, remove the original
+                                    -- ds''' <- rmDecl pn True ds''
+                                    -- t'' <- rmTypeSig pn t'
+                                    t'' <- rmDecl pn True t
+
+                                    drawTokenTree -- ++AZ++ debug
+
+                                    -- return (replaceBinds t'' ds''')
+                                    return (t'')
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
                   -- _ ->error $ "\nThis function/pattern binding is used by more than one friend bindings\n" ++ (show uselist) -- ++AZ++
 
@@ -1269,7 +1278,7 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    -- error $ "MoveDef.foldParams:1 (toks)=" ++ (showToks toks) -- ++AZ++
 
                    decls' <- foldInDemotedDecls pns clashedNames subst decls
-                   toks <- fetchToks
+                   -- toks <- fetchToks
                    -- error $ "MoveDef.foldParams: (toks)=" ++ (showToks toks) -- ++AZ++
                    let demotedDecls''' = definingDeclsNames pns decls' True False
 
