@@ -209,6 +209,40 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "getTokensBefore" $ do
+    it "gets the tokens before a given srcloc" $ do
+      (t,toks) <- parsedFileMoveDefMd1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+
+      let forest = mkTreeFromTokens toks
+
+      let sspan = posToSrcSpan forest ((24,5),(24,11))
+
+      let (tm',toksSpan) = getTokensFor forest sspan
+
+      (GHC.showPpr sspan) `shouldBe` "test/testdata/MoveDef/Md1.hs:24:5-10"
+      (showSrcSpan sspan) `shouldBe` "((24,5),(24,11))"
+      (showToks toksSpan) `shouldBe` "[(((24,5),(24,5)),ITvocurly,\"\"),(((24,5),(24,7)),ITvarid \"zz\",\"zz\"),(((24,8),(24,9)),ITequal,\"=\"),(((24,10),(24,11)),ITinteger 1,\"1\")]"
+
+
+      (drawTreeEntry tm') `shouldBe`
+            "((1,1),(40,17))\n|\n"++
+            "+- ((1,1),(23,8))\n|\n"++
+            "+- ((24,5),(24,11))\n|\n"++
+            "`- ((26,1),(40,17))\n"
+
+      let (tm'',toksBefore) = getTokensBefore tm' sspan
+      (showToks $ drop 100 toksBefore) `shouldBe` "[(((22,10),(22,11)),ITvarsym \"+\",\"+\"),(((22,12),(22,14)),ITvarid \"zz\",\"zz\"),(((23,3),(23,8)),ITwhere,\"where\")]"
+
+      (drawTreeEntry tm'') `shouldBe`
+            "((1,1),(40,17))\n|\n"++
+            "+- ((1,1),(23,8))\n|\n"++
+            "+- ((24,5),(24,11))\n|\n"++
+            "`- ((26,1),(40,17))\n"
+
+  -- ---------------------------------------------
+
   describe "getSrcSpanFor" $ do
     it "inserts a SrcSpan if it was not in the forest" $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -1152,5 +1186,13 @@ dupDefDd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
 parsedFileDupDefDd1 :: IO (ParseResult, [PosToken])
 parsedFileDupDefDd1 = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+
+-- ---------------------------------------------------------------------
+
+moveDefMd1FileName :: GHC.FastString
+moveDefMd1FileName = GHC.mkFastString "./test/testdata/MoveDef/Md1.hs"
+
+parsedFileMoveDefMd1 :: IO (ParseResult, [PosToken])
+parsedFileMoveDefMd1 = parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
 
 -- ---------------------------------------------------------------------

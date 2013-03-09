@@ -380,10 +380,20 @@ getTokensFor forest sspan = (forest'', tokens)
 -- TODO: consider returning an Either. Although in reality the error
 --       should never happen
 getTokensBefore :: Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
-getTokensBefore forest sspan = (forest', prevToks)
+getTokensBefore forest sspan = (forest', prevToks')
   where
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
-    prevToks = retrieveTokens tree
+    -- prevToks = retrieveTokens tree
+
+    z = openZipperToSpan (srcSpanToForestSpan sspan) $ Z.fromTree forest'
+
+    prevToks = case (retrievePrevLineToks z) of
+                 [] -> retrieveTokens tree
+                 xs -> xs
+
+    (_,rtoks) = break (\t->tokenPos t < (getGhcLoc sspan)) $ reverse prevToks
+    prevToks' = reverse rtoks
+    -- prevToks' = prevToks
 
 -- ---------------------------------------------------------------------
 

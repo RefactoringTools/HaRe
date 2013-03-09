@@ -3338,7 +3338,7 @@ rmDecl pn incSig t = do
          case length decls of
            1 -> do
              -- Get rid of preceding where or let token
-             prevToks <- getToksBeforeSpan sspan
+             -- prevToks <- getToksBeforeSpan sspan
              let startPos = getGhcLoc sspan
                  (toks1,toks2)=break (\t->tokenPos t < startPos) $ reverse prevToks --divide the token stream.
                  --get the  'where' or 'let' token
