@@ -559,8 +559,12 @@ updateToksWithPos :: (SYB.Data t)
   -> RefactGhc ()  -- ^ Updates the RefactState
 updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
   = do
+       -- newToks <- liftIO $ basicTokenise (printFun newAST)
        newToks <- liftIO $ basicTokenise (printFun newAST)
-       putToksForPos (startPos,endPos) newToks
+       let newToks' = if addTrailingNl 
+                       then newToks ++ [newLnToken (last newToks)]
+                       else newToks
+       putToksForPos (startPos,endPos) newToks'
 
        return ()
 
@@ -796,8 +800,7 @@ deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
 
       -- tokens after the tokens to be deleted at the same line.
       after = let t= dropWhile (\t -> tokenPosEnd t <= endPos) toks21
-              in  if (emptyList t) then error "Sorry, HaRe failed to finish this refactoring. DeleteToks"
-                                   -- else gtail "deleteToks6" t
+              in  if (emptyList t) then t -- ++AZ++ error "Sorry, HaRe failed to finish this refactoring. deleteToks"
                                    else t
 
 {- ++ original ++

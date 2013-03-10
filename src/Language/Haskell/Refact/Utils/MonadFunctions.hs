@@ -9,7 +9,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Original API provided
        , fetchToks -- ^Deprecated
        , fetchOrigToks
-       , putToks -- ^Deprecated
+       , putToks -- ^Deprecated, destroys token tree
        , getTypecheckedModule
        , getRefactStreamModified
        , getRefactInscopes
@@ -216,7 +216,7 @@ removeToksForPos pos = do
   let forest' = removeSrcSpan (rsTokenCache tm) (srcSpanToForestSpan sspan)
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  liftIO $ putStrLn $ "removeToksForPos result:" ++ (show forest')
+  liftIO $ putStrLn $ "removeToksForPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
   return ()
 
 -- ---------------------------------------------------------------------

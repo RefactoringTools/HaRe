@@ -21,7 +21,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , insertSrcSpan
        , removeSrcSpan
        , getSrcSpanFor
-       , getPathFor
+       -- , getPathFor
        , retrieveTokens
        , addNewSrcSpanAndToksAfter
        , addToksAfterSrcSpan
@@ -43,7 +43,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        -- * Internal, for testing
        , splitForestOnSpan
-       , lookupSrcSpan
+       -- , lookupSrcSpan
        , invariantOk
        , invariant
        , mkTreeFromTokens
@@ -440,15 +440,19 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
 getSrcSpanFor :: Tree Entry -> ForestSpan -> (Tree Entry, Tree Entry)
 getSrcSpanFor forest sspan = (forest',tree)
   where
-    forest' = insertSrcSpan forest sspan -- Will NO-OP if already there
+    forest' = insertSrcSpan forest sspan -- Will NO-OP if already
+                                         -- there
+    z = openZipperToSpan sspan $ Z.fromTree forest'
+    tree = Z.tree z
+    {-
     tree = case (lookupSrcSpan [forest'] sspan) of
              [x] -> x
-             -- xx  -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show xx) ++ " for " ++ (drawTreeEntry forest)
-             -- xx  -> case (filter (\t -> forestSpanVersionNotSet (treeStartEnd t)) xx) of 
              xx  -> case (filter (\t -> (treeStartEnd t) == sspan) xx) of 
                      [y] -> y
                      yy -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show (xx,yy)) ++ " for " ++ (drawTreeEntry forest)
+-}
 
+{-
 -- ---------------------------------------------------------------------
 -- |Retrieve a path to the tree containing a SrcSpan from the forest,
 -- or return an empty list if it is not present
@@ -464,7 +468,7 @@ getPathFor forest sspan = getPathFor' [] [forest] (srcSpanToForestSpan sspan)
                                  then (path++middle) else []
            [Node _ sub] -> getPathFor' (path ++ middle) sub ss
            _   -> (path ++ middle)
-
+-}
 
 -- ---------------------------------------------------------------------
 -- |Insert a ForestSpan into the forest, if it is not there already.
@@ -939,6 +943,7 @@ Should bring all of them
 
 -- ---------------------------------------------------------------------
 
+{-
 -- | Look a SrcSpan up in the forest.
 -- There are three possibilities
 -- 1. It is not there
@@ -961,7 +966,7 @@ lookupSrcSpan forest sspan = res
            [Node _  []] -> middle
            [Node _ sub] -> lookupSrcSpan sub sspan
            _   -> middle
-
+-}
 
 -- ---------------------------------------------------------------------
 

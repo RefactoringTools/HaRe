@@ -265,7 +265,7 @@ spec = do
       (showForestSpan $ treeStartEnd tree) `shouldBe` "((19,1),(21,14))"
 
   -- ---------------------------------------------
-
+{-
   describe "lookupSrcSpan" $ do
     it "looks up a SrcSpan that is fully enclosed in the forest" $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -389,7 +389,7 @@ spec = do
       (map showForestSpan $ map treeStartEnd subtrees)
            `shouldBe` ["((3,29),(3,30))"]
 
-
+-}
   -- ---------------------------------------------
 
   describe "splitForestOnSpan" $ do
@@ -651,6 +651,7 @@ spec = do
 
   -- ---------------------------------------------
 
+{-
   describe "getPathFor" $ do
     it "retrieves an empty path if the SrcSpan is not in the tree" $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -692,7 +693,7 @@ spec = do
 
       (map showForestSpan $ map treeStartEnd $ getPathFor forest' l) `shouldBe`
              ["((1,1),(26,1))","((19,1),(21,14))"]
-
+-}
   -- ---------------------------------------------
 
   describe "retrieveTokens" $ do

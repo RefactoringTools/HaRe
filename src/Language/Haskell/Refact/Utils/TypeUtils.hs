@@ -3367,7 +3367,6 @@ rmDecl pn incSig t = do
 
 -- ---------------------------------------------------------------------
 
-
 -- | Remove the type signature that defines the given identifier's
 -- type from the declaration list.
 rmTypeSig :: (SYB.Data t) =>
@@ -3379,6 +3378,51 @@ rmTypeSig pn t
   where
    inDecls (sigs::[GHC.LSig GHC.Name])
       | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
+     -- TODO: replace fetchToks/putToks with getToksForSpan/putToksForSpan
+     = do -- toks <- fetchToks
+          let (decls1,decls2)= break (definesTypeSig pn) sigs
+          let sspan = gfromJust "rmTypeSig" $ getSrcSpan $ ghead "rmTypeSig" decls2 
+          toks <- getToksForSpan sspan
+          liftIO $ putStrLn $ "rmTypeSig: fetched toks:" ++ (show toks) -- ++AZ++
+          let (toks',decls')=
+               let sig@(GHC.L l (GHC.TypeSig names typ)) = ghead "rmTypeSig" decls2  -- as decls2/=[], no problem with head
+                   (startPos,endPos) = getStartEndLoc sig
+               in if length names > 1
+                     then let newSig=(GHC.L l (GHC.TypeSig (filter (\(GHC.L _ x) -> x /= pn) names) typ))
+                              pnt = ghead "rmTypeSig" (filter (\(GHC.L _ x) -> x == pn) names)
+                              (startPos1, endPos1) = let (startPos1', endPos1') = getStartEndLoc pnt
+                                                     in if gfromJust "rmTypeSig" (elemIndex pnt names) >0
+                                                        then extendForwards  toks startPos1' endPos1' isComma
+                                                        else extendBackwards toks startPos1' endPos1' isComma
+                          in (deleteToks toks startPos1 endPos1,(decls1++[newSig]++tail decls2))
+                     else  ((deleteToks toks startPos endPos),(decls1++tail decls2)) 
+                     -- else  error $ "rmTypeSig:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
+          -- putToks toks' modified
+          liftIO $ putStrLn $ "rmTypeSig: about to replace tokens:" ++ (show toks') -- ++AZ++
+          case toks' of
+            [] -> do
+                   _ <- removeToksForSpan sspan
+                   return ()
+            _  -> do
+                   _ <- putToksForSpan sspan toks'
+                   return ()
+          return decls'
+   inDecls x = return x
+
+
+{- ++AZ++ before getting rid of fetchToks/PutToks
+-- | Remove the type signature that defines the given identifier's
+-- type from the declaration list.
+rmTypeSig :: (SYB.Data t) =>
+         GHC.Name    -- ^ The identifier whose type signature is to be removed.
+      -> t           -- ^ The declarations
+      -> RefactGhc t -- ^ The result
+rmTypeSig pn t
+  = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
+  where
+   inDecls (sigs::[GHC.LSig GHC.Name])
+      | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
+     -- TODO: replace fetchToks/putToks with getToksForSpan/putToksForSpan
      = do toks <- fetchToks
           let (decls1,decls2)= break (definesTypeSig pn) sigs
               (toks',decls')=
@@ -3397,40 +3441,8 @@ rmTypeSig pn t
           putToks toks' modified
           return decls'
    inDecls x = return x
+++AZ++ end -}
 
-
-{- ++ original ++
-
--- | Remove the type signature that defines the given identifier's type from the declaration list.
-{-rmTypeSig::(MonadState (([PosToken],Bool),t1) m)
-            => PName       -- ^ The identifier whose type signature is to be removed.
-            ->[HsDeclP]    -- ^ The declaration list
-            ->m [HsDeclP]  -- ^ The result -}
-
-rmTypeSig pn  t = applyTP (full_tdTP (idTP `adhocTP` inDecls)) t
-  where
-   inDecls (decls::[HsDeclP])
-      | snd (break (definesTypeSig pn) decls) /=[]
-     = do ((toks,_), others) <- get
-          let (decls1,decls2)= break  (definesTypeSig pn) decls
-              (toks',decls')=
-               let sig@(TiDecorate.Dec (HsTypeSig loc is c tp))=ghead "rmTypeSig" decls2  -- as decls2/=[], no problem with head
-                   (startPos,endPos)=getStartEndLoc toks sig
-               in if length is>1
-                     then let newSig=(TiDecorate.Dec (HsTypeSig loc (filter (\x-> (pNTtoPN x)/=pn) is) c tp))
-                              pnt = ghead "rmTypeSig" (filter (\x-> pNTtoPN x == pn) is)
-                              (startPos1, endPos1) = let (startPos1', endPos1') = getStartEndLoc toks pnt
-                                                     in if fromJust (elemIndex pnt is) >0
-                                                        then extendForwards toks startPos1' endPos1' isComma
-                                                        else extendBackwards toks startPos1' endPos1' isComma
-                          in (deleteToks toks startPos1 endPos1,(decls1++[newSig]++tail decls2))
-                     else  ((deleteToks toks startPos endPos),(decls1++tail decls2)) 
-          put ((toks',modified),others)
-          return decls'
-   inDecls x = return x
-
-
-++ original end ++ -}
 
 -- ---------------------------------------------------------------------
 
