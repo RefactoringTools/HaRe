@@ -6,7 +6,7 @@ module Demote.D1 where
 sumSquares (x:xs) = sq   + sumSquares xs
     where
       sq = x ^ pow
-
+    
 
 
 

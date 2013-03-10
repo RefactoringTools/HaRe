@@ -61,6 +61,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , forestLineToGhcLine
        , forestPosVersionSet
        , forestPosVersionNotSet
+       , forestSpanVersions
        , forestSpanVersionSet
        , forestSpanVersionNotSet
        , insertForestLineInSrcSpan
@@ -269,6 +270,10 @@ instance Ord ForestLine where
     if (l1 == l2)
       then compare v1 v2
       else compare l1 l2
+
+-- |Gets the version numbers
+forestSpanVersions :: ForestSpan -> (Int,Int)
+forestSpanVersions ((ForestLine sv _,_),(ForestLine ev _,_)) = (sv,ev)
 
 -- |Checks if the version is non-zero in either position
 forestSpanVersionSet :: ForestSpan -> Bool
@@ -488,6 +493,8 @@ insertSrcSpan forest sspan = forest'
 
           -- Tokens here, must introduce sub-spans with split, taking
           -- cognizance of start and end comments
+          -- TODO: does startEndLocIncComments' give the same boundary
+          --       if approached from one side as the other?
           (startLoc,endLoc) = startEndLocIncComments' toks (tokStartPos,tokEndPos)
 
           -- (startToks,middleToks,endToks) = splitToks (startPos,endPos) toks
@@ -851,7 +858,9 @@ openZipperToNode node z
 
 -- ---------------------------------------------------------------------
 
--- |Open a zipper so that its focus has the given SrcSpan in its subtree
+-- |Open a zipper so that its focus has the given SrcSpan in its
+-- subtree, or the location where the SrcSpan should go, if it is not
+-- in the tree
 openZipperToSpan
   :: ForestSpan
      -> Z.TreePos Z.Full Entry
@@ -871,9 +880,16 @@ openZipperToSpan sspan z
                    openZipperToSpan sspan x
             -- _xs -> z -- Multiple, this is the spot
             xx  -> case (filter (\zt -> (treeStartEnd $ Z.tree zt) == sspan) xx) of 
+                    -- [] -> error $ "openZipperToSpan: no matching subtree:(sspan,xx)=" ++ (show (sspan,xx)) -- ++AZ++ 
                     [y] -> openZipperToSpan sspan y
-                    yy -> z -- Multiple, this is the spot
-
+                    yy -> -- Multiple, check if we can separate out
+                             -- by version
+                          case (filter (\zt -> (forestSpanVersions $ treeStartEnd $ Z.tree zt) == (forestSpanVersions sspan)) xx) of
+                           -- [] -> z
+                           [] -> error $ "openZipperToSpan:no version match:(sspan,yy)=" ++ (show (sspan,yy)) -- ++AZ++
+                           [w] -> openZipperToSpan sspan w
+                           -- _ww -> z
+                           ww -> error $ "openZipperToSpan:multiple version match:" ++ (show ww) -- ++AZ++
           contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
             where
               (startPos,endPos) = treeStartEnd $ Z.tree zn

@@ -473,7 +473,74 @@ spec = do
               "`- ((26,1),(26,1))\n"
 
     it "does not delete existing versioned spans" $ do
-      "fail" `shouldBe` "does not delete existing versioned forestspans"
+      (t,toks) <- parsedFileDemoteD1
+      let forest = mkTreeFromTokens toks
+
+      let sspan = posToSrcSpan forest ((6,21),(6,41))
+      (GHC.showPpr sspan) `shouldBe` "test/testdata/Demote/D1.hs:6:21-40"
+      (showSrcSpan sspan) `shouldBe` "((6,21),(6,41))"
+
+      let forest1 = insertSrcSpan forest (fs sspan)
+
+      declToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "where\n  sq = x ^ pow\n"
+      -- putToksAfterPos ((6,21),(6,41)) at PlaceIndent 1 4 2
+      let (forest2,newSpan) = addToksAfterSrcSpan forest1 sspan (PlaceIndent 1 4 2) declToks
+
+      (invariant forest2) `shouldBe` []
+      (drawTreeEntry forest2) `shouldBe`
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(6,20))\n|\n"++
+               "+- ((6,21),(6,41))\n|\n"++
+               "+- ((1000007,5),(1000011,1))\n|\n"++
+               "`- ((7,1),(13,25))\n"
+
+      -- Context set up, now for the test.
+
+      let sspan2 = posToSrcSpan forest ((9,1),(9,14))
+      (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:9:1-13"
+
+      let z = openZipperToSpan (fs sspan2) $ Z.fromTree forest2
+      (drawTreeEntry $ Z.tree z) `shouldBe` "((7,1),(13,25))\n"
+      -- (show $ treeStartEnd (Z.tree z)) `shouldBe` "((ForestLine {flInsertVersion = 0, flLine = 1},1),(ForestLine {flInsertVersion = 0, flLine = 13},25))"
+      -- (show (Z.firstChild z)) `shouldBe` ""
+      -- (show $ Z.next $ fromJust $ (Z.firstChild z)) `shouldBe` ""
+ {-
+      let childrenAsZ = go [] (Z.firstChild z)
+           where
+            go acc Nothing = acc
+            go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)
+
+      (show $ map treeStartEnd $ map Z.tree childrenAsZ) `shouldBe` 
+           "[((ForestLine {flInsertVersion = 0, flLine = 1},1),(ForestLine {flInsertVersion = 0, flLine = 6},20)),"++
+            "((ForestLine {flInsertVersion = 0, flLine = 6},21),(ForestLine {flInsertVersion = 0, flLine = 6},41)),"++
+            "((ForestLine {flInsertVersion = 1, flLine = 7},5),(ForestLine {flInsertVersion = 1, flLine = 11},1)),"++
+            "((ForestLine {flInsertVersion = 0, flLine = 7},1),(ForestLine {flInsertVersion = 0, flLine = 13},25))]"
+
+
+      let xx = filter contains childrenAsZ
+           where
+             contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
+               where
+                 (startPos,endPos) = treeStartEnd $ Z.tree zn
+                 (nodeStart,nodeEnd) = (fs sspan2)
+
+      -- (show xx) `shouldBe` ""
+
+      let xx' = filter (\zt -> (treeStartEnd $ Z.tree zt) == (fs sspan2)) xx
+
+      -- (show xx') `shouldBe` ""
+-}
+
+
+      (drawTreeEntry $ insertSrcSpan forest2 (fs sspan2)) `shouldBe`
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(6,20))\n|\n"++
+               "+- ((6,21),(6,41))\n|\n"++
+               "+- ((1000007,5),(1000011,1))\n|\n"++
+               "`- ((7,1),(13,25))\n   |\n"++
+               "   +- ((7,1),(7,18))\n   |\n"++
+               "   +- ((9,1),(9,14))\n   |\n"++
+               "   `- ((11,1),(13,25))\n"
 
   -- ---------------------------------------------
 
@@ -552,20 +619,21 @@ spec = do
                "+- ((6,21),(6,41))\n|\n"++
                "+- ((1000007,5),(1000011,1))\n|\n"++
                "`- ((7,1),(13,25))\n"
-
       -- Context set up, now for the test.
 
       let sspan2 = posToSrcSpan forest ((9,1),(9,14))
       (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:9:1-13"
       let forest3 = removeSrcSpan forest2 (fs sspan2)
 
-      (drawTreeEntry $ insertSrcSpan forest (fs sspan2)) `shouldBe`
+      (drawTreeEntry $ insertSrcSpan forest2 (fs sspan2)) `shouldBe`
                "((1,1),(13,25))\n|\n"++
                "+- ((1,1),(6,20))\n|\n"++
                "+- ((6,21),(6,41))\n|\n"++
                "+- ((1000007,5),(1000011,1))\n|\n"++
-               "+- ((7,1),(8,20))\n|\n"++
-               "`- ((11,1),(13,25))\n"
+               "`- ((7,1),(13,25))\n   |\n"++
+               "   +- ((7,1),(7,18))\n   |\n"++
+               "   +- ((9,1),(9,14))\n   |\n"++
+               "   `- ((11,1),(13,25))\n"
 
       (invariant forest3) `shouldBe` []
       (drawTreeEntry forest3) `shouldBe`
@@ -573,12 +641,13 @@ spec = do
                "+- ((1,1),(6,20))\n|\n"++
                "+- ((6,21),(6,41))\n|\n"++
                "+- ((1000007,5),(1000011,1))\n|\n"++
-               "+- ((7,1),(8,20))\n|\n"++
-               "`- ((11,1),(13,25))\n"
+               "`- ((7,1),(13,25))\n   |\n"++
+               "   +- ((7,1),(7,18))\n   |\n"++
+               "   `- ((11,1),(13,25))\n"
 
       let toks' = retrieveTokens forest3
       -- (showToks toks') `shouldBe` ""
-      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n\n\n \n\n  sumSquares [] = 0\n\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n\n  sumSquares [] = 0\n\n\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
   -- ---------------------------------------------
 
