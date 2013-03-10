@@ -180,6 +180,7 @@ putToksAfterPos pos position toks = do
   let (forest',newSpan) = addToksAfterSrcSpan (rsTokenCache tm) sspan position toks
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
+  liftIO $ putStrLn $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
   return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST

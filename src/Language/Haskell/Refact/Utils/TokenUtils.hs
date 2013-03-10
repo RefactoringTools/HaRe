@@ -54,6 +54,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , ghcSpanStartEnd
        , insertNodeAfter
        , retrievePrevLineToks
+       , openZipperToNode
        , openZipperToSpan
        , forestSpanToSimpPos
 
@@ -444,13 +445,6 @@ getSrcSpanFor forest sspan = (forest',tree)
                                          -- there
     z = openZipperToSpan sspan $ Z.fromTree forest'
     tree = Z.tree z
-    {-
-    tree = case (lookupSrcSpan [forest'] sspan) of
-             [x] -> x
-             xx  -> case (filter (\t -> (treeStartEnd t) == sspan) xx) of 
-                     [y] -> y
-                     yy -> error $ "TokenUtils.getSrcSpanFor("++ (show sspan) ++ "): got " ++ (show (xx,yy)) ++ " for " ++ (drawTreeEntry forest)
--}
 
 {-
 -- ---------------------------------------------------------------------
@@ -530,6 +524,9 @@ removeSrcSpan forest sspan = forest''
 
     z' = Z.setTree (pt { subForest = subTree}) zp
     forest'' = Z.toTree z'
+    -- forest'' = error $ "removeSrcSpan: initial tree\n" ++ (drawTreeEntry forest) -- ++AZ++
+    -- forest'' = error $ "removeSrcSpan: after insertSrcSpan\n" ++ (drawTreeEntry forest') -- ++AZ++
+
 
 -- ---------------------------------------------------------------------
 

@@ -294,7 +294,9 @@ moveDecl1 t defName ns topLevel
         let Just sspan = getSrcSpan funBinding
         funToks <- getToksForSpan sspan
 
-        t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
+        -- t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
+        t'' <- rmTypeSig (ghead "moveDecl3.2"  ns) t
+        t'  <- rmDecl    (ghead "moveDecl3.1"  ns) False t''
         addDecl t' defName (ghead "moveDecl1 2" funBinding,sigToMove,Just (maybeToksSig ++ funToks)) topLevel
 
 {- ++AZ++ before using TokenUtils

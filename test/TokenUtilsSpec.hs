@@ -794,6 +794,86 @@ spec = do
     it "replaces the tokens for a given span, removing any sub tree" $ do
        pending "write this"
 
+    -- --------------------------------------
+
+    it "replaces a single token" $ do
+      (_t,toks) <- parsedFileDemoteWhereIn4
+      let forest = mkTreeFromTokens toks
+
+      let ss1 = posToSrcSpan forest ((11,18),(11,22))
+      (GHC.showPpr ss1) `shouldBe` "test/testdata/Demote/WhereIn4.hs:11:18-21"
+      (showSrcSpan ss1) `shouldBe` "((11,18),(11,22))"
+
+      ss1Tok <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "sq"
+      (show ss1Tok) `shouldBe` "[((((0,0),(0,2)),ITvarid \"sq\"),\"sq\")]"
+
+      let (forest2,_ss1') = updateTokensForSrcSpan forest ss1 ss1Tok
+
+      (drawTreeEntry forest2) `shouldBe` 
+           "((1,1),(20,1))\n|\n"++
+           "+- ((1,1),(11,17))\n|\n"++
+           "+- ((11,18),(11,20))\n|\n"++
+           "`- ((11,23),(20,1))\n"
+
+      -- (show forest2) `shouldBe` ""
+
+      let ss2 = posToSrcSpan forest ((11,27),(11,31))
+      (GHC.showPpr ss2) `shouldBe` "test/testdata/Demote/WhereIn4.hs:11:27-30"
+      (showSrcSpan ss2) `shouldBe` "((11,27),(11,31))"
+
+      ss2Tok <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "sq"
+      (show ss2Tok) `shouldBe` "[((((0,0),(0,2)),ITvarid \"sq\"),\"sq\")]"
+
+      let (forest3,_ss2') = updateTokensForSrcSpan forest2 ss2 ss2Tok
+
+      (drawTreeEntry forest3) `shouldBe` 
+           "((1,1),(20,1))\n|\n"++
+           "+- ((1,1),(11,17))\n|\n"++
+           "+- ((11,18),(11,20))\n|\n"++
+           "`- ((11,23),(20,1))\n   |\n"++
+           "   +- ((11,23),(11,26))\n   |\n"++
+           "   +- ((11,27),(11,29))\n   |\n"++
+           "   `- ((11,32),(20,1))\n"
+
+      -- (show forest2) `shouldBe` ""
+{-
+      (drawTreeEntry $ insertSrcSpan forest2 (fs ss2)) `shouldBe` 
+           "((1,1),(20,1))\n|\n"++
+           "+- ((1,1),(11,17))\n|\n"++
+           "+- ((11,18),(11,20))\n|\n"++
+           "`- ((11,23),(20,1))\n   |\n"++
+           "   +- ((11,23),(11,26))\n   |\n"++
+           "   +- ((11,27),(11,31))\n   |\n"++
+           "   `- ((11,32),(20,1))\n"
+
+      let (f,tree) = getSrcSpanFor forest2 (fs ss2)
+      let zf = openZipperToNode tree $ Z.fromTree f
+
+      (show tree) `shouldBe` ""
+      (show zf) `shouldBe` ""
+-}
+      let ss3 = posToSrcSpan forest ((15,14),(15,17))
+      (GHC.showPpr ss3) `shouldBe` "test/testdata/Demote/WhereIn4.hs:15:14-16"
+      (showSrcSpan ss3) `shouldBe` "((15,14),(15,17))"
+
+      ss3Tok <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "p"
+      (show ss3Tok) `shouldBe` "[((((0,0),(0,1)),ITvarid \"p\"),\"p\")]"
+
+      let (forest4,_ss3') = updateTokensForSrcSpan forest3 ss3 ss3Tok
+      (drawTreeEntry forest4) `shouldBe` 
+           "((1,1),(20,1))\n|\n"++
+           "+- ((1,1),(11,17))\n|\n"++
+           "+- ((11,18),(11,20))\n|\n"++
+           "`- ((11,23),(20,1))\n   |\n"++
+           "   +- ((11,23),(11,26))\n   |\n"++
+           "   +- ((11,27),(11,29))\n   |\n"++
+           "   `- ((11,32),(20,1))\n      |\n"++
+           "      +- ((11,32),(15,13))\n      |\n"++ -- ++AZ++ was end
+                                                     -- (15,14), this
+                                                     -- is the problem
+           "      +- ((15,14),(15,15))\n      |\n"++
+           "      `- ((17,1),(20,1))\n"
+
   -- ---------------------------------------------
 
   describe "posToSrcSpan" $ do
@@ -1325,5 +1405,13 @@ demoteD1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
 
 parsedFileDemoteD1 :: IO (ParseResult, [PosToken])
 parsedFileDemoteD1 = parsedFileGhc "./test/testdata/Demote/D1.hs"
+
+-- ---------------------------------------------------------------------
+
+demoteWherIn4FileName  :: GHC.FastString
+demoteWherIn4FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs"
+
+parsedFileDemoteWhereIn4 :: IO (ParseResult, [PosToken])
+parsedFileDemoteWhereIn4 = parsedFileGhc "./test/testdata/Demote/WhereIn4.hs"
 
 -- ---------------------------------------------------------------------

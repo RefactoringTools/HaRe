@@ -3306,7 +3306,7 @@ rmDecl pn incSig t = do
                 -> RefactGhc [GHC.LHsBind GHC.Name]
     rmTopLevelDecl decl decls
       =do 
-          liftIO $ putStr $ "rmTopLevelDecl: " -- ++AZ++
+          liftIO $ putStrLn $ "rmTopLevelDecl:" -- ++AZ++
 
           {-
           toks <- fetchToks
