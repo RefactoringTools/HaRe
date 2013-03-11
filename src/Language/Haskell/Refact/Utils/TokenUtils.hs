@@ -211,12 +211,15 @@ data Positioning = PlaceAdjacent -- ^Only a single space between the
                  deriving (Show)
 
 -- ---------------------------------------------------------------------
+
+{-
 -- ++AZ++ TODO: will we actuall need these?
 -- | Operations on the structure
 data Operations = OpAdded Entry          -- ^The entry that was added
                 | OpRemoved Entry        -- ^The Entry that was removed
                 | OpReplaced Entry Entry -- ^The first is old, second is new Entry
 
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -406,9 +409,10 @@ getTokensBefore forest sspan = (forest', prevToks')
 -- |Replace the tokens for a given SrcSpan with new ones. The SrcSpan
 -- will be inserted into the tree if it is not already there
 -- TODO: What about the change in size of the SrcSpan? Solution is to
--- replace the SrcSpan with a new one (marked), and return it
-updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (Tree Entry,GHC.SrcSpan)
-updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
+-- replace the SrcSpan with a new one (marked), and return it, as well
+-- as the old one
+updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (Tree Entry,GHC.SrcSpan,Tree Entry)
+updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
   where
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
     prevToks = retrieveTokens tree
@@ -419,7 +423,7 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
     (startPos,endPos) = nonCommentSpan toks''
 
     -- if the original sspan had a ForestLine version, preserve it
-    ((fls@(ForestLine vs _),_),(ForestLine ve _,_)) = srcSpanToForestSpan sspan
+    (((ForestLine vs _),_),(ForestLine ve _,_)) = srcSpanToForestSpan sspan
     -- newPosSpan = ((ForestLine vs sl,sc),(ForestLine ve el,ec))
     newSpan = insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos) 
 
@@ -429,11 +433,10 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan)
     forest'' = Z.toTree zf'
     -- forest'' = error $ "updateTokensForSrcSpan: toks''=" ++ (show toks'') -- ++AZ++
     -- forest'' = error $ "updateTokensForSrcSpan: (posToSrcSpan forest (startPos,endPos))=" ++ (GHC.showPpr $ posToSrcSpan forest (startPos,endPos)) -- ++AZ++
-
-
     -- forest'' = error $ "updateTokensForSrcSpan: tree=" ++ (show tree) -- ++AZ++
     -- (forest'',newSpan') = addNewSrcSpanAndToksAfter forest sspan newSpan pos toks''
 
+    oldTree = tree
 
 -- ---------------------------------------------------------------------
 -- |Retrieve a path to the tree containing a ForestSpan from the forest,
@@ -511,8 +514,9 @@ insertSrcSpan forest sspan = forest'
 -- | Removes a ForestSpan and its tokens from the forest.
 -- TODO: should it store the removed span somewhere else?
 
-removeSrcSpan :: Tree Entry -> ForestSpan -> Tree Entry
-removeSrcSpan forest sspan = forest''
+removeSrcSpan :: Tree Entry -> ForestSpan 
+  -> (Tree Entry,Tree Entry) -- ^Updated forest, removed span
+removeSrcSpan forest sspan = (forest'', delTree)
   where
     forest' = insertSrcSpan forest sspan -- Make sure span is actually
                                          -- in the tree
@@ -527,6 +531,7 @@ removeSrcSpan forest sspan = forest''
     -- forest'' = error $ "removeSrcSpan: initial tree\n" ++ (drawTreeEntry forest) -- ++AZ++
     -- forest'' = error $ "removeSrcSpan: after insertSrcSpan\n" ++ (drawTreeEntry forest') -- ++AZ++
 
+    delTree = Z.tree z
 
 -- ---------------------------------------------------------------------
 

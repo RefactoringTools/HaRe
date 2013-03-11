@@ -79,6 +79,8 @@ import qualified Var           as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+import qualified Data.Map as Map
+
 -- import Data.Generics
 
 import Debug.Trace
@@ -291,6 +293,7 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     let rs = RefMod { rsTypecheckedMod = parsedFile
                     , rsOrigTokenStream = toks
                     , rsTokenCache = mkTreeFromTokens toks
+                    , rsTokenStash = Map.empty
                     , rsStreamModified = False
                     }
     put (RefSt settings u f (Just rs))

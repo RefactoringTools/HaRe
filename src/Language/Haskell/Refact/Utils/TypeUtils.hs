@@ -2810,7 +2810,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
                 -- toks'=replaceToks toks start end [newToken]
                 toks'=replaceTok toks start newToken
 
-            putToksForPos (start,end) [newToken]
+            putToksForPos (start,end) [newToken] Nothing
 
             return (replaceHiding imp  (Just (isHide, (map mkNewEnt  pns)++ents))) 
 
@@ -2860,8 +2860,9 @@ addParamsToDecls::
       ->Bool        -- ^ Modify the token stream or not.
       ->RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
 
-addParamsToDecls decls pn paramPNames modifyToks
-   = if (paramPNames/=[])
+addParamsToDecls decls pn paramPNames modifyToks = do
+  liftIO $ putStrLn $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (GHC.showPpr (pn,paramPNames,modifyToks))
+  if (paramPNames/=[])
         then mapM addParamToDecl decls
         else return decls
   where
@@ -3282,12 +3283,15 @@ duplicateDecl decls sigs n newFunName
 rmDecl:: (SYB.Data t)
         =>GHC.Name     -- ^ The identifier whose definition is to be removed.
         ->Bool         -- ^ True means including the type signature.
+        ->Maybe String -- ^ Possible named stash for removed decl tokens,
+                       --   in the RefactGhc Monad
+        ->Maybe String -- ^ Possible named stash for removed signature tokens,
         ->t            -- ^ The declaration list.
         -> RefactGhc t -- ^ The result.
-rmDecl pn incSig t = do
+rmDecl pn incSig maybeStash maybeSigStash t = do
   liftIO $ putStr $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
   t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
-  t'' <- if incSig then rmTypeSig pn t'
+  t'' <- if incSig then rmTypeSig pn maybeSigStash t'
                    else return t'
   return t''
   where
@@ -3314,7 +3318,7 @@ rmDecl pn incSig t = do
               toks'= deleteToks toks startLoc endLoc
           putToks toks' modified
           -}
-          removeToksForPos (getStartEndLoc decl)
+          removeToksForPos (getStartEndLoc decl) maybeStash
           let (decls1, decls2) = break (defines pn) decls
               decls2' = gtail "rmLocalDecl 1" decls2
           return $ (decls1 ++ decls2')
@@ -3336,7 +3340,7 @@ rmDecl pn incSig t = do
          -- let (startPos,endPos) = getStartEndLoc decl   --startEndLoc toks decl
          prevToks <- getToksBeforeSpan sspan -- Need these before
                                              -- sspan is deleted
-         removeToksForPos (getStartEndLoc decl)
+         removeToksForPos (getStartEndLoc decl) maybeStash
          -- ++AZ++: TODO: get rid of where clause, if no more decls
          -- here
          case length decls of
@@ -3356,7 +3360,7 @@ rmDecl pn incSig t = do
 
              liftIO $ putStr $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
 
-             removeToksForPos (rmStartPos,rmEndPos)
+             removeToksForPos (rmStartPos,rmEndPos) maybeStash
              return ()
            _ -> return ()
 
@@ -3371,9 +3375,11 @@ rmDecl pn incSig t = do
 -- type from the declaration list.
 rmTypeSig :: (SYB.Data t) =>
          GHC.Name    -- ^ The identifier whose type signature is to be removed.
+      -> Maybe String -- ^ possible name to stash original tokens in
+                      -- the monad
       -> t           -- ^ The declarations
       -> RefactGhc t -- ^ The result
-rmTypeSig pn t
+rmTypeSig pn maybeStash t
   = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   where
    inDecls (sigs::[GHC.LSig GHC.Name])
@@ -3404,7 +3410,7 @@ rmTypeSig pn t
                    _ <- removeToksForSpan sspan
                    return ()
             _  -> do
-                   _ <- putToksForSpan sspan toks'
+                   _ <- putToksForSpan sspan toks' maybeStash
                    return ()
           return decls'
    inDecls x = return x
@@ -3544,10 +3550,11 @@ renamePN::(SYB.Data t)
    ->Bool                 -- ^ True means modifying the token stream as well.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
-renamePN oldPN newName updateTokens t
+renamePN oldPN newName updateTokens t = do
   -- = error $ "renamePN: sspan=" ++ (GHC.showPpr sspan) -- ++AZ++
+  liftIO $ putStrLn $ "renamePN: (oldPN,newName)=" ++ (GHC.showPpr (oldPN,newName))
   -- Note: bottom-up traversal
-  = everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
+  everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
   where
     maybeSspan = getSrcSpan t
     sspan = gfromJust "renamePN" maybeSspan
@@ -3577,7 +3584,7 @@ renamePN oldPN newName updateTokens t
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     -- putToks toks' True
-                    _ <- putToksForSpan sspan toks'
+                    _ <- putToksForSpan sspan toks' Nothing
                     return newName
                     -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (GHC.showPpr (row,col,l,sspan)) ++ (show toks) -- ++AZ++
            else return newName
@@ -3610,9 +3617,10 @@ autoRenameLocalVar:: (HsValBinds t)
                      ->t            -- ^ The syntax phrase.
                      -> RefactGhc t -- ^ The result.
 
-autoRenameLocalVar updateToks pn t
+autoRenameLocalVar updateToks pn t = do
+  liftIO $ putStrLn $ "autoRenameLocalVar: (updateToks,pn)=" ++ (GHC.showPpr (updateToks,pn))
   -- = everywhereMStaged SYB.Renamer (SYB.mkM renameInMatch)
-  = do if isDeclaredIn pn t
+  if isDeclaredIn pn t
          then do t' <- worker t
                  return t'
          else do return t

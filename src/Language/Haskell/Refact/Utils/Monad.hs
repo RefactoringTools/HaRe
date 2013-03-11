@@ -68,6 +68,7 @@ import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
 import Data.Tree
+import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
 
@@ -78,8 +79,8 @@ data RefactSettings = RefSet
 data RefactModule = RefMod
         { rsTypecheckedMod :: GHC.TypecheckedModule
         , rsOrigTokenStream :: [PosToken]  -- ^Original Token stream for the current module
-        -- , rsTokenStream     :: [PosToken]  -- ^Token stream for the current module, maybe modified
         , rsTokenCache :: Tree Entry -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
+        , rsTokenStash :: Map.Map String (Tree Entry) -- cut/paste buffer
         , rsStreamModified :: Bool     -- ^current module has updated the token stream
         }
 

@@ -295,8 +295,8 @@ moveDecl1 t defName ns topLevel
         funToks <- getToksForSpan sspan
 
         -- t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
-        t'' <- rmTypeSig (ghead "moveDecl3.2"  ns) t
-        t'  <- rmDecl    (ghead "moveDecl3.1"  ns) False t''
+        t'' <- rmTypeSig (ghead "moveDecl3.2"  ns) Nothing t
+        t'  <- rmDecl    (ghead "moveDecl3.1"  ns) False Nothing Nothing t''
         addDecl t' defName (ghead "moveDecl1 2" funBinding,sigToMove,Just (maybeToksSig ++ funToks)) topLevel
 
 {- ++AZ++ before using TokenUtils
@@ -966,10 +966,10 @@ doDemoting' t pn
                          -- let ds=foldl (flip removeTypeSig) (deleteFirstsBy sameBind (hsBinds t) demotedDecls) declaredPns
 
                          -- ++AZ++ moved to after the rest, so the tree is still available to start with
-                         -- ds <- rmDecl pn True (hsBinds t)
-                         -- t' <- rmTypeSig pn t
-                         let ds = hsBinds t
-                         let t' = t
+                         ds <- rmDecl pn True (Just "decl") (Just "sig") (hsBinds t)
+                         t' <- rmTypeSig pn (Just "sig2") t
+                         -- let ds = hsBinds t
+                         -- let t' = t
 
                          --get those varaibles declared at where the demotedDecls will be demoted to
                          let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
@@ -987,22 +987,24 @@ doDemoting' t pn
                                  --ds'<-foldM (flip (autoRenameLocalVar True)) ds clashedNames
                             else  --duplicate demoted declarations to the right place.
                                  do
+                                    liftIO $ putStrLn $ "MoveDef: about to duplicateDecls"
                                     -- error ("doDemoting':(declaredPns,demotedDecls)=" ++ (GHC.showPpr (declaredPns,demotedDecls))) -- ++AZ++
                                     -- error ("doDemoting':(origDecls)=" ++ (GHC.showPpr (origDecls))) -- ++AZ++
                                     -- ds'' <- duplicateDecls declaredPns origDecls
                                     ds'' <- duplicateDecls declaredPns (ghead "doDemoting'" demotedDecls) demotedSig (Just (demotedSigToks ++ demotedToks)) origDecls
+                                    liftIO $ putStrLn $ "MoveDef:duplicateDecls done"
 
                                     drawTokenTree -- ++AZ++ debug
 
                                     -- Finally, remove the original
                                     -- ds''' <- rmDecl pn True ds''
                                     -- t'' <- rmTypeSig pn t'
-                                    t'' <- rmDecl pn True t
+                                    -- t'' <- rmDecl pn True t
 
-                                    drawTokenTree -- ++AZ++ debug
+                                    -- drawTokenTree -- ++AZ++ debug
 
-                                    -- return (replaceBinds t'' ds''')
-                                    return (t'')
+                                    return (replaceBinds t' ds'')
+                                    -- return (t'')
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
                   -- _ ->error $ "\nThis function/pattern binding is used by more than one friend bindings\n" ++ (show uselist) -- ++AZ++
 
@@ -1243,7 +1245,10 @@ foldParams :: [GHC.Name]             -- ^The (list?) function name being demoted
            -> RefactGhc (GHC.Match GHC.Name)
 foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demotedDecls dsig dtoks
 
-     =do let matches=concatMap matchesInDecls [GHC.unLoc demotedDecls]
+     =do 
+         liftIO $ putStrLn $ "MoveDef.foldParams entered"
+
+         let matches=concatMap matchesInDecls [GHC.unLoc demotedDecls]
              pn=ghead "foldParams" pns    --pns /=[]
          params <- allParams pn rhs []
          -- error $ "MoveDef.foldParams: (pns,decls)=" ++ (GHC.showPpr (pns,decls)) -- ++AZ++
@@ -1279,7 +1284,10 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    -- toks <- fetchToks
                    -- error $ "MoveDef.foldParams:1 (toks)=" ++ (showToks toks) -- ++AZ++
 
+                   liftIO $ putStrLn $ "MoveDef.foldParams about to foldInDemotedDecls"
+
                    decls' <- foldInDemotedDecls pns clashedNames subst decls
+                   liftIO $ putStrLn $ "MoveDef.foldParams foldInDemotedDecls done"
                    -- toks <- fetchToks
                    -- error $ "MoveDef.foldParams: (toks)=" ++ (showToks toks) -- ++AZ++
                    let demotedDecls''' = definingDeclsNames pns decls' True False
@@ -1292,7 +1300,9 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    {-
                    return (HsMatch loc1 name pats rhs' (ds++(filter (not.isTypeSig) demotedDecls''')))
                    -}
+                   liftIO $ putStrLn $ "MoveDef.foldParams about to addDecl"
                    rhs'' <- addDecl rhs' Nothing (ghead "foldParams 2" demotedDecls''',Nothing,Nothing) False
+                   liftIO $ putStrLn $ "MoveDef.foldParams addDecl done"
                    return (GHC.Match pats mt rhs'')
            else  do  -- moveDecl pns match False decls True
                      -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding 

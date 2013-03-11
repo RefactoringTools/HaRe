@@ -563,13 +563,16 @@ spec = do
               "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
 
-      let forest'' = removeSrcSpan forest' (fs l)
+      let (forest'',delTree) = removeSrcSpan forest' (fs l)
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
               -- "+- ((19,1),(21,14))\n|\n"++ -- removed again
               "`- ((26,1),(26,1))\n"
+
+      (drawTreeEntry delTree) `shouldBe`
+              "((19,1),(21,14))\n" -- removed again
 
       let toks' = retrieveTokens forest''
       -- (showToks toks') `shouldBe` ""
@@ -586,12 +589,15 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
       (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
 
-      let forest' = removeSrcSpan forest (fs l)
+      let (forest',delTree) = removeSrcSpan forest (fs l)
       (invariant forest') `shouldBe` []
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(10,10))\n|\n"++
               "`- ((19,1),(26,1))\n"
+
+      (drawTreeEntry delTree) `shouldBe`
+              "((13,1),(15,17))\n" -- removed again
 
       let toks' = retrieveTokens forest'
       -- (showToks toks') `shouldBe` ""
@@ -623,7 +629,7 @@ spec = do
 
       let sspan2 = posToSrcSpan forest ((9,1),(9,14))
       (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:9:1-13"
-      let forest3 = removeSrcSpan forest2 (fs sspan2)
+      let (forest3,delTree) = removeSrcSpan forest2 (fs sspan2)
 
       (drawTreeEntry $ insertSrcSpan forest2 (fs sspan2)) `shouldBe`
                "((1,1),(13,25))\n|\n"++
@@ -634,6 +640,10 @@ spec = do
                "   +- ((7,1),(7,18))\n   |\n"++
                "   +- ((9,1),(9,14))\n   |\n"++
                "   `- ((11,1),(13,25))\n"
+
+      (drawTreeEntry delTree) `shouldBe`
+              "((9,1),(9,14))\n" -- removed again
+
 
       (invariant forest3) `shouldBe` []
       (drawTreeEntry forest3) `shouldBe`
@@ -731,7 +741,7 @@ spec = do
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
       (GHC.showPpr decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
 
-      let (forest',newSpan) = updateTokensForSrcSpan forest l (take 3 toks)
+      let (forest',newSpan,_) = updateTokensForSrcSpan forest l (take 3 toks)
       (GHC.showPpr newSpan) `shouldBe` "test/testdata/TokenTest.hs:18:1-22"
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(26,1))\n|\n"++
@@ -782,7 +792,7 @@ spec = do
       let newToks = replaceTokNoReAlign toksForOp (19,1) newTok
       (show newToks) `shouldBe`   "[((((18,1),(18,19)),ITlineComment \"-- leading comment\"),\"-- leading comment\"),((((19,1),(19,1)),ITsemi),\"\"),((((19,1),(19,4)),ITmodule),\"bbb\"),((((19,5),(19,6)),ITvarid \"x\"),\"x\"),((((19,7),(19,8)),ITvarid \"y\"),\"y\"),((((19,9),(19,10)),ITequal),\"=\"),((((20,3),(20,5)),ITdo),\"do\"),((((20,6),(20,6)),ITvocurly),\"\"),((((20,6),(20,7)),ITvarid \"c\"),\"c\"),((((20,8),(20,10)),ITlarrow),\"<-\"),((((20,11),(20,18)),ITvarid \"getChar\"),\"getChar\"),((((21,6),(21,6)),ITsemi),\"\"),((((21,6),(21,12)),ITvarid \"return\"),\"return\"),((((21,13),(21,14)),ITvarid \"c\"),\"c\")]"
 
-      let (forest''',newSpan) = updateTokensForSrcSpan forest'' l newToks
+      let (forest''',newSpan,_) = updateTokensForSrcSpan forest'' l newToks
 
       let toksFinal = retrieveTokens forest'''
 
@@ -807,7 +817,7 @@ spec = do
       ss1Tok <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "sq"
       (show ss1Tok) `shouldBe` "[((((0,0),(0,2)),ITvarid \"sq\"),\"sq\")]"
 
-      let (forest2,_ss1') = updateTokensForSrcSpan forest ss1 ss1Tok
+      let (forest2,_ss1',_) = updateTokensForSrcSpan forest ss1 ss1Tok
 
       (drawTreeEntry forest2) `shouldBe` 
            "((1,1),(20,1))\n|\n"++
@@ -824,7 +834,7 @@ spec = do
       ss2Tok <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "sq"
       (show ss2Tok) `shouldBe` "[((((0,0),(0,2)),ITvarid \"sq\"),\"sq\")]"
 
-      let (forest3,_ss2') = updateTokensForSrcSpan forest2 ss2 ss2Tok
+      let (forest3,_ss2',_) = updateTokensForSrcSpan forest2 ss2 ss2Tok
 
       (drawTreeEntry forest3) `shouldBe` 
            "((1,1),(20,1))\n|\n"++
@@ -859,7 +869,8 @@ spec = do
       ss3Tok <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "p"
       (show ss3Tok) `shouldBe` "[((((0,0),(0,1)),ITvarid \"p\"),\"p\")]"
 
-      let (forest4,_ss3') = updateTokensForSrcSpan forest3 ss3 ss3Tok
+      let (forest4,_ss3',_) = updateTokensForSrcSpan forest3 ss3 ss3Tok
+      (show forest4) `shouldBe` ""
       (drawTreeEntry forest4) `shouldBe` 
            "((1,1),(20,1))\n|\n"++
            "+- ((1,1),(11,17))\n|\n"++
@@ -1072,12 +1083,13 @@ spec = do
 
       --  removeToksForPos ((7,1),(7,6))
       let sspan = posToSrcSpan forest ((7,1),(7,6))
-      let forest' = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      let (forest',_delTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(8,6))\n|\n"++
               "+- ((1,1),(4,19))\n|\n"++
               "`- ((8,1),(8,6))\n"
       (invariant forest') `shouldBe` []
+
 
       --  putToksAfterPos ((4,14),(4,19))
       let sspan' = posToSrcSpan forest' ((4,14),(4,19))
@@ -1115,7 +1127,7 @@ spec = do
 
       --  removeToksForPos ((7,1),(7,6))
       let sspan = posToSrcSpan forest ((7,1),(7,6))
-      let forest' = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      let (forest',_) = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(8,6))\n|\n"++
               "+- ((1,1),(4,19))\n|\n"++
@@ -1165,7 +1177,7 @@ spec = do
 
       --  removeToksForPos ((7,1),(7,6))
       let sspan = posToSrcSpan forest ((7,1),(7,6))
-      let forest' = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      let (forest',_) = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(8,6))\n|\n"++
               "+- ((1,1),(4,19))\n|\n"++
