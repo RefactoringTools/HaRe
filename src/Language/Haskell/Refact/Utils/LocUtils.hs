@@ -564,7 +564,7 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
        let newToks' = if addTrailingNl 
                        then newToks ++ [newLnToken (last newToks)]
                        else newToks
-       putToksForPos (startPos,endPos) newToks' Nothing
+       putToksForPos (startPos,endPos) newToks'
 
        return ()
 

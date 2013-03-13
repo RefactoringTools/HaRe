@@ -273,7 +273,7 @@ lookupNameGhc n = do
 -- ---------------------------------------------------------------------
 -- | Show a PName in a format like: 'pn'(at row:r, col: c).
 showPNwithLoc::GHC.Located GHC.Name->String
-showPNwithLoc pn@(GHC.L l n)
+showPNwithLoc pn@(GHC.L l _n)
   = let (r,c) = getGhcLoc l
     -- in  " '"++pNtoName pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
     in  " '"++GHC.showPpr pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
@@ -303,6 +303,7 @@ defaultExp::HsExpP
 defaultExp=GHC.HsVar $ mkRdrName "nothing"
 
 
+mkRdrName :: String -> GHC.RdrName
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
 -- | Make a new GHC.Name, using the Unique Int sequence stored in the
@@ -2810,7 +2811,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
                 -- toks'=replaceToks toks start end [newToken]
                 toks'=replaceTok toks start newToken
 
-            putToksForPos (start,end) [newToken] Nothing
+            putToksForPos (start,end) [newToken]
 
             return (replaceHiding imp  (Just (isHide, (map mkNewEnt  pns)++ents))) 
 
@@ -3318,7 +3319,7 @@ rmDecl pn incSig maybeStash maybeSigStash t = do
               toks'= deleteToks toks startLoc endLoc
           putToks toks' modified
           -}
-          removeToksForPos (getStartEndLoc decl) maybeStash
+          stashId <- removeToksForPos (getStartEndLoc decl)
           let (decls1, decls2) = break (defines pn) decls
               decls2' = gtail "rmLocalDecl 1" decls2
           return $ (decls1 ++ decls2')
@@ -3340,7 +3341,7 @@ rmDecl pn incSig maybeStash maybeSigStash t = do
          -- let (startPos,endPos) = getStartEndLoc decl   --startEndLoc toks decl
          prevToks <- getToksBeforeSpan sspan -- Need these before
                                              -- sspan is deleted
-         removeToksForPos (getStartEndLoc decl) maybeStash
+         stashId <- removeToksForPos (getStartEndLoc decl)
          -- ++AZ++: TODO: get rid of where clause, if no more decls
          -- here
          case length decls of
@@ -3360,7 +3361,7 @@ rmDecl pn incSig maybeStash maybeSigStash t = do
 
              liftIO $ putStr $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
 
-             removeToksForPos (rmStartPos,rmEndPos) maybeStash
+             stashId <- removeToksForPos (rmStartPos,rmEndPos)
              return ()
            _ -> return ()
 
@@ -3410,7 +3411,7 @@ rmTypeSig pn maybeStash t
                    _ <- removeToksForSpan sspan
                    return ()
             _  -> do
-                   _ <- putToksForSpan sspan toks' maybeStash
+                   (_,stashId) <- putToksForSpan sspan toks'
                    return ()
           return decls'
    inDecls x = return x
@@ -3584,7 +3585,7 @@ renamePN oldPN newName updateTokens t = do
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     -- putToks toks' True
-                    _ <- putToksForSpan sspan toks' Nothing
+                    (_,stashId) <- putToksForSpan sspan toks'
                     return newName
                     -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (GHC.showPpr (row,col,l,sspan)) ++ (show toks) -- ++AZ++
            else return newName

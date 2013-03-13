@@ -6,6 +6,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactSettings(..)
        , RefactState(..)
        , RefactModule(..)
+       , RefactStashId(..)
        , RefactFlags(..)
        -- , initRefactModule
        -- GHC monad stuff
@@ -76,11 +77,13 @@ data RefactSettings = RefSet
         { rsetImportPath :: [FilePath]
         } deriving (Show)
 
+data RefactStashId = Stash String deriving (Show,Eq,Ord)
+
 data RefactModule = RefMod
         { rsTypecheckedMod :: GHC.TypecheckedModule
         , rsOrigTokenStream :: [PosToken]  -- ^Original Token stream for the current module
         , rsTokenCache :: Tree Entry -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
-        , rsTokenStash :: Map.Map String (Tree Entry) -- cut/paste buffer
+        , rsTokenStash :: Map.Map RefactStashId (Tree Entry) -- cut/paste buffer
         , rsStreamModified :: Bool     -- ^current module has updated the token stream
         }
 

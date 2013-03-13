@@ -84,9 +84,6 @@ import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
 
-
-
-
 -- |fetch the possibly modified tokens. Deprecated
 fetchToks :: RefactGhc [PosToken]
 fetchToks = do
@@ -137,37 +134,46 @@ getToksBeforeSpan sspan = do
   liftIO $ putStrLn $ "getToksBeforeSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
   return toks
 
+-- |Put a tree in the stash, against a unique RefactStashId
+--  Utility function for internal use
+stash :: Tree Entry -> RefactGhc RefactStashId
+stash oldTree = do
+  st <- get
+  let u' =  (rsUniqState st) + 1
+  let stashName = (Stash $ "stash_" ++ (show u'))
+  let Just tm = rsModule st
+  let stash' = Map.insert stashName oldTree (rsTokenStash tm)
+  let rsModule' = Just (tm {rsTokenStash = stash'})
+  put $ st { rsUniqState = u', rsModule = rsModule' }
+  return stashName
+
 
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens
-putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> Maybe String -> RefactGhc GHC.SrcSpan
-putToksForSpan sspan toks maybeStash = do
+putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc (GHC.SrcSpan,RefactStashId)
+putToksForSpan sspan toks = do
   liftIO $ putStrLn $ "putToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show toks)
   st <- get
   let Just tm = rsModule st
   let (forest',newSpan,oldTree) = updateTokensForSrcSpan (rsTokenCache tm) sspan toks
-  let stash' = case maybeStash of
-                Just stashName -> Map.insert stashName oldTree (rsTokenStash tm)
-                Nothing        -> rsTokenStash tm
-  let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True, rsTokenStash = stash'})
+  let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  return newSpan
+  stashName <- stash oldTree
+  return (newSpan,stashName)
 
 -- |Replace the tokens for a given GHC.SrcSpan, return GHC.SrcSpan
 -- they are placed in
-putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> Maybe String -> RefactGhc GHC.SrcSpan
-putToksForPos pos toks maybeStash = do
+putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc (GHC.SrcSpan,RefactStashId)
+putToksForPos pos toks = do
   liftIO $ putStrLn $ "putToksForPos " ++ (show pos) ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
   let sspan = posToSrcSpan (rsTokenCache tm) pos
   let (forest',newSpan,oldTree) = updateTokensForSrcSpan (rsTokenCache tm) sspan toks
-  let stash' = case maybeStash of
-                Just stashName -> Map.insert stashName oldTree (rsTokenStash tm)
-                Nothing        -> rsTokenStash tm
-  let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True, rsTokenStash = stash'})
+  let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  return newSpan
+  stashName <- stash oldTree
+  return (newSpan,stashName)
 
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterSpan :: GHC.SrcSpan -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
@@ -207,31 +213,30 @@ putDeclToksAfterSpan oldSpan t pos toks = do
   return t'
 
 -- |Remove a GHC.SrcSpan and its associated tokens
-removeToksForSpan :: GHC.SrcSpan -> RefactGhc ()
+removeToksForSpan :: GHC.SrcSpan -> RefactGhc RefactStashId
 removeToksForSpan sspan = do
   liftIO $ putStrLn $ "removeToksForSpan " ++ (GHC.showPpr sspan)
   st <- get
   let Just tm = rsModule st
-  let (forest',_) = removeSrcSpan (rsTokenCache tm) (srcSpanToForestSpan sspan)
+  let (forest',oldTree) = removeSrcSpan (rsTokenCache tm) (srcSpanToForestSpan sspan)
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  return ()
+  stashName <- stash oldTree
+  return stashName
 
 -- |Remove a GHC.SrcSpan and its associated tokens
-removeToksForPos :: (SimpPos,SimpPos) -> Maybe String -> RefactGhc ()
-removeToksForPos pos maybeStash = do
+removeToksForPos :: (SimpPos,SimpPos) -> RefactGhc RefactStashId
+removeToksForPos pos = do
   liftIO $ putStrLn $ "removeToksForPos " ++ (show pos)
   st <- get
   let Just tm = rsModule st
   let sspan = posToSrcSpan (rsTokenCache tm) pos
   let (forest',delTree) = removeSrcSpan (rsTokenCache tm) (srcSpanToForestSpan sspan)
-  let stash' = case maybeStash of
-                Just stashName -> Map.insert stashName delTree (rsTokenStash tm)
-                Nothing        -> rsTokenStash tm
-  let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True, rsTokenStash = stash'})
+  let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   liftIO $ putStrLn $ "removeToksForPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
-  return ()
+  stashName <- stash delTree
+  return stashName
 
 -- ---------------------------------------------------------------------
 
