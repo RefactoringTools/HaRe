@@ -30,6 +30,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , treeIdFromForestSpan
        , getTreeFromCache
        , replaceTreeInCache
+       , syncAstToLatestCache
 
        -- * Token marking and re-alignment
        , tokenFileMark
@@ -301,6 +302,16 @@ forestLineToGhcLine fl = ((flTreeSelector  fl) * forestTreeConstant
                         + (flInsertVersion fl) * forestConstant) 
                         + (flLine fl)
 
+forestSpanToSrcSpan :: ForestSpan -> GHC.SrcSpan
+forestSpanToSrcSpan ((fls,sc),(fle,ec)) = sspan
+  where
+    lineStart = forestLineToGhcLine fls
+    lineEnd   = forestLineToGhcLine fle
+    locStart = GHC.mkSrcLoc (GHC.mkFastString "foo") lineStart sc
+    locEnd   = GHC.mkSrcLoc (GHC.mkFastString "foo") lineEnd   ec
+    sspan = GHC.mkSrcSpan locStart locEnd
+
+
 instance Ord ForestLine where
   -- Use line as the primary comparison, but break any ties with the
   -- version
@@ -428,6 +439,17 @@ replaceTreeInCache sspan tree tk = tk'
   where
     tid = treeIdFromForestSpan $ srcSpanToForestSpan sspan
     tk' = tk {tkCache = Map.insert tid tree (tkCache tk) }
+
+-- ---------------------------------------------------------------------
+
+-- |Assuming most recent operation has stashed the old tokens, sync
+-- the given AST to the most recent stash entry
+syncAstToLatestCache :: (SYB.Data t) => TokenCache -> GHC.Located t -> GHC.Located t
+syncAstToLatestCache tk t = t'
+  where
+    forest@(Node (Entry fs _) _) = (tkCache tk) Map.! (tkLastTreeId tk)
+    sspan = forestSpanToSrcSpan fs
+    (t',_) = syncAST t sspan forest
 
 -- ---------------------------------------------------------------------
 

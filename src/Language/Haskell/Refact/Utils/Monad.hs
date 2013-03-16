@@ -8,6 +8,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactModule(..)
        , RefactStashId(..)
        , RefactFlags(..)
+       , StateStorage(..)
        -- , initRefactModule
        -- GHC monad stuff
        , RefactGhc
@@ -96,8 +97,9 @@ data RefactState = RefSt
         { rsSettings :: RefactSettings -- ^Session level settings
         , rsUniqState :: Int -- ^ Current Unique creator value, incremented every time it is used
         , rsFlags :: RefactFlags -- ^ Flags for controlling generic traversals
-        -- The current module being refactored
-        , rsModule :: Maybe RefactModule
+        , rsStorage :: StateStorage -- ^Temporary storage of values
+                                    -- while refactoring takes place
+        , rsModule :: Maybe RefactModule -- ^The current module being refactored
         }
 
 -- |Result of parsing a Haskell source file. The first element in the
@@ -106,6 +108,14 @@ data RefactState = RefSt
 -- change as we learn more
 type ParseResult = GHC.TypecheckedModule
 
+-- |Provide some temporary storage while the refactoring is taking
+-- place
+data StateStorage = StorageNone
+                  | StorageBind (GHC.LHsBind GHC.Name)
+
+instance Show StateStorage where
+  show StorageNone        = "StorageNone"
+  show (StorageBind bind) = "(StorageBind " ++ (GHC.showPpr bind) ++ ")"
 
 -- ---------------------------------------------------------------------
 -- StateT and GhcT stack

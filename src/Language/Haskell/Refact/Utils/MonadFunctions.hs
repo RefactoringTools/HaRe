@@ -29,6 +29,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , putDeclToksAfterSpan
        , removeToksForSpan
        , removeToksForPos
+       , syncDeclToLatestStash
        -- , putNewSpanAndToks
        -- , putNewPosAndToks
        -- * Managing token stash
@@ -41,6 +42,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactDone
        , setRefactDone
        , clearRefactDone
+
+       , setStateStorage
+       , getStateStorage
 
        -- , Refact -- ^ TODO: Deprecated, use RefactGhc
        -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
@@ -303,6 +307,15 @@ getTokenTree = do
   return mainForest
 
 -- ---------------------------------------------------------------------
+
+syncDeclToLatestStash :: (SYB.Data t) => (GHC.Located t) -> RefactGhc (GHC.Located t)
+syncDeclToLatestStash t = do
+  st <- get
+  let Just tm = rsModule st
+  let t' = syncAstToLatestCache (rsTokenCache tm) t
+  return t'
+
+-- ---------------------------------------------------------------------
 {-
 -- |Add a new GHC.SrcSpan and tokens
 putNewSpanAndToks :: GHC.SrcSpan -> [PosToken] -> RefactGhc ()
@@ -385,9 +398,21 @@ clearRefactDone = do
 
 -- ---------------------------------------------------------------------
 
+setStateStorage :: StateStorage -> RefactGhc ()
+setStateStorage storage = do
+  st <- get
+  put $ st { rsStorage = storage }
+
+getStateStorage :: RefactGhc StateStorage
+getStateStorage = do
+  storage <- gets rsStorage
+  return storage
+
+-- ---------------------------------------------------------------------
+
 initRefactModule
   :: GHC.TypecheckedModule -> [PosToken] -> Maybe RefactModule
-initRefactModule tm toks 
+initRefactModule tm toks
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsOrigTokenStream = toks
                  , rsTokenCache = initTokenCache toks

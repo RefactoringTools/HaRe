@@ -3289,13 +3289,22 @@ rmDecl:: (SYB.Data t)
         =>GHC.Name     -- ^ The identifier whose definition is to be removed.
         ->Bool         -- ^ True means including the type signature.
         ->t            -- ^ The declaration list.
-        -> RefactGhc (t) -- ^ The result
+        -> RefactGhc (t,GHC.LHsBind GHC.Name) -- ^ The result, and the
+                                              -- removed declaration,
+                                              -- with SrcSpans
+                                              -- adjusted to reflect
+                                              -- the stashed tokens
 rmDecl pn incSig t = do
   liftIO $ putStr $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
+  setStateStorage StorageNone
   t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   t'' <- if incSig then rmTypeSig pn t'
                    else return t'
-  return t''
+  storage <- getStateStorage
+  let decl' = case storage of
+                StorageBind bind -> bind
+                x                -> error $ "rmDecl: unexpected value in StateStorage:" ++ (show x)
+  return (t'',decl')
   where
     inDecls (decls::[GHC.LHsBind GHC.Name])
       | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
@@ -3314,13 +3323,10 @@ rmDecl pn incSig t = do
       =do
           liftIO $ putStrLn $ "rmTopLevelDecl:" -- ++AZ++
 
-          {-
-          toks <- fetchToks
-          let (startLoc, endLoc)=startEndLocIncComments toks decl
-              toks'= deleteToks toks startLoc endLoc
-          putToks toks' modified
-          -}
-          stashId <- removeToksForPos (getStartEndLoc decl)
+          removeToksForPos (getStartEndLoc decl)
+          decl' <- syncDeclToLatestStash decl
+          setStateStorage (StorageBind decl')
+
           let (decls1, decls2) = break (defines pn) decls
               decls2' = gtail "rmLocalDecl 1" decls2
           return $ (decls1 ++ decls2')
@@ -3356,7 +3362,7 @@ rmDecl pn incSig t = do
                  --There must be a 'where' or 'let', so rvToks1 can not be empty.
                  whereOrLet=ghead "rmLocalDecl:whereOrLet" rvToks1
                  --drop the 'where' 'or 'let' token
-            
+
                  rmEndPos = tokenPos $ ghead "rmLocalDecl.2" toks2
                  rmStartPos = tokenPos whereOrLet
 

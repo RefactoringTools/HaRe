@@ -288,14 +288,14 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
     -- restore the state. Fix this to store the modules in some kind of cache.
-    (RefSt settings u f _) <- get
+    (RefSt settings u f s _) <- get
 
     let rs = RefMod { rsTypecheckedMod = parsedFile
                     , rsOrigTokenStream = toks
                     , rsTokenCache = initTokenCache toks
                     , rsStreamModified = False
                     }
-    put (RefSt settings u f (Just rs))
+    put (RefSt settings u f s (Just rs))
 
     refac  -- Run the refactoring, updating the state as required
     mod'  <- getRefactRenamed
