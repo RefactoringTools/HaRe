@@ -898,28 +898,28 @@ spec = do
 
   describe "ghcLineToForestLine" $ do
     it "converts a GHC line to a ForestLine" $ do
-      (ghcLineToForestLine 34) `shouldBe` ForestLine 0 34
-      (ghcLineToForestLine   1000034) `shouldBe` ForestLine 1 34
-      (ghcLineToForestLine 530000034) `shouldBe` ForestLine 530 34
+      (ghcLineToForestLine         34) `shouldBe` ForestLine 0 0 34
+      (ghcLineToForestLine   1000034) `shouldBe` ForestLine 0  1 34
+      (ghcLineToForestLine 530000034) `shouldBe` ForestLine 5 30 34
 
   describe "forestLineToGhcLine" $ do
     it "converts a ForestLine value to a GHC line" $ do
-      (forestLineToGhcLine $ ForestLine   0 34) `shouldBe`        34
-      (forestLineToGhcLine $ ForestLine   1 34) `shouldBe`   1000034
-      (forestLineToGhcLine $ ForestLine 530 34) `shouldBe` 530000034
+      (forestLineToGhcLine $ ForestLine 0  0 34) `shouldBe`        34
+      (forestLineToGhcLine $ ForestLine 0  1 34) `shouldBe`   1000034
+      (forestLineToGhcLine $ ForestLine 5 30 34) `shouldBe` 530000034
 
   -- ---------------------------------------------
 
   describe "ForestLine Ord" $ do
     it "implements Ord for ForestLine" $ do
-      compare (ForestLine 0 1) (ForestLine 0 3) `shouldBe` LT
-      compare (ForestLine 0 3) (ForestLine 1 3) `shouldBe` LT
-      compare (ForestLine 1 1) (ForestLine 2 3) `shouldBe` LT
-      compare (ForestLine 9 3) (ForestLine 0 4) `shouldBe` LT
+      compare (ForestLine 0 0 1) (ForestLine 0 0 3) `shouldBe` LT
+      compare (ForestLine 0 0 3) (ForestLine 0 1 3) `shouldBe` LT
+      compare (ForestLine 0 1 1) (ForestLine 0 2 3) `shouldBe` LT
+      compare (ForestLine 0 9 3) (ForestLine 0 0 4) `shouldBe` LT
 
-      compare (ForestLine 7 3) (ForestLine 7 3) `shouldBe` EQ
+      compare (ForestLine 0 7 3) (ForestLine 0 7 3) `shouldBe` EQ
 
-      compare (ForestLine 0 4) (ForestLine 0 3) `shouldBe` GT
+      compare (ForestLine 0 0 4) (ForestLine 0 0 3) `shouldBe` GT
 
   -- ---------------------------------------------
 
@@ -937,8 +937,8 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let (ghcl,c) = getGhcLoc l
-      let (ForestLine v line) = ghcLineToForestLine ghcl
-      let newSpan' = insertForestLineInSrcSpan (ForestLine (v+1) line) l
+      let (ForestLine tr v line) = ghcLineToForestLine ghcl
+      let newSpan' = insertForestLineInSrcSpan (ForestLine tr (v+1) line) l
 
       let toksNew = take 3 toks
       let newNode = Node (Entry (fs newSpan') toksNew) []
@@ -1270,7 +1270,7 @@ spec = do
       (showForestSpan $ treeStartEnd tree4) `shouldBe` "((13,5),(26,1))"
 
       (invariant (Node (Entry sspan []) [tree1,tree2,tree3,tree4])) `shouldBe` []
-      (invariant (Node (Entry sspan []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: (ForestLine {flInsertVersion = 0, flLine = 13},4) not < (ForestLine {flInsertVersion = 0, flLine = 6},3):Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(26,1)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: ((ForestLine 0 0 13),4) not < ((ForestLine 0 0 6),3):Node (Entry ((1,1),(26,1)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(26,1)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
 
   -- ---------------------------------------------
 {-
@@ -1300,7 +1300,7 @@ spec = do
 
   describe "mkTreeFromTokens" $ do
     it "creates a tree from an empty token list" $ do
-      (show $ mkTreeFromTokens []) `shouldBe` "Node {rootLabel = Entry ((ForestLine {flInsertVersion = 0, flLine = 0},0),(ForestLine {flInsertVersion = 0, flLine = 0},0)) [], subForest = []}"
+      (show $ mkTreeFromTokens []) `shouldBe` "Node {rootLabel = Entry (((ForestLine 0 0 0),0),((ForestLine 0 0 0),0)) [], subForest = []}"
 
     -- -----------------------
 
@@ -1309,7 +1309,7 @@ spec = do
       let toks' = take 2 $ drop 5 toks
       let tree = mkTreeFromTokens toks'
       (show toks') `shouldBe` "[((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")]"
-      (show tree) `shouldBe` "Node {rootLabel = Entry ((ForestLine {flInsertVersion = 0, flLine = 5},1),(ForestLine {flInsertVersion = 0, flLine = 5},6)) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
+      (show tree) `shouldBe` "Node {rootLabel = Entry (((ForestLine 0 0 5),1),((ForestLine 0 0 5),6)) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
 
   -- ---------------------------------------------
 
@@ -1381,7 +1381,7 @@ mkTreeFromSubTrees trees = Node (Entry sspan []) trees
    sspan    = simpPosToForestSpan (startLoc,endLoc)
 
 nonNullSpan :: ForestSpan
-nonNullSpan = ((ForestLine 0 0,0),(ForestLine 0 1,0))
+nonNullSpan = ((ForestLine 0 0 0,0),(ForestLine 0 0 1,0))
 
 
 -- ---------------------------------------------------------------------

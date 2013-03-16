@@ -773,7 +773,7 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
       let
         comp = do
-         newDecls <- rmDecl n False Nothing Nothing declsr
+         (newDecls,_,_) <- rmDecl n False declsr
 
          return newDecls
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -791,7 +791,7 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
       let
         comp = do
-         newDecls <- rmDecl n True Nothing Nothing renamed
+         (newDecls,_,_) <- rmDecl n True renamed
          return newDecls
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "MoveDef.Md1.ff"
@@ -810,7 +810,7 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
       let
         comp = do
-         renamed' <- rmTypeSig n Nothing renamed
+         (renamed',_) <- rmTypeSig n renamed
          return renamed'
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "MoveDef.Md1.ff"
@@ -828,8 +828,8 @@ spec = do
       let Just (GHC.L _ n) = locToName whereIn3FileName (14, 1) renamed
       let
         comp = do
-         ds <- rmDecl n True Nothing Nothing (hsBinds renamed)
-         renamed' <- rmTypeSig n Nothing renamed
+         (ds,_,_) <- rmDecl n True (hsBinds renamed)
+         (renamed',_) <- rmTypeSig n renamed
          let renamed'' = (replaceBinds renamed' ds)
          return renamed''
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -849,7 +849,7 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (16, 5) renamed
       let
         comp = do
-         renamed' <- rmTypeSig n Nothing renamed
+         (renamed',_) <- rmTypeSig n renamed
          return renamed'
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "ff"

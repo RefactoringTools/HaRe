@@ -295,8 +295,8 @@ moveDecl1 t defName ns topLevel
         funToks <- getToksForSpan sspan
 
         -- t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
-        t'' <- rmTypeSig (ghead "moveDecl3.2"  ns) Nothing t
-        t'  <- rmDecl    (ghead "moveDecl3.1"  ns) False Nothing Nothing t''
+        (t'',_) <- rmTypeSig (ghead "moveDecl3.2"  ns) t
+        (t',_,_)  <- rmDecl    (ghead "moveDecl3.1"  ns) False t''
         addDecl t' defName (ghead "moveDecl1 2" funBinding,sigToMove,Just (maybeToksSig ++ funToks)) topLevel
 
 {- ++AZ++ before using TokenUtils
@@ -966,12 +966,12 @@ doDemoting' t pn
                          -- let ds=foldl (flip removeTypeSig) (deleteFirstsBy sameBind (hsBinds t) demotedDecls) declaredPns
 
                          -- ++AZ++ moved to after the rest, so the tree is still available to start with
-                         ds <- rmDecl pn True (Just "decl") (Just "sig") (hsBinds t)
-                         t' <- rmTypeSig pn (Just "sig2") t
+                         (ds,declStash,_) <- rmDecl pn True (hsBinds t)
+                         (t',sigStash) <- rmTypeSig pn t
                          -- let ds = hsBinds t
                          -- let t' = t
 
-                         --get those varaibles declared at where the demotedDecls will be demoted to
+                         --get those variables declared at where the demotedDecls will be demoted to
                          let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
                          --make sure free variable in 'f' do not clash with variables in 'dl',
 

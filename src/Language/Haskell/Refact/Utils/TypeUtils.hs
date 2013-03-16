@@ -2685,6 +2685,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                -> RefactGhc t
   addLocalDecl parent (newFun, maybeSig, newFunToks)
     =do
+        liftIO $ putStrLn $ "addLocalDecl entered" -- ++AZ++
         let binds = hsValBinds parent
 
         let (startLoc,endLoc) 
@@ -2700,7 +2701,10 @@ addDecl parent pn (decl, msig, declToks) topLevel
             rowIndent = 1
 
         -- error $ "TypeUtils.addLocalDecl:((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)=" ++ (show ((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)) -- ++AZ++
+        liftIO $ putStrLn $ "TypeUtils.addLocalDecl:((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)=" ++ (show ((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)) -- ++AZ++
 
+        drawTokenTree -- ++AZ++
+ 
         _ <- putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
 
 
@@ -3284,17 +3288,21 @@ duplicateDecl decls sigs n newFunName
 rmDecl:: (SYB.Data t)
         =>GHC.Name     -- ^ The identifier whose definition is to be removed.
         ->Bool         -- ^ True means including the type signature.
-        ->Maybe String -- ^ Possible named stash for removed decl tokens,
-                       --   in the RefactGhc Monad
-        ->Maybe String -- ^ Possible named stash for removed signature tokens,
         ->t            -- ^ The declaration list.
-        -> RefactGhc t -- ^ The result.
-rmDecl pn incSig maybeStash maybeSigStash t = do
+        -> RefactGhc (t,RefactStashId,Maybe RefactStashId) 
+           -- ^ The result, and RefactStashId of the removed decl tokens,
+           -- and possibly of removed signature tokens
+rmDecl pn incSig t = do
   liftIO $ putStr $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
+  oldStashIds <- getStashIds
   t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
-  t'' <- if incSig then rmTypeSig pn maybeSigStash t'
-                   else return t'
-  return t''
+  newStashIds <- getStashIds
+  let declStash = ghead "rmDecl" (newStashIds \\ oldStashIds)
+  (t'',sigStash) <- if incSig then do 
+                                    (tp,stash) <- rmTypeSig pn t'
+                                    return (tp,Just stash)
+                              else return (t',Nothing)
+  return (t'',declStash,sigStash)
   where
     inDecls (decls::[GHC.LHsBind GHC.Name])
       | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
@@ -3376,12 +3384,15 @@ rmDecl pn incSig maybeStash maybeSigStash t = do
 -- type from the declaration list.
 rmTypeSig :: (SYB.Data t) =>
          GHC.Name    -- ^ The identifier whose type signature is to be removed.
-      -> Maybe String -- ^ possible name to stash original tokens in
-                      -- the monad
       -> t           -- ^ The declarations
-      -> RefactGhc t -- ^ The result
-rmTypeSig pn maybeStash t
-  = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
+      -> RefactGhc (t,RefactStashId) -- ^ The result, and stash for
+                                     -- the removed tokens
+rmTypeSig pn t
+  = do
+     oldStashIds <- getStashIds
+     t' <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
+     newStashIds <- getStashIds
+     return (t',ghead "rmTypeSig" (newStashIds \\ oldStashIds))
   where
    inDecls (sigs::[GHC.LSig GHC.Name])
       | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]

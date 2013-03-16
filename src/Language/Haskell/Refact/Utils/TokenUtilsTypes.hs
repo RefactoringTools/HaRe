@@ -54,9 +54,17 @@ data Entry = Entry ForestSpan -- ^The source span contained in this Node
 -- ---------------------------------------------------------------------
 
 data ForestLine = ForestLine
-                  { flInsertVersion :: Int
+                  { flTreeSelector :: Int
+                  , flInsertVersion :: Int
                   , flLine :: Int
-                  } deriving (Eq,Show)
+                  } deriving (Eq)
+
+instance Show ForestLine where
+  show s = "(ForestLine " ++ (show $ flTreeSelector s) 
+         ++ " " ++ (show $ flInsertVersion s)
+         ++ " " ++ (show $ flLine s)
+         ++ ")"
+                          
 
 -- ---------------------------------------------------------------------
 

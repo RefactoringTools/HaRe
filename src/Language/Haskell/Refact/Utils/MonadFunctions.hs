@@ -31,6 +31,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , removeToksForPos
        -- , putNewSpanAndToks
        -- , putNewPosAndToks
+       -- * Managing token stash
+       , getStashIds
+       , stashDiff
 
        -- * For debugging
        , drawTokenTree
@@ -80,6 +83,7 @@ import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
 import Data.Tree
+import Data.List
 import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
@@ -147,6 +151,18 @@ stash oldTree = do
   put $ st { rsUniqState = u', rsModule = rsModule' }
   return stashName
 
+-- |Get the current stash ids
+getStashIds :: RefactGhc [RefactStashId]
+getStashIds = do
+  st <- get
+  let Just tm = rsModule st
+  return (Map.keys (rsTokenStash tm))
+  
+-- |get any stash ids added compared to the prior list
+stashDiff :: [RefactStashId] -> RefactGhc [RefactStashId]
+stashDiff prev = do
+  current <- getStashIds
+  return (current \\ prev)
 
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens
@@ -173,6 +189,7 @@ putToksForPos pos toks = do
   let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   stashName <- stash oldTree
+  drawTokenTree
   return (newSpan,stashName)
 
 -- |Add tokens after a designated GHC.SrcSpan
