@@ -292,8 +292,7 @@ applyRefac refac (Just (parsedFile,toks)) fileName = do
 
     let rs = RefMod { rsTypecheckedMod = parsedFile
                     , rsOrigTokenStream = toks
-                    , rsTokenCache = mkTreeFromTokens toks
-                    , rsTokenStash = Map.empty
+                    , rsTokenCache = initTokenCache toks
                     , rsStreamModified = False
                     }
     put (RefSt settings u f (Just rs))

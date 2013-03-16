@@ -3289,20 +3289,13 @@ rmDecl:: (SYB.Data t)
         =>GHC.Name     -- ^ The identifier whose definition is to be removed.
         ->Bool         -- ^ True means including the type signature.
         ->t            -- ^ The declaration list.
-        -> RefactGhc (t,RefactStashId,Maybe RefactStashId) 
-           -- ^ The result, and RefactStashId of the removed decl tokens,
-           -- and possibly of removed signature tokens
+        -> RefactGhc (t) -- ^ The result
 rmDecl pn incSig t = do
   liftIO $ putStr $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
-  oldStashIds <- getStashIds
   t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
-  newStashIds <- getStashIds
-  let declStash = ghead "rmDecl" (newStashIds \\ oldStashIds)
-  (t'',sigStash) <- if incSig then do 
-                                    (tp,stash) <- rmTypeSig pn t'
-                                    return (tp,Just stash)
-                              else return (t',Nothing)
-  return (t'',declStash,sigStash)
+  t'' <- if incSig then rmTypeSig pn t'
+                   else return t'
+  return t''
   where
     inDecls (decls::[GHC.LHsBind GHC.Name])
       | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
@@ -3318,7 +3311,7 @@ rmDecl pn incSig t = do
     rmTopLevelDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
                 -> RefactGhc [GHC.LHsBind GHC.Name]
     rmTopLevelDecl decl decls
-      =do 
+      =do
           liftIO $ putStrLn $ "rmTopLevelDecl:" -- ++AZ++
 
           {-
@@ -3385,14 +3378,11 @@ rmDecl pn incSig t = do
 rmTypeSig :: (SYB.Data t) =>
          GHC.Name    -- ^ The identifier whose type signature is to be removed.
       -> t           -- ^ The declarations
-      -> RefactGhc (t,RefactStashId) -- ^ The result, and stash for
-                                     -- the removed tokens
+      -> RefactGhc t -- ^ The result
 rmTypeSig pn t
   = do
-     oldStashIds <- getStashIds
      t' <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
-     newStashIds <- getStashIds
-     return (t',ghead "rmTypeSig" (newStashIds \\ oldStashIds))
+     return t'
   where
    inDecls (sigs::[GHC.LSig GHC.Name])
       | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
@@ -3422,7 +3412,7 @@ rmTypeSig pn t
                    _ <- removeToksForSpan sspan
                    return ()
             _  -> do
-                   (_,stashId) <- putToksForSpan sspan toks'
+                   putToksForSpan sspan toks'
                    return ()
           return decls'
    inDecls x = return x
@@ -3596,7 +3586,7 @@ renamePN oldPN newName updateTokens t = do
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     -- putToks toks' True
-                    (_,stashId) <- putToksForSpan sspan toks'
+                    putToksForSpan sspan toks'
                     return newName
                     -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (GHC.showPpr (row,col,l,sspan)) ++ (show toks) -- ++AZ++
            else return newName

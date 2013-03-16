@@ -773,7 +773,7 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
       let
         comp = do
-         (newDecls,_,_) <- rmDecl n False declsr
+         newDecls <- rmDecl n False declsr
 
          return newDecls
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -791,7 +791,7 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
       let
         comp = do
-         (newDecls,_,_) <- rmDecl n True renamed
+         newDecls <- rmDecl n True renamed
          return newDecls
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "MoveDef.Md1.ff"
@@ -810,7 +810,7 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
       let
         comp = do
-         (renamed',_) <- rmTypeSig n renamed
+         renamed' <- rmTypeSig n renamed
          return renamed'
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "MoveDef.Md1.ff"
@@ -828,8 +828,8 @@ spec = do
       let Just (GHC.L _ n) = locToName whereIn3FileName (14, 1) renamed
       let
         comp = do
-         (ds,_,_) <- rmDecl n True (hsBinds renamed)
-         (renamed',_) <- rmTypeSig n renamed
+         ds <- rmDecl n True (hsBinds renamed)
+         renamed' <- rmTypeSig n renamed
          let renamed'' = (replaceBinds renamed' ds)
          return renamed''
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -849,7 +849,7 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (16, 5) renamed
       let
         comp = do
-         (renamed',_) <- rmTypeSig n renamed
+         renamed' <- rmTypeSig n renamed
          return renamed'
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "ff"
@@ -1310,7 +1310,7 @@ spec = do
          return (new,newName,toksForOp)
       let
 
-      ((nb,nn,tfo),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = forest'', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True, rsTokenStash = Map.empty})}
+      ((nb,nn,tfo),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest'', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       -- (show tfo) `shouldBe` ""
       (GHC.showPpr n) `shouldBe` "TokenTest.foo" 
       (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
@@ -1365,7 +1365,7 @@ spec = do
          return (new,newName)
       let
 
-      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = forest''', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True, rsTokenStash = Map.empty})}
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest''', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       -- (show tfo) `shouldBe` ""
       (GHC.showPpr n) `shouldBe` "TokenTest.foo" 
       (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"

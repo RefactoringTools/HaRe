@@ -8,20 +8,22 @@
 module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        Entry(..)
        , ForestLine(..)
-       , ForestPos(..)
-       , ForestSpan(..)
+       , ForestPos
+       , ForestSpan
+       , TreeId(..)
+       , TokenCache(..)
+       , mainTid
        ) where
 
 import Language.Haskell.Refact.Utils.TypeSyn
-
+import Data.Tree
+import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
 
 {-
 
 Structure is to be indexed by SrcSpan.
-
-Memo-ised.
 
 Must be recursive, so if one srcspan is requested that contains a
 modified sub-src span, the modified one is returned.
@@ -73,6 +75,20 @@ type ForestPos = (ForestLine,Int)
 
 -- |Match a SrcSpan, using a ForestLine as the marker
 type ForestSpan = (ForestPos,ForestPos)
+
+-- ---------------------------------------------------------------------
+
+data TreeId = TId Int deriving (Eq,Ord,Show)
+
+-- |Identifies the tree carrying the main tokens, not any work in
+-- progress or deleted ones
+mainTid :: TreeId
+mainTid = TId 0
+
+data TokenCache = TK 
+  { tkCache :: Map.Map TreeId (Tree Entry)
+  , tkLastTreeId :: TreeId
+  }
 
 -- ---------------------------------------------------------------------
 

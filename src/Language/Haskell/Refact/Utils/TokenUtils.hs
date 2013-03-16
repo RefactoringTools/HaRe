@@ -12,8 +12,7 @@
 module Language.Haskell.Refact.Utils.TokenUtils(
        Entry(..)
        , Positioning(..)
-       -- , Module(..)
-       -- , initModule
+       , initTokenCache
        , getTokensFor
        , getTokensBefore
        , updateTokensForSrcSpan
@@ -26,6 +25,11 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , addNewSrcSpanAndToksAfter
        , addToksAfterSrcSpan
        , addDeclToksAfterSrcSpan
+
+       -- * Token Tree Selection
+       , treeIdFromForestSpan
+       , getTreeFromCache
+       , replaceTreeInCache
 
        -- * Token marking and re-alignment
        , tokenFileMark
@@ -135,6 +139,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Data.List
 import Data.Maybe
 import Data.Tree
+import qualified Data.Map as Map
 import qualified Data.Tree.Zipper as Z
 
 -- ---------------------------------------------------------------------
@@ -255,7 +260,7 @@ data Operations = OpAdded Entry          -- ^The entry that was added
 --   bottom 6 digits : the original source line
 --   next 2 : the InsertVersion
 --   top 2 : the AST identifier.
--- This gives us up to 47 insert versions and 21 different ASTs
+-- This gives us up to 99 insert versions and 20 different ASTs
 --  NOTE: suspect the AST limit may prove problematic
 --
 forestConstant :: Int
@@ -264,11 +269,14 @@ forestConstant = 1000000
 forestTreeConstant :: Int
 forestTreeConstant = 100*forestConstant
 
+forestVersionDivisor :: Int
 forestVersionDivisor = 100
 
-maxForestVersion = 47
+maxForestVersion :: Int
+maxForestVersion = 99
 
-maxASTTree = 21
+maxASTTree :: Int
+maxASTTree = 20
 
 {-
 This has been moved to TokenUtilsTypes
@@ -376,6 +384,11 @@ srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToF
     (startRow,startCol) = getGhcLoc sspan
     (endRow,endCol) = getGhcLocEnd sspan
 
+-- --------------------------------------------------------------------
+
+treeIdFromForestSpan :: ForestSpan -> TreeId
+treeIdFromForestSpan ((ForestLine tr _ _,_),(ForestLine _ _ _,_)) = TId tr
+
 -- ---------------------------------------------------------------------
 {-
 data Module = Module
@@ -395,6 +408,26 @@ initModule typeChecked tokens
 
 -- Initially work with non-monadic code, can build it into the
 -- RefactGhc monad later
+
+initTokenCache :: [PosToken] -> TokenCache
+initTokenCache toks = TK (Map.fromList [((TId 0),(mkTreeFromTokens toks))]) (TId 0)
+
+
+-- ---------------------------------------------------------------------
+
+getTreeFromCache :: GHC.SrcSpan -> TokenCache -> Tree Entry
+getTreeFromCache sspan tk = (tkCache tk) Map.! tid
+  where
+    tid = treeIdFromForestSpan $ srcSpanToForestSpan sspan
+
+
+-- ---------------------------------------------------------------------
+
+replaceTreeInCache :: GHC.SrcSpan -> Tree Entry -> TokenCache -> TokenCache
+replaceTreeInCache sspan tree tk = tk'
+  where
+    tid = treeIdFromForestSpan $ srcSpanToForestSpan sspan
+    tk' = tk {tkCache = Map.insert tid tree (tkCache tk) }
 
 -- ---------------------------------------------------------------------
 
