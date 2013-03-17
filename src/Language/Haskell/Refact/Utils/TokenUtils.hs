@@ -501,9 +501,9 @@ replaceTreeInCache sspan tree tk = tk'
 -- |Assuming most recent operation has stashed the old tokens, sync
 -- the given AST to the most recent stash entry
 syncAstToLatestCache :: (SYB.Data t) => TokenCache -> GHC.Located t -> GHC.Located t
-syncAstToLatestCache tk t -- = t'
+syncAstToLatestCache tk t = t'
   -- = error $ "syncAstToLatestCache:pos=" ++ (show pos)
-  = error $ "syncAstToLatestCache:fs=" ++ (show fs)
+  -- = error $ "syncAstToLatestCache:fs=" ++ (show fs)
   where
     mainForest = (tkCache tk) Map.! mainTid
     forest@(Node (Entry fs _) _) = (tkCache tk) Map.! (tkLastTreeId tk)

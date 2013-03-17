@@ -1380,7 +1380,7 @@ spec = do
              "+- ((1,1),(9,14))\n|\n"++
              "`- ((13,1),(13,25))\n"++
              "tree TId 1:\n"++
-             "((11,1),(11,8))\n"
+             "((100000011,1),(100000011,8))\n"
 
       let mainForest = (tkCache tk') Map.! mainTid
       let sspan = posToSrcSpan mainForest ((11,1),(11,8))
@@ -1400,7 +1400,7 @@ spec = do
 
       let tree2 = getTreeFromCache sspan2 tk'
       (drawTreeEntry tree2) `shouldBe` 
-             "((11,1),(11,8))\n"
+             "((100000011,1),(100000011,8))\n"
 
 
   -- ---------------------------------------------
@@ -1447,7 +1447,7 @@ spec = do
              "+- ((1,1),(9,14))\n|\n"++
              "`- ((13,1),(13,25))\n"++
              "tree TId 1:\n"++
-             "((1,1),(6,17))\n" -- This is wrong, should have tid in it
+             "((100000001,1),(100000006,17))\n" 
 
   -- ---------------------------------------------
 
@@ -1469,7 +1469,7 @@ spec = do
              "+- ((1,1),(9,14))\n|\n"++
              "`- ((13,1),(13,25))\n"++
              "tree TId 1:\n"++
-             "((11,1),(11,8))\n"
+             "((100000011,1),(100000011,8))\n"
 
       let mainForest = (tkCache tk') Map.! mainTid
       let sspan = posToSrcSpan mainForest ((11,1),(11,8))
@@ -1479,8 +1479,8 @@ spec = do
       (showSrcSpan sspan2) `shouldBe` "((100000001,1),(100000011,8))"
 
       let decl'@(GHC.L ss' _) = syncAstToLatestCache tk' decl
-      (GHC.showPpr ss') `shouldBe` "test/testdata/Demote/D1.hs:(100000001,1)-(100000011,7)"
-      (showSrcSpan ss') `shouldBe` "((100000001,1),(100000011,8))"
+      (GHC.showPpr ss') `shouldBe` "test/testdata/Demote/D1.hs:100000011:1-7"
+      (showSrcSpan ss') `shouldBe` "((100000011,1),(100000011,8))"
 
 -- ---------------------------------------------------------------------
 -- Helper functions
