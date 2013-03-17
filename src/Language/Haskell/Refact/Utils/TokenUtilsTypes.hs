@@ -66,7 +66,7 @@ instance Show ForestLine where
          ++ " " ++ (show $ flInsertVersion s)
          ++ " " ++ (show $ flLine s)
          ++ ")"
-                          
+
 
 -- ---------------------------------------------------------------------
 
@@ -85,7 +85,7 @@ data TreeId = TId Int deriving (Eq,Ord,Show)
 mainTid :: TreeId
 mainTid = TId 0
 
-data TokenCache = TK 
+data TokenCache = TK
   { tkCache :: Map.Map TreeId (Tree Entry)
   , tkLastTreeId :: TreeId
   }

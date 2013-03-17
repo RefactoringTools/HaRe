@@ -78,6 +78,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        -- * Based on Data.Tree
        , drawTreeEntry
+       , drawTokenCache
        , drawForestEntry
        , drawEntry
 
@@ -1178,6 +1179,16 @@ showForest forest = map (showSubTree 0) forest
 
 showForest :: [Tree Entry] -> [String]
 showForest forest = map showTree forest
+
+-- ---------------------------------------------------------------------
+
+-- |Call drawTreeEntry on the entire token cache
+drawTokenCache :: TokenCache -> String
+drawTokenCache tk = Map.foldlWithKey' doOne "" (tkCache tk)
+  where
+    doOne :: String -> TreeId -> Tree Entry -> String
+    doOne s key val = s ++ "tree " ++ (show key) ++ ":\n"
+                        ++ (drawTreeEntry val)
 
 -- ---------------------------------------------------------------------
 -- | Neat 2-dimensional drawing of a tree.

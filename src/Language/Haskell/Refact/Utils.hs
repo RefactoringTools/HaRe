@@ -258,6 +258,7 @@ runRefacSession settings comp = do
         { rsSettings = fromMaybe (RefSet ["."]) settings
         , rsUniqState = 1
         , rsFlags = RefFlags False
+        , rsStorage = StorageNone
         , rsModule = Nothing
         }
   (refactoredMods,_s) <- runRefactGhc (initGhcSession >> comp) initialState

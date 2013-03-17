@@ -207,7 +207,7 @@ putToksForPos pos toks = do
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   stashName <- stash oldTree
-  drawTokenTree
+  drawTokenTree ""
   return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan
@@ -281,19 +281,21 @@ removeToksForPos pos = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  liftIO $ putStrLn $ "removeToksForPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
   stashName <- stash delTree
+  liftIO $ putStrLn $ "removeToksForPos result:" ++ (show forest')
+  drawTokenTree "Full TokenCache"
   return ()
 
 -- ---------------------------------------------------------------------
 
 -- |Print the Token Tree for debug purposes
-drawTokenTree :: RefactGhc ()
-drawTokenTree = do
+drawTokenTree :: String -> RefactGhc ()
+drawTokenTree msg = do
   st <- get
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
-  liftIO $ putStrLn $ "current token tree:\n" ++ (drawTreeEntry mainForest)
+  -- liftIO $ putStrLn $ msg ++ "\ncurrent token tree:\n" ++ (drawTreeEntry mainForest)
+  liftIO $ putStrLn $ msg ++ "\ncurrent token tree:\n" ++ (drawTokenCache (rsTokenCache tm))
   return ()
 
 -- ---------------------------------------------------------------------

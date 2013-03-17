@@ -2688,7 +2688,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
         liftIO $ putStrLn $ "addLocalDecl entered" -- ++AZ++
         let binds = hsValBinds parent
 
-        let (startLoc,endLoc) 
+        let (startLoc,endLoc)
              = if (emptyList localDecls)
                  then getStartEndLoc parent
                  else getStartEndLoc localDecls
@@ -2703,8 +2703,8 @@ addDecl parent pn (decl, msig, declToks) topLevel
         -- error $ "TypeUtils.addLocalDecl:((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)=" ++ (show ((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)) -- ++AZ++
         liftIO $ putStrLn $ "TypeUtils.addLocalDecl:((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)=" ++ (show ((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)) -- ++AZ++
 
-        drawTokenTree -- ++AZ++
- 
+        drawTokenTree "" -- ++AZ++
+
         _ <- putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
 
 
@@ -3348,7 +3348,10 @@ rmDecl pn incSig t = do
          -- let (startPos,endPos) = getStartEndLoc decl   --startEndLoc toks decl
          prevToks <- getToksBeforeSpan sspan -- Need these before
                                              -- sspan is deleted
-         stashId <- removeToksForPos (getStartEndLoc decl)
+         removeToksForPos (getStartEndLoc decl)
+         decl' <- syncDeclToLatestStash decl
+         setStateStorage (StorageBind decl')
+
          -- ++AZ++: TODO: get rid of where clause, if no more decls
          -- here
          case length decls of
@@ -3356,7 +3359,7 @@ rmDecl pn incSig t = do
              -- Get rid of preceding where or let token
              -- prevToks <- getToksBeforeSpan sspan
              let startPos = getGhcLoc sspan
-                 (_toks1,toks2)=break (\t->tokenPos t < startPos) $ reverse prevToks --divide the token stream.
+                 (_toks1,toks2)=break (\t1->tokenPos t1 < startPos) $ reverse prevToks --divide the token stream.
                  --get the  'where' or 'let' token
                  rvToks1 = dropWhile (not.isWhereOrLet) toks2
                  --There must be a 'where' or 'let', so rvToks1 can not be empty.
@@ -3368,7 +3371,7 @@ rmDecl pn incSig t = do
 
              liftIO $ putStr $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
 
-             stashId <- removeToksForPos (rmStartPos,rmEndPos)
+             removeToksForPos (rmStartPos,rmEndPos)
              return ()
            _ -> return ()
 
@@ -3381,19 +3384,19 @@ rmDecl pn incSig t = do
 
 -- | Remove the type signature that defines the given identifier's
 -- type from the declaration list.
+-- TODO: return removed signature, with its tokens in a stash, as per rmDecl
 rmTypeSig :: (SYB.Data t) =>
          GHC.Name    -- ^ The identifier whose type signature is to be removed.
       -> t           -- ^ The declarations
       -> RefactGhc t -- ^ The result
 rmTypeSig pn t
   = do
-     t' <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
+     t' <- everywhereMStaged SYB.Renamer (SYB.mkM inSigs) t
      return t'
   where
-   inDecls (sigs::[GHC.LSig GHC.Name])
+   inSigs (sigs::[GHC.LSig GHC.Name])
       | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
-     -- TODO: replace fetchToks/putToks with getToksForSpan/putToksForSpan
-     = do -- toks <- fetchToks
+     = do
           let (decls1,decls2)= break (definesTypeSig pn) sigs
           let sspan = gfromJust "rmTypeSig" $ getSrcSpan $ ghead "rmTypeSig" decls2 
           toks <- getToksForSpan sspan
@@ -3421,47 +3424,12 @@ rmTypeSig pn t
                    putToksForSpan sspan toks'
                    return ()
           return decls'
-   inDecls x = return x
-
-
-{- ++AZ++ before getting rid of fetchToks/PutToks
--- | Remove the type signature that defines the given identifier's
--- type from the declaration list.
-rmTypeSig :: (SYB.Data t) =>
-         GHC.Name    -- ^ The identifier whose type signature is to be removed.
-      -> t           -- ^ The declarations
-      -> RefactGhc t -- ^ The result
-rmTypeSig pn t
-  = everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
-  where
-   inDecls (sigs::[GHC.LSig GHC.Name])
-      | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
-     -- TODO: replace fetchToks/putToks with getToksForSpan/putToksForSpan
-     = do toks <- fetchToks
-          let (decls1,decls2)= break (definesTypeSig pn) sigs
-              (toks',decls')=
-               let sig@(GHC.L l (GHC.TypeSig names typ)) = ghead "rmTypeSig" decls2  -- as decls2/=[], no problem with head
-                   (startPos,endPos) = getStartEndLoc sig
-               in if length names > 1
-                     then let newSig=(GHC.L l (GHC.TypeSig (filter (\(GHC.L _ x) -> x /= pn) names) typ))
-                              pnt = ghead "rmTypeSig" (filter (\(GHC.L _ x) -> x == pn) names)
-                              (startPos1, endPos1) = let (startPos1', endPos1') = getStartEndLoc pnt
-                                                     in if gfromJust "rmTypeSig" (elemIndex pnt names) >0
-                                                        then extendForwards  toks startPos1' endPos1' isComma
-                                                        else extendBackwards toks startPos1' endPos1' isComma
-                          in (deleteToks toks startPos1 endPos1,(decls1++[newSig]++tail decls2))
-                     else  ((deleteToks toks startPos endPos),(decls1++tail decls2)) 
-                     -- else  error $ "rmTypeSig:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
-          putToks toks' modified
-          return decls'
-   inDecls x = return x
-++AZ++ end -}
-
+   inSigs x = return x
 
 -- ---------------------------------------------------------------------
 
 {-
------------------------------------------------------------------------------------------- 
+
 -- | Replace the name (and qualifier if specified) by a new name (and qualifier) in a PName.
 --   The function does not modify the token stream.
 replaceNameInPN::Maybe ModuleName    -- ^ The new qualifier
@@ -3588,7 +3556,7 @@ renamePN oldPN newName updateTokens t = do
            then  do
                     -- toks <- fetchToks
                     liftIO $ putStrLn $ "renamePN.worker: (sspan,newName)=" ++ (GHC.showPpr (sspan,newName)) -- ++AZ++ debug
-                    drawTokenTree -- ++AZ++ debug
+                    drawTokenTree "" -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     -- putToks toks' True
