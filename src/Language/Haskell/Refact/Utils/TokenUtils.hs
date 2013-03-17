@@ -28,6 +28,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        -- * Token Tree Selection
        , treeIdFromForestSpan
+       , putToksInCache
+       , removeToksFromCache
        , getTreeFromCache
        , replaceTreeInCache
        , syncAstToLatestCache
@@ -62,6 +64,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , openZipperToNode
        , openZipperToSpan
        , forestSpanToSimpPos
+       , forestSpanToGhcPos
 
        , ghcLineToForestLine
        , forestLineToGhcLine
@@ -294,13 +297,13 @@ data ForestLine = ForestLine
 ghcLineToForestLine :: Int -> ForestLine
 ghcLineToForestLine l = ForestLine tr v l'
   where
-    l' = (mod l forestConstant) 
+    l' = (mod l forestConstant)
     v  = (div l forestConstant) `mod` forestVersionDivisor
     tr = (div l forestTreeConstant)
 
 forestLineToGhcLine :: ForestLine -> Int
-forestLineToGhcLine fl = ((flTreeSelector  fl) * forestTreeConstant 
-                        + (flInsertVersion fl) * forestConstant) 
+forestLineToGhcLine fl = ((flTreeSelector  fl) * forestTreeConstant
+                        + (flInsertVersion fl) * forestConstant)
                         + (flLine fl)
 
 forestSpanToSrcSpan :: ForestSpan -> GHC.SrcSpan
@@ -338,7 +341,7 @@ forestSpanVersionSet ((ForestLine _ sv _,_),(ForestLine _ ev _,_)) = sv /= 0 || 
 forestSpanVersionNotSet :: ForestSpan -> Bool
 forestSpanVersionNotSet ((ForestLine _ sv _,_),(ForestLine _ ev _,_)) = sv == 0 && ev == 0
 
--- |Checks if the version is non-zero 
+-- |Checks if the version is non-zero
 forestPosVersionSet :: ForestPos -> Bool
 forestPosVersionSet (ForestLine _ v _,_) = v /= 0
 
@@ -346,9 +349,21 @@ forestPosVersionSet (ForestLine _ v _,_) = v /= 0
 forestPosVersionNotSet :: ForestPos -> Bool
 forestPosVersionNotSet (ForestLine _ v _,_) = v == 0
 
+-- |Puts a TreeId into a forestSpan
+treeIdIntoForestSpan :: TreeId -> ForestSpan -> ForestSpan
+treeIdIntoForestSpan (TId sel) ((ForestLine _ sv sl,sc),(ForestLine _ ev el,ec))
+  = ((ForestLine sel sv sl,sc),(ForestLine sel ev el,ec))
+
+
 -- |Strip out the version markers
 forestSpanToSimpPos :: ForestSpan -> (SimpPos,SimpPos)
 forestSpanToSimpPos ((ForestLine _ _ sr,sc),(ForestLine _ _ er,ec)) = ((sr,sc),(er,ec))
+
+-- |Strip out the version markers
+forestSpanToGhcPos :: ForestSpan -> (SimpPos,SimpPos)
+forestSpanToGhcPos ((fls,sc),(fle,ec))
+  = ((forestLineToGhcLine fls,sc),(forestLineToGhcLine fle,ec))
+
 
 simpPosToForestSpan :: (SimpPos,SimpPos) -> ForestSpan
 simpPosToForestSpan ((sr,sc),(er,ec))
@@ -427,6 +442,45 @@ initTokenCache toks = TK (Map.fromList [((TId 0),(mkTreeFromTokens toks))]) (TId
 
 -- ---------------------------------------------------------------------
 
+treeIdIntoTree :: TreeId -> Tree Entry -> Tree Entry
+treeIdIntoTree tid tree@(Node (Entry fs toks) subTree) = tree'
+  where
+    fs' = treeIdIntoForestSpan tid fs
+    tree' = Node (Entry fs' toks) subTree
+
+-- ---------------------------------------------------------------------
+
+stash :: TokenCache -> Tree Entry -> TokenCache
+stash tk oldTree = tk'
+  where
+    (TId lastTreeId) = tkLastTreeId tk
+    lastTreeId' = TId (lastTreeId + 1)
+    oldTree' = treeIdIntoTree lastTreeId' oldTree
+    cache' = Map.insert lastTreeId' oldTree' (tkCache tk)
+    tk' = tk {tkLastTreeId = lastTreeId', tkCache = cache' }
+
+-- ---------------------------------------------------------------------
+
+putToksInCache :: TokenCache -> GHC.SrcSpan -> [PosToken] -> (TokenCache,GHC.SrcSpan)
+putToksInCache tk sspan toks = (tk'',newSpan)
+  where
+   forest = getTreeFromCache sspan tk
+   (forest',newSpan,oldTree) = updateTokensForSrcSpan forest sspan toks
+   tk' = replaceTreeInCache sspan forest' tk
+   tk'' = stash tk' oldTree
+
+-- ---------------------------------------------------------------------
+
+removeToksFromCache :: TokenCache -> GHC.SrcSpan -> TokenCache
+removeToksFromCache tk sspan = tk''
+  where
+    forest = getTreeFromCache sspan tk
+    (forest',oldTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
+    tk' = replaceTreeInCache sspan forest' tk
+    tk'' = stash tk' oldTree
+
+-- ---------------------------------------------------------------------
+
 getTreeFromCache :: GHC.SrcSpan -> TokenCache -> Tree Entry
 getTreeFromCache sspan tk = (tkCache tk) Map.! tid
   where
@@ -439,17 +493,22 @@ replaceTreeInCache :: GHC.SrcSpan -> Tree Entry -> TokenCache -> TokenCache
 replaceTreeInCache sspan tree tk = tk'
   where
     tid = treeIdFromForestSpan $ srcSpanToForestSpan sspan
-    tk' = tk {tkCache = Map.insert tid tree (tkCache tk) }
+    tree' = treeIdIntoTree tid tree
+    tk' = tk {tkCache = Map.insert tid tree' (tkCache tk) }
 
 -- ---------------------------------------------------------------------
 
 -- |Assuming most recent operation has stashed the old tokens, sync
 -- the given AST to the most recent stash entry
 syncAstToLatestCache :: (SYB.Data t) => TokenCache -> GHC.Located t -> GHC.Located t
-syncAstToLatestCache tk t = t'
+syncAstToLatestCache tk t -- = t'
+  -- = error $ "syncAstToLatestCache:pos=" ++ (show pos)
+  = error $ "syncAstToLatestCache:fs=" ++ (show fs)
   where
+    mainForest = (tkCache tk) Map.! mainTid
     forest@(Node (Entry fs _) _) = (tkCache tk) Map.! (tkLastTreeId tk)
-    sspan = forestSpanToSrcSpan fs
+    pos = forestSpanToGhcPos fs
+    sspan = posToSrcSpan mainForest pos
     (t',_) = syncAST t sspan forest
 
 -- ---------------------------------------------------------------------

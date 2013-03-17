@@ -29,6 +29,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
 import qualified Data.Tree.Zipper as Z
+import qualified Data.Map as Map
 
 import TestUtils
 
@@ -1359,7 +1360,127 @@ spec = do
     it "Modifies a token stream to cater for changes in length of a token after e.g. renaming" $ do
       pending "write this"
 
+  -- ---------------------------------------------
 
+  describe "getTreeFromCache" $ do
+    it "get the appropriate tree from the token cache, based on the SrcSpan" $ do
+      (t,toks) <- parsedFileDemoteD1
+      let tk = initTokenCache toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/Demote/D1.hs:11:1-7"
+      (showSrcSpan l) `shouldBe` "((11,1),(11,8))"
+
+      let tk' = removeToksFromCache tk l
+      (drawTokenCache tk') `shouldBe` 
+             "tree TId 0:\n"++
+             "((1,1),(13,25))\n|\n"++
+             "+- ((1,1),(9,14))\n|\n"++
+             "`- ((13,1),(13,25))\n"++
+             "tree TId 1:\n"++
+             "((11,1),(11,8))\n"
+
+      let mainForest = (tkCache tk') Map.! mainTid
+      let sspan = posToSrcSpan mainForest ((11,1),(11,8))
+
+      let tree1 = getTreeFromCache sspan tk'
+      (drawTreeEntry tree1) `shouldBe` 
+             "((1,1),(13,25))\n|\n"++
+             "+- ((1,1),(9,14))\n|\n"++
+             "`- ((13,1),(13,25))\n"
+
+      let sspan2 = insertForestLineInSrcSpan (ForestLine 1 0 1) sspan
+      (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:(100000001,1)-(100000011,7)"
+      (showSrcSpan sspan2) `shouldBe` "((100000001,1),(100000011,8))"
+
+      let tid = treeIdFromForestSpan $ srcSpanToForestSpan sspan2
+      (show tid) `shouldBe` "TId 1"
+
+      let tree2 = getTreeFromCache sspan2 tk'
+      (drawTreeEntry tree2) `shouldBe` 
+             "((11,1),(11,8))\n"
+
+
+  -- ---------------------------------------------
+
+  describe "replaceTreeInCache" $ do
+    it "replace the appropriate tree from the token cache, based on the SrcSpan" $ do
+      (t,toks) <- parsedFileDemoteD1
+      let tk = initTokenCache toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/Demote/D1.hs:11:1-7"
+      (showSrcSpan l) `shouldBe` "((11,1),(11,8))"
+
+      let tk' = removeToksFromCache tk l
+      (drawTokenCache tk') `shouldBe` 
+             "tree TId 0:\n"++
+             "((1,1),(13,25))\n|\n"++
+             "+- ((1,1),(9,14))\n|\n"++
+             "`- ((13,1),(13,25))\n"++
+             "tree TId 1:\n"++
+             "((100000011,1),(100000011,8))\n"
+
+      let mainForest = (tkCache tk') Map.! mainTid
+      let sspan = posToSrcSpan mainForest ((11,1),(11,8))
+
+      let sspan2 = insertForestLineInSrcSpan (ForestLine 1 0 1) sspan
+      (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:(100000001,1)-(100000011,7)"
+      (showSrcSpan sspan2) `shouldBe` "((100000001,1),(100000011,8))"
+
+      let tree1 = mkTreeFromTokens (take 10 toks)
+      let tk1 = replaceTreeInCache sspan tree1 tk'
+      (drawTokenCache tk1) `shouldBe` 
+             "tree TId 0:\n"++
+             "((1,1),(6,17))\n"++
+             "tree TId 1:\n"++
+             "((100000011,1),(100000011,8))\n"
+
+      let tk2 = replaceTreeInCache sspan2 tree1 tk'
+      (drawTokenCache tk2) `shouldBe` 
+             "tree TId 0:\n"++
+             "((1,1),(13,25))\n|\n"++
+             "+- ((1,1),(9,14))\n|\n"++
+             "`- ((13,1),(13,25))\n"++
+             "tree TId 1:\n"++
+             "((1,1),(6,17))\n" -- This is wrong, should have tid in it
+
+  -- ---------------------------------------------
+
+  describe "syncAstToLatestCache" $ do
+    it "update the SrcSpans in a declaration to math the latest stash" $ do
+      (t,toks) <- parsedFileDemoteD1
+      let tk = initTokenCache toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      (GHC.showPpr l) `shouldBe` "test/testdata/Demote/D1.hs:11:1-7"
+      (showSrcSpan l) `shouldBe` "((11,1),(11,8))"
+
+      let tk' = removeToksFromCache tk l
+      (drawTokenCache tk') `shouldBe` 
+             "tree TId 0:\n"++
+             "((1,1),(13,25))\n|\n"++
+             "+- ((1,1),(9,14))\n|\n"++
+             "`- ((13,1),(13,25))\n"++
+             "tree TId 1:\n"++
+             "((11,1),(11,8))\n"
+
+      let mainForest = (tkCache tk') Map.! mainTid
+      let sspan = posToSrcSpan mainForest ((11,1),(11,8))
+
+      let sspan2 = insertForestLineInSrcSpan (ForestLine 1 0 1) sspan
+      (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:(100000001,1)-(100000011,7)"
+      (showSrcSpan sspan2) `shouldBe` "((100000001,1),(100000011,8))"
+
+      let decl'@(GHC.L ss' _) = syncAstToLatestCache tk' decl
+      (GHC.showPpr ss') `shouldBe` "test/testdata/Demote/D1.hs:(100000001,1)-(100000011,7)"
+      (showSrcSpan ss') `shouldBe` "((100000001,1),(100000011,8))"
 
 -- ---------------------------------------------------------------------
 -- Helper functions

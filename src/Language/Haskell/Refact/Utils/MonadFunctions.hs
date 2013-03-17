@@ -146,6 +146,7 @@ getToksBeforeSpan sspan = do
   liftIO $ putStrLn $ "getToksBeforeSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
   return toks
 
+{-
 -- |Put a tree in the stash, against a unique RefactStashId
 --  Utility function for internal use
 stash :: Tree Entry -> RefactGhc ()
@@ -159,20 +160,6 @@ stash oldTree = do
   let rsModule' = Just (tm {rsTokenCache = TK tk' lastTreeId'})
   put $ st { rsModule = rsModule' }
   return ()
-
-{-
--- |Get the current stash ids
-getStashIds :: RefactGhc [RefactStashId]
-getStashIds = do
-  st <- get
-  let Just tm = rsModule st
-  return (Map.keys (tkCache $ rsTokenCache tm))
-
--- |get any stash ids added compared to the prior list
-stashDiff :: [RefactStashId] -> RefactGhc [RefactStashId]
-stashDiff prev = do
-  current <- getStashIds
-  return (current \\ prev)
 -}
 
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
@@ -182,12 +169,16 @@ putToksForSpan sspan toks = do
   liftIO $ putStrLn $ "putToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show toks)
   st <- get
   let Just tm = rsModule st
+
+  let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
+  {-
   let forest = getTreeFromCache sspan (rsTokenCache tm)
   let (forest',newSpan,oldTree) = updateTokensForSrcSpan forest sspan toks
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
+  -}
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  stashName <- stash oldTree
+  -- stashName <- stash oldTree
   return newSpan
 
 -- |Replace the tokens for a given GHC.SrcSpan, return GHC.SrcSpan
@@ -201,12 +192,15 @@ putToksForPos pos toks = do
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
+  let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
+  {-
   let forest = getTreeFromCache sspan (rsTokenCache tm)
   let (forest',newSpan,oldTree) = updateTokensForSrcSpan forest sspan toks
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
+  -}
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  stashName <- stash oldTree
+  -- stashName <- stash oldTree
   drawTokenTree ""
   return newSpan
 
@@ -260,12 +254,15 @@ removeToksForSpan sspan = do
   liftIO $ putStrLn $ "removeToksForSpan " ++ (GHC.showPpr sspan)
   st <- get
   let Just tm = rsModule st
+  let tk' = removeToksFromCache (rsTokenCache tm) sspan
+  {-
   let forest = getTreeFromCache sspan (rsTokenCache tm)
   let (forest',oldTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
+  -}
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  stashName <- stash oldTree -- Create a new entry for the old tree
+  -- stashName <- stash oldTree -- Create a new entry for the old tree
   return ()
 
 -- |Remove a GHC.SrcSpan and its associated tokens
@@ -276,14 +273,16 @@ removeToksForPos pos = do
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
+  let tk' = removeToksFromCache (rsTokenCache tm) sspan
+  {-
   let forest = getTreeFromCache sspan (rsTokenCache tm)
   let (forest',delTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
+  -}
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  stashName <- stash delTree
-  liftIO $ putStrLn $ "removeToksForPos result:" ++ (show forest')
-  drawTokenTree "Full TokenCache"
+  -- stashName <- stash delTree
+  drawTokenTree "removeToksForPos result"
   return ()
 
 -- ---------------------------------------------------------------------

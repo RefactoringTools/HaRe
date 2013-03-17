@@ -62,7 +62,7 @@ data ForestLine = ForestLine
                   } deriving (Eq)
 
 instance Show ForestLine where
-  show s = "(ForestLine " ++ (show $ flTreeSelector s) 
+  show s = "(ForestLine " ++ (show $ flTreeSelector s)
          ++ " " ++ (show $ flInsertVersion s)
          ++ " " ++ (show $ flLine s)
          ++ ")"

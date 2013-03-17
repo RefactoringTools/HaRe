@@ -1284,6 +1284,7 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    demotedDecls''' <- foldInDemotedDecls pns clashedNames subst [demotedDecls]
 
                    liftIO $ putStrLn $ "MoveDef.foldParams foldInDemotedDecls done"
+                   drawTokenTree "after foldInDemotedDecls" -- ++AZ++
 
                    -- moveDecl pns (HsMatch loc1 name pats rhs' ds) False decls' False
                    -- moveDecl1 {- pns -} (GHC.Match pats mt rhs') Nothing pns False decls' False
@@ -1328,8 +1329,14 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
           -- worker (match@(HsMatch loc1 (PNT pname _ _) pats rhs ds)::HsMatchP)
           worker (match@(GHC.FunBind (GHC.L _ pname) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name)
             | isJust (find (==pname) pns)
-            = do match'  <- foldM (flip (autoRenameLocalVar True)) match clashedNames
+            = do
+                 liftIO $ putStrLn $ "foldInDemotedDecls: match found:clashedNames=" ++ (GHC.showPpr clashedNames) -- ++AZ++
+                 liftIO $ putStrLn $ "foldInDemotedDecls: subst=" ++ (GHC.showPpr subst) -- ++AZ++
+                 drawTokenTree "in match start" -- ++AZ++
+                 match'  <- foldM (flip (autoRenameLocalVar True)) match clashedNames
                  match'' <- foldM replaceExpWithUpdToks match' subst
+                 liftIO $ putStrLn $ "foldInDemotedDecls: about to rmParamsInDemotedDecls" -- ++AZ++
+                 drawTokenTree "in match before rmParamsInDemotedDecls" -- ++AZ++
                  rmParamsInDemotedDecls (map fst subst) match''
 
           worker x = return x
@@ -1586,16 +1593,16 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
            -}
 
 
---substitute an old expression by new expression
-replaceExpWithUpdToks :: (SYB.Data t) 
+-- |substitute an old expression by new expression
+replaceExpWithUpdToks :: (SYB.Data t)
                       => t -> (GHC.Name, GHC.HsExpr GHC.Name)
                       -> RefactGhc t
 replaceExpWithUpdToks  decls subst
   -- = applyTP (full_buTP (idTP `adhocTP` worker)) decls
-  = everywhereMStaged' SYB.Renamer (SYB.mkM worker) decls 
+  = everywhereMStaged' SYB.Renamer (SYB.mkM worker) decls
          where worker (e@(GHC.L l _)::GHC.LHsExpr GHC.Name)
                  |(expToName e/=defaultName) &&  (expToName e)==(fst subst)
-                     =update e (GHC.L l (snd subst)) e
+                     = update e (GHC.L l (snd subst)) e
                worker x=return x
 
 {-

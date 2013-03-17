@@ -2686,6 +2686,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
   addLocalDecl parent (newFun, maybeSig, newFunToks)
     =do
         liftIO $ putStrLn $ "addLocalDecl entered" -- ++AZ++
+        drawTokenTree "initial tree" -- ++AZ++
         let binds = hsValBinds parent
 
         let (startLoc,endLoc)
@@ -3592,9 +3593,8 @@ autoRenameLocalVar:: (HsValBinds t)
                      ->GHC.Name     -- ^ The identifier.
                      ->t            -- ^ The syntax phrase.
                      -> RefactGhc t -- ^ The result.
-
-autoRenameLocalVar updateToks pn t = do
-  liftIO $ putStrLn $ "autoRenameLocalVar: (updateToks,pn)=" ++ (GHC.showPpr (updateToks,pn))
+autoRenameLocalVar modifyToks pn t = do
+  liftIO $ putStrLn $ "autoRenameLocalVar: (modifyToks,pn)=" ++ (GHC.showPpr (modifyToks,pn))
   -- = everywhereMStaged SYB.Renamer (SYB.mkM renameInMatch)
   if isDeclaredIn pn t
          then do t' <- worker t
@@ -3606,7 +3606,7 @@ autoRenameLocalVar updateToks pn t = do
                       let ds = hsVisibleNames pn (hsValBinds t)
                       let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
                       newName <- mkNewGhcName newNameStr
-                      if updateToks
+                      if modifyToks
                         then renamePN pn newName True t
                         else renamePN pn newName False t
 
