@@ -243,7 +243,7 @@ putDeclToksAfterSpan oldSpan t pos toks = do
   let Just tm = rsModule st
   let forest = getTreeFromCache oldSpan (rsTokenCache tm)
   let (forest',_newSpan, t') = addDeclToksAfterSrcSpan forest oldSpan pos toks t
-  let tk' = replaceTreeInCache oldSpan forest' $ rsTokenCache tm
+  let tk' = replaceTreeInCache oldSpan forest' (rsTokenCache tm)
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return t'

@@ -493,8 +493,16 @@ replaceTreeInCache :: GHC.SrcSpan -> Tree Entry -> TokenCache -> TokenCache
 replaceTreeInCache sspan tree tk = tk'
   where
     tid = treeIdFromForestSpan $ srcSpanToForestSpan sspan
-    tree' = treeIdIntoTree tid tree
+    -- tree' = treeIdIntoTree tid tree
+    tree' = putTidInTree tid tree
     tk' = tk {tkCache = Map.insert tid tree' (tkCache tk) }
+
+putTidInTree :: TreeId -> Tree Entry -> Tree Entry
+putTidInTree tid tree@(Node (Entry fs toks) subForest) = tree'
+  where
+    subForest' = map (putTidInTree tid) subForest
+    fs' = treeIdIntoForestSpan tid fs
+    tree' = Node (Entry fs' toks) subForest'
 
 -- ---------------------------------------------------------------------
 
@@ -504,6 +512,7 @@ syncAstToLatestCache :: (SYB.Data t) => TokenCache -> GHC.Located t -> GHC.Locat
 syncAstToLatestCache tk t = t'
   -- = error $ "syncAstToLatestCache:pos=" ++ (show pos)
   -- = error $ "syncAstToLatestCache:fs=" ++ (show fs)
+  -- = error $ "syncAstToLatestCache:sspan=" ++ (show sspan)
   where
     mainForest = (tkCache tk) Map.! mainTid
     forest@(Node (Entry fs _) _) = (tkCache tk) Map.! (tkLastTreeId tk)
@@ -570,7 +579,7 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
     (startPos,endPos) = nonCommentSpan toks''
 
     -- if the original sspan had a ForestLine version, preserve it
-    (((ForestLine trs vs _),_),(ForestLine tre ve _,_)) = srcSpanToForestSpan sspan
+    (((ForestLine _trs vs _),_),(ForestLine _tre ve _,_)) = srcSpanToForestSpan sspan
     -- newPosSpan = ((ForestLine vs sl,sc),(ForestLine ve el,ec))
     newSpan = insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos) 
 
@@ -635,7 +644,8 @@ insertSrcSpan forest sspan = forest'
 
               -- TODO: we are potentially discarding added info here,
               -- with sub SrcSpans having markers in them
-              retrieveTokens $ Z.toTree z
+              -- retrieveTokens $ Z.toTree z
+              retrieveTokens $ Z.tree z
 
           (tokStartPos,tokEndPos) = forestSpanToSimpPos sspan
 
@@ -684,9 +694,10 @@ removeSrcSpan forest sspan = (forest'', delTree)
 
 -- |Retrieve all the tokens at the leaves of the tree, in order
 -- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
--- rows with tokenFileMark in a filename for a token
+--      rows with tokenFileMark in a filename for a token
 retrieveTokens :: Tree Entry -> [PosToken]
-retrieveTokens forest = reAlignMarked $ concat $ map (\t -> F.foldl accum [] t) [forest]
+retrieveTokens forest = stripForestLines $ reAlignMarked 
+                      $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]
     accum acc (Entry _ toks) = acc ++ toks
@@ -762,6 +773,16 @@ isMarked (GHC.L l _,_) =
   case l of
     GHC.RealSrcSpan ss -> GHC.srcSpanFile ss == tokenFileMark
     _                  -> False
+
+-- ---------------------------------------------------------------------
+
+stripForestLines :: [PosToken] -> [PosToken]
+stripForestLines toks = map doOne toks
+  where
+    doOne (GHC.L l t,s) = (GHC.L l' t,s)
+      where
+       ((ForestLine _ _ ls,_),(_,_)) = srcSpanToForestSpan l
+       l' = insertForestLineInSrcSpan (ForestLine 0 0 ls) l
 
 -- ---------------------------------------------------------------------
 
@@ -1028,7 +1049,8 @@ openZipperToSpan sspan z
 
           childrenAsZ = go [] (Z.firstChild z)
           z' = case (filter contains childrenAsZ) of
-            [] -> z -- Not in subtree, this is as good as it gets
+            [] -> z -- Not directly in a subtree, this is as good as
+                    -- it gets
             [x] -> -- exactly one, drill down
                    openZipperToSpan sspan x
             -- _xs -> z -- Multiple, this is the spot
@@ -1326,18 +1348,24 @@ syncAST :: (SYB.Data t)
 -- syncAST (GHC.L _l t) sspan forest = (ast',forest')
 syncAST ast@(GHC.L l _t) sspan forest = (GHC.L sspan xx,forest')
   where
-    -- ast' = (GHC.L sspan t)
     forest' = forest
 
     ((ForestLine _ _ startRow,startCol),_)       = srcSpanToForestSpan l
     ((ForestLine _ _ newStartRow,newStartCol),_) = srcSpanToForestSpan sspan
 
-    rowOffset = newStartRow - startRow
-    colOffset = newStartCol - startCol
+    (( sr, sc),( er, ec)) = ghcSpanStartEnd l
+    ((nsr,nsc),(ner,nec)) = ghcSpanStartEnd sspan
+
+    rowOffset = nsr - sr
+    colOffset = nsc - sc
+
+    rowOffset' = newStartRow - startRow
+    colOffset' = newStartCol - startCol
 
     -- TODO: take cognizance of the ForestLines encoded in srcspans
     -- when calculating the offsets etc
-    syncSpan s = addOffsetToSpan (rowOffset,colOffset) s
+    syncSpan s  = addOffsetToSpan (rowOffset,colOffset) s
+    syncSpan' s = addOffsetToSpan (rowOffset',colOffset') s
     -- syncSpan s = s
 
     (GHC.L _s xx) = everywhereStaged SYB.Renamer (
@@ -1350,12 +1378,13 @@ syncAST ast@(GHC.L l _t) sspan forest = (GHC.L sspan xx,forest')
               `SYB.extT` limportdecl
               ) ast
 
-    hsbindlr (GHC.L s b) = (GHC.L (syncSpan s) b) :: GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)
-    sig (GHC.L s n) = (GHC.L (syncSpan s) n) :: GHC.LSig GHC.Name
-    ty (GHC.L s typ) =  (GHC.L (syncSpan s) typ) :: (GHC.LHsType GHC.Name)
-    name (GHC.L s n) = (GHC.L (syncSpan s) n) :: GHC.Located GHC.Name
-    lhsexpr (GHC.L s e) = (GHC.L (syncSpan s) e) :: GHC.LHsExpr GHC.Name
-    lpat (GHC.L s p) = (GHC.L (syncSpan s) p) :: GHC.LPat GHC.Name
+    hsbindlr (GHC.L s b)    = (GHC.L (syncSpan s) b) :: GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)
+    sig (GHC.L s n)         = (GHC.L (syncSpan s) n) :: GHC.LSig GHC.Name
+    ty (GHC.L s typ)        = (GHC.L (syncSpan s) typ) :: (GHC.LHsType GHC.Name)
+    -- TODO: ++AZ++ this is horrible, ad hoc: syncSpan'
+    name (GHC.L s n)        = (GHC.L (syncSpan' s) n) :: GHC.Located GHC.Name
+    lhsexpr (GHC.L s e)     = (GHC.L (syncSpan s) e) :: GHC.LHsExpr GHC.Name
+    lpat (GHC.L s p)        = (GHC.L (syncSpan s) p) :: GHC.LPat GHC.Name
     limportdecl (GHC.L s n) = (GHC.L (syncSpan s) n) :: GHC.LImportDecl GHC.Name
 
 -- ---------------------------------------------------------------------
