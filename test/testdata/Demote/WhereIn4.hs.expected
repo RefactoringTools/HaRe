@@ -1,4 +1,4 @@
-module WhereIn4 where
+module Demote.WhereIn4 where
 
 --A definition can be demoted to the local 'where' binding of a friend declaration,
 --if it is only used by this friend declaration.
@@ -10,7 +10,6 @@ module WhereIn4 where
 
 sumSquares x y = sq x + sq y       
          where p=2  {-There is a comment-}
-
                sq z = z^p  --there is a comment
 
 

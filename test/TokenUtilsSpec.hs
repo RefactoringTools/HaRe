@@ -753,7 +753,7 @@ spec = do
       let toks' = retrieveTokens forest'
       -- (showToks toks ) `shouldBe` ""
       -- (showToks toks') `shouldBe` ""
-      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n module TokenTest where\n\n\n\n\n\n\n\n "
+      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n  module TokenTest where\n\n\n\n\n\n\n\n "
 
     -- --------------------------------------
 
@@ -1530,6 +1530,58 @@ spec = do
              "`- ((13,1),(13,25))\n"++
              "tree TId 1:\n"++
              "((100000001,1),(100000006,17))\n" 
+
+  -- -----------------------------------
+
+  describe "removeToksFromCache" $ do
+    it "removes a SrcSpan from the main tree, and stashes it" $ do
+      (_t,toks) <- parsedFileDemoteWhereIn4
+      let tk = initTokenCache toks
+
+      -- removeToksForPos ((15,1),(15,17))
+      let pos = ((15,1),(15,17))
+      let mainForest = (tkCache tk) Map.! mainTid
+      let sspan = posToSrcSpan mainForest pos
+      let tk' = removeToksFromCache tk sspan
+
+      (drawTokenCache tk') `shouldBe` 
+             "tree TId 0:\n"++
+             "((1,1),(20,1))\n|\n"++
+             "+- ((1,1),(14,18))\n|\n"++
+             "`- ((17,1),(20,1))\n"++
+             "tree TId 1:\n"++
+             "((100000015,1),(100000015,17))\n"
+
+      let tree1 = (tkCache tk') Map.! (TId 1)
+
+      (show $ retrieveTokens tree1) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
+
+      -- putToksForSpan test/testdata/Demote/WhereIn4.hs:100000015:14-16:[((((0,1),(0,2)),ITvarid "p"),"p")]
+
+      let sspan3 = posToSrcSpan mainForest ((100000015,14),(100000015,17))
+      (GHC.showPpr sspan3) `shouldBe` "test/testdata/Demote/WhereIn4.hs:100000015:14-16"
+      let toks3 = [mkToken (GHC.ITvarid (GHC.mkFastString "p")) (0,1) "p"]
+      (show toks3) `shouldBe` "[((((0,1),(0,2)),ITvarid \"p\"),\"p\")]"
+      let (tk3,_newSpan) = putToksInCache tk' sspan3 toks3
+      (drawTokenCache tk3) `shouldBe` 
+             "tree TId 0:\n"++
+             "((1,1),(20,1))\n|\n"++
+             "+- ((1,1),(14,18))\n|\n"++
+             "`- ((17,1),(20,1))\n"++
+             "tree TId 1:\n"++
+             "((100000015,1),(100000015,17))\n|\n"++
+             "+- ((100000015,1),(100000015,14))\n|\n"++
+             "`- ((100000015,14),(100000015,15))\n"++
+             "tree TId 2:\n"++
+             "((200000015,14),(200000015,17))\n"
+
+      let (forest2,tree1') = getSrcSpanFor tree1 (srcSpanToForestSpan sspan3)
+      (show $ retrieveTokens forest2) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
+
+      (show $ retrieveTokens tree1') `shouldBe` "[((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
+
+      let tree3 = (tkCache tk3) Map.! (TId 1)
+      (show $ retrieveTokens tree3) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,15)),ITvarid \"p\"),\"p\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
 
   -- ---------------------------------------------
 

@@ -1283,6 +1283,9 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    -- let demotedDecls''' = definingDeclsNames pns decls' True False
                    demotedDecls''' <- foldInDemotedDecls pns clashedNames subst [demotedDecls]
 
+                   -- let [(GHC.L lll _)] = demotedDecls'''
+                   -- liftIO $ putStrLn $ "MoveDef.foldParams demotedDecls''' srcspan=" ++ (GHC.showPpr lll)
+                  
                    liftIO $ putStrLn $ "MoveDef.foldParams foldInDemotedDecls done"
                    drawTokenTree "after foldInDemotedDecls" -- ++AZ++
 
@@ -1295,7 +1298,9 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    return (HsMatch loc1 name pats rhs' (ds++(filter (not.isTypeSig) demotedDecls''')))
                    -}
                    liftIO $ putStrLn $ "MoveDef.foldParams about to addDecl"
-                   rhs'' <- addDecl rhs' Nothing (ghead "foldParams 2" demotedDecls''',Nothing,Nothing) False
+                   let [(GHC.L declSpan _)] = demotedDecls'''
+                   declToks <- getToksForSpan declSpan
+                   rhs'' <- addDecl rhs' Nothing (ghead "foldParams 2" demotedDecls''',Nothing,Just declToks) False
                    liftIO $ putStrLn $ "MoveDef.foldParams addDecl done"
                    return (GHC.Match pats mt rhs'')
            else  do  -- moveDecl pns match False decls True

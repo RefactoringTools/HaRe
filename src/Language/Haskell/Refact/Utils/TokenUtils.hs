@@ -345,6 +345,10 @@ forestSpanVersionNotSet ((ForestLine _ sv _,_),(ForestLine _ ev _,_)) = sv == 0 
 forestPosVersionSet :: ForestPos -> Bool
 forestPosVersionSet (ForestLine _ v _,_) = v /= 0
 
+-- |Checks if the AST version is non-zero
+forestPosAstVersionSet :: ForestPos -> Bool
+forestPosAstVersionSet (ForestLine tr _ _,_) = tr /= 0
+
 -- |Checks if the version is zero
 forestPosVersionNotSet :: ForestPos -> Bool
 forestPosVersionNotSet (ForestLine _ v _,_) = v == 0
@@ -567,14 +571,47 @@ getTokensBefore forest sspan = (forest', prevToks')
 -- TODO: What about the change in size of the SrcSpan? Solution is to
 -- replace the SrcSpan with a new one (marked), and return it, as well
 -- as the old one
+-- TODO2: What about trailing comments? Preserve or replace?
 updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (Tree Entry,GHC.SrcSpan,Tree Entry)
 updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
   where
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
     prevToks = retrieveTokens tree
 
+
+    endComments = reverse $ takeWhile isWhiteSpace $ reverse toks
+    startComments = takeWhile isWhiteSpace $ toks
+
+    {-
+    stripComments ts = ts'
+      where
+        ts1 = reverse $ dropWhile isWhiteSpace $ reverse ts
+        ts' = dropWhile isWhiteSpace ts1
+    -}
+
     newTokStart = ghead "reIndentToks" prevToks
-    toks'' = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
+
+    toks'' = if (nonEmptyList startComments || nonEmptyList endComments)
+      then -- toks have comments, discard originals
+           reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
+      else -- Must reuse any pre-existing start or end comments, and
+           -- resync the tokens across all three.
+        let
+           origEndComments = reverse $ takeWhile isWhiteSpace $ reverse prevToks
+           origStartComments = takeWhile isWhiteSpace $ prevToks
+           core = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
+           trail = if (emptyList origEndComments)
+            then []
+            else addOffsetToToks (lineOffset,colOffset) origEndComments
+              where
+                lineOffset = 0 -- tokenRow (head origEndComments) - tokenRow (head origEndComments)
+                colOffset = 0 -- tokenCol (head origEndComments)
+
+           toks' = origStartComments ++ core ++ trail
+        in toks'
+
+    -- toks'' = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
+    -- toks'' = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks (leadComments ++ core ++ trailComments)
 
     (startPos,endPos) = nonCommentSpan toks''
 
@@ -1199,7 +1236,7 @@ invariant forest = rsub
         -- test
         -- TODO: is this a reasonable approach?
 
-        rs = if (start == sstart) && ((end == send) || (forestPosVersionSet send))
+        rs = if (start == sstart) && ((end == send) || (forestPosVersionSet send) || (forestPosAstVersionSet send))
                then []
                else ["FAIL: subForest start and end does not match entry: " ++ (prettyshow node)]
 
