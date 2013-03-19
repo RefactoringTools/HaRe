@@ -1519,20 +1519,23 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                     = do let pats'=filter (\x->not ((patToPNT x /= Nothing) &&
                                           elem (fromJust $ patToPNT x) ps)) pats
 
-                         {- TODO: at this point the original declaration is missing, no point updating the toks. Maybe ++AZ++
                          let (startPos,endPos@(endRow,endCol)) = getBiggestStartEndLoc pats
                          -- error $ "rmParamsInDemotedDecls:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
                          -- error $ "rmParamsInDemotedDecls:(prettyprint pats')=" ++ (prettyprint pats) -- ++AZ++
-                         updateToksWithPos (startPos,endPos) pats' prettyprint False
-                         toks <- fetchToks
-                         error $ "rmParamsInDemotedDecls:(toks)=" ++ (showToks toks) -- ++AZ++
-                         let (toks1, _, toks2)  = splitToks (startPos, (endRow,(endCol - 1))) toks
-                         error $ "rmParamsInDemotedDecls:(last toks1,head toks2)=" ++ (showToks [last toks1, head toks2]) -- ++AZ++
-                         ++AZ++ -}
+                         if (emptyList pats')
+                           then removeToksForPos (startPos,endPos)
+                           else -- updateToksWithPos (startPos,endPos) pats' prettyprint False
+                                updateToksWithPos (startPos,endPos) pats' pprPat False
+                         -- toks <- fetchToks
+                         -- error $ "rmParamsInDemotedDecls:(toks)=" ++ (showToks toks) -- ++AZ++
+                         -- let (toks1, _, toks2)  = splitToks (startPos, (endRow,(endCol - 1))) toks
+                         -- error $ "rmParamsInDemotedDecls:(last toks1,head toks2)=" ++ (showToks [last toks1, head toks2]) -- ++AZ++
+
                          -- pats'' <- update pats pats' pats
 
                          return (GHC.Match pats' typ rhs)
 
+       pprPat pat = intercalate " " $ map (\p -> (prettyprint p )) pat
 {-
        rmParamsInDemotedDecls ps
          =applyTP (once_tdTP (failTP `adhocTP` worker))

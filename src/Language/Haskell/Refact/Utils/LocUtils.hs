@@ -557,6 +557,8 @@ updateToks oldAST@(GHC.L sspan _) newAST printFun addTrailingNl
        putToksForSpan sspan  newToks'
        return ()
 
+-- ---------------------------------------------------------------------
+
 updateToksWithPos :: (SYB.Data t)
   => (SimpPos, SimpPos) -- ^Start and end pos of old element
   -> t             -- ^ New element
