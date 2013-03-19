@@ -1041,8 +1041,10 @@ doDemoting' t pn
                          -> RefactGhc [GHC.LHsBind GHC.Name]
           -- duplicateDecls :: (SYB.Data t) =>[GHC.Name] -> t -> RefactGhc [GHC.LHsBind GHC.Name]
           duplicateDecls pns demoted dsig dtoks decls
-             = do everywhereMStaged SYB.Renamer (SYB.mkM dupInMatch
-             -- = do somewhereMStaged SYB.Renamer (SYB.mkM dupInMatch
+             -- = do everywhereMStaged SYB.Renamer (SYB.mkM dupInMatch
+             = do clearRefactDone
+                  everywhereMStaged' SYB.Renamer (SYB.mkM dupInMatch -- top-down approach
+             -- = do somewhereMStaged SYB.Renamer (SYB.mkM dupInMatch -- need working MonadPlus for somewhereMStaged
                                                 `SYB.extM` dupInPat) decls
              {-
              = do applyTP (once_tdTP (failTP `adhocTP` dupInMatch
@@ -1052,20 +1054,25 @@ doDemoting' t pn
              -}
                where
                  -- dupInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-                 dupInMatch (match@(GHC.Match pats mt rhs) :: GHC.Match GHC.Name)
+                 dupInMatch (match@(GHC.Match pats _mt rhs) :: GHC.Match GHC.Name)
                    -- | any (flip findPN match) pns && not (any (flip findPN name) pns)
                    | (not $ findPNs pns pats) && findPNs pns rhs
                    =  do
-                        --If not fold parameters.
-                        -- moveDecl pns pats False decls False
-                        {- ++AZ++ foldParams instead
-                        rhs' <- addDecl rhs Nothing (demoted,dsig,dtoks) False
-                        return (GHC.Match pats mt rhs')
-                        -}
-                        -- If fold parameters.
-                        -- error "dupInMatch" -- ++AZ++
-                        match' <- foldParams pns match decls demoted dsig dtoks
-                        return match'
+                        done <- getRefactDone
+                        if done
+                          then return match
+                          else do
+                            setRefactDone
+                            --If not fold parameters.
+                            -- moveDecl pns pats False decls False
+                            {- ++AZ++ foldParams instead
+                            rhs' <- addDecl rhs Nothing (demoted,dsig,dtoks) False
+                            return (GHC.Match pats mt rhs')
+                            -}
+                            -- If fold parameters.
+                            -- error "dupInMatch" -- ++AZ++
+                            match' <- foldParams pns match decls demoted dsig dtoks
+                            return match'
                  -- dupInMatch _ =mzero
                  dupInMatch x = return x
 
@@ -1236,18 +1243,15 @@ foldParams :: [GHC.Name]             -- ^The (list?) function name being demoted
            -> Maybe (GHC.LSig GHC.Name) -- ^Signature being demoted, if there is one
            -> Maybe [PosToken]          -- ^Tokens if provided
            -> RefactGhc (GHC.Match GHC.Name)
-foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demotedDecls dsig dtoks
+foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls dsig dtoks
 
      =do
          liftIO $ putStrLn $ "MoveDef.foldParams entered"
+         liftIO $ putStrLn $ "MoveDef.foldParams:match=" ++ (SYB.showData SYB.Renamer 0 match)
 
          let matches=concatMap matchesInDecls [GHC.unLoc demotedDecls]
              pn=ghead "foldParams" pns    --pns /=[]
          params <- allParams pn rhs []
-         -- error $ "MoveDef.foldParams: (pns,decls)=" ++ (GHC.showPpr (pns,decls)) -- ++AZ++
-         -- error $ "MoveDef.foldParams: (demotedDecls)=" ++ (GHC.showPpr (demotedDecls)) -- ++AZ++
-         -- error $ "MoveDef.foldParams: (params,pn)=" ++ (GHC.showPpr (params,pn)) -- ++AZ++
-         -- error $ "MoveDef.foldParams: (length matches)=" ++ (GHC.showPpr (length matches)) -- ++AZ++
          if (length.nub.map length) params==1                  -- have same number of param 
              && ((length matches)==1)      -- only one 'match' in the demoted declaration
            then do
@@ -1255,9 +1259,10 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                        subst=mkSubst patsInDemotedDecls params
                        fstSubst=map fst subst
                        sndSubst=map snd subst
+
+                   liftIO $ putStrLn $ "MoveDef.foldParams before rmParamsInParent"
                    rhs' <- rmParamsInParent pn sndSubst rhs
-                   -- toks <- fetchToks
-                   -- error $ "MoveDef.foldParams:1 (toks)=" ++ (showToks toks) -- ++AZ++
+                   liftIO $ putStrLn $ "MoveDef.foldParams after rmParamsInParent"
 
                    -- ls<-mapM hsFreeAndDeclaredPNs sndSubst
                    let ls = map hsFreeAndDeclaredPNs sndSubst
@@ -1266,38 +1271,14 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    let newNames=((concatMap fst ls)) \\ (fstSubst)
                    --There may be name clashing because of introducing new names.
                    clashedNames<-getClashedNames fstSubst newNames (ghead "foldParams" matches)
-                  {- --auotmatic renaming
-                   demotedDecls'<-foldM (flip (autoRenameLocalVar True)) demotedDecls clashedNames
-                   demotedDecls''<- foldM replaceExpWithUpdToks demotedDecls' subst 
-                   --remove substituted parameters in demoted declarations
-                   demotedDecls'''<-rmParamsInDemotedDecls fstSubst demotedDecls'' -}
-                   -- error $ "MoveDef.foldParams: (pns,clashedNames,subst))=" ++ (GHC.showPpr (pns,clashedNames,subst)) -- ++AZ++
-                   -- error $ "MoveDef.foldParams: (decls)=" ++ (SYB.showData SYB.Renamer 0 decls) -- ++AZ++
-
-                   -- toks <- fetchToks
-                   -- error $ "MoveDef.foldParams:1 (toks)=" ++ (showToks toks) -- ++AZ++
 
                    liftIO $ putStrLn $ "MoveDef.foldParams about to foldInDemotedDecls"
 
                    -- decls' <- foldInDemotedDecls pns clashedNames subst decls
                    -- let demotedDecls''' = definingDeclsNames pns decls' True False
                    demotedDecls''' <- foldInDemotedDecls pns clashedNames subst [demotedDecls]
-
-                   -- let [(GHC.L lll _)] = demotedDecls'''
-                   -- liftIO $ putStrLn $ "MoveDef.foldParams demotedDecls''' srcspan=" ++ (GHC.showPpr lll)
-                  
                    liftIO $ putStrLn $ "MoveDef.foldParams foldInDemotedDecls done"
-                   drawTokenTree "after foldInDemotedDecls" -- ++AZ++
 
-                   -- moveDecl pns (HsMatch loc1 name pats rhs' ds) False decls' False
-                   -- moveDecl1 {- pns -} (GHC.Match pats mt rhs') Nothing pns False decls' False
-                   -- error $ "MoveDef.foldParams: (rhs')=" ++ (SYB.showData SYB.Renamer 0 rhs') -- ++AZ++
-                   -- error $ "MoveDef.foldParams: (decls')=" ++ (SYB.showData SYB.Renamer 0 decls') -- ++AZ++
-                   -- error $ "MoveDef.foldParams: (demotedDecls''')=" ++ (SYB.showData SYB.Renamer 0 demotedDecls''') -- ++AZ++
-                   {-
-                   return (HsMatch loc1 name pats rhs' (ds++(filter (not.isTypeSig) demotedDecls''')))
-                   -}
-                   liftIO $ putStrLn $ "MoveDef.foldParams about to addDecl"
                    let [(GHC.L declSpan _)] = demotedDecls'''
                    declToks <- getToksForSpan declSpan
                    rhs'' <- addDecl rhs' Nothing (ghead "foldParams 2" demotedDecls''',Nothing,Just declToks) False
@@ -1305,6 +1286,7 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                    return (GHC.Match pats mt rhs'')
            else  do  -- moveDecl pns match False decls True
                      -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding 
+                     liftIO $ putStrLn $ "MoveDef.foldParams about to addDecl:dtoks=" ++ (show dtoks)
                      rhs' <- addDecl rhs Nothing (demotedDecls,dsig,dtoks) False
                      return (GHC.Match pats mt rhs')
 
@@ -1328,20 +1310,14 @@ foldParams pns (match@((GHC.Match pats mt rhs))::GHC.Match GHC.Name) decls demot
                           -> [GHC.LHsBind GHC.Name] -- ^Binds of original top level entiity, including src and dst
                           -> RefactGhc [GHC.LHsBind GHC.Name]
        foldInDemotedDecls  pns clashedNames subst decls
-          -- = applyTP (stop_tdTP (failTP `adhocTP` worker)) decls
           = everywhereMStaged SYB.Renamer (SYB.mkM worker) decls
           where
           -- worker (match@(HsMatch loc1 (PNT pname _ _) pats rhs ds)::HsMatchP)
           worker (match@(GHC.FunBind (GHC.L _ pname) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name)
             | isJust (find (==pname) pns)
             = do
-                 liftIO $ putStrLn $ "foldInDemotedDecls: match found:clashedNames=" ++ (GHC.showPpr clashedNames) -- ++AZ++
-                 liftIO $ putStrLn $ "foldInDemotedDecls: subst=" ++ (GHC.showPpr subst) -- ++AZ++
-                 drawTokenTree "in match start" -- ++AZ++
                  match'  <- foldM (flip (autoRenameLocalVar True)) match clashedNames
                  match'' <- foldM replaceExpWithUpdToks match' subst
-                 liftIO $ putStrLn $ "foldInDemotedDecls: about to rmParamsInDemotedDecls" -- ++AZ++
-                 drawTokenTree "in match before rmParamsInDemotedDecls" -- ++AZ++
                  rmParamsInDemotedDecls (map fst subst) match''
 
           worker x = return x

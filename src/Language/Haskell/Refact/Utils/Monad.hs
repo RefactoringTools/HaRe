@@ -141,6 +141,11 @@ instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
 instance (MonadTrans GHC.GhcT) where
    lift = GHC.liftGhcT
 
+-- instance MonadPlus RefactGhc where
+instance MonadPlus (GHC.GhcT (StateT RefactState IO)) where
+  mzero = undefined
+  mplus = undefined
+
 {-
 instance MonadPlus (RefactGhc a) where
    mzero = RefactGhc (StateT(\ st -> mzero))

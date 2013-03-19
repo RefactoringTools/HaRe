@@ -2685,17 +2685,20 @@ addDecl parent pn (decl, msig, declToks) topLevel
                -> RefactGhc t
   addLocalDecl parent (newFun, maybeSig, newFunToks)
     =do
-        liftIO $ putStrLn $ "addLocalDecl entered" -- ++AZ++
+        liftIO $ putStrLn $ "addLocalDecl entered"
+        liftIO $ putStrLn $ "addLocalDecl entered:parent=" ++ (SYB.showData SYB.Renamer 0 parent) -- ++AZ++
         drawTokenTree "initial tree" -- ++AZ++
         let binds = hsValBinds parent
 
+        -- liftIO $ putStrLn $ "addLocalDecl entered:localDecls=" ++ (SYB.showData SYB.Renamer 0 localDecls) -- ++AZ++
+        liftIO $ putStrLn $ "addLocalDecl entered:newSource=" ++ (show $ "[" ++ newSource ++ "]") -- ++AZ++
         let (startLoc,endLoc)
              = if (emptyList localDecls)
                  then getStartEndLoc parent
                  else getStartEndLoc localDecls
 
         newToks <- liftIO $ basicTokenise newSource
-        -- error $ "TypeUtils.addLocalDecl:newToks=" ++ (showToks newToks) -- ++AZ++
+        -- liftIO $ putStrLn $ "TypeUtils.addLocalDecl:newToks=" ++ (showToks newToks) -- ++AZ++
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
 
         let colIndent = if (emptyList localDecls) then 4 else 0
