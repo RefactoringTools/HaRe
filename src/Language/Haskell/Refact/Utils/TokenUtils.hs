@@ -923,41 +923,53 @@ addDeclToksAfterSrcSpan forest oldSpan pos toks t = (forest'',newSpan,t')
 
 reIndentToks :: Positioning -> [PosToken] -> [PosToken] -> [PosToken]
 reIndentToks pos prevToks toks = toks''
+  -- = error $ "reIndentToks:((isComment lastTok),(tokenRow lastNonCommentTok),lastTokEndLine)=" ++ (show ((isComment lastTok),(tokenRow lastNonCommentTok),lastTokEndLine))
   where
     newTokStart = ghead "reIndentToks"
                 $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
 
+    firstTok = ghead "reIndentToks" toks
+    lastTok = glast "reIndentToks" prevToks
+
+    lastNonCommentTok = ghead "reIndentToks.2"
+                      $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse prevToks
+
     prevOffset = getIndentOffset prevToks (tokenPos (glast "reIndentToks1" prevToks))
+
+    (lastTokEndLine,_) = tokenPosEnd lastTok
+
 
     (lineOffset,colOffset,endNewlines) = case pos of
       PlaceAdjacent -> (lineOffset',colOffset',0)
         where
-          colStart  = (tokenColEnd (glast "reIndentToks" prevToks)) + 1
-          lineStart = (tokenRow    (glast "reIndentToks" prevToks))
+          colStart  = (tokenColEnd (lastTok)) + 1
+          lineStart = (tokenRow    (lastTok))
 
-          lineOffset' = lineStart - (tokenRow $ ghead "reIndentToks" toks)
+          lineOffset' = lineStart - (tokenRow firstTok)
           colOffset'  = colStart  - (tokenCol newTokStart)
 
       PlaceAbsolute row col -> (lineOffset', colOffset', 0)
         where
-          lineOffset' = row - (tokenRow $ ghead "reIndentToks" toks)
-          colOffset'  = col - (tokenCol $ ghead "reIndentToks" toks)
+          lineOffset' = row - (tokenRow firstTok)
+          colOffset'  = col - (tokenCol firstTok)
 
       PlaceOffset rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where
           colStart  = tokenCol $ ghead "reIndentToks"
                     $ dropWhile isWhiteSpace prevToks
-          lineStart = (tokenRow (glast "reIndentToks" prevToks)) -- + 1
+          lineStart = (tokenRow (lastTok)) -- + 1
 
-          lineOffset' = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
+          lineOffset' = rowIndent + lineStart - (tokenRow firstTok)
           colOffset'  = colIndent + colStart  - (tokenCol newTokStart)
 
       PlaceIndent rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where
           colStart = prevOffset
-          lineStart = (tokenRow (glast "reIndentToks" prevToks)) -- + 1
+          lineStart = if ((isComment lastTok) && (tokenRow lastNonCommentTok /= lastTokEndLine))
+              then (tokenRow (lastTok)) + 1
+              else  (tokenRow (lastTok))
 
-          lineOffset' = rowIndent + lineStart - (tokenRow $ ghead "reIndentToks" toks)
+          lineOffset' = rowIndent + lineStart - (tokenRow firstTok)
           colOffset'  = colIndent + colStart  - (tokenCol newTokStart) + 1 -- ++AZ++ Why +1?
 
     toks'  = addOffsetToToks (lineOffset,colOffset) toks

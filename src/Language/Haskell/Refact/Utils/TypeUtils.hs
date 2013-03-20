@@ -2686,7 +2686,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
   addLocalDecl parent (newFun, maybeSig, newFunToks)
     =do
         liftIO $ putStrLn $ "addLocalDecl entered"
-        liftIO $ putStrLn $ "addLocalDecl entered:parent=" ++ (SYB.showData SYB.Renamer 0 parent) -- ++AZ++
+        -- liftIO $ putStrLn $ "addLocalDecl entered:parent=" ++ (SYB.showData SYB.Renamer 0 parent) -- ++AZ++
         drawTokenTree "initial tree" -- ++AZ++
         let binds = hsValBinds parent
 

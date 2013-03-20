@@ -1120,6 +1120,50 @@ spec = do
 
     -- ---------------------------------
 
+    it "Adds a new SrcSpan after an existing one, with an indent catering for comments" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn5.hs" 
+      let forest = mkTreeFromTokens toks
+
+      -- removeToksForPos ((14,1),(14,6))
+      let sspan = posToSrcSpan forest ((14,1),(14,6))
+      let (forest',_delTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(19,1))\n|\n"++
+              "+- ((1,1),(12,26))\n|\n"++
+              "`- ((16,1),(19,1))\n"
+      (invariant forest') `shouldBe` []
+
+      -- addLocalDecl entered:newSource="[pow=2\n\n]"
+      -- putToksAfterPos ((11,16),(12,26)) at PlaceIndent 1 0 2
+      let sspan' = posToSrcSpan forest' ((11,16),(12,26))
+
+      let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
+      (drawTreeEntry finsert) `shouldBe`
+              "((1,1),(19,1))\n|\n"++
+              "+- ((1,1),(12,26))\n|  |\n"++
+              "|  +- ((1,1),(11,15))\n|  |\n"++
+              "|  `- ((11,16),(12,26))\n|\n"++
+              "`- ((16,1),(19,1))\n"
+
+      newToks <- liftIO $ basicTokenise "pow=2\n\n"
+      let (forest'',sspan'') = addToksAfterSrcSpan finsert (sspan') (PlaceIndent 1 0 2) newToks
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(19,1))\n|\n"++
+              "+- ((1,1),(12,26))\n|  |\n"++
+              "|  +- ((1,1),(11,15))\n|  |\n"++
+              "|  +- ((11,16),(12,26))\n|  |\n"++
+              "|  `- ((1000014,16),(1000016,1))\n|\n"++
+              "`- ((16,1),(19,1))\n"
+
+      (showSrcSpan sspan'') `shouldBe` "((1000014,16),(1000016,1))"
+      -- (invariant forest'') `shouldBe` []
+
+      let toksFinal = retrieveTokens forest''
+      -- (showToks toksFinal) `shouldBe` ""
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.WhereIn5 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'pow' to 'sq'\n --This example aims to test demoting a function/pattern binding multi-levels.\n\n sumSquares x y = sq x + sq y\n          where sq 0=0\n                sq z=z^pow {-There \nis a comment-}\n                pow=2\n\n \n\n  anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+
+    -- ---------------------------------
+
     it "Adds a new SrcSpan after deleting toks" $ do
       (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
