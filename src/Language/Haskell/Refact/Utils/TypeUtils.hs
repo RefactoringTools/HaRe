@@ -2435,7 +2435,40 @@ addImportDecl ::
     GHC.RenamedSource -> GHC.ModuleName -> Maybe GHC.FastString -> Bool -> Bool -> Bool ->
         Maybe String -> Bool -> [GHC.Name] -> RefactGhc GHC.RenamedSource
 addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias hide idNames
-  = do toks <- fetchToks
+  = do
+       toks <- fetchToks
+       let (toks1, toks2)
+               =if length imps' > 0
+                   then let (_startLoc, endLoc) = getStartEndLoc $ last imps'
+                            toks1' = getToks ((1,1),endLoc) toks
+                            toks2' = dropWhile (\t -> (tokenPos t) <= tokenPos (last toks1')) toks
+                        in (toks1', toks2')
+                   else if not $ isEmptyGroup groupedDecls
+                          then
+                               let startLoc = fst $ startEndLocIncComments toks groupedDecls
+                                   (toks1', toks2') = break (\t ->tokenPos t==startLoc) toks
+                               in (toks1',  toks2')
+                          else (toks,[])
+           before = "\n\n"
+
+           colOffset = if length imps' == 0 && isEmptyGroup groupedDecls
+                        then 1
+                        else getIndentOffset toks
+                                $ if length imps' > 0 then fst $ getStartEndLoc (ghead "addImportDecl4" imps')
+                                               else fst $ startEndLocIncComments toks  groupedDecls
+
+           loc' = realSrcLocFromTok $ (glast "addImportDecl5" toks1)
+       impToks <- liftIO $ tokenise loc' (colOffset-1) True
+                      $ before ++ (GHC.showPpr impDecl)
+       let toks' = toks1++impToks++ (map (increaseSrcSpan (2,0)) toks2)
+       let startPos = tokenPos      $ glast "addImportDecl" toks1
+       let endPos   = tokenPosEnd $ glast "addImportDecl" toks1
+       -- putToks toks' True
+       -- error $ "addImportDecl:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
+       -- error $ "addImportDecl:impToks=" ++ (show impToks) -- ++AZ++
+       putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) impToks
+  {- ++AZ++ old version, without Tokenutils
+       toks <- fetchToks
        let (toks1, toks2)
                =if length imps' > 0
                    then let (_startLoc, endLoc) = getStartEndLoc $ last imps'
@@ -2461,6 +2494,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
                       $ before ++ (GHC.showPpr impDecl)
        let toks' = toks1++impToks++ (map (increaseSrcSpan (2,0)) toks2)
        putToks toks' True
+       ++AZ++ before TokenUtils end -}
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
 
@@ -3418,7 +3452,6 @@ rmTypeSig pn t
                           in (deleteToks toks startPos1 endPos1,(decls1++[newSig]++tail decls2))
                      else  ((deleteToks toks startPos endPos),(decls1++tail decls2)) 
                      -- else  error $ "rmTypeSig:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
-          -- putToks toks' modified
           liftIO $ putStrLn $ "rmTypeSig: about to replace tokens:" ++ (show toks') -- ++AZ++
           case toks' of
             [] -> do
@@ -3563,7 +3596,6 @@ renamePN oldPN newName updateTokens t = do
                     drawTokenTree "" -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
-                    -- putToks toks' True
                     putToksForSpan sspan toks'
                     return newName
                     -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (GHC.showPpr (row,col,l,sspan)) ++ (show toks) -- ++AZ++

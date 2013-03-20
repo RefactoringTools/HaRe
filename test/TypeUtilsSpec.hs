@@ -1888,7 +1888,7 @@ spec = do
 
          return (res,toks,renamed2,toks2)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1\n\n import Data.List\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
+      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1\n import Data.List\n \n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
 
     it "Add an import entry to a module with some declaration, but no explicit imports." $ do
@@ -1905,7 +1905,7 @@ spec = do
 
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module Simplest where\n\n import Data.List\n\n\n simple x = x\n "
+      (GHC.showRichTokenStream t) `shouldBe` "module Simplest where\n import Data.List\n \n simple x = x\n "
 
 
     it "Add an import entry to a module with explicit imports, but no declarations." $ do
@@ -1933,7 +1933,7 @@ spec = do
          (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/Empty.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
-       
+
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
          toks <- fetchToks
@@ -1941,7 +1941,7 @@ spec = do
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
 
-      (GHC.showRichTokenStream t) `shouldBe` "module Empty where\n\n \n\n import Data.List"
+      (GHC.showRichTokenStream t) `shouldBe` "module Empty where\n\n \n import Data.List\n \n "
 
 
   -- ---------------------------------------
@@ -2168,4 +2168,18 @@ parsedFileTokenTestGhc = parsedFileGhc "./test/testdata/TokenTest.hs"
 -- t = withArgs ["--match", "getName"] main
 
 
+ttt = do
+      let
+        comp = do
 
+         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/JustImports.hs"
+         -- clearParsedModule
+         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+
+         let listModName  = GHC.mkModuleName "Data.List"
+         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
+         toks <- fetchToks
+
+         return (res,toks,renamed1,_toks1)
+      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n\n import Data.List\n "

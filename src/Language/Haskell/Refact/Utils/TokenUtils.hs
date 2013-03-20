@@ -982,13 +982,11 @@ reIndentToks pos prevToks toks = toks''
 -- |Extract the start and end position of a span, without any leading
 -- or trailing comments
 nonCommentSpan :: [PosToken] -> (SimpPos,SimpPos)
+nonCommentSpan [] = ((0,0),(0,0))
 nonCommentSpan toks = (startPos,endPos)
   where
-    -- startTok = ghead "nonCommentSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
-    -- endTok   = ghead "nonCommentSpan" $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse toks
-
-    startTok = ghead "nonCommentSpan" $ dropWhile isWhiteSpace $ toks
-    endTok   = ghead "nonCommentSpan" $ dropWhile isWhiteSpace $ reverse toks
+    startTok = ghead "nonCommentSpan.1" $ dropWhile isWhiteSpace $ toks
+    endTok   = ghead "nonCommentSpan.2" $ dropWhile isWhiteSpace $ reverse toks
 
     startPos = tokenPos    startTok
     endPos   = tokenPosEnd endTok

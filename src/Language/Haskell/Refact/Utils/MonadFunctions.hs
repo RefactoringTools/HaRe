@@ -9,7 +9,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Original API provided
        , fetchToks -- ^Deprecated
        , fetchOrigToks
-       , putToks -- ^Deprecated, destroys token tree
+       -- , putToks -- ^Deprecated, destroys token tree
        , getTypecheckedModule
        , getRefactStreamModified
        , getRefactInscopes
