@@ -2437,66 +2437,24 @@ addImportDecl ::
 addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias hide idNames
   = do
        toks <- fetchToks
-       let (toks1, toks2)
+       let toks1
                =if length imps' > 0
                    then let (_startLoc, endLoc) = getStartEndLoc $ last imps'
                             toks1' = getToks ((1,1),endLoc) toks
-                            toks2' = dropWhile (\t -> (tokenPos t) <= tokenPos (last toks1')) toks
-                        in (toks1', toks2')
+                        in toks1'
                    else if not $ isEmptyGroup groupedDecls
                           then
                                let startLoc = fst $ startEndLocIncComments toks groupedDecls
-                                   (toks1', toks2') = break (\t ->tokenPos t==startLoc) toks
-                               in (toks1',  toks2')
-                          else (toks,[])
-           before = "\n\n"
+                                   (toks1', _toks2') = break (\t ->tokenPos t==startLoc) toks
+                               in toks1'
+                          else toks
 
-           colOffset = if length imps' == 0 && isEmptyGroup groupedDecls
-                        then 1
-                        else getIndentOffset toks
-                                $ if length imps' > 0 then fst $ getStartEndLoc (ghead "addImportDecl4" imps')
-                                               else fst $ startEndLocIncComments toks  groupedDecls
-
-           loc' = realSrcLocFromTok $ (glast "addImportDecl5" toks1)
-       impToks <- liftIO $ tokenise loc' (colOffset-1) True
-                      $ before ++ (GHC.showPpr impDecl)
-       let toks' = toks1++impToks++ (map (increaseSrcSpan (2,0)) toks2)
        let startPos = tokenPos      $ glast "addImportDecl" toks1
        let endPos   = tokenPosEnd $ glast "addImportDecl" toks1
-       -- putToks toks' True
-       -- error $ "addImportDecl:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
-       -- error $ "addImportDecl:impToks=" ++ (show impToks) -- ++AZ++
+
        newToks <- liftIO $ basicTokenise (GHC.showPpr impDecl)
        liftIO $ putStrLn $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
        putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
-  {- ++AZ++ old version, without Tokenutils
-       toks <- fetchToks
-       let (toks1, toks2)
-               =if length imps' > 0
-                   then let (_startLoc, endLoc) = getStartEndLoc $ last imps'
-                            toks1' = getToks ((1,1),endLoc) toks
-                            toks2' = dropWhile (\t -> (tokenPos t) <= tokenPos (last toks1')) toks
-                        in (toks1', toks2')
-                   else if not $ isEmptyGroup groupedDecls
-                          then
-                               let startLoc = fst $ startEndLocIncComments toks groupedDecls
-                                   (toks1', toks2') = break (\t ->tokenPos t==startLoc) toks
-                               in (toks1',  toks2')
-                          else (toks,[])
-           before = "\n\n"
-
-           colOffset = if length imps' == 0 && isEmptyGroup groupedDecls
-                        then 1
-                        else getIndentOffset toks
-                                $ if length imps' > 0 then fst $ getStartEndLoc (ghead "addImportDecl4" imps')
-                                               else fst $ startEndLocIncComments toks  groupedDecls
-
-           loc' = realSrcLocFromTok $ (glast "addImportDecl5" toks1)
-       impToks <- liftIO $ tokenise loc' (colOffset-1) True
-                      $ before ++ (GHC.showPpr impDecl)
-       let toks' = toks1++impToks++ (map (increaseSrcSpan (2,0)) toks2)
-       putToks toks' True
-       ++AZ++ before TokenUtils end -}
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
 
@@ -2721,29 +2679,19 @@ addDecl parent pn (decl, msig, declToks) topLevel
                -> RefactGhc t
   addLocalDecl parent (newFun, maybeSig, newFunToks)
     =do
-        liftIO $ putStrLn $ "addLocalDecl entered"
-        -- liftIO $ putStrLn $ "addLocalDecl entered:parent=" ++ (SYB.showData SYB.Renamer 0 parent) -- ++AZ++
-        drawTokenTree "initial tree" -- ++AZ++
         let binds = hsValBinds parent
 
-        -- liftIO $ putStrLn $ "addLocalDecl entered:localDecls=" ++ (SYB.showData SYB.Renamer 0 localDecls) -- ++AZ++
-        liftIO $ putStrLn $ "addLocalDecl entered:newSource=" ++ (show $ "[" ++ newSource ++ "]") -- ++AZ++
         let (startLoc,endLoc)
              = if (emptyList localDecls)
                  then getStartEndLoc parent
                  else getStartEndLoc localDecls
 
         newToks <- liftIO $ basicTokenise newSource
-        -- liftIO $ putStrLn $ "TypeUtils.addLocalDecl:newToks=" ++ (showToks newToks) -- ++AZ++
+
         (newFun',_) <- addLocInfo (newFun, newToks) -- This function calles problems because of the lexer.
 
         let colIndent = if (emptyList localDecls) then 4 else 0
             rowIndent = 1
-
-        -- error $ "TypeUtils.addLocalDecl:((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)=" ++ (show ((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)) -- ++AZ++
-        liftIO $ putStrLn $ "TypeUtils.addLocalDecl:((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)=" ++ (show ((startLoc,endLoc),(PlaceIndent rowIndent colIndent 2),newToks)) -- ++AZ++
-
-        drawTokenTree "" -- ++AZ++
 
         _ <- putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
 
