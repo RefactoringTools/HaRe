@@ -2466,7 +2466,9 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
        -- putToks toks' True
        -- error $ "addImportDecl:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
        -- error $ "addImportDecl:impToks=" ++ (show impToks) -- ++AZ++
-       putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) impToks
+       newToks <- liftIO $ basicTokenise (GHC.showPpr impDecl)
+       liftIO $ putStrLn $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
+       putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
   {- ++AZ++ old version, without Tokenutils
        toks <- fetchToks
        let (toks1, toks2)

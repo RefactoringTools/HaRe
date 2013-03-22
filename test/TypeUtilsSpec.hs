@@ -1339,16 +1339,16 @@ spec = do
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
       let (decl',forest''') = syncAST decl sspan forest'' 
 
-      (GHC.showPpr $ getSrcSpan decl') `shouldBe` "Just test/testdata/TokenTest.hs:(1000024,1)-(1000028,0)"
+      (GHC.showPpr $ getSrcSpan decl') `shouldBe` "Just test/testdata/TokenTest.hs:(1000024,1)-(1000026,13)"
 
       (invariant forest''') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(26,1))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
-              "+- ((1000024,1),(1000028,1))\n|\n"++ -- our inserted span
+              "+- ((1000024,1),(1000026,14))\n|\n"++ -- our inserted span
               "`- ((26,1),(26,1))\n"
-      (showSrcSpan sspan) `shouldBe` "((1000024,1),(1000028,1))"
+      (showSrcSpan sspan) `shouldBe` "((1000024,1),(1000026,14))"
 
       -- (show $ getTokensFor forest''' sspan) `shouldBe` ""
 
@@ -1922,7 +1922,7 @@ spec = do
 
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n\n import Data.List\n "
+      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List\n \n "
 
 
 
@@ -2167,19 +2167,3 @@ parsedFileTokenTestGhc = parsedFileGhc "./test/testdata/TokenTest.hs"
 
 -- t = withArgs ["--match", "getName"] main
 
-
-ttt = do
-      let
-        comp = do
-
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/JustImports.hs"
-         -- clearParsedModule
-         let renamed1 = fromJust $ GHC.tm_renamed_source t1
-
-         let listModName  = GHC.mkModuleName "Data.List"
-         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
-         toks <- fetchToks
-
-         return (res,toks,renamed1,_toks1)
-      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n\n import Data.List\n "

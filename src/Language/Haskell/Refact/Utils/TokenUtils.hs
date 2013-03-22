@@ -694,21 +694,36 @@ insertSrcSpan forest sspan = forest'
 
           -- (startToks,middleToks,endToks) = splitToks (startPos,endPos) toks
           (startToks,middleToks,endToks) = splitToks (startLoc,endLoc) toks
+          {-
           subTree = [mkTreeFromTokens startToks,
                      mkTreeFromSpanTokens sspan middleToks,
                      mkTreeFromTokens endToks]
+          -}
+          tree1 = if (emptyList $ filter (\t -> not $ isEmpty t) startToks)
+                     then []
+                     else [mkTreeFromTokens startToks]
+          tree2 = [mkTreeFromSpanTokens sspan middleToks]
+          tree3 = if (emptyList $ filter (\t -> not $ isEmpty t) endToks)
+                     then []
+                     else [mkTreeFromTokens endToks]
+
+          subTree = tree1 ++ tree2 ++ tree3
           subTree' = filter (\t -> treeStartEnd t /= nullSpan) subTree
           (Entry _sspan _) = Z.label z
 
           z' = Z.setTree (Node (Entry _sspan []) subTree') z
           forest'' = Z.toTree z'
+          -- forest'' = error $ "insertSrcSpan:(startToks,endToks)=" ++ (show (startToks,endToks)) -- ++AZ++
+          -- forest'' = error $ "insertSrcSpan:(Z.toTree z')=" ++ (show (Z.toTree z')) -- ++AZ++
+          -- forest'' = error $ "insertSrcSpan:(startLoc,endLoc)=" ++ (show (startLoc,endLoc)) -- ++AZ++
+          -- forest'' = error $ "insertSrcSpan:(tokStartPos,tokEndPos,toks)=" ++ (show (tokStartPos,tokEndPos,toks)) -- ++AZ++
 
 -- ---------------------------------------------------------------------
 
 -- | Removes a ForestSpan and its tokens from the forest.
 -- TODO: should it store the removed span somewhere else?
 
-removeSrcSpan :: Tree Entry -> ForestSpan 
+removeSrcSpan :: Tree Entry -> ForestSpan
   -> (Tree Entry,Tree Entry) -- ^Updated forest, removed span
 removeSrcSpan forest sspan = (forest'', delTree)
   where
@@ -894,8 +909,10 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
     (startPos,endPos) = nonCommentSpan toks''
 
     newSpan = posToSrcSpan forest (startPos,endPos)
+
     -- TODO: expensive reIndentToks being done twice now
     (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks''
+    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks'')=" ++ (showToks prevToks'),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks'')=" ++ (showToks toks''),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(prevToks)=" ++ (showToks prevToks),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show ((lineOffset,lineStart,tokenRow $ head toks,tokenRow $ head toks'',tokenRow newTokStart,colOffset))),oldSpan)
@@ -1612,8 +1629,9 @@ isComment ((GHC.L _ (GHC.ITblockComment _)),_s)    = True
 isComment ((GHC.L _ _),_s)                         = False
 
 isEmpty :: PosToken -> Bool
-isEmpty ((GHC.L _ (GHC.ITsemi)), "") = True
-isEmpty _                           = False
+isEmpty ((GHC.L _ (GHC.ITsemi)),    "") = True
+isEmpty ((GHC.L _ (GHC.ITvocurly)), "") = True
+isEmpty _                               = False
 
 --Some functions for fetching a specific field of a token
 tokenCol :: PosToken -> Int
