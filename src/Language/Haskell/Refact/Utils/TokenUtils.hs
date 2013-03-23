@@ -115,6 +115,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , groupTokensByLine
        , reAlignToks
        , reSequenceToks
+       , mkToken
+       , mkZeroToken
        ) where
 
 import qualified BasicTypes    as GHC
@@ -413,7 +415,7 @@ srcSpanToForestSpan :: GHC.SrcSpan -> ForestSpan
 srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToForestLine endRow,endCol))
   where
     (startRow,startCol) = getGhcLoc sspan
-    (endRow,endCol) = getGhcLocEnd sspan
+    (endRow,endCol)     = getGhcLocEnd sspan
 
 -- --------------------------------------------------------------------
 
@@ -578,18 +580,12 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
     prevToks = retrieveTokens tree
 
-
     endComments = reverse $ takeWhile isWhiteSpace $ reverse toks
     startComments = takeWhile isWhiteSpace $ toks
 
-    {-
-    stripComments ts = ts'
-      where
-        ts1 = reverse $ dropWhile isWhiteSpace $ reverse ts
-        ts' = dropWhile isWhiteSpace ts1
-    -}
-
-    newTokStart = ghead "reIndentToks" prevToks
+    newTokStart = if (emptyList prevToks)
+                   then mkZeroToken
+                   else ghead "updateTokensForSrcSpan.1" prevToks
 
     toks'' = if (nonEmptyList startComments || nonEmptyList endComments)
       then -- toks have comments, discard originals
@@ -939,16 +935,17 @@ addDeclToksAfterSrcSpan forest oldSpan pos toks t = (forest'',newSpan,t')
 -- ---------------------------------------------------------------------
 
 reIndentToks :: Positioning -> [PosToken] -> [PosToken] -> [PosToken]
+reIndentToks _ _ [] = []
 reIndentToks pos prevToks toks = toks''
   -- = error $ "reIndentToks:((isComment lastTok),(tokenRow lastNonCommentTok),lastTokEndLine)=" ++ (show ((isComment lastTok),(tokenRow lastNonCommentTok),lastTokEndLine))
   where
-    newTokStart = ghead "reIndentToks"
+    newTokStart = ghead "reIndentToks.1"
                 $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
 
-    firstTok = ghead "reIndentToks" toks
-    lastTok = glast "reIndentToks" prevToks
+    firstTok = ghead "reIndentToks.2" toks
+    lastTok  = glast "reIndentToks" prevToks
 
-    lastNonCommentTok = ghead "reIndentToks.2"
+    lastNonCommentTok = ghead "reIndentToks.3"
                       $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse prevToks
 
     prevOffset = getIndentOffset prevToks (tokenPos (glast "reIndentToks1" prevToks))
@@ -972,7 +969,7 @@ reIndentToks pos prevToks toks = toks''
 
       PlaceOffset rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where
-          colStart  = tokenCol $ ghead "reIndentToks"
+          colStart  = tokenCol $ ghead "reIndentToks.4"
                     $ dropWhile isWhiteSpace prevToks
           lineStart = (tokenRow (lastTok)) -- + 1
 
@@ -1247,7 +1244,7 @@ invariant forest = rsub
 
         rinc = checkInclusion node
 
-        rnull = if (sspan == nullSpan) 
+        rnull = if (sspan == nullSpan)
                  then ["FAIL: null SrcSpan in tree: " ++ (prettyshow node)]
                  else []
 
@@ -1724,31 +1721,14 @@ getSrcSpan t = res t
 -- after endPos.
 -- Note: The startPos and endPos refer to the startPos of a token only.
 --       So a single token will have the same startPos and endPos
+--    NO^^^^
 splitToks::(SimpPos, SimpPos)->[PosToken]->([PosToken],[PosToken],[PosToken])
 splitToks (startPos, endPos) toks =
-  let (toks1,toks2)   = break (\t -> tokenPos t >= startPos) toks
-      (toks21,toks22) = break (\t -> tokenPos t >  endPos) toks2
+  let (toks1,toks2)   = break (\t -> tokenPos    t >= startPos) toks
+      (toks21,toks22) = break (\t -> tokenPos    t >=  endPos) toks2
   in
     (toks1,toks21,toks22)
 
-{- ++AZ++ old, comlicated
-   = -- trace ("splitToks" ++ (show (startPos,endPos)) ++ (showToks toks))
-   (if (startPos, endPos) == (simpPos0, simpPos0)
-       then error "Invalid token stream position!"
-       else let startPos'= if startPos==simpPos0 then endPos   else startPos
-                endPos'  = if endPos == simpPos0 then startPos else endPos
-                (toks1, toks2) = break (\t -> tokenPos t == startPos') toks
-                (toks21, toks22) = correctBreak startPos' endPos' toks1 toks2 toks
-
-            -- in error ((showToks toks1) ++ "\n" ++ (showToks toks21) ++ "\n" ++ (showToks toks22))
-            in      (toks1, toks21 {-++[ghead "splitToks" toks22]-}, toks22) )
-  where
-    correctBreak startPos' endPos' toks1 toks2 toks
-      = if length toks2 == 0
-           then let (toks1', toks2) = break (\t -> tokenPos t >= startPos') toks 
-                in break (\t -> tokenPos t >= endPos') (drop 2 toks1++toks2)
-           else (break (\t -> tokenPos t > endPos') toks2)
--}
 
 -- ---------------------------------------------------------------------
 
@@ -1878,6 +1858,19 @@ reAlignToks (tok1@((GHC.L l1 _t1),_s1):tok2@((GHC.L l2 t2),s2):ts)
 -- token renaming
 reSequenceToks :: [PosToken] -> [PosToken]
 reSequenceToks toks = toks
+
+-- ---------------------------------------------------------------------
+
+-- |Compose a new token using the given arguments.
+mkToken::GHC.Token -> SimpPos -> String -> PosToken
+mkToken t (row,col) c = ((GHC.L l t),c)
+  where
+    filename = (GHC.mkFastString "f")
+    l = GHC.mkSrcSpan (GHC.mkSrcLoc filename row col) (GHC.mkSrcLoc filename row (col + (length c) ))
+
+
+mkZeroToken :: PosToken
+mkZeroToken = mkToken GHC.ITsemi (0,0) ""
 
 -- ---------------------------------------------------------------------
 

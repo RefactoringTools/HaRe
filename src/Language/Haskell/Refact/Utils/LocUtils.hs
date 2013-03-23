@@ -9,7 +9,9 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -- , showToks
                      -- , tokenLen
                      -- ,lengthOfToks
-                     , mkToken, mkZeroToken {-,defaultToken, whiteSpacesToken -},whiteSpaceTokens
+                     -- , mkToken, mkZeroToken {-,defaultToken, -}
+                     {-whiteSpacesToken -}
+                     ,whiteSpaceTokens
                      , realSrcLocFromTok
                      , isWhite
                      , notWhite
@@ -330,6 +332,7 @@ replaceTabBySpaces (s:ss)
 
 -}
 
+{-
 -- |Compose a new token using the given arguments.
 mkToken::GHC.Token -> SimpPos -> String -> PosToken
 mkToken t (row,col) c = ((GHC.L l t),c)
@@ -340,7 +343,7 @@ mkToken t (row,col) c = ((GHC.L l t),c)
 
 mkZeroToken :: PosToken
 mkZeroToken = mkToken GHC.ITsemi (0,0) ""
-
+-}
 ---Restriction: the refactorer should not modify refactorer-modified/created tokens.
 defaultToken :: PosToken
 defaultToken = (GHC.noLoc (GHC.ITlineComment "defaultToken"), "defaultToken")

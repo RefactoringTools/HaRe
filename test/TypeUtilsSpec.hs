@@ -1941,7 +1941,7 @@ spec = do
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
 
-      (GHC.showRichTokenStream t) `shouldBe` "module Empty where\n\n \n import Data.List\n \n "
+      (GHC.showRichTokenStream t) `shouldBe` "module Empty where\n import Data.List\n \n "
 
 
   -- ---------------------------------------
@@ -2166,4 +2166,5 @@ parsedFileTokenTestGhc = parsedFileGhc "./test/testdata/TokenTest.hs"
 -- t = withArgs ["--match", "definingDeclsNames"] main
 
 -- t = withArgs ["--match", "getName"] main
+
 

@@ -432,6 +432,21 @@ spec = do
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
+      --
+      let z = openZipperToSpan (fs l) $ Z.fromTree forest
+      let toksz = retrieveTokens $ Z.tree z
+      let (tokStartPos,tokEndPos) = forestSpanToSimpPos (fs l)
+      (show (tokStartPos,tokEndPos)) `shouldBe` "((19,1),(21,14))"
+
+      -- (show toksz) `shouldBe` ""
+      let (begin,middle,end) = splitToks (tokStartPos,tokEndPos) toksz
+      (show middle) `shouldBe` "[((((19,1),(19,1)),ITsemi),\"\"),((((19,1),(19,4)),ITvarid \"foo\"),\"foo\"),((((19,5),(19,6)),ITvarid \"x\"),\"x\"),((((19,7),(19,8)),ITvarid \"y\"),\"y\"),((((19,9),(19,10)),ITequal),\"=\"),((((20,3),(20,5)),ITdo),\"do\"),((((20,6),(20,6)),ITvocurly),\"\"),((((20,6),(20,7)),ITvarid \"c\"),\"c\"),((((20,8),(20,10)),ITlarrow),\"<-\"),((((20,11),(20,18)),ITvarid \"getChar\"),\"getChar\"),((((21,6),(21,6)),ITsemi),\"\"),((((21,6),(21,12)),ITvarid \"return\"),\"return\"),((((21,13),(21,14)),ITvarid \"c\"),\"c\")]"
+
+      let (startLoc,endLoc) = startEndLocIncComments' toksz (tokStartPos,tokEndPos)
+      (show (startLoc,endLoc)) `shouldBe` "((18,1),(21,14))"
+
+      --
+
       let forest' = insertSrcSpan forest (fs l)
       (invariant forest') `shouldBe` []
       (drawTreeEntry forest') `shouldBe`
@@ -604,7 +619,8 @@ spec = do
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n\n\n\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
     -- ---------------------------------
-    it "Removes a span and tokens without destroying the forest" $ do
+
+    it "Removes a span and tokens without destroying the forest 1" $ do
       (t,toks) <- parsedFileDemoteD1
       let forest = mkTreeFromTokens toks
 
@@ -658,6 +674,109 @@ spec = do
       let toks' = retrieveTokens forest3
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n\n  sumSquares [] = 0\n\n\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+
+    -- ---------------------------------
+
+    it "Removes a span and tokens without destroying the forest 2" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn6.hs"
+      let forest = mkTreeFromTokens toks
+      let tk = initTokenCache toks
+
+      -- removeToksForPos ((13,1),(13,21))
+      let sspan = posToSrcSpan forest ((13,1),(13,21))
+      (GHC.showPpr sspan) `shouldBe` "test/testdata/Demote/WhereIn6.hs:13:1-20"
+
+      let tk2 = removeToksFromCache tk sspan
+      (drawTokenCache tk2) `shouldBe`
+               "tree TId 0:\n"++
+               "((1,1),(13,21))\n|\n"++
+               "`- ((1,1),(11,25))\n"++
+               "tree TId 1:\n"++
+               "((100000013,1),(100000013,21))\n"
+
+
+      -- putToksForSpan test/testdata/Demote/WhereIn6.hs:100000013:16:[((((0,1),(0,2)),ITvarid "x"),"x")]
+      let ss2 = posToSrcSpan forest ((100000013,16),(100000013,17))
+      (GHC.showPpr ss2) `shouldBe` "test/testdata/Demote/WhereIn6.hs:100000013:16"
+      toks2 <- basicTokenise "x"
+      (show toks2) `shouldBe` "[((((0,1),(0,2)),ITvarid \"x\"),\"x\")]"
+      let (tk3,_ss2') = putToksInCache tk2 ss2 toks2
+      (drawTokenCache tk3) `shouldBe`
+               "tree TId 0:\n"++
+               "((1,1),(13,21))\n|\n"++
+               "`- ((1,1),(11,25))\n"++
+               "tree TId 1:\n"++
+               "((100000013,1),(100000013,21))\n|\n"++
+               "+- ((100000013,1),(100000013,16))\n|\n"++
+               "+- ((100000013,16),(100000013,17))\n|\n"++
+               "`- ((100000013,17),(100000013,21))\n"++
+               "tree TId 2:\n"++
+               "((200000013,16),(200000013,17))\n"
+
+      (GHC.showRichTokenStream $ retrieveTokens $ getTreeFromCache ss2 tk3) `shouldBe` 
+                "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
+
+      -- putToksForSpan test/testdata/Demote/WhereIn6.hs:100000013:18:[((((0,1),(0,2)),ITvarid "y"),"y")]
+      let ss3 = posToSrcSpan forest ((100000013,18),(100000013,19))
+      (GHC.showPpr ss3) `shouldBe` "test/testdata/Demote/WhereIn6.hs:100000013:18"
+      toks3 <- basicTokenise "y"
+      (show toks3) `shouldBe` "[((((0,1),(0,2)),ITvarid \"y\"),\"y\")]"
+      let (tk4,_ss3') = putToksInCache tk3 ss3 toks3
+      (drawTokenCache tk4) `shouldBe`
+               "tree TId 0:\n"++
+               "((1,1),(13,21))\n|\n"++
+               "`- ((1,1),(11,25))\n"++
+               "tree TId 1:\n"++
+               "((100000013,1),(100000013,21))\n|\n"++
+               "+- ((100000013,1),(100000013,16))\n|\n"++
+               "+- ((100000013,16),(100000013,17))\n|\n"++
+               "`- ((100000013,17),(100000013,21))\n   |\n"++
+               "   +- ((100000013,17),(100000013,18))\n   |\n"++
+               "   +- ((100000013,18),(100000013,19))\n   |\n"++
+               "   `- ((100000013,19),(100000013,21))\n"++
+               "tree TId 2:\n"++
+               "((200000013,16),(200000013,17))\n"++
+               "tree TId 3:\n"++
+               "((300000013,18),(300000013,19))\n"
+      (GHC.showRichTokenStream $ retrieveTokens $ getTreeFromCache ss2 tk4) `shouldBe` 
+                "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+y+c"
+
+
+
+      -- Context set up, now for the test.
+{-
+      let sspan2 = posToSrcSpan forest ((9,1),(9,14))
+      (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:9:1-13"
+      let (forest3,delTree) = removeSrcSpan forest2 (fs sspan2)
+
+      (drawTreeEntry $ insertSrcSpan forest2 (fs sspan2)) `shouldBe`
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(6,20))\n|\n"++
+               "+- ((6,21),(6,41))\n|\n"++
+               "+- ((1000007,5),(1000009,6))\n|\n"++
+               "`- ((7,1),(13,25))\n   |\n"++
+               "   +- ((7,1),(7,18))\n   |\n"++
+               "   +- ((9,1),(9,14))\n   |\n"++
+               "   `- ((11,1),(13,25))\n"
+
+      (drawTreeEntry delTree) `shouldBe`
+              "((9,1),(9,14))\n" -- removed again
+
+
+      (invariant forest3) `shouldBe` []
+      (drawTreeEntry forest3) `shouldBe`
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(6,20))\n|\n"++
+               "+- ((6,21),(6,41))\n|\n"++
+               "+- ((1000007,5),(1000009,6))\n|\n"++
+               "`- ((7,1),(13,25))\n   |\n"++
+               "   +- ((7,1),(7,18))\n   |\n"++
+               "   `- ((11,1),(13,25))\n"
+
+      let toks' = retrieveTokens forest3
+      -- (showToks toks') `shouldBe` ""
+      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n\n  sumSquares [] = 0\n\n\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+-}
 
   -- ---------------------------------------------
 
@@ -882,6 +1001,81 @@ spec = do
            "      +- ((11,32),(15,14))\n      |\n"++
            "      +- ((15,14),(15,15))\n      |\n"++
            "      `- ((17,1),(20,1))\n"
+
+    -- --------------------------------------
+
+    it "replaces a single token,without disturbing adjacent ones" $ do
+      (_t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn6.hs"
+
+      let forest = mkTreeFromTokens toks
+      let tk = initTokenCache toks
+
+      -- removeToksForPos ((13,1),(13,21))
+      let sspan = posToSrcSpan forest ((13,1),(13,21))
+      (GHC.showPpr sspan) `shouldBe` "test/testdata/Demote/WhereIn6.hs:13:1-20"
+
+      -- (showToks toks) `shouldBe` ""
+      let tk2 = removeToksFromCache tk sspan
+      (drawTokenCache tk2) `shouldBe`
+                 "tree TId 0:\n"++
+               "((1,1),(13,21))\n|\n"++
+               "`- ((1,1),(11,25))\n"++
+               "tree TId 1:\n"++
+               "((100000013,1),(100000013,21))\n"
+
+      let ss2 = posToSrcSpan forest ((100000013,16),(100000013,17))
+      (GHC.showPpr ss2) `shouldBe` "test/testdata/Demote/WhereIn6.hs:100000013:16"
+      (showSrcSpan ss2) `shouldBe` "((100000013,16),(100000013,17))"
+      (show (srcSpanToForestSpan ss2)) `shouldBe` "(((ForestLine 1 0 13),16),((ForestLine 1 0 13),17))"
+      (show $ getGhcLoc ss2) `shouldBe` "(100000013,16)"
+      (show $ getGhcLocEnd ss2) `shouldBe` "(100000013,17)"
+      let (tokStartPos,tokEndPos) = forestSpanToSimpPos (srcSpanToForestSpan ss2)
+      (tokStartPos,tokEndPos) `shouldBe` ((13,16),(13,17))
+
+      let f2 = getTreeFromCache ss2 tk2
+      (GHC.showRichTokenStream $ retrieveTokens f2) `shouldBe`
+               "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=a+b+c"
+      toks2 <- basicTokenise "x"
+      (show toks2) `shouldBe` "[((((0,1),(0,2)),ITvarid \"x\"),\"x\")]"
+      --
+
+      let z = openZipperToSpan (srcSpanToForestSpan ss2) $ Z.fromTree f2
+      let toksz = retrieveTokens $ Z.tree z
+      (GHC.showRichTokenStream toksz) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=a+b+c"
+      let (begin,middle,end) = splitToks (tokStartPos,tokEndPos) toksz
+      -- (show begin) `shouldBe` ""
+      (show middle) `shouldBe` "[((((13,16),(13,17)),ITvarid \"a\"),\"a\")]"
+      -- (show end) `shouldBe` ""
+
+      let (startLoc,endLoc) = startEndLocIncComments' toksz (tokStartPos,tokEndPos)
+      (startLoc,endLoc) `shouldBe` ((13,16),(13,17))
+
+      let fss = insertSrcSpan f2 (srcSpanToForestSpan ss2)
+      (drawTreeEntry fss) `shouldBe`
+               "((100000013,1),(100000013,21))\n|\n"++
+               "+- ((13,1),(13,16))\n|\n"++
+               "+- ((100000013,16),(100000013,17))\n|\n"++
+               "`- ((13,17),(13,21))\n"
+
+      let (forest',tree) = getSrcSpanFor f2 (srcSpanToForestSpan ss2)
+      (drawTreeEntry forest') `shouldBe`
+               "((100000013,1),(100000013,21))\n|\n"++
+               "+- ((13,1),(13,16))\n|\n"++
+               "+- ((100000013,16),(100000013,17))\n|\n"++
+               "`- ((13,17),(13,21))\n"
+      --
+
+      let (f3,_ss1',_) = updateTokensForSrcSpan f2 ss2 toks2
+
+      (drawTreeEntry f3) `shouldBe`
+               "((100000013,1),(100000013,21))\n|\n"++
+               "+- ((13,1),(13,16))\n|\n"++
+               "+- ((13,16),(13,17))\n|\n"++
+               "`- ((13,17),(13,21))\n"
+      -- (show f3) `shouldBe` ""
+      (GHC.showRichTokenStream $ retrieveTokens f3) `shouldBe`
+               "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
+
 
   -- ---------------------------------------------
 
@@ -1253,7 +1447,7 @@ spec = do
            where
             go acc Nothing = acc
             go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)
-      (show $ map treeStartEnd $ map Z.tree childrenAsZ) `shouldBe` 
+      (show $ map treeStartEnd $ map Z.tree childrenAsZ) `shouldBe`
              "[(((ForestLine 0 0 1),1),((ForestLine 0 0 6),20)),"++
               "(((ForestLine 0 0 6),21),((ForestLine 0 0 6),23)),"++
               "(((ForestLine 0 0 6),26),((ForestLine 0 0 7),18))]"
@@ -1344,7 +1538,6 @@ spec = do
 
       let toksFinal = retrieveTokens forest'
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List\n \n "
-
 
   -- ---------------------------------------------
 

@@ -398,9 +398,7 @@ spec = do
     it "Split the tokens into a front, middle and end" $ do
       (t,toks) <- parsedFileCaseBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
-
-      let Just expr = locToExp (4,7) (4,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
-          (_front,middle,_back) = splitToks ((4,9),(4,36)) toks
+          (_front,middle,_back) = splitToks ((4,9),(4,42)) toks
       (showToks middle) `shouldBe`
                "[(((4,9),(4,11)),ITif,\"if\")," ++
                "(((4,12),(4,13)),IToparen,\"(\")," ++
@@ -418,7 +416,7 @@ spec = do
     it "Split the tokens into a front, middle and end 2" $ do
       (t,toks) <- parsedFileWhereIn6Ghc
 
-      let (_front,middle,_back) = splitToks ((13,10),(13,14)) toks
+      let (_front,middle,_back) = splitToks ((13,10),(13,15)) toks
       (showToks middle) `shouldBe`
               "[(((13,10),(13,11)),ITvarid \"a\",\"a\"),"
               ++"(((13,12),(13,13)),ITvarid \"b\",\"b\"),"
@@ -431,7 +429,7 @@ spec = do
     it "Split the tokens into a front, middle and end, for a single token" $ do
       (t,toks) <- parsedFileWhereIn6Ghc
 
-      let (_front,middle,_back) = splitToks ((13,10),(13,10)) toks
+      let (_front,middle,_back) = splitToks ((13,10),(13,11)) toks
       (showToks middle) `shouldBe` "[(((13,10),(13,11)),ITvarid \"a\",\"a\")]"
 
   -- -------------------------------------------------------------------
@@ -441,8 +439,7 @@ spec = do
       (t,toks) <- parsedFileCaseBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just expr = locToExp (4,7) (4,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
-          (front,middle,_back) = splitToks ((4,9),(4,36)) toks
+          (front,middle,_back) = splitToks ((4,9),(4,42)) toks
       (showToks middle) `shouldBe`
                "[(((4,9),(4,11)),ITif,\"if\")," ++
                "(((4,12),(4,13)),IToparen,\"(\")," ++
@@ -456,7 +453,7 @@ spec = do
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n         if (odd x) then \"Odd\" else \"Even\""
       (showToks [(head front)]) `shouldBe` "[(((1,1),(1,7)),ITmodule,\"module\")]"
 
-      let newToks = replaceToks middle (4,17) (4,17) [(head front)]
+      let newToks = replaceToks middle (4,17) (4,18) [(head front)]
       (showToks newToks) `shouldBe`
                "[(((4,9),(4,11)),ITif,\"if\")," ++
                "(((4,12),(4,13)),IToparen,\"(\")," ++
@@ -477,7 +474,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just expr = locToExp (4,7) (4,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
-          (front,middle,_back) = splitToks ((4,1),(4,20)) toks
+          (front,middle,_back) = splitToks ((4,1),(4,24)) toks
       (showToks middle) `shouldBe`
                "[(((4,1),(4,1)),ITvocurly,\"\"),"++
                "(((4,1),(4,4)),ITvarid \"foo\",\"foo\"),"++

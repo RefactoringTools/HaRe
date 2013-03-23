@@ -2449,8 +2449,9 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
                                in toks1'
                           else toks
 
-       let startPos = tokenPos      $ glast "addImportDecl" toks1
-       let endPos   = tokenPosEnd $ glast "addImportDecl" toks1
+       let lastTok = ghead "addImportDecl" $ dropWhile isWhiteSpace $ reverse toks1
+       let startPos = tokenPos    lastTok
+       let endPos   = tokenPosEnd lastTok
 
        newToks <- liftIO $ basicTokenise (GHC.showPpr impDecl)
        liftIO $ putStrLn $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
@@ -3354,7 +3355,7 @@ rmDecl pn incSig t = do
                  whereOrLet=ghead "rmLocalDecl:whereOrLet" rvToks1
                  --drop the 'where' 'or 'let' token
 
-                 rmEndPos = tokenPos $ ghead "rmLocalDecl.2" toks2
+                 rmEndPos   = tokenPosEnd $ ghead "rmLocalDecl.2" toks2
                  rmStartPos = tokenPos whereOrLet
 
              liftIO $ putStr $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
