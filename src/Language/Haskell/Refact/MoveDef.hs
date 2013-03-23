@@ -282,7 +282,7 @@ moveDecl1 t defName ns topLevel
         let funBinding = definingDeclsNames [n] (hsBinds t) True True
         let typeSig = definingSigsNames [n] t
 
-        -- liftIO $ putStr $ "moveDecl1: (ns,funBinding)=" ++ (GHC.showPpr (ns,funBinding)) -- ++AZ++
+        liftIO $ putStr $ "moveDecl1: (ns,funBinding)=" ++ (GHC.showPpr (ns,funBinding)) -- ++AZ++
 
         (sigToMove,maybeToksSig) <- case typeSig of
           [] -> return (Nothing,[])
@@ -296,7 +296,7 @@ moveDecl1 t defName ns topLevel
 
         -- t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
         t'' <- rmTypeSig (ghead "moveDecl3.2"  ns) t
-        (t',_declRemoved)  <- rmDecl    (ghead "moveDecl3.1"  ns) False t''
+        (t',_declRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
         addDecl t' defName (ghead "moveDecl1 2" funBinding,sigToMove,Just (maybeToksSig ++ funToks)) topLevel
 
 
@@ -1247,7 +1247,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
 
      =do
          liftIO $ putStrLn $ "MoveDef.foldParams entered"
-         liftIO $ putStrLn $ "MoveDef.foldParams:match=" ++ (SYB.showData SYB.Renamer 0 match)
+         -- liftIO $ putStrLn $ "MoveDef.foldParams:match=" ++ (SYB.showData SYB.Renamer 0 match)
 
          let matches=concatMap matchesInDecls [GHC.unLoc demotedDecls]
              pn=ghead "foldParams" pns    --pns /=[]
@@ -1260,9 +1260,9 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
                        fstSubst=map fst subst
                        sndSubst=map snd subst
 
-                   liftIO $ putStrLn $ "MoveDef.foldParams before rmParamsInParent"
+                   -- liftIO $ putStrLn $ "MoveDef.foldParams before rmParamsInParent"
                    rhs' <- rmParamsInParent pn sndSubst rhs
-                   liftIO $ putStrLn $ "MoveDef.foldParams after rmParamsInParent"
+                   -- liftIO $ putStrLn $ "MoveDef.foldParams after rmParamsInParent"
 
                    -- ls<-mapM hsFreeAndDeclaredPNs sndSubst
                    let ls = map hsFreeAndDeclaredPNs sndSubst
