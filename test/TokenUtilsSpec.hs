@@ -164,7 +164,7 @@ spec = do
       (show prevToks') `shouldBe` ""
       -}
       -- --- -- --
-      let (tm'''',newSpan',decl') = addDeclToksAfterSrcSpan tm''' newSpan (PlaceOffset 1 0 2) declToks decl
+      let (tm'''',_newSpan',decl') = addDeclToksAfterSrcSpan tm''' newSpan (PlaceOffset 1 0 2) declToks decl
       -- (GHC.showPpr newSpan') `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
 
       (drawTreeEntry tm'''') `shouldBe`
@@ -213,7 +213,7 @@ spec = do
     it "gets the tokens before a given srcloc" $ do
       (t,toks) <- parsedFileMoveDefMd1
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
+      -- let decls = hsBinds renamed
 
       let forest = mkTreeFromTokens toks
 
@@ -248,7 +248,7 @@ spec = do
       (t,toks) <- parsedFileTokenTestGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       let forest = mkTreeFromTokens toks
 
       let (forest',tree) = getSrcSpanFor forest (fs l)
@@ -409,7 +409,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
@@ -428,7 +428,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
@@ -439,7 +439,7 @@ spec = do
       (show (tokStartPos,tokEndPos)) `shouldBe` "((19,1),(21,14))"
 
       -- (show toksz) `shouldBe` ""
-      let (begin,middle,end) = splitToks (tokStartPos,tokEndPos) toksz
+      let (_begin,middle,end) = splitToks (tokStartPos,tokEndPos) toksz
       (show middle) `shouldBe` "[((((19,1),(19,1)),ITsemi),\"\"),((((19,1),(19,4)),ITvarid \"foo\"),\"foo\"),((((19,5),(19,6)),ITvarid \"x\"),\"x\"),((((19,7),(19,8)),ITvarid \"y\"),\"y\"),((((19,9),(19,10)),ITequal),\"=\"),((((20,3),(20,5)),ITdo),\"do\"),((((20,6),(20,6)),ITvocurly),\"\"),((((20,6),(20,7)),ITvarid \"c\"),\"c\"),((((20,8),(20,10)),ITlarrow),\"<-\"),((((20,11),(20,18)),ITvarid \"getChar\"),\"getChar\"),((((21,6),(21,6)),ITsemi),\"\"),((((21,6),(21,12)),ITvarid \"return\"),\"return\"),((((21,13),(21,14)),ITvarid \"c\"),\"c\")]"
 
       let (startLoc,endLoc) = startEndLocIncComments' toksz (tokStartPos,tokEndPos)
@@ -463,7 +463,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
@@ -488,7 +488,7 @@ spec = do
               "`- ((26,1),(26,1))\n"
 
     it "does not delete existing versioned spans" $ do
-      (t,toks) <- parsedFileDemoteD1
+      (_t,toks) <- parsedFileDemoteD1
       let forest = mkTreeFromTokens toks
 
       let sspan = posToSrcSpan forest ((6,21),(6,41))
@@ -499,7 +499,7 @@ spec = do
 
       declToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "where\n  sq = x ^ pow\n"
       -- putToksAfterPos ((6,21),(6,41)) at PlaceIndent 1 4 2
-      let (forest2,newSpan) = addToksAfterSrcSpan forest1 sspan (PlaceIndent 1 4 2) declToks
+      let (forest2,_newSpan) = addToksAfterSrcSpan forest1 sspan (PlaceIndent 1 4 2) declToks
 
       (invariant forest2) `shouldBe` []
       (drawTreeEntry forest2) `shouldBe`
@@ -566,7 +566,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
@@ -600,7 +600,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head $ drop 1 decls
+      let (GHC.L l _) = head $ drop 1 decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
       (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
 
@@ -621,7 +621,7 @@ spec = do
     -- ---------------------------------
 
     it "Removes a span and tokens without destroying the forest 1" $ do
-      (t,toks) <- parsedFileDemoteD1
+      (_t,toks) <- parsedFileDemoteD1
       let forest = mkTreeFromTokens toks
 
       let sspan = posToSrcSpan forest ((6,21),(6,41))
@@ -632,7 +632,7 @@ spec = do
 
       declToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "where\n  sq = x ^ pow\n"
       -- putToksAfterPos ((6,21),(6,41)) at PlaceIndent 1 4 2
-      let (forest2,newSpan) = addToksAfterSrcSpan forest1 sspan (PlaceIndent 1 4 2) declToks
+      let (forest2,_newSpan) = addToksAfterSrcSpan forest1 sspan (PlaceIndent 1 4 2) declToks
 
       (invariant forest2) `shouldBe` []
       (drawTreeEntry forest2) `shouldBe`
@@ -678,7 +678,7 @@ spec = do
     -- ---------------------------------
 
     it "Removes a span and tokens without destroying the forest 2" $ do
-      (t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn6.hs"
+      (_t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn6.hs"
       let forest = mkTreeFromTokens toks
       let tk = initTokenCache toks
 
@@ -780,51 +780,6 @@ spec = do
 
   -- ---------------------------------------------
 
-{-
-  describe "getPathFor" $ do
-    it "retrieves an empty path if the SrcSpan is not in the tree" $ do
-      (t,toks) <- parsedFileTokenTestGhc
-      let forest = mkTreeFromTokens toks
-
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
-      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
-      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
-
-      (map treeStartEnd $ getPathFor forest l) `shouldBe` []
-      (concatMap showTree $ getPathFor forest l) `shouldBe` ""
-
-      let forest' = insertSrcSpan forest (fs l)
-
-      (map showForestSpan $ map treeStartEnd $ getPathFor forest' l)
-           `shouldBe` ["((1,1),(26,1))","((19,1),(21,14))"]
-
-
-    -- -----------------------------------
-    it "retrieves the path if the SrcSpan is in the tree" $ do
-      (t,toks) <- parsedFileTokenTestGhc
-      let forest = mkTreeFromTokens toks
-
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
-      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
-      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
-      (show $ ghcSpanStartEnd l) `shouldBe` "((19,1),(21,14))"
-
-      let forest' = insertSrcSpan forest (fs l)
-      (drawTreeEntry forest') `shouldBe`
-              "((1,1),(26,1))\n|\n"++
-              "+- ((1,1),(15,17))\n|\n"++
-              "+- ((19,1),(21,14))\n|\n"++ -- our inserted span
-              "`- ((26,1),(26,1))\n"
-
-      (map showForestSpan $ map treeStartEnd $ getPathFor forest' l) `shouldBe`
-             ["((1,1),(26,1))","((19,1),(21,14))"]
--}
-  -- ---------------------------------------------
-
   describe "retrieveTokens" $ do
     it "extracts all the tokens from the leaves of the trees, in order" $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -832,7 +787,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
@@ -911,7 +866,7 @@ spec = do
       let newToks = replaceTokNoReAlign toksForOp (19,1) newTok
       (show newToks) `shouldBe`   "[((((18,1),(18,19)),ITlineComment \"-- leading comment\"),\"-- leading comment\"),((((19,1),(19,1)),ITsemi),\"\"),((((19,1),(19,4)),ITmodule),\"bbb\"),((((19,5),(19,6)),ITvarid \"x\"),\"x\"),((((19,7),(19,8)),ITvarid \"y\"),\"y\"),((((19,9),(19,10)),ITequal),\"=\"),((((20,3),(20,5)),ITdo),\"do\"),((((20,6),(20,6)),ITvocurly),\"\"),((((20,6),(20,7)),ITvarid \"c\"),\"c\"),((((20,8),(20,10)),ITlarrow),\"<-\"),((((20,11),(20,18)),ITvarid \"getChar\"),\"getChar\"),((((21,6),(21,6)),ITsemi),\"\"),((((21,6),(21,12)),ITvarid \"return\"),\"return\"),((((21,13),(21,14)),ITvarid \"c\"),\"c\")]"
 
-      let (forest''',newSpan,_) = updateTokensForSrcSpan forest'' l newToks
+      let (forest''',_newSpan,_) = updateTokensForSrcSpan forest'' l newToks
 
       let toksFinal = retrieveTokens forest'''
 
@@ -1042,7 +997,7 @@ spec = do
       let z = openZipperToSpan (srcSpanToForestSpan ss2) $ Z.fromTree f2
       let toksz = retrieveTokens $ Z.tree z
       (GHC.showRichTokenStream toksz) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=a+b+c"
-      let (begin,middle,end) = splitToks (tokStartPos,tokEndPos) toksz
+      let (_begin,middle,_end) = splitToks (tokStartPos,tokEndPos) toksz
       -- (show begin) `shouldBe` ""
       (show middle) `shouldBe` "[((((13,16),(13,17)),ITvarid \"a\"),\"a\")]"
       -- (show end) `shouldBe` ""
@@ -1057,7 +1012,7 @@ spec = do
                "+- ((100000013,16),(100000013,17))\n|\n"++
                "`- ((13,17),(13,21))\n"
 
-      let (forest',tree) = getSrcSpanFor f2 (srcSpanToForestSpan ss2)
+      let (forest',_tree) = getSrcSpanFor f2 (srcSpanToForestSpan ss2)
       (drawTreeEntry forest') `shouldBe`
                "((100000013,1),(100000013,21))\n|\n"++
                "+- ((13,1),(13,16))\n|\n"++
@@ -1124,21 +1079,21 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
-      let (ghcl,c) = getGhcLoc l
-      let (ForestLine tr v line) = ghcLineToForestLine ghcl
-      let newSpan' = insertForestLineInSrcSpan (ForestLine tr (v+1) line) l
+      let (ghcl,_c) = getGhcLoc l
+      let (ForestLine tr v lin) = ghcLineToForestLine ghcl
+      let newSpan' = insertForestLineInSrcSpan (ForestLine tr (v+1) lin) l
 
       let toksNew = take 3 toks
       let newNode = Node (Entry (fs newSpan') toksNew) []
       -- let newNode = Node (Entry l toks) []
 
-      let toks' = retrieveTokens tree
+      -- let toks' = retrieveTokens tree
       let forest'' = insertNodeAfter tree newNode forest'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
@@ -1191,7 +1146,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
@@ -1219,7 +1174,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head $ tail decls
+      let (GHC.L l _) = head $ tail decls
       (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
       (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
 
@@ -1270,7 +1225,7 @@ spec = do
     -- ---------------------------------
 
     it "Adds a new SrcSpan after an existing one, with an indent based on whole prior line." $ do
-      (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
+      (_t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
 
       --  removeToksForPos ((7,1),(7,6))
@@ -1314,7 +1269,7 @@ spec = do
     -- ---------------------------------
 
     it "Adds a new SrcSpan after an existing one, with an indent catering for comments" $ do
-      (t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn5.hs"
+      (_t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn5.hs"
       let forest = mkTreeFromTokens toks
 
       -- removeToksForPos ((14,1),(14,6))
@@ -1358,7 +1313,7 @@ spec = do
     -- ---------------------------------
 
     it "Adds a new SrcSpan after deleting toks" $ do
-      (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
+      (_t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
 
       --  removeToksForPos ((7,1),(7,6))
@@ -1383,7 +1338,7 @@ spec = do
               "|  `- ((4,14),(4,19))\n|\n"++
               "`- ((8,1),(8,6))\n"
 
-      let (f,t) = getSrcSpanFor forest' (srcSpanToForestSpan sspan')
+      let (f,_t) = getSrcSpanFor forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry f) `shouldBe`
               "((1,1),(8,6))\n|\n"++
               "+- ((1,1),(4,19))\n|  |\n"++
@@ -1407,7 +1362,7 @@ spec = do
     -- ---------------------------------
 
     it "Adds a new SrcSpan after an existing one, in a subtree." $ do
-      (t,toks) <- parsedFileDemoteD1
+      (_t,toks) <- parsedFileDemoteD1
 
       let forest = mkTreeFromTokens toks
 
@@ -1489,7 +1444,7 @@ spec = do
     -- ---------------------------------
 
     it "Adds a new SrcSpan after the last one" $ do
-      (t,toks)  <- parsedFileGhc "./test/testdata/TypeUtils/JustImports.hs"
+      (_t,toks)  <- parsedFileGhc "./test/testdata/TypeUtils/JustImports.hs"
 
       let forest = mkTreeFromTokens toks
 
@@ -1527,7 +1482,7 @@ spec = do
               "`- ((3,8),(3,18))\n"
       -}
 
-      let (forest',sspan') = addToksAfterSrcSpan forest sspan (PlaceOffset 1 0 1) newToks
+      let (forest',_sspan') = addToksAfterSrcSpan forest sspan (PlaceOffset 1 0 1) newToks
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(3,18))\n|\n"++
               "+- ((1,1),(3,7))\n|\n"++
@@ -1741,7 +1696,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/Demote/D1.hs:11:1-7"
       (showSrcSpan l) `shouldBe` "((11,1),(11,8))"
 
@@ -1784,7 +1739,7 @@ spec = do
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let (GHC.L l _) = head decls
       (GHC.showPpr l) `shouldBe` "test/testdata/Demote/D1.hs:11:1-7"
       (showSrcSpan l) `shouldBe` "((11,1),(11,8))"
 
@@ -1902,7 +1857,7 @@ spec = do
       (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:(100000001,1)-(100000011,7)"
       (showSrcSpan sspan2) `shouldBe` "((100000001,1),(100000011,8))"
 
-      let decl'@(GHC.L ss' _) = syncAstToLatestCache tk' decl
+      let (GHC.L ss' _) = syncAstToLatestCache tk' decl
       (GHC.showPpr ss') `shouldBe` "test/testdata/Demote/D1.hs:100000011:1-7"
       (showSrcSpan ss') `shouldBe` "((100000011,1),(100000011,8))"
 
