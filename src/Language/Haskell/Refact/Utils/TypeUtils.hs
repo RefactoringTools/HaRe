@@ -3420,10 +3420,17 @@ rmTypeSig pn t
                                     else extendBackwards toks (startPos1',endPos1') isComma
                      toks' = deleteToks toks startPos1 endPos1
                  putToksForSpan sspan toks'
-                 -- TODO: the next two lines are wrong, need to stash
-                 -- only the one we delete
-                 sig' <- syncDeclToLatestStash sig
+
+                 -- Construct the old signature, by keeping the
+                 -- signature part but discarding the other names
+                 let oldSig = (GHC.L sspan (GHC.TypeSig [pnt] typ))
+                 sig'@(GHC.L sspan' _) <- syncDeclToLatestStash oldSig
+                 let typeLoc = extendBackwards toks (getStartEndLoc typ) isDoubleColon
+                 let (_,typTok,_) = splitToks typeLoc toks
+                 let (_,pntTok,_) = splitToks (getStartEndLoc pnt) toks
+                 putToksForSpan sspan' (pntTok ++ typTok)
                  setStateStorage (StorageSig sig')
+
 
                  return (decls1++[newSig]++tail decls2)
              else do

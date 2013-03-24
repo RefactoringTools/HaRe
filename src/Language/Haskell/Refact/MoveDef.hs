@@ -280,24 +280,24 @@ moveDecl1 t defName ns topLevel
    = do
         let n = ghead "moveDecl1" ns
         let funBinding = definingDeclsNames [n] (hsBinds t) True True
-        let typeSig = definingSigsNames [n] t
 
-        liftIO $ putStr $ "moveDecl1: (ns,funBinding)=" ++ (GHC.showPpr (ns,funBinding)) -- ++AZ++
-
-        (sigToMove,maybeToksSig) <- case typeSig of
-          [] -> return (Nothing,[])
-          _  -> do
-            let Just sspanSig = getSrcSpan typeSig
-            toksSig  <- getToksForSpan sspanSig
-            return (Just (ghead "moveDecl1 2" typeSig),toksSig)
+        liftIO $ putStrLn $ "moveDecl1: (ns,funBinding)=" ++ (GHC.showPpr (ns,funBinding)) -- ++AZ++
 
         let Just sspan = getSrcSpan funBinding
         funToks <- getToksForSpan sspan
 
-        -- t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
         (t'',sigRemoved) <- rmTypeSig (ghead "moveDecl3.2"  ns) t
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
-        addDecl t' defName (ghead "moveDecl1 2" funBinding,sigToMove,Just (maybeToksSig ++ funToks)) topLevel
+
+        maybeToksSig <- case sigRemoved of
+          Nothing -> return []
+          Just (GHC.L sspanSig _)  -> do
+            toksSig  <- getToksForSpan sspanSig
+            return toksSig
+
+        liftIO $ putStrLn $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
+
+        addDecl t' defName (ghead "moveDecl1 2" funBinding,sigRemoved,Just (maybeToksSig ++ funToks)) topLevel
 
 
 
@@ -922,13 +922,10 @@ doDemoting' t pn
    in if not (usedByRhs t declaredPns)
        then do
               drawTokenTree "" -- ++AZ++ debug
-              -- TODO: make this next block something in TypeUtils
+              -- TODO: Must be another way of getting the
+              --       demotedDecls, without the toks
               toks <- fetchToks
               let (demotedDecls,demotedToks) = getDeclAndToks pn True toks t
-              let (demotedSig, demotedSigToks) =
-                    case (getSigAndToks pn t toks) of
-                      Just (sig, sigToks) -> (Just sig, sigToks)
-                      Nothing -> (Nothing,[])
 
               -- find how many matches/pattern bindings (except the binding defining pn) use 'pn'
               -- uselist <- uses declaredPns (hsBinds t\\demotedDecls)
@@ -940,8 +937,6 @@ doDemoting' t pn
                        -}
                   uselist = concatMap (\r -> if (emptyList r) then [] else ["Used"])$ map (\b -> uses declaredPns [b]) otherBinds
                   -- uselist' =map (\b -> uses declaredPns [b]) otherBinds
-              -- error ("doDemoting':(pn,declaredPns,otherBinds,useList,uselist')=" ++ (GHC.showPpr (pn,declaredPns,otherBinds,uselist,uselist'))) -- ++AZ++
-              -- error ("doDemoting':(pn,origDecls,demotedDecls,uselist)=" ++ (GHC.showPpr (pn,origDecls,demotedDecls,uselist))) -- ++AZ++
               case  length uselist  of
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function
@@ -957,16 +952,18 @@ doDemoting' t pn
 
                          -- ++AZ++ moved to after the rest, so the tree is still available to start with
                          (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
-                         (t',sigRemoved) <- rmTypeSig pn t
-                         -- let ds = hsBinds t
-                         -- let t' = t
+                         (t',demotedSig) <- rmTypeSig pn t
+
+                         demotedSigToks <- case demotedSig of
+                                               Just (GHC.L ss _) -> do 
+                                                   sigToks <- getToksForSpan ss
+                                                   return sigToks
+                                               Nothing -> return []
+                         liftIO $ putStrLn $ "MoveDef:demotedSigToks=" ++ (show demotedSigToks) -- ++AZ++
 
                          --get those variables declared at where the demotedDecls will be demoted to
                          let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
                          --make sure free variable in 'f' do not clash with variables in 'dl',
-
-                         -- error ("doDemoting':(ds,dl)=" ++ (GHC.showPpr (ds,dl))) -- ++AZ++
-
                          --otherwise do renaming.
                          let clashedNames=filter (\x-> elem (id x) (map id f)) $ (nub.concat) dl
                          --rename clashed names to new names created automatically,update TOKEN STREAM as well.
@@ -978,11 +975,6 @@ doDemoting' t pn
                             else  --duplicate demoted declarations to the right place.
                                  do
                                     liftIO $ putStrLn $ "MoveDef: about to duplicateDecls"
-                                    -- error ("doDemoting':(declaredPns,demotedDecls)=" ++ (GHC.showPpr (declaredPns,demotedDecls))) -- ++AZ++
-                                    -- error ("doDemoting':(origDecls)=" ++ (GHC.showPpr (origDecls))) -- ++AZ++
-                                    -- ds'' <- duplicateDecls declaredPns origDecls
-
-                                    -- ds'' <- duplicateDecls declaredPns (ghead "doDemoting'" demotedDecls) demotedSig (Just (demotedSigToks ++ demotedToks)) origDecls
                                     ds'' <- duplicateDecls declaredPns removedDecl demotedSig (Just (demotedSigToks ++ demotedToks)) origDecls
 
                                     liftIO $ putStrLn $ "MoveDef:duplicateDecls done"
@@ -994,7 +986,7 @@ doDemoting' t pn
                                     -- t'' <- rmTypeSig pn t'
                                     -- t'' <- rmDecl pn True t
 
-                                    -- drawTokenTree "" -- ++AZ++ debug
+
 
                                     return (replaceBinds t' ds'')
                                     -- return (t'')

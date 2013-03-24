@@ -105,6 +105,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , divideComments
        , isWhiteSpace
        , notWhiteSpace
+       , isDoubleColon
        , isComment
        , getSrcSpan
        , getIndentOffset
@@ -1613,6 +1614,10 @@ notWhiteSpace :: PosToken -> Bool
 notWhiteSpace tok = not (isWhiteSpace tok)
 
 -- ---------------------------------------------------------------------
+
+isDoubleColon :: PosToken -> Bool
+isDoubleColon ((GHC.L _ (GHC.ITdcolon)), "::") = True
+isDoubleColon _                                = False
 
 isComment :: PosToken -> Bool
 isComment ((GHC.L _ (GHC.ITdocCommentNext _)),_s)  = True
