@@ -3275,25 +3275,28 @@ duplicateDecl decls sigs n newFunName
 -- parameter is True) that defines the given identifier from the
 -- declaration list.
 rmDecl:: (SYB.Data t)
-        =>GHC.Name     -- ^ The identifier whose definition is to be removed.
-        ->Bool         -- ^ True means including the type signature.
-        ->t            -- ^ The declaration list.
-        -> RefactGhc (t,GHC.LHsBind GHC.Name) -- ^ The result, and the
-                                              -- removed declaration,
-                                              -- with SrcSpans
-                                              -- adjusted to reflect
-                                              -- the stashed tokens
+    =>GHC.Name     -- ^ The identifier whose definition is to be removed.
+    ->Bool         -- ^ True means including the type signature.
+    ->t            -- ^ The declaration list.
+    -> RefactGhc
+        (t,                        -- ^ The result
+        GHC.LHsBind GHC.Name,      -- ^ and the removed declaration,
+                                   -- with SrcSpans adjusted to
+                                   -- reflect the stashed
+                                   -- tokens
+        Maybe (GHC.LSig GHC.Name)) -- ^ and the possibly removed siganture
 rmDecl pn incSig t = do
   liftIO $ putStr $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
   t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
-  t'' <- if incSig then rmTypeSig pn t'
-                   else return t'
+  (t'',sig') <- if incSig
+                  then rmTypeSig pn t'
+                  else return (t', Nothing)
   storage <- getStateStorage
   let decl' = case storage of
                 StorageBind bind -> bind
                 x                -> error $ "rmDecl: unexpected value in StateStorage:" ++ (show x)
-  return (t'',decl')
+  return (t'',decl',sig')
   where
     inDecls (decls::[GHC.LHsBind GHC.Name])
       | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
@@ -3373,21 +3376,28 @@ rmDecl pn incSig t = do
 
 -- | Remove the type signature that defines the given identifier's
 -- type from the declaration list.
--- TODO: return removed signature, with its tokens in a stash, as per rmDecl
 rmTypeSig :: (SYB.Data t) =>
          GHC.Name    -- ^ The identifier whose type signature is to be removed.
       -> t           -- ^ The declarations
-      -> RefactGhc t -- ^ The result
+      -> RefactGhc (t,Maybe (GHC.LSig GHC.Name))
+                     -- ^ The result and removed signature, if there
+                     -- was one
 rmTypeSig pn t
   = do
+     setStateStorage StorageNone
      t' <- everywhereMStaged SYB.Renamer (SYB.mkM inSigs) t
-     return t'
+     storage <- getStateStorage
+     let sig' = case storage of
+                  StorageSig sig -> Just sig
+                  StorageNone    -> Nothing
+                  x -> error $ "rmTypeSig: unexpected value in StateStorage:" ++ (show x)
+     return (t',sig')
   where
    inSigs (sigs::[GHC.LSig GHC.Name])
       | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
      = do
          let (decls1,decls2)= break (definesTypeSig pn) sigs
-         let (GHC.L sspan (GHC.TypeSig names typ)) = ghead "rmTypeSig" decls2
+         let sig@(GHC.L sspan (GHC.TypeSig names typ)) = ghead "rmTypeSig" decls2
          if length names > 1
              then do
                  -- We have the following cases
@@ -3409,12 +3419,17 @@ rmTypeSig pn t
                                     then extendForwards  toks (startPos1',endPos1') isComma
                                     else extendBackwards toks (startPos1',endPos1') isComma
                      toks' = deleteToks toks startPos1 endPos1
-                 liftIO $ putStrLn $ "rmTypeSig: (startPos1', endPos1'):" ++ (show (getStartEndLoc pnt)) -- ++AZ++
-                 liftIO $ putStrLn $ "rmTypeSig: (sspan):" ++ (GHC.showPpr sspan) -- ++AZ++
                  putToksForSpan sspan toks'
+                 -- TODO: the next two lines are wrong, need to stash
+                 -- only the one we delete
+                 sig' <- syncDeclToLatestStash sig
+                 setStateStorage (StorageSig sig')
+
                  return (decls1++[newSig]++tail decls2)
              else do
                  removeToksForSpan sspan
+                 sig' <- syncDeclToLatestStash sig
+                 setStateStorage (StorageSig sig')
                  return (decls1++tail decls2)
    inSigs x = return x
 

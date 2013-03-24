@@ -112,10 +112,12 @@ type ParseResult = GHC.TypecheckedModule
 -- place
 data StateStorage = StorageNone
                   | StorageBind (GHC.LHsBind GHC.Name)
+                  | StorageSig (GHC.LSig GHC.Name)
 
 instance Show StateStorage where
   show StorageNone        = "StorageNone"
   show (StorageBind bind) = "(StorageBind " ++ (GHC.showPpr bind) ++ ")"
+  show (StorageSig sig)   = "(StorageSig " ++ (GHC.showPpr sig) ++ ")"
 
 -- ---------------------------------------------------------------------
 -- StateT and GhcT stack

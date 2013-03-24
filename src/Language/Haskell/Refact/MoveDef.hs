@@ -295,8 +295,8 @@ moveDecl1 t defName ns topLevel
         funToks <- getToksForSpan sspan
 
         -- t' <- rmDecl (ghead "moveDecl3"  ns) False =<< foldM (flip rmTypeSig) t ns
-        t'' <- rmTypeSig (ghead "moveDecl3.2"  ns) t
-        (t',_declRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
+        (t'',sigRemoved) <- rmTypeSig (ghead "moveDecl3.2"  ns) t
+        (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
         addDecl t' defName (ghead "moveDecl1 2" funBinding,sigToMove,Just (maybeToksSig ++ funToks)) topLevel
 
 
@@ -956,8 +956,8 @@ doDemoting' t pn
                          -- let ds=foldl (flip removeTypeSig) (deleteFirstsBy sameBind (hsBinds t) demotedDecls) declaredPns
 
                          -- ++AZ++ moved to after the rest, so the tree is still available to start with
-                         (ds,removedDecl) <- rmDecl pn True (hsBinds t)
-                         t' <- rmTypeSig pn t
+                         (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
+                         (t',sigRemoved) <- rmTypeSig pn t
                          -- let ds = hsBinds t
                          -- let t' = t
 
