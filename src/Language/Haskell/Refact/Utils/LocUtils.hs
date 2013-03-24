@@ -1100,23 +1100,27 @@ extendBothSides  toks startLoc endLoc  forwardCondFun backwardCondFun
         in (firstLoc, lastLoc)
 -}
 
-extendForwards :: [PosToken] -> SimpPos -> SimpPos -> (PosToken -> Bool)
+-- |Extend the given position backwards to the front of the file while
+-- the supplied condition holds
+extendBackwards :: [PosToken] -> (SimpPos ,SimpPos) -> (PosToken -> Bool)
   -> (SimpPos,SimpPos)
-extendForwards toks startLoc endLoc forwardCondFun
-       =let toks1=takeWhile (\t->tokenPos t /= startLoc) toks
-            firstLoc=case (dropWhile (not.forwardCondFun) (reverse toks1)) of
-                       [] ->startLoc  -- is this the correct default?
-                       l -> (tokenPos.ghead "extendForwards") l
-        in (firstLoc, endLoc)
+extendBackwards toks (startLoc,endLoc) condFun
+    = let toks1 = takeWhile (\t->tokenPos t /= startLoc) toks
+          firstLoc = case (dropWhile (not.condFun) (reverse toks1)) of
+                       [] -> startLoc  -- is this the correct default?
+                       l  -> (tokenPos.ghead "extendBackwards") l
+      in (firstLoc, endLoc)
 
-extendBackwards :: [PosToken] -> SimpPos -> SimpPos -> (PosToken -> Bool)
+-- |Extend the given position forwards to the end of the file while
+-- the supplied condition holds
+extendForwards :: [PosToken] -> (SimpPos ,SimpPos) -> (PosToken -> Bool)
   -> (SimpPos,SimpPos)
-extendBackwards toks startLoc endLoc backwardCondFun
-       = let toks1= gtail "extendBackwards"  $ dropWhile (\t->tokenPos t /=endLoc) toks
-             lastLoc=case (dropWhile (not.backwardCondFun) toks1) of
+extendForwards toks (startLoc,endLoc) condFun
+    = let toks1 = gtail "extendForwards"  $ dropWhile (\t->tokenPosEnd t /= endLoc) toks
+          lastLoc = case (dropWhile (condFun) toks1) of
                           [] ->endLoc -- is this the correct default?
-                          l ->(tokenPos. ghead "extendBackwards") l
-         in (startLoc, lastLoc)
+                          l ->(tokenPos. ghead "extendForwards") l
+      in (startLoc, lastLoc)
 
 {-
 ------------------Some functions for associating comments with syntax phrases.---------------------------

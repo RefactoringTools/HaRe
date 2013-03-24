@@ -3406,10 +3406,11 @@ rmTypeSig pn t
                      (startPos1, endPos1) =
                          let (startPos1', endPos1') = getStartEndLoc pnt
                              in if gfromJust "rmTypeSig" (elemIndex pnt names) == 0
-                                    then extendForwards  toks startPos1' endPos1' isComma
-                                    else extendBackwards toks startPos1' endPos1' isComma
+                                    then extendForwards  toks (startPos1',endPos1') isComma
+                                    else extendBackwards toks (startPos1',endPos1') isComma
                      toks' = deleteToks toks startPos1 endPos1
                  liftIO $ putStrLn $ "rmTypeSig: (startPos1', endPos1'):" ++ (show (getStartEndLoc pnt)) -- ++AZ++
+                 liftIO $ putStrLn $ "rmTypeSig: (sspan):" ++ (GHC.showPpr sspan) -- ++AZ++
                  putToksForSpan sspan toks'
                  return (decls1++[newSig]++tail decls2)
              else do
