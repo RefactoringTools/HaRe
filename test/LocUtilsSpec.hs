@@ -805,11 +805,11 @@ spec = do
       (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (drawTreeEntry f) `shouldBe`
-                "((1,1),(34,1))\n|\n"++
+                "((1,1),(32,18))\n|\n"++
                 "+- ((1,1),(3,31))\n|\n"++
                 "+- ((4,1),(4,19))\n|\n"++
                 "+- ((1000004,20),(1000004,25))\n|\n"++
-                "`- ((6,1),(34,1))\n"
+                "`- ((6,1),(32,18))\n"
       -- (showTree f) `shouldBe` ""
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x n1 n2\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 

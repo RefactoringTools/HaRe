@@ -7,15 +7,19 @@ module WhereIn7 where
 --In this example, demote the top level 'sq' to 'sumSquares'
 --This example also aims to test the split of type signature.
 
-sumSquares x y = sq x + sq y       
-  where
-    sq :: Int -> Int
+sumSquares x y = sq x + sq y
+    where
+       sq            :: Int -> Int
+       sq 0 = 0
+       sq z = z^pow
+          where  pow=2
+    
 
-    sq 0 = 0
-    sq z = z^pow 
-       where  pow=2
+
 
 anotherFun :: Int -> Int
 
+
+
+
 anotherFun x = x^2
- 

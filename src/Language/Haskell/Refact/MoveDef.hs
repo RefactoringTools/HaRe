@@ -925,8 +925,8 @@ doDemoting' t pn
               -- TODO: Must be another way of getting the
               --       demotedDecls, without the toks
               toks <- fetchToks
-              let (demotedDecls,demotedToks) = getDeclAndToks pn True toks t
-
+              -- let (demotedDecls,demotedToks) = getDeclAndToks pn True toks t
+              let demotedDecls = definingDeclsNames [pn] (hsBinds t) True True
               -- find how many matches/pattern bindings (except the binding defining pn) use 'pn'
               -- uselist <- uses declaredPns (hsBinds t\\demotedDecls)
               let -- uselist = uses declaredPns (hsBinds t\\demotedDecls)
@@ -954,12 +954,18 @@ doDemoting' t pn
                          (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
                          (t',demotedSig) <- rmTypeSig pn t
 
+                         let (GHC.L ssd _) = removedDecl
+                         demotedToks <- getToksForSpan ssd
+
                          demotedSigToks <- case demotedSig of
-                                               Just (GHC.L ss _) -> do 
+                                               Just (GHC.L ss _) -> do
                                                    sigToks <- getToksForSpan ss
                                                    return sigToks
                                                Nothing -> return []
+
                          liftIO $ putStrLn $ "MoveDef:demotedSigToks=" ++ (show demotedSigToks) -- ++AZ++
+
+                         liftIO $ putStrLn $ "MoveDef:sig and decl toks[" ++ (GHC.showRichTokenStream (demotedSigToks ++ demotedToks)) ++ "]" -- ++AZ++
 
                          --get those variables declared at where the demotedDecls will be demoted to
                          let dl = map (flip declaredNamesInTargetPlace ds) declaredPns

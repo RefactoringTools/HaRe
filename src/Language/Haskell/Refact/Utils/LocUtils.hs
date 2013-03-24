@@ -406,7 +406,7 @@ tokenise  startPos colOffset withFirstLineIndent str
      addIndent ln = if withFirstLineIndent
                       then replicate colOffset ' '++ ln
                       else ln
- 
+
 -- ---------------------------------------------------------------------
 
 -- |Convert a string into a set of Haskell tokens. It has default
@@ -414,6 +414,7 @@ tokenise  startPos colOffset withFirstLineIndent str
 basicTokenise :: String -> IO [PosToken]
 basicTokenise str = tokenise startPos 0 False str
   where
+    -- startPos = (GHC.mkRealSrcLoc tokenFileMark 0 1)
     startPos = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 1)
 
 -- ---------------------------------------------------------------------

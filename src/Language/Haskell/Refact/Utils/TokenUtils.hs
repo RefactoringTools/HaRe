@@ -107,6 +107,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , notWhiteSpace
        , isDoubleColon
        , isComment
+       , isEmpty
        , getSrcSpan
        , getIndentOffset
        , splitOnNewLn
@@ -1633,6 +1634,7 @@ isComment ((GHC.L _ _),_s)                         = False
 isEmpty :: PosToken -> Bool
 isEmpty ((GHC.L _ (GHC.ITsemi)),    "") = True
 isEmpty ((GHC.L _ (GHC.ITvocurly)), "") = True
+isEmpty ((GHC.L _ _),               "") = True
 isEmpty _                               = False
 
 --Some functions for fetching a specific field of a token
@@ -1836,10 +1838,12 @@ groupTokensByLine (xs) = let x = head xs
 -- ---------------------------------------------------------------------
 
 -- | Make sure all tokens have at least one space between them
+--   (Except for zero-length toks)
 -- TODO: pretty sure this can be simplified
 reAlignToks :: [PosToken] -> [PosToken]
 reAlignToks [] = []
 reAlignToks [t] = [t]
+reAlignToks (tok1@(_,""):ts) = tok1 : reAlignToks ts
 reAlignToks (tok1@((GHC.L l1 _t1),_s1):tok2@((GHC.L l2 t2),s2):ts)
   = tok1:reAlignToks (tok2':ts)
    where

@@ -1328,16 +1328,17 @@ spec = do
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
-              "((1,1),(26,1))\n|\n"++
+              "((1,1),(21,14))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
-              "+- ((1000019,1),(1000021,14))\n|\n"++ -- our inserted span
-              "`- ((26,1),(26,1))\n"
+              "`- ((1000019,1),(1000021,14))\n" -- our inserted span
+
+
       (showSrcSpan sspan) `shouldBe` "((1000019,1),(1000021,14))"
 
       let toksFinal = retrieveTokens forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n  "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
 
       let
         comp = do
@@ -1353,7 +1354,7 @@ spec = do
       (GHC.showPpr n) `shouldBe` "TokenTest.foo" 
       (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n  "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
       (GHC.showPpr nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
 
@@ -1381,18 +1382,17 @@ spec = do
 
       (invariant forest''') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
-              "((1,1),(26,1))\n|\n"++
+              "((1,1),(21,14))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
-              "+- ((1000024,1),(1000026,14))\n|\n"++ -- our inserted span
-              "`- ((26,1),(26,1))\n"
+              "`- ((1000024,1),(1000026,14))\n"  -- our inserted span
       (showSrcSpan sspan) `shouldBe` "((1000024,1),(1000026,14))"
 
       -- (show $ getTokensFor forest''' sspan) `shouldBe` ""
 
       let toksFinal = retrieveTokens forest'''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n \n\n  "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n \n\n "
 
       let
         comp = do
@@ -1408,7 +1408,7 @@ spec = do
       (GHC.showPpr n) `shouldBe` "TokenTest.foo" 
       (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n \n\n  "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n \n\n "
       (GHC.showPpr nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
 
@@ -1445,13 +1445,13 @@ spec = do
 
       (invariant forest''') `shouldBe` []
       (drawTreeEntry forest''') `shouldBe`
-              "((1,1),(34,1))\n|\n"++
+              "((1,1),(32,18))\n|\n"++
               "+- ((1,1),(3,31))\n|  |\n"++
               "|  +- ((1,1),(1,24))\n|  |\n"++
               "|  `- ((3,1),(3,31))\n|\n"++
               "+- ((4,1),(4,19))\n|\n"++
               "+- ((1000006,1),(1000006,31))\n|\n"++
-              "`- ((6,1),(34,1))\n"
+              "`- ((6,1),(32,18))\n"
 
       (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
       (showSrcSpan newSpan) `shouldBe` "((1000006,1),(1000006,31))"
@@ -1488,26 +1488,26 @@ spec = do
       let (forest4,toksSig1) = getTokensFor forest''' newSpan
       (invariant forest4) `shouldBe` []
       (drawTreeEntry forest4) `shouldBe`
-              "((1,1),(34,1))\n|\n"++
+              "((1,1),(32,18))\n|\n"++
               "+- ((1,1),(3,31))\n|  |\n"++
               "|  +- ((1,1),(1,24))\n|  |\n"++
               "|  `- ((3,1),(3,31))\n|\n"++
               "+- ((4,1),(4,19))\n|\n"++
               "+- ((1000006,1),(1000006,31))\n|\n"++
-              "`- ((6,1),(34,1))\n"
+              "`- ((6,1),(32,18))\n"
 
       (GHC.showRichTokenStream toksSig1) `shouldBe` "\n\n\n\n\n toplevel :: Integer -> Integer"
 
       let (forest5,newSpan2,_) = updateTokensForSrcSpan forest4 newSpan toksSig1
       (invariant forest5) `shouldBe` []
       (drawTreeEntry forest5) `shouldBe`
-              "((1,1),(34,1))\n|\n"++
+              "((1,1),(32,18))\n|\n"++
               "+- ((1,1),(3,31))\n|  |\n"++
               "|  +- ((1,1),(1,24))\n|  |\n"++
               "|  `- ((3,1),(3,31))\n|\n"++
               "+- ((4,1),(4,19))\n|\n"++
               "+- ((1000006,1),(1000006,31))\n|\n"++
-              "`- ((6,1),(34,1))\n"
+              "`- ((6,1),(32,18))\n"
 
 
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'

@@ -493,6 +493,8 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
        modifyFile ((fileName,_),(ts,renamed)) = do
            -- let source = concatMap (snd.snd) ts
 
+           -- The bug fix only works if we strip any empty tokens
+           -- let ts' = bypassGHCBug7351 $ filter (\t -> not $ isEmpty t) ts
            let ts' = bypassGHCBug7351 ts
            let source = GHC.showRichTokenStream ts'
 
@@ -505,6 +507,7 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            seq (length source) (writeFile (fileName ++ ".refactored") source)
 
            writeFile (fileName ++ ".tokens") (showToks ts')
+           -- writeFile (fileName ++ ".tokens") (showToks $ filter (\t -> not $ isEmpty t) ts)
            writeFile (fileName ++ ".renamed_out") (GHC.showPpr renamed)
            writeFile (fileName ++ ".AST_out") $ (GHC.showPpr renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
 
