@@ -403,7 +403,7 @@ spec = do
       (showForestSpan $ treeStartEnd tree1) `shouldBe` "((1,1),(8,8))"
       (showForestSpan $ treeStartEnd tree2) `shouldBe` "((8,9),(13,4))"
       (showForestSpan $ treeStartEnd tree3) `shouldBe` "((13,5),(15,17))"
-      (showForestSpan $ treeStartEnd tree4) `shouldBe` "((19,1),(26,1))"
+      (showForestSpan $ treeStartEnd tree4) `shouldBe` "((19,1),(21,14))"
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -414,7 +414,7 @@ spec = do
       let (begin,middle,end) = splitForestOnSpan (subForest forest) (fs l)
       (map showForestSpan $ map treeStartEnd begin) `shouldBe`
              ["((1,1),(8,8))","((8,9),(13,4))","((13,5),(15,17))"]
-      (map showForestSpan $ map treeStartEnd middle) `shouldBe` ["((19,1),(26,1))"]
+      (map showForestSpan $ map treeStartEnd middle) `shouldBe` ["((19,1),(21,14))"]
       (show $ map treeStartEnd end) `shouldBe` "[]"
 
   -- ---------------------------------------------
@@ -573,18 +573,18 @@ spec = do
               "`- ((19,1),(21,14))\n" -- our inserted span
 
       let (forest'',delTree) = removeSrcSpan forest' (fs l)
-      (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(21,14))\n|\n"++
               "`- ((1,1),(15,17))\n"
               -- "+- ((19,1),(21,14))\n|\n"++ -- removed again
+      (invariant forest'') `shouldBe` []
 
       (drawTreeEntry delTree) `shouldBe`
               "((19,1),(21,14))\n" -- removed again
 
       let toks' = retrieveTokens forest''
       -- (showToks toks') `shouldBe` ""
-      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n\n\n\n\n\n\n\n\n "
+      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment"
 
     -- ---------------------------------
     it "removes a span and tokens that were not explicitly in the forest" $ do
@@ -790,8 +790,10 @@ spec = do
               "+- ((1,1),(15,17))\n|\n"++
               "`- ((19,1),(21,14))\n" -- our inserted span
 
+      let toksClean = reverse $ dropWhile isEmpty $ reverse toks
+
       let toks' = retrieveTokens forest'
-      (show toks') `shouldBe` (show toks)
+      (show toks') `shouldBe` (show toksClean)
 
   -- ---------------------------------------------
 
@@ -1562,16 +1564,17 @@ spec = do
   describe "invariant 2" $ do
     it "checks that a the subree fully includes the parent" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      let tree@(Node (Entry sspan _) _) = mkTreeFromTokens toks
-      let tree2 = mkTreeFromTokens (tail toks)
-      let tree3 = mkTreeFromTokens (take 10 toks)
+      let tree1@(Node (Entry sspan _) _)  = mkTreeFromTokens toks
+      let tree2@(Node (Entry sspan2 _) _) = mkTreeFromTokens (tail toks)
+      let tree3@(Node (Entry sspan3 _) _) = mkTreeFromTokens (take 10 toks)
       let tree4 = mkTreeFromTokens (drop 10 toks)
-      (showTree tree)  `shouldBe` "Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
+      (showTree tree1) `shouldBe` "Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
       (showTree tree2) `shouldBe` "Node (Entry ((1,8),(21,14)) [(((1,8),(1,17)),ITconid \"TokenTest\",\"TokenTest\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
       (showTree tree3) `shouldBe` "Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) []"
 
-      (invariant (Node (Entry sspan []) [tree2])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(21,14)) []) [\"Node (Entry ((1,8),(21,14)) [(((1,8),(1,17)),ITconid \\\"TokenTest\\\",\\\"TokenTest\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
-      (invariant (Node (Entry sspan []) [tree3])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(21,14)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\"]"]
+      (invariant (Node (Entry sspan2 []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,8),(21,14)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+
+      (invariant (Node (Entry sspan3 []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(5,12)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
 
       (invariant (Node (Entry sspan []) [tree3,tree4])) `shouldBe` []
 

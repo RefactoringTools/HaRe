@@ -1251,6 +1251,9 @@ invariant forest = rsub
                  else []
 
     -- |Check invariant 2, assuming 1 ok
+    --  NOTE: check that the subtree spans do not go outside the node
+    --  span, they do not need to completely fill it, because some may
+    --  have been removed during manipulation
     checkInclusion      (Node _                    []) = []
     checkInclusion node@(Node (Entry _sspan _toks)  sub) = rs ++ rseq
       where
@@ -1262,7 +1265,7 @@ invariant forest = rsub
         -- test
         -- TODO: is this a reasonable approach?
 
-        rs = if (start == sstart) && ((end == send) || (forestPosVersionSet send) || (forestPosAstVersionSet send))
+        rs = if (start <= sstart) && ((end >= send) || (forestPosVersionSet send) || (forestPosAstVersionSet send))
                then []
                else ["FAIL: subForest start and end does not match entry: " ++ (prettyshow node)]
 
