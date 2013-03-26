@@ -34,7 +34,7 @@ spec = do
 
   describe "locToExp on ParsedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
-      (t, toks) <- parsedFileBGhc
+      (t, _toks) <- parsedFileBGhc
       let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just expr) = locToExp (7,7) (7,43) mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
@@ -43,7 +43,7 @@ spec = do
 
     it "finds the largest leftmost expression contained in a given region #2" $ do
       -- ((_, _, mod), toks) <- parsedFileBGhc
-      (t, toks) <- parsedFileBGhc
+      (t, _toks) <- parsedFileBGhc
       let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just expr) = locToExp (7,7) (7,41) mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
@@ -52,7 +52,7 @@ spec = do
 
     it "finds the largest leftmost expression in RenamedSource" $ do
       -- ((_, renamed, _), toks) <- parsedFileBGhc
-      (t, toks) <- parsedFileBGhc
+      (t, _toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let (Just expr) = locToExp (7,7) (7,41) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
@@ -251,6 +251,23 @@ spec = do
       r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, interpreted )\""
                   ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, interpreted )\"]")
 
+
+  -- -------------------------------------------------------------------
+
+  describe "RefactFlags" $ do
+    it "puts the RefactDone flag through its paces" $ do
+      let
+        comp = do
+          v1 <- getRefactDone
+          clearRefactDone
+          v2 <- getRefactDone
+          setRefactDone
+          v3 <- getRefactDone
+
+          return (v1,v2,v3)
+      ((v1',v2',v3'), _s) <- runRefactGhcState comp
+
+      (show (v1',v2',v3')) `shouldBe` "(False,False,True)"
 
 
 -- ---------------------------------------------------------------------

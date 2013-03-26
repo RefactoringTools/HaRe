@@ -385,15 +385,18 @@ clearParsedModule = do
 getRefactDone :: RefactGhc Bool
 getRefactDone = do
   flags <- gets rsFlags
+  liftIO $ putStrLn $ "getRefactDone: " ++ (show (rsDone flags))
   return (rsDone flags)
 
 setRefactDone :: RefactGhc ()
 setRefactDone = do
+  liftIO $ putStrLn $ "setRefactDone" 
   st <- get
   put $ st { rsFlags = RefFlags True }
 
 clearRefactDone :: RefactGhc ()
 clearRefactDone = do
+  liftIO $ putStrLn $ "clearRefactDone" 
   st <- get
   put $ st { rsFlags = RefFlags False }
 

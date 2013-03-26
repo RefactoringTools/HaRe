@@ -755,6 +755,8 @@ demotingInClientMod pns (modName, fileName)
 doDemoting :: GHC.Name -> RefactGhc ()
 doDemoting  pn = do
 
+  clearRefactDone -- Only do this action once
+
   renamed  <- getRefactRenamed
   renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM demoteInMod
                                              `SYB.extM` demoteInMatch
@@ -1040,7 +1042,9 @@ doDemoting' t pn
           -- duplicateDecls :: (SYB.Data t) =>[GHC.Name] -> t -> RefactGhc [GHC.LHsBind GHC.Name]
           duplicateDecls pns demoted dsig dtoks decls
              -- = do everywhereMStaged SYB.Renamer (SYB.mkM dupInMatch
-             = do clearRefactDone
+             = do 
+                  liftIO $ putStrLn "duplicateDecls:clearing done"  -- ++AZ++
+                  -- clearRefactDone
                   everywhereMStaged' SYB.Renamer (SYB.mkM dupInMatch -- top-down approach
              -- = do somewhereMStaged SYB.Renamer (SYB.mkM dupInMatch -- need working MonadPlus for somewhereMStaged
                                                 `SYB.extM` dupInPat) decls
@@ -1057,9 +1061,11 @@ doDemoting' t pn
                    | (not $ findPNs pns pats) && findPNs pns rhs
                    =  do
                         done <- getRefactDone
+                        liftIO $ putStrLn $ "duplicateDecls:value of done=" ++ (show done) -- ++AZ++
                         if done
                           then return match
                           else do
+                            liftIO $ putStrLn "duplicateDecls:setting done"  -- ++AZ++
                             setRefactDone
                             --If not fold parameters.
                             -- moveDecl pns pats False decls False
@@ -1279,6 +1285,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
 
                    let [(GHC.L declSpan _)] = demotedDecls'''
                    declToks <- getToksForSpan declSpan
+                   liftIO $ putStrLn $ "MoveDef.foldParams addDecl adding to (hsBinds):[" ++ (SYB.showData SYB.Renamer 0 $ hsBinds rhs') ++ "]" -- ++AZ++
                    rhs'' <- addDecl rhs' Nothing (ghead "foldParams 2" demotedDecls''',Nothing,Just declToks) False
                    liftIO $ putStrLn $ "MoveDef.foldParams addDecl done"
                    return (GHC.Match pats mt rhs'')
@@ -1389,7 +1396,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
               -- This genuinely needs to be done once only. Damn.
               -- =applyTP (stop_tdTP (failTP `adhocTP` worker))
              = do
-                _ <- clearRefactDone
+                -- _ <- clearRefactDone
                 everywhereMStaged' SYB.Renamer (SYB.mkM worker) t
                 where
                   {-
