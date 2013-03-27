@@ -758,7 +758,9 @@ doDemoting  pn = do
   clearRefactDone -- Only do this action once
 
   renamed  <- getRefactRenamed
-  renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM demoteInMod
+  liftIO $ putStrLn $ "MoveDef.doDemoting:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+  -- everywhereMStaged' is top-down
+  renamed' <- everywhereMStaged' SYB.Renamer (SYB.mkM   demoteInMod
                                              `SYB.extM` demoteInMatch
                                              `SYB.extM` demoteInPat
                                              `SYB.extM` demoteInLet
@@ -793,26 +795,44 @@ doDemoting  pn = do
 
        --2. The demoted definition is a local decl in a match
        -- demoteInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-       demoteInMatch (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name)
+       demoteInMatch (match@(GHC.Match _pats _mt rhs)::GHC.Match GHC.Name)
          -- | definingDecls [pn] ds False False/=[]
          | not $ emptyList (definingDeclsNames [pn] (hsBinds rhs) False False)
-         = doDemoting' match pn
+         = do
+              liftIO $ putStrLn "MoveDef:demoteInMatch" -- ++AZ++
+              done <- getRefactDone
+              match' <- if (not done)
+                then doDemoting' match pn
+                else return match
+              return match'
        demoteInMatch  x = return x
 
        --3. The demoted definition is a local decl in a pattern binding
        -- demoteInPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
-       demoteInPat (pat@((GHC.PatBind p rhs _ _ _))::GHC.HsBind GHC.Name)
+       demoteInPat (pat@((GHC.PatBind _p rhs _ _ _))::GHC.HsBind GHC.Name)
          -- | definingDecls [pn] ds False False /=[]
          | not $ emptyList (definingDeclsNames [pn] (hsBinds rhs) False False)
-          = doDemoting' pat pn
+          = do
+              liftIO $ putStrLn "MoveDef:demoteInPat" -- ++AZ++
+              done <- getRefactDone
+              pat' <- if (not done)
+                then doDemoting' pat pn
+                else return pat
+              return pat'
        demoteInPat x = return x
 
        --4: The demoted definition is a local decl in a Let expression
        -- demoteInLet (letExp@(Exp (HsLet ds e))::HsExpP)
-       demoteInLet (letExp@(GHC.HsLet ds e)::GHC.HsExpr GHC.Name)
+       demoteInLet (letExp@(GHC.HsLet ds _e)::GHC.HsExpr GHC.Name)
          -- | definingDecls [pn] ds False False/=[]
          | not $ emptyList (definingDeclsNames [pn] (hsBinds ds) False False)
-          = doDemoting' letExp pn
+          = do
+              liftIO $ putStrLn "MoveDef:demoteInLet" -- ++AZ++
+              done <- getRefactDone
+              letExp' <- if (not done)
+                 then doDemoting' letExp pn
+                 else return letExp
+              return letExp'
        demoteInLet x = return x
 
        -- TODO: the rest of these cases below
@@ -829,7 +849,13 @@ doDemoting  pn = do
        demoteInStmt (letStmt@(GHC.LetStmt binds)::GHC.Stmt GHC.Name)
          -- | definingDecls [pn] ds False False /=[]
          | not $ emptyList (definingDeclsNames [pn] (hsBinds binds) False False)
-          = doDemoting' letStmt pn
+          = do
+              liftIO $ putStrLn "MoveDef:demoteInStmt" -- ++AZ++
+              done <- getRefactDone
+              letStmt' <- if (not done)
+                then doDemoting' letStmt pn
+                else return letStmt
+              return letStmt'
        demoteInStmt x =return x
 
        -- TODO: the rest of these cases below
@@ -919,16 +945,12 @@ doDemoting' t pn
  = let origDecls = hsBinds t
        demotedDecls'= definingDeclsNames [pn] origDecls True False
        declaredPns = nub $ concatMap definedPNs demotedDecls'
-       -- demotedDecls = definingDeclsNames declaredPns origDecls True False
-   -- in if not (usedByRhs t declaredPns) -- ++AZ++ this only works because the top level is hard coded to False.
    in if not (usedByRhs t declaredPns)
+      -- if True -- ++AZ++ temporary
        then do
-              drawTokenTree "" -- ++AZ++ debug
-              -- TODO: Must be another way of getting the
-              --       demotedDecls, without the toks
-              toks <- fetchToks
-              -- let (demotedDecls,demotedToks) = getDeclAndToks pn True toks t
+              -- drawTokenTree "" -- ++AZ++ debug
               let demotedDecls = definingDeclsNames [pn] (hsBinds t) True True
+              -- liftIO $ putStrLn $ "doDemoting':demotedDecls=" ++ (GHC.showPpr demotedDecls) -- ++AZ++
               -- find how many matches/pattern bindings (except the binding defining pn) use 'pn'
               -- uselist <- uses declaredPns (hsBinds t\\demotedDecls)
               let -- uselist = uses declaredPns (hsBinds t\\demotedDecls)
@@ -1042,8 +1064,8 @@ doDemoting' t pn
           -- duplicateDecls :: (SYB.Data t) =>[GHC.Name] -> t -> RefactGhc [GHC.LHsBind GHC.Name]
           duplicateDecls pns demoted dsig dtoks decls
              -- = do everywhereMStaged SYB.Renamer (SYB.mkM dupInMatch
-             = do 
-                  liftIO $ putStrLn "duplicateDecls:clearing done"  -- ++AZ++
+             = do
+                  -- liftIO $ putStrLn "duplicateDecls:clearing done"  -- ++AZ++
                   -- clearRefactDone
                   everywhereMStaged' SYB.Renamer (SYB.mkM dupInMatch -- top-down approach
              -- = do somewhereMStaged SYB.Renamer (SYB.mkM dupInMatch -- need working MonadPlus for somewhereMStaged

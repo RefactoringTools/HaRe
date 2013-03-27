@@ -746,7 +746,7 @@ removeSrcSpan forest sspan = (forest'', delTree)
 -- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
 --      rows with tokenFileMark in a filename for a token
 retrieveTokens :: Tree Entry -> [PosToken]
-retrieveTokens forest = stripForestLines $ reAlignMarked 
+retrieveTokens forest = stripForestLines $ reAlignMarked
                       $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]
@@ -871,7 +871,8 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
                  [] -> retrieveTokens tree
                  xs -> xs
 
-    toks' = reIndentToks pos prevToks toks
+    prevToks' = limitPrevToks prevToks oldSpan
+    toks' = reIndentToks pos prevToks' toks
 
     newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
 
@@ -897,12 +898,18 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
     prevToks = case (retrievePrevLineToks z) of
                  [] -> retrieveTokens tree
                  xs -> xs
-    (_,(ForestLine _ _ endRow,_))       = srcSpanToForestSpan oldSpan
 
-    -- prevToks' = takeWhile (\t -> tokenRow t < endRow) prevToks
+{-
+    ((ForestLine _ _ startRow,startCol),(ForestLine _ _ endRow,_)) = srcSpanToForestSpan oldSpan
+
+    -- Make sure the toks do not extend past where we are
     prevToks' = reverse $ dropWhile (\t -> tokenRow t > endRow) $ reverse  prevToks
 
-    toks'' = reIndentToks pos prevToks' toks
+    -- Only use the toks for the given oldspan
+    prevToks'' = dropWhile (\t -> tokenPos t < (startRow,startCol)) prevToks'
+-}
+    prevToks'' = limitPrevToks prevToks oldSpan
+    toks'' = reIndentToks pos prevToks'' toks
 
     (startPos,endPos) = nonCommentSpan toks''
 
@@ -914,6 +921,20 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks'')=" ++ (showToks toks''),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(prevToks)=" ++ (showToks prevToks),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show ((lineOffset,lineStart,tokenRow $ head toks,tokenRow $ head toks'',tokenRow newTokStart,colOffset))),oldSpan)
+
+-- ---------------------------------------------------------------------
+
+limitPrevToks :: [PosToken] -> GHC.SrcSpan -> [PosToken]
+limitPrevToks prevToks sspan = prevToks''
+  where
+    ((ForestLine _ _ startRow,startCol),(ForestLine _ _ endRow,_)) = srcSpanToForestSpan sspan
+
+    -- Make sure the toks do not extend past where we are
+    prevToks' = reverse $ dropWhile (\t -> tokenRow t > endRow) $ reverse  prevToks
+
+    -- Only use the toks for the given oldspan
+    -- prevToks'' = dropWhile (\t -> tokenPos t < (startRow,startCol)) prevToks'
+    prevToks'' = dropWhile (\t -> tokenRow t < startRow) prevToks'
 
 -- ---------------------------------------------------------------------
 
@@ -939,6 +960,7 @@ addDeclToksAfterSrcSpan forest oldSpan pos toks t = (forest'',newSpan,t')
 reIndentToks :: Positioning -> [PosToken] -> [PosToken] -> [PosToken]
 reIndentToks _ _ [] = []
 reIndentToks pos prevToks toks = toks''
+  -- = error $ "reIndentToks:(pos,prevToks)=" ++ (show (pos,prevToks)) -- ++AZ++
   -- = error $ "reIndentToks:((isComment lastTok),(tokenRow lastNonCommentTok),lastTokEndLine)=" ++ (show ((isComment lastTok),(tokenRow lastNonCommentTok),lastTokEndLine))
   where
     newTokStart = ghead "reIndentToks.1"
@@ -983,7 +1005,7 @@ reIndentToks pos prevToks toks = toks''
           colStart = prevOffset
           lineStart = if ((isComment lastTok) && (tokenRow lastNonCommentTok /= lastTokEndLine))
               then (tokenRow (lastTok)) + 1
-              else  (tokenRow (lastTok))
+              else (tokenRow (lastTok))
 
           lineOffset' = rowIndent + lineStart - (tokenRow firstTok)
           colOffset'  = colIndent + colStart  - (tokenCol newTokStart) + 1 -- ++AZ++ Why +1?
@@ -1607,7 +1629,7 @@ increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L _l t), s) = (GHC.L ne
         (endLine, endCol)     = add1 $ getLocatedEnd   lt
 
         add1 :: (Int, Int) -> (Int, Int)
-        add1 (x,y) = (x+lineAmount,y+colAmount)
+        add1 (r,c) = (r+lineAmount,c+colAmount)
 
 -- ---------------------------------------------------------------------
 

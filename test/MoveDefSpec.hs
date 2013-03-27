@@ -140,13 +140,11 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "demotes LetIn1 12 22" $ do
-     pending "todo"
-{-
      doDemote ["./test/testdata/Demote/LetIn1.hs","12","22"]
      diff <- compareFiles "./test/testdata/Demote/LetIn1.hs.refactored"
                           "./test/testdata/Demote/LetIn1.hs.expected"
      diff `shouldBe` []
--}
+
     -- -----------------------------------------------------------------
 
     it "demotes PatBindIn1 19 1" $ do

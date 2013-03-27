@@ -2047,12 +2047,12 @@ instance UsedByRhs (GHC.LHsBind GHC.Name) where
   usedByRhs (GHC.L _ bind) pns = usedByRhs bind pns
 
 instance UsedByRhs (GHC.HsExpr GHC.Name) where
-  usedByRhs (GHC.HsLet lb _) pns = findPNs pns lb
-  usedByRhs e                pns = error $ "undefined usedByRhs:" ++ (GHC.showPpr e)
+  usedByRhs (GHC.HsLet _lb e) pns = findPNs pns e
+  usedByRhs e                _pns = error $ "undefined usedByRhs:" ++ (GHC.showPpr e)
 
 instance UsedByRhs (GHC.Stmt GHC.Name) where
   usedByRhs (GHC.LetStmt lb) pns = findPNs pns lb
-  usedByRhs s                pns = error $ "undefined usedByRhs:" ++ (GHC.showPpr s)
+  usedByRhs s               _pns = error $ "undefined usedByRhs:" ++ (GHC.showPpr s)
 
 {- ++ original
 class (Term t) =>UsedByRhs t where
@@ -2682,7 +2682,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
     =do
         let binds = hsValBinds parent
 
-        let (startLoc,endLoc)
+        let (startLoc@(r,c),endLoc)
              = if (emptyList localDecls)
                  then getStartEndLoc parent
                  else getStartEndLoc localDecls
@@ -2697,6 +2697,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
         if (emptyList localDecls)
           then
             putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent 2) newToks
+            -- putToksAfterPos (startLoc,endLoc) (PlaceAbsolute (r+1) c) newToks
           else
             putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
 
@@ -2707,6 +2708,8 @@ addDecl parent pn (decl, msig, declToks) topLevel
     where
          localDecls = hsBinds parent
 
+         -- TODO: where tokens are passed in, first normalise them to
+         -- the left column before adding in the where clause part
          newSource  = if (emptyList localDecls)
                        then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
                        else ("" ++ newFun'++"\n")
