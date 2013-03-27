@@ -2689,12 +2689,16 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         newToks <- liftIO $ basicTokenise newSource
 
-        (newFun',_) <- addLocInfo (newFun, newToks) 
+        (newFun',_) <- addLocInfo (newFun, newToks)
 
         let colIndent = if (emptyList localDecls) then 4 else 0
             rowIndent = 1
 
-        _ <- putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
+        if (emptyList localDecls)
+          then
+            putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent 2) newToks
+          else
+            putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
 
         case maybeSig of
            Nothing  -> return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))

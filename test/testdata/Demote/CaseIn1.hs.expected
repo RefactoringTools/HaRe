@@ -1,4 +1,4 @@
-module CaseIn1 where
+module Demote.CaseIn1 where
 
 --A definition can be demoted to the local 'where' binding of a friend declaration,
 --if it is only used by this friend declaration.
@@ -10,10 +10,12 @@ module CaseIn1 where
 --show that lifting and demoting are not inverse.
 
 main x y z = case x of
-                0 -> addthree  
-                1 -> inc y        
+                0 -> addthree
+                1 -> inc y
                      where inc a =a+1
-  where
-    addthree =x+y+z
+    where
+       addthree      =x+y+z
+    
 
-  
+
+
