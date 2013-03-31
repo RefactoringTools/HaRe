@@ -3278,7 +3278,8 @@ duplicateDecl decls sigs n newFunName
 
           return sspanSig'
 
-      funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceIndent 1 0 1) toks
+      -- funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceIndent 1 0 1) toks
+      funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceIndent 1 0 2) toks
       funBinding'' <- renamePN n newFunName True funBinding'
 
       -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this

@@ -49,6 +49,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
 
        -- * Internal, for testing
+       , limitPrevToks
+       , reIndentToks
        , splitForestOnSpan
        -- , lookupSrcSpan
        , invariantOk
@@ -866,6 +868,7 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
     newSpan' = insertForestLineInSrcSpan (ForestLine tr (v+1) l) newSpan
 
     -- TODO: this is the same as before, merge it
+    {-
     z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree forest'
     prevToks = case (retrievePrevLineToks z) of
                  [] -> retrieveTokens tree
@@ -873,10 +876,32 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
 
     prevToks' = limitPrevToks prevToks oldSpan
     toks' = reIndentToks pos prevToks' toks
+    -}
+
+    toks' = placeToksForSpan forest' oldSpan tree pos toks
 
     newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
 
     forest'' = insertNodeAfter tree newNode forest'
+
+-- ---------------------------------------------------------------------
+
+placeToksForSpan ::
+  Tree Entry
+  -> GHC.SrcSpan
+  -> Tree Entry
+  -> Positioning
+  -> [PosToken]
+  -> [PosToken]
+placeToksForSpan forest oldSpan tree pos toks = toks'
+  where
+    z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree forest
+    prevToks = case (retrievePrevLineToks z) of
+                 [] -> retrieveTokens tree
+                 xs -> xs
+
+    prevToks' = limitPrevToks prevToks oldSpan
+    toks' = reIndentToks pos prevToks' toks
 
 -- ---------------------------------------------------------------------
 
@@ -893,30 +918,27 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
   where
     (fwithspan,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
 
+    {-
     z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree fwithspan
-
     prevToks = case (retrievePrevLineToks z) of
                  [] -> retrieveTokens tree
                  xs -> xs
 
-{-
-    ((ForestLine _ _ startRow,startCol),(ForestLine _ _ endRow,_)) = srcSpanToForestSpan oldSpan
-
-    -- Make sure the toks do not extend past where we are
-    prevToks' = reverse $ dropWhile (\t -> tokenRow t > endRow) $ reverse  prevToks
-
-    -- Only use the toks for the given oldspan
-    prevToks'' = dropWhile (\t -> tokenPos t < (startRow,startCol)) prevToks'
--}
+    
     prevToks'' = limitPrevToks prevToks oldSpan
     toks'' = reIndentToks pos prevToks'' toks
+    -}
+    toks'' = placeToksForSpan fwithspan oldSpan tree pos toks
 
     (startPos,endPos) = nonCommentSpan toks''
 
     newSpan = posToSrcSpan forest (startPos,endPos)
 
     -- TODO: expensive reIndentToks being done twice now
-    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks''
+    -- (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks''
+    (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks
+
+
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks'')=" ++ (showToks prevToks'),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks'')=" ++ (showToks toks''),oldSpan)
     -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(prevToks)=" ++ (showToks prevToks),oldSpan)

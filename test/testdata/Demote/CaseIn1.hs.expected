@@ -17,5 +17,3 @@ main x y z = case x of
        addthree      =x+y+z
     
 
-
-

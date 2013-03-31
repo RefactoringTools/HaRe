@@ -114,8 +114,6 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn6 13 1" $ do
-     -- pending "todo"
-
      doDemote ["./test/testdata/Demote/WhereIn6.hs","13","1"]
      diff <- compareFiles "./test/testdata/Demote/WhereIn6.hs.refactored"
                           "./test/testdata/Demote/WhereIn6.hs.expected"
