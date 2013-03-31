@@ -118,6 +118,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
   , allPNT
   , allPNTLens
   , newNameTok
+  , stripLeadingSpaces
   -- , lookupNameGhc
  ) where
 
@@ -2711,10 +2712,10 @@ addDecl parent pn (decl, msig, declToks) topLevel
          -- TODO: where tokens are passed in, first normalise them to
          -- the left column before adding in the where clause part
          newSource  = if (emptyList localDecls)
-                       then "where\n"++ concatMap (\l-> "  "++l++"\n") (lines newFun')
+                       then "where\n"++ concatMap (\l-> "   "++l++"\n") (lines newFun')
                        else ("" ++ newFun'++"\n")
            where
-            newFun' = sigStr ++ newFunBody
+            newFun' = unlines $ stripLeadingSpaces $ lines $ sigStr ++ newFunBody
             newFunBody = case newFunToks of
                            Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
                            Nothing -> prettyprint newFun
@@ -2725,6 +2726,18 @@ addDecl parent pn (decl, msig, declToks) topLevel
                                      Just sig -> (prettyprint sig) ++ "\n"
                                      Nothing -> ""
 
+-- ---------------------------------------------------------------------
+
+-- |Take a list of strings and return a list with the longest prefix
+-- of spaces removed
+stripLeadingSpaces :: [String] -> [String]
+stripLeadingSpaces xs = map (drop n) xs
+  where
+    n = minimum $ map oneLen xs
+
+    oneLen x = length prefix 
+      where
+        (prefix,_) = break (/=' ') x
 
 -- ---------------------------------------------------------------------
 

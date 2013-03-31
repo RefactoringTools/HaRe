@@ -1487,6 +1487,41 @@ spec = do
       let toksFinal = retrieveTokens forest'
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List\n \n "
 
+    -- ---------------------------------
+
+    it "Adds a SrcSpan after deleting, without extra tokens" $ do
+      (_t,toks)  <- parsedFileGhc "./test/testdata/Demote/LetIn1.hs"
+      let forest = mkTreeFromTokens toks
+
+      -- removeToksForPos ((12,22),(12,27))
+      let sspan = posToSrcSpan forest ((12,22),(12,27))
+      let (forest',_) = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(17,23))\n|\n"++
+              "+- ((1,1),(11,32))\n|\n"++
+              "`- ((13,18),(17,23))\n"
+      (invariant forest') `shouldBe` []
+
+      -- putToksAfterPos ((11,27),(11,32)) at PlaceOffset 1 4 2
+      newToks <- basicTokenise "where\n   pow=2\n"
+      (show newToks) `shouldBe` "[((((0,1),(0,6)),ITwhere),\"where\"),((((1,4),(1,4)),ITvocurly),\"\"),((((1,4),(1,7)),ITvarid \"pow\"),\"pow\"),((((1,7),(1,8)),ITequal),\"=\"),((((1,8),(1,9)),ITinteger 2),\"2\"),((((2,1),(2,1)),ITvccurly),\"\")]"
+      let sspan' = posToSrcSpan forest' ((11,27),(11,32))
+      let position = PlaceOffset 1 4 2
+
+      let (forest'',newSpan) = addToksAfterSrcSpan forest' sspan' position newToks
+
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(17,23))\n|\n"++
+              "+- ((1,1),(11,32))\n|  |\n"++
+              "|  +- ((1,1),(11,27))\n|  |\n"++
+              "|  +- ((11,27),(11,32))\n|  |\n"++
+              "|  `- ((1000012,26),(1000013,34))\n|\n"++
+              "`- ((13,18),(17,23))\n"
+
+      (showSrcSpan newSpan) `shouldBe` "((1000012,26),(1000013,34))"
+      (invariant forest'') `shouldBe` []
+      (GHC.showRichTokenStream $ retrieveTokens forest'') `shouldBe` ""
+
   -- ---------------------------------------------
 
   describe "retrievePrevLineToks" $ do

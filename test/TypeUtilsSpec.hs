@@ -2082,6 +2082,14 @@ spec = do
 -}
 
   -- ---------------------------------------
+
+  describe "stripLeadingSpaces" $ do
+    it "Strips the longest common space prefix from a list of Strings" $ do
+      (stripLeadingSpaces []) `shouldBe` []
+      (stripLeadingSpaces ["a"," b","  c"]) `shouldBe` ["a"," b","  c"]
+      (stripLeadingSpaces [" a"," b","  c"]) `shouldBe` ["a","b"," c"]
+
+  -- ---------------------------------------
 foo 
   = do
       let

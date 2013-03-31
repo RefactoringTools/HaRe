@@ -220,7 +220,7 @@ putToksAfterSpan oldSpan pos toks = do
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterPos :: (SimpPos,SimpPos) -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksAfterPos pos position toks = do
-  liftIO $ putStrLn $ "putToksAfterPos " ++ (show pos) ++ " at "  ++ (show position)
+  liftIO $ putStrLn $ "putToksAfterPos " ++ (show pos) ++ " at "  ++ (show position) ++ ":" ++ (show toks)
   st <- get
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid

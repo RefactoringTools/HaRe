@@ -1,4 +1,4 @@
-module LetIn1 where
+module Demote.LetIn1 where
 
 --A definition can be demoted to the local 'where' binding of a friend declaration,
 --if it is only used by this friend declaration.
@@ -9,8 +9,8 @@ module LetIn1 where
 
 sumSquares x y = let sq 0=0
                      sq z=z^pow
-                       where
-                         pow=2
+                         where
+                            pow=2
                  in sq x + sq y  
                     
          
