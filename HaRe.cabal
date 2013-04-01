@@ -118,7 +118,7 @@ test-suite spec
     , ghc-paths   == 0.1.*
     , ghc-prim
     , ghc-syb-utils
-    , hspec       >= 1.3
+    , hspec       >= 1.5.1
     , lens >= 3.0
     , mtl
     , old-time

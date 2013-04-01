@@ -390,7 +390,7 @@ spec = do
 
   describe "updateToks" $ do
     it "needs a test or two" $ do
-      pending "write this test"
+      pending -- "write this test"
 
   -- -------------------------------------------------------------------
 
@@ -863,7 +863,7 @@ spec = do
 
   describe "lengthOfLastLine" $ do
     it "needs a test or two" $ do
-      pending "write this test"
+      pending -- "write this test"
 
   -- -------------------------------------------------------------------
 
@@ -1017,7 +1017,7 @@ spec = do
 
   describe "foo" $ do
     it "needs a test or two" $ do
-      pending "write this test"
+      pending -- "write this test"
 
 -- ---------------------------------------------------------------------
 -- Helper functions

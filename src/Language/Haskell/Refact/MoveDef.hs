@@ -102,7 +102,7 @@ compDemote :: Maybe FilePath -> FilePath -> SimpPos
 compDemote maybeMainFile fileName (row,col) = do
       loadModuleGraphGhc maybeMainFile
 
-      modInfo@(t, _tokList) <- getModuleGhc fileName
+      modInfo@(_t, _tokList) <- getModuleGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
 

@@ -44,11 +44,11 @@ spec = do
 
   describe "case 1" $ do
     it "gets a set of tokens, including comments" $ do
-      pending "1"
+      pending -- "1"
     it "add a new set of tokens after the ones we have" $ do
-      pending "2"
+      pending -- "2"
     it "gives us all the tokens in order after this" $ do
-      pending "3"
+      pending -- "3"
 
   -- ---------------------------------------------
 
@@ -869,7 +869,7 @@ spec = do
     -- --------------------------------------
 
     it "replaces the tokens for a given span, removing any sub tree" $ do
-       pending "write this"
+       pending -- "write this"
 
     -- --------------------------------------
 
@@ -1696,7 +1696,7 @@ spec = do
 
   describe "invariant 3" $ do
     it "checks that all ForestSpans have the same version for start and end" $ do
-      pending "write this test (and function)"
+      pending -- "write this test (and function)"
 
   -- ---------------------------------------------
 
@@ -1759,7 +1759,7 @@ spec = do
 
   describe "reSequenceToks" $ do
     it "Modifies a token stream to cater for changes in length of a token after e.g. renaming" $ do
-      pending "write this"
+      pending -- "write this"
 
   -- ---------------------------------------------
 

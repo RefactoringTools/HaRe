@@ -112,11 +112,18 @@ spec = do
       getLocatedStart res `shouldBe` (25,7)
 
     it "returns Nothing for a given source location, if it does not fall in an identifier" $ do
-      -- ((_, renamed,_),_toks) <- parsedFileBGhc
       (t, _toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let res = locToName bFileName (7,7) renamed
+      res `shouldBe` Nothing
+
+    it "gets a short name too" $ do
+      (t, _toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn2.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let res = locToName bFileName (14,1) renamed
+      (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
       res `shouldBe` Nothing
 
   -- -------------------------------------------------------------------
@@ -239,7 +246,7 @@ spec = do
       let res = definingDecls [(PN (mkRdrName "zz"))] ds False True
       GHC.showPpr res `shouldBe` "[zz n = n + 1]" -- TODO: Currently fails, will come back to it
       -}
-      pending "Currently fails, will come back to it"
+      pending -- "Currently fails, will come back to it"
 
     it "only finds recursively in sub-binds if asked" $ do
       -- modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
@@ -285,7 +292,7 @@ spec = do
       let res = definingDecls [(PN (mkRdrName "c"))] ds True False
       GHC.showPpr res `shouldBe` "[c :: Integer, c = 7]"
       -}
-      pending "Convert to definingDeclsNames"
+      pending -- "Convert to definingDeclsNames"
     -}
 
     it "finds in a patbind" $ do
@@ -305,7 +312,7 @@ spec = do
       let res = definingDecls [(PN (mkRdrName "tup"))] ds True False
       GHC.showPpr res `shouldBe` "[tup :: (Int, Int), tup@(h, t) = head $ zip [1 .. 10] [3 .. 15]]"
       -}
-      pending "Convert to definingDeclsNames"
+      pending -- "Convert to definingDeclsNames"
     -}
 
     {- ++AZ++ a data decl is not part of the binds
@@ -329,7 +336,7 @@ spec = do
       let res = definingDecls [(PN (mkRdrName "zz"))] ds False True
       GHC.showPpr res `shouldBe` "[zz n = n + 1]" -- TODO: Currently fails, will come back to it
       -}
-      pending "Currently fails, will come back to it"
+      pending -- "Currently fails, will come back to it"
 
     it "only finds recursively in sub-binds if asked" $ do
       {-
@@ -337,7 +344,7 @@ spec = do
       let res = definingDecls [(PN (mkRdrName "zz"))] ds False False
       GHC.showPpr res `shouldBe` "[]"
       -}
-      pending "Convert to definingDeclsNames"
+      pending -- "Convert to definingDeclsNames"
 
   -- -------------------------------------------------------------------
 
@@ -497,24 +504,24 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "Finds free and declared in a single bind" $ do
-      pending "fix the prior test"
+      pending -- "fix the prior test"
 
 
   -- ---------------------------------------------------------------------
 
   describe "hsFDsFromInside" $ do
     it "does something useful" $ do
-      pending "Complete this"
+      pending -- "Complete this"
 
   describe "hsFDNamesFromInside" $ do
     it "does something useful" $ do
-      pending "Complete this"
+      pending -- "Complete this"
 
   -- ---------------------------------------------------------------------
 
   describe "hsVisibleNames" $ do
     it "does something useful" $ do
-      pending "Complete this"
+      pending -- "Complete this"
 
   -- ---------------------------------------------------------------------
 
@@ -607,13 +614,13 @@ spec = do
 
   describe "definedPNs" $ do
     it "foo" $ do
-      pending "write this test"
+      pending -- "write this test"
 
   -- ---------------------------------------------
 
   describe "inScopeInfo" $ do
     it "returns 4 element tuples for in scope names" $ do
-      pending "is this still needed?"
+      pending -- "is this still needed?"
       {-
       ((inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
       let info = inScopeInfo inscopes
@@ -625,7 +632,7 @@ spec = do
 
   describe "isInScopeAndUnqualified" $ do
     it "True if the identifier is in scope and unqualified" $ do
-      pending "needed?"
+      pending -- "needed?"
       {-
       ((inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
       let info = inScopeInfo inscopes
@@ -1572,47 +1579,47 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "Finds an entity in [HsBind Name]" $ do
-      pending "write this test"
+      pending -- "write this test"
 
     -- -----------------------------------------------------------------
 
     it "Finds an entity in (MatchGroup matches _)" $ do
-      pending "write this test"
+      pending -- "write this test"
 
     -- -----------------------------------------------------------------
 
     it "Finds an entity in (HsLet decls _)" $ do
-      pending "write this test"
+      pending -- "write this test"
 
     -- -----------------------------------------------------------------
 
     it "Finds an entity in (HsLet _ e1)" $ do
-      pending "write this test"
+      pending -- "write this test"
 
     -- -----------------------------------------------------------------
 
     it "Finds an entity in (HsLet decls _)" $ do
-      pending "write this test"
+      pending -- "write this test"
 
     -- -----------------------------------------------------------------
 
     it "Finds an entity in (PatBind pat rhs _ _ _)" $ do
-      pending "write this test"
+      pending -- "write this test"
 
     -- -----------------------------------------------------------------
 
     it "Finds an entity in (Match _ _ rhs)" $ do
-      pending "write this test"
+      pending -- "write this test"
 
     -- -----------------------------------------------------------------
 
     it "Finds an entity in (LetStmt binds)" $ do
-      pending "write this test"
+      pending -- "write this test"
 
     -- -----------------------------------------------------------------
 
     it "Finds an entity in (BindStmt _ rhs _ _)" $ do
-      pending "write this test"
+      pending -- "write this test"
 
 
   -- ---------------------------------------------
@@ -1745,19 +1752,19 @@ spec = do
 
   describe "isExplicitlyExported" $ do
     it "Returns True if the identifier is explicitly exported" $ do
-      pending "write this "
+      pending -- "write this "
 
     it "Returns False if the identifier is not explicitly exported" $ do
-      pending "write this "
+      pending -- "write this "
 
   -- ---------------------------------------------
 
   describe "causeNameClashInExports" $ do
     it "Returns False if there is no clash" $ do
-      pending "write this "
+      pending -- "write this "
 
     it "Returns True if clash of type xx" $ do
-      pending "write this "
+      pending -- "write this "
 
   -- --------------------------------------
 
@@ -1820,7 +1827,7 @@ spec = do
       (GHC.showPpr r) `shouldBe` "sq pow 0 = 0\nsq pow z = z GHC.Real.^ pow"
 
     it "Removes the qualifiers and updates the tokens" $ do
-      pending "Is this needed?"
+      pending -- "Is this needed?"
 
   -- ---------------------------------------
 

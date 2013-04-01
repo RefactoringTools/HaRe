@@ -41,7 +41,7 @@ spec = do
 
   describe "second thing" $ do
     it "does something good" $ do
-      pending "real soon now"
+      pending -- "real soon now"
 
 
 -- ---------------------------------------------------------------------
