@@ -255,7 +255,7 @@ runRefacSession :: (Maybe RefactSettings)
 runRefacSession settings comp = do
   let
    initialState = RefSt
-        { rsSettings = fromMaybe (RefSet ["."]) settings
+        { rsSettings = fromMaybe defaultSettings settings
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
@@ -481,7 +481,7 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
     -- isSubRefactor is used only for history (undo).
   = do let modifiedFiles = filter (\((f,m),_) -> m == modified) files
 
-       putStrLn $ "writeRefactoredFiles:files=[" ++ (show $ map (\((f,_),(ts,_)) -> (f,GHC.showRichTokenStream ts)) files) ++ "]" -- ++AZ++ debug
+       -- putStrLn $ "writeRefactoredFiles:files=[" ++ (show $ map (\((f,_),(ts,_)) -> (f,GHC.showRichTokenStream ts)) files) ++ "]" -- ++AZ++ debug
 
 
        -- TODO: restore the history function
@@ -498,7 +498,7 @@ writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], 
            let ts' = bypassGHCBug7351 ts
            let source = GHC.showRichTokenStream ts'
 
-           putStrLn $ "writeRefactoredFiles:" ++ fileName ++ ":[" ++ source ++ "]" -- ++AZ++ debug
+           -- putStrLn $ "writeRefactoredFiles:" ++ fileName ++ ":[" ++ source ++ "]" -- ++AZ++ debug
            -- (Julien personnal remark) seq forces the evaluation of
            -- its first argument and returns its second argument. It
            -- is unclear for me why (length source) evaluation is

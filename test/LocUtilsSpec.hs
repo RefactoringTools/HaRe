@@ -33,7 +33,9 @@ import Language.Haskell.Refact.Utils.TypeUtils
 -- ---------------------------------------------------------------------
 
 main :: IO ()
-main = hspec spec
+main = do
+  setLogger
+  hspec spec
 
 spec :: Spec
 spec = do

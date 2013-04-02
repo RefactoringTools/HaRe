@@ -38,7 +38,9 @@ import qualified Data.Map as Map
 import Data.List
 
 main :: IO ()
-main = hspec spec
+main = do
+  setLogger
+  hspec spec
 
 spec :: Spec
 spec = do

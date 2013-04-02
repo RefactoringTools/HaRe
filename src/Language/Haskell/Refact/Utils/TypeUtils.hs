@@ -848,7 +848,7 @@ usedWithoutQual :: GHC.Name -> GHC.RenamedSource -> RefactGhc Bool
 usedWithoutQual name renamed = do
   case res of
      Just (GHC.L l _) -> do
-       liftIO $ putStrLn ("usedWithoutQual") -- ++AZ++ debug
+       logm ("usedWithoutQual") -- ++AZ++ debug
        toks <- fetchToks
 
        let (_,s) = ghead "usedWithoutQual"  $ getToks (getGhcLoc l, getGhcLocEnd l) toks
@@ -2455,7 +2455,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
        let endPos   = tokenPosEnd lastTok
 
        newToks <- liftIO $ basicTokenise (GHC.showPpr impDecl)
-       liftIO $ putStrLn $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
+       logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
        putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
@@ -2874,7 +2874,7 @@ addParamsToDecls::
       ->RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
 
 addParamsToDecls decls pn paramPNames modifyToks = do
-  liftIO $ putStrLn $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (GHC.showPpr (pn,paramPNames,modifyToks))
+  logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (GHC.showPpr (pn,paramPNames,modifyToks))
   if (paramPNames/=[])
         then mapM addParamToDecl decls
         else return decls
@@ -3306,7 +3306,7 @@ rmDecl:: (SYB.Data t)
                                    -- tokens
         Maybe (GHC.LSig GHC.Name)) -- ^ and the possibly removed siganture
 rmDecl pn incSig t = do
-  liftIO $ putStr $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
+  logm $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
   t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   (t'',sig') <- if incSig
@@ -3333,7 +3333,7 @@ rmDecl pn incSig t = do
                 -> RefactGhc [GHC.LHsBind GHC.Name]
     rmTopLevelDecl decl decls
       =do
-          liftIO $ putStrLn $ "rmTopLevelDecl:" -- ++AZ++
+          logm $ "rmTopLevelDecl:" -- ++AZ++
 
           removeToksForPos (getStartEndLoc decl)
           decl' <- syncDeclToLatestStash decl
@@ -3381,7 +3381,7 @@ rmDecl pn incSig t = do
                  rmEndPos   = tokenPosEnd $ ghead "rmLocalDecl.2" toks2
                  rmStartPos = tokenPos whereOrLet
 
-             liftIO $ putStr $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
+             logm $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
 
              removeToksForPos (rmStartPos,rmEndPos)
              return ()
@@ -3431,7 +3431,7 @@ rmTypeSig pn t
                  let newSig=(GHC.L sspan (GHC.TypeSig (filter (\(GHC.L _ x) -> x /= pn) names) typ))
 
                  toks <- getToksForSpan sspan
-                 liftIO $ putStrLn $ "rmTypeSig: fetched toks:" ++ (show toks) -- ++AZ++
+                 logm $ "rmTypeSig: fetched toks:" ++ (show toks) -- ++AZ++
                  let pnt = ghead "rmTypeSig" (filter (\(GHC.L _ x) -> x == pn) names)
                      (startPos1, endPos1) =
                          let (startPos1', endPos1') = getStartEndLoc pnt
@@ -3562,7 +3562,7 @@ renamePN::(SYB.Data t)
    ->RefactGhc t
 renamePN oldPN newName updateTokens t = do
   -- = error $ "renamePN: sspan=" ++ (GHC.showPpr sspan) -- ++AZ++
-  liftIO $ putStrLn $ "renamePN: (oldPN,newName)=" ++ (GHC.showPpr (oldPN,newName))
+  logm $ "renamePN: (oldPN,newName)=" ++ (GHC.showPpr (oldPN,newName))
   -- Note: bottom-up traversal
   everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
   where
@@ -3589,7 +3589,7 @@ renamePN oldPN newName updateTokens t = do
      = do if updateTokens
            then  do
                     -- toks <- fetchToks
-                    liftIO $ putStrLn $ "renamePN.worker: (sspan,newName)=" ++ (GHC.showPpr (sspan,newName)) -- ++AZ++ debug
+                    logm $ "renamePN.worker: (sspan,newName)=" ++ (GHC.showPpr (sspan,newName)) -- ++AZ++ debug
                     drawTokenTree "" -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
@@ -3626,7 +3626,7 @@ autoRenameLocalVar:: (HsValBinds t)
                      ->t            -- ^ The syntax phrase.
                      -> RefactGhc t -- ^ The result.
 autoRenameLocalVar modifyToks pn t = do
-  liftIO $ putStrLn $ "autoRenameLocalVar: (modifyToks,pn)=" ++ (GHC.showPpr (modifyToks,pn))
+  logm $ "autoRenameLocalVar: (modifyToks,pn)=" ++ (GHC.showPpr (modifyToks,pn))
   -- = everywhereMStaged SYB.Renamer (SYB.mkM renameInMatch)
   if isDeclaredIn pn t
          then do t' <- worker t

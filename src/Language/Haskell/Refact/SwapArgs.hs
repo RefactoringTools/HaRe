@@ -91,7 +91,7 @@ reallyDoSwap _pnt@(PNT (GHC.L _ _)) _name@(GHC.L s n1) renamed = do
          -- 1. The definition is at top level...
          inMod (_func@(GHC.FunBind (GHC.L x n2) infixity (GHC.MatchGroup matches p) a locals tick)::(GHC.HsBindLR GHC.Name GHC.Name ))
             | GHC.nameUnique n1 == GHC.nameUnique n2
-                    = do liftIO $ putStrLn ("inMatch>" ++ SYB.showData SYB.Parser 0 (GHC.L x n2) ++ "<")
+                    = do logm ("inMatch>" ++ SYB.showData SYB.Parser 0 (GHC.L x n2) ++ "<")
                          newMatches <- updateMatches matches
                          return (GHC.FunBind (GHC.L x n2) infixity (GHC.MatchGroup newMatches p) a locals tick)
          inMod func = return func
@@ -135,7 +135,7 @@ reallyDoSwap _pnt@(PNT (GHC.L _ _)) _name@(GHC.L s n1) renamed = do
 {-        inMatch i@(GHC.L x m@(GHC.Match (p1:p2:ps) nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )
 		  -- = error (SYB.showData SYB.Parser 0 pnt)
             | GHC.srcSpanStart s == GHC.srcSpanStart x
-              = do liftIO $ putStrLn ("inMatch>" ++ SYB.showData SYB.Parser 0 (p1:p2:ps) ++ "<")
+              = do logm ("inMatch>" ++ SYB.showData SYB.Parser 0 (p1:p2:ps) ++ "<")
                    p1' <- update p1 p2 p1 --pats
                    p2' <- update p2 p1 p2
                    return (GHC.L x (GHC.Match (p1':p2':ps) nothing rhs))

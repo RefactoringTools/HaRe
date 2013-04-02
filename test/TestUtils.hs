@@ -4,9 +4,11 @@ module TestUtils
        , runRefactGhcState
        , initialState
        , toksFromState
-       , defaultSettings
+       , defaultTestSettings
        , catchException
        , mkTokenCache
+
+       , setLogger
        ) where
 
 
@@ -28,6 +30,8 @@ import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
 import Data.Tree
+import System.Log.Handler.Simple
+import System.Log.Logger
 import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
@@ -54,7 +58,7 @@ parsedFileGhc fileName = do
 
 initialState :: RefactState
 initialState = RefSt
-  { rsSettings = RefSet ["./test/testdata/"]
+  { rsSettings = RefSet ["./test/testdata/"] False
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
@@ -81,7 +85,7 @@ runRefactGhcState paramcomp = do
   let
      -- initialState = ReplState { repl_inputState = initInputState }
      initialState = RefSt
-        { rsSettings = RefSet ["./test/testdata/"]
+        { rsSettings = RefSet ["./test/testdata/"] False
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
@@ -92,8 +96,8 @@ runRefactGhcState paramcomp = do
 
 -- ---------------------------------------------------------------------
 
-defaultSettings :: Maybe RefactSettings
-defaultSettings = Just $ RefSet ["./test/testdata/"]
+defaultTestSettings :: Maybe RefactSettings
+defaultTestSettings = Just $ RefSet ["./test/testdata/"] False
 
 -- ---------------------------------------------------------------------
 
@@ -105,6 +109,21 @@ catchException f = do
     handler:: SomeException -> IO (Maybe String)
     handler e = return (Just (show e))
 
+-- ---------------------------------------------------------------------
+
+setLogger :: IO ()
+setLogger = do
+  {-
+  h <- fileHandler "debug.log" DEBUG >>= \lh -> return $
+                 setFormatter lh (simpleLogFormatter "[$time : $loggername : $prio] $msg")
+  updateGlobalLogger "MyApp.BuggyComponent" (addHandler h)
+  -}
+
+  -- s <- streamHandler stdout DEBUG
+  h <- fileHandler "debug.log" DEBUG
+  updateGlobalLogger rootLoggerName (setHandlers [h])
+
+-- ---------------------------------------------------------------------
 
 -- EOF
-  
+

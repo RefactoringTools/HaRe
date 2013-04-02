@@ -14,6 +14,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactGhc
        , runRefactGhc
        , getRefacSettings
+       , defaultSettings
 
        {- ++AZ++ moved to MonadUtils, to break import cycle
        -- * Conveniences for state access
@@ -76,7 +77,12 @@ import qualified Data.Map as Map
 
 data RefactSettings = RefSet
         { rsetImportPath :: [FilePath]
+        -- , rsetLogFileName :: Maybe FilePath
+        , rsetLoggingOn :: Bool
         } deriving (Show)
+
+defaultSettings :: RefactSettings
+defaultSettings = RefSet ["."] False
 
 data RefactStashId = Stash String deriving (Show,Eq,Ord)
 

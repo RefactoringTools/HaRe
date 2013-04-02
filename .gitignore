@@ -114,3 +114,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Demote/LetIn1.hs.tokens
 /test/testdata/Demote/PatBindIn1.hs.AST_out
 /test/testdata/Demote/PatBindIn1.hs.renamed_out
+/debug.log

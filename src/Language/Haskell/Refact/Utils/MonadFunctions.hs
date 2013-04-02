@@ -46,6 +46,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , setStateStorage
        , getStateStorage
 
+       , logm
        -- , Refact -- ^ TODO: Deprecated, use RefactGhc
        -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
        ) where
@@ -86,6 +87,8 @@ import Language.Haskell.Refact.Utils.TypeSyn
 
 import Data.Tree
 import Data.List
+import System.Log.Handler.Simple
+import System.Log.Logger
 import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
@@ -95,13 +98,13 @@ fetchToks :: RefactGhc [PosToken]
 fetchToks = do
   Just tm <- gets rsModule
   let toks = retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
-  liftIO $ putStrLn $ "fetchToks" ++ (showToks toks)
+  logm $ "fetchToks" ++ (showToks toks)
   return toks
 
 -- |fetch the pristine token stream
 fetchOrigToks :: RefactGhc [PosToken]
 fetchOrigToks = do
-  liftIO $ putStrLn "fetchOrigToks"
+  logm "fetchOrigToks"
   Just tm <- gets rsModule
   return $ rsOrigTokenStream tm
 
@@ -110,7 +113,7 @@ fetchOrigToks = do
 -- Deprecated
 putToks :: [PosToken] -> Bool -> RefactGhc ()
 putToks toks isModified = do
-  liftIO $ putStrLn $ "putToks " ++ (showToks toks)
+  logm $ "putToks " ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
   let rsModule' = Just (tm {rsTokenCache = initTokenCache toks, rsStreamModified = isModified})
@@ -130,7 +133,7 @@ getToksForSpan sspan = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
-  liftIO $ putStrLn $ "getToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
+  logm $ "getToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
   return toks
 
 -- |Get the current tokens preceding a given GHC.SrcSpan.
@@ -143,7 +146,7 @@ getToksBeforeSpan sspan = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
-  liftIO $ putStrLn $ "getToksBeforeSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
+  logm $ "getToksBeforeSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
   return toks
 
 {-
@@ -166,7 +169,7 @@ stash oldTree = do
 -- delimiting new tokens
 putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksForSpan sspan toks = do
-  liftIO $ putStrLn $ "putToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show toks)
+  logm $ "putToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show toks)
   st <- get
   let Just tm = rsModule st
 
@@ -187,7 +190,7 @@ putToksForSpan sspan toks = do
 --              deprecate the function
 putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksForPos pos toks = do
-  liftIO $ putStrLn $ "putToksForPos " ++ (show pos) ++ (showToks toks)
+  logm $ "putToksForPos " ++ (show pos) ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
@@ -207,7 +210,7 @@ putToksForPos pos toks = do
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterSpan :: GHC.SrcSpan -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksAfterSpan oldSpan pos toks = do
-  liftIO $ putStrLn $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan)
+  logm $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan)
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache oldSpan (rsTokenCache tm)
@@ -220,7 +223,7 @@ putToksAfterSpan oldSpan pos toks = do
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterPos :: (SimpPos,SimpPos) -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksAfterPos pos position toks = do
-  liftIO $ putStrLn $ "putToksAfterPos " ++ (show pos) ++ " at "  ++ (show position) ++ ":" ++ (show toks)
+  logm $ "putToksAfterPos " ++ (show pos) ++ " at "  ++ (show position) ++ ":" ++ (show toks)
   st <- get
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
@@ -230,7 +233,7 @@ putToksAfterPos pos position toks = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  liftIO $ putStrLn $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
+  logm $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
   return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST
@@ -238,7 +241,7 @@ putToksAfterPos pos position toks = do
 putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc (GHC.Located t)
 -- putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc t
 putDeclToksAfterSpan oldSpan t pos toks = do
-  liftIO $ putStrLn $ "putDeclToksAfterSpan " ++ (GHC.showPpr oldSpan) ++ ":" ++ (show (pos,toks))
+  logm $ "putDeclToksAfterSpan " ++ (GHC.showPpr oldSpan) ++ ":" ++ (show (pos,toks))
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache oldSpan (rsTokenCache tm)
@@ -251,7 +254,7 @@ putDeclToksAfterSpan oldSpan t pos toks = do
 -- |Remove a GHC.SrcSpan and its associated tokens
 removeToksForSpan :: GHC.SrcSpan -> RefactGhc ()
 removeToksForSpan sspan = do
-  liftIO $ putStrLn $ "removeToksForSpan " ++ (GHC.showPpr sspan)
+  logm $ "removeToksForSpan " ++ (GHC.showPpr sspan)
   st <- get
   let Just tm = rsModule st
   let tk' = removeToksFromCache (rsTokenCache tm) sspan
@@ -268,7 +271,7 @@ removeToksForSpan sspan = do
 -- |Remove a GHC.SrcSpan and its associated tokens
 removeToksForPos :: (SimpPos,SimpPos) -> RefactGhc ()
 removeToksForPos pos = do
-  liftIO $ putStrLn $ "removeToksForPos " ++ (show pos)
+  logm $ "removeToksForPos " ++ (show pos)
   st <- get
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
@@ -293,8 +296,8 @@ drawTokenTree msg = do
   st <- get
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
-  -- liftIO $ putStrLn $ msg ++ "\ncurrent token tree:\n" ++ (drawTreeEntry mainForest)
-  liftIO $ putStrLn $ msg ++ "\ncurrent token tree:\n" ++ (drawTokenCache (rsTokenCache tm))
+  -- logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTreeEntry mainForest)
+  logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTokenCache (rsTokenCache tm))
   return ()
 
 -- ---------------------------------------------------------------------
@@ -385,18 +388,18 @@ clearParsedModule = do
 getRefactDone :: RefactGhc Bool
 getRefactDone = do
   flags <- gets rsFlags
-  liftIO $ putStrLn $ "getRefactDone: " ++ (show (rsDone flags))
+  logm $ "getRefactDone: " ++ (show (rsDone flags))
   return (rsDone flags)
 
 setRefactDone :: RefactGhc ()
 setRefactDone = do
-  liftIO $ putStrLn $ "setRefactDone" 
+  logm $ "setRefactDone" 
   st <- get
   put $ st { rsFlags = RefFlags True }
 
 clearRefactDone :: RefactGhc ()
 clearRefactDone = do
-  liftIO $ putStrLn $ "clearRefactDone" 
+  logm $ "clearRefactDone" 
   st <- get
   put $ st { rsFlags = RefFlags False }
 
@@ -411,6 +414,15 @@ getStateStorage :: RefactGhc StateStorage
 getStateStorage = do
   storage <- gets rsStorage
   return storage
+
+-- ---------------------------------------------------------------------
+
+logm :: String -> RefactGhc ()
+logm string = do
+  settings <- getRefacSettings
+  when (rsetLoggingOn settings) $ liftIO $ warningM "HaRe" string
+  -- liftIO $ putStrLn string
+  return ()
 
 -- ---------------------------------------------------------------------
 

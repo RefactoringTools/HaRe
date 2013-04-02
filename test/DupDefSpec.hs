@@ -20,7 +20,9 @@ import TestUtils
 -- ---------------------------------------------------------------------
 
 main :: IO ()
-main = hspec spec
+main = do
+  setLogger
+  hspec spec
 
 spec :: Spec
 spec = do
@@ -76,7 +78,7 @@ spec = do
      diff `shouldBe` []
 
     it "hides the new definition if it will cause problems in client mods" $ do
-     duplicateDef defaultSettings (Just "./test/testdata/DupDef/Dd2.hs") "./test/testdata/DupDef/Dd1.hs" "mm" (23,5)
+     duplicateDef defaultTestSettings (Just "./test/testdata/DupDef/Dd2.hs") "./test/testdata/DupDef/Dd1.hs" "mm" (23,5)
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []

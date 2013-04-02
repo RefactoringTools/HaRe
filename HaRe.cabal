@@ -33,8 +33,9 @@ Library
                                 , pretty
                                 , rosezipper
                                 , syb
+                                , hslogger
                                 , transformers
-                                , uniplate
+                                -- , uniplate
 
         -- GHC-Options:             -Wall
         -- We want to run coverage reports on the library
@@ -85,7 +86,8 @@ Executable ghc-hare
                                 , rosezipper
                                 , syb
                                 , transformers
-                                , uniplate
+                                , hslogger
+                                -- , uniplate
         Other-Modules:          Paths_HaRe
 
 
@@ -128,8 +130,7 @@ test-suite spec
     , rosezipper
     , syb
     , transformers
-    , uniplate
-
-    -- Note: flymake under ghc-mod will not work if this is in
+    -- , uniplate
+    , hslogger
     , HaRe >= 0.6.0.3
 

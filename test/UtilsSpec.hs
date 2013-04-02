@@ -27,7 +27,9 @@ import Language.Haskell.Refact.Utils.TypeUtils
 -- ---------------------------------------------------------------------
 
 main :: IO ()
-main = hspec spec
+main = do
+  setLogger
+  hspec spec
 
 spec :: Spec
 spec = do
@@ -110,13 +112,13 @@ spec = do
 
   describe "modIsExported" $ do
     it "needs a test or two" $ do
-      pending -- "write this test"
+      pending  -- "write this test"
 
   -- -------------------------------------------------------------------
 
   describe "clientModsAndFiles" $ do
     it "can only be called in a live RefactGhc session" $ do
-      pending -- "write this test"
+      pending  -- "write this test"
 
     it "gets modules which directly or indirectly import a module #1" $ do
       -- TODO: harvest this commonality
@@ -141,7 +143,7 @@ spec = do
 
   describe "serverModsAndFiles" $ do
     it "can only be called in a live RefactGhc session" $ do
-      pending -- "write this test"
+      pending  -- "write this test"
 
     it "gets modules which are directly or indirectly imported by a module #1" $ do
       let
