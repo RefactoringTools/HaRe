@@ -120,7 +120,7 @@ test-suite spec
     , ghc-paths   == 0.1.*
     , ghc-prim
     , ghc-syb-utils
-    , hspec       >= 1.5.1
+    , hspec       == 1.4.*
     , lens >= 3.0
     , mtl
     , old-time
