@@ -39,7 +39,7 @@ import Data.List
 
 main :: IO ()
 main = do
-  setLogger
+  -- setLogger
   hspec spec
 
 spec :: Spec
@@ -124,9 +124,11 @@ spec = do
       (t, _toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn2.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let res = locToName bFileName (14,1) renamed
-      (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
-      res `shouldBe` Nothing
+      let Just (res@(GHC.L l n)) = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn2.hs") (14,1) renamed
+      GHC.showPpr n `shouldBe` "Demote.WhereIn2.sq"
+      -- Note: loc does not line up due to multiple matches in FunBind
+      GHC.showPpr l `shouldBe` "test/testdata/Demote/WhereIn2.hs:13:1-2" 
+      getLocatedStart res `shouldBe` (13,1)
 
   -- -------------------------------------------------------------------
 
