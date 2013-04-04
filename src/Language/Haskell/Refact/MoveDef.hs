@@ -278,6 +278,7 @@ moveDecl1 :: (HsValBinds t)
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns topLevel
    = do
+        -- TODO: work with all of ns, not just the first
         let n = ghead "moveDecl1" ns
         let funBinding = definingDeclsNames [n] (hsBinds t) True True
 
@@ -286,18 +287,22 @@ moveDecl1 t defName ns topLevel
         let Just sspan = getSrcSpan funBinding
         funToks <- getToksForSpan sspan
 
-        (t'',sigRemoved) <- rmTypeSig (ghead "moveDecl3.2"  ns) t
+        -- (t'',sigRemoved) <- rmTypeSig (ghead "moveDecl3.2"  ns) t
+        (t'',sigsRemoved) <- rmTypeSigs ns t
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
 
-        maybeToksSig <- case sigRemoved of
-          Nothing -> return []
-          Just (GHC.L sspanSig _)  -> do
-            toksSig  <- getToksForSpan sspanSig
-            return toksSig
+        let getToksForMaybeSig demotedSig@(GHC.L ss _) = 
+                             do
+                                                   sigToks <- getToksForSpan ss
+                                                   return sigToks
+
+        maybeToksSigMulti <- mapM getToksForMaybeSig sigsRemoved 
+        let maybeToksSig = concat maybeToksSigMulti
+
 
         logm $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
 
-        addDecl t' defName (ghead "moveDecl1 2" funBinding,sigRemoved,Just (maybeToksSig ++ funToks)) topLevel
+        addDecl t' defName (ghead "moveDecl1 2" funBinding,sigsRemoved,Just (maybeToksSig ++ funToks)) topLevel
 
 
 
@@ -976,16 +981,33 @@ doDemoting' t pn
 
                          -- ++AZ++ moved to after the rest, so the tree is still available to start with
                          (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
-                         (t',demotedSig) <- rmTypeSig pn t
+{-
+                         (t',demotedSig) <- rmTypeSig pn t --TODO:
+                                                           --reinstate
+                                                           --declaredPns
+                                                           --instead
+                                                           --of pn
+-}
+                         -- (t',demotedSigsMaybe) <- foldM (\(tee,ds) n -> do { (tee',d) <- rmTypeSig n tee; return (tee', ds++[d])}) (t,[]) declaredPns
+                         -- let demotedSigs = catMaybes demotedSigsMaybe
+                         (t',demotedSigs) <- rmTypeSigs declaredPns t
 
                          let (GHC.L ssd _) = removedDecl
                          demotedToks <- getToksForSpan ssd
 
+{-
                          demotedSigToks <- case demotedSig of
                                                Just (GHC.L ss _) -> do
                                                    sigToks <- getToksForSpan ss
                                                    return sigToks
                                                Nothing -> return []
+-}
+                         let getToksForMaybeSig demotedSig@(GHC.L ss _) = do
+                                                   sigToks <- getToksForSpan ss
+                                                   return sigToks
+
+                         demotedSigToksLists <- mapM getToksForMaybeSig demotedSigs
+                         let demotedSigToks = concat demotedSigToksLists
 
                          logm $ "MoveDef:demotedSigToks=" ++ (show demotedSigToks) -- ++AZ++
 
@@ -1005,7 +1027,7 @@ doDemoting' t pn
                             else  --duplicate demoted declarations to the right place.
                                  do
                                     logm $ "MoveDef: about to duplicateDecls"
-                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSig (Just (demotedSigToks ++ demotedToks)) origDecls
+                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSigs (Just (demotedSigToks ++ demotedToks)) origDecls
 
                                     logm $ "MoveDef:duplicateDecls done"
 
@@ -1057,7 +1079,7 @@ doDemoting' t pn
           -- duplicateDecls :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
           duplicateDecls :: [GHC.Name] -- ^ function names to be demoted
                          -> GHC.LHsBind GHC.Name -- ^Bind being demoted
-                         -> Maybe (GHC.LSig GHC.Name) -- ^Signature being demoted, if there is one
+                         -> [GHC.LSig GHC.Name] -- ^Signatures being demoted, if any
                          -> Maybe [PosToken]          -- ^Tokens if provided
                          -> [GHC.LHsBind GHC.Name]    -- ^Binds of original top level entiity, including src and dst
                          -> RefactGhc [GHC.LHsBind GHC.Name]
@@ -1266,7 +1288,7 @@ foldParams :: [GHC.Name]             -- ^The (list?) function name being demoted
            -> GHC.Match GHC.Name     -- ^The RHS of the place to receive the demoted decls
            -> [GHC.LHsBind GHC.Name] -- ^Binds of original top level entiity, including src and dst
            -> GHC.LHsBind GHC.Name   -- ^The decls being demoted
-           -> Maybe (GHC.LSig GHC.Name) -- ^Signature being demoted, if there is one
+           -> [GHC.LSig GHC.Name]    -- ^Signatures being demoted, if any
            -> Maybe [PosToken]          -- ^Tokens if provided
            -> RefactGhc (GHC.Match GHC.Name)
 foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls dsig dtoks
@@ -1308,7 +1330,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
                    let [(GHC.L declSpan _)] = demotedDecls'''
                    declToks <- getToksForSpan declSpan
                    logm $ "MoveDef.foldParams addDecl adding to (hsBinds):[" ++ (SYB.showData SYB.Renamer 0 $ hsBinds rhs') ++ "]" -- ++AZ++
-                   rhs'' <- addDecl rhs' Nothing (ghead "foldParams 2" demotedDecls''',Nothing,Just declToks) False
+                   rhs'' <- addDecl rhs' Nothing (ghead "foldParams 2" demotedDecls''',[],Just declToks) False
                    logm $ "MoveDef.foldParams addDecl done"
                    return (GHC.Match pats mt rhs'')
            else  do  -- moveDecl pns match False decls True

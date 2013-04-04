@@ -971,7 +971,7 @@ spec = do
          nn  <- mkNewGhcName "nn"
          nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl renamed Nothing (newDecl,Nothing,Nothing) True
+         newDecls <- addDecl renamed Nothing (newDecl,[],Nothing) True
 
          return newDecls
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -1003,7 +1003,7 @@ spec = do
        (L {test/testdata/SwapArgs/B.hs:36:8-10} 
         (HsTyVar {Name: GHC.Types.Int}))))
 -}
-         newDecls <- addDecl renamed Nothing (newDecl,Just sig,Nothing) True
+         newDecls <- addDecl renamed Nothing (newDecl,[sig],Nothing) True
          -- newDecls <- addDecl renamed Nothing (newDecl,Nothing,Nothing) True
 
          return (hSig,intName,newDecls)
@@ -1026,7 +1026,7 @@ spec = do
          nn  <- mkNewGhcName "nn"
          nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl renamed (Just n) (newDecl,Nothing,Nothing) True
+         newDecls <- addDecl renamed (Just n) (newDecl,[],Nothing) True
 
          return (n,newDecls)
       ((n,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -1054,7 +1054,7 @@ spec = do
          let (GHC.L _ (GHC.TypeSig _ (GHC.L _ (GHC.HsTyVar intName)))) = hSig
          let sig = GHC.noLoc (GHC.TypeSig [(GHC.noLoc nn)] (GHC.noLoc (GHC.HsTyVar intName)))
 
-         newDecls <- addDecl renamed (Just n) (newDecl,Just sig,Nothing) True
+         newDecls <- addDecl renamed (Just n) (newDecl,[sig],Nothing) True
 
          return (n,newDecls)
       ((n,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -1081,7 +1081,7 @@ spec = do
          nn  <- mkNewGhcName "nn"
          nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
 
          return (tlDecls,newDecls)
       ((tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -1114,7 +1114,7 @@ spec = do
          let (GHC.L _ (GHC.TypeSig _ (GHC.L _ (GHC.HsTyVar intName)))) = hSig
          let sig = GHC.noLoc (GHC.TypeSig [(GHC.noLoc nn)] (GHC.noLoc (GHC.HsTyVar intName)))
 
-         newDecls <- addDecl tlDecls Nothing (newDecl,Just sig,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (newDecl,[sig],Nothing) False
 
          return (tlDecls,newDecls)
       ((tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -1141,7 +1141,7 @@ spec = do
          nn  <- mkNewGhcName "nn"
          nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
 
          return (tlDecls,newDecls)
       ((tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -1168,7 +1168,7 @@ spec = do
          nn  <- mkNewGhcName "nn"
          nn2 <- mkNewGhcName "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
 
          return (tlDecls,newDecls)
       ((tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -1201,7 +1201,7 @@ spec = do
          let sig = GHC.noLoc (GHC.TypeSig [(GHC.noLoc nn)] (GHC.noLoc (GHC.HsTyVar intName)))
 
          -- newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
-         newDecls <- addDecl tlDecls Nothing (newDecl,Just sig,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (newDecl,[sig],Nothing) False
 
          return (tlDecls,newDecls)
       ((tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -1231,7 +1231,7 @@ spec = do
  
 
          -- newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
-         newDecls <- addDecl tlDecls Nothing (sqDecl,Just sqSig,Nothing) False
+         newDecls <- addDecl tlDecls Nothing (sqDecl,[sqSig],Nothing) False
 
          return (sqSig,tlDecls,newDecls)
       ((sigs,tl,nb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -1275,7 +1275,7 @@ spec = do
              toksToAdd = sigToks ++ declToks
 
          -- newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
-         newDecls <- addDecl tlDecls Nothing (sqDecl,Just sqSig,Just toksToAdd) False
+         newDecls <- addDecl tlDecls Nothing (sqDecl,[sqSig],Just toksToAdd) False
 
          return (sqSig,tlDecls,newDecls,toksToAdd)
       ((sigs,tl,nb,tta),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }

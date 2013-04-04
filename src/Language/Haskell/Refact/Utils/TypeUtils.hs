@@ -75,7 +75,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,addDecl, addItemsToImport, addHiding --, rmItemsFromImport, addItemsToExport
     ,addParamsToDecls {- , addGuardsToRhs-}, addImportDecl, duplicateDecl -- , moveDecl
     -- ** Removing
-    ,rmDecl, rmTypeSig -- , commentOutTypeSig, rmParams
+    ,rmDecl, rmTypeSig, rmTypeSigs -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
     -- ** Updating
     -- ,Update(update)
@@ -2648,7 +2648,7 @@ rmPreludeImports = filter isPrelude where
 -- declaration and optional signature.
 -- NOTE: This function returns tokens originating at (0,0), to be
 -- stitched in at the right place by TokenUtils
-makeNewToks :: (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
+makeNewToks :: (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
               -> RefactGhc [PosToken]
 makeNewToks (decl, maybeSig, declToks) = do
    let
@@ -2657,10 +2657,12 @@ makeNewToks (decl, maybeSig, declToks) = do
                 Nothing -> "\n"++(prettyprint decl)++"\n\n"
      sigStr  = case declToks of
                 Just _ts -> ""
+{-
                 Nothing -> case maybeSig of
                              Just sig -> "\n"++(prettyprint sig)
                              Nothing -> ""
-
+-}
+                Nothing -> "\n" ++ (intercalate "\n" $ map prettyprint maybeSig)
    newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
    return newToks
 
@@ -2676,8 +2678,8 @@ addDecl:: (SYB.Data t,HsValBinds t)
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
                           -- identifier's definition.
-        -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
-             -- ^ The declaration with optional signature to be added,
+        -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
+             -- ^ The declaration with optional signatures to be added,
              -- in both AST and Token stream format (optional). If
              -- signature and tokens provided, the tokens should
              -- include the signature too
@@ -2698,7 +2700,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
   -- definition will be pretty-printed if its token stream is not
   -- provided.
   addTopLevelDecl :: (SYB.Data t, HsValBinds t)
-       => (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken])
+       => (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
        -> t -> RefactGhc t
   addTopLevelDecl (decl, maybeSig, maybeDeclToks) parent
     = do let binds = hsValBinds parent
@@ -2713,14 +2715,17 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 2 0 2) newToks
 
+{-
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
+-}
+         return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
 
   appendDecl :: (SYB.Data t, HsValBinds t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
-      -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken]) -- ^declaration and maybe sig/tokens
+      -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken]) -- ^declaration and maybe sig/tokens
       -> RefactGhc t -- ^updated AST
   appendDecl parent pn (decl, maybeSig, declToks)
     = do let binds = hsValBinds parent
@@ -2730,17 +2735,19 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
+         {-
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
-
+         -}
+         return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
       where
         decls = hsBinds parent
         (before,after) = break (defines pn) decls -- Need to handle the case that 'after' is empty?
 
 
   addLocalDecl :: (SYB.Data t, HsValBinds t)
-               => t -> (GHC.LHsBind GHC.Name, Maybe (GHC.LSig GHC.Name), Maybe [PosToken]) 
+               => t -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken]) 
                -> RefactGhc t
   addLocalDecl parent (newFun, maybeSig, newFunToks)
     =do
@@ -2765,10 +2772,12 @@ addDecl parent pn (decl, msig, declToks) topLevel
           else
             putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
 
+        {-
         case maybeSig of
            Nothing  -> return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent ++ [newFun']))) (sig:(getValBindSigs binds))))
-
+        -}
+        return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent ++ [newFun']))) (maybeSig++(getValBindSigs binds))))
     where
          localDecls = hsBinds parent
 
@@ -2785,9 +2794,12 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
             sigStr  = case newFunToks of
                         Just _ts -> ""
+                        {-
                         Nothing -> case maybeSig of
                                      Just sig -> (prettyprint sig) ++ "\n"
                                      Nothing -> ""
+                        -}
+                        Nothing -> "\n" ++ (intercalate "\n" $ map prettyprint maybeSig)
 
 -- ---------------------------------------------------------------------
 
@@ -2798,7 +2810,7 @@ stripLeadingSpaces xs = map (drop n) xs
   where
     n = minimum $ map oneLen xs
 
-    oneLen x = length prefix 
+    oneLen x = length prefix
       where
         (prefix,_) = break (/=' ') x
 
@@ -3456,6 +3468,18 @@ rmDecl pn incSig t = do
 
 
 -- ---------------------------------------------------------------------
+
+-- | Remove multiple type signatures
+rmTypeSigs :: (SYB.Data t) =>
+         [GHC.Name]  -- ^ The identifiers whose type signatures are to be removed.
+      -> t           -- ^ The declarations
+      -> RefactGhc (t,[GHC.LSig GHC.Name])
+                     -- ^ The result and removed signatures, if there
+                     -- were any
+rmTypeSigs pns t = do
+  (t',demotedSigsMaybe) <- foldM (\(tee,ds) n -> do { (tee',d) <- rmTypeSig n tee; return (tee', ds++[d])}) (t,[]) pns
+  return (t',catMaybes demotedSigsMaybe)
+
 
 -- | Remove the type signature that defines the given identifier's
 -- type from the declaration list.
