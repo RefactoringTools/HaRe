@@ -617,8 +617,34 @@ spec = do
   -- ---------------------------------------------
 
   describe "definedPNs" $ do
-    it "foo" $ do
-      pending -- "write this test"
+    it "gets the PNs defined in a declaration" $ do
+      (t, toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L _ pn) = locToName dd1FileName (3, 1) renamed
+      (GHC.showPpr pn) `shouldBe` "DupDef.Dd1.toplevel"
+
+      let origDecls = hsBinds renamed
+      let demotedDecls'= definingDeclsNames [pn] origDecls True False
+      let declaredPns = nub $ concatMap definedPNs demotedDecls'
+
+      (GHC.showPpr declaredPns) `shouldBe` "[DupDef.Dd1.toplevel]"
+
+    -- ---------------------------------
+
+    it "gets the PNs defined in an as-match" $ do
+      (t, toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L _ pn) = locToName dd1FileName (14, 1) renamed
+      (GHC.showPpr pn) `shouldBe` "DupDef.Dd1.tup"
+
+      let origDecls = hsBinds renamed
+      let demotedDecls'= definingDeclsNames [pn] origDecls True False
+      let declaredPns = nub $ concatMap definedPNs demotedDecls'
+
+      (GHC.showPpr declaredPns) `shouldBe` "[DupDef.Dd1.tup, DupDef.Dd1.h, DupDef.Dd1.t]"
+
 
   -- ---------------------------------------------
 

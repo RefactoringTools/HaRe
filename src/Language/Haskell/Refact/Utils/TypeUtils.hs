@@ -1122,8 +1122,10 @@ hsPNs t = (nub.ghead "hsPNs") res
 
 -- ---------------------------------------------------------------------
 
-hsNamess::(SYB.Data t)=> t -> [GHC.Name]
-hsNamess t = (nub.ghead "hsNamess") res
+-- |Get all the names in the given syntax element
+hsNamess :: (SYB.Data t) => t -> [GHC.Name]
+-- hsNamess t = (nub.ghead "hsNamess") res
+hsNamess t = nub $ concat res
   where
      res = SYB.everythingStaged SYB.Renamer (++) [] ([] `SYB.mkQ` inName) t
 
@@ -1986,8 +1988,9 @@ isTypeSigOf _  _ =False
 -- | Return the list of identifiers (in PName format) defined by a function\/pattern binding.
 definedPNs::GHC.LHsBind GHC.Name -> [GHC.Name]
 definedPNs (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)) = [pname]
-definedPNs (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _)) = (hsNamess p)
-definedPNs (GHC.L _ (GHC.VarBind pname _rhs _)) = [pname]
+definedPNs (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))         = (hsNamess p)
+definedPNs (GHC.L _ (GHC.VarBind pname _rhs _))              = [pname]
+
 -- TODO: what about GHC.AbsBinds?
 definedPNs  _ = []
 

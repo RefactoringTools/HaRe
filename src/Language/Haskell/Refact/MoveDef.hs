@@ -1055,7 +1055,7 @@ doDemoting' t pn
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).
           -- duplicateDecls :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
-          duplicateDecls :: [GHC.Name] -- ^ function name to be demoted
+          duplicateDecls :: [GHC.Name] -- ^ function names to be demoted
                          -> GHC.LHsBind GHC.Name -- ^Bind being demoted
                          -> Maybe (GHC.LSig GHC.Name) -- ^Signature being demoted, if there is one
                          -> Maybe [PosToken]          -- ^Tokens if provided
