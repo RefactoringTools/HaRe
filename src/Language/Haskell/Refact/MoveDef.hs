@@ -964,9 +964,15 @@ doDemoting' t pn
                       {- From 'hsDecls t' to 'hsDecls t \\ demotedDecls'.
                          Bug fixed 06/09/2004 to handle direct recursive function.
                        -}
-                  uselist = concatMap (\r -> if (emptyList r) then [] else ["Used"])$ map (\b -> uses declaredPns [b]) otherBinds
+                  uselist = concatMap (\r -> if (emptyList r) then [] else ["Used"]) $ map (\b -> uses declaredPns [b]) otherBinds
+
+                  xx = map (\b -> (b,uses declaredPns [b])) otherBinds
+                  yy = concatMap (\(b,r) -> if (emptyList r) then [] else [b]) xx
+              logm $ "doDemoting': uses xx=" ++ (GHC.showPpr xx)
+              logm $ "doDemoting': uses yy=" ++ (GHC.showPpr yy)
+
                   -- uselist' =map (\b -> uses declaredPns [b]) otherBinds
-              case  length uselist  of
+              case length uselist  of
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function
                       do
@@ -975,39 +981,21 @@ doDemoting' t pn
                          -- (f,d)<-hsFreeAndDeclaredPNs demotedDecls
                          let (f,_d) = hsFreeAndDeclaredPNs demotedDecls
                          -- remove demoted declarations
-                         --Without updating the token stream.
-                         -- let ds=foldl (flip removeTypeSig) (hsBinds t\\demotedDecls) declaredPns
-                         -- let ds=foldl (flip removeTypeSig) (deleteFirstsBy sameBind (hsBinds t) demotedDecls) declaredPns
-
-                         -- ++AZ++ moved to after the rest, so the tree is still available to start with
                          (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
-{-
-                         (t',demotedSig) <- rmTypeSig pn t --TODO:
-                                                           --reinstate
-                                                           --declaredPns
-                                                           --instead
-                                                           --of pn
--}
-                         -- (t',demotedSigsMaybe) <- foldM (\(tee,ds) n -> do { (tee',d) <- rmTypeSig n tee; return (tee', ds++[d])}) (t,[]) declaredPns
-                         -- let demotedSigs = catMaybes demotedSigsMaybe
+
                          (t',demotedSigs) <- rmTypeSigs declaredPns t
 
                          let (GHC.L ssd _) = removedDecl
                          demotedToks <- getToksForSpan ssd
 
-{-
-                         demotedSigToks <- case demotedSig of
-                                               Just (GHC.L ss _) -> do
-                                                   sigToks <- getToksForSpan ss
-                                                   return sigToks
-                                               Nothing -> return []
--}
-                         let getToksForMaybeSig demotedSig@(GHC.L ss _) = do
+                         -- TODO: move this to its own fn
+                         let getToksForMaybeSig (GHC.L ss _) = do
                                                    sigToks <- getToksForSpan ss
                                                    return sigToks
 
                          demotedSigToksLists <- mapM getToksForMaybeSig demotedSigs
                          let demotedSigToks = concat demotedSigToksLists
+                         -- end TODO
 
                          logm $ "MoveDef:demotedSigToks=" ++ (show demotedSigToks) -- ++AZ++
 
@@ -1031,19 +1019,12 @@ doDemoting' t pn
 
                                     logm $ "MoveDef:duplicateDecls done"
 
-                                    drawTokenTree "" -- ++AZ++ debug
-
-                                    -- Finally, remove the original
-                                    -- ds''' <- rmDecl pn True ds''
-                                    -- t'' <- rmTypeSig pn t'
-                                    -- t'' <- rmDecl pn True t
-
-
+                                    -- drawTokenTree "" -- ++AZ++ debug
 
                                     return (replaceBinds t' ds'')
-                                    -- return (t'')
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
-                  -- _ ->error $ "\nThis function/pattern binding is used by more than one friend bindings\n" ++ (show uselist) -- ++AZ++
+                  -- _ ->error $ "\nThis function/pattern binding is used by more than one friend bindings:\n" ++ (GHC.showPpr yy)
+                  -- _ ->error $ "\nThis function/pattern binding is used by more than one friend bindings\n" ++ (GHC.showPpr (uselist,declaredPns,otherBinds)) -- ++AZ++
 
        else error "This function can not be demoted as it is used in current level!\n"
        -- else error ("doDemoting': demotedDecls=" ++ (GHC.showPpr demotedDecls)) -- ++AZ++
@@ -1053,26 +1034,29 @@ doDemoting' t pn
 
     where
           ---find how many matches/pattern bindings use  'pn'-------
-          uses :: (SYB.Data t) => [GHC.Name] -> [t] -> [[String]]
-          uses pns
-               = SYB.everythingStaged SYB.Renamer (++) []
+          -- uses :: (SYB.Data t) => [GHC.Name] -> [t] -> [Int]
+          -- uses :: (SYB.Data t) => [GHC.Name] -> t -> [Int]
+          uses pns t
+               = concat $ SYB.everythingStaged SYB.Renamer (++) []
                    ([] `SYB.mkQ`  usedInMatch
-                       `SYB.extQ` usedInPat)
+                       `SYB.extQ` usedInPat) t
                 where
                   -- ++AZ++ Not in pattern, but is in RHS
                   -- usedInMatch (match@(HsMatch _ (PNT pname _ _) _ _ _)::HsMatchP)
                   usedInMatch ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
                     -- | isNothing (find (==pname) pns) && any  (flip findPN match) pns
                     | (not $ findPNs pns pats) && findPNs pns rhs
-                     = return ["Once"]
-                  usedInMatch _ = mzero
+                     = return [1::Int]
+                  usedInMatch _ = return []
+                  -- usedInMatch _ = mzero
 
                   -- usedInPat (pat@(Dec (HsPatBind _ p _ _)):: HsDeclP)
                   usedInPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
                     -- | hsPNs p `intersect` pns ==[]  && any  (flip findPN pat) pns
                     | (not $ findPNs pns pat) && findPNs pns rhs
-                    = return ["Once"]
-                  usedInPat  _=mzero
+                    = return [1::Int]
+                  usedInPat  _ = return []
+                  -- usedInPat  _ = mzero 
 
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).

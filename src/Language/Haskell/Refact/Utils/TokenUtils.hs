@@ -989,12 +989,12 @@ reIndentToks pos prevToks toks = toks''
                 $ dropWhile (\tok -> isComment tok || isEmpty tok) $ toks
 
     firstTok = ghead "reIndentToks.2" toks
-    lastTok  = glast "reIndentToks" prevToks
+    lastTok  = glast "reIndentToks.1" prevToks
 
     lastNonCommentTok = ghead "reIndentToks.3"
                       $ dropWhile (\tok -> isComment tok || isEmpty tok) $ reverse prevToks
 
-    prevOffset = getIndentOffset prevToks (tokenPos (glast "reIndentToks1" prevToks))
+    prevOffset = getIndentOffset prevToks (tokenPos (glast "reIndentToks.2" prevToks))
 
     (lastTokEndLine,_) = tokenPosEnd lastTok
 
@@ -1034,7 +1034,7 @@ reIndentToks pos prevToks toks = toks''
 
     toks'  = addOffsetToToks (lineOffset,colOffset) toks
     toks'' = if endNewlines > 0
-               then toks' ++ [(newLinesToken endNewlines $ glast "reIndentToks" toks')]
+               then toks' ++ [(newLinesToken endNewlines $ glast "reIndentToks.3" toks')]
                else toks'
 
 -- ---------------------------------------------------------------------

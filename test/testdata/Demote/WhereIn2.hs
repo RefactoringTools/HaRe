@@ -9,7 +9,7 @@ module Demote.WhereIn2 where
 
 sumSquares x y = sq x + sq y +pow      
          where pow=2
-
+               sq z = z^pow -- Added to make test fail with no avail dest
 sq 0 = 0
 sq z = z^pow
 

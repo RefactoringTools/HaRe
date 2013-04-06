@@ -21,7 +21,7 @@ import TestUtils
 
 main :: IO ()
 main = do
-  setLogger
+  -- setLogger
   hspec spec
 
 spec :: Spec
@@ -158,48 +158,41 @@ spec = do
 
     it "fails WhereIn2 14 1" $ do
      res <- catchException (doDemote ["./test/testdata/Demote/WhereIn2.hs","14","1"])
+     -- demote (Just logSettings) Nothing "./test/testdata/Demote/WhereIn2.hs" (14,1)
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
     -- -----------------------------------------------------------------
 
     it "fails LetIn2 11 22" $ do
-     pending -- "todo"
-{-
      res <- catchException (doDemote ["./test/testdata/Demote/LetIn2.hs","11","22"])
      (show res) `shouldBe` "Just \"This function can not be demoted as it is used in current level!\\n\""
--}
+
     -- -----------------------------------------------------------------
 
     it "fails PatBindIn4 18 1" $ do
-     pending -- "todo"
-{-
      res <- catchException (doDemote ["./test/testdata/Demote/PatBindIn4.hs","18","1"])
-     (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
--}
+     -- (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
+     (show res) `shouldBe` "Just \"\\nThis function/pattern binding is used by more than one friend bindings\\n\""
+
     -- -----------------------------------------------------------------
 
     it "fails WhereIn8 16 1" $ do
-     pending -- "todo"
-{-
      res <- catchException (doDemote ["./test/testdata/Demote/WhereIn8.hs","16","1"])
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
--}
+
     -- -----------------------------------------------------------------
 
     it "fails D2 5 1" $ do
-     pending -- "todo"
-{-
      res <- catchException (doDemote ["./test/testdata/Demote/D2.hs","5","1"])
+     -- demote logTestSettings (Just "./test/testdata/Demote/A2.hs") "./test/testdata/Demote/D2.hs" (5,1)
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
--}
+
     -- -----------------------------------------------------------------
 
     it "fails D3 5 1" $ do
-     pending -- "todo"
-{-
      res <- catchException (doDemote ["./test/testdata/Demote/D3.hs","5","1"])
      (show res) `shouldBe` "Just \"This definition can not be demoted, as it is explicitly exported by the current module!\""
--}
+
 
 
 {- Original test cases. These files are now in testdata/Demote

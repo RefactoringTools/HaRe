@@ -15,6 +15,7 @@ module Language.Haskell.Refact.Utils.Monad
        , runRefactGhc
        , getRefacSettings
        , defaultSettings
+       , logSettings
 
        {- ++AZ++ moved to MonadUtils, to break import cycle
        -- * Conveniences for state access
@@ -83,6 +84,10 @@ data RefactSettings = RefSet
 
 defaultSettings :: RefactSettings
 defaultSettings = RefSet ["."] False
+
+logSettings :: RefactSettings
+logSettings = defaultSettings { rsetLoggingOn = True }
+
 
 data RefactStashId = Stash String deriving (Show,Eq,Ord)
 

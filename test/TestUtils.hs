@@ -5,6 +5,7 @@ module TestUtils
        , initialState
        , toksFromState
        , defaultTestSettings
+       , logTestSettings
        , catchException
        , mkTokenCache
 
@@ -98,6 +99,9 @@ runRefactGhcState paramcomp = do
 
 defaultTestSettings :: Maybe RefactSettings
 defaultTestSettings = Just $ RefSet ["./test/testdata/"] False
+
+logTestSettings :: Maybe RefactSettings
+logTestSettings = Just $ RefSet ["./test/testdata/"] True
 
 -- ---------------------------------------------------------------------
 
