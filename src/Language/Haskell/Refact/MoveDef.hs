@@ -964,14 +964,12 @@ doDemoting' t pn
                       {- From 'hsDecls t' to 'hsDecls t \\ demotedDecls'.
                          Bug fixed 06/09/2004 to handle direct recursive function.
                        -}
-                  uselist = concatMap (\r -> if (emptyList r) then [] else ["Used"]) $ map (\b -> uses declaredPns [b]) otherBinds
-
+                  -- uselist = concatMap (\r -> if (emptyList r) then [] else ["Used"]) $ map (\b -> uses declaredPns [b]) otherBinds
                   xx = map (\b -> (b,uses declaredPns [b])) otherBinds
-                  yy = concatMap (\(b,r) -> if (emptyList r) then [] else [b]) xx
+                  uselist = concatMap (\(b,r) -> if (emptyList r) then [] else [b]) xx
               logm $ "doDemoting': uses xx=" ++ (GHC.showPpr xx)
-              logm $ "doDemoting': uses yy=" ++ (GHC.showPpr yy)
+              logm $ "doDemoting': uses uselist=" ++ (GHC.showPpr uselist)
 
-                  -- uselist' =map (\b -> uses declaredPns [b]) otherBinds
               case length uselist  of
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function
@@ -982,7 +980,6 @@ doDemoting' t pn
                          let (f,_d) = hsFreeAndDeclaredPNs demotedDecls
                          -- remove demoted declarations
                          (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
-
                          (t',demotedSigs) <- rmTypeSigs declaredPns t
 
                          let (GHC.L ssd _) = removedDecl
@@ -1015,8 +1012,8 @@ doDemoting' t pn
                             else  --duplicate demoted declarations to the right place.
                                  do
                                     logm $ "MoveDef: about to duplicateDecls"
-                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSigs (Just (demotedSigToks ++ demotedToks)) origDecls
-
+                                    -- ds'' <- duplicateDecls declaredPns removedDecl demotedSigs (Just (demotedSigToks ++ demotedToks)) origDecls
+                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSigs (Just (demotedSigToks ++ demotedToks)) ds
                                     logm $ "MoveDef:duplicateDecls done"
 
                                     -- drawTokenTree "" -- ++AZ++ debug
@@ -1320,6 +1317,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
            else  do  -- moveDecl pns match False decls True
                      -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding 
                      logm $ "MoveDef.foldParams about to addDecl:dtoks=" ++ (show dtoks)
+                     drawTokenTree "" -- ++AZ++ debug
                      rhs' <- addDecl rhs Nothing (demotedDecls,dsig,dtoks) False
                      return (GHC.Match pats mt rhs')
 

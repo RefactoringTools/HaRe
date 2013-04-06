@@ -49,6 +49,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
 
        -- * Internal, for testing
+       , placeToksForSpan
        , limitPrevToks
        , reIndentToks
        , splitForestOnSpan

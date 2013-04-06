@@ -37,7 +37,7 @@ import TestUtils
 
 main :: IO ()
 main = do
-  setLogger
+  -- setLogger
   hspec spec
 
 spec :: Spec
@@ -1307,7 +1307,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after deleting toks" $ do
+    it "Adds a new SrcSpan after deleting toks 1" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
 

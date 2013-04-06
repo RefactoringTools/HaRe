@@ -156,6 +156,15 @@ spec = do
 
     -- -----------------------------------------------------------------
 
+    it "demotes D2 5 1 when not imported by other module" $ do
+     doDemote ["./test/testdata/Demote/D2.hs","5","1"]
+     -- demote logTestSettings Nothing "./test/testdata/Demote/D2.hs" (5,1)
+     diff <- compareFiles "./test/testdata/Demote/D2.hs.refactored"
+                          "./test/testdata/Demote/D2.hs.expected"
+     diff `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
     it "fails WhereIn2 14 1" $ do
      res <- catchException (doDemote ["./test/testdata/Demote/WhereIn2.hs","14","1"])
      -- demote (Just logSettings) Nothing "./test/testdata/Demote/WhereIn2.hs" (14,1)
