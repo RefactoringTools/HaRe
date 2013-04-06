@@ -1818,7 +1818,8 @@ spec = do
       (showToks t) `shouldBe` "[(((40,0),(40,0)),ITsemi,\"\"),(((40,0),(40,6)),ITvarid \"tlFunc\",\"tlFunc\"),(((40,7),(40,8)),ITvarid \"x\",\"x\"),(((40,9),(40,10)),ITequal,\"=\"),(((40,11),(40,12)),ITvarid \"c\",\"c\"),(((40,13),(40,14)),ITstar,\"*\"),(((40,15),(40,16)),ITvarid \"x\",\"x\"),(((41,0),(41,17)),ITlineComment \"-- Comment at end\",\"-- Comment at end\")]"
 
   -- --------------------------------------
-
+{-
+This function is not used and has been removed
   describe "getDeclToks" $ do
     it "Returns a the tokens associated with a declaration" $ do
       let
@@ -1834,6 +1835,7 @@ spec = do
       ((dt,n1,n2),s) <- runRefactGhcState comp 
       (GHC.showPpr n1) `shouldBe` "Demote.D1.sq"
       (showToks dt) `shouldBe` "[(((9,1),(9,1)),ITsemi,\"\"),(((9,1),(9,3)),ITvarid \"sq\",\"sq\"),(((9,4),(9,5)),ITvarid \"x\",\"x\"),(((9,6),(9,7)),ITequal,\"=\"),(((9,8),(9,9)),ITvarid \"x\",\"x\"),(((9,10),(9,11)),ITvarsym \"^\",\"^\"),(((9,11),(9,14)),ITvarid \"pow\",\"pow\")]"
+-}
 
   -- ---------------------------------------
 
