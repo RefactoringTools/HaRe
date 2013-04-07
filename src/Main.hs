@@ -18,7 +18,7 @@ main = run ( doRefac, info )
 
 
 doRefac :: Term (IO ())
-doRefac = GhcRefacCase.ifToCase <$> files
+doRefac = GhcRefacCase.doIfToCase <$> files
 
 
  -- Define the 0th positional argument, defaulting to the value '"world"' in
@@ -27,7 +27,7 @@ filename :: Term String
 filename = value $ pos 0 "world" posInfo { posName = "GREETED" }
 
 
-t1 = GhcRefacCase.ifToCase ["./refactorer/B.hs","4","7","4","43"]
+t1 = GhcRefacCase.doIfToCase ["./refactorer/B.hs","4","7","4","43"]
 
 -- ---------------------------------------------------------------------
 -- Command line processing
