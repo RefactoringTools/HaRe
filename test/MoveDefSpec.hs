@@ -192,9 +192,14 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "fails D2 5 1" $ do
-     res <- catchException (doDemote ["./test/testdata/Demote/D2.hs","5","1"])
-     -- demote logTestSettings (Just "./test/testdata/Demote/A2.hs") "./test/testdata/Demote/D2.hs" (5,1)
-     (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
+     res <- catchException (demote defaultTestSettings (Just "./test/testdata/Demote/A2.hs") "./test/testdata/Demote/D2.hs" (5,1))
+     -- res <- catchException (demote logTestSettings (Just "./test/testdata/Demote/A2.hs") "./test/testdata/Demote/D2.hs" (5,1))
+     (show res) `shouldBe` "Just \"This definition can not be demoted, as it is used in the client module 'main:Demote.A2'!\""
+
+    -- -----------------------------------------------------------------
+   
+    it "fails for re-export in client module"  $ do
+      pending
 
     -- -----------------------------------------------------------------
 

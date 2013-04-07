@@ -13,6 +13,7 @@ module Language.Haskell.Refact.Utils
        , loadModuleGraphGhc
        , getModuleGhc
        , parseSourceFileGhc
+       , getModuleDetails
 
        -- * The bits that do the work
        , runRefacSession
@@ -23,6 +24,7 @@ module Language.Haskell.Refact.Utils
        -- , writeRefactoredFiles
        -- , Refact -- ^ deprecated
        , fileNameToModName
+       , fileNameFromModSummary
        , getModuleName
        , isVarId
        , clientModsAndFiles
@@ -47,7 +49,6 @@ import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
-import System.IO.Unsafe
 
 
 import qualified Bag           as GHC
@@ -132,8 +133,8 @@ fileNameToModName fileName = do
 
 -- | Extract the module name from the parsed source, if there is one
 getModuleName :: GHC.ParsedSource -> Maybe (GHC.ModuleName,String)
-getModuleName (GHC.L _ mod) =
-  case (GHC.hsmodName mod) of
+getModuleName (GHC.L _ modn) =
+  case (GHC.hsmodName modn) of
     Nothing -> Nothing
     Just (GHC.L _ modname) -> Just $ (modname,GHC.moduleNameString modname)
 
@@ -179,7 +180,7 @@ loadModuleGraphGhc maybeTargetFile = do
 -- | Return the info for a module, once the module graph has been loaded
 
 getModuleGhc ::
-  String -> RefactGhc (ParseResult,[PosToken])
+  FilePath -> RefactGhc (ParseResult,[PosToken])
 getModuleGhc targetFile = do
   graph <- GHC.getModuleGraph
 
@@ -198,8 +199,6 @@ getModuleDetails modSum = do
       t <- GHC.typecheckModule p
 
       GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
-
-      let pm = GHC.tm_parsed_module t
 
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       mtm <- gets rsModule
@@ -284,7 +283,6 @@ applyRefac refac Nothing fileName
        return res
 
 applyRefac refac (Just (parsedFile,toks)) fileName = do
-    let settings = RefSet ["."]
 
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
@@ -345,6 +343,17 @@ updateR old new t
           | otherwise = return e
 -}
 
+-- ---------------------------------------------------------------------
+
+fileNameFromModSummary :: GHC.ModSummary -> FilePath
+fileNameFromModSummary modSummary = fileName
+  where
+    -- TODO: what if we are loading a compiled only client and do not
+    -- have the original source?
+    Just fileName = GHC.ml_hs_file (GHC.ms_location modSummary)
+
+-- ---------------------------------------------------------------------
+
 class (SYB.Data t, SYB.Data t1) => Update t t1 where
 
   -- | Update the occurrence of one syntax phrase in a given scope by
@@ -391,7 +400,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n
                      -- TODO: make sure to call syncAST
                      return newTy
             | otherwise = return t
-            
+
 instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1, SYB.Data n2) => Update (GHC.LHsBindLR n1 n2) t where
        update oldBind newBind t
              = everywhereMStaged SYB.Parser (SYB.mkM inBind) t
@@ -417,8 +426,8 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1,
 zipUpdateToks f [] [] c = return []
 zipUpdateToks f [] _ _  = return []
 zipUpdateToks f _ [] _  = return []
-zipUpdateToks f (a:as) (b:bs) c = do res <- f a b c 
-                                     rest <- zipUpdateToks f as bs c  
+zipUpdateToks f (a:as) (b:bs) c = do res <- f a b c
+                                     rest <- zipUpdateToks f as bs c
                                      return (res:rest)
 -}
 
@@ -475,7 +484,9 @@ writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-re
          -> m ()
 -}
 -- writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
-writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], GHC.RenamedSource))])
+writeRefactoredFiles ::
+  Bool -> [((String, Bool), ([PosToken], GHC.RenamedSource))] -> IO ()
+writeRefactoredFiles _isSubRefactor files
 -- writeRefactoredFiles :: Bool -> [(RefactState, GHC.ParsedSource)]
     -- The AST is not used.
     -- isSubRefactor is used only for history (undo).
@@ -545,37 +556,37 @@ bypassGHCBug7351 ts = map go ts
 -- ---------------------------------------------------------------------
 
 -- | Return True if a string is a lexically  valid variable name.
-isVarId::String->Bool
-isVarId id =isId id && isSmall (ghead "isVarId" id)
+isVarId::String -> Bool
+isVarId mid = isId mid && isSmall (ghead "isVarId" mid)
      where isSmall c=isLower c || c=='_'
 
 -- | Return True if a string is a lexically valid constructor name.
 isConId::String->Bool
-isConId id =isId id && isUpper (ghead "isConId" id)
+isConId mid =isId mid && isUpper (ghead "isConId" mid)
 
 -- | Return True if a string is a lexically valid operator name.
 isOperator::String->Bool
-isOperator id = id /= [] && isOpSym (ghead "isOperator" id) &&
-                isLegalOpTail (tail id) && not (isReservedOp id)
+isOperator mid = mid /= [] && isOpSym (ghead "isOperator" mid) &&
+                isLegalOpTail (tail mid) && not (isReservedOp mid)
    where
-    isOpSym id = elem id opSymbols
+    isOpSym mid = elem mid opSymbols
        where opSymbols = ['!', '#', '$', '%', '&', '*', '+','.','/','<','=','>','?','@','\'','^','|','-','~']
 
     isLegalOpTail tail = all isLegal tail
        where isLegal c = isOpSym c || c==':'
 
-    isReservedOp id = elem id reservedOps
+    isReservedOp mid = elem mid reservedOps
        where reservedOps = ["..", ":","::","=","\"", "|","<-","@","~","=>"]
 
 {-Returns True if a string lexically is an identifier. *This function should not be exported.*
 -}
 isId::String->Bool
-isId id = id/=[] && isLegalIdTail (tail id) && not (isReservedId id)
+isId mid = mid/=[] && isLegalIdTail (tail mid) && not (isReservedId mid)
   where
     isLegalIdTail tail=all isLegal tail
         where isLegal c=isSmall c|| isUpper c || isDigit c || c=='\''
 
-    isReservedId id=elem id reservedIds
+    isReservedId mid=elem mid reservedIds
       where reservedIds=["case", "class", "data", "default", "deriving","do","else" ,"if",
                          "import", "in", "infix","infixl","infixr","instance","let","module",
                          "newtype", "of","then","type","where","_"]
@@ -611,7 +622,6 @@ mycomp ms1 ms2 = (GHC.ms_mod ms1) == (GHC.ms_mod ms2)
 -- | Return the server module and file names. The server modules of
 -- module, say m, are those modules which are directly or indirectly
 -- imported by module m. This can only be called in a live GHC session
-
 serverModsAndFiles
   :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
 serverModsAndFiles m = do
@@ -623,14 +633,6 @@ serverModsAndFiles m = do
                  $ map summaryNodeSummary $ GHC.reachableG mg modNode
 
   return serverMods
-
-
-   -- do gf <- getCurrentModuleGraph
-   --    let fileAndMods = [(m,f)|(f,(m,ms))<-gf]
-   --        g           = (map snd) gf
-   --        serverMods  = reachable g [m] \\ [m]
-   --        servers     = concatMap (\m'->[(m,f)|(m,f)<-fileAndMods, m==m']) serverMods
-   --    return servers
 
 
 -- ---------------------------------------------------------------------

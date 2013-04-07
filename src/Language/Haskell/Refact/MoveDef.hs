@@ -731,9 +731,10 @@ demote' modName fileName modInfo@(mod,toks) (GHC.L _ pn) = do
                   if isTl && modIsExported parsed
                     then do let demotedDecls'= definingDeclsNames [pn] (hsBinds renamed) True False
                                 declaredPns  = nub $ concatMap definedPNs demotedDecls'
-                            -- clients<-clientModsAndFiles modName
+                            clients <- clientModsAndFiles modName
+                            logm $ "demote':clients=" ++ (GHC.showPpr clients)
                             -- TODO: Complete this
-                            -- refactoredClients <-mapM (demotingInClientMod declaredPns) clients
+                            refactoredClients <-mapM (demotingInClientMod declaredPns) clients
                             -- writeRefactoredFiles False $ ((fileName,m),(toks',mod')):refactoredClients
                             return (refactoredMod:[])
                     -- else writeRefactoredFiles False [((fileName,m), (toks',mod'))]
@@ -741,12 +742,30 @@ demote' modName fileName modInfo@(mod,toks) (GHC.L _ pn) = do
     else error "\nInvalid cursor position!"
 
 
---Do refactoring in the client module, that is:
---a) Check whether the identifier is used in the module body
---b) If the identifier is not used but is hided by the import declaration, then remove it from the hiding.
+-- |Do refactoring in the client module, that is:
+--  a) Check whether the identifier is used in the module body
+--  b) If the identifier is not used but is hided by the import
+--     declaration, then remove it from the hiding.
+-- demotingInClientMod :: [GHC.Name] -> GHC.ModSummary -> RefactGhc [a]
+demotingInClientMod pns modSummary = do
+  modInfo@(parseResult,toks) <- getModuleDetails modSummary
+  refactoredMod <- applyRefac (doDemotingInClientMod pns (GHC.ms_mod modSummary)) (Just modInfo) (fileNameFromModSummary modSummary)
+  return refactoredMod
 
-demotingInClientMod pns (modName, fileName)
-  = error "undefined demotingInClientMod"
+
+doDemotingInClientMod :: [GHC.Name] -> GHC.Module -> RefactGhc ()
+doDemotingInClientMod pns modName = do
+  renamed@(_g,imps,exps,_docs) <- getRefactRenamed
+  -- if any (\pn->findPN pn (hsModDecls mod) || findPN pn (hsModExports mod)) pns
+  if any (\pn->findPN pn (hsBinds renamed) || findPN pn (exps)) pns
+     then error $ "This definition can not be demoted, as it is used in the client module '"++(GHC.showPpr modName)++"'!"
+     else if any (\pn->findPN pn imps) pns
+             -- TODO: reinstate this
+             then do -- (mod',((ts',m),_))<-runStateT (rmItemsFromImport mod pns) ((ts,unmodified),(-1000,0))
+                     return ()
+             else return ()
+
+
 {-
   = do (inscps, exps, mod ,ts) <- parseSourceFile fileName
        if any (\pn->findPN pn (hsModDecls mod) || findPN pn (hsModExports mod)) pns

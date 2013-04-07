@@ -2868,12 +2868,12 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
              Import -> False
 
     inImport :: GHC.LImportDecl GHC.Name -> RefactGhc (GHC.LImportDecl GHC.Name)
-    inImport imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit as h))
+    inImport imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit _as h))
       | serverModName == modName  && not isQualified -- && (if isJust pn then findPN (fromJust pn) h else True)
        = case h of
-           Nothing             -> insertEnts imp [] True
-           Just (isHide, ents) -> insertEnts imp ents False
-           _                   -> return imp
+           Nothing              -> insertEnts imp [] True
+           Just (_isHide, ents) -> insertEnts imp ents False
+           _                    -> return imp
     inImport x = return x
 
     insertEnts ::
@@ -2898,7 +2898,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
 
                 newToken=mkToken t start (beginning++showEntities GHC.showPpr pns ++ending)
                 -- toks'=replaceToks toks start end [newToken]
-                toks'=replaceTok toks start newToken
+                -- toks'=replaceTok toks start newToken
 
             putToksForPos (start,end) [newToken]
 
