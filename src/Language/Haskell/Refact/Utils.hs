@@ -260,10 +260,11 @@ type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.RenamedSource))
 -- It is intended that this forms the umbrella function, in which
 -- applyRefac is called
 --
-runRefacSession :: (Maybe RefactSettings)
+runRefacSession :: Maybe RefactSettings
+         -> Maybe FilePath -- ^ main module for the project being refactored
          -> RefactGhc [ApplyRefacResult]
          -> IO ()
-runRefacSession settings comp = do
+runRefacSession settings maybeMainFile comp = do
   let
    initialState = RefSt
         { rsSettings = fromMaybe defaultSettings settings
@@ -272,7 +273,10 @@ runRefacSession settings comp = do
         , rsStorage = StorageNone
         , rsModule = Nothing
         }
-  (refactoredMods,_s) <- runRefactGhc (initGhcSession >> comp) initialState
+  (refactoredMods,_s) <- runRefactGhc (initGhcSession >>
+                                       loadModuleGraphGhc maybeMainFile >>
+                                       comp) initialState
+
   writeRefactoredFiles False refactoredMods
   return ()
 

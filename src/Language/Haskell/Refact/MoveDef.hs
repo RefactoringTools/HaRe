@@ -64,14 +64,12 @@ doLiftToTopLevel args
 -- | The API entry point
 liftToTopLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO ()
 liftToTopLevel settings maybeMainFile fileName (row,col) =
-  runRefacSession settings (compLiftToTopLevel maybeMainFile fileName (row,col))
+  runRefacSession settings maybeMainFile (compLiftToTopLevel fileName (row,col))
 
 
-compLiftToTopLevel :: Maybe FilePath -> FilePath -> SimpPos
+compLiftToTopLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
-compLiftToTopLevel maybeMainFile fileName (row,col) = do
-      loadModuleGraphGhc maybeMainFile
-      -- modInfo@(t, _tokList) <- getModuleGhc fileName
+compLiftToTopLevel fileName (row,col) = do
       getModuleGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
@@ -96,13 +94,11 @@ doDemote args
 -- | The API entry point
 demote :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO ()
 demote settings maybeMainFile fileName (row,col) =
-  runRefacSession settings (compDemote maybeMainFile fileName (row,col))
+  runRefacSession settings maybeMainFile (compDemote fileName (row,col))
 
-compDemote :: Maybe FilePath -> FilePath -> SimpPos
+compDemote ::FilePath -> SimpPos
          -> RefactGhc [ApplyRefacResult]
-compDemote maybeMainFile fileName (row,col) = do
-      loadModuleGraphGhc maybeMainFile
-
+compDemote fileName (row,col) = do
       getModuleGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed

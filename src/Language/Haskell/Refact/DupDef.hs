@@ -40,14 +40,14 @@ doDuplicateDef args
 -- | The API entry point
 duplicateDef :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO ()
 duplicateDef settings maybeMainFile fileName newName (row,col) =
-  runRefacSession settings (comp maybeMainFile fileName newName (row,col))
+  runRefacSession settings maybeMainFile (comp fileName newName (row,col))
 
 
-comp :: Maybe FilePath -> FilePath -> String -> SimpPos
+comp :: FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
-comp maybeMainFile fileName newName (row, col) = do
+comp fileName newName (row, col) = do
       if isVarId newName
-        then do loadModuleGraphGhc maybeMainFile
+        then do -- loadModuleGraphGhc maybeMainFile
                 -- modInfo@(t, _tokList) <- getModuleGhc fileName
                 getModuleGhc fileName
                 renamed <- getRefactRenamed

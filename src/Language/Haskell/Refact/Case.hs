@@ -31,13 +31,10 @@ doIfToCase args
 -- | The API entry point
 ifToCase :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> IO ()
 ifToCase settings maybeMainFile fileName beginPos endPos =
-  runRefacSession settings (comp maybeMainFile fileName beginPos endPos)
+  runRefacSession settings maybeMainFile (comp fileName beginPos endPos)
 
-comp :: Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp maybeMainFile fileName beginPos endPos = do
-       -- TODO: move this into runRefacSession
-       loadModuleGraphGhc maybeMainFile
-
+comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
+comp fileName beginPos endPos = do
        getModuleGhc fileName
        renamed <- getRefactRenamed
        let expr = locToExp beginPos endPos renamed

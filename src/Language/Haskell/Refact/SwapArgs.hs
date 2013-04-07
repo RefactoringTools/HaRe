@@ -37,13 +37,13 @@ swapArgs args
   = do let fileName = args!!0
            row = (read (args!!1)::Int)
            col = (read (args!!2)::Int)
-       runRefacSession Nothing (comp Nothing fileName (row,col))
+       runRefacSession Nothing Nothing (comp fileName (row,col))
 
 
-comp :: Maybe FilePath -> String -> SimpPos
+comp :: String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
-comp maybeMainFile fileName (row, col) = do
-       loadModuleGraphGhc maybeMainFile
+comp fileName (row, col) = do
+       -- loadModuleGraphGhc maybeMainFile
        -- modInfo@(_t, _tokList) <- getModuleGhc fileName
        getModuleGhc fileName
        renamed <- getRefactRenamed
