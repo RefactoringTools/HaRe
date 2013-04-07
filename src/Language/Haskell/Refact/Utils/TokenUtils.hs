@@ -43,6 +43,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        -- * Utility
        , posToSrcSpan
        , posToSrcSpanTok
+       , fileNameFromTok
 
        -- * AST tie up
        , syncAST

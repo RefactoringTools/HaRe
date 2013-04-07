@@ -18,6 +18,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactParsed
        , putParsedModule
        , clearParsedModule
+       , getRefactFileName
 
        -- * TokenUtils API
        , putToksForSpan
@@ -382,6 +383,16 @@ clearParsedModule = do
   st <- get
   put $ st { rsModule = Nothing }
 
+
+-- ---------------------------------------------------------------------
+
+getRefactFileName :: RefactGhc (Maybe FilePath)
+getRefactFileName = do
+  mtm <- gets rsModule
+  case mtm of
+    Nothing -> return Nothing
+    Just tm -> do toks <- fetchOrigToks
+                  return $ Just (GHC.unpackFS $ fileNameFromTok $ ghead "getRefactFileName" toks)
 
 -- ---------------------------------------------------------------------
 

@@ -48,7 +48,8 @@ comp :: Maybe FilePath -> FilePath -> String -> SimpPos
 comp maybeMainFile fileName newName (row, col) = do
       if isVarId newName
         then do loadModuleGraphGhc maybeMainFile
-                modInfo@(t, _tokList) <- getModuleGhc fileName
+                -- modInfo@(t, _tokList) <- getModuleGhc fileName
+                getModuleGhc fileName
                 renamed <- getRefactRenamed
                 parsed  <- getRefactParsed
 
@@ -57,7 +58,8 @@ comp maybeMainFile fileName newName (row, col) = do
                 case maybePn of
                   Just pn ->
                        do
-                          refactoredMod@((_fp,ismod),(_toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                          -- refactoredMod@((_fp,ismod),(_toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
+                          refactoredMod@((_fp,ismod),(_toks',renamed')) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
                           case (ismod) of
                             False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
                             True -> return ()
@@ -187,7 +189,8 @@ refactorInClientMod serverModName newPName modSummary
   = do
        logm ("refactorInClientMod: (serverModName,newPName)=" ++ (GHC.showPpr (serverModName,newPName))) -- ++AZ++ debug
        let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
-       modInfo@(t,ts) <- getModuleGhc fileName
+       -- modInfo@(t,ts) <- getModuleGhc fileName
+       getModuleGhc fileName
 
        renamed <- getRefactRenamed
        parsed <- getRefactParsed
@@ -200,9 +203,10 @@ refactorInClientMod serverModName newPName modSummary
        logm ("refactorInClientMod: (mustHide)=" ++ (GHC.showPpr (mustHide))) -- ++AZ++ debug
        if isJust modNames && mustHide
         then do
-                refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
+                -- refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
+                refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (RSFile fileName)
                 return refactoredMod
-        else return ((fileName,unmodified),(ts,renamed))
+        else return ((fileName,unmodified),([],renamed))
    where
      needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
      needToBeHided name exps parsed = do

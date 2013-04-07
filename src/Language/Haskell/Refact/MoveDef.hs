@@ -71,7 +71,8 @@ compLiftToTopLevel :: Maybe FilePath -> FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftToTopLevel maybeMainFile fileName (row,col) = do
       loadModuleGraphGhc maybeMainFile
-      modInfo@(t, _tokList) <- getModuleGhc fileName
+      -- modInfo@(t, _tokList) <- getModuleGhc fileName
+      getModuleGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
 
@@ -79,7 +80,7 @@ compLiftToTopLevel maybeMainFile fileName (row,col) = do
       let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
       case maybePn of
         Just pn ->  do
-            liftToTopLevel' modName modInfo fileName pn
+            liftToTopLevel' modName pn
         _       ->  error "\nInvalid cursor position!\n"
 
 
@@ -102,7 +103,7 @@ compDemote :: Maybe FilePath -> FilePath -> SimpPos
 compDemote maybeMainFile fileName (row,col) = do
       loadModuleGraphGhc maybeMainFile
 
-      modInfo@(_t, _tokList) <- getModuleGhc fileName
+      getModuleGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
 
@@ -110,7 +111,7 @@ compDemote maybeMainFile fileName (row,col) = do
       let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
       case maybePn of
         Just pn -> do
-          demote' modName fileName modInfo pn
+          demote' modName pn
         _       -> error "\nInvalid cursor position!\n"
 
 
@@ -171,15 +172,15 @@ move direction args
 
 -}
 
-liftToTopLevel' :: GHC.ModuleName -> (ParseResult,[PosToken]) -> FilePath
+liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
                 -> GHC.Located GHC.Name
                 -> RefactGhc [ApplyRefacResult]
-liftToTopLevel' modName _modInfo _fileName pn@(GHC.L _ n) = do
+liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
   parsed  <- getRefactParsed
   if isLocalFunOrPatName n renamed
       then do -- ((mod',declPns),((toks',m),_))<-runStateT liftToMod ((toks,unmodified),(-1000,0))
-              refactoredMod <- applyRefac (liftToMod) (Just _modInfo) _fileName
+              refactoredMod <- applyRefac (liftToMod) RSAlreadyLoaded
 
               if modIsExported parsed
                then do clients<-clientModsAndFiles modName
@@ -713,11 +714,11 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
 
 demote' ::
      GHC.ModuleName
-  -> FilePath
-  -> (ParseResult,[PosToken])
+  -- -> FilePath
+  -- -> (ParseResult,[PosToken])
   -> GHC.Located GHC.Name
   -> RefactGhc [ApplyRefacResult]
-demote' modName fileName modInfo@(mod,toks) (GHC.L _ pn) = do
+demote' modName (GHC.L _ pn) = do
   renamed <- getRefactRenamed
   parsed  <- getRefactParsed
   if isFunOrPatName pn renamed
@@ -726,7 +727,7 @@ demote' modName fileName modInfo@(mod,toks) (GHC.L _ pn) = do
        if isTl && isExplicitlyExported pn renamed
           then error "This definition can not be demoted, as it is explicitly exported by the current module!"
           else do -- (mod',((toks',m),_))<-doDemoting pn fileName mod toks
-                  refactoredMod <- applyRefac (doDemoting pn) (Just modInfo) fileName
+                  refactoredMod <- applyRefac (doDemoting pn) RSAlreadyLoaded
                   -- isTl <- isTopLevelPN pn
                   if isTl && modIsExported parsed
                     then do let demotedDecls'= definingDeclsNames [pn] (hsBinds renamed) True False
@@ -748,8 +749,8 @@ demote' modName fileName modInfo@(mod,toks) (GHC.L _ pn) = do
 --     declaration, then remove it from the hiding.
 -- demotingInClientMod :: [GHC.Name] -> GHC.ModSummary -> RefactGhc [a]
 demotingInClientMod pns modSummary = do
-  modInfo@(parseResult,toks) <- getModuleDetails modSummary
-  refactoredMod <- applyRefac (doDemotingInClientMod pns (GHC.ms_mod modSummary)) (Just modInfo) (fileNameFromModSummary modSummary)
+  getModuleDetails modSummary
+  refactoredMod <- applyRefac (doDemotingInClientMod pns (GHC.ms_mod modSummary)) RSAlreadyLoaded
   return refactoredMod
 
 

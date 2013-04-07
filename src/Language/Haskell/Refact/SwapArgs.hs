@@ -44,7 +44,8 @@ comp :: Maybe FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp maybeMainFile fileName (row, col) = do
        loadModuleGraphGhc maybeMainFile
-       modInfo@(_t, _tokList) <- getModuleGhc fileName
+       -- modInfo@(_t, _tokList) <- getModuleGhc fileName
+       getModuleGhc fileName
        renamed <- getRefactRenamed
        -- parsed  <- getRefactParsed
        -- modInfo@((_, renamed, mod), toks) <- parseSourceFileGhc fileName
@@ -56,7 +57,8 @@ comp maybeMainFile fileName (row, col) = do
        -- error (SYB.showData SYB.Parser 0 name)
 
        case name of
-            (Just pn) -> do refactoredMod@(_, (_t, s)) <- applyRefac (doSwap pnt pn) (Just modInfo) fileName
+            -- (Just pn) -> do refactoredMod@(_, (_t, s)) <- applyRefac (doSwap pnt pn) (Just modInfo) fileName
+            (Just pn) -> do refactoredMod@(_, (_t, s)) <- applyRefac (doSwap pnt pn) (RSFile fileName)
                             return [refactoredMod]
             Nothing   -> error "Incorrect identifier selected!"
        --if isFunPNT pnt mod    -- Add this back in ++ CMB +++

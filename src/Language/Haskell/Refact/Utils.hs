@@ -19,6 +19,7 @@ module Language.Haskell.Refact.Utils
        , runRefacSession
        , applyRefac
        , ApplyRefacResult(..)
+       , RefacSource(..)
 
        , update
        -- , writeRefactoredFiles
@@ -177,10 +178,11 @@ loadModuleGraphGhc maybeTargetFile = do
 
 -- ---------------------------------------------------------------------
 
--- | Return the info for a module, once the module graph has been loaded
-
+-- | Once the module graph has been loaded, load the given module into
+-- the RefactGhc monad
 getModuleGhc ::
-  FilePath -> RefactGhc (ParseResult,[PosToken])
+  -- FilePath -> RefactGhc (ParseResult,[PosToken])
+  FilePath -> RefactGhc ()
 getModuleGhc targetFile = do
   graph <- GHC.getModuleGraph
 
@@ -193,7 +195,10 @@ getModuleGhc targetFile = do
 
 -- ---------------------------------------------------------------------
 
-getModuleDetails :: GHC.ModSummary -> RefactGhc (ParseResult,[PosToken])
+-- | In the existing GHC session, put the requested TypeCheckedModule
+-- into the RefactGhc monad
+getModuleDetails :: GHC.ModSummary -> RefactGhc ()
+-- getModuleDetails :: GHC.ModSummary -> RefactGhc (ParseResult,[PosToken])
 getModuleDetails modSum = do
       p <- GHC.parseModule modSum
       t <- GHC.typecheckModule p
@@ -203,18 +208,25 @@ getModuleDetails modSum = do
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       mtm <- gets rsModule
       case mtm of
-        Just _tm -> error "getModuleDetails: trying to load a module without finishing with active one"
+        Just tm -> if ((rsStreamModified tm == False)
+                      && ((GHC.mkFastString $ fileNameFromModSummary modSum) ==
+                          (fileNameFromTok $ ghead "getModuleDetails" tokens)))
+                     then return ()
+                     else error "getModuleDetails: trying to load a module without finishing with active one"
+
         Nothing -> putParsedModule t tokens
 
-      return (t,tokens)
+      -- return (t,tokens)
+      return ()
 
 -- ---------------------------------------------------------------------
 
 -- | Parse a single source file into a GHC session
 parseSourceFileGhc ::
-  String -> RefactGhc (ParseResult,[PosToken])
+  -- String -> RefactGhc (ParseResult,[PosToken])
+  String -> RefactGhc ()
 parseSourceFileGhc targetFile = do
-      target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- Force interpretation, for inscopes
+      target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- * to force interpretation, for inscopes
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
 
@@ -266,37 +278,38 @@ runRefacSession settings comp = do
 
 -- ---------------------------------------------------------------------
 
+data RefacSource = RSFile FilePath
+                 | RSMod GHC.ModSummary
+                 | RSAlreadyLoaded
+
 -- TODO: the module should be stored in the state, and returned if it
 -- has been modified in a prior refactoring, instead of being parsed
 -- afresh each time.
 
 -- | Apply a refactoring (or part of a refactoring) to a single module
 applyRefac
-    :: RefactGhc ()                     -- ^ The refactoring
-    -> Maybe (ParseResult, [PosToken])  -- ^ parse of module, if available
-    -> FilePath                         -- ^ filename, if not
+    :: RefactGhc ()       -- ^ The refactoring
+    -> RefacSource        -- ^ where to get the module and toks
     -> RefactGhc ApplyRefacResult
 
-applyRefac refac Nothing fileName
-  = do (pr, toks) <- getModuleGhc fileName  -- TODO: move this into the RefactGhc monad, so it shares a session
-       res <- applyRefac refac (Just (pr,toks)) fileName
-       return res
-
-applyRefac refac (Just (parsedFile,toks)) fileName = do
+applyRefac refac source = do
 
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
     -- restore the state. Fix this to store the modules in some kind of cache.
-    (RefSt settings u f s _) <- get
 
-    let rs = RefMod { rsTypecheckedMod = parsedFile
-                    , rsOrigTokenStream = toks
-                    , rsTokenCache = initTokenCache toks
-                    , rsStreamModified = False
-                    }
-    put (RefSt settings u f s (Just rs))
+    fileName <- case source of
+         RSFile fname    -> do getModuleGhc fname
+                               return fname
+         RSMod  ms       -> do getModuleGhc $ fileNameFromModSummary ms
+                               return $ fileNameFromModSummary ms
+         RSAlreadyLoaded -> do mfn <- getRefactFileName
+                               case mfn of
+                                 Just fname -> return fname
+                                 Nothing -> error "applyRefac RSAlreadyLoaded: nothing loaded"
 
     refac  -- Run the refactoring, updating the state as required
+
     mod'  <- getRefactRenamed
     toks' <- fetchToks
     m     <- getRefactStreamModified

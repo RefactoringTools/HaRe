@@ -56,12 +56,12 @@ parsedFileMGhc :: IO (ParseResult,[PosToken])
 parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
 
 parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileBGhc = parseSourceFileGhc fileName
+parseFileBGhc = parseSourceFileTest fileName
   where
     fileName = "./test/testdata/B.hs"
 
 parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileMGhc = parseSourceFileGhc fileName
+parseFileMGhc = parseSourceFileTest fileName
   where
     fileName = "./test/testdata/M.hs"
 
@@ -73,7 +73,7 @@ parsedFileNoMod = parsedFileGhc fileName
 comp :: RefactGhc String
 comp = do
     s <- get
-    modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/TypeUtils/B.hs"
+    modInfo@(t, toks) <- parseSourceFileTest "./test/testdata/TypeUtils/B.hs"
 
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g

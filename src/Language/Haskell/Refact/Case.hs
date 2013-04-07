@@ -1,25 +1,12 @@
-module Language.Haskell.Refact.Case(ifToCase) where
+module Language.Haskell.Refact.Case(doIfToCase,ifToCase) where
 
-import qualified Data.Generics.Schemes as SYB
-import qualified Data.Generics.Aliases as SYB
+import qualified Data.Generics         as SYB
+-- import qualified Data.Generics.Aliases as SYB
+-- import qualified Data.Generics.Schemes as SYB
 import qualified GHC.SYB.Utils         as SYB
 
+
 import qualified GHC
-import qualified DynFlags              as GHC
-import qualified Outputable            as GHC
-import qualified MonadUtils            as GHC
-import qualified Name                  as GHC
-import qualified RdrName               as GHC
-import qualified OccName               as GHC
-
-import qualified Data.Generics as SYB
-import qualified GHC.SYB.Utils as SYB
-
-import GHC.Paths ( libdir )
-import Control.Monad
-import Control.Monad.State
-import Data.Data
-import Data.Maybe
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -33,30 +20,37 @@ import Language.Haskell.Refact.Utils.TypeUtils
 -- ---------------------------------------------------------------------
 
 -- TODO: This boilerplate will be moved to the coordinator, just the refac session will be exposed
-ifToCase :: [String] -> IO () -- For now
-ifToCase args
+doIfToCase :: [String] -> IO () -- For now
+doIfToCase args
   = do let fileName = args!!0
            beginPos = (read (args!!1), read (args!!2))::(Int,Int)
            endPos   = (read (args!!3), read (args!!4))::(Int,Int)
-       runRefacSession Nothing (comp fileName beginPos endPos)
+       ifToCase Nothing Nothing fileName beginPos endPos
        return ()
 
-comp :: String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName beginPos endPos = do
-       -- TODO: bring in getModuleGhc
-       modInfo@(t, _toks) <- parseSourceFileGhc fileName
-       let renamed = gfromJust "ifToCase" $ GHC.tm_renamed_source t
+-- | The API entry point
+ifToCase :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> IO ()
+ifToCase settings maybeMainFile fileName beginPos endPos =
+  runRefacSession settings (comp maybeMainFile fileName beginPos endPos)
+
+comp :: Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
+comp maybeMainFile fileName beginPos endPos = do
+       -- TODO: move this into runRefacSession
+       loadModuleGraphGhc maybeMainFile
+
+       getModuleGhc fileName
+       renamed <- getRefactRenamed
        let expr = locToExp beginPos endPos renamed
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
-                -> do refactoredMod <- applyRefac (doIfToCase exp1) (Just modInfo ) fileName
+                -> do refactoredMod <- applyRefac (doIfToCaseInternal exp1) (RSFile fileName)
                       return [refactoredMod]
          _      -> error $ "You haven't selected an if-then-else  expression!" --  ++ (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
 
-doIfToCase ::
+doIfToCaseInternal ::
   GHC.Located (GHC.HsExpr GHC.Name)
   -> RefactGhc ()
-doIfToCase expr = do
+doIfToCaseInternal expr = do
   rs <- getRefactRenamed
   reallyDoIfToCase expr rs
 
@@ -65,7 +59,7 @@ reallyDoIfToCase ::
   -> GHC.RenamedSource
   -> RefactGhc ()
 reallyDoIfToCase expr rs = do
-   
+
    everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
    return ()
        where

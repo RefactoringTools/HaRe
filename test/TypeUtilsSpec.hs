@@ -678,7 +678,7 @@ spec = do
       -- ((_inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
       let
         comp = do
-         (p,toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         (p,toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
          res1 <- isInScopeAndUnqualifiedGhc "c"
          res2 <- isInScopeAndUnqualifiedGhc "DupDef.Dd1.c"
          res3 <- isInScopeAndUnqualifiedGhc "nonexistent"
@@ -1558,7 +1558,7 @@ spec = do
     it "Returns true if a syntax phrase is part of another" $ do
       let
         comp = do
-         (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
          putParsedModule t toks
          parentr <- getRefactRenamed
 
@@ -1583,7 +1583,7 @@ spec = do
     it "Returns false if a syntax phrase is not part of another" $ do
       let
         comp = do
-         (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
          putParsedModule t toks
          parentr <- getRefactRenamed
 
@@ -1683,9 +1683,9 @@ spec = do
       let
         comp = do
 
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
          clearParsedModule
-         (t2, toks2) <- parseSourceFileGhc "./test/testdata/DupDef/Dd2.hs"
+         (t2, toks2) <- parseSourceFileTest "./test/testdata/DupDef/Dd2.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
          let renamed2 = fromJust $ GHC.tm_renamed_source t2
@@ -1711,9 +1711,9 @@ spec = do
       let
         comp = do
 
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
          clearParsedModule
-         (t2, toks2) <- parseSourceFileGhc "./test/testdata/DupDef/Dd3.hs"
+         (t2, toks2) <- parseSourceFileTest "./test/testdata/DupDef/Dd3.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
          let renamed2 = fromJust $ GHC.tm_renamed_source t2
@@ -1740,7 +1740,7 @@ spec = do
     it "Returns True if the identifier is used unqualified" $ do
       let
         comp = do
-          (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+          (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
           putParsedModule t toks
           renamed <- getRefactRenamed
 
@@ -1758,7 +1758,7 @@ spec = do
     it "Returns False if the identifier is used qualified" $ do
       let
         comp = do
-          (t, toks) <- parseSourceFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
+          (t, toks) <- parseSourceFileTest "./test/testdata/FreeAndDeclared/Declare.hs"
           putParsedModule t toks
           renamed <- getRefactRenamed
           parsed <- getRefactParsed
@@ -1802,7 +1802,7 @@ spec = do
     it "Returns a declaration and its associated tokens" $ do
       let
         comp = do
-          (t, toks) <- parseSourceFileGhc "./test/testdata/MoveDef/Md1.hs"
+          (t, toks) <- parseSourceFileTest "./test/testdata/MoveDef/Md1.hs"
           putParsedModule t toks
           renamed <- getRefactRenamed
 
@@ -1824,7 +1824,7 @@ This function is not used and has been removed
     it "Returns a the tokens associated with a declaration" $ do
       let
         comp = do
-          (t, toks) <- parseSourceFileGhc "./test/testdata/Demote/D1.hs"
+          (t, toks) <- parseSourceFileTest "./test/testdata/Demote/D1.hs"
           putParsedModule t toks
           renamed <- getRefactRenamed
 
@@ -1867,7 +1867,7 @@ This function is not used and has been removed
     it "Returns True if a given identifier is used in the RHS of a syntax element" $ do
       let
         comp = do
-          (t, toks) <- parseSourceFileGhc "./test/testdata/MoveDef/Demote.hs"
+          (t, toks) <- parseSourceFileTest "./test/testdata/MoveDef/Demote.hs"
           putParsedModule t toks
           renamed <- getRefactRenamed
 
@@ -1893,7 +1893,7 @@ This function is not used and has been removed
     it "Renames an identifier if it is used, no token update" $ do
       let
         comp = do
-          (t, toks) <- parseSourceFileGhc "./test/testdata/Demote/WhereIn4.hs"
+          (t, toks) <- parseSourceFileTest "./test/testdata/Demote/WhereIn4.hs"
           putParsedModule t toks
           renamed <- getRefactRenamed
 
@@ -1915,7 +1915,7 @@ This function is not used and has been removed
     it "Renames an identifier if it is used and updates tokens" $ do
       let
         comp = do
-          (t, toks) <- parseSourceFileGhc "./test/testdata/Demote/WhereIn4.hs"
+          (t, toks) <- parseSourceFileTest "./test/testdata/Demote/WhereIn4.hs"
           putParsedModule t toks
           renamed <- getRefactRenamed
 
@@ -1948,9 +1948,9 @@ This function is not used and has been removed
       let
         comp = do
 
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
          clearParsedModule
-         (t2, toks2) <- parseSourceFileGhc "./test/testdata/DupDef/Dd2.hs"
+         (t2, toks2) <- parseSourceFileTest "./test/testdata/DupDef/Dd2.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
          let renamed2 = fromJust $ GHC.tm_renamed_source t2
@@ -1972,7 +1972,7 @@ This function is not used and has been removed
       let
         comp = do
 
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/Simplest.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/Simplest.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
@@ -1989,7 +1989,7 @@ This function is not used and has been removed
       let
         comp = do
 
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/JustImports.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/JustImports.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
@@ -2007,7 +2007,7 @@ This function is not used and has been removed
       let
         comp = do
 
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/Empty.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/Empty.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
@@ -2027,7 +2027,7 @@ This function is not used and has been removed
     it "Add an item to an import entry with no items." $ do
       let
         comp = do
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/JustImports.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/JustImports.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
@@ -2047,7 +2047,7 @@ This function is not used and has been removed
 {-    it "Try adding more than one item to an existing import entry with no items, using separate calls." $ do
       let
         comp = do
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/JustImports.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/JustImports.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
@@ -2069,7 +2069,7 @@ This function is not used and has been removed
     it "Add an item to an import entry with existing items." $ do
       let
         comp = do
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/SelectivelyImports.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/SelectivelyImports.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
@@ -2087,7 +2087,7 @@ This function is not used and has been removed
     it "Add an item to an import entry with existing items, passing existing conditional identifier." $ do
       let
         comp = do
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/SelectivelyImports.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/SelectivelyImports.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
@@ -2105,7 +2105,7 @@ This function is not used and has been removed
     it "Add an item to an import entry with existing items, passing missing conditional identifier" $ do
       let
         comp = do
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/SelectivelyImports.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/SelectivelyImports.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
@@ -2134,7 +2134,7 @@ foo
       let
         comp = do
 
-         (t1,_toks1)  <- parseSourceFileGhc "./test/testdata/TypeUtils/Empty.hs"
+         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/Empty.hs"
          -- clearParsedModule
          let renamed1@(g,_,_,_) = fromJust $ GHC.tm_renamed_source t1
 

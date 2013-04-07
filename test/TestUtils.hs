@@ -1,6 +1,7 @@
 module TestUtils 
        ( compareFiles
        , parsedFileGhc
+       , parseSourceFileTest
        , runRefactGhcState
        , initialState
        , toksFromState
@@ -50,10 +51,19 @@ parsedFileGhc :: String -> IO (ParseResult,[PosToken])
 parsedFileGhc fileName = do
   let
     comp = do
-       (p,toks) <- parseSourceFileGhc fileName -- Load the file first
-       return (p,toks)
+       res <- parseSourceFileTest fileName 
+       return res
   (parseResult,_s) <- runRefactGhcState comp
   return parseResult
+
+-- ---------------------------------------------------------------------
+
+parseSourceFileTest :: FilePath -> RefactGhc (ParseResult,[PosToken])
+parseSourceFileTest fileName = do
+  parseSourceFileGhc fileName -- Load the file first
+  p <- getTypecheckedModule
+  toks <- fetchOrigToks
+  return (p,toks)
 
 -- ---------------------------------------------------------------------
 

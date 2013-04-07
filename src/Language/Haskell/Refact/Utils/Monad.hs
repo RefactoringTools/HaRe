@@ -92,10 +92,10 @@ logSettings = defaultSettings { rsetLoggingOn = True }
 data RefactStashId = Stash String deriving (Show,Eq,Ord)
 
 data RefactModule = RefMod
-        { rsTypecheckedMod :: GHC.TypecheckedModule
+        { rsTypecheckedMod  :: GHC.TypecheckedModule
         , rsOrigTokenStream :: [PosToken]  -- ^Original Token stream for the current module
-        , rsTokenCache :: TokenCache -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
-        , rsStreamModified :: Bool     -- ^current module has updated the token stream
+        , rsTokenCache      :: TokenCache  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
+        , rsStreamModified  :: Bool        -- ^current module has updated the token stream
         }
 
 data RefactFlags = RefFlags
@@ -105,12 +105,12 @@ data RefactFlags = RefFlags
 -- | State for refactoring a single file. Holds/hides the token
 -- stream, which gets updated transparently at key points.
 data RefactState = RefSt
-        { rsSettings :: RefactSettings -- ^Session level settings
+        { rsSettings  :: RefactSettings -- ^Session level settings
         , rsUniqState :: Int -- ^ Current Unique creator value, incremented every time it is used
-        , rsFlags :: RefactFlags -- ^ Flags for controlling generic traversals
-        , rsStorage :: StateStorage -- ^Temporary storage of values
-                                    -- while refactoring takes place
-        , rsModule :: Maybe RefactModule -- ^The current module being refactored
+        , rsFlags     :: RefactFlags -- ^ Flags for controlling generic traversals
+        , rsStorage   :: StateStorage -- ^Temporary storage of values
+                                      -- while refactoring takes place
+        , rsModule    :: Maybe RefactModule -- ^The current module being refactored
         }
 
 -- |Result of parsing a Haskell source file. The first element in the

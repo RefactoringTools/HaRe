@@ -784,7 +784,7 @@ spec = do
       let
         comp = do
 
-         (t, toks) <- parseSourceFileGhc "./test/testdata/DupDef/Dd1.hs"
+         (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
          putParsedModule t toks
          parentr <- getRefactRenamed
 
@@ -1055,12 +1055,12 @@ parsedFileMGhc :: IO (ParseResult,[PosToken])
 parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
 
 parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileBGhc = parseSourceFileGhc fileName
+parseFileBGhc = parseSourceFileTest fileName
   where
     fileName = "./test/testdata/B.hs"
 
 parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileMGhc = parseSourceFileGhc fileName
+parseFileMGhc = parseSourceFileTest fileName
   where
     fileName = "./test/testdata/M.hs"
 
@@ -1074,7 +1074,7 @@ parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 comp :: RefactGhc String
 comp = do
     s <- get
-    modInfo@(t, toks) <- parseSourceFileGhc "./test/testdata/B.hs"
+    modInfo@(t, toks) <- parseSourceFileTest "./test/testdata/B.hs"
 
     g <- GHC.getModuleGraph
     gs <- mapM GHC.showModule g
