@@ -3,13 +3,9 @@ module TokenUtilsSpec (main, spec) where
 import           Test.Hspec
 import           Test.QuickCheck
 
-import qualified Bag        as GHC
-import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
-import qualified GhcMonad   as GHC
 import qualified Lexer      as GHC
-import qualified Name       as GHC
 import qualified Outputable as GHC
 import qualified SrcLoc     as GHC
 
@@ -796,6 +792,12 @@ spec = do
 
       let toks' = retrieveTokens forest'
       (show toks') `shouldBe` (show toksClean)
+
+  -- ---------------------------------------------
+
+  describe "monotonicLineToks" $ do
+    it "makes sure the tokens are in strictly increasing order of line" $ do
+      pending
 
   -- ---------------------------------------------
 

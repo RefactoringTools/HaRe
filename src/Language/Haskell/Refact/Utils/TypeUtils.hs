@@ -116,7 +116,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
 -- * Debug stuff
   , allPNT
-  , allPNTLens
+  --  , allPNTLens
   , newNameTok
   , stripLeadingSpaces
   -- , lookupNameGhc
@@ -133,52 +133,25 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
-import System.IO.Unsafe
 
 -- Modules from GHC
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
-import qualified Coercion      as GHC
-import qualified Digraph       as GHC
-import qualified DynFlags      as GHC
-import qualified ErrUtils      as GHC
 import qualified FastString    as GHC
-import qualified ForeignCall   as GHC
 import qualified GHC           as GHC
-import qualified GHC.Paths     as GHC
-import qualified HsDecls       as GHC
-import qualified HsImpExp      as GHC
-import qualified HsPat         as GHC
-import qualified HsSyn         as GHC
-import qualified InstEnv       as GHC
 import qualified Lexer         as GHC
-import qualified Module        as GHC
-import qualified MonadUtils    as GHC
 import qualified Name          as GHC
-import qualified NameSet       as GHC
-import qualified OccName       as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
-import qualified TcEvidence    as GHC
-import qualified TcType        as GHC
-import qualified TypeRep       as GHC
 import qualified Unique        as GHC
-import qualified Var           as GHC
 import qualified UniqSet       as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
-import qualified Unsafe.Coerce as SYB
 
 -- Lens
-import Control.Applicative
-import Control.Lens
-import Control.Lens.Plated
-import Control.Lens.Traversal
-import Data.Data.Lens hiding (tinplate)
-import GHC.Generics hiding (from, to)
-import GHC.Generics.Lens
+-- import Control.Lens
 
 -- ---------------------------------------------------------------------
 -- |Process the inscope relation returned from the parsing and module
@@ -559,9 +532,9 @@ hsFreeAndDeclaredPNs t = (nub f, nub d)
           -- stmts --
           stmts ((GHC.BindStmt pat expr bind fail) :: GHC.Stmt GHC.Name) =
             let
-              (pf,pd) = hsFreeAndDeclaredPNs pat
-              (ef,ed) = hsFreeAndDeclaredPNs expr
-              (sf,sd) = hsFreeAndDeclaredPNs [bind,fail]
+              (pf,pd)  = hsFreeAndDeclaredPNs pat
+              (ef,_ed) = hsFreeAndDeclaredPNs expr
+              (sf,_sd) = hsFreeAndDeclaredPNs [bind,fail]
             in
               (pf `union` ef `union` (sf\\pd),[]) -- pd) -- Check this
 
@@ -903,7 +876,7 @@ usedWithoutQualR name parsed = fromMaybe False res
 
      -- ----------------
 
-     checkName (pname@(GHC.L l pn)::GHC.Located GHC.RdrName)
+     checkName ((GHC.L l pn)::GHC.Located GHC.RdrName)
         -- | ((GHC.nameUnique pn) == (GHC.nameUnique name)) &&
         | ((GHC.rdrNameOcc pn) == (GHC.nameOccName name)) &&
           -- isUsedInRhs pname parsed &&
@@ -953,8 +926,8 @@ hsFDsFromInside t = (nub f, nub d)
                            `SYB.extQ` expr
                            `SYB.extQ` stmts) t
 
-     renamed ((group,_,_,_)::GHC.RenamedSource)
-        = hsFreeAndDeclaredPNs $ GHC.hs_valds group
+     renamed ((grp,_,_,_)::GHC.RenamedSource)
+        = hsFreeAndDeclaredPNs $ GHC.hs_valds grp
 
  {-    decls (ds::[HsDeclP])                    --CHECK THIS.
        = hsFreeAndDeclaredPNs decls
@@ -969,7 +942,7 @@ hsFDsFromInside t = (nub f, nub d)
           nub (pd `union` rd))
 
 
-     decl ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name) =
+     decl ((GHC.FunBind (GHC.L _ _) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name) =
        let
          fds = map hsFDsFromInside matches
        in
@@ -2312,6 +2285,7 @@ getName str t
 
 ------------------------------------------------------------------------------------
 
+{-
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
 allPNTLens ::(SYB.Data t, SYB.Typeable t)=>GHC.FastString   -- ^ The file name
@@ -2349,7 +2323,7 @@ getPNT pnt@(GHC.L l name) = [PNT pnt]
 getPNTBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
        = [(PNT (GHC.L l name))]
 getPNTBind _ = []
-
+-}
 -- getPNT
 
   {-

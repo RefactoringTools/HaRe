@@ -53,31 +53,11 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        ) where
 
 import Control.Monad.State
-import Data.Maybe
-import Exception
-import qualified Control.Monad.IO.Class as MU
 
-import qualified Bag           as GHC
-import qualified BasicTypes    as GHC
-import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
-import qualified GhcMonad      as GHC
-import qualified GHC.Paths     as GHC
-import qualified HsSyn         as GHC
-import qualified Module        as GHC
 -- import qualified MonadUtils    as GHC
 import qualified Outputable    as GHC
-import qualified RdrName       as GHC
-import qualified SrcLoc        as GHC
-import qualified TcEvidence    as GHC
-import qualified TcType        as GHC
-import qualified TypeRep       as GHC
-import qualified Var           as GHC
-import qualified Lexer         as GHC
-import qualified Coercion      as GHC
-import qualified ForeignCall   as GHC
-import qualified InstEnv       as GHC
 
 import qualified Data.Data as SYB
 
@@ -87,8 +67,6 @@ import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
 import Data.Tree
-import Data.List
-import System.Log.Handler.Simple
 import System.Log.Logger
 import qualified Data.Map as Map
 
@@ -109,6 +87,7 @@ fetchOrigToks = do
   Just tm <- gets rsModule
   return $ rsOrigTokenStream tm
 
+{-
 -- |Replace the module tokens with a modified set. This destroys any
 -- pre-existing structure in the token tree
 -- Deprecated
@@ -119,7 +98,7 @@ putToks toks isModified = do
   let Just tm = rsModule st
   let rsModule' = Just (tm {rsTokenCache = initTokenCache toks, rsStreamModified = isModified})
   put $ st { rsModule = rsModule' }
-
+-}
 
 -- TODO: ++AZ: these individual calls should happen via the TokenUtils
 --       API, have a simple get/put interface here only
@@ -175,11 +154,6 @@ putToksForSpan sspan toks = do
   let Just tm = rsModule st
 
   let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
-  {-
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',newSpan,oldTree) = updateTokensForSrcSpan forest sspan toks
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
-  -}
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   -- stashName <- stash oldTree
@@ -296,7 +270,7 @@ drawTokenTree :: String -> RefactGhc ()
 drawTokenTree msg = do
   st <- get
   let Just tm = rsModule st
-  let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
+  -- let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   -- logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTreeEntry mainForest)
   logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTokenCache (rsTokenCache tm))
   return ()
@@ -390,9 +364,9 @@ getRefactFileName :: RefactGhc (Maybe FilePath)
 getRefactFileName = do
   mtm <- gets rsModule
   case mtm of
-    Nothing -> return Nothing
-    Just tm -> do toks <- fetchOrigToks
-                  return $ Just (GHC.unpackFS $ fileNameFromTok $ ghead "getRefactFileName" toks)
+    Nothing  -> return Nothing
+    Just _tm -> do toks <- fetchOrigToks
+                   return $ Just (GHC.unpackFS $ fileNameFromTok $ ghead "getRefactFileName" toks)
 
 -- ---------------------------------------------------------------------
 

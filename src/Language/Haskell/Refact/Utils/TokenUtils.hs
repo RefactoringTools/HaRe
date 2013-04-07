@@ -120,24 +120,17 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , newLinesToken
        , groupTokensByLine
        , reAlignToks
+       , monotonicLineToks
        , reSequenceToks
        , mkToken
        , mkZeroToken
        ) where
 
-import qualified BasicTypes    as GHC
-import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
-import qualified GHC.Paths     as GHC
-import qualified HsSyn         as GHC
 import qualified Lexer         as GHC
-import qualified Module        as GHC
-import qualified MonadUtils    as GHC
 import qualified Outputable    as GHC
-import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
-import qualified StringBuffer  as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -145,12 +138,10 @@ import qualified GHC.SYB.Utils as SYB
 import qualified Data.Foldable as F
 
 import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
 import Data.List
-import Data.Maybe
 import Data.Tree
 import qualified Data.Map as Map
 import qualified Data.Tree.Zipper as Z
@@ -750,7 +741,7 @@ removeSrcSpan forest sspan = (forest'', delTree)
 -- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
 --      rows with tokenFileMark in a filename for a token
 retrieveTokens :: Tree Entry -> [PosToken]
-retrieveTokens forest = stripForestLines $ reAlignMarked
+retrieveTokens forest = stripForestLines $ {- monotonicLineToks $ -} reAlignMarked
                       $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]
@@ -769,15 +760,6 @@ retrievePrevLineToks z = res' -- error $ "retrievePrevLineToks:done notWhite=" +
     -- we will start with the tokens in the current tree, and work
     -- back.
     prevToks = retrieveTokens $ Z.tree z
-    nonWhiteToks = filter notWhiteSpace prevToks
-
-    endLine = tokenRow $ glast "retrievePrevLineToks" nonWhiteToks
-
-    notWhite = filter notWhiteSpace $ concat $ go z
-
-    -- Now keep moving back intil done
-    done toks = endLine /= (tokenRow $ ghead "retrievePrevLineToks"
-                                     $ filter notWhiteSpace toks)
 
     -- res = concat $ dropWhile (\toks -> (emptyList toks) || (done toks)) $ reverse (prevToks : (go z))
     res' = concat $ reverse (prevToks : (go z))
@@ -788,11 +770,11 @@ retrievePrevLineToks z = res' -- error $ "retrievePrevLineToks:done notWhite=" +
     -- res' = error $ "retrievePrevLineToks:(prevToks : (go z))=" ++ (show (prevToks : (go z)))
 
     go :: Z.TreePos Z.Full Entry -> [[PosToken]]
-    go z
-      | not (Z.isRoot z) = toks : (go $ gfromJust "retrievePrevLineToks" (Z.parent z))
+    go zz
+      | not (Z.isRoot zz) = toks : (go $ gfromJust "retrievePrevLineToks" (Z.parent zz))
       | otherwise = [toks]
       where
-        toks = concatMap retrieveTokens $ Z.before z
+        toks = concatMap retrieveTokens $ Z.before zz
 
 
 
@@ -1646,9 +1628,12 @@ addOffsetToToks (r,c) toks = map (\t -> increaseSrcSpan (r,c) t) toks
 
 
 increaseSrcSpan :: SimpPos -> PosToken -> PosToken
-increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L _l t), s) = (GHC.L newL t, s) where
+increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L _l t), s)
+    = (GHC.L newL t, s)
+    where
         filename = fileNameFromTok posToken
-        newL = GHC.mkSrcSpan (GHC.mkSrcLoc filename startLine startCol) (GHC.mkSrcLoc filename endLine endCol)
+        newL = GHC.mkSrcSpan (GHC.mkSrcLoc filename startLine startCol)
+                             (GHC.mkSrcLoc filename endLine endCol)
         (startLine, startCol) = add1 $ getLocatedStart lt
         (endLine, endCol)     = add1 $ getLocatedEnd   lt
 
@@ -1909,6 +1894,26 @@ reAlignToks (tok1@((GHC.L l1 _t1),_s1):tok2@((GHC.L l2 t2),s2):ts)
      l2' = GHC.mkRealSrcSpan (GHC.mkRealSrcLoc fname sr sc)
                              (GHC.mkRealSrcLoc fname er ec)
      tok2' = ((GHC.L (GHC.RealSrcSpan l2') t2),s2)
+
+-- ---------------------------------------------------------------------
+
+-- | sort out line numbering so that they are always monotonically
+-- increasing.
+monotonicLineToks :: [PosToken] -> [PosToken]
+monotonicLineToks toks = goMonotonicLineToks (0,0) toks
+
+goMonotonicLineToks :: SimpPos -> [PosToken] -> [PosToken]
+goMonotonicLineToks _ [] = []
+goMonotonicLineToks _ [t] = [t]
+goMonotonicLineToks (orow,ocol) (t1:t2:ts)
+  = t1:monotonicLineToks (t2':ts)
+  where
+    offset' = if (tokenRow t1) > (tokenRow t2 + orow)
+               then (orow + tokenRow t1 - tokenRow t2 + 1, ocol)
+               else (orow,ocol)
+
+    t1' = increaseSrcSpan (orow,ocol) t1
+    t2' = increaseSrcSpan offset'     t2
 
 -- ---------------------------------------------------------------------
 

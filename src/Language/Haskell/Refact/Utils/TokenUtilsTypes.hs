@@ -52,6 +52,7 @@ Invariants:
 -- | An entry in the data structure for a particular srcspan.
 data Entry = Entry ForestSpan -- ^The source span contained in this Node
                    [PosToken] -- ^The tokens for the SrcSpan if subtree is empty
+--             deriving (Show)
 
 -- ---------------------------------------------------------------------
 
