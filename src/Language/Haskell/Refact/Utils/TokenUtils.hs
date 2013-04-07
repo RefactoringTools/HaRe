@@ -741,7 +741,7 @@ removeSrcSpan forest sspan = (forest'', delTree)
 -- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
 --      rows with tokenFileMark in a filename for a token
 retrieveTokens :: Tree Entry -> [PosToken]
-retrieveTokens forest = stripForestLines $ {- monotonicLineToks $ -}reAlignMarked
+retrieveTokens forest = stripForestLines $ monotonicLineToks $ reAlignMarked
                       $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]

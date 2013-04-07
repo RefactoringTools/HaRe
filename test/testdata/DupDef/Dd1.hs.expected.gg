@@ -19,6 +19,7 @@ tup@(h,t) = head $ zip [1..10] [3..ff]
     gg :: Int
     gg = 15
 
+
 data D = A | B String | C
 
 ff y = y + zz

@@ -21,7 +21,7 @@ import TestUtils
 
 main :: IO ()
 main = do
-  setLogger
+  -- setLogger
   hspec spec
 
 spec :: Spec
