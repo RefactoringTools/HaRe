@@ -222,7 +222,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                                        (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) 
                                        [GHC.unLoc pn] True
                                 -- return (mod', declaredPns)
-                                return ()
+                                return declaredPns
 
                         else askRenamingMsg pns "lifting"
 
@@ -389,15 +389,20 @@ addParamsToParent pn params t
 -- |Do refactoring in the client module. that is to hide the identifer
 -- in the import declaration if it will cause any problem in the
 -- client module.
-
+liftingInClientMod ::
+  GHC.ModuleName
+  -> [GHC.Name]
+  -> GHC.ModSummary
+  -> RefactGhc [ApplyRefacResult]
 liftingInClientMod serverModName pns modSummary = do
        getModuleDetails modSummary
        renamed <- getRefactRenamed
        let exps = renamed
   -- = do (inscps, exps ,mod ,ts) <- parseSourceFile fileName
-       let modNames = willBeUnQualImportedBy serverModName mod
+       -- let modNames = willBeUnQualImportedBy serverModName mod
+       modNames <- willBeUnQualImportedBy serverModName
        if isJust modNames
-        then let pns' = namesNeedToBeHided mod exps (fromJust modNames) pns
+        then let pns' = namesNeedToBeHided exps (fromJust modNames) pns
              -- in if pns' /= []
              in if (nonEmptyList pns')
                  -- then do <-runStateT (addHiding serverModName mod pns') ((ts,unmodified),(-1000,0))
@@ -406,26 +411,47 @@ liftingInClientMod serverModName pns modSummary = do
                  else return []
         else return []
 
--- |get the module name or alias name by which the lifted identifier
--- will be imported automatically.
--- willBeUnQualImportedBy::HsName.ModuleName->HsModuleP->Maybe [HsName.ModuleName]
-willBeUnQualImportedBy modName mod
-   = error $ "willBeUnQualImportedBy"
+-- |Test whether an identifier defined in the modules specified by
+-- 'names' will be exported by current module.
+willBeExportedByClientMod :: [GHC.ModuleName] -> RefactGhc (Maybe [GHC.ModuleName])
+willBeExportedByClientMod names = do
+  (_,_,exps,_) <- getRefactRenamed
+  error $ "undefined willBeExportedByClientMod"
 {-
-   = let imps  = hsModImports mod
-         ms =filter (\(HsImportDecl _ (SN modName1 _) qualify  as h)->modName==modName1 && (not qualify) && 
-                          (isNothing h || (isJust h && ((fst (fromJust h))==True)))) imps
-         in if ms==[] then Nothing
-                      else Just $ nub $ map getModName ms
-
-         where getModName (HsImportDecl _ (SN modName _) qualify  as h)
-                 = if isJust as then simpModName (fromJust as)
-                                else modName
-               simpModName (SN m loc) = m
+  = let exps = hsModExports mod
+    in if isNothing exps
+          then False
+          else any isJust $ map (\y-> (find (\x-> (simpModule x==Just y)) (fromJust exps))) names
+      where simpModule (ModuleE (SN m _)) = Just m
+            simpModule _  = Nothing
 -}
 
---get the subset of 'pns', which need to be hided in the import declaration in module 'mod'
-namesNeedToBeHided mod exps modNames  pns
+-- |get the module name or alias name by which the lifted identifier
+-- will be imported automatically.
+-- TODO: maybe move this into TypeUtils
+-- willBeUnQualImportedBy::HsName.ModuleName->HsModuleP->Maybe [HsName.ModuleName]
+willBeUnQualImportedBy :: GHC.ModuleName -> RefactGhc (Maybe [GHC.ModuleName])
+willBeUnQualImportedBy modName = do
+   (_,imps,_,_) <- getRefactRenamed
+   let ms = filter (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as h))
+                     -> modName == modName1 && (not isQualified) && (isNothing h || (isJust h && ((fst (fromJust h)) == True))))
+                   imps
+
+       res = if (emptyList ms) then Nothing
+                               else Just $ nub $ map getModName ms
+
+       getModName (GHC.L _ (GHC.ImportDecl (GHC.L _ modName2) _qualify _source _safe _isQualified _isImplicit as _h))
+        = if isJust as then simpModName (fromJust as)
+                       else modName2
+
+       simpModName m = m
+
+   return res
+
+
+-- |get the subset of 'pns', which need to be hided in the import
+-- declaration in module 'mod'
+namesNeedToBeHided exps modNames pns
   = error $ "undefined namesNeedToBeHided"
 {-
   = if willBeExportedByClientMod modNames mod
