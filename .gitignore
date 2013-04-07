@@ -76,7 +76,6 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Demote/WhereIn3.hs.AST_out
 /test/testdata/Demote/WhereIn3.hs.renamed_out
 /test/testdata/Demote/WhereIn5.hs.AST_out
-/test/testdata/Demote/WhereIn5.hs.expected
 /test/testdata/Demote/WhereIn5.hs.refactored
 /test/testdata/Demote/WhereIn5.hs.renamed_out
 /test/testdata/Demote/WhereIn5.hs.tokens
