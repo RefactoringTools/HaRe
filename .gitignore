@@ -122,3 +122,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Demote/D2.hs.AST_out
 /test/testdata/Demote/D2.hs.expected.1
 /test/testdata/Demote/D2.hs.renamed_out
+/test/testdata/LiftToToplevel/D1.hs.AST_out
+/test/testdata/LiftToToplevel/D1.hs.refactored
+/test/testdata/LiftToToplevel/D1.hs.renamed_out
+/test/testdata/LiftToToplevel/D1.hs.tokens

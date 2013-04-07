@@ -54,6 +54,73 @@ spec = do
                           "./test/testdata/MoveDef/Md1.hs.refactored"
      diff `shouldBe` []
 
+    -- ---------------------------------
+
+    it "liftToTopLevel D1 C1 A1 8 6" $ do
+     -- doLiftToTopLevel ["./test/testdata/LiftToToplevel/D1.hs","8","6"]
+     liftToTopLevel defaultTestSettings (Just "./test/testdata/LiftToToplevel/A1.hs") "./test/testdata/LiftToToplevel/D1.hs" (8,6)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/D1.hs.expected"
+                          "./test/testdata/LiftToToplevel/D1.hs.refactored"
+     diff `shouldBe` []
+
+    it "liftToTopLevel D2 C2 A2 8 6" $ do
+      pending
+
+    it "liftToTopLevel D3 C3 A3 8 6" $ do
+      pending
+
+    it "liftToTopLevel WhereIn1 12 18" $ do
+      pending
+
+    it "liftToTopLevel WhereIn6 13 29" $ do
+      pending
+
+    it "liftToTopLevel WhereIn7 12 14" $ do
+      pending
+
+    it "liftToTopLevel LetIn1 11 22" $ do
+      pending
+
+    it "liftToTopLevel LetIn2 10 22" $ do
+      pending
+
+    it "liftToTopLevel LetIn3 10 27" $ do
+      pending
+
+    it "liftToTopLevel PatBindIn1 18 7" $ do
+      pending
+
+    it "liftToTopLevel PatBindIn3 11 `15" $ do
+      pending
+
+    it "liftToTopLevel CaseIn1 10 28" $ do
+      pending
+
+    it "liftToTopLevel PatBindIn2 17 7 fails" $ do
+      pending
+
+    it "liftToTopLevel WhereIn2 11 18 fails" $ do
+      pending
+
+
+{- original tests
+positive=[(["D1.hs","C1.hs","A1.hs"],["8","6"]),
+          (["D2.hs","C2.hs","A2.hs"],["8","6"]),
+          (["D3.hs","C3.hs","A3.hs"],["8","6"]),
+          (["WhereIn1.hs"],["12","18"]),
+          (["WhereIn6.hs"],["13","29"]),
+          (["WhereIn7.hs"],["12","14"]),
+          (["LetIn1.hs"],["11","22"]),
+          (["LetIn2.hs"],["10","22"]),
+          (["LetIn3.hs"],["10","27"]),
+          (["PatBindIn1.hs"],["18","7"]),
+          (["PatBindIn3.hs"],["11","15"]),
+          (["CaseIn1.hs"],["10","28"])],
+negative=[(["PatBindIn2.hs"],["17","7"]),
+          (["WhereIn2.hs"],["11","18"])
+         ]
+
+-}
 
   -- -------------------------------------------------------------------
 
@@ -197,7 +264,7 @@ spec = do
      (show res) `shouldBe` "Just \"This definition can not be demoted, as it is used in the client module 'main:Demote.A2'!\""
 
     -- -----------------------------------------------------------------
-   
+
     it "fails for re-export in client module"  $ do
       pending
 
