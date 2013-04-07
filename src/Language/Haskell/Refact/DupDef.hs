@@ -59,7 +59,7 @@ comp fileName newName (row, col) = do
                   Just pn ->
                        do
                           -- refactoredMod@((_fp,ismod),(_toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
-                          refactoredMod@((_fp,ismod),(_toks',renamed')) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
+                          (refactoredMod@((_fp,ismod),(_toks',renamed')),_) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
                           case (ismod) of
                             False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
                             True -> return ()
@@ -204,7 +204,7 @@ refactorInClientMod serverModName newPName modSummary
        if isJust modNames && mustHide
         then do
                 -- refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
-                refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (RSFile fileName)
+                (refactoredMod,_) <- applyRefac (doDuplicatingClient serverModName [newPName]) (RSFile fileName)
                 return refactoredMod
         else return ((fileName,unmodified),([],renamed))
    where

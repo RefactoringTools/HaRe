@@ -40,7 +40,7 @@ comp fileName beginPos endPos = do
        let expr = locToExp beginPos endPos renamed
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
-                -> do refactoredMod <- applyRefac (doIfToCaseInternal exp1) RSAlreadyLoaded
+                -> do (refactoredMod,_) <- applyRefac (doIfToCaseInternal exp1) RSAlreadyLoaded
                       return [refactoredMod]
          _      -> error $ "You haven't selected an if-then-else  expression!" --  ++ (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
 

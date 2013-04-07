@@ -58,7 +58,7 @@ comp fileName newName beginPos = do
        -- let expr = locToExp beginPos endPos renamed
 --       case expr of
 --         Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
-       refactoredMod <- applyRefac (rename' name' newName) (Just modInfo ) fileName
+       (refactoredMod,_) <- applyRefac (rename' name' newName) (Just modInfo ) fileName
        return [refactoredMod]
 
 eFromJust :: Maybe a -> String -> a

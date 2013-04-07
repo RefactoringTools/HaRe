@@ -58,7 +58,7 @@ comp fileName (row, col) = do
 
        case name of
             -- (Just pn) -> do refactoredMod@(_, (_t, s)) <- applyRefac (doSwap pnt pn) (Just modInfo) fileName
-            (Just pn) -> do refactoredMod@(_, (_t, s)) <- applyRefac (doSwap pnt pn) (RSFile fileName)
+            (Just pn) -> do (refactoredMod@(_, (_t, s)),_) <- applyRefac (doSwap pnt pn) (RSFile fileName)
                             return [refactoredMod]
             Nothing   -> error "Incorrect identifier selected!"
        --if isFunPNT pnt mod    -- Add this back in ++ CMB +++

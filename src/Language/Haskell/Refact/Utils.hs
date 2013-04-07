@@ -292,9 +292,9 @@ data RefacSource = RSFile FilePath
 
 -- | Apply a refactoring (or part of a refactoring) to a single module
 applyRefac
-    :: RefactGhc ()       -- ^ The refactoring
+    :: RefactGhc a       -- ^ The refactoring
     -> RefacSource        -- ^ where to get the module and toks
-    -> RefactGhc ApplyRefacResult
+    -> RefactGhc (ApplyRefacResult,a)
 
 applyRefac refac source = do
 
@@ -312,7 +312,7 @@ applyRefac refac source = do
                                  Just fname -> return fname
                                  Nothing -> error "applyRefac RSAlreadyLoaded: nothing loaded"
 
-    refac  -- Run the refactoring, updating the state as required
+    res <- refac  -- Run the refactoring, updating the state as required
 
     mod'  <- getRefactRenamed
     toks' <- fetchToks
@@ -321,7 +321,7 @@ applyRefac refac source = do
     -- Clear the refactoring state
     clearParsedModule
 
-    return ((fileName,m),(toks', mod'))
+    return (((fileName,m),(toks', mod')),res)
 
 
 -- ---------------------------------------------------------------------

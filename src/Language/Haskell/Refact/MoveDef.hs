@@ -176,12 +176,14 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
   parsed  <- getRefactParsed
   if isLocalFunOrPatName n renamed
       then do -- ((mod',declPns),((toks',m),_))<-runStateT liftToMod ((toks,unmodified),(-1000,0))
-              refactoredMod <- applyRefac (liftToMod) RSAlreadyLoaded
+              (refactoredMod,declPns) <- applyRefac (liftToMod) RSAlreadyLoaded
 
               if modIsExported parsed
-               then do clients<-clientModsAndFiles modName
+               then do clients <- clientModsAndFiles modName
                        -- TODO: Complete this
+                       logm $ "liftToTopLevel':clients=" ++ (GHC.showPpr clients)
                        -- refactoredClients <- mapM (liftingInClientMod modName declPns) clients
+                       refactoredClients <- mapM (liftingInClientMod modName declPns) clients
                        -- writeRefactoredFiles False $ ((fileName,m),(toks',mod')):refactoredClients
                        return (refactoredMod:[])
                else do return [refactoredMod]
@@ -382,6 +384,61 @@ addParamsToParent pn params t
 
           addParamToExp  exp param
               =(Exp (HsApp exp param))
+-}
+
+-- |Do refactoring in the client module. that is to hide the identifer
+-- in the import declaration if it will cause any problem in the
+-- client module.
+
+liftingInClientMod serverModName pns modSummary = do
+       getModuleDetails modSummary
+       renamed <- getRefactRenamed
+       let exps = renamed
+  -- = do (inscps, exps ,mod ,ts) <- parseSourceFile fileName
+       let modNames = willBeUnQualImportedBy serverModName mod
+       if isJust modNames
+        then let pns' = namesNeedToBeHided mod exps (fromJust modNames) pns
+             -- in if pns' /= []
+             in if (nonEmptyList pns')
+                 -- then do <-runStateT (addHiding serverModName mod pns') ((ts,unmodified),(-1000,0))
+                 then do (refactoredMod,_) <- applyRefac (addHiding serverModName renamed pns') RSAlreadyLoaded 
+                         return [refactoredMod]
+                 else return []
+        else return []
+
+-- |get the module name or alias name by which the lifted identifier
+-- will be imported automatically.
+-- willBeUnQualImportedBy::HsName.ModuleName->HsModuleP->Maybe [HsName.ModuleName]
+willBeUnQualImportedBy modName mod
+   = error $ "willBeUnQualImportedBy"
+{-
+   = let imps  = hsModImports mod
+         ms =filter (\(HsImportDecl _ (SN modName1 _) qualify  as h)->modName==modName1 && (not qualify) && 
+                          (isNothing h || (isJust h && ((fst (fromJust h))==True)))) imps
+         in if ms==[] then Nothing
+                      else Just $ nub $ map getModName ms
+
+         where getModName (HsImportDecl _ (SN modName _) qualify  as h)
+                 = if isJust as then simpModName (fromJust as)
+                                else modName
+               simpModName (SN m loc) = m
+-}
+
+--get the subset of 'pns', which need to be hided in the import declaration in module 'mod'
+namesNeedToBeHided mod exps modNames  pns
+  = error $ "undefined namesNeedToBeHided"
+{-
+  = if willBeExportedByClientMod modNames mod
+      then pns
+      else concatMap needToBeHided pns
+    where
+      needToBeHided  pn
+        = let name = pNtoName pn
+          in if (usedWithoutQual name (hsModDecls mod) --the same name is used in the module unqualifiedly
+                || usedWithoutQual name (hsModExports mod)  --the same name is exported unqualifiedly by an Ent decl
+                || causeNameClashInExports pn name mod exps)
+              then [pn]
+              else []
 -}
 
 {-
@@ -723,16 +780,14 @@ demote' modName (GHC.L _ pn) = do
        if isTl && isExplicitlyExported pn renamed
           then error "This definition can not be demoted, as it is explicitly exported by the current module!"
           else do -- (mod',((toks',m),_))<-doDemoting pn fileName mod toks
-                  refactoredMod <- applyRefac (doDemoting pn) RSAlreadyLoaded
+                  (refactoredMod,_) <- applyRefac (doDemoting pn) RSAlreadyLoaded
                   -- isTl <- isTopLevelPN pn
                   if isTl && modIsExported parsed
                     then do let demotedDecls'= definingDeclsNames [pn] (hsBinds renamed) True False
                                 declaredPns  = nub $ concatMap definedPNs demotedDecls'
                             clients <- clientModsAndFiles modName
                             logm $ "demote':clients=" ++ (GHC.showPpr clients)
-                            -- TODO: Complete this
                             refactoredClients <-mapM (demotingInClientMod declaredPns) clients
-                            -- writeRefactoredFiles False $ ((fileName,m),(toks',mod')):refactoredClients
                             return (refactoredMod:[])
                     -- else writeRefactoredFiles False [((fileName,m), (toks',mod'))]
                     else do return [refactoredMod]
@@ -746,7 +801,7 @@ demote' modName (GHC.L _ pn) = do
 -- demotingInClientMod :: [GHC.Name] -> GHC.ModSummary -> RefactGhc [a]
 demotingInClientMod pns modSummary = do
   getModuleDetails modSummary
-  refactoredMod <- applyRefac (doDemotingInClientMod pns (GHC.ms_mod modSummary)) RSAlreadyLoaded
+  (refactoredMod,_) <- applyRefac (doDemotingInClientMod pns (GHC.ms_mod modSummary)) RSAlreadyLoaded
   return refactoredMod
 
 
