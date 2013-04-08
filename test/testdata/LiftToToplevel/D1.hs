@@ -6,6 +6,7 @@ module LiftToToplevel.D1 where
 sumSquares (x:xs) = sq x + sumSquares xs
   where 
      sq x = x ^ pow
+     -- sq x = x ^ 2
      pow =2 
  
 sumSquares [] = 0

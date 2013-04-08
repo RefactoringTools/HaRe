@@ -816,8 +816,8 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 
 -- | Return True if the identifier is unqualifiedly used in the given
 -- syntax phrase.
-
-usedWithoutQual :: GHC.Name -> GHC.RenamedSource -> RefactGhc Bool
+usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
+-- usedWithoutQual :: GHC.Name -> GHC.RenamedSource -> RefactGhc Bool
 usedWithoutQual name renamed = do
   case res of
      Just (GHC.L l _) -> do
@@ -3359,7 +3359,8 @@ rmDecl:: (SYB.Data t)
 rmDecl pn incSig t = do
   logm $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
-  t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
+  t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t -- top down
+  -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   (t'',sig') <- if incSig
                   then rmTypeSig pn t'
                   else return (t', Nothing)
@@ -3369,6 +3370,22 @@ rmDecl pn incSig t = do
                 x                -> error $ "rmDecl: unexpected value in StateStorage:" ++ (show x)
   return (t'',decl',sig')
   where
+    inGRHSs ((GHC.GRHSs a localDecls)::GHC.GRHSs GHC.Name)
+      -- | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
+      | not $ emptyList (snd (break (defines pn) (hsBinds localDecls))) -- /=[]
+      = do
+         let decls = hsBinds localDecls
+         -- logm $ "rmDecl:inGRHSs decls=" ++ (SYB.showData SYB.Renamer 0 $ decls)
+         let (_decls1, decls2) = break (defines pn) decls
+             decl = ghead "rmDecl" decls2
+         topLevel <- isTopLevelPN pn
+         decls' <- case topLevel of
+                     True   -> rmTopLevelDecl decl decls
+                     False  -> rmLocalDecl decl decls
+         return (GHC.GRHSs a (replaceBinds localDecls decls'))
+    inGRHSs x = return x
+
+
     inDecls (decls::[GHC.LHsBind GHC.Name])
       | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
       = do let (_decls1, decls2) = break (defines pn) decls
@@ -3407,8 +3424,7 @@ rmDecl pn incSig t = do
                 -> RefactGhc [GHC.LHsBind GHC.Name]
     rmLocalDecl decl@(GHC.L sspan _) decls
      = do
-         -- toks <- fetchToks
-         -- let (startPos,endPos) = getStartEndLoc decl   --startEndLoc toks decl
+         logm $ "rmLocalDecl: decls=" ++ (GHC.showPpr decls)
          prevToks <- getToksBeforeSpan sspan -- Need these before
                                              -- sspan is deleted
          removeToksForPos (getStartEndLoc decl)

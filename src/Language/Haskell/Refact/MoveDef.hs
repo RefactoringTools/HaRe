@@ -174,6 +174,7 @@ liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
 liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
   parsed  <- getRefactParsed
+  -- logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
   if isLocalFunOrPatName n renamed
       then do -- ((mod',declPns),((toks',m),_))<-runStateT liftToMod ((toks,unmodified),(-1000,0))
               (refactoredMod,declPns) <- applyRefac (liftToMod) RSAlreadyLoaded
@@ -209,6 +210,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                       -}
                       let liftedDecls = definingDeclsNames [n] parent True True
                           declaredPns = nub $ concatMap definedPNs liftedDecls
+                      logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (GHC.showPpr (liftedDecls,declaredPns))
                       pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
                       let (_,dd) = hsFreeAndDeclaredPNs renamed
                       if pns==[]
@@ -288,14 +290,15 @@ moveDecl1 t defName ns topLevel
 
         -- (t'',sigRemoved) <- rmTypeSig (ghead "moveDecl3.2"  ns) t
         (t'',sigsRemoved) <- rmTypeSigs ns t
+        -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
 
-        let getToksForMaybeSig demotedSig@(GHC.L ss _) = 
+        let getToksForMaybeSig (GHC.L ss _) =
                              do
-                                                   sigToks <- getToksForSpan ss
-                                                   return sigToks
+                               sigToks <- getToksForSpan ss
+                               return sigToks
 
-        maybeToksSigMulti <- mapM getToksForMaybeSig sigsRemoved 
+        maybeToksSigMulti <- mapM getToksForMaybeSig sigsRemoved
         let maybeToksSig = concat maybeToksSigMulti
 
 
@@ -402,9 +405,10 @@ liftingInClientMod serverModName pns modSummary = do
        -- let modNames = willBeUnQualImportedBy serverModName mod
        modNames <- willBeUnQualImportedBy serverModName
        if isJust modNames
-        then let pns' = namesNeedToBeHided exps (fromJust modNames) pns
+        then do
+             pns' <- namesNeedToBeHided exps (fromJust modNames) pns
              -- in if pns' /= []
-             in if (nonEmptyList pns')
+             if (nonEmptyList pns')
                  -- then do <-runStateT (addHiding serverModName mod pns') ((ts,unmodified),(-1000,0))
                  then do (refactoredMod,_) <- applyRefac (addHiding serverModName renamed pns') RSAlreadyLoaded 
                          return [refactoredMod]
@@ -413,10 +417,16 @@ liftingInClientMod serverModName pns modSummary = do
 
 -- |Test whether an identifier defined in the modules specified by
 -- 'names' will be exported by current module.
-willBeExportedByClientMod :: [GHC.ModuleName] -> RefactGhc (Maybe [GHC.ModuleName])
-willBeExportedByClientMod names = do
-  (_,_,exps,_) <- getRefactRenamed
-  error $ "undefined willBeExportedByClientMod"
+willBeExportedByClientMod :: [GHC.ModuleName] -> GHC.RenamedSource -> Bool
+willBeExportedByClientMod names renamed =
+  let (_,_,exps,_) = renamed
+  -- in
+  --   error $ "undefined willBeExportedByClientMod"
+  in if isNothing exps
+        then False
+        else any isJust $ map (\y-> (find (\x-> (simpModule x==Just y)) (fromJust exps))) names
+     where simpModule (GHC.L _ (GHC.IEModuleContents m)) = Just m
+           simpModule _  = Nothing
 {-
   = let exps = hsModExports mod
     in if isNothing exps
@@ -451,8 +461,28 @@ willBeUnQualImportedBy modName = do
 
 -- |get the subset of 'pns', which need to be hided in the import
 -- declaration in module 'mod'
-namesNeedToBeHided exps modNames pns
-  = error $ "undefined namesNeedToBeHided"
+namesNeedToBeHided :: GHC.RenamedSource -> [GHC.ModuleName] -> [GHC.Name]
+   -> RefactGhc [GHC.Name]
+namesNeedToBeHided exps modNames pns = do
+  if willBeExportedByClientMod modNames exps
+      then return pns
+      else do
+        ff <- mapM (needToBeHided exps) pns
+        return $ concat ff
+  where
+    needToBeHided :: GHC.RenamedSource -> GHC.Name -> RefactGhc [GHC.Name]
+    needToBeHided renamed@(_,_,exps,_) pn = do
+      uwoqb <- usedWithoutQual pn (hsBinds renamed)
+      uwoqe <- usedWithoutQual pn exps
+
+      if (uwoqb --the same name is used in the module
+                --unqualifiedly
+            || uwoqe --the same name is exported unqualifiedly by an
+                     --Ent decl
+            -- || causeNameClashInExports pn modNames renamed)
+            || any (\m -> causeNameClashInExports pn m renamed) modNames)
+           then return [pn]
+           else return []
 {-
   = if willBeExportedByClientMod modNames mod
       then pns
