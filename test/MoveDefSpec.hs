@@ -56,12 +56,25 @@ spec = do
 
     -- ---------------------------------
 
+    it "liftToTopLevel D1A 8 6 with pow too" $ do
+     -- liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/D1.hs" (8,6)
+     liftToTopLevel logTestSettings Nothing "./test/testdata/LiftToToplevel/D1.hs" (8,6)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/D1A.hs.expected"
+                          "./test/testdata/LiftToToplevel/D1A.hs.refactored"
+     diff `shouldBe` []
+
+
     it "liftToTopLevel D1 C1 A1 8 6" $ do
      -- liftToTopLevel defaultTestSettings (Just "./test/testdata/LiftToToplevel/A1.hs") "./test/testdata/LiftToToplevel/D1.hs" (8,6)
      liftToTopLevel logTestSettings (Just "./test/testdata/LiftToToplevel/A1.hs") "./test/testdata/LiftToToplevel/D1.hs" (8,6)
      diff <- compareFiles "./test/testdata/LiftToToplevel/D1.hs.expected"
                           "./test/testdata/LiftToToplevel/D1.hs.refactored"
+     diff <- compareFiles "./test/testdata/LiftToToplevel/C1.hs.expected"
+                          "./test/testdata/LiftToToplevel/C1.hs.refactored"
      diff `shouldBe` []
+
+
+
 
     it "liftToTopLevel D2 C2 A2 8 6" $ do
       pending

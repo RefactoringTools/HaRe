@@ -450,14 +450,12 @@ causeNameClashInExports  pn newName mod exps
 -- the free variables, and the second list contains the declared
 -- variables.
 -- Expects RenamedSource
-
 hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = (nub f, nub d)
    where
           (f,d) = hsFreeAndDeclared'
 
           hsFreeAndDeclared' :: ([GHC.Name],[GHC.Name])
-
           hsFreeAndDeclared' = SYB.everythingStaged SYB.Renamer
                              (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
                              ([],[])
@@ -902,7 +900,6 @@ usedWithoutQualR name parsed = fromMaybe False res
 -- those declared variables that are visible to the main expression
 -- inside t.
 -- NOTE: Expects to be given RenamedSource
-
 hsFDsFromInside:: (SYB.Data t) => t-> ([GHC.Name],[GHC.Name])
 hsFDsFromInside t = (nub f, nub d)
    where
@@ -1301,6 +1298,15 @@ instance HsDecls GHC.ParsedSource where
 replaceDecls :: [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name]
 replaceDecls t decls = decls
 
+{-
+Note re ValBindsOut in the GHC source
+
+ | ValBindsOut            -- After renaming RHS; idR can be Name or Id
+        [(RecFlag, LHsBinds idL)]       -- Dependency analysed, later bindings
+                                        -- in the list may depend on earlier
+                                        -- ones.
+        [LSig Name]
+-}
 getValBinds :: GHC.HsValBinds t -> [GHC.LHsBind t]
 getValBinds binds = case binds of
     GHC.ValBindsIn   binds _sigs -> GHC.bagToList binds
@@ -1489,7 +1495,7 @@ instance HsValBinds ([GHC.LHsBind GHC.Name]) where
 
 instance HsValBinds (GHC.LHsExpr GHC.Name) where
   hsValBinds (GHC.L _ (GHC.HsLet binds _ex)) = hsValBinds binds
-  hsValBinds _                              = emptyValBinds
+  hsValBinds _                               = emptyValBinds
 
 -- ---------------------------------------------------------------------
 
