@@ -53,7 +53,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
     ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
-    ,findPNT,findPN
+    ,findPNT,findPN,findAllNameOccurences
     ,findPNs, findEntity, findEntity'
     ,sameOccurrence
     ,defines, definesP,definesTypeSig -- , isTypeSigOf
@@ -815,8 +815,33 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 -- | Return True if the identifier is unqualifiedly used in the given
 -- syntax phrase.
 usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
--- usedWithoutQual :: GHC.Name -> GHC.RenamedSource -> RefactGhc Bool
 usedWithoutQual name renamed = do
+  logm $ "usedWithoutQual:name="  ++ (GHC.showPpr (name,GHC.nameUnique name))
+  -- logm $ "usedWithoutQual:t="  ++ (SYB.showData SYB.Renamer 0 renamed)
+  let names = findAllNameOccurences name renamed
+  logm $ "usedWithoutQual:names=" ++ (GHC.showPpr names)
+
+  let allNames = findAllNames renamed
+  logm $ "usedWithoutQual:allNames=" ++ (GHC.showPpr $ map (\(GHC.L _ n) -> (n,GHC.nameUnique n)) allNames)
+
+  toks <- fetchToks
+  res <- mapM (isUsedWithoutQual toks) names
+  return $ or res
+  where
+    isUsedWithoutQual toks (GHC.L l _) = do
+       logm ("usedWithoutQual") -- ++AZ++ debug
+       let (_,s) = ghead "usedWithoutQual" $ getToks (getGhcLoc l, getGhcLocEnd l) toks
+       logm $ "isUsedWithoutQual:(l,s)" ++ (GHC.showPpr (l,s)) -- ++AZ++ debug
+       return $ not $ elem '.' s
+
+
+{- ++original++
+-- | Return True if the identifier is unqualifiedly used in the given
+-- syntax phrase.
+usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
+usedWithoutQual name renamed = do
+  logm $ "usedWithoutQual:name="  ++ (GHC.showPpr name)
+  -- logm $ "usedWithoutQual:t="  ++ (SYB.showData SYB.Renamer 0 renamed)
   case res of
      Just (GHC.L l _) -> do
        logm ("usedWithoutQual") -- ++AZ++ debug
@@ -849,6 +874,8 @@ usedWithoutQual name renamed = do
         | ((GHC.nameUnique pn) == (GHC.nameUnique name)) &&
           isUsedInRhs pname renamed = Just pname
      checkName _ = Nothing
+
+-}
 
 -- | Return True if the identifier is unqualifiedly used in the given
 -- syntax phrase.
@@ -2110,7 +2137,6 @@ allPNT::(SYB.Data t)=>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     ->[PNT]            -- ^ The result
--- TODO: return a Maybe, rather than encoding failure in defaultPNT
 allPNT  fileName (row,col) t
   = res
        where
@@ -3843,6 +3869,49 @@ findPNT (GHC.L _ pn)
         worker (n::GHC.Name)
            | GHC.nameUnique pn == GHC.nameUnique n = Just True
         worker _ = Nothing
+
+-- | Find all occurrences with location of the given name
+findAllNameOccurences :: (SYB.Data t) => GHC.Name -> t -> [(GHC.Located GHC.Name)]
+findAllNameOccurences  name t
+  = res
+       where
+        res = SYB.everythingStaged SYB.Renamer (++) []
+            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+
+        worker (ln@(GHC.L l n) :: (GHC.Located GHC.Name))
+          | GHC.nameUnique n == GHC.nameUnique name = [ln]
+        worker _ = []
+
+        workerBind (GHC.L l (GHC.VarPat n) :: (GHC.Located (GHC.Pat GHC.Name)))
+          | GHC.nameUnique n == GHC.nameUnique name  = [(GHC.L l n)]
+        workerBind _ = []
+
+        workerExpr (GHC.L l (GHC.HsVar n) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+          | GHC.nameUnique n == GHC.nameUnique name  = [(GHC.L l n)]
+        workerExpr _ = []
+
+
+-- | Find all locations where names occure in the given syntax phrase
+findAllNames:: (SYB.Data t) => t -> [(GHC.Located GHC.Name)]
+findAllNames  t
+  = res
+       where
+        res = SYB.everythingStaged SYB.Renamer (++) []
+            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+
+        worker (ln@(GHC.L l n) :: (GHC.Located GHC.Name))
+          | True = [ln]
+        worker _ = []
+
+        workerBind (GHC.L l (GHC.VarPat n) :: (GHC.Located (GHC.Pat GHC.Name)))
+          | True = [(GHC.L l n)]
+        workerBind _ = []
+
+        workerExpr (GHC.L l (GHC.HsVar n) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+          | True = [(GHC.L l n)]
+        workerExpr _ = []
+
+
 
 -- | Return True if the identifier occurs in the given syntax phrase.
 findPN::(SYB.Data t)=> GHC.Name -> t -> Bool

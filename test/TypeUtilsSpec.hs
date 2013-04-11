@@ -89,6 +89,20 @@ spec = do
       let res = allPNT bFileName (7,6) mod
       show res `shouldBe`  "[(PNT test/testdata/TypeUtils/S.hs:4:1-3 foo),(PNT test/testdata/TypeUtils/S.hs:4:5 x),(PNT test/testdata/TypeUtils/S.hs:4:13-15 odd),(PNT test/testdata/TypeUtils/S.hs:4:17 x),(PNT test/testdata/TypeUtils/S.hs:6:6 D),(PNT test/testdata/TypeUtils/S.hs:6:10 A),(PNT test/testdata/TypeUtils/S.hs:6:14 B),(PNT test/testdata/TypeUtils/S.hs:6:25 C),(PNT test/testdata/TypeUtils/S.hs:8:1-7 subdecl),(PNT test/testdata/TypeUtils/S.hs:8:9 x),(PNT test/testdata/TypeUtils/S.hs:8:13-14 zz),(PNT test/testdata/TypeUtils/S.hs:8:16 x),(PNT test/testdata/TypeUtils/S.hs:10:5-6 zz),(PNT test/testdata/TypeUtils/S.hs:10:8 n),(PNT test/testdata/TypeUtils/S.hs:10:12 n),(PNT test/testdata/TypeUtils/S.hs:10:14 +)]"
 
+  -- -------------------------------------------------------------------
+
+  describe "findAllNameOccurences" $ do
+    it "finds all occurrences of the given name in a syntax phrase" $ do
+      modInfo@(t, toks) <- parsedFileSGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (res@(GHC.L l n)) = locToName sFileName (4,5) renamed
+      (GHC.showPpr n) `shouldBe` "x"
+
+      let res = findAllNameOccurences n renamed
+      (GHC.showPpr res) `shouldBe` "[x, x]"
+      -- NOTE: does not get the x's in line 8
+      (GHC.showPpr $ map startEndLocGhc res) `shouldBe` "[((4, 5), (4, 6)), ((4, 17), (4, 18))]"
 
   -- -------------------------------------------------------------------
 
@@ -1733,7 +1747,7 @@ spec = do
          return (res,toks,renamed2,toks2)
       ((_r,t,_r2,_tk2),_s) <- runRefactGhcState comp
       (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd3 where\n\n import DupDef.Dd1 hiding (dd,n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
-      
+
   -- ---------------------------------------------
 
   describe "usedWithoutQual" $ do
@@ -1749,7 +1763,7 @@ spec = do
           return (res,n,name)
 
       -- ((r,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }
-      ((r,n1,n2),s) <- runRefactGhcState comp 
+      ((r,n1,n2),s) <- runRefactGhcState comp
 
       (GHC.getOccString n2) `shouldBe` "zip"
       (GHC.showPpr n1) `shouldBe` "GHC.List.zip"
@@ -2169,6 +2183,9 @@ bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
 
 parsedFileBGhc :: IO (ParseResult,[PosToken])
 parsedFileBGhc = parsedFileGhc "./test/testdata/TypeUtils/B.hs"
+
+sFileName :: GHC.FastString
+sFileName = GHC.mkFastString "./test/testdata/TypeUtils/S.hs"
 
 parsedFileSGhc :: IO (ParseResult,[PosToken])
 parsedFileSGhc = parsedFileGhc "./test/testdata/TypeUtils/S.hs"

@@ -403,13 +403,15 @@ liftingInClientMod serverModName pns modSummary = do
        renamed <- getRefactRenamed
        logm $ "liftingInClientMod:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        let exps = renamed
+       let clientModule = GHC.ms_mod modSummary
+       logm $ "liftingInClientMod:clientModule=" ++ (GHC.showPpr clientModule)
   -- = do (inscps, exps ,mod ,ts) <- parseSourceFile fileName
        -- let modNames = willBeUnQualImportedBy serverModName mod
        modNames <- willBeUnQualImportedBy serverModName
        logm $ "liftingInClientMod:modNames=" ++ (GHC.showPpr modNames)
        if isJust modNames
         then do
-             pns' <- namesNeedToBeHided exps (fromJust modNames) pns
+             pns' <- namesNeedToBeHided clientModule (fromJust modNames) pns
              logm $ "liftingInClientMod:pns'=" ++ (GHC.showPpr pns')
              -- in if pns' /= []
              if (nonEmptyList pns')
@@ -465,10 +467,16 @@ willBeUnQualImportedBy modName = do
 
 -- |get the subset of 'pns', which need to be hided in the import
 -- declaration in module 'mod'
-namesNeedToBeHided :: GHC.RenamedSource -> [GHC.ModuleName] -> [GHC.Name]
+-- Note: these are newly exported from the module, so we cannot use
+-- the GHC name resolution i nthis case.
+namesNeedToBeHided :: GHC.Module -> [GHC.ModuleName] -> [GHC.Name]
    -> RefactGhc [GHC.Name]
-namesNeedToBeHided renamed modNames pns = do
+namesNeedToBeHided clientModule modNames pns = do
+  renamed <- getRefactRenamed
   logm $ "namesNeedToBeHided:willBeExportedByClientMod=" ++ (show $ willBeExportedByClientMod modNames renamed)
+  gnames <- GHC.getNamesInScope
+  let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
+  logm $ "namesNeedToBeHided:(clientInscopes)=" ++ (GHC.showPpr (clientInscopes))
   if willBeExportedByClientMod modNames renamed
       then return pns
       else do

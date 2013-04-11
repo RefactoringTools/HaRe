@@ -57,8 +57,8 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D1A 8 6 with pow too" $ do
-     -- liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/D1.hs" (8,6)
-     liftToTopLevel logTestSettings Nothing "./test/testdata/LiftToToplevel/D1.hs" (8,6)
+     liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/D1.hs" (8,6)
+     -- liftToTopLevel logTestSettings Nothing "./test/testdata/LiftToToplevel/D1.hs" (8,6)
      diff <- compareFiles "./test/testdata/LiftToToplevel/D1A.hs.expected"
                           "./test/testdata/LiftToToplevel/D1A.hs.refactored"
      diff `shouldBe` []

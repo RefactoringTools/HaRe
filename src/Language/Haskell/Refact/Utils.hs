@@ -198,7 +198,6 @@ getModuleGhc targetFile = do
 -- | In the existing GHC session, put the requested TypeCheckedModule
 -- into the RefactGhc monad
 getModuleDetails :: GHC.ModSummary -> RefactGhc ()
--- getModuleDetails :: GHC.ModSummary -> RefactGhc (ParseResult,[PosToken])
 getModuleDetails modSum = do
       p <- GHC.parseModule modSum
       t <- GHC.typecheckModule p

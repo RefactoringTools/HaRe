@@ -1,9 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 module Language.Haskell.Refact.Utils.GhcUtils where
 
-
--- import qualified Data.Generics.Schemes as SYB
--- import qualified Data.Generics.Aliases as SYB
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
