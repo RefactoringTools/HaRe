@@ -12,11 +12,13 @@ module Language.Haskell.Refact.MoveDef
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+import qualified Exception             as GHC
 import qualified FastString            as GHC
 import qualified GHC
 import qualified OccName               as GHC
 import qualified Outputable            as GHC
 
+import Control.Exception
 import Control.Monad.State
 import Data.List
 import Data.Maybe
@@ -176,16 +178,13 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
   parsed  <- getRefactParsed
   -- logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
   if isLocalFunOrPatName n renamed
-      then do -- ((mod',declPns),((toks',m),_))<-runStateT liftToMod ((toks,unmodified),(-1000,0))
+      then do
               (refactoredMod,declPns) <- applyRefac (liftToMod) RSAlreadyLoaded
 
               if modIsExported parsed
                then do clients <- clientModsAndFiles modName
-                       -- TODO: Complete this
                        logm $ "liftToTopLevel':(clients,declPns)=" ++ (GHC.showPpr (clients,declPns))
-                       -- refactoredClients <- mapM (liftingInClientMod modName declPns) clients
                        refactoredClients <- mapM (liftingInClientMod modName declPns) clients
-                       -- writeRefactoredFiles False $ ((fileName,m),(toks',mod')):refactoredClients
                        return (refactoredMod:(concat refactoredClients))
                else do return [refactoredMod]
       else error "\nThe identifier is not a local function/pattern name!"
@@ -216,6 +215,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
                       logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (GHC.showPpr (liftedDecls,declaredPns))
                       pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
+                      -- TODO: use GHC query to get top-level declarations
                       let (_,dd) = hsFreeAndDeclaredPNs renamed
                       if pns==[]
                         then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl n dd parent liftedDecls
@@ -495,7 +495,12 @@ namesNeedToBeHided clientModule modNames pns = do
     getLocalEquiv :: GHC.Name -> RefactGhc (GHC.Name,String,[GHC.Name])
     getLocalEquiv pn = do
       let pnStr = stripPackage $ GHC.showPpr pn
-      cns <- GHC.parseName pnStr
+      logm $ "MoveDef getLocalEquiv: about to parseName:" ++ (show pnStr)
+      ecns <- GHC.gtry $ GHC.parseName pnStr
+      let cns = case ecns of
+                 Left (_e::SomeException) -> []
+                 Right v -> v
+      logm $ "MoveDef getLocalEquiv: cns:" ++ (GHC.showPpr cns) 
       return (pn,pnStr,cns)
 
     stripPackage :: String -> String
@@ -820,6 +825,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
   =do  let (ef,_) = hsFreeAndDeclaredPNs parent
        let (lf,_) = hsFreeAndDeclaredPNs liftedDecls
        let newParams=((nub lf)\\ (nub ef)) \\ dd  --parameters (in PName format) to be added to pn because of lifting
+       logm $ "addParamsToParentAndLiftedDecl:(newParams,ef,lf,dd)=" ++ (GHC.showPpr (newParams,ef,lf,dd))
        if newParams/=[]
          then if  (any isComplexPatBind liftedDecls)
                 then error "This pattern binding cannot be lifted, as it uses some other local bindings!"
@@ -842,9 +848,9 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
          else return (parent,liftedDecls,False)
 -}
 
-{-
+
 --------------------------------End of Lifting-----------------------------------------
--}
+
 {-Refactoring : demote a function/pattern binding(simpe or complex) to the declaration where it is used.
   Descritption: if a declaration D, say, is only used by another declaration F,say, then D can be 
                 demoted into the local declaration list (where clause) in F.

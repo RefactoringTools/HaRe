@@ -56,16 +56,6 @@ spec = do
 
     -- ---------------------------------
 
-    it "liftToTopLevel D1A 8 6 with pow too" $ do
-     liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/D1.hs" (8,6)
-     -- liftToTopLevel logTestSettings Nothing "./test/testdata/LiftToToplevel/D1.hs" (8,6)
-     diff <- compareFiles "./test/testdata/LiftToToplevel/D1A.hs.expected"
-                          "./test/testdata/LiftToToplevel/D1A.hs.refactored"
-     diff `shouldBe` []
-
-
-    -- ---------------------------------
-
     it "liftToTopLevel D1 C1 A1 8 6" $ do
      liftToTopLevel defaultTestSettings (Just "./test/testdata/LiftToToplevel/A1.hs") "./test/testdata/LiftToToplevel/D1.hs" (8,6)
      -- liftToTopLevel logTestSettings     (Just "./test/testdata/LiftToToplevel/A1.hs") "./test/testdata/LiftToToplevel/D1.hs" (8,6)
@@ -84,7 +74,19 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D2 C2 A2 8 6" $ do
-      pending
+     liftToTopLevel defaultTestSettings (Just "./test/testdata/LiftToToplevel/A2.hs") "./test/testdata/LiftToToplevel/D2.hs" (8,6)
+     -- liftToTopLevel logTestSettings     (Just "./test/testdata/LiftToToplevel/A2.hs") "./test/testdata/LiftToToplevel/D2.hs" (8,6)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/D2.hs.expected"
+                          "./test/testdata/LiftToToplevel/D2.hs.refactored"
+     diff `shouldBe` []
+
+     diff2 <- compareFiles "./test/testdata/LiftToToplevel/C2.hs.expected"
+                          "./test/testdata/LiftToToplevel/C2.hs.refactored"
+     diff2 `shouldBe` []
+
+     a1Refactored <- doesFileExist "./test/testdata/LiftToToplevel/A2.hs.refactored"
+     a1Refactored `shouldBe` False
+
 
     -- ---------------------------------
 

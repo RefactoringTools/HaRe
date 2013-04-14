@@ -524,6 +524,41 @@ spec = do
     it "Finds free and declared in a single bind" $ do
       pending -- "fix the prior test"
 
+    -- -----------------------------------------------------------------
+
+    it "It does stop_tdTU" $ do
+      -- Top-down type-unifying traversal that is cut of below nodes
+      -- where the argument strategy succeeds.
+      -- http://hackage.haskell.org/packages/archive/StrategyLib/4.0.0.0/doc/html/Data-Generics-Strafunski-StrategyLib-TraversalTheme.html#v%3Astop_tdTU
+
+      (t, _toks) <- parsedFileLiftD1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let res = hsFreeAndDeclaredPNs $ hsBinds renamed
+
+      let ff = getFvs $ hsBinds renamed
+      (GHC.showPpr ff) `shouldBe` ""
+
+      -- Free Vars
+      {-
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+                   "[(GHC.Num.+, (-1, -1)), "++
+                    "(sq, (8, 6)), "++
+                    "(x, (6, 13)),\n "++
+                    "(LiftToToplevel.D1.sumSquares, (6, 1)), "++
+                    "(xs, (6, 15)),\n "++
+                    "(GHC.Num.fromInteger, (-1, -1)), "++
+                    "(GHC.Real.^, (-1, -1)),\n "++
+                    "(x, (8, 9)), (pow, (9, 6))]"
+      -}
+
+      -- Declared Vars
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+                   "[(LiftToToplevel.D1.sumSquares, (6, 1)), "++ 
+                    "(x, (6, 13)),\n "++
+                    "(xs, (6, 15)), "++ 
+                    "(LiftToToplevel.D1.main, (13, 1))]"
+
 
   -- ---------------------------------------------------------------------
 
@@ -2234,6 +2269,14 @@ parsedFileD1Ghc = parsedFileGhc "./test/testdata/Demote/D1.hs"
 
 d1FileName :: GHC.FastString
 d1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
+
+-- -----------
+
+liftD1FileName :: GHC.FastString
+liftD1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/D1.hs"
+
+parsedFileLiftD1Ghc :: IO (ParseResult,[PosToken])
+parsedFileLiftD1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/D1.hs"
 
 -- -----------
 

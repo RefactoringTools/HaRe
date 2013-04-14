@@ -146,6 +146,19 @@ everywhereStaged stage f x
   | checkItemStage stage x = x
   | otherwise = (f . gmapT (everywhereStaged stage f)) x
 
+-- | Top-down version of everywhereStaged
+everywhereStaged' ::  SYB.Stage -> (forall a. Data a => a -> a) -> forall a. Data a => a -> a
+everywhereStaged' stage f x
+  | checkItemStage stage x = x
+  | otherwise = (gmapT (everywhereStaged stage f) . f) x
+
+{-
+-- Arguments of (.) are flipped compared to everywhere
+everywhere' f = gmapT (everywhere' f) . f
+-}
+
+
+
 -- ---------------------------------------------------------------------
 {-
 -- From SYB
@@ -241,10 +254,13 @@ checkItemStage stage x = (const False `SYB.extQ` postTcType `SYB.extQ` fixity `S
 -- | Staged variation of SYB.everything
 -- The stage must be provided to avoid trying to modify elements which
 -- may not be present at all stages of AST processing.
+-- Note: Top-down order
 everythingStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> SYB.GenericQ r
 everythingStaged stage k z f x
   | checkItemStage stage x = z
   | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
+
+
 
 
 -- listify :: Typeable r => (r -> Bool) -> GenericQ [r]

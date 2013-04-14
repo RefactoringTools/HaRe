@@ -1,4 +1,4 @@
-module D2 where
+module LiftToToplevel.D2 where
 
 {-lift 'sq' to top level. In this refactoring, 'sq' will
   be hided in the import declaraion of module 'D2' in module 'C2'.-}

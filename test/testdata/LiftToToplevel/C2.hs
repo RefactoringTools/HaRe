@@ -1,10 +1,10 @@
-module C2 (module D2, module C2) where 
+module LiftToToplevel.C2 (module LiftToToplevel.D2, module LiftToToplevel.C2) where 
 
-import D2 
+import LiftToToplevel.D2
 
 anotherFun (x:xs) =  x^4 + anotherFun xs
 
 anotherFun [] = 0
 
- 
+
 

@@ -1,6 +1,6 @@
-module A2 where
+module LiftToToplevel.A2 where
  
-import C2 
+import LiftToToplevel.C2 
 
 main  = sumSquares [1..4] + anotherFun [1..4] 
 
