@@ -401,7 +401,7 @@ liftingInClientMod :: GHC.ModuleName -> [GHC.Name] -> GHC.ModSummary
 liftingInClientMod serverModName pns modSummary = do
        getModuleDetails modSummary
        renamed <- getRefactRenamed
-       logm $ "liftingInClientMod:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+       -- logm $ "liftingInClientMod:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        let exps = renamed
        let clientModule = GHC.ms_mod modSummary
        logm $ "liftingInClientMod:clientModule=" ++ (GHC.showPpr clientModule)
@@ -477,24 +477,42 @@ namesNeedToBeHided clientModule modNames pns = do
   gnames <- GHC.getNamesInScope
   let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
   logm $ "namesNeedToBeHided:(clientInscopes)=" ++ (GHC.showPpr (clientInscopes))
+
+  pnsMapped <- mapM getLocalEquiv pns
+  logm $ "namesNeedToBeHided:pnsMapped=" ++ (GHC.showPpr pnsMapped)
+
+  let pnsMapped' = filter (\(_,_,ns) -> not $ emptyList ns) pnsMapped
+
   if willBeExportedByClientMod modNames renamed
       then return pns
       else do
-        ff <- mapM (needToBeHided renamed) pns
+        ff <- mapM (needToBeHided renamed) pnsMapped'
         return $ concat ff
   where
-    needToBeHided :: GHC.RenamedSource -> GHC.Name -> RefactGhc [GHC.Name]
-    needToBeHided renamed@(_,_,exps,_) pn = do
-      uwoqb <- usedWithoutQual pn (hsBinds renamed)
-      uwoqe <- usedWithoutQual pn exps
+    -- | Strip the package prefix from the name and return the
+    -- stripped name together with any names in the local module that
+    -- may match the stripped one
+    getLocalEquiv :: GHC.Name -> RefactGhc (GHC.Name,String,[GHC.Name])
+    getLocalEquiv pn = do
+      let pnStr = stripPackage $ GHC.showPpr pn
+      cns <- GHC.parseName pnStr
+      return (pn,pnStr,cns)
+
+    stripPackage :: String -> String
+    stripPackage str = reverse s
+      where
+        (s,_) = break (== '.') $ reverse str
+
+    needToBeHided :: GHC.RenamedSource -> (GHC.Name,String,[GHC.Name]) -> RefactGhc [GHC.Name]
+    needToBeHided renamed (pn,_pnStr,pnsLocal) = do
+      uwoq <- mapM (\n -> usedWithoutQual n renamed) pnsLocal
 
       logm $ "needToBeHided:(hsBinds renamed)=" ++ (GHC.showPpr (hsBinds renamed))
-      logm $ "needToBeHided:(pn,uwoqb,uwoqe)=" ++ (GHC.showPpr (pn,uwoqb,uwoqe))
+      logm $ "needToBeHided:(pn,uwoq)=" ++ (GHC.showPpr (pn,uwoq))
 
-      if (uwoqb --the same name is used in the module
-                --unqualifiedly
-            || uwoqe --the same name is exported unqualifiedly by an
-                     --Ent decl
+      if (any (== True) uwoq --the same name is used in the module unqualifiedly or
+                --is exported unqualifiedly by an Ent decl 
+
             -- || causeNameClashInExports pn modNames renamed)
             || any (\m -> causeNameClashInExports pn m renamed) modNames)
            then return [pn]

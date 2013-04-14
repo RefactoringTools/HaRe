@@ -821,8 +821,8 @@ usedWithoutQual name renamed = do
   let names = findAllNameOccurences name renamed
   logm $ "usedWithoutQual:names=" ++ (GHC.showPpr names)
 
-  let allNames = findAllNames renamed
-  logm $ "usedWithoutQual:allNames=" ++ (GHC.showPpr $ map (\(GHC.L _ n) -> (n,GHC.nameUnique n)) allNames)
+  -- let allNames = findAllNames renamed
+  -- logm $ "usedWithoutQual:allNames=" ++ (GHC.showPpr $ map (\(GHC.L _ n) -> (n,GHC.nameUnique n)) allNames)
 
   toks <- fetchToks
   res <- mapM (isUsedWithoutQual toks) names
