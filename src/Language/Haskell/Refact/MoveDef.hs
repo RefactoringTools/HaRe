@@ -176,7 +176,7 @@ liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
 liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
   parsed  <- getRefactParsed
-  -- logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+  logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
   if isLocalFunOrPatName n renamed
       then do
               (refactoredMod,declPns) <- applyRefac (liftToMod) RSAlreadyLoaded
@@ -215,8 +215,11 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
                       logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (GHC.showPpr (liftedDecls,declaredPns))
                       pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
-                      -- TODO: use GHC query to get top-level declarations
-                      let (_,dd) = hsFreeAndDeclaredPNs renamed
+
+                      -- let (_,dd) = hsFreeAndDeclaredPNs renamed
+                      let dd = getDeclaredVars $ hsBinds renamed
+                      logm $ "liftToMod:(ddd)=" ++ (GHC.showPpr dd)
+
                       if pns==[]
                         then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl n dd parent liftedDecls
                                 let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
@@ -373,9 +376,42 @@ pnsNeedRenaming dest parent liftedDecls pns
 -}
 
 --can not simply use PNameToExp, PNameToPat here because of the location information. 
-addParamsToParent pn [] t = return t
-addParamsToParent pn params t
-  = error "undefined addParamsToParent"
+addParamsToParent :: (HsValBinds t) => GHC.Name -> [GHC.Name] -> t -> RefactGhc t
+addParamsToParent _pn [] t = return t
+addParamsToParent  pn params t = do
+  logm $ "addParamsToParent:(pn,params)" ++ (GHC.showPpr (pn,params))
+  binds' <- addParamsToDecls (hsBinds t) pn params True
+  return $ replaceBinds t binds'
+
+{-
+  t' <- everywhereMStaged SYB.Renamer (SYB.mkM inExp) t
+  return t'
+  where
+     inExp (exp@(GHC.L l (GHC.HsVar n))::GHC.LHsExpr GHC.Name)
+       {-
+       | n == pn
+       = do let newExp = (GHC.L l (GHC.HsPar (foldl addParamToExp exp params)))
+            update exp newExp exp
+       -} = return exp
+     inExp x = return x
+
+     addParamToExp exp param
+       = GHC.noLoc (GHC.HsApp exp param)
+
+{-
+                  (L {test/testdata/LiftToToplevel/D1.hs:6:21-24}
+                   (HsApp
+                    (L {test/testdata/LiftToToplevel/D1.hs:6:21-22}
+                     (HsVar {Name: sq}))
+                    (L {test/testdata/LiftToToplevel/D1.hs:6:24}
+                     (HsVar {Name: x}))))
+                  (L {test/testdata/LiftToToplevel/D1.hs:6:26}
+                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6}
+                  (L {test/testdata/LiftToToplevel/D1.hs:6:28-40}
+-}
+-}
+
+
 {- ++AZ++ original
 --can not simply use PNameToExp, PNameToPat here because of the location information. 
 addParamsToParent pn [] t = return t
@@ -815,7 +851,7 @@ liftedToTopLevel pnt@(PNT pn _ _) (mod@(HsModule loc name exps imps ds):: HsModu
      else (False, [])
 -}
 
-addParamsToParentAndLiftedDecl :: SYB.Data t =>
+addParamsToParentAndLiftedDecl :: HsValBinds t => -- SYB.Data t =>
   GHC.Name
   -> [GHC.Name]
   -> t
@@ -824,7 +860,13 @@ addParamsToParentAndLiftedDecl :: SYB.Data t =>
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls
   =do  let (ef,_) = hsFreeAndDeclaredPNs parent
        let (lf,_) = hsFreeAndDeclaredPNs liftedDecls
-       let newParams=((nub lf)\\ (nub ef)) \\ dd  --parameters (in PName format) to be added to pn because of lifting
+
+       let eff = getFreeVars $ hsBinds parent
+       let lff = getFreeVars liftedDecls
+       logm $ "addParamsToParentAndLiftedDecl:(eff,lff)=" ++ (GHC.showPpr (eff,lff))
+
+       -- let newParams=((nub lf)\\ (nub ef)) \\ dd  --parameters (in PName format) to be added to pn because of lifting
+       let newParams=((nub lff)\\ (nub eff)) \\ dd  --parameters (in PName format) to be added to pn because of lifting
        logm $ "addParamsToParentAndLiftedDecl:(newParams,ef,lf,dd)=" ++ (GHC.showPpr (newParams,ef,lf,dd))
        if newParams/=[]
          then if  (any isComplexPatBind liftedDecls)

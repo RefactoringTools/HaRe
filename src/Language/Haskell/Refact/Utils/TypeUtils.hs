@@ -44,7 +44,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
     ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
-    ,getFvs
+    ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
+
     ,hsVisiblePNs, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
 
@@ -690,8 +691,8 @@ hsFreeAndDeclaredNames t = ((nub.map GHC.showPpr) f1, (nub.map GHC.showPpr) d1)
 -- ---------------------------------------------------------------------
 
 -- |Experiment with GHC fvs stuff
-getFvs :: (SYB.Data t) => t -> [([GHC.Name], GHC.NameSet)]
-getFvs t
+getFvsAll :: (SYB.Data t) => t -> [([GHC.Name], GHC.NameSet)]
+getFvsAll t
   = SYB.everythingStaged SYB.Renamer
                              (++) []
                              ([]
@@ -699,9 +700,34 @@ getFvs t
                              ) t
   where
       binds :: (GHC.HsBind GHC.Name) -> [([GHC.Name],GHC.NameSet)]
-      binds (GHC.FunBind (GHC.L _ pname) _ _ _ fvs _) = [([pname],fvs)]
-      binds (GHC.PatBind p _rhs _ty fvs _) = [((hsNamess p),fvs)]
+      binds (GHC.FunBind (GHC.L _ pname) _ _ _ fvs _) = [([pname],     fvs)]
+      binds (GHC.PatBind p _rhs _ty fvs _)            = [((hsNamess p),fvs)]
       binds _ = []
+
+-- |Experiment with GHC fvs stuff
+getFvs :: [GHC.LHsBind GHC.Name] -> [([GHC.Name], GHC.NameSet)]
+getFvs bs = concatMap binds bs
+  where
+      binds :: (GHC.LHsBind GHC.Name) -> [([GHC.Name],GHC.NameSet)]
+      binds (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ fvs _)) = [([pname],     fvs)]
+      binds (GHC.L _ (GHC.PatBind p _rhs _ty fvs _))            = [((hsNamess p),fvs)]
+      binds _ = []
+
+getFreeVars :: [GHC.LHsBind GHC.Name] -> [GHC.Name]
+getFreeVars bs = concatMap binds bs
+  where
+      binds :: (GHC.LHsBind GHC.Name) -> [GHC.Name]
+      binds (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ fvs _)) = (GHC.nameSetToList fvs)
+      binds (GHC.L _ (GHC.PatBind p _rhs _ty fvs _))            = (GHC.nameSetToList fvs)
+      binds _ = []
+
+getDeclaredVars :: [GHC.LHsBind GHC.Name] -> [GHC.Name]
+getDeclaredVars bs = concatMap vars bs
+  where
+      vars :: (GHC.LHsBind GHC.Name) -> [GHC.Name]
+      vars (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ fvs _)) = [pname]
+      vars (GHC.L _ (GHC.PatBind p _rhs _ty fvs _))            = (hsNamess p)
+      vars _ = []
 
 --------------------------------------------------------------------------------
 -- | Same as `hsVisiblePNs' except that the returned identifiers are

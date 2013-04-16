@@ -77,7 +77,8 @@ fetchToks :: RefactGhc [PosToken]
 fetchToks = do
   Just tm <- gets rsModule
   let toks = retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
-  logm $ "fetchToks" ++ (showToks toks)
+  -- logm $ "fetchToks" ++ (showToks toks)
+  logm $ "fetchToks (not showing toks"
   return toks
 
 -- |fetch the pristine token stream

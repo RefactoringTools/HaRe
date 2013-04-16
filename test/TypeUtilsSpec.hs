@@ -536,6 +536,8 @@ spec = do
 
       let res = hsFreeAndDeclaredPNs $ hsBinds renamed
 
+      -- (GHC.showPpr $ hsBinds renamed) `shouldBe` ""
+
       let ff = getFvs $ hsBinds renamed
       (GHC.showPpr ff) `shouldBe` ""
 
