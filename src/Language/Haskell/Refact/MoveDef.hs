@@ -380,8 +380,10 @@ addParamsToParent :: (HsValBinds t) => GHC.Name -> [GHC.Name] -> t -> RefactGhc 
 addParamsToParent _pn [] t = return t
 addParamsToParent  pn params t = do
   logm $ "addParamsToParent:(pn,params)" ++ (GHC.showPpr (pn,params))
-  binds' <- addParamsToDecls (hsBinds t) pn params True
-  return $ replaceBinds t binds'
+  -- binds' <- addParamsToDecls (hsBinds t) pn params True
+  -- return $ replaceBinds t binds'
+  t' <- addActualParamsToRhs True pn params t
+  return t'
 
 {-
   t' <- everywhereMStaged SYB.Renamer (SYB.mkM inExp) t

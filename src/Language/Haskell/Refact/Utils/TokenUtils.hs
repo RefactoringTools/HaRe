@@ -408,6 +408,12 @@ insertVersionsInSrcSpan _ _ ss = error $ "insertVersionsInSrcSpan: expecting a R
 
 -- ---------------------------------------------------------------------
 
+insertVersionsInForestSpan :: Int -> Int -> ForestSpan -> ForestSpan
+insertVersionsInForestSpan vsNew veNew ((ForestLine trs _vs ls,cs),(ForestLine tre _ve le,ce))
+  = ((ForestLine trs vsNew ls,cs),(ForestLine tre veNew le,ce))
+
+-- ---------------------------------------------------------------------
+
 srcSpanToForestSpan :: GHC.SrcSpan -> ForestSpan
 srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToForestLine endRow,endCol))
   where
@@ -501,7 +507,7 @@ replaceTreeInCache sspan tree tk = tk'
     tk' = tk {tkCache = Map.insert tid tree' (tkCache tk) }
 
 putTidInTree :: TreeId -> Tree Entry -> Tree Entry
-putTidInTree tid tree@(Node (Entry fs toks) subForest) = tree'
+putTidInTree tid (Node (Entry fs toks) subForest) = tree'
   where
     subForest' = map (putTidInTree tid) subForest
     fs' = treeIdIntoForestSpan tid fs
@@ -603,15 +609,13 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
            toks' = origStartComments ++ core ++ trail
         in toks'
 
-    -- toks'' = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
-    -- toks'' = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks (leadComments ++ core ++ trailComments)
-
     (startPos,endPos) = nonCommentSpan toks''
 
     -- if the original sspan had a ForestLine version, preserve it
     (((ForestLine _trs vs _),_),(ForestLine _tre ve _,_)) = srcSpanToForestSpan sspan
-    -- newPosSpan = ((ForestLine vs sl,sc),(ForestLine ve el,ec))
-    newSpan = insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos) 
+    -- Note: adding one to end version, so invariant won't fail
+    -- newSpan = insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos) 
+    newSpan = insertVersionsInSrcSpan vs (ve + 1) $ posToSrcSpan forest (startPos,endPos) 
 
     zf = openZipperToNode tree $ Z.fromTree forest'
 
@@ -634,24 +638,6 @@ getSrcSpanFor forest sspan = (forest',tree)
                                          -- there
     z = openZipperToSpan sspan $ Z.fromTree forest'
     tree = Z.tree z
-
-{-
--- ---------------------------------------------------------------------
--- |Retrieve a path to the tree containing a SrcSpan from the forest,
--- or return an empty list if it is not present
-getPathFor :: Tree Entry -> GHC.SrcSpan -> [Tree Entry]
-getPathFor forest sspan = getPathFor' [] [forest] (srcSpanToForestSpan sspan)
-  where
-    getPathFor' :: [Tree Entry] -> Forest Entry -> ForestSpan -> [Tree Entry]
-    getPathFor' path f ss  = res
-      where
-        (_,middle,_) = splitForestOnSpan f ss
-        res = case middle of
-           [m@(Node _ [])] -> if (ss == treeStartEnd m)
-                                 then (path++middle) else []
-           [Node _ sub] -> getPathFor' (path ++ middle) sub ss
-           _   -> (path ++ middle)
--}
 
 -- ---------------------------------------------------------------------
 -- |Insert a ForestSpan into the forest, if it is not there already.
@@ -1114,12 +1100,29 @@ openZipperToNode node z
           z' = if (treeStartEnd (Z.tree child)) == treeStartEnd node
                  then child
                  else openZipperToNode node child
-
+{-
+          -- because a srcspan may have been updated, its endpos may
+          -- have it's version bumped by one.
           contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
             where
-              (startPos,endPos) = treeStartEnd $ Z.tree zn
-              (nodeStart,nodeEnd) = treeStartEnd node
+              (tvs,_tve) = forestSpanVersions $ treeStartEnd $ Z.tree zn
+              (nvs,_nve) = forestSpanVersions $ treeStartEnd node
+              (startPos,endPos)   = insertVersionsInForestSpan tvs tvs $ treeStartEnd $  Z.tree zn
+              (nodeStart,nodeEnd) = insertVersionsInForestSpan nvs nvs $ treeStartEnd $ node
+-}
+          contains zn = spanContains (treeStartEnd $ Z.tree zn) (treeStartEnd node)
 
+-- ---------------------------------------------------------------------
+
+-- because a srcspan may have been updated, its endpos may have it's
+-- version bumped by one.
+spanContains :: ForestSpan -> ForestSpan -> Bool
+spanContains span1 span2 = (startPos <= nodeStart && endPos >= nodeEnd)
+    where
+        (tvs,_tve) = forestSpanVersions $ span1
+        (nvs,_nve) = forestSpanVersions $ span2
+        (startPos,endPos)   = insertVersionsInForestSpan tvs tvs span1
+        (nodeStart,nodeEnd) = insertVersionsInForestSpan nvs nvs span2
 
 -- ---------------------------------------------------------------------
 
@@ -1150,16 +1153,22 @@ openZipperToSpan sspan z
                     [y] -> openZipperToSpan sspan y
                     yy -> -- Multiple, check if we can separate out
                              -- by version
-                          case (filter (\zt -> (forestSpanVersions $ treeStartEnd $ Z.tree zt) == (forestSpanVersions sspan)) xx) of
+                          -- case (filter (\zt -> (forestSpanVersions $ treeStartEnd $ Z.tree zt) == (forestSpanVersions sspan)) xx) of
+                          -- But can't check end version, might be
+                          -- tagging an update srcSpan
+                          case (filter (\zt -> (fst $ forestSpanVersions $ treeStartEnd $ Z.tree zt) == (fst $ forestSpanVersions sspan)) xx) of
                            -- [] -> z
                            [] -> error $ "openZipperToSpan:no version match:(sspan,yy)=" ++ (show (sspan,yy)) -- ++AZ++
                            [w] -> openZipperToSpan sspan w
                            -- _ww -> z
                            ww -> error $ "openZipperToSpan:multiple version match:" ++ (show ww) -- ++AZ++
+          contains zn = spanContains (treeStartEnd $ Z.tree zn) sspan
+{-
           contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
             where
               (startPos,endPos) = treeStartEnd $ Z.tree zn
               (nodeStart,nodeEnd) = sspan
+-}
 
           go acc Nothing = acc
           go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)
@@ -1312,7 +1321,8 @@ invariant forest = rsub
                         show e1 ++ " not < " ++ show s2 ++
                         ":" ++ prettyshow node']
 
-            before (ForestLine trs ve er,ec) (ForestLine tre vs sr,sc)
+            -- |Compare end of one span with beginning of another
+            before (ForestLine _trs ve er,ec) (ForestLine _tre vs sr,sc)
               = case (ve /= 0, vs /= 0) of
                  (False, False) -> (er,ec) <= (sr,sc) -- e.g. (10,3) <= (11,5)
                  (False, True)  -> True               -- e.g. (10,3) <= (100011,5)

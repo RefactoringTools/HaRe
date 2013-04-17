@@ -816,7 +816,9 @@ spec = do
 
          -- return newBinding
          return (funBinding,declsToDup,newBinding)
-      ((fb,dd,newb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((fb,dd,newb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((fb,dd,newb),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
       (GHC.showPpr n) `shouldBe` "ff"
       (GHC.showPpr dd) `shouldBe` "[ff = 15]"
       (GHC.showPpr fb) `shouldBe` "[ff = 15]"

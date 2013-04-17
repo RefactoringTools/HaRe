@@ -75,7 +75,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program transformation
     -- ** Adding
     ,addDecl, addItemsToImport, addHiding --, rmItemsFromImport, addItemsToExport
-    ,addParamsToDecls {- , addGuardsToRhs-}, addImportDecl, duplicateDecl -- , moveDecl
+    ,addParamsToDecls, addActualParamsToRhs {- , addGuardsToRhs-}, addImportDecl, duplicateDecl -- , moveDecl
     -- ** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -3043,7 +3043,7 @@ addParamsToDecls decls pn paramPNames modifyToks = do
       where
        -- addParamtoMatch (HsMatch loc fun pats rhs  decls)
        addParamtoMatch (GHC.L l (GHC.Match pats mtyp rhs))
-        = do rhs' <- addActualParamsToRhs pn paramPNames rhs
+        = do rhs' <- addActualParamsToRhs modifyToks pn paramPNames rhs
              let pats' = map GHC.noLoc $ map pNtoPat paramPNames
              pats'' <- if modifyToks then do _ <- addFormalParams fun pats'
                                              return pats'
@@ -3054,7 +3054,7 @@ addParamsToDecls decls pn paramPNames modifyToks = do
    -- addParamToDecl (TiDecorate.Dec (HsPatBind loc p rhs ds))
    addParamToDecl (GHC.L l1 (GHC.PatBind (GHC.L l2 pat@(GHC.VarPat p)) rhs ty fvs t))
      | p == pn
-       = do rhs'<-addActualParamsToRhs pn paramPNames rhs
+       = do rhs'<-addActualParamsToRhs modifyToks pn paramPNames rhs
             let pats' = map GHC.noLoc $ map pNtoPat paramPNames
             pats'' <- if modifyToks  then do _ <- addFormalParams pat pats'
                                              -- error "addParamToDecl" -- ++AZ++
@@ -3064,24 +3064,19 @@ addParamsToDecls decls pn paramPNames modifyToks = do
             return (GHC.L l1 (GHC.PatBind (GHC.L l2 pat) rhs ty fvs t))
    addParamToDecl x=return x
 
-   addActualParamsToRhs :: (SYB.Typeable t, SYB.Data t) =>
-                        GHC.Name -> [GHC.Name] -> t -> RefactGhc t
-   addActualParamsToRhs pn paramPNames rhs = do
+
+addActualParamsToRhs :: (SYB.Typeable t, SYB.Data t) =>
+                        Bool -> GHC.Name -> [GHC.Name] -> t -> RefactGhc t
+addActualParamsToRhs modifyToks pn paramPNames rhs = do
     r <- everywhereMStaged SYB.Renamer (SYB.mkM worker) rhs
     return r
     -- = applyTP (stop_tdTP (failTP `adhocTP` worker))
      where
        worker :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-{-
-       worker (GHC.L l1 (GHC.HsApp e1 e2))
-        -- | pname == pn
-        | True
-         = do
-              error ("got here:addActualParamsToRhs:" ++ (GHC.showPpr (e1,e2)))
--}
        worker (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) e2))
-        -- | pname == pn
-        | True
+        -- TODO: reinstate this test
+        | pname == pn
+        -- | True
          = do
               -- error "got here:addActualParamsToRhs"
               let newExp = (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) (foldl addParamToExp e2 paramPNames)))
@@ -3092,22 +3087,7 @@ addParamsToDecls decls pn paramPNames modifyToks = do
        worker x = return x
 
        addParamToExp :: (GHC.LHsExpr GHC.Name) -> GHC.Name -> (GHC.LHsExpr GHC.Name)
-       -- addParamToExp  exp param=(TiDecorate.Exp (HsApp exp param))
-       addParamToExp  exp param = GHC.noLoc (GHC.HsApp exp (GHC.noLoc (GHC.HsVar param)))
-
-
-
-       {-
-       worker exp@(GHC.HsVar pname)
-        | pname==pn
-         = do -- let newExp=TiDecorate.Exp (HsParen (foldl addParamToExp exp (map pNtoExp paramPNames)))
-              let newExp=exp -- TiDecorate.Exp (HsParen (foldl addParamToExp exp (map pNtoExp paramPNames)))
-              if modifyToks then do -- (newExp', _) <- updateToks exp newExp prettyprint
-                                    -- return newExp'
-                                    return newExp
-                            else return newExp
-       worker x = return x
-       -}
+       addParamToExp  expr param = GHC.noLoc (GHC.HsApp expr (GHC.noLoc (GHC.HsVar param)))
 
 {-
 zz ab = 1 + toplevel ab
@@ -3755,7 +3735,7 @@ renamePN oldPN newName updateTokens t = do
     rename  pnt@(GHC.L l n)
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = (getLocatedStart pnt)
-          newName <- worker (row,col) l n
+          (newName,sspan') <- worker (row,col) l n
           return (GHC.L l newName)
     rename x = return x
 
@@ -3763,10 +3743,12 @@ renamePN oldPN newName updateTokens t = do
     renameVar var@(GHC.L l (GHC.HsVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = getLocatedStart var
-          newName <- worker (row,col) l n
+          (newName,sspan') <- worker (row,col) l n
           return (GHC.L l (GHC.HsVar newName))
     renameVar x = return x
 
+    -- TODO: must update the original sspan with the new one.
+             ++AZ++ How?
     worker (row,col) l n
      = do if updateTokens
            then  do
@@ -3775,10 +3757,10 @@ renamePN oldPN newName updateTokens t = do
                     drawTokenTree "" -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
-                    putToksForSpan sspan toks'
-                    return newName
+                    sspan' <- putToksForSpan sspan toks'
+                    return (newName,sspan')
                     -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (GHC.showPpr (row,col,l,sspan)) ++ (show toks) -- ++AZ++
-           else return newName
+           else return (newName,l)
 
 -- ---------------------------------------------------------------------
 

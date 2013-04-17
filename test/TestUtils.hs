@@ -4,6 +4,7 @@ module TestUtils
        , parseSourceFileTest
        , runRefactGhcState
        , initialState
+       , initialLogOnState
        , toksFromState
        , defaultTestSettings
        , logTestSettings
@@ -70,6 +71,17 @@ parseSourceFileTest fileName = do
 initialState :: RefactState
 initialState = RefSt
   { rsSettings = RefSet ["./test/testdata/"] False
+  , rsUniqState = 1
+  , rsFlags = RefFlags False
+  , rsStorage = StorageNone
+  , rsModule = Nothing
+  }
+
+-- ---------------------------------------------------------------------
+
+initialLogOnState :: RefactState
+initialLogOnState = RefSt
+  { rsSettings = RefSet ["./test/testdata/"] True
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone

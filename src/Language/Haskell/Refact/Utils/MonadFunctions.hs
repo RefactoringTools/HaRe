@@ -130,22 +130,6 @@ getToksBeforeSpan sspan = do
   logm $ "getToksBeforeSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
   return toks
 
-{-
--- |Put a tree in the stash, against a unique RefactStashId
---  Utility function for internal use
-stash :: Tree Entry -> RefactGhc ()
-stash oldTree = do
-  st <- get
-  let Just tm = rsModule st
-  let tk = tkCache $ rsTokenCache tm
-  let (TId lastTreeId) = tkLastTreeId $ rsTokenCache tm
-  let lastTreeId' = TId (lastTreeId + 1)
-  let tk' = Map.insert lastTreeId' oldTree tk
-  let rsModule' = Just (tm {rsTokenCache = TK tk' lastTreeId'})
-  put $ st { rsModule = rsModule' }
-  return ()
--}
-
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens
 putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc GHC.SrcSpan
