@@ -15,6 +15,7 @@ import Control.Monad.State
 import Data.Maybe
 import Data.Tree
 import Exception
+import Numeric
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.LocUtils
@@ -90,7 +91,7 @@ spec = do
       (showToks declToks) `shouldBe` "[(((4,1),(4,1)),ITsemi,\"\"),(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),(((4,10),(4,11)),ITvarid \"x\",\"x\"),(((4,12),(4,13)),ITequal,\"=\"),(((4,14),(4,15)),ITvarid \"c\",\"c\"),(((4,16),(4,17)),ITstar,\"*\"),(((4,18),(4,19)),ITvarid \"x\",\"x\")]"
 
       let (tm'',newSpan,decl') = addDeclToksAfterSrcSpan tm' l (PlaceOffset 2 0 2) declToks decl
-      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-18"
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1048582:1-18"
 
       (SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1000006:1-18} \n (FunBind \n  (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel}) \n  (False) \n  (MatchGroup \n   [\n    (L {test/testdata/DupDef/Dd1.hs:4:1-18} \n     (Match \n      [\n       (L {test/testdata/DupDef/Dd1.hs:1000006:10} \n        (VarPat {Name: x}))] \n      (Nothing) \n      (GRHSs \n       [\n        (L {test/testdata/DupDef/Dd1.hs:4:14-18} \n         (GRHS \n          [] \n          (L {test/testdata/DupDef/Dd1.hs:1000006:14-18} \n           (OpApp \n            (L {test/testdata/DupDef/Dd1.hs:1000006:14} \n             (HsVar {Name: DupDef.Dd1.c})) \n            (L {test/testdata/DupDef/Dd1.hs:1000006:16} \n             (HsVar {Name: GHC.Num.*})) {Fixity: infixl 7} \n            (L {test/testdata/DupDef/Dd1.hs:1000006:18} \n             (HsVar {Name: x}))))))] \n       (EmptyLocalBinds))))] {!type placeholder here?!}) \n  (WpHole) {NameSet: \n  [{Name: DupDef.Dd1.c}]} \n  (Nothing)))"
 
@@ -136,7 +137,7 @@ spec = do
             "`- ((6,1),(32,18))\n"
 
       let (tm''',newSpan,typeSig') = addDeclToksAfterSrcSpan tm'' l (PlaceOffset 2 0 0) sigToks typeSig
-      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1048582:1-30"
 
       (SYB.showData SYB.Renamer 0 typeSig') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1000006:1-30} \n (TypeSig \n  [\n   (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel})] \n  (L {test/testdata/DupDef/Dd1.hs:1000006:13-30} \n   (HsFunTy \n    (L {test/testdata/DupDef/Dd1.hs:1000006:13-19} \n     (HsTyVar {Name: GHC.Integer.Type.Integer})) \n    (L {test/testdata/DupDef/Dd1.hs:1000006:24-30} \n     (HsTyVar {Name: GHC.Integer.Type.Integer}))))))"
 
@@ -196,7 +197,7 @@ spec = do
            "`- ((25,1),(32,18))\n"
 
       let (tm2,newSpan) = addToksAfterSrcSpan tm1 sspan (PlaceIndent 1 0 1) declToks
-      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1000024:5-10"
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1048600:5-10"
       (drawTreeEntry tm2) `shouldBe`
            "((1,1),(32,18))\n|\n"++
            "+- ((1,1),(22,8))\n|\n"++
@@ -1044,28 +1045,32 @@ spec = do
 
   describe "ghcLineToForestLine" $ do
     it "converts a GHC line to a ForestLine" $ do
-      (ghcLineToForestLine         34) `shouldBe` ForestLine 0 0 34
-      (ghcLineToForestLine   1000034) `shouldBe` ForestLine 0  1 34
-      (ghcLineToForestLine 530000034) `shouldBe` ForestLine 5 30 34
+      (ghcLineToForestLine         34) `shouldBe` ForestLine False 0  0 34
+      (ghcLineToForestLine   0x100022) `shouldBe` ForestLine False 0  1 34
+      (ghcLineToForestLine  0xbe00022) `shouldBe` ForestLine False 5 30 34
+      (ghcLineToForestLine 0x49400022) `shouldBe` ForestLine True  4 20 34
 
   describe "forestLineToGhcLine" $ do
     it "converts a ForestLine value to a GHC line" $ do
-      (forestLineToGhcLine $ ForestLine 0  0 34) `shouldBe`        34
-      (forestLineToGhcLine $ ForestLine 0  1 34) `shouldBe`   1000034
-      (forestLineToGhcLine $ ForestLine 5 30 34) `shouldBe` 530000034
-
+      (hex $ forestLineToGhcLine $ ForestLine False 0  0 34) `shouldBe`       "0x22"
+      (hex $ forestLineToGhcLine $ ForestLine False 0  1 34) `shouldBe`   "0x100022"
+      (hex $ forestLineToGhcLine $ ForestLine False 5 30 34) `shouldBe`  "0xbe00022"
+                                        -- 0xbe = 101 11110
+      (hex $ forestLineToGhcLine $ ForestLine True  4 20 34) `shouldBe` "0x49400022"
+                                   -- 0x494 = 1 00100 10100 
   -- ---------------------------------------------
 
   describe "ForestLine Ord" $ do
     it "implements Ord for ForestLine" $ do
-      compare (ForestLine 0 0 1) (ForestLine 0 0 3) `shouldBe` LT
-      compare (ForestLine 0 0 3) (ForestLine 0 1 3) `shouldBe` LT
-      compare (ForestLine 0 1 1) (ForestLine 0 2 3) `shouldBe` LT
-      compare (ForestLine 0 9 3) (ForestLine 0 0 4) `shouldBe` LT
+      compare (ForestLine False 0 0 1) (ForestLine False 0 0 3) `shouldBe` LT
+      compare (ForestLine False 0 0 3) (ForestLine False 0 1 3) `shouldBe` LT
+      compare (ForestLine False 0 1 1) (ForestLine False 0 2 3) `shouldBe` LT
+      compare (ForestLine False 0 9 3) (ForestLine False 0 0 4) `shouldBe` LT
+      compare (ForestLine True  0 0 6) (ForestLine False 0 0 4) `shouldBe` LT
 
-      compare (ForestLine 0 7 3) (ForestLine 0 7 3) `shouldBe` EQ
+      compare (ForestLine False 0 7 3) (ForestLine False 0 7 3) `shouldBe` EQ
 
-      compare (ForestLine 0 0 4) (ForestLine 0 0 3) `shouldBe` GT
+      compare (ForestLine False 0 0 4) (ForestLine False 0 0 3) `shouldBe` GT
 
   -- ---------------------------------------------
 
@@ -1083,8 +1088,8 @@ spec = do
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
       let (ghcl,_c) = getGhcLoc l
-      let (ForestLine tr v lin) = ghcLineToForestLine ghcl
-      let newSpan' = insertForestLineInSrcSpan (ForestLine tr (v+1) lin) l
+      let (ForestLine ch tr v lin) = ghcLineToForestLine ghcl
+      let newSpan' = insertForestLineInSrcSpan (ForestLine ch tr (v+1) lin) l
 
       let toksNew = take 3 toks
       let newNode = Node (Entry (fs newSpan') toksNew) []
@@ -1796,7 +1801,7 @@ spec = do
              "+- ((1,1),(9,14))\n|\n"++
              "`- ((13,1),(13,25))\n"
 
-      let sspan2 = insertForestLineInSrcSpan (ForestLine 1 0 1) sspan
+      let sspan2 = insertForestLineInSrcSpan (ForestLine False 1 0 1) sspan
       (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:(100000001,1)-(100000011,7)"
       (showSrcSpan sspan2) `shouldBe` "((100000001,1),(100000011,8))"
 
@@ -1833,7 +1838,7 @@ spec = do
       let mainForest = (tkCache tk') Map.! mainTid
       let sspan = posToSrcSpan mainForest ((11,1),(11,8))
 
-      let sspan2 = insertForestLineInSrcSpan (ForestLine 1 0 1) sspan
+      let sspan2 = insertForestLineInSrcSpan (ForestLine False 1 0 1) sspan
       (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:(100000001,1)-(100000011,7)"
       (showSrcSpan sspan2) `shouldBe` "((100000001,1),(100000011,8))"
 
@@ -1909,7 +1914,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "syncAstToLatestCache" $ do
-    it "update the SrcSpans in a declaration to math the latest stash" $ do
+    it "update the SrcSpans in a declaration to match the latest stash" $ do
       (t,toks) <- parsedFileDemoteD1
       let tk = initTokenCache toks
 
@@ -1931,7 +1936,7 @@ spec = do
       let mainForest = (tkCache tk') Map.! mainTid
       let sspan = posToSrcSpan mainForest ((11,1),(11,8))
 
-      let sspan2 = insertForestLineInSrcSpan (ForestLine 1 0 1) sspan
+      let sspan2 = insertForestLineInSrcSpan (ForestLine False 1 0 1) sspan
       (GHC.showPpr sspan2) `shouldBe` "test/testdata/Demote/D1.hs:(100000001,1)-(100000011,7)"
       (showSrcSpan sspan2) `shouldBe` "((100000001,1),(100000011,8))"
 
@@ -1941,6 +1946,10 @@ spec = do
 
 -- ---------------------------------------------------------------------
 -- Helper functions
+
+hex :: Int -> String
+hex v = "0x" ++ showHex v ""
+
 
 fs :: GHC.SrcSpan -> ForestSpan
 fs = srcSpanToForestSpan
@@ -1959,7 +1968,7 @@ mkTreeFromSubTrees trees = Node (Entry sspan []) trees
    sspan    = simpPosToForestSpan (startLoc,endLoc)
 
 nonNullSpan :: ForestSpan
-nonNullSpan = ((ForestLine 0 0 0,0),(ForestLine 0 0 1,0))
+nonNullSpan = ((ForestLine False 0 0 0,0),(ForestLine False 0 0 1,0))
 
 
 -- ---------------------------------------------------------------------

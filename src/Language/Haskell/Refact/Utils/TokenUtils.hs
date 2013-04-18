@@ -141,6 +141,7 @@ import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
+import Data.Bits
 import Data.List
 import Data.Tree
 import qualified Data.Map as Map
@@ -257,52 +258,51 @@ data Operations = OpAdded Entry          -- ^The entry that was added
 --
 -- However, as pointed out on #haskell, the GHC compiler (which this
 -- implemtation explicitly targets) provides the full 32 bits (at
--- least, can be 64), so we have 
+-- least, can be 64), so we have
 --   maxBound :: Int = 2,147,483,647
 --
--- The encoding will be 
---   bottom 6 digits : the original source line
---   next 2 : the InsertVersion
---   top 2 : the AST identifier.
--- This gives us up to 99 insert versions and 20 different ASTs
---  NOTE: suspect the AST limit may prove problematic
---
-forestConstant :: Int
-forestConstant = 1000000
+-- Schema:max pos value is 0x7fffffff (31 bits)
+-- 1 bit for LenChanged
+-- 5 bits for tree    : 32 values
+-- 5 bits for version : 32 values
+-- 20 bits for line number: 1048576 values
 
-forestTreeConstant :: Int
-forestTreeConstant = 100*forestConstant
+forestLineMask =          0xfffff -- bottom 20 bits
+forestVersionMask    =  0x1f00000 -- next 5 bits
+forestTreeMask       = 0x3e000000 -- next 5 bits
+forestLenChangedMask = 0x40000000 -- top (non-sign) bit
 
-forestVersionDivisor :: Int
-forestVersionDivisor = 100
-
-maxForestVersion :: Int
-maxForestVersion = 99
-
-maxASTTree :: Int
-maxASTTree = 20
+forestVersionShift = 20
+forestTreeShift    = 25
 
 {-
 This has been moved to TokenUtilsTypes
 
 data ForestLine = ForestLine
-                  { flTreeSelector :: Int
+                  { flSpanLengthChanged :: Bool -- ^The length of the
+                                                -- span may have
+                                                -- changed due to
+                                                -- updated tokens.
+                  , flTreeSelector :: Int
                   , flInsertVersion :: Int
                   , flLine :: Int
-                  } deriving (Eq,Show)
+                  } deriving (Eq)
 -}
 
 -- | Extract an encoded ForestLine from a GHC line
 ghcLineToForestLine :: Int -> ForestLine
-ghcLineToForestLine l = ForestLine tr v l'
+ghcLineToForestLine l = ForestLine ch tr v l'
   where
-    l' = (mod l forestConstant)
-    v  = (div l forestConstant) `mod` forestVersionDivisor
-    tr = (div l forestTreeConstant)
+    l' =  l .&. forestLineMask
+    v  = shiftR (l .&. forestVersionMask) forestVersionShift
+    tr = shiftR (l .&. forestTreeMask)    forestTreeShift
+    ch = (l .&. forestLenChangedMask) /= 0
 
+-- TODO: check that the components are in range
 forestLineToGhcLine :: ForestLine -> Int
-forestLineToGhcLine fl = ((flTreeSelector  fl) * forestTreeConstant
-                        + (flInsertVersion fl) * forestConstant)
+forestLineToGhcLine fl =  (if (flSpanLengthChanged fl) then forestLenChangedMask else 0)
+                        + (shiftL (flTreeSelector  fl) forestTreeShift)
+                        + (shiftL (flInsertVersion fl) forestVersionShift)
                         + (flLine fl)
 
 forestSpanToSrcSpan :: ForestSpan -> GHC.SrcSpan
@@ -319,48 +319,52 @@ instance Ord ForestLine where
   -- Use line as the primary comparison, but break any ties with the
   -- version
   -- Tree is ignored, as it is only a marker on the topmost element
-  compare (ForestLine _ v1 l1) (ForestLine _ v2 l2) =
+  compare (ForestLine _ _ v1 l1) (ForestLine _ _ v2 l2) =
     if (l1 == l2)
       then compare v1 v2
       else compare l1 l2
 
 -- |Gets the version numbers
 forestSpanVersions :: ForestSpan -> (Int,Int)
-forestSpanVersions ((ForestLine _ sv _,_),(ForestLine _ ev _,_)) = (sv,ev)
+forestSpanVersions ((ForestLine _ _ sv _,_),(ForestLine _ _ ev _,_)) = (sv,ev)
 
 -- |Gets the AST tree numbers
 forestSpanAstVersions :: ForestSpan -> (Int,Int)
-forestSpanAstVersions ((ForestLine trs _ _,_),(ForestLine tre _ _,_)) = (trs,tre)
+forestSpanAstVersions ((ForestLine _ trs _ _,_),(ForestLine _ tre _ _,_)) = (trs,tre)
+
+-- |Gets the SpanLengthChanged flags
+forestSpanLenChangedFlags :: ForestSpan -> (Bool,Bool)
+forestSpanLenChangedFlags ((ForestLine chs _ _ _,_),(ForestLine che _ _ _,_)) = (chs,che)
 
 -- |Checks if the version is non-zero in either position
 forestSpanVersionSet :: ForestSpan -> Bool
-forestSpanVersionSet ((ForestLine _ sv _,_),(ForestLine _ ev _,_)) = sv /= 0 || ev /= 0
+forestSpanVersionSet ((ForestLine _ _ sv _,_),(ForestLine _ _ ev _,_)) = sv /= 0 || ev /= 0
 
 -- |Checks if the version is zero in both positions
 forestSpanVersionNotSet :: ForestSpan -> Bool
-forestSpanVersionNotSet ((ForestLine _ sv _,_),(ForestLine _ ev _,_)) = sv == 0 && ev == 0
+forestSpanVersionNotSet ((ForestLine _ _ sv _,_),(ForestLine _ _ ev _,_)) = sv == 0 && ev == 0
 
 -- |Checks if the version is non-zero
 forestPosVersionSet :: ForestPos -> Bool
-forestPosVersionSet (ForestLine _ v _,_) = v /= 0
+forestPosVersionSet (ForestLine _ _ v _,_) = v /= 0
 
 -- |Checks if the AST version is non-zero
 forestPosAstVersionSet :: ForestPos -> Bool
-forestPosAstVersionSet (ForestLine tr _ _,_) = tr /= 0
+forestPosAstVersionSet (ForestLine _ tr _ _,_) = tr /= 0
 
 -- |Checks if the version is zero
 forestPosVersionNotSet :: ForestPos -> Bool
-forestPosVersionNotSet (ForestLine _ v _,_) = v == 0
+forestPosVersionNotSet (ForestLine _ _ v _,_) = v == 0
 
 -- |Puts a TreeId into a forestSpan
 treeIdIntoForestSpan :: TreeId -> ForestSpan -> ForestSpan
-treeIdIntoForestSpan (TId sel) ((ForestLine _ sv sl,sc),(ForestLine _ ev el,ec))
-  = ((ForestLine sel sv sl,sc),(ForestLine sel ev el,ec))
+treeIdIntoForestSpan (TId sel) ((ForestLine chs _ sv sl,sc),(ForestLine che _ ev el,ec))
+  = ((ForestLine chs sel sv sl,sc),(ForestLine che sel ev el,ec))
 
 
 -- |Strip out the version markers
 forestSpanToSimpPos :: ForestSpan -> (SimpPos,SimpPos)
-forestSpanToSimpPos ((ForestLine _ _ sr,sc),(ForestLine _ _ er,ec)) = ((sr,sc),(er,ec))
+forestSpanToSimpPos ((ForestLine _ _ _ sr,sc),(ForestLine _ _ _ er,ec)) = ((sr,sc),(er,ec))
 
 -- |Strip out the version markers
 forestSpanToGhcPos :: ForestSpan -> (SimpPos,SimpPos)
@@ -373,19 +377,26 @@ simpPosToForestSpan ((sr,sc),(er,ec))
     = ((ghcLineToForestLine sr,sc),(ghcLineToForestLine er,ec))
 
 nullSpan :: ForestSpan
-nullSpan = ((ForestLine 0 0 0,0),(ForestLine 0 0 0,0))
+nullSpan = ((ForestLine False 0 0 0,0),(ForestLine False 0 0 0,0))
 
 showForestSpan :: ForestSpan -> String
 showForestSpan ((sr,sc),(er,ec))
-  = show ((forestLineToGhcLine sr,sc),(forestLineToGhcLine er,ec))
+  = show ((flToNum sr,sc),(flToNum er,ec))
+  where
+    flToNum (ForestLine ch tr v l) = (if ch then 10000000000 else 0)
+                                   + tr * 100000000
+                                   + v  *   1000000
+                                   + l
+
+
 
 -- ---------------------------------------------------------------------
 
 insertForestLineInSrcSpan :: ForestLine -> GHC.SrcSpan -> GHC.SrcSpan
-insertForestLineInSrcSpan fl@(ForestLine tr v _l) (GHC.RealSrcSpan ss) = ss'
+insertForestLineInSrcSpan fl@(ForestLine ch tr v _l) (GHC.RealSrcSpan ss) = ss'
   where
     lineStart = forestLineToGhcLine fl
-    lineEnd   = forestLineToGhcLine (ForestLine tr v (GHC.srcSpanEndLine ss))
+    lineEnd   = forestLineToGhcLine (ForestLine ch tr v (GHC.srcSpanEndLine ss))
     locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineStart (GHC.srcSpanStartCol ss)
     locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
     ss' = GHC.mkSrcSpan locStart locEnd
@@ -397,9 +408,10 @@ insertForestLineInSrcSpan _ ss = error $ "insertForestLineInSrcSpan: expecting a
 insertVersionsInSrcSpan :: Int -> Int -> GHC.SrcSpan -> GHC.SrcSpan
 insertVersionsInSrcSpan vs ve rss@(GHC.RealSrcSpan ss) = ss'
   where
+    (chs,che) = forestSpanLenChangedFlags $ srcSpanToForestSpan rss
     (trs,tre) = forestSpanAstVersions $ srcSpanToForestSpan rss
-    lineStart = forestLineToGhcLine (ForestLine trs vs (GHC.srcSpanStartLine ss))
-    lineEnd   = forestLineToGhcLine (ForestLine tre ve (GHC.srcSpanEndLine ss))
+    lineStart = forestLineToGhcLine (ForestLine chs trs vs (GHC.srcSpanStartLine ss))
+    lineEnd   = forestLineToGhcLine (ForestLine che tre ve (GHC.srcSpanEndLine ss))
     locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineStart (GHC.srcSpanStartCol ss)
     locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
     ss' = GHC.mkSrcSpan locStart locEnd
@@ -408,9 +420,24 @@ insertVersionsInSrcSpan _ _ ss = error $ "insertVersionsInSrcSpan: expecting a R
 
 -- ---------------------------------------------------------------------
 
+insertLenChangedInSrcSpan :: Bool -> Bool -> GHC.SrcSpan -> GHC.SrcSpan
+insertLenChangedInSrcSpan chs che rss@(GHC.RealSrcSpan ss) = ss'
+  where
+    (vs,ve)   = forestSpanVersions $ srcSpanToForestSpan rss
+    (trs,tre) = forestSpanAstVersions $ srcSpanToForestSpan rss
+    lineStart = forestLineToGhcLine (ForestLine chs trs vs (GHC.srcSpanStartLine ss))
+    lineEnd   = forestLineToGhcLine (ForestLine che tre ve (GHC.srcSpanEndLine ss))
+    locStart  = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineStart (GHC.srcSpanStartCol ss)
+    locEnd    = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
+    ss' = GHC.mkSrcSpan locStart locEnd
+
+insertLenChangedInSrcSpan _ _ ss = error $ "insertVersionsInSrcSpan: expecting a RealSrcSpan, got:" ++ (GHC.showPpr ss)
+
+-- ---------------------------------------------------------------------
+
 insertVersionsInForestSpan :: Int -> Int -> ForestSpan -> ForestSpan
-insertVersionsInForestSpan vsNew veNew ((ForestLine trs _vs ls,cs),(ForestLine tre _ve le,ce))
-  = ((ForestLine trs vsNew ls,cs),(ForestLine tre veNew le,ce))
+insertVersionsInForestSpan vsNew veNew ((ForestLine chs trs _vs ls,cs),(ForestLine che tre _ve le,ce))
+  = ((ForestLine chs trs vsNew ls,cs),(ForestLine che tre veNew le,ce))
 
 -- ---------------------------------------------------------------------
 
@@ -423,7 +450,7 @@ srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToF
 -- --------------------------------------------------------------------
 
 treeIdFromForestSpan :: ForestSpan -> TreeId
-treeIdFromForestSpan ((ForestLine tr _ _,_),(ForestLine _ _ _,_)) = TId tr
+treeIdFromForestSpan ((ForestLine _ tr _ _,_),(ForestLine _ _ _ _,_)) = TId tr
 
 -- ---------------------------------------------------------------------
 {-
@@ -612,10 +639,11 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
     (startPos,endPos) = nonCommentSpan toks''
 
     -- if the original sspan had a ForestLine version, preserve it
-    (((ForestLine _trs vs _),_),(ForestLine _tre ve _,_)) = srcSpanToForestSpan sspan
+    (((ForestLine _chs _trs vs _),_),(ForestLine _che _tre ve _,_)) = srcSpanToForestSpan sspan
     -- Note: adding one to end version, so invariant won't fail
     -- newSpan = insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos) 
-    newSpan = insertVersionsInSrcSpan vs (ve + 1) $ posToSrcSpan forest (startPos,endPos) 
+    newSpan = insertLenChangedInSrcSpan True True
+            $ insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos) 
 
     zf = openZipperToNode tree $ Z.fromTree forest'
 
@@ -803,8 +831,8 @@ stripForestLines toks = map doOne toks
   where
     doOne (GHC.L l t,s) = (GHC.L l' t,s)
       where
-       ((ForestLine _ _ ls,_),(_,_)) = srcSpanToForestSpan l
-       l' = insertForestLineInSrcSpan (ForestLine 0 0 ls) l
+       ((ForestLine _ _ _ ls,_),(_,_)) = srcSpanToForestSpan l
+       l' = insertForestLineInSrcSpan (ForestLine False 0 0 ls) l
 
 -- ---------------------------------------------------------------------
 
@@ -834,8 +862,8 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
     (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
 
     (ghcl,_c) = getGhcLoc newSpan
-    (ForestLine tr v l) = ghcLineToForestLine ghcl
-    newSpan' = insertForestLineInSrcSpan (ForestLine tr (v+1) l) newSpan
+    (ForestLine ch tr v l) = ghcLineToForestLine ghcl
+    newSpan' = insertForestLineInSrcSpan (ForestLine ch tr (v+1) l) newSpan
 
     -- TODO: this is the same as before, merge it
     {-
@@ -919,7 +947,7 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
 limitPrevToks :: [PosToken] -> GHC.SrcSpan -> [PosToken]
 limitPrevToks prevToks sspan = prevToks''
   where
-    ((ForestLine _ _ startRow,startCol),(ForestLine _ _ endRow,_)) = srcSpanToForestSpan sspan
+    ((ForestLine _ _ _ startRow,startCol),(ForestLine _ _ _ endRow,_)) = srcSpanToForestSpan sspan
 
     -- Make sure the toks do not extend past where we are
     prevToks' = reverse $ dropWhile (\t -> tokenRow t > endRow) $ reverse  prevToks
@@ -1322,7 +1350,7 @@ invariant forest = rsub
                         ":" ++ prettyshow node']
 
             -- |Compare end of one span with beginning of another
-            before (ForestLine _trs ve er,ec) (ForestLine _tre vs sr,sc)
+            before (ForestLine _chs _trs ve er,ec) (ForestLine _che _tre vs sr,sc)
               = case (ve /= 0, vs /= 0) of
                  (False, False) -> (er,ec) <= (sr,sc) -- e.g. (10,3) <= (11,5)
                  (False, True)  -> True               -- e.g. (10,3) <= (100011,5)
@@ -1454,8 +1482,8 @@ syncAST ast@(GHC.L l _t) sspan forest = (GHC.L sspan xx,forest')
   where
     forest' = forest
 
-    ((ForestLine _ _ startRow,startCol),_)       = srcSpanToForestSpan l
-    ((ForestLine _ _ newStartRow,newStartCol),_) = srcSpanToForestSpan sspan
+    ((ForestLine _ _ _ startRow,startCol),_)       = srcSpanToForestSpan l
+    ((ForestLine _ _ _ newStartRow,newStartCol),_) = srcSpanToForestSpan sspan
 
     (( sr, sc),( er, ec)) = ghcSpanStartEnd l
     ((nsr,nsc),(ner,nec)) = ghcSpanStartEnd sspan

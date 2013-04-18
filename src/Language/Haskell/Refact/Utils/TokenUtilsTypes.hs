@@ -57,13 +57,18 @@ data Entry = Entry ForestSpan -- ^The source span contained in this Node
 -- ---------------------------------------------------------------------
 
 data ForestLine = ForestLine
-                  { flTreeSelector :: Int
+                  { flSpanLengthChanged :: Bool -- ^The length of the
+                                                -- span may have
+                                                -- changed due to
+                                                -- updated tokens.
+                  , flTreeSelector :: Int
                   , flInsertVersion :: Int
                   , flLine :: Int
                   } deriving (Eq)
 
 instance Show ForestLine where
-  show s = "(ForestLine " ++ (show $ flTreeSelector s)
+  show s = "(ForestLine " ++ (show $ flSpanLengthChanged s)
+         ++ " " ++ (show $ flTreeSelector s)
          ++ " " ++ (show $ flInsertVersion s)
          ++ " " ++ (show $ flLine s)
          ++ ")"

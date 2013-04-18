@@ -3748,7 +3748,7 @@ renamePN oldPN newName updateTokens t = do
     renameVar x = return x
 
     -- TODO: must update the original sspan with the new one.
-             ++AZ++ How?
+       --      ++AZ++ How?
     worker (row,col) l n
      = do if updateTokens
            then  do
