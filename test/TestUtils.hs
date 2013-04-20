@@ -10,6 +10,7 @@ module TestUtils
        , logTestSettings
        , catchException
        , mkTokenCache
+       , hex
 
        , setLogger
        ) where
@@ -31,11 +32,18 @@ import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
+import Numeric
 
 import Data.Tree
 import System.Log.Handler.Simple
 import System.Log.Logger
 import qualified Data.Map as Map
+
+
+-- ---------------------------------------------------------------------
+
+hex :: Int -> String
+hex v = "0x" ++ showHex v ""
 
 -- ---------------------------------------------------------------------
 

@@ -62,6 +62,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , showForest
        , showTree
        , showSrcSpan
+       , showSrcSpanF
        , ghcSpanStartEnd
        , insertNodeAfter
        , retrievePrevLineToks
@@ -78,6 +79,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , forestSpanVersionSet
        , forestSpanVersionNotSet
        , insertForestLineInSrcSpan
+       , insertLenChangedInSrcSpan
+       , insertVersionsInSrcSpan
        , srcSpanToForestSpan
        , nullSpan
        , simpPosToForestSpan
@@ -267,6 +270,7 @@ data Operations = OpAdded Entry          -- ^The entry that was added
 -- 5 bits for version : 32 values
 -- 20 bits for line number: 1048576 values
 
+forestLineMask,forestVersionMask,forestTreeMask,forestLenChangedMask :: Int
 forestLineMask =          0xfffff -- bottom 20 bits
 forestVersionMask    =  0x1f00000 -- next 5 bits
 forestTreeMask       = 0x3e000000 -- next 5 bits
@@ -319,10 +323,20 @@ instance Ord ForestLine where
   -- Use line as the primary comparison, but break any ties with the
   -- version
   -- Tree is ignored, as it is only a marker on the topmost element
-  compare (ForestLine _ _ v1 l1) (ForestLine _ _ v2 l2) =
-    if (l1 == l2)
-      then compare v1 v2
-      else compare l1 l2
+  -- If the size of a span is changed, it is returned as LT to prevent
+  -- issues with the invariant checking.
+  compare (ForestLine sc1 _ v1 l1) (ForestLine sc2 _ v2 l2) =
+         if (l1 == l2)
+           then compare v1 v2
+           else compare l1 l2
+{-
+    if (sc1 || sc2) 
+       then LT
+       else
+         if (l1 == l2)
+           then compare v1 v2
+           else compare l1 l2
+-}
 
 -- |Gets the version numbers
 forestSpanVersions :: ForestSpan -> (Int,Int)
@@ -383,12 +397,10 @@ showForestSpan :: ForestSpan -> String
 showForestSpan ((sr,sc),(er,ec))
   = show ((flToNum sr,sc),(flToNum er,ec))
   where
-    flToNum (ForestLine ch tr v l) = (if ch then 10000000000 else 0)
-                                   + tr * 100000000
-                                   + v  *   1000000
-                                   + l
-
-
+    flToNum (ForestLine ch tr v l) = (if ch then 10000000000::Integer else 0)
+                                   + ((fromIntegral tr) * 100000000::Integer)
+                                   + ((fromIntegral v)  *   1000000::Integer)
+                                   + (fromIntegral l)
 
 -- ---------------------------------------------------------------------
 
@@ -1539,6 +1551,13 @@ showSrcSpan :: GHC.SrcSpan -> String
 showSrcSpan sspan = show (getGhcLoc sspan, (r,c))
   where
     (r,c) = getGhcLocEnd sspan
+
+showSrcSpanF :: GHC.SrcSpan -> String
+showSrcSpanF sspan = show (((chs,trs,vs,ls),cs),((che,tre,ve,le),ce))
+  where
+    ((ForestLine chs trs vs ls,cs),(ForestLine che tre ve le,ce)) = srcSpanToForestSpan sspan
+    chsn = if chs then 1 else 0
+    chen = if che then 1 else 0
 
 -- ---------------------------------------------------------------------
 -- Next section is stuff brought over from LocUtils, to break cycles

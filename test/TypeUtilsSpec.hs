@@ -27,6 +27,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
+import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.Environment
@@ -789,6 +790,7 @@ spec = do
 
          return newBinding
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       -- (show $ toksFromState s) `shouldBe` ""
@@ -1424,7 +1426,8 @@ spec = do
               "`- ((1000019,1),(1000021,14))\n" -- our inserted span
 
 
-      (showSrcSpan sspan) `shouldBe` "((1000019,1),(1000021,14))"
+      (showSrcSpanF sspan) `shouldBe` "(((False,0,1,19),1),((False,0,1,21),14))"
+
 
       let toksFinal = retrieveTokens forest''
       -- (showToks toksFinal) `shouldBe` ""
@@ -1441,7 +1444,7 @@ spec = do
 
       ((nb,nn,tfo),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest'', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       -- (show tfo) `shouldBe` ""
-      (GHC.showPpr n) `shouldBe` "TokenTest.foo" 
+      (GHC.showPpr n) `shouldBe` "TokenTest.foo"
       (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
@@ -1466,9 +1469,11 @@ spec = do
 
       let toks' = retrieveTokens tree
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
-      let (decl',forest''') = syncAST decl sspan forest'' 
+      let (decl',forest''') = syncAST decl sspan forest''
 
-      (GHC.showPpr $ getSrcSpan decl') `shouldBe` "Just test/testdata/TokenTest.hs:(1000024,1)-(1000026,13)"
+      -- (GHC.showPpr $ getSrcSpan decl') `shouldBe` "Just test/testdata/TokenTest.hs:(1000024,1)-(1000026,13)"
+      (GHC.showPpr $ getSrcSpan decl') `shouldBe` "Just test/testdata/TokenTest.hs:(1048600,1)-(1048602,13)"
+      (showSrcSpanF $ fromJust $ getSrcSpan decl') `shouldBe` "(((False,0,1,24),1),((False,0,1,26),14))"
 
       (invariant forest''') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
@@ -1476,7 +1481,7 @@ spec = do
               "+- ((1,1),(15,17))\n|\n"++
               "+- ((19,1),(21,14))\n|\n"++
               "`- ((1000024,1),(1000026,14))\n"  -- our inserted span
-      (showSrcSpan sspan) `shouldBe` "((1000024,1),(1000026,14))"
+      (showSrcSpanF sspan) `shouldBe` "(((False,0,1,24),1),((False,0,1,26),14))"
 
       -- (show $ getTokensFor forest''' sspan) `shouldBe` ""
 
@@ -1495,7 +1500,7 @@ spec = do
 
       ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest''', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       -- (show tfo) `shouldBe` ""
-      (GHC.showPpr n) `shouldBe` "TokenTest.foo" 
+      (GHC.showPpr n) `shouldBe` "TokenTest.foo"
       (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n "
@@ -1543,8 +1548,8 @@ spec = do
               "+- ((1000006,1),(1000006,31))\n|\n"++
               "`- ((6,1),(32,18))\n"
 
-      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
-      (showSrcSpan newSpan) `shouldBe` "((1000006,1),(1000006,31))"
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1048582:1-30"
+      (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
 
       let (forest4',tree4) = getSrcSpanFor forest''' (srcSpanToForestSpan newSpan)
       -- (show forest4') `shouldBe` "" -- Broken, tokens for 1000006,31
@@ -1558,22 +1563,7 @@ spec = do
       let z = openZipperToSpan (srcSpanToForestSpan newSpan) $ Z.fromTree forest'''
       let ztoks = retrieveTokens $ Z.toTree z
       -- (show $ Z.tree z) `shouldBe` "" -- Looks good
-  
-      {-
-      let (tokStartPos,tokEndPos) = forestSpanToSimpPos (srcSpanToForestSpan newSpan)
-      let (startLoc,endLoc) = startEndLocIncComments' ztoks (tokStartPos,tokEndPos)
-      (show (tokStartPos,tokEndPos)) `shouldBe` "((6,1),(6,31))"
-      let (begin,middle,end) = splitToks (tokStartPos,tokEndPos) ztoks
-      (show middle) `shouldBe` "" -- Wrong value
-      let (toks1,toks2)   = break (\t -> tokenPos t >= startLoc) ztoks
-      -- (show toks2) `shouldBe` ""
-      let (toks21,toks22) = break (\t -> tokenPos t >  endLoc) toks2
-      (show $ map tokenPos toks2) `shouldBe` ""
-      (show toks21) `shouldBe` ""
 
-      (show middle) `shouldBe` ""
-      (show (startLoc,endLoc)) `shouldBe` "((6,1),(6,15))" -- NO!!
-      -}
 
       let (forest4,toksSig1) = getTokensFor forest''' newSpan
       (invariant forest4) `shouldBe` []
@@ -1588,6 +1578,23 @@ spec = do
 
       (GHC.showRichTokenStream toksSig1) `shouldBe` "\n\n\n\n\n toplevel :: Integer -> Integer"
 
+      --
+      let (((ForestLine _chs _trs vs _),_),(ForestLine _che _tre ve _,_)) = srcSpanToForestSpan newSpan
+
+      let fl = (ForestLine True 0 1 6)
+      (ghcLineToForestLine $ forestLineToGhcLine fl) `shouldBe` fl
+      (forestLineToGhcLine fl) `shouldBe` 1074790406
+      (hex $ forestLineToGhcLine fl) `shouldBe` "0x40100006"
+
+      let (startPos,endPos) = ((6,1),(6,31))
+      let tSpan = insertLenChangedInSrcSpan True True
+                $ insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos) 
+      (showSrcSpanF $ insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos))
+                             `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
+      (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
+      (showSrcSpanF tSpan)   `shouldBe` "(((True,0,2,6),1),((True,0,2,6),31))"
+      --
+
       let (forest5,newSpan2,_) = updateTokensForSrcSpan forest4 newSpan toksSig1
       (invariant forest5) `shouldBe` []
       (drawTreeEntry forest5) `shouldBe`
@@ -1597,11 +1604,11 @@ spec = do
               "|  `- ((3,1),(3,31))\n|\n"++
               "+- ((4,1),(4,19))\n|\n"++
               "+- ((1000006,1),(1000006,31))\n|\n"++
-              "`- ((6,1),(32,18))\n"
+              "`- ((6,1),(32,18))\nbaz"
 
 
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
-      let (decl',forest''') = syncAST decl sspan forest'' 
+      let (decl',forest''') = syncAST decl sspan forest''
 
       "a" `shouldBe` "a"
 
