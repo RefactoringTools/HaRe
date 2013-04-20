@@ -1064,6 +1064,7 @@ spec = do
       (ghcLineToForestLine   0x100022) `shouldBe` ForestLine False 0  1 34
       (ghcLineToForestLine  0xbe00022) `shouldBe` ForestLine False 5 30 34
       (ghcLineToForestLine 0x49400022) `shouldBe` ForestLine True  4 20 34
+      (ghcLineToForestLine 0x40100022) `shouldBe` ForestLine True  0  1 34
 
   describe "forestLineToGhcLine" $ do
     it "converts a ForestLine value to a GHC line" $ do
@@ -1073,6 +1074,8 @@ spec = do
                                         -- 0xbe = 101 11110
       (hex $ forestLineToGhcLine $ ForestLine True  4 20 34) `shouldBe` "0x49400022"
                                    -- 0x494 = 1 00100 10100
+      (hex $ forestLineToGhcLine $ ForestLine True  0  1 34) `shouldBe` "0x40100022"
+
   -- ---------------------------------------------
 
   describe "ForestLine Ord" $ do

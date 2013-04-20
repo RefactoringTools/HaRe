@@ -789,8 +789,8 @@ spec = do
          newBinding <- duplicateDecl declsr renamed n newName2
 
          return newBinding
-      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       -- (show $ toksFromState s) `shouldBe` ""
@@ -1587,12 +1587,19 @@ spec = do
       (hex $ forestLineToGhcLine fl) `shouldBe` "0x40100006"
 
       let (startPos,endPos) = ((6,1),(6,31))
-      let tSpan = insertLenChangedInSrcSpan True True
+      let tSpan = insertLenChangedInSrcSpan True False
                 $ insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos) 
       (showSrcSpanF $ insertVersionsInSrcSpan vs ve $ posToSrcSpan forest (startPos,endPos))
                              `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
       (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
-      (showSrcSpanF tSpan)   `shouldBe` "(((True,0,2,6),1),((True,0,2,6),31))"
+      (showSrcSpanF tSpan)   `shouldBe` "(((True,0,1,6),1),((False,0,1,6),31))"
+
+      (show (vs,ve)) `shouldBe` "(1,1)"
+      let ((s1,_),_) =  srcSpanToForestSpan newSpan
+      (hex $ forestLineToGhcLine s1) `shouldBe` "0x100006"
+      let ((s,_),e) = srcSpanToForestSpan tSpan
+      (hex $ forestLineToGhcLine s) `shouldBe`  "0x40100006"
+
       --
 
       let (forest5,newSpan2,_) = updateTokensForSrcSpan forest4 newSpan toksSig1
@@ -1603,8 +1610,8 @@ spec = do
               "|  +- ((1,1),(1,24))\n|  |\n"++
               "|  `- ((3,1),(3,31))\n|\n"++
               "+- ((4,1),(4,19))\n|\n"++
-              "+- ((1000006,1),(1000006,31))\n|\n"++
-              "`- ((6,1),(32,18))\nbaz"
+              "+- ((10001000006,1),(10001000006,31))\n|\n"++
+              "`- ((6,1),(32,18))\n"
 
 
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'

@@ -435,12 +435,23 @@ insertVersionsInSrcSpan _ _ ss = error $ "insertVersionsInSrcSpan: expecting a R
 insertLenChangedInSrcSpan :: Bool -> Bool -> GHC.SrcSpan -> GHC.SrcSpan
 insertLenChangedInSrcSpan chs che rss@(GHC.RealSrcSpan ss) = ss'
   where
+    (sl,sc) = getGhcLoc rss
+    (el,ec) = getGhcLocEnd rss
+    sl' = if chs then sl .|. forestLenChangedMask
+                 else sl .&. (complement forestLenChangedMask)
+
+    el' = if che then el .|. forestLenChangedMask
+                 else el .&. (complement forestLenChangedMask)
+
+    locStart =  GHC.mkSrcLoc (GHC.srcSpanFile ss) sl' (GHC.srcSpanStartCol ss)
+    locEnd    = GHC.mkSrcLoc (GHC.srcSpanFile ss) el' (GHC.srcSpanEndCol   ss)
+
     (vs,ve)   = forestSpanVersions $ srcSpanToForestSpan rss
     (trs,tre) = forestSpanAstVersions $ srcSpanToForestSpan rss
     lineStart = forestLineToGhcLine (ForestLine chs trs vs (GHC.srcSpanStartLine ss))
     lineEnd   = forestLineToGhcLine (ForestLine che tre ve (GHC.srcSpanEndLine ss))
-    locStart  = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineStart (GHC.srcSpanStartCol ss)
-    locEnd    = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
+    -- locStart  = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineStart (GHC.srcSpanStartCol ss)
+    -- locEnd    = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
     ss' = GHC.mkSrcSpan locStart locEnd
 
 insertLenChangedInSrcSpan _ _ ss = error $ "insertVersionsInSrcSpan: expecting a RealSrcSpan, got:" ++ (GHC.showPpr ss)
