@@ -64,7 +64,10 @@ data ForestLine = ForestLine
                   , flTreeSelector :: Int
                   , flInsertVersion :: Int
                   , flLine :: Int
-                  } deriving (Eq)
+                  } -- deriving (Eq)
+
+instance Eq ForestLine where
+  (ForestLine _ s1 v1 l1) == (ForestLine _ s2 v2 l2) = s1 == s2 && v1 == v2 && l1 == l2
 
 instance Show ForestLine where
   show s = "(ForestLine " ++ (show $ flSpanLengthChanged s)

@@ -888,17 +888,6 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
     (ForestLine ch tr v l) = ghcLineToForestLine ghcl
     newSpan' = insertForestLineInSrcSpan (ForestLine ch tr (v+1) l) newSpan
 
-    -- TODO: this is the same as before, merge it
-    {-
-    z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree forest'
-    prevToks = case (retrievePrevLineToks z) of
-                 [] -> retrieveTokens tree
-                 xs -> xs
-
-    prevToks' = limitPrevToks prevToks oldSpan
-    toks' = reIndentToks pos prevToks' toks
-    -}
-
     toks' = placeToksForSpan forest' oldSpan tree pos toks
 
     newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
@@ -939,16 +928,6 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
   where
     (fwithspan,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
 
-    {-
-    z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree fwithspan
-    prevToks = case (retrievePrevLineToks z) of
-                 [] -> retrieveTokens tree
-                 xs -> xs
-
-    
-    prevToks'' = limitPrevToks prevToks oldSpan
-    toks'' = reIndentToks pos prevToks'' toks
-    -}
     toks'' = placeToksForSpan fwithspan oldSpan tree pos toks
 
     (startPos,endPos) = nonCommentSpan toks''
@@ -1114,7 +1093,6 @@ insertNodeAfter
   :: Tree Entry -> Tree Entry -> Tree Entry -> Tree Entry
 insertNodeAfter oldNode newNode forest = forest'
   where
-    -- (startPos,endPos) = treeStartEnd node
     zf = openZipperToNode oldNode $ Z.fromTree forest
     zp = gfromJust "insertNodeAfter" $ Z.parent zf
     tp = Z.tree zp

@@ -260,7 +260,7 @@ spec = do
                         (((forestLineToGhcLine $ ForestLine False 0 1 6),1),
                          ((forestLineToGhcLine $ ForestLine False 0 1 6),31) )
       let (tm4,toks4) = getTokensFor tm''' sspan3
-      (drawTreeEntry tm4) `shouldBe` 
+      (drawTreeEntry tm4) `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
             "|  +- ((1,1),(1,24))\n|  |\n"++
@@ -273,7 +273,7 @@ spec = do
       -- NOTE: shortcut, using same toks, it is the book-keeping we
       -- are testing
       let (tm5,sspan5,tree5) = updateTokensForSrcSpan tm4 sspan3 toks4
-      (drawTreeEntry tm5) `shouldBe` 
+      (drawTreeEntry tm5) `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
             "|  +- ((1,1),(1,24))\n|  |\n"++
@@ -284,16 +284,46 @@ spec = do
 
       -- putDeclToksAfterSpan test/testdata/DupDef/Dd1.hs:1048582:1-30:("(((False,0,1,6),1),((False,0,1,6),31))",PlaceIndent 1 0 2
 
-      let (tm6,sspan6) = addToksAfterSrcSpan tm5 sspan3 (PlaceIndent 1 0 2) declToks
-      (drawTreeEntry tm6) `shouldBe` 
+      -- --
+      let newSpan = posToSrcSpan tm5 ((7,1),(7,19))
+      (showSrcSpanF newSpan) `shouldBe` "(((False,0,0,7),1),((False,0,0,7),19))"
+      -- let (forest',newSpan') = addNewSrcSpanAndToksAfter tm5 sspan3 newSpan (PlaceIndent 1 0 2) declToks
+
+      let z = openZipperToSpan (srcSpanToForestSpan sspan3) $ Z.fromTree tm5
+      (show $ treeStartEnd (Z.tree z))    `shouldBe` "(((ForestLine True 0 1 6),1),((ForestLine True 0 1 6),31))"
+      (show (srcSpanToForestSpan sspan3)) `shouldBe` "(((ForestLine False 0 1 6),1),((ForestLine False 0 1 6),31))"
+      (show $ treeStartEnd (Z.tree z) == (srcSpanToForestSpan sspan3)) `shouldBe` "True"
+
+      let f1 = insertSrcSpan tm5 (srcSpanToForestSpan sspan3)
+      (drawTreeEntry f1) `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
             "|  +- ((1,1),(1,24))\n|  |\n"++
             "|  `- ((3,1),(3,31))\n|\n"++
             "+- ((4,1),(4,19))\n|\n"++
-            "+- ((10001000006,1),(10001000006,31))\n|  |\n"++
-            "|  +- ((1000006,1),(1000006,31))\n|  |\n"++
-            "|  `- ((1000007,1),(1000007,19))\n|\n"++
+            "+- ((10001000006,1),(10001000006,31))\n|\n"++
+            "`- ((6,1),(32,18))\n"
+
+      let (forest',tree) = getSrcSpanFor tm5 (srcSpanToForestSpan sspan3)
+      (drawTreeEntry forest') `shouldBe`
+            "((1,1),(32,18))\n|\n"++
+            "+- ((1,1),(3,31))\n|  |\n"++
+            "|  +- ((1,1),(1,24))\n|  |\n"++
+            "|  `- ((3,1),(3,31))\n|\n"++
+            "+- ((4,1),(4,19))\n|\n"++
+            "+- ((10001000006,1),(10001000006,31))\n|\n"++
+            "`- ((6,1),(32,18))\n"
+      -- --
+
+      let (tm6,sspan6) = addToksAfterSrcSpan tm5 sspan3 (PlaceIndent 1 0 2) declToks
+      (drawTreeEntry tm6) `shouldBe`
+            "((1,1),(32,18))\n|\n"++
+            "+- ((1,1),(3,31))\n|  |\n"++
+            "|  +- ((1,1),(1,24))\n|  |\n"++
+            "|  `- ((3,1),(3,31))\n|\n"++
+            "+- ((4,1),(4,19))\n|\n"++
+            "+- ((10001000006,1),(10001000006,31))\n|\n"++
+            "+- ((1000007,1),(1000007,19))\n|\n"++
             "`- ((6,1),(32,18))\n"
 
       -- Context set up at last, actual test:
@@ -302,10 +332,17 @@ spec = do
                         (((forestLineToGhcLine $ ForestLine False 0 1 7),1),
                          ((forestLineToGhcLine $ ForestLine False 0 1 7),19) )
       let (tm7,toks7) = getTokensFor tm6 sspan4
-      (drawTreeEntry tm7) `shouldBe` 
-            ""
+      (drawTreeEntry tm7) `shouldBe`
+            "((1,1),(32,18))\n|\n"++
+            "+- ((1,1),(3,31))\n|  |\n"++
+            "|  +- ((1,1),(1,24))\n|  |\n"++
+            "|  `- ((3,1),(3,31))\n|\n"++
+            "+- ((4,1),(4,19))\n|\n"++
+            "+- ((10001000006,1),(10001000006,31))\n|\n"++
+            "+- ((1000007,1),(1000007,19))\n|\n"++
+            "`- ((6,1),(32,18))\n"
 
-      (show toks7) `shouldBe` ""
+      (show toks7) `shouldBe` "[((((7,1),(7,1)),ITsemi),\"\"),((((7,1),(7,9)),ITvarid \"toplevel\"),\"toplevel\"),((((7,10),(7,11)),ITvarid \"x\"),\"x\"),((((7,12),(7,13)),ITequal),\"=\"),((((7,14),(7,15)),ITvarid \"c\"),\"c\"),((((7,16),(7,17)),ITstar),\"*\"),((((7,18),(7,19)),ITvarid \"x\"),\"x\"),((((9,1),(9,1)),ITvocurly),\"\")]"
 
   -- ---------------------------------------------
 
