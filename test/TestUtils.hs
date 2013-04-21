@@ -78,7 +78,7 @@ parseSourceFileTest fileName = do
 
 initialState :: RefactState
 initialState = RefSt
-  { rsSettings = RefSet ["./test/testdata/"] False
+  { rsSettings = RefSet ["./test/testdata/","./testdata"] False
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone

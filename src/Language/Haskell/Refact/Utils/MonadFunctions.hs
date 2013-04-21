@@ -114,7 +114,7 @@ getToksForSpan sspan = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
-  logm $ "getToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
+  logm $ "getToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
 
 -- |Get the current tokens preceding a given GHC.SrcSpan.
@@ -127,14 +127,14 @@ getToksBeforeSpan sspan = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
-  logm $ "getToksBeforeSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (ghcSpanStartEnd sspan,toks))
+  logm $ "getToksBeforeSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
 
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens
 putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksForSpan sspan toks = do
-  logm $ "putToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show toks)
+  logm $ "putToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show toks)
   st <- get
   let Just tm = rsModule st
 
@@ -170,7 +170,7 @@ putToksForPos pos toks = do
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterSpan :: GHC.SrcSpan -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksAfterSpan oldSpan pos toks = do
-  logm $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan)
+  logm $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan) ++ ":" ++ (showSrcSpanF oldSpan)
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache oldSpan (rsTokenCache tm)
@@ -201,7 +201,7 @@ putToksAfterPos pos position toks = do
 putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc (GHC.Located t)
 -- putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc t
 putDeclToksAfterSpan oldSpan t pos toks = do
-  logm $ "putDeclToksAfterSpan " ++ (GHC.showPpr oldSpan) ++ ":" ++ (show (pos,toks))
+  logm $ "putDeclToksAfterSpan " ++ (GHC.showPpr oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,toks))
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache oldSpan (rsTokenCache tm)
@@ -214,7 +214,7 @@ putDeclToksAfterSpan oldSpan t pos toks = do
 -- |Remove a GHC.SrcSpan and its associated tokens
 removeToksForSpan :: GHC.SrcSpan -> RefactGhc ()
 removeToksForSpan sspan = do
-  logm $ "removeToksForSpan " ++ (GHC.showPpr sspan)
+  logm $ "removeToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (showSrcSpanF sspan)
   st <- get
   let Just tm = rsModule st
   let tk' = removeToksFromCache (rsTokenCache tm) sspan
