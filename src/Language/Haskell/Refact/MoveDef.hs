@@ -294,8 +294,8 @@ moveDecl1 t defName ns topLevel
 
         let Just sspan = getSrcSpan funBinding
         funToks <- getToksForSpan sspan
+        logm $ "moveDecl1:funToks=" ++ (showToks funToks)
 
-        -- (t'',sigRemoved) <- rmTypeSig (ghead "moveDecl3.2"  ns) t
         (t'',sigsRemoved) <- rmTypeSigs ns t
         -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''

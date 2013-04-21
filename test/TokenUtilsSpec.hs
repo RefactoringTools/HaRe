@@ -206,7 +206,7 @@ spec = do
            "`- ((25,1),(32,18))\n"
 
     -- ---------------------------------
-    -- xxxxxxxx
+    
     it "gets the tokens after adding and renaming" $ do
       (t,toks) <- parsedFileDupDefDd1
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -343,6 +343,67 @@ spec = do
             "`- ((6,1),(32,18))\n"
 
       (show toks7) `shouldBe` "[((((7,1),(7,1)),ITsemi),\"\"),((((7,1),(7,9)),ITvarid \"toplevel\"),\"toplevel\"),((((7,10),(7,11)),ITvarid \"x\"),\"x\"),((((7,12),(7,13)),ITequal),\"=\"),((((7,14),(7,15)),ITvarid \"c\"),\"c\"),((((7,16),(7,17)),ITstar),\"*\"),((((7,18),(7,19)),ITvarid \"x\"),\"x\"),((((9,1),(9,1)),ITvocurly),\"\")]"
+
+    -- ---------------------------------
+  -- xxxxxxxx
+
+    it "gets the tokens after renaming" $ do
+      (t,toks) <- parsedFileLiftD1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let forest = mkTreeFromTokens toks
+
+      -- putToksForSpan test/testdata/LiftToToplevel/D1.hs:6:24:(((False,0,0,6),24),((False,0,0,6),25))
+      -- [((((0,1),(0,3)),ITvarid "sq"),"sq"),((((0,4),(0,5)),IToparen),"("),((((0,5),(0,6)),ITvarid "x"),"x"),((((0,7),(0,10)),ITvarid "pow"),"pow"),((((0,10),(0,11)),ITcparen),")")]
+
+      let sspan1 = posToSrcSpan forest $
+                        (((forestLineToGhcLine $ ForestLine False 0 0 6),24),
+                         ((forestLineToGhcLine $ ForestLine False 0 0 6),25) )
+      newToks <- liftIO $ basicTokenise "sq (x pow)"
+      (show newToks) `shouldBe` "[((((0,1),(0,3)),ITvarid \"sq\"),\"sq\"),((((0,4),(0,5)),IToparen),\"(\"),((((0,5),(0,6)),ITvarid \"x\"),\"x\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\"),((((0,10),(0,11)),ITcparen),\")\")]"
+
+      let (tm2,sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
+      (drawTreeEntry tm2) `shouldBe`
+            "((1,1),(13,25))\n|\n"++
+            "+- ((1,1),(6,23))\n|\n"++
+            "+- ((10000000006,24),(10000000006,34))\n|\n"++
+            "`- ((6,26),(13,25))\n"
+
+      -- putToksAfterPos ((8,6),(8,8)) at PlaceAdjacent:[((((0,2),(0,5)),ITvarid "pow"),"pow")]
+      let sspan2 = posToSrcSpan forest $
+                        (((forestLineToGhcLine $ ForestLine False 0 0 8),6),
+                         ((forestLineToGhcLine $ ForestLine False 0 0 8),8) )
+      toks3 <- liftIO $ basicTokenise " pow"
+      (show toks3) `shouldBe` "[((((0,2),(0,5)),ITvarid \"pow\"),\"pow\")]"
+      let (tm3,newSpan3) = addToksAfterSrcSpan tm2 sspan2 PlaceAdjacent toks3
+      (showSrcSpanF newSpan3) `shouldBe` "(((False,0,1,8),9),((False,0,1,8),12))"
+      (drawTreeEntry tm3) `shouldBe`
+            "((1,1),(13,25))\n|\n"++
+            "+- ((1,1),(6,23))\n|\n"++
+            "+- ((10000000006,24),(10000000006,34))\n|\n"++
+            "`- ((6,26),(13,25))\n   |\n"++
+            "   +- ((6,26),(7,8))\n   |\n"++
+            "   +- ((8,6),(8,8))\n   |\n"++
+            "   +- ((1000008,9),(1000008,12))\n   |\n"++
+            "   `- ((8,9),(13,25))\n"
+
+      -- The test ....
+      -- getToksForSpan test/testdata/LiftToToplevel/D1.hs:8:6-19:("(((False,0,0,8),6),((False,0,0,8),20))",
+      let sspan3 = posToSrcSpan forest $
+                        (((forestLineToGhcLine $ ForestLine False 0 0 8),6),
+                         ((forestLineToGhcLine $ ForestLine False 0 0 8),20) )
+
+      let (tm4,toks4) = getTokensFor tm3 sspan3
+      (drawTreeEntry tm4) `shouldBe`
+            "((1,1),(13,25))\n|\n"++
+            "+- ((1,1),(6,23))\n|\n"++
+            "+- ((10000000006,24),(10000000006,34))\n|\n"++
+            "`- ((6,26),(13,25))\n   |\n"++
+            "   +- ((6,26),(7,8))\n   |\n"++
+            "   +- ((8,6),(8,20))\n   |\n"++
+            "   `- ((9,6),(13,25))\n"
+
+      (showToks toks4) `shouldBe` "[(((8,6),(8,6)),ITvocurly,\"\"),(((8,6),(8,8)),ITvarid \"sq\",\"sq\"),(((8,9),(8,12)),ITvarid \"pow\",\"pow\"),(((8,9),(8,10)),ITvarid \"x\",\"x\"),(((8,11),(8,12)),ITequal,\"=\"),(((8,13),(8,14)),ITvarid \"x\",\"x\"),(((8,15),(8,16)),ITvarsym \"^\",\"^\"),(((8,17),(8,20)),ITvarid \"pow\",\"pow\")]"
 
   -- ---------------------------------------------
 
@@ -2133,6 +2194,14 @@ mkTreeFromSubTrees trees = Node (Entry sspan []) trees
 nonNullSpan :: ForestSpan
 nonNullSpan = ((ForestLine False 0 0 0,0),(ForestLine False 0 0 1,0))
 
+
+-- ---------------------------------------------------------------------
+
+liftD1FileName :: GHC.FastString
+liftD1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/D1.hs"
+
+parsedFileLiftD1Ghc :: IO (ParseResult,[PosToken])
+parsedFileLiftD1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/D1.hs"
 
 -- ---------------------------------------------------------------------
 

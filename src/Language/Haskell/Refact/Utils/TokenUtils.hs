@@ -323,9 +323,10 @@ instance Ord ForestLine where
   -- Use line as the primary comparison, but break any ties with the
   -- version
   -- Tree is ignored, as it is only a marker on the topmost element
-  -- If the size of a span is changed, it is returned as LT to prevent
-  -- issues with the invariant checking.
-  compare (ForestLine sc1 _ v1 l1) (ForestLine sc2 _ v2 l2) =
+  -- Ignore sizeChanged flag, it will only be relevant in the
+  -- invariant check
+  compare (ForestLine _sc1 _ v1 l1) (ForestLine _sc2 _ v2 l2) =
+ 
          if (l1 == l2)
            then compare v1 v2
            else compare l1 l2
@@ -1344,7 +1345,7 @@ invariant forest = rsub
           = r ++ checkSequence node' (s:ss)
           where
             -- r = if e1 <= s2
-            r = if before e1 s2
+            r = if (before e1 s2) || (sizeChanged e1)
                  then []
                  else ["FAIL: subForest not in order: " ++
                         show e1 ++ " not < " ++ show s2 ++
@@ -1360,6 +1361,14 @@ invariant forest = rsub
                                     then False
                                     else True
 
+            sizeChanged (ForestLine ch _ _ _,_) = ch
+
+{-
+     cs    ce
+     True  _ -> True
+     False _ -> before
+
+-}
 
 -- ---------------------------------------------------------------------
 

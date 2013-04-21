@@ -67,6 +67,8 @@ data ForestLine = ForestLine
                   } -- deriving (Eq)
 
 instance Eq ForestLine where
+  -- TODO: make this undefined, and patch all broken code to use the
+  --       specific fun here directly instead.
   (ForestLine _ s1 v1 l1) == (ForestLine _ s2 v2 l2) = s1 == s2 && v1 == v2 && l1 == l2
 
 instance Show ForestLine where
