@@ -227,7 +227,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
                                 -- error ("liftToMod:newBinds=" ++ (GHC.showPpr (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
                                 -- mod'<-moveDecl1 (replaceDecls declsr (before++parent'++after))
-                                mod'<-moveDecl1 (replaceBinds renamed (before++parent'++after))
+                                mod' <- moveDecl1 (replaceBinds renamed (before++parent'++after))
                                        (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) 
                                        [GHC.unLoc pn] True
                                 -- return (mod', declaredPns)
@@ -293,8 +293,10 @@ moveDecl1 t defName ns topLevel
         logm $ "moveDecl1: (ns,funBinding)=" ++ (GHC.showPpr (ns,funBinding)) -- ++AZ++
 
         let Just sspan = getSrcSpan funBinding
+        drawTokenTree "before getting toks" -- ++AZ++
         funToks <- getToksForSpan sspan
         logm $ "moveDecl1:funToks=" ++ (showToks funToks)
+        drawTokenTree "after getting toks" -- ++AZ++
 
         (t'',sigsRemoved) <- rmTypeSigs ns t
         -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
@@ -383,6 +385,7 @@ addParamsToParent  pn params t = do
   -- binds' <- addParamsToDecls (hsBinds t) pn params True
   -- return $ replaceBinds t binds'
   t' <- addActualParamsToRhs True pn params t
+  logm $ "addParamsToParent:done"
   return t'
 
 {-

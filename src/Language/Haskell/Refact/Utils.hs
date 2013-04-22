@@ -319,7 +319,8 @@ applyRefac refac source = do
     res <- refac  -- Run the refactoring, updating the state as required
 
     mod'  <- getRefactRenamed
-    toks' <- fetchToks
+    -- toks' <- fetchToks
+    toks' <- fetchToksFinal
     m     <- getRefactStreamModified
 
     -- Clear the refactoring state

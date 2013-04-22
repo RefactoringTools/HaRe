@@ -8,6 +8,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        -- * Original API provided
        , fetchToks -- ^Deprecated
+       , fetchToksFinal
        , fetchOrigToks
        -- , putToks -- ^Deprecated, destroys token tree
        , getTypecheckedModule
@@ -79,6 +80,15 @@ fetchToks = do
   let toks = retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchToks (not showing toks"
+  return toks
+
+-- |fetch the final tokens
+fetchToksFinal :: RefactGhc [PosToken]
+fetchToksFinal = do
+  Just tm <- gets rsModule
+  let toks = retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
+  -- logm $ "fetchToks" ++ (showToks toks)
+  logm $ "fetchToksFinal (not showing toks"
   return toks
 
 -- |fetch the pristine token stream

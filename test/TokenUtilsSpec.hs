@@ -375,8 +375,11 @@ spec = do
                          ((forestLineToGhcLine $ ForestLine False 0 0 8),8) )
       toks3 <- liftIO $ basicTokenise " pow"
       (show toks3) `shouldBe` "[((((0,2),(0,5)),ITvarid \"pow\"),\"pow\")]"
-      let (tm3,newSpan3) = addToksAfterSrcSpan tm2 sspan2 PlaceAdjacent toks3
+      let toks3' = map markToken toks3
+      (show toks3') `shouldBe` "[((((0,2),(0,5)),ITvarid \"pow\"),\"pow\")]"
+      let (tm3,newSpan3) = addToksAfterSrcSpan tm2 sspan2 PlaceAdjacent toks3'
       (showSrcSpanF newSpan3) `shouldBe` "(((False,0,1,8),9),((False,0,1,8),12))"
+      -- (show tm3) `shouldBe` ""
       (drawTreeEntry tm3) `shouldBe`
             "((1,1),(13,25))\n|\n"++
             "+- ((1,1),(6,23))\n|\n"++
@@ -401,7 +404,25 @@ spec = do
             "`- ((6,26),(13,25))\n   |\n"++
             "   +- ((6,26),(7,8))\n   |\n"++
             "   +- ((8,6),(8,20))\n   |\n"++
-            "   `- ((9,6),(13,25))\n"
+            "   `- ((9,6),(13,25))\nfoo"
+
+{-
+tree TId 0:
+((1,1),(11,18))
+|
++- ((1,1),(6,23))
+|
++- ((10000000006,24),(10000000006,34))
+|
+`- ((6,26),(11,18))
+   |
+   +- ((6,26),(7,8))
+   |
+   +- ((8,6),(8,20))
+   |
+   `- ((8,21),(11,18))
+-}
+
 
       (showToks toks4) `shouldBe` "[(((8,6),(8,6)),ITvocurly,\"\"),(((8,6),(8,8)),ITvarid \"sq\",\"sq\"),(((8,9),(8,12)),ITvarid \"pow\",\"pow\"),(((8,9),(8,10)),ITvarid \"x\",\"x\"),(((8,11),(8,12)),ITequal,\"=\"),(((8,13),(8,14)),ITvarid \"x\",\"x\"),(((8,15),(8,16)),ITvarsym \"^\",\"^\"),(((8,17),(8,20)),ITvarid \"pow\",\"pow\")]"
 
@@ -1004,6 +1025,12 @@ spec = do
 
       let toks' = retrieveTokens forest'
       (show toks') `shouldBe` (show toksClean)
+
+  -- ---------------------------------------------
+
+  describe "retrieveTokensFinal" $ do
+    it "extracts all the tokens from the leaves of the trees, in order, realigned" $ do
+      pending
 
   -- ---------------------------------------------
 

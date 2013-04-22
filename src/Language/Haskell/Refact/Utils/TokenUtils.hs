@@ -22,6 +22,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , getSrcSpanFor
        -- , getPathFor
        , retrieveTokens
+       , retrieveTokensFinal
        , addNewSrcSpanAndToksAfter
        , addToksAfterSrcSpan
        , addDeclToksAfterSrcSpan
@@ -778,8 +779,24 @@ removeSrcSpan forest sspan = (forest'', delTree)
 -- |Retrieve all the tokens at the leaves of the tree, in order
 -- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
 --      rows with tokenFileMark in a filename for a token
+-- TODO: separate this into a version that does re-align for final
+--       retrieval, and one that does not for intermediate use
 retrieveTokens :: Tree Entry -> [PosToken]
-retrieveTokens forest = stripForestLines $ monotonicLineToks $ reAlignMarked
+retrieveTokens forest = stripForestLines $ monotonicLineToks {- $ reAlignMarked -}
+                      $ concat $ map (\t -> F.foldl accum [] t) [forest]
+  where
+    accum :: [PosToken] -> Entry -> [PosToken]
+    accum acc (Entry _ toks) = acc ++ toks
+
+-- ---------------------------------------------------------------------
+
+-- |Retrieve all the tokens at the leaves of the tree, in order
+-- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
+--      rows with tokenFileMark in a filename for a token
+-- TODO: separate this into a version that does re-align for final
+--       retrieval, and one that does not for intermediate use
+retrieveTokensFinal :: Tree Entry -> [PosToken]
+retrieveTokensFinal forest = stripForestLines $ monotonicLineToks $ reAlignMarked
                       $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]
