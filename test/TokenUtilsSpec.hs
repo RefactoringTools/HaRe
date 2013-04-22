@@ -345,7 +345,6 @@ spec = do
       (show toks7) `shouldBe` "[((((7,1),(7,1)),ITsemi),\"\"),((((7,1),(7,9)),ITvarid \"toplevel\"),\"toplevel\"),((((7,10),(7,11)),ITvarid \"x\"),\"x\"),((((7,12),(7,13)),ITequal),\"=\"),((((7,14),(7,15)),ITvarid \"c\"),\"c\"),((((7,16),(7,17)),ITstar),\"*\"),((((7,18),(7,19)),ITvarid \"x\"),\"x\"),((((9,1),(9,1)),ITvocurly),\"\")]"
 
     -- ---------------------------------
-  -- xxxxxxxx
 
     it "gets the tokens after renaming" $ do
       (t,toks) <- parsedFileLiftD1Ghc
@@ -404,7 +403,7 @@ spec = do
             "`- ((6,26),(13,25))\n   |\n"++
             "   +- ((6,26),(7,8))\n   |\n"++
             "   +- ((8,6),(8,20))\n   |\n"++
-            "   `- ((9,6),(13,25))\nfoo"
+            "   `- ((9,6),(13,25))\n"
 
 {-
 tree TId 0:
@@ -1311,7 +1310,7 @@ tree TId 0:
       compare (ForestLine False 0 0 3) (ForestLine False 0 1 3) `shouldBe` LT
       compare (ForestLine False 0 1 1) (ForestLine False 0 2 3) `shouldBe` LT
       compare (ForestLine False 0 9 3) (ForestLine False 0 0 4) `shouldBe` LT
-      compare (ForestLine True  0 0 6) (ForestLine False 0 0 4) `shouldBe` LT
+      compare (ForestLine True  0 0 6) (ForestLine False 0 0 4) `shouldBe` GT
 
       compare (ForestLine False 0 7 3) (ForestLine False 0 7 3) `shouldBe` EQ
 

@@ -548,12 +548,8 @@ updateToks :: (SYB.Data t)
   -> (GHC.Located t -> [Char]) -- ^ pretty printer
   -> Bool         -- ^ Add trailing newline if required
   -> RefactGhc () -- ^ Updates the RefactState
-updateToks oldAST@(GHC.L sspan _) newAST printFun addTrailingNl
-  -- = trace "updateToks" $
+updateToks (GHC.L sspan _) newAST printFun addTrailingNl
   = do
-       -- let (startPos, endPos) = getStartEndLoc oldAST
-       -- updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
-
        newToks <- liftIO $ basicTokenise (printFun newAST)
        let newToks' = if addTrailingNl 
                        then newToks ++ [newLnToken (last newToks)]

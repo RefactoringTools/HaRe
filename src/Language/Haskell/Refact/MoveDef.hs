@@ -293,10 +293,10 @@ moveDecl1 t defName ns topLevel
         logm $ "moveDecl1: (ns,funBinding)=" ++ (GHC.showPpr (ns,funBinding)) -- ++AZ++
 
         let Just sspan = getSrcSpan funBinding
-        drawTokenTree "before getting toks" -- ++AZ++
+        -- drawTokenTree "before getting toks" -- ++AZ++
         funToks <- getToksForSpan sspan
         logm $ "moveDecl1:funToks=" ++ (showToks funToks)
-        drawTokenTree "after getting toks" -- ++AZ++
+        -- drawTokenTree "after getting toks" -- ++AZ++
 
         (t'',sigsRemoved) <- rmTypeSigs ns t
         -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
@@ -309,7 +309,6 @@ moveDecl1 t defName ns topLevel
 
         maybeToksSigMulti <- mapM getToksForMaybeSig sigsRemoved
         let maybeToksSig = concat maybeToksSigMulti
-
 
         logm $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
 
@@ -382,10 +381,11 @@ addParamsToParent :: (HsValBinds t) => GHC.Name -> [GHC.Name] -> t -> RefactGhc 
 addParamsToParent _pn [] t = return t
 addParamsToParent  pn params t = do
   logm $ "addParamsToParent:(pn,params)" ++ (GHC.showPpr (pn,params))
-  -- binds' <- addParamsToDecls (hsBinds t) pn params True
-  -- return $ replaceBinds t binds'
+  drawTokenTree "bbbb"
   t' <- addActualParamsToRhs True pn params t
-  logm $ "addParamsToParent:done"
+  drawTokenTree "aaaa"
+  -- tree <- getTokenTree
+  -- logm $ "addParamsToParent:done:tree=" ++ (show tree)
   return t'
 
 {-

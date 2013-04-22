@@ -2730,7 +2730,7 @@ makeNewToks :: (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
 makeNewToks (decl, maybeSig, declToks) = do
    let
      declStr = case declToks of
-                Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
+                Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts
                 Nothing -> "\n"++(prettyprint decl)++"\n\n"
      sigStr  = case declToks of
                 Just _ts -> ""
@@ -2866,7 +2866,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
            where
             newFun' = unlines $ stripLeadingSpaces $ lines $ sigStr ++ newFunBody
             newFunBody = case newFunToks of
-                           Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream ts
+                           Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts
                            Nothing -> prettyprint newFun
 
             sigStr  = case newFunToks of
@@ -3073,21 +3073,101 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
     -- = applyTP (stop_tdTP (failTP `adhocTP` worker))
      where
        worker :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-       worker (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) e2))
-        -- TODO: reinstate this test
-        | pname == pn
-        -- | True
-         = do
-              -- error "got here:addActualParamsToRhs"
+       worker oldExp@(GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) e2))
+        | pname == pn = do
+              TODO: newExp is calculated incorrectly
               let newExp = (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) (foldl addParamToExp e2 paramPNames)))
-              if modifyToks then do _ <- updateToks e2 newExp prettyprint False
-                                    -- error "addActualParamsToRhs"
+              logm $ "addActualParamsToRhs:newExp=" ++ (SYB.showData SYB.Renamer 0 $ newExp)
+              logm $ "addActualParamsToRhs:(prettyprint newExp)=[" ++ (prettyprint newExp) ++ "]"
+              -- if modifyToks then do _ <- updateToks e2 newExp prettyprint False
+              if modifyToks then do _ <- updateToks oldExp newExp prettyprint False
                                     return newExp
                             else return newExp
        worker x = return x
 
        addParamToExp :: (GHC.LHsExpr GHC.Name) -> GHC.Name -> (GHC.LHsExpr GHC.Name)
        addParamToExp  expr param = GHC.noLoc (GHC.HsApp expr (GHC.noLoc (GHC.HsVar param)))
+
+{-
+Alternate, no parens : sq pow x + sumSquares xs
+
+                (L {test/testdata/LiftToToplevel/D2.hs:6:21-44} 
+                 (OpApp 
+
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-28} 
+                   (HsApp 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-26} 
+                     (HsApp 
+                      (L {test/testdata/LiftToToplevel/D2.hs:6:21-22} 
+                       (HsVar {Name: LiftToToplevel.D2.sq})) 
+                      (L {test/testdata/LiftToToplevel/D2.hs:6:24-26} 
+                       (HsVar {Name: pow})))) 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:28} 
+                     (HsVar {Name: x})))) 
+
+
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:30} 
+                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6} 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:32-44} 
+                   (HsApp 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:32-41} 
+                     (HsVar {Name: LiftToToplevel.D2.sumSquares})) 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:43-44} 
+                     (HsVar {Name: xs}))))))))] 
+
+
+Required end result : (sq pow) x + sumSquares xs
+
+                (L {test/testdata/LiftToToplevel/D2.hs:6:21-46} 
+                 (OpApp 
+
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-30} 
+                   (HsApp 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-28} 
+                     (HsPar 
+                      (L {test/testdata/LiftToToplevel/D2.hs:6:22-27} 
+                       (HsApp 
+                        (L {test/testdata/LiftToToplevel/D2.hs:6:22-23} 
+                         (HsVar {Name: LiftToToplevel.D2.sq})) 
+                        (L {test/testdata/LiftToToplevel/D2.hs:6:25-27} 
+                         (HsVar {Name: pow})))))) 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:30} 
+                     (HsVar {Name: x})))) 
+
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:32} 
+                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6} 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:34-46} 
+                   (HsApp 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:34-43} 
+                     (HsVar {Name: LiftToToplevel.D2.sumSquares})) 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:45-46} 
+                     (HsVar {Name: xs}))))))))] 
+
+Original : sq x + sumSquares xs
+
+                (L {test/testdata/LiftToToplevel/D2.hs:6:21-40} 
+                 (OpApp 
+
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-24} 
+                   (HsApp 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-22} 
+                     (HsVar {Name: sq})) 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:24} 
+                     (HsVar {Name: x})))) 
+
+
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:26} 
+                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6} 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:28-40} 
+                   (HsApp 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:28-37} 
+                     (HsVar {Name: LiftToToplevel.D2.sumSquares})) 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:39-40} 
+                     (HsVar {Name: xs}))))))))] 
+
+-}
+
+
 
 {-
 zz ab = 1 + toplevel ab

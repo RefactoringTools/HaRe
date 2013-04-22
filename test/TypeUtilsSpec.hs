@@ -526,7 +526,7 @@ spec = do
       pending -- "fix the prior test"
 
     -- -----------------------------------------------------------------
-
+{-
     it "It does stop_tdTU" $ do
       -- Top-down type-unifying traversal that is cut of below nodes
       -- where the argument strategy succeeds.
@@ -561,7 +561,7 @@ spec = do
                     "(x, (6, 13)),\n "++
                     "(xs, (6, 15)), "++ 
                     "(LiftToToplevel.D1.main, (13, 1))]"
-
+-}
 
   -- ---------------------------------------------------------------------
 
