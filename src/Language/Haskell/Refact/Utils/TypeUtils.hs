@@ -3075,8 +3075,8 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
        worker :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
        worker oldExp@(GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) e2))
         | pname == pn = do
-              TODO: newExp is calculated incorrectly
-              let newExp = (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) (foldl addParamToExp e2 paramPNames)))
+              -- let newExp = (GHC.L l1 (GHC.HsApp (GHC.L l2 (GHC.HsVar pname)) (foldl addParamToExp e2 paramPNames)))
+              let newExp = foldl myAddParam oldExp paramPNames
               logm $ "addActualParamsToRhs:newExp=" ++ (SYB.showData SYB.Renamer 0 $ newExp)
               logm $ "addActualParamsToRhs:(prettyprint newExp)=[" ++ (prettyprint newExp) ++ "]"
               -- if modifyToks then do _ <- updateToks e2 newExp prettyprint False
@@ -3088,34 +3088,19 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
        addParamToExp :: (GHC.LHsExpr GHC.Name) -> GHC.Name -> (GHC.LHsExpr GHC.Name)
        addParamToExp  expr param = GHC.noLoc (GHC.HsApp expr (GHC.noLoc (GHC.HsVar param)))
 
+       myAddParam (GHC.L l1 (GHC.HsApp e1 e2)) n = (GHC.L l1 (GHC.HsApp e1' e2))
+         where
+           e1' = (GHC.noLoc
+                   (GHC.HsPar
+                    (GHC.noLoc
+                     (GHC.HsApp e1
+                               (GHC.noLoc (GHC.HsVar n))
+                     )
+                    )
+                  )
+                )
+
 {-
-Alternate, no parens : sq pow x + sumSquares xs
-
-                (L {test/testdata/LiftToToplevel/D2.hs:6:21-44} 
-                 (OpApp 
-
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-28} 
-                   (HsApp 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-26} 
-                     (HsApp 
-                      (L {test/testdata/LiftToToplevel/D2.hs:6:21-22} 
-                       (HsVar {Name: LiftToToplevel.D2.sq})) 
-                      (L {test/testdata/LiftToToplevel/D2.hs:6:24-26} 
-                       (HsVar {Name: pow})))) 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:28} 
-                     (HsVar {Name: x})))) 
-
-
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:30} 
-                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6} 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:32-44} 
-                   (HsApp 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:32-41} 
-                     (HsVar {Name: LiftToToplevel.D2.sumSquares})) 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:43-44} 
-                     (HsVar {Name: xs}))))))))] 
-
-
 Required end result : (sq pow) x + sumSquares xs
 
                 (L {test/testdata/LiftToToplevel/D2.hs:6:21-46} 
@@ -3142,6 +3127,33 @@ Required end result : (sq pow) x + sumSquares xs
                      (HsVar {Name: LiftToToplevel.D2.sumSquares})) 
                     (L {test/testdata/LiftToToplevel/D2.hs:6:45-46} 
                      (HsVar {Name: xs}))))))))] 
+
+Alternate, no parens : sq pow x + sumSquares xs
+
+                (L {test/testdata/LiftToToplevel/D2.hs:6:21-44} 
+                 (OpApp 
+
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-28} 
+                   (HsApp 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-26} 
+                     (HsApp 
+                      (L {test/testdata/LiftToToplevel/D2.hs:6:21-22} 
+                       (HsVar {Name: LiftToToplevel.D2.sq})) 
+                      (L {test/testdata/LiftToToplevel/D2.hs:6:24-26} 
+                       (HsVar {Name: pow})))) 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:28} 
+                     (HsVar {Name: x})))) 
+
+
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:30} 
+                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6} 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:32-44} 
+                   (HsApp 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:32-41} 
+                     (HsVar {Name: LiftToToplevel.D2.sumSquares})) 
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:43-44} 
+                     (HsVar {Name: xs}))))))))] 
+
 
 Original : sq x + sumSquares xs
 

@@ -63,11 +63,17 @@ import Language.Haskell.Refact.Utils.GhcUtils
 
 --targetFile = "../test/testdata/" ++ targetMod ++ ".hs"
 
-targetFile = "./test/testdata/TypeUtils/" ++ targetMod ++ ".hs"
+-- ++AZ++ targetFile = "./test/testdata/TypeUtils/" ++ targetMod ++ ".hs"
 --targetFile = "./" ++ targetMod ++ ".hs"
 -- targetMod = "SwapArgs/B"
 -- targetMod = "Ole"
-targetMod = "Empty"
+-- ++AZ++ targetMod = "Empty"
+
+targetFile = "./test/testdata/" ++ targetMod ++ ".hs" -- ++AZ++
+-- targetMod = "Demote/WhereIn6"                                       -- ++AZ++
+-- targetMod = "MoveDef/Md1"                                       -- ++AZ++
+-- targetMod = "Demote/WhereIn2"                                       -- ++AZ++
+targetMod = "Demote/PatBindIn1"                                       -- ++AZ++
 
 {- main = t1 -}
 
@@ -157,7 +163,11 @@ getStuff =
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "FreeAndDeclared.Declare"
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "SwapArgs.B"
         -- modSum <- GHC.getModSummary $ GHC.mkModuleName "Ole"
-        modSum <- GHC.getModSummary $ GHC.mkModuleName targetMod
+        -- ++AZ++ modSum <- GHC.getModSummary $ GHC.mkModuleName targetMod 
+        -- modSum <- GHC.getModSummary $ GHC.mkModuleName "Demote.WhereIn6"
+        -- modSum <- GHC.getModSummary $ GHC.mkModuleName "MoveDef.Md1"
+        -- modSum <- GHC.getModSummary $ GHC.mkModuleName "Demote.WhereIn2"
+        modSum <- GHC.getModSummary $ GHC.mkModuleName "Demote.PatBindIn1"
         p <- GHC.parseModule modSum
 
         t <- GHC.typecheckModule p

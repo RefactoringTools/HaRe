@@ -16,6 +16,8 @@ Seems Language.Haskell.Interpreter will return an error if there are any warning
 Will modify tests to avoid warnings, for now, but must address in future.
 
 
+Original tests (with good results) are here
+  https://github.com/alanz/HaRe/tree/71f80d2a59058acd6088c98d9748999f90ab0195/testing
 
 
 

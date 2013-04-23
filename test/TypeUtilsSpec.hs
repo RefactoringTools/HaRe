@@ -789,8 +789,8 @@ spec = do
          newBinding <- duplicateDecl declsr renamed n newName2
 
          return newBinding
-      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       -- (show $ toksFromState s) `shouldBe` ""
@@ -818,8 +818,8 @@ spec = do
 
          -- return newBinding
          return (funBinding,declsToDup,newBinding)
-      -- ((fb,dd,newb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((fb,dd,newb),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      ((fb,dd,newb),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((fb,dd,newb),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (GHC.showPpr n) `shouldBe` "ff"
       (GHC.showPpr dd) `shouldBe` "[ff = 15]"
@@ -853,6 +853,59 @@ spec = do
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       (GHC.showPpr $ last $ init nb) `shouldBe` "MoveDef.Md1.toplevel bar2 x = MoveDef.Md1.c GHC.Num.* x"
+
+  -- ---------------------------------------------
+
+  describe "addActualParamsToRhs" $ do
+    it "Adds a parameter to a the rhs of a declaration, and updates the token stream" $ do
+      (t, toks) <- parsedFileLiftD1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+      -- let decl@(GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [GHC.L _ (GHC.Match _ _ rhs) ] _) _ _ _)) = head declsr
+      let decl = head declsr
+      (GHC.showPpr decl) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = sq x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
+      -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
+      let Just (GHC.L _ n) = locToName liftD1FileName (6, 21) renamed
+      let
+        comp = do
+         _newName <- mkNewGhcName "bar"
+         newName2 <- mkNewGhcName "bar2"
+         newBinding <- addActualParamsToRhs True n [newName2] decl
+
+         return newBinding
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showPpr n) `shouldBe` "sq"
+      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+      (GHC.showPpr nb) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = (sq bar2) x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
+
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.D1 where\n\n {-lift 'sq' to top level. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = (sq bar2) x+ sumSquares xs\n   where\n      sq x = x ^ pow\n      pow =2\n\n sumSquares [] = 0\n\n main = sumSquares [1..4]\n\n\n "
+
+    -- --------------------
+
+    it "Adds parameters to a the rhs of a declaration, and updates the token stream" $ do
+      (t, toks) <- parsedFileLiftD1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+      -- let decl@(GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [GHC.L _ (GHC.Match _ _ rhs) ] _) _ _ _)) = head declsr
+      let decl = head declsr
+      (GHC.showPpr decl) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = sq x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
+      -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
+      let Just (GHC.L _ n) = locToName liftD1FileName (6, 21) renamed
+      let
+        comp = do
+         newName  <- mkNewGhcName "bar"
+         newName2 <- mkNewGhcName "bar2"
+         newBinding <- addActualParamsToRhs True n [newName,newName2] decl
+
+         return newBinding
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showPpr n) `shouldBe` "sq"
+      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+      (GHC.showPpr nb) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = ((sq bar) bar2) x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
+
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.D1 where\n\n {-lift 'sq' to top level. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = ((sq bar) bar2) x+ sumSquares xs\n   where\n      sq x = x ^ pow\n      pow =2\n\n sumSquares [] = 0\n\n main = sumSquares [1..4]\n\n\n "
 
   -- ---------------------------------------------
 
