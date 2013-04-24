@@ -1,5 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Language.Haskell.Refact.Utils.Monad
        ( ParseResult
        -- , RefactResult
@@ -154,10 +156,21 @@ instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
 instance (MonadTrans GHC.GhcT) where
    lift = GHC.liftGhcT
 
+
+-- Could not deduce (MonadPlus (GHC.GhcT (StateT RefactState IO)))
 -- instance MonadPlus RefactGhc where
+
 instance MonadPlus (GHC.GhcT (StateT RefactState IO)) where
-  mzero = undefined
-  mplus = undefined
+  mzero = error "mzero undefined for RefactGhc"
+
+  -- mplus :: RefactGhc a -> RefactGhc a -> RefactGhc a
+  -- mplus (v1::(RefactGhc [a])) (v2::(RefactGhc [a])) = do
+  mplus v1 v2 = do
+    vv1 <- v1
+    vv2 <- v2
+    (vv1 `mplus` vv2)
+  -- mplus = error "mplus undefined for RefactGhc"  
+
 
 {-
 instance MonadPlus (RefactGhc a) where
@@ -167,20 +180,6 @@ instance MonadPlus (RefactGhc a) where
    -- ^Try one of the refactorings, x or y, with the same state plugged in
 -}
 
-{-
-instance (MonadPlus (GHC.GhcT (StateT RefactState IO))) where
-  mzero = lift mzero
-
-  -- For somewhereMStaged to work, the b leg should only be evaluated
-  -- if the a leg is mzero
-  mplus a b = do
-                a' <- a 
-                case a' of
-                  mzero -> do
-                            b'  <- b
-                            return b'
-                  _ -> return a'
--}
 
 runRefactGhc ::
   RefactGhc a -> RefactState -> IO (a, RefactState)

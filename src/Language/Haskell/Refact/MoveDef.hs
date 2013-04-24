@@ -344,9 +344,9 @@ pnsNeedRenaming dest parent liftedDecls pns
        return (concat r)
   where
      pnsNeedRenaming' pn
-       = do let (f,d) = hsFDsFromInside dest --f: free variable names that may be shadowed by pn
+       = do (f,d) <- hsFDsFromInside dest --f: free variable names that may be shadowed by pn
                                              --d: declaread variables names that may clash with pn
-            let vs = hsVisiblePNs pn parent  --vs: declarad varaibles that may shadow pn
+            vs <- hsVisiblePNs pn parent  --vs: declarad variables that may shadow pn
             let -- inscpNames = map (\(x,_,_,_)->x) $ inScopeInfo inscps
                 vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
             -- if elem (pNtoName pn) vars  || isInScopeAndUnqualified (pNtoName pn) inscps && findEntity pn dest
@@ -863,8 +863,8 @@ addParamsToParentAndLiftedDecl :: HsValBinds t => -- SYB.Data t =>
   -> [GHC.LHsBind GHC.Name]
   -> RefactGhc (t, [GHC.LHsBind GHC.Name], Bool)
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls
-  =do  let (ef,_) = hsFreeAndDeclaredPNs parent
-       let (lf,_) = hsFreeAndDeclaredPNs liftedDecls
+  =do  (ef,_) <- hsFreeAndDeclaredPNs parent
+       (lf,_) <- hsFreeAndDeclaredPNs liftedDecls
 
        let eff = getFreeVars $ hsBinds parent
        let lff = getFreeVars liftedDecls
@@ -1197,7 +1197,7 @@ doDemoting' t pn
                          drawTokenTree "" -- ++AZ++ debug
                          logm "MoveDef.doDemoting':target location found" -- ++AZ++
                          -- (f,d)<-hsFreeAndDeclaredPNs demotedDecls
-                         let (f,_d) = hsFreeAndDeclaredPNs demotedDecls
+                         (f,_d) <- hsFreeAndDeclaredPNs demotedDecls
                          -- remove demoted declarations
                          (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
                          (t',demotedSigs) <- rmTypeSigs declaredPns t
@@ -1273,7 +1273,7 @@ doDemoting' t pn
                     | (not $ findPNs pns pat) && findPNs pns rhs
                     = return [1::Int]
                   usedInPat  _ = return []
-                  -- usedInPat  _ = mzero 
+                  -- usedInPat  _ = mzero
 
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).

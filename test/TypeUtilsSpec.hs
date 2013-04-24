@@ -485,10 +485,15 @@ spec = do
 
   describe "hsFreeAndDeclaredPNs" $ do
     it "Finds declared HsVar" $ do
-      (t, _toks) <- parsedFileDeclareGhc
+      (t, toks) <- parsedFileDeclareGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
-
-      let res = hsFreeAndDeclaredPNs renamed
+      
+      let
+        comp = do
+          r <- hsFreeAndDeclaredPNs renamed
+          return r
+      -- ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       -- Free Vars
       (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[(Data.Generics.Text.gshow, (-1, -1)), (z, (36, 4)),\n (System.IO.getChar, (-1, -1)), (GHC.Base.>>=, (-1, -1)),\n (GHC.Base.fail, (-1, -1)), (System.IO.putStrLn, (-1, -1)),\n (GHC.Base.return, (-1, -1)), (a, (27, 6)), (b, (27, 11)),\n (y, (21, 8)), (GHC.Base.$, (-1, -1)), (GHC.List.head, (-1, -1)),\n (GHC.List.zip, (-1, -1)), (GHC.Num.fromInteger, (-1, -1)),\n (GHC.Num.*, (-1, -1)), (FreeAndDeclared.Declare.c, (9, 1)),\n (x, (6, 10))]"
@@ -499,13 +504,17 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "Finds free and declared in a single bind" $ do
-      (t, _toks) <- parsedFileDd1Ghc
+      (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tup = getName "DupDef.Dd1.ff" renamed
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
 
-      let res = hsFreeAndDeclaredPNs decl
+      let
+        comp = do
+          r <- hsFreeAndDeclaredPNs decl
+          return r
+      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
       -- Free Vars
       (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
@@ -584,18 +593,24 @@ spec = do
   describe "hsVisiblePNs" $ do
     it "Returns [] if e does not occur in t" $ do
       -- ((_,Just renamed,_parsed),_toks) <- parsedFileDd1Ghc
-      (t,_toks) <- parsedFileDd1Ghc
+      (t,toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tl1  = locToExp (4,13) (4,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       let Just tup = getName "DupDef.Dd1.tup" renamed
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
-      (GHC.showPpr $ hsVisiblePNs tl1 tup) `shouldBe` "[]"
+      let
+        comp = do
+          r <- hsVisiblePNs tl1 tup
+          return r
+      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+
+      (GHC.showPpr $ res) `shouldBe` "[]"
 
     -- -----------------------------------------------------------------
 
     it "Returns visible vars if e does occur in t" $ do
-      (t,_toks) <- parsedFileDd1Ghc
+      (t,toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
@@ -604,13 +619,18 @@ spec = do
       let Just tup = getName "DupDef.Dd1.l" renamed
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       (GHC.showPpr decl) `shouldBe` "DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z"
+      let
+        comp = do
+         r <- hsVisiblePNs tl1 decl
+         return r
+      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
-      (GHC.showPpr $ hsVisiblePNs tl1 decl) `shouldBe` "[z, ll]"
+      (GHC.showPpr res ) `shouldBe` "[z, ll]"
 
     -- -----------------------------------------------------------------
 
     it "Returns visible vars if e does occur in t #2" $ do
-      (t,_toks) <- parsedFileDd1Ghc
+      (t,toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
@@ -618,8 +638,13 @@ spec = do
 
       let Just rhs  = locToExp (26,1) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       (GHC.showPpr rhs) `shouldBe` "let ll = 34 in ll GHC.Num.+ z"
+      let
+        comp = do
+          r <- hsVisiblePNs tl1 rhs
+          return r
+      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
-      (GHC.showPpr $ hsVisiblePNs tl1 rhs) `shouldBe` "[ll]"
+      (GHC.showPpr res) `shouldBe` "[ll]"
 
   -- ---------------------------------------------
 

@@ -35,6 +35,7 @@ Library
                                 , syb
                                 , hslogger
                                 , transformers
+                                , Strafunski-StrategyLib
                                 -- , uniplate
 
         -- GHC-Options:             -Wall
@@ -87,6 +88,7 @@ Executable ghc-hare
                                 , syb
                                 , transformers
                                 , hslogger
+                                , Strafunski-StrategyLib
                                 -- , uniplate
         Other-Modules:          Paths_HaRe
 
