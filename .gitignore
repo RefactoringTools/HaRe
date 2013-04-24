@@ -138,3 +138,7 @@ testing/*/hi
 testing/UTest
 testing/addCon/Case1.hs.temp.hs
 testing/addCon/Case2.hs.temp.hs
+/test/testdata/LiftToToplevel/D3.hs.AST_out
+/test/testdata/LiftToToplevel/D3.hs.refactored
+/test/testdata/LiftToToplevel/D3.hs.renamed_out
+/test/testdata/LiftToToplevel/D3.hs.tokens
