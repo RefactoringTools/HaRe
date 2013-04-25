@@ -32,6 +32,8 @@ import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
+import Data.Generics.Strafunski.StrategyLib.StrategyLib
+
 import Debug.Trace
 
 -- ---------------------------------------------------------------------
@@ -1219,7 +1221,8 @@ doDemoting' t pn
                          logm $ "MoveDef:sig and decl toks[" ++ (GHC.showRichTokenStream (demotedSigToks ++ demotedToks)) ++ "]" -- ++AZ++
 
                          --get those variables declared at where the demotedDecls will be demoted to
-                         let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
+                         -- let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
+                         dl <- mapM (flip declaredNamesInTargetPlace ds) declaredPns
                          --make sure free variable in 'f' do not clash with variables in 'dl',
                          --otherwise do renaming.
                          let clashedNames=filter (\x-> elem (id x) (map id f)) $ (nub.concat) dl
@@ -1350,27 +1353,46 @@ doDemoting' t pn
           declaredNamesInTargetPlace :: (SYB.Data t)
                             => GHC.Name -> t
                             -- -> RefactGhc [GHC.Name]
-                            -> [GHC.Name]
+                            -> RefactGhc [GHC.Name]
+{-
           declaredNamesInTargetPlace pn
              = SYB.everythingStaged SYB.Renamer (++) []
                    ([] `SYB.mkQ`  inMatch
                        `SYB.extQ` inPat)
+-}
+          declaredNamesInTargetPlace pn=applyTU (stop_tdTUGhc (failTU
+                                                    `adhocTU` inMatch
+                                                    `adhocTU` inPat))
+
                where
                  -- inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
                  inMatch ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
                     | findPN pn rhs
-                     -- =(return.snd)=<<hsFDsFromInside rhs
-                     = (snd $ hsFDsFromInside rhs)
-                 -- inMatch _ =mzero
-                 inMatch _ = []
+                     =(return.snd)=<<hsFDsFromInside rhs
+                     -- = (snd $ hsFDsFromInside rhs)
+                 inMatch _ =mzero
+                 -- inMatch _ = []
 
                  -- inPat (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
                  inPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
                     |findPN pn rhs
-                     -- =(return.snd)=<<hsFDsFromInside pat
-                     = (snd $ hsFDsFromInside pat)
-                 -- inPat _=mzero
-                 inPat _ = []
+                     =(return.snd)=<<hsFDsFromInside pat
+                     -- = (snd $ hsFDsFromInside pat)
+                 inPat _=mzero
+                 -- inPat _ = []
+
+
+{-
+                 inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+                    | findPN pn rhs
+                     =(return.snd)=<<hsFDsFromInside match
+                 inMatch _ =mzero
+
+                 inPat (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
+                    |findPN pn rhs
+                     =(return.snd)=<<hsFDsFromInside pat
+                 inPat _=mzero
+-}
 
 
 {- ++original++
@@ -1514,7 +1536,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
                    -- logm $ "MoveDef.foldParams after rmParamsInParent"
 
                    -- ls<-mapM hsFreeAndDeclaredPNs sndSubst
-                   let ls = map hsFreeAndDeclaredPNs sndSubst
+                   ls <- mapM hsFreeAndDeclaredPNs sndSubst
                    -- newNames contains the newly introduced names to the demoted decls---
                    -- let newNames=(map pNtoName (concatMap fst ls)) \\ (map pNtoName fstSubst)
                    let newNames=((concatMap fst ls)) \\ (fstSubst)
@@ -1802,8 +1824,8 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
 
 
        getClashedNames oldNames newNames match
-         = do  let (f,d) = hsFDsFromInside match
-               let ds' = map (flip hsVisiblePNs match) oldNames
+         = do  (f,d) <- hsFDsFromInside match
+               ds' <- mapM (flip hsVisiblePNs match) oldNames
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub
                                    ( nub (d `union` (nub.concat) ds')))
