@@ -14,8 +14,10 @@ import Control.Monad
 import Control.Lens
 import Control.Applicative
 import Data.Data
--- import Data.Data.Lens(uniplate,biplate,template,tinplate)
+
 import Unsafe.Coerce
+
+import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 {-
 
@@ -251,6 +253,11 @@ checkItemStage stage x = (const False `SYB.extQ` postTcType `SYB.extQ` fixity `S
         postTcType = const (stage<SYB.TypeChecker) :: GHC.PostTcType -> Bool
         fixity = const (stage<SYB.Renamer) :: GHC.Fixity -> Bool
 
+checkItemRenamer :: Typeable a => a -> Bool
+checkItemRenamer x = checkItemStage SYB.Renamer x
+
+
+
 -- | Staged variation of SYB.everything
 -- The stage must be provided to avoid trying to modify elements which
 -- may not be present at all stages of AST processing.
@@ -259,8 +266,6 @@ everythingStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> SYB.Gen
 everythingStaged stage k z f x
   | checkItemStage stage x = z
   | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
-
-
 
 
 -- listify :: Typeable r => (r -> Bool) -> GenericQ [r]
@@ -274,3 +279,81 @@ listifyStaged
 listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x | p x ]))
 
 
+-- ---------------------------------------------------------------------
+
+-- Strafunski StrategyLib adaptations
+
+-- Example being chased
+-- hsFreeAndDeclared'= applyTU (stop_tdTU (failTU  `adhocTU` expr) t
+
+-- Starting point down the rabbit hole of checkItemStage
+-- | Top-down type-unifying traversal that is cut of below nodes
+--   where the argument strategy succeeds.
+stop_tdTUGhc 	:: (MonadPlus m, Monoid a) => TU a m -> TU a m
+stop_tdTUGhc s	=  s `choiceTU` (allTUGhc' (stop_tdTU s))
+
+
+allTUGhc :: (Monad m, Monoid a) => (a -> a -> a) -> a -> TU a m -> TU a m
+allTUGhc op2 u s  =  MkTU (\x -> case (checkItemRenamer x) of
+                                  True -> do return (u) -- `op2` s)
+                                  -- True  ->  fold (gmapQ (applyTU s) x)
+                                  False ->  fold (gmapQ (applyTU s) x)
+                          )
+  where
+    fold l = foldM op2' u l
+    op2' x c = c >>= \y -> return (x `op2` y)
+
+-- This is the one that needs checkItemStage
+{- ++ Original (reamed to avoid clash)
+allTUGhc :: Monad m => (a -> a -> a) -> a -> TU a m -> TU a m
+allTUGhc op2 u s  =  MkTU (\x -> fold (gmapQ (applyTU s) x))
+  where
+    fold l = foldM op2' u l
+    op2' x c = c >>= \y -> return (x `op2` y)
+-}
+
+{-
+newtype Monad m =>
+        TU a m =
+                 MkTU (forall x. Data x => x -> m a)
+
+unTP (MkTP f)	 = f
+unTU (MkTU f)	 = f
+
+applyTU 	:: (Monad m, Data x) => TU a m -> x -> m a
+applyTU         =  unTU
+
+paraTU 		:: Monad m => (forall t. t -> m a) -> TU a m
+paraTU f	=  MkTU f
+
+
+-}
+
+-- Hence this one too
+allTUGhc' :: (Monad m, Monoid a) => TU a m -> TU a m
+allTUGhc' =  allTUGhc mappend mempty
+
+-- hsVisiblePNs e t = applyTU (full_tdTU (constTU [] `adhocTU` top
+
+-- | Full type-unifying traversal in top-down order.
+full_tdTUGhc 	:: (Monad m, Monoid a) => TU a m -> TU a m
+full_tdTUGhc s	=  op2TU mappend s (allTUGhc' (full_tdTUGhc s))
+
+{-
+-- | Parallel combination of two type-unifying strategies with a binary
+--   combinator. In other words, the values resulting from applying the
+--   type-unifying strategies are combined to a final value by applying
+--   the combinator 'o'.
+
+op2TU :: Monad m => (a -> b -> c) -> TU a m -> TU b m -> TU c m
+op2TU o s s' =  s  `passTU` \a ->
+                s' `passTU` \b ->
+                constTU (o a b)
+
+passTU 		:: Monad m => TU a m -> (a -> TU b m) -> TU b m
+passTU f g	=  MkTU ((unTU f) `mlet` (\y -> unTU (g y))) 
+
+-- | Sequential composition with value passing; a kind of monadic let.
+mlet 		:: Monad m => (a -> m b) -> (b -> a -> m c) -> a -> m c
+f `mlet` g    	=  \x -> f x >>= \y -> g y x
+-}

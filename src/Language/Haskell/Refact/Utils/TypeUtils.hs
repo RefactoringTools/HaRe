@@ -153,9 +153,8 @@ import qualified UniqSet       as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
--- import Data.Generics.Strafunski.StrategyLib.TraversalTheme
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
-import Data.Generics.Strafunski.StrategyLib.StrategyPrelude
+
 
 -- Lens
 -- import Control.Lens
@@ -463,7 +462,7 @@ hsFreeAndDeclaredPNs t = do
   return (f,d)
 
 hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
-hsFreeAndDeclaredPNs' t = do 
+hsFreeAndDeclaredPNs' t = do
       (f,d) <- hsFreeAndDeclared'
       return (nub f, nub d)
           -- TODO: This must be top-down, stop on first success.
@@ -472,7 +471,7 @@ hsFreeAndDeclaredPNs' t = do
 
    where
 {- ++AZ++ experimental -}
-          hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  -- `adhocTU` binds
+          hsFreeAndDeclared'= applyTU (stop_tdTUGhc (failTU  -- `adhocTU` binds
                                                          `adhocTU` expr
                                                          `adhocTU` pattern
                                                          `adhocTU` match
@@ -775,7 +774,7 @@ hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
                       `SYB.extQ` match
                       `SYB.extQ` stmts) t
 -}
-hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` top
+hsVisiblePNs e t = applyTU (full_tdTUGhc (constTU [] `adhocTU` top
                                                   `adhocTU` expr
                                                   `adhocTU` decl
                                                   `adhocTU` match
