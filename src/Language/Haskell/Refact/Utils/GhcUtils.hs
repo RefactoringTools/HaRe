@@ -290,7 +290,7 @@ listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x 
 -- | Top-down type-unifying traversal that is cut of below nodes
 --   where the argument strategy succeeds.
 stop_tdTUGhc 	:: (MonadPlus m, Monoid a) => TU a m -> TU a m
-stop_tdTUGhc s	=  s `choiceTU` (allTUGhc' (stop_tdTU s))
+stop_tdTUGhc s	=  s `choiceTU` (allTUGhc' (stop_tdTUGhc s))
 
 
 allTUGhc :: (Monad m, Monoid a) => (a -> a -> a) -> a -> TU a m -> TU a m

@@ -1223,6 +1223,7 @@ doDemoting' t pn
                          --get those variables declared at where the demotedDecls will be demoted to
                          -- let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
                          dl <- mapM (flip declaredNamesInTargetPlace ds) declaredPns
+                         logm $ "mapM declaredNamesInTargetPlace done"
                          --make sure free variable in 'f' do not clash with variables in 'dl',
                          --otherwise do renaming.
                          let clashedNames=filter (\x-> elem (id x) (map id f)) $ (nub.concat) dl
@@ -1360,26 +1361,26 @@ doDemoting' t pn
                    ([] `SYB.mkQ`  inMatch
                        `SYB.extQ` inPat)
 -}
-          declaredNamesInTargetPlace pn=applyTU (stop_tdTUGhc (failTU
-                                                    `adhocTU` inMatch
-                                                    `adhocTU` inPat))
-
+          declaredNamesInTargetPlace pn t = do
+             logm $ "declaredNamesInTargetPlace:pn=" ++ (GHC.showPpr pn)
+             res <- applyTU (stop_tdTUGhc (failTU
+                                           `adhocTU` inMatch
+                                           `adhocTU` inPat)) t
+             return res
                where
                  -- inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-                 inMatch ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
-                    | findPN pn rhs
-                     =(return.snd)=<<hsFDsFromInside rhs
-                     -- = (snd $ hsFDsFromInside rhs)
+                 inMatch ((GHC.Match _pats _ rhs) :: GHC.Match GHC.Name)
+                    | findPN pn rhs = do
+                     logm $ "declaredNamesInTargetPlace:inMatch"
+                     (return.snd) =<< hsFDsFromInside rhs
                  inMatch _ =mzero
-                 -- inMatch _ = []
 
                  -- inPat (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
                  inPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
-                    |findPN pn rhs
-                     =(return.snd)=<<hsFDsFromInside pat
-                     -- = (snd $ hsFDsFromInside pat)
-                 inPat _=mzero
-                 -- inPat _ = []
+                    |findPN pn rhs = do
+                     logm $ "declaredNamesInTargetPlace:inPat"
+                     (return.snd) =<< hsFDsFromInside pat
+                 inPat _= mzero
 
 
 {-

@@ -142,3 +142,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/LiftToToplevel/D3.hs.refactored
 /test/testdata/LiftToToplevel/D3.hs.renamed_out
 /test/testdata/LiftToToplevel/D3.hs.tokens
+/src/strafunski.hs
