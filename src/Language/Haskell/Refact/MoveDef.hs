@@ -218,7 +218,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                       logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (GHC.showPpr (liftedDecls,declaredPns))
                       pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
 
-                      -- let (_,dd) = hsFreeAndDeclaredPNs renamed
+                      -- (_,dd) <- hsFreeAndDeclaredPNs renamed
                       let dd = getDeclaredVars $ hsBinds renamed
                       logm $ "liftToMod:(ddd)=" ++ (GHC.showPpr dd)
 

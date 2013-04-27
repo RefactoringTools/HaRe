@@ -91,12 +91,28 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D3 C3 A3 8 6" $ do
-      pending
+     liftToTopLevel defaultTestSettings (Just "./test/testdata/LiftToToplevel/A3.hs") "./test/testdata/LiftToToplevel/D3.hs" (8,6)
+     -- liftToTopLevel logTestSettings     (Just "./test/testdata/LiftToToplevel/A3.hs") "./test/testdata/LiftToToplevel/D3.hs" (8,6)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/D3.hs.expected"
+                          "./test/testdata/LiftToToplevel/D3.hs.refactored"
+     diff `shouldBe` []
+
+     c3Refactored <- doesFileExist "./test/testdata/LiftToToplevel/C3.hs.refactored"
+     c3Refactored `shouldBe` False
+
+     a3Refactored <- doesFileExist "./test/testdata/LiftToToplevel/A3.hs.refactored"
+     a3Refactored `shouldBe` False
+
 
     -- ---------------------------------
 
     it "liftToTopLevel WhereIn1 12 18" $ do
-      pending
+     liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/WhereIn1.hs" (12,18)
+     -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/WhereIn1.hs" (12,18)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/WhereIn1.hs.expected"
+                          "./test/testdata/LiftToToplevel/WhereIn1.hs.refactored"
+     diff `shouldBe` []
+
 
     -- ---------------------------------
 
