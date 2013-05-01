@@ -251,9 +251,9 @@ isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
 -- AST Stage.
 checkItemStage :: Typeable a => SYB.Stage -> a -> Bool
 checkItemStage stage x = (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x
-  where nameSet = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> Bool
+  where nameSet    = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> Bool
         postTcType = const (stage<SYB.TypeChecker) :: GHC.PostTcType -> Bool
-        fixity = const (stage<SYB.Renamer) :: GHC.Fixity -> Bool
+        fixity     = const (stage<SYB.Renamer) :: GHC.Fixity -> Bool
 
 checkItemRenamer :: Typeable a => a -> Bool
 checkItemRenamer x = checkItemStage SYB.Renamer x
@@ -284,6 +284,7 @@ listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x 
 -- ---------------------------------------------------------------------
 
 -- Strafunski StrategyLib adaptations
+
 
 -- ---------------------------------------------------------------------
 
@@ -334,3 +335,51 @@ checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` n
 checkItemRenamer' :: (MonadPlus m) => TU () m
 checkItemRenamer' = checkItemStage' SYB.Renamer
 
+
+
+{-
+-- ++AZ++ old version
+-- ---------------------------------------------------------------------
+
+-- Strafunski StrategyLib adaptations
+
+-- Example being chased
+-- hsFreeAndDeclared'= applyTU (stop_tdTU (failTU `adhocTU` expr) t
+
+-- Starting point down the rabbit hole of checkItemStage
+-- | Top-down type-unifying traversal that is cut of below nodes
+-- where the argument strategy succeeds.
+stop_tdTUGhc :: (MonadPlus m, Monoid a) => TU a m -> TU a m
+stop_tdTUGhc s = s `choiceTU` (allTUGhc' (stop_tdTUGhc s))
+
+
+allTUGhc :: (Monad m, Monoid a) => (a -> a -> a) -> a -> TU a m -> TU a m
+allTUGhc op2 u s = MkTU (\x -> case (checkItemRenamer x) of
+                                  True -> do return (u) -- `op2` s)
+                                  False -> fold (gmapQ (applyTU s) x)
+                          )
+  where
+    fold l = foldM op2' u l
+    op2' x c = c >>= \y -> return (x `op2` y)
+
+-- This is the one that needs checkItemStage
+{- ++ Original (reamed to avoid clash)
+allTUGhc :: Monad m => (a -> a -> a) -> a -> TU a m -> TU a m
+allTUGhc op2 u s = MkTU (\x -> fold (gmapQ (applyTU s) x))
+where
+fold l = foldM op2' u l
+op2' x c = c >>= \y -> return (x `op2` y)
+-}
+
+-- Hence this one too
+allTUGhc' :: (Monad m, Monoid a) => TU a m -> TU a m
+allTUGhc' = allTUGhc mappend mempty
+
+-- hsVisiblePNs e t = applyTU (full_tdTU (constTU [] `adhocTU` top
+
+-- | Full type-unifying traversal in top-down order.
+full_tdTUGhc :: (Monad m, Monoid a) => TU a m -> TU a m
+full_tdTUGhc s = op2TU mappend s (allTUGhc' (full_tdTUGhc s))
+
+
+-}

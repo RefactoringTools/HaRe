@@ -458,108 +458,82 @@ causeNameClashInExports  pn newName mod exps
 -- Expects RenamedSource
 hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
-  (f,d) <- hsFreeAndDeclaredPNs' t
-  return (f,d)
-
-hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
-hsFreeAndDeclaredPNs' t = do
       (f,d) <- hsFreeAndDeclared'
       return (nub f, nub d)
-          -- TODO: This must be top-down, stop on first success.
-          --       Original returned mzero on non-match
           -- hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
 
    where
-{- ++AZ++ experimental -}
-          hsFreeAndDeclared'= applyTU (stop_tdTUGhc (failTU  -- `adhocTU` binds
+          hsFreeAndDeclared' :: RefactGhc ([GHC.Name],[GHC.Name])
+          hsFreeAndDeclared' = applyTU (stop_tdTUGhc (failTU
                                                          `adhocTU` expr
                                                          `adhocTU` pattern
                                                          `adhocTU` match
                                                          `adhocTU` stmts
-                                                         `adhocTU` rhs)) t
+                                                         `adhocTU` rhs
+                                                          )) t
 
-{- ++AZ++ experimental orig
-          hsFreeAndDeclared' :: (Bool,[GHC.Name],[GHC.Name])
-          hsFreeAndDeclared' = SYB.everythingStaged SYB.Renamer
-                             combine
-                             (False,[],[]) ((False,[],[])
-                                       `SYB.mkQ`  binds
-                                       `SYB.extQ` expr
-                                       `SYB.extQ` pattern
-                                       `SYB.extQ` match
-                                       `SYB.extQ` stmts
-                                       `SYB.extQ` rhs
-                                       ) t
-++AZ++ end -}
 
-{-
-          combine :: (Bool,[GHC.Name],[GHC.Name])
-                  -> (Bool,[GHC.Name],[GHC.Name])
-                  -> (Bool,[GHC.Name],[GHC.Name])
-          combine (done1,f1,d1) (done2,f2,d2) = (done',f',d')
-            where
-              (done',f',d')
-                -- = if done1
-                = if False -- ++AZ++ temporary until sorted out
-                    then (done1,f1,d1)
-                    else (done2,f1++f2,d1++d2)
--}
 
           -- TODO: ++AZ++ Note:After renaming, HsBindLR has field bind_fvs
           --       containing locally bound free vars
 
 {-
           binds (bs :: [GHC.LHsBind GHC.Name]) = do
-            (fr,de) <- foldl' com ([],[]) $ mapM hsFreeAndDeclaredPNs' bs
+            (fr,de) <- foldl' com ([],[]) $ mapM hsFreeAndDeclaredPNs bs
             let com (f1,d1) (f2,d2) = (f1++f2,d1++d2)
             return (fr,de)
 -}
-          rhs ((GHC.GRHSs g ds) :: GHC.GRHSs GHC.Name)
-           -- = error "blah"
-            = do (df,dd) <- hsFreeAndDeclaredPNs' g
-                 (ef,ed) <- hsFreeAndDeclaredPNs' ds
-                 return (df ++ ef, dd ++ ed)
-          rhs _ = return ([],[])
-
           -- expr --
           expr (GHC.HsVar n) = return ([n],[])
 
           expr (GHC.OpApp e1 (GHC.L _ (GHC.HsVar n)) _ e2) = do
-              (ef,ed) <- hsFreeAndDeclaredPNs' [e1,e2]
-              (f,d) <- addFree n (ef,ed)
-              return (f,d) 
+              (ef,ed) <- hsFreeAndDeclaredPNs [e1,e2]
+              (f,d)   <- addFree n (ef,ed)
+              return (f,d)
 
           expr ((GHC.HsLam (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name) =
-             hsFreeAndDeclaredPNs' matches
+             hsFreeAndDeclaredPNs matches
 
           expr ((GHC.HsLet decls e) :: GHC.HsExpr GHC.Name) =
             do
-              (df,dd) <- hsFreeAndDeclaredPNs' decls
-              (ef,_)  <- hsFreeAndDeclaredPNs' e
+              (df,dd) <- hsFreeAndDeclaredPNs decls
+              (ef,_)  <- hsFreeAndDeclaredPNs e
               return ((df `union` (ef \\ dd)),[])
 
           expr (GHC.RecordCon (GHC.L _ n) _ e) = do
-            fd <- (hsFreeAndDeclaredPNs' e)
+            fd <- (hsFreeAndDeclaredPNs e)
             addFree n fd   --Need Testing
 
           expr (GHC.EAsPat (GHC.L _ n) e) = do
-            fd <- (hsFreeAndDeclaredPNs' e)
+            fd <- (hsFreeAndDeclaredPNs e)
             addFree n fd
 
-          expr _ = return ([],[])
+          expr _ = mzero
+
+          -- rhs --
+          rhs ((GHC.GRHSs g ds) :: GHC.GRHSs GHC.Name)
+           -- = error "blah"
+            = do (df,dd) <- hsFreeAndDeclaredPNs g
+                 (ef,ed) <- hsFreeAndDeclaredPNs ds
+                 return (df ++ ef, dd ++ ed)
+          -- rhs _ = return ([],[])
+          -- rhs _ = return mzero
+          rhs _ = mzero
 
           -- pat --
           pattern (GHC.VarPat n) = return ([],[n])
           -- It seems all the GHC pattern match syntax elements end up
           -- with GHC.VarPat
 
-          pattern _ = return ([],[])
+          -- pattern _ = return ([],[])
+          -- pattern _ = return mzero
+          pattern _ = mzero
 
           -- match and patBind, same type--
           match ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ ds _) :: GHC.HsBind GHC.Name)
             = do
-                (pf,pd) <- hsFreeAndDeclaredPNs' matches
-              
+                (pf,pd) <- hsFreeAndDeclaredPNs matches
+
                 -- ((pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))),[fun])
                 return (pf,[n] ++ (GHC.uniqSetToList ds) ++ pd)
                 -- error (show (map nameToString (GHC.uniqSetToList ds)))
@@ -567,33 +541,37 @@ hsFreeAndDeclaredPNs' t = do
           -- patBind --
           match (GHC.PatBind pat rhs _ ds _) =
             do
-              (pf,pd)  <- hsFreeAndDeclaredPNs' pat
-              (rf,rd) <- hsFreeAndDeclaredPNs' rhs
-            
+              (pf,pd) <- hsFreeAndDeclaredPNs pat
+              (rf,rd) <- hsFreeAndDeclaredPNs rhs
+
               return (pf `union` (rf \\pd),pd ++ GHC.uniqSetToList ds ++ rd)
                -- error (show (map nameToString (GHC.uniqSetToList ds)))
 
-          match _ = return ([],[])
+          -- match _ = return ([],[])
+          -- match _ = return mzero
+          match _ = mzero
 
 
           -- stmts --
           stmts ((GHC.BindStmt pat expre bind fail) :: GHC.Stmt GHC.Name) = do
-            (pf,pd)  <- hsFreeAndDeclaredPNs' pat
-            (ef,_ed) <- hsFreeAndDeclaredPNs' expre
-            (sf,_sd) <- hsFreeAndDeclaredPNs' [bind,fail]
-            
+            (pf,pd)  <- hsFreeAndDeclaredPNs pat
+            (ef,_ed) <- hsFreeAndDeclaredPNs expre
+            (sf,_sd) <- hsFreeAndDeclaredPNs [bind,fail]
+
             return (pf `union` ef `union` (sf\\pd),[]) -- pd) -- Check this
 
           stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
-            hsFreeAndDeclaredPNs' binds
+            hsFreeAndDeclaredPNs binds
 
-          stmts _ = return ([],[])
+          -- stmts _ = return ([],[])
+          -- stmts _ = return mzero
+          stmts _ = mzero
 
 {-
           recDecl ((HsRecDecl _ _ _ _ is) :: HsConDeclI PNT (HsTypeI PNT) [HsTypeI PNT])
                 =do let d=map pNTtoPN $ concatMap fst is
                     return ([],d)
-          recDecl _ =mzero
+          recDecl _ =return mzero
 -}
 
           addFree :: GHC.Name -> ([GHC.Name],[GHC.Name])

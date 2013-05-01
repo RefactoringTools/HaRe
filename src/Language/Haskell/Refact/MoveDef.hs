@@ -15,6 +15,7 @@ import qualified GHC.SYB.Utils as SYB
 import qualified Exception             as GHC
 import qualified FastString            as GHC
 import qualified GHC
+import qualified Name                  as GHC
 import qualified OccName               as GHC
 import qualified Outputable            as GHC
 
@@ -327,10 +328,14 @@ allDeclsIn t = fromMaybe [] (applyTU (full_tdTU (constTU [] `adhocTU` decl)) t)
 -}
 
 
+askRenamingMsg :: [GHC.Name] -> String -> t
 askRenamingMsg pns str
-  = error ("The identifier(s):" ++ prettyprint pns ++
+  = error ("The identifier(s): " ++ (intercalate "," $ map showPN pns) ++
            " will cause name clash/capture or ambiguity occurrence problem after "
            ++ str ++", please do renaming first!")
+
+  where
+    showPN pn = GHC.showPpr (pn,GHC.nameSrcLoc pn)
 {- ++AZ++ original
 askRenamingMsg pns str
   = error ("The identifier(s):" ++ showEntities showPNwithLoc pns ++
@@ -347,14 +352,14 @@ pnsNeedRenaming dest parent liftedDecls pns
   where
      pnsNeedRenaming' pn
        = do (f,d) <- hsFDsFromInside dest --f: free variable names that may be shadowed by pn
-                                             --d: declaread variables names that may clash with pn
+                                          --d: declaread variables names that may clash with pn
             vs <- hsVisiblePNs pn parent  --vs: declarad variables that may shadow pn
             let -- inscpNames = map (\(x,_,_,_)->x) $ inScopeInfo inscps
                 vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
             -- if elem (pNtoName pn) vars  || isInScopeAndUnqualified (pNtoName pn) inscps && findEntity pn dest
             isInScope <- isInScopeAndUnqualifiedGhc (pNtoName pn)
+            logm $ "MoveDef.onsNeedRenaming:(f,d,vs,vars,isInScope)=" ++ (GHC.showPpr (f,d,vs,vars,isInScope))
             if elem (pNtoName pn) vars  || isInScope && findEntity pn dest
-
                then return [pn]
                else return []
      --This pNtoName takes into account the qualifier.

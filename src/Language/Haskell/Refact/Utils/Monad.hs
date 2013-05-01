@@ -157,34 +157,9 @@ instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
 instance (MonadTrans GHC.GhcT) where
    lift = GHC.liftGhcT
 
-{-
-instance MonadPlus (StateT RefactState IO) where
-  mzero = StateT $ \_s -> mzero
-  (StateT x1) `mplus` (StateT x2) = StateT $ \s -> (x1 s) `mplus` (x2 s)
--}
-
-instance (MonadPlus m,Functor m, GHC.MonadIO m,ExceptionMonad m) => MonadPlus (GHC.GhcT m) where
+instance (MonadPlus m,Functor m,GHC.MonadIO m,ExceptionMonad m) => MonadPlus (GHC.GhcT m) where
   mzero = GHC.GhcT $ \s -> mzero
-  -- x1@(GHC.GhcT x) `mplus` y = GHC.GhcT $ \s -> GHC.runGhcT (Just GHC.libdir) x1
   x `mplus` y = GHC.GhcT $ \s -> (GHC.runGhcT (Just GHC.libdir) x) `mplus` (GHC.runGhcT (Just GHC.libdir) y)
-
-{-
-instance MonadPlus (GHC.GhcT (StateT RefactState IO)) where
-  -- mzero = error "mzero undefined for RefactGhc"
-  mzero = GHC.GhcT $ \_ -> (StateT(\ st -> mzero))
-  -- x `mplus` y =  GHC.GhcT $ \gs -> GHC.runGhcT (Just GHC.libdir) (StateT ( \ st -> runStateT x st `mplus` runStateT y st))  
-  -- x `mplus` y =  GHC.GhcT $ (StateT ( \ st -> runStateT x st `mplus` runStateT y st))  
-  x `mplus` y =  GHC.GhcT $ \gs -> (StateT ( \st -> runStateT (GHC.runGhcT (Just GHC.libdir) x st) `mplus` runStateT (GHC.runGhcT (Just GHC.libdir) y st) ))  
-  -- mplus = undefined
--}
-
-{-
-instance MonadPlus (RefactGhc a) where
-   mzero = RefactGhc (StateT(\ st -> mzero))
-
-   -- x `mplus` y =  RefactGhc (StateT ( \ st -> runRefact x st `mplus` runRefact y st))  
-   -- ^Try one of the refactorings, x or y, with the same state plugged in
--}
 
 
 runRefactGhc ::
