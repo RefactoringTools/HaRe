@@ -1366,6 +1366,7 @@ doDemoting' t pn
              res <- applyTU (stop_tdTUGhc (failTU
                                            `adhocTU` inMatch
                                            `adhocTU` inPat)) t
+             logm $ "declaredNamesInTargetPlace:res=" ++ (GHC.showPpr res)
              return res
                where
                  -- inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
@@ -1373,14 +1374,16 @@ doDemoting' t pn
                     | findPN pn rhs = do
                      logm $ "declaredNamesInTargetPlace:inMatch"
                      (return.snd) =<< hsFDsFromInside rhs
-                 inMatch _ =mzero
+                 -- inMatch _ = mzero
+                 inMatch _ = return mzero
 
                  -- inPat (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
                  inPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
                     |findPN pn rhs = do
                      logm $ "declaredNamesInTargetPlace:inPat"
                      (return.snd) =<< hsFDsFromInside pat
-                 inPat _= mzero
+                 -- inPat _=  mzero
+                 inPat _=  return mzero
 
 
 {-

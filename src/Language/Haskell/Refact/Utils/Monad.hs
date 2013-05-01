@@ -148,6 +148,7 @@ instance ExceptionMonad m => ExceptionMonad (StateT s m) where
     gblock = mapStateT gblock
     gunblock = mapStateT gunblock
 
+
 instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
     get = lift get
     put = lift . put
