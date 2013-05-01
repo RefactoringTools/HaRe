@@ -1,5 +1,6 @@
 language: haskell
 before_install:
+    - "cabal update"
     - "cabal install test-framework"
     - "cabal install test-framework-hunit"
     - "cabal install QuickCheck"
