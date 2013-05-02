@@ -458,12 +458,20 @@ causeNameClashInExports  pn newName mod exps
 -- Expects RenamedSource
 hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
+  let fd = hsFreeAndDeclaredPNs' t
+  -- logm $ "hsFreeAndDeclaredPNs:fd=" ++ (GHC.showPpr fd)
+  return $ fromMaybe ([],[]) fd
+
+-- hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
+hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> Maybe ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNs' t = do
       (f,d) <- hsFreeAndDeclared'
       return (nub f, nub d)
           -- hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
 
    where
-          hsFreeAndDeclared' :: RefactGhc ([GHC.Name],[GHC.Name])
+          -- hsFreeAndDeclared' :: RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
+          hsFreeAndDeclared' :: Maybe ([GHC.Name],[GHC.Name])
           hsFreeAndDeclared' = applyTU (stop_tdTUGhc (failTU
                                                          `adhocTU` expr
                                                          `adhocTU` pattern
@@ -479,7 +487,7 @@ hsFreeAndDeclaredPNs t = do
 
 {-
           binds (bs :: [GHC.LHsBind GHC.Name]) = do
-            (fr,de) <- foldl' com ([],[]) $ mapM hsFreeAndDeclaredPNs bs
+            (fr,de) <- foldl' com ([],[]) $ mapM hsFreeAndDeclaredPNs' bs
             let com (f1,d1) (f2,d2) = (f1++f2,d1++d2)
             return (fr,de)
 -}
@@ -487,37 +495,39 @@ hsFreeAndDeclaredPNs t = do
           expr (GHC.HsVar n) = return ([n],[])
 
           expr (GHC.OpApp e1 (GHC.L _ (GHC.HsVar n)) _ e2) = do
-              (ef,ed) <- hsFreeAndDeclaredPNs [e1,e2]
-              (f,d)   <- addFree n (ef,ed)
-              return (f,d)
+              -- (ef,ed) <- hsFreeAndDeclaredPNs' [e1,e2]
+              -- (f,d)   <- addFree n (ef,ed)
+              efed <- hsFreeAndDeclaredPNs' [e1,e2]
+              fd   <- addFree n efed
+              return fd
 
           expr ((GHC.HsLam (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name) =
-             hsFreeAndDeclaredPNs matches
+             hsFreeAndDeclaredPNs' matches
 
           expr ((GHC.HsLet decls e) :: GHC.HsExpr GHC.Name) =
             do
-              (df,dd) <- hsFreeAndDeclaredPNs decls
-              (ef,_)  <- hsFreeAndDeclaredPNs e
+              (df,dd) <- hsFreeAndDeclaredPNs' decls
+              (ef,_)  <- hsFreeAndDeclaredPNs' e
               return ((df `union` (ef \\ dd)),[])
 
           expr (GHC.RecordCon (GHC.L _ n) _ e) = do
-            fd <- (hsFreeAndDeclaredPNs e)
+            fd <- (hsFreeAndDeclaredPNs' e)
             addFree n fd   --Need Testing
 
           expr (GHC.EAsPat (GHC.L _ n) e) = do
-            fd <- (hsFreeAndDeclaredPNs e)
+            fd <- (hsFreeAndDeclaredPNs' e)
             addFree n fd
 
           expr _ = mzero
 
+
           -- rhs --
           rhs ((GHC.GRHSs g ds) :: GHC.GRHSs GHC.Name)
            -- = error "blah"
-            = do (df,dd) <- hsFreeAndDeclaredPNs g
-                 (ef,ed) <- hsFreeAndDeclaredPNs ds
+            = do (df,dd) <- hsFreeAndDeclaredPNs' g
+                 (ef,ed) <- hsFreeAndDeclaredPNs' ds
                  return (df ++ ef, dd ++ ed)
-          -- rhs _ = return ([],[])
-          -- rhs _ = return mzero
+
           rhs _ = mzero
 
           -- pat --
@@ -525,46 +535,41 @@ hsFreeAndDeclaredPNs t = do
           -- It seems all the GHC pattern match syntax elements end up
           -- with GHC.VarPat
 
-          -- pattern _ = return ([],[])
-          -- pattern _ = return mzero
           pattern _ = mzero
 
           -- match and patBind, same type--
           match ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ ds _) :: GHC.HsBind GHC.Name)
             = do
-                (pf,pd) <- hsFreeAndDeclaredPNs matches
+                (pf,pd) <- hsFreeAndDeclaredPNs' matches
 
-                -- ((pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))),[fun])
+                -- ((pf `union` ((rf `union` df) \\ (dd `union` pd
+                -- `union` [fun]))),[fun])
                 return (pf,[n] ++ (GHC.uniqSetToList ds) ++ pd)
-                -- error (show (map nameToString (GHC.uniqSetToList ds)))
 
           -- patBind --
           match (GHC.PatBind pat rhs _ ds _) =
             do
-              (pf,pd) <- hsFreeAndDeclaredPNs pat
-              (rf,rd) <- hsFreeAndDeclaredPNs rhs
-
+              (pf,pd) <- hsFreeAndDeclaredPNs' pat
+              (rf,rd) <- hsFreeAndDeclaredPNs' rhs
               return (pf `union` (rf \\pd),pd ++ GHC.uniqSetToList ds ++ rd)
-               -- error (show (map nameToString (GHC.uniqSetToList ds)))
 
-          -- match _ = return ([],[])
-          -- match _ = return mzero
           match _ = mzero
 
 
           -- stmts --
-          stmts ((GHC.BindStmt pat expre bind fail) :: GHC.Stmt GHC.Name) = do
-            (pf,pd)  <- hsFreeAndDeclaredPNs pat
-            (ef,_ed) <- hsFreeAndDeclaredPNs expre
-            (sf,_sd) <- hsFreeAndDeclaredPNs [bind,fail]
-
+          stmts ((GHC.BindStmt pat expre bindOp failOp) :: GHC.Stmt GHC.Name) = do
+            -- TODO ++AZ++ : Not sure it is meaningful to pull
+            --               anything out of bindOp/failOp
+            (pf,pd)  <- hsFreeAndDeclaredPNs' pat
+            (ef,_ed) <- hsFreeAndDeclaredPNs' expre
+            -- sf_sd <- hsFreeAndDeclaredPNs' [bindOp,failOp]
+            -- let (sf,_sd) = fromMaybe ([],[]) sf_sd
+            let sf = []
             return (pf `union` ef `union` (sf\\pd),[]) -- pd) -- Check this
 
           stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
-            hsFreeAndDeclaredPNs binds
+            hsFreeAndDeclaredPNs' binds
 
-          -- stmts _ = return ([],[])
-          -- stmts _ = return mzero
           stmts _ = mzero
 
 {-
@@ -575,8 +580,12 @@ hsFreeAndDeclaredPNs t = do
 -}
 
           addFree :: GHC.Name -> ([GHC.Name],[GHC.Name])
-                  -> RefactGhc ([GHC.Name],[GHC.Name])
+                  -> Maybe ([GHC.Name],[GHC.Name])
+          -- addFree :: GHC.Name -> (Maybe ([GHC.Name],[GHC.Name]))
+          --         -> RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
           addFree free (fr,de) = return ([free] `union` fr, de)
+          -- addFree free (Just (fr,de)) = return ([free] `union` fr, de)
+          -- addFree free Nothing        = mzero
 
 {-
 hsFreeAndDeclaredPNs:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])

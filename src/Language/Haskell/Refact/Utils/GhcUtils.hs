@@ -251,9 +251,9 @@ isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
 -- AST Stage.
 checkItemStage :: Typeable a => SYB.Stage -> a -> Bool
 checkItemStage stage x = (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x
-  where nameSet    = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<SYB.TypeChecker) :: GHC.PostTcType -> Bool
-        fixity     = const (stage<SYB.Renamer) :: GHC.Fixity -> Bool
+  where nameSet    = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet        -> Bool
+        postTcType = const (stage < SYB.TypeChecker                  ) :: GHC.PostTcType -> Bool
+        fixity     = const (stage < SYB.Renamer                      ) :: GHC.Fixity     -> Bool
 
 checkItemRenamer :: Typeable a => a -> Bool
 checkItemRenamer x = checkItemStage SYB.Renamer x
@@ -285,7 +285,7 @@ listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x 
 
 -- Strafunski StrategyLib adaptations
 
-
+{- ++AZ++ James Koppel version, out for now
 -- ---------------------------------------------------------------------
 
 -- | Full type-unifying traversal in top-down order.
@@ -335,9 +335,10 @@ checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` n
 checkItemRenamer' :: (MonadPlus m) => TU () m
 checkItemRenamer' = checkItemStage' SYB.Renamer
 
+++AZ++  -}
 
 
-{-
+{- -}
 -- ++AZ++ old version
 -- ---------------------------------------------------------------------
 
@@ -382,4 +383,5 @@ full_tdTUGhc :: (Monad m, Monoid a) => TU a m -> TU a m
 full_tdTUGhc s = op2TU mappend s (allTUGhc' (full_tdTUGhc s))
 
 
--}
+{- -}
+

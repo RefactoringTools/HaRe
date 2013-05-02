@@ -46,19 +46,51 @@ pp = do
   (t, _toks) <- parsedFileDeclareSGhc
   let renamed = fromJust $ GHC.tm_renamed_source t
   putStrLn $ "GHC AST:" ++ (SYB.showData SYB.Renamer 0 renamed)
-  r <- traverseTU2 renamed
+  -- r <- traverseTU2 renamed
+  -- let r = tu2l renamed
+  let r = tu2m renamed
+  -- r <- tu2i renamed
   putStrLn $ "r=" ++ (show r)
 
 -- ---------------------------------------------------------------------
 
+tu2i :: (SYB.Data t) => t -> IO [String]
+tu2i = traverseTU2
+
+
+tu2m :: (SYB.Data t) => t -> Maybe [String]
+tu2m = traverseTU2
+
+tu2l :: (SYB.Data t) => t -> [] [String]
+tu2l = traverseTU2
+
 traverseTU2 :: (SYB.Data t, MonadPlus m) => t -> m [String]
 traverseTU2 t = do
-   applyTU (full_tdTUGhc (failTU -- `adhocTU` expr
+   applyTU (full_tdTUGhc (failTU 
+   -- applyTU (stop_tdTUGhc (failTU 
+                `adhocTU` lit
+                -- `adhocTU` expr
    -- applyTU (full_tdTUGhc (failTU `adhocTU` ff
    -- applyTU (full_tdTUGhc (gg `adhocTU` ff
                                       )) t
 
+
+lit :: (MonadPlus m) => GHC.HsLit -> m [String]
+lit (GHC.HsChar n) = return ([[n]])
+lit _ = return ["foo"]
+
+expr :: (MonadPlus m) => GHC.HsExpr GHC.Name -> m [String]
+expr (GHC.HsVar n) = return ([GHC.showPpr n])
+expr _ = return ["foo"]
+
+
 -- ---------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------
+-- | Top-down type-unifying traversal that is cut of below nodes
+--   where the argument strategy succeeds.
+stop_tdTUGhc :: (MonadPlus m, Monoid a) => TU a m -> TU a m
+stop_tdTUGhc s = ifTU checkItemRenamer' (const s) (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
 
 -- | Full type-unifying traversal in top-down order.
 full_tdTUGhc 	:: (MonadPlus m, Monoid a) => TU a m -> TU a m
@@ -132,14 +164,26 @@ adhocTU s f = MkTU (unTU s `extQ` f)
 -}
 
 
+checkItemStage' :: forall m. (MonadPlus m) => SYB.Stage -> TU a m
+checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` nameSet
+  where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: GHC.NameSet    -> m a
+        postTcType = const (guard $ stage < SYB.TypeChecker                  ) :: GHC.PostTcType -> m a
+        fixity     = const (guard $ stage < SYB.Renamer                      ) :: GHC.Fixity     -> m a
+
+checkItemRenamer' :: (MonadPlus m) => TU a m
+checkItemRenamer' = checkItemStage' SYB.Renamer
+
+
+{-
 checkItemStage' :: forall m. (MonadPlus m) => SYB.Stage -> TU () m
 checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` nameSet
-  where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: GHC.NameSet -> m ()
+  where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: GHC.NameSet    -> m ()
         postTcType = const (guard $ stage < SYB.TypeChecker                  ) :: GHC.PostTcType -> m ()
-        fixity     = const (guard $ stage < SYB.Renamer                      ) :: GHC.Fixity -> m ()
+        fixity     = const (guard $ stage < SYB.Renamer                      ) :: GHC.Fixity     -> m ()
 
 checkItemRenamer' :: (MonadPlus m) => TU () m
 checkItemRenamer' = checkItemStage' SYB.Renamer
+-}
 
 -- ---------------------------------------------------------------------
 
