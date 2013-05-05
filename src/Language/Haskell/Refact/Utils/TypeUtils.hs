@@ -473,9 +473,9 @@ hsFreeAndDeclaredPNs' t = do
           -- hsFreeAndDeclared' :: RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
           hsFreeAndDeclared' :: Maybe ([GHC.Name],[GHC.Name])
           hsFreeAndDeclared' = applyTU (stop_tdTUGhc (failTU
-          -- hsFreeAndDeclared' = applyTU (stop_tdTUGhc ((constTU ([],[]))
                                                          `adhocTU` expr
                                                          `adhocTU` pattern
+                                                         `adhocTU` binds
                                                          `adhocTU` match
                                                          `adhocTU` stmts
                                                          `adhocTU` rhs
@@ -486,12 +486,6 @@ hsFreeAndDeclaredPNs' t = do
           -- TODO: ++AZ++ Note:After renaming, HsBindLR has field bind_fvs
           --       containing locally bound free vars
 
-{-
-          binds (bs :: [GHC.LHsBind GHC.Name]) = do
-            (fr,de) <- foldl' com ([],[]) $ mapM hsFreeAndDeclaredPNs' bs
-            let com (f1,d1) (f2,d2) = (f1++f2,d1++d2)
-            return (fr,de)
--}
           -- expr --
           expr (GHC.HsVar n) = return ([n],[])
 
@@ -519,8 +513,8 @@ hsFreeAndDeclaredPNs' t = do
             fd <- (hsFreeAndDeclaredPNs' e)
             addFree n fd
 
-          -- expr _ = mzero
-          expr _ = return ([],[])
+          expr _ = mzero
+          -- expr _ = return ([],[])
 
 
           -- rhs --
@@ -530,35 +524,41 @@ hsFreeAndDeclaredPNs' t = do
                  (ef,ed) <- hsFreeAndDeclaredPNs' ds
                  return (df ++ ef, dd ++ ed)
 
-          -- rhs _ = mzero
-          rhs _ = return ([],[])
+          rhs _ = mzero
+          -- rhs _ = return ([],[])
 
           -- pat --
           pattern (GHC.VarPat n) = return ([],[n])
           -- It seems all the GHC pattern match syntax elements end up
           -- with GHC.VarPat
 
-          -- pattern _ = mzero
-          pattern _ = return ([],[])
+          pattern _ = mzero
+          -- pattern _ = return ([],[])
 
           -- match and patBind, same type--
-          match ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ ds _) :: GHC.HsBind GHC.Name)
+          binds ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ _fvs _) :: GHC.HsBind GHC.Name)
             = do
-                (pf,pd) <- hsFreeAndDeclaredPNs' matches
+                (pf,_pd) <- hsFreeAndDeclaredPNs' matches
 
-                -- ((pf `union` ((rf `union` df) \\ (dd `union` pd
-                -- `union` [fun]))),[fun])
-                return (pf,[n] ++ (GHC.uniqSetToList ds) ++ pd)
+                -- ((pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))),[fun])
+                -- return ((GHC.uniqSetToList fvs),[n])
+                return (pf \\ [n] ,[n])
 
           -- patBind --
-          match (GHC.PatBind pat rhs _ ds _) =
+          binds (GHC.PatBind pat rhs _ ds _) =
             do
               (pf,pd) <- hsFreeAndDeclaredPNs' pat
               (rf,rd) <- hsFreeAndDeclaredPNs' rhs
               return (pf `union` (rf \\pd),pd ++ GHC.uniqSetToList ds ++ rd)
 
-          -- match _ = mzero
-          match _ = return ([],[])
+          binds _ = mzero
+          -- match _ = return ([],[])
+
+          match ((GHC.Match pats mtype rhs) :: GHC.Match GHC.Name )
+            = do
+              (pf,pd) <- hsFreeAndDeclaredPNs' pats
+              (rf,rd) <- hsFreeAndDeclaredPNs' rhs
+              return ((pf `union` (rf \\ (pd `union` rd))),[])
 
           -- stmts --
           stmts ((GHC.BindStmt pat expre bindOp failOp) :: GHC.Stmt GHC.Name) = do
@@ -574,8 +574,8 @@ hsFreeAndDeclaredPNs' t = do
           stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
             hsFreeAndDeclaredPNs' binds
 
-          -- stmts _ = mzero
-          stmts _ = return ([],[])
+          stmts _ = mzero
+          -- stmts _ = return ([],[])
 
 {-
           recDecl ((HsRecDecl _ _ _ _ is) :: HsConDeclI PNT (HsTypeI PNT) [HsTypeI PNT])
@@ -767,10 +767,10 @@ hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
                       `SYB.extQ` stmts) t
 -}
 hsVisiblePNs e t = applyTU (full_tdTUGhc (constTU [] `adhocTU` top
-                                                  `adhocTU` expr
-                                                  `adhocTU` decl
-                                                  `adhocTU` match
-                                                  `adhocTU` stmts)) t
+                                                     `adhocTU` expr
+                                                     `adhocTU` decl
+                                                     `adhocTU` match
+                                                     `adhocTU` stmts)) t
 
       where
           top ((groups,_,_,_) :: GHC.RenamedSource)
@@ -1088,7 +1088,8 @@ hsFDsFromInside t = do
          (df,dd) <- hsFreeAndDeclaredPNs matches
          return (nub (df `union` (ef \\ dd)), nub dd)
 
-     expr _ = return ([],[])
+     -- expr _ = return ([],[])
+     expr _ = mzero
 
      stmts ((GHC.BindStmt pat e1 e2 e3) :: GHC.Stmt GHC.Name) =
        do
@@ -1101,7 +1102,8 @@ hsFDsFromInside t = do
      stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
        hsFreeAndDeclaredPNs binds
 
-     stmts _ = return ([],[])
+     -- stmts _ = return ([],[])
+     stmts _ = mzero
 
 -- -----
 

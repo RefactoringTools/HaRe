@@ -498,10 +498,20 @@ spec = do
       -- (GHC.showPpr res) `shouldBe` ""
 
       -- Free Vars
-      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[(y, (21, 8)), (GHC.Base.$, (-1, -1)), (GHC.List.head, (-1, -1)),\n (GHC.Num.*, (-1, -1)), (FreeAndDeclared.Declare.c, (9, 1)),\n (x, (6, 10))]"
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[(Data.Generics.Text.gshow, (-1, -1)),\n (System.IO.getChar, (-1, -1)), (System.IO.putStrLn, (-1, -1)),\n (GHC.Base.return, (-1, -1)), (GHC.Base.$, (-1, -1)),\n (GHC.List.head, (-1, -1)), (GHC.List.zip, (-1, -1)),\n (GHC.Num.fromInteger, (-1, -1)), (GHC.Num.*, (-1, -1)),\n (FreeAndDeclared.Declare.c, (9, 1))]"
 
       -- Declared Vars
-      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` "[(FreeAndDeclared.Declare.ff, (36, 1)), (z, (36, 4)),\n (FreeAndDeclared.Declare.mkT, (34, 1)),\n (FreeAndDeclared.Declare.main, (30, 1)),\n (FreeAndDeclared.Declare.unF, (27, 1)),\n (FreeAndDeclared.Declare.:|, (25, 14)),\n (FreeAndDeclared.Declare.unD, (21, 1)),\n (FreeAndDeclared.Declare.B, (18, 14)),\n (FreeAndDeclared.Declare.d, (10, 1)),\n (FreeAndDeclared.Declare.c, (9, 1)),\n (FreeAndDeclared.Declare.toplevel, (6, 1)), (x, (6, 10))]"
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+                   "[(FreeAndDeclared.Declare.ff, (36, 1)),\n "++
+                   "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
+                   "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
+                   "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
+                   "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
+                   "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
+                   "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
+                   "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
+                   "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
+                   "(FreeAndDeclared.Declare.toplevel, (6, 1))]"
 
     -- -----------------------------------------------------------------
 
@@ -539,15 +549,37 @@ spec = do
 
       -- Free Vars
       (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
-                   "[(GHC.Num.+, (-1, -1)), " ++
-                    "(y, (21, 4)), " ++
-                    "(zz, (23, 5))]"  -- ++AZ++: pretty sure zz is declared
+                   "[(GHC.Num.+, (-1, -1)), "++
+                   "(GHC.Num.fromInteger, (-1, -1))]"
 
       -- Declared Vars
       (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
-                   "[(DupDef.Dd1.ff, (21, 1)), " ++
-                    "(y, (21, 4)), " ++  -- ++AZ++: pretty sure y is a free var
-                    "(zz, (23, 5))]"
+                   "[(DupDef.Dd1.ff, (21, 1))]"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds free and declared at the top level" $ do
+      (t, toks) <- parsedFileLiftWhereIn1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let
+        comp = do
+          -- r <- hsFreeAndDeclaredPNs renamed
+          r <- hsFreeAndDeclaredPNs $ hsBinds renamed
+          return r
+      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+
+      -- Declared Vars
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+                   "[(LiftToToplevel.WhereIn1.anotherFun, (15, 1)),\n "++
+                   "(LiftToToplevel.WhereIn1.sumSquares, (9, 1))]"
+
+      -- Free Vars
+      (GHC.showPpr $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+                   "[(GHC.Num.fromInteger, (-1, -1)), "++
+                   "(GHC.Classes.==, (-1, -1)),\n "++
+                   "(GHC.Real.^, (-1, -1)), "++
+                   "(GHC.Num.+, (-1, -1))]"
 
     -- -----------------------------------------------------------------
 
@@ -2396,6 +2428,14 @@ liftD1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/D1.hs"
 
 parsedFileLiftD1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftD1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/D1.hs"
+
+-- -----------
+
+liftWhereIn1FileName :: GHC.FastString
+liftWhereIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/WhereIn1.hs"
+
+parsedFileLiftWhereIn1Ghc :: IO (ParseResult,[PosToken])
+parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereIn1.hs"
 
 -- -----------
 

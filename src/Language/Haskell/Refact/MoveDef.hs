@@ -89,6 +89,7 @@ compLiftToTopLevel fileName (row,col) = do
 
 -- ---------------------------------------------------------------------
 
+doDemote :: [String] -> IO ()
 doDemote args
  = do let  fileName = ghead "filename"  args
            row = read (args!!1)::Int
@@ -217,6 +218,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                       -- one and the top level that are used in this one?
 
                       logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (GHC.showPpr (liftedDecls,declaredPns))
+                      -- original : pns<-pnsNeedRenaming inscps mod parent liftedDecls declaredPns
                       pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
 
                       -- (_,dd) <- hsFreeAndDeclaredPNs renamed
@@ -345,7 +347,8 @@ askRenamingMsg pns str
 
 -- |Get the subset of 'pns' that need to be renamed before lifting.
 pnsNeedRenaming :: (SYB.Data t1) =>
-  t1 -> [GHC.LHsBind GHC.Name] -> t2 -> [GHC.Name] -> RefactGhc [GHC.Name]
+  t1 -> [GHC.LHsBind GHC.Name] -> t2 -> [GHC.Name] 
+  -> RefactGhc [GHC.Name]
 pnsNeedRenaming dest parent liftedDecls pns
    =do r <- mapM pnsNeedRenaming' pns
        return (concat r)

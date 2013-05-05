@@ -47,7 +47,8 @@ main = pp
 
 pp :: IO ()
 pp = do
-  (t, _toks) <- parsedFileDeclareSGhc
+  -- (t, _toks) <- parsedFileDeclareSGhc
+  (t, _toks) <- parsedFileLiftWhereIn1Ghc
   let renamed = fromJust $ GHC.tm_renamed_source t
   putStrLn $ "GHC AST:" ++ (SYB.showData SYB.Renamer 0 renamed)
   -- r <- traverseTU2 renamed
@@ -307,3 +308,5 @@ parsedFileDeclareSGhc :: IO (ParseResult,[PosToken])
 parsedFileDeclareSGhc = parsedFileGhc "./test/testdata/FreeAndDeclared/DeclareS.hs"
 
 
+parsedFileLiftWhereIn1Ghc :: IO (ParseResult,[PosToken])
+parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereIn1.hs"
