@@ -473,6 +473,7 @@ hsFreeAndDeclaredPNs' t = do
           -- hsFreeAndDeclared' :: RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
           hsFreeAndDeclared' :: Maybe ([GHC.Name],[GHC.Name])
           hsFreeAndDeclared' = applyTU (stop_tdTUGhc (failTU
+          -- hsFreeAndDeclared' = applyTU (stop_tdTUGhc ((constTU ([],[]))
                                                          `adhocTU` expr
                                                          `adhocTU` pattern
                                                          `adhocTU` match
@@ -518,7 +519,8 @@ hsFreeAndDeclaredPNs' t = do
             fd <- (hsFreeAndDeclaredPNs' e)
             addFree n fd
 
-          expr _ = mzero
+          -- expr _ = mzero
+          expr _ = return ([],[])
 
 
           -- rhs --
@@ -528,14 +530,16 @@ hsFreeAndDeclaredPNs' t = do
                  (ef,ed) <- hsFreeAndDeclaredPNs' ds
                  return (df ++ ef, dd ++ ed)
 
-          rhs _ = mzero
+          -- rhs _ = mzero
+          rhs _ = return ([],[])
 
           -- pat --
           pattern (GHC.VarPat n) = return ([],[n])
           -- It seems all the GHC pattern match syntax elements end up
           -- with GHC.VarPat
 
-          pattern _ = mzero
+          -- pattern _ = mzero
+          pattern _ = return ([],[])
 
           -- match and patBind, same type--
           match ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ ds _) :: GHC.HsBind GHC.Name)
@@ -553,8 +557,8 @@ hsFreeAndDeclaredPNs' t = do
               (rf,rd) <- hsFreeAndDeclaredPNs' rhs
               return (pf `union` (rf \\pd),pd ++ GHC.uniqSetToList ds ++ rd)
 
-          match _ = mzero
-
+          -- match _ = mzero
+          match _ = return ([],[])
 
           -- stmts --
           stmts ((GHC.BindStmt pat expre bindOp failOp) :: GHC.Stmt GHC.Name) = do
@@ -570,7 +574,8 @@ hsFreeAndDeclaredPNs' t = do
           stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
             hsFreeAndDeclaredPNs' binds
 
-          stmts _ = mzero
+          -- stmts _ = mzero
+          stmts _ = return ([],[])
 
 {-
           recDecl ((HsRecDecl _ _ _ _ is) :: HsConDeclI PNT (HsTypeI PNT) [HsTypeI PNT])

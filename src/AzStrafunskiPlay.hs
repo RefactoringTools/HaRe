@@ -1,5 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 import           TestUtils
 
@@ -17,6 +20,7 @@ import qualified Outputable as GHC
 import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
 import qualified Module     as GHC
+import qualified UniqSet    as GHC
 
 import Control.Monad.State
 import Data.Maybe
@@ -47,16 +51,19 @@ pp = do
   let renamed = fromJust $ GHC.tm_renamed_source t
   putStrLn $ "GHC AST:" ++ (SYB.showData SYB.Renamer 0 renamed)
   -- r <- traverseTU2 renamed
-  -- let r = tu2l renamed
-  let r = tu2m renamed
-  -- r <- tu2i renamed
-  putStrLn $ "r=" ++ (show r)
+  let rl = tu2l renamed
+  let rm = tu2m renamed
+  let re = tu2e renamed
+  -- ri <- tu2i renamed
+  -- putStrLn $ "(rm)=" ++ (show (rm))
+  -- putStrLn $ "(rm,re,rl)=" ++ (show (rm,re,rl))
+  putStrLn $ "(rm,re)=" ++ (show (rm,re))
+  -- putStrLn $ "(rm,ri)=" ++ (show (rm,ri))
 
 -- ---------------------------------------------------------------------
 
 tu2i :: (SYB.Data t) => t -> IO [String]
 tu2i = traverseTU2
-
 
 tu2m :: (SYB.Data t) => t -> Maybe [String]
 tu2m = traverseTU2
@@ -64,25 +71,41 @@ tu2m = traverseTU2
 tu2l :: (SYB.Data t) => t -> [] [String]
 tu2l = traverseTU2
 
+tu2e :: (SYB.Data t) => t -> Either String [String]
+tu2e = traverseTU2
+
 traverseTU2 :: (SYB.Data t, MonadPlus m) => t -> m [String]
 traverseTU2 t = do
-   applyTU (full_tdTUGhc (failTU 
-   -- applyTU (stop_tdTUGhc (failTU 
+   -- applyTU (full_tdTUGhc (failTU
+   -- applyTU (full_tdTUGhc ((constTU [])
+   -- applyTU (stop_tdTUGhc ((constTU ["start"])
+   -- applyTU (stop_tdTUGhc (failTU
+   applyTU (stop_tdTUGhc (failTU
                 `adhocTU` lit
                 -- `adhocTU` expr
+                -- `adhocTU` mg
    -- applyTU (full_tdTUGhc (failTU `adhocTU` ff
    -- applyTU (full_tdTUGhc (gg `adhocTU` ff
                                       )) t
 
 
 lit :: (MonadPlus m) => GHC.HsLit -> m [String]
-lit (GHC.HsChar n) = return ([[n]])
-lit _ = return ["foo"]
+lit (GHC.HsChar n) = return (["lit",[n]])
+-- lit _ = return ["foo"]
+-- lit _ = return mzero
 
 expr :: (MonadPlus m) => GHC.HsExpr GHC.Name -> m [String]
-expr (GHC.HsVar n) = return ([GHC.showPpr n])
-expr _ = return ["foo"]
+expr (GHC.HsVar n) = return (["var",GHC.showPpr n])
+expr _ = return []
 
+mg :: (MonadPlus m) => GHC.MatchGroup GHC.Name -> m [String]
+-- mg (GHC.MatchGroup _ _) = return ["mg"]
+-- mg (GHC.MatchGroup _ _) = return mzero
+mg (GHC.MatchGroup _ _) = do
+  -- s <- mzero :: (MonadPlus m) => m [String]
+  -- return [show s]
+  return ["show s"]
+-- mg _ = return ["nmg"]
 
 -- ---------------------------------------------------------------------
 
@@ -90,7 +113,17 @@ expr _ = return ["foo"]
 -- | Top-down type-unifying traversal that is cut of below nodes
 --   where the argument strategy succeeds.
 stop_tdTUGhc :: (MonadPlus m, Monoid a) => TU a m -> TU a m
-stop_tdTUGhc s = ifTU checkItemRenamer' (const s) (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+-- stop_tdTUGhc s = ifTU checkItemRenamer' (const s) (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+-- stop_tdTUGhc s = ifTU checkItemRenamer' (const failTU) (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+stop_tdTUGhc s = (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+
+{-
+-- | Top-down type-unifying traversal that is cut of below nodes
+--   where the argument strategy succeeds.
+stop_tdTU 	:: (MonadPlus m, Monoid a) => TU a m -> TU a m
+stop_tdTU s	=  s `choiceTU` (allTU' (stop_tdTU s))
+
+-}
 
 -- | Full type-unifying traversal in top-down order.
 full_tdTUGhc 	:: (MonadPlus m, Monoid a) => TU a m -> TU a m
@@ -98,6 +131,49 @@ full_tdTUGhc s	=  op2TU mappend s (allTUGhc' (full_tdTUGhc s))
 
 allTUGhc :: (MonadPlus m) => (a -> a -> a) -> a -> TU a m -> TU a m
 allTUGhc op2 u s  = ifTU checkItemRenamer' (const $ constTU u) (allTU op2 u s)
+
+{- This one works, but we cannot use MkTU
+
+allTUGhc :: (Monad m, Monoid a) => (a -> a -> a) -> a -> TU a m -> TU a m
+allTUGhc op2 u s = MkTU (\x -> case (checkItemRenamer x) of
+                                  True -> do return (u) -- `op2` s)
+                                  False -> fold (gmapQ (applyTU s) x)
+                          )
+  where
+    fold l = foldM op2' u l
+    op2' x c = c >>= \y -> return (x `op2` y)
+
+
+-- Original -----
+allTU 		:: Monad m => (a -> a -> a) -> a -> TU a m -> TU a m
+allTU op2 u s   =  MkTU (\x -> fold (gmapQ (applyTU s) x))
+  where
+    fold l = foldM op2' u l
+    op2' x c = c >>= \y -> return (x `op2` y)
+
+
+class Typeable a => Data a where
+  ...
+  gmapQ :: (forall d. Data d => d -> u) -> a -> [u]
+  ...
+
+-}
+
+-- MatchGroup [LMatch id] PostTcType
+-- gmapQ f (GHC.MatchGroup matches ptt) = [f matches]
+
+{-
+-- gmapQ :: (forall d. SYB.Data d => d -> u) -> a -> [u]
+instance SYB.Data GHC.NameSet where
+  gmapQ f (x::GHC.NameSet)    = []
+
+instance SYB.Data GHC.PostTcType where
+  gmapQ f (x::GHC.PostTcType) = []
+
+instance SYB.Data GHC.Fixity where
+  gmapQ f (x::GHC.Fixity)     = []
+-}
+
 
 allTUGhc' :: (MonadPlus m, Monoid a) => TU a m -> TU a m
 allTUGhc' = allTUGhc mappend mempty
@@ -161,28 +237,68 @@ f `mchoice` g 	=  \x -> (f x) `mplus` (g x)
 adhocTU :: (Monad m, Data t) => TU a m -> (t -> m a) -> TU a m
 adhocTU s f = MkTU (unTU s `extQ` f)
 
+-- | Extend a generic query by a type-specific case
+extQ :: ( Typeable a
+        , Typeable b
+        )
+     => (a -> q)  -- existing query, starting from mkQ, extended via extQ
+     -> (b -> q)  -- the new part to be added on
+     -> a
+     -> q
+extQ f g a = maybe (f a) g (cast a)
+
+-- maybe :: b -> (a -> b) -> Maybe a -> b
+--   takes default, fn to apply if Just
+
+-- | Make a generic query;
+--   start from a type-specific case;
+--   return a constant otherwise
+--
+mkQ :: ( Typeable a
+       , Typeable b
+       )
+    => r
+    -> (b -> r)
+    -> a
+    -> r
+(r `mkQ` br) a = case cast a of
+                        Just b  -> br b
+                        Nothing -> r
+
+-- Type-safe cast
+-- The type-safe cast operation 
+cast :: (Typeable a, Typeable b) => a -> Maybe b
+
 -}
 
-
-checkItemStage' :: forall m. (MonadPlus m) => SYB.Stage -> TU a m
-checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` nameSet
-  where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: GHC.NameSet    -> m a
-        postTcType = const (guard $ stage < SYB.TypeChecker                  ) :: GHC.PostTcType -> m a
-        fixity     = const (guard $ stage < SYB.Renamer                      ) :: GHC.Fixity     -> m a
-
-checkItemRenamer' :: (MonadPlus m) => TU a m
-checkItemRenamer' = checkItemStage' SYB.Renamer
-
-
-{-
 checkItemStage' :: forall m. (MonadPlus m) => SYB.Stage -> TU () m
 checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` nameSet
-  where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: GHC.NameSet    -> m ()
-        postTcType = const (guard $ stage < SYB.TypeChecker                  ) :: GHC.PostTcType -> m ()
-        fixity     = const (guard $ stage < SYB.Renamer                      ) :: GHC.Fixity     -> m ()
+  where nameSet    = (const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker])) :: GHC.NameSet    -> m ()
+        postTcType = (const (guard $ stage < SYB.TypeChecker                  )) :: GHC.PostTcType -> m ()
+        fixity     = (const (guard $ stage < SYB.Renamer                      )) :: GHC.Fixity     -> m ()
+
+
 
 checkItemRenamer' :: (MonadPlus m) => TU () m
 checkItemRenamer' = checkItemStage' SYB.Renamer
+-- checkItemRenamer' = failTU
+
+{-
+-- fixity :: (MonadPlus m) => SYB.Stage -> a -> GHC.Fixity -> m ()
+fixity :: (MonadPlus m) => SYB.Stage -> a -> GHC.Fixity -> m a
+fixity stage u _x = do
+  guard (stage < SYB.Renamer)
+  return u
+
+postTcType :: (MonadPlus m) => SYB.Stage -> a -> GHC.PostTcType -> m a
+postTcType stage u _x = do
+  guard $ stage < SYB.TypeChecker
+  return u
+
+nameSet :: (MonadPlus m) => SYB.Stage -> a -> GHC.NameSet -> m a
+nameSet stage u _x = do
+  guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]
+  return u
 -}
 
 -- ---------------------------------------------------------------------

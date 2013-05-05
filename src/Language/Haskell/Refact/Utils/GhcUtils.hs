@@ -285,7 +285,7 @@ listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x 
 
 -- Strafunski StrategyLib adaptations
 
-{- ++AZ++ James Koppel version, out for now
+{- ++AZ++ James Koppel version, out for now -}
 -- ---------------------------------------------------------------------
 
 -- | Full type-unifying traversal in top-down order.
@@ -303,12 +303,16 @@ full_tdTU s	=  op2TU mappend s (allTU' (full_tdTU s))
 -- | Top-down type-unifying traversal that is cut of below nodes
 --   where the argument strategy succeeds.
 stop_tdTUGhc :: (MonadPlus m, Monoid a) => TU a m -> TU a m
-stop_tdTUGhc s = ifTU checkItemRenamer' (const s) (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+-- stop_tdTUGhc s = ifTU checkItemRenamer' (const s) (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+stop_tdTUGhc s = (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+
+
+
 
 allTUGhc' :: (MonadPlus m, Monoid a) => TU a m -> TU a m
 allTUGhc' = allTUGhc mappend mempty
 
-{- original
+{- original 
 -- | Top-down type-unifying traversal that is cut of below nodes
 --   where the argument strategy succeeds.
 stop_tdTU 	:: (MonadPlus m, Monoid a) => TU a m -> TU a m
@@ -335,10 +339,10 @@ checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` n
 checkItemRenamer' :: (MonadPlus m) => TU () m
 checkItemRenamer' = checkItemStage' SYB.Renamer
 
-++AZ++  -}
+{-  ++AZ++  -}
 
 
-{- -}
+{- 
 -- ++AZ++ old version
 -- ---------------------------------------------------------------------
 
@@ -363,6 +367,7 @@ allTUGhc op2 u s = MkTU (\x -> case (checkItemRenamer x) of
     fold l = foldM op2' u l
     op2' x c = c >>= \y -> return (x `op2` y)
 
+
 -- This is the one that needs checkItemStage
 {- ++ Original (reamed to avoid clash)
 allTUGhc :: Monad m => (a -> a -> a) -> a -> TU a m -> TU a m
@@ -383,5 +388,5 @@ full_tdTUGhc :: (Monad m, Monoid a) => TU a m -> TU a m
 full_tdTUGhc s = op2TU mappend s (allTUGhc' (full_tdTUGhc s))
 
 
-{- -}
+-}
 
