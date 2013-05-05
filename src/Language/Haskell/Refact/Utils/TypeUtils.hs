@@ -3049,15 +3049,16 @@ addParamsToDecls decls pn paramPNames modifyToks = do
    -- addParamToDecl (TiDecorate.Dec (HsFunBind loc matches@((HsMatch _ fun pats rhs ds):ms)))
    addParamToDecl (GHC.L l1 (GHC.FunBind fun@(GHC.L l2 pname) i (GHC.MatchGroup matches ptt) co fvs t))
     | pname == pn
-    = do matches' <-mapM addParamtoMatch matches
+    = do matches' <- mapM addParamtoMatch matches
          -- return (TiDecorate.Dec (HsFunBind loc matches'))
          return (GHC.L l1 (GHC.FunBind (GHC.L l2 pname) i (GHC.MatchGroup matches' ptt) co fvs t))
       where
        -- addParamtoMatch (HsMatch loc fun pats rhs  decls)
-       addParamtoMatch (GHC.L l (GHC.Match pats mtyp rhs))
+       addParamtoMatch match@(GHC.L l (GHC.Match pats mtyp rhs))
         = do rhs' <- addActualParamsToRhs modifyToks pn paramPNames rhs
              let pats' = map GHC.noLoc $ map pNtoPat paramPNames
-             pats'' <- if modifyToks then do _ <- addFormalParams fun pats'
+             -- pats'' <- if modifyToks then do _ <- addFormalParams fun pats'
+             pats'' <- if modifyToks then do _ <- addFormalParams match pats'
                                              return pats'
                                      else return pats'
              -- return (HsMatch loc  fun  (pats'++pats)  rhs' decls)

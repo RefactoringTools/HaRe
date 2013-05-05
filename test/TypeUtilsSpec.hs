@@ -931,6 +931,27 @@ spec = do
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       (GHC.showPpr $ last $ init nb) `shouldBe` "MoveDef.Md1.toplevel bar2 x = MoveDef.Md1.c GHC.Num.* x"
 
+    -- ---------------------------------
+
+    it "Adds parameters to a declaration with multiple matches" $ do
+      (t, toks) <- parsedFileAddParams1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+      let Just (GHC.L _ n) = locToName addParams1FileName (3, 1) renamed
+      let
+        comp = do
+         newName <- mkNewGhcName "pow"
+         newBinding <- addParamsToDecls declsr n [newName] True
+
+         return newBinding
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (GHC.showPpr n) `shouldBe` "AddParams1.sq"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n "
+      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module AddParams1 where\n\n sq pow 0 = 0\n sq pow z = z^2\n\n "
+      (GHC.showPpr $ last $ init nb) `shouldBe` ""
+
   -- ---------------------------------------------
 
   describe "addActualParamsToRhs" $ do
@@ -2468,6 +2489,14 @@ typeSigsFileName = GHC.mkFastString "./test/testdata/TypeUtils/TypeSigs.hs"
 
 parsedFileTypeSigs :: IO (ParseResult, [PosToken])
 parsedFileTypeSigs = parsedFileGhc "./test/testdata/TypeUtils/TypeSigs.hs"
+
+-- ----------------------------------------------------
+
+addParams1FileName :: GHC.FastString
+addParams1FileName = GHC.mkFastString "./test/testdata/AddParams1.hs"
+
+parsedFileAddParams1 :: IO (ParseResult, [PosToken])
+parsedFileAddParams1 = parsedFileGhc "./test/testdata/AddParams1.hs"
 
 -- ----------------------------------------------------
 
