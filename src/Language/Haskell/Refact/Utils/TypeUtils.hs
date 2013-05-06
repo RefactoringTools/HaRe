@@ -2607,7 +2607,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
        let endPos   = tokenPosEnd lastTok
 
        newToks <- liftIO $ basicTokenise (GHC.showPpr impDecl)
-       logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
+       -- logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
        putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
@@ -2742,16 +2742,12 @@ makeNewToks :: (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
 makeNewToks (decl, maybeSig, declToks) = do
    let
      declStr = case declToks of
-                Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts
+                Just ts -> "\n" ++ (unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts)
                 Nothing -> "\n"++(prettyprint decl)++"\n\n"
      sigStr  = case declToks of
                 Just _ts -> ""
-{-
-                Nothing -> case maybeSig of
-                             Just sig -> "\n"++(prettyprint sig)
-                             Nothing -> ""
--}
                 Nothing -> "\n" ++ (intercalate "\n" $ map prettyprint maybeSig)
+   -- logm $ "makeNewToks:declStr=[" ++ declStr ++ "]"
    newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
    return newToks
 
@@ -2797,6 +2793,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
 
          newToks <- makeNewToks (decl,maybeSig,maybeDeclToks)
+         -- logm $ "addTopLevelDecl:newToks=" ++ (show newToks)
 
          let Just sspan = if (emptyList decls2)
                             then getSrcSpan (glast "addTopLevelDecl" decls1)
@@ -2818,7 +2815,10 @@ addDecl parent pn (decl, msig, declToks) topLevel
       -> RefactGhc t -- ^updated AST
   appendDecl parent pn (decl, maybeSig, declToks)
     = do let binds = hsValBinds parent
+         -- logm $ "appendDecl:declToks=" ++ (show declToks)
          newToks <- makeNewToks (decl,maybeSig,declToks)
+         -- logm $ "appendDecl:newToks=" ++ (show newToks)
+
          let Just sspan = getSrcSpan $ ghead "appendDecl" after
          decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 2 0 2) newToks
 
