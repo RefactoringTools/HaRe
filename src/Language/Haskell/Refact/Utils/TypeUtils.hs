@@ -3057,26 +3057,54 @@ addParamsToDecls decls pn paramPNames modifyToks = do
        addParamtoMatch match@(GHC.L l (GHC.Match pats mtyp rhs))
         = do rhs' <- addActualParamsToRhs modifyToks pn paramPNames rhs
              let pats' = map GHC.noLoc $ map pNtoPat paramPNames
-             -- pats'' <- if modifyToks then do _ <- addFormalParams fun pats'
-             pats'' <- if modifyToks then do _ <- addFormalParams match pats'
-                                             return pats'
-                                     else return pats'
+             pats'' <- if modifyToks
+               then do -- TODO: What happens if pats is []
+                       _ <- addFormalParams (head pats) pats'
+                       return pats'
+
+               else return pats'
              -- return (HsMatch loc  fun  (pats'++pats)  rhs' decls)
              return (GHC.L l (GHC.Match (pats'++pats) mtyp rhs'))
 
    -- addParamToDecl (TiDecorate.Dec (HsPatBind loc p rhs ds))
-   addParamToDecl (GHC.L l1 (GHC.PatBind (GHC.L l2 pat@(GHC.VarPat p)) rhs ty fvs t))
+   addParamToDecl (GHC.L l1 (GHC.PatBind pat@(GHC.L l2 (GHC.VarPat p)) rhs ty fvs t))
      | p == pn
        = do rhs'<-addActualParamsToRhs modifyToks pn paramPNames rhs
             let pats' = map GHC.noLoc $ map pNtoPat paramPNames
             pats'' <- if modifyToks  then do _ <- addFormalParams pat pats'
-                                             -- error "addParamToDecl" -- ++AZ++
                                              return pats'
                                      else return pats'
             -- return (TiDecorate.Dec (HsFunBind loc [HsMatch loc (patToPNT p) pats' rhs ds]))
-            return (GHC.L l1 (GHC.PatBind (GHC.L l2 pat) rhs ty fvs t))
+            return (GHC.L l1 (GHC.PatBind pat rhs ty fvs t))
    addParamToDecl x=return x
 
+-- | Add tokens corresponding to the new parameters to the end of the
+-- syntax element provided
+addFormalParams :: GHC.LPat GHC.Name -> [GHC.Located (GHC.Pat GHC.Name)] -> RefactGhc ()
+addFormalParams (GHC.L l _) newParams
+  = do
+       toks <- getToksForSpan l
+       -- newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
+       let newStr = (prettyprintPatList prettyprint True newParams)
+       newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False newStr
+
+       -- _ <- putToksForSpan l (({- map markToken -} newToks) ++ toks)
+       _ <- putToksForSpan l ({- map markToken -} newToks)
+       _ <- putToksAfterSpan l PlaceAdjacent toks
+       return ()
+
+{-
+-- | Add tokens corresponding to the new parameters to the end of the
+-- syntax element provided
+addFormalParams :: (SYB.Data t, SYB.Typeable t) =>
+                t -> [GHC.Located (GHC.Pat GHC.Name)] -> RefactGhc ()
+addFormalParams t newParams
+  = do
+       let (startPos,endPos) = getStartEndLoc t
+       newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
+       _ <- putToksAfterPos (startPos,endPos) PlaceAdjacent $ map markToken newToks
+       return ()
+-}
 
 addActualParamsToRhs :: (SYB.Typeable t, SYB.Data t) =>
                         Bool -> GHC.Name -> [GHC.Name] -> t -> RefactGhc t
