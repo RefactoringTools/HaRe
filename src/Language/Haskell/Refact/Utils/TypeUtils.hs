@@ -2285,11 +2285,16 @@ locToName::(SYB.Data t)=>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located GHC.Name)  -- ^ The result
-locToName fileName (row,col) t
-  = res
-       where
-        res = somethingStaged SYB.Renamer Nothing
-            (Nothing `SYB.mkQ` workerFunBind `SYB.extQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+locToName fileName (row,col) t = 
+      if res1 /= Nothing 
+        then res1
+        else res2
+     where
+        res1 = somethingStaged SYB.Renamer Nothing
+            (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+
+        res2 = somethingStaged SYB.Renamer Nothing
+            (Nothing `SYB.mkQ` workerFunBind) t
 
         {-
         res = reverse $ everythingStaged SYB.Renamer (++) []

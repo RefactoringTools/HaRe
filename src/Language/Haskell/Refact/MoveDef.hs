@@ -181,6 +181,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
   parsed  <- getRefactParsed
   logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+  logm $ "liftToTopLevel':pn=" ++ (GHC.showPpr pn)
   if isLocalFunOrPatName n renamed
       then do
               (refactoredMod,declPns) <- applyRefac (liftToMod) RSAlreadyLoaded

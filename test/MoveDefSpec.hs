@@ -117,7 +117,12 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel WhereIn6 13 29" $ do
-      pending
+     liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/WhereIn6.hs" (13,29)
+     -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/WhereIn6.hs" (13,29)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/WhereIn6.hs.expected"
+                          "./test/testdata/LiftToToplevel/WhereIn6.hs.refactored"
+     diff `shouldBe` []
+
 
     -- ---------------------------------
 
