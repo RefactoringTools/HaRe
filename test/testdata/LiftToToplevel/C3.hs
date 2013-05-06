@@ -1,6 +1,6 @@
-module C3  where 
+module LiftToToplevel.C3  where 
 
-import D3(pow)
+import LiftToToplevel.D3(pow)
 
 anotherFun (x:xs) =  x^pow + anotherFun xs
 

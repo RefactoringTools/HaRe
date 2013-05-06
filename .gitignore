@@ -15,7 +15,6 @@
 /old/testing/introThreshold/UTestCache
 /refactorer/B.hs.refactored
 /spec.tix
-/src/#Main.hs#
 /src/Ole.hs.AST_out
 /src/Ole.hs.refactored
 /src/Ole.hs.renamed_out
@@ -23,6 +22,7 @@
 /src/Ole.hs.tokens1
 /src/ZipperLensGist.hs
 /src/ZipperPlayRose.hs
+/src/strafunski.hs
 /test/debug.log
 /test/testdata/Case/B.hs.AST_out
 /test/testdata/Case/B.hs.refactored
@@ -104,6 +104,14 @@
 /test/testdata/LiftToToplevel/D2.hs.refactored
 /test/testdata/LiftToToplevel/D2.hs.renamed_out
 /test/testdata/LiftToToplevel/D2.hs.tokens
+/test/testdata/LiftToToplevel/D3.hs.AST_out
+/test/testdata/LiftToToplevel/D3.hs.refactored
+/test/testdata/LiftToToplevel/D3.hs.renamed_out
+/test/testdata/LiftToToplevel/D3.hs.tokens
+/test/testdata/LiftToToplevel/WhereIn1.hs.AST_out
+/test/testdata/LiftToToplevel/WhereIn1.hs.refactored
+/test/testdata/LiftToToplevel/WhereIn1.hs.renamed_out
+/test/testdata/LiftToToplevel/WhereIn1.hs.tokens
 /test/testdata/M
 /test/testdata/MoveDef/Demote.hs.AST_out
 /test/testdata/MoveDef/Demote.hs.refactored
@@ -138,7 +146,3 @@ testing/*/hi
 testing/UTest
 testing/addCon/Case1.hs.temp.hs
 testing/addCon/Case2.hs.temp.hs
-/test/testdata/LiftToToplevel/D3.hs.AST_out
-/test/testdata/LiftToToplevel/D3.hs.refactored
-/test/testdata/LiftToToplevel/D3.hs.renamed_out
-/test/testdata/LiftToToplevel/D3.hs.tokens

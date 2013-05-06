@@ -778,6 +778,8 @@ spec = do
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n     ff = 15"
 
   -- -------------------------------------------------------------------
+{-
+  -- This has been moved into TypeUtils
 
   describe "addFormalParams" $ do
     it "adds new parameters to a token stream??" $ do
@@ -814,7 +816,7 @@ spec = do
                 "`- ((6,1),(32,18))\n"
       -- (showTree f) `shouldBe` ""
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x n1 n2\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-
+-}
 
   -- -------------------------------------------------------------------
 

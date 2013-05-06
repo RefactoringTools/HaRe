@@ -1,4 +1,4 @@
-module WhereIn1 where
+module LiftToToplevel.WhereIn1 where
 
 --A definition can be lifted from a where or let to the top level binding group.
 --Lifting a definition widens the scope of the definition.

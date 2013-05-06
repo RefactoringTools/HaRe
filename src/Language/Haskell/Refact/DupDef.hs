@@ -144,12 +144,12 @@ reallyDoDuplicating pn newName inscopes renamed = do
                     duplicatedDecls = definingDeclsNames [n] declsr True False
                     -- (after,before)  = break (definesP pn) (reverse declsp)
 
-                    (f,d) = hsFDNamesFromInside parentr
+                (f,d) <- hsFDNamesFromInside parentr
                     --f: names that might be shadowd by the new name,
                     --d: names that might clash with the new name
 
-                    dv = hsVisibleNames ln declsr --dv: names may shadow new name
-                    vars        = nub (f `union` d `union` dv)
+                dv <- hsVisibleNames ln declsr --dv: names may shadow new name
+                let vars        = nub (f `union` d `union` dv)
 
                 newNameGhc <- mkNewGhcName newName
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow

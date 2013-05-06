@@ -1,4 +1,4 @@
-module D3 where
+module LiftToToplevel.D3 where
 
 {-lift 'sq' to top level. This refactoring only affects the 
   current module. -}

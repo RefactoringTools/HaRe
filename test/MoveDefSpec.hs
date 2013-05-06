@@ -36,7 +36,7 @@ spec = do
 
     it "checks for name clashes" $ do
      res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","17","5"])
-     (show res) `shouldBe` "Just \"The identifier(s):[ff] will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
+     (show res) `shouldBe` "Just \"The identifier(s): (ff, test/testdata/MoveDef/Md1.hs:17:5) will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
 
     {-
     it "checks for invalid new name" $ do
@@ -91,12 +91,28 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D3 C3 A3 8 6" $ do
-      pending
+     liftToTopLevel defaultTestSettings (Just "./test/testdata/LiftToToplevel/A3.hs") "./test/testdata/LiftToToplevel/D3.hs" (8,6)
+     -- liftToTopLevel logTestSettings     (Just "./test/testdata/LiftToToplevel/A3.hs") "./test/testdata/LiftToToplevel/D3.hs" (8,6)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/D3.hs.expected"
+                          "./test/testdata/LiftToToplevel/D3.hs.refactored"
+     diff `shouldBe` []
+
+     c3Refactored <- doesFileExist "./test/testdata/LiftToToplevel/C3.hs.refactored"
+     c3Refactored `shouldBe` False
+
+     a3Refactored <- doesFileExist "./test/testdata/LiftToToplevel/A3.hs.refactored"
+     a3Refactored `shouldBe` False
+
 
     -- ---------------------------------
 
     it "liftToTopLevel WhereIn1 12 18" $ do
-      pending
+     liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/WhereIn1.hs" (12,18)
+     -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/WhereIn1.hs" (12,18)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/WhereIn1.hs.expected"
+                          "./test/testdata/LiftToToplevel/WhereIn1.hs.refactored"
+     diff `shouldBe` []
+
 
     -- ---------------------------------
 
@@ -182,6 +198,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes a definition from the top level 1" $ do
      doDemote ["./test/testdata/MoveDef/Demote.hs","7","1"]
+     -- demote logTestSettings Nothing "./test/testdata/MoveDef/Demote.hs" (7,1)
      diff <- compareFiles "./test/testdata/MoveDef/Demote.hs.refactored"
                           "./test/testdata/MoveDef/Demote.hs.expected"
      diff `shouldBe` []

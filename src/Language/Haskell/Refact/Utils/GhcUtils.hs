@@ -1,4 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Language.Haskell.Refact.Utils.GhcUtils where
 
 import qualified Data.Generics as SYB
@@ -14,8 +16,10 @@ import Control.Monad
 import Control.Lens
 import Control.Applicative
 import Data.Data
--- import Data.Data.Lens(uniplate,biplate,template,tinplate)
+
 import Unsafe.Coerce
+
+import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 {-
 
@@ -247,9 +251,14 @@ isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
 -- AST Stage.
 checkItemStage :: Typeable a => SYB.Stage -> a -> Bool
 checkItemStage stage x = (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x
-  where nameSet = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<SYB.TypeChecker) :: GHC.PostTcType -> Bool
-        fixity = const (stage<SYB.Renamer) :: GHC.Fixity -> Bool
+  where nameSet    = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet        -> Bool
+        postTcType = const (stage < SYB.TypeChecker                  ) :: GHC.PostTcType -> Bool
+        fixity     = const (stage < SYB.Renamer                      ) :: GHC.Fixity     -> Bool
+
+checkItemRenamer :: Typeable a => a -> Bool
+checkItemRenamer x = checkItemStage SYB.Renamer x
+
+
 
 -- | Staged variation of SYB.everything
 -- The stage must be provided to avoid trying to modify elements which
@@ -259,8 +268,6 @@ everythingStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> SYB.Gen
 everythingStaged stage k z f x
   | checkItemStage stage x = z
   | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
-
-
 
 
 -- listify :: Typeable r => (r -> Bool) -> GenericQ [r]
@@ -273,4 +280,113 @@ listifyStaged
   :: (Data a, Typeable a1) => SYB.Stage -> (a1 -> Bool) -> a -> [a1]
 listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x | p x ]))
 
+
+-- ---------------------------------------------------------------------
+
+-- Strafunski StrategyLib adaptations
+
+{- ++AZ++ James Koppel version, out for now -}
+-- ---------------------------------------------------------------------
+
+-- | Full type-unifying traversal in top-down order.
+full_tdTUGhc 	:: (MonadPlus m, Monoid a) => TU a m -> TU a m
+full_tdTUGhc s	=  op2TU mappend s (allTUGhc' (full_tdTUGhc s))
+
+
+{- original
+-- | Full type-unifying traversal in top-down order.
+full_tdTU 	:: (Monad m, Monoid a) => TU a m -> TU a m
+full_tdTU s	=  op2TU mappend s (allTU' (full_tdTU s))
+-}
+
+-- ---------------------------------------------------------------------
+-- | Top-down type-unifying traversal that is cut of below nodes
+--   where the argument strategy succeeds.
+stop_tdTUGhc :: (MonadPlus m, Monoid a) => TU a m -> TU a m
+-- stop_tdTUGhc s = ifTU checkItemRenamer' (const s) (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+stop_tdTUGhc s = (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+
+
+
+
+allTUGhc' :: (MonadPlus m, Monoid a) => TU a m -> TU a m
+allTUGhc' = allTUGhc mappend mempty
+
+{- original 
+-- | Top-down type-unifying traversal that is cut of below nodes
+--   where the argument strategy succeeds.
+stop_tdTU 	:: (MonadPlus m, Monoid a) => TU a m -> TU a m
+stop_tdTU s	=  s `choiceTU` (allTU' (stop_tdTU s))
+
+allTU' 		:: (Monad m, Monoid a) => TU a m -> TU a m
+allTU'		=  allTU mappend mempty
+-}
+
+
+------------------------------------------
+
+-- This section courtesy of @jkoppel (James Koppel)
+allTUGhc :: (MonadPlus m) => (a -> a -> a) -> a -> TU a m -> TU a m
+allTUGhc op2 u s  = ifTU checkItemRenamer' (const $ constTU u) (allTU op2 u s)
+
+
+checkItemStage' :: forall m. (MonadPlus m) => SYB.Stage -> TU () m
+checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` nameSet
+  where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> m ()
+        postTcType = const (guard $ stage<SYB.TypeChecker) :: GHC.PostTcType -> m ()
+        fixity     = const (guard $ stage<SYB.Renamer) :: GHC.Fixity -> m ()
+
+checkItemRenamer' :: (MonadPlus m) => TU () m
+checkItemRenamer' = checkItemStage' SYB.Renamer
+
+{-  ++AZ++  -}
+
+
+{- 
+-- ++AZ++ old version
+-- ---------------------------------------------------------------------
+
+-- Strafunski StrategyLib adaptations
+
+-- Example being chased
+-- hsFreeAndDeclared'= applyTU (stop_tdTU (failTU `adhocTU` expr) t
+
+-- Starting point down the rabbit hole of checkItemStage
+-- | Top-down type-unifying traversal that is cut of below nodes
+-- where the argument strategy succeeds.
+stop_tdTUGhc :: (MonadPlus m, Monoid a) => TU a m -> TU a m
+stop_tdTUGhc s = s `choiceTU` (allTUGhc' (stop_tdTUGhc s))
+
+
+allTUGhc :: (Monad m, Monoid a) => (a -> a -> a) -> a -> TU a m -> TU a m
+allTUGhc op2 u s = MkTU (\x -> case (checkItemRenamer x) of
+                                  True -> do return (u) -- `op2` s)
+                                  False -> fold (gmapQ (applyTU s) x)
+                          )
+  where
+    fold l = foldM op2' u l
+    op2' x c = c >>= \y -> return (x `op2` y)
+
+
+-- This is the one that needs checkItemStage
+{- ++ Original (reamed to avoid clash)
+allTUGhc :: Monad m => (a -> a -> a) -> a -> TU a m -> TU a m
+allTUGhc op2 u s = MkTU (\x -> fold (gmapQ (applyTU s) x))
+where
+fold l = foldM op2' u l
+op2' x c = c >>= \y -> return (x `op2` y)
+-}
+
+-- Hence this one too
+allTUGhc' :: (Monad m, Monoid a) => TU a m -> TU a m
+allTUGhc' = allTUGhc mappend mempty
+
+-- hsVisiblePNs e t = applyTU (full_tdTU (constTU [] `adhocTU` top
+
+-- | Full type-unifying traversal in top-down order.
+full_tdTUGhc :: (Monad m, Monoid a) => TU a m -> TU a m
+full_tdTUGhc s = op2TU mappend s (allTUGhc' (full_tdTUGhc s))
+
+
+-}
 

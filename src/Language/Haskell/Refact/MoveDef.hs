@@ -15,6 +15,7 @@ import qualified GHC.SYB.Utils as SYB
 import qualified Exception             as GHC
 import qualified FastString            as GHC
 import qualified GHC
+import qualified Name                  as GHC
 import qualified OccName               as GHC
 import qualified Outputable            as GHC
 
@@ -31,6 +32,8 @@ import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+
+import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 import Debug.Trace
 
@@ -86,6 +89,7 @@ compLiftToTopLevel fileName (row,col) = do
 
 -- ---------------------------------------------------------------------
 
+doDemote :: [String] -> IO ()
 doDemote args
  = do let  fileName = ghead "filename"  args
            row = read (args!!1)::Int
@@ -214,9 +218,10 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                       -- one and the top level that are used in this one?
 
                       logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (GHC.showPpr (liftedDecls,declaredPns))
+                      -- original : pns<-pnsNeedRenaming inscps mod parent liftedDecls declaredPns
                       pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
 
-                      -- let (_,dd) = hsFreeAndDeclaredPNs renamed
+                      -- (_,dd) <- hsFreeAndDeclaredPNs renamed
                       let dd = getDeclaredVars $ hsBinds renamed
                       logm $ "liftToMod:(ddd)=" ++ (GHC.showPpr dd)
 
@@ -325,10 +330,14 @@ allDeclsIn t = fromMaybe [] (applyTU (full_tdTU (constTU [] `adhocTU` decl)) t)
 -}
 
 
+askRenamingMsg :: [GHC.Name] -> String -> t
 askRenamingMsg pns str
-  = error ("The identifier(s):" ++ prettyprint pns ++
+  = error ("The identifier(s): " ++ (intercalate "," $ map showPN pns) ++
            " will cause name clash/capture or ambiguity occurrence problem after "
            ++ str ++", please do renaming first!")
+
+  where
+    showPN pn = GHC.showPpr (pn,GHC.nameSrcLoc pn)
 {- ++AZ++ original
 askRenamingMsg pns str
   = error ("The identifier(s):" ++ showEntities showPNwithLoc pns ++
@@ -338,21 +347,22 @@ askRenamingMsg pns str
 
 -- |Get the subset of 'pns' that need to be renamed before lifting.
 pnsNeedRenaming :: (SYB.Data t1) =>
-  t1 -> [GHC.LHsBind GHC.Name] -> t2 -> [GHC.Name] -> RefactGhc [GHC.Name]
+  t1 -> [GHC.LHsBind GHC.Name] -> t2 -> [GHC.Name] 
+  -> RefactGhc [GHC.Name]
 pnsNeedRenaming dest parent liftedDecls pns
    =do r <- mapM pnsNeedRenaming' pns
        return (concat r)
   where
      pnsNeedRenaming' pn
-       = do let (f,d) = hsFDsFromInside dest --f: free variable names that may be shadowed by pn
-                                             --d: declaread variables names that may clash with pn
-            let vs = hsVisiblePNs pn parent  --vs: declarad varaibles that may shadow pn
+       = do (f,d) <- hsFDsFromInside dest --f: free variable names that may be shadowed by pn
+                                          --d: declaread variables names that may clash with pn
+            vs <- hsVisiblePNs pn parent  --vs: declarad variables that may shadow pn
             let -- inscpNames = map (\(x,_,_,_)->x) $ inScopeInfo inscps
                 vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
             -- if elem (pNtoName pn) vars  || isInScopeAndUnqualified (pNtoName pn) inscps && findEntity pn dest
             isInScope <- isInScopeAndUnqualifiedGhc (pNtoName pn)
+            -- logm $ "MoveDef.pnsNeedRenaming:(f,d,vs,vars,isInScope)=" ++ (GHC.showPpr (f,d,vs,vars,isInScope))
             if elem (pNtoName pn) vars  || isInScope && findEntity pn dest
-
                then return [pn]
                else return []
      --This pNtoName takes into account the qualifier.
@@ -863,8 +873,8 @@ addParamsToParentAndLiftedDecl :: HsValBinds t => -- SYB.Data t =>
   -> [GHC.LHsBind GHC.Name]
   -> RefactGhc (t, [GHC.LHsBind GHC.Name], Bool)
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls
-  =do  let (ef,_) = hsFreeAndDeclaredPNs parent
-       let (lf,_) = hsFreeAndDeclaredPNs liftedDecls
+  =do  (ef,_) <- hsFreeAndDeclaredPNs parent
+       (lf,_) <- hsFreeAndDeclaredPNs liftedDecls
 
        let eff = getFreeVars $ hsBinds parent
        let lff = getFreeVars liftedDecls
@@ -1197,7 +1207,7 @@ doDemoting' t pn
                          drawTokenTree "" -- ++AZ++ debug
                          logm "MoveDef.doDemoting':target location found" -- ++AZ++
                          -- (f,d)<-hsFreeAndDeclaredPNs demotedDecls
-                         let (f,_d) = hsFreeAndDeclaredPNs demotedDecls
+                         (f,_d) <- hsFreeAndDeclaredPNs demotedDecls
                          -- remove demoted declarations
                          (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
                          (t',demotedSigs) <- rmTypeSigs declaredPns t
@@ -1219,7 +1229,9 @@ doDemoting' t pn
                          logm $ "MoveDef:sig and decl toks[" ++ (GHC.showRichTokenStream (demotedSigToks ++ demotedToks)) ++ "]" -- ++AZ++
 
                          --get those variables declared at where the demotedDecls will be demoted to
-                         let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
+                         -- let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
+                         dl <- mapM (flip declaredNamesInTargetPlace ds) declaredPns
+                         logm $ "mapM declaredNamesInTargetPlace done"
                          --make sure free variable in 'f' do not clash with variables in 'dl',
                          --otherwise do renaming.
                          let clashedNames=filter (\x-> elem (id x) (map id f)) $ (nub.concat) dl
@@ -1273,7 +1285,7 @@ doDemoting' t pn
                     | (not $ findPNs pns pat) && findPNs pns rhs
                     = return [1::Int]
                   usedInPat  _ = return []
-                  -- usedInPat  _ = mzero 
+                  -- usedInPat  _ = mzero
 
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).
@@ -1350,27 +1362,49 @@ doDemoting' t pn
           declaredNamesInTargetPlace :: (SYB.Data t)
                             => GHC.Name -> t
                             -- -> RefactGhc [GHC.Name]
-                            -> [GHC.Name]
+                            -> RefactGhc [GHC.Name]
+{-
           declaredNamesInTargetPlace pn
              = SYB.everythingStaged SYB.Renamer (++) []
                    ([] `SYB.mkQ`  inMatch
                        `SYB.extQ` inPat)
+-}
+          declaredNamesInTargetPlace pn t = do
+             logm $ "declaredNamesInTargetPlace:pn=" ++ (GHC.showPpr pn)
+             res <- applyTU (stop_tdTUGhc (failTU
+                                           `adhocTU` inMatch
+                                           `adhocTU` inPat)) t
+             logm $ "declaredNamesInTargetPlace:res=" ++ (GHC.showPpr res)
+             return res
                where
                  -- inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-                 inMatch ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
-                    | findPN pn rhs
-                     -- =(return.snd)=<<hsFDsFromInside rhs
-                     = (snd $ hsFDsFromInside rhs)
-                 -- inMatch _ =mzero
-                 inMatch _ = []
+                 inMatch ((GHC.Match _pats _ rhs) :: GHC.Match GHC.Name)
+                    | findPN pn rhs = do
+                     logm $ "declaredNamesInTargetPlace:inMatch"
+                     (return.snd) =<< hsFDsFromInside rhs
+                 -- inMatch _ = mzero
+                 inMatch _ = return mzero
 
                  -- inPat (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
                  inPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
+                    |findPN pn rhs = do
+                     logm $ "declaredNamesInTargetPlace:inPat"
+                     (return.snd) =<< hsFDsFromInside pat
+                 -- inPat _=  mzero
+                 inPat _=  return mzero
+
+
+{-
+                 inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+                    | findPN pn rhs
+                     =(return.snd)=<<hsFDsFromInside match
+                 inMatch _ =mzero
+
+                 inPat (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
                     |findPN pn rhs
-                     -- =(return.snd)=<<hsFDsFromInside pat
-                     = (snd $ hsFDsFromInside pat)
-                 -- inPat _=mzero
-                 inPat _ = []
+                     =(return.snd)=<<hsFDsFromInside pat
+                 inPat _=mzero
+-}
 
 
 {- ++original++
@@ -1514,7 +1548,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
                    -- logm $ "MoveDef.foldParams after rmParamsInParent"
 
                    -- ls<-mapM hsFreeAndDeclaredPNs sndSubst
-                   let ls = map hsFreeAndDeclaredPNs sndSubst
+                   ls <- mapM hsFreeAndDeclaredPNs sndSubst
                    -- newNames contains the newly introduced names to the demoted decls---
                    -- let newNames=(map pNtoName (concatMap fst ls)) \\ (map pNtoName fstSubst)
                    let newNames=((concatMap fst ls)) \\ (fstSubst)
@@ -1802,8 +1836,8 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
 
 
        getClashedNames oldNames newNames match
-         = do  let (f,d) = hsFDsFromInside match
-               let ds' = map (flip hsVisiblePNs match) oldNames
+         = do  (f,d) <- hsFDsFromInside match
+               ds' <- mapM (flip hsVisiblePNs match) oldNames
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub
                                    ( nub (d `union` (nub.concat) ds')))
