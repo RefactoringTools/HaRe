@@ -3499,6 +3499,14 @@ rmDecl pn incSig t = do
                 -> RefactGhc [GHC.LHsBind GHC.Name]
     rmLocalDecl decl@(GHC.L sspan _) decls
      = do
+
+         -- TODO: The let/in version is wrapped in a GHC.HsLet expression.
+         -- The sspan of HsLet runs from the let keyword to the end of
+         -- the in clause.
+         -- (GHC.L l (HsLet (HsLocalBinds id) (LHsExpr id))
+         -- So we must remove the tokens from the start of l to the
+         -- start of the LHsExpr
+
          logm $ "rmLocalDecl: decls=" ++ (GHC.showPpr decls)
          prevToks <- getToksBeforeSpan sspan -- Need these before
                                              -- sspan is deleted
