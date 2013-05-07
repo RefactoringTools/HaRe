@@ -948,9 +948,33 @@ spec = do
          return newBinding
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "AddParams1.sq"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n foo = 3\n\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module AddParams1 where\n\n sq  pow 0= 0\n sq  pow z= z^2\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module AddParams1 where\n\n sq  pow 0= 0\n sq  pow z= z^2\n\n foo = 3\n\n "
+      -- (GHC.showPpr $ last $ init nb) `shouldBe` ""
+
+    -- ---------------------------------
+
+    it "Adds parameters to a declaration with no existing ones" $ do
+      (t, toks) <- parsedFileAddParams1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let declsr = hsBinds renamed
+      let Just (GHC.L _ n) = locToName addParams1FileName (6, 1) renamed
+      let
+        comp = do
+         newName1 <- mkNewGhcName "baz"
+         newName2 <- mkNewGhcName "bar"
+         newBinding <- addParamsToDecls declsr n [newName1,newName2] True
+
+         return newBinding
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (GHC.showPpr n) `shouldBe` "AddParams1.foo"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n foo = 3\n\n "
+      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n foo baz bar= 3\n\n "
       -- (GHC.showPpr $ last $ init nb) `shouldBe` ""
 
   -- ---------------------------------------------
