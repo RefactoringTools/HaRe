@@ -980,7 +980,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "addActualParamsToRhs" $ do
-    it "Adds a parameter to a the rhs of a declaration, and updates the token stream" $ do
+    it "Adds a parameter to the rhs of a declaration, and updates the token stream" $ do
       (t, toks) <- parsedFileLiftD1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -998,37 +998,40 @@ spec = do
 
          return newBinding
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "sq"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (GHC.showPpr nb) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = (sq bar2) x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
 
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.D1 where\n\n {-lift 'sq' to top level. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = (sq bar2) x+ sumSquares xs\n   where\n      sq x = x ^ pow\n      pow =2\n\n sumSquares [] = 0\n\n main = sumSquares [1..4]\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.D1 where\n\n {-lift 'sq' to top level. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = (sq bar2)x + sumSquares xs\n   where\n      sq x = x ^ pow\n      pow =2\n\n sumSquares [] = 0\n\n main = sumSquares [1..4]\n\n\n "
 
     -- --------------------
 
-    it "Adds parameters to a the rhs of a declaration, and updates the token stream" $ do
-      (t, toks) <- parsedFileLiftD1Ghc
+    it "Adds parameters to a complex rhs of a declaration, and updates the token stream" $ do
+      (t, toks) <- parsedFileLiftWhereIn7Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
       -- let decl@(GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [GHC.L _ (GHC.Match _ _ rhs) ] _) _ _ _)) = head declsr
       let decl = head declsr
-      (GHC.showPpr decl) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = sq x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
+      (GHC.showPpr decl) `shouldBe` "LiftToToplevel.WhereIn7.fun x y z\n  = inc addthree\n  where\n      inc a = a GHC.Num.+ 1\n      addthree = x GHC.Num.+ y GHC.Num.+ z"
       -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
-      let Just (GHC.L _ n) = locToName liftD1FileName (6, 21) renamed
+      let Just (GHC.L _ n) = locToName liftWhereIn7FileName (10, 17) renamed
       let
         comp = do
-         newName  <- mkNewGhcName "bar"
-         newName2 <- mkNewGhcName "bar2"
-         newBinding <- addActualParamsToRhs True n [newName,newName2] decl
+         newName1 <- mkNewGhcName "x1"
+         newName2 <- mkNewGhcName "y1"
+         newName3 <- mkNewGhcName "z1"
+         newBinding <- addActualParamsToRhs True n [newName1,newName2,newName3] decl
 
          return newBinding
       (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (GHC.showPpr n) `shouldBe` "sq"
+      -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (GHC.showPpr n) `shouldBe` "addthree"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (GHC.showPpr nb) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = ((sq bar) bar2) x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.WhereIn7 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'addthree' defined in 'fun'.\n --This example aims to test adding parenthese.\n\n\n fun x y z =inc (addthree x1 y1 z1)\n        where inc a =a +1\n              addthree=x+y+z\n "
+      (GHC.showPpr nb) `shouldBe` "LiftToToplevel.WhereIn7.fun x y z\n  = inc (addthree x1 y1 z1)\n  where\n      inc a = a GHC.Num.+ 1\n      addthree = x GHC.Num.+ y GHC.Num.+ z"
 
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.D1 where\n\n {-lift 'sq' to top level. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = ((sq bar) bar2) x+ sumSquares xs\n   where\n      sq x = x ^ pow\n      pow =2\n\n sumSquares [] = 0\n\n main = sumSquares [1..4]\n\n\n "
 
   -- ---------------------------------------------
 
@@ -2482,6 +2485,14 @@ liftWhereIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/WhereIn1
 
 parsedFileLiftWhereIn1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereIn1.hs"
+
+-- -----------
+
+liftWhereIn7FileName :: GHC.FastString
+liftWhereIn7FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/WhereIn7.hs"
+
+parsedFileLiftWhereIn7Ghc :: IO (ParseResult,[PosToken])
+parsedFileLiftWhereIn7Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereIn7.hs"
 
 -- -----------
 

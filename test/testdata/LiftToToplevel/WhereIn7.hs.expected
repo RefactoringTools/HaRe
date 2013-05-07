@@ -7,6 +7,8 @@ module LiftToToplevel.WhereIn7 where
 --This example aims to test adding parenthese.
 
 
-fun x y z =inc addthree
+fun x y z =inc (addthree x y z)
        where inc a =a +1
-             addthree=x+y+z
+
+addthree x y z=x+y+z
+

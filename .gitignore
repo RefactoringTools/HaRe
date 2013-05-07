@@ -150,3 +150,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/LiftToToplevel/WhereIn6.hs.refactored
 /test/testdata/LiftToToplevel/WhereIn6.hs.renamed_out
 /test/testdata/LiftToToplevel/WhereIn6.hs.tokens
+/test/testdata/LiftToToplevel/WhereIn7.hs.AST_out
+/test/testdata/LiftToToplevel/WhereIn7.hs.refactored
+/test/testdata/LiftToToplevel/WhereIn7.hs.renamed_out
+/test/testdata/LiftToToplevel/WhereIn7.hs.tokens
