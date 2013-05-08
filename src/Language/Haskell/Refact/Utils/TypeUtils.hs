@@ -3434,7 +3434,10 @@ rmDecl:: (SYB.Data t)
 rmDecl pn incSig t = do
   logm $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
-  t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t -- top down
+  t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
+  t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
+
+             -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
   -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   (t'',sig') <- if incSig
                   then rmTypeSig pn t'
@@ -3451,6 +3454,7 @@ rmDecl pn incSig t = do
       = do
          let decls = hsBinds localDecls
          -- logm $ "rmDecl:inGRHSs decls=" ++ (SYB.showData SYB.Renamer 0 $ decls)
+         logm $ "rmDecl:inGRHSs localDecls=" ++ (SYB.showData SYB.Renamer 0 $ localDecls)
          let (_decls1, decls2) = break (defines pn) decls
              decl = ghead "rmDecl" decls2
          topLevel <- isTopLevelPN pn
@@ -3459,7 +3463,6 @@ rmDecl pn incSig t = do
                      False  -> rmLocalDecl decl decls
          return (GHC.GRHSs a (replaceBinds localDecls decls'))
     inGRHSs x = return x
-
 
     inDecls (decls::[GHC.LHsBind GHC.Name])
       | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
@@ -3472,6 +3475,29 @@ rmDecl pn incSig t = do
                      False  -> rmLocalDecl decl decls
     inDecls x = return x
 
+    inLet :: GHC.LHsExpr GHC.Name -> RefactGhc (GHC.LHsExpr GHC.Name)
+    inLet (GHC.L ss (GHC.HsLet localDecls expr@(GHC.L l _)))
+      | not $ emptyList (snd (break (defines pn) (hsBinds localDecls)))
+      = do
+         let decls = hsBinds localDecls
+         let (decls1, decls2) = break (defines pn) decls
+             decl = ghead "rmDecl" decls2
+
+         toks <- getToksForSpan l
+         removeToksForPos (getStartEndLoc decl)
+         decl' <- syncDeclToLatestStash decl
+         setStateStorage (StorageBind decl')
+         case length decls of
+           1 -> do
+            putToksForSpan ss toks
+            return expr
+           _ -> do
+             let decls2' = gtail "inLet" decls2
+             return $ (GHC.L ss (GHC.HsLet (replaceBinds localDecls (decls1 ++ decls2')) expr))
+
+    inLet x = return x
+
+
     rmTopLevelDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
                 -> RefactGhc [GHC.LHsBind GHC.Name]
     rmTopLevelDecl decl decls
@@ -3483,7 +3509,7 @@ rmDecl pn incSig t = do
           setStateStorage (StorageBind decl')
 
           let (decls1, decls2) = break (defines pn) decls
-              decls2' = gtail "rmLocalDecl 1" decls2
+              decls2' = gtail "rmTopLevelDecl 1" decls2
           return $ (decls1 ++ decls2')
           -- return (decls \\ [decl])
 
@@ -3532,8 +3558,9 @@ rmDecl pn incSig t = do
                  rmStartPos = tokenPos whereOrLet
 
              logm $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
-
              removeToksForPos (rmStartPos,rmEndPos)
+
+--isIn
              return ()
            _ -> return ()
 

@@ -1078,6 +1078,7 @@ spec = do
     it "Removes the last local decl in a let/in clause" $ do
       (t, toks) <- parsedFileLiftLetIn1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName liftLetIn1FileName (11, 22) renamed
@@ -1086,13 +1087,13 @@ spec = do
          (newDecls,removedDecl,removedSig) <- rmDecl n True declsr
 
          return newDecls
-      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (GHC.showPpr n) `shouldBe` "sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test lifting a definition from a let clause to top level,\n --and the elimination of the keywords 'let' and 'in'\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                   in sq x + sq y\n                        where pow=2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test lifting a definition from a let clause to top level,\n --and the elimination of the keywords 'let' and 'in'\n\n sumSquares x y = sq x + sq y\n                        where pow=2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
-      (GHC.showPpr nb) `shouldBe` "[something here :) ]"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test lifting a definition from a let clause to top level,\n --and the elimination of the keywords 'let' and 'in'\n\n sumSquares x y = sq x + sq y\n\n\n                        where pow=2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
+      (GHC.showPpr nb) `shouldBe` "[LiftToToplevel.LetIn1.anotherFun 0 y\n   = sq y\n   where\n       sq x = x GHC.Real.^ 2,\n LiftToToplevel.LetIn1.sumSquares x y\n   = sq x GHC.Num.+ sq y\n   where\n       pow = 2]"
 
 
 
