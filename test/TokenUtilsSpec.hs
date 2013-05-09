@@ -425,6 +425,90 @@ tree TId 0:
 
       (showToks toks4) `shouldBe` "[(((8,6),(8,6)),ITvocurly,\"\"),(((8,6),(8,8)),ITvarid \"sq\",\"sq\"),(((8,9),(8,12)),ITvarid \"pow\",\"pow\"),(((8,9),(8,10)),ITvarid \"x\",\"x\"),(((8,11),(8,12)),ITequal,\"=\"),(((8,13),(8,14)),ITvarid \"x\",\"x\"),(((8,15),(8,16)),ITvarsym \"^\",\"^\"),(((8,17),(8,20)),ITvarid \"pow\",\"pow\")]"
 
+    -- ---------------------------------
+
+    it "gets the tokens after updating a SrcSpan" $ do
+      (t,toks) <- parsedFileLiftLetIn1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let forest = mkTreeFromTokens toks
+
+      -- putToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:12:22-23:(((False,0,0,12),22),((False,0,0,12),24))
+      -- [((((0,1),(0,2)),IToparen),"("),((((0,2),(0,4)),ITvarid "sq"),"sq"),((((0,5),(0,8)),ITvarid "pow"),"pow"),((((0,8),(0,9)),ITcparen),")")]
+
+      let sspan1 = posToSrcSpan forest $
+                        (((forestLineToGhcLine $ ForestLine False 0 0 12),22),
+                         ((forestLineToGhcLine $ ForestLine False 0 0 12),24) )
+      newToks <- liftIO $ basicTokenise "(sq pow)"
+      (show newToks) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
+
+      let (tm2,sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
+      (drawTreeEntry tm2) `shouldBe`
+            "((1,1),(16,22))\n|\n"++
+            "+- ((1,1),(12,21))\n|\n"++
+            "+- ((10000000012,22),(10000000012,30))\n|\n"++
+            "`- ((12,25),(16,22))\n"
+
+      -- putToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:12:29-30:(((False,0,0,12),29),((False,0,0,12),31))
+      -- [((((0,1),(0,2)),IToparen),"("),((((0,2),(0,4)),ITvarid "sq"),"sq"),((((0,5),(0,8)),ITvarid "pow"),"pow"),((((0,8),(0,9)),ITcparen),")")]
+
+      let sspan2 = posToSrcSpan forest $
+                        (((forestLineToGhcLine $ ForestLine False 0 0 12),29),
+                         ((forestLineToGhcLine $ ForestLine False 0 0 12),31) )
+      newToks2 <- liftIO $ basicTokenise "(sq pow)"
+      (show newToks2) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
+
+      let (tm3,sspan3,tree3) = updateTokensForSrcSpan tm2 sspan2 newToks2
+      (drawTreeEntry tm3) `shouldBe`
+            "((1,1),(16,22))\n|\n"++
+            "+- ((1,1),(12,21))\n|\n"++
+            "+- ((10000000012,22),(10000000012,30))\n|\n"++
+            "`- ((12,25),(16,22))\n   |\n"++
+            "   +- ((12,25),(12,28))\n   |\n"++
+            "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+            "   `- ((12,32),(16,22))\n"
+
+
+      -- The test ....
+      -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:12:22-32:("(((False,0,0,12),22),((False,0,0,12),33))"
+      let sspan4 = posToSrcSpan forest $
+                        (((forestLineToGhcLine $ ForestLine False 0 0 12),22),
+                         ((forestLineToGhcLine $ ForestLine False 0 0 12),33) )
+
+      --
+{-
+      let z = openZipperToSpan (srcSpanToForestSpan sspan4) $ Z.fromTree tm3
+      (show z) `shouldBe` ""
+
+      let f1 = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
+      (show f1) `shouldBe` ""
+
+      let (f2,t2) = getSrcSpanFor tm3 (srcSpanToForestSpan sspan4)
+
+      (show t2) `shouldBe` ""
+-}
+      --
+
+      let (tm5,toks5) = getTokensFor tm3 sspan4
+
+      -- (showTree tm3) `shouldBe` ""
+
+      (GHC.showRichTokenStream toks5) `shouldBe`
+         "\n\n\n\n\n\n\n\n\n\n\n                      (sq pow)x + (sq pow)y"
+      -- (showToks toks5) `shouldBe` ""
+
+      (drawTreeEntry tm5) `shouldBe`
+            "((1,1),(16,22))\n|\n"++
+            "+- ((1,1),(12,21))\n|\n"++
+            "+- ((12,22),(12,33))\n|\n"++            
+            "+ +- ((10000000012,22),(10000000012,30))\n|\n"++
+            "+  - ((12,25),(16,22))\n   |\n"++
+            "+    +- ((12,25),(12,28))\n   |\n"++
+            "+    +- ((10000000012,29),(10000000012,37))\n   |\n"++
+            "+    `- ((12,32),(16,22))\n" ++
+            "`- ((12,33),(16,22))\n "
+
+
   -- ---------------------------------------------
 
   describe "getTokensBefore" $ do
@@ -2228,6 +2312,14 @@ liftD1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/D1.hs"
 
 parsedFileLiftD1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftD1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/D1.hs"
+
+-- ---------------------------------------------------------------------
+
+liftLetIn1FileName :: GHC.FastString
+liftLetIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/LetIn1.hs"
+
+parsedFileLiftLetIn1Ghc :: IO (ParseResult,[PosToken])
+parsedFileLiftLetIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/LetIn1.hs"
 
 -- ---------------------------------------------------------------------
 

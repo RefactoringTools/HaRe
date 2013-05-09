@@ -32,6 +32,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , removeToksForSpan
        , removeToksForPos
        , syncDeclToLatestStash
+
+       -- , putSrcSpan -- ^Make sure a SrcSpan is in the tree
+
        -- , putNewSpanAndToks
        -- , putNewPosAndToks
        -- * Managing token stash
@@ -166,11 +169,6 @@ putToksForPos pos toks = do
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
   let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
-  {-
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',newSpan,oldTree) = updateTokensForSrcSpan forest sspan toks
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
-  -}
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   -- stashName <- stash oldTree
@@ -228,11 +226,6 @@ removeToksForSpan sspan = do
   st <- get
   let Just tm = rsModule st
   let tk' = removeToksFromCache (rsTokenCache tm) sspan
-  {-
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',oldTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
-  -}
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   -- stashName <- stash oldTree -- Create a new entry for the old tree
@@ -247,16 +240,25 @@ removeToksForPos pos = do
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
   let tk' = removeToksFromCache (rsTokenCache tm) sspan
-  {-
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',delTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
-  -}
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  -- stashName <- stash delTree
   drawTokenTree "removeToksForPos result"
   return ()
+
+{-
+-- |Insert a GHC.SrcSpan into the tree if it is not already there
+putSrcSpan ::  GHC.SrcSpan -> RefactGhc ()
+putSrcSpan sspan = do
+  logm $ "putSrcSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (showSrcSpanF sspan) 
+  st <- get
+  let Just tm = rsModule st
+  let forest = getTreeFromCache sspan (rsTokenCache tm)
+  let forest' = insertSrcSpan forest (srcSpanToForestSpan sspan)
+  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
+  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
+  put $ st { rsModule = rsModule' }
+  return ()
+-}
 
 -- ---------------------------------------------------------------------
 

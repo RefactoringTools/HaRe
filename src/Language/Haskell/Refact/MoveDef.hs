@@ -302,7 +302,7 @@ moveDecl1 t defName ns topLevel
         -- drawTokenTree "before getting toks" -- ++AZ++
         funToks <- getToksForSpan sspan
         logm $ "moveDecl1:funToks=" ++ (showToks funToks)
-        -- drawTokenTree "after getting toks" -- ++AZ++
+        drawTokenTree "moveDecl1:after getting toks" -- ++AZ++
 
         (t'',sigsRemoved) <- rmTypeSigs ns t
         -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++

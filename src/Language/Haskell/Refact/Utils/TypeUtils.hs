@@ -3479,6 +3479,9 @@ rmDecl pn incSig t = do
     inLet (GHC.L ss (GHC.HsLet localDecls expr@(GHC.L l _)))
       | not $ emptyList (snd (break (defines pn) (hsBinds localDecls)))
       = do
+         -- putSrcSpan ss -- Make sure the tree includes a SrcSpan for
+                       -- the HsLet, for when it is replaced later
+
          let decls = hsBinds localDecls
          let (decls1, decls2) = break (defines pn) decls
              decl = ghead "rmDecl" decls2
