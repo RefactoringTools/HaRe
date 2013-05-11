@@ -55,6 +55,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , limitPrevToks
        , reIndentToks
        , splitForestOnSpan
+       , spanContains
        -- , lookupSrcSpan
        , invariantOk
        , invariant
@@ -227,7 +228,7 @@ data Positioning = PlaceAdjacent -- ^Only a single space between the
 -- ---------------------------------------------------------------------
 
 {-
--- ++AZ++ TODO: will we actuall need these?
+-- ++AZ++ TODO: will we actually need these?
 -- | Operations on the structure
 data Operations = OpAdded Entry          -- ^The entry that was added
                 | OpRemoved Entry        -- ^The Entry that was removed
@@ -702,53 +703,105 @@ insertSrcSpan forest sspan = forest'
     z = openZipperToSpan sspan $ Z.fromTree forest
     forest' = if treeStartEnd (Z.tree z) == sspan
       then forest -- Already in, exactly
-      else forest''
-        where
-          toks = if (Z.isLeaf z)
-            then
-              -- If we are at a leaf, retrieve the toks
-              let (Entry _ t) = Z.label z in t
-            else
-              -- Have multiple sub-trees containing the tokens
+      else if (Z.isLeaf z)
+        then
+          let
+            -- If we are at a leaf, retrieve the toks
+            (Entry _ toks) = Z.label z
 
-              -- TODO: we are potentially discarding added info here,
-              -- with sub SrcSpans having markers in them
-              -- retrieveTokens $ Z.toTree z
-              retrieveTokens $ Z.tree z
+            (tokStartPos,tokEndPos) = forestSpanToSimpPos sspan
 
-          (tokStartPos,tokEndPos) = forestSpanToSimpPos sspan
+            -- Tokens here, must introduce sub-spans with split, taking
+            -- cognizance of start and end comments
+            -- TODO: does startEndLocIncComments' give the same boundary
+            --       if approached from one side as the other?
+            (startLoc,endLoc) = startEndLocIncComments' toks (tokStartPos,tokEndPos)
 
-          -- Tokens here, must introduce sub-spans with split, taking
-          -- cognizance of start and end comments
-          -- TODO: does startEndLocIncComments' give the same boundary
-          --       if approached from one side as the other?
-          (startLoc,endLoc) = startEndLocIncComments' toks (tokStartPos,tokEndPos)
+            (startToks,middleToks,endToks) = splitToks (startLoc,endLoc) toks
+            tree1 = if (emptyList $ filter (\t -> not $ isEmpty t) startToks)
+                       then []
+                       else [mkTreeFromTokens startToks]
+            tree2 = [mkTreeFromSpanTokens sspan middleToks]
+            tree3 = if (emptyList $ filter (\t -> not $ isEmpty t) endToks)
+                       then []
+                       else [mkTreeFromTokens endToks]
 
-          -- (startToks,middleToks,endToks) = splitToks (startPos,endPos) toks
-          (startToks,middleToks,endToks) = splitToks (startLoc,endLoc) toks
-          {-
-          subTree = [mkTreeFromTokens startToks,
-                     mkTreeFromSpanTokens sspan middleToks,
-                     mkTreeFromTokens endToks]
-          -}
-          tree1 = if (emptyList $ filter (\t -> not $ isEmpty t) startToks)
-                     then []
-                     else [mkTreeFromTokens startToks]
-          tree2 = [mkTreeFromSpanTokens sspan middleToks]
-          tree3 = if (emptyList $ filter (\t -> not $ isEmpty t) endToks)
-                     then []
-                     else [mkTreeFromTokens endToks]
+            subTree = tree1 ++ tree2 ++ tree3
+            subTree' = filter (\t -> treeStartEnd t /= nullSpan) subTree
+            (Entry sspan2 _) = Z.label z
 
-          subTree = tree1 ++ tree2 ++ tree3
-          subTree' = filter (\t -> treeStartEnd t /= nullSpan) subTree
-          (Entry _sspan _) = Z.label z
+            z' = Z.setTree (Node (Entry sspan2 []) subTree') z
+            forest'' = Z.toTree z'
+          in forest''
+        else
+          let
+            -- Have multiple sub-trees containing the tokens
 
-          z' = Z.setTree (Node (Entry _sspan []) subTree') z
-          forest'' = Z.toTree z'
-          -- forest'' = error $ "insertSrcSpan:(startToks,endToks)=" ++ (show (startToks,endToks)) -- ++AZ++
-          -- forest'' = error $ "insertSrcSpan:(Z.toTree z')=" ++ (show (Z.toTree z')) -- ++AZ++
-          -- forest'' = error $ "insertSrcSpan:(startLoc,endLoc)=" ++ (show (startLoc,endLoc)) -- ++AZ++
-          -- forest'' = error $ "insertSrcSpan:(tokStartPos,tokEndPos,toks)=" ++ (show (tokStartPos,tokEndPos,toks)) -- ++AZ++
+            -- Scenarios
+            -- We have sub-trees [A1,A2..An] and a SS
+            -- The sub-trees can be split into the following
+            --   0 or more that come completely before SS
+            --   1 (As) containing the start of the SS, either
+            --      start SS == start As
+            --      start SS >  start As
+            --   1 (Ae) containing the end of the SS, either
+            --      end SS == end Ae
+            --      end SS <  end Ae
+            --   Note: for the suffixes, s <= e, i.e. As may == Ae
+            --   0 or more that are completely after SS
+            -- This information is derived through the spanContains predicate
+
+            -- contains zn = spanContains (treeStartEnd $ Z.tree zn) sspan
+            -- contains zn = spanContains (treeStartEnd zn) sspan
+            contains zn = error $ "need to define insertSrcSpan.contains"
+            children = map Z.tree $ getChildrenAsZ z
+            (before,rest) = break (\x ->     (contains x)) children
+            (middle,end)  = break (\x -> not (contains x)) rest
+
+            (b,m,e) = case middle of
+              [] -> error $ "insertSrcSpan:(before,middle,end)=" ++ (show (before,middle,end))
+              [x] -> -- only one tree
+                     splitTree x sspan
+              xx  -> -- more than one tree
+                (b',m',e')
+                  where
+                    ( bb,mb,_eb) = splitTree (ghead "insertSrcSpan" xx) sspan
+                    (_be,me, ee) = splitTree (glast "insertSrcSpan" xx) sspan
+                    mm = tail $ init xx -- xx = (head xx) ++ mm ++ (last xx)
+
+                    b' = bb
+                    m' = mb ++ mm ++ me
+                    e' = ee
+
+            subTree' = before ++ b ++ m ++ e ++ end
+
+            -- TODO: we are potentially discarding added info here,
+            -- with sub SrcSpans having markers in them
+            (Entry sspan2 _) = Z.label z
+
+            z' = Z.setTree (Node (Entry sspan2 []) subTree') z
+            forest'' = Z.toTree z'
+          in
+            -- forest''
+            error $ "insertSrcSpan:(before,middle,end)=" ++ (show (before,middle,end)) -- ++AZ++
+            -- forest'' = error $ "insertSrcSpan:(startToks,endToks)=" ++ (show (startToks,endToks)) -- ++AZ++
+            -- forest'' = error $ "insertSrcSpan:(Z.toTree z')=" ++ (show (Z.toTree z')) -- ++AZ++
+            -- forest'' = error $ "insertSrcSpan:(startLoc,endLoc)=" ++ (show (startLoc,endLoc)) -- ++AZ++
+            -- forest'' = error $ "insertSrcSpan:(tokStartPos,tokEndPos,toks)=" ++ (show (tokStartPos,tokEndPos,toks)) -- ++AZ++
+
+-- ---------------------------------------------------------------------
+
+-- |Split a given tree (in zipper form) into a possibly empty part
+-- that lies before the srcspan, the part that is wholly included in
+-- the srcspan and the part the lies outside of it at the end
+-- splitTree :: Z.TreePos Z.Full Entry -> ForestSpan
+--   -> ([Z.TreePos Z.Full Entry],[Z.TreePos Z.Full Entry],[Z.TreePos Z.Full Entry])
+splitTree z sspan = -- (b,m,e)
+ error $ "splitTree:(sspan,Z.tree z)=" ++ (show (sspan,z))
+  where
+    b = []
+    m = []
+    e = []
 
 -- ---------------------------------------------------------------------
 
@@ -1139,30 +1192,31 @@ openZipperToNode node z
         where
           -- go through all of the children to find the one that
           -- either is what we are looking for, or contains it
+          childrenAsZ = getChildrenAsZ z
+          {-
           childrenAsZ = map (\j -> gfromJust "openZipperToNode" j)
                       $ iterate (\mz -> Z.next $ gfromJust ("openZipperToNode:" ++ (show z)) mz)
                       $ Z.firstChild z
+          -}
           child = ghead "openZipperToNode" $ filter contains childrenAsZ
           -- focus of child either IS the node we care about, or contains it
           z' = if (treeStartEnd (Z.tree child)) == treeStartEnd node
                  then child
                  else openZipperToNode node child
-{-
-          -- because a srcspan may have been updated, its endpos may
-          -- have it's version bumped by one.
-          contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
-            where
-              (tvs,_tve) = forestSpanVersions $ treeStartEnd $ Z.tree zn
-              (nvs,_nve) = forestSpanVersions $ treeStartEnd node
-              (startPos,endPos)   = insertVersionsInForestSpan tvs tvs $ treeStartEnd $  Z.tree zn
-              (nodeStart,nodeEnd) = insertVersionsInForestSpan nvs nvs $ treeStartEnd $ node
--}
+
           contains zn = spanContains (treeStartEnd $ Z.tree zn) (treeStartEnd node)
+
+getChildrenAsZ :: Z.TreePos Z.Full a -> [Z.TreePos Z.Full a]
+getChildrenAsZ z = go [] (Z.firstChild z)
+  where
+    go acc Nothing = acc
+    go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)
 
 -- ---------------------------------------------------------------------
 
--- because a srcspan may have been updated, its endpos may have it's
--- version bumped by one.
+-- |Does the first span contain the second? Takes cognisance of the
+-- various flags a ForestSpan can have.
+-- NOTE: This function relies on the Eq instance for ForestLine
 spanContains :: ForestSpan -> ForestSpan -> Bool
 spanContains span1 span2 = (startPos <= nodeStart && endPos >= nodeEnd)
     where
@@ -1188,21 +1242,19 @@ openZipperToSpan sspan z
           -- go through all of the children to find the one that
           -- either is what we are looking for, or contains it
 
-          childrenAsZ = go [] (Z.firstChild z)
+          -- childrenAsZ = go [] (Z.firstChild z)
+          childrenAsZ = getChildrenAsZ z
           z' = case (filter contains childrenAsZ) of
             [] -> z -- Not directly in a subtree, this is as good as
                     -- it gets
             [x] -> -- exactly one, drill down
                    openZipperToSpan sspan x
-            -- _xs -> z -- Multiple, this is the spot
+
             xx  -> case (filter (\zt -> (treeStartEnd $ Z.tree zt) == sspan) xx) of 
                     -- [] -> error $ "openZipperToSpan: no matching subtree:(sspan,xx)=" ++ (show (sspan,xx)) -- ++AZ++ 
                     [y] -> openZipperToSpan sspan y
                     yy -> -- Multiple, check if we can separate out
                              -- by version
-                          -- case (filter (\zt -> (forestSpanVersions $ treeStartEnd $ Z.tree zt) == (forestSpanVersions sspan)) xx) of
-                          -- But can't check end version, might be
-                          -- tagging an update srcSpan
                           case (filter (\zt -> (fst $ forestSpanVersions $ treeStartEnd $ Z.tree zt) == (fst $ forestSpanVersions sspan)) xx) of
                            -- [] -> z
                            [] -> error $ "openZipperToSpan:no version match:(sspan,yy)=" ++ (show (sspan,yy)) -- ++AZ++
@@ -1210,15 +1262,7 @@ openZipperToSpan sspan z
                            -- _ww -> z
                            ww -> error $ "openZipperToSpan:multiple version match:" ++ (show ww) -- ++AZ++
           contains zn = spanContains (treeStartEnd $ Z.tree zn) sspan
-{-
-          contains zn = (startPos <= nodeStart && endPos >= nodeEnd)
-            where
-              (startPos,endPos) = treeStartEnd $ Z.tree zn
-              (nodeStart,nodeEnd) = sspan
--}
 
-          go acc Nothing = acc
-          go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)
 
 -- ---------------------------------------------------------------------
 

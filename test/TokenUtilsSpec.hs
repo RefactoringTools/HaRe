@@ -476,9 +476,24 @@ tree TId 0:
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),33) )
 
       --
-{-
+      {-
+      let childrenAsZ = go [] (Z.firstChild $ Z.fromTree tm3)
+           where
+             go acc Nothing = acc
+             go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)
+
+      -- (show childrenAsZ) `shouldBe` ""
+
+      let fcaz = filter contains childrenAsZ
+           where
+             contains zn = spanContains (treeStartEnd $ Z.tree zn) (srcSpanToForestSpan sspan4)
+
+      (show fcaz) `shouldBe` "[]"
+
+
+
       let z = openZipperToSpan (srcSpanToForestSpan sspan4) $ Z.fromTree tm3
-      (show z) `shouldBe` ""
+      (drawTreeEntry $ Z.tree z) `shouldBe` ""
 
       let f1 = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
       (show f1) `shouldBe` ""
@@ -486,7 +501,7 @@ tree TId 0:
       let (f2,t2) = getSrcSpanFor tm3 (srcSpanToForestSpan sspan4)
 
       (show t2) `shouldBe` ""
--}
+      -}
       --
 
       let (tm5,toks5) = getTokensFor tm3 sspan4
@@ -500,7 +515,7 @@ tree TId 0:
       (drawTreeEntry tm5) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(12,21))\n|\n"++
-            "+- ((12,22),(12,33))\n|\n"++            
+            "+- ((12,22),(12,33))\n|\n"++
             "+ +- ((10000000012,22),(10000000012,30))\n|\n"++
             "+  - ((12,25),(16,22))\n   |\n"++
             "+    +- ((12,25),(12,28))\n   |\n"++
