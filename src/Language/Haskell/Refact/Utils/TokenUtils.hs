@@ -394,7 +394,10 @@ simpPosToForestSpan ((sr,sc),(er,ec))
     = ((ghcLineToForestLine sr,sc),(ghcLineToForestLine er,ec))
 
 nullSpan :: ForestSpan
-nullSpan = ((ForestLine False 0 0 0,0),(ForestLine False 0 0 0,0))
+nullSpan = (nullPos,nullPos)
+
+nullPos :: ForestPos
+nullPos = (ForestLine False 0 0 0,0)
 
 showForestSpan :: ForestSpan -> String
 showForestSpan ((sr,sc),(er,ec))
@@ -751,13 +754,22 @@ insertSrcSpan forest sspan = forest'
             --   0 or more that are completely after SS
             -- This information is derived through the spanContains predicate
 
-            -- contains zn = spanContains (treeStartEnd $ Z.tree zn) sspan
-            -- contains zn = spanContains (treeStartEnd zn) sspan
-            contains zn = error $ "need to define insertSrcSpan.contains"
-            children = map Z.tree $ getChildrenAsZ z
-            (before,rest) = break (\x ->     (contains x)) children
-            (middle,end)  = break (\x -> not (contains x)) rest
+            -- contains zn = spanContains (treeStartEnd $ Z.tree zn)
+            -- sspan
+{-
+            containsStart t = containsStart' (treeStartEnd t) sspan
+            containsStart' (startPos,endPos) (nodeStart,nodeEnd) = (startPos >= nodeStart && startPos <= nodeEnd)
 
+            containsEnd t = containsEnd' (treeStartEnd t) sspan
+            containsEnd' (startPos,endPos) (nodeStart,nodeEnd) = (endPos >= nodeStart && endPos <= nodeEnd)
+
+            (Node _entry children) = Z.tree z
+            (before,rest) = break (\x ->     (containsStart x)) children
+            (middle',end')  = break (\x -> not (containsEnd x)) rest
+            middle = middle' ++ [ghead "insertSrcSpan.1" end']
+            end    = gtail "insertSrcSpan.1" end'
+-}
+            (before,middle,end) = splitTree (Z.tree z) sspan
             (b,m,e) = case middle of
               [] -> error $ "insertSrcSpan:(before,middle,end)=" ++ (show (before,middle,end))
               [x] -> -- only one tree
@@ -765,8 +777,8 @@ insertSrcSpan forest sspan = forest'
               xx  -> -- more than one tree
                 (b',m',e')
                   where
-                    ( bb,mb,_eb) = splitTree (ghead "insertSrcSpan" xx) sspan
-                    (_be,me, ee) = splitTree (glast "insertSrcSpan" xx) sspan
+                    ( bb,mb,_eb) = splitTree (ghead "insertSrcSpan.2" xx) sspan
+                    (_be,me, ee) = splitTree (glast "insertSrcSpan.2" xx) sspan
                     mm = tail $ init xx -- xx = (head xx) ++ mm ++ (last xx)
 
                     b' = bb
@@ -782,8 +794,8 @@ insertSrcSpan forest sspan = forest'
             z' = Z.setTree (Node (Entry sspan2 []) subTree') z
             forest'' = Z.toTree z'
           in
-            -- forest''
-            error $ "insertSrcSpan:(before,middle,end)=" ++ (show (before,middle,end)) -- ++AZ++
+            forest''
+            -- error $ "insertSrcSpan:(before,middle,end)=" ++ (show (before,middle,end)) -- ++AZ++
             -- forest'' = error $ "insertSrcSpan:(startToks,endToks)=" ++ (show (startToks,endToks)) -- ++AZ++
             -- forest'' = error $ "insertSrcSpan:(Z.toTree z')=" ++ (show (Z.toTree z')) -- ++AZ++
             -- forest'' = error $ "insertSrcSpan:(startLoc,endLoc)=" ++ (show (startLoc,endLoc)) -- ++AZ++
@@ -791,17 +803,85 @@ insertSrcSpan forest sspan = forest'
 
 -- ---------------------------------------------------------------------
 
--- |Split a given tree (in zipper form) into a possibly empty part
--- that lies before the srcspan, the part that is wholly included in
--- the srcspan and the part the lies outside of it at the end
--- splitTree :: Z.TreePos Z.Full Entry -> ForestSpan
---   -> ([Z.TreePos Z.Full Entry],[Z.TreePos Z.Full Entry],[Z.TreePos Z.Full Entry])
-splitTree z sspan = -- (b,m,e)
- error $ "splitTree:(sspan,Z.tree z)=" ++ (show (sspan,z))
+doSplitTree ::
+  Tree Entry -> ForestSpan
+  -> ([Tree Entry], [Tree Entry], [Tree Entry])
+doSplitTree tree sspan@(sspanStart,sspanEnd) = (b1++b,m,e++e1)
   where
-    b = []
-    m = []
-    e = []
+    (b1,m1,e1) = splitTree tree sspan
+    (b,m,e) = case m1 of
+      [] -> error $ "doSplitTree:(b1,m1,e1)=" ++ (show (b1,m1,e1))
+      [x] -> -- only one tree
+             case x of
+               (Node (Entry ss   []) sub) -> splitTree x sspan
+               (Node (Entry ss@(ssStart,ssEnd) toks)  []) -> (b',m',e')
+                where
+                  -- TODO: ignoring comment boundaries to start
+
+                  -- There are three possibilities
+                  --  1. The span starts only in these tokens
+                  --  2. The span starts and ends in these tokens
+                  --  3. The span ends only in these tokens
+                  (b',m',e') = case (containsStart ss sspan,containsEnd ss sspan) of
+                    (True, False) -> (b'',m'',e'') -- Start only
+                      where
+                       (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks
+                       b'' = [Node (Entry (ssStart,sspanEnd) toksb) []]
+                       m'' = [Node (Entry (sspanEnd,ssEnd) toksm) []]
+                       e'' = []
+                    (True, True) -> (b'',m'',e'') -- Start and End
+                      where
+                       (toksb,toksm,tokse) = splitToks (forestSpanToSimpPos (ssStart,ssEnd)) toks
+                       b'' = [Node (Entry (sspanStart,ssStart) toksb) []]
+                       m'' = [Node (Entry (ssStart,ssEnd)      toksm) []]
+                       e'' = [Node (Entry (ssEnd,sspanEnd)     tokse) []]
+                    (False,True) -> (b'',m'',e'') -- End only
+                      where
+                       (_,toksm,tokse) = splitToks (forestSpanToSimpPos (nullPos,sspanEnd)) toks
+                       b'' = []
+                       m'' = [Node (Entry (ssStart,sspanEnd) toksm) []]
+                       e'' = [Node (Entry (sspanEnd,ssEnd)   tokse) []]
+                    (False,False) -> error $ "doSplitTree: error (ss,sspan)=" ++ (show (ss,sspan))
+
+      xx  -> -- more than one tree
+        (b',m',e')
+          where
+            ( bb,mb,_eb) = splitTree (ghead "doSplitTree.2" xx) sspan
+            (_be,me, ee) = splitTree (glast "doSplitTree.2" xx) sspan
+            mm = tail $ init xx -- xx = (head xx) ++ mm ++ (last xx)
+
+            b' = bb
+            m' = mb ++ mm ++ me
+            e' = ee
+
+-- ---------------------------------------------------------------------
+
+containsStart (startPos,_endPos) (nodeStart,nodeEnd)
+  = (startPos >= nodeStart && startPos <= nodeEnd)
+containsEnd   (_startPos,endPos) (nodeStart,nodeEnd)
+  = (endPos >= nodeStart && endPos <= nodeEnd)
+
+-- |Split a given tree into a possibly empty part that lies before the
+-- srcspan, the part that is wholly included in the srcspan and the
+-- part the lies outside of it at the end.
+
+-- NOTE: This needs to be recursive, and when it reaches the bottom it
+--       must split up the tokens
+splitTree ::
+  Tree Entry -> ForestSpan
+  -> ([Tree Entry], [Tree Entry], [Tree Entry])
+splitTree tree sspan = (before,middle,end)
+  where
+    containsStart' t = containsStart (treeStartEnd t) sspan
+    containsEnd' t = containsEnd (treeStartEnd t) sspan
+
+    (Node _entry children) = tree
+    (before,rest)   = break (\x ->     (containsStart' x)) children
+    (middle',end')  = break (\x -> not (containsEnd'   x)) rest
+    (middle,end) = if (emptyList end')
+              then (middle',end')
+              else (middle' ++ [ghead "splitTree.1" end'],
+                    gtail "splitTree.1" end')
 
 -- ---------------------------------------------------------------------
 
@@ -1220,6 +1300,7 @@ getChildrenAsZ z = go [] (Z.firstChild z)
 spanContains :: ForestSpan -> ForestSpan -> Bool
 spanContains span1 span2 = (startPos <= nodeStart && endPos >= nodeEnd)
     where
+        -- TODO: This looks like a no-op?
         (tvs,_tve) = forestSpanVersions $ span1
         (nvs,_nve) = forestSpanVersions $ span2
         (startPos,endPos)   = insertVersionsInForestSpan tvs tvs span1
@@ -1879,10 +1960,10 @@ getSrcSpan t = res t
 -- Note: The startPos and endPos refer to the startPos of a token only.
 --       So a single token will have the same startPos and endPos
 --    NO^^^^
-splitToks::(SimpPos, SimpPos)->[PosToken]->([PosToken],[PosToken],[PosToken])
+splitToks::(SimpPos,SimpPos)->[PosToken]->([PosToken],[PosToken],[PosToken])
 splitToks (startPos, endPos) toks =
-  let (toks1,toks2)   = break (\t -> tokenPos    t >= startPos) toks
-      (toks21,toks22) = break (\t -> tokenPos    t >=  endPos) toks2
+  let (toks1,toks2)   = break (\t -> tokenPos t >= startPos) toks
+      (toks21,toks22) = break (\t -> tokenPos t >=   endPos) toks2
   in
     (toks1,toks21,toks22)
 

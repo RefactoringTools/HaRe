@@ -476,6 +476,17 @@ tree TId 0:
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),33) )
 
       --
+      let ss1 = posToSrcSpan forest $
+                        (((forestLineToGhcLine $ ForestLine False 0 0  1), 1),
+                         ((forestLineToGhcLine $ ForestLine False 0 0 12),21) )
+      let ss2 = posToSrcSpan forest $
+                        (((forestLineToGhcLine $ ForestLine True  0 0 12),22),
+                         ((forestLineToGhcLine $ ForestLine True  0 0 12),30) )
+      let ss3 = posToSrcSpan forest $
+                        (((forestLineToGhcLine $ ForestLine False 0 0 12),25),
+                         ((forestLineToGhcLine $ ForestLine False 0 0 16),22) )
+
+      -- spanContains ss1 sspan4
       {-
       let childrenAsZ = go [] (Z.firstChild $ Z.fromTree tm3)
            where
@@ -508,10 +519,6 @@ tree TId 0:
 
       -- (showTree tm3) `shouldBe` ""
 
-      (GHC.showRichTokenStream toks5) `shouldBe`
-         "\n\n\n\n\n\n\n\n\n\n\n                      (sq pow)x + (sq pow)y"
-      -- (showToks toks5) `shouldBe` ""
-
       (drawTreeEntry tm5) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(12,21))\n|\n"++
@@ -522,6 +529,10 @@ tree TId 0:
             "+    +- ((10000000012,29),(10000000012,37))\n   |\n"++
             "+    `- ((12,32),(16,22))\n" ++
             "`- ((12,33),(16,22))\n "
+
+      (GHC.showRichTokenStream toks5) `shouldBe`
+         "\n\n\n\n\n\n\n\n\n\n\n                      (sq pow)x + (sq pow)y"
+      -- (showToks toks5) `shouldBe` ""
 
 
   -- ---------------------------------------------
