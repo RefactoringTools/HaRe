@@ -487,52 +487,56 @@ tree TId 0:
                          ((forestLineToGhcLine $ ForestLine False 0 0 16),22) )
 
       -- spanContains ss1 sspan4
-      {-
-      let childrenAsZ = go [] (Z.firstChild $ Z.fromTree tm3)
-           where
-             go acc Nothing = acc
-             go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)
-
-      -- (show childrenAsZ) `shouldBe` ""
-
-      let fcaz = filter contains childrenAsZ
-           where
-             contains zn = spanContains (treeStartEnd $ Z.tree zn) (srcSpanToForestSpan sspan4)
-
-      (show fcaz) `shouldBe` "[]"
-
-
-
-      let z = openZipperToSpan (srcSpanToForestSpan sspan4) $ Z.fromTree tm3
-      (drawTreeEntry $ Z.tree z) `shouldBe` ""
+      -- let z = openZipperToSpan (srcSpanToForestSpan sspan4) $ Z.fromTree tm3
+      -- (drawTreeEntry $ Z.tree z) `shouldBe` ""
 
       let f1 = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
-      (show f1) `shouldBe` ""
+      (drawTreeEntry f1) `shouldBe`
+            "((1,1),(16,22))\n|\n"++
+            "+- ((1,1),(12,21))\n|\n"++
+            "+- ((12,22),(10000000012,30))\n|\n"++
+            "`- ((12,25),(16,22))\n   |\n"++
+            "   +- ((12,25),(12,28))\n   |\n"++
+            "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+            "   `- ((12,32),(16,22))\n"
 
-      let (f2,t2) = getSrcSpanFor tm3 (srcSpanToForestSpan sspan4)
+      -- (show f1) `shouldBe` ""
 
-      (show t2) `shouldBe` ""
-      -}
+      -- let (f2,t2) = getSrcSpanFor tm3 (srcSpanToForestSpan sspan4)
+
+      -- (show t2) `shouldBe` ""
       --
+      {-
+      (show tm3) `shouldBe` ""
+      Node {rootLabel = Entry (((ForestLine False 0 0 12),32),((ForestLine False 0 0 16),22)) 
+        [((((12,32),(12,33)),ITvarid \"y\"),\"y\"),
+         ((((13,24),(13,29)),ITwhere),\"where\"),
+      -}
+      let ss2f@(ss2fs,ss2fe)        = srcSpanToForestSpan ss2
+      let sspan4f@(sspan4s,sspan4e) = srcSpanToForestSpan sspan4
+      (show (ss2f,sspan4f)) `shouldBe` "((((ForestLine True 0 0 12),22),((ForestLine True 0 0 12),30)),"++
+                                       "(((ForestLine False 0 0 12),22),((ForestLine False 0 0 12),33)))"
+      -- (ss2fe >= sspan4s,ss2fe <= sspan4e) `shouldBe` (True,False)
+      (containsStart ss2f sspan4f,containsEnd ss2f sspan4f) `shouldBe` (True,False)
 
       let (tm5,toks5) = getTokensFor tm3 sspan4
 
       -- (showTree tm3) `shouldBe` ""
+
+      (GHC.showRichTokenStream toks5) `shouldBe`
+         "\n\n\n\n\n\n\n\n\n\n\n                      (sq pow)x + (sq pow)y"
+      -- (showToks toks5) `shouldBe` ""
 
       (drawTreeEntry tm5) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(12,21))\n|\n"++
             "+- ((12,22),(12,33))\n|\n"++
             "+ +- ((10000000012,22),(10000000012,30))\n|\n"++
-            "+  - ((12,25),(16,22))\n   |\n"++
+            "+  - ((12,25),(12,32))\n   |\n"++
             "+    +- ((12,25),(12,28))\n   |\n"++
             "+    +- ((10000000012,29),(10000000012,37))\n   |\n"++
-            "+    `- ((12,32),(16,22))\n" ++
             "`- ((12,33),(16,22))\n "
 
-      (GHC.showRichTokenStream toks5) `shouldBe`
-         "\n\n\n\n\n\n\n\n\n\n\n                      (sq pow)x + (sq pow)y"
-      -- (showToks toks5) `shouldBe` ""
 
 
   -- ---------------------------------------------
