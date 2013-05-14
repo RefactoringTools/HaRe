@@ -56,7 +56,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , reIndentToks
        , splitForestOnSpan
        , spanContains
-       , containsStart, containsEnd
+       , containsStart, containsMiddle, containsEnd
+       , splitSubtree
        -- , lookupSrcSpan
        , invariantOk
        , invariant
@@ -786,9 +787,11 @@ doSplitTree tree                             sspan = (b'',m'',e'')
       xx  -> -- more than one tree
         (b',m',e')
         -- error $ "doSplitTree:xx:(sspan,tree,xx,(b',m',e'))=" ++ (show (sspan,tree,xx,(b',m',e')))
+        -- error $ "doSplitTree:xx:(sspan,tree,xx,(b',m',e'))=" ++ (show (sspan,tree,xx,(bbb,me,ee)))
           where
             ( bb,mb,[]) = doSplitTree (ghead "doSplitTree.2" xx) sspan
             ( [],me,ee) = doSplitTree (glast "doSplitTree.2" xx) sspan
+            -- ( bbb,me,ee) = doSplitTree (glast "doSplitTree.2" xx) sspan
             mm = tail $ init xx -- xx = (head xx) ++ mm ++ (last xx)
 
             b' = bb
@@ -798,16 +801,6 @@ doSplitTree tree                             sspan = (b'',m'',e'')
 
 
 -- ---------------------------------------------------------------------
-
--- |True if the start of the second param lies in the span of the first
-containsStart :: ForestSpan -> ForestSpan -> Bool
-containsStart (nodeStart,nodeEnd) (startPos,_endPos)
-  = (startPos >= nodeStart && startPos <= nodeEnd)
-
--- |True if the end of the second param lies in the span of the first
-containsEnd :: ForestSpan -> ForestSpan -> Bool
-containsEnd   (nodeStart,nodeEnd) (_startPos,endPos)
-  = (endPos >= nodeStart && endPos <= nodeEnd)
 
 splitSubToks ::
   Tree Entry
@@ -846,8 +839,29 @@ splitSubToks tree sspan = (b',m',e')
          b'' = []
          m'' = [Node (Entry (ssStart,sspanEnd) toksm) []]
          e'' = if (emptyList tokse) then [] else [Node (Entry (sspanEnd,ssEnd)   tokse) []]
-      (False,False) -> error $ "doSplitTree: error (ss,sspan)=" ++ (show (ss,sspan))
+      (False,False) -> if (containsMiddle ss sspan)
+                        then ([],[tree],[])
+                        else error $ "doSplitTree: error (ss,sspan)=" ++ (show (ss,sspan))
 
+-- ---------------------------------------------------------------------
+
+-- |True if the start of the second param lies in the span of the first
+containsStart :: ForestSpan -> ForestSpan -> Bool
+containsStart (nodeStart,nodeEnd) (startPos,_endPos)
+  = (startPos >= nodeStart && startPos <= nodeEnd)
+
+-- |True if the start of the second param lies before the first, and
+-- ends after or on the second
+containsMiddle :: ForestSpan -> ForestSpan -> Bool
+containsMiddle   (nodeStart,nodeEnd) (startPos,endPos)
+  = (startPos <= nodeStart) && (endPos >= nodeEnd)
+
+-- |True if the end of the second param lies in the span of the first
+containsEnd :: ForestSpan -> ForestSpan -> Bool
+containsEnd   (nodeStart,nodeEnd) (_startPos,endPos)
+  = (endPos >= nodeStart && endPos <= nodeEnd)
+
+-- ---------------------------------------------------------------------
 
 -- |Split a given tree into a possibly empty part that lies before the
 -- srcspan, the part that is wholly included in the srcspan and the
@@ -856,14 +870,15 @@ splitSubtree ::
   Tree Entry -> ForestSpan
   -> ([Tree Entry], [Tree Entry], [Tree Entry])
 splitSubtree tree sspan = (before,middle,end)
+                          -- error $ "splitSubtree:(sspan,tree,middle',end')=" ++ (show (sspan,tree,middle',end'))
   where
-    containsStart' t = containsStart (treeStartEnd t) sspan
-    containsEnd'   t = containsEnd   (treeStartEnd t) sspan
+    containsStart'  t = containsStart  (treeStartEnd t) sspan
+    containsMiddle' t = containsMiddle (treeStartEnd t) sspan
+    -- containsEnd'    t = containsEnd    (treeStartEnd t) sspan
 
     (Node _entry children) = tree
-    (before,rest)   = break (\x ->     (containsStart' x)) children
-    TODO: the middle is not calculated properly, check the conditions again
-    (middle',end')  = break (\x -> not (containsEnd'   x)) rest
+    (before,rest)   = break (\x ->     (containsMiddle' x)) children
+    (middle',end')  = break (\x -> not (containsMiddle' x)) rest
     (middle,end) = if (emptyList end')
               then (middle',end')
               else (middle' ++ [ghead "splitSubtree.1" end'],

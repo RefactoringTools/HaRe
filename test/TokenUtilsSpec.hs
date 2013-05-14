@@ -474,8 +474,18 @@ tree TId 0:
       let sspan4 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 0 12),22),
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),33) )
-
       --
+
+      let f1 = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
+      (drawTreeEntry f1) `shouldBe`
+            "((1,1),(16,22))\n|\n"++
+            "+- ((1,1),(12,21))\n|\n"++
+            "+- ((12,22),(12,33))\n|  |\n"++
+            "|  +- ((12,22),(10000000012,30))\n|  |\n"++
+            "|  +- ((12,25),(12,28))\n|  |\n"++
+            "|  `- ((10000000012,29),(10000000012,37))\n|\n"++  
+            "`- ((12,34),(16,22))\n"
+
       let ss1 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 0  1), 1),
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),21) )
@@ -486,21 +496,21 @@ tree TId 0:
                         (((forestLineToGhcLine $ ForestLine False 0 0 12),25),
                          ((forestLineToGhcLine $ ForestLine False 0 0 16),22) )
 
-      -- spanContains ss1 sspan4
-      -- let z = openZipperToSpan (srcSpanToForestSpan sspan4) $ Z.fromTree tm3
-      -- (drawTreeEntry $ Z.tree z) `shouldBe` ""
 
-      let f1 = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
-      (drawTreeEntry f1) `shouldBe`
-            "((1,1),(16,22))\n|\n"++
-            "+- ((1,1),(12,21))\n|\n"++
-            "+- ((12,22),(10000000012,30))\n|\n"++
-            "`- ((12,25),(16,22))\n   |\n"++
-            "   +- ((12,25),(12,28))\n   |\n"++
-            "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
-            "   `- ((12,32),(16,22))\n"
+      (show $ containsEnd (((ForestLine True 0 0 12),22),((ForestLine True 0 0 12),30)) (srcSpanToForestSpan sspan4)) `shouldBe` "False"
+      (show $ containsMiddle (((ForestLine True 0 0 12),22),((ForestLine True 0 0 12),30)) (srcSpanToForestSpan sspan4)) `shouldBe` "True"
 
-      -- (show f1) `shouldBe` ""
+      (show $ containsEnd (((ForestLine False 0 0 12),25),((ForestLine False 0 0 16),22)) (srcSpanToForestSpan sspan4)) `shouldBe` "True"
+      (show $ containsMiddle (((ForestLine False 0 0 12),25),((ForestLine False 0 0 16),22)) (srcSpanToForestSpan sspan4)) `shouldBe` "False"
+
+      (show $ containsMiddle (((ForestLine False 0 0 12),25),((ForestLine False 0 0 12),28)) (srcSpanToForestSpan sspan4)) `shouldBe` "True"
+
+      let (b1,m1@[m1a,m1b],e1) = splitSubtree tm3 (srcSpanToForestSpan sspan4)
+      -- (show (b1,m1,e1)) `shouldBe` "([],[],[])"
+
+      let (b2,m2,e2) = splitSubtree m1b (srcSpanToForestSpan sspan4)
+      -- (show (b2,m2,e2)) `shouldBe` "([],[],[])"
+
 
       -- let (f2,t2) = getSrcSpanFor tm3 (srcSpanToForestSpan sspan4)
 
