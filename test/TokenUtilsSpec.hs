@@ -477,14 +477,16 @@ tree TId 0:
       --
 
       let f1 = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
+      -- (show f1) `shouldBe` ""
       (drawTreeEntry f1) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(12,21))\n|\n"++
             "+- ((12,22),(12,33))\n|  |\n"++
-            "|  +- ((12,22),(10000000012,30))\n|  |\n"++
+            "|  +- ((10000000012,22),(10000000012,30))\n|  |\n"++
             "|  +- ((12,25),(12,28))\n|  |\n"++
-            "|  `- ((10000000012,29),(10000000012,37))\n|\n"++  
-            "`- ((12,34),(16,22))\n"
+            "|  +- ((10000000012,29),(10000000012,37))\n|  |\n"++
+            "|  `- ((12,32),(12,33))\n|\n"++
+            "`- ((13,24),(16,22))\n"
 
       let ss1 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 0  1), 1),
@@ -504,6 +506,12 @@ tree TId 0:
       (show $ containsMiddle (((ForestLine False 0 0 12),25),((ForestLine False 0 0 16),22)) (srcSpanToForestSpan sspan4)) `shouldBe` "False"
 
       (show $ containsMiddle (((ForestLine False 0 0 12),25),((ForestLine False 0 0 12),28)) (srcSpanToForestSpan sspan4)) `shouldBe` "True"
+
+      (show $ containsMiddle (((ForestLine True 0 0 12),29),((ForestLine True 0 0 12),37)) (srcSpanToForestSpan sspan4)) `shouldBe` "False"
+      (show $ containsEnd    (((ForestLine True 0 0 12),29),((ForestLine True 0 0 12),37)) (srcSpanToForestSpan sspan4)) `shouldBe` "True"
+
+
+      (show $ containsMiddle (((ForestLine False 0 0 12),32),((ForestLine False 0 0 16),22)) (srcSpanToForestSpan sspan4)) `shouldBe` "False"
 
       let (b1,m1@[m1a,m1b],e1) = splitSubtree tm3 (srcSpanToForestSpan sspan4)
       -- (show (b1,m1,e1)) `shouldBe` "([],[],[])"
@@ -540,13 +548,12 @@ tree TId 0:
       (drawTreeEntry tm5) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(12,21))\n|\n"++
-            "+- ((12,22),(12,33))\n|\n"++
-            "+ +- ((10000000012,22),(10000000012,30))\n|\n"++
-            "+  - ((12,25),(12,32))\n   |\n"++
-            "+    +- ((12,25),(12,28))\n   |\n"++
-            "+    +- ((10000000012,29),(10000000012,37))\n   |\n"++
-            "`- ((12,33),(16,22))\n "
-
+            "+- ((12,22),(12,33))\n|  |\n"++
+            "|  +- ((10000000012,22),(10000000012,30))\n|  |\n"++
+            "|  +- ((12,25),(12,28))\n|  |\n"++
+            "|  +- ((10000000012,29),(10000000012,37))\n|  |\n"++
+            "|  `- ((12,32),(12,33))\n|\n"++
+            "`- ((12,33),(16,22))\n"
 
 
   -- ---------------------------------------------
