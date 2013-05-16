@@ -800,6 +800,7 @@ doSplitTree tree                             sspan = (b'',m'',e'')
 
 
 -- ---------------------------------------------------------------------
+{- Version using mkTreeFromTokens 
 splitSubToks ::
   Tree Entry
   -> (ForestPos, ForestPos)
@@ -840,9 +841,22 @@ splitSubToks tree sspan = (b',m',e')
       (False,False) -> if (containsMiddle ss sspan)
                         then ([],[tree],[])
                         else error $ "splitSubToks: error (ss,sspan)=" ++ (show (ss,sspan))
+ -}
 
+mkTreeFromTokens2 :: [PosToken] -> ForestSpan -> Tree Entry
+mkTreeFromTokens2 [] sspan = mkTreeFromTokens []
+mkTreeFromTokens2 toks sspan = tree
+  where
+   (Node (Entry span treeToks) sub) = mkTreeFromTokens toks
 
-{-  Without using mkTreeFromTokens
+   ((ForestLine chs ts vs  _, _),(ForestLine che te ve  _, _)) = sspan
+   ((ForestLine   _  _  _ ls,cs),(ForestLine   _  _  _ le,ce)) = span
+   
+   span' = ((ForestLine chs ts vs ls, cs),(ForestLine che te ve  le, ce)) 
+
+   tree = (Node (Entry span' treeToks) sub)
+
+{-  Without using mkTreeFromTokens -}
 splitSubToks ::
   Tree Entry
   -> (ForestPos, ForestPos)
@@ -865,27 +879,27 @@ splitSubToks tree sspan = (b',m',e')
          (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks
          b'' = if (emptyList toksb) then [] else [Node (Entry (ssStart, sspanEnd) toksb) []]
          m'' = if (ssStart == sspanStart) -- Eq does not compare all flags
-                    then [Node (Entry (ssStart,   ssEnd   ) toksm) []]
-                    else [Node (Entry (sspanStart,ssEnd   ) toksm) []]
+                    then [mkTreeFromTokens2 toksm (ssStart,   ssEnd)]
+                    else [mkTreeFromTokens2 toksm (sspanStart,ssEnd)]
          e'' = []
       (True, True) -> (b'',m'',e'') -- Start and End
                       -- error $ "splitSubToks:start+end(sspan,tree,(b'',m'',e''))=" ++ (show (sspan,tree,(b'',m'',e'')))
         where
          (toksb,toksm,tokse) = splitToks (forestSpanToSimpPos (ssStart,ssEnd)) toks
-         b'' = if (emptyList toksb) then [] else [Node (Entry (sspanStart,ssStart) toksb) []]
-         m'' = [Node (Entry (ssStart,ssEnd)      toksm) []]
-         e'' = if (emptyList tokse) then [] else [Node (Entry (ssEnd,sspanEnd)     tokse) []]
+         b'' = if (emptyList toksb) then [] else [mkTreeFromTokens2 toksb (sspanStart,ssStart)]
+         m'' = [mkTreeFromTokens2 toksm (ssStart,ssEnd)]
+         e'' = if (emptyList tokse) then [] else [mkTreeFromTokens2 tokse (ssEnd,sspanEnd)]
       (False,True) -> (b'',m'',e'') -- End only
                       -- error $ "splitSubToks:end only(sspan,tree,(m'',e''))=" ++ (show (sspan,tree,(m'',e'')))
         where
          (_,toksm,tokse) = splitToks (forestSpanToSimpPos (nullPos,sspanEnd)) toks
          b'' = []
-         m'' = [Node (Entry (ssStart,sspanEnd) toksm) []]
-         e'' = if (emptyList tokse) then [] else [Node (Entry (sspanEnd,ssEnd)   tokse) []]
+         m'' = [mkTreeFromTokens2 toksm (ssStart,sspanEnd)]
+         e'' = if (emptyList tokse) then [] else [mkTreeFromTokens2 tokse (sspanEnd,ssEnd)]
       (False,False) -> if (containsMiddle ss sspan)
                         then ([],[tree],[])
                         else error $ "doSplitTree: error (ss,sspan)=" ++ (show (ss,sspan))
--}
+{- -}
 
 -- ---------------------------------------------------------------------
 
