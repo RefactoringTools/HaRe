@@ -848,6 +848,8 @@ tree TId 0:
               "|  `- ((13,1),(15,17))\n|\n"++
               "`- ((19,1),(21,14))\n"
 
+    ------------------------------------
+
     it "does not delete existing versioned spans" $ do
       (_t,toks) <- parsedFileDemoteD1
       let forest = mkTreeFromTokens toks
@@ -917,6 +919,267 @@ tree TId 0:
                "   +- ((7,1),(7,18))\n   |\n"++
                "   +- ((9,1),(9,14))\n   |\n"++
                "   `- ((11,1),(13,25))\n"
+
+    ------------------------------------
+
+    it "insert a span after deleting one" $ do
+      (_t,toks) <- parsedFileLiftLetIn1Ghc
+      let forest = mkTreeFromTokens toks
+
+      -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:12:22-32
+
+      let sspan = posToSrcSpan forest ((12,22),(12,33))
+      (GHC.showPpr sspan) `shouldBe` "test/testdata/LiftToToplevel/LetIn1.hs:12:22-32"
+      (showSrcSpan sspan) `shouldBe` "((12,22),(12,33))"
+
+      -- let forest1 = insertSrcSpan forest (fs sspan)
+      let (forest1,declToks) = getTokensFor forest sspan
+
+      -- removeToksForPos ((10,22),(11,32))
+      let sspan2 = posToSrcSpan forest ((10,22),(11,32))
+      let (f2,_t2) = removeSrcSpan forest1 (srcSpanToForestSpan sspan2)
+
+      (invariant f2) `shouldBe` []
+      (drawTreeEntry f2) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|  |\n"++
+               "|  +- ((1,1),(10,21))\n|  |\n"++
+               "|  `- ((12,19),(12,21))\n|\n"++
+               "+- ((12,22),(12,33))\n|\n"++
+               "`- ((13,24),(16,22))\n"
+
+      -- Context in place, time for test
+
+
+
+
+      -- putToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:(10,18)-(12,32):
+      (show declToks) `shouldBe` "[((((12,22),(12,24)),ITvarid \"sq\"),\"sq\"),((((12,25),(12,26)),ITvarid \"x\"),\"x\"),((((12,27),(12,28)),ITvarsym \"+\"),\"+\"),((((12,29),(12,31)),ITvarid \"sq\"),\"sq\"),((((12,32),(12,33)),ITvarid \"y\"),\"y\")]"
+
+
+      -- putToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:(10,18)-(12,32)
+      let sspan3 = posToSrcSpan forest ((10,18),(12,33))
+
+--
+      let (b1,m1,e1) = splitSubtree' f2 (srcSpanToForestSpan sspan3)
+      (show (b1,m1,e1)) `shouldBe` "([],[],[])"
+
+--
+
+
+      let (f3,_newSpan3,_tree3) = updateTokensForSrcSpan f2 sspan3 declToks
+
+      (invariant f3) `shouldBe` []
+      (drawTreeEntry f3) `shouldBe`
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(6,20))\n|\n"++
+               "+- ((6,21),(6,41))\n|\n"++
+               "+- ((1000007,5),(1000008,20))\n|\n"++
+               "`- ((7,1),(13,25))\n"
+
+    ------------------------------------
+
+    it "Manipulates the Token Tree without breaking the invariant" $ do
+      (_t,toks) <- parsedFileLiftLetIn1Ghc
+      let forest = mkTreeFromTokens toks
+
+
+      -- putToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:12:22-23:(((False,0,0,12),22),((False,0,0,12),24))
+      newToks1 <- liftIO $ basicTokenise "(sq pow)"
+      (show newToks1) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
+
+      let sspan1 = posToSrcSpan forest ((12,22),(12,24))
+
+      let (f2,_newSpan2,_tree2) = updateTokensForSrcSpan forest sspan1 newToks1
+
+      (invariant f2) `shouldBe` []
+      (drawTreeEntry f2) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|\n"++
+               "+- ((10000000012,22),(10000000012,30))\n|\n"++
+               "`- ((12,25),(16,22))\n"
+
+
+      -- putToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:12:29-30:(((False,0,0,12),29),((False,0,0,12),31))
+      (show newToks1) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
+
+      let sspan2 = posToSrcSpan forest ((12,29),(12,31))
+
+      let (f3,_newSpan3,_tree3) = updateTokensForSrcSpan f2 sspan2 newToks1
+
+      (invariant f3) `shouldBe` []
+      (drawTreeEntry f3) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|\n"++
+               "+- ((10000000012,22),(10000000012,30))\n|\n"++
+               "`- ((12,25),(16,22))\n   |\n"++
+               "   +- ((12,25),(12,28))\n   |\n"++
+               "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+               "   `- ((12,32),(16,22))\n"
+
+
+      -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:10:25:("(((False,0,0,10),25),((False,0,0,10),26))",[((((10,25),(10,26)),ITinteger 0),"0")])
+      let sspan3 = posToSrcSpan forest ((10,25),(10,26))
+      let (f4,toks4) = getTokensFor f3 sspan3
+
+      (invariant f4) `shouldBe` []
+      (drawTreeEntry f4) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|  |\n"++
+               "|  +- ((1,1),(10,24))\n|  |\n"++
+               "|  +- ((10,25),(10,26))\n|  |\n"++
+               "|  `- ((10,26),(12,21))\n|\n"++
+               "+- ((10000000012,22),(10000000012,30))\n|\n"++
+               "`- ((12,25),(16,22))\n   |\n"++
+               "   +- ((12,25),(12,28))\n   |\n"++
+               "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+               "   `- ((12,32),(16,22))\n"
+
+
+      -- putToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:10:25:(((False,0,0,10),25),((False,0,0,10),26))
+      newToks2 <- liftIO $ basicTokenise "pow" -- TODO: check that
+                                               -- using basicTokenise
+                                               -- here is ok
+      -- (show newToks2) `shouldBe` "[((((10,26),(10,29)),ITvarid \"pow\"),\"pow\")]"
+      let (f5,_newSpan5,_tree5) = updateTokensForSrcSpan f4 sspan3 newToks2
+
+      (invariant f5) `shouldBe` []
+      (drawTreeEntry f5) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|  |\n"++
+               "|  +- ((1,1),(10,24))\n|  |\n"++
+               "|  +- ((10000000010,25),(10000000010,28))\n|  |\n"++
+               "|  `- ((10,26),(12,21))\n|\n"++
+               "+- ((10000000012,22),(10000000012,30))\n|\n"++
+               "`- ((12,25),(16,22))\n   |\n"++
+               "   +- ((12,25),(12,28))\n   |\n"++
+               "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+               "   `- ((12,32),(16,22))\n"
+
+
+      -- putToksAfterSpan test/testdata/LiftToToplevel/LetIn1.hs:10:25:(((False,0,0,10),25),((False,0,0,10),26)) at PlaceAdjacent:[(((10,25),(10,26)),ITinteger 0,"0")]
+      let sspan5 = posToSrcSpan forest ((10,25),(10,26))
+      newToks3 <- liftIO $ basicTokenise "0"
+      (show newToks3) `shouldBe` "[((((0,1),(0,2)),ITinteger 0),\"0\")]"
+      let (f6,_newSpan6) = addToksAfterSrcSpan f5 sspan5 PlaceAdjacent newToks3
+
+      (invariant f6) `shouldBe` []
+      (drawTreeEntry f6) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|  |\n"++
+               "|  +- ((1,1),(10,24))\n|  |\n"++
+               "|  +- ((10000000010,25),(10000000010,28))\n|  |  |\n"++
+               "|  |  +- ((10,25),(10,26))\n|  |  |\n"++
+               "|  |  `- ((1000010,29),(1000010,30))\n|  |\n"++
+               "|  `- ((10,26),(12,21))\n|\n"++
+               "+- ((10000000012,22),(10000000012,30))\n|\n"++
+               "`- ((12,25),(16,22))\n   |\n"++
+               "   +- ((12,25),(12,28))\n   |\n"++
+               "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+               "   `- ((12,32),(16,22))\n"
+
+
+      -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:11:25:("(((False,0,0,11),25),((False,0,0,11),26))",[((((11,25),(11,26)),ITvarid "z"),"z")])
+
+      let sspan6 = posToSrcSpan forest ((11,25),(11,26))
+      let (f7,toks7) = getTokensFor f6 sspan6
+
+      (invariant f7) `shouldBe` []
+      (drawTreeEntry f7) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|  |\n"++
+               "|  +- ((1,1),(10,24))\n|  |\n"++
+               "|  +- ((10000000010,25),(10000000010,28))\n|  |  |\n"++
+               "|  |  +- ((10,25),(10,26))\n|  |  |\n"++
+               "|  |  `- ((1000010,29),(1000010,30))\n|  |\n"++
+               "|  `- ((10,26),(12,21))\n|     |\n"++
+               "|     +- ((10,26),(11,24))\n|     |\n"++
+               "|     +- ((11,25),(11,26))\n|     |\n"++
+               "|     `- ((11,26),(12,21))\n|\n"++
+               "+- ((10000000012,22),(10000000012,30))\n|\n"++
+               "`- ((12,25),(16,22))\n   |\n"++
+               "   +- ((12,25),(12,28))\n   |\n"++
+               "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+               "   `- ((12,32),(16,22))\n"
+
+
+      -- putToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:11:25:(((False,0,0,11),25),((False,0,0,11),26))[((((11,26),(11,29)),ITvarid "pow"),"pow")]
+
+      let (f8,_newSpan8,_tree8) = updateTokensForSrcSpan f7 sspan6 newToks2
+
+      (invariant f8) `shouldBe` []
+      (drawTreeEntry f8) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|  |\n"++
+               "|  +- ((1,1),(10,24))\n|  |\n"++
+               "|  +- ((10000000010,25),(10000000010,28))\n|  |  |\n"++
+               "|  |  +- ((10,25),(10,26))\n|  |  |\n"++
+               "|  |  `- ((1000010,29),(1000010,30))\n|  |\n"++
+               "|  `- ((10,26),(12,21))\n|     |\n"++
+               "|     +- ((10,26),(11,24))\n|     |\n"++
+               "|     +- ((10000000011,25),(10000000011,28))\n|     |\n"++
+               "|     `- ((11,26),(12,21))\n|\n"++
+               "+- ((10000000012,22),(10000000012,30))\n|\n"++
+               "`- ((12,25),(16,22))\n   |\n"++
+               "   +- ((12,25),(12,28))\n   |\n"++
+               "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+               "   `- ((12,32),(16,22))\n"
+
+
+      -- putToksAfterSpan test/testdata/LiftToToplevel/LetIn1.hs:11:25:(((False,0,0,11),25),((False,0,0,11),26)) at PlaceAdjacent:[(((11,25),(11,26)),ITvarid "z","z")]
+
+      newToks4 <- liftIO $ basicTokenise "z"
+      (show newToks4) `shouldBe` "[((((0,1),(0,2)),ITvarid \"z\"),\"z\")]"
+      let (f9,_newSpan9) = addToksAfterSrcSpan f8 sspan6 PlaceAdjacent newToks4
+
+      (invariant f9) `shouldBe` []
+      (drawTreeEntry f9) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|  |\n"++
+               "|  +- ((1,1),(10,24))\n|  |\n"++
+               "|  +- ((10000000010,25),(10000000010,28))\n|  |  |\n"++
+               "|  |  +- ((10,25),(10,26))\n|  |  |\n"++
+               "|  |  `- ((1000010,29),(1000010,30))\n|  |\n"++
+               "|  `- ((10,26),(12,21))\n|     |\n"++
+               "|     +- ((10,26),(11,24))\n|     |\n"++
+               "|     +- ((10000000011,25),(10000000011,28))\n|     |  |\n"++
+               "|     |  +- ((11,25),(11,26))\n|     |  |\n"++
+               "|     |  `- ((1000011,29),(1000011,30))\n|     |\n"++
+               "|     `- ((11,26),(12,21))\n|\n"++
+               "+- ((10000000012,22),(10000000012,30))\n|\n"++
+               "`- ((12,25),(16,22))\n   |\n"++
+               "   +- ((12,25),(12,28))\n   |\n"++
+               "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+               "   `- ((12,32),(16,22))\n"
+
+      -- Context in place, time for test
+
+      -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:(10,22)-(11,31)
+      let sspan9 = posToSrcSpan forest ((10,22),(11,31))
+      let (f10,_toks10) = getTokensFor f9 sspan9
+
+      (drawTreeEntry f10) `shouldBe`
+               "((1,1),(16,22))\n|\n"++
+               "+- ((1,1),(12,21))\n|  |\n"++
+               "|  +- ((1,1),(11,31))\n|  |\n"++  -- *WRONG*
+               "|  +- ((10,22),(11,31))\n|  |  |\n"++
+               "|  |  +- ((10,22),(10,24))\n|  |  |\n"++
+               "|  |  +- ((10000000010,25),(10000000010,28))\n|  |  |  |\n"++
+               "|  |  |  +- ((10,25),(10,26))\n|  |  |  |\n"++
+               "|  |  |  `- ((1000010,29),(1000010,30))\n|  |  |\n"++
+               "|  |  +- ((10,26),(11,24))\n|  |  |\n"++
+               "|  |  +- ((10000000011,25),(10000000011,28))\n|  |  |  |\n"++
+               "|  |  |  +- ((11,25),(11,26))\n|  |  |  |\n"++
+               "|  |  |  `- ((1000011,29),(1000011,30))\n|  |  |\n"++
+               "|  |  `- ((11,26),(11,32))\n|  |\n"++
+               "|  `- ((12,19),(12,21))\n|\n"++
+               "+- ((10000000012,22),(10000000012,30))\n|\n"++
+               "`- ((12,25),(16,22))\n   |\n"++
+               "   +- ((12,25),(12,28))\n   |\n"++
+               "   +- ((10000000012,29),(10000000012,37))\n   |\n"++
+               "   `- ((12,32),(16,22))\n"
+
+      (invariant f10) `shouldBe` []
 
   -- ---------------------------------------------
 
