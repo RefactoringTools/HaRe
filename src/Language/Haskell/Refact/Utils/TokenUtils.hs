@@ -57,7 +57,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , splitForestOnSpan
        , spanContains
        , containsStart, containsMiddle, containsEnd
-       , splitSubtree, splitSubtree'
+       , doSplitTree, splitSubtree, splitSubToks
        -- , lookupSrcSpan
        , invariantOk
        , invariant
@@ -774,9 +774,9 @@ doSplitTree tree                             sspan = (b'',m'',e'')
       xx  -> -- more than one tree
         (b',m',e')
           where
-            ( bb,mb,eb) = case (doSplitTree (ghead "doSplitTree.2" xx) sspan) of
-                           (a,b,[]) -> (a,b,[])
-                           xx -> error $ "doSplitTree:eb populated:" ++ (show (sspan,tree,xx))
+            (bb,mb,_eb) = case (doSplitTree (ghead "doSplitTree.2" xx) sspan) of
+                           (x,y,[]) -> (x,y,[])
+                           xxx -> error $ "doSplitTree:eb populated:" ++ (show (sspan,tree,xxx))
 
             -- ( bb,mb,[]) = doSplitTree (ghead "doSplitTree.2" xx) sspan
 
@@ -791,64 +791,20 @@ doSplitTree tree                             sspan = (b'',m'',e'')
 
 
 -- ---------------------------------------------------------------------
-{- Version using mkTreeFromTokens
-splitSubToks ::
-  Tree Entry
-  -> (ForestPos, ForestPos)
-  -> ([Tree Entry], [Tree Entry], [Tree Entry])
-splitSubToks tree sspan = (b',m',e')
-                          -- error $ "splitSubToks:(sspan,tree)=" ++ (show (sspan,tree))
-  where
-    (Node (Entry ss@(ssStart,ssEnd) toks)  []) = tree
-    (sspanStart,sspanEnd) = sspan
-    -- TODO: ignoring comment boundaries to start
-
-    -- There are three possibilities
-    --  1. The span starts only in these tokens
-    --  2. The span starts and ends in these tokens
-    --  3. The span ends only in these tokens
-    (b',m',e') = case (containsStart ss sspan,containsEnd ss sspan) of
-      (True, False) -> (b'',m'',e'') -- Start only
-                       -- error $ "splitSubToks:StartOnly:(sspan,tree,(b'',m''))=" ++ (show (sspan,tree,(b'',m'')))
-        where
-         (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks
-         b'' = if (emptyList toksb) then [] else [mkTreeFromTokens toksb]
-         m'' = [mkTreeFromTokens toksm]
-         e'' = []
-      (True, True) -> (b'',m'',e'') -- Start and End
-                      -- error $ "splitSubToks:start+end(sspan,tree,(b'',m'',e''))=" ++ (show (sspan,tree,(b'',m'',e'')))
-        where
-         (toksb,toksm,tokse) = splitToks (forestSpanToSimpPos (ssStart,ssEnd)) toks
-         b'' = if (emptyList toksb) then [] else [mkTreeFromTokens toksb]
-         m'' = [mkTreeFromTokens toksm]
-         e'' = if (emptyList tokse) then [] else [mkTreeFromTokens tokse]
-      (False,True) -> (b'',m'',e'') -- End only
-                      -- error $ "splitSubToks:end only(sspan,tree,(m'',e''))=" ++ (show (sspan,tree,(m'',e'')))
-        where
-         (_,toksm,tokse) = splitToks (forestSpanToSimpPos (nullPos,sspanEnd)) toks
-         b'' = []
-         m'' = [mkTreeFromTokens toksm]
-         e'' = if (emptyList tokse) then [] else [mkTreeFromTokens tokse]
-      (False,False) -> if (containsMiddle ss sspan)
-                        then ([],[tree],[])
-                        else error $ "splitSubToks: error (ss,sspan)=" ++ (show (ss,sspan))
- -}
 
 mkTreeListFromTokens :: [PosToken] -> ForestSpan -> [Tree Entry]
-mkTreeListFromTokens [] sspan = []
+mkTreeListFromTokens  [] _sspan = []
 mkTreeListFromTokens toks sspan = [tree]
   where
-   (Node (Entry span treeToks) sub) = mkTreeFromTokens toks
+   (Node (Entry tspan treeToks) sub) = mkTreeFromTokens toks
 
    ((ForestLine chs ts vs  _, _),(ForestLine che te ve  _, _)) = sspan
-   ((ForestLine   _  _  _ ls,cs),(ForestLine   _  _  _ le,ce)) = span
+   ((ForestLine   _  _  _ ls,cs),(ForestLine   _  _  _ le,ce)) = tspan
 
    span' = ((ForestLine chs ts vs ls, cs),(ForestLine che te ve  le, ce))
 
    tree = (Node (Entry span' treeToks) sub)
 
-
-{-  Without using mkTreeFromTokens -}
 splitSubToks ::
   Tree Entry
   -> (ForestPos, ForestPos)
@@ -869,7 +825,8 @@ splitSubToks tree sspan = (b',m',e')
                        -- error $ "splitSubToks:StartOnly:(sspan,tree,(b'',m''))=" ++ (show (sspan,tree,(b'',m'')))
         where
          (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks
-         b'' = if (emptyList toksb) then [] else [Node (Entry (ssStart, sspanEnd) toksb) []]
+--         b'' = if (emptyList toksb) then [] else [Node (Entry (ssStart, sspanEnd) toksb) []]
+         b'' = if (emptyList toksb) then [] else [mkTreeFromTokens toksb] -- Need to get end from actual toks
          m'' = if (ssStart == sspanStart) -- Eq does not compare all flags
                     then mkTreeListFromTokens toksm (ssStart,   ssEnd)
                     else mkTreeListFromTokens toksm (sspanStart,ssEnd)
@@ -886,12 +843,15 @@ splitSubToks tree sspan = (b',m',e')
         where
          (_,toksm,tokse) = splitToks (forestSpanToSimpPos (nullPos,sspanEnd)) toks
          b'' = []
-         m'' = mkTreeListFromTokens toksm (ssStart,sspanEnd)
+         m'' = let -- If the last span is changed, make sure it stays
+                   -- as it was
+                 [Node (Entry (st,_en) tk) []] = mkTreeListFromTokens toksm (ssStart,sspanEnd)
+                in
+                 [Node (Entry (st,sspanEnd) tk) []]
          e'' = mkTreeListFromTokens tokse (sspanEnd,ssEnd)
       (False,False) -> if (containsMiddle ss sspan)
                         then ([],[tree],[])
                         else error $ "splitSubToks: error (ss,sspan)=" ++ (show (ss,sspan))
-{- -}
 
 -- ---------------------------------------------------------------------
 
@@ -930,62 +890,11 @@ splitSubtree tree sspan = (before,middle,end)
 
     (Node _entry children) = tree
     (before,rest)   = break (\x -> cond x) children
-    -- (before,rest)   = break (\x ->     (containsMiddle' x)) children
-
-    -- (middle',end')  = break (\x -> not (containsMiddle' x)) rest
-    -- (middle',end')  = break (\x -> not (cond x)) rest
     (endr,middler)  = break (\x -> cond x) $ reverse rest
-
-{-
-    (middle'',end'') = if (emptyList end')
-              then (middle',end')
-              else (middle' ++ [ghead "splitSubtree.1" end'],
-                    gtail "splitSubtree.1" end')
--}
 
     (middle,end) = (reverse middler,reverse endr)
 
-{-
-    (middle,end) = if (emptyList (filter cond before) && all cond middler && emptyList (filter cond endr))
-                      then (reverse middler,reverse end)
-                      else error $ "splitSubtree:(sspan,tree,(before,middler,endr))=" ++ (show (sspan,tree,(before,middler,endr),((emptyList (filter cond before),all cond middler,emptyList (filter cond endr)))))
--}
-{-
-    (middle,end) = if (emptyList end'')
-              then (middle'',end'')
-              else if containsEnd' (ghead "splitSubtree.2" end'')
-                then (middle'' ++ [ghead "splitSubtree.3" end''],
-                      gtail "splitSubtree.2" end'')
-                else (middle'',end'')
--}
 
--- |Split a given tree into a possibly empty part that lies before the
--- srcspan, the part that is wholly included in the srcspan and the
--- part the lies outside of it at the end.
-splitSubtree' ::
-  Tree Entry -> ForestSpan
-  -> ([Tree Entry], [Tree Entry], [Tree Entry])
-splitSubtree' tree sspan = (before,middle,end)
-                          -- error $ "splitSubtree:(sspan,tree,middle',end')=" ++ (show (sspan,tree,middle',end'))
-  where
-    containsStart'  t = containsStart  (treeStartEnd t) sspan
-    containsMiddle' t = containsMiddle (treeStartEnd t) sspan
-    containsEnd'    t = containsEnd    (treeStartEnd t) sspan
-
-    (Node _entry children) = tree
-    (before,rest)   = break (\x -> containsStart' x || containsMiddle' x) children
-    -- (before,rest)   = break (\x ->     (containsMiddle' x)) children
-    (middle',end')  = break (\x -> not (containsMiddle' x)) rest
-    (middle'',end'') = if (emptyList end')
-              then (middle',end')
-              else (middle' ++ [ghead "splitSubtree.1" end'],
-                    gtail "splitSubtree.1" end')
-    (middle,end) = if (emptyList end'')
-              then (middle'',end'')
-              else if containsEnd' (ghead "splitSubtree.2" end'')
-                then (middle'' ++ [ghead "splitSubtree.3" end''],
-                      gtail "splitSubtree.2" end'')
-                else (middle'',end'')
 
 -- ---------------------------------------------------------------------
 

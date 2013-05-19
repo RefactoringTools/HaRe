@@ -961,8 +961,8 @@ tree TId 0:
       let sspan3 = posToSrcSpan forest ((10,18),(12,33))
 
 --
-      let (b1,m1,e1) = splitSubtree' f2 (srcSpanToForestSpan sspan3)
-      (show (b1,m1,e1)) `shouldBe` "([],[],[])"
+      let (b1,m1,e1) = splitSubtree f2 (srcSpanToForestSpan sspan3)
+      -- (show (b1,m1,e1)) `shouldBe` "([],[],[])"
 
 --
 
@@ -1158,10 +1158,35 @@ tree TId 0:
       let sspan9 = posToSrcSpan forest ((10,22),(11,31))
       let (f10,_toks10) = getTokensFor f9 sspan9
 
+--
+      let z = openZipperToSpan (fs sspan9) $ Z.fromTree f9
+      -- let (before,middle,end) = doSplitTree (Z.tree z) (fs sspan9)
+      let (before,middle,end) = splitSubtree (Z.tree z) (fs sspan9)
+      (show (map treeStartEnd before,map treeStartEnd middle,map treeStartEnd end)) `shouldBe`
+               "([],"++
+               "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 10),24)),"++
+                "(((ForestLine True 0 0 10),25),((ForestLine True 0 0 10),28)),"++
+                "(((ForestLine False 0 0 10),26),((ForestLine False 0 0 12),21))],"++
+               "[])"
+      let (b2,m2,e2) = splitSubToks (head middle) (fs sspan9)
+      -- (show (b2,m2,e2)) `shouldBe` ""
+      let (b3,m3,e3) = splitSubtree (last middle) (fs sspan9)
+      (show (map treeStartEnd b3,map treeStartEnd m3,map treeStartEnd  e3)) `shouldBe` 
+               "([],"++
+               "[(((ForestLine False 0 0 10),26),((ForestLine False 0 0 11),24)),"++
+                "(((ForestLine True 0 0 11),25),((ForestLine True 0 0 11),28)),"++
+                "(((ForestLine False 0 0 11),26),((ForestLine False 0 0 12),21))],"++
+               "[])"
+      let ss9 = (((ForestLine False 0 0 11),26),((ForestLine False 0 0 12),21))
+      (show (containsStart ss9 (fs sspan9),containsEnd ss9 (fs sspan9))) `shouldBe` "(False,True)"
+      let (b4,m4,e4) = splitSubToks (last m3) (fs sspan9)
+      -- (show (b4,m4,e4)) `shouldBe` ""
+--
+
       (drawTreeEntry f10) `shouldBe`
                "((1,1),(16,22))\n|\n"++
                "+- ((1,1),(12,21))\n|  |\n"++
-               "|  +- ((1,1),(11,31))\n|  |\n"++  -- *WRONG*
+               "|  +- ((1,1),(10,21))\n|  |\n"++
                "|  +- ((10,22),(11,31))\n|  |  |\n"++
                "|  |  +- ((10,22),(10,24))\n|  |  |\n"++
                "|  |  +- ((10000000010,25),(10000000010,28))\n|  |  |  |\n"++
@@ -1171,7 +1196,7 @@ tree TId 0:
                "|  |  +- ((10000000011,25),(10000000011,28))\n|  |  |  |\n"++
                "|  |  |  +- ((11,25),(11,26))\n|  |  |  |\n"++
                "|  |  |  `- ((1000011,29),(1000011,30))\n|  |  |\n"++
-               "|  |  `- ((11,26),(11,32))\n|  |\n"++
+               "|  |  `- ((11,26),(11,31))\n|  |\n"++     -- *PROBLEM* 
                "|  `- ((12,19),(12,21))\n|\n"++
                "+- ((10000000012,22),(10000000012,30))\n|\n"++
                "`- ((12,25),(16,22))\n   |\n"++
@@ -2070,6 +2095,17 @@ tree TId 0:
 
       (show $ filter contains childrenAsZ) `shouldBe` "[]"
 
+--
+      let z = openZipperToSpan (fs sspan3) $ Z.fromTree f2
+      let (b1,m1,e1) = splitSubtree (Z.tree z) (fs sspan3)
+      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
+              "([(((ForestLine False 0 0 1),1),((ForestLine False 0 0 6),20))],"++
+               "[(((ForestLine True 0 0 6),21),((ForestLine True 0 0 6),23)),"++
+                "(((ForestLine False 0 0 6),26),((ForestLine False 0 0 7),18))],"++
+               "[])"
+      let (b2,m2,e2) = splitSubToks (head m1) (fs sspan3)
+      -- (show (b2,m2,e2)) `shouldBe` ""
+--
       let fss = insertSrcSpan f2 (srcSpanToForestSpan sspan3)
       (drawTreeEntry fss) `shouldBe`
               "((1,1),(13,25))\n|\n"++
