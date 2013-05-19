@@ -187,6 +187,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
               (refactoredMod,declPns) <- applyRefac (liftToMod) RSAlreadyLoaded
 
               if modIsExported parsed
+              -- if False -- ++AZ++ TODO: restore this temporary removal
                then do clients <- clientModsAndFiles modName
                        logm $ "liftToTopLevel':(clients,declPns)=" ++ (GHC.showPpr (clients,declPns))
                        refactoredClients <- mapM (liftingInClientMod modName declPns) clients

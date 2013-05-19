@@ -1209,11 +1209,13 @@ nonCommentSpan :: [PosToken] -> (SimpPos,SimpPos)
 nonCommentSpan [] = ((0,0),(0,0))
 nonCommentSpan toks = (startPos,endPos)
   where
-    startTok = ghead "nonCommentSpan.1" $ dropWhile isWhiteSpace $ toks
-    endTok   = ghead "nonCommentSpan.2" $ dropWhile isWhiteSpace $ reverse toks
-
-    startPos = tokenPos    startTok
-    endPos   = tokenPosEnd endTok
+    stripped = dropWhile isWhiteSpace $ toks
+    (startPos,endPos) = case stripped of
+      [] -> ((0,0),(0,0))
+      _ -> (tokenPos startTok,tokenPosEnd endTok)
+       where
+        startTok = ghead "nonCommentSpan.1" $ dropWhile isWhiteSpace $ toks
+        endTok   = ghead "nonCommentSpan.2" $ dropWhile isWhiteSpace $ reverse toks
 
 -- ---------------------------------------------------------------------
 
@@ -1258,7 +1260,8 @@ insertNodeAfter
 insertNodeAfter oldNode newNode forest = forest'
   where
     zf = openZipperToNode oldNode $ Z.fromTree forest
-    zp = gfromJust "insertNodeAfter" $ Z.parent zf
+    -- zp = gfromJust "insertNodeAfter" $ Z.parent zf
+    zp = gfromJust ("insertNodeAfter:" ++ (show (oldNode,newNode,forest))) $ Z.parent zf
     tp = Z.tree zp
 
     -- now go through the children of the parent tree, and find the
