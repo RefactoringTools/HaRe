@@ -48,8 +48,11 @@ spec = do
      (show res) `shouldBe` "Just \"The selected identifier is not a function/simple pattern name, or is not defined in this module \""
     -}
 
+    -- ---------------------------------
+
     it "lifts a definition to the top level" $ do
      doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","24","5"]
+     -- liftToTopLevel logTestSettings Nothing "./test/testdata/MoveDef/Md1.hs" (24,5)
      diff <- compareFiles "./test/testdata/MoveDef/Md1.hs.expected"
                           "./test/testdata/MoveDef/Md1.hs.refactored"
      diff `shouldBe` []

@@ -3454,7 +3454,7 @@ rmDecl pn incSig t = do
       = do
          let decls = hsBinds localDecls
          -- logm $ "rmDecl:inGRHSs decls=" ++ (SYB.showData SYB.Renamer 0 $ decls)
-         logm $ "rmDecl:inGRHSs localDecls=" ++ (SYB.showData SYB.Renamer 0 $ localDecls)
+         -- logm $ "rmDecl:inGRHSs localDecls=" ++ (SYB.showData SYB.Renamer 0 $ localDecls)
          let (_decls1, decls2) = break (defines pn) decls
              decl = ghead "rmDecl" decls2
          topLevel <- isTopLevelPN pn

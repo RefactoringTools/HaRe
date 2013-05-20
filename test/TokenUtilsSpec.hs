@@ -2270,6 +2270,56 @@ tree TId 0:
       (invariant forest'') `shouldBe` []
       (GHC.showRichTokenStream $ retrieveTokens forest'') `shouldBe` "module Demote.LetIn1 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the local  'pow' to 'sq'\n --This example also aims to test the demoting a local declaration in 'let'.\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                          where\n                             pow=2\n                          \n\n \n                  in sq x + sq y\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n   "
 
+    -- ---------------------------------
+
+    it "Adds a SrcSpan, chasing a bug in MoveDef" $ do
+      (_t,toks)  <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
+      let forest = mkTreeFromTokens toks
+
+      -- getToksForSpan test/testdata/MoveDef/Md1.hs:24:5-10:("(((False,0,0,24),5),((False,0,0,24),11))",
+      let sspan1 = posToSrcSpan forest ((24,5),(24,11))
+      let (f1,_toks1) = getTokensFor forest sspan1
+
+      (drawTreeEntry f1) `shouldBe`
+              "((1,1),(40,17))\n|\n"++
+              "+- ((1,1),(23,8))\n|\n"++
+              "+- ((24,5),(24,11))\n|\n"++
+              "`- ((26,1),(40,17))\n"
+      (invariant f1) `shouldBe` []
+
+      -- removeToksForPos ((24,5),(24,11))
+      let (f2,_) = removeSrcSpan f1 (srcSpanToForestSpan sspan1)
+      (drawTreeEntry f2) `shouldBe`
+              "((1,1),(40,17))\n|\n"++
+              "+- ((1,1),(23,8))\n|\n"++
+              "`- ((26,1),(40,17))\n"
+      (invariant f2) `shouldBe` []
+
+      -- removeToksForPos ((23,3),(23,8))
+      let sspan3 = posToSrcSpan forest ((23,3),(23,8))
+      let (f3,_) = removeSrcSpan f2 (srcSpanToForestSpan sspan3)
+      (drawTreeEntry f3) `shouldBe`
+              "((1,1),(40,17))\n|\n"++
+              "+- ((1,1),(23,8))\n|  |\n"++
+              "|  `- ((1,1),(22,14))\n|\n"++
+              "`- ((26,1),(40,17))\n"
+      (invariant f3) `shouldBe` []
+
+      -- Context set, time for test
+
+      -- putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,22),1),((False,0,0,24),11))",PlaceOffset 2 0 2,[((((1,6),(1,8)),ITvarid "zz"),"zz"),((((1,9),(1,10)),ITequal),"="),((((1,11),(1,12)),ITinteger 1),"1")])
+      newToks <- basicTokenise "\n     zz = 1"
+      (show newToks) `shouldBe` "[((((1,6),(1,8)),ITvarid \"zz\"),\"zz\"),((((1,9),(1,10)),ITequal),\"=\"),((((1,11),(1,12)),ITinteger 1),\"1\")]"
+
+      let sspan4 = posToSrcSpan forest ((22,1),(24,11))
+      let (f4,_newSpan4) = addToksAfterSrcSpan f3 sspan4 (PlaceOffset 2 0 2) newToks
+      (drawTreeEntry f4) `shouldBe`
+              "((1,1),(40,17))\n|\n"++
+              "+- ((1,1),(23,8))\n|  |\n"++
+              "|  `- ((1,1),(22,14))\n|\n"++
+              "`- ((26,1),(40,17))\n"
+      (invariant f4) `shouldBe` []
+
   -- ---------------------------------------------
 
   describe "retrievePrevLineToks" $ do

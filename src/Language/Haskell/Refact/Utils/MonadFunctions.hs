@@ -91,7 +91,7 @@ fetchToksFinal = do
   Just tm <- gets rsModule
   let toks = retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
   -- logm $ "fetchToks" ++ (showToks toks)
-  logm $ "fetchToksFinal (not showing toks"
+  logm $ "fetchToksFinal (not showing toks)"
   return toks
 
 -- |fetch the pristine token stream
@@ -207,7 +207,6 @@ putToksAfterPos pos position toks = do
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST
 -- fragment to reflect it
 putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc (GHC.Located t)
--- putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc t
 putDeclToksAfterSpan oldSpan t pos toks = do
   logm $ "putDeclToksAfterSpan " ++ (GHC.showPpr oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,toks))
   st <- get

@@ -186,6 +186,9 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
       then do
               (refactoredMod,declPns) <- applyRefac (liftToMod) RSAlreadyLoaded
 
+              logm $ "liftToTopLevel' applyRefac done "
+              -- logm $ "liftToTopLevel' applyRefac done:toks= " ++ (show (fst $ snd refactoredMod))
+
               if modIsExported parsed
               -- if False -- ++AZ++ TODO: restore this temporary removal
                then do clients <- clientModsAndFiles modName
@@ -227,16 +230,23 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                       let dd = getDeclaredVars $ hsBinds renamed
                       logm $ "liftToMod:(ddd)=" ++ (GHC.showPpr dd)
 
+                      drawTokenTree "liftToMod.a"
+
                       if pns==[]
                         then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl n dd parent liftedDecls
                                 let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
                                                                 else liftedDecls'
+
+                                drawTokenTree "liftToMod.c"
 
                                 -- error ("liftToMod:newBinds=" ++ (GHC.showPpr (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
                                 -- mod'<-moveDecl1 (replaceDecls declsr (before++parent'++after))
                                 mod' <- moveDecl1 (replaceBinds renamed (before++parent'++after))
                                        (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) 
                                        [GHC.unLoc pn] True
+
+                                drawTokenTree "liftToMod.b"
+
                                 -- return (mod', declaredPns)
                                 return declaredPns
 

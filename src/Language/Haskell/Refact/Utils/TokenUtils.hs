@@ -220,12 +220,12 @@ deriving instance Show Entry => Show (Entry)
 -- the prior span
 data Positioning = PlaceAdjacent -- ^Only a single space between the
                    -- end of the prior span and the new one
-                 | PlaceAbsolute Int Int -- ^Start at the specified
+                 | PlaceAbsolute !Int !Int -- ^Start at the specified
                    -- line and col
-                 | PlaceOffset Int Int Int -- ^Line and Col offset for
+                 | PlaceOffset !Int !Int !Int -- ^Line and Col offset for
                    -- start, num lines to add at the end
                    -- relative to the indent level of the prior span
-                 | PlaceIndent Int Int Int -- ^Line and Col offset for
+                 | PlaceIndent !Int !Int !Int -- ^Line and Col offset for
                    -- start, num lines to add at the end
                    -- relative to the indent level of the prior line
                  deriving (Show)
@@ -1098,15 +1098,7 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
 
     newSpan = posToSrcSpan forest (startPos,endPos)
 
-    -- TODO: expensive reIndentToks being done twice now
-    -- (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks''
     (forest',newSpan') = addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks
-
-
-    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks'')=" ++ (showToks prevToks'),oldSpan)
-    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(toks'')=" ++ (showToks toks''),oldSpan)
-    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(prevToks)=" ++ (showToks prevToks),oldSpan)
-    -- (forest',newSpan') = (error $ "addToksAfterSrcSpan:(lineOffset,colOffset)=" ++ (show ((lineOffset,lineStart,tokenRow $ head toks,tokenRow $ head toks'',tokenRow newTokStart,colOffset))),oldSpan)
 
 -- ---------------------------------------------------------------------
 

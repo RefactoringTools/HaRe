@@ -50,20 +50,20 @@ Invariants:
 
 -- TODO: turn this into a record, with named accessors
 -- | An entry in the data structure for a particular srcspan.
-data Entry = Entry ForestSpan -- ^The source span contained in this Node
-                   [PosToken] -- ^The tokens for the SrcSpan if subtree is empty
+data Entry = Entry !ForestSpan -- ^The source span contained in this Node
+                   ![PosToken] -- ^The tokens for the SrcSpan if subtree is empty
 --             deriving (Show)
 
 -- ---------------------------------------------------------------------
 
 data ForestLine = ForestLine
-                  { flSpanLengthChanged :: Bool -- ^The length of the
+                  { flSpanLengthChanged :: !Bool -- ^The length of the
                                                 -- span may have
                                                 -- changed due to
                                                 -- updated tokens.
-                  , flTreeSelector :: Int
-                  , flInsertVersion :: Int
-                  , flLine :: Int
+                  , flTreeSelector  :: !Int
+                  , flInsertVersion :: !Int
+                  , flLine          :: !Int
                   } -- deriving (Eq)
 
 instance Eq ForestLine where
@@ -89,7 +89,7 @@ type ForestSpan = (ForestPos,ForestPos)
 
 -- ---------------------------------------------------------------------
 
-data TreeId = TId Int deriving (Eq,Ord,Show)
+data TreeId = TId !Int deriving (Eq,Ord,Show)
 
 -- |Identifies the tree carrying the main tokens, not any work in
 -- progress or deleted ones
@@ -97,8 +97,8 @@ mainTid :: TreeId
 mainTid = TId 0
 
 data TokenCache = TK
-  { tkCache :: Map.Map TreeId (Tree Entry)
-  , tkLastTreeId :: TreeId
+  { tkCache :: !(Map.Map TreeId (Tree Entry))
+  , tkLastTreeId :: !TreeId
   }
 
 -- ---------------------------------------------------------------------
