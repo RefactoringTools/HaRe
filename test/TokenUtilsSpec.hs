@@ -2312,6 +2312,44 @@ tree TId 0:
       (show newToks) `shouldBe` "[((((1,6),(1,8)),ITvarid \"zz\"),\"zz\"),((((1,9),(1,10)),ITequal),\"=\"),((((1,11),(1,12)),ITinteger 1),\"1\")]"
 
       let sspan4 = posToSrcSpan forest ((22,1),(24,11))
+
+--
+      (show f3) `shouldBe` ""
+      let (fwithspan,tree) = getSrcSpanFor f3 (srcSpanToForestSpan sspan4)
+      (drawTreeEntry fwithspan) `shouldBe`
+              "((1,1),(40,17))\n|\n"++
+              "+- ((1,1),(21,17))\n|\n"++
+              "+- ((22,1),(22,14))\n|\n"++
+              "`- ((26,1),(40,17))\n"
+
+      let toks'' = placeToksForSpan fwithspan sspan4 tree (PlaceOffset 2 0 2) newToks
+      let (startPos,endPos) = nonCommentSpan toks''
+      let newSpan = posToSrcSpan forest (startPos,endPos)
+      (GHC.showPpr newSpan) `shouldBe` "test/testdata/MoveDef/Md1.hs:24:1-6"
+
+      let (forest',tree') = getSrcSpanFor f3 (srcSpanToForestSpan sspan4)
+      (show tree') `shouldBe` ""
+
+      -- let (forest',newSpan') = addNewSrcSpanAndToksAfter f3 sspan4 newSpan (PlaceOffset 2 0 2) newToks
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(40,17))\n|\n"++
+              "+- ((1,1),(21,17))\n|\n"++
+              "+- ((22,1),(22,14))\n|\n"++
+              "`- ((26,1),(40,17))\n"
+
+      let (ghcl,_c) = getGhcLoc newSpan
+      let (ForestLine ch tr v l) = ghcLineToForestLine ghcl
+      let newSpan' = insertForestLineInSrcSpan (ForestLine ch tr (v+1) l) newSpan
+      let toks' = placeToksForSpan forest' sspan4 tree' (PlaceOffset 2 0 2) newToks
+      let newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
+      (show newNode) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 1 24),1),((ForestLine False 0 1 24),7)) [((((24,1),(24,3)),ITvarid \"zz\"),\"zz\"),((((24,4),(24,5)),ITequal),\"=\"),((((24,6),(24,7)),ITinteger 1),\"1\"),((((26,1),(26,1)),ITvocurly),\"\")], subForest = []}"
+
+      let forest'' = insertNodeAfter tree' newNode forest'
+      (drawTreeEntry forest'') `shouldBe`
+              "((1,1),(40,17))\n|\n"
+
+--
+
       let (f4,_newSpan4) = addToksAfterSrcSpan f3 sspan4 (PlaceOffset 2 0 2) newToks
       (drawTreeEntry f4) `shouldBe`
               "((1,1),(40,17))\n|\n"++

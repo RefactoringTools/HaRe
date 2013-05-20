@@ -58,6 +58,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , spanContains
        , containsStart, containsMiddle, containsEnd
        , doSplitTree, splitSubtree, splitSubToks
+       , nonCommentSpan
        -- , lookupSrcSpan
        , invariantOk
        , invariant
