@@ -1096,11 +1096,6 @@ spec = do
       (GHC.showPpr nb) `shouldBe` "[LiftToToplevel.LetIn1.anotherFun 0 y\n   = sq y\n   where\n       sq x = x GHC.Real.^ 2,\n LiftToToplevel.LetIn1.sumSquares x y\n   = sq x GHC.Num.+ sq y\n   where\n       pow = 2]"
 
 
-    -- -----------------------------------
-
-    it "Removes the decl from the AST too" $ do
-      "a" `shouldBe` "implement this test"
-
   -- ---------------------------------------------
 
   describe "rmTypeSig" $ do

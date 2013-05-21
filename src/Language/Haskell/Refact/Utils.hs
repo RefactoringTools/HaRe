@@ -530,7 +530,7 @@ writeRefactoredFiles _isSubRefactor files
            let ts' = bypassGHCBug7351 ts
            let source = GHC.showRichTokenStream ts'
 
-           putStrLn $ "writeRefactoredFiles:" ++ fileName ++ ":[" ++ source ++ "]" -- ++AZ++ debug
+           -- putStrLn $ "writeRefactoredFiles:" ++ fileName ++ ":[" ++ source ++ "]" -- ++AZ++ debug
            -- (Julien personnal remark) seq forces the evaluation of
            -- its first argument and returns its second argument. It
            -- is unclear for me why (length source) evaluation is
@@ -541,7 +541,7 @@ writeRefactoredFiles _isSubRefactor files
 
            -- seq (length source) (AbstractIO.writeFile fileName source) -- ++AZ++ TODO: restore this when ready for production
            seq (length source) (writeFile (fileName ++ ".refactored") source)
-           putStrLn $ "writeRefactoredFiles:seq done"
+           -- putStrLn $ "writeRefactoredFiles:seq done"
 
            writeFile (fileName ++ ".tokens") (showToks ts')
            -- writeFile (fileName ++ ".tokens") (showToks $ filter (\t -> not $ isEmpty t) ts)

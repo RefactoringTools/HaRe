@@ -87,7 +87,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , insertLenChangedInSrcSpan
        , insertVersionsInSrcSpan
        , srcSpanToForestSpan
-       , nullSpan
+       , nullSpan,nullPos
        , simpPosToForestSpan
        , showForestSpan
 
@@ -828,9 +828,23 @@ splitSubToks tree sspan = (b',m',e')
          (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks
 --         b'' = if (emptyList toksb) then [] else [Node (Entry (ssStart, sspanEnd) toksb) []]
          b'' = if (emptyList toksb) then [] else [mkTreeFromTokens toksb] -- Need to get end from actual toks
+{-
          m'' = if (ssStart == sspanStart) -- Eq does not compare all flags
                     then mkTreeListFromTokens toksm (ssStart,   ssEnd)
                     else mkTreeListFromTokens toksm (sspanStart,ssEnd)
+-}
+         m'' = let
+                (ForestLine _ch _ts _v le,ce) = sspanEnd
+                tl = 
+                  if (ssStart == sspanStart) -- Eq does not compare all flags
+                    then mkTreeListFromTokens toksm (ssStart,   ssEnd)
+                    else mkTreeListFromTokens toksm (sspanStart,ssEnd)
+                tl' = if emptyList tl
+                 then []
+                 else [Node (Entry (st,(ForestLine ch ts v le,ce)) tk) []]
+                   where [Node (Entry (st,(ForestLine ch ts v _l,_c)) tk) []] = tl
+               in
+                tl'
          e'' = []
       (True, True) -> (b'',m'',e'') -- Start and End
                       -- error $ "splitSubToks:start+end(sspan,tree,(b'',m'',e''))=" ++ (show (sspan,tree,(b'',m'',e'')))
@@ -1496,7 +1510,7 @@ invariant forest = rsub
           = r ++ checkSequence node' (s:ss)
           where
             -- r = if e1 <= s2
-            r = if (before e1 s2) || (sizeChanged e1)
+            r = if (before e1 s2) || (sizeChanged e1) {- ++AZ++ -} || (sizeChanged s2)
                  then []
                  else ["FAIL: subForest not in order: " ++
                         show e1 ++ " not < " ++ show s2 ++
