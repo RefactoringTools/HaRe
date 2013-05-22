@@ -149,7 +149,12 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel LetIn2 10 22" $ do
-      pending
+     liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/LetIn2.hs" (10,22)
+     -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/LetIn2.hs" (10,22)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/LetIn2.hs.expected"
+                          "./test/testdata/LiftToToplevel/LetIn2.hs.refactored"
+     diff `shouldBe` []
+
 
     -- ---------------------------------
 

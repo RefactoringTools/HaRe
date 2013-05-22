@@ -158,3 +158,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/LiftToToplevel/LetIn1.hs.refactored
 /test/testdata/LiftToToplevel/LetIn1.hs.renamed_out
 /test/testdata/LiftToToplevel/LetIn1.hs.tokens
+/test/testdata/LiftToToplevel/LetIn2.hs.AST_out
+/test/testdata/LiftToToplevel/LetIn2.hs.refactored
+/test/testdata/LiftToToplevel/LetIn2.hs.renamed_out
+/test/testdata/LiftToToplevel/LetIn2.hs.tokens
