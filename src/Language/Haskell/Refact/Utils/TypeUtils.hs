@@ -3596,6 +3596,8 @@ rmTypeSig :: (SYB.Data t) =>
                      -- was one
 rmTypeSig pn t
   = do
+     -- logm $ "rmTypeSig:t="  ++ (SYB.showData SYB.Renamer 0 t)
+
      setStateStorage StorageNone
      t' <- everywhereMStaged SYB.Renamer (SYB.mkM inSigs) t
      storage <- getStateStorage
@@ -3651,6 +3653,34 @@ rmTypeSig pn t
                  setStateStorage (StorageSig sig')
                  return (decls1++tail decls2)
    inSigs x = return x
+
+{-
+               [
+                (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:7-14}
+                 (TypeSig
+                  [
+                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:7} {Name: h})] 
+                  (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:12-14}
+                   (HsTyVar {Name: GHC.Types.Int})))),
+                (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:7-14}
+                 (TypeSig
+                  [
+                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:7} {Name: t})] 
+                  (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:12-14}
+                   (HsTyVar {Name: GHC.Types.Int})))),
+                (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:7-22}
+                 (TypeSig
+                  [
+                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:7-9} {Name: tup})] 
+                  (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:14-22}
+                   (HsTupleTy
+                    (HsBoxedOrConstraintTuple)
+                    [
+                     (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:15-17}
+                      (HsTyVar {Name: GHC.Types.Int})),
+                     (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:19-21}
+                      (HsTyVar {Name: GHC.Types.Int}))]))))]
+-}
 
 -- ---------------------------------------------------------------------
 

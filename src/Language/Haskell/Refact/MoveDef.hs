@@ -238,12 +238,13 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                                                                 else liftedDecls'
 
                                 drawTokenTree "liftToMod.c"
+                                logm $ "liftToMod:(declaredPns)=" ++ (GHC.showPpr declaredPns)
 
                                 -- error ("liftToMod:newBinds=" ++ (GHC.showPpr (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
                                 -- mod'<-moveDecl1 (replaceDecls declsr (before++parent'++after))
                                 mod' <- moveDecl1 (replaceBinds renamed (before++parent'++after))
                                        (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))) 
-                                       [GHC.unLoc pn] True
+                                       [GHC.unLoc pn] declaredPns True
 
                                 drawTokenTree "liftToMod.b"
 
@@ -299,9 +300,11 @@ moveDecl1 :: (HsValBinds t)
      -- TODO: make this next parameter a single value, not a list,
      -- after module complete
   -> [GHC.Name]     -- ^ The first one is the decl to move
+  -> [GHC.Name]     -- ^ The signatures to remove. May be multiple if
+                    -- decl being moved has a patbind.
   -> Bool           -- ^True if moving to the top level
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
-moveDecl1 t defName ns topLevel
+moveDecl1 t defName ns sigNames topLevel
    = do
         -- TODO: work with all of ns, not just the first
         let n = ghead "moveDecl1" ns
@@ -315,7 +318,8 @@ moveDecl1 t defName ns topLevel
         logm $ "moveDecl1:funToks=" ++ (showToks funToks)
         drawTokenTree "moveDecl1:after getting toks" -- ++AZ++
 
-        (t'',sigsRemoved) <- rmTypeSigs ns t
+        -- (t'',sigsRemoved) <- rmTypeSigs ns t
+        (t'',sigsRemoved) <- rmTypeSigs sigNames t
         -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
         -- logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
@@ -325,7 +329,13 @@ moveDecl1 t defName ns topLevel
                                sigToks <- getToksForSpan ss
                                return sigToks
 
-        maybeToksSigMulti <- mapM getToksForMaybeSig sigsRemoved
+        -- logm $ "moveDecl1:sigsRemoved sorted=" ++ (GHC.showPpr $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (srcSpanToForestSpan s1) (srcSpanToForestSpan s2)) sigsRemoved)
+        -- logm $ "moveDecl1:sigsRemoved spans=" ++ (show $ map (\(GHC.L l _) -> srcSpanToForestSpan l) sigsRemoved)
+
+        -- maybeToksSigMulti <- mapM getToksForMaybeSig sigsRemoved
+        maybeToksSigMulti <- mapM getToksForMaybeSig 
+                             $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (srcSpanToForestSpan s1) (srcSpanToForestSpan s2))  
+                                sigsRemoved
         let maybeToksSig = concat maybeToksSigMulti
 
         logm $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
@@ -1237,6 +1247,7 @@ doDemoting' t pn
                          let demotedSigToks = concat demotedSigToksLists
                          -- end TODO
 
+                         logm $ "MoveDef:declaredPns=" ++ (GHC.showPpr declaredPns) -- ++AZ++
                          logm $ "MoveDef:demotedSigToks=" ++ (show demotedSigToks) -- ++AZ++
 
                          logm $ "MoveDef:sig and decl toks[" ++ (GHC.showRichTokenStream (demotedSigToks ++ demotedToks)) ++ "]" -- ++AZ++
@@ -1359,7 +1370,7 @@ doDemoting' t pn
                        -- rhs' <- moveDecl pns rhs False decls False
                        -- TODO: what wbout dtoks?
                        -- error "dupInPat" -- ++AZ++
-                       rhs' <- moveDecl1 rhs Nothing pns False
+                       rhs' <- moveDecl1 rhs Nothing pns pns False
                        return (GHC.PatBind pat rhs' ty fvs ticks)
                  -- dupInPat _ =mzero
                  dupInPat x = return x

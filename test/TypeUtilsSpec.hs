@@ -1193,30 +1193,27 @@ spec = do
       (GHC.showPpr os) `shouldBe` "Just TypeSigs.sq :: GHC.Types.Int -> GHC.Types.Int"
       (GHC.showRichTokenStream ot) `shouldBe` "\n\n sq            :: Int -> Int"
 
-  -- ---------------------------------------------
+    -- -----------------------------------------------------------------
 {-
-  describe "moveDecl" $ do
-    it "moves a declaration from one syntax element to another" $ do
-      (t, toks) <- parsedFileD1Ghc
+    it "removes a type signature for a pattern in a bind" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/LiftToToplevel/PatBindIn1.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let Just (GHC.L _ n) = locToName (GHC.mkFastString "./test/testdata/LiftToToplevel/PatBindIn1.hs") (18, 7) renamed
       let
         comp = do
-         renamed <- getRefactRenamed
-         let Just (GHC.L _ ssq) = locToName d1FileName (6, 1) renamed
-         let Just (GHC.L _ sq) = locToName d1FileName (9, 1) renamed
-         let declsr = hsBinds renamed
-             ssqDecls = definingDeclsNames [ssq] declsr True False
-             sqDecls  = definingDeclsNames [sq]  declsr True False
-
-         newDecls <- moveDecl [sq] ssqDecls False sqDecls True
-
-         return (ssq,sq,ssqDecls,sqDecls,newDecls)
-      ((s1,s2,d1,d2,nd),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (GHC.showPpr d1) `shouldBe` "[Demote.D1.sumSquares (x : xs)\n   = Demote.D1.sq x GHC.Num.+ Demote.D1.sumSquares xs\n Demote.D1.sumSquares [] = 0]"
-      (GHC.showPpr s2) `shouldBe` "Demote.D1.sq"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n sumSquares [] = 0\n\n sq x = x ^pow\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
-      (showToks $ take 40 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` ""
-      (GHC.showPpr nd) `shouldBe` ""
+         (renamed',removedSig) <- rmTypeSig n renamed
+         let (Just (GHC.L ss _)) = removedSig
+         oldSigToks <- getToksForSpan ss
+         return (renamed',removedSig,oldSigToks)
+      -- ((nb,os,ot),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((nb,os,ot),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks } 
+      (GHC.showPpr n) `shouldBe` "tup"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftToToplevel.PatBindIn1 where\n\n --A definition can be lifted from a where or let into the surrounding binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'tup' defined in 'foo'\n --This example aims to test renaming and the lifting of type signatures.\n\n main :: Int\n main = foo 3\n\n foo :: Int -> Int\n foo x = h + t + (snd tup)\n       where\n       h :: Int\n       t :: Int\n       tup :: (Int,Int)\n       tup@(h,t) = head $ zip [1..10] [3..15]\n "
+      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.PatBindIn1 where\n\n --A definition can be lifted from a where or let into the surrounding binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'tup' defined in 'foo'\n --This example aims to test renaming and the lifting of type signatures.\n\n main :: Int\n main = foo 3\n\n foo :: Int -> Int\n foo x = h + t + (snd tup)\n       where\n       \n       \n\n       tup@(h,t) = head $ zip [1..10] [3..15]\n "
+      (GHC.showPpr nb) `shouldBe` ""
+      (GHC.showPpr os) `shouldBe` ""
+      (GHC.showRichTokenStream ot) `shouldBe` ""
 -}
   -- ---------------------------------------------
 

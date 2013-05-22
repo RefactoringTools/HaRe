@@ -165,11 +165,14 @@ spec = do
                           "./test/testdata/LiftToToplevel/LetIn3.hs.refactored"
      diff `shouldBe` []
 
-
     -- ---------------------------------
 
     it "liftToTopLevel PatBindIn1 18 7" $ do
-      pending
+     liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/PatBindIn1.hs" (18,7)
+     -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/PatBindIn1.hs" (18,7)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/PatBindIn1.hs.expected"
+                          "./test/testdata/LiftToToplevel/PatBindIn1.hs.refactored"
+     diff `shouldBe` []
 
     -- ---------------------------------
 
