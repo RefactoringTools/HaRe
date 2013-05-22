@@ -860,9 +860,13 @@ splitSubToks tree sspan = (b',m',e')
          b'' = []
          m'' = let -- If the last span is changed, make sure it stays
                    -- as it was
-                 [Node (Entry (st,_en) tk) []] = mkTreeListFromTokens toksm (ssStart,sspanEnd)
+                tl = mkTreeListFromTokens toksm (ssStart,sspanEnd)
+                tl' = if emptyList tl
+                 then []
+                 else [Node (Entry (st,sspanEnd) tk) []]
+                   where [Node (Entry (st,_en) tk) []] = mkTreeListFromTokens toksm (ssStart,sspanEnd)
                 in
-                 [Node (Entry (st,sspanEnd) tk) []]
+                 tl'
          e'' = mkTreeListFromTokens tokse (sspanEnd,ssEnd)
       (False,False) -> if (containsMiddle ss sspan)
                         then ([],[tree],[])

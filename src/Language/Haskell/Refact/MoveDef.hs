@@ -318,7 +318,7 @@ moveDecl1 t defName ns topLevel
         (t'',sigsRemoved) <- rmTypeSigs ns t
         -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
-        logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
+        -- logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
 
         let getToksForMaybeSig (GHC.L ss _) =
                              do
