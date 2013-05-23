@@ -12,4 +12,3 @@ fun x y z =inc (addthree x y z)
 
 addthree x y z=x+y+z
 
-

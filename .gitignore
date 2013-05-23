@@ -168,3 +168,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/LiftToToplevel/PatBindIn1.hs.refactored
 /test/testdata/LiftToToplevel/PatBindIn1.hs.renamed_out
 /test/testdata/LiftToToplevel/PatBindIn1.hs.tokens
+/test/testdata/LiftToToplevel/PatBindIn3.hs.AST_out
+/test/testdata/LiftToToplevel/PatBindIn3.hs.refactored
+/test/testdata/LiftToToplevel/PatBindIn3.hs.renamed_out
+/test/testdata/LiftToToplevel/PatBindIn3.hs.tokens

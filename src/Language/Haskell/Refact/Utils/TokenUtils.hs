@@ -80,6 +80,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , forestLineToGhcLine
        , forestPosVersionSet
        , forestPosVersionNotSet
+       , forestSpanLenChanged
        , forestSpanVersions
        , forestSpanVersionSet
        , forestSpanVersionNotSet
@@ -369,6 +370,12 @@ forestPosAstVersionSet (ForestLine _ tr _ _,_) = tr /= 0
 -- |Checks if the version is zero
 forestPosVersionNotSet :: ForestPos -> Bool
 forestPosVersionNotSet (ForestLine _ _ v _,_) = v == 0
+
+forestSpanLenChanged :: ForestSpan -> Bool
+forestSpanLenChanged (s,e) = (forestPosLenChanged s) || (forestPosLenChanged e)
+
+forestPosLenChanged :: ForestPos -> Bool
+forestPosLenChanged (ForestLine ch _ _ _,_) = ch
 
 -- |Puts a TreeId into a forestSpan
 treeIdIntoForestSpan :: TreeId -> ForestSpan -> ForestSpan
@@ -795,7 +802,7 @@ doSplitTree tree                             sspan = (b'',m'',e'')
 
 mkTreeListFromTokens :: [PosToken] -> ForestSpan -> [Tree Entry]
 mkTreeListFromTokens  [] _sspan = []
-mkTreeListFromTokens toks sspan = [tree]
+mkTreeListFromTokens toks sspan = res
   where
    (Node (Entry tspan treeToks) sub) = mkTreeFromTokens toks
 
@@ -804,7 +811,10 @@ mkTreeListFromTokens toks sspan = [tree]
 
    span' = ((ForestLine chs ts vs ls, cs),(ForestLine che te ve  le, ce))
 
-   tree = (Node (Entry span' treeToks) sub)
+   res = if ((ls,cs),(le,ce)) == ((0,0),(0,0))
+     then []
+     else [(Node (Entry span' treeToks) sub)]
+
 
 splitSubToks ::
   Tree Entry
@@ -847,14 +857,12 @@ splitSubToks tree sspan = (b',m',e')
                 tl'
          e'' = []
       (True, True) -> (b'',m'',e'') -- Start and End
-                      -- error $ "splitSubToks:start+end(sspan,tree,(b'',m'',e''))=" ++ (show (sspan,tree,(b'',m'',e'')))
         where
          (toksb,toksm,tokse) = splitToks (forestSpanToSimpPos (ssStart,ssEnd)) toks
          b'' = mkTreeListFromTokens toksb (sspanStart,ssStart)
          m'' = mkTreeListFromTokens toksm (ssStart,ssEnd)
          e'' = mkTreeListFromTokens tokse (ssEnd,sspanEnd)
       (False,True) -> (b'',m'',e'') -- End only
-                      -- error $ "splitSubToks:end only(sspan,tree,(m'',e''))=" ++ (show (sspan,tree,(m'',e'')))
         where
          (_,toksm,tokse) = splitToks (forestSpanToSimpPos (nullPos,sspanEnd)) toks
          b'' = []
@@ -1360,15 +1368,23 @@ openZipperToSpan sspan z
 
             xx  -> case (filter (\zt -> (treeStartEnd $ Z.tree zt) == sspan) xx) of 
                     -- [] -> error $ "openZipperToSpan: no matching subtree:(sspan,xx)=" ++ (show (sspan,xx)) -- ++AZ++ 
+                    [] -> -- more than one matches, see if we can get
+                          -- rid of the ones that have been lengthened
+                          case (filter (forestSpanLenChanged . treeStartEnd . Z.tree) xx) of
+                            [] -> z -- we tried...
+                            [w] -> openZipperToSpan sspan w
+                            ww -> error $ "openZipperToSpan:can't resolve:(sspan,ww)="++(show (sspan,ww))
                     [y] -> openZipperToSpan sspan y
-                    yy -> -- Multiple, check if we can separate out
-                             -- by version
+                    yy -> -- Multiple, check if we can separate out by
+                          -- version
                           case (filter (\zt -> (fst $ forestSpanVersions $ treeStartEnd $ Z.tree zt) == (fst $ forestSpanVersions sspan)) xx) of
                            -- [] -> z
                            [] -> error $ "openZipperToSpan:no version match:(sspan,yy)=" ++ (show (sspan,yy)) -- ++AZ++
                            [w] -> openZipperToSpan sspan w
                            -- _ww -> z
-                           ww -> error $ "openZipperToSpan:multiple version match:" ++ (show ww) -- ++AZ++
+                           -- ww -> error $ "openZipperToSpan:multiple version match:" ++ (show (sspan,ww)) -- ++AZ++
+                           ww -> error $ "openZipperToSpan:multiple version match:" ++ (show (sspan,yy)) -- ++AZ++
+
           contains zn = spanContains (treeStartEnd $ Z.tree zn) sspan
 
 

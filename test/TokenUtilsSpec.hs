@@ -1206,6 +1206,60 @@ tree TId 0:
 
       (invariant f10) `shouldBe` []
 
+    ------------------------------------
+
+    it "updates tokens without breaking things" $ do
+      (_t,toks) <- parsedFileGhc "./test/testdata/LiftToToplevel/PatBindIn3.hs"
+      let forest = mkTreeFromTokens toks
+
+
+      -- putToksForSpan test/testdata/LiftToToplevel/PatBindIn3.hs:9:16-17:(((False,0,0,9),16),((False,0,0,9),18))
+      newToks1 <- liftIO $ basicTokenise "(sq x pow)"
+      (show newToks1) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,6)),ITvarid \"x\"),\"x\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\"),((((0,10),(0,11)),ITcparen),\")\")]"
+
+      let sspan1 = posToSrcSpan forest ((9,16),(9,18))
+
+      let (f2,_newSpan2,_tree2) = updateTokensForSrcSpan forest sspan1 newToks1
+
+      (invariant f2) `shouldBe` []
+      (drawTreeEntry f2) `shouldBe`
+               "((1,1),(15,22))\n|\n"++
+               "+- ((1,1),(9,15))\n|\n"++
+               "+- ((10000000009,16),(10000000009,26))\n|\n"++
+               "`- ((9,19),(15,22))\n"
+
+      -- putToksForSpan test/testdata/LiftToToplevel/PatBindIn3.hs:9:21-22:(((False,0,0,9),21),((False,0,0,9),23))
+      (show newToks1) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,6)),ITvarid \"x\"),\"x\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\"),((((0,10),(0,11)),ITcparen),\")\")]"
+
+      let sspan2 = posToSrcSpan forest ((9,21),(9,23))
+
+--
+{-
+      let z = openZipperToSpan (fs sspan2) $ Z.fromTree f2
+      (Z.isLeaf z) `shouldBe` False
+
+      let (b1,m1,e1) = splitSubtree (Z.tree z) (fs sspan2)
+      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
+              "([(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),15))],"++
+
+               "[(((ForestLine True 0 0 9),16),((ForestLine True 0 0 9),26)),"++
+                "(((ForestLine False 0 0 9),19),((ForestLine False 0 0 15),22))],"++
+
+               "[])"
+-}
+--
+
+      let (f3,_newSpan3,_tree3) = updateTokensForSrcSpan f2 sspan2 newToks1
+      (invariant f3) `shouldBe` []
+      (drawTreeEntry f3) `shouldBe`
+               "((1,1),(15,22))\n|\n"++
+               "+- ((1,1),(9,15))\n|\n"++
+               "+- ((10000000009,16),(10000000009,26))\n|  |\n"++
+               "|  +- ((9,16),(9,21))\n|  |\n"++
+               "|  +- ((10000000009,22),(10000000009,32))\n|  |\n"++
+               "|  `- ((9,25),(9,26))\n|\n"++
+               "`- ((9,19),(15,22))\n"
+
   -- ---------------------------------------------
 
   describe "removeSrcSpan" $ do
