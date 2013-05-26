@@ -392,25 +392,23 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
 {- Original test cases. These files are now in testdata/Demote
 
--- TODO: reinstate these tests
-
 TestCases{refactorCmd="demote",
-positive=[(["D1.hs","C1.hs","A1.hs"],["9","1"]),
-          (["WhereIn1.hs"],["12","1"]),
-          (["WhereIn3.hs"],["14","1"]),
-          (["WhereIn4.hs"],["14","1"]),
-          (["WhereIn5.hs"],["14","1"]),
-          (["WhereIn6.hs"],["13","1"]),
-          (["WhereIn7.hs"],["13","1"]),
-          (["CaseIn1.hs"],["16","1"]),
-          (["LetIn1.hs"],["12","22"]),
-          (["PatBindIn1.hs"],["19","1"])],
-negative=[(["WhereIn2.hs"],["14","1"]),
-          (["LetIn2.hs"],["11","22"]),
-          (["PatBindIn4.hs"],["18","1"]),
-          (["WhereIn8.hs"],["16","1"]),
-          (["D2.hs","C2.hs","A2.hs"],["5","1"]),
-          (["D3.hs"],["5","1"])]
+positive=[(["D1.hs","C1.hs","A1.hs"],["9","1"]), x
+          (["WhereIn1.hs"],["12","1"]), x
+          (["WhereIn3.hs"],["14","1"]), x
+          (["WhereIn4.hs"],["14","1"]), x
+          (["WhereIn5.hs"],["14","1"]), x
+          (["WhereIn6.hs"],["13","1"]), x
+          (["WhereIn7.hs"],["13","1"]), x
+          (["CaseIn1.hs"],["16","1"]), x
+          (["LetIn1.hs"],["12","22"]), x
+          (["PatBindIn1.hs"],["19","1"])], x
+negative=[(["WhereIn2.hs"],["14","1"]), x
+          (["LetIn2.hs"],["11","22"]), x
+          (["PatBindIn4.hs"],["18","1"]), x
+          (["WhereIn8.hs"],["16","1"]), x
+          (["D2.hs","C2.hs","A2.hs"],["5","1"]), x
+          (["D3.hs"],["5","1"])] x
 }
 -}
 
