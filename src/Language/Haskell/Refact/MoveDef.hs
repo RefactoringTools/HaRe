@@ -384,7 +384,7 @@ pnsNeedRenaming dest parent liftedDecls pns
                 vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
             -- if elem (pNtoName pn) vars  || isInScopeAndUnqualified (pNtoName pn) inscps && findEntity pn dest
             isInScope <- isInScopeAndUnqualifiedGhc (pNtoName pn)
-            -- logm $ "MoveDef.pnsNeedRenaming:(f,d,vs,vars,isInScope)=" ++ (GHC.showPpr (f,d,vs,vars,isInScope))
+            logm $ "MoveDef.pnsNeedRenaming:(f,d,vs,vars,isInScope)=" ++ (GHC.showPpr (f,d,vs,vars,isInScope))
             if elem (pNtoName pn) vars  || isInScope && findEntity pn dest
                then return [pn]
                else return []

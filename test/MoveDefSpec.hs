@@ -197,12 +197,23 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel PatBindIn2 17 7 fails" $ do
-      pending
+{-
+     res <- catchException (doLiftToTopLevel ["./test/testdata/LiftToToplevel/PatBindIn2.hs","17","7"])
+     -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/PatBindIn2.hs" (17,7)
+
+     (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
+-}
+     pending -- Not clear that this was covered in the original, will
+             -- come back to it
 
     -- ---------------------------------
 
     it "liftToTopLevel WhereIn2 11 18 fails" $ do
-      pending
+     res <- catchException (doLiftToTopLevel ["./test/testdata/LiftToToplevel/WhereIn2.hs","11","18"])
+     -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/WhereIn2.hs" (11,18)
+
+     (show res) `shouldBe` "Just \"The identifier(s): (sq, test/testdata/LiftToToplevel/WhereIn2.hs:11:18) will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
+
 
 
 {- original tests
