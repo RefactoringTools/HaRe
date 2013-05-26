@@ -1227,6 +1227,8 @@ tree TId 0:
                "+- ((1,1),(9,15))\n|\n"++
                "+- ((10000000009,16),(10000000009,26))\n|\n"++
                "`- ((9,19),(15,22))\n"
+      let toks2 = retrieveTokensFinal f2
+      (GHC.showRichTokenStream toks2) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' defined in 'sumSquares'\n --This example aims to test changing a constant to a function.\n\n sumSquares x = (sq x pow)+ sq\n            where\n               sq = x^pow\n               pow =2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n\n "
 
       -- putToksForSpan test/testdata/LiftToToplevel/PatBindIn3.hs:9:21-22:(((False,0,0,9),21),((False,0,0,9),23))
       (show newToks1) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,6)),ITvarid \"x\"),\"x\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\"),((((0,10),(0,11)),ITcparen),\")\")]"
@@ -1234,18 +1236,23 @@ tree TId 0:
       let sspan2 = posToSrcSpan forest ((9,21),(9,23))
 
 --
+      -- (show f2) `shouldBe` ""
 {-
       let z = openZipperToSpan (fs sspan2) $ Z.fromTree f2
-      (Z.isLeaf z) `shouldBe` False
+      (Z.isLeaf z) `shouldBe` True
 
-      let (b1,m1,e1) = splitSubtree (Z.tree z) (fs sspan2)
-      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
-              "([(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),15))],"++
+      let (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor f2 (fs sspan2)
+      (drawTreeEntry forest') `shouldBe`
+               "((1,1),(15,22))\n|\n"++
+               "+- ((1,1),(9,15))\n|\n"++
+               "+- ((10000000009,16),(10000000009,26))\n|\n"++
+               "`- ((9,19),(15,22))\n   |\n"++
+               "   +- ((9,19),(9,20))\n   |\n"++
+               "   +- ((9,21),(9,23))\n   |\n"++
+               "   `- ((10,12),(15,22))\n"
 
-               "[(((ForestLine True 0 0 9),16),((ForestLine True 0 0 9),26)),"++
-                "(((ForestLine False 0 0 9),19),((ForestLine False 0 0 15),22))],"++
-
-               "[])"
+      let zf = openZipperToNode tree $ Z.fromTree forest'
+      (show zf) `shouldBe` ""
 -}
 --
 
@@ -1254,11 +1261,13 @@ tree TId 0:
       (drawTreeEntry f3) `shouldBe`
                "((1,1),(15,22))\n|\n"++
                "+- ((1,1),(9,15))\n|\n"++
-               "+- ((10000000009,16),(10000000009,26))\n|  |\n"++
-               "|  +- ((9,16),(9,21))\n|  |\n"++
-               "|  +- ((10000000009,22),(10000000009,32))\n|  |\n"++
-               "|  `- ((9,25),(9,26))\n|\n"++
-               "`- ((9,19),(15,22))\n"
+               "+- ((10000000009,16),(10000000009,26))\n|\n"++
+               "`- ((9,19),(15,22))\n   |\n"++
+               "   +- ((9,19),(9,20))\n   |\n"++
+               "   +- ((10000000009,21),(10000000009,31))\n   |\n"++
+               "   `- ((10,12),(15,22))\n"
+      let toks3 = retrieveTokensFinal f3
+      (GHC.showRichTokenStream toks3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' defined in 'sumSquares'\n --This example aims to test changing a constant to a function.\n\n sumSquares x = (sq x pow)+ (sq x pow)\n            where\n               sq = x^pow\n               pow =2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n\n "
 
   -- ---------------------------------------------
 

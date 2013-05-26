@@ -1295,11 +1295,15 @@ insertNodeAfter oldNode newNode forest = forest'
 -- ---------------------------------------------------------------------
 
 -- |Open a zipper so that its focus is the given node
+--  NOTE: the node must already be in the tree
 openZipperToNode
   :: Tree Entry
      -> Z.TreePos Z.Full Entry
      -> Z.TreePos Z.Full Entry
-openZipperToNode node z
+openZipperToNode node@(Node (Entry sspan _) _) z
+  = openZipperToSpan sspan z
+
+{-
   -- = error $ "openZipperToNode:(treeStartEnd (Z.tree z),z)="++(show (treeStartEnd (Z.tree z),z)) -- ++AZ++
   = if treeStartEnd (Z.tree z) == treeStartEnd node
       then z
@@ -1308,11 +1312,6 @@ openZipperToNode node z
           -- go through all of the children to find the one that
           -- either is what we are looking for, or contains it
           childrenAsZ = getChildrenAsZ z
-          {-
-          childrenAsZ = map (\j -> gfromJust "openZipperToNode" j)
-                      $ iterate (\mz -> Z.next $ gfromJust ("openZipperToNode:" ++ (show z)) mz)
-                      $ Z.firstChild z
-          -}
           child = ghead "openZipperToNode" $ filter contains childrenAsZ
           -- focus of child either IS the node we care about, or contains it
           z' = if (treeStartEnd (Z.tree child)) == treeStartEnd node
@@ -1320,6 +1319,7 @@ openZipperToNode node z
                  else openZipperToNode node child
 
           contains zn = spanContains (treeStartEnd $ Z.tree zn) (treeStartEnd node)
+-}
 
 getChildrenAsZ :: Z.TreePos Z.Full a -> [Z.TreePos Z.Full a]
 getChildrenAsZ z = go [] (Z.firstChild z)
@@ -1370,7 +1370,7 @@ openZipperToSpan sspan z
                     -- [] -> error $ "openZipperToSpan: no matching subtree:(sspan,xx)=" ++ (show (sspan,xx)) -- ++AZ++ 
                     [] -> -- more than one matches, see if we can get
                           -- rid of the ones that have been lengthened
-                          case (filter (forestSpanLenChanged . treeStartEnd . Z.tree) xx) of
+                          case (filter (not .forestSpanLenChanged . treeStartEnd . Z.tree) xx) of
                             [] -> z -- we tried...
                             [w] -> openZipperToSpan sspan w
                             ww -> error $ "openZipperToSpan:can't resolve:(sspan,ww)="++(show (sspan,ww))
@@ -1386,7 +1386,6 @@ openZipperToSpan sspan z
                            ww -> error $ "openZipperToSpan:multiple version match:" ++ (show (sspan,yy)) -- ++AZ++
 
           contains zn = spanContains (treeStartEnd $ Z.tree zn) sspan
-
 
 -- ---------------------------------------------------------------------
 
