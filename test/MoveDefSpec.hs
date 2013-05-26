@@ -187,7 +187,12 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel CaseIn1 10 28" $ do
-      pending
+     liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/CaseIn1.hs" (10,28)
+     -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/CaseIn1.hs" (10,28)
+     diff <- compareFiles "./test/testdata/LiftToToplevel/CaseIn1.hs.expected"
+                          "./test/testdata/LiftToToplevel/CaseIn1.hs.refactored"
+     diff `shouldBe` []
+
 
     -- ---------------------------------
 
