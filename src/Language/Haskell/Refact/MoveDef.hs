@@ -612,15 +612,17 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
              --2. The definition will be lifted to the declaration list of a match
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-             liftToMatch (match@(GHC.Match pats mtyp rhs)::GHC.Match GHC.Name)
-                 | nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False)
-                  = doLifting1 match n
-                  -- =do rhs'<-worker match rhs pn
-                  --     return (GHC.Match pats mtyp rhs')
+             liftToMatch (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
+                 | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False False)
+                  =do match'<-worker match (hsBinds ds) pn
+                      -- let ds' = (replaceBinds ds ds'')
+                      -- return (GHC.Match pats mtyp (GHC.GRHSs rhs ds'))
+                      return match'
 
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-             --     | definingDecls [pn] (hsDecls rhs) False False /=[]
-             --      = doLifting1 match pn
+             liftToMatch (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
+                  | nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False)
+                   = doLifting1 match n
              liftToMatch _ =mzero
 {-
              --2. The definition will be lifted to the declaration list of a match

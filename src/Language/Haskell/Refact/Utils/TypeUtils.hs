@@ -1941,9 +1941,9 @@ definingDeclsNames::
             ->Bool       -- ^ True means to include the type signature.
             ->Bool       -- ^ True means to look at the local declarations as well. 
             ->[GHC.LHsBind GHC.Name]  -- ^ The result.
-definingDeclsNames pns ds _incTypeSig recursive = concatMap defines ds
+definingDeclsNames pns ds _incTypeSig recursive = concatMap defining ds
   where
-   defines decl
+   defining decl
      = if recursive
         then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` inDecl) decl
         else defines' decl
