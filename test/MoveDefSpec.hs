@@ -237,6 +237,45 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
   -- -------------------------------------------------------------------
 
+  describe "LiftOneLevel" $ do
+
+    it "LiftOneLevel D1 C1 A1 8 6" $ do
+     liftOneLevel defaultTestSettings (Just "./test/testdata/LiftOneLevel/A1.hs") "./test/testdata/LiftOneLevel/D1.hs" (8,6)
+     -- liftOneLevel logTestSettings     (Just "./test/testdata/LiftOneLevel/A1.hs") "./test/testdata/LiftOneLevel/D1.hs" (8,6)
+     diff <- compareFiles "./test/testdata/LiftOneLevel/D1.hs.expected"
+                          "./test/testdata/LiftOneLevel/D1.hs.refactored"
+     diff `shouldBe` []
+
+     diff2 <- compareFiles "./test/testdata/LiftOneLevel/C1.hs.expected"
+                          "./test/testdata/LiftOneLevel/C1.hs.refactored"
+     diff2 `shouldBe` []
+
+     a1Refactored <- doesFileExist "./test/testdata/LiftOneLevel/A1.hs.refactored"
+     a1Refactored `shouldBe` False
+
+
+{- original tests
+TestCases{refactorCmd="liftOneLevel",
+positive=[(["D1.hs","C1.hs","A1.hs"],["8","6"]),
+          (["D2.hs","C2.hs","A2.hs"],["8","6"]),
+          (["D3.hs","C3.hs","A3.hs"],["8","6"]),
+          (["WhereIn1.hs"],["12","18"]),
+          (["WhereIn6.hs"],["15","29"]),
+          (["WhereIn7.hs"],["12","14"]),
+          (["WhereIn8.hs"],["8","11"]),
+          (["LetIn1.hs"],["11","22"]),
+          (["LetIn2.hs"],["10","22"]),
+          (["LetIn3.hs"],["10","27"]),
+          (["PatBindIn3.hs"],["11","15"]),
+          (["CaseIn1.hs"],["10","28"])],
+negative=[(["PatBindIn2.hs"],["17","7"]),
+          (["WhereIn2.hs"],["8","18"])]
+}
+
+-}
+
+  -- -------------------------------------------------------------------
+
   describe "doDemote" $ do
 
     it "notifies if no definition selected" $ do

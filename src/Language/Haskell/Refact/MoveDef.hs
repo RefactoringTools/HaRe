@@ -110,6 +110,9 @@ compLiftOneLevel fileName (row,col) = do
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
 
+      -- logm $ "compLiftOneLevel:(fileName,row,col)="++(show (fileName,row,col))
+      -- logm $ "compLiftOneLevel:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+
       let (Just (modName,_)) = getModuleName parsed
       let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
       case maybePn of
@@ -586,22 +589,39 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
    where
       liftOneLevel''= do
-                           renamed <- getRefactRenamed
-                           (applyTP ((once_tdTP (failTP `adhocTP` liftToMod
-                                                          --  `adhocTP` liftToMatch
+             logm $ "in liftOneLevel''"
+             renamed <- getRefactRenamed
+             renamed' <- (applyTP ((once_tdTPGhc (failTP `adhocTP` liftToMod
+                                                         `adhocTP` liftToMatch
                                                           --  `adhocTP` liftToPattern 
                                                           --  `adhocTP` liftToLet
                                                           --   `adhocTP` liftToAlt
                                                           --  `adhocTP` liftToLetStmt
                                                                                   ))
-                                          `choiceTP` failure) renamed) -- ((toks,unmodified),(-1000,0))
+                            `choiceTP` failure) renamed) -- ((toks,unmodified),(-1000,0))
+             return renamed'
            where
              --1. The definition will be lifted to top level
-             liftToMod (mod@(g,imps,exps,docs):: GHC.RenamedSource)
-                | definingDeclsNames [n] (hsBinds g) False False /=[]  --False means not taking type signature into account 
-                  = do ds'<-worker mod (hsBinds g) pn
-                       return (ds',imps,exps,docs)
+             liftToMod (ren@(g,imps,exps,docs):: GHC.RenamedSource)
+                | nonEmptyList (definingDeclsNames [n] (hsBinds g) False False)  --False means not taking type signature into account 
+                  = do
+                       logm $ "in liftOneLevel''.liftToMod"
+                       ds'<-worker ren (hsBinds g) pn
+                       return (ds'::GHC.RenamedSource)
              liftToMod  _ =mzero
+
+             --2. The definition will be lifted to the declaration list of a match
+             -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+             liftToMatch (match@(GHC.Match pats mtyp rhs)::GHC.Match GHC.Name)
+                 | nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False)
+                  = doLifting1 match n
+                  -- =do rhs'<-worker match rhs pn
+                  --     return (GHC.Match pats mtyp rhs')
+
+             -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+             --     | definingDecls [pn] (hsDecls rhs) False False /=[]
+             --      = doLifting1 match pn
+             liftToMatch _ =mzero
 {-
              --2. The definition will be lifted to the declaration list of a match
              liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
@@ -613,7 +633,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                  | definingDecls [pn] (hsDecls rhs) False False /=[]
                   = doLifting1 match pn
              liftToMatch _ =mzero
+-}
 
+{-
              --3. The definition will be lifted to the declaration list of a pattern binding 
              liftToPattern (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
                 | definingDecls [pn] (hsDecls ds) False  False /=[]
@@ -665,6 +687,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                    = error ( "Lifting this definition failed. "++
                            " This might be because that the definition to be lifted is defined in a class/instance declaration.")
 
+             worker :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name] -> GHC.Located GHC.Name -> RefactGhc t
              worker dest ds pn
                   =do let (before, parent,after)=divideDecls ds pn
                           liftedDecls=definingDeclsNames [n] parent True  False
@@ -686,6 +709,18 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 --parent'<-doMoving declaredPns (ghead "worker" parent) True  paramAdded parent'
                                 --return (before++parent'++liftedDecls''++after)
                         else askRenamingMsg pns "lifting"
+             doLifting1 dest@(GHC.Match pats mtyp parent)  pn
+               = do  let  liftedDecls=definingDeclsNames [n] (hsBinds parent) True  False
+                          declaredPns=nub $ concatMap definedPNs liftedDecls
+                     -- pns<-pnsNeedRenaming inscps dest parent liftedDecls declaredPns
+                     pns<-pnsNeedRenaming dest (hsBinds parent) liftedDecls declaredPns
+                     (_, dd)<-hsFreeAndDeclaredPNs dest
+                     if pns==[]
+                       then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl pn dd parent liftedDecls
+                               let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
+                                                                else liftedDecls'
+                               moveDecl1 (GHC.Match pats mtyp parent') Nothing [n] declaredPns False 
+                        else askRenamingMsg pns "lifting"
 {-
              doLifting1 dest@(HsMatch loc1 name pats parent ds)  pn
                = do  let  liftedDecls=definingDecls [pn] (hsDecls parent) True  False
@@ -698,6 +733,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                                                 else liftedDecls'
                                moveDecl1 (HsMatch loc1 name pats parent' ds) Nothing [pn] False 
                         else askRenamingMsg pns "lifting"
+-}
+
+{-
              doLifting2 dest@(Dec (HsPatBind loc p parent ds)) pn
                = do  let  liftedDecls=definingDecls [pn] (hsDecls parent) True  False
                           declaredPns=nub $ concatMap definedPNs liftedDecls

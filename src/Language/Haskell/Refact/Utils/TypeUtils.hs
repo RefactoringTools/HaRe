@@ -1935,7 +1935,7 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
 -- |Find those declarations(function\/pattern binding) which define
 -- the specified GHC.Names. incTypeSig indicates whether the
 -- corresponding type signature will be included.
-definingDeclsNames:: -- (SYB.Data t) =>
+definingDeclsNames::
             [GHC.Name]   -- ^ The specified identifiers.
             ->[GHC.LHsBind GHC.Name] -- ^ A collection of declarations.
             ->Bool       -- ^ True means to include the type signature.

@@ -6,9 +6,7 @@ module Language.Haskell.Refact.Utils.GhcUtils where
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
--- import Data.Generics
 import GHC
--- import GHC.SYB.Utils
 import NameSet
 import Control.Monad
 
@@ -321,6 +319,27 @@ stop_tdTU s	=  s `choiceTU` (allTU' (stop_tdTU s))
 allTU' 		:: (Monad m, Monoid a) => TU a m -> TU a m
 allTU'		=  allTU mappend mempty
 -}
+
+{- original
+-- | Top-down type-preserving traversal that performs its argument
+--   strategy at most once.
+once_tdTP 	:: MonadPlus m => TP m -> TP m
+once_tdTP s	=  s `choiceTP` (oneTP (once_tdTP s))
+
+-- Succeed for one child; don't care about the other children
+oneTP 	   :: MonadPlus m => TP m -> TP m
+oneTP s	   =  MkTP (gmapMo (applyTP s))
+-}
+
+-- | Top-down type-preserving traversal that performs its argument
+--   strategy at most once.
+once_tdTPGhc 	:: MonadPlus m => TP m -> TP m
+once_tdTPGhc s	=  s `choiceTP` (oneTPGhc (once_tdTPGhc s))
+
+-- Succeed for one child; don't care about the other children
+oneTPGhc 	   :: MonadPlus m => TP m -> TP m
+-- oneTPGhc s	   =  ifTP checkItemRenamer' (const s) (oneTP s)
+oneTPGhc s	   =  ifTP checkItemRenamer' (const failTP) (oneTP s)
 
 
 ------------------------------------------
