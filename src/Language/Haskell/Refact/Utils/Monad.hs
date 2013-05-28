@@ -129,15 +129,15 @@ data StateStorage = StorageNone
 
 instance Show StateStorage where
   show StorageNone        = "StorageNone"
-  show (StorageBind bind) = "(StorageBind " ++ (GHC.showPpr bind) ++ ")"
-  show (StorageSig sig)   = "(StorageSig " ++ (GHC.showPpr sig) ++ ")"
+  show (StorageBind bind) = "(StorageBind " ++ (showGhc bind) ++ ")"
+  show (StorageSig sig)   = "(StorageSig " ++ (showGhc sig) ++ ")"
 
 -- ---------------------------------------------------------------------
 -- StateT and GhcT stack
 
 type RefactGhc a = GHC.GhcT (StateT RefactState IO) a
 
-instance (MonadIO (GHC.GhcT (StateT RefactState IO))) where
+instance (MU.MonadIO (GHC.GhcT (StateT RefactState IO))) where
          liftIO = GHC.liftIO
 
 instance GHC.MonadIO (StateT RefactState IO) where

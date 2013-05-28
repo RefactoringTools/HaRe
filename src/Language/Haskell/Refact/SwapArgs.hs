@@ -155,6 +155,6 @@ reallyDoSwap _pnt@(PNT (GHC.L _ _)) _name@(GHC.L s n1) renamed = do
 
 -- expToPNT x = undefined
 
-prettyprint :: (GHC.Outputable a) => a -> String
-prettyprint x = GHC.showSDoc $ GHC.ppr x
+-- prettyprint :: (GHC.Outputable a) => a -> String
+-- prettyprint x = GHC.showSDoc $ GHC.ppr x
 

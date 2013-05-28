@@ -207,7 +207,7 @@ getModuleDetails modSum = do
       p <- GHC.parseModule modSum
       t <- GHC.typecheckModule p
 
-      GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
+      GHC.setContext [GHC.IIModule (GHC.moduleName $ GHC.ms_mod modSum)]
 
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       mtm <- gets rsModule
@@ -391,8 +391,9 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
                = do 
+                    df <- GHC.getSessionDynFlags
                     drawTokenTree "update Located HsExpr starting" -- ++AZ++
-                    _ <- updateToks oldExp newExp prettyprint False
+                    _ <- updateToks oldExp newExp (prettyprint df) False
                     drawTokenTree "update Located HsExpr done" -- ++AZ++
 
                 -- error "update: updated tokens" -- ++AZ++ debug
@@ -406,7 +407,9 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t
         where
           inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
-                = do _ <- updateToks oldPat newPat prettyprint False
+                = do 
+                     df <- GHC.getSessionDynFlags
+                     _ <- updateToks oldPat newPat (prettyprint df) False
                      -- TODO: make sure to call syncAST
                      return newPat
             | otherwise = return p
@@ -417,7 +420,9 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n
         where
           inTyp (t::GHC.LHsType n)
             | sameOccurrence t oldTy
-                = do _ <- updateToks oldTy newTy prettyprint False
+                = do 
+                     df <- GHC.getSessionDynFlags
+                     _ <- updateToks oldTy newTy (prettyprint df) False
                      -- TODO: make sure to call syncAST
                      return newTy
             | otherwise = return t
@@ -428,7 +433,9 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1,
           where
             inBind (t::GHC.LHsBindLR n1 n2)
               | sameOccurrence t oldBind
-                  = do _ <- updateToks oldBind newBind prettyprint False
+                  = do 
+                       df <- GHC.getSessionDynFlags
+                       _ <- updateToks oldBind newBind (prettyprint df) False
                        -- TODO: make sure to call syncAST
                        return newBind
               | otherwise = return t
@@ -545,8 +552,8 @@ writeRefactoredFiles _isSubRefactor files
 
            writeFile (fileName ++ ".tokens") (showToks ts')
            -- writeFile (fileName ++ ".tokens") (showToks $ filter (\t -> not $ isEmpty t) ts)
-           writeFile (fileName ++ ".renamed_out") (GHC.showPpr renamed)
-           writeFile (fileName ++ ".AST_out") $ (GHC.showPpr renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
+           writeFile (fileName ++ ".renamed_out") (showGhc renamed)
+           writeFile (fileName ++ ".AST_out") $ (showGhc renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
 
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not

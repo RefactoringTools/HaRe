@@ -20,6 +20,12 @@ import qualified SrcLoc     as GHC
 
 import Data.Generics
 
+-- |Show a GHC API structure
+showGhc :: a -> String
+showGhc a = undefined
+
+
+
 {-
 
 data NameSpace = ValueName | ClassName | TypeCon | DataCon | Other  deriving (Eq, Show)
@@ -83,8 +89,11 @@ type HsName = GHC.RdrName
 -- type PN     = GHC.RdrName
 newtype PName = PN HsName deriving (Eq)
 
+{-
 instance Show PName where
-  show (PN n) = "(PN " ++ (GHC.showRdrName n) ++ ")"
+  -- show (PN n) = "(PN " ++ (GHC.showRdrName n) ++ ")"
+  show (PN n) = "(PN " ++ (showGhc n) ++ ")"
+-}
 
 -- | The PNT is the unique name, after GHC renaming. It corresponds to
 -- GHC.Name data PNT = PNT GHC.Name deriving (Data,Typeable) -- Note:
@@ -92,11 +101,16 @@ instance Show PName where
 -- ++AZ++ : will run with Located RdrName for now, will see when we need the Unique name
 data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable,Eq)
 
+
 instance Show PNT where
-  show (PNT (GHC.L l name)) = "(PNT " ++ (GHC.showPpr l) ++ " " ++ (GHC.showRdrName name) ++ ")"
+  -- show (PNT (GHC.L l name)) = "(PNT " ++ (showGhc l) ++ " " ++ (GHC.showRdrName name) ++ ")"
+  show (PNT (GHC.L l name)) = "(PNT " ++ (showGhc l) ++ " " ++ (showGhc name) ++ ")"
+
+
 
 instance Show (GHC.GenLocated GHC.SrcSpan GHC.Name) where
-  show (GHC.L l name) = "(" ++ (GHC.showPpr l) ++ " " ++ (GHC.showPpr $ GHC.nameUnique name) ++ " " ++ (GHC.showPpr name) ++ ")"
+  show (GHC.L l name) = "(" ++ (showGhc l) ++ " " ++ (showGhc $ GHC.nameUnique name) ++ " " ++ (showGhc name) ++ ")"
+
 
 instance Show GHC.NameSpace where
   show ns

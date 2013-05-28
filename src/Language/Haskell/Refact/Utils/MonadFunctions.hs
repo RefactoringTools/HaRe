@@ -40,6 +40,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Managing token stash
 
        -- * For debugging
+       , showGhc
        , drawTokenTree
        , getTokenTree
 
@@ -60,7 +61,6 @@ import Control.Monad.State
 
 import qualified FastString    as GHC
 import qualified GHC           as GHC
--- import qualified MonadUtils    as GHC
 import qualified Outputable    as GHC
 
 import qualified Data.Data as SYB
@@ -127,7 +127,7 @@ getToksForSpan sspan = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
-  logm $ "getToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
+  logm $ "getToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
 
 -- |Get the current tokens preceding a given GHC.SrcSpan.
@@ -140,14 +140,14 @@ getToksBeforeSpan sspan = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
-  logm $ "getToksBeforeSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
+  logm $ "getToksBeforeSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
 
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens
 putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksForSpan sspan toks = do
-  logm $ "putToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show toks)
+  logm $ "putToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show toks)
   st <- get
   let Just tm = rsModule st
 
@@ -178,7 +178,7 @@ putToksForPos pos toks = do
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterSpan :: GHC.SrcSpan -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksAfterSpan oldSpan pos toks = do
-  logm $ "putToksAfterSpan " ++ (GHC.showPpr oldSpan) ++ ":" ++ (showSrcSpanF oldSpan) ++ " at " ++ (show pos) ++ ":" ++ (showToks toks)
+  logm $ "putToksAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (showSrcSpanF oldSpan) ++ " at " ++ (show pos) ++ ":" ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache oldSpan (rsTokenCache tm)
@@ -208,7 +208,7 @@ putToksAfterPos pos position toks = do
 -- fragment to reflect it
 putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc (GHC.Located t)
 putDeclToksAfterSpan oldSpan t pos toks = do
-  logm $ "putDeclToksAfterSpan " ++ (GHC.showPpr oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,toks))
+  logm $ "putDeclToksAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,toks))
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache oldSpan (rsTokenCache tm)
@@ -221,7 +221,7 @@ putDeclToksAfterSpan oldSpan t pos toks = do
 -- |Remove a GHC.SrcSpan and its associated tokens
 removeToksForSpan :: GHC.SrcSpan -> RefactGhc ()
 removeToksForSpan sspan = do
-  logm $ "removeToksForSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (showSrcSpanF sspan)
+  logm $ "removeToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan)
   st <- get
   let Just tm = rsModule st
   let tk' = removeToksFromCache (rsTokenCache tm) sspan
@@ -248,7 +248,7 @@ removeToksForPos pos = do
 -- |Insert a GHC.SrcSpan into the tree if it is not already there
 putSrcSpan ::  GHC.SrcSpan -> RefactGhc ()
 putSrcSpan sspan = do
-  logm $ "putSrcSpan " ++ (GHC.showPpr sspan) ++ ":" ++ (showSrcSpanF sspan) 
+  logm $ "putSrcSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) 
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
@@ -260,6 +260,13 @@ putSrcSpan sspan = do
 -}
 
 -- ---------------------------------------------------------------------
+
+{-
+-- |Pretty print a GHC type
+showGhc a = do
+    dflags <- GHC.getSessionDynFlags
+    showGhc dflags a
+-}
 
 -- |Print the Token Tree for debug purposes
 drawTokenTree :: String -> RefactGhc ()

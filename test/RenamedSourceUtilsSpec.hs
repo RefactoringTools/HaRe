@@ -39,7 +39,7 @@ spec = do
       (t, toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
       let fvs = getFreeVariables renamed
-      (GHC.showPpr $ GHC.nameSetToList $ GHC.unionManyNameSets fvs) `shouldBe` "[TypeUtils.B.foo, TypeUtils.B.bob]"
+      (showGhc $ GHC.nameSetToList $ GHC.unionManyNameSets fvs) `shouldBe` "[TypeUtils.B.foo, TypeUtils.B.bob]"
 
 
 

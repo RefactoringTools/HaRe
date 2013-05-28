@@ -176,7 +176,7 @@ inScopeInfo :: InScopes                                          -- ^ The inscop
 inScopeInfo names = nub $  map getEntInfo $ names
   where
      getEntInfo name
-       =(GHC.showPpr name,
+       =(showGhc name,
          GHC.occNameSpace $ GHC.nameOccName name,
          GHC.moduleName $ GHC.nameModule name,
          getQualMaybe $ GHC.nameRdrName name)
@@ -256,7 +256,7 @@ showPNwithLoc::GHC.Located GHC.Name->String
 showPNwithLoc pn@(GHC.L l _n)
   = let (r,c) = getGhcLoc l
     -- in  " '"++pNtoName pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
-    in  " '"++GHC.showPpr pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
+    in  " '"++showGhc pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
 
 -- ---------------------------------------------------------------------
 
@@ -334,6 +334,23 @@ mkNewName oldName fds suffix
 
 -- | Return True if the current module is exported either by default
 -- or by specifying the module name in the export.
+modIsExported:: GHC.ModuleName       -- ^ The module name
+               -> GHC.RenamedSource  -- ^ The AST of the module
+               -> Bool               -- ^ The result
+modIsExported modName (_g,_emps,mexps,_mdocs)
+   = let
+       modExported (GHC.L _ (GHC.IEModuleContents name)) = name == modName
+       modExported _ = False
+
+       moduleExports = filter modExported $ fromMaybe [] mexps
+
+     in if isNothing mexps
+           then True
+           else (nonEmptyList moduleExports)
+
+{- GHC 7.4.2 version, working on ParsedSource
+-- | Return True if the current module is exported either by default
+-- or by specifying the module name in the export.
 modIsExported::HsModuleP   -- ^ The AST of the module
                -> Bool     -- ^ The result
 modIsExported (GHC.L _ mod)
@@ -344,7 +361,8 @@ modIsExported (GHC.L _ mod)
          matchModName (GHC.L _ n@(GHC.IEVar _)) =
            case modName of
              Nothing -> False
-             Just (GHC.L _ mn) -> (GHC.moduleNameString mn) == GHC.showRdrName (GHC.ieName n)
+             -- GHC7.4.2 version:Just (GHC.L _ mn) -> (GHC.moduleNameString mn) == GHC.showRdrName (GHC.ieName n)
+             Just (GHC.L _ mn) -> (GHC.moduleNameString mn) == GHC.getOccString (GHC.ieName n)
          matchModName (GHC.L _ (GHC.IEModuleContents mne)) =
            case modName of
              Nothing -> False
@@ -354,6 +372,7 @@ modIsExported (GHC.L _ mod)
      in if isNothing exps
            then True
            else isJust $ find matchModName (gfromJust "modIsExported" exps)
+-}
 
 {- ++AZ++ original
 -- | Return True if the current module is exported either by default or by specifying the module name in the export.
@@ -408,7 +427,7 @@ causeNameClashInExports  pn {- newName -} modName mod@(_g,imps,maybeExps,_doc) -
 
   = let exps = fromMaybe [] maybeExps
         varExps = filter isImpVar exps
-        modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if GHC.showPpr x== GHC.showPpr pn
+        modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if showGhc x== showGhc pn
                                                         then [GHC.moduleName $ GHC.nameModule x]
                                                         else []) varExps)
     in (isExplicitlyExported pn mod) &&
@@ -459,7 +478,7 @@ causeNameClashInExports  pn newName mod exps
 hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
   let fd = hsFreeAndDeclaredPNs' t
-  -- logm $ "hsFreeAndDeclaredPNs:fd=" ++ (GHC.showPpr fd)
+  -- logm $ "hsFreeAndDeclaredPNs:fd=" ++ (showGhc fd)
   return $ fromMaybe ([],[]) fd
 
 -- hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
@@ -692,7 +711,7 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
 hsFreeAndDeclaredNames::(SYB.Data t) => t -> RefactGhc ([String],[String])
 hsFreeAndDeclaredNames t = do
   (f1,d1) <- hsFreeAndDeclaredPNs t
-  return ((nub.map GHC.showPpr) f1, (nub.map GHC.showPpr) d1)
+  return ((nub.map showGhc) f1, (nub.map showGhc) d1)
 
 -- hsFreeAndDeclaredNames::(Term t, MonadPlus m)=> t->m([String],[String])
 -- hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
@@ -745,7 +764,7 @@ getDeclaredVars bs = concatMap vars bs
 hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2) => t1 -> t2 -> RefactGhc [String]
 hsVisibleNames e t = do
   d <- hsVisiblePNs e t
-  return ((nub.map GHC.showPpr) d)
+  return ((nub.map showGhc) d)
 
 -- hsVisibleNames:: (Term t1, Term t2, FindEntity t1, MonadPlus m) => t1 -> t2 -> m [String]
 -- hsVisibleNames e t =do d<-hsVisiblePNs e t
@@ -903,13 +922,13 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 -- syntax phrase.
 usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 usedWithoutQual name renamed = do
-  logm $ "usedWithoutQual:name="  ++ (GHC.showPpr (name,GHC.nameUnique name))
+  logm $ "usedWithoutQual:name="  ++ (showGhc (name,GHC.nameUnique name))
   -- logm $ "usedWithoutQual:t="  ++ (SYB.showData SYB.Renamer 0 renamed)
   let names = findAllNameOccurences name renamed
-  logm $ "usedWithoutQual:names=" ++ (GHC.showPpr names)
+  logm $ "usedWithoutQual:names=" ++ (showGhc names)
 
   -- let allNames = findAllNames renamed
-  -- logm $ "usedWithoutQual:allNames=" ++ (GHC.showPpr $ map (\(GHC.L _ n) -> (n,GHC.nameUnique n)) allNames)
+  -- logm $ "usedWithoutQual:allNames=" ++ (showGhc $ map (\(GHC.L _ n) -> (n,GHC.nameUnique n)) allNames)
 
   toks <- fetchToks
   res <- mapM (isUsedWithoutQual toks) names
@@ -918,7 +937,7 @@ usedWithoutQual name renamed = do
     isUsedWithoutQual toks (GHC.L l _) = do
        logm ("usedWithoutQual") -- ++AZ++ debug
        let (_,s) = ghead "usedWithoutQual" $ getToks (getGhcLoc l, getGhcLocEnd l) toks
-       logm $ "isUsedWithoutQual:(l,s)" ++ (GHC.showPpr (l,s)) -- ++AZ++ debug
+       logm $ "isUsedWithoutQual:(l,s)" ++ (showGhc (l,s)) -- ++AZ++ debug
        return $ not $ elem '.' s
 
 
@@ -927,7 +946,7 @@ usedWithoutQual name renamed = do
 -- syntax phrase.
 usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 usedWithoutQual name renamed = do
-  logm $ "usedWithoutQual:name="  ++ (GHC.showPpr name)
+  logm $ "usedWithoutQual:name="  ++ (showGhc name)
   -- logm $ "usedWithoutQual:t="  ++ (SYB.showData SYB.Renamer 0 renamed)
   case res of
      Just (GHC.L l _) -> do
@@ -1184,7 +1203,7 @@ hsFDNamesFromInside::(SYB.Data t) => t -> RefactGhc ([String],[String])
 hsFDNamesFromInside t = do
   (f,d) <- hsFDsFromInside t
   return
-    ((nub.map GHC.showPpr) f, (nub.map GHC.showPpr) d)
+    ((nub.map showGhc) f, (nub.map showGhc) d)
 -- hsFDNamesFromInside::(Term t, MonadPlus m)=>t->m ([String],[String])
 -- hsFDNamesFromInside t =do (f,d)<-hsFDsFromInside t
 --                           return ((nub.map pNtoName) f, (nub.map pNtoName) d)
@@ -1561,12 +1580,12 @@ instance HsValBinds (GHC.HsExpr GHC.Name) where
   hsValBinds (GHC.HsLet ds _) = hsValBinds ds
 
   replaceValBinds (GHC.HsLet binds ex) new = (GHC.HsLet (replaceValBinds binds new) ex)
-  replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" ++ (GHC.showPpr old)
+  replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" ++ (showGhc old)
 
 instance HsValBinds (GHC.Stmt GHC.Name) where
   hsValBinds (GHC.LetStmt ds) = hsValBinds ds
   replaceValBinds (GHC.LetStmt ds) new = (GHC.LetStmt (replaceValBinds ds new))
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (GHC.showPpr old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc old)
 
 
 -- ---------------------------------------------------------------------
@@ -1601,7 +1620,7 @@ instance HsValBinds ([GHC.LHsBind GHC.Name]) where
   replaceValBinds _old (GHC.ValBindsIn b _sigs) = GHC.bagToList b
   replaceValBinds _old (GHC.ValBindsOut rbinds _sigs) = GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
 
-  -- replaceValBinds old new = error ("replaceValBinds (old,new)=" ++ (GHC.showPpr (old,new)))
+  -- replaceValBinds old new = error ("replaceValBinds (old,new)=" ++ (showGhc (old,new)))
 
 instance HsValBinds (GHC.LHsExpr GHC.Name) where
   hsValBinds (GHC.L _ (GHC.HsLet binds _ex)) = hsValBinds binds
@@ -1905,7 +1924,8 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
       defines' decl@(GHC.L l (GHC.SigD        _ {- (GHC.Sig id) -}))          = []
 
       -- TyClD - Type definitions
-      defines' decl@(GHC.L l (GHC.TyClD (GHC.TyData _ _ name _ _ _ cons _)))
+      -- GHC7.4.2: defines' decl@(GHC.L l (GHC.TyClD (GHC.TyData _ _ name _ _ _ cons _)))
+      defines' decl@(GHC.L l (GHC.TyClD (GHC.TyDecl _name _vars (GHC.TyData _ _ _ _ cons _) _fvs)))
        = if checkCons cons == True then [decl]
                                    else []
 
@@ -2141,11 +2161,11 @@ instance UsedByRhs (GHC.LHsBind GHC.Name) where
 
 instance UsedByRhs (GHC.HsExpr GHC.Name) where
   usedByRhs (GHC.HsLet _lb e) pns = findPNs pns e
-  usedByRhs e                _pns = error $ "undefined usedByRhs:" ++ (GHC.showPpr e)
+  usedByRhs e                _pns = error $ "undefined usedByRhs:" ++ (showGhc e)
 
 instance UsedByRhs (GHC.Stmt GHC.Name) where
   usedByRhs (GHC.LetStmt lb) pns = findPNs pns lb
-  usedByRhs s               _pns = error $ "undefined usedByRhs:" ++ (GHC.showPpr s)
+  usedByRhs s               _pns = error $ "undefined usedByRhs:" ++ (showGhc s)
 
 {- ++ original
 class (Term t) =>UsedByRhs t where
@@ -2389,16 +2409,16 @@ getName str t
             (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
         worker (pnt@(GHC.L _ n) :: (GHC.Located GHC.Name))
-          | GHC.showPpr n == str = Just n
+          | showGhc n == str = Just n
         worker _ = Nothing
 
         workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
-          | GHC.showPpr name == str = Just name
+          | showGhc name == str = Just name
         workerBind _ = Nothing
 
 
         workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-          | GHC.showPpr name == str = Just name
+          | showGhc name == str = Just name
         workerExpr _ = Nothing
 
 
@@ -2611,7 +2631,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
        let startPos = tokenPos    lastTok
        let endPos   = tokenPosEnd lastTok
 
-       newToks <- liftIO $ basicTokenise (GHC.showPpr impDecl)
+       newToks <- liftIO $ basicTokenise (showGhc impDecl)
        -- logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
        putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
@@ -2745,13 +2765,14 @@ rmPreludeImports = filter isPrelude where
 makeNewToks :: (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
               -> RefactGhc [PosToken]
 makeNewToks (decl, maybeSig, declToks) = do
+   df <- GHC.getSessionDynFlags
    let
      declStr = case declToks of
                 Just ts -> "\n" ++ (unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts)
-                Nothing -> "\n"++(prettyprint decl)++"\n\n"
+                Nothing -> "\n"++(prettyprint df decl)++"\n\n"
      sigStr  = case declToks of
                 Just _ts -> ""
-                Nothing -> "\n" ++ (intercalate "\n" $ map prettyprint maybeSig)
+                Nothing -> "\n" ++ (intercalate "\n" $ map (prettyprint df) maybeSig)
    -- logm $ "makeNewToks:declStr=[" ++ declStr ++ "]"
    newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
    return newToks
@@ -2845,6 +2866,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                -> RefactGhc t
   addLocalDecl parent (newFun, maybeSig, newFunToks)
     =do
+        df <- GHC.getSessionDynFlags
         let binds = hsValBinds parent
 
         let (startLoc@(r,c),endLoc)
@@ -2852,7 +2874,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                  then getStartEndLoc parent
                  else getStartEndLoc localDecls
 
-        newToks <- liftIO $ basicTokenise newSource
+        newToks <- liftIO $ basicTokenise (newSource df)
 
         (newFun',_) <- addLocInfo (newFun, newToks)
 
@@ -2877,14 +2899,14 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          -- TODO: where tokens are passed in, first normalise them to
          -- the left column before adding in the where clause part
-         newSource  = if (emptyList localDecls)
+         newSource df = if (emptyList localDecls)
                        then "where\n"++ concatMap (\l-> "   "++l++"\n") (lines newFun')
                        else ("" ++ newFun'++"\n")
            where
             newFun' = unlines $ stripLeadingSpaces $ lines $ sigStr ++ newFunBody
             newFunBody = case newFunToks of
                            Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts
-                           Nothing -> prettyprint newFun
+                           Nothing -> prettyprint df newFun
 
             sigStr  = case newFunToks of
                         Just _ts -> ""
@@ -2895,7 +2917,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                         -}
                         Nothing -> if (emptyList maybeSig)
                                      then ""
-                                     else (intercalate "\n" $ map prettyprint maybeSig) ++ "\n"
+                                     else (intercalate "\n" $ map (prettyprint df) maybeSig) ++ "\n"
 
 -- ---------------------------------------------------------------------
 
@@ -2990,7 +3012,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
                         else ","
                 ending = if isNew then ")" else s
 
-                newToken=mkToken t start (beginning++showEntities GHC.showPpr pns ++ending)
+                newToken=mkToken t start (beginning++showEntities showGhc pns ++ending)
                 -- toks'=replaceToks toks start end [newToken]
                 -- toks'=replaceTok toks start newToken
 
@@ -3045,7 +3067,7 @@ addParamsToDecls::
       ->RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
 
 addParamsToDecls decls pn paramPNames modifyToks = do
-  logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (GHC.showPpr (pn,paramPNames,modifyToks))
+  logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhc (pn,paramPNames,modifyToks))
   if (paramPNames/=[])
         then mapM addParamToDecl decls
         else return decls
@@ -3065,7 +3087,7 @@ addParamsToDecls decls pn paramPNames modifyToks = do
              pats'' <- if modifyToks
                then do -- TODO: What happens if pats is []
                        -- Will only happen if there is a single match only.
-                       logm $ "addParamtoMatch:l=" ++ (GHC.showPpr l)
+                       logm $ "addParamtoMatch:l=" ++ (showGhc l)
                        if emptyList pats
                          then addFormalParams (Left l2) pats'
                          else addFormalParams (Right (ghead "addParamtoMatch" pats)) pats'
@@ -3092,8 +3114,9 @@ addParamsToDecls decls pn paramPNames modifyToks = do
 addFormalParams :: Either GHC.SrcSpan (GHC.LPat GHC.Name) -> [GHC.Located (GHC.Pat GHC.Name)] -> RefactGhc ()
 addFormalParams place newParams
   = do
+       df <- GHC.getSessionDynFlags
        -- newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
-       let newStr = (prettyprintPatList prettyprint True newParams)
+       let newStr = (prettyprintPatList (prettyprint df) True newParams)
 
        case place of
          Left l@(GHC.RealSrcSpan ss) -> do
@@ -3127,11 +3150,12 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
        worker :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
        worker oldExp@(GHC.L l2 (GHC.HsVar pname))
         | pname == pn = do
+              df <- GHC.getSessionDynFlags
               let newExp' = foldl addParamToExp oldExp paramPNames
               let newExp  = (GHC.L l2 (GHC.HsPar newExp'))
               -- TODO: updateToks must add a space at the end of the
               --       new exp
-              if modifyToks then do _ <- updateToks oldExp newExp prettyprint False
+              if modifyToks then do _ <- updateToks oldExp newExp (prettyprint df) False
                                     return newExp
                             else return newExp
        worker x = return x
@@ -3432,7 +3456,7 @@ rmDecl:: (SYB.Data t)
                                    -- tokens
         Maybe (GHC.LSig GHC.Name)) -- ^ and the possibly removed siganture
 rmDecl pn incSig t = do
-  logm $ "rmDecl:(pn,incSig)= " ++ (GHC.showPpr (pn,incSig)) -- ++AZ++
+  logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
   t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
@@ -3536,7 +3560,7 @@ rmDecl pn incSig t = do
          -- So we must remove the tokens from the start of l to the
          -- start of the LHsExpr
 
-         logm $ "rmLocalDecl: decls=" ++ (GHC.showPpr decls)
+         logm $ "rmLocalDecl: decls=" ++ (showGhc decls)
          prevToks <- getToksBeforeSpan sspan -- Need these before
                                              -- sspan is deleted
          removeToksForPos (getStartEndLoc decl)
@@ -3738,7 +3762,7 @@ rmQualifier pns t =
        | elem pn pns
        = do do toks <- fetchToks
                -- let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
-               let (rs,_) = break (=='.') $ reverse $ GHC.showPpr pn -- ++TODO: replace this with the appropriate formulation
+               let (rs,_) = break (=='.') $ reverse $ showGhc pn -- ++TODO: replace this with the appropriate formulation
                    s = reverse rs
                {- TODO: reinstate token update if required
                let (row,col) = getGhcLoc l
@@ -3783,8 +3807,8 @@ renamePN::(SYB.Data t)
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
 renamePN oldPN newName updateTokens t = do
-  -- = error $ "renamePN: sspan=" ++ (GHC.showPpr sspan) -- ++AZ++
-  logm $ "renamePN: (oldPN,newName)=" ++ (GHC.showPpr (oldPN,newName))
+  -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
+  logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
   everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
   where
@@ -3813,13 +3837,13 @@ renamePN oldPN newName updateTokens t = do
      = do if updateTokens
            then  do
                     -- toks <- fetchToks
-                    logm $ "renamePN.worker: (sspan,newName)=" ++ (GHC.showPpr (sspan,newName)) -- ++AZ++ debug
+                    logm $ "renamePN.worker: (sspan,newName)=" ++ (showGhc (sspan,newName)) -- ++AZ++ debug
                     drawTokenTree "" -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     sspan' <- putToksForSpan sspan toks'
                     return (newName,sspan')
-                    -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (GHC.showPpr (row,col,l,sspan)) ++ (show toks) -- ++AZ++
+                    -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (showGhc (row,col,l,sspan)) ++ (show toks) -- ++AZ++
            else return (newName,l)
 
 -- ---------------------------------------------------------------------
@@ -3850,7 +3874,7 @@ autoRenameLocalVar:: (HsValBinds t)
                      ->t            -- ^ The syntax phrase.
                      -> RefactGhc t -- ^ The result.
 autoRenameLocalVar modifyToks pn t = do
-  logm $ "autoRenameLocalVar: (modifyToks,pn)=" ++ (GHC.showPpr (modifyToks,pn))
+  logm $ "autoRenameLocalVar: (modifyToks,pn)=" ++ (showGhc (modifyToks,pn))
   -- = everywhereMStaged SYB.Renamer (SYB.mkM renameInMatch)
   if isDeclaredIn pn t
          then do t' <- worker t
@@ -4134,7 +4158,7 @@ expToName _ = Nothing
 -}
 
 nameToString :: GHC.Name -> String
-nameToString name = GHC.showPpr name
+nameToString name = showGhc name
 
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing

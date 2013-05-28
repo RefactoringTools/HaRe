@@ -128,7 +128,7 @@ spec = do
          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
-      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
 
     it "gets modules which directly or indirectly import a module #2" $ do
       let
@@ -137,7 +137,7 @@ spec = do
          g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
-      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:Main]"
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:Main]"
 
   -- -------------------------------------------------------------------
 
@@ -152,7 +152,7 @@ spec = do
          g <- serverModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
-      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[]"
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[]"
 
     it "gets modules which are directly or indirectly imported by a module #2" $ do
       let
@@ -161,7 +161,7 @@ spec = do
          g <- serverModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
-      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:S1]"
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:S1]"
 
 
   -- -------------------------------------------------------------------
@@ -192,7 +192,7 @@ spec = do
          g <- sortCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp
-      (GHC.showPpr $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:TypeUtils.C, main:TypeUtils.B]"
+      (showGhc $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:TypeUtils.C, main:TypeUtils.B]"
 
   -- -------------------------------------------------------------------
 
@@ -212,7 +212,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
 
     -- ---------------------------------
 
@@ -230,7 +230,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[]"
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[]"
 
     -- ---------------------------------
 
@@ -248,7 +248,7 @@ spec = do
       (( ( (t,_)), mg ), _s) <- runRefactGhcState comp
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (show $ getModuleName parsed) `shouldBe` "Just (DupDef.Dd1,\"DupDef.Dd1\")"
-      GHC.showPpr (map GHC.ms_mod mg) `shouldBe` "[main:DupDef.Dd2]"
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:DupDef.Dd2]"
 
 
   -- -------------------------------------------------------------------

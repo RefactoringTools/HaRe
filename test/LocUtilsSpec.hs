@@ -51,7 +51,7 @@ spec = do
       let decl = head $ drop 4 decls
       let (startPos,endPos) = startEndLocIncComments toks decl
 
-      (GHC.showPpr decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
+      (showGhc decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
       (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe` 
              ("[(((18,1),(18,1)),ITsemi,\"\")," ++
@@ -103,8 +103,8 @@ spec = do
       let decl = head $ drop 1 decls
       let (startPos,endPos) = startEndLocIncComments toks sqSig
 
-      -- (GHC.showPpr decls) `shouldBe` ""
-      (GHC.showPpr sqSig) `shouldBe` "Demote.WhereIn3.sq ::\n  GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int"
+      -- (showGhc decls) `shouldBe` ""
+      (showGhc sqSig) `shouldBe` "Demote.WhereIn3.sq ::\n  GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int"
 
       (showToks $ getToks ((11,1),(15,1)) toks) `shouldBe` 
              ("[(((11,10),(11,15)),ITwhere,\"where\"),"++
@@ -150,8 +150,8 @@ spec = do
       let decl = head decls
       let (startPos,endPos) = startEndLocIncComments toks decl
 
-      -- (GHC.showPpr decls) `shouldBe` ""
-      (GHC.showPpr decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
+      -- (showGhc decls) `shouldBe` ""
+      (showGhc decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
 
       (showToks $ getToks ((14,1),(26,1)) toks) `shouldBe` 
              ("[(((14,3),(14,6)),ITlet,\"let\"),"++
@@ -198,7 +198,7 @@ spec = do
       (show $ getStartEndLoc decl) `shouldBe` "((13,1),(13,21))"
       let (startPos,endPos) = startEndLocIncComments toks decl
 
-      (GHC.showPpr decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
+      (showGhc decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
       -- (SYB.showData SYB.Renamer 0 decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
       (showToks $ getToks ((13,1),(22,1)) toks) `shouldBe`
              ("[(((13,1),(13,1)),ITvccurly,\"\"),"++
@@ -233,7 +233,7 @@ spec = do
       let decl = head $ drop 4 decls
       let (startPos,endPos) = startEndLocIncFowComment toks decl
 
-      (GHC.showPpr decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
+      (showGhc decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
       (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe`
              ("[(((18,1),(18,1)),ITsemi,\"\")," ++
@@ -278,8 +278,8 @@ spec = do
       let decl = head $ drop 2 decls
       let (startPos,endPos) = startEndLocIncFowComment toks decl
 
-      (GHC.showPpr decls) `shouldBe` "[MoveDef.Demote.d = 9, MoveDef.Demote.c = 7,\n MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x]"
-      (GHC.showPpr decl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
+      (showGhc decls) `shouldBe` "[MoveDef.Demote.d = 9, MoveDef.Demote.c = 7,\n MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x]"
+      (showGhc decl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
 
       (showToks $ getToks ((4,1),(8,1)) toks) `shouldBe` 
              ("[(((4,1),(4,1)),ITsemi,\"\"),"++
@@ -309,13 +309,13 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head $ tail decls
-      (GHC.showPpr l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
+      (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
       (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
 
       let (startPos,endPos) = startEndLocIncFowComment toks decl
 
-      (GHC.showPpr decls) `shouldBe` "[TokenTest.foo x y\n   = do { c <- System.IO.getChar;\n          GHC.Base.return c },\n TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar,\n TokenTest.bib a b\n   = x\n   where\n       x = 3,\n TokenTest.bob a b\n   = x\n   where\n       x = 3]"
-      (GHC.showPpr decl) `shouldBe` "TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar"
+      (showGhc decls) `shouldBe` "[TokenTest.foo x y\n   = do { c <- System.IO.getChar;\n          GHC.Base.return c },\n TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar,\n TokenTest.bib a b\n   = x\n   where\n       x = 3,\n TokenTest.bob a b\n   = x\n   where\n       x = 3]"
+      (showGhc decl) `shouldBe` "TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar"
 
       (showToks $ getToks ((13,1),(19,1)) toks) `shouldBe` 
              ("[(((13,1),(13,1)),ITvccurly,\"\"),"++
@@ -514,7 +514,7 @@ spec = do
 
       -- Check for token marker
       let (GHC.L l _,_) = head $ tail newToks
-      (GHC.showPpr l) `shouldBe` "HaRe:4:1-3"
+      (showGhc l) `shouldBe` "HaRe:4:1-3"
       
 
   -- -------------------------------------------------------------------
@@ -649,8 +649,8 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let declsr = hsBinds renamed
           ss = getSrcSpan declsr
-      (GHC.showPpr declsr) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) },\n DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z,\n DupDef.Dd1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1,\n DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15,\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
-      (GHC.showPpr ss) `shouldBe` "Just test/testdata/DupDef/Dd1.hs:(30,1)-(32,17)"
+      (showGhc declsr) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) },\n DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z,\n DupDef.Dd1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1,\n DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15,\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+      (showGhc ss) `shouldBe` "Just test/testdata/DupDef/Dd1.hs:(30,1)-(32,17)"
 
     -- -------------------------------
     it "Finds the SrcSpan for a top level decl" $ do
@@ -659,8 +659,8 @@ spec = do
       let declsr = hsBinds renamed
           decl = head $ drop 2 declsr
           ss = getSrcSpan decl
-      (GHC.showPpr decl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
-      (GHC.showPpr ss) `shouldBe` "Just test/testdata/MoveDef/Demote.hs:4:1-18"
+      (showGhc decl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
+      (showGhc ss) `shouldBe` "Just test/testdata/MoveDef/Demote.hs:4:1-18"
       
   -- -------------------------------------------------------------------
 
@@ -676,7 +676,7 @@ spec = do
       let decl = head $ drop 4 decls
       let (startPos,endPos) = startEndLocIncComments toks decl
 
-      (GHC.showPpr decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
+      (showGhc decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
       (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe` 
              ("[(((18,1),(18,1)),ITsemi,\"\")," ++
@@ -721,7 +721,7 @@ spec = do
       let decl = head $ decls
       let (startPos,endPos) = startEndLocIncComments toks decl
 
-      (GHC.showPpr decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
+      (showGhc decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
       -- (SYB.showData SYB.Renamer 0 decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
       (show   (startPos,endPos)) `shouldBe` "((13,1),(13,21))"
 
@@ -805,8 +805,8 @@ spec = do
          forest <- getTokenTree
          return (tlDecls,ln,forest)
       ((d,l,f),s) <- runRefactGhcState comp
-      (GHC.showPpr l) `shouldBe` "DupDef.Dd1.toplevel";
-      (GHC.showPpr d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+      (showGhc l) `shouldBe` "DupDef.Dd1.toplevel";
+      (showGhc d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (drawTreeEntry f) `shouldBe`
                 "((1,1),(32,18))\n|\n"++
