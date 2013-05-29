@@ -122,22 +122,24 @@ spec = do
 
     it "gets modules which directly or indirectly import a module #1" $ do
       -- TODO: harvest this commonality
+      df <- getTestDynFlags
       let
         comp = do
          (p,toks) <- parseFileMGhc -- Load the main file first
          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      showGhcd df (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
 
     it "gets modules which directly or indirectly import a module #2" $ do
+      df <- getTestDynFlags
       let
         comp = do
          (p,toks) <- parseFileMGhc -- Load the main file first
          g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:Main]"
+      showGhcd df (map GHC.ms_mod mg) `shouldBe` "[main:Main]"
 
   -- -------------------------------------------------------------------
 
@@ -146,22 +148,24 @@ spec = do
       pending  -- "write this test"
 
     it "gets modules which are directly or indirectly imported by a module #1" $ do
+      df <- getTestDynFlags
       let
         comp = do
          (p,toks) <- parseFileMGhc -- Load the main file first
          g <- serverModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[]"
+      showGhcd df (map GHC.ms_mod mg) `shouldBe` "[]"
 
     it "gets modules which are directly or indirectly imported by a module #2" $ do
+      df <- getTestDynFlags
       let
         comp = do
          (p,toks) <- parseFileMGhc -- Load the main file first
          g <- serverModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:S1]"
+      showGhcd df (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:S1]"
 
 
   -- -------------------------------------------------------------------
@@ -186,18 +190,20 @@ spec = do
 
   describe "sortCurrentModuleGraph" $ do
     it "needs a test or two" $ do
+      df <- getTestDynFlags
       let
         comp = do
          (p,toks) <- parseFileBGhc -- Load the file first
          g <- sortCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp
-      (showGhc $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:TypeUtils.C, main:TypeUtils.B]"
+      (showGhcd df $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:TypeUtils.C, main:TypeUtils.B]"
 
   -- -------------------------------------------------------------------
 
   describe "getModuleGhc" $ do
     it "retrieves a module from an existing module graph" $ do
+      df <- getTestDynFlags
       let
         comp = do
           loadModuleGraphGhc $ Just "./test/testdata/M.hs"
@@ -212,11 +218,12 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      showGhcd df (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
 
     -- ---------------------------------
 
     it "loads the module and dependents if no existing module graph" $ do
+      df <- getTestDynFlags
       let
         comp = do
           getModuleGhc "./test/testdata/S1.hs"
@@ -230,11 +237,12 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[]"
+      showGhcd df (map GHC.ms_mod mg) `shouldBe` "[]"
 
     -- ---------------------------------
 
     it "retrieves a module from an existing module graph #2" $ do
+      df <- getTestDynFlags
       let
         comp = do
           loadModuleGraphGhc $ Just "./test/testdata/DupDef/Dd2.hs"
@@ -248,7 +256,7 @@ spec = do
       (( ( (t,_)), mg ), _s) <- runRefactGhcState comp
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (show $ getModuleName parsed) `shouldBe` "Just (DupDef.Dd1,\"DupDef.Dd1\")"
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:DupDef.Dd2]"
+      showGhcd df (map GHC.ms_mod mg) `shouldBe` "[main:DupDef.Dd2]"
 
 
   -- -------------------------------------------------------------------
