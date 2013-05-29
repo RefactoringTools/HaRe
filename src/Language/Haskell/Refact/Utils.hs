@@ -35,7 +35,7 @@ module Language.Haskell.Refact.Utils
 
        -- * For testing
        , initGhcSession
-       , prettyprint
+       -- , prettyprint
        , pwd
        ) where
 

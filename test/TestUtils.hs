@@ -1,7 +1,10 @@
-module TestUtils 
+module TestUtils
        ( compareFiles
        , parsedFileGhc
        , parseSourceFileTest
+       , getTestDynFlags
+       , runLogTestGhc
+       , runTestGhc
        , runRefactGhcState
        , initialState
        , initialLogOnState
@@ -112,18 +115,39 @@ mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 
 -- ---------------------------------------------------------------------
 
+getTestDynFlags :: IO GHC.DynFlags
+getTestDynFlags = do
+  (df,_) <- runTestGhc $ GHC.getSessionDynFlags
+  return df
+
+-- ---------------------------------------------------------------------
+
+runLogTestGhc :: RefactGhc a -> IO (a, RefactState)
+runLogTestGhc comp = do
+   res <- runRefactGhc comp $ initialLogOnState
+   return res
+
+-- ---------------------------------------------------------------------
+
+runTestGhc :: RefactGhc a -> IO (a, RefactState)
+runTestGhc comp = do
+   res <- runRefactGhc comp $ initialState
+   return res
+
+-- ---------------------------------------------------------------------
+
 runRefactGhcState :: RefactGhc t -> IO (t, RefactState)
 runRefactGhcState paramcomp = do
   let
-     -- initialState = ReplState { repl_inputState = initInputState }
-     initialState = RefSt
+     -- initState = ReplState { repl_inputState = initInputState }
+     initState = RefSt
         { rsSettings = RefSet ["./test/testdata/"] False
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
         , rsModule = Nothing
         }
-  (r,s) <- runRefactGhc (initGhcSession >> paramcomp) initialState
+  (r,s) <- runRefactGhc (initGhcSession >> paramcomp) initState
   return (r,s)
 
 -- ---------------------------------------------------------------------

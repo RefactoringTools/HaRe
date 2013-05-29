@@ -484,6 +484,23 @@ spec = do
       let [decl] = definingDecls [(PN (mkRdrName "tup"))] ds False False
       isSimplePatBind decl  `shouldBe` True
 -}
+
+  -- ---------------------------------------------------------------------
+{-
+  describe "showGhc" $ do
+    it "Constructs custom GHC.DynFlags" $ do
+      (t, toks) <- parsedFileDeclareGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      
+      let
+        comp = do
+          df <- GHC.getSessionDynFlags
+          return (prettyprint df df)
+      -- ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      (show res) `shouldBe` ""
+-}
   -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredPNs" $ do

@@ -22,9 +22,10 @@ import Data.Generics
 
 -- |Show a GHC API structure
 showGhc :: a -> String
-showGhc a = undefined
+showGhc a = error "showGhc undefined"
 
-
+showGhcd :: (GHC.Outputable a) => GHC.DynFlags -> a -> String
+showGhcd df x = GHC.showSDoc df $ GHC.ppr x
 
 {-
 
