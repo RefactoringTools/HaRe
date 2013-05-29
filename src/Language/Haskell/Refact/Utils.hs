@@ -499,6 +499,20 @@ instance (SYB.Data t) => Update [GHC.Located HsPatP] t where
     inPat p = return p
 --++AZ++ comment out for now ends -}
 
+-- ---------------------------------------------------------------------
+
+getDynFlags :: IO GHC.DynFlags
+getDynFlags = do
+  let
+    initialState = RefSt
+      { rsSettings = RefSet [] False
+      , rsUniqState = 1
+      , rsFlags = RefFlags False
+      , rsStorage = StorageNone
+      , rsModule = Nothing
+      }
+  (df,_) <- runRefactGhc GHC.getSessionDynFlags initialState
+  return df
 
 -- ---------------------------------------------------------------------
 
@@ -530,6 +544,7 @@ writeRefactoredFiles _isSubRefactor files
 
      where
        modifyFile ((fileName,_),(ts,renamed)) = do
+           df <- getDynFlags
            -- let source = concatMap (snd.snd) ts
 
            -- The bug fix only works if we strip any empty tokens
@@ -552,8 +567,8 @@ writeRefactoredFiles _isSubRefactor files
 
            writeFile (fileName ++ ".tokens") (showToks ts')
            -- writeFile (fileName ++ ".tokens") (showToks $ filter (\t -> not $ isEmpty t) ts)
-           writeFile (fileName ++ ".renamed_out") (showGhc renamed)
-           writeFile (fileName ++ ".AST_out") $ (showGhc renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
+           writeFile (fileName ++ ".renamed_out") (showGhcd df renamed)
+           writeFile (fileName ++ ".AST_out") $ (showGhcd df renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
 
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not

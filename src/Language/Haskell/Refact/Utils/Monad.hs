@@ -129,8 +129,8 @@ data StateStorage = StorageNone
 
 instance Show StateStorage where
   show StorageNone        = "StorageNone"
-  show (StorageBind bind) = "(StorageBind " ++ (showGhc bind) ++ ")"
-  show (StorageSig sig)   = "(StorageSig " ++ (showGhc sig) ++ ")"
+  show (StorageBind bind) = "(StorageBind " {- ++ (showGhc bind) -} ++ ")"
+  show (StorageSig sig)   = "(StorageSig " {- ++ (showGhc sig) -} ++ ")"
 
 -- ---------------------------------------------------------------------
 -- StateT and GhcT stack

@@ -63,7 +63,7 @@ parsedFileGhc :: String -> IO (ParseResult,[PosToken])
 parsedFileGhc fileName = do
   let
     comp = do
-       res <- parseSourceFileTest fileName 
+       res <- parseSourceFileTest fileName
        return res
   (parseResult,_s) <- runRefactGhcState comp
   return parseResult

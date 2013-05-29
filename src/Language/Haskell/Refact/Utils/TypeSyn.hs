@@ -20,10 +20,10 @@ import qualified SrcLoc     as GHC
 
 import Data.Generics
 
--- |Show a GHC API structure
-showGhc :: a -> String
-showGhc a = error "showGhc undefined"
+-- showGhc :: a -> String
+-- showGhc a = error "showGhc undefined"
 
+-- |Show a GHC API structure
 showGhcd :: (GHC.Outputable a) => GHC.DynFlags -> a -> String
 showGhcd df x = GHC.showSDoc df $ GHC.ppr x
 
@@ -102,15 +102,15 @@ instance Show PName where
 -- ++AZ++ : will run with Located RdrName for now, will see when we need the Unique name
 data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable,Eq)
 
-
+{- ++AZ++ only needed for some tests
 instance Show PNT where
   -- show (PNT (GHC.L l name)) = "(PNT " ++ (showGhc l) ++ " " ++ (GHC.showRdrName name) ++ ")"
   show (PNT (GHC.L l name)) = "(PNT " ++ (showGhc l) ++ " " ++ (showGhc name) ++ ")"
 
 
-
 instance Show (GHC.GenLocated GHC.SrcSpan GHC.Name) where
   show (GHC.L l name) = "(" ++ (showGhc l) ++ " " ++ (showGhc $ GHC.nameUnique name) ++ " " ++ (showGhc name) ++ ")"
+only for tests end -}
 
 
 instance Show GHC.NameSpace where
