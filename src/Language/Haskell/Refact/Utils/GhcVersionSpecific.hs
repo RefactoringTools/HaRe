@@ -37,7 +37,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 
 -- |Show a GHC API structure
 showGhcd :: (GHC.Outputable a) => GHC.DynFlags -> a -> String
-#if __GLASGOW_HASKELL__ >= 704
+#if __GLASGOW_HASKELL__ > 704
 showGhcd df x = GHC.showSDoc df $ GHC.ppr x
 #else
 showGhcd df x = GHC.showSDoc    $ GHC.ppr x
