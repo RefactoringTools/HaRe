@@ -1,4 +1,6 @@
+
 {-# LANGUAGE CPP #-}
+
 
 -- |This module contains all the code that depends on a specific
 -- version of GHC, and should be the only one requiring CPP
@@ -35,7 +37,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 
 -- |Show a GHC API structure
 showGhcd :: (GHC.Outputable a) => GHC.DynFlags -> a -> String
-#if __GLASGOW_HASKELL__ > 742
+#if __GLASGOW_HASKELL__ >= 704
 showGhcd df x = GHC.showSDoc df $ GHC.ppr x
 #else
 showGhcd df x = GHC.showSDoc    $ GHC.ppr x
@@ -45,7 +47,7 @@ showGhcd df x = GHC.showSDoc    $ GHC.ppr x
 
 
 prettyprint :: (GHC.Outputable a) => GHC.DynFlags -> a -> String
-#if __GLASGOW_HASKELL__ > 742
+#if __GLASGOW_HASKELL__ > 704
 prettyprint df x = GHC.renderWithStyle df (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
 #else
 prettyprint df x = GHC.renderWithStyle    (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
@@ -57,7 +59,7 @@ prettyprint df x = GHC.renderWithStyle    (GHC.ppr x) (GHC.mkUserStyle GHC.never
 lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
 lexStringToRichTokens startLoc str = do
   -- error $ "lexStringToRichTokens: (startLoc,str)=" ++ (showGhc (startLoc,str)) -- ++AZ
-#if __GLASGOW_HASKELL__ > 742
+#if __GLASGOW_HASKELL__ > 704
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $ do
 #else
   GHC.defaultErrorHandler GHC.defaultLogAction $ do
@@ -101,7 +103,7 @@ lexStringToRichTokens startLoc str = do
 -- ---------------------------------------------------------------------
 
 getDataConstructors :: GHC.LHsDecl n -> [GHC.LConDecl n]
-#if __GLASGOW_HASKELL__ > 742
+#if __GLASGOW_HASKELL__ > 704
 getDataConstructors (GHC.L _ (GHC.TyClD (GHC.TyDecl _ _ (GHC.TyData _ _ _ _ cons _) _))) = cons
 #else
 getDataConstructors (GHC.L _ (GHC.TyClD (GHC.TyData _ _ _ _ _ _ cons _))) = cons
@@ -114,7 +116,7 @@ getDataConstructors _ = []
 -- ---------------------------------------------------------------------
 
 -- setGhcContext :: GHC.ModSummary
-#if __GLASGOW_HASKELL__ > 742
+#if __GLASGOW_HASKELL__ > 704
 setGhcContext modSum = GHC.setContext [GHC.IIModule (GHC.moduleName $ GHC.ms_mod modSum)]
 #else
 setGhcContext modSum = GHC.setContext [GHC.IIModule (                 GHC.ms_mod modSum)]

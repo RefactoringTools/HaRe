@@ -54,6 +54,7 @@ Library
            , Language.Haskell.Refact.Utils
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils
+           , Language.Haskell.Refact.Utils.GhcVersionSpecific
            , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
            , Language.Haskell.Refact.Utils.MonadFunctions
