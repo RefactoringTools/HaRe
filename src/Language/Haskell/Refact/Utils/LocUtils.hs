@@ -359,7 +359,8 @@ ghcPos0 = GHC.mkSrcLoc (GHC.mkFastString "") 1 1
 
 
 prettyprint :: (GHC.Outputable a) => GHC.DynFlags -> a -> String
-prettyprint df x = GHC.showSDoc df $ GHC.ppr x
+-- prettyprint df x = GHC.showSDoc df $ GHC.ppr x
+prettyprint df x = GHC.renderWithStyle df (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
 
 prettyprintGhc :: (GHC.Outputable a) => a -> RefactGhc String
 prettyprintGhc x = do
