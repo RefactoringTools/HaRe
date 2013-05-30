@@ -341,6 +341,7 @@ moveDecl1 t defName ns sigNames topLevel
         let maybeToksSig = concat maybeToksSigMulti
 
         logm $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
+        logm $ "moveDecl1:(defName,topLevel)" ++ (showGhcd df (defName,topLevel)) -- ++AZ++
 
         addDecl t' defName (ghead "moveDecl1 2" funBinding,sigsRemoved,Just (maybeToksSig ++ funToks)) topLevel
 
