@@ -45,6 +45,7 @@ import Data.List
 import Data.Maybe
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -207,7 +208,8 @@ getModuleDetails modSum = do
       p <- GHC.parseModule modSum
       t <- GHC.typecheckModule p
 
-      GHC.setContext [GHC.IIModule (GHC.moduleName $ GHC.ms_mod modSum)]
+      -- GHC.setContext [GHC.IIModule (GHC.moduleName $ GHC.ms_mod modSum)]
+      setGhcContext modSum
 
       tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
       mtm <- gets rsModule
@@ -220,7 +222,6 @@ getModuleDetails modSum = do
 
         Nothing -> putParsedModule t tokens
 
-      -- return (t,tokens)
       return ()
 
 -- ---------------------------------------------------------------------

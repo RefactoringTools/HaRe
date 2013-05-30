@@ -62,6 +62,7 @@ Library
            , Language.Haskell.Refact.Utils.TokenUtilsTypes
            , Language.Haskell.Refact.Utils.TypeSyn
            , Language.Haskell.Refact.Utils.TypeUtils
+        Extensions:      CPP
    
 
 
@@ -91,6 +92,7 @@ Executable ghc-hare
                                 , Strafunski-StrategyLib
                                 -- , uniplate
         Other-Modules:          Paths_HaRe
+        Extensions:      CPP
 
 
 test-suite spec
@@ -136,4 +138,5 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , HaRe >= 0.6.0.3
+  Extensions:      CPP
 

@@ -64,6 +64,7 @@ import qualified Outputable    as GHC
 
 import qualified Data.Data as SYB
 
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes

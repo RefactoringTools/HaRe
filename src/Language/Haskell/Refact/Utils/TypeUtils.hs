@@ -130,6 +130,7 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Language.Haskell.Refact.Utils.GhcUtils
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -1931,6 +1932,21 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
 
       -- TyClD - Type definitions
       -- GHC7.4.2: defines' decl@(GHC.L l (GHC.TyClD (GHC.TyData _ _ name _ _ _ cons _)))
+      -- GHC7.6.3: defines' decl@(GHC.L l (GHC.TyClD (GHC.TyDecl _name _vars (GHC.TyData _ _ _ _ cons _) _fvs)))
+      defines' decl@(GHC.L l (GHC.TyClD _))
+       = if checkCons (getDataConstructors decl) == True 
+                                   then [decl]
+                                   else []
+
+             where
+               checkCons [] = False
+               checkCons ((GHC.L _ (GHC.ConDecl (GHC.L _ pname) _ _ _ _ _ _ _)):ms)
+                 | isJust (find (==(PN pname)) pns) = True
+                 | otherwise = checkCons ms
+
+{- ++ Without GhcVersionSpecific
+      -- TyClD - Type definitions
+      -- GHC7.4.2: defines' decl@(GHC.L l (GHC.TyClD (GHC.TyData _ _ name _ _ _ cons _)))
       defines' decl@(GHC.L l (GHC.TyClD (GHC.TyDecl _name _vars (GHC.TyData _ _ _ _ cons _) _fvs)))
        = if checkCons cons == True then [decl]
                                    else []
@@ -1940,6 +1956,7 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
                checkCons ((GHC.L _ (GHC.ConDecl (GHC.L _ pname) _ _ _ _ _ _ _)):ms)
                  | isJust (find (==(PN pname)) pns) = True
                  | otherwise = checkCons ms
+-}
 
       defines' decl@(GHC.L l (GHC.TyClD       _ {- (GHC.TyClDecl id) -}))     = []
 

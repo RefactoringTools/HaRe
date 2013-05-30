@@ -51,7 +51,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , tokenise
                      , basicTokenise
                      , lexStringToRichTokens
-                     , prettyprint, prettyprintGhc
+                     , prettyprint -- , prettyprintGhc
                      , prettyprintPatList
                      -- , groupTokensByLine
                      , addLocInfo
@@ -84,6 +84,7 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.Refact.Utils.GhcUtils
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
@@ -356,23 +357,13 @@ ghcSpan0 = GHC.mkSrcSpan ghcPos0 ghcPos0
 ghcPos0 = GHC.mkSrcLoc (GHC.mkFastString "") 1 1
 
 -- ---------------------------------------------------------------------
-
-
-prettyprint :: (GHC.Outputable a) => GHC.DynFlags -> a -> String
--- prettyprint df x = GHC.showSDoc df $ GHC.ppr x
-prettyprint df x = GHC.renderWithStyle df (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
-
+{-
 prettyprintGhc :: (GHC.Outputable a) => a -> RefactGhc String
 prettyprintGhc x = do
   df <- GHC.getSessionDynFlags
   return $ GHC.showSDoc df $ GHC.ppr x
-
-{- GHC 7.4.2 version
-prettyprint :: (GHC.Outputable a) => a -> String
--- prettyprint x = GHC.showSDoc $ GHC.ppr x
-prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
--- prettyprint x = GHC.renderWithStyle (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllThe
 -}
+
 -- ---------------------------------------------------------------------
 
 prettyprintPatList :: (t -> String) -> Bool -> [t] -> String
@@ -427,48 +418,6 @@ basicTokenise str = tokenise startPos 0 False str
   where
     -- startPos = (GHC.mkRealSrcLoc tokenFileMark 0 1)
     startPos = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 1)
-
--- ---------------------------------------------------------------------
-
--- GHC 7.6.3 version
-lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
-lexStringToRichTokens startLoc str = do
-  -- error $ "lexStringToRichTokens: (startLoc,str)=" ++ (showGhc (startLoc,str)) -- ++AZ
-  GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $ do
-    GHC.runGhc (Just GHC.libdir) $ do
-      dflags <- GHC.getSessionDynFlags
-      let dflags' = foldl GHC.xopt_set dflags
-                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-      _ <- GHC.setSessionDynFlags dflags'
-
-      -- lexTokenStream :: StringBuffer -> RealSrcLoc -> DynFlags -> ParseResult [Located Token]
-      let res = GHC.lexTokenStream (GHC.stringToStringBuffer str) startLoc dflags'
-      case res of
-        GHC.POk _ toks -> return $ GHC.addSourceToTokens startLoc (GHC.stringToStringBuffer str) toks 
-        GHC.PFailed _srcSpan _msg -> error $ "lexStringToRichTokens:" -- ++ (show $ GHC.ppr msg)
-
-        -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
-
-{- GHC 7.4.2 version
-
-lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
-lexStringToRichTokens startLoc str = do
-  -- error $ "lexStringToRichTokens: (startLoc,str)=" ++ (showGhc (startLoc,str)) -- ++AZ
-  GHC.defaultErrorHandler GHC.defaultLogAction $ do
-    GHC.runGhc (Just GHC.libdir) $ do
-      dflags <- GHC.getSessionDynFlags
-      let dflags' = foldl GHC.xopt_set dflags
-                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-      _ <- GHC.setSessionDynFlags dflags'
-
-      -- lexTokenStream :: StringBuffer -> RealSrcLoc -> DynFlags -> ParseResult [Located Token]
-      let res = GHC.lexTokenStream (GHC.stringToStringBuffer str) startLoc dflags'
-      case res of
-        GHC.POk _ toks -> return $ GHC.addSourceToTokens startLoc (GHC.stringToStringBuffer str) toks 
-        GHC.PFailed _srcSpan _msg -> error $ "lexStringToRichTokens:" -- ++ (show $ GHC.ppr msg)
-
-        -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
--}
 
 -- ---------------------------------------------------------------------
 
