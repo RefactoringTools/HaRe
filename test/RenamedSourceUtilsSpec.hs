@@ -37,11 +37,10 @@ spec = do
 
   describe "getFreeVariables" $ do
     it "gets the free variables for a given syntax element" $ do
-      df <- getTestDynFlags
       (t, toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
       let fvs = getFreeVariables renamed
-      (showGhcd df $ GHC.nameSetToList $ GHC.unionManyNameSets fvs) `shouldBe` "[TypeUtils.B.foo, TypeUtils.B.bob]"
+      (showGhc $ GHC.nameSetToList $ GHC.unionManyNameSets fvs) `shouldBe` "[TypeUtils.B.foo, TypeUtils.B.bob]"
 
 
 

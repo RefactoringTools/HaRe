@@ -43,7 +43,7 @@ import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeUtils
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
 import qualified Language.Haskell.Refact.SwapArgs as GhcSwapArgs
-import qualified Language.Haskell.Refact.Rename as GhcRefacRename
+-- import qualified Language.Haskell.Refact.Rename as GhcRefacRename
 
 import Control.Monad.State
 
@@ -77,8 +77,10 @@ targetMod = "Demote/PatBindIn1"                                       -- ++AZ++
 
 {- main = t1 -}
 
+{-
 t1 = GhcRefacCase.ifToCase ["../old/refactorer/B.hs","4","7","4","43"]
 t2 = GhcRefacCase.ifToCase ["./old/B.hs","4","7","4","43"]
+-}
 
 s1 = GhcSwapArgs.swapArgs ["../test/testdata/SwapArgs/B.hs","10","1"]
 
@@ -87,6 +89,7 @@ s1 = GhcSwapArgs.swapArgs ["../old/refactorer/B.hs","6","1"]
 s2 = GhcSwapArgs.swapArgs ["./old/refactorer/B.hs","6","1"]
 -}
 
+{-
 -- added by Chris for renaming
 r1 = GhcRefacRename.rename ["./Ole.hs", "Cas", "18", "1"]  -- lambda
 r2 = GhcRefacRename.rename ["./Ole.hs", "j", "21", "1"] -- case of
@@ -95,7 +98,7 @@ r4 = GhcRefacRename.rename ["./Ole.hs", "kkk", "30", "1"] -- pattern binding
 r5 = GhcRefacRename.rename ["./Ole.hs", "bob", "14", "15"] -- let
 r6 = GhcRefacRename.rename ["./Ole.hs", "a", "33", "1"] -- where clause
 r7 = GhcRefacRename.rename ["./Ole.hs", "newBlah", "38", "6"] -- data declaration
-
+-}
 p1 = 
   do
     toks <- lexStringToRichTokens (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 0) "if (1) then x else y"

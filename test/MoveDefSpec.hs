@@ -239,7 +239,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
   describe "LiftOneLevel" $ do
 
-    it "LiftOneLevel D1 C1 A1 8 6" $ do
+    it "LiftOneLevel.liftToMod D1 C1 A1 8 6" $ do
      liftOneLevel defaultTestSettings (Just "./test/testdata/LiftOneLevel/A1.hs") "./test/testdata/LiftOneLevel/D1.hs" (8,6)
      -- liftOneLevel logTestSettings     (Just "./test/testdata/LiftOneLevel/A1.hs") "./test/testdata/LiftOneLevel/D1.hs" (8,6)
      diff <- compareFiles "./test/testdata/LiftOneLevel/D1.hs.expected"

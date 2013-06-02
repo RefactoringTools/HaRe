@@ -392,9 +392,8 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
                = do 
-                    df <- GHC.getSessionDynFlags
                     drawTokenTree "update Located HsExpr starting" -- ++AZ++
-                    _ <- updateToks oldExp newExp (prettyprint df) False
+                    _ <- updateToks oldExp newExp prettyprint False
                     drawTokenTree "update Located HsExpr done" -- ++AZ++
 
                 -- error "update: updated tokens" -- ++AZ++ debug
@@ -409,8 +408,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t
           inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
                 = do 
-                     df <- GHC.getSessionDynFlags
-                     _ <- updateToks oldPat newPat (prettyprint df) False
+                     _ <- updateToks oldPat newPat prettyprint False
                      -- TODO: make sure to call syncAST
                      return newPat
             | otherwise = return p
@@ -422,8 +420,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n
           inTyp (t::GHC.LHsType n)
             | sameOccurrence t oldTy
                 = do 
-                     df <- GHC.getSessionDynFlags
-                     _ <- updateToks oldTy newTy (prettyprint df) False
+                     _ <- updateToks oldTy newTy prettyprint False
                      -- TODO: make sure to call syncAST
                      return newTy
             | otherwise = return t
@@ -435,8 +432,7 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1,
             inBind (t::GHC.LHsBindLR n1 n2)
               | sameOccurrence t oldBind
                   = do 
-                       df <- GHC.getSessionDynFlags
-                       _ <- updateToks oldBind newBind (prettyprint df) False
+                       _ <- updateToks oldBind newBind prettyprint False
                        -- TODO: make sure to call syncAST
                        return newBind
               | otherwise = return t
@@ -568,8 +564,8 @@ writeRefactoredFiles _isSubRefactor files
 
            writeFile (fileName ++ ".tokens") (showToks ts')
            -- writeFile (fileName ++ ".tokens") (showToks $ filter (\t -> not $ isEmpty t) ts)
-           writeFile (fileName ++ ".renamed_out") (showGhcd df renamed)
-           writeFile (fileName ++ ".AST_out") $ (showGhcd df renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
+           writeFile (fileName ++ ".renamed_out") (showGhc renamed)
+           writeFile (fileName ++ ".AST_out") $ (showGhc renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
 
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not

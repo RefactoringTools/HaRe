@@ -47,7 +47,6 @@ duplicateDef settings maybeMainFile fileName newName (row,col) =
 comp :: FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
-      df <- GHC.getSessionDynFlags
       if isVarId newName
         then do -- loadModuleGraphGhc maybeMainFile
                 -- modInfo@(t, _tokList) <- getModuleGhc fileName
@@ -68,7 +67,7 @@ comp fileName newName (row, col) = do
 
                           if modIsExported modName renamed
                            then do clients <- clientModsAndFiles modName
-                                   logm ("DupDef: clients=" ++ (showGhcd df clients)) -- ++AZ++ debug
+                                   logm ("DupDef: clients=" ++ (showGhc clients)) -- ++AZ++ debug
                                    refactoredClients <- mapM (refactorInClientMod modName 
                                                              (findNewPName newName renamed')) clients
                                    return $ refactoredMod:refactoredClients
@@ -189,8 +188,7 @@ refactorInClientMod :: GHC.ModuleName -> GHC.Name -> GHC.ModSummary
                     -> RefactGhc ApplyRefacResult
 refactorInClientMod serverModName newPName modSummary
   = do
-       df <- GHC.getSessionDynFlags
-       logm ("refactorInClientMod: (serverModName,newPName)=" ++ (showGhcd df (serverModName,newPName))) -- ++AZ++ debug
+       logm ("refactorInClientMod: (serverModName,newPName)=" ++ (showGhc (serverModName,newPName))) -- ++AZ++ debug
        let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
        -- modInfo@(t,ts) <- getModuleGhc fileName
        getModuleGhc fileName
@@ -199,11 +197,11 @@ refactorInClientMod serverModName newPName modSummary
        parsed <- getRefactParsed
 
        let modNames = willBeUnQualImportedBy serverModName renamed
-       logm ("refactorInClientMod: (modNames)=" ++ (showGhcd df (modNames))) -- ++AZ++ debug
+       logm ("refactorInClientMod: (modNames)=" ++ (showGhc (modNames))) -- ++AZ++ debug
 
        -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
        mustHide <- needToBeHided newPName renamed parsed
-       logm ("refactorInClientMod: (mustHide)=" ++ (showGhcd df (mustHide))) -- ++AZ++ debug
+       logm ("refactorInClientMod: (mustHide)=" ++ (showGhc (mustHide))) -- ++AZ++ debug
        if isJust modNames && mustHide
         then do
                 -- refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
@@ -213,10 +211,9 @@ refactorInClientMod serverModName newPName modSummary
    where
      needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
      needToBeHided name exps parsed = do
-         df <- GHC.getSessionDynFlags
          let usedUnqual = usedWithoutQualR name parsed
-         logm ("refactorInClientMod: (usedUnqual)=" ++ (showGhcd df (usedUnqual))) -- ++AZ++ debug
-         return $ usedUnqual || causeNameClashInExports df name serverModName exps
+         logm ("refactorInClientMod: (usedUnqual)=" ++ (showGhc (usedUnqual))) -- ++AZ++ debug
+         return $ usedUnqual || causeNameClashInExports name serverModName exps
 
 
 doDuplicatingClient :: GHC.ModuleName -> [GHC.Name]

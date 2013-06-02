@@ -172,12 +172,12 @@ import Data.Generics.Strafunski.StrategyLib.StrategyLib
 -- whether there is an entry for it with the qualifier field being
 -- Nothing.
 --
-inScopeInfo :: GHC.DynFlags -> InScopes                                      -- ^ The inscope relation .
+inScopeInfo :: InScopes                                      -- ^ The inscope relation .
            ->[(String, GHC.NameSpace, GHC.ModuleName, Maybe GHC.ModuleName)] -- ^ The result
-inScopeInfo df names = nub $  map getEntInfo $ names
+inScopeInfo names = nub $  map getEntInfo $ names
   where
      getEntInfo name
-       =(showGhcd df name,
+       =(showGhc name,
          GHC.occNameSpace $ GHC.nameOccName name,
          GHC.moduleName $ GHC.nameModule name,
          getQualMaybe $ GHC.nameRdrName name)
@@ -203,12 +203,11 @@ exportInfo exports = nub $ map getEntInfo  exports
 
 -- | Return True if the identifier is inscope and can be used without
 -- a qualifier.
-isInScopeAndUnqualified::GHC.DynFlags
-                       -> String       -- ^ The identifier name.
+isInScopeAndUnqualified::String       -- ^ The identifier name.
                        ->InScopes     -- ^ The inscope relation
                        ->Bool         -- ^ The result.
-isInScopeAndUnqualified df n names
- = isJust $ find (\ (x, _,_, qual) -> x == n && isNothing qual ) $ inScopeInfo df names
+isInScopeAndUnqualified n names
+ = isJust $ find (\ (x, _,_, qual) -> x == n && isNothing qual ) $ inScopeInfo names
 
 -- isInScopeAndUnqualified id inScopeRel
 --  = isJust $ find (\ (x, _,_, qual) -> x == id && isNothing qual ) $ inScopeInfo inScopeRel
@@ -254,11 +253,11 @@ lookupNameGhc n = do
 
 -- ---------------------------------------------------------------------
 -- | Show a PName in a format like: 'pn'(at row:r, col: c).
-showPNwithLoc:: GHC.DynFlags -> GHC.Located GHC.Name -> String
-showPNwithLoc df pn@(GHC.L l _n)
+showPNwithLoc:: GHC.Located GHC.Name -> String
+showPNwithLoc pn@(GHC.L l _n)
   = let (r,c) = getGhcLoc l
     -- in  " '"++pNtoName pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
-    in  " '"++showGhcd df pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
+    in  " '"++showGhc pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
 
 -- ---------------------------------------------------------------------
 
@@ -417,20 +416,19 @@ isExplicitlyExported pn (_g,_imps,exps,_docs)
 -- ---------------------------------------------------------------------
 
 -- | ++AZ++ What does this actually do?
-causeNameClashInExports:: GHC.DynFlags
-                        -> GHC.Name      -- ^ The original name??
+causeNameClashInExports::  GHC.Name      -- ^ The original name??
                         -- -> String      -- ^ The identifier name
                         -> GHC.ModuleName     -- ^ The identity of the module
                         -> GHC.RenamedSource  -- ^ The AST of the module
                         ->Bool       -- ^ The result
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
-causeNameClashInExports df pn {- newName -} modName mod@(_g,imps,maybeExps,_doc) -- exps
+causeNameClashInExports pn {- newName -} modName mod@(_g,imps,maybeExps,_doc) -- exps
   -- = error "causeNameClashInExports undefined"
 
   = let exps = fromMaybe [] maybeExps
         varExps = filter isImpVar exps
-        modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if showGhcd df x== showGhcd df pn
+        modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if showGhc x== showGhc pn
                                                         then [GHC.moduleName $ GHC.nameModule x]
                                                         else []) varExps)
     in (isExplicitlyExported pn mod) &&
@@ -481,7 +479,7 @@ causeNameClashInExports  pn newName mod exps
 hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
   let fd = hsFreeAndDeclaredPNs' t
-  -- logm $ "hsFreeAndDeclaredPNs:fd=" ++ (showGhcd df fd)
+  -- logm $ "hsFreeAndDeclaredPNs:fd=" ++ (showGhc fd)
   return $ fromMaybe ([],[]) fd
 
 -- hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
@@ -713,9 +711,8 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
 -- variables are in the String format.
 hsFreeAndDeclaredNames::(SYB.Data t) => t -> RefactGhc ([String],[String])
 hsFreeAndDeclaredNames t = do
-  df <- GHC.getSessionDynFlags
   (f1,d1) <- hsFreeAndDeclaredPNs t
-  return ((nub.map (showGhcd df)) f1, (nub.map (showGhcd df)) d1)
+  return ((nub.map showGhc) f1, (nub.map showGhc) d1)
 
 -- hsFreeAndDeclaredNames::(Term t, MonadPlus m)=> t->m([String],[String])
 -- hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
@@ -767,9 +764,8 @@ getDeclaredVars bs = concatMap vars bs
 -- in String format.
 hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2) => t1 -> t2 -> RefactGhc [String]
 hsVisibleNames e t = do
-  df <- GHC.getSessionDynFlags
   d <- hsVisiblePNs e t
-  return ((nub.map (showGhcd df)) d)
+  return ((nub.map showGhc) d)
 
 -- hsVisibleNames:: (Term t1, Term t2, FindEntity t1, MonadPlus m) => t1 -> t2 -> m [String]
 -- hsVisibleNames e t =do d<-hsVisiblePNs e t
@@ -927,14 +923,13 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 -- syntax phrase.
 usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 usedWithoutQual name renamed = do
-  df <- GHC.getSessionDynFlags
-  logm $ "usedWithoutQual:name="  ++ (showGhcd df (name,GHC.nameUnique name))
+  logm $ "usedWithoutQual:name="  ++ (showGhc (name,GHC.nameUnique name))
   -- logm $ "usedWithoutQual:t="  ++ (SYB.showData SYB.Renamer 0 renamed)
   let names = findAllNameOccurences name renamed
-  logm $ "usedWithoutQual:names=" ++ (showGhcd df names)
+  logm $ "usedWithoutQual:names=" ++ (showGhc names)
 
   -- let allNames = findAllNames renamed
-  -- logm $ "usedWithoutQual:allNames=" ++ (showGhcd df $ map (\(GHC.L _ n) -> (n,GHC.nameUnique n)) allNames)
+  -- logm $ "usedWithoutQual:allNames=" ++ (showGhc $ map (\(GHC.L _ n) -> (n,GHC.nameUnique n)) allNames)
 
   toks <- fetchToks
   res <- mapM (isUsedWithoutQual toks) names
@@ -943,7 +938,7 @@ usedWithoutQual name renamed = do
     isUsedWithoutQual toks (GHC.L l _) = do
        logm ("usedWithoutQual") -- ++AZ++ debug
        let (_,s) = ghead "usedWithoutQual" $ getToks (getGhcLoc l, getGhcLocEnd l) toks
-       -- logm $ "isUsedWithoutQual:(l,s)" ++ (showGhcd df (l,s)) -- ++AZ++ debug
+       -- logm $ "isUsedWithoutQual:(l,s)" ++ (showGhc (l,s)) -- ++AZ++ debug
        return $ not $ elem '.' s
 
 
@@ -952,7 +947,7 @@ usedWithoutQual name renamed = do
 -- syntax phrase.
 usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 usedWithoutQual name renamed = do
-  logm $ "usedWithoutQual:name="  ++ (showGhcd df name)
+  logm $ "usedWithoutQual:name="  ++ (showGhc name)
   -- logm $ "usedWithoutQual:t="  ++ (SYB.showData SYB.Renamer 0 renamed)
   case res of
      Just (GHC.L l _) -> do
@@ -1207,10 +1202,9 @@ hsFDsFromInside t = do (f,d)<-hsFDsFromInside' t
 -- are in the String format
 hsFDNamesFromInside::(SYB.Data t) => t -> RefactGhc ([String],[String])
 hsFDNamesFromInside t = do
-  df <- GHC.getSessionDynFlags
   (f,d) <- hsFDsFromInside t
   return
-    ((nub.map (showGhcd df)) f, (nub.map (showGhcd df)) d)
+    ((nub.map showGhc) f, (nub.map showGhc) d)
 -- hsFDNamesFromInside::(Term t, MonadPlus m)=>t->m ([String],[String])
 -- hsFDNamesFromInside t =do (f,d)<-hsFDsFromInside t
 --                           return ((nub.map pNtoName) f, (nub.map pNtoName) d)
@@ -1578,6 +1572,9 @@ instance HsValBinds (GHC.Match GHC.Name) where
 instance HsValBinds (GHC.HsBind GHC.Name) where
   hsValBinds (GHC.PatBind _p rhs _typ _fvs _) = hsValBinds rhs
 
+  -- TODO: ++AZ++ added for compatibility with hsDecls.
+  hsValBinds (GHC.FunBind _ _ matches _ _ _) = hsValBinds matches
+
   replaceValBinds (GHC.PatBind p (GHC.GRHSs rhs binds) typ fvs pt) newBinds
     = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt)
       where
@@ -1587,12 +1584,12 @@ instance HsValBinds (GHC.HsExpr GHC.Name) where
   hsValBinds (GHC.HsLet ds _) = hsValBinds ds
 
   replaceValBinds (GHC.HsLet binds ex) new = (GHC.HsLet (replaceValBinds binds new) ex)
-  replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" -- ++ (showGhcd df old)
+  replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" ++ (showGhc old)
 
 instance HsValBinds (GHC.Stmt GHC.Name) where
   hsValBinds (GHC.LetStmt ds) = hsValBinds ds
   replaceValBinds (GHC.LetStmt ds) new = (GHC.LetStmt (replaceValBinds ds new))
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" -- ++ (showGhcd df old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc old)
 
 
 -- ---------------------------------------------------------------------
@@ -1627,7 +1624,7 @@ instance HsValBinds ([GHC.LHsBind GHC.Name]) where
   replaceValBinds _old (GHC.ValBindsIn b _sigs) = GHC.bagToList b
   replaceValBinds _old (GHC.ValBindsOut rbinds _sigs) = GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
 
-  -- replaceValBinds old new = error ("replaceValBinds (old,new)=" ++ (showGhcd df (old,new)))
+  -- replaceValBinds old new = error ("replaceValBinds (old,new)=" ++ (showGhc (old,new)))
 
 instance HsValBinds (GHC.LHsExpr GHC.Name) where
   hsValBinds (GHC.L _ (GHC.HsLet binds _ex)) = hsValBinds binds
@@ -2184,11 +2181,11 @@ instance UsedByRhs (GHC.LHsBind GHC.Name) where
 
 instance UsedByRhs (GHC.HsExpr GHC.Name) where
   usedByRhs (GHC.HsLet _lb e) pns = findPNs pns e
-  usedByRhs e                _pns = error $ "undefined usedByRhs:" -- ++ (showGhcd df e)
+  usedByRhs e                _pns = error $ "undefined usedByRhs:" ++ (showGhc e)
 
 instance UsedByRhs (GHC.Stmt GHC.Name) where
   usedByRhs (GHC.LetStmt lb) pns = findPNs pns lb
-  usedByRhs s               _pns = error $ "undefined usedByRhs:" -- ++ (showGhcd df s)
+  usedByRhs s               _pns = error $ "undefined usedByRhs:" ++ (showGhc s)
 
 {- ++ original
 class (Term t) =>UsedByRhs t where
@@ -2421,27 +2418,26 @@ allNames t
 -- it is Renamed source, the GHC.Name will include its defining
 -- location. Returns Nothing if the name is not found.
 
-getName::(SYB.Data t)=> GHC.DynFlags
-                    -> String           -- ^ The name to find
-                    -> t                -- ^ The syntax phrase
-                    -> Maybe GHC.Name   -- ^ The result
-getName df str t
+getName::(SYB.Data t)=> String           -- ^ The name to find
+                     -> t                -- ^ The syntax phrase
+                     -> Maybe GHC.Name   -- ^ The result
+getName str t
   = res
        where
         res = somethingStaged SYB.Renamer Nothing
             (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
         worker (pnt@(GHC.L _ n) :: (GHC.Located GHC.Name))
-          | showGhcd df n == str = Just n
+          | showGhc n == str = Just n
         worker _ = Nothing
 
         workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
-          | showGhcd df name == str = Just name
+          | showGhc name == str = Just name
         workerBind _ = Nothing
 
 
         workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-          | showGhcd df name == str = Just name
+          | showGhc name == str = Just name
         workerExpr _ = Nothing
 
 
@@ -2637,7 +2633,6 @@ addImportDecl ::
         Maybe String -> Bool -> [GHC.Name] -> RefactGhc GHC.RenamedSource
 addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias hide idNames
   = do
-       df <- GHC.getSessionDynFlags
        toks <- fetchToks
        let toks1
                =if length imps' > 0
@@ -2655,7 +2650,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
        let startPos = tokenPos    lastTok
        let endPos   = tokenPosEnd lastTok
 
-       newToks <- liftIO $ basicTokenise (showGhcd df impDecl)
+       newToks <- liftIO $ basicTokenise (showGhc impDecl)
        -- logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
        putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
@@ -2789,14 +2784,13 @@ rmPreludeImports = filter isPrelude where
 makeNewToks :: (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
               -> RefactGhc [PosToken]
 makeNewToks (decl, maybeSig, declToks) = do
-   df <- GHC.getSessionDynFlags
    let
      declStr = case declToks of
                 Just ts -> "\n" ++ (unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts)
-                Nothing -> "\n"++(prettyprint df decl)++"\n\n"
+                Nothing -> "\n"++(prettyprint decl)++"\n\n"
      sigStr  = case declToks of
                 Just _ts -> ""
-                Nothing -> "\n" ++ (intercalate "\n" $ map (prettyprint df) maybeSig)
+                Nothing -> "\n" ++ (intercalate "\n" $ map prettyprint maybeSig)
    -- logm $ "makeNewToks:declStr=[" ++ declStr ++ "]"
    newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
    return newToks
@@ -2890,7 +2884,6 @@ addDecl parent pn (decl, msig, declToks) topLevel
                -> RefactGhc t
   addLocalDecl parent (newFun, maybeSig, newFunToks)
     =do
-        df <- GHC.getSessionDynFlags
         let binds = hsValBinds parent
 
         let (startLoc@(r,c),endLoc)
@@ -2898,7 +2891,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                  then getStartEndLoc parent
                  else getStartEndLoc localDecls
 
-        newToks <- liftIO $ basicTokenise (newSource df)
+        newToks <- liftIO $ basicTokenise newSource
 
         (newFun',_) <- addLocInfo (newFun, newToks)
 
@@ -2923,14 +2916,14 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          -- TODO: where tokens are passed in, first normalise them to
          -- the left column before adding in the where clause part
-         newSource df = if (emptyList localDecls)
+         newSource = if (emptyList localDecls)
                        then "where\n"++ concatMap (\l-> "   "++l++"\n") (lines newFun')
                        else ("" ++ newFun'++"\n")
            where
             newFun' = unlines $ stripLeadingSpaces $ lines $ sigStr ++ newFunBody
             newFunBody = case newFunToks of
                            Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts
-                           Nothing -> prettyprint df newFun
+                           Nothing -> prettyprint newFun
 
             sigStr  = case newFunToks of
                         Just _ts -> ""
@@ -2941,7 +2934,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                         -}
                         Nothing -> if (emptyList maybeSig)
                                      then ""
-                                     else (intercalate "\n" $ map (prettyprint df) maybeSig) ++ "\n"
+                                     else (intercalate "\n" $ map prettyprint maybeSig) ++ "\n"
 
 -- ---------------------------------------------------------------------
 
@@ -3024,7 +3017,6 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
     insertEnts imp ents isNew =
         if isNew && not isHide then return imp
         else do
-            df <- GHC.getSessionDynFlags
             toks <- fetchToks
             let (startPos,endPos) = getStartEndLoc imp
                 ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
@@ -3037,7 +3029,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
                         else ","
                 ending = if isNew then ")" else s
 
-                newToken=mkToken t start (beginning++showEntities (showGhcd df) pns ++ending)
+                newToken=mkToken t start (beginning++showEntities showGhc pns ++ending)
                 -- toks'=replaceToks toks start end [newToken]
                 -- toks'=replaceTok toks start newToken
 
@@ -3092,8 +3084,7 @@ addParamsToDecls::
       ->RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
 
 addParamsToDecls decls pn paramPNames modifyToks = do
-  df <- GHC.getSessionDynFlags
-  logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhcd df (pn,paramPNames,modifyToks))
+  logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhc (pn,paramPNames,modifyToks))
   if (paramPNames/=[])
         then mapM addParamToDecl decls
         else return decls
@@ -3109,12 +3100,11 @@ addParamsToDecls decls pn paramPNames modifyToks = do
        -- addParamtoMatch (HsMatch loc fun pats rhs  decls)
        addParamtoMatch (GHC.L l (GHC.Match pats mtyp rhs))
         = do rhs' <- addActualParamsToRhs modifyToks pn paramPNames rhs
-             df <- GHC.getSessionDynFlags
              let pats' = map GHC.noLoc $ map pNtoPat paramPNames
              pats'' <- if modifyToks
                then do -- TODO: What happens if pats is []
                        -- Will only happen if there is a single match only.
-                       logm $ "addParamtoMatch:l=" ++ (showGhcd df l)
+                       logm $ "addParamtoMatch:l=" ++ (showGhc l)
                        if emptyList pats
                          then addFormalParams (Left l2) pats'
                          else addFormalParams (Right (ghead "addParamtoMatch" pats)) pats'
@@ -3141,9 +3131,8 @@ addParamsToDecls decls pn paramPNames modifyToks = do
 addFormalParams :: Either GHC.SrcSpan (GHC.LPat GHC.Name) -> [GHC.Located (GHC.Pat GHC.Name)] -> RefactGhc ()
 addFormalParams place newParams
   = do
-       df <- GHC.getSessionDynFlags
        -- newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
-       let newStr = (prettyprintPatList (prettyprint df) True newParams)
+       let newStr = (prettyprintPatList prettyprint True newParams)
 
        case place of
          Left l@(GHC.RealSrcSpan ss) -> do
@@ -3177,12 +3166,11 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
        worker :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
        worker oldExp@(GHC.L l2 (GHC.HsVar pname))
         | pname == pn = do
-              df <- GHC.getSessionDynFlags
               let newExp' = foldl addParamToExp oldExp paramPNames
               let newExp  = (GHC.L l2 (GHC.HsPar newExp'))
               -- TODO: updateToks must add a space at the end of the
               --       new exp
-              if modifyToks then do _ <- updateToks oldExp newExp (prettyprint df) False
+              if modifyToks then do _ <- updateToks oldExp newExp prettyprint False
                                     return newExp
                             else return newExp
        worker x = return x
@@ -3483,8 +3471,7 @@ rmDecl:: (SYB.Data t)
                                    -- tokens
         Maybe (GHC.LSig GHC.Name)) -- ^ and the possibly removed siganture
 rmDecl pn incSig t = do
-  df <- GHC.getSessionDynFlags
-  logm $ "rmDecl:(pn,incSig)= " ++ (showGhcd df (pn,incSig)) -- ++AZ++
+  logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
   t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
@@ -3588,8 +3575,7 @@ rmDecl pn incSig t = do
          -- So we must remove the tokens from the start of l to the
          -- start of the LHsExpr
 
-         df <- GHC.getSessionDynFlags
-         logm $ "rmLocalDecl: decls=" ++ (showGhcd df decls)
+         logm $ "rmLocalDecl: decls=" ++ (showGhc decls)
          prevToks <- getToksBeforeSpan sspan -- Need these before
                                              -- sspan is deleted
          removeToksForPos (getStartEndLoc decl)
@@ -3790,9 +3776,8 @@ rmQualifier pns t =
      rename (pnt@(GHC.L l pn)::GHC.Located GHC.Name)
        | elem pn pns
        = do do toks <- fetchToks
-               df <- GHC.getSessionDynFlags
                -- let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
-               let (rs,_) = break (=='.') $ reverse $ showGhcd df pn -- ++TODO: replace this with the appropriate formulation
+               let (rs,_) = break (=='.') $ reverse $ showGhc pn -- ++TODO: replace this with the appropriate formulation
                    s = reverse rs
                {- TODO: reinstate token update if required
                let (row,col) = getGhcLoc l
@@ -3837,9 +3822,8 @@ renamePN::(SYB.Data t)
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
 renamePN oldPN newName updateTokens t = do
-  -- = error $ "renamePN: sspan=" ++ (showGhcd df sspan) -- ++AZ++
-  df <- GHC.getSessionDynFlags
-  logm $ "renamePN: (oldPN,newName)=" ++ (showGhcd df (oldPN,newName))
+  -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
+  logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
   everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
   where
@@ -3867,15 +3851,14 @@ renamePN oldPN newName updateTokens t = do
     worker (row,col) l n
      = do if updateTokens
            then  do
-                    df <- GHC.getSessionDynFlags
                     -- toks <- fetchToks
-                    logm $ "renamePN.worker: (sspan,newName)=" ++ (showGhcd df (sspan,newName)) -- ++AZ++ debug
+                    logm $ "renamePN.worker: (sspan,newName)=" ++ (showGhc (sspan,newName)) -- ++AZ++ debug
                     drawTokenTree "" -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     sspan' <- putToksForSpan sspan toks'
                     return (newName,sspan')
-                    -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (showGhcd df (row,col,l,sspan)) ++ (show toks) -- ++AZ++
+                    -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (showGhc (row,col,l,sspan)) ++ (show toks) -- ++AZ++
            else return (newName,l)
 
 -- ---------------------------------------------------------------------
@@ -3906,8 +3889,7 @@ autoRenameLocalVar:: (HsValBinds t)
                      ->t            -- ^ The syntax phrase.
                      -> RefactGhc t -- ^ The result.
 autoRenameLocalVar modifyToks pn t = do
-  df <- GHC.getSessionDynFlags
-  logm $ "autoRenameLocalVar: (modifyToks,pn)=" ++ (showGhcd df (modifyToks,pn))
+  logm $ "autoRenameLocalVar: (modifyToks,pn)=" ++ (showGhc (modifyToks,pn))
   -- = everywhereMStaged SYB.Renamer (SYB.mkM renameInMatch)
   if isDeclaredIn pn t
          then do t' <- worker t
@@ -3916,9 +3898,8 @@ autoRenameLocalVar modifyToks pn t = do
 
       where
          worker t =do (f,d) <- hsFDNamesFromInside t
-                      df <- GHC.getSessionDynFlags
                       ds <- hsVisibleNames pn (hsValBinds t)
-                      let newNameStr=mkNewName (nameToString df pn) (nub (f `union` d `union` ds)) 1
+                      let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
                       newName <- mkNewGhcName newNameStr
                       if modifyToks
                         then renamePN pn newName True t
@@ -4191,8 +4172,8 @@ expToName _ = Nothing
 
 -}
 
-nameToString :: GHC.DynFlags -> GHC.Name -> String
-nameToString df name = showGhcd df name
+nameToString :: GHC.Name -> String
+nameToString name = showGhc name
 
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing

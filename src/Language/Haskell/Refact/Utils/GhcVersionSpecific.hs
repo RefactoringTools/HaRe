@@ -6,7 +6,7 @@
 -- version of GHC, and should be the only one requiring CPP
 module Language.Haskell.Refact.Utils.GhcVersionSpecific
   (
-    showGhcd
+    showGhc
   , prettyprint
   , lexStringToRichTokens
   , getDataConstructors
@@ -33,29 +33,29 @@ import qualified StringBuffer  as GHC
 
 import Language.Haskell.Refact.Utils.TypeSyn
 
+
 -- ---------------------------------------------------------------------
 
 -- |Show a GHC API structure
-showGhcd :: (GHC.Outputable a) => GHC.DynFlags -> a -> String
+showGhc :: (GHC.Outputable a) => a -> String
 #if __GLASGOW_HASKELL__ > 704
-showGhcd df x = GHC.showSDoc df $ GHC.ppr x
+showGhc x = GHC.showSDoc GHC.tracingDynFlags $ GHC.ppr x
 #else
-showGhcd df x = GHC.showSDoc    $ GHC.ppr x
+showGhc x = GHC.showSDoc                     $ GHC.ppr x
 #endif
 
 -- ---------------------------------------------------------------------
 
 
-prettyprint :: (GHC.Outputable a) => GHC.DynFlags -> a -> String
+prettyprint :: (GHC.Outputable a) => a -> String
 #if __GLASGOW_HASKELL__ > 704
-prettyprint df x = GHC.renderWithStyle df (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
+prettyprint x = GHC.renderWithStyle GHC.tracingDynFlags (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
 #else
-prettyprint df x = GHC.renderWithStyle    (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
+prettyprint x = GHC.renderWithStyle                     (GHC.ppr x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
 #endif
 
 -- ---------------------------------------------------------------------
 
--- GHC 7.6.3 version
 lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
 lexStringToRichTokens startLoc str = do
   -- error $ "lexStringToRichTokens: (startLoc,str)=" ++ (showGhc (startLoc,str)) -- ++AZ
@@ -78,27 +78,6 @@ lexStringToRichTokens startLoc str = do
 
         -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
 
-
-{- GHC 7.4.2 version
-
-lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
-lexStringToRichTokens startLoc str = do
-  -- error $ "lexStringToRichTokens: (startLoc,str)=" ++ (showGhc (startLoc,str)) -- ++AZ
-  GHC.defaultErrorHandler GHC.defaultLogAction $ do
-    GHC.runGhc (Just GHC.libdir) $ do
-      dflags <- GHC.getSessionDynFlags
-      let dflags' = foldl GHC.xopt_set dflags
-                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash]
-      _ <- GHC.setSessionDynFlags dflags'
-
-      -- lexTokenStream :: StringBuffer -> RealSrcLoc -> DynFlags -> ParseResult [Located Token]
-      let res = GHC.lexTokenStream (GHC.stringToStringBuffer str) startLoc dflags'
-      case res of
-        GHC.POk _ toks -> return $ GHC.addSourceToTokens startLoc (GHC.stringToStringBuffer str) toks 
-        GHC.PFailed _srcSpan _msg -> error $ "lexStringToRichTokens:" -- ++ (show $ GHC.ppr msg)
-
-        -- addSourceToTokens :: RealSrcLoc -> StringBuffer -> [Located Token] -> [(Located Token, String)]
--}
 
 -- ---------------------------------------------------------------------
 

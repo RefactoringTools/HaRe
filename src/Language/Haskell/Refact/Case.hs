@@ -65,9 +65,8 @@ reallyDoIfToCase expr rs = do
          inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
            | sameOccurrence expr exp1
            = do
-               df <- GHC.getSessionDynFlags
                newExp <- ifToCaseTransform exp1
-               updateToks exp1 newExp (prettyprint df) True
+               updateToks exp1 newExp prettyprint True
                return newExp
 
          inExp e = return e

@@ -19,7 +19,8 @@ Will modify tests to avoid warnings, for now, but must address in future.
 Original tests (with good results) are here
   https://github.com/alanz/HaRe/tree/71f80d2a59058acd6088c98d9748999f90ab0195/testing
 
-
+Original data structures are here
+http://www.cs.kent.ac.uk/projects/refactor-fp/hare/API_Doc/HsModule.html
 
 -------------------------------------
 
