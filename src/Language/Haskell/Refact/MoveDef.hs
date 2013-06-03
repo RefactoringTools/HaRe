@@ -43,19 +43,36 @@ import Debug.Trace
 data Direction = UptoTopLevel | UpOneLevel | Down
 
 {--------This function handles refactorings involving moving a definition--------
- According to the Haskell's  syntax, a declaration may occur in one of the following six contexts:
+
+ According to the Haskell's syntax, a declaration may occur in one of
+the following six contexts:
+
   1. A top level declaration in the module:
-            HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds
-  2. A local declaration in a Match:
-            HsMatch SrcLoc i [p] (HsRhs e) ds
+        old: HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds
+        new: (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
+              HsGroup hs_valds :: HsValBinds id ...
+
+  2. A local declaration in a Match: (of a FunBind)
+        old: HsMatch SrcLoc i [p] (HsRhs e) ds
+        new: Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
+
   3. A local declaration in a pattern binding:
-            HsPatBind SrcLoc p (HsRhs e) ds
+        old: HsPatBind SrcLoc p (HsRhs e) ds
+        new: PatBind (LPat idL) (GRHSs idR) PostTcType NameSet (Maybe tickish)
+
   4. A local declaration in a Let expression:
-            HsLet ds e
+        old: HsLet ds e
+        new: HsLet (HsLocalBinds id) (LHsExpr id)
+
   5. A local declaration in a Case alternative:
-            HsAlt SrcLoc p (HsRhs e) ds
+        old: HsAlt SrcLoc p (HsRhs e) ds
+        new: HsCase (LHsExpr id) (MatchGroup id)
+           new is same as in a FunBind.
+
   6. A local declaration in a Do statement:
-            HsLetStmt ds (HsStmt e p ds)
+        old: HsLetStmt ds (HsStmt e p ds)
+        new: LetStmt (HsLocalBindsLR idL idR)
+             in context GRHS [LStmt id] (LHsExpr id)
 -}
 
 -- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
@@ -184,23 +201,30 @@ move direction args
 
 
 {- Refactoring Names: 'liftToTopLevel'
-   This refactoring lifts a local function/pattern binding to the top level of the module, so as to 
-    make it accessible to  other functions in the current module, and those modules that import 
-    current module.
 
-   In the current implementation, a definition will be lifted only if none of the identifiers defined in this
-   definition will cause name clash/capture problems in the current module after lifting. 
+   This refactoring lifts a local function/pattern binding to the top
+   level of the module, so as to make it accessible to other functions in
+   the current module, and those modules that import current module.
 
-   In the case that the whole current module is exported implicitly, the lifted identifier will be  exported
-   automatically after lifting. If the identifier will cause name clash/ambiguous occurrence problem in a 
-   client module, it will be hided in the import declaration of the client module (Note: this might not be 
-   the best solution, we prefer hiding it in the server module instead of in the client module in the final version).
+   In the current implementation, a definition will be lifted only if
+   none of the identifiers defined in this definition will cause name
+   clash/capture problems in the current module after lifting.
 
-   In the case of indirect importing, it might be time-consuming to trace whether the lifted identifier
-   will cause any problem in a client module that indirectly imports the current  module. The current solution is:
-   suppose a defintion is lifted to top level in module A, and module A is imported and exported by module B, then
-   the lifted identifier will be hided in the import declaration of B no matter whether it causes problems in 
-   module B or not.
+   In the case that the whole current module is exported implicitly,
+   the lifted identifier will be exported automatically after lifting. If
+   the identifier will cause name clash/ambiguous occurrence problem in a
+   client module, it will be hided in the import declaration of the
+   client module (Note: this might not be the best solution, we prefer
+   hiding it in the server module instead of in the client module in the
+   final version).
+
+   In the case of indirect importing, it might be time-consuming to
+   trace whether the lifted identifier will cause any problem in a client
+   module that indirectly imports the current module. The current
+   solution is: suppose a defintion is lifted to top level in module A,
+   and module A is imported and exported by module B, then the lifted
+   identifier will be hided in the import declaration of B no matter
+  whether it causes problems in module B or not.
 
    Function name: liftToTopLevel
    parameters: fileName--current file name.
@@ -530,9 +554,15 @@ namesNeedToBeHided clientModule modNames pns = do
    Descritption:
     this refactoring lifts a local function/pattern binding only one level up.
     By 'lifting one-level up' ,I mean:
+
     case1: In a module (HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds):
            A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
            where clause of one of ds's element declaration.
+
+        new: (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
+              HsGroup hs_valds :: HsValBinds id ...
+
+
 
     case2: In a match ( HsMatch SrcLoc i [p] (HsRhs e) ds) :
           A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
@@ -540,28 +570,48 @@ namesNeedToBeHided clientModule modNames pns = do
            A declaration D,say,in the rhs expression 'e' will be lifted to 'ds' if D is Not local to
            other declaration list in 'e'
 
+           (in a FunBind)
+        new: Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
+
+
     case3: In a pattern  binding (HsPatBind SrcLoc p (HsRhs e) ds):
            A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
            where clause of one of ds's element declaration.
            A declaration D,say,in the rhs expression 'e' will be lifted to 'ds' if D is Not local to
            other declaration list in 'e'
 
-    case4: In the Lex expression (Exp (HsLet ds e):
+        new: PatBind (LPat idL) (GRHSs idR) PostTcType NameSet (Maybe tickish)
+
+
+
+    case4: In the Let expression (Exp (HsLet ds e):
            A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
            where clause of one of ds's element declaration.
            A declaration D, say, in the expression 'e' will be lifted to 'ds' if D is not local to
            other declaration list in 'e'
+
+        new: HsLet (HsLocalBinds id) (LHsExpr id)
+
+
     case5: In the case Alternative expression:(HsAlt loc p rhs ds)
            A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
            where clause of one of ds's element declaration.
            A declaration D in 'rhs' will be lifted to 'ds' if D is not local to other declaration 
            list in 'rhs'.
 
+        new: HsCase (LHsExpr id) (MatchGroup id)
+           new is same as in a FunBind.
+
+
     case6: In the do statement expression:(HsLetStmt ds stmts)
            A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
            where clause of one of ds's element declaration.
            A declaration D in 'stmts' will be lifted to 'ds' if D is not local to other declaration 
            list in 'stmts'.
+
+        new: LetStmt (HsLocalBindsLR idL idR)
+             in context GRHS [LStmt id] (LHsExpr id)
+
 
 Function name: liftOneLevel
 parameters: fileName--current file name.
@@ -606,6 +656,15 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                             `choiceTP` failure) renamed) -- ((toks,unmodified),(-1000,0))
              return renamed'
            where
+{-
+    case1: In a module (HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds):
+           A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
+           where clause of one of ds's element declaration.
+
+        new: (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
+              HsGroup hs_valds :: HsValBinds id ...
+
+-}
              --1. The definition will be lifted to top level
              liftToMod (ren@(g,imps,exps,docs):: GHC.RenamedSource)
                 | nonEmptyList (definingDeclsNames [n] (hsBinds g) False False)
