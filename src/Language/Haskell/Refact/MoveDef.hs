@@ -667,13 +667,19 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 -}
              --1. The definition will be lifted to top level
              liftToMod (ren@(g,imps,exps,docs):: GHC.RenamedSource)
-                | nonEmptyList (definingDeclsNames [n] (hsBinds g) False False)
+                -- | nonEmptyList (definingDeclsNames [n] (hsBinds g) False False)
+                | nonEmptyList candidateBinds
                  -- ^^ first False means not taking type signature into account
                  --    second means do not recurse in the search
                   = do
                        logm $ "in liftOneLevel''.liftToMod"
-                       ren'<-worker ren (hsBinds g) pn
+                       -- ren'<-worker ren (hsBinds g) pn
+                       ren'<-worker ren (ghead "liftToMod" candidateBinds) pn
                        return (ren'::GHC.RenamedSource)
+                where
+                 candidateBinds = filter nonEmptyList
+                                $ map (\bs -> definingDeclsNames [n] bs False False) 
+                                $ map hsBinds (hsBinds g)
              liftToMod  _ =mzero
 
              --2. The definition will be lifted to the declaration list of a match
