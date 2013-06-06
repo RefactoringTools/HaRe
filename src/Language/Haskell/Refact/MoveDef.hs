@@ -672,14 +672,15 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                  -- ^^ first False means not taking type signature into account
                  --    second means do not recurse in the search
                   = do
-                       logm $ "in liftOneLevel''.liftToMod"
+                       logm $ "in liftOneLevel''.liftToMod:candidateBinds=" ++ (showGhc candidateBinds)
                        -- ren'<-worker ren (hsBinds g) pn
-                       ren'<-worker ren (ghead "liftToMod" candidateBinds) pn
+                       ren'<-worker ren candidateBinds pn True
                        return (ren'::GHC.RenamedSource)
                 where
-                 candidateBinds = filter nonEmptyList
-                                $ map (\bs -> definingDeclsNames [n] bs False False) 
-                                $ map hsBinds (hsBinds g)
+                 candidateBinds = map snd
+                                $ filter (\(l,_bs) -> nonEmptyList l)
+                                $ map (\bs -> (definingDeclsNames [n] (hsBinds bs) False False,bs)) 
+                                $ (hsBinds g)
              liftToMod  _ =mzero
 
              --2. The definition will be lifted to the declaration list of a match
@@ -688,7 +689,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                  | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False False)
                   =do
                       logm $ "in liftOneLevel''.liftToMatch in ds"
-                      match' <- worker match (hsBinds ds) pn
+                      match' <- worker match (hsBinds ds) pn False
                       -- let ds' = (replaceBinds ds ds'')
                       -- return (GHC.Match pats mtyp (GHC.GRHSs rhs ds'))
                       return match'
@@ -705,7 +706,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              --2. The definition will be lifted to the declaration list of a match
              liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
                  | definingDecls [pn] (hsDecls ds) False False/=[]
-                  =do ds'<-worker match ds pn
+                  =do ds'<-worker match ds pn False
                       return (HsMatch loc1 name pats rhs ds')
 
              liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
@@ -718,7 +719,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              --3. The definition will be lifted to the declaration list of a pattern binding 
              liftToPattern (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
                 | definingDecls [pn] (hsDecls ds) False  False /=[]
-                  =do ds'<-worker pat ds pn
+                  =do ds'<-worker pat ds pn False
                       return (Dec (HsPatBind loc p rhs ds'))
 
              liftToPattern (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
@@ -729,7 +730,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              --4. The definition will be lifted to the declaration list in a let expresiion.
              liftToLet (letExp@(Exp (HsLet ds e))::HsExpP)
                | definingDecls [pn] (hsDecls ds) False  False/=[]
-                =do ds' <-worker letExp ds pn
+                =do ds' <-worker letExp ds pn False
                     return (Exp (HsLet ds' e))
 
              liftToLet (letExp@(Exp (HsLet ds e))::HsExpP)  --Attention: ds can be empty!
@@ -741,7 +742,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              --5. The definition will be lifted to the declaration list in a alt
              liftToAlt (alt@(HsAlt loc p rhs ds)::(HsAlt (HsExpP) (HsPatP) [HsDeclP]))
                 |definingDecls [pn] (hsDecls ds) False  False /=[]
-                =do ds'<-worker alt ds pn
+                =do ds'<-worker alt ds pn False
                     return (HsAlt loc p rhs ds')
 
              liftToAlt (alt@(HsAlt loc p rhs ds)::(HsAlt (HsExpP) (HsPatP) [HsDeclP]))
@@ -752,7 +753,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              --6. The defintion will be lifted to the declaration list in a let statement.
              liftToLetStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP]))
                 |definingDecls [pn] (hsDecls ds) False  False/=[]
-               =do ds'<-worker letStmt ds pn
+               =do ds'<-worker letStmt ds pn False
                    return (HsLetStmt ds' stmts)
 
              liftToLetStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP])) 
@@ -768,14 +769,19 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
              worker :: (HsValBinds t)
                 => t -> [GHC.LHsBind GHC.Name] -> GHC.Located GHC.Name
+                -> Bool -- ^True if lifting to the top level
                 -> RefactGhc t
-             worker dest ds pn
+             worker dest ds pn toToplevel
                   =do let (before, parent,after)=divideDecls ds pn
-                          liftedDecls=definingDeclsNames [n] parent True  False
+                          -- liftedDecls=definingDeclsNames [n] parent True  False
+                          liftedDecls=definingDeclsNames [n] parent True  True
                           declaredPns=nub $ concatMap definedPNs liftedDecls
+                      logm $ "MoveDef.worker: (ds)=" ++ (showGhc (ds))
+                      logm $ "MoveDef.worker: parent=" ++ (showGhc parent)
                       (_, dd)<-hsFreeAndDeclaredPNs dest
                       -- pns<-pnsNeedRenaming inscps dest parent liftedDecls declaredPns
                       pns<-pnsNeedRenaming dest parent liftedDecls declaredPns
+                      logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
                                 (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl n dd
@@ -784,8 +790,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                                                 else liftedDecls'
                                 --True means the new decl will be at the same level with its parant. 
                                 dest'<-moveDecl1 (replaceBinds dest (before++parent'++after))
-                                           (Just (ghead "liftToMod" (definedPNs (ghead "worker" parent')))) 
-                                           [n] declaredPns False
+                                           (Just (ghead "worker" (definedPNs (ghead "worker" parent')))) 
+                                           [n] declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
                                 return dest'
                                 --parent'<-doMoving declaredPns (ghead "worker" parent) True  paramAdded parent'
                                 --return (before++parent'++liftedDecls''++after)

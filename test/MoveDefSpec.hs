@@ -246,12 +246,26 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
                           "./test/testdata/LiftOneLevel/D1.hs.refactored"
      diff `shouldBe` []
 
-     diff2 <- compareFiles "./test/testdata/LiftOneLevel/C1.hs.expected"
-                          "./test/testdata/LiftOneLevel/C1.hs.refactored"
-     diff2 `shouldBe` []
+     c1Refactored <- doesFileExist "./test/testdata/LiftOneLevel/C1.hs.refactored"
+     c1Refactored `shouldBe` False
 
      a1Refactored <- doesFileExist "./test/testdata/LiftOneLevel/A1.hs.refactored"
      a1Refactored `shouldBe` False
+
+    -- ---------------------------------
+
+    it "LiftOneLevel.liftToMod D2 C2 A2 8 6" $ do
+     liftOneLevel defaultTestSettings (Just "./test/testdata/LiftOneLevel/A2.hs") "./test/testdata/LiftOneLevel/D2.hs" (8,6)
+     -- liftOneLevel logTestSettings     (Just "./test/testdata/LiftOneLevel/A2.hs") "./test/testdata/LiftOneLevel/D2.hs" (8,6)
+     diff <- compareFiles "./test/testdata/LiftOneLevel/D2.hs.expected"
+                          "./test/testdata/LiftOneLevel/D2.hs.refactored"
+     diff `shouldBe` []
+
+     c2Refactored <- doesFileExist "./test/testdata/LiftOneLevel/C2.hs.refactored"
+     c2Refactored `shouldBe` False
+
+     a2Refactored <- doesFileExist "./test/testdata/LiftOneLevel/A2.hs.refactored"
+     a2Refactored `shouldBe` False
 
 
 {- original tests
