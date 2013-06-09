@@ -629,7 +629,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
   parsed  <- getRefactParsed
   if isLocalFunOrPatName n renamed
         then do -- (mod', ((toks',m),_))<-liftOneLevel''
-                (refactoredMod,declPns) <- applyRefac (liftOneLevel'') RSAlreadyLoaded
+                (refactoredMod,_) <- applyRefac (liftOneLevel'') RSAlreadyLoaded
 
                 -- TODO: reinstate next line
                 let (b, pns) = liftedToTopLevel pn renamed
@@ -683,6 +683,17 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 $ (hsBinds g)
              liftToMod  _ =mzero
 
+{-
+    case2: In a match ( HsMatch SrcLoc i [p] (HsRhs e) ds) :
+          A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
+           where clause of one of ds's element declaration.
+           A declaration D,say,in the rhs expression 'e' will be lifted to 'ds' if D is Not local to
+           other declaration list in 'e'
+
+           (in a FunBind)
+        new: Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
+
+-}
              --2. The definition will be lifted to the declaration list of a match
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
              liftToMatch (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
@@ -697,7 +708,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
              liftToMatch (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
                  -- TODO: WIP here, reinstate the following
-                 | error "carry on here" -- nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False)
+                 | nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False)
+                 -- | error "carry on here" -- nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False)
                    = do
                       logm $ "in liftOneLevel''.liftToMatch in rhs"
                       doLifting1 match n
@@ -802,6 +814,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                      -- pns<-pnsNeedRenaming inscps dest parent liftedDecls declaredPns
                      pns<-pnsNeedRenaming dest (hsBinds parent) liftedDecls declaredPns
                      (_, dd)<-hsFreeAndDeclaredPNs dest
+                     logm $ "MoveDef.doLifting1: pns=" ++ (showGhc pns)
                      if pns==[]
                        then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl pn dd parent liftedDecls
                                let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'

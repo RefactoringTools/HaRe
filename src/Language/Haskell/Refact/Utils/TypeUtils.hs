@@ -1632,6 +1632,28 @@ instance HsValBinds (GHC.LHsExpr GHC.Name) where
 
 -- ---------------------------------------------------------------------
 
+instance HsValBinds [GHC.LGRHS GHC.Name] where
+  hsValBinds xs = unionBinds $ map hsValBinds xs
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LGRHS GHC.Name) where
+  hsValBinds (GHC.L _ (GHC.GRHS stmts _expr)) = hsValBinds stmts
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.LStmt GHC.Name] where
+  hsValBinds xs = unionBinds $ map hsValBinds xs
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LStmt GHC.Name) where
+  hsValBinds (GHC.L _ (GHC.LetStmt binds)) = hsValBinds binds
+  hsValBinds _                             = emptyValBinds
+
+-- ---------------------------------------------------------------------
+
+
 
 
 {-
