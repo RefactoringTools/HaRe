@@ -283,6 +283,15 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
      a3Refactored <- doesFileExist "./test/testdata/LiftOneLevel/A3.hs.refactored"
      a3Refactored `shouldBe` False
 
+    -- ---------------------------------
+
+    it "LiftOneLevel WhereIn1 12 18" $ do
+     liftOneLevel defaultTestSettings Nothing "./test/testdata/LiftOneLevel/WhereIn1.hs" (12,18)
+     -- liftOneLevel logTestSettings  Nothing "./test/testdata/LiftOneLevel/WhereIn1.hs" (12,18)
+     diff <- compareFiles "./test/testdata/LiftOneLevel/WhereIn1.hs.expected"
+                          "./test/testdata/LiftOneLevel/WhereIn1.hs.refactored"
+     diff `shouldBe` []
+
 
 {- original tests
 TestCases{refactorCmd="liftOneLevel",
