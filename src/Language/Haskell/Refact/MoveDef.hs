@@ -632,11 +632,11 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                 (refactoredMod,declPns) <- applyRefac (liftOneLevel'') RSAlreadyLoaded
 
                 -- TODO: reinstate next line
-                -- let (b, pns) = liftedToTopLevel pnt mod
-                let (b,pns) = (False,[])
+                let (b, pns) = liftedToTopLevel pn renamed
+                -- let (b,pns) = (False,[])
                 if b &&  modIsExported modName renamed
                   then do clients<-clientModsAndFiles modName
-                          logm $ "liftOneLevel':(clients,declPns)=" ++ (showGhc (clients,declPns))
+                          -- logm $ "liftOneLevel':(clients,declPns)=" ++ (showGhc (clients,declPns))
                           refactoredClients <- mapM (liftingInClientMod modName pns) clients
                           return (refactoredMod:(concat refactoredClients))
                   else do return [refactoredMod]
@@ -1051,6 +1051,16 @@ liftedToTopLevel pnt@(PNT pn _ _) (mod@(HsModule loc name exps imps ds):: HsModu
           in (True, declaredPns)
      else (False, [])
 -}
+
+liftedToTopLevel :: GHC.Located GHC.Name -> GHC.RenamedSource -> (Bool,[GHC.Name])
+liftedToTopLevel pnt@(GHC.L _ pn) renamed
+  = if nonEmptyList (definingDeclsNames [pn] (hsBinds renamed) False True)
+     then let (_, parent,_) = divideDecls (hsBinds renamed) pnt
+              liftedDecls=definingDeclsNames [pn] (hsBinds parent) True True
+              declaredPns  = nub $ concatMap definedPNs liftedDecls
+          in (True, declaredPns)
+     else (False, [])
+
 
 addParamsToParentAndLiftedDecl :: HsValBinds t => -- SYB.Data t =>
   GHC.Name
