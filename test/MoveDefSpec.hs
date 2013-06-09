@@ -268,6 +268,21 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
      a2Refactored <- doesFileExist "./test/testdata/LiftOneLevel/A2.hs.refactored"
      a2Refactored `shouldBe` False
 
+    -- ---------------------------------
+
+    it "LiftOneLevel.liftToMod D3 C3 A3 8 6" $ do
+     liftOneLevel defaultTestSettings (Just "./test/testdata/LiftOneLevel/A3.hs") "./test/testdata/LiftOneLevel/D3.hs" (8,6)
+     -- liftOneLevel logTestSettings     (Just "./test/testdata/LiftOneLevel/A3.hs") "./test/testdata/LiftOneLevel/D3.hs" (8,6)
+     diff <- compareFiles "./test/testdata/LiftOneLevel/D3.hs.expected"
+                          "./test/testdata/LiftOneLevel/D3.hs.refactored"
+     diff `shouldBe` []
+
+     c3Refactored <- doesFileExist "./test/testdata/LiftOneLevel/C3.hs.refactored"
+     c3Refactored `shouldBe` False
+
+     a3Refactored <- doesFileExist "./test/testdata/LiftOneLevel/A3.hs.refactored"
+     a3Refactored `shouldBe` False
+
 
 {- original tests
 TestCases{refactorCmd="liftOneLevel",
