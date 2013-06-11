@@ -37,6 +37,7 @@ Library
                                 , transformers
                                 , Strafunski-StrategyLib
                                 -- , uniplate
+                                , syz
 
         -- GHC-Options:             -Wall
         -- We want to run coverage reports on the library
@@ -92,6 +93,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 -- , uniplate
+                                , syz
         Other-Modules:          Paths_HaRe
         Extensions:      CPP
 
@@ -138,6 +140,7 @@ test-suite spec
     -- , uniplate
     , hslogger
     , Strafunski-StrategyLib
+    , syz
     , HaRe >= 0.6.0.3
   Extensions:      CPP
 
