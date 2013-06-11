@@ -203,3 +203,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/LiftOneLevel/WhereIn1.hs.refactored
 /test/testdata/LiftOneLevel/WhereIn1.hs.renamed_out
 /test/testdata/LiftOneLevel/WhereIn1.hs.tokens
+/test/testdata/LiftOneLevel/C1.hs.AST_out
+/test/testdata/LiftOneLevel/C1.hs.renamed_out
+/test/testdata/LiftOneLevel/C1.hs.tokens
+/test/testdata/LiftOneLevel/C1.hs.refactored

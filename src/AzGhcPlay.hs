@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -146,7 +147,11 @@ ifToCase args
 --   Match [LPat id] (Maybe (LHsType id)) (GRHSs id)	 
 
 getStuff =
+#if __GLASGOW_HASKELL__ > 704
+    GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $ do
+#else
     GHC.defaultErrorHandler GHC.defaultLogAction $ do
+#endif
       GHC.runGhc (Just libdir) $ do
         dflags <- GHC.getSessionDynFlags
         let dflags' = foldl GHC.xopt_set dflags
@@ -180,7 +185,13 @@ getStuff =
         -- c <- return $ GHC.coreModule d
         c <- return $ GHC.coreModule d
 
-        GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
+#if __GLASGOW_HASKELL__ > 704
+        GHC.setContext [GHC.IIModule (GHC.moduleName $ GHC.ms_mod modSum)]
+#else
+        GHC.setContext [GHC.IIModule (                 GHC.ms_mod modSum)]
+#endif
+
+        -- GHC.setContext [GHC.IIModule (GHC.ms_mod modSum)]
         inscopes <- GHC.getNamesInScope
         
 
@@ -203,7 +214,7 @@ getStuff =
         -- let p' = processParsedMod ifToCase t
         -- GHC.liftIO (putStrLn . showParsedModule $ t)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
-        -- GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
+        -- GHC.liftIO (putStrLn $ showGhc $ GHC.tm_typechecked_source p')
 
         let ps  = GHC.pm_parsed_source p
         -- GHC.liftIO (putStrLn $ SYB.showData SYB.Parser 0 ps)
@@ -234,31 +245,31 @@ getStuff =
         -- Inscopes ----------------------------------------------------
         -- GHC.liftIO (putStrLn $ "\ninscopes(showData)=" ++ (SYB.showData SYB.Parser 0 $ inscopes))
         -- names <- GHC.parseName "G.mkT"
-        -- GHC.liftIO (putStrLn $ "\nparseName=" ++ (GHC.showPpr $ names))
+        -- GHC.liftIO (putStrLn $ "\nparseName=" ++ (showGhc $ names))
 
 
         -- ParsedSource -----------------------------------------------
-        -- GHC.liftIO (putStrLn $ "parsedSource(Ppr)=" ++ (GHC.showPpr $ GHC.pm_parsed_source p))
+        -- GHC.liftIO (putStrLn $ "parsedSource(Ppr)=" ++ (showGhc $ GHC.pm_parsed_source p))
         -- GHC.liftIO (putStrLn $ "\nparsedSource(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.pm_parsed_source p))
 
         -- RenamedSource -----------------------------------------------
-        GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
+        GHC.liftIO (putStrLn $ "renamedSource(Ppr)=" ++ (showGhc $ GHC.tm_renamed_source t))
         GHC.liftIO (putStrLn $ "\nrenamedSource(showData)=" ++ (SYB.showData SYB.Renamer 0 $ GHC.tm_renamed_source t))
 
-        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
+        -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (showGhc $ GHC.tm_typechecked_source t))
         -- GHC.liftIO (putStrLn $ "typeCheckedSource=" ++ (SYB.showData SYB.TypeChecker 0 $ GHC.tm_typechecked_source t))
 
         -- ModuleInfo ----------------------------------------------------------------
         -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (SYB.showData SYB.Parser 0 $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
-        -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (GHC.showPpr $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
-        -- GHC.liftIO (putStrLn $ "moduleInfo.TopLevelScope=" ++ (GHC.showPpr $ GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info t))
+        -- GHC.liftIO (putStrLn $ "moduleInfo.TyThings=" ++ (showGhc $ GHC.modInfoTyThings $ GHC.tm_checked_module_info t))
+        -- GHC.liftIO (putStrLn $ "moduleInfo.TopLevelScope=" ++ (showGhc $ GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info t))
 
 
         -- Investigating TypeCheckedModule, in t
-        --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_renamed_source t))
+        --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(Ppr)=" ++ (showGhc $ GHC.tm_renamed_source t))
         --GHC.liftIO (putStrLn $ "TypecheckedModule : tm_renamed_source(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_renamed_source t))
 
-        -- GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(Ppr)=" ++ (GHC.showPpr $ GHC.tm_typechecked_source t))
+        -- GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(Ppr)=" ++ (showGhc $ GHC.tm_typechecked_source t))
         -- GHC.liftIO (putStrLn $ "TypecheckedModule : tm_typechecked_source(showData)=" ++ (SYB.showData SYB.Parser 0 $ GHC.tm_typechecked_source t))
 
 
@@ -266,10 +277,10 @@ getStuff =
         -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : cm_binds(showData)=" ++ (SYB.showData SYB.TypeChecker 0 $ GHC.mg_binds c))
 
         -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : cm_binds(showData)=" ++ (SYB.showData SYB.TypeChecker 0 $ GHC.exprsFreeVars $ getBinds $ GHC.mg_binds c))
-        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeVars cm_binds(showData)=" ++ (GHC.showPpr $ GHC.exprsFreeVars $ getBinds $ GHC.mg_binds c))
-        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeIds cm_binds(showPpr)=" ++ (GHC.showPpr $ map GHC.exprFreeIds $ getBinds $ GHC.mg_binds c))
+        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeVars cm_binds(showData)=" ++ (showGhc $ GHC.exprsFreeVars $ getBinds $ GHC.mg_binds c))
+        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : exprFreeIds cm_binds(showPpr)=" ++ (showGhc $ map GHC.exprFreeIds $ getBinds $ GHC.mg_binds c))
 
-        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : bindFreeVars cm_binds(showPpr)=" ++ (GHC.showPpr $ map GHC.bindFreeVars $ GHC.mg_binds c))
+        -- GHC.liftIO (putStrLn $ "TypecheckedModuleCoreModule : bindFreeVars cm_binds(showPpr)=" ++ (showGhc $ map GHC.bindFreeVars $ GHC.mg_binds c))
 
 
         return ()
@@ -278,7 +289,7 @@ getStuff =
 processVarUniques t = SYB.everywhereMStaged SYB.TypeChecker (SYB.mkM showUnique) t
     where
         showUnique (var :: Var)
-           = do GHC.liftIO $ putStrLn (GHC.showPpr (varUnique var))
+           = do GHC.liftIO $ putStrLn (showGhc (varUnique var))
                 return var
         showUnique x = return x
 
@@ -291,11 +302,11 @@ getBinds xs = map (\(_,x) -> x) $ concatMap getBind xs
     getBind (GHC.NonRec b e) = [(b,e)]
     getBind (GHC.Rec bs) = bs
 
-
+{-
 instance (Show GHC.TyThing) where
   show (GHC.AnId anId) = "(AnId " ++ (show anId) ++ ")"
   show _               = "(Another TyThing)"
-
+-}
 -- instance (Show GHC.Name) where
 
 convertSource ps =1
@@ -400,7 +411,7 @@ example =
         let p' = processParsedMod shortenLists p
         -- GHC.liftIO (putStrLn . showParsedModule $ p)
         -- GHC.liftIO (putStrLn . showParsedModule $ p')
-        GHC.liftIO (putStrLn $ GHC.showPpr $ GHC.tm_typechecked_source p')
+        GHC.liftIO (putStrLn $ showGhc $ GHC.tm_typechecked_source p')
 
 showParsedModule p = SYB.showData SYB.TypeChecker 0 (GHC.tm_typechecked_source p)
 
@@ -646,3 +657,10 @@ Ok, modules loaded: Main.
                               (*** Exception: noRebindableInfo
    -}
 
+-- |Show a GHC API structure
+showGhc :: (GHC.Outputable a) => a -> String
+#if __GLASGOW_HASKELL__ > 704
+showGhc x = GHC.showSDoc GHC.tracingDynFlags $ GHC.ppr x
+#else
+showGhc x = GHC.showSDoc                     $ GHC.ppr x
+#endif
