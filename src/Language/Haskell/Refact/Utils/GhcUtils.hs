@@ -9,15 +9,18 @@ import qualified GHC.SYB.Utils as SYB
 import GHC
 import NameSet
 import Control.Monad
+import Data.Maybe
 
 -- For Lens stuff
-import Control.Lens
+-- import Control.Lens
 import Control.Applicative
 import Data.Data
 
 import Unsafe.Coerce
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
+
+import Data.Generics.Zipper
 
 {-
 
@@ -29,13 +32,13 @@ everything :: (r -> r -> r) -> GenericQ r -> GenericQ r
 -- Apply f to x to summarise top-level node;
 -- use gmapQ to recurse into immediate subterms;
 -- use ordinary foldl to reduce list of intermediate results
--- 
+--
 everything k f x = foldl k (f x) (gmapQ (everything k f) x)
 
 -- | A variation of 'everything', using a 'GenericQ Bool' to skip
 --   parts of the input 'Data'.
 everythingBut :: GenericQ Bool -> (r -> r -> r) -> r -> GenericQ r -> GenericQ r
-everythingBut q k z f x 
+everythingBut q k z f x
  | q x       = z
  | otherwise = foldl k (f x) (gmapQ (everythingBut q k z f) x)
 
@@ -45,7 +48,7 @@ everythingBut q k z f x
 -- | Like 'everything', but avoid known potholes, based on the 'Stage' that
 --   generated the Ast.
 everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ r
-everythingStaged stage k z f x 
+everythingStaged stage k z f x
   | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = z
   | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
   where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
@@ -80,7 +83,7 @@ somethingStaged :: SYB.Stage -> (Maybe u) -> SYB.GenericQ (Maybe u) -> SYB.Gener
 
 -- "something" can be defined in terms of "everything"
 -- when a suitable "choice" operator is used for reduction
--- 
+--
 somethingStaged stage z = everythingStaged stage SYB.orElse z
 
 -- ---------------------------------------------------------------------
@@ -92,7 +95,7 @@ somewhere :: MonadPlus m => GenericM m -> GenericM m
 -- We try "f" in top-down manner, but descent into "x" when we fail
 -- at the root of the term. The transformation fails if "f" fails
 -- everywhere, say succeeds nowhere.
--- 
+--
 somewhere f x = f x `mplus` gmapMp (somewhere f) x
 -}
 
@@ -206,6 +209,7 @@ everywhere' f = gmapT (everywhere' f) . f
 -- @
 --ghcplate ::
 --  (Data a, Typeable b, Applicative c) => (b -> c b) -> a -> c a
+{-
 ghcplate :: (Data a, Typeable a, Typeable b) => Simple Traversal a b
 ghcplate f = gfoldl (stepghc f) pure
 {-# INLINE ghcplate #-}
@@ -213,15 +217,15 @@ ghcplate f = gfoldl (stepghc f) pure
 stepghc ::
   (Data d, Typeable b, Applicative f) =>
   (b -> f b) -> f (d -> e) -> d -> f e
-stepghc f w d 
-  | isGhcHole d = ($d) <$> w 
+stepghc f w d
+  | isGhcHole d = ($d) <$> w
   | otherwise = w <*> case cast d of
       Just b  -> unsafeCoerce <$> f b
       Nothing -> ghcplate f d
 
 isGhcHole :: Typeable a => a -> Bool
 isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
-  where 
+  where
     isNameSet n = case (cast n)::(Maybe NameSet) of
       Just _ -> True
       Nothing -> False
@@ -233,11 +237,11 @@ isGhcHole t = (isNameSet t) || (isPostTcType t) || (isFixity t)
     isFixity n = case (cast n)::(Maybe GHC.Fixity) of
       Just _ -> True
       Nothing -> False
+-}
 
-
--- gfoldl :: Data a => 
+-- gfoldl :: Data a =>
 -- (forall d b. Data d => c (d -> b) -> d -> c b) -- nonempty constructor (immediate subterm)
--- -> (forall g. g -> c g)                        -- empty constructor 
+-- -> (forall g. g -> c g)                        -- empty constructor
 -- -> a                                           -- thing to be folded
 -- -> c a
 --
@@ -310,7 +314,7 @@ stop_tdTUGhc s = (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
 allTUGhc' :: (MonadPlus m, Monoid a) => TU a m -> TU a m
 allTUGhc' = allTUGhc mappend mempty
 
-{- original 
+{- original
 -- | Top-down type-unifying traversal that is cut of below nodes
 --   where the argument strategy succeeds.
 stop_tdTU 	:: (MonadPlus m, Monoid a) => TU a m -> TU a m
@@ -361,7 +365,7 @@ checkItemRenamer' = checkItemStage' SYB.Renamer
 {-  ++AZ++  -}
 
 
-{- 
+{-
 -- ++AZ++ old version
 -- ---------------------------------------------------------------------
 
@@ -409,3 +413,137 @@ full_tdTUGhc s = op2TU mappend s (allTUGhc' (full_tdTUGhc s))
 
 -}
 
+-- ---------------------------------------------------------------------
+
+-- Scrap-your-zippers for ghc
+
+{-
+Original versions
+
+-- | Apply a generic transformation everywhere in a bottom-up manner.
+zeverywhere :: GenericT -> Zipper a -> Zipper a
+zeverywhere f z = trans f (downT g z) where
+  g z' = leftT g (zeverywhere f z')
+-}
+-- | Apply a generic transformation everywhere in a bottom-up manner.
+zeverywhereStaged :: (Typeable a) => SYB.Stage -> SYB.GenericT -> Zipper a -> Zipper a
+zeverywhereStaged stage f z
+  | checkZipperStaged stage z = z
+  | otherwise = trans f (downT g z)
+  where
+    g z' = leftT g (zeverywhereStaged stage f z')
+
+{-
+-- | Apply a generic transformation everywhere in a top-down manner.
+zeverywhere' :: GenericT -> Zipper a -> Zipper a
+zeverywhere' f z =
+  downQ (g x) (zeverywhere' f . leftmost) x where
+    x = trans f z
+    g z' = rightQ (upQ z' g z') (zeverywhere' f) z'
+
+-- | Apply a generic monadic transformation once at the topmost leftmost successful location.
+zsomewhere :: (MonadPlus m) => GenericM m -> Zipper a -> m (Zipper a)
+zsomewhere f z = transM f z `mplus` downM mzero (g . leftmost) z where
+  g z' = transM f z `mplus` rightM mzero (zsomewhere f) z'
+-}
+
+-- | Apply a generic monadic transformation once at the topmost
+-- leftmost successful location, avoiding holes in the GHC structures
+zsomewhereStaged :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Zipper a -> m (Zipper a)
+zsomewhereStaged stage f z
+  | checkZipperStaged stage z = return z
+  | otherwise = transM f z `mplus` downM mzero (g . leftmost) z
+  where
+    g z' = transM f z `mplus` rightM mzero (zsomewhereStaged stage f) z'
+
+-- TODO: ++AZ++ : carry on here: use transMZ not transM
+-- | Apply a generic monadic zipper transformation once at the topmost
+-- leftmost successful location, avoiding holes in the GHC structures
+zsomewhereStagedZ :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Zipper a -> m (Zipper a)
+zsomewhereStagedZ stage f z
+  | checkZipperStaged stage z = return z
+  | otherwise = transM f z `mplus` downM mzero (g . leftmost) z
+  where
+    g z' = transM f z `mplus` rightM mzero (zsomewhereStaged stage f) z'
+
+-- We need f to have type
+-- f :: Zipper a -> (b -> m b) -> Zipper a
+-- f z ff
+
+transMZ ::
+  (Monad m, Typeable b) =>
+  (Zipper a -> Maybe b -> m (Zipper a)) -> Zipper a -> m (Zipper a)
+transMZ f z = do
+  z' <- f z (getHole z)
+  return z'
+
+{-
+-- | Apply a generic monadic transformation to the hole
+transM :: (Monad m) => GenericM m -> Zipper a -> m (Zipper a)
+transM f (Zipper hole ctxt) = do
+  hole' <- f hole
+  return (Zipper hole' ctxt)
+
+-- | Apply a generic query to the hole.
+query :: GenericQ b -> Zipper a -> b
+query  f (Zipper hole _ctxt) = f hole
+
+type SYB.GenericM m = Data a => a -> m a
+
+SYB.mkM ::
+  (Monad m, Typeable a, Typeable b) => (b -> m b) -> a -> m a
+mkM = extM return
+
+-- | Extend a generic monadic transformation by a type-specific case
+extM :: ( Monad m
+        , Typeable a
+        , Typeable b
+        )
+     => (a -> m a) -> (b -> m b) -> a -> m a
+extM def ext = unM ((M def) `ext0` (M ext))
+
+-- | Flexible type extension
+ext0 :: (Typeable a, Typeable b) => c a -> c b -> c a
+ext0 def ext = maybe def id (gcast ext)
+
+-- | The type constructor for transformations
+newtype M m x = M { unM :: x -> m x }
+
+-}
+
+
+checkZipperStaged :: SYB.Stage -> Zipper a -> Bool
+checkZipperStaged stage z
+  | isJust maybeNameSet    = checkItemStage stage (fromJust maybeNameSet)
+  | isJust maybePostTcType = checkItemStage stage (fromJust maybePostTcType)
+  | isJust maybeFixity     = checkItemStage stage (fromJust maybeFixity)
+  | otherwise = False
+  where
+    maybeNameSet ::  Maybe NameSet
+    maybeNameSet = getHole z
+
+    maybePostTcType :: Maybe PostTcType
+    maybePostTcType = getHole z
+
+    maybeFixity :: Maybe GHC.Fixity
+    maybeFixity = getHole z
+
+
+{-
+everywhereStaged ::  SYB.Stage -> (forall a. Data a => a -> a) -> forall a. Data a => a -> a
+everywhereStaged stage f x
+  | checkItemStage stage x = x
+  | otherwise = (f . gmapT (everywhereStaged stage f)) x
+
+-- From GHC SYB Utils
+-- | Like 'everything', but avoid known potholes, based on the 'Stage' that
+--   generated the Ast.
+everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ r
+everythingStaged stage k z f x
+  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = z
+  | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+
+-}

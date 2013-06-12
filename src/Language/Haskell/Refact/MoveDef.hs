@@ -21,6 +21,7 @@ import qualified Outputable            as GHC
 
 import Control.Exception
 import Control.Monad.State
+import Data.Generics.Zipper
 import Data.List
 import Data.Maybe
 
@@ -646,6 +647,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
       liftOneLevel''= do
              logm $ "in liftOneLevel''"
              renamed <- getRefactRenamed
+{- ++ AZ ++ original
              renamed' <- (applyTP ((once_tdTPGhc (failTP `adhocTP` liftToMod
                                                          `adhocTP` liftToMatch
                                                           --  `adhocTP` liftToPattern 
@@ -654,7 +656,11 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                                           --  `adhocTP` liftToLetStmt
                                                                                   ))
                             `choiceTP` failure) renamed) -- ((toks,unmodified),(-1000,0))
-             return renamed'
+-}
+             renamed' <- zsomewhereStaged SYB.Renamer
+                           (SYB.mkM liftToMod `SYB.extM` liftToMatch)
+                           (toZipper renamed)
+             return (fromZipper renamed')
            where
 {-
     case1: In a module (HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds):
@@ -773,7 +779,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                = doLifting5 letStmt pn
              liftToLetStmt _=mzero
 -}
-             failure=idTP `adhocTP` mod
+             -- failure=idTP `adhocTP` mod
                 where
                   mod (m::HsModuleP)
                    = error ( "Lifting this definition failed. "++

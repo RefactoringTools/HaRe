@@ -246,8 +246,9 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
                           "./test/testdata/LiftOneLevel/D1.hs.refactored"
      diff `shouldBe` []
 
-     c1Refactored <- doesFileExist "./test/testdata/LiftOneLevel/C1.hs.refactored"
-     c1Refactored `shouldBe` False
+     diff2 <- compareFiles "./test/testdata/LiftOneLevel/C1.hs.expected"
+                           "./test/testdata/LiftOneLevel/C1.hs.refactored"
+     diff2 `shouldBe` []
 
      a1Refactored <- doesFileExist "./test/testdata/LiftOneLevel/A1.hs.refactored"
      a1Refactored `shouldBe` False
