@@ -447,6 +447,17 @@ zsomewhere f z = transM f z `mplus` downM mzero (g . leftmost) z where
   g z' = transM f z `mplus` rightM mzero (zsomewhere f) z'
 -}
 
+-- | Open a zipper to the point where the Geneneric query passes.
+-- returns the original zipper if the query does not pass (check this)
+zopenStaged :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Zipper a -> Zipper a
+zopenStaged stage t z
+  | checkZipperStaged stage z = z
+  | query t z  = z
+  | otherwise = trans id (downT g z)
+  where
+    g z' = leftT g (zopenStaged stage t z')
+
+
 -- | Apply a generic monadic transformation once at the topmost
 -- leftmost successful location, avoiding holes in the GHC structures
 zsomewhereStaged :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Zipper a -> m (Zipper a)
@@ -456,7 +467,9 @@ zsomewhereStaged stage f z
   where
     g z' = transM f z `mplus` rightM mzero (zsomewhereStaged stage f) z'
 
--- TODO: ++AZ++ : carry on here: use transMZ not transM
+
+
+--  TODO: ++AZ++ : carry on here: use transMZ not transM
 -- | Apply a generic monadic zipper transformation once at the topmost
 -- leftmost successful location, avoiding holes in the GHC structures
 zsomewhereStagedZ :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Zipper a -> m (Zipper a)
@@ -470,12 +483,22 @@ zsomewhereStagedZ stage f z
 -- f :: Zipper a -> (b -> m b) -> Zipper a
 -- f z ff
 
+{-
+transMZ ::
+  (Monad m,Data a) => SYB.GenericM m -> Zipper a -> m (Zipper a)
+transMZ f z = do
+  z' <- f z
+  return z'
+-}
+
+{-
 transMZ ::
   (Monad m, Typeable b) =>
   (Zipper a -> Maybe b -> m (Zipper a)) -> Zipper a -> m (Zipper a)
 transMZ f z = do
   z' <- f z (getHole z)
   return z'
+-}
 
 {-
 -- | Apply a generic monadic transformation to the hole
