@@ -657,10 +657,18 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                                                                   ))
                             `choiceTP` failure) renamed) -- ((toks,unmodified),(-1000,0))
 -}
+{-
              renamed' <- zsomewhereStaged SYB.Renamer
                            (SYB.mkM liftToMod `SYB.extM` liftToMatch)
                            (toZipper renamed)
              return (fromZipper renamed')
+-}
+             let z = zopenStaged SYB.Renamer (False `SYB.mkQ` liftToMatchQ) (toZipper renamed)
+             logm $ "liftOneLevel'':got z:" ++ (SYB.showData SYB.Renamer 0 $ (getHole z :: Maybe (GHC.Match GHC.Name)))
+
+             z' <- transZM SYB.Renamer (False `SYB.mkQ` liftToMatchQ) liftToMatchZ z
+
+             return (fromZipper z')
            where
 {-
     case1: In a module (HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds):
@@ -700,8 +708,20 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
         new: Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
 
 -}
+
+
              --2. The definition will be lifted to the declaration list of a match
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+             liftToMatchQ :: GHC.Match GHC.Name -> Bool
+             liftToMatchQ (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
+                 = (nonEmptyList (definingDeclsNames [n] (hsBinds  ds) False False)) ||
+                   (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
+
+             liftToMatchZ :: SYB.Stage -> Zipper a -> RefactGhc (Zipper a)
+             liftToMatchZ stage z = do
+                      logm $ "in liftOneLevel''.liftToMatchZ"
+                      return z
+
              liftToMatch (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
                  | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False False)
                   =do

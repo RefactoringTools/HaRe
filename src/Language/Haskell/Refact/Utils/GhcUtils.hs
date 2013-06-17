@@ -20,7 +20,7 @@ import Unsafe.Coerce
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
-import Data.Generics.Zipper
+import qualified Data.Generics.Zipper as Z
 
 {-
 
@@ -74,7 +74,7 @@ something :: GenericQ (Maybe u) -> GenericQ (Maybe u)
 
 -- "something" can be defined in terms of "everything"
 -- when a suitable "choice" operator is used for reduction
--- 
+--
 something = everything orElse
 -}
 
@@ -426,66 +426,170 @@ zeverywhere f z = trans f (downT g z) where
   g z' = leftT g (zeverywhere f z')
 -}
 -- | Apply a generic transformation everywhere in a bottom-up manner.
-zeverywhereStaged :: (Typeable a) => SYB.Stage -> SYB.GenericT -> Zipper a -> Zipper a
+zeverywhereStaged :: (Typeable a) => SYB.Stage -> SYB.GenericT -> Z.Zipper a -> Z.Zipper a
 zeverywhereStaged stage f z
   | checkZipperStaged stage z = z
-  | otherwise = trans f (downT g z)
+  | otherwise = Z.trans f (Z.downT g z)
   where
-    g z' = leftT g (zeverywhereStaged stage f z')
+    g z' = Z.leftT g (zeverywhereStaged stage f z')
 
 {-
 -- | Apply a generic transformation everywhere in a top-down manner.
-zeverywhere' :: GenericT -> Zipper a -> Zipper a
+zeverywhere' :: GenericT -> Z.Zipper a -> Z.Zipper a
 zeverywhere' f z =
   downQ (g x) (zeverywhere' f . leftmost) x where
     x = trans f z
     g z' = rightQ (upQ z' g z') (zeverywhere' f) z'
 
 -- | Apply a generic monadic transformation once at the topmost leftmost successful location.
-zsomewhere :: (MonadPlus m) => GenericM m -> Zipper a -> m (Zipper a)
+zsomewhere :: (MonadPlus m) => GenericM m -> Z.Zipper a -> m (Z.Zipper a)
 zsomewhere f z = transM f z `mplus` downM mzero (g . leftmost) z where
   g z' = transM f z `mplus` rightM mzero (zsomewhere f) z'
 -}
 
 -- | Open a zipper to the point where the Geneneric query passes.
 -- returns the original zipper if the query does not pass (check this)
-zopenStaged :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Zipper a -> Zipper a
+zopenStaged :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Z.Zipper a -> Z.Zipper a
 zopenStaged stage t z
   | checkZipperStaged stage z = z
-  | query t z  = z
-  | otherwise = trans id (downT g z)
+  | Z.query t z  = z
+  -- | query t z  = error $ "zopenStaged: query passed"
+  | otherwise = Z.trans id (Z.downT g z)
   where
-    g z' = leftT g (zopenStaged stage t z')
+    g z' = Z.leftT g (zopenStaged stage t z')
+
+
+{-
+-- | Summarise all nodes in top-down, left-to-right order
+everything :: (r -> r -> r) -> GenericQ r -> GenericQ r
+
+-- Apply f to x to summarise top-level node;
+-- use gmapQ to recurse into immediate subterms;
+-- use ordinary foldl to reduce list of intermediate results
+--
+everything k f x = foldl k (f x) (gmapQ (everything k f) x)
+
+-}
+zeverything :: (r -> r -> r) -> SYB.GenericQ r -> Z.Zipper a
+
+-- Apply f to x to summarise top-level node;
+-- use gmapQ to recurse into immediate subterms;
+-- use ordinary foldl to reduce list of intermediate results
+--
+-- zeverything k f x = foldl k (query f x) (zmapQ (zeverything k f) x)
+zeverything k f x = foldl k (Z.query f x) (Z.zmapQ (zeverything k f) x)
+
+-- foldl :: (a -> b -> a) -> a -> [b] -> a
+{-
+-- | Apply a generic query to the immediate children.
+zmapQ :: GenericQ b -> Z.Zipper a -> [b]
+zmapQ f z = reverse $ downQ [] g z where
+  g z' = query f z' : leftQ [] g z'
+-}
+
+
+{-
+
+zeverythingStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> Z.Zipper a -> r
+zeverythingStaged stage k e f z
+  | checkZipperStaged stage z = e
+  -- | otherwise = foldl k (f z) (gmapQ (zeverythingStaged stage k e f) z)
+  | otherwise = foldl k (f z) (zmapQ (zeverythingStaged stage k e f) z)
+-}
+
+{-
+-- From GHC SYB Utils
+-- | Like 'everything', but avoid known potholes, based on the 'Stage' that
+--   generated the Ast.
+everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ r
+everythingStaged stage k z f x
+  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = z
+  | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+
+gmapQ :: (forall d. Data d => d -> u) -> a -> [u]
+-}
+
+
+-- | Open a zipper to the point where the Geneneric query passes.
+-- returns the original zipper if the query does not pass (check this)
+zopenStaged' :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Z.Zipper a -> Z.Zipper a
+zopenStaged' stage t z
+  | checkZipperStaged stage z = z
+  | Z.query t z  = z
+  -- | query t z  = error $ "zopenStaged: query passed"
+  | otherwise = Z.trans id (Z.downT g z)
+  where
+    g z' = Z.leftT g (zopenStaged' stage t z')
+
+{-
+zopenStaged' :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Z.Zipper a -> m (Z.Zipper a)
+zopenStaged' stage f z
+  | checkZipperStaged stage z = return z
+  | otherwise = transM f z `mplus` downM mzero (g . leftmost) z
+  where
+    g z' = transM f z `mplus` rightM mzero (zopenStaged' stage f) z'
+-}
 
 
 -- | Apply a generic monadic transformation once at the topmost
 -- leftmost successful location, avoiding holes in the GHC structures
-zsomewhereStaged :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Zipper a -> m (Zipper a)
+zsomewhereStaged :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Z.Zipper a -> m (Z.Zipper a)
 zsomewhereStaged stage f z
   | checkZipperStaged stage z = return z
-  | otherwise = transM f z `mplus` downM mzero (g . leftmost) z
+  | otherwise = Z.transM f z `mplus` Z.downM mzero (g . Z.leftmost) z
   where
-    g z' = transM f z `mplus` rightM mzero (zsomewhereStaged stage f) z'
+    g z' = Z.transM f z `mplus` Z.rightM mzero (zsomewhereStaged stage f) z'
 
 
 
 --  TODO: ++AZ++ : carry on here: use transMZ not transM
 -- | Apply a generic monadic zipper transformation once at the topmost
 -- leftmost successful location, avoiding holes in the GHC structures
-zsomewhereStagedZ :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Zipper a -> m (Zipper a)
+zsomewhereStagedZ :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Z.Zipper a -> m (Z.Zipper a)
 zsomewhereStagedZ stage f z
   | checkZipperStaged stage z = return z
-  | otherwise = transM f z `mplus` downM mzero (g . leftmost) z
+  | otherwise = Z.transM f z `mplus` Z.downM mzero (g . Z.leftmost) z
   where
-    g z' = transM f z `mplus` rightM mzero (zsomewhereStaged stage f) z'
+    g z' = Z.transM f z `mplus` Z.rightM mzero (zsomewhereStagedZ stage f) z'
 
 -- We need f to have type
--- f :: Zipper a -> (b -> m b) -> Zipper a
+-- f :: Z.Zipper a -> (b -> m b) -> Z.Zipper a
 -- f z ff
+
+
+-- Starting on the inside
+
+-- | Transform a zipper opened with a given generic query
+transZ :: SYB.Stage -> SYB.GenericQ Bool -> (SYB.Stage -> Z.Zipper a -> Z.Zipper a) -> Z.Zipper a -> Z.Zipper a
+transZ stage q t z
+  | Z.query q z = t stage z
+  | otherwise = z
+
+-- | Monadic transform of a zipper opened with a given generic query
+transZM :: Monad m
+  => SYB.Stage
+  -> SYB.GenericQ Bool
+  -> (SYB.Stage -> Z.Zipper a -> m (Z.Zipper a))
+  -> Z.Zipper a
+  -> m (Z.Zipper a)
+transZM stage q t z
+  | Z.query q z = t stage z
+  | otherwise = return z
+
+-- cast :: a -> Maybe b
+
+{-
+-- | Apply a generic query to the hole.
+query :: GenericQ b -> Z.Zipper a -> b
+query  f (Z.Zipper hole _ctxt) = f hole
+-}
 
 {-
 transMZ ::
-  (Monad m,Data a) => SYB.GenericM m -> Zipper a -> m (Zipper a)
+  (Monad m,Data a) => SYB.GenericM m -> Z.Zipper a -> m (Z.Zipper a)
 transMZ f z = do
   z' <- f z
   return z'
@@ -494,7 +598,7 @@ transMZ f z = do
 {-
 transMZ ::
   (Monad m, Typeable b) =>
-  (Zipper a -> Maybe b -> m (Zipper a)) -> Zipper a -> m (Zipper a)
+  (Z.Zipper a -> Maybe b -> m (Z.Zipper a)) -> Z.Zipper a -> m (Z.Zipper a)
 transMZ f z = do
   z' <- f z (getHole z)
   return z'
@@ -502,14 +606,14 @@ transMZ f z = do
 
 {-
 -- | Apply a generic monadic transformation to the hole
-transM :: (Monad m) => GenericM m -> Zipper a -> m (Zipper a)
-transM f (Zipper hole ctxt) = do
+transM :: (Monad m) => GenericM m -> Z.Zipper a -> m (Z.Zipper a)
+transM f (Z.Zipper hole ctxt) = do
   hole' <- f hole
-  return (Zipper hole' ctxt)
+  return (Z.Zipper hole' ctxt)
 
 -- | Apply a generic query to the hole.
-query :: GenericQ b -> Zipper a -> b
-query  f (Zipper hole _ctxt) = f hole
+query :: GenericQ b -> Z.Zipper a -> b
+query  f (Z.Zipper hole _ctxt) = f hole
 
 type SYB.GenericM m = Data a => a -> m a
 
@@ -529,13 +633,16 @@ extM def ext = unM ((M def) `ext0` (M ext))
 ext0 :: (Typeable a, Typeable b) => c a -> c b -> c a
 ext0 def ext = maybe def id (gcast ext)
 
+maybe :: b -> (a -> b) -> Maybe a -> b
+
+gcast :: (Typeable a, Typeable b) => c a -> Maybe (c b)
+
 -- | The type constructor for transformations
 newtype M m x = M { unM :: x -> m x }
 
 -}
 
-
-checkZipperStaged :: SYB.Stage -> Zipper a -> Bool
+checkZipperStaged :: SYB.Stage -> Z.Zipper a -> Bool
 checkZipperStaged stage z
   | isJust maybeNameSet    = checkItemStage stage (fromJust maybeNameSet)
   | isJust maybePostTcType = checkItemStage stage (fromJust maybePostTcType)
@@ -543,13 +650,13 @@ checkZipperStaged stage z
   | otherwise = False
   where
     maybeNameSet ::  Maybe NameSet
-    maybeNameSet = getHole z
+    maybeNameSet = Z.getHole z
 
     maybePostTcType :: Maybe PostTcType
-    maybePostTcType = getHole z
+    maybePostTcType = Z.getHole z
 
     maybeFixity :: Maybe GHC.Fixity
-    maybeFixity = getHole z
+    maybeFixity = Z.getHole z
 
 
 {-
