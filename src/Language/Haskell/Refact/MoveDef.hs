@@ -665,19 +665,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              return (fromZipper renamed')
 -}
 
-{-
-             let z = zopenStaged SYB.Renamer (False `SYB.mkQ` liftToMatchQ) (Z.toZipper renamed)
-             logm $ "liftOneLevel'':got z:" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z :: Maybe (GHC.Match GHC.Name)))
+             let zs = zopenStaged SYB.Renamer (False `SYB.mkQ` liftToMatchQ) (Z.toZipper renamed)
+             logm $ "liftOneLevel'':got zs len:" ++ (show $ length zs)
+             logm $ "liftOneLevel'':got [z]:" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole (head zs) :: Maybe (GHC.Match GHC.Name)))
 
-             z' <- transZM SYB.Renamer (False `SYB.mkQ` liftToMatchQ) liftToMatchZ z
-
-             return (Z.fromZipper z')
--}
-             let z = zzz SYB.Renamer (False `SYB.mkQ` liftToMatchQ) (Z.toZipper renamed)
-             logm $ "liftOneLevel'':got z len:" ++ (show $ length z)
-             logm $ "liftOneLevel'':got [z]:" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole (head z) :: Maybe (GHC.Match GHC.Name)))
-
-             z' <- transZM SYB.Renamer (False `SYB.mkQ` liftToMatchQ) liftToMatchZ (head z)
+             z' <- case zs of
+                     [zz] -> transZM SYB.Renamer (False `SYB.mkQ` liftToMatchQ) liftToMatchZ zz
+                     _    -> return (Z.toZipper renamed)
 
              return (Z.fromZipper z')
              -- return renamed

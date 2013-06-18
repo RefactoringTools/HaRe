@@ -449,96 +449,19 @@ zsomewhere f z = transM f z `mplus` downM mzero (g . leftmost) z where
 
 -- | Open a zipper to the point where the Geneneric query passes.
 -- returns the original zipper if the query does not pass (check this)
-zopenStaged :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Z.Zipper a -> Z.Zipper a
-zopenStaged stage t z
-  | checkZipperStaged stage z = z
-  | Z.query t z  = z
-  -- | query t z  = error $ "zopenStaged: query passed"
-  | otherwise = Z.trans id (Z.downT g z)
+zopenStaged :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Z.Zipper a -> [Z.Zipper a]
+zopenStaged stage q z
+  | checkZipperStaged stage z = []
+  | Z.query q z = [z]
+  | otherwise = reverse $ Z.downQ [] g z 
   where
-    g z' = Z.leftT g (zopenStaged stage t z')
+    g z' = (zopenStaged stage q z') ++ (Z.leftQ [] g z')
 
-
-{-
--- | Summarise all nodes in top-down, left-to-right order
-everything :: (r -> r -> r) -> GenericQ r -> GenericQ r
-
--- Apply f to x to summarise top-level node;
--- use gmapQ to recurse into immediate subterms;
--- use ordinary foldl to reduce list of intermediate results
---
-everything k f x = foldl k (f x) (gmapQ (everything k f) x)
-
--}
--- zeverything :: (r -> r -> r) -> SYB.GenericQ r -> Z.Zipper a
-
--- Apply f to x to summarise top-level node;
--- use gmapQ to recurse into immediate subterms;
--- use ordinary foldl to reduce list of intermediate results
---
--- zeverything k f x = foldl k (query f x) (zmapQ (zeverything k f) x)
--- zeverything k f x = foldl k (Z.query f x) (Z.zmapQ (zeverything k f) x)
-
-{-
-
-zeverythingStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> Z.Zipper a -> r
-zeverythingStaged stage k e f z
-  | checkZipperStaged stage z = e
-  -- | otherwise = foldl k (f z) (gmapQ (zeverythingStaged stage k e f) z)
-  | otherwise = foldl k (f z) (zmapQ (zeverythingStaged stage k e f) z)
-z-}
-
-{-
--- From GHC SYB Utils
--- | Like 'everything', but avoid known potholes, based on the 'Stage' that
---   generated the Ast.
-everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ r
-everythingStaged stage k z f x
-  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = z
-  | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
-  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
-        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
-        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
-
-gmapQ :: (forall d. Data d => d -> u) -> a -> [u]
--}
-
-
--- | Open a zipper to the point where the Geneneric query passes.
--- returns the original zipper if the query does not pass (check this)
-zopenStaged' :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Z.Zipper a -> Z.Zipper a
-zopenStaged' stage t z
-  | checkZipperStaged stage z = z
-  | Z.query t z  = z
-  -- | query t z  = error $ "zopenStaged: query passed"
-  | otherwise = Z.trans id (Z.downT g z)
-  where
-    g z' = Z.leftT g (zopenStaged' stage t z')
-
--- foldl :: (a -> b -> a) -> a -> [b] -> a
 {-
 -- | Apply a generic query to the immediate children.
 zmapQ :: GenericQ b -> Z.Zipper a -> [b]
 zmapQ f z = reverse $ downQ [] g z where
   g z' = query f z' : leftQ [] g z'
--}
-
-zzz :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Z.Zipper a -> [Z.Zipper a]
-zzz stage q z
-  | checkZipperStaged stage z = []
-  | Z.query q z = [z]
-  | otherwise = reverse $ Z.downQ [] g z 
-  where
-    -- g z' = query f z' : leftQ [] g z'
-    g z' = (zzz stage q z') ++ (Z.leftQ [] g z')
-
-{-
-zopenStaged' :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Z.Zipper a -> m (Z.Zipper a)
-zopenStaged' stage f z
-  | checkZipperStaged stage z = return z
-  | otherwise = transM f z `mplus` downM mzero (g . leftmost) z
-  where
-    g z' = transM f z `mplus` rightM mzero (zopenStaged' stage f) z'
 -}
 
 
@@ -551,24 +474,6 @@ zsomewhereStaged stage f z
   where
     g z' = Z.transM f z `mplus` Z.rightM mzero (zsomewhereStaged stage f) z'
 
-
-
---  TODO: ++AZ++ : carry on here: use transMZ not transM
--- | Apply a generic monadic zipper transformation once at the topmost
--- leftmost successful location, avoiding holes in the GHC structures
-zsomewhereStagedZ :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Z.Zipper a -> m (Z.Zipper a)
-zsomewhereStagedZ stage f z
-  | checkZipperStaged stage z = return z
-  | otherwise = Z.transM f z `mplus` Z.downM mzero (g . Z.leftmost) z
-  where
-    g z' = Z.transM f z `mplus` Z.rightM mzero (zsomewhereStagedZ stage f) z'
-
--- We need f to have type
--- f :: Z.Zipper a -> (b -> m b) -> Z.Zipper a
--- f z ff
-
-
--- Starting on the inside
 
 -- | Transform a zipper opened with a given generic query
 transZ :: SYB.Stage -> SYB.GenericQ Bool -> (SYB.Stage -> Z.Zipper a -> Z.Zipper a) -> Z.Zipper a -> Z.Zipper a
@@ -767,3 +672,47 @@ zlopenZipper done q z
     z' = z -- $ within traverse (zlopenZipper done q)
 --    g = fmap id $ z & within traverse 
 
+
+{-
+-- | Summarise all nodes in top-down, left-to-right order
+everything :: (r -> r -> r) -> GenericQ r -> GenericQ r
+
+-- Apply f to x to summarise top-level node;
+-- use gmapQ to recurse into immediate subterms;
+-- use ordinary foldl to reduce list of intermediate results
+--
+everything k f x = foldl k (f x) (gmapQ (everything k f) x)
+
+-}
+-- zeverything :: (r -> r -> r) -> SYB.GenericQ r -> Z.Zipper a
+
+-- Apply f to x to summarise top-level node;
+-- use gmapQ to recurse into immediate subterms;
+-- use ordinary foldl to reduce list of intermediate results
+--
+-- zeverything k f x = foldl k (query f x) (zmapQ (zeverything k f) x)
+-- zeverything k f x = foldl k (Z.query f x) (Z.zmapQ (zeverything k f) x)
+
+{-
+
+zeverythingStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> Z.Zipper a -> r
+zeverythingStaged stage k e f z
+  | checkZipperStaged stage z = e
+  -- | otherwise = foldl k (f z) (gmapQ (zeverythingStaged stage k e f) z)
+  | otherwise = foldl k (f z) (zmapQ (zeverythingStaged stage k e f) z)
+z-}
+
+{-
+-- From GHC SYB Utils
+-- | Like 'everything', but avoid known potholes, based on the 'Stage' that
+--   generated the Ast.
+everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ r
+everythingStaged stage k z f x
+  | (const False `extQ` postTcType `extQ` fixity `extQ` nameSet) x = z
+  | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+
+
+-}
