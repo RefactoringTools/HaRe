@@ -20,8 +20,9 @@ import qualified OccName               as GHC
 import qualified Outputable            as GHC
 
 import Control.Exception
+import Control.Lens
 import Control.Monad.State
-import Data.Generics.Zipper
+import qualified Data.Generics.Zipper as Z
 import Data.List
 import Data.Maybe
 
@@ -663,12 +664,23 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                            (toZipper renamed)
              return (fromZipper renamed')
 -}
-             let z = zopenStaged SYB.Renamer (False `SYB.mkQ` liftToMatchQ) (toZipper renamed)
-             logm $ "liftOneLevel'':got z:" ++ (SYB.showData SYB.Renamer 0 $ (getHole z :: Maybe (GHC.Match GHC.Name)))
+
+{-
+             let z = zopenStaged SYB.Renamer (False `SYB.mkQ` liftToMatchQ) (Z.toZipper renamed)
+             logm $ "liftOneLevel'':got z:" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z :: Maybe (GHC.Match GHC.Name)))
 
              z' <- transZM SYB.Renamer (False `SYB.mkQ` liftToMatchQ) liftToMatchZ z
 
-             return (fromZipper z')
+             return (Z.fromZipper z')
+-}
+             let z = zzz SYB.Renamer (False `SYB.mkQ` liftToMatchQ) (Z.toZipper renamed)
+             logm $ "liftOneLevel'':got z len:" ++ (show $ length z)
+             logm $ "liftOneLevel'':got [z]:" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole (head z) :: Maybe (GHC.Match GHC.Name)))
+
+             z' <- transZM SYB.Renamer (False `SYB.mkQ` liftToMatchQ) liftToMatchZ (head z)
+
+             return (Z.fromZipper z')
+             -- return renamed
            where
 {-
     case1: In a module (HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds):
@@ -717,7 +729,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                  = (nonEmptyList (definingDeclsNames [n] (hsBinds  ds) False False)) ||
                    (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
 
-             liftToMatchZ :: SYB.Stage -> Zipper a -> RefactGhc (Zipper a)
+             liftToMatchZ :: SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a)
              liftToMatchZ stage z = do
                       logm $ "in liftOneLevel''.liftToMatchZ"
                       return z

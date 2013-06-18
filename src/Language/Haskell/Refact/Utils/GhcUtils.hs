@@ -12,7 +12,7 @@ import Control.Monad
 import Data.Maybe
 
 -- For Lens stuff
--- import Control.Lens
+import Control.Lens
 import Control.Applicative
 import Data.Data
 
@@ -470,23 +470,14 @@ everything :: (r -> r -> r) -> GenericQ r -> GenericQ r
 everything k f x = foldl k (f x) (gmapQ (everything k f) x)
 
 -}
-zeverything :: (r -> r -> r) -> SYB.GenericQ r -> Z.Zipper a
+-- zeverything :: (r -> r -> r) -> SYB.GenericQ r -> Z.Zipper a
 
 -- Apply f to x to summarise top-level node;
 -- use gmapQ to recurse into immediate subterms;
 -- use ordinary foldl to reduce list of intermediate results
 --
 -- zeverything k f x = foldl k (query f x) (zmapQ (zeverything k f) x)
-zeverything k f x = foldl k (Z.query f x) (Z.zmapQ (zeverything k f) x)
-
--- foldl :: (a -> b -> a) -> a -> [b] -> a
-{-
--- | Apply a generic query to the immediate children.
-zmapQ :: GenericQ b -> Z.Zipper a -> [b]
-zmapQ f z = reverse $ downQ [] g z where
-  g z' = query f z' : leftQ [] g z'
--}
-
+-- zeverything k f x = foldl k (Z.query f x) (Z.zmapQ (zeverything k f) x)
 
 {-
 
@@ -495,7 +486,7 @@ zeverythingStaged stage k e f z
   | checkZipperStaged stage z = e
   -- | otherwise = foldl k (f z) (gmapQ (zeverythingStaged stage k e f) z)
   | otherwise = foldl k (f z) (zmapQ (zeverythingStaged stage k e f) z)
--}
+z-}
 
 {-
 -- From GHC SYB Utils
@@ -523,6 +514,23 @@ zopenStaged' stage t z
   | otherwise = Z.trans id (Z.downT g z)
   where
     g z' = Z.leftT g (zopenStaged' stage t z')
+
+-- foldl :: (a -> b -> a) -> a -> [b] -> a
+{-
+-- | Apply a generic query to the immediate children.
+zmapQ :: GenericQ b -> Z.Zipper a -> [b]
+zmapQ f z = reverse $ downQ [] g z where
+  g z' = query f z' : leftQ [] g z'
+-}
+
+zzz :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Z.Zipper a -> [Z.Zipper a]
+zzz stage q z
+  | checkZipperStaged stage z = []
+  | Z.query q z = [z]
+  | otherwise = reverse $ Z.downQ [] g z 
+  where
+    -- g z' = query f z' : leftQ [] g z'
+    g z' = (zzz stage q z') ++ (Z.leftQ [] g z')
 
 {-
 zopenStaged' :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Z.Zipper a -> m (Z.Zipper a)
@@ -677,3 +685,85 @@ everythingStaged stage k z f x
         fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
 
 -}
+
+-- ---------------------------------------------------------------------
+
+-- Control.Lens.Zipper
+
+lcheckZipperStaged :: (Typeable a) => SYB.Stage -> (Zipper h i a) -> Bool
+lcheckZipperStaged stage z
+  | isJust maybeNameSet    = checkItemStage stage (fromJust maybeNameSet)
+  | isJust maybePostTcType = checkItemStage stage (fromJust maybePostTcType)
+  | isJust maybeFixity     = checkItemStage stage (fromJust maybeFixity)
+  | otherwise = False
+  where
+    maybeNameSet ::  Maybe NameSet
+    maybeNameSet = cast (view focus z)
+
+    maybePostTcType :: Maybe PostTcType
+    maybePostTcType = cast (view focus z)
+
+    maybeFixity :: Maybe GHC.Fixity
+    maybeFixity = cast (view focus z)
+
+{-
+Original versions
+
+-- | Apply a generic transformation everywhere in a bottom-up manner.
+zeverywhere :: GenericT -> Zipper a -> Zipper a
+zeverywhere f z = trans f (downT g z) where
+  g z' = leftT g (zeverywhere f z')
+
+-- | Apply a generic transformation everywhere in a bottom-up manner.
+zeverywhereStaged :: (Typeable a) => SYB.Stage -> SYB.GenericT -> Z.Zipper a -> Z.Zipper a
+zeverywhereStaged stage f z
+  | checkZipperStaged stage z = z
+  | otherwise = Z.trans f (Z.downT g z)
+  where
+    g z' = Z.leftT g (zeverywhereStaged stage f z')
+-}
+
+{-
+-- | Apply a generic transformation everywhere in a bottom-up manner.
+lzeverywhere :: (Data a) => SYB.GenericT -> (Zipper h i a) -> (Zipper h i a)
+lzeverywhere f z = trans f (downward g z) where
+  g z' = leftT g (lzeverywhere f z')
+-}
+
+trans :: (Data a) => SYB.GenericT -> (Zipper h i a) -> (Zipper h i a)
+trans f z = z & focus .~ (f v)
+  where
+    v = view focus z
+
+
+{-
+-- | Apply a generic transformation to the hole.
+trans :: GenericT -> Zipper a -> Zipper a
+trans  f (Zipper hole ctxt) = Zipper (f hole) ctxt
+-}
+
+-- zeverything :: (r -> r -> r) -> SYB.GenericQ r -> Z.Zipper a
+
+zleverything :: (Data a) => (r -> r -> r) -> SYB.GenericQ r -> (Zipper h i a) -> r
+-- zleverything k f z = foldl k (f (view focus z) ) zs
+zleverything k f z = (f (view focus z) ) 
+  -- where
+    -- ff = z $ within
+    -- zs = case ff of
+    --        Just _ -> (f (view focus z) ) 
+    --        Nothing -> (f (view focus z) ) 
+
+-- foldl :: (a -> b -> a) -> a -> [b] -> a
+
+-- everything :: (r -> r -> r) -> GenericQ r -> GenericQ r
+-- everything k f x = foldl k (f x) (gmapQ (everything k f) x)
+
+zlopenZipper :: (Data a) => Bool -> SYB.GenericQ Bool -> (Zipper h i a) -> (Zipper h i a)
+zlopenZipper done q z 
+  | done = z
+  | q (view focus z) = z
+  | otherwise = zlopenZipper done q z'
+  where
+    z' = z -- $ within traverse (zlopenZipper done q)
+--    g = fmap id $ z & within traverse 
+

@@ -236,3 +236,37 @@ s1 = zipper s
 
 
 
+-- -----------------------------------------------------------
+
+-- from http://stackoverflow.com/questions/15489324/traversal-tree-with-lens-and-zippers
+
+testTree = Node 1 [ Node 2 [ Node 4 [ Node 6 [], Node 8 [] ],
+                             Node 5 [ Node 7 [], Node 9 [] ] ],
+                    Node 3 [ Node 10 [], 
+                             Node 11 [] ] 
+                  ]
+
+zipperTree = zipper testTree
+
+
+z1 = zipperTree & downward branches 
+                & fromWithin traverse 
+                & downward root 
+                & focus .~ 500 
+                & rezip
+
+z1' = Node 1 [ Node 500 [Node {rootLabel = 4, subForest = [Node {rootLabel = 6, subForest = []},Node {rootLabel = 8, subForest = []}]},Node {rootLabel = 5, subForest = [Node {rootLabel = 7, subForest = []},Node {rootLabel = 9, subForest = []}]}],
+                       Node {rootLabel = 3, subForest = [Node {rootLabel = 10, subForest = []},Node {rootLabel = 11, subForest = []}]}]
+
+tape = zipperTree & downward branches 
+                  & fromWithin traverse 
+                  & downward root 
+                  & saveTape
+
+z2 :: Maybe (Tree Integer)
+z2 = do
+      t  <- (restoreTape tape testTree)
+      return (t & focus .~ 15 & rezip)
+
+z3 = zipperTree & downward branches 
+--                & fromWithin traverse 
