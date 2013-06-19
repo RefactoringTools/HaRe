@@ -1,6 +1,6 @@
 module LiftOneLevel.WhereIn6 where
 
---A definition can be lifted from a where or let to the top level binding group.
+--A definition can be lifted from a where or let into the surrounding binding group.
 --Lifting a definition widens the scope of the definition.
 
 --In this example, lift 'pow' defined in 'sq'

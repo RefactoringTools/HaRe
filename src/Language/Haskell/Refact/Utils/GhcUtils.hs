@@ -593,6 +593,58 @@ everythingStaged stage k z f x
 
 -- ---------------------------------------------------------------------
 
+-- | Climb the tree until a predicate holds
+upUntil :: SYB.GenericQ Bool -> Z.Zipper a -> Maybe (Z.Zipper a)
+upUntil q z 
+  | Z.query q z = Just z
+  | otherwise = Z.upQ Nothing (upUntil q) z
+
+{-
+
+-- | Apply a generic query to the rightmost child if one exists.
+upQ :: b -- ^ Value to return if parent does not exist.
+    -> (Zipper a -> b) -> Zipper a -> b
+upQ b f z = moveQ up b f z
+
+
+
+
+-- | Move to the leftmost sibling.
+leftmost :: Zipper a -> Zipper a
+leftmost z = leftQ z leftmost z
+
+------ Query
+-- | Apply a generic query to the left sibling if one exists.
+leftQ :: b -- ^ Value to return of no left sibling exists.
+      -> (Zipper a -> b) -> Zipper a -> b
+leftQ b f z = moveQ left b f z
+
+
+-- | A movement operation such as 'left', 'right', 'up', or 'down'.
+type Move a = Zipper a -> Maybe (Zipper a)
+
+-- | Apply a generic query using the specified movement operation.
+moveQ :: Move a -- ^ Move operation
+      -> b -- ^ Default if can't move
+      -> (Zipper a -> b) -- ^ Query if can move
+      -> Zipper a -- ^ Zipper
+      -> b
+moveQ move b f z = case move z of
+                     Nothing -> b
+                     Just z' -> f z'
+
+-}
+
+
+
+
+
+
+
+
+
+-- ---------------------------------------------------------------------
+
 -- Control.Lens.Zipper
 
 lcheckZipperStaged :: (Typeable a) => SYB.Stage -> (Zipper h i a) -> Bool

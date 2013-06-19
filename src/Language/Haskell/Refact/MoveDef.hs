@@ -721,6 +721,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
             (GHC.L _ (Match [LPat id] (Maybe (LHsType id)) (GRHSs id)))
 -}
 
+             -- Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))
+             isValBinds :: GHC.HsValBinds GHC.Name -> Bool
+             isValBinds _ = True
 
              --2. The definition will be lifted to the declaration list of a match
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
@@ -758,9 +761,14 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       let Just z7 = Z.up z6
 
                       let Just z8 = Z.up z7
-                      logm $ "liftToMatchZ:z8=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z8 :: Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))))
+                      -- logm $ "liftToMatchZ:z8=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z8 :: Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))))
 
-                      let Just ds' = Z.getHole z8 :: Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))
+                      -- let Just ds' = Z.getHole z8 :: Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))
+
+                      -- let Just zu = upUntil (False `SYB.mkQ` isValBinds) z
+                      let zu  = fromMaybe (error "MoveDef.liftToMatchZ.1") $ upUntil (False `SYB.mkQ` isValBinds) z
+                      -- let Just ds' = Z.getHole zu :: Maybe (GHC.HsValBinds GHC.Name)
+                      let ds' = fromMaybe (error "MoveDef.liftToMatchZ.2") (Z.getHole zu :: Maybe (GHC.HsValBinds GHC.Name))
 
                       -- let match' = match
                       -- match' <- worker match (hsBinds ds) pn False
