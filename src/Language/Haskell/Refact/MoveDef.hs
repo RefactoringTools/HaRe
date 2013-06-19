@@ -12,6 +12,7 @@ module Language.Haskell.Refact.MoveDef
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+import qualified Bag                   as GHC
 import qualified Exception             as GHC
 import qualified FastString            as GHC
 import qualified GHC
@@ -713,6 +714,11 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
            (in a FunBind)
         new: Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
 
+        (Funbind ... (MatchGroup GHC.Name) ..)
+
+          MatchGroup [LMatch id] PostTcType
+
+            (GHC.L _ (Match [LPat id] (Maybe (LHsType id)) (GRHSs id)))
 -}
 
 
@@ -724,9 +730,45 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                    (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
 
              liftToMatchZ :: SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a)
-             liftToMatchZ stage z = do
-                      logm $ "in liftOneLevel''.liftToMatchZ"
-                      return z
+             liftToMatchZ stage z
+                 | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False False)
+                  = do
+                      logm $ "in liftOneLevel''.liftToMatchZ in ds"
+
+                      let Just z1 = Z.up z
+                      -- logm $ "liftToMatchZ:z1=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z1 :: Maybe (GHC.LMatch GHC.Name)))
+
+                      let Just z2 = Z.up z1
+                      -- logm $ "liftToMatchZ:z2=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z2 :: Maybe ([GHC.LMatch GHC.Name])))
+
+                      let Just z3 = Z.up z2
+                      -- What is z2?
+
+                      let Just z4 = Z.up z3
+                      -- logm $ "liftToMatchZ:z4=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z4 :: Maybe (GHC.MatchGroup GHC.Name)))
+
+                      let Just z5 = Z.up z4
+                      -- logm $ "liftToMatchZ:z5=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z5 :: Maybe (GHC.HsBindLR GHC.Name GHC.Name)))
+                      -- z5 is a funbind
+
+                      let Just z6 = Z.up z5
+                      -- logm $ "liftToMatchZ:z6=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z6 :: Maybe (GHC.LHsBindLR GHC.Name GHC.Name)))
+                      -- z6 is a located funbind
+
+                      let Just z7 = Z.up z6
+
+                      let Just z8 = Z.up z7
+                      logm $ "liftToMatchZ:z8=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z8 :: Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))))
+
+                      let Just ds' = Z.getHole z8 :: Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))
+
+                      -- let match' = match
+                      -- match' <- worker match (hsBinds ds) pn False
+                      match' <- worker match (hsBinds ds') pn False
+
+                      return (Z.setHole match' z)
+                  where
+                    Just (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name )= Z.getHole z
 
              liftToMatch (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
                  | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False False)
