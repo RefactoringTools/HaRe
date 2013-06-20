@@ -660,12 +660,6 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                             `choiceTP` failure) renamed) -- ((toks,unmodified),(-1000,0))
 -}
 {-
-             renamed' <- zsomewhereStaged SYB.Renamer
-                           (SYB.mkM liftToMod `SYB.extM` liftToMatch)
-                           (toZipper renamed)
-             return (fromZipper renamed')
--}
-
              let zs = zopenStaged SYB.Renamer (False `SYB.mkQ` liftToMatchQ) (Z.toZipper renamed)
              logm $ "liftOneLevel'':got zs len:" ++ (show $ length zs)
              logm $ "liftOneLevel'':got [z]:" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole (head zs) :: Maybe (GHC.Match GHC.Name)))
@@ -675,6 +669,19 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                      _    -> return (Z.toZipper renamed)
 
              return (Z.fromZipper z')
+-}
+{-
+             let zs = zopenStaged' SYB.Renamer (Nothing `SYB.mkQ` liftToMatchQ') (Z.toZipper renamed)
+             logm $ "liftOneLevel'':got zs len:" ++ (show $ length zs)
+             -- logm $ "liftOneLevel'':got [z]:" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole (head zs) :: Maybe (GHC.Match GHC.Name)))
+
+             z' <- case zs of
+                     [(z,t)] -> t SYB.Renamer z
+                     _    -> return (Z.toZipper renamed)
+
+             return (Z.fromZipper z')
+-}
+             ztransformStagedM SYB.Renamer (Nothing `SYB.mkQ` liftToMatchQ') (Z.toZipper renamed)
              -- return renamed
            where
 {-
@@ -727,6 +734,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
              --2. The definition will be lifted to the declaration list of a match
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+             liftToMatchQ' :: GHC.Match GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+             liftToMatchQ' (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
+                 | (nonEmptyList (definingDeclsNames [n] (hsBinds  ds) False False)) ||
+                   (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
+                    = Just liftToMatchZ
+                 | otherwise = Nothing
+
              liftToMatchQ :: GHC.Match GHC.Name -> Bool
              liftToMatchQ (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
                  = (nonEmptyList (definingDeclsNames [n] (hsBinds  ds) False False)) ||

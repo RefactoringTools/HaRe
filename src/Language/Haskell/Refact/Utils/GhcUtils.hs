@@ -637,10 +637,69 @@ moveQ move b f z = case move z of
 
 
 
+-- ---------------------------------------------------------------------
+
+
+-- | Open a zipper to the point where the Generic query passes,
+-- returning the zipper and a value from the specific part of the 
+-- GenericQ that matched. This allows the components of the query to
+-- return a specific transformation routine, to apply to the returned zipper
+zopenStaged' :: (Typeable a)
+  => SYB.Stage
+  -> SYB.GenericQ (Maybe b)
+  -> Z.Zipper a
+  -> [(Z.Zipper a,b)]
+zopenStaged' stage q z
+  | checkZipperStaged stage z = []
+  -- | Z.query q z = [z]
+  | isJust zq = [(z,fromJust zq)]
+  | otherwise = reverse $ Z.downQ [] g z
+  where
+    g z' = (zopenStaged' stage q z') ++ (Z.leftQ [] g z')
+
+    zq = Z.query q z
+
+
+-- | Open a zipper to the point where the Generic query passes,
+-- and apply the transformation returned from the specific part of the 
+-- GenericQ that matched. 
+ztransformStagedM :: (Typeable a,Monad m)
+  => SYB.Stage
+  -> SYB.GenericQ (Maybe (SYB.Stage -> Z.Zipper a -> m (Z.Zipper a)))
+  -> Z.Zipper a
+  -> m (Z.Zipper a)
+ztransformStagedM stage q z = do
+    let zs = zopenStaged' stage q z
+    z' <- case zs of
+           [(zz,t)] -> t stage zz
+           _        -> return z
+    return z'
 
 
 
-
+{-
+-- | Open a zipper to the point where the Geneneric query passes, and
+-- then perform the whole-zipper transformation on it
+ztransformStagedM :: (Typeable a, MonadPlus m)
+  => SYB.Stage
+  -> SYB.GenericQ (Maybe (SYB.Stage -> Z.Zipper a -> m (Z.Zipper a)))
+  -> Z.Zipper a
+  -> m (Z.Zipper a)
+ztransformStagedM stage q z
+  | checkZipperStaged stage z = return z
+  -- | Z.query q z = [z]
+  | isJust zq = do r <- (fromJust zq) stage z
+                   return r
+  | otherwise = return $ Z.downQ z g z
+  where
+    g z' = (ztransformStagedM stage q z') `mplus` (Z.leftQ z' g z')
+{-
+    g z' = do ls <- (ztransformStagedM stage q z')
+              rs <- (Z.leftQ [] g z')
+              return (ls ++ rs)
+-}
+    zq = Z.query q z
+-}
 
 
 -- ---------------------------------------------------------------------
