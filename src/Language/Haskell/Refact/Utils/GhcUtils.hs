@@ -267,6 +267,15 @@ upUntil q z
   | Z.query q z = Just z
   | otherwise = Z.upQ Nothing (upUntil q) z
 
+-- ---------------------------------------------------------------------
+
+-- | Up the zipper until a predicate holds, and then return the zipper
+-- hole
+findAbove :: (Data a) => (a -> Bool) -> Z.Zipper a -> Maybe a
+findAbove cond z = do
+    zu  <- upUntil (False `SYB.mkQ` cond) z
+    res <- (Z.getHole zu)
+    return res
 
 -- ---------------------------------------------------------------------
 

@@ -659,7 +659,10 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                                                                   ))
                             `choiceTP` failure) renamed) -- ((toks,unmodified),(-1000,0))
 -}
-             ztransformStagedM SYB.Renamer (Nothing `SYB.mkQ` liftToMatchQ) (Z.toZipper renamed)
+             ztransformStagedM SYB.Renamer (Nothing
+                                `SYB.mkQ` liftToMatchQ
+                                `SYB.extQ` liftToLet
+                                    ) (Z.toZipper renamed)
 
            where
 {-
@@ -706,95 +709,38 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
             (GHC.L _ (Match [LPat id] (Maybe (LHsType id)) (GRHSs id)))
 -}
 
-             -- Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))
              isValBinds :: GHC.HsValBinds GHC.Name -> Bool
              isValBinds _ = True
 
+             isGRHSs :: GHC.GRHSs GHC.Name -> Bool
+             isGRHSs _ = True
+
              --2. The definition will be lifted to the declaration list of a match
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-             liftToMatchQ :: GHC.Match GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
-             liftToMatchQ (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
+             liftToMatchQ :: (SYB.Data a) => GHC.Match GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+             liftToMatchQ ((GHC.Match _pats _mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
                  | (nonEmptyList (definingDeclsNames [n] (hsBinds  ds) False False)) ||
                    (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
                     = Just liftToMatchZ
                  | otherwise = Nothing
 
-             liftToMatchZ :: SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a)
-             liftToMatchZ stage z
+             liftToMatchZ :: (SYB.Data a) => SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a)
+             liftToMatchZ _stage z
                  | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False False)
                   = do
                       logm $ "in liftOneLevel''.liftToMatchZ in ds"
 
-                      let Just z1 = Z.up z
-                      -- logm $ "liftToMatchZ:z1=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z1 :: Maybe (GHC.LMatch GHC.Name)))
-
-                      let Just z2 = Z.up z1
-                      -- logm $ "liftToMatchZ:z2=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z2 :: Maybe ([GHC.LMatch GHC.Name])))
-
-                      let Just z3 = Z.up z2
-                      -- What is z2?
-
-                      let Just z4 = Z.up z3
-                      -- logm $ "liftToMatchZ:z4=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z4 :: Maybe (GHC.MatchGroup GHC.Name)))
-
-                      let Just z5 = Z.up z4
-                      -- logm $ "liftToMatchZ:z5=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z5 :: Maybe (GHC.HsBindLR GHC.Name GHC.Name)))
-                      -- z5 is a funbind
-
-                      let Just z6 = Z.up z5
-                      -- logm $ "liftToMatchZ:z6=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z6 :: Maybe (GHC.LHsBindLR GHC.Name GHC.Name)))
-                      -- z6 is a located funbind
-
-                      let Just z7 = Z.up z6
-
-                      let Just z8 = Z.up z7
-                      -- logm $ "liftToMatchZ:z8=" ++ (SYB.showData SYB.Renamer 0 $ (Z.getHole z8 :: Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))))
-
-                      -- let Just ds' = Z.getHole z8 :: Maybe (GHC.Bag (GHC.LHsBindLR GHC.Name GHC.Name))
-
-                      -- let Just zu = upUntil (False `SYB.mkQ` isValBinds) z
                       let zu  = fromMaybe (error "MoveDef.liftToMatchZ.1") $ upUntil (False `SYB.mkQ` isValBinds) z
-                      -- let Just ds' = Z.getHole zu :: Maybe (GHC.HsValBinds GHC.Name)
-                      let ds' = fromMaybe (error "MoveDef.liftToMatchZ.2") (Z.getHole zu :: Maybe (GHC.HsValBinds GHC.Name))
+                      let mds = (Z.getHole zu :: Maybe (GHC.HsValBinds GHC.Name))
 
-                      -- let match' = match
-                      -- match' <- worker match (hsBinds ds) pn False
-                      match' <- worker match (hsBinds ds') pn False
+                      match' <- case mds of
+                                  Just ds' -> worker match (hsBinds ds') pn False
+                                  Nothing  -> return match
 
                       return (Z.setHole match' z)
                   where
-                    Just (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name )= Z.getHole z
+                    Just (match@(GHC.Match _pats _mtyp (GHC.GRHSs _rhs ds))::GHC.Match GHC.Name )= Z.getHole z
 
-             liftToMatch (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
-                 | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False False)
-                  =do
-                      logm $ "in liftOneLevel''.liftToMatch in ds"
-                      match' <- worker match (hsBinds ds) pn False
-                      -- let ds' = (replaceBinds ds ds'')
-                      -- return (GHC.Match pats mtyp (GHC.GRHSs rhs ds'))
-                      return match'
-
-             -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-             liftToMatch (match@(GHC.Match pats mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
-                 -- TODO: WIP here, reinstate the following
-                 | nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False)
-                 -- | error "carry on here" -- nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False)
-                   = do
-                      logm $ "in liftOneLevel''.liftToMatch in rhs"
-                      doLifting1 match n
-             liftToMatch _ =mzero
-{-
-             --2. The definition will be lifted to the declaration list of a match
-             liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-                 | definingDecls [pn] (hsDecls ds) False False/=[]
-                  =do ds'<-worker match ds pn False
-                      return (HsMatch loc1 name pats rhs ds')
-
-             liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-                 | definingDecls [pn] (hsDecls rhs) False False /=[]
-                  = doLifting1 match pn
-             liftToMatch _ =mzero
--}
 
 {-
              --3. The definition will be lifted to the declaration list of a pattern binding 
@@ -807,7 +753,33 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                 | definingDecls [pn] (hsDecls rhs) False  False /=[]
                   =doLifting2 pat  pn
              liftToPattern _=mzero
+-}
 
+             --4. The definition will be lifted to the declaration list in a let expression.
+             liftToLet :: GHC.HsExpr GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+             liftToLet (letExp@(GHC.HsLet ds e)::GHC.HsExpr GHC.Name)
+               | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False  False)
+                 = Just doLiftToLet
+               | otherwise = Nothing
+               where
+                 doLiftToLet stage z =
+                  do
+                    logm $ "in liftOneLevel''.liftToLet in ds"
+                    -- move up until we find a GRHSs
+
+                    -- TODO: make next two lines part of GhcUtils
+                    let zu  = fromMaybe (error "MoveDef.liftToMatchZ.1") $ upUntil (False `SYB.mkQ` isGRHSs) z
+                    let grhss = fromMaybe (error "MoveDef.liftToMatchZ.2") (Z.getHole zu :: Maybe (GHC.GRHSs GHC.Name))
+
+                    -- let (GHC.GRHSs rhs ds) = grhss
+                    logm $ "doLiftToLet:dest=" ++ (SYB.showData SYB.Renamer 0 ds) -- ++AZ++
+
+                    -- ds' <- worker letExp (hsBinds ds) pn False
+                    ds' <- worker grhss (hsBinds ds) pn False
+                    -- return (Z.setHole (GHC.GRHSs rhs (replaceBinds ds ds')) z)
+                    return (Z.setHole ds' z)
+             liftToLet _ = Nothing
+{-
              --4. The definition will be lifted to the declaration list in a let expresiion.
              liftToLet (letExp@(Exp (HsLet ds e))::HsExpP)
                | definingDecls [pn] (hsDecls ds) False  False/=[]
@@ -818,7 +790,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                | definingDecls [pn] (hsDecls e) False  False /=[]
                 = doLifting3 letExp pn
              liftToLet _ =mzero
-
+-}
+{-
 
              --5. The definition will be lifted to the declaration list in a alt
              liftToAlt (alt@(HsAlt loc p rhs ds)::(HsAlt (HsExpP) (HsPatP) [HsDeclP]))
@@ -842,12 +815,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                = doLifting5 letStmt pn
              liftToLetStmt _=mzero
 -}
+{-
              -- failure=idTP `adhocTP` mod
                 where
                   mod (m::HsModuleP)
                    = error ( "Lifting this definition failed. "++
                            " This might be because that the definition to be lifted is defined in a class/instance declaration.")
-
+-}
              worker :: (HsValBinds t)
                 => t -> [GHC.LHsBind GHC.Name] -> GHC.Located GHC.Name
                 -> Bool -- ^True if lifting to the top level
@@ -1906,6 +1880,9 @@ removeTypeSig pn decls = decls
 -- ++AZ++ : Not sure if this is meaningful with renamed source.
 
 -- divideDecls::[HsDeclP]->PNT->([HsDeclP],[HsDeclP],[HsDeclP])
+divideDecls ::
+  SYB.Data a =>
+  [a] -> GHC.Located GHC.Name -> ([a], [a], [a])
 divideDecls ds pnt
   -- = error "undefined divideDecls"
   = let (before,after)=break (\x->findPNT pnt x) ds
