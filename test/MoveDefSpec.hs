@@ -303,6 +303,16 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
      diff `shouldBe` []
 
 
+    -- ---------------------------------
+
+    it "LiftOneLevel WhereIn7 12 14" $ do
+     liftOneLevel defaultTestSettings Nothing "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
+     -- liftOneLevel logTestSettings  Nothing "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
+     diff <- compareFiles "./test/testdata/LiftOneLevel/WhereIn7.hs.expected"
+                          "./test/testdata/LiftOneLevel/WhereIn7.hs.refactored"
+     diff `shouldBe` []
+
+
 {- original tests
 TestCases{refactorCmd="liftOneLevel",
 positive=[(["D1.hs","C1.hs","A1.hs"],["8","6"]),
