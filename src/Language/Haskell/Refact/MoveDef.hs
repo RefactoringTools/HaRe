@@ -332,9 +332,11 @@ moveDecl1 :: (HsValBinds t)
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns sigNames topLevel
    = do
+        -- logm $ "moveDecl1:t=" ++ (SYB.showData SYB.Renamer 0 t) -- ++AZ++
         -- TODO: work with all of ns, not just the first
         let n = ghead "moveDecl1" ns
-        let funBinding = definingDeclsNames [n] (hsBinds t) True True
+        -- let funBinding = definingDeclsNames [n] (hsBinds t) True True
+        let funBinding = definingDeclsNames' [n] t
 
         logm $ "moveDecl1: (ns,funBinding)=" ++ (showGhc (ns,funBinding)) -- ++AZ++
 
@@ -346,17 +348,16 @@ moveDecl1 t defName ns sigNames topLevel
 
         -- (t'',sigsRemoved) <- rmTypeSigs ns t
         (t'',sigsRemoved) <- rmTypeSigs sigNames t
-        -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
+        drawTokenTree "moveDecl1:after rmTypeSigs" -- ++AZ++
+        logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
         -- logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
+        drawTokenTree "moveDecl1:after rmDecl" -- ++AZ++
 
         let getToksForMaybeSig (GHC.L ss _) =
                              do
                                sigToks <- getToksForSpan ss
                                return sigToks
-
-        -- logm $ "moveDecl1:sigsRemoved sorted=" ++ (showGhc $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (srcSpanToForestSpan s1) (srcSpanToForestSpan s2)) sigsRemoved)
-        -- logm $ "moveDecl1:sigsRemoved spans=" ++ (show $ map (\(GHC.L l _) -> srcSpanToForestSpan l) sigsRemoved)
 
         -- maybeToksSigMulti <- mapM getToksForMaybeSig sigsRemoved
         maybeToksSigMulti <- mapM getToksForMaybeSig
@@ -775,7 +776,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                     logm $ "doLiftToLet:dest=" ++ (SYB.showData SYB.Renamer 0 ds) -- ++AZ++
 
                     -- ds' <- worker letExp (hsBinds ds) pn False
-                    ds' <- worker grhss (hsBinds ds) pn False
+                    ds' <- worker1 grhss (hsBinds ds) pn False
                     -- return (Z.setHole (GHC.GRHSs rhs (replaceBinds ds ds')) z)
                     return (Z.setHole ds' z)
              liftToLet _ = Nothing
@@ -823,14 +824,19 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                            " This might be because that the definition to be lifted is defined in a class/instance declaration.")
 -}
              worker :: (HsValBinds t)
-                => t -> [GHC.LHsBind GHC.Name] -> GHC.Located GHC.Name
+                => t -- ^The destination of the lift operation
+                -> [GHC.LHsBind GHC.Name] -- ^ list containing the
+                                -- decl to be lifted
+                -> GHC.Located GHC.Name -- ^ The name of the decl to
+                                -- be lifted
                 -> Bool -- ^True if lifting to the top level
                 -> RefactGhc t
-             worker dest ds pn toToplevel
-                  =do let (before, parent,after)=divideDecls ds pn
+             worker dest ds pnn toToplevel
+                  =do let (before,parent,after)=divideDecls ds pnn -- parent is misnomer, it is the decl to be moved
                           -- liftedDecls=definingDeclsNames [n] parent True  False
                           liftedDecls=definingDeclsNames [n] parent True  True
                           declaredPns=nub $ concatMap definedPNs liftedDecls
+                      logm $ "MoveDef.worker: (dest)=" ++ (SYB.showData SYB.Renamer 0 dest)
                       logm $ "MoveDef.worker: (ds)=" ++ (showGhc (ds))
                       logm $ "MoveDef.worker: parent=" ++ (showGhc parent)
                       (_, dd)<-hsFreeAndDeclaredPNs dest
@@ -851,6 +857,42 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 --parent'<-doMoving declaredPns (ghead "worker" parent) True  paramAdded parent'
                                 --return (before++parent'++liftedDecls''++after)
                         else askRenamingMsg pns "lifting"
+
+             worker1 :: (HsValBinds t)
+                => t -- ^The destination of the lift operation
+                -> [GHC.LHsBind GHC.Name] -- ^ list containing the
+                                -- decl to be lifted
+                -> GHC.Located GHC.Name -- ^ The name of the decl to
+                                -- be lifted
+                -> Bool -- ^True if lifting to the top level
+                -> RefactGhc t
+             worker1 dest ds pnn toToplevel
+                  =do let (before,decl,after)=divideDecls ds pnn
+                          liftedDecls=definingDeclsNames [n] decl True  True
+                          declaredPns=nub $ concatMap definedPNs liftedDecls
+                      logm $ "MoveDef.worker1: (dest)=" ++ (SYB.showData SYB.Renamer 0 dest)
+                      logm $ "MoveDef.worker1: (ds)=" ++ (showGhc (ds))
+                      logm $ "MoveDef.worker1: decl=" ++ (showGhc decl)
+                      (_, dd)<-hsFreeAndDeclaredPNs dest
+                      -- pns<-pnsNeedRenaming inscps dest decl liftedDecls declaredPns
+                      pns<-pnsNeedRenaming dest decl liftedDecls declaredPns
+                      logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
+                      if pns==[]
+                        then do
+                                (decl',liftedDecls',paramAdded)
+                                    <- addParamsToParentAndLiftedDecl n dd decl liftedDecls 
+                                let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
+                                                                else liftedDecls'
+                                --True means the new decl will be at the same level with its parant. 
+                                dest'<-moveDecl1 dest Nothing
+                                           [n] declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                return dest'
+                                --decl'<-doMoving declaredPns (ghead "worker" decl) True  paramAdded decl'
+                                --return (before++decl'++liftedDecls''++after)
+                        else askRenamingMsg pns "lifting"
+
+
+
              doLifting1 dest@(GHC.Match pats mtyp parent)  pn
                = do  let  liftedDecls=definingDeclsNames [n] (hsBinds parent) True  False
                           declaredPns=nub $ concatMap definedPNs liftedDecls

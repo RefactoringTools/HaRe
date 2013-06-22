@@ -98,7 +98,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     ,definingDecls, definedPNs
-    ,definingDeclsNames, definingSigsNames
+    ,definingDeclsNames, definingDeclsNames', definingSigsNames
     , allNames
     -- ,simplifyDecl
 
@@ -2007,14 +2007,30 @@ definingDeclsNames pns ds _incTypeSig recursive = concatMap defining ds
   where
    defining decl
      = if recursive
-        then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` inDecl) decl
+        then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
         else defines' decl
      where
-      inDecl :: (GHC.LHsBind GHC.Name) -> [GHC.LHsBind GHC.Name]
-      inDecl (d::(GHC.LHsBind GHC.Name))
-        | not $ emptyList (defines' d) = defines' d
-      inDecl _ = []
+      defines' :: (GHC.LHsBind GHC.Name) -> [GHC.LHsBind GHC.Name]
+      defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
+        |isJust (find (==(pname)) pns) = [decl']
 
+      defines' decl'@(GHC.L _l (GHC.PatBind p _rhs _ty _fvs _))
+        |(hsNamess p) `intersect` pns /= [] = [decl']
+
+      defines' _ = []
+
+-- |Find those declarations(function\/pattern binding) which define
+-- the specified GHC.Names. incTypeSig indicates whether the
+-- corresponding type signature will be included.
+definingDeclsNames':: (SYB.Data t)
+            => [GHC.Name]   -- ^ The specified identifiers.
+            -> t -- ^ A collection of declarations.
+            ->[GHC.LHsBind GHC.Name]  -- ^ The result.
+definingDeclsNames' pns t = defining t
+  where
+   defining decl
+     = SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
+     where
       defines' :: (GHC.LHsBind GHC.Name) -> [GHC.LHsBind GHC.Name]
       defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
         |isJust (find (==(pname)) pns) = [decl']
@@ -3541,7 +3557,7 @@ rmDecl pn incSig t = do
       | not $ emptyList (snd (break (defines pn) (hsBinds localDecls)))
       = do
          -- putSrcSpan ss -- Make sure the tree includes a SrcSpan for
-                       -- the HsLet, for when it is replaced later
+                          -- the HsLet, for when it is replaced later
 
          let decls = hsBinds localDecls
          let (decls1, decls2) = break (defines pn) decls
@@ -3553,11 +3569,13 @@ rmDecl pn incSig t = do
          setStateStorage (StorageBind decl')
          case length decls of
            1 -> do
+            logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
             putToksForSpan ss toks
             return expr
            _ -> do
-             let decls2' = gtail "inLet" decls2
-             return $ (GHC.L ss (GHC.HsLet (replaceBinds localDecls (decls1 ++ decls2')) expr))
+            logm $ "rmDecl.inLet:length decls /= 1"
+            let decls2' = gtail "inLet" decls2
+            return $ (GHC.L ss (GHC.HsLet (replaceBinds localDecls (decls1 ++ decls2')) expr))
 
     inLet x = return x
 
@@ -3631,7 +3649,6 @@ rmDecl pn incSig t = do
          let (decls1, decls2) = break (defines pn) decls
              decls2' = gtail "rmLocalDecl 3" decls2
          return $ (decls1 ++ decls2')
-
 
 -- ---------------------------------------------------------------------
 

@@ -1120,7 +1120,6 @@ spec = do
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test lifting a definition from a let clause to top level,\n --and the elimination of the keywords 'let' and 'in'\n\n sumSquares x y = sq x + sq y\n\n\n                        where pow=2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
       (showGhc nb) `shouldBe` "[LiftToToplevel.LetIn1.anotherFun 0 y\n   = sq y\n   where\n       sq x = x GHC.Real.^ 2,\n LiftToToplevel.LetIn1.sumSquares x y\n   = sq x GHC.Num.+ sq y\n   where\n       pow = 2]"
 
-
   -- ---------------------------------------------
 
   describe "rmTypeSig" $ do
@@ -2560,6 +2559,14 @@ liftLetIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/LetIn1.hs"
 
 parsedFileLiftLetIn1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftLetIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/LetIn1.hs"
+
+-- -----------
+
+liftOneLetIn1FileName :: GHC.FastString
+liftOneLetIn1FileName = GHC.mkFastString "./test/testdata/LiftOneLevel/LetIn1.hs"
+
+parsedFileLiftOneLetIn1Ghc :: IO (ParseResult,[PosToken])
+parsedFileLiftOneLetIn1Ghc = parsedFileGhc "./test/testdata/LiftOneLevel/LetIn1.hs"
 
 -- -----------
 
