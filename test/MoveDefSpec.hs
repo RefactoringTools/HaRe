@@ -331,6 +331,16 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
      diff `shouldBe` []
 
 
+    -- ---------------------------------
+
+    it "LiftOneLevel LetIn2 11 22" $ do
+     liftOneLevel defaultTestSettings Nothing "./test/testdata/LiftOneLevel/LetIn2.hs" (11,22)
+     -- liftOneLevel logTestSettings  Nothing "./test/testdata/LiftOneLevel/LetIn2.hs" (11,22)
+     diff <- compareFiles "./test/testdata/LiftOneLevel/LetIn2.hs.expected"
+                          "./test/testdata/LiftOneLevel/LetIn2.hs.refactored"
+     diff `shouldBe` []
+
+
 {- original tests
 TestCases{refactorCmd="liftOneLevel",
 positive=[(["D1.hs","C1.hs","A1.hs"],["8","6"]),

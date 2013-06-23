@@ -516,8 +516,8 @@ spec = do
         comp = do
           r <- hsFreeAndDeclaredPNs renamed
           return r
-      -- ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       -- (showGhc res) `shouldBe` ""
 

@@ -416,16 +416,11 @@ pnsNeedRenaming dest parent liftedDecls pns
      pNtoName = showGhc
 
 
---can not simply use PNameToExp, PNameToPat here because of the location information. 
 addParamsToParent :: (HsValBinds t) => GHC.Name -> [GHC.Name] -> t -> RefactGhc t
 addParamsToParent _pn [] t = return t
 addParamsToParent  pn params t = do
   logm $ "addParamsToParent:(pn,params)" ++ (showGhc (pn,params))
-  drawTokenTree "bbbb"
   t' <- addActualParamsToRhs True pn params t
-  drawTokenTree "aaaa"
-  -- tree <- getTokenTree
-  -- logm $ "addParamsToParent:done:tree=" ++ (show tree)
   return t'
 
 
@@ -763,17 +758,17 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                  = Just doLiftToLet
                | otherwise = Nothing
                where
-                 doLiftToLet stage z =
+                 doLiftToLet _stage z =
                   do
                     logm $ "in liftOneLevel''.liftToLet in ds"
                     -- move up until we find a GRHSs
 
                     -- TODO: make next two lines part of GhcUtils
-                    let zu  = fromMaybe (error "MoveDef.liftToMatchZ.1") $ upUntil (False `SYB.mkQ` isGRHSs) z
+                    let zu    = fromMaybe (error "MoveDef.liftToMatchZ.1") $ upUntil (False `SYB.mkQ` isGRHSs) z
                     let grhss = fromMaybe (error "MoveDef.liftToMatchZ.2") (Z.getHole zu :: Maybe (GHC.GRHSs GHC.Name))
 
                     -- let (GHC.GRHSs rhs ds) = grhss
-                    logm $ "doLiftToLet:dest=" ++ (SYB.showData SYB.Renamer 0 ds) -- ++AZ++
+                    -- logm $ "doLiftToLet:dest=" ++ (SYB.showData SYB.Renamer 0 ds) -- ++AZ++
 
                     -- ds' <- worker letExp (hsBinds ds) pn False
                     ds' <- worker1 grhss (hsBinds ds) pn False
@@ -867,7 +862,16 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                 -> Bool -- ^True if lifting to the top level
                 -> RefactGhc t
              worker1 dest ds pnn toToplevel
-                  =do let (before,decl,after)=divideDecls ds pnn
+{-
+Actions required
+  1. add parameters to original decls if required
+  2. add parameters to any points that call the lifted decl
+     once it is lifted
+  3. Replace the above in the AST
+  4. Do the move
+-}
+
+                  =do let (_before,decl,_after)=divideDecls ds pnn
                           liftedDecls=definingDeclsNames [n] decl True  True
                           declaredPns=nub $ concatMap definedPNs liftedDecls
                       logm $ "MoveDef.worker1: (dest)=" ++ (SYB.showData SYB.Renamer 0 dest)
@@ -879,12 +883,15 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (decl',liftedDecls',paramAdded)
-                                    <- addParamsToParentAndLiftedDecl n dd decl liftedDecls 
+                                (dest',liftedDecls',paramAdded)
+                                    -- <- addParamsToParentAndLiftedDecl n dd decl liftedDecls 
+                                    <- addParamsToParentAndLiftedDecl n dd dest liftedDecls 
                                 let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
                                                                 else liftedDecls'
+                                -- logm $ "MoveDef.worker1:liftedDecls''=" ++ (showGhc liftedDecls'')
+                                logm $ "MoveDef.worker1:dest'=" ++ (SYB.showData SYB.Renamer 0 dest')
                                 --True means the new decl will be at the same level with its parant. 
-                                dest'<-moveDecl1 dest Nothing
+                                dest'<-moveDecl1 dest' Nothing
                                            [n] declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
                                 return dest'
                                 --decl'<-doMoving declaredPns (ghead "worker" decl) True  paramAdded decl'
@@ -1160,9 +1167,9 @@ liftedToTopLevel pnt@(GHC.L _ pn) renamed
      else (False, [])
 
 
-addParamsToParentAndLiftedDecl :: HsValBinds t => -- SYB.Data t =>
+addParamsToParentAndLiftedDecl :: HsValBinds t =>
   GHC.Name
-  -> [GHC.Name]
+  -> [GHC.Name] -- ^Declared names in parent
   -> t
   -> [GHC.LHsBind GHC.Name]
   -> RefactGhc (t, [GHC.LHsBind GHC.Name], Bool)
@@ -1180,7 +1187,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
        if newParams/=[]
          then if  (any isComplexPatBind liftedDecls)
                 then error "This pattern binding cannot be lifted, as it uses some other local bindings!"
-                else do parent'<-{-addParamsToDecls parent pn newParams True-} addParamsToParent pn newParams parent
+                else do parent' <- addParamsToParent pn newParams parent
                         liftedDecls'<-addParamsToDecls liftedDecls pn newParams True 
                         return (parent', liftedDecls',True)
          else return (parent,liftedDecls,False)
