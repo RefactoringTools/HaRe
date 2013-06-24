@@ -18,6 +18,9 @@ foo x y =
   do c <- getChar
      return c
 
+fud a b = let bar = 3
+          in b + bar
+
 
 
 

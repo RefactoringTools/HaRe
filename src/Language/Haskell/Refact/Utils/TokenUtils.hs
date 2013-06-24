@@ -120,6 +120,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , notWhiteSpace
        , isDoubleColon
        , isComment
+       , isWhere, isLet, isWhereOrLet
        , isEmpty
        , getSrcSpan
        , getIndentOffset
@@ -1910,6 +1911,17 @@ isEmpty ((GHC.L _ (GHC.ITvocurly)), "") = True
 isEmpty ((GHC.L _ _),               "") = True
 isEmpty _                               = False
 
+isWhereOrLet :: PosToken -> Bool
+isWhereOrLet t = isWhere t || isLet t
+isWhere :: PosToken -> Bool
+isWhere ((GHC.L _ t),_s) =  case t of
+                       GHC.ITwhere -> True
+                       _           -> False
+isLet :: PosToken -> Bool
+isLet   ((GHC.L _ t),_s) =  case t of
+                       GHC.ITlet -> True
+                       _         -> False
+
 --Some functions for fetching a specific field of a token
 tokenCol :: PosToken -> Int
 tokenCol (GHC.L l _,_) = c where (_,c) = getGhcLoc l
@@ -2033,7 +2045,8 @@ getIndentOffset toks pos
          then error "HaRe error: position does not exist in the token stream!"
          else let (sl,_) = splitOnNewLn $ reverse ts1
                 -- sl is the reversed tokens of the previous line
-                  sls = filter (\t -> tokenLen t > 0) sl
+                  -- sls = filter (\t -> tokenLen t > 0) sl
+                  (sls,_) = break isWhereOrLet $ filter (\t -> tokenLen t > 0) sl
                   firstTok = (glast "getIndentOffset" sls)
               in if startLayout firstTok
                   then if (length sls > 1)

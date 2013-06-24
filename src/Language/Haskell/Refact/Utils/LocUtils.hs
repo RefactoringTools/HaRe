@@ -20,7 +20,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      ,isNewLn,isCommentStart -},isComment {-,
                      isNestedComment-},isMultiLineComment {-,isOpenBracket,isCloseBracket, -}
                      ,isOpenSquareBracket,isCloseSquareBracket {- ,isOpenBrace,isConid,
-                     isLit -},isWhereOrLet,isWhere,isLet,isIn {- ,isCase,isDo,isIf,isForall,
+                     isLit,isWhereOrLet,isWhere,isLet-},isIn {- ,isCase,isDo,isIf,isForall,
                      isHiding,isModule-} ,isComma {-,isEqual,isLambda,isIrrefute -},isBar --,isMinus,
                      ,endsWithNewLn,startsWithNewLn,hasNewLn {- ,startsWithEmptyLn,
                      lastNonSpaceToken,firstNonSpaceToken -} ,compressPreNewLns,compressEndNewLns
@@ -199,16 +199,6 @@ isConid (t,(_,_))              = t==Conid
 isLit (t,(_,s)) = t==IntLit || t==FloatLit || t==CharLit || t==StringLit
 -}
 -- isWhereOrLet  t   = isWhere t || isLet t
-isWhereOrLet :: PosToken -> Bool
-isWhereOrLet t = isWhere t || isLet t
-isWhere :: PosToken -> Bool
-isWhere ((GHC.L _ t),_s) =  case t of
-                       GHC.ITwhere -> True
-                       _           -> False
-isLet :: PosToken -> Bool
-isLet   ((GHC.L _ t),_s) =  case t of
-                       GHC.ITlet -> True
-                       _         -> False
 {-
 isImport (t, (_,s))= t == Reservedid && s=="import"
 isType (t, (_,s))= t  == Reservedid && s=="type"

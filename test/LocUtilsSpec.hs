@@ -921,6 +921,12 @@ spec = do
 
     -- ---------------------------------
 
+    it "Get the indent after embedded let clause" $ do
+      (_t,toks) <- parsedFileOffsetGhc
+      getIndentOffset toks (22,1) `shouldBe` 14
+
+    -- ---------------------------------
+
     it "Get the indent after inline in clause" $ do
       (_t,toks) <- parsedFileOffsetGhc
       let middle = getToks ((15,1),(16,1)) toks
