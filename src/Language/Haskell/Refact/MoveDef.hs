@@ -711,6 +711,10 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              isGRHSs :: GHC.GRHSs GHC.Name -> Bool
              isGRHSs _ = True
 
+             isHsLet :: GHC.HsExpr GHC.Name -> Bool
+             isHsLet (GHC.HsLet _ _) = True
+             isHsLet _               = False
+
              --2. The definition will be lifted to the declaration list of a match
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
              liftToMatchQ :: (SYB.Data a) => GHC.Match GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
@@ -764,16 +768,21 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                     -- move up until we find a GRHSs
 
                     -- TODO: make next two lines part of GhcUtils
-                    let zu    = fromMaybe (error "MoveDef.liftToMatchZ.1") $ upUntil (False `SYB.mkQ` isGRHSs) z
-                    let grhss = fromMaybe (error "MoveDef.liftToMatchZ.2") (Z.getHole zu :: Maybe (GHC.GRHSs GHC.Name))
+                    let zu = fromMaybe (error "MoveDef.liftToLet.1")
+                             $ upUntil (False `SYB.mkQ` isGRHSs `SYB.extQ` isHsLet) 
+                                   (fromJust $ Z.up z)
 
-                    -- let (GHC.GRHSs rhs ds) = grhss
-                    -- logm $ "doLiftToLet:dest=" ++ (SYB.showData SYB.Renamer 0 ds) -- ++AZ++
+                    let
+                      wgrhs (grhss::GHC.GRHSs GHC.Name) = worker1 grhss (hsBinds ds) pn False
 
-                    -- ds' <- worker letExp (hsBinds ds) pn False
-                    ds' <- worker1 grhss (hsBinds ds) pn False
-                    -- return (Z.setHole (GHC.GRHSs rhs (replaceBinds ds ds')) z)
-                    return (Z.setHole ds' z)
+                      wlet :: GHC.HsExpr GHC.Name -> RefactGhc (GHC.HsExpr GHC.Name)
+                      wlet l@(GHC.HsLet _ _) = worker1 l (hsBinds ds) pn False
+
+                    ds' <- Z.transM (SYB.mkM wgrhs `SYB.extM` wlet) zu
+
+                    return ds'
+
+
              liftToLet _ = Nothing
 {-
              --4. The definition will be lifted to the declaration list in a let expresiion.

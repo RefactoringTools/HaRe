@@ -340,7 +340,18 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
                           "./test/testdata/LiftOneLevel/LetIn2.hs.refactored"
      diff `shouldBe` []
 
+    -- ---------------------------------
 
+    it "LiftOneLevel LetIn3 10 27" $ do
+     liftOneLevel defaultTestSettings Nothing "./test/testdata/LiftOneLevel/LetIn3.hs" (10,27)
+     -- liftOneLevel logTestSettings  Nothing "./test/testdata/LiftOneLevel/LetIn3.hs" (10,27)
+     diff <- compareFiles "./test/testdata/LiftOneLevel/LetIn3.hs.expected"
+                          "./test/testdata/LiftOneLevel/LetIn3.hs.refactored"
+     diff `shouldBe` []
+
+
+-- TODO: check that other declarations in a list that make use of the
+-- one being lifted also have params changed.
 {- original tests
 TestCases{refactorCmd="liftOneLevel",
 positive=[(["D1.hs","C1.hs","A1.hs"],["8","6"]),
@@ -358,6 +369,7 @@ positive=[(["D1.hs","C1.hs","A1.hs"],["8","6"]),
 negative=[(["PatBindIn2.hs"],["17","7"]),
           (["WhereIn2.hs"],["8","18"])]
 }
+
 
 -}
 
