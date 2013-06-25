@@ -653,55 +653,12 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                             `choiceTP` failure) renamed) -- ((toks,unmodified),(-1000,0))
 -}
              ztransformStagedM SYB.Renamer (Nothing
-                                `SYB.mkQ` liftToMatchQ
-                                `SYB.extQ` liftToLet
+                                `SYB.mkQ` liftToMatchQ'
+                                -- `SYB.mkQ` liftToMatchQ
+                                -- `SYB.extQ` liftToLet
                                     ) (Z.toZipper renamed)
 
            where
-{-
-    case1: In a module (HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds):
-           A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
-           where clause of one of ds's element declaration.
-
-        new: (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
-              HsGroup hs_valds :: HsValBinds id ...
-
--}
-             --1. The definition will be lifted to top level
-             liftToMod (ren@(g,imps,exps,docs):: GHC.RenamedSource)
-                -- | nonEmptyList (definingDeclsNames [n] (hsBinds g) False False)
-                | nonEmptyList candidateBinds
-                 -- ^^ first False means not taking type signature into account
-                 --    second means do not recurse in the search
-                  = do
-                       logm $ "in liftOneLevel''.liftToMod:candidateBinds=" ++ (showGhc candidateBinds)
-                       -- ren'<-worker ren (hsBinds g) pn
-                       ren'<-worker ren candidateBinds pn True
-                       return (ren'::GHC.RenamedSource)
-                where
-                 candidateBinds = map snd
-                                $ filter (\(l,_bs) -> nonEmptyList l)
-                                $ map (\bs -> (definingDeclsNames [n] (hsBinds bs) False False,bs)) 
-                                $ (hsBinds g)
-             liftToMod  _ =mzero
-
-{-
-    case2: In a match ( HsMatch SrcLoc i [p] (HsRhs e) ds) :
-          A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
-           where clause of one of ds's element declaration.
-           A declaration D,say,in the rhs expression 'e' will be lifted to 'ds' if D is Not local to
-           other declaration list in 'e'
-
-           (in a FunBind)
-        new: Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
-
-        (Funbind ... (MatchGroup GHC.Name) ..)
-
-          MatchGroup [LMatch id] PostTcType
-
-            (GHC.L _ (Match [LPat id] (Maybe (LHsType id)) (GRHSs id)))
--}
-
              isValBinds :: GHC.HsValBinds GHC.Name -> Bool
              isValBinds _ = True
 
@@ -711,6 +668,45 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              isHsLet :: GHC.HsExpr GHC.Name -> Bool
              isHsLet (GHC.HsLet _ _) = True
              isHsLet _               = False
+
+             liftToMatchQ' :: (SYB.Data a) => GHC.Match GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+             liftToMatchQ' ((GHC.Match _pats _mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
+                 | (nonEmptyList (definingDeclsNames [n] (hsBinds  ds) False False)) ||
+                   (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
+                    = Just (doLiftZ ds)
+                 | otherwise = Nothing
+
+
+             doLiftZ :: (HsValBinds t)
+               => t -> SYB.Stage -> Z.Zipper a
+               -> RefactGhc (Z.Zipper a)
+             doLiftZ ds _stage z =
+                  do
+                    logm $ "in liftOneLevel''.liftToLet in ds"
+                    -- move up until we find a GRHSs
+
+                    -- TODO: make next two lines part of GhcUtils
+                    let zu = fromMaybe (error "MoveDef.liftToLet.1")
+                             $ upUntil (False `SYB.mkQ` isGRHSs `SYB.extQ` isHsLet `SYB.extQ` isValBinds) 
+                                   (fromJust $ Z.up z)
+
+                    let
+                      wgrhs (grhss::GHC.GRHSs GHC.Name) = do
+                         (_,dd) <- (hsFreeAndDeclaredPNs grhss)
+                         worker1 grhss (hsBinds ds) pn dd False
+
+                      wlet :: GHC.HsExpr GHC.Name -> RefactGhc (GHC.HsExpr GHC.Name)
+                      -- wlet l@(GHC.HsLet _ _) = worker1 l (hsBinds ds) pn False
+                      wlet l@(GHC.HsLet dsl e) = do
+                        (_,dd) <- hsFreeAndDeclaredPNs dsl
+                        dsl' <- worker1 l (hsBinds ds) pn dd False
+                        return dsl'
+
+                    ds' <- Z.transM (SYB.mkM wgrhs `SYB.extM` wlet) zu
+
+                    return ds'
+
+             -- --------------------------------------------------------
 
              --2. The definition will be lifted to the declaration list of a match
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
