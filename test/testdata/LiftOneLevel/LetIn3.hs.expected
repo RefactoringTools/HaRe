@@ -6,10 +6,14 @@ module LiftOneLevel.LetIn3 where
 --In this example, lift 'sq' in 'sumSquares'
 --This example aims to test lifting a definition from a let clause to a let clause,
 
-sumSquares x y = let sq 0=0
+sumSquares x y = let pow=2
+                     sq 0=0
                      sq z=z^pow
-                     pow=2
-                 in ( sq x + sq y)
- 
+
+
+                 in (sq x + sq y
+
+                                    )
+
 anotherFun 0 y = sq y
      where sq x = x^2

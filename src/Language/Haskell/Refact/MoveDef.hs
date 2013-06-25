@@ -349,7 +349,7 @@ moveDecl1 t defName ns sigNames topLevel
         -- (t'',sigsRemoved) <- rmTypeSigs ns t
         (t'',sigsRemoved) <- rmTypeSigs sigNames t
         drawTokenTree "moveDecl1:after rmTypeSigs" -- ++AZ++
-        logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
+        -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
         -- logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
         drawTokenTree "moveDecl1:after rmDecl" -- ++AZ++
@@ -773,10 +773,16 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                    (fromJust $ Z.up z)
 
                     let
-                      wgrhs (grhss::GHC.GRHSs GHC.Name) = worker1 grhss (hsBinds ds) pn False
+                      wgrhs (grhss::GHC.GRHSs GHC.Name) = do
+                         (_,dd) <- (hsFreeAndDeclaredPNs grhss)
+                         worker1 grhss (hsBinds ds) pn dd False
 
                       wlet :: GHC.HsExpr GHC.Name -> RefactGhc (GHC.HsExpr GHC.Name)
-                      wlet l@(GHC.HsLet _ _) = worker1 l (hsBinds ds) pn False
+                      -- wlet l@(GHC.HsLet _ _) = worker1 l (hsBinds ds) pn False
+                      wlet l@(GHC.HsLet dsl e) = do
+                        (_,dd) <- hsFreeAndDeclaredPNs dsl
+                        dsl' <- worker1 l (hsBinds ds) pn dd False
+                        return dsl'
 
                     ds' <- Z.transM (SYB.mkM wgrhs `SYB.extM` wlet) zu
 
@@ -868,9 +874,10 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 -- decl to be lifted
                 -> GHC.Located GHC.Name -- ^ The name of the decl to
                                 -- be lifted
+                -> [GHC.Name] -- ^Declared variables in the destination
                 -> Bool -- ^True if lifting to the top level
                 -> RefactGhc t
-             worker1 dest ds pnn toToplevel
+             worker1 dest ds pnn dd toToplevel
 {-
 Actions required
   1. add parameters to original decls if required
@@ -886,7 +893,9 @@ Actions required
                       logm $ "MoveDef.worker1: (dest)=" ++ (SYB.showData SYB.Renamer 0 dest)
                       logm $ "MoveDef.worker1: (ds)=" ++ (showGhc (ds))
                       logm $ "MoveDef.worker1: decl=" ++ (showGhc decl)
-                      (_, dd)<-hsFreeAndDeclaredPNs dest
+
+                      -- TODO: the value for dd should be [pow]
+                      -- (_, dd) <- hsFreeAndDeclaredPNs dest
                       -- pns<-pnsNeedRenaming inscps dest decl liftedDecls declaredPns
                       pns<-pnsNeedRenaming dest decl liftedDecls declaredPns
                       logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
