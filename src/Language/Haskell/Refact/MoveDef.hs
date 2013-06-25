@@ -625,14 +625,11 @@ liftOneLevel' :: GHC.ModuleName
 
 liftOneLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
-  parsed  <- getRefactParsed
   if isLocalFunOrPatName n renamed
         then do -- (mod', ((toks',m),_))<-liftOneLevel''
                 (refactoredMod,_) <- applyRefac (liftOneLevel'') RSAlreadyLoaded
 
-                -- TODO: reinstate next line
                 let (b, pns) = liftedToTopLevel pn renamed
-                -- let (b,pns) = (False,[])
                 if b &&  modIsExported modName renamed
                   then do clients<-clientModsAndFiles modName
                           -- logm $ "liftOneLevel':(clients,declPns)=" ++ (showGhc (clients,declPns))
@@ -742,19 +739,6 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                     Just (match@(GHC.Match _pats _mtyp (GHC.GRHSs _rhs ds))::GHC.Match GHC.Name )= Z.getHole z
 
 
-{-
-             --3. The definition will be lifted to the declaration list of a pattern binding 
-             liftToPattern (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
-                | definingDecls [pn] (hsDecls ds) False  False /=[]
-                  =do ds'<-worker pat ds pn False
-                      return (Dec (HsPatBind loc p rhs ds'))
-
-             liftToPattern (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
-                | definingDecls [pn] (hsDecls rhs) False  False /=[]
-                  =doLifting2 pat  pn
-             liftToPattern _=mzero
--}
-
              --4. The definition will be lifted to the declaration list in a let expression.
              liftToLet :: GHC.HsExpr GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
              liftToLet (letExp@(GHC.HsLet ds e)::GHC.HsExpr GHC.Name)
@@ -790,18 +774,6 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
 
              liftToLet _ = Nothing
-{-
-             --4. The definition will be lifted to the declaration list in a let expresiion.
-             liftToLet (letExp@(Exp (HsLet ds e))::HsExpP)
-               | definingDecls [pn] (hsDecls ds) False  False/=[]
-                =do ds' <-worker letExp ds pn False
-                    return (Exp (HsLet ds' e))
-
-             liftToLet (letExp@(Exp (HsLet ds e))::HsExpP)  --Attention: ds can be empty!
-               | definingDecls [pn] (hsDecls e) False  False /=[]
-                = doLifting3 letExp pn
-             liftToLet _ =mzero
--}
 {-
 
              --5. The definition will be lifted to the declaration list in a alt

@@ -235,3 +235,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/LiftOneLevel/PatBindIn3.hs.refactored
 /test/testdata/LiftOneLevel/PatBindIn3.hs.renamed_out
 /test/testdata/LiftOneLevel/PatBindIn3.hs.tokens
+/test/testdata/LiftOneLevel/CaseIn1.hs.AST_out
+/test/testdata/LiftOneLevel/CaseIn1.hs.refactored
+/test/testdata/LiftOneLevel/CaseIn1.hs.renamed_out
+/test/testdata/LiftOneLevel/CaseIn1.hs.tokens
