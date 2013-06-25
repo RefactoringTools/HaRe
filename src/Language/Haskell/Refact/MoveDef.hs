@@ -138,7 +138,13 @@ compLiftOneLevel fileName (row,col) = do
       let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
       case maybePn of
         Just pn ->  do
-            liftOneLevel' modName pn
+            rs <- liftOneLevel' modName pn
+            logm $ "compLiftOneLevel:rs=" ++ (show $ (refactDone rs,map (\((_,d),_) -> d) rs))
+            if (refactDone rs)
+              then return rs
+              else error ( "Lifting this definition failed. "++
+                       " This might be because that the definition to be "++
+                       "lifted is defined in a class/instance declaration.")
         _       ->  error "\nInvalid cursor position!\n"
 
 
@@ -628,7 +634,6 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
   if isLocalFunOrPatName n renamed
         then do -- (mod', ((toks',m),_))<-liftOneLevel''
                 (refactoredMod,_) <- applyRefac (liftOneLevel'') RSAlreadyLoaded
-
                 let (b, pns) = liftedToTopLevel pn renamed
                 if b &&  modIsExported modName renamed
                   then do clients<-clientModsAndFiles modName
@@ -653,7 +658,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                             `choiceTP` failure) renamed) -- ((toks,unmodified),(-1000,0))
 -}
              ztransformStagedM SYB.Renamer (Nothing
-                                `SYB.mkQ` liftToMatchQ'
+                                `SYB.mkQ` liftToModQ
+                                `SYB.extQ` liftToMatchQ'
+                                `SYB.extQ` liftToLet'
                                 -- `SYB.mkQ` liftToMatchQ
                                 -- `SYB.extQ` liftToLet
                                     ) (Z.toZipper renamed)
@@ -669,13 +676,31 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              isHsLet (GHC.HsLet _ _) = True
              isHsLet _               = False
 
+             liftToModQ (ren@(g,_imps,_exps,_docs):: GHC.RenamedSource)
+                | nonEmptyList candidateBinds
+                  = Just (doLiftZ candidateBinds)
+                  -- = Just (worker ren candidateBinds pn True)
+                | otherwise = Nothing
+                where
+                 candidateBinds = map snd
+                                $ filter (\(l,_bs) -> nonEmptyList l)
+                                $ map (\bs -> (definingDeclsNames [n] (hsBinds bs) False False,bs)) 
+                                $ (hsBinds g)
+
              liftToMatchQ' :: (SYB.Data a) => GHC.Match GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
              liftToMatchQ' ((GHC.Match _pats _mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
-                 | (nonEmptyList (definingDeclsNames [n] (hsBinds  ds) False False)) ||
-                   (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
+                 | (nonEmptyList (definingDeclsNames [n] (hsBinds  ds) False False)) 
                     = Just (doLiftZ ds)
+                 | (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
+                    = Just (doLiftZ rhs)
                  | otherwise = Nothing
 
+             liftToLet' :: GHC.HsExpr GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+             liftToLet' ((GHC.HsLet ds _e)::GHC.HsExpr GHC.Name)
+               | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False  False)
+                 = Just (doLiftZ ds)
+               | otherwise = Nothing
+             liftToLet' _ = Nothing
 
              doLiftZ :: (HsValBinds t)
                => t -> SYB.Stage -> Z.Zipper a
@@ -683,14 +708,19 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              doLiftZ ds _stage z =
                   do
                     logm $ "in liftOneLevel''.liftToLet in ds"
-                    -- move up until we find a GRHSs
 
-                    -- TODO: make next two lines part of GhcUtils
-                    let zu = fromMaybe (error "MoveDef.liftToLet.1")
-                             $ upUntil (False `SYB.mkQ` isGRHSs `SYB.extQ` isHsLet `SYB.extQ` isValBinds) 
-                                   (fromJust $ Z.up z)
+                    let zu = case (Z.up z) of
+                              Just zz -> fromMaybe (error "MoveDef.liftToLet.1")
+                                  $ upUntil (False `SYB.mkQ` isGRHSs
+                                                   `SYB.extQ` isHsLet
+                                                   `SYB.extQ` isValBinds)
+                                     zz
+                              Nothing -> z
 
                     let
+                      wtop (ren::GHC.RenamedSource) = do
+                        worker ren (hsBinds ds) pn True
+
                       wgrhs (grhss::GHC.GRHSs GHC.Name) = do
                          (_,dd) <- (hsFreeAndDeclaredPNs grhss)
                          worker1 grhss (hsBinds ds) pn dd False
@@ -702,11 +732,33 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         dsl' <- worker1 l (hsBinds ds) pn dd False
                         return dsl'
 
-                    ds' <- Z.transM (SYB.mkM wgrhs `SYB.extM` wlet) zu
+                      wvalbinds (vb::GHC.HsValBinds GHC.Name) = do
+                         (_,dd) <- (hsFreeAndDeclaredPNs vb)
+                         worker1 vb (hsBinds ds) pn dd False
+
+                    ds' <- Z.transM (SYB.mkM wtop `SYB.extM` wgrhs
+                                     `SYB.extM` wlet `SYB.extM` wvalbinds) zu
 
                     return ds'
 
+
+
              -- --------------------------------------------------------
+
+             --1. The definition will be lifted to top level
+             liftToMod (ren@(g,imps,exps,docs):: GHC.RenamedSource)
+                | nonEmptyList candidateBinds
+                  = do
+                       logm $ "in liftOneLevel''.liftToMod:candidateBinds=" ++ (showGhc candidateBinds)
+                       ren' <- worker ren candidateBinds pn True
+                       return (ren'::GHC.RenamedSource)
+                where
+                 candidateBinds = map snd
+                                $ filter (\(l,_bs) -> nonEmptyList l)
+                                $ map (\bs -> (definingDeclsNames [n] (hsBinds bs) False False,bs)) 
+                                $ (hsBinds g)
+             liftToMod  _ =mzero
+
 
              --2. The definition will be lifted to the declaration list of a match
              -- liftToMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
@@ -716,6 +768,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                    (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
                     = Just liftToMatchZ
                  | otherwise = Nothing
+
 
              liftToMatchZ :: (SYB.Data a) => SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a)
              liftToMatchZ _stage z

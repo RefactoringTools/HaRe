@@ -367,6 +367,24 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
                           "./test/testdata/LiftOneLevel/CaseIn1.hs.refactored"
      diff `shouldBe` []
 
+    -- -----------------------------------------------------------------
+
+    it "fails PatBindIn2 17 7" $ do
+     {-
+     res <- catchException (liftOneLevel defaultTestSettings Nothing "./test/testdata/LiftOneLevel/PatBindIn2.hs" (17,7))
+     -- liftOneLevel logTestSettings Nothing "./test/testdata/LiftOneLevel/PatBindIn2.hs" (17,7)
+     (show res) `shouldBe` "Just \"Lifting this definition failed.  This might be because that the definition to be lifted is defined in a class/instance declaration.\""
+     -}
+     pending -- Not clear that this was covered in the original, will
+             -- come back to it
+
+    -- -----------------------------------------------------------------
+
+    it "fails WhereIn2 8 18" $ do
+     res <- catchException (liftOneLevel defaultTestSettings Nothing "./test/testdata/LiftOneLevel/WhereIn2.hs" (8,18))
+     -- liftOneLevel logTestSettings Nothing "./test/testdata/LiftOneLevel/WhereIn2.hs" (8,18)
+     (show res) `shouldBe` "Just \"The identifier(s): (sq, test/testdata/LiftOneLevel/WhereIn2.hs:8:18) will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
+
 
 -- TODO: check that other declarations in a list that make use of the
 -- one being lifted also have params changed.

@@ -18,6 +18,7 @@ module Language.Haskell.Refact.Utils
        -- * The bits that do the work
        , runRefacSession
        , applyRefac
+       , refactDone
        , ApplyRefacResult(..)
        , RefacSource(..)
 
@@ -328,6 +329,12 @@ applyRefac refac source = do
 
     return (((fileName,m),(toks', mod')),res)
 
+
+-- ---------------------------------------------------------------------
+
+-- |Returns True if any of the results has its modified flag set
+refactDone :: [ApplyRefacResult] -> Bool
+refactDone rs = any (\((_,d),_) -> d) rs
 
 -- ---------------------------------------------------------------------
 
