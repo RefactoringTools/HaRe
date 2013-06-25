@@ -349,6 +349,15 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
                           "./test/testdata/LiftOneLevel/LetIn3.hs.refactored"
      diff `shouldBe` []
 
+    -- ---------------------------------
+
+    it "LiftOneLevel PatBindIn3 11 15" $ do
+     liftOneLevel defaultTestSettings Nothing "./test/testdata/LiftOneLevel/PatBindIn3.hs" (11,15)
+     -- liftOneLevel logTestSettings  Nothing "./test/testdata/LiftOneLevel/PatBindIn3.hs" (11,15)
+     diff <- compareFiles "./test/testdata/LiftOneLevel/PatBindIn3.hs.expected"
+                          "./test/testdata/LiftOneLevel/PatBindIn3.hs.refactored"
+     diff `shouldBe` []
+
 
 -- TODO: check that other declarations in a list that make use of the
 -- one being lifted also have params changed.
