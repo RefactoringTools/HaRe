@@ -51,16 +51,19 @@ Invariants:
 -- TODO: turn this into a record, with named accessors
 -- | An entry in the data structure for a particular srcspan.
 data Entry = Entry !ForestSpan -- ^The source span contained in this Node
-                   ![PosToken] -- ^The tokens for the SrcSpan if subtree is empty
+                   ![PosToken] -- ^The tokens for the SrcSpan if
+                               -- subtree is empty
+           | Deleted !ForestSpan -- ^The source span has been deleted
+
 --             deriving (Show)
 
 -- ---------------------------------------------------------------------
 
 data ForestLine = ForestLine
                   { flSpanLengthChanged :: !Bool -- ^The length of the
-                                                -- span may have
-                                                -- changed due to
-                                                -- updated tokens.
+                                                 -- span may have
+                                                 -- changed due to
+                                                 -- updated tokens.
                   , flTreeSelector  :: !Int
                   , flInsertVersion :: !Int
                   , flLine          :: !Int

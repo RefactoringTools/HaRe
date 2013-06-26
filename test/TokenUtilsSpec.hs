@@ -35,29 +35,10 @@ import TestUtils
 
 main :: IO ()
 main = do
-  -- setLogger
   hspec spec
-
-
--- shouldBe :: (Show a, Eq a) => a -> a -> Expectation
--- infix 1 `shouldBe`
-
-ioshouldBe :: (Show a, Eq a) => a -> a -> Expectation
-ioshouldBe a b = liftIO $ shouldBe a b
-infix 1 `ioshouldBe`
-
 
 spec :: Spec
 spec = do
-
-
-  describe "case 1" $ do
-    it "gets a set of tokens, including comments" $ do
-      pending -- "1"
-    it "add a new set of tokens after the ones we have" $ do
-      pending -- "2"
-    it "gives us all the tokens in order after this" $ do
-      pending -- "3"
 
   -- ---------------------------------------------
 
@@ -2861,6 +2842,33 @@ tree TId 0:
       -- (showGhc ss') `shouldBe` "test/testdata/Demote/D1.hs:100000011:1-7"
       (showGhc ss') `shouldBe` "test/testdata/Demote/D1.hs:33554443:1-7"
       (showSrcSpanF ss') `shouldBe` "(((False,1,0,11),1),((False,1,0,11),8))"
+
+  -- ---------------------------------------------
+
+  describe "formatAfterDelete" $ do
+    it "Does not leave a blank line in toks after deleting" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let f1 = mkTreeFromTokens toks
+      (GHC.showRichTokenStream $ retrieveTokens f1) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head $ drop 1 decls
+      (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
+      (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
+
+      let (f2,_) = removeSrcSpan f1 (fs l)
+
+      (drawTreeEntry f2) `shouldBe`
+            "((1,1),(21,14))\n|\n"++
+            "+- ((1,1),(10,10))\n|\n"++
+            "+- ((13,1),(15,17))D\n|\n"++
+            "`- ((19,1),(21,14))\n"
+
+      let es = retrieveTokens' f2
+      (show $ deleteGapsToks es) `shouldBe` ""
+      -- (GHC.showRichTokenStream $ retrieveTokens f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+ 
 
 -- ---------------------------------------------------------------------
 -- Helper functions

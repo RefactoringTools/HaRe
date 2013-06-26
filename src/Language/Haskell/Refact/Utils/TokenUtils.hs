@@ -21,6 +21,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , getSrcSpanFor
        -- , getPathFor
        , retrieveTokens
+       , retrieveTokens' -- temporary for debug
        , retrieveTokensFinal
        , addNewSrcSpanAndToksAfter
        , addToksAfterSrcSpan
@@ -90,6 +91,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , nullSpan,nullPos
        , simpPosToForestSpan
        , showForestSpan
+       , deleteGapsToks
 
        -- * Based on Data.Tree
        , drawTreeEntry
@@ -445,6 +447,12 @@ srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToF
   where
     (startRow,startCol) = getGhcLoc sspan
     (endRow,endCol)     = getGhcLocEnd sspan
+
+-- --------------------------------------------------------------------
+
+forestSpanFromEntry :: Entry -> ForestSpan
+forestSpanFromEntry (Entry ss _) = ss
+forestSpanFromEntry (Deleted ss) = ss
 
 -- --------------------------------------------------------------------
 
@@ -811,7 +819,7 @@ splitSubToks tree sspan = (b',m',e')
 -}
          m'' = let
                 (ForestLine _ch _ts _v le,ce) = sspanEnd
-                tl = 
+                tl =
                   if (ssStart == sspanStart) -- Eq does not compare all flags
                     then mkTreeListFromTokens toksm (ssStart,   ssEnd)
                     else mkTreeListFromTokens toksm (sspanStart,ssEnd)
@@ -904,7 +912,8 @@ removeSrcSpan forest sspan = (forest'', delTree)
     zp = gfromJust "removeSrcSpan" $ Z.parent z
 
     pt = Z.tree zp
-    subTree = filter (\t -> not (treeStartEnd t == sspan)) $ subForest pt
+    -- subTree = filter (\t -> not (treeStartEnd t == sspan)) $ subForest pt
+    subTree = map (\t -> if (treeStartEnd t == sspan) then (Node (Deleted sspan) []) else t) $ subForest pt
 
     z' = Z.setTree (pt { subForest = subTree}) zp
     forest'' = Z.toTree z'
@@ -920,12 +929,58 @@ removeSrcSpan forest sspan = (forest'', delTree)
 --      rows with tokenFileMark in a filename for a token
 -- TODO: separate this into a version that does re-align for final
 --       retrieval, and one that does not for intermediate use
+
 retrieveTokens :: Tree Entry -> [PosToken]
 retrieveTokens forest = stripForestLines $ monotonicLineToks {- $ reAlignMarked -}
-                      $ concat $ map (\t -> F.foldl accum [] t) [forest]
+                      $ deleteGapsToks $ retrieveTokens' forest
+                      -- $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]
     accum acc (Entry _ toks) = acc ++ toks
+
+
+retrieveTokens' :: Tree Entry -> [Entry]
+retrieveTokens' forest = {- stripForestLines $ monotonicLineToks {- $ reAlignMarked -}
+                      $ -} concat $ map (\t -> F.foldl accum [] t) [forest]
+  where
+    accum :: [Entry] -> Entry -> [Entry]
+    accum acc   (Entry _   []) = acc
+    accum acc e@(Entry _ toks) = acc ++ [e]
+    accum acc e@(Deleted _)    = acc ++ [e]
+
+-- ---------------------------------------------------------------------
+
+-- | Process the leaf nodes of a tree to remove all deleted spans
+deleteGapsToks :: [Entry] -> [PosToken]
+deleteGapsToks toks = goDeleteGapsToks (0,0) toks
+
+goDeleteGapsToks :: SimpPos -> [Entry] -> [PosToken]
+goDeleteGapsToks      _ []                    = []
+goDeleteGapsToks offset [Entry _ t]           = map (increaseSrcSpan offset) t
+goDeleteGapsToks      _ [Deleted _]           = []
+goDeleteGapsToks offset (Deleted _:ts)        = goDeleteGapsToks offset ts
+goDeleteGapsToks offset [Entry _ t,Deleted _] = map (increaseSrcSpan offset) t
+goDeleteGapsToks offset (Entry _ t1:Entry _ t2:ts) = (map (increaseSrcSpan offset) (t1 ++ t2)) ++goDeleteGapsToks offset ts
+goDeleteGapsToks (fr,fc) (Entry ss t1:Deleted _:t2:ts)
+  = t1' ++ goDeleteGapsToks offset' (t2:ts)
+  where
+    -- TODO: use actual first and last toks, may be comments
+    -- TODO: what about deletion within a line?
+    (_,(sr,sc)) = forestSpanToSimpPos ss
+    ((dr,dc),_) = forestSpanToSimpPos $ forestSpanFromEntry t2
+    offset' = (fr + sr - dr + 2, fc)
+
+    t1' = map (increaseSrcSpan (fr,fc)) t1
+{-
+goDeleteGapsToks (orow,ocol) (Entry _ t1:t2:ts)
+  = t1 ++ goDeleteGapsToks offset' (t2':ts)
+  where
+    offset' = if (tokenRow t1 - orow) > (tokenRow t2)
+               then (orow + (tokenRow t1) - tokenRow t2 + 1, ocol)
+               else (orow,ocol)
+
+    t2' = increaseSrcSpan offset' t2
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -1542,6 +1597,7 @@ drawForestEntry :: Forest Entry -> String
 drawForestEntry  = unlines . map drawTreeEntry
 
 drawEntry :: Tree Entry -> [String]
+drawEntry (Node (Deleted sspan   )  _  ) = [(showForestSpan sspan) ++ "D"]
 drawEntry (Node (Entry sspan _toks) ts0) = (showForestSpan sspan) : drawSubTrees ts0
   where
     drawSubTrees [] = []
