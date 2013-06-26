@@ -52,8 +52,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getStateStorage
 
        , logm
-       -- , Refact -- ^ TODO: Deprecated, use RefactGhc
-       -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
+
+       , updateToks
+       , updateToksWithPos
        ) where
 
 import Control.Monad.State
@@ -66,6 +67,7 @@ import qualified Data.Data as SYB
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -416,6 +418,41 @@ initRefactModule tm toks
                  , rsStreamModified = False
                  })
 
+-- ---------------------------------------------------------------------
+
+updateToks :: (SYB.Data t)
+  => GHC.Located t -- ^ Old element
+  -> GHC.Located t -- ^ New element
+  -> (GHC.Located t -> [Char]) -- ^ pretty printer
+  -> Bool         -- ^ Add trailing newline if required
+  -> RefactGhc () -- ^ Updates the RefactState
+updateToks (GHC.L sspan _) newAST printFun addTrailingNl
+  = do
+       newToks <- liftIO $ basicTokenise (printFun newAST)
+       let newToks' = if addTrailingNl 
+                       then newToks ++ [newLnToken (last newToks)]
+                       else newToks
+       putToksForSpan sspan  newToks'
+       return ()
+
+-- ---------------------------------------------------------------------
+
+updateToksWithPos :: (SYB.Data t)
+  => (SimpPos, SimpPos) -- ^Start and end pos of old element
+  -> t             -- ^ New element
+  -> (t -> [Char]) -- ^ pretty printer
+  -> Bool          -- ^ Add trailing newline if required
+  -> RefactGhc ()  -- ^ Updates the RefactState
+updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
+  = do
+       -- newToks <- liftIO $ basicTokenise (printFun newAST)
+       newToks <- liftIO $ basicTokenise (printFun newAST)
+       let newToks' = if addTrailingNl 
+                       then newToks ++ [newLnToken (last newToks)]
+                       else newToks
+       putToksForPos (startPos,endPos) newToks'
+
+       return ()
 
 -- EOF
 
