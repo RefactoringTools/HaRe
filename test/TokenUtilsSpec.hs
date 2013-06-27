@@ -936,10 +936,10 @@ tree TId 0:
                "((1,1),(16,22))\n|\n"++
                "+- ((1,1),(12,21))\n|  |\n"++
                "|  +- ((1,1),(10,21))\n|  |\n"++
+               "|  +- ((10,22),(11,32))D\n|  |\n"++
                "|  `- ((12,19),(12,21))\n|\n"++
                "+- ((12,22),(12,33))\n|\n"++
                "`- ((13,24),(16,22))\n"
-
       -- Context in place, time for test
 
 
@@ -1283,8 +1283,9 @@ tree TId 0:
       let (forest'',delTree) = removeSrcSpan forest' (fs l)
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(21,14))\n|\n"++
-              "`- ((1,1),(15,17))\n"
-              -- "+- ((19,1),(21,14))\n|\n"++ -- removed again
+               "+- ((1,1),(15,17))\n|\n"++
+               "`- ((19,1),(21,14))D\n" -- removed again
+
       (invariant forest'') `shouldBe` []
 
       (drawTreeEntry delTree) `shouldBe`
@@ -1295,6 +1296,7 @@ tree TId 0:
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment"
 
     -- ---------------------------------
+
     it "removes a span and tokens that were not explicitly in the forest" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
@@ -1308,16 +1310,17 @@ tree TId 0:
       let (forest',delTree) = removeSrcSpan forest (fs l)
       (invariant forest') `shouldBe` []
       (drawTreeEntry forest') `shouldBe`
-              "((1,1),(21,14))\n|\n"++
-              "+- ((1,1),(10,10))\n|\n"++
-              "`- ((19,1),(21,14))\n"
+               "((1,1),(21,14))\n|\n"++
+               "+- ((1,1),(10,10))\n|\n"++
+               "+- ((13,1),(15,17))D\n|\n"++
+               "`- ((19,1),(21,14))\n"
 
       (drawTreeEntry delTree) `shouldBe`
               "((13,1),(15,17))\n" -- removed again
 
       let toks' = retrieveTokens forest'
       -- (showToks toks') `shouldBe` ""
-      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n\n\n\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
     -- ---------------------------------
 
@@ -1342,6 +1345,7 @@ tree TId 0:
                "+- ((6,21),(6,41))\n|\n"++
                "+- ((1000007,5),(1000008,20))\n|\n"++
                "`- ((7,1),(13,25))\n"
+
       -- Context set up, now for the test.
 
       let sspan2 = posToSrcSpan forest ((9,1),(9,14))
@@ -1370,6 +1374,7 @@ tree TId 0:
                "+- ((1000007,5),(1000008,20))\n|\n"++
                "`- ((7,1),(13,25))\n   |\n"++
                "   +- ((7,1),(7,18))\n   |\n"++
+               "   +- ((9,1),(9,14))D\n   |\n"++
                "   `- ((11,1),(13,25))\n"
 
       let toks' = retrieveTokens forest3
@@ -1391,10 +1396,10 @@ tree TId 0:
       (drawTokenCache tk2) `shouldBe`
                "tree TId 0:\n"++
                "((1,1),(13,21))\n|\n"++
-               "`- ((1,1),(11,25))\n"++
+               "+- ((1,1),(11,25))\n|\n"++
+               "`- ((13,1),(13,21))D\n"++
                "tree TId 1:\n"++
                "((100000013,1),(100000013,21))\n"
-
 
       -- putToksForSpan test/testdata/Demote/WhereIn6.hs:100000013:16:[((((0,1),(0,2)),ITvarid "x"),"x")]
       -- let ss2 = posToSrcSpan forest ((100000013,16),(100000013,17))
@@ -1410,7 +1415,8 @@ tree TId 0:
       (drawTokenCache tk3) `shouldBe`
                "tree TId 0:\n"++
                "((1,1),(13,21))\n|\n"++
-               "`- ((1,1),(11,25))\n"++
+               "+- ((1,1),(11,25))\n|\n"++
+               "`- ((13,1),(13,21))D\n"++
                "tree TId 1:\n"++
                "((100000013,1),(100000013,21))\n|\n"++
                "+- ((100000013,1),(100000013,16))\n|\n"++
@@ -1436,7 +1442,8 @@ tree TId 0:
       (drawTokenCache tk4) `shouldBe`
                "tree TId 0:\n"++
                "((1,1),(13,21))\n|\n"++
-               "`- ((1,1),(11,25))\n"++
+               "+- ((1,1),(11,25))\n|\n"++
+               "`- ((13,1),(13,21))D\n"++
                "tree TId 1:\n"++
                "((100000013,1),(100000013,21))\n|\n"++
                "+- ((100000013,1),(100000013,16))\n|\n"++
@@ -1672,7 +1679,7 @@ tree TId 0:
 
       let (forest4,_ss3',_) = updateTokensForSrcSpan forest3 ss3 ss3Tok
       -- (show forest4) `shouldBe` ""
-      (drawTreeEntry forest4) `shouldBe` 
+      (drawTreeEntry forest4) `shouldBe`
            "((1,1),(18,23))\n|\n"++
            "+- ((1,1),(11,17))\n|\n"++
            "+- ((10000000011,18),(10000000011,20))\n|\n"++
@@ -1699,9 +1706,10 @@ tree TId 0:
       -- (showToks toks) `shouldBe` ""
       let tk2 = removeToksFromCache tk sspan
       (drawTokenCache tk2) `shouldBe`
-                 "tree TId 0:\n"++
+               "tree TId 0:\n"++
                "((1,1),(13,21))\n|\n"++
-               "`- ((1,1),(11,25))\n"++
+               "+- ((1,1),(11,25))\n|\n"++
+               "`- ((13,1),(13,21))D\n"++
                "tree TId 1:\n"++
                "((100000013,1),(100000013,21))\n"
 
@@ -1968,8 +1976,9 @@ tree TId 0:
       let (forest',_delTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(8,6))\n|\n"++
-              "+- ((1,1),(4,19))\n|\n"++
-              "`- ((8,1),(8,6))\n"
+               "+- ((1,1),(4,19))\n|\n"++
+               "+- ((7,1),(7,6))D\n|\n"++
+               "`- ((8,1),(8,6))\n"
       (invariant forest') `shouldBe` []
 
 
@@ -1978,21 +1987,23 @@ tree TId 0:
 
       let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry finsert) `shouldBe`
-              "((1,1),(8,6))\n|\n"++
-              "+- ((1,1),(4,19))\n|  |\n"++
-              "|  +- ((1,1),(4,13))\n|  |\n"++
-              "|  `- ((4,14),(4,19))\n|\n"++
-              "`- ((8,1),(8,6))\n"
+               "((1,1),(8,6))\n|\n"++
+               "+- ((1,1),(4,19))\n|  |\n"++
+               "|  +- ((1,1),(4,13))\n|  |\n"++
+               "|  `- ((4,14),(4,19))\n|\n"++
+               "+- ((7,1),(7,6))D\n|\n"++
+               "`- ((8,1),(8,6))\n"
 
       let newToks = take 3 toks
       let (forest'',sspan'') = addToksAfterSrcSpan finsert (sspan') (PlaceOffset 2 4 2) newToks
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(8,6))\n|\n"++
-              "+- ((1,1),(4,19))\n|  |\n"++
-              "|  +- ((1,1),(4,13))\n|  |\n"++
-              "|  +- ((4,14),(4,19))\n|  |\n"++
-              "|  `- ((1000006,5),(1000006,32))\n|\n"++
-              "`- ((8,1),(8,6))\n"
+               "+- ((1,1),(4,19))\n|  |\n"++
+               "|  +- ((1,1),(4,13))\n|  |\n"++
+               "|  +- ((4,14),(4,19))\n|  |\n"++
+               "|  `- ((1000006,5),(1000006,32))\n|\n"++
+               "+- ((7,1),(7,6))D\n|\n"++
+               "`- ((8,1),(8,6))\n"
 
       (showSrcSpanF sspan'') `shouldBe` "(((False,0,1,6),5),((False,0,1,6),32))"
       -- (invariant forest'') `shouldBe` []
@@ -2011,9 +2022,10 @@ tree TId 0:
       let sspan = posToSrcSpan forest ((14,1),(14,6))
       let (forest',_delTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeEntry forest') `shouldBe`
-              "((1,1),(17,23))\n|\n"++
-              "+- ((1,1),(12,26))\n|\n"++
-              "`- ((16,1),(17,23))\n"
+               "((1,1),(17,23))\n|\n"++
+               "+- ((1,1),(12,26))\n|\n"++
+               "+- ((14,1),(14,6))D\n|\n"++
+               "`- ((16,1),(17,23))\n"
       (invariant forest') `shouldBe` []
 
       -- addLocalDecl entered:newSource="[pow=2\n\n]"
@@ -2022,21 +2034,23 @@ tree TId 0:
 
       let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry finsert) `shouldBe`
-              "((1,1),(17,23))\n|\n"++
-              "+- ((1,1),(12,26))\n|  |\n"++
-              "|  +- ((1,1),(11,15))\n|  |\n"++
-              "|  `- ((11,16),(12,26))\n|\n"++
-              "`- ((16,1),(17,23))\n"
+               "((1,1),(17,23))\n|\n"++
+               "+- ((1,1),(12,26))\n|  |\n"++
+               "|  +- ((1,1),(11,15))\n|  |\n"++
+               "|  `- ((11,16),(12,26))\n|\n"++
+               "+- ((14,1),(14,6))D\n|\n"++
+               "`- ((16,1),(17,23))\n"
 
       newToks <- liftIO $ basicTokenise "pow=2\n\n"
       let (forest'',sspan'') = addToksAfterSrcSpan finsert (sspan') (PlaceIndent 1 0 2) newToks
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(17,23))\n|\n"++
-              "+- ((1,1),(12,26))\n|  |\n"++
-              "|  +- ((1,1),(11,15))\n|  |\n"++
-              "|  +- ((11,16),(12,26))\n|  |\n"++
-              "|  `- ((1000014,16),(1000014,21))\n|\n"++
-              "`- ((16,1),(17,23))\n"
+               "+- ((1,1),(12,26))\n|  |\n"++
+               "|  +- ((1,1),(11,15))\n|  |\n"++
+               "|  +- ((11,16),(12,26))\n|  |\n"++
+               "|  `- ((1000014,16),(1000014,21))\n|\n"++
+               "+- ((14,1),(14,6))D\n|\n"++
+               "`- ((16,1),(17,23))\n"
 
       (showSrcSpanF sspan'') `shouldBe` "(((False,0,1,14),16),((False,0,1,14),21))"
       -- (invariant forest'') `shouldBe` []
@@ -2056,8 +2070,9 @@ tree TId 0:
       let (forest',_) = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(8,6))\n|\n"++
-              "+- ((1,1),(4,19))\n|\n"++
-              "`- ((8,1),(8,6))\n"
+               "+- ((1,1),(4,19))\n|\n"++
+               "+- ((7,1),(7,6))D\n|\n"++
+               "`- ((8,1),(8,6))\n"
       (invariant forest') `shouldBe` []
 
       --  putToksAfterPos ((4,14),(4,19))
@@ -2068,28 +2083,31 @@ tree TId 0:
       let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry finsert) `shouldBe`
               "((1,1),(8,6))\n|\n"++
-              "+- ((1,1),(4,19))\n|  |\n"++
-              "|  +- ((1,1),(4,13))\n|  |\n"++
-              "|  `- ((4,14),(4,19))\n|\n"++
-              "`- ((8,1),(8,6))\n"
+               "+- ((1,1),(4,19))\n|  |\n"++
+               "|  +- ((1,1),(4,13))\n|  |\n"++
+               "|  `- ((4,14),(4,19))\n|\n"++
+               "+- ((7,1),(7,6))D\n|\n"++
+               "`- ((8,1),(8,6))\n"
 
       let (f,_t) = getSrcSpanFor forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry f) `shouldBe`
               "((1,1),(8,6))\n|\n"++
-              "+- ((1,1),(4,19))\n|  |\n"++
-              "|  +- ((1,1),(4,13))\n|  |\n"++
-              "|  `- ((4,14),(4,19))\n|\n"++
-              "`- ((8,1),(8,6))\n"
+               "+- ((1,1),(4,19))\n|  |\n"++
+               "|  +- ((1,1),(4,13))\n|  |\n"++
+               "|  `- ((4,14),(4,19))\n|\n"++
+               "+- ((7,1),(7,6))D\n|\n"++
+               "`- ((8,1),(8,6))\n"
 
       let (forest'',newSpan) = addToksAfterSrcSpan forest' sspan' position newToks
 
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(8,6))\n|\n"++
-              "+- ((1,1),(4,19))\n|  |\n"++
-              "|  +- ((1,1),(4,13))\n|  |\n"++
-              "|  +- ((4,14),(4,19))\n|  |\n"++
-              "|  `- ((1000005,5),(1000005,32))\n|\n"++
-              "`- ((8,1),(8,6))\n"
+               "+- ((1,1),(4,19))\n|  |\n"++
+               "|  +- ((1,1),(4,13))\n|  |\n"++
+               "|  +- ((4,14),(4,19))\n|  |\n"++
+               "|  `- ((1000005,5),(1000005,32))\n|\n"++
+               "+- ((7,1),(7,6))D\n|\n"++
+               "`- ((8,1),(8,6))\n"
 
       (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,5),5),((False,0,1,5),32))"
       (invariant forest'') `shouldBe` []
@@ -2106,8 +2124,9 @@ tree TId 0:
       let (forest',_delTree) = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(13,25))\n|\n"++
-              "+- ((1,1),(7,18))\n|\n"++
-              "`- ((11,1),(13,25))\n"
+               "+- ((1,1),(7,18))\n|\n"++
+               "+- ((9,1),(9,14))D\n|\n"++
+               "`- ((11,1),(13,25))\n"
       (invariant forest') `shouldBe` []
 
       -- putToksForSpan test/testdata/Demote/D1.hs:6:21-24:[((((0,1),(0,3)),ITvarid "sq"),"sq")]
@@ -2115,13 +2134,13 @@ tree TId 0:
       let tok2 = head $ drop 12 toks
       let (f2,_newSpan,_oldTree) = updateTokensForSrcSpan forest' sspan2 [tok2]
       (drawTreeEntry f2) `shouldBe`
-              "((1,1),(13,25))\n|\n"++
-              "+- ((1,1),(7,18))\n|  |\n"++
-              "|  +- ((1,1),(6,20))\n|  |\n"++
-              "|  +- ((10000000006,21),(10000000006,23))\n|  |\n"++
-              "|  `- ((6,26),(7,18))\n|\n"++
-              "`- ((11,1),(13,25))\n"
-
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(7,18))\n|  |\n"++
+               "|  +- ((1,1),(6,20))\n|  |\n"++
+               "|  +- ((10000000006,21),(10000000006,23))\n|  |\n"++
+               "|  `- ((6,26),(7,18))\n|\n"++
+               "+- ((9,1),(9,14))D\n|\n"++
+               "`- ((11,1),(13,25))\n"
       -- putToksAfterPos ((6,21),(6,41)) at PlaceIndent 1 4 2
       let sspan3 = posToSrcSpan forest' ((6,21),(6,41))
       let newToks = take 20 $ drop 5 toks
@@ -2163,33 +2182,34 @@ tree TId 0:
       let fss = insertSrcSpan f2 (srcSpanToForestSpan sspan3)
       (drawTreeEntry fss) `shouldBe`
               "((1,1),(13,25))\n|\n"++
-              "+- ((1,1),(7,18))\n|  |\n"++
-              "|  +- ((1,1),(6,20))\n|  |\n"++
-              "|  +- ((6,21),(6,41))\n|  |  |\n"++
-              "|  |  +- ((10000000006,21),(10000000006,41))\n|  |  |\n"++
-              "|  |  `- ((6,26),(6,41))\n|  |\n"++
-              "|  `- ((7,1),(7,18))\n|\n"++
-              "`- ((11,1),(13,25))\n"
-
+               "+- ((1,1),(7,18))\n|  |\n"++
+               "|  +- ((1,1),(6,20))\n|  |\n"++
+               "|  +- ((6,21),(6,41))\n|  |  |\n"++
+               "|  |  +- ((10000000006,21),(10000000006,41))\n|  |  |\n"++
+               "|  |  `- ((6,26),(6,41))\n|  |\n"++
+               "|  `- ((7,1),(7,18))\n|\n"++
+               "+- ((9,1),(9,14))D\n|\n"++
+               "`- ((11,1),(13,25))\n"
 
       let (forest'',sspan'') = addToksAfterSrcSpan f2 sspan3 (PlaceOffset 1 4 2) newToks
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(13,25))\n|\n"++
-              "+- ((1,1),(7,18))\n|  |\n"++
-              "|  +- ((1,1),(6,20))\n|  |\n"++
-              "|  +- ((6,21),(6,41))\n|  |  |\n"++
-              "|  |  +- ((10000000006,21),(10000000006,41))\n|  |  |\n"++
-              "|  |  `- ((6,26),(6,41))\n|  |\n"++
-              "|  +- ((1000007,5),(1000010,7))\n|  |\n"++
-              "|  `- ((7,1),(7,18))\n|\n"++
-              "`- ((11,1),(13,25))\n"
+               "+- ((1,1),(7,18))\n|  |\n"++
+               "|  +- ((1,1),(6,20))\n|  |\n"++
+               "|  +- ((6,21),(6,41))\n|  |  |\n"++
+               "|  |  +- ((10000000006,21),(10000000006,41))\n|  |  |\n"++
+               "|  |  `- ((6,26),(6,41))\n|  |\n"++
+               "|  +- ((1000007,5),(1000010,7))\n|  |\n"++
+               "|  `- ((7,1),(7,18))\n|\n"++
+               "+- ((9,1),(9,14))D\n|\n"++
+               "`- ((11,1),(13,25))\n"
 
       (showSrcSpanF sspan'') `shouldBe` "(((False,0,1,7),5),((False,0,1,10),7))"
       -- (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokens forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq   + sumSquares xs\n     sumSquares (x:xs) = sq x + sumSquares xs\n     sumSquares [] = 0\n\n     sq\n\n \n sumSquares [] = 0\n\n\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq   + sumSquares xs\n     sumSquares (x:xs) = sq x + sumSquares xs\n     sumSquares [] = 0\n\n     sq\n\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
     -- ---------------------------------
 
@@ -2255,8 +2275,9 @@ tree TId 0:
       let (forest',_) = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(17,23))\n|\n"++
-              "+- ((1,1),(11,32))\n|\n"++
-              "`- ((13,18),(17,23))\n"
+               "+- ((1,1),(11,32))\n|\n"++
+               "+- ((12,22),(12,27))D\n|\n"++
+               "`- ((13,18),(17,23))\n"
       (invariant forest') `shouldBe` []
 
       -- putToksAfterPos ((11,27),(11,32)) at PlaceOffset 1 4 2
@@ -2275,19 +2296,20 @@ tree TId 0:
       let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry finsert) `shouldBe`
               "((1,1),(17,23))\n|\n"++
-              "+- ((1,1),(11,32))\n|  |\n"++
-              "|  +- ((1,1),(11,27))\n|  |\n"++
-              "|  `- ((11,27),(11,32))\n|\n"++
-              "`- ((13,18),(17,23))\n"
-
+               "+- ((1,1),(11,32))\n|  |\n"++
+               "|  +- ((1,1),(11,27))\n|  |\n"++
+               "|  `- ((11,27),(11,32))\n|\n"++
+               "+- ((12,22),(12,27))D\n|\n"++
+               "`- ((13,18),(17,23))\n"
 
       let (fwithspan,_t) = getSrcSpanFor forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry fwithspan) `shouldBe`
               "((1,1),(17,23))\n|\n"++
-              "+- ((1,1),(11,32))\n|  |\n"++
-              "|  +- ((1,1),(11,27))\n|  |\n"++
-              "|  `- ((11,27),(11,32))\n|\n"++
-              "`- ((13,18),(17,23))\n"
+               "+- ((1,1),(11,32))\n|  |\n"++
+               "|  +- ((1,1),(11,27))\n|  |\n"++
+               "|  `- ((11,27),(11,32))\n|\n"++
+               "+- ((12,22),(12,27))D\n|\n"++
+               "`- ((13,18),(17,23))\n"
 
       let z = openZipperToSpan (srcSpanToForestSpan sspan') $ Z.fromTree fwithspan
       let prevToks = retrievePrevLineToks z
@@ -2314,11 +2336,12 @@ tree TId 0:
 
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(17,23))\n|\n"++
-              "+- ((1,1),(11,32))\n|  |\n"++
-              "|  +- ((1,1),(11,27))\n|  |\n"++
-              "|  +- ((11,27),(11,32))\n|  |\n"++
-              "|  `- ((1000012,26),(1000013,34))\n|\n"++
-              "`- ((13,18),(17,23))\n"
+               "+- ((1,1),(11,32))\n|  |\n"++
+               "|  +- ((1,1),(11,27))\n|  |\n"++
+               "|  +- ((11,27),(11,32))\n|  |\n"++
+               "|  `- ((1000012,26),(1000013,34))\n|\n"++
+               "+- ((12,22),(12,27))D\n|\n"++
+               "`- ((13,18),(17,23))\n"
 
       (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,12),26),((False,0,1,13),34))"
       (invariant forest'') `shouldBe` []
@@ -2345,8 +2368,9 @@ tree TId 0:
       let (f2,_) = removeSrcSpan f1 (srcSpanToForestSpan sspan1)
       (drawTreeEntry f2) `shouldBe`
               "((1,1),(40,17))\n|\n"++
-              "+- ((1,1),(23,8))\n|\n"++
-              "`- ((26,1),(40,17))\n"
+               "+- ((1,1),(23,8))\n|\n"++
+               "+- ((24,5),(24,11))D\n|\n"++
+               "`- ((26,1),(40,17))\n"
       (invariant f2) `shouldBe` []
 
       -- removeToksForPos ((23,3),(23,8))
@@ -2354,9 +2378,11 @@ tree TId 0:
       let (f3,_) = removeSrcSpan f2 (srcSpanToForestSpan sspan3)
       (drawTreeEntry f3) `shouldBe`
               "((1,1),(40,17))\n|\n"++
-              "+- ((1,1),(23,8))\n|  |\n"++
-              "|  `- ((1,1),(22,14))\n|\n"++
-              "`- ((26,1),(40,17))\n"
+               "+- ((1,1),(23,8))\n|  |\n"++
+               "|  +- ((1,1),(22,14))\n|  |\n"++
+               "|  `- ((23,3),(23,8))D\n|\n"++
+               "+- ((24,5),(24,11))D\n|\n"++
+               "`- ((26,1),(40,17))\n"
       (invariant f3) `shouldBe` []
 
       -- Context set, time for test
@@ -2371,22 +2397,25 @@ tree TId 0:
       let z = openZipperToSpan (fs sspan4) $ Z.fromTree f3
       (drawTreeEntry $ Z.tree z) `shouldBe`
               "((1,1),(40,17))\n|\n"++
-              "+- ((1,1),(23,8))\n|  |\n"++
-              "|  `- ((1,1),(22,14))\n|\n"++
-              "`- ((26,1),(40,17))\n"
-
+               "+- ((1,1),(23,8))\n|  |\n"++
+               "|  +- ((1,1),(22,14))\n|  |\n"++
+               "|  `- ((23,3),(23,8))D\n|\n"++
+               "+- ((24,5),(24,11))D\n|\n"++
+               "`- ((26,1),(40,17))\n"
 
       -- let (b1,m1,e1) = doSplitTree (Z.tree z) (fs sspan4)
       let (b1,m1,e1) = splitSubtree (Z.tree z) (fs sspan4)
       (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
               "([],"++
-              "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 23),8))],"++
-              "[(((ForestLine False 0 0 26),1),((ForestLine False 0 0 40),17))])"
+              "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 23),8)),"++
+               "(((ForestLine False 0 0 24),5),((ForestLine False 0 0 24),11))],"++
+               "[(((ForestLine False 0 0 26),1),((ForestLine False 0 0 40),17))])"
 
       let (b2,m2,e2) = splitSubtree (head m1) (fs sspan4)
       (show (map treeStartEnd b2,map treeStartEnd m2,map treeStartEnd e2)) `shouldBe` 
               "([],"++
-              "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 22),14))],"++
+              "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 22),14)),"++
+               "(((ForestLine False 0 0 23),3),((ForestLine False 0 0 23),8))],"++
               "[])"
 
       let (Node (Entry ss toks2) _) = head m2
@@ -2478,8 +2507,9 @@ tree TId 0:
       let (forest',_) = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(8,6))\n|\n"++
-              "+- ((1,1),(4,19))\n|\n"++
-              "`- ((8,1),(8,6))\n"
+               "+- ((1,1),(4,19))\n|\n"++
+               "+- ((7,1),(7,6))D\n|\n"++
+               "`- ((8,1),(8,6))\n"
       (invariant forest') `shouldBe` []
 
       --  putToksAfterPos ((4,14),(4,19))
@@ -2488,10 +2518,11 @@ tree TId 0:
       let finsert = insertSrcSpan forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry finsert) `shouldBe`
               "((1,1),(8,6))\n|\n"++
-              "+- ((1,1),(4,19))\n|  |\n"++
-              "|  +- ((1,1),(4,13))\n|  |\n"++
-              "|  `- ((4,14),(4,19))\n|\n"++
-              "`- ((8,1),(8,6))\n"
+               "+- ((1,1),(4,19))\n|  |\n"++
+               "|  +- ((1,1),(4,13))\n|  |\n"++
+               "|  `- ((4,14),(4,19))\n|\n"++
+               "+- ((7,1),(7,6))D\n|\n"++
+               "`- ((8,1),(8,6))\n"
       -- (invariant forest'') `shouldBe` []
 
       -- Now we have the test case set up. We want prior toks from
@@ -2676,22 +2707,23 @@ tree TId 0:
       (showSrcSpan l) `shouldBe` "((11,1),(11,8))"
 
       let tk' = removeToksFromCache tk l
-      (drawTokenCache tk') `shouldBe` 
-             "tree TId 0:\n"++
-             "((1,1),(13,25))\n|\n"++
-             "+- ((1,1),(9,14))\n|\n"++
-             "`- ((13,1),(13,25))\n"++
-             "tree TId 1:\n"++
-             "((100000011,1),(100000011,8))\n"
-
+      (drawTokenCache tk') `shouldBe`
+               "tree TId 0:\n"++
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(9,14))\n|\n"++
+               "+- ((11,1),(11,8))D\n|\n"++
+               "`- ((13,1),(13,25))\n"++
+               "tree TId 1:\n"++
+               "((100000011,1),(100000011,8))\n"
       let mainForest = (tkCache tk') Map.! mainTid
       let sspan = posToSrcSpan mainForest ((11,1),(11,8))
 
       let tree1 = getTreeFromCache sspan tk'
-      (drawTreeEntry tree1) `shouldBe` 
+      (drawTreeEntry tree1) `shouldBe`
              "((1,1),(13,25))\n|\n"++
-             "+- ((1,1),(9,14))\n|\n"++
-             "`- ((13,1),(13,25))\n"
+               "+- ((1,1),(9,14))\n|\n"++
+               "+- ((11,1),(11,8))D\n|\n"++
+               "`- ((13,1),(13,25))\n"
 
       let sspan2 = insertForestLineInSrcSpan (ForestLine False 1 0 1) sspan
       (showGhc sspan2) `shouldBe` "test/testdata/Demote/D1.hs:(33554433,1)-(33554443,7)"
@@ -2701,7 +2733,7 @@ tree TId 0:
       (show tid) `shouldBe` "TId 1"
 
       let tree2 = getTreeFromCache sspan2 tk'
-      (drawTreeEntry tree2) `shouldBe` 
+      (drawTreeEntry tree2) `shouldBe`
              "((100000011,1),(100000011,8))\n"
 
 
@@ -2719,14 +2751,14 @@ tree TId 0:
       (showSrcSpan l) `shouldBe` "((11,1),(11,8))"
 
       let tk' = removeToksFromCache tk l
-      (drawTokenCache tk') `shouldBe` 
-             "tree TId 0:\n"++
-             "((1,1),(13,25))\n|\n"++
-             "+- ((1,1),(9,14))\n|\n"++
-             "`- ((13,1),(13,25))\n"++
-             "tree TId 1:\n"++
-             "((100000011,1),(100000011,8))\n"
-
+      (drawTokenCache tk') `shouldBe`
+               "tree TId 0:\n"++
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(9,14))\n|\n"++
+               "+- ((11,1),(11,8))D\n|\n"++
+               "`- ((13,1),(13,25))\n"++
+               "tree TId 1:\n"++
+               "((100000011,1),(100000011,8))\n"
       let mainForest = (tkCache tk') Map.! mainTid
       let sspan = posToSrcSpan mainForest ((11,1),(11,8))
 
@@ -2744,12 +2776,14 @@ tree TId 0:
 
       let tk2 = replaceTreeInCache sspan2 tree1 tk'
       (drawTokenCache tk2) `shouldBe`
-             "tree TId 0:\n"++
-             "((1,1),(13,25))\n|\n"++
-             "+- ((1,1),(9,14))\n|\n"++
-             "`- ((13,1),(13,25))\n"++
-             "tree TId 1:\n"++
-             "((100000001,1),(100000006,17))\n"
+               "tree TId 0:\n"++
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(9,14))\n|\n"++
+               "+- ((11,1),(11,8))D\n|\n"++
+               "`- ((13,1),(13,25))\n"++
+               "tree TId 1:\n"++
+               "((100000001,1),(100000006,17))\n"
+
 
   -- -----------------------------------
 
@@ -2765,12 +2799,13 @@ tree TId 0:
       let tk' = removeToksFromCache tk sspan
 
       (drawTokenCache tk') `shouldBe`
-             "tree TId 0:\n"++
-             "((1,1),(18,23))\n|\n"++
-             "+- ((1,1),(14,18))\n|\n"++
-             "`- ((17,1),(18,23))\n"++
-             "tree TId 1:\n"++
-             "((100000015,1),(100000015,17))\n"
+               "tree TId 0:\n"++
+               "((1,1),(18,23))\n|\n"++
+               "+- ((1,1),(14,18))\n|\n"++
+               "+- ((15,1),(15,17))D\n|\n"++
+               "`- ((17,1),(18,23))\n"++
+               "tree TId 1:\n"++
+               "((100000015,1),(100000015,17))\n"
 
       let tree1 = (tkCache tk') Map.! (TId 1)
 
@@ -2790,16 +2825,17 @@ tree TId 0:
       (show toks3) `shouldBe` "[((((0,1),(0,2)),ITvarid \"p\"),\"p\")]"
       let (tk3,_newSpan) = putToksInCache tk' sspan3 toks3
       (drawTokenCache tk3) `shouldBe`
-             "tree TId 0:\n"++
-             "((1,1),(18,23))\n|\n"++
-             "+- ((1,1),(14,18))\n|\n"++
-             "`- ((17,1),(18,23))\n"++
-             "tree TId 1:\n"++
-             "((100000015,1),(100000015,17))\n|\n"++
-             "+- ((100000015,1),(100000015,14))\n|\n"++
-             "`- ((10100000015,14),(10100000015,15))\n"++
-             "tree TId 2:\n"++
-             "((200000015,14),(200000015,17))\n"
+               "tree TId 0:\n"++
+               "((1,1),(18,23))\n|\n"++
+               "+- ((1,1),(14,18))\n|\n"++
+               "+- ((15,1),(15,17))D\n|\n"++
+               "`- ((17,1),(18,23))\n"++
+               "tree TId 1:\n"++
+               "((100000015,1),(100000015,17))\n|\n"++
+               "+- ((100000015,1),(100000015,14))\n|\n"++
+               "`- ((10100000015,14),(10100000015,15))\n"++
+               "tree TId 2:\n"++
+               "((200000015,14),(200000015,17))\n"
 
       let (forest2,tree1') = getSrcSpanFor tree1 (srcSpanToForestSpan sspan3)
       (show $ retrieveTokens forest2) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
@@ -2824,12 +2860,13 @@ tree TId 0:
 
       let tk' = removeToksFromCache tk l
       (drawTokenCache tk') `shouldBe`
-             "tree TId 0:\n"++
-             "((1,1),(13,25))\n|\n"++
-             "+- ((1,1),(9,14))\n|\n"++
-             "`- ((13,1),(13,25))\n"++
-             "tree TId 1:\n"++
-             "((100000011,1),(100000011,8))\n"
+               "tree TId 0:\n"++
+               "((1,1),(13,25))\n|\n"++
+               "+- ((1,1),(9,14))\n|\n"++
+               "+- ((11,1),(11,8))D\n|\n"++
+               "`- ((13,1),(13,25))\n"++
+               "tree TId 1:\n"++
+               "((100000011,1),(100000011,8))\n"
 
       let mainForest = (tkCache tk') Map.! mainTid
       let sspan = posToSrcSpan mainForest ((11,1),(11,8))
@@ -2866,9 +2903,9 @@ tree TId 0:
             "`- ((19,1),(21,14))\n"
 
       let es = retrieveTokens' f2
-      (show $ deleteGapsToks es) `shouldBe` ""
-      -- (GHC.showRichTokenStream $ retrieveTokens f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
- 
+      -- (show $ deleteGapsToks es) `shouldBe` ""
+      (GHC.showRichTokenStream $ retrieveTokens f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions
