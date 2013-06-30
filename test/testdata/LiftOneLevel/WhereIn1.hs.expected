@@ -11,7 +11,6 @@ sumSquares x y = (sq pow)x + (sq pow)y
 
 
                  pow=2
-
 sq pow 0= 0
 sq pow z= z^pow
 

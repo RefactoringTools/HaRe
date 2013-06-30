@@ -796,16 +796,15 @@ splitSubToks ::
   Tree Entry
   -> (ForestPos, ForestPos)
   -> ([Tree Entry], [Tree Entry], [Tree Entry])
-splitSubToks (Node (Deleted ss@(ssStart,ssEnd)) []) (sspanStart,sspanEnd) = (b',m',e')
+splitSubToks n@(Node (Deleted (ssStart,ssEnd)) []) (sspanStart,sspanEnd) = (b',m',e')
   where
-    (b',m',e') = case (containsStart ss sspan,containsEnd ss sspan) of
-      (True, False) -> (b'',m'',e'') -- Start only
-        where
-         b'' = 
-      (True, True)  -> (b'',m'',e'') -- Start and End
-      (False,True)  -> (b'',m'',e'') -- End only
-      (False,False) -> (b'',m'',e'')
-
+    b' = if sspanStart > ssStart
+           then [Node (Deleted (ssStart,ssStart)) []]
+           else []
+    m' = [n]
+    e' = if ssEnd > sspanEnd
+           then [Node (Deleted (sspanEnd,ssEnd)) []]
+           else []
 splitSubToks tree sspan = (b',m',e')
                           -- error $ "splitSubToks:(sspan,tree)=" ++ (show (sspan,tree))
   where
@@ -830,6 +829,8 @@ splitSubToks tree sspan = (b',m',e')
                     else mkTreeListFromTokens toksm (sspanStart,ssEnd)
 -}
          m'' = let
+                -- ssStart, ssEnd is passed in node
+                -- sspanStart, sspanEnd is span we are matching
                 (ForestLine _ch _ts _v le,ce) = sspanEnd
                 tl =
                   if (ssStart == sspanStart) -- Eq does not compare all flags
@@ -840,7 +841,8 @@ splitSubToks tree sspan = (b',m',e')
                  else [Node (Entry (st,(ForestLine ch ts v le,ce)) tk) []]
                    where [Node (Entry (st,(ForestLine ch ts v _l,_c)) tk) []] = tl
                in
-                tl'
+                -- tl'
+                tl
          e'' = []
       (True, True) -> (b'',m'',e'') -- Start and End
         where
@@ -1621,6 +1623,8 @@ showTree = prettyshow
 
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
+prettyshow (Node (Deleted sspan) [])
+  = "Node (Deleted " ++ (showForestSpan sspan) ++ ")"
 prettyshow (Node (Entry sspan toks) sub)
   = "Node (Entry " ++ (showForestSpan sspan) ++ " "
      ++ (prettyToks toks) ++ ") "
