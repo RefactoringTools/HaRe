@@ -2925,6 +2925,41 @@ tree TId 0:
       -- (show $ deleteGapsToks es) `shouldBe` ""
       (GHC.showRichTokenStream $ retrieveTokens f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
+  -- ---------------------------------------------
+
+  describe "deleteGapsToks" $ do
+    it "Closes the gap when finding a Deleted Entry" $ do
+      (t,toks) <- parsedFileLiftWhereIn1Ghc
+      let f1 = mkTreeFromTokens toks
+
+      -- removeToksForPos ((11,18),(12,32))
+      -- |  +- ((11,18),(12,31))D
+      let pos = ((11,18),(12,32))
+      let sspan = posToSrcSpan f1 pos
+      let (f2,_t2) = removeSrcSpan f1 (srcSpanToForestSpan sspan)
+
+      (drawTreeEntry f2) `shouldBe`
+            "((1,1),(16,23))\n|\n"++
+            "+- ((1,1),(10,17))\n|\n"++
+            "+- ((11,18),(12,32))D\n|\n"++
+            "`- ((13,18),(16,23))\n"
+
+      let entries = retrieveTokens' f2
+
+      -- (show entries) `shouldBe` ""
+
+      (show $ deleteGapsToks entries) `shouldBe` ""      
+
+      "a" `shouldBe` "b"
+
+
+    it "closes the gap" $ do
+      let entries =
+           [
+           ]
+
+      "a" `shouldBe` "b"
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions
@@ -3007,3 +3042,12 @@ parsedFileDemoteWhereIn4 :: IO (ParseResult, [PosToken])
 parsedFileDemoteWhereIn4 = parsedFileGhc "./test/testdata/Demote/WhereIn4.hs"
 
 -- ---------------------------------------------------------------------
+
+liftWhereIn1FileName :: GHC.FastString
+liftWhereIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/WhereIn1.hs"
+
+parsedFileLiftWhereIn1Ghc :: IO (ParseResult,[PosToken])
+parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereIn1.hs"
+
+-- ---------------------------------------------------------------------
+

@@ -92,6 +92,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , simpPosToForestSpan
        , showForestSpan
        , deleteGapsToks
+       , deleteGapsToks'
 
        -- * Based on Data.Tree
        , drawTreeEntry
@@ -973,7 +974,7 @@ goDeleteGapsToks offset [Entry _ t]           = map (increaseSrcSpan offset) t
 goDeleteGapsToks      _ [Deleted _]           = []
 goDeleteGapsToks offset (Deleted _:ts)        = goDeleteGapsToks offset ts
 goDeleteGapsToks offset [Entry _ t,Deleted _] = map (increaseSrcSpan offset) t
-goDeleteGapsToks offset (Entry _ t1:Entry _ t2:ts) = (map (increaseSrcSpan offset) (t1 ++ t2)) ++goDeleteGapsToks offset ts
+goDeleteGapsToks offset (Entry _ t1:e@(Entry _ _):ts) = (map (increaseSrcSpan offset) t1) ++goDeleteGapsToks offset (e:ts)
 goDeleteGapsToks (fr,fc) (Entry ss t1:Deleted _:t2:ts)
   = t1' ++ goDeleteGapsToks offset' (t2:ts)
   where
@@ -981,9 +982,36 @@ goDeleteGapsToks (fr,fc) (Entry ss t1:Deleted _:t2:ts)
     -- TODO: what about deletion within a line?
     (_,(sr,_sc)) = forestSpanToSimpPos ss
     ((dr,_dc),_) = forestSpanToSimpPos $ forestSpanFromEntry t2
-    offset' = (fr + sr - dr + 2, fc)
+    -- offset' = (fr + sr - dr + 2, fc)
+    offset' = (fr + sr - dr + 1, fc)
 
     t1' = map (increaseSrcSpan (fr,fc)) t1
+
+--
+-- | Process the leaf nodes of a tree to remove all deleted spans
+deleteGapsToks' :: [Entry] -> [(SimpPos,String,ForestSpan,[PosToken])]
+deleteGapsToks' toks = goDeleteGapsToks' (0,0) toks
+
+goDeleteGapsToks' :: SimpPos -> [Entry] -> [(SimpPos,String,ForestSpan,[PosToken])]
+goDeleteGapsToks'      _  []                    = [((0,0),  "N",nullSpan, [])]
+goDeleteGapsToks' offset  [Entry ss t]           = [(offset,"E1",ss,map (increaseSrcSpan offset) t)]
+goDeleteGapsToks'      _  [Deleted _]           = [((0,0),  "D1",nullSpan, [])]
+goDeleteGapsToks' offset  (Deleted _:ts)        = (offset, "D0",nullSpan, []):goDeleteGapsToks' offset ts
+goDeleteGapsToks' offset  [Entry ss t,Deleted _] = [(offset,"[ED]",ss,map (increaseSrcSpan offset) t)]
+goDeleteGapsToks' offset  (Entry ss t1:e@(Entry _ _):ts) =(offset,"EE", ss, (map (increaseSrcSpan offset) t1)):goDeleteGapsToks' offset (e:ts)
+goDeleteGapsToks' (fr,fc) (Entry ss t1:Deleted _:t2:ts)
+  = ((fr,fc),"ED",ss,t1') : goDeleteGapsToks' offset' (t2:ts)
+  where
+    -- TODO: use actual first and last toks, may be comments
+    -- TODO: what about deletion within a line?
+    (_,(sr,_sc)) = forestSpanToSimpPos ss
+    ((dr,_dc),_) = forestSpanToSimpPos $ forestSpanFromEntry t2
+    -- offset' = (fr + sr - dr + 2, fc)
+    offset' = (fr + sr - dr + 1, fc)
+
+    t1' = map (increaseSrcSpan (fr,fc)) t1
+
+--
 
 -- ---------------------------------------------------------------------
 
@@ -1126,7 +1154,7 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
 limitPrevToks :: [PosToken] -> GHC.SrcSpan -> [PosToken]
 limitPrevToks prevToks sspan = prevToks''
   where
-    ((ForestLine _ _ _ startRow,startCol),(ForestLine _ _ _ endRow,_)) = srcSpanToForestSpan sspan
+    ((ForestLine _ _ _ startRow,_startCol),(ForestLine _ _ _ endRow,_)) = srcSpanToForestSpan sspan
 
     -- Make sure the toks do not extend past where we are
     prevToks' = reverse $ dropWhile (\t -> tokenRow t > endRow) $ reverse  prevToks

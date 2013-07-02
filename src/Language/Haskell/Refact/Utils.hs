@@ -574,6 +574,7 @@ writeRefactoredFiles _isSubRefactor files
            writeFile (fileName ++ ".renamed_out") (showGhc renamed)
            writeFile (fileName ++ ".AST_out") $ (showGhc renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
 
+
            -- (Julien) I have changed Unlit.writeHaskellFile into
            -- AbstractIO.writeFile (which is ok as long as we do not
            -- have literate Haskell files)

@@ -93,6 +93,9 @@ fetchToksFinal = do
   Just tm <- gets rsModule
   let toks = retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
   -- logm $ "fetchToks" ++ (showToks toks)
+  logm $ "fetchToksFinal:[Entry]=" ++ (show $ retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid)
+  logm $ "fetchToksFinal:[PosToken]=" ++ (show $ deleteGapsToks' $ retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid)
+
   logm $ "fetchToksFinal (not showing toks)"
   return toks
 
