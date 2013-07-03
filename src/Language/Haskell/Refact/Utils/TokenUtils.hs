@@ -20,6 +20,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , removeSrcSpan
        , getSrcSpanFor
        -- , getPathFor
+       , retrieveTokensInterim
        , retrieveTokens
        , retrieveTokens' -- temporary for debug
        , retrieveTokensFinal
@@ -945,6 +946,15 @@ removeSrcSpan forest sspan = (forest'', delTree)
 -- TODO: separate this into a version that does re-align for final
 --       retrieval, and one that does not for intermediate use
 
+retrieveTokensInterim :: Tree Entry -> [PosToken]
+retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {- $ reAlignMarked -}
+                             $ concat $ map (\t -> F.foldl accum [] t) [forest]
+  where
+    accum :: [PosToken] -> Entry -> [PosToken]
+    accum acc (Entry _ toks) = acc ++ toks
+    accum acc (Deleted _)    = acc
+
+
 retrieveTokens :: Tree Entry -> [PosToken]
 retrieveTokens forest = stripForestLines $ monotonicLineToks {- $ reAlignMarked -}
                       $ deleteGapsToks $ retrieveTokens' forest
@@ -982,8 +992,8 @@ goDeleteGapsToks (fr,fc) (Entry ss t1:Deleted _:t2:ts)
     -- TODO: what about deletion within a line?
     (_,(sr,_sc)) = forestSpanToSimpPos ss
     ((dr,_dc),_) = forestSpanToSimpPos $ forestSpanFromEntry t2
-    -- offset' = (fr + sr - dr + 2, fc)
-    offset' = (fr + sr - dr + 1, fc)
+    offset' = (fr + sr - dr + 2, fc)
+    -- offset' = (fr + sr - dr + 1, fc)
 
     t1' = map (increaseSrcSpan (fr,fc)) t1
 
@@ -1006,8 +1016,8 @@ goDeleteGapsToks' (fr,fc) (Entry ss t1:Deleted _:t2:ts)
     -- TODO: what about deletion within a line?
     (_,(sr,_sc)) = forestSpanToSimpPos ss
     ((dr,_dc),_) = forestSpanToSimpPos $ forestSpanFromEntry t2
-    -- offset' = (fr + sr - dr + 2, fc)
-    offset' = (fr + sr - dr + 1, fc)
+    offset' = (fr + sr - dr + 2, fc)
+    -- offset' = (fr + sr - dr + 1, fc)
 
     t1' = map (increaseSrcSpan (fr,fc)) t1
 
@@ -1040,7 +1050,8 @@ retrievePrevLineToks z = res' -- error $ "retrievePrevLineToks:done notWhite=" +
     -- Assuming the zipper has been opened to the span we care about,
     -- we will start with the tokens in the current tree, and work
     -- back.
-    prevToks = retrieveTokens $ Z.tree z
+    -- prevToks = retrieveTokens $ Z.tree z
+    prevToks = retrieveTokensInterim $ Z.tree z
 
     -- res = concat $ dropWhile (\toks -> (emptyList toks) || (done toks)) $ reverse (prevToks : (go z))
     res' = concat $ reverse (prevToks : (go z))

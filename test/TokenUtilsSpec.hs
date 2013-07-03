@@ -1377,7 +1377,7 @@ tree TId 0:
 
       let toks' = retrieveTokens forest3
       -- (showToks toks') `shouldBe` ""
-      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n sumSquares [] = 0\n\n\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
     -- ---------------------------------
 
@@ -2944,21 +2944,62 @@ tree TId 0:
             "+- ((11,18),(12,32))D\n|\n"++
             "`- ((13,18),(16,23))\n"
 
-      let entries = retrieveTokens' f2
+      -- putDeclToksAfterSpan test/testdata/LiftToToplevel/WhereIn1.hs:(9,1)-(13,22):("(((False,0,0,9),1),((False,0,0,13),23))",PlaceOffset 2 0 2,[((((1,19),(1,21)),ITvarid "sq"),"sq"),((((1,23),(1,26)),ITvarid "pow"),"pow"),((((1,27),(1,28)),ITinteger 0),"0"),((((1,28),(1,29)),ITequal),"="),((((1,30),(1,31)),ITinteger 0),"0"),((((2,19),(2,21)),ITvarid "sq"),"sq"),((((2,23),(2,26)),ITvarid "pow"),"pow"),((((2,27),(2,28)),ITvarid "z"),"z"),((((2,28),(2,29)),ITequal),"="),((((2,30),(2,31)),ITvarid "z"),"z"),((((2,31),(2,32)),ITvarsym "^"),"^"),((((2,32),(2,35)),ITvarid "pow"),"pow")])
+
+      newToks <- liftIO $ basicTokenise "\n                  sq  pow 0= 0\n                  sq  pow z= z^pow"
+      (show newToks) `shouldBe` "[((((1,19),(1,21)),ITvarid \"sq\"),\"sq\"),((((1,23),(1,26)),ITvarid \"pow\"),\"pow\"),((((1,27),(1,28)),ITinteger 0),\"0\"),((((1,28),(1,29)),ITequal),\"=\"),((((1,30),(1,31)),ITinteger 0),\"0\"),((((2,19),(2,21)),ITvarid \"sq\"),\"sq\"),((((2,23),(2,26)),ITvarid \"pow\"),\"pow\"),((((2,27),(2,28)),ITvarid \"z\"),\"z\"),((((2,28),(2,29)),ITequal),\"=\"),((((2,30),(2,31)),ITvarid \"z\"),\"z\"),((((2,31),(2,32)),ITvarsym \"^\"),\"^\"),((((2,32),(2,35)),ITvarid \"pow\"),\"pow\")]"
+
+      let sspan2 = posToSrcSpan f1 ((9,1),(13,23))
+      let pos2 = (PlaceOffset 2 0 2)
+      let (f3,_newSpan) = addToksAfterSrcSpan f2 sspan2 pos2 newToks
+      (drawTreeEntry f3) `shouldBe`
+            "((1,1),(16,23))\n|\n"++
+            "+- ((1,1),(1,37))\n|\n"++
+            "+- ((9,1),(13,23))\n|  |\n"++
+            "|  +- ((9,1),(10,17))\n|  |\n"++
+            "|  +- ((11,18),(12,32))D\n|  |\n"++
+            "|  `- ((13,18),(13,23))\n|\n"++
+            "+- ((1000015,1),(1000016,17))\n|\n"++
+            "`- ((15,1),(16,23))\n"
+
+--
+      -- Seems the problem is in addToksAfterSrcSpan
+
+      let (fwithspan,tree) = getSrcSpanFor f2 (srcSpanToForestSpan sspan2)
+
+      let z = openZipperToSpan (srcSpanToForestSpan sspan2) $ Z.fromTree fwithspan
+      let prevToks = case (retrievePrevLineToks z) of
+                   [] -> retrieveTokens tree
+                   xs -> xs
+
+      let prevToks' = limitPrevToks prevToks sspan2
+      let toks' = reIndentToks pos2 prevToks' newToks
+
+      -- Hmmm. This is the final position, after taking into account
+      -- the deleted entry. BUT, we are putting it back into the
+      -- original tree. 
+      (show $ last prevToks') `shouldBe` "((((13,22),(13,23)),ITinteger 2),\"2\")"
+
+      -- What we actually need, but we are getting ((13,1),(13,3))
+      let toks'' = placeToksForSpan fwithspan sspan2 tree pos2 newToks
+      (show $ head toks'') `shouldBe` "((((15,1),(15,3)),ITvarid \"sq\"),\"sq\")"
+
+--
+
+
+      -- (showTree f3) `shouldBe` ""
+
+      -- (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe` ""
+
+      let entries = retrieveTokens' f3
 
       -- (show entries) `shouldBe` ""
 
-      (show $ deleteGapsToks entries) `shouldBe` ""      
+      -- (show $ deleteGapsToks entries) `shouldBe` ""
+      -- (show $ deleteGapsToks' entries) `shouldBe` ""
 
-      "a" `shouldBe` "b"
+      (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe` "module LiftToToplevel.WhereIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test add parameters to 'sq'.\n\n sumSquares x y = sq x + sq y\n            where\n\n                  pow=2\n\n sq  pow 0= 0\n sq  pow z= z^pow\n\n \n anotherFun 0 y = sq y\n      where  sq x = x^2\n "
 
-
-    it "closes the gap" $ do
-      let entries =
-           [
-           ]
-
-      "a" `shouldBe` "b"
 
 
 -- ---------------------------------------------------------------------
