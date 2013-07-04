@@ -54,6 +54,9 @@ data Entry = Entry !ForestSpan -- ^The source span contained in this Node
                    ![PosToken] -- ^The tokens for the SrcSpan if
                                -- subtree is empty
            | Deleted !ForestSpan -- ^The source span has been deleted
+                     SimpPos     -- ^The gap between this span end and
+                                 --  the start of the next in the
+                                 --  fringe of the tree.
 
 --             deriving (Show)
 

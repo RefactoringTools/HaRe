@@ -94,6 +94,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , showForestSpan
        , deleteGapsToks
        , deleteGapsToks'
+       , calcEndGap
 
        -- * Based on Data.Tree
        , drawTreeEntry
@@ -453,8 +454,8 @@ srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToF
 -- --------------------------------------------------------------------
 
 forestSpanFromEntry :: Entry -> ForestSpan
-forestSpanFromEntry (Entry ss _) = ss
-forestSpanFromEntry (Deleted ss) = ss
+forestSpanFromEntry (Entry ss _  ) = ss
+forestSpanFromEntry (Deleted ss _) = ss
 
 -- --------------------------------------------------------------------
 
@@ -543,7 +544,7 @@ replaceTreeInCache sspan tree tk = tk'
     tk' = tk {tkCache = Map.insert tid tree' (tkCache tk) }
 
 putTidInTree :: TreeId -> Tree Entry -> Tree Entry
-putTidInTree tid (Node (Deleted fs) []) = (Node (Deleted fs') [])
+putTidInTree tid (Node (Deleted fs eg) []) = (Node (Deleted fs' eg) [])
   where fs' = treeIdIntoForestSpan tid fs
 putTidInTree tid (Node (Entry fs toks) subs) = tree'
   where
@@ -742,7 +743,7 @@ insertSrcSpan forest sspan = forest'
 doSplitTree ::
   Tree Entry -> ForestSpan
   -> ([Tree Entry], [Tree Entry], [Tree Entry])
-doSplitTree tree@(Node (Deleted _ss)     []) sspan = splitSubToks tree sspan -- ++AZ+ What is correct?
+doSplitTree tree@(Node (Deleted _ss _)   []) sspan = splitSubToks tree sspan -- ++AZ+ What is correct?
 doSplitTree tree@(Node (Entry _ss _toks) []) sspan = splitSubToks tree sspan
 doSplitTree tree                             sspan = (b'',m'',e'')
  -- error $ "doSplitTree:(sspan,tree,(b1,m1,e1))=" ++ (show (sspan,tree,(b1,m1,e1)))
@@ -798,14 +799,16 @@ splitSubToks ::
   Tree Entry
   -> (ForestPos, ForestPos)
   -> ([Tree Entry], [Tree Entry], [Tree Entry])
-splitSubToks n@(Node (Deleted (ssStart,ssEnd)) []) (sspanStart,sspanEnd) = (b',m',e')
+splitSubToks n@(Node (Deleted (ssStart,ssEnd) eg) []) (sspanStart,sspanEnd) = (b',m',e')
   where
+    egs = (0,0) -- TODO: calculate this
+    ege = (0,0) -- TODO: calculate this
     b' = if sspanStart > ssStart
-           then [Node (Deleted (ssStart,ssStart)) []]
+           then [Node (Deleted (ssStart,ssStart) egs) []]
            else []
     m' = [n]
     e' = if ssEnd > sspanEnd
-           then [Node (Deleted (sspanEnd,ssEnd)) []]
+           then [Node (Deleted (sspanEnd,ssEnd) ege) []]
            else []
 splitSubToks tree sspan = (b',m',e')
                           -- error $ "splitSubToks:(sspan,tree)=" ++ (show (sspan,tree))
@@ -916,8 +919,6 @@ splitSubtree tree sspan = (before,middle,end)
 -- ---------------------------------------------------------------------
 
 -- | Removes a ForestSpan and its tokens from the forest.
--- TODO: should it store the removed span somewhere else?
-
 removeSrcSpan :: Tree Entry -> ForestSpan
   -> (Tree Entry,Tree Entry) -- ^Updated forest, removed span
 removeSrcSpan forest sspan = (forest'', delTree)
@@ -927,9 +928,12 @@ removeSrcSpan forest sspan = (forest'', delTree)
     z = openZipperToSpan sspan $ Z.fromTree forest'
     zp = gfromJust "removeSrcSpan" $ Z.parent z
 
+    -- eg = (0,0) -- TODO: calculate the end gap from the tree
+    eg = calcEndGap forest' sspan
+
     pt = Z.tree zp
     -- subTree = filter (\t -> not (treeStartEnd t == sspan)) $ subForest pt
-    subTree = map (\t -> if (treeStartEnd t == sspan) then (Node (Deleted sspan) []) else t) $ subForest pt
+    subTree = map (\t -> if (treeStartEnd t == sspan) then (Node (Deleted sspan eg) []) else t) $ subForest pt
 
     z' = Z.setTree (pt { subForest = subTree}) zp
     forest'' = Z.toTree z'
@@ -937,6 +941,35 @@ removeSrcSpan forest sspan = (forest'', delTree)
     -- forest'' = error $ "removeSrcSpan: after insertSrcSpan\n" ++ (drawTreeEntry forest') -- ++AZ++
 
     delTree = Z.tree z
+
+-- ---------------------------------------------------------------------
+
+-- |For a span about to be deleted, calculate the gap between the end
+-- of the span being deleted and the start of the next one, at a token
+-- level.
+calcEndGap :: Tree Entry -> ForestSpan -> SimpPos
+calcEndGap tree sspan = gap
+  where
+    (_sspanStart,(spanRow,spanCol)) = forestSpanToSimpPos sspan
+    entries = retrieveTokens' tree
+    (_before,after) = break (\e -> forestSpanFromEntry e > sspan) entries
+    -- last element of before should be the sspan we care about, first
+    -- of after is the one we are looking for.
+
+    -- TODO: ++AZ++ `after` may contain zero or more Deleted segments in the
+    -- front, accumulate their offsets first
+    (tokRow,tokCol) = if emptyList after
+            then (spanRow,spanCol)
+            else (r,c)
+              where
+                (r,c) = case ghead ("calcEndGap:after="++(show after)) after of
+                  (Entry _ toks) -> (tokenRow t,tokenCol t)
+                             where t = ghead "calcEndGap" toks
+                  (Deleted ss _) -> fst $ forestSpanToSimpPos ss
+
+
+    gap = (tokRow - spanRow, tokCol - spanCol)
+    -- gap = error $ "calcEndGap: (before,after)=" ++ (show (before,after))
 
 -- ---------------------------------------------------------------------
 
@@ -952,7 +985,7 @@ retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {- $ reAlign
   where
     accum :: [PosToken] -> Entry -> [PosToken]
     accum acc (Entry _ toks) = acc ++ toks
-    accum acc (Deleted _)    = acc
+    accum acc (Deleted _ _)  = acc
 
 
 retrieveTokens :: Tree Entry -> [PosToken]
@@ -970,7 +1003,7 @@ retrieveTokens' forest = concat $ map (\t -> F.foldl accum [] t) [forest]
     accum :: [Entry] -> Entry -> [Entry]
     accum acc   (Entry _   []) = acc
     accum acc e@(Entry _ toks) = acc ++ [e]
-    accum acc e@(Deleted _)    = acc ++ [e]
+    accum acc e@(Deleted _ _)  = acc ++ [e]
 
 -- ---------------------------------------------------------------------
 
@@ -981,18 +1014,22 @@ deleteGapsToks toks = goDeleteGapsToks (0,0) toks
 goDeleteGapsToks :: SimpPos -> [Entry] -> [PosToken]
 goDeleteGapsToks      _ []                    = []
 goDeleteGapsToks offset [Entry _ t]           = map (increaseSrcSpan offset) t
-goDeleteGapsToks      _ [Deleted _]           = []
-goDeleteGapsToks offset (Deleted _:ts)        = goDeleteGapsToks offset ts
-goDeleteGapsToks offset [Entry _ t,Deleted _] = map (increaseSrcSpan offset) t
+goDeleteGapsToks      _ [Deleted _ _]         = []
+goDeleteGapsToks offset (Deleted _ _:ts)      = goDeleteGapsToks offset ts
+goDeleteGapsToks offset [Entry _ t,Deleted _ _] = map (increaseSrcSpan offset) t
 goDeleteGapsToks offset (Entry _ t1:e@(Entry _ _):ts) = (map (increaseSrcSpan offset) t1) ++goDeleteGapsToks offset (e:ts)
-goDeleteGapsToks (fr,fc) (Entry ss t1:Deleted _:t2:ts)
+goDeleteGapsToks (fr,fc) (Entry ss t1:Deleted _ eg:t2:ts)
   = t1' ++ goDeleteGapsToks offset' (t2:ts)
   where
     -- TODO: use actual first and last toks, may be comments
     -- TODO: what about deletion within a line?
+    
+    (deltaR,deltaC) = eg
     (_,(sr,_sc)) = forestSpanToSimpPos ss
     ((dr,_dc),_) = forestSpanToSimpPos $ forestSpanFromEntry t2
-    offset' = (fr + sr - dr + 2, fc)
+    offset' = if deltaR > 0
+       then (fr + sr - dr + deltaR, fc)
+       else (fr + sr - dr + deltaR, fc) 
     -- offset' = (fr + sr - dr + 1, fc)
 
     t1' = map (increaseSrcSpan (fr,fc)) t1
@@ -1004,12 +1041,12 @@ deleteGapsToks' toks = goDeleteGapsToks' (0,0) toks
 
 goDeleteGapsToks' :: SimpPos -> [Entry] -> [(SimpPos,String,ForestSpan,[PosToken])]
 goDeleteGapsToks'      _  []                    = [((0,0),  "N",nullSpan, [])]
-goDeleteGapsToks' offset  [Entry ss t]           = [(offset,"E1",ss,map (increaseSrcSpan offset) t)]
-goDeleteGapsToks'      _  [Deleted _]           = [((0,0),  "D1",nullSpan, [])]
-goDeleteGapsToks' offset  (Deleted _:ts)        = (offset, "D0",nullSpan, []):goDeleteGapsToks' offset ts
-goDeleteGapsToks' offset  [Entry ss t,Deleted _] = [(offset,"[ED]",ss,map (increaseSrcSpan offset) t)]
+goDeleteGapsToks' offset  [Entry ss t]          = [(offset,"E1",ss,map (increaseSrcSpan offset) t)]
+goDeleteGapsToks'      _  [Deleted _ _]         = [((0,0),  "D1",nullSpan, [])]
+goDeleteGapsToks' offset  (Deleted _ _:ts)      = (offset, "D0",nullSpan, []):goDeleteGapsToks' offset ts
+goDeleteGapsToks' offset  [Entry ss t,Deleted _ _] = [(offset,"[ED]",ss,map (increaseSrcSpan offset) t)]
 goDeleteGapsToks' offset  (Entry ss t1:e@(Entry _ _):ts) =(offset,"EE", ss, (map (increaseSrcSpan offset) t1)):goDeleteGapsToks' offset (e:ts)
-goDeleteGapsToks' (fr,fc) (Entry ss t1:Deleted _:t2:ts)
+goDeleteGapsToks' (fr,fc) (Entry ss t1:Deleted _ _:t2:ts)
   = ((fr,fc),"ED",ss,t1') : goDeleteGapsToks' offset' (t2:ts)
   where
     -- TODO: use actual first and last toks, may be comments
@@ -1520,8 +1557,8 @@ invariant forest = rsub
         r = checkNode [] tree
 
     checkNode :: [String] -> Tree Entry -> [String]
-    checkNode _acc (Node (Deleted _sspan) []) = []
-    checkNode _acc node@(Node (Deleted _sspan) _sub)
+    checkNode _acc (Node (Deleted _sspan _) []) = []
+    checkNode _acc node@(Node (Deleted _sspan _) _sub)
          = ["FAIL: deleted node with subtree: " ++ (prettyshow node)]
     checkNode acc node@(Node (Entry sspan toks) sub) = acc ++ r ++ rinc ++ rsubs ++ rnull
       where
@@ -1596,8 +1633,8 @@ invariant forest = rsub
 -- treeStartEnd :: Tree Entry -> (SimpPos,SimpPos)
 -- treeStartEnd (Node (Entry sspan _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
 treeStartEnd :: Tree Entry -> ForestSpan
-treeStartEnd (Node (Entry sspan _) _) = sspan
-treeStartEnd (Node (Deleted sspan) _) = sspan
+treeStartEnd (Node (Entry sspan _  ) _) = sspan
+treeStartEnd (Node (Deleted sspan _) _) = sspan
 
 -- |Get the start and end position of a SrcSpan
 -- spanStartEnd :: GHC.SrcSpan -> (SimpPos,SimpPos)
@@ -1644,7 +1681,7 @@ drawForestEntry :: Forest Entry -> String
 drawForestEntry  = unlines . map drawTreeEntry
 
 drawEntry :: Tree Entry -> [String]
-drawEntry (Node (Deleted sspan   )  _  ) = [(showForestSpan sspan) ++ "D"]
+drawEntry (Node (Deleted sspan  eg )  _  ) = [(showForestSpan sspan) ++ (show eg) ++ "D"]
 drawEntry (Node (Entry sspan _toks) ts0) = (showForestSpan sspan) : drawSubTrees ts0
   where
     drawSubTrees [] = []
@@ -1662,8 +1699,8 @@ showTree = prettyshow
 
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
-prettyshow (Node (Deleted sspan) [])
-  = "Node (Deleted " ++ (showForestSpan sspan) ++ ")"
+prettyshow (Node (Deleted sspan eg) [])
+  = "Node (Deleted " ++ (showForestSpan sspan) ++ " " ++ (show eg) ++ ")"
 prettyshow (Node (Entry sspan toks) sub)
   = "Node (Entry " ++ (showForestSpan sspan) ++ " "
      ++ (prettyToks toks) ++ ") "
