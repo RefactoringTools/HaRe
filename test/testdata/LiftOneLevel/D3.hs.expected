@@ -6,7 +6,6 @@ current module. -}
 sumSquares (x:xs) = sq x + sumSquares xs
 
 
-
 sumSquares [] = 0
 
 sq x = x ^ pow

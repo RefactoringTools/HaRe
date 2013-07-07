@@ -5,7 +5,6 @@ affects module 'D1' and 'C1' -}
 
 sumSquares (x:xs) = (sq pow)x + sumSquares xs
   where
-
      pow =2
 
 sumSquares [] = 0

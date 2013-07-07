@@ -11,8 +11,6 @@ sumSquares (x:xs) = sq   + sumSquares xs
 
 sumSquares [] = 0
 
-
-
 pow = 2
 
 main = sumSquares [1..4]

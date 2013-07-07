@@ -9,6 +9,7 @@ module TestUtils
        , initialState
        , initialLogOnState
        , toksFromState
+       , entriesFromState
        , defaultTestSettings
        , logTestSettings
        , catchException
@@ -106,6 +107,15 @@ toksFromState st =
   case (rsModule st) of
     -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
+    Nothing -> []
+
+-- ---------------------------------------------------------------------
+
+entriesFromState :: RefactState -> [Entry]
+entriesFromState st =
+  case (rsModule st) of
+    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
+    Just tm -> retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
 
 -- ---------------------------------------------------------------------

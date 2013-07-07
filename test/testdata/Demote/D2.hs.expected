@@ -1,10 +1,5 @@
 module Demote.D2 where
 
-
-
-
-
-
 sq x = x ^pow
 
 pow = 2

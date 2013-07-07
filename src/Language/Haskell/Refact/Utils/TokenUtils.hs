@@ -95,6 +95,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , deleteGapsToks
        , deleteGapsToks'
        , calcEndGap
+       , stripForestLines
 
        -- * Based on Data.Tree
        , drawTreeEntry
@@ -367,6 +368,12 @@ forestSpanToGhcPos ((fls,sc),(fle,ec))
 simpPosToForestSpan :: (SimpPos,SimpPos) -> ForestSpan
 simpPosToForestSpan ((sr,sc),(er,ec))
     = ((ghcLineToForestLine sr,sc),(ghcLineToForestLine er,ec))
+
+forestSpanStart :: ForestSpan -> ForestPos
+forestSpanStart (start,_) = start
+
+forestSpanEnd :: ForestSpan -> ForestPos
+forestSpanEnd (_,end) = end
 
 nullSpan :: ForestSpan
 nullSpan = (nullPos,nullPos)
@@ -799,16 +806,18 @@ splitSubToks ::
   Tree Entry
   -> (ForestPos, ForestPos)
   -> ([Tree Entry], [Tree Entry], [Tree Entry])
-splitSubToks n@(Node (Deleted (ssStart,ssEnd) eg) []) (sspanStart,sspanEnd) = (b',m',e')
+splitSubToks n@(Node (Deleted (ssStart,ssEnd) _eg) []) (sspanStart,sspanEnd) = (b',m',e')
   where
     egs = (0,0) -- TODO: calculate this
     ege = (0,0) -- TODO: calculate this
     b' = if sspanStart > ssStart
            then [Node (Deleted (ssStart,ssStart) egs) []]
+           -- then error $ "splitSubToks:would return:b'=" ++ (show [Node (Deleted (ssStart,ssStart) egs) []]) -- ++AZ++
            else []
     m' = [n]
     e' = if ssEnd > sspanEnd
            then [Node (Deleted (sspanEnd,ssEnd) ege) []]
+           -- then error $ "splitSubToks:would return:e'=" ++ (show [Node (Deleted (sspanEnd,ssEnd) ege) []]) -- ++AZ++
            else []
 splitSubToks tree sspan = (b',m',e')
                           -- error $ "splitSubToks:(sspan,tree)=" ++ (show (sspan,tree))
@@ -951,25 +960,31 @@ calcEndGap :: Tree Entry -> ForestSpan -> SimpPos
 calcEndGap tree sspan = gap
   where
     (_sspanStart,(spanRow,spanCol)) = forestSpanToSimpPos sspan
+    (spanStart,spanEnd) = sspan
     entries = retrieveTokens' tree
-    (_before,after) = break (\e -> forestSpanFromEntry e > sspan) entries
+    -- NOTE: the entries are the fringe of the tree, the sspan in
+       -- question may be represented by several entries
+    (_before,rest)   = span  (\e -> (forestSpanStart $ forestSpanFromEntry e) < spanStart) entries
+    (rafter,rmiddle) = break (\e -> (forestSpanEnd $ forestSpanFromEntry e) <= spanEnd) $ reverse rest
+    middle = reverse rmiddle
+    after = reverse rafter
     -- last element of before should be the sspan we care about, first
     -- of after is the one we are looking for.
 
     -- TODO: ++AZ++ `after` may contain zero or more Deleted segments in the
     -- front, accumulate their offsets first
+    -- NOTE: This gets done afterwards in mergeDeletes
     (tokRow,tokCol) = if emptyList after
-            then (spanRow,spanCol)
-            else (r,c)
-              where
+        then (spanRow + 2,spanCol)
+        else (r,c)
+            where
                 (r,c) = case ghead ("calcEndGap:after="++(show after)) after of
-                  (Entry _ toks) -> (tokenRow t,tokenCol t)
-                             where t = ghead "calcEndGap" toks
-                  (Deleted ss _) -> fst $ forestSpanToSimpPos ss
-
+                    (Entry _ toks) -> (tokenRow t,tokenCol t)
+                        where t = ghead "calcEndGap" toks
+                    (Deleted ss _) -> fst $ forestSpanToSimpPos ss
 
     gap = (tokRow - spanRow, tokCol - spanCol)
-    -- gap = error $ "calcEndGap: (before,after)=" ++ (show (before,after))
+    -- gap = error $ "calcEndGap: (sspan,(before,middle,after))=" ++ (show (sspan,(_before,middle,after)))
 
 -- ---------------------------------------------------------------------
 
@@ -998,12 +1013,24 @@ retrieveTokens forest = stripForestLines $ monotonicLineToks {- $ reAlignMarked 
 
 
 retrieveTokens' :: Tree Entry -> [Entry]
-retrieveTokens' forest = concat $ map (\t -> F.foldl accum [] t) [forest]
+retrieveTokens' forest = mergeDeletes $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [Entry] -> Entry -> [Entry]
     accum acc   (Entry _   []) = acc
     accum acc e@(Entry _ toks) = acc ++ [e]
     accum acc e@(Deleted _ _)  = acc ++ [e]
+
+-- |Merge adjacent Deleted entries
+mergeDeletes :: [Entry] -> [Entry]
+mergeDeletes [] = []
+mergeDeletes [x] = [x]
+mergeDeletes ((Deleted ss1 (r1,_)):(Deleted ss2 (r2,c2)):xs) = (Deleted ss o):xs
+  where
+    (start,_) = ss1
+    (_, end) = ss2
+    ss = (start,end)
+    o = (r1+r2,c2)
+mergeDeletes (x:xs) = x:mergeDeletes xs
 
 -- ---------------------------------------------------------------------
 
@@ -1023,13 +1050,13 @@ goDeleteGapsToks (fr,fc) (Entry ss t1:Deleted _ eg:t2:ts)
   where
     -- TODO: use actual first and last toks, may be comments
     -- TODO: what about deletion within a line?
-    
-    (deltaR,deltaC) = eg
+
+    (deltaR,_deltaC) = eg
     (_,(sr,_sc)) = forestSpanToSimpPos ss
     ((dr,_dc),_) = forestSpanToSimpPos $ forestSpanFromEntry t2
     offset' = if deltaR > 0
-       then (fr + sr - dr + deltaR, fc)
-       else (fr + sr - dr + deltaR, fc) 
+       then (fr + (sr - dr) + deltaR, fc)
+       else (fr + (sr - dr) + deltaR, fc)
     -- offset' = (fr + sr - dr + 1, fc)
 
     t1' = map (increaseSrcSpan (fr,fc)) t1

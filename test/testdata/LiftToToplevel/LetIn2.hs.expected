@@ -7,7 +7,6 @@ module LiftToToplevel.LetIn2 where
 --This example aims to test lifting a definition from a let clause to top Level.
 
 sumSquares x y = let
-
                      pow=2
                  in (sq pow)x + (sq pow)y
 
