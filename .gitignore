@@ -190,7 +190,6 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/LiftOneLevel/C2.hs.tokens
 /test/testdata/LiftOneLevel/D1.hs.alt
 /test/testdata/LiftOneLevel/A1.hs.expected
-/test/testdata/LiftOneLevel/C1.hs.expected
 /test/testdata/LiftOneLevel/D2.hs.AST_out
 /test/testdata/LiftOneLevel/D2.hs.refactored
 /test/testdata/LiftOneLevel/D2.hs.renamed_out
