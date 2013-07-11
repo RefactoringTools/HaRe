@@ -23,6 +23,8 @@ Library
                                 , containers
                                 , directory
                                 , filepath
+                                -- , free 
+                                -- , comonad
                                 , ghc
                                 , ghc-paths
                                 , ghc-prim
@@ -78,6 +80,8 @@ Executable ghc-hare
                                 , cmdtheline >= 0.2.1
                                 , containers
                                 , directory
+                                -- , free 
+                                -- , comonad
                                 , filepath
                                 , ghc
                                 , ghc-paths
@@ -123,6 +127,8 @@ test-suite spec
     , deepseq
     , directory
     , filepath
+    -- , free 
+    -- , comonad
     , ghc         >= 6.12 && < 7.8
     , ghc-paths   == 0.1.*
     , ghc-prim

@@ -618,11 +618,10 @@ getTokensBefore forest sspan = (forest', prevToks')
 -- ---------------------------------------------------------------------
 
 -- |Replace the tokens for a given SrcSpan with new ones. The SrcSpan
--- will be inserted into the tree if it is not already there
--- TODO: What about the change in size of the SrcSpan? Solution is to
--- replace the SrcSpan with a new one (marked), and return it, as well
--- as the old one
--- TODO2: What about trailing comments? Preserve or replace?
+-- will be inserted into the tree if it is not already there.
+-- If the SrcSpan changes size, replace the SrcSpan with a new one
+-- (marked), and return it, as well as the old one
+-- TODO: What about trailing comments? Preserve or replace?
 updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (Tree Entry,GHC.SrcSpan,Tree Entry)
 updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
   where
@@ -937,7 +936,6 @@ removeSrcSpan forest sspan = (forest'', delTree)
     z = openZipperToSpan sspan $ Z.fromTree forest'
     zp = gfromJust "removeSrcSpan" $ Z.parent z
 
-    -- eg = (0,0) -- TODO: calculate the end gap from the tree
     eg = calcEndGap forest' sspan
 
     pt = Z.tree zp
@@ -971,9 +969,8 @@ calcEndGap tree sspan = gap
     -- last element of before should be the sspan we care about, first
     -- of after is the one we are looking for.
 
-    -- TODO: ++AZ++ `after` may contain zero or more Deleted segments in the
-    -- front, accumulate their offsets first
-    -- NOTE: This gets done afterwards in mergeDeletes
+    -- NOTE: `after` may contain zero or more Deleted segments in the
+    -- front. These get merged later in mergeDeletes
     (tokRow,tokCol) = if emptyList after
         then (spanRow + 2,spanCol)
         else (r,c)
@@ -991,8 +988,6 @@ calcEndGap tree sspan = gap
 -- |Retrieve all the tokens at the leaves of the tree, in order
 -- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
 --      rows with tokenFileMark in a filename for a token
--- TODO: separate this into a version that does re-align for final
---       retrieval, and one that does not for intermediate use
 
 retrieveTokensInterim :: Tree Entry -> [PosToken]
 retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {- $ reAlignMarked -}
@@ -1092,8 +1087,6 @@ goDeleteGapsToks' (fr,fc) (Entry ss t1:Deleted _ _:t2:ts)
 -- |Retrieve all the tokens at the leaves of the tree, in order
 -- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
 --      rows with tokenFileMark in a filename for a token
--- TODO: separate this into a version that does re-align for final
---       retrieval, and one that does not for intermediate use
 retrieveTokensFinal :: Tree Entry -> [PosToken]
 retrieveTokensFinal forest = stripForestLines $ monotonicLineToks $ reAlignMarked
                       $ deleteGapsToks $ retrieveTokens' forest

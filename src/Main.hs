@@ -3,6 +3,7 @@ import System.Console.CmdTheLine
 import Control.Applicative       ( (<$>), (<*>) )
 import System.IO
 
+import Language.Haskell.Refact.Utils.Monad
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
 
 -- Based initially on http://elifrey.com/2012/07/23/CmdTheLine-Tutorial/
@@ -20,6 +21,25 @@ main = run ( doRefac, info )
 doRefac :: Term (IO ())
 doRefac = GhcRefacCase.doIfToCase <$> files
 
+doIfToCase :: Term (IO ())
+doIfToCase = GhcRefacCase.ifToCase <$> settings <*> mainFile <*> thisFile <*> startPos <*> endPos
+
+mainFile = undefined
+thisFile = undefined
+startPos = undefined
+endPos = undefined
+
+
+ -- Define a flag argument under the names '--silent' and '-s'
+--  silent :: Term Bool
+ -- silent = value . flag $ optInfo [ "silent", "s" ]
+
+-- defaultOpt :: ArgVal a => a -> a -> OptInfo -> Arg 
+-- defaultOpt def v ai is as opt except if it is present and no value is assigned on the command line, def is the result. 
+
+
+-- settings :: Term (Maybe RefactSettings)
+settings = value $ defaultOpt Nothing (optInfo [ "s", "settings"]) 
 
  -- Define the 0th positional argument, defaulting to the value '"world"' in
  -- absence.

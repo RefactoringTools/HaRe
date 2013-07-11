@@ -1,0 +1,29 @@
+
+* TODO Make the tests pass on 7.4.x.
+  Showing the AST has different spacing. Must come up with an
+  adjustment of the output to match.
+* TODO Make sure the command line client works
+* TODO Re-enable the elisp
+
+* TODO from the source files
+** TODO Check that the components are in range
+   [2013-07-11 Thu]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20check%20that%20the%20components%20are%20in%20range][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: check that the components are in range]]
+** TODO This should be in splitSubToks
+   [2013-07-11 Thu]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::then%20--%20TODO:%20This%20should%20be%20in%20splitSubToks][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::then -- TODO: This should be in splitSubToks]]
+** TODO Calculate end gap in splitSubToks
+   [2013-07-11 Thu]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::egs%20%3D%20(0,0)%20--%20TODO:%20calculate%20this][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::egs = (0,0) -- TODO: calculate this]]
+** TODO Consider comment boundaries in splitSubToks
+   [2013-07-11 Thu]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20ignoring%20comment%20boundaries%20to%20start][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: ignoring comment boundaries to start]]
+** TODO goDeleteGapsToks - use start and end toks not sspan, there may be comments
+   [2013-07-11 Thu]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20use%20actual%20first%20and%20last%20toks,%20may%20be%20comments][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: use actual first and last toks, may be comments]]
+** TODO goDeleteGapsToks : deal with deletion within a line
+   [2013-07-11 Thu]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20what%20about%20deletion%20within%20a%20line?][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: what about deletion within a line?]]
+** TODO This looks like a no-op?
+   [2013-07-11 Thu]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20This%20looks%20like%20a%20no-op?][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: This looks like a no-op?]]
