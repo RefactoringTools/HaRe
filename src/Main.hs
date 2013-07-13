@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 
 import System.Console.CmdTheLine
 import Control.Applicative       ( (<$>), (<*>) )
@@ -8,8 +11,9 @@ import qualified Language.Haskell.Refact.Case as GhcRefacCase
 
 -- Based initially on http://elifrey.com/2012/07/23/CmdTheLine-Tutorial/
 
--- main = t1
-main = run ( doRefac, info )
+main :: IO ()
+-- main = run ( doRefac, info )
+main = run ( doIfToCase, info )
 
 
 -- convertTerm :: Term (IO ())
@@ -34,12 +38,24 @@ endPos = undefined
 --  silent :: Term Bool
  -- silent = value . flag $ optInfo [ "silent", "s" ]
 
--- defaultOpt :: ArgVal a => a -> a -> OptInfo -> Arg 
+-- defaultOpt :: ArgVal a => a -> a -> OptInfo -> Arg
 -- defaultOpt def v ai is as opt except if it is present and no value is assigned on the command line, def is the result. 
 
 
--- settings :: Term (Maybe RefactSettings)
-settings = value $ defaultOpt Nothing (optInfo [ "s", "settings"]) 
+settings :: Term (Maybe RefactSettings)
+settings = value $ opt (Just defaultSettings) (optInfo [ "s", "settings"])
+
+instance ArgVal (Maybe RefactSettings) where
+  converter = just
+
+instance ArgVal RefactSettings where
+  converter = (pRefactSettings,ppRefactSettings)
+
+pRefactSettings :: ArgParser RefactSettings
+pRefactSettings _s = Right (RefSet ["."] False)
+
+ppRefactSettings :: ArgPrinter RefactSettings
+ppRefactSettings = undefined
 
  -- Define the 0th positional argument, defaulting to the value '"world"' in
  -- absence.

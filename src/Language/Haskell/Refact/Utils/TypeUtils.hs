@@ -61,7 +61,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,defines, definesP,definesTypeSig -- , isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
     ,sameBind
-    ,usedByRhs,UsedByRhs(..)
+    {- ,usedByRhs -},UsedByRhs(..)
 
     -- ** Modules and files
     -- ,clientModsAndFiles,serverModsAndFiles,isAnExistingMod
@@ -145,7 +145,7 @@ import qualified GHC           as GHC
 import qualified Lexer         as GHC
 import qualified Name          as GHC
 import qualified NameSet       as GHC
-import qualified Outputable    as GHC
+-- import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
 import qualified Unique        as GHC
@@ -442,7 +442,7 @@ causeNameClashInExports pn {- newName -} modName mod@(_g,imps,maybeExps,_doc) --
     modIsUnQualifedImported mod modName
      =let -- imps =hsModImports mod
        -- imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) qualify _source _safe isQualified _isImplicit as h))
-      in isJust $ find (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) qualify _source _safe isQualified _isImplicit as h)) 
+      in isJust $ find (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h)) 
                                 -> modName1 == modName && (not isQualified)) imps
       -- in isJust $ find (\(HsImportDecl _ (SN modName1 _) qualify  _ h) -> modName == modName1 && (not qualify)) imps
 
@@ -4069,7 +4069,7 @@ findAllNameOccurences  name t
         res = SYB.everythingStaged SYB.Renamer (++) []
             ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
-        worker (ln@(GHC.L l n) :: (GHC.Located GHC.Name))
+        worker (ln@(GHC.L _l n) :: (GHC.Located GHC.Name))
           | GHC.nameUnique n == GHC.nameUnique name = [ln]
         worker _ = []
 
@@ -4090,7 +4090,7 @@ findAllNames  t
         res = SYB.everythingStaged SYB.Renamer (++) []
             ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
-        worker (ln@(GHC.L l n) :: (GHC.Located GHC.Name))
+        worker (ln@(GHC.L _l _n) :: (GHC.Located GHC.Name))
           | True = [ln]
         worker _ = []
 
@@ -4312,7 +4312,7 @@ getToksForDecl decl toks
 getDeclAndToks :: (HsValBinds t)
      => GHC.Name -> Bool -> [PosToken] -> t
      -> ([GHC.LHsBind GHC.Name],[PosToken])
-getDeclAndToks pn incSig toks t =
+getDeclAndToks pn _incSig toks t =
   let
     decls     = definingDeclsNames [pn] (hsBinds t) True True
     declToks  = getToksForDecl decls toks
@@ -4329,7 +4329,7 @@ removeToksOffset toks = toks'
               [] -> []
               _  -> removeOffset offset toks
                       where
-                        (r,c) = tokenPos $ head toks
+                        (_r,c) = tokenPos $ head toks
                         offset = c -- getIndentOffset toks (r+1,c)
 
 -- ---------------------------------------------------------------------
@@ -4394,7 +4394,7 @@ getSig pn t = maybeSig
 
    inDecls (sigs::[GHC.LSig GHC.Name])
       | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
-     = let (decls1,decls2)= break (definesTypeSig pn) sigs
+     = let (_decls1,decls2)= break (definesTypeSig pn) sigs
            sig@(GHC.L l (GHC.TypeSig names typ)) = ghead "getSigsAndToks" decls2  -- as decls2/=[], no problem with head
            sig' = if  length names > 1
                    then (GHC.L l (GHC.TypeSig (filter (\(GHC.L _ x) -> x /= pn) names) typ))

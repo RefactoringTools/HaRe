@@ -338,8 +338,6 @@ refactDone rs = any (\((_,d),_) -> d) rs
 
 -- ---------------------------------------------------------------------
 
-
-
 {-
 applyRefacToClientMods refac fileName
    = do clients <- clientModsAndFiles =<< fileNameToModName fileName

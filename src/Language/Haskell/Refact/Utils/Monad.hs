@@ -4,14 +4,13 @@
 
 module Language.Haskell.Refact.Utils.Monad
        ( ParseResult
-       -- , RefactResult
        , RefactSettings(..)
        , RefactState(..)
        , RefactModule(..)
        , RefactStashId(..)
        , RefactFlags(..)
        , StateStorage(..)
-       -- , initRefactModule
+
        -- GHC monad stuff
        , RefactGhc
        , runRefactGhc
@@ -19,28 +18,6 @@ module Language.Haskell.Refact.Utils.Monad
        , defaultSettings
        , logSettings
 
-       {- ++AZ++ moved to MonadUtils, to break import cycle
-       -- * Conveniences for state access
-       , fetchToks
-       , fetchOrigToks
-       , putToks
-       , getTypecheckedModule
-       , getRefactStreamModified
-       , getRefactInscopes
-       , getRefactRenamed
-       , putRefactRenamed
-       , getRefactParsed
-       , putParsedModule
-       , clearParsedModule
-
-       -- * State flags for managing generic traversals
-       , getRefactDone
-       , setRefactDone
-       , clearRefactDone
-       -}
-
-       -- , Refact -- ^ TODO: Deprecated, use RefactGhc
-       -- , runRefact -- ^ TODO: Deprecated, use runRefactGhc
        ) where
 
 import Control.Monad.State

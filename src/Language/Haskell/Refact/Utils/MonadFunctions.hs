@@ -61,7 +61,6 @@ import Control.Monad.State
 
 import qualified FastString    as GHC
 import qualified GHC           as GHC
-import qualified Outputable    as GHC
 
 import qualified Data.Data as SYB
 
