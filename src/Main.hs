@@ -7,6 +7,7 @@ import Control.Applicative       ( (<$>), (<*>) )
 import System.IO
 
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.TypeSyn
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
 
 -- Based initially on http://elifrey.com/2012/07/23/CmdTheLine-Tutorial/
@@ -25,13 +26,41 @@ main = run ( doIfToCase, info )
 doRefac :: Term (IO ())
 doRefac = GhcRefacCase.doIfToCase <$> files
 
+
+{-
+GhcRefacCase.ifToCase ::
+  Maybe RefactSettings
+  -> Maybe FilePath
+  -> FilePath
+  -> Language.Haskell.Refact.Utils.TypeSyn.SimpPos
+  -> Language.Haskell.Refact.Utils.TypeSyn.SimpPos
+  -> IO ()
+-}
+
 doIfToCase :: Term (IO ())
 doIfToCase = GhcRefacCase.ifToCase <$> settings <*> mainFile <*> thisFile <*> startPos <*> endPos
 
-mainFile = undefined
-thisFile = undefined
-startPos = undefined
-endPos = undefined
+
+mainFile :: Term (Maybe FilePath)
+mainFile = value $ opt Nothing (optInfo ["m","main"])
+
+thisFile :: Term FilePath
+thisFile = required $ pos 0 Nothing posInfo
+    { posName = "file"
+    , posDoc = "The file originating the refactoring."
+    }
+
+startPos :: Term SimpPos
+startPos = required $ pos 1 Nothing posInfo
+    { posName = "startpos"
+    , posDoc = "The (row,col) of the start of the refactoring."
+    }
+
+endPos :: Term SimpPos
+endPos = required $ pos 2 Nothing posInfo
+    { posName = "endpos"
+    , posDoc = "The (row,col) of the end of the refactoring."
+    }
 
 
  -- Define a flag argument under the names '--silent' and '-s'
@@ -46,6 +75,9 @@ settings :: Term (Maybe RefactSettings)
 settings = value $ opt (Just defaultSettings) (optInfo [ "s", "settings"])
 
 instance ArgVal (Maybe RefactSettings) where
+   converter = just
+
+instance ArgVal (Maybe SimpPos) where
   converter = just
 
 instance ArgVal RefactSettings where
@@ -55,12 +87,16 @@ pRefactSettings :: ArgParser RefactSettings
 pRefactSettings _s = Right (RefSet ["."] False)
 
 ppRefactSettings :: ArgPrinter RefactSettings
-ppRefactSettings = undefined
+ppRefactSettings = error "ppRefactSettings undefined"
 
- -- Define the 0th positional argument, defaulting to the value '"world"' in
- -- absence.
-filename :: Term String
-filename = value $ pos 0 "world" posInfo { posName = "GREETED" }
+instance ArgVal SimpPos where
+  converter = (pSimpPos, ppSimpPos)
+
+pSimpPos :: ArgParser SimpPos
+pSimpPos = error "pSimpPos undefined"
+
+ppSimpPos :: ArgPrinter SimpPos
+ppSimpPos = error "ppSimpPos undefined"
 
 
 t1 = GhcRefacCase.doIfToCase ["./refactorer/B.hs","4","7","4","43"]
@@ -90,7 +126,7 @@ info :: TermInfo
 info = defTI -- The default TermInfo
   { termName = "ghc-hare"
   , version  = "0.x.x.x"
-  , termDoc  = "Haskell RefactorerConvert plain text pgm files to ascii art."
+  , termDoc  = "Haskell Refactorer"
   }
 
 
