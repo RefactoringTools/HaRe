@@ -5,7 +5,6 @@
 import System.Console.CmdTheLine
 import Data.Maybe
 import Control.Applicative       ( (<$>), (<*>) )
-import System.IO
 import qualified Text.PrettyPrint as PP
 
 import Language.Haskell.Refact.Utils.Monad
@@ -14,67 +13,7 @@ import qualified Language.Haskell.Refact.Case as GhcRefacCase
 
 -- Based initially on http://elifrey.com/2012/07/23/CmdTheLine-Tutorial/
 
-main :: IO ()
--- main = run ( doRefac, info )
-main = run ( doIfToCase, info )
-
-
--- convertTerm :: Term (IO ())
--- convertTerm = convert <$> fmap process invert <*> output <*> filesExist files
-
--- ifToCase :: [String] -> IO ()
-
-
-doRefac :: Term (IO ())
-doRefac = GhcRefacCase.doIfToCase <$> files
-
-
-{-
-GhcRefacCase.ifToCase ::
-  Maybe RefactSettings
-  -> Maybe FilePath
-  -> FilePath
-  -> Language.Haskell.Refact.Utils.TypeSyn.SimpPos
-  -> Language.Haskell.Refact.Utils.TypeSyn.SimpPos
-  -> IO ()
--}
-
-doIfToCase :: Term (IO ())
-doIfToCase = GhcRefacCase.ifToCase <$> settings <*> mainFile <*> thisFile <*> startPos <*> endPos
-
-
-mainFile :: Term (Maybe FilePath)
-mainFile = value $ opt Nothing (optInfo ["m","main"])
-
-thisFile :: Term FilePath
-thisFile = required $ pos 0 Nothing posInfo
-    { posName = "file"
-    , posDoc = "The file originating the refactoring."
-    }
-
-startPos :: Term SimpPos
-startPos = required $ pos 1 Nothing posInfo
-    { posName = "startpos"
-    , posDoc = "The (row,col) of the start of the refactoring."
-    }
-
-endPos :: Term SimpPos
-endPos = required $ pos 2 Nothing posInfo
-    { posName = "endpos"
-    , posDoc = "The (row,col) of the end of the refactoring."
-    }
-
-
- -- Define a flag argument under the names '--silent' and '-s'
---  silent :: Term Bool
- -- silent = value . flag $ optInfo [ "silent", "s" ]
-
--- defaultOpt :: ArgVal a => a -> a -> OptInfo -> Arg
--- defaultOpt def v ai is as opt except if it is present and no value is assigned on the command line, def is the result. 
-
-
-settings :: Term (Maybe RefactSettings)
-settings = value $ opt (Just defaultSettings) (optInfo [ "s", "settings"])
+-- ---------------------------------------------------------------------
 
 instance ArgVal (Maybe RefactSettings) where
    converter = just
@@ -84,56 +23,143 @@ instance ArgVal (Maybe SimpPos) where
 
 instance ArgVal RefactSettings where
   converter = (pRefactSettings,ppRefactSettings)
+    where
+        pRefactSettings :: ArgParser RefactSettings
+        pRefactSettings _s = Right (RefSet ["."] False)
 
-pRefactSettings :: ArgParser RefactSettings
-pRefactSettings _s = Right (RefSet ["."] False)
+        ppRefactSettings :: ArgPrinter RefactSettings
+        ppRefactSettings s = PP.text (show s)
 
-ppRefactSettings :: ArgPrinter RefactSettings
-ppRefactSettings = error "ppRefactSettings undefined"
 
 instance ArgVal SimpPos where
   converter = (pSimpPos, ppSimpPos)
+    where
+        pSimpPos :: ArgParser SimpPos
+        pSimpPos s = res
+          where
+            res = case ((fmap fst . listToMaybe . reads) s) of
+              Nothing -> Left $ PP.text "Expecting (row,col)"
+              Just r -> Right r
 
-pSimpPos :: ArgParser SimpPos
-pSimpPos s = res
-  where
-    res = case ((fmap fst . listToMaybe . reads) s) of
-      Nothing -> Left $ PP.text "Expecting (row,col)"
-      Just r -> Right r
+        ppSimpPos :: ArgPrinter SimpPos
+        -- ppSimpPos = error "ppSimpPos undefined"
+        ppSimpPos s = PP.text (show s)
 
-ppSimpPos :: ArgPrinter SimpPos
-ppSimpPos = error "ppSimpPos undefined"
-
-
-
-t1 = GhcRefacCase.doIfToCase ["./refactorer/B.hs","4","7","4","43"]
 
 -- ---------------------------------------------------------------------
--- Command line processing
+-- command line argument types
 
-filesInfo :: PosInfo
-filesInfo = posInfo
-  { posName = "FILE"
-  , posDoc  = "A list of files to read in. If empty, read from stdin."
+mainFile :: Term (Maybe FilePath)
+mainFile = value $ opt Nothing (optInfo ["m","main"])
+     { optName = "main"
+     , optDoc  = "The Haskell main file, if there is one"
+     , optSec  = "OPTSEC"
+     }
+
+
+thisFile :: Term FilePath
+thisFile = required $ pos 0 Nothing posInfo
+    { posName = "file"
+    , posDoc = "The file originating the refactoring."
+    }
+
+startRow :: Term Int
+startRow = required $ pos 1 Nothing posInfo
+    { posName = "startline"
+    , posDoc = "The line of the start of the refactoring."
+    }
+
+startCol :: Term Int
+startCol = required $ pos 2 Nothing posInfo
+    { posName = "startcol"
+    , posDoc = "The col of the start of the refactoring."
+    }
+
+endRow :: Term Int
+endRow = required $ pos 3 Nothing posInfo
+    { posName = "endline"
+    , posDoc = "The line of the end of the refactoring."
+    }
+
+endCol :: Term Int
+endCol = required $ pos 4 Nothing posInfo
+    { posName = "endcol"
+    , posDoc = "The col of the end of the refactoring."
+    }
+
+settings :: Term (Maybe RefactSettings)
+settings = value $ opt (Just defaultSettings) (optInfo [ "s", "settings"])
+
+-- ---------------------------------------------------------------------
+
+-- 'input' is a common option. We set its 'optSec' field to 'comOpts' so
+-- that it is placed under that section instead of the default '"OPTIONS"'
+-- section, which we will reserve for command-specific options.
+input :: Term (Maybe String)
+input = value $ opt Nothing (optInfo [ "input", "i" ])
+      { optName = "INPUT"
+      , optDoc = "For specifying input on the command line. If present, "
+               ++ "input is not read form standard-in."
+      , optSec = comOpts
+      }
+
+
+-- ---------------------------------------------------------------------
+
+main :: IO ()
+main = runChoice defaultTerm [ ifToCaseTerm ]
+
+defaultTerm :: (Term a, TermInfo)
+defaultTerm = ( ret $ const (helpFail Pager Nothing) <$> input
+              , info
+              )
+  where
+    info :: TermInfo
+    info = defTI'
+      { termName = "ghc-hare"
+      , version  = "0.x.x.x"
+      , termDoc  = doc
+      }
+
+
+ifToCaseTerm :: (Term (IO ()), TermInfo)
+ifToCaseTerm = (doIfToCase, info)
+  where
+
+    doIfToCase :: Term (IO ())
+    doIfToCase = ifToCase <$> settings <*> mainFile <*> thisFile
+               <*> startRow <*> startCol <*> endRow <*> endCol
+
+    ifToCase s m f sr sc er ec
+      = GhcRefacCase.ifToCase s m f (sr,sc) (er,ec)
+
+    info :: TermInfo
+    info = defTI'
+      { termName = "iftocase"
+      , version  = "0.x.x.x"
+      , termDoc  = doc
+      }
+
+
+doc :: String
+doc = "Haskell Refactorer"
+
+
+-- The heading under which to place common options.
+comOpts :: String
+comOpts = "COMMON OPTIONS"
+
+-- A modified default 'TermInfo' to be shared by commands.
+defTI' :: TermInfo
+defTI' = defTI
+  { man =
+      [ S comOpts
+      , P "These options are common to all commands."
+      , S "MORE HELP"
+      , P "Use '$(mname) $(i,COMMAND) --help' for help on a single command."
+      , S "BUGS"
+      , P "Email bug reports to <foo@bar.com>"
+      ]
+  , stdOptSec = comOpts
   }
-
-filesArg :: Arg [String]
-filesArg = posAny [] filesInfo
-
-files :: Term [String]
-files = value filesArg
-
-output :: Term (Maybe String)
-output = value $ opt Nothing (optInfo [ "o", "out" ])
-       { optDoc = "The path to a file to write output to.  If absent, write "
-               ++ "to stdout."
-       }
-
-info :: TermInfo
-info = defTI -- The default TermInfo
-  { termName = "ghc-hare"
-  , version  = "0.x.x.x"
-  , termDoc  = "Haskell Refactorer"
-  }
-
 
