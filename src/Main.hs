@@ -3,8 +3,10 @@
 
 
 import System.Console.CmdTheLine
+import Data.Maybe
 import Control.Applicative       ( (<$>), (<*>) )
 import System.IO
+import qualified Text.PrettyPrint as PP
 
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -93,10 +95,15 @@ instance ArgVal SimpPos where
   converter = (pSimpPos, ppSimpPos)
 
 pSimpPos :: ArgParser SimpPos
-pSimpPos = error "pSimpPos undefined"
+pSimpPos s = res
+  where
+    res = case ((fmap fst . listToMaybe . reads) s) of
+      Nothing -> Left $ PP.text "Expecting (row,col)"
+      Just r -> Right r
 
 ppSimpPos :: ArgPrinter SimpPos
 ppSimpPos = error "ppSimpPos undefined"
+
 
 
 t1 = GhcRefacCase.doIfToCase ["./refactorer/B.hs","4","7","4","43"]
