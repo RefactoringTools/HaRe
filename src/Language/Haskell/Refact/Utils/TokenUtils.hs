@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 --
@@ -16,6 +17,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , getTokensBefore
        , updateTokensForSrcSpan
        , treeStartEnd
+       , spanStartEnd
        , insertSrcSpan
        , removeSrcSpan
        , getSrcSpanFor
@@ -79,6 +81,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        , ghcLineToForestLine
        , forestLineToGhcLine
+       , forestSpanToSrcSpan
        , forestPosVersionSet
        , forestPosVersionNotSet
        , forestSpanLenChanged
@@ -108,9 +111,9 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
 import qualified FastString    as GHC
 import qualified GHC           as GHC
-import qualified Lexer         as GHC
-import qualified Outputable    as GHC
-import qualified SrcLoc        as GHC
+-- import qualified Lexer         as GHC
+-- import qualified Outputable    as GHC
+-- import qualified SrcLoc        as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -128,8 +131,8 @@ import Data.Tree
 import qualified Data.Map as Map
 import qualified Data.Tree.Zipper as Z
 
-import Debug.Trace
-debug = flip trace
+-- import Debug.Trace
+-- debug = flip trace
 
 -- ---------------------------------------------------------------------
 
@@ -257,7 +260,10 @@ forestVersionMask    =  0x1f00000 -- next 5 bits
 forestTreeMask       = 0x3e000000 -- next 5 bits
 forestLenChangedMask = 0x40000000 -- top (non-sign) bit
 
+forestVersionShift :: Int
 forestVersionShift = 20
+
+forestTreeShift :: Int
 forestTreeShift    = 25
 
 {-
@@ -401,7 +407,7 @@ insertForestLineInSrcSpan fl@(ForestLine ch tr v _l) (GHC.RealSrcSpan ss) = ss'
     locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
     ss' = GHC.mkSrcSpan locStart locEnd
 
-insertForestLineInSrcSpan _ ss = error $ "insertForestLineInSrcSpan: expecting a RealSrcSpan, got:" -- ++ (showGhc ss)
+insertForestLineInSrcSpan _ _ss = error $ "insertForestLineInSrcSpan: expecting a RealSrcSpan, got:" -- ++ (showGhc ss)
 
 -- ---------------------------------------------------------------------
 
@@ -416,15 +422,15 @@ insertVersionsInSrcSpan vs ve rss@(GHC.RealSrcSpan ss) = ss'
     locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
     ss' = GHC.mkSrcSpan locStart locEnd
 
-insertVersionsInSrcSpan _ _ ss = error $ "insertVersionsInSrcSpan: expecting a RealSrcSpan, got:" -- ++ (showGhc ss)
+insertVersionsInSrcSpan _ _ _ss = error $ "insertVersionsInSrcSpan: expecting a RealSrcSpan, got:" -- ++ (showGhc ss)
 
 -- ---------------------------------------------------------------------
 
 insertLenChangedInSrcSpan :: Bool -> Bool -> GHC.SrcSpan -> GHC.SrcSpan
 insertLenChangedInSrcSpan chs che rss@(GHC.RealSrcSpan ss) = ss'
   where
-    (sl,sc) = getGhcLoc rss
-    (el,ec) = getGhcLocEnd rss
+    (sl,_sc) = getGhcLoc rss
+    (el,_ec) = getGhcLocEnd rss
     sl' = if chs then sl .|. forestLenChangedMask
                  else sl .&. (complement forestLenChangedMask)
 
@@ -434,15 +440,15 @@ insertLenChangedInSrcSpan chs che rss@(GHC.RealSrcSpan ss) = ss'
     locStart =  GHC.mkSrcLoc (GHC.srcSpanFile ss) sl' (GHC.srcSpanStartCol ss)
     locEnd    = GHC.mkSrcLoc (GHC.srcSpanFile ss) el' (GHC.srcSpanEndCol   ss)
 
-    (vs,ve)   = forestSpanVersions $ srcSpanToForestSpan rss
-    (trs,tre) = forestSpanAstVersions $ srcSpanToForestSpan rss
-    lineStart = forestLineToGhcLine (ForestLine chs trs vs (GHC.srcSpanStartLine ss))
-    lineEnd   = forestLineToGhcLine (ForestLine che tre ve (GHC.srcSpanEndLine ss))
+    -- (vs,ve)   = forestSpanVersions $ srcSpanToForestSpan rss
+    -- (trs,tre) = forestSpanAstVersions $ srcSpanToForestSpan rss
+    -- lineStart = forestLineToGhcLine (ForestLine chs trs vs (GHC.srcSpanStartLine ss))
+    -- lineEnd   = forestLineToGhcLine (ForestLine che tre ve (GHC.srcSpanEndLine ss))
     -- locStart  = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineStart (GHC.srcSpanStartCol ss)
     -- locEnd    = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
     ss' = GHC.mkSrcSpan locStart locEnd
 
-insertLenChangedInSrcSpan _ _ ss = error $ "insertVersionsInSrcSpan: expecting a RealSrcSpan, got:" -- ++ (showGhc ss)
+insertLenChangedInSrcSpan _ _ _ss = error $ "insertVersionsInSrcSpan: expecting a RealSrcSpan, got:" -- ++ (showGhc ss)
 
 -- ---------------------------------------------------------------------
 
@@ -496,7 +502,7 @@ initTokenCache toks = TK (Map.fromList [((TId 0),(mkTreeFromTokens toks))]) (TId
 -- ---------------------------------------------------------------------
 
 treeIdIntoTree :: TreeId -> Tree Entry -> Tree Entry
-treeIdIntoTree tid tree@(Node (Entry fs toks) subTree) = tree'
+treeIdIntoTree tid (Node (Entry fs toks) subTree) = tree'
   where
     fs' = treeIdIntoForestSpan tid fs
     tree' = Node (Entry fs' toks) subTree
@@ -849,7 +855,7 @@ splitSubToks tree sspan = (b',m',e')
                   if (ssStart == sspanStart) -- Eq does not compare all flags
                     then mkTreeListFromTokens toksm (ssStart,   ssEnd)
                     else mkTreeListFromTokens toksm (sspanStart,ssEnd)
-                tl' = if emptyList tl
+                _tl' = if emptyList tl
                  then []
                  else [Node (Entry (st,(ForestLine ch ts v le,ce)) tk) []]
                    where [Node (Entry (st,(ForestLine ch ts v _l,_c)) tk) []] = tl
@@ -964,7 +970,7 @@ calcEndGap tree sspan = gap
        -- question may be represented by several entries
     (_before,rest)   = span  (\e -> (forestSpanStart $ forestSpanFromEntry e) < spanStart) entries
     (rafter,rmiddle) = break (\e -> (forestSpanEnd $ forestSpanFromEntry e) <= spanEnd) $ reverse rest
-    middle = reverse rmiddle
+    _middle = reverse rmiddle
     after = reverse rafter
     -- last element of before should be the sspan we care about, first
     -- of after is the one we are looking for.
@@ -1001,19 +1007,14 @@ retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {- $ reAlign
 retrieveTokens :: Tree Entry -> [PosToken]
 retrieveTokens forest = stripForestLines $ monotonicLineToks {- $ reAlignMarked -}
                       $ deleteGapsToks $ retrieveTokens' forest
-                      -- $ concat $ map (\t -> F.foldl accum [] t) [forest]
-  where
-    accum :: [PosToken] -> Entry -> [PosToken]
-    accum acc (Entry _ toks) = acc ++ toks
-
 
 retrieveTokens' :: Tree Entry -> [Entry]
 retrieveTokens' forest = mergeDeletes $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [Entry] -> Entry -> [Entry]
-    accum acc   (Entry _   []) = acc
-    accum acc e@(Entry _ toks) = acc ++ [e]
-    accum acc e@(Deleted _ _)  = acc ++ [e]
+    accum acc   (Entry _   [])  = acc
+    accum acc e@(Entry _ _toks) = acc ++ [e]
+    accum acc e@(Deleted _ _)   = acc ++ [e]
 
 -- |Merge adjacent Deleted entries
 mergeDeletes :: [Entry] -> [Entry]
@@ -1090,10 +1091,6 @@ goDeleteGapsToks' (fr,fc) (Entry ss t1:Deleted _ _:t2:ts)
 retrieveTokensFinal :: Tree Entry -> [PosToken]
 retrieveTokensFinal forest = stripForestLines $ monotonicLineToks $ reAlignMarked
                       $ deleteGapsToks $ retrieveTokens' forest
-                      -- $ concat $ map (\t -> F.foldl accum [] t) [forest]
-  where
-    accum :: [PosToken] -> Entry -> [PosToken]
-    accum acc (Entry _ toks) = acc ++ toks
 
 -- ---------------------------------------------------------------------
 
@@ -1390,7 +1387,7 @@ openZipperToNode
   :: Tree Entry
      -> Z.TreePos Z.Full Entry
      -> Z.TreePos Z.Full Entry
-openZipperToNode node@(Node (Entry sspan _) _) z
+openZipperToNode (Node (Entry sspan _) _) z
   = openZipperToSpan sspan z
 
 {-
@@ -1473,7 +1470,7 @@ openZipperToSpan sspan z
                            [w] -> openZipperToSpan sspan w
                            -- _ww -> z
                            -- ww -> error $ "openZipperToSpan:multiple version match:" ++ (show (sspan,ww)) -- ++AZ++
-                           ww -> error $ "openZipperToSpan:multiple version match:" ++ (show (sspan,yy)) -- ++AZ++
+                           _ww -> error $ "openZipperToSpan:multiple version match:" ++ (show (sspan,yy)) -- ++AZ++
 
           contains zn = spanContains (treeStartEnd $ Z.tree zn) sspan
 
@@ -1706,11 +1703,11 @@ drawEntry (Node (Entry sspan _toks) ts0) = (showForestSpan sspan) : drawSubTrees
   where
     drawSubTrees [] = []
     drawSubTrees [t] =
-        "|" : shift "`- " "   " (drawEntry t)
+        "|" : shft "`- " "   " (drawEntry t)
     drawSubTrees (t:ts) =
-        "|" : shift "+- " "|  " (drawEntry t) ++ drawSubTrees ts
+        "|" : shft "+- " "|  " (drawEntry t) ++ drawSubTrees ts
 
-    shift first other = zipWith (++) (first : repeat other)
+    shft first other = zipWith (++) (first : repeat other)
 
 -- ---------------------------------------------------------------------
 
@@ -1776,8 +1773,8 @@ syncAST ast@(GHC.L l _t) sspan forest = (GHC.L sspan xx,forest')
     ((ForestLine _ _ _ startRow,startCol),_)       = srcSpanToForestSpan l
     ((ForestLine _ _ _ newStartRow,newStartCol),_) = srcSpanToForestSpan sspan
 
-    (( sr, sc),( er, ec)) = ghcSpanStartEnd l
-    ((nsr,nsc),(ner,nec)) = ghcSpanStartEnd sspan
+    (( sr, sc),( _er, _ec)) = ghcSpanStartEnd l
+    ((nsr,nsc),(_ner,_nec)) = ghcSpanStartEnd sspan
 
     rowOffset = nsr - sr
     colOffset = nsc - sc
@@ -1835,11 +1832,8 @@ showSrcSpanF :: GHC.SrcSpan -> String
 showSrcSpanF sspan = show (((chs,trs,vs,ls),cs),((che,tre,ve,le),ce))
   where
     ((ForestLine chs trs vs ls,cs),(ForestLine che tre ve le,ce)) = srcSpanToForestSpan sspan
-    chsn = if chs then 1 else 0
-    chen = if che then 1 else 0
-
--- ---------------------------------------------------------------------
--- Next section is stuff brought over from LocUtils, to break cycles
+    -- chsn = if chs then 1 else 0
+    -- chen = if che then 1 else 0
 
 -- ---------------------------------------------------------------------
 

@@ -13,21 +13,21 @@ module Language.Haskell.Refact.Utils.GhcVersionSpecific
   )
   where
 
-import qualified BasicTypes    as GHC
+-- import qualified BasicTypes    as GHC
 import qualified DynFlags      as GHC
-import qualified FastString    as GHC
+-- import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
-import qualified GhcMonad      as GHC
-import qualified HsExpr        as GHC
-import qualified HsSyn         as GHC
+-- import qualified GhcMonad      as GHC
+-- import qualified HsExpr        as GHC
+-- import qualified HsSyn         as GHC
 import qualified Lexer         as GHC
-import qualified Module        as GHC
-import qualified MonadUtils    as GHC
-import qualified Name          as GHC
+-- import qualified Module        as GHC
+-- import qualified MonadUtils    as GHC
+-- import qualified Name          as GHC
 import qualified Outputable    as GHC
-import qualified RdrName       as GHC
-import qualified SrcLoc        as GHC
+-- import qualified RdrName       as GHC
+-- import qualified SrcLoc        as GHC
 import qualified StringBuffer  as GHC
 
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -93,7 +93,7 @@ getDataConstructors _ = []
 
 -- ---------------------------------------------------------------------
 
--- setGhcContext :: GHC.ModSummary
+setGhcContext :: GHC.GhcMonad m => GHC.ModSummary -> m ()
 #if __GLASGOW_HASKELL__ > 704
 setGhcContext modSum = GHC.setContext [GHC.IIModule (GHC.moduleName $ GHC.ms_mod modSum)]
 #else

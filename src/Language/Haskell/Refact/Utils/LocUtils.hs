@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Language.Haskell.Refact.Utils.LocUtils(
                      {-
                      module HsTokens,
@@ -106,19 +108,19 @@ module Language.Haskell.Refact.Utils.LocUtils(
   ) where
 
 
-import qualified BasicTypes    as GHC
-import qualified DynFlags      as GHC
+-- import qualified BasicTypes    as GHC
+--  import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
-import qualified GHC.Paths     as GHC
-import qualified HsSyn         as GHC
+-- import qualified GHC.Paths     as GHC
+-- import qualified HsSyn         as GHC
 import qualified Lexer         as GHC
-import qualified Module        as GHC
-import qualified MonadUtils    as GHC
-import qualified Outputable    as GHC
-import qualified RdrName       as GHC
+-- import qualified Module        as GHC
+-- import qualified MonadUtils    as GHC
+-- import qualified Outputable    as GHC
+-- import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
-import qualified StringBuffer  as GHC
+-- import qualified StringBuffer  as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -130,7 +132,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 
 import Data.Maybe
 import Data.List
-import Debug.Trace
+-- import Debug.Trace
 
 -- ---------------------------------------------------------------------
 
@@ -734,9 +736,9 @@ deleteToks toks startPos endPos
       before = takeWhile (\t->tokenPos t<startPos) toks21
 
       -- tokens after the tokens to be deleted at the same line.
-      after = let t= dropWhile (\t -> tokenPosEnd t <= endPos) toks21
-              in  if (emptyList t) then t -- ++AZ++ error "Sorry, HaRe failed to finish this refactoring. deleteToks"
-                                   else t
+      after = let ts= dropWhile (\t -> tokenPosEnd t <= endPos) toks21
+              in  if (emptyList ts) then ts -- ++AZ++ error "Sorry, HaRe failed to finish this refactoring. deleteToks"
+                                    else ts
 
 {- ++ original ++
 {-Delete a sequence of tokens specified by the start position and end position from the token stream,
@@ -783,7 +785,7 @@ deleteToks toks startPos@(startRow, startCol) endPos@(endRow, endCol)
 -- | Adjust the layout to compensate the change in the token stream.
 adjustLayout:: [PosToken] -> Int -> Int -> [PosToken]
 adjustLayout [] _ _ = []
-adjustLayout toks oldOffset newOffset = toks -- ++AZ++ temporary while plumbing the rest
+adjustLayout toks _oldOffset _newOffset = toks -- ++AZ++ temporary while plumbing the rest
 {- ++AZ++ TODO: restore and fix this
 adjustLayout toks oldOffset newOffset
  | oldOffset == newOffset  = toks

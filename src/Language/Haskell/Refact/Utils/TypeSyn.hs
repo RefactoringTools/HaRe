@@ -3,18 +3,20 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Language.Haskell.Refact.Utils.TypeSyn where
 
 
 -- Modules from GHC
-import qualified FastString as GHC
+-- import qualified FastString as GHC
 import qualified GHC        as GHC
-import qualified GhcMonad   as GHC
-import qualified HsExpr     as GHC
+-- import qualified GhcMonad   as GHC
+-- import qualified HsExpr     as GHC
 import qualified Name       as GHC
 import qualified Outputable as GHC
-import qualified RdrName    as GHC
-import qualified SrcLoc     as GHC
+-- import qualified RdrName    as GHC
+-- import qualified SrcLoc     as GHC
 
 
 
@@ -108,7 +110,6 @@ instance Show PNT where
 instance Show (GHC.GenLocated GHC.SrcSpan GHC.Name) where
   show (GHC.L l name) = "(" ++ (showGhc l) ++ " " ++ (showGhc $ GHC.nameUnique name) ++ " " ++ (showGhc name) ++ ")"
 only for tests end -}
-
 
 instance Show GHC.NameSpace where
   show ns
@@ -212,18 +213,20 @@ instance Ord OptSrcLoc where compare _ _ = EQ
 -- ---------------------------------------------------------------------
 -- Putting these here for the time being, to avoid import loops
 
+ghead :: String -> [a] -> a
+ghead  info []    = error $ "ghead "++info++" []"
+ghead _info (h:_) = h
 
-ghead info []    = error $ "ghead "++info++" []"
-ghead info (h:_) = h
+glast :: String -> [a] -> a
+glast  info []    = error $ "glast " ++ info ++ " []"
+glast _info h     = last h
 
-glast info []    = error $ "glast " ++ info ++ " []"
-glast info h     = last h
+gtail :: String -> [a] -> [a]
+gtail  info []   = error $ "gtail " ++ info ++ " []"
+gtail _info h    = tail h
 
-gtail info []   = error $ "gtail " ++ info ++ " []"
-gtail info h    = tail h
-
-gfromJust info (Just h) = h
-gfromJust info Nothing = error $ "gfromJust " ++ info ++ " Nothing"
-
+gfromJust :: [Char] -> Maybe a -> a
+gfromJust _info (Just h) = h
+gfromJust  info Nothing = error $ "gfromJust " ++ info ++ " Nothing"
 
 -- ---------------------------------------------------------------------

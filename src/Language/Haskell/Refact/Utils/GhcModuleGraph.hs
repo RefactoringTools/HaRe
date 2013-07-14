@@ -7,47 +7,15 @@ module Language.Haskell.Refact.Utils.GhcModuleGraph
   ) where
 
 -- GHC imports
-import Bag
-import BasicTypes
-import Coercion
 import Digraph
-import Digraph
-import DynFlags
-import ErrUtils
 import FastString
-import ForeignCall
 import GHC
-import GHC.Paths
-import HsSyn
 import HscTypes
-import InstEnv
 import Maybes
-import Module
-import MonadUtils
-import NameSet
-import OccName
-import Outputable
 import Panic
-import RdrName
-import SrcLoc
-import TcEvidence
-import TcType
-import TypeRep
-import Var
 
 -- Other imports
 import qualified Data.Map as Map
-import qualified FiniteMap as Map( insertListWith)
-
-import System.Directory ( doesFileExist, getModificationTime )
-import System.IO	( fixIO )
-import System.IO.Error	( isDoesNotExistError )
-import System.Time	( ClockTime )
-import System.FilePath
-import Control.Monad
-import Data.Maybe
-import Data.List
-import qualified Data.List as List
 
 {-
 
@@ -108,6 +76,7 @@ getModulesAsGraph drop_hs_boot_nodes summaries mb_root_mod
 -- This bit is from the GHC source >>>>>>>
 type SummaryNode = (ModSummary, Int, [Int])
 
+{-
 topSortModuleGraph
   :: Bool -> [ModSummary] -> Maybe ModuleName -> [SCC ModSummary]
 topSortModuleGraph drop_hs_boot_nodes summaries mb_root_mod
@@ -125,6 +94,7 @@ topSortModuleGraph drop_hs_boot_nodes summaries mb_root_mod
             let root | Just node <- lookup_node HsSrcFile root_mod, graph `hasVertexG` node = node
                      | otherwise = ghcError (ProgramError "module does not exist")
             in graphFromEdgedVertices (seq root (reachableG graph root))
+-}
 
 summaryNodeKey :: SummaryNode -> Int
 summaryNodeKey (_, k, _) = k
@@ -139,10 +109,10 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
     numbered_summaries = zip summaries [1..]
 
     lookup_node :: HscSource -> ModuleName -> Maybe SummaryNode
-    lookup_node hs_src mod = Map.lookup (mod, hs_src) node_map
+    lookup_node hs_src modName = Map.lookup (modName, hs_src) node_map
 
     lookup_key :: HscSource -> ModuleName -> Maybe Int
-    lookup_key hs_src mod = fmap summaryNodeKey (lookup_node hs_src mod)
+    lookup_key hs_src modName = fmap summaryNodeKey (lookup_node hs_src modName)
 
     node_map :: NodeMap SummaryNode
     node_map = Map.fromList [ ((moduleName (ms_mod s), ms_hsc_src s), node)
@@ -183,6 +153,7 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
 type NodeKey   = (ModuleName, HscSource)  -- The nodes of the graph are
 type NodeMap a = Map.Map NodeKey a	  -- keyed by (mod, src_file_type) pairs
 
+{-
 msKey :: ModSummary -> NodeKey
 msKey (ModSummary { ms_mod = mod, ms_hsc_src = boot }) = (moduleName mod,boot)
 
@@ -191,7 +162,9 @@ mkNodeMap summaries = Map.fromList [ (msKey s, s) | s <- summaries]
 
 nodeMapElts :: NodeMap a -> [a]
 nodeMapElts = Map.elems
+-}
 
+{-
 msDeps :: ModSummary -> [(Located ModuleName, IsBootInterface)]
 -- (msDeps s) returns the dependencies of the ModSummary s.
 -- A wrinkle is that for a {-# SOURCE #-} import we return
@@ -204,6 +177,7 @@ msDeps :: ModSummary -> [(Located ModuleName, IsBootInterface)]
 msDeps s =
     concat [ [(m,True), (m,False)] | m <- ms_home_srcimps s ]
          ++ [ (m,False) | m <- ms_home_imps s ]
+-}
 
 home_imps :: [Located (ImportDecl RdrName)] -> [Located ModuleName]
 home_imps imps = [ ideclName i |  L _ i <- imps, isLocal (ideclPkgQual i) ]
@@ -211,8 +185,10 @@ home_imps imps = [ ideclName i |  L _ i <- imps, isLocal (ideclPkgQual i) ]
         isLocal (Just pkg) | pkg == fsLit "this" = True -- "this" is special
         isLocal _ = False
 
+{-
 ms_home_allimps :: ModSummary -> [ModuleName]
 ms_home_allimps ms = map unLoc (ms_home_srcimps ms ++ ms_home_imps ms)
+-}
 
 ms_home_srcimps :: ModSummary -> [Located ModuleName]
 ms_home_srcimps = home_imps . ms_srcimps

@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.Refact.Utils.Monad
        ( ParseResult
@@ -21,37 +22,33 @@ module Language.Haskell.Refact.Utils.Monad
        ) where
 
 import Control.Monad.State
-import Data.Maybe
 import Exception
 import qualified Control.Monad.IO.Class as MU
 
-import qualified Bag           as GHC
-import qualified BasicTypes    as GHC
-import qualified DynFlags      as GHC
-import qualified FastString    as GHC
+-- import qualified Bag           as GHC
+-- import qualified BasicTypes    as GHC
+-- import qualified DynFlags      as GHC
+-- import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified GhcMonad      as GHC
 import qualified GHC.Paths     as GHC
-import qualified HsSyn         as GHC
-import qualified Module        as GHC
+-- import qualified HsSyn         as GHC
+-- import qualified Module        as GHC
 import qualified MonadUtils    as GHC
-import qualified Outputable    as GHC
-import qualified RdrName       as GHC
-import qualified SrcLoc        as GHC
-import qualified TcEvidence    as GHC
-import qualified TcType        as GHC
-import qualified TypeRep       as GHC
-import qualified Var           as GHC
-import qualified Lexer         as GHC
-import qualified Coercion      as GHC
-import qualified ForeignCall   as GHC
-import qualified InstEnv       as GHC
+-- import qualified Outputable    as GHC
+-- import qualified RdrName       as GHC
+-- import qualified SrcLoc        as GHC
+-- import qualified TcEvidence    as GHC
+-- import qualified TcType        as GHC
+-- import qualified TypeRep       as GHC
+-- import qualified Var           as GHC
+-- import qualified Lexer         as GHC
+-- import qualified Coercion      as GHC
+-- import qualified ForeignCall   as GHC
+-- import qualified InstEnv       as GHC
 
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
-
-import Data.Tree
-import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
 
@@ -106,8 +103,8 @@ data StateStorage = StorageNone
 
 instance Show StateStorage where
   show StorageNone        = "StorageNone"
-  show (StorageBind bind) = "(StorageBind " {- ++ (showGhc bind) -} ++ ")"
-  show (StorageSig sig)   = "(StorageSig " {- ++ (showGhc sig) -} ++ ")"
+  show (StorageBind _bind) = "(StorageBind " {- ++ (showGhc bind) -} ++ ")"
+  show (StorageSig _sig)   = "(StorageSig " {- ++ (showGhc sig) -} ++ ")"
 
 -- ---------------------------------------------------------------------
 -- StateT and GhcT stack
@@ -135,8 +132,8 @@ instance (MonadTrans GHC.GhcT) where
    lift = GHC.liftGhcT
 
 instance (MonadPlus m,Functor m,GHC.MonadIO m,ExceptionMonad m) => MonadPlus (GHC.GhcT m) where
-  mzero = GHC.GhcT $ \s -> mzero
-  x `mplus` y = GHC.GhcT $ \s -> (GHC.runGhcT (Just GHC.libdir) x) `mplus` (GHC.runGhcT (Just GHC.libdir) y)
+  mzero = GHC.GhcT $ \_s -> mzero
+  x `mplus` y = GHC.GhcT $ \_s -> (GHC.runGhcT (Just GHC.libdir) x) `mplus` (GHC.runGhcT (Just GHC.libdir) y)
 
 
 runRefactGhc ::
