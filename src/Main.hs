@@ -9,6 +9,7 @@ import qualified Text.PrettyPrint as PP
 
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.DupDef
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
 
 -- Based initially on http://elifrey.com/2012/07/23/CmdTheLine-Tutorial/
@@ -63,29 +64,36 @@ thisFile = required $ pos 0 Nothing posInfo
     , posDoc = "The file originating the refactoring."
     }
 
-startRow :: Term Int
-startRow = required $ pos 1 Nothing posInfo
+startRow :: Int -> Term Int
+startRow p = required $ pos p Nothing posInfo
     { posName = "startline"
     , posDoc = "The line of the start of the refactoring."
     }
 
-startCol :: Term Int
-startCol = required $ pos 2 Nothing posInfo
+startCol :: Int -> Term Int
+startCol p = required $ pos p Nothing posInfo
     { posName = "startcol"
     , posDoc = "The col of the start of the refactoring."
     }
 
-endRow :: Term Int
-endRow = required $ pos 3 Nothing posInfo
+endRow :: Int -> Term Int
+endRow p = required $ pos p Nothing posInfo
     { posName = "endline"
     , posDoc = "The line of the end of the refactoring."
     }
 
-endCol :: Term Int
-endCol = required $ pos 4 Nothing posInfo
+endCol :: Int -> Term Int
+endCol p = required $ pos p Nothing posInfo
     { posName = "endcol"
     , posDoc = "The col of the end of the refactoring."
     }
+
+newName :: Int -> Term String
+newName p = required $ pos p Nothing posInfo
+    { posName = "newname"
+    , posDoc = "The new name."
+    }
+
 
 settings :: Term (Maybe RefactSettings)
 settings = value $ opt (Just defaultSettings) (optInfo [ "s", "settings"])
@@ -107,7 +115,7 @@ input = value $ opt Nothing (optInfo [ "input", "i" ])
 -- ---------------------------------------------------------------------
 
 main :: IO ()
-main = runChoice defaultTerm [ ifToCaseTerm ]
+main = runChoice defaultTerm [ ifToCaseTerm, duplicateDefTerm ]
 
 defaultTerm :: (Term a, TermInfo)
 defaultTerm = ( ret $ const (helpFail Pager Nothing) <$> input
@@ -128,7 +136,7 @@ ifToCaseTerm = (doIfToCase, info)
 
     doIfToCase :: Term (IO ())
     doIfToCase = ifToCase <$> settings <*> mainFile <*> thisFile
-               <*> startRow <*> startCol <*> endRow <*> endCol
+               <*> startRow 1 <*> startCol 2 <*> endRow 3 <*> endCol 4
 
     ifToCase s m f sr sc er ec
       = GhcRefacCase.ifToCase s m f (sr,sc) (er,ec)
@@ -140,6 +148,27 @@ ifToCaseTerm = (doIfToCase, info)
       , termDoc  = doc
       }
 
+-- ---------------------------------------------------------------------
+
+-- duplicateDef :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO ()
+-- duplicateDef settings maybeMainFile fileName newName (row,col) =
+
+duplicateDefTerm :: (Term (IO ()), TermInfo)
+duplicateDefTerm = (doDupDef,info)
+  where
+    doDupDef :: Term (IO ())
+    doDupDef = dupDef <$> settings <*> mainFile <*> thisFile <*> newName 1 <*> startRow 2 <*> startCol 3
+
+    dupDef s m f nn r c = duplicateDef s m f nn (r,c)
+
+    info :: TermInfo
+    info = defTI'
+      { termName = "dupdef"
+      , version  = "0.x.x.x"
+      , termDoc  = doc
+      }
+
+-- ---------------------------------------------------------------------
 
 doc :: String
 doc = "Haskell Refactorer"
