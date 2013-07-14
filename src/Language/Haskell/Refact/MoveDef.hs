@@ -12,16 +12,16 @@ module Language.Haskell.Refact.MoveDef
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import qualified Bag                   as GHC
+-- import qualified Bag                   as GHC
 import qualified Exception             as GHC
 import qualified FastString            as GHC
 import qualified GHC
 import qualified Name                  as GHC
-import qualified OccName               as GHC
-import qualified Outputable            as GHC
+-- import qualified OccName               as GHC
+-- import qualified Outputable            as GHC
 
 import Control.Exception
-import Control.Lens
+-- import Control.Lens
 import Control.Monad.State
 import qualified Data.Generics.Zipper as Z
 import Data.List
@@ -39,7 +39,7 @@ import Language.Haskell.Refact.Utils.TypeUtils
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
-import Debug.Trace
+-- import Debug.Trace
 
 -- ---------------------------------------------------------------------
 
@@ -248,7 +248,6 @@ liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
                 -> RefactGhc [ApplyRefacResult]
 liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
-  parsed  <- getRefactParsed
   -- logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
   logm $ "liftToTopLevel':pn=" ++ (showGhc pn)
   if isLocalFunOrPatName n renamed
@@ -400,7 +399,7 @@ askRenamingMsg pns str
 pnsNeedRenaming :: (SYB.Data t1) =>
   t1 -> [GHC.LHsBind GHC.Name] -> t2 -> [GHC.Name]
   -> RefactGhc [GHC.Name]
-pnsNeedRenaming dest parent liftedDecls pns
+pnsNeedRenaming dest parent _liftedDecls pns
    =do
        r <- mapM pnsNeedRenaming' pns
        return (concat r)
@@ -439,7 +438,6 @@ liftingInClientMod serverModName pns modSummary = do
        getModuleDetails modSummary
        renamed <- getRefactRenamed
        -- logm $ "liftingInClientMod:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
-       let exps = renamed
        let clientModule = GHC.ms_mod modSummary
        logm $ "liftingInClientMod:clientModule=" ++ (showGhc clientModule)
   -- = do (inscps, exps ,mod ,ts) <- parseSourceFile fileName
@@ -873,7 +871,6 @@ demote' ::
   -> RefactGhc [ApplyRefacResult]
 demote' modName (GHC.L _ pn) = do
   renamed <- getRefactRenamed
-  parsed  <- getRefactParsed
   if isFunOrPatName pn renamed
     then do
        isTl <- isTopLevelPN pn
@@ -888,8 +885,8 @@ demote' modName (GHC.L _ pn) = do
                             clients <- clientModsAndFiles modName
                             logm $ "demote':clients=" ++ (showGhc clients)
                             refactoredClients <-mapM (demotingInClientMod declaredPns) clients
-                            return (refactoredMod:[])
-                    -- else writeRefactoredFiles False [((fileName,m), (toks',mod'))]
+                            -- return (refactoredMod:[])
+                            return (refactoredMod:refactoredClients)
                     else do return [refactoredMod]
     else error "\nInvalid cursor position!"
 
@@ -898,7 +895,9 @@ demote' modName (GHC.L _ pn) = do
 --  a) Check whether the identifier is used in the module body
 --  b) If the identifier is not used but is hided by the import
 --     declaration, then remove it from the hiding.
--- demotingInClientMod :: [GHC.Name] -> GHC.ModSummary -> RefactGhc [a]
+demotingInClientMod ::
+  [GHC.Name] -> GHC.ModSummary
+  -> RefactGhc ApplyRefacResult
 demotingInClientMod pns modSummary = do
   getModuleDetails modSummary
   (refactoredMod,_) <- applyRefac (doDemotingInClientMod pns (GHC.ms_mod modSummary)) RSAlreadyLoaded
@@ -1291,7 +1290,7 @@ foldParams :: [GHC.Name]             -- ^The (list?) function name being demoted
            -> [GHC.LSig GHC.Name]    -- ^Signatures being demoted, if any
            -> Maybe [PosToken]          -- ^Tokens if provided
            -> RefactGhc (GHC.Match GHC.Name)
-foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls dsig dtoks
+foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls dsig dtoks
 
      =do
          logm $ "MoveDef.foldParams entered"
@@ -1363,7 +1362,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
           = everywhereMStaged SYB.Renamer (SYB.mkM worker) decls
           where
           -- worker (match@(HsMatch loc1 (PNT pname _ _) pats rhs ds)::HsMatchP)
-          worker (match@(GHC.FunBind (GHC.L _ pname) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name)
+          worker (match@(GHC.FunBind (GHC.L _ pname) _ (GHC.MatchGroup _matches _) _ _ _) :: GHC.HsBind GHC.Name)
             | isJust (find (==pname) pns)
             = do
                  match'  <- foldM (flip (autoRenameLocalVar True)) match clashedNames
@@ -1420,7 +1419,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
                       False -> return e
                   worker x = return x
                   -}
-                  worker (GHC.HsApp e1 e2 ) -- The param being removed is e2
+                  worker (GHC.HsApp e1 _e2 ) -- The param being removed is e2
                     |expToName e1==pn = return (GHC.unLoc e1)
                   worker x = return x
 {-
@@ -1489,7 +1488,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
                          let pats'=filter (\x->not ((patToPNT x /= Nothing) &&
                                           elem (fromJust $ patToPNT x) ps)) pats
 
-                         let (startPos,endPos@(endRow,endCol)) = getBiggestStartEndLoc pats
+                         let (startPos,endPos) = getBiggestStartEndLoc pats
                          -- error $ "rmParamsInDemotedDecls:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
                          -- error $ "rmParamsInDemotedDecls:(prettyprint pats')=" ++ (prettyprint pats) -- ++AZ++
                          if (emptyList pats')
@@ -1525,7 +1524,7 @@ foldParams pns (match@(GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demote
 
 
        getClashedNames oldNames newNames match
-         = do  (f,d) <- hsFDsFromInside match
+         = do  (_f,d) <- hsFDsFromInside match
                ds' <- mapM (flip hsVisiblePNs match) oldNames
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub
@@ -1566,14 +1565,16 @@ replaceExpWithUpdToks  decls subst
 
 
 -- | return True if pn is a local function/pattern name
+isLocalFunOrPatName :: SYB.Data t => GHC.Name -> t -> Bool
 isLocalFunOrPatName pn scope
  = isLocalPN pn && isFunOrPatName pn scope
 
+{-
 -- |removeTypeSig removes the signature declaration for pn from the decl list.
 -- removeTypeSig :: GHC.Name->[HsDeclP]->[HsDeclP]
 removeTypeSig pn decls = decls
   -- ++ AZ++ TODO: make use of rmTypeSig pn decls from TypeUtils
-
+-}
 
 -- |Divide a declaration list into three parts (before, parent, after)
 -- according to the PNT, where 'parent' is the first decl containing

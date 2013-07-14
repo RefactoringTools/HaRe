@@ -7,9 +7,7 @@ import qualified GHC.SYB.Utils as SYB
 import qualified FastString            as GHC
 import qualified GHC
 import qualified OccName               as GHC
-import qualified Outputable            as GHC
 
---import Control.Monad.State
 import Data.List
 import Data.Maybe
 
@@ -19,7 +17,6 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
@@ -82,7 +79,6 @@ doDuplicating :: GHC.Located GHC.Name -> String
 doDuplicating pn newName = do
    inscopes <- getRefactInscopes
    renamed  <- getRefactRenamed
-   parsed   <- getRefactParsed
    reallyDoDuplicating pn newName inscopes renamed
 
 
@@ -138,7 +134,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
 
         doDuplicating' :: (HsValBinds t) => InScopes -> t -> GHC.Located GHC.Name
                        -> RefactGhc (t)
-        doDuplicating' inscps parentr ln@(GHC.L _ n)
+        doDuplicating' _inscps parentr ln@(GHC.L _ n)
            = do let
                     declsr = hsBinds parentr
 
@@ -246,9 +242,9 @@ refactorInClientMod serverModName newPName (modName, fileName)
 -- | get the module name or alias name by which the duplicated
 -- definition will be imported automatically.
 willBeUnQualImportedBy :: GHC.ModuleName -> GHC.RenamedSource -> Maybe [GHC.ModuleName]
-willBeUnQualImportedBy modName renamed@(_,imps,_,_)
+willBeUnQualImportedBy modName (_,imps,_,_)
    = let
-         ms = filter (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) qualify _source _safe isQualified _isImplicit as h))
+         ms = filter (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as h))
                     -> modName == modName1
                        && not isQualified
                               && (isNothing h  -- not hiding
@@ -259,7 +255,7 @@ willBeUnQualImportedBy modName renamed@(_,imps,_,_)
          in if (emptyList ms) then Nothing
                       else Just $ nub $ map getModName ms
 
-         where getModName (GHC.L _ (GHC.ImportDecl modName1 qualify _source _safe isQualified _isImplicit as h))
+         where getModName (GHC.L _ (GHC.ImportDecl _modName1 _qualify _source _safe _isQualified _isImplicit as _h))
                  = if isJust as then (fromJust as)
                                 else modName
                -- simpModName (SN m loc) = m
