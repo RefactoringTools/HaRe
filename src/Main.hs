@@ -10,6 +10,7 @@ import qualified Text.PrettyPrint as PP
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.DupDef
+import Language.Haskell.Refact.MoveDef
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
 
 -- Based initially on http://elifrey.com/2012/07/23/CmdTheLine-Tutorial/
@@ -54,7 +55,14 @@ mainFile :: Term (Maybe FilePath)
 mainFile = value $ opt Nothing (optInfo ["m","main"])
      { optName = "main"
      , optDoc  = "The Haskell main file, if there is one"
-     , optSec  = "OPTSEC"
+     , optSec = comOpts
+     }
+
+settings :: Term (Maybe RefactSettings)
+settings = value $ opt (Just defaultSettings) (optInfo [ "s", "settings"])
+     { optName = "settings"
+     , optDoc  = "The set of paths to the source"
+     , optSec = comOpts
      }
 
 
@@ -95,9 +103,6 @@ newName p = required $ pos p Nothing posInfo
     }
 
 
-settings :: Term (Maybe RefactSettings)
-settings = value $ opt (Just defaultSettings) (optInfo [ "s", "settings"])
-
 -- ---------------------------------------------------------------------
 
 -- 'input' is a common option. We set its 'optSec' field to 'comOpts' so
@@ -115,10 +120,15 @@ input = value $ opt Nothing (optInfo [ "input", "i" ])
 -- ---------------------------------------------------------------------
 
 main :: IO ()
-main = runChoice defaultTerm [ ifToCaseTerm, duplicateDefTerm ]
+main = runChoice defaultTerm [ ifToCaseTerm
+                             , duplicateDefTerm
+                             , liftToTopTerm
+                             , liftOneTerm
+                             , demoteTerm
+                             ]
 
 defaultTerm :: (Term a, TermInfo)
-defaultTerm = ( ret $ const (helpFail Pager Nothing) <$> input
+defaultTerm = ( ret $ const (helpFail Pager Nothing) <$> mainFile -- <*> settings
               , info
               )
   where
@@ -144,8 +154,7 @@ ifToCaseTerm = (doIfToCase, info)
     info :: TermInfo
     info = defTI'
       { termName = "iftocase"
-      , version  = "0.x.x.x"
-      , termDoc  = doc
+      , termDoc  = "Convert an if expression to a case expression"
       }
 
 -- ---------------------------------------------------------------------
@@ -164,8 +173,64 @@ duplicateDefTerm = (doDupDef,info)
     info :: TermInfo
     info = defTI'
       { termName = "dupdef"
-      , version  = "0.x.x.x"
-      , termDoc  = doc
+      , termDoc  = "Duplicate a definition"
+      }
+
+-- ---------------------------------------------------------------------
+
+-- liftToTopLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO ()
+-- liftToTopLevel settings maybeMainFile fileName (row,col) =
+
+liftToTopTerm :: (Term (IO ()), TermInfo)
+liftToTopTerm = (doLiftToTop,info)
+  where
+    doLiftToTop :: Term (IO ())
+    doLiftToTop = liftToTop <$> settings <*> mainFile <*> thisFile <*> startRow 1 <*> startCol 2
+
+    liftToTop s m f r c = liftToTopLevel s m f (r,c)
+
+    info :: TermInfo
+    info = defTI'
+      { termName = "liftToTopLevel"
+      , termDoc  = "Lift a declaration to the top level"
+      }
+
+-- ---------------------------------------------------------------------
+
+-- liftOneLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO ()
+-- liftOneLevel settings maybeMainFile fileName (row,col) =
+
+liftOneTerm :: (Term (IO ()), TermInfo)
+liftOneTerm = (doLiftOne,info)
+  where
+    doLiftOne :: Term (IO ())
+    doLiftOne = liftOne <$> settings <*> mainFile <*> thisFile <*> startRow 1 <*> startCol 2
+
+    liftOne s m f r c = liftOneLevel s m f (r,c)
+
+    info :: TermInfo
+    info = defTI'
+      { termName = "liftOneLevel"
+      , termDoc  = "Lift a declaration one level"
+      }
+
+-- ---------------------------------------------------------------------
+
+-- demote :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO ()
+-- demote settings maybeMainFile fileName (row,col) =
+
+demoteTerm :: (Term (IO ()), TermInfo)
+demoteTerm = (doDemote',info)
+  where
+    doDemote' :: Term (IO ())
+    doDemote' = demote' <$> settings <*> mainFile <*> thisFile <*> startRow 1 <*> startCol 2
+
+    demote' s m f r c = demote s m f (r,c)
+
+    info :: TermInfo
+    info = defTI'
+      { termName = "demote"
+      , termDoc  = "Move a declaration down one level"
       }
 
 -- ---------------------------------------------------------------------
