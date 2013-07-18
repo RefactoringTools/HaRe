@@ -15,6 +15,9 @@
   :END:
 
 * TODO Revisit DupDef, formatting not good
+  :PROPERTIES:
+  :ID:       75ea1ecc-efe5-4bfc-959f-1ec6fe6694ab
+  :END:
   - e.g. ghc-hare dupdef Case/B.hs joe 9 1
 * TODO from the source files
   :PROPERTIES:
@@ -62,3 +65,8 @@
    :END:
    [2013-07-11 Thu]
    [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20This%20looks%20like%20a%20no-op?][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: This looks like a no-op?]]
+** TODO generic TODO
+   :PROPERTIES:
+   :ID:       f7f75aad-8804-4dc3-9511-d7357c1755e7
+   :END:
+   [[file:src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO][todos]]
