@@ -1,4 +1,3 @@
-
 * TODO Make the tests pass on 7.4.x.
   :PROPERTIES:
   :ID:       226a960d-58a9-44df-85a9-1d60fbb60bfb
@@ -28,43 +27,43 @@
    :ID:       5318a78f-d18b-4df0-a664-506400ee1b67
    :END:
    [2013-07-11 Thu]
-   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20check%20that%20the%20components%20are%20in%20range][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: check that the components are in range]]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20check%20that%20the%20components%20are%20in%20range][file:.//src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: check that the components are in range]]
 ** TODO This should be in splitSubToks
    :PROPERTIES:
    :ID:       74497dc3-e597-4892-a55b-ad126e1a2c31
    :END:
    [2013-07-11 Thu]
-   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::then%20--%20TODO:%20This%20should%20be%20in%20splitSubToks][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::then -- TODO: This should be in splitSubToks]]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::then%20--%20TODO:%20This%20should%20be%20in%20splitSubToks][file:.//src/Language/Haskell/Refact/Utils/TokenUtils.hs::then -- TODO: This should be in splitSubToks]]
 ** TODO Calculate end gap in splitSubToks
    :PROPERTIES:
    :ID:       b3691446-2a8d-4a61-8172-a61a0abe7993
    :END:
    [2013-07-11 Thu]
-   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::egs%20%3D%20(0,0)%20--%20TODO:%20calculate%20this][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::egs = (0,0) -- TODO: calculate this]]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::egs%20%3D%20(0,0)%20--%20TODO:%20calculate%20this][file:.//src/Language/Haskell/Refact/Utils/TokenUtils.hs::egs = (0,0) -- TODO: calculate this]]
 ** TODO Consider comment boundaries in splitSubToks
    :PROPERTIES:
    :ID:       b04c3f84-f728-4086-b7be-005e5657d75a
    :END:
    [2013-07-11 Thu]
-   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20ignoring%20comment%20boundaries%20to%20start][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: ignoring comment boundaries to start]]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20ignoring%20comment%20boundaries%20to%20start][file:./src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: ignoring comment boundaries to start]]
 ** TODO goDeleteGapsToks - use start and end toks not sspan, there may be comments
    :PROPERTIES:
    :ID:       809fcc7a-3ba1-4241-a850-ad4a5040d699
    :END:
    [2013-07-11 Thu]
-   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20use%20actual%20first%20and%20last%20toks,%20may%20be%20comments][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: use actual first and last toks, may be comments]]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20use%20actual%20first%20and%20last%20toks,%20may%20be%20comments][file:.//src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: use actual first and last toks, may be comments]]
 ** TODO goDeleteGapsToks : deal with deletion within a line
    :PROPERTIES:
    :ID:       51d8c773-a255-4fbe-8d53-d1c18d17326f
    :END:
    [2013-07-11 Thu]
-   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20what%20about%20deletion%20within%20a%20line?][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: what about deletion within a line?]]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20what%20about%20deletion%20within%20a%20line?][file:./src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: what about deletion within a line?]]
 ** TODO This looks like a no-op?
    :PROPERTIES:
    :ID:       26e11bee-d04c-46e1-80af-4181157ebadd
    :END:
    [2013-07-11 Thu]
-   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20This%20looks%20like%20a%20no-op?][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: This looks like a no-op?]]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20This%20looks%20like%20a%20no-op?][file:./src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: This looks like a no-op?]]
 ** TODO generic TODO
    :PROPERTIES:
    :ID:       f7f75aad-8804-4dc3-9511-d7357c1755e7
