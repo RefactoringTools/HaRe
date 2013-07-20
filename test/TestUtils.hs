@@ -21,16 +21,14 @@ module TestUtils
 
 
 import qualified GHC        as GHC
-import qualified GhcMonad   as GHC
-import qualified Outputable as GHC
-import qualified RdrName    as GHC
-import qualified SrcLoc     as GHC
+-- import qualified GhcMonad   as GHC
+-- import qualified Outputable as GHC
+-- import qualified RdrName    as GHC
+-- import qualified SrcLoc     as GHC
 
-import Control.Monad.State
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.Refact.Utils
-import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils

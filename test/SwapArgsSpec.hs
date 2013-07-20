@@ -1,19 +1,13 @@
 module SwapArgsSpec (main, spec) where
 
 import           Test.Hspec
-import           Test.QuickCheck
 
-import qualified GHC      as GHC
-import qualified GhcMonad as GHC
-import qualified RdrName  as GHC
-import qualified SrcLoc   as GHC
+-- import qualified GHC      as GHC
+-- import qualified GhcMonad as GHC
+-- import qualified RdrName  as GHC
+-- import qualified SrcLoc   as GHC
 
-import Exception
-import Control.Monad.State
 import Language.Haskell.Refact.SwapArgs
-import Language.Haskell.Refact.Utils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.LocUtils
 
 import TestUtils
 

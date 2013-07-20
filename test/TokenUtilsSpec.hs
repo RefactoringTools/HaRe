@@ -1,23 +1,19 @@
 module TokenUtilsSpec (main, spec) where
 
 import           Test.Hspec
-import           Test.QuickCheck
 
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified Lexer      as GHC
-import qualified Outputable as GHC
-import qualified SrcLoc     as GHC
+-- import qualified Outputable as GHC
+-- import qualified SrcLoc     as GHC
 
 import qualified GHC.SYB.Utils as SYB
 
 import Control.Monad.State
 import Data.Maybe
 import Data.Tree
-import Exception
-import Numeric
 
-import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -153,7 +149,7 @@ spec = do
       (show prevToks') `shouldBe` ""
       -}
       -- --- -- --
-      let (tm'''',_newSpan',decl') = addDeclToksAfterSrcSpan tm''' newSpan (PlaceOffset 1 0 2) declToks decl
+      let (tm'''',_newSpan',_decl') = addDeclToksAfterSrcSpan tm''' newSpan (PlaceOffset 1 0 2) declToks decl
       -- (showGhc newSpan') `shouldBe` "test/testdata/DupDef/Dd1.hs:1000006:1-30"
 
       (drawTreeEntry tm'''') `shouldBe`
@@ -263,7 +259,7 @@ spec = do
       -- putToksForSpan test/testdata/DupDef/Dd1.hs:1048582:1-30:(((False,0,1,6),1),((False,0,1,6),31))
       -- NOTE: shortcut, using same toks, it is the book-keeping we
       -- are testing
-      let (tm5,sspan5,tree5) = updateTokensForSrcSpan tm4 sspan3 toks4
+      let (tm5,_sspan5,tree5) = updateTokensForSrcSpan tm4 sspan3 toks4
       (drawTreeEntry tm5) `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
@@ -295,7 +291,7 @@ spec = do
             "+- ((10001000006,1),(10001000006,31))\n|\n"++
             "`- ((6,1),(32,18))\n"
 
-      let (forest',tree) = getSrcSpanFor tm5 (srcSpanToForestSpan sspan3)
+      let (forest',_tree) = getSrcSpanFor tm5 (srcSpanToForestSpan sspan3)
       (drawTreeEntry forest') `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
@@ -306,7 +302,7 @@ spec = do
             "`- ((6,1),(32,18))\n"
       -- --
 
-      let (tm6,sspan6) = addToksAfterSrcSpan tm5 sspan3 (PlaceIndent 1 0 2) declToks
+      let (tm6,_sspan6) = addToksAfterSrcSpan tm5 sspan3 (PlaceIndent 1 0 2) declToks
       (drawTreeEntry tm6) `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
@@ -340,7 +336,7 @@ spec = do
     it "gets the tokens after renaming" $ do
       (t,toks) <- parsedFileLiftD1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
+      -- let decls = hsBinds renamed
       let forest = mkTreeFromTokens toks
 
       -- putToksForSpan test/testdata/LiftToToplevel/D1.hs:6:24:(((False,0,0,6),24),((False,0,0,6),25))
@@ -352,7 +348,7 @@ spec = do
       newToks <- liftIO $ basicTokenise "sq (x pow)"
       (show newToks) `shouldBe` "[((((0,1),(0,3)),ITvarid \"sq\"),\"sq\"),((((0,4),(0,5)),IToparen),\"(\"),((((0,5),(0,6)),ITvarid \"x\"),\"x\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\"),((((0,10),(0,11)),ITcparen),\")\")]"
 
-      let (tm2,sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
+      let (tm2,_sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
       (drawTreeEntry tm2) `shouldBe`
             "((1,1),(13,25))\n|\n"++
             "+- ((1,1),(6,23))\n|\n"++
@@ -434,7 +430,7 @@ tree TId 0:
     it "gets the tokens after updating a SrcSpan" $ do
       (t,toks) <- parsedFileLiftLetIn1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
+      -- let decls = hsBinds renamed
       let forest = mkTreeFromTokens toks
 
       -- putToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:12:22-23:(((False,0,0,12),22),((False,0,0,12),24))
@@ -446,7 +442,7 @@ tree TId 0:
       newToks <- liftIO $ basicTokenise "(sq pow)"
       (show newToks) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
 
-      let (tm2,sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
+      let (tm2,_sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
       (drawTreeEntry tm2) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(12,21))\n|\n"++
@@ -462,7 +458,7 @@ tree TId 0:
       newToks2 <- liftIO $ basicTokenise "(sq pow)"
       (show newToks2) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
 
-      let (tm3,sspan3,tree3) = updateTokensForSrcSpan tm2 sspan2 newToks2
+      let (tm3,_sspan3,tree3) = updateTokensForSrcSpan tm2 sspan2 newToks2
       (drawTreeEntry tm3) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(12,21))\n|\n"++
