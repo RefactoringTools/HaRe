@@ -269,7 +269,7 @@ type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.RenamedSource))
 runRefacSession :: Maybe RefactSettings
          -> Maybe FilePath -- ^ main module for the project being refactored
          -> RefactGhc [ApplyRefacResult]
-         -> IO ()
+         -> IO [FilePath]
 runRefacSession settings maybeMainFile comp = do
   let
    initialState = RefSt
@@ -284,7 +284,8 @@ runRefacSession settings maybeMainFile comp = do
                                        comp) initialState
 
   writeRefactoredFiles False refactoredMods
-  return ()
+  return $ modifiedFiles refactoredMods
+  -- return ()
 
 -- ---------------------------------------------------------------------
 
@@ -343,6 +344,13 @@ applyRefacToClientMods refac fileName
    = do clients <- clientModsAndFiles =<< fileNameToModName fileName
         mapM (applyRefac refac Nothing) (map snd clients)
 -}
+
+-- ---------------------------------------------------------------------
+
+
+modifiedFiles :: [((String, Bool), ([PosToken], GHC.RenamedSource))] -> [String]
+modifiedFiles refactResult = map (\((s,_),_) -> s) 
+                           $ filter (\((_,b),_) -> b) refactResult
 
 -- ---------------------------------------------------------------------
 

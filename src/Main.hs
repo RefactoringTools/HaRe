@@ -2,9 +2,11 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 
-import System.Console.CmdTheLine
-import Data.Maybe
 import Control.Applicative       ( (<$>), (<*>) )
+import Data.List
+import Data.Maybe
+import Exception
+import System.Console.CmdTheLine
 import qualified Text.PrettyPrint as PP
 
 import Language.Haskell.Refact.Utils.Monad
@@ -148,8 +150,7 @@ ifToCaseTerm = (doIfToCase, info)
     doIfToCase = ifToCase <$> settings <*> mainFile <*> thisFile
                <*> startRow 1 <*> startCol 2 <*> endRow 3 <*> endCol 4
 
-    ifToCase s m f sr sc er ec
-      = GhcRefacCase.ifToCase s m f (sr,sc) (er,ec)
+    ifToCase s m f sr sc er ec = runFunc $ GhcRefacCase.ifToCase s m f (sr,sc) (er,ec)
 
     info :: TermInfo
     info = defTI'
@@ -168,7 +169,7 @@ duplicateDefTerm = (doDupDef,info)
     doDupDef :: Term (IO ())
     doDupDef = dupDef <$> settings <*> mainFile <*> thisFile <*> newName 1 <*> startRow 2 <*> startCol 3
 
-    dupDef s m f nn r c = duplicateDef s m f nn (r,c)
+    dupDef s m f nn r c = runFunc $duplicateDef s m f nn (r,c)
 
     info :: TermInfo
     info = defTI'
@@ -187,7 +188,7 @@ liftToTopTerm = (doLiftToTop,info)
     doLiftToTop :: Term (IO ())
     doLiftToTop = liftToTop <$> settings <*> mainFile <*> thisFile <*> startRow 1 <*> startCol 2
 
-    liftToTop s m f r c = liftToTopLevel s m f (r,c)
+    liftToTop s m f r c = runFunc $ liftToTopLevel s m f (r,c)
 
     info :: TermInfo
     info = defTI'
@@ -206,7 +207,7 @@ liftOneTerm = (doLiftOne,info)
     doLiftOne :: Term (IO ())
     doLiftOne = liftOne <$> settings <*> mainFile <*> thisFile <*> startRow 1 <*> startCol 2
 
-    liftOne s m f r c = liftOneLevel s m f (r,c)
+    liftOne s m f r c = runFunc $ liftOneLevel s m f (r,c)
 
     info :: TermInfo
     info = defTI'
@@ -225,13 +226,35 @@ demoteTerm = (doDemote',info)
     doDemote' :: Term (IO ())
     doDemote' = demote' <$> settings <*> mainFile <*> thisFile <*> startRow 1 <*> startCol 2
 
-    demote' s m f r c = demote s m f (r,c)
+    demote' s m f r c = runFunc $ demote s m f (r,c)
 
     info :: TermInfo
     info = defTI'
       { termName = "demote"
       , termDoc  = "Move a declaration down one level"
       }
+
+-- ---------------------------------------------------------------------
+
+runFunc :: IO [String] -> IO ()
+runFunc f = do
+  r <- catchException f
+  let ret = case r of
+       Left s    -> "(error " ++ (show s) ++ ")"
+       Right mfs -> "(ok " ++ showLisp mfs ++ ")"
+  putStrLn ret
+  
+
+showLisp :: [String] -> String
+showLisp xs = "(" ++ (intercalate " " $ map show xs) ++ ")"
+
+catchException :: (IO t) -> IO (Either String t)
+catchException f = do
+  res <- handle handler (f >>= \r -> return $ Right r)
+  return res
+  where
+    handler:: SomeException -> IO (Either String t)
+    handler e = return (Left (show e))
 
 -- ---------------------------------------------------------------------
 

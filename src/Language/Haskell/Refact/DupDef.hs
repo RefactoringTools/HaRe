@@ -36,7 +36,7 @@ doDuplicateDef args
       return ()
 
 -- | The API entry point
-duplicateDef :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO ()
+duplicateDef :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO [FilePath]
 duplicateDef settings maybeMainFile fileName newName (row,col) =
   runRefacSession settings maybeMainFile (comp fileName newName (row,col))
 

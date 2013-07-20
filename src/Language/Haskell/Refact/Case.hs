@@ -25,7 +25,7 @@ doIfToCase args
        return ()
 
 -- | The API entry point
-ifToCase :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> IO ()
+ifToCase :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
 ifToCase settings maybeMainFile fileName beginPos endPos =
   runRefacSession settings maybeMainFile (comp fileName beginPos endPos)
 

@@ -32,7 +32,7 @@ import Language.Haskell.Refact.Utils.TypeUtils
 
 import Debug.Trace
 
-swapArgs :: [String] -> IO () -- For now
+swapArgs :: [String] -> IO [FilePath]
 swapArgs args
   = do let fileName = args!!0
            row = (read (args!!1)::Int)

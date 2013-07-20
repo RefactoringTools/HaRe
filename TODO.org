@@ -69,3 +69,6 @@
    :ID:       f7f75aad-8804-4dc3-9511-d7357c1755e7
    :END:
    [[file:src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO][todos]]
+** TODO Carry on here
+   [2013-07-19 Fri]
+   [[file:~/mysrc/github/alanz/HaRe/elisp/hare.el::(erl-send-rpc%20wrangler-erl-node%20'emacs_wrangler%20'apply_refac%20(list%20'move_fun][file:~/mysrc/github/alanz/HaRe/elisp/hare.el::(erl-send-rpc wrangler-erl-node 'emacs_wrangler 'apply_refac (list 'move_fun]]

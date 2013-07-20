@@ -88,7 +88,7 @@ doLiftToTopLevel args
       return ()
 
 -- | The API entry point
-liftToTopLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO ()
+liftToTopLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
 liftToTopLevel settings maybeMainFile fileName (row,col) =
   runRefacSession settings maybeMainFile (compLiftToTopLevel fileName (row,col))
 
@@ -119,7 +119,7 @@ doLiftOneLevel args
       return ()
 
 -- | The API entry point
-liftOneLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO ()
+liftOneLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
 liftOneLevel settings maybeMainFile fileName (row,col) =
   runRefacSession settings maybeMainFile (compLiftOneLevel fileName (row,col))
 
@@ -160,7 +160,7 @@ doDemote args
       return ()
 
 -- | The API entry point
-demote :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO ()
+demote :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
 demote settings maybeMainFile fileName (row,col) =
   runRefacSession settings maybeMainFile (compDemote fileName (row,col))
 
