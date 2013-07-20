@@ -52,14 +52,14 @@
 ;;   :group 'wrangler)
 
 
-;; (defcustom refac-monitor-repository-path ""     
+;; (defcustom refac-monitor-repository-path ""
 ;;   "*FOR CASESTUDY WITH Git/SVN ONLY.* Path to the Wrangler monitor reposiotry"
 ;;   :type 'directory
 ;;   :group 'wrangler)
 
 ;; (defcustom log-source-code nil
 ;;   "*FOR CASESTUDY USE ONLY* 'off' means to log the refactoring commands; 'on' means
-;;   to log both refactoring commands and source code."      
+;;   to log both refactoring commands and source code."
 ;;   :type 'boolean
 ;;   :group 'wrangler)
 
@@ -146,7 +146,7 @@
 ;;      (setq monitored 'true)
 ;;       (setq dirs (cdr dirs))
 ;;       ))
-;;   (if monitored 
+;;   (if monitored
 ;;       (car dirs)
 ;;     nil))
 
@@ -154,7 +154,7 @@
   (let ((dir (is-a-monitored-file curfilename)))
     (if (equal nil dir)
         nil
-      (cond 
+      (cond
        ((equal version-control-system 'ClearCase)
         (add-logmsg-to-logfile-clearcase logmsg))
        ((or (equal version-control-system 'Git)
@@ -162,7 +162,7 @@
         (write-to-refac-logfile dir logmsg "Clone Detection"))
        (t nil)
        ))))
-  
+
 (defun add-logmsg-to-logfile-clearcase(logmsg)
   "Add logmsg to the refactor log file which is stored in a clearase repository." 
   (run-hook-with-args 'before-commit-functions (list refactor-log-file) nil)
@@ -1192,7 +1192,6 @@
         (buffer (current-buffer)))
     (if (buffers-saved)
         (hare-refactor-lift-one-1 current-file-name line-no column-no hare-search-paths 'emacs tab-width)
-        ;; (message "hare-refactor-lift-one-1 %s %d %d %s" current-file-name line-no column-no hare-search-paths)
       (message "Refactoring aborted."))))
 
 
@@ -1201,13 +1200,21 @@
   (let (composite-refac-p name msg result)
   (setq composite-refac-p (equal editor 'composite_emacs))
 
-  (ghc-read-lisp
-   (lambda ()
-     (message "Initializing...")
-     (call-process ghc-hare-command nil (get-buffer-create "*HaRe*") nil "liftOneLevel" current-file-name
-                   (number-to-string line-no) (number-to-string column-no))
-     (message "Initializing...done"))
-   )))
+  (let ((res
+        (ghc-read-lisp
+         (lambda ()
+           (message "Running...")
+           ;(call-process ghc-hare-command nil (get-buffer-create "*HaRe*") nil
+           (call-process ghc-hare-command nil t nil
+                         "liftOneLevel" current-file-name
+                         (number-to-string line-no) (number-to-string column-no))
+           (message "Running...done"))
+         )))
+    (with-current-buffer (get-buffer-create "*HaRe*") (insert (prin1-to-string res)))
+    (message "Res=%s" res)
+    (process-result current-file-name res line-no column-no composite-refac-p)
+   )
+  ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
