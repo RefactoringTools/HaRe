@@ -72,3 +72,9 @@
 ** TODO Carry on here
    [2013-07-19 Fri]
    [[file:~/mysrc/github/alanz/HaRe/elisp/hare.el::(erl-send-rpc%20wrangler-erl-node%20'emacs_wrangler%20'apply_refac%20(list%20'move_fun][file:~/mysrc/github/alanz/HaRe/elisp/hare.el::(erl-send-rpc wrangler-erl-node 'emacs_wrangler 'apply_refac (list 'move_fun]]
+** TODO implement "do-commit" the refactoring result in elisp
+   [2013-07-20 Sat]
+   [[file:~/mysrc/github/alanz/HaRe/elisp/hare.el::"commit%20the%20refactoring%20result."][file:~/mysrc/github/alanz/HaRe/elisp/hare.el::"commit the refactoring result."]]
+** TODO move buffers-saved test into hare-refactor-command 
+   [2013-07-20 Sat]
+   [[file:~/mysrc/github/alanz/HaRe/elisp/hare.el::TODO:%20move%20this%20test%20into%20hare-refactor-command][file:~/mysrc/github/alanz/HaRe/elisp/hare.el::TODO: move this test into hare-refactor-command]]

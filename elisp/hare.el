@@ -186,6 +186,7 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; The next two functions courtesy of the ghc-mod elisp.
 
 (defun ghc-read-lisp (func)
   (with-temp-buffer
@@ -1206,6 +1207,23 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun hare-refactor-dupdef (name)
+  "Lift a definition one level."
+  (interactive (list (read-string "new definition name: ")))
+  (let ((current-file-name (buffer-file-name))
+        (line-no           (current-line-no))
+        (column-no         (current-column-no))
+        (buffer (current-buffer)))
+    (if (buffers-saved)
+        (hare-refactor-command
+                         `("dupdef" ,current-file-name ,name
+                         ,(number-to-string line-no) ,(number-to-string column-no)
+                         )
+                         search-paths editor tab-width)
+      (message "Refactoring aborted."))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun hare-refactor-lift-one ()
   "Lift a definition one level."
   (interactive)
@@ -1214,18 +1232,46 @@
         (column-no         (current-column-no))
         (buffer (current-buffer)))
     (if (buffers-saved)
-        (hare-refactor-lift-one-1 current-file-name line-no column-no hare-search-paths 'emacs tab-width)
-      (message "Refactoring aborted."))))
-
-
-(defun hare-refactor-lift-one-1 (current-file-name line-no column-no search-paths editor tab-width)
-  "Lift a definition one level."
-
-  (hare-refactor-command
+        (hare-refactor-command
                          `("liftOneLevel" ,current-file-name
                          ,(number-to-string line-no) ,(number-to-string column-no))
                          search-paths editor tab-width)
-  )
+
+      (message "Refactoring aborted."))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun hare-refactor-lifttotop ()
+  "Lift a definition to the top level."
+  (interactive)
+  (let ((current-file-name (buffer-file-name))
+        (line-no           (current-line-no))
+        (column-no         (current-column-no))
+        (buffer (current-buffer)))
+    (if (buffers-saved)
+        (hare-refactor-command
+                         `("liftToTopLevel" ,current-file-name
+                         ,(number-to-string line-no) ,(number-to-string column-no))
+                         search-paths editor tab-width)
+
+      (message "Refactoring aborted."))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun hare-refactor-demote ()
+  "Move a declaration down one level"
+  (interactive)
+  (let ((current-file-name (buffer-file-name))
+        (line-no           (current-line-no))
+        (column-no         (current-column-no))
+        (buffer (current-buffer)))
+    (if (buffers-saved) ;; TODO: move this test into hare-refactor-command
+        (hare-refactor-command
+                         `("demote" ,current-file-name
+                         ,(number-to-string line-no) ,(number-to-string column-no))
+                         search-paths editor tab-width)
+
+      (message "Refactoring aborted."))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
