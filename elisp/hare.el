@@ -1183,6 +1183,29 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun hare-refactor-iftocase(start end)
+  "Register a process with a user-provied name."
+  (interactive (list ;; (read-string "process name: ")
+                  (region-beginning)
+                  (region-end)
+                  ))
+  (let ((current-file-name (buffer-file-name))
+     (buffer (current-buffer))
+     (start-line-no (line-no-pos start))
+     (start-col-no  (current-column-pos start))
+     (end-line-no   (line-no-pos end))
+     (end-col-no    (current-column-pos end)))
+    (if (buffers-saved)
+        (hare-refactor-command
+                         `("iftocase" ,current-file-name
+                         ,(number-to-string start-line-no) ,(number-to-string start-col-no)
+                         ,(number-to-string end-line-no)   ,(number-to-string end-col-no)
+                         )
+                         search-paths editor tab-width)
+      (message "Refactoring aborted."))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun hare-refactor-lift-one ()
   "Lift a definition one level."
   (interactive)
@@ -1204,28 +1227,10 @@
                          search-paths editor tab-width)
   )
 
-(defun hare-refactor-lift-one-1-orig (current-file-name line-no column-no search-paths editor tab-width)
-  "Lift a definition one level."
-  (let (composite-refac-p name msg result)
-  (setq composite-refac-p (equal editor 'composite_emacs))
-
-  (let ((res
-        (ghc-read-lisp
-         (lambda ()
-           (message "Running...")
-           (apply 'call-process ghc-hare-command nil t nil
-                         `("liftOneLevel" ,current-file-name
-                         ,(number-to-string line-no) ,(number-to-string column-no)))
-           (message "Running...done"))
-         )))
-    (with-current-buffer (get-buffer-create "*HaRe*") (insert (prin1-to-string res)))
-    (message "Res=%s" res)
-    (process-result current-file-name res line-no column-no composite-refac-p)
-   )
-  ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun hare-refactor-command (params search-paths editor tab-width)
-  "Lift a definition one level."
+  "Send a refactoring command to the ghc-hare executable and process the reply"
   (let (composite-refac-p name msg result)
   (setq composite-refac-p (equal editor 'composite_emacs))
 
@@ -1235,11 +1240,9 @@
            (message "Running...")
            (apply 'call-process ghc-hare-command nil t nil
                          params)
-                         ;; `("liftOneLevel" ,current-file-name
-                         ;; ,(number-to-string line-no) ,(number-to-string column-no)))
            (message "Running...done"))
          )))
-    (with-current-buffer (get-buffer-create "*HaRe*") (insert (prin1-to-string res)))
+    (with-current-buffer (get-buffer-create "*HaRe*") (insert (format "%s\n"  (prin1-to-string res))))
     (message "Res=%s" res)
     (process-result current-file-name res line-no column-no composite-refac-p)
    )
