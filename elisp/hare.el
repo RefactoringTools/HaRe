@@ -1197,6 +1197,15 @@
 
 (defun hare-refactor-lift-one-1 (current-file-name line-no column-no search-paths editor tab-width)
   "Lift a definition one level."
+
+  (hare-refactor-command
+                         `("liftOneLevel" ,current-file-name
+                         ,(number-to-string line-no) ,(number-to-string column-no))
+                         search-paths editor tab-width)
+  )
+
+(defun hare-refactor-lift-one-1-orig (current-file-name line-no column-no search-paths editor tab-width)
+  "Lift a definition one level."
   (let (composite-refac-p name msg result)
   (setq composite-refac-p (equal editor 'composite_emacs))
 
@@ -1204,10 +1213,30 @@
         (ghc-read-lisp
          (lambda ()
            (message "Running...")
-           ;(call-process ghc-hare-command nil (get-buffer-create "*HaRe*") nil
-           (call-process ghc-hare-command nil t nil
-                         "liftOneLevel" current-file-name
-                         (number-to-string line-no) (number-to-string column-no))
+           (apply 'call-process ghc-hare-command nil t nil
+                         `("liftOneLevel" ,current-file-name
+                         ,(number-to-string line-no) ,(number-to-string column-no)))
+           (message "Running...done"))
+         )))
+    (with-current-buffer (get-buffer-create "*HaRe*") (insert (prin1-to-string res)))
+    (message "Res=%s" res)
+    (process-result current-file-name res line-no column-no composite-refac-p)
+   )
+  ))
+
+(defun hare-refactor-command (params search-paths editor tab-width)
+  "Lift a definition one level."
+  (let (composite-refac-p name msg result)
+  (setq composite-refac-p (equal editor 'composite_emacs))
+
+  (let ((res
+        (ghc-read-lisp
+         (lambda ()
+           (message "Running...")
+           (apply 'call-process ghc-hare-command nil t nil
+                         params)
+                         ;; `("liftOneLevel" ,current-file-name
+                         ;; ,(number-to-string line-no) ,(number-to-string column-no)))
            (message "Running...done"))
          )))
     (with-current-buffer (get-buffer-create "*HaRe*") (insert (prin1-to-string res)))
