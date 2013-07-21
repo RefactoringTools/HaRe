@@ -3016,6 +3016,62 @@ tree TId 0:
 
       (calcEndGap f2 (fs sspan)) `shouldBe` (1,-14)
       
+  -- ---------------------------------------------
+
+  describe "layout problems" $ do
+    it "Does not leave a blank line for DupDef" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Case/B.hs" 
+      let f1 = mkTreeFromTokens toks
+
+      -- getToksForSpan test/testdata/Case/B.hs:(9,1)-(11,17):("(((False,0,0,9),1),((False,0,0,11),18))
+      let pos1 = ((9,1),(11,17))
+      let sspan1 = posToSrcSpan f1 pos1
+      let (f2,_t2) = getSrcSpanFor f1 (srcSpanToForestSpan sspan1)
+      (drawTreeEntry f2) `shouldBe`
+            "((1,1),(18,12))\n|\n"++
+            "+- ((1,1),(6,16))\n|\n"++
+            "+- ((9,1),(11,17))\n|\n"++
+            "`- ((13,1),(18,12))\n"
+
+      -- putDeclToksAfterSpan test/testdata/Case/B.hs:(9,1)-(11,17):("(((False,0,0,9),1),((False,0,0,11),18))",PlaceIndent 1 0 2,[((((9,1),(9,1)),ITsemi),""),((((9,1),(9,5)),ITvarid "foo'"),"foo'"),((((9,6),(9,7)),ITvarid "x"),"x"),((((9,8),(9,9)),ITequal),"="),((((9,10),(9,14)),ITcase),"case"),((((9,15),(9,16)),IToparen),"("),((((9,16),(9,19)),ITvarid "odd"),"odd"),((((9,20),(9,21)),ITvarid "x"),"x"),((((9,21),(9,22)),ITcparen),")"),((((9,23),(9,25)),ITof),"of"),((((10,3),(10,3)),ITvocurly),""),((((10,3),(10,7)),ITconid "True"),"True"),((((10,8),(10,10)),ITrarrow),"->"),((((10,11),(10,16)),ITstring "Odd"),"\"Odd\""),((((11,3),(11,3)),ITsemi),""),((((11,3),(11,8)),ITconid "False"),"False"),((((11,9),(11,11)),ITrarrow),"->"),((((11,12),(11,18)),ITstring "Even"),"\"Even\"")])
+
+      newToks <- liftIO $ basicTokenise "\n\n\n\n\n\n\n\n\nfoo' x = case (odd x) of\n  True -> \"Odd\"\n  False -> \"Even\""
+
+      -- TODO: note: original had first token ((((9,1),(9,1)),ITsemi),"")
+      (show newToks) `shouldBe` "[((((9,1),(9,5)),ITvarid \"foo'\"),\"foo'\"),((((9,6),(9,7)),ITvarid \"x\"),\"x\"),((((9,8),(9,9)),ITequal),\"=\"),((((9,10),(9,14)),ITcase),\"case\"),((((9,15),(9,16)),IToparen),\"(\"),((((9,16),(9,19)),ITvarid \"odd\"),\"odd\"),((((9,20),(9,21)),ITvarid \"x\"),\"x\"),((((9,21),(9,22)),ITcparen),\")\"),((((9,23),(9,25)),ITof),\"of\"),((((10,3),(10,3)),ITvocurly),\"\"),((((10,3),(10,7)),ITconid \"True\"),\"True\"),((((10,8),(10,10)),ITrarrow),\"->\"),((((10,11),(10,16)),ITstring \"Odd\"),\"\\\"Odd\\\"\"),((((11,3),(11,3)),ITsemi),\"\"),((((11,3),(11,8)),ITconid \"False\"),\"False\"),((((11,9),(11,11)),ITrarrow),\"->\"),((((11,12),(11,18)),ITstring \"Even\"),\"\\\"Even\\\"\")]"
+
+      let (f3,_newSpan3) = addToksAfterSrcSpan f2 sspan1 (PlaceIndent 1 0 2) newToks
+      (drawTreeEntry f3) `shouldBe`
+            "((1,1),(18,12))\n|\n"++
+            "+- ((1,1),(6,16))\n|\n"++
+            "+- ((9,1),(11,17))\n|\n"++
+            "+- ((1000012,3),(1000014,20))\n|\n"++
+            "`- ((13,1),(18,12))\n"
+
+      -- getToksForSpan test/testdata/Case/B.hs:(1048588,3)-(1048590,19):("(((False,0,1,12),3),((False,0,1,14),20))"
+
+      let sspan2 = posToSrcSpan f1 ((1048588,3),(1048590,20))
+      (show $ srcSpanToForestSpan  sspan2) `shouldBe` "(((ForestLine False 0 1 12),3),((ForestLine False 0 1 14),20))"
+      
+      -- putToksForSpan test/testdata/Case/B.hs:(1048588,3)-(1048590,19):(((False,0,1,12),3),((False,0,1,14),20))[((((12,3),(12,3)),ITsemi),""),((((12,3),(12,6)),ITvarid "joe"),"joe"),((((12,8),(12,9)),ITvarid "x"),"x"),((((12,10),(12,11)),ITequal),"="),((((12,12),(12,16)),ITcase),"case"),((((12,17),(12,18)),IToparen),"("),((((12,18),(12,21)),ITvarid "odd"),"odd"),((((12,22),(12,23)),ITvarid "x"),"x"),((((12,23),(12,24)),ITcparen),")"),((((12,25),(12,27)),ITof),"of"),((((13,5),(13,5)),ITvocurly),""),((((13,5),(13,9)),ITconid "True"),"True"),((((13,10),(13,12)),ITrarrow),"->"),((((13,13),(13,18)),ITstring "Odd"),"\"Odd\""),((((14,5),(14,5)),ITsemi),""),((((14,5),(14,10)),ITconid "False"),"False"),((((14,11),(14,13)),ITrarrow),"->"),((((14,14),(14,20)),ITstring "Even"),"\"Even\""),((((16,1),(16,1)),ITvocurly),"")]
+
+      newToks2 <- liftIO $ basicTokenise "\n\n\n\n\n\n\n\n\n\n\n\n  joe  x = case (odd x) of\nTrue -> \"Odd\"\n  False -> \"Even\""
+
+      -- TODO: note, original had first tok ((((12,3),(12,3)),ITsemi),\"\")
+      (show newToks2) `shouldBe` "[((((12,3),(12,6)),ITvarid \"joe\"),\"joe\"),((((12,8),(12,9)),ITvarid \"x\"),\"x\"),((((12,10),(12,11)),ITequal),\"=\"),((((12,12),(12,16)),ITcase),\"case\"),((((12,17),(12,18)),IToparen),\"(\"),((((12,18),(12,21)),ITvarid \"odd\"),\"odd\"),((((12,22),(12,23)),ITvarid \"x\"),\"x\"),((((12,23),(12,24)),ITcparen),\")\"),((((12,25),(12,27)),ITof),\"of\"),((((13,5),(13,5)),ITvocurly),\"\"),((((13,5),(13,9)),ITconid \"True\"),\"True\"),((((13,10),(13,12)),ITrarrow),\"->\"),((((13,13),(13,18)),ITstring \"Odd\"),\"\\\"Odd\\\"\"),((((14,5),(14,5)),ITsemi),\"\"),((((14,5),(14,10)),ITconid \"False\"),\"False\"),((((14,11),(14,13)),ITrarrow),\"->\"),((((14,14),(14,20)),ITstring \"Even\"),\"\\\"Even\\\"\"),((((16,1),(16,1)),ITvocurly),\"\")]"
+      
+      let (f4,_newSpan,_oldTree) = updateTokensForSrcSpan f3 sspan2 newToks2
+      (drawTreeEntry f3) `shouldBe`
+            "((1,1),(16,23))\n|\n"++
+            "+- ((1,1),(1,37))\n|\n"++
+            "+- ((9,1),(13,23))\n|  |\n"++
+            "|  +- ((9,1),(10,17))\n|  |\n"++
+            "|  +- ((11,18),(12,32))(1,-14)D\n|  |\n"++
+            "|  `- ((13,18),(13,23))\n|\n"++
+            "+- ((1000015,1),(1000016,17))\n|\n"++
+            "`- ((15,1),(16,23))\n"
+
+      
 -- ---------------------------------------------------------------------
 -- Helper functions
 

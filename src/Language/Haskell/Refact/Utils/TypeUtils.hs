@@ -574,14 +574,14 @@ hsFreeAndDeclaredPNs' t = do
           binds _ = mzero
           -- match _ = return ([],[])
 
-          match ((GHC.Match pats mtype rhs) :: GHC.Match GHC.Name )
+          match ((GHC.Match pats _mtype rhs) :: GHC.Match GHC.Name )
             = do
               (pf,pd) <- hsFreeAndDeclaredPNs' pats
               (rf,rd) <- hsFreeAndDeclaredPNs' rhs
               return ((pf `union` (rf \\ (pd `union` rd))),[])
 
           -- stmts --
-          stmts ((GHC.BindStmt pat expre bindOp failOp) :: GHC.Stmt GHC.Name) = do
+          stmts ((GHC.BindStmt pat expre _bindOp failOp) :: GHC.Stmt GHC.Name) = do
             -- TODO ++AZ++ : Not sure it is meaningful to pull
             --               anything out of bindOp/failOp
             (pf,pd)  <- hsFreeAndDeclaredPNs' pat

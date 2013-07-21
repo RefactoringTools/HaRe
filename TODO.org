@@ -1,4 +1,4 @@
-* TODO Make the tests pass on 7.4.x.
+* DONE Make the tests pass on 7.4.x.
   :PROPERTIES:
   :ID:       226a960d-58a9-44df-85a9-1d60fbb60bfb
   :END:

@@ -85,6 +85,12 @@ spec = do
                            "./test/testdata/DupDef/Dd2.hs.expected"
      diff2 `shouldBe` []
 
+    it "duplicates a definition and formats properly" $ do
+     duplicateDef defaultTestSettings Nothing "./test/testdata/Case/B.hs" "joe" (9,1)
+     -- duplicateDef logTestSettings Nothing "./test/testdata/Case/B.hs" "joe" (9,1)
+     diff <- compareFiles "./test/testdata/Case/B.hs.refactored"
+                          "./test/testdata/Case/B.hs.expected.dd"
+     diff `shouldBe` []
 
 -- ---------------------------------------------------------------------
 -- Helper functions
