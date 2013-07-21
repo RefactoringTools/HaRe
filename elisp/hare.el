@@ -5,6 +5,10 @@
 
 ;; Put the following code to your "~/.emacs".
 ;;
+;; (add-to-list 'load-path
+;;     "~/.cabal/share/HaRe-0.7.0.0/elisp")
+;; (require 'hare)
+;;
 ;; (autoload 'hare-init "hare" nil t)
 ;; (add-hook 'haskell-mode-hook (lambda () (hare-init)))
 ;;   Note: hare-init in addition to your normal haskell-mode hooks
@@ -727,9 +731,9 @@
 
 (defun haskell-refactor-version()
   (interactive)
-  (message "HaRe version 1.0"))
+  (message "HaRe version 0.7.0.0"))
 
-(setq hare-version  "(hare-1.0) ")
+(setq hare-version  "(hare-0.7.0.0) ")
 
 (defun hare-menu-init()
   "Init HaRe menus."
@@ -1462,7 +1466,7 @@
              (apply-refac-cmds current-file-name (list 'error rsn)))
             ((equal (elt result 0) 'error)
              (setq rsn (elt result 1))
-             (message "Refactoring failed: %S" rsn)
+             (message-box "Refactoring failed: %S" rsn)
              (apply-refac-cmds current-file-name (list 'error rsn)))
             ((equal (elt result 0) 'ok)
              (setq modified (elt result 1))

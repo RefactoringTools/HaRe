@@ -137,7 +137,7 @@ defaultTerm = ( ret $ const (helpFail Pager Nothing) <$> mainFile -- <*> setting
     info :: TermInfo
     info = defTI'
       { termName = "ghc-hare"
-      , version  = "0.x.x.x"
+      , version  = "0.7.0.0"
       , termDoc  = doc
       }
 
