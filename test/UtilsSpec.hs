@@ -9,10 +9,10 @@ import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
-import qualified Name       as GHC
-import qualified Outputable as GHC
-import qualified RdrName    as GHC
-import qualified SrcLoc     as GHC
+-- import qualified Name       as GHC
+-- import qualified Outputable as GHC
+-- import qualified RdrName    as GHC
+-- import qualified SrcLoc     as GHC
 
 import Control.Monad.State
 import Data.Maybe
@@ -21,9 +21,7 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.Refact.Utils.TypeUtils
 
 -- ---------------------------------------------------------------------
 
@@ -65,7 +63,7 @@ spec = do
   describe "locToExp on RenamedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
       -- ((_, Just renamed, _), toks) <- parsedFileBGhc
-      (t, toks) <- parsedFileBGhc
+      (t, _toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let (Just expr) = locToExp (7,7) (7,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
@@ -96,16 +94,16 @@ spec = do
   describe "getModuleName" $ do
     it "returns a string for the module name if there is one" $ do
       -- modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      modInfo@(t, toks) <- parsedFileBGhc
+      (t, toks) <- parsedFileBGhc
       let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let (Just (modname,modNameStr)) = getModuleName mod
+      let (Just (_modname,modNameStr)) = getModuleName mod
       -- let modNameStr = "foo"
       modNameStr `shouldBe` "TypeUtils.B"
 
     it "returns Nothing for the module name otherwise" $ do
       -- modInfo@((_, _, mod), toks) <- parsedFileNoMod
-      modInfo@(t, toks) <- parsedFileNoMod
+      (t, toks) <- parsedFileNoMod
       let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       getModuleName mod `shouldBe` Nothing
 
@@ -125,7 +123,7 @@ spec = do
       -- TODO: harvest this commonality
       let
         comp = do
-         (p,toks) <- parseFileMGhc -- Load the main file first
+         (_p,toks) <- parseFileMGhc -- Load the main file first
          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -134,7 +132,7 @@ spec = do
     it "gets modules which directly or indirectly import a module #2" $ do
       let
         comp = do
-         (p,toks) <- parseFileMGhc -- Load the main file first
+         (_p,toks) <- parseFileMGhc -- Load the main file first
          g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -158,7 +156,7 @@ spec = do
     it "gets modules which are directly or indirectly imported by a module #2" $ do
       let
         comp = do
-         (p,toks) <- parseFileMGhc -- Load the main file first
+         (_p,toks) <- parseFileMGhc -- Load the main file first
          g <- serverModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -171,7 +169,7 @@ spec = do
     it "gets the module graph for the currently loaded modules" $ do
       let
         comp = do
-         (p,toks) <- parseFileBGhc -- Load the file first
+         (_p,toks) <- parseFileBGhc -- Load the file first
          g <- getCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -189,7 +187,7 @@ spec = do
     it "needs a test or two" $ do
       let
         comp = do
-         (p,toks) <- parseFileBGhc -- Load the file first
+         (_p,toks) <- parseFileBGhc -- Load the file first
          g <- sortCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp

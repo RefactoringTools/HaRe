@@ -15,6 +15,7 @@ module TestUtils
        , catchException
        , mkTokenCache
        , hex
+       , unspace
 
        , setLogger
        ) where
@@ -189,6 +190,17 @@ setLogger = do
   -- s <- streamHandler stdout DEBUG
   h <- fileHandler "debug.log" DEBUG
   updateGlobalLogger rootLoggerName (setHandlers [h])
+
+-- ---------------------------------------------------------------------
+
+-- |Convert any sequence of more than one space to a single space
+unspace :: String -> String
+unspace str = go [] str
+  where
+    go acc []  = acc
+    go acc [x] = acc ++ [x]
+    go acc (' ':' ':xs) = go acc (' ':xs)
+    go acc (x:xs) = go (acc++[x]) xs
 
 -- ---------------------------------------------------------------------
 
