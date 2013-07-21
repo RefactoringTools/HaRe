@@ -14,3 +14,5 @@ Also, do
 
     M-x unload-feature
     hare
+
+Very useful resource: <http://www.emacswiki.org/emacs/ElispCookbook>
