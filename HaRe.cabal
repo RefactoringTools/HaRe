@@ -1,211 +1,145 @@
 Name:                           HaRe
-Version:                        0.6.0.3
-Author:                         Chris Brown, Huiqing Li, Simon Thompson
+Version:                        0.7.0.0
+Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Chris Brown
 Stability:                      Provisional
 Bug-Reports:                    mailto:chrisb@cs.st-andrews.ac.uk
 License:                        BSD3
 License-File:                   LICENSE
 Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
-Description:                    A full Haskell 98 refactoring tool. HaRe supports the full Haskell 98 standard, implemented in Haskell and supporting Emacs and VIm.
+Description:                    A full Haskell 2010 refactoring tool. HaRe supports the full Haskell 2010 standard, implemented in Haskell and supporting Emacs.
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
-Cabal-Version:                  >= 1.6
+Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
-Data-Dir:                       misc
-Data-Files:                     haskell-refac.el
-                                , refactor.vim
-                                , Prelude.hs
-                                , *.hs
-                                , dupReport
-                                , dupAnswers
-                                , dupPositions
-                                , dupTransforms
-                                , dupClassAnswer
-                                , dupClassTransform
-                                , mergeCache
-                                , evaluateResult
-                                , genFoldCache
+Data-Dir:                       .
+data-files:                     elisp/*.el
 
+flag hpc
+  default: False
 
 Library
         Build-Depends:          base >=4
-                                , syb
-                                , network
-                                , ghc
                                 , containers
-                                , hint
-                                , mtl
                                 , directory
-                                , pretty
-                                , process
                                 , filepath
-                                , old-time
-                                , array
+                                , ghc
                                 , ghc-paths
-        Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
-        GHC-Options:             -fno-cse -fglasgow-exts
-        Hs-Source-Dirs:
-           StrategyLib-4.0-beta/library
-           StrategyLib-4.0-beta/models/deriving/
-           -- editors
-           refactorer
-           refactorer/PwPf
-           tools/base
-           tools/base/AST
-           tools/base/Modules
-           tools/base/TI
-           tools/base/defs
-           tools/base/lib
-           tools/base/lib/Monads
-           tools/base/parse2
-           tools/base/parse2/Lexer
-           -- tools/base/parse2/LexerGen
-           -- tools/base/parse2/LexerSpec
-           tools/base/parse2/Parser
-           tools/base/pretty
-           tools/base/syntax
-           -- tools/base/tests/HbcLibraries
-           -- tools/base/transforms
-           -- tools/base/transforms/Deriving
-           -- tools/hs2html
-           tools/pfe
+                                , ghc-prim
+                                , ghc-syb-utils
+                                , lens >= 3.0
+                                , mtl
+                                , old-time
+                                , pretty
+                                , rosezipper
+                                , syb
+                                , hslogger
+                                , transformers
+                                , Strafunski-StrategyLib
+                                , syz
+
+        -- GHC-Options:             -Wall
+        -- We want to run coverage reports on the library
+        if flag(hpc)
+          ghc-options: -fhpc
+          -- GHC-Options:             -fhpc
+
+        Hs-Source-Dirs:         src
         Other-Modules:          Paths_HaRe
-        Exposed-modules:        PwPfConversion PWCore Pointfree GlobalPW
-           DuplicateCode
-           EditorCommands
-           ParseAnswers
-           RefacAddCon
-           RefacAddEvalMonCache
-           RefacAddField
-           RefacAddRmParam
-           RefacADT
-           RefacAsPatterns
-           RefacCacheMerge
-           RefacCase
-           RefacCleanImps
-           RefacDataNewType
-           RefacDeForest
-           RefacDupDef
-           RefacDuplicates
-           RefacDupTrans
-           RefacEvalMon
-           RefacFunDef
-           RefacGenCache
-           RefacGenDef
-           RefacGenFold
-           RefacIdentify
-           RefacInstantiate
-           RefacIntroEvalDegree
-           RefacIntroPattern
-           RefacIntroThreshold
-           RefacLetWhere
-           RefacLocUtils
-           RefacMerge
-           RefacMoveDef
-           RefacMvDefBtwMod
-           RefacNewDef
-           RefacPwPf
-           RefacRedunDec
-           RefacRemoveField
-           RefacRenaming
-           RefacRmCon
-           RefacRmDef
-           RefacSimplify
-           RefacSlicing
-           RefacSlicTuple
-           RefacSwapArgs
-           RefacTypeSig
-           RefacTypeSyn
-           RefacUnfoldAsPatterns
-           RefacUnGuard
-           RefacUtils
-           RefacWhereLet
-           SlicingUtils
-           TypeCheck
+        Exposed-modules:
+             Language.Haskell.Refact.Case
+           , Language.Haskell.Refact.DupDef
+           , Language.Haskell.Refact.MoveDef
+           , Language.Haskell.Refact.SwapArgs
+           , Language.Haskell.Refact.Utils
+           , Language.Haskell.Refact.Utils.GhcModuleGraph
+           , Language.Haskell.Refact.Utils.GhcUtils
+           , Language.Haskell.Refact.Utils.GhcVersionSpecific
+           , Language.Haskell.Refact.Utils.LocUtils
+           , Language.Haskell.Refact.Utils.Monad
+           , Language.Haskell.Refact.Utils.MonadFunctions
+           , Language.Haskell.Refact.Utils.RenamedSourceUtils
+           , Language.Haskell.Refact.Utils.TokenUtils
+           , Language.Haskell.Refact.Utils.TokenUtilsTypes
+           , Language.Haskell.Refact.Utils.TypeSyn
+           , Language.Haskell.Refact.Utils.TypeUtils
+        Extensions:      CPP
+   
 
 
-Executable hare-evaluate
-        -- Main-Is:                refactorer/Evaluate.hs
-        Main-Is:                Evaluate.hs
-        GHC-Options:            -fno-cse -fglasgow-exts
+Executable ghc-hare
+        Main-Is:                Main.hs
+        -- GHC-Options:            -Wall
         Hs-Source-Dirs:
-          -- editors
-          refactorer
-          tools/base/lib
-          tools/base/lib/Monads/
-        Build-Depends:          base >4, hint, filepath
+          ./src
+        Build-Depends:          base >=4
+                                , array
+                                , cmdtheline >= 0.2.1
+                                , containers
+                                , directory
+                                , filepath
+                                , ghc
+                                , ghc-paths
+                                , ghc-prim
+                                , ghc-syb-utils
+                                , lens >= 3.0
+                                , mtl
+                                , old-time
+                                , pretty
+                                , rosezipper
+                                , syb
+                                , transformers
+                                , hslogger
+                                , Strafunski-StrategyLib
+                                -- , uniplate
+                                , syz
         Other-Modules:          Paths_HaRe
-
-Executable hare
-        -- Main-Is:                refactorer/pfe.hs
-        Main-Is:                pfe.hs
-        GHC-Options:            -fno-cse -fglasgow-exts
-        Hs-Source-Dirs:
-          StrategyLib-4.0-beta/library/
-          StrategyLib-4.0-beta/models/deriving/
-          -- StrategyLib-4.0-beta/src
-          -- editors
-          refactorer/
-          tools/base/
-          tools/base/AST
-          tools/base/Modules
-          tools/base/TI
-          tools/base/defs/
-          tools/base/lib
-          tools/base/lib/Monads/
-          tools/base/parse2
-          tools/base/parse2/Lexer/
-          -- tools/base/parse2/LexerGen
-          -- tools/base/parse2/LexerSpec/
-          tools/base/parse2/Parser/
-          tools/base/pretty/
-          tools/base/syntax
-          -- tools/base/tests/HbcLibraries
-          tools/base/transforms
-          tools/base/transforms/Deriving
-          tools/hs2html/
-          tools/pfe
-        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths, MonadCatchIO-mtl, transformers
-        Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
-        Other-Modules:          Paths_HaRe
+        Extensions:      CPP
 
 
+test-suite spec
+  type:
+      exitcode-stdio-1.0
+  ghc-options:
+      -- reinstate these later  -Wall 
+      -- -Wall
+      -- reinstate these later  -Werror
+      -- -fhpc
+      -- -fhpc -hpcdir dist/hpc/app-1.0
+  cpp-options:
+      -DTEST
+  main-is:
+      Spec.hs
+  Hs-Source-Dirs:         
+    -- src
+    test
+  build-depends:
+      base        >= 4.0  && < 4.7
+    , Diff == 0.1.3
+    , HUnit       == 1.2.*
+    , QuickCheck  >= 2.5
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc         >= 7.0.1 && < 7.8
+    , ghc-paths   == 0.1.*
+    , ghc-prim
+    , ghc-syb-utils
+    , hspec       == 1.4.*
+    , lens >= 3.0
+    , mtl
+    , old-time
+    , process
+    , silently
+    , stringbuilder
+    , rosezipper
+    , syb
+    , transformers
+    -- , uniplate
+    , hslogger
+    , Strafunski-StrategyLib
+    , syz
+    , HaRe >= 0.7.0.0
+  Extensions:      CPP
 
-Executable hare-client
-        -- Main-Is:                refactorer/pfe_client.hs
-        Main-Is:                pfe_client.hs
-        GHC-Options:            -fno-cse -fglasgow-exts
-        Hs-Source-Dirs:
-          -- StrategyLib-4.0-beta/library/
-          -- StrategyLib-4.0-beta/models/deriving/
-          -- StrategyLib-4.0-beta/src
-          -- editors
-          refactorer/
-          -- tools/base/
-          -- tools/base/AST
-          -- tools/base/Modules
-          -- tools/base/TI
-          -- tools/base/defs/
-          -- tools/base/lib
-          tools/base/lib/Monads/
-          -- tools/base/parse2
-          -- tools/base/parse2/Lexer/
-          -- tools/base/parse2/LexerGen
-          -- tools/base/parse2/LexerSpec/
-          -- tools/base/parse2/Parser/
-          -- tools/base/pretty/
-          -- tools/base/syntax
-          -- tools/base/tests/HbcLibraries
-          -- tools/base/transforms
-          -- tools/base/transforms/Deriving
-          -- tools/hs2html/
-          -- tools/pfe
-        Build-Depends:          base >=4, syb, network, ghc, containers, hint, mtl, directory, pretty, process, filepath, old-time, array, ghc-paths
-        Extensions:             CPP, MultiParamTypeClasses, OverlappingInstances, UndecidableInstances, FunctionalDependencies, NoMonomorphismRestriction
-        Other-Modules:          Paths_HaRe
-
-Executable UTest
-  Main-Is:                      UTest.hs
-  Build-Depends:                base >= 4, HUnit, process
-  Hs-Source-Dirs:               testing
