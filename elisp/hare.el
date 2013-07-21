@@ -3,6 +3,13 @@
 ;; Note: based on
 ;; https://github.com/RefactoringTools/wrangler/blob/master/elisp/wrangler.el.src
 
+;; Put the following code to your "~/.emacs".
+;;
+;; (autoload 'hare-init "hare" nil t)
+;; (add-hook 'haskell-mode-hook (lambda () (hare-init)))
+;;   Note: hare-init in addition to your normal haskell-mode hooks
+
+
 ;; Prerequisites
 
 ;; (require 'vc-hooks)
@@ -15,8 +22,6 @@
 (if (eq (substring emacs-version 0 4) "22.2")
     (require 'ediff-init1)
   (require 'ediff-init))
-
-(provide 'hare)
 
 (defgroup hare nil
   "HaRe options.")
@@ -67,6 +72,54 @@
   "Customization of group `hare' for the Haskell Refactorer."
   (interactive)
   (customize-group 'hare))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; This initialization section based on ghc-mod one
+
+(defvar hare-initialized nil)
+
+;;;###autoload
+(defun hare-init ()
+  (unless hare-initialized
+    (define-key haskell-mode-map "\C-c\C-rdm"  'hare-refactor-demote)
+    (define-key haskell-mode-map "\C-c\C-rdd"  'hare-refactor-dupdef)
+    (define-key haskell-mode-map "\C-c\C-ric"  'hare-refactor-iftocase)
+    (define-key haskell-mode-map "\C-c\C-rlo"  'hare-refactor-lift-one)
+    (define-key haskell-mode-map "\C-c\C-rlt"  'hare-refactor-lifttotop)
+    ;(define-key haskell-mode-map "\C-c\C-rr"   'hare-refactor-rename)
+    (setq hare-initialized t)))
+
+(provide 'hare)
+
+(defun hare-init-interactive ()
+  (interactive)
+  (hare-init)
+
+  ;; Creating a new menu pane in the menu bar to the right of “Tools” menu
+  (define-key-after
+    haskell-mode-map
+    [menu-bar mymenu]
+    (cons "Refactorer" (make-sparse-keymap "HaRe"))
+    'tools )
+
+  ;; Creating a menu item, under the menu by the id “[menu-bar mymenu]”
+  (define-key haskell-mode-map [menu-bar mymenu dm] '("Demote Definition"    . hare-refactor-demote))
+  (define-key haskell-mode-map [menu-bar mymenu dd] '("Duplicate Definition" . hare-refactor-dupdef))
+  (define-key haskell-mode-map [menu-bar mymenu ic] '("Convert if to case"   . hare-refactor-iftocase))
+  (define-key haskell-mode-map [menu-bar mymenu lo] '("Lift one level"       . hare-refactor-lift-one))
+  (define-key haskell-mode-map [menu-bar mymenu lt] '("Lift to top level"    . hare-refactor-lifttotop))
+  
+  )
+
+(defun hare-menu-remove()
+  (interactive)
+;; code to remove the whole menu panel
+;; (global-unset-key [menu-bar mymenu])
+  (global-unset-key [menu-bar mymenu])
+  (local-unset-key [menu-bar mymenu])
+)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;; (require 'erl)
 ;; (require 'erl-service)

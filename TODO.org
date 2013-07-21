@@ -4,11 +4,11 @@
   :END:
   Showing the AST has different spacing. Must come up with an
   adjustment of the output to match.
-* TODO Make sure the command line client works
+* DONE Make sure the command line client works
   :PROPERTIES:
   :ID:       d0de92f2-ee8c-4305-acfa-d875cf80f808
   :END:
-* TODO Re-enable the elisp
+* DONE Re-enable the elisp
   :PROPERTIES:
   :ID:       eacc1dca-2bf3-4ae6-950a-42348325e853
   :END:
@@ -72,7 +72,7 @@
 ** TODO Carry on here
    [2013-07-19 Fri]
    [[file:~/mysrc/github/alanz/HaRe/elisp/hare.el::(erl-send-rpc%20wrangler-erl-node%20'emacs_wrangler%20'apply_refac%20(list%20'move_fun][file:~/mysrc/github/alanz/HaRe/elisp/hare.el::(erl-send-rpc wrangler-erl-node 'emacs_wrangler 'apply_refac (list 'move_fun]]
-** TODO implement "do-commit" the refactoring result in elisp
+** DONE implement "do-commit" the refactoring result in elisp
    [2013-07-20 Sat]
    [[file:~/mysrc/github/alanz/HaRe/elisp/hare.el::"commit%20the%20refactoring%20result."][file:~/mysrc/github/alanz/HaRe/elisp/hare.el::"commit the refactoring result."]]
 ** TODO move buffers-saved test into hare-refactor-command 

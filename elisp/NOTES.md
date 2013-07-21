@@ -16,3 +16,5 @@ Also, do
     hare
 
 Very useful resource: <http://www.emacswiki.org/emacs/ElispCookbook>
+
+Menus: <http://ergoemacs.org/emacs/elisp_menu.html>
