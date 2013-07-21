@@ -91,14 +91,12 @@
     (define-key haskell-mode-map "\C-c\C-rlo"  'hare-refactor-lift-one)
     (define-key haskell-mode-map "\C-c\C-rlt"  'hare-refactor-lifttotop)
     ;(define-key haskell-mode-map "\C-c\C-rr"   'hare-refactor-rename)
+    (hare-init-menu)
     (setq hare-initialized t)))
 
 (provide 'hare)
 
-(defun hare-init-interactive ()
-  (interactive)
-  (hare-init)
-
+(defun hare-init-menu()
   ;; Creating a new menu pane in the menu bar to the right of “Tools” menu
   (define-key-after
     haskell-mode-map
@@ -112,7 +110,12 @@
   (define-key haskell-mode-map [menu-bar mymenu ic] '("Convert if to case"   . hare-refactor-iftocase))
   (define-key haskell-mode-map [menu-bar mymenu lo] '("Lift one level"       . hare-refactor-lift-one))
   (define-key haskell-mode-map [menu-bar mymenu lt] '("Lift to top level"    . hare-refactor-lifttotop))
-  
+)
+
+(defun hare-init-interactive ()
+  (interactive)
+  (hare-init)
+  (hare-init-menu)
   )
 
 (defun hare-menu-remove()
