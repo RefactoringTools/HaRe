@@ -18,6 +18,8 @@
   :ID:       75ea1ecc-efe5-4bfc-959f-1ec6fe6694ab
   :END:
   - e.g. ghc-hare dupdef Case/B.hs joe 9 1
+* TODO Make undo (M-x u) undo a refactoring.
+* TODO The elisp test for buffers to save includes directories that have been modified
 * TODO from the source files
   :PROPERTIES:
   :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
