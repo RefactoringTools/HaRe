@@ -3484,15 +3484,27 @@ duplicateDecl decls sigs n newFunName
           let Just sspanSig = getSrcSpan typeSig
           toksSig  <- getToksForSpan sspanSig
 
-          typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceIndent 2 0 0) toksSig
+          let colStart  = tokenCol $ ghead "duplicateDecl.sig"
+                    $ dropWhile isWhiteSpace toksSig
+
+
+          -- typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceIndent 2 0 0) toksSig
+          typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceAbsCol 2 colStart 0) toksSig
           _typeSig'' <- renamePN n newFunName True typeSig'
 
           let (GHC.L sspanSig' _) = typeSig'
 
           return sspanSig'
 
-      -- funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceIndent 1 0 1) toks
-      funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceIndent 1 0 2) toks
+      let rowOffset = case typeSig of
+                        [] -> 2
+                        _  -> 1
+
+      let colStart  = tokenCol $ ghead "duplicateDecl.decl"
+                    $ dropWhile isWhiteSpace toks
+
+      -- funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceIndent 1 0 2) toks
+      funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceAbsCol rowOffset colStart 2) toks
       funBinding'' <- renamePN n newFunName True funBinding'
 
       -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this

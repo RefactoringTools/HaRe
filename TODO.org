@@ -13,7 +13,7 @@
   :ID:       eacc1dca-2bf3-4ae6-950a-42348325e853
   :END:
 
-* TODO Revisit DupDef, formatting not good
+* DONE Revisit DupDef, formatting not good
   :PROPERTIES:
   :ID:       75ea1ecc-efe5-4bfc-959f-1ec6fe6694ab
   :END:

@@ -199,6 +199,12 @@ data Positioning = PlaceAdjacent -- ^Only a single space between the
                    -- end of the prior span and the new one
                  | PlaceAbsolute !Int !Int -- ^Start at the specified
                    -- line and col
+                 | PlaceAbsCol !Int !Int !Int -- ^Line offset and
+                                              -- absolute Col. Mainly
+                                              -- for forcing start at
+                                              -- left margin, number
+                                              -- of lines to add at
+                                              -- the end
                  | PlaceOffset !Int !Int !Int -- ^Line and Col offset for
                    -- start, num lines to add at the end
                    -- relative to the indent level of the prior span
@@ -1282,6 +1288,13 @@ reIndentToks pos prevToks toks = toks''
         where
           lineOffset' = row - (tokenRow firstTok)
           colOffset'  = col - (tokenCol firstTok)
+
+      PlaceAbsCol rowIndent col numLines -> (lineOffset', colOffset', numLines)
+        where
+          colOffset'  = col - (tokenCol firstTok)
+          lineStart = (tokenRow (lastTok)) -- + 1
+
+          lineOffset' = rowIndent + lineStart - (tokenRow firstTok)
 
       PlaceOffset rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where
