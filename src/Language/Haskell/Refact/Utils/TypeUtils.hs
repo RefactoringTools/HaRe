@@ -37,7 +37,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
        (
  -- * Program Analysis
     -- ** Imports and exports
-   inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc -- , hsQualifier, {-This function should be removed-} rmPrelude 
+   inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc
+   -- , hsQualifier, {-This function should be removed-} rmPrelude
    {-,exportInfo -}, isExported, isExplicitlyExported, modIsExported
 
     -- ** Variable analysis
@@ -66,6 +67,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Modules and files
     -- ,clientModsAndFiles,serverModsAndFiles,isAnExistingMod
     -- ,fileNameToModName, strToModName, modNameToStr
+    , isMainModule
+    , getModule
 
     -- ** Locations
     ,defineLoc, useLoc,locToPNT {-,locToPN -},locToExp -- , getStartEndLoc
@@ -79,15 +82,16 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
+
     -- ** Updating
     -- ,Update(update)
     {- ,qualifyPName-},rmQualifier,renamePN {- ,replaceNameInPN -},autoRenameLocalVar
 
--- * Miscellous
+    -- * Miscellous
     -- ** Parsing, writing and showing
-   {- ,parseSourceFile,writeRefactoredFiles-}, showEntities,showPNwithLoc -- , newProj, addFile, chase
+    {- ,parseSourceFile,writeRefactoredFiles-}, showEntities,showPNwithLoc -- , newProj, addFile, chase
     -- ** Locations
-   -- ,toRelativeLocs, rmLocs
+    -- ,toRelativeLocs, rmLocs
     -- ** Default values
    ,defaultPN,defaultPNT,defaultName {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
 
@@ -112,16 +116,16 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     , removeOffset
 
--- * Typed AST traversals (added by CMB)
+    -- * Typed AST traversals (added by CMB)
     -- * Miscellous
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
 
--- * Debug stuff
-  , allPNT
-  --  , allPNTLens
-  , newNameTok
-  , stripLeadingSpaces
-  -- , lookupNameGhc
+    -- * Debug stuff
+    , allPNT
+    --  , allPNTLens
+    , newNameTok
+    , stripLeadingSpaces
+    -- , lookupNameGhc
  ) where
 
 import Exception
@@ -143,6 +147,7 @@ import qualified BasicTypes    as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Lexer         as GHC
+import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified NameSet       as GHC
 -- import qualified Outputable    as GHC
@@ -156,9 +161,6 @@ import qualified GHC.SYB.Utils as SYB
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
-
--- Lens
--- import Control.Lens
 
 -- ---------------------------------------------------------------------
 -- |Process the inscope relation returned from the parsing and module
@@ -389,7 +391,12 @@ modIsExported mod
 
 -- ---------------------------------------------------------------------
 
-isExported = error "isExported undefined"
+isExported ::GHC.Name          -- ^ The identifier
+           ->GHC.RenamedSource -- ^ The AST of the module
+           ->Bool              -- ^ The result
+isExported n renamed = error "isExported undefined"
+  -- Note: call isExplicitlyExported and ???
+
 {- ++AZ++ original
 -- | Return True if the identifier is exported either implicitly or explicitly.
 isExported::PNT         -- ^ The identifier.
@@ -1240,6 +1247,13 @@ hsPNTs =(nub.ghead "hsPNTs").applyTU (full_tdTU (constTU [] `adhocTU` inPnt))
    where
      inPnt pnt@(PNT _  _ _) = return [pnt]
 -}
+
+-----------------------------------------------------------------------------
+
+getModule :: RefactGhc GHC.Module
+getModule = do
+  typechecked <- getTypecheckedModule
+  return $ GHC.ms_mod $ GHC.pm_mod_summary $ GHC.tm_parsed_module typechecked
 
 -----------------------------------------------------------------------------
 
@@ -2187,6 +2201,7 @@ sameBind b1 b2 = (definesNames b1) == (definesNames b2)
     definesNames (GHC.L _ (GHC.FunBind (GHC.L _ name) _ _ _ _ _)) = [name]
     definesNames (GHC.L _ (GHC.VarBind name _ _))                 = [name]
 -}
+
 -- ---------------------------------------------------------------------
 
 -- TODO: is this the same is isUsedInRhs?
@@ -3888,6 +3903,7 @@ renamePN oldPN newName updateTokens t = do
   -- Note: bottom-up traversal
   everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
   where
+    logm $ "renamePN:***ERROR**:do not use getSrcSpan"
     maybeSspan = getSrcSpan t
     sspan = gfromJust "renamePN" maybeSspan
 
@@ -3895,16 +3911,18 @@ renamePN oldPN newName updateTokens t = do
     rename  pnt@(GHC.L l n)
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = (getLocatedStart pnt)
-          (newName,sspan') <- worker (row,col) l n
-          return (GHC.L l newName)
+          logm $ "renamePN:rename at :" ++ (show (row,col))
+          (new,_sspan') <- worker (row,col) l n
+          return (GHC.L l new)
     rename x = return x
 
     renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
     renameVar var@(GHC.L l (GHC.HsVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = getLocatedStart var
-          (newName,sspan') <- worker (row,col) l n
-          return (GHC.L l (GHC.HsVar newName))
+          logm $ "renamePN:renameVar at :" ++ (show (row,col))
+          (new,_sspan') <- worker (row,col) l n
+          return (GHC.L l (GHC.HsVar new))
     renameVar x = return x
 
     -- TODO: must update the original sspan with the new one.
@@ -4040,6 +4058,11 @@ canBeQualified pnt t
        inImp _ = Nothing
 -}
 
+
+-- ---------------------------------------------------------------------
+
+isMainModule :: GHC.Module -> Bool
+isMainModule modu = GHC.modulePackageId modu == GHC.mainPackageId
 
 -- ---------------------------------------------------------------------
 

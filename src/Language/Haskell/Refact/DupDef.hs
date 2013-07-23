@@ -40,13 +40,11 @@ duplicateDef :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> 
 duplicateDef settings maybeMainFile fileName newName (row,col) =
   runRefacSession settings maybeMainFile (comp fileName newName (row,col))
 
-
 comp :: FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
       if isVarId newName
-        then do -- loadModuleGraphGhc maybeMainFile
-                -- modInfo@(t, _tokList) <- getModuleGhc fileName
+        then do 
                 getModuleGhc fileName
                 renamed <- getRefactRenamed
                 parsed  <- getRefactParsed

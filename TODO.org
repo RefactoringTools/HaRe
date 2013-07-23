@@ -80,3 +80,9 @@
 ** TODO move buffers-saved test into hare-refactor-command 
    [2013-07-20 Sat]
    [[file:~/mysrc/github/alanz/HaRe/elisp/hare.el::TODO:%20move%20this%20test%20into%20hare-refactor-command][file:~/mysrc/github/alanz/HaRe/elisp/hare.el::TODO: move this test into hare-refactor-command]]
+** TODO Complete SwapArgs
+   [2013-07-23 Tue]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/SwapArgs.hs::module%20Language.Haskell.Refact.SwapArgs%20(swapArgs)%20where][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/SwapArgs.hs::module Language.Haskell.Refact.SwapArgs (swapArgs) where]]
+** TODO "renamePN:***ERROR**:do not use getSrcSpan"
+   [2013-07-23 Tue]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TypeUtils.hs::logm%20$%20"renamePN:***ERROR**:do%20not%20use%20getSrcSpan"][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TypeUtils.hs::logm $ "renamePN:***ERROR**:do not use getSrcSpan"]]
