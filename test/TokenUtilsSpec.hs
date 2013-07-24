@@ -739,7 +739,24 @@ tree TId 0:
 
 -}
   -- ---------------------------------------------
+  
+  describe "containment" $ do
+    it "checks containsStart,containsMiddle and containsEnd" $ do
+      let sspan@(s,e) = (((ForestLine False 0 0 24),1),((ForestLine False 0 0 24),4))
+      let nspan@(ns,ne) = (((ForestLine False 0 1 24),1),((ForestLine False 0 1 26),14))
+     
+      (show $ compare s ns) `shouldBe` "LT"
 
+      -- "0" ++ (show $ s >= ns) `shouldBe` "0True"
+      "1" ++ (show $ s <= ne) `shouldBe` "1True"
+
+      "2" ++ (show $ containsStart  nspan sspan) `shouldBe` "2True"
+      "3" ++ (show $ containsMiddle nspan sspan) `shouldBe` "3True"
+      "4" ++ (show $ containsEnd    nspan sspan) `shouldBe` "4True"
+
+
+  -- ---------------------------------------------
+  
   describe "splitForestOnSpan" $ do
     it "splits a forest into (begin,middle,end) according to a span" $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -2421,7 +2438,7 @@ tree TId 0:
 
       (containsStart ss (fs sspan4),containsEnd ss (fs sspan4)) `shouldBe` (True,False)
 
-      let (sspanStart,sspanEnd) = fs sspan4
+      let (sspanStart,_sspanEnd) = fs sspan4
 
       let (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks2
       (show (head toksb,last toksb)) `shouldBe`

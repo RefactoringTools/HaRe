@@ -629,6 +629,14 @@ getTokensBefore forest sspan = (forest', prevToks')
 
 -- ---------------------------------------------------------------------
 
+-- | Given a SrcSpan, find the closest enclosing one that is already
+-- in the tree, and return the enclosing span and the tokens it
+-- contains.
+getTokensAround :: Tree Entry -> GHC.SrcSpan -> (GHC.SrcSpan,[PosToken])
+getTokensAround = error $ "undefined getTokensAround"
+
+-- ---------------------------------------------------------------------
+
 -- |Replace the tokens for a given SrcSpan with new ones. The SrcSpan
 -- will be inserted into the tree if it is not already there.
 -- If the SrcSpan changes size, replace the SrcSpan with a new one

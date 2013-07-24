@@ -158,6 +158,7 @@ import qualified UniqSet       as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
+import qualified Data.Generics.Zipper as Z
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
@@ -3903,7 +3904,7 @@ renamePN oldPN newName updateTokens t = do
   -- Note: bottom-up traversal
   everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
   where
-    logm $ "renamePN:***ERROR**:do not use getSrcSpan"
+    -- logm $ "renamePN:***ERROR**:do not use getSrcSpan"
     maybeSspan = getSrcSpan t
     sspan = gfromJust "renamePN" maybeSspan
 
@@ -3931,15 +3932,47 @@ renamePN oldPN newName updateTokens t = do
      = do if updateTokens
            then  do
                     -- toks <- fetchToks
-                    logm $ "renamePN.worker: (sspan,newName)=" ++ (showGhc (sspan,newName)) -- ++AZ++ debug
+                    logm $ "renamePN.worker: (sspan,l,newName)=" ++ (showGhc (sspan,l,newName)) -- ++AZ++ debug
                     drawTokenTree "" -- ++AZ++ debug
                     toks <- getToksForSpan sspan
+                    -- toks <- getToksForSpan l
+                    -- logm $ "renamePN.worker:toks=" ++ (show toks)
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
                     sspan' <- putToksForSpan sspan toks'
+                    -- l' <- putToksForSpan l toks'
+                    logm $ "renamePN.worker:toks'=" ++ (show toks')
                     return (newName,sspan')
+                    -- return (newName,l')
                     -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (showGhc (row,col,l,sspan)) ++ (show toks) -- ++AZ++
            else return (newName,l)
 
+-- ---------------------------------------------------------------------
+{-
+renamePN' ::(SYB.Data t)
+   =>GHC.Name             -- ^ The identifier to be renamed.
+   ->GHC.Name             -- ^ The new name, including possible qualifier
+   ->Bool                 -- ^ True means modifying the token stream as well.
+   ->t                    -- ^ The syntax phrase
+   ->RefactGhc t
+renamePN' oldPN newName updateTokens t = do
+  logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
+  renamed <- getRefactRenamed
+  ztransformStagedM SYB.Renamer (Nothing
+                                `SYB.mkQ` renameQ
+                                ) (Z.toZipper renamed)
+    where
+      renameQ :: (SYB.Data a) => GHC.Located GHC.Name -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+      renameQ ((GHC.Match _pats _mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.Name)
+
+    rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
+    rename  pnt@(GHC.L l n)
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do let (row,col) = (getLocatedStart pnt)
+          logm $ "renamePN:rename at :" ++ (show (row,col))
+          (new,_sspan') <- worker (row,col) l n
+          return (GHC.L l new)
+    rename x = return x
+-}
 -- ---------------------------------------------------------------------
 
 newNameTok :: GHC.SrcSpan -> GHC.Name -> PosToken

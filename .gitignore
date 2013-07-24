@@ -248,3 +248,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/Field1.hs.refactored
 /test/testdata/Renaming/Field1.hs.renamed_out
 /test/testdata/Renaming/Field1.hs.tokens
+/TODO.org_archive
