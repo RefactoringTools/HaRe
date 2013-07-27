@@ -50,6 +50,7 @@ Library
              Language.Haskell.Refact.Case
            , Language.Haskell.Refact.DupDef
            , Language.Haskell.Refact.MoveDef
+           , Language.Haskell.Refact.Renaming
            , Language.Haskell.Refact.SwapArgs
            , Language.Haskell.Refact.Utils
            , Language.Haskell.Refact.Utils.GhcModuleGraph
@@ -64,7 +65,7 @@ Library
            , Language.Haskell.Refact.Utils.TypeSyn
            , Language.Haskell.Refact.Utils.TypeUtils
         Extensions:      CPP
-   
+
 
 
 Executable ghc-hare
@@ -101,7 +102,7 @@ test-suite spec
   type:
       exitcode-stdio-1.0
   ghc-options:
-      -- reinstate these later  -Wall 
+      -- reinstate these later  -Wall
       -- -Wall
       -- reinstate these later  -Werror
       -- -fhpc
@@ -110,7 +111,7 @@ test-suite spec
       -DTEST
   main-is:
       Spec.hs
-  Hs-Source-Dirs:         
+  Hs-Source-Dirs:
     -- src
     test
   build-depends:
