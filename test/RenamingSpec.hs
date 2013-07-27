@@ -33,6 +33,13 @@ spec = do
                           "./test/testdata/Renaming/Field1.hs.refactored"
      diff `shouldBe` []
 
+    it "Renames in Field3 9 1" $ do
+     rename defaultTestSettings Nothing "./test/testdata/Renaming/Field3.hs" "abs" (9,1)
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/Field3.hs" "abs" (9,1)
+     diff <- compareFiles "./test/testdata/Renaming/Field3.hs.expected"
+                          "./test/testdata/Renaming/Field3.hs.refactored"
+     diff `shouldBe` []
+
 {-
 TestCases{refactorCmd="rename",
 positive=[

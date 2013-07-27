@@ -3903,16 +3903,17 @@ renamePN oldPN newName updateTokens t = do
   logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
   let isRenamed = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t
-  if isRenamed == (Just True) then
-    everywhereMStaged SYB.Renamer (SYB.mkM renameGroup `SYB.extM` renameName `SYB.extM` renameVar) t
-  else
-    renamePNworker oldPN newName updateTokens t
+  if isRenamed == (Just True)
+    then
+      everywhereMStaged SYB.Renamer (SYB.mkM renameGroup `SYB.extM` renameName `SYB.extM` renameVar) t
+    else
+      renamePNworker oldPN newName updateTokens t
   where
     isRenamedSource :: GHC.RenamedSource -> Maybe Bool
-    isRenamedSource (g,i,e,d) = Just True
+    isRenamedSource (_g,_i,_e,_d) = Just True
 
     isRenamedGroup :: GHC.HsGroup GHC.Name -> Maybe Bool
-    isRenamedGroup g = Just True
+    isRenamedGroup _g = Just True
 
     renameGroup :: (GHC.HsGroup GHC.Name) -> RefactGhc (GHC.HsGroup GHC.Name)
     renameGroup  (GHC.HsGroup vals typs inst deriv fixs def for war ann rule vect doc)
