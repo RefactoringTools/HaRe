@@ -85,7 +85,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Updating
     -- ,Update(update)
-    {- ,qualifyPName-},rmQualifier,renamePN,renamePN' {- ,replaceNameInPN -},autoRenameLocalVar
+    {- ,qualifyPName-},rmQualifier,renamePN {- ,replaceNameInPN -},autoRenameLocalVar
 
     -- * Miscellous
     -- ** Parsing, writing and showing
@@ -3900,6 +3900,52 @@ renamePN::(SYB.Data t)
    ->RefactGhc t
 renamePN oldPN newName updateTokens t = do
   -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
+  logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
+  -- Note: bottom-up traversal
+  let isRenamed = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t
+  if isRenamed == (Just True) then
+    everywhereMStaged SYB.Renamer (SYB.mkM renameGroup `SYB.extM` renameName `SYB.extM` renameVar) t
+  else
+    renamePNworker oldPN newName updateTokens t
+  where
+    isRenamedSource :: GHC.RenamedSource -> Maybe Bool
+    isRenamedSource (g,i,e,d) = Just True
+
+    isRenamedGroup :: GHC.HsGroup GHC.Name -> Maybe Bool
+    isRenamedGroup g = Just True
+
+    renameGroup :: (GHC.HsGroup GHC.Name) -> RefactGhc (GHC.HsGroup GHC.Name)
+    renameGroup  (GHC.HsGroup vals typs inst deriv fixs def for war ann rule vect doc)
+     = do
+          logm $ "renamePN':renameGroup"
+          vals' <- renamePNworker oldPN newName updateTokens vals
+          typs' <- renamePNworker oldPN newName updateTokens typs
+          return (GHC.HsGroup vals' typs' inst deriv fixs def for war ann rule vect doc)
+    renameGroup x = return x
+
+    renameName :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
+    renameName  pnt@(GHC.L _l _n) = renamePNworker oldPN newName updateTokens pnt
+
+    renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
+    renameVar var@(GHC.L _l (GHC.HsVar _n)) = renamePNworker oldPN newName updateTokens var
+    renameVar x = return x
+
+-- ---------------------------------------------------------------------
+
+-- | Rename each occurrences of the identifier in the given syntax
+-- phrase with the new name. If the Bool parameter is True, then
+-- modify both the AST and the token stream, otherwise only modify the
+-- AST.
+-- TODO: the syntax phrase is required to be GHC.Located, not sure how
+-- to specify this without breaking the everywhereMStaged call
+renamePNworker::(SYB.Data t)
+   =>GHC.Name             -- ^ The identifier to be renamed.
+   ->GHC.Name             -- ^ The new name, including possible qualifier
+   ->Bool                 -- ^ True means modifying the token stream as well.
+   ->t                    -- ^ The syntax phrase
+   ->RefactGhc t
+renamePNworker oldPN newName updateTokens t = do
+  -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
   logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
   everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
@@ -3945,38 +3991,6 @@ renamePN oldPN newName updateTokens t = do
                     -- return (newName,l')
                     -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (showGhc (row,col,l,sspan)) ++ (show toks) -- ++AZ++
            else return (newName,l)
-
--- ---------------------------------------------------------------------
-
--- | Rename each occurrences of the identifier in the given syntax
--- phrase with the new name. If the Bool parameter is True, then
--- modify both the AST and the token stream, otherwise only modify the
--- AST.
--- TODO: the syntax phrase is required to be GHC.Located, not sure how
--- to specify this without breaking the everywhereMStaged call
-renamePN'::(SYB.Data t)
-   =>GHC.Name             -- ^ The identifier to be renamed.
-   ->GHC.Name             -- ^ The new name, including possible qualifier
-   ->Bool                 -- ^ True means modifying the token stream as well.
-   ->t                    -- ^ The syntax phrase
-   ->RefactGhc t
-renamePN' oldPN newName updateTokens t = do
-  -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
-  logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
-  -- Note: bottom-up traversal
-  everywhereMStaged SYB.Renamer (SYB.mkM renameGroup `SYB.extM` renameOthers) t
-  where
-    renameGroup :: (GHC.HsGroup GHC.Name) -> RefactGhc (GHC.HsGroup GHC.Name)
-    renameGroup  (GHC.HsGroup vals typs inst deriv fix def for war ann rule vect doc)
-     = do
-          logm $ "renamePN':renameGroup"
-          vals' <- renamePN oldPN newName updateTokens vals
-          typs' <- renamePN oldPN newName updateTokens typs
-          return (GHC.HsGroup vals' typs' inst deriv fix def for war ann rule vect doc)
-    rename x = return x
-
-    renameOthers :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
-    renameOthers  pnt@(GHC.L l n) = renamePN oldPN newName updateTokens pnt
 
 -- ---------------------------------------------------------------------
 
