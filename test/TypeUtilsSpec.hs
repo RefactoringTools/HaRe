@@ -1846,7 +1846,7 @@ spec = do
       "a" `shouldBe` "a"
 
     ------------------------------------
-    
+
     it "Replace a name in data declaration too" $ do
       (t, toks) <- parsedFileRenamingField1
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -1857,7 +1857,7 @@ spec = do
       let
         comp = do
          newName <- mkNewGhcName "pointx1"
-         new <- renamePN n newName True renamed
+         new <- renamePN' n newName True renamed
 
          return (new,newName)
       let
@@ -1866,9 +1866,8 @@ spec = do
       (showGhc n) `shouldBe` "Field1.pointx"
       (showToks $ [newNameTok l nn]) `shouldBe` "[(((5,18),(5,25)),ITvarid \"pointx1\",\"pointx1\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx, pointy :: Float}\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx1, pointy :: Float}\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx1 p * pointx1 p +\n                   pointy p * pointy p)\n\n "
-      (showGhc nb) `shouldBe` "bar2 x = DupDef.Dd1.c GHC.Num.* x"
-      (showToks $ take 20 $ toks) `shouldBe` "[(((1,1),(1,7)),ITmodule,\"module\"),(((1,8),(1,18)),ITqconid (\"DupDef\",\"Dd1\"),\"DupDef.Dd1\"),(((1,19),(1,24)),ITwhere,\"where\"),(((3,1),(3,1)),ITvocurly,\"\"),(((3,1),(3,9)),ITvarid \"toplevel\",\"toplevel\"),(((3,10),(3,12)),ITdcolon,\"::\"),(((3,13),(3,20)),ITconid \"Integer\",\"Integer\"),(((3,21),(3,23)),ITrarrow,\"->\"),(((3,24),(3,31)),ITconid \"Integer\",\"Integer\"),(((4,1),(4,1)),ITsemi,\"\"),(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),(((4,10),(4,11)),ITvarid \"x\",\"x\"),(((4,12),(4,13)),ITequal,\"=\"),(((4,14),(4,15)),ITvarid \"c\",\"c\"),(((4,16),(4,17)),ITstar,\"*\"),(((4,18),(4,19)),ITvarid \"x\",\"x\"),(((6,1),(6,1)),ITsemi,\"\"),(((6,1),(6,2)),ITvarid \"c\",\"c\"),(((6,2),(6,3)),ITcomma,\",\"),(((6,3),(6,4)),ITvarid \"d\",\"d\")]"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx1 , pointy :: Float }\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx1 p * pointx1 p +\n                   pointy p * pointy p)"
+      (unspace $ showGhc nb) `shouldBe` unspace "(Field1.absPoint :: Field1.Point -> GHC.Types.Float\n Field1.absPoint p\n   = GHC.Float.sqrt\n       (pointx1 p GHC.Num.* pointx1 p\n        GHC.Num.+ Field1.pointy p GHC.Num.* Field1.pointy p)\n \n data Field1.Point\n   = Field1.Pt {pointx1 :: GHC.Types.Float,\n                Field1.pointy :: GHC.Types.Float},\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
   -- ---------------------------------------------
 
