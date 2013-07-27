@@ -739,24 +739,24 @@ tree TId 0:
 
 -}
   -- ---------------------------------------------
-  
+
   describe "containment" $ do
     it "checks containsStart,containsMiddle and containsEnd" $ do
       let sspan@(s,e) = (((ForestLine False 0 0 24),1),((ForestLine False 0 0 24),4))
       let nspan@(ns,ne) = (((ForestLine False 0 1 24),1),((ForestLine False 0 1 26),14))
-     
+
       (show $ compare s ns) `shouldBe` "LT"
 
       -- "0" ++ (show $ s >= ns) `shouldBe` "0True"
       "1" ++ (show $ s <= ne) `shouldBe` "1True"
 
-      "2" ++ (show $ containsStart  nspan sspan) `shouldBe` "2True"
-      "3" ++ (show $ containsMiddle nspan sspan) `shouldBe` "3True"
-      "4" ++ (show $ containsEnd    nspan sspan) `shouldBe` "4True"
+      "2" ++ (show $ containsStart  nspan sspan) `shouldBe` "2False"
+      "3" ++ (show $ containsMiddle nspan sspan) `shouldBe` "3False"
+      "4" ++ (show $ containsEnd    nspan sspan) `shouldBe` "4False"
 
 
   -- ---------------------------------------------
-  
+
   describe "splitForestOnSpan" $ do
     it "splits a forest into (begin,middle,end) according to a span" $ do
       (t,toks) <- parsedFileTokenTestGhc
