@@ -7,7 +7,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Conveniences for state access
 
        -- * Original API provided
-       , fetchToks -- ^Deprecated
+       , fetchToks -- |Deprecated
        , fetchToksFinal
        , fetchOrigToks
        -- , putToks -- ^Deprecated, destroys token tree
@@ -165,10 +165,10 @@ putToksForSpan sspan toks = do
 
 -- |Replace the tokens for a given GHC.SrcSpan, return GHC.SrcSpan
 -- they are placed in
--- ++AZ++ TODO: This bypasses the tree selection process.Perhaps
---              deprecate the function
 putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksForPos pos toks = do
+-- ++AZ++ TODO: This bypasses the tree selection process.Perhaps
+--              deprecate the function
   logm $ "putToksForPos " ++ (show pos) ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
@@ -194,7 +194,7 @@ putToksAfterSpan oldSpan pos toks = do
   put $ st { rsModule = rsModule' }
   return newSpan
 
--- |Add tokens after a designated GHC.SrcSpan
+-- |Add tokens after a designated position
 putToksAfterPos :: (SimpPos,SimpPos) -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksAfterPos pos position toks = do
   logm $ "putToksAfterPos " ++ (show pos) ++ " at "  ++ (show position) ++ ":" ++ (show toks)

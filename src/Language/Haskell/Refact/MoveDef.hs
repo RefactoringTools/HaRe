@@ -545,7 +545,7 @@ namesNeedToBeHided clientModule modNames pns = do
       if (any (== True) uwoq --the same name is used in the module unqualifiedly or
                 --is exported unqualifiedly by an Ent decl
 
-            -- || causeNameClashInExports pn modNames renamed)
+            -- was || causeNameClashInExports pn modNames renamed)
             || any (\m -> causeNameClashInExports pn m renamed) modNames)
            then return [pn]
            else return []
@@ -960,7 +960,7 @@ doDemoting  pn = do
        --2. The demoted definition is a local decl in a match
        -- demoteInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
        demoteInMatch (match@(GHC.Match _pats _mt rhs)::GHC.Match GHC.Name)
-         -- | definingDecls [pn] ds False False/=[]
+         -- was | definingDecls [pn] ds False False/=[]
          | not $ emptyList (definingDeclsNames [pn] (hsBinds rhs) False False)
          = do
               logm "MoveDef:demoteInMatch" -- ++AZ++
@@ -974,7 +974,7 @@ doDemoting  pn = do
        --3. The demoted definition is a local decl in a pattern binding
        -- demoteInPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
        demoteInPat (pat@((GHC.PatBind _p rhs _ _ _))::GHC.HsBind GHC.Name)
-         -- | definingDecls [pn] ds False False /=[]
+         -- was | definingDecls [pn] ds False False /=[]
          | not $ emptyList (definingDeclsNames [pn] (hsBinds rhs) False False)
           = do
               logm "MoveDef:demoteInPat" -- ++AZ++
@@ -988,7 +988,7 @@ doDemoting  pn = do
        --4: The demoted definition is a local decl in a Let expression
        -- demoteInLet (letExp@(Exp (HsLet ds e))::HsExpP)
        demoteInLet (letExp@(GHC.HsLet ds _e)::GHC.HsExpr GHC.Name)
-         -- | definingDecls [pn] ds False False/=[]
+         -- was | definingDecls [pn] ds False False/=[]
          | not $ emptyList (definingDeclsNames [pn] (hsBinds ds) False False)
           = do
               logm "MoveDef:demoteInLet" -- ++AZ++
@@ -1011,7 +1011,7 @@ doDemoting  pn = do
        --6.The demoted definition is a local decl in a Let statement.
        -- demoteInStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP]))
        demoteInStmt (letStmt@(GHC.LetStmt binds)::GHC.Stmt GHC.Name)
-         -- | definingDecls [pn] ds False False /=[]
+         -- was | definingDecls [pn] ds False False /=[]
          | not $ emptyList (definingDeclsNames [pn] (hsBinds binds) False False)
           = do
               logm "MoveDef:demoteInStmt" -- ++AZ++
@@ -1131,7 +1131,7 @@ doDemoting' t pn
                   -- ++AZ++ Not in pattern, but is in RHS
                   -- usedInMatch (match@(HsMatch _ (PNT pname _ _) _ _ _)::HsMatchP)
                   usedInMatch ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
-                    -- | isNothing (find (==pname) pns) && any  (flip findPN match) pns
+                    -- was | isNothing (find (==pname) pns) && any  (flip findPN match) pns
                     | (not $ findPNs pns pats) && findPNs pns rhs
                      = return [1::Int]
                   usedInMatch _ = return []
@@ -1139,7 +1139,7 @@ doDemoting' t pn
 
                   -- usedInPat (pat@(Dec (HsPatBind _ p _ _)):: HsDeclP)
                   usedInPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
-                    -- | hsPNs p `intersect` pns ==[]  && any  (flip findPN pat) pns
+                    -- was | hsPNs p `intersect` pns ==[]  && any  (flip findPN pat) pns
                     | (not $ findPNs pns pat) && findPNs pns rhs
                     = return [1::Int]
                   usedInPat  _ = return []
@@ -1172,7 +1172,7 @@ doDemoting' t pn
                where
                  -- dupInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
                  dupInMatch (match@(GHC.Match pats _mt rhs) :: GHC.Match GHC.Name)
-                   -- | any (flip findPN match) pns && not (any (flip findPN name) pns)
+                   -- was | any (flip findPN match) pns && not (any (flip findPN name) pns)
                    | (not $ findPNs pns pats) && findPNs pns rhs
                    =  do
                         done <- getRefactDone
@@ -1197,7 +1197,7 @@ doDemoting' t pn
 
                  -- dupInPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
                  dupInPat ((GHC.PatBind pat rhs ty fvs ticks) :: GHC.HsBind GHC.Name)
-                    -- |any (flip findPN pat) pns && not (any (flip findPN p) pns)
+                    -- was |any (flip findPN pat) pns && not (any (flip findPN p) pns)
                     | (not $ findPNs pns pat) && findPNs pns rhs
                    -- =  moveDecl pns pat False decls False
                    = do
@@ -1514,7 +1514,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
          -- =applyTP (full_buTP (idTP `adhocTP` worker))
          = everywhereMStaged SYB.Renamer (SYB.mkM worker)
             where worker exp@(GHC.L _ (GHC.HsApp e1 e2))
-                   -- | findPN pn e1 && (elem (GHC.unLoc e2) es)
+                   -- was | findPN pn e1 && (elem (GHC.unLoc e2) es)
                    | findPN pn e1 && (elem (showGhc (GHC.unLoc e2)) (map (showGhc) es))
                       = update exp e1 exp
                   worker (exp@(GHC.L _ (GHC.HsPar e1)))

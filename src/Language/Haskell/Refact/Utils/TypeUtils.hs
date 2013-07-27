@@ -802,7 +802,6 @@ hsVisiblePNs e t = applyTU (full_tdTUGhc (constTU [] `adhocTU` top
 
       where
           top ((groups,_,_,_) :: GHC.RenamedSource)
-            -- | findEntity e groups = dd -- ++AZ++:TODO: Should be GHC.HsValBinds GHC.Name, not groups
             | findEntity e (GHC.hs_valds groups) = do -- ++AZ++:TODO: Should be GHC.HsValBinds GHC.Name, not groups
              (_df,dd) <- hsFreeAndDeclaredPNs (GHC.hs_valds groups)
              return dd
@@ -1017,7 +1016,6 @@ usedWithoutQualR name parsed = fromMaybe False res
      -- ----------------
 
      checkName ((GHC.L l pn)::GHC.Located GHC.RdrName)
-        -- | ((GHC.nameUnique pn) == (GHC.nameUnique name)) &&
         | ((GHC.rdrNameOcc pn) == (GHC.nameOccName name)) &&
           -- isUsedInRhs pname parsed &&
           isUsedInRhs (GHC.L l name) parsed &&
@@ -1858,7 +1856,6 @@ instance FindEntity (GHC.Located (GHC.HsExpr GHC.Name)) where
     res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
 
     worker (expr::GHC.Located (GHC.HsExpr GHC.Name))
-      -- | e == expr = Just True
       | sameOccurrence e expr = Just True
     worker _ = Nothing
 
@@ -1870,7 +1867,6 @@ instance FindEntity (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) where
     res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
 
     worker (expr::(GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)))
-      -- | e == expr = Just True
       | sameOccurrence e expr = Just True
     worker _ = Nothing
 
@@ -1880,7 +1876,6 @@ instance FindEntity (GHC.Located (GHC.HsDecl GHC.Name)) where
     res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
 
     worker (decl::(GHC.Located (GHC.HsDecl GHC.Name)))
-      -- | e == expr = Just True
       | sameOccurrence d decl = Just True
     worker _ = Nothing
 
@@ -1948,8 +1943,8 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
         else defines' decl
      where
       inDecl (d::GHC.LHsDecl GHC.RdrName {- HsDeclP -} )
-        -- |defines' d /= [] =return $ defines' d
-        -- | length (defines' d) /= 0 = defines' d -- TODO: horribly inefficient
+        -- was |defines' d /= [] =return $ defines' d
+        -- was | length (defines' d) /= 0 = defines' d -- TODO: horribly inefficient
         | True = defines' d -- TODO: horribly inefficient
       inDecl _ = []
 
@@ -2898,7 +2893,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
   addTopLevelDecl (decl, maybeSig, maybeDeclToks) parent
     = do let binds = hsValBinds parent
              decls = hsBinds parent
-             (decls1,decls2) = break (\x->isFunOrPatBindR x {- || isTypeSig x -}) decls
+             (decls1,decls2) = break (\x->isFunOrPatBindR x {- was || isTypeSig x -}) decls
 
          newToks <- makeNewToks (decl,maybeSig,maybeDeclToks)
          -- logm $ "addTopLevelDecl:newToks=" ++ (show newToks)
@@ -3540,12 +3535,13 @@ rmDecl:: (SYB.Data t)
     ->Bool         -- ^ True means including the type signature.
     ->t            -- ^ The declaration list.
     -> RefactGhc
-        (t,                        -- ^ The result
-        GHC.LHsBind GHC.Name,      -- ^ and the removed declaration,
-                                   -- with SrcSpans adjusted to
-                                   -- reflect the stashed
-                                   -- tokens
-        Maybe (GHC.LSig GHC.Name)) -- ^ and the possibly removed siganture
+        (t,
+        GHC.LHsBind GHC.Name,
+        Maybe (GHC.LSig GHC.Name))  -- ^ The result and the removed
+                                   -- declaration, with SrcSpans
+                                   -- adjusted to reflect the stashed
+                                   -- tokens and the possibly removed
+                                   -- siganture
 rmDecl pn incSig t = do
   logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
@@ -3564,7 +3560,7 @@ rmDecl pn incSig t = do
   return (t'',decl',sig')
   where
     inGRHSs ((GHC.GRHSs a localDecls)::GHC.GRHSs GHC.Name)
-      -- | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
+      -- was | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
       | not $ emptyList (snd (break (defines pn) (hsBinds localDecls))) -- /=[]
       = do
          let decls = hsBinds localDecls
@@ -4401,7 +4397,7 @@ getToksForDecl decl toks
       = let (startPos, endPos) = startEndLocIncComments toks decl
             (toks1, _) =let(ts1,(_t:ts2'))= break (\t -> tokenPos t >= endPos) toks
                         in (ts1, ts2')
-        in dropWhile (\t -> tokenPos t < startPos {- || isNewLn t -}) toks1
+        in dropWhile (\t -> tokenPos t < startPos {- was || isNewLn t -}) toks1
 
 -- ---------------------------------------------------------------------
 

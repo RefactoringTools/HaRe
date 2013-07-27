@@ -290,7 +290,6 @@ zopenStaged' :: (Typeable a)
   -> [(Z.Zipper a,b)]
 zopenStaged' stage q z
   | checkZipperStaged stage z = []
-  -- | Z.query q z = [z]
   | isJust zq = [(z,fromJust zq)]
   | otherwise = reverse $ Z.downQ [] g z
   where

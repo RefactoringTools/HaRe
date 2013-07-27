@@ -50,10 +50,10 @@ Invariants:
 
 -- TODO: turn this into a record, with named accessors
 -- | An entry in the data structure for a particular srcspan.
-data Entry = Entry !ForestSpan -- ^The source span contained in this Node
+data Entry = Entry !ForestSpan -- The source span contained in this Node
                    ![PosToken] -- ^The tokens for the SrcSpan if
-                               -- subtree is empty
-           | Deleted !ForestSpan -- ^The source span has been deleted
+                               --  subtree is empty
+           | Deleted !ForestSpan -- The source span has been deleted
                      SimpPos     -- ^The gap between this span end and
                                  --  the start of the next in the
                                  --  fringe of the tree.

@@ -7,7 +7,8 @@
 --
 -- This module contains an API to manage a token stream.
 --
---
+-- This API is used internally by MonadFunctions and the other utility
+-- modules, it should probably never be used directly in a refactoring.
 
 module Language.Haskell.Refact.Utils.TokenUtils(
        Entry(..)
@@ -1010,7 +1011,7 @@ calcEndGap tree sspan = gap
 --      rows with tokenFileMark in a filename for a token
 
 retrieveTokensInterim :: Tree Entry -> [PosToken]
-retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {- $ reAlignMarked -}
+retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {-  reAlignMarked -}
                              $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]
@@ -1019,7 +1020,7 @@ retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {- $ reAlign
 
 
 retrieveTokens :: Tree Entry -> [PosToken]
-retrieveTokens forest = stripForestLines $ monotonicLineToks {- $ reAlignMarked -}
+retrieveTokens forest = stripForestLines $ monotonicLineToks {- reAlignMarked -}
                       $ deleteGapsToks $ retrieveTokens' forest
 
 retrieveTokens' :: Tree Entry -> [Entry]
@@ -1169,7 +1170,7 @@ addNewSrcSpanAndToksAfter ::
   -> GHC.SrcSpan -- ^Existing span for the tokens
   -> Positioning
   -> [PosToken]  -- ^The new tokens belonging to the new SrcSpan
-  -> (Tree Entry -- ^Updated forest with the new span
+  -> (Tree Entry -- Updated forest with the new span
      , GHC.SrcSpan) -- ^Unique SrcSpan allocated in the forest to
                     -- identify this span in its position
 addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')

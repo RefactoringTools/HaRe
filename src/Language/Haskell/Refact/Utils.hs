@@ -232,7 +232,8 @@ parseSourceFileGhc ::
   -- String -> RefactGhc (ParseResult,[PosToken])
   String -> RefactGhc ()
 parseSourceFileGhc targetFile = do
-      target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- * to force interpretation, for inscopes
+      target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- The *
+                                     -- is to force interpretation, for inscopes
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
 
@@ -255,7 +256,6 @@ getExports (GHC.L _ hsmod) =
 
 -- | The result of a refactoring is the file, a flag as to whether it
 -- was modified, the updated token stream, and the updated AST
--- type ApplyRefacResult = ((FilePath, Bool), ([PosToken], RefactResult))
 type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.RenamedSource))
 
 
@@ -268,7 +268,8 @@ type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.RenamedSource))
 --
 runRefacSession :: Maybe RefactSettings
          -> Maybe FilePath -- ^ main module for the project being refactored
-         -> RefactGhc [ApplyRefacResult]
+         -> RefactGhc [ApplyRefacResult] -- ^ The computation doing
+                                         -- the refactoriing
          -> IO [FilePath]
 runRefacSession settings maybeMainFile comp = do
   let

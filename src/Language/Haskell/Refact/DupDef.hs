@@ -121,7 +121,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
 
         --6.The definition to be duplicated is a local decl in a Let statement.
         dupInLetStmt (letStmt@(GHC.LetStmt ds):: GHC.Stmt GHC.Name)
-           -- |findFunOrPatBind pn ds /=[]=doDuplicating' inscps letStmt pn
+           -- was |findFunOrPatBind pn ds /=[]=doDuplicating' inscps letStmt pn
            |not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letStmt pn
         dupInLetStmt letStmt = return letStmt
 
