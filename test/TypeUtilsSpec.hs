@@ -2500,6 +2500,56 @@ This function is not used and has been removed
 
   -- ---------------------------------------
 
+  describe "name predicates" $ do
+    it "classifies names" $ do
+      (t,_toks) <- parsedFileCon
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let Just (GHC.L _ n1) = locToName conFileName (3,6) renamed
+      let Just (GHC.L _ n2) = locToName conFileName (3,12) renamed
+      let Just (GHC.L _ n3) = locToName conFileName (3,16) renamed
+      let Just (GHC.L _ n4) = locToName conFileName (5,1) renamed
+      let Just (GHC.L _ n5) = locToName conFileName (8,5) renamed
+
+      (showGhc n1) `shouldBe` "Main.Foo"
+      "11" ++ (show $ GHC.isTyVarName n1)   `shouldBe` "11False"
+      "12" ++ (show $ GHC.isTyConName n1)   `shouldBe` "12True"
+      "13" ++ (show $ GHC.isDataConName n1) `shouldBe` "13False"
+      "14" ++ (show $ GHC.isValName n1)     `shouldBe` "14False"
+      "15" ++ (show $ GHC.isVarName n1)     `shouldBe` "15False"
+
+      (showGhc n2) `shouldBe` "Main.Ff"
+      "21" ++ (show $ GHC.isTyVarName n2)   `shouldBe` "21False"
+      "22" ++ (show $ GHC.isTyConName n2)   `shouldBe` "22False"
+      "23" ++ (show $ GHC.isDataConName n2) `shouldBe` "23True"
+      "24" ++ (show $ GHC.isValName n2)     `shouldBe` "24True"
+      "25" ++ (show $ GHC.isVarName n2)     `shouldBe` "25False"
+
+      (showGhc n3) `shouldBe` "Main.fooA" -- field name
+      "31" ++ (show $ GHC.isTyVarName n3)   `shouldBe` "31False"
+      "32" ++ (show $ GHC.isTyConName n3)   `shouldBe` "32False"
+      "33" ++ (show $ GHC.isDataConName n3) `shouldBe` "33False"
+      "34" ++ (show $ GHC.isValName n3)     `shouldBe` "34True"
+      "35" ++ (show $ GHC.isVarName n3)     `shouldBe` "35True"
+
+      (showGhc n4) `shouldBe` "Main.xx"
+      "41" ++ (show $ GHC.isTyVarName n4)   `shouldBe` "41False"
+      "42" ++ (show $ GHC.isTyConName n4)   `shouldBe` "42False"
+      "43" ++ (show $ GHC.isDataConName n4) `shouldBe` "43False"
+      "44" ++ (show $ GHC.isValName n4)     `shouldBe` "44True"
+      "45" ++ (show $ GHC.isVarName n4)     `shouldBe` "45True"
+
+      (showGhc n5) `shouldBe` "GHC.Classes.=="
+      "51" ++ (show $ GHC.isTyVarName n5)   `shouldBe` "51False"
+      "52" ++ (show $ GHC.isTyConName n5)   `shouldBe` "52False"
+      "53" ++ (show $ GHC.isDataConName n5) `shouldBe` "53False"
+      "54" ++ (show $ GHC.isValName n5)     `shouldBe` "54True"
+      "55" ++ (show $ GHC.isVarName n5)     `shouldBe` "55True"
+
+      -- (show $ isFieldName n3) `shouldBe` "True"
+      -- (show $ isFieldName n2) `shouldBe` "False"
+
+  -- ---------------------------------------
+
 
 myShow :: GHC.RdrName -> String
 myShow n = case n of
@@ -2512,6 +2562,13 @@ myShow n = case n of
 
 -- ---------------------------------------------------------------------
 -- Helper functions
+
+conFileName :: GHC.FastString
+conFileName = GHC.mkFastString "./test/testdata/Con.hs"
+
+parsedFileCon :: IO (ParseResult,[PosToken])
+parsedFileCon = parsedFileGhc "./test/testdata/Con.hs"
+
 
 renamingField3FileName :: GHC.FastString
 renamingField3FileName = GHC.mkFastString "./test/testdata/Renaming/Field3.hs"

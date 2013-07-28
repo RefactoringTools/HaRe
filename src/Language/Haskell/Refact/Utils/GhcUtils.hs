@@ -6,15 +6,11 @@ module Language.Haskell.Refact.Utils.GhcUtils where
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+import Control.Monad
+import Data.Data
+import Data.Maybe
 import GHC
 import NameSet
-import Control.Monad
-import Data.Maybe
-
--- For Lens stuff
--- import Control.Lens
--- import Control.Applicative
-import Data.Data
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
@@ -74,6 +70,16 @@ somewhereMStaged stage f x
 
 -- ---------------------------------------------------------------------
 
+-- | Apply a monadic transformation at least somewhere, in bottom up order
+somewhereMStagedBu :: MonadPlus m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
+somewhereMStagedBu stage f x
+  | checkItemStage stage x = mzero
+  -- was | otherwise = f x `mplus` gmapMp (somewhereMStaged stage f) x
+  | otherwise =  gmapMp (somewhereMStaged stage f) x `mplus` f x
+
+
+-- ---------------------------------------------------------------------
+
 -- | Monadic variation on everywhere
 everywhereMStaged :: Monad m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
 
@@ -96,6 +102,7 @@ everywhereMStaged' stage f x
 
 -- ---------------------------------------------------------------------
 
+-- | Bottom-up transformation
 everywhereStaged ::  SYB.Stage -> (forall a. Data a => a -> a) -> forall a. Data a => a -> a
 everywhereStaged stage f x
   | checkItemStage stage x = x
@@ -169,6 +176,11 @@ allTUGhc' = allTUGhc mappend mempty
 --   strategy at most once.
 once_tdTPGhc    :: MonadPlus m => TP m -> TP m
 once_tdTPGhc s  =  s `choiceTP` (oneTPGhc (once_tdTPGhc s))
+
+-- | Bottom-up type-preserving traversal that performs its argument
+--   strategy at most once.
+once_buTPGhc    :: MonadPlus m => TP m -> TP m
+once_buTPGhc s  =  (oneTPGhc (once_buTPGhc s)) `choiceTP` s
 
 -- Succeed for one child; don't care about the other children
 oneTPGhc          :: MonadPlus m => TP m -> TP m

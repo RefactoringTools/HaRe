@@ -47,6 +47,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , isInstanceName
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
+    ,isDeclaredIn
     ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
@@ -54,7 +55,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,hsFDsFromInside, hsFDNamesFromInside
 
     -- ** Property checking
-    ,isVarId,isConId {- ,isOperator -},isTopLevelPN,isLocalPN -- ,isTopLevelPNT
+    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN -- ,isTopLevelPNT
     ,isQualifiedPN {- ,isFunPNT, isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
@@ -1234,6 +1235,7 @@ isClassName n = error "undefined isClassName"
 isInstanceName :: GHC.Name -> Bool
 isInstanceName n = error "undefined isInstanceName"
 
+
 -- ---------------------------------------------------------------------
 -- | Collect the identifiers (in PName format) in a given syntax phrase.
 
@@ -1275,26 +1277,26 @@ getModule = do
 -- ---------------------------------------------------------------------
 
 -- | Return True if a string is a lexically  valid variable name.
-isVarId::String -> Bool
+isVarId :: String -> Bool
 isVarId mid = isId mid && isSmall (ghead "isVarId" mid)
      where isSmall c=isLower c || c=='_'
 
 -- | Return True if a string is a lexically valid constructor name.
-isConId::String->Bool
-isConId mid =isId mid && isUpper (ghead "isConId" mid)
+isConId :: String -> Bool
+isConId mid = isId mid && isUpper (ghead "isConId" mid)
 
 -- | Return True if a string is a lexically valid operator name.
-isOperator::String->Bool
+isOperator :: String->Bool
 isOperator mid = mid /= [] && isOpSym (ghead "isOperator" mid) &&
                 isLegalOpTail (tail mid) && not (isReservedOp mid)
    where
-    isOpSym mid = elem mid opSymbols
+    isOpSym mid' = elem mid' opSymbols
        where opSymbols = ['!', '#', '$', '%', '&', '*', '+','.','/','<','=','>','?','@','\'','^','|','-','~']
 
-    isLegalOpTail tail = all isLegal tail
+    isLegalOpTail tail' = all isLegal tail'
        where isLegal c = isOpSym c || c==':'
 
-    isReservedOp mid = elem mid reservedOps
+    isReservedOp mid' = elem mid' reservedOps
        where reservedOps = ["..", ":","::","=","\"", "|","<-","@","~","=>"]
 
 -- | Returns True if a string lexically is an identifier.
@@ -2439,8 +2441,8 @@ locToName::(SYB.Data t)=>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located GHC.Name)  -- ^ The result
-locToName fileName (row,col) t = 
-      if res1 /= Nothing 
+locToName fileName (row,col) t =
+      if res1 /= Nothing
         then res1
         else res2
      where

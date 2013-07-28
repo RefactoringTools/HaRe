@@ -36,6 +36,7 @@ import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 {-This refactoring renames an indentifier to a user-specified name.
 
@@ -79,12 +80,14 @@ comp fileName newName (row,col) = do
     getModuleGhc fileName
     renamed <- getRefactRenamed
     parsed  <- getRefactParsed
+    logm $ "comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
 
     modu <- getModule
     let (Just (modName,_)) = getModuleName parsed
     let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
     case maybePn of
         Just pn@(GHC.L _ n) -> do
+           logm $ "Renaming:(n,modu)=" ++ (showGhc (n,modu))
            unless (nameToString n /= newName) $ error "The new name is same as the old name" 
            unless (isValidNewName n newName) $ error $ "Invalid new name:" ++ newName ++ "!"
            let defineMod = GHC.moduleName $ GHC.nameModule n
@@ -146,6 +149,9 @@ rename args
 -- |Actually do the renaming, split into the various things that can
 -- be renamed.
 doRenaming :: GHC.Located GHC.Name -> String -> RefactGhc ()
+doRenaming pn@(GHC.L _ n) newNameStr = do
+  logm $ "doRenaming:(pn,newNameStr) = " ++ (showGhc (pn,newNameStr))
+  error "fubar"
 {-
 doRenaming pn@(GHC.L _ n) newNameStr = do
   logm $ "doRenaming:(pn,newNameStr) = " ++ (showGhc (pn,newNameStr))
@@ -180,11 +186,12 @@ doRenaming oldPNT@(PNT oldPN@(PN i (S loc)) (Type _) _) newName modName mod insc
         return ((replaceDecls mod (before++parent'++after)),toks)
 -}
 
+{-
 ---------Rename a field name -------------------------------------
 doRenaming pn@(GHC.L _ n) newNameStr
   | isFieldName n = do
   logm $ "doRenaming:fieldName=" ++ (showGhc n)
-
+-}
 {- old
 doRenaming oldPNT@(PNT _ (FieldOf con typeInfo) _) newName modName mod inscps exps env 
   =do let (before,parent,after)=divideDecls (hsDecls mod) oldPNT
@@ -197,8 +204,33 @@ doRenaming oldPNT@(PNT _ (FieldOf con typeInfo) _) newName modName mod inscps ex
                else runStateT (renameTopLevelVarName oldPNT newName modName inscps exps mod False True) env
 -}
 
-{-
+
 --------Rename a value variable name--------------------------------
+doRenaming pn@(GHC.L _ oldn) newNameStr = do
+  logm $ "doRenaming:(pn,newNameStr) = " ++ (showGhc (pn,newNameStr))
+  renamed <- getRefactRenamed
+  {-
+  r' <- applyTP (once_buTPGhc (failTP `adhocTP` renameInMod
+                                -- `adhocTP` renameInMatch
+                                -- `adhocTP` renameInPattern
+                                -- `adhocTP` renameInExp
+                                -- `adhocTP` renameInAlt
+                                -- `adhocTP` renameInStmts
+                                )) renamed
+                                -}
+  somewhereMStagedBu SYB.Renamer (SYB.mkM renameInMod
+                                 ) renamed
+  return ()
+   where
+     -- 1. The name is declared in a module(top level name)
+     -- renameInMod (mod::HsModuleP)
+     renameInMod :: GHC.RenamedSource -> RefactGhc GHC.RenamedSource
+     renameInMod ren
+        | isDeclaredIn oldn ren = do
+          return $ renameTopLevelVarName oldn newNameStr ren True True
+     renameInMod _ren = mzero
+
+{- original
 doRenaming oldPNT@(PNT oldPN Value loc) newName modName mod inscps exps env
  = runStateT (applyTP (once_buTP (failTP `adhocTP` renameInMod
                              `adhocTP` renameInMatch
@@ -271,6 +303,9 @@ doRenaming' oldPNT@(PNT oldPN _ _) newName parent mod fun exps env
                     else runStateT (renamePN oldPN Nothing newName True parent) env 
 -}
 
+renameTopLevelVarName :: GHC.Name -> String -> GHC.RenamedSource -> Bool -> Bool -> GHC.RenamedSource
+renameTopLevelVarName oldPN newName renamed existChecking exportChecking
+  = error "undefined renameTopLevelVarName"
 {-
 renameTopLevelVarName oldPNT@(PNT oldPN _ _) newName modName inscps exps mod existChecking exportChecking
   =do -- f' contains names imported from other modules;
@@ -299,7 +334,9 @@ renameTopLevelVarName oldPNT@(PNT oldPN _ _) newName modName inscps exps mod exi
                                    else if exportChecking && isInScopeAndUnqualified newName inscps
                                           then renamePN oldPN (Just modName) newName True mod
                                           else renamePN oldPN  Nothing newName True mod 
+-}
 
+{-
 renameLocalVarName oldPN newName t
   =do (f,d) <- hsFDNamesFromInside t
       if elem newName (d \\ [pNtoName oldPN])  --only check the declared names here.
@@ -372,61 +409,53 @@ fieldNames  (PNT pn (FieldOf con typeInfo) _)
 isValidNewName :: GHC.Name -> String -> Bool
 isValidNewName oldName newName = res
  where
-   tyconOk = if GHC.isTyConName oldName && isConId newName
-              then True
-              else error "Invalid type constructor name!"
+   doTest :: Bool -> Bool -> String -> Bool
+   doTest isCategory isRightType errStr =
+      if isCategory
+         then if isRightType
+               then True
+               else error errStr
+         else True
 
-   classOk = if isClassName oldName && isConId newName
-              then True
-              else error "Invalid class name!"
+   tyconOk = doTest (GHC.isTyConName oldName)
+                    (isConId newName)
+                    "Invalid type constructor/class name!"
 
-   dataConOk = if GHC.isDataConName oldName && isConId newName
-              then True
-              else error "Invalid data constructor name!"
+   -- classOk = if isClassName oldName && isConId newName
+   --            then True
+   --            else error "Invalid class name!"
 
-   fieldOk = if isFieldName oldName && isVarId newName
-              then True
-              else error "Invalid field name!"
+   dataConOk = doTest (GHC.isDataConName oldName)
+                      (isConId newName)
+                      "Invalid data constructor name!"
 
-   instanceOk = if isInstanceName oldName && isVarId newName
-                 then True
-                 else error "Invalid class instance name!"
+   fieldOk = doTest (isFieldName oldName)
+                    (isVarId newName)
+                    "Invalid field name!"
 
-   tyVarOk = if GHC.isTyVarName oldName && isVarId newName
-                 then True
-                 else error "Invalid type variable name!"
+   -- instanceOk = doTest (isInstanceName oldName)
+   --                     (isVarId newName)
+   --                     "Invalid class instance name!"
 
-   -- TODO: implement the rest here
-   res = tyconOk && classOk && dataConOk && fieldOk && instanceOk && tyVarOk
-{-
- = case oldName of
-        (PNT (PN i (G _ _ _)) (Type _) _) ->if isConId newName then True
-                                                               else error "Invalid type constructor name!"  
-        (PNT _ (Class _ _) _)               ->if isConId newName then True
-                                                               else error "Invalid class name!"
-        (PNT _ (ConstrOf _  _) _)         ->if isConId newName then True
-                                                               else error "Invalid data constructor name!"
+   tyVarOk = doTest (GHC.isTyVarName oldName)
+                    (isVarId newName)
+                    "Invalid type variable name!"
 
-        (PNT _ (FieldOf _ _ ) _ )         ->if isVarId newName then True
-                                                               else error "Invalid field name!" 
-
-        (PNT _ (MethodOf i _ _) _)          ->if isVarId newName then True
-                                                               else error "Invalid class instance name!"
-
-        (PNT (PN i (S loc)) (Type _) _)   ->if isVarId newName then True
-                                                               else error "Invalid type variable name!"
-
-        (PNT oldPN Value loc)
-          ->  let oldName' = pNTtoName oldName
-              in if isVarId oldName' && not (isVarId newName)
+   oldName' = nameToString oldName
+   matchNamesOk = if isVarId oldName' && not (isVarId newName)
                    then error "The new name should be an identifier!"
                    else if isOperator oldName' && not (isOperator newName)
                           then error "The new name should be an operator!"
                           else if (isVarId oldName' && isVarId newName) ||
                                    (isOperator oldName' && isOperator newName)
                                   then True
-                                  else error "Invalid new name!"
--}
+                                  -- else error "Invalid new name!"
+                                  else error $ "Invalid new name!" ++ (show (oldName',isVarId oldName',isVarId newName,isOperator oldName',isOperator newName))
+
+   res = tyconOk && dataConOk {- && fieldOk && instanceOk -} &&
+         tyVarOk && matchNamesOk
+
+   -- res = error $ "isValidNewName:(tyconOk,dataConOk`,fieldOk,instanceOk,tyVarOk,matchNamesOk)=" ++ (show (tyconOk,dataConOk,fieldOk,instanceOk,tyVarOk,matchNamesOk))
 
 {- old
 isValidNewName oldName newName
@@ -467,6 +496,6 @@ divideDecls ds pnt
   = let (before,after)=break (\x->findPNT pnt x) ds
     in if (after/=[])
          then (before, [head after], tail after)
-         else (ds,[],[]) 
+         else (ds,[],[])
 
 -}

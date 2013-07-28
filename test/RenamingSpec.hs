@@ -27,8 +27,8 @@ spec = do
 
   describe "Renaming" $ do
     it "Renames in D1 B1 C1 A1 6 6" $ do
-     r <- rename defaultTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D2.hs" "AnotherTree" (6,6)
-     -- rename logTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D2.hs" "AnotherTree" (6,6)
+     r <- rename defaultTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
+     -- rename logTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
 
      (show r) `shouldBe` ""
 
