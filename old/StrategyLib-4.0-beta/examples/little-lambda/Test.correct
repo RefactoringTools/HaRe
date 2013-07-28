@@ -1,3 +1,0 @@
-Just (Lambda "mies" (Arrow (TVar "AAP") (TVar "NOOT")) (Apply (Var "aap") (Var "noot")))
-["mies","aap","noot"]
-["Lambda \"mies\" (Arrow (TVar \"AAP\") (TVar \"NOOT\")) (Apply (Var \"aap\") (Var \"noot\"))","\"mies\"","Arrow (TVar \"AAP\") (TVar \"NOOT\")","TVar \"AAP\"","\"AAP\"","TVar \"NOOT\"","\"NOOT\"","Apply (Var \"aap\") (Var \"noot\")","Var \"aap\"","\"aap\"","Var \"noot\"","\"noot\""]
