@@ -1,4 +1,4 @@
-module Language.Haskell.Refact.Renaming(rename,doRename) where
+module Language.Haskell.Refact.Renaming(rename) where
 
 import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
@@ -64,14 +64,6 @@ import Language.Haskell.Refact.Utils.TypeUtils
 the file name, but we should keep in mind that people also use unnamed
 modules.
 -}
-
-doRename :: [String] -> IO ()
-doRename args
-  = do let fileName = args!!0
-           newName = args!!1
-           beginPos = (read (args!!2), read (args!!3))::(Int,Int)
-       rename Nothing Nothing fileName newName beginPos
-       return ()
 
 -- | The API entry point
 rename :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO [FilePath]

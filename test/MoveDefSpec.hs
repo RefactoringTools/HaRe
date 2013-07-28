@@ -28,13 +28,15 @@ spec = do
 
   -- -------------------------------------------------------------------
 
-  describe "doLiftToTopLevel" $ do
+  describe "liftToTopLevel" $ do
     it "Cannot lift a top level declaration" $ do
-     res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","4","1"])
+     -- res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","4","1"])
+     res <- catchException (liftToTopLevel defaultTestSettings Nothing "./test/testdata/MoveDef/Md1.hs" (4,1))
      (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
 
     it "checks for name clashes" $ do
-     res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","17","5"])
+     -- res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","17","5"])
+     res <- catchException (liftToTopLevel defaultTestSettings Nothing "./test/testdata/MoveDef/Md1.hs" (17,5))
      (show res) `shouldBe` "Just \"The identifier(s): (ff, test/testdata/MoveDef/Md1.hs:17:5) will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
 
     {-
@@ -50,7 +52,8 @@ spec = do
     -- ---------------------------------
 
     it "lifts a definition to the top level" $ do
-     doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","24","5"]
+     -- doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","24","5"]
+     liftToTopLevel defaultTestSettings Nothing "./test/testdata/MoveDef/Md1.hs" (24,5)
      -- liftToTopLevel logTestSettings Nothing "./test/testdata/MoveDef/Md1.hs" (24,5)
      diff <- compareFiles "./test/testdata/MoveDef/Md1.hs.expected"
                           "./test/testdata/MoveDef/Md1.hs.refactored"
@@ -208,7 +211,8 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel WhereIn2 11 18 fails" $ do
-     res <- catchException (doLiftToTopLevel ["./test/testdata/LiftToToplevel/WhereIn2.hs","11","18"])
+     -- res <- catchException (doLiftToTopLevel ["./test/testdata/LiftToToplevel/WhereIn2.hs","11","18"])
+     res <- catchException (liftToTopLevel defaultTestSettings Nothing "./test/testdata/LiftToToplevel/WhereIn2.hs" (11,18))
      -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/WhereIn2.hs" (11,18)
 
      (show res) `shouldBe` "Just \"The identifier(s): (sq, test/testdata/LiftToToplevel/WhereIn2.hs:11:18) will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
@@ -410,18 +414,21 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
   -- -------------------------------------------------------------------
 
-  describe "doDemote" $ do
+  describe "demote" $ do
 
     it "notifies if no definition selected" $ do
-     res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","14","13"])
+     -- res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","14","13"])
+     res <- catchException (demote defaultTestSettings Nothing "./test/testdata/MoveDef/Md1.hs" (14,13))
      (show res) `shouldBe` "Just \"\\nInvalid cursor position!\""
 
     it "will not demote if nowhere to go" $ do
-     res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","8","1"])
+     -- res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","8","1"])
+     res <- catchException (demote defaultTestSettings Nothing "./test/testdata/MoveDef/Md1.hs" (8,1))
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
     it "demotes a definition from the top level 1" $ do
-     doDemote ["./test/testdata/MoveDef/Demote.hs","7","1"]
+     -- doDemote ["./test/testdata/MoveDef/Demote.hs","7","1"]
+     demote defaultTestSettings Nothing "./test/testdata/MoveDef/Demote.hs" (7,1)
      -- demote logTestSettings Nothing "./test/testdata/MoveDef/Demote.hs" (7,1)
      diff <- compareFiles "./test/testdata/MoveDef/Demote.hs.refactored"
                           "./test/testdata/MoveDef/Demote.hs.expected"
@@ -430,7 +437,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes a definition from the top level D1" $ do
-     doDemote ["./test/testdata/Demote/D1.hs","9","1"]
+     -- doDemote ["./test/testdata/Demote/D1.hs","9","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/D1.hs" (9,1)
      diff <- compareFiles "./test/testdata/Demote/D1.hs.refactored"
                           "./test/testdata/Demote/D1.hs.expected"
      diff `shouldBe` []
@@ -438,7 +446,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn1 12 1" $ do
-     doDemote ["./test/testdata/Demote/WhereIn1.hs","12","1"]
+     -- doDemote ["./test/testdata/Demote/WhereIn1.hs","12","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/WhereIn1.hs" (12,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn1.hs.refactored"
                           "./test/testdata/Demote/WhereIn1.hs.expected"
      diff `shouldBe` []
@@ -446,7 +455,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn3 14 1" $ do
-     doDemote ["./test/testdata/Demote/WhereIn3.hs","14","1"]
+     -- doDemote ["./test/testdata/Demote/WhereIn3.hs","14","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/WhereIn3.hs" (14,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn3.hs.refactored"
                           "./test/testdata/Demote/WhereIn3.hs.expected"
      diff `shouldBe` []
@@ -454,7 +464,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn4 14 1" $ do
-     doDemote ["./test/testdata/Demote/WhereIn4.hs","14","1"]
+     -- doDemote ["./test/testdata/Demote/WhereIn4.hs","14","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/WhereIn4.hs" (14,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn4.hs.refactored"
                           "./test/testdata/Demote/WhereIn4.hs.expected"
      diff `shouldBe` []
@@ -462,7 +473,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn5 14 1" $ do
-     doDemote ["./test/testdata/Demote/WhereIn5.hs","14","1"]
+     -- doDemote ["./test/testdata/Demote/WhereIn5.hs","14","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/WhereIn5.hs" (14,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn5.hs.refactored"
                           "./test/testdata/Demote/WhereIn5.hs.expected"
      diff `shouldBe` []
@@ -470,7 +482,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn6 13 1" $ do
-     doDemote ["./test/testdata/Demote/WhereIn6.hs","13","1"]
+     -- doDemote ["./test/testdata/Demote/WhereIn6.hs","13","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/WhereIn6.hs" (13,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn6.hs.refactored"
                           "./test/testdata/Demote/WhereIn6.hs.expected"
      diff `shouldBe` []
@@ -478,7 +491,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn7 13 1" $ do
-     doDemote ["./test/testdata/Demote/WhereIn7.hs","13","1"]
+     -- doDemote ["./test/testdata/Demote/WhereIn7.hs","13","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/WhereIn7.hs" (13,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn7.hs.refactored"
                           "./test/testdata/Demote/WhereIn7.hs.expected"
      diff `shouldBe` []
@@ -486,7 +500,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes CaseIn1 16 1" $ do
-     doDemote ["./test/testdata/Demote/CaseIn1.hs","16","1"]
+     -- doDemote ["./test/testdata/Demote/CaseIn1.hs","16","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/CaseIn1.hs" (16,1)
      diff <- compareFiles "./test/testdata/Demote/CaseIn1.hs.refactored"
                           "./test/testdata/Demote/CaseIn1.hs.expected"
      diff `shouldBe` []
@@ -494,7 +509,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes LetIn1 12 22" $ do
-     doDemote ["./test/testdata/Demote/LetIn1.hs","12","22"]
+     -- doDemote ["./test/testdata/Demote/LetIn1.hs","12","22"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/LetIn1.hs" (12,22)
      diff <- compareFiles "./test/testdata/Demote/LetIn1.hs.refactored"
                           "./test/testdata/Demote/LetIn1.hs.expected"
      diff `shouldBe` []
@@ -502,8 +518,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes PatBindIn1 19 1" $ do
-       -- pending -- "todo"
-     doDemote ["./test/testdata/Demote/PatBindIn1.hs","19","1"]
+     -- doDemote ["./test/testdata/Demote/PatBindIn1.hs","19","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/PatBindIn1.hs" (19,1)
      diff <- compareFiles "./test/testdata/Demote/PatBindIn1.hs.refactored"
                           "./test/testdata/Demote/PatBindIn1.hs.expected"
      diff `shouldBe` []
@@ -511,7 +527,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes D2 5 1 when not imported by other module" $ do
-     doDemote ["./test/testdata/Demote/D2.hs","5","1"]
+     -- doDemote ["./test/testdata/Demote/D2.hs","5","1"]
+     demote defaultTestSettings Nothing "./test/testdata/Demote/D2.hs" (5,1)
      -- demote logTestSettings Nothing "./test/testdata/Demote/D2.hs" (5,1)
      diff <- compareFiles "./test/testdata/Demote/D2.hs.refactored"
                           "./test/testdata/Demote/D2.hs.expected"
@@ -520,27 +537,31 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "fails WhereIn2 14 1" $ do
-     res <- catchException (doDemote ["./test/testdata/Demote/WhereIn2.hs","14","1"])
+     -- res <- catchException (doDemote ["./test/testdata/Demote/WhereIn2.hs","14","1"])
+     res <- catchException (demote defaultTestSettings Nothing "./test/testdata/Demote/WhereIn2.hs" (14,1))
      -- demote (Just logSettings) Nothing "./test/testdata/Demote/WhereIn2.hs" (14,1)
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
     -- -----------------------------------------------------------------
 
     it "fails LetIn2 11 22" $ do
-     res <- catchException (doDemote ["./test/testdata/Demote/LetIn2.hs","11","22"])
+     -- res <- catchException (doDemote ["./test/testdata/Demote/LetIn2.hs","11","22"])
+     res <- catchException (demote defaultTestSettings Nothing "./test/testdata/Demote/LetIn2.hs" (11,22))
      (show res) `shouldBe` "Just \"This function can not be demoted as it is used in current level!\\n\""
 
     -- -----------------------------------------------------------------
 
     it "fails PatBindIn4 18 1" $ do
-     res <- catchException (doDemote ["./test/testdata/Demote/PatBindIn4.hs","18","1"])
+     -- res <- catchException (doDemote ["./test/testdata/Demote/PatBindIn4.hs","18","1"])
+     res <- catchException (demote defaultTestSettings Nothing "./test/testdata/Demote/PatBindIn4.hs" (18,1))
      -- (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
      (show res) `shouldBe` "Just \"\\nThis function/pattern binding is used by more than one friend bindings\\n\""
 
     -- -----------------------------------------------------------------
 
     it "fails WhereIn8 16 1" $ do
-     res <- catchException (doDemote ["./test/testdata/Demote/WhereIn8.hs","16","1"])
+     -- res <- catchException (doDemote ["./test/testdata/Demote/WhereIn8.hs","16","1"])
+     res <- catchException (demote defaultTestSettings Nothing "./test/testdata/Demote/WhereIn8.hs" (16,1))
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
     -- -----------------------------------------------------------------
@@ -558,7 +579,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "fails D3 5 1" $ do
-     res <- catchException (doDemote ["./test/testdata/Demote/D3.hs","5","1"])
+     -- res <- catchException (doDemote ["./test/testdata/Demote/D3.hs","5","1"])
+     res <- catchException (demote defaultTestSettings Nothing "./test/testdata/Demote/D3.hs" (5,1))
      (show res) `shouldBe` "Just \"This definition can not be demoted, as it is explicitly exported by the current module!\""
 
 

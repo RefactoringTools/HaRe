@@ -3,9 +3,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Language.Haskell.Refact.MoveDef
-  ( liftToTopLevel, doLiftToTopLevel
-  , liftOneLevel, doLiftOneLevel
-  , demote, doDemote
+  ( liftToTopLevel
+  , liftOneLevel
+  , demote
   -- ,liftingInClientMod
   ) where
 
@@ -78,6 +78,7 @@ the following six contexts:
              in context GRHS [LStmt id] (LHsExpr id)
 -}
 
+{-
 -- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
 doLiftToTopLevel :: [String] -> IO () -- For now
 doLiftToTopLevel args
@@ -86,6 +87,7 @@ doLiftToTopLevel args
           col      = read (args!!2)::Int
       liftToTopLevel Nothing  Nothing fileName (row,col)
       return ()
+-}
 
 -- | The API entry point
 liftToTopLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
@@ -110,6 +112,7 @@ compLiftToTopLevel fileName (row,col) = do
 
 -- ---------------------------------------------------------------------
 
+{-
 doLiftOneLevel :: [String] -> IO () -- For now
 doLiftOneLevel args
  = do let fileName = ghead "filename" args
@@ -117,6 +120,7 @@ doLiftOneLevel args
           col      = read (args!!2)::Int
       liftOneLevel Nothing  Nothing fileName (row,col)
       return ()
+-}
 
 -- | The API entry point
 liftOneLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
@@ -151,6 +155,7 @@ compLiftOneLevel fileName (row,col) = do
 
 -- ---------------------------------------------------------------------
 
+{-
 doDemote :: [String] -> IO ()
 doDemote args
  = do let  fileName = ghead "filename"  args
@@ -158,6 +163,7 @@ doDemote args
            col = read (args!!2)::Int
       demote Nothing Nothing fileName (row,col)
       return ()
+-}
 
 -- | The API entry point
 demote :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]

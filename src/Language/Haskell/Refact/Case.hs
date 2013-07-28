@@ -1,4 +1,4 @@
-module Language.Haskell.Refact.Case(doIfToCase,ifToCase) where
+module Language.Haskell.Refact.Case(ifToCase) where
 
 import qualified Data.Generics         as SYB
 import qualified GHC.SYB.Utils         as SYB
@@ -14,15 +14,6 @@ import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeUtils
 
 -- ---------------------------------------------------------------------
-
--- TODO: This boilerplate will be moved to the coordinator, just the refac session will be exposed
-doIfToCase :: [String] -> IO () -- For now
-doIfToCase args
-  = do let fileName = args!!0
-           beginPos = (read (args!!1), read (args!!2))::(Int,Int)
-           endPos   = (read (args!!3), read (args!!4))::(Int,Int)
-       ifToCase Nothing Nothing fileName beginPos endPos
-       return ()
 
 -- | The API entry point
 ifToCase :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]

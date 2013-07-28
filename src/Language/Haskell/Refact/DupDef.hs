@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.Haskell.Refact.DupDef(duplicateDef, doDuplicateDef) where
+module Language.Haskell.Refact.DupDef(duplicateDef) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -25,6 +25,7 @@ import Language.Haskell.Refact.Utils.TypeUtils
 -- simple pattern binding) at same level with a new name provided by
 -- the user. The new name should not cause name clash/capture.
 
+{-
 -- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
 doDuplicateDef :: [String] -> IO () -- For now
 doDuplicateDef args
@@ -34,6 +35,7 @@ doDuplicateDef args
           col      = read (args!!3)::Int
       duplicateDef Nothing  Nothing fileName newName (row,col)
       return ()
+-}
 
 -- | The API entry point
 duplicateDef :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO [FilePath]
@@ -44,7 +46,7 @@ comp :: FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
       if isVarId newName
-        then do 
+        then do
                 getModuleGhc fileName
                 renamed <- getRefactRenamed
                 parsed  <- getRefactParsed
