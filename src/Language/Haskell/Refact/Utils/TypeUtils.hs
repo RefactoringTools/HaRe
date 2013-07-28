@@ -76,7 +76,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Locations
     ,defineLoc, useLoc,locToPNT {-,locToPN -},locToExp -- , getStartEndLoc
-    ,locToName
+    ,locToName, locToRdrName
     ,getName
 
  -- * Program transformation
@@ -154,7 +154,7 @@ import qualified Lexer         as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified NameSet       as GHC
--- import qualified Outputable    as GHC
+import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
 import qualified Unique        as GHC
@@ -2437,19 +2437,40 @@ locToName fileName (row,col) t
 
 -- |Same as locToName, but cater for FunBind MatchGroups where only
 -- the first name is retained in the AST
-locToName::(SYB.Data t)=>GHC.FastString   -- ^ The file name
+locToName::(SYB.Data t)
+                    =>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located GHC.Name)  -- ^ The result
-locToName fileName (row,col) t =
+locToName fileName (row,col) t = locToName' SYB.Renamer fileName (row,col) t
+
+-- |Same as locToName, but cater for FunBind MatchGroups where only
+-- the first name is retained in the AST
+locToRdrName::(SYB.Data t)
+                    =>GHC.FastString   -- ^ The file name
+                    ->SimpPos          -- ^ The row and column number
+                    ->t                -- ^ The syntax phrase
+                    -> Maybe (GHC.Located GHC.RdrName)  -- ^ The result
+locToRdrName fileName (row,col) t = locToName' SYB.Parser fileName (row,col) t
+
+
+-- |Same as locToName, but cater for FunBind MatchGroups where only
+-- the first name is retained in the AST
+locToName'::(SYB.Data t, SYB.Data a, Eq a,GHC.Outputable a)
+                    =>SYB.Stage
+                    ->GHC.FastString   -- ^ The file name
+                    ->SimpPos          -- ^ The row and column number
+                    ->t                -- ^ The syntax phrase
+                    -> Maybe (GHC.Located a)  -- ^ The result
+locToName' stage fileName (row,col) t =
       if res1 /= Nothing
         then res1
         else res2
      where
-        res1 = somethingStaged SYB.Renamer Nothing
+        res1 = somethingStaged stage Nothing
             (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
-        res2 = somethingStaged SYB.Renamer Nothing
+        res2 = somethingStaged stage Nothing
             (Nothing `SYB.mkQ` workerFunBind) t
 
         {-
@@ -2470,21 +2491,21 @@ locToName fileName (row,col) t =
         -- fail, it needs to be deduced from a FunBind having more
         -- than one match. The Located Match includes the original
         -- variable name in the location, but not in the match contents
-        workerFunBind ((GHC.L _ (GHC.FunBind pnt _ (GHC.MatchGroup matches _) _ _ _)) :: (GHC.LHsBindLR GHC.Name GHC.Name))
+        workerFunBind ((GHC.L _ (GHC.FunBind pnt _ (GHC.MatchGroup matches _) _ _ _)) :: (GHC.LHsBindLR a a))
           | nonEmptyList match = Just pnt
           where
             match = filter inScope (tail matches)
         workerFunBind _ = Nothing
 
-        worker (pnt :: (GHC.Located GHC.Name))
+        worker (pnt :: (GHC.Located a))
           | inScope pnt = Just pnt
         worker _ = Nothing
 
-        workerBind pnt@(GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
+        workerBind pnt@(GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat a)))
           | inScope pnt = Just (GHC.L l name)
         workerBind _ = Nothing
 
-        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
+        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr a)))
           | inScope pnt = Just (GHC.L l name)
         workerExpr _ = Nothing
 

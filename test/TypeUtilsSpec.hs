@@ -2495,8 +2495,8 @@ This function is not used and has been removed
       (showGhc n) `shouldBe` "Field3.absPoint"
       (showGhc nf) `shouldBe` "Field3.pointx"
 
-      (show $ isFieldName nf) `shouldBe` "True"
-      (show $ isFieldName n) `shouldBe` "False"
+      -- (show $ isFieldName nf) `shouldBe` "True"
+      -- (show $ isFieldName n) `shouldBe` "False"
 
   -- ---------------------------------------
 

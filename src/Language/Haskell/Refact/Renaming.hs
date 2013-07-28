@@ -88,8 +88,13 @@ comp fileName newName (row,col) = do
     case maybePn of
         Just pn@(GHC.L _ n) -> do
            logm $ "Renaming:(n,modu)=" ++ (showGhc (n,modu))
+           let Just (GHC.L _ rdrName) = locToRdrName (GHC.mkFastString fileName) (row, col) parsed
+           let rdrNameStr = GHC.occNameString $ GHC.rdrNameOcc rdrName
+           logm $ "Renaming: rdrName=" ++ (SYB.showData SYB.Parser 0 rdrName)
+           logm $ "Renaming: occname rdrName=" ++ (show $ GHC.occNameString $ GHC.rdrNameOcc rdrName)
+
            unless (nameToString n /= newName) $ error "The new name is same as the old name" 
-           unless (isValidNewName n newName) $ error $ "Invalid new name:" ++ newName ++ "!"
+           unless (isValidNewName n rdrNameStr newName) $ error $ "Invalid new name:" ++ newName ++ "!"
            let defineMod = GHC.moduleName $ GHC.nameModule n
            unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++ 
                                          ", please do renaming in that module!"))
@@ -97,8 +102,7 @@ comp fileName newName (row,col) = do
              then error ("The 'main' function defined in a 'Main' module should not be renamed!")
              else do
                logm $ "Renaming.comp: not main module"
-               (refactoredMod@((_fp,ismod),(_toks',_renamed')),_) <- applyRefac (doRenaming pn newName) (RSFile fileName)
-               unless ismod $ error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
+               (refactoredMod@((_fp,_),(_toks',_renamed')),_) <- applyRefac (doRenaming pn rdrNameStr newName) (RSFile fileName)
                -- if isExported n renamed  --no matter whether this pn is used or not.
                if False -- TODO: reinstate prior line
                    then do clients <- clientModsAndFiles modName
@@ -148,10 +152,10 @@ rename args
 
 -- |Actually do the renaming, split into the various things that can
 -- be renamed.
-doRenaming :: GHC.Located GHC.Name -> String -> RefactGhc ()
-doRenaming pn@(GHC.L _ n) newNameStr = do
-  logm $ "doRenaming:(pn,newNameStr) = " ++ (showGhc (pn,newNameStr))
-  error "fubar"
+doRenaming :: GHC.Located GHC.Name -> String -> String -> RefactGhc ()
+-- doRenaming pn@(GHC.L _ n) rdrNameStr newNameStr = do
+--   logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ (showGhc (pn,rdrNameStr,newNameStr))
+--   error "fubar"
 {-
 doRenaming pn@(GHC.L _ n) newNameStr = do
   logm $ "doRenaming:(pn,newNameStr) = " ++ (showGhc (pn,newNameStr))
@@ -206,8 +210,8 @@ doRenaming oldPNT@(PNT _ (FieldOf con typeInfo) _) newName modName mod inscps ex
 
 
 --------Rename a value variable name--------------------------------
-doRenaming pn@(GHC.L _ oldn) newNameStr = do
-  logm $ "doRenaming:(pn,newNameStr) = " ++ (showGhc (pn,newNameStr))
+doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr = do
+  logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ (showGhc (pn,rdrNameStr,newNameStr))
   renamed <- getRefactRenamed
   {-
   r' <- applyTP (once_buTPGhc (failTP `adhocTP` renameInMod
@@ -406,8 +410,8 @@ fieldNames  (PNT pn (FieldOf con typeInfo) _)
   where  pNtoName (PN i _) = i
 -}
 
-isValidNewName :: GHC.Name -> String -> Bool
-isValidNewName oldName newName = res
+isValidNewName :: GHC.Name -> String -> String -> Bool
+isValidNewName oldName rdrNameStr newName = res
  where
    doTest :: Bool -> Bool -> String -> Bool
    doTest isCategory isRightType errStr =
@@ -441,8 +445,10 @@ isValidNewName oldName newName = res
                     (isVarId newName)
                     "Invalid type variable name!"
 
-   oldName' = nameToString oldName
-   matchNamesOk = if isVarId oldName' && not (isVarId newName)
+   oldName' = rdrNameStr
+   matchNamesOk
+     | GHC.isValName oldName || GHC.isVarName oldName
+              = if isVarId oldName' && not (isVarId newName)
                    then error "The new name should be an identifier!"
                    else if isOperator oldName' && not (isOperator newName)
                           then error "The new name should be an operator!"
@@ -451,6 +457,7 @@ isValidNewName oldName newName = res
                                   then True
                                   -- else error "Invalid new name!"
                                   else error $ "Invalid new name!" ++ (show (oldName',isVarId oldName',isVarId newName,isOperator oldName',isOperator newName))
+     | otherwise = True
 
    res = tyconOk && dataConOk {- && fieldOk && instanceOk -} &&
          tyVarOk && matchNamesOk
