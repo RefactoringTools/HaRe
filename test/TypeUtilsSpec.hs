@@ -2483,6 +2483,20 @@ This function is not used and has been removed
       (unspace "  ab   c") `shouldBe` " ab c"
       (unspace "abc    ") `shouldBe` "abc "
 
+  -- ---------------------------------------
+
+  describe "isFieldName" $ do
+    it "returns True if a Name is a field name" $ do
+      (t,_toks) <- parsedFileRenamingField3
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let Just (GHC.L _ nf) = locToName renamingField3FileName (10,21) renamed
+      let Just (GHC.L _ n) = locToName renamingField3FileName (10,1) renamed
+
+      (showGhc n) `shouldBe` "Field3.absPoint"
+      (showGhc nf) `shouldBe` "Field3.pointx"
+
+      (show $ isFieldName nf) `shouldBe` "True"
+      (show $ isFieldName n) `shouldBe` "False"
 
   -- ---------------------------------------
 
@@ -2498,6 +2512,14 @@ myShow n = case n of
 
 -- ---------------------------------------------------------------------
 -- Helper functions
+
+renamingField3FileName :: GHC.FastString
+renamingField3FileName = GHC.mkFastString "./test/testdata/Renaming/Field3.hs"
+
+parsedFileRenamingField3 :: IO (ParseResult,[PosToken])
+parsedFileRenamingField3 = parsedFileGhc "./test/testdata/Renaming/Field3.hs"
+
+
 
 bFileName :: GHC.FastString
 bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"

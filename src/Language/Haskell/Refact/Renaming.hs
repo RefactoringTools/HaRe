@@ -65,46 +65,45 @@ the file name, but we should keep in mind that people also use unnamed
 modules.
 -}
 
--- | The API entry point
-rename :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO [FilePath]
+-- | Rename the given identifier.
+rename :: Maybe RefactSettings -> Maybe FilePath
+   -> FilePath -> String -> SimpPos
+   -> IO [FilePath]
 rename settings maybeMainFile fileName newName (row,col) =
   runRefacSession settings maybeMainFile (comp fileName newName (row,col))
 
-
--- body of refac
+-- | Body of the refactoring
 comp :: String -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row,col) = do
     logm $ "Renaming.comp: (fileName,newName,(row,col))=" ++ (show (fileName,newName,(row,col)))
-    if isVarId newName
-        then do
-            getModuleGhc fileName
-            renamed <- getRefactRenamed
-            parsed  <- getRefactParsed
+    getModuleGhc fileName
+    renamed <- getRefactRenamed
+    parsed  <- getRefactParsed
 
-            modu <- getModule
-            let (Just (modName,_)) = getModuleName parsed
-            let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
-            case maybePn of
-                Just pn@(GHC.L _ n) -> do
-                   unless (nameToString n /= newName) $ error "The new name is same as the old name" 
-                   let defineMod = GHC.moduleName $ GHC.nameModule n
-                   unless (defineMod == modName ) ( error ("This idenifier is defined in module " ++ (show defineMod) ++ 
-                                                 ", please do renaming in that module!"))
-                   if isMainModule modu && (showGhc pn) == "main"
-                     then error ("The 'main' function defined in a 'Main' module should not be renamed!")
-                     else do
-                       logm $ "Renaming.comp: not main module"
-                       (refactoredMod@((_fp,ismod),(_toks',_renamed')),_) <- applyRefac (doRenaming pn newName) (RSFile fileName)
-                       unless ismod $ error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
-                       -- if isExported n renamed  --no matter whether this pn is used or not.
-                       if False -- TODO: reinstate prior line
-                           then do clients <- clientModsAndFiles modName
-                                   logm ("Renaming: clients=" ++ (showGhc clients)) -- ++AZ++ debug
-                                   refactoredClients <- mapM (renameInClientMod modName newName) clients 
-                                   return $ refactoredMod:refactoredClients
-                        else  return [refactoredMod]
-                Nothing -> error "Invalid cursor position!"
-        else error $ "Invalid new name:" ++ newName ++ "!"
+    modu <- getModule
+    let (Just (modName,_)) = getModuleName parsed
+    let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
+    case maybePn of
+        Just pn@(GHC.L _ n) -> do
+           unless (nameToString n /= newName) $ error "The new name is same as the old name" 
+           unless (isValidNewName n newName) $ error $ "Invalid new name:" ++ newName ++ "!"
+           let defineMod = GHC.moduleName $ GHC.nameModule n
+           unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++ 
+                                         ", please do renaming in that module!"))
+           if isMainModule modu && (showGhc pn) == "main"
+             then error ("The 'main' function defined in a 'Main' module should not be renamed!")
+             else do
+               logm $ "Renaming.comp: not main module"
+               (refactoredMod@((_fp,ismod),(_toks',_renamed')),_) <- applyRefac (doRenaming pn newName) (RSFile fileName)
+               unless ismod $ error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
+               -- if isExported n renamed  --no matter whether this pn is used or not.
+               if False -- TODO: reinstate prior line
+                   then do clients <- clientModsAndFiles modName
+                           logm ("Renaming: clients=" ++ (showGhc clients)) -- ++AZ++ debug
+                           refactoredClients <- mapM (renameInClientMod modName newName) clients 
+                           return $ refactoredMod:refactoredClients
+                   else  return [refactoredMod]
+        Nothing -> error "Invalid cursor position!"
 
 {- original
 
@@ -144,9 +143,10 @@ rename args
 -}
 
 
-
-doRenaming :: GHC.Located GHC.Name -> String
-              -> RefactGhc ()
+-- |Actually do the renaming, split into the various things that can
+-- be renamed.
+doRenaming :: GHC.Located GHC.Name -> String -> RefactGhc ()
+{-
 doRenaming pn@(GHC.L _ n) newNameStr = do
   logm $ "doRenaming:(pn,newNameStr) = " ++ (showGhc (pn,newNameStr))
   renamed <- getRefactRenamed
@@ -154,7 +154,7 @@ doRenaming pn@(GHC.L _ n) newNameStr = do
   newName <- mkNewGhcName newNameStr
   renamePN n newName True renamed
   return ()
-
+-}
 
 {-
 ---------Rename a type constructor--------------------------
@@ -178,8 +178,14 @@ doRenaming oldPNT@(PNT oldPN@(PN i (S loc)) (Type _) _) newName modName mod insc
    = do let (before, parent, after)=divideDecls (hsDecls mod) oldPNT
         (parent',toks)<-doRenaming' oldPNT newName parent mod  hsTypeVbls exps  env
         return ((replaceDecls mod (before++parent'++after)),toks)
+-}
 
 ---------Rename a field name -------------------------------------
+doRenaming pn@(GHC.L _ n) newNameStr
+  | isFieldName n = do
+  logm $ "doRenaming:fieldName=" ++ (showGhc n)
+
+{- old
 doRenaming oldPNT@(PNT _ (FieldOf con typeInfo) _) newName modName mod inscps exps env 
   =do let (before,parent,after)=divideDecls (hsDecls mod) oldPNT
           siblingNames=siblingFieldNames oldPNT
@@ -189,7 +195,10 @@ doRenaming oldPNT@(PNT _ (FieldOf con typeInfo) _) newName modName mod inscps ex
         else if elem newName $ fieldNames oldPNT
                then runStateT (renameTopLevelVarName oldPNT newName modName inscps exps mod False False) env
                else runStateT (renameTopLevelVarName oldPNT newName modName inscps exps mod False True) env
---------Rename a value varaible name--------------------------------
+-}
+
+{-
+--------Rename a value variable name--------------------------------
 doRenaming oldPNT@(PNT oldPN Value loc) newName modName mod inscps exps env
  = runStateT (applyTP (once_buTP (failTP `adhocTP` renameInMod
                              `adhocTP` renameInMatch
@@ -227,8 +236,27 @@ doRenaming oldPNT@(PNT oldPN Value loc) newName modName mod inscps exps env
      renameInStmts (stmts::HsExpP)
        |isDeclaredIn oldPN stmts=renameLocalVarName oldPN newName stmts
      renameInStmts stmts=mzero
+-}
 
+doRenaming' :: GHC.Name -> String  -> RefactGhc ()
+-- doRenaming' oldPNT@(PNT oldPN _ _) newName parent mod fun exps env
+doRenaming' oldPN newName
+ = error "undefined doRenaming'"
+{-
+ = let (f',d')= fun parent
+       (f,d)  =((nub.map pNtoName.filter (not.isQualifiedPN)) f', (nub.map pNtoName) d')
+   in if elem newName (d \\ [pNtoName oldPN])
+         then error("Name '"++newName++"'  already existed\n")
+         else if elem newName f
+               then error ("The new name will cause ambiguous occurrence problem,"
+                           ++" please select another new name or qualify the use of "
+                           ++ newName ++ " before renaming!\n")
+               else if causeNameClashInExports oldPN newName mod exps
+                    then error ("The new name will cause cause conflicting exports, please select another new name!")
+                    else runStateT (renamePN oldPN Nothing newName True parent) env 
+-}
 
+{- old
 doRenaming' oldPNT@(PNT oldPN _ _) newName parent mod fun exps env
  = let (f',d')= fun parent
        (f,d)  =((nub.map pNtoName.filter (not.isQualifiedPN)) f', (nub.map pNtoName) d')
@@ -241,7 +269,9 @@ doRenaming' oldPNT@(PNT oldPN _ _) newName parent mod fun exps env
                else if causeNameClashInExports oldPN newName mod exps
                     then error ("The new name will cause cause conflicting exports, please select another new name!")
                     else runStateT (renamePN oldPN Nothing newName True parent) env 
+-}
 
+{-
 renameTopLevelVarName oldPNT@(PNT oldPN _ _) newName modName inscps exps mod existChecking exportChecking
   =do -- f' contains names imported from other modules;
       -- d' contains the top level names declared in this module;
@@ -337,8 +367,68 @@ fieldNames  (PNT pn (FieldOf con typeInfo) _)
  =let cons=constructors typeInfo
   in  (nub. map pNtoName) $ concatMap (fromMaybe [].conFields) cons
   where  pNtoName (PN i _) = i
+-}
 
+isValidNewName :: GHC.Name -> String -> Bool
+isValidNewName oldName newName = res
+ where
+   tyconOk = if GHC.isTyConName oldName && isConId newName
+              then True
+              else error "Invalid type constructor name!"
 
+   classOk = if isClassName oldName && isConId newName
+              then True
+              else error "Invalid class name!"
+
+   dataConOk = if GHC.isDataConName oldName && isConId newName
+              then True
+              else error "Invalid data constructor name!"
+
+   fieldOk = if isFieldName oldName && isVarId newName
+              then True
+              else error "Invalid field name!"
+
+   instanceOk = if isInstanceName oldName && isVarId newName
+                 then True
+                 else error "Invalid class instance name!"
+
+   tyVarOk = if GHC.isTyVarName oldName && isVarId newName
+                 then True
+                 else error "Invalid type variable name!"
+
+   -- TODO: implement the rest here
+   res = tyconOk && classOk && dataConOk && fieldOk && instanceOk && tyVarOk
+{-
+ = case oldName of
+        (PNT (PN i (G _ _ _)) (Type _) _) ->if isConId newName then True
+                                                               else error "Invalid type constructor name!"  
+        (PNT _ (Class _ _) _)               ->if isConId newName then True
+                                                               else error "Invalid class name!"
+        (PNT _ (ConstrOf _  _) _)         ->if isConId newName then True
+                                                               else error "Invalid data constructor name!"
+
+        (PNT _ (FieldOf _ _ ) _ )         ->if isVarId newName then True
+                                                               else error "Invalid field name!" 
+
+        (PNT _ (MethodOf i _ _) _)          ->if isVarId newName then True
+                                                               else error "Invalid class instance name!"
+
+        (PNT (PN i (S loc)) (Type _) _)   ->if isVarId newName then True
+                                                               else error "Invalid type variable name!"
+
+        (PNT oldPN Value loc)
+          ->  let oldName' = pNTtoName oldName
+              in if isVarId oldName' && not (isVarId newName)
+                   then error "The new name should be an identifier!"
+                   else if isOperator oldName' && not (isOperator newName)
+                          then error "The new name should be an operator!"
+                          else if (isVarId oldName' && isVarId newName) ||
+                                   (isOperator oldName' && isOperator newName)
+                                  then True
+                                  else error "Invalid new name!"
+-}
+
+{- old
 isValidNewName oldName newName
  = case oldName of
         (PNT (PN i (G _ _ _)) (Type _) _) ->if isConId newName then True

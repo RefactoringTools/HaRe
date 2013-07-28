@@ -42,6 +42,9 @@ module Language.Haskell.Refact.Utils.TypeUtils
    {-,exportInfo -}, isExported, isExplicitlyExported, modIsExported
 
     -- ** Variable analysis
+    , isFieldName
+    , isClassName
+    , isInstanceName
     ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
     ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
@@ -51,7 +54,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,hsFDsFromInside, hsFDNamesFromInside
 
     -- ** Property checking
-    {- ,isVarId,isConId,isOperator -},isTopLevelPN,isLocalPN -- ,isTopLevelPNT
+    ,isVarId,isConId {- ,isOperator -},isTopLevelPN,isLocalPN -- ,isTopLevelPNT
     ,isQualifiedPN {- ,isFunPNT, isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
@@ -129,8 +132,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
  ) where
 
 import Exception
--- import Control.Exception
 import Control.Monad.State
+import Data.Char
 import Data.List
 import Data.Maybe
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -1217,6 +1220,21 @@ hsFDNamesFromInside t = do
 
 
 -- ---------------------------------------------------------------------
+-- | True if the name is a field name
+isFieldName :: GHC.Name -> Bool
+isFieldName n = error "undefined isFieldName"
+
+-- ---------------------------------------------------------------------
+-- | True if the name is a field name
+isClassName :: GHC.Name -> Bool
+isClassName n = error "undefined isClassName"
+
+-- ---------------------------------------------------------------------
+-- | True if the name is a class instance
+isInstanceName :: GHC.Name -> Bool
+isInstanceName n = error "undefined isInstanceName"
+
+-- ---------------------------------------------------------------------
 -- | Collect the identifiers (in PName format) in a given syntax phrase.
 
 hsPNs::(SYB.Data t)=> t -> [PName]
@@ -1253,6 +1271,46 @@ getModule :: RefactGhc GHC.Module
 getModule = do
   typechecked <- getTypecheckedModule
   return $ GHC.ms_mod $ GHC.pm_mod_summary $ GHC.tm_parsed_module typechecked
+
+-- ---------------------------------------------------------------------
+
+-- | Return True if a string is a lexically  valid variable name.
+isVarId::String -> Bool
+isVarId mid = isId mid && isSmall (ghead "isVarId" mid)
+     where isSmall c=isLower c || c=='_'
+
+-- | Return True if a string is a lexically valid constructor name.
+isConId::String->Bool
+isConId mid =isId mid && isUpper (ghead "isConId" mid)
+
+-- | Return True if a string is a lexically valid operator name.
+isOperator::String->Bool
+isOperator mid = mid /= [] && isOpSym (ghead "isOperator" mid) &&
+                isLegalOpTail (tail mid) && not (isReservedOp mid)
+   where
+    isOpSym mid = elem mid opSymbols
+       where opSymbols = ['!', '#', '$', '%', '&', '*', '+','.','/','<','=','>','?','@','\'','^','|','-','~']
+
+    isLegalOpTail tail = all isLegal tail
+       where isLegal c = isOpSym c || c==':'
+
+    isReservedOp mid = elem mid reservedOps
+       where reservedOps = ["..", ":","::","=","\"", "|","<-","@","~","=>"]
+
+-- | Returns True if a string lexically is an identifier.
+-- *This function should not be exported.*
+isId::String->Bool
+isId mid = mid/=[] && isLegalIdTail (tail mid) && not (isReservedId mid)
+  where
+    isLegalIdTail tail' = all isLegal tail'
+        where isLegal c=isSmall c|| isUpper c || isDigit c || c=='\''
+
+    isReservedId mid' = elem mid' reservedIds
+      where reservedIds=["case", "class", "data", "default", "deriving","do","else" ,"if",
+                         "import", "in", "infix","infixl","infixr","instance","let","module",
+                         "newtype", "of","then","type","where","_"]
+
+    isSmall c=isLower c || c=='_'
 
 -----------------------------------------------------------------------------
 

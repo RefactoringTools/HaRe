@@ -1,4 +1,4 @@
-module D1 where
+module Renaming.D1 where
 
 {-Rename data constructor `Tree` to `AnotherTree`.
   This refactoring affects module `D1', 'B1' and 'C1' -}

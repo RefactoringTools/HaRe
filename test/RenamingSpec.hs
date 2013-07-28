@@ -25,7 +25,17 @@ main = do
 spec :: Spec
 spec = do
 
-  describe "doDuplicateDef" $ do
+  describe "Renaming" $ do
+    it "Renames in D1 B1 C1 A1 6 6" $ do
+     r <- rename defaultTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D2.hs" "AnotherTree" (6,6)
+     -- rename logTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D2.hs" "AnotherTree" (6,6)
+
+     (show r) `shouldBe` ""
+
+     diff <- compareFiles "./test/testdata/Renaming/D1.hs.expected"
+                          "./test/testdata/Renaming/D1.hs.refactored"
+     diff `shouldBe` []
+
     it "Renames in Field1 5 18" $ do
      rename defaultTestSettings Nothing "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)
      -- rename logTestSettings Nothing "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)
@@ -34,12 +44,14 @@ spec = do
      diff `shouldBe` []
 
     it "Renames in Field3 9 1" $ do
+     pending
+     {-
      rename defaultTestSettings Nothing "./test/testdata/Renaming/Field3.hs" "abs" (9,1)
      -- rename logTestSettings Nothing "./test/testdata/Renaming/Field3.hs" "abs" (9,1)
      diff <- compareFiles "./test/testdata/Renaming/Field3.hs.expected"
                           "./test/testdata/Renaming/Field3.hs.refactored"
      diff `shouldBe` []
-
+     -}
 {-
 TestCases{refactorCmd="rename",
 positive=[
