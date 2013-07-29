@@ -30,11 +30,13 @@ spec = do
      r <- rename defaultTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
      -- rename logTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
 
-     (show r) `shouldBe` ""
+     r `shouldBe` ["./test/testdata/Renaming/D1.hs"]
 
      diff <- compareFiles "./test/testdata/Renaming/D1.hs.expected"
                           "./test/testdata/Renaming/D1.hs.refactored"
      diff `shouldBe` []
+
+    -- ---------------------------------
 
     it "Renames in Field1 5 18" $ do
      rename defaultTestSettings Nothing "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)

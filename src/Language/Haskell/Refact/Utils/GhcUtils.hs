@@ -75,7 +75,7 @@ somewhereMStagedBu :: MonadPlus m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM
 somewhereMStagedBu stage f x
   | checkItemStage stage x = mzero
   -- was | otherwise = f x `mplus` gmapMp (somewhereMStaged stage f) x
-  | otherwise =  gmapMp (somewhereMStaged stage f) x `mplus` f x
+  | otherwise =  gmapMp (somewhereMStagedBu stage f) x `mplus` f x
 
 
 -- ---------------------------------------------------------------------

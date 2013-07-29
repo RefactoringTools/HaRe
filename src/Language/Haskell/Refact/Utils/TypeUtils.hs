@@ -428,16 +428,13 @@ isExplicitlyExported pn (_g,_imps,exps,_docs)
 -- ---------------------------------------------------------------------
 
 -- | ++AZ++ What does this actually do?
-causeNameClashInExports::  GHC.Name      -- ^ The original name??
-                        -- -> String      -- ^ The identifier name
-                        -> GHC.ModuleName     -- ^ The identity of the module
-                        -> GHC.RenamedSource  -- ^ The AST of the module
-                        ->Bool       -- ^ The result
+causeNameClashInExports::  GHC.Name          -- ^ The original name??
+                        -> GHC.ModuleName    -- ^ The identity of the module
+                        -> GHC.RenamedSource -- ^ The AST of the module
+                        -> Bool              -- ^ The result
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
 causeNameClashInExports pn {- newName -} modName mod@(_g,imps,maybeExps,_doc) -- exps
-  -- = error "causeNameClashInExports undefined"
-
   = let exps = fromMaybe [] maybeExps
         varExps = filter isImpVar exps
         modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if showGhc x== showGhc pn
@@ -3977,7 +3974,7 @@ renamePN::(SYB.Data t)
    ->RefactGhc t
 renamePN oldPN newName updateTokens t = do
   -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
-  logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
+  -- logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
   let isRenamed = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t
   if isRenamed == (Just True)
@@ -4024,9 +4021,11 @@ renamePNworker::(SYB.Data t)
    ->RefactGhc t
 renamePNworker oldPN newName updateTokens t = do
   -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
-  logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
+  logm $ "renamePNworker: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
-  everywhereMStaged SYB.Renamer (SYB.mkM rename `SYB.extM` renameVar) t
+  everywhereMStaged SYB.Renamer (SYB.mkM rename
+                               `SYB.extM` renameVar
+                               `SYB.extM` renameTyVar) t
   where
     -- logm $ "renamePN:***ERROR**:do not use getSrcSpan"
     maybeSspan = getSrcSpan t
@@ -4049,6 +4048,16 @@ renamePNworker oldPN newName updateTokens t = do
           (new,_sspan') <- worker (row,col) l n
           return (GHC.L l (GHC.HsVar new))
     renameVar x = return x
+
+    -- HsTyVar {Name: Renaming.D1.Tree}))
+    renameTyVar :: (GHC.Located (GHC.HsType GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsType GHC.Name))
+    renameTyVar var@(GHC.L l (GHC.HsTyVar n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do let (row,col) = getLocatedStart var
+          logm $ "renamePN:renameTyVar at :" ++ (show (row,col))
+          (new,_sspan') <- worker (row,col) l n
+          return (GHC.L l (GHC.HsTyVar new))
+    renameTyVar x = return x
 
     -- TODO: must update the original sspan with the new one.
        --      ++AZ++ How?

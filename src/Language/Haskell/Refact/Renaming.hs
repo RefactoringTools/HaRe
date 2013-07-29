@@ -102,7 +102,7 @@ comp fileName newName (row,col) = do
              then error ("The 'main' function defined in a 'Main' module should not be renamed!")
              else do
                logm $ "Renaming.comp: not main module"
-               (refactoredMod@((_fp,_),(_toks',_renamed')),_) <- applyRefac (doRenaming pn rdrNameStr newName) (RSFile fileName)
+               (refactoredMod@((_fp,_),(_toks',_renamed')),_) <- applyRefac (doRenaming pn rdrNameStr newName modName) (RSFile fileName)
                -- if isExported n renamed  --no matter whether this pn is used or not.
                if False -- TODO: reinstate prior line
                    then do clients <- clientModsAndFiles modName
@@ -152,7 +152,7 @@ rename args
 
 -- |Actually do the renaming, split into the various things that can
 -- be renamed.
-doRenaming :: GHC.Located GHC.Name -> String -> String -> RefactGhc ()
+doRenaming :: GHC.Located GHC.Name -> String -> String -> GHC.ModuleName -> RefactGhc ()
 -- doRenaming pn@(GHC.L _ n) rdrNameStr newNameStr = do
 --   logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ (showGhc (pn,rdrNameStr,newNameStr))
 --   error "fubar"
@@ -210,7 +210,7 @@ doRenaming oldPNT@(PNT _ (FieldOf con typeInfo) _) newName modName mod inscps ex
 
 
 --------Rename a value variable name--------------------------------
-doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr = do
+doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr modName = do
   logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ (showGhc (pn,rdrNameStr,newNameStr))
   renamed <- getRefactRenamed
   {-
@@ -222,7 +222,8 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr = do
                                 -- `adhocTP` renameInStmts
                                 )) renamed
                                 -}
-  somewhereMStagedBu SYB.Renamer (SYB.mkM renameInMod
+  -- somewhereMStagedBu SYB.Renamer (SYB.mkM renameInMod
+  everywhereMStaged SYB.Renamer (SYB.mkM renameInMod
                                  ) renamed
   return ()
    where
@@ -230,8 +231,10 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr = do
      -- renameInMod (mod::HsModuleP)
      renameInMod :: GHC.RenamedSource -> RefactGhc GHC.RenamedSource
      renameInMod ren
-        | isDeclaredIn oldn ren = do
-          return $ renameTopLevelVarName oldn newNameStr ren True True
+        -- | isDeclaredIn oldn ren = do
+        | True = do
+           logm $ "renameInMod"
+           renameTopLevelVarName oldn newNameStr modName ren True True
      renameInMod _ren = mzero
 
 {- original
@@ -307,10 +310,43 @@ doRenaming' oldPNT@(PNT oldPN _ _) newName parent mod fun exps env
                     else runStateT (renamePN oldPN Nothing newName True parent) env 
 -}
 
-renameTopLevelVarName :: GHC.Name -> String -> GHC.RenamedSource -> Bool -> Bool -> GHC.RenamedSource
-renameTopLevelVarName oldPN newName renamed existChecking exportChecking
-  = error "undefined renameTopLevelVarName"
-{-
+renameTopLevelVarName :: GHC.Name -> String -> GHC.ModuleName -> GHC.RenamedSource
+                         -> Bool -> Bool -> RefactGhc GHC.RenamedSource
+renameTopLevelVarName oldPN newName modName renamed existChecking exportChecking = do
+     logm $ "renameTopLevelVarName"
+     newNameGhc <- mkNewGhcName newName
+     causeAmbiguity <- causeAmbiguityInExports oldPN  newNameGhc
+      -- f' contains names imported from other modules;
+      -- d' contains the top level names declared in this module;
+     (f',d') <- hsFDsFromInside renamed
+      --filter those qualified free variables in f'
+     -- let (f,d) = ((nub.map pNtoName.filter (not.isQualifiedPN)) f', (nub.map pNtoName) d')
+     let (f,d) = (map nameToString f',map nameToString d')
+     if elem newName f
+       then error ("The new name will cause ambiguous occurrence problem,"
+                   ++" please select another new name or qualify the use of ' "
+                   ++ newName ++ "' before renaming!\n")  -- Another implementation option is to add the qualifier
+                                                         -- to newName automatically.
+       else if existChecking && elem newName (d \\ [nameToString oldPN])  --only check the declared names here.
+             then error ("Name '"++newName++"'  already existed\n") --the same name has been declared in this module.
+             else if exportChecking && causeNameClashInExports oldPN modName renamed -- exps
+                    then error ("The new name will cause  conflicting exports, please select another new name!") 
+                    else if exportChecking && causeAmbiguity -- causeAmbiguityInExports oldPN  newNameGhc {- inscps -} renamed
+                          then error $"The new name will cause ambiguity in the exports of module "++ show modName ++ ", please select another name!"   
+                          else do  -- get all of those declared names visible to oldPN at where oldPN is used.
+
+                                 isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName
+                                 ds<-hsVisibleNames oldPN renamed
+                                 -- '\\[pNtoName oldPN]' handles the case in which the new name is same as the old name   
+                                 if existChecking && elem newName ((nub (ds `union` f)) \\[nameToString oldPN])
+                                   then error ("Name '"++newName++"'  already existed, or rename '"
+                                                ++nameToString oldPN++ "' to '"++newName++
+                                                "' will change the program's semantics!\n")
+                                   else if exportChecking && isInScopeUnqual -- isInScopeAndUnqualifiedGhc newName
+                                          then renamePN oldPN newNameGhc True renamed
+                                          else renamePN oldPN newNameGhc True renamed
+
+{- original
 renameTopLevelVarName oldPNT@(PNT oldPN _ _) newName modName inscps exps mod existChecking exportChecking
   =do -- f' contains names imported from other modules;
       -- d' contains the top level names declared in this module;
@@ -390,10 +426,22 @@ renameInClientMod pnt@(PNT oldPN _ _) newName (m, fileName)
                  else do renamePN oldPN Nothing newName True mod
 
 ---------------------------------------------
+-}
+
+causeAmbiguityInExports :: GHC.Name -> GHC.Name -> RefactGhc Bool
+causeAmbiguityInExports pn newName {- inscps -}  = do
+    parsed <- getRefactParsed
+    isInScopeUnqual <- isInScopeAndUnqualifiedGhc $ nameToString pn
+    let usedUnqual = usedWithoutQualR newName parsed
+    return (isInScopeUnqual && usedUnqual)
+
+{- original
 causeAmbiguityInExports pn  newName inscps mod
   = isInScopeAndUnqualified (pNtoName pn) inscps &&
     usedWithoutQual newName (hsModExports mod)
+-}
 
+{-
 siblingFieldNames (PNT pn (FieldOf con typeInfo) loc)
   = let cons=constructors typeInfo
         orig1 = pNtoLoc pn
