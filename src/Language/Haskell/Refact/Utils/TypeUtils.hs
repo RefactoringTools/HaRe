@@ -3966,6 +3966,10 @@ rmQualifier pns t
 -- AST.
 -- TODO: the syntax phrase is required to be GHC.Located, not sure how
 -- to specify this without breaking the everywhereMStaged call
+
+-- NOTE: TODO: this function is split into renamePN and renamePNworker
+-- because the worker needs a closely enclosing SrcSpan, which is not
+-- the case for RenamedSource. There must be a better way.
 renamePN::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
    ->GHC.Name             -- ^ The new name, including possible qualifier
@@ -3976,10 +3980,15 @@ renamePN oldPN newName updateTokens t = do
   -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
   -- logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
-  let isRenamed = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t
+  let isRenamed = somethingStaged SYB.Renamer Nothing
+                   (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t
+
+
   if isRenamed == (Just True)
     then
-      everywhereMStaged SYB.Renamer (SYB.mkM renameGroup `SYB.extM` renameName `SYB.extM` renameVar) t
+      everywhereMStaged SYB.Renamer
+                 (SYB.mkM renameGroup `SYB.extM` renameName
+                 `SYB.extM` renameVar `SYB.extM` renameTyVar) t
     else
       renamePNworker oldPN newName updateTokens t
   where
@@ -4004,6 +4013,10 @@ renamePN oldPN newName updateTokens t = do
     renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
     renameVar var@(GHC.L _l (GHC.HsVar _n)) = renamePNworker oldPN newName updateTokens var
     renameVar x = return x
+
+    renameTyVar :: (GHC.Located (GHC.HsType GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsType GHC.Name))
+    renameTyVar var@(GHC.L _l (GHC.HsTyVar _n)) = renamePNworker oldPN newName updateTokens var
+    renameTyVar x = return x
 
 -- ---------------------------------------------------------------------
 
