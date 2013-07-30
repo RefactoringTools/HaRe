@@ -102,13 +102,14 @@ comp fileName newName (row,col) = do
              then error ("The 'main' function defined in a 'Main' module should not be renamed!")
              else do
                logm $ "Renaming.comp: not main module"
-               (refactoredMod@((_fp,_),(_toks',_renamed')),_) <- applyRefac (doRenaming pn rdrNameStr newName modName) (RSFile fileName)
-               -- if isExported n renamed  --no matter whether this pn is used or not.
-               if False -- TODO: reinstate prior line
+               newNameGhc <- mkNewGhcName newName
+               (refactoredMod@((_fp,_),(_toks',_renamed')),_) <- applyRefac (doRenaming pn rdrNameStr newName newNameGhc modName) (RSFile fileName)
+               if isExported n renamed  --no matter whether this pn is used or not.
+               -- if False -- TODO: reinstate prior line
                    then do clients <- clientModsAndFiles modName
                            logm ("Renaming: clients=" ++ (showGhc clients)) -- ++AZ++ debug
-                           refactoredClients <- mapM (renameInClientMod modName newName) clients 
-                           return $ refactoredMod:refactoredClients
+                           refactoredClients <- mapM (renameInClientMod n newName newNameGhc) clients 
+                           return $ refactoredMod:(concat refactoredClients)
                    else  return [refactoredMod]
         Nothing -> error "Invalid cursor position!"
 
@@ -152,7 +153,7 @@ rename args
 
 -- |Actually do the renaming, split into the various things that can
 -- be renamed.
-doRenaming :: GHC.Located GHC.Name -> String -> String -> GHC.ModuleName -> RefactGhc ()
+doRenaming :: GHC.Located GHC.Name -> String -> String -> GHC.Name -> GHC.ModuleName -> RefactGhc ()
 -- doRenaming pn@(GHC.L _ n) rdrNameStr newNameStr = do
 --   logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ (showGhc (pn,rdrNameStr,newNameStr))
 --   error "fubar"
@@ -210,7 +211,7 @@ doRenaming oldPNT@(PNT _ (FieldOf con typeInfo) _) newName modName mod inscps ex
 
 
 --------Rename a value variable name--------------------------------
-doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr modName = do
+doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
   logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ (showGhc (pn,rdrNameStr,newNameStr))
   renamed <- getRefactRenamed
   {-
@@ -234,7 +235,7 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr modName = do
         -- | isDeclaredIn oldn ren = do
         | True = do
            logm $ "renameInMod"
-           renameTopLevelVarName oldn newNameStr modName ren True True
+           renameTopLevelVarName oldn newNameStr newNameGhc modName ren True True
      renameInMod _ren = mzero
 
 {- original
@@ -310,11 +311,10 @@ doRenaming' oldPNT@(PNT oldPN _ _) newName parent mod fun exps env
                     else runStateT (renamePN oldPN Nothing newName True parent) env 
 -}
 
-renameTopLevelVarName :: GHC.Name -> String -> GHC.ModuleName -> GHC.RenamedSource
+renameTopLevelVarName :: GHC.Name -> String -> GHC.Name -> GHC.ModuleName -> GHC.RenamedSource
                          -> Bool -> Bool -> RefactGhc GHC.RenamedSource
-renameTopLevelVarName oldPN newName modName renamed existChecking exportChecking = do
+renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exportChecking = do
      logm $ "renameTopLevelVarName"
-     newNameGhc <- mkNewGhcName newName
      causeAmbiguity <- causeAmbiguityInExports oldPN  newNameGhc
       -- f' contains names imported from other modules;
       -- d' contains the top level names declared in this module;
@@ -391,9 +391,24 @@ renameLocalVarName oldPN newName t
                   else renamePN oldPN Nothing newName True t
 -}
 
-renameInClientMod = error $ "undefined renameInClientMod"
+renameInClientMod :: GHC.Name -> String -> GHC.Name -> GHC.ModSummary
+ -> RefactGhc [ApplyRefacResult]
+renameInClientMod oldPN newName newNameGhc modSummary = do
+      isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName
+      -- if  qualifier == []  --this name is not imported, but it maybe used in the import list
+      if isInScopeUnqual
+       then
+        -- do (mod', ((ts',m),f))<-runStateT (renamePN oldPN Nothing newName True mod) ((ts,unmodified), fileName)
+        do (refactoredMod,_) <- applyRefac (refactRename oldPN newNameGhc) RSAlreadyLoaded
+           return [refactoredMod]
+       else
+           return []
+  where
+     refactRename old new = do
+       renamed <- getRefactRenamed
+       renamePN old new True renamed
 
-{-
+{- original
 renameInClientMod pnt@(PNT oldPN _ _) newName (m, fileName)
   =do (inscps, exps ,mod ,ts) <-parseSourceFile fileName
       let qualifier= hsQualifier pnt inscps

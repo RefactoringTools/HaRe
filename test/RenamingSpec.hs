@@ -30,11 +30,27 @@ spec = do
      r <- rename defaultTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
      -- rename logTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
 
-     r `shouldBe` ["./test/testdata/Renaming/D1.hs"]
+     r `shouldBe` [ "./test/testdata/Renaming/D1.hs"
+                  , "./test/testdata/Renaming/B1.hs"
+                  , "./test/testdata/Renaming/C1.hs"
+                  , "./test/testdata/Renaming/A1.hs"
+                  ]
 
-     diff <- compareFiles "./test/testdata/Renaming/D1.hs.expected"
-                          "./test/testdata/Renaming/D1.hs.refactored"
-     diff `shouldBe` []
+     diffD <- compareFiles "./test/testdata/Renaming/D1.hs.expected"
+                           "./test/testdata/Renaming/D1.hs.refactored"
+     diffD `shouldBe` []
+
+     diffC <- compareFiles "./test/testdata/Renaming/C1.hs.expected"
+                           "./test/testdata/Renaming/C1.hs.refactored"
+     diffC `shouldBe` []
+
+     diffB <- compareFiles "./test/testdata/Renaming/B1.hs.expected"
+                           "./test/testdata/Renaming/B1.hs.refactored"
+     diffB `shouldBe` []
+
+     diffA <- compareFiles "./test/testdata/Renaming/A1.hs.expected"
+                           "./test/testdata/Renaming/A1.hs.refactored"
+     diffA `shouldBe` []
 
     -- ---------------------------------
 

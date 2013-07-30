@@ -1375,8 +1375,13 @@ isPatName pn
 -- |Return True if a PName is a qualified PName.
 --  AZ:NOTE: this tests the use instance, the underlying name may be qualified.
 --           e.g. used name is zip, GHC.List.zip
+--     NOTE2: not sure if this gives a meaningful result for a GHC.Name
 isQualifiedPN :: GHC.Name -> RefactGhc Bool
 isQualifiedPN name = return $ GHC.isQual $ GHC.nameRdrName name
+
+isQualifiedPN' :: GHC.Name -> Bool
+isQualifiedPN' name = GHC.isQual $ GHC.nameRdrName name
+
 {-
   = case (GHC.nameModule_maybe name) of
       Just _ -> True
