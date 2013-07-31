@@ -1,4 +1,4 @@
-module D3 where
+module Renaming.D3 where
 
 {-Rename class name 'SameOrNot' to 'Same'.
   This refactoring affects module `D3', 'B3' and 'C3' -}
