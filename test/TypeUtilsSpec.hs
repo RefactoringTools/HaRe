@@ -150,7 +150,7 @@ spec = do
       let Just (res@(GHC.L l n)) = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn2.hs") (14,1) renamed
       showGhc n `shouldBe` "Demote.WhereIn2.sq"
       -- Note: loc does not line up due to multiple matches in FunBind
-      showGhc l `shouldBe` "test/testdata/Demote/WhereIn2.hs:13:1-2" 
+      showGhc l `shouldBe` "test/testdata/Demote/WhereIn2.hs:13:1-2"
       getLocatedStart res `shouldBe` (13,1)
 
   -- -------------------------------------------------------------------
@@ -166,7 +166,7 @@ spec = do
       -- Map.insertWith :: Ord k => (a -> a -> a) -> k -> a -> Map k a -> Map k a
       let res'' = foldl' (\m (k,a) -> Map.insertWith (++) k a m) Map.empty res'
 
-      (sort $ Map.elems res'') `shouldBe` 
+      (sort $ Map.elems res'') `shouldBe`
                  ["(test/testdata/TypeUtils/S.hs:10:12,\n test/testdata/TypeUtils/S.hs:10:8,\n n)(test/testdata/TypeUtils/S.hs:10:8,\n test/testdata/TypeUtils/S.hs:10:8,\n n)"
                  ,"(test/testdata/TypeUtils/S.hs:10:14, <no location info>, GHC.Num.+)"
                  ,"(test/testdata/TypeUtils/S.hs:10:5-6,\n test/testdata/TypeUtils/S.hs:10:5-6,\n zz)(test/testdata/TypeUtils/S.hs:8:13-14,\n test/testdata/TypeUtils/S.hs:10:5-6,\n zz)"
@@ -310,7 +310,7 @@ spec = do
       let Just (GHC.L _ n) = locToName dd1FileName (3,3) renamed
       let res = definingDeclsNames [n] renamed True False
       showGhc res `shouldBe` "[toplevel :: Integer -> Integer,DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
-    -} 
+    -}
 
     {-
     it "strips other names from typedef" $ do
@@ -642,9 +642,9 @@ spec = do
 
       -- Declared Vars
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
-                   "[(LiftToToplevel.D1.sumSquares, (6, 1)), "++ 
+                   "[(LiftToToplevel.D1.sumSquares, (6, 1)), "++
                     "(x, (6, 13)),\n "++
-                    "(xs, (6, 15)), "++ 
+                    "(xs, (6, 15)), "++
                     "(LiftToToplevel.D1.main, (13, 1))]"
 -}
 
@@ -2028,6 +2028,33 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "isExported" $ do
+    it "Returns True if a GHC.Name is exported" $ do
+      (t, toks) <- parsedFileRenamingB1
+
+      let
+        comp = do
+         renamed <- getRefactRenamed
+
+         let mn1 = locToName renamingB1FileName (11,1) renamed
+         let (Just (GHC.L _ myFringe)) = mn1
+
+         let mn2 = locToName renamingB1FileName (15,1) renamed
+         let (Just (GHC.L _ sumSquares)) = mn2
+
+         exMyFring <- isExported myFringe
+         exSumSquares <- isExported sumSquares
+
+         return (myFringe,exMyFring,sumSquares,exSumSquares)
+      ((mf,emf,ss,ess),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+
+      (showGhc mf) `shouldBe` "Renaming.B1.myFringe"
+      emf `shouldBe` True
+      (showGhc ss) `shouldBe` "Renaming.B1.sumSquares"
+      ess `shouldBe` False
+
+  -- ---------------------------------------------
+
   describe "addHiding" $ do
     it "Add a hiding entry to the imports with no existing hiding" $ do
       let
@@ -2760,6 +2787,14 @@ renamingField1FileName = GHC.mkFastString "./test/testdata/Renaming/Field1.hs"
 
 parsedFileRenamingField1 :: IO (ParseResult, [PosToken])
 parsedFileRenamingField1 = parsedFileGhc "./test/testdata/Renaming/Field1.hs"
+
+-- ----------------------------------------------------
+
+renamingB1FileName :: GHC.FastString
+renamingB1FileName = GHC.mkFastString "./test/testdata/Renaming/B1.hs"
+
+parsedFileRenamingB1 :: IO (ParseResult, [PosToken])
+parsedFileRenamingB1 = parsedFileGhc "./test/testdata/Renaming/B1.hs"
 
 -- ----------------------------------------------------
 

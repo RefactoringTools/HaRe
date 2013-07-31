@@ -254,7 +254,7 @@ removeToksForPos pos = do
 -- |Insert a GHC.SrcSpan into the tree if it is not already there
 putSrcSpan ::  GHC.SrcSpan -> RefactGhc ()
 putSrcSpan sspan = do
-  logm $ "putSrcSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) 
+  logm $ "putSrcSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan)
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
@@ -312,8 +312,10 @@ putNewSpanAndToks newSpan toks = do
 
 getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
 getTypecheckedModule = do
-  Just tm <- gets rsModule
-  return $ rsTypecheckedMod tm
+  mtm <- gets rsModule
+  case mtm of
+    Just tm -> return $ rsTypecheckedMod tm
+    Nothing -> error "HaRe: file not loaded for refactoring"
 
 getRefactStreamModified :: RefactGhc Bool
 getRefactStreamModified = do

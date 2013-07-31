@@ -1,4 +1,4 @@
-module Renaming.B1 (myFringe)where
+module Renaming.B1 (myFringe) where
 
 import Renaming.D1 hiding (sumSquares)
 
@@ -8,13 +8,13 @@ instance SameOrNot Float where
    isSame a  b = a ==b
    isNotSame a b = a /=b
 
-myFringe:: AnotherTree a -> [a]
+myFringe:: AnotherTree a -> [ a ]
 myFringe (Leaf x ) = [x]
 myFringe (Branch left right) = myFringe right
 
 sumSquares (x:xs)= x^2 + sumSquares xs
-sumSquares [] =0 
+sumSquares [] =0
 
 
-  
+
 

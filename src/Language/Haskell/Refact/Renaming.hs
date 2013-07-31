@@ -19,13 +19,14 @@ import qualified NameSet               as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import GHC.Paths ( libdir )
 import Control.Monad
 import Control.Monad.State
 import Data.Char
 import Data.Data
-import Data.Maybe
 import Data.List
+import Data.Maybe
+import Exception
+import GHC.Paths ( libdir )
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -103,9 +104,9 @@ comp fileName newName (row,col) = do
              else do
                logm $ "Renaming.comp: not main module"
                newNameGhc <- mkNewGhcName newName
-               (refactoredMod@((_fp,_),(_toks',_renamed')),_) <- applyRefac (doRenaming pn rdrNameStr newName newNameGhc modName) (RSFile fileName)
-               if isExported n renamed  --no matter whether this pn is used or not.
-               -- if False -- TODO: reinstate prior line
+               (refactoredMod,nIsExported) <- applyRefac (doRenaming pn rdrNameStr newName newNameGhc modName) RSAlreadyLoaded
+               logm $ "Renaming:nIsExported=" ++ (show nIsExported)
+               if nIsExported  --no matter whether this pn is used or not.
                    then do clients <- clientModsAndFiles modName
                            logm ("Renaming: clients=" ++ (showGhc clients)) -- ++AZ++ debug
                            refactoredClients <- mapM (renameInClientMod n newName newNameGhc) clients 
@@ -152,8 +153,8 @@ rename args
 
 
 -- |Actually do the renaming, split into the various things that can
--- be renamed.
-doRenaming :: GHC.Located GHC.Name -> String -> String -> GHC.Name -> GHC.ModuleName -> RefactGhc ()
+-- be renamed. Returns True if the name is exported
+doRenaming :: GHC.Located GHC.Name -> String -> String -> GHC.Name -> GHC.ModuleName -> RefactGhc Bool
 -- doRenaming pn@(GHC.L _ n) rdrNameStr newNameStr = do
 --   logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ (showGhc (pn,rdrNameStr,newNameStr))
 --   error "fubar"
@@ -226,7 +227,9 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
   -- somewhereMStagedBu SYB.Renamer (SYB.mkM renameInMod
   everywhereMStaged SYB.Renamer (SYB.mkM renameInMod
                                  ) renamed
-  return ()
+  logm $ "doRenaming done"
+  nIsExported <- isExported oldn
+  return nIsExported
    where
      -- 1. The name is declared in a module(top level name)
      -- renameInMod (mod::HsModuleP)
@@ -343,8 +346,16 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                                 ++nameToString oldPN++ "' to '"++newName++
                                                 "' will change the program's semantics!\n")
                                    else if exportChecking && isInScopeUnqual -- isInScopeAndUnqualifiedGhc newName
-                                          then renamePN oldPN newNameGhc True renamed
-                                          else renamePN oldPN newNameGhc True renamed
+                                          then do
+                                               renamePN oldPN newNameGhc True renamed
+                                               logm $ "renameTopLevelVarName done"
+                                               r' <- getRefactRenamed
+                                               return r'
+                                          else do
+                                               renamePN oldPN newNameGhc True renamed
+                                               logm $ "renameTopLevelVarName done"
+                                               r' <- getRefactRenamed
+                                               return r'
 
 {- original
 renameTopLevelVarName oldPNT@(PNT oldPN _ _) newName modName inscps exps mod existChecking exportChecking
@@ -394,7 +405,18 @@ renameLocalVarName oldPN newName t
 renameInClientMod :: GHC.Name -> String -> GHC.Name -> GHC.ModSummary
  -> RefactGhc [ApplyRefacResult]
 renameInClientMod oldPN newName newNameGhc modSummary = do
-      isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName
+      logm $ "renameInClientMod:(oldPN,modSummary)=" ++ (showGhc (oldPN,modSummary)) -- ++AZ++
+      getModuleDetails modSummary
+      {- ++AZ++ debug stuff -}
+      names <- ghandle handler (GHC.parseName $ nameToString oldPN)
+
+
+      nameInfo <- mapM GHC.lookupName names
+      logm $ "renameInClientMod: nameInfo=" ++ (showGhc nameInfo)
+      {- ++AZ++ debug stuff end -}
+
+      isInScopeUnqual <- isInScopeAndUnqualifiedGhc $ nameToString oldPN
+      logm $ "renameInClientMod: isInScopeAndUnqual=" ++ (show isInScopeUnqual) -- ++AZ++
       -- if  qualifier == []  --this name is not imported, but it maybe used in the import list
       if isInScopeUnqual
        then
@@ -404,6 +426,9 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
        else
            return []
   where
+     handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
+     handler _ = return []
+
      refactRename old new = do
        renamed <- getRefactRenamed
        renamePN old new True renamed

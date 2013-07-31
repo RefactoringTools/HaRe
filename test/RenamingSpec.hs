@@ -31,9 +31,9 @@ spec = do
      -- rename logTestSettings (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
 
      r `shouldBe` [ "./test/testdata/Renaming/D1.hs"
-                  , "./test/testdata/Renaming/B1.hs"
                   , "./test/testdata/Renaming/C1.hs"
                   , "./test/testdata/Renaming/A1.hs"
+                  , "./test/testdata/Renaming/B1.hs"
                   ]
 
      diffD <- compareFiles "./test/testdata/Renaming/D1.hs.expected"

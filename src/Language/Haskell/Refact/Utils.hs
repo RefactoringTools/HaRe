@@ -203,6 +203,9 @@ getModuleGhc targetFile = do
 
 -- | In the existing GHC session, put the requested TypeCheckedModule
 -- into the RefactGhc monad
+
+-- TODO: rename this function, it is not clear in a refactoring what
+-- it does
 getModuleDetails :: GHC.ModSummary -> RefactGhc ()
 getModuleDetails modSum = do
       p <- GHC.parseModule modSum

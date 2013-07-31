@@ -13,8 +13,8 @@ myFringe (Leaf x ) = [x]
 myFringe (Branch left right) = myFringe right
 
 sumSquares (x:xs)= x^2 + sumSquares xs
-sumSquares [] =0 
+sumSquares [] =0
 
 
-  
+
 

@@ -226,12 +226,14 @@ isInScopeAndUnqualifiedGhc :: String         -- ^ The identifier name.
 isInScopeAndUnqualifiedGhc n = do
   names <- ghandle handler (GHC.parseName n)
   nameInfo <- mapM GHC.lookupName names
-  let nameList = filter isId $ catMaybes nameInfo
+  let nameList = filter isAnId $ catMaybes nameInfo
   return $ nameList /= []
 
   where
-    isId (GHC.AnId _) = True
-    isId _            = False
+    isAnId (GHC.AnId _)     = True
+    isAnId (GHC.ADataCon _) = True
+    isAnId (GHC.ATyCon _)   = True
+    isAnId _                = False
 
     -- handler:: (Exception e,GHC.GhcMonad m) => e -> m [GHC.Name]
     handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
@@ -396,25 +398,13 @@ modIsExported mod
 
 -- ---------------------------------------------------------------------
 
-isExported ::GHC.Name          -- ^ The identifier
-           ->GHC.RenamedSource -- ^ The AST of the module
-           ->Bool              -- ^ The result
-isExported n renamed = error "isExported undefined"
-  -- Note: call isExplicitlyExported and ???
-
-{- ++AZ++ original
--- | Return True if the identifier is exported either implicitly or explicitly.
-isExported::PNT         -- ^ The identifier.
-           ->Exports    -- ^ The export relation.
-           ->Bool       -- ^ The result.
-isExported pnt@(PNT pn t1 _) exps
-   = if isTopLevelPNT pnt
-       then case hasModName pn of
-               Just modName  -> isJust (find (\(name, nameSpace, modName1) -> name == pNtoName pn
-                                         && modName == modName1 && hasNameSpace pnt == nameSpace) $ exportInfo exps)  
-               Nothing       -> False
-       else False
--}
+-- | Return True if an identifier is exported by the module currently
+-- being refactored.
+isExported :: GHC.Name -> RefactGhc Bool
+isExported n = do
+  typechecked <- getTypecheckedModule
+  let modInfo = GHC.tm_checked_module_info typechecked
+  return $ GHC.modInfoIsExportedName modInfo n
 
 -- ---------------------------------------------------------------------
 
@@ -4038,8 +4028,7 @@ renamePNworker::(SYB.Data t)
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
 renamePNworker oldPN newName updateTokens t = do
-  -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
-  logm $ "renamePNworker: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
+  -- logm $ "renamePNworker: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
   everywhereMStaged SYB.Renamer (SYB.mkM rename
                                `SYB.extM` renameVar
@@ -4062,7 +4051,7 @@ renamePNworker oldPN newName updateTokens t = do
     renameVar var@(GHC.L l (GHC.HsVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = getLocatedStart var
-          logm $ "renamePN:renameVar at :" ++ (show (row,col))
+          -- logm $ "renamePN:renameVar at :" ++ (show (row,col))
           (new,_sspan') <- worker (row,col) l n
           return (GHC.L l (GHC.HsVar new))
     renameVar x = return x
@@ -4072,7 +4061,7 @@ renamePNworker oldPN newName updateTokens t = do
     renameTyVar var@(GHC.L l (GHC.HsTyVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = getLocatedStart var
-          logm $ "renamePN:renameTyVar at :" ++ (show (row,col))
+          -- logm $ "renamePN:renameTyVar at :" ++ (show (row,col))
           (new,_sspan') <- worker (row,col) l n
           return (GHC.L l (GHC.HsTyVar new))
     renameTyVar x = return x
