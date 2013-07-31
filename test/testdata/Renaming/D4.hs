@@ -1,4 +1,4 @@
-module D4 where
+module Renaming.D4 where
 
 {-Rename instance name 'isSame'' to 'sameOrNot'.
   This refactoring affects module `D4', 'B4' and 'C4' -}

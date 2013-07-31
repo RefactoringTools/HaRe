@@ -54,7 +54,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in D2 B2 C2 A2 6 6" $ do
+    it "Renames in D2 B2 C2 A2 6 24" $ do
      r <- rename defaultTestSettings (Just "./test/testdata/Renaming/A2.hs") "./test/testdata/Renaming/D2.hs" "SubTree" (6,24)
      -- rename logTestSettings (Just "./test/testdata/Renaming/A2.hs") "./test/testdata/Renaming/D2.hs" "SubTree" (6,24)
 
@@ -82,7 +82,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in D3 B3 C3 A3 6 6" $ do
+    it "Renames in D3 B3 C3 A3 12 7" $ do
      --     (["D3.hs","B3.hs","C3.hs","A3.hs"],["Same","12","7"]),
      r <- rename defaultTestSettings (Just "./test/testdata/Renaming/A3.hs") "./test/testdata/Renaming/D3.hs" "Same" (12,7)
      -- rename logTestSettings (Just "./test/testdata/Renaming/A3.hs") "./test/testdata/Renaming/D3.hs" "Same" (12,7)
@@ -108,6 +108,35 @@ spec = do
      -- diffA <- compareFiles "./test/testdata/Renaming/A3.hs.expected"
      --                       "./test/testdata/Renaming/A3.hs.refactored"
      -- diffA `shouldBe` []
+
+    -- ---------------------------------
+
+    it "Renames in D4 B4 C4 A4 13 4" $ do
+     --     (["D4.hs","B4.hs","C4.hs","A4.hs"],["isSameOrNot","13","4"]),
+     r <- rename defaultTestSettings (Just "./test/testdata/Renaming/A4.hs") "./test/testdata/Renaming/D4.hs" "isSameOrNot" (13,4)
+     -- rename logTestSettings (Just "./test/testdata/Renaming/A4.hs") "./test/testdata/Renaming/D4.hs" "isSameOrNot" (13,4)
+
+     r `shouldBe` [ "./test/testdata/Renaming/D4.hs"
+                  , "./test/testdata/Renaming/C4.hs"
+                  , "./test/testdata/Renaming/A4.hs"
+                  , "./test/testdata/Renaming/B4.hs"
+                  ]
+
+     diffD <- compareFiles "./test/testdata/Renaming/D4.hs.expected"
+                           "./test/testdata/Renaming/D4.hs.refactored"
+     diffD `shouldBe` []
+
+     diffC <- compareFiles "./test/testdata/Renaming/C4.hs.expected"
+                           "./test/testdata/Renaming/C4.hs.refactored"
+     diffC `shouldBe` []
+
+     diffB <- compareFiles "./test/testdata/Renaming/B4.hs.expected"
+                           "./test/testdata/Renaming/B4.hs.refactored"
+     diffB `shouldBe` []
+
+     diffA <- compareFiles "./test/testdata/Renaming/A4.hs.expected"
+                           "./test/testdata/Renaming/A4.hs.refactored"
+     diffA `shouldBe` []
 
     -- ---------------------------------
 
