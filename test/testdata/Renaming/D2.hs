@@ -1,4 +1,4 @@
-module D2 where
+module Renaming.D2 where
 
 {-Rename type constructor `Branch` to `SubTree`.
   This refactoring affects module `D2', 'B2' and 'C2' -}

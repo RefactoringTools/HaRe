@@ -535,7 +535,7 @@ isValidNewName oldName rdrNameStr newName = res
 
    oldName' = rdrNameStr
    matchNamesOk
-     | GHC.isValName oldName || GHC.isVarName oldName
+     | {- GHC.isValName oldName || -} GHC.isVarName oldName
               = if isVarId oldName' && not (isVarId newName)
                    then error "The new name should be an identifier!"
                    else if isOperator oldName' && not (isOperator newName)
@@ -544,7 +544,7 @@ isValidNewName oldName rdrNameStr newName = res
                                    (isOperator oldName' && isOperator newName)
                                   then True
                                   -- else error "Invalid new name!"
-                                  else error $ "Invalid new name!" ++ (show (oldName',isVarId oldName',isVarId newName,isOperator oldName',isOperator newName))
+                                  else error $ "Invalid new name!" ++ (show (oldName',newName,isVarId oldName',isVarId newName,isOperator oldName',isOperator newName))
      | otherwise = True
 
    res = tyconOk && dataConOk {- && fieldOk && instanceOk -} &&
