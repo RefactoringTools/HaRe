@@ -97,11 +97,11 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Locations
     -- ,toRelativeLocs, rmLocs
     -- ** Default values
-   ,defaultPN,defaultPNT,defaultName {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
+   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
 
 
     -- ** Identifiers, expressions, patterns and declarations
-    ,pNTtoPN -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
+    {- ,pNTtoPN-} -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
     ,ghcToPN,lghcToPN, expToName
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
@@ -125,7 +125,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
 
     -- * Debug stuff
-    , allPNT
+    -- , allPNT
     --  , allPNTLens
     , newNameTok
     , stripLeadingSpaces
@@ -270,13 +270,12 @@ showPNwithLoc pn@(GHC.L l _n)
 
 -- ---------------------------------------------------------------------
 
+{- ++AZ++ getting rid of PNT
 -- | Default identifier in the PNT format.
 -- defaultPNT:: GHC.GenLocated GHC.SrcSpan GHC.RdrName   -- GHC.RdrName
 defaultPNT:: PNT
--- defaultPNT = PNT defaultPN Value (N Nothing) :: PNT
--- defaultPNT = GHC.mkRdrUnqual "nothing" :: PNT
--- defaultPNT = PNT (mkRdrName "nothing") (N Nothing) :: PNT
 defaultPNT = PNT (GHC.L GHC.noSrcSpan (mkRdrName "nothing"))
+-}
 
 defaultPN :: PName
 defaultPN = PN (mkRdrName "nothing")
@@ -2362,6 +2361,7 @@ locToPNT  fileName (row,col) t
 -}
 ------------------------------------------------------------------------------------
 
+{- ++AZ++ getting rid of PNT
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
 
@@ -2387,7 +2387,7 @@ allPNT  _fileName (row,col) t
         workerExpr (GHC.L l (GHC.HsVar name) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
           | True = [(PNT (GHC.L l name))]
         workerExpr _ = []
-
+-}
 
 --------------------------------------------------------------------------------
 
@@ -4328,10 +4328,13 @@ locToExp beginPos endPos t = res
         (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
 
 --------------------------------------------------------------------------------
+
+{- ++AZ++ getting rid of PNT
 -- | From PNT to PName.
 -- NOTE: the PNT holds the GHC.Name value, it must be converted to a GHC.RdrName
 pNTtoPN :: PNT -> PName
 pNTtoPN (PNT (GHC.L _ n)) = PN n
+-}
 
 ghcToPN :: GHC.RdrName -> PName
 ghcToPN rdr = PN rdr

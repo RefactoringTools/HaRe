@@ -98,8 +98,7 @@ instance Show PName where
 -- | The PNT is the unique name, after GHC renaming. It corresponds to
 -- GHC.Name data PNT = PNT GHC.Name deriving (Data,Typeable) -- Note:
 -- GHC.Name has SrcLoc in it already
--- ++AZ++ : will run with Located RdrName for now, will see when we need the Unique name
-data PNT = PNT (GHC.Located (GHC.RdrName)) deriving (Data,Typeable,Eq)
+
 
 {- ++AZ++ only needed for some tests
 instance Show PNT where

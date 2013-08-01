@@ -47,11 +47,12 @@ main = do
 spec :: Spec
 spec = do
 
+  {-
   describe "pNTtoPN" $ do
     it "Converts a PNT (located ) to a PN (unlocated)" $ do
       let pnt = PNT (GHC.L GHC.noSrcSpan (mkRdrName "aname"))
       (pNTtoPN pnt) == (PN (mkRdrName "aname")) `shouldBe` True
-
+  -}
   -- -------------------------------------------------------------------
 {-
   describe "locToPNT" $ do
@@ -87,8 +88,8 @@ spec = do
       (showGhc n) `shouldBe` "nothing"
 -}
 
-    it "lists all PNTs" $ do
-      pending
+    -- it "lists all PNTs" $ do
+    --   pending
 {-
       -- modInfo@((_, _, mod), toks) <- parsedFileBGhc
       modInfo@(t, toks) <- parsedFileSGhc
@@ -101,7 +102,7 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "findAllNameOccurences" $ do
-    it "finds all occurrences of the given name in a syntax phrase" $ do
+   it "finds all occurrences of the given name in a syntax phrase" $ do
       modInfo@(t, toks) <- parsedFileSGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
