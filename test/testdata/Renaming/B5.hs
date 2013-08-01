@@ -1,8 +1,8 @@
-module B5 (myFringe)where
+module Renaming.B5 (myFringe)where
 
-import D5 hiding (sumSquares)
+import Renaming.D5 hiding (sumSquares)
 
-import qualified D5 
+import qualified Renaming.D5 
 
 instance SameOrNot Float where
    isSame a  b = a ==b

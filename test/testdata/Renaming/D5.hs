@@ -1,4 +1,4 @@
-module D5 where
+module Renaming.D5 where
 
 {-Rename top level identifier 'sumSquares' to 'sum'.
   This refactoring affects module `D5', 'B5' , 'C5' and 'A5' -}

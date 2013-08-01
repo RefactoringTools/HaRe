@@ -1,10 +1,10 @@
-module A5 where
+module Renaming.A5 where
 
-import B5 
-import C5 
-import D5
+import Renaming.B5 
+import Renaming.C5 
+import Renaming.D5
 
 main :: Tree Int ->Bool
 main t = isSame (sumSquares (fringe t))
-               (sumSquares (B5.myFringe t)+sumSquares (C5.myFringe t))
+               (sumSquares (Renaming.B5.myFringe t)+sumSquares (Renaming.C5.myFringe t))
 
