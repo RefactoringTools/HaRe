@@ -53,8 +53,8 @@ spec = do
       (pNTtoPN pnt) == (PN (mkRdrName "aname")) `shouldBe` True
 
   -- -------------------------------------------------------------------
-
-  describe "locToPnt" $ do
+{-
+  describe "locToPNT" $ do
     it "returns a pnt for a given source location, if it falls anywhere in an identifier" $ do
       -- ((_, _, parsed), toks) <- parsedFileBGhc
       (t, toks) <- parsedFileBGhc
@@ -85,7 +85,7 @@ spec = do
       getLocatedStart res `shouldBe` (-1,-1)
       -- GHC.showRdrName n `shouldBe` "nothing"
       (showGhc n) `shouldBe` "nothing"
-
+-}
 
     it "lists all PNTs" $ do
       pending
@@ -2141,7 +2141,8 @@ spec = do
           parsed <- getRefactParsed
 
           let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) renamed
-          let PNT np@(GHC.L _ namep) = locToPNT (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
+          -- let PNT np@(GHC.L _ namep) = locToPNT (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
+          let Just np@(GHC.L _ namep) = locToRdrName (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
           res <- usedWithoutQual name renamed
           return (res,namep,name,n)
       -- ((r,np,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }

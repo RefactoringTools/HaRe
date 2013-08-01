@@ -82,14 +82,16 @@ comp fileName newName (row,col) = do
     renamed <- getRefactRenamed
     parsed  <- getRefactParsed
     logm $ "comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+    -- logm $ "comp:parsed=" ++ (SYB.showData SYB.Parser 0 parsed) -- ++AZ++
 
     modu <- getModule
     let (Just (modName,_)) = getModuleName parsed
     let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
+    logm $ "Renamed.comp:maybePn=" ++ (showGhc maybePn) -- ++AZ++
     case maybePn of
         Just pn@(GHC.L _ n) -> do
            logm $ "Renaming:(n,modu)=" ++ (showGhc (n,modu))
-           let Just (GHC.L _ rdrName) = locToRdrName (GHC.mkFastString fileName) (row, col) parsed
+           let (GHC.L _ rdrName) = gfromJust "Renaming.comp" $ locToRdrName (GHC.mkFastString fileName) (row, col) parsed
            let rdrNameStr = GHC.occNameString $ GHC.rdrNameOcc rdrName
            logm $ "Renaming: rdrName=" ++ (SYB.showData SYB.Parser 0 rdrName)
            logm $ "Renaming: occname rdrName=" ++ (show $ GHC.occNameString $ GHC.rdrNameOcc rdrName)
@@ -594,3 +596,4 @@ divideDecls ds pnt
          else (ds,[],[])
 
 -}
+

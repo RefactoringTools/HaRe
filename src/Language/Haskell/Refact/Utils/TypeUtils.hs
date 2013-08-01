@@ -75,7 +75,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , getModule
 
     -- ** Locations
-    ,defineLoc, useLoc,locToPNT {-,locToPN -},locToExp -- , getStartEndLoc
+    ,defineLoc, useLoc {-, locToPNT,locToPN -},locToExp -- , getStartEndLoc
     ,locToName, locToRdrName
     ,getName
 
@@ -2322,6 +2322,7 @@ instance UsedByRhs HsModuleP where
 
 --------------------------------------------------------------------------------
 
+{-
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
 -- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
 
@@ -2358,7 +2359,7 @@ locToPNT  fileName (row,col) t
               (GHC.srcSpanStartLine ss == row) &&
               (col >= (GHC.srcSpanStartCol ss)) &&
               (col <= (GHC.srcSpanEndCol ss))
-
+-}
 ------------------------------------------------------------------------------------
 
 -- |Find the identifier(in PNT format) whose start position is (row,col) in the
@@ -2393,42 +2394,6 @@ allPNT  _fileName (row,col) t
 -- |Find the identifier(in GHC.Name format) whose start position is
 -- (row,col) in the file specified by the fileName, and returns
 -- `Nothing` if such an identifier does not exist.
-{-
-locToName::(SYB.Data t)=>GHC.FastString   -- ^ The file name
-                    ->SimpPos          -- ^ The row and column number
-                    ->t                -- ^ The syntax phrase
-                    -> Maybe (GHC.Located GHC.Name)  -- ^ The result
-locToName fileName (row,col) t
-  = res
-       where
-        res = somethingStaged SYB.Renamer Nothing
-            (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
-
-        worker (pnt :: (GHC.Located GHC.Name))
-          | inScope pnt = Just pnt
-        worker _ = Nothing
-
-        workerBind pnt@(GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
-          | inScope pnt = Just (GHC.L l name)
-        workerBind _ = Nothing
-
-        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-          | inScope pnt = Just (GHC.L l name)
-        workerExpr _ = Nothing
-
-        inScope :: GHC.Located e -> Bool
-        inScope (GHC.L l _) =
-          case l of
-            (GHC.UnhelpfulSpan _) -> False
-            (GHC.RealSrcSpan ss)  ->
-              (GHC.srcSpanFile ss == fileName) &&
-              (GHC.srcSpanStartLine ss == row) &&
-              (col >= (GHC.srcSpanStartCol ss)) &&
-              (col <= (GHC.srcSpanEndCol ss))
--}
-
--- |Same as locToName, but cater for FunBind MatchGroups where only
--- the first name is retained in the AST
 locToName::(SYB.Data t)
                     =>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
@@ -2436,8 +2401,9 @@ locToName::(SYB.Data t)
                     -> Maybe (GHC.Located GHC.Name)  -- ^ The result
 locToName fileName (row,col) t = locToName' SYB.Renamer fileName (row,col) t
 
--- |Same as locToName, but cater for FunBind MatchGroups where only
--- the first name is retained in the AST
+-- |Find the identifier(in GHC.RdrName format) whose start position is
+-- (row,col) in the file specified by the fileName, and returns
+-- `Nothing` if such an identifier does not exist.
 locToRdrName::(SYB.Data t)
                     =>GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
@@ -2446,8 +2412,9 @@ locToRdrName::(SYB.Data t)
 locToRdrName fileName (row,col) t = locToName' SYB.Parser fileName (row,col) t
 
 
--- |Same as locToName, but cater for FunBind MatchGroups where only
--- the first name is retained in the AST
+-- |Worker for both locToName and locToRdrName.
+-- NOTE: provides for FunBind MatchGroups where only the first name is
+-- retained in the AST
 locToName'::(SYB.Data t, SYB.Data a, Eq a,GHC.Outputable a)
                     =>SYB.Stage
                     ->GHC.FastString   -- ^ The file name
