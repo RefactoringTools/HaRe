@@ -166,6 +166,8 @@ import qualified Data.Generics.Zipper as Z
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
+import Debug.Trace
+debug = flip trace
 
 -- ---------------------------------------------------------------------
 -- |Process the inscope relation returned from the parsing and module
@@ -2450,11 +2452,14 @@ locToName' stage fileName (row,col) t =
         -- fail, it needs to be deduced from a FunBind having more
         -- than one match. The Located Match includes the original
         -- variable name in the location, but not in the match contents
-        workerFunBind ((GHC.L _ (GHC.FunBind pnt _ (GHC.MatchGroup matches _) _ _ _)) :: (GHC.LHsBindLR a a))
+        workerFunBind ((GHC.FunBind pnt _ (GHC.MatchGroup matches _) _ _ _) :: (GHC.HsBindLR a a))
           | nonEmptyList match = Just pnt
           where
+            -- match = error $ "locToName':matches=" ++ (showGhc $ map (\(GHC.L l _) -> l) matches)
             match = filter inScope (tail matches)
+            -- match = filter inScope (matches)
         workerFunBind _ = Nothing
+
 
         worker (pnt :: (GHC.Located a))
           | inScope pnt = Just pnt
@@ -2478,7 +2483,6 @@ locToName' stage fileName (row,col) t =
               (GHC.srcSpanEndLine ss   >= row) &&
               (col >= (GHC.srcSpanStartCol ss)) &&
               (col <= (GHC.srcSpanEndCol   ss))
-
 
 
 --------------------------------------------------------------------------------

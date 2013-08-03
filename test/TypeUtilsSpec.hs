@@ -156,6 +156,27 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "locToRdrName" $ do
+    it "returns a GHC.RdrName for a given source location, if it falls anywhere in an identifier" $ do
+      (t, _toks) <- parsedFileRenamingD5
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let Just (res@(GHC.L l n)) = locToRdrName renamingD5FileName (20,1) parsed
+      showGhc l `shouldBe` "test/testdata/Renaming/D5.hs:20:1-10"
+      getLocatedStart res `shouldBe` (20,1)
+      showGhc n `shouldBe` "sumSquares"
+
+    it "returns a GHC.RdrName for a source location, in a MatchGroup" $ do
+      (t, _toks) <- parsedFileLocToName
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let Just (res@(GHC.L l n)) = locToRdrName locToNameFileName (24,2) parsed
+      showGhc n `shouldBe` "sumSquares"
+      getLocatedStart res `shouldBe` (20,1) -- Because second match discards name
+      showGhc l `shouldBe` "test/testdata/LocToName.hs:20:1-10"
+
+  -- -------------------------------------------------------------------
+
   describe "allNames" $ do
     it "lists all Names" $ do
       (t, _toks) <- parsedFileSGhc
@@ -2632,6 +2653,18 @@ renamingField3FileName = GHC.mkFastString "./test/testdata/Renaming/Field3.hs"
 parsedFileRenamingField3 :: IO (ParseResult,[PosToken])
 parsedFileRenamingField3 = parsedFileGhc "./test/testdata/Renaming/Field3.hs"
 
+
+renamingD5FileName :: GHC.FastString
+renamingD5FileName = GHC.mkFastString "./test/testdata/Renaming/D5.hs"
+
+parsedFileRenamingD5 :: IO (ParseResult,[PosToken])
+parsedFileRenamingD5 = parsedFileGhc "./test/testdata/Renaming/D5.hs"
+
+locToNameFileName :: GHC.FastString
+locToNameFileName = GHC.mkFastString "./test/testdata/LocToName.hs"
+
+parsedFileLocToName :: IO (ParseResult,[PosToken])
+parsedFileLocToName = parsedFileGhc "./test/testdata/LocToName.hs"
 
 
 bFileName :: GHC.FastString
