@@ -1,9 +1,9 @@
-module D5 where
+module Renaming.D5 where
 
 {-Rename top level identifier 'sumSquares' to 'sum'.
   This refactoring affects module `D5', 'B5' , 'C5' and 'A5' -}
-   
-data Tree a = Leaf a | Branch (Tree a) (Tree a) 
+
+data Tree a = Leaf a | Branch (Tree a) (Tree a)
 
 fringe :: Tree a -> [a]
 fringe (Leaf x ) = [x]
@@ -18,7 +18,7 @@ instance SameOrNot Int where
    isNotSame a b = a /= b
 
 sum (x:xs) = sq x + D5.sum xs
-    where sq x = x ^pow 
+    where sq x = x ^pow
           pow = 2
 
-sum [] = 0
+sum        [ ] = 0

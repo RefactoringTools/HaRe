@@ -8,6 +8,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -}
                      SimpPos,unmodified,modified
                      , simpPos0
+                     , nullSrcSpan
                      -- , emptyList, nonEmptyList
                      , showToks
                      -- , tokenLen
@@ -161,6 +162,11 @@ extractComments ((startPosl, startPosr), endPos) toks
 
 ------------------------------------------------
 -}
+
+nullSrcSpan :: GHC.SrcSpan
+nullSrcSpan = GHC.UnhelpfulSpan $ GHC.mkFastString "HaRe nullSrcSpan"
+
+------------------------------------------------
 
 --Some functions for checking whether a token is of a specific type of token.
 

@@ -84,6 +84,9 @@ comp fileName newName (row,col) = do
     logm $ "comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
     -- logm $ "comp:parsed=" ++ (SYB.showData SYB.Parser 0 parsed) -- ++AZ++
 
+    let (GHC.L _ rdrName') = gfromJust "Renaming.comp" $ locToRdrName (GHC.mkFastString fileName) (row, col) parsed
+    logm $ "Renaming.comp:rdrName'=" ++ (showGhc rdrName')
+
     modu <- getModule
     let (Just (modName,_)) = getModuleName parsed
     let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
@@ -105,7 +108,7 @@ comp fileName newName (row,col) = do
              then error ("The 'main' function defined in a 'Main' module should not be renamed!")
              else do
                logm $ "Renaming.comp: not main module"
-               newNameGhc <- mkNewGhcName newName
+               newNameGhc <- mkNewGhcName (Just modu) newName
                (refactoredMod,nIsExported) <- applyRefac (doRenaming pn rdrNameStr newName newNameGhc modName) RSAlreadyLoaded
                logm $ "Renaming:nIsExported=" ++ (show nIsExported)
                if nIsExported  --no matter whether this pn is used or not.
@@ -349,12 +352,14 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                                 "' will change the program's semantics!\n")
                                    else if exportChecking && isInScopeUnqual -- isInScopeAndUnqualifiedGhc newName
                                           then do
-                                               renamePN oldPN newNameGhc True renamed
-                                               logm $ "renameTopLevelVarName done"
+                                               logm $ "renameTopLevelVarName start..:should have qualified"
+                                               renamePN oldPN newNameGhc True True renamed
+                                               logm $ "renameTopLevelVarName done:should have qualified"
                                                r' <- getRefactRenamed
                                                return r'
                                           else do
-                                               renamePN oldPN newNameGhc True renamed
+                                               logm $ "renameTopLevelVarName start.."
+                                               renamePN oldPN newNameGhc True False renamed
                                                logm $ "renameTopLevelVarName done"
                                                r' <- getRefactRenamed
                                                return r'
@@ -433,7 +438,7 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
 
      refactRename old new = do
        renamed <- getRefactRenamed
-       renamePN old new True renamed
+       renamePN old new True False renamed
 
 {- original
 renameInClientMod pnt@(PNT oldPN _ _) newName (m, fileName)

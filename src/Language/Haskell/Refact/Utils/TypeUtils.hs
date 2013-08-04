@@ -298,17 +298,18 @@ mkRdrName :: String -> GHC.RdrName
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
 -- | Make a new GHC.Name, using the Unique Int sequence stored in the
--- RefactState
-mkNewGhcName :: String -> RefactGhc GHC.Name
-mkNewGhcName name = do
+-- RefactState.
+mkNewGhcName :: Maybe GHC.Module -> String -> RefactGhc GHC.Name
+mkNewGhcName maybeMod name = do
   s <- get
   u <- gets rsUniqState
   put s { rsUniqState = (u+1) }
 
   let un = GHC.mkUnique 'H' (u+1) -- H for HaRe :)
       -- n = GHC.mkSystemName un (GHC.mkVarOcc name)
-      n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
-
+      n = case maybeMod of
+               Nothing -> GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
+               Just modu -> GHC.mkExternalName un modu (GHC.mkVarOcc name) nullSrcSpan
   return n
 
 mkNewToplevelName :: GHC.Module -> String -> GHC.SrcSpan -> RefactGhc GHC.Name
@@ -3545,7 +3546,7 @@ duplicateDecl decls sigs n newFunName
 
           -- typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceIndent 2 0 0) toksSig
           typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceAbsCol 2 colStart 0) toksSig
-          _typeSig'' <- renamePN n newFunName True typeSig'
+          _typeSig'' <- renamePN n newFunName True False typeSig'
 
           let (GHC.L sspanSig' _) = typeSig'
 
@@ -3560,7 +3561,7 @@ duplicateDecl decls sigs n newFunName
 
       -- funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceIndent 1 0 2) toks
       funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceAbsCol rowOffset colStart 2) toks
-      funBinding'' <- renamePN n newFunName True funBinding'
+      funBinding'' <- renamePN n newFunName True False funBinding'
 
       -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
       return [funBinding'']
@@ -3940,9 +3941,11 @@ renamePN::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
    ->GHC.Name             -- ^ The new name, including possible qualifier
    ->Bool                 -- ^ True means modifying the token stream as well.
+   ->Bool                 -- ^ True means use the qualified form for
+                          --   the new name.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
-renamePN oldPN newName updateTokens t = do
+renamePN oldPN newName updateTokens useQual t = do
   -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
   -- logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
@@ -3957,7 +3960,7 @@ renamePN oldPN newName updateTokens t = do
                  `SYB.extM` renameVar `SYB.extM` renameTyVar
                  `SYB.extM` renameFunBind) t
     else
-      renamePNworker oldPN newName updateTokens t
+      renamePNworker oldPN newName updateTokens useQual t
   where
     isRenamedSource :: GHC.RenamedSource -> Maybe Bool
     isRenamedSource (_g,_i,_e,_d) = Just True
@@ -3969,27 +3972,27 @@ renamePN oldPN newName updateTokens t = do
     renameGroup  (GHC.HsGroup vals typs inst deriv fixs def for war ann rule vect doc)
      = do
           logm $ "renamePN:renameGroup"
-          vals' <- renamePNworker oldPN newName updateTokens vals
-          typs' <- renamePNworker oldPN newName updateTokens typs
+          vals' <- renamePNworker oldPN newName updateTokens useQual vals
+          typs' <- renamePNworker oldPN newName updateTokens useQual typs
           return (GHC.HsGroup vals' typs' inst deriv fixs def for war ann rule vect doc)
     renameGroup x = return x
 
     renameName :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
-    renameName  pnt@(GHC.L _l _n) = renamePNworker oldPN newName updateTokens pnt
+    renameName  pnt@(GHC.L _l _n) = renamePNworker oldPN newName updateTokens useQual pnt
 
     renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-    renameVar var@(GHC.L _l (GHC.HsVar _n)) = renamePNworker oldPN newName updateTokens var
+    renameVar var@(GHC.L _l (GHC.HsVar _n)) = renamePNworker oldPN newName updateTokens useQual var
     renameVar x = return x
 
     renameTyVar :: (GHC.Located (GHC.HsType GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsType GHC.Name))
-    renameTyVar var@(GHC.L _l (GHC.HsTyVar _n)) = renamePNworker oldPN newName updateTokens var
+    renameTyVar var@(GHC.L _l (GHC.HsTyVar _n)) = renamePNworker oldPN newName updateTokens useQual var
     renameTyVar x = return x
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
     renameFunBind lfun@(GHC.L _ (GHC.FunBind _ _ _ _ _ _))
       = do
           logm "renamePN:renameFunBind"
-          renamePNworker oldPN newName updateTokens lfun
+          renamePNworker oldPN newName updateTokens useQual lfun
     renameFunBind x = return x
 
 -- ---------------------------------------------------------------------
@@ -4004,9 +4007,11 @@ renamePNworker::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
    ->GHC.Name             -- ^ The new name, including possible qualifier
    ->Bool                 -- ^ True means modifying the token stream as well.
+   ->Bool                 -- ^ True means use the qualified form for
+                          --   the new name.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
-renamePNworker oldPN newName updateTokens t = do
+renamePNworker oldPN newName updateTokens useQual t = do
   -- logm $ "renamePNworker: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal
   everywhereMStaged SYB.Renamer (SYB.mkM rename
@@ -4023,7 +4028,7 @@ renamePNworker oldPN newName updateTokens t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = (getLocatedStart pnt)
           logm $ "renamePN:rename at :" ++ (show (row,col))
-          (new,_sspan') <- worker (row,col) l n
+          (new,_sspan') <- worker useQual (row,col) l n
           return (GHC.L l new)
     rename x = return x
 
@@ -4032,7 +4037,7 @@ renamePNworker oldPN newName updateTokens t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = getLocatedStart var
           -- logm $ "renamePN:renameVar at :" ++ (show (row,col))
-          (new,_sspan') <- worker (row,col) l n
+          (new,_sspan') <- worker useQual (row,col) l n
           return (GHC.L l (GHC.HsVar new))
     renameVar x = return x
 
@@ -4042,12 +4047,12 @@ renamePNworker oldPN newName updateTokens t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = getLocatedStart var
           -- logm $ "renamePN:renameTyVar at :" ++ (show (row,col))
-          (new,_sspan') <- worker (row,col) l n
+          (new,_sspan') <- worker useQual (row,col) l n
           return (GHC.L l (GHC.HsTyVar new))
     renameTyVar x = return x
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
-    renameFunBind lfun@(GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MatchGroup matches typ) co fvs tick))
+    renameFunBind (GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MatchGroup matches typ) co fvs tick))
      | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
      = do -- Need to (a) rename the actual funbind name
           --         NOTE: due to bottom-up traversal, (a) should
@@ -4059,7 +4064,7 @@ renamePNworker oldPN newName updateTokens t = do
           -- (_new,_sspan') <- worker (row,col) l n
           -- Now do (b)
           logm $ "renameFunBind:starting matches"
-          let w lmatch@(GHC.L lm _match) = worker (r,c) lm n
+          let w lmatch@(GHC.L lm _match) = worker useQual (r,c) lm n
                 where (r,c) = getLocatedStart lmatch
           mapM w $ tail matches
           logm $ "renameFunBind:matches done"
@@ -4068,16 +4073,15 @@ renamePNworker oldPN newName updateTokens t = do
 
     -- TODO: must update the original sspan with the new one.
        --      ++AZ++ How?
-    worker (row,col) l _n
+    worker useQual (row,col) l _n
      = do if updateTokens
            then  do
-                    -- toks <- fetchToks
                     logm $ "renamePN.worker: (sspan,l,newName)=" ++ (showGhc (sspan,l,newName)) -- ++AZ++ debug
                     drawTokenTree "" -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     -- toks <- getToksForSpan l
                     -- logm $ "renamePN.worker:toks=" ++ (show toks)
-                    let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok l newName)
+                    let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok useQual l newName)
                     sspan' <- putToksForSpan sspan toks'
                     -- l' <- putToksForSpan l toks'
                     logm $ "renamePN.worker:toks'=" ++ (show toks')
@@ -4088,11 +4092,15 @@ renamePNworker oldPN newName updateTokens t = do
 
 -- ---------------------------------------------------------------------
 
-newNameTok :: GHC.SrcSpan -> GHC.Name -> PosToken
-newNameTok l newName =
-  ((GHC.L l' (GHC.ITvarid (GHC.occNameFS $ GHC.getOccName newName))),newNameStr)
+-- | Create a new name token. If 'useQual' then use the qualified
+--   name, if it exists.
+newNameTok :: Bool -> GHC.SrcSpan -> GHC.Name -> PosToken
+newNameTok useQual l newName =
+  ((GHC.L l' (GHC.ITvarid (GHC.mkFastString newNameStr))),newNameStr)
   where
-   newNameStr = (GHC.occNameString $ GHC.getOccName newName)
+   newNameStr = if useQual then (showGhc newName)
+                           else (GHC.occNameString $ GHC.getOccName newName)
+
    l' =  case l of
      GHC.RealSrcSpan ss ->
        let
@@ -4125,10 +4133,10 @@ autoRenameLocalVar modifyToks pn t = do
          worker t =do (f,d) <- hsFDNamesFromInside t
                       ds <- hsVisibleNames pn (hsValBinds t)
                       let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
-                      newName <- mkNewGhcName newNameStr
+                      newName <- mkNewGhcName Nothing newNameStr
                       if modifyToks
-                        then renamePN pn newName True t
-                        else renamePN pn newName False t
+                        then renamePN pn newName True False t
+                        else renamePN pn newName False False t
 
 {- ++AZ++ original
 {-

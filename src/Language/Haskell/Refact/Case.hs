@@ -61,8 +61,8 @@ reallyDoIfToCase expr rs = do
 -- TODO: rearrange the structure and preserve the comments in the original, e.g. in e1,e2,e3
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
-  trueName  <- mkNewGhcName "True"
-  falseName <- mkNewGhcName "False"
+  trueName  <- mkNewGhcName Nothing "True"
+  falseName <- mkNewGhcName Nothing "False"
   let ret = GHC.L l (GHC.HsCase e1
              (GHC.MatchGroup
               [

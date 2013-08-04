@@ -766,7 +766,7 @@ spec = do
   describe "isTopLevelPN" $ do
     it "returns False if the name is not defined at the top level of the module" $ do
       (t, toks) <- parsedFileDd1Ghc
-      let 
+      let
         comp = do
           renamed <- getRefactRenamed
           let Just (GHC.L _ n) = locToName dd1FileName (17, 5) renamed
@@ -778,7 +778,7 @@ spec = do
 
     it "returns True if the name is defined at the top level of the module" $ do
       (t, toks) <- parsedFileDd1Ghc
-      let 
+      let
         comp = do
           renamed <- getRefactRenamed
           let Just (GHC.L _ n) = locToName dd1FileName (21, 1) renamed
@@ -867,18 +867,44 @@ spec = do
 
   describe "mkNewGhcName" $ do
     it "Creates a new GHC.Name" $ do
+      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "F1")
       let
         comp = do
-         name1 <- mkNewGhcName "foo"
-         name2 <- mkNewGhcName "bar"
-         return (name1,name2)
-      ((n1,n2),s) <- runRefactGhcState comp
+         name1 <- mkNewGhcName Nothing "foo"
+         name2 <- mkNewGhcName Nothing "bar"
+         name3 <- mkNewGhcName (Just modu) "baz"
+         return (name1,name2,name3)
+      ((n1,n2,n3),s) <- runRefactGhcState comp
       GHC.getOccString n1 `shouldBe` "foo"
       showGhc n1 `shouldBe` "foo"
       GHC.getOccString n2 `shouldBe` "bar"
       showGhc n2 `shouldBe` "bar"
+      (showGhc $ GHC.nameModule n3) `shouldBe` "mypackage-1.0:F1"
+      (SYB.showData SYB.Renamer 0 n3) `shouldBe` "{Name: F1.baz}"
+      GHC.getOccString n3 `shouldBe` "baz"
+      showGhc n3 `shouldBe` "F1.baz"
       (showGhc $ GHC.nameUnique n1) `shouldBe` "H2"
       (showGhc $ GHC.nameUnique n2) `shouldBe` "H3"
+      (showGhc $ GHC.nameUnique n3) `shouldBe` "H4"
+
+  -- ---------------------------------------------
+
+  describe "newNameTok" $ do
+    it "Creates a new token from a GHC.Name" $ do
+      (_t, toks) <-parsedFileDd1Ghc
+      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "F1")
+      let
+        comp = do
+         name1 <- mkNewGhcName Nothing "foo"
+         name2 <- mkNewGhcName (Just modu) "baz"
+         return (name1,name2)
+      ((n1,n2),_s) <- runRefactGhcState comp
+      let sspan = posToSrcSpanTok (head toks) ((10,1),(10,15))
+      (show $ newNameTok False sspan n1) `shouldBe` "((((10,1),(10,4)),ITvarid \"foo\"),\"foo\")"
+      (show $ newNameTok True sspan n1) `shouldBe` "((((10,1),(10,4)),ITvarid \"foo\"),\"foo\")"
+
+      (show $ newNameTok False sspan n2) `shouldBe` "((((10,1),(10,4)),ITvarid \"baz\"),\"baz\")"
+      (show $ newNameTok True sspan n2) `shouldBe` "((((10,1),(10,7)),ITvarid \"F1.baz\"),\"F1.baz\")"
 
   -- ---------------------------------------------
 
@@ -886,8 +912,8 @@ spec = do
     it "Prints a GHC.Name ready for parsing into tokens" $ do
       let
         comp = do
-         name1 <- mkNewGhcName "foo"
-         name2 <- mkNewGhcName "bar"
+         name1 <- mkNewGhcName Nothing "foo"
+         name2 <- mkNewGhcName Nothing "bar"
          return (name1,name2)
       ((n1,n2),s) <- runRefactGhcState comp
       GHC.getOccString n1 `shouldBe` "foo"
@@ -908,8 +934,8 @@ spec = do
       let Just (GHC.L _ n) = locToName dd1FileName (3, 1) renamed
       let
         comp = do
-         _newName <- mkNewGhcName "bar"
-         newName2 <- mkNewGhcName "bar2"
+         _newName <- mkNewGhcName Nothing "bar"
+         newName2 <- mkNewGhcName Nothing "bar2"
          newBinding <- duplicateDecl declsr renamed n newName2
 
          return newBinding
@@ -932,7 +958,7 @@ spec = do
       (showGhc n) `shouldBe` "ff"
       let
         comp = do
-         newName2 <- mkNewGhcName "gg"
+         newName2 <- mkNewGhcName Nothing "gg"
 
          let
            declsToDup = definingDeclsNames [n] declsr True True
@@ -966,8 +992,8 @@ spec = do
       let Just (GHC.L _ n) = locToName md1FileName (3, 1) renamed
       let
         comp = do
-         _newName <- mkNewGhcName "bar"
-         newName2 <- mkNewGhcName "bar2"
+         _newName <- mkNewGhcName Nothing "bar"
+         newName2 <- mkNewGhcName Nothing "bar2"
          newBinding <- addParamsToDecls declsr n [newName2] True
 
          return newBinding
@@ -989,7 +1015,7 @@ spec = do
       let Just (GHC.L _ n) = locToName addParams1FileName (3, 1) renamed
       let
         comp = do
-         newName <- mkNewGhcName "pow"
+         newName <- mkNewGhcName Nothing "pow"
          newBinding <- addParamsToDecls declsr n [newName] True
 
          return newBinding
@@ -1011,8 +1037,8 @@ spec = do
       let Just (GHC.L _ n) = locToName addParams1FileName (6, 1) renamed
       let
         comp = do
-         newName1 <- mkNewGhcName "baz"
-         newName2 <- mkNewGhcName "bar"
+         newName1 <- mkNewGhcName Nothing "baz"
+         newName2 <- mkNewGhcName Nothing "bar"
          newBinding <- addParamsToDecls declsr n [newName1,newName2] True
 
          return newBinding
@@ -1039,8 +1065,8 @@ spec = do
       let Just (GHC.L _ n) = locToName liftD1FileName (6, 21) renamed
       let
         comp = do
-         _newName <- mkNewGhcName "bar"
-         newName2 <- mkNewGhcName "bar2"
+         _newName <- mkNewGhcName Nothing "bar"
+         newName2 <- mkNewGhcName Nothing "bar2"
          newBinding <- addActualParamsToRhs True n [newName2] decl
 
          return newBinding
@@ -1066,9 +1092,9 @@ spec = do
       let Just (GHC.L _ n) = locToName liftWhereIn7FileName (10, 17) renamed
       let
         comp = do
-         newName1 <- mkNewGhcName "x1"
-         newName2 <- mkNewGhcName "y1"
-         newName3 <- mkNewGhcName "z1"
+         newName1 <- mkNewGhcName Nothing "x1"
+         newName2 <- mkNewGhcName Nothing "y1"
+         newName3 <- mkNewGhcName Nothing "z1"
          newBinding <- addActualParamsToRhs True n [newName1,newName2,newName3] decl
 
          return newBinding
@@ -1271,8 +1297,8 @@ spec = do
       let
         comp = do
          renamed <- getRefactRenamed
-         nn  <- mkNewGhcName "nn"
-         nn2 <- mkNewGhcName "nn2"
+         nn  <- mkNewGhcName Nothing "nn"
+         nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl renamed Nothing (newDecl,[],Nothing) True
 
@@ -1291,8 +1317,8 @@ spec = do
       let
         comp = do
          renamed <- getRefactRenamed
-         nn  <- mkNewGhcName "nn"
-         nn2 <- mkNewGhcName "nn2"
+         nn  <- mkNewGhcName Nothing "nn"
+         nn2 <- mkNewGhcName Nothing "nn2"
          let (GHC.ValBindsOut _ vb) = hsValBinds renamed
          let hSig = head $ drop 3 vb
          let (GHC.L _ (GHC.TypeSig _ (GHC.L _ (GHC.HsTyVar intName)))) = hSig
@@ -1326,8 +1352,8 @@ spec = do
         comp = do
          renamed <- getRefactRenamed
          let Just (GHC.L l n) = locToName md1FileName (21, 1) renamed
-         nn  <- mkNewGhcName "nn"
-         nn2 <- mkNewGhcName "nn2"
+         nn  <- mkNewGhcName Nothing "nn"
+         nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl renamed (Just n) (newDecl,[],Nothing) True
 
@@ -1348,8 +1374,8 @@ spec = do
         comp = do
          renamed <- getRefactRenamed
          let Just (GHC.L l n) = locToName md1FileName (21, 1) renamed
-         nn  <- mkNewGhcName "nn"
-         nn2 <- mkNewGhcName "nn2"
+         nn  <- mkNewGhcName Nothing "nn"
+         nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
 
          let (GHC.ValBindsOut _ vb) = hsValBinds renamed
@@ -1381,8 +1407,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewGhcName "nn"
-         nn2 <- mkNewGhcName "nn2"
+         nn  <- mkNewGhcName Nothing "nn"
+         nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
 
@@ -1408,8 +1434,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewGhcName "nn"
-         nn2 <- mkNewGhcName "nn2"
+         nn  <- mkNewGhcName Nothing "nn"
+         nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
 
          let (GHC.ValBindsOut _ vb) = hsValBinds renamed
@@ -1441,8 +1467,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewGhcName "nn"
-         nn2 <- mkNewGhcName "nn2"
+         nn  <- mkNewGhcName Nothing "nn"
+         nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
 
@@ -1468,8 +1494,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewGhcName "nn"
-         nn2 <- mkNewGhcName "nn2"
+         nn  <- mkNewGhcName Nothing "nn"
+         nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
          newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
 
@@ -1494,8 +1520,8 @@ spec = do
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         nn  <- mkNewGhcName "nn"
-         nn2 <- mkNewGhcName "nn2"
+         nn  <- mkNewGhcName Nothing "nn"
+         nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
 
          let (GHC.ValBindsOut _ vb) = hsValBinds renamed
@@ -1604,15 +1630,15 @@ spec = do
       let Just (GHC.L l n) = locToName dd1FileName (3, 1) renamed
       let
         comp = do
-         newName <- mkNewGhcName "bar2"
-         new <- renamePN n newName True (last declsr)
+         newName <- mkNewGhcName Nothing "bar2"
+         new <- renamePN n newName True False (last declsr)
 
          return (new,newName)
       let
 
       ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "DupDef.Dd1.toplevel"
-      (showToks $ [newNameTok l nn]) `shouldBe` "[(((3,1),(3,5)),ITvarid \"bar2\",\"bar2\")]"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((3,1),(3,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n bar2     x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (showGhc nb) `shouldBe` "bar2 x = DupDef.Dd1.c GHC.Num.* x"
@@ -1633,15 +1659,15 @@ spec = do
       let Just (GHC.L l n) = locToName whereIn4FileName (11, 21) renamed
       let
         comp = do
-         newName <- mkNewGhcName "p_1"
-         new <- renamePN n newName True decl
+         newName <- mkNewGhcName Nothing "p_1"
+         new <- renamePN n newName True False decl
 
          return (new,newName)
       let
 
       ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "p"
-      (showToks $ [newNameTok l nn]) `shouldBe` "[(((11,21),(11,24)),ITvarid \"p_1\",\"p_1\")]"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((11,21),(11,24)),ITvarid \"p_1\",\"p_1\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p_1 x + sq p_1 y\n          where p_1 = 2 {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
       (showGhc nb) `shouldBe` "Demote.WhereIn4.sumSquares x y\n  = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n  where\n      p_1 = 2"
@@ -1683,9 +1709,9 @@ spec = do
 
       let
         comp = do
-         newName <- mkNewGhcName "bar2"
+         newName <- mkNewGhcName Nothing "bar2"
          toksForOp <- getToksForSpan l
-         new <- renamePN n newName True (head decls)
+         new <- renamePN n newName True False (head decls)
 
          return (new,newName,toksForOp)
       let
@@ -1693,7 +1719,7 @@ spec = do
       ((nb,nn,tfo),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest'', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       -- (show tfo) `shouldBe` ""
       (showGhc n) `shouldBe` "TokenTest.foo"
-      (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
       (showGhc nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
@@ -1739,9 +1765,9 @@ spec = do
 
       let
         comp = do
-         newName <- mkNewGhcName "bar2"
+         newName <- mkNewGhcName Nothing "bar2"
          -- toksForOp <- getToksForSpan sspan -- The new span this time
-         new <- renamePN n newName True decl'
+         new <- renamePN n newName True False decl'
 
          return (new,newName)
       let
@@ -1749,7 +1775,7 @@ spec = do
       ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest''', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       -- (show tfo) `shouldBe` ""
       (showGhc n) `shouldBe` "TokenTest.foo"
-      (showToks $ [newNameTok l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((19,1),(21,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n bar2 x y =\n   do c <- getChar\n      return c\n\n "
       (showGhc nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
@@ -1878,15 +1904,15 @@ spec = do
       let Just (GHC.L l n) = locToName renamingField1FileName (5, 19) renamed
       let
         comp = do
-         newName <- mkNewGhcName "pointx1"
-         new <- renamePN n newName True renamed
+         newName <- mkNewGhcName Nothing "pointx1"
+         new <- renamePN n newName True False renamed
 
          return (new,newName)
       let
 
       ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "Field1.pointx"
-      (showToks $ [newNameTok l nn]) `shouldBe` "[(((5,18),(5,25)),ITvarid \"pointx1\",\"pointx1\")]"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((5,18),(5,25)),ITvarid \"pointx1\",\"pointx1\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx, pointy :: Float}\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx1 , pointy :: Float }\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx1 p * pointx1 p +\n                   pointy p * pointy p)\n\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(Field1.absPoint :: Field1.Point -> GHC.Types.Float\n Field1.absPoint p\n   = GHC.Float.sqrt\n       (pointx1 p GHC.Num.* pointx1 p\n        GHC.Num.+ Field1.pointy p GHC.Num.* Field1.pointy p)\n \n data Field1.Point\n   = Field1.Pt {pointx1 :: GHC.Types.Float,\n                Field1.pointy :: GHC.Types.Float},\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
@@ -1903,15 +1929,15 @@ spec = do
       let Just (GHC.L l n) = locToName renamingField1FileName (5, 6) renamed
       let
         comp = do
-         newName <- mkNewGhcName "NewPoint"
-         new <- renamePN n newName True renamed
+         newName <- mkNewGhcName Nothing "NewPoint"
+         new <- renamePN n newName True False renamed
 
          return (new,newName)
       let
 
       ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "Field1.Point"
-      (showToks $ [newNameTok l nn]) `shouldBe` "[(((5,6),(5,14)),ITvarid \"NewPoint\",\"NewPoint\")]"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((5,6),(5,14)),ITvarid \"NewPoint\",\"NewPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx, pointy :: Float}\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data NewPoint = Pt { pointx , pointy :: Float }\n\n absPoint :: NewPoint -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(Field1.absPoint :: NewPoint -> GHC.Types.Float\n Field1.absPoint p\n   = GHC.Float.sqrt\n       (Field1.pointx p GHC.Num.* Field1.pointx p\n        GHC.Num.+ Field1.pointy p GHC.Num.* Field1.pointy p)\n \n data NewPoint\n   = Field1.Pt {Field1.pointx :: GHC.Types.Float,\n                Field1.pointy :: GHC.Types.Float},\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
@@ -1927,8 +1953,8 @@ spec = do
       let Just (GHC.L l n) = locToName locToNameFileName (20, 1) renamed
       let
         comp = do
-         newName <- mkNewGhcName "newPoint"
-         new <- renamePN n newName True renamed
+         newName <- mkNewGhcName Nothing "newPoint"
+         new <- renamePN n newName True False renamed
 
          return (new,newName)
       let
@@ -1936,7 +1962,7 @@ spec = do
       -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "LocToName.sumSquares"
-      (showToks $ [newNameTok l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint   ( x : xs ) = x ^ 2 + newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint   [ ] = 0"
       (unspace $ showGhc nb) `shouldBe` unspace "(newPoint (x : xs) = x GHC.Real.^ 2 GHC.Num.+ newPoint xs\n newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
@@ -2121,8 +2147,8 @@ spec = do
          let (Just (GHC.L _ n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
-         n1   <- mkNewGhcName "n1"
-         n2   <- mkNewGhcName "n2"
+         n1   <- mkNewGhcName Nothing "n1"
+         n2   <- mkNewGhcName Nothing "n2"
          res  <- addHiding modName renamed2 [n1,n2]
          toks <- fetchToks
 
@@ -2149,8 +2175,8 @@ spec = do
          let (Just (GHC.L _ n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
-         n1   <- mkNewGhcName "n1"
-         n2   <- mkNewGhcName "n2"
+         n1   <- mkNewGhcName Nothing "n1"
+         n2   <- mkNewGhcName Nothing "n2"
          res  <- addHiding modName renamed2 [n1,n2]
          toks <- fetchToks
 
@@ -2236,7 +2262,7 @@ spec = do
           let res = getDeclAndToks name True toks renamed
           return (res,n,name)
 
-      (((d,t),n1,n2),s) <- runRefactGhcState comp 
+      (((d,t),n1,n2),s) <- runRefactGhcState comp
       (showGhc n1) `shouldBe` "MoveDef.Md1.tlFunc"
       (showGhc d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
       (show $ getStartEndLoc d) `shouldBe` "((40,1),(40,17))"
@@ -2258,7 +2284,7 @@ This function is not used and has been removed
           let res = getDeclToks name False (hsBinds renamed) toks
           return (res,n,name)
 
-      ((dt,n1,n2),s) <- runRefactGhcState comp 
+      ((dt,n1,n2),s) <- runRefactGhcState comp
       (showGhc n1) `shouldBe` "Demote.D1.sq"
       (showToks dt) `shouldBe` "[(((9,1),(9,1)),ITsemi,\"\"),(((9,1),(9,3)),ITvarid \"sq\",\"sq\"),(((9,4),(9,5)),ITvarid \"x\",\"x\"),(((9,6),(9,7)),ITequal,\"=\"),(((9,8),(9,9)),ITvarid \"x\",\"x\"),(((9,10),(9,11)),ITvarsym \"^\",\"^\"),(((9,11),(9,14)),ITvarid \"pow\",\"pow\")]"
 -}
@@ -2384,8 +2410,8 @@ This function is not used and has been removed
          let parsed1 = GHC.pm_parsed_source $ GHC.tm_parsed_module t1
 
          let listModName  = GHC.mkModuleName "Data.List"
-         n1   <- mkNewGhcName "n1"
-         n2   <- mkNewGhcName "n2"
+         n1   <- mkNewGhcName Nothing "n1"
+         n2   <- mkNewGhcName Nothing "n2"
          res  <- addImportDecl renamed2 listModName Nothing False False False Nothing False [] 
          toks <- fetchToks
 
@@ -2460,7 +2486,7 @@ This function is not used and has been removed
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let modName  = GHC.mkModuleName "Data.Maybe"
-         itemName <- mkNewGhcName "fromJust"
+         itemName <- mkNewGhcName Nothing "fromJust"
 
          res  <- addItemsToImport modName renamed1 [itemName]
          toks <- fetchToks
@@ -2480,11 +2506,11 @@ This function is not used and has been removed
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let modName  = GHC.mkModuleName "Data.Maybe"
-         itemName <- mkNewGhcName "fromJust"
+         itemName <- mkNewGhcName Nothing "fromJust"
 
          res  <- addItemsToImport modName renamed1 [itemName] --listModName Nothing False False False Nothing False [] 
 
-         itemName2 <- mkNewGhcName "isJust"
+         itemName2 <- mkNewGhcName Nothing "isJust"
 
          res2 <- addItemsToImport modName res [itemName2]
          toks <- fetchToks
@@ -2502,7 +2528,7 @@ This function is not used and has been removed
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let modName  = GHC.mkModuleName "Data.Maybe"
-         itemName <- mkNewGhcName "isJust"
+         itemName <- mkNewGhcName Nothing "isJust"
 
          res  <- addItemsToImport modName renamed1 [itemName]
          toks <- fetchToks
@@ -2520,8 +2546,8 @@ This function is not used and has been removed
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let modName  = GHC.mkModuleName "Data.Maybe"
-         itemName <- mkNewGhcName "isJust"
-         conditionalId <- mkNewGhcName "fromJust"
+         itemName <- mkNewGhcName Nothing "isJust"
+         conditionalId <- mkNewGhcName Nothing "fromJust"
 
          res  <- addItemsToImport modName renamed1 [itemName] (Just conditionalId) 
          toks <- fetchToks
@@ -2538,7 +2564,7 @@ This function is not used and has been removed
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let modName  = GHC.mkModuleName "Data.Maybe"
-         itemName <- mkNewGhcName "isJust"
+         itemName <- mkNewGhcName Nothing "isJust"
 
          res  <- addItemsToImport modName renamed1 [itemName] (Just itemName)
          toks <- fetchToks

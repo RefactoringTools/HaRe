@@ -309,3 +309,16 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/D4.hs.refactored
 /test/testdata/Renaming/D4.hs.renamed_out
 /test/testdata/Renaming/D4.hs.tokens
+/test/testdata/Renaming/A5.hs.AST_out
+/test/testdata/Renaming/A5.hs.refactored
+/test/testdata/Renaming/A5.hs.renamed_out
+/test/testdata/Renaming/A5.hs.tokens
+/test/testdata/Renaming/C5.hs.AST_out
+/test/testdata/Renaming/C5.hs.refactored
+/test/testdata/Renaming/C5.hs.renamed_out
+/test/testdata/Renaming/C5.hs.tokens
+/test/testdata/Renaming/D5.hs.AST_out
+/test/testdata/Renaming/D5.hs.parsed
+/test/testdata/Renaming/D5.hs.refactored
+/test/testdata/Renaming/D5.hs.renamed_out
+/test/testdata/Renaming/D5.hs.tokens
