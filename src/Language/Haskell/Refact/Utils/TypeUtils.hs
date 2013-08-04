@@ -3954,7 +3954,8 @@ renamePN oldPN newName updateTokens t = do
     then
       everywhereMStaged SYB.Renamer
                  (SYB.mkM renameGroup `SYB.extM` renameName
-                 `SYB.extM` renameVar `SYB.extM` renameTyVar) t
+                 `SYB.extM` renameVar `SYB.extM` renameTyVar
+                 `SYB.extM` renameFunBind) t
     else
       renamePNworker oldPN newName updateTokens t
   where
@@ -3967,7 +3968,7 @@ renamePN oldPN newName updateTokens t = do
     renameGroup :: (GHC.HsGroup GHC.Name) -> RefactGhc (GHC.HsGroup GHC.Name)
     renameGroup  (GHC.HsGroup vals typs inst deriv fixs def for war ann rule vect doc)
      = do
-          logm $ "renamePN':renameGroup"
+          logm $ "renamePN:renameGroup"
           vals' <- renamePNworker oldPN newName updateTokens vals
           typs' <- renamePNworker oldPN newName updateTokens typs
           return (GHC.HsGroup vals' typs' inst deriv fixs def for war ann rule vect doc)
@@ -3983,6 +3984,13 @@ renamePN oldPN newName updateTokens t = do
     renameTyVar :: (GHC.Located (GHC.HsType GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsType GHC.Name))
     renameTyVar var@(GHC.L _l (GHC.HsTyVar _n)) = renamePNworker oldPN newName updateTokens var
     renameTyVar x = return x
+
+    renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
+    renameFunBind lfun@(GHC.L _ (GHC.FunBind _ _ _ _ _ _))
+      = do
+          logm "renamePN:renameFunBind"
+          renamePNworker oldPN newName updateTokens lfun
+    renameFunBind x = return x
 
 -- ---------------------------------------------------------------------
 
@@ -4003,7 +4011,8 @@ renamePNworker oldPN newName updateTokens t = do
   -- Note: bottom-up traversal
   everywhereMStaged SYB.Renamer (SYB.mkM rename
                                `SYB.extM` renameVar
-                               `SYB.extM` renameTyVar) t
+                               `SYB.extM` renameTyVar
+                               `SYB.extM` renameFunBind) t
   where
     -- logm $ "renamePN:***ERROR**:do not use getSrcSpan"
     maybeSspan = getSrcSpan t
@@ -4036,6 +4045,26 @@ renamePNworker oldPN newName updateTokens t = do
           (new,_sspan') <- worker (row,col) l n
           return (GHC.L l (GHC.HsTyVar new))
     renameTyVar x = return x
+
+    renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
+    renameFunBind lfun@(GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MatchGroup matches typ) co fvs tick))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
+     = do -- Need to (a) rename the actual funbind name
+          --         NOTE: due to bottom-up traversal, (a) should
+          --               already have been done.
+          --         (b) rename each of 'tail matches'
+          --             (head is renamed in (a) )
+          logm $ "renamePNWorker:renameFunBind"
+          -- let (row,col) = getLocatedStart lfun
+          -- (_new,_sspan') <- worker (row,col) l n
+          -- Now do (b)
+          logm $ "renameFunBind:starting matches"
+          let w lmatch@(GHC.L lm _match) = worker (r,c) lm n
+                where (r,c) = getLocatedStart lmatch
+          mapM w $ tail matches
+          logm $ "renameFunBind:matches done"
+          return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MatchGroup matches typ) co fvs tick))
+    renameFunBind x = return x
 
     -- TODO: must update the original sspan with the new one.
        --      ++AZ++ How?
