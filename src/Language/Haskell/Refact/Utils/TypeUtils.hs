@@ -4052,7 +4052,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
     renameTyVar x = return x
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
-    renameFunBind (GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MatchGroup matches typ) co fvs tick))
+    renameFunBind lfun@(GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MatchGroup matches typ) co fvs tick))
      | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
      = do -- Need to (a) rename the actual funbind name
           --         NOTE: due to bottom-up traversal, (a) should
@@ -4060,11 +4060,12 @@ renamePNworker oldPN newName updateTokens useQual t = do
           --         (b) rename each of 'tail matches'
           --             (head is renamed in (a) )
           logm $ "renamePNWorker:renameFunBind"
-          -- let (row,col) = getLocatedStart lfun
-          -- (_new,_sspan') <- worker (row,col) l n
+          let (row,col) = getLocatedStart lfun
+          (_new,_sspan') <- worker False (row,col) l n
           -- Now do (b)
           logm $ "renameFunBind:starting matches"
-          let w lmatch@(GHC.L lm _match) = worker useQual (r,c) lm n
+          -- let w lmatch@(GHC.L lm _match) = worker useQual (r,c) lm n
+          let w lmatch@(GHC.L lm _match) = worker False (r,c) lm n
                 where (r,c) = getLocatedStart lmatch
           mapM w $ tail matches
           logm $ "renameFunBind:matches done"
