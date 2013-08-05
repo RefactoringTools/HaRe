@@ -1,6 +1,6 @@
-module C5  where 
+module Renaming.C5  where
 
-import D5
+import Renaming.D5
 
 instance SameOrNot Double where
    isSame a  b = a ==b
@@ -8,9 +8,9 @@ instance SameOrNot Double where
 
 myFringe:: Tree a -> [a]
 myFringe (Leaf x ) = [x]
-myFringe (Branch left right) = myFringe left 
+myFringe (Branch left right) = myFringe left
 
-mySumSq = D5.sum
+mySumSq = Renaming.D5.sum
 
 
 

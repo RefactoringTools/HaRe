@@ -17,7 +17,7 @@ instance SameOrNot Int where
    isSame a  b = a == b
    isNotSame a b = a /= b
 
-sum (x:xs) = sq x + D5.sum xs
+sum           ( x : xs ) = sq x + Renaming.D5.sum xs
     where sq x = x ^pow
           pow = 2
 
