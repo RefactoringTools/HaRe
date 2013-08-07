@@ -143,6 +143,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
+import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
 -- Modules from GHC
@@ -3956,6 +3957,7 @@ renamePN oldPN newName updateTokens useQual t = do
   if isRenamed == (Just True)
     then
       everywhereMStaged SYB.Renamer
+      -- everywhereMStaged' SYB.Renamer
                  (SYB.mkM renameGroup `SYB.extM` renameName
                  `SYB.extM` renameVar `SYB.extM` renameTyVar
                  `SYB.extM` renameFunBind) t
@@ -4013,8 +4015,9 @@ renamePNworker::(SYB.Data t)
    ->RefactGhc t
 renamePNworker oldPN newName updateTokens useQual t = do
   -- logm $ "renamePNworker: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
-  -- Note: bottom-up traversal
+  -- Note: bottom-up traversal (no ' at end)
   everywhereMStaged SYB.Renamer (SYB.mkM rename
+  -- everywhereMStaged' SYB.Renamer (SYB.mkM rename
                                `SYB.extM` renameVar
                                `SYB.extM` renameTyVar
                                `SYB.extM` renameFunBind) t
@@ -4074,15 +4077,17 @@ renamePNworker oldPN newName updateTokens useQual t = do
 
     -- TODO: must update the original sspan with the new one.
        --      ++AZ++ How?
-    worker useQual (row,col) l _n
+    worker useQual' (r,c) l _n
      = do if updateTokens
            then  do
-                    logm $ "renamePN.worker: (sspan,l,newName)=" ++ (showGhc (sspan,l,newName)) -- ++AZ++ debug
+                    let (row,col) = srcPosToSimpPos (r,c)
+                    logm $ "renamePN.worker: ((row,col),sspan,l,newName)=" ++ (showGhc ((row,col),sspan,l,newName)) -- ++AZ++ debug
                     drawTokenTree "" -- ++AZ++ debug
                     toks <- getToksForSpan sspan
                     -- toks <- getToksForSpan l
                     -- logm $ "renamePN.worker:toks=" ++ (show toks)
-                    let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok useQual l newName)
+                    logm $ "renamePN.worker:newTok=" ++ (show (markToken $ newNameTok useQual' l newName))
+                    let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok useQual' l newName)
                     sspan' <- putToksForSpan sspan toks'
                     -- l' <- putToksForSpan l toks'
                     logm $ "renamePN.worker:toks'=" ++ (show toks')
@@ -4105,8 +4110,10 @@ newNameTok useQual l newName =
    l' =  case l of
      GHC.RealSrcSpan ss ->
        let
-         locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) (GHC.srcSpanStartLine ss) (GHC.srcSpanStartCol ss) 
-         locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) (GHC.srcSpanEndLine ss) (length newNameStr + GHC.srcSpanStartCol ss) 
+         ((ForestLine _ _ _ startRow,startCol),_) = srcSpanToForestSpan l
+
+         locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) startRow startCol
+         locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) startRow (length newNameStr + startCol) 
        in
          GHC.mkSrcSpan locStart locEnd
      _ -> l

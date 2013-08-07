@@ -95,6 +95,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , srcSpanToForestSpan
        , nullSpan,nullPos
        , simpPosToForestSpan
+       , srcPosToSimpPos
        , showForestSpan
        , deleteGapsToks
        , deleteGapsToks'
@@ -112,10 +113,6 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
 import qualified FastString    as GHC
 import qualified GHC           as GHC
--- import qualified Lexer         as GHC
--- import qualified Outputable    as GHC
--- import qualified SrcLoc        as GHC
-
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
@@ -381,6 +378,11 @@ forestSpanToGhcPos ((fls,sc),(fle,ec))
 simpPosToForestSpan :: (SimpPos,SimpPos) -> ForestSpan
 simpPosToForestSpan ((sr,sc),(er,ec))
     = ((ghcLineToForestLine sr,sc),(ghcLineToForestLine er,ec))
+
+srcPosToSimpPos :: (Int,Int) -> (Int,Int)
+srcPosToSimpPos (sr,c) = (l,c)
+  where
+    (ForestLine _ _ _ l) = ghcLineToForestLine sr
 
 forestSpanStart :: ForestSpan -> ForestPos
 forestSpanStart (start,_) = start
