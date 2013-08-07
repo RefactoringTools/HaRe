@@ -416,8 +416,6 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
       getModuleDetails modSummary
       {- ++AZ++ debug stuff -}
       names <- ghandle handler (GHC.parseName $ nameToString oldPN)
-
-
       nameInfo <- mapM GHC.lookupName names
       logm $ "renameInClientMod: nameInfo=" ++ (showGhc nameInfo)
       {- ++AZ++ debug stuff end -}
@@ -431,6 +429,7 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
         do (refactoredMod,_) <- applyRefac (refactRename oldPN newNameGhc) RSAlreadyLoaded
            return [refactoredMod]
        else
+           -- TODO: implement this
            return []
   where
      handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
@@ -438,7 +437,7 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
 
      refactRename old new = do
        renamed <- getRefactRenamed
-       renamePN old new True False renamed
+       renamePN old new True True renamed
 
 {- original
 renameInClientMod pnt@(PNT oldPN _ _) newName (m, fileName)
