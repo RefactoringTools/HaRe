@@ -3994,7 +3994,9 @@ renamePN oldPN newName updateTokens useQual t = do
     renameFunBind lfun@(GHC.L _ (GHC.FunBind _ _ _ _ _ _))
       = do
           logm "renamePN:renameFunBind"
-          renamePNworker oldPN newName updateTokens useQual lfun
+          r <- renamePNworker oldPN newName updateTokens useQual lfun
+          logm "renamePN:renameFunBind done"
+          return r
     renameFunBind x = return x
 
 -- ---------------------------------------------------------------------

@@ -437,7 +437,8 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
 
      refactRename old new = do
        renamed <- getRefactRenamed
-       renamePN old new True True renamed
+       logm $ "renameInClientMod.refactRename:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+       renamePN old new True False renamed
 
 {- original
 renameInClientMod pnt@(PNT oldPN _ _) newName (m, fileName)
