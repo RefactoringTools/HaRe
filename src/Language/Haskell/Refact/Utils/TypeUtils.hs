@@ -223,13 +223,18 @@ isInScopeAndUnqualified n names
 --  = isJust $ find (\ (x, _,_, qual) -> x == id && isNothing qual ) $ inScopeInfo inScopeRel
 
 -- | Return True if the identifier is inscope and can be used without
--- a qualifier. The identifier name string may have a qualifier already
+-- a qualifier. The identifier name string may have a qualifier
+-- already
+-- NOTE: may require qualification based on name clash with an
+-- existing identifier.
 isInScopeAndUnqualifiedGhc :: String         -- ^ The identifier name.
                            -> RefactGhc Bool -- ^ The result.
 isInScopeAndUnqualifiedGhc n = do
   names <- ghandle handler (GHC.parseName n)
+  logm $ "isInScopeAndUnqualifiedGhc:(n,names)=" ++ (showGhc (n,names))
   nameInfo <- mapM GHC.lookupName names
   let nameList = filter isAnId $ catMaybes nameInfo
+  logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (showGhc (n,names))
   return $ nameList /= []
 
   where
@@ -238,9 +243,11 @@ isInScopeAndUnqualifiedGhc n = do
     isAnId (GHC.ATyCon _)   = True
     isAnId _                = False
 
-    -- handler:: (Exception e,GHC.GhcMonad m) => e -> m [GHC.Name]
-    handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
-    handler _ = return []
+    -- handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
+    handler:: SomeException -> RefactGhc [GHC.Name]
+    handler e = do
+      logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show e)
+      return []
 
 -- ---------------------------------------------------------------------
 {-

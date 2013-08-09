@@ -412,7 +412,7 @@ renameLocalVarName oldPN newName t
 renameInClientMod :: GHC.Name -> String -> GHC.Name -> GHC.ModSummary
  -> RefactGhc [ApplyRefacResult]
 renameInClientMod oldPN newName newNameGhc modSummary = do
-      logm $ "renameInClientMod:(oldPN,modSummary)=" ++ (showGhc (oldPN,modSummary)) -- ++AZ++
+      logm $ "renameInClientMod:(oldPN,newNameGhc,modSummary)=" ++ (showGhc (oldPN,newNameGhc,modSummary)) -- ++AZ++
       getModuleDetails modSummary
       {- ++AZ++ debug stuff -}
       names <- ghandle handler (GHC.parseName $ nameToString oldPN)

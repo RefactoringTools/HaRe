@@ -41,7 +41,6 @@ import Data.List
 
 main :: IO ()
 main = do
-  -- setLogger
   hspec spec
 
 spec :: Spec
@@ -850,18 +849,46 @@ spec = do
 
   describe "isInScopeAndUnqualifiedGhc" $ do
     it "True if the identifier is in scope and unqualified" $ do
-      -- ((_inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
       let
         comp = do
-         (p,toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
+         (_p,_toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
+         ctx <- GHC.getContext
          res1 <- isInScopeAndUnqualifiedGhc "c"
          res2 <- isInScopeAndUnqualifiedGhc "DupDef.Dd1.c"
          res3 <- isInScopeAndUnqualifiedGhc "nonexistent"
-         return (res1,res2,res3)
-      ((r1,r2,r3),s) <- runRefactGhcState comp
+         return (res1,res2,res3,ctx)
+      ((r1,r2,r3,c),s) <- runRefactGhcState comp
+      (showGhc c) `shouldBe` "[*DupDef.Dd1]"
       r1 `shouldBe` True
       r2 `shouldBe` True
       r3 `shouldBe` False
+
+    it "Requires qualification on name clash with an import" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/ScopeAndQual.hs"
+      let
+        comp = do
+         renamed <- getRefactRenamed
+
+         ctx <- GHC.getContext
+
+         let Just sumSquares = locToName (GHC.mkFastString "./test/testdata/ScopeAndQual.hs") (13,15) renamed
+         ssUnqual <- isQualifiedPN $ GHC.unLoc sumSquares
+         -- names <- GHC.parseName "sum"
+         -- names2 <- GHC.parseName "mySumSq"
+         res1 <- isInScopeAndUnqualifiedGhc "sum"
+         res2 <- isInScopeAndUnqualifiedGhc "L.sum"
+         return (res1,res2,sumSquares,ssUnqual,ctx)
+      -- ((r1,ns,ns2,ss,ssu),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((r1,r2,ss,ssu,c),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      (showGhc c) `shouldBe` "[*ScopeAndQual]"
+      (prettyprint ss) `shouldBe` "sumSquares"
+      (showGhc ss) `shouldBe` "ScopeAndQual.sumSquares"
+      (show $ ssu) `shouldBe` "False"
+      -- (showGhc ns) `shouldBe` "[ScopeAndQual.sum]"
+      -- (showGhc ns2) `shouldBe` "[ScopeAndQual.mySumSq]"
+      r2 `shouldBe` True
+      r1 `shouldBe` False
 
   -- ---------------------------------------------
 
@@ -2902,6 +2929,14 @@ renamingB1FileName = GHC.mkFastString "./test/testdata/Renaming/B1.hs"
 
 parsedFileRenamingB1 :: IO (ParseResult, [PosToken])
 parsedFileRenamingB1 = parsedFileGhc "./test/testdata/Renaming/B1.hs"
+
+-- ----------------------------------------------------
+
+renamingC5FileName :: GHC.FastString
+renamingC5FileName = GHC.mkFastString "./test/testdata/Renaming/C5.hs"
+
+parsedFileRenamingC5 :: IO (ParseResult, [PosToken])
+parsedFileRenamingC5 = parsedFileGhc "./test/testdata/Renaming/C5.hs"
 
 -- ----------------------------------------------------
 

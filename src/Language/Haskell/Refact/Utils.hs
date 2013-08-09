@@ -34,7 +34,7 @@ module Language.Haskell.Refact.Utils
        , sortCurrentModuleGraph
 
        -- * For testing
-       , initGhcSession
+       -- , initGhcSession
        -- , prettyprint
        , pwd
        ) where
@@ -147,27 +147,6 @@ getModuleName (GHC.L _ modn) =
 
 -- ---------------------------------------------------------------------
 
--- | Initialise the GHC session, when starting a refactoring.
---   This should never be called directly.
-
-initGhcSession :: RefactGhc ()
-initGhcSession = do
-      settings <- getRefacSettings
-      dflags   <- GHC.getSessionDynFlags
-      let dflags' = foldl GHC.xopt_set dflags
-                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash
-                    ]
-          dflags'' = dflags' { GHC.importPaths = rsetImportPath settings }
-
-          -- Enable GHCi style in-memory linking
-          dflags''' = dflags'' { GHC.hscTarget = GHC.HscInterpreted,
-                                 GHC.ghcLink   = GHC.LinkInMemory }
-
-      _ <- GHC.setSessionDynFlags dflags'''
-      return ()
-
--- ---------------------------------------------------------------------
-
 -- | Load a module graph into the GHC session, starting from main
 loadModuleGraphGhc ::
   Maybe FilePath -> RefactGhc ()
@@ -231,7 +210,6 @@ getModuleDetails modSum = do
 
 -- | Parse a single source file into a GHC session
 parseSourceFileGhc ::
-  -- String -> RefactGhc (ParseResult,[PosToken])
   String -> RefactGhc ()
 parseSourceFileGhc targetFile = do
       target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- The *

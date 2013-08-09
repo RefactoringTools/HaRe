@@ -18,6 +18,7 @@ module Language.Haskell.Refact.Utils.Monad
        , getRefacSettings
        , defaultSettings
        , logSettings
+       , initGhcSession
 
        ) where
 
@@ -25,10 +26,31 @@ import Control.Monad.State
 import Exception
 import qualified Control.Monad.IO.Class as MU
 
+import qualified Bag           as GHC
+import qualified BasicTypes    as GHC
+import qualified Coercion      as GHC
+import qualified Digraph       as GHC
+import qualified DynFlags      as GHC
+import qualified ErrUtils      as GHC
+import qualified FastString    as GHC
+import qualified ForeignCall   as GHC
 import qualified GHC           as GHC
-import qualified GhcMonad      as GHC
 import qualified GHC.Paths     as GHC
+import qualified GhcMonad      as GHC
+import qualified HsSyn         as GHC
+import qualified InstEnv       as GHC
+import qualified Module        as GHC
 import qualified MonadUtils    as GHC
+import qualified NameSet       as GHC
+import qualified OccName       as GHC
+import qualified Outputable    as GHC
+import qualified RdrName       as GHC
+import qualified SrcLoc        as GHC
+import qualified StaticFlags   as GHC
+import qualified TcEvidence    as GHC
+import qualified TcType        as GHC
+import qualified TypeRep       as GHC
+import qualified Var           as GHC
 
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -117,10 +139,32 @@ instance (MonadPlus m,Functor m,GHC.MonadIO m,ExceptionMonad m) => MonadPlus (GH
   x `mplus` y = GHC.GhcT $ \_s -> (GHC.runGhcT (Just GHC.libdir) x) `mplus` (GHC.runGhcT (Just GHC.libdir) y)
 
 
+-- ---------------------------------------------------------------------
+
+-- | Initialise the GHC session, when starting a refactoring.
+--   This should never be called directly.
+initGhcSession :: RefactGhc ()
+initGhcSession = do
+      settings <- getRefacSettings
+      dflags   <- GHC.getSessionDynFlags
+      let dflags' = foldl GHC.xopt_set dflags
+                    [GHC.Opt_Cpp, GHC.Opt_ImplicitPrelude, GHC.Opt_MagicHash
+                    ]
+          dflags'' = dflags' { GHC.importPaths = rsetImportPath settings }
+
+          -- Enable GHCi style in-memory linking
+          dflags''' = dflags'' { GHC.hscTarget = GHC.HscInterpreted,
+                                 GHC.ghcLink   = GHC.LinkInMemory }
+
+      _ <- GHC.setSessionDynFlags dflags'''
+      return ()
+
+
 runRefactGhc ::
   RefactGhc a -> RefactState -> IO (a, RefactState)
 runRefactGhc comp initState = do
-    runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
+    -- runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
+    runStateT (GHC.runGhcT (Just GHC.libdir) (initGhcSession >> comp)) initState
 
 getRefacSettings :: RefactGhc RefactSettings
 getRefacSettings = do
