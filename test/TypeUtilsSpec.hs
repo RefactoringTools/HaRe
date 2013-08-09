@@ -864,31 +864,32 @@ spec = do
       r3 `shouldBe` False
 
     it "Requires qualification on name clash with an import" $ do
-      (t,toks) <- parsedFileGhc "./test/testdata/ScopeAndQual.hs"
       let
         comp = do
+         (t,toks) <- parseSourceFileTest  "./test/testdata/ScopeAndQual.hs"
+         putParsedModule t toks
          renamed <- getRefactRenamed
 
          ctx <- GHC.getContext
 
          let Just sumSquares = locToName (GHC.mkFastString "./test/testdata/ScopeAndQual.hs") (13,15) renamed
          ssUnqual <- isQualifiedPN $ GHC.unLoc sumSquares
-         -- names <- GHC.parseName "sum"
-         -- names2 <- GHC.parseName "mySumSq"
+         names <- GHC.parseName "sum"
+         names2 <- GHC.parseName "mySumSq"
          res1 <- isInScopeAndUnqualifiedGhc "sum"
          res2 <- isInScopeAndUnqualifiedGhc "L.sum"
-         return (res1,res2,sumSquares,ssUnqual,ctx)
-      -- ((r1,ns,ns2,ss,ssu),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((r1,r2,ss,ssu,c),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+         return (res1,res2,names,names2,sumSquares,ssUnqual,ctx)
+      -- ((r1,r2,ss,ssu,c),_s) <- runRefactGhc comp $ initialLogOnState
+      ((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcState comp
 
       (showGhc c) `shouldBe` "[*ScopeAndQual]"
       (prettyprint ss) `shouldBe` "sumSquares"
       (showGhc ss) `shouldBe` "ScopeAndQual.sumSquares"
       (show $ ssu) `shouldBe` "False"
-      -- (showGhc ns) `shouldBe` "[ScopeAndQual.sum]"
-      -- (showGhc ns2) `shouldBe` "[ScopeAndQual.mySumSq]"
-      r2 `shouldBe` True
-      r1 `shouldBe` False
+      (showGhc ns) `shouldBe` "[ScopeAndQual.sum]"
+      (showGhc ns2) `shouldBe` "[ScopeAndQual.mySumSq]"
+      "1" ++ (show r1) `shouldBe` "1True"
+      "2" ++ (show r2) `shouldBe` "2True"
 
   -- ---------------------------------------------
 
@@ -1584,7 +1585,7 @@ spec = do
 
          let [sqDecl] = definingDeclsNames [sq] (hsBinds renamed) False False
              [sqSig]  = definingSigsNames  [sq] renamed
- 
+
 
          -- newDecls <- addDecl tlDecls Nothing (newDecl,Nothing,Nothing) False
          newDecls <- addDecl tlDecls Nothing (sqDecl,[sqSig],Nothing) False
@@ -1617,10 +1618,10 @@ spec = do
          {-
          let [sqDecl] = definingDeclsNames [sq] (hsBinds renamed) False False
              [sqSig]  = definingSigsNames  [sq] renamed
- 
+
 
          let declToks = getDeclToks sq False (hsBinds renamed) toks
-             Just (_sig,sigToks) = getSigAndToks sq renamed toks 
+             Just (_sig,sigToks) = getSigAndToks sq renamed toks
              toksToAdd = sigToks ++ declToks
          -}
          let ([sqDecl],declToks) = getDeclAndToks sq True toks renamed

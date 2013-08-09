@@ -232,6 +232,8 @@ isInScopeAndUnqualifiedGhc :: String         -- ^ The identifier name.
 isInScopeAndUnqualifiedGhc n = do
   names <- ghandle handler (GHC.parseName n)
   logm $ "isInScopeAndUnqualifiedGhc:(n,names)=" ++ (showGhc (n,names))
+  ctx <- GHC.getContext
+  logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
   nameInfo <- mapM GHC.lookupName names
   let nameList = filter isAnId $ catMaybes nameInfo
   logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (showGhc (n,names))

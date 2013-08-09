@@ -163,8 +163,8 @@ initGhcSession = do
 runRefactGhc ::
   RefactGhc a -> RefactState -> IO (a, RefactState)
 runRefactGhc comp initState = do
-    -- runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
-    runStateT (GHC.runGhcT (Just GHC.libdir) (initGhcSession >> comp)) initState
+    runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
+    -- runStateT (GHC.runGhcT (Just GHC.libdir) (initGhcSession >> comp)) initState
 
 getRefacSettings :: RefactGhc RefactSettings
 getRefacSettings = do
