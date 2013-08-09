@@ -78,18 +78,7 @@ the following six contexts:
              in context GRHS [LStmt id] (LHsExpr id)
 -}
 
-{-
--- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
-doLiftToTopLevel :: [String] -> IO () -- For now
-doLiftToTopLevel args
- = do let fileName = ghead "filename" args
-          row      = read (args!!1)::Int
-          col      = read (args!!2)::Int
-      liftToTopLevel Nothing  Nothing fileName (row,col)
-      return ()
--}
-
--- | The API entry point
+-- | Lift a definition to the top level
 liftToTopLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
 liftToTopLevel settings maybeMainFile fileName (row,col) =
   runRefacSession settings maybeMainFile (compLiftToTopLevel fileName (row,col))
@@ -112,17 +101,7 @@ compLiftToTopLevel fileName (row,col) = do
 
 -- ---------------------------------------------------------------------
 
-{-
-doLiftOneLevel :: [String] -> IO () -- For now
-doLiftOneLevel args
- = do let fileName = ghead "filename" args
-          row      = read (args!!1)::Int
-          col      = read (args!!2)::Int
-      liftOneLevel Nothing  Nothing fileName (row,col)
-      return ()
--}
-
--- | The API entry point
+-- | Move a definition one level up from where it is now
 liftOneLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
 liftOneLevel settings maybeMainFile fileName (row,col) =
   runRefacSession settings maybeMainFile (compLiftOneLevel fileName (row,col))
