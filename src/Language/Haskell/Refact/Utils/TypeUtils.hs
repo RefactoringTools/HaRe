@@ -37,7 +37,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
        (
  -- * Program Analysis
     -- ** Imports and exports
-   inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, isInScopeAndUnqualifiedGhc'
+   inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
    -- , hsQualifier, {-This function should be removed-} rmPrelude
    {-,exportInfo -}, isExported, isExplicitlyExported, modIsExported
 
@@ -227,46 +227,39 @@ isInScopeAndUnqualified n names
 -- already
 -- NOTE: may require qualification based on name clash with an
 -- existing identifier.
-isInScopeAndUnqualifiedGhc :: String         -- ^ The identifier name.
-                           -> RefactGhc Bool -- ^ The result.
-isInScopeAndUnqualifiedGhc n = do
+isInScopeAndUnqualifiedGhc ::
+     String           -- ^ The identifier name.
+  -> (Maybe GHC.Name) -- ^ Existing name, to be excluded from test, if
+                      -- known
+  -> RefactGhc Bool   -- ^ The result.
+isInScopeAndUnqualifiedGhc n maybeExising = do
   names <- ghandle handler (GHC.parseName n)
   logm $ "isInScopeAndUnqualifiedGhc:(n,names)=" ++ (show n) ++ ":" ++  (showGhc names)
   ctx <- GHC.getContext
   logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
-  nameInfo <- mapM GHC.lookupName names
-  let nameList = filter isAnId $ catMaybes nameInfo
-  logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (show n) ++ ":" ++  (showGhc nameList)  
+  let nameList = case maybeExising of
+                  Nothing -> names
+                  Just n' -> filter (\x -> (GHC.nameUnique x) /= (GHC.nameUnique n')) names
+  logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (show n) ++ ":" ++  (showGhc nameList)
   return $ nameList /= []
 
   where
-    isAnId (GHC.AnId _)     = True
-    isAnId (GHC.ADataCon _) = True
-    isAnId (GHC.ATyCon _)   = True
-    isAnId _                = False
-
-    -- handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
     handler:: SomeException -> RefactGhc [GHC.Name]
     handler e = do
       logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show e)
       return []
 
-isInScopeAndUnqualifiedGhc' :: String         -- ^ The identifier name.
-                           -> GHC.Name      -- ^ The existing identifier
-                           -> RefactGhc Bool -- ^ The result.
-isInScopeAndUnqualifiedGhc' n nn = do
+inScopeNames :: String         -- ^ The identifier name.
+             -> RefactGhc [GHC.Name] -- ^ The result.
+inScopeNames n = do
   names <- ghandle handler (GHC.parseName n)
-  logm $ "isInScopeAndUnqualifiedGhc:(n,names)=" ++ (show n) ++ ":" ++  (showGhc names)
-  ctx <- GHC.getContext
-  logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
-  let names' = filter (\x -> (GHC.nameUnique x) /= (GHC.nameUnique nn)) names
-  logm $ "isInScopeAndUnqualifiedGhc:(n,names')=" ++ (show n) ++ ":" ++  (showGhc names')
-  return $ names' /= []
+  logm $ "inScopeNames:(n,names)=" ++ (show n) ++ ":" ++  (showGhc names)
+  return $ names
 
   where
     handler:: SomeException -> RefactGhc [GHC.Name]
     handler e = do
-      logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show e)
+      logm $ "inScopeNames.handler e=" ++ (show e)
       return []
 
 -- ---------------------------------------------------------------------
@@ -454,21 +447,21 @@ causeNameClashInExports::  GHC.Name          -- ^ The original name??
                         -> Bool              -- ^ The result
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
-causeNameClashInExports pn {- newName -} modName mod@(_g,imps,maybeExps,_doc) -- exps
+causeNameClashInExports pn {- newName -} modName renamed@(_g,imps,maybeExps,_doc) -- exps
   = let exps = fromMaybe [] maybeExps
         varExps = filter isImpVar exps
         modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if showGhc x== showGhc pn
                                                         then [GHC.moduleName $ GHC.nameModule x]
                                                         else []) varExps)
-    in (isExplicitlyExported pn mod) &&
-        ( any (modIsUnQualifedImported mod) modNames
+    in (isExplicitlyExported pn renamed) &&
+        ( any (modIsUnQualifedImported renamed) modNames
             || elem modName modNames)
  where
     isImpVar (GHC.L _ x) = case x of
       GHC.IEVar _ -> True
       _           -> False
 
-    modIsUnQualifedImported mod modName
+    modIsUnQualifedImported mod' modName
      =let -- imps =hsModImports mod
        -- imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) qualify _source _safe isQualified _isImplicit as h))
       in isJust $ find (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h)) 
@@ -791,15 +784,11 @@ getDeclaredVars bs = concatMap vars bs
 --------------------------------------------------------------------------------
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
-hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2) => t1 -> t2 -> RefactGhc [String]
+hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2)
+  => t1 -> t2 -> RefactGhc [String]
 hsVisibleNames e t = do
   d <- hsVisiblePNs e t
   return ((nub.map showGhc) d)
-
--- hsVisibleNames:: (Term t1, Term t2, FindEntity t1, MonadPlus m) => t1 -> t2 -> m [String]
--- hsVisibleNames e t =do d<-hsVisiblePNs e t
---                        return ((nub.map pNtoName) d)
-
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
@@ -4056,7 +4045,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
     sspan = gfromJust "renamePN" maybeSspan
 
     rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
-    rename  pnt@(GHC.L l n)
+    rename pnt@(GHC.L l n)
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do let (row,col) = (getLocatedStart pnt)
           logm $ "renamePN:rename at :" ++ (show (row,col))

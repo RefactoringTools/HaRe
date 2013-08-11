@@ -1,6 +1,6 @@
-module C7(myFringe)  where 
+module Renaming.C7(myFringe)  where 
 
-import D7
+import Renaming.D7
 
 myFringe:: Tree a -> [a]
 myFringe (Leaf x ) = [x]

@@ -169,6 +169,26 @@ spec = do
 
     -- ---------------------------------
 
+    it "Renames in D7 C7  10 1" $ do
+     --     (["D7.hs","C7.hs"],["myFringe","10","1"]),
+     r <- rename defaultTestSettings (Just "./test/testdata/Renaming/C7.hs") "./test/testdata/Renaming/D7.hs" "myFringe" (10,1)
+     -- rename logTestSettings (Just "./test/testdata/Renaming/C7.hs") "./test/testdata/Renaming/D7.hs" "myFringe" (10,1)
+
+     r `shouldBe` [ "./test/testdata/Renaming/D7.hs"
+                  , "./test/testdata/Renaming/C7.hs"
+                  ]
+
+     diffD <- compareFiles "./test/testdata/Renaming/D7.hs.expected"
+                           "./test/testdata/Renaming/D7.hs.refactored"
+     diffD `shouldBe` []
+
+     diffC <- compareFiles "./test/testdata/Renaming/C7.hs.expected"
+                           "./test/testdata/Renaming/C7.hs.refactored"
+     diffC `shouldBe` []
+
+
+    -- ---------------------------------
+
     it "Renames in Field1 5 18" $ do
      rename defaultTestSettings Nothing "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)
      -- rename logTestSettings Nothing "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)

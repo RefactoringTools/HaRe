@@ -1,4 +1,4 @@
-module D7 where
+module Renaming.D7 where
 
 {- Rename 'fringe' to 'myFringe'. 
    This affects module 'D7' and 'C7'

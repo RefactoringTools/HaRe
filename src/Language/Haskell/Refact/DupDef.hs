@@ -150,7 +150,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
 
                 newNameGhc <- mkNewGhcName Nothing newName
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow
-                nameAlreadyInScope <- isInScopeAndUnqualifiedGhc newName
+                nameAlreadyInScope <- isInScopeAndUnqualifiedGhc newName Nothing
 
                 -- logm ("DupDef: nameAlreadyInScope =" ++ (show nameAlreadyInScope)) -- ++AZ++ debug
                 -- logm ("DupDef: ln =" ++ (show ln)) -- ++AZ++ debug

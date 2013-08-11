@@ -397,7 +397,7 @@ pnsNeedRenaming dest parent _liftedDecls pns
             let -- inscpNames = map (\(x,_,_,_)->x) $ inScopeInfo inscps
                 vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
             -- if elem (pNtoName pn) vars  || isInScopeAndUnqualified (pNtoName pn) inscps && findEntity pn dest
-            isInScope <- isInScopeAndUnqualifiedGhc (pNtoName pn)
+            isInScope <- isInScopeAndUnqualifiedGhc (pNtoName pn) Nothing
             logm $ "MoveDef.pnsNeedRenaming:(f,d,vs,vars,isInScope)=" ++ (showGhc (f,d,vs,vars,isInScope))
             if elem (pNtoName pn) vars  || isInScope && findEntity pn dest
                then return [pn]
