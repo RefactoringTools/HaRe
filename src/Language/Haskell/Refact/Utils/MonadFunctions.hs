@@ -435,7 +435,7 @@ updateToks :: (SYB.Data t)
 updateToks (GHC.L sspan _) newAST printFun addTrailingNl
   = do
        newToks <- liftIO $ basicTokenise (printFun newAST)
-       let newToks' = if addTrailingNl 
+       let newToks' = if addTrailingNl
                        then newToks ++ [newLnToken (last newToks)]
                        else newToks
        putToksForSpan sspan  newToks'
@@ -453,7 +453,7 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
   = do
        -- newToks <- liftIO $ basicTokenise (printFun newAST)
        newToks <- liftIO $ basicTokenise (printFun newAST)
-       let newToks' = if addTrailingNl 
+       let newToks' = if addTrailingNl
                        then newToks ++ [newLnToken (last newToks)]
                        else newToks
        putToksForPos (startPos,endPos) newToks'

@@ -6,6 +6,7 @@ module TestUtils
        , runLogTestGhc
        , runTestGhc
        , runRefactGhcState
+       , runRefactGhcStateLog
        , initialState
        , initialLogOnState
        , toksFromState
@@ -146,11 +147,15 @@ runTestGhc comp = do
 -- ---------------------------------------------------------------------
 
 runRefactGhcState :: RefactGhc t -> IO (t, RefactState)
-runRefactGhcState paramcomp = do
+runRefactGhcState paramcomp = runRefactGhcStateLog paramcomp False
+
+-- ---------------------------------------------------------------------
+
+runRefactGhcStateLog :: RefactGhc t -> Bool -> IO (t, RefactState)
+runRefactGhcStateLog paramcomp logOn  = do
   let
-     -- initState = ReplState { repl_inputState = initInputState }
      initState = RefSt
-        { rsSettings = RefSet ["./test/testdata/"] False
+        { rsSettings = RefSet ["./test/testdata/"] logOn
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone

@@ -420,25 +420,35 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
       logm $ "renameInClientMod: nameInfo=" ++ (showGhc nameInfo)
       {- ++AZ++ debug stuff end -}
 
+      -- There are two different tests we need to do here
+      -- 1. Does the new name clash with some existing name in the
+      --    client mod, in which case it must be qualified
+      -- 2. Is the new name module imported qualified, and so needs to
+      --    be qualified in the replacement, according to the import
       isInScopeUnqual <- isInScopeAndUnqualifiedGhc $ nameToString oldPN
-      logm $ "renameInClientMod: isInScopeAndUnqual=" ++ (show isInScopeUnqual) -- ++AZ++
+      isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName
+      logm $ "renameInClientMod: (isInScopeAndUnqual,isInScopeUnqualNew)=" ++ (show (isInScopeUnqual,isInScopeUnqualNew)) -- ++AZ++
       -- if  qualifier == []  --this name is not imported, but it maybe used in the import list
-      if isInScopeUnqual
+      -- if isInScopeUnqual
+      if isInScopeUnqualNew
        then
         -- do (mod', ((ts',m),f))<-runStateT (renamePN oldPN Nothing newName True mod) ((ts,unmodified), fileName)
-        do (refactoredMod,_) <- applyRefac (refactRename oldPN newNameGhc) RSAlreadyLoaded
+        do
+           (refactoredMod,_) <- applyRefac (refactRename oldPN newNameGhc True) RSAlreadyLoaded
            return [refactoredMod]
        else
-           -- TODO: implement this
-           return []
+        do
+           (refactoredMod,_) <- applyRefac (refactRename oldPN newNameGhc False) RSAlreadyLoaded
+           -- TODO: implement rest of this
+           return [refactoredMod]
   where
      handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
      handler _ = return []
 
-     refactRename old new = do
+     refactRename old new useQual = do
        renamed <- getRefactRenamed
        logm $ "renameInClientMod.refactRename:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
-       renamePN old new True False renamed
+       renamePN old new True useQual renamed
 
 {- original
 renameInClientMod pnt@(PNT oldPN _ _) newName (m, fileName)

@@ -11,7 +11,3 @@ myFringe (Leaf x ) = [x]
 myFringe (Branch left right) = myFringe left
 
 mySumSq = Renaming.D5.sum
-
-
-
-

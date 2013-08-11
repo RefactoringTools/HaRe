@@ -37,7 +37,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
        (
  -- * Program Analysis
     -- ** Imports and exports
-   inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc
+   inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, isInScopeAndUnqualifiedGhc'
    -- , hsQualifier, {-This function should be removed-} rmPrelude
    {-,exportInfo -}, isExported, isExplicitlyExported, modIsExported
 
@@ -231,12 +231,12 @@ isInScopeAndUnqualifiedGhc :: String         -- ^ The identifier name.
                            -> RefactGhc Bool -- ^ The result.
 isInScopeAndUnqualifiedGhc n = do
   names <- ghandle handler (GHC.parseName n)
-  logm $ "isInScopeAndUnqualifiedGhc:(n,names)=" ++ (showGhc (n,names))
+  logm $ "isInScopeAndUnqualifiedGhc:(n,names)=" ++ (show n) ++ ":" ++  (showGhc names)
   ctx <- GHC.getContext
   logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
   nameInfo <- mapM GHC.lookupName names
   let nameList = filter isAnId $ catMaybes nameInfo
-  logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (showGhc (n,names))
+  logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (show n) ++ ":" ++  (showGhc nameList)  
   return $ nameList /= []
 
   where
@@ -246,6 +246,24 @@ isInScopeAndUnqualifiedGhc n = do
     isAnId _                = False
 
     -- handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
+    handler:: SomeException -> RefactGhc [GHC.Name]
+    handler e = do
+      logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show e)
+      return []
+
+isInScopeAndUnqualifiedGhc' :: String         -- ^ The identifier name.
+                           -> GHC.Name      -- ^ The existing identifier
+                           -> RefactGhc Bool -- ^ The result.
+isInScopeAndUnqualifiedGhc' n nn = do
+  names <- ghandle handler (GHC.parseName n)
+  logm $ "isInScopeAndUnqualifiedGhc:(n,names)=" ++ (show n) ++ ":" ++  (showGhc names)
+  ctx <- GHC.getContext
+  logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
+  let names' = filter (\x -> (GHC.nameUnique x) /= (GHC.nameUnique nn)) names
+  logm $ "isInScopeAndUnqualifiedGhc:(n,names')=" ++ (show n) ++ ":" ++  (showGhc names')
+  return $ names' /= []
+
+  where
     handler:: SomeException -> RefactGhc [GHC.Name]
     handler e = do
       logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show e)

@@ -870,6 +870,8 @@ spec = do
          putParsedModule t toks
          renamed <- getRefactRenamed
 
+         logm $ "renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+
          ctx <- GHC.getContext
 
          let Just sumSquares = locToName (GHC.mkFastString "./test/testdata/ScopeAndQual.hs") (13,15) renamed
@@ -879,8 +881,8 @@ spec = do
          res1 <- isInScopeAndUnqualifiedGhc "sum"
          res2 <- isInScopeAndUnqualifiedGhc "L.sum"
          return (res1,res2,names,names2,sumSquares,ssUnqual,ctx)
-      -- ((r1,r2,ss,ssu,c),_s) <- runRefactGhc comp $ initialLogOnState
-      ((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcState comp
+      ((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcStateLog comp True
+      --((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcState comp
 
       (showGhc c) `shouldBe` "[*ScopeAndQual]"
       (prettyprint ss) `shouldBe` "sumSquares"
