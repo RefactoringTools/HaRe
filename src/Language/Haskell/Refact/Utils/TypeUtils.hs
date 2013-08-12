@@ -89,7 +89,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Updating
     -- ,Update(update)
-    {- ,qualifyPName-},rmQualifier,renamePN {- ,replaceNameInPN -},autoRenameLocalVar
+    {- ,qualifyPName-},rmQualifier,qualifyToplevelName,renamePN {- ,replaceNameInPN -},autoRenameLocalVar
 
     -- * Miscellous
     -- ** Parsing, writing and showing
@@ -3944,6 +3944,16 @@ rmQualifier pns t
 
 -- ---------------------------------------------------------------------
 
+-- | Replace all occurences of a top level GHC.Name with a qualified version.
+qualifyToplevelName :: GHC.Name -> RefactGhc ()
+qualifyToplevelName n = do
+    renamed <- getRefactRenamed
+    logm $ "qualifyToplevelName:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed)
+    renamePN n n True True renamed
+    return ()
+
+-- ---------------------------------------------------------------------
+
 -- | Rename each occurrences of the identifier in the given syntax
 -- phrase with the new name. If the Bool parameter is True, then
 -- modify both the AST and the token stream, otherwise only modify the
@@ -4034,8 +4044,8 @@ renamePNworker::(SYB.Data t)
 renamePNworker oldPN newName updateTokens useQual t = do
   -- logm $ "renamePNworker: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal (no ' at end)
-  everywhereMStaged SYB.Renamer (SYB.mkM rename
-  -- everywhereMStaged' SYB.Renamer (SYB.mkM rename
+  -- everywhereMStaged SYB.Renamer (SYB.mkM rename
+  everywhereMStaged' SYB.Renamer (SYB.mkM rename
                                `SYB.extM` renameVar
                                `SYB.extM` renameTyVar
                                `SYB.extM` renameFunBind) t

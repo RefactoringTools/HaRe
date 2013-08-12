@@ -471,13 +471,8 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
        logm $ "renameInClientMod.qualifyTopLevelVar:new:toQualify=" ++ (show new) ++ ":" ++ (showGhc toQualify)
        -- renamed <- getRefactRenamed
        -- renamePN new new True True renamed
-       mapM_ w toQualify
+       mapM_ qualifyToplevelName toQualify
        return ()
-
-       where
-         w n = do
-           renamed <- getRefactRenamed
-           renamePN n n True True renamed
 
      worker :: GHC.Name -> String -> GHC.Name -> RefactGhc ()
      worker oldPN newName newNameGhc = do

@@ -2019,6 +2019,30 @@ spec = do
       (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
+  -- ---------------------------------------------
+
+  describe "qualifyToplevelName" $ do
+    it "Qualify a name at the top level, updating tokens" $ do
+      (t, toks) <- parsedFileRenamingC7
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let declsr = hsBinds renamed
+      -- (showGhc declsr) `shouldBe` ""
+      let Just (GHC.L l n) = locToName renamingC7FileName (7, 1) renamed
+      let
+        comp = do
+         new <- qualifyToplevelName n
+
+         return ()
+      let
+
+      -- (_,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (_,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (showGhc n) `shouldBe` "Renaming.C7.myFringe"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.C7(myFringe)  where\n\n import Renaming.D7\n\n myFringe:: Tree a -> [a]\n myFringe (Leaf x ) = [x]\n myFringe (Branch left right) = myFringe left ++ fringe right\n\n\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Renaming.C7(Renaming.C7.myFringe)  where\n\n import Renaming.D7\n\n myFringe:: Tree a -> [a]\n Renaming.C7.myFringe (Leaf x ) = [x]\n myFringe (Branch left right) = Renaming.C7.myFringe left ++ fringe right\n\n\n\n\n "
+
+
 
   -- ---------------------------------------------
 
@@ -2761,6 +2785,14 @@ renamingD5FileName = GHC.mkFastString "./test/testdata/Renaming/D5.hs"
 
 parsedFileRenamingD5 :: IO (ParseResult,[PosToken])
 parsedFileRenamingD5 = parsedFileGhc "./test/testdata/Renaming/D5.hs"
+
+
+renamingC7FileName :: GHC.FastString
+renamingC7FileName = GHC.mkFastString "./test/testdata/Renaming/C7.hs"
+
+parsedFileRenamingC7 :: IO (ParseResult,[PosToken])
+parsedFileRenamingC7 = parsedFileGhc "./test/testdata/Renaming/C7.hs"
+
 
 locToNameFileName :: GHC.FastString
 locToNameFileName = GHC.mkFastString "./test/testdata/LocToName.hs"
