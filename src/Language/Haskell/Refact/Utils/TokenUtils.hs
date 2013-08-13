@@ -16,6 +16,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , initTokenCache
        , getTokensFor
        , getTokensBefore
+       , replaceTokenForSrcSpan
        , updateTokensForSrcSpan
        , treeStartEnd
        , spanStartEnd
@@ -33,6 +34,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        -- * Token Tree Selection
        , treeIdFromForestSpan
+       , replaceTokenInCache
        , putToksInCache
        , removeToksFromCache
        , getTreeFromCache
@@ -185,6 +187,21 @@ Note : Need to
 
 
 -}
+{-
+
+NOTE: Token stream has zero-length string tokens in it,
+
+  ITvocurly
+  ITsemi
+  ITvccurly
+
+These are inserted by GHC at points where a '{', ';' or '}' belongs in
+the code, were it not implied by layout.
+
+This can perhaps be used to choose appropriate token boundaries.
+
+-}
+
 
 deriving instance Show Entry => Show (Entry)
 
@@ -529,6 +546,15 @@ stash tk oldTree = tk'
 
 -- ---------------------------------------------------------------------
 
+replaceTokenInCache :: TokenCache -> GHC.SrcSpan -> PosToken -> TokenCache
+replaceTokenInCache tk sspan tok = tk'
+  where
+   forest = getTreeFromCache sspan tk
+   forest' = replaceTokenForSrcSpan forest sspan tok
+   tk' = replaceTreeInCache sspan forest' tk
+
+-- ---------------------------------------------------------------------
+
 putToksInCache :: TokenCache -> GHC.SrcSpan -> [PosToken] -> (TokenCache,GHC.SrcSpan)
 putToksInCache tk sspan toks = (tk'',newSpan)
   where
@@ -631,12 +657,41 @@ getTokensBefore forest sspan = (forest', prevToks')
     -- prevToks' = prevToks
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Given a SrcSpan, find the closest enclosing one that is already
 -- in the tree, and return the enclosing span and the tokens it
 -- contains.
 getTokensAround :: Tree Entry -> GHC.SrcSpan -> (GHC.SrcSpan,[PosToken])
 getTokensAround = error $ "undefined getTokensAround"
+-}
+-- ---------------------------------------------------------------------
+
+-- |Replace a single token in a token tree, without changing the
+-- structure of the tree
+-- NOTE: the GHC.SrcSpan may have been used to select the appropriate
+-- forest in the first place, and is required to select the correct
+-- span in the tree, due to the ForestLine annotations that may be present
+replaceTokenForSrcSpan :: Tree Entry -> GHC.SrcSpan -> PosToken -> Tree Entry
+replaceTokenForSrcSpan forest sspan tok = forest'
+  where
+    (GHC.L tl _,_) = tok
+    -- First open to the sspan, making use of any Forestline annotations
+    z = openZipperToSpan (srcSpanToForestSpan sspan) $ Z.fromTree forest
+
+    -- Then drill down to the specific subtree containing the token
+    z' = openZipperToSpan (srcSpanToForestSpan tl) z
+
+    (tspan,toks) = case Z.tree z' of
+            (Node (Entry ss tks) []) -> (ss,tks)
+            (Node (Entry _ []) _sub) -> error $ "replaceTokenForSrcSpan: expecting tokens, found: " ++ (show $ Z.tree z')
+
+    ((row,col),_) = forestSpanToSimpPos $ srcSpanToForestSpan tl
+    toks' = replaceTokNoReAlign toks (row,col) tok
+
+    zf = Z.setTree (Node (Entry tspan toks') []) z'
+    forest' = Z.toTree zf
+
+    -- forest' = forest
 
 -- ---------------------------------------------------------------------
 
@@ -1414,23 +1469,6 @@ openZipperToNode
 openZipperToNode (Node (Entry sspan _) _) z
   = openZipperToSpan sspan z
 
-{-
-  -- = error $ "openZipperToNode:(treeStartEnd (Z.tree z),z)="++(show (treeStartEnd (Z.tree z),z)) -- ++AZ++
-  = if treeStartEnd (Z.tree z) == treeStartEnd node
-      then z
-      else z'
-        where
-          -- go through all of the children to find the one that
-          -- either is what we are looking for, or contains it
-          childrenAsZ = getChildrenAsZ z
-          child = ghead "openZipperToNode" $ filter contains childrenAsZ
-          -- focus of child either IS the node we care about, or contains it
-          z' = if (treeStartEnd (Z.tree child)) == treeStartEnd node
-                 then child
-                 else openZipperToNode node child
-
-          contains zn = spanContains (treeStartEnd $ Z.tree zn) (treeStartEnd node)
--}
 
 getChildrenAsZ :: Z.TreePos Z.Full a -> [Z.TreePos Z.Full a]
 getChildrenAsZ z = go [] (Z.firstChild z)

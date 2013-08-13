@@ -1778,6 +1778,33 @@ tree TId 0:
       (GHC.showRichTokenStream $ retrieveTokens f3) `shouldBe`
                "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
 
+  -- ---------------------------------------------
+
+  describe "replaceTokenForSrcSpan" $ do
+    it "replaces a single token in a given span, without disturbing the tree" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let decl@(GHC.L l _) = head decls
+      let Just (GHC.L ln n) = locToName tokenTestFileName (13, 1) renamed
+
+
+      (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
+      (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+      (showGhc decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
+      (showGhc n) `shouldBe` "TokenTest.bab"
+
+      let newTok = markToken $ newNameTok False l n
+      let forest' = replaceTokenForSrcSpan forest l newTok
+
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(21,14))\n"
+
+      let toks' = retrieveTokens forest'
+      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+
 
   -- ---------------------------------------------
 

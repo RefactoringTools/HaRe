@@ -4116,9 +4116,11 @@ renamePNworker oldPN newName updateTokens useQual t = do
                     -- logm $ "renamePN.worker:toks=" ++ (show toks)
                     logm $ "renamePN.worker:newTok=" ++ (show (markToken $ newNameTok useQual' l newName))
                     let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok useQual' l newName)
-                    sspan' <- putToksForSpan sspan toks'
+                    -- sspan' <- putToksForSpan sspan toks'
+                    replaceToken sspan (markToken $ newNameTok useQual' l newName)
+                    let sspan' = sspan
                     -- l' <- putToksForSpan l toks'
-                    logm $ "renamePN.worker:toks'=" ++ (show toks')
+                    -- logm $ "renamePN.worker:toks'=" ++ (show toks')
                     return (newName,sspan')
                     -- return (newName,l')
                     -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (showGhc (row,col,l,sspan)) ++ (show toks) -- ++AZ++

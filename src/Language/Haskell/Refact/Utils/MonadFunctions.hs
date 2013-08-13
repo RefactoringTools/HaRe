@@ -22,6 +22,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactFileName
 
        -- * TokenUtils API
+       , replaceToken
        , putToksForSpan
        , getToksForSpan
        , getToksBeforeSpan
@@ -148,6 +149,18 @@ getToksBeforeSpan sspan = do
   put $ st { rsModule = rsModule' }
   logm $ "getToksBeforeSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
+
+-- |Replace a token occurring in a given GHC.SrcSpan
+replaceToken ::  GHC.SrcSpan -> PosToken -> RefactGhc ()
+replaceToken sspan tok = do
+  logm $ "replaceToken " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show tok)
+  st <- get
+  let Just tm = rsModule st
+
+  let tk' = replaceTokenInCache (rsTokenCache tm) sspan tok
+  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
+  put $ st { rsModule = rsModule' }
+  return ()
 
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens
@@ -388,7 +401,7 @@ setRefactDone = do
 
 clearRefactDone :: RefactGhc ()
 clearRefactDone = do
-  logm $ "clearRefactDone" 
+  logm $ "clearRefactDone"
   st <- get
   put $ st { rsFlags = RefFlags False }
 
