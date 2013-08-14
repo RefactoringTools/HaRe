@@ -107,6 +107,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        -- * Based on Data.Tree
        , drawTreeEntry
        , drawTokenCache
+       , drawTokenCacheDetailed
        , drawForestEntry
        , drawEntry
 
@@ -1516,13 +1517,17 @@ openZipperToSpan sspan z
                    openZipperToSpan sspan x
 
             xx  -> case (filter (\zt -> (treeStartEnd $ Z.tree zt) == sspan) xx) of 
-                    -- [] -> error $ "openZipperToSpan: no matching subtree:(sspan,xx)=" ++ (show (sspan,xx)) -- ++AZ++ 
                     [] -> -- more than one matches, see if we can get
                           -- rid of the ones that have been lengthened
                           case (filter (not .forestSpanLenChanged . treeStartEnd . Z.tree) xx) of
                             [] -> z -- we tried...
                             [w] -> openZipperToSpan sspan w
-                            ww -> error $ "openZipperToSpan:can't resolve:(sspan,ww)="++(show (sspan,ww))
+                            -- ww -> error $ "openZipperToSpan:can't resolve:(sspan,ww)="++(show (sspan,ww))
+                            ww -> -- more than one candidate, break
+                                  -- the tie on version match
+                                  case (filter (\zt -> matchVersions sspan zt) ww) of
+                                     [v] -> openZipperToSpan sspan v
+                                     _   -> error $ "openZipperToSpan:can't resolve:(sspan,ww)="++(show (sspan,map (\zt -> treeStartEnd $ Z.tree zt) ww))
                     [y] -> openZipperToSpan sspan y
                     yy -> -- Multiple, check if we can separate out by
                           -- version
@@ -1530,11 +1535,14 @@ openZipperToSpan sspan z
                            -- [] -> z
                            [] -> error $ "openZipperToSpan:no version match:(sspan,yy)=" ++ (show (sspan,yy)) -- ++AZ++
                            [w] -> openZipperToSpan sspan w
-                           -- _ww -> z
-                           -- ww -> error $ "openZipperToSpan:multiple version match:" ++ (show (sspan,ww)) -- ++AZ++
                            _ww -> error $ "openZipperToSpan:multiple version match:" ++ (show (sspan,yy)) -- ++AZ++
 
           contains zn = spanContains (treeStartEnd $ Z.tree zn) sspan
+
+          matchVersions span1 z2 = isMatch
+            where
+              span2 = treeStartEnd $ Z.tree z2
+              isMatch = forestSpanVersions span1 == forestSpanVersions span2
 
 -- ---------------------------------------------------------------------
 
@@ -1751,6 +1759,16 @@ drawTokenCache tk = Map.foldlWithKey' doOne "" (tkCache tk)
                         ++ (drawTreeEntry val)
 
 -- ---------------------------------------------------------------------
+
+-- |Call drawTreeEntry on the entire token cache
+drawTokenCacheDetailed :: TokenCache -> String
+drawTokenCacheDetailed tk = Map.foldlWithKey' doOne "" (tkCache tk)
+  where
+    doOne :: String -> TreeId -> Tree Entry -> String
+    doOne s key val = s ++ "tree " ++ (show key) ++ ":\n"
+                        ++ (show val)
+
+-- ---------------------------------------------------------------------
 -- | Neat 2-dimensional drawing of a tree.
 drawTreeEntry :: Tree Entry -> String
 drawTreeEntry  = unlines . drawEntry
@@ -1863,8 +1881,11 @@ syncAST ast@(GHC.L l _t) sspan forest = (GHC.L sspan xx,forest')
     hsbindlr (GHC.L s b)    = (GHC.L (syncSpan s) b) :: GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)
     sig (GHC.L s n)         = (GHC.L (syncSpan s) n) :: GHC.LSig GHC.Name
     ty (GHC.L s typ)        = (GHC.L (syncSpan s) typ) :: (GHC.LHsType GHC.Name)
+
     -- TODO: ++AZ++ this is horrible, ad hoc: syncSpan'
-    name (GHC.L s n)        = (GHC.L (syncSpan' s) n) :: GHC.Located GHC.Name
+    --name (GHC.L s n)        = (GHC.L (syncSpan' s) n) :: GHC.Located GHC.Name
+    name (GHC.L s n)        = (GHC.L (syncSpan s) n) :: GHC.Located GHC.Name
+
     lhsexpr (GHC.L s e)     = (GHC.L (syncSpan s) e) :: GHC.LHsExpr GHC.Name
     lpat (GHC.L s p)        = (GHC.L (syncSpan s) p) :: GHC.LPat GHC.Name
     limportdecl (GHC.L s n) = (GHC.L (syncSpan s) n) :: GHC.LImportDecl GHC.Name

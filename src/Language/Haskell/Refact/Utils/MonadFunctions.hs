@@ -42,6 +42,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        -- * For debugging
        , drawTokenTree
+       , drawTokenTreeDetailed
        , getTokenTree
 
        -- * State flags for managing generic traversals
@@ -288,6 +289,16 @@ drawTokenTree msg = do
   -- let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   -- logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTreeEntry mainForest)
   logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTokenCache (rsTokenCache tm))
+  return ()
+
+-- ---------------------------------------------------------------------
+
+-- |Print detailed Token Tree for debug purposes
+drawTokenTreeDetailed :: String -> RefactGhc ()
+drawTokenTreeDetailed msg = do
+  st <- get
+  let Just tm = rsModule st
+  logm $ msg ++ "\ncurrent detailed token tree:\n" ++ (drawTokenCacheDetailed (rsTokenCache tm))
   return ()
 
 -- ---------------------------------------------------------------------

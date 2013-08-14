@@ -3560,8 +3560,6 @@ duplicateDecl decls sigs n newFunName
           let colStart  = tokenCol $ ghead "duplicateDecl.sig"
                     $ dropWhile isWhiteSpace toksSig
 
-
-          -- typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceIndent 2 0 0) toksSig
           typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceAbsCol 2 colStart 0) toksSig
           _typeSig'' <- renamePN n newFunName True False typeSig'
 
@@ -3576,7 +3574,6 @@ duplicateDecl decls sigs n newFunName
       let colStart  = tokenCol $ ghead "duplicateDecl.decl"
                     $ dropWhile isWhiteSpace toks
 
-      -- funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceIndent 1 0 2) toks
       funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceAbsCol rowOffset colStart 2) toks
       funBinding'' <- renamePN n newFunName True False funBinding'
 
@@ -3986,6 +3983,7 @@ renamePN oldPN newName updateTokens useQual t = do
       -- everywhereMStaged' SYB.Renamer
                  (SYB.mkM renameGroup `SYB.extM` renameName
                  `SYB.extM` renameVar `SYB.extM` renameTyVar
+                 `SYB.extM` renameLIE
                  `SYB.extM` renameFunBind) t
     else
       renamePNworker oldPN newName updateTokens useQual t
@@ -4015,6 +4013,10 @@ renamePN oldPN newName updateTokens useQual t = do
     renameTyVar :: (GHC.Located (GHC.HsType GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsType GHC.Name))
     renameTyVar var@(GHC.L _l (GHC.HsTyVar _n)) = renamePNworker oldPN newName updateTokens useQual var
     renameTyVar x = return x
+
+    renameLIE :: (GHC.LIE GHC.Name) -> RefactGhc (GHC.LIE GHC.Name)
+    renameLIE lie@(GHC.L _l (GHC.IEVar n)) = renamePNworker oldPN newName updateTokens useQual lie
+    renameLIE x = return x
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
     renameFunBind lfun@(GHC.L _ (GHC.FunBind _ _ _ _ _ _))
@@ -4048,39 +4050,49 @@ renamePNworker oldPN newName updateTokens useQual t = do
   everywhereMStaged' SYB.Renamer (SYB.mkM rename
                                `SYB.extM` renameVar
                                `SYB.extM` renameTyVar
+                               `SYB.extM` renameLIE
                                `SYB.extM` renameFunBind) t
   where
     -- logm $ "renamePN:***ERROR**:do not use getSrcSpan"
-    maybeSspan = getSrcSpan t
-    sspan = gfromJust "renamePN" maybeSspan
+    -- maybeSspan = getSrcSpan t
+    -- sspan = gfromJust "renamePN" maybeSspan
 
     rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
     rename pnt@(GHC.L l n)
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
-     = do let (row,col) = (getLocatedStart pnt)
-          logm $ "renamePN:rename at :" ++ (show (row,col))
-          (new,_sspan') <- worker useQual (row,col) l n
-          return (GHC.L l new)
+     = do -- let (row,col) = (getLocatedStart pnt)
+          logm $ "renamePN:rename at :" ++ (show l) ++ (showSrcSpanF l)
+          worker useQual l n
+          return (GHC.L l newName)
     rename x = return x
 
     renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
     renameVar var@(GHC.L l (GHC.HsVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
-     = do let (row,col) = getLocatedStart var
+     = do -- let (row,col) = getLocatedStart var
           -- logm $ "renamePN:renameVar at :" ++ (show (row,col))
-          (new,_sspan') <- worker useQual (row,col) l n
-          return (GHC.L l (GHC.HsVar new))
+          worker useQual l n
+          return (GHC.L l (GHC.HsVar newName))
     renameVar x = return x
 
     -- HsTyVar {Name: Renaming.D1.Tree}))
     renameTyVar :: (GHC.Located (GHC.HsType GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsType GHC.Name))
     renameTyVar var@(GHC.L l (GHC.HsTyVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
-     = do let (row,col) = getLocatedStart var
+     = do -- let (row,col) = getLocatedStart var
           -- logm $ "renamePN:renameTyVar at :" ++ (show (row,col))
-          (new,_sspan') <- worker useQual (row,col) l n
-          return (GHC.L l (GHC.HsTyVar new))
+          worker useQual l n
+          return (GHC.L l (GHC.HsTyVar newName))
     renameTyVar x = return x
+
+    renameLIE :: (GHC.LIE GHC.Name) -> RefactGhc (GHC.LIE GHC.Name)
+    renameLIE lie@(GHC.L l (GHC.IEVar n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do -- let (row,col) = getLocatedStart lie
+          -- logm $ "renamePN:renameLIE at :" ++ (show (row,col))
+          worker useQual l n
+          return (GHC.L l (GHC.IEVar newName))
+    renameLIE x = return x
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
     renameFunBind lfun@(GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MatchGroup matches typ) co fvs tick))
@@ -4091,40 +4103,33 @@ renamePNworker oldPN newName updateTokens useQual t = do
           --         (b) rename each of 'tail matches'
           --             (head is renamed in (a) )
           logm $ "renamePNWorker:renameFunBind"
-          let (row,col) = getLocatedStart lfun
-          (_new,_sspan') <- worker False (row,col) l n
+          let -- (row,col) = getLocatedStart lfun
+          worker False l n
           -- Now do (b)
           logm $ "renameFunBind:starting matches"
           -- let w lmatch@(GHC.L lm _match) = worker useQual (r,c) lm n
-          let w lmatch@(GHC.L lm _match) = worker False (r,c) lm n
-                where (r,c) = getLocatedStart lmatch
+          let w lmatch@(GHC.L lm _match) = worker False lm n
+                -- where (r,c) = getLocatedStart lmatch
           mapM w $ tail matches
           logm $ "renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MatchGroup matches typ) co fvs tick))
     renameFunBind x = return x
 
-    -- TODO: must update the original sspan with the new one.
-       --      ++AZ++ How?
-    worker useQual' (r,c) l _n
+    worker useQual' l _n
      = do if updateTokens
            then  do
-                    let (row,col) = srcPosToSimpPos (r,c)
-                    logm $ "renamePN.worker: ((row,col),sspan,l,newName)=" ++ (showGhc ((row,col),sspan,l,newName)) -- ++AZ++ debug
+                    logm $ "renamePN.worker entry:l=" ++ (showSrcSpanF l)
+                    -- let (row,col) = srcPosToSimpPos (r,c)
+                    -- logm $ "renamePN.worker: ((row,col),sspan,l,newName)=" ++ (showGhc ((row,col),sspan,l,newName)) -- ++AZ++ debug
+                    -- logm $ "renamePN.worker: ((row,col),l,newName)=" ++ (showGhc ((row,col),l,newName)) -- ++AZ++ debug
+                    logm $ "renamePN.worker: (l,newName)=" ++ (showGhc (l,newName)) -- ++AZ++ debug
                     drawTokenTree "" -- ++AZ++ debug
-                    toks <- getToksForSpan sspan
-                    -- toks <- getToksForSpan l
-                    -- logm $ "renamePN.worker:toks=" ++ (show toks)
                     logm $ "renamePN.worker:newTok=" ++ (show (markToken $ newNameTok useQual' l newName))
-                    let toks'= replaceTokNoReAlign toks (row,col) (markToken $ newNameTok useQual' l newName)
-                    -- sspan' <- putToksForSpan sspan toks'
-                    replaceToken sspan (markToken $ newNameTok useQual' l newName)
-                    let sspan' = sspan
-                    -- l' <- putToksForSpan l toks'
-                    -- logm $ "renamePN.worker:toks'=" ++ (show toks')
-                    return (newName,sspan')
-                    -- return (newName,l')
-                    -- error $ "renamePN: (row,col,l,sspan),toks=" ++ (showGhc (row,col,l,sspan)) ++ (show toks) -- ++AZ++
-           else return (newName,l)
+                    -- replaceToken sspan (markToken $ newNameTok useQual' l newName)
+                    replaceToken l (markToken $ newNameTok useQual' l newName)
+                    drawTokenTree "after replaceToken" -- ++AZ++ debug
+                    return ()
+           else return ()
 
 -- ---------------------------------------------------------------------
 

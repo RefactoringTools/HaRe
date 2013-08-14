@@ -17,20 +17,29 @@ module TestUtils
        , mkTokenCache
        , hex
        , unspace
-
+       , mkTestGhcName
        , setLogger
        ) where
 
 
-import qualified GHC        as GHC
--- import qualified GhcMonad   as GHC
--- import qualified Outputable as GHC
--- import qualified RdrName    as GHC
--- import qualified SrcLoc     as GHC
+-- import qualified Bag           as GHC
+-- import qualified BasicTypes    as GHC
+-- import qualified FastString    as GHC
+import qualified GHC           as GHC
+-- import qualified Lexer         as GHC
+-- import qualified Module        as GHC
+import qualified Name          as GHC
+-- import qualified NameSet       as GHC
+-- import qualified Outputable    as GHC
+-- import qualified RdrName       as GHC
+-- import qualified SrcLoc        as GHC
+import qualified Unique        as GHC
+-- import qualified UniqSet       as GHC
 
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
@@ -206,6 +215,16 @@ unspace str = go [] str
     go acc [x] = acc ++ [x]
     go acc (' ':' ':xs) = go acc (' ':xs)
     go acc (x:xs) = go (acc++[x]) xs
+
+-- ---------------------------------------------------------------------
+
+mkTestGhcName :: Int -> Maybe GHC.Module -> String -> GHC.Name
+mkTestGhcName u maybeMod name = n
+  where
+      un = GHC.mkUnique 'H' (u+1) -- H for HaRe :)
+      n = case maybeMod of
+               Nothing -> GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
+               Just modu -> GHC.mkExternalName un modu (GHC.mkVarOcc name) nullSrcSpan
 
 -- ---------------------------------------------------------------------
 

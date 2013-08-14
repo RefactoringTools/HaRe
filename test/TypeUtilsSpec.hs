@@ -881,8 +881,8 @@ spec = do
          res1 <- isInScopeAndUnqualifiedGhc "sum" Nothing
          res2 <- isInScopeAndUnqualifiedGhc "L.sum" Nothing
          return (res1,res2,names,names2,sumSquares,ssUnqual,ctx)
-      ((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcStateLog comp True
-      --((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcState comp
+      -- ((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcStateLog comp True
+      ((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcState comp
 
       -- (showGhc c) `shouldBe` "[*ScopeAndQual]"
       (prettyprint ss) `shouldBe` "sumSquares"
@@ -969,8 +969,8 @@ spec = do
          newBinding <- duplicateDecl declsr renamed n newName2
 
          return newBinding
-      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       -- (show $ toksFromState s) `shouldBe` ""
@@ -1991,7 +1991,7 @@ spec = do
       (showGhc n) `shouldBe` "LocToName.sumSquares"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint   ( x : xs ) = x ^ 2 + newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint   [ ] = 0"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint   ( x : xs ) = x ^ 2 + newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint   [ ] = 0\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(newPoint (x : xs) = x GHC.Real.^ 2 GHC.Num.+ newPoint xs\n newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
     ------------------------------------
@@ -2008,14 +2008,13 @@ spec = do
          new <- renamePN n newName True True renamed
 
          return (new,newName)
-      let
 
       ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "LocToName.sumSquares"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint   ( x : xs ) = x ^ 2 + LocToName.newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint   [ ] = 0"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint   ( x : xs ) = x ^ 2 + LocToName.newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint   [ ] = 0\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 

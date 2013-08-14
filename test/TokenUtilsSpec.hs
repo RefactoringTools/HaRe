@@ -80,7 +80,7 @@ spec = do
       let (tm'',newSpan,decl') = addDeclToksAfterSrcSpan tm' l (PlaceOffset 2 0 2) declToks decl
       (showGhc newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1048582:1-18"
 
-      (SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1048582:1-18} \n (FunBind \n  (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel}) \n  (False) \n  (MatchGroup \n   [\n    (L {test/testdata/DupDef/Dd1.hs:4:1-18} \n     (Match \n      [\n       (L {test/testdata/DupDef/Dd1.hs:1048582:10} \n        (VarPat {Name: x}))] \n      (Nothing) \n      (GRHSs \n       [\n        (L {test/testdata/DupDef/Dd1.hs:4:14-18} \n         (GRHS \n          [] \n          (L {test/testdata/DupDef/Dd1.hs:1048582:14-18} \n           (OpApp \n            (L {test/testdata/DupDef/Dd1.hs:1048582:14} \n             (HsVar {Name: DupDef.Dd1.c})) \n            (L {test/testdata/DupDef/Dd1.hs:1048582:16} \n             (HsVar {Name: GHC.Num.*})) {Fixity: infixl 7} \n            (L {test/testdata/DupDef/Dd1.hs:1048582:18} \n             (HsVar {Name: x}))))))] \n       (EmptyLocalBinds))))] {!type placeholder here?!}) \n  (WpHole) {NameSet: \n  [{Name: DupDef.Dd1.c}]} \n  (Nothing)))"
+      (SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1048582:1-18} \n (FunBind \n  (L {test/testdata/DupDef/Dd1.hs:1048582:1-8} {Name: DupDef.Dd1.toplevel}) \n  (False) \n  (MatchGroup \n   [\n    (L {test/testdata/DupDef/Dd1.hs:4:1-18} \n     (Match \n      [\n       (L {test/testdata/DupDef/Dd1.hs:1048582:10} \n        (VarPat {Name: x}))] \n      (Nothing) \n      (GRHSs \n       [\n        (L {test/testdata/DupDef/Dd1.hs:4:14-18} \n         (GRHS \n          [] \n          (L {test/testdata/DupDef/Dd1.hs:1048582:14-18} \n           (OpApp \n            (L {test/testdata/DupDef/Dd1.hs:1048582:14} \n             (HsVar {Name: DupDef.Dd1.c})) \n            (L {test/testdata/DupDef/Dd1.hs:1048582:16} \n             (HsVar {Name: GHC.Num.*})) {Fixity: infixl 7} \n            (L {test/testdata/DupDef/Dd1.hs:1048582:18} \n             (HsVar {Name: x}))))))] \n       (EmptyLocalBinds))))] {!type placeholder here?!}) \n  (WpHole) {NameSet: \n  [{Name: DupDef.Dd1.c}]} \n  (Nothing)))"
 
       (drawTreeEntry tm'') `shouldBe`
             "((1,1),(32,18))\n|\n"++
@@ -126,7 +126,7 @@ spec = do
       let (tm''',newSpan,typeSig') = addDeclToksAfterSrcSpan tm'' l (PlaceOffset 2 0 0) sigToks typeSig
       (showGhc newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1048582:1-30"
 
-      (SYB.showData SYB.Renamer 0 typeSig') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1048582:1-30} \n (TypeSig \n  [\n   (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel})] \n  (L {test/testdata/DupDef/Dd1.hs:1048582:13-30} \n   (HsFunTy \n    (L {test/testdata/DupDef/Dd1.hs:1048582:13-19} \n     (HsTyVar {Name: GHC.Integer.Type.Integer})) \n    (L {test/testdata/DupDef/Dd1.hs:1048582:24-30} \n     (HsTyVar {Name: GHC.Integer.Type.Integer}))))))"
+      (SYB.showData SYB.Renamer 0 typeSig') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1048582:1-30} \n (TypeSig \n  [\n   (L {test/testdata/DupDef/Dd1.hs:1048582:1-8} {Name: DupDef.Dd1.toplevel})] \n  (L {test/testdata/DupDef/Dd1.hs:1048582:13-30} \n   (HsFunTy \n    (L {test/testdata/DupDef/Dd1.hs:1048582:13-19} \n     (HsTyVar {Name: GHC.Integer.Type.Integer})) \n    (L {test/testdata/DupDef/Dd1.hs:1048582:24-30} \n     (HsTyVar {Name: GHC.Integer.Type.Integer}))))))"
 
       (drawTreeEntry tm''') `shouldBe`
             "((1,1),(32,18))\n|\n"++
@@ -231,7 +231,7 @@ spec = do
       -- (showSrcSpanF newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1048582:1-30"
       (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
 
-      (SYB.showData SYB.Renamer 0 typeSig') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1048582:1-30} \n (TypeSig \n  [\n   (L {test/testdata/DupDef/Dd1.hs:6:1-8} {Name: DupDef.Dd1.toplevel})] \n  (L {test/testdata/DupDef/Dd1.hs:1048582:13-30} \n   (HsFunTy \n    (L {test/testdata/DupDef/Dd1.hs:1048582:13-19} \n     (HsTyVar {Name: GHC.Integer.Type.Integer})) \n    (L {test/testdata/DupDef/Dd1.hs:1048582:24-30} \n     (HsTyVar {Name: GHC.Integer.Type.Integer}))))))"
+      (SYB.showData SYB.Renamer 0 typeSig') `shouldBe` "\n(L {test/testdata/DupDef/Dd1.hs:1048582:1-30} \n (TypeSig \n  [\n   (L {test/testdata/DupDef/Dd1.hs:1048582:1-8} {Name: DupDef.Dd1.toplevel})] \n  (L {test/testdata/DupDef/Dd1.hs:1048582:13-30} \n   (HsFunTy \n    (L {test/testdata/DupDef/Dd1.hs:1048582:13-19} \n     (HsTyVar {Name: GHC.Integer.Type.Integer})) \n    (L {test/testdata/DupDef/Dd1.hs:1048582:24-30} \n     (HsTyVar {Name: GHC.Integer.Type.Integer}))))))"
 
       (drawTreeEntry tm''') `shouldBe`
             "((1,1),(32,18))\n|\n"++
@@ -1805,6 +1805,72 @@ tree TId 0:
       let toks' = retrieveTokens forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
+    -- ---------------------------------
+
+    it "replaces a single token in an added span" $ do
+      (_t,toks) <- parsedFileDd1Ghc
+
+      let f1 = mkTreeFromTokens toks
+
+      let ss1 = posToSrcSpan f1 ((4,1),(4,19))
+      let (f2,_toks1) = getTokensFor f1 ss1
+
+      let ss2 = posToSrcSpan f1 ((3,1),(3,31))
+      let (f3,toks2) = getTokensFor f2 ss2
+
+      (drawTreeEntry f3) `shouldBe`
+              "((1,1),(32,18))\n|\n"++
+              "+- ((1,1),(3,31))\n|  |\n"++
+              "|  +- ((1,1),(1,24))\n|  |\n"++
+              "|  `- ((3,1),(3,31))\n|\n"++
+              "+- ((4,1),(4,19))\n|\n"++
+              "`- ((6,1),(32,18))\n"
+
+      -- putDeclToksAfterSpan test/testdata/DupDef/Dd1.hs:4:1-18:("(((False,0,0,4),1),((False,0,0,4),19))",PlaceAbsCol 2 1 0,[((((3,1),(3,1)),ITvocurly),""),((((3,1),(3,9)),ITvarid "toplevel"),"toplevel"),((((3,10),(3,12)),ITdcolon),"::"),((((3,13),(3,20)),ITconid "Integer"),"Integer"),((((3,21),(3,23)),ITrarrow),"->"),((((3,24),(3,31)),ITconid "Integer"),"Integer")])
+      let (f4,ss4) = addToksAfterSrcSpan f3 ss1 (PlaceAbsCol 2 1 0) toks2
+
+      (drawTreeEntry f4) `shouldBe`
+              "((1,1),(32,18))\n|\n"++
+              "+- ((1,1),(3,31))\n|  |\n"++
+              "|  +- ((1,1),(1,24))\n|  |\n"++
+              "|  `- ((3,1),(3,31))\n|\n"++
+              "+- ((4,1),(4,19))\n|\n"++
+              "+- ((1000006,1),(1000006,31))\n|\n"++
+              "`- ((6,1),(32,18))\n"
+
+      (showSrcSpan ss4) `shouldBe` "((1048582,1),(1048582,31))"
+      (showSrcSpanF ss4) `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
+
+      -- renamePN.worker entry:l=(((False,0,1,6),1),((False,0,1,6),9))
+      let ss5 = posToSrcSpan f1 $
+                        (((forestLineToGhcLine $ ForestLine False 0 1 6),1),
+                         ((forestLineToGhcLine $ ForestLine False 0 1 6),9) )
+
+      -- (markToken $ newNameTok useQual' l newName)
+      let newName = mkTestGhcName 1 Nothing "bar2"
+      let newTok = markToken $ newNameTok False ss5 newName
+      (show newTok) `shouldBe` "((((6,1),(6,5)),ITvarid \"bar2\"),\"bar2\")"
+
+--
+      let  (GHC.L tl _,_) = newTok
+      let z = openZipperToSpan (srcSpanToForestSpan ss5) $ Z.fromTree f4
+
+      (drawTreeEntry $ Z.tree z) `shouldBe`
+                    "((1000006,1),(1000006,31))\n"
+--
+      let f5 = replaceTokenForSrcSpan f4 ss5 newTok
+      (drawTreeEntry f5) `shouldBe`
+              "((1,1),(32,18))\n|\n"++
+              "+- ((1,1),(3,31))\n|  |\n"++
+              "|  +- ((1,1),(1,24))\n|  |\n"++
+              "|  `- ((3,1),(3,31))\n|\n"++
+              "+- ((4,1),(4,19))\n|\n"++
+              "+- ((1000006,1),(1000006,31))\n|\n"++
+              "`- ((6,1),(32,18))\n"
+
+      let toks' = retrieveTokens f5
+      (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2     :: Integer -> Integerc,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+
 
   -- ---------------------------------------------
 
@@ -3150,3 +3216,10 @@ parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereI
 
 -- ---------------------------------------------------------------------
 
+dd1FileName :: GHC.FastString
+dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
+
+parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
+parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+
+-- ---------------------------------------------------------------------
