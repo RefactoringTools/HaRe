@@ -334,3 +334,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/B5.hs.refactored
 /test/testdata/Renaming/B5.hs.renamed_out
 /test/testdata/Renaming/B5.hs.tokens
+/test/testdata/Renaming/Field4.hs.AST_out
+/test/testdata/Renaming/Field4.hs.refactored
+/test/testdata/Renaming/Field4.hs.renamed_out
+/test/testdata/Renaming/Field4.hs.tokens
