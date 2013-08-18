@@ -230,16 +230,17 @@ isInScopeAndUnqualified n names
 isInScopeAndUnqualifiedGhc ::
      String           -- ^ The identifier name.
   -> (Maybe GHC.Name) -- ^ Existing name, to be excluded from test, if
-                      -- known
+                      --   known
   -> RefactGhc Bool   -- ^ The result.
 isInScopeAndUnqualifiedGhc n maybeExising = do
   names <- ghandle handler (GHC.parseName n)
-  logm $ "isInScopeAndUnqualifiedGhc:(n,names)=" ++ (show n) ++ ":" ++  (showGhc names)
+  logm $ "isInScopeAndUnqualifiedGhc:(n,(maybeExising,names))=" ++ (show n) ++ ":" ++  (showGhc (maybeExising,names))
   ctx <- GHC.getContext
   logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
   let nameList = case maybeExising of
                   Nothing -> names
-                  Just n' -> filter (\x -> (GHC.nameUnique x) /= (GHC.nameUnique n')) names
+                  -- Just n' -> filter (\x -> (GHC.nameUnique x) /= (GHC.nameUnique n')) names
+                  Just n' -> filter (\x -> (showGhc x) /= (showGhc n')) names
   logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (show n) ++ ":" ++  (showGhc nameList)
   return $ nameList /= []
 
@@ -1003,7 +1004,8 @@ usedWithoutQual name renamed = do
 
 -- | Return True if the identifier is unqualifiedly used in the given
 -- syntax phrase.
-usedWithoutQualR :: GHC.Name -> GHC.ParsedSource -> Bool
+-- usedWithoutQualR :: GHC.Name -> GHC.ParsedSource -> Bool
+usedWithoutQualR ::  (SYB.Data t) => GHC.Name -> t -> Bool
 usedWithoutQualR name parsed = fromMaybe False res
   where
      res = somethingStaged SYB.Parser Nothing

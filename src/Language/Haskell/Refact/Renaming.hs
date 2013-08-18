@@ -322,7 +322,7 @@ doRenaming' oldPNT@(PNT oldPN _ _) newName parent mod fun exps env
 renameTopLevelVarName :: GHC.Name -> String -> GHC.Name -> GHC.ModuleName -> GHC.RenamedSource
                          -> Bool -> Bool -> RefactGhc GHC.RenamedSource
 renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exportChecking = do
-     logm $ "renameTopLevelVarName"
+     logm $ "renameTopLevelVarName:(existChecking,exportChecking)=" ++ (show (existChecking,exportChecking))
      causeAmbiguity <- causeAmbiguityInExports oldPN  newNameGhc
       -- f' contains names imported from other modules;
       -- d' contains the top level names declared in this module;
@@ -343,7 +343,8 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                           then error $"The new name will cause ambiguity in the exports of module "++ show modName ++ ", please select another name!"   
                           else do  -- get all of those declared names visible to oldPN at where oldPN is used.
 
-                                 isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName Nothing
+                                 -- isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName Nothing
+                                 isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName (Just newNameGhc)
                                  ds<-hsVisibleNames oldPN renamed
                                  -- '\\[pNtoName oldPN]' handles the case in which the new name is same as the old name   
                                  if existChecking && elem newName ((nub (ds `union` f)) \\[nameToString oldPN])
@@ -525,10 +526,11 @@ renameInClientMod pnt@(PNT oldPN _ _) newName (m, fileName)
 -}
 
 causeAmbiguityInExports :: GHC.Name -> GHC.Name -> RefactGhc Bool
-causeAmbiguityInExports pn newName {- inscps -}  = do
-    parsed <- getRefactParsed
-    isInScopeUnqual <- isInScopeAndUnqualifiedGhc (nameToString pn) Nothing
-    let usedUnqual = usedWithoutQualR newName parsed
+causeAmbiguityInExports old newName {- inscps -}  = do
+    (GHC.L _ (GHC.HsModule _ exps _imps _decls _ _)) <- getRefactParsed
+    isInScopeUnqual <- isInScopeAndUnqualifiedGhc (nameToString old) Nothing
+    let usedUnqual = usedWithoutQualR newName exps
+    logm $ "causeAmbiguityInExports:(isInScopeUnqual,usedUnqual)" ++ (show (isInScopeUnqual,usedUnqual))
     return (isInScopeUnqual && usedUnqual)
 
 {- original

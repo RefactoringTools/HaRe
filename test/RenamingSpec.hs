@@ -190,8 +190,10 @@ spec = do
     -- ---------------------------------
 
     it "Renames in Field1 5 18" $ do
-     rename defaultTestSettings Nothing "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)
      -- rename logTestSettings Nothing "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)
+     r `shouldBe` [ "./test/testdata/Renaming/Field1.hs"
+                  ]
      diff <- compareFiles "./test/testdata/Renaming/Field1.hs.expected"
                           "./test/testdata/Renaming/Field1.hs.refactored"
      diff `shouldBe` []
@@ -199,10 +201,24 @@ spec = do
     -- ---------------------------------
 
     it "Renames in Field3 9 1" $ do
-     rename defaultTestSettings Nothing "./test/testdata/Renaming/Field3.hs" "abs" (9,1)
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/Field3.hs" "abs" (9,1)
      -- rename logTestSettings Nothing "./test/testdata/Renaming/Field3.hs" "abs" (9,1)
+     r `shouldBe` [ "./test/testdata/Renaming/Field3.hs"
+                  ]
      diff <- compareFiles "./test/testdata/Renaming/Field3.hs.expected"
                           "./test/testdata/Renaming/Field3.hs.refactored"
+     diff `shouldBe` []
+
+    -- ---------------------------------
+
+    it "Renames in Field4 5 23" $ do
+     --     (["Field4.hs"],["value2","5","23"]),
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/Field4.hs" "value2" (5,23)
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/Field4.hs" "value2" (5,23)
+     r `shouldBe` [ "./test/testdata/Renaming/Field4.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/Field4.hs.expected"
+                          "./test/testdata/Renaming/Field4.hs.refactored"
      diff `shouldBe` []
 
 
