@@ -461,9 +461,9 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
        return ()
 
      refactRenameComplex :: GHC.Name -> String -> GHC.Name -> RefactGhc ()
-     refactRenameComplex old new newNameGhc = do
+     refactRenameComplex old new newGhc = do
        qualifyTopLevelVar new
-       worker old new newNameGhc
+       worker old new newGhc
 
      qualifyTopLevelVar :: String -> RefactGhc ()
      qualifyTopLevelVar new = do

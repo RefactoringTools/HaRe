@@ -1,4 +1,4 @@
-module Renaming.C7(Renaming.C7.myFringe)  where 
+module Renaming.C7(Renaming.C7.myFringe ) where
 
 import Renaming.D7
 

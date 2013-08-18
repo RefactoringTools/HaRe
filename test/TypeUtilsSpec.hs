@@ -2042,6 +2042,31 @@ spec = do
       (unspace $ showGhc nb) `shouldBe` unspace "(ScopeAndQual.main :: GHC.Types.IO ()\n ScopeAndQual.main\n = System.IO.putStrLn\n (GHC.Show.show GHC.Base.$ LocToName.mySum [1, 2, 3])\n ScopeAndQual.sum a b = a GHC.Num.+ b\n ScopeAndQual.sumSquares xs\n = LocToName.mySum GHC.Base.$ GHC.Base.map (\\ x -> x GHC.Num.* x) xs\n ScopeAndQual.mySumSq = ScopeAndQual.sumSquares,\n [import qualified Data.List as L,\n import Prelude hiding ( LocToName.mySum )],\n Nothing,\n Nothing)"
 
 
+    ------------------------------------
+
+    it "Does not qualify the subject of a type signature" $ do
+      (t,toks) <- parsedFileRenamingC7
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
+
+      let Just (GHC.L l n) = locToName renamingC7FileName (5, 1) renamed
+      let
+        comp = do
+         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+         newName <- mkNewGhcName (Just modu) "myNewFringe"
+         new <- renamePN n newName True True renamed
+
+         return (new,newName)
+
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (showGhc n) `shouldBe` "Renaming.C7.myFringe"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((5,1),(5,12)),ITvarid \"myNewFringe\",\"myNewFringe\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.C7(myFringe)  where\n\n import Renaming.D7\n\n myFringe:: Tree a -> [a]\n myFringe (Leaf x ) = [x]\n myFringe (Branch left right) = myFringe left ++ fringe right\n\n\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Renaming.C7(LocToName.myNewFringe ) where\n\n import Renaming.D7\n\n myNewFringe :: Tree a -> [ a ]\n myNewFringe ( Leaf x ) = [ x ]\n myNewFringe ( Branch left right ) = LocToName.myNewFringe left ++ fringe right\n\n\n\n\n "
+      (unspace $ showGhc nb) `shouldBe` unspace ""
+
+
   -- ---------------------------------------------
 
   describe "qualifyToplevelName" $ do
@@ -2049,12 +2074,10 @@ spec = do
       (t, toks) <- parsedFileRenamingC7
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = hsBinds renamed
-      -- (showGhc declsr) `shouldBe` ""
-      let Just (GHC.L l n) = locToName renamingC7FileName (7, 1) renamed
+      let Just (GHC.L _l n) = locToName renamingC7FileName (7, 1) renamed
       let
         comp = do
-         new <- qualifyToplevelName n
+         _new <- qualifyToplevelName n
 
          return ()
       let

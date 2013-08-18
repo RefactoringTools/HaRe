@@ -3987,9 +3987,12 @@ renamePN oldPN newName updateTokens useQual t = do
     then
       everywhereMStaged SYB.Renamer
       -- everywhereMStaged' SYB.Renamer
-                 (SYB.mkM renameGroup `SYB.extM` renameName
+                 (SYB.mkM renameRenamedSource
+                 `SYB.extM` renameGroup
+                 `SYB.extM` renameName
                  `SYB.extM` renameVar `SYB.extM` renameTyVar
-                 `SYB.extM` renameLIE
+                 `SYB.extM` renameImport
+                 `SYB.extM` renameTypeSig
                  `SYB.extM` renameFunBind) t
     else
       renamePNworker oldPN newName updateTokens useQual t
@@ -3999,6 +4002,13 @@ renamePN oldPN newName updateTokens useQual t = do
 
     isRenamedGroup :: GHC.HsGroup GHC.Name -> Maybe Bool
     isRenamedGroup _g = Just True
+
+    -- ---------------------------------
+
+    renameRenamedSource :: GHC.RenamedSource -> RefactGhc GHC.RenamedSource
+    renameRenamedSource (g,i,e,d) = do
+      e' <- renamePNworker oldPN newName updateTokens useQual e
+      return (g,i,e',d)
 
     renameGroup :: (GHC.HsGroup GHC.Name) -> RefactGhc (GHC.HsGroup GHC.Name)
     renameGroup  (GHC.HsGroup vals typs inst deriv fixs def for war ann rule vect doc)
@@ -4020,10 +4030,26 @@ renamePN oldPN newName updateTokens useQual t = do
     renameTyVar var@(GHC.L _l (GHC.HsTyVar _n)) = renamePNworker oldPN newName updateTokens useQual var
     renameTyVar x = return x
 
+{-
+    -- TODO:Need to distinguish between this use in an import .. hiding vs
+    -- in an export
     renameLIE :: (GHC.LIE GHC.Name) -> RefactGhc (GHC.LIE GHC.Name)
     -- renameLIE lie@(GHC.L _l (GHC.IEVar _n)) = renamePNworker oldPN newName updateTokens useQual lie
     renameLIE lie@(GHC.L _l (GHC.IEVar _n)) = renamePNworker oldPN newName updateTokens False lie
     renameLIE x = return x
+-}
+
+    renameImport :: (GHC.ImportDecl GHC.Name) -> RefactGhc (GHC.ImportDecl GHC.Name)
+    renameImport (GHC.ImportDecl modName qualify source safe isQualified isImplicit as h)
+      = do
+          logm "renamePN:renameImport"
+          h' <- renamePNworker oldPN newName updateTokens False h
+          logm "renamePN:renameImport done"
+          return (GHC.ImportDecl modName qualify source safe isQualified isImplicit as h')
+    renameImport x = return x
+
+    renameTypeSig :: (GHC.LSig GHC.Name) -> RefactGhc (GHC.LSig GHC.Name)
+    renameTypeSig sig = renamePNworker oldPN newName updateTokens False sig
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
     renameFunBind lfun@(GHC.L _ (GHC.FunBind _ _ _ _ _ _))
@@ -4060,23 +4086,19 @@ renamePNworker oldPN newName updateTokens useQual t = do
                                `SYB.extM` renameLIE
                                `SYB.extM` renameFunBind) t
   where
-    -- logm $ "renamePN:***ERROR**:do not use getSrcSpan"
-    -- maybeSspan = getSrcSpan t
-    -- sspan = gfromJust "renamePN" maybeSspan
-
     rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
-    rename pnt@(GHC.L l n)
+    rename (GHC.L l n)
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
-     = do -- let (row,col) = (getLocatedStart pnt)
+     = do
           logm $ "renamePN:rename at :" ++ (show l) ++ (showSrcSpanF l)
           worker useQual l n
           return (GHC.L l newName)
     rename x = return x
 
     renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-    renameVar var@(GHC.L l (GHC.HsVar n))
+    renameVar (GHC.L l (GHC.HsVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
-     = do -- let (row,col) = getLocatedStart var
+     = do
           -- logm $ "renamePN:renameVar at :" ++ (show (row,col))
           worker useQual l n
           return (GHC.L l (GHC.HsVar newName))
@@ -4084,25 +4106,25 @@ renamePNworker oldPN newName updateTokens useQual t = do
 
     -- HsTyVar {Name: Renaming.D1.Tree}))
     renameTyVar :: (GHC.Located (GHC.HsType GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsType GHC.Name))
-    renameTyVar var@(GHC.L l (GHC.HsTyVar n))
+    renameTyVar (GHC.L l (GHC.HsTyVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
-     = do -- let (row,col) = getLocatedStart var
+     = do
           -- logm $ "renamePN:renameTyVar at :" ++ (show (row,col))
           worker useQual l n
           return (GHC.L l (GHC.HsTyVar newName))
     renameTyVar x = return x
 
     renameLIE :: (GHC.LIE GHC.Name) -> RefactGhc (GHC.LIE GHC.Name)
-    renameLIE lie@(GHC.L l (GHC.IEVar n))
+    renameLIE (GHC.L l (GHC.IEVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
-     = do -- let (row,col) = getLocatedStart lie
+     = do
           -- logm $ "renamePN:renameLIE at :" ++ (show (row,col))
           worker useQual l n
           return (GHC.L l (GHC.IEVar newName))
     renameLIE x = return x
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
-    renameFunBind lfun@(GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MatchGroup matches typ) co fvs tick))
+    renameFunBind (GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MatchGroup matches typ) co fvs tick))
      | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
      = do -- Need to (a) rename the actual funbind name
           --         NOTE: due to bottom-up traversal, (a) should
@@ -4115,12 +4137,21 @@ renamePNworker oldPN newName updateTokens useQual t = do
           -- Now do (b)
           logm $ "renameFunBind:starting matches"
           -- let w lmatch@(GHC.L lm _match) = worker useQual (r,c) lm n
-          let w lmatch@(GHC.L lm _match) = worker False lm n
-                -- where (r,c) = getLocatedStart lmatch
+          let w (GHC.L lm _match) = worker False lm n
           mapM w $ tail matches
           logm $ "renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MatchGroup matches typ) co fvs tick))
     renameFunBind x = return x
+
+    renameTypeSig :: (GHC.LSig GHC.Name) -> RefactGhc (GHC.LSig GHC.Name)
+    renameTypeSig sig@(GHC.L _ (GHC.TypeSig ns typ))
+     = do
+         let [GHC.L l n] = filter (\(GHC.L _ mn) -> GHC.nameUnique mn == GHC.nameUnique oldPN) ns
+         worker False l n
+         -- TODO: split out the other elements of the list, and return
+         -- the updated list.
+         return sig
+    renameTypeSig x = return x
 
     worker useQual' l _n
      = do if updateTokens
