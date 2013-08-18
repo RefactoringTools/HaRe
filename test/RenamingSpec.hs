@@ -221,6 +221,30 @@ spec = do
                           "./test/testdata/Renaming/Field4.hs.refactored"
      diff `shouldBe` []
 
+    -- ---------------------------------
+
+    it "Renames in IdIn1 11 1" $ do
+     --     (["IdIn1.hs"],["x1","11","1"]),
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/IdIn1.hs" "x1" (11,1)
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/IdIn1.hs" "x1" (11,1)
+     r `shouldBe` [ "./test/testdata/Renaming/IdIn1.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/IdIn1.hs.expected"
+                          "./test/testdata/Renaming/IdIn1.hs.refactored"
+     diff `shouldBe` []
+
+    -- ---------------------------------
+
+    it "Renames in IdIn2 15 7" $ do
+     --     (["IdIn2.hs"],["x1","15","7"]),
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/IdIn2.hs" "x1" (15,7)
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/IdIn2.hs" "x1" (15,7)
+     r `shouldBe` [ "./test/testdata/Renaming/IdIn2.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/IdIn2.hs.expected"
+                          "./test/testdata/Renaming/IdIn2.hs.refactored"
+     diff `shouldBe` []
+
 
 {-
 TestCases{refactorCmd="rename",
