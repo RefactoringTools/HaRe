@@ -3985,15 +3985,17 @@ renamePN oldPN newName updateTokens useQual t = do
 
   if isRenamed == (Just True)
     then
+      -- somewhereMStaged SYB.Renamer
       everywhereMStaged SYB.Renamer
       -- everywhereMStaged' SYB.Renamer
                  (SYB.mkM renameRenamedSource
                  `SYB.extM` renameGroup
-                 `SYB.extM` renameName
-                 `SYB.extM` renameVar `SYB.extM` renameTyVar
-                 `SYB.extM` renameImport
-                 -- `SYB.extM` renameTypeSig
-                 `SYB.extM` renameFunBind) t
+                 -- `SYB.extM` renameName
+                 -- `SYB.extM` renameVar
+                 -- `SYB.extM` renameTyVar
+                 -- `SYB.extM` renameImport
+                 -- `SYB.extM` renameFunBind
+                 ) t
     else
       renamePNworker oldPN newName updateTokens useQual t
   where
@@ -4007,8 +4009,9 @@ renamePN oldPN newName updateTokens useQual t = do
 
     renameRenamedSource :: GHC.RenamedSource -> RefactGhc GHC.RenamedSource
     renameRenamedSource (g,i,e,d) = do
+      i' <- renamePNworker oldPN newName updateTokens False i
       e' <- renamePNworker oldPN newName updateTokens useQual e
-      return (g,i,e',d)
+      return (g,i',e',d)
 
     renameGroup :: (GHC.HsGroup GHC.Name) -> RefactGhc (GHC.HsGroup GHC.Name)
     renameGroup  (GHC.HsGroup vals typs inst deriv fixs def for war ann rule vect doc)
@@ -4048,6 +4051,7 @@ renamePN oldPN newName updateTokens useQual t = do
           return (GHC.ImportDecl modName qualify source safe isQualified isImplicit as h')
     renameImport x = return x
 
+{-
     renameTypeSig :: (GHC.LSig GHC.Name) -> RefactGhc (GHC.LSig GHC.Name)
     renameTypeSig sig
       = do
@@ -4055,7 +4059,7 @@ renamePN oldPN newName updateTokens useQual t = do
           r <- renamePNworker oldPN newName updateTokens False sig
           logm "renamePN:renameTypeSig done"
           return r
-
+-}
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
     renameFunBind lfun@(GHC.L _ (GHC.FunBind _ _ _ _ _ _))
       = do
@@ -4084,8 +4088,8 @@ renamePNworker::(SYB.Data t)
 renamePNworker oldPN newName updateTokens useQual t = do
   -- logm $ "renamePNworker: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal (no ' at end)
-  -- everywhereMStaged SYB.Renamer (SYB.mkM rename
-  everywhereMStaged' SYB.Renamer (SYB.mkM rename
+  everywhereMStaged SYB.Renamer (SYB.mkM rename
+  -- everywhereMStaged' SYB.Renamer (SYB.mkM rename
                                `SYB.extM` renameVar
                                `SYB.extM` renameTyVar
                                `SYB.extM` renameLIE
@@ -4151,7 +4155,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
     renameTypeSig (GHC.L l (GHC.TypeSig ns typ))
      = do
          logm $ "renamePNWorker:renameTypeSig"
-         -- ns' <- renamePNworker oldPN newName updateTokens False ns
+         _ns' <- renamePNworker oldPN newName updateTokens False ns
          -- Has already been renamed, make sure qualifier is removed
          ns' <- renamePNworker newName newName updateTokens False ns
          typ' <- renamePNworker oldPN newName updateTokens False typ
