@@ -2447,7 +2447,10 @@ locToName' stage fileName (row,col) t =
         else res2
      where
         res1 = somethingStaged stage Nothing
-            (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+            (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind
+                     `SYB.extQ` workerExpr
+                     `SYB.extQ` workerLIE
+                     ) t
 
         res2 = somethingStaged stage Nothing
             (Nothing `SYB.mkQ` workerFunBind) t
@@ -2478,7 +2481,6 @@ locToName' stage fileName (row,col) t =
             -- match = filter inScope (matches)
         workerFunBind _ = Nothing
 
-
         worker (pnt :: (GHC.Located a))
           | inScope pnt = Just pnt
         worker _ = Nothing
@@ -2490,6 +2492,10 @@ locToName' stage fileName (row,col) t =
         workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr a)))
           | inScope pnt = Just (GHC.L l name)
         workerExpr _ = Nothing
+
+        workerLIE (pnt@(GHC.L l (GHC.IEVar name)) :: (GHC.LIE a))
+          | inScope pnt = Just (GHC.L l name)
+        workerLIE _ = Nothing
 
         inScope :: GHC.Located e -> Bool
         inScope (GHC.L l _) =
@@ -4015,7 +4021,8 @@ renamePN oldPN newName updateTokens useQual t = do
     renameTyVar x = return x
 
     renameLIE :: (GHC.LIE GHC.Name) -> RefactGhc (GHC.LIE GHC.Name)
-    renameLIE lie@(GHC.L _l (GHC.IEVar n)) = renamePNworker oldPN newName updateTokens useQual lie
+    -- renameLIE lie@(GHC.L _l (GHC.IEVar _n)) = renamePNworker oldPN newName updateTokens useQual lie
+    renameLIE lie@(GHC.L _l (GHC.IEVar _n)) = renamePNworker oldPN newName updateTokens False lie
     renameLIE x = return x
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)

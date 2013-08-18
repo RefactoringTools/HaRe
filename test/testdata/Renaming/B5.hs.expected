@@ -1,6 +1,6 @@
 module Renaming.B5 (myFringe)where
 
-import Renaming.D5 hiding (sum)
+import Renaming.D5 hiding (sum       )
 
 import qualified Renaming.D5
 

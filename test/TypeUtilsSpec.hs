@@ -2018,6 +2018,30 @@ spec = do
       (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
+    ------------------------------------
+
+    it "Does not qualify a name in an import hiding clause" $ do
+      (t,toks) <- parsedFileScopeAndQual
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
+
+      let Just (GHC.L l n) = locToName scopeAndQualFileName (4, 24) renamed
+      let
+        comp = do
+         newName <- mkNewGhcName (Just modu) "mySum"
+         new <- renamePN n newName True True renamed
+
+         return (new,newName)
+
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (showGhc n) `shouldBe` "Data.List.sum"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((4,24),(4,29)),ITvarid \"mySum\",\"mySum\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module ScopeAndQual where\n\n import qualified Data.List as L\n import Prelude hiding (sum)\n\n main :: IO ()\n main = putStrLn (show $ L.sum [1,2,3])\n\n sum a b = a + b\n\n sumSquares xs = L.sum $ map (\\x -> x*x) xs\n\n mySumSq = sumSquares\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module ScopeAndQual where\n\n import qualified Data.List as L\n import Prelude hiding (mySum )\n\n main :: IO ()\n main = putStrLn (show $ LocToName.mySum [ 1 , 2 , 3 ] )\n\n sum a b = a + b\n\n sumSquares xs = LocToName.mySum $ map ( \\ x -> x * x ) xs\n\n mySumSq = sumSquares\n "
+      (unspace $ showGhc nb) `shouldBe` unspace "(ScopeAndQual.main :: GHC.Types.IO ()\n ScopeAndQual.main\n = System.IO.putStrLn\n (GHC.Show.show GHC.Base.$ LocToName.mySum [1, 2, 3])\n ScopeAndQual.sum a b = a GHC.Num.+ b\n ScopeAndQual.sumSquares xs\n = LocToName.mySum GHC.Base.$ GHC.Base.map (\\ x -> x GHC.Num.* x) xs\n ScopeAndQual.mySumSq = ScopeAndQual.sumSquares,\n [import qualified Data.List as L,\n import Prelude hiding ( LocToName.mySum )],\n Nothing,\n Nothing)"
+
+
   -- ---------------------------------------------
 
   describe "qualifyToplevelName" $ do
@@ -2973,6 +2997,15 @@ parsedFileRenamingC5 :: IO (ParseResult, [PosToken])
 parsedFileRenamingC5 = parsedFileGhc "./test/testdata/Renaming/C5.hs"
 
 -- ----------------------------------------------------
+
+scopeAndQualFileName :: GHC.FastString
+scopeAndQualFileName = GHC.mkFastString "./test/testdata/ScopeAndQual.hs"
+
+parsedFileScopeAndQual :: IO (ParseResult, [PosToken])
+parsedFileScopeAndQual = parsedFileGhc "./test/testdata/ScopeAndQual.hs"
+
+-- ----------------------------------------------------
+
 
 -- Runners
 
