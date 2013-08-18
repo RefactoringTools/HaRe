@@ -355,6 +355,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                                logm $ "renameTopLevelVarName start..:should have qualified"
                                                renamePN oldPN newNameGhc True True renamed
                                                logm $ "renameTopLevelVarName done:should have qualified"
+                                               -- drawTokenTreeDetailed "should be qualified" -- ++AZ++ debug
                                                r' <- getRefactRenamed
                                                return r'
                                           else do
