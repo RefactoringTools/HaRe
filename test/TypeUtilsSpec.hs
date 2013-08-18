@@ -2058,13 +2058,13 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "Renaming.C7.myFringe"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((5,1),(5,12)),ITvarid \"myNewFringe\",\"myNewFringe\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.C7(myFringe)  where\n\n import Renaming.D7\n\n myFringe:: Tree a -> [a]\n myFringe (Leaf x ) = [x]\n myFringe (Branch left right) = myFringe left ++ fringe right\n\n\n\n\n "
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Renaming.C7(LocToName.myNewFringe ) where\n\n import Renaming.D7\n\n myNewFringe :: Tree a -> [ a ]\n myNewFringe ( Leaf x ) = [ x ]\n myNewFringe ( Branch left right ) = LocToName.myNewFringe left ++ fringe right\n\n\n\n\n "
-      (unspace $ showGhc nb) `shouldBe` unspace ""
+      (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.myNewFringe :: Renaming.D7.Tree a -> [a]\n LocToName.myNewFringe (Renaming.D7.Leaf x) = [x]\n LocToName.myNewFringe (Renaming.D7.Branch left right)\n = LocToName.myNewFringe left GHC.Base.++ Renaming.D7.fringe right,\n [import (implicit) Prelude, import Renaming.D7],\n Just [LocToName.myNewFringe],\n Nothing)"
 
 
   -- ---------------------------------------------

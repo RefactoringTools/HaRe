@@ -3992,7 +3992,7 @@ renamePN oldPN newName updateTokens useQual t = do
                  `SYB.extM` renameName
                  `SYB.extM` renameVar `SYB.extM` renameTyVar
                  `SYB.extM` renameImport
-                 `SYB.extM` renameTypeSig
+                 -- `SYB.extM` renameTypeSig
                  `SYB.extM` renameFunBind) t
     else
       renamePNworker oldPN newName updateTokens useQual t
@@ -4049,7 +4049,12 @@ renamePN oldPN newName updateTokens useQual t = do
     renameImport x = return x
 
     renameTypeSig :: (GHC.LSig GHC.Name) -> RefactGhc (GHC.LSig GHC.Name)
-    renameTypeSig sig = renamePNworker oldPN newName updateTokens False sig
+    renameTypeSig sig
+      = do
+          logm "renamePN:renameTypeSig"
+          r <- renamePNworker oldPN newName updateTokens False sig
+          logm "renamePN:renameTypeSig done"
+          return r
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
     renameFunBind lfun@(GHC.L _ (GHC.FunBind _ _ _ _ _ _))
@@ -4084,6 +4089,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
                                `SYB.extM` renameVar
                                `SYB.extM` renameTyVar
                                `SYB.extM` renameLIE
+                               `SYB.extM` renameTypeSig
                                `SYB.extM` renameFunBind) t
   where
     rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
@@ -4131,27 +4137,26 @@ renamePNworker oldPN newName updateTokens useQual t = do
           --               already have been done.
           --         (b) rename each of 'tail matches'
           --             (head is renamed in (a) )
-          logm $ "renamePNWorker:renameFunBind"
-          let -- (row,col) = getLocatedStart lfun
+          logm $ "renamePNWorker.renameFunBind"
           worker False l n
           -- Now do (b)
-          logm $ "renameFunBind:starting matches"
-          -- let w lmatch@(GHC.L lm _match) = worker useQual (r,c) lm n
+          logm $ "renamePNworker.renameFunBind:starting matches"
           let w (GHC.L lm _match) = worker False lm n
           mapM w $ tail matches
-          logm $ "renameFunBind:matches done"
+          logm $ "renamePNworker.renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MatchGroup matches typ) co fvs tick))
     renameFunBind x = return x
 
     renameTypeSig :: (GHC.LSig GHC.Name) -> RefactGhc (GHC.LSig GHC.Name)
-    renameTypeSig sig@(GHC.L _ (GHC.TypeSig ns typ))
+    renameTypeSig (GHC.L l (GHC.TypeSig ns typ))
      = do
-         let [GHC.L l n] = filter (\(GHC.L _ mn) -> GHC.nameUnique mn == GHC.nameUnique oldPN) ns
-         worker False l n
-         -- TODO: split out the other elements of the list, and return
-         -- the updated list.
-         return sig
-    renameTypeSig x = return x
+         logm $ "renamePNWorker:renameTypeSig"
+         -- ns' <- renamePNworker oldPN newName updateTokens False ns
+         -- Has already been renamed, make sure qualifier is removed
+         ns' <- renamePNworker newName newName updateTokens False ns
+         typ' <- renamePNworker oldPN newName updateTokens False typ
+         logm $ "renamePNWorker:renameTypeSig done"
+         return (GHC.L l (GHC.TypeSig ns' typ'))
 
     worker useQual' l _n
      = do if updateTokens
