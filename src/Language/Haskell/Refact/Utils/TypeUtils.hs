@@ -3990,11 +3990,6 @@ renamePN oldPN newName updateTokens useQual t = do
       -- everywhereMStaged' SYB.Renamer
                  (SYB.mkM renameRenamedSource
                  `SYB.extM` renameGroup
-                 -- `SYB.extM` renameName
-                 -- `SYB.extM` renameVar
-                 -- `SYB.extM` renameTyVar
-                 -- `SYB.extM` renameImport
-                 -- `SYB.extM` renameFunBind
                  ) t
     else
       renamePNworker oldPN newName updateTokens useQual t
@@ -4013,61 +4008,25 @@ renamePN oldPN newName updateTokens useQual t = do
       e' <- renamePNworker oldPN newName updateTokens useQual e
       return (g,i',e',d)
 
+    -- TODO: no need to do the subelements, just rename the whole group
     renameGroup :: (GHC.HsGroup GHC.Name) -> RefactGhc (GHC.HsGroup GHC.Name)
     renameGroup  (GHC.HsGroup vals typs inst deriv fixs def for war ann rule vect doc)
      = do
           logm $ "renamePN:renameGroup"
           vals' <- renamePNworker oldPN newName updateTokens useQual vals
           typs' <- renamePNworker oldPN newName updateTokens useQual typs
-          return (GHC.HsGroup vals' typs' inst deriv fixs def for war ann rule vect doc)
+          inst' <- renamePNworker oldPN newName updateTokens useQual inst
+          deriv' <- renamePNworker oldPN newName updateTokens useQual deriv
+          fixs' <- renamePNworker oldPN newName updateTokens useQual fixs
+          def' <- renamePNworker oldPN newName updateTokens useQual def
+          for' <- renamePNworker oldPN newName updateTokens useQual for
+          war' <- renamePNworker oldPN newName updateTokens useQual war
+          ann' <- renamePNworker oldPN newName updateTokens useQual ann
+          rule' <- renamePNworker oldPN newName updateTokens useQual rule
+          vect' <- renamePNworker oldPN newName updateTokens useQual vect
+          doc' <- renamePNworker oldPN newName updateTokens useQual doc
+          return (GHC.HsGroup vals' typs' inst' deriv' fixs' def' for' war' ann' rule' vect' doc')
     renameGroup x = return x
-
-    renameName :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
-    renameName  pnt@(GHC.L _l _n) = renamePNworker oldPN newName updateTokens useQual pnt
-
-    renameVar :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-    renameVar var@(GHC.L _l (GHC.HsVar _n)) = renamePNworker oldPN newName updateTokens useQual var
-    renameVar x = return x
-
-    renameTyVar :: (GHC.Located (GHC.HsType GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsType GHC.Name))
-    renameTyVar var@(GHC.L _l (GHC.HsTyVar _n)) = renamePNworker oldPN newName updateTokens useQual var
-    renameTyVar x = return x
-
-{-
-    -- TODO:Need to distinguish between this use in an import .. hiding vs
-    -- in an export
-    renameLIE :: (GHC.LIE GHC.Name) -> RefactGhc (GHC.LIE GHC.Name)
-    -- renameLIE lie@(GHC.L _l (GHC.IEVar _n)) = renamePNworker oldPN newName updateTokens useQual lie
-    renameLIE lie@(GHC.L _l (GHC.IEVar _n)) = renamePNworker oldPN newName updateTokens False lie
-    renameLIE x = return x
--}
-
-    renameImport :: (GHC.ImportDecl GHC.Name) -> RefactGhc (GHC.ImportDecl GHC.Name)
-    renameImport (GHC.ImportDecl modName qualify source safe isQualified isImplicit as h)
-      = do
-          logm "renamePN:renameImport"
-          h' <- renamePNworker oldPN newName updateTokens False h
-          logm "renamePN:renameImport done"
-          return (GHC.ImportDecl modName qualify source safe isQualified isImplicit as h')
-    renameImport x = return x
-
-{-
-    renameTypeSig :: (GHC.LSig GHC.Name) -> RefactGhc (GHC.LSig GHC.Name)
-    renameTypeSig sig
-      = do
-          logm "renamePN:renameTypeSig"
-          r <- renamePNworker oldPN newName updateTokens False sig
-          logm "renamePN:renameTypeSig done"
-          return r
--}
-    renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
-    renameFunBind lfun@(GHC.L _ (GHC.FunBind _ _ _ _ _ _))
-      = do
-          logm "renamePN:renameFunBind"
-          r <- renamePNworker oldPN newName updateTokens useQual lfun
-          logm "renamePN:renameFunBind done"
-          return r
-    renameFunBind x = return x
 
 -- ---------------------------------------------------------------------
 
