@@ -2501,7 +2501,11 @@ locToName' stage fileName (row,col) t =
           | inScope pnt = Just (GHC.L l name)
         workerLIE _ = Nothing
 
+#if __GLASGOW_HASKELL__ > 704
         workerHsTyVarBndr (pnt@(GHC.L l (GHC.UserTyVar name))::  (GHC.LHsTyVarBndr a))
+#else
+        workerHsTyVarBndr (pnt@(GHC.L l (GHC.UserTyVar name _typ))::  (GHC.LHsTyVarBndr a))
+#endif
           | inScope pnt = Just (GHC.L l name)
         workerHsTyVarBndr _ = Nothing
 
