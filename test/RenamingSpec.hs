@@ -257,6 +257,30 @@ spec = do
                           "./test/testdata/Renaming/ClassIn1.hs.refactored"
      diff `shouldBe` []
 
+    -- ---------------------------------
+
+    it "Renames in ClassIn2 8 3" $ do
+     --     (["ClassIn2.hs"],["reversable","8","3"]),
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/ClassIn2.hs" "reversable" (8,3)
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/ClassIn2.hs" "reversable" (8,3)
+     r `shouldBe` [ "./test/testdata/Renaming/ClassIn2.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/ClassIn2.hs.expected"
+                          "./test/testdata/Renaming/ClassIn2.hs.refactored"
+     diff `shouldBe` []
+
+    -- ---------------------------------
+
+    it "Renames in ConstructorIn1 8 6" $ do
+     --     (["ConstructorIn1.hs"],["MyBTree","8","6"]),
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
+     r `shouldBe` [ "./test/testdata/Renaming/ConstructorIn1.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/ConstructorIn1.hs.expected"
+                          "./test/testdata/Renaming/ConstructorIn1.hs.refactored"
+     diff `shouldBe` []
+
 
 {-
 TestCases{refactorCmd="rename",

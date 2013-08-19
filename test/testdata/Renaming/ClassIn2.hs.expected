@@ -11,12 +11,12 @@ class Reversable a where
 instance Reversable [a] where
   reversable = reverse
 
-data Foo = Boo | Moo 
- 
+data Foo = Boo | Moo
+
 instance Eq Foo where
    Boo == Boo = True
    Moo == Moo = True
    _   == _   = False
 
-main = reversable [1,2,3]
+main = reversable [ 1 , 2 , 3 ]
 
