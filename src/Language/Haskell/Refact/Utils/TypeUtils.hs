@@ -2452,6 +2452,7 @@ locToName' stage fileName (row,col) t =
             (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind
                      `SYB.extQ` workerExpr
                      `SYB.extQ` workerLIE
+                     `SYB.extQ` workerHsTyVarBndr
                      ) t
 
         res2 = somethingStaged stage Nothing
@@ -2498,6 +2499,11 @@ locToName' stage fileName (row,col) t =
         workerLIE (pnt@(GHC.L l (GHC.IEVar name)) :: (GHC.LIE a))
           | inScope pnt = Just (GHC.L l name)
         workerLIE _ = Nothing
+
+        workerHsTyVarBndr (pnt@(GHC.L l (GHC.UserTyVar name))::  (GHC.LHsTyVarBndr a))
+          | inScope pnt = Just (GHC.L l name)
+        workerHsTyVarBndr _ = Nothing
+
 
         inScope :: GHC.Located e -> Bool
         inScope (GHC.L l _) =
@@ -4053,6 +4059,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
   -- everywhereMStaged' SYB.Renamer (SYB.mkM rename
                                `SYB.extM` renameVar
                                `SYB.extM` renameTyVar
+                               `SYB.extM` renameHsTyVarBndr
                                `SYB.extM` renameLIE
                                `SYB.extM` renameTypeSig
                                `SYB.extM` renameFunBind) t
@@ -4084,6 +4091,16 @@ renamePNworker oldPN newName updateTokens useQual t = do
           worker useQual l n
           return (GHC.L l (GHC.HsTyVar newName))
     renameTyVar x = return x
+
+    renameHsTyVarBndr :: (GHC.LHsTyVarBndr GHC.Name) -> RefactGhc (GHC.LHsTyVarBndr GHC.Name)
+    renameHsTyVarBndr (GHC.L l (GHC.UserTyVar n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          -- logm $ "renamePN:renameHsTyVarBndr at :" ++ (show (row,col))
+          worker useQual l n
+          return (GHC.L l (GHC.UserTyVar newName))
+    renameHsTyVarBndr x = return x
+
 
     renameLIE :: (GHC.LIE GHC.Name) -> RefactGhc (GHC.LIE GHC.Name)
     renameLIE (GHC.L l (GHC.IEVar n))

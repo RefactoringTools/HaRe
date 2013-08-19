@@ -126,6 +126,8 @@ spec = do
       getLocatedStart res `shouldBe` (7,1)
       showGhc n `shouldBe` "TypeUtils.B.foo"
 
+    -- ---------------------------------
+
     it "returns a GHC.Name for a given source location, if it falls anywhere in an identifier #2" $ do
       -- ((_, renamed,_),_toks) <- parsedFileBGhc
       (t, _toks) <- parsedFileBGhc
@@ -136,12 +138,16 @@ spec = do
       showGhc l `shouldBe` "test/testdata/TypeUtils/B.hs:25:7-9"
       getLocatedStart res `shouldBe` (25,7)
 
+    -- ---------------------------------
+
     it "returns Nothing for a given source location, if it does not fall in an identifier" $ do
       (t, _toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let res = locToName bFileName (7,7) renamed
       (showGhc res) `shouldBe` "Nothing"
+
+    -- ---------------------------------
 
     it "gets a short name too" $ do
       (t, _toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn2.hs"
@@ -152,6 +158,18 @@ spec = do
       -- Note: loc does not line up due to multiple matches in FunBind
       showGhc l `shouldBe` "test/testdata/Demote/WhereIn2.hs:13:1-2"
       getLocatedStart res `shouldBe` (13,1)
+
+    -- ---------------------------------
+
+    it "gets a type variable name" $ do
+      (t, _toks) <- parsedFileGhc "./test/testdata/Renaming/ConstructorIn3.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (res@(GHC.L l n)) = locToName (GHC.mkFastString "./test/testdata/Renaming/ConstructorIn3.hs") (9,12) renamed
+      showGhc n `shouldBe` "a"
+      -- Note: loc does not line up due to multiple matches in FunBind
+      showGhc l `shouldBe` "test/testdata/Renaming/ConstructorIn3.hs:9:12"
+      getLocatedStart res `shouldBe` (9,12)
 
   -- -------------------------------------------------------------------
 
