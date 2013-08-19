@@ -338,3 +338,11 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/Field4.hs.refactored
 /test/testdata/Renaming/Field4.hs.renamed_out
 /test/testdata/Renaming/Field4.hs.tokens
+/test/testdata/Renaming/IdIn1.hs.AST_out
+/test/testdata/Renaming/IdIn1.hs.refactored
+/test/testdata/Renaming/IdIn1.hs.renamed_out
+/test/testdata/Renaming/IdIn1.hs.tokens
+/test/testdata/Renaming/IdIn2.hs.AST_out
+/test/testdata/Renaming/IdIn2.hs.refactored
+/test/testdata/Renaming/IdIn2.hs.renamed_out
+/test/testdata/Renaming/IdIn2.hs.tokens

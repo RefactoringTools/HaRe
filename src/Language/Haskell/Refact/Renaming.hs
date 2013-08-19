@@ -101,7 +101,15 @@ comp fileName newName (row,col) = do
 
            unless (nameToString n /= newName) $ error "The new name is same as the old name" 
            unless (isValidNewName n rdrNameStr newName) $ error $ "Invalid new name:" ++ newName ++ "!"
-           let defineMod = GHC.moduleName $ GHC.nameModule n
+
+
+           logm $ "Renaming.comp: before GHC.nameModule,n=" ++ (showGhc n)
+           -- let defineMod = GHC.moduleName $ GHC.nameModule n
+
+           let defineMod = case GHC.nameModule_maybe n of
+                            Just modu -> GHC.moduleName modu
+                            Nothing -> modName
+
            unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++ 
                                          ", please do renaming in that module!"))
            if isMainModule modu && (showGhc pn) == "main"
