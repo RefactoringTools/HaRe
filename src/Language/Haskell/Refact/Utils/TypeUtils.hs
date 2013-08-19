@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -4092,13 +4093,22 @@ renamePNworker oldPN newName updateTokens useQual t = do
           return (GHC.L l (GHC.HsTyVar newName))
     renameTyVar x = return x
 
+
     renameHsTyVarBndr :: (GHC.LHsTyVarBndr GHC.Name) -> RefactGhc (GHC.LHsTyVarBndr GHC.Name)
+#if __GLASGOW_HASKELL__ > 704
     renameHsTyVarBndr (GHC.L l (GHC.UserTyVar n))
+#else
+    renameHsTyVarBndr (GHC.L l (GHC.UserTyVar n typ))
+#endif
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           -- logm $ "renamePN:renameHsTyVarBndr at :" ++ (show (row,col))
           worker useQual l n
+#if __GLASGOW_HASKELL__ > 704
           return (GHC.L l (GHC.UserTyVar newName))
+#else
+          return (GHC.L l (GHC.UserTyVar newName typ))
+#endif
     renameHsTyVarBndr x = return x
 
 
