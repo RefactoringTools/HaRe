@@ -245,6 +245,18 @@ spec = do
                           "./test/testdata/Renaming/IdIn2.hs.refactored"
      diff `shouldBe` []
 
+    -- ---------------------------------
+
+    it "Renames in ClassIn1 7 7" $ do
+     --     (["ClassIn1.hs"],["MyReversable","7","7"]),
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/ClassIn1.hs" "MyReversable" (7,7)
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/ClassIn1.hs" "MyReversable" (7,7)
+     r `shouldBe` [ "./test/testdata/Renaming/ClassIn1.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/ClassIn1.hs.expected"
+                          "./test/testdata/Renaming/ClassIn1.hs.refactored"
+     diff `shouldBe` []
+
 
 {-
 TestCases{refactorCmd="rename",

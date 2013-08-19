@@ -8,11 +8,11 @@ class MyReversable a where
   myreverse :: a -> a
   myreverse _ = undefined
 
-instance MyReversable [a] where
+instance MyReversable [ a ] where
   myreverse = reverse
 
-data Foo = Boo | Moo 
- 
+data Foo = Boo | Moo
+
 instance Eq Foo where
    Boo == Boo = True
    Moo == Moo = True

@@ -346,3 +346,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/IdIn2.hs.refactored
 /test/testdata/Renaming/IdIn2.hs.renamed_out
 /test/testdata/Renaming/IdIn2.hs.tokens
+/test/testdata/Renaming/ClassIn1.hs.AST_out
+/test/testdata/Renaming/ClassIn1.hs.refactored
+/test/testdata/Renaming/ClassIn1.hs.renamed_out
+/test/testdata/Renaming/ClassIn1.hs.tokens
