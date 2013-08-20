@@ -363,6 +363,30 @@ spec = do
      res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/IdIn3.hs" "foo" (10,1))
      (show res) `shouldBe` "Just \"Name 'foo'  already existed\\n\""
 
+    -- ---------------------------------
+
+    it "upper case name for fn fails IdIn4" $ do
+     --     (["IdIn4.hs"],["Foo","12","1"]),
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/IdIn4.hs" "Foo" (12,1)
+     res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/IdIn4.hs" "Foo" (12,1))
+     (show res) `shouldBe` "Just \"The new name should be an identifier!\""
+
+    -- ---------------------------------
+
+    it "naming clash IdIn5" $ do
+     --     (["IdIn5.hs"],["y","10","1"]),
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/IdIn5.hs" "y" (10,1)
+     res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/IdIn5.hs" "y" (10,1))
+     (show res) `shouldBe` "Just \"Name 'y'  already existed, or rename 'IdIn5.x' to 'y' will change the program's semantics!\\n\""
+
+    -- ---------------------------------
+
+    it "must rename in home module ClassIn3" $ do
+     --     (["ClassIn3.hs"],["Eq1","16","10"]),
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/ClassIn3.hs" "Eq1" (16,10)
+     res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/ClassIn3.hs" "Eq1" (16,10))
+     (show res) `shouldBe` "Just \"This identifier is defined in module GHC.Classes, please do renaming in that module!\""
+
 {-
 TestCases{refactorCmd="rename",
 positive=[
