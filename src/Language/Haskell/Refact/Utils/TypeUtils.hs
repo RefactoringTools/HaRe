@@ -4066,6 +4066,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
                                `SYB.extM` renameTyVar
                                `SYB.extM` renameHsTyVarBndr
                                `SYB.extM` renameLIE
+                               `SYB.extM` renameLPat
                                `SYB.extM` renameTypeSig
                                `SYB.extM` renameFunBind) t
   where
@@ -4124,6 +4125,15 @@ renamePNworker oldPN newName updateTokens useQual t = do
           worker useQual l n
           return (GHC.L l (GHC.IEVar newName))
     renameLIE x = return x
+
+    renameLPat :: (GHC.LPat GHC.Name) -> RefactGhc (GHC.LPat GHC.Name)
+    renameLPat (GHC.L l (GHC.VarPat n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          -- logm $ "renamePN:renameLPat at :" ++ (show (row,col))
+          worker False l n
+          return (GHC.L l (GHC.VarPat newName))
+    renameLPat x = return x
 
     renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
     renameFunBind (GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MatchGroup matches typ) co fvs tick))

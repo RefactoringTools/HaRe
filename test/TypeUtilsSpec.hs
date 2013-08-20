@@ -2046,7 +2046,10 @@ spec = do
       let Just (GHC.L l n) = locToName layoutIn2FileName (8, 7) renamed
       let
         comp = do
-         newName <- mkNewGhcName (Just modu) "ls"
+         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+
+         -- newName <- mkNewGhcName (Just modu) "ls"
+         newName <- mkNewGhcName Nothing "ls"
          new <- renamePN n newName True True renamed
 
          return (new,newName)
@@ -2054,10 +2057,10 @@ spec = do
       ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "list"
-      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint   ( x : xs ) = x ^ 2 + LocToName.newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint   [ ] = 0\n "
-      (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((8,7),(8,9)),ITvarid \"ls\",\"ls\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of  (1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly ls   = case ls   of  ( 1 : xs ) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
+      (unspace $ showGhc nb) `shouldBe` unspace "(LayoutIn2.silly :: [GHC.Types.Int] -> GHC.Types.Int\n LayoutIn2.silly ls\n = case ls of {\n (1 : xs) -> 1\n (2 : xs)\n | x GHC.Classes.< 10 -> 4\n where\n x = GHC.List.last xs\n otherwise -> 12 },\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
     ------------------------------------
