@@ -353,6 +353,15 @@ spec = do
                           "./test/testdata/Renaming/LayoutIn4.hs.refactored"
      diff `shouldBe` []
 
+    -- ---------------------------------
+    -- Negative tests
+    -- ---------------------------------
+
+    it "naming clash at top level IdIn3" $ do
+     -- (["IdIn3.hs"],["foo","10","1"]),
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/IdIn3.hs" "foo" (10,1)
+     res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/IdIn3.hs" "foo" (10,1))
+     (show res) `shouldBe` "Just \"Name 'foo'  already existed\\n\""
 
 {-
 TestCases{refactorCmd="rename",

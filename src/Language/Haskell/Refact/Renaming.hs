@@ -338,12 +338,16 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
       --filter those qualified free variables in f'
      -- let (f,d) = ((nub.map pNtoName.filter (not.isQualifiedPN)) f', (nub.map pNtoName) d')
      let (f,d) = (map nameToString f',map nameToString d')
-     if elem newName f
+     logm $ "renameTopLevelVarName:f=" ++ (show f)
+     logm $ "renameTopLevelVarName:d=" ++ (show d)
+     let newNameStr = nameToString newNameGhc
+     logm $ "renameTopLevelVarName:(newName,newNameStr)=" ++ (show (newName,newNameStr))
+     if elem newNameStr f
        then error ("The new name will cause ambiguous occurrence problem,"
                    ++" please select another new name or qualify the use of ' "
                    ++ newName ++ "' before renaming!\n")  -- Another implementation option is to add the qualifier
                                                          -- to newName automatically.
-       else if existChecking && elem newName (d \\ [nameToString oldPN])  --only check the declared names here.
+       else if existChecking && elem newNameStr (d \\ [nameToString oldPN])  --only check the declared names here.
              then error ("Name '"++newName++"'  already existed\n") --the same name has been declared in this module.
              else if exportChecking && causeNameClashInExports oldPN modName renamed -- exps
                     then error ("The new name will cause  conflicting exports, please select another new name!") 
