@@ -561,7 +561,7 @@ spec = do
       -- (showGhc res) `shouldBe` ""
 
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[(Data.Generics.Text.gshow, (-1, -1)),\n (System.IO.getChar, (-1, -1)), (System.IO.putStrLn, (-1, -1)),\n (GHC.Base.return, (-1, -1)), (GHC.Base.$, (-1, -1)),\n (GHC.List.head, (-1, -1)), (GHC.List.zip, (-1, -1)),\n (GHC.Num.fromInteger, (-1, -1)), (GHC.Num.*, (-1, -1)),\n (FreeAndDeclared.Declare.c, (9, 1))]"
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[(Data.Generics.Text.gshow, (-1, -1)),\n (System.IO.getChar, (-1, -1)), (System.IO.putStrLn, (-1, -1)),\n (GHC.Base.return, (-1, -1)), (GHC.Base.$, (-1, -1)),\n (GHC.List.head, (-1, -1)), (GHC.List.zip, (-1, -1)),\n (GHC.Num.fromInteger, (-1, -1)), (GHC.Num.*, (-1, -1))]"
 
       -- Declared Vars
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
@@ -621,7 +621,7 @@ spec = do
 
     -- -----------------------------------------------------------------
 
-    it "Finds free and declared at the top level" $ do
+    it "Finds free and declared at the top level 1" $ do
       (t, toks) <- parsedFileLiftWhereIn1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -643,6 +643,33 @@ spec = do
                    "(GHC.Classes.==, (-1, -1)),\n "++
                    "(GHC.Real.^, (-1, -1)), "++
                    "(GHC.Num.+, (-1, -1))]"
+
+    -- -----------------------------------------------------------------
+
+    it "Finds free and declared at the top level 2" $ do
+      (t, toks) <- parsedFileIdIn3
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let
+        comp = do
+          r <- hsFreeAndDeclaredPNs renamed
+          -- r <- hsFreeAndDeclaredPNs $ hsBinds renamed
+          return r
+      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+
+      -- Declared Vars
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+                   "[(IdIn3.bar, (14, 1))"++
+                  ", (IdIn3.x, (10, 1))"++
+                  ", (IdIn3.foo, (12, 1)),\n "++
+                    "(IdIn3.main, (18, 1))]"
+
+
+      -- Free Vars
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+                   "[(GHC.Num.+, (-1, -1)), "++
+                   "(GHC.Num.fromInteger, (-1, -1))]"
+
 
     -- -----------------------------------------------------------------
 
@@ -3079,6 +3106,16 @@ layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
 
 parsedFileLayoutIn2 :: IO (ParseResult, [PosToken])
 parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
+
+-- ----------------------------------------------------
+
+idIn3FileName :: GHC.FastString
+idIn3FileName = GHC.mkFastString "./test/testdata/Renaming/IdIn3.hs"
+
+parsedFileIdIn3 :: IO (ParseResult, [PosToken])
+parsedFileIdIn3 = parsedFileGhc "./test/testdata/Renaming/IdIn3.hs"
+
+-- ----------------------------------------------------
 
 -- Runners
 

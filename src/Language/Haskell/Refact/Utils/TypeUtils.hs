@@ -504,7 +504,8 @@ hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
   let fd = hsFreeAndDeclaredPNs' t
   -- logm $ "hsFreeAndDeclaredPNs:fd=" ++ (showGhc fd)
-  return $ fromMaybe ([],[]) fd
+  let (f,d) = fromMaybe ([],[]) fd
+  return (f \\ d, d)
 
 -- hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
 hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> Maybe ([GHC.Name],[GHC.Name])
@@ -589,23 +590,23 @@ hsFreeAndDeclaredPNs' t = do
                 return (pf \\ [n] ,[n])
 
           -- patBind --
-          binds (GHC.PatBind pat rhs _ ds _) =
+          binds (GHC.PatBind pat prhs _ ds _) =
             do
               (pf,pd) <- hsFreeAndDeclaredPNs' pat
-              (rf,rd) <- hsFreeAndDeclaredPNs' rhs
+              (rf,rd) <- hsFreeAndDeclaredPNs' prhs
               return (pf `union` (rf \\pd),pd ++ GHC.uniqSetToList ds ++ rd)
 
           binds _ = mzero
           -- match _ = return ([],[])
 
-          match ((GHC.Match pats _mtype rhs) :: GHC.Match GHC.Name )
+          match ((GHC.Match pats _mtype mrhs) :: GHC.Match GHC.Name )
             = do
               (pf,pd) <- hsFreeAndDeclaredPNs' pats
-              (rf,rd) <- hsFreeAndDeclaredPNs' rhs
+              (rf,rd) <- hsFreeAndDeclaredPNs' mrhs
               return ((pf `union` (rf \\ (pd `union` rd))),[])
 
           -- stmts --
-          stmts ((GHC.BindStmt pat expre _bindOp failOp) :: GHC.Stmt GHC.Name) = do
+          stmts ((GHC.BindStmt pat expre _bindOp _failOp) :: GHC.Stmt GHC.Name) = do
             -- TODO ++AZ++ : Not sure it is meaningful to pull
             --               anything out of bindOp/failOp
             (pf,pd)  <- hsFreeAndDeclaredPNs' pat
@@ -615,8 +616,8 @@ hsFreeAndDeclaredPNs' t = do
             let sf = []
             return (pf `union` ef `union` (sf\\pd),[]) -- pd) -- Check this
 
-          stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
-            hsFreeAndDeclaredPNs' binds
+          stmts ((GHC.LetStmt binds') :: GHC.Stmt GHC.Name) =
+            hsFreeAndDeclaredPNs' binds'
 
           stmts _ = mzero
           -- stmts _ = return ([],[])
@@ -1059,22 +1060,11 @@ hsFDsFromInside t = do
      return (nub f, nub d)
    where
      hsFDsFromInside' = applyTU (once_tdTU (failTU  `adhocTU` renamed
-                                                     `adhocTU` decl
-                                                     `adhocTU` match
-                                                     `adhocTU` expr
-                                                     `adhocTU` stmts ))
+                                                    `adhocTU` decl
+                                                    `adhocTU` match
+                                                    `adhocTU` expr
+                                                    `adhocTU` stmts ))
 
-{-
-     hsFDsFromInside' :: ([GHC.Name],[GHC.Name])
-     hsFDsFromInside' = SYB.everythingStaged SYB.Renamer
-                  (\(f1,d1) (f2,d2) -> (f1++f2,d1++d2))
-                  ([],[])
-                  (([],[]) `SYB.mkQ` renamed
-                           `SYB.extQ` match
-                           `SYB.extQ` decl
-                           `SYB.extQ` expr
-                           `SYB.extQ` stmts) t
--}
 
      renamed ((grp,_,_,_)::GHC.RenamedSource)
         = hsFreeAndDeclaredPNs $ GHC.hs_valds grp
