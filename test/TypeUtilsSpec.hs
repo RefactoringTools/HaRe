@@ -2038,6 +2038,30 @@ spec = do
 
     ------------------------------------
 
+    it "Replace a parameter name in a FunBind" $ do
+      (t, toks) <- parsedFileLayoutIn2
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LayoutIn2")
+
+      let Just (GHC.L l n) = locToName layoutIn2FileName (8, 7) renamed
+      let
+        comp = do
+         newName <- mkNewGhcName (Just modu) "ls"
+         new <- renamePN n newName True True renamed
+
+         return (new,newName)
+
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (showGhc n) `shouldBe` "list"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint   ( x : xs ) = x ^ 2 + LocToName.newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint   [ ] = 0\n "
+      (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+
+
+    ------------------------------------
+
     it "Does not qualify a name in an import hiding clause" $ do
       (t,toks) <- parsedFileScopeAndQual
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -3047,6 +3071,11 @@ parsedFileScopeAndQual = parsedFileGhc "./test/testdata/ScopeAndQual.hs"
 
 -- ----------------------------------------------------
 
+layoutIn2FileName :: GHC.FastString
+layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
+
+parsedFileLayoutIn2 :: IO (ParseResult, [PosToken])
+parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
 
 -- Runners
 

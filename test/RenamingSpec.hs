@@ -305,6 +305,30 @@ spec = do
                           "./test/testdata/Renaming/ConstructorIn3.hs.refactored"
      diff `shouldBe` []
 
+    -- ---------------------------------
+
+    it "Renames in LayoutIn1 7 17" $ do
+     --     (["LayoutIn1.hs"],["square","7","17"]),
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/LayoutIn1.hs" "square" (7,17)
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/LayoutIn1.hs" "square" (7,17)
+     r `shouldBe` [ "./test/testdata/Renaming/LayoutIn1.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/LayoutIn1.hs.expected"
+                          "./test/testdata/Renaming/LayoutIn1.hs.refactored"
+     diff `shouldBe` []
+
+    -- ---------------------------------
+
+    it "Renames in LayoutIn2 8 7" $ do
+     --     (["LayoutIn2.hs"],["ls","8","7"]),
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/LayoutIn2.hs" "ls" (8,7)
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/LayoutIn2.hs" "ls" (8,7)
+     r `shouldBe` [ "./test/testdata/Renaming/LayoutIn2.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/LayoutIn2.hs.expected"
+                          "./test/testdata/Renaming/LayoutIn2.hs.refactored"
+     diff `shouldBe` []
+
 
 {-
 TestCases{refactorCmd="rename",
