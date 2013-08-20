@@ -374,3 +374,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/LayoutIn2.hs.refactored
 /test/testdata/Renaming/LayoutIn2.hs.renamed_out
 /test/testdata/Renaming/LayoutIn2.hs.tokens
+/test/testdata/Renaming/LayoutIn3.hs.AST_out
+/test/testdata/Renaming/LayoutIn3.hs.refactored
+/test/testdata/Renaming/LayoutIn3.hs.renamed_out
+/test/testdata/Renaming/LayoutIn3.hs.tokens
