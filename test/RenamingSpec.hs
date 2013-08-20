@@ -387,6 +387,22 @@ spec = do
      res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/ClassIn3.hs" "Eq1" (16,10))
      (show res) `shouldBe` "Just \"This identifier is defined in module GHC.Classes, please do renaming in that module!\""
 
+    -- ---------------------------------
+
+    it "will not rename existing name Field2" $ do
+     --     (["Field2.hs"], ["absPoint", "5", "18"]),
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/Field2.hs" "absPoint" (5,18)
+     res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/Field2.hs" "absPoint" (5,18))
+     (show res) `shouldBe` "Just \"Name 'absPoint'  already existed\\n\""
+
+    -- ---------------------------------
+
+    it "must qualify clashes Qualifier" $ do
+     --     (["Qualifier.hs"],["sum","13","1"]),
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/Qualifier.hs" "sum" (13,1)
+     res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/Qualifier.hs" "sum" (13,1))
+     (show res) `shouldBe` "Just \"Name 'absPoint'  already existed\\n\""
+
 {-
 TestCases{refactorCmd="rename",
 positive=[
