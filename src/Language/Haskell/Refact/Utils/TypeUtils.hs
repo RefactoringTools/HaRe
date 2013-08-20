@@ -2444,6 +2444,7 @@ locToName' stage fileName (row,col) t =
                      `SYB.extQ` workerExpr
                      `SYB.extQ` workerLIE
                      `SYB.extQ` workerHsTyVarBndr
+                     `SYB.extQ` workerLHsType
                      ) t
 
         res2 = somethingStaged stage Nothing
@@ -2498,6 +2499,10 @@ locToName' stage fileName (row,col) t =
 #endif
           | inScope pnt = Just (GHC.L l name)
         workerHsTyVarBndr _ = Nothing
+
+        workerLHsType (pnt@(GHC.L l (GHC.HsTyVar name)):: (GHC.LHsType a))
+          | inScope pnt = Just (GHC.L l name)
+        workerLHsType _ = Nothing
 
 
         inScope :: GHC.Located e -> Bool

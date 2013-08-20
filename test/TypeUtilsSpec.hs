@@ -171,6 +171,17 @@ spec = do
       showGhc l `shouldBe` "test/testdata/Renaming/ConstructorIn3.hs:9:12"
       getLocatedStart res `shouldBe` (9,12)
 
+    -- ---------------------------------
+
+    it "gets an instance class name" $ do
+      (t, _toks) <- parsedFileGhc "./test/testdata/Renaming/ClassIn3.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+      let Just (res@(GHC.L l n)) = locToName (GHC.mkFastString "./test/testdata/Renaming/ClassIn3.hs") (16,10) renamed
+      showGhc n `shouldBe` "GHC.Classes.Eq"
+      showGhc l `shouldBe` "test/testdata/Renaming/ClassIn3.hs:16:10-11"
+      getLocatedStart res `shouldBe` (16,10)
+
   -- -------------------------------------------------------------------
 
   describe "locToRdrName" $ do
