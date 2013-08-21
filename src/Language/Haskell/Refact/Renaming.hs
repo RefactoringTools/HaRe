@@ -112,7 +112,8 @@ comp fileName newName (row,col) = do
 
            unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++ 
                                          ", please do renaming in that module!"))
-           if isMainModule modu && (showGhc pn) == "main"
+           -- logm $ "Renaming.comp:(isMainModule modu,pn)=" ++ (showGhc (isMainModule modu,pn))
+           if isMainModule modu && (showGhc pn) == "Main.main"
              then error ("The 'main' function defined in a 'Main' module should not be renamed!")
              else do
                logm $ "Renaming.comp: not main module"

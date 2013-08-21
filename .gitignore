@@ -390,3 +390,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/Qualifier.hs.refactored
 /test/testdata/Renaming/Qualifier.hs.renamed_out
 /test/testdata/Renaming/Qualifier.hs.tokens
+/test/testdata/Renaming/Main.hs.AST_out
+/test/testdata/Renaming/Main.hs.refactored
+/test/testdata/Renaming/Main.hs.renamed_out
+/test/testdata/Renaming/Main.hs.tokens

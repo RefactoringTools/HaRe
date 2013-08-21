@@ -8,4 +8,4 @@ sumSquares (x:xs) = sq x + sumSquares xs
 
 sumSquares [] = 0
 
-main=sumSquares [1..4]
+main=return $ sumSquares [1..4]
