@@ -3972,9 +3972,8 @@ qualifyToplevelName n = do
 -- TODO: the syntax phrase is required to be GHC.Located, not sure how
 -- to specify this without breaking the everywhereMStaged call
 
--- NOTE: TODO: this function is split into renamePN and renamePNworker
--- because the worker needs a closely enclosing SrcSpan, which is not
--- the case for RenamedSource. There must be a better way.
+-- NOTE: TODO: get rid of this and promote renamePNworker, it is no
+   -- longer needed
 renamePN::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
    ->GHC.Name             -- ^ The new name, including possible qualifier

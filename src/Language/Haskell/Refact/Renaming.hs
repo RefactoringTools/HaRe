@@ -342,7 +342,10 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
      logm $ "renameTopLevelVarName:d=" ++ (show d)
      let newNameStr = nameToString newNameGhc
      logm $ "renameTopLevelVarName:(newName,newNameStr)=" ++ (show (newName,newNameStr))
-     if elem newNameStr f
+     scopeClashNames <- inScopeNames newName
+     logm $ "renameTopLevelVarName:(scopeClashNames,intersection)=" ++ (showGhc (scopeClashNames,intersect scopeClashNames f'))
+     if (nonEmptyList $ intersect scopeClashNames f')
+     -- if elem newNameStr f
        then error ("The new name will cause ambiguous occurrence problem,"
                    ++" please select another new name or qualify the use of ' "
                    ++ newName ++ "' before renaming!\n") -- Another implementation option is to add the qualifier
