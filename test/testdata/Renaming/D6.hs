@@ -1,4 +1,4 @@
-module D6 where
+module Renaming.D6 where
 
 data Tree a = Leaf a | Branch (Tree a) (Tree a) 
 

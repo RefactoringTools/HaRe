@@ -1,8 +1,8 @@
-module ConflictExport (D6.fringe, myFringe) where
+module Renaming.ConflictExport (Renaming.D6.fringe, myFringe) where
 
 {-Rename 'myFringe' to 'fringe' will fail because of
   conflicting exports. -}
-import D6
+import Renaming.D6
 
 myFringe:: Tree a -> [a]
 myFringe (Leaf x ) = [x]

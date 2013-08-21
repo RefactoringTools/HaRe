@@ -411,6 +411,14 @@ spec = do
      res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/Main.hs" "main1" (11,1))
      (show res) `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
 
+    -- ---------------------------------
+
+    it "ConflictExports" $ do
+     --     (["ConflictExport.hs","D6.hs"],["fringe","7","1"])]
+     -- rename logTestSettings (Just "./test/testdata/Renaming/ConflictExport.hs") "./test/testdata/Renaming/ConflictExport.hs" "fringe" (7,1)
+     res <- catchException (rename defaultTestSettings (Just "./test/testdata/Renaming/ConflictExport.hs") "./test/testdata/Renaming/ConflictExport.hs" "fringe" (7,1))
+     (show res) `shouldBe` "Just \"The new name will cause  conflicting exports, please select another new name!\""
+
 {-
 TestCases{refactorCmd="rename",
 positive=[
