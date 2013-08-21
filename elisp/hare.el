@@ -90,7 +90,7 @@
     (define-key haskell-mode-map "\C-c\C-ric"  'hare-refactor-iftocase)
     (define-key haskell-mode-map "\C-c\C-rlo"  'hare-refactor-lift-one)
     (define-key haskell-mode-map "\C-c\C-rlt"  'hare-refactor-lifttotop)
-    ;(define-key haskell-mode-map "\C-c\C-rr"   'hare-refactor-rename)
+    (define-key haskell-mode-map "\C-c\C-rr"   'hare-refactor-rename)
     (hare-init-menu)
     (setq hare-initialized t)))
 
@@ -110,6 +110,7 @@
   (define-key haskell-mode-map [menu-bar mymenu ic] '("Convert if to case"   . hare-refactor-iftocase))
   (define-key haskell-mode-map [menu-bar mymenu lo] '("Lift one level"       . hare-refactor-lift-one))
   (define-key haskell-mode-map [menu-bar mymenu lt] '("Lift to top level"    . hare-refactor-lifttotop))
+  (define-key haskell-mode-map [menu-bar mymenu r ] '("Rename"               . hare-refactor-rename))
 )
 
 (defun hare-init-interactive ()
@@ -1296,7 +1297,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun hare-refactor-dupdef (name)
-  "Lift a definition one level."
+  "Duplicate a definition."
   (interactive (list (read-string "new definition name: ")))
   (let ((current-file-name (buffer-file-name))
         (line-no           (current-line-no))
@@ -1359,6 +1360,23 @@
                          ,(number-to-string line-no) ,(number-to-string column-no))
                          hare-search-paths 'emacs tab-width)
 
+      (message "Refactoring aborted."))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun hare-refactor-rename (name)
+  "Rename an identifier."
+  (interactive (list (read-string "new identifier name: ")))
+  (let ((current-file-name (buffer-file-name))
+        (line-no           (current-line-no))
+        (column-no         (current-column-no))
+        (buffer (current-buffer)))
+    (if (buffers-saved)
+        (hare-refactor-command current-file-name line-no column-no
+                         `("rename" ,current-file-name ,name
+                         ,(number-to-string line-no) ,(number-to-string column-no)
+                         )
+                         hare-search-paths 'emacs tab-width)
       (message "Refactoring aborted."))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

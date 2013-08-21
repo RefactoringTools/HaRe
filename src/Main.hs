@@ -9,10 +9,11 @@ import Exception
 import System.Console.CmdTheLine
 import qualified Text.PrettyPrint as PP
 
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.DupDef
 import Language.Haskell.Refact.MoveDef
+import Language.Haskell.Refact.Renaming
+import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.TypeSyn
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
 
 -- Based initially on http://elifrey.com/2012/07/23/CmdTheLine-Tutorial/
@@ -127,6 +128,7 @@ main = runChoice defaultTerm [ ifToCaseTerm
                              , liftToTopTerm
                              , liftOneTerm
                              , demoteTerm
+                             , renameTerm
                              ]
 
 defaultTerm :: (Term a, TermInfo)
@@ -236,6 +238,25 @@ demoteTerm = (doDemote',info)
 
 -- ---------------------------------------------------------------------
 
+-- rename :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO [FilePath]
+-- rename settings maybeMainFile fileName newName (row,col) =
+
+renameTerm :: (Term (IO ()), TermInfo)
+renameTerm = (doRename,info)
+  where
+    doRename :: Term (IO ())
+    doRename = rename' <$> settings <*> mainFile <*> thisFile <*> newName 1 <*> startRow 2 <*> startCol 3
+
+    rename' s m f n r c = runFunc $ rename s m f n (r,c)
+
+    info :: TermInfo
+    info = defTI'
+      { termName = "rename"
+      , termDoc  = "Rename an identifier"
+      }
+
+-- ---------------------------------------------------------------------
+
 runFunc :: IO [String] -> IO ()
 runFunc f = do
   r <- catchException f
@@ -243,7 +264,7 @@ runFunc f = do
        Left s    -> "(error " ++ (show s) ++ ")"
        Right mfs -> "(ok " ++ showLisp mfs ++ ")"
   putStrLn ret
-  
+
 
 showLisp :: [String] -> String
 showLisp xs = "(" ++ (intercalate " " $ map show xs) ++ ")"
