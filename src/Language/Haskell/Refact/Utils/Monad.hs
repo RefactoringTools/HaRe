@@ -53,6 +53,7 @@ import qualified MonadUtils    as GHC
 -- import qualified TypeRep       as GHC
 -- import qualified Var           as GHC
 
+import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
@@ -62,8 +63,10 @@ data VerboseLevel = Debug | Normal | Off
             deriving (Eq,Show)
 
 data RefactSettings = RefSet
-        { rsetImportPath :: ![FilePath]
-        -- , rsetLogFileName :: Maybe FilePath
+        { rsetGhcOpts      :: ![String]
+        , rsetExpandSplice :: Bool
+        -- | The sandbox directory.
+        , rsetSandbox      :: Maybe FilePath
         , rsetVerboseLevel :: !VerboseLevel
         } deriving (Show)
 
@@ -147,6 +150,7 @@ instance (MonadPlus m,Functor m,GHC.MonadIO m,ExceptionMonad m) => MonadPlus (GH
 
 -- | Initialise the GHC session, when starting a refactoring.
 --   This should never be called directly.
+{-
 initGhcSession :: RefactGhc ()
 initGhcSession = do
       settings <- getRefacSettings
@@ -162,6 +166,21 @@ initGhcSession = do
 
       _ <- GHC.setSessionDynFlags dflags'''
       return ()
+-}
+
+initGhcSession :: Cradle -> RefactGhc ()
+initGhcSession cradle = do
+    settings <- getRefacSettings
+    let opt = rsSettings
+    readLog <- initializeFlagsWithCradle opt cradle options True
+    setTargetFile fileName
+    checkSlowAndSet
+    void $ load LoadAllTargets
+    -- liftIO readLog
+    where
+      options
+        | rsetExpandSplice opt = "-w:"   : rsetGhcOpts opt
+        | otherwise            = "-Wall" : rsetGhcOpts opt
 
 
 runRefactGhc ::

@@ -1,33 +1,28 @@
-module Language.Haskell.Refact.Renaming(rename) where
+module Language.Haskell.Refact.Renaming(rename,renameCradle) where
 
-import qualified Data.Generics.Schemes as SYB
+-- import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
-import qualified DynFlags              as GHC
 import qualified FastString            as GHC
 import qualified GHC
-import qualified HsPat                 as GHC
-import qualified Module                as GHC
-import qualified MonadUtils            as GHC
+-- import qualified MonadUtils            as GHC
 import qualified Name                  as GHC
-import qualified NameSet               as GHC
-import qualified OccName               as GHC
-import qualified Outputable            as GHC
+-- import qualified NameSet               as GHC
+-- import qualified OccName               as GHC
+-- import qualified Outputable            as GHC
 import qualified RdrName               as GHC
-import qualified Unique                as GHC
+-- import qualified Unique                as GHC
 
-import qualified Data.Generics as SYB
-import qualified GHC.SYB.Utils as SYB
+-- import qualified Data.Generics as SYB
+-- import qualified GHC.SYB.Utils as SYB
 
 import Control.Monad
-import Control.Monad.State
-import Data.Char
-import Data.Data
+-- import Control.Monad.State
 import Data.List
-import Data.Maybe
+
 import Exception
-import GHC.Paths ( libdir )
+-- import GHC.Paths ( libdir )
 
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -35,10 +30,10 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
+-- import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
-import Data.Generics.Strafunski.StrategyLib.StrategyLib
+-- import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 {-This refactoring renames an indentifier to a user-specified name.
 
@@ -68,12 +63,21 @@ the file name, but we should keep in mind that people also use unnamed
 modules.
 -}
 
+
+-- | Rename the given identifier.
+renameCradle :: Options -> Cradle
+   -> FilePath -> String -> SimpPos
+   -> IO [FilePath]
+renameCradle opt cradle fileName newName (row,col) =
+  runRefacSession opt cradle (comp fileName newName (row,col))
+
+
 -- | Rename the given identifier.
 rename :: Maybe RefactSettings -> Maybe FilePath
    -> FilePath -> String -> SimpPos
    -> IO [FilePath]
 rename settings maybeMainFile fileName newName (row,col) =
-  runRefacSession settings maybeMainFile (comp fileName newName (row,col))
+  runRefacSessionOld settings maybeMainFile (comp fileName newName (row,col))
 
 -- | Body of the refactoring
 comp :: String -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
@@ -111,7 +115,7 @@ comp fileName newName (row,col) = do
            -- let defineMod = GHC.moduleName $ GHC.nameModule n
 
            let defineMod = case GHC.nameModule_maybe n of
-                            Just modu -> GHC.moduleName modu
+                            Just mn -> GHC.moduleName mn
                             Nothing -> modName
 
            unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++ 
@@ -299,10 +303,12 @@ doRenaming oldPNT@(PNT oldPN Value loc) newName modName mod inscps exps env
      renameInStmts stmts=mzero
 -}
 
+{-
 doRenaming' :: GHC.Name -> String  -> RefactGhc ()
 -- doRenaming' oldPNT@(PNT oldPN _ _) newName parent mod fun exps env
 doRenaming' oldPN newName
  = error "undefined doRenaming'"
+-}
 {-
  = let (f',d')= fun parent
        (f,d)  =((nub.map pNtoName.filter (not.isQualifiedPN)) f', (nub.map pNtoName) d')

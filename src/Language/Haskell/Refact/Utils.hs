@@ -42,13 +42,13 @@ module Language.Haskell.Refact.Utils
 import Control.Monad.State
 import Data.List
 import Data.Maybe
+import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.Directory
@@ -241,12 +241,13 @@ type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.RenamedSource))
 -- It is intended that this forms the umbrella function, in which
 -- applyRefac is called
 --
-runRefacSession :: Maybe RefactSettings
+{-
+runRefacSessionOld :: Maybe RefactSettings
          -> Maybe FilePath -- ^ main module for the project being refactored
          -> RefactGhc [ApplyRefacResult] -- ^ The computation doing
                                          -- the refactoriing
          -> IO [FilePath]
-runRefacSession settings maybeMainFile comp = do
+runRefacSessionOld settings maybeMainFile comp = do
   let
    initialState = RefSt
         { rsSettings = fromMaybe defaultSettings settings
@@ -257,6 +258,34 @@ runRefacSession settings maybeMainFile comp = do
         }
   (refactoredMods,_s) <- runRefactGhc (initGhcSession >>
                                        loadModuleGraphGhc maybeMainFile >>
+                                       comp) initialState
+
+  let verbosity = rsetVerboseLevel (rsSettings initialState)
+  writeRefactoredFiles verbosity refactoredMods
+  return $ modifiedFiles refactoredMods
+-}
+-- -------------
+
+runRefacSession :: RefactSettings
+         -> Cradle                       -- ^ Identifies the
+                                         -- surrounding project
+         -> RefactGhc [ApplyRefacResult] -- ^ The computation doing
+                                         -- the refactoriing
+         -> IO [FilePath]
+runRefacSession opt cradle comp = do
+  let
+   initialState = RefSt
+        { rsSettings = settings
+        , rsUniqState = 1
+        , rsFlags = RefFlags False
+        , rsStorage = StorageNone
+        , rsModule = Nothing
+        }
+
+  -- readLog <- initializeFlagsWithCradle opt cradle options True
+  -- setTargetFile fileName
+
+  (refactoredMods,_s) <- runRefactGhc (initGhcSession cradle >>
                                        comp) initialState
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)

@@ -9,9 +9,13 @@ import Exception
 import System.Console.CmdTheLine
 import qualified Text.PrettyPrint as PP
 
+import Language.Haskell.GhcMod
+
+-- The actual refactorings
 import Language.Haskell.Refact.DupDef
 import Language.Haskell.Refact.MoveDef
 import Language.Haskell.Refact.Renaming
+
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import qualified Language.Haskell.Refact.Case as GhcRefacCase
@@ -53,6 +57,20 @@ instance ArgVal SimpPos where
 
 -- ---------------------------------------------------------------------
 -- command line argument types
+
+-- |cradle from ghc-mod
+{-
+cradle :: Term (Maybe Cradle)
+cradle = do
+  (strVer,ver) <- getGHCVersion
+  return undefined
+-}
+
+-- As used in ghc-mod
+--    (strVer,ver) <- getGHCVersion
+--    cradle <- findCradle (sandbox opt') strVer
+
+
 
 mainFile :: Term (Maybe FilePath)
 mainFile = value $ opt Nothing (optInfo ["m","main"])

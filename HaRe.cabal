@@ -36,7 +36,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , lens >= 3.0
+                                , ghc-mod
                                 , mtl
                                 , old-time
                                 , pretty
@@ -78,7 +78,8 @@ Library
 
 
 Executable ghc-hare
-        Main-Is:                Main.hs
+        -- Main-Is:                Main.hs
+        Main-Is:                MainHaRe.hs
         -- GHC-Options:            -Wall
         Hs-Source-Dirs:
           ./src
@@ -92,7 +93,7 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , lens >= 3.0
+                                , ghc-mod
                                 , mtl
                                 , old-time
                                 , pretty
@@ -101,7 +102,6 @@ Executable ghc-hare
                                 , transformers
                                 , hslogger
                                 , Strafunski-StrategyLib
-                                -- , uniplate
                                 , syz
         Other-Modules:          Paths_HaRe
         Extensions:      CPP
@@ -136,8 +136,8 @@ test-suite spec
     , ghc-paths   == 0.1.*
     , ghc-prim
     , ghc-syb-utils
+    , ghc-mod
     , hspec       == 1.4.*
-    , lens >= 3.0
     , mtl
     , old-time
     , process
@@ -146,7 +146,6 @@ test-suite spec
     , rosezipper
     , syb
     , transformers
-    -- , uniplate
     , hslogger
     , Strafunski-StrategyLib
     , syz
