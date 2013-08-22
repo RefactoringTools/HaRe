@@ -19,7 +19,7 @@ module Language.Haskell.Refact.Utils
        , runRefacSession
        , applyRefac
        , refactDone
-       , ApplyRefacResult(..)
+       , ApplyRefacResult
        , RefacSource(..)
 
        , update
@@ -40,7 +40,6 @@ module Language.Haskell.Refact.Utils
        ) where
 
 import Control.Monad.State
-import Data.Char
 import Data.List
 import Data.Maybe
 import Language.Haskell.Refact.Utils.GhcModuleGraph
@@ -49,43 +48,39 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
+-- import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.Directory
 
-import qualified Bag           as GHC
-import qualified BasicTypes    as GHC
-import qualified Coercion      as GHC
+-- import qualified Bag           as GHC
+-- import qualified BasicTypes    as GHC
+-- import qualified Coercion      as GHC
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
-import qualified ErrUtils      as GHC
+-- import qualified ErrUtils      as GHC
 import qualified FastString    as GHC
-import qualified ForeignCall   as GHC
+-- import qualified ForeignCall   as GHC
 import qualified GHC
-import qualified GHC           as GHC
-import qualified GHC.Paths     as GHC
-import qualified HsSyn         as GHC
-import qualified InstEnv       as GHC
-import qualified Module        as GHC
-import qualified MonadUtils    as GHC
-import qualified NameSet       as GHC
-import qualified OccName       as GHC
+-- import qualified GHC           as GHC
+-- import qualified GHC.Paths     as GHC
+-- import qualified HsSyn         as GHC
+-- import qualified InstEnv       as GHC
+-- import qualified Module        as GHC
+-- import qualified MonadUtils    as GHC
+-- import qualified NameSet       as GHC
+-- import qualified OccName       as GHC
 import qualified Outputable    as GHC
-import qualified RdrName       as GHC
-import qualified SrcLoc        as GHC
-import qualified StaticFlags   as GHC
-import qualified TcEvidence    as GHC
-import qualified TcType        as GHC
-import qualified TypeRep       as GHC
-import qualified Var           as GHC
+-- import qualified RdrName       as GHC
+-- import qualified SrcLoc        as GHC
+-- import qualified StaticFlags   as GHC
+-- import qualified TcEvidence    as GHC
+-- import qualified TcType        as GHC
+-- import qualified TypeRep       as GHC
+-- import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
-
-import qualified Data.Map as Map
-
--- import Data.Generics
 
 import Debug.Trace
 
@@ -264,9 +259,9 @@ runRefacSession settings maybeMainFile comp = do
                                        loadModuleGraphGhc maybeMainFile >>
                                        comp) initialState
 
-  writeRefactoredFiles False refactoredMods
+  let verbosity = rsetVerboseLevel (rsSettings initialState)
+  writeRefactoredFiles verbosity refactoredMods
   return $ modifiedFiles refactoredMods
-  -- return ()
 
 -- ---------------------------------------------------------------------
 
@@ -330,7 +325,7 @@ applyRefacToClientMods refac fileName
 
 
 modifiedFiles :: [((String, Bool), ([PosToken], GHC.RenamedSource))] -> [String]
-modifiedFiles refactResult = map (\((s,_),_) -> s) 
+modifiedFiles refactResult = map (\((s,_),_) -> s)
                            $ filter (\((_,b),_) -> b) refactResult
 
 -- ---------------------------------------------------------------------
@@ -401,7 +396,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t
         where
           inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
-                = do 
+                = do
                      _ <- updateToks oldPat newPat prettyprint False
                      -- TODO: make sure to call syncAST
                      return newPat
@@ -413,7 +408,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n
         where
           inTyp (t::GHC.LHsType n)
             | sameOccurrence t oldTy
-                = do 
+                = do
                      _ <- updateToks oldTy newTy prettyprint False
                      -- TODO: make sure to call syncAST
                      return newTy
@@ -425,7 +420,7 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1,
           where
             inBind (t::GHC.LHsBindLR n1 n2)
               | sameOccurrence t oldBind
-                  = do 
+                  = do
                        _ <- updateToks oldBind newBind prettyprint False
                        -- TODO: make sure to call syncAST
                        return newBind
@@ -496,7 +491,7 @@ getDynFlags :: IO GHC.DynFlags
 getDynFlags = do
   let
     initialState = RefSt
-      { rsSettings = RefSet [] False
+      { rsSettings = RefSet [] Normal
       , rsUniqState = 1
       , rsFlags = RefFlags False
       , rsStorage = StorageNone
@@ -518,24 +513,17 @@ writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-re
 -}
 -- writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
 writeRefactoredFiles ::
-  Bool -> [((String, Bool), ([PosToken], GHC.RenamedSource))] -> IO ()
-writeRefactoredFiles _isSubRefactor files
--- writeRefactoredFiles :: Bool -> [(RefactState, GHC.ParsedSource)]
-    -- The AST is not used.
-    -- isSubRefactor is used only for history (undo).
-  = do let modifiedFiles = filter (\((f,m),_) -> m == modified) files
-
-       -- putStrLn $ "writeRefactoredFiles:files=[" ++ (show $ map (\((f,_),(ts,_)) -> (f,GHC.showRichTokenStream ts)) files) ++ "]" -- ++AZ++ debug
-
+  VerboseLevel -> [((String, Bool), ([PosToken], GHC.RenamedSource))] -> IO ()
+writeRefactoredFiles verbosity files
+  = do let filesModified = filter (\((_f,m),_) -> m == modified) files
 
        -- TODO: restore the history function
-       -- ++AZ++ PFE0.addToHistory isSubRefactor (map (fst.fst) modifiedFiles)
-       sequence_ (map modifyFile modifiedFiles)
+       -- ++AZ++ PFE0.addToHistory isSubRefactor (map (fst.fst) filesModified)
+       sequence_ (map modifyFile filesModified)
        -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
 
      where
        modifyFile ((fileName,_),(ts,renamed)) = do
-           df <- getDynFlags
            -- let source = concatMap (snd.snd) ts
 
            -- The bug fix only works if we strip any empty tokens
@@ -543,44 +531,20 @@ writeRefactoredFiles _isSubRefactor files
            let ts' = bypassGHCBug7351 ts
            let source = GHC.showRichTokenStream ts'
 
-           -- putStrLn $ "writeRefactoredFiles:" ++ fileName ++ ":[" ++ source ++ "]" -- ++AZ++ debug
            -- (Julien personnal remark) seq forces the evaluation of
            -- its first argument and returns its second argument. It
            -- is unclear for me why (length source) evaluation is
            -- forced.
-
-           -- seq :: a -> b -> b
-           -- infixr 0 seq
-
-           -- seq (length source) (AbstractIO.writeFile fileName source) -- ++AZ++ TODO: restore this when ready for production
            seq (length source) (writeFile (fileName ++ ".refactored") source)
-           -- putStrLn $ "writeRefactoredFiles:seq done"
 
-           writeFile (fileName ++ ".tokens") (showToks ts')
-           -- writeFile (fileName ++ ".tokens") (showToks $ filter (\t -> not $ isEmpty t) ts)
-           writeFile (fileName ++ ".renamed_out") (showGhc renamed)
-           writeFile (fileName ++ ".AST_out") $ (showGhc renamed) ++ "\n\n----------------------\n\n" ++ (SYB.showData SYB.Renamer 0 renamed)
+           when (verbosity == Debug) $
+             do
+               writeFile (fileName ++ ".tokens") (showToks ts')
+               writeFile (fileName ++ ".renamed_out") (showGhc renamed)
+               writeFile (fileName ++ ".AST_out") $ ((showGhc renamed) ++
+                      "\n\n----------------------\n\n" ++
+                      (SYB.showData SYB.Renamer 0 renamed))
 
-
-           -- (Julien) I have changed Unlit.writeHaskellFile into
-           -- AbstractIO.writeFile (which is ok as long as we do not
-           -- have literate Haskell files)
-
-           {- ++AZ++ TODO: restore this
-           editorCmds <- PFE0.getEditorCmds
-           MT.lift (sendEditorModified editorCmds fileName)
-           -}
-
-       writeTestDataForFile ((fileName,_),(ts,mod)) = do
-           -- let source=concatMap (snd.snd) ts
-           let source = GHC.showRichTokenStream ts
-           seq (length source) $ writeFile (createNewFileName "_TokOut" fileName) source
-           -- writeHaskellFile (createNewFileName "AST" fileName) ((render.ppi.rmPrelude) mod)
-           -- ++AZ++ writeHaskellFile (createNewFileName "AST" fileName) (SYB.showData SYB.Parser mod)
-
-       createNewFileName str fileName
-          =let (name, posfix)=span (/='.') fileName
-           in (name++str++posfix)
 
 -- http://hackage.haskell.org/trac/ghc/ticket/7351
 bypassGHCBug7351 :: [PosToken] -> [PosToken]
@@ -614,6 +578,7 @@ clientModsAndFiles m = do
   return clientMods
 
 -- TODO : find decent name and place for this.
+mycomp :: GHC.ModSummary -> GHC.ModSummary -> Bool
 mycomp ms1 ms2 = (GHC.ms_mod ms1) == (GHC.ms_mod ms2)
 
 

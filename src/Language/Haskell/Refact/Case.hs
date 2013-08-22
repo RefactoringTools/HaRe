@@ -15,7 +15,7 @@ import Language.Haskell.Refact.Utils.TypeUtils
 
 -- ---------------------------------------------------------------------
 
--- | The API entry point
+-- | Convert an if expression to a case expression
 ifToCase :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
 ifToCase settings maybeMainFile fileName beginPos endPos =
   runRefacSession settings maybeMainFile (comp fileName beginPos endPos)

@@ -30,7 +30,7 @@ instance ArgVal RefactSettings where
   converter = (pRefactSettings,ppRefactSettings)
     where
         pRefactSettings :: ArgParser RefactSettings
-        pRefactSettings _s = Right (RefSet ["."] False)
+        pRefactSettings _s = Right (RefSet ["."] Normal)
 
         ppRefactSettings :: ArgPrinter RefactSettings
         ppRefactSettings s = PP.text (show s)

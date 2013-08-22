@@ -249,7 +249,7 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
      -- renameInMod (mod::HsModuleP)
      renameInMod :: GHC.RenamedSource -> RefactGhc GHC.RenamedSource
      renameInMod ren
-        -- | isDeclaredIn oldn ren = do
+        -- was | isDeclaredIn oldn ren = do
         | True = do
            logm $ "renameInMod"
            renameTopLevelVarName oldn newNameStr newNameGhc modName ren True True

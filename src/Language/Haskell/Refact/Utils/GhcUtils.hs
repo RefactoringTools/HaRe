@@ -1,6 +1,17 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-|
+
+This module contains routines used to perform generic traversals of
+the GHC AST, avoiding the traps resulting from certain fields being
+populated with values defined to trigger an error if ever evaluated.
+
+This is a useful feature for tracking down bugs in GHC, but makes use
+of the GHC library problematic.
+
+-}
+
 module Language.Haskell.Refact.Utils.GhcUtils where
 
 import qualified Data.Generics as SYB

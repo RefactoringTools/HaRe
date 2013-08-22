@@ -3,11 +3,15 @@ Version:                        0.7.0.0
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Chris Brown
 Stability:                      Provisional
-Bug-Reports:                    mailto:chrisb@cs.st-andrews.ac.uk
+Bug-Reports:                    http://github.com/alanz/HaRe/issues
 License:                        BSD3
 License-File:                   LICENSE
 Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
-Description:                    A full Haskell 2010 refactoring tool. HaRe supports the full Haskell 2010 standard, implemented in Haskell and supporting Emacs.
+Description:
+   A full Haskell 2010 refactoring tool. HaRe supports the full
+   Haskell 2010 standard, implemented in Haskell and supporting Emacs.
+   .
+   It is tested against GHC 7.4.x and 7.6.x
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8

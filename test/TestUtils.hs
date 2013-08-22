@@ -91,7 +91,7 @@ parseSourceFileTest fileName = do
 
 initialState :: RefactState
 initialState = RefSt
-  { rsSettings = RefSet ["./test/testdata/","./testdata"] False
+  { rsSettings = RefSet ["./test/testdata/","./testdata"] Normal
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
@@ -102,7 +102,7 @@ initialState = RefSt
 
 initialLogOnState :: RefactState
 initialLogOnState = RefSt
-  { rsSettings = RefSet ["./test/testdata/"] True
+  { rsSettings = RefSet ["./test/testdata/"] Debug
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
@@ -156,11 +156,11 @@ runTestGhc comp = do
 -- ---------------------------------------------------------------------
 
 runRefactGhcState :: RefactGhc t -> IO (t, RefactState)
-runRefactGhcState paramcomp = runRefactGhcStateLog paramcomp False
+runRefactGhcState paramcomp = runRefactGhcStateLog paramcomp Normal
 
 -- ---------------------------------------------------------------------
 
-runRefactGhcStateLog :: RefactGhc t -> Bool -> IO (t, RefactState)
+runRefactGhcStateLog :: RefactGhc t -> VerboseLevel -> IO (t, RefactState)
 runRefactGhcStateLog paramcomp logOn  = do
   let
      initState = RefSt
@@ -176,10 +176,10 @@ runRefactGhcStateLog paramcomp logOn  = do
 -- ---------------------------------------------------------------------
 
 defaultTestSettings :: Maybe RefactSettings
-defaultTestSettings = Just $ RefSet ["./test/testdata/"] False
+defaultTestSettings = Just $ RefSet ["./test/testdata/"] Normal
 
 logTestSettings :: Maybe RefactSettings
-logTestSettings = Just $ RefSet ["./test/testdata/"] True
+logTestSettings = Just $ RefSet ["./test/testdata/"] Debug
 
 -- ---------------------------------------------------------------------
 

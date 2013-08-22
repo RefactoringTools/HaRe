@@ -38,7 +38,6 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        -- , putNewSpanAndToks
        -- , putNewPosAndToks
-       -- * Managing token stash
 
        -- * For debugging
        , drawTokenTree
@@ -433,7 +432,9 @@ getStateStorage = do
 logm :: String -> RefactGhc ()
 logm string = do
   settings <- getRefacSettings
-  when (rsetLoggingOn settings) $ liftIO $ warningM "HaRe" string
+  let loggingOn = (rsetVerboseLevel settings == Debug)
+             --     || (rsetVerboseLevel settings == Normal)
+  when loggingOn $ liftIO $ warningM "HaRe" string
   -- liftIO $ putStrLn string
   return ()
 

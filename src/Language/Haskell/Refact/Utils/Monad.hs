@@ -5,6 +5,7 @@
 
 module Language.Haskell.Refact.Utils.Monad
        ( ParseResult
+       , VerboseLevel(..)
        , RefactSettings(..)
        , RefactState(..)
        , RefactModule(..)
@@ -26,48 +27,51 @@ import Control.Monad.State
 import Exception
 import qualified Control.Monad.IO.Class as MU
 
-import qualified Bag           as GHC
-import qualified BasicTypes    as GHC
-import qualified Coercion      as GHC
-import qualified Digraph       as GHC
+-- import qualified Bag           as GHC
+-- import qualified BasicTypes    as GHC
+-- import qualified Coercion      as GHC
+-- import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
-import qualified ErrUtils      as GHC
-import qualified FastString    as GHC
-import qualified ForeignCall   as GHC
+-- import qualified ErrUtils      as GHC
+-- import qualified FastString    as GHC
+-- import qualified ForeignCall   as GHC
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
-import qualified HsSyn         as GHC
-import qualified InstEnv       as GHC
-import qualified Module        as GHC
+-- import qualified HsSyn         as GHC
+-- import qualified InstEnv       as GHC
+-- import qualified Module        as GHC
 import qualified MonadUtils    as GHC
-import qualified NameSet       as GHC
-import qualified OccName       as GHC
-import qualified Outputable    as GHC
-import qualified RdrName       as GHC
-import qualified SrcLoc        as GHC
-import qualified StaticFlags   as GHC
-import qualified TcEvidence    as GHC
-import qualified TcType        as GHC
-import qualified TypeRep       as GHC
-import qualified Var           as GHC
+-- import qualified NameSet       as GHC
+-- import qualified OccName       as GHC
+-- import qualified Outputable    as GHC
+-- import qualified RdrName       as GHC
+-- import qualified SrcLoc        as GHC
+-- import qualified StaticFlags   as GHC
+-- import qualified TcEvidence    as GHC
+-- import qualified TcType        as GHC
+-- import qualified TypeRep       as GHC
+-- import qualified Var           as GHC
 
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
 -- ---------------------------------------------------------------------
 
+data VerboseLevel = Debug | Normal | Off
+            deriving (Eq,Show)
+
 data RefactSettings = RefSet
         { rsetImportPath :: ![FilePath]
         -- , rsetLogFileName :: Maybe FilePath
-        , rsetLoggingOn :: !Bool
+        , rsetVerboseLevel :: !VerboseLevel
         } deriving (Show)
 
 defaultSettings :: RefactSettings
-defaultSettings = RefSet ["."] False
+defaultSettings = RefSet ["."] Normal
 
 logSettings :: RefactSettings
-logSettings = defaultSettings { rsetLoggingOn = True }
+logSettings = defaultSettings { rsetVerboseLevel = Debug }
 
 
 data RefactStashId = Stash !String deriving (Show,Eq,Ord)

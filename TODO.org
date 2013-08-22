@@ -1,6 +1,10 @@
 * TODO Make undo (M-x u) undo a refactoring.
 * TODO The elisp test for buffers to save includes directories that have been modified
-* TODO push ForestSpan annotations into the tokens too, to enable single token replacement for renaming, without disturbing the actual token tree
+* TODO add test flag when not set do not generate .tokens,.AST_out,.renamed files
+* TODO sort out realignment of tokens on a line when one is changed
+* DONE look at executable-paths package
+* TODO check .lhs support
+* TODO check cabal support
 * TODO from the source files
   :PROPERTIES:
   :ID:       2930a92b-9989-427f-b02e-e47ca11a84de

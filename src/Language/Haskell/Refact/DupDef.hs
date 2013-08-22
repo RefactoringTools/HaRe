@@ -21,23 +21,9 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
 -- ---------------------------------------------------------------------
--- | This refactoring duplicates a definition(function binding or
--- simple pattern binding) at same level with a new name provided by
+-- | This refactoring duplicates a definition (function binding or
+-- simple pattern binding) at the same level with a new name provided by
 -- the user. The new name should not cause name clash/capture.
-
-{-
--- TODO: This boilerplate will be moved to the coordinator, just comp will be exposed
-doDuplicateDef :: [String] -> IO () -- For now
-doDuplicateDef args
- = do let fileName = ghead "filename" args
-          newName  = args!!1
-          row      = read (args!!2)::Int
-          col      = read (args!!3)::Int
-      duplicateDef Nothing  Nothing fileName newName (row,col)
-      return ()
--}
-
--- | The API entry point
 duplicateDef :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO [FilePath]
 duplicateDef settings maybeMainFile fileName newName (row,col) =
   runRefacSession settings maybeMainFile (comp fileName newName (row,col))

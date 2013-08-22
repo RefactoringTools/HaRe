@@ -134,17 +134,7 @@ compLiftOneLevel fileName (row,col) = do
 
 -- ---------------------------------------------------------------------
 
-{-
-doDemote :: [String] -> IO ()
-doDemote args
- = do let  fileName = ghead "filename"  args
-           row = read (args!!1)::Int
-           col = read (args!!2)::Int
-      demote Nothing Nothing fileName (row,col)
-      return ()
--}
-
--- | The API entry point
+-- | Move a definition one level down
 demote :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
 demote settings maybeMainFile fileName (row,col) =
   runRefacSession settings maybeMainFile (compDemote fileName (row,col))
