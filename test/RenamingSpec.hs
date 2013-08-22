@@ -413,6 +413,25 @@ spec = do
 
     -- ---------------------------------
 
+    it "cannot rename main Main2" $ do
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/Main2.hs" "main1" (4,1)
+     res <- catchException (rename defaultTestSettings Nothing "./test/testdata/Renaming/Main2.hs" "main1" (4,1))
+     (show res) `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
+
+    -- ---------------------------------
+
+    it "rename with default main Main2" $ do
+     -- rename logTestSettings Nothing "./test/testdata/Renaming/Main2.hs" "baz" (6,1)
+     r <- rename defaultTestSettings Nothing "./test/testdata/Renaming/Main2.hs" "baz" (6,1)
+
+     r `shouldBe` [ "./test/testdata/Renaming/Main2.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/Main2.hs.expected"
+                          "./test/testdata/Renaming/Main2.hs.refactored"
+     diff `shouldBe` []
+
+    -- ---------------------------------
+
     it "ConflictExports" $ do
      --     (["ConflictExport.hs","D6.hs"],["fringe","7","1"])]
      -- rename logTestSettings (Just "./test/testdata/Renaming/ConflictExport.hs") "./test/testdata/Renaming/ConflictExport.hs" "fringe" (7,1)

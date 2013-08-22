@@ -4,17 +4,18 @@ import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
-import qualified GHC
 import qualified DynFlags              as GHC
-import qualified Outputable            as GHC
+import qualified FastString            as GHC
+import qualified GHC
+import qualified HsPat                 as GHC
+import qualified Module                as GHC
 import qualified MonadUtils            as GHC
 import qualified Name                  as GHC
-import qualified RdrName               as GHC
-import qualified OccName               as GHC
-import qualified Unique                as GHC
-import qualified FastString            as GHC
-import qualified HsPat                 as GHC
 import qualified NameSet               as GHC
+import qualified OccName               as GHC
+import qualified Outputable            as GHC
+import qualified RdrName               as GHC
+import qualified Unique                as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -88,7 +89,10 @@ comp fileName newName (row,col) = do
     logm $ "Renaming.comp:rdrName'=" ++ (showGhc rdrName')
 
     modu <- getModule
-    let (Just (modName,_)) = getModuleName parsed
+    -- let (Just (modName,_)) = getModuleName parsed
+    let modName = case (getModuleName parsed) of
+                    Just (mn,_) -> mn
+                    Nothing -> GHC.mkModuleName "Main"
     let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
     logm $ "Renamed.comp:maybePn=" ++ (showGhc maybePn) -- ++AZ++
     case maybePn of
