@@ -8,10 +8,15 @@ License:                        BSD3
 License-File:                   LICENSE
 Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
 Description:
-   A full Haskell 2010 refactoring tool. HaRe supports the full
+   A Haskell 2010 refactoring tool. HaRe supports the full
    Haskell 2010 standard, implemented in Haskell and supporting Emacs.
    .
    It is tested against GHC 7.4.x and 7.6.x
+   .
+   Warning: This is alpha code. Always commit code to your version
+   control system before refactoring. The developers make no
+   warranties, use at your own risk.
+
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8

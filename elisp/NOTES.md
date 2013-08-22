@@ -1,6 +1,6 @@
 Interactive elisp shell
 
-    M-x ielm 
+    M-x ielm
 
 Break on unhandled error, put in .emacs
 

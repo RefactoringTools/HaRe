@@ -1,6 +1,6 @@
 * TODO Make undo (M-x u) undo a refactoring.
 * TODO The elisp test for buffers to save includes directories that have been modified
-* TODO add test flag when not set do not generate .tokens,.AST_out,.renamed files
+* DONE add test flag when not set do not generate .tokens,.AST_out,.renamed files
 * TODO sort out realignment of tokens on a line when one is changed
 * DONE look at executable-paths package
 * TODO check .lhs support
