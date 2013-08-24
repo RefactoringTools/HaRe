@@ -37,7 +37,9 @@ import qualified Unique        as GHC
 -- import qualified UniqSet       as GHC
 
 import Data.Algorithm.Diff
+import Data.Maybe
 import Exception
+import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -91,7 +93,7 @@ parseSourceFileTest fileName = do
 
 initialState :: RefactState
 initialState = RefSt
-  { rsSettings = RefSet ["./test/testdata/","./testdata"] Normal
+  { rsSettings = fromJust defaultTestSettings
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
@@ -102,7 +104,7 @@ initialState = RefSt
 
 initialLogOnState :: RefactState
 initialLogOnState = RefSt
-  { rsSettings = RefSet ["./test/testdata/"] Debug
+  { rsSettings = fromJust logTestSettings
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
@@ -164,22 +166,29 @@ runRefactGhcStateLog :: RefactGhc t -> VerboseLevel -> IO (t, RefactState)
 runRefactGhcStateLog paramcomp logOn  = do
   let
      initState = RefSt
-        { rsSettings = RefSet ["./test/testdata/"] logOn
+        { rsSettings = defaultSettings { rsetVerboseLevel = logOn }
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
         , rsModule = Nothing
         }
-  (r,s) <- runRefactGhc (initGhcSession >> paramcomp) initState
+  (r,s) <- runRefactGhc (initGhcSession testCradle >> paramcomp) initState
   return (r,s)
 
 -- ---------------------------------------------------------------------
 
+testCradle :: Cradle
+testCradle = Cradle "./test/testdata/" Nothing Nothing Nothing
+
+-- ---------------------------------------------------------------------
+
 defaultTestSettings :: Maybe RefactSettings
-defaultTestSettings = Just $ RefSet ["./test/testdata/"] Normal
+-- defaultTestSettings = Just $ RefSet ["./test/testdata/"] Normal
+defaultTestSettings = Just $ defaultSettings { rsetVerboseLevel = Normal }
 
 logTestSettings :: Maybe RefactSettings
-logTestSettings = Just $ RefSet ["./test/testdata/"] Debug
+-- logTestSettings = Just $ RefSet ["./test/testdata/"] Debug
+logTestSettings = Just $ defaultSettings { rsetVerboseLevel = Debug }
 
 -- ---------------------------------------------------------------------
 

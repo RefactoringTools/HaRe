@@ -53,7 +53,7 @@ import qualified MonadUtils    as GHC
 -- import qualified TypeRep       as GHC
 -- import qualified Var           as GHC
 
-import Language.Haskell.GhcMod
+import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
@@ -71,7 +71,7 @@ data RefactSettings = RefSet
         } deriving (Show)
 
 defaultSettings :: RefactSettings
-defaultSettings = RefSet ["."] Normal
+defaultSettings = RefSet [] False Nothing Normal
 
 logSettings :: RefactSettings
 logSettings = defaultSettings { rsetVerboseLevel = Debug }
@@ -171,14 +171,23 @@ initGhcSession = do
 initGhcSession :: Cradle -> RefactGhc ()
 initGhcSession cradle = do
     settings <- getRefacSettings
-    let opt = rsSettings
-    readLog <- initializeFlagsWithCradle opt cradle options True
-    setTargetFile fileName
-    checkSlowAndSet
-    void $ load LoadAllTargets
+    let opt = Options {
+                 outputStyle = PlainStyle
+                 , hlintOpts = []
+                 , ghcOpts = (rsetGhcOpts settings)
+                 , operators = False
+                 , detailed = False
+                 , expandSplice = False
+                 , sandbox = (rsetSandbox settings)
+                 }
+    readLog <- initializeFlagsWithCradle opt cradle (options settings) True
+    -- setTargetFile fileName
+    -- checkSlowAndSet
+    void $ GHC.load GHC.LoadAllTargets
     -- liftIO readLog
+    return ()
     where
-      options
+      options opt
         | rsetExpandSplice opt = "-w:"   : rsetGhcOpts opt
         | otherwise            = "-Wall" : rsetGhcOpts opt
 

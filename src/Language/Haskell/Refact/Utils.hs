@@ -42,7 +42,7 @@ module Language.Haskell.Refact.Utils
 import Control.Monad.State
 import Data.List
 import Data.Maybe
-import Language.Haskell.GhcMod
+import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -272,7 +272,7 @@ runRefacSession :: RefactSettings
          -> RefactGhc [ApplyRefacResult] -- ^ The computation doing
                                          -- the refactoriing
          -> IO [FilePath]
-runRefacSession opt cradle comp = do
+runRefacSession settings cradle comp = do
   let
    initialState = RefSt
         { rsSettings = settings
@@ -517,7 +517,8 @@ instance (SYB.Data t) => Update [GHC.Located HsPatP] t where
 -- ---------------------------------------------------------------------
 
 getDynFlags :: IO GHC.DynFlags
-getDynFlags = do
+getDynFlags = getDynamicFlags
+{-
   let
     initialState = RefSt
       { rsSettings = RefSet [] Normal
@@ -528,6 +529,7 @@ getDynFlags = do
       }
   (df,_) <- runRefactGhc GHC.getSessionDynFlags initialState
   return df
+-}
 
 -- ---------------------------------------------------------------------
 
