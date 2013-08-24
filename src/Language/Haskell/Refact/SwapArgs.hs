@@ -19,25 +19,26 @@ import Control.Monad
 import Control.Monad.State
 import Data.Data
 import Data.Maybe
------------------
 
+import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TokenUtils
+-- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
 import Debug.Trace
 
-swapArgs :: [String] -> IO [FilePath]
-swapArgs args
+-- TODO: replace args with specific parameters
+swapArgs :: RefactSettings -> Cradle -> Maybe FilePath -> [String] -> IO [FilePath]
+swapArgs settings cradle maybeMainFile args
   = do let fileName = args!!0
            row = (read (args!!1)::Int)
            col = (read (args!!2)::Int)
-       runRefacSession Nothing Nothing (comp fileName (row,col))
+       runRefacSession settings cradle maybeMainFile (comp fileName (row,col))
 
 
 comp :: String -> SimpPos

@@ -6,6 +6,7 @@ import qualified GHC.SYB.Utils         as SYB
 
 import qualified GHC
 
+import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
@@ -16,9 +17,9 @@ import Language.Haskell.Refact.Utils.TypeUtils
 -- ---------------------------------------------------------------------
 
 -- | Convert an if expression to a case expression
-ifToCase :: RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
-ifToCase settings maybeMainFile fileName beginPos endPos =
-  runRefacSession settings maybeMainFile (comp fileName beginPos endPos)
+ifToCase :: RefactSettings -> Cradle -> Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
+ifToCase settings cradle maybeMainFile fileName beginPos endPos =
+  runRefacSession settings cradle maybeMainFile (comp fileName beginPos endPos)
 
 comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do

@@ -64,6 +64,7 @@ data VerboseLevel = Debug | Normal | Off
 
 data RefactSettings = RefSet
         { rsetGhcOpts      :: ![String]
+        , rsetImportPaths :: ![IncludeDir]
         , rsetExpandSplice :: Bool
         -- | The sandbox directory.
         , rsetSandbox      :: Maybe FilePath
@@ -71,7 +72,7 @@ data RefactSettings = RefSet
         } deriving (Show)
 
 defaultSettings :: RefactSettings
-defaultSettings = RefSet [] False Nothing Normal
+defaultSettings = RefSet [] [] False Nothing Normal
 
 logSettings :: RefactSettings
 logSettings = defaultSettings { rsetVerboseLevel = Debug }
@@ -168,8 +169,8 @@ initGhcSession = do
       return ()
 -}
 
-initGhcSession :: Cradle -> RefactGhc ()
-initGhcSession cradle = do
+initGhcSession :: Cradle -> [IncludeDir] -> RefactGhc ()
+initGhcSession cradle importDirs = do
     settings <- getRefacSettings
     let opt = Options {
                  outputStyle = PlainStyle
@@ -180,7 +181,7 @@ initGhcSession cradle = do
                  , expandSplice = False
                  , sandbox = (rsetSandbox settings)
                  }
-    readLog <- initializeFlagsWithCradle opt cradle (options settings) True
+    _readLog <- initializeFlagsWithCradle opt cradle (options settings) importDirs True
     -- setTargetFile fileName
     -- checkSlowAndSet
     void $ GHC.load GHC.LoadAllTargets

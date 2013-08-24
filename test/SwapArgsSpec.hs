@@ -23,13 +23,13 @@ spec = do
 
   describe "swapArgs" $ do
     it "checks for that an identifier is selected" $ do
-     res <- catchException (swapArgs ["./test/testdata/SwapArgs/B.hs","4","1"])
+     res <- catchException (swapArgs defaultTestSettings testCradle Nothing ["./test/testdata/SwapArgs/B.hs","4","1"])
      -- let res = "foo"
      (show res) `shouldBe` "Just \"Incorrect identifier selected!\""
 
 
     it "swaps arguments for a definition at the top level" $ do
-     swapArgs ["./test/testdata/SwapArgs/B.hs","9","1"]
+     swapArgs defaultTestSettings testCradle Nothing ["./test/testdata/SwapArgs/B.hs","9","1"]
      diff <- compareFiles "./test/testdata/SwapArgs/B.hs.refactored"
                           "./test/testdata/SwapArgs/B.hs.expected"
      diff `shouldBe` []

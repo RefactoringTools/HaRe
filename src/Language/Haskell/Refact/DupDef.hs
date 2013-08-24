@@ -11,6 +11,7 @@ import qualified OccName               as GHC
 import Data.List
 import Data.Maybe
 
+import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -24,9 +25,9 @@ import Language.Haskell.Refact.Utils.TypeUtils
 -- | This refactoring duplicates a definition (function binding or
 -- simple pattern binding) at the same level with a new name provided by
 -- the user. The new name should not cause name clash/capture.
-duplicateDef :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO [FilePath]
-duplicateDef settings maybeMainFile fileName newName (row,col) =
-  runRefacSession settings maybeMainFile (comp fileName newName (row,col))
+duplicateDef :: RefactSettings -> Cradle -> Maybe FilePath -> FilePath -> String -> SimpPos -> IO [FilePath]
+duplicateDef settings cradle maybeMainFile fileName newName (row,col) =
+  runRefacSession settings cradle maybeMainFile (comp fileName newName (row,col))
 
 comp :: FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]

@@ -269,10 +269,11 @@ runRefacSessionOld settings maybeMainFile comp = do
 runRefacSession :: RefactSettings
          -> Cradle                       -- ^ Identifies the
                                          -- surrounding project
+         -> Maybe FilePath -- ^ main module for the project being refactored
          -> RefactGhc [ApplyRefacResult] -- ^ The computation doing
                                          -- the refactoriing
          -> IO [FilePath]
-runRefacSession settings cradle comp = do
+runRefacSession settings cradle maybeMainFile comp = do
   let
    initialState = RefSt
         { rsSettings = settings
@@ -285,7 +286,8 @@ runRefacSession settings cradle comp = do
   -- readLog <- initializeFlagsWithCradle opt cradle options True
   -- setTargetFile fileName
 
-  (refactoredMods,_s) <- runRefactGhc (initGhcSession cradle >>
+  (refactoredMods,_s) <- runRefactGhc (initGhcSession cradle (rsetImportPaths settings) >>
+                                       loadModuleGraphGhc maybeMainFile >>
                                        comp) initialState
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)

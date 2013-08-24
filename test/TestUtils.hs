@@ -13,6 +13,7 @@ module TestUtils
        , entriesFromState
        , defaultTestSettings
        , logTestSettings
+       , testCradle
        , catchException
        , mkTokenCache
        , hex
@@ -37,7 +38,6 @@ import qualified Unique        as GHC
 -- import qualified UniqSet       as GHC
 
 import Data.Algorithm.Diff
-import Data.Maybe
 import Exception
 import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils
@@ -93,7 +93,7 @@ parseSourceFileTest fileName = do
 
 initialState :: RefactState
 initialState = RefSt
-  { rsSettings = fromJust defaultTestSettings
+  { rsSettings = defaultTestSettings
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
@@ -104,7 +104,7 @@ initialState = RefSt
 
 initialLogOnState :: RefactState
 initialLogOnState = RefSt
-  { rsSettings = fromJust logTestSettings
+  { rsSettings = logTestSettings
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
@@ -166,13 +166,14 @@ runRefactGhcStateLog :: RefactGhc t -> VerboseLevel -> IO (t, RefactState)
 runRefactGhcStateLog paramcomp logOn  = do
   let
      initState = RefSt
-        { rsSettings = defaultSettings { rsetVerboseLevel = logOn }
+        { rsSettings = defaultTestSettings { rsetVerboseLevel = logOn }
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
         , rsModule = Nothing
         }
-  (r,s) <- runRefactGhc (initGhcSession testCradle >> paramcomp) initState
+  (r,s) <- runRefactGhc (initGhcSession testCradle (rsetImportPaths defaultTestSettings) >> 
+                                                paramcomp) initState
   return (r,s)
 
 -- ---------------------------------------------------------------------
@@ -182,13 +183,15 @@ testCradle = Cradle "./test/testdata/" Nothing Nothing Nothing
 
 -- ---------------------------------------------------------------------
 
-defaultTestSettings :: Maybe RefactSettings
+defaultTestSettings :: RefactSettings
 -- defaultTestSettings = Just $ RefSet ["./test/testdata/"] Normal
-defaultTestSettings = Just $ defaultSettings { rsetVerboseLevel = Normal }
+defaultTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
+                                      , rsetVerboseLevel = Normal }
 
-logTestSettings :: Maybe RefactSettings
+logTestSettings :: RefactSettings
 -- logTestSettings = Just $ RefSet ["./test/testdata/"] Debug
-logTestSettings = Just $ defaultSettings { rsetVerboseLevel = Debug }
+logTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
+                                  , rsetVerboseLevel = Debug }
 
 -- ---------------------------------------------------------------------
 

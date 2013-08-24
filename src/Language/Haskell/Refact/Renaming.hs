@@ -1,4 +1,4 @@
-module Language.Haskell.Refact.Renaming(rename,renameCradle) where
+module Language.Haskell.Refact.Renaming(rename) where
 
 -- import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
@@ -12,28 +12,20 @@ import qualified Name                  as GHC
 -- import qualified OccName               as GHC
 -- import qualified Outputable            as GHC
 import qualified RdrName               as GHC
--- import qualified Unique                as GHC
-
--- import qualified Data.Generics as SYB
--- import qualified GHC.SYB.Utils as SYB
 
 import Control.Monad
--- import Control.Monad.State
 import Data.List
-
 import Exception
--- import GHC.Paths ( libdir )
 
+import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
--- import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 {-This refactoring renames an indentifier to a user-specified name.
 
@@ -63,21 +55,12 @@ the file name, but we should keep in mind that people also use unnamed
 modules.
 -}
 
-
 -- | Rename the given identifier.
-renameCradle :: Options -> Cradle
+rename :: RefactSettings -> Cradle -> Maybe FilePath
    -> FilePath -> String -> SimpPos
    -> IO [FilePath]
-renameCradle opt cradle fileName newName (row,col) =
-  runRefacSession opt cradle (comp fileName newName (row,col))
-
-
--- | Rename the given identifier.
-rename :: Maybe RefactSettings -> Maybe FilePath
-   -> FilePath -> String -> SimpPos
-   -> IO [FilePath]
-rename settings maybeMainFile fileName newName (row,col) =
-  runRefacSessionOld settings maybeMainFile (comp fileName newName (row,col))
+rename settings cradle maybeMainFile fileName newName (row,col) =
+  runRefacSession settings cradle maybeMainFile (comp fileName newName (row,col))
 
 -- | Body of the refactoring
 comp :: String -> String -> SimpPos -> RefactGhc [ApplyRefacResult]

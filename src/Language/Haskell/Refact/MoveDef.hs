@@ -21,12 +21,12 @@ import qualified Name                  as GHC
 -- import qualified Outputable            as GHC
 
 import Control.Exception
--- import Control.Lens
 import Control.Monad.State
 import qualified Data.Generics.Zipper as Z
 import Data.List
 import Data.Maybe
 
+import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -79,9 +79,9 @@ the following six contexts:
 -}
 
 -- | Lift a definition to the top level
-liftToTopLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
-liftToTopLevel settings maybeMainFile fileName (row,col) =
-  runRefacSession settings maybeMainFile (compLiftToTopLevel fileName (row,col))
+liftToTopLevel :: RefactSettings -> Cradle -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
+liftToTopLevel settings cradle maybeMainFile fileName (row,col) =
+  runRefacSession settings cradle maybeMainFile (compLiftToTopLevel fileName (row,col))
 
 
 compLiftToTopLevel :: FilePath -> SimpPos
@@ -102,9 +102,9 @@ compLiftToTopLevel fileName (row,col) = do
 -- ---------------------------------------------------------------------
 
 -- | Move a definition one level up from where it is now
-liftOneLevel :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
-liftOneLevel settings maybeMainFile fileName (row,col) =
-  runRefacSession settings maybeMainFile (compLiftOneLevel fileName (row,col))
+liftOneLevel :: RefactSettings -> Cradle -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
+liftOneLevel settings cradle maybeMainFile fileName (row,col) =
+  runRefacSession settings cradle maybeMainFile (compLiftOneLevel fileName (row,col))
 
 
 compLiftOneLevel :: FilePath -> SimpPos
@@ -135,9 +135,9 @@ compLiftOneLevel fileName (row,col) = do
 -- ---------------------------------------------------------------------
 
 -- | Move a definition one level down
-demote :: Maybe RefactSettings -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
-demote settings maybeMainFile fileName (row,col) =
-  runRefacSession settings maybeMainFile (compDemote fileName (row,col))
+demote :: RefactSettings -> Cradle -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
+demote settings cradle maybeMainFile fileName (row,col) =
+  runRefacSession settings cradle maybeMainFile (compDemote fileName (row,col))
 
 compDemote ::FilePath -> SimpPos
          -> RefactGhc [ApplyRefacResult]
