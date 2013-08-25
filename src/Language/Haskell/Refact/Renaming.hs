@@ -352,6 +352,8 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                           then error $"The new name will cause ambiguity in the exports of module "++ show modName ++ ", please select another name!"   
                           else do  -- get all of those declared names visible to oldPN at where oldPN is used.
 
+                                 logm $ "renameTopLevelVarName:basic tests done"
+
                                  -- isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName Nothing
                                  isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName (Just newNameGhc)
                                  ds<-hsVisibleNames oldPN renamed
