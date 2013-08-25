@@ -69,11 +69,12 @@ data RefactSettings = RefSet
         , rsetMainFile     :: Maybe FilePath
         -- | The sandbox directory.
         , rsetSandbox      :: Maybe FilePath
+        , rsetCheckTokenUtilsInvariant :: !Bool
         , rsetVerboseLevel :: !VerboseLevel
         } deriving (Show)
 
 defaultSettings :: RefactSettings
-defaultSettings = RefSet [] [] False Nothing Nothing Normal
+defaultSettings = RefSet [] [] False Nothing Nothing False Normal
 
 logSettings :: RefactSettings
 logSettings = defaultSettings { rsetVerboseLevel = Debug }

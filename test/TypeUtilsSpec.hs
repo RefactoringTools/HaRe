@@ -1842,7 +1842,7 @@ spec = do
               "`- ((1000024,1),(1000026,14))\n"  -- our inserted span
       (showSrcSpanF sspan) `shouldBe` "(((False,0,1,24),1),((False,0,1,26),14))"
 
-      -- (show $ getTokensFor forest''' sspan) `shouldBe` ""
+      -- (show $ getTokensFor True forest''' sspan) `shouldBe` ""
 
       let toksFinal = retrieveTokens forest'''
       -- (showToks toksFinal) `shouldBe` ""
@@ -1882,7 +1882,7 @@ spec = do
       (showGhc n) `shouldBe` "DupDef.Dd1.toplevel"
 
       -- let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
-      let (forest',toks') = getTokensFor forest l
+      let (forest',toks') = getTokensFor True forest l
 
       let typeSig = definingSigsNames [n] renamed
       (showGhc typeSig) `shouldBe` "[DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
@@ -1890,7 +1890,7 @@ spec = do
       let Just sspanSig = getSrcSpan typeSig
       (showGhc sspanSig) `shouldBe` "test/testdata/DupDef/Dd1.hs:3:1-30"
 
-      let (forest'',toksSig) = getTokensFor forest' sspanSig
+      let (forest'',toksSig) = getTokensFor True forest' sspanSig
       (GHC.showRichTokenStream toksSig) `shouldBe` "\n\n toplevel :: Integer -> Integer"
 
       -- typeSig'  <- putDeclToksAfterSpan l (head typeSig) (PlaceOffset 2 0 0) toksSig
@@ -1925,7 +1925,7 @@ spec = do
       -- (show $ Z.tree z) `shouldBe` "" -- Looks good
 
 
-      let (forest4,toksSig1) = getTokensFor forest''' newSpan
+      let (forest4,toksSig1) = getTokensFor True forest''' newSpan
       (invariant forest4) `shouldBe` []
       (drawTreeEntry forest4) `shouldBe`
               "((1,1),(32,18))\n|\n"++

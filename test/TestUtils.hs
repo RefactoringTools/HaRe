@@ -187,11 +187,14 @@ testCradle = Cradle "./test/testdata/" Nothing Nothing Nothing
 
 defaultTestSettings :: RefactSettings
 defaultTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
+                                      , rsetCheckTokenUtilsInvariant = True
                                       , rsetVerboseLevel = Normal }
 
 logTestSettings :: RefactSettings
 logTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
-                                  , rsetVerboseLevel = Debug }
+                                  , rsetCheckTokenUtilsInvariant = True
+                                  , rsetVerboseLevel = Debug
+                                  }
 
 testSettingsMainfile :: FilePath -> RefactSettings
 testSettingsMainfile mainFile = defaultTestSettings { rsetMainFile = Just mainFile }

@@ -624,10 +624,11 @@ syncAstToLatestCache tk t = t'
 -- NOTE: The SrcSpan may be one introduced by HaRe, rather than GHC.
 -- TODO: consider returning an Either. Although in reality the error
 --       should never happen
-getTokensFor :: Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
-getTokensFor forest sspan = (forest'', tokens)
+getTokensFor :: Bool -> Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
+getTokensFor checkInvariant forest sspan = (forest'', tokens)
   where
-     forest' = if invariantOk forest -- TODO: remove this, expensive operation
+     forest' = if checkInvariant || invariantOk forest -- short
+                                 -- circuit eval
                then forest
                else error $ "getTokensFor:invariant failed:" ++ (show $ invariant forest)
      (forest'',tree) = getSrcSpanFor forest' (srcSpanToForestSpan sspan)

@@ -128,9 +128,10 @@ putToks toks isModified = do
 getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
 getToksForSpan sspan = do
   st <- get
+  let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensFor forest sspan
+  let (forest',toks) = getTokensFor checkInv forest sspan
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }

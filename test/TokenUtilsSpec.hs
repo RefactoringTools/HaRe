@@ -46,7 +46,7 @@ spec = do
       let decl@(GHC.L l _) = head decls
 
       let forest = mkTreeFromTokens toks
-      let (tm',declToks) = getTokensFor forest l
+      let (tm',declToks) = getTokensFor True forest l
 
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
@@ -70,7 +70,7 @@ spec = do
       let decl@(GHC.L l _) = head $ drop 6 decls
 
       let forest = mkTreeFromTokens toks
-      let (tm',declToks) = getTokensFor forest l
+      let (tm',declToks) = getTokensFor True forest l
 
       (showGhc l) `shouldBe` "test/testdata/DupDef/Dd1.hs:4:1-18"
       (showSrcSpan l) `shouldBe` "((4,1),(4,19))"
@@ -98,7 +98,7 @@ spec = do
       let forest = mkTreeFromTokens toks
 
       let decl@(GHC.L l _) = head $ drop 6 decls
-      let (tm',declToks) = getTokensFor forest l
+      let (tm',declToks) = getTokensFor True forest l
       (drawTreeEntry tm') `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|\n"++
@@ -114,7 +114,7 @@ spec = do
       let typeSig = head $ definingSigsNames [n] renamed
       let (GHC.L ln _) = typeSig
       (showSrcSpan ln) `shouldBe` "((3,1),(3,31))"
-      let (tm'',sigToks) = getTokensFor tm' ln
+      let (tm'',sigToks) = getTokensFor True tm' ln
       (drawTreeEntry tm'') `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
@@ -175,7 +175,7 @@ spec = do
       let sspan = posToSrcSpan forest ((23,5),(23,11))
       (showGhc sspan) `shouldBe` "test/testdata/DupDef/Dd1.hs:23:5-10"
 
-      let (tm1,declToks) = getTokensFor forest sspan
+      let (tm1,declToks) = getTokensFor True forest sspan
       (GHC.showRichTokenStream declToks) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n     zz = 1"
       (drawTreeEntry tm1) `shouldBe`
            "((1,1),(32,18))\n|\n"++
@@ -202,7 +202,7 @@ spec = do
 
       let decl@(GHC.L l _) = head $ drop 6 decls
       (showSrcSpanF l) `shouldBe` "(((False,0,0,4),1),((False,0,0,4),19))"
-      let (tm',declToks) = getTokensFor forest l
+      let (tm',declToks) = getTokensFor True forest l
       (drawTreeEntry tm') `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|\n"++
@@ -218,7 +218,7 @@ spec = do
       let typeSig = head $ definingSigsNames [n] renamed
       let (GHC.L ln _) = typeSig
       (showSrcSpan ln) `shouldBe` "((3,1),(3,31))"
-      let (tm'',sigToks) = getTokensFor tm' ln
+      let (tm'',sigToks) = getTokensFor True tm' ln
       (drawTreeEntry tm'') `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
@@ -246,7 +246,7 @@ spec = do
       let sspan3 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 1 6),1),
                          ((forestLineToGhcLine $ ForestLine False 0 1 6),31) )
-      let (tm4,toks4) = getTokensFor tm''' sspan3
+      let (tm4,toks4) = getTokensFor True tm''' sspan3
       (drawTreeEntry tm4) `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
@@ -318,7 +318,7 @@ spec = do
       let sspan4 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 1 7),1),
                          ((forestLineToGhcLine $ ForestLine False 0 1 7),19) )
-      let (tm7,toks7) = getTokensFor tm6 sspan4
+      let (tm7,toks7) = getTokensFor True tm6 sspan4
       (drawTreeEntry tm7) `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
@@ -383,7 +383,7 @@ spec = do
                         (((forestLineToGhcLine $ ForestLine False 0 0 8),6),
                          ((forestLineToGhcLine $ ForestLine False 0 0 8),20) )
 
-      let (tm4,toks4) = getTokensFor tm3 sspan3
+      let (tm4,toks4) = getTokensFor True tm3 sspan3
       (drawTreeEntry tm4) `shouldBe`
             "((1,1),(13,25))\n|\n"++
             "+- ((1,1),(6,23))\n|\n"++
@@ -538,7 +538,7 @@ tree TId 0:
       -- (ss2fe >= sspan4s,ss2fe <= sspan4e) `shouldBe` (True,False)
       (containsStart ss2f sspan4f,containsEnd ss2f sspan4f) `shouldBe` (True,False)
 
-      let (tm5,toks5) = getTokensFor tm3 sspan4
+      let (tm5,toks5) = getTokensFor True tm3 sspan4
 
       -- (showTree tm3) `shouldBe` ""
 
@@ -568,7 +568,7 @@ tree TId 0:
 
       let sspan = posToSrcSpan forest ((24,5),(24,11))
 
-      let (tm',toksSpan) = getTokensFor forest sspan
+      let (tm',toksSpan) = getTokensFor True forest sspan
 
       (showGhc sspan) `shouldBe` "test/testdata/MoveDef/Md1.hs:24:5-10"
       (showSrcSpan sspan) `shouldBe` "((24,5),(24,11))"
@@ -937,7 +937,7 @@ tree TId 0:
       (showSrcSpan sspan) `shouldBe` "((12,22),(12,33))"
 
       -- let forest1 = insertSrcSpan forest (fs sspan)
-      let (forest1,declToks) = getTokensFor forest sspan
+      let (forest1,declToks) = getTokensFor True forest sspan
 
       -- removeToksForPos ((10,22),(11,32))
       let sspan2 = posToSrcSpan forest ((10,22),(11,32))
@@ -1023,7 +1023,7 @@ tree TId 0:
 
       -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:10:25:("(((False,0,0,10),25),((False,0,0,10),26))",[((((10,25),(10,26)),ITinteger 0),"0")])
       let sspan3 = posToSrcSpan forest ((10,25),(10,26))
-      let (f4,toks4) = getTokensFor f3 sspan3
+      let (f4,toks4) = getTokensFor True f3 sspan3
 
       (invariant f4) `shouldBe` []
       (drawTreeEntry f4) `shouldBe`
@@ -1085,7 +1085,7 @@ tree TId 0:
       -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:11:25:("(((False,0,0,11),25),((False,0,0,11),26))",[((((11,25),(11,26)),ITvarid "z"),"z")])
 
       let sspan6 = posToSrcSpan forest ((11,25),(11,26))
-      let (f7,toks7) = getTokensFor f6 sspan6
+      let (f7,toks7) = getTokensFor True f6 sspan6
 
       (invariant f7) `shouldBe` []
       (drawTreeEntry f7) `shouldBe`
@@ -1159,7 +1159,7 @@ tree TId 0:
 
       -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:(10,22)-(11,31)
       let sspan9 = posToSrcSpan forest ((10,22),(11,31))
-      let (f10,_toks10) = getTokensFor f9 sspan9
+      let (f10,_toks10) = getTokensFor True f9 sspan9
 
 --
       let z = openZipperToSpan (fs sspan9) $ Z.fromTree f9
@@ -1603,7 +1603,7 @@ tree TId 0:
       (showGhc n) `shouldBe` "TokenTest.foo"
       (showGhc ln) `shouldBe` "test/testdata/TokenTest.hs:19:1-3"
 
-      let (_tree,toksForOp) = getTokensFor forest'' l
+      let (_tree,toksForOp) = getTokensFor True forest'' l
 
       let (GHC.L _ ghcTok,_) = head toks
       let newTok = mkToken ghcTok (19,1) "bbb"
@@ -1813,10 +1813,10 @@ tree TId 0:
       let f1 = mkTreeFromTokens toks
 
       let ss1 = posToSrcSpan f1 ((4,1),(4,19))
-      let (f2,_toks1) = getTokensFor f1 ss1
+      let (f2,_toks1) = getTokensFor True f1 ss1
 
       let ss2 = posToSrcSpan f1 ((3,1),(3,31))
-      let (f3,toks2) = getTokensFor f2 ss2
+      let (f3,toks2) = getTokensFor True f2 ss2
 
       (drawTreeEntry f3) `shouldBe`
               "((1,1),(32,18))\n|\n"++
@@ -2460,7 +2460,7 @@ tree TId 0:
 
       -- getToksForSpan test/testdata/MoveDef/Md1.hs:24:5-10:("(((False,0,0,24),5),((False,0,0,24),11))",
       let sspan1 = posToSrcSpan forest ((24,5),(24,11))
-      let (f1,_toks1) = getTokensFor forest sspan1
+      let (f1,_toks1) = getTokensFor True forest sspan1
 
       (drawTreeEntry f1) `shouldBe`
               "((1,1),(40,17))\n|\n"++
