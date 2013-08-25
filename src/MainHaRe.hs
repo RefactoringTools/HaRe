@@ -129,27 +129,28 @@ main = flip catches handlers $ do
     res <- case cmdArg0 of
 
       -- demote wants FilePath -> SimpPos
-      "demote" -> demote opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "demote" -> runFunc $ demote opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- dupdef wants FilePath -> String -> SimpPos
-      "dupdef" -> duplicateDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+      "dupdef" -> runFunc $ duplicateDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
 
       -- iftocase wants FilePath -> SimpPos -> SimpPos
-      "iftocase" -> ifToCase opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
+      "iftocase" -> runFunc $ ifToCase opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
 
       -- liftOneLevel wants FilePath -> SimpPos
-      "liftOneLevel" -> liftOneLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "liftOneLevel" -> runFunc $ liftOneLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- liftToTopLevel wants FilePath -> SimpPos
-      "liftToTopLevel" -> liftToTopLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "liftToTopLevel" -> runFunc $ liftToTopLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- rename wants FilePath -> String -> SimpPos
-      "rename" -> rename opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+      "rename" -> runFunc $ rename opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
 
-      "show" -> return [(show (opt,cradle))]
+      "show" -> putStr  (show (opt,cradle))
 
       cmd      -> throw (NoSuchCommand cmd)
     putStr (show res)
+    -- putStr $ "(ok " ++ showLisp mfs ++ ")"
   where
     handlers = [Handler handler1, Handler handler2]
 
@@ -186,6 +187,27 @@ main = flip catches handlers $ do
               }
       where
         mPkgConf = cradlePackageConf cradle
+
+----------------------------------------------------------------
+
+runFunc :: IO [String] -> IO ()
+runFunc f = do
+  r <- catchException f
+  let ret = case r of
+       Left s    -> "(error " ++ (show s) ++ ")"
+       Right mfs -> "(ok " ++ showLisp mfs ++ ")"
+  putStrLn ret
+
+showLisp :: [String] -> String
+showLisp xs = "(" ++ (intercalate " " $ map show xs) ++ ")"
+
+catchException :: (IO t) -> IO (Either String t)
+catchException f = do
+  res <- handle handler (f >>= \r -> return $ Right r)
+  return res
+  where
+    handler:: SomeException -> IO (Either String t)
+    handler e = return (Left (show e))
 
 ----------------------------------------------------------------
 
