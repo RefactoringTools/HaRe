@@ -85,6 +85,7 @@ Executable ghc-hare
           ./src
         Build-Depends:          base >=4
                                 , array
+                                -- TODO: remove cmdtheline
                                 , cmdtheline >= 0.2.1
                                 , containers
                                 , directory
@@ -96,6 +97,7 @@ Executable ghc-hare
                                 , ghc-mod
                                 , mtl
                                 , old-time
+                                , parsec
                                 , pretty
                                 , rosezipper
                                 , syb

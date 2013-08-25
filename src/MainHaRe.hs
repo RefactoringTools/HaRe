@@ -1,4 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- Based on
 -- https://github.com/kazu-yamamoto/ghc-mod/blob/master/src/GHCMod.hs
@@ -24,6 +27,13 @@ import System.Directory
 import System.Environment (getArgs)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 
+import qualified Data.Text as T
+import Data.Text (Text)
+import Text.Parsec.Combinator
+import Text.Parsec.Prim
+import Text.Parsec.Error
+import Text.Parsec.Char
+import Text.Parsec.Token
 
 ----------------------------------------------------------------
 
@@ -39,7 +49,6 @@ usage =    "ghc-hare version " ++ showVersion version ++ "\n"
         ++ "\t ghc-hare liftOneLevel" ++ ghcOptHelp ++ "[-l]\n"
         ++ "\t ghc-hare demote" ++ ghcOptHelp ++ "[-l]\n"
         ++ "\t ghc-hare rename" ++ ghcOptHelp ++ "[-l]\n"
-        ++ "\t ghc-hare boot\n"
         ++ "\t ghc-hare help\n"
 
 {-
@@ -58,41 +67,45 @@ usage =    "ghc-hare version " ++ showVersion version ++ "\n"
 -}
 ----------------------------------------------------------------
 
-argspec :: [OptDescr (Options -> Options)]
-argspec = [ Option "l" ["tolisp"]
-            (NoArg (\opts -> opts { outputStyle = LispStyle }))
-            "print as a list of Lisp"
-          , Option "h" ["hlintOpt"]
-            (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
-            "hlint options"
+argspec :: [OptDescr (RefactSettings -> RefactSettings)]
+argspec = [ Option "m" ["mainfile"]
+              (ReqArg (\mf opts -> opts { rsetMainFile = Just mf }) "FILE")
+              "Main file name if not specified in cabal file"
+
+          -- , Option "l" ["tolisp"]
+          --     (NoArg (\opts -> opts { outputStyle = LispStyle }))
+          --     "print as a list of Lisp"
+          -- , Option "h" ["hlintOpt"]
+          --     (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
+          --     "hlint options"
           , Option "g" ["ghcOpt"]
-            (ReqArg (\g opts -> opts { ghcOpts = g : ghcOpts opts }) "ghcOpt")
-            "GHC options"
-          , Option "o" ["operators"]
-            (NoArg (\opts -> opts { operators = True }))
-            "print operators, too"
-          , Option "d" ["detailed"]
-            (NoArg (\opts -> opts { detailed = True }))
-            "print detailed info"
+              (ReqArg (\g opts -> opts { rsetGhcOpts = g : rsetGhcOpts opts }) "ghcOpt")
+              "GHC options"
+          -- , Option "o" ["operators"]
+          --     (NoArg (\opts -> opts { operators = True }))
+          --     "print operators, too"
+          -- , Option "d" ["detailed"]
+          --     (NoArg (\opts -> opts { detailed = True }))
+          --     "print detailed info"
           , Option "s" ["sandbox"]
-            (ReqArg (\s opts -> opts { sandbox = Just s }) "path")
-            "specify cabal-dev sandbox (default 'cabal-dev`)"
+              (ReqArg (\s opts -> opts { rsetSandbox = Just s }) "path")
+              "specify cabal-dev sandbox (default 'cabal-dev`)"
           ]
 
-parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
+parseArgs :: [OptDescr (RefactSettings -> RefactSettings)] -> [String] -> (RefactSettings, [String])
 parseArgs spec argv
     = case getOpt Permute spec argv of
-        (o,n,[]  ) -> (foldr id defaultOptions o, n)
+        (o,n,[]  ) -> (foldr id defaultSettings o, n)
         (_,_,errs) -> throw (CmdArg errs)
 
 ----------------------------------------------------------------
 
-data GHCModError = SafeList
+data HareError = SafeList
                  | NoSuchCommand String
                  | CmdArg [String]
                  | FileNotExist String deriving (Show, Typeable)
 
-instance Exception GHCModError
+instance Exception HareError
 
 ----------------------------------------------------------------
 
@@ -104,7 +117,8 @@ main = flip catches handlers $ do
     args <- getArgs
     let (opt',cmdArg) = parseArgs argspec args
     (strVer,ver) <- getGHCVersion
-    cradle <- findCradle (sandbox opt') strVer
+    let opt'' = optionsFromSettings opt'
+    cradle <- findCradle (sandbox opt'') strVer
     let opt = adjustOpts opt' cradle ver
         cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
@@ -112,8 +126,10 @@ main = flip catches handlers $ do
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
     res <- case cmdArg0 of
-      "rename" -> renameCradle opt cradle
 
+      -- rename wants FilePath -> String -> SimpPos
+      "rename" -> rename opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+{-
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
       "check"  -> checkSyntax opt cradle cmdArg1
@@ -124,19 +140,16 @@ main = flip catches handlers $ do
       "lint"   -> withFile (lintSyntax opt) cmdArg1
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt
-      "boot"   -> do
-         mods  <- listModules opt
-         langs <- listLanguages opt
-         flags <- listFlags opt
-         pre   <- concat <$> mapM (browseModule opt) preBrowsedModules
-         return $ mods ++ langs ++ flags ++ pre
+-}
       cmd      -> throw (NoSuchCommand cmd)
-    putStr res
+    putStr (show res)
   where
     handlers = [Handler handler1, Handler handler2]
+
     handler1 :: ErrorCall -> IO ()
     handler1 = print -- for debug
-    handler2 :: GHCModError -> IO ()
+
+    handler2 :: HareError -> IO ()
     handler2 SafeList = printUsage
     handler2 (NoSuchCommand cmd) = do
         hPutStrLn stderr $ "\"" ++ cmd ++ "\" not supported"
@@ -147,7 +160,9 @@ main = flip catches handlers $ do
     handler2 (FileNotExist file) = do
         hPutStrLn stderr $ "\"" ++ file ++ "\" not found"
         printUsage
+
     printUsage = hPutStrLn stderr $ '\n' : usageInfo usage argspec
+
     withFile cmd file = do
         exist <- doesFileExist file
         if exist
@@ -156,28 +171,48 @@ main = flip catches handlers $ do
     xs !. idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
+
     adjustOpts opt cradle ver = case mPkgConf of
             Nothing      -> opt
             Just pkgConf -> opt {
-                ghcOpts = ghcPackageConfOptions ver pkgConf ++ ghcOpts opt
+                rsetGhcOpts = ghcPackageConfOptions ver pkgConf ++ rsetGhcOpts opt
               }
       where
         mPkgConf = cradlePackageConf cradle
 
 ----------------------------------------------------------------
 
-preBrowsedModules :: [String]
-preBrowsedModules = [
-    "Prelude"
-  , "Control.Applicative"
-  , "Control.Monad"
-  , "Control.Exception"
-  , "Data.Char"
-  , "Data.List"
-  , "Data.Maybe"
-  , "System.IO"
-  ]
+parseSimpPos :: String -> String -> SimpPos
+parseSimpPos str1 str2 = case (parse rowCol "" (T.pack (str1 ++ " " ++ str2))) of
+                          Left err -> throw (CmdArg [(show err)])
+                          Right val -> val
 
+rowCol :: P (Int,Int)
+rowCol = do
+  row <- number "line number"
+  _ <- spaces
+  col <- number "column number"
+  return (fromIntegral row, fromIntegral col)
+
+type P = Parsec Text ()
+
+instance (Monad m) => Stream Text m Char where
+    uncons = return . T.uncons
+
+number :: String -> P Integer
+number expectedStr = do { ds <- many1 digit; return (read ds) } <?> expectedStr
+
+----------------------------------------------------------------
+
+optionsFromSettings :: RefactSettings -> Options
+optionsFromSettings settings = opt
+  where
+    opt = defaultOptions
+            { ghcOpts = rsetGhcOpts settings
+            , sandbox = rsetSandbox settings
+            }
+
+----------------------------------------------------------------
 
 ghcPackageConfOptions :: Int -> String -> [String]
 ghcPackageConfOptions ver file
