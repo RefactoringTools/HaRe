@@ -4137,40 +4137,40 @@ renamePNworker oldPN newName updateTokens useQual t = do
           --               already have been done.
           --         (b) rename each of 'tail matches'
           --             (head is renamed in (a) )
-          logm $ "renamePNWorker.renameFunBind"
+          -- logm $ "renamePNWorker.renameFunBind"
           worker False l n
           -- Now do (b)
-          logm $ "renamePNworker.renameFunBind:starting matches"
+          -- logm $ "renamePNworker.renameFunBind:starting matches"
           let w (GHC.L lm _match) = worker False lm n
           mapM w $ tail matches
-          logm $ "renamePNworker.renameFunBind:matches done"
+          -- logm $ "renamePNworker.renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MatchGroup matches typ) co fvs tick))
     renameFunBind x = return x
 
     renameTypeSig :: (GHC.LSig GHC.Name) -> RefactGhc (GHC.LSig GHC.Name)
     renameTypeSig (GHC.L l (GHC.TypeSig ns typ))
      = do
-         logm $ "renamePNWorker:renameTypeSig"
+         -- logm $ "renamePNWorker:renameTypeSig"
          _ns' <- renamePNworker oldPN newName updateTokens False ns
          -- Has already been renamed, make sure qualifier is removed
          ns' <- renamePNworker newName newName updateTokens False ns
          typ' <- renamePNworker oldPN newName updateTokens False typ
-         logm $ "renamePNWorker:renameTypeSig done"
+         -- logm $ "renamePNWorker:renameTypeSig done"
          return (GHC.L l (GHC.TypeSig ns' typ'))
 
     worker useQual' l _n
      = do if updateTokens
            then  do
-                    logm $ "renamePN.worker entry:l=" ++ (showSrcSpanF l)
+                    -- logm $ "renamePN.worker entry:l=" ++ (showSrcSpanF l)
                     -- let (row,col) = srcPosToSimpPos (r,c)
                     -- logm $ "renamePN.worker: ((row,col),sspan,l,newName)=" ++ (showGhc ((row,col),sspan,l,newName)) -- ++AZ++ debug
                     -- logm $ "renamePN.worker: ((row,col),l,newName)=" ++ (showGhc ((row,col),l,newName)) -- ++AZ++ debug
-                    logm $ "renamePN.worker: (l,newName)=" ++ (showGhc (l,newName)) -- ++AZ++ debug
-                    drawTokenTree "" -- ++AZ++ debug
-                    logm $ "renamePN.worker:newTok=" ++ (show (markToken $ newNameTok useQual' l newName))
+                    -- logm $ "renamePN.worker: (l,newName)=" ++ (showGhc (l,newName)) -- ++AZ++ debug
+                    -- drawTokenTree "" -- ++AZ++ debug
+                    -- logm $ "renamePN.worker:newTok=" ++ (show (markToken $ newNameTok useQual' l newName))
                     -- replaceToken sspan (markToken $ newNameTok useQual' l newName)
                     replaceToken l (markToken $ newNameTok useQual' l newName)
-                    drawTokenTree "after replaceToken" -- ++AZ++ debug
+                    -- drawTokenTree "after replaceToken" -- ++AZ++ debug
                     return ()
            else return ()
 
