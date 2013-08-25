@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 -- Based on
 -- https://github.com/kazu-yamamoto/ghc-mod/blob/master/src/GHCMod.hs
@@ -27,8 +26,6 @@ import System.Directory
 import System.Environment (getArgs)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 
-import qualified Data.Text as T
-import Data.Text (Text)
 import Text.Parsec.Combinator
 import Text.Parsec.Prim
 import Text.Parsec.Error
@@ -43,12 +40,12 @@ ghcOptHelp = " [-g GHC_opt1 -g GHC_opt2 ...] "
 usage :: String
 usage =    "ghc-hare version " ++ showVersion version ++ "\n"
         ++ "Usage:\n"
-        ++ "\t ghc-hare iftocase" ++ ghcOptHelp ++ "[-l]\n"
-        ++ "\t ghc-hare dupdef" ++ ghcOptHelp ++ "[-l]\n"
-        ++ "\t ghc-hare liftToTopLevel" ++ ghcOptHelp ++ "[-l]\n"
-        ++ "\t ghc-hare liftOneLevel" ++ ghcOptHelp ++ "[-l]\n"
-        ++ "\t ghc-hare demote" ++ ghcOptHelp ++ "[-l]\n"
-        ++ "\t ghc-hare rename" ++ ghcOptHelp ++ "[-l]\n"
+        ++ "\t ghc-hare demote" ++ ghcOptHelp ++ "filename line col\n"
+        ++ "\t ghc-hare dupdef" ++ ghcOptHelp ++ "filename newname line col\n"
+        ++ "\t ghc-hare iftocase" ++ ghcOptHelp ++ "filename startline startcol endline endcol\n"
+        ++ "\t ghc-hare liftOneLevel" ++ ghcOptHelp ++ "filename line col\n"
+        ++ "\t ghc-hare liftToTopLevel" ++ ghcOptHelp ++ "filename line col\n"
+        ++ "\t ghc-hare rename" ++ ghcOptHelp ++ "filename newname line col\n"
         ++ "\t ghc-hare help\n"
 
 {-
@@ -90,6 +87,9 @@ argspec = [ Option "m" ["mainfile"]
           , Option "s" ["sandbox"]
               (ReqArg (\s opts -> opts { rsetSandbox = Just s }) "path")
               "specify cabal-dev sandbox (default 'cabal-dev`)"
+          , Option "v" ["verbosw"]
+              (NoArg (\opts -> opts { rsetVerboseLevel = Debug }))
+              "debug logging on"
           ]
 
 parseArgs :: [OptDescr (RefactSettings -> RefactSettings)] -> [String] -> (RefactSettings, [String])
@@ -125,22 +125,29 @@ main = flip catches handlers $ do
         cmdArg2 = cmdArg !. 2
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
+        cmdArg5 = cmdArg !. 5
     res <- case cmdArg0 of
+
+      -- demote wants FilePath -> SimpPos
+      "demote" -> demote opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+
+      -- dupdef wants FilePath -> String -> SimpPos
+      "dupdef" -> duplicateDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+
+      -- iftocase wants FilePath -> SimpPos -> SimpPos
+      "iftocase" -> ifToCase opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
+
+      -- liftOneLevel wants FilePath -> SimpPos
+      "liftOneLevel" -> liftOneLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+
+      -- liftToTopLevel wants FilePath -> SimpPos
+      "liftToTopLevel" -> liftToTopLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- rename wants FilePath -> String -> SimpPos
       "rename" -> rename opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
-{-
-      "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
-      "list"   -> listModules opt
-      "check"  -> checkSyntax opt cradle cmdArg1
-      "expand" -> checkSyntax opt { expandSplice = True } cradle cmdArg1
-      "debug"  -> debugInfo opt cradle strVer cmdArg1
-      "type"   -> typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
-      "info"   -> infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
-      "lint"   -> withFile (lintSyntax opt) cmdArg1
-      "lang"   -> listLanguages opt
-      "flag"   -> listFlags opt
--}
+
+      "show" -> return [(show (opt,cradle))]
+
       cmd      -> throw (NoSuchCommand cmd)
     putStr (show res)
   where
@@ -183,7 +190,8 @@ main = flip catches handlers $ do
 ----------------------------------------------------------------
 
 parseSimpPos :: String -> String -> SimpPos
-parseSimpPos str1 str2 = case (parse rowCol "" (T.pack (str1 ++ " " ++ str2))) of
+-- parseSimpPos str1 str2 = case (parse rowCol "" (T.pack (str1 ++ " " ++ str2))) of
+parseSimpPos str1 str2 = case (parse rowCol "" ((str1 ++ " " ++ str2))) of
                           Left err -> throw (CmdArg [(show err)])
                           Right val -> val
 
@@ -194,10 +202,12 @@ rowCol = do
   col <- number "column number"
   return (fromIntegral row, fromIntegral col)
 
-type P = Parsec Text ()
+type P = Parsec String ()
 
-instance (Monad m) => Stream Text m Char where
-    uncons = return . T.uncons
+instance (Monad m) => Stream String m Char where
+    -- uncons = return . T.uncons
+    uncons [] = return Nothing
+    uncons s  = return $ Just (head s,tail s)
 
 number :: String -> P Integer
 number expectedStr = do { ds <- many1 digit; return (read ds) } <?> expectedStr
