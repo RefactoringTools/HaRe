@@ -356,7 +356,9 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
 
                                  -- isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName Nothing
                                  isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName (Just newNameGhc)
-                                 ds<-hsVisibleNames oldPN renamed
+                                 logm $ "renameTopLevelVarName:after isInScopeUnqual"
+                                 ds <- hsVisibleNames oldPN renamed
+                                 logm $ "renameTopLevelVarName:ds computed=" ++ (show ds)
                                  -- '\\[pNtoName oldPN]' handles the case in which the new name is same as the old name   
                                  if existChecking && elem newName ((nub (ds `union` f)) \\[nameToString oldPN])
                                    then error ("Name '"++newName++"'  already existed, or rename '"

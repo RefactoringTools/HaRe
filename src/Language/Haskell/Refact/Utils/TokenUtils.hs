@@ -627,7 +627,7 @@ syncAstToLatestCache tk t = t'
 getTokensFor :: Bool -> Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
 getTokensFor checkInvariant forest sspan = (forest'', tokens)
   where
-     forest' = if checkInvariant || invariantOk forest -- short
+     forest' = if (not checkInvariant) || invariantOk forest -- short
                                  -- circuit eval
                then forest
                else error $ "getTokensFor:invariant failed:" ++ (show $ invariant forest)

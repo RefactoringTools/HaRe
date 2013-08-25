@@ -72,6 +72,7 @@ import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
+import Data.Time.Clock
 import Data.Tree
 import System.Log.Logger
 import qualified Data.Map as Map
@@ -406,7 +407,7 @@ getRefactDone = do
 
 setRefactDone :: RefactGhc ()
 setRefactDone = do
-  logm $ "setRefactDone" 
+  logm $ "setRefactDone"
   st <- get
   put $ st { rsFlags = RefFlags True }
 
@@ -435,9 +436,15 @@ logm string = do
   settings <- getRefacSettings
   let loggingOn = (rsetVerboseLevel settings == Debug)
              --     || (rsetVerboseLevel settings == Normal)
-  when loggingOn $ liftIO $ warningM "HaRe" string
-  -- liftIO $ putStrLn string
+  when loggingOn $ do
+     ts <- liftIO timeStamp
+     liftIO $ warningM "HaRe" (ts ++ ":" ++ string)
   return ()
+
+timeStamp :: IO String
+timeStamp = do
+  k <- getCurrentTime
+  return (show k)
 
 -- ---------------------------------------------------------------------
 

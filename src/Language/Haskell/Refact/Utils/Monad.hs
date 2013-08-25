@@ -53,6 +53,7 @@ import qualified MonadUtils    as GHC
 -- import qualified TypeRep       as GHC
 -- import qualified Var           as GHC
 
+import Data.List
 import Language.Haskell.GhcModLowLevel
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -64,7 +65,7 @@ data VerboseLevel = Debug | Normal | Off
 
 data RefactSettings = RefSet
         { rsetGhcOpts      :: ![String]
-        , rsetImportPaths :: ![IncludeDir]
+        , rsetImportPaths :: ![FilePath]
         , rsetExpandSplice :: Bool
         , rsetMainFile     :: Maybe FilePath
         -- | The sandbox directory.
@@ -171,19 +172,23 @@ initGhcSession = do
       return ()
 -}
 
-initGhcSession :: Cradle -> [IncludeDir] -> RefactGhc ()
+initGhcSession :: Cradle -> [FilePath] -> RefactGhc ()
 initGhcSession cradle importDirs = do
     settings <- getRefacSettings
+    let ghcOptsDirs =
+         case importDirs of
+           [] -> (rsetGhcOpts settings)
+           _  -> ("-i" ++ (intercalate ":" importDirs)):(rsetGhcOpts settings)
     let opt = Options {
                  outputStyle = PlainStyle
                  , hlintOpts = []
-                 , ghcOpts = (rsetGhcOpts settings)
+                 , ghcOpts = ghcOptsDirs
                  , operators = False
                  , detailed = False
                  , expandSplice = False
                  , sandbox = (rsetSandbox settings)
                  }
-    _readLog <- initializeFlagsWithCradle opt cradle (options settings) importDirs True
+    _readLog <- initializeFlagsWithCradle opt cradle (options settings) True
     -- setTargetFile fileName
     -- checkSlowAndSet
     void $ GHC.load GHC.LoadAllTargets

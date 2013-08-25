@@ -44,6 +44,7 @@ Library
                                 , syb
                                 , hslogger
                                 , transformers
+                                , time
                                 , Strafunski-StrategyLib
                                 , syz
 
@@ -81,6 +82,7 @@ Executable ghc-hare
         -- Main-Is:                Main.hs
         Main-Is:                MainHaRe.hs
         -- GHC-Options:            -Wall
+        GHC-Options:            -prof -fprof-auto -rtsopts
         Hs-Source-Dirs:
           ./src
         Build-Depends:          base >=4
@@ -101,6 +103,7 @@ Executable ghc-hare
                                 , pretty
                                 , rosezipper
                                 , syb
+                                , time
                                 , transformers
                                 , hslogger
                                 , Strafunski-StrategyLib
@@ -149,6 +152,7 @@ test-suite spec
     , rosezipper
     , syb
     , transformers
+    , time
     , hslogger
     , Strafunski-StrategyLib
     , syz

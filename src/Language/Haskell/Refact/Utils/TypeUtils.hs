@@ -502,8 +502,9 @@ causeNameClashInExports  pn newName mod exps
 -- Expects RenamedSource
 hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
+  logm $ "hsFreeAndDeclaredPNs:entered="
   let fd = hsFreeAndDeclaredPNs' t
-  -- logm $ "hsFreeAndDeclaredPNs:fd=" ++ (showGhc fd)
+  logm $ "hsFreeAndDeclaredPNs:fd=" ++ (showGhc fd)
   let (f,d) = fromMaybe ([],[]) fd
   return (f \\ d, d)
 
@@ -791,6 +792,7 @@ hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2)
   => t1 -> t2 -> RefactGhc [String]
 hsVisibleNames e t = do
   d <- hsVisiblePNs e t
+  logm $ "hsVisibleNames:got d"
   return ((nub.map showGhc) d)
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
@@ -807,12 +809,25 @@ hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
                       `SYB.extQ` match
                       `SYB.extQ` stmts) t
 -}
-hsVisiblePNs e t = applyTU (full_tdTUGhc (constTU [] `adhocTU` top
-                                                     `adhocTU` expr
-                                                     `adhocTU` decl
-                                                     `adhocTU` match
-                                                     `adhocTU` stmts)) t
-
+hsVisiblePNs e t = do
+    logm $ "hsVisiblePNs:entered"
+    {- -}
+    r <- applyTU (full_tdTUGhc (constTU [] `adhocTU` top
+                                           `adhocTU` expr
+                                           `adhocTU` decl
+                                           `adhocTU` match
+                                           `adhocTU` stmts)) t
+   {- -}
+{-
+    r <- SYB.everythingStaged SYB.Renamer (++) []
+                  ([] `SYB.mkQ`  top
+                      `SYB.extQ` expr
+                      `SYB.extQ` decl
+                      `SYB.extQ` match
+                      `SYB.extQ` stmts) t
+-}
+    logm $ "hsVisiblePNs:done"
+    return r
       where
           top ((groups,_,_,_) :: GHC.RenamedSource)
             | findEntity e (GHC.hs_valds groups) = do -- ++AZ++:TODO: Should be GHC.HsValBinds GHC.Name, not groups
