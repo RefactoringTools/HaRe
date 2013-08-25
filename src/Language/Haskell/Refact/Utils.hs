@@ -269,11 +269,10 @@ runRefacSessionOld settings maybeMainFile comp = do
 runRefacSession :: RefactSettings
          -> Cradle                       -- ^ Identifies the
                                          -- surrounding project
-         -> Maybe FilePath -- ^ main module for the project being refactored
          -> RefactGhc [ApplyRefacResult] -- ^ The computation doing
                                          -- the refactoriing
          -> IO [FilePath]
-runRefacSession settings cradle maybeMainFile comp = do
+runRefacSession settings cradle comp = do
   let
    initialState = RefSt
         { rsSettings = settings
@@ -283,6 +282,7 @@ runRefacSession settings cradle maybeMainFile comp = do
         , rsModule = Nothing
         }
 
+   maybeMainFile = rsetMainFile settings
   -- readLog <- initializeFlagsWithCradle opt cradle options True
   -- setTargetFile fileName
 

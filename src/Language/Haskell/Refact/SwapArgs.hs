@@ -33,12 +33,12 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import Debug.Trace
 
 -- TODO: replace args with specific parameters
-swapArgs :: RefactSettings -> Cradle -> Maybe FilePath -> [String] -> IO [FilePath]
-swapArgs settings cradle maybeMainFile args
+swapArgs :: RefactSettings -> Cradle -> [String] -> IO [FilePath]
+swapArgs settings cradle args
   = do let fileName = args!!0
            row = (read (args!!1)::Int)
            col = (read (args!!2)::Int)
-       runRefacSession settings cradle maybeMainFile (comp fileName (row,col))
+       runRefacSession settings cradle (comp fileName (row,col))
 
 
 comp :: String -> SimpPos

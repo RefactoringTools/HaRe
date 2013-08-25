@@ -56,11 +56,11 @@ modules.
 -}
 
 -- | Rename the given identifier.
-rename :: RefactSettings -> Cradle -> Maybe FilePath
+rename :: RefactSettings -> Cradle
    -> FilePath -> String -> SimpPos
    -> IO [FilePath]
-rename settings cradle maybeMainFile fileName newName (row,col) =
-  runRefacSession settings cradle maybeMainFile (comp fileName newName (row,col))
+rename settings cradle fileName newName (row,col) =
+  runRefacSession settings cradle (comp fileName newName (row,col))
 
 -- | Body of the refactoring
 comp :: String -> String -> SimpPos -> RefactGhc [ApplyRefacResult]

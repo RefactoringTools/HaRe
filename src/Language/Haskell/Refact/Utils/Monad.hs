@@ -66,13 +66,14 @@ data RefactSettings = RefSet
         { rsetGhcOpts      :: ![String]
         , rsetImportPaths :: ![IncludeDir]
         , rsetExpandSplice :: Bool
+        , rsetMainFile     :: Maybe FilePath
         -- | The sandbox directory.
         , rsetSandbox      :: Maybe FilePath
         , rsetVerboseLevel :: !VerboseLevel
         } deriving (Show)
 
 defaultSettings :: RefactSettings
-defaultSettings = RefSet [] [] False Nothing Normal
+defaultSettings = RefSet [] [] False Nothing Nothing Normal
 
 logSettings :: RefactSettings
 logSettings = defaultSettings { rsetVerboseLevel = Debug }

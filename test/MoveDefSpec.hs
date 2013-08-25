@@ -2,16 +2,7 @@ module MoveDefSpec (main, spec) where
 
 import           Test.Hspec
 
--- import qualified GHC      as GHC
--- import qualified GhcMonad as GHC
--- import qualified SrcLoc   as GHC
-
--- import Control.Monad.State
--- import Exception
 import Language.Haskell.Refact.MoveDef
--- import Language.Haskell.Refact.Utils
--- import Language.Haskell.Refact.Utils.LocUtils
--- import Language.Haskell.Refact.Utils.Monad
 import System.Directory
 
 import TestUtils
@@ -20,7 +11,6 @@ import TestUtils
 
 main :: IO ()
 main = do
-  -- setLogger
   hspec spec
 
 spec :: Spec
@@ -31,12 +21,12 @@ spec = do
   describe "liftToTopLevel" $ do
     it "Cannot lift a top level declaration" $ do
      -- res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","4","1"])
-     res <- catchException (liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/MoveDef/Md1.hs" (4,1))
+     res <- catchException (liftToTopLevel defaultTestSettings testCradle "./test/testdata/MoveDef/Md1.hs" (4,1))
      (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
 
     it "checks for name clashes" $ do
      -- res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","17","5"])
-     res <- catchException (liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/MoveDef/Md1.hs" (17,5))
+     res <- catchException (liftToTopLevel defaultTestSettings testCradle "./test/testdata/MoveDef/Md1.hs" (17,5))
      (show res) `shouldBe` "Just \"The identifier(s): (ff, test/testdata/MoveDef/Md1.hs:17:5) will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
 
     {-
@@ -53,7 +43,7 @@ spec = do
 
     it "lifts a definition to the top level" $ do
      -- doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","24","5"]
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/MoveDef/Md1.hs" (24,5)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/MoveDef/Md1.hs" (24,5)
      -- liftToTopLevel logTestSettings testCradle Nothing "./test/testdata/MoveDef/Md1.hs" (24,5)
      diff <- compareFiles "./test/testdata/MoveDef/Md1.hs.expected"
                           "./test/testdata/MoveDef/Md1.hs.refactored"
@@ -62,7 +52,7 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D1 C1 A1 8 6" $ do
-     liftToTopLevel defaultTestSettings testCradle (Just "./test/testdata/LiftToToplevel/A1.hs") "./test/testdata/LiftToToplevel/D1.hs" (8,6)
+     liftToTopLevel (testSettingsMainfile "./test/testdata/LiftToToplevel/A1.hs") testCradle "./test/testdata/LiftToToplevel/D1.hs" (8,6)
      -- liftToTopLevel logTestSettings  testCradle    (Just "./test/testdata/LiftToToplevel/A1.hs") "./test/testdata/LiftToToplevel/D1.hs" (8,6)
      diff <- compareFiles "./test/testdata/LiftToToplevel/D1.hs.expected"
                           "./test/testdata/LiftToToplevel/D1.hs.refactored"
@@ -79,7 +69,7 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D2 C2 A2 8 6" $ do
-     liftToTopLevel defaultTestSettings testCradle (Just "./test/testdata/LiftToToplevel/A2.hs") "./test/testdata/LiftToToplevel/D2.hs" (8,6)
+     liftToTopLevel (testSettingsMainfile "./test/testdata/LiftToToplevel/A2.hs") testCradle "./test/testdata/LiftToToplevel/D2.hs" (8,6)
      -- liftToTopLevel logTestSettings  testCradle    (Just "./test/testdata/LiftToToplevel/A2.hs") "./test/testdata/LiftToToplevel/D2.hs" (8,6)
      diff <- compareFiles "./test/testdata/LiftToToplevel/D2.hs.expected"
                           "./test/testdata/LiftToToplevel/D2.hs.refactored"
@@ -96,7 +86,7 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D3 C3 A3 8 6" $ do
-     liftToTopLevel defaultTestSettings testCradle (Just "./test/testdata/LiftToToplevel/A3.hs") "./test/testdata/LiftToToplevel/D3.hs" (8,6)
+     liftToTopLevel (testSettingsMainfile "./test/testdata/LiftToToplevel/A3.hs") testCradle "./test/testdata/LiftToToplevel/D3.hs" (8,6)
      -- liftToTopLevel logTestSettings  testCradle    (Just "./test/testdata/LiftToToplevel/A3.hs") "./test/testdata/LiftToToplevel/D3.hs" (8,6)
      diff <- compareFiles "./test/testdata/LiftToToplevel/D3.hs.expected"
                           "./test/testdata/LiftToToplevel/D3.hs.refactored"
@@ -112,7 +102,7 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel WhereIn1 12 18" $ do
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/WhereIn1.hs" (12,18)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/WhereIn1.hs" (12,18)
      -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/WhereIn1.hs" (12,18)
      diff <- compareFiles "./test/testdata/LiftToToplevel/WhereIn1.hs.expected"
                           "./test/testdata/LiftToToplevel/WhereIn1.hs.refactored"
@@ -122,7 +112,7 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel WhereIn6 13 29" $ do
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/WhereIn6.hs" (13,29)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/WhereIn6.hs" (13,29)
      -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/WhereIn6.hs" (13,29)
      diff <- compareFiles "./test/testdata/LiftToToplevel/WhereIn6.hs.expected"
                           "./test/testdata/LiftToToplevel/WhereIn6.hs.refactored"
@@ -132,7 +122,7 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel WhereIn7 12 14" $ do
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/WhereIn7.hs" (12,14)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/WhereIn7.hs" (12,14)
      -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/WhereIn7.hs" (12,14)
      diff <- compareFiles "./test/testdata/LiftToToplevel/WhereIn7.hs.expected"
                           "./test/testdata/LiftToToplevel/WhereIn7.hs.refactored"
@@ -141,7 +131,7 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel LetIn1 11 22" $ do
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/LetIn1.hs" (11,22)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LetIn1.hs" (11,22)
      -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/LetIn1.hs" (11,22)
      diff <- compareFiles "./test/testdata/LiftToToplevel/LetIn1.hs.expected"
                           "./test/testdata/LiftToToplevel/LetIn1.hs.refactored"
@@ -151,7 +141,7 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel LetIn2 10 22" $ do
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/LetIn2.hs" (10,22)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LetIn2.hs" (10,22)
      -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/LetIn2.hs" (10,22)
      diff <- compareFiles "./test/testdata/LiftToToplevel/LetIn2.hs.expected"
                           "./test/testdata/LiftToToplevel/LetIn2.hs.refactored"
@@ -161,8 +151,8 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel LetIn3 10 27" $ do
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/LetIn3.hs" (10,27)
-     -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/LetIn3.hs" (10,27)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LetIn3.hs" (10,27)
+     -- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/LetIn3.hs" (10,27)
      diff <- compareFiles "./test/testdata/LiftToToplevel/LetIn3.hs.expected"
                           "./test/testdata/LiftToToplevel/LetIn3.hs.refactored"
      diff `shouldBe` []
@@ -170,8 +160,8 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel PatBindIn1 18 7" $ do
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/PatBindIn1.hs" (18,7)
-     -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/PatBindIn1.hs" (18,7)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/PatBindIn1.hs" (18,7)
+     -- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/PatBindIn1.hs" (18,7)
      diff <- compareFiles "./test/testdata/LiftToToplevel/PatBindIn1.hs.expected"
                           "./test/testdata/LiftToToplevel/PatBindIn1.hs.refactored"
      diff `shouldBe` []
@@ -179,8 +169,8 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel PatBindIn3 11 15" $ do
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/PatBindIn3.hs" (11,15)
-     -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/PatBindIn3.hs" (11,15)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/PatBindIn3.hs" (11,15)
+     -- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/PatBindIn3.hs" (11,15)
      diff <- compareFiles "./test/testdata/LiftToToplevel/PatBindIn3.hs.expected"
                           "./test/testdata/LiftToToplevel/PatBindIn3.hs.refactored"
      diff `shouldBe` []
@@ -189,8 +179,8 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel CaseIn1 10 28" $ do
-     liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/CaseIn1.hs" (10,28)
-     -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/CaseIn1.hs" (10,28)
+     liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/CaseIn1.hs" (10,28)
+     -- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/CaseIn1.hs" (10,28)
      diff <- compareFiles "./test/testdata/LiftToToplevel/CaseIn1.hs.expected"
                           "./test/testdata/LiftToToplevel/CaseIn1.hs.refactored"
      diff `shouldBe` []
@@ -212,7 +202,7 @@ spec = do
 
     it "liftToTopLevel WhereIn2 11 18 fails" $ do
      -- res <- catchException (doLiftToTopLevel ["./test/testdata/LiftToToplevel/WhereIn2.hs","11","18"])
-     res <- catchException (liftToTopLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftToToplevel/WhereIn2.hs" (11,18))
+     res <- catchException (liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/WhereIn2.hs" (11,18))
      -- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/WhereIn2.hs" (11,18)
 
      (show res) `shouldBe` "Just \"The identifier(s): (sq, test/testdata/LiftToToplevel/WhereIn2.hs:11:18) will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
@@ -243,7 +233,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
   describe "LiftOneLevel" $ do
 
     it "LiftOneLevel.liftToMod D1 C1 A1 8 6" $ do
-     liftOneLevel defaultTestSettings testCradle (Just "./test/testdata/LiftOneLevel/A1.hs") "./test/testdata/LiftOneLevel/D1.hs" (8,6)
+     liftOneLevel (testSettingsMainfile "./test/testdata/LiftOneLevel/A1.hs") testCradle "./test/testdata/LiftOneLevel/D1.hs" (8,6)
      -- liftOneLevel logTestSettings  testCradle    (Just "./test/testdata/LiftOneLevel/A1.hs") "./test/testdata/LiftOneLevel/D1.hs" (8,6)
      diff <- compareFiles "./test/testdata/LiftOneLevel/D1.hs.expected"
                           "./test/testdata/LiftOneLevel/D1.hs.refactored"
@@ -259,7 +249,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel.liftToMod D2 C2 A2 8 6" $ do
-     liftOneLevel defaultTestSettings testCradle (Just "./test/testdata/LiftOneLevel/A2.hs") "./test/testdata/LiftOneLevel/D2.hs" (8,6)
+     liftOneLevel (testSettingsMainfile "./test/testdata/LiftOneLevel/A2.hs") testCradle "./test/testdata/LiftOneLevel/D2.hs" (8,6)
      -- liftOneLevel logTestSettings  testCradle    (Just "./test/testdata/LiftOneLevel/A2.hs") "./test/testdata/LiftOneLevel/D2.hs" (8,6)
      diff <- compareFiles "./test/testdata/LiftOneLevel/D2.hs.expected"
                           "./test/testdata/LiftOneLevel/D2.hs.refactored"
@@ -275,7 +265,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel.liftToMod D3 C3 A3 8 6" $ do
-     liftOneLevel defaultTestSettings testCradle (Just "./test/testdata/LiftOneLevel/A3.hs") "./test/testdata/LiftOneLevel/D3.hs" (8,6)
+     liftOneLevel (testSettingsMainfile "./test/testdata/LiftOneLevel/A3.hs") testCradle "./test/testdata/LiftOneLevel/D3.hs" (8,6)
      -- liftOneLevel logTestSettings  testCradle    (Just "./test/testdata/LiftOneLevel/A3.hs") "./test/testdata/LiftOneLevel/D3.hs" (8,6)
      diff <- compareFiles "./test/testdata/LiftOneLevel/D3.hs.expected"
                           "./test/testdata/LiftOneLevel/D3.hs.refactored"
@@ -290,8 +280,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel WhereIn1 12 18" $ do
-     liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn1.hs" (12,18)
-     -- liftOneLevel logTestSettings  testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn1.hs" (12,18)
+     liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/WhereIn1.hs" (12,18)
+     -- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/WhereIn1.hs" (12,18)
      diff <- compareFiles "./test/testdata/LiftOneLevel/WhereIn1.hs.expected"
                           "./test/testdata/LiftOneLevel/WhereIn1.hs.refactored"
      diff `shouldBe` []
@@ -299,8 +289,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel WhereIn6 13 29" $ do
-     liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn6.hs" (13,29)
-     -- liftOneLevel logTestSettings  testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn6.hs" (13,29)
+     liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/WhereIn6.hs" (13,29)
+     -- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/WhereIn6.hs" (13,29)
      diff <- compareFiles "./test/testdata/LiftOneLevel/WhereIn6.hs.expected"
                           "./test/testdata/LiftOneLevel/WhereIn6.hs.refactored"
      diff `shouldBe` []
@@ -309,8 +299,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel WhereIn7 12 14" $ do
-     liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
-     -- liftOneLevel logTestSettings  testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
+     liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
+     -- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
      diff <- compareFiles "./test/testdata/LiftOneLevel/WhereIn7.hs.expected"
                           "./test/testdata/LiftOneLevel/WhereIn7.hs.refactored"
      diff `shouldBe` []
@@ -318,8 +308,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel WhereIn8 8 11" $ do
-     liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn8.hs" (8,11)
-     -- liftOneLevel logTestSettings  testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn8.hs" (8,11)
+     liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/WhereIn8.hs" (8,11)
+     -- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/WhereIn8.hs" (8,11)
      diff <- compareFiles "./test/testdata/LiftOneLevel/WhereIn8.hs.expected"
                           "./test/testdata/LiftOneLevel/WhereIn8.hs.refactored"
      diff `shouldBe` []
@@ -327,8 +317,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel LetIn1 11 22" $ do
-     liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/LetIn1.hs" (11,22)
-     -- liftOneLevel logTestSettings  testCradle Nothing "./test/testdata/LiftOneLevel/LetIn1.hs" (11,22)
+     liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/LetIn1.hs" (11,22)
+     -- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/LetIn1.hs" (11,22)
      diff <- compareFiles "./test/testdata/LiftOneLevel/LetIn1.hs.expected"
                           "./test/testdata/LiftOneLevel/LetIn1.hs.refactored"
      diff `shouldBe` []
@@ -337,8 +327,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel LetIn2 11 22" $ do
-     liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/LetIn2.hs" (11,22)
-     -- liftOneLevel logTestSettings  testCradle Nothing "./test/testdata/LiftOneLevel/LetIn2.hs" (11,22)
+     liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/LetIn2.hs" (11,22)
+     -- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/LetIn2.hs" (11,22)
      diff <- compareFiles "./test/testdata/LiftOneLevel/LetIn2.hs.expected"
                           "./test/testdata/LiftOneLevel/LetIn2.hs.refactored"
      diff `shouldBe` []
@@ -346,8 +336,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel LetIn3 10 27" $ do
-     liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/LetIn3.hs" (10,27)
-     -- liftOneLevel logTestSettings  testCradle Nothing "./test/testdata/LiftOneLevel/LetIn3.hs" (10,27)
+     liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/LetIn3.hs" (10,27)
+     -- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/LetIn3.hs" (10,27)
      diff <- compareFiles "./test/testdata/LiftOneLevel/LetIn3.hs.expected"
                           "./test/testdata/LiftOneLevel/LetIn3.hs.refactored"
      diff `shouldBe` []
@@ -355,8 +345,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel PatBindIn3 11 15" $ do
-     liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/PatBindIn3.hs" (11,15)
-     -- liftOneLevel logTestSettings  testCradle Nothing "./test/testdata/LiftOneLevel/PatBindIn3.hs" (11,15)
+     liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/PatBindIn3.hs" (11,15)
+     -- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/PatBindIn3.hs" (11,15)
      diff <- compareFiles "./test/testdata/LiftOneLevel/PatBindIn3.hs.expected"
                           "./test/testdata/LiftOneLevel/PatBindIn3.hs.refactored"
      diff `shouldBe` []
@@ -364,8 +354,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "LiftOneLevel CaseIn1 10 28" $ do
-     liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/CaseIn1.hs" (10,28)
-     -- liftOneLevel logTestSettings  testCradle Nothing "./test/testdata/LiftOneLevel/CaseIn1.hs" (10,28)
+     liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/CaseIn1.hs" (10,28)
+     -- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/CaseIn1.hs" (10,28)
      diff <- compareFiles "./test/testdata/LiftOneLevel/CaseIn1.hs.expected"
                           "./test/testdata/LiftOneLevel/CaseIn1.hs.refactored"
      diff `shouldBe` []
@@ -384,8 +374,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "fails WhereIn2 8 18" $ do
-     res <- catchException (liftOneLevel defaultTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn2.hs" (8,18))
-     -- liftOneLevel logTestSettings testCradle Nothing "./test/testdata/LiftOneLevel/WhereIn2.hs" (8,18)
+     res <- catchException (liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/WhereIn2.hs" (8,18))
+     -- liftOneLevel logTestSettings testCradle "./test/testdata/LiftOneLevel/WhereIn2.hs" (8,18)
      (show res) `shouldBe` "Just \"The identifier(s): (sq, test/testdata/LiftOneLevel/WhereIn2.hs:8:18) will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
 
 
@@ -418,17 +408,17 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "notifies if no definition selected" $ do
      -- res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","14","13"])
-     res <- catchException (demote defaultTestSettings testCradle Nothing "./test/testdata/MoveDef/Md1.hs" (14,13))
+     res <- catchException (demote defaultTestSettings testCradle "./test/testdata/MoveDef/Md1.hs" (14,13))
      (show res) `shouldBe` "Just \"\\nInvalid cursor position!\""
 
     it "will not demote if nowhere to go" $ do
      -- res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","8","1"])
-     res <- catchException (demote defaultTestSettings testCradle Nothing "./test/testdata/MoveDef/Md1.hs" (8,1))
+     res <- catchException (demote defaultTestSettings testCradle "./test/testdata/MoveDef/Md1.hs" (8,1))
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
     it "demotes a definition from the top level 1" $ do
      -- doDemote ["./test/testdata/MoveDef/Demote.hs","7","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/MoveDef/Demote.hs" (7,1)
+     demote defaultTestSettings testCradle "./test/testdata/MoveDef/Demote.hs" (7,1)
      -- demote logTestSettings testCradle Nothing "./test/testdata/MoveDef/Demote.hs" (7,1)
      diff <- compareFiles "./test/testdata/MoveDef/Demote.hs.refactored"
                           "./test/testdata/MoveDef/Demote.hs.expected"
@@ -438,7 +428,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes a definition from the top level D1" $ do
      -- doDemote ["./test/testdata/Demote/D1.hs","9","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/D1.hs" (9,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/D1.hs" (9,1)
      diff <- compareFiles "./test/testdata/Demote/D1.hs.refactored"
                           "./test/testdata/Demote/D1.hs.expected"
      diff `shouldBe` []
@@ -447,7 +437,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes WhereIn1 12 1" $ do
      -- doDemote ["./test/testdata/Demote/WhereIn1.hs","12","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/WhereIn1.hs" (12,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/WhereIn1.hs" (12,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn1.hs.refactored"
                           "./test/testdata/Demote/WhereIn1.hs.expected"
      diff `shouldBe` []
@@ -456,7 +446,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes WhereIn3 14 1" $ do
      -- doDemote ["./test/testdata/Demote/WhereIn3.hs","14","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/WhereIn3.hs" (14,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/WhereIn3.hs" (14,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn3.hs.refactored"
                           "./test/testdata/Demote/WhereIn3.hs.expected"
      diff `shouldBe` []
@@ -465,7 +455,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes WhereIn4 14 1" $ do
      -- doDemote ["./test/testdata/Demote/WhereIn4.hs","14","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/WhereIn4.hs" (14,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/WhereIn4.hs" (14,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn4.hs.refactored"
                           "./test/testdata/Demote/WhereIn4.hs.expected"
      diff `shouldBe` []
@@ -474,7 +464,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes WhereIn5 14 1" $ do
      -- doDemote ["./test/testdata/Demote/WhereIn5.hs","14","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/WhereIn5.hs" (14,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/WhereIn5.hs" (14,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn5.hs.refactored"
                           "./test/testdata/Demote/WhereIn5.hs.expected"
      diff `shouldBe` []
@@ -483,7 +473,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes WhereIn6 13 1" $ do
      -- doDemote ["./test/testdata/Demote/WhereIn6.hs","13","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/WhereIn6.hs" (13,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/WhereIn6.hs" (13,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn6.hs.refactored"
                           "./test/testdata/Demote/WhereIn6.hs.expected"
      diff `shouldBe` []
@@ -492,7 +482,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes WhereIn7 13 1" $ do
      -- doDemote ["./test/testdata/Demote/WhereIn7.hs","13","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/WhereIn7.hs" (13,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/WhereIn7.hs" (13,1)
      diff <- compareFiles "./test/testdata/Demote/WhereIn7.hs.refactored"
                           "./test/testdata/Demote/WhereIn7.hs.expected"
      diff `shouldBe` []
@@ -501,7 +491,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes CaseIn1 16 1" $ do
      -- doDemote ["./test/testdata/Demote/CaseIn1.hs","16","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/CaseIn1.hs" (16,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/CaseIn1.hs" (16,1)
      diff <- compareFiles "./test/testdata/Demote/CaseIn1.hs.refactored"
                           "./test/testdata/Demote/CaseIn1.hs.expected"
      diff `shouldBe` []
@@ -510,7 +500,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes LetIn1 12 22" $ do
      -- doDemote ["./test/testdata/Demote/LetIn1.hs","12","22"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/LetIn1.hs" (12,22)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/LetIn1.hs" (12,22)
      diff <- compareFiles "./test/testdata/Demote/LetIn1.hs.refactored"
                           "./test/testdata/Demote/LetIn1.hs.expected"
      diff `shouldBe` []
@@ -519,7 +509,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes PatBindIn1 19 1" $ do
      -- doDemote ["./test/testdata/Demote/PatBindIn1.hs","19","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/PatBindIn1.hs" (19,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/PatBindIn1.hs" (19,1)
      diff <- compareFiles "./test/testdata/Demote/PatBindIn1.hs.refactored"
                           "./test/testdata/Demote/PatBindIn1.hs.expected"
      diff `shouldBe` []
@@ -528,7 +518,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "demotes D2 5 1 when not imported by other module" $ do
      -- doDemote ["./test/testdata/Demote/D2.hs","5","1"]
-     demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/D2.hs" (5,1)
+     demote defaultTestSettings testCradle "./test/testdata/Demote/D2.hs" (5,1)
      -- demote logTestSettings testCradle Nothing "./test/testdata/Demote/D2.hs" (5,1)
      diff <- compareFiles "./test/testdata/Demote/D2.hs.refactored"
                           "./test/testdata/Demote/D2.hs.expected"
@@ -538,7 +528,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "fails WhereIn2 14 1" $ do
      -- res <- catchException (doDemote ["./test/testdata/Demote/WhereIn2.hs","14","1"])
-     res <- catchException (demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/WhereIn2.hs" (14,1))
+     res <- catchException (demote defaultTestSettings testCradle "./test/testdata/Demote/WhereIn2.hs" (14,1))
      -- demote (Just logSettings) testCradle Nothing "./test/testdata/Demote/WhereIn2.hs" (14,1)
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
@@ -546,14 +536,14 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "fails LetIn2 11 22" $ do
      -- res <- catchException (doDemote ["./test/testdata/Demote/LetIn2.hs","11","22"])
-     res <- catchException (demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/LetIn2.hs" (11,22))
+     res <- catchException (demote defaultTestSettings testCradle "./test/testdata/Demote/LetIn2.hs" (11,22))
      (show res) `shouldBe` "Just \"This function can not be demoted as it is used in current level!\\n\""
 
     -- -----------------------------------------------------------------
 
     it "fails PatBindIn4 18 1" $ do
      -- res <- catchException (doDemote ["./test/testdata/Demote/PatBindIn4.hs","18","1"])
-     res <- catchException (demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/PatBindIn4.hs" (18,1))
+     res <- catchException (demote defaultTestSettings testCradle "./test/testdata/Demote/PatBindIn4.hs" (18,1))
      -- (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
      (show res) `shouldBe` "Just \"\\nThis function/pattern binding is used by more than one friend bindings\\n\""
 
@@ -561,13 +551,13 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "fails WhereIn8 16 1" $ do
      -- res <- catchException (doDemote ["./test/testdata/Demote/WhereIn8.hs","16","1"])
-     res <- catchException (demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/WhereIn8.hs" (16,1))
+     res <- catchException (demote defaultTestSettings testCradle "./test/testdata/Demote/WhereIn8.hs" (16,1))
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
     -- -----------------------------------------------------------------
 
     it "fails D2 5 1" $ do
-     res <- catchException (demote defaultTestSettings testCradle (Just "./test/testdata/Demote/A2.hs") "./test/testdata/Demote/D2.hs" (5,1))
+     res <- catchException (demote (testSettingsMainfile "./test/testdata/Demote/A2.hs") testCradle "./test/testdata/Demote/D2.hs" (5,1))
      -- res <- catchException (demote logTestSettings testCradle (Just "./test/testdata/Demote/A2.hs") "./test/testdata/Demote/D2.hs" (5,1))
      (show res) `shouldBe` "Just \"This definition can not be demoted, as it is used in the client module 'main:Demote.A2'!\""
 
@@ -580,7 +570,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "fails D3 5 1" $ do
      -- res <- catchException (doDemote ["./test/testdata/Demote/D3.hs","5","1"])
-     res <- catchException (demote defaultTestSettings testCradle Nothing "./test/testdata/Demote/D3.hs" (5,1))
+     res <- catchException (demote defaultTestSettings testCradle "./test/testdata/Demote/D3.hs" (5,1))
      (show res) `shouldBe` "Just \"This definition can not be demoted, as it is explicitly exported by the current module!\""
 
 

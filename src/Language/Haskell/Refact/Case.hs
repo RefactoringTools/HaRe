@@ -17,9 +17,9 @@ import Language.Haskell.Refact.Utils.TypeUtils
 -- ---------------------------------------------------------------------
 
 -- | Convert an if expression to a case expression
-ifToCase :: RefactSettings -> Cradle -> Maybe FilePath -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
-ifToCase settings cradle maybeMainFile fileName beginPos endPos =
-  runRefacSession settings cradle maybeMainFile (comp fileName beginPos endPos)
+ifToCase :: RefactSettings -> Cradle -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
+ifToCase settings cradle fileName beginPos endPos =
+  runRefacSession settings cradle (comp fileName beginPos endPos)
 
 comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do

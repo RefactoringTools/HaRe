@@ -103,7 +103,8 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-        Other-Modules:          Paths_HaRe
+                                , HaRe >= 0.7.0.0
+        -- Other-Modules:          Paths_HaRe
         Extensions:      CPP
 
 

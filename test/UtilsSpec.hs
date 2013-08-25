@@ -95,7 +95,7 @@ spec = do
   describe "getModuleName" $ do
     it "returns a string for the module name if there is one" $ do
       -- modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      (t, toks) <- parsedFileBGhc
+      (t, _toks) <- parsedFileBGhc
       let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just (_modname,modNameStr)) = getModuleName mod
@@ -104,7 +104,7 @@ spec = do
 
     it "returns Nothing for the module name otherwise" $ do
       -- modInfo@((_, _, mod), toks) <- parsedFileNoMod
-      (t, toks) <- parsedFileNoMod
+      (t, _toks) <- parsedFileNoMod
       let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       getModuleName mod `shouldBe` Nothing
 
@@ -124,7 +124,7 @@ spec = do
       -- TODO: harvest this commonality
       let
         comp = do
-         (_p,toks) <- parseFileMGhc -- Load the main file first
+         (_p,_toks) <- parseFileMGhc -- Load the main file first
          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -133,7 +133,7 @@ spec = do
     it "gets modules which directly or indirectly import a module #2" $ do
       let
         comp = do
-         (_p,toks) <- parseFileMGhc -- Load the main file first
+         (_p,_toks) <- parseFileMGhc -- Load the main file first
          g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -148,7 +148,7 @@ spec = do
     it "gets modules which are directly or indirectly imported by a module #1" $ do
       let
         comp = do
-         (p,toks) <- parseFileMGhc -- Load the main file first
+         (_p,toks) <- parseFileMGhc -- Load the main file first
          g <- serverModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -157,7 +157,7 @@ spec = do
     it "gets modules which are directly or indirectly imported by a module #2" $ do
       let
         comp = do
-         (_p,toks) <- parseFileMGhc -- Load the main file first
+         (_p,_toks) <- parseFileMGhc -- Load the main file first
          g <- serverModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -170,7 +170,7 @@ spec = do
     it "gets the module graph for the currently loaded modules" $ do
       let
         comp = do
-         (_p,toks) <- parseFileBGhc -- Load the file first
+         (_p,_toks) <- parseFileBGhc -- Load the file first
          g <- getCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -188,7 +188,7 @@ spec = do
     it "needs a test or two" $ do
       let
         comp = do
-         (_p,toks) <- parseFileBGhc -- Load the file first
+         (_p,_toks) <- parseFileBGhc -- Load the file first
          g <- sortCurrentModuleGraph
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -255,13 +255,39 @@ spec = do
 
   describe "runRefactGhc" $ do
     it "contains a State monad" $ do
+      let
+       comp = do
+        s <- get
+        (_t, _toks) <- parseSourceFileTest "./test/testdata/TypeUtils/B.hs"
+
+        g <- GHC.getModuleGraph
+        gs <- mapM GHC.showModule g
+        -- GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
+
+        put (s {rsUniqState = 100})
+        return (show gs)
+
       (_,s) <- runRefactGhcState comp
       (rsUniqState s) `shouldBe` 100
 
     it "contains the GhcT monad" $ do
+      let
+       comp = do
+        s <- get
+        (_t, _toks) <- parseSourceFileTest "./test/testdata/TypeUtils/B.hs"
+
+        g <- GHC.getModuleGraph
+        gs <- mapM GHC.showModule g
+        -- GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
+
+        put (s {rsUniqState = 100})
+        return (show gs)
+
       (r,_) <- runRefactGhcState comp
-      r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, interpreted )\""
-                  ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, interpreted )\"]")
+      -- r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, interpreted )\""
+      --             ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, interpreted )\"]")
+      r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, nothing )\""
+                  ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, nothing )\"]")
 
 
   -- -------------------------------------------------------------------
@@ -304,22 +330,10 @@ parseFileMGhc = parseSourceFileTest fileName
   where
     fileName = "./test/testdata/M.hs"
 
--- parsedFileNoMod = unsafeParseSourceFile fileName
-parsedFileNoMod = parsedFileGhc fileName
-  where
-    fileName = "./test/testdata/NoMod.hs"
 
-comp :: RefactGhc String
-comp = do
-    s <- get
-    modInfo@(t, toks) <- parseSourceFileTest "./test/testdata/TypeUtils/B.hs"
+parsedFileNoMod :: IO (ParseResult,[PosToken])
+parsedFileNoMod = parsedFileGhc "./test/testdata/NoMod.hs"
 
-    g <- GHC.getModuleGraph
-    gs <- mapM GHC.showModule g
-    GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
-
-    put (s {rsUniqState = 100})
-    return (show gs)
 
 
 -- ---------------------------------------------------------------------

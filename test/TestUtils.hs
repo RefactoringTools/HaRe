@@ -13,6 +13,8 @@ module TestUtils
        , entriesFromState
        , defaultTestSettings
        , logTestSettings
+       , testSettingsMainfile
+       , logTestSettingsMainfile
        , testCradle
        , catchException
        , mkTokenCache
@@ -184,14 +186,18 @@ testCradle = Cradle "./test/testdata/" Nothing Nothing Nothing
 -- ---------------------------------------------------------------------
 
 defaultTestSettings :: RefactSettings
--- defaultTestSettings = Just $ RefSet ["./test/testdata/"] Normal
 defaultTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
                                       , rsetVerboseLevel = Normal }
 
 logTestSettings :: RefactSettings
--- logTestSettings = Just $ RefSet ["./test/testdata/"] Debug
 logTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
                                   , rsetVerboseLevel = Debug }
+
+testSettingsMainfile :: FilePath -> RefactSettings
+testSettingsMainfile mainFile = defaultTestSettings { rsetMainFile = Just mainFile }
+
+logTestSettingsMainfile :: FilePath -> RefactSettings
+logTestSettingsMainfile mainFile = logTestSettings { rsetMainFile = Just mainFile }
 
 -- ---------------------------------------------------------------------
 

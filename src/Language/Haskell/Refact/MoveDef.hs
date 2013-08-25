@@ -79,9 +79,9 @@ the following six contexts:
 -}
 
 -- | Lift a definition to the top level
-liftToTopLevel :: RefactSettings -> Cradle -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
-liftToTopLevel settings cradle maybeMainFile fileName (row,col) =
-  runRefacSession settings cradle maybeMainFile (compLiftToTopLevel fileName (row,col))
+liftToTopLevel :: RefactSettings -> Cradle -> FilePath -> SimpPos -> IO [FilePath]
+liftToTopLevel settings cradle fileName (row,col) =
+  runRefacSession settings cradle (compLiftToTopLevel fileName (row,col))
 
 
 compLiftToTopLevel :: FilePath -> SimpPos
@@ -102,9 +102,9 @@ compLiftToTopLevel fileName (row,col) = do
 -- ---------------------------------------------------------------------
 
 -- | Move a definition one level up from where it is now
-liftOneLevel :: RefactSettings -> Cradle -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
-liftOneLevel settings cradle maybeMainFile fileName (row,col) =
-  runRefacSession settings cradle maybeMainFile (compLiftOneLevel fileName (row,col))
+liftOneLevel :: RefactSettings -> Cradle -> FilePath -> SimpPos -> IO [FilePath]
+liftOneLevel settings cradle fileName (row,col) =
+  runRefacSession settings cradle (compLiftOneLevel fileName (row,col))
 
 
 compLiftOneLevel :: FilePath -> SimpPos
@@ -135,9 +135,9 @@ compLiftOneLevel fileName (row,col) = do
 -- ---------------------------------------------------------------------
 
 -- | Move a definition one level down
-demote :: RefactSettings -> Cradle -> Maybe FilePath -> FilePath -> SimpPos -> IO [FilePath]
-demote settings cradle maybeMainFile fileName (row,col) =
-  runRefacSession settings cradle maybeMainFile (compDemote fileName (row,col))
+demote :: RefactSettings -> Cradle -> FilePath -> SimpPos -> IO [FilePath]
+demote settings cradle fileName (row,col) =
+  runRefacSession settings cradle (compDemote fileName (row,col))
 
 compDemote ::FilePath -> SimpPos
          -> RefactGhc [ApplyRefacResult]
