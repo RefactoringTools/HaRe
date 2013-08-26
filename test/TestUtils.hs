@@ -41,7 +41,8 @@ import qualified Unique        as GHC
 
 import Data.Algorithm.Diff
 import Exception
-import Language.Haskell.GhcModLowLevel
+import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad

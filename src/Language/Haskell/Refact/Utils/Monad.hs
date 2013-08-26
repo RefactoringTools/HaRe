@@ -54,7 +54,8 @@ import qualified MonadUtils    as GHC
 -- import qualified Var           as GHC
 
 import Data.List
-import Language.Haskell.GhcModLowLevel
+import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
