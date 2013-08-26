@@ -508,16 +508,36 @@ hsFreeAndDeclaredPNs t = do
   let (f,d) = fromMaybe ([],[]) fd
   return (f \\ d, d)
 
--- hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
 hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> Maybe ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs' t = do
       (f,d) <- hsFreeAndDeclared'
-      return (nub f, nub d)
+      let (f',d') = (nub f, nub d)
+      -- return (f' \\ d',d')
+      return (f',d')
           -- hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
 
    where
+          cc :: Maybe ([GHC.Name],[GHC.Name]) -> Maybe ([GHC.Name],[GHC.Name]) -> Maybe ([GHC.Name],[GHC.Name])
+          cc = mappend
+          -- cc Nothing Nothing = Nothing
+          -- -- cc (Just (f1,d1)) (Just (f2,d2)) = Just (f1++f2,d1++d2)
+          -- cc (Just (f1,d1)) (Just (f2,d2)) = Just (f1,d1)
+          -- cc Nothing x = x
+          -- cc x Nothing = x
           -- hsFreeAndDeclared' :: RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
           hsFreeAndDeclared' :: Maybe ([GHC.Name],[GHC.Name])
+          hsFreeAndDeclared' = somethingStaged SYB.Renamer Nothing
+          -- hsFreeAndDeclared' = everythingStaged SYB.Renamer cc Nothing
+                                       (Nothing
+                                           `SYB.mkQ` expr
+                                           `SYB.extQ` pattern
+                                           `SYB.extQ` bindList
+                                           `SYB.extQ` binds
+                                           `SYB.extQ` match
+                                           `SYB.extQ` stmts
+                                           `SYB.extQ` rhs
+                                       ) t
+{-
           hsFreeAndDeclared' = applyTU (stop_tdTUGhc (failTU
                                                          `adhocTU` expr
                                                          `adhocTU` pattern
@@ -526,7 +546,7 @@ hsFreeAndDeclaredPNs' t = do
                                                          `adhocTU` stmts
                                                          `adhocTU` rhs
                                                           )) t
-
+-}
 
 
           -- TODO: ++AZ++ Note:After renaming, HsBindLR has field bind_fvs
@@ -560,7 +580,6 @@ hsFreeAndDeclaredPNs' t = do
             addFree n fd
 
           expr _ = mzero
-          -- expr _ = return ([],[])
 
 
           -- rhs --
@@ -571,7 +590,6 @@ hsFreeAndDeclaredPNs' t = do
                  return (df ++ ef, dd ++ ed)
 
           rhs _ = mzero
-          -- rhs _ = return ([],[])
 
           -- pat --
           pattern (GHC.VarPat n) = return ([],[n])
@@ -580,6 +598,11 @@ hsFreeAndDeclaredPNs' t = do
 
           pattern _ = mzero
           -- pattern _ = return ([],[])
+
+          bindList (ds :: [GHC.LHsBind GHC.Name])
+            =do (f,d) <- hsFreeAndDeclaredList ds
+                return (f\\d,d)
+          bindList _ = mzero
 
           -- match and patBind, same type--
           binds ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ _fvs _) :: GHC.HsBind GHC.Name)
@@ -598,7 +621,6 @@ hsFreeAndDeclaredPNs' t = do
               return (pf `union` (rf \\pd),pd ++ GHC.uniqSetToList ds ++ rd)
 
           binds _ = mzero
-          -- match _ = return ([],[])
 
           match ((GHC.Match pats _mtype mrhs) :: GHC.Match GHC.Name )
             = do
@@ -621,22 +643,16 @@ hsFreeAndDeclaredPNs' t = do
             hsFreeAndDeclaredPNs' binds'
 
           stmts _ = mzero
-          -- stmts _ = return ([],[])
 
-{-
-          recDecl ((HsRecDecl _ _ _ _ is) :: HsConDeclI PNT (HsTypeI PNT) [HsTypeI PNT])
-                =do let d=map pNTtoPN $ concatMap fst is
-                    return ([],d)
-          recDecl _ =return mzero
--}
 
           addFree :: GHC.Name -> ([GHC.Name],[GHC.Name])
                   -> Maybe ([GHC.Name],[GHC.Name])
-          -- addFree :: GHC.Name -> (Maybe ([GHC.Name],[GHC.Name]))
-          --         -> RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
           addFree free (fr,de) = return ([free] `union` fr, de)
-          -- addFree free (Just (fr,de)) = return ([free] `union` fr, de)
-          -- addFree free Nothing        = mzero
+
+          hsFreeAndDeclaredList l=do fds<-mapM hsFreeAndDeclaredPNs' l
+                                     return (foldr union [] (map fst fds),
+                                             foldr union [] (map snd fds))
+
 
 {-
 hsFreeAndDeclaredPNs:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
