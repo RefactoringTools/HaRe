@@ -3,6 +3,7 @@
 * TODO sort out realignment of tokens on a line when one is changed
 * TODO disable invariant test when not in test mode
 * TODO add tests for command-line invocation of ghc-hare
+* TODO look at using ordnub
 * TODO check .lhs support
 * TODO check cabal support
 * TODO from the source files
