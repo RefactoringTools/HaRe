@@ -326,7 +326,7 @@ renameTopLevelVarName :: GHC.Name -> String -> GHC.Name -> GHC.ModuleName -> GHC
                          -> Bool -> Bool -> RefactGhc GHC.RenamedSource
 renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exportChecking = do
      logm $ "renameTopLevelVarName:(existChecking,exportChecking)=" ++ (show (existChecking,exportChecking))
-     causeAmbiguity <- causeAmbiguityInExports oldPN  newNameGhc
+     causeAmbiguity <- causeAmbiguityInExports oldPN newNameGhc
       -- f' contains names imported from other modules;
       -- d' contains the top level names declared in this module;
      let (f',d') = hsFDsFromInside renamed
@@ -348,7 +348,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
        else if existChecking && elem newNameStr (d \\ [nameToString oldPN])  --only check the declared names here.
              then error ("Name '"++newName++"'  already existed\n") --the same name has been declared in this module.
              else if exportChecking && causeNameClashInExports oldPN modName renamed -- exps
-                    then error ("The new name will cause  conflicting exports, please select another new name!") 
+                    then error ("The new name will cause conflicting exports, please select another new name!") 
                     else if exportChecking && causeAmbiguity -- causeAmbiguityInExports oldPN  newNameGhc {- inscps -} renamed
                           then error $"The new name will cause ambiguity in the exports of module "++ show modName ++ ", please select another name!"   
                           else do  -- get all of those declared names visible to oldPN at where oldPN is used.

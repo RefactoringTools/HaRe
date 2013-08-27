@@ -2447,7 +2447,12 @@ spec = do
 
   describe "causeNameClashInExports" $ do
     it "Returns False if there is no clash" $ do
-      pending -- "write this "
+      (t, toks) <- parseSourceFileTest "./test/testdata/MoveDef/Md1.hs"
+      putParsedModule t toks
+      renamed <- getRefactRenamed
+
+      let res = causeNameClashInExports name modName renamed
+      res `shouldBe` False
 
     it "Returns True if clash of type xx" $ do
       pending -- "write this "

@@ -442,7 +442,7 @@ isExplicitlyExported pn (_g,_imps,exps,_docs)
 
 -- ---------------------------------------------------------------------
 
--- | ++AZ++ What does this actually do?
+-- | Check if the proposed new name will conflict with an existing export
 causeNameClashInExports::  GHC.Name          -- ^ The original name??
                         -> GHC.ModuleName    -- ^ The identity of the module
                         -> GHC.RenamedSource -- ^ The AST of the module
@@ -471,12 +471,14 @@ causeNameClashInExports pn {- newName -} modName renamed@(_g,imps,maybeExps,_doc
       -- in isJust $ find (\(HsImportDecl _ (SN modName1 _) qualify  _ h) -> modName == modName1 && (not qualify)) imps
 
 
-{- ++AZ++ Original
-causeNameClashInExports::String      -- ^ The identifier name
-                        ->HsModuleP  -- ^ The AST of the module
-                        ->Exports    -- ^ The export relation of the module
-                        ->Bool       -- ^ The result
+-- Original seems to be
+--   1. pick up new module name if it is in the export list already
+--   2. Check if the old is exported explicitly
+--   3.  if so, if the new module is exported unqualified
+--        or xxx
+--       then it will cause a clash
 
+{- ++AZ++ Original
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
 causeNameClashInExports  pn newName mod exps
@@ -2454,7 +2456,8 @@ locToName' stage fileName (row,col) t =
         else res2
      where
         res1 = somethingStaged stage Nothing
-            (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind
+            (Nothing `SYB.mkQ` worker
+                     `SYB.extQ` workerBind
                      `SYB.extQ` workerExpr
                      `SYB.extQ` workerLIE
                      `SYB.extQ` workerHsTyVarBndr

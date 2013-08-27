@@ -6,7 +6,11 @@
 * TODO look at using ordnub
 * TODO check .lhs support
 * TODO check cabal support
-* TODO liftIO is performance bottleneck in MonadPlus implementation of RefactGhc monad
+* DONE liftIO is performance bottleneck in MonadPlus implementation of RefactGhc monad
+       - sorted out by moving the computation into the Maybe monad
+         instead.
+* TODO locToName fails for name in export list
+* TODO rename 'down' to 'downWeGo' in syz Zipper.hs fails with "will cause name clash in exports"
 * TODO from the source files
   :PROPERTIES:
   :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
