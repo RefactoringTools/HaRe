@@ -500,13 +500,12 @@ causeNameClashInExports  pn newName mod exps
 -- the free variables, and the second list contains the declared
 -- variables.
 -- Expects RenamedSource
-hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
-hsFreeAndDeclaredPNs t = do
-  logm $ "hsFreeAndDeclaredPNs:entered="
-  let fd = hsFreeAndDeclaredPNs' t
-  logm $ "hsFreeAndDeclaredPNs:fd=" ++ (showGhc fd)
-  let (f,d) = fromMaybe ([],[]) fd
-  return (f \\ d, d)
+hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNs t = res
+  where
+    fd = hsFreeAndDeclaredPNs' t
+    (f,d) = fromMaybe ([],[]) fd
+    res = (f \\ d, d)
 
 hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> Maybe ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs' t = do
@@ -751,10 +750,11 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned
 -- variables are in the String format.
-hsFreeAndDeclaredNames::(SYB.Data t) => t -> RefactGhc ([String],[String])
-hsFreeAndDeclaredNames t = do
-  (f1,d1) <- hsFreeAndDeclaredPNs t
-  return ((nub.map showGhc) f1, (nub.map showGhc) d1)
+hsFreeAndDeclaredNames::(SYB.Data t) => t -> ([String],[String])
+hsFreeAndDeclaredNames t = res
+  where
+    (f1,d1) = hsFreeAndDeclaredPNs t
+    res = ((nub.map showGhc) f1, (nub.map showGhc) d1)
 
 -- hsFreeAndDeclaredNames::(Term t, MonadPlus m)=> t->m([String],[String])
 -- hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
@@ -805,17 +805,17 @@ getDeclaredVars bs = concatMap vars bs
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
 hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2)
-  => t1 -> t2 -> RefactGhc [String]
-hsVisibleNames e t = do
-  d <- hsVisiblePNs e t
-  logm $ "hsVisibleNames:got d"
-  return ((nub.map showGhc) d)
+  => t1 -> t2 -> [String]
+hsVisibleNames e t = res
+  where
+    d = hsVisiblePNs e t
+    res = ((nub.map showGhc) d)
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
 hsVisiblePNs :: (FindEntity e, SYB.Data e, SYB.Data t)
-             => e -> t -> RefactGhc [GHC.Name]
+             => e -> t -> [GHC.Name]
 
 {-
 hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
@@ -825,14 +825,14 @@ hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
                       `SYB.extQ` match
                       `SYB.extQ` stmts) t
 -}
-hsVisiblePNs e t = do
-    logm $ "hsVisiblePNs:entered"
+hsVisiblePNs e t = res
+  where
     {- -}
-    r <- applyTU (full_tdTUGhc (constTU [] `adhocTU` top
+          r = (applyTU (full_tdTUGhc (constTU [] `adhocTU` top
                                            `adhocTU` expr
                                            `adhocTU` decl
                                            `adhocTU` match
-                                           `adhocTU` stmts)) t
+                                           `adhocTU` stmts)) t) :: Maybe [GHC.Name]
    {- -}
 {-
     r <- SYB.everythingStaged SYB.Renamer (++) []
@@ -842,57 +842,45 @@ hsVisiblePNs e t = do
                       `SYB.extQ` match
                       `SYB.extQ` stmts) t
 -}
-    logm $ "hsVisiblePNs:done"
-    return r
-      where
+          res =  fromMaybe [] r
+      -- where
+          top :: (MonadPlus m) => GHC.RenamedSource -> m [GHC.Name]
           top ((groups,_,_,_) :: GHC.RenamedSource)
             | findEntity e (GHC.hs_valds groups) = do -- ++AZ++:TODO: Should be GHC.HsValBinds GHC.Name, not groups
-             logm $ "hsVisiblePNs:top starting"
-             (_df,dd) <- hsFreeAndDeclaredPNs (GHC.hs_valds groups)
-             logm $ "hsVisiblePNs:top done"
+             let (_df,dd) = hsFreeAndDeclaredPNs (GHC.hs_valds groups)
              return dd
           top _ = return []
 
           expr ((GHC.HsLet decls e1) :: GHC.HsExpr GHC.Name)
              |findEntity e e1 || findEntity e decls = do
-              logm $ "hsVisiblePNs:expr starting"
-              (_df,dd) <- hsFreeAndDeclaredPNs decls
-              logm $ "hsVisiblePNs:expr done"
+              let (_df,dd) = hsFreeAndDeclaredPNs decls
               return dd
 
           expr _ = return []
 
           decl ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
             |findEntity e rhs = do
-             logm $ "hsVisiblePNs:decl starting"
-             (_pf,pd) <- hsFreeAndDeclaredPNs pat
-             (_df,dd) <- hsFreeAndDeclaredPNs rhs
-             logm $ "hsVisiblePNs:decl done"
+             let (_pf,pd) = hsFreeAndDeclaredPNs pat
+             let (_df,dd) = hsFreeAndDeclaredPNs rhs
              return (pd `union` dd)
           decl _ = return []
 
           -- Pick up from HsAlt etc
           match ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
             |findEntity e rhs = do
-             logm $ "hsVisiblePNs:match starting"
-             (_pf,pd) <- hsFreeAndDeclaredPNs pats
-             (_df,dd) <- hsFreeAndDeclaredPNs rhs
-             logm $ "hsVisiblePNs:match done"
+             let (_pf,pd) = hsFreeAndDeclaredPNs pats
+             let (_df,dd) = hsFreeAndDeclaredPNs rhs
              return (pd `union` dd)
           match _ = return []
 
           stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name)
             | findEntity e binds = do
-             logm $ "hsVisiblePNs:stmts 1 starting"
-             (_df,dd) <- hsFreeAndDeclaredPNs binds
-             logm $ "hsVisiblePNs:stmts 1 done"
+             let (_df,dd) = hsFreeAndDeclaredPNs binds
              return dd
 
           stmts ((GHC.BindStmt pat rhs _ _) :: GHC.Stmt GHC.Name)
             | findEntity e rhs = do
-             logm $ "hsVisiblePNs:stmts 2 starting"
-             (_df,dd) <- hsFreeAndDeclaredPNs pat
-             logm $ "hsVisiblePNs:stmts 2 done"
+             let (_df,dd) = hsFreeAndDeclaredPNs pat
              return dd
 
           stmts _ = return []
@@ -1076,67 +1064,72 @@ usedWithoutQualR name parsed = fromMaybe False res
 -- those declared variables that are visible to the main expression
 -- inside t.
 -- NOTE: Expects to be given RenamedSource
-hsFDsFromInside:: (SYB.Data t) => t-> RefactGhc ([GHC.Name],[GHC.Name])
-hsFDsFromInside t = do
-     (f,d) <- hsFDsFromInside' t
-     return (nub f, nub d)
+hsFDsFromInside:: (SYB.Data t) => t-> ([GHC.Name],[GHC.Name])
+hsFDsFromInside t = res
    where
-     hsFDsFromInside' = applyTU (once_tdTU (failTU  `adhocTU` renamed
-                                                    `adhocTU` decl
-                                                    `adhocTU` match
-                                                    `adhocTU` expr
-                                                    `adhocTU` stmts ))
+     (f,d) = fromMaybe ([],[]) $ hsFDsFromInside' t
+     res = (nub f, nub d)
 
+     hsFDsFromInside' :: (SYB.Data t) => t -> Maybe ([GHC.Name],[GHC.Name])
+     hsFDsFromInside' t = do
+          let r1 = applyTU (once_tdTU (failTU  `adhocTU` renamed
+                                               `adhocTU` decl
+                                               `adhocTU` match
+                                               `adhocTU` expr
+                                               `adhocTU` stmts )) t
+          let (f,d) = fromMaybe ([],[]) r1
+          return (nub f, nub d)
 
      renamed ((grp,_,_,_)::GHC.RenamedSource)
-        = hsFreeAndDeclaredPNs $ GHC.hs_valds grp
+        = return $ hsFreeAndDeclaredPNs $ GHC.hs_valds grp
 
  {-    decls (ds::[HsDeclP])                    --CHECK THIS.
        = hsFreeAndDeclaredPNs decls
 -}
      -- Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
      match ((GHC.Match pats _type rhs):: GHC.Match GHC.Name ) = do
-       (pf, pd) <- hsFreeAndDeclaredPNs pats
-       (rf, rd) <- hsFreeAndDeclaredPNs rhs
+       let (pf, pd) = hsFreeAndDeclaredPNs pats
+       let (rf, rd) = hsFreeAndDeclaredPNs rhs
        return (nub (pf `union` (rf \\ pd)),
                nub (pd `union` rd))
 
 
+     decl :: GHC.HsBind GHC.Name -> Maybe ([GHC.Name],[GHC.Name])
      decl ((GHC.FunBind (GHC.L _ _) _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name) =
        do
-         fds <- mapM hsFDsFromInside matches
+         fds <- mapM hsFDsFromInside' matches
          -- error (show $ nameToString n)
          return (nub (concatMap fst fds), nub (concatMap snd fds))
 
      decl ((GHC.PatBind p rhs _ _ _) :: GHC.HsBind GHC.Name) =
        do
-         (pf, pd) <- hsFreeAndDeclaredPNs p
-         (rf, rd) <- hsFreeAndDeclaredPNs rhs
+         let (pf, pd) = hsFreeAndDeclaredPNs p
+         let (rf, rd) = hsFreeAndDeclaredPNs rhs
          return
            (nub (pf `union` (rf \\ pd)),
             nub (pd `union` rd))
 
      decl ((GHC.VarBind p rhs _) :: GHC.HsBind GHC.Name) =
        do
-         (pf, pd) <- hsFreeAndDeclaredPNs p
-         (rf, rd) <- hsFreeAndDeclaredPNs rhs
+         let (pf, pd) = hsFreeAndDeclaredPNs p
+         let (rf, rd) = hsFreeAndDeclaredPNs rhs
          return
            (nub (pf `union` (rf \\ pd)),
             nub (pd `union` rd))
 
      expr ((GHC.HsLet decls e) :: GHC.HsExpr GHC.Name) =
        do
-         (df,dd) <- hsFreeAndDeclaredPNs decls
-         (ef,_)  <- hsFreeAndDeclaredPNs e
+         let (df,dd) = hsFreeAndDeclaredPNs decls
+         let (ef,_)  = hsFreeAndDeclaredPNs e
          return (nub (df `union` (ef \\ dd)), nub dd)
 
      expr ((GHC.HsLam (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name) =
-       hsFreeAndDeclaredPNs matches
+       return $ hsFreeAndDeclaredPNs matches
 
      expr ((GHC.HsCase e (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name) =
        do
-         (ef,_)  <- hsFreeAndDeclaredPNs e
-         (df,dd) <- hsFreeAndDeclaredPNs matches
+         let (ef,_)  = hsFreeAndDeclaredPNs e
+         let (df,dd) = hsFreeAndDeclaredPNs matches
          return (nub (df `union` (ef \\ dd)), nub dd)
 
      -- expr _ = return ([],[])
@@ -1144,14 +1137,14 @@ hsFDsFromInside t = do
 
      stmts ((GHC.BindStmt pat e1 e2 e3) :: GHC.Stmt GHC.Name) =
        do
-         (pf,pd)  <- hsFreeAndDeclaredPNs pat
-         (ef,_ed) <- hsFreeAndDeclaredPNs e1
-         (df,dd)  <- hsFreeAndDeclaredPNs [e2,e3]
+         let (pf,pd)  = hsFreeAndDeclaredPNs pat
+         let (ef,_ed) = hsFreeAndDeclaredPNs e1
+         let (df,dd)  = hsFreeAndDeclaredPNs [e2,e3]
          return
            (nub (pf `union` (((ef \\ dd) `union` df) \\ pd)), nub (pd `union` dd))
 
      stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name) =
-       hsFreeAndDeclaredPNs binds
+       return $ hsFreeAndDeclaredPNs binds
 
      -- stmts _ = return ([],[])
      stmts _ = mzero
@@ -1233,7 +1226,7 @@ hsFDsFromInside t = do (f,d)<-hsFDsFromInside' t
 -- are in the String format
 hsFDNamesFromInside::(SYB.Data t) => t -> RefactGhc ([String],[String])
 hsFDNamesFromInside t = do
-  (f,d) <- hsFDsFromInside t
+  let (f,d) = hsFDsFromInside t
   return
     ((nub.map showGhc) f, (nub.map showGhc) d)
 -- hsFDNamesFromInside::(Term t, MonadPlus m)=>t->m ([String],[String])
@@ -4238,7 +4231,7 @@ autoRenameLocalVar modifyToks pn t = do
 
       where
          worker t =do (f,d) <- hsFDNamesFromInside t
-                      ds <- hsVisibleNames pn (hsValBinds t)
+                      let ds = hsVisibleNames pn (hsValBinds t)
                       let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
                       newName <- mkNewGhcName Nothing newNameStr
                       if modifyToks

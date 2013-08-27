@@ -329,7 +329,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
      causeAmbiguity <- causeAmbiguityInExports oldPN  newNameGhc
       -- f' contains names imported from other modules;
       -- d' contains the top level names declared in this module;
-     (f',d') <- hsFDsFromInside renamed
+     let (f',d') = hsFDsFromInside renamed
       --filter those qualified free variables in f'
      -- let (f,d) = ((nub.map pNtoName.filter (not.isQualifiedPN)) f', (nub.map pNtoName) d')
      let (f,d) = (map nameToString f',map nameToString d')
@@ -358,7 +358,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                  -- isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName Nothing
                                  isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName (Just newNameGhc)
                                  logm $ "renameTopLevelVarName:after isInScopeUnqual"
-                                 ds <- hsVisibleNames oldPN renamed
+                                 let ds = hsVisibleNames oldPN renamed
                                  logm $ "renameTopLevelVarName:ds computed=" ++ (show ds)
                                  -- '\\[pNtoName oldPN]' handles the case in which the new name is same as the old name   
                                  if existChecking && elem newName ((nub (ds `union` f)) \\[nameToString oldPN])
@@ -496,7 +496,7 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
        renamed <- getRefactRenamed
        isInScopeUnqual <- isInScopeAndUnqualifiedGhc (nameToString oldPN) Nothing
        isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName Nothing
-       vs <- hsVisibleNames oldPN renamed   --Does this check names other than variable names?
+       let vs = hsVisibleNames oldPN renamed   --Does this check names other than variable names?
        if elem newName ((nub vs) \\ [nameToString oldPN])  || isInScopeUnqualNew
          -- then renamePN oldPN (Just qual) newName True mod  --rename to qualified Name
          -- else do renamePN oldPN Nothing newName True mod

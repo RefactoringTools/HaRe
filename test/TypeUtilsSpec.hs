@@ -564,7 +564,7 @@ spec = do
 
       let
         comp = do
-          r <- hsFreeAndDeclaredPNs renamed
+          let r = hsFreeAndDeclaredPNs renamed
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
@@ -595,7 +595,7 @@ spec = do
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
       let
         comp = do
-          r <- hsFreeAndDeclaredPNs renamed
+          let r = hsFreeAndDeclaredPNs renamed
           return r
       -- ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
@@ -617,7 +617,7 @@ spec = do
 
       let
         comp = do
-          r <- hsFreeAndDeclaredPNs decl
+          let r = hsFreeAndDeclaredPNs decl
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
@@ -639,7 +639,7 @@ spec = do
       let
         comp = do
           -- r <- hsFreeAndDeclaredPNs renamed
-          r <- hsFreeAndDeclaredPNs $ hsBinds renamed
+          let r = hsFreeAndDeclaredPNs $ hsBinds renamed
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
@@ -663,7 +663,7 @@ spec = do
 
       let
         comp = do
-          r <- hsFreeAndDeclaredPNs renamed
+          let r = hsFreeAndDeclaredPNs renamed
           -- r <- hsFreeAndDeclaredPNs $ hsBinds renamed
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -754,7 +754,7 @@ spec = do
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       let
         comp = do
-          r <- hsVisiblePNs tl1 tup
+          let r = hsVisiblePNs tl1 tup
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
@@ -774,7 +774,7 @@ spec = do
       (showGhc decl) `shouldBe` "DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z"
       let
         comp = do
-         r <- hsVisiblePNs tl1 decl
+         let r = hsVisiblePNs tl1 decl
          return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
@@ -793,7 +793,7 @@ spec = do
       (showGhc rhs) `shouldBe` "let ll = 34 in ll GHC.Num.+ z"
       let
         comp = do
-          r <- hsVisiblePNs tl1 rhs
+          let r = hsVisiblePNs tl1 rhs
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
