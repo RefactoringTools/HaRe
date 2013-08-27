@@ -82,7 +82,7 @@ Executable ghc-hare
         -- Main-Is:                Main.hs
         Main-Is:                MainHaRe.hs
         -- GHC-Options:            -Wall
-        GHC-Options:            -prof -fprof-auto -rtsopts
+        GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
         Build-Depends:          base >=4

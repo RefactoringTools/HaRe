@@ -524,6 +524,7 @@ hsFreeAndDeclaredPNs' t = do
           -- cc (Just (f1,d1)) (Just (f2,d2)) = Just (f1,d1)
           -- cc Nothing x = x
           -- cc x Nothing = x
+{-
           -- hsFreeAndDeclared' :: RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
           hsFreeAndDeclared' :: Maybe ([GHC.Name],[GHC.Name])
           hsFreeAndDeclared' = somethingStaged SYB.Renamer Nothing
@@ -537,7 +538,8 @@ hsFreeAndDeclaredPNs' t = do
                                            `SYB.extQ` stmts
                                            `SYB.extQ` rhs
                                        ) t
-{-
+-}
+
           hsFreeAndDeclared' = applyTU (stop_tdTUGhc (failTU
                                                          `adhocTU` expr
                                                          `adhocTU` pattern
@@ -546,8 +548,6 @@ hsFreeAndDeclaredPNs' t = do
                                                          `adhocTU` stmts
                                                          `adhocTU` rhs
                                                           )) t
--}
-
 
           -- TODO: ++AZ++ Note:After renaming, HsBindLR has field bind_fvs
           --       containing locally bound free vars
@@ -847,61 +847,52 @@ hsVisiblePNs e t = do
       where
           top ((groups,_,_,_) :: GHC.RenamedSource)
             | findEntity e (GHC.hs_valds groups) = do -- ++AZ++:TODO: Should be GHC.HsValBinds GHC.Name, not groups
+             logm $ "hsVisiblePNs:top starting"
              (_df,dd) <- hsFreeAndDeclaredPNs (GHC.hs_valds groups)
+             logm $ "hsVisiblePNs:top done"
              return dd
           top _ = return []
 
-          {- ++AZ++ included in (GHC.Match ...) below
-          expr ((GHC.HsLam (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name)
-            | findEntity e matches = dd
-           where
-             (_df,dd) = hsFreeAndDeclaredPNs matches
-          ++AZ++ end -}
-
           expr ((GHC.HsLet decls e1) :: GHC.HsExpr GHC.Name)
              |findEntity e e1 || findEntity e decls = do
+              logm $ "hsVisiblePNs:expr starting"
               (_df,dd) <- hsFreeAndDeclaredPNs decls
+              logm $ "hsVisiblePNs:expr done"
               return dd
-          {- ++AZ++ included in (GHC.Match ...) below
-          -- This is the equivalent of HsAlt
-          expr ((GHC.HsCase _ (GHC.MatchGroup matches _)) :: GHC.HsExpr GHC.Name)
-            | findEntity e matches = dd
-           where
-             (_df,dd) = hsFreeAndDeclaredPNs matches
-          ++AZ++ end -}
 
           expr _ = return []
 
-          {- ++AZ++ included in (GHC.Match ...) below
-          decl ((GHC.FunBind _ _ (GHC.MatchGroup matches _) _ _ _) :: GHC.HsBind GHC.Name) 
-            | findEntity e matches = dd
-           where
-             (_df,dd) = hsFreeAndDeclaredPNs matches
-          ++AZ++ end -}
-
           decl ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
             |findEntity e rhs = do
+             logm $ "hsVisiblePNs:decl starting"
              (_pf,pd) <- hsFreeAndDeclaredPNs pat
              (_df,dd) <- hsFreeAndDeclaredPNs rhs
+             logm $ "hsVisiblePNs:decl done"
              return (pd `union` dd)
           decl _ = return []
 
           -- Pick up from HsAlt etc
           match ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
             |findEntity e rhs = do
+             logm $ "hsVisiblePNs:match starting"
              (_pf,pd) <- hsFreeAndDeclaredPNs pats
              (_df,dd) <- hsFreeAndDeclaredPNs rhs
+             logm $ "hsVisiblePNs:match done"
              return (pd `union` dd)
           match _ = return []
 
           stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name)
             | findEntity e binds = do
+             logm $ "hsVisiblePNs:stmts 1 starting"
              (_df,dd) <- hsFreeAndDeclaredPNs binds
+             logm $ "hsVisiblePNs:stmts 1 done"
              return dd
 
           stmts ((GHC.BindStmt pat rhs _ _) :: GHC.Stmt GHC.Name)
             | findEntity e rhs = do
+             logm $ "hsVisiblePNs:stmts 2 starting"
              (_df,dd) <- hsFreeAndDeclaredPNs pat
+             logm $ "hsVisiblePNs:stmts 2 done"
              return dd
 
           stmts _ = return []
@@ -1923,7 +1914,7 @@ instance FindEntity GHC.Name where
 
   findEntity n t = fromMaybe False res
    where
-    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+    res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
 
     worker (name::GHC.Name)
       | n == name = Just True
@@ -1935,7 +1926,7 @@ instance FindEntity (GHC.Located GHC.Name) where
 
   findEntity n t = fromMaybe False res
    where
-    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+    res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
 
     worker (name::GHC.Located GHC.Name)
       | n == name = Just True
@@ -1945,10 +1936,9 @@ instance FindEntity (GHC.Located GHC.Name) where
 
 instance FindEntity (GHC.Located (GHC.HsExpr GHC.Name)) where
 
-  -- findEntity n t = error "findEntity (GHC.Located (GHC.HsExpr GHC.Name)) undefined"
   findEntity e t = fromMaybe False res
    where
-    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+    res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
 
     worker (expr::GHC.Located (GHC.HsExpr GHC.Name))
       | sameOccurrence e expr = Just True
@@ -1959,7 +1949,7 @@ instance FindEntity (GHC.Located (GHC.HsExpr GHC.Name)) where
 instance FindEntity (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) where
   findEntity e t = fromMaybe False res
    where
-    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+    res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
 
     worker (expr::(GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)))
       | sameOccurrence e expr = Just True
@@ -1968,7 +1958,7 @@ instance FindEntity (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) where
 instance FindEntity (GHC.Located (GHC.HsDecl GHC.Name)) where
   findEntity d t = fromMaybe False res
    where
-    res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+    res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
 
     worker (decl::(GHC.Located (GHC.HsDecl GHC.Name)))
       | sameOccurrence d decl = Just True
