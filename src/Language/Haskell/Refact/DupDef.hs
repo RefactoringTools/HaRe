@@ -53,7 +53,7 @@ comp fileName newName (row, col) = do
                           if modIsExported modName renamed
                            then do clients <- clientModsAndFiles modName
                                    logm ("DupDef: clients=" ++ (showGhc clients)) -- ++AZ++ debug
-                                   refactoredClients <- mapM (refactorInClientMod modName 
+                                   refactoredClients <- mapM (refactorInClientMod (GHC.unLoc pn) modName 
                                                              (findNewPName newName renamed')) clients
                                    return $ refactoredMod:refactoredClients
                            else  return [refactoredMod]
@@ -168,9 +168,9 @@ findNewPName name renamed = gfromJust "findNewPName" res
 -- | Do refactoring in the client module. That is to hide the
 -- identifer in the import declaration if it will cause any problem in
 -- the client module.
-refactorInClientMod :: GHC.ModuleName -> GHC.Name -> GHC.ModSummary
+refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> GHC.ModSummary
                     -> RefactGhc ApplyRefacResult
-refactorInClientMod serverModName newPName modSummary
+refactorInClientMod oldPN serverModName newPName modSummary
   = do
        logm ("refactorInClientMod: (serverModName,newPName)=" ++ (showGhc (serverModName,newPName))) -- ++AZ++ debug
        let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
@@ -197,8 +197,7 @@ refactorInClientMod serverModName newPName modSummary
      needToBeHided name exps parsed = do
          let usedUnqual = usedWithoutQualR name parsed
          logm ("refactorInClientMod: (usedUnqual)=" ++ (showGhc (usedUnqual))) -- ++AZ++ debug
-         return $ usedUnqual || causeNameClashInExports name serverModName exps
-
+         return $ usedUnqual || causeNameClashInExports oldPN name serverModName exps
 
 doDuplicatingClient :: GHC.ModuleName -> [GHC.Name]
               -> RefactGhc ()

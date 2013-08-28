@@ -442,22 +442,30 @@ isExplicitlyExported pn (_g,_imps,exps,_docs)
 
 -- ---------------------------------------------------------------------
 
+
 -- | Check if the proposed new name will conflict with an existing export
-causeNameClashInExports::  GHC.Name          -- ^ The original name??
+causeNameClashInExports::  GHC.Name          -- ^ The original name
+                        -> GHC.Name          -- ^ The new name
                         -> GHC.ModuleName    -- ^ The identity of the module
                         -> GHC.RenamedSource -- ^ The AST of the module
                         -> Bool              -- ^ The result
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
-causeNameClashInExports pn {- newName -} modName renamed@(_g,imps,maybeExps,_doc) -- exps
+causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
   = let exps = fromMaybe [] maybeExps
         varExps = filter isImpVar exps
-        modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if showGhc x== showGhc pn
+        -- TODO: make withoutQual part of the API
+        withoutQual n = showGhc $ GHC.localiseName n
+        modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar x))->if withoutQual x== withoutQual newName
                                                         then [GHC.moduleName $ GHC.nameModule x]
                                                         else []) varExps)
-    in (isExplicitlyExported pn renamed) &&
-        ( any (modIsUnQualifedImported renamed) modNames
-            || elem modName modNames)
+        res = (isExplicitlyExported pn renamed) &&
+               ( any (modIsUnQualifedImported renamed) modNames
+                 || elem modName modNames)
+    in res
+    -- in error $ "causeNameClashInExports:modNames=" ++ (showGhc modNames)
+    -- in error $ "causeNameClashInExports:explicitlyExported=" ++ (showGhc (isExplicitlyExported pn renamed))
+    -- in error $ "causeNameClashInExports:any unqualImp=" ++ (showGhc (any (modIsUnQualifedImported renamed) modNames))
  where
     isImpVar (GHC.L _ x) = case x of
       GHC.IEVar _ -> True
@@ -472,11 +480,27 @@ causeNameClashInExports pn {- newName -} modName renamed@(_g,imps,maybeExps,_doc
 
 
 -- Original seems to be
---   1. pick up new module name if it is in the export list already
+--   1. pick up any module names in the export list with same unQual
+     --   part as the new name
 --   2. Check if the old is exported explicitly
 --   3.  if so, if the new module is exported unqualified
---        or xxx
+--        or belongs to the current module
 --       then it will cause a clash
+{-
+
+modNames capture potential clashes e.g.
+
+@
+module Exports (head) where
+
+import Data.Text (head)
+@
+
+So if the new name was 'head', then the modNames would be
+ [Data.Text]
+
+-}
+
 
 {- ++AZ++ Original
 

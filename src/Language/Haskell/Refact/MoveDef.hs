@@ -522,7 +522,9 @@ namesNeedToBeHided clientModule modNames pns = do
                 --is exported unqualifiedly by an Ent decl
 
             -- was || causeNameClashInExports pn modNames renamed)
-            || any (\m -> causeNameClashInExports pn m renamed) modNames)
+            -- TODO: ++AZ++ check if next line needs to be reinstated
+            -- || any (\m -> causeNameClashInExports oldPN pn m renamed) modNames)
+            || False)
            then return [pn]
            else return []
 

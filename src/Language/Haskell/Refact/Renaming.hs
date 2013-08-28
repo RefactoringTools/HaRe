@@ -339,6 +339,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
      logm $ "renameTopLevelVarName:(newName,newNameStr)=" ++ (show (newName,newNameStr))
      scopeClashNames <- inScopeNames newName
      logm $ "renameTopLevelVarName:(scopeClashNames,intersection)=" ++ (showGhc (scopeClashNames,intersect scopeClashNames f'))
+     logm $ "renameTopLevelVarName:(oldPN,modName)=" ++ (showGhc (oldPN,modName))
      if (nonEmptyList $ intersect scopeClashNames f')
      -- if elem newNameStr f
        then error ("The new name will cause ambiguous occurrence problem,"
@@ -347,7 +348,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                                          -- to newName automatically.
        else if existChecking && elem newNameStr (d \\ [nameToString oldPN])  --only check the declared names here.
              then error ("Name '"++newName++"'  already existed\n") --the same name has been declared in this module.
-             else if exportChecking && causeNameClashInExports oldPN modName renamed -- exps
+             else if exportChecking && causeNameClashInExports oldPN newNameGhc modName renamed
                     then error ("The new name will cause conflicting exports, please select another new name!") 
                     else if exportChecking && causeAmbiguity -- causeAmbiguityInExports oldPN  newNameGhc {- inscps -} renamed
                           then error $"The new name will cause ambiguity in the exports of module "++ show modName ++ ", please select another name!"   
@@ -439,7 +440,7 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
       renamed <- getRefactRenamed
       let modName = GHC.moduleName $ GHC.ms_mod modSummary
       -- causeNameClashInExports oldPN newName mod exps
-      logm $ "renameInClientMod:causeNameClashInExports oldPN modName renamed=" ++ (show $ causeNameClashInExports oldPN modName renamed)
+      -- logm $ "renameInClientMod:causeNameClashInExports oldPN modName renamed=" ++ (show $ causeNameClashInExports oldPN modName renamed)
 
       -- There are two different tests we need to do here
       -- 1. Does the new name clash with some existing name in the
@@ -458,7 +459,7 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
            (refactoredMod,_) <- applyRefac (refactRenameSimple oldPN newName newNameGhc True) RSAlreadyLoaded
            return [refactoredMod]
        else
-        do if causeNameClashInExports oldPN modName renamed
+        do if causeNameClashInExports oldPN newNameGhc modName renamed
              then error $"The new name will cause conflicting exports in module "++ show newName ++ ", please select another name!"
              else do
                (refactoredMod,_) <- applyRefac (refactRenameComplex oldPN newName newNameGhc) RSAlreadyLoaded

@@ -2446,16 +2446,56 @@ spec = do
   -- ---------------------------------------------
 
   describe "causeNameClashInExports" $ do
+    it "Returns True if there is a clash" $ do
+
+      (t, _toks) <- parsedFileGhc "./test/testdata/Renaming/ConflictExport.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let modu = GHC.ms_mod $ GHC.pm_mod_summary $ GHC.tm_parsed_module t
+
+      -- Is this the right module?
+      let Just (modName,_) = getModuleName parsed
+
+      let Just (GHC.L _ myFringe) = locToName (GHC.mkFastString "./test/testdata/Renaming/ConflictExport.hs") (9,1) renamed
+      (showGhc myFringe) `shouldBe` "Renaming.ConflictExport.myFringe"
+
+      -- old name is myFringe
+      -- new name is "Renaming.ConflictExport.fringe"
+      let newName = mkTestGhcName 1 (Just modu) "fringe"
+
+      (showGhc modu) `shouldBe` "main:Renaming.ConflictExport"
+      (showGhc newName) `shouldBe` "Renaming.ConflictExport.fringe"
+
+      (showGhc $ GHC.localiseName newName) `shouldBe` "fringe"
+
+      let res = causeNameClashInExports myFringe newName modName renamed
+      res `shouldBe` True
+
     it "Returns False if there is no clash" $ do
-      (t, toks) <- parseSourceFileTest "./test/testdata/MoveDef/Md1.hs"
-      putParsedModule t toks
-      renamed <- getRefactRenamed
+      (t, _toks) <- parsedFileGhc "./test/testdata/Renaming/ConflictExport.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let res = causeNameClashInExports name modName renamed
+      let modu = GHC.ms_mod $ GHC.pm_mod_summary $ GHC.tm_parsed_module t
+
+      -- Is this the right module?
+      let Just (modName,_) = getModuleName parsed
+
+      let Just (GHC.L _ myFringe) = locToName (GHC.mkFastString "./test/testdata/Renaming/ConflictExport.hs") (9,1) renamed
+      (showGhc myFringe) `shouldBe` "Renaming.ConflictExport.myFringe"
+
+      -- old name is myFringe
+      -- new name is "Renaming.ConflictExport.fringe"
+      let newName = mkTestGhcName 1 (Just modu) "fringeOk"
+
+      (showGhc modu) `shouldBe` "main:Renaming.ConflictExport"
+      (showGhc newName) `shouldBe` "Renaming.ConflictExport.fringeOk"
+
+      (showGhc $ GHC.localiseName newName) `shouldBe` "fringeOk"
+
+      let res = causeNameClashInExports myFringe newName modName renamed
       res `shouldBe` False
-
-    it "Returns True if clash of type xx" $ do
-      pending -- "write this "
 
   -- --------------------------------------
 

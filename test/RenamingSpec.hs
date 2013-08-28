@@ -424,9 +424,9 @@ spec = do
 
     it "ConflictExports" $ do
      --     (["ConflictExport.hs","D6.hs"],["fringe","7","1"])]
-     -- rename (logTestSettingsMainfile "./test/testdata/Renaming/ConflictExport.hs") "./test/testdata/Renaming/ConflictExport.hs" "fringe" (7,1)
+     -- rename (logTestSettingsMainfile "./test/testdata/Renaming/ConflictExport.hs") testCradle "./test/testdata/Renaming/ConflictExport.hs" "fringe" (7,1)
      res <- catchException (rename (testSettingsMainfile "./test/testdata/Renaming/ConflictExport.hs") testCradle "./test/testdata/Renaming/ConflictExport.hs" "fringe" (7,1))
-     (show res) `shouldBe` "Just \"The new name will cause  conflicting exports, please select another new name!\""
+     (show res) `shouldBe` "Just \"The new name will cause conflicting exports, please select another new name!\""
 
 {-
 TestCases{refactorCmd="rename",
