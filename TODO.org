@@ -6,12 +6,15 @@
 * TODO look at using ordnub
 * TODO check .lhs support
 * TODO check cabal support
-* DONE liftIO is performance bottleneck in MonadPlus implementation of RefactGhc monad
-       - sorted out by moving the computation into the Maybe monad
-         instead.
-* DONE locToName fails for name in export list
-* TODO rename 'down' to 'downWeGo' in syz Zipper.hs fails with "will cause name clash in exports"
+* DONE rename 'down' to 'downWeGo' in syz Zipper.hs fails with "will cause name clash in exports"
 * TODO liftToTopLevel in syz Zipper of g from zmapQ fails horribly
+     It seems to go back too far when looking for the where
+     statement. Perhaps look at using the zero width tokens here.
+     log:rmLocalDecl: where/let tokens are at((280,17),(303,31))
+     from: liftToTopLevel ./Data/Generics/Zipper.hs 304 3
+     in directory ~/tmp/hackage/syz-0.2.0.0
+
+* TODO add command line param to turn off timestamping of log lines when -v
 * TODO from the source files
   :PROPERTIES:
   :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
