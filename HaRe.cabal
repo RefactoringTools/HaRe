@@ -9,13 +9,16 @@ License-File:                   LICENSE
 Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
 Description:
    A Haskell 2010 refactoring tool. HaRe supports the full
-   Haskell 2010 standard, implemented in Haskell and supporting Emacs.
+   Haskell 2010 standard.
    .
    It is tested against GHC 7.4.x and 7.6.x
    .
+   It currently only has emacs integration built in, community input
+   welcome for others.
+   .
    Warning: This is alpha code. Always commit code to your version
    control system before refactoring. The developers make no
-   warranties, use at your own risk.
+   warranties, use at your own risk. May frighten children and dogs.
 
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring

@@ -12,7 +12,43 @@ of the GHC library problematic.
 
 -}
 
-module Language.Haskell.Refact.Utils.GhcUtils where
+module Language.Haskell.Refact.Utils.GhcUtils (
+    -- * SYB versions
+      everythingButStaged
+    , somethingStaged
+    , somewhereMStaged
+    , somewhereMStagedBu
+    , everywhereMStaged
+    , everywhereMStaged'
+    , everywhereStaged
+    , everywhereStaged'
+    , listifyStaged
+    -- ** SYB Utility
+    , checkItemRenamer
+    -- * Strafunski StrategyLib versions
+    , full_tdTUGhc
+    , stop_tdTUGhc
+    , allTUGhc'
+    , once_tdTPGhc
+    , once_buTPGhc
+    , oneTPGhc
+    , allTUGhc
+    -- ** Strafunski utility
+    , checkItemStage'
+    , checkItemRenamer'
+    -- * Scrap Your Zipper versions
+    , zeverywhereStaged
+    , zopenStaged
+    , zsomewhereStaged
+    , transZ
+    , transZM
+    , zopenStaged'
+    , ztransformStagedM
+    -- ** SYZ utilities
+    , checkZipperStaged
+    , upUntil
+    , findAbove
+    ) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -176,8 +212,6 @@ full_tdTUGhc s  =  op2TU mappend s (allTUGhc' (full_tdTUGhc s))
 stop_tdTUGhc :: (MonadPlus m, Monoid a) => TU a m -> TU a m
 -- stop_tdTUGhc s = ifTU checkItemRenamer' (const s) (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
 stop_tdTUGhc s = (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
-
-
 
 
 allTUGhc' :: (MonadPlus m, Monoid a) => TU a m -> TU a m

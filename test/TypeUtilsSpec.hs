@@ -2405,16 +2405,17 @@ spec = do
 
   -- ---------------------------------------------
 
-  describe "usedWithoutQual" $ do
+  describe "usedWithoutQualR" $ do
     it "Returns True if the identifier is used unqualified" $ do
       let
         comp = do
           (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
           putParsedModule t toks
           renamed <- getRefactRenamed
+          parsed <- getRefactParsed
 
           let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (14,21) renamed
-          res <- usedWithoutQual name renamed
+          let res = usedWithoutQualR name parsed
           return (res,n,name)
 
       -- ((r,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }
@@ -2435,7 +2436,7 @@ spec = do
           let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) renamed
           -- let PNT np@(GHC.L _ namep) = locToPNT (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
           let Just np@(GHC.L _ namep) = locToRdrName (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
-          res <- usedWithoutQual name renamed
+          let res = usedWithoutQualR name parsed
           return (res,namep,name,n)
       -- ((r,np,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }
       ((r,np,n1,n2),s) <- runRefactGhcState comp

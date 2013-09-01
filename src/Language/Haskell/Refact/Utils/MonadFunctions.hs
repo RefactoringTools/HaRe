@@ -1,15 +1,20 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+
+-- |
+
+-- This module provides the primary interface to the combined
+-- AST/Tokens, and the functions here will ensure that any changes are
+-- properly synced and propagated.
+
 module Language.Haskell.Refact.Utils.MonadFunctions
        (
-         initRefactModule
-
        -- * Conveniences for state access
 
        -- * Original API provided
-       , fetchToks -- |Deprecated
-       , fetchToksFinal
+         fetchToksFinal
        , fetchOrigToks
+       , fetchToks -- Deprecated
        -- , putToks -- ^Deprecated, destroys token tree
        , getTypecheckedModule
        , getRefactStreamModified
@@ -56,6 +61,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        , updateToks
        , updateToksWithPos
+
+       -- * For use by the tests only
+       , initRefactModule
        ) where
 
 import Control.Monad.State

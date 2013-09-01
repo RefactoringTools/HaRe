@@ -476,6 +476,7 @@ namesNeedToBeHided :: GHC.Module -> [GHC.ModuleName] -> [GHC.Name]
    -> RefactGhc [GHC.Name]
 namesNeedToBeHided clientModule modNames pns = do
   renamed <- getRefactRenamed
+  parsed <- getRefactParsed
   logm $ "namesNeedToBeHided:willBeExportedByClientMod=" ++ (show $ willBeExportedByClientMod modNames renamed)
   gnames <- GHC.getNamesInScope
   let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
@@ -489,7 +490,7 @@ namesNeedToBeHided clientModule modNames pns = do
   if willBeExportedByClientMod modNames renamed
       then return pns
       else do
-        ff <- mapM (needToBeHided renamed) pnsMapped'
+        ff <- mapM (needToBeHided parsed) pnsMapped'
         return $ concat ff
   where
     -- | Strip the package prefix from the name and return the
@@ -511,11 +512,11 @@ namesNeedToBeHided clientModule modNames pns = do
       where
         (s,_) = break (== '.') $ reverse str
 
-    needToBeHided :: GHC.RenamedSource -> (GHC.Name,String,[GHC.Name]) -> RefactGhc [GHC.Name]
-    needToBeHided renamed (pn,_pnStr,pnsLocal) = do
-      uwoq <- mapM (\n -> usedWithoutQual n renamed) pnsLocal
+    needToBeHided :: GHC.ParsedSource -> (GHC.Name,String,[GHC.Name]) -> RefactGhc [GHC.Name]
+    needToBeHided parsed (pn,_pnStr,pnsLocal) = do
+      let uwoq = map (\n -> usedWithoutQualR n parsed) pnsLocal
 
-      logm $ "needToBeHided:(hsBinds renamed)=" ++ (showGhc (hsBinds renamed))
+      -- logm $ "needToBeHided:(hsBinds renamed)=" ++ (showGhc (hsBinds renamed))
       logm $ "needToBeHided:(pn,uwoq)=" ++ (showGhc (pn,uwoq))
 
       if (any (== True) uwoq --the same name is used in the module unqualifiedly or
@@ -523,7 +524,7 @@ namesNeedToBeHided clientModule modNames pns = do
 
             -- was || causeNameClashInExports pn modNames renamed)
             -- TODO: ++AZ++ check if next line needs to be reinstated
-            -- || any (\m -> causeNameClashInExports oldPN pn m renamed) modNames)
+            -- was || any (\m -> causeNameClashInExports oldPN pn m renamed) modNames)
             || False)
            then return [pn]
            else return []

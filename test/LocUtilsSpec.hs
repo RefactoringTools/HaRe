@@ -106,7 +106,7 @@ spec = do
       -- (showGhc decls) `shouldBe` ""
       (showGhc sqSig) `shouldBe` "Demote.WhereIn3.sq ::\n  GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int"
 
-      (showToks $ getToks ((11,1),(15,1)) toks) `shouldBe` 
+      (showToks $ getToks ((11,1),(15,1)) toks) `shouldBe`
              ("[(((11,10),(11,15)),ITwhere,\"where\"),"++
              "(((11,16),(11,16)),ITvocurly,\"\"),"++
              "(((11,16),(11,17)),ITvarid \"p\",\"p\"),"++

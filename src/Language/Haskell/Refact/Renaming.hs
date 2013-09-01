@@ -548,12 +548,6 @@ causeAmbiguityInExports old newName {- inscps -}  = do
     logm $ "causeAmbiguityInExports:(isInScopeUnqual,usedUnqual)" ++ (show (isInScopeUnqual,usedUnqual))
     return (isInScopeUnqual && usedUnqual)
 
-{- original
-causeAmbiguityInExports pn  newName inscps mod
-  = isInScopeAndUnqualified (pNtoName pn) inscps &&
-    usedWithoutQual newName (hsModExports mod)
--}
-
 {-
 siblingFieldNames (PNT pn (FieldOf con typeInfo) loc)
   = let cons=constructors typeInfo

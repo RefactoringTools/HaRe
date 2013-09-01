@@ -6,8 +6,8 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Language.Haskell.Refact.Utils
-       ( locToExp
-       , sameOccurrence
+       (
+         sameOccurrence
 
        -- * Managing the GHC / project environment
        , loadModuleGraphGhc
@@ -268,11 +268,12 @@ runRefacSessionOld settings maybeMainFile comp = do
 -- -------------
 
 runRefacSession :: RefactSettings
-         -> Cradle                       -- ^ Identifies the
-                                         -- surrounding project
-         -> RefactGhc [ApplyRefacResult] -- ^ The computation doing
-                                         -- the refactoriing
-         -> IO [FilePath]
+    -> Cradle                       -- ^ Identifies the surrounding
+                                    -- project
+    -> RefactGhc [ApplyRefacResult] -- ^ The computation doing the
+                                    -- refactoring. Normally created
+                                    -- via 'applyRefac'
+    -> IO [FilePath]
 runRefacSession settings cradle comp = do
   let
    initialState = RefSt

@@ -46,7 +46,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , isFieldName
     , isClassName
     , isInstanceName
-    ,hsPNs -- ,hsPNTs,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
+    ,hsPNs -- ,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
     ,isDeclaredIn
     ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
@@ -57,10 +57,10 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN -- ,isTopLevelPNT
-    ,isQualifiedPN {- ,isFunPNT, isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
+    ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
-    ,usedWithoutQual,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
+    ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     ,findPNT,findPN,findAllNameOccurences
     ,findPNs, findEntity, findEntity'
     ,sameOccurrence
@@ -76,7 +76,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , getModule
 
     -- ** Locations
-    ,defineLoc, useLoc {-, locToPNT,locToPN -},locToExp -- , getStartEndLoc
+    ,defineLoc, useLoc, locToExp  -- , getStartEndLoc
     ,locToName, locToRdrName
     ,getName
 
@@ -102,7 +102,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
 
     -- ** Identifiers, expressions, patterns and declarations
-    {- ,pNTtoPN-} -- ,pNTtoName,pNtoName,nameToPNT, nameToPN,pNtoPNT
     ,ghcToPN,lghcToPN, expToName
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
@@ -112,12 +111,10 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,simplifyDecl
 
     -- ** Others
-    -- , applyRefac, applyRefacToClientMods
     , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
     , causeNameClashInExports {- , inRegion , unmodified -}, prettyprint
-    , getDeclAndToks,getSigAndToks
 
     , removeOffset
 
@@ -126,6 +123,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
 
     -- * Debug stuff
+    , getDeclAndToks, getSigAndToks
     -- , allPNT
     --  , allPNTLens
     , newNameTok
@@ -164,7 +162,7 @@ import qualified UniqSet       as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
-import qualified Data.Generics.Zipper as Z
+-- import qualified Data.Generics.Zipper as Z
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
@@ -382,44 +380,6 @@ modIsExported modName (_g,_emps,mexps,_mdocs)
      in if isNothing mexps
            then True
            else (nonEmptyList moduleExports)
-
-{- GHC 7.4.2 version, working on ParsedSource
--- | Return True if the current module is exported either by default
--- or by specifying the module name in the export.
-modIsExported::HsModuleP   -- ^ The AST of the module
-               -> Bool     -- ^ The result
-modIsExported (GHC.L _ mod)
-   = let exps    = GHC.hsmodExports mod
-         modName = GHC.hsmodName mod
-
-         matchModName :: GHC.Located (GHC.IE GHC.RdrName) -> Bool
-         matchModName (GHC.L _ n@(GHC.IEVar _)) =
-           case modName of
-             Nothing -> False
-             -- GHC7.4.2 version:Just (GHC.L _ mn) -> (GHC.moduleNameString mn) == GHC.showRdrName (GHC.ieName n)
-             Just (GHC.L _ mn) -> (GHC.moduleNameString mn) == GHC.getOccString (GHC.ieName n)
-         matchModName (GHC.L _ (GHC.IEModuleContents mne)) =
-           case modName of
-             Nothing -> False
-             Just (GHC.L _ mn) -> (GHC.moduleNameString mn) == (GHC.moduleNameString mne)
-         matchModName _ = False
-
-     in if isNothing exps
-           then True
-           else isJust $ find matchModName (gfromJust "modIsExported" exps)
--}
-
-{- ++AZ++ original
--- | Return True if the current module is exported either by default or by specifying the module name in the export.
-modIsExported::HsModuleP  -- ^ The AST of the module
-               ->Bool     -- ^ The result
-modIsExported mod
-   = let exps    = hsModExports mod
-         modName = hsModName mod
-     in if isNothing exps
-           then True
-           else isJust $ find (==(ModuleE modName)) (fromJust exps)
--}
 
 -- ---------------------------------------------------------------------
 
@@ -975,6 +935,7 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 
 ------------------------------------------------------------------------
 
+{- ++ replaced by usedWithoutQualR
 -- | Return True if the identifier is unqualifiedly used in the given
 -- syntax phrase.
 usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
@@ -994,9 +955,8 @@ usedWithoutQual name renamed = do
     isUsedWithoutQual toks (GHC.L l _) = do
        logm ("usedWithoutQual") -- ++AZ++ debug
        let (_,s) = ghead "usedWithoutQual" $ getToks (getGhcLoc l, getGhcLocEnd l) toks
-       -- logm $ "isUsedWithoutQual:(l,s)" ++ (showGhc (l,s)) -- ++AZ++ debug
        return $ not $ elem '.' s
-
+-}
 
 {- ++original++
 -- | Return True if the identifier is unqualifiedly used in the given
@@ -2374,76 +2334,6 @@ instance UsedByRhs HsModuleP where
 
 --------------------------------------------------------------------------------
 
-{-
--- |Find the identifier(in PNT format) whose start position is (row,col) in the
--- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
-
-locToPNT::(SYB.Data t)=>GHC.FastString -- ^ The file name
-                    ->SimpPos          -- ^ The row and column number
-                    ->t                -- ^ The syntax phrase
-                    ->PNT              -- ^ The result
--- TODO: return a Maybe, rather than encoding failure in defaultPNT
-locToPNT  fileName (row,col) t
-  = case res of
-         Just x -> x
-         Nothing -> defaultPNT
-       where
-        res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
-
-        worker (pnt@(GHC.L l _) :: (GHC.Located GHC.RdrName))
-          | inScope l = Just (PNT pnt)
-        worker _ = Nothing
-
-        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
-          | inScope l = Just (PNT (GHC.L l name))
-        workerBind _ = Nothing
-
-        workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
-          | inScope l = Just (PNT (GHC.L l name))
-        workerExpr _ = Nothing
-
-        inScope :: GHC.SrcSpan -> Bool
-        inScope l =
-          case l of
-            (GHC.UnhelpfulSpan _) -> False
-            (GHC.RealSrcSpan ss)  ->
-              (GHC.srcSpanFile ss == fileName) &&
-              (GHC.srcSpanStartLine ss == row) &&
-              (col >= (GHC.srcSpanStartCol ss)) &&
-              (col <= (GHC.srcSpanEndCol ss))
--}
-------------------------------------------------------------------------------------
-
-{- ++AZ++ getting rid of PNT
--- |Find the identifier(in PNT format) whose start position is (row,col) in the
--- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
-
-allPNT::(SYB.Data t)=>GHC.FastString   -- ^ The file name
-                    ->SimpPos          -- ^ The row and column number
-                    ->t                -- ^ The syntax phrase
-                    ->[PNT]            -- ^ The result
-allPNT  _fileName (row,col) t
-  = res
-       where
-        -- res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
-        res = SYB.everythingStaged SYB.Parser (++) []
-            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
-
-        worker (pnt :: (GHC.Located GHC.RdrName))
-          | True = [(PNT pnt)]
-        worker _ = []
-
-        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
-          | True = [(PNT (GHC.L l name))]
-        workerBind _ = []
-
-        workerExpr (GHC.L l (GHC.HsVar name) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
-          | True = [(PNT (GHC.L l name))]
-        workerExpr _ = []
--}
-
---------------------------------------------------------------------------------
-
 -- |Find the identifier(in GHC.Name format) whose start position is
 -- (row,col) in the file specified by the fileName, and returns
 -- `Nothing` if such an identifier does not exist.
@@ -2617,77 +2507,6 @@ getName str t
 
 ------------------------------------------------------------------------------------
 
-{-
--- |Find the identifier(in PNT format) whose start position is (row,col) in the
--- file specified by the fileName, and returns defaultPNT if such an identifier does not exist.
-allPNTLens ::(SYB.Data t, SYB.Typeable t)=>GHC.FastString   -- ^ The file name
-                    ->SimpPos          -- ^ The row and column number
-                    ->t                -- ^ The syntax phrase
-                    ->[PNT]            -- ^ The result
-
--- TODO: return a Maybe, rather than encoding failure in defaultPNT
-allPNTLens fileName (row,col) t
-  = res
-       where
-        -- res = []
-        res = pnts t
-
-        pnts :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
-        -- pnts = foldMapOf ghcplate getPNT
-
-        -- foldMapOf :: Monoid r => Simple Traversal a c -> (c -> r) -> a -> r
-        pnts = foldMapOf mytraverse pntQ
-        -- pnts = foldMapOf mytraverse getPNT
-        -- pnts = foldMapOf ghcplate getPNT
-        -- pnts = foldOf mytraverse
-        -- pnts = foldMapOf ghcplate getPNTBind
-
-
-mytraverse :: (SYB.Data a) => Simple Traversal a [PNT]
-mytraverse = ghcplate
-
-
--- pntQ :: (SYB.Data a, SYB.Typeable a) => a -> [PNT]
-pntQ = (          [] `SYB.mkQ` getPNT `SYB.extQ` getPNTBind)
-
-getPNT pnt@(GHC.L l name) = [PNT pnt]
-
-getPNTBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
-       = [(PNT (GHC.L l name))]
-getPNTBind _ = []
--}
--- getPNT
-
-  {-
-        -- res = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
-        res = SYB.everythingStaged SYB.Parser (++) []
-            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
-
-        worker (pnt :: (GHC.Located GHC.RdrName))
-          -- | inScope pnt = [(PNT pnt)]
-          | True = [(PNT pnt)]
-        worker _ = []
-
-        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.RdrName)))
-          -- | inScope pnt = [(PNT pnt)]
-          | True = [(PNT (GHC.L l name))]
-        workerBind _ = []
-
-        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
-          -- | inScope pnt = [(PNT pnt)]
-          | True = [(PNT (GHC.L l name))]
-        workerExpr _ = []
-
-        inScope :: GHC.Located e -> Bool
-        inScope (GHC.L l _) =
-          case l of
-            (GHC.UnhelpfulSpan _) -> False
-            (GHC.RealSrcSpan ss)  ->
-              (GHC.srcSpanFile ss == fileName) &&
-              (GHC.srcSpanStartLine ss == row) &&
-              (col >= (GHC.srcSpanStartCol ss)) &&
-              (col <= (GHC.srcSpanEndCol ss))
-  -}
 
 -- ---------------------------------------------------------------------
 
@@ -2858,18 +2677,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
      mkNewLModuleName :: GHC.ModuleName -> GHC.Located GHC.ModuleName
      mkNewLModuleName moduName = mkNewLSomething moduName
 
-{-
--- TODO: move this to TokenUtils
-increaseSrcSpan :: Int -> PosToken -> PosToken
-increaseSrcSpan amount posToken@(lt@(GHC.L l t), s) = (GHC.L newL t, s) where
-        filename = GHC.mkFastString "f"
-        newL = GHC.mkSrcSpan (GHC.mkSrcLoc filename startLine startCol) (GHC.mkSrcLoc filename endLine endCol)
-        (startLine, startCol) = add1 $ getLocatedStart lt
-        (endLine, endCol) = add1 $ getLocatedEnd lt
-
-        add1 :: (Int, Int) -> (Int, Int)
-        add1 (x,y) = (x+amount,y)
--}
+-- ---------------------------------------------------------------------
 
 isEmptyGroup :: GHC.HsGroup id -> Bool
 isEmptyGroup x = (==0) $ sum $
@@ -3217,39 +3025,6 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
     replaceHiding (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as _h)) h1 =
          (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as h1))
 
-{- ++AZ++ original
--- | add items to the hiding list of an import declaration which imports the specified module.
-addHiding::(MonadState (([PosToken],Bool),t1) m)
-            =>ModuleName           -- ^ The imported module name
-            ->HsModuleP            -- ^ The current module
-            ->[PName]              -- ^ The items to be added
-            ->m HsModuleP          -- ^ The result
-addHiding serverModName mod pns
-   = applyTP (full_tdTP (idTP `adhocTP` inImport)) mod
-  where
-    inImport (imp@(HsImportDecl loc (SN modName _) qual  as h)::HsImportDeclP)
-      | serverModName == modName  && not qual
-       = case h of
-           Nothing ->do ((toks,_),others)<-get
-                        let (_,endPos)=getStartEndLoc toks imp
-                            (t,(_,s)) = ghead "addHiding" $ getToks (endPos,endPos) toks 
-                            newToken=mkToken t endPos (s++" hiding ("++showEntities pNtoName pns++")")
-                            toks'=replaceToks toks endPos endPos [newToken]
-                        put ((toks',modified),others)
-                        return (replaceHiding imp (Just (True, map mkNewEnt pns )))
-           Just (True, ents) ->do ((toks,_),others)<-get
-                                  let (_,endPos)=getStartEndLoc toks imp
-                                      (t, (_,s))=ghead "addHiding"  $ getToks (endPos,endPos) toks
-                                      newToken=mkToken t endPos (","++showEntities pNtoName pns ++s)
-                                      toks'=replaceToks toks endPos endPos [newToken]
-                                  put ((toks',modified),others)
-                                  return (replaceHiding imp  (Just (True, (map mkNewEnt  pns)++ents))) 
-           Just (False, ent)  -> return imp
-    inImport x = return x
-
-    mkNewEnt pn = (Var (PNT pn Value (N (Just loc0))))
-    replaceHiding (HsImportDecl loc modName qual as h) h1 = HsImportDecl loc modName qual as h1    
--}
 -- ---------------------------------------------------------------------
 
 addParamsToDecls::
@@ -3912,44 +3687,6 @@ rmTypeSig pn t
 
 -- ---------------------------------------------------------------------
 
-{-
-
--- | Replace the name (and qualifier if specified) by a new name (and qualifier) in a PName.
---   The function does not modify the token stream.
-replaceNameInPN::Maybe ModuleName    -- ^ The new qualifier
-                 ->PName             -- ^ The old PName
-                 ->String            -- ^ The new name
-                 ->PName             -- ^ The result
-replaceNameInPN qualifier (PN (UnQual s)(UniqueNames.S loc))  newName
-  = if isJust qualifier then (PN (Qual (fromJust qualifier) newName) (UniqueNames.S loc))
-                        else (PN (UnQual newName) (UniqueNames.S loc))
-replaceNameInPN qualifier (PN (Qual modName  s)(UniqueNames.S loc))  newName
-  = if isJust qualifier  then (PN (Qual (fromJust qualifier) newName)(UniqueNames.S loc))
-                         else (PN (Qual modName newName) (UniqueNames.S loc))
-replaceNameInPN qualifier (PN (UnQual s) (G modName s1 loc))  newName
-  = if isJust qualifier then (PN (Qual (fromJust qualifier)  newName) (G modName newName loc))
-                        else (PN (UnQual newName) (G modName newName loc))
-replaceNameInPN qualifier (PN (Qual modName s) (G modName1 s1 loc))  newName
-  =if isJust qualifier then (PN (Qual (fromJust qualifier) newName) (G modName1 newName loc)) 
-                       else (PN (Qual modName newName) (G modName1 newName loc))
--}
-
--- ---------------------------------------------------------------------
-
-------------------------------------------------------------------------------------------------
-
-{-
--- | Add a qualifier to an identifier if it is not qualified.
-qualifyPName::ModuleName  -- ^ The qualifier.
-              ->PName     -- ^ The identifier.
-              ->PName     -- ^ The result.
-qualifyPName qual pn
- = case pn of
-      PN (UnQual n) ty -> PN (Qual qual n ) ty
-      _                -> pn
--}
-
--- ---------------------------------------------------------------------
 
 -- TODO: Is this function needed with GHC?
 
@@ -3975,26 +3712,6 @@ rmQualifier pns t =
                -}
                return (GHC.L l (GHC.mkInternalName (GHC.nameUnique pn) (GHC.mkVarOcc s) l))
      rename x = return  x
-
-
-
-{- ++ original ++
--- | Remove the qualifier from the given identifiers in the given syntax phrase.
-rmQualifier::((MonadState (([PosToken], Bool), t1) m),Term t)
-             =>[PName]  -- ^ The identifiers.
-               ->t      -- ^ The syntax phrase.
-               ->m t    -- ^ The result.
-rmQualifier pns t
-  = applyTP (full_tdTP (adhocTP idTP rename )) t
-   where
-     rename pnt@(PNT  pn@(PN (Qual modName  s) l) ty loc@(N (Just (SrcLoc fileName _ row col))))
-       | elem pn pns
-       = do do ((toks,_), others)<-get
-               let toks' =replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
-               put ((toks', modified), others)
-               return (PNT (PN (UnQual s) l) ty loc)
-     rename x = return  x
--}
 
 -- ---------------------------------------------------------------------
 
@@ -4452,26 +4169,11 @@ findPNs pns
            | elem (GHC.nameUnique n) uns = Just True
         worker _ = Nothing
 
-
-{-
-
--- | Return True if any of the specified PNames ocuur in the given syntax phrase.
-findPNs::(Term t)=>[PName]->t->Bool
-findPNs pns
-   =(fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` worker)))
-     where
-        worker (pn1::PName)
-           |elem pn1 pns = Just True
-        worker _ =Nothing
-
--}
-
-
 -- ---------------------------------------------------------------------
--- | Given the syntax phrase (and the token stream), find the
--- largest-leftmost expression contained in the region specified by
--- the start and end position. If no expression can be found, then
--- return the defaultExp.
+
+-- | Given the syntax phrase, find the largest-leftmost expression
+-- contained in the region specified by the start and end position, if
+-- found.
 locToExp:: (SYB.Data t,SYB.Typeable n) =>
                    SimpPos    -- ^ The start position.
                 -> SimpPos    -- ^ The end position.
@@ -4499,12 +4201,6 @@ locToExp beginPos endPos t = res
 
 --------------------------------------------------------------------------------
 
-{- ++AZ++ getting rid of PNT
--- | From PNT to PName.
--- NOTE: the PNT holds the GHC.Name value, it must be converted to a GHC.RdrName
-pNTtoPN :: PNT -> PName
-pNTtoPN (PNT (GHC.L _ n)) = PN n
--}
 
 ghcToPN :: GHC.RdrName -> PName
 ghcToPN rdr = PN rdr
@@ -4520,27 +4216,6 @@ expToName (GHC.L _ (GHC.HsVar pnt)) = pnt
 expToName (GHC.L _ (GHC.HsPar e))   = expToName e
 expToName _ = defaultName
 
-{- From Utils,hs
--- | If an expression consists of only one identifier then return this identifier in the PNT format,
---  otherwise return the default PNT.
-
--- TODO: bring in data constructor constants too.
--- expToPNT ::
---  GHC.GenLocated GHC.SrcSpan (GHC.HsExpr PNT)
---  -> Maybe PNT
-
--- Will have to look this up ....
-expToPNT (GHC.L x (GHC.HsVar pnt))                     = Just (PNT (GHC.L x pnt))
--- expToPNT (GHC.L x (GHC.HsIPVar (GHC.IPName pnt)))      = pnt
--- expToPNT (GHC.HsOverLit (GHC.HsOverLit pnt)) = pnt
--- expToPNT (GHC.HsLit litVal) = GHC.showSDoc $ GHC.ppr litVal
--- expToPNT (GHC.HsPar (GHC.L _ e)) = expToPNT e
-expToPNT _ = Nothing
-
-expToName (GHC.L l (GHC.HsVar name)) = Just name
-expToName _ = Nothing
-
--}
 
 nameToString :: GHC.Name -> String
 nameToString name = showGhc name
@@ -4568,63 +4243,6 @@ pNtoPat pname = GHC.VarPat pname
     -- =let loc=srcLoc pname
     --  in (TiDecorate.Pat (HsPId (HsVar (PNT pname Value (N (Just loc))))))
 
-{-
--- | Compose a pattern from a pName.
-pNtoPat :: PName -> HsPatP
-pNtoPat pname
-    =let loc=srcLoc pname
-     in (TiDecorate.Pat (HsPId (HsVar (PNT pname Value (N (Just loc))))))
--}
-
-{- ++AZ++ this with deal with an actual GHC.Name
-pNTtoPN (PNT pname) = case (GHC.nameModule_maybe pname) of
-        Nothing -> PN (GHC.Unqual (GHC.nameOccName pname))
-        (Just mod) -> PN (GHC.Qual (GHC.moduleName mod) (GHC.nameOccName pname))
-++AZ++ end -}
-
-{-
--- | From PName to Name. This function ignores the qualifier.
-pNtoName::PName->String
-pNtoName (PN (UnQual i) orig)=i
-pNtoName (PN (Qual modName i) orig)=i
--}
-
-{-
--- | From PNT to Name. This function ingnores the qualifier.
-pNTtoName::PNT->String
-pNTtoName=pNtoName.pNTtoPN
--}
-
--- ---------------------------------------------------------------------
-
-{-
--- TODO: THIS FUNCTION SHOULD NOT BE IN THE API.
--- | Get the list of tokens which represent the declaration that defines pn.
-getDeclToks :: PName           -- ^ The identifier.
-              -> Bool          -- ^ True means type signature should be included.
-              -> [HsDeclP]     -- ^ The declaration list in which the identifier is defined.
-              -> [PosToken]    -- ^ The input token stream.
-              -> [PosToken]    -- ^ The result.
--}
-{- Removed, not needed
--- | Get the list of tokens which represent the declaration that defines pn.
-getDeclToks :: GHC.Name        -- ^ The identifier.
-              -> Bool          -- ^ True means type signature should be included.
-              -> [GHC.LHsBind GHC.Name] -- ^ The declaration list in which the identifier is defined.
-              -> [PosToken]    -- ^ The input token stream.
-              -> [PosToken]    -- ^ The result.
-
--- ++AZ++ TODO: the last two params are swapped in getDeclAndToks
-getDeclToks pn incSig decls toks
-  = let
-        decl = ghead "getDeclToks1" $ definingDeclsNames [pn] decls False False
-        sig  = ghead "getDeclToks2" $ definingSigsNames [pn] decls
-
-        declToks = getToksForDecl decl toks
-        sigToks  = getToksForDecl sig toks
-        -- sigToks = [] -- ++AZ++
-    in if incSig then sigToks ++ declToks  else declToks
--}
 -- ---------------------------------------------------------------------
 
 -- TODO: This should use the TokenUtils API
@@ -4638,8 +4256,8 @@ getToksForDecl decl toks
 
 -- ---------------------------------------------------------------------
 
+-- TODO: this is currently only used in a test
 -- Get the toks for a declaration, and adjust its offset to 0.
--- TODO: Remove this, should use the TokenUtils versions instead
 getDeclAndToks :: (HsValBinds t)
      => GHC.Name -> Bool -> [PosToken] -> t
      -> ([GHC.LHsBind GHC.Name],[PosToken])
@@ -4649,6 +4267,18 @@ getDeclAndToks pn _incSig toks t =
     declToks  = getToksForDecl decls toks
 
   in (decls, removeToksOffset declToks)
+
+-- ---------------------------------------------------------------------
+
+-- TODO: this is currently only used in a test
+-- | Get the signature and tokens for a declaration
+getSigAndToks :: (SYB.Data t) => GHC.Name -> t -> [PosToken]
+     -> Maybe (GHC.LSig GHC.Name,[PosToken])
+getSigAndToks pn t toks
+  = case (getSig pn t) of
+      Nothing -> Nothing
+      Just sig -> Just (sig, removeToksOffset $ getToksForDecl sig toks)
+
 
 -- ---------------------------------------------------------------------
 
@@ -4684,30 +4314,6 @@ removeOffset offset toks = map (\(t,s) -> (adjust t,s)) toks
             in
               GHC.mkSrcSpan locs loce
           _ -> l
-
--- ---------------------------------------------------------------------
-
-{- This function is not used and is being removed
-
--- | Get the tokens for a signature
-getSigToks :: (SYB.Data t) => GHC.Name -> t -> [PosToken]
-     -> [PosToken]
-getSigToks pn t toks
-  = case (getSigAndToks pn t toks) of
-    Just (_sig,sigToks) -> sigToks
-    Nothing -> []
--}
-
--- ---------------------------------------------------------------------
-
--- | Get the signature and tokens for a declaration
-getSigAndToks :: (SYB.Data t) => GHC.Name -> t -> [PosToken]
-     -> Maybe (GHC.LSig GHC.Name,[PosToken])
-getSigAndToks pn t toks
-  = case (getSig pn t) of
-      Nothing -> Nothing
-      Just sig -> Just (sig, removeToksOffset $ getToksForDecl sig toks)
-
 
 -- ---------------------------------------------------------------------
 
