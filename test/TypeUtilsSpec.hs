@@ -1901,14 +1901,12 @@ spec = do
       -- toks'' = placeToksForSpan fwithspan oldSpan tree pos toks
       let z = openZipperToSpan (srcSpanToForestSpan l) $ Z.fromTree fwithspan
       let prevToks = retrievePrevLineToks z
-      (show prevToks) `shouldBe` "[((((4,18),(4,19)),ITvarid \"x\"),\"x\"),((((4,16),(4,17)),ITstar),\"*\"),((((4,14),(4,15)),ITvarid \"c\"),\"c\"),((((4,12),(4,13)),ITequal),\"=\"),((((4,10),(4,11)),ITvarid \"x\"),\"x\"),((((4,1),(4,9)),ITvarid \"toplevel\"),\"toplevel\"),((((4,1),(4,1)),ITsemi),\"\"),((((3,24),(3,31)),ITconid \"Integer\"),\"Integer\"),((((3,21),(3,23)),ITrarrow),\"->\"),((((3,13),(3,20)),ITconid \"Integer\"),\"Integer\"),((((3,10),(3,12)),ITdcolon),\"::\"),((((3,1),(3,9)),ITvarid \"toplevel\"),\"toplevel\"),((((3,1),(3,1)),ITvocurly),\"\"),((((1,19),(1,24)),ITwhere),\"where\"),((((1,8),(1,18)),ITqconid (\"DupDef\",\"Dd1\")),\"DupDef.Dd1\"),((((1,1),(1,7)),ITmodule),\"module\")]"
+      (show prevToks) `shouldBe` "RT [((((4,18),(4,19)),ITvarid \"x\"),\"x\"),((((4,16),(4,17)),ITstar),\"*\"),((((4,14),(4,15)),ITvarid \"c\"),\"c\"),((((4,12),(4,13)),ITequal),\"=\"),((((4,10),(4,11)),ITvarid \"x\"),\"x\"),((((4,1),(4,9)),ITvarid \"toplevel\"),\"toplevel\"),((((4,1),(4,1)),ITsemi),\"\"),((((3,24),(3,31)),ITconid \"Integer\"),\"Integer\"),((((3,21),(3,23)),ITrarrow),\"->\"),((((3,13),(3,20)),ITconid \"Integer\"),\"Integer\"),((((3,10),(3,12)),ITdcolon),\"::\"),((((3,1),(3,9)),ITvarid \"toplevel\"),\"toplevel\"),((((3,1),(3,1)),ITvocurly),\"\"),((((1,19),(1,24)),ITwhere),\"where\"),((((1,8),(1,18)),ITqconid (\"DupDef\",\"Dd1\")),\"DupDef.Dd1\"),((((1,1),(1,7)),ITmodule),\"module\")]"
       let prevToks' = limitPrevToks prevToks l
-      (show prevToks') `shouldBe` "[((((4,18),(4,19)),ITvarid \"x\"),\"x\"),((((4,16),(4,17)),ITstar),\"*\"),((((4,14),(4,15)),ITvarid \"c\"),\"c\"),((((4,12),(4,13)),ITequal),\"=\"),((((4,10),(4,11)),ITvarid \"x\"),\"x\"),((((4,1),(4,9)),ITvarid \"toplevel\"),\"toplevel\"),((((4,1),(4,1)),ITsemi),\"\"),((((3,24),(3,31)),ITconid \"Integer\"),\"Integer\"),((((3,21),(3,23)),ITrarrow),\"->\"),((((3,13),(3,20)),ITconid \"Integer\"),\"Integer\"),((((3,10),(3,12)),ITdcolon),\"::\"),((((3,1),(3,9)),ITvarid \"toplevel\"),\"toplevel\"),((((3,1),(3,1)),ITvocurly),\"\"),((((1,19),(1,24)),ITwhere),\"where\"),((((1,8),(1,18)),ITqconid (\"DupDef\",\"Dd1\")),\"DupDef.Dd1\"),((((1,1),(1,7)),ITmodule),\"module\")]"
+      (show prevToks') `shouldBe` "RT [((((4,18),(4,19)),ITvarid \"x\"),\"x\"),((((4,16),(4,17)),ITstar),\"*\"),((((4,14),(4,15)),ITvarid \"c\"),\"c\"),((((4,12),(4,13)),ITequal),\"=\"),((((4,10),(4,11)),ITvarid \"x\"),\"x\"),((((4,1),(4,9)),ITvarid \"toplevel\"),\"toplevel\"),((((4,1),(4,1)),ITsemi),\"\")]"
 
-Hmm. need to be explicit about reversed tokens vs non reversed. Time for a typedef
-
-      let toks' = reIndentToks (PlaceOffset 2 0 0) prevToks' toksSig
-      (show toks') `shouldBe` ""
+      let toks'2 = reIndentToks (PlaceOffset 2 0 0) (unReverseToks prevToks') toksSig
+      (show toks'2) `shouldBe` "[((((6,1),(6,1)),ITvocurly),\"\"),((((6,1),(6,9)),ITvarid \"toplevel\"),\"toplevel\"),((((6,10),(6,12)),ITdcolon),\"::\"),((((6,13),(6,20)),ITconid \"Integer\"),\"Integer\"),((((6,21),(6,23)),ITrarrow),\"->\"),((((6,24),(6,31)),ITconid \"Integer\"),\"Integer\")]"
 --
       -- typeSig'  <- putDeclToksAfterSpan l (head typeSig) (PlaceOffset 2 0 0) toksSig
       let (forest''',newSpan,_typeSig') = addDeclToksAfterSrcSpan forest'' l (PlaceOffset 2 0 0) toksSig (head typeSig) 

@@ -2420,13 +2420,13 @@ tree TId 0:
       let prevToks = retrievePrevLineToks z
       let prevToks'' = limitPrevToks prevToks sspan'
       (show prevToks'') `shouldBe`
-             "RT [((((11,22),(11,22)),ITsemi),\"\"),"++
-              "((((11,22),(11,24)),ITvarid \"sq\"),\"sq\"),"++
-              "((((11,25),(11,26)),ITvarid \"z\"),\"z\"),"++
-              "((((11,26),(11,27)),ITequal),\"=\"),"++
-              "((((11,27),(11,28)),ITvarid \"z\"),\"z\"),"++
+          "RT [((((11,29),(11,32)),ITvarid \"pow\"),\"pow\"),"++
               "((((11,28),(11,29)),ITvarsym \"^\"),\"^\"),"++
-              "((((11,29),(11,32)),ITvarid \"pow\"),\"pow\")]"
+              "((((11,27),(11,28)),ITvarid \"z\"),\"z\"),"++
+              "((((11,26),(11,27)),ITequal),\"=\"),"++
+              "((((11,25),(11,26)),ITvarid \"z\"),\"z\"),"++
+              "((((11,22),(11,24)),ITvarid \"sq\"),\"sq\"),"++
+              "((((11,22),(11,22)),ITsemi),\"\")]"
       let toks'' = reIndentToks position (unReverseToks prevToks'') newToks
       (show toks'') `shouldBe`
              "[((((12,26),(12,31)),ITwhere),\"where\"),"++

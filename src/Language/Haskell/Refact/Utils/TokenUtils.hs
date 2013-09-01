@@ -1273,6 +1273,8 @@ placeToksForSpan forest oldSpan tree pos toks = toks'
 
     prevToks' = limitPrevToks prevToks oldSpan
     toks' = reIndentToks pos (unReverseToks prevToks') toks
+    -- toks' = error $ "placeToksForSpan: prevToks'=" ++ (show prevToks')
+    -- toks' = error $ "placeToksForSpan: prevToks=" ++ (show prevToks)
 
 -- ---------------------------------------------------------------------
 
@@ -1300,7 +1302,7 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
 -- ---------------------------------------------------------------------
 
 limitPrevToks :: ReversedToks -> GHC.SrcSpan -> ReversedToks
-limitPrevToks prevToks sspan = RT prevToks''
+limitPrevToks prevToks sspan = reverseToks prevToks''
   where
     ((ForestLine _ _ _ startRow,_startCol),(ForestLine _ _ _ endRow,_)) = srcSpanToForestSpan sspan
 
@@ -1375,8 +1377,11 @@ reIndentToks pos prevToks toks = toks''
 
       PlaceOffset rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where
+          -- TODO: Should this not be prevOffset?
           colStart  = tokenCol $ ghead "reIndentToks.4"
                     $ dropWhile isWhiteSpace prevToks
+          -- colStart = prevOffset
+          -- colStart = error $ "reIndentToks:prevToks=" ++ (show prevToks)
           lineStart = (tokenRow (lastTok)) -- + 1
 
           lineOffset' = rowIndent + lineStart - (tokenRow firstTok)

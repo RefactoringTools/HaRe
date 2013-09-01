@@ -1343,9 +1343,9 @@ getSrcSpan t = res t
 -- ---------------------------------------------------------------------
 
 -- | Get the indent of the line before, taking into account in-line
--- where, let, in and do tokens
+-- 'where', 'let', 'in' and 'do' tokens
 getIndentOffset :: [PosToken] -> SimpPos -> Int
-getIndentOffset [] _pos    = 1
+getIndentOffset [] _pos     = 1
 getIndentOffset _toks (0,0) = 1
 getIndentOffset toks pos
   = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
@@ -1353,7 +1353,6 @@ getIndentOffset toks pos
          then error "HaRe error: position does not exist in the token stream!"
          else let (sl,_) = splitOnNewLn $ reverse ts1
                 -- sl is the reversed tokens of the previous line
-                  -- sls = filter (\t -> tokenLen t > 0) sl
                   (sls,_) = break isWhereOrLet $ filter (\t -> tokenLen t > 0) sl
                   firstTok = (glast "getIndentOffset" sls)
               in if startLayout firstTok
