@@ -1,7 +1,7 @@
 * TODO Make undo (M-x u) undo a refactoring.
 * TODO The elisp test for buffers to save includes directories that have been modified
 * TODO sort out realignment of tokens on a line when one is changed
-* TODO disable invariant test when not in test mode
+* DONE disable invariant test when not in test mode
 * TODO add tests for command-line invocation of ghc-hare
 * TODO look at using ordnub
 * TODO check .lhs support
@@ -15,6 +15,7 @@
      in directory ~/tmp/hackage/syz-0.2.0.0
 
 * TODO add command line param to turn off timestamping of log lines when -v
+* TODO add more granularity on logging control, e.g wether to show tokens while working, whether to dump initial AST
 * TODO from the source files
   :PROPERTIES:
   :ID:       2930a92b-9989-427f-b02e-e47ca11a84de

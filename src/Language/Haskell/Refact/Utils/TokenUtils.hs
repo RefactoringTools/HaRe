@@ -637,35 +637,21 @@ getTokensFor checkInvariant forest sspan = (forest'', tokens)
 
 -- ---------------------------------------------------------------------
 
--- |Get the (possible cached) tokens for a given source span, and
--- cache their being fetched.
--- NOTE: The SrcSpan may be one introduced by HaRe, rather than GHC.
--- TODO: consider returning an Either. Although in reality the error
---       should never happen
+-- |Get the tokens preceding a given 'SrcSpan'
 getTokensBefore :: Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
 getTokensBefore forest sspan = (forest', prevToks')
   where
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
-    -- prevToks = retrieveTokens tree
 
     z = openZipperToSpan (srcSpanToForestSpan sspan) $ Z.fromTree forest'
 
     prevToks = case (retrievePrevLineToks z) of
-                 [] -> retrieveTokens tree
+                 [] -> retrieveTokensInterim tree
                  xs -> xs
 
     (_,rtoks) = break (\t->tokenPos t < (getGhcLoc sspan)) $ reverse prevToks
     prevToks' = reverse rtoks
-    -- prevToks' = prevToks
 
--- ---------------------------------------------------------------------
-{-
--- | Given a SrcSpan, find the closest enclosing one that is already
--- in the tree, and return the enclosing span and the tokens it
--- contains.
-getTokensAround :: Tree Entry -> GHC.SrcSpan -> (GHC.SrcSpan,[PosToken])
-getTokensAround = error $ "undefined getTokensAround"
--}
 -- ---------------------------------------------------------------------
 
 -- |Replace a single token in a token tree, without changing the
@@ -1065,18 +1051,22 @@ calcEndGap tree sspan = gap
 
 -- ---------------------------------------------------------------------
 
--- |Retrieve all the tokens at the leaves of the tree, in order
--- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
---      rows with tokenFileMark in a filename for a token
-
+-- |Retrieve all the tokens at the leaves of the tree, in order. No
+-- adjustments are made to address gaps or re-alignment of the tokens
 retrieveTokensInterim :: Tree Entry -> [PosToken]
 retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {-  reAlignMarked -}
                              $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]
+    accum acc (Entry _   []) = acc
     accum acc (Entry _ toks) = acc ++ toks
     accum acc (Deleted _ _)  = acc
 
+-- |Retrieve all the tokens at the leaves of the tree, in order,
+-- making adjustments to the layout to cater for movement of subtrees,
+-- and changing of token lengths.
+-- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
+--      rows with tokenFileMark in a filename for a token
 
 retrieveTokens :: Tree Entry -> [PosToken]
 retrieveTokens forest = stripForestLines $ monotonicLineToks {- reAlignMarked -}
@@ -1171,7 +1161,6 @@ retrieveTokensFinal forest = stripForestLines $ monotonicLineToks $ reAlignMarke
 -- |Starting from a point in the zipper, retrieve all tokens backwards
 -- until the line changes for a non-comment/non-empty token or
 -- beginning of file.
-
 retrievePrevLineToks :: Z.TreePos Z.Full Entry -> [PosToken]
 retrievePrevLineToks z = res' -- error $ "retrievePrevLineToks:done notWhite=" ++ (show (done notWhite)) -- ++AZ++
   where
@@ -1181,22 +1170,22 @@ retrievePrevLineToks z = res' -- error $ "retrievePrevLineToks:done notWhite=" +
     -- prevToks = retrieveTokens $ Z.tree z
     prevToks = retrieveTokensInterim $ Z.tree z
 
-    -- res = concat $ dropWhile (\toks -> (emptyList toks) || (done toks)) $ reverse (prevToks : (go z))
-    res' = concat $ reverse (prevToks : (go z))
-    -- res' = dropWhile (\tok -> isWhiteSpace tok || tokenRow tok < endLine) res
+    res' = reverse $ (concat (go z)) ++ prevToks
+    -- res' =  (reverse prevToks) ++ (concat (go z))
+
     -- res' = error $ "retrievePrevLineToks:res'=" ++ (show (dropWhile (\tok -> isWhiteSpace tok || tokenRow tok < endLine) res))
     -- res' = error $ "retrievePrevLineToks:prevToks=" ++ (show prevToks)
     -- res' = error $ "retrievePrevLineToks:prevToks=" ++ (show res)
     -- res' = error $ "retrievePrevLineToks:(prevToks : (go z))=" ++ (show (prevToks : (go z)))
 
+    -- TODO:  ++AZ++ what is this actually doing?
     go :: Z.TreePos Z.Full Entry -> [[PosToken]]
     go zz
       | not (Z.isRoot zz) = toks : (go $ gfromJust "retrievePrevLineToks" (Z.parent zz))
       | otherwise = [toks]
       where
-        toks = concatMap retrieveTokens $ Z.before zz
-
-
+        toks = concat $ reverse $ map retrieveTokensInterim $ Z.before zz
+        -- toks = concat $ map retrieveTokensInterim $ Z.before zz
 
 
 -- ---------------------------------------------------------------------

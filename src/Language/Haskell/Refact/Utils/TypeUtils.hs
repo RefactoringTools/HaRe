@@ -2074,7 +2074,7 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
       -- GHC7.4.2: defines' decl@(GHC.L l (GHC.TyClD (GHC.TyData _ _ name _ _ _ cons _)))
       -- GHC7.6.3: defines' decl@(GHC.L l (GHC.TyClD (GHC.TyDecl _name _vars (GHC.TyData _ _ _ _ cons _) _fvs)))
       defines' decl@(GHC.L l (GHC.TyClD _))
-       = if checkCons (getDataConstructors decl) == True 
+       = if checkCons (getDataConstructors decl) == True
                                    then [decl]
                                    else []
 
@@ -3764,6 +3764,7 @@ rmDecl pn incSig t = do
          -- start of the LHsExpr
 
          logm $ "rmLocalDecl: decls=" ++ (showGhc decls)
+         -- drawTokenTreeDetailed $ "Before getToksForSpan :" ++ (show sspan) -- ++AZ++
          prevToks <- getToksBeforeSpan sspan -- Need these before
                                              -- sspan is deleted
          removeToksForPos (getStartEndLoc decl)
@@ -3787,6 +3788,7 @@ rmDecl pn incSig t = do
                  rmEndPos   = tokenPosEnd $ ghead "rmLocalDecl.2" toks2
                  rmStartPos = tokenPos whereOrLet
 
+             -- logm $ "rmLocalDecl: where/let tokens:" ++ (show (_toks1,toks2)) -- ++AZ++ 
              logm $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
              removeToksForPos (rmStartPos,rmEndPos)
 

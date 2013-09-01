@@ -10,7 +10,6 @@ import TestUtils
 
 main :: IO ()
 main = do
-  -- setLogger
   hspec spec
 
 spec :: Spec
