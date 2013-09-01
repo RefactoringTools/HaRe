@@ -11,7 +11,14 @@
 -- modules, it should probably never be used directly in a refactoring.
 
 module Language.Haskell.Refact.Utils.TokenUtils(
-       Entry(..)
+       -- * A token stream with last tokens first, and functions to
+       -- manipulate it
+         ReversedToks(..)
+       , reverseToks
+       , unReverseToks
+       , reversedToks
+       -- *
+       , Entry(..)
        , Positioning(..)
        , initTokenCache
        , getTokensFor
@@ -23,7 +30,6 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , insertSrcSpan
        , removeSrcSpan
        , getSrcSpanFor
-       -- , getPathFor
        , retrieveTokensInterim
        , retrieveTokens
        , retrieveTokens' -- temporary for debug
@@ -208,6 +214,20 @@ deriving instance Show Entry => Show (Entry)
 
 
 -- ---------------------------------------------------------------------
+
+-- |Keep track of when tokens are reversed, to avoid confusion
+data ReversedToks = RT [PosToken]
+                    deriving (Show)
+
+reverseToks :: [PosToken] -> ReversedToks
+reverseToks toks = RT $ reverse toks
+
+unReverseToks :: ReversedToks -> [PosToken]
+unReverseToks (RT toks) = reverse toks
+
+reversedToks :: ReversedToks -> [PosToken]
+reversedToks (RT toks) = toks
+
 
 -- |How new SrcSpans should be inserted in the Token tree, relative to
 -- the prior span
@@ -638,7 +658,7 @@ getTokensFor checkInvariant forest sspan = (forest'', tokens)
 -- ---------------------------------------------------------------------
 
 -- |Get the tokens preceding a given 'SrcSpan'
-getTokensBefore :: Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
+getTokensBefore :: Tree Entry -> GHC.SrcSpan -> (Tree Entry,ReversedToks)
 getTokensBefore forest sspan = (forest', prevToks')
   where
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
@@ -646,11 +666,11 @@ getTokensBefore forest sspan = (forest', prevToks')
     z = openZipperToSpan (srcSpanToForestSpan sspan) $ Z.fromTree forest'
 
     prevToks = case (retrievePrevLineToks z) of
-                 [] -> retrieveTokensInterim tree
+                 RT [] -> reverseToks $ retrieveTokensInterim tree
                  xs -> xs
 
-    (_,rtoks) = break (\t->tokenPos t < (getGhcLoc sspan)) $ reverse prevToks
-    prevToks' = reverse rtoks
+    (_,rtoks) = break (\t->tokenPos t < (getGhcLoc sspan)) $ reversedToks prevToks
+    prevToks' = RT rtoks
 
 -- ---------------------------------------------------------------------
 
@@ -1161,8 +1181,8 @@ retrieveTokensFinal forest = stripForestLines $ monotonicLineToks $ reAlignMarke
 -- |Starting from a point in the zipper, retrieve all tokens backwards
 -- until the line changes for a non-comment/non-empty token or
 -- beginning of file.
-retrievePrevLineToks :: Z.TreePos Z.Full Entry -> [PosToken]
-retrievePrevLineToks z = res' -- error $ "retrievePrevLineToks:done notWhite=" ++ (show (done notWhite)) -- ++AZ++
+retrievePrevLineToks :: Z.TreePos Z.Full Entry -> ReversedToks
+retrievePrevLineToks z = RT res' -- error $ "retrievePrevLineToks:done notWhite=" ++ (show (done notWhite)) -- ++AZ++
   where
     -- Assuming the zipper has been opened to the span we care about,
     -- we will start with the tokens in the current tree, and work
@@ -1248,11 +1268,11 @@ placeToksForSpan forest oldSpan tree pos toks = toks'
   where
     z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree forest
     prevToks = case (retrievePrevLineToks z) of
-                 [] -> retrieveTokens tree
+                 RT [] -> reverseToks $ retrieveTokens tree
                  xs -> xs
 
     prevToks' = limitPrevToks prevToks oldSpan
-    toks' = reIndentToks pos prevToks' toks
+    toks' = reIndentToks pos (unReverseToks prevToks') toks
 
 -- ---------------------------------------------------------------------
 
@@ -1279,13 +1299,13 @@ addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
 
 -- ---------------------------------------------------------------------
 
-limitPrevToks :: [PosToken] -> GHC.SrcSpan -> [PosToken]
-limitPrevToks prevToks sspan = prevToks''
+limitPrevToks :: ReversedToks -> GHC.SrcSpan -> ReversedToks
+limitPrevToks prevToks sspan = RT prevToks''
   where
     ((ForestLine _ _ _ startRow,_startCol),(ForestLine _ _ _ endRow,_)) = srcSpanToForestSpan sspan
 
     -- Make sure the toks do not extend past where we are
-    prevToks' = reverse $ dropWhile (\t -> tokenRow t > endRow) $ reverse  prevToks
+    prevToks' = dropWhile (\t -> tokenRow t > endRow) $ unReverseToks prevToks
 
     -- Only use the toks for the given oldspan
     -- prevToks'' = dropWhile (\t -> tokenPos t < (startRow,startCol)) prevToks'

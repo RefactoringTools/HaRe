@@ -582,7 +582,7 @@ tree TId 0:
             "`- ((26,1),(40,17))\n"
 
       let (tm'',toksBefore) = getTokensBefore tm' sspan
-      (showToks $ drop 100 toksBefore) `shouldBe` "[(((22,10),(22,11)),ITvarsym \"+\",\"+\"),(((22,12),(22,14)),ITvarid \"zz\",\"zz\"),(((23,3),(23,8)),ITwhere,\"where\")]"
+      (showToks $ drop 100 $ unReverseToks toksBefore) `shouldBe` "[(((22,10),(22,11)),ITvarsym \"+\",\"+\"),(((22,12),(22,14)),ITvarid \"zz\",\"zz\"),(((23,3),(23,8)),ITwhere,\"where\")]"
 
       (drawTreeEntry tm'') `shouldBe`
             "((1,1),(40,17))\n|\n"++
@@ -2420,14 +2420,14 @@ tree TId 0:
       let prevToks = retrievePrevLineToks z
       let prevToks'' = limitPrevToks prevToks sspan'
       (show prevToks'') `shouldBe`
-             "[((((11,22),(11,22)),ITsemi),\"\"),"++
+             "RT [((((11,22),(11,22)),ITsemi),\"\"),"++
               "((((11,22),(11,24)),ITvarid \"sq\"),\"sq\"),"++
               "((((11,25),(11,26)),ITvarid \"z\"),\"z\"),"++
               "((((11,26),(11,27)),ITequal),\"=\"),"++
               "((((11,27),(11,28)),ITvarid \"z\"),\"z\"),"++
               "((((11,28),(11,29)),ITvarsym \"^\"),\"^\"),"++
               "((((11,29),(11,32)),ITvarid \"pow\"),\"pow\")]"
-      let toks'' = reIndentToks position prevToks'' newToks
+      let toks'' = reIndentToks position (unReverseToks prevToks'') newToks
       (show toks'') `shouldBe`
              "[((((12,26),(12,31)),ITwhere),\"where\"),"++
               "((((13,29),(13,29)),ITvocurly),\"\"),"++
@@ -2658,7 +2658,7 @@ tree TId 0:
 
       let toksPrev = retrievePrevLineToks z
 
-      (GHC.showRichTokenStream toksPrev) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x"
+      (GHC.showRichTokenStream (unReverseToks toksPrev)) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x"
 
   -- ---------------------------------------------
 
@@ -3075,16 +3075,16 @@ tree TId 0:
 
       let z = openZipperToSpan (srcSpanToForestSpan sspan2) $ Z.fromTree fwithspan
       let prevToks = case (retrievePrevLineToks z) of
-                   [] -> retrieveTokens tree
+                   RT [] -> reverseToks $ retrieveTokensInterim tree
                    xs -> xs
 
       let prevToks' = limitPrevToks prevToks sspan2
-      let toks' = reIndentToks pos2 prevToks' newToks
+      let toks' = reIndentToks pos2 (unReverseToks prevToks') newToks
 
       -- Hmmm. This is the final position, after taking into account
       -- the deleted entry. BUT, we are putting it back into the
-      -- original tree. 
-      (show $ last prevToks') `shouldBe` "((((13,22),(13,23)),ITinteger 2),\"2\")"
+      -- original tree.
+      (show $ last $ unReverseToks prevToks') `shouldBe` "((((13,22),(13,23)),ITinteger 2),\"2\")"
 
       -- What we actually need, but we are getting ((13,1),(13,3))
       let toks'' = placeToksForSpan fwithspan sspan2 tree pos2 newToks

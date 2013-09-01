@@ -140,7 +140,7 @@ getToksForSpan sspan = do
   return toks
 
 -- |Get the current tokens preceding a given GHC.SrcSpan.
-getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
+getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc ReversedToks
 getToksBeforeSpan sspan = do
   st <- get
   let Just tm = rsModule st

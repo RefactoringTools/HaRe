@@ -3778,7 +3778,7 @@ rmDecl pn incSig t = do
              -- Get rid of preceding where or let token
              -- prevToks <- getToksBeforeSpan sspan
              let startPos = getGhcLoc sspan
-                 (_toks1,toks2)=break (\t1->tokenPos t1 < startPos) $ reverse prevToks --divide the token stream.
+                 (_toks1,toks2)=break (\t1->tokenPos t1 < startPos) $ reversedToks prevToks --divide the token stream.
                  --get the  'where' or 'let' token
                  rvToks1 = dropWhile (not.isWhereOrLet) toks2
                  --There must be a 'where' or 'let', so rvToks1 can not be empty.
