@@ -799,7 +799,7 @@ tree TId 0:
 
       --
       let z = openZipperToSpan (fs l) $ Z.fromTree forest
-      let toksz = retrieveTokens $ Z.tree z
+      let toksz = retrieveTokensInterim $ Z.tree z
       let (tokStartPos,tokEndPos) = forestSpanToSimpPos (fs l)
       (show (tokStartPos,tokEndPos)) `shouldBe` "((19,1),(21,14))"
 
@@ -1302,7 +1302,7 @@ tree TId 0:
       (drawTreeEntry delTree) `shouldBe`
               "((19,1),(21,14))\n" -- removed again
 
-      let toks' = retrieveTokens forest''
+      let toks' = retrieveTokensFinal forest''
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment"
 
@@ -1329,7 +1329,7 @@ tree TId 0:
       (drawTreeEntry delTree) `shouldBe`
               "((13,1),(15,17))\n" -- removed again
 
-      let toks' = retrieveTokens forest'
+      let toks' = retrieveTokensFinal forest'
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
@@ -1388,7 +1388,7 @@ tree TId 0:
                "   +- ((9,1),(9,14))(2,-13)D\n   |\n"++
                "   `- ((11,1),(13,25))\n"
 
-      let toks' = retrieveTokens forest3
+      let toks' = retrieveTokensFinal forest3
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
@@ -1436,7 +1436,7 @@ tree TId 0:
                "tree TId 2:\n"++
                "((200000013,16),(200000013,17))\n"
 
-      (GHC.showRichTokenStream $ retrieveTokens $ getTreeFromCache ss2 tk3) `shouldBe` 
+      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk3) `shouldBe` 
                 "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
 
       -- putToksForSpan test/testdata/Demote/WhereIn6.hs:100000013:18:[((((0,1),(0,2)),ITvarid "y"),"y")]
@@ -1468,7 +1468,7 @@ tree TId 0:
                "tree TId 3:\n"++
                "((300000013,18),(300000013,19))\n"
 
-      (GHC.showRichTokenStream $ retrieveTokens $ getTreeFromCache ss2 tk4) `shouldBe` 
+      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk4) `shouldBe` 
                 "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+y+c"
 
 
@@ -1529,7 +1529,7 @@ tree TId 0:
 
       let toksClean = reverse $ dropWhile isEmpty $ reverse toks
 
-      let toks' = retrieveTokens forest'
+      let toks' = retrieveTokensFinal forest'
       (show toks') `shouldBe` (show toksClean)
 
   -- ---------------------------------------------
@@ -1568,9 +1568,7 @@ tree TId 0:
               "+- ((1,1),(15,17))\n|\n"++
               "`- ((10000000018,1),(10000000018,23))\n"  -- our inserted span
 
-      let toks' = retrieveTokens forest'
-      -- (showToks toks ) `shouldBe` ""
-      -- (showToks toks') `shouldBe` ""
+      let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n \n module TokenTest where"
 
     -- --------------------------------------
@@ -1587,7 +1585,7 @@ tree TId 0:
 
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
-      let toks' = retrieveTokens tree
+      let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
 
       (invariant forest'') `shouldBe` []
@@ -1613,7 +1611,7 @@ tree TId 0:
 
       let (forest''',_newSpan,_) = updateTokensForSrcSpan forest'' l newToks
 
-      let toksFinal = retrieveTokens forest'''
+      let toksFinal = retrieveTokensFinal forest'''
 
       -- (show toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bbb x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
@@ -1735,14 +1733,14 @@ tree TId 0:
       (tokStartPos,tokEndPos) `shouldBe` ((13,16),(13,17))
 
       let f2 = getTreeFromCache ss2 tk2
-      (GHC.showRichTokenStream $ retrieveTokens f2) `shouldBe`
+      (GHC.showRichTokenStream $ retrieveTokensInterim f2) `shouldBe`
                "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=a+b+c"
       toks2 <- basicTokenise "x"
       (show toks2) `shouldBe` "[((((0,1),(0,2)),ITvarid \"x\"),\"x\")]"
       --
 
       let z = openZipperToSpan (srcSpanToForestSpan ss2) $ Z.fromTree f2
-      let toksz = retrieveTokens $ Z.tree z
+      let toksz = retrieveTokensInterim $ Z.tree z
       (GHC.showRichTokenStream toksz) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=a+b+c"
       let (_begin,middle,_end) = splitToks (tokStartPos,tokEndPos) toksz
       -- (show begin) `shouldBe` ""
@@ -1775,7 +1773,7 @@ tree TId 0:
                "+- ((10000000013,16),(10000000013,17))\n|\n"++
                "`- ((13,17),(13,21))\n"
       -- (show f3) `shouldBe` ""
-      (GHC.showRichTokenStream $ retrieveTokens f3) `shouldBe`
+      (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe`
                "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
 
   -- ---------------------------------------------
@@ -1802,7 +1800,7 @@ tree TId 0:
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(21,14))\n"
 
-      let toks' = retrieveTokens forest'
+      let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
     -- ---------------------------------
@@ -1868,8 +1866,8 @@ tree TId 0:
               "+- ((1000006,1),(1000006,31))\n|\n"++
               "`- ((6,1),(32,18))\n"
 
-      let toks' = retrieveTokens f5
-      (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2     :: Integer -> Integerc,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      let toks' = retrieveTokensFinal f5
+      (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2     :: Integer -> Integer c , d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 
 
   -- ---------------------------------------------
@@ -1950,7 +1948,7 @@ tree TId 0:
               "`- ((1000019,1),(1000021,14))\n" -- our inserted span
 
 
-      let toksFinal = retrieveTokens forest''
+      let toksFinal = retrieveTokensFinal forest''
       (GHC.showRichTokenStream toksNew) `shouldBe` "module TokenTest where"
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n module TokenTest where"
 
@@ -1969,7 +1967,7 @@ tree TId 0:
 
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
-      let toks' = retrieveTokens tree
+      let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
@@ -1980,7 +1978,7 @@ tree TId 0:
 
       (showSrcSpanF sspan) `shouldBe` "(((False,0,1,19),1),((False,0,1,21),14))"
 
-      let toksFinal = retrieveTokens forest''
+      let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
 
@@ -1999,7 +1997,7 @@ tree TId 0:
 
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
-      let toks' = retrieveTokens tree
+      let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(21,14))\n|\n"++
@@ -2010,7 +2008,7 @@ tree TId 0:
       (showSrcSpanF sspan) `shouldBe` "(((False,0,1,24),1),((False,0,1,26),14))"
       (invariant forest'') `shouldBe` []
 
-      let toksFinal = retrieveTokens forest''
+      let toksFinal = retrieveTokensFinal forest''
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
 
     -- ---------------------------------
@@ -2027,7 +2025,7 @@ tree TId 0:
 
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
-      let toks' = retrieveTokens tree
+      let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(21,14))\n|\n"++
@@ -2038,7 +2036,7 @@ tree TId 0:
       (showSrcSpanF sspan) `shouldBe` "(((False,0,1,17),1),((False,0,1,19),17))"
       (invariant forest'') `shouldBe` []
 
-      let toksFinal = retrieveTokens forest''
+      let toksFinal = retrieveTokensFinal forest''
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
     -- ---------------------------------
@@ -2055,7 +2053,7 @@ tree TId 0:
 
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
-      let toks' = retrieveTokens tree
+      let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 4 2) toks'
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(21,14))\n|\n"++
@@ -2066,7 +2064,7 @@ tree TId 0:
       (showSrcSpanF sspan) `shouldBe` "(((False,0,1,24),5),((False,0,1,26),18))"
       (invariant forest'') `shouldBe` []
 
-      let toksFinal = retrieveTokens forest''
+      let toksFinal = retrieveTokensFinal forest''
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n     -- leading comment\n     foo x y =\n       do c <- getChar\n          return c\n\n "
 
     -- ---------------------------------
@@ -2112,7 +2110,7 @@ tree TId 0:
       (showSrcSpanF sspan'') `shouldBe` "(((False,0,1,6),5),((False,0,1,6),32))"
       -- (invariant forest'') `shouldBe` []
 
-      let toksFinal = retrieveTokens forest''
+      let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n     module MoveDef.Demote where\n\n \n d = 9\n\n\n "
 
@@ -2159,7 +2157,7 @@ tree TId 0:
       (showSrcSpanF sspan'') `shouldBe` "(((False,0,1,14),16),((False,0,1,14),21))"
       -- (invariant forest'') `shouldBe` []
 
-      let toksFinal = retrieveTokens forest''
+      let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.WhereIn5 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'pow' to 'sq'\n --This example aims to test demoting a function/pattern binding multi-levels.\n\n sumSquares x y = sq x + sq y\n          where sq 0=0\n                sq z=z^pow {-There \nis a comment-}\n                pow=2\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
 
@@ -2312,7 +2310,7 @@ tree TId 0:
       (showSrcSpanF sspan'') `shouldBe` "(((False,0,1,7),5),((False,0,1,10),7))"
       -- (invariant forest'') `shouldBe` []
 
-      let toksFinal = retrieveTokens forest''
+      let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq   + sumSquares xs\n     sumSquares (x:xs) = sq x + sumSquares xs\n     sumSquares [] = 0\n\n     sq\n\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
@@ -2323,7 +2321,7 @@ tree TId 0:
 
       let forest = mkTreeFromTokens toks
 
-      let toksTree = retrieveTokens forest
+      let toksTree = retrieveTokensInterim forest
       (GHC.showRichTokenStream toksTree) `shouldBe` "module JustImports where\n\n import Data.Maybe\n "
       (show toksTree) `shouldBe`
            "[((((1,1),(1,7)),ITmodule),\"module\"),"++
@@ -2366,7 +2364,7 @@ tree TId 0:
 
       (invariant forest') `shouldBe` []
 
-      let toksFinal = retrieveTokens forest'
+      let toksFinal = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List\n "
 
     -- ---------------------------------
@@ -2450,7 +2448,7 @@ tree TId 0:
 
       (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,12),26),((False,0,1,13),34))"
       (invariant forest'') `shouldBe` []
-      (GHC.showRichTokenStream $ retrieveTokens forest'') `shouldBe` "module Demote.LetIn1 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the local  'pow' to 'sq'\n --This example also aims to test the demoting a local declaration in 'let'.\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                          where\n                             pow=2\n                          \n\n \n                  in sq x + sq y\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n   "
+      (GHC.showRichTokenStream $ retrieveTokensFinal forest'') `shouldBe` "module Demote.LetIn1 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the local  'pow' to 'sq'\n --This example also aims to test the demoting a local declaration in 'let'.\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                          where\n                             pow=2\n                          \n\n \n                  in sq x + sq y\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n   "
 
     -- ---------------------------------
 
@@ -2793,7 +2791,7 @@ tree TId 0:
 
       let (forest',tree) = getSrcSpanFor forest (fs l)
 
-      let toks' = retrieveTokens tree
+      let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
@@ -2809,7 +2807,7 @@ tree TId 0:
       (showGhc decl') `shouldBe` "TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar"
       (take 90 $ SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/TokenTest.hs:(1048589,1)-(1048591,16)} \n (FunBind \n  (L {test/testdata/"
 
-      let toksFinal = retrieveTokens forest'''
+      let toksFinal = retrieveTokensFinal forest'''
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
   -- ---------------------------------------------
@@ -2934,7 +2932,7 @@ tree TId 0:
 
       let tree1 = (tkCache tk') Map.! (TId 1)
 
-      (show $ retrieveTokens tree1) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
+      (show $ retrieveTokensInterim tree1) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
 
       -- putToksForSpan test/testdata/Demote/WhereIn4.hs:100000015:14-16:[((((0,1),(0,2)),ITvarid "p"),"p")]
 
@@ -2963,12 +2961,12 @@ tree TId 0:
                "((200000015,14),(200000015,17))\n"
 
       let (forest2,tree1') = getSrcSpanFor tree1 (srcSpanToForestSpan sspan3)
-      (show $ retrieveTokens forest2) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
+      (show $ retrieveTokensInterim forest2) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
 
-      (show $ retrieveTokens tree1') `shouldBe` "[((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
+      (show $ retrieveTokensInterim tree1') `shouldBe` "[((((15,14),(15,17)),ITvarid \"pow\"),\"pow\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
 
       let tree3 = (tkCache tk3) Map.! (TId 1)
-      (show $ retrieveTokens tree3) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,15)),ITvarid \"p\"),\"p\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
+      (show $ retrieveTokensInterim tree3) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,15)),ITvarid \"p\"),\"p\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
 
   -- ---------------------------------------------
 
@@ -3011,7 +3009,7 @@ tree TId 0:
     it "Does not leave a blank line in toks after deleting" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let f1 = mkTreeFromTokens toks
-      (GHC.showRichTokenStream $ retrieveTokens f1) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream $ retrieveTokensFinal f1) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -3029,7 +3027,7 @@ tree TId 0:
 
       let es = retrieveTokens' f2
       -- (show $ deleteGapsToks es) `shouldBe` ""
-      (GHC.showRichTokenStream $ retrieveTokens f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream $ retrieveTokensFinal f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
   -- ---------------------------------------------
 

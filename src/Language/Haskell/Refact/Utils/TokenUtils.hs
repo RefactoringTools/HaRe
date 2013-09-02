@@ -30,10 +30,10 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , insertSrcSpan
        , removeSrcSpan
        , getSrcSpanFor
-       , retrieveTokensInterim
-       , retrieveTokens
-       , retrieveTokens' -- temporary for debug
        , retrieveTokensFinal
+       , retrieveTokensInterim
+       -- , retrieveTokens
+       , retrieveTokens' -- temporary for debug
        , addNewSrcSpanAndToksAfter
        , addToksAfterSrcSpan
        , addDeclToksAfterSrcSpan
@@ -66,6 +66,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , placeToksForSpan
        , limitPrevToks
        , reIndentToks
+       , reAlignToks
        , splitForestOnSpan
        , spanContains
        , containsStart, containsMiddle, containsEnd
@@ -122,6 +123,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
 import qualified FastString    as GHC
 import qualified GHC           as GHC
+import qualified SrcLoc        as GHC
+
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
@@ -653,7 +656,7 @@ getTokensFor checkInvariant forest sspan = (forest'', tokens)
                else error $ "getTokensFor:invariant failed:" ++ (show $ invariant forest)
      (forest'',tree) = getSrcSpanFor forest' (srcSpanToForestSpan sspan)
 
-     tokens = retrieveTokens tree
+     tokens = retrieveTokensInterim tree
 
 -- ---------------------------------------------------------------------
 
@@ -712,7 +715,7 @@ updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (Tree Entry
 updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
   where
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
-    prevToks = retrieveTokens tree
+    prevToks = retrieveTokensInterim tree
 
     endComments = reverse $ takeWhile isWhiteSpace $ reverse toks
     startComments = takeWhile isWhiteSpace $ toks
@@ -1071,6 +1074,14 @@ calcEndGap tree sspan = gap
 
 -- ---------------------------------------------------------------------
 
+-- |Retrieve all the tokens at the leaves of the tree, in order.
+-- Marked tokens are re-aligned, and gaps are closed.
+retrieveTokensFinal :: Tree Entry -> [PosToken]
+retrieveTokensFinal forest = stripForestLines $ monotonicLineToks $ reAlignMarked
+                      $ deleteGapsToks $ retrieveTokens' forest
+
+-- ---------------------------------------------------------------------
+
 -- |Retrieve all the tokens at the leaves of the tree, in order. No
 -- adjustments are made to address gaps or re-alignment of the tokens
 retrieveTokensInterim :: Tree Entry -> [PosToken]
@@ -1087,10 +1098,11 @@ retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {-  reAlignM
 -- and changing of token lengths.
 -- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
 --      rows with tokenFileMark in a filename for a token
-
+{- -- ++AZ++ rather use retrieveTokensInterim or retrieveTokensFinal
 retrieveTokens :: Tree Entry -> [PosToken]
 retrieveTokens forest = stripForestLines $ monotonicLineToks {- reAlignMarked -}
                       $ deleteGapsToks $ retrieveTokens' forest
+-}
 
 retrieveTokens' :: Tree Entry -> [Entry]
 retrieveTokens' forest = mergeDeletes $ concat $ map (\t -> F.foldl accum [] t) [forest]
@@ -1169,15 +1181,6 @@ goDeleteGapsToks' (fr,fc) (Entry ss t1:Deleted _ _:t2:ts)
 
 -- ---------------------------------------------------------------------
 
--- |Retrieve all the tokens at the leaves of the tree, in order
--- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
---      rows with tokenFileMark in a filename for a token
-retrieveTokensFinal :: Tree Entry -> [PosToken]
-retrieveTokensFinal forest = stripForestLines $ monotonicLineToks $ reAlignMarked
-                      $ deleteGapsToks $ retrieveTokens' forest
-
--- ---------------------------------------------------------------------
-
 -- |Starting from a point in the zipper, retrieve all tokens backwards
 -- until the line changes for a non-comment/non-empty token or
 -- beginning of file.
@@ -1229,6 +1232,32 @@ reAlignMarked toks = concatMap alignOne $ groupTokensByLine toks
 
 -- ---------------------------------------------------------------------
 
+-- | Make sure all tokens have at least one space between them
+--   (Except for zero-length toks)
+-- TODO: pretty sure this can be simplified
+reAlignToks :: [PosToken] -> [PosToken]
+reAlignToks [] = []
+reAlignToks [t] = [t]
+reAlignToks (tok1@(_,""):ts) = tok1 : reAlignToks ts
+reAlignToks (tok1@((GHC.L l1 _t1),_s1):tok2@((GHC.L l2 t2),s2):ts)
+  = tok1:reAlignToks (tok2':ts)
+   where
+     ((_sr1,_sc1),(er1,ec1)) = (getGhcLoc l1,getGhcLocEnd l1)
+     (( sr2, sc2),(er2,ec2)) = (getGhcLoc l2,getGhcLocEnd l2)
+
+     ((sr,sc),(er,ec)) = if (er1 == sr2 && ec1 >= sc2)
+              then ((sr2,ec1+1),(er2,ec1+1 + tokenLen tok2))
+              else ((sr2,sc2),(er2,ec2))
+
+     fname = case l2 of
+               GHC.RealSrcSpan ss -> GHC.srcSpanFile ss
+               _ -> GHC.mkFastString "foo"
+     l2' = GHC.mkRealSrcSpan (GHC.mkRealSrcLoc fname sr sc)
+                             (GHC.mkRealSrcLoc fname er ec)
+     tok2' = ((GHC.L (GHC.RealSrcSpan l2') t2),s2)
+
+-- ---------------------------------------------------------------------
+
 -- |Add a new SrcSpan and Tokens after a given one in the token stream
 -- and forest. This will be given a unique SrcSpan in return, which
 -- specifically indexes into the forest.
@@ -1268,7 +1297,7 @@ placeToksForSpan forest oldSpan tree pos toks = toks'
   where
     z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree forest
     prevToks = case (retrievePrevLineToks z) of
-                 RT [] -> reverseToks $ retrieveTokens tree
+                 RT [] -> reverseToks $ retrieveTokensInterim tree
                  xs -> xs
 
     prevToks' = limitPrevToks prevToks oldSpan
@@ -1425,7 +1454,7 @@ nonCommentSpan toks = (startPos,endPos)
 posToSrcSpan :: Tree Entry -> (SimpPos,SimpPos) -> GHC.SrcSpan
 posToSrcSpan forest ((rs,cs),(re,ce)) = sspan
   where
-    (GHC.L l _,_) = ghead "posToSrcSpan"  $ retrieveTokens forest -- ++AZ++ Ouch, performance??
+    (GHC.L l _,_) = ghead "posToSrcSpan"  $ retrieveTokensInterim forest -- ++AZ++ Ouch, performance??
     sspan =  case l of
       GHC.RealSrcSpan ss ->
         let

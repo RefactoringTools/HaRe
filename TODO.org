@@ -5,12 +5,12 @@
 * TODO look at using ordnub
 * TODO check .lhs support
 * TODO check cabal support
-* DONE liftToTopLevel in syz Zipper of g from zmapQ fails horribly
-     It seems to go back too far when looking for the where
-     statement. Perhaps look at using the zero width tokens here.
-     log:rmLocalDecl: where/let tokens are at((280,17),(303,31))
-     from: liftToTopLevel ./Data/Generics/Zipper.hs 304 3
-     in directory ~/tmp/hackage/syz-0.2.0.0
+* TODO liftToTopLevel in syz Zipper of g from zmapQ introduces param errors
+     zmapQ f z = reverse $ downQ [] g z where
+          g z' = query f z' : leftQ [] g z'
+     becomes
+     zmapQ f z = reverse $ downQ [] (g f g)z
+     g f z'g= query f z' : leftQ [] (g f g)g f g)z'
 
 * TODO add command line param to turn off timestamping of log lines when -v
 * TODO add more granularity on logging control, e.g wether to show tokens while working, whether to dump initial AST

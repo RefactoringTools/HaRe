@@ -1776,7 +1776,7 @@ spec = do
 
       let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
 
-      let toks' = retrieveTokens tree
+      let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
@@ -1788,7 +1788,7 @@ spec = do
 
       (showSrcSpanF sspan) `shouldBe` "(((False,0,1,19),1),((False,0,1,21),14))"
 
-      let toksFinal = retrieveTokens forest''
+      let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
 
@@ -1826,7 +1826,7 @@ spec = do
 
       let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
 
-      let toks' = retrieveTokens tree
+      let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
       let (decl',forest''') = syncAST decl sspan forest''
 
@@ -1844,7 +1844,7 @@ spec = do
 
       -- (show $ getTokensFor True forest''' sspan) `shouldBe` ""
 
-      let toksFinal = retrieveTokens forest'''
+      let toksFinal = retrieveTokensFinal forest'''
       -- (showToks toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
 
@@ -1936,7 +1936,7 @@ spec = do
 
       -- TODO: It seems the openZipperToSpan is the actual failure point
       let z = openZipperToSpan (srcSpanToForestSpan newSpan) $ Z.fromTree forest'''
-      let ztoks = retrieveTokens $ Z.toTree z
+      let ztoks = retrieveTokensInterim $ Z.toTree z
       -- (show $ Z.tree z) `shouldBe` "" -- Looks good
 
 

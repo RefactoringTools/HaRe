@@ -50,7 +50,6 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      StartEndLoc, isArrow,-- swapInToks,
                      commentToks
                      -}
-                     -- , reAlignToks
                      , tokenise
                      , basicTokenise
                      , lexStringToRichTokens
@@ -98,7 +97,6 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , newLnToken
                      , newLinesToken
                      , groupTokensByLine
-                     , reAlignToks
                      , monotonicLineToks
                      , reSequenceToks
                      , mkToken
@@ -560,7 +558,6 @@ replaceTok toks pos newTok =
     if length toksSameLine == 0 && length toksRest == 0
         then toks1 ++ [newTok]
         else let
-               -- newToks = toks1 ++ (reAlignToks (newTok:toksSameLine)) ++ toksRest
                newToks = toks1 ++ (newTok':toksSameLine) ++ toksRest
              in newToks
    where
@@ -1419,32 +1416,6 @@ groupTokensByLine (xs) = let x = head xs
                         _ ->  (xs'++ [ghead "groupTokensByLine" xs''])
                                 : groupTokensByLine (gtail "groupTokensByLine" xs'')
 
-
--- ---------------------------------------------------------------------
-
--- | Make sure all tokens have at least one space between them
---   (Except for zero-length toks)
--- TODO: pretty sure this can be simplified
-reAlignToks :: [PosToken] -> [PosToken]
-reAlignToks [] = []
-reAlignToks [t] = [t]
-reAlignToks (tok1@(_,""):ts) = tok1 : reAlignToks ts
-reAlignToks (tok1@((GHC.L l1 _t1),_s1):tok2@((GHC.L l2 t2),s2):ts)
-  = tok1:reAlignToks (tok2':ts)
-   where
-     ((_sr1,_sc1),(er1,ec1)) = (getGhcLoc l1,getGhcLocEnd l1)
-     (( sr2, sc2),(er2,ec2)) = (getGhcLoc l2,getGhcLocEnd l2)
-
-     ((sr,sc),(er,ec)) = if (er1 == sr2 && ec1 >= sc2)
-              then ((sr2,ec1+1),(er2,ec1+1 + tokenLen tok2))
-              else ((sr2,sc2),(er2,ec2))
-
-     fname = case l2 of
-               GHC.RealSrcSpan ss -> GHC.srcSpanFile ss
-               _ -> GHC.mkFastString "foo"
-     l2' = GHC.mkRealSrcSpan (GHC.mkRealSrcLoc fname sr sc)
-                             (GHC.mkRealSrcLoc fname er ec)
-     tok2' = ((GHC.L (GHC.RealSrcSpan l2') t2),s2)
 
 -- ---------------------------------------------------------------------
 

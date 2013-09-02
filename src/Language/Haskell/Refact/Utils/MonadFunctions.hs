@@ -91,7 +91,7 @@ import qualified Data.Map as Map
 fetchToks :: RefactGhc [PosToken]
 fetchToks = do
   Just tm <- gets rsModule
-  let toks = retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
+  let toks = retrieveTokensInterim $ (tkCache $ rsTokenCache tm) Map.! mainTid
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchToks (not showing toks"
   return toks
@@ -102,11 +102,6 @@ fetchToksFinal = do
   Just tm <- gets rsModule
   let toks = retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
   -- logm $ "fetchToks" ++ (showToks toks)
-
-  -- logm $ "fetchToksFinal:[Entry]=" ++ (show $ retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid)
-  -- logm $ "fetchToksFinal:[PosToken]=" ++ (show $ deleteGapsToks' $ retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid)
-  -- logm $ "fetchToksFinal:[PosToken2]=" ++ (show $ stripForestLines $ deleteGapsToks $ retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid)
-
   logm $ "fetchToksFinal (not showing toks)"
   return toks
 
@@ -116,22 +111,6 @@ fetchOrigToks = do
   logm "fetchOrigToks"
   Just tm <- gets rsModule
   return $ rsOrigTokenStream tm
-
-{-
--- |Replace the module tokens with a modified set. This destroys any
--- pre-existing structure in the token tree
--- Deprecated
-putToks :: [PosToken] -> Bool -> RefactGhc ()
-putToks toks isModified = do
-  logm $ "putToks " ++ (showToks toks)
-  st <- get
-  let Just tm = rsModule st
-  let rsModule' = Just (tm {rsTokenCache = initTokenCache toks, rsStreamModified = isModified})
-  put $ st { rsModule = rsModule' }
--}
-
--- TODO: ++AZ: these individual calls should happen via the TokenUtils
---       API, have a simple get/put interface here only
 
 -- |Get the current tokens for a given GHC.SrcSpan.
 getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
@@ -183,15 +162,12 @@ putToksForSpan sspan toks = do
   let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  -- stashName <- stash oldTree
   return newSpan
 
 -- |Replace the tokens for a given GHC.SrcSpan, return GHC.SrcSpan
 -- they are placed in
 putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc GHC.SrcSpan
 putToksForPos pos toks = do
--- ++AZ++ TODO: This bypasses the tree selection process.Perhaps
---              deprecate the function
   logm $ "putToksForPos " ++ (show pos) ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
@@ -200,7 +176,6 @@ putToksForPos pos toks = do
   let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  -- stashName <- stash oldTree
   drawTokenTree ""
   return newSpan
 
@@ -256,7 +231,6 @@ removeToksForSpan sspan = do
   let tk' = removeToksFromCache (rsTokenCache tm) sspan
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  -- stashName <- stash oldTree -- Create a new entry for the old tree
   return ()
 
 -- |Remove a GHC.SrcSpan and its associated tokens
@@ -272,21 +246,6 @@ removeToksForPos pos = do
   put $ st { rsModule = rsModule' }
   drawTokenTree "removeToksForPos result"
   return ()
-
-{-
--- |Insert a GHC.SrcSpan into the tree if it is not already there
-putSrcSpan ::  GHC.SrcSpan -> RefactGhc ()
-putSrcSpan sspan = do
-  logm $ "putSrcSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan)
-  st <- get
-  let Just tm = rsModule st
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let forest' = insertSrcSpan forest (srcSpanToForestSpan sspan)
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
-  return ()
--}
 
 -- ---------------------------------------------------------------------
 
@@ -328,18 +287,6 @@ syncDeclToLatestStash t = do
   let Just tm = rsModule st
   let t' = syncAstToLatestCache (rsTokenCache tm) t
   return t'
-
--- ---------------------------------------------------------------------
-{-
--- |Add a new GHC.SrcSpan and tokens
-putNewSpanAndToks :: GHC.SrcSpan -> [PosToken] -> RefactGhc ()
-putNewSpanAndToks newSpan toks = do
-  st <- get
-  let Just tm = rsModule st
-  let (forest',_) = addNewSrcSpanAndToks (rsTokenCache tm) oldSpan toks
-  let rsModule' = Just (tm {rsTokenCache = forest', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
--}
 
 -- ---------------------------------------------------------------------
 
