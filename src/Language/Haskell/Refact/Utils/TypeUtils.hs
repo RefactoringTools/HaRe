@@ -3093,7 +3093,7 @@ addFormalParams place newParams
          Right (GHC.L l _) -> do
            toks <- getToksForSpan l
            newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False newStr
-           _ <- putToksForSpan l ({- map markToken -} newToks)
+           _ <- putToksForSpan l newToks
            _ <- putToksAfterSpan l PlaceAdjacent toks
            return ()
 
@@ -3346,24 +3346,6 @@ rmItemsFromExport mod@(HsModule loc modName exps@(Just es) imps ds) (Right ents)
                                  return (Just (es \\ ents))
        return (HsModule loc modName exps' imps ds)
 rmItemsFromExport mod _ = return mod
--}
-
-{-
---This function is only used by this module, and should not be exported.
-deleteEnt toks (startPos, endPos)
-  = let (toks1,toks2)=break (\t->tokenPos t==startPos) toks
-        previousTok=ghead "deleteEnt" $ dropWhile isWhiteSpace $ reverse toks1
-        toks' = dropWhile isWhiteSpace $ gtail "deleteEnts" $ dropWhile (\t->tokenPos t/=endPos) toks2
-        nextTok = ghead "deleteEnt" toks'
-        startPos'=if isComma previousTok && (not (isComma nextTok)) then tokenPos previousTok else startPos
-    in if isComma nextTok
-         then let remainedToks = tail toks'
-              in if remainedToks /= []
-                   then let whites = takeWhile isWhiteSpace remainedToks
-                        in if whites /= [] then deleteToks toks startPos' (tokenPos (last whites))
-                                           else deleteToks toks startPos' (tokenPos nextTok)
-                   else deleteToks toks startPos' (tokenPos nextTok)
-         else deleteToks toks startPos' endPos
 -}
 
 -- ---------------------------------------------------------------------

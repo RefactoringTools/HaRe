@@ -436,6 +436,7 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+{-
   describe "replaceToks" $ do
     it "Replaces a set of tokens in a token stream" $ do
       (t,toks) <- parsedFileCaseBGhc
@@ -466,9 +467,9 @@ spec = do
                "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
                "(((4,31),(4,35)),ITelse,\"else\")," ++
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
-
+-}
   -- -------------------------------------------------------------------
-
+{-
   describe "replaceTok" $ do
     it "Replaces a single tokens in a token stream" $ do
       (_t,toks) <- parsedFileCaseBGhc
@@ -490,7 +491,7 @@ spec = do
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n foo x = if (odd x) then"
 
       let (GHC.L l t1,_n) = head $ tail middle
- 
+
       let newTok = (GHC.L l t1,"marimba")
       (showToks [newTok]) `shouldBe` "[(((4,1),(4,4)),ITvarid \"foo\",\"marimba\")]"
 
@@ -513,23 +514,23 @@ spec = do
       -- Check for token marker
       let (GHC.L l1 _,_) = head $ tail newToks
       (showGhc l1) `shouldBe` "HaRe:4:1-3"
-      
 
+-}
   -- -------------------------------------------------------------------
 
   describe "deleteToks" $ do
     it "Deletes a set of tokens from a token stream" $ do
       (_t,toks) <- parsedFileCaseBGhc
       let toks' = take 25 toks
-      (showToks toks') `shouldBe` 
-               "[(((1,1),(1,7)),ITmodule,\"module\")," ++ 
+      (showToks toks') `shouldBe`
+               "[(((1,1),(1,7)),ITmodule,\"module\")," ++
                 "(((1,8),(1,9)),ITconid \"B\",\"B\")," ++
-                "(((1,10),(1,15)),ITwhere,\"where\")," ++ 
+                "(((1,10),(1,15)),ITwhere,\"where\")," ++
                 "(((2,1),(2,35)),ITlineComment \"-- Test for refactor of if to case\",\"-- Test for refactor of if to case\")," ++
                 "(((4,1),(4,1)),ITvocurly,\"\")," ++
                 "(((4,1),(4,4)),ITvarid \"foo\",\"foo\")," ++
                 "(((4,5),(4,6)),ITvarid \"x\",\"x\")," ++
-                "(((4,7),(4,8)),ITequal,\"=\")," ++ 
+                "(((4,7),(4,8)),ITequal,\"=\")," ++
                 "(((4,9),(4,11)),ITif,\"if\")," ++
                 "(((4,12),(4,13)),IToparen,\"(\")," ++
                 "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
@@ -799,7 +800,7 @@ spec = do
              pats = [GHC.noLoc (GHC.VarPat n1), GHC.noLoc (GHC.VarPat n2)]
 
          addFormalParams tlDecls pats
-         
+
          forest <- getTokenTree
          return (tlDecls,ln,forest)
       ((d,l,f),s) <- runRefactGhcState comp
@@ -815,32 +816,6 @@ spec = do
       -- (showTree f) `shouldBe` ""
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x n1 n2\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 -}
-
-  -- -------------------------------------------------------------------
-
-  describe "reAlignToks" $ do
-    it "spaces tokens out if they overlap" $ do
-      let toks = [mkToken GHC.ITsemi (1,1) "v1"
-                 ,mkToken GHC.ITsemi (1,1) "v2"
-                 ,mkToken GHC.ITsemi (1,1) "v3"
-                 ]
-      (showToks toks) `shouldBe` "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,1),(1,3)),ITsemi,\"v2\"),(((1,1),(1,3)),ITsemi,\"v3\")]"
-      (showToks $ reAlignToks toks) `shouldBe` "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,4),(1,6)),ITsemi,\"v2\"),(((1,7),(1,9)),ITsemi,\"v3\")]"
-
-    it "spaces tokens out if they overlap, over multiple lines" $ do
-      let toks = [mkToken GHC.ITsemi (1,1) "v1"
-                 ,mkToken GHC.ITsemi (1,1) "v2"
-                 ,mkToken GHC.ITsemi (1,1) "v3"
-                 ,mkToken GHC.ITsemi (2,1) "v4"
-                 ,mkToken GHC.ITsemi (2,9) "v5"
-                 ]
-      (showToks toks) `shouldBe` 
-            "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,1),(1,3)),ITsemi,\"v2\"),(((1,1),(1,3)),ITsemi,\"v3\"),"++
-            "(((2,1),(2,3)),ITsemi,\"v4\"),(((2,9),(2,11)),ITsemi,\"v5\")]"
-
-      (showToks $ reAlignToks toks) `shouldBe` 
-            "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,4),(1,6)),ITsemi,\"v2\"),(((1,7),(1,9)),ITsemi,\"v3\"),"++
-            "(((2,1),(2,3)),ITsemi,\"v4\"),(((2,9),(2,11)),ITsemi,\"v5\")]"
 
   -- -------------------------------------------------------------------
 

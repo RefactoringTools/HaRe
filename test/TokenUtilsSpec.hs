@@ -2658,6 +2658,32 @@ tree TId 0:
 
       (GHC.showRichTokenStream (unReverseToks toksPrev)) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x"
 
+  -- -------------------------------------------------------------------
+
+  describe "reAlignToks" $ do
+    it "spaces tokens out if they overlap" $ do
+      let toks = [mkToken GHC.ITsemi (1,1) "v1"
+                 ,mkToken GHC.ITsemi (1,1) "v2"
+                 ,mkToken GHC.ITsemi (1,1) "v3"
+                 ]
+      (showToks toks) `shouldBe` "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,1),(1,3)),ITsemi,\"v2\"),(((1,1),(1,3)),ITsemi,\"v3\")]"
+      (showToks $ reAlignToks toks) `shouldBe` "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,4),(1,6)),ITsemi,\"v2\"),(((1,7),(1,9)),ITsemi,\"v3\")]"
+
+    it "spaces tokens out if they overlap, over multiple lines" $ do
+      let toks = [mkToken GHC.ITsemi (1,1) "v1"
+                 ,mkToken GHC.ITsemi (1,1) "v2"
+                 ,mkToken GHC.ITsemi (1,1) "v3"
+                 ,mkToken GHC.ITsemi (2,1) "v4"
+                 ,mkToken GHC.ITsemi (2,9) "v5"
+                 ]
+      (showToks toks) `shouldBe`
+            "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,1),(1,3)),ITsemi,\"v2\"),(((1,1),(1,3)),ITsemi,\"v3\"),"++
+            "(((2,1),(2,3)),ITsemi,\"v4\"),(((2,9),(2,11)),ITsemi,\"v5\")]"
+
+      (showToks $ reAlignToks toks) `shouldBe`
+            "[(((1,1),(1,3)),ITsemi,\"v1\"),(((1,4),(1,6)),ITsemi,\"v2\"),(((1,7),(1,9)),ITsemi,\"v3\"),"++
+            "(((2,1),(2,3)),ITsemi,\"v4\"),(((2,9),(2,11)),ITsemi,\"v5\")]"
+
   -- ---------------------------------------------
 
   describe "invariant 1" $ do

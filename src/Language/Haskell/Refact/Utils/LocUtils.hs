@@ -31,7 +31,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
 
                      , lengthOfLastLine
                      , getToks
-                     , replaceToks,replaceTok,replaceTokNoReAlign,deleteToks,doRmWhites -- ,doAddWhites
+                     -- , replaceToks,replaceTok
+                     ,replaceTokNoReAlign,deleteToks,doRmWhites -- ,doAddWhites
                      , srcLocs
                      , getSrcSpan, getAllSrcLocs
                      -- , ghcSrcLocs -- Test version
@@ -527,6 +528,7 @@ addFormalParams t newParams
 -}
 -- ---------------------------------------------------------------------
 
+{-
 -- |Replace a list of tokens in the token stream by a new list of
 -- tokens, adjust the layout as well. To use this function make sure
 -- the start and end positions really exist in the token stream.
@@ -545,9 +547,10 @@ replaceToks toks startPos endPos newToks =
    where
       (toks1, _toks21, toks22) = splitToks (startPos, endPos) toks
       newToks' = map markToken newToks
-
+-}
 -- ---------------------------------------------------------------------
 
+{-
 -- |Replace a single token in the token stream by a new token, adjust
 -- the layout to the end of the current line as well. To use this
 -- function make sure the start position really exists in the token
@@ -568,7 +571,7 @@ replaceTok toks pos newTok =
 
       newRowFound t1 t2 = tokenRow t1 /= tokenRow t2
       newTok' = markToken newTok
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |Replace a single token in the token stream by a new token, without

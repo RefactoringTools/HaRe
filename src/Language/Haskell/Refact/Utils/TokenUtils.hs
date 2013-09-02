@@ -1093,16 +1093,6 @@ retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {-  reAlignM
     accum acc (Entry _ toks) = acc ++ toks
     accum acc (Deleted _ _)  = acc
 
--- |Retrieve all the tokens at the leaves of the tree, in order,
--- making adjustments to the layout to cater for movement of subtrees,
--- and changing of token lengths.
--- TODO: ++AZ++ run through the tokens and trigger re-alignment in all
---      rows with tokenFileMark in a filename for a token
-{- -- ++AZ++ rather use retrieveTokensInterim or retrieveTokensFinal
-retrieveTokens :: Tree Entry -> [PosToken]
-retrieveTokens forest = stripForestLines $ monotonicLineToks {- reAlignMarked -}
-                      $ deleteGapsToks $ retrieveTokens' forest
--}
 
 retrieveTokens' :: Tree Entry -> [Entry]
 retrieveTokens' forest = mergeDeletes $ concat $ map (\t -> F.foldl accum [] t) [forest]
