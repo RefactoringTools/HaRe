@@ -6,7 +6,7 @@ module ConstructorIn3 where
 
 --Rename tyoe variable 'a' in BTree to 'b'
 
-data BTree b = Empty | T b ( BTree b ) ( BTree b )
+data BTree b = Empty | T b (BTree b) (BTree b)
                deriving Show
 
 buildtree :: Ord a => [a] -> BTree a

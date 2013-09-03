@@ -2,7 +2,7 @@ module Renaming.C3  where
 
 import Renaming.D3
 
-instance Same      Double where
+instance Same Double where
    isSame a  b = a ==b
    isNotSame a b = a /=b
 

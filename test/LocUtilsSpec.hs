@@ -639,6 +639,46 @@ spec = do
             "(((18,6),(18,11)),ITwhere,\"where\")]")
 
 
+  -- -------------------------------------------------------------------
+
+  describe "groupTokensByLine" $ do
+    it "Groups a list of tokens by line" $ do
+      (_t,toks) <- parsedFileCaseBGhc
+      let toks' = take 25 toks
+      (showToks toks') `shouldBe`
+               "[(((1,1),(1,7)),ITmodule,\"module\")," ++
+                "(((1,8),(1,9)),ITconid \"B\",\"B\")," ++
+                "(((1,10),(1,15)),ITwhere,\"where\")," ++
+                "(((2,1),(2,35)),ITlineComment \"-- Test for refactor of if to case\",\"-- Test for refactor of if to case\")," ++
+                "(((4,1),(4,1)),ITvocurly,\"\")," ++
+                "(((4,1),(4,4)),ITvarid \"foo\",\"foo\")," ++
+                "(((4,5),(4,6)),ITvarid \"x\",\"x\")," ++
+                "(((4,7),(4,8)),ITequal,\"=\")," ++
+                "(((4,9),(4,11)),ITif,\"if\")," ++
+                "(((4,12),(4,13)),IToparen,\"(\")," ++
+                "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
+                "(((4,17),(4,18)),ITvarid \"x\",\"x\")," ++
+                "(((4,18),(4,19)),ITcparen,\")\")," ++
+                "(((4,20),(4,24)),ITthen,\"then\")," ++
+                "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
+                "(((4,31),(4,35)),ITelse,\"else\")," ++
+                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")," ++
+                "(((6,1),(6,1)),ITsemi,\"\")," ++
+                "(((6,1),(6,4)),ITvarid \"bob\",\"bob\")," ++
+                "(((6,5),(6,6)),ITvarid \"x\",\"x\")," ++
+                "(((6,7),(6,8)),ITvarid \"y\",\"y\")," ++
+                "(((6,9),(6,10)),ITequal,\"=\")," ++
+                "(((6,11),(6,12)),ITvarid \"x\",\"x\")," ++
+                "(((6,13),(6,14)),ITvarsym \"+\",\"+\")," ++
+                "(((6,15),(6,16)),ITvarid \"y\",\"y\")]"
+
+      let grouped = groupTokensByLine toks'
+      (map showToks grouped) `shouldBe`
+         ["[(((1,1),(1,7)),ITmodule,\"module\"),(((1,8),(1,9)),ITconid \"B\",\"B\"),(((1,10),(1,15)),ITwhere,\"where\")]",
+          "[(((2,1),(2,35)),ITlineComment \"-- Test for refactor of if to case\",\"-- Test for refactor of if to case\")]",
+          "[(((4,1),(4,1)),ITvocurly,\"\"),(((4,1),(4,4)),ITvarid \"foo\",\"foo\"),(((4,5),(4,6)),ITvarid \"x\",\"x\"),(((4,7),(4,8)),ITequal,\"=\"),(((4,9),(4,11)),ITif,\"if\"),(((4,12),(4,13)),IToparen,\"(\"),(((4,13),(4,16)),ITvarid \"odd\",\"odd\"),(((4,17),(4,18)),ITvarid \"x\",\"x\"),(((4,18),(4,19)),ITcparen,\")\"),(((4,20),(4,24)),ITthen,\"then\"),(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\"),(((4,31),(4,35)),ITelse,\"else\"),(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]",
+          "[(((6,1),(6,1)),ITsemi,\"\"),(((6,1),(6,4)),ITvarid \"bob\",\"bob\"),(((6,5),(6,6)),ITvarid \"x\",\"x\"),(((6,7),(6,8)),ITvarid \"y\",\"y\"),(((6,9),(6,10)),ITequal,\"=\"),(((6,11),(6,12)),ITvarid \"x\",\"x\"),(((6,13),(6,14)),ITvarsym \"+\",\"+\"),(((6,15),(6,16)),ITvarid \"y\",\"y\")]"
+         ]
 
   -- -------------------------------------------------------------------
 
@@ -660,7 +700,7 @@ spec = do
           ss = getSrcSpan decl
       (showGhc decl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
       (showGhc ss) `shouldBe` "Just test/testdata/MoveDef/Demote.hs:4:1-18"
-      
+
   -- -------------------------------------------------------------------
 
   describe "getAllSrcLocs" $ do

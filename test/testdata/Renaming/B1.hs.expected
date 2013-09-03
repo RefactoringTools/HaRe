@@ -8,7 +8,7 @@ instance SameOrNot Float where
    isSame a  b = a ==b
    isNotSame a b = a /=b
 
-myFringe:: AnotherTree a -> [ a ]
+myFringe:: AnotherTree a -> [a]
 myFringe (Leaf x ) = [x]
 myFringe (Branch left right) = myFringe right
 

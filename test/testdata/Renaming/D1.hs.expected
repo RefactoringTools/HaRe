@@ -3,9 +3,9 @@ module Renaming.D1 where
 {-Rename data constructor `Tree` to `AnotherTree`.
   This refactoring affects module `D1', 'B1' and 'C1' -}
 
-data AnotherTree a = Leaf a | Branch ( AnotherTree a ) ( AnotherTree a )
+data AnotherTree a = Leaf a | Branch (AnotherTree a) (AnotherTree a)
 
-fringe :: AnotherTree a -> [ a ]
+fringe :: AnotherTree a -> [a]
 fringe (Leaf x ) = [x]
 fringe (Branch left right) = fringe left ++ fringe right
 

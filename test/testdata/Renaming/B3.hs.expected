@@ -4,7 +4,7 @@ import Renaming.D3 hiding (sumSquares)
 
 import qualified Renaming.D3
 
-instance Same      Float where
+instance Same Float where
    isSame a  b = a ==b
    isNotSame a b = a /=b
 

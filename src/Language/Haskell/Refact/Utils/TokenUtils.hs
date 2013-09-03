@@ -66,6 +66,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , placeToksForSpan
        , limitPrevToks
        , reIndentToks
+       , reAlignOneLine
        , reAlignToks
        , splitForestOnSpan
        , spanContains
@@ -1216,15 +1217,39 @@ stripForestLines toks = map doOne toks
 reAlignMarked :: [PosToken] -> [PosToken]
 reAlignMarked toks = concatMap alignOne $ groupTokensByLine toks
   where
-    alignOne toksl = unmarked ++ (reAlignToks marked)
+    -- alignOne toksl = unmarked ++ (reAlignToks marked)
+    alignOne toksl = unmarked ++ (reAlignOneLine marked)
      where
        (unmarked,marked) = break isMarked toksl
 
 -- ---------------------------------------------------------------------
 
--- | Make sure all tokens have at least one space between them
---   (Except for zero-length toks)
--- TODO: pretty sure this can be simplified
+-- | Some tokens are marked if they belong to identifiers which have
+-- been renamed. When the renaming takes place, no layout adjustment
+-- is done. This function adjusts the spacing for the rest of the line
+-- to match as far as possible the original spacing, except for the
+-- name change.
+reAlignOneLine :: [PosToken] -> [PosToken]
+reAlignOneLine toks = go (0,0) toks
+  where
+    go _ [] = []
+    go (l,c) (t:ts) = (increaseSrcSpan (l,c) t') : (go (l,c') ts)
+      where
+        (t',dc) = adjustToken t
+        c' = c + dc
+
+    adjustToken tt@(_,"") = (tt,0)
+    adjustToken tt@(lt@(GHC.L _ t),s) = ((GHC.L newL t,s),deltac)
+      where
+        (sl,sc) = getLocatedStart lt
+        (el,ec) = getLocatedEnd   lt
+        deltac = (length s) - (ec - sc)
+
+        filename = fileNameFromTok tt
+        newL = GHC.mkSrcSpan (GHC.mkSrcLoc filename sl sc)
+                             (GHC.mkSrcLoc filename el (ec + deltac))
+
+
 reAlignToks :: [PosToken] -> [PosToken]
 reAlignToks [] = []
 reAlignToks [t] = [t]

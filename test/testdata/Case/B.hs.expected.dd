@@ -10,7 +10,7 @@ foo' x = case (odd x) of
   True -> "Odd"
   False -> "Even"
 
-joe  x = case ( odd x ) of
+joe x = case (odd x) of
   True -> "Odd"
   False -> "Even"
 

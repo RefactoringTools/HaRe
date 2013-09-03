@@ -548,53 +548,29 @@ replaceToks toks startPos endPos newToks =
       (toks1, _toks21, toks22) = splitToks (startPos, endPos) toks
       newToks' = map markToken newToks
 -}
--- ---------------------------------------------------------------------
 
-{-
--- |Replace a single token in the token stream by a new token, adjust
--- the layout to the end of the current line as well. To use this
--- function make sure the start position really exists in the token
--- stream.
--- Note: does not re-align, else other later replacements may fail.
-replaceTok::[PosToken]->SimpPos->PosToken->[PosToken]
-replaceTok toks pos newTok =
-    if length toksSameLine == 0 && length toksRest == 0
-        then toks1 ++ [newTok]
-        else let
-               newToks = toks1 ++ (newTok':toksSameLine) ++ toksRest
-             in newToks
-   where
-      (toks1,toks2) = break (\t -> tokenPos t >= pos && tokenLen t > 0) toks
-      (toksSameLine,toksRest) = if emptyList toks2
-         then error $ "replaceTok(" ++ show pos ++ "): token not in stream"
-         else break (newRowFound (ghead "replaceTok" $ tail toks2))  (tail toks2)
-
-      newRowFound t1 t2 = tokenRow t1 /= tokenRow t2
-      newTok' = markToken newTok
--}
 -- ---------------------------------------------------------------------
 
 -- |Replace a single token in the token stream by a new token, without
 -- adjusting the layout.
--- Note: does not re-align, else other later replacements may fail.
+-- Note1: does not re-align, else other later replacements may fail.
+-- Note2: must keep original end col, to know what the inter-token gap
+--        was when re-aligning
 replaceTokNoReAlign::[PosToken]->SimpPos->PosToken->[PosToken]
 replaceTokNoReAlign toks pos newTok =
     toks1 ++ [newTok'] ++ toksRest
    where
       (toks1,toks2) = break (\t -> tokenPos t >= pos && tokenLen t > 0) toks
       toksRest = if (emptyList toks2) then [] else (gtail "replaceTokNoReAlign" toks2)
-      newTok' = markToken newTok
+      oldTok =  if (emptyList toks2) then newTok else (ghead "replaceTokNoReAlign" toks2)
+      -- newTok' = markToken newTok
+      newTok' = markToken $ matchTokenPos oldTok newTok
 
 -- ---------------------------------------------------------------------
 
-{- ++AZ++ this definition does not make sense
--- | Get the end of the line before the pos
-getOffset toks pos
-  = let (ts1, ts2) = break (\t->tokenPos t >= pos) toks
-    in if (emptyList ts2)
-         then error "HaRe error: position does not exist in the token stream!"
-         else lengthOfLastLine ts1
--}
+-- |Transfer the location information from the first param to the second
+matchTokenPos :: PosToken -> PosToken -> PosToken
+matchTokenPos (GHC.L l _,_) (GHC.L _ t,s) = (GHC.L l t,s)
 
 -- ---------------------------------------------------------------------
 
@@ -611,38 +587,7 @@ getLineOffset toks pos
 
 -- ---------------------------------------------------------------------
 
--- ++AZ++ next bit commented out with --, otherwise ghci complains
 
--- --comment a token stream specified by the start and end position.
--- commentToks::(SimpPos,SimpPos)->[PosToken]->[PosToken]
--- commentToks (startPos,endPos) toks
---     = let (toks1, toks21, toks22) = splitToks (startPos, endPos) toks
---           toks21' = case toks21 of
---                      []              -> toks21
---                      (t,(l,s)):[]    -> (t, (l, ("{-" ++ s ++ "-}"))):[]
---                      (t1,(l1,s1)):ts -> let lastTok@(t2, (l2, s2)) = glast "commentToks" ts
---                                             lastTok' = (t2, (l2, (s2++" -}")))
---                                         in (t1,(l1, ("{- "++s1))): (reverse (lastTok': gtail "commentToks" (reverse ts)))
---       in (toks1 ++ toks21' ++ toks22)
-
--- ++AZ++ prev bit commented out with --, otherwise ghci complains
-
-{-
-insertTerms :: (SimpPos, SimpPos) -> [PosToken] -> String -> [PosToken]
-insertTerms ((startPosl, startPosr), endPos) toks com
-    = let (toks1, toks21, toks22) = splitToks ((startPosl, startPosr), endPos) toks
-          toks21' = (Commentstart, ((Pos 0 startPosl startPosr) , "")) : [(Comment, ((Pos 0 startPosl startPosr), ("\n" ++ com ++ "\n")))]
-      in (toks1 ++ toks21' ++ (toks21 ++ toks22))
-
-
-insertComments :: (SimpPos, SimpPos) -> [PosToken] -> String -> [PosToken]
-insertComments ((startPosl, startPosr), endPos) toks com
-    = let (toks1, toks21, toks22) = splitToks ((startPosl, startPosr), endPos) toks
-          toks21' = (Commentstart, ((Pos 0 startPosl startPosr) , "")) : [(Comment, ((Pos 0 startPosl startPosr), ("\n{- " ++ com ++ " -}\n")))]
-      in (toks1 ++ toks21' ++ (toks21 ++ toks22))
-
----  - } - }
--}
 {-
 srcLocs::(Data t)=> t->[SimpPos]
 srcLocs t =(nub.srcLocs') t \\ [simpPos0]
@@ -1411,14 +1356,21 @@ newLinesToken jump (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
 -- ---------------------------------------------------------------------
 
 groupTokensByLine :: [PosToken] -> [[PosToken]]
-groupTokensByLine [] = []
-groupTokensByLine (xs) = let x = head xs
-                             (xs', xs'') = break (\x' -> tokenRow x /= tokenRow x') xs
-                      in case xs'' of
-                        [] -> [xs']
-                        _ ->  (xs'++ [ghead "groupTokensByLine" xs''])
-                                : groupTokensByLine (gtail "groupTokensByLine" xs'')
+groupTokensByLine xs = groupBy fn xs
+  where
+    fn t1 t2 = tokenRow t1 == tokenRow t2
 
+{-
+groupTokensByLine :: [PosToken] -> [[PosToken]]
+groupTokensByLine [] = []
+groupTokensByLine (xs) =
+  let x = head xs
+      (xs', xs'') = break (\x' -> tokenRow x /= tokenRow x') xs
+  in case xs'' of
+      [] -> [xs']
+      _  -> (xs'++ [ghead "groupTokensByLine" xs''])
+             : groupTokensByLine (gtail "groupTokensByLine" xs'')
+-}
 
 -- ---------------------------------------------------------------------
 

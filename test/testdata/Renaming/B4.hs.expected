@@ -5,7 +5,7 @@ import Renaming.D4 hiding (sumSquares)
 import qualified Renaming.D4
 
 instance SameOrNot Float where
-   isSameOrNot a b = a == b
+   isSameOrNot a  b = a ==b
    isNotSame a b = a /=b
 
 myFringe:: Tree a -> [a]

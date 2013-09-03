@@ -18,5 +18,5 @@ instance Eq Foo where
    Moo == Moo = True
    _   == _   = False
 
-main = reversable [ 1 , 2 , 3 ]
+main = reversable [1,2,3]
 

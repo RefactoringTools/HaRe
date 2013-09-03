@@ -6,4 +6,4 @@ module LayoutIn1 where
 
 sumSquares x y= square x + square y where square x = x ^ pow
   --There is a comment.
-                                  pow=2
+                                          pow=2

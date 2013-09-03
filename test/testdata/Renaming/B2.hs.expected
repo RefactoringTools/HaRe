@@ -10,7 +10,7 @@ instance SameOrNot Float where
 
 myFringe:: Tree a -> [a]
 myFringe (Leaf x ) = [x]
-myFringe (SubTree left right ) = myFringe right
+myFringe (SubTree left right) = myFringe right
 
 sumSquares (x:xs)= x^2 + sumSquares xs
 sumSquares [] =0

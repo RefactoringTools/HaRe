@@ -3900,26 +3900,20 @@ renamePNworker oldPN newName updateTokens useQual t = do
          -- logm $ "renamePNWorker:renameTypeSig done"
          return (GHC.L l (GHC.TypeSig ns' typ'))
 
+    -- The param l is only useful for the start of the token pos
     worker useQual' l _n
      = do if updateTokens
            then  do
-                    -- logm $ "renamePN.worker entry:l=" ++ (showSrcSpanF l)
-                    -- let (row,col) = srcPosToSimpPos (r,c)
-                    -- logm $ "renamePN.worker: ((row,col),sspan,l,newName)=" ++ (showGhc ((row,col),sspan,l,newName)) -- ++AZ++ debug
-                    -- logm $ "renamePN.worker: ((row,col),l,newName)=" ++ (showGhc ((row,col),l,newName)) -- ++AZ++ debug
-                    -- logm $ "renamePN.worker: (l,newName)=" ++ (showGhc (l,newName)) -- ++AZ++ debug
-                    -- drawTokenTree "" -- ++AZ++ debug
-                    -- logm $ "renamePN.worker:newTok=" ++ (show (markToken $ newNameTok useQual' l newName))
-                    -- replaceToken sspan (markToken $ newNameTok useQual' l newName)
-                    replaceToken l (markToken $ newNameTok useQual' l newName)
-                    -- drawTokenTree "after replaceToken" -- ++AZ++ debug
-                    return ()
+             replaceToken l (markToken $ newNameTok useQual' l newName)
+             return ()
            else return ()
 
 -- ---------------------------------------------------------------------
 
 -- | Create a new name token. If 'useQual' then use the qualified
---   name, if it exists.
+-- name, if it exists.
+-- The end position is not changed, so the eventual realignment can
+-- know what the difference in length in the token is
 newNameTok :: Bool -> GHC.SrcSpan -> GHC.Name -> PosToken
 newNameTok useQual l newName =
   ((GHC.L l' (GHC.ITvarid (GHC.mkFastString newNameStr))),newNameStr)

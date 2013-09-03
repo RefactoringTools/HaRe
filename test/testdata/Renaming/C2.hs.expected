@@ -8,7 +8,7 @@ instance SameOrNot Double where
 
 myFringe:: Tree a -> [a]
 myFringe (Leaf x ) = [x]
-myFringe (SubTree left right ) = myFringe left
+myFringe (SubTree left right) = myFringe left
 
 
 

@@ -5,7 +5,7 @@ module ConstructorIn1 where
 --Any type variable can be renamed.
 
 --Rename type Constructor 'BTree' to 'MyBTree' 
-data MyBTree a = Empty | T a ( MyBTree a ) ( MyBTree a )
+data MyBTree a = Empty | T a (MyBTree a) (MyBTree a)
                deriving Show
 
 buildtree :: Ord a => [a] -> MyBTree a

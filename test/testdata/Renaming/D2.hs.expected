@@ -3,11 +3,11 @@ module Renaming.D2 where
 {-Rename type constructor `Branch` to `SubTree`.
   This refactoring affects module `D2', 'B2' and 'C2' -}
 
-data Tree a = Leaf a | SubTree ( Tree a ) ( Tree a )
+data Tree a = Leaf a | SubTree (Tree a) (Tree a)
 
 fringe :: Tree a -> [a]
 fringe (Leaf x ) = [x]
-fringe (SubTree left right ) = fringe left ++ fringe right
+fringe (SubTree left right) = fringe left ++ fringe right
 
 class SameOrNot a where
    isSame  :: a -> a -> Bool

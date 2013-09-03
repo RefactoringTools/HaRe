@@ -3,7 +3,7 @@ module Renaming.C4  where
 import Renaming.D4
 
 instance SameOrNot Double where
-   isSameOrNot a b = a == b
+   isSameOrNot a  b = a ==b
    isNotSame a b = a /=b
 
 myFringe:: Tree a -> [a]

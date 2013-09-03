@@ -5,6 +5,6 @@ import Renaming.C5
 import Renaming.D5
 
 main :: Tree Int ->Bool
-main t = isSame (Renaming.D5.sum ( fringe t ) )
-               (Renaming.D5.sum ( Renaming.B5.myFringe t ) + Renaming.D5.sum ( Renaming.C5.myFringe t ) )
+main t = isSame (Renaming.D5.sum (fringe t))
+               (Renaming.D5.sum (Renaming.B5.myFringe t)+Renaming.D5.sum (Renaming.C5.myFringe t))
 

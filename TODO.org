@@ -14,6 +14,7 @@
 
 * TODO add command line param to turn off timestamping of log lines when -v
 * TODO add more granularity on logging control, e.g wether to show tokens while working, whether to dump initial AST
+* TODO renaming with length change does not adjust surrounding layout for do/let/where etc
 * TODO from the source files
   :PROPERTIES:
   :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
