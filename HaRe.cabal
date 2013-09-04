@@ -46,11 +46,8 @@ Build-Type:                     Simple
 Data-Dir:                       .
 data-files:                     elisp/*.el
 
-flag hpc
-  default: False
-
 Library
-        Build-Depends:          base >=4
+        Build-Depends:          base >= 4.0  && < 4.7
                                 , containers
                                 , directory
                                 , filepath
@@ -71,10 +68,6 @@ Library
                                 , syz
 
         -- GHC-Options:             -Wall
-        -- We want to run coverage reports on the library
-        if flag(hpc)
-          ghc-options: -fhpc
-          -- GHC-Options:             -fhpc
 
         Hs-Source-Dirs:         src
         Other-Modules:          Paths_HaRe
@@ -107,7 +100,7 @@ Executable ghc-hare
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
-        Build-Depends:          base >=4
+        Build-Depends:          base >= 4.0  && < 4.7
                                 , array
                                 -- TODO: remove cmdtheline
                                 , cmdtheline >= 0.2.1
@@ -181,3 +174,6 @@ test-suite spec
     , HaRe >= 0.7.0.0
   Extensions:      CPP
 
+source-repository head
+  type:     git
+  location: https://github.com/alanz/HaRe.git
