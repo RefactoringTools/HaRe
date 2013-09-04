@@ -1867,7 +1867,7 @@ tree TId 0:
               "`- ((6,1),(32,18))\n"
 
       let toks' = retrieveTokensFinal f5
-      (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2 :: Integer -> Integerc , d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2 :: Integer -> Integerc,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 
 
   -- ---------------------------------------------
@@ -2677,12 +2677,12 @@ tree TId 0:
                   ,mkToken GHC.ITsemi (1, 7) "v3"
                   ,mkToken GHC.ITsemi (1,10) "v4"
                   ]
-      let (GHC.L l _,_) = head $ tail toks'
-      let t2 = markToken $ newNameTok False l (mkTestGhcName 1 Nothing "v2long")
+      let tv2@(GHC.L l _,_) = head $ tail toks'
+      let t2 = markToken $ matchTokenPos tv2 $ newNameTok False l (mkTestGhcName 1 Nothing "v2long")
       let toks = head toks':t2:drop 2 toks'
       (showToks toks) `shouldBe`
            "[(((1,1),(1,3)),ITsemi,\"v1\"),"++
-            "(((1,4),(1,10)),ITvarid \"v2long\",\"v2long\"),"++
+            "(((1,4),(1,6)),ITvarid \"v2long\",\"v2long\"),"++
             "(((1,7),(1,9)),ITsemi,\"v3\"),"++
             "(((1,10),(1,12)),ITsemi,\"v4\")]"
 
@@ -2700,12 +2700,12 @@ tree TId 0:
                   ,mkToken GHC.ITsemi (1,10) "v3"
                   ,mkToken GHC.ITsemi (1,13) "v4"
                   ]
-      let (GHC.L l _,_) = head $ tail toks'
-      let t2 = markToken $ newNameTok False l (mkTestGhcName 1 Nothing "v2long")
+      let tv2@(GHC.L l _,_) = head $ tail toks'
+      let t2 = markToken $ matchTokenPos tv2 $ newNameTok False l (mkTestGhcName 1 Nothing "v2long")
       let toks = head toks':t2:drop 2 toks'
       (showToks toks) `shouldBe`
            "[(((1,1),(1,3)),ITsemi,\"v1\"),"++
-            "(((1,4),(1,10)),ITvarid \"v2long\",\"v2long\"),"++
+            "(((1,4),(1,6)),ITvarid \"v2long\",\"v2long\"),"++
             "(((1,10),(1,12)),ITsemi,\"v3\"),"++
             "(((1,13),(1,15)),ITsemi,\"v4\")]"
 
@@ -2723,12 +2723,12 @@ tree TId 0:
                   ,mkToken GHC.ITsemi (1, 7) "v3"
                   ,mkToken GHC.ITsemi (1,10) "v4"
                   ]
-      let (GHC.L l _,_) = head $ tail toks'
-      let t2 = markToken $ newNameTok False l (mkTestGhcName 1 Nothing "v")
+      let tv2@(GHC.L l _,_) = head $ tail toks'
+      let t2 = markToken $ matchTokenPos tv2 $ newNameTok False l (mkTestGhcName 1 Nothing "v")
       let toks = head toks':t2:drop 2 toks'
       (showToks toks) `shouldBe`
            "[(((1,1),(1,3)),ITsemi,\"v1\"),"++
-            "(((1,4),(1,5)),ITvarid \"v\",\"v\"),"++
+            "(((1,4),(1,6)),ITvarid \"v\",\"v\"),"++
             "(((1,7),(1,9)),ITsemi,\"v3\"),"++
             "(((1,10),(1,12)),ITsemi,\"v4\")]"
 

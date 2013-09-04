@@ -1707,7 +1707,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "renamePN" $ do
-    it "Replace a Name with another, updating tokens" $ do
+    it "replaces a Name with another, updating tokens" $ do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -1726,14 +1726,14 @@ spec = do
       (showGhc n) `shouldBe` "DupDef.Dd1.toplevel"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((3,1),(3,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n bar2     x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n bar2 x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (showGhc nb) `shouldBe` "bar2 x = DupDef.Dd1.c GHC.Num.* x"
       (showToks $ take 20 $ toks) `shouldBe` "[(((1,1),(1,7)),ITmodule,\"module\"),(((1,8),(1,18)),ITqconid (\"DupDef\",\"Dd1\"),\"DupDef.Dd1\"),(((1,19),(1,24)),ITwhere,\"where\"),(((3,1),(3,1)),ITvocurly,\"\"),(((3,1),(3,9)),ITvarid \"toplevel\",\"toplevel\"),(((3,10),(3,12)),ITdcolon,\"::\"),(((3,13),(3,20)),ITconid \"Integer\",\"Integer\"),(((3,21),(3,23)),ITrarrow,\"->\"),(((3,24),(3,31)),ITconid \"Integer\",\"Integer\"),(((4,1),(4,1)),ITsemi,\"\"),(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),(((4,10),(4,11)),ITvarid \"x\",\"x\"),(((4,12),(4,13)),ITequal,\"=\"),(((4,14),(4,15)),ITvarid \"c\",\"c\"),(((4,16),(4,17)),ITstar,\"*\"),(((4,18),(4,19)),ITvarid \"x\",\"x\"),(((6,1),(6,1)),ITsemi,\"\"),(((6,1),(6,2)),ITvarid \"c\",\"c\"),(((6,2),(6,3)),ITcomma,\",\"),(((6,3),(6,4)),ITvarid \"d\",\"d\")]"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
 
     -- -----------------------------------------------------------------
 
-    it "Replace a Name with another, updating tokens 2" $ do
+    it "replaces a Name with another, updating tokens 2" $ do
       (t, toks) <- parsedFileWhereIn4Ghc
 
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -1755,7 +1755,7 @@ spec = do
       (showGhc n) `shouldBe` "p"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((11,21),(11,24)),ITvarid \"p_1\",\"p_1\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p_1 x + sq p_1 y\n          where p_1 = 2 {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p_1 x + sq p_1 y\n          where p_1=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
       (showGhc nb) `shouldBe` "Demote.WhereIn4.sumSquares x y\n  = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n  where\n      p_1 = 2"
       (showToks $ take 20 $ toks) `shouldBe` "[(((1,1),(1,7)),ITmodule,\"module\"),(((1,8),(1,23)),ITqconid (\"Demote\",\"WhereIn4\"),\"Demote.WhereIn4\"),(((1,24),(1,29)),ITwhere,\"where\"),(((3,1),(3,84)),ITlineComment \"--A definition can be demoted to the local 'where' binding of a friend declaration,\",\"--A definition can be demoted to the local 'where' binding of a friend declaration,\"),(((4,1),(4,49)),ITlineComment \"--if it is only used by this friend declaration.\",\"--if it is only used by this friend declaration.\"),(((6,1),(6,66)),ITlineComment \"--Demoting a definition narrows down the scope of the definition.\",\"--Demoting a definition narrows down the scope of the definition.\"),(((7,1),(7,61)),ITlineComment \"--In this example, demote the top level 'sq' to 'sumSquares'\",\"--In this example, demote the top level 'sq' to 'sumSquares'\"),(((8,1),(8,55)),ITlineComment \"--In this case (there is single matches), if possible,\",\"--In this case (there is single matches), if possible,\"),(((9,1),(9,82)),ITlineComment \"--the parameters will be folded after demoting and type sigature will be removed.\",\"--the parameters will be folded after demoting and type sigature will be removed.\"),(((11,1),(11,1)),ITvocurly,\"\"),(((11,1),(11,11)),ITvarid \"sumSquares\",\"sumSquares\"),(((11,12),(11,13)),ITvarid \"x\",\"x\"),(((11,14),(11,15)),ITvarid \"y\",\"y\"),(((11,16),(11,17)),ITequal,\"=\"),(((11,18),(11,20)),ITvarid \"sq\",\"sq\"),(((11,21),(11,22)),ITvarid \"p\",\"p\"),(((11,23),(11,24)),ITvarid \"x\",\"x\"),(((11,25),(11,26)),ITvarsym \"+\",\"+\"),(((11,27),(11,29)),ITvarid \"sq\",\"sq\"),(((11,30),(11,31)),ITvarid \"p\",\"p\")]"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
@@ -1996,12 +1996,10 @@ spec = do
 
     ------------------------------------
 
-    it "Replace a name in a data declaration too" $ do
+    it "replaces a name in a data declaration too" $ do
       (t, toks) <- parsedFileRenamingField1
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = hsBinds renamed
-      -- (showGhc declsr) `shouldBe` ""
       let Just (GHC.L l n) = locToName renamingField1FileName (5, 19) renamed
       let
         comp = do
@@ -2016,13 +2014,13 @@ spec = do
       (showGhc n) `shouldBe` "Field1.pointx"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((5,18),(5,25)),ITvarid \"pointx1\",\"pointx1\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx, pointy :: Float}\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx1 , pointy :: Float }\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx1 p * pointx1 p +\n                   pointy p * pointy p)\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx1, pointy :: Float}\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx1 p * pointx1 p +\n                   pointy p * pointy p)\n\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(Field1.absPoint :: Field1.Point -> GHC.Types.Float\n Field1.absPoint p\n   = GHC.Float.sqrt\n       (pointx1 p GHC.Num.* pointx1 p\n        GHC.Num.+ Field1.pointy p GHC.Num.* Field1.pointy p)\n \n data Field1.Point\n   = Field1.Pt {pointx1 :: GHC.Types.Float,\n                Field1.pointy :: GHC.Types.Float},\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
     ------------------------------------
 
-    it "Replace a name in a type signature too" $ do
+    it "replaces a name in a type signature too" $ do
       (t, toks) <- parsedFileRenamingField1
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -2039,7 +2037,7 @@ spec = do
       (showGhc n) `shouldBe` "Field1.Point"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((5,6),(5,14)),ITvarid \"NewPoint\",\"NewPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx, pointy :: Float}\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data NewPoint = Pt { pointx , pointy :: Float }\n\n absPoint :: NewPoint -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data NewPoint = Pt {pointx, pointy :: Float}\n\n absPoint :: NewPoint -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(Field1.absPoint :: NewPoint -> GHC.Types.Float\n Field1.absPoint p\n   = GHC.Float.sqrt\n       (Field1.pointx p GHC.Num.* Field1.pointx p\n        GHC.Num.+ Field1.pointy p GHC.Num.* Field1.pointy p)\n \n data NewPoint\n   = Field1.Pt {Field1.pointx :: GHC.Types.Float,\n                Field1.pointy :: GHC.Types.Float},\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
     ------------------------------------
@@ -2062,12 +2060,12 @@ spec = do
       (showGhc n) `shouldBe` "LocToName.sumSquares"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint   ( x : xs ) = x ^ 2 + newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint   [ ] = 0\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint (x:xs) = x ^2 + newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint [] = 0\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(newPoint (x : xs) = x GHC.Real.^ 2 GHC.Num.+ newPoint xs\n newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
     ------------------------------------
 
-    it "Replace a qualified name in a FunBind with multiple patterns" $ do
+    it "replace a qualified name in a FunBind with multiple patterns" $ do
       (t, toks) <- parsedFileLocToName
       let renamed = fromJust $ GHC.tm_renamed_source t
       let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
@@ -2085,13 +2083,13 @@ spec = do
       (showGhc n) `shouldBe` "LocToName.sumSquares"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint   ( x : xs ) = x ^ 2 + LocToName.newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint   [ ] = 0\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n newPoint (x:xs) = x ^2 + LocToName.newPoint xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n newPoint [] = 0\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
     ------------------------------------
 
-    it "Replace a parameter name in a FunBind" $ do
+    it "replace a parameter name in a FunBind" $ do
       (t, toks) <- parsedFileLayoutIn2
       let renamed = fromJust $ GHC.tm_renamed_source t
       let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LayoutIn2")
@@ -2136,13 +2134,13 @@ spec = do
       (showGhc n) `shouldBe` "Data.List.sum"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((4,24),(4,29)),ITvarid \"mySum\",\"mySum\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module ScopeAndQual where\n\n import qualified Data.List as L\n import Prelude hiding (sum)\n\n main :: IO ()\n main = putStrLn (show $ L.sum [1,2,3])\n\n sum a b = a + b\n\n sumSquares xs = L.sum $ map (\\x -> x*x) xs\n\n mySumSq = sumSquares\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module ScopeAndQual where\n\n import qualified Data.List as L\n import Prelude hiding (mySum )\n\n main :: IO ()\n main = putStrLn (show $ LocToName.mySum [ 1 , 2 , 3 ] )\n\n sum a b = a + b\n\n sumSquares xs = LocToName.mySum $ map ( \\ x -> x * x ) xs\n\n mySumSq = sumSquares\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module ScopeAndQual where\n\n import qualified Data.List as L\n import Prelude hiding (mySum)\n\n main :: IO ()\n main = putStrLn (show $ LocToName.mySum [1,2,3])\n\n sum a b = a + b\n\n sumSquares xs = LocToName.mySum $ map (\\x -> x*x) xs\n\n mySumSq = sumSquares\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(ScopeAndQual.main :: GHC.Types.IO ()\n ScopeAndQual.main\n = System.IO.putStrLn\n (GHC.Show.show GHC.Base.$ LocToName.mySum [1, 2, 3])\n ScopeAndQual.sum a b = a GHC.Num.+ b\n ScopeAndQual.sumSquares xs\n = LocToName.mySum GHC.Base.$ GHC.Base.map (\\ x -> x GHC.Num.* x) xs\n ScopeAndQual.mySumSq = ScopeAndQual.sumSquares,\n [import qualified Data.List as L,\n import Prelude hiding ( LocToName.mySum )],\n Nothing,\n Nothing)"
 
 
     ------------------------------------
 
-    it "Does not qualify the subject of a type signature" $ do
+    it "does not qualify the subject of a type signature" $ do
       (t,toks) <- parsedFileRenamingC7
       let renamed = fromJust $ GHC.tm_renamed_source t
       let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
@@ -2161,14 +2159,14 @@ spec = do
       (showGhc n) `shouldBe` "Renaming.C7.myFringe"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((5,1),(5,12)),ITvarid \"myNewFringe\",\"myNewFringe\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.C7(myFringe)  where\n\n import Renaming.D7\n\n myFringe:: Tree a -> [a]\n myFringe (Leaf x ) = [x]\n myFringe (Branch left right) = myFringe left ++ fringe right\n\n\n\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Renaming.C7(LocToName.myNewFringe ) where\n\n import Renaming.D7\n\n myNewFringe :: Tree a -> [ a ]\n myNewFringe ( Leaf x ) = [ x ]\n myNewFringe ( Branch left right ) = LocToName.myNewFringe left ++ fringe right\n\n\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Renaming.C7(LocToName.myNewFringe)  where\n\n import Renaming.D7\n\n myNewFringe:: Tree a -> [a]\n myNewFringe (Leaf x ) = [x]\n myNewFringe (Branch left right) = LocToName.myNewFringe left ++ fringe right\n\n\n\n\n "
       (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.myNewFringe :: Renaming.D7.Tree a -> [a]\n LocToName.myNewFringe (Renaming.D7.Leaf x) = [x]\n LocToName.myNewFringe (Renaming.D7.Branch left right)\n = LocToName.myNewFringe left GHC.Base.++ Renaming.D7.fringe right,\n [import (implicit) Prelude, import Renaming.D7],\n Just [LocToName.myNewFringe],\n Nothing)"
 
 
   -- ---------------------------------------------
 
   describe "qualifyToplevelName" $ do
-    it "Qualify a name at the top level, updating tokens" $ do
+    it "qualifies a name at the top level, updating tokens" $ do
       (t, toks) <- parsedFileRenamingC7
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -2184,7 +2182,7 @@ spec = do
       -- (_,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "Renaming.C7.myFringe"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.C7(myFringe)  where\n\n import Renaming.D7\n\n myFringe:: Tree a -> [a]\n myFringe (Leaf x ) = [x]\n myFringe (Branch left right) = myFringe left ++ fringe right\n\n\n\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Renaming.C7(Renaming.C7.myFringe ) where\n\n import Renaming.D7\n\n myFringe :: Tree a -> [ a ]\n myFringe ( Leaf x ) = [ x ]\n myFringe ( Branch left right ) = Renaming.C7.myFringe left ++ fringe right\n\n\n\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Renaming.C7(Renaming.C7.myFringe)  where\n\n import Renaming.D7\n\n myFringe:: Tree a -> [a]\n myFringe (Leaf x ) = [x]\n myFringe (Branch left right) = Renaming.C7.myFringe left ++ fringe right\n\n\n\n\n "
 
 
 
@@ -2629,7 +2627,7 @@ This function is not used and has been removed
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
 
 
-    it "Renames an identifier if it is used and updates tokens" $ do
+    it "renames an identifier if it is used and updates tokens" $ do
       let
         comp = do
           (t, toks) <- parseSourceFileTest "./test/testdata/Demote/WhereIn4.hs"
@@ -2648,7 +2646,7 @@ This function is not used and has been removed
       (showGhc n2) `shouldBe` "p"
       (showGhc d) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n   where\n       p = 2]"
       (showGhc r) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n   where\n       p_1 = 2]"
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p_1 x + sq p_1 y\n          where p_1 = 2 {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p_1 x + sq p_1 y\n          where p_1=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
 
   -- ---------------------------------------
 

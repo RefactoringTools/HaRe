@@ -188,6 +188,7 @@ initGhcSession cradle importDirs = do
                  , detailed = False
                  , expandSplice = False
                  , sandbox = (rsetSandbox settings)
+                 , lineSeparator = LineSeparator "\n"
                  }
     _readLog <- initializeFlagsWithCradle opt cradle (options settings) True
     -- setTargetFile fileName

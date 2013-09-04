@@ -105,6 +105,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , markToken
                      , isMarked
                      , addOffsetToToks
+                     , matchTokenPos
   ) where
 
 
