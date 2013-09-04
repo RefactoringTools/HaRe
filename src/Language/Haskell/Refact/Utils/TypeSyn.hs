@@ -5,6 +5,9 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+-- | This is a legacy module from the pre-GHC HaRe, and will disappear
+-- eventually.
+
 module Language.Haskell.Refact.Utils.TypeSyn where
 
 
