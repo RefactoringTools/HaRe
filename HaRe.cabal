@@ -1,15 +1,15 @@
 Name:                           HaRe
 Version:                        0.7.0.0
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
-Maintainer:                     Chris Brown
-Stability:                      Provisional
+Maintainer:                     Alan Zimmerman
+Stability:                      Alpha
 Bug-Reports:                    http://github.com/alanz/HaRe/issues
 License:                        BSD3
 License-File:                   LICENSE
 Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
 Description:
    A Haskell 2010 refactoring tool. HaRe supports the full
-   Haskell 2010 standard.
+   Haskell 2010 standard, through making use of the GHC API.
    .
    It is tested against GHC 7.4.x and 7.6.x
    .
@@ -19,6 +19,25 @@ Description:
    Warning: This is alpha code. Always commit code to your version
    control system before refactoring. The developers make no
    warranties, use at your own risk. May frighten children and dogs.
+   .
+   Current known defects:
+   .
+     * After renaming, the layout of surrounding 'do','let','where' or
+      'of' clauses is not adjusted. This can cause problems if the new
+      name is a different length from the old one.
+   .
+     * liftToTopLevel of a recursive function may introduce parameter
+       errors. e.g. lifting 'g' in the 'zmapQ' function from 'syz-0.2.0.0'
+       'Data.Generics.Zipper' results in the following
+   .
+   >  zmapQ f z = reverse $ downQ [] g z where
+   >       g z' = query f z' : leftQ [] g z'
+   .
+      becomes
+   .
+   >  zmapQ f z = reverse $ downQ [] (g f g)z
+   >
+   >  g f z'g= query f z' : leftQ [] (g f g)g f g)z'
 
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
