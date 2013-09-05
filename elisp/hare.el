@@ -21,7 +21,7 @@
 ;; (require 'vc)
 ;; (require 'erlang)
 ;; (require 'distel)
-;; (require 'read-char-spec)
+(require 'read-char-spec)
 
 (if (eq (substring emacs-version 0 4) "22.2")
     (require 'ediff-init1)
@@ -118,6 +118,10 @@
   (hare-init)
   (hare-init-menu)
   )
+
+(defconst erlang-xemacs-p (string-match "Lucid\\|XEmacs" emacs-version)
+  "Non-nil when running under XEmacs or Lucid Emacs.")
+
 
 (defun hare-menu-remove()
   (interactive)
@@ -768,17 +772,17 @@
     (load  hare_ext)
     nil)
 
-(defun hare-menu-remove()
-  "Remove HaRe menus."
-  (interactive)
-  (define-key erlang-mode-map "\C-c\C-w\C-_"  nil)
-  (define-key erlang-mode-map  "\C-c\C-w\C-b" nil)
-  (define-key erlang-mode-map "\C-c\C-w\C-e"  nil)
-  (cond (erlang-xemacs-p
-         (erlang-menu-uninstall '("HaRe") wrangler-menu-items erlang-mode-map t))
-        (t
-         (erlang-menu-uninstall "HaRe" wrangler-menu-items erlang-mode-map t))
-        ))
+;; (defun hare-menu-remove()
+;;   "Remove HaRe menus."
+;;   (interactive)
+;;   (define-key erlang-mode-map "\C-c\C-w\C-_"  nil)
+;;   (define-key erlang-mode-map  "\C-c\C-w\C-b" nil)
+;;   (define-key erlang-mode-map "\C-c\C-w\C-e"  nil)
+;;   (cond (erlang-xemacs-p
+;;          (erlang-menu-uninstall '("HaRe") wrangler-menu-items erlang-mode-map t))
+;;         (t
+;;          (erlang-menu-uninstall "HaRe" wrangler-menu-items erlang-mode-map t))
+;;         ))
 
 (defun erlang-menu-uninstall (name items keymap &optional popup)
   "UnInstall a menu in Emacs or XEmacs based on an abstract description."
@@ -1412,8 +1416,6 @@
 ;;         nil))
 ;;     (setq args (cdr args)))
 ;;   )
-
-
 
 
 
