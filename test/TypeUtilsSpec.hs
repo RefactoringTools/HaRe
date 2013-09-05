@@ -2089,10 +2089,9 @@ spec = do
 
     ------------------------------------
 
-    it "replace a parameter name in a FunBind" $ do
+    it "replaces a parameter name in a FunBind" $ do
       (t, toks) <- parsedFileLayoutIn2
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LayoutIn2")
 
       let Just (GHC.L l n) = locToName layoutIn2FileName (8, 7) renamed
       let
@@ -2116,7 +2115,7 @@ spec = do
 
     ------------------------------------
 
-    it "Does not qualify a name in an import hiding clause" $ do
+    it "does not qualify a name in an import hiding clause" $ do
       (t,toks) <- parsedFileScopeAndQual
       let renamed = fromJust $ GHC.tm_renamed_source t
       let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")

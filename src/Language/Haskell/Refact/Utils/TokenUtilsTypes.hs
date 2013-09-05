@@ -38,13 +38,21 @@ associated srcloc, due to leading / trailing comments
 SrcSpans are nested in one another according to the structure of the
 AST.
 
-Store it in some kind of tree structure, memoised.
+Store it in some kind of tree structure.
 
 Invariants:
   1. For each tree, either the rootLabel has a SrcSpan only, or the subForest /= [].
   2. The trees making up the subForest of a given node fully include the parent SrcSpan.
      i.e. the leaves contain all the tokens for a given SrcSpan.
   3. A given SrcSpan can only appear (or be included) in a single tree of the forest.
+
+There are conflicting requirements for access to the tokens. On the
+one hand the tokens need to be moved around (mainly in columns) to
+support changing layout as e.g. a token is renamed. On the other, the
+originals need to be preserved, so they can tie up with the positions
+in the SrcSpans and for renaming.
+
+Question: is the latter statement valid? ++AZ++
 
 -}
 
