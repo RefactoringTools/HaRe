@@ -407,3 +407,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Case/D.hs.AST_out
 /test/testdata/Case/D.hs.renamed_out
 /test/testdata/Case/D.hs.tokens
+/test/testdata/Case/E.hs.AST_out
+/test/testdata/Case/E.hs.refactored
+/test/testdata/Case/E.hs.renamed_out
+/test/testdata/Case/E.hs.tokens

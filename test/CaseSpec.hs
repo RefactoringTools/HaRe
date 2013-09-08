@@ -45,6 +45,16 @@ spec = do
 
     -- ---------------------------------
 
+    it "converts in complex sub level expression 2 E" $ do
+      r <- ifToCase defaultTestSettings testCradle "./test/testdata/Case/E.hs" (7,8) (13,20)
+      -- ifToCase logTestSettings testCradle "./test/testdata/Case/E.hs" (7,8) (13,20)
+      r `shouldBe` ["./test/testdata/Case/E.hs"]
+      diff <- compareFiles "./test/testdata/Case/E.hs.refactored"
+                           "./test/testdata/Case/E.hs.expected"
+      diff `shouldBe` []
+
+    -- ---------------------------------
+
     it "complains if an if-then-else is not selected" $ do
       res <- catchException(ifToCase defaultTestSettings testCradle "./test/testdata/Case/C.hs" (4,7) (9,1))
       -- ifToCase logTestSettings testCradle "./test/testdata/Case/C.hs" (4,7) (9,1)
