@@ -15,7 +15,7 @@ main = do
 spec :: Spec
 spec = do
   describe "ifToCase" $ do
-    it "converts an if expression to a case expression" $ do
+    it "converts an if expression to a case expression B" $ do
       r <- ifToCase defaultTestSettings testCradle "./test/testdata/Case/B.hs" (4,7) (4,43)
       -- ifToCase logTestSettings testCradle "./test/testdata/Case/B.hs" (4,7) (4,43)
       r `shouldBe` ["./test/testdata/Case/B.hs"]
@@ -25,7 +25,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "converts an if expression with comments to a case expression 1" $ do
+    it "converts an if expression with comments to a case expression 1 C" $ do
       r <- ifToCase defaultTestSettings testCradle "./test/testdata/Case/C.hs" (5,7) (10,1)
       -- ifToCase logTestSettings testCradle "./test/testdata/Case/C.hs" (5,7) (10,1)
       r `shouldBe` ["./test/testdata/Case/C.hs"]
@@ -35,7 +35,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "converts an if expression with comments to a case expression 2" $ do
+    it "converts an if expression with comments to a case expression 2 D" $ do
       r <- ifToCase defaultTestSettings testCradle "./test/testdata/Case/D.hs" (5,7) (12,1)
       -- ifToCase logTestSettings testCradle "./test/testdata/Case/D.hs" (5,7) (12,1)
       r `shouldBe` ["./test/testdata/Case/D.hs"]

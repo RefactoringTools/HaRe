@@ -29,7 +29,7 @@ comp fileName beginPos endPos = do
        renamed <- getRefactRenamed
        logm $ "Case.comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        let expr = locToExp beginPos endPos renamed
-       logm $ "Case.comp:expr=" ++ (SYB.showData SYB.Renamer 0 expr) -- ++AZ++
+       -- logm $ "Case.comp:expr=" ++ (SYB.showData SYB.Renamer 0 expr) -- ++AZ++
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do (refactoredMod,_) <- applyRefac (doIfToCaseInternal exp1) RSAlreadyLoaded
@@ -53,7 +53,7 @@ reallyDoIfToCase expr rs = do
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-         inExp exp1@(GHC.L l (GHC.HsIf _se (GHC.L l1 e1) (GHC.L l2 e2) (GHC.L l3 e3)))
+         inExp exp1@(GHC.L l (GHC.HsIf _se (GHC.L l1 _) (GHC.L l2 _) (GHC.L l3 _)))
            | sameOccurrence expr exp1
            = do
                newExp <- ifToCaseTransform exp1
@@ -75,7 +75,9 @@ reallyDoIfToCase expr rs = do
                let t2 = reIndentToks (PlaceIndent 1 4 0) t1 trueToks
                let t3 = reIndentToks PlaceAdjacent (t1++t2) thenToks
 
-               let t4 = reIndentToks (PlaceIndent 1 0 0) (t1++t2++t3) falseToks
+               let (_,col) = tokenPos $ ghead "reallyDoIfToCase" t2
+
+               let t4 = reIndentToks (PlaceAbsCol 1 col 0) (t1++t2++t3) falseToks
                let t5 = reIndentToks PlaceAdjacent (t1++t2++t3++t4) elseToks
 
                let caseToks = t1++t2++t3++t4++t5 ++ [newLnToken (last t5)]
@@ -90,6 +92,8 @@ reallyDoIfToCase expr rs = do
                logm $ "reallyDoIfToCase:t5=[" ++ (GHC.showRichTokenStream t5) ++ "]"
 
                logm $ "reallyDoIfToCase:caseToks=" ++ (show caseToks)
+
+               -- drawTokenTreeDetailed "reallyDoIfToCase"
 
                putToksForSpan l caseToks
 
