@@ -1271,6 +1271,71 @@ tree TId 0:
       let toks3 = retrieveTokensFinal f3
       (GHC.showRichTokenStream toks3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' defined in 'sumSquares'\n --This example aims to test changing a constant to a function.\n\n sumSquares x = (sq x pow)+ (sq x pow)\n            where\n               sq = x^pow\n               pow =2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n\n "
 
+    ------------------------------------
+
+    it "allocates comments in an if then else expression" $ do
+      (_t,toks) <- parsedFileGhc "./test/testdata/Case/C.hs"
+      let t1 = mkTreeFromTokens toks
+
+      -- getToksForSpan test/testdata/Case/C.hs:5:12-18:("(((False,0,0,5),12),((False,0,0,5),19))
+      let s1 = posToSrcSpan t1 $
+                 (((forestLineToGhcLine $ ForestLine False 0 0 5),12),
+                  ((forestLineToGhcLine $ ForestLine False 0 0 5),19) )
+      (showGhc s1) `shouldBe` "test/testdata/Case/C.hs:5:12-18"
+      let t2 = insertSrcSpan t1 (fs s1)
+
+      -- getToksForSpan test/testdata/Case/C.hs:7:13-19:("(((False,0,0,7),13),((False,0,0,7),20))
+      let s2 = posToSrcSpan t1 $
+                 (((forestLineToGhcLine $ ForestLine False 0 0 7),13),
+                  ((forestLineToGhcLine $ ForestLine False 0 0 7),20) )
+      (showGhc s2) `shouldBe` "test/testdata/Case/C.hs:7:13-19"
+      let t3 = insertSrcSpan t2 (fs s2)
+
+-- innards of insertSrcSpan
+      let sspan = fs s2
+      let z = openZipperToSpan (fs s2) $ Z.fromTree t2
+      (Z.isLeaf z) `shouldBe` True
+      let (Entry _ toks) = Z.label z
+      let (tokStartPos,tokEndPos) = forestSpanToSimpPos sspan
+
+      (GHC.showRichTokenStream toks) `shouldBe` "\n\n\n\n\n           then -- This is an odd result\n             bob x 1\n           else -- This is an even result\n             bob x 2\n\n bob x y = x + y\n\n "
+
+      let (startLoc,endLoc) = startEndLocIncComments' toks (tokStartPos,tokEndPos)
+      -- let (startLoc,endLoc) = startEndLocIncCommentsDebug toks (tokStartPos,tokEndPos)
+      (show (tokStartPos,tokEndPos)) `shouldBe` "((7,13),(7,20))"
+      (show (startLoc,endLoc)) `shouldBe` "((6,16),(7,20))"
+--
+
+
+      -- getToksForSpan test/testdata/Case/C.hs:9:13-19:("(((False,0,0,9),13),((False,0,0,9),20))  
+      let s3 = posToSrcSpan t1 $
+                 (((forestLineToGhcLine $ ForestLine False 0 0 9),13),
+                  ((forestLineToGhcLine $ ForestLine False 0 0 9),20) )
+      (showGhc s3) `shouldBe` "test/testdata/Case/C.hs:9:13-19"
+      let t4 = insertSrcSpan t3 (fs s3)
+
+      (drawTreeEntry t4) `shouldBe`
+            "((1,1),(11,16))\n|\n"++
+            "+- ((1,1),(5,11))\n|\n"++
+            "+- ((5,12),(5,19))\n|\n"++
+            "`- ((6,11),(11,16))\n   |\n"++
+            "   +- ((6,11),(6,15))\n   |\n"++
+            "   +- ((7,13),(7,20))\n   |\n"++
+            "   `- ((8,11),(11,16))\n      |\n"++
+            "      +- ((8,11),(8,15))\n      |\n"++
+            "      +- ((9,13),(9,20))\n      |\n"++
+            "      `- ((11,1),(11,16))\n"
+
+      let (_,thenToks) = getTokensFor False t4 s2
+      let (_,elseToks) = getTokensFor False t4 s3
+
+      (GHC.showRichTokenStream thenToks) `shouldBe`
+           "\n\n\n\n\n                "++
+           "-- This is an odd result\n             bob x 1"
+      (GHC.showRichTokenStream elseToks) `shouldBe`
+           "\n\n\n\n\n\n\n                "++
+           "-- This is an even result\n             bob x 2"
+
   -- ---------------------------------------------
 
   describe "removeSrcSpan" $ do

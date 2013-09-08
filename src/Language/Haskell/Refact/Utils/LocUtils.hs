@@ -43,7 +43,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , getStartEndLoc2,
                      startEndLoc,extendBothSides -},extendForwards,extendBackwards
                      , startEndLocIncFowComment{- ,startEndLocIncFowNewLn -}
-                     {- ++AZ++ moved to TokenUtils , startEndLocIncComments, startEndLocIncComments' -}
+                     , startEndLocIncComments, startEndLocIncComments'
                      {-,
                      prettyprint ,deleteFromToks, prettyprintGuardsAlt,
                      -}
@@ -83,7 +83,6 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , fileNameFromTok
                      , splitToks
                      , emptyList, nonEmptyList
-                     , startEndLocIncComments, startEndLocIncComments'
                      , divideComments
                      , isWhiteSpace
                      , notWhiteSpace
@@ -92,6 +91,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , isWhereOrLet
                      , isWhere
                      , isLet
+                     , isElse
+                     , isThen
                      , getIndentOffset
                      , splitOnNewLn
                      , tokenLen
@@ -1134,21 +1135,18 @@ nonEmptyList _  = True
 startEndLocIncComments::(SYB.Data t) => [PosToken] -> t -> (SimpPos,SimpPos)
 startEndLocIncComments toks t = startEndLocIncComments' toks (getStartEndLoc t)
 
-
+{-
 startEndLocIncComments' :: [PosToken] -> (SimpPos,SimpPos) -> (SimpPos,SimpPos)
 startEndLocIncComments' toks (startLoc,endLoc) =
   let
     (begin,middle,end) = splitToks (startLoc,endLoc) toks
 
-    -- (leadinr,leadr) = break (\tok -> not (isComment tok || isEmpty tok)) $ reverse begin
-    (leadinr,leadr) = break notWhiteSpace  $ reverse begin
+    (leadinr,leadr) = break notWhiteSpace $ reverse begin
     leadr' = filter (\t -> not (isEmpty t)) leadr
     prevLine  = if (emptyList leadr') then 0 else (tokenRow $ ghead "startEndLocIncComments'1" leadr')
     firstLine = if (emptyList middle) then 0 else (tokenRow $ ghead "startEndLocIncComments'1" middle)
     (_,leadComments) = divideComments prevLine firstLine $ reverse leadinr
 
-
-    -- (trail,trailrest) = break (\tok -> not (isComment tok || isEmpty tok)) end
     (trail,trailrest) = break notWhiteSpace end
     trail' = filter (\t -> not (isEmpty t)) trail
     lastLine = if (emptyList middle)    then    0 else (tokenRow $ glast "startEndLocIncComments'2" middle)
@@ -1161,7 +1159,36 @@ startEndLocIncComments' toks (startLoc,endLoc) =
       then ((0,0),(0,0))
       else ((tokenPos $ ghead "startEndLocIncComments 4" middle'),(tokenPosEnd $ last middle'))
       -- else error $ "startEndLocIncComments: (prevLine,firstLine) reverse leadr =" ++ (show (prevLine,firstLine)) ++ "," ++ (showToks $ reverse leadr)
+-}
 
+startEndLocIncComments' :: [PosToken] -> (SimpPos,SimpPos) -> (SimpPos,SimpPos)
+startEndLocIncComments' toks (startLoc,endLoc) =
+  let
+    (begin,middle,end) = splitToks (startLoc,endLoc) toks
+
+    notIgnored tt = not (isWhiteSpace tt || isThen tt || isElse tt)
+
+    -- (leadinr,leadr) = break notWhiteSpace $ reverse begin
+    (leadinr,leadr) = break notIgnored $ reverse begin
+    leadr' = filter (\t -> not (isEmpty t)) leadr
+    prevLine  = if (emptyList leadr') then 0 else (tokenRow $ ghead "startEndLocIncComments'1" leadr')
+    firstLine = if (emptyList middle) then 0 else (tokenRow $ ghead "startEndLocIncComments'1" middle)
+    (_nonleadComments,leadComments') = divideComments prevLine firstLine $ reverse leadinr
+    leadComments = dropWhile (\tt -> (isThen tt || isElse tt || isEmpty tt)) leadComments'
+
+    (trail,trailrest) = break notWhiteSpace end
+    trail' = filter (\t -> not (isEmpty t)) trail
+    lastLine = if (emptyList middle)    then    0 else (tokenRow $ glast "startEndLocIncComments'2" middle)
+    nextLine = if (emptyList trailrest) then 1000 else (tokenRow $ ghead "startEndLocIncComments'2" trailrest)
+    (trailComments,_) =  divideComments lastLine nextLine trail'
+
+    middle' = leadComments ++ middle ++ trailComments
+  in
+    if (emptyList middle')
+      then ((0,0),(0,0))
+      else ((tokenPos $ ghead "startEndLocIncComments 4" middle'),(tokenPosEnd $ last middle'))
+      -- else error $ "startEndLocIncComments: (prevLine,firstLine) reverse leadr =" ++ (show (prevLine,firstLine)) ++ "," ++ (showToks $ reverse leadr)
+      -- else error $ "startEndLocIncComments: (prevLine,firstLine) reverse leadinr =" ++ (show (prevLine,firstLine)) ++ "," ++ (showToks $ reverse leadinr) ++ (show (_nonleadComments,leadComments'))
 
 -- ---------------------------------------------------------------------
 
@@ -1246,6 +1273,16 @@ isWhere ((GHC.L _ t),_s) =  case t of
 isLet :: PosToken -> Bool
 isLet   ((GHC.L _ t),_s) =  case t of
                        GHC.ITlet -> True
+                       _         -> False
+
+isElse :: PosToken -> Bool
+isElse   ((GHC.L _ t),_s) =  case t of
+                       GHC.ITelse -> True
+                       _         -> False
+
+isThen :: PosToken -> Bool
+isThen   ((GHC.L _ t),_s) =  case t of
+                       GHC.ITthen -> True
                        _         -> False
 
 -- ---------------------------------------------------------------------
