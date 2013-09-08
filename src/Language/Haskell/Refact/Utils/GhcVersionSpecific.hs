@@ -7,27 +7,18 @@ module Language.Haskell.Refact.Utils.GhcVersionSpecific
   (
     showGhc
   , prettyprint
+  , prettyprint2
   , lexStringToRichTokens
   , getDataConstructors
   , setGhcContext
   )
   where
 
--- import qualified BasicTypes    as GHC
 import qualified DynFlags      as GHC
--- import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
--- import qualified GhcMonad      as GHC
--- import qualified HsExpr        as GHC
--- import qualified HsSyn         as GHC
 import qualified Lexer         as GHC
--- import qualified Module        as GHC
--- import qualified MonadUtils    as GHC
--- import qualified Name          as GHC
 import qualified Outputable    as GHC
--- import qualified RdrName       as GHC
--- import qualified SrcLoc        as GHC
 import qualified StringBuffer  as GHC
 
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -54,6 +45,16 @@ prettyprint x = GHC.renderWithStyle                     (GHC.ppr x) (GHC.mkUserS
 #endif
 
 -- ---------------------------------------------------------------------
+
+prettyprint2 :: (GHC.Outputable a) => a -> String
+#if __GLASGOW_HASKELL__ > 704
+prettyprint2 x = GHC.renderWithStyle GHC.tracingDynFlags (GHC.ppr x) (GHC.cmdlineParserStyle)
+#else
+prettyprint2 x = GHC.renderWithStyle                     (GHC.ppr x) (GHC.cmdlineParserStyle)
+#endif
+
+-- ---------------------------------------------------------------------
+
 
 lexStringToRichTokens :: GHC.RealSrcLoc -> String -> IO [PosToken]
 lexStringToRichTokens startLoc str = do

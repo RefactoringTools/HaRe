@@ -3,16 +3,18 @@ module Language.Haskell.Refact.Case(ifToCase) where
 import qualified Data.Generics         as SYB
 import qualified GHC.SYB.Utils         as SYB
 
+import qualified GHC           as GHC
 
-import qualified GHC
-
+import Control.Monad.IO.Class
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
+import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.TypeSyn
 
 -- ---------------------------------------------------------------------
 
@@ -25,7 +27,9 @@ comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
        getModuleGhc fileName
        renamed <- getRefactRenamed
+       logm $ "Case.comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        let expr = locToExp beginPos endPos renamed
+       logm $ "Case.comp:expr=" ++ (SYB.showData SYB.Renamer 0 expr) -- ++AZ++
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do (refactoredMod,_) <- applyRefac (doIfToCaseInternal exp1) RSAlreadyLoaded
@@ -49,12 +53,46 @@ reallyDoIfToCase expr rs = do
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-
-         inExp exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
+         inExp exp1@(GHC.L l (GHC.HsIf _se (GHC.L l1 e1) (GHC.L l2 e2) (GHC.L l3 e3)))
            | sameOccurrence expr exp1
            = do
                newExp <- ifToCaseTransform exp1
-               updateToks exp1 newExp prettyprint True
+               -- updateToks exp1 newExp prettyprint True
+               -- updateToks exp1 newExp prettyprint2 True
+               let (GHC.RealSrcLoc rl) = GHC.srcSpanStart l
+               caseTok <- liftIO $ tokenise rl 0 False "case"
+               condToks <- getToksForSpan l1
+               ofTok <- liftIO $ tokenise (realSrcLocFromTok (glast "reallyDoIfToCase" condToks)) 1 True "of"
+               trueToks  <- liftIO $ basicTokenise "True  ->"
+               falseToks <- liftIO $ basicTokenise "False ->"
+               thenToks <- getToksForSpan l2
+               elseToks <- getToksForSpan l3
+
+               let t0 = reIndentToks PlaceAdjacent caseTok condToks
+               let t1' = reIndentToks PlaceAdjacent (caseTok ++ t0) ofTok
+               let t1 = caseTok ++ t0 ++ t1'
+
+               let t2 = reIndentToks (PlaceIndent 1 4 0) t1 trueToks
+               let t3 = reIndentToks PlaceAdjacent (t1++t2) thenToks
+
+               let t4 = reIndentToks (PlaceIndent 1 0 0) (t1++t2++t3) falseToks
+               let t5 = reIndentToks PlaceAdjacent (t1++t2++t3++t4) elseToks
+
+               let caseToks = t1++t2++t3++t4++t5 ++ [newLnToken (last t5)]
+
+               logm $ "reallyDoIfToCase:t1=[" ++ (GHC.showRichTokenStream t1) ++ "]"
+               logm $ "reallyDoIfToCase:t2=[" ++ (GHC.showRichTokenStream t2) ++ "]"
+               logm $ "reallyDoIfToCase:t3=[" ++ (GHC.showRichTokenStream t3) ++ "]"
+
+               logm $ "reallyDoIfToCase:t1++t2++t3=" ++ (show (t1++t2++t3))
+
+               logm $ "reallyDoIfToCase:t4=[" ++ (GHC.showRichTokenStream t4) ++ "]"
+               logm $ "reallyDoIfToCase:t5=[" ++ (GHC.showRichTokenStream t5) ++ "]"
+
+               logm $ "reallyDoIfToCase:caseToks=" ++ (show caseToks)
+
+               putToksForSpan l caseToks
+
                return newExp
 
          inExp e = return e
@@ -92,6 +130,89 @@ ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
 ifToCaseTransform x = return x
 
 -- ---------------------------------------------------------------------
+{-
+HsIf (Maybe (SyntaxExpr id)) (LHsExpr id) (LHsExpr id) (LHsExpr id)
+
+[Can ignore The SyntaxExpr]
+
+
+HsCase (LHsExpr id) (MatchGroup id)
+
+-}
+
+{-
+Need to move to
+
+(L {test/testdata/Case/B.hs:(9,10)-(11,17)} 
+                 (HsCase 
+                  (L {test/testdata/Case/B.hs:9:15-21} 
+                   (HsPar 
+                    (L {test/testdata/Case/B.hs:9:16-20} 
+                     (HsApp 
+                      (L {test/testdata/Case/B.hs:9:16-18} 
+                       (HsVar {Name: GHC.Real.odd})) 
+                      (L {test/testdata/Case/B.hs:9:20} 
+                       (HsVar {Name: x})))))) 
+                  (MatchGroup 
+                   [
+                    (L {test/testdata/Case/B.hs:10:3-15} 
+                     (Match 
+                      [
+                       (L {test/testdata/Case/B.hs:10:3-6} 
+                        (ConPatIn 
+                         (L {test/testdata/Case/B.hs:10:3-6} {Name: GHC.Types.True}) 
+                         (PrefixCon 
+                          [])))] 
+                      (Nothing) 
+                      (GRHSs 
+                       [
+                        (L {test/testdata/Case/B.hs:10:11-15} 
+                         (GRHS 
+                          [] 
+                          (L {test/testdata/Case/B.hs:10:11-15} 
+                           (HsLit 
+                            (HsString {FastString: "Odd"})))))] 
+                       (EmptyLocalBinds)))),
+                    (L {test/testdata/Case/B.hs:11:3-17} 
+                     (Match 
+                      [
+                       (L {test/testdata/Case/B.hs:11:3-7} 
+                        (ConPatIn 
+                         (L {test/testdata/Case/B.hs:11:3-7} {Name: GHC.Types.False}) 
+                         (PrefixCon 
+                          [])))] 
+                      (Nothing) 
+                      (GRHSs 
+                       [
+                        (L {test/testdata/Case/B.hs:11:12-17} 
+                         (GRHS 
+                          [] 
+                          (L {test/testdata/Case/B.hs:11:12-17} 
+                           (HsLit 
+                            (HsString {FastString: "Even"})))))] 
+                       (EmptyLocalBinds))))] {!type placeholder here?!})))
+
+from ---
+
+(L {test/testdata/Case/B.hs:4:9-41} 
+                 (HsIf 
+                  (Nothing) 
+                  (L {test/testdata/Case/B.hs:4:12-18} 
+                   (HsPar 
+                    (L {test/testdata/Case/B.hs:4:13-17} 
+                     (HsApp 
+                      (L {test/testdata/Case/B.hs:4:13-15} 
+                       (HsVar {Name: GHC.Real.odd})) 
+                      (L {test/testdata/Case/B.hs:4:17} 
+                       (HsVar {Name: x})))))) 
+                  (L {test/testdata/Case/B.hs:4:25-29} 
+                   (HsLit 
+                    (HsString {FastString: "Odd"}))) 
+                  (L {test/testdata/Case/B.hs:4:36-41} 
+                   (HsLit 
+                    (HsString {FastString: "Even"})))))
+
+-}
 
 -- EOF
 

@@ -6,11 +6,7 @@ import qualified GHC.SYB.Utils         as SYB
 
 import qualified FastString            as GHC
 import qualified GHC
--- import qualified MonadUtils            as GHC
 import qualified Name                  as GHC
--- import qualified NameSet               as GHC
--- import qualified OccName               as GHC
--- import qualified Outputable            as GHC
 import qualified RdrName               as GHC
 
 import Control.Monad
@@ -18,7 +14,6 @@ import Data.List
 import Exception
 
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
