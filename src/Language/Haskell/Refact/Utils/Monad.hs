@@ -170,7 +170,7 @@ initGhcSession cradle importDirs = do
                  , lineSeparator = LineSeparator "\n"
                  }
     _readLog <- initializeFlagsWithCradle opt cradle (options settings) True
-    -- setTargetFile fileName
+    -- setTargetFile fileNames
     -- checkSlowAndSet
     void $ GHC.load GHC.LoadAllTargets
     -- liftIO readLog

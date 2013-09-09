@@ -63,7 +63,7 @@ import qualified Outputable    as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import Debug.Trace
+-- import Debug.Trace
 
 -- ---------------------------------------------------------------------
 
@@ -95,6 +95,7 @@ import Debug.Trace
 
 -- ---------------------------------------------------------------------
 
+pwd :: IO FilePath
 pwd = getCurrentDirectory
 
 -- ---------------------------------------------------------------------
@@ -202,11 +203,12 @@ parseSourceFileGhc targetFile = do
       let [(_,modSum)] = mm
       getModuleDetails modSum
 
-
+{-
 getExports (GHC.L _ hsmod) =
   case hsmod of
     GHC.HsModule _ (Just exports) _ _ _ _ -> exports
     _                                     -> []
+-}
 
 -- ---------------------------------------------------------------------
 

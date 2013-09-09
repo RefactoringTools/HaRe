@@ -96,6 +96,7 @@ Library
 Executable ghc-hare
         -- Main-Is:                Main.hs
         Main-Is:                MainHaRe.hs
+        Other-Modules:          Paths_HaRe
         -- GHC-Options:            -Wall
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
@@ -124,7 +125,6 @@ Executable ghc-hare
                                 , Strafunski-StrategyLib
                                 , syz
                                 , HaRe >= 0.7.0.0
-        -- Other-Modules:          Paths_HaRe
         Extensions:      CPP
 
 

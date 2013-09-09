@@ -146,7 +146,7 @@ main = flip catches handlers $ do
       -- rename wants FilePath -> String -> SimpPos
       "rename" -> runFunc $ rename opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
 
-      "show" -> putStr  (show (opt,cradle))
+      "show" -> putStrLn  (show (opt,cradle))
 
       cmd      -> throw (NoSuchCommand cmd)
     putStr (show res)
