@@ -1,34 +1,25 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.SwapArgs (swapArgs) where
 
-import qualified Data.Generics.Schemes as SYB
+-- import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
 import qualified FastString            as GHC
 import qualified Name                  as GHC
 import qualified GHC
-import qualified DynFlags              as GHC
-import qualified Outputable            as GHC
-import qualified MonadUtils            as GHC
-import qualified RdrName               as GHC
-import qualified OccName               as GHC
-
-import GHC.Paths ( libdir )
-import Control.Monad
-import Control.Monad.State
-import Data.Data
-import Data.Maybe
+-- import qualified DynFlags              as GHC
+-- import qualified Outputable            as GHC
+-- import qualified MonadUtils            as GHC
+-- import qualified RdrName               as GHC
+-- import qualified OccName               as GHC
 
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TokenUtils
--- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
 import Debug.Trace

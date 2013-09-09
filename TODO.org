@@ -15,6 +15,9 @@
 * TODO add command line param to turn off timestamping of log lines when -v
 * TODO add more granularity on logging control, e.g wether to show tokens while working, whether to dump initial AST
 * TODO renaming with length change does not adjust surrounding layout for do/let/where/of etc
+* TODO getting GHC panic on HsWithBndrs. Update checkItemStage for it
+* TODO Look at refactoring Data.Vault.Lazy. Uses include process
+   [2013-09-09 Mon]
 * TODO from the source files
   :PROPERTIES:
   :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
@@ -89,3 +92,6 @@
 ** TODO cmdtheline 0.2.2 has broken output for --help
    [2013-07-31 Wed]
    [[file:~/mysrc/github/erudify/colog/colog.cabal::cmdtheline%20>%3D%200.2%20&&%20<%200.2.2,][file:~/mysrc/github/erudify/colog/colog.cabal::cmdtheline >= 0.2 && < 0.2.2,]]
+** TODO ghc-hare fails on GhcVersionSpecific, Could it be the LANGUAGE CPP?
+   [2013-09-09 Mon]
+   [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/GhcVersionSpecific.hs]]

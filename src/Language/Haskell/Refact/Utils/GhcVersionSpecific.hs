@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 
-
 -- |This module contains all the code that depends on a specific
 -- version of GHC, and should be the only one requiring CPP
 module Language.Haskell.Refact.Utils.GhcVersionSpecific

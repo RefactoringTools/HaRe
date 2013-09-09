@@ -56,8 +56,10 @@ import qualified GHC.SYB.Utils as SYB
 import Control.Monad
 import Data.Data
 import Data.Maybe
-import GHC
-import NameSet
+
+import qualified GHC     as GHC
+import qualified HsTypes as GHC
+import qualified NameSet as GHC
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
@@ -167,13 +169,24 @@ everywhereStaged' stage f x
 
 -- | Checks whether the current item is undesirable for analysis in the current
 -- AST Stage.
-checkItemStage :: Typeable a => SYB.Stage -> a -> Bool
-checkItemStage stage x = (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x
-  where nameSet    = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet        -> Bool
-        postTcType = const (stage < SYB.TypeChecker                  ) :: GHC.PostTcType -> Bool
-        fixity     = const (stage < SYB.Renamer                      ) :: GHC.Fixity     -> Bool
+checkItemStage :: (Typeable a, Data a) => SYB.Stage -> a -> Bool
+checkItemStage stage x = (checkItemStage1 stage x) || (checkItemStage2 stage x)
 
-checkItemRenamer :: Typeable a => a -> Bool
+-- Check the Typeable items
+checkItemStage1 :: (Typeable a) => SYB.Stage -> a -> Bool
+checkItemStage1 stage x = (const False `SYB.extQ` postTcType `SYB.extQ` fixity `SYB.extQ` nameSet) x
+  where nameSet     = const (stage `elem` [SYB.Parser,SYB.TypeChecker]) :: GHC.NameSet       -> Bool
+        postTcType  = const (stage < SYB.TypeChecker                  ) :: GHC.PostTcType    -> Bool
+        fixity      = const (stage < SYB.Renamer                      ) :: GHC.Fixity        -> Bool
+
+-- | Check the Typeable1 items
+checkItemStage2 :: Data a => SYB.Stage -> a -> Bool
+checkItemStage2 stage x = (const False `SYB.ext1Q` hsWithBndrs) x
+  where
+        hsWithBndrs = const (stage < SYB.Renamer) :: GHC.HsWithBndrs a -> Bool
+
+
+checkItemRenamer :: (Data a, Typeable a) => a -> Bool
 checkItemRenamer x = checkItemStage SYB.Renamer x
 
 
@@ -242,9 +255,18 @@ allTUGhc op2 u s  = ifTU checkItemRenamer' (const $ constTU u) (allTU op2 u s)
 
 checkItemStage' :: forall m. (MonadPlus m) => SYB.Stage -> TU () m
 checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` nameSet
-  where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: NameSet -> m ()
+  where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: GHC.NameSet -> m ()
         postTcType = const (guard $ stage<SYB.TypeChecker) :: GHC.PostTcType -> m ()
         fixity     = const (guard $ stage<SYB.Renamer) :: GHC.Fixity -> m ()
+
+{-
+-- | Check the Typeable1 items
+checkItemStage2' :: forall m. (MonadPlus m) => SYB.Stage -> TU () m
+checkItemStage2' stage x = failTU `adhocTU` hsWithBndrs
+  where
+    hsWithBndrs :: (Data t) => GHC.HsWithBndrs t -> m ()
+    hsWithBndrs = const (guard $ stage < SYB.Renamer)
+-}
 
 checkItemRenamer' :: (MonadPlus m) => TU () m
 checkItemRenamer' = checkItemStage' SYB.Renamer
@@ -305,16 +327,20 @@ checkZipperStaged stage z
   | isJust maybeNameSet    = checkItemStage stage (fromJust maybeNameSet)
   | isJust maybePostTcType = checkItemStage stage (fromJust maybePostTcType)
   | isJust maybeFixity     = checkItemStage stage (fromJust maybeFixity)
+  -- | isJust maybeHsWithBndrs = checkItemStage stage (fromJust maybeHsWithBndrs)
   | otherwise = False
   where
-    maybeNameSet ::  Maybe NameSet
+    maybeNameSet ::  Maybe GHC.NameSet
     maybeNameSet = Z.getHole z
 
-    maybePostTcType :: Maybe PostTcType
+    maybePostTcType :: Maybe GHC.PostTcType
     maybePostTcType = Z.getHole z
 
     maybeFixity :: Maybe GHC.Fixity
     maybeFixity = Z.getHole z
+
+    -- maybeHsWithBndrs :: (Data b) => Maybe (GHC.HsWithBndrs b)
+    -- maybeHsWithBndrs = Z.getHole z
 
 -- ---------------------------------------------------------------------
 
@@ -369,6 +395,4 @@ ztransformStagedM stage q z = do
            [(zz,t)] -> t stage zz
            _        -> return z
     return z'
-
-
 

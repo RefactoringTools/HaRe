@@ -431,7 +431,7 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
       GHC.IEVar _ -> True
       _           -> False
 
-    modIsUnQualifedImported mod' modName
+    modIsUnQualifedImported _mod' modName
      =let -- imps =hsModImports mod
        -- imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) qualify _source _safe isQualified _isImplicit as h))
       in isJust $ find (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h)) 

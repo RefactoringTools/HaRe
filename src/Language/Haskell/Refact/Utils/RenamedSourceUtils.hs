@@ -9,32 +9,8 @@ module Language.Haskell.Refact.Utils.RenamedSourceUtils
  ) where
 
 -- Modules from GHC
-import qualified Bag           as GHC
-import qualified BasicTypes    as GHC
-import qualified Coercion      as GHC
-import qualified HsDecls       as GHC
-import qualified Digraph       as GHC
-import qualified DynFlags      as GHC
-import qualified ErrUtils      as GHC
-import qualified FastString    as GHC
-import qualified ForeignCall   as GHC
 import qualified GHC           as GHC
-import qualified GHC.Paths     as GHC
-import qualified HsPat         as GHC
-import qualified HsSyn         as GHC
-import qualified InstEnv       as GHC
-import qualified Module        as GHC
-import qualified MonadUtils    as GHC
-import qualified Name          as GHC
 import qualified NameSet       as GHC
-import qualified OccName       as GHC
-import qualified Outputable    as GHC
-import qualified RdrName       as GHC
-import qualified SrcLoc        as GHC
-import qualified TcEvidence    as GHC
-import qualified TcType        as GHC
-import qualified TypeRep       as GHC
-import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB

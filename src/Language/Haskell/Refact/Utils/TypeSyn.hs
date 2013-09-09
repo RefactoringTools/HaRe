@@ -12,21 +12,11 @@ module Language.Haskell.Refact.Utils.TypeSyn where
 
 
 -- Modules from GHC
--- import qualified FastString as GHC
 import qualified GHC        as GHC
--- import qualified GhcMonad   as GHC
--- import qualified HsExpr     as GHC
 import qualified Name       as GHC
 import qualified Outputable as GHC
--- import qualified RdrName    as GHC
--- import qualified SrcLoc     as GHC
-
-
 
 import Data.Generics
-
--- showGhc :: a -> String
--- showGhc a = error "showGhc undefined"
 
 
 {-

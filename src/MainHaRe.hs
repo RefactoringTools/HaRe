@@ -87,7 +87,7 @@ argspec = [ Option "m" ["mainfile"]
           , Option "s" ["sandbox"]
               (ReqArg (\s opts -> opts { rsetSandbox = Just s }) "path")
               "specify cabal-dev sandbox (default 'cabal-dev`)"
-          , Option "v" ["verbosw"]
+          , Option "v" ["verbose"]
               (NoArg (\opts -> opts { rsetVerboseLevel = Debug }))
               "debug logging on"
           ]

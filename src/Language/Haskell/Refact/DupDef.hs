@@ -12,7 +12,6 @@ import Data.List
 import Data.Maybe
 
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
