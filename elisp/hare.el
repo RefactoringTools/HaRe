@@ -218,24 +218,24 @@
 ;;       (car dirs)
 ;;     nil))
 
-(defun log-search-result(curfilename logmsg)
-  (let ((dir (is-a-monitored-file curfilename)))
-    (if (equal nil dir)
-        nil
-      (cond
-       ((equal version-control-system 'ClearCase)
-        (add-logmsg-to-logfile-clearcase logmsg))
-       ((or (equal version-control-system 'Git)
-            (equal version-control-system 'SVN))
-        (write-to-refac-logfile dir logmsg "Clone Detection"))
-       (t nil)
-       ))))
+;; (defun log-search-result(curfilename logmsg)
+;;   (let ((dir (is-a-monitored-file curfilename)))
+;;     (if (equal nil dir)
+;;         nil
+;;       (cond
+;;        ((equal version-control-system 'ClearCase)
+;;         (add-logmsg-to-logfile-clearcase logmsg))
+;;        ((or (equal version-control-system 'Git)
+;;             (equal version-control-system 'SVN))
+;;         (write-to-refac-logfile dir logmsg "Clone Detection"))
+;;        (t nil)
+;;        ))))
 
-(defun add-logmsg-to-logfile-clearcase(logmsg)
-  "Add logmsg to the refactor log file which is stored in a clearase repository." 
-  (run-hook-with-args 'before-commit-functions (list refactor-log-file) nil)
-  (run-hook-with-args 'after-commit-functions refactor-log-file logmsg)
-)
+;; (defun add-logmsg-to-logfile-clearcase(logmsg)
+;;   "Add logmsg to the refactor log file which is stored in a clearase repository." 
+;;   (run-hook-with-args 'before-commit-functions (list refactor-log-file) nil)
+;;   (run-hook-with-args 'after-commit-functions refactor-log-file logmsg)
+;; )
 
 (defun prepare-to-commit()
   ";make sure the files are writeable when cleaecase is used as the repository."
@@ -246,10 +246,10 @@
 
 (defun commit()
   "commit the refactoring result."
-  (if (equal version-control-system 'ClearCase)
-      (prepare-to-commit)
-    nil
-    )
+  ;; (if (equal version-control-system 'ClearCase)
+  ;;     (prepare-to-commit)
+  ;;   nil
+  ;;   )
   (do-commit)
   )
 
@@ -746,7 +746,7 @@
 (defun hare-menu-init()
   "Init HaRe menus."
   (interactive)
-  (define-key erlang-mode-map "\C-c\C-w_"  'hare-refactor-undo)
+  ;; (define-key erlang-mode-map "\C-c\C-w_"  'hare-refactor-undo)
   ;; (define-key erlang-mode-map "\C-c\C-wb" 'erl-wrangler-code-inspector-var-instances)
   ;; (define-key erlang-mode-map "\C-c\C-we" 'remove-highlights)
   ;; (define-key erlang-mode-map "\C-c\C-wrv" 'erl-refactor-rename-var)
@@ -793,65 +793,65 @@
            'undefined))
         (t nil)))
 
-(defun hare-refactor-undo()
-  "Undo the latest refactoring."
-  (interactive)
-  (let (buffer (current-buffer))
-    (if (y-or-n-p "Undo a refactoring will also undo the editings done after the refactoring, undo anyway?")
-        (progn
-          (if (equal version-control-system 'ClearCase)
-              nil
-              ;; (erl-spawn
-              ;;   (erl-send-rpc wrangler-erl-node 'wrangler_undo_server 'files_to_change (list))
-              ;;   (erl-receive (buffer)
-              ;;       ((['rex ['badrpc rsn]]
-              ;;         (message "Undo failed: %S" rsn))
-              ;;        (['rex ['error rsn]]
-              ;;         (message "Undo failed: %s" rsn))
-              ;;        (['rex ['ok files-to-recover  filenames-to-recover]]
-              ;;         (progn
-              ;;           (setq files-to-write files-to-recover)
-              ;;           (setq files-to-rename filenames-to-recover)
-              ;;           (prepare-to-commit) )))))
-            nil
-            )
-          ;; (erl-spawn
-          ;;   (erl-send-rpc wrangler-erl-node 'wrangler_undo_server 'undo_emacs (list))
-          ;;   (erl-receive (buffer)
-          ;;       ((['rex ['badrpc rsn]]
-          ;;         (message "Undo failed: %S" rsn))
-          ;;        (['rex ['error rsn]]
-          ;;         (message "Undo failed: %s" rsn))
-          ;;        (['rex ['ok modified1 logmsg curfile]]
-          ;;         (dolist (f modified1)
-          ;;           (let ((oldfilename (car f))
-          ;;                 (newfilename (car (cdr f)))
-          ;;                 (buffer (get-file-buffer-1 (car (cdr f)))))
-          ;;             (if buffer (if (not (equal oldfilename newfilename))
-          ;;                            (with-current-buffer buffer
-          ;;                              (progn (set-visited-file-name oldfilename)
-          ;;                                     (revert-buffer nil t t)))
-          ;;                          (with-current-buffer buffer (revert-buffer nil t t)))
-          ;;               nil)))
-          ;;         (let ((dir (is-a-monitored-file curfile)))
-          ;;           (if (equal nil dir)
-          ;;               nil
-          ;;             (cond
-          ;;              ((equal version-control-system 'ClearCase)
-          ;;               (let* ((reason (read-string "Reason for undo: " nil nil "" nil))
-          ;;                     (new-logmsg (concat "UNDO: " logmsg "Reason: " reason "\n")))
-          ;;                 (add-logmsg-to-logfile-clearcase new-logmsg)))
-          ;;              ((or (equal version-control-system 'Git)
-          ;;                   (equal version-control-system 'SVN))
-          ;;               (let ((reason (read-string "Reason for undo: " nil nil "" nil)))
-          ;;                 (write-to-refac-logfile dir (concat "UNDO: " logmsg "Reason: " reason "\n") "UNDO"))
-          ;;               )
-          ;;              (t nil))
-          ;;             (message "Undo succeeded")))))))
-          )
-      (message "Undo aborted."))
-    )
-  )
+;; (defun hare-refactor-undo()
+;;   "Undo the latest refactoring."
+;;   (interactive)
+;;   (let (buffer (current-buffer))
+;;     (if (y-or-n-p "Undo a refactoring will also undo the editings done after the refactoring, undo anyway?")
+;;         (progn
+;;           ;; (if (equal version-control-system 'ClearCase)
+;;           ;;     nil
+;;           ;;     ;; (erl-spawn
+;;           ;;     ;;   (erl-send-rpc wrangler-erl-node 'wrangler_undo_server 'files_to_change (list))
+;;           ;;     ;;   (erl-receive (buffer)
+;;           ;;     ;;       ((['rex ['badrpc rsn]]
+;;           ;;     ;;         (message "Undo failed: %S" rsn))
+;;           ;;     ;;        (['rex ['error rsn]]
+;;           ;;     ;;         (message "Undo failed: %s" rsn))
+;;           ;;     ;;        (['rex ['ok files-to-recover  filenames-to-recover]]
+;;           ;;     ;;         (progn
+;;           ;;     ;;           (setq files-to-write files-to-recover)
+;;           ;;     ;;           (setq files-to-rename filenames-to-recover)
+;;           ;;     ;;           (prepare-to-commit) )))))
+;;           ;;   nil
+;;           ;;   )
+;;           ;; (erl-spawn
+;;           ;;   (erl-send-rpc wrangler-erl-node 'wrangler_undo_server 'undo_emacs (list))
+;;           ;;   (erl-receive (buffer)
+;;           ;;       ((['rex ['badrpc rsn]]
+;;           ;;         (message "Undo failed: %S" rsn))
+;;           ;;        (['rex ['error rsn]]
+;;           ;;         (message "Undo failed: %s" rsn))
+;;           ;;        (['rex ['ok modified1 logmsg curfile]]
+;;           ;;         (dolist (f modified1)
+;;           ;;           (let ((oldfilename (car f))
+;;           ;;                 (newfilename (car (cdr f)))
+;;           ;;                 (buffer (get-file-buffer-1 (car (cdr f)))))
+;;           ;;             (if buffer (if (not (equal oldfilename newfilename))
+;;           ;;                            (with-current-buffer buffer
+;;           ;;                              (progn (set-visited-file-name oldfilename)
+;;           ;;                                     (revert-buffer nil t t)))
+;;           ;;                          (with-current-buffer buffer (revert-buffer nil t t)))
+;;           ;;               nil)))
+;;           ;;         (let ((dir (is-a-monitored-file curfile)))
+;;           ;;           (if (equal nil dir)
+;;           ;;               nil
+;;           ;;             (cond
+;;           ;;              ((equal version-control-system 'ClearCase)
+;;           ;;               (let* ((reason (read-string "Reason for undo: " nil nil "" nil))
+;;           ;;                     (new-logmsg (concat "UNDO: " logmsg "Reason: " reason "\n")))
+;;           ;;                 (add-logmsg-to-logfile-clearcase new-logmsg)))
+;;           ;;              ((or (equal version-control-system 'Git)
+;;           ;;                   (equal version-control-system 'SVN))
+;;           ;;               (let ((reason (read-string "Reason for undo: " nil nil "" nil)))
+;;           ;;                 (write-to-refac-logfile dir (concat "UNDO: " logmsg "Reason: " reason "\n") "UNDO"))
+;;           ;;               )
+;;           ;;              (t nil))
+;;           ;;             (message "Undo succeeded")))))))
+;;           )
+;;       (message "Undo aborted."))
+;;     )
+;;   )
 
 
 (defun preview-commit-cancel(current-file-name modified renamed)
