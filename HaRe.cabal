@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.0.2
+Version:                        0.7.0.3
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -43,8 +43,8 @@ Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
-Data-Dir:                       .
 data-files:                     elisp/*.el
+data-Dir:                       .
 
 Library
         Build-Depends:          base >= 4.0  && < 4.7
@@ -96,7 +96,7 @@ Library
 Executable ghc-hare
         -- Main-Is:                Main.hs
         Main-Is:                MainHaRe.hs
-        Other-Modules:          Paths_HaRe
+        -- Other-Modules:          Paths_HaRe
         -- GHC-Options:            -Wall
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:

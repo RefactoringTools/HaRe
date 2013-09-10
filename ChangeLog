@@ -1,10 +1,14 @@
+2013-09-10  v0.7.0.3
+	
+	* Fix elisp, would not commit refactoring due to missing methods
+	
 2013-09-08  v0.7.0.2
 
 	* Fix issue #3: ifToCase formatting
 	
 2013-09-05  v0.7.0.1
 
-	* Fix issue #2: elisp 
+	* Fix issue #2: elisp
 
 2013-09-04 v0.7.0.0
 

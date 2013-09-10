@@ -131,7 +131,9 @@ loadModuleGraphGhc maybeTargetFile = do
   case maybeTargetFile of
     Just targetFile -> do
       -- Prefix with * to force interpretation, for inscopes
-      target <- GHC.guessTarget ("*" ++ targetFile) Nothing
+      -- target <- GHC.guessTarget ("*" ++ targetFile) Nothing
+      -- NOTE: does not seem to be required
+      target <- GHC.guessTarget (targetFile) Nothing
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets
       return ()

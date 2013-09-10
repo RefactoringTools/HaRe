@@ -16,10 +16,14 @@ Running the bare command lists available refactorings and their parameters
 
 ### Emacs integration
 
-Currently only emacs integration is offered. Add the following to your ~/.emacs
+Currently only emacs integration is offered. Add the following to your
+~/.emacs using the load-path entry that matches the installation on
+your machine.
 
     (add-to-list 'load-path
-        "~/.cabal/share/HaRe-0.7.0.0/elisp")
+        "~/.cabal/share/HaRe-0.7.0.3/elisp")
+    (add-to-list 'load-path
+        "~/.cabal/share/i386-linux-ghc-7.6.3/HaRe-0.7.0.3/elisp")
     (require 'hare)
     (autoload 'hare-init "hare" nil t)
 

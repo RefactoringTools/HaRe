@@ -9,10 +9,6 @@ import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
--- import qualified Name       as GHC
--- import qualified Outputable as GHC
--- import qualified RdrName    as GHC
--- import qualified SrcLoc     as GHC
 
 import Control.Monad.State
 import Data.Maybe
@@ -70,6 +66,17 @@ spec = do
       let (Just expr) = locToExp (7,7) (7,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
       getLocatedStart expr `shouldBe` (7,9)
       getLocatedEnd   expr `shouldBe` (7,42)
+
+  -- -------------------------------------------------------------------
+
+  describe "loading a file" $ do
+    it "loads a file having the LANGUAGE CPP pragma" $ do
+      (t, _toks) <- parsedFileBCppGhc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let (Just expr) = locToExp (5,1) (5,25) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
+      getLocatedStart expr `shouldBe` (7,12)
+      getLocatedEnd   expr `shouldBe` (7,19)
 
   -- -------------------------------------------------------------------
 
@@ -316,6 +323,9 @@ bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
 
 parsedFileBGhc :: IO (ParseResult,[PosToken])
 parsedFileBGhc = parsedFileGhc "./test/testdata/TypeUtils/B.hs"
+
+parsedFileBCppGhc :: IO (ParseResult,[PosToken])
+parsedFileBCppGhc = parsedFileGhc "./test/testdata/BCpp.hs"
 
 parsedFileMGhc :: IO (ParseResult,[PosToken])
 parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
