@@ -183,12 +183,13 @@ checkItemStage1 stage x = (const False `SYB.extQ` postTcType `SYB.extQ` fixity `
         postTcType  = const (stage < SYB.TypeChecker                  ) :: GHC.PostTcType    -> Bool
         fixity      = const (stage < SYB.Renamer                      ) :: GHC.Fixity        -> Bool
 
+#if __GLASGOW_HASKELL__ > 704
 -- | Check the Typeable1 items
 checkItemStage2 :: Data a => SYB.Stage -> a -> Bool
 checkItemStage2 stage x = (const False `SYB.ext1Q` hsWithBndrs) x
   where
         hsWithBndrs = const (stage < SYB.Renamer) :: GHC.HsWithBndrs a -> Bool
-
+#endif
 
 checkItemRenamer :: (Data a, Typeable a) => a -> Bool
 checkItemRenamer x = checkItemStage SYB.Renamer x
