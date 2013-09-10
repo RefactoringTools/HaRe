@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -170,7 +171,10 @@ everywhereStaged' stage f x
 -- | Checks whether the current item is undesirable for analysis in the current
 -- AST Stage.
 checkItemStage :: (Typeable a, Data a) => SYB.Stage -> a -> Bool
-checkItemStage stage x = (checkItemStage1 stage x) || (checkItemStage2 stage x)
+checkItemStage stage x = (checkItemStage1 stage x)
+#if __GLASGOW_HASKELL__ > 704
+                      || (checkItemStage2 stage x)
+#endif
 
 -- Check the Typeable items
 checkItemStage1 :: (Typeable a) => SYB.Stage -> a -> Bool
