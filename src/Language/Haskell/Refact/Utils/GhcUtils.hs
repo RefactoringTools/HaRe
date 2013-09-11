@@ -332,7 +332,7 @@ checkZipperStaged stage z
   | isJust maybeNameSet    = checkItemStage stage (fromJust maybeNameSet)
   | isJust maybePostTcType = checkItemStage stage (fromJust maybePostTcType)
   | isJust maybeFixity     = checkItemStage stage (fromJust maybeFixity)
-  -- | isJust maybeHsWithBndrs = checkItemStage stage (fromJust maybeHsWithBndrs)
+  -- was | isJust maybeHsWithBndrs = checkItemStage stage (fromJust maybeHsWithBndrs)
   | otherwise = False
   where
     maybeNameSet ::  Maybe GHC.NameSet

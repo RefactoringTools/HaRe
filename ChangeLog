@@ -1,3 +1,6 @@
+2013-09-11  v0.7.0.4
+	* Correct Haddock compile error. Close #4
+	* hsWithBndrs only exists for GHC > 7.4.x
 2013-09-10  v0.7.0.3
 	
 	* Fix elisp, would not commit refactoring due to missing methods
