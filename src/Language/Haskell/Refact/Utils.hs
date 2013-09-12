@@ -67,34 +67,6 @@ import qualified GHC.SYB.Utils as SYB
 
 -- ---------------------------------------------------------------------
 
--- Term defined in ../StrategyLib-4.0-beta/models/deriving/TermRep.hs
-
--- type PosToken = (Token, (Pos, String))
---       -- Defined at ../tools/base/parse2/Lexer/HsLayoutPre.hs:14:6
--- data Pos
---   = Pos {HsLexerPass1.char :: !Int, line :: !Int, column :: !Int}
---      -- Defined at ../tools/base/parse2/Lexer/HsLexerPos.hs:3:6
--- data Token
---      -- Defined at ../tools/base/parse2/Lexer/HsTokens.hs:5:6
-
--- GHC version
--- getRichTokenStream :: GhcMonad m => Module -> m [(Located Token, String)]
-
--- getStartEndLoc ::
---   forall t.
---   (Term t, StartEndLoc t, Printable t) =>
---   [PosToken] -> t -> (SimpPos, SimpPos)
---       -- Defined at RefacLocUtils.hs:1188:1
-
--- type HsExpP = HsExpI PNT     -- Defined at RefacTypeSyn.hs:17:6
-
-
--- data PNT = PNT PName (IdTy PId) OptSrcLoc
---       -- Defined at ../tools/base/defs/PNT.hs:23:6
-
-
--- ---------------------------------------------------------------------
-
 pwd :: IO FilePath
 pwd = getCurrentDirectory
 
@@ -205,13 +177,6 @@ parseSourceFileGhc targetFile = do
       let [(_,modSum)] = mm
       getModuleDetails modSum
 
-{-
-getExports (GHC.L _ hsmod) =
-  case hsmod of
-    GHC.HsModule _ (Just exports) _ _ _ _ -> exports
-    _                                     -> []
--}
-
 -- ---------------------------------------------------------------------
 
 -- | The result of a refactoring is the file, a flag as to whether it
@@ -226,31 +191,6 @@ type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.RenamedSource))
 -- It is intended that this forms the umbrella function, in which
 -- applyRefac is called
 --
-{-
-runRefacSessionOld :: Maybe RefactSettings
-         -> Maybe FilePath -- ^ main module for the project being refactored
-         -> RefactGhc [ApplyRefacResult] -- ^ The computation doing
-                                         -- the refactoriing
-         -> IO [FilePath]
-runRefacSessionOld settings maybeMainFile comp = do
-  let
-   initialState = RefSt
-        { rsSettings = fromMaybe defaultSettings settings
-        , rsUniqState = 1
-        , rsFlags = RefFlags False
-        , rsStorage = StorageNone
-        , rsModule = Nothing
-        }
-  (refactoredMods,_s) <- runRefactGhc (initGhcSession >>
-                                       loadModuleGraphGhc maybeMainFile >>
-                                       comp) initialState
-
-  let verbosity = rsetVerboseLevel (rsSettings initialState)
-  writeRefactoredFiles verbosity refactoredMods
-  return $ modifiedFiles refactoredMods
--}
--- -------------
-
 runRefacSession :: RefactSettings
     -> Cradle                       -- ^ Identifies the surrounding
                                     -- project
@@ -344,32 +284,6 @@ applyRefacToClientMods refac fileName
 modifiedFiles :: [((String, Bool), ([PosToken], GHC.RenamedSource))] -> [String]
 modifiedFiles refactResult = map (\((s,_),_) -> s)
                            $ filter (\((_,b),_) -> b) refactResult
-
--- ---------------------------------------------------------------------
-
-{- ++AZ++ TODO: replace this with a single function -}
-
-{-
--- | Update the occurrence of one syntax phrase in a given scope by
--- another syntax phrase
-updateR :: (SYB.Data t,SYB.Data t1, GHC.OutputableBndr t)
-         => t     -- ^ The syntax phrase to be updated.
-         -> t     -- ^ The new syntax phrase.
-         -> t1    -- ^ The contex where the old syntax phrase occurs.
-         -> RefactGhc t1  -- ^ The result.
-updateR old new t
-  = everywhereMStaged SYB.Renamer (SYB.mkM inExp) t
-       where
-        inExp :: GHC.Located t -> RefactGhc (GHC.Located t)
-        -- inExp (e::(GHC.OutputableBndr n, SYB.Data n) => GHC.Located n)
-        -- inExp (e@(GHC.L l _)::(GHC.OutputableBndr n, SYB.Data n) => GHC.Located n)
-        inExp (e@(GHC.L l _))
-          | sameOccurrence e old
-               = do (new', _) <- updateToks old new prettyprint
-                -- error "update: updated tokens" -- ++AZ++ debug
-                    return new'
-          | otherwise = return e
--}
 
 -- ---------------------------------------------------------------------
 
@@ -506,31 +420,10 @@ instance (SYB.Data t) => Update [GHC.Located HsPatP] t where
 
 getDynFlags :: IO GHC.DynFlags
 getDynFlags = getDynamicFlags
-{-
-  let
-    initialState = RefSt
-      { rsSettings = RefSet [] Normal
-      , rsUniqState = 1
-      , rsFlags = RefFlags False
-      , rsStorage = StorageNone
-      , rsModule = Nothing
-      }
-  (df,_) <- runRefactGhc GHC.getSessionDynFlags initialState
-  return df
--}
 
 -- ---------------------------------------------------------------------
 
 -- | Write refactored program source to files.
-{-
-writeRefactoredFiles::Bool   -- ^ True means the current refactoring is a sub-refactoring
-         ->[((String,Bool),([PosToken],HsModuleP))]
-            --  ^ String: the file name; Bool: True means the file has
-            --  been modified.[PosToken]: the token stream; HsModuleP:
-            --  the module AST.
-         -> m ()
--}
--- writeRefactoredFiles (isSubRefactor::Bool) (files::[((String,Bool),([PosToken], HsModuleP))])
 writeRefactoredFiles ::
   VerboseLevel -> [((String, Bool), ([PosToken], GHC.RenamedSource))] -> IO ()
 writeRefactoredFiles verbosity files
@@ -626,20 +519,6 @@ instance (Show GHC.ModuleName) where
 
 -- ---------------------------------------------------------------------
 
--- | Return True if the given module name exists in the project.
---isAnExistingMod::( ) =>ModuleName->PFE0MT n i ds ext m Bool
-
-{-
-isAnExistingMod::(PFE0_IO err m,IOErr err,HasInfixDecls i ds,QualNames i m1 n, Read n,Show n)=>
-                  ModuleName->PFE0MT n i ds ext m Bool
-
-isAnExistingMod m
-  =  do ms<-allModules
-        return (elem m ms)
--}
-
--- ---------------------------------------------------------------------
-
 -- | Get the current module graph, provided we are in a live GHC session
 getCurrentModuleGraph :: RefactGhc GHC.ModuleGraph
 getCurrentModuleGraph = GHC.getModuleGraph
@@ -650,11 +529,5 @@ sortCurrentModuleGraph = do
   g <- getCurrentModuleGraph
   let scc = GHC.topSortModuleGraph False g Nothing
   return scc
-
--- getSubGraph optms = concat # getSortedSubGraph optms
--- getSortedSubGraph optms = flip optSubGraph optms # sortCurrentModuleGraph
--- allModules = moduleList # sortCurrentModuleGraph
--- moduleList g = [m|scc<-g,(_,(m,_))<-scc]
-
 
 
