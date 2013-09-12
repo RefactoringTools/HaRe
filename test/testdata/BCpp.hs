@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE CPP #-}
 -- Check that we can parse a file which requires CPP
 module BCpp where

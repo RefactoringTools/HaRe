@@ -54,6 +54,7 @@ import Control.Applicative
 import Data.Data
 import Data.IORef
 import System.Directory
+import System.FilePath
 import qualified Data.Map as Map
 
 -- import Language.Haskell.Refact.Utils.GhcUtils
@@ -200,16 +201,31 @@ getStuff =
 
         let cppFiles = filter (\f -> getSuffix f == suffix) fileList
         GHC.liftIO $ putStrLn $ "temp dir hscpp files=:" ++ show (cppFiles)
+        origNames <- GHC.liftIO $ mapM getOriginalFile $ map (\f -> d </> f) cppFiles
+        GHC.liftIO $ putStrLn $ "temp dir orig names=:" ++ show (origNames)
+        let tmpFile = head $ filter (\(o,_) -> o == srcFile) origNames
+        GHC.liftIO $ putStrLn $ "temp dir tmpFile=:" ++ show (tmpFile)
+        buf <- GHC.liftIO $ GHC.hGetStringBuffer $ snd tmpFile
+        GHC.liftIO $ putStrLn $ "got buf:[" ++ sbufToString buf ++ "]"
 
+        strSrcWithHead <- GHC.liftIO $ readFile $ snd tmpFile
+        let strSrc = unlines $ drop 3 $ lines strSrcWithHead
+        let strSrcBuf = GHC.stringToStringBuffer strSrc
 
+        GHC.liftIO $ putStrLn $ "got strSrcBuf:[" ++ sbufToString strSrcBuf ++ "]"
 
         let startLoc = GHC.mkRealSrcLoc (GHC.mkFastString srcFile) 1 1
         tt <- case GHC.lexTokenStream src startLoc flags of
                 GHC.POk _ ts  -> return ts
                 GHC.PFailed span err ->
-                   do dflags <- GHC.getDynFlags
+                   do -- dflags <- GHC.getDynFlags
                       -- GHC.liftIO $ GHC.throwIO $ GHC.mkSrcErr (unitBag $ GHC.mkPlainErrMsg dflags span err)
-                      error "parse failed"
+                      case GHC.lexTokenStream strSrcBuf startLoc flags of
+                       GHC.POk _ ts  -> return ts
+                       GHC.PFailed span err ->
+                         do dflags <- GHC.getDynFlags
+                            error "parse failed2"
+        GHC.liftIO $ putStrLn $ "got tt:[" ++ show tt ++ "]"
 
 
         -- Tokens ------------------------------------------------------
@@ -318,6 +334,20 @@ sbufToString sb@(GHC.StringBuffer buf len cur) = GHC.lexemeToString sb len
 getSuffix :: FilePath -> String
 getSuffix fname = reverse $ fst $ break (== '.') $ reverse fname
 
+
+-- | A GHC preprocessed file has the following comments at the top
+-- # 1 "./test/testdata/BCpp.hs"
+-- # 1 "<command-line>"
+-- # 1 "./test/testdata/BCpp.hs"
+-- This function reads the first line of the file and returns the
+-- string in it.
+-- NOTE: no error checking, will blow up if it fails
+getOriginalFile :: FilePath -> IO (FilePath,FilePath)
+getOriginalFile fname = do
+  fcontents <- readFile fname
+  let firstLine = head $ lines fcontents
+  let (_,originalFname) = break (== '"') firstLine
+  return $ (tail $ init $ originalFname,fname)
 
 -- ---------------------------------------------------------------------
 
