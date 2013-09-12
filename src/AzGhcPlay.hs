@@ -52,6 +52,9 @@ import Control.Monad.State
 
 import Control.Applicative
 import Data.Data
+import Data.IORef
+import System.Directory
+import qualified Data.Map as Map
 
 -- import Language.Haskell.Refact.Utils.GhcUtils
 
@@ -187,6 +190,19 @@ getStuff =
         GHC.liftIO $ putStrLn $ "got saf:" ++ show (srcFile,src)
         GHC.liftIO $ putStrLn $ "got src:[" ++ sbufToString src ++ "]"
         GHC.liftIO $ putStrLn $ "got saf:" ++ show (srcFile,src)
+
+        df <- GHC.getSessionDynFlags
+        d <- GHC.liftIO $ getTempDir df
+        GHC.liftIO $ putStrLn $ "temp dir=:" ++ show (d)
+        fileList <- GHC.liftIO $ getDirectoryContents d
+        GHC.liftIO $ putStrLn $ "temp dir files=:" ++ show (fileList)
+        let suffix = "hscpp"
+
+        let cppFiles = filter (\f -> getSuffix f == suffix) fileList
+        GHC.liftIO $ putStrLn $ "temp dir hscpp files=:" ++ show (cppFiles)
+
+
+
         let startLoc = GHC.mkRealSrcLoc (GHC.mkFastString srcFile) 1 1
         tt <- case GHC.lexTokenStream src startLoc flags of
                 GHC.POk _ ts  -> return ts
@@ -279,11 +295,29 @@ getModuleSourceAndFlags mod = do
         source <- GHC.liftIO $ GHC.hGetStringBuffer sourceFile
         return (sourceFile, source, GHC.ms_hspp_opts m)
 
+-- return our temporary directory within tmp_dir, creating one if we
+-- don't have one yet
+getTempDir :: GHC.DynFlags -> IO FilePath
+getTempDir dflags
+  = do let ref = GHC.dirsToClean dflags
+           tmp_dir = GHC.tmpDir dflags
+       mapping <- readIORef ref
+       case Map.lookup tmp_dir mapping of
+           Nothing -> error "should already be a tmpDir"
+           Just d -> return d
+
+
 
 -- ---------------------------------------------------------------------
 
 sbufToString :: GHC.StringBuffer -> String
 sbufToString sb@(GHC.StringBuffer buf len cur) = GHC.lexemeToString sb len
+
+-- ---------------------------------------------------------------------
+
+getSuffix :: FilePath -> String
+getSuffix fname = reverse $ fst $ break (== '.') $ reverse fname
+
 
 -- ---------------------------------------------------------------------
 
