@@ -6,14 +6,19 @@ module Language.Haskell.Refact.Utils.GhcBugWorkArounds
     getRichTokenStreamWA
     ) where
 
+import qualified Bag                   as GHC
 import qualified DynFlags              as GHC
+import qualified ErrUtils              as GHC
 import qualified FastString            as GHC
 import qualified GHC                   as GHC
+import qualified HscTypes              as GHC
 import qualified Lexer                 as GHC
 import qualified MonadUtils            as GHC
+import qualified Outputable            as GHC
 import qualified SrcLoc                as GHC
 import qualified StringBuffer          as GHC
 
+import Control.Exception
 import Data.IORef
 import System.Directory
 import System.FilePath
@@ -24,7 +29,7 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 
 -- | Replacement for original 'getRichTokenStream' which will return
 -- the tokens for a file processed by CPP.
--- See bug http://ghc.haskell.org/trac/ghc/ticket/8265
+-- See bug <http://ghc.haskell.org/trac/ghc/ticket/8265>
 getRichTokenStreamWA :: GHC.GhcMonad m => GHC.Module -> m [(GHC.Located GHC.Token, String)]
 getRichTokenStreamWA mod = do
   (sourceFile, source, flags) <- getModuleSourceAndFlags mod
@@ -38,8 +43,7 @@ getRichTokenStreamWA mod = do
              GHC.POk _ ts -> return $ GHC.addSourceToTokens startLoc source ts
              GHC.PFailed span err ->
                do dflags <- GHC.getDynFlags
-                  -- throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg dflags span err)
-                  error "getRichTokenStreamWA:parse failed"
+                  throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg dflags span err)
 
 -- ---------------------------------------------------------------------
 
@@ -73,9 +77,11 @@ getSuffix :: FilePath -> String
 getSuffix fname = reverse $ fst $ break (== '.') $ reverse fname
 
 -- | A GHC preprocessed file has the following comments at the top
+-- @
 -- # 1 "./test/testdata/BCpp.hs"
 -- # 1 "<command-line>"
 -- # 1 "./test/testdata/BCpp.hs"
+-- @
 -- This function reads the first line of the file and returns the
 -- string in it.
 -- NOTE: no error checking, will blow up if it fails
@@ -95,8 +101,8 @@ getModuleSourceAndFlags mod = do
   m <- GHC.getModSummary (GHC.moduleName mod)
   case GHC.ml_hs_file $ GHC.ms_location m of
     Nothing -> do dflags <- GHC.getDynFlags
-                  -- liftIO $ GHC.throwIO $ GHC.mkApiErr dflags (text "No source available for module " <+> GHC.ppr mod)
-                  error $ ("No source available for module " ++ showGhc mod)
+                  GHC.liftIO $ throwIO $ GHC.mkApiErr dflags (GHC.text "No source available for module " GHC.<+> GHC.ppr mod)
+                  -- error $ ("No source available for module " ++ showGhc mod)
     Just sourceFile -> do
         source <- GHC.liftIO $ GHC.hGetStringBuffer sourceFile
         return (sourceFile, source, GHC.ms_hspp_opts m)
