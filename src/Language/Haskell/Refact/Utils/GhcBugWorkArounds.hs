@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- | Provide workarounds for bugs detected in GHC, until they are
 -- fixed in a later version
 
@@ -20,6 +21,7 @@ import qualified StringBuffer          as GHC
 
 import Control.Exception
 import Data.IORef
+import Data.List.Utils
 import System.Directory
 import System.FilePath
 import qualified Data.Map as Map
@@ -40,10 +42,21 @@ getRichTokenStreamWA mod = do
         do
            strSrcBuf <- getPreprocessedSrc sourceFile
            case GHC.lexTokenStream strSrcBuf startLoc flags of
-             GHC.POk _ ts -> return $ GHC.addSourceToTokens startLoc source ts
+             GHC.POk _ ts ->
+               do directiveToks <- GHC.liftIO $ getPreprocessorAsComments sourceFile
+                  let toks = GHC.addSourceToTokens startLoc source ts
+                  return $ mergeBy locFn toks directiveToks
+                  -- return directiveToks
+                  -- return toks
              GHC.PFailed span err ->
                do dflags <- GHC.getDynFlags
+#if __GLASGOW_HASKELL__ > 704
                   throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg dflags span err)
+#else
+                  throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg        span err)
+#endif
+
+locFn (GHC.L l1 _,_) (GHC.L l2 _,_) = compare l1 l2
 
 -- ---------------------------------------------------------------------
 
@@ -92,6 +105,23 @@ getOriginalFile fname = do
   let (_,originalFname) = break (== '"') firstLine
   return $ (tail $ init $ originalFname,fname)
 
+-- ---------------------------------------------------------------------
+
+-- | Get the preprocessor directives as comment tokens from the
+-- source.
+getPreprocessorAsComments :: FilePath -> IO [(GHC.Located GHC.Token, String)]
+getPreprocessorAsComments srcFile = do
+  fcontents <- readFile srcFile
+  let directives = filter (\(_lineNum,line) -> line /= [] && head line == '#') $ zip [1..] $ lines fcontents
+
+  let mkTok (lineNum,line) = (GHC.L l (GHC.ITlineComment line),line)
+       where
+         start = GHC.mkSrcLoc (GHC.mkFastString srcFile) lineNum 1
+         end   = GHC.mkSrcLoc (GHC.mkFastString srcFile) lineNum (length line)
+         l = GHC.mkSrcSpan start end
+
+  let toks = map mkTok directives
+  return toks
 
 -- ---------------------------------------------------------------------
 -- Copied from the GHC source, since not exported
@@ -101,7 +131,11 @@ getModuleSourceAndFlags mod = do
   m <- GHC.getModSummary (GHC.moduleName mod)
   case GHC.ml_hs_file $ GHC.ms_location m of
     Nothing -> do dflags <- GHC.getDynFlags
+#if __GLASGOW_HASKELL__ > 704
                   GHC.liftIO $ throwIO $ GHC.mkApiErr dflags (GHC.text "No source available for module " GHC.<+> GHC.ppr mod)
+#else
+                  GHC.liftIO $ throwIO $ GHC.mkApiErr        (GHC.text "No source available for module " GHC.<+> GHC.ppr mod)
+#endif
                   -- error $ ("No source available for module " ++ showGhc mod)
     Just sourceFile -> do
         source <- GHC.liftIO $ GHC.hGetStringBuffer sourceFile
