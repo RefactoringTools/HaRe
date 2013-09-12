@@ -44,6 +44,7 @@ import Data.List
 import Data.Maybe
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
+import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -144,7 +145,10 @@ getModuleDetails modSum = do
       -- GHC.setContext [GHC.IIModule (GHC.moduleName $ GHC.ms_mod modSum)]
       setGhcContext modSum
 
-      tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
+      -- Use the workaround to get the tokens, the existing one does
+      -- not return tokens for CPP processed files.
+      -- tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
+      tokens <- getRichTokenStreamWA (GHC.ms_mod modSum)
       mtm <- gets rsModule
       case mtm of
         Just tm -> if ((rsStreamModified tm == False)
