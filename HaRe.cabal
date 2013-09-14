@@ -95,7 +95,6 @@ Library
 
 
 Executable ghc-hare
-        -- Main-Is:                Main.hs
         Main-Is:                MainHaRe.hs
         -- Other-Modules:          Paths_HaRe
         -- GHC-Options:            -Wall
