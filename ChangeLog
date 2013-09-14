@@ -1,3 +1,8 @@
+	* When refactoring a CPP pre-processed file, read the preprocessor
+	directives and non-compiled code as comments, so the source can be
+	round-tripped. This allows refactoring of simple #if/#else/#endif
+	code. NOTE: no refactoring is done on code that is not live after
+	the preprocessor.
 2013-09-12  v0.7.0.5
 	* Now able to get tokens for a file pre-processed with CPP. But it
 	is the pre-processed output, so the CPP directives are stripped

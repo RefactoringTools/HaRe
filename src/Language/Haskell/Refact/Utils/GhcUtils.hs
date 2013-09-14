@@ -59,7 +59,6 @@ import Data.Data
 import Data.Maybe
 
 import qualified GHC     as GHC
-import qualified HsTypes as GHC
 import qualified NameSet as GHC
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib

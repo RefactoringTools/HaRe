@@ -43,7 +43,6 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -56,7 +55,6 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import System.Directory
 
 import qualified Digraph       as GHC
-import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC
 import qualified Outputable    as GHC
@@ -315,7 +313,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
        where
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
-               = do 
+               = do
                     drawTokenTree "update Located HsExpr starting" -- ++AZ++
                     _ <- updateToks oldExp newExp prettyprint False
                     drawTokenTree "update Located HsExpr done" -- ++AZ++
@@ -341,25 +339,25 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n
      update oldTy newTy t
            = everywhereMStaged SYB.Parser (SYB.mkM inTyp) t
         where
-          inTyp (t::GHC.LHsType n)
-            | sameOccurrence t oldTy
+          inTyp (t'::GHC.LHsType n)
+            | sameOccurrence t' oldTy
                 = do
                      _ <- updateToks oldTy newTy prettyprint False
                      -- TODO: make sure to call syncAST
                      return newTy
-            | otherwise = return t
+            | otherwise = return t'
 
 instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1, SYB.Data n2) => Update (GHC.LHsBindLR n1 n2) t where
        update oldBind newBind t
              = everywhereMStaged SYB.Parser (SYB.mkM inBind) t
           where
-            inBind (t::GHC.LHsBindLR n1 n2)
-              | sameOccurrence t oldBind
+            inBind (t'::GHC.LHsBindLR n1 n2)
+              | sameOccurrence t' oldBind
                   = do
                        _ <- updateToks oldBind newBind prettyprint False
                        -- TODO: make sure to call syncAST
                        return newBind
-              | otherwise = return t
+              | otherwise = return t'
 
 {- instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update [GHC.LPat n] t where
     update oldPat newPat t
@@ -422,11 +420,6 @@ instance (SYB.Data t) => Update [GHC.Located HsPatP] t where
 
 -- ---------------------------------------------------------------------
 
-getDynFlags :: IO GHC.DynFlags
-getDynFlags = getDynamicFlags
-
--- ---------------------------------------------------------------------
-
 -- | Write refactored program source to files.
 writeRefactoredFiles ::
   VerboseLevel -> [((String, Bool), ([PosToken], GHC.RenamedSource))] -> IO ()
@@ -475,8 +468,8 @@ clientModsAndFiles m = do
   modsum <- GHC.getModSummary m
   let mg = getModulesAsGraph False ms Nothing
       rg = GHC.transposeG mg
-      modNode = fromJust $ find (\(msum,_,_) -> mycomp msum modsum) (GHC.verticesG rg)
-      clientMods = filter (\msum -> not (mycomp msum modsum))
+      modNode = fromJust $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
+      clientMods = filter (\msum' -> not (mycomp msum' modsum))
                  $ map summaryNodeSummary $ GHC.reachableG rg modNode
 
   return clientMods
@@ -497,8 +490,8 @@ serverModsAndFiles m = do
   ms <- GHC.getModuleGraph
   modsum <- GHC.getModSummary m
   let mg = getModulesAsGraph False ms Nothing
-      modNode = fromJust $ find (\(msum,_,_) -> mycomp msum modsum) (GHC.verticesG mg)
-      serverMods = filter (\msum -> not (mycomp msum modsum))
+      modNode = fromJust $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG mg)
+      serverMods = filter (\msum' -> not (mycomp msum' modsum))
                  $ map summaryNodeSummary $ GHC.reachableG mg modNode
 
   return serverMods

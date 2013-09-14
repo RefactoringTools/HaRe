@@ -260,7 +260,7 @@ spec = do
 
 
   -- -------------------------------------------------------------------
-
+{-
   describe "definingDecls" $ do
     it "returns [] if not found" $ do
       (t, _toks) <- parsedFileDd1Ghc
@@ -332,7 +332,7 @@ spec = do
 
       let res = definingDecls [(PN (mkRdrName "zz"))] ds False False
       showGhc res `shouldBe` "[]"
-
+-}
   -- -------------------------------------------------------------------
 
   describe "definingDeclsNames" $ do

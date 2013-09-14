@@ -105,7 +105,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,ghcToPN,lghcToPN, expToName
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
-    ,definingDecls, definedPNs
+    {- ,definingDecls -}, definedPNs
     ,definingDeclsNames, definingDeclsNames', definingSigsNames
     , allNames
     -- ,simplifyDecl
@@ -431,11 +431,11 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
       GHC.IEVar _ -> True
       _           -> False
 
-    modIsUnQualifedImported _mod' modName
+    modIsUnQualifedImported _mod' modName'
      =let -- imps =hsModImports mod
        -- imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) qualify _source _safe isQualified _isImplicit as h))
-      in isJust $ find (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h)) 
-                                -> modName1 == modName && (not isQualified)) imps
+      in isJust $ find (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h))
+                                -> modName1 == modName' && (not isQualified)) imps
       -- in isJust $ find (\(HsImportDecl _ (SN modName1 _) qualify  _ h) -> modName == modName1 && (not qualify)) imps
 
 
@@ -502,8 +502,8 @@ hsFreeAndDeclaredPNs' t = do
           -- hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
 
    where
-          cc :: Maybe ([GHC.Name],[GHC.Name]) -> Maybe ([GHC.Name],[GHC.Name]) -> Maybe ([GHC.Name],[GHC.Name])
-          cc = mappend
+          -- cc :: Maybe ([GHC.Name],[GHC.Name]) -> Maybe ([GHC.Name],[GHC.Name]) -> Maybe ([GHC.Name],[GHC.Name])
+          -- cc = mappend
           -- cc Nothing Nothing = Nothing
           -- -- cc (Just (f1,d1)) (Just (f2,d2)) = Just (f1++f2,d1++d2)
           -- cc (Just (f1,d1)) (Just (f2,d2)) = Just (f1,d1)
@@ -529,6 +529,7 @@ hsFreeAndDeclaredPNs' t = do
                                                          `adhocTU` expr
                                                          `adhocTU` pattern
                                                          `adhocTU` binds
+                                                         `adhocTU` bindList
                                                          `adhocTU` match
                                                          `adhocTU` stmts
                                                          `adhocTU` rhs
@@ -569,12 +570,11 @@ hsFreeAndDeclaredPNs' t = do
 
           -- rhs --
           rhs ((GHC.GRHSs g ds) :: GHC.GRHSs GHC.Name)
-           -- = error "blah"
             = do (df,dd) <- hsFreeAndDeclaredPNs' g
                  (ef,ed) <- hsFreeAndDeclaredPNs' ds
                  return (df ++ ef, dd ++ ed)
 
-          rhs _ = mzero
+          -- rhs _ = mzero
 
           -- pat --
           pattern (GHC.VarPat n) = return ([],[n])
@@ -587,7 +587,7 @@ hsFreeAndDeclaredPNs' t = do
           bindList (ds :: [GHC.LHsBind GHC.Name])
             =do (f,d) <- hsFreeAndDeclaredList ds
                 return (f\\d,d)
-          bindList _ = mzero
+          -- bindList _ = mzero
 
           -- match and patBind, same type--
           binds ((GHC.FunBind (GHC.L _ n) _ (GHC.MatchGroup matches _) _ _fvs _) :: GHC.HsBind GHC.Name)
@@ -747,7 +747,7 @@ hsFreeAndDeclaredNames t = res
 --                              return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Experiment with GHC fvs stuff
 getFvsAll :: (SYB.Data t) => t -> [([GHC.Name], GHC.NameSet)]
 getFvsAll t
@@ -761,7 +761,7 @@ getFvsAll t
       binds (GHC.FunBind (GHC.L _ pname) _ _ _ fvs _) = [([pname],     fvs)]
       binds (GHC.PatBind p _rhs _ty fvs _)            = [((hsNamess p),fvs)]
       binds _ = []
-
+-}
 -- |Experiment with GHC fvs stuff
 getFvs :: [GHC.LHsBind GHC.Name] -> [([GHC.Name], GHC.NameSet)]
 getFvs bs = concatMap binds bs
@@ -1063,8 +1063,8 @@ hsFDsFromInside t = res
                                                `adhocTU` match
                                                `adhocTU` expr
                                                `adhocTU` stmts )) t
-          let (f,d) = fromMaybe ([],[]) r1
-          return (nub f, nub d)
+          let (f',d') = fromMaybe ([],[]) r1
+          return (nub f', nub d')
 
      renamed ((grp,_,_,_)::GHC.RenamedSource)
         = return $ hsFreeAndDeclaredPNs $ GHC.hs_valds grp
@@ -1223,17 +1223,17 @@ hsFDNamesFromInside t = do
 -- ---------------------------------------------------------------------
 -- | True if the name is a field name
 isFieldName :: GHC.Name -> Bool
-isFieldName n = error "undefined isFieldName"
+isFieldName _n = error "undefined isFieldName"
 
 -- ---------------------------------------------------------------------
 -- | True if the name is a field name
 isClassName :: GHC.Name -> Bool
-isClassName n = error "undefined isClassName"
+isClassName _n = error "undefined isClassName"
 
 -- ---------------------------------------------------------------------
 -- | True if the name is a class instance
 isInstanceName :: GHC.Name -> Bool
-isInstanceName n = error "undefined isInstanceName"
+isInstanceName _n = error "undefined isInstanceName"
 
 
 -- ---------------------------------------------------------------------
@@ -1382,8 +1382,10 @@ isPatName pn
 isQualifiedPN :: GHC.Name -> RefactGhc Bool
 isQualifiedPN name = return $ GHC.isQual $ GHC.nameRdrName name
 
+{-
 isQualifiedPN' :: GHC.Name -> Bool
 isQualifiedPN' name = GHC.isQual $ GHC.nameRdrName name
+-}
 
 {-
   = case (GHC.nameModule_maybe name) of
@@ -1680,7 +1682,7 @@ instance HsValBinds (GHC.Stmt GHC.Name) where
 
 instance HsValBinds (GHC.LHsBinds GHC.Name) where
   hsValBinds binds = hsValBinds $ GHC.bagToList binds
-
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsBinds GHC.Name) undefined for:" ++ (showGhc old)
 
 -- ---------------------------------------------------------------------
 
@@ -1714,27 +1716,32 @@ instance HsValBinds ([GHC.LHsBind GHC.Name]) where
 instance HsValBinds (GHC.LHsExpr GHC.Name) where
   hsValBinds (GHC.L _ (GHC.HsLet binds _ex)) = hsValBinds binds
   hsValBinds _                               = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsExpr GHC.Name) undefined for:" ++ (showGhc old)
 
 -- ---------------------------------------------------------------------
 
 instance HsValBinds [GHC.LGRHS GHC.Name] where
   hsValBinds xs = unionBinds $ map hsValBinds xs
+  replaceValBinds _old _new = error $ "replaceValBinds [GHC.LGRHS GHC.Name] undefined for:" -- ++ (showGhc old)
 
 -- ---------------------------------------------------------------------
 
 instance HsValBinds (GHC.LGRHS GHC.Name) where
   hsValBinds (GHC.L _ (GHC.GRHS stmts _expr)) = hsValBinds stmts
+  replaceValBinds _old _new = error $ "replaceValBinds (GHC.LHGRHS GHC.Name) undefined for:" -- ++ (showGhc _old)
 
 -- ---------------------------------------------------------------------
 
 instance HsValBinds [GHC.LStmt GHC.Name] where
   hsValBinds xs = unionBinds $ map hsValBinds xs
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LStmt GHC.Name] undefined for:" ++ (showGhc old)
 
 -- ---------------------------------------------------------------------
 
 instance HsValBinds (GHC.LStmt GHC.Name) where
   hsValBinds (GHC.L _ (GHC.LetStmt binds)) = hsValBinds binds
   hsValBinds _                             = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LStmt GHC.Name) undefined for:" ++ (showGhc old)
 
 -- ---------------------------------------------------------------------
 
@@ -1990,6 +1997,7 @@ findEntity' a b = res
 
 -- ---------------------------------------------------------------------
 
+{-
 -- |Find those declarations(function\/pattern binding and type
 -- signature) which define the specified PNames. incTypeSig indicates
 -- whether the corresponding type signature will be included.
@@ -2072,6 +2080,7 @@ definingDecls pns ds incTypeSig recursive = concatMap defines ds
       defines' decl@(GHC.L l (GHC.SpliceD     _ {- (GHC.SpliceDecl id) -}))   = []
       defines' decl@(GHC.L l (GHC.DocD        _ {- (GHC.DocDecl) -}))         = []
       defines' decl@(GHC.L l (GHC.QuasiQuoteD _ {- (GHC.HsQuasiQuote id) -})) = []
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -2815,40 +2824,40 @@ addDecl parent pn (decl, msig, declToks) topLevel
   addTopLevelDecl :: (SYB.Data t, HsValBinds t)
        => (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
        -> t -> RefactGhc t
-  addTopLevelDecl (decl, maybeSig, maybeDeclToks) parent
-    = do let binds = hsValBinds parent
-             decls = hsBinds parent
+  addTopLevelDecl (newDecl, maybeSig, maybeDeclToks) parent'
+    = do let binds = hsValBinds parent'
+             decls = hsBinds parent'
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- was || isTypeSig x -}) decls
 
-         newToks <- makeNewToks (decl,maybeSig,maybeDeclToks)
+         newToks <- makeNewToks (newDecl,maybeSig,maybeDeclToks)
          -- logm $ "addTopLevelDecl:newToks=" ++ (show newToks)
 
          let Just sspan = if (emptyList decls2)
                             then getSrcSpan (glast "addTopLevelDecl" decls1)
                             else getSrcSpan (ghead "addTopLevelDecl" decls2)
 
-         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 2 0 2) newToks
+         decl' <- putDeclToksAfterSpan sspan newDecl (PlaceOffset 2 0 2) newToks
 
 {-
          case maybeSig of
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
 -}
-         return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
+         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
 
   appendDecl :: (SYB.Data t, HsValBinds t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
       -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken]) -- ^declaration and maybe sig/tokens
       -> RefactGhc t -- ^updated AST
-  appendDecl parent pn (decl, maybeSig, declToks)
-    = do let binds = hsValBinds parent
-         -- logm $ "appendDecl:declToks=" ++ (show declToks)
-         newToks <- makeNewToks (decl,maybeSig,declToks)
+  appendDecl parent' pn' (newDecl, maybeSig, declToks')
+    = do let binds = hsValBinds parent'
+         -- logm $ "appendDecl:declToks=" ++ (show declToks')
+         newToks <- makeNewToks (newDecl,maybeSig,declToks')
          -- logm $ "appendDecl:newToks=" ++ (show newToks)
 
          let Just sspan = getSrcSpan $ ghead "appendDecl" after
-         decl' <- putDeclToksAfterSpan sspan decl (PlaceOffset 2 0 2) newToks
+         decl' <- putDeclToksAfterSpan sspan newDecl (PlaceOffset 2 0 2) newToks
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
@@ -2857,22 +2866,22 @@ addDecl parent pn (decl, msig, declToks) topLevel
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
          -}
-         return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
+         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
       where
-        decls = hsBinds parent
-        (before,after) = break (defines pn) decls -- Need to handle the case that 'after' is empty?
+        decls = hsBinds parent'
+        (before,after) = break (defines pn') decls -- Need to handle the case that 'after' is empty?
 
 
   addLocalDecl :: (SYB.Data t, HsValBinds t)
-               => t -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken]) 
+               => t -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
                -> RefactGhc t
-  addLocalDecl parent (newFun, maybeSig, newFunToks)
+  addLocalDecl parent' (newFun, maybeSig, newFunToks)
     =do
-        let binds = hsValBinds parent
+        let binds = hsValBinds parent'
 
         let (startLoc,endLoc)
              = if (emptyList localDecls)
-                 then getStartEndLoc parent
+                 then getStartEndLoc parent'
                  else getStartEndLoc localDecls
 
         newToks <- liftIO $ basicTokenise newSource
@@ -2894,9 +2903,9 @@ addDecl parent pn (decl, msig, declToks) topLevel
            Nothing  -> return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent ++ [newFun']))) (sig:(getValBindSigs binds))))
         -}
-        return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent ++ [newFun']))) (maybeSig++(getValBindSigs binds))))
+        return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun']))) (maybeSig++(getValBindSigs binds))))
     where
-         localDecls = hsBinds parent
+         localDecls = hsBinds parent'
 
          -- TODO: where tokens are passed in, first normalise them to
          -- the left column before adding in the where clause part
@@ -2990,7 +2999,6 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
        = case h of
            Nothing              -> insertEnts imp [] True
            Just (_isHide, ents) -> insertEnts imp ents False
-           _                    -> return imp
     inImport x = return x
 
     insertEnts ::
@@ -3019,7 +3027,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
 
             putToksForPos (start,end) [newToken]
 
-            return (replaceHiding imp  (Just (isHide, (map mkNewEnt  pns)++ents))) 
+            return (replaceHiding imp  (Just (isHide, (map mkNewEnt  pns)++ents)))
 
 
     replaceHiding (GHC.L l (GHC.ImportDecl mn q src safe isQ isImp as _h)) h1 =
@@ -3763,7 +3771,7 @@ renamePN oldPN newName updateTokens useQual t = do
           logm $ "renamePN:renameGroup"
           g' <- renamePNworker oldPN newName updateTokens useQual g
           return g'
-    renameGroup x = return x
+    -- renameGroup x = return x
 
 -- ---------------------------------------------------------------------
 
@@ -3914,7 +3922,7 @@ newNameTok useQual l newName =
          ((ForestLine _ _ _ startRow,startCol),_) = srcSpanToForestSpan l
 
          locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) startRow startCol
-         locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) startRow (length newNameStr + startCol) 
+         locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) startRow (length newNameStr + startCol)
        in
          GHC.mkSrcSpan locStart locEnd
      _ -> l
@@ -3939,63 +3947,14 @@ autoRenameLocalVar modifyToks pn t = do
          else do return t
 
       where
-         worker t =do (f,d) <- hsFDNamesFromInside t
-                      let ds = hsVisibleNames pn (hsValBinds t)
-                      let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
-                      newName <- mkNewGhcName Nothing newNameStr
-                      if modifyToks
-                        then renamePN pn newName True False t
-                        else renamePN pn newName False False t
+         worker tt =do (f,d) <- hsFDNamesFromInside tt
+                       let ds = hsVisibleNames pn (hsValBinds tt)
+                       let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
+                       newName <- mkNewGhcName Nothing newNameStr
+                       if modifyToks
+                         then renamePN pn newName True False tt
+                         else renamePN pn newName False False tt
 
-{- ++AZ++ original
-{-
-autoRenameLocalVar::(MonadPlus m, Term t)
-                    =>Bool         -- ^ True means modfiying the token stream as well.  
-                     ->PName       -- ^ The identifier.
-                     ->t           -- ^ The syntax phrase.
-                     -> m t        -- ^ The result.
--}
-autoRenameLocalVar::(MonadPlus m, (MonadState (([PosToken], Bool), (Int,Int)) m), Term t)
-                    =>Bool         -- ^ True means modfiying the token stream as well.  
-                     ->PName       -- ^ The identifier.
-                     ->t           -- ^ The syntax phrase.
-                     -> m t        -- ^ The result.
-
-
-autoRenameLocalVar updateToks pn
-  =applyTP (once_buTP (failTP `adhocTP` renameInMatch
-                              `adhocTP` renameInPat
-                              `adhocTP` renameInExp
-                              `adhocTP` renameInAlt
-                              `adhocTP` renameInStmts))
-      where
-         renameInMatch (match::HsMatchP)
-           |isDeclaredIn pn match=worker match
-         renameInMatch _ =mzero
-
-         renameInPat (pat::HsDeclP)
-          |isDeclaredIn pn pat=worker pat
-         renameInPat _ =mzero
-
-         renameInExp (exp::HsExpP)
-          |isDeclaredIn pn exp=worker exp
-         renameInExp _ =mzero
-
-         renameInAlt (alt::HsAltP)
-          |isDeclaredIn pn alt=worker alt
-         renameInAlt _ =mzero
-
-         renameInStmts (stmt::HsStmtP)
-          |isDeclaredIn pn stmt=worker stmt
-         renameInStmts _=mzero
-
-         worker t =do (f,d)<-hsFDNamesFromInside t
-                      ds<-hsVisibleNames pn (hsDecls t)
-                      let newName=mkNewName (pNtoName pn) (nub (f `union` d `union` ds)) 1
-                      if updateToks
-                        then renamePN pn Nothing newName True t
-                        else renamePN pn Nothing newName False t
--}
 -- ---------------------------------------------------------------------
 
 -- | Show a list of entities, the parameter f is a function that
@@ -4090,6 +4049,7 @@ findAllNameOccurences  name t
         workerExpr _ = []
 
 
+{-
 -- | Find all locations where names occur in the given syntax phrase
 findAllNames:: (SYB.Data t) => t -> [(GHC.Located GHC.Name)]
 findAllNames  t
@@ -4109,7 +4069,7 @@ findAllNames  t
         workerExpr (GHC.L l (GHC.HsVar n) :: (GHC.Located (GHC.HsExpr GHC.Name)))
           | True = [(GHC.L l n)]
         workerExpr _ = []
-
+-}
 
 
 -- | Return True if the identifier occurs in the given syntax phrase.

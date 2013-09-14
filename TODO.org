@@ -18,7 +18,7 @@
       becomes
       zmapQ f z = reverse $ downQ [] (g f g)z
       g f z'g= query f z' : leftQ [] (g f g)g f g)z'
-** TODO Strategy for CPP code: how to preserve the preprocessor directives?
+** DONE Strategy for CPP code: how to preserve the preprocessor directives?
     - Take original source, extract prepocessor directives (lines
       starting #), turn them into line comments and merge in.
     - Problem is, in an #if/#then/#else the part not included gets
@@ -26,6 +26,8 @@
     - Cannot simply tokenise it, the refactorings will go crazy. Have
       to some-how detect them and convert them into blockcomments, to
       carry through.
+** TODO Provide a warning if refactoring is done on code using CPP.
+     State that refactoring may only affect current flags code, not others.
 ** TODO Make undo (M-x u) undo a refactoring.
 ** DONE sort out realignment of tokens on a line when one is changed
 ** TODO add tests for command-line invocation of ghc-hare

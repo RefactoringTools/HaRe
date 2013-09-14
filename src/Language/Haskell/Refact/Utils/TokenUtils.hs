@@ -1909,23 +1909,15 @@ syncAST ast@(GHC.L l _t) sspan forest = (GHC.L sspan xx,forest')
   where
     forest' = forest
 
-    ((ForestLine _ _ _ startRow,startCol),_)       = srcSpanToForestSpan l
-    ((ForestLine _ _ _ newStartRow,newStartCol),_) = srcSpanToForestSpan sspan
-
     (( sr, sc),( _er, _ec)) = ghcSpanStartEnd l
     ((nsr,nsc),(_ner,_nec)) = ghcSpanStartEnd sspan
 
     rowOffset = nsr - sr
     colOffset = nsc - sc
 
-    rowOffset' = newStartRow - startRow
-    colOffset' = newStartCol - startCol
-
     -- TODO: take cognizance of the ForestLines encoded in srcspans
     -- when calculating the offsets etc
     syncSpan s  = addOffsetToSpan (rowOffset,colOffset) s
-    syncSpan' s = addOffsetToSpan (rowOffset',colOffset') s
-    -- syncSpan s = s
 
     (GHC.L _s xx) = everywhereStaged SYB.Renamer (
               SYB.mkT hsbindlr

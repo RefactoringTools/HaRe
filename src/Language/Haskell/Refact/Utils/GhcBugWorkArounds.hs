@@ -28,7 +28,6 @@ import System.FilePath
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.TypeSyn
 
 -- ---------------------------------------------------------------------
@@ -41,8 +40,8 @@ bypassGHCBug7351 ts = map go ts
    go rt@(GHC.L (GHC.UnhelpfulSpan _) _t,_s) = rt
    go    (GHC.L (GHC.RealSrcSpan l) t,s) = (GHC.L (fixCol l) t,s)
 
-   fixCol l = GHC.mkSrcSpan (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanStartLine l) ((GHC.srcSpanStartCol l) - 1)) 
-                            (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanEndLine l) ((GHC.srcSpanEndCol l) - 1)) 
+   fixCol l = GHC.mkSrcSpan (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanStartLine l) ((GHC.srcSpanStartCol l) - 1))
+                            (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanEndLine l) ((GHC.srcSpanEndCol l) - 1))
 
 -- ---------------------------------------------------------------------
 
@@ -50,8 +49,8 @@ bypassGHCBug7351 ts = map go ts
 -- the tokens for a file processed by CPP.
 -- See bug <http://ghc.haskell.org/trac/ghc/ticket/8265>
 getRichTokenStreamWA :: GHC.GhcMonad m => GHC.Module -> m [(GHC.Located GHC.Token, String)]
-getRichTokenStreamWA mod = do
-  (sourceFile, source, flags) <- getModuleSourceAndFlags mod
+getRichTokenStreamWA modu = do
+  (sourceFile, source, flags) <- getModuleSourceAndFlags modu
   let startLoc = GHC.mkRealSrcLoc (GHC.mkFastString sourceFile) 1 1
   case GHC.lexTokenStream source startLoc flags of
     GHC.POk _ ts -> return $ GHC.addSourceToTokens startLoc source ts
@@ -212,14 +211,14 @@ parseError sspan err = do
 -- Copied from the GHC source, since not exported
 
 getModuleSourceAndFlags :: GHC.GhcMonad m => GHC.Module -> m (String, GHC.StringBuffer, GHC.DynFlags)
-getModuleSourceAndFlags mod = do
-  m <- GHC.getModSummary (GHC.moduleName mod)
+getModuleSourceAndFlags modu = do
+  m <- GHC.getModSummary (GHC.moduleName modu)
   case GHC.ml_hs_file $ GHC.ms_location m of
     Nothing -> do dflags <- GHC.getDynFlags
 #if __GLASGOW_HASKELL__ > 704
-                  GHC.liftIO $ throwIO $ GHC.mkApiErr dflags (GHC.text "No source available for module " GHC.<+> GHC.ppr mod)
+                  GHC.liftIO $ throwIO $ GHC.mkApiErr dflags (GHC.text "No source available for module " GHC.<+> GHC.ppr modu)
 #else
-                  GHC.liftIO $ throwIO $ GHC.mkApiErr        (GHC.text "No source available for module " GHC.<+> GHC.ppr mod)
+                  GHC.liftIO $ throwIO $ GHC.mkApiErr        (GHC.text "No source available for module " GHC.<+> GHC.ppr modu)
 #endif
                   -- error $ ("No source available for module " ++ showGhc mod)
     Just sourceFile -> do
