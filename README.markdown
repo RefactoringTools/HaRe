@@ -79,8 +79,6 @@ This allows a sequence of refactorings to be undone manually if
 required. In theory.
 
 
-
-
 ## Development & Support
 
 Join in at `#haskell-refactorer` on freenode.
@@ -91,9 +89,17 @@ To run the test suite do:
 
     cabal configure --enable-tests && cabal build && cabal test
 
-See http://hspec.github.com/ for details on hspec
+See <http://hspec.github.com/> for details on hspec
 
-see http://travis-ci.org/#alanz/HaRe for continuous build results
+see <http://travis-ci.org/#alanz/HaRe> for continuous build results
+
+## Resources
+
+  * [GHC chapter](http://aosabook.org/en/ghc.html) of
+    [AOSA](http://aosabook.org "Architecture of Open Source
+    Applications") (if only for the diagram of GHC phases and data structures)
+  * [GHC 7.6.3 API docs](http://www.haskell.org/ghc/docs/7.6.3/html/libraries/ghc-7.6.3/GHC.html)
+  * [GHC 7.4.2 API docs](http://www.haskell.org/ghc/docs/7.4.2/html/libraries/ghc-7.4.2/GHC.html)
 
 ## Coding style
 

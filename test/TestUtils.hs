@@ -25,24 +25,13 @@ module TestUtils
        ) where
 
 
--- import qualified Bag           as GHC
--- import qualified BasicTypes    as GHC
--- import qualified FastString    as GHC
 import qualified GHC           as GHC
--- import qualified Lexer         as GHC
--- import qualified Module        as GHC
 import qualified Name          as GHC
--- import qualified NameSet       as GHC
--- import qualified Outputable    as GHC
--- import qualified RdrName       as GHC
--- import qualified SrcLoc        as GHC
 import qualified Unique        as GHC
--- import qualified UniqSet       as GHC
 
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GhcMod
--- import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad

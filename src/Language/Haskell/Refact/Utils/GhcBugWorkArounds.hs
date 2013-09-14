@@ -4,7 +4,8 @@
 
 module Language.Haskell.Refact.Utils.GhcBugWorkArounds
     (
-    getRichTokenStreamWA
+    bypassGHCBug7351
+    , getRichTokenStreamWA
     ) where
 
 import qualified Bag                   as GHC
@@ -25,9 +26,25 @@ import Data.List.Utils
 import System.Directory
 import System.FilePath
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
+import Language.Haskell.Refact.Utils.TypeSyn
 
+-- ---------------------------------------------------------------------
+
+-- http://hackage.haskell.org/trac/ghc/ticket/7351
+bypassGHCBug7351 :: [PosToken] -> [PosToken]
+bypassGHCBug7351 ts = map go ts
+  where
+   go :: (GHC.Located GHC.Token, String) -> (GHC.Located GHC.Token, String)
+   go rt@(GHC.L (GHC.UnhelpfulSpan _) _t,_s) = rt
+   go    (GHC.L (GHC.RealSrcSpan l) t,s) = (GHC.L (fixCol l) t,s)
+
+   fixCol l = GHC.mkSrcSpan (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanStartLine l) ((GHC.srcSpanStartCol l) - 1)) 
+                            (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanEndLine l) ((GHC.srcSpanEndCol l) - 1)) 
+
+-- ---------------------------------------------------------------------
 
 -- | Replacement for original 'getRichTokenStream' which will return
 -- the tokens for a file processed by CPP.
@@ -38,25 +55,86 @@ getRichTokenStreamWA mod = do
   let startLoc = GHC.mkRealSrcLoc (GHC.mkFastString sourceFile) 1 1
   case GHC.lexTokenStream source startLoc flags of
     GHC.POk _ ts -> return $ GHC.addSourceToTokens startLoc source ts
-    GHC.PFailed span err ->
+    GHC.PFailed _span _err ->
         do
            strSrcBuf <- getPreprocessedSrc sourceFile
            case GHC.lexTokenStream strSrcBuf startLoc flags of
              GHC.POk _ ts ->
                do directiveToks <- GHC.liftIO $ getPreprocessorAsComments sourceFile
+                  nonDirectiveToks <- tokeniseOriginalSrc startLoc flags source
                   let toks = GHC.addSourceToTokens startLoc source ts
-                  return $ mergeBy locFn toks directiveToks
+                  return $ combineTokens directiveToks nonDirectiveToks toks
                   -- return directiveToks
+                  -- return nonDirectiveToks
                   -- return toks
-             GHC.PFailed span err ->
-               do dflags <- GHC.getDynFlags
-#if __GLASGOW_HASKELL__ > 704
-                  throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg dflags span err)
-#else
-                  throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg        span err)
-#endif
+             GHC.PFailed sspan err -> parseError sspan err
 
-locFn (GHC.L l1 _,_) (GHC.L l2 _,_) = compare l1 l2
+-- ---------------------------------------------------------------------
+
+-- | Combine the three sets of tokens to produce a single set that
+-- represents the code compiled, and will regenerate the original
+-- source file.
+-- [@directiveToks@] are the tokens corresponding to preprocessor
+--                   directives, converted to comments
+-- [@origSrcToks@] are the tokenised source of the original code, with
+--                 the preprocessor directives stripped out so that
+--                 the lexer  does not complain
+-- [@postCppToks@] are the tokens that the compiler saw originally
+-- NOTE: this scheme will only work for cpp in -nomacro mode
+combineTokens ::
+     [(GHC.Located GHC.Token, String)]
+  -> [(GHC.Located GHC.Token, String)]
+  -> [(GHC.Located GHC.Token, String)]
+  -> [(GHC.Located GHC.Token, String)]
+combineTokens directiveToks origSrcToks postCppToks = toks
+  where
+    locFn (GHC.L l1 _,_) (GHC.L l2 _,_) = compare l1 l2
+    m1Toks = mergeBy locFn postCppToks directiveToks
+
+    -- We must now find the set of tokens that are in origSrcToks, but
+    -- not in m1Toks
+
+    -- GHC.Token does not have Ord, can't use a set directly
+    origSpans = map (\(GHC.L l _,_) -> l) origSrcToks
+    m1Spans = map (\(GHC.L l _,_) -> l) m1Toks
+    missingSpans = (Set.fromList origSpans) Set.\\ (Set.fromList m1Spans)
+
+    missingToks = filter (\(GHC.L l _,_) -> Set.member l missingSpans) origSrcToks
+
+    missingAsComments = map mkCommentTok missingToks
+      where
+        mkCommentTok :: (GHC.Located GHC.Token,String) -> (GHC.Located GHC.Token,String)
+        mkCommentTok (GHC.L l _,s) = (GHC.L l (GHC.ITlineComment s),s)
+
+    toks = mergeBy locFn m1Toks missingAsComments
+
+-- ---------------------------------------------------------------------
+
+tokeniseOriginalSrc ::
+  GHC.GhcMonad m
+  => GHC.RealSrcLoc -> GHC.DynFlags -> GHC.StringBuffer
+  -> m [(GHC.Located GHC.Token, String)]
+tokeniseOriginalSrc startLoc flags buf = do
+  let src = stripPreprocessorDirectives buf
+  case GHC.lexTokenStream src startLoc flags of
+    GHC.POk _ ts -> return $ GHC.addSourceToTokens startLoc src ts
+    GHC.PFailed sspan err -> parseError sspan err
+
+-- ---------------------------------------------------------------------
+
+-- | Strip out the CPP directives so that the balance of the source
+-- can tokenised.
+stripPreprocessorDirectives :: GHC.StringBuffer -> GHC.StringBuffer
+stripPreprocessorDirectives buf = buf'
+  where
+    srcByLine = lines $ sbufToString buf
+    noDirectivesLines = map (\line -> if line /= [] && head line == '#' then "" else line) srcByLine
+    buf' = GHC.stringToStringBuffer $ unlines noDirectivesLines
+
+-- ---------------------------------------------------------------------
+
+sbufToString :: GHC.StringBuffer -> String
+sbufToString sb@(GHC.StringBuffer _buf len _cur) = GHC.lexemeToString sb len
 
 -- ---------------------------------------------------------------------
 
@@ -77,10 +155,6 @@ getPreprocessedSrc srcFile = do
   origNames <- GHC.liftIO $ mapM getOriginalFile $ map (\f -> d </> f) cppFiles
   let tmpFile = head $ filter (\(o,_) -> o == srcFile) origNames
   buf <- GHC.liftIO $ GHC.hGetStringBuffer $ snd tmpFile
-
-  -- strSrcWithHead <- GHC.liftIO $ readFile $ snd tmpFile
-  -- let strSrc = unlines $ drop 3 $ lines strSrcWithHead
-  -- let strSrcBuf = GHC.stringToStringBuffer strSrc
 
   return buf
 
@@ -122,6 +196,17 @@ getPreprocessorAsComments srcFile = do
 
   let toks = map mkTok directives
   return toks
+
+-- ---------------------------------------------------------------------
+
+parseError :: GHC.GhcMonad m => GHC.SrcSpan -> GHC.MsgDoc -> m b
+parseError sspan err = do
+               do dflags <- GHC.getDynFlags
+#if __GLASGOW_HASKELL__ > 704
+                  throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg dflags sspan err)
+#else
+                  throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg        sspan err)
+#endif
 
 -- ---------------------------------------------------------------------
 -- Copied from the GHC source, since not exported

@@ -461,18 +461,6 @@ writeRefactoredFiles verbosity files
                       "\n\n----------------------\n\n" ++
                       (SYB.showData SYB.Renamer 0 renamed))
 
-
--- http://hackage.haskell.org/trac/ghc/ticket/7351
-bypassGHCBug7351 :: [PosToken] -> [PosToken]
-bypassGHCBug7351 ts = map go ts
-  where
-   go :: (GHC.Located GHC.Token, String) -> (GHC.Located GHC.Token, String)
-   go rt@(GHC.L (GHC.UnhelpfulSpan _) _t,_s) = rt
-   go    (GHC.L (GHC.RealSrcSpan l) t,s) = (GHC.L (fixCol l) t,s)
-
-   fixCol l = GHC.mkSrcSpan (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanStartLine l) ((GHC.srcSpanStartCol l) - 1)) 
-                            (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanEndLine l) ((GHC.srcSpanEndCol l) - 1)) 
-
 -- ---------------------------------------------------------------------
 
 -- | Return the client modules and file names. The client modules of
