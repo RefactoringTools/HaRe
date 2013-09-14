@@ -198,13 +198,16 @@ getPreprocessorAsComments srcFile = do
 
 -- ---------------------------------------------------------------------
 
-parseError :: GHC.GhcMonad m => GHC.SrcSpan -> GHC.SDoc -> m b
-parseError sspan err = do
-               do dflags <- GHC.getDynFlags
 #if __GLASGOW_HASKELL__ > 704
-                  throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg dflags sspan err)
+parseError :: GHC.GhcMonad m => GHC.SrcSpan -> GHC.MsgDoc -> m b
+parseError sspan err = do
+  do dflags <- GHC.getDynFlags
+     throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg dflags sspan err)
 #else
-                  throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg        sspan err)
+parseError :: GHC.GhcMonad m => GHC.SrcSpan -> GHC.Message -> m b
+parseError sspan err = do
+  do dflags <- GHC.getDynFlags
+     throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg        sspan err)
 #endif
 
 -- ---------------------------------------------------------------------
