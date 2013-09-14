@@ -22,7 +22,7 @@ import qualified StringBuffer          as GHC
 
 import Control.Exception
 import Data.IORef
-import Data.List.Utils
+-- import Data.List.Utils
 import System.Directory
 import System.FilePath
 import qualified Data.Map as Map
@@ -235,4 +235,29 @@ getTempDir dflags
        case Map.lookup tmp_dir mapping of
            Nothing -> error "should already be a tmpDir"
            Just d -> return d
+
+-- ---------------------------------------------------------------------
+
+-- Copied over from MissingH, the dependency cause travis to fail
+
+{- | Merge two sorted lists using into a single, sorted whole,
+allowing the programmer to specify the comparison function.
+
+QuickCheck test property:
+
+prop_mergeBy xs ys =
+    mergeBy cmp (sortBy cmp xs) (sortBy cmp ys) == sortBy cmp (xs ++ ys)
+          where types = xs :: [ (Int, Int) ]
+                cmp (x1,_) (x2,_) = compare x1 x2
+-}
+mergeBy :: (a -> a -> Ordering) -> [a] -> [a] -> [a]
+mergeBy cmp [] ys = ys
+mergeBy cmp xs [] = xs
+mergeBy cmp (allx@(x:xs)) (ally@(y:ys))
+        -- Ordering derives Eq, Ord, so the comparison below is valid.
+        -- Explanation left as an exercise for the reader.
+        -- Someone please put this code out of its misery.
+    | (x `cmp` y) <= EQ = x : mergeBy cmp xs ally
+    | otherwise = y : mergeBy cmp allx ys
+
 

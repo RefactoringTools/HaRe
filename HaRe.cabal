@@ -56,7 +56,6 @@ Library
                                 , ghc-prim
                                 , ghc-syb-utils
                                 , ghc-mod >= 2.1.2
-                                , MissingH
                                 , mtl
                                 , old-time
                                 , pretty
@@ -115,7 +114,6 @@ Executable ghc-hare
                                 , ghc-prim
                                 , ghc-syb-utils
                                 , ghc-mod >= 2.1.2
-                                , MissingH
                                 , mtl
                                 , old-time
                                 , parsec
@@ -163,7 +161,6 @@ test-suite spec
     , ghc-mod >= 2.1.2
     , hspec       == 1.4.*
     , mtl
-    , MissingH
     , old-time
     , process
     , silently
