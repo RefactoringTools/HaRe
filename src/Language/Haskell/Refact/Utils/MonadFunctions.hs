@@ -38,6 +38,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , removeToksForSpan
        , removeToksForPos
        , syncDeclToLatestStash
+       , indentDeclAndToks
 
        -- , putSrcSpan -- ^Make sure a SrcSpan is in the tree
 
@@ -286,6 +287,24 @@ syncDeclToLatestStash t = do
   st <- get
   let Just tm = rsModule st
   let t' = syncAstToLatestCache (rsTokenCache tm) t
+  return t'
+
+-- ---------------------------------------------------------------------
+
+-- | Indent an AST fragment and its associated tokens by a set amount
+indentDeclAndToks :: (SYB.Data t) => (GHC.Located t) -> Int -> RefactGhc (GHC.Located t)
+indentDeclAndToks t offset = do
+  let (GHC.L sspan _) = t
+  logm $ "indentDeclAndToks " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ ",offset=" ++ show offset
+  st <- get
+  let Just tm = rsModule st
+  let tk = rsTokenCache tm
+  let forest = (tkCache tk) Map.! mainTid
+  let (t',forest') = indentDeclToks t forest offset
+  let tk' = tk {tkCache = Map.insert mainTid forest' (tkCache tk) }
+  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
+  put $ st { rsModule = rsModule' }
+  drawTokenTree "indentDeclToks result"
   return t'
 
 -- ---------------------------------------------------------------------

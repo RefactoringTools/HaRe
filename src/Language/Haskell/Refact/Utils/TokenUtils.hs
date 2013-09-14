@@ -603,7 +603,6 @@ getTreeFromCache sspan tk = (tkCache tk) Map.! tid
   where
     tid = treeIdFromForestSpan $ srcSpanToForestSpan sspan
 
-
 -- ---------------------------------------------------------------------
 
 replaceTreeInCache :: GHC.SrcSpan -> Tree Entry -> TokenCache -> TokenCache

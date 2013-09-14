@@ -3028,6 +3028,69 @@ tree TId 0:
       (showGhc decl') `shouldBe` "case list of {\n  (1 : xs) -> 1\n  (2 : xs)\n    | x GHC.Classes.< 10 -> 4\n    where\n        x = GHC.List.last xs\n  otherwise -> 12 }"
       (take 320 $ SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/Renaming/LayoutIn2.hs:(8,14)-(12,42)} \n (HsCase \n  (L {test/testdata/Renaming/LayoutIn2.hs:8:19-22} \n   (HsVar {Name: list})) \n  (MatchGroup \n   [\n    (L {test/testdata/Renaming/LayoutIn2.hs:8:32-42} \n     (Match \n      [\n       (L {test/testdata/Renaming/LayoutIn2.hs:8:32-37} \n        (ParPat \n     "
 
+    ------------------------------------
+
+    it "adds a negative offset to a decl and toks" $ do
+      (t,toks) <- parsedFileLayoutIn2
+      let forest = mkTreeFromTokens toks
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+
+      let Just decl@(GHC.L l _) = (locToExp (8,13) (12,43) renamed) :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
+
+      (showGhc l) `shouldBe` "test/testdata/Renaming/LayoutIn2.hs:(8,14)-(12,42)"
+      (showSrcSpan l) `shouldBe` "((8,14),(12,43))"
+
+      (showGhc decl) `shouldBe`
+           "case list of {\n"++
+           "  (1 : xs) -> 1\n"++
+           "  (2 : xs)\n"++
+           "    | x GHC.Classes.< 10 -> 4\n"++
+           "    where\n"++
+           "        x = GHC.List.last xs\n"++
+           "  otherwise -> 12 }"
+      let (GHC.L _ (GHC.HsCase expr (GHC.MatchGroup matches typ))) = decl
+      (showGhc expr) `shouldBe` "list"
+
+      let (GHC.L m1l _) = head matches
+      (showSrcSpan m1l) `shouldBe` "((8,28),(8,39))"
+      let (m1,forest') = indentDeclToks (head matches) forest (-2)
+
+      -- let toks' = retrieveTokensInterim forest'
+      (invariant forest') `shouldBe` []
+      (drawTreeEntry forest') `shouldBe`
+              "((1,1),(12,43))\n|\n"++
+              "+- ((1,1),(8,26))\n|\n"++
+              "+- ((8,26),(8,37))\n|\n"++ -- dedented by 2
+              "`- ((10,28),(12,43))\n"
+
+      let toksFinal = retrieveTokensFinal forest'
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of(1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
+
+      let decl' = (GHC.L l (GHC.HsCase expr (GHC.MatchGroup (m1:(tail matches)) typ)))
+      (showGhc decl') `shouldBe` "case list of {\n  (1 : xs) -> 1\n  (2 : xs)\n    | x GHC.Classes.< 10 -> 4\n    where\n        x = GHC.List.last xs\n  otherwise -> 12 }"
+      (take 320 $ SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/Renaming/LayoutIn2.hs:(8,14)-(12,42)} \n (HsCase \n  (L {test/testdata/Renaming/LayoutIn2.hs:8:19-22} \n   (HsVar {Name: list})) \n  (MatchGroup \n   [\n    (L {test/testdata/Renaming/LayoutIn2.hs:8:26-36} \n     (Match \n      [\n       (L {test/testdata/Renaming/LayoutIn2.hs:8:26-31} \n        (ParPat \n     "
+
+      -- Now to do it for the second item in the list
+      let (GHC.L m2l _) = head $ drop 1 matches
+      (showSrcSpan m2l) `shouldBe` "((10,28),(11,66))"
+      let (m2,forest2) = indentDeclToks (head $ drop 1 matches) forest' (-2)
+
+      (invariant forest2) `shouldBe` []
+      (drawTreeEntry forest2) `shouldBe`
+              "((1,1),(12,43))\n|\n"++
+              "+- ((1,1),(8,26))\n|\n"++
+              "+- ((8,26),(8,37))\n|\n"++ -- dedented by 2
+              "`- ((10,28),(12,43))\n"
+
+      let toksFinal2 = retrieveTokensFinal forest2
+      (GHC.showRichTokenStream toksFinal2) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of(1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
+
+      let decl2 = (GHC.L l (GHC.HsCase expr (GHC.MatchGroup (m1:m2:(tail $ tail matches)) typ)))
+      (showGhc decl') `shouldBe` "case list of {\n  (1 : xs) -> 1\n  (2 : xs)\n    | x GHC.Classes.< 10 -> 4\n    where\n        x = GHC.List.last xs\n  otherwise -> 12 }"
+      (take 320 $ SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/Renaming/LayoutIn2.hs:(8,14)-(12,42)} \n (HsCase \n  (L {test/testdata/Renaming/LayoutIn2.hs:8:19-22} \n   (HsVar {Name: list})) \n  (MatchGroup \n   [\n    (L {test/testdata/Renaming/LayoutIn2.hs:8:26-36} \n     (Match \n      [\n       (L {test/testdata/Renaming/LayoutIn2.hs:8:26-31} \n        (ParPat \n     "
+
   -- ---------------------------------------------
 
   describe "reSequenceToks" $ do

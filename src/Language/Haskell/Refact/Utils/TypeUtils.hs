@@ -3740,16 +3740,16 @@ renamePN oldPN newName updateTokens useQual t = do
                    (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t
 
 
-  if isRenamed == (Just True)
+  t' <- if isRenamed == (Just True)
     then
-      -- somewhereMStaged SYB.Renamer
       everywhereMStaged SYB.Renamer
-      -- everywhereMStaged' SYB.Renamer
                  (SYB.mkM renameRenamedSource
                  `SYB.extM` renameGroup
                  ) t
     else
       renamePNworker oldPN newName updateTokens useQual t
+  t'' <- adjustLayoutAfterRename oldPN newName t'
+  return t''
   where
     isRenamedSource :: GHC.RenamedSource -> Maybe Bool
     isRenamedSource (_g,_i,_e,_d) = Just True
@@ -3800,7 +3800,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
                                `SYB.extM` renameLIE
                                `SYB.extM` renameLPat
                                `SYB.extM` renameTypeSig
-                               `SYB.extM` renameFunBind) t
+                               `SYB.extM` renameFunBind
+                               ) t
   where
     rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
     rename (GHC.L l n)
@@ -3902,6 +3903,41 @@ renamePNworker oldPN newName updateTokens useQual t = do
              replaceToken l (markToken $ newNameTok useQual' l newName)
              return ()
            else return ()
+
+-- ---------------------------------------------------------------------
+
+adjustLayoutAfterRename ::(SYB.Data t)
+   =>GHC.Name             -- ^ The identifier that has been renamed
+   ->GHC.Name             -- ^ The new name, including possible qualifier
+   ->t                    -- ^ The syntax phrase
+   ->RefactGhc t
+adjustLayoutAfterRename oldPN newName t = do
+  -- Note: bottom-up traversal (no ' at end)
+  everywhereMStaged SYB.Renamer (SYB.mkM adjustLHsExpr
+                               ) t
+  where
+    adjustLHsExpr :: (GHC.LHsExpr GHC.Name) -> RefactGhc (GHC.LHsExpr GHC.Name)
+    adjustLHsExpr (GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms typ)))
+      | findPNs [oldPN,newName] expr
+      = do -- Need to see if the last line of the expr changes due to
+           -- a name length change, and if so in/dedent mg accordingly
+           -- Starting with a very naive version.
+           let off = (length $ showGhc newName) - (length $ showGhc oldPN)
+           ms' <- indentList ms off
+           return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms' typ)))
+    adjustLHsExpr x = return x
+
+
+indentList :: (SYB.Data t) => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
+indentList ms off = do
+  -- mapM (\m -> indentDeclAndToks m off) ms
+  go ms
+  where
+    go [] = return []
+    go (x:xs) = do
+      x'  <- indentDeclAndToks x off
+      xs' <-  go xs
+      return (x':xs')
 
 -- ---------------------------------------------------------------------
 
