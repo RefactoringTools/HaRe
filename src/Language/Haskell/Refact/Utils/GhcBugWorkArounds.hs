@@ -66,7 +66,7 @@ getRichTokenStreamWA modu = do
                   -- return directiveToks
                   -- return nonDirectiveToks
                   -- return toks
-             GHC.PFailed sspan err -> parseError sspan err
+             GHC.PFailed sspan err -> parseError flags sspan err
 
 -- ---------------------------------------------------------------------
 
@@ -117,7 +117,7 @@ tokeniseOriginalSrc startLoc flags buf = do
   let src = stripPreprocessorDirectives buf
   case GHC.lexTokenStream src startLoc flags of
     GHC.POk _ ts -> return $ GHC.addSourceToTokens startLoc src ts
-    GHC.PFailed sspan err -> parseError sspan err
+    GHC.PFailed sspan err -> parseError flags sspan err
 
 -- ---------------------------------------------------------------------
 
@@ -199,12 +199,12 @@ getPreprocessorAsComments srcFile = do
 -- ---------------------------------------------------------------------
 
 #if __GLASGOW_HASKELL__ > 704
-parseError :: GHC.GhcMonad m => GHC.SrcSpan -> GHC.MsgDoc -> m b
-parseError sspan err = do
-  do dflags <- GHC.getDynFlags
+parseError :: GHC.GhcMonad m => GHC.DynFlags -> GHC.SrcSpan -> GHC.MsgDoc -> m b
+parseError dflags sspan err = do
+  do
      throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg dflags sspan err)
 #else
-parseError :: GHC.GhcMonad m => GHC.SrcSpan -> GHC.Message -> m b
+parseError :: GHC.GhcMonad m => GHC.DynFlags -> GHC.SrcSpan -> GHC.Message -> m b
 parseError sspan err = do
   do dflags <- GHC.getDynFlags
      throw $ GHC.mkSrcErr (GHC.unitBag $ GHC.mkPlainErrMsg        sspan err)

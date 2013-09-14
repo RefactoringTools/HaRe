@@ -6,13 +6,15 @@
 --
 
 module Language.Haskell.Refact.Utils.TokenUtilsTypes(
-       Entry(..)
+       -- * The cache of trees comprising the manipulated tokens
+         TokenCache(..)
+       , TreeId(..)
+       , mainTid
+       -- * Structure of each tree
+       , Entry(..)
        , ForestLine(..)
        , ForestPos
        , ForestSpan
-       , TreeId(..)
-       , TokenCache(..)
-       , mainTid
        ) where
 
 import Language.Haskell.Refact.Utils.TypeSyn
