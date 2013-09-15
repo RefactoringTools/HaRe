@@ -3536,8 +3536,6 @@ rmDecl pn incSig t = do
          decl' <- syncDeclToLatestStash decl
          setStateStorage (StorageBind decl')
 
-         -- ++AZ++: TODO: get rid of where clause, if no more decls
-         -- here
          case length decls of
            1 -> do
              -- Get rid of preceding where or let token
@@ -3557,7 +3555,6 @@ rmDecl pn incSig t = do
              logm $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
              removeToksForPos (rmStartPos,rmEndPos)
 
---isIn
              return ()
            _ -> return ()
 
@@ -3904,6 +3901,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
 
 -- ---------------------------------------------------------------------
 
+-- | Once a rename is complete, adjust the layout for any affected
+-- where/let/of/do elements
 adjustLayoutAfterRename ::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier that has been renamed
    ->GHC.Name             -- ^ The new name, including possible qualifier
@@ -3921,6 +3920,37 @@ adjustLayoutAfterRename oldPN newName t = do
            -- a name length change, and if so in/dedent mg accordingly
            -- Starting with a very naive version.
            let off = (length $ showGhc newName) - (length $ showGhc oldPN)
+           -- Offset calculation
+           -- * Must take into account the new position of the 'of'
+           --   token.
+           -- * But must also take account of any spaces between the
+           --   end of the 'of' token and the start of the MatchGroup.
+           -- * And of whether the 'of' token is on the same line as
+           --   the MatchGroup
+           toksBefore <- getToksBeforeSpan l
+           toks <- getToksForSpan l
+           let lineToks = groupTokensByLine toks
+           let ofLine = ghead "adjustLayoutAfterRename.1" $ filter (\l -> any isOf l) lineToks
+           -- Check if we have any toksBefore belonging on the same
+           -- line
+           -- NOTE: tokeBefore are in reverse order
+           let lt = dropWhile (\tok -> tokenRow (ghead "adjustLayoutAfterRename.2" ofLine) 
+                                        > tokenRow tok) (reversedToks toksBefore)
+           let lt' = takeWhile (\tok -> tokenRow (ghead "adjustLayoutAfterRename.2" ofLine) 
+                                        == tokenRow tok) lt
+
+           let fullOfLineRev = reverse ofLine ++ lt'
+
+           let upToOf = reverse $ dropWhile (\tok -> not (isOf tok)) fullOfLineRev
+
+           -- Now, at last, we can work out the offset 
+
+           logm $ "adjustLayoutAfterRename: upToOf=" ++ show upToOf
+           logm $ "adjustLayoutAfterRename: fullOfLineRev=" ++ show fullOfLineRev
+           logm $ "adjustLayoutAfterRename: lt'=" ++ show lt'
+           logm $ "adjustLayoutAfterRename: toksBefore=" ++ show toksBefore
+           logm $ "adjustLayoutAfterRename: ofLine=" ++ show ofLine
+           logm $ "adjustLayoutAfterRename: toks=" ++ show toks
            logm $ "adjustLayoutAfterRename: off=" ++ show off
            ms' <- indentList ms off
            return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms' typ)))
@@ -3930,15 +3960,7 @@ adjustLayoutAfterRename oldPN newName t = do
 indentList :: (SYB.Data t) => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
 indentList ms off = do
   mapM (\m -> indentDeclAndToks m off) ms
-{-
-  go ms
-  where
-    go [] = return []
-    go (x:xs) = do
-      x'  <- indentDeclAndToks x off
-      xs' <-  go xs
-      return (x':xs')
--}
+
 -- ---------------------------------------------------------------------
 
 -- | Create a new name token. If 'useQual' then use the qualified

@@ -11,7 +11,6 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        (
        -- * Conveniences for state access
 
-       -- * Original API provided
          fetchToksFinal
        , fetchOrigToks
        , fetchToks -- Deprecated
@@ -39,11 +38,6 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , removeToksForPos
        , syncDeclToLatestStash
        , indentDeclAndToks
-
-       -- , putSrcSpan -- ^Make sure a SrcSpan is in the tree
-
-       -- , putNewSpanAndToks
-       -- , putNewPosAndToks
 
        -- * For debugging
        , drawTokenTree

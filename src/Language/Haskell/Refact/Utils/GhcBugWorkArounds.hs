@@ -215,8 +215,9 @@ getModuleSourceAndFlags :: GHC.GhcMonad m => GHC.Module -> m (String, GHC.String
 getModuleSourceAndFlags modu = do
   m <- GHC.getModSummary (GHC.moduleName modu)
   case GHC.ml_hs_file $ GHC.ms_location m of
-    Nothing -> do dflags <- GHC.getDynFlags
+    Nothing ->
 #if __GLASGOW_HASKELL__ > 704
+               do dflags <- GHC.getDynFlags
                   GHC.liftIO $ throwIO $ GHC.mkApiErr dflags (GHC.text "No source available for module " GHC.<+> GHC.ppr modu)
 #else
                   GHC.liftIO $ throwIO $ GHC.mkApiErr        (GHC.text "No source available for module " GHC.<+> GHC.ppr modu)
