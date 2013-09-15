@@ -3919,7 +3919,8 @@ adjustLayoutAfterRename oldPN newName t = do
       = do -- Need to see if the last line of the expr changes due to
            -- a name length change, and if so in/dedent mg accordingly
            -- Starting with a very naive version.
-           let off = (length $ showGhc newName) - (length $ showGhc oldPN)
+           -- let off = (length $ showGhc newName) - (length $ showGhc oldPN)
+
            -- Offset calculation
            -- * Must take into account the new position of the 'of'
            --   token.
@@ -3930,7 +3931,7 @@ adjustLayoutAfterRename oldPN newName t = do
            toksBefore <- getToksBeforeSpan l
            toks <- getToksForSpan l
            let lineToks = groupTokensByLine toks
-           let ofLine = ghead "adjustLayoutAfterRename.1" $ filter (\l -> any isOf l) lineToks
+           let ofLine = ghead "adjustLayoutAfterRename.1" $ filter (\ll -> any isOf ll) lineToks
            -- Check if we have any toksBefore belonging on the same
            -- line
            -- NOTE: tokeBefore are in reverse order
@@ -3943,17 +3944,26 @@ adjustLayoutAfterRename oldPN newName t = do
 
            let upToOf = reverse $ dropWhile (\tok -> not (isOf tok)) fullOfLineRev
 
-           -- Now, at last, we can work out the offset 
+           -- Now, at last, we can work out the offset
+           let off = sum $ map tokenDelta upToOf
+                      where
+                        tokenDelta (_,"") = 0
+                        tokenDelta (tt,s) = deltac
+                          where
+                            (_sl,sc) = getLocatedStart tt
+                            (_el,ec) = getLocatedEnd   tt
+                            deltac = (length s) - (ec - sc)
 
-           logm $ "adjustLayoutAfterRename: upToOf=" ++ show upToOf
-           logm $ "adjustLayoutAfterRename: fullOfLineRev=" ++ show fullOfLineRev
-           logm $ "adjustLayoutAfterRename: lt'=" ++ show lt'
-           logm $ "adjustLayoutAfterRename: toksBefore=" ++ show toksBefore
-           logm $ "adjustLayoutAfterRename: ofLine=" ++ show ofLine
-           logm $ "adjustLayoutAfterRename: toks=" ++ show toks
-           logm $ "adjustLayoutAfterRename: off=" ++ show off
-           ms' <- indentList ms off
-           return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms' typ)))
+           -- logm $ "adjustLayoutAfterRename: upToOf=" ++ show upToOf
+           -- logm $ "adjustLayoutAfterRename: fullOfLineRev=" ++ show fullOfLineRev
+           -- logm $ "adjustLayoutAfterRename: lt'=" ++ show lt'
+           -- logm $ "adjustLayoutAfterRename: toksBefore=" ++ show toksBefore
+           -- logm $ "adjustLayoutAfterRename: ofLine=" ++ show ofLine
+           -- logm $ "adjustLayoutAfterRename: toks=" ++ show toks
+           -- logm $ "adjustLayoutAfterRename: off=" ++ show off
+           ms' <- indentList (gtail "adjustLayoutAfterRename.3" ms) off
+           let hm = ghead "adjustLayoutAfterRename.4" ms
+           return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup (hm:ms') typ)))
     adjustLHsExpr x = return x
 
 

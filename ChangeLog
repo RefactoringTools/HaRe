@@ -1,3 +1,5 @@
+	* Re-align tokens when renaming the condition of a case statement
+	to have a different length
 	* When refactoring a CPP pre-processed file, read the preprocessor
 	directives and non-compiled code as comments, so the source can be
 	round-tripped. This allows refactoring of simple #if/#else/#endif

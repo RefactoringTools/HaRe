@@ -1,4 +1,4 @@
-module MonadFunctionSpec (main, spec) where
+module MonadFunctionsSpec (main, spec) where
 
 import           Test.Hspec
 
