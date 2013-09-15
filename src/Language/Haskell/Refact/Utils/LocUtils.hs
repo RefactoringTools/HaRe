@@ -94,6 +94,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , isElse
                      , isThen
                      , isOf
+                     , isDo
                      , getIndentOffset
                      , splitOnNewLn
                      , tokenLen
@@ -1293,6 +1294,11 @@ isThen   ((GHC.L _ t),_s) =  case t of
 isOf :: PosToken -> Bool
 isOf   ((GHC.L _ t),_s) =  case t of
                        GHC.ITof -> True
+                       _        -> False
+
+isDo :: PosToken -> Bool
+isDo   ((GHC.L _ t),_s) =  case t of
+                       GHC.ITdo -> True
                        _        -> False
 
 

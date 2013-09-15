@@ -5,7 +5,7 @@ module LayoutIn4 where
 --In this Example: rename 'ioFun' to  'io'
 
 main = ioFun "hello" where ioFun s= do  let  k = reverse s
- --There is a commet
+ --There is a comment
                                         s <- getLine
                                         let  q = (k ++ s)
                                         putStr q

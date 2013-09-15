@@ -3903,6 +3903,10 @@ renamePNworker oldPN newName updateTokens useQual t = do
 
 -- | Once a rename is complete, adjust the layout for any affected
 -- where/let/of/do elements
+--
+-- TODO: what if the renamePN is of a different syntax element that
+-- just happens to be on the same line as the trigger token? May have
+-- to get rid of the conditional part in the tests below
 adjustLayoutAfterRename ::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier that has been renamed
    ->GHC.Name             -- ^ The new name, including possible qualifier
@@ -3914,7 +3918,7 @@ adjustLayoutAfterRename oldPN newName t = do
                                ) t
   where
     adjustLHsExpr :: (GHC.LHsExpr GHC.Name) -> RefactGhc (GHC.LHsExpr GHC.Name)
-    adjustLHsExpr (GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms typ)))
+    adjustLHsExpr x@(GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms typ)))
       | findPNs [oldPN,newName] expr
       = do -- Need to see if the last line of the expr changes due to
            -- a name length change, and if so in/dedent mg accordingly
@@ -3928,48 +3932,82 @@ adjustLayoutAfterRename oldPN newName t = do
            --   end of the 'of' token and the start of the MatchGroup.
            -- * And of whether the 'of' token is on the same line as
            --   the MatchGroup
-           toksBefore <- getToksBeforeSpan l
-           toks <- getToksForSpan l
-           let lineToks = groupTokensByLine toks
-           let ofLine = ghead "adjustLayoutAfterRename.1" $ filter (\ll -> any isOf ll) lineToks
-           -- Check if we have any toksBefore belonging on the same
-           -- line
-           -- NOTE: tokeBefore are in reverse order
-           let lt = dropWhile (\tok -> tokenRow (ghead "adjustLayoutAfterRename.2" ofLine) 
-                                        > tokenRow tok) (reversedToks toksBefore)
-           let lt' = takeWhile (\tok -> tokenRow (ghead "adjustLayoutAfterRename.2" ofLine) 
-                                        == tokenRow tok) lt
-
-           let fullOfLineRev = reverse ofLine ++ lt'
-
-           let upToOf = reverse $ dropWhile (\tok -> not (isOf tok)) fullOfLineRev
-
-           -- Now, at last, we can work out the offset
-           let off = sum $ map tokenDelta upToOf
-                      where
-                        tokenDelta (_,"") = 0
-                        tokenDelta (tt,s) = deltac
-                          where
-                            (_sl,sc) = getLocatedStart tt
-                            (_el,ec) = getLocatedEnd   tt
-                            deltac = (length s) - (ec - sc)
+           upToOf <- getLineToks l isOf
+           let off = calcOffset upToOf
 
            -- logm $ "adjustLayoutAfterRename: upToOf=" ++ show upToOf
-           -- logm $ "adjustLayoutAfterRename: fullOfLineRev=" ++ show fullOfLineRev
-           -- logm $ "adjustLayoutAfterRename: lt'=" ++ show lt'
-           -- logm $ "adjustLayoutAfterRename: toksBefore=" ++ show toksBefore
-           -- logm $ "adjustLayoutAfterRename: ofLine=" ++ show ofLine
-           -- logm $ "adjustLayoutAfterRename: toks=" ++ show toks
            -- logm $ "adjustLayoutAfterRename: off=" ++ show off
-           ms' <- indentList (gtail "adjustLayoutAfterRename.3" ms) off
-           let hm = ghead "adjustLayoutAfterRename.4" ms
-           return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup (hm:ms') typ)))
+           if off /= 0
+             then do
+               -- ms' <- indentList' (gtail "adjustLayoutAfterRename.3" ms) off
+               -- let hm = ghead "adjustLayoutAfterRename.4" ms
+               -- return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup (hm:ms') typ)))
+
+               ms' <- indentList ms off
+               return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms' typ)))
+             else return x
+
+{-
+    adjustLHsExpr x@(GHC.L l (GHC.HsDo GHC.DoExpr stmts typ)) =
+      do
+        upToDo <- getLineToks l isDo
+        let off = calcOffset upToDo
+        if off /= 0
+          then do
+            return x
+          else return x
+-}
     adjustLHsExpr x = return x
 
+-- -------------------------------------
 
-indentList :: (SYB.Data t) => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
+getLineToks :: GHC.SrcSpan -> (PosToken -> Bool) -> RefactGhc [PosToken]
+getLineToks l isToken = do
+  toksBefore <- getToksBeforeSpan l
+  toks <- getToksForSpan l
+  let lineToks = groupTokensByLine toks
+  let ofLine = ghead "adjustLayoutAfterRename.1" $ filter (\ll -> any isToken ll) lineToks
+  -- Check if we have any toksBefore belonging on the same
+  -- line
+  -- NOTE: tokeBefore are in reverse order
+  let lt = dropWhile (\tok -> tokenRow (ghead "adjustLayoutAfterRename.2" ofLine) 
+                               > tokenRow tok) (reversedToks toksBefore)
+  let lt' = takeWhile (\tok -> tokenRow (ghead "adjustLayoutAfterRename.2" ofLine) 
+                               == tokenRow tok) lt
+
+  let fullOfLineRev = reverse ofLine ++ lt'
+
+  let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) fullOfLineRev
+  return upToOf
+
+-- -------------------------------------
+
+calcOffset :: [PosToken] -> Int
+calcOffset toks = sum $ map tokenDelta toks
+  where
+    tokenDelta (_,"") = 0
+    tokenDelta (tt,s) = deltac
+      where
+        (_sl,sc) = getLocatedStart tt
+        (_el,ec) = getLocatedEnd   tt
+        deltac = (length s) - (ec - sc)
+
+-- -------------------------------------
+
+indentList :: SYB.Data t
+   => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
 indentList ms off = do
+  -- ms' <- indentList' (gtail "indentList.1" ms) off
+  ms' <- mapM (\m -> indentDeclAndToks m off) (gtail "indentList.1" ms)
+  let hm = ghead "indentList.2" ms
+  return (hm:ms')
+
+indentList' :: (SYB.Data t) => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
+indentList' ms off = do
   mapM (\m -> indentDeclAndToks m off) ms
+
+
+
 
 -- ---------------------------------------------------------------------
 
