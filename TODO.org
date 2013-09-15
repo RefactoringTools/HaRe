@@ -1,9 +1,7 @@
 * HaRe todo
-** DONE ghc-hare fails on GhcVersionSpecific, Could it be the LANGUAGE CPP?
-    -- Nope, see http://ghc.haskell.org/trac/ghc/ticket/8265
-    [2013-09-09 Mon]
-    [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/GhcVersionSpecific.hs]]
 ** TODO renaming with length change does not adjust surrounding layout for do/let/where/of etc
+    - 'of' complete
+    - 'do' complete
 ** TODO rename mod to parsed complains of existing variable named parsed.
      - This is not the case. Line 36 col 10
    [2013-09-10 Tue]
@@ -18,24 +16,15 @@
       becomes
       zmapQ f z = reverse $ downQ [] (g f g)z
       g f z'g= query f z' : leftQ [] (g f g)g f g)z'
-** DONE Strategy for CPP code: how to preserve the preprocessor directives?
-    - Take original source, extract prepocessor directives (lines
-      starting #), turn them into line comments and merge in.
-    - Problem is, in an #if/#then/#else the part not included gets
-      thrown away.
-    - Cannot simply tokenise it, the refactorings will go crazy. Have
-      to some-how detect them and convert them into blockcomments, to
-      carry through.
+** TODO adjustLayoutAfterRename might be usable once only when realigning for the final tokens.
 ** TODO Provide a warning if refactoring is done on code using CPP.
      State that refactoring may only affect current flags code, not others.
 ** TODO Make undo (M-x u) undo a refactoring.
-** DONE sort out realignment of tokens on a line when one is changed
 ** TODO add tests for command-line invocation of ghc-hare
 ** TODO look at using ordnub
 ** TODO check .lhs support
 ** TODO add command line param to turn off timestamping of log lines when -v
 ** TODO add more granularity on logging control, e.g wether to show tokens while working, whether to dump initial AST
-** DONE getting GHC panic on HsWithBndrs. Update checkItemStage for it
 ** TODO Look at refactoring Data.Vault.Lazy. Uses include process
     [2013-09-09 Mon]
 ** TODO from the source files

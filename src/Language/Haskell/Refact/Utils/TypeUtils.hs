@@ -3913,6 +3913,10 @@ adjustLayoutAfterRename ::(SYB.Data t)
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
 adjustLayoutAfterRename oldPN newName t = do
+  logm $ "adjustLayoutAfterRename:(oldPN,newName)=" ++ showGhc (oldPN,newName)
+  -- drawTokenTree "before adjusting"
+  -- logm $ "adjustLayoutAfterRename:t=" ++ (SYB.showData SYB.Renamer 0 t)
+
   -- Note: bottom-up traversal (no ' at end)
   everywhereMStaged SYB.Renamer (SYB.mkM adjustLHsExpr
                                ) t
@@ -3939,32 +3943,29 @@ adjustLayoutAfterRename oldPN newName t = do
            -- logm $ "adjustLayoutAfterRename: off=" ++ show off
            if off /= 0
              then do
-               -- ms' <- indentList' (gtail "adjustLayoutAfterRename.3" ms) off
-               -- let hm = ghead "adjustLayoutAfterRename.4" ms
-               -- return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup (hm:ms') typ)))
-
                ms' <- indentList ms off
                return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms' typ)))
              else return x
 
-{-
     adjustLHsExpr x@(GHC.L l (GHC.HsDo GHC.DoExpr stmts typ)) =
       do
         upToDo <- getLineToks l isDo
         let off = calcOffset upToDo
         if off /= 0
           then do
-            return x
+            logm $ "adjustLHsExpr:do:(l,off)=" ++ showGhc (l,off)
+            stmts' <- indentList stmts off
+            return (GHC.L l (GHC.HsDo GHC.DoExpr stmts' typ))
           else return x
--}
+
     adjustLHsExpr x = return x
 
 -- -------------------------------------
 
 getLineToks :: GHC.SrcSpan -> (PosToken -> Bool) -> RefactGhc [PosToken]
 getLineToks l isToken = do
-  toksBefore <- getToksBeforeSpan l
   toks <- getToksForSpan l
+  toksBefore <- getToksBeforeSpan l
   let lineToks = groupTokensByLine toks
   let ofLine = ghead "adjustLayoutAfterRename.1" $ filter (\ll -> any isToken ll) lineToks
   -- Check if we have any toksBefore belonging on the same
@@ -3997,17 +3998,9 @@ calcOffset toks = sum $ map tokenDelta toks
 indentList :: SYB.Data t
    => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
 indentList ms off = do
-  -- ms' <- indentList' (gtail "indentList.1" ms) off
   ms' <- mapM (\m -> indentDeclAndToks m off) (gtail "indentList.1" ms)
   let hm = ghead "indentList.2" ms
   return (hm:ms')
-
-indentList' :: (SYB.Data t) => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
-indentList' ms off = do
-  mapM (\m -> indentDeclAndToks m off) ms
-
-
-
 
 -- ---------------------------------------------------------------------
 

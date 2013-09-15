@@ -405,8 +405,9 @@ logm string = do
   let loggingOn = (rsetVerboseLevel settings == Debug)
              --     || (rsetVerboseLevel settings == Normal)
   when loggingOn $ do
-     ts <- liftIO timeStamp
-     liftIO $ warningM "HaRe" (ts ++ ":" ++ string)
+     -- ts <- liftIO timeStamp
+     -- liftIO $ warningM "HaRe" (ts ++ ":" ++ string)
+     liftIO $ warningM "HaRe" (string)
   return ()
 
 timeStamp :: IO String
