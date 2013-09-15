@@ -4,6 +4,6 @@ module LayoutIn1 where
 
 --In this Example: rename 'sq' to 'square'.
 
-sumSquares x y= square x + square y where square x = x ^ pow
-  --There is a comment.
+sumSquares x y= square x + square y where square x= x^pow
+          --There is a comment.
                                           pow=2

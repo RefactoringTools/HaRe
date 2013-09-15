@@ -1533,7 +1533,6 @@ getValBindSigs binds = case binds of
     GHC.ValBindsIn  _ sigs -> sigs
     GHC.ValBindsOut _ sigs -> sigs
 
-
 emptyValBinds :: GHC.HsValBinds GHC.Name
 emptyValBinds = GHC.ValBindsIn (GHC.listToBag []) []
 
@@ -1547,6 +1546,8 @@ unionBinds (x1:x2:xs) = unionBinds ((mergeBinds x1 x2):xs)
     mergeBinds (GHC.ValBindsOut b1 s1) (GHC.ValBindsOut b2 s2) = (GHC.ValBindsOut (b1++b2) (s1++s2))
     mergeBinds y1@(GHC.ValBindsIn _ _) y2@(GHC.ValBindsOut _  _) = mergeBinds y2 y1
     mergeBinds    (GHC.ValBindsOut b1 s1) (GHC.ValBindsIn b2 s2) = (GHC.ValBindsOut (b1++[(GHC.NonRecursive,b2)]) (s1++s2))
+
+-- NOTE: ValBindsIn are found before the Renamer, ValBindsOut after
 
 hsBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name]
 hsBinds t = case hsValBinds t of
@@ -3919,6 +3920,7 @@ adjustLayoutAfterRename oldPN newName t = do
 
   -- Note: bottom-up traversal (no ' at end)
   everywhereMStaged SYB.Renamer (SYB.mkM adjustLHsExpr
+                               `SYB.extM` adjustLMatch
                                ) t
   where
     adjustLHsExpr :: (GHC.LHsExpr GHC.Name) -> RefactGhc (GHC.LHsExpr GHC.Name)
@@ -3960,25 +3962,65 @@ adjustLayoutAfterRename oldPN newName t = do
 
     adjustLHsExpr x = return x
 
+    -- ---------------------------------
+
+    adjustLMatch :: (GHC.LMatch GHC.Name) -> RefactGhc (GHC.LMatch GHC.Name)
+    adjustLMatch x@(GHC.L _ (GHC.Match _ _ (GHC.GRHSs _ GHC.EmptyLocalBinds))) = return x
+    adjustLMatch x@(GHC.L l (GHC.Match pats mtyp (GHC.GRHSs grhs local))) =
+      do
+        upToWhere <- getLineToks l isWhere
+        let off = calcOffset upToWhere
+        if off /= 0
+          then do
+            logm $ "adjustLMatch:(l,off)=" ++ showGhc (l,off)
+            -- logm $ "adjustLMatch:local=[" ++ showGhc local ++ "]"
+            -- logm $ "adjustLMatch:hsBinds local=[" ++ showGhc (hsBinds local) ++ "]"
+            -- logm $ "adjustLMatch:sort $ hsBinds local=[" ++ showGhc (sortBy compareLocated $ hsBinds local) ++ "]"
+
+            local' <- indentList (sortBy compareLocated $ hsBinds local) off
+            return (GHC.L l (GHC.Match pats mtyp (GHC.GRHSs grhs (replaceBinds local local'))))
+          else return x
+
+    adjustLMatch x = return x
+
+-- -------------------------------------
+
+compareLocated ::
+  Ord a => GHC.GenLocated a t -> GHC.GenLocated a t1 -> Ordering
+compareLocated (GHC.L l1 _) (GHC.L l2 _) = compare l1 l2
+
 -- -------------------------------------
 
 getLineToks :: GHC.SrcSpan -> (PosToken -> Bool) -> RefactGhc [PosToken]
 getLineToks l isToken = do
   toks <- getToksForSpan l
   toksBefore <- getToksBeforeSpan l
-  let lineToks = groupTokensByLine toks
-  let ofLine = ghead "adjustLayoutAfterRename.1" $ filter (\ll -> any isToken ll) lineToks
+
+  logm $ "getLineToks:toks=" ++ show toks
+  logm $ "getLineToks:toksBefore=" ++ show toksBefore
+
+  let lineToks = groupTokensByLine $ reverse toks ++ (reversedToks toksBefore)
+
+  logm $ "getLineToks:lineToks=" ++ show lineToks
+
+  let ofLine = ghead "getLineToks.1" $ filter (\ll -> any isToken ll) lineToks
+
+  logm $ "getLineToks:ofLine=" ++ show ofLine
+
+{-
   -- Check if we have any toksBefore belonging on the same
   -- line
   -- NOTE: tokeBefore are in reverse order
-  let lt = dropWhile (\tok -> tokenRow (ghead "adjustLayoutAfterRename.2" ofLine) 
+  let lt = dropWhile (\tok -> tokenRow (ghead "getLineToks.2" ofLine)
                                > tokenRow tok) (reversedToks toksBefore)
-  let lt' = takeWhile (\tok -> tokenRow (ghead "adjustLayoutAfterRename.2" ofLine) 
+  let lt' = takeWhile (\tok -> tokenRow (ghead "getLineToks.3" ofLine)
                                == tokenRow tok) lt
 
   let fullOfLineRev = reverse ofLine ++ lt'
-
-  let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) fullOfLineRev
+-}
+  -- let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) fullOfLineRev
+  let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) ofLine
+  logm $ "getLineToks:upToOf=" ++ show upToOf
   return upToOf
 
 -- -------------------------------------

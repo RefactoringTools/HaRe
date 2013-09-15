@@ -2253,6 +2253,55 @@ spec = do
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutIn4 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'ioFun' to  'io'\n\n main = ioFunLong \"hello\" where ioFunLong s= do  let  k = reverse s\n          --There is a comment\n                                                 s <- getLine\n                                                 let  q = (k ++ s)\n                                                 putStr q\n                                                 putStr \"foo\""
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutIn4.main\n = ioFunLong \"hello\"\n where\n ioFunLong s\n = do { let k = GHC.List.reverse s;\n s <- System.IO.getLine;\n let q = (k GHC.Base.++ s);\n System.IO.putStr q;\n System.IO.putStr \"foo\" },\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
+    ------------------------------------
+
+    it "realigns toks in a where for a shorter name" $ do
+      (t, toks) <- parsedFileLayoutIn1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L l n) = locToName layoutIn1FileName (7, 17) renamed
+      let
+        comp = do
+         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+
+         newName <- mkNewGhcName Nothing "q"
+         new <- renamePN n newName True True renamed
+
+         return (new,newName)
+
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (showGhc n) `shouldBe` "sq"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((7,17),(7,18)),ITvarid \"q\",\"q\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn1 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'sq' to 'square'.\n\n sumSquares x y= sq x + sq y where sq x= x^pow\n   --There is a comment.\n                                   pow=2\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutIn1 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'sq' to 'square'.\n\n sumSquares x y= q x + q y where q x= x^pow\n --There is a comment.\n                                 pow=2"
+      (unspace $ showGhc nb) `shouldBe` unspace "(LayoutIn1.sumSquares x y\n = q x GHC.Num.+ q y\n where\n q x = x GHC.Real.^ pow\n pow = 2,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+
+
+    ------------------------------------
+
+    it "realigns toks in a where for a longer name" $ do
+      (t, toks) <- parsedFileLayoutIn1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L l n) = locToName layoutIn1FileName (7, 17) renamed
+      let
+        comp = do
+         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+
+         newName <- mkNewGhcName Nothing "square"
+         new <- renamePN n newName True True renamed
+
+         return (new,newName)
+
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (showGhc n) `shouldBe` "sq"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((7,17),(7,23)),ITvarid \"square\",\"square\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn1 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'sq' to 'square'.\n\n sumSquares x y= sq x + sq y where sq x= x^pow\n   --There is a comment.\n                                   pow=2\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutIn1 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'sq' to 'square'.\n\n sumSquares x y= square x + square y where square x= x^pow\n           --There is a comment.\n                                           pow=2"
+      (unspace $ showGhc nb) `shouldBe` unspace "(LayoutIn1.sumSquares x y\n = square x GHC.Num.+ square y\n where\n square x = x GHC.Real.^ pow\n pow = 2,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+
 
   -- ---------------------------------------------
 
@@ -3275,6 +3324,14 @@ layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
 
 parsedFileLayoutIn2 :: IO (ParseResult, [PosToken])
 parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
+
+-- ----------------------------------------------------
+
+layoutIn1FileName :: GHC.FastString
+layoutIn1FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn1.hs"
+
+parsedFileLayoutIn1 :: IO (ParseResult, [PosToken])
+parsedFileLayoutIn1 = parsedFileGhc "./test/testdata/Renaming/LayoutIn1.hs"
 
 -- ----------------------------------------------------
 

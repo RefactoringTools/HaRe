@@ -300,7 +300,7 @@ spec = do
     it "Renames in LayoutIn1 7 17" $ do
      --     (["LayoutIn1.hs"],["square","7","17"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/LayoutIn1.hs" "square" (7,17)
-     -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/LayoutIn1.hs" "square" (7,17)
+     -- rename logTestSettings testCradle "./test/testdata/Renaming/LayoutIn1.hs" "square" (7,17)
      r `shouldBe` [ "./test/testdata/Renaming/LayoutIn1.hs"
                   ]
      diff <- compareFiles "./test/testdata/Renaming/LayoutIn1.hs.expected"

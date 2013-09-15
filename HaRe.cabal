@@ -22,9 +22,9 @@ Description:
    .
    Current known defects:
    .
-     * After renaming, the layout of surrounding 'do','let' or 'where'
-       clauses is not adjusted. This can cause problems if the new
-       name is a different length from the old one.
+     * After renaming, the layout of surrounding 'let' clause is not adjusted.
+       This can cause problems if the new name is a different length from the
+       old one.
    .
      * liftToTopLevel of a recursive function may introduce parameter
        errors. e.g. lifting 'g' in the 'zmapQ' function from 'syz-0.2.0.0'

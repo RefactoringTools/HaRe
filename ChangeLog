@@ -2,6 +2,8 @@
 
 	* src/Language/Haskell/Refact/Utils/TypeUtils.hs
 	(adjustLayoutAfterRename): Adjust layout in a do expression after renaming
+	(adjustLayoutAfterRename): Adjust layout in a where expression
+	after renaming
 
 	* Re-align tokens when renaming the condition of a case statement
 	to have a different length
