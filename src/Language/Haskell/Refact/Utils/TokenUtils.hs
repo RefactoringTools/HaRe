@@ -508,6 +508,12 @@ insertVersionsInForestSpan vsNew veNew ((ForestLine chs trs _vs ls,cs),(ForestLi
 
 -- ---------------------------------------------------------------------
 
+insertLenChangedInForestSpan :: Bool -> ForestSpan -> ForestSpan
+insertLenChangedInForestSpan chNew ((ForestLine _chs trs vs ls,cs),(ForestLine _che tre ve le,ce))
+  = ((ForestLine chNew trs vs ls,cs),(ForestLine chNew tre ve le,ce))
+
+-- ---------------------------------------------------------------------
+
 srcSpanToForestSpan :: GHC.SrcSpan -> ForestSpan
 srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToForestLine endRow,endCol))
   where
@@ -519,6 +525,10 @@ srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToF
 forestSpanFromEntry :: Entry -> ForestSpan
 forestSpanFromEntry (Entry ss _  ) = ss
 forestSpanFromEntry (Deleted ss _) = ss
+
+putForestSpanInEntry :: Entry -> ForestSpan -> Entry
+putForestSpanInEntry (Entry ss toks) ssnew = (Entry ss toks)
+putForestSpanInEntry (Deleted ss toks) ssnew = (Deleted ss toks)
 
 -- --------------------------------------------------------------------
 
@@ -1946,8 +1956,16 @@ indentDeclToks decl@(GHC.L sspan _) forest offset = (decl',forest'')
 
     z = openZipperToSpan (srcSpanToForestSpan sspan) $ Z.fromTree forest'
 
-    tree' = go tree
-    forest'' = Z.toTree (Z.setTree tree' z)
+    (Node entry subs) = go tree
+    -- The invariant will fail if we do not propagate this change
+    -- upward. But it needs to sync with the AST, which we do not have
+    -- the upward version of.
+    -- Instead, set the lengthChanged flag, in the parent.
+    sss = forestSpanFromEntry entry
+    sss' = insertLenChangedInForestSpan True sss
+    tree'' = Node (putForestSpanInEntry entry sss') subs
+
+    forest'' = Z.toTree (Z.setTree tree'' z)
 
     (decl',_) = syncAST decl (addOffsetToSpan off sspan) tree
 

@@ -21,11 +21,9 @@ import qualified SrcLoc     as GHC
 
 import Control.Monad.State
 import Data.Maybe
-import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
--- import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
@@ -53,7 +51,7 @@ spec = do
 
       (showGhc decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
-      (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe` 
+      (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe`
              ("[(((18,1),(18,1)),ITsemi,\"\")," ++
              "(((18,1),(18,5)),ITdata,\"data\")," ++
              "(((18,6),(18,7)),ITconid \"D\",\"D\")," ++

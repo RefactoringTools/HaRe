@@ -3077,19 +3077,22 @@ tree TId 0:
       (showSrcSpan m2l) `shouldBe` "((10,28),(11,66))"
       let (m2,forest2) = indentDeclToks (head $ drop 1 matches) forest' (-2)
 
+      -- (show forest2) `shouldBe` ""
       (invariant forest2) `shouldBe` []
       (drawTreeEntry forest2) `shouldBe`
               "((1,1),(12,43))\n|\n"++
               "+- ((1,1),(8,26))\n|\n"++
-              "+- ((8,26),(8,37))\n|\n"++ -- dedented by 2
-              "`- ((10,28),(12,43))\n"
+              "+- ((8,26),(8,37))\n|\n"++
+              "`- ((10,28),(12,43))\n   |\n"++
+              "   +- ((10,26),(11,64))\n   |\n"++
+              "   `- ((12,28),(12,43))\n"
 
       let toksFinal2 = retrieveTokensFinal forest2
-      (GHC.showRichTokenStream toksFinal2) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of(1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
+      (GHC.showRichTokenStream toksFinal2) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of(1:xs) -> 1\n--There is a comment\n                          (2:xs)\n                            | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
 
       let decl2 = (GHC.L l (GHC.HsCase expr (GHC.MatchGroup (m1:m2:(tail $ tail matches)) typ)))
-      (showGhc decl') `shouldBe` "case list of {\n  (1 : xs) -> 1\n  (2 : xs)\n    | x GHC.Classes.< 10 -> 4\n    where\n        x = GHC.List.last xs\n  otherwise -> 12 }"
-      (take 320 $ SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/Renaming/LayoutIn2.hs:(8,14)-(12,42)} \n (HsCase \n  (L {test/testdata/Renaming/LayoutIn2.hs:8:19-22} \n   (HsVar {Name: list})) \n  (MatchGroup \n   [\n    (L {test/testdata/Renaming/LayoutIn2.hs:8:26-36} \n     (Match \n      [\n       (L {test/testdata/Renaming/LayoutIn2.hs:8:26-31} \n        (ParPat \n     "
+      (showGhc decl2) `shouldBe` "case list of {\n  (1 : xs) -> 1\n  (2 : xs)\n    | x GHC.Classes.< 10 -> 4\n    where\n        x = GHC.List.last xs\n  otherwise -> 12 }"
+      (take 320 $ SYB.showData SYB.Renamer 0 decl2) `shouldBe` "\n(L {test/testdata/Renaming/LayoutIn2.hs:(8,14)-(12,42)} \n (HsCase \n  (L {test/testdata/Renaming/LayoutIn2.hs:8:19-22} \n   (HsVar {Name: list})) \n  (MatchGroup \n   [\n    (L {test/testdata/Renaming/LayoutIn2.hs:8:26-36} \n     (Match \n      [\n       (L {test/testdata/Renaming/LayoutIn2.hs:8:26-31} \n        (ParPat \n     "
 
   -- ---------------------------------------------
 

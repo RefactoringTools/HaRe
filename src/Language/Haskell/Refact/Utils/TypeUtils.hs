@@ -3722,8 +3722,6 @@ qualifyToplevelName n = do
 -- TODO: the syntax phrase is required to be GHC.Located, not sure how
 -- to specify this without breaking the everywhereMStaged call
 
--- NOTE: TODO: get rid of this and promote renamePNworker, it is no
-   -- longer needed
 renamePN::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
    ->GHC.Name             -- ^ The new name, including possible qualifier
@@ -3923,6 +3921,7 @@ adjustLayoutAfterRename oldPN newName t = do
            -- a name length change, and if so in/dedent mg accordingly
            -- Starting with a very naive version.
            let off = (length $ showGhc newName) - (length $ showGhc oldPN)
+           logm $ "adjustLayoutAfterRename: off=" ++ show off
            ms' <- indentList ms off
            return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms' typ)))
     adjustLHsExpr x = return x
@@ -3930,7 +3929,8 @@ adjustLayoutAfterRename oldPN newName t = do
 
 indentList :: (SYB.Data t) => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
 indentList ms off = do
-  -- mapM (\m -> indentDeclAndToks m off) ms
+  mapM (\m -> indentDeclAndToks m off) ms
+{-
   go ms
   where
     go [] = return []
@@ -3938,7 +3938,7 @@ indentList ms off = do
       x'  <- indentDeclAndToks x off
       xs' <-  go xs
       return (x':xs')
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Create a new name token. If 'useQual' then use the qualified
