@@ -527,8 +527,8 @@ forestSpanFromEntry (Entry ss _  ) = ss
 forestSpanFromEntry (Deleted ss _) = ss
 
 putForestSpanInEntry :: Entry -> ForestSpan -> Entry
-putForestSpanInEntry (Entry ss toks) ssnew = (Entry ss toks)
-putForestSpanInEntry (Deleted ss toks) ssnew = (Deleted ss toks)
+putForestSpanInEntry (Entry   _ss toks) ssnew = (Entry   ssnew toks)
+putForestSpanInEntry (Deleted _ss toks) ssnew = (Deleted ssnew toks)
 
 -- --------------------------------------------------------------------
 
@@ -1742,7 +1742,10 @@ invariant forest = rsub
         -- test
         -- TODO: is this a reasonable approach?
 
-        rs = if (start <= sstart) && ((end >= send) || (forestPosVersionSet send) || (forestPosAstVersionSet send))
+        rs = if (start <= sstart) && ((end >= send)
+                 || (forestPosVersionSet send) || (forestPosAstVersionSet send)
+                 || (forestPosLenChanged start)
+                )
                then []
                else ["FAIL: subForest start and end does not match entry: " ++ (prettyshow node)]
 
@@ -1956,25 +1959,38 @@ indentDeclToks decl@(GHC.L sspan _) forest offset = (decl',forest'')
 
     z = openZipperToSpan (srcSpanToForestSpan sspan) $ Z.fromTree forest'
 
-    (Node entry subs) = go tree
+    tree' = go tree
     -- The invariant will fail if we do not propagate this change
     -- upward. But it needs to sync with the AST, which we do not have
     -- the upward version of.
     -- Instead, set the lengthChanged flag, in the parent.
-    sss = forestSpanFromEntry entry
-    sss' = insertLenChangedInForestSpan True sss
-    tree'' = Node (putForestSpanInEntry entry sss') subs
 
-    forest'' = Z.toTree (Z.setTree tree'' z)
+    -- sss = forestSpanFromEntry entry
+    -- sss' = insertLenChangedInForestSpan True sss
+    -- tree'' = Node (putForestSpanInEntry entry sss') subs
+
+    markLenChanged (Node entry subs) = (Node entry' subs)
+      where
+        sss = forestSpanFromEntry entry
+        sss' = insertLenChangedInForestSpan True sss
+        entry' = putForestSpanInEntry entry sss'
+
+    z' = Z.setTree tree' z
+    -- forest'' = Z.toTree (Z.setTree tree'' z)
+
+    forest'' = case Z.parent z' of
+                Nothing  -> Z.toTree (Z.setTree (markLenChanged $ Z.tree z' ) z' )
+                Just z'' -> Z.toTree (Z.setTree (markLenChanged $ Z.tree z'') z'')
+
 
     (decl',_) = syncAST decl (addOffsetToSpan off sspan) tree
 
     off = (0,offset)
 
     -- Pretty sure this could be a fold of some kind
-    go tr@(Node (Deleted _ss _eg) []) = tr
-    go    (Node (Entry ss []) sub)  = (Node (Entry (addOffsetToForestSpan off ss) []) (map go sub))
-    go    (Node (Entry ss toks) []) = (Node (Entry (addOffsetToForestSpan off ss) (addOffsetToToks off toks)) [])
+    go (Node (Deleted ss eg) []) = (Node (Deleted (addOffsetToForestSpan off ss) eg) [])
+    go (Node (Entry ss []) sub)  = (Node (Entry (addOffsetToForestSpan off ss) []) (map go sub))
+    go (Node (Entry ss toks) []) = (Node (Entry (addOffsetToForestSpan off ss) (addOffsetToToks off toks)) [])
 
 -- ---------------------------------------------------------------------
 
