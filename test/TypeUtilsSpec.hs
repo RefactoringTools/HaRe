@@ -2302,6 +2302,79 @@ spec = do
       (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutIn1 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'sq' to 'square'.\n\n sumSquares x y= square x + square y where square x= x^pow\n           --There is a comment.\n                                           pow=2"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutIn1.sumSquares x y\n = square x GHC.Num.+ square y\n where\n square x = x GHC.Real.^ pow\n pow = 2,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
+    ------------------------------------
+
+    it "realigns toks in a let/in for a shorter name" $ do
+      (t, toks) <- parsedFileLayoutLet1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L l n) = locToName layoutLet1FileName (6, 6) renamed
+      let
+        comp = do
+         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+
+         newName <- mkNewGhcName Nothing "x"
+         new <- renamePN n newName True True renamed
+
+         return (new,newName)
+
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (showGhc n) `shouldBe` "xxx"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((6,5),(6,6)),ITvarid \"x\",\"x\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo x = let a = 1\n             b = 2\n           in x + a + b"
+      (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo x\n = let\n a = 1\n b = 2\n in x GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+
+    ------------------------------------
+
+    it "realigns toks in a let/in for a longer name 1" $ do
+      (t, toks) <- parsedFileLayoutLet1
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L l n) = locToName layoutLet1FileName (6, 6) renamed
+      let
+        comp = do
+         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+
+         newName <- mkNewGhcName Nothing "xxxlong"
+         new <- renamePN n newName True True renamed
+
+         return (new,newName)
+
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (showGhc n) `shouldBe` "xxx"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((6,5),(6,12)),ITvarid \"xxxlong\",\"xxxlong\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxxlong = let a = 1\n                   b = 2\n           in xxxlong + a + b"
+      (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+
+
+    ------------------------------------
+
+    it "realigns toks in a let/in for a longer name 2" $ do
+      (t, toks) <- parsedFileLayoutLet2
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L l n) = locToName layoutLet2FileName (7, 6) renamed
+      let
+        comp = do
+         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+
+         newName <- mkNewGhcName Nothing "xxxlong"
+         new <- renamePN n newName True True renamed
+
+         return (new,newName)
+
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (showGhc n) `shouldBe` "xxx"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[(((7,5),(7,12)),ITvarid \"xxxlong\",\"xxxlong\")]"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet2 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n -- In this case the tokens for xxx + a + b should also shift out\n\n foo xxx = let a = 1\n               b = 2 in xxx + a + b\n\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxxlong = let a = 1\n                   b = 2\n           in xxxlong + a + b"
+      (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+
 
   -- ---------------------------------------------
 
@@ -3324,6 +3397,22 @@ layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
 
 parsedFileLayoutIn2 :: IO (ParseResult, [PosToken])
 parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
+
+-- ----------------------------------------------------
+
+layoutLet1FileName :: GHC.FastString
+layoutLet1FileName = GHC.mkFastString "./test/testdata/TypeUtils/LayoutLet1.hs"
+
+parsedFileLayoutLet1 :: IO (ParseResult, [PosToken])
+parsedFileLayoutLet1 = parsedFileGhc "./test/testdata/TypeUtils/LayoutLet1.hs"
+
+-- ----------------------------------------------------
+
+layoutLet2FileName :: GHC.FastString
+layoutLet2FileName = GHC.mkFastString "./test/testdata/TypeUtils/LayoutLet2.hs"
+
+parsedFileLayoutLet2 :: IO (ParseResult, [PosToken])
+parsedFileLayoutLet2 = parsedFileGhc "./test/testdata/TypeUtils/LayoutLet2.hs"
 
 -- ----------------------------------------------------
 

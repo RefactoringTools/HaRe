@@ -29,6 +29,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , replaceToken
        , putToksForSpan
        , getToksForSpan
+       , getToksForSpanNoInv
        , getToksBeforeSpan
        , putToksForPos
        , putToksAfterSpan
@@ -121,6 +122,23 @@ getToksForSpan sspan = do
   logm $ "getToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
 
+-- |Get the current tokens for a given GHC.SrcSpan, without checking
+-- the invariant.
+-- TODO: this should not be necessary
+getToksForSpanNoInv ::  GHC.SrcSpan -> RefactGhc [PosToken]
+getToksForSpanNoInv sspan = do
+  st <- get
+  let checkInv = False
+  let Just tm = rsModule st
+  let forest = getTreeFromCache sspan (rsTokenCache tm)
+  let (forest',toks) = getTokensFor checkInv forest sspan
+  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
+  let rsModule' = Just (tm {rsTokenCache = tk'})
+  put $ st { rsModule = rsModule' }
+  logm $ "getToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
+  return toks
+
+
 -- |Get the current tokens preceding a given GHC.SrcSpan.
 getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc ReversedToks
 getToksBeforeSpan sspan = do
@@ -133,6 +151,7 @@ getToksBeforeSpan sspan = do
   put $ st { rsModule = rsModule' }
   logm $ "getToksBeforeSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
+
 
 -- |Replace a token occurring in a given GHC.SrcSpan
 replaceToken ::  GHC.SrcSpan -> PosToken -> RefactGhc ()

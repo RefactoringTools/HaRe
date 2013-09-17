@@ -3924,6 +3924,8 @@ adjustLayoutAfterRename oldPN newName t = do
                                ) t
   where
     adjustLHsExpr :: (GHC.LHsExpr GHC.Name) -> RefactGhc (GHC.LHsExpr GHC.Name)
+
+    -- case expression
     adjustLHsExpr x@(GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms typ)))
       | findPNs [oldPN,newName] expr
       = do -- Need to see if the last line of the expr changes due to
@@ -3941,14 +3943,13 @@ adjustLayoutAfterRename oldPN newName t = do
            upToOf <- getLineToks l isOf
            let off = calcOffset upToOf
 
-           -- logm $ "adjustLayoutAfterRename: upToOf=" ++ show upToOf
-           -- logm $ "adjustLayoutAfterRename: off=" ++ show off
            if off /= 0
              then do
                ms' <- indentList ms off
                return (GHC.L l (GHC.HsCase expr (GHC.MatchGroup ms' typ)))
              else return x
 
+    -- do expression
     adjustLHsExpr x@(GHC.L l (GHC.HsDo GHC.DoExpr stmts typ)) =
       do
         upToDo <- getLineToks l isDo
@@ -3958,6 +3959,23 @@ adjustLayoutAfterRename oldPN newName t = do
             logm $ "adjustLHsExpr:do:(l,off)=" ++ showGhc (l,off)
             stmts' <- indentList stmts off
             return (GHC.L l (GHC.HsDo GHC.DoExpr stmts' typ))
+          else return x
+
+    -- let expression.
+    -- In following match, the 'let' token comes before local, 'in' before expr
+    adjustLHsExpr x@(GHC.L l (GHC.HsLet local expr)) =
+      do
+        upToLet <- getLineToks l isLet
+        let off = calcOffset upToLet
+        if off /= 0
+          then do
+            logm $ "adjustLHsExpr:let:(l,off)=" ++ showGhc (l,off)
+            local' <- indentList (sortBy compareLocated $ hsBinds local) off
+            upToIn <- getLineToks l isIn
+            let offIn = calcOffset upToIn
+            logm $ "adjustLHsExpr:in:(l,offIn)=" ++ showGhc (l,offIn)
+            expr' <- indentDeclAndToks expr offIn
+            return (GHC.L l (GHC.HsLet (replaceBinds local local') expr'))
           else return x
 
     adjustLHsExpr x = return x
@@ -3991,9 +4009,10 @@ compareLocated (GHC.L l1 _) (GHC.L l2 _) = compare l1 l2
 
 -- -------------------------------------
 
+-- |Get all the tokens on the same line as the do/let/of etc token
 getLineToks :: GHC.SrcSpan -> (PosToken -> Bool) -> RefactGhc [PosToken]
 getLineToks l isToken = do
-  toks <- getToksForSpan l
+  toks <- getToksForSpanNoInv l
   toksBefore <- getToksBeforeSpan l
 
   logm $ "getLineToks:toks=" ++ show toks
@@ -4007,17 +4026,6 @@ getLineToks l isToken = do
 
   logm $ "getLineToks:ofLine=" ++ show ofLine
 
-{-
-  -- Check if we have any toksBefore belonging on the same
-  -- line
-  -- NOTE: tokeBefore are in reverse order
-  let lt = dropWhile (\tok -> tokenRow (ghead "getLineToks.2" ofLine)
-                               > tokenRow tok) (reversedToks toksBefore)
-  let lt' = takeWhile (\tok -> tokenRow (ghead "getLineToks.3" ofLine)
-                               == tokenRow tok) lt
-
-  let fullOfLineRev = reverse ofLine ++ lt'
--}
   -- let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) fullOfLineRev
   let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) ofLine
   logm $ "getLineToks:upToOf=" ++ show upToOf
@@ -4041,6 +4049,7 @@ indentList :: SYB.Data t
    => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
 indentList ms off = do
   ms' <- mapM (\m -> indentDeclAndToks m off) (gtail "indentList.1" ms)
+  -- drawTokenTreeDetailed "after indentList"
   let hm = ghead "indentList.2" ms
   return (hm:ms')
 
