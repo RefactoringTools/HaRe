@@ -3016,7 +3016,7 @@ tree TId 0:
       -- let toks' = retrieveTokensInterim forest'
       (invariant forest') `shouldBe` []
       (drawTreeEntry forest') `shouldBe`
-              "((1,1),(12,43))\n|\n"++
+              "((10000000001,1),(10000000012,43))\n|\n"++
               "+- ((1,1),(8,26))\n|\n"++
               "+- ((8,32),(8,43))\n|\n"++ -- Indented by 4
               "`- ((10,28),(12,43))\n"
@@ -3084,10 +3084,10 @@ tree TId 0:
       -- (show forest2) `shouldBe` "forest2"
       (invariant forest2) `shouldBe` []
       (drawTreeEntry forest2) `shouldBe`
-              "((1,1),(12,43))\n|\n"++
+              "((10000000001,1),(10000000012,43))\n|\n"++
               "+- ((1,1),(8,26))\n|\n"++
               "+- ((8,26),(8,37))\n|\n"++
-              "`- ((10,28),(12,43))\n   |\n"++
+              "`- ((10000000010,28),(10000000012,43))\n   |\n"++
               "   +- ((10,26),(11,64))\n   |\n"++
               "   `- ((12,28),(12,43))\n"
 

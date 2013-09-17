@@ -1742,10 +1742,10 @@ invariant forest = rsub
         -- test
         -- TODO: is this a reasonable approach?
 
-        rs = if (start <= sstart) && ((end >= send)
-                 || (forestPosVersionSet send) || (forestPosAstVersionSet send)
-                 || (forestPosLenChanged start)
-                )
+        rs = if ((start <= sstart) &&
+                ((end >= send) || (forestPosVersionSet send) || (forestPosAstVersionSet send)))
+                || (forestPosLenChanged start)
+
                then []
                else ["FAIL: subForest start and end does not match entry: " ++ (prettyshow node)]
 
@@ -2028,6 +2028,7 @@ showSrcSpanF sspan = show (((chs,trs,vs,ls),cs),((che,tre,ve,le),ce))
     ((ForestLine chs trs vs ls,cs),(ForestLine che tre ve le,ce)) = srcSpanToForestSpan sspan
     -- chsn = if chs then 1 else 0
     -- chen = if che then 1 else 0
+
 
 -- ---------------------------------------------------------------------
 
