@@ -2,6 +2,7 @@
 ** TODO renaming with length change does not adjust surrounding layout for do/let/where/of etc
     - 'of' complete
     - 'do' complete
+** TODO rename tid to tidlong in MissingH-1.2.0.2/src/Data/Progress/Meter.hs (164,16) does not fix layout after the do
 ** TODO rename mod to parsed complains of existing variable named parsed.
      - This is not the case. Line 36 col 10
    [2013-09-10 Tue]
