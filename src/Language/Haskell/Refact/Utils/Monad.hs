@@ -23,20 +23,22 @@ module Language.Haskell.Refact.Utils.Monad
 
        ) where
 
-import Control.Monad.State
-import Exception
-import qualified Control.Monad.IO.Class as MU
 
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
 import qualified MonadUtils    as GHC
 
+import Control.Monad.State
 import Data.List
+import Data.Maybe
+import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
+import System.Log.Logger
+import qualified Control.Monad.IO.Class as MU
 
 -- ---------------------------------------------------------------------
 
@@ -169,11 +171,15 @@ initGhcSession cradle importDirs = do
                  , sandbox = (rsetSandbox settings)
                  , lineSeparator = LineSeparator "\n"
                  }
-    _readLog <- initializeFlagsWithCradle opt cradle (options settings) True
-    -- setTargetFile fileNames
-    -- checkSlowAndSet
-    void $ GHC.load GHC.LoadAllTargets
-    -- liftIO readLog
+    (_readLog,targets) <- initializeFlagsWithCradle opt cradle (options settings) True
+    liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
+
+    let (t1,t2,t3,t4) = targets
+    case t1 ++ t2 ++ t3 ++ t4 of
+      [] -> return ()
+      tgts -> do setTargetFiles tgts
+                 checkSlowAndSet
+                 void $ GHC.load GHC.LoadAllTargets
     return ()
     where
       options opt

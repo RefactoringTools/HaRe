@@ -11,6 +11,10 @@
 ** TODO check cabal support
      - It does not seem to pick up the main files. Need to see how to
        set those.
+     - pull request for ghc-mod to return those
+     - should possibly make a setting to include targets from
+       test/benchmark categories
+     - Need to manage current directory in terms of cabal.
 ** TODO liftToTopLevel in syz Zipper of g from zmapQ introduces param errors
       zmapQ f z = reverse $ downQ [] g z where
            g z' = query f z' : leftQ [] g z'
