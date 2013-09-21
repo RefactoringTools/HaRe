@@ -37,6 +37,8 @@ import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
+import System.Directory
+import System.FilePath
 import System.Log.Logger
 import qualified Control.Monad.IO.Class as MU
 
@@ -164,22 +166,31 @@ initGhcSession cradle importDirs = do
     let opt = Options {
                  outputStyle = PlainStyle
                  , hlintOpts = []
-                 , ghcOpts = ghcOptsDirs
+                 , ghcOpts = ghcOptsDirs -- ++ ["-XImplicitPrelude"]
                  , operators = False
                  , detailed = False
                  , expandSplice = False
-                 , sandbox = (rsetSandbox settings)
-                 , lineSeparator = LineSeparator "\n"
+                 -- , sandbox = (rsetSandbox settings)
+                 , lineSeparator = LineSeparator "\0"
                  }
-    (_readLog,targets) <- initializeFlagsWithCradle opt cradle (options settings) True
-    liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
+    (_readLog,mcabal) <- initializeFlagsWithCradle opt cradle (options settings) True
 
-    let (t1,t2,t3,t4) = targets
-    case t1 ++ t2 ++ t3 ++ t4 of
-      [] -> return ()
-      tgts -> do setTargetFiles tgts
-                 checkSlowAndSet
-                 void $ GHC.load GHC.LoadAllTargets
+    case mcabal of
+      Just cabal -> do
+        targets <- liftIO $ cabalAllTargets cabal
+        -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
+
+        let (t1,t2,t3,t4) = targets
+        case t1 ++ t2 ++ t3 ++ t4 of
+          [] -> return ()
+          tgts -> do
+                     -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show tgts)
+                     setTargetFiles tgts
+                     checkSlowAndSet
+                     void $ GHC.load GHC.LoadAllTargets
+
+      Nothing -> return()
+
     return ()
     where
       options opt

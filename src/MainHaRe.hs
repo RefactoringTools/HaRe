@@ -5,13 +5,11 @@
 -- Based on
 -- https://github.com/kazu-yamamoto/ghc-mod/blob/master/src/GHCMod.hs
 
-import Control.Applicative
 import Control.Exception
 import Data.List
 import Data.Maybe
 import Data.Typeable
 import Data.Version
-import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Case
 import Language.Haskell.Refact.DupDef
@@ -22,15 +20,12 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Paths_HaRe
 import Prelude
 import System.Console.GetOpt
-import System.Directory
 import System.Environment (getArgs)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 
 import Text.Parsec.Combinator
 import Text.Parsec.Prim
-import Text.Parsec.Error
 import Text.Parsec.Char
-import Text.Parsec.Token
 
 ----------------------------------------------------------------
 
@@ -115,12 +110,9 @@ main = flip catches handlers $ do
     hSetEncoding stdout utf8
 -- #endif
     args <- getArgs
-    let (opt',cmdArg) = parseArgs argspec args
-    (strVer,ver) <- getGHCVersion
-    let opt'' = optionsFromSettings opt'
-    cradle <- findCradle (sandbox opt'') strVer
-    let opt = adjustOpts opt' cradle ver
-        cmdArg0 = cmdArg !. 0
+    let (opt,cmdArg) = parseArgs argspec args
+    cradle <- findCradle
+    let cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
         cmdArg2 = cmdArg !. 2
         cmdArg3 = cmdArg !. 3
@@ -170,23 +162,17 @@ main = flip catches handlers $ do
         printUsage
 
     printUsage = hPutStrLn stderr $ '\n' : usageInfo usage argspec
-
+{-
     withFile cmd file = do
         exist <- doesFileExist file
         if exist
             then cmd file
             else throw (FileNotExist file)
+-}
     xs !. idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
 
-    adjustOpts opt cradle ver = case mPkgConf of
-            Nothing      -> opt
-            Just pkgConf -> opt {
-                rsetGhcOpts = ghcPackageConfOptions ver pkgConf ++ rsetGhcOpts opt
-              }
-      where
-        mPkgConf = cradlePackageConf cradle
 
 ----------------------------------------------------------------
 
@@ -235,19 +221,4 @@ number :: String -> P Integer
 number expectedStr = do { ds <- many1 digit; return (read ds) } <?> expectedStr
 
 ----------------------------------------------------------------
-
-optionsFromSettings :: RefactSettings -> Options
-optionsFromSettings settings = opt
-  where
-    opt = defaultOptions
-            { ghcOpts = rsetGhcOpts settings
-            , sandbox = rsetSandbox settings
-            }
-
-----------------------------------------------------------------
-
-ghcPackageConfOptions :: Int -> String -> [String]
-ghcPackageConfOptions ver file
-  | ver >= 706 = ["-package-db",   file, "-no-user-package-db"]
-  | otherwise  = ["-package-conf", file, "-no-user-package-conf"]
 

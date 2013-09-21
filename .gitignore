@@ -320,3 +320,9 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Case/E.hs.renamed_out
 /test/testdata/Case/E.hs.tokens
 
+/test/testdata/cabal/cabal1/src/Foo/Bar.hs.AST_out
+/test/testdata/cabal/cabal1/src/Foo/Bar.hs.renamed_out
+/test/testdata/cabal/cabal1/src/Foo/Bar.hs.tokens
+/test/testdata/cabal/cabal1/src/main.hs.AST_out
+/test/testdata/cabal/cabal1/src/main.hs.renamed_out
+/test/testdata/cabal/cabal1/src/main.hs.tokens

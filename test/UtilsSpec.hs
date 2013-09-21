@@ -14,6 +14,8 @@ import qualified GhcMonad   as GHC
 import Control.Monad.State
 import Data.Algorithm.Diff
 import Data.Maybe
+import Language.Haskell.GhcMod
+import Language.Haskell.Refact.Renaming
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -22,6 +24,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+import System.Directory
 
 -- ---------------------------------------------------------------------
 
@@ -86,6 +89,25 @@ spec = do
       origStr <- readFile "./test/testdata/BCpp.hs"
       let toksStr = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
       (show (filter (\(c,_) -> c /= B) $ getGroupedDiff (lines toksStr) (lines origStr))) `shouldBe` "[]"
+
+  -- -----------------------------------
+
+    it "loads a series of files based on cabal" $ do
+
+      currentDir <- getCurrentDirectory
+      currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      setCurrentDirectory "./test/testdata/cabal/cabal1"
+      d <- getCurrentDirectory
+      d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
+      cradle <- findCradle
+      -- (show cradle) `shouldBe` ""
+      -- r <- rename defaultSettings cradle "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1/src/main.hs" "baz1" (7, 13)
+      -- r <- rename defaultSettings cradle "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1/src/Foo/Bar.hs" "baz1" (3, 1)
+      r <- rename logTestSettings cradle "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1/src/Foo/Bar.hs" "baz1" (3, 1)
+      setCurrentDirectory currentDir
+
+      (show r) `shouldBe` "[\"/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1/src/Foo/Bar.hs\",\"src/main.hs\"]"
+
 
   -- -------------------------------------------------------------------
 

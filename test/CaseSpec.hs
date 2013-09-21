@@ -24,6 +24,7 @@ spec = do
     -- ---------------------------------
 
     it "converts an if expression with comments to a case expression 1 C" $ do
+
       r <- ifToCase defaultTestSettings testCradle "./test/testdata/Case/C.hs" (5,7) (10,1)
       -- ifToCase logTestSettings testCradle "./test/testdata/Case/C.hs" (5,7) (10,1)
       r `shouldBe` ["./test/testdata/Case/C.hs"]
