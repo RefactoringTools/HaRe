@@ -92,7 +92,7 @@ spec = do
 
   -- -----------------------------------
 
-    it "loads a series of files based on cabal" $ do
+    it "loads a series of files based on cabal1" $ do
 
       currentDir <- getCurrentDirectory
       -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
@@ -109,6 +109,27 @@ spec = do
       r' <- mapM makeRelativeToCurrentDirectory r
 
       (show r') `shouldBe` "[\"test/testdata/cabal/cabal1/src/Foo/Bar.hs\",\"src/main.hs\"]"
+
+
+  -- -----------------------------------
+
+    it "loads a series of files based on cabal2" $ do
+
+      currentDir <- getCurrentDirectory
+      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      setCurrentDirectory "./test/testdata/cabal/cabal2"
+      -- d <- getCurrentDirectory
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
+      cradle <- findCradle
+      -- (show cradle) `shouldBe` ""
+
+      r <- rename defaultSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
+      -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
+      setCurrentDirectory currentDir
+
+      r' <- mapM makeRelativeToCurrentDirectory r
+
+      (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main.hs\"]"
 
 
   -- -------------------------------------------------------------------
