@@ -79,12 +79,12 @@ argspec = [ Option "m" ["mainfile"]
           -- , Option "d" ["detailed"]
           --     (NoArg (\opts -> opts { detailed = True }))
           --     "print detailed info"
-          , Option "s" ["sandbox"]
-              (ReqArg (\s opts -> opts { rsetSandbox = Just s }) "path")
-              "specify cabal-dev sandbox (default 'cabal-dev`)"
           , Option "v" ["verbose"]
               (NoArg (\opts -> opts { rsetVerboseLevel = Debug }))
               "debug logging on"
+          , Option "b" ["boundary"]
+            (ReqArg (\s opts -> opts { rsetLineSeparator = LineSeparator s }) "sep")
+            "specify line separator (default is Nul string)"
           ]
 
 parseArgs :: [OptDescr (RefactSettings -> RefactSettings)] -> [String] -> (RefactSettings, [String])

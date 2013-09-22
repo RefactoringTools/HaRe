@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.Refact.Utils.Monad
@@ -51,17 +52,22 @@ data RefactSettings = RefSet
         { rsetGhcOpts      :: ![String]
         , rsetImportPaths :: ![FilePath]
         , rsetExpandSplice :: Bool
+        , rsetLineSeparator :: LineSeparator
         , rsetMainFile     :: Maybe FilePath
         , rsetCheckTokenUtilsInvariant :: !Bool
         , rsetVerboseLevel :: !VerboseLevel
         , rsetEnabledTargets :: (Bool,Bool,Bool,Bool)
         } deriving (Show)
 
+deriving instance Show LineSeparator
+
+
 defaultSettings :: RefactSettings
 defaultSettings = RefSet
     { rsetGhcOpts = []
     , rsetImportPaths = []
     , rsetExpandSplice = False
+    , rsetLineSeparator = LineSeparator "\0"
     , rsetMainFile = Nothing
     , rsetCheckTokenUtilsInvariant = False
     , rsetVerboseLevel = Normal
@@ -159,7 +165,7 @@ initGhcSession cradle importDirs = do
                  , operators = False
                  , detailed = False
                  , expandSplice = False
-                 , lineSeparator = LineSeparator "\0"
+                 , lineSeparator = rsetLineSeparator settings
                  }
     (_readLog,mcabal) <- initializeFlagsWithCradle opt cradle (options settings) True
 
