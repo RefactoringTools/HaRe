@@ -10,7 +10,9 @@ import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
+import qualified HscTypes   as GHC
 
+import Control.Exception
 import Control.Monad.State
 import Data.Algorithm.Diff
 import Data.Maybe
@@ -30,7 +32,6 @@ import System.Directory
 
 main :: IO ()
 main = do
-  -- setLogger
   hspec spec
 
 spec :: Spec
@@ -127,7 +128,14 @@ spec = do
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
 
-      r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
+      let handler = [Handler handler1]
+          handler1 :: GHC.SourceError -> IO [String]
+          handler1 _e = do
+             setCurrentDirectory currentDir
+             return []
+
+      r <- catches (rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)) handler
+      -- r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       setCurrentDirectory currentDir
 
