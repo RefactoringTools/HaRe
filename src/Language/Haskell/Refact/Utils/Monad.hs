@@ -31,15 +31,15 @@ import qualified MonadUtils    as GHC
 
 import Control.Monad.State
 import Data.List
-import Data.Maybe
+-- import Data.Maybe
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
-import System.Directory
-import System.FilePath
-import System.Log.Logger
+-- import System.Directory
+-- import System.FilePath
+-- import System.Log.Logger
 import qualified Control.Monad.IO.Class as MU
 
 -- ---------------------------------------------------------------------
@@ -52,14 +52,21 @@ data RefactSettings = RefSet
         , rsetImportPaths :: ![FilePath]
         , rsetExpandSplice :: Bool
         , rsetMainFile     :: Maybe FilePath
-        -- | The sandbox directory.
-        , rsetSandbox      :: Maybe FilePath
         , rsetCheckTokenUtilsInvariant :: !Bool
         , rsetVerboseLevel :: !VerboseLevel
+        , rsetEnabledTargets :: (Bool,Bool,Bool,Bool)
         } deriving (Show)
 
 defaultSettings :: RefactSettings
-defaultSettings = RefSet [] [] False Nothing Nothing False Normal
+defaultSettings = RefSet
+    { rsetGhcOpts = []
+    , rsetImportPaths = []
+    , rsetExpandSplice = False
+    , rsetMainFile = Nothing
+    , rsetCheckTokenUtilsInvariant = False
+    , rsetVerboseLevel = Normal
+    , rsetEnabledTargets = (True,False,True,False)
+    }
 
 logSettings :: RefactSettings
 logSettings = defaultSettings { rsetVerboseLevel = Debug }
@@ -165,9 +172,11 @@ initGhcSession cradle importDirs = do
         -- each main module and retrieve its module graph, and then
         -- set the targets to this superset.
 
-        let (libt,exet,testt,bencht) = targets
+        let targets' = getEnabledTargets settings targets
+        -- let (libt,exet,testt,bencht) = targets
         -- case libt ++ exet ++ testt ++ bencht of
-        case libt {- ++ exet -} ++ testt ++ bencht of
+        -- case libt {- ++ exet -} ++ testt ++ bencht of
+        case targets' of
           [] -> return ()
           tgts -> do
                      -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show tgts)
@@ -194,6 +203,19 @@ getRefacSettings :: RefactGhc RefactSettings
 getRefacSettings = do
   s <- get
   return (rsSettings s)
+
+-- ---------------------------------------------------------------------
+
+getEnabledTargets :: RefactSettings -> ([FilePath],[FilePath],[FilePath],[FilePath]) -> [FilePath]
+getEnabledTargets settings (libt,exet,testt,bencht) = targets
+  where
+    (libEnabled, exeEnabled, testEnabled, benchEnabled) = rsetEnabledTargets settings
+    targets = on libEnabled libt
+           ++ on exeEnabled exet
+           ++ on testEnabled testt
+           ++ on benchEnabled bencht
+
+    on flag xs = if flag then xs else []
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ trying to wrap this in GhcT, or vice versa

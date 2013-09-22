@@ -102,7 +102,9 @@ spec = do
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
 
-      r <- rename defaultSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
+
+      r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       setCurrentDirectory currentDir
 
@@ -123,7 +125,9 @@ spec = do
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
 
-      r <- rename defaultSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
+
+      r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       setCurrentDirectory currentDir
 
