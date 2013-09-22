@@ -45,7 +45,7 @@ comp fileName (row, col) = do
        -- putStrLn $ showParsedModule mod
        -- let pnt = locToPNT fileName (row, col) mod
 
-       let name = locToName (GHC.mkFastString fileName) (row, col) renamed
+       let name = locToName (row, col) renamed
        -- error (SYB.showData SYB.Parser 0 name)
 
        case name of

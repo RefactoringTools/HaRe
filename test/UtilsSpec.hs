@@ -95,15 +95,18 @@ spec = do
     it "loads a series of files based on cabal" $ do
 
       currentDir <- getCurrentDirectory
-      currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
       setCurrentDirectory "./test/testdata/cabal/cabal1"
       d <- getCurrentDirectory
-      d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
       -- r <- rename defaultSettings cradle "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1/src/main.hs" "baz1" (7, 13)
       -- r <- rename defaultSettings cradle "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1/src/Foo/Bar.hs" "baz1" (3, 1)
-      r <- rename logTestSettings cradle "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1/src/Foo/Bar.hs" "baz1" (3, 1)
+
+      -- r <- rename logTestSettings cradle "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1/src/Foo/Bar.hs" "baz1" (3, 1)
+      -- r <- rename logTestSettings cradle "./test/testdata/cabal/cabal1/src/Foo/Bar.hs" "baz1" (3, 1) -- Nope
+      r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       setCurrentDirectory currentDir
 
       (show r) `shouldBe` "[\"/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1/src/Foo/Bar.hs\",\"src/main.hs\"]"

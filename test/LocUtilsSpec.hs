@@ -4,20 +4,11 @@ import           Test.Hspec
 
 import           TestUtils
 
--- import qualified Bag        as GHC
--- import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified GhcMonad   as GHC
 import qualified Lexer      as GHC
--- import qualified Name       as GHC
--- import qualified Outputable as GHC
--- import qualified RdrName    as GHC
 import qualified SrcLoc     as GHC
-
--- import qualified Data.Generics.Schemes as SYB
--- import qualified Data.Generics.Aliases as SYB
--- import qualified GHC.SYB.Utils         as SYB
 
 import Control.Monad.State
 import Data.Maybe
@@ -89,7 +80,7 @@ spec = do
 
       let declsr = hsBinds renamed
 
-      let Just (GHC.L _ sq) = locToName whereIn3FileName (14, 1) renamed
+      let Just (GHC.L _ sq) = locToName (14, 1) renamed
       let (Just sqSig, _sigToks) =
             case (getSigAndToks sq renamed toks) of
               Just (sig, sigToks) -> (Just sig, sigToks)
@@ -141,7 +132,7 @@ spec = do
 
       let declsr = hsBinds renamed
 
-      let Just (GHC.L _ _sq) = locToName tokenTestFileName (19, 1) renamed
+      let Just (GHC.L _ _sq) = locToName (19, 1) renamed
 
       let decls = filter isFunOrPatBindR declsr
 

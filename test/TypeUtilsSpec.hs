@@ -1,7 +1,6 @@
 module TypeUtilsSpec (main, spec) where
 
 import           Test.Hspec
--- import           Test.QuickCheck
 
 import           TestUtils
 
@@ -23,9 +22,9 @@ import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
-import System.Environment
+-- import System.Environment
 
-import Data.Tree
+-- import Data.Tree
 import qualified Data.Tree.Zipper as Z
 
 import qualified Data.Map as Map
@@ -97,7 +96,7 @@ spec = do
       modInfo@(t, toks) <- parsedFileSGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (res@(GHC.L l n)) = locToName sFileName (4,5) renamed
+      let Just (res@(GHC.L l n)) = locToName (4,5) renamed
       (showGhc n) `shouldBe` "x"
 
       let res = findAllNameOccurences n renamed
@@ -113,7 +112,7 @@ spec = do
       (t, _toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (res@(GHC.L l n)) = locToName bFileName (7,3) renamed
+      let Just (res@(GHC.L l n)) = locToName (7,3) renamed
       showGhc l `shouldBe` "test/testdata/TypeUtils/B.hs:7:1-3"
       getLocatedStart res `shouldBe` (7,1)
       showGhc n `shouldBe` "TypeUtils.B.foo"
@@ -125,7 +124,7 @@ spec = do
       (t, _toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (res@(GHC.L l n)) = locToName bFileName (25,8) renamed
+      let Just (res@(GHC.L l n)) = locToName (25,8) renamed
       showGhc n `shouldBe` "TypeUtils.B.bob"
       showGhc l `shouldBe` "test/testdata/TypeUtils/B.hs:25:7-9"
       getLocatedStart res `shouldBe` (25,7)
@@ -136,7 +135,7 @@ spec = do
       (t, _toks) <- parsedFileBGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let res = locToName bFileName (7,7) renamed
+      let res = locToName (7,7) renamed
       (showGhc res) `shouldBe` "Nothing"
 
     -- ---------------------------------
@@ -145,7 +144,7 @@ spec = do
       (t, _toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn2.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (res@(GHC.L l n)) = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn2.hs") (14,1) renamed
+      let Just (res@(GHC.L l n)) = locToName (14,1) renamed
       showGhc n `shouldBe` "Demote.WhereIn2.sq"
       -- Note: loc does not line up due to multiple matches in FunBind
       showGhc l `shouldBe` "test/testdata/Demote/WhereIn2.hs:13:1-2"
@@ -157,7 +156,7 @@ spec = do
       (t, _toks) <- parsedFileGhc "./test/testdata/Renaming/ConstructorIn3.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (res@(GHC.L l n)) = locToName (GHC.mkFastString "./test/testdata/Renaming/ConstructorIn3.hs") (9,12) renamed
+      let Just (res@(GHC.L l n)) = locToName (9,12) renamed
       showGhc n `shouldBe` "a"
       -- Note: loc does not line up due to multiple matches in FunBind
       showGhc l `shouldBe` "test/testdata/Renaming/ConstructorIn3.hs:9:12"
@@ -169,7 +168,7 @@ spec = do
       (t, _toks) <- parsedFileGhc "./test/testdata/Renaming/ClassIn3.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
-      let Just (res@(GHC.L l n)) = locToName (GHC.mkFastString "./test/testdata/Renaming/ClassIn3.hs") (16,10) renamed
+      let Just (res@(GHC.L l n)) = locToName (16,10) renamed
       showGhc n `shouldBe` "GHC.Classes.Eq"
       showGhc l `shouldBe` "test/testdata/Renaming/ClassIn3.hs:16:10-11"
       getLocatedStart res `shouldBe` (16,10)
@@ -181,7 +180,7 @@ spec = do
       (t, _toks) <- parsedFileRenamingD5
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let Just (res@(GHC.L l n)) = locToRdrName renamingD5FileName (20,1) parsed
+      let Just (res@(GHC.L l n)) = locToRdrName (20,1) parsed
       showGhc l `shouldBe` "test/testdata/Renaming/D5.hs:20:1-10"
       getLocatedStart res `shouldBe` (20,1)
       showGhc n `shouldBe` "sumSquares"
@@ -190,7 +189,7 @@ spec = do
       (t, _toks) <- parsedFileLocToName
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let Just (res@(GHC.L l n)) = locToRdrName locToNameFileName (24,2) parsed
+      let Just (res@(GHC.L l n)) = locToRdrName (24,2) parsed
       showGhc n `shouldBe` "sumSquares"
       getLocatedStart res `shouldBe` (20,1) -- Because second match discards name
       showGhc l `shouldBe` "test/testdata/LocToName.hs:20:1-10"
@@ -333,7 +332,7 @@ spec = do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just ((GHC.L _ n)) = locToName dd1FileName (16,6) renamed
+      let Just ((GHC.L _ n)) = locToName (16,6) renamed
       let res = definingDeclsNames [n] (hsBinds renamed) False False
       showGhc res `shouldBe` "[]"
 
@@ -342,7 +341,7 @@ spec = do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L _ n) = locToName dd1FileName (3,3) renamed
+      let Just (GHC.L _ n) = locToName (3,3) renamed
       let res = definingDeclsNames [n] (hsBinds renamed) False False
       showGhc res `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
 
@@ -369,7 +368,7 @@ spec = do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L _ n) = locToName dd1FileName (14,1) renamed
+      let Just (GHC.L _ n) = locToName (14,1) renamed
       let res = definingDeclsNames [n] (hsBinds renamed) False False
       showGhc res `shouldBe` "[DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15]"
 
@@ -422,7 +421,7 @@ spec = do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just ((GHC.L _ n)) = locToName dd1FileName (21,1) renamed
+      let Just ((GHC.L _ n)) = locToName (21,1) renamed
       showGhc n `shouldBe` "DupDef.Dd1.ff"
       let res = definingSigsNames [n] renamed
       showGhc res `shouldBe` "[]"
@@ -431,7 +430,7 @@ spec = do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just ((GHC.L _ n)) = locToName dd1FileName (4,1) renamed
+      let Just ((GHC.L _ n)) = locToName (4,1) renamed
       showGhc n `shouldBe` "DupDef.Dd1.toplevel"
       let res = definingSigsNames [n] renamed
       showGhc res `shouldBe` "[DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
@@ -440,7 +439,7 @@ spec = do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just ((GHC.L _ n)) = locToName dd1FileName (7,1) renamed
+      let Just ((GHC.L _ n)) = locToName (7,1) renamed
       showGhc n `shouldBe` "DupDef.Dd1.c"
       let res = definingSigsNames [n] renamed
       showGhc res `shouldBe`  "[DupDef.Dd1.c :: GHC.Integer.Type.Integer]"
@@ -449,7 +448,7 @@ spec = do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just ((GHC.L _ n)) = locToName dd1FileName (16,5) renamed
+      let Just ((GHC.L _ n)) = locToName (16,5) renamed
       showGhc n `shouldBe` "ff"
       let res = definingSigsNames [n] renamed
       showGhc res `shouldBe` "[ff :: GHC.Types.Int]"
@@ -458,13 +457,13 @@ spec = do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just ((GHC.L _ n1)) = locToName dd1FileName (21,1) renamed
+      let Just ((GHC.L _ n1)) = locToName (21,1) renamed
       showGhc n1 `shouldBe` "DupDef.Dd1.ff"
 
-      let Just ((GHC.L _ n2)) = locToName dd1FileName (16,5) renamed
+      let Just ((GHC.L _ n2)) = locToName (16,5) renamed
       showGhc n2 `shouldBe` "ff"
 
-      let Just ((GHC.L _ n3)) = locToName dd1FileName (4,1) renamed
+      let Just ((GHC.L _ n3)) = locToName (4,1) renamed
       showGhc n3 `shouldBe` "DupDef.Dd1.toplevel"
 
       let res = definingSigsNames [n1,n2,n3] renamed
@@ -797,14 +796,14 @@ spec = do
     it "returns True if the name is local to the module" $ do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let Just (GHC.L _ n) = locToName dd1FileName (17, 5) renamed
+      let Just (GHC.L _ n) = locToName (17, 5) renamed
       (showGhc n) `shouldBe` "ff"
       isLocalPN n `shouldBe` True
 
     it "returns False if the name is not local to the module" $ do
       (t, _toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let Just (GHC.L _ n) = locToName dd1FileName (21, 1) renamed
+      let Just (GHC.L _ n) = locToName (21, 1) renamed
       (showGhc n) `shouldBe` "DupDef.Dd1.ff"
       isLocalPN n `shouldBe` False
 
@@ -816,7 +815,7 @@ spec = do
       let
         comp = do
           renamed <- getRefactRenamed
-          let Just (GHC.L _ n) = locToName dd1FileName (17, 5) renamed
+          let Just (GHC.L _ n) = locToName (17, 5) renamed
           topLevel <- isTopLevelPN n
           return (n,topLevel)
       ((nf,tl),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -828,7 +827,7 @@ spec = do
       let
         comp = do
           renamed <- getRefactRenamed
-          let Just (GHC.L _ n) = locToName dd1FileName (21, 1) renamed
+          let Just (GHC.L _ n) = locToName (21, 1) renamed
           topLevel <- isTopLevelPN n
           return (n,topLevel)
 
@@ -843,7 +842,7 @@ spec = do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L _ pn) = locToName dd1FileName (3, 1) renamed
+      let Just (GHC.L _ pn) = locToName (3, 1) renamed
       (showGhc pn) `shouldBe` "DupDef.Dd1.toplevel"
 
       let origDecls = hsBinds renamed
@@ -858,7 +857,7 @@ spec = do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L _ pn) = locToName dd1FileName (14, 1) renamed
+      let Just (GHC.L _ pn) = locToName (14, 1) renamed
       (showGhc pn) `shouldBe` "DupDef.Dd1.tup"
 
       let origDecls = hsBinds renamed
@@ -922,7 +921,7 @@ spec = do
 
          ctx <- GHC.getContext
 
-         let Just sumSquares = locToName (GHC.mkFastString "./test/testdata/ScopeAndQual.hs") (13,15) renamed
+         let Just sumSquares = locToName (13,15) renamed
          ssUnqual <- isQualifiedPN $ GHC.unLoc sumSquares
          names <- GHC.parseName "sum"
          names2 <- GHC.parseName "mySumSq"
@@ -1009,7 +1008,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
-      let Just (GHC.L _ n) = locToName dd1FileName (3, 1) renamed
+      let Just (GHC.L _ n) = locToName (3, 1) renamed
       let
         comp = do
          _newName <- mkNewGhcName Nothing "bar"
@@ -1032,7 +1031,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
-      let Just (GHC.L l n) = locToName dd1FileName (17, 6) renamed
+      let Just (GHC.L l n) = locToName (17, 6) renamed
       (showGhc n) `shouldBe` "ff"
       let
         comp = do
@@ -1067,7 +1066,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
-      let Just (GHC.L _ n) = locToName md1FileName (3, 1) renamed
+      let Just (GHC.L _ n) = locToName (3, 1) renamed
       let
         comp = do
          _newName <- mkNewGhcName Nothing "bar"
@@ -1090,7 +1089,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
-      let Just (GHC.L _ n) = locToName addParams1FileName (3, 1) renamed
+      let Just (GHC.L _ n) = locToName (3, 1) renamed
       let
         comp = do
          newName <- mkNewGhcName Nothing "pow"
@@ -1112,7 +1111,7 @@ spec = do
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       let declsr = hsBinds renamed
-      let Just (GHC.L _ n) = locToName addParams1FileName (6, 1) renamed
+      let Just (GHC.L _ n) = locToName (6, 1) renamed
       let
         comp = do
          newName1 <- mkNewGhcName Nothing "baz"
@@ -1140,7 +1139,7 @@ spec = do
       let decl = head declsr
       (showGhc decl) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = sq x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
       -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
-      let Just (GHC.L _ n) = locToName liftD1FileName (6, 21) renamed
+      let Just (GHC.L _ n) = locToName (6, 21) renamed
       let
         comp = do
          _newName <- mkNewGhcName Nothing "bar"
@@ -1167,7 +1166,7 @@ spec = do
       let decl = head declsr
       (showGhc decl) `shouldBe` "LiftToToplevel.WhereIn7.fun x y z\n  = inc addthree\n  where\n      inc a = a GHC.Num.+ 1\n      addthree = x GHC.Num.+ y GHC.Num.+ z"
       -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
-      let Just (GHC.L _ n) = locToName liftWhereIn7FileName (10, 17) renamed
+      let Just (GHC.L _ n) = locToName (10, 17) renamed
       let
         comp = do
          newName1 <- mkNewGhcName Nothing "x1"
@@ -1192,7 +1191,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
-      let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
+      let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
          (newDecls,removedDecl,removedSig) <- rmDecl n False declsr
@@ -1212,7 +1211,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       -- let declsr = hsBinds renamed
-      let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
+      let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
          (newDecls,_removedDecl,_removedSig) <- rmDecl n True renamed
@@ -1234,7 +1233,7 @@ spec = do
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       let declsr = hsBinds renamed
-      let Just (GHC.L _ n) = locToName liftLetIn1FileName (11, 22) renamed
+      let Just (GHC.L _ n) = locToName (11, 22) renamed
       let
         comp = do
          (newDecls,removedDecl,removedSig) <- rmDecl n True declsr
@@ -1254,7 +1253,7 @@ spec = do
     it "removes a type signature from the top level" $ do
       (t, toks) <- parsedFileMd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let Just (GHC.L _ n) = locToName md1FileName (22, 1) renamed
+      let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
          (renamed',sigRemoved) <- rmTypeSig n renamed
@@ -1272,7 +1271,7 @@ spec = do
     it "removes a type signature from the top level, after decl removed" $ do
       (t, toks) <- parsedFileWhereIn3Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let Just (GHC.L _ n) = locToName whereIn3FileName (14, 1) renamed
+      let Just (GHC.L _ n) = locToName (14, 1) renamed
       let
         comp = do
          (ds,removedDecl,removedSig) <- rmDecl n True (hsBinds renamed)
@@ -1293,7 +1292,7 @@ spec = do
     it "removes a type signature from non-top level" $ do
       (t, toks) <- parsedFileMd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let Just (GHC.L _ n) = locToName md1FileName (16, 5) renamed
+      let Just (GHC.L _ n) = locToName (16, 5) renamed
       let
         comp = do
          (renamed',removedSig) <- rmTypeSig n renamed
@@ -1311,7 +1310,7 @@ spec = do
     it "removes a type signature within multi signatures 1" $ do
       (t, toks) <- parsedFileTypeSigs
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let Just (GHC.L _ b) = locToName typeSigsFileName (12, 1) renamed
+      let Just (GHC.L _ b) = locToName (12, 1) renamed
       let
         comp = do
          (renamed',removedSig) <- rmTypeSig b renamed
@@ -1329,7 +1328,7 @@ spec = do
     it "removes a type signature within multi signatures 2" $ do
       (t, toks) <- parsedFileTypeSigs
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let Just (GHC.L _ n) = locToName typeSigsFileName (4, 1) renamed
+      let Just (GHC.L _ n) = locToName (4, 1) renamed
       let
         comp = do
          (renamed',removedSig) <- rmTypeSig n renamed
@@ -1429,7 +1428,7 @@ spec = do
       let
         comp = do
          renamed <- getRefactRenamed
-         let Just (GHC.L l n) = locToName md1FileName (21, 1) renamed
+         let Just (GHC.L l n) = locToName (21, 1) renamed
          nn  <- mkNewGhcName Nothing "nn"
          nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
@@ -1451,7 +1450,7 @@ spec = do
       let
         comp = do
          renamed <- getRefactRenamed
-         let Just (GHC.L l n) = locToName md1FileName (21, 1) renamed
+         let Just (GHC.L l n) = locToName (21, 1) renamed
          nn  <- mkNewGhcName Nothing "nn"
          nn2 <- mkNewGhcName Nothing "nn2"
          let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
@@ -1481,7 +1480,7 @@ spec = do
 
          renamed <- getRefactRenamed
 
-         let Just (GHC.L _ tl) = locToName md1FileName (4, 1) renamed
+         let Just (GHC.L _ tl) = locToName (4, 1) renamed
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
@@ -1508,7 +1507,7 @@ spec = do
 
          renamed <- getRefactRenamed
 
-         let Just (GHC.L _ tl) = locToName md1FileName (4, 1) renamed
+         let Just (GHC.L _ tl) = locToName (4, 1) renamed
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
@@ -1541,7 +1540,7 @@ spec = do
 
          renamed <- getRefactRenamed
 
-         let Just (GHC.L _ tl) = locToName demoteFileName (4, 1) renamed
+         let Just (GHC.L _ tl) = locToName (4, 1) renamed
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
@@ -1568,7 +1567,7 @@ spec = do
 
          renamed <- getRefactRenamed
 
-         let Just (GHC.L _ tl) = locToName md2FileName (4, 1) renamed
+         let Just (GHC.L _ tl) = locToName (4, 1) renamed
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
@@ -1594,7 +1593,7 @@ spec = do
 
          renamed <- getRefactRenamed
 
-         let Just (GHC.L _ tl) = locToName md2FileName (4, 1) renamed
+         let Just (GHC.L _ tl) = locToName (4, 1) renamed
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
@@ -1627,11 +1626,11 @@ spec = do
         comp = do
          renamed <- getRefactRenamed
 
-         let Just (GHC.L _ tl) = locToName whereIn3FileName (10, 1) renamed
+         let Just (GHC.L _ tl) = locToName (10, 1) renamed
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         let Just (GHC.L _ sq) = locToName whereIn3FileName (14, 1) renamed
+         let Just (GHC.L _ sq) = locToName (14, 1) renamed
 
          let [sqDecl] = definingDeclsNames [sq] (hsBinds renamed) False False
              [sqSig]  = definingSigsNames  [sq] renamed
@@ -1659,11 +1658,11 @@ spec = do
 
          renamed <- getRefactRenamed
 
-         let Just (GHC.L _ tl) = locToName whereIn3FileName (10, 1) renamed
+         let Just (GHC.L _ tl) = locToName (10, 1) renamed
          let declsr = hsBinds renamed
              [tlDecls] = definingDeclsNames [tl] declsr True False
 
-         let Just (GHC.L _ sq) = locToName whereIn3FileName (14, 1) renamed
+         let Just (GHC.L _ sq) = locToName (14, 1) renamed
 
          {-
          let [sqDecl] = definingDeclsNames [sq] (hsBinds renamed) False False
@@ -1705,7 +1704,7 @@ spec = do
 
       let declsr = hsBinds renamed
       -- (showGhc declsr) `shouldBe` ""
-      let Just (GHC.L l n) = locToName dd1FileName (3, 1) renamed
+      let Just (GHC.L l n) = locToName (3, 1) renamed
       let
         comp = do
          newName <- mkNewGhcName Nothing "bar2"
@@ -1734,7 +1733,7 @@ spec = do
       let decl = head $ drop 2 declsr
       (showGhc decl) `shouldBe` "Demote.WhereIn4.sumSquares x y\n  = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n  where\n      p = 2"
 
-      let Just (GHC.L l n) = locToName whereIn4FileName (11, 21) renamed
+      let Just (GHC.L l n) = locToName (11, 21) renamed
       let
         comp = do
          newName <- mkNewGhcName Nothing "p_1"
@@ -1763,7 +1762,7 @@ spec = do
       let (GHC.L l _) = head decls
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
-      let Just (GHC.L _ n) = locToName tokenTestFileName (19, 1) renamed
+      let Just (GHC.L _ n) = locToName (19, 1) renamed
       (showGhc n) `shouldBe` "TokenTest.foo"
 
       let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
@@ -1813,7 +1812,7 @@ spec = do
       let decl@(GHC.L l _) = head decls
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
-      let Just (GHC.L _ n) = locToName tokenTestFileName (19, 1) renamed
+      let Just (GHC.L _ n) = locToName (19, 1) renamed
       (showGhc n) `shouldBe` "TokenTest.foo"
 
       let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
@@ -1870,7 +1869,7 @@ spec = do
       let decl@(GHC.L l _) = head $ drop 6 decls
       (showGhc l) `shouldBe` "test/testdata/DupDef/Dd1.hs:4:1-18"
       (showSrcSpan l) `shouldBe` "((4,1),(4,19))"
-      let Just (GHC.L _ n) = locToName dd1FileName(4, 1) renamed
+      let Just (GHC.L _ n) = locToName (4, 1) renamed
       (showGhc n) `shouldBe` "DupDef.Dd1.toplevel"
 
       -- let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan l)
@@ -1992,7 +1991,7 @@ spec = do
       (t, toks) <- parsedFileRenamingField1
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName renamingField1FileName (5, 19) renamed
+      let Just (GHC.L l n) = locToName (5, 19) renamed
       let
         comp = do
          newName <- mkNewGhcName Nothing "pointx1"
@@ -2016,7 +2015,7 @@ spec = do
       (t, toks) <- parsedFileRenamingField1
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName renamingField1FileName (5, 6) renamed
+      let Just (GHC.L l n) = locToName (5, 6) renamed
       let
         comp = do
          newName <- mkNewGhcName Nothing "NewPoint"
@@ -2038,7 +2037,7 @@ spec = do
       (t, toks) <- parsedFileLocToName
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName locToNameFileName (20, 1) renamed
+      let Just (GHC.L l n) = locToName (20, 1) renamed
       let
         comp = do
          newName <- mkNewGhcName Nothing "newPoint"
@@ -2062,7 +2061,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
 
-      let Just (GHC.L l n) = locToName locToNameFileName (20, 1) renamed
+      let Just (GHC.L l n) = locToName (20, 1) renamed
       let
         comp = do
          newName <- mkNewGhcName (Just modu) "newPoint"
@@ -2085,7 +2084,7 @@ spec = do
       (t, toks) <- parsedFileLayoutIn2
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutIn2FileName (8, 7) renamed
+      let Just (GHC.L l n) = locToName (8, 7) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2112,7 +2111,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
 
-      let Just (GHC.L l n) = locToName scopeAndQualFileName (4, 24) renamed
+      let Just (GHC.L l n) = locToName (4, 24) renamed
       let
         comp = do
          newName <- mkNewGhcName (Just modu) "mySum"
@@ -2136,7 +2135,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
 
-      let Just (GHC.L l n) = locToName renamingC7FileName (5, 1) renamed
+      let Just (GHC.L l n) = locToName (5, 1) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2159,7 +2158,7 @@ spec = do
       (t, toks) <- parsedFileLayoutIn2
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutIn2FileName (8, 7) renamed
+      let Just (GHC.L l n) = locToName (8, 7) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2185,7 +2184,7 @@ spec = do
       (t, toks) <- parsedFileLayoutIn2
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutIn2FileName (8, 7) renamed
+      let Just (GHC.L l n) = locToName (8, 7) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2210,7 +2209,7 @@ spec = do
       (t, toks) <- parsedFileLayoutIn4
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutIn4FileName (7, 8) renamed
+      let Just (GHC.L l n) = locToName (7, 8) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2235,7 +2234,7 @@ spec = do
       (t, toks) <- parsedFileLayoutIn4
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutIn4FileName (7, 8) renamed
+      let Just (GHC.L l n) = locToName (7, 8) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2259,7 +2258,7 @@ spec = do
       (t, toks) <- parsedFileLayoutIn1
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutIn1FileName (7, 17) renamed
+      let Just (GHC.L l n) = locToName (7, 17) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2284,7 +2283,7 @@ spec = do
       (t, toks) <- parsedFileLayoutIn1
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutIn1FileName (7, 17) renamed
+      let Just (GHC.L l n) = locToName (7, 17) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2308,7 +2307,7 @@ spec = do
       (t, toks) <- parsedFileLayoutLet1
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutLet1FileName (6, 6) renamed
+      let Just (GHC.L l n) = locToName (6, 6) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2332,7 +2331,7 @@ spec = do
       (t, toks) <- parsedFileLayoutLet1
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutLet1FileName (6, 6) renamed
+      let Just (GHC.L l n) = locToName (6, 6) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2357,7 +2356,7 @@ spec = do
       (t, toks) <- parsedFileLayoutLet2
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName layoutLet2FileName (7, 6) renamed
+      let Just (GHC.L l n) = locToName (7, 6) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2383,7 +2382,7 @@ spec = do
       (t, toks) <- parsedFileRenamingC7
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L _l n) = locToName renamingC7FileName (7, 1) renamed
+      let Just (GHC.L _l n) = locToName (7, 1) renamed
       let
         comp = do
          _new <- qualifyToplevelName n
@@ -2409,7 +2408,7 @@ spec = do
          putParsedModule t toks
          parentr <- getRefactRenamed
 
-         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
+         let mn = locToName (4,1) parentr
          let (Just (ln@(GHC.L _ n))) = mn
 
          let declsr = hsBinds parentr
@@ -2434,10 +2433,10 @@ spec = do
          putParsedModule t toks
          parentr <- getRefactRenamed
 
-         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) parentr
+         let mn = locToName (4,1) parentr
          let (Just (ln@(GHC.L _ n))) = mn
 
-         let mltup = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (11,1) parentr
+         let mltup = locToName (11,1) parentr
          let (Just (ltup@(GHC.L _ tup))) = mltup
 
          let declsr = hsBinds parentr
@@ -2539,10 +2538,10 @@ spec = do
         comp = do
          renamed <- getRefactRenamed
 
-         let mn1 = locToName renamingB1FileName (11,1) renamed
+         let mn1 = locToName (11,1) renamed
          let (Just (GHC.L _ myFringe)) = mn1
 
-         let mn2 = locToName renamingB1FileName (15,1) renamed
+         let mn2 = locToName (15,1) renamed
          let (Just (GHC.L _ sumSquares)) = mn2
 
          exMyFring <- isExported myFringe
@@ -2573,7 +2572,7 @@ spec = do
          let parsed1 = GHC.pm_parsed_source $ GHC.tm_parsed_module t1
          -- let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
 
-         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) renamed1
+         let mn = locToName (4,1) renamed1
          let (Just (GHC.L _ n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
@@ -2601,7 +2600,7 @@ spec = do
          let parsed1 = GHC.pm_parsed_source $ GHC.tm_parsed_module t1
          -- let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
 
-         let mn = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (4,1) renamed1
+         let mn = locToName (4,1) renamed1
          let (Just (GHC.L _ n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
@@ -2625,7 +2624,7 @@ spec = do
           renamed <- getRefactRenamed
           parsed <- getRefactParsed
 
-          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/DupDef/Dd1.hs") (14,21) renamed
+          let Just n@(GHC.L _ name) = locToName (14,21) renamed
           let res = usedWithoutQualR name parsed
           return (res,n,name)
 
@@ -2644,9 +2643,9 @@ spec = do
           renamed <- getRefactRenamed
           parsed <- getRefactParsed
 
-          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) renamed
+          let Just n@(GHC.L _ name) = locToName (36,12) renamed
           -- let PNT np@(GHC.L _ namep) = locToPNT (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
-          let Just np@(GHC.L _ namep) = locToRdrName (GHC.mkFastString "./test/testdata/FreeAndDeclared/Declare.hs") (36,12) parsed
+          let Just np@(GHC.L _ namep) = locToRdrName (36,12) parsed
           let res = usedWithoutQualR name parsed
           return (res,namep,name,n)
       -- ((r,np,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }
@@ -2684,7 +2683,7 @@ spec = do
       -- Is this the right module?
       let Just (modName,_) = getModuleName parsed
 
-      let Just (GHC.L _ myFringe) = locToName (GHC.mkFastString "./test/testdata/Renaming/ConflictExport.hs") (9,1) renamed
+      let Just (GHC.L _ myFringe) = locToName (9,1) renamed
       (showGhc myFringe) `shouldBe` "Renaming.ConflictExport.myFringe"
 
       -- old name is myFringe
@@ -2709,7 +2708,7 @@ spec = do
       -- Is this the right module?
       let Just (modName,_) = getModuleName parsed
 
-      let Just (GHC.L _ myFringe) = locToName (GHC.mkFastString "./test/testdata/Renaming/ConflictExport.hs") (9,1) renamed
+      let Just (GHC.L _ myFringe) = locToName (9,1) renamed
       (showGhc myFringe) `shouldBe` "Renaming.ConflictExport.myFringe"
 
       -- old name is myFringe
@@ -2734,7 +2733,7 @@ spec = do
           putParsedModule t toks
           renamed <- getRefactRenamed
 
-          let Just n@(GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Md1.hs") (40,4) renamed
+          let Just n@(GHC.L _ name) = locToName (40,4) renamed
           let res = getDeclAndToks name True toks renamed
           return (res,n,name)
 
@@ -2774,7 +2773,7 @@ This function is not used and has been removed
         comp = do
           renamed <- getRefactRenamed
 
-          let Just (GHC.L _ sq) = locToName whereIn3FileName (14, 1) renamed
+          let Just (GHC.L _ sq) = locToName (14, 1) renamed
 
           let ([sqDecl],declToks) = getDeclAndToks sq True toks renamed
 
@@ -2799,8 +2798,8 @@ This function is not used and has been removed
           putParsedModule t toks
           renamed <- getRefactRenamed
 
-          let Just (GHC.L _ tl)   = locToName (GHC.mkFastString "./test/testdata/MoveDef/Demote.hs") (4,1) renamed
-          let Just (GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/MoveDef/Demote.hs") (7,1) renamed
+          let Just (GHC.L _ tl)   = locToName (4,1) renamed
+          let Just (GHC.L _ name) = locToName (7,1) renamed
           let decls = (definingDeclsNames [tl] (hsBinds renamed) False False)
           decls' <- rmQualifier [name] decls
 
@@ -2825,8 +2824,8 @@ This function is not used and has been removed
           putParsedModule t toks
           renamed <- getRefactRenamed
 
-          let Just (GHC.L _ tl)   = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs") (11,1) renamed
-          let Just (GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs") (11,21) renamed
+          let Just (GHC.L _ tl)   = locToName (11,1) renamed
+          let Just (GHC.L _ name) = locToName (11,21) renamed
           let decls = (definingDeclsNames [tl] (hsBinds renamed) False False)
           decls' <- autoRenameLocalVar False name decls
 
@@ -2847,8 +2846,8 @@ This function is not used and has been removed
           putParsedModule t toks
           renamed <- getRefactRenamed
 
-          let Just (GHC.L _ tl)   = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs") (11,1) renamed
-          let Just (GHC.L _ name) = locToName (GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs") (11,21) renamed
+          let Just (GHC.L _ tl)   = locToName (11,1) renamed
+          let Just (GHC.L _ name) = locToName (11,21) renamed
           let decls = (definingDeclsNames [tl] (hsBinds renamed) False False)
           decls' <- autoRenameLocalVar True name decls
 
@@ -3093,8 +3092,8 @@ This function is not used and has been removed
     it "returns True if a Name is a field name" $ do
       (t,_toks) <- parsedFileRenamingField3
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let Just (GHC.L _ nf) = locToName renamingField3FileName (10,21) renamed
-      let Just (GHC.L _ n) = locToName renamingField3FileName (10,1) renamed
+      let Just (GHC.L _ nf) = locToName (10,21) renamed
+      let Just (GHC.L _ n) = locToName (10,1) renamed
 
       (showGhc n) `shouldBe` "Field3.absPoint"
       (showGhc nf) `shouldBe` "Field3.pointx"
@@ -3108,11 +3107,11 @@ This function is not used and has been removed
     it "classifies names" $ do
       (t,_toks) <- parsedFileCon
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let Just (GHC.L _ n1) = locToName conFileName (3,6) renamed
-      let Just (GHC.L _ n2) = locToName conFileName (3,12) renamed
-      let Just (GHC.L _ n3) = locToName conFileName (3,16) renamed
-      let Just (GHC.L _ n4) = locToName conFileName (5,1) renamed
-      let Just (GHC.L _ n5) = locToName conFileName (8,5) renamed
+      let Just (GHC.L _ n1) = locToName (3,6) renamed
+      let Just (GHC.L _ n2) = locToName (3,12) renamed
+      let Just (GHC.L _ n3) = locToName (3,16) renamed
+      let Just (GHC.L _ n4) = locToName (5,1) renamed
+      let Just (GHC.L _ n5) = locToName (8,5) renamed
 
       (showGhc n1) `shouldBe` "Main.Foo"
       "11" ++ (show $ GHC.isTyVarName n1)   `shouldBe` "11False"

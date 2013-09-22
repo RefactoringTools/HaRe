@@ -4,7 +4,6 @@ module Language.Haskell.Refact.DupDef(duplicateDef) where
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import qualified FastString            as GHC
 import qualified GHC
 import qualified OccName               as GHC
 
@@ -39,7 +38,7 @@ comp fileName newName (row, col) = do
                 parsed  <- getRefactParsed
 
                 let (Just (modName,_)) = getModuleName parsed
-                let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
+                let maybePn = locToName (row, col) renamed
                 case maybePn of
                   Just pn ->
                        do

@@ -5,8 +5,6 @@ import           Test.Hspec
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified Lexer      as GHC
--- import qualified Outputable as GHC
--- import qualified SrcLoc     as GHC
 
 import qualified GHC.SYB.Utils as SYB
 
@@ -110,7 +108,7 @@ spec = do
       (showGhc decl) `shouldBe` "DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x"
       (showToks declToks) `shouldBe` "[(((4,1),(4,1)),ITsemi,\"\"),(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),(((4,10),(4,11)),ITvarid \"x\",\"x\"),(((4,12),(4,13)),ITequal,\"=\"),(((4,14),(4,15)),ITvarid \"c\",\"c\"),(((4,16),(4,17)),ITstar,\"*\"),(((4,18),(4,19)),ITvarid \"x\",\"x\")]"
 
-      let Just (GHC.L _ n) = locToName dupDefDd1FileName (4, 2) renamed
+      let Just (GHC.L _ n) = locToName (4, 2) renamed
       let typeSig = head $ definingSigsNames [n] renamed
       let (GHC.L ln _) = typeSig
       (showSrcSpan ln) `shouldBe` "((3,1),(3,31))"
@@ -169,7 +167,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let forest = mkTreeFromTokens toks
 
-      let Just (GHC.L _ n) = locToName dupDefDd1FileName (23, 5) renamed
+      let Just (GHC.L _ n) = locToName (23, 5) renamed
       (showGhc n) `shouldBe` "zz"
 
       let sspan = posToSrcSpan forest ((23,5),(23,11))
@@ -214,7 +212,7 @@ spec = do
       (showGhc decl) `shouldBe` "DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x"
       (showToks declToks) `shouldBe` "[(((4,1),(4,1)),ITsemi,\"\"),(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),(((4,10),(4,11)),ITvarid \"x\",\"x\"),(((4,12),(4,13)),ITequal,\"=\"),(((4,14),(4,15)),ITvarid \"c\",\"c\"),(((4,16),(4,17)),ITstar,\"*\"),(((4,18),(4,19)),ITvarid \"x\",\"x\")]"
 
-      let Just (GHC.L _ n) = locToName dupDefDd1FileName (4, 2) renamed
+      let Just (GHC.L _ n) = locToName (4, 2) renamed
       let typeSig = head $ definingSigsNames [n] renamed
       let (GHC.L ln _) = typeSig
       (showSrcSpan ln) `shouldBe` "((3,1),(3,31))"
@@ -1662,7 +1660,7 @@ tree TId 0:
 
       (showSrcSpanF sspan) `shouldBe` "(((False,0,1,19),1),((False,0,1,21),14))"
 
-      let Just (GHC.L ln n) = locToName tokenTestFileName (19, 1) renamed
+      let Just (GHC.L ln n) = locToName (19, 1) renamed
       (showGhc n) `shouldBe` "TokenTest.foo"
       (showGhc ln) `shouldBe` "test/testdata/TokenTest.hs:19:1-3"
 
@@ -1851,7 +1849,7 @@ tree TId 0:
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
-      let Just (GHC.L ln n) = locToName tokenTestFileName (13, 1) renamed
+      let Just (GHC.L ln n) = locToName (13, 1) renamed
 
 
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"

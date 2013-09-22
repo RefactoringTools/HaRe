@@ -74,15 +74,53 @@ pwd = getCurrentDirectory
 -- | From file name to module name.
 fileNameToModName :: FilePath -> RefactGhc GHC.ModuleName
 fileNameToModName fileName = do
+{-
   graph <- GHC.getModuleGraph
+  cgraph <- liftIO $ canonicalizeGraph graph
+  cfileName <- liftIO $ canonicalizePath fileName
 
-  let mm = filter (\(mfn,_ms) -> mfn == Just fileName) $
-        map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
+  let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
+
+  -- let mm = filter (\(mfn,_ms) -> mfn == Just fileName) $
+  --       map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
 
   case mm of
     [] -> error $ "Can't find module name"
     _ ->  return $ GHC.moduleName $ GHC.ms_mod $ snd $ head mm
+-}
+  mm <- getModuleMaybe fileName
+  case mm of
+    Nothing -> error $ "Can't find module name"
+    Just ms ->  return $ GHC.moduleName $ GHC.ms_mod ms
 
+-- ---------------------------------------------------------------------
+
+getModuleMaybe :: FilePath -> RefactGhc (Maybe GHC.ModSummary)
+getModuleMaybe fileName = do
+  graph <- GHC.getModuleGraph
+  cgraph <- liftIO $ canonicalizeGraph graph
+  cfileName <- liftIO $ canonicalizePath fileName
+
+  let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
+
+  case mm of
+    [] -> return Nothing
+    _ -> return $ Just $ snd (ghead "getModuleMaybe" mm)
+
+-- ---------------------------------------------------------------------
+
+canonicalizeGraph ::
+  [GHC.ModSummary] -> IO [(Maybe (FilePath), GHC.ModSummary)]
+canonicalizeGraph graph = do
+  let mm = map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
+      canon ((Just fp),m) = do
+        fp' <- canonicalizePath fp
+        return $ (Just fp',m)
+      canon (Nothing,m)  = return (Nothing,m)
+
+  mm' <- mapM canon mm
+
+  return mm'
 
 -- ---------------------------------------------------------------------
 
@@ -115,18 +153,28 @@ loadModuleGraphGhc maybeTargetFile = do
 
 -- | Once the module graph has been loaded, load the given module into
 -- the RefactGhc monad
+-- TODO: relax the equality test, if the file is loaded via cabal it
+-- may have a full filesystem path.
 getModuleGhc ::
-  -- FilePath -> RefactGhc (ParseResult,[PosToken])
   FilePath -> RefactGhc ()
 getModuleGhc targetFile = do
+{-
   graph <- GHC.getModuleGraph
 
   let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
        map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
 
+--  let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
+--       map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
+
   case mm of
     [(_,modSum)] -> getModuleDetails modSum
     _            -> parseSourceFileGhc targetFile
+-}
+  mm <- getModuleMaybe targetFile
+  case mm of
+    Just ms -> getModuleDetails ms
+    Nothing -> parseSourceFileGhc targetFile
 
 -- ---------------------------------------------------------------------
 
@@ -162,22 +210,28 @@ getModuleDetails modSum = do
 -- ---------------------------------------------------------------------
 
 -- | Parse a single source file into a GHC session
-parseSourceFileGhc ::
-  String -> RefactGhc ()
+parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
       target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- The *
                                      -- is to force interpretation, for inscopes
       GHC.setTargets [target]
       GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
 
+{-
       graph <- GHC.getModuleGraph
 
+-- TODO: canonicalize paths
       let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
            map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
 
       -- let modSum = head g
       let [(_,modSum)] = mm
       getModuleDetails modSum
+-}
+      mm <- getModuleMaybe targetFile
+      case mm of
+        Nothing -> error $ "HaRe:unexpected error parsing " ++ targetFile
+        Just modSum -> getModuleDetails modSum
 
 -- ---------------------------------------------------------------------
 

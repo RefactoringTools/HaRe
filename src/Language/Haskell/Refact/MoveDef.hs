@@ -12,13 +12,9 @@ module Language.Haskell.Refact.MoveDef
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
--- import qualified Bag                   as GHC
 import qualified Exception             as GHC
-import qualified FastString            as GHC
 import qualified GHC
 import qualified Name                  as GHC
--- import qualified OccName               as GHC
--- import qualified Outputable            as GHC
 
 import Control.Exception
 import Control.Monad.State
@@ -92,7 +88,7 @@ compLiftToTopLevel fileName (row,col) = do
       parsed  <- getRefactParsed
 
       let (Just (modName,_)) = getModuleName parsed
-      let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
+      let maybePn = locToName (row, col) renamed
       case maybePn of
         Just pn ->  do
             liftToTopLevel' modName pn
@@ -118,7 +114,7 @@ compLiftOneLevel fileName (row,col) = do
       logm $ "compLiftOneLevel:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
 
       let (Just (modName,_)) = getModuleName parsed
-      let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
+      let maybePn = locToName (row, col) renamed
       case maybePn of
         Just pn ->  do
             rs <- liftOneLevel' modName pn
@@ -147,7 +143,7 @@ compDemote fileName (row,col) = do
       parsed  <- getRefactParsed
 
       let (Just (modName,_)) = getModuleName parsed
-      let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
+      let maybePn = locToName (row, col) renamed
       case maybePn of
         Just pn -> do
           demote' modName pn

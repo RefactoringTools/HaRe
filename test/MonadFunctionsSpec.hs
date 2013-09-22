@@ -35,7 +35,7 @@ spec = do
           let Just decl@(GHC.L _l _) = (locToExp (8,13) (12,43) renamed) :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
           r <- indentDeclAndToks decl (6)
 
-          let Just ((GHC.L _ n)) = locToName layoutIn2FileName (8,1) renamed
+          let Just ((GHC.L _ n)) = locToName (8,1) renamed
           let [decl2] = definingDeclsNames [n] (hsBinds renamed) False False
           r2 <- indentDeclAndToks decl2 (6)
 

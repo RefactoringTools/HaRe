@@ -4,7 +4,6 @@ module Language.Haskell.Refact.Renaming(rename) where
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
-import qualified FastString            as GHC
 import qualified GHC
 import qualified Name                  as GHC
 import qualified RdrName               as GHC
@@ -59,7 +58,7 @@ rename settings cradle fileName newName (row,col) =
   runRefacSession settings cradle (comp fileName newName (row,col))
 
 -- | Body of the refactoring
-comp :: String -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
+comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row,col) = do
     logm $ "Renaming.comp: (fileName,newName,(row,col))=" ++ (show (fileName,newName,(row,col)))
     getModuleGhc fileName
@@ -68,7 +67,7 @@ comp fileName newName (row,col) = do
     logm $ "comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
     -- logm $ "comp:parsed=" ++ (SYB.showData SYB.Parser 0 parsed) -- ++AZ++
 
-    let (GHC.L _ rdrName') = gfromJust "Renaming.comp" $ locToRdrName (GHC.mkFastString fileName) (row, col) parsed
+    let (GHC.L _ rdrName') = gfromJust "Renaming.comp" $ locToRdrName (row, col) parsed
     logm $ "Renaming.comp:rdrName'=" ++ (showGhc rdrName')
 
     modu <- getModule
@@ -76,12 +75,12 @@ comp fileName newName (row,col) = do
     let modName = case (getModuleName parsed) of
                     Just (mn,_) -> mn
                     Nothing -> GHC.mkModuleName "Main"
-    let maybePn = locToName (GHC.mkFastString fileName) (row, col) renamed
+    let maybePn = locToName (row, col) renamed
     logm $ "Renamed.comp:maybePn=" ++ (showGhc maybePn) -- ++AZ++
     case maybePn of
         Just pn@(GHC.L _ n) -> do
            logm $ "Renaming:(n,modu)=" ++ (showGhc (n,modu))
-           let (GHC.L _ rdrName) = gfromJust "Renaming.comp" $ locToRdrName (GHC.mkFastString fileName) (row, col) parsed
+           let (GHC.L _ rdrName) = gfromJust "Renaming.comp" $ locToRdrName (row, col) parsed
            let rdrNameStr = GHC.occNameString $ GHC.rdrNameOcc rdrName
            logm $ "Renaming: rdrName=" ++ (SYB.showData SYB.Parser 0 rdrName)
            logm $ "Renaming: occname rdrName=" ++ (show $ GHC.occNameString $ GHC.rdrNameOcc rdrName)

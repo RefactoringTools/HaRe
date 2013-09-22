@@ -2348,21 +2348,19 @@ instance UsedByRhs HsModuleP where
 -- (row,col) in the file specified by the fileName, and returns
 -- `Nothing` if such an identifier does not exist.
 locToName::(SYB.Data t)
-                    =>GHC.FastString   -- ^ The file name
-                    ->SimpPos          -- ^ The row and column number
+                    =>SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located GHC.Name)  -- ^ The result
-locToName fileName (row,col) t = locToName' SYB.Renamer fileName (row,col) t
+locToName (row,col) t = locToName' SYB.Renamer (row,col) t
 
 -- |Find the identifier(in GHC.RdrName format) whose start position is
 -- (row,col) in the file specified by the fileName, and returns
 -- `Nothing` if such an identifier does not exist.
 locToRdrName::(SYB.Data t)
-                    =>GHC.FastString   -- ^ The file name
-                    ->SimpPos          -- ^ The row and column number
+                    =>SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located GHC.RdrName)  -- ^ The result
-locToRdrName fileName (row,col) t = locToName' SYB.Parser fileName (row,col) t
+locToRdrName (row,col) t = locToName' SYB.Parser (row,col) t
 
 
 -- |Worker for both locToName and locToRdrName.
@@ -2370,11 +2368,10 @@ locToRdrName fileName (row,col) t = locToName' SYB.Parser fileName (row,col) t
 -- retained in the AST
 locToName'::(SYB.Data t, SYB.Data a, Eq a,GHC.Outputable a)
                     =>SYB.Stage
-                    ->GHC.FastString   -- ^ The file name
                     ->SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located a)  -- ^ The result
-locToName' stage fileName (row,col) t =
+locToName' stage (row,col) t =
       if res1 /= Nothing
         then res1
         else res2
@@ -2451,7 +2448,7 @@ locToName' stage fileName (row,col) t =
           case l of
             (GHC.UnhelpfulSpan _) -> False
             (GHC.RealSrcSpan ss)  ->
-              (GHC.srcSpanFile ss == fileName) &&
+              -- (GHC.srcSpanFile ss == fileName) &&
               (GHC.srcSpanStartLine ss <= row) &&
               (GHC.srcSpanEndLine ss   >= row) &&
               (col >= (GHC.srcSpanStartCol ss)) &&
