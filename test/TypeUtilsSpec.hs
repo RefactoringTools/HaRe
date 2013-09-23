@@ -1244,7 +1244,7 @@ spec = do
       (showGhc n) `shouldBe` "sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test lifting a definition from a let clause to top level,\n --and the elimination of the keywords 'let' and 'in'\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                   in sq x + sq y\n                        where pow=2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test lifting a definition from a let clause to top level,\n --and the elimination of the keywords 'let' and 'in'\n\n sumSquares x y = sq x + sq y\n\n\n                        where pow=2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test lifting a definition from a let clause to top level,\n --and the elimination of the keywords 'let' and 'in'\n\n sumSquares x y = in sq x + sq y\n\n\n                        where pow=2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
       (showGhc nb) `shouldBe` "[LiftToToplevel.LetIn1.anotherFun 0 y\n   = sq y\n   where\n       sq x = x GHC.Real.^ 2,\n LiftToToplevel.LetIn1.sumSquares x y\n   = sq x GHC.Num.+ sq y\n   where\n       pow = 2]"
 
   -- ---------------------------------------------
@@ -2322,7 +2322,7 @@ spec = do
       (showGhc n) `shouldBe` "xxx"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((6,5),(6,6)),ITvarid \"x\",\"x\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo x = let a = 1\n             b = 2\n           in x + a + b"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo x = let a = 1\n             b = 2\n         in x + a + b"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo x\n = let\n a = 1\n b = 2\n in x GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
     ------------------------------------
@@ -2346,7 +2346,7 @@ spec = do
       (showGhc n) `shouldBe` "xxx"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((6,5),(6,12)),ITvarid \"xxxlong\",\"xxxlong\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxxlong = let a = 1\n                   b = 2\n           in xxxlong + a + b"
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxxlong = let a = 1\n                   b = 2\n               in xxxlong + a + b"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
@@ -2366,13 +2366,14 @@ spec = do
 
          return (new,newName)
 
-      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "xxx"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((7,5),(7,12)),ITvarid \"xxxlong\",\"xxxlong\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet2 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n -- In this case the tokens for xxx + a + b should also shift out\n\n foo xxx = let a = 1\n               b = 2 in xxx + a + b\n\n "
-      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxxlong = let a = 1\n                   b = 2\n           in xxxlong + a + b"
-      (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+      -- (show $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module LayoutLet2 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n -- In this case the tokens for xxx + a + b should also shift out\n\n foo xxxlong = let a = 1\n                   b = 2 in xxxlong + a + b"
+      (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet2.foo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
   -- ---------------------------------------------

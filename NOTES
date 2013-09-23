@@ -90,6 +90,8 @@ Observations
   7. The surrounding indent can perhaps be managed within this
      structure.
 
+  8. The GHC ParsedSource is in linear order, the RenamedSource is not
+
 
 
 

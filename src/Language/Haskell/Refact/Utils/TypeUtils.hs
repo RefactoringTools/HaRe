@@ -3969,9 +3969,11 @@ adjustLayoutAfterRename oldPN newName t = do
             logm $ "adjustLHsExpr:let:(l,off)=" ++ showGhc (l,off)
             local' <- indentList (sortBy compareLocated $ hsBinds local) off
             upToIn <- getLineToks l isIn
+            -- logm $ "adjustLHsExpr:in:(upToIn)=" ++ show upToIn
             let offIn = calcOffset upToIn
             logm $ "adjustLHsExpr:in:(l,offIn)=" ++ showGhc (l,offIn)
-            expr' <- indentDeclAndToks expr offIn
+            -- expr' <- indentDeclAndToks expr offIn
+            expr' <- indentDeclAndToks expr off
             return (GHC.L l (GHC.HsLet (replaceBinds local local') expr'))
           else return x
 

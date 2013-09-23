@@ -1167,7 +1167,7 @@ startEndLocIncComments' toks (startLoc,endLoc) =
   let
     (begin,middle,end) = splitToks (startLoc,endLoc) toks
 
-    notIgnored tt = not (isWhiteSpace tt || isThen tt || isElse tt)
+    notIgnored tt = not (isWhiteSpace tt || isThen tt || isElse tt || isIn tt)
 
     -- (leadinr,leadr) = break notWhiteSpace $ reverse begin
     (leadinr,leadr) = break notIgnored $ reverse begin
@@ -1175,7 +1175,7 @@ startEndLocIncComments' toks (startLoc,endLoc) =
     prevLine  = if (emptyList leadr') then 0 else (tokenRow $ ghead "startEndLocIncComments'1" leadr')
     firstLine = if (emptyList middle) then 0 else (tokenRow $ ghead "startEndLocIncComments'1" middle)
     (_nonleadComments,leadComments') = divideComments prevLine firstLine $ reverse leadinr
-    leadComments = dropWhile (\tt -> (isThen tt || isElse tt || isEmpty tt)) leadComments'
+    leadComments = dropWhile (\tt -> (isThen tt || isElse tt || isEmpty tt || isIn tt)) leadComments'
 
     (trail,trailrest) = break notWhiteSpace end
     trail' = filter (\t -> not (isEmpty t)) trail
