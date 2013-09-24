@@ -814,11 +814,13 @@ insertSrcSpan forest sspan = forest'
             (startLoc,endLoc) = startEndLocIncComments' toks (tokStartPos,tokEndPos)
 
             (startToks,middleToks,endToks) = splitToks (startLoc,endLoc) toks
-            tree1 = if (emptyList $ filter (\t -> not $ isEmpty t) startToks)
+            -- tree1 = if (emptyList $ filter (\t -> not $ isEmpty t) startToks)
+            tree1 = if (nonCommentSpan startToks == ((0,0),(0,0)))
                        then []
                        else [mkTreeFromTokens startToks]
             tree2 = [mkTreeFromSpanTokens sspan middleToks]
-            tree3 = if (emptyList $ filter (\t -> not $ isEmpty t) endToks)
+            -- tree3 = if (emptyList $ filter (\t -> not $ isEmpty t) endToks)
+            tree3 = if (nonCommentSpan endToks == ((0,0),(0,0)))
                        then []
                        else [mkTreeFromTokens endToks]
 
@@ -939,12 +941,9 @@ splitSubToks tree sspan = (b',m',e')
         where
          (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks
 --         b'' = if (emptyList toksb) then [] else [Node (Entry (ssStart, sspanEnd) toksb) []]
-         b'' = if (emptyList toksb) then [] else [mkTreeFromTokens toksb] -- Need to get end from actual toks
-{-
-         m'' = if (ssStart == sspanStart) -- Eq does not compare all flags
-                    then mkTreeListFromTokens toksm (ssStart,   ssEnd)
-                    else mkTreeListFromTokens toksm (sspanStart,ssEnd)
--}
+         b'' = if (emptyList toksb || nonCommentSpan toksb == ((0,0),(0,0)))
+                 then []
+                 else [mkTreeFromTokens toksb] -- Need to get end from actual toks
          m'' = let
                 -- ssStart, ssEnd is passed in node
                 -- sspanStart, sspanEnd is span we are matching
@@ -1894,10 +1893,13 @@ prettyToks toks = showToks [ghead "prettyToks" toks] ++ ".." ++ showToks [last t
 -- |Make a tree representing a particular set of tokens
 mkTreeFromTokens :: [PosToken] -> Tree Entry
 mkTreeFromTokens [] = Node (Entry nullSpan []) []
+-- mkTreeFromTokens [] = error "mkTreeFromTokens:empty token list"
 mkTreeFromTokens toks = Node (Entry sspan toks) []
   where
    (startLoc',endLoc') = nonCommentSpan toks
-   sspan    = simpPosToForestSpan (startLoc',endLoc')
+   sspan    = if (startLoc',endLoc') == ((0,0),(0,0))
+     then error $ "mkTreeFromTokens:null span for:" ++ (show toks)
+     else simpPosToForestSpan (startLoc',endLoc')
 
 -- ---------------------------------------------------------------------
 
