@@ -725,8 +725,11 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
     (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
     prevToks = retrieveTokensInterim tree
 
-    endComments = reverse $ takeWhile isWhiteSpace $ reverse toks
-    startComments = takeWhile isWhiteSpace $ toks
+    -- endComments = reverse $ takeWhile isWhiteSpace $ reverse toks
+    -- startComments = takeWhile isWhiteSpace $ toks
+
+    endComments   = reverse $ takeWhile isWhiteSpaceOrIgnored $ reverse toks
+    startComments = takeWhile isWhiteSpaceOrIgnored $ toks
 
     newTokStart = if (emptyList prevToks)
                    then mkZeroToken
@@ -738,9 +741,13 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
       else -- Must reuse any pre-existing start or end comments, and
            -- resync the tokens across all three.
         let
-           origEndComments = reverse $ takeWhile isWhiteSpace $ reverse prevToks
-           origStartComments = takeWhile isWhiteSpace $ prevToks
-           core = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
+           -- origEndComments = reverse $ takeWhile isWhiteSpace $ reverse prevToks
+           -- origStartComments = takeWhile isWhiteSpace $ prevToks
+           origEndComments   = reverse $ takeWhile isWhiteSpaceOrIgnored $ reverse prevToks
+           origStartComments = takeWhile isWhiteSpaceOrIgnored $ prevToks
+           -- core = reIndentToks (PlaceAbsolute (tokenRow newTokStart) (tokenCol newTokStart)) prevToks toks
+           ((startRow,startCol),_) = forestSpanToGhcPos $ srcSpanToForestSpan sspan
+           core = reIndentToks (PlaceAbsolute startRow startCol) prevToks toks
            trail = if (emptyList origEndComments)
             then []
             else addOffsetToToks (lineOffset,colOffset) origEndComments
@@ -1430,7 +1437,8 @@ reIndentToks pos prevToks toks = toks''
         where
           -- TODO: Should this not be prevOffset?
           colStart  = tokenCol $ ghead "reIndentToks.4"
-                    $ dropWhile isWhiteSpace prevToks
+                    -- $ dropWhile isWhiteSpace prevToks
+                    $ dropWhile isWhiteSpaceOrIgnored prevToks
           -- colStart = prevOffset
           -- colStart = error $ "reIndentToks:prevToks=" ++ (show prevToks)
           lineStart = (tokenRow (lastTok)) -- + 1
@@ -1461,13 +1469,16 @@ nonCommentSpan :: [PosToken] -> (SimpPos,SimpPos)
 nonCommentSpan [] = ((0,0),(0,0))
 nonCommentSpan toks = (startPos,endPos)
   where
-    stripped = dropWhile isWhiteSpace $ toks
+    -- stripped = dropWhile isWhiteSpace $ toks
+    stripped = dropWhile isWhiteSpaceOrIgnored $ toks
     (startPos,endPos) = case stripped of
       [] -> ((0,0),(0,0))
       _ -> (tokenPos startTok,tokenPosEnd endTok)
        where
-        startTok = ghead "nonCommentSpan.1" $ dropWhile isWhiteSpace $ toks
-        endTok   = ghead "nonCommentSpan.2" $ dropWhile isWhiteSpace $ reverse toks
+        -- startTok = ghead "nonCommentSpan.1" $ dropWhile isWhiteSpace $ toks
+        -- endTok   = ghead "nonCommentSpan.2" $ dropWhile isWhiteSpace $ reverse toks
+        startTok = ghead "nonCommentSpan.1" $ dropWhile isWhiteSpaceOrIgnored $ toks
+        endTok   = ghead "nonCommentSpan.2" $ dropWhile isWhiteSpaceOrIgnored $ reverse toks
 
 -- ---------------------------------------------------------------------
 

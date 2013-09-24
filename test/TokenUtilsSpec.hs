@@ -437,13 +437,23 @@ tree TId 0:
       let sspan1 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 0 12),22),
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),24) )
+--
+      let ff = insertSrcSpan forest (fs sspan1)
+      (drawTreeEntry ff) `shouldBe`
+            "((1,1),(16,22))\n|\n"++
+            "+- ((1,1),(11,32))\n|\n"++
+            "+- ((12,22),(12,24))\n|\n"++
+            "`- ((12,25),(16,22))\n"
+      -- (show ff) `shouldBe` ""
+--
       newToks <- liftIO $ basicTokenise "(sq pow)"
       (show newToks) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
 
       let (tm2,_sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
+      -- (show tm2) `shouldBe` ""
       (drawTreeEntry tm2) `shouldBe`
             "((1,1),(16,22))\n|\n"++
-            "+- ((1,1),(12,21))\n|\n"++
+            "+- ((1,1),(11,32))\n|\n"++
             "+- ((10000000012,22),(10000000012,30))\n|\n"++
             "`- ((12,25),(16,22))\n"
 
@@ -459,7 +469,7 @@ tree TId 0:
       let (tm3,_sspan3,tree3) = updateTokensForSrcSpan tm2 sspan2 newToks2
       (drawTreeEntry tm3) `shouldBe`
             "((1,1),(16,22))\n|\n"++
-            "+- ((1,1),(12,21))\n|\n"++
+            "+- ((1,1),(11,32))\n|\n"++
             "+- ((10000000012,22),(10000000012,30))\n|\n"++
             "`- ((12,25),(16,22))\n   |\n"++
             "   +- ((12,25),(12,28))\n   |\n"++
@@ -478,7 +488,7 @@ tree TId 0:
       -- (show f1) `shouldBe` ""
       (drawTreeEntry f1) `shouldBe`
             "((1,1),(16,22))\n|\n"++
-            "+- ((1,1),(12,21))\n|\n"++
+            "+- ((1,1),(11,32))\n|\n"++
             "+- ((12,22),(12,33))\n|  |\n"++
             "|  +- ((10000000012,22),(10000000012,30))\n|  |\n"++
             "|  +- ((12,25),(12,28))\n|  |\n"++

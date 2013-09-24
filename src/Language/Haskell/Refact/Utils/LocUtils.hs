@@ -19,7 +19,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , realSrcLocFromTok
                      , isWhite
                      , notWhite
-                     -- , isWhiteSpace
+                     , isWhiteSpace
+                     , isWhiteSpaceOrIgnored
                      {-
                      ,isNewLn,isCommentStart -},isComment {-,
                      isNestedComment-},isMultiLineComment {-,isOpenBracket,isCloseBracket, -}
@@ -84,7 +85,6 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , splitToks
                      , emptyList, nonEmptyList
                      , divideComments
-                     , isWhiteSpace
                      , notWhiteSpace
                      , isDoubleColon
                      , isEmpty
@@ -274,15 +274,10 @@ hasNewLn (GHC.L l _,_) = case l of
   _ -> False
 
 
-{-
---Returns True if a token stream starts with a newline token (apart from the white spaces tokens)
-startsWithEmptyLn::[PosToken]->Bool
-startsWithEmptyLn toks=isJust (find isNewLn $ takeWhile (\t->isWhiteSpace t || isNewLn t) toks)
--}
-
--- |get the last non-space token in a token stream.
+-- |get the last non-ignored token in a token stream.
 lastNonSpaceToken::[PosToken] -> PosToken
-lastNonSpaceToken toks=case dropWhile isWhiteSpace (reverse toks) of
+-- lastNonSpaceToken toks=case dropWhile isWhiteSpace (reverse toks) of
+lastNonSpaceToken toks=case dropWhile isWhiteSpaceOrIgnored (reverse toks) of
                          [] -> defaultToken
                          l  -> ghead "lastNonSpaceToken" l
 {-
@@ -307,12 +302,6 @@ compressPreNewLns toks= let (toks1, toks2) = break (not.(\t->isNewLn t || isWhit
 -- |Remove the following extra empty lines.
 compressEndNewLns::[PosToken]->[PosToken]
 compressEndNewLns toks = toks
-{- ++AZ++: is this still needed?
-compressEndNewLns toks=let (toks1, toks2) = break (not.(\t->isNewLn t || isWhiteSpace t)) (reverse toks)
-                           groupedToks    = groupTokensByLine toks1
-                       in if length groupedToks>1 then reverse ((ghead "compressEndNewLns" groupedToks)++toks2)
-                                                  else toks
--}
 {-
 prettyprintPatList beginWithSpace t
      = replaceTabBySpaces $ if beginWithSpace then format1 t else format2 t
@@ -787,9 +776,6 @@ doRmWhites::Int -> [PosToken] -> [PosToken]
 doRmWhites 0 ts = ts
 doRmWhites _ [] = []
 doRmWhites _ ts = ts
--- ++AZ++ IS this still needed?
--- doRmWhites n toks@(t:ts)=if isWhiteSpace t then doRmWhites (n-1) ts
---                                            else toks
 
 
 {-
@@ -1133,41 +1119,17 @@ nonEmptyList _  = True
 -- the start and end location to cover the preceding and following
 -- comments.
 --
+-- In this routine, 'then','else','do' and 'in' are treated as comments.
 startEndLocIncComments::(SYB.Data t) => [PosToken] -> t -> (SimpPos,SimpPos)
 startEndLocIncComments toks t = startEndLocIncComments' toks (getStartEndLoc t)
 
-{-
-startEndLocIncComments' :: [PosToken] -> (SimpPos,SimpPos) -> (SimpPos,SimpPos)
-startEndLocIncComments' toks (startLoc,endLoc) =
-  let
-    (begin,middle,end) = splitToks (startLoc,endLoc) toks
-
-    (leadinr,leadr) = break notWhiteSpace $ reverse begin
-    leadr' = filter (\t -> not (isEmpty t)) leadr
-    prevLine  = if (emptyList leadr') then 0 else (tokenRow $ ghead "startEndLocIncComments'1" leadr')
-    firstLine = if (emptyList middle) then 0 else (tokenRow $ ghead "startEndLocIncComments'1" middle)
-    (_,leadComments) = divideComments prevLine firstLine $ reverse leadinr
-
-    (trail,trailrest) = break notWhiteSpace end
-    trail' = filter (\t -> not (isEmpty t)) trail
-    lastLine = if (emptyList middle)    then    0 else (tokenRow $ glast "startEndLocIncComments'2" middle)
-    nextLine = if (emptyList trailrest) then 1000 else (tokenRow $ ghead "startEndLocIncComments'2" trailrest)
-    (trailComments,_) =  divideComments lastLine nextLine trail'
-
-    middle' = leadComments ++ middle ++ trailComments
-  in
-    if (emptyList middle')
-      then ((0,0),(0,0))
-      else ((tokenPos $ ghead "startEndLocIncComments 4" middle'),(tokenPosEnd $ last middle'))
-      -- else error $ "startEndLocIncComments: (prevLine,firstLine) reverse leadr =" ++ (show (prevLine,firstLine)) ++ "," ++ (showToks $ reverse leadr)
--}
 
 startEndLocIncComments' :: [PosToken] -> (SimpPos,SimpPos) -> (SimpPos,SimpPos)
 startEndLocIncComments' toks (startLoc,endLoc) =
   let
     (begin,middle,end) = splitToks (startLoc,endLoc) toks
 
-    notIgnored tt = not (isWhiteSpace tt || isThen tt || isElse tt || isIn tt)
+    notIgnored tt = not (isWhiteSpaceOrIgnored tt)
 
     -- (leadinr,leadr) = break notWhiteSpace $ reverse begin
     (leadinr,leadr) = break notIgnored $ reverse begin
@@ -1175,12 +1137,17 @@ startEndLocIncComments' toks (startLoc,endLoc) =
     prevLine  = if (emptyList leadr') then 0 else (tokenRow $ ghead "startEndLocIncComments'1" leadr')
     firstLine = if (emptyList middle) then 0 else (tokenRow $ ghead "startEndLocIncComments'1" middle)
     (_nonleadComments,leadComments') = divideComments prevLine firstLine $ reverse leadinr
-    leadComments = dropWhile (\tt -> (isThen tt || isElse tt || isEmpty tt || isIn tt)) leadComments'
+    -- leadComments = dropWhile (\tt -> (isThen tt || isElse tt || isEmpty tt || isIn tt || isDo tt)) leadComments'
+    leadComments = dropWhile (\tt -> (isEmpty tt)) leadComments'
 
     (trail,trailrest) = break notWhiteSpace end
     trail' = filter (\t -> not (isEmpty t)) trail
-    lastLine = if (emptyList middle)    then    0 else (tokenRow $ glast "startEndLocIncComments'2" middle)
-    nextLine = if (emptyList trailrest) then 1000 else (tokenRow $ ghead "startEndLocIncComments'2" trailrest)
+    lastLine = if (emptyList middle)
+        then      0
+        else (tokenRow $ glast "startEndLocIncComments'2" middle)
+    nextLine = if (emptyList trailrest)
+        then 100000
+        else (tokenRow $ ghead "startEndLocIncComments'2" trailrest)
     (trailComments,_) =  divideComments lastLine nextLine trail'
 
     middle' = leadComments ++ middle ++ trailComments
@@ -1241,6 +1208,9 @@ isWhiteSpace tok = isComment tok || isEmpty tok
 
 notWhiteSpace :: PosToken -> Bool
 notWhiteSpace tok = not (isWhiteSpace tok)
+
+isWhiteSpaceOrIgnored :: PosToken -> Bool
+isWhiteSpaceOrIgnored tok = isWhiteSpace tok || isThen tok || isElse tok || isIn tok || isDo tok
 
 -- ---------------------------------------------------------------------
 
