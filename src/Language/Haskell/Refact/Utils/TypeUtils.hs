@@ -3937,8 +3937,11 @@ adjustLayoutAfterRename oldPN newName t = do
            --   end of the 'of' token and the start of the MatchGroup.
            -- * And of whether the 'of' token is on the same line as
            --   the MatchGroup
+           -- logm $ "adjustLHsExpr:case:starting="
+           -- drawTokenTreeDetailed "adjustLHsExpr:case"
            upToOf <- getLineToks l isOf
            let off = calcOffset upToOf
+           logm $ "adjustLHsExpr:case:(l,off)=" ++ showGhc (l,off)
 
            if off /= 0
              then do
@@ -4028,8 +4031,8 @@ getLineToks l isToken = do
   toks <- getToksForSpanNoInv l
   toksBefore <- getToksBeforeSpan l
 
-  logm $ "getLineToks:toks=" ++ show toks
-  logm $ "getLineToks:toksBefore=" ++ show toksBefore
+  -- logm $ "getLineToks:toks=" ++ show toks
+  -- logm $ "getLineToks:toksBefore=" ++ show toksBefore
 
   let lineToks = groupTokensByLine $ reverse toks ++ (reversedToks toksBefore)
 
@@ -4037,11 +4040,11 @@ getLineToks l isToken = do
 
   let forLine = ghead "getLineToks.1" $ filter (\ll -> any isToken ll) lineToks
 
-  logm $ "getLineToks:forLine=" ++ show forLine
+  -- logm $ "getLineToks:forLine=" ++ show forLine
 
   -- let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) fullOfLineRev
   let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) forLine
-  logm $ "getLineToks:upToOf=" ++ show upToOf
+  logm $ "getLineToks:up to match=" ++ show upToOf
   return upToOf
 
 -- -------------------------------------

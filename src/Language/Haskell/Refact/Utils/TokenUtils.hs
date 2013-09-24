@@ -902,7 +902,8 @@ mkTreeListFromTokens toks sspan = res
 
    span' = ((ForestLine chs ts vs ls, cs),(ForestLine che te ve  le, ce))
 
-   res = if ((ls,cs),(le,ce)) == ((0,0),(0,0))
+   -- res = if ((ls,cs),(le,ce)) == ((0,0),(0,0))
+   res = if nonCommentSpan toks == ((0,0),(0,0))
      then []
      else [(Node (Entry span' treeToks) sub)]
 
