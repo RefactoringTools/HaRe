@@ -3968,12 +3968,21 @@ adjustLayoutAfterRename oldPN newName t = do
           then do
             logm $ "adjustLHsExpr:let:(l,off)=" ++ showGhc (l,off)
             local' <- indentList (sortBy compareLocated $ hsBinds local) off
+            -- drawTokenTreeDetailed "adjustLHsExpr:let:after indentList"
             upToIn <- getLineToks l isIn
             -- logm $ "adjustLHsExpr:in:(upToIn)=" ++ show upToIn
             let offIn = calcOffset upToIn
-            logm $ "adjustLHsExpr:in:(l,offIn)=" ++ showGhc (l,offIn)
-            -- expr' <- indentDeclAndToks expr offIn
-            expr' <- indentDeclAndToks expr off
+            logm $ "adjustLHsExpr:let/in:(l,offIn)=" ++ showGhc (l,offIn)
+
+            -- Does the 'in' token fall on the same line as the let
+            -- decls?
+            let (GHC.L ll _) = glast "adjustLHSExpr" local'
+            lastDeclToks <- getToksForSpan ll
+            let offToUse = if startLineForToks upToIn == startLineForToks (reverse lastDeclToks)
+                             then off
+                             else offIn
+            expr' <- indentDeclAndToks expr offToUse
+            -- drawTokenTreeDetailed "adjustLHsExpr:let:after indentDeclAndToks"
             return (GHC.L l (GHC.HsLet (replaceBinds local local') expr'))
           else return x
 
@@ -4002,6 +4011,11 @@ adjustLayoutAfterRename oldPN newName t = do
 
 -- -------------------------------------
 
+startLineForToks :: [PosToken] -> Int
+startLineForToks toks = tokenRow $ ghead "startLineForToks" toks
+
+-- -------------------------------------
+
 compareLocated ::
   Ord a => GHC.GenLocated a t -> GHC.GenLocated a t1 -> Ordering
 compareLocated (GHC.L l1 _) (GHC.L l2 _) = compare l1 l2
@@ -4021,12 +4035,12 @@ getLineToks l isToken = do
 
   logm $ "getLineToks:lineToks=" ++ show lineToks
 
-  let ofLine = ghead "getLineToks.1" $ filter (\ll -> any isToken ll) lineToks
+  let forLine = ghead "getLineToks.1" $ filter (\ll -> any isToken ll) lineToks
 
-  logm $ "getLineToks:ofLine=" ++ show ofLine
+  logm $ "getLineToks:forLine=" ++ show forLine
 
   -- let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) fullOfLineRev
-  let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) ofLine
+  let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) forLine
   logm $ "getLineToks:upToOf=" ++ show upToOf
   return upToOf
 
