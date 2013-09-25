@@ -26,6 +26,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        -- * Operations at 'Tree' 'Entry' level
        , getTokensFor
+       , getTokensForNoIntros
        , getTokensBefore
        , replaceTokenForSrcSpan
        , updateTokensForSrcSpan
@@ -448,11 +449,13 @@ showForestSpan ((sr,sc),(er,ec))
 
 -- ---------------------------------------------------------------------
 
+-- | Replace any ForestLine flags already in a SrcSpan with the given ones
 insertForestLineInSrcSpan :: ForestLine -> GHC.SrcSpan -> GHC.SrcSpan
 insertForestLineInSrcSpan fl@(ForestLine ch tr v _l) (GHC.RealSrcSpan ss) = ss'
   where
     lineStart = forestLineToGhcLine fl
-    lineEnd   = forestLineToGhcLine (ForestLine ch tr v (GHC.srcSpanEndLine ss))
+    (_,(ForestLine _ _ _ le,_)) = srcSpanToForestSpan (GHC.RealSrcSpan ss)
+    lineEnd   = forestLineToGhcLine (ForestLine ch tr v le)
     locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineStart (GHC.srcSpanStartCol ss)
     locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) lineEnd   (GHC.srcSpanEndCol ss)
     ss' = GHC.mkSrcSpan locStart locEnd
@@ -653,8 +656,6 @@ syncAstToLatestCache tk t = t'
 -- |Get the (possible cached) tokens for a given source span, and
 -- cache their being fetched.
 -- NOTE: The SrcSpan may be one introduced by HaRe, rather than GHC.
--- TODO: consider returning an Either. Although in reality the error
---       should never happen
 getTokensFor :: Bool -> Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
 getTokensFor checkInvariant forest sspan = (forest'', tokens)
   where
@@ -665,6 +666,18 @@ getTokensFor checkInvariant forest sspan = (forest'', tokens)
      (forest'',tree) = getSrcSpanFor forest' (srcSpanToForestSpan sspan)
 
      tokens = retrieveTokensInterim tree
+
+-- ---------------------------------------------------------------------
+
+-- |Get the (possible cached) tokens for a given source span, and
+-- cache their being fetched.
+-- NOTE: The SrcSpan may be one introduced by HaRe, rather than GHC.
+getTokensForNoIntros :: Bool -> Tree Entry -> GHC.SrcSpan -> (Tree Entry,[PosToken])
+getTokensForNoIntros checkInvariant forest sspan = (forest', tokens')
+  where
+    (forest',tokens) = getTokensFor checkInvariant forest sspan
+    (lead,rest) = break (not . isWhiteSpaceOrIgnored) tokens
+    tokens' = (filter (not . isIgnored) lead) ++ rest
 
 -- ---------------------------------------------------------------------
 
@@ -1092,7 +1105,7 @@ calcEndGap tree sspan = gap
 -- |Retrieve all the tokens at the leaves of the tree, in order.
 -- Marked tokens are re-aligned, and gaps are closed.
 retrieveTokensFinal :: Tree Entry -> [PosToken]
-retrieveTokensFinal forest = stripForestLines $ monotonicLineToks $ reAlignMarked
+retrieveTokensFinal forest = monotonicLineToks $ stripForestLines $ reAlignMarked
                       $ deleteGapsToks $ retrieveTokens' forest
 
 -- ---------------------------------------------------------------------
@@ -1100,7 +1113,7 @@ retrieveTokensFinal forest = stripForestLines $ monotonicLineToks $ reAlignMarke
 -- |Retrieve all the tokens at the leaves of the tree, in order. No
 -- adjustments are made to address gaps or re-alignment of the tokens
 retrieveTokensInterim :: Tree Entry -> [PosToken]
-retrieveTokensInterim forest = stripForestLines $ monotonicLineToks {-  reAlignMarked -}
+retrieveTokensInterim forest = monotonicLineToks $ stripForestLines {-  reAlignMarked -}
                              $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]

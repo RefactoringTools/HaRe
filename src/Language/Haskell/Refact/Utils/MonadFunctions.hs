@@ -30,6 +30,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , putToksForSpan
        , getToksForSpan
        , getToksForSpanNoInv
+       , getToksForSpanWithIntros
        , getToksBeforeSpan
        , putToksForPos
        , putToksAfterSpan
@@ -115,7 +116,8 @@ getToksForSpan sspan = do
   let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensFor checkInv forest sspan
+  -- let (forest',toks) = getTokensFor checkInv forest sspan
+  let (forest',toks) = getTokensForNoIntros checkInv forest sspan
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
@@ -132,12 +134,28 @@ getToksForSpanNoInv sspan = do
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
   let (forest',toks) = getTokensFor checkInv forest sspan
+  -- let (forest',toks) = getTokensForNoIntros checkInv forest sspan
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
   logm $ "getToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
 
+
+-- |Get the current tokens for a given GHC.SrcSpan, leaving out any
+-- leading 'then', 'else', 'of', 'do' or 'in' tokens
+getToksForSpanWithIntros ::  GHC.SrcSpan -> RefactGhc [PosToken]
+getToksForSpanWithIntros sspan = do
+  st <- get
+  let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
+  let Just tm = rsModule st
+  let forest = getTreeFromCache sspan (rsTokenCache tm)
+  let (forest',toks) = getTokensFor checkInv forest sspan
+  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
+  let rsModule' = Just (tm {rsTokenCache = tk'})
+  put $ st { rsModule = rsModule' }
+  logm $ "getToksForSpanNoIntros " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
+  return toks
 
 -- |Get the current tokens preceding a given GHC.SrcSpan.
 getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc ReversedToks
@@ -455,6 +473,7 @@ updateToks :: (SYB.Data t)
   -> RefactGhc () -- ^ Updates the RefactState
 updateToks (GHC.L sspan _) newAST printFun addTrailingNl
   = do
+       logm $ "updateToks " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan))  
        newToks <- liftIO $ basicTokenise (printFun newAST)
        let newToks' = if addTrailingNl
                        then newToks ++ [newLnToken (last newToks)]

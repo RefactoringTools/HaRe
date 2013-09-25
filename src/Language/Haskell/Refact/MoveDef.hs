@@ -320,15 +320,18 @@ moveDecl1 t defName ns sigNames topLevel
         -- drawTokenTree "before getting toks" -- ++AZ++
         funToks <- getToksForSpan sspan
         logm $ "moveDecl1:funToks=" ++ (showToks funToks)
-        drawTokenTree "moveDecl1:after getting toks" -- ++AZ++
+        drawTokenTree "moveDecl1:after getting toks" -- ++AZ++ 'in' present
+        --- drawTokenTreeDetailed "moveDecl1:after getting toks" -- ++AZ++
 
         -- (t'',sigsRemoved) <- rmTypeSigs ns t
         (t'',sigsRemoved) <- rmTypeSigs sigNames t
-        drawTokenTree "moveDecl1:after rmTypeSigs" -- ++AZ++
+        -- drawTokenTree "moveDecl1:after rmTypeSigs" -- ++AZ++
+        drawTokenTreeDetailed "moveDecl1:after rmTypeSigs" -- ++AZ++
         -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
         -- logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
-        drawTokenTree "moveDecl1:after rmDecl" -- ++AZ++
+        -- drawTokenTree "moveDecl1:after rmDecl" -- ++AZ++
+        drawTokenTreeDetailed "moveDecl1:after rmDecl" -- ++AZ++  'in' missing
 
         let getToksForMaybeSig (GHC.L ss _) =
                              do
@@ -397,6 +400,7 @@ addParamsToParent _pn [] t = return t
 addParamsToParent  pn params t = do
   logm $ "addParamsToParent:(pn,params)" ++ (showGhc (pn,params))
   t' <- addActualParamsToRhs True pn params t
+  -- drawTokenTreeDetailed "addParamsToParent done"
   return t'
 
 

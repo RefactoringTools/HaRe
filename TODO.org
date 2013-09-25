@@ -1,4 +1,5 @@
 * HaRe todo
+** TODO splitSubToks does not take cognizance of leading/trailing comments
 ** TODO renaming with length change does not adjust surrounding layout for do/let/where/of etc
     - 'of' complete
     - 'do' complete

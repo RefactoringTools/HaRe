@@ -3421,8 +3421,10 @@ rmDecl:: (SYB.Data t)
                                    -- siganture
 rmDecl pn incSig t = do
   logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
+  -- drawTokenTreeDetailed "rmDecl.entry tree" -- ++AZ++ 'in' present
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
+  drawTokenTreeDetailed "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
   t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
 
              -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
@@ -3474,7 +3476,10 @@ rmDecl pn incSig t = do
          let (decls1, decls2) = break (defines pn) decls
              decl = ghead "rmDecl" decls2
 
+         -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ present
          toks <- getToksForSpan l
+         -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ missing
+         -- toks <- getToksForSpanWithIntros l
          removeToksForPos (getStartEndLoc decl)
          decl' <- syncDeclToLatestStash decl
          setStateStorage (StorageBind decl')
@@ -3485,6 +3490,7 @@ rmDecl pn incSig t = do
             return expr
            _ -> do
             logm $ "rmDecl.inLet:length decls /= 1"
+            -- drawTokenTreeDetailed "rmDecl.inLet tree"
             let decls2' = gtail "inLet" decls2
             return $ (GHC.L ss (GHC.HsLet (replaceBinds localDecls (decls1 ++ decls2')) expr))
 

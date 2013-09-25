@@ -1462,7 +1462,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Removes a span and tokens without destroying the forest 2" $ do
+    it "removes a span and tokens without destroying the forest 2" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn6.hs"
       let forest = mkTreeFromTokens toks
       let tk = initTokenCache toks
@@ -1504,6 +1504,8 @@ tree TId 0:
                "tree TId 2:\n"++
                "((200000013,16),(200000013,17))\n"
 
+      -- (show $ retrieveTokensInterim $ getTreeFromCache ss2 tk3) `shouldBe` "" 
+      -- (show $ getTreeFromCache ss2 tk3) `shouldBe` ""
       (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk3) `shouldBe` 
                 "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
 
@@ -1628,16 +1630,16 @@ tree TId 0:
 
       let (forest',newSpan,_) = updateTokensForSrcSpan forest l (take 3 toks)
       -- (showGhc newSpan) `shouldBe` "test/testdata/TokenTest.hs:(18,1)-(1000018,22)"
-      (showGhc newSpan) `shouldBe` "test/testdata/TokenTest.hs:1073741842:1-22"
-      (showSrcSpanF newSpan) `shouldBe` "(((True,0,0,18),1),((True,0,0,18),23))"
+      (showGhc newSpan) `shouldBe` "test/testdata/TokenTest.hs:1073741843:1-22"
+      (showSrcSpanF newSpan) `shouldBe` "(((True,0,0,19),1),((True,0,0,19),23))"
 
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(21,14))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
-              "`- ((10000000018,1),(10000000018,23))\n"  -- our inserted span
+              "`- ((10000000019,1),(10000000019,23))\n"  -- our inserted span
 
       let toks' = retrieveTokensFinal forest'
-      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n \n module TokenTest where"
+      (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n module TokenTest where"
 
     -- --------------------------------------
 
@@ -1838,7 +1840,7 @@ tree TId 0:
       (drawTreeEntry f3) `shouldBe`
                "((100000013,1),(100000013,21))\n|\n"++
                "+- ((13,1),(13,16))\n|\n"++
-               "+- ((10000000013,16),(10000000013,17))\n|\n"++
+               "+- ((10200000013,16),(10200000013,17))\n|\n"++
                "`- ((13,17),(13,21))\n"
       -- (show f3) `shouldBe` ""
       (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe`
@@ -2437,7 +2439,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Adds a SrcSpan after deleting, without extra tokens" $ do
+    it "adds a SrcSpan after deleting, without extra tokens" $ do
       (_t,toks)  <- parsedFileGhc "./test/testdata/Demote/LetIn1.hs"
       let forest = mkTreeFromTokens toks
 
@@ -2448,7 +2450,7 @@ tree TId 0:
               "((1,1),(17,23))\n|\n"++
                "+- ((1,1),(11,32))\n|\n"++
                "+- ((12,22),(12,27))(1,-9)D\n|\n"++
-               "`- ((13,18),(17,23))\n"
+               "`- ((13,21),(17,23))\n"
       (invariant forest') `shouldBe` []
 
       -- putToksAfterPos ((11,27),(11,32)) at PlaceOffset 1 4 2
@@ -2471,7 +2473,7 @@ tree TId 0:
                "|  +- ((1,1),(11,27))\n|  |\n"++
                "|  `- ((11,27),(11,32))\n|\n"++
                "+- ((12,22),(12,27))(1,-9)D\n|\n"++
-               "`- ((13,18),(17,23))\n"
+               "`- ((13,21),(17,23))\n"
 
       let (fwithspan,_t) = getSrcSpanFor forest' (srcSpanToForestSpan sspan')
       (drawTreeEntry fwithspan) `shouldBe`
@@ -2480,7 +2482,7 @@ tree TId 0:
                "|  +- ((1,1),(11,27))\n|  |\n"++
                "|  `- ((11,27),(11,32))\n|\n"++
                "+- ((12,22),(12,27))(1,-9)D\n|\n"++
-               "`- ((13,18),(17,23))\n"
+               "`- ((13,21),(17,23))\n"
 
       let z = openZipperToSpan (srcSpanToForestSpan sspan') $ Z.fromTree fwithspan
       let prevToks = retrievePrevLineToks z
@@ -2512,7 +2514,7 @@ tree TId 0:
                "|  +- ((11,27),(11,32))\n|  |\n"++
                "|  `- ((1000012,26),(1000013,34))\n|\n"++
                "+- ((12,22),(12,27))(1,-9)D\n|\n"++
-               "`- ((13,18),(17,23))\n"
+               "`- ((13,21),(17,23))\n"
 
       (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,12),26),((False,0,1,13),34))"
       (invariant forest'') `shouldBe` []
