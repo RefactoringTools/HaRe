@@ -1,5 +1,6 @@
 module TestUtils
        ( compareFiles
+       , compareStrings
        , parsedFileGhc
        , parseSourceFileTest
        , getTestDynFlags
@@ -54,12 +55,18 @@ hex v = "0x" ++ showHex v ""
 
 -- ---------------------------------------------------------------------
 
-compareFiles :: FilePath -> FilePath -> IO [(DI, [String])]
+compareFiles :: FilePath -> FilePath -> IO [Diff [String]]
 compareFiles fileA fileB = do
   astr <- readFile fileA
   bstr <- readFile fileB
-  -- putStrLn $ "compareFiles " ++ (show $ lines astr) ++ "," ++ (show $ lines bstr) 
-  return $ filter (\(c,_) -> c /= B) $ getGroupedDiff (lines astr) (lines bstr)
+  -- return $ filter (\c -> not( isBoth c)) $ getGroupedDiff (lines astr) (lines bstr)
+  return $ compareStrings astr bstr
+
+compareStrings :: String -> String -> [Diff [String]]
+compareStrings astr bstr = filter (\c -> not( isBoth c)) $ getGroupedDiff (lines astr) (lines bstr)
+    where
+      isBoth (Both _ _) = True
+      isBoth _        = False
 
 -- ---------------------------------------------------------------------
 

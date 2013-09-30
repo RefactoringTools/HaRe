@@ -89,7 +89,8 @@ spec = do
 #endif
       origStr <- readFile "./test/testdata/BCpp.hs"
       let toksStr = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
-      (show (filter (\(c,_) -> c /= B) $ getGroupedDiff (lines toksStr) (lines origStr))) `shouldBe` "[]"
+      -- (show (filter (\(c,_) -> c /= B) $ getGroupedDiff (lines toksStr) (lines origStr))) `shouldBe` "[]"
+      (show $ compareStrings toksStr origStr) `shouldBe` "[]"
 
   -- -----------------------------------
 
