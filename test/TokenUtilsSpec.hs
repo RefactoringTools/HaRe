@@ -563,6 +563,79 @@ tree TId 0:
             "|  `- ((12,32),(12,33))\n|\n"++
             "`- ((13,24),(16,22))\n"
 
+    -- ---------------------------------
+
+    it "gets tokens for a span should be same as getTokensForNoIntros" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Case/D.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let decls = hsBinds renamed
+      let forest = mkTreeFromTokens toks
+
+      -- getToksForSpan test/testdata/Case/D.hs:5:12-18:("(((False,0,0,5),12),((False,0,0,5),19))",[((((5,12),(5,13)),IToparen),"("),((((5,13),(5,16)),ITvarid "odd"),"odd"),((((5,17),(5,18)),ITvarid "x"),"x"),((((5,18),(5,19)),ITcparen),")")])
+      -- getToksForSpan test/testdata/Case/D.hs:(6,16)-(8,19):("(((False,0,0,6),16),((False,0,0,8),20))",[((((1,1),(1,7)),ITmodule),"module"),((((1,8),(1,9)),ITconid "C"),"C"),((((1,10),(1,15)),ITwhere),"where"),((((2,1),(2,35)),ITlineComment "-- Test for refactor of if to case")
+
+      let sspan = posToSrcSpan forest ((5,12),(5,19))
+      (showGhc sspan) `shouldBe` "test/testdata/Case/D.hs:5:12-18"
+      (showSrcSpanF sspan) `shouldBe` "(((False,0,0,5),12),((False,0,0,5),19))"
+
+      let (tm',declToks) = getTokensFor True forest sspan
+      (drawTreeEntry tm') `shouldBe`
+            "((1,1),(13,16))\n|\n"++
+            "+- ((1,1),(5,11))\n|\n"++
+            "+- ((5,12),(5,19))\n|\n"++
+            "`- ((8,13),(13,16))\n"
+
+      let expectedToks = "[(((5,12),(5,13)),IToparen,\"(\"),(((5,13),(5,16)),ITvarid \"odd\",\"odd\"),(((5,17),(5,18)),ITvarid \"x\",\"x\"),(((5,18),(5,19)),ITcparen,\")\")]"
+      (showToks declToks) `shouldBe` expectedToks
+
+      let (tm2,declToks2) = getTokensForNoIntros True forest sspan
+      (drawTreeEntry tm2) `shouldBe`
+            "((1,1),(13,16))\n|\n"++
+            "+- ((1,1),(5,11))\n|\n"++
+            "+- ((5,12),(5,19))\n|\n"++
+            "`- ((8,13),(13,16))\n"
+
+      (showToks declToks2) `shouldBe` expectedToks
+
+
+      let sspan2 = posToSrcSpan forest ((6,16),(8,20))
+      (showGhc sspan2) `shouldBe` "test/testdata/Case/D.hs:(6,16)-(8,19)"
+      (showSrcSpanF sspan2) `shouldBe` "(((False,0,0,6),16),((False,0,0,8),20))"
+
+-- -- drill down testing
+      let z = openZipperToSpan (srcSpanToForestSpan sspan2) $ Z.fromTree tm'
+      (show $ Z.isLeaf z) `shouldBe` "False"
+
+      -- (show $ Z.tree z) `shouldBe` "xxx"
+      let (b1,[m1],e1) = splitSubtree (Z.tree z) (srcSpanToForestSpan sspan2)
+      -- (show m1) `shouldBe` "xxx"
+      let (b2,[m2],e2) = splitSubToks m1 (srcSpanToForestSpan sspan2)
+      (show m2) `shouldBe` "yyy"
+
+      let (before,middle,end) = doSplitTree (Z.tree z) (srcSpanToForestSpan sspan2)
+      (show (before,middle,end)) `shouldBe` ""
+
+
+      let t3 = insertSrcSpan tm' (srcSpanToForestSpan sspan2)
+      drawTreeEntry t3 `shouldBe`
+            "((1,1),(13,16))\n|\n"++
+            "+- ((1,1),(5,11))\n|\n"++
+            "+- ((5,12),(5,19))\n|\n"++
+            "+- ((6,16),(8,20))\n|\n"++ -- The problem
+            "`- ((11,13),(13,16))\nxx"
+--
+
+      let (tm'',declToks') = getTokensFor True tm' sspan2
+      (drawTreeEntry tm'') `shouldBe`
+            "((1,1),(13,16))\n|\n"++
+            "+- ((1,1),(5,11))\n|\n"++
+            "+- ((5,12),(5,19))\n|\n"++
+            "+- ((8,13),(8,20))\n|\n"++
+            "`- ((11,13),(13,16))\n"
+
+      let expectedToks2 = ""
+      (showToks declToks') `shouldBe` expectedToks2
+
   -- ---------------------------------------------
 
   describe "getTokensBefore" $ do
@@ -2945,6 +3018,23 @@ tree TId 0:
       let tree = mkTreeFromTokens toks'
       (show toks') `shouldBe` "[((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")]"
       (show tree) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),6)) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
+
+  -- ---------------------------------------------
+
+  describe "splitSubToks" $ do
+    it "Splits sub tokens" $ do
+      (_t,toks) <- parsedFileGhc "./test/testdata/Case/D.hs"
+      let forest = mkTreeFromTokens toks
+
+      let startPos = (ForestLine False 0 0 6,16)
+      let endPos   = (ForestLine False 0 0 8,19)
+
+      -- test/testdata/Case/D.hs:(6,16)-(8,19)}
+      (showGhc $ forestSpanToSrcSpan (startPos,endPos)) `shouldBe` "foo:(6,16)-(8,18)"
+
+      let (b,m,e) = splitSubToks forest (startPos,endPos)
+      (show m) `shouldBe` "[Node {rootLabel = Entry (((ForestLine False 0 0 8),13),((ForestLine False 0 0 8),18)) "++
+          "[((((6,16),(6,18)),ITdo),\"do\"),((((7,13),(7,37)),ITlineComment \"-- This is an odd result\"),\"-- This is an odd result\"),((((8,13),(8,13)),ITvocurly),\"\"),((((8,13),(8,16)),ITvarid \"bob\"),\"bob\"),((((8,17),(8,18)),ITvarid \"x\"),\"x\")], subForest = []}]"
 
   -- ---------------------------------------------
 

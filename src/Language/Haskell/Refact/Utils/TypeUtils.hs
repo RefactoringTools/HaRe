@@ -3982,11 +3982,12 @@ adjustLayoutAfterRename oldPN newName t = do
             -- logm $ "adjustLHsExpr:in:(upToIn)=" ++ show upToIn
             let offIn = calcOffset upToIn
             logm $ "adjustLHsExpr:let/in:(l,offIn)=" ++ showGhc (l,offIn)
+            -- drawTokenTreeDetailed "before blowup"
 
             -- Does the 'in' token fall on the same line as the let
             -- decls?
             let (GHC.L ll _) = glast "adjustLHSExpr" local'
-            lastDeclToks <- getToksForSpan ll
+            lastDeclToks <- getToksForSpanNoInv ll
             let offToUse = if startLineForToks upToIn == startLineForToks (reverse lastDeclToks)
                              then off
                              else offIn
@@ -4000,7 +4001,7 @@ adjustLayoutAfterRename oldPN newName t = do
     -- ---------------------------------
 
     adjustLMatch :: (GHC.LMatch GHC.Name) -> RefactGhc (GHC.LMatch GHC.Name)
-    adjustLMatch x@(GHC.L _ (GHC.Match _ _ (GHC.GRHSs _ GHC.EmptyLocalBinds))) = return x
+    adjustLMatch x@(GHC.L _ (GHC.Match _    _    (GHC.GRHSs _    GHC.EmptyLocalBinds))) = return x
     adjustLMatch x@(GHC.L l (GHC.Match pats mtyp (GHC.GRHSs grhs local))) =
       do
         upToWhere <- getLineToks l isWhere
