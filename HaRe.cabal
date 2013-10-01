@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.0.5
+Version:                        0.7.0.6
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -22,7 +22,7 @@ Description:
    .
    Current known defects:
    .
-     * After renaming, the layout of surrounding 'let' clause is not adjusted.
+     * After renaming, the layout of nested let/where clauses is not adjusted.
        This can cause problems if the new name is a different length from the
        old one.
    .

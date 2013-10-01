@@ -1,12 +1,9 @@
-2013-09-15  alanz  <alanz@alanz-laptop>
-
-	* src/Language/Haskell/Refact/Utils/TypeUtils.hs
-	(adjustLayoutAfterRename): Adjust layout in a do expression after renaming
-	(adjustLayoutAfterRename): Adjust layout in a where expression
-	after renaming
-
-	* Re-align tokens when renaming the condition of a case statement
-	to have a different length
+2013-10-01 v0.7.0.6
+	* Sort out most of the do/in/let layout when renaming. Only nested
+	layout changes to be dealt with.
+	* Updated to use the latest ghc-mod, with cabal 1.18.x sandbox
+	support.
+	* Updated to latest versions of Diff and hspec
 	* When refactoring a CPP pre-processed file, read the preprocessor
 	directives and non-compiled code as comments, so the source can be
 	round-tripped. This allows refactoring of simple #if/#else/#endif
