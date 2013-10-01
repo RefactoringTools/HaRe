@@ -22,6 +22,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , isWhiteSpace
                      , isWhiteSpaceOrIgnored
                      , isIgnored
+                     , isIgnoredNonComment
                      {-
                      ,isNewLn,isCommentStart -},isComment {-,
                      isNestedComment-},isMultiLineComment {-,isOpenBracket,isCloseBracket, -}
@@ -1216,6 +1217,12 @@ isWhiteSpaceOrIgnored tok = isWhiteSpace tok || isIgnored tok
 -- Tokens that are ignored when allocating tokens to a SrcSpan
 isIgnored :: PosToken -> Bool
 isIgnored tok = isThen tok || isElse tok || isIn tok || isDo tok
+
+-- | Tokens that are ignored when determining the first non-comment
+-- token in a span
+isIgnoredNonComment :: PosToken -> Bool
+isIgnoredNonComment tok = isThen tok || isElse tok || isWhiteSpace tok
+
 
 -- ---------------------------------------------------------------------
 

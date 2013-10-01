@@ -3484,9 +3484,10 @@ rmDecl pn incSig t = do
          decl' <- syncDeclToLatestStash decl
          setStateStorage (StorageBind decl')
          case length decls of
-           1 -> do
+           1 -> do -- Removing the last declaration
             logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
-            putToksForSpan ss toks
+            -- putToksForSpan ss toks
+            putToksForSpan ss $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
             return expr
            _ -> do
             logm $ "rmDecl.inLet:length decls /= 1"
