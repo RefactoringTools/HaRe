@@ -1455,7 +1455,6 @@ reIndentToks pos prevToks toks = toks''
         where
           -- TODO: Should this not be prevOffset?
           colStart  = tokenCol $ ghead "reIndentToks.4"
-                    -- $ dropWhile isWhiteSpace prevToks
                     $ dropWhile isWhiteSpaceOrIgnored prevToks
           -- colStart = prevOffset
           -- colStart = error $ "reIndentToks:prevToks=" ++ (show prevToks)

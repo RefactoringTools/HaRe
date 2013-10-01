@@ -3938,11 +3938,11 @@ adjustLayoutAfterRename oldPN newName t = do
            -- let off = (length $ showGhc newName) - (length $ showGhc oldPN)
 
            -- Offset calculation
-           -- * Must take into account the new position of the 'of'
+           -- - Must take into account the new position of the 'of'
            --   token.
-           -- * But must also take account of any spaces between the
+           -- - But must also take account of any spaces between the
            --   end of the 'of' token and the start of the MatchGroup.
-           -- * And of whether the 'of' token is on the same line as
+           -- - And of whether the 'of' token is on the same line as
            --   the MatchGroup
            -- logm $ "adjustLHsExpr:case:starting="
            -- drawTokenTreeDetailed "adjustLHsExpr:case"
