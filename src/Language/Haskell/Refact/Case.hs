@@ -65,8 +65,13 @@ reallyDoIfToCase expr rs = do
                ofTok <- liftIO $ tokenise (realSrcLocFromTok (glast "reallyDoIfToCase" condToks)) 1 True "of"
                trueToks  <- liftIO $ basicTokenise "True  ->"
                falseToks <- liftIO $ basicTokenise "False ->"
-               thenToks <- getToksForSpan l2
-               elseToks <- getToksForSpan l3
+               thenToksRaw <- getToksForSpan l2
+               elseToksRaw <- getToksForSpan l3
+
+               let thenToks = dropWhile isEmpty thenToksRaw
+               let elseToks = dropWhile isEmpty elseToksRaw
+
+               logm $ "reallyDoIfToCase:elseToks=" ++ (show elseToks)
 
                let t0 = reIndentToks PlaceAdjacent caseTok condToks
                let t1' = reIndentToks PlaceAdjacent (caseTok ++ t0) ofTok
@@ -78,6 +83,7 @@ reallyDoIfToCase expr rs = do
                let (_,col) = tokenPos $ ghead "reallyDoIfToCase" t2
 
                let t4 = reIndentToks (PlaceAbsCol 1 col 0) (t1++t2++t3) falseToks
+               -- logm $ "reallyDoIfToCase:(t1++t2++t3++t4)=" ++ (show (t1++t2++t3++t4))
                let t5 = reIndentToks PlaceAdjacent (t1++t2++t3++t4) elseToks
 
                let caseToks = t1++t2++t3++t4++t5 ++ [newLnToken (last t5)]
@@ -86,7 +92,7 @@ reallyDoIfToCase expr rs = do
                logm $ "reallyDoIfToCase:t2=[" ++ (GHC.showRichTokenStream t2) ++ "]"
                logm $ "reallyDoIfToCase:t3=[" ++ (GHC.showRichTokenStream t3) ++ "]"
 
-               logm $ "reallyDoIfToCase:t1++t2++t3=" ++ (show (t1++t2++t3))
+               -- logm $ "reallyDoIfToCase:t1++t2++t3=" ++ (show (t1++t2++t3))
 
                logm $ "reallyDoIfToCase:t4=[" ++ (GHC.showRichTokenStream t4) ++ "]"
                logm $ "reallyDoIfToCase:t5=[" ++ (GHC.showRichTokenStream t5) ++ "]"
