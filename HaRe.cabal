@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.0.6
+Version:                        0.7.0.7
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -146,8 +146,7 @@ test-suite spec
     test
   build-depends:
       base        >= 4.0  && < 4.7
-    -- , Diff == 0.1.3
-    , Diff
+    , Diff >= 0.3.0
     , HUnit       == 1.2.*
     , QuickCheck  >= 2.5
     , containers

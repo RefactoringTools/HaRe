@@ -73,6 +73,12 @@ introduced by them need to be kept indented at the same level.
 ```
 
 
+## General approach
+
+Perform bottom-up traversal, ensuring that each of the above elements
+is aligned in its column.
+
+
 ## The braces / semicolon insertion algorithm is as follows
 
 

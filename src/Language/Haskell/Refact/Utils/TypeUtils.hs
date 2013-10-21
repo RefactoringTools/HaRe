@@ -4016,7 +4016,9 @@ adjustLayoutAfterRename oldPN newName t = do
 
             local' <- indentList (sortBy compareLocated $ hsBinds local) off
             return (GHC.L l (GHC.Match pats mtyp (GHC.GRHSs grhs (replaceBinds local local'))))
-          else return x
+          else do
+            logm $ "adjustLMatch: (l,off)=" ++ showGhc (l,off)
+            return x
 
     adjustLMatch x = return x
 
