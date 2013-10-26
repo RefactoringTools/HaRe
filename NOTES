@@ -77,7 +77,7 @@ Observations
      re-arrangements are made. I suspect that the complexity of doing
      this will not be worth the result.
 
-  4. The final output happens via the token stream. 
+  4. The final output happens via the token stream.
 
   5. The only leeway with the RealSrcLoc is the Int pairs pertaining
      to the start and end line/col pairs. Perhaps use either -ve
@@ -92,6 +92,18 @@ Observations
 
   8. The GHC ParsedSource is in linear order, the RenamedSource is not
 
+
+Further thoughts on Token/AST tie up
+------------------------------------
+
+Layout is the biggest problem, in terms of knock-on effect of layout changes.
+
+This is a solved problem, in the pretty-print world.
+
+So, try and represent the token tree as a representation of the layout
+elements of the original AST.
+
+To do this, must identify the critical layout points, REQUIRED by haskell.
 
 
 
