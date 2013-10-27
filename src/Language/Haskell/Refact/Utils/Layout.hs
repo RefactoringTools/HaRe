@@ -5,13 +5,18 @@ module Language.Haskell.Refact.Utils.Layout (
   allocTokens
   ) where
 
+import qualified Bag           as GHC
 import qualified GHC           as GHC
+import qualified Outputable    as GHC
+
+import Outputable
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import Data.List
 import Language.Haskell.Refact.Utils.GhcUtils
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -127,6 +132,12 @@ data Layout = Above [Layout]
             | Leaf                    [PosToken]
             | LeafLocated GHC.SrcSpan [PosToken]
             deriving (Show)
+
+instance Outputable Layout where
+  ppr (Above list) = text "Above" <+> ppr list
+  ppr (Offset r c layout) = text "Offset" <+> ppr r <+> ppr c <+> ppr layout
+  ppr (Leaf toks) = text "Leaf" <+> text (show toks)
+  ppr (LeafLocated sspan toks) = text "LeafLocated" <+> ppr sspan <+> text (show toks)
 
 -- ---------------------------------------------------------------------
 
@@ -255,17 +266,11 @@ allocDerivD (acc,toks) d@(GHC.L l (GHC.DerivD      _)) = ([],[])
 -- ---------------------------------------------------------------------
 
 allocValD :: ([Layout],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([Layout],[PosToken])
-allocValD (acc,toks) (GHC.L _l (GHC.ValD (GHC.FunBind (GHC.L ln _) _ (GHC.MatchGroup matches _) _ _ _))) = r
+allocValD (acc,toks) (GHC.L l (GHC.ValD bind@(GHC.FunBind _ _ _ _ _ _))) = r
   where
-    (nameLayout,toks1) = ([Leaf s1,LeafLocated ln nameToks],toks')
-      where
-        (s1,nameToks,toks') = splitToks (ghcSpanStartEnd ln) toks
-
-    (matchesLayout,toks2) = ([Leaf s2] ++ allocMatches matches matchToks,toks2')
-          where
-            (s2,matchToks,toks2') = splitToksForList matches toks1
-
-    r = (acc ++ (strip $ nameLayout ++ matchesLayout),toks2)
+    (s1,bindToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    bindLayout = allocBind (GHC.L l bind) bindToks
+    r = (acc ++ (strip $ [Leaf s1] ++ bindLayout),toks')
 
 allocValD (acc,toks) d@(GHC.L l (GHC.ValD (GHC.PatBind lhs rhs _ _ _))) = r
   where
@@ -347,17 +352,136 @@ allocPat (GHC.L l _) toks = [Leaf toks]
 -- ---------------------------------------------------------------------
 
 allocRhs :: GHC.LGRHS GHC.RdrName -> [PosToken] -> [Layout]
-allocRhs (GHC.L l (GHC.GRHS stmts expr)) toksIn = r
+allocRhs (GHC.L _l (GHC.GRHS stmts expr)) toksIn = r
   where
-    r = error "allocRhs undefined"
+    (s1,stmtsToks,toks') = splitToksForList stmts toksIn
+    stmtsLayout = allocList stmts stmtsToks allocStmt
+    exprLayout = allocExpr expr toks'
+    r = strip $ [Leaf s1] ++ stmtsLayout ++ exprLayout
+
+-- ---------------------------------------------------------------------
+
+allocStmt :: GHC.LStmt GHC.RdrName -> [PosToken] -> [Layout]
+allocStmt (GHC.L _ (GHC.LastStmt expr _)) toks = allocExpr expr toks
+allocStmt (GHC.L _ (GHC.BindStmt pat@(GHC.L lp _) expr _ _)) toks = r
+  where
+    (s1,patToks,toks') = splitToks (ghcSpanStartEnd lp) toks
+    patLayout = allocPat pat patToks
+    exprLayout = allocExpr expr toks'
+    r = strip $ [Leaf s1] ++ patLayout ++ exprLayout
+allocStmt (GHC.L _ (GHC.ExprStmt expr _ _ _)) toks = allocExpr expr toks
+allocStmt (GHC.L _ (GHC.LetStmt binds))       toks = allocLocalBinds binds toks
+allocStmt (GHC.L _ (GHC.ParStmt stmts _ _))          toks = undefined
+allocStmt (GHC.L _ (GHC.TransStmt _ _ _ _ _ _ _ _ )) toks = undefined
+allocStmt (GHC.L _ (GHC.RecStmt _ _ _ _ _ _ _ _ _))  toks = undefined
+
+-- ---------------------------------------------------------------------
+
+allocExpr :: GHC.LHsExpr GHC.RdrName -> [PosToken] -> [Layout]
+allocExpr (GHC.L l (GHC.HsVar _)) toks = [LeafLocated l toks]
+allocExpr (GHC.L l (GHC.HsLit _)) toks = [LeafLocated l toks]
+allocExpr (GHC.L _ (GHC.HsLam (GHC.MatchGroup matches _))) toks
+  = allocMatches matches toks
+allocExpr (GHC.L _ (GHC.HsLamCase _ (GHC.MatchGroup matches _))) toks
+  = allocMatches matches toks
+allocExpr (GHC.L _ (GHC.HsApp e1@(GHC.L l1 _) e2)) toks = r
+  where
+    (s1,e1Toks,e2Toks) = splitToks (ghcSpanStartEnd l1) toks
+    e1Layout = allocExpr e1 e1Toks
+    e2Layout = allocExpr e2 e2Toks
+    r = strip $ [Leaf s1] ++ e1Layout ++ e2Layout
+allocExpr (GHC.L _ (GHC.OpApp e1@(GHC.L l1 _) e2@(GHC.L l2 _) _ e3)) toks = r
+  where
+    (s1,e1Toks,toks1) = splitToks (ghcSpanStartEnd l1) toks
+    (s2,e2Toks,e3Toks) = splitToks (ghcSpanStartEnd l2) toks1
+    e1Layout = allocExpr e1 e1Toks
+    e2Layout = allocExpr e2 e2Toks
+    e3Layout = allocExpr e3 e3Toks
+    r = strip $ [Leaf s1] ++ e1Layout ++ [Leaf s2] ++ e2Layout ++ e3Layout
+allocExpr (GHC.L _ (GHC.NegApp expr _)) toks = allocExpr expr toks
+allocExpr (GHC.L _ (GHC.HsPar expr))    toks = allocExpr expr toks
+allocExpr (GHC.L _ (GHC.SectionL e1@(GHC.L l1 _) e2)) toks = r
+  where
+    (s1,e1Toks,e2Toks) = splitToks (ghcSpanStartEnd l1) toks
+    e1Layout = allocExpr e1 e1Toks
+    e2Layout = allocExpr e2 e2Toks
+    r = strip $ [Leaf s1] ++ e1Layout ++ e2Layout
+allocExpr (GHC.L _ (GHC.SectionR e1@(GHC.L l1 _) e2)) toks = r
+  where
+    (s1,e1Toks,e2Toks) = splitToks (ghcSpanStartEnd l1) toks
+    e1Layout = allocExpr e1 e1Toks
+    e2Layout = allocExpr e2 e2Toks
+    r = strip $ [Leaf s1] ++ e1Layout ++ e2Layout
+allocExpr (GHC.L _ (GHC.ExplicitTuple tupArgs _)) toks = r
+  where
+    r = undefined
+allocExpr (GHC.L _ (GHC.HsCase expr@(GHC.L le _) (GHC.MatchGroup matches _))) toks = r
+  where
+    (s1,exprToks,matchToks) = splitToks (ghcSpanStartEnd le) toks
+    exprLayout = allocExpr expr exprToks
+    matchesLayout = allocMatches matches matchToks
+    r = strip $ [Leaf s1] ++ exprLayout ++ matchesLayout
+allocExpr (GHC.L _ (GHC.HsIf _ e1@(GHC.L l1 _) e2@(GHC.L l2 _) e3)) toks = r
+  where
+    (s1,e1Toks,toks1) = splitToks (ghcSpanStartEnd l1) toks
+    (s2,e2Toks,e3Toks) = splitToks (ghcSpanStartEnd l2) toks1
+    e1Layout = allocExpr e1 e1Toks
+    e2Layout = allocExpr e2 e2Toks
+    e3Layout = allocExpr e3 e3Toks
+    r = strip $ [Leaf s1] ++ e1Layout ++ [Leaf s2] ++ e2Layout ++ e3Layout
+allocExpr (GHC.L _ (GHC.HsMultiIf _ rhs)) toks = allocList rhs toks allocRhs
+allocExpr (GHC.L _ (GHC.HsLet localBinds expr@(GHC.L le _))) toks = r
+  where
+    (bindToks,exprToks,toks') = splitToks (ghcSpanStartEnd le) toks
+    bindLayout = allocLocalBinds localBinds bindToks
+    exprLayout = allocExpr expr exprToks
+    r = strip $ bindLayout ++ exprLayout ++ [Leaf toks']
+allocExpr (GHC.L _ (GHC.HsDo _ stmts _)) toks = allocList stmts toks allocStmt
+allocExpr (GHC.L _ (GHC.ExplicitList _ exprs)) toks = allocList exprs toks allocExpr
+allocExpr (GHC.L _ (GHC.ExplicitPArr _ exprs)) toks = allocList exprs toks allocExpr
+allocExpr (GHC.L _ (GHC.RecordCon (GHC.L ln _) _ (GHC.HsRecFields fields _))) toks = r
+  where
+    (s1,nameToks,fieldsToks) = splitToks (ghcSpanStartEnd ln) toks
+    nameLayout = [LeafLocated ln nameToks]
+    fieldsLayout = error "allocExpr allocRecField needs work"
+    r = strip $ [Leaf s1] ++ nameLayout ++ fieldsLayout
+
+allocExpr e toks = error $ "allocExpr for " ++ (SYB.showData SYB.Parser 0  e) ++ " undefined"
 
 -- ---------------------------------------------------------------------
 
 allocLocalBinds :: GHC.HsLocalBinds GHC.RdrName -> [PosToken] -> [Layout]
 allocLocalBinds GHC.EmptyLocalBinds toks = strip $ [Leaf toks]
-allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = error "allocLocalBinds undefined"
+allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
+  where
+    bindList = GHC.bagToList binds
+    (s1,toksBinds,toks1) = splitToksForList bindList toks
+    bindsLayout = allocList bindList toksBinds allocBind
+    sigsLayout = allocList sigs toks1 doSigs
+    doSigs = undefined
+    r = strip $ [Leaf s1] ++ bindsLayout ++ sigsLayout
 
 allocLocalBinds (GHC.HsIPBinds ib)  toks = error "allocLocalBinds undefined"
+
+-- ---------------------------------------------------------------------
+
+allocBind :: GHC.LHsBind GHC.RdrName -> [PosToken] -> [Layout]
+allocBind (GHC.L _ (GHC.FunBind (GHC.L ln _) _ (GHC.MatchGroup matches _) _ _ _)) toks = r
+  where
+    (nameLayout,toks1) = ([Leaf s1,LeafLocated ln nameToks],toks')
+      where
+        (s1,nameToks,toks') = splitToks (ghcSpanStartEnd ln) toks
+
+    (matchesLayout,toks2) = ([Leaf s2] ++ allocMatches matches matchToks,toks2')
+          where
+            (s2,matchToks,toks2') = splitToksForList matches toks1
+
+    r = strip $ nameLayout ++ matchesLayout ++ [Leaf toks2]
+
+-- ---------------------------------------------------------------------
+
+allocRecField :: GHC.HsRecFields GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> [PosToken] -> [Layout]
+allocRecField = undefined
 
 -- ---------------------------------------------------------------------
 

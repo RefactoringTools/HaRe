@@ -51,7 +51,14 @@ spec = do
           "((((3,17),(3,24)),ITstring \"hello\"),\"\\\"hello\\\"\")]"
 
       let layout = allocTokens parsed toks
-      (show layout) `shouldBe` ""
+      (showGhc layout) `shouldBe`
+         "[LeafLocated test/testdata/Layout/Bare.hs:3:1-4 "++
+            "[((((3,1),(3,5)),ITvarid \"main\"),\"main\")],\n "++
+         "Leaf [((((3,6),(3,7)),ITequal),\"=\")],\n "++
+         "LeafLocated test/testdata/Layout/Bare.hs:3:8-15 "++
+            "[((((3,8),(3,16)),ITvarid \"putStrLn\"),\"putStrLn\")],\n "++
+         "LeafLocated test/testdata/Layout/Bare.hs:3:17-23 "++
+            "[((((3,17),(3,24)),ITstring \"hello\"),\"\\\"hello\\\"\")]]"
 
 -- ---------------------------------------------------------------------
 
