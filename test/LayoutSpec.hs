@@ -51,6 +51,7 @@ spec = do
           "((((3,17),(3,24)),ITstring \"hello\"),\"\\\"hello\\\"\")]"
 
       let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
       (showGhc layout) `shouldBe`
          "[LeafLocated test/testdata/Layout/Bare.hs:3:1-4 "++
             "[((((3,1),(3,5)),ITvarid \"main\"),\"main\")],\n "++
@@ -65,8 +66,10 @@ spec = do
     it "allocates Tokens for a let expression" $ do
       (t,toks) <- parsedFileLetExpr
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let renamed = fromJust $ GHC.tm_renamed_source t
 
       -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       (show toks) `shouldBe`
          "[((((1,1),(1,61)),ITlineComment \"-- A simple let expression, to ensure the layout is detected\"),\"-- A simple let expression, to ensure the layout is detected\"),"++
@@ -94,6 +97,51 @@ spec = do
 
 
       let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (showGhc layout) `shouldBe`
+         ""
+
+  -- ---------------------------------------------
+
+    it "allocates Tokens for a let statement" $ do
+      (t,toks) <- parsedFileLetStmt
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+{-
+      (show toks) `shouldBe`
+         "[((((1,1),(1,60)),ITlineComment \"-- A simple let statement, to ensure the layout is detected\"),\"-- A simple let statement, to ensure the layout is detected\"),"++
+         "((((3,1),(3,7)),ITmodule),\"module\"),"++
+         "((((3,8),(3,22)),ITqconid (\"Layout\",\"LetStmt\")),\"Layout.LetStmt\"),"++
+         "((((3,23),(3,28)),ITwhere),\"where\"),"++
+         "((((5,1),(5,1)),ITvocurly),\"\"),"++
+         "((((5,1),(5,4)),ITvarid \"foo\"),\"foo\"),"++
+         "((((5,5),(5,6)),ITequal),\"=\"),"++
+         "((((5,7),(5,9)),ITdo),\"do\"),"++
+         "((((6,9),(6,9)),ITvocurly),\"\"),"++
+         "((((6,9),(6,12)),ITlet),\"let\"),"++
+         "((((6,13),(6,13)),ITvocurly),\"\"),"++
+         "((((6,13),(6,14)),ITvarid \"x\"),\"x\"),"++
+         "((((6,15),(6,16)),ITequal),\"=\"),"++
+         "((((6,17),(6,18)),ITinteger 1),\"1\"),"++
+         "((((7,13),(7,13)),ITsemi),\"\"),"++
+         "((((7,13),(7,14)),ITvarid \"y\"),\"y\"),"++
+         "((((7,15),(7,16)),ITequal),\"=\"),"++
+         "((((7,17),(7,18)),ITinteger 2),\"2\"),"++
+         "((((8,9),(8,9)),ITvccurly),\"\"),"++
+         "((((8,9),(8,9)),ITsemi),\"\"),"++
+         "((((8,9),(8,10)),ITvarid \"x\"),\"x\"),"++
+         "((((8,10),(8,11)),ITvarsym \"+\"),\"+\"),"++
+         "((((8,11),(8,12)),ITvarid \"y\"),\"y\"),"++
+         "((((10,1),(10,1)),ITvccurly),\"\"),"++
+         "((((10,1),(10,1)),ITsemi),\"\")]"
+-}
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
       (showGhc layout) `shouldBe`
          ""
 
@@ -105,6 +153,11 @@ parsedFileBare = parsedFileGhc "./test/testdata/Layout/Bare.hs"
 -- ---------------------------------------------------------------------
 
 parsedFileLetExpr :: IO (ParseResult,[PosToken])
-parsedFileLetExpr= parsedFileGhc "./test/testdata/Layout/LetExpr.hs"
+parsedFileLetExpr = parsedFileGhc "./test/testdata/Layout/LetExpr.hs"
+
+-- ---------------------------------------------------------------------
+
+parsedFileLetStmt :: IO (ParseResult,[PosToken])
+parsedFileLetStmt = parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
 
 -- ---------------------------------------------------------------------
