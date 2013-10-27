@@ -380,6 +380,7 @@ allocStmt (GHC.L _ (GHC.RecStmt _ _ _ _ _ _ _ _ _))  toks = undefined
 allocExpr :: GHC.LHsExpr GHC.RdrName -> [PosToken] -> [Layout]
 allocExpr (GHC.L l (GHC.HsVar _)) toks = [LeafLocated l toks]
 allocExpr (GHC.L l (GHC.HsLit _)) toks = [LeafLocated l toks]
+allocExpr (GHC.L l (GHC.HsOverLit _)) toks = [LeafLocated l toks]
 allocExpr (GHC.L _ (GHC.HsLam (GHC.MatchGroup matches _))) toks
   = allocMatches matches toks
 allocExpr (GHC.L _ (GHC.HsLamCase _ (GHC.MatchGroup matches _))) toks
@@ -459,7 +460,7 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
     bindsLayout = allocList bindList toksBinds allocBind
     sigsLayout = allocList sigs toks1 doSigs
     doSigs = undefined
-    r = strip $ [Leaf s1] ++ bindsLayout ++ sigsLayout
+    r = strip $ [Leaf s1] ++ [Above bindsLayout] ++ sigsLayout
 
 allocLocalBinds (GHC.HsIPBinds ib)  toks = error "allocLocalBinds undefined"
 
