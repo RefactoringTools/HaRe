@@ -15,6 +15,7 @@ import qualified Module     as GHC
 import Data.Maybe
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
+import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -22,6 +23,7 @@ import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+
 -- import System.Environment
 
 -- import Data.Tree
@@ -1792,7 +1794,7 @@ spec = do
          return (new,newName,toksForOp)
       let
 
-      ((nb,nn,tfo),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest'', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
+      ((nb,nn,tfo),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest'', rsTokenLayout = nullTokenLayout, rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       -- (show tfo) `shouldBe` ""
       (showGhc n) `shouldBe` "TokenTest.foo"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((19,1),(19,5)),ITvarid \"bar2\",\"bar2\")]"
@@ -1847,7 +1849,7 @@ spec = do
 
          return (new,newName)
 
-      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest''', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
+      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest''', rsTokenLayout = nullTokenLayout, rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = Just (RefMod {rsTokenCache = mkTokenCache forest''', rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
 
       -- (show tfo) `shouldBe` ""

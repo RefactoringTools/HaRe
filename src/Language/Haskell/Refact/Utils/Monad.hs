@@ -32,15 +32,12 @@ import qualified MonadUtils    as GHC
 
 import Control.Monad.State
 import Data.List
--- import Data.Maybe
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
+import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
--- import System.Directory
--- import System.FilePath
--- import System.Log.Logger
 import qualified Control.Monad.IO.Class as MU
 
 -- ---------------------------------------------------------------------
@@ -84,6 +81,7 @@ data RefactModule = RefMod
         { rsTypecheckedMod  :: !GHC.TypecheckedModule
         , rsOrigTokenStream :: ![PosToken]  -- ^Original Token stream for the current module
         , rsTokenCache      :: !TokenCache  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
+        , rsTokenLayout     :: !TokenLayout -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
         , rsStreamModified  :: !Bool        -- ^current module has updated the token stream
         }
 

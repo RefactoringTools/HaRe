@@ -41,6 +41,10 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , syncDeclToLatestStash
        , indentDeclAndToks
 
+       -- * LayoutUtils API
+       , getLayoutForSpan
+       , putDeclLayoutAfterSpan
+
        -- * For debugging
        , drawTokenTree
        , drawTokenTreeDetailed
@@ -73,6 +77,9 @@ import qualified Data.Data as SYB
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.LocUtils
+import Language.Haskell.Refact.Utils.Layout
+import Language.Haskell.Refact.Utils.LayoutTypes
+import Language.Haskell.Refact.Utils.LayoutUtils
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -338,7 +345,31 @@ indentDeclAndToks t offset = do
   drawTokenTree "indentDeclToks result"
   return t'
 
+-- =====================================================================
+-- Layout Tree stuff
 -- ---------------------------------------------------------------------
+
+getLayoutForSpan :: GHC.SrcSpan -> RefactGhc LayoutTree
+getLayoutForSpan sspan = do
+  st <- get
+  let Just tm = rsModule st
+  let lay = getLayoutFor sspan (rsTokenLayout tm)
+  logm $ "getLayoutForSpan " ++ (showGhc sspan) ++ ":" ++ (showGhc lay)
+  return lay
+
+putDeclLayoutAfterSpan :: (SYB.Data t)
+   => GHC.SrcSpan -> GHC.Located t -> Positioning -> LayoutTree
+   -> RefactGhc (GHC.Located t)
+putDeclLayoutAfterSpan oldSpan t pos lay = do
+  logm $ "putDeclLayoutAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,lay))
+  st <- get
+  let Just tm = rsModule st
+  let (tl',_newSpan, t') = addDeclLayoutAfterSrcSpan (rsTokenLayout tm) oldSpan pos lay t
+  let rsModule' = Just (tm {rsTokenLayout = tl', rsStreamModified = True})
+  put $ st { rsModule = rsModule' }
+  return t'
+
+-- =====================================================================
 
 getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
 getTypecheckedModule = do
@@ -460,6 +491,9 @@ initRefactModule tm toks
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsOrigTokenStream = toks
                  , rsTokenCache = initTokenCache toks
+                 , rsTokenLayout = initTokenLayout
+                                    (GHC.pm_parsed_source $ GHC.tm_parsed_module tm) 
+                                    toks
                  , rsStreamModified = False
                  })
 

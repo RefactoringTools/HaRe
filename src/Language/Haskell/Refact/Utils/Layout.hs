@@ -1,9 +1,14 @@
+{-# LANGUAGE StandaloneDeriving #-}
+
 -- |
 --
 
 module Language.Haskell.Refact.Utils.Layout (
-    allocTokens
+    initTokenLayout
+  , nullTokenLayout
+  , allocTokens
   , retrieveTokens
+  , getLoc
   ) where
 
 import qualified Bag           as GHC
@@ -19,6 +24,7 @@ import qualified GHC.SYB.Utils as SYB
 import Data.List
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
+import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -122,25 +128,8 @@ AST Items for layout keywords.
 
 
 -- ---------------------------------------------------------------------
-{-
 
-The layout will have to have a tree structure
-
--}
-
-type RowOffset = Int
-type ColOffset = Int
-
-data LayoutTree = Group GHC.SrcSpan Layout [LayoutTree]  -- Same as current
-                                       -- TokenUtils internal tree node
-                | Leaf  GHC.SrcSpan Layout [PosToken] -- Same as current
-                                      -- TokenUtils leaf node
-            deriving (Show)
-
-data Layout = Above
-            | Offset RowOffset ColOffset
-            | NoChange
-            deriving (Show)
+deriving instance Show LayoutTree
 
 instance Outputable LayoutTree where
   ppr (Group sspan lay list) = hang (text "Group") 2 (vcat [ppr sspan, ppr lay,ppr list])
@@ -150,6 +139,14 @@ instance Outputable Layout where
   ppr (Above)      = text "Above"
   ppr (Offset r c) = text "Offset" <+> ppr r <+> ppr c
   ppr (NoChange)   = text "NoChange"
+
+-- ---------------------------------------------------------------------
+
+initTokenLayout :: GHC.ParsedSource -> [PosToken] -> TokenLayout
+initTokenLayout parsed toks = TL (allocTokens parsed toks)
+
+nullTokenLayout :: TokenLayout
+nullTokenLayout = TL (Leaf nullSrcSpan NoChange [])
 
 -- ---------------------------------------------------------------------
 
