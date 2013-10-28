@@ -9,6 +9,7 @@ module Language.Haskell.Refact.Utils.Layout (
 import qualified Bag           as GHC
 import qualified GHC           as GHC
 import qualified Outputable    as GHC
+import qualified SrcLoc        as GHC
 
 import Outputable
 
@@ -130,18 +131,18 @@ type RowOffset = Int
 type ColOffset = Int
 data Layout = Above [Layout]
             | Offset RowOffset ColOffset Layout
-            | Group                    [Layout]
-            | GroupLocated GHC.SrcSpan [Layout]
-            | Leaf                    [PosToken]
-            | LeafLocated GHC.SrcSpan [PosToken]
+            | GroupLocated GHC.SrcSpan [Layout]  -- Same as current
+                                       -- TokenUtils internal tree node
+            | LeafLocated GHC.SrcSpan [PosToken] -- Same as current
+                                      -- TokenUtils leaf node
             deriving (Show)
 
 instance Outputable Layout where
   ppr (Above list)              = hang (text "Above") 2 (ppr list)
   ppr (Offset r c layout)       = text "Offset" <+> ppr r <+> ppr c <+> ppr layout
-  ppr (Group list)              = hang (text "Group") 2 (ppr list)
+  -- ppr (Group list)              = hang (text "Group") 2 (ppr list)
   ppr (GroupLocated sspan list) = hang (text "GroupLocated") 2 (vcat [ppr sspan, ppr list])
-  ppr (Leaf toks)               = text "Leaf" <+> text (show toks)
+  -- ppr (Leaf toks)               = text "Leaf" <+> text (show toks)
   ppr (LeafLocated sspan toks)  = hang (text "LeafLocated") 2 (vcat [ppr sspan, text (show toks)])
 
 -- ---------------------------------------------------------------------
@@ -199,21 +200,21 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
     (nameLayout,toks1) =
       case maybeName of
         Nothing -> ([],toks)
-        Just (GHC.L ln _modName) -> ([Leaf s1,LeafLocated ln modNameToks],toks')
+        Just (GHC.L ln _modName) -> ((makeLeafFromToks s1) ++ [LeafLocated ln modNameToks],toks')
           where
             (s1,modNameToks,toks') = splitToks (ghcSpanStartEnd ln) toks
 
     (exportLayout,toks2) =
       case maybeExports of
         Nothing -> ([],toks1)
-        Just exps -> ([Leaf s2,Leaf expToks],toks2')
+        Just exps -> ((makeLeafFromToks s2) ++ (makeLeafFromToks expToks),toks2')
           where
             (s2,expToks,toks2') = splitToksForList exps toks1
 
     (importLayout,toks3) =
       case imports of
         [] -> ([],toks2)
-        is -> ([Leaf s3,Leaf impToks],toks3')
+        is -> ((makeLeafFromToks s3) ++ (makeLeafFromToks impToks),toks3')
           where
             (s3,impToks,toks3') = splitToksForList is toks2
 
@@ -221,11 +222,11 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
       case decls of
         [] -> ([],toks3)
         -- is -> ([Leaf s4,Leaf impToks,Leaf toks4'],[])
-        is -> ([Leaf s4] ++ allocDecls is declToks ++ [Leaf toks4'],[])
+        is -> ((makeLeafFromToks s4) ++ allocDecls is declToks ++ (makeLeafFromToks toks4'),[])
           where
             (s4,declToks,toks4') = splitToksForList is toks3
 
-    r = Group (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
+    r = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
 
 -- ---------------------------------------------------------------------
 
@@ -234,7 +235,7 @@ allocDecls decls toks = r
   where
     (declLayout,tailToks) = foldl' doOne ([],toks) decls
 
-    r = strip $ declLayout ++ [Leaf tailToks]
+    r = strip $ declLayout ++ (makeLeafFromToks tailToks)
 
     doOne :: ([Layout],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([Layout],[PosToken])
     doOne acc d@(GHC.L _ (GHC.TyClD       _)) = allocTyClD       acc d
@@ -274,7 +275,7 @@ allocValD (acc,toks) (GHC.L l (GHC.ValD bind@(GHC.FunBind _ _ _ _ _ _))) = r
   where
     (s1,bindToks,toks') = splitToks (ghcSpanStartEnd l) toks
     bindLayout = allocBind (GHC.L l bind) bindToks
-    r = (acc ++ (strip $ [Leaf s1] ++ [Group bindLayout] ),toks')
+    r = (acc ++ (strip $ (makeLeafFromToks s1) ++ [makeGroup bindLayout] ),toks')
 
 allocValD (acc,toks) d@(GHC.L l (GHC.ValD (GHC.PatBind lhs rhs _ _ _))) = r
   where
@@ -346,12 +347,12 @@ allocMatches matches toksIn = allocList matches toksIn doOne
         patLayout = allocList pats patsToks allocPat
         rhsLayout = allocList rhs rhsToks allocRhs
         localBindsLayout = allocLocalBinds localBinds bindsToks
-        r = (strip $ [Leaf s1] ++ patLayout ++ [Leaf s2] ++ rhsLayout ++ localBindsLayout)
+        r = (strip $ (makeLeafFromToks s1) ++ patLayout ++ (makeLeafFromToks s2) ++ rhsLayout ++ localBindsLayout)
 
 -- ---------------------------------------------------------------------
 
 allocPat :: GHC.LPat GHC.RdrName -> [PosToken] -> [Layout]
-allocPat (GHC.L l _) toks = [Leaf toks]
+allocPat (GHC.L l _) toks = makeLeafFromToks toks
 
 -- ---------------------------------------------------------------------
 
@@ -361,7 +362,7 @@ allocRhs (GHC.L _l (GHC.GRHS stmts expr)) toksIn = r
     (s1,stmtsToks,toks') = splitToksForList stmts toksIn
     stmtsLayout = allocList stmts stmtsToks allocStmt
     exprLayout = allocExpr expr toks'
-    r = strip $ [Leaf s1] ++ stmtsLayout ++ exprLayout
+    r = strip $ (makeLeafFromToks s1) ++ stmtsLayout ++ exprLayout
 
 -- ---------------------------------------------------------------------
 
@@ -372,7 +373,7 @@ allocStmt (GHC.L _ (GHC.BindStmt pat@(GHC.L lp _) expr _ _)) toks = r
     (s1,patToks,toks') = splitToks (ghcSpanStartEnd lp) toks
     patLayout = allocPat pat patToks
     exprLayout = allocExpr expr toks'
-    r = strip $ [Leaf s1] ++ patLayout ++ exprLayout
+    r = strip $ (makeLeafFromToks s1) ++ patLayout ++ exprLayout
 allocStmt (GHC.L _ (GHC.ExprStmt expr _ _ _)) toks = allocExpr expr toks
 allocStmt (GHC.L _ (GHC.LetStmt binds))       toks = allocLocalBinds binds toks
 allocStmt (GHC.L _ (GHC.ParStmt stmts _ _))          toks = undefined
@@ -394,7 +395,7 @@ allocExpr (GHC.L _ (GHC.HsApp e1@(GHC.L l1 _) e2)) toks = r
     (s1,e1Toks,e2Toks) = splitToks (ghcSpanStartEnd l1) toks
     e1Layout = allocExpr e1 e1Toks
     e2Layout = allocExpr e2 e2Toks
-    r = strip $ [Leaf s1] ++ e1Layout ++ e2Layout
+    r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ e2Layout
 allocExpr (GHC.L _ (GHC.OpApp e1@(GHC.L l1 _) e2@(GHC.L l2 _) _ e3)) toks = r
   where
     (s1,e1Toks,toks1) = splitToks (ghcSpanStartEnd l1) toks
@@ -402,7 +403,7 @@ allocExpr (GHC.L _ (GHC.OpApp e1@(GHC.L l1 _) e2@(GHC.L l2 _) _ e3)) toks = r
     e1Layout = allocExpr e1 e1Toks
     e2Layout = allocExpr e2 e2Toks
     e3Layout = allocExpr e3 e3Toks
-    r = strip $ [Leaf s1] ++ e1Layout ++ [Leaf s2] ++ e2Layout ++ e3Layout
+    r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ (makeLeafFromToks s2) ++ e2Layout ++ e3Layout
 allocExpr (GHC.L _ (GHC.NegApp expr _)) toks = allocExpr expr toks
 allocExpr (GHC.L _ (GHC.HsPar expr))    toks = allocExpr expr toks
 allocExpr (GHC.L _ (GHC.SectionL e1@(GHC.L l1 _) e2)) toks = r
@@ -410,13 +411,13 @@ allocExpr (GHC.L _ (GHC.SectionL e1@(GHC.L l1 _) e2)) toks = r
     (s1,e1Toks,e2Toks) = splitToks (ghcSpanStartEnd l1) toks
     e1Layout = allocExpr e1 e1Toks
     e2Layout = allocExpr e2 e2Toks
-    r = strip $ [Leaf s1] ++ e1Layout ++ e2Layout
+    r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ e2Layout
 allocExpr (GHC.L _ (GHC.SectionR e1@(GHC.L l1 _) e2)) toks = r
   where
     (s1,e1Toks,e2Toks) = splitToks (ghcSpanStartEnd l1) toks
     e1Layout = allocExpr e1 e1Toks
     e2Layout = allocExpr e2 e2Toks
-    r = strip $ [Leaf s1] ++ e1Layout ++ e2Layout
+    r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ e2Layout
 allocExpr (GHC.L _ (GHC.ExplicitTuple tupArgs _)) toks = r
   where
     r = undefined
@@ -425,7 +426,7 @@ allocExpr (GHC.L _ (GHC.HsCase expr@(GHC.L le _) (GHC.MatchGroup matches _))) to
     (s1,exprToks,matchToks) = splitToks (ghcSpanStartEnd le) toks
     exprLayout = allocExpr expr exprToks
     matchesLayout = allocMatches matches matchToks
-    r = strip $ [Leaf s1] ++ exprLayout ++ matchesLayout
+    r = strip $ (makeLeafFromToks s1) ++ exprLayout ++ matchesLayout
 allocExpr (GHC.L _ (GHC.HsIf _ e1@(GHC.L l1 _) e2@(GHC.L l2 _) e3)) toks = r
   where
     (s1,e1Toks,toks1) = splitToks (ghcSpanStartEnd l1) toks
@@ -433,14 +434,14 @@ allocExpr (GHC.L _ (GHC.HsIf _ e1@(GHC.L l1 _) e2@(GHC.L l2 _) e3)) toks = r
     e1Layout = allocExpr e1 e1Toks
     e2Layout = allocExpr e2 e2Toks
     e3Layout = allocExpr e3 e3Toks
-    r = strip $ [Leaf s1] ++ e1Layout ++ [Leaf s2] ++ e2Layout ++ e3Layout
+    r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ (makeLeafFromToks s2) ++ e2Layout ++ e3Layout
 allocExpr (GHC.L _ (GHC.HsMultiIf _ rhs)) toks = allocList rhs toks allocRhs
 allocExpr (GHC.L _ (GHC.HsLet localBinds expr@(GHC.L le _))) toks = r
   where
     (bindToks,exprToks,toks') = splitToks (ghcSpanStartEnd le) toks
     bindLayout = allocLocalBinds localBinds bindToks
     exprLayout = allocExpr expr exprToks
-    r = strip $ bindLayout ++ [Group exprLayout] ++ [Leaf toks']
+    r = strip $ bindLayout ++ [makeGroup exprLayout] ++ (makeLeafFromToks toks')
 allocExpr (GHC.L _ (GHC.HsDo _ stmts _)) toks = allocList stmts toks allocStmt
 allocExpr (GHC.L _ (GHC.ExplicitList _ exprs)) toks = allocList exprs toks allocExpr
 allocExpr (GHC.L _ (GHC.ExplicitPArr _ exprs)) toks = allocList exprs toks allocExpr
@@ -449,14 +450,14 @@ allocExpr (GHC.L _ (GHC.RecordCon (GHC.L ln _) _ (GHC.HsRecFields fields _))) to
     (s1,nameToks,fieldsToks) = splitToks (ghcSpanStartEnd ln) toks
     nameLayout = [LeafLocated ln nameToks]
     fieldsLayout = error "allocExpr allocRecField needs work"
-    r = strip $ [Leaf s1] ++ nameLayout ++ fieldsLayout
+    r = strip $ (makeLeafFromToks s1) ++ nameLayout ++ fieldsLayout
 
 allocExpr e toks = error $ "allocExpr for " ++ (SYB.showData SYB.Parser 0  e) ++ " undefined"
 
 -- ---------------------------------------------------------------------
 
 allocLocalBinds :: GHC.HsLocalBinds GHC.RdrName -> [PosToken] -> [Layout]
-allocLocalBinds GHC.EmptyLocalBinds toks = strip $ [Leaf toks]
+allocLocalBinds GHC.EmptyLocalBinds toks = strip $ makeLeafFromToks toks
 allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
   where
     bindList = GHC.bagToList binds
@@ -472,7 +473,7 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
     bindsLayout = allocList bindList toksBinds allocBind
     sigsLayout = allocList sigs toks1 doSigs
     doSigs = undefined
-    r = strip $ [Leaf s1] ++ [Offset ro co (Above bindsLayout)] ++ sigsLayout
+    r = strip $ (makeLeafFromToks s1) ++ [Offset ro co (Above bindsLayout)] ++ sigsLayout
 
 allocLocalBinds (GHC.HsIPBinds ib)  toks = error "allocLocalBinds undefined"
 
@@ -481,15 +482,15 @@ allocLocalBinds (GHC.HsIPBinds ib)  toks = error "allocLocalBinds undefined"
 allocBind :: GHC.LHsBind GHC.RdrName -> [PosToken] -> [Layout]
 allocBind (GHC.L l (GHC.FunBind (GHC.L ln _) _ (GHC.MatchGroup matches _) _ _ _)) toks = r
   where
-    (nameLayout,toks1) = ([Leaf s1,LeafLocated ln nameToks],toks')
+    (nameLayout,toks1) = ((makeLeafFromToks s1)++[LeafLocated ln nameToks],toks')
       where
         (s1,nameToks,toks') = splitToks (ghcSpanStartEnd ln) toks
 
-    (matchesLayout,toks2) = ([Leaf s2] ++ allocMatches matches matchToks,toks2')
+    (matchesLayout,toks2) = ((makeLeafFromToks s2) ++ allocMatches matches matchToks,toks2')
           where
             (s2,matchToks,toks2') = splitToksForList matches toks1
 
-    r = strip $ [GroupLocated l (strip $ nameLayout ++ matchesLayout)] ++ [Leaf toks2]
+    r = strip $ [GroupLocated l (strip $ nameLayout ++ matchesLayout)] ++ (makeLeafFromToks toks2)
 
 -- ---------------------------------------------------------------------
 
@@ -501,7 +502,7 @@ allocRecField = undefined
 strip :: [Layout] -> [Layout]
 strip ls = filter notEmpty ls
   where
-    notEmpty (Leaf []) = False
+    -- notEmpty (Leaf []) = False
     notEmpty (LeafLocated _ []) = False
     notEmpty _ = True
 
@@ -513,22 +514,22 @@ allocList :: [GHC.Located a] -> [PosToken]
 allocList xs toksIn allocFunc = r
   where
     (s2,listToks,toks2') = splitToksForList xs toksIn
-    (layout,toks2) = ([Leaf s2] ++ allocAll xs listToks,toks2')
+    (layout,toks2) = ((makeLeafFromToks s2) ++ allocAll xs listToks,toks2')
 
     allocAll xs' toks = res
       where
         (declLayout,tailToks) = foldl' doOne ([],toks) xs'
 
-        res = strip $ declLayout ++ [Leaf tailToks]
+        res = strip $ declLayout ++ (makeLeafFromToks tailToks)
 
         -- doOne :: ([Layout],[PosToken]) -> GHC.Located a -> ([Layout],[PosToken])
         doOne (acc,toksOne) x@(GHC.L l _) = r1
           where
             (s1,funcToks,toks') = splitToks (ghcSpanStartEnd l) toksOne
-            layout' = [Leaf s1] ++ [Group (strip $ allocFunc x funcToks)]
+            layout' = (makeLeafFromToks s1) ++ [makeGroup (strip $ allocFunc x funcToks)]
             r1 = (acc ++ (strip layout'),toks')
 
-    r = strip $ layout ++ [Leaf toks2]
+    r = strip $ layout ++ (makeLeafFromToks toks2)
 
 -- ---------------------------------------------------------------------
 
@@ -543,13 +544,40 @@ splitToksForList xs toks = splitToks (getGhcLoc s, getGhcLocEnd e) toks
 
 -- ---------------------------------------------------------------------
 
+makeGroup :: [Layout] -> Layout
+makeGroup ls = GroupLocated loc ls
+  where
+    loc = case ls of
+           [] -> nullSrcSpan
+           _  -> GHC.combineSrcSpans (getLoc $ head ls) (getLoc $ last ls)
+
+-- ---------------------------------------------------------------------
+
+makeLeafFromToks :: [PosToken] -> [Layout]
+makeLeafFromToks [] = []
+makeLeafFromToks toks = [LeafLocated loc toks]
+  where
+    -- TODO: ignore leading/trailing comments etc
+    loc = GHC.combineSrcSpans (tokenSrcSpan $ head toks) (tokenSrcSpan $ last toks)
+
+-- ---------------------------------------------------------------------
+
+getLoc :: Layout -> GHC.SrcSpan
+getLoc (Above _)          = nullSrcSpan
+getLoc (Offset _ _ _)     = nullSrcSpan
+getLoc (GroupLocated l _) = l
+-- getLoc (Leaf          _)  = nullSrcSpan
+getLoc (LeafLocated l _)  = l
+
+-- ---------------------------------------------------------------------
+
 retrieveTokens :: Layout -> [PosToken]
 retrieveTokens layout = go [] layout
   where
     go acc (Above xs)           = acc ++ (concat $ map (go []) xs)
     go acc (Offset _ _ l)       = go acc l
-    go acc (Group          xs)  = acc ++ (concat $ map (go []) xs)
+    -- go acc (Group          xs)  = acc ++ (concat $ map (go []) xs)
     go acc (GroupLocated _ xs)  = acc ++ (concat $ map (go []) xs)
-    go acc (Leaf          toks) = acc ++ toks
+    -- go acc (Leaf          toks) = acc ++ toks
     go acc (LeafLocated _ toks) = acc ++ toks
 

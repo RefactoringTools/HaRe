@@ -2789,8 +2789,7 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- ---------------------------------------------------------------------
 
 -- | Adding a declaration to the declaration list of the given syntax
--- phrase(so far only adding function\/pattern binding has been
--- tested). If the second argument is Nothing, then the declaration
+-- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
 addDecl:: (SYB.Data t,HsValBinds t)

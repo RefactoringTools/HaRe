@@ -74,6 +74,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , tokenRow
                      , tokenPos
                      , tokenPosEnd
+                     , tokenSrcSpan
                      , tokenCon
                      , increaseSrcSpan
                      , getGhcLoc
@@ -1016,6 +1017,9 @@ tokenPos (GHC.L l _,_)     = getGhcLoc l
 
 tokenPosEnd :: (GHC.GenLocated GHC.SrcSpan t1, t) -> SimpPos
 tokenPosEnd (GHC.L l _,_)     = getGhcLocEnd l
+
+tokenSrcSpan :: (GHC.Located t1, t) -> GHC.SrcSpan
+tokenSrcSpan (GHC.L l _,_)     = l
 
 -- TODO: badly named function
 tokenCon :: PosToken -> String
