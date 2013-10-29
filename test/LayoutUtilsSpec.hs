@@ -27,9 +27,6 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import qualified Data.Tree.Zipper as Z
 import qualified Data.Map as Map
 
-import Control.Lens.Combinators
-import Control.Lens.Getter
-import Control.Lens.Zipper
 import Data.Traversable
 
 import TestUtils
@@ -111,15 +108,12 @@ spec = do
 
       let sspan = posToSrcSpanTok (head toks) ((7,7),(7,9))
 
-      let z = (zipper layout)
-      -- (showLTOne $ view focus z) `shouldBe` ""
+      let z = (Z.fromTree layout)
+      let z1 = openZipper sspan z
 
-      -- let z1 = (z & fromWithin traverse & rightwards <&> view focus) :: Maybe (Top :>> LayoutTree a)
-      -- let z1 = (z & fromWithin traverse  & leftward <&> view focus) :: Maybe (Top :>> LayoutTree a)
+      (showGhc $ Z.tree z1) `shouldBe`
+         "Node\n  Label test/testdata/Layout/LetExpr.hs:7:7-8 NoChange [((((7,7),(7,7)),ITvccurly),\"\"),((((7,7),(7,9)),ITin),\"in\")]\n  []"
 
-      -- (show $ view focus $ fromJust z1) `shouldBe` ""
-
-      "a" `shouldBe` "b"
 
 -- ---------------------------------------------------------------------
 

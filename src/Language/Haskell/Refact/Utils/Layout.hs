@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances    #-}
@@ -350,8 +351,10 @@ allocExpr (GHC.L l (GHC.HsLit _)) toks = [makeLeaf l NoChange toks]
 allocExpr (GHC.L l (GHC.HsOverLit _)) toks = [makeLeaf l NoChange toks]
 allocExpr (GHC.L _ (GHC.HsLam (GHC.MatchGroup matches _))) toks
   = allocMatches matches toks
+#if __GLASGOW_HASKELL__ > 704
 allocExpr (GHC.L _ (GHC.HsLamCase _ (GHC.MatchGroup matches _))) toks
   = allocMatches matches toks
+#endif
 allocExpr (GHC.L _ (GHC.HsApp e1@(GHC.L l1 _) e2)) toks = r
   where
     (s1,e1Toks,e2Toks) = splitToks (ghcSpanStartEnd l1) toks
@@ -397,7 +400,9 @@ allocExpr (GHC.L _ (GHC.HsIf _ e1@(GHC.L l1 _) e2@(GHC.L l2 _) e3)) toks = r
     e2Layout = allocExpr e2 e2Toks
     e3Layout = allocExpr e3 e3Toks
     r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ (makeLeafFromToks s2) ++ e2Layout ++ e3Layout
+#if __GLASGOW_HASKELL__ > 704
 allocExpr (GHC.L _ (GHC.HsMultiIf _ rhs)) toks = allocList rhs toks allocRhs
+#endif
 allocExpr (GHC.L _ (GHC.HsLet localBinds expr@(GHC.L le _))) toks = r
   where
     (bindToks,exprToks,toks') = splitToks (ghcSpanStartEnd le) toks

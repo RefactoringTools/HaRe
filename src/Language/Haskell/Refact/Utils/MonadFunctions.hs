@@ -364,7 +364,8 @@ putDeclLayoutAfterSpan oldSpan t pos lay = do
   logm $ "putDeclLayoutAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,lay))
   st <- get
   let Just tm = rsModule st
-  let (tl',_newSpan, t') = addDeclLayoutAfterSrcSpan (rsTokenLayout tm) oldSpan pos lay t
+  let (TL layoutTree) = rsTokenLayout tm
+  let (tl',_newSpan, t') = addDeclLayoutAfterSrcSpan layoutTree oldSpan pos lay t
   let rsModule' = Just (tm {rsTokenLayout = tl', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return t'

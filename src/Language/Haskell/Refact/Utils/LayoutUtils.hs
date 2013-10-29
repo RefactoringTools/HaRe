@@ -5,6 +5,7 @@ module Language.Haskell.Refact.Utils.LayoutUtils
     getLayoutFor
   , addDeclLayoutAfterSrcSpan
   , showLTOne
+  , openZipper
   ) where
 
 import qualified GHC           as GHC
@@ -17,14 +18,16 @@ import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
+-- import Language.Haskell.Refact.Utils.TokenUtils
+-- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
-import Control.Lens.Getter
-import Control.Lens.Zipper
-import Data.Traversable
 import Data.Tree
+
+import qualified Data.Tree.Zipper as Z
+
+import qualified Language.Haskell.Refact.Utils.TokenUtils      as U
+import qualified Language.Haskell.Refact.Utils.TokenUtilsTypes as U
 
 -- ---------------------------------------------------------------------
 
@@ -49,16 +52,48 @@ getLayoutFor' sspan tl@(Node (Label ss _ []) subs)
 -- ---------------------------------------------------------------------
 
 addDeclLayoutAfterSrcSpan :: (SYB.Data t) =>
-     TokenLayout  -- ^TokenTree to be modified
+     LayoutTree  -- ^TokenTree to be modified
   -> GHC.SrcSpan -- ^Preceding location for new tokens
-  -> Positioning
+  -> U.Positioning
   -> LayoutTree -- ^New tokens to be added
   -> GHC.Located t  -- ^Declaration the tokens belong to, to be synced
   -> (TokenLayout, GHC.SrcSpan,GHC.Located t) -- ^ updated TokenTree ,SrcSpan location for
                                -- the new tokens in the TokenTree, and
                                -- updated AST element
-addDeclLayoutAfterSrcSpan = undefined
+addDeclLayoutAfterSrcSpan tl oldSpan pos layout t = (tl'',newSpan,t')
+  where
+    (tl',newSpan) = addLayoutAfterSrcSpan tl oldSpan pos layout
+    (t',tl'') = syncAST t newSpan tl'
 
+-- ---------------------------------------------------------------------
+
+-- |Add new tokens after the given SrcSpan, constructing a new SrcSpan
+-- in the process
+addLayoutAfterSrcSpan ::
+  LayoutTree  -- ^TokenTree to be modified
+  -> GHC.SrcSpan -- ^Preceding location for new tokens
+  -> U.Positioning
+  -> LayoutTree -- ^New tokens to be added
+  -> (LayoutTree, GHC.SrcSpan) -- ^ updated TokenTree and SrcSpan location for
+                               -- the new tokens in the TokenTree
+addLayoutAfterSrcSpan lt oldSpan pos layout = (lt',newSpan')
+  where
+    tree = getSrcSpanFor lt oldSpan
+
+    toks'' = placeLayoutForSpan lt oldSpan tree pos layout
+
+    (startPos,endPos) = U.nonCommentSpan toks''
+
+    newSpan = U.posToSrcSpanTok mkZeroToken (startPos,endPos)
+
+    (lt',newSpan') = addNewSrcSpanAndToksAfter lt oldSpan newSpan pos layout
+
+-- ---------------------------------------------------------------------
+
+syncAST = undefined
+getSrcSpanFor = undefined
+placeLayoutForSpan = undefined
+addNewSrcSpanAndToksAfter = undefined
 
 -- ---------------------------------------------------------------------
 
@@ -79,6 +114,26 @@ openZipper sspan z
     (Group _ _ subs) = view focus z
     z' = zipper (getChildForSpan sspan subs)
 -}
+
+openZipper :: GHC.SrcSpan
+     -> Z.TreePos Z.Full Label
+     -> Z.TreePos Z.Full Label
+openZipper sspan z
+  | getLoc (Z.tree z) == sspan = z
+  | otherwise = openZipper sspan child
+  where
+    child = ghead "openZipper" $ filter (GHC.isSubspanOf sspan . getLoc . Z.tree) childrenAsZ
+    childrenAsZ = getChildrenAsZ z
+
+-- ---------------------------------------------------------------------
+
+getChildrenAsZ :: Z.TreePos Z.Full a -> [Z.TreePos Z.Full a]
+getChildrenAsZ z = go [] (Z.firstChild z)
+  where
+    go acc Nothing = acc
+    go acc (Just zz) = go (acc ++ [zz]) (Z.next zz)
+
+
 -- ---------------------------------------------------------------------
 
 getChildForSpan :: GHC.SrcSpan -> [LayoutTree] -> LayoutTree
