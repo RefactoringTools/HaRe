@@ -1,16 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeFamilies       #-}
-{-# LANGUAGE EmptyDataDecls     #-}
-{-# LANGUAGE DeriveFoldable     #-}
-{-# LANGUAGE DeriveFunctor      #-}
-{-# LANGUAGE DeriveTraversable  #-}
 -- |
 --
 
 module Language.Haskell.Refact.Utils.LayoutTypes (
     TokenLayout(..)
-  , LayoutTree(..)
+  , LayoutTree
+  , Label(..)
   , Layout(..)
   , RowOffset
   , ColOffset
@@ -18,31 +12,31 @@ module Language.Haskell.Refact.Utils.LayoutTypes (
 
 import GHC
 
-import Data.Foldable
-import Data.Traversable
+import Data.Tree
 
 import Language.Haskell.Refact.Utils.TypeSyn
 
 -- ---------------------------------------------------------------------
 
-data TokenLayout = TL (LayoutTree Int)
+data TokenLayout = TL (Tree Label)
+
+type LayoutTree = Tree Label
 
 -- ---------------------------------------------------------------------
-{-
-
-The layout will have to have a tree structure
-
--}
 
 
 type RowOffset = Int
 type ColOffset = Int
 
+{-
 data LayoutTree a = Group GHC.SrcSpan Layout [LayoutTree a]  -- Same as current
                                        -- TokenUtils internal tree node
                 | Leaf  GHC.SrcSpan Layout [PosToken] -- Same as current
                                       -- TokenUtils leaf node
                 deriving (Foldable,Traversable,Functor)
+-}
+
+data Label = Label GHC.SrcSpan Layout [PosToken]
 
 data Layout = Above
             | Offset RowOffset ColOffset

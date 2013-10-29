@@ -115,10 +115,10 @@ spec = do
       -- (showLTOne $ view focus z) `shouldBe` ""
 
       -- let z1 = (z & fromWithin traverse & rightwards <&> view focus) :: Maybe (Top :>> LayoutTree a)
-      let z1 = (z & fromWithin traverse  & leftward <&> view focus) :: Maybe (Top :>> LayoutTree a)
+      -- let z1 = (z & fromWithin traverse  & leftward <&> view focus) :: Maybe (Top :>> LayoutTree a)
 
-      (show $ view focus $ fromJust z1) `shouldBe` ""
-   
+      -- (show $ view focus $ fromJust z1) `shouldBe` ""
+
       "a" `shouldBe` "b"
 
 -- ---------------------------------------------------------------------

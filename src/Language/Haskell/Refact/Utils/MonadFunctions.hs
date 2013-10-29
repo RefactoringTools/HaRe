@@ -349,7 +349,7 @@ indentDeclAndToks t offset = do
 -- Layout Tree stuff
 -- ---------------------------------------------------------------------
 
-getLayoutForSpan :: GHC.SrcSpan -> RefactGhc (LayoutTree Int)
+getLayoutForSpan :: GHC.SrcSpan -> RefactGhc LayoutTree
 getLayoutForSpan sspan = do
   st <- get
   let Just tm = rsModule st
@@ -358,7 +358,7 @@ getLayoutForSpan sspan = do
   return lay
 
 putDeclLayoutAfterSpan :: (SYB.Data t)
-   => GHC.SrcSpan -> GHC.Located t -> Positioning -> LayoutTree a
+   => GHC.SrcSpan -> GHC.Located t -> Positioning -> LayoutTree
    -> RefactGhc (GHC.Located t)
 putDeclLayoutAfterSpan oldSpan t pos lay = do
   logm $ "putDeclLayoutAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,lay))

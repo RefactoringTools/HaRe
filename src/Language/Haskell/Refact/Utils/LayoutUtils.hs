@@ -24,18 +24,21 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Control.Lens.Getter
 import Control.Lens.Zipper
 import Data.Traversable
+import Data.Tree
 
 -- ---------------------------------------------------------------------
 
-getLayoutFor :: GHC.SrcSpan -> TokenLayout -> LayoutTree Int
+getLayoutFor :: GHC.SrcSpan -> TokenLayout -> LayoutTree
 getLayoutFor sspan (TL layout) = getLayoutFor' sspan layout
 
-getLayoutFor' :: GHC.SrcSpan -> LayoutTree a -> LayoutTree a
-getLayoutFor' sspan tl@(Leaf ss _ _)
+getLayoutFor' :: GHC.SrcSpan -> LayoutTree -> LayoutTree
+-- getLayoutFor' sspan tl@(Leaf ss _ _)
+getLayoutFor' sspan tl@(Node (Label ss _ _) [])
   | sspan == ss = tl
   | otherwise = error $ "getLayoutFor :" ++ (showGhc sspan) ++ " not in " ++ (showGhc tl)
 
-getLayoutFor' sspan tl@(Group ss _ subs)
+-- getLayoutFor' sspan tl@(Group ss _ subs)
+getLayoutFor' sspan tl@(Node (Label ss _ []) subs)
   | sspan == ss = tl
   | null subs        = error $ "getLayoutFor :" ++ (showGhc sspan) ++ " not in " ++ (showGhc tl)
   | length subs > 1  = error $ "getLayoutFor :" ++ (showGhc sspan) ++ " multiple in " ++ (showGhc tl)
@@ -49,7 +52,7 @@ addDeclLayoutAfterSrcSpan :: (SYB.Data t) =>
      TokenLayout  -- ^TokenTree to be modified
   -> GHC.SrcSpan -- ^Preceding location for new tokens
   -> Positioning
-  -> LayoutTree a -- ^New tokens to be added
+  -> LayoutTree -- ^New tokens to be added
   -> GHC.Located t  -- ^Declaration the tokens belong to, to be synced
   -> (TokenLayout, GHC.SrcSpan,GHC.Located t) -- ^ updated TokenTree ,SrcSpan location for
                                -- the new tokens in the TokenTree, and
@@ -66,8 +69,8 @@ openZipperToSpan sspan lay = r
     -- r = toZipper lay
     r = zipper lay
 -}
-
-openZipper :: GHC.SrcSpan -> Top :>> LayoutTree a -> Top :>> LayoutTree a
+{-
+openZipper :: GHC.SrcSpan -> Top :>> LayoutTree -> Top :>> LayoutTree
 openZipper sspan z
   | getLoc (view focus z) == sspan = z
   | isLeaf (view focus z) = error $ "openZipperToSpan not found " ++ showGhc sspan ++ ":" ++ showLTOne (view focus z)
@@ -75,10 +78,10 @@ openZipper sspan z
   where
     (Group _ _ subs) = view focus z
     z' = zipper (getChildForSpan sspan subs)
-
+-}
 -- ---------------------------------------------------------------------
 
-getChildForSpan :: GHC.SrcSpan -> [LayoutTree a] -> LayoutTree a
+getChildForSpan :: GHC.SrcSpan -> [LayoutTree] -> LayoutTree
 getChildForSpan sspan subs = sub
   where
     sub = ghead "getChildForSpan" $ map snd $ filter (GHC.isSubspanOf sspan . fst) 
@@ -86,14 +89,17 @@ getChildForSpan sspan subs = sub
 
 -- ---------------------------------------------------------------------
 
-showLTOne :: LayoutTree a -> String
-showLTOne (Leaf ss lay _toks) = "(Leaf "  ++ (showGhc ss) ++ " " ++ (show lay) ++ " " ++ "toks)"
-showLTOne (Group ss lay subs) = "(Group " ++ (showGhc ss) ++ " " ++ (show lay) ++ " " ++ showGhc (map getLoc subs) ++ ")"
+showLTOne :: LayoutTree -> String
+-- showLTOne (Leaf ss lay _toks) = "(Leaf "  ++ (showGhc ss) ++ " " ++ (show lay) ++ " " ++ "toks)"
+-- showLTOne (Group ss lay subs) = "(Group " ++ (showGhc ss) ++ " " ++ (show lay) ++ " " ++ showGhc (map getLoc subs) ++ ")"
+showLTOne (Node (Label ss lay _toks) []) = "(Leaf "  ++ (showGhc ss) ++ " " ++ (show lay) ++ " " ++ "toks)"
+showLTOne (Node (Label ss lay []) subs) = "(Group " ++ (showGhc ss) ++ " " ++ (show lay) ++ " " ++ showGhc (map getLoc subs) ++ ")"
+
 
 -- ---------------------------------------------------------------------
 
-isLeaf :: LayoutTree a -> Bool
-isLeaf (Leaf _ _ _) = True
+isLeaf :: LayoutTree -> Bool
+isLeaf (Node _ []) = True
 isLeaf _            = False
 
 -- ---------------------------------------------------------------------
