@@ -2,6 +2,9 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies       #-}
 {-# LANGUAGE EmptyDataDecls     #-}
+{-# LANGUAGE DeriveFoldable     #-}
+{-# LANGUAGE DeriveFunctor      #-}
+{-# LANGUAGE DeriveTraversable  #-}
 -- |
 --
 
@@ -14,15 +17,15 @@ module Language.Haskell.Refact.Utils.LayoutTypes (
   ) where
 
 import GHC
-import GHC.Generics
 
-import qualified Data.Generics as SYB
+import Data.Foldable
+import Data.Traversable
 
 import Language.Haskell.Refact.Utils.TypeSyn
 
 -- ---------------------------------------------------------------------
 
-data TokenLayout = TL LayoutTree
+data TokenLayout = TL (LayoutTree Int)
 
 -- ---------------------------------------------------------------------
 {-
@@ -35,34 +38,15 @@ The layout will have to have a tree structure
 type RowOffset = Int
 type ColOffset = Int
 
-data LayoutTree = Group GHC.SrcSpan Layout [LayoutTree]  -- Same as current
+data LayoutTree a = Group GHC.SrcSpan Layout [LayoutTree a]  -- Same as current
                                        -- TokenUtils internal tree node
                 | Leaf  GHC.SrcSpan Layout [PosToken] -- Same as current
                                       -- TokenUtils leaf node
-                -- deriving (SYB.Typeable,SYB.Data)
-
-deriving instance SYB.Typeable GHC.Token
+                deriving (Foldable,Traversable,Functor)
 
 data Layout = Above
             | Offset RowOffset ColOffset
             | NoChange
-            deriving (Show,SYB.Typeable,SYB.Data)
+            deriving (Show)
 
-
--- ---------------------------------------------------------------------
-
-data D_Token
-data C_Token
-
-instance Datatype D_Token where
-  datatypeName _ = "Token"
-  moduleName   _ = "Token"
-
-instance Constructor C_Token where
-  conName _ = "" -- JPM: I'm not sure this is the right implementation...
-
-instance Generic Token where
-  type Rep Token = D1 D_Token (C1 C_Token (S1 NoSelector (Rec0 Token)))
-  from x = M1 (M1 (M1 (K1 x)))
-  to (M1 (M1 (M1 (K1 x)))) = x
 

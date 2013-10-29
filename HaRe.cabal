@@ -56,6 +56,7 @@ Library
                                 , ghc-prim
                                 , ghc-syb-utils
                                 , ghc-mod >= 3.1.2
+                                , lens
                                 , mtl
                                 , old-time
                                 , pretty
@@ -67,7 +68,7 @@ Library
                                 , Strafunski-StrategyLib
                                 , syz
 
-        -- GHC-Options:             -Wall
+        GHC-Options:             -Wall
 
         Hs-Source-Dirs:         src
         Other-Modules:          Paths_HaRe
@@ -97,7 +98,7 @@ Library
 Executable ghc-hare
         Main-Is:                MainHaRe.hs
         -- Other-Modules:          Paths_HaRe
-        -- GHC-Options:            -Wall
+        GHC-Options:            -Wall
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
@@ -113,6 +114,7 @@ Executable ghc-hare
                                 , ghc-prim
                                 , ghc-syb-utils
                                 , ghc-mod >= 3.1.2
+                                , lens
                                 , mtl
                                 , old-time
                                 , parsec
@@ -158,7 +160,7 @@ test-suite spec
     , ghc-prim
     , ghc-syb-utils
     , ghc-mod >= 3.1.2
-    -- , hspec       == 1.4.*
+    , lens
     , hspec
     , mtl
     , old-time

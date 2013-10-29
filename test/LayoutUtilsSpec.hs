@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeOperators #-}
 module LayoutUtilsSpec (main, spec) where
 
 import           Test.Hspec
@@ -25,6 +26,11 @@ import Language.Haskell.Refact.Utils.TypeUtils
 
 import qualified Data.Tree.Zipper as Z
 import qualified Data.Map as Map
+
+import Control.Lens.Combinators
+import Control.Lens.Getter
+import Control.Lens.Zipper
+import Data.Traversable
 
 import TestUtils
 
@@ -87,6 +93,33 @@ spec = do
   -- ---------------------------------------------
 
 
+  -- ---------------------------------------------
+
+  describe "openZipper" $ do
+    it "opens a zipper to the given SrcSpan" $ do
+      (t,toks) <- parsedFileLetExpr
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
+
+      let layout = allocTokens parsed toks
+
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+
+      -- (showGhc layout) `shouldBe`
+      --    ""
+
+      let sspan = posToSrcSpanTok (head toks) ((7,7),(7,9))
+
+      let z = (zipper layout)
+      -- (showLTOne $ view focus z) `shouldBe` ""
+
+      -- let z1 = (z & fromWithin traverse & rightwards <&> view focus) :: Maybe (Top :>> LayoutTree a)
+      let z1 = (z & fromWithin traverse  & leftward <&> view focus) :: Maybe (Top :>> LayoutTree a)
+
+      (show $ view focus $ fromJust z1) `shouldBe` ""
+   
+      "a" `shouldBe` "b"
 
 -- ---------------------------------------------------------------------
 
