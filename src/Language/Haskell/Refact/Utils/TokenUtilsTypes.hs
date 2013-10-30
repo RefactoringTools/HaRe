@@ -24,6 +24,8 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Data.Tree
 import qualified Data.Map as Map
 
+import Outputable
+
 -- ---------------------------------------------------------------------
 
 {-
@@ -108,6 +110,8 @@ instance Show ForestLine where
          ++ " " ++ (show $ flLine s)
          ++ ")"
 
+instance Outputable ForestLine where
+  ppr fl = text (show fl)
 
 -- ---------------------------------------------------------------------
 

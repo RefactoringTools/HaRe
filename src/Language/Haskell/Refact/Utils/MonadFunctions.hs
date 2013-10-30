@@ -43,7 +43,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        -- * LayoutUtils API
        , getLayoutForSpan
-       , putDeclLayoutAfterSpan
+       -- , putDeclLayoutAfterSpan
 
        -- * For debugging
        , drawTokenTree
@@ -357,6 +357,7 @@ getLayoutForSpan sspan = do
   logm $ "getLayoutForSpan " ++ (showGhc sspan) ++ ":" ++ (showGhc lay)
   return lay
 
+{-
 putDeclLayoutAfterSpan :: (SYB.Data t)
    => GHC.SrcSpan -> GHC.Located t -> Positioning -> LayoutTree
    -> RefactGhc (GHC.Located t)
@@ -369,6 +370,7 @@ putDeclLayoutAfterSpan oldSpan t pos lay = do
   let rsModule' = Just (tm {rsTokenLayout = tl', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return t'
+-}
 
 -- =====================================================================
 

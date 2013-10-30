@@ -40,8 +40,12 @@ main = do
 spec :: Spec
 spec = do
 
-  -- ---------------------------------------------
+  describe "write a test" $ do
+    it "needs a test" $ do
+      pending
 
+  -- ---------------------------------------------
+{-
   describe "getLayoutFor" $ do
     it "gets the layout for a leaf in the LayoutTree " $ do
       (t,toks) <- parsedFileLetExpr
@@ -86,34 +90,9 @@ spec = do
 
       (showLTOne lay) `shouldBe`
           "(Group test/testdata/Layout/LetExpr.hs:(5,5)-(7,14) NoChange [test/testdata/Layout/LetExpr.hs:5:5,\n test/testdata/Layout/LetExpr.hs:(5,7)-(7,14)])"
-
+-}
+   
   -- ---------------------------------------------
-
-
-  -- ---------------------------------------------
-
-  describe "openZipper" $ do
-    it "opens a zipper to the given SrcSpan" $ do
-      (t,toks) <- parsedFileLetExpr
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-      -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
-
-      let layout = allocTokens parsed toks
-
-      (show $ retrieveTokens layout) `shouldBe` (show toks)
-
-      -- (showGhc layout) `shouldBe`
-      --    ""
-
-      let sspan = posToSrcSpanTok (head toks) ((7,7),(7,9))
-
-      let z = (Z.fromTree layout)
-      let z1 = openZipper sspan z
-
-      (showGhc $ Z.tree z1) `shouldBe`
-         "Node\n  Label test/testdata/Layout/LetExpr.hs:7:7-8 NoChange [((((7,7),(7,7)),ITvccurly),\"\"),((((7,7),(7,9)),ITin),\"in\")]\n  []"
-
 
 -- ---------------------------------------------------------------------
 

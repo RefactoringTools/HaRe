@@ -135,11 +135,11 @@ AST Items for layout keywords.
 
 deriving instance Show Label
 
-instance Outputable (Tree Label) where
+instance Outputable (Tree Entry) where
   ppr (Node label subs) = hang (text "Node") 2 (vcat [ppr label,ppr subs])
 
-instance Outputable Label where
-  ppr (Label sspan lay toks) = text "Label" <+> ppr sspan <+> ppr lay <+> text (show toks)
+instance Outputable Entry where
+  ppr (Entry sspan lay toks) = text "Entry" <+> ppr sspan <+> ppr lay <+> text (show toks)
 
 instance Outputable Layout where
   ppr (Above)      = text "Above"
@@ -153,7 +153,7 @@ initTokenLayout parsed toks = TL (allocTokens parsed toks)
 
 nullTokenLayout :: TokenLayout
 -- nullTokenLayout = TL (Leaf nullSrcSpan NoChange [])
-nullTokenLayout = TL (Node (Label nullSrcSpan NoChange []) [])
+nullTokenLayout = TL (Node (Entry (sf nullSrcSpan) NoChange []) [])
 
 -- ---------------------------------------------------------------------
 
@@ -472,7 +472,7 @@ strip ls = filter notEmpty ls
   where
     -- notEmpty (Leaf []) = False
     -- notEmpty (Leaf _ _ []) = False
-    notEmpty (Node (Label _ _ []) []) = False
+    notEmpty (Node (Entry _ _ []) []) = False
     notEmpty _ = True
 
 -- ---------------------------------------------------------------------
@@ -515,17 +515,17 @@ splitToksForList xs toks = splitToks (getGhcLoc s, getGhcLocEnd e) toks
 
 placeAbove :: [LayoutTree] -> LayoutTree
 placeAbove [] = error "placeAbove []"
-placeAbove ls = Node (Label loc Above []) ls
+placeAbove ls = Node (Entry loc Above []) ls
   where
-    loc = GHC.combineSrcSpans (getLoc $ head ls) (getLoc $ last ls)
+    loc = combineSpans (getLoc $ head ls) (getLoc $ last ls)
 
 -- ---------------------------------------------------------------------
 
 placeOffset :: RowOffset -> ColOffset -> [LayoutTree] -> LayoutTree
 placeOffset _ _ [] = error "placeOffset []"
-placeOffset r c ls = Node (Label loc (Offset r c) []) ls
+placeOffset r c ls = Node (Entry loc (Offset r c) []) ls
   where
-    loc = GHC.combineSrcSpans (getLoc $ head ls) (getLoc $ last ls)
+    loc = combineSpans (getLoc $ head ls) (getLoc $ last ls)
 
 -- ---------------------------------------------------------------------
 
@@ -533,33 +533,31 @@ makeGroup :: [LayoutTree] -> LayoutTree
 makeGroup ls = makeGroupLayout NoChange ls
 
 makeGroupLayout :: Layout -> [LayoutTree] -> LayoutTree
-makeGroupLayout lay ls = Node (Label loc lay []) ls
+makeGroupLayout lay ls = Node (Entry loc lay []) ls
   where
     loc = case ls of
-           [] -> nullSrcSpan
-           _  -> GHC.combineSrcSpans (getLoc $ head ls) (getLoc $ last ls)
+           [] -> sf nullSrcSpan
+           _  -> combineSpans (getLoc $ head ls) (getLoc $ last ls)
 
 mkGroup :: GHC.SrcSpan -> Layout -> [LayoutTree] -> LayoutTree
-mkGroup sspan lay subs = Node (Label sspan lay []) subs
+mkGroup sspan lay subs = Node (Entry (sf sspan) lay []) subs
 
 -- ---------------------------------------------------------------------
 
 makeLeafFromToks :: [PosToken] -> [LayoutTree]
 makeLeafFromToks [] = []
-makeLeafFromToks toks = [Node (Label loc NoChange toks) []]
+makeLeafFromToks toks = [Node (Entry loc NoChange toks) []]
   where
     -- TODO: ignore leading/trailing comments etc
-    loc = GHC.combineSrcSpans (tokenSrcSpan $ head toks) (tokenSrcSpan $ last toks)
+    loc = combineSpans (sf $ tokenSrcSpan $ head toks) (sf $ tokenSrcSpan $ last toks)
 
 makeLeaf :: GHC.SrcSpan -> Layout -> [PosToken] -> LayoutTree
-makeLeaf sspan lay toks = Node (Label sspan lay toks) []
+makeLeaf sspan lay toks = Node (Entry (sf sspan) lay toks) []
 
 -- ---------------------------------------------------------------------
 
-getLoc :: LayoutTree -> GHC.SrcSpan
--- getLoc (Group l _ _) = l
--- getLoc (Leaf  l _ _) = l
-getLoc (Node (Label l _ _) _) = l
+getLoc :: LayoutTree -> ForestSpan
+getLoc (Node (Entry l _ _) _) = l
 
 -- ---------------------------------------------------------------------
 
@@ -568,6 +566,8 @@ retrieveTokens layout = go [] layout
   where
     -- go acc (Group _ _ xs)  = acc ++ (concat $ map (go []) xs)
     -- go acc (Leaf _ _ toks) = acc ++ toks
-    go acc (Node (Label _ _ []  ) xs) = acc ++ (concat $ map (go []) xs)
-    go acc (Node (Label _ _ toks)  _) = acc ++ toks
+    go acc (Node (Entry _ _ []  ) xs) = acc ++ (concat $ map (go []) xs)
+    go acc (Node (Entry _ _ toks)  _) = acc ++ toks
+
+-- ---------------------------------------------------------------------
 

@@ -57,6 +57,9 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , fileNameFromTok
        , treeStartEnd
        , spanStartEnd
+       , sf
+       , fs
+       , combineSpans
 
        -- * A token stream with last tokens first, and functions to manipulate it
        , ReversedToks(..)
@@ -2061,5 +2064,50 @@ showSrcSpanF sspan = show (((chs,trs,vs,ls),cs),((che,tre,ve,le),ce))
 
 
 -- ---------------------------------------------------------------------
+
+sf :: GHC.SrcSpan -> ForestSpan
+sf = srcSpanToForestSpan
+
+fs :: ForestSpan -> GHC.SrcSpan
+fs = forestSpanToSrcSpan
+
+
+-- | ForestSpan version of GHC combineSrcSpans
+combineSpans :: ForestSpan -> ForestSpan -> ForestSpan
+combineSpans fs1 fs2 = fs'
+  where
+    [lowFs,highFs] = sort [fs1,fs2]
+    ((ForestLine  chls  trls  vls  lls ,cls),(ForestLine _chle _trle _vle _lle,_cle)) = lowFs
+    ((ForestLine _chhs _trhs _vhs _lhs,_chs),(ForestLine  chhe  trhe  vhe  lhe, che)) = highFs
+
+    fs' = ((ForestLine chls trls vls lls,cls),(ForestLine chhe trhe vhe lhe,che))
+
+{-
+-- | Combines two 'SrcSpan' into one that spans at least all the characters
+-- within both spans. Assumes the "file" part is the same in both inputs
+combineSrcSpans :: SrcSpan -> SrcSpan -> SrcSpan
+combineSrcSpans (UnhelpfulSpan _) r = r -- this seems more useful
+combineSrcSpans l (UnhelpfulSpan _) = l
+combineSrcSpans (RealSrcSpan span1) (RealSrcSpan span2)
+    = RealSrcSpan (combineRealSrcSpans span1 span2)
+
+-- | Combines two 'SrcSpan' into one that spans at least all the characters
+-- within both spans. Assumes the "file" part is the same in both inputs
+combineRealSrcSpans :: RealSrcSpan -> RealSrcSpan -> RealSrcSpan
+combineRealSrcSpans span1 span2
+ = if line_start == line_end
+   then if col_start == col_end
+        then SrcSpanPoint     file line_start col_start
+        else SrcSpanOneLine   file line_start col_start col_end
+   else      SrcSpanMultiLine file line_start col_start line_end col_end
+  where
+    (line_start, col_start) = min (srcSpanStartLine span1, srcSpanStartCol span1)
+                                  (srcSpanStartLine span2, srcSpanStartCol span2)
+    (line_end, col_end)     = max (srcSpanEndLine span1, srcSpanEndCol span1)
+                                  (srcSpanEndLine span2, srcSpanEndCol span2)
+    file = srcSpanFile span1
+
+
+-}
 
 -- EOF
