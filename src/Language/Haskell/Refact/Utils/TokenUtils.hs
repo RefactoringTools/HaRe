@@ -526,11 +526,11 @@ srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToF
 -- --------------------------------------------------------------------
 
 forestSpanFromEntry :: Entry -> ForestSpan
-forestSpanFromEntry (Entry ss _  ) = ss
-forestSpanFromEntry (Deleted ss _) = ss
+forestSpanFromEntry (Entry   ss _ _) = ss
+forestSpanFromEntry (Deleted ss _)   = ss
 
 putForestSpanInEntry :: Entry -> ForestSpan -> Entry
-putForestSpanInEntry (Entry   _ss toks) ssnew = (Entry   ssnew toks)
+putForestSpanInEntry (Entry   _ss lay toks) ssnew = (Entry ssnew lay toks)
 putForestSpanInEntry (Deleted _ss toks) ssnew = (Deleted ssnew toks)
 
 -- --------------------------------------------------------------------
@@ -564,10 +564,10 @@ initTokenCache toks = TK (Map.fromList [((TId 0),(mkTreeFromTokens toks))]) (TId
 -- ---------------------------------------------------------------------
 
 treeIdIntoTree :: TreeId -> Tree Entry -> Tree Entry
-treeIdIntoTree tid (Node (Entry fs toks) subTree) = tree'
+treeIdIntoTree tid (Node (Entry fs lay toks) subTree) = tree'
   where
     fs' = treeIdIntoForestSpan tid fs
-    tree' = Node (Entry fs' toks) subTree
+    tree' = Node (Entry fs' lay toks) subTree
 
 -- ---------------------------------------------------------------------
 
@@ -629,11 +629,11 @@ replaceTreeInCache sspan tree tk = tk'
 putTidInTree :: TreeId -> Tree Entry -> Tree Entry
 putTidInTree tid (Node (Deleted fs eg) []) = (Node (Deleted fs' eg) [])
   where fs' = treeIdIntoForestSpan tid fs
-putTidInTree tid (Node (Entry fs toks) subs) = tree'
+putTidInTree tid (Node (Entry fs lay toks) subs) = tree'
   where
     subs' = map (putTidInTree tid) subs
     fs' = treeIdIntoForestSpan tid fs
-    tree' = Node (Entry fs' toks) subs'
+    tree' = Node (Entry fs' lay toks) subs'
 
 -- ---------------------------------------------------------------------
 
@@ -646,7 +646,7 @@ syncAstToLatestCache tk t = t'
   -- = error $ "syncAstToLatestCache:sspan=" ++ (show sspan)
   where
     mainForest = (tkCache tk) Map.! mainTid
-    forest@(Node (Entry fs _) _) = (tkCache tk) Map.! (tkLastTreeId tk)
+    forest@(Node (Entry fs _ _) _) = (tkCache tk) Map.! (tkLastTreeId tk)
     pos = forestSpanToGhcPos fs
     sspan = posToSrcSpan mainForest pos
     (t',_) = syncAST t sspan forest
@@ -686,7 +686,7 @@ getTokensForNoIntros checkInvariant forest sspan = (forest', tokens')
 getTokensBefore :: Tree Entry -> GHC.SrcSpan -> (Tree Entry,ReversedToks)
 getTokensBefore forest sspan = (forest', prevToks')
   where
-    (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
+    (forest',tree@(Node (Entry _s _ _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
 
     z = openZipperToSpan (srcSpanToForestSpan sspan) $ Z.fromTree forest'
 
@@ -714,14 +714,14 @@ replaceTokenForSrcSpan forest sspan tok = forest'
     -- Then drill down to the specific subtree containing the token
     z' = openZipperToSpan (srcSpanToForestSpan tl) z
 
-    (tspan,toks) = case Z.tree z' of
-            (Node (Entry ss tks) []) -> (ss,tks)
-            (Node (Entry _ []) _sub) -> error $ "replaceTokenForSrcSpan: expecting tokens, found: " ++ (show $ Z.tree z')
+    (tspan,lay,toks) = case Z.tree z' of
+            (Node (Entry ss ly tks) []) -> (ss,ly,tks)
+            (Node (Entry _ _ []) _sub) -> error $ "replaceTokenForSrcSpan: expecting tokens, found: " ++ (show $ Z.tree z')
 
     ((row,col),_) = forestSpanToSimpPos $ srcSpanToForestSpan tl
     toks' = replaceTokNoReAlign toks (row,col) tok
 
-    zf = Z.setTree (Node (Entry tspan toks') []) z'
+    zf = Z.setTree (Node (Entry tspan lay toks') []) z'
     forest' = Z.toTree zf
 
     -- forest' = forest
@@ -736,7 +736,7 @@ replaceTokenForSrcSpan forest sspan tok = forest'
 updateTokensForSrcSpan :: Tree Entry -> GHC.SrcSpan -> [PosToken] -> (Tree Entry,GHC.SrcSpan,Tree Entry)
 updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
   where
-    (forest',tree@(Node (Entry _s _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
+    (forest',tree@(Node (Entry _s _ _) _)) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
     prevToks = retrieveTokensInterim tree
 
     -- endComments = reverse $ takeWhile isWhiteSpace $ reverse toks
@@ -783,7 +783,7 @@ updateTokensForSrcSpan forest sspan toks = (forest'',newSpan,oldTree)
 
     zf = openZipperToNode tree $ Z.fromTree forest'
 
-    zf' = Z.setTree (Node (Entry (srcSpanToForestSpan newSpan) toks'') []) zf
+    zf' = Z.setTree (Node (Entry (srcSpanToForestSpan newSpan) NoChange toks'') []) zf
     forest'' = Z.toTree zf'
     -- forest'' = error $ "updateTokensForSrcSpan: toks''=" ++ (show toks'') -- ++AZ++
     -- forest'' = error $ "updateTokensForSrcSpan: (posToSrcSpan forest (startPos,endPos))=" ++ (showGhc $ posToSrcSpan forest (startPos,endPos)) -- ++AZ++
@@ -817,7 +817,7 @@ insertSrcSpan forest sspan = forest'
         then  -- TODO: This should be in splitSubToks
           let
             -- If we are at a leaf, retrieve the toks
-            (Entry _ toks) = Z.label z
+            (Entry _ _ toks) = Z.label z
 
             (tokStartPos,tokEndPos) = forestSpanToSimpPos sspan
 
@@ -840,9 +840,9 @@ insertSrcSpan forest sspan = forest'
 
             subTree = tree1 ++ tree2 ++ tree3
             subTree' = filter (\t -> treeStartEnd t /= nullSpan) subTree
-            (Entry sspan2 _) = Z.label z
+            (Entry sspan2 _ _) = Z.label z
 
-            z' = Z.setTree (Node (Entry sspan2 []) subTree') z
+            z' = Z.setTree (Node (Entry sspan2 NoChange []) subTree') z
             forest'' = Z.toTree z'
           in forest''
         else
@@ -850,11 +850,11 @@ insertSrcSpan forest sspan = forest'
             (before,middle,end) = doSplitTree (Z.tree z) sspan
             newTree = case middle of
                         [x] -> x
-                        _xs -> (Node (Entry sspan []) middle)
+                        _xs -> (Node (Entry sspan NoChange []) middle)
             subTree' = before ++ [newTree] ++ end
-            (Entry sspan2 _) = Z.label z
+            (Entry sspan2 _ _) = Z.label z
 
-            z' = Z.setTree (Node (Entry sspan2 []) subTree') z
+            z' = Z.setTree (Node (Entry sspan2 NoChange []) subTree') z
             forest'' = Z.toTree z'
           in
             forest''
@@ -869,9 +869,9 @@ insertSrcSpan forest sspan = forest'
 doSplitTree ::
   Tree Entry -> ForestSpan
   -> ([Tree Entry], [Tree Entry], [Tree Entry])
-doSplitTree tree@(Node (Deleted _ss _)   []) sspan = splitSubToks tree sspan -- ++AZ+ What is correct?
-doSplitTree tree@(Node (Entry _ss _toks) []) sspan = splitSubToks tree sspan
-doSplitTree tree                             sspan = (b'',m'',e'')
+doSplitTree tree@(Node (Deleted _ss _)     []) sspan = splitSubToks tree sspan -- ++AZ+ What is correct?
+doSplitTree tree@(Node (Entry _ss _ _toks) []) sspan = splitSubToks tree sspan
+doSplitTree tree                               sspan = (b'',m'',e'')
  -- error $ "doSplitTree:(sspan,tree,(b1,m1,e1))=" ++ (show (sspan,tree,(b1,m1,e1)))
   where
     (b1,m1,e1) = splitSubtree tree sspan
@@ -910,7 +910,7 @@ mkTreeListFromTokens :: [PosToken] -> ForestSpan -> Bool -> [Tree Entry]
 mkTreeListFromTokens  [] _sspan _ = []
 mkTreeListFromTokens toks sspan useOriginalSpan = res
   where
-   (Node (Entry tspan treeToks) sub) = mkTreeFromTokens toks
+   (Node (Entry tspan NoChange treeToks) sub) = mkTreeFromTokens toks
 
    ((ForestLine chs ts vs  _, _),(ForestLine che te ve  _, _)) = sspan
    ((ForestLine   _  _  _ ls,cs),(ForestLine   _  _  _ le,ce)) = tspan
@@ -920,8 +920,8 @@ mkTreeListFromTokens toks sspan useOriginalSpan = res
    res = if nonCommentSpan toks == ((0,0),(0,0))
      then []
      else if useOriginalSpan
-            then [(Node (Entry sspan treeToks) sub)]
-            else [(Node (Entry span' treeToks) sub)]
+            then [(Node (Entry sspan NoChange treeToks) sub)]
+            else [(Node (Entry span' NoChange treeToks) sub)]
 
 -- ---------------------------------------------------------------------
 
@@ -944,7 +944,7 @@ splitSubToks n@(Node (Deleted (treeStart,treeEnd) _eg) []) (sspanStart,sspanEnd)
 splitSubToks tree sspan = (b',m',e')
                           -- error $ "splitSubToks:(sspan,tree)=" ++ (show (sspan,tree))
   where
-    (Node (Entry ss@(treeStart,treeEnd) toks)  []) = tree
+    (Node (Entry ss@(treeStart,treeEnd) _lay toks)  []) = tree
     (sspanStart,sspanEnd) = sspan
     -- TODO: ignoring comment boundaries to start
 
@@ -969,8 +969,8 @@ splitSubToks tree sspan = (b',m',e')
                     else mkTreeListFromTokens toksm (sspanStart,treeEnd) False
                 _tl' = if emptyList tl
                  then []
-                 else [Node (Entry (st,(ForestLine ch ts v le,ce)) tk) []]
-                   where [Node (Entry (st,(ForestLine ch ts v _l,_c)) tk) []] = tl
+                 else [Node (Entry (st,(ForestLine ch ts v le,ce)) lay tk) []]
+                   where [Node (Entry (st,(ForestLine ch ts v _l,_c)) lay tk) []] = tl
                in
                 -- tl'
                 tl
@@ -993,8 +993,8 @@ splitSubToks tree sspan = (b',m',e')
                 tl = mkTreeListFromTokens toksm (treeStart,sspanEnd) False
                 tl' = if emptyList tl
                  then []
-                 else [Node (Entry (st,sspanEnd) tk) []]
-                   where [Node (Entry (st,_en) tk) []] = mkTreeListFromTokens toksm (treeStart,sspanEnd) False
+                 else [Node (Entry (st,sspanEnd) lay tk) []]
+                   where [Node (Entry (st,_en) lay tk) []] = mkTreeListFromTokens toksm (treeStart,sspanEnd) False
                 in
                  tl'
          e'' = mkTreeListFromTokens tokse (sspanEnd,treeEnd) False
@@ -1098,7 +1098,7 @@ calcEndGap tree sspan = gap
         else (r,c)
             where
                 (r,c) = case ghead ("calcEndGap:after="++(show after)) after of
-                    (Entry _ toks) -> (tokenRow t,tokenCol t)
+                    (Entry _ _ toks) -> (tokenRow t,tokenCol t)
                         where t = ghead "calcEndGap" toks
                     (Deleted ss _) -> fst $ forestSpanToSimpPos ss
 
@@ -1122,18 +1122,18 @@ retrieveTokensInterim forest = monotonicLineToks $ stripForestLines {-  reAlignM
                              $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [PosToken] -> Entry -> [PosToken]
-    accum acc (Entry _   []) = acc
-    accum acc (Entry _ toks) = acc ++ toks
-    accum acc (Deleted _ _)  = acc
+    accum acc (Entry _ _ [])   = acc
+    accum acc (Entry _ _ toks) = acc ++ toks
+    accum acc (Deleted _ _)    = acc
 
 
 retrieveTokens' :: Tree Entry -> [Entry]
 retrieveTokens' forest = mergeDeletes $ concat $ map (\t -> F.foldl accum [] t) [forest]
   where
     accum :: [Entry] -> Entry -> [Entry]
-    accum acc   (Entry _   [])  = acc
-    accum acc e@(Entry _ _toks) = acc ++ [e]
-    accum acc e@(Deleted _ _)   = acc ++ [e]
+    accum acc   (Entry _ _ [])    = acc
+    accum acc e@(Entry _ _ _toks) = acc ++ [e]
+    accum acc e@(Deleted _ _)     = acc ++ [e]
 
 -- |Merge adjacent Deleted entries
 mergeDeletes :: [Entry] -> [Entry]
@@ -1155,12 +1155,12 @@ deleteGapsToks toks = goDeleteGapsToks (0,0) toks
 
 goDeleteGapsToks :: SimpPos -> [Entry] -> [PosToken]
 goDeleteGapsToks      _ []                    = []
-goDeleteGapsToks offset [Entry _ t]           = map (increaseSrcSpan offset) t
+goDeleteGapsToks offset [Entry _ _ t]         = map (increaseSrcSpan offset) t
 goDeleteGapsToks      _ [Deleted _ _]         = []
 goDeleteGapsToks offset (Deleted _ _:ts)      = goDeleteGapsToks offset ts
-goDeleteGapsToks offset [Entry _ t,Deleted _ _] = map (increaseSrcSpan offset) t
-goDeleteGapsToks offset (Entry _ t1:e@(Entry _ _):ts) = (map (increaseSrcSpan offset) t1) ++goDeleteGapsToks offset (e:ts)
-goDeleteGapsToks (fr,fc) (Entry ss t1:Deleted _ eg:t2:ts)
+goDeleteGapsToks offset [Entry _ _ t,Deleted _ _] = map (increaseSrcSpan offset) t
+goDeleteGapsToks offset (Entry _ _ t1:e@(Entry _ _ _):ts) = (map (increaseSrcSpan offset) t1) ++goDeleteGapsToks offset (e:ts)
+goDeleteGapsToks (fr,fc) (Entry ss _lay1 t1:Deleted _ eg:t2:ts)
   = t1' ++ goDeleteGapsToks offset' (t2:ts)
   where
     -- TODO: use actual first and last toks, may be comments
@@ -1183,12 +1183,12 @@ deleteGapsToks' toks = goDeleteGapsToks' (0,0) toks
 
 goDeleteGapsToks' :: SimpPos -> [Entry] -> [(SimpPos,String,ForestSpan,[PosToken])]
 goDeleteGapsToks'      _  []                    = [((0,0),  "N",nullSpan, [])]
-goDeleteGapsToks' offset  [Entry ss t]          = [(offset,"E1",ss,map (increaseSrcSpan offset) t)]
+goDeleteGapsToks' offset  [Entry ss _ t]        = [(offset,"E1",ss,map (increaseSrcSpan offset) t)]
 goDeleteGapsToks'      _  [Deleted _ _]         = [((0,0),  "D1",nullSpan, [])]
 goDeleteGapsToks' offset  (Deleted _ _:ts)      = (offset, "D0",nullSpan, []):goDeleteGapsToks' offset ts
-goDeleteGapsToks' offset  [Entry ss t,Deleted _ _] = [(offset,"[ED]",ss,map (increaseSrcSpan offset) t)]
-goDeleteGapsToks' offset  (Entry ss t1:e@(Entry _ _):ts) =(offset,"EE", ss, (map (increaseSrcSpan offset) t1)):goDeleteGapsToks' offset (e:ts)
-goDeleteGapsToks' (fr,fc) (Entry ss t1:Deleted _ _:t2:ts)
+goDeleteGapsToks' offset  [Entry ss _ t,Deleted _ _] = [(offset,"[ED]",ss,map (increaseSrcSpan offset) t)]
+goDeleteGapsToks' offset  (Entry ss _ t1:e@(Entry _ _ _):ts) =(offset,"EE", ss, (map (increaseSrcSpan offset) t1)):goDeleteGapsToks' offset (e:ts)
+goDeleteGapsToks' (fr,fc) (Entry ss _ t1:Deleted _ _:t2:ts)
   = ((fr,fc),"ED",ss,t1') : goDeleteGapsToks' offset' (t2:ts)
   where
     -- TODO: use actual first and last toks, may be comments
@@ -1327,7 +1327,7 @@ addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
 
     toks' = placeToksForSpan forest' oldSpan tree pos toks
 
-    newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
+    newNode = Node (Entry (srcSpanToForestSpan newSpan') NoChange toks') []
 
     forest'' = insertNodeAfter tree newNode forest'
 
@@ -1561,7 +1561,7 @@ openZipperToNode
   :: Tree Entry
      -> Z.TreePos Z.Full Entry
      -> Z.TreePos Z.Full Entry
-openZipperToNode (Node (Entry sspan _) _) z
+openZipperToNode (Node (Entry sspan _ _) _) z
   = openZipperToSpan sspan z
 
 
@@ -1741,7 +1741,7 @@ invariant forest = rsub
     checkNode _acc (Node (Deleted _sspan _) []) = []
     checkNode _acc node@(Node (Deleted _sspan _) _sub)
          = ["FAIL: deleted node with subtree: " ++ (prettyshow node)]
-    checkNode acc node@(Node (Entry sspan toks) sub) = acc ++ r ++ rinc ++ rsubs ++ rnull
+    checkNode acc node@(Node (Entry sspan _lay toks) sub) = acc ++ r ++ rinc ++ rsubs ++ rnull
       where
         r = if (   emptyList toks && nonEmptyList sub) ||
                (nonEmptyList toks &&    emptyList sub)
@@ -1760,7 +1760,7 @@ invariant forest = rsub
     --  span, they do not need to completely fill it, because some may
     --  have been removed during manipulation
     checkInclusion      (Node _                    []) = []
-    checkInclusion node@(Node (Entry _sspan _toks)  sub) = rs ++ rseq
+    checkInclusion node@(Node (Entry _sspan _lay _toks)  sub) = rs ++ rseq
       where
         (start,end) = treeStartEnd node
         subs = map treeStartEnd sub
@@ -1817,7 +1817,7 @@ invariant forest = rsub
 -- treeStartEnd :: Tree Entry -> (SimpPos,SimpPos)
 -- treeStartEnd (Node (Entry sspan _) _) = (getGhcLoc sspan,getGhcLocEnd sspan)
 treeStartEnd :: Tree Entry -> ForestSpan
-treeStartEnd (Node (Entry sspan _  ) _) = sspan
+treeStartEnd (Node (Entry sspan _ _) _) = sspan
 treeStartEnd (Node (Deleted sspan _) _) = sspan
 
 -- |Get the start and end position of a SrcSpan
@@ -1876,7 +1876,7 @@ drawForestEntry  = unlines . map drawTreeEntry
 
 drawEntry :: Tree Entry -> [String]
 drawEntry (Node (Deleted sspan  eg )  _  ) = [(showForestSpan sspan) ++ (show eg) ++ "D"]
-drawEntry (Node (Entry sspan _toks) ts0) = (showForestSpan sspan) : drawSubTrees ts0
+drawEntry (Node (Entry sspan _ _toks) ts0) = (showForestSpan sspan) : drawSubTrees ts0
   where
     drawSubTrees [] = []
     drawSubTrees [t] =
@@ -1895,7 +1895,7 @@ showTree = prettyshow
 prettyshow :: Tree Entry -> String
 prettyshow (Node (Deleted sspan eg) [])
   = "Node (Deleted " ++ (showForestSpan sspan) ++ " " ++ (show eg) ++ ")"
-prettyshow (Node (Entry sspan toks) sub)
+prettyshow (Node (Entry sspan lay toks) sub)
   = "Node (Entry " ++ (showForestSpan sspan) ++ " "
      ++ (prettyToks toks) ++ ") "
      ++ show (map prettyshow  sub)
@@ -1910,8 +1910,8 @@ prettyToks toks = showToks [ghead "prettyToks" toks] ++ ".." ++ showToks [last t
 
 -- |Make a tree representing a particular set of tokens
 mkTreeFromTokens :: [PosToken] -> Tree Entry
-mkTreeFromTokens []   = Node (Entry nullSpan []) []
-mkTreeFromTokens toks = Node (Entry sspan toks) []
+mkTreeFromTokens []   = Node (Entry nullSpan NoChange []) []
+mkTreeFromTokens toks = Node (Entry sspan NoChange toks) []
   where
    (startLoc',endLoc') = nonCommentSpan toks
    sspan    = if (startLoc',endLoc') == ((0,0),(0,0))
@@ -1922,7 +1922,7 @@ mkTreeFromTokens toks = Node (Entry sspan toks) []
 
 -- |Make a tree representing a particular set of tokens
 mkTreeFromSpanTokens :: ForestSpan -> [PosToken] -> Tree Entry
-mkTreeFromSpanTokens sspan toks = Node (Entry sspan toks) []
+mkTreeFromSpanTokens sspan toks = Node (Entry sspan NoChange toks) []
 
 -- ---------------------------------------------------------------------
 
@@ -2019,8 +2019,8 @@ indentDeclToks decl@(GHC.L sspan _) forest offset = (decl',forest'')
 
     -- Pretty sure this could be a fold of some kind
     go (Node (Deleted ss eg) []) = (Node (Deleted (addOffsetToForestSpan off ss) eg) [])
-    go (Node (Entry ss []) sub)  = (Node (Entry (addOffsetToForestSpan off ss) []) (map go sub))
-    go (Node (Entry ss toks) []) = (Node (Entry (addOffsetToForestSpan off ss) (addOffsetToToks off toks)) [])
+    go (Node (Entry ss lay []) sub)  = (Node (Entry (addOffsetToForestSpan off ss) lay []) (map go sub))
+    go (Node (Entry ss lay toks) []) = (Node (Entry (addOffsetToForestSpan off ss) lay (addOffsetToToks off toks)) [])
 
 -- ---------------------------------------------------------------------
 

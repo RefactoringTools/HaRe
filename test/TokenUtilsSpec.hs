@@ -1363,7 +1363,7 @@ tree TId 0:
       let sspan = fs s2
       let z = openZipperToSpan (fs s2) $ Z.fromTree t2
       (Z.isLeaf z) `shouldBe` True
-      let (Entry _ toks) = Z.label z
+      let (Entry _ _ toks) = Z.label z
       let (tokStartPos,tokEndPos) = forestSpanToSimpPos sspan
 
       (GHC.showRichTokenStream toks) `shouldBe` "\n\n\n\n\n           then -- This is an odd result\n             bob x 1\n           else -- This is an even result\n             bob x 2\n\n bob x y = x + y\n\n "
@@ -2069,7 +2069,7 @@ tree TId 0:
       let newSpan' = insertForestLineInSrcSpan (ForestLine ch tr (v+1) lin) l
 
       let toksNew = take 3 toks
-      let newNode = Node (Entry (fs newSpan') toksNew) []
+      let newNode = Node (Entry (fs newSpan') NoChange toksNew) []
       -- let newNode = Node (Entry l toks) []
 
       -- let toks' = retrieveTokens tree
@@ -2586,7 +2586,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Adds a SrcSpan, chasing a bug in MoveDef" $ do
+    it "adds a SrcSpan, chasing a bug in MoveDef" $ do
       (_t,toks)  <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
       let forest = mkTreeFromTokens toks
 
@@ -2621,6 +2621,7 @@ tree TId 0:
                "+- ((24,5),(24,11))(2,-10)D\n|\n"++
                "`- ((26,1),(40,17))\n"
       (invariant f3) `shouldBe` []
+
 
       -- Context set, time for test
 
@@ -2659,7 +2660,7 @@ tree TId 0:
                "(((ForestLine False 0 0 23),3),((ForestLine False 0 0 23),8))],"++ 
               "[])"
 
-      let (Node (Entry ss toks2) _) = head m2
+      let (Node (Entry ss _ toks2) _) = head m2
 
       (containsStart ss (fs sspan4),containsEnd ss (fs sspan4)) `shouldBe` (True,False)
 
@@ -2725,8 +2726,8 @@ tree TId 0:
       let (ForestLine ch tr v l) = ghcLineToForestLine ghcl
       let newSpan' = insertForestLineInSrcSpan (ForestLine ch tr (v+1) l) newSpan
       let toks' = placeToksForSpan forest' sspan4 tree' (PlaceOffset 2 0 2) newToks
-      let newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
-      (show newNode) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 1 24),1),((ForestLine False 0 1 24),7)) [((((24,1),(24,3)),ITvarid \"zz\"),\"zz\"),((((24,4),(24,5)),ITequal),\"=\"),((((24,6),(24,7)),ITinteger 1),\"1\"),((((26,1),(26,1)),ITvocurly),\"\")], subForest = []}"
+      let newNode = Node (Entry (srcSpanToForestSpan newSpan') NoChange toks') []
+      (show newNode) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 1 24),1),((ForestLine False 0 1 24),7)) NoChange [((((24,1),(24,3)),ITvarid \"zz\"),\"zz\"),((((24,4),(24,5)),ITequal),\"=\"),((((24,6),(24,7)),ITinteger 1),\"1\"),((((26,1),(26,1)),ITvocurly),\"\")], subForest = []}"
 
       let forest'' = insertNodeAfter tree' newNode forest'
       (drawTreeEntry forest'') `shouldBe`
@@ -2904,18 +2905,18 @@ tree TId 0:
 
   describe "invariant 1" $ do
     it "checks that a tree with empty tokens and empty subForest fails" $ do
-      (invariant $ Node (Entry nonNullSpan []) []) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
+      (invariant $ Node (Entry nonNullSpan NoChange []) []) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
 
     -- -----------------------
     it "checks that a tree nonempty tokens and empty subForest passes" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      (invariant $ Node (Entry nonNullSpan (take 3 toks)) []) `shouldBe` []
+      (invariant $ Node (Entry nonNullSpan NoChange (take 3 toks)) []) `shouldBe` []
 
     -- -----------------------
     it "checks that a tree with nonempty tokens and nonempty subForest fails" $ do
       (_t,toks) <- parsedFileTokenTestGhc
 
-      (invariant (Node (Entry (simpPosToForestSpan ((1,1),(1,7))) (take 1 toks)) [emptyTree])) `shouldBe`
+      (invariant (Node (Entry (simpPosToForestSpan ((1,1),(1,7))) NoChange (take 1 toks)) [emptyTree])) `shouldBe`
              ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [\"Node (Entry ((0,0),(1,0)) []) []\"]",
               "FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [\"Node (Entry ((0,0),(1,0)) []) []\"]",
               "FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
@@ -2924,40 +2925,40 @@ tree TId 0:
     -- -----------------------
     it "checks that a tree with empty tokens and nonempty subForest passes" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      let tree@(Node (Entry sspan _) _) = mkTreeFromTokens toks
+      let tree@(Node (Entry sspan _ _) _) = mkTreeFromTokens toks
 
-      (invariant (Node (Entry sspan []) [tree])) `shouldBe` []
+      (invariant (Node (Entry sspan NoChange []) [tree])) `shouldBe` []
 
     -- -----------------------
     it "checks the subtrees too" $ do
       (_t,_toks) <- parsedFileTokenTestGhc
 
-      (invariant (Node (Entry nonNullSpan []) [emptyTree])) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
+      (invariant (Node (Entry nonNullSpan NoChange []) [emptyTree])) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
 
   -- ---------------------------------------------
 
   describe "invariant 2" $ do
     it "checks that a the subree fully includes the parent" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      let tree1@(Node (Entry sspan _) _)  = mkTreeFromTokens toks
-      let tree2@(Node (Entry sspan2 _) _) = mkTreeFromTokens (tail toks)
-      let tree3@(Node (Entry sspan3 _) _) = mkTreeFromTokens (take 10 toks)
+      let tree1@(Node (Entry sspan _ _) _)  = mkTreeFromTokens toks
+      let tree2@(Node (Entry sspan2 _ _) _) = mkTreeFromTokens (tail toks)
+      let tree3@(Node (Entry sspan3 _ _) _) = mkTreeFromTokens (take 10 toks)
       let tree4 = mkTreeFromTokens (drop 10 toks)
       (showTree tree1) `shouldBe` "Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
       (showTree tree2) `shouldBe` "Node (Entry ((1,8),(21,14)) [(((1,8),(1,17)),ITconid \"TokenTest\",\"TokenTest\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
       (showTree tree3) `shouldBe` "Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) []"
 
-      (invariant (Node (Entry sspan2 []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,8),(21,14)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan2 NoChange []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,8),(21,14)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
 
-      (invariant (Node (Entry sspan3 []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(5,12)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan3 NoChange []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(5,12)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
 
-      (invariant (Node (Entry sspan []) [tree3,tree4])) `shouldBe` []
+      (invariant (Node (Entry sspan NoChange []) [tree3,tree4])) `shouldBe` []
 
     -- -----------------------------------------------------------------
 
     it "checks that a the subree is in span order" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      let (Node (Entry sspan _) _) = mkTreeFromTokens toks
+      let (Node (Entry sspan _ _) _) = mkTreeFromTokens toks
       let tree1 = mkTreeFromTokens (take 10 toks)
       let tree2 = mkTreeFromTokens (take 10 $ drop 10 toks)
       let tree3 = mkTreeFromTokens (take 10 $ drop 20 toks)
@@ -2968,8 +2969,8 @@ tree TId 0:
       (showForestSpan $ treeStartEnd tree3) `shouldBe` "((8,9),(13,4))"
       (showForestSpan $ treeStartEnd tree4) `shouldBe` "((13,5),(21,14))"
 
-      (invariant (Node (Entry sspan []) [tree1,tree2,tree3,tree4])) `shouldBe` []
-      (invariant (Node (Entry sspan []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: ((ForestLine False 0 0 13),4) not < ((ForestLine False 0 0 6),3):Node (Entry ((1,1),(21,14)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(21,14)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan NoChange []) [tree1,tree2,tree3,tree4])) `shouldBe` []
+      (invariant (Node (Entry sspan NoChange []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: ((ForestLine False 0 0 13),4) not < ((ForestLine False 0 0 6),3):Node (Entry ((1,1),(21,14)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(21,14)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
 
   -- ---------------------------------------------
 {-
@@ -2999,7 +3000,7 @@ tree TId 0:
 
   describe "mkTreeFromTokens" $ do
     it "creates a tree from an empty token list" $ do
-      (show $ mkTreeFromTokens []) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 0 0),0),((ForestLine False 0 0 0),0)) [], subForest = []}"
+      (show $ mkTreeFromTokens []) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 0 0),0),((ForestLine False 0 0 0),0)) NoChange [], subForest = []}"
 
     -- -----------------------
 
@@ -3008,12 +3009,12 @@ tree TId 0:
       let toks' = take 2 $ drop 5 toks
       let tree = mkTreeFromTokens toks'
       (show toks') `shouldBe` "[((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")]"
-      (show tree) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),6)) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
+      (show tree) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),6)) NoChange [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
 
   -- ---------------------------------------------
 
   describe "splitSubToks" $ do
-    it "Splits sub tokens" $ do
+    it "splits sub tokens" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/Case/D.hs"
       let forest = mkTreeFromTokens toks
 
@@ -3024,7 +3025,7 @@ tree TId 0:
       (showGhc $ forestSpanToSrcSpan (startPos,endPos)) `shouldBe` "foo:(6,16)-(8,18)"
 
       let (b,m,e) = splitSubToks forest (startPos,endPos)
-      (show m) `shouldBe` "[Node {rootLabel = Entry (((ForestLine False 0 0 6),16),((ForestLine False 0 0 8),19)) "++
+      (show m) `shouldBe` "[Node {rootLabel = Entry (((ForestLine False 0 0 6),16),((ForestLine False 0 0 8),19)) NoChange "++
           "[((((6,16),(6,18)),ITdo),\"do\"),((((7,13),(7,37)),ITlineComment \"-- This is an odd result\"),\"-- This is an odd result\"),((((8,13),(8,13)),ITvocurly),\"\"),((((8,13),(8,16)),ITvarid \"bob\"),\"bob\"),((((8,17),(8,18)),ITvarid \"x\"),\"x\")], subForest = []}]"
 
   -- ---------------------------------------------
@@ -3033,7 +3034,7 @@ tree TId 0:
     it "checks that a tree with a null SrcSpan fails" $ do
       (_t,toks) <- parsedFileTokenTestGhc
       let toks' = take 2 $ drop 5 toks
-      (invariant $ Node (Entry nullSpan toks') []) `shouldBe` ["FAIL: null SrcSpan in tree: Node (Entry ((0,0),(0,0)) [(((5,1),(5,4)),ITvarid \"bob\",\"bob\"),(((5,5),(5,6)),ITvarid \"a\",\"a\")]) []"]
+      (invariant $ Node (Entry nullSpan NoChange toks') []) `shouldBe` ["FAIL: null SrcSpan in tree: Node (Entry ((0,0),(0,0)) [(((5,1),(5,4)),ITvarid \"bob\",\"bob\"),(((5,5),(5,6)),ITvarid \"a\",\"a\")]) []"]
 
   -- ---------------------------------------------
 
@@ -3497,7 +3498,7 @@ tree TId 0:
             "`- ((13,18),(16,23))\n"
 
       (calcEndGap f2 (fs sspan)) `shouldBe` (1,-14)
-      
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 
@@ -3506,14 +3507,14 @@ fs :: GHC.SrcSpan -> ForestSpan
 fs = srcSpanToForestSpan
 
 emptyTree :: Tree Entry
-emptyTree = Node (Entry nonNullSpan []) []
+emptyTree = Node (Entry nonNullSpan NoChange []) []
 
 mkTreeFromSubTrees :: [Tree Entry] -> Tree Entry
-mkTreeFromSubTrees [] = Node (Entry nullSpan []) []
-mkTreeFromSubTrees trees = Node (Entry sspan []) trees
+mkTreeFromSubTrees [] = Node (Entry nullSpan NoChange []) []
+mkTreeFromSubTrees trees = Node (Entry sspan NoChange []) trees
   where
-   (Node (Entry _ startToks) _) = head trees
-   (Node (Entry _ endToks) _) = last trees
+   (Node (Entry _ _ startToks) _) = head trees
+   (Node (Entry _ _ endToks) _) = last trees
    startLoc = tokenPos $ head startToks
    endLoc   = tokenPosEnd $ last endToks -- SrcSpans count from start of token, not end
    sspan    = simpPosToForestSpan (startLoc,endLoc)

@@ -12,6 +12,9 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        , mainTid
        -- * Structure of each tree
        , Entry(..)
+       , Layout(..)
+       , RowOffset
+       , ColOffset
        , ForestLine(..)
        , ForestPos
        , ForestSpan
@@ -60,7 +63,9 @@ Question: is the latter statement valid? ++AZ++
 
 -- TODO: turn this into a record, with named accessors
 -- | An entry in the data structure for a particular srcspan.
-data Entry = Entry !ForestSpan -- The source span contained in this Node
+data Entry = Entry !ForestSpan -- The source span contained in this
+                                  -- Node
+                   !Layout     -- ^How the sub-elements nest
                    ![PosToken] -- ^The tokens for the SrcSpan if
                                --  subtree is empty
            | Deleted !ForestSpan -- The source span has been deleted
@@ -69,6 +74,15 @@ data Entry = Entry !ForestSpan -- The source span contained in this Node
                                  --  fringe of the tree.
 
 --             deriving (Show)
+
+type RowOffset = Int
+type ColOffset = Int
+
+data Layout = Above
+            | Offset RowOffset ColOffset
+            | NoChange
+            deriving (Show)
+
 
 -- ---------------------------------------------------------------------
 
