@@ -13,6 +13,7 @@
 module Language.Haskell.Refact.Utils.TokenUtils(
        -- * Creating
         initTokenCache
+       , initTokenCacheLayout
        , mkTreeFromTokens
        , mkTreeFromSpanTokens
 
@@ -564,6 +565,9 @@ initModule typeChecked tokens
 initTokenCache :: [PosToken] -> TokenCache
 initTokenCache toks = TK (Map.fromList [((TId 0),(mkTreeFromTokens toks))]) (TId 0)
 
+initTokenCacheLayout :: Tree Entry -> TokenCache
+initTokenCacheLayout tree = TK (Map.fromList [((TId 0),tree)]) (TId 0)
+
 -- ---------------------------------------------------------------------
 
 treeIdIntoTree :: TreeId -> Tree Entry -> Tree Entry
@@ -707,6 +711,8 @@ getTokensBefore forest sspan = (forest', prevToks')
 -- NOTE: the GHC.SrcSpan may have been used to select the appropriate
 -- forest in the first place, and is required to select the correct
 -- span in the tree, due to the ForestLine annotations that may be present
+
+-- TODO: work at the token level, not the sspan level
 replaceTokenForSrcSpan :: Tree Entry -> GHC.SrcSpan -> PosToken -> Tree Entry
 replaceTokenForSrcSpan forest sspan tok = forest'
   where
@@ -719,7 +725,7 @@ replaceTokenForSrcSpan forest sspan tok = forest'
 
     (tspan,lay,toks) = case Z.tree z' of
             (Node (Entry ss ly tks) []) -> (ss,ly,tks)
-            (Node (Entry _ _ []) _sub) -> error $ "replaceTokenForSrcSpan: expecting tokens, found: " ++ (show $ Z.tree z')
+            (Node (Entry _ _ []) _sub) -> error $ "replaceTokenForSrcSpan:" ++ (showForestSpan $ sf sspan) ++ " expecting tokens, found: " ++ (show $ Z.tree z')
 
     ((row,col),_) = forestSpanToSimpPos $ srcSpanToForestSpan tl
     toks' = replaceTokNoReAlign toks (row,col) tok

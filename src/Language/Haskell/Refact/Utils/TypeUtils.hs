@@ -3367,14 +3367,14 @@ duplicateDecl decls sigs n newFunName
  = do
       let Just sspan = getSrcSpan funBinding
       toks <- getToksForSpan sspan
-      lay <- getLayoutForSpan sspan
+      -- lay <- getLayoutForSpan sspan
 
       newSpan <- case typeSig of
         [] -> return sspan
         _  -> do
           let Just sspanSig = getSrcSpan typeSig
           toksSig <- getToksForSpan sspanSig
-          laySig  <- getLayoutForSpan sspanSig
+          -- laySig  <- getLayoutForSpan sspanSig
 
           let colStart  = tokenCol $ ghead "duplicateDecl.sig"
                     $ dropWhile isWhiteSpace toksSig

@@ -148,8 +148,8 @@ instance Outputable Layout where
 
 -- ---------------------------------------------------------------------
 
-initTokenLayout :: GHC.ParsedSource -> [PosToken] -> TokenLayout
-initTokenLayout parsed toks = TL (allocTokens parsed toks)
+initTokenLayout :: GHC.ParsedSource -> [PosToken] -> LayoutTree
+initTokenLayout parsed toks = (allocTokens parsed toks)
 
 nullTokenLayout :: TokenLayout
 -- nullTokenLayout = TL (Leaf nullSrcSpan NoChange [])
@@ -424,7 +424,9 @@ allocExpr (GHC.L _ (GHC.RecordCon (GHC.L ln _) _ (GHC.HsRecFields fields _))) to
     fieldsLayout = error "allocExpr allocRecField needs work"
     r = strip $ (makeLeafFromToks s1) ++ nameLayout ++ fieldsLayout
 
-allocExpr e toks = error $ "allocExpr for " ++ (SYB.showData SYB.Parser 0  e) ++ " undefined"
+allocExpr (GHC.L _ (GHC.ArithSeq _ info)) toks = allocArithSeqInfo info toks
+
+allocExpr e toks = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 
 -- ---------------------------------------------------------------------
 
@@ -467,7 +469,33 @@ allocBind (GHC.L l (GHC.FunBind (GHC.L ln _) _ (GHC.MatchGroup matches _) _ _ _)
 -- ---------------------------------------------------------------------
 
 allocRecField :: GHC.HsRecFields GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> [PosToken] -> [LayoutTree]
-allocRecField = undefined
+allocRecField = error "Layout.allocRecField undefined"
+
+-- ---------------------------------------------------------------------
+
+allocArithSeqInfo :: GHC.ArithSeqInfo GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocArithSeqInfo (GHC.From e) toks = allocExpr e toks
+allocArithSeqInfo (GHC.FromThen e1@(GHC.L l _) e2) toksIn = r
+  where
+    (s1,e1Toks,e2Toks) = splitToks (ghcSpanStartEnd l) toksIn
+    e1Layout = allocExpr e1 e1Toks
+    e2Layout = allocExpr e2 e2Toks
+    r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ e2Layout
+
+allocArithSeqInfo (GHC.FromTo e1@(GHC.L l _) e2) toksIn = r
+  where
+    (s1,e1Toks,e2Toks) = splitToks (ghcSpanStartEnd l) toksIn
+    e1Layout = allocExpr e1 e1Toks
+    e2Layout = allocExpr e2 e2Toks
+    r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ e2Layout
+allocArithSeqInfo (GHC.FromThenTo e1@(GHC.L l1 _) e2@(GHC.L l2 _) e3) toksIn = r
+  where
+    (s1,e1Toks,toks)   = splitToks (ghcSpanStartEnd l1) toksIn
+    (s2,e2Toks,e3Toks) = splitToks (ghcSpanStartEnd l2) toks
+    e1Layout = allocExpr e1 e1Toks
+    e2Layout = allocExpr e2 e2Toks
+    e3Layout = allocExpr e3 e3Toks
+    r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ e2Layout ++ (makeLeafFromToks s2) ++  e3Layout
 
 -- ---------------------------------------------------------------------
 

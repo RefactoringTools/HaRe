@@ -42,7 +42,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , indentDeclAndToks
 
        -- * LayoutUtils API
-       , getLayoutForSpan
+       -- , getLayoutForSpan
        -- , putDeclLayoutAfterSpan
 
        -- * For debugging
@@ -348,7 +348,7 @@ indentDeclAndToks t offset = do
 -- =====================================================================
 -- Layout Tree stuff
 -- ---------------------------------------------------------------------
-
+{-
 getLayoutForSpan :: GHC.SrcSpan -> RefactGhc LayoutTree
 getLayoutForSpan sspan = do
   st <- get
@@ -356,7 +356,7 @@ getLayoutForSpan sspan = do
   let lay = getLayoutFor sspan (rsTokenLayout tm)
   logm $ "getLayoutForSpan " ++ (showGhc sspan) ++ ":" ++ (showGhc lay)
   return lay
-
+-}
 {-
 putDeclLayoutAfterSpan :: (SYB.Data t)
    => GHC.SrcSpan -> GHC.Located t -> Positioning -> LayoutTree
@@ -493,10 +493,10 @@ initRefactModule
 initRefactModule tm toks
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsOrigTokenStream = toks
-                 , rsTokenCache = initTokenCache toks
-                 , rsTokenLayout = initTokenLayout
+                 -- , rsTokenCache = initTokenCache toks
+                 , rsTokenCache = initTokenCacheLayout (initTokenLayout
                                     (GHC.pm_parsed_source $ GHC.tm_parsed_module tm) 
-                                    toks
+                                    toks)
                  , rsStreamModified = False
                  })
 
