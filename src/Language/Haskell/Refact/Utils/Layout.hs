@@ -340,7 +340,11 @@ allocStmt (GHC.L _ (GHC.BindStmt pat@(GHC.L lp _) expr _ _)) toks = r
     r = strip $ (makeLeafFromToks s1) ++ patLayout ++ exprLayout
 allocStmt (GHC.L _ (GHC.ExprStmt expr _ _ _)) toks = allocExpr expr toks
 allocStmt (GHC.L _ (GHC.LetStmt binds))       toks = allocLocalBinds binds toks
+#if __GLASGOW_HASKELL__ > 704
 allocStmt (GHC.L _ (GHC.ParStmt stmts _ _))          toks = undefined
+#else
+allocStmt (GHC.L _ (GHC.ParStmt stmts _ _ _))        toks = undefined
+#endif
 allocStmt (GHC.L _ (GHC.TransStmt _ _ _ _ _ _ _ _ )) toks = undefined
 allocStmt (GHC.L _ (GHC.RecStmt _ _ _ _ _ _ _ _ _))  toks = undefined
 
