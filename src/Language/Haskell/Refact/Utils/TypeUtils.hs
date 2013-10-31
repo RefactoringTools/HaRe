@@ -3736,6 +3736,7 @@ renamePN::(SYB.Data t)
 renamePN oldPN newName updateTokens useQual t = do
   -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
   -- logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
+  logm $ "renamePN': t=" ++ (SYB.showData SYB.Renamer 0 t)
   -- Note: bottom-up traversal
   let isRenamed = somethingStaged SYB.Renamer Nothing
                    (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t

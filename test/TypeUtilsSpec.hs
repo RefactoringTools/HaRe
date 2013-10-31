@@ -1700,7 +1700,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "renamePN" $ do
-    it "replaces a Name with another, updating tokens" $ do
+    it "replaces a Name with another, updating tokens 1" $ do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -1715,7 +1715,8 @@ spec = do
          return (new,newName)
       let
 
-      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "DupDef.Dd1.toplevel"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((3,1),(3,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
@@ -2729,7 +2730,7 @@ spec = do
   -- --------------------------------------
 
   describe "getDeclAndToks" $ do
-    it "Returns a declaration and its associated tokens" $ do
+    it "returns a declaration and its associated tokens" $ do
       let
         comp = do
           (t, toks) <- parseSourceFileTest "./test/testdata/MoveDef/Md1.hs"
@@ -2741,6 +2742,7 @@ spec = do
           return (res,n,name)
 
       (((d,t),n1,n2),s) <- runRefactGhcState comp
+      -- (((d,t),n1,n2),s) <- runRefactGhcStateLog comp Debug
       (showGhc n1) `shouldBe` "MoveDef.Md1.tlFunc"
       (showGhc d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
       (show $ getStartEndLoc d) `shouldBe` "((40,1),(40,17))"
@@ -2956,7 +2958,7 @@ This function is not used and has been removed
   -- ---------------------------------------
 
   describe "addItemsToImport" $ do
-    it "Add an item to an import entry with no items." $ do
+    it "add an item to an import entry with no items." $ do
       let
         comp = do
          (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/JustImports.hs"
@@ -2971,9 +2973,12 @@ This function is not used and has been removed
 
          return (res,toks,renamed1,_toks1)
       ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+      -- ((_r,t,r2,tk2),s) <- runRefactGhcStateLog comp Debug
+
       -- This is the correct behavior. If the import doesn't have an import list, creating 
       -- one for an item effectively reduces the imported interface.
-      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module JustImports where\n\n import Data.Maybe\n "
+      -- (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n "
 
 -- Not sure if this should be a test
 {-    it "Try adding more than one item to an existing import entry with no items, using separate calls." $ do

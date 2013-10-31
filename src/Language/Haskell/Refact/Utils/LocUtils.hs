@@ -1137,13 +1137,11 @@ startEndLocIncComments' toks (startLoc,endLoc) =
 
     notIgnored tt = not (isWhiteSpaceOrIgnored tt)
 
-    -- (leadinr,leadr) = break notWhiteSpace $ reverse begin
     (leadinr,leadr) = break notIgnored $ reverse begin
     leadr' = filter (\t -> not (isEmpty t)) leadr
     prevLine  = if (emptyList leadr') then 0 else (tokenRow $ ghead "startEndLocIncComments'1" leadr')
     firstLine = if (emptyList middle) then 0 else (tokenRow $ ghead "startEndLocIncComments'1" middle)
     (_nonleadComments,leadComments') = divideComments prevLine firstLine $ reverse leadinr
-    -- leadComments = dropWhile (\tt -> (isThen tt || isElse tt || isEmpty tt || isIn tt || isDo tt)) leadComments'
     leadComments = dropWhile (\tt -> (isEmpty tt)) leadComments'
 
     (trail,trailrest) = break notWhiteSpace end

@@ -13,6 +13,7 @@ import Data.Maybe
 import Data.Tree
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
+import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
@@ -1915,7 +1916,8 @@ tree TId 0:
   describe "replaceTokenForSrcSpan" $ do
     it "replaces a single token in a given span, without disturbing the tree" $ do
       (t,toks) <- parsedFileTokenTestGhc
-      let forest = mkTreeFromTokens toks
+      -- let forest = mkTreeFromTokens toks
+      let forest = initTokenLayout (GHC.pm_parsed_source $ GHC.tm_parsed_module t) toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
@@ -1932,7 +1934,96 @@ tree TId 0:
       let forest' = replaceTokenForSrcSpan forest l newTok
 
       (drawTreeEntry forest') `shouldBe`
-              "((1,1),(21,14))\n"
+              "((1,1),(26,1))\n|\n"++
+              "+- ((1,1),(1,7))\n|\n"++
+              "+- ((1,8),(1,17))\n|\n"++
+              "+- ((1,18),(3,32))\n|\n"++
+              "+- ((5,1),(6,14))\n|  |\n"++
+              "|  `- ((5,1),(6,14))\n|     |\n"++
+              "|     +- ((5,1),(5,4))\n|     |\n"++
+              "|     `- ((5,5),(6,14))\n|        |\n"++
+              "|        +- ((5,5),(5,6))\n|        |  |\n"++
+              "|        |  `- ((5,5),(5,6))\n|        |\n"++
+              "|        +- ((5,7),(5,8))\n|        |  |\n"++
+              "|        |  `- ((5,7),(5,8))\n|        |\n"++
+              "|        +- ((5,9),(5,10))\n|        |\n"++
+              "|        +- ((5,11),(5,12))\n|        |  |\n"++
+              "|        |  `- ((5,11),(5,12))\n|        |\n"++
+              "|        +- ((6,3),(6,8))\n|        |\n"++
+              "|        `- ((6,9),(6,14))\n|           |\n"++
+              "|           `- ((6,9),(6,14))\n|              |\n"++
+              "|              `- ((6,9),(6,14))\n|                 |\n"++
+              "|                 `- ((6,9),(6,14))\n|                    |\n"++
+              "|                    +- ((6,9),(6,10))\n|                    |\n"++
+              "|                    `- ((6,11),(6,14))\n|                       |\n"++
+              "|                       +- ((6,11),(6,12))\n|                       |\n"++
+              "|                       `- ((6,13),(6,14))\n|                          |\n"++
+              "|                          `- ((6,13),(6,14))\n|\n"++
+              "+- ((8,1),(10,10))\n|  |\n"++
+              "|  `- ((8,1),(10,10))\n|     |\n"++
+              "|     +- ((8,1),(8,4))\n|     |\n"++
+              "|     `- ((8,5),(10,10))\n|        |\n"++
+              "|        +- ((8,5),(8,6))\n|        |  |\n"++
+              "|        |  `- ((8,5),(8,6))\n|        |\n"++
+              "|        +- ((8,7),(8,8))\n|        |  |\n"++
+              "|        |  `- ((8,7),(8,8))\n|        |\n"++
+              "|        +- ((8,9),(8,10))\n|        |\n"++
+              "|        +- ((8,11),(8,12))\n|        |  |\n"++
+              "|        |  `- ((8,11),(8,12))\n|        |\n"++
+              "|        +- ((9,3),(9,8))\n|        |\n"++
+              "|        `- ((10,5),(10,10))\n|           |\n"++
+              "|           `- ((10,5),(10,10))\n|              |\n"++
+              "|              `- ((10,5),(10,10))\n|                 |\n"++
+              "|                 `- ((10,5),(10,10))\n|                    |\n"++
+              "|                    +- ((10,5),(10,6))\n|                    |\n"++
+              "|                    `- ((10,7),(10,10))\n|                       |\n"++
+              "|                       +- ((10,7),(10,8))\n|                       |\n"++
+              "|                       `- ((10,9),(10,10))\n|                          |\n"++
+              "|                          `- ((10,9),(10,10))\n|\n"++
+              "+- ((13,1),(15,17))\n|  |\n"++
+              "|  `- ((13,1),(15,17))\n|     |\n"++
+              "|     +- ((13,1),(13,4))\n|     |\n"++
+              "|     `- ((13,5),(15,17))\n|        |\n"++
+              "|        +- ((13,5),(13,6))\n|        |  |\n"++
+              "|        |  `- ((13,5),(13,6))\n|        |\n"++
+              "|        +- ((13,7),(13,8))\n|        |  |\n"++
+              "|        |  `- ((13,7),(13,8))\n|        |\n"++
+              "|        +- ((13,9),(13,10))\n|        |\n"++
+              "|        `- ((14,3),(15,17))\n|           |\n"++
+              "|           +- ((14,3),(14,6))\n|           |\n"++
+              "|           +- ((14,7),(14,14))\n|           |  |\n"++
+              "|           |  `- ((14,7),(14,14))\n|           |     |\n"++
+              "|           |     `- ((14,7),(14,14))\n|           |        |\n"++
+              "|           |        `- ((14,7),(14,14))\n|           |           |\n"++
+              "|           |           +- ((14,7),(14,10))\n|           |           |\n"++
+              "|           |           `- ((14,11),(14,14))\n|           |              |\n"++
+              "|           |              +- ((14,11),(14,12))\n|           |              |\n"++
+              "|           |              `- ((14,13),(14,14))\n|           |                 |\n"++
+              "|           |                 `- ((14,13),(14,14))\n|           |\n"++
+              "|           +- ((15,3),(15,5))\n|           |\n"++
+              "|           `- ((15,10),(15,17))\n|              |\n"++
+              "|              +- ((15,10),(15,11))\n|              |\n"++
+              "|              +- ((15,12),(15,13))\n|              |\n"++
+              "|              `- ((15,14),(15,17))\n|\n"++
+              "+- ((15,18),(18,19))\n|\n"++
+              "+- ((19,1),(21,14))\n|  |\n"++
+              "|  `- ((19,1),(21,14))\n|     |\n"++
+              "|     +- ((19,1),(19,4))\n|     |\n"++
+              "|     `- ((19,5),(21,14))\n|        |\n"++
+              "|        +- ((19,5),(19,6))\n|        |  |\n"++
+              "|        |  `- ((19,5),(19,6))\n|        |\n"++
+              "|        +- ((19,7),(19,8))\n|        |  |\n"++
+              "|        |  `- ((19,7),(19,8))\n|        |\n"++
+              "|        +- ((19,9),(19,10))\n|        |\n"++
+              "|        `- ((20,3),(21,14))\n|           |\n"++
+              "|           +- ((20,3),(20,5))\n|           |\n"++
+              "|           +- ((20,6),(20,18))\n|           |  |\n"++
+              "|           |  +- ((20,6),(20,7))\n|           |  |\n"++
+              "|           |  `- ((20,11),(20,18))\n|           |\n"++
+              "|           `- ((21,6),(21,14))\n|              |\n"++
+              "|              +- ((21,6),(21,12))\n|              |\n"++
+              "|              `- ((21,13),(21,14))\n|\n"++
+              "`- ((26,1),(26,1))\n"
 
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
@@ -1940,9 +2031,10 @@ tree TId 0:
     -- ---------------------------------
 
     it "replaces a single token in an added span" $ do
-      (_t,toks) <- parsedFileDd1Ghc
+      (t,toks) <- parsedFileDd1Ghc
 
-      let f1 = mkTreeFromTokens toks
+      -- let f1 = mkTreeFromTokens toks
+      let f1 = initTokenLayout (GHC.pm_parsed_source $ GHC.tm_parsed_module t) toks
 
       let ss1 = posToSrcSpan f1 ((4,1),(4,19))
       let (f2,_toks1) = getTokensFor True f1 ss1

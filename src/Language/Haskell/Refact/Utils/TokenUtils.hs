@@ -723,6 +723,8 @@ replaceTokenForSrcSpan forest sspan tok = forest'
     -- Then drill down to the specific subtree containing the token
     z' = openZipperToSpan (srcSpanToForestSpan tl) z
 
+    -- Note: with LayoutTree, the full tree matching the AST has been
+    -- built, still need to drill down to the nearest enclosing span
     (tspan,lay,toks) = case Z.tree z' of
             (Node (Entry ss ly tks) []) -> (ss,ly,tks)
             (Node (Entry _ _ []) _sub) -> error $ "replaceTokenForSrcSpan:" ++ (showForestSpan $ sf sspan) ++ " expecting tokens, found: " ++ (show $ Z.tree z')
@@ -1495,14 +1497,11 @@ nonCommentSpan :: [PosToken] -> (SimpPos,SimpPos)
 nonCommentSpan [] = ((0,0),(0,0))
 nonCommentSpan toks = (startPos,endPos)
   where
-    -- stripped = dropWhile isWhiteSpace $ toks
     stripped = dropWhile isIgnoredNonComment $ toks
     (startPos,endPos) = case stripped of
       [] -> ((0,0),(0,0))
       _ -> (tokenPos startTok,tokenPosEnd endTok)
        where
-        -- startTok = ghead "nonCommentSpan.1" $ dropWhile isWhiteSpace $ toks
-        -- endTok   = ghead "nonCommentSpan.2" $ dropWhile isWhiteSpace $ reverse toks
         startTok = ghead "nonCommentSpan.1" $ dropWhile isIgnoredNonComment $ toks
         endTok   = ghead "nonCommentSpan.2" $ dropWhile isIgnoredNonComment $ reverse toks
 
