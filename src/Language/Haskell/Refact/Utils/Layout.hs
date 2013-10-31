@@ -190,7 +190,12 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
           where
             (s4,declToks,toks4') = splitToksForList is toks3
 
-    r = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
+    -- r = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
+    -- r = error $ "allocTokens:(nameLayout,toks1)=" ++ (show (nameLayout,toks1)) -- ++AZ++
+    -- r = error $ "allocTokens:(exportLayout,toks2)=" ++ (show (exportLayout,toks2)) -- ++AZ++
+    -- r = error $ "allocTokens:(importLayout,toks3)=" ++ (show (importLayout,toks3)) -- ++AZ++
+    r = error $ "allocTokens:(declLayout,toks4)=" ++ (show (declLayout,_toks4)) -- ++AZ++
+
 
 -- ---------------------------------------------------------------------
 
@@ -220,17 +225,20 @@ allocDecls decls toks = r
 -- ---------------------------------------------------------------------
 
 allocTyClD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocTyClD (acc,toks) d@(GHC.L l (GHC.TyClD       _)) = ([],[])
+allocTyClD (acc,toks) d@(GHC.L l (GHC.TyClD       _))
+  = error "allocTyClD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocInstD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocInstD (acc,toks) d@(GHC.L l (GHC.InstD       _)) = ([],[])
+allocInstD (acc,toks) d@(GHC.L l (GHC.InstD       _))
+  = error "allocInstD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocDerivD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocDerivD (acc,toks) d@(GHC.L l (GHC.DerivD      _)) = ([],[])
+allocDerivD (acc,toks) d@(GHC.L l (GHC.DerivD      _))
+  = error "allocDerivD undefined"
 
 -- ---------------------------------------------------------------------
 
@@ -243,7 +251,8 @@ allocValD (acc,toks) (GHC.L l (GHC.ValD bind@(GHC.FunBind _ _ _ _ _ _))) = r
 
 allocValD (acc,toks) d@(GHC.L l (GHC.ValD (GHC.PatBind lhs rhs _ _ _))) = r
   where
-    r = ([],[])
+    r = error "allocValD PatBind undefined"
+
 
 allocValD (acc,toks) d@(GHC.L l (GHC.ValD (GHC.VarBind n rhs _))) = error "allocValD:VarBinds"
 allocValD (acc,toks) d@(GHC.L l (GHC.ValD (GHC.AbsBinds tvs vars exps ev binds))) = error "allocValD:AbsBinds"
@@ -251,52 +260,102 @@ allocValD (acc,toks) d@(GHC.L l (GHC.ValD (GHC.AbsBinds tvs vars exps ev binds))
 -- ---------------------------------------------------------------------
 
 allocSigD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocSigD (acc,toks) d@(GHC.L l (GHC.SigD        _)) = ([],[])
+allocSigD (acc,toks) d@(GHC.L l (GHC.SigD (GHC.TypeSig names t@(GHC.L lt _)))) = (r,toks'')
+  where
+    (s1,nameToks,toks') = splitToksForList names toks
+    nameLayout = allocList names nameToks allocLocated
+    (s2,typeToks,toks'') = splitToks (ghcSpanStartEnd lt) toks'
+    typeLayout = allocType t typeToks
+    r = strip $ (makeLeafFromToks s1) ++ nameLayout ++ (makeLeafFromToks s2) ++ typeLayout
+allocSigD (acc,toks) d@(GHC.L l (GHC.SigD (GHC.GenericSig names t@(GHC.L lt _)))) = (r,toks'')
+  where
+    (s1,nameToks,toks') = splitToksForList names toks
+    nameLayout = allocList names nameToks allocLocated
+    (s2,typeToks,toks'') = splitToks (ghcSpanStartEnd lt) toks'
+    typeLayout = allocType t typeToks
+    r = strip $ (makeLeafFromToks s1) ++ nameLayout ++ (makeLeafFromToks s2) ++ typeLayout
+allocSigD (acc,toks) d@(GHC.L l (GHC.SigD (GHC.IdSig i))) = (r,toks')
+  where
+    (s1,nameToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    r = strip $ (makeLeafFromToks s1) ++ [makeLeaf l NoChange nameToks]
+allocSigD (acc,toks) d@(GHC.L l (GHC.SigD (GHC.FixSig (GHC.FixitySig n@(GHC.L ln _) fix)))) = (r,toks')
+  where
+    (s1,fToks,toks')   = splitToks (ghcSpanStartEnd l) toks
+    (s2,nToks,fixToks) = splitToks (ghcSpanStartEnd ln) fToks
+
+    r = strip $ (makeLeafFromToks s1) ++ (allocLocated n nToks)
+             ++ (makeLeafFromToks s2) ++ (makeLeafFromToks fixToks)
+allocSigD (acc,toks) d@(GHC.L l (GHC.SigD (GHC.InlineSig n@(GHC.L ln _) ip))) = (r,toks')
+  where
+    (s1,sigToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,nToks,ipToks) = splitToks (ghcSpanStartEnd l) sigToks
+    r = strip $ (makeLeafFromToks s1) ++ (allocLocated n nToks)
+             ++ (makeLeafFromToks s2) ++ (makeLeafFromToks ipToks)
+allocSigD (acc,toks) d@(GHC.L l (GHC.SigD (GHC.SpecSig n@(GHC.L ln _) t@(GHC.L lt _) ip))) = (r,toks')
+  where
+    (s1,sigToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,nToks,toks'') = splitToks (ghcSpanStartEnd ln) sigToks
+    (s3,tToks,ipToks) = splitToks (ghcSpanStartEnd ln) toks''
+    nameLayout = allocLocated n nToks
+    typeLayout = [allocType t tToks]
+    ipLayout = makeLeafFromToks ipToks
+    r = strip $ (makeLeafFromToks s1) ++ nameLayout ++ (makeLeafFromToks s2)
+             ++ typeLayout ++ (makeLeafFromToks s3) ++ ipLayout
+allocSigD (acc,toks) d@(GHC.L l (GHC.SigD (GHC.SpecInstSig t))) = allocType t toks
 
 -- ---------------------------------------------------------------------
 
 allocDefD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocDefD (acc,toks) d@(GHC.L l (GHC.DefD        _)) = ([],[])
+allocDefD (acc,toks) d@(GHC.L l (GHC.DefD        _))
+  = error "allocDefD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocForD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocForD (acc,toks) d@(GHC.L l (GHC.ForD        _)) = ([],[])
+allocForD (acc,toks) d@(GHC.L l (GHC.ForD        _))
+  = error "allocForD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocWarningD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocWarningD (acc,toks) d@(GHC.L l (GHC.WarningD    _)) = ([],[])
+allocWarningD (acc,toks) d@(GHC.L l (GHC.WarningD    _))
+  = error "allocWarningD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocAnnD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocAnnD (acc,toks) d@(GHC.L l (GHC.AnnD        _)) = ([],[])
+allocAnnD (acc,toks) d@(GHC.L l (GHC.AnnD        _))
+  = error "allocAnnD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocRuleD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocRuleD (acc,toks) d@(GHC.L l (GHC.RuleD       _)) = ([],[])
+allocRuleD (acc,toks) d@(GHC.L l (GHC.RuleD       _))
+  = error "allocRuleD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocVectD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocVectD (acc,toks) d@(GHC.L l (GHC.VectD       _)) = ([],[])
+allocVectD (acc,toks) d@(GHC.L l (GHC.VectD       _))
+  = error "allocVectD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocSpliceD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocSpliceD (acc,toks) d@(GHC.L l (GHC.SpliceD     _)) = ([],[])
+allocSpliceD (acc,toks) d@(GHC.L l (GHC.SpliceD     _))
+  = error "allocSpliceD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocDocD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocDocD (acc,toks) d@(GHC.L l (GHC.DocD        _)) = ([],[])
+allocDocD (acc,toks) d@(GHC.L l (GHC.DocD        _))
+  = error "allocDocD undefined"
 
 -- ---------------------------------------------------------------------
 
 allocQuasiQuoteD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocQuasiQuoteD (acc,toks) d@(GHC.L l (GHC.QuasiQuoteD _)) = ([],[])
+allocQuasiQuoteD (acc,toks) d@(GHC.L l (GHC.QuasiQuoteD _))
+  = error "allocQuasiQuoteD undefined"
 
 -- ---------------------------------------------------------------------
 
@@ -444,10 +503,12 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
                (x:_) -> (tokenRow firstBindTok - tokenRow x,
                          tokenCol firstBindTok - tokenCol x)
 
-    bindsLayout = allocList bindList toksBinds allocBind
+    bindsLayout = case allocList bindList toksBinds allocBind of
+      [] -> []
+      bs -> [placeOffset ro co [placeAbove bs]]
     sigsLayout = allocList sigs toks1 doSigs
     doSigs = undefined
-    r = strip $ (makeLeafFromToks s1) ++ [placeOffset ro co [placeAbove bindsLayout]] ++ sigsLayout
+    r = strip $ (makeLeafFromToks s1) ++ bindsLayout ++ sigsLayout
 
 allocLocalBinds (GHC.HsIPBinds ib)  toks = error "allocLocalBinds undefined"
 
@@ -499,13 +560,23 @@ allocArithSeqInfo (GHC.FromThenTo e1@(GHC.L l1 _) e2@(GHC.L l2 _) e3) toksIn = r
 
 -- ---------------------------------------------------------------------
 
-strip :: [LayoutTree] -> [LayoutTree]
-strip ls = filter notEmpty ls
+allocType = error "allocType undefined"
+
+-- ---------------------------------------------------------------------
+
+allocLocated :: (GHC.Located b -> [PosToken] -> [LayoutTree])
+allocLocated (GHC.L l _) toks = r
   where
-    -- notEmpty (Leaf []) = False
-    -- notEmpty (Leaf _ _ []) = False
-    notEmpty (Node (Entry _ _ []) []) = False
-    notEmpty _ = True
+    (s1,toks1,s2) = splitToks (ghcSpanStartEnd l) toks
+    r = strip $ (makeLeafFromToks s1) ++ [makeLeaf l NoChange toks1] ++ (makeLeafFromToks s2)
+
+-- ---------------------------------------------------------------------
+
+strip :: [LayoutTree] -> [LayoutTree]
+strip ls = filter (not . emptyNode) ls
+  where
+    emptyNode (Node (Entry _ _ []) []) = True
+    emptyNode _                        = False
 
 -- ---------------------------------------------------------------------
 

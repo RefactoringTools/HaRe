@@ -2032,9 +2032,11 @@ tree TId 0:
 
     it "replaces a single token in an added span" $ do
       (t,toks) <- parsedFileDd1Ghc
-
+      let parsed = (GHC.pm_parsed_source $ GHC.tm_parsed_module t)
       -- let f1 = mkTreeFromTokens toks
-      let f1 = initTokenLayout (GHC.pm_parsed_source $ GHC.tm_parsed_module t) toks
+      let f1 = initTokenLayout parsed toks
+
+      (drawTreeEntry f1) `shouldBe` ""
 
       let ss1 = posToSrcSpan f1 ((4,1),(4,19))
       let (f2,_toks1) = getTokensFor True f1 ss1
