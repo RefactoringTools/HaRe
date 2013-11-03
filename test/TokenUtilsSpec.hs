@@ -2033,10 +2033,13 @@ tree TId 0:
     it "replaces a single token in an added span" $ do
       (t,toks) <- parsedFileDd1Ghc
       let parsed = (GHC.pm_parsed_source $ GHC.tm_parsed_module t)
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
       -- let f1 = mkTreeFromTokens toks
       let f1 = initTokenLayout parsed toks
 
-      (drawTreeEntry f1) `shouldBe` ""
+      (drawTreeCompact f1) `shouldBe` "0:((1,1),(34,1))\n1:((1,1),(1,7))\n1:((1,8),(1,18))\n1:((1,19),(1,24))\n1:((3,1),(3,9))\n2:((3,1),(3,9))\n1:((3,10),(3,12))\n1:((3,13),(3,20))\n1:((3,21),(3,23))\n1:((3,24),(3,31))\n1:((4,1),(4,19))\n2:((4,1),(4,19))\n3:((4,1),(4,9))\n3:((4,10),(4,19))\n4:((4,10),(4,11))\n5:((4,10),(4,11))\n4:((4,12),(4,13))\n4:((4,14),(4,19))\n5:((4,14),(4,15))\n5:((4,16),(4,17))\n5:((4,18),(4,19))\n1:((6,1),(6,2))\n2:((6,1),(6,2))\n1:((6,2),(6,3))\n1:((6,3),(6,4))\n2:((6,3),(6,4))\n1:((6,5),(6,7))\n1:((6,8),(6,15))\n1:((7,1),(7,6))\n2:((7,1),(7,6))\n3:((7,1),(7,2))\n3:((7,3),(7,6))\n4:((7,3),(7,4))\n4:((7,5),(7,6))\n5:((7,5),(7,6))\n1:((8,1),(8,6))\n2:((8,1),(8,6))\n3:((8,1),(8,2))\n3:((8,3),(8,6))\n4:((8,3),(8,4))\n4:((8,5),(8,6))\n5:((8,5),(8,6))\n1:((10,1),(10,16))\n1:((11,1),(11,4))\n2:((11,1),(11,4))\n1:((11,5),(11,7))\n1:((11,8),(11,9))\n1:((11,9),(11,12))\n2:((11,9),(11,12))\n1:((11,12),(11,13))\n1:((11,14),(11,17))\n2:((11,14),(11,17))\n1:((11,17),(11,18))\n1:((12,1),(12,2))\n2:((12,1),(12,2))\n1:((12,3),(12,5))\n1:((12,6),(12,9))\n1:((13,1),(13,2))\n2:((13,1),(13,2))\n1:((13,3),(13,5))\n1:((13,6),(13,9))\n1:((14,1),(14,10))\n1:((14,11),(14,12))\n1:((14,13),(14,38))\n2:((14,13),(14,17))\n2:((14,18),(14,19))\n2:((14,20),(14,23))\n2:((14,24),(14,25))\n2:((14,25),(14,26))\n2:((14,28),(14,30))\n2:((14,32),(14,33))\n2:((14,33),(14,34))\n2:((14,36),(14,38))\n1:((15,3),(16,14))\n1:((17,5),(17,12))\n2:((17,5),(17,12))\n3:((17,5),(17,12))\n4:((17,5),(17,12))\n5:((17,5),(17,7))\n5:((17,8),(17,12))\n6:((17,8),(17,9))\n6:((17,10),(17,12))\n7:((17,10),(17,12))\n1:((19,1),(19,5))\n1:((19,6),(19,7))\n1:((19,8),(19,9))\n1:((19,10),(19,11))\n2:((19,10),(19,11))\n1:((19,12),(19,13))\n1:((19,14),(19,22))\n2:((19,14),(19,15))\n2:((19,16),(19,22))\n3:((19,16),(19,22))\n1:((19,23),(19,24))\n1:((19,25),(19,26))\n2:((19,25),(19,26))\n1:((21,1),(23,11))\n2:((21,1),(23,11))\n3:((21,1),(21,3))\n3:((21,4),(23,11))\n4:((21,4),(21,5))\n5:((21,4),(21,5))\n4:((21,6),(21,7))\n4:((21,8),(21,14))\n5:((21,8),(21,9))\n5:((21,10),(21,11))\n5:((21,12),(21,14))\n4:((22,3),(22,8))\n4:((23,5),(23,11))\n5:((23,5),(23,11))\n6:((23,5),(23,11))\n7:((23,5),(23,11))\n8:((23,5),(23,7))\n8:((23,8),(23,11))\n9:((23,8),(23,9))\n9:((23,10),(23,11))\n10:((23,10),(23,11))\n1:((25,1),(28,12))\n2:((25,1),(28,12))\n3:((25,1),(25,2))\n3:((25,3),(28,12))\n4:((25,3),(25,4))\n5:((25,3),(25,4))\n4:((25,5),(25,6))\n4:((26,3),(28,12))\n5:((26,3),(26,6))\n5:((27,5),(27,12))\n6:((27,5),(27,12))\n7:((27,5),(27,12))\n8:((27,5),(27,12))\n9:((27,5),(27,7))\n9:((27,8),(27,12))\n10:((27,8),(27,9))\n10:((27,10),(27,12))\n11:((27,10),(27,12))\n5:((28,3),(28,5))\n5:((28,6),(28,12))\n6:((28,6),(28,8))\n6:((28,9),(28,10))\n6:((28,11),(28,12))\n1:((30,1),(32,18))\n2:((30,1),(32,18))\n3:((30,1),(30,3))\n3:((30,4),(32,17))\n4:((30,4),(30,5))\n5:((30,4),(30,5))\n4:((30,6),(30,7))\n4:((30,8),(32,17))\n5:((30,8),(30,10))\n5:((31,3),(31,13))\n6:((31,3),(31,6))\n6:((31,7),(31,13))\n7:((31,7),(31,13))\n8:((31,7),(31,13))\n9:((31,7),(31,13))\n10:((31,7),(31,9))\n10:((31,10),(31,13))\n11:((31,10),(31,11))\n11:((31,12),(31,13))\n12:((31,12),(31,13))\n5:((32,3),(32,17))\n6:((32,3),(32,9))\n6:((32,10),(32,11))\n6:((32,11),(32,13))\n6:((32,14),(32,15))\n6:((32,16),(32,17))\n1:((34,1),(34,1))\n"
+      (invariant f1) `shouldBe` []
 
       let ss1 = posToSrcSpan f1 ((4,1),(4,19))
       let (f2,_toks1) = getTokensFor True f1 ss1
@@ -2044,6 +2047,7 @@ tree TId 0:
       let ss2 = posToSrcSpan f1 ((3,1),(3,31))
       let (f3,toks2) = getTokensFor True f2 ss2
 
+{-
       (drawTreeEntry f3) `shouldBe`
               "((1,1),(32,18))\n|\n"++
               "+- ((1,1),(3,31))\n|  |\n"++
@@ -2051,10 +2055,11 @@ tree TId 0:
               "|  `- ((3,1),(3,31))\n|\n"++
               "+- ((4,1),(4,19))\n|\n"++
               "`- ((6,1),(32,18))\n"
+-}
 
       -- putDeclToksAfterSpan test/testdata/DupDef/Dd1.hs:4:1-18:("(((False,0,0,4),1),((False,0,0,4),19))",PlaceAbsCol 2 1 0,[((((3,1),(3,1)),ITvocurly),""),((((3,1),(3,9)),ITvarid "toplevel"),"toplevel"),((((3,10),(3,12)),ITdcolon),"::"),((((3,13),(3,20)),ITconid "Integer"),"Integer"),((((3,21),(3,23)),ITrarrow),"->"),((((3,24),(3,31)),ITconid "Integer"),"Integer")])
       let (f4,ss4) = addToksAfterSrcSpan f3 ss1 (PlaceAbsCol 2 1 0) toks2
-
+{-
       (drawTreeEntry f4) `shouldBe`
               "((1,1),(32,18))\n|\n"++
               "+- ((1,1),(3,31))\n|  |\n"++
@@ -2063,7 +2068,7 @@ tree TId 0:
               "+- ((4,1),(4,19))\n|\n"++
               "+- ((1000006,1),(1000006,31))\n|\n"++
               "`- ((6,1),(32,18))\n"
-
+-}
       (showSrcSpan ss4) `shouldBe` "((1048582,1),(1048582,31))"
       (showSrcSpanF ss4) `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
 
@@ -2085,6 +2090,7 @@ tree TId 0:
                     "((1000006,1),(1000006,31))\n"
 --
       let f5 = replaceTokenForSrcSpan f4 ss5 newTok
+{-
       (drawTreeEntry f5) `shouldBe`
               "((1,1),(32,18))\n|\n"++
               "+- ((1,1),(3,31))\n|  |\n"++
@@ -2093,7 +2099,7 @@ tree TId 0:
               "+- ((4,1),(4,19))\n|\n"++
               "+- ((1000006,1),(1000006,31))\n|\n"++
               "`- ((6,1),(32,18))\n"
-
+-}
       let toks' = retrieveTokensFinal f5
       (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2 :: Integer -> Integerc,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 
@@ -3011,10 +3017,9 @@ tree TId 0:
       (_t,toks) <- parsedFileTokenTestGhc
 
       (invariant (Node (Entry (simpPosToForestSpan ((1,1),(1,7))) NoChange (take 1 toks)) [emptyTree])) `shouldBe`
-             ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [\"Node (Entry ((0,0),(1,0)) []) []\"]",
-              "FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [\"Node (Entry ((0,0),(1,0)) []) []\"]",
+             ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [Node (Entry ((0,0),(1,0)) []) []]",
+              "FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [Node (Entry ((0,0),(1,0)) []) []]",
               "FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
-
 
     -- -----------------------
     it "checks that a tree with empty tokens and nonempty subForest passes" $ do
@@ -3042,9 +3047,9 @@ tree TId 0:
       (showTree tree2) `shouldBe` "Node (Entry ((1,8),(21,14)) [(((1,8),(1,17)),ITconid \"TokenTest\",\"TokenTest\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
       (showTree tree3) `shouldBe` "Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) []"
 
-      (invariant (Node (Entry sspan2 NoChange []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,8),(21,14)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan2 NoChange []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,8),(21,14)) []) [Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []]"]
 
-      (invariant (Node (Entry sspan3 NoChange []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(5,12)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan3 NoChange []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(5,12)) []) [Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []]"]
 
       (invariant (Node (Entry sspan NoChange []) [tree3,tree4])) `shouldBe` []
 
@@ -3064,7 +3069,7 @@ tree TId 0:
       (showForestSpan $ treeStartEnd tree4) `shouldBe` "((13,5),(21,14))"
 
       (invariant (Node (Entry sspan NoChange []) [tree1,tree2,tree3,tree4])) `shouldBe` []
-      (invariant (Node (Entry sspan NoChange []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: ((ForestLine False 0 0 13),4) not < ((ForestLine False 0 0 6),3):Node (Entry ((1,1),(21,14)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(21,14)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan NoChange []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: ((ForestLine False 0 0 13),4) not < ((ForestLine False 0 0 6),3):Node (Entry ((1,1),(21,14)) []) [Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) [],Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\"=\")]..[(((13,1),(13,4)),ITvarid \"bab\",\"bab\")]) [],Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\"where\")]..[(((8,7),(8,8)),ITvarid \"b\",\"b\")]) [],Node (Entry ((13,5),(21,14)) [(((13,5),(13,6)),ITvarid \"a\",\"a\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []]"]
 
   -- ---------------------------------------------
 {-

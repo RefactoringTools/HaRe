@@ -2628,8 +2628,14 @@ addItemsToImport serverModName pn ids t
 -- ---------------------------------------------------------------------
 
 addImportDecl ::
-    GHC.RenamedSource -> GHC.ModuleName -> Maybe GHC.FastString -> Bool -> Bool -> Bool ->
-        Maybe String -> Bool -> [GHC.Name] -> RefactGhc GHC.RenamedSource
+    GHC.RenamedSource
+    -> GHC.ModuleName
+    -> Maybe GHC.FastString -- ^qualifier
+    -> Bool -> Bool -> Bool
+    -> Maybe String         -- ^alias
+    -> Bool
+    -> [GHC.Name]
+    -> RefactGhc GHC.RenamedSource
 addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias hide idNames
   = do
        toks <- fetchToks
@@ -3810,7 +3816,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           logm $ "renamePNworker:rename at :" ++ (show l) ++ (showSrcSpanF l)
-          worker useQual l n
+          worker useQual l
           return (GHC.L l newName)
     rename x = return x
 
@@ -3819,7 +3825,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           -- logm $ "renamePNworker:renameVar at :" ++ (show (row,col))
-          worker useQual l n
+          worker useQual l
           return (GHC.L l (GHC.HsVar newName))
     renameVar x = return x
 
@@ -3829,7 +3835,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           -- logm $ "renamePNworker:renameTyVar at :" ++ (show (row,col))
-          worker useQual l n
+          worker useQual l
           return (GHC.L l (GHC.HsTyVar newName))
     renameTyVar x = return x
 
@@ -3843,7 +3849,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           -- logm $ "renamePNworker:renameHsTyVarBndr at :" ++ (show (row,col))
-          worker useQual l n
+          worker useQual l
 #if __GLASGOW_HASKELL__ > 704
           return (GHC.L l (GHC.UserTyVar newName))
 #else
@@ -3856,7 +3862,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           -- logm $ "renamePNworker:renameLIE at :" ++ (show (row,col))
-          worker useQual l n
+          worker useQual l
           return (GHC.L l (GHC.IEVar newName))
     renameLIE x = return x
 
@@ -3865,7 +3871,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           -- logm $ "renamePNworker:renameLPat at :" ++ (show (row,col))
-          worker False l n
+          worker False l
           return (GHC.L l (GHC.VarPat newName))
     renameLPat x = return x
 
@@ -3878,10 +3884,10 @@ renamePNworker oldPN newName updateTokens useQual t = do
           --         (b) rename each of 'tail matches'
           --             (head is renamed in (a) )
           -- logm $ "renamePNWorker.renameFunBind"
-          worker False l n
+          worker False ln
           -- Now do (b)
           -- logm $ "renamePNWorker.renameFunBind.renameFunBind:starting matches"
-          let w (GHC.L lm _match) = worker False lm n
+          let w (GHC.L lm _match) = worker False lm
           mapM w $ tail matches
           -- logm $ "renamePNWorker.renameFunBind.renameFunBind.renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MatchGroup matches typ) co fvs tick))
@@ -3899,7 +3905,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
          return (GHC.L l (GHC.TypeSig ns' typ'))
 
     -- The param l is only useful for the start of the token pos
-    worker useQual' l _n
+    worker :: Bool -> GHC.SrcSpan -> RefactGhc ()
+    worker useQual' l
      = do if updateTokens
            then  do
              replaceToken l (markToken $ newNameTok useQual' l newName)

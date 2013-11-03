@@ -277,14 +277,14 @@ allocValD (acc,toks) (GHC.L l (GHC.ValD bind@(GHC.FunBind _ _ _ _ _ _))) = r
 
 allocValD (acc,toks) (GHC.L l (GHC.ValD (GHC.PatBind lhs@(GHC.L ll _) (GHC.GRHSs rhs localBinds) _ _ _))) = (r,toks')
   where
-    (s1,bindToks,toks')  = splitToks (ghcSpanStartEnd l) toks
+    (s1,bindToks,toks') = splitToks (ghcSpanStartEnd l) toks
     (s2,lhsToks,toks1) = splitToks (ghcSpanStartEnd ll) bindToks
     (s3,rhsToks,bindsToks) = splitToksForList rhs toks1
     lhsLayout = allocPat lhs lhsToks
     rhsLayout = allocList rhs rhsToks allocRhs
     localBindsLayout = allocLocalBinds localBinds bindsToks
     r = acc ++ (strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
-             ++ lhsLayout ++ rhsLayout ++ (makeLeafFromToks s3)
+             ++ lhsLayout ++ (makeLeafFromToks s3) ++ rhsLayout
              ++ localBindsLayout)
 
 allocValD (acc,toks) d@(GHC.L l (GHC.ValD (GHC.VarBind n rhs _))) = error "allocValD:VarBinds"
@@ -494,10 +494,19 @@ allocExpr (GHC.L _ (GHC.ExplicitTuple tupArgs _)) toks = r
     r = error $ "allocExpr ExplicitTuple undefined"
 allocExpr (GHC.L _ (GHC.HsCase expr@(GHC.L le _) (GHC.MatchGroup matches _))) toks = r
   where
-    (s1,exprToks,matchToks) = splitToks (ghcSpanStartEnd le) toks
+    (s1,exprToks,toks1) = splitToks (ghcSpanStartEnd le) toks
+    (s2,matchToks,toks2) = splitToksForList matches toks1
     exprLayout = allocExpr expr exprToks
-    matchesLayout = allocMatches matches matchToks
-    r = strip $ (makeLeafFromToks s1) ++ exprLayout ++ matchesLayout
+
+    firstMatchTok = ghead "allocLocalBinds" $ dropWhile isWhiteSpaceOrIgnored matchToks
+    (ro,co) = case (filter isOf s2) of
+               [] -> (0,0)
+               (x:_) -> (tokenRow firstMatchTok - tokenRow x,
+                         tokenCol firstMatchTok - tokenCol x)
+
+    matchesLayout = [placeOffset ro co [placeAbove (allocMatches matches matchToks)]]
+    r = strip $ (makeLeafFromToks s1) ++ exprLayout
+             ++ (makeLeafFromToks s2) ++ matchesLayout ++ (makeLeafFromToks toks2)
 allocExpr (GHC.L _ (GHC.HsIf _ e1@(GHC.L l1 _) e2@(GHC.L l2 _) e3)) toks = r
   where
     (s1,e1Toks,toks1) = splitToks (ghcSpanStartEnd l1) toks
@@ -794,7 +803,7 @@ allocHsConDeclDetails :: GHC.HsConDeclDetails GHC.RdrName -> [PosToken] -> ([Lay
 allocHsConDeclDetails (GHC.PrefixCon ds) toks = (r,toks')
   where
     (s1,dsToks,toks') = splitToksForList ds toks
-    dsLayout = allocList ds dsToks allocLBangTypeName
+    dsLayout = allocList ds dsToks allocLBangType
     r = strip $ (makeLeafFromToks s1) ++ dsLayout
 allocHsConDeclDetails (GHC.RecCon conDecls) toks = (r,toks')
   where
@@ -817,12 +826,26 @@ allocHsConDeclDetails (GHC.InfixCon bt1@(GHC.L lb1 _) bt2@(GHC.L lb2 _)) toks = 
 -- ---------------------------------------------------------------------
 
 allocConDeclField :: GHC.ConDeclField GHC.RdrName -> [PosToken] -> ([LayoutTree],[PosToken])
-allocConDeclField = error "allocConDeclField undefined"
+allocConDeclField (GHC.ConDeclField n@(GHC.L ln _) typ@(GHC.L lb _) mdoc) toks = (r,toks')
+  where
+    (s1,nToks,toks1) = splitToks (ghcSpanStartEnd ln) toks
+    nLayout = allocLocated n nToks
+    (s2,btToks,toks2) = splitToks (ghcSpanStartEnd lb) toks1
+    btLayout = allocLBangType typ btToks
+    (mdocLayout,toks') = case mdoc of
+      Nothing -> ([],toks2)
+      Just ldoc@(GHC.L ld _) -> (rd,toks2')
+        where
+          (sd,docToks,toks2') = splitToks (ghcSpanStartEnd ld) toks2
+          rdLayout = allocLocated ldoc docToks
+          rd = strip $ (makeLeafFromToks sd) ++ rdLayout
+    r = strip $ (makeLeafFromToks s1) ++ nLayout ++ (makeLeafFromToks s2)
+             ++ btLayout ++ mdocLayout
 
 -- ---------------------------------------------------------------------
 
-allocLBangTypeName :: GHC.LBangType GHC.RdrName -> [PosToken] -> [LayoutTree]
-allocLBangTypeName bt toks = allocType bt toks
+allocLBangType :: GHC.LBangType GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocLBangType bt toks = allocType bt toks
 
 -- ---------------------------------------------------------------------
 

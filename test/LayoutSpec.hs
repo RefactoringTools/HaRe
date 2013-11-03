@@ -52,6 +52,7 @@ spec = do
 
       let layout = allocTokens parsed toks
       (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
       (showGhc layout) `shouldBe`
          "Node\n"++
          "  Entry (((ForestLine False 0 0 3), 1),\n"++
@@ -99,169 +100,45 @@ spec = do
       -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      (show toks) `shouldBe`
-
-
-         "[((((1,1),(1,61)),ITlineComment \"-- A simple let expression, to ensure the layout is detected\"),\"-- A simple let expression, to ensure the layout is detected\"),"++
-         "((((3,1),(3,7)),ITmodule),\"module\"),"++
-         "((((3,8),(3,22)),ITqconid (\"Layout\",\"LetExpr\")),\"Layout.LetExpr\"),"++
-         "((((3,23),(3,28)),ITwhere),\"where\"),"++
-         "((((5,1),(5,1)),ITvocurly),\"\"),"++
-         "((((5,1),(5,4)),ITvarid \"foo\"),\"foo\"),"++
-         "((((5,5),(5,6)),ITequal),\"=\"),"++
-         "((((5,7),(5,10)),ITlet),\"let\"),"++
-         "((((5,11),(5,11)),ITvocurly),\"\"),"++
-         "((((5,11),(5,12)),ITvarid \"x\"),\"x\"),"++
-         "((((5,13),(5,14)),ITequal),\"=\"),"++
-         "((((5,15),(5,16)),ITinteger 1),\"1\"),"++
-         "((((6,11),(6,11)),ITsemi),\"\"),"++
-         "((((6,11),(6,12)),ITvarid \"y\"),\"y\"),"++
-         "((((6,13),(6,14)),ITequal),\"=\"),"++
-         "((((6,15),(6,16)),ITinteger 2),\"2\"),"++
-         "((((7,7),(7,7)),ITvccurly),\"\"),"++
-         "((((7,7),(7,9)),ITin),\"in\"),"++
-         "((((7,10),(7,11)),ITvarid \"x\"),\"x\"),"++
-         "((((7,12),(7,13)),ITvarsym \"+\"),\"+\"),"++
-         "((((7,14),(7,15)),ITvarid \"y\"),\"y\"),"++
-         "((((9,1),(9,1)),ITsemi),\"\")]"
-
+      (GHC.showRichTokenStream toks) `shouldBe` "-- A simple let expression, to ensure the layout is detected\n\n module Layout.LetExpr where\n\n foo = let x = 1\n           y = 2\n       in x + y\n\n "
 
       let layout = allocTokens parsed toks
       (show $ retrieveTokens layout) `shouldBe` (show toks)
-      (showGhc layout) `shouldBe`
-         "Node\n"++
-         "  Entry (((ForestLine False 0 0 1), 1),\n"++
-         "         ((ForestLine False 0 0 9), 1)) NoChange []\n"++
-         "  [Node\n"++
-         "     Entry (((ForestLine False 0 0 1), 1),\n"++
-         "            ((ForestLine False 0 0 3),\n"++
-         "             7)) NoChange [((((1,1),(1,61)),ITlineComment \"-- A simple let expression, to ensure the layout is detected\"),\"-- A simple let expression, to ensure the layout is detected\"),((((3,1),(3,7)),ITmodule),\"module\")]\n"++
-         "     [],\n"++
-         "   Node\n"++
-         "     Entry (((ForestLine False 0 0 3), 8),\n"++
-         "            ((ForestLine False 0 0 3),\n"++
-         "             22)) NoChange [((((3,8),(3,22)),ITqconid (\"Layout\",\"LetExpr\")),\"Layout.LetExpr\")]\n"++
-         "     [],\n"++
-         "   Node\n"++
-         "     Entry (((ForestLine False 0 0 3), 23),\n"++
-         "            ((ForestLine False 0 0 3),\n"++
-         "             28)) NoChange [((((3,23),(3,28)),ITwhere),\"where\")]\n"++
-         "     [],\n"++
-         "   Node\n"++
-         "     Entry (((ForestLine False 0 0 5), 1),\n"++
-         "            ((ForestLine False 0 0 7), 15)) NoChange []\n"++
-         "     [Node\n"++
-         "        Entry (((ForestLine False 0 0 5), 1),\n"++
-         "               ((ForestLine False 0 0 7), 15)) NoChange []\n"++
-         "        [Node\n"++
-         "           Entry (((ForestLine False 0 0 5), 1),\n"++
-         "                  ((ForestLine False 0 0 5),\n"++
-         "                   4)) NoChange [((((5,1),(5,1)),ITvocurly),\"\"),((((5,1),(5,4)),ITvarid \"foo\"),\"foo\")]\n"++
-         "           [],\n"++
-         "         Node\n"++
-         "           Entry (((ForestLine False 0 0 5), 5),\n"++
-         "                  ((ForestLine False 0 0 7), 15)) NoChange []\n"++
-         "           [Node\n"++
-         "              Entry (((ForestLine False 0 0 5), 5),\n"++
-         "                     ((ForestLine False 0 0 5),\n"++
-         "                      6)) NoChange [((((5,5),(5,6)),ITequal),\"=\")]\n"++
-         "              [],\n"++
-         "            Node\n"++
-         "              Entry (((ForestLine False 0 0 5), 7),\n"++
-         "                     ((ForestLine False 0 0 7), 15)) NoChange []\n"++
-         "              [Node\n"++
-         "                 Entry (((ForestLine False 0 0 5), 7),\n"++
-         "                        ((ForestLine False 0 0 5),\n"++
-         "                         10)) NoChange [((((5,7),(5,10)),ITlet),\"let\")]\n"++
-         "                 [],\n"++
-         "               Node\n"++
-         "                 Entry (((ForestLine False 0 0 5), 11),\n"++
-         "                        ((ForestLine False 0 0 6), 16)) Offset 0 4 []\n"++
-         "                 [Node\n"++
-         "                    Entry (((ForestLine False 0 0 5), 11),\n"++
-         "                           ((ForestLine False 0 0 6), 16)) Above []\n"++
-         "                    [Node\n"++
-         "                       Entry (((ForestLine False 0 0 5), 11),\n"++
-         "                              ((ForestLine False 0 0 5), 16)) NoChange []\n"++
-         "                       [Node\n"++
-         "                          Entry (((ForestLine False 0 0 5), 11),\n"++
-         "                                 ((ForestLine False 0 0 5), 16)) NoChange []\n"++
-         "                          [Node\n"++
-         "                             Entry (((ForestLine False 0 0 5), 11),\n"++
-         "                                    ((ForestLine False 0 0 5),\n"++
-         "                                     12)) NoChange [((((5,11),(5,11)),ITvocurly),\"\"),((((5,11),(5,12)),ITvarid \"x\"),\"x\")]\n"++
-         "                             [],\n"++
-         "                           Node\n"++
-         "                             Entry (((ForestLine False 0 0 5), 13),\n"++
-         "                                    ((ForestLine False 0 0 5), 16)) NoChange []\n"++
-         "                             [Node\n"++
-         "                                Entry (((ForestLine False 0 0 5), 13),\n"++
-         "                                       ((ForestLine False 0 0 5),\n"++
-         "                                        14)) NoChange [((((5,13),(5,14)),ITequal),\"=\")]\n"++
-         "                                [],\n"++
-         "                              Node\n"++
-         "                                Entry (((ForestLine False 0 0 5), 15),\n"++
-         "                                       ((ForestLine False 0 0 5), 16)) NoChange []\n"++
-         "                                [Node\n"++
-         "                                   Entry (((ForestLine False 0 0 5), 15),\n"++
-         "                                          ((ForestLine False 0 0 5),\n"++
-         "                                           16)) NoChange [((((5,15),(5,16)),ITinteger 1),\"1\")]\n"++
-         "                                   []]]]],\n"++
-         "                     Node\n"++
-         "                       Entry (((ForestLine False 0 0 6), 11),\n"++
-         "                              ((ForestLine False 0 0 6), 16)) NoChange []\n"++
-         "                       [Node\n"++
-         "                          Entry (((ForestLine False 0 0 6), 11),\n"++
-         "                                 ((ForestLine False 0 0 6), 16)) NoChange []\n"++
-         "                          [Node\n"++
-         "                             Entry (((ForestLine False 0 0 6), 11),\n"++
-         "                                    ((ForestLine False 0 0 6),\n"++
-         "                                     12)) NoChange [((((6,11),(6,11)),ITsemi),\"\"),((((6,11),(6,12)),ITvarid \"y\"),\"y\")]\n"++
-         "                             [],\n"++
-         "                           Node\n"++
-         "                             Entry (((ForestLine False 0 0 6), 13),\n"++
-         "                                    ((ForestLine False 0 0 6), 16)) NoChange []\n"++
-         "                             [Node\n"++
-         "                                Entry (((ForestLine False 0 0 6), 13),\n"++
-         "                                       ((ForestLine False 0 0 6),\n"++
-         "                                        14)) NoChange [((((6,13),(6,14)),ITequal),\"=\")]\n"++
-         "                                [],\n"++
-         "                              Node\n"++
-         "                                Entry (((ForestLine False 0 0 6), 15),\n"++
-         "                                       ((ForestLine False 0 0 6), 16)) NoChange []\n"++
-         "                                [Node\n"++
-         "                                   Entry (((ForestLine False 0 0 6), 15),\n"++
-         "                                          ((ForestLine False 0 0 6),\n"++
-         "                                           16)) NoChange [((((6,15),(6,16)),ITinteger 2),\"2\")]\n"++
-         "                                   []]]]]]],\n"++
-         "               Node\n"++
-         "                 Entry (((ForestLine False 0 0 7), 7),\n"++
-         "                        ((ForestLine False 0 0 7),\n"++
-         "                         9)) NoChange [((((7,7),(7,7)),ITvccurly),\"\"),((((7,7),(7,9)),ITin),\"in\")]\n"++
-         "                 [],\n"++
-         "               Node\n"++
-         "                 Entry (((ForestLine False 0 0 7), 10),\n"++
-         "                        ((ForestLine False 0 0 7), 15)) NoChange []\n"++
-         "                 [Node\n"++
-         "                    Entry (((ForestLine False 0 0 7), 10),\n"++
-         "                           ((ForestLine False 0 0 7),\n"++
-         "                            11)) NoChange [((((7,10),(7,11)),ITvarid \"x\"),\"x\")]\n"++
-         "                    [],\n"++
-         "                  Node\n"++
-         "                    Entry (((ForestLine False 0 0 7), 12),\n"++
-         "                           ((ForestLine False 0 0 7),\n"++
-         "                            13)) NoChange [((((7,12),(7,13)),ITvarsym \"+\"),\"+\")]\n"++
-         "                    [],\n"++
-         "                  Node\n"++
-         "                    Entry (((ForestLine False 0 0 7), 14),\n"++
-         "                           ((ForestLine False 0 0 7),\n"++
-         "                            15)) NoChange [((((7,14),(7,15)),ITvarid \"y\"),\"y\")]\n"++
-         "                    []]]]]],\n"++
-         "   Node\n"++
-         "     Entry (((ForestLine False 0 0 9), 1),\n"++
-         "            ((ForestLine False 0 0 9),\n"++
-         "             1)) NoChange [((((9,1),(9,1)),ITsemi),\"\")]\n"++
-         "     []]"
+      (invariant layout) `shouldBe` []
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(7,15))\n"++
+          "2:((5,1),(7,15))\n"++
+          "3:((5,1),(5,4))\n"++
+          "3:((5,5),(7,15))\n"++
+          "4:((5,5),(5,6))\n"++
+          "4:((5,7),(7,15))\n"++
+          "5:((5,7),(5,10))\n"++ -- 'let' token
+          "5:((5,11),(6,16))(Offset 0 4)\n"++ -- the grouped expressions
+           "6:((5,11),(6,16)) Above \n"++
+            "7:((5,11),(5,16))\n"++
+             "8:((5,11),(5,16))\n"++
+              "9:((5,11),(5,12))\n"++
+              "9:((5,13),(5,16))\n"++
+               "10:((5,13),(5,14))\n"++
+               "10:((5,15),(5,16))\n"++
+                "11:((5,15),(5,16))\n"++
+            "7:((6,11),(6,16))\n"++
+             "8:((6,11),(6,16))\n"++
+              "9:((6,11),(6,12))\n"++
+              "9:((6,13),(6,16))\n"++
+               "10:((6,13),(6,14))\n"++
+               "10:((6,15),(6,16))\n"++
+                "11:((6,15),(6,16))\n"++
+          "5:((7,7),(7,9))\n"++
+          "5:((7,10),(7,15))\n"++
+          "6:((7,10),(7,11))\n"++
+          "6:((7,12),(7,13))\n"++
+          "6:((7,14),(7,15))\n"++
+          "1:((9,1),(9,1))\n"
 
   -- ---------------------------------------------
 
@@ -273,72 +150,95 @@ spec = do
       -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-{-
-      (show toks) `shouldBe`
-         "[((((1,1),(1,60)),ITlineComment \"-- A simple let statement, to ensure the layout is detected\"),\"-- A simple let statement, to ensure the layout is detected\"),"++
-         "((((3,1),(3,7)),ITmodule),\"module\"),"++
-         "((((3,8),(3,22)),ITqconid (\"Layout\",\"LetStmt\")),\"Layout.LetStmt\"),"++
-         "((((3,23),(3,28)),ITwhere),\"where\"),"++
-         "((((5,1),(5,1)),ITvocurly),\"\"),"++
-         "((((5,1),(5,4)),ITvarid \"foo\"),\"foo\"),"++
-         "((((5,5),(5,6)),ITequal),\"=\"),"++
-         "((((5,7),(5,9)),ITdo),\"do\"),"++
-         "((((6,9),(6,9)),ITvocurly),\"\"),"++
-         "((((6,9),(6,12)),ITlet),\"let\"),"++
-         "((((6,13),(6,13)),ITvocurly),\"\"),"++
-         "((((6,13),(6,14)),ITvarid \"x\"),\"x\"),"++
-         "((((6,15),(6,16)),ITequal),\"=\"),"++
-         "((((6,17),(6,18)),ITinteger 1),\"1\"),"++
-         "((((7,13),(7,13)),ITsemi),\"\"),"++
-         "((((7,13),(7,14)),ITvarid \"y\"),\"y\"),"++
-         "((((7,15),(7,16)),ITequal),\"=\"),"++
-         "((((7,17),(7,18)),ITinteger 2),\"2\"),"++
-         "((((8,9),(8,9)),ITvccurly),\"\"),"++
-         "((((8,9),(8,9)),ITsemi),\"\"),"++
-         "((((8,9),(8,10)),ITvarid \"x\"),\"x\"),"++
-         "((((8,10),(8,11)),ITvarsym \"+\"),\"+\"),"++
-         "((((8,11),(8,12)),ITvarid \"y\"),\"y\"),"++
-         "((((10,1),(10,1)),ITvccurly),\"\"),"++
-         "((((10,1),(10,1)),ITsemi),\"\")]"
--}
+      (GHC.showRichTokenStream toks) `shouldBe` "-- A simple let statement, to ensure the layout is detected\n\n module Layout.LetStmt where\n\n foo = do\n         let x = 1\n             y = 2\n         x+y\n\n "
 
       let layout = allocTokens parsed toks
       (show $ retrieveTokens layout) `shouldBe` (show toks)
-      (drawTreeEntry layout) `shouldBe`
-          "((1,1),(10,1))\n|\n"++
-          "+- ((1,1),(3,7))\n|\n"++
-          "+- ((3,8),(3,22))\n|\n"++
-          "+- ((3,23),(3,28))\n|\n"++
-          "+- ((5,1),(8,12))\n|  |\n"++
-          "|  `- ((5,1),(8,12))\n|     |\n"++
-          "|     +- ((5,1),(5,4))\n|     |\n"++
-          "|     `- ((5,5),(8,12))\n|        |\n"++
-          "|        +- ((5,5),(5,6))\n|        |\n"++
-          "|        `- ((5,7),(8,12))\n|           |\n"++
-          "|           +- ((5,7),(5,9))\n|           |\n"++
-          "|           +- ((6,9),(7,18))\n|           |  |\n"++
-          "|           |  +- ((6,9),(6,12))\n|           |  |\n"++
-          "|           |  `- ((6,13),(7,18))\n|           |     |\n"++
-          "|           |     `- ((6,13),(7,18))\n|           |        |\n"++
-          "|           |        +- ((6,13),(6,18))\n|           |        |  |\n"++
-          "|           |        |  `- ((6,13),(6,18))\n|           |        |     |\n"++
-          "|           |        |     +- ((6,13),(6,14))\n|           |        |     |\n"++
-          "|           |        |     `- ((6,15),(6,18))\n|           |        |        |\n"++
-          "|           |        |        +- ((6,15),(6,16))\n|           |        |        |\n"++
-          "|           |        |        `- ((6,17),(6,18))\n|           |        |           |\n"++
-          "|           |        |           `- ((6,17),(6,18))\n|           |        |\n"++
-          "|           |        `- ((7,13),(7,18))\n|           |           |\n"++
-          "|           |           `- ((7,13),(7,18))\n|           |              |\n"++
-          "|           |              +- ((7,13),(7,14))\n|           |              |\n"++
-          "|           |              `- ((7,15),(7,18))\n|           |                 |\n"++
-          "|           |                 +- ((7,15),(7,16))\n|           |                 |\n"++
-          "|           |                 `- ((7,17),(7,18))\n|           |                    |\n"++
-          "|           |                    `- ((7,17),(7,18))\n|           |\n"++
-          "|           `- ((8,9),(8,12))\n|              |\n"++
-          "|              +- ((8,9),(8,10))\n|              |\n"++
-          "|              +- ((8,10),(8,11))\n|              |\n"++
-          "|              `- ((8,11),(8,12))\n|\n"++
-          "`- ((10,1),(10,1))\n"
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(10,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(8,12))\n"++
+          "2:((5,1),(8,12))\n"++
+          "3:((5,1),(5,4))\n"++
+          "3:((5,5),(8,12))\n"++
+          "4:((5,5),(5,6))\n"++
+          "4:((5,7),(8,12))\n"++
+          "5:((5,7),(5,9))\n"++
+          "5:((6,9),(7,18))\n"++
+          "6:((6,9),(6,12))\n"++
+          "6:((6,13),(7,18))(Offset 0 4)\n"++
+          "7:((6,13),(7,18)) Above \n"++
+          "8:((6,13),(6,18))\n"++
+          "9:((6,13),(6,18))\n"++
+          "10:((6,13),(6,14))\n"++
+          "10:((6,15),(6,18))\n"++
+          "11:((6,15),(6,16))\n"++
+          "11:((6,17),(6,18))\n"++
+          "12:((6,17),(6,18))\n"++
+          "8:((7,13),(7,18))\n"++
+          "9:((7,13),(7,18))\n"++
+          "10:((7,13),(7,14))\n"++
+          "10:((7,15),(7,18))\n"++
+          "11:((7,15),(7,16))\n"++
+          "11:((7,17),(7,18))\n"++
+          "12:((7,17),(7,18))\n"++
+          "5:((8,9),(8,12))\n"++
+          "6:((8,9),(8,10))\n"++
+          "6:((8,10),(8,11))\n"++
+          "6:((8,11),(8,12))\n"++
+          "1:((10,1),(10,1))\n"
+
+  -- ---------------------------------------------
+
+    it "allocates Tokens for a case expression" $ do
+      (t,toks) <- parsedFileCaseExpr
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      (GHC.showRichTokenStream toks) `shouldBe` "-- A simple case expression, to ensure the layout is detected\n\n module Layout.CaseExpr where\n\n foo x = case x of\n    1 -> \"a\"\n    2 -> \"b\"\n\n "
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,23))\n"++
+          "1:((3,24),(3,29))\n"++
+          "1:((5,1),(7,12))\n"++
+          "2:((5,1),(7,12))\n"++
+          "3:((5,1),(5,4))\n"++
+          "3:((5,5),(7,12))\n"++
+          "4:((5,5),(5,6))\n"++
+          "5:((5,5),(5,6))\n"++
+          "4:((5,7),(5,8))\n"++
+          "4:((5,9),(7,12))\n"++
+          "5:((5,9),(5,13))\n"++
+          "5:((5,14),(5,15))\n"++
+          "5:((5,16),(5,18))\n"++
+          "5:((6,4),(7,12))(Offset 1 -12)\n"++
+           "6:((6,4),(7,12)) Above \n"++
+            "7:((6,4),(6,12))\n"++
+             "8:((6,4),(6,5))\n"++
+              "9:((6,4),(6,5))\n"++
+             "8:((6,6),(6,8))\n"++
+             "8:((6,9),(6,12))\n"++
+              "9:((6,9),(6,12))\n"++
+            "7:((7,4),(7,12))\n"++
+             "8:((7,4),(7,5))\n"++
+              "9:((7,4),(7,5))\n"++
+             "8:((7,6),(7,8))\n"++
+             "8:((7,9),(7,12))\n"++
+              "9:((7,9),(7,12))\n"++
+          "1:((9,1),(9,1))\n"
+
 
 
 -- ---------------------------------------------------------------------
@@ -355,5 +255,10 @@ parsedFileLetExpr = parsedFileGhc "./test/testdata/Layout/LetExpr.hs"
 
 parsedFileLetStmt :: IO (ParseResult,[PosToken])
 parsedFileLetStmt = parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
+
+-- ---------------------------------------------------------------------
+
+parsedFileCaseExpr :: IO (ParseResult,[PosToken])
+parsedFileCaseExpr = parsedFileGhc "./test/testdata/Layout/CaseExpr.hs"
 
 -- ---------------------------------------------------------------------

@@ -2092,14 +2092,13 @@ spec = do
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
-         -- newName <- mkNewGhcName (Just modu) "ls"
          newName <- mkNewGhcName Nothing "ls"
          new <- renamePN n newName True True renamed
 
          return (new,newName)
 
-      ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "list"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((8,7),(8,9)),ITvarid \"ls\",\"ls\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of  (1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
@@ -2937,7 +2936,7 @@ This function is not used and has been removed
 
     -- ---------------------------------
 
-    it "Add an import entry to a module with no declarations and no explicit imports." $ do
+    it "adds an import entry to a module with no declarations and no explicit imports" $ do
       let
         comp = do
 
@@ -2947,12 +2946,11 @@ This function is not used and has been removed
 
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
-         toks <- fetchToks
 
-         return (res,toks,renamed1,_toks1)
-      ((_r,t,r2,tk2),s) <- runRefactGhcState comp
+         return (res,renamed1,_toks1)
+      ((_r,_r2,_tk2),s) <- runRefactGhcState comp
 
-      (GHC.showRichTokenStream t) `shouldBe` "module Empty where\n import Data.List\n "
+      (GHC.showRichTokenStream $ toksFromState s) `shouldBe` "module Empty where\n import Data.List\n "
 
 
   -- ---------------------------------------

@@ -122,7 +122,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , drawTokenCacheDetailed
        , drawForestEntry
        , drawEntry
-
+       , drawTreeCompact
 
        ) where
 
@@ -727,7 +727,7 @@ replaceTokenForSrcSpan forest sspan tok = forest'
     -- built, still need to drill down to the nearest enclosing span
     (tspan,lay,toks) = case Z.tree z' of
             (Node (Entry ss ly tks) []) -> (ss,ly,tks)
-            (Node (Entry _ _ []) _sub) -> error $ "replaceTokenForSrcSpan:" ++ (showForestSpan $ sf sspan) ++ " expecting tokens, found: " ++ (show $ Z.tree z')
+            (Node (Entry _ _ []) _sub) -> error $ "replaceTokenForSrcSpan:tok pos" ++ (showForestSpan $ sf tl) ++ " expecting tokens, found: " ++ (show $ Z.tree z')
 
     ((row,col),_) = forestSpanToSimpPos $ srcSpanToForestSpan tl
     toks' = replaceTokNoReAlign toks (row,col) tok
@@ -1884,7 +1884,7 @@ drawForestEntry  = unlines . map drawTreeEntry
 
 drawEntry :: Tree Entry -> [String]
 drawEntry (Node (Deleted sspan  eg )  _  ) = [(showForestSpan sspan) ++ (show eg) ++ "D"]
-drawEntry (Node (Entry sspan _ _toks) ts0) = (showForestSpan sspan) : drawSubTrees ts0
+drawEntry (Node (Entry sspan lay _toks) ts0) = ((showForestSpan sspan) ++ (showLayout lay)): drawSubTrees ts0
   where
     drawSubTrees [] = []
     drawSubTrees [t] =
@@ -1893,6 +1893,21 @@ drawEntry (Node (Entry sspan _ _toks) ts0) = (showForestSpan sspan) : drawSubTre
         "|" : shft "+- " "|  " (drawEntry t) ++ drawSubTrees ts
 
     shft first other = zipWith (++) (first : repeat other)
+
+showLayout :: Layout -> String
+showLayout NoChange = ""
+showLayout Above = " Above "
+showLayout (Offset r c) = "(Offset " ++ show r ++ " " ++ show c ++ ")"
+
+-- ---------------------------------------------------------------------
+
+drawTreeCompact :: Tree Entry -> String
+drawTreeCompact = unlines . drawTreeCompact' 0
+
+drawTreeCompact' :: Int -> Tree Entry -> [String]
+drawTreeCompact' level (Node (Deleted sspan  eg )  _  ) = [(show level) ++ ":" ++ (showForestSpan sspan) ++ (show eg) ++ "D"]
+drawTreeCompact' level (Node (Entry sspan lay _toks) ts0) = ((show level) ++ ":" ++ (showForestSpan sspan) ++ (showLayout lay))
+                                                          : (concatMap (drawTreeCompact' (level + 1)) ts0)
 
 -- ---------------------------------------------------------------------
 
@@ -1906,7 +1921,8 @@ prettyshow (Node (Deleted sspan eg) [])
 prettyshow (Node (Entry sspan lay toks) sub)
   = "Node (Entry " ++ (showForestSpan sspan) ++ " "
      ++ (prettyToks toks) ++ ") "
-     ++ show (map prettyshow  sub)
+     -- ++ show (map prettyshow sub)
+     ++ "[" ++ intercalate "," (map prettyshow sub) ++ "]"
 
 prettyToks :: [PosToken] -> String
 prettyToks [] = "[]"
