@@ -44,6 +44,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        -- * Retrieving tokens
        , retrieveTokensFinal
        , retrieveTokensPpr
+       , renderPpr
        , retrieveTokensInterim
        , retrieveTokens' -- temporary for debug
 
@@ -144,8 +145,10 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Data.Bits
 import Data.List
 import Data.Tree
+import qualified Text.PrettyPrint as PP
 import qualified Data.Map as Map
 import qualified Data.Tree.Zipper as Z
+
 
 -- import Debug.Trace
 -- debug = flip trace
@@ -1174,12 +1177,33 @@ retrieveTokensPpr' (acc,curLineToks) (Node (Entry _sspan _     toks) []) = (acc+
                           else ((mkPprFromLineToks curLineToks) ++ concatMap mkPprFromLineToks (init xs),last xs)
 
 
--- TODO: reset toks to start from 0?
 mkPprFromLineToks :: [PosToken] -> [Ppr]
 mkPprFromLineToks [] = []
-mkPprFromLineToks toks = [PprText toks]
---  where
---    toks' = addOffsetToToks ((-(tokenRow (head toks))),0) toks
+mkPprFromLineToks toks = [PprText ro co toks']
+  where
+    ro = tokenRow $ head toks
+    co = tokenCol $ head toks
+    toks' = addOffsetToToks (-ro,-co) toks
+
+-- ---------------------------------------------------------------------
+
+-- |Convert a Ppr list into formated source code
+renderPpr :: [Ppr] -> String
+renderPpr ps = PP.render $  PP.vcat $ go (1,1) ps
+  where
+    go :: (Int,Int) -> [Ppr] -> [PP.Doc]
+    go _ [] = []
+    go (r,c) ((PprText rt ct toks):ps)   = ((newLines r rt) <> (newCol r c rt ct)) ++ [PP.text $ GHC.showRichTokenStream toks] ++ go (rt,ct) ps
+    go (r,c) ((PprOffset rt ct subs):ps) = (go (r,c) subs) ++ (go (r+rt,c+ct) ps)
+    go (r,c) ((PprAbove subs):ps)        = (PP.vcat (go (1,1) subs)) : (go (r,c) ps)
+
+    newLines :: Int -> Int -> [PP.Doc]
+    newLines oldRow newRow = take (newRow - oldRow) $ repeat (PP.text "")
+
+    newCol :: Int -> Int -> Int -> Int -> [PP.Doc]
+    newCol oldRow oldCol newRow newCol
+      | oldRow /= newRow = [PP.text $ take newCol (repeat ' ')]
+      | otherwise        = [PP.text $ take (newCol - oldCol) (repeat ' ')]
 
 -- ---------------------------------------------------------------------
 

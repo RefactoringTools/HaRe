@@ -139,7 +139,7 @@ data TokenCache = TK
 -- ---------------------------------------------------------------------
 
 -- |A data structure to make the ppr process visible
-data Ppr = PprText [PosToken]
+data Ppr = PprText Int Int [PosToken] -- ^Original row and col of the tokens
          | PprAbove [Ppr]
          | PprOffset Int Int [Ppr]
 
