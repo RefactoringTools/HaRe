@@ -14,6 +14,7 @@ module Language.Haskell.Refact.Utils.Layout (
   ) where
 
 import qualified Bag           as GHC
+import qualified ForeignCall   as GHC
 import qualified GHC           as GHC
 import qualified Outputable    as GHC
 import qualified SrcLoc        as GHC
@@ -190,11 +191,11 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
           where
             (s4,declToks,toks4') = splitToksForList is toks3
 
-    -- r = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
+    r = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
     -- r = error $ "allocTokens:(nameLayout,toks1)=" ++ (show (nameLayout,toks1)) -- ++AZ++
     -- r = error $ "allocTokens:(exportLayout,toks2)=" ++ (show (exportLayout,toks2)) -- ++AZ++
     -- r = error $ "allocTokens:(importLayout,toks3)=" ++ (show (importLayout,toks3)) -- ++AZ++
-    r = error $ "allocTokens:(declLayout,toks4)=" ++ (show (declLayout,_toks4)) -- ++AZ++
+    -- r = error $ "allocTokens:(declLayout,toks4)=" ++ (show (declLayout,_toks4)) -- ++AZ++
 
 
 -- ---------------------------------------------------------------------
@@ -711,7 +712,127 @@ allocTyVarBndr = error "allocTyVarBndr undefined"
 -- ---------------------------------------------------------------------
 
 allocHsTyDefn :: GHC.HsTyDefn GHC.RdrName -> [PosToken] -> ([LayoutTree],[PosToken])
-allocHsTyDefn = error "allocHsTyDefn undefined"
+allocHsTyDefn (GHC.TySynonym typ@(GHC.L l _)) toks = (r,toks')
+  where
+    (s1,typToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    typeLayout = allocType typ typToks
+    r = strip $ (makeLeafFromToks s1) ++ typeLayout
+allocHsTyDefn (GHC.TyData _ (GHC.L lc ctx) mc mk cons mderivs) toks = (r,toks')
+  where
+    (s1,ctxToks,toks2) = splitToks (ghcSpanStartEnd lc) toks
+    ctxLayout = allocHsContext ctx ctxToks
+
+    -- TODO: correctly determine the token range for this
+    (mcLayout,toks3) = case mc of
+      Nothing -> ([],toks2)
+      Just ct -> (rc,toks2')
+        where
+          ctLayout = allocCType ct toks2
+          toks2' = toks2
+          rc = strip $ ctLayout
+
+    (mkLayout,toks4) = case mk of
+      Nothing -> ([],toks3)
+      Just k@(GHC.L lk _) -> (rk,toks3')
+        where
+          (sk,kToks,toks3') = splitToks (ghcSpanStartEnd lk) toks3
+          kindLayout = allocHsKind k kToks
+          rk = strip $ (makeLeafFromToks sk) ++ kindLayout
+
+    (s2,consToks,toks5) = splitToksForList cons toks4
+    consLayout = allocList cons consToks allocConDecl
+
+    (mderivsLayout,toks6) = case mderivs of
+      Nothing -> ([],toks5)
+      Just ds -> (rd,toksd)
+        where
+          (sd,derivToks,toksd) = splitToksForList ds toks5
+          derivLayout = allocList ds derivToks allocType
+          rd = strip $ (makeLeafFromToks sd) ++ derivLayout
+    toks' = toks6
+    r = strip $ (makeLeafFromToks s1) ++ ctxLayout ++ mcLayout ++ mkLayout
+             ++ (makeLeafFromToks s2) ++ consLayout ++ mderivsLayout
+
+-- ---------------------------------------------------------------------
+
+allocConDecl :: GHC.LConDecl GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocConDecl (GHC.L l (GHC.ConDecl n@(GHC.L ln _) _expl qvars (GHC.L lc ctx) details res mdoc _)) toks = r
+  where
+    (s1,conDeclToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,nameToks,toks2) = splitToks (ghcSpanStartEnd ln) conDeclToks
+    nameLayout = allocLocated n nameToks
+    (qvarsLayout,toks3) = allocTyVarBndrs qvars toks2
+    (s3,ctxToks,toks4) = splitToks (ghcSpanStartEnd lc) toks3
+    ctxLayout = allocHsContext ctx ctxToks
+
+    (detailsLayout,toks5) = allocHsConDeclDetails details toks4
+    (resLayout,toks6) = case res of
+      GHC.ResTyH98 -> ([],toks5)
+      GHC.ResTyGADT (ty@(GHC.L lt _)) -> (rt,toks6')
+        where
+          (st,tyToks,toks6') = splitToks (ghcSpanStartEnd lt) toks5
+          tyLayout = allocType ty tyToks
+          rt = strip $ (makeLeafFromToks st) ++ tyLayout
+
+    (docLayout,toks7) = case mdoc of
+      Nothing -> ([],toks6)
+      Just ds@(GHC.L ld _) -> (rd,toks7')
+        where
+          (sd,dsToks,toks7') = splitToks (ghcSpanStartEnd ld) toks6
+          dsLayout = allocLocated ds dsToks
+          rd = strip (makeLeafFromToks sd) ++ dsLayout
+
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ nameLayout ++ qvarsLayout ++ (makeLeafFromToks s3)
+             ++ ctxLayout ++ detailsLayout ++ resLayout
+             ++ docLayout ++ (makeLeafFromToks toks7)
+             ++ (makeLeafFromToks toks')
+
+-- ---------------------------------------------------------------------
+
+allocHsConDeclDetails :: GHC.HsConDeclDetails GHC.RdrName -> [PosToken] -> ([LayoutTree],[PosToken])
+allocHsConDeclDetails (GHC.PrefixCon ds) toks = (r,toks')
+  where
+    (s1,dsToks,toks') = splitToksForList ds toks
+    dsLayout = allocList ds dsToks allocLBangTypeName
+    r = strip $ (makeLeafFromToks s1) ++ dsLayout
+allocHsConDeclDetails (GHC.RecCon conDecls) toks = (r,toks')
+  where
+    (r,toks') = foldl' doOne ([],toks) conDecls
+
+    doOne (acc,toksOne) cdf = (r1,toks2)
+      where
+        (lay,toks2) = allocConDeclField cdf toksOne
+        r1 = acc ++ lay
+allocHsConDeclDetails (GHC.InfixCon bt1@(GHC.L lb1 _) bt2@(GHC.L lb2 _)) toks = (r,toks')
+  where
+    (s1,bt1Toks,toks2) = splitToks (ghcSpanStartEnd lb1) toks
+    (s2,bt2Toks,toks') = splitToks (ghcSpanStartEnd lb2) toks2
+    bt1Layout = allocType bt1 bt1Toks
+    bt2Layout = allocType bt2 bt2Toks
+
+    r = strip $ (makeLeafFromToks s1) ++ bt1Layout
+             ++ (makeLeafFromToks s2) ++ bt2Layout
+
+-- ---------------------------------------------------------------------
+
+allocConDeclField :: GHC.ConDeclField GHC.RdrName -> [PosToken] -> ([LayoutTree],[PosToken])
+allocConDeclField = error "allocConDeclField undefined"
+
+-- ---------------------------------------------------------------------
+
+allocLBangTypeName :: GHC.LBangType GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocLBangTypeName bt toks = allocType bt toks
+
+-- ---------------------------------------------------------------------
+
+allocHsKind :: GHC.LHsKind GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocHsKind = error "allocHsKind undefined"
+
+-- ---------------------------------------------------------------------
+
+allocCType :: GHC.CType -> [PosToken] -> [LayoutTree]
+allocCType = error "allocCType undefined"
 
 -- ---------------------------------------------------------------------
 
