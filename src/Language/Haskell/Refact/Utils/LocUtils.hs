@@ -15,7 +15,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -- ,lengthOfToks
                      -- , mkToken, mkZeroToken {-,defaultToken, -}
                      {-whiteSpacesToken -}
-                     ,whiteSpaceTokens
+                     , whiteSpaceTokens
                      , realSrcLocFromTok
                      , isWhite
                      , notWhite
@@ -60,6 +60,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , prettyprint -- , prettyprintGhc
                      , prettyprintPatList
                      , groupTokensByLine
+                     , toksOnSameLine
                      , addLocInfo
                      -- , getIndentOffset
                      , getLineOffset
@@ -1398,9 +1399,10 @@ newLinesToken jump (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
 -- ---------------------------------------------------------------------
 
 groupTokensByLine :: [PosToken] -> [[PosToken]]
-groupTokensByLine xs = groupBy fn xs
-  where
-    fn t1 t2 = tokenRow t1 == tokenRow t2
+groupTokensByLine xs = groupBy toksOnSameLine xs
+
+toksOnSameLine :: PosToken -> PosToken -> Bool
+toksOnSameLine t1 t2 = tokenRow t1 == tokenRow t2
 
 {-
 groupTokensByLine :: [PosToken] -> [[PosToken]]

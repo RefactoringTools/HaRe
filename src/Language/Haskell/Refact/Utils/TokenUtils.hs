@@ -43,6 +43,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        -- * Retrieving tokens
        , retrieveTokensFinal
+       , retrieveTokensPpr
        , retrieveTokensInterim
        , retrieveTokens' -- temporary for debug
 
@@ -218,7 +219,8 @@ This can perhaps be used to choose appropriate token boundaries.
 -}
 
 
-deriving instance Show Entry => Show (Entry)
+deriving instance Show Entry --  => Show (Entry)
+deriving instance Show Ppr
 
 
 -- ---------------------------------------------------------------------
@@ -1126,6 +1128,61 @@ retrieveTokensFinal forest = monotonicLineToks $ stripForestLines $ reAlignMarke
 
 -- ---------------------------------------------------------------------
 
+-- |Retrieve the tokens in a ppr format, so they can be rendered
+retrieveTokensPpr :: Tree Entry -> [Ppr]
+retrieveTokensPpr forest = pps'
+  where
+    (pps,lastLine) = retrieveTokensPpr' ([],[]) forest
+    pps' = pps ++ (mkPprFromLineToks lastLine)
+
+retrieveTokensPpr' :: ([Ppr],[PosToken]) -> Tree Entry -> ([Ppr],[PosToken])
+retrieveTokensPpr' acc (Node (Deleted _sspan  _eg ) _  ) = acc
+
+retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs) = foldl' retrieveTokensPpr' acc subs
+retrieveTokensPpr' acc (Node (Entry _sspan Above        []) subs) = acc'
+  where
+    (ac,curLineToks) = acc
+    (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
+    cl2Acc = mkPprFromLineToks cl2
+    ll = mkPprFromLineToks curLineToks
+    acc' = (ac ++ ll ++ [PprAbove (sss++cl2Acc)],[])
+
+retrieveTokensPpr' acc (Node (Entry _sspan (Offset r c) []) subs) = acc'
+  where
+    (ac,curLineToks) = acc
+    (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
+    cl2Acc = mkPprFromLineToks cl2
+    ll = mkPprFromLineToks curLineToks
+    acc' = (ac ++ ll ++ [PprOffset r c (sss++cl2Acc)],[])
+
+retrieveTokensPpr' (acc,curLineToks) (Node (Entry _sspan _     toks) []) = (acc++accNew,curLineToks')
+  where
+    toksByLine = groupTokensByLine toks
+    (accNew,curLineToks') = case curLineToks of
+      [] -> case toksByLine of
+              [] -> ([],[])
+              [x] -> ([],x)
+              xs -> (concatMap mkPprFromLineToks (init xs),last xs)
+
+      _  -> case toksByLine of
+              [] -> ([],[])
+              [x] -> if (toksOnSameLine (last curLineToks) (head x))
+                       then ([],curLineToks ++ x)
+                       else (mkPprFromLineToks curLineToks,x)
+              (x:xs) -> if (toksOnSameLine (last curLineToks) (head x))
+                          then ((mkPprFromLineToks (curLineToks++x)) ++ concatMap mkPprFromLineToks (init xs),last xs)
+                          else ((mkPprFromLineToks curLineToks) ++ concatMap mkPprFromLineToks (init xs),last xs)
+
+
+-- TODO: reset toks to start from 0?
+mkPprFromLineToks :: [PosToken] -> [Ppr]
+mkPprFromLineToks [] = []
+mkPprFromLineToks toks = [PprText toks]
+--  where
+--    toks' = addOffsetToToks ((-(tokenRow (head toks))),0) toks
+
+-- ---------------------------------------------------------------------
+
 -- |Retrieve all the tokens at the leaves of the tree, in order. No
 -- adjustments are made to address gaps or re-alignment of the tokens
 retrieveTokensInterim :: Tree Entry -> [PosToken]
@@ -1420,6 +1477,7 @@ addDeclToksAfterSrcSpan forest oldSpan pos toks t = (forest'',newSpan,t')
     (t',forest'') = syncAST t newSpan forest'
 
 -- ---------------------------------------------------------------------
+
 
 reIndentToks :: Positioning -> [PosToken] -> [PosToken] -> [PosToken]
 reIndentToks _ _ [] = []

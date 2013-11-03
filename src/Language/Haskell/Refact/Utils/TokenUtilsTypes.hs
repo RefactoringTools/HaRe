@@ -18,6 +18,7 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        , ForestLine(..)
        , ForestPos
        , ForestSpan
+       , Ppr(..)
        ) where
 
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -134,6 +135,13 @@ data TokenCache = TK
   { tkCache :: !(Map.Map TreeId (Tree Entry))
   , tkLastTreeId :: !TreeId
   }
+
+-- ---------------------------------------------------------------------
+
+-- |A data structure to make the ppr process visible
+data Ppr = PprText [PosToken]
+         | PprAbove [Ppr]
+         | PprOffset Int Int [Ppr]
 
 -- ---------------------------------------------------------------------
 

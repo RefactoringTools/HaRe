@@ -1681,6 +1681,66 @@ tree TId 0:
 
   -- ---------------------------------------------
 
+  describe "retrieveTokensPpr" $ do
+    it "retrieves the tokens in Ppr format" $ do
+      (t,toks) <- parsedFileLayoutLetExpr
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      (GHC.showRichTokenStream toks) `shouldBe` "-- A simple let expression, to ensure the layout is detected\n\n module Layout.LetExpr where\n\n foo = let x = 1\n           y = 2\n       in x + y\n\n "
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(7,15))\n"++
+          "2:((5,1),(7,15))\n"++
+          "3:((5,1),(5,4))\n"++
+          "3:((5,5),(7,15))\n"++
+          "4:((5,5),(5,6))\n"++
+          "4:((5,7),(7,15))\n"++
+          "5:((5,7),(5,10))\n"++ -- 'let' token
+          "5:((5,11),(6,16))(Offset 0 4)\n"++ -- the grouped expressions
+           "6:((5,11),(6,16)) Above \n"++
+            "7:((5,11),(5,16))\n"++
+             "8:((5,11),(5,16))\n"++
+              "9:((5,11),(5,12))\n"++
+              "9:((5,13),(5,16))\n"++
+               "10:((5,13),(5,14))\n"++
+               "10:((5,15),(5,16))\n"++
+                "11:((5,15),(5,16))\n"++
+            "7:((6,11),(6,16))\n"++
+             "8:((6,11),(6,16))\n"++
+              "9:((6,11),(6,12))\n"++
+              "9:((6,13),(6,16))\n"++
+               "10:((6,13),(6,14))\n"++
+               "10:((6,15),(6,16))\n"++
+                "11:((6,15),(6,16))\n"++
+          "5:((7,7),(7,9))\n"++
+          "5:((7,10),(7,15))\n"++
+          "6:((7,10),(7,11))\n"++
+          "6:((7,12),(7,13))\n"++
+          "6:((7,14),(7,15))\n"++
+          "1:((9,1),(9,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      (show pprVal) `shouldBe`
+          "["++
+          "PprText [((((1,1),(1,61)),ITlineComment \"-- A simple let expression, to ensure the layout is detected\"),\"-- A simple let expression, to ensure the layout is detected\")],"++
+          "PprText [((((3,1),(3,7)),ITmodule),\"module\"),((((3,8),(3,22)),ITqconid (\"Layout\",\"LetExpr\")),\"Layout.LetExpr\"),((((3,23),(3,28)),ITwhere),\"where\")],"++
+          "PprText [((((5,1),(5,1)),ITvocurly),\"\"),((((5,1),(5,4)),ITvarid \"foo\"),\"foo\"),((((5,5),(5,6)),ITequal),\"=\"),((((5,7),(5,10)),ITlet),\"let\")],"++
+          "PprOffset 0 4 "++
+           "[PprAbove "++
+             "[PprText [((((5,11),(5,11)),ITvocurly),\"\"),((((5,11),(5,12)),ITvarid \"x\"),\"x\"),((((5,13),(5,14)),ITequal),\"=\"),((((5,15),(5,16)),ITinteger 1),\"1\")],"++
+              "PprText [((((6,11),(6,11)),ITsemi),\"\"),((((6,11),(6,12)),ITvarid \"y\"),\"y\"),((((6,13),(6,14)),ITequal),\"=\"),((((6,15),(6,16)),ITinteger 2),\"2\")]]],"++
+          "PprText [((((7,7),(7,7)),ITvccurly),\"\"),((((7,7),(7,9)),ITin),\"in\"),((((7,10),(7,11)),ITvarid \"x\"),\"x\"),((((7,12),(7,13)),ITvarsym \"+\"),\"+\"),((((7,14),(7,15)),ITvarid \"y\"),\"y\")],"++
+          "PprText [((((9,1),(9,1)),ITsemi),\"\")]]"
+
+  -- ---------------------------------------------
+
   describe "updateTokensForSrcSpan" $ do
     it "replaces the tokens for a given span, inserting the span if needed" $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -3701,5 +3761,10 @@ layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
 
 parsedFileLayoutIn2 :: IO (ParseResult, [PosToken])
 parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
+
+-- ---------------------------------------------------------------------
+
+parsedFileLayoutLetExpr :: IO (ParseResult,[PosToken])
+parsedFileLayoutLetExpr = parsedFileGhc "./test/testdata/Layout/LetExpr.hs"
 
 -- ---------------------------------------------------------------------
