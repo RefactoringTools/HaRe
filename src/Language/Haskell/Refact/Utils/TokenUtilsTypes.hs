@@ -19,6 +19,7 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        , ForestPos
        , ForestSpan
        , Ppr(..)
+       , HDoc(..)
        ) where
 
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -142,6 +143,18 @@ data TokenCache = TK
 data Ppr = PprText Int Int [PosToken] -- ^Original row and col of the tokens
          | PprAbove [Ppr]
          | PprOffset Int Int [Ppr]
+
+
+infixl 6 `Hbeside`
+
+-- |A structure to wrap the pretty print commands to make them
+-- visible, since Doc constructors are not exported
+data HDoc = Htext String
+          | Hhcat [HDoc]
+          | Hvcat [HDoc]
+          | Hnest Int HDoc
+          | HDoc `Hbeside` HDoc
+          deriving (Eq,Show)
 
 -- ---------------------------------------------------------------------
 

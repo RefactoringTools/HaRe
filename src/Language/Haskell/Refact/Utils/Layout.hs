@@ -502,7 +502,7 @@ allocExpr (GHC.L _ (GHC.HsCase expr@(GHC.L le _) (GHC.MatchGroup matches _))) to
     (ro,co) = case (filter isOf s2) of
                [] -> (0,0)
                (x:_) -> (tokenRow firstMatchTok - tokenRow x,
-                         tokenCol firstMatchTok - tokenCol x)
+                         tokenCol firstMatchTok - (tokenCol x + tokenLen x))
 
     matchesLayout = [placeOffset ro co [placeAbove (allocMatches matches matchToks)]]
     r = strip $ (makeLeafFromToks s1) ++ exprLayout
@@ -552,7 +552,7 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
     (ro,co) = case (filter isWhereOrLet s1) of
                [] -> (0,0)
                (x:_) -> (tokenRow firstBindTok - tokenRow x,
-                         tokenCol firstBindTok - tokenCol x)
+                         tokenCol firstBindTok - (tokenCol x + tokenLen x))
 
     bindsLayout = case allocList bindList toksBinds allocBind of
       [] -> []

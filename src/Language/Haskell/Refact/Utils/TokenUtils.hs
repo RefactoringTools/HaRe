@@ -45,6 +45,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , retrieveTokensFinal
        , retrieveTokensPpr
        , renderPpr
+       , renderPprToHDoc
+       , renderHDoc
        , retrieveTokensInterim
        , retrieveTokens' -- temporary for debug
 
@@ -1142,13 +1144,14 @@ retrieveTokensPpr' :: ([Ppr],[PosToken]) -> Tree Entry -> ([Ppr],[PosToken])
 retrieveTokensPpr' acc (Node (Deleted _sspan  _eg ) _  ) = acc
 
 retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs) = foldl' retrieveTokensPpr' acc subs
+
 retrieveTokensPpr' acc (Node (Entry _sspan Above        []) subs) = acc'
   where
     (ac,curLineToks) = acc
     (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
     cl2Acc = mkPprFromLineToks cl2
     ll = mkPprFromLineToks curLineToks
-    acc' = (ac ++ ll ++ [PprAbove (sss++cl2Acc)],[])
+    acc' = (ac ++ ll ++ [PprAbove (normaliseColumns (sss++cl2Acc))],[])
 
 retrieveTokensPpr' acc (Node (Entry _sspan (Offset r c) []) subs) = acc'
   where
@@ -1185,25 +1188,63 @@ mkPprFromLineToks toks = [PprText ro co toks']
     co = tokenCol $ head toks
     toks' = addOffsetToToks (-ro,-co) toks
 
+
+-- | The PprAbove construct needs all the starting columns to be reset to zero
+normaliseColumns :: [Ppr] -> [Ppr]
+normaliseColumns [] = []
+normaliseColumns ps = ps'
+  where
+    offset = case (head ps) of
+      PprText _r c _ -> c
+      _              -> 0
+    ps' = map removeOffset ps
+
+    removeOffset (PprText r c toks) = (PprText r (c - offset) toks)
+    removeOffset x = x
+
 -- ---------------------------------------------------------------------
 
 -- |Convert a Ppr list into formated source code
 renderPpr :: [Ppr] -> String
-renderPpr ps = PP.render $  PP.vcat $ go (1,1) ps
+renderPpr = renderHDoc . renderPprToHDoc
+
+-- |Convert a Ppr list into formated source code
+renderPprToHDoc :: [Ppr] -> HDoc
+renderPprToHDoc ps = Hvcat $ go (1,1) ps
   where
-    go :: (Int,Int) -> [Ppr] -> [PP.Doc]
+    go :: (Int,Int) -> [Ppr] -> [HDoc]
     go _ [] = []
-    go (r,c) ((PprText rt ct toks):ps)   = ((newLines r rt) <> (newCol r c rt ct)) ++ [PP.text $ GHC.showRichTokenStream toks] ++ go (rt,ct) ps
-    go (r,c) ((PprOffset rt ct subs):ps) = (go (r,c) subs) ++ (go (r+rt,c+ct) ps)
-    go (r,c) ((PprAbove subs):ps)        = (PP.vcat (go (1,1) subs)) : (go (r,c) ps)
+    go (r,c) (ppt@(PprText rt ct _toks):(PprOffset rto cto subs):ps') = [(head $ renderPprText (r,c) ppt) `Hbeside` (renderOffset rto cto) `Hbeside` Hhcat (go (rt+rto,colAfterPprText ppt) subs)] ++ go (rt,ct) ps'
+    go (r,c) (ppt@(PprText rt ct _toks):ps') = renderPprText (r,c) ppt ++ go (rt,ct) ps'
+    go (r,c) ((PprOffset rt ct subs):ps')    = (go (r+rt,c+ct) subs) ++ (go (r+rt,c+ct) ps')
+    go (r,c) ((PprAbove subs):ps')           = (Hvcat (go (r,c) subs)) : (go (r,c) ps')
+    -- go (r,c) ((PprAbove subs):ps')           = error $ "PprAbove:(r,c)=" ++ show (r,c)
 
-    newLines :: Int -> Int -> [PP.Doc]
-    newLines oldRow newRow = take (newRow - oldRow) $ repeat (PP.text "")
+    colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
 
-    newCol :: Int -> Int -> Int -> Int -> [PP.Doc]
-    newCol oldRow oldCol newRow newCol
-      | oldRow /= newRow = [PP.text $ take newCol (repeat ' ')]
-      | otherwise        = [PP.text $ take (newCol - oldCol) (repeat ' ')]
+    renderPprText (r,c) (PprText rt ct toks) = [Hvcat (newLines r rt) `Hbeside` (newCol r c rt ct) `Hbeside` (Htext $ GHC.showRichTokenStream toks)]
+
+    renderOffset r c = Hvcat (take r $ repeat (Htext "")) `Hbeside` (Htext $ take c (repeat ' '))
+
+    newLines :: Int -> Int -> [HDoc]
+    newLines oldRow newRow = take (newRow - oldRow) $ repeat (Htext "")
+
+    newCol :: Int -> Int -> Int -> Int -> HDoc
+    newCol oldR oldC newR newC
+      | oldR /= newR = Htext $ take newC (repeat ' ')
+      | otherwise    = Htext $ take (newC - oldC) (repeat ' ')
+
+-- ---------------------------------------------------------------------
+
+renderHDoc :: HDoc -> String
+renderHDoc = PP.render . hDocToDoc
+
+hDocToDoc :: HDoc -> PP.Doc
+hDocToDoc (Htext s)       = PP.text s
+hDocToDoc (Hhcat ds)      = PP.hcat (map hDocToDoc ds)
+hDocToDoc (Hvcat ds)      = PP.vcat (map hDocToDoc ds)
+hDocToDoc (Hnest i d)     = PP.nest i (hDocToDoc d)
+hDocToDoc (a `Hbeside` b) = (hDocToDoc a) PP.<> (hDocToDoc b)
 
 -- ---------------------------------------------------------------------
 

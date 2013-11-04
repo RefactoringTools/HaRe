@@ -32,7 +32,20 @@ foo' = render ff
     ]
 
 
-foo'' = render ff
+foo = render ff
+  where
+   ff = vcat
+    [
+     text "-- A simple let expression, to ensure the layout is detected"
+    , text ""
+    , text "module Layout.LetExpr where"
+    , text ""
+    , (text "foobarbaz = let") <> ((vcat []) <> text " ") <> (vcat [ text "x = 1"
+                                   , text "y = 2"])
+    , text "      in x + y"
+    ]
+
+foo''' = render ff
   where
    ff = vcat
     [
@@ -45,7 +58,7 @@ foo'' = render ff
     , text "      in x + y"
     ]
 
-foo = render ff
+foo'' = render ff
   where
     ff = vcat 
       [

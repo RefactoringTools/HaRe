@@ -1704,7 +1704,7 @@ tree TId 0:
           "4:((5,5),(5,6))\n"++
           "4:((5,7),(7,15))\n"++
           "5:((5,7),(5,10))\n"++ -- 'let' token
-          "5:((5,11),(6,16))(Offset 0 4)\n"++ -- the grouped expressions
+          "5:((5,11),(6,16))(Offset 0 1)\n"++ -- the grouped expressions
            "6:((5,11),(6,16)) Above \n"++
             "7:((5,11),(5,16))\n"++
              "8:((5,11),(5,16))\n"++
@@ -1733,12 +1733,14 @@ tree TId 0:
           "PprText 1 1 [((((0,0),(0,60)),ITlineComment \"-- A simple let expression, to ensure the layout is detected\"),\"-- A simple let expression, to ensure the layout is detected\")],"++
           "PprText 3 1 [((((0,0),(0,6)),ITmodule),\"module\"),((((0,7),(0,21)),ITqconid (\"Layout\",\"LetExpr\")),\"Layout.LetExpr\"),((((0,22),(0,27)),ITwhere),\"where\")],"++
           "PprText 5 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITvarid \"foo\"),\"foo\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,6),(0,9)),ITlet),\"let\")],"++
-          "PprOffset 0 4 "++
+          "PprOffset 0 1 "++
            "[PprAbove "++
-            "[PprText 5 11 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,1)),ITvarid \"x\"),\"x\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 1),\"1\")],"++
-             "PprText 6 11 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),ITvarid \"y\"),\"y\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")]]],"++
+            "[PprText 5 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,1)),ITvarid \"x\"),\"x\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 1),\"1\")],"++
+             "PprText 6 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),ITvarid \"y\"),\"y\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")]]],"++
           "PprText 7 7 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,2)),ITin),\"in\"),((((0,3),(0,4)),ITvarid \"x\"),\"x\"),((((0,5),(0,6)),ITvarsym \"+\"),\"+\"),((((0,7),(0,8)),ITvarid \"y\"),\"y\")],"++
           "PprText 9 1 [((((0,0),(0,0)),ITsemi),\"\")]]"
+
+      -- (show $ renderPprToHDoc pprVal) `shouldBe`  ""
 
       (renderPpr pprVal) `shouldBe`
           "-- A simple let expression, to ensure the layout is detected\n" ++
