@@ -2,6 +2,8 @@
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+
 -- |
 --
 
@@ -11,6 +13,9 @@ module Language.Haskell.Refact.Utils.Layout (
   , allocTokens
   , retrieveTokens
   , getLoc
+
+  -- * For testing
+  , addEndOffsets
   ) where
 
 import qualified Bag           as GHC
@@ -25,6 +30,7 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import Data.List
+import Data.Maybe
 import Data.Tree
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -33,6 +39,8 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
+
+import qualified Data.Tree.Zipper as Z
 
 -- ---------------------------------------------------------------------
 
@@ -143,9 +151,10 @@ instance Outputable Entry where
   ppr (Entry sspan lay toks) = text "Entry" <+> ppr sspan <+> ppr lay <+> text (show toks)
 
 instance Outputable Layout where
-  ppr (Above)      = text "Above"
-  ppr (Offset r c) = text "Offset" <+> ppr r <+> ppr c
-  ppr (NoChange)   = text "NoChange"
+  ppr (Above ro co (r,c))   = text "Above" <+> ppr ro <+> ppr co <+> ppr (r,c)
+  ppr (Offset r c)    = text "Offset" <+> ppr r <+> ppr c
+  ppr (NoChange)      = text "NoChange"
+  ppr (EndOffset r c) = text "EndOffset" <+> ppr r <+> ppr c
 
 -- ---------------------------------------------------------------------
 
@@ -191,12 +200,43 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
           where
             (s4,declToks,toks4') = splitToksForList is toks3
 
-    r = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
+    r = addEndOffsets $ makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
     -- r = error $ "allocTokens:(nameLayout,toks1)=" ++ (show (nameLayout,toks1)) -- ++AZ++
     -- r = error $ "allocTokens:(exportLayout,toks2)=" ++ (show (exportLayout,toks2)) -- ++AZ++
     -- r = error $ "allocTokens:(importLayout,toks3)=" ++ (show (importLayout,toks3)) -- ++AZ++
     -- r = error $ "allocTokens:(declLayout,toks4)=" ++ (show (declLayout,_toks4)) -- ++AZ++
 
+-- ---------------------------------------------------------------------
+
+addEndOffsets :: LayoutTree -> LayoutTree
+addEndOffsets tree = Z.toTree $ doOne (Z.fromTree tree)
+  where
+    doOne z = z''
+      where
+        z' = work z
+        z'' = case (Z.firstChild z') of
+                Nothing -> z'
+                Just zz -> doChild zz
+
+    doChild z
+      | Z.isLast zw = fromJust $ Z.parent zw
+      | isJust z' = doChild $ fromJust z'
+      where
+        zw = doOne z
+        z' = Z.nextTree $ Z.nextSpace zw
+
+    work :: Z.TreePos Z.Full Entry -> Z.TreePos Z.Full Entry
+    work z = z'
+      where
+       z' = case Z.label z of
+         (Entry _ (Above _ _ _) []) -> manipulateTree z
+         _                          -> z
+
+    -- | Use the last token pos in the Above Layout to insert a
+    -- EndOffset layout entry
+    -- This will either be in the next sibling along, or the next leaf
+    -- in order to the right of this one.
+    manipulateTree z = zxxxx -- TODO: broken to carry on from here
 
 -- ---------------------------------------------------------------------
 
@@ -504,7 +544,12 @@ allocExpr (GHC.L _ (GHC.HsCase expr@(GHC.L le _) (GHC.MatchGroup matches _))) to
                (x:_) -> (tokenRow firstMatchTok - tokenRow x,
                          tokenCol firstMatchTok - (tokenCol x + tokenLen x))
 
-    matchesLayout = [placeOffset ro co [placeAbove (allocMatches matches matchToks)]]
+    (rt,ct) = case (dropWhile isWhiteSpaceOrIgnored (reverse matchToks)) of
+             [] -> (0,0)
+             (x:xs) -> (tokenRow x,tokenCol x)
+
+
+    matchesLayout = [placeAbove ro co (rt,ct) (allocMatches matches matchToks)]
     r = strip $ (makeLeafFromToks s1) ++ exprLayout
              ++ (makeLeafFromToks s2) ++ matchesLayout ++ (makeLeafFromToks toks2)
 allocExpr (GHC.L _ (GHC.HsIf _ e1@(GHC.L l1 _) e2@(GHC.L l2 _) e3)) toks = r
@@ -554,9 +599,13 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
                (x:_) -> (tokenRow firstBindTok - tokenRow x,
                          tokenCol firstBindTok - (tokenCol x + tokenLen x))
 
+    (rt,ct) = case (dropWhile isWhiteSpaceOrIgnored (reverse toksBinds)) of
+             [] -> (0,0)
+             (x:xs) -> (tokenRow x,tokenCol x)
+
     bindsLayout = case allocList bindList toksBinds allocBind of
       [] -> []
-      bs -> [placeOffset ro co [placeAbove bs]]
+      bs -> [placeAbove ro co (rt,ct) bs]
     sigsLayout = allocList sigs toks1 allocSig
     r = strip $ (makeLeafFromToks s1) ++ bindsLayout ++ sigsLayout
 
@@ -910,9 +959,9 @@ splitToksForList xs toks = splitToks (getGhcLoc s, getGhcLocEnd e) toks
 
 -- ---------------------------------------------------------------------
 
-placeAbove :: [LayoutTree] -> LayoutTree
-placeAbove [] = error "placeAbove []"
-placeAbove ls = Node (Entry loc Above []) ls
+placeAbove :: RowOffset -> ColOffset -> (Row,Col) -> [LayoutTree] -> LayoutTree
+placeAbove _ _ _ [] = error "placeAbove []"
+placeAbove ro co (r,c) ls = Node (Entry loc (Above ro co (r,c)) []) ls
   where
     loc = combineSpans (getLoc $ head ls) (getLoc $ last ls)
 

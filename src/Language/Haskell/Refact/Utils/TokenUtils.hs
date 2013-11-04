@@ -46,6 +46,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , retrieveTokensPpr
        , renderPpr
        , renderPprToHDoc
+       , renderPprToHDoc'
        , renderHDoc
        , retrieveTokensInterim
        , retrieveTokens' -- temporary for debug
@@ -1145,13 +1146,13 @@ retrieveTokensPpr' acc (Node (Deleted _sspan  _eg ) _  ) = acc
 
 retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs) = foldl' retrieveTokensPpr' acc subs
 
-retrieveTokensPpr' acc (Node (Entry _sspan Above        []) subs) = acc'
+retrieveTokensPpr' acc (Node (Entry _sspan (Above ro co (r,c))  []) subs) = acc'
   where
     (ac,curLineToks) = acc
     (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
     cl2Acc = mkPprFromLineToks cl2
     ll = mkPprFromLineToks curLineToks
-    acc' = (ac ++ ll ++ [PprAbove (normaliseColumns (sss++cl2Acc))],[])
+    acc' = (ac ++ ll ++ [PprAbove ro co (r,c) (normaliseColumns (sss++cl2Acc))],[])
 
 retrieveTokensPpr' acc (Node (Entry _sspan (Offset r c) []) subs) = acc'
   where
@@ -1204,11 +1205,12 @@ normaliseColumns ps = ps'
 
 -- ---------------------------------------------------------------------
 
--- |Convert a Ppr list into formated source code
+-- |Convert a Ppr list into formatted source code
 renderPpr :: [Ppr] -> String
 renderPpr = renderHDoc . renderPprToHDoc
+-- renderPpr = renderHDoc . renderPprToHDoc'
 
--- |Convert a Ppr list into formated source code
+-- |Convert a Ppr list into an HDoc structure
 renderPprToHDoc :: [Ppr] -> HDoc
 renderPprToHDoc ps = Hvcat $ go (1,1) ps
   where
@@ -1217,14 +1219,48 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
     go (r,c) (ppt@(PprText rt ct _toks):(PprOffset rto cto subs):ps') = [(head $ renderPprText (r,c) ppt) `Hbeside` (renderOffset rto cto) `Hbeside` Hhcat (go (rt+rto,colAfterPprText ppt) subs)] ++ go (rt,ct) ps'
     go (r,c) (ppt@(PprText rt ct _toks):ps') = renderPprText (r,c) ppt ++ go (rt,ct) ps'
     go (r,c) ((PprOffset rt ct subs):ps')    = (go (r+rt,c+ct) subs) ++ (go (r+rt,c+ct) ps')
-    go (r,c) ((PprAbove subs):ps')           = (Hvcat (go (r,c) subs)) : (go (r,c) ps')
-    -- go (r,c) ((PprAbove subs):ps')           = error $ "PprAbove:(r,c)=" ++ show (r,c)
+    go (r,c) ((PprAbove ro co _ subs):ps')     = (Hvcat (go (r+ro,c+co) subs)) : (go (r,c) ps')
+    -- go (r,c) ((PprAbove subs):ps')        = error $ "PprAbove:(r,c)=" ++ show (r,c)
 
     colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
 
     renderPprText (r,c) (PprText rt ct toks) = [Hvcat (newLines r rt) `Hbeside` (newCol r c rt ct) `Hbeside` (Htext $ GHC.showRichTokenStream toks)]
 
     renderOffset r c = Hvcat (take r $ repeat (Htext "")) `Hbeside` (Htext $ take c (repeat ' '))
+
+    newLines :: Int -> Int -> [HDoc]
+    newLines oldRow newRow = take (newRow - oldRow) $ repeat (Htext "")
+
+    newCol :: Int -> Int -> Int -> Int -> HDoc
+    newCol oldR oldC newR newC
+      | oldR /= newR = Htext $ take newC (repeat ' ')
+      | otherwise    = Htext $ take (newC - oldC) (repeat ' ')
+
+-- ---------------------------------------------------------------------
+
+-- |Convert a Ppr list into an HDoc structure
+renderPprToHDoc' :: [Ppr] -> HDoc
+renderPprToHDoc' ps = Hvcat r
+  where
+    (_,r) = foldl' go ((1,1),[]) ps
+
+    go :: ((Int,Int),[HDoc]) -> Ppr -> ((Int,Int),[HDoc])
+
+    go ((r,c),acc) (ppt@(PprText rt ct toks)) = ((rt,colAfterPprText ppt),acc ++ renderPprText (r,c) ppt)
+
+    go ((r,c),acc) (PprOffset rt ct subs)    = ((r',c'),acc ++ roff)
+      where
+        ((r',c'),roff) = foldl' go ((r+rt,c+ct),[]) subs
+
+    go ((r,c),acc) (PprAbove ro co _ subs)      = ((r',c'),acc++[(Hvcat rabove)])
+      where
+        ((r',c'),rabove) = foldl' go ((r,c),[]) subs
+
+    renderPprText (r,c) (PprText rt ct toks) =
+         [Hvcat (newLines r rt) `Hbeside` (newCol r c rt ct)
+          `Hbeside` (Htext $ GHC.showRichTokenStream toks)]
+
+    colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
 
     newLines :: Int -> Int -> [HDoc]
     newLines oldRow newRow = take (newRow - oldRow) $ repeat (Htext "")
@@ -2018,9 +2054,9 @@ drawEntry (Node (Entry sspan lay _toks) ts0) = ((showForestSpan sspan) ++ (showL
     shft first other = zipWith (++) (first : repeat other)
 
 showLayout :: Layout -> String
-showLayout NoChange = ""
-showLayout Above = " Above "
-showLayout (Offset r c) = "(Offset " ++ show r ++ " " ++ show c ++ ")"
+showLayout NoChange       = ""
+showLayout (Above ro co (r,c)) = "(Above "++ show ro ++ " " ++ show co ++ " " ++ show (r,c) ++ ")"
+showLayout (Offset r c)   = "(Offset " ++ show r ++ " " ++ show c ++ ")"
 
 -- ---------------------------------------------------------------------
 

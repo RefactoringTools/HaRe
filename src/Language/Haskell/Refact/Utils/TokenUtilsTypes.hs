@@ -15,6 +15,8 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        , Layout(..)
        , RowOffset
        , ColOffset
+       , Row
+       , Col
        , ForestLine(..)
        , ForestPos
        , ForestSpan
@@ -81,10 +83,15 @@ data Entry = Entry !ForestSpan -- The source span contained in this
 
 type RowOffset = Int
 type ColOffset = Int
+type Row       = Int
+type Col       = Int
 
-data Layout = Above
+data Layout = Above RowOffset ColOffset (Row,Col)
             | Offset RowOffset ColOffset
             | NoChange
+            -- | Offset between the end of an 'Above' entry and the
+            -- next one
+            | EndOffset RowOffset ColOffset
             deriving (Show)
 
 
@@ -140,10 +147,11 @@ data TokenCache = TK
 -- ---------------------------------------------------------------------
 
 -- |A data structure to make the ppr process visible
-data Ppr = PprText Int Int [PosToken] -- ^Original row and col of the tokens
-         | PprAbove [Ppr]
-         | PprOffset Int Int [Ppr]
+data Ppr = PprText Row Col [PosToken] -- ^Original row and col of the tokens
+         | PprAbove RowOffset ColOffset (Row,Col) [Ppr] -- ^ Offset of start of embedded parts, coords of last token
+         | PprOffset RowOffset ColOffset [Ppr]
 
+-- ---------------------------------------------------------------------
 
 infixl 6 `Hbeside`
 
