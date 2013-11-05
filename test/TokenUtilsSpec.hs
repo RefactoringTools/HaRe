@@ -12,6 +12,7 @@ import Control.Monad.State
 import Data.Maybe
 import Data.Tree
 
+import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
@@ -1683,7 +1684,7 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "retrieveTokensPpr" $ do
-    it "retrieves the tokens in Ppr format" $ do
+    it "retrieves the tokens in Ppr format LetExpr" $ do
       (t,toks) <- parsedFileLayoutLetExpr
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -1750,6 +1751,71 @@ tree TId 0:
           "foo = let x = 1\n" ++
           "          y = 2\n" ++
           "      in x + y\n"
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in Ppr format LetStmt" $ do
+      (t,toks) <- parsedFileLayoutLetStmt
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      (GHC.showRichTokenStream $ bypassGHCBug7351 toks) `shouldBe` "-- A simple let statement, to ensure the layout is detected\n\nmodule Layout.LetStmt where\n\nfoo = do\n        let x = 1\n            y = 2\n        x+y\n\n"
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(10,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(8,12))\n"++
+          "2:((5,1),(8,12))\n"++
+          "3:((5,1),(5,4))\n"++
+          "3:((5,5),(8,12))\n"++
+          "4:((5,5),(5,6))\n"++
+          "4:((5,7),(8,12))\n"++
+           "5:((5,7),(5,9))\n"++
+           "5:((6,9),(7,18))\n"++
+            "6:((6,9),(6,12))\n"++
+            "6:((6,13),(7,18))(Above 0 1 (7,17) (1,-8))\n"++
+             "7:((6,13),(6,18))\n"++
+              "8:((6,13),(6,18))\n"++
+               "9:((6,13),(6,14))\n"++
+               "9:((6,15),(6,18))\n"++
+                "10:((6,15),(6,16))\n"++
+                "10:((6,17),(6,18))\n"++
+                 "11:((6,17),(6,18))\n"++
+             "7:((7,13),(7,18))\n"++
+              "8:((7,13),(7,18))\n"++
+               "9:((7,13),(7,14))\n"++
+                "9:((7,15),(7,18))\n"++
+                 "10:((7,15),(7,16))\n"++
+                 "10:((7,17),(7,18))\n"++
+                  "11:((7,17),(7,18))\n"++
+           "5:((8,9),(8,12))\n"++
+            "6:((8,9),(8,10))\n"++
+            "6:((8,10),(8,11))\n"++
+            "6:((8,11),(8,12))\n"++
+          "1:((10,1),(10,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      (show pprVal) `shouldBe`
+          "["++
+          "PprText 1 1 [((((0,0),(0,59)),ITlineComment \"-- A simple let statement, to ensure the layout is detected\"),\"-- A simple let statement, to ensure the layout is detected\")],"++
+          "PprText 3 1 [((((0,0),(0,6)),ITmodule),\"module\"),((((0,7),(0,21)),ITqconid (\"Layout\",\"LetStmt\")),\"Layout.LetStmt\"),((((0,22),(0,27)),ITwhere),\"where\")],"++
+          "PprText 5 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITvarid \"foo\"),\"foo\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,6),(0,8)),ITdo),\"do\")],"++
+          "PprText 6 9 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITlet),\"let\")],"++
+          "PprAbove 0 1 (7,17) (1,-8) "++
+            "[PprText 6 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,1)),ITvarid \"x\"),\"x\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 1),\"1\")],"++
+             "PprText 7 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),ITvarid \"y\"),\"y\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")]],"++
+          "PprText 8 9 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),ITvarid \"x\"),\"x\"),((((0,1),(0,2)),ITvarsym \"+\"),\"+\"),((((0,2),(0,3)),ITvarid \"y\"),\"y\")],"++
+          "PprText 10 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\")]]"
+
+      -- (show $ renderPprToHDoc pprVal) `shouldBe`  ""
+      -- (show $ renderPprToHDoc' pprVal) `shouldBe`  ""
+
+      (renderPpr pprVal) `shouldBe`
+          "-- A simple let statement, to ensure the layout is detected\n\nmodule Layout.LetStmt where\n\nfoo = do\n        let x = 1\n            y = 2\n        x+y\n"
 
   -- ---------------------------------------------
 
@@ -3778,5 +3844,10 @@ parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
 
 parsedFileLayoutLetExpr :: IO (ParseResult,[PosToken])
 parsedFileLayoutLetExpr = parsedFileGhc "./test/testdata/Layout/LetExpr.hs"
+
+-- ---------------------------------------------------------------------
+
+parsedFileLayoutLetStmt :: IO (ParseResult,[PosToken])
+parsedFileLayoutLetStmt = parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
 
 -- ---------------------------------------------------------------------
