@@ -1225,6 +1225,24 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
           `Hbeside` Hhcat (go (rt+rto,colAfterPprText ppt) subs)] ++ go (rt,ct) ps'
 
     go (r,c) (ppt@(PprText rt ct _toks):(PprAbove ro co (_,cc) (er,ec) subs):ps')
+        = case er of
+            0 -> [firstPart `Hbeside` secondPart] -- On the same line
+            _ -> [firstPart,secondPart]           -- Go to new line
+          ++ (go (lookAheadRc ps'') ps'')
+        where
+          firstPart = ((head $ renderPprText (r,c) ppt)
+                      `Hbeside` (renderOffset ro co (colAfterPprText ppt))
+                      `Hbeside` Hhcat [(Hvcat (go (rt+ro,ct+co) subs))]
+                      )
+          secondPart =  ((renderOffset er ec cc)
+                        `Hbeside` nextPpr)
+
+
+          (nextPpr,ps'') = case ps' of
+            [] -> (Hempty,[])
+            (p:pps) -> (head $ go (lookAheadRc [p]) [p],pps)
+{-
+    go (r,c) (ppt@(PprText rt ct _toks):(PprAbove ro co (_,cc) (er,ec) subs):ps')
         = ((head $ renderPprText (r,c) ppt)
           `Hbeside` (renderOffset ro co (colAfterPprText ppt))
           `Hbeside` Hhcat [(Hvcat (go (rt+ro,ct+co) subs))]
@@ -1236,7 +1254,7 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
           (nextPpr,ps'') = case ps' of
             [] -> (Hempty,[])
             (p:pps) -> (head $ go (lookAheadRc [p]) [p],pps)
-
+-}
     go (r,c) (ppt@(PprText rt ct _toks):ps') = renderPprText (r,c) ppt ++ go (rt,ct) ps'
 
     go (r,c) ((PprOffset rt ct subs):ps')    = (go (r+rt,c+ct) subs) ++ (go (r+rt,c+ct) ps')
@@ -1257,14 +1275,10 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
     renderOffset :: Row -> Col -> Col -> HDoc
     renderOffset r c oc = nl `Hbeside` (Htext $ take c' (repeat ' '))
       where
-        c' = if r == 0 then c else (c + oc)
+        c' = if r == 0 then c else (c + oc - 1)
         nl
          | r /= 0  = Hvcat (take r $ repeat (Htext ""))
          | otherwise = Hempty
-        -- nl = nn r
-
-        nn 0 = Hempty
-        nn n = (Htext "") `Habove` (nn (n -1))
 
     newLines :: Int -> Int -> HDoc
     newLines oldRow newRow
@@ -1273,7 +1287,7 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
 
     newCol :: Int -> Int -> Int -> Int -> HDoc
     newCol oldR oldC newR newC
-      | oldR /= newR = Htext $ take newC (repeat ' ')
+      | oldR /= newR = Htext $ take (newC - 1)    (repeat ' ')
       | otherwise    = Htext $ take (newC - oldC) (repeat ' ')
 
 -- ---------------------------------------------------------------------
