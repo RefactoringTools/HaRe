@@ -225,7 +225,8 @@ This can perhaps be used to choose appropriate token boundaries.
 -}
 
 
-deriving instance Show Entry --  => Show (Entry)
+deriving instance Show         Entry
+
 deriving instance Show Ppr
 
 
@@ -1146,13 +1147,13 @@ retrieveTokensPpr' acc (Node (Deleted _sspan  _eg ) _  ) = acc
 
 retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs) = foldl' retrieveTokensPpr' acc subs
 
-retrieveTokensPpr' acc (Node (Entry _sspan (Above ro co (r,c))  []) subs) = acc'
+retrieveTokensPpr' acc (Node (Entry _sspan (Above ro co (r,c) eo)  []) subs) = acc'
   where
     (ac,curLineToks) = acc
     (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
     cl2Acc = mkPprFromLineToks cl2
     ll = mkPprFromLineToks curLineToks
-    acc' = (ac ++ ll ++ [PprAbove ro co (r,c) (normaliseColumns (sss++cl2Acc))],[])
+    acc' = (ac ++ ll ++ [PprAbove ro co (r,c) eo (normaliseColumns (sss++cl2Acc))],[])
 
 retrieveTokensPpr' acc (Node (Entry _sspan (Offset r c) []) subs) = acc'
   where
@@ -1219,7 +1220,7 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
     go (r,c) (ppt@(PprText rt ct _toks):(PprOffset rto cto subs):ps') = [(head $ renderPprText (r,c) ppt) `Hbeside` (renderOffset rto cto) `Hbeside` Hhcat (go (rt+rto,colAfterPprText ppt) subs)] ++ go (rt,ct) ps'
     go (r,c) (ppt@(PprText rt ct _toks):ps') = renderPprText (r,c) ppt ++ go (rt,ct) ps'
     go (r,c) ((PprOffset rt ct subs):ps')    = (go (r+rt,c+ct) subs) ++ (go (r+rt,c+ct) ps')
-    go (r,c) ((PprAbove ro co _ subs):ps')     = (Hvcat (go (r+ro,c+co) subs)) : (go (r,c) ps')
+    go (r,c) ((PprAbove ro co _ _ subs):ps')     = (Hvcat (go (r+ro,c+co) subs)) : (go (r,c) ps')
     -- go (r,c) ((PprAbove subs):ps')        = error $ "PprAbove:(r,c)=" ++ show (r,c)
 
     colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
@@ -1252,7 +1253,7 @@ renderPprToHDoc' ps = Hvcat r
       where
         ((r',c'),roff) = foldl' go ((r+rt,c+ct),[]) subs
 
-    go ((r,c),acc) (PprAbove ro co _ subs)      = ((r',c'),acc++[(Hvcat rabove)])
+    go ((r,c),acc) (PprAbove ro co _ _ subs)      = ((r',c'),acc++[(Hvcat rabove)])
       where
         ((r',c'),rabove) = foldl' go ((r,c),[]) subs
 
@@ -2055,7 +2056,7 @@ drawEntry (Node (Entry sspan lay _toks) ts0) = ((showForestSpan sspan) ++ (showL
 
 showLayout :: Layout -> String
 showLayout NoChange       = ""
-showLayout (Above ro co (r,c)) = "(Above "++ show ro ++ " " ++ show co ++ " " ++ show (r,c) ++ ")"
+showLayout (Above ro co (r,c) eo) = "(Above "++ show ro ++ " " ++ show co ++ " " ++ show (r,c) ++ " " ++ show eo ++ ")"
 showLayout (Offset r c)   = "(Offset " ++ show r ++ " " ++ show c ++ ")"
 
 -- ---------------------------------------------------------------------

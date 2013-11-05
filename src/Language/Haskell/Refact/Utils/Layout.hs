@@ -151,7 +151,7 @@ instance Outputable Entry where
   ppr (Entry sspan lay toks) = text "Entry" <+> ppr sspan <+> ppr lay <+> text (show toks)
 
 instance Outputable Layout where
-  ppr (Above ro co (r,c))   = text "Above" <+> ppr ro <+> ppr co <+> ppr (r,c)
+  ppr (Above ro co (r,c) oe)   = text "Above" <+> ppr ro <+> ppr co <+> ppr (r,c) <+> ppr oe
   ppr (Offset r c)    = text "Offset" <+> ppr r <+> ppr c
   ppr (NoChange)      = text "NoChange"
   ppr (EndOffset r c) = text "EndOffset" <+> ppr r <+> ppr c
@@ -200,7 +200,8 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
           where
             (s4,declToks,toks4') = splitToksForList is toks3
 
-    r = addEndOffsets $ makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
+    r' = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
+    r = addEndOffsets r' toks
     -- r = error $ "allocTokens:(nameLayout,toks1)=" ++ (show (nameLayout,toks1)) -- ++AZ++
     -- r = error $ "allocTokens:(exportLayout,toks2)=" ++ (show (exportLayout,toks2)) -- ++AZ++
     -- r = error $ "allocTokens:(importLayout,toks3)=" ++ (show (importLayout,toks3)) -- ++AZ++
@@ -208,6 +209,22 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
 
 -- ---------------------------------------------------------------------
 
+addEndOffsets :: LayoutTree -> [PosToken] -> LayoutTree
+addEndOffsets tree toks = go tree
+  where
+    go (t@(Node (Entry _ _ _toks) [])) = t
+    go (  (Node (Entry s (Above ro co (r,c) _eo) []) subs)) = (Node (Entry s (Above ro co (r,c) eo') []) (map go subs))
+      where
+        (_,m,_) = splitToks ((r,c),(99999,1)) toks
+        eo' = case m of
+               (_x:y:_ts) -> (tokenRow y - r, tokenCol y - c)
+               _ -> (0,0)
+        -- eo' = error $ "addEndOffsets:m=" ++ (show m)
+        -- eo' = (0,0)
+    go (  (Node (Entry s l []) subs)) = (Node (Entry s l []) (map go subs))
+
+-- ---------------------------------------------------------------------
+{-
 addEndOffsets :: LayoutTree -> LayoutTree
 addEndOffsets tree = Z.toTree $ doOne (Z.fromTree tree)
   where
@@ -237,6 +254,7 @@ addEndOffsets tree = Z.toTree $ doOne (Z.fromTree tree)
     -- This will either be in the next sibling along, or the next leaf
     -- in order to the right of this one.
     manipulateTree z = zxxxx -- TODO: broken to carry on from here
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -961,7 +979,7 @@ splitToksForList xs toks = splitToks (getGhcLoc s, getGhcLocEnd e) toks
 
 placeAbove :: RowOffset -> ColOffset -> (Row,Col) -> [LayoutTree] -> LayoutTree
 placeAbove _ _ _ [] = error "placeAbove []"
-placeAbove ro co (r,c) ls = Node (Entry loc (Above ro co (r,c)) []) ls
+placeAbove ro co (r,c) ls = Node (Entry loc (Above ro co (r,c) (0,0)) []) ls
   where
     loc = combineSpans (getLoc $ head ls) (getLoc $ last ls)
 
