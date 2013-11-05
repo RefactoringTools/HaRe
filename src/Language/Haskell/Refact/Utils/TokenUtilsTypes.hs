@@ -159,6 +159,7 @@ data Ppr = PprText Row Col [PosToken] -- ^Original row and col of the tokens
 -- ---------------------------------------------------------------------
 
 infixl 6 `Hbeside`
+infixl 6 `Habove`
 
 -- |A structure to wrap the pretty print commands to make them
 -- visible, since Doc constructors are not exported
@@ -167,6 +168,8 @@ data HDoc = Htext String
           | Hvcat [HDoc]
           | Hnest Int HDoc
           | HDoc `Hbeside` HDoc
+          | HDoc `Habove` HDoc
+          | Hempty
           deriving (Eq,Show)
 
 -- ---------------------------------------------------------------------

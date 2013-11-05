@@ -46,7 +46,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , retrieveTokensPpr
        , renderPpr
        , renderPprToHDoc
-       , renderPprToHDoc'
+       -- , renderPprToHDoc'
        , renderHDoc
        , retrieveTokensInterim
        , retrieveTokens' -- temporary for debug
@@ -1217,20 +1217,59 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
   where
     go :: (Int,Int) -> [Ppr] -> [HDoc]
     go _ [] = []
-    go (r,c) (ppt@(PprText rt ct _toks):(PprOffset rto cto subs):ps') = [(head $ renderPprText (r,c) ppt) `Hbeside` (renderOffset rto cto) `Hbeside` Hhcat (go (rt+rto,colAfterPprText ppt) subs)] ++ go (rt,ct) ps'
+
+    -- NOTE: PprOffset is likely to disappear
+    go (r,c) (ppt@(PprText rt ct _toks):(PprOffset rto cto subs):ps')
+        = [(head $ renderPprText (r,c) ppt)
+          `Hbeside` (renderOffset rto cto (colAfterPprText ppt))
+          `Hbeside` Hhcat (go (rt+rto,colAfterPprText ppt) subs)] ++ go (rt,ct) ps'
+
+    go (r,c) (ppt@(PprText rt ct _toks):(PprAbove ro co (_,cc) (er,ec) subs):ps')
+        = ((head $ renderPprText (r,c) ppt)
+          `Hbeside` (renderOffset ro co (colAfterPprText ppt))
+          `Hbeside` Hhcat [(Hvcat (go (rt+ro,ct+co) subs))]
+          )
+          `Hbeside` ((renderOffset er ec cc)
+          `Hbeside` nextPpr)
+        : (go (lookAheadRc ps'') ps'')
+        where
+          (nextPpr,ps'') = case ps' of
+            [] -> (Hempty,[])
+            (p:pps) -> (head $ go (lookAheadRc [p]) [p],pps)
+
     go (r,c) (ppt@(PprText rt ct _toks):ps') = renderPprText (r,c) ppt ++ go (rt,ct) ps'
+
     go (r,c) ((PprOffset rt ct subs):ps')    = (go (r+rt,c+ct) subs) ++ (go (r+rt,c+ct) ps')
-    go (r,c) ((PprAbove ro co _ _ subs):ps')     = (Hvcat (go (r+ro,c+co) subs)) : (go (r,c) ps')
-    -- go (r,c) ((PprAbove subs):ps')        = error $ "PprAbove:(r,c)=" ++ show (r,c)
+
+
+    -- ---------------------------------
+
+    lookAheadRc []                       = (0,0)
+    lookAheadRc ((PprText r c _):_)      = (r,c)
+    lookAheadRc ((PprOffset r c _):_)    = (r,c)
+    lookAheadRc ((PprAbove r c _ _ _):_) = (r,c)
+
 
     colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
 
-    renderPprText (r,c) (PprText rt ct toks) = [Hvcat (newLines r rt) `Hbeside` (newCol r c rt ct) `Hbeside` (Htext $ GHC.showRichTokenStream toks)]
+    renderPprText (r,c) (PprText rt ct toks) = [(newLines r rt) `Hbeside` (newCol r c rt ct) `Hbeside` (Htext $ GHC.showRichTokenStream toks)]
 
-    renderOffset r c = Hvcat (take r $ repeat (Htext "")) `Hbeside` (Htext $ take c (repeat ' '))
+    renderOffset :: Row -> Col -> Col -> HDoc
+    renderOffset r c oc = nl `Hbeside` (Htext $ take c' (repeat ' '))
+      where
+        c' = if r == 0 then c else (c + oc)
+        nl
+         | r /= 0  = Hvcat (take r $ repeat (Htext ""))
+         | otherwise = Hempty
+        -- nl = nn r
 
-    newLines :: Int -> Int -> [HDoc]
-    newLines oldRow newRow = take (newRow - oldRow) $ repeat (Htext "")
+        nn 0 = Hempty
+        nn n = (Htext "") `Habove` (nn (n -1))
+
+    newLines :: Int -> Int -> HDoc
+    newLines oldRow newRow
+      | oldRow == newRow = Hempty
+      | otherwise        = Hvcat $ take (newRow - oldRow) $ repeat (Htext "")
 
     newCol :: Int -> Int -> Int -> Int -> HDoc
     newCol oldR oldC newR newC
@@ -1239,6 +1278,7 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
 
 -- ---------------------------------------------------------------------
 
+{-
 -- |Convert a Ppr list into an HDoc structure
 renderPprToHDoc' :: [Ppr] -> HDoc
 renderPprToHDoc' ps = Hvcat r
@@ -1270,6 +1310,7 @@ renderPprToHDoc' ps = Hvcat r
     newCol oldR oldC newR newC
       | oldR /= newR = Htext $ take newC (repeat ' ')
       | otherwise    = Htext $ take (newC - oldC) (repeat ' ')
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -1282,6 +1323,8 @@ hDocToDoc (Hhcat ds)      = PP.hcat (map hDocToDoc ds)
 hDocToDoc (Hvcat ds)      = PP.vcat (map hDocToDoc ds)
 hDocToDoc (Hnest i d)     = PP.nest i (hDocToDoc d)
 hDocToDoc (a `Hbeside` b) = (hDocToDoc a) PP.<> (hDocToDoc b)
+hDocToDoc (a `Habove` b)  = (hDocToDoc a) PP.$+$ (hDocToDoc b)
+hDocToDoc Hempty          = PP.empty
 
 -- ---------------------------------------------------------------------
 
