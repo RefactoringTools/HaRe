@@ -1217,22 +1217,11 @@ renderPpr ps = go 0 (1,1) ps
         = firstPart
           ++ (renderOffset er ec cc)
           ++ go ci (lookAheadRc ci ps') ps'
---          ++ secondPart
---          ++ (go ci (lookAheadRc ci ps'') ps'')
       where
           firstPart = ((renderPprText ci (r,c) ppt)
                        ++ (renderOffset ro co (colAfterPprText ppt))
                        ++ renderPprAbove (co + (colAfterPprText ppt)) ppa
                       )
-          secondPart =  ((renderOffset er ec cc)
-                        ++ nextPpr)
-
-          (nextPpr,ps'') = case ps' of
-            [] -> ("",[])
-            (p:pps) -> (lhead $ go ci (lookAheadRc ci [p]) [p],pps)
-
-          lhead :: String -> String
-          lhead = takeWhile (/='\n')
 
     go ci (r,c) (p@(PprText rt ct _toks):ps') = (renderPprText ci (r,c) p) ++ go ci (rt,ct) ps'
 
@@ -1241,18 +1230,13 @@ renderPpr ps = go 0 (1,1) ps
     -- ---------------------------------
 
     renderPprAbove :: Col -> Ppr -> String
-    renderPprAbove ci (PprAbove _ro _co _ (er,ec) subs) = r
-      where
-        -- Assumptions: we are already at (r,c), and the required
-        -- column offset is ci
-        (ra,endCol) = case subs of
-             [] -> ("",0)
-             (p:_) -> (ra',endCol')
+    renderPprAbove ci (PprAbove _ _ _ _ subs)
+       = case subs of
+             [] -> ""
+             (p:_) -> ra'
                where
                  (r',c') = (lookAheadRc ci [p])
                  ra' = go ci (r',c') subs
-                 endCol' = c'
-        r = ra -- ++ (renderOffset er ec endCol)
 
     lookAheadRc _ []                       = (0,0)
     lookAheadRc ci ((PprText r c _):_)      = (r,ci+c)

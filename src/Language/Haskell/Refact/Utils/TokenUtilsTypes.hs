@@ -21,7 +21,7 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        , ForestPos
        , ForestSpan
        , Ppr(..)
-       , HDoc(..)
+       -- , HDoc(..)
        ) where
 
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -157,7 +157,7 @@ data Ppr = PprText Row Col [PosToken] -- ^Original row and col of the tokens
          | PprOffset RowOffset ColOffset [Ppr]
 
 -- ---------------------------------------------------------------------
-
+{-
 infixl 6 `Hbeside`
 infixl 6 `Habove`
 
@@ -171,7 +171,7 @@ data HDoc = Htext String
           | HDoc `Habove` HDoc
           | Hempty
           deriving (Eq,Show)
-
+-}
 -- ---------------------------------------------------------------------
 
 -- EOF
