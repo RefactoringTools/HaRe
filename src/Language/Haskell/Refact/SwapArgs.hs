@@ -54,7 +54,7 @@ comp fileName (row, col) = do
                             -- let pnt = locToPNT (GHC.mkFastString fileName) (row, col) renamed
                             -- let pnt = gfromJust "SwapArgs.comp" $ locToRdrName (GHC.mkFastString fileName) (row, col) renamed
 
-                            (refactoredMod@(_, (_t, _s)),_) <- applyRefac (doSwap pn) (RSFile fileName)
+                            (refactoredMod,_) <- applyRefac (doSwap pn) (RSFile fileName)
                             return [refactoredMod]
             Nothing   -> error "Incorrect identifier selected!"
        --if isFunPNT pnt mod    -- Add this back in ++ CMB +++

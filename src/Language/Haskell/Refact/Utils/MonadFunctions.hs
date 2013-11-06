@@ -12,6 +12,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Conveniences for state access
 
          fetchToksFinal
+       , fetchPprFinal
        , fetchOrigToks
        , fetchToks -- Deprecated
        -- , putToks -- ^Deprecated, destroys token tree
@@ -108,6 +109,15 @@ fetchToksFinal = do
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchToksFinal (not showing toks)"
   return toks
+
+-- |fetch the final tokens in Ppr format
+fetchPprFinal :: RefactGhc [Ppr]
+fetchPprFinal = do
+  Just tm <- gets rsModule
+  let pprVal = retrieveTokensPpr $ (tkCache $ rsTokenCache tm) Map.! mainTid
+  -- logm $ "fetchToks" ++ (showToks toks)
+  logm $ "fetchPprFinal (not showing ppr)"
+  return pprVal
 
 -- |fetch the pristine token stream
 fetchOrigToks :: RefactGhc [PosToken]

@@ -1110,7 +1110,6 @@ splitToks (startPos, endPos) toks =
     (toks1,toks21,toks22)
 
 
-
 -- ----------------------------------------------------------------------
 
 -- |Get around lack of instance Eq when simply testing for empty list

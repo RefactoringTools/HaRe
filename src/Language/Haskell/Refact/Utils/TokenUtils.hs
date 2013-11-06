@@ -45,9 +45,9 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , retrieveTokensFinal
        , retrieveTokensPpr
        , renderPpr
-       , renderPprToHDoc
+       -- , renderPprToHDoc
        -- , renderPprToHDoc'
-       , renderHDoc
+       -- , renderHDoc
        , retrieveTokensInterim
        , retrieveTokens' -- temporary for debug
 
@@ -1208,6 +1208,87 @@ normaliseColumns ps = ps'
 
 -- |Convert a Ppr list into formatted source code
 renderPpr :: [Ppr] -> String
+renderPpr ps = go 0 (1,1) ps
+  where
+    go :: Col -> (Row,Col) -> [Ppr] -> String
+    go _ _ [] = []
+
+    go ci (r,c) (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,cc) (er,ec) _subs):ps')
+        = case er of
+            0 -> firstPart ++ secondPart -- On the same line
+            _ -> firstPart ++ secondPart    -- Go to new line
+          ++ (go ci (lookAheadRc ci ps'') ps'')
+      where
+          firstPart = ((renderPprText ci (r,c) ppt)
+                       ++ (renderOffset ro co (colAfterPprText ppt))
+                       ++ renderPprAbove (co + (colAfterPprText ppt)) ppa
+                      )
+          secondPart =  ((renderOffset er ec cc)
+                        ++ nextPpr)
+
+          (nextPpr,ps'') = case ps' of
+            [] -> ("",[])
+            (p:pps) -> (lhead $ go ci (lookAheadRc ci [p]) [p],pps)
+
+          lhead :: String -> String
+          lhead = takeWhile (/='\n')
+
+    go ci (r,c) (p@(PprText rt ct _toks):ps') = (renderPprText ci (r,c) p) ++ go ci (rt,ct) ps'
+
+    go _ _ pps = error $ "renderPpr: unmatched in go:" ++ (show pps)
+
+    -- ---------------------------------
+
+    renderPprAbove :: Col -> Ppr -> String
+    renderPprAbove ci (PprAbove _ro _co _ (er,ec) subs) = r
+      where
+        -- Assumptions: we are already at (r,c), and the required
+        -- column offset is ci
+        (ra,endCol) = case subs of
+             [] -> ("",0)
+             (p:_) -> (ra',endCol')
+               where
+                 (r',c') = (lookAheadRc ci [p])
+                 ra' = go ci (r',c') subs
+                 endCol' = c'
+        r = ra -- ++ (renderOffset er ec endCol)
+
+    lookAheadRc _ []                       = (0,0)
+    lookAheadRc ci ((PprText r c _):_)      = (r,ci+c)
+    lookAheadRc ci ((PprOffset r c _):_)    = (r,ci+c)
+    lookAheadRc ci ((PprAbove r c _ _ _):_) = (r,ci+c)
+
+    colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
+
+    renderPprText :: Col -> (Row,Col) -> Ppr -> String
+    renderPprText ci (r,c) (PprText rt ct toks)
+      = (newLines r rt)
+      ++ (newCol r c rt (ci + ct))
+      -- ++ "(" ++ (show (ci,(r,c),(rt,ct))) ++ ")"
+      ++ (GHC.showRichTokenStream toks)
+
+    renderOffset :: Row -> Col -> Col -> String
+    renderOffset r c oc = nl ++ (take c' (repeat ' '))
+      where
+        c' = if r == 0 then c else (c + oc - 1)
+        nl
+         | r /= 0  = take r $ repeat '\n'
+         | otherwise = []
+
+    newLines :: Row -> Row -> String
+    newLines oldRow newRow
+      | oldRow == newRow = ""
+      | otherwise        = take (newRow - oldRow) $ repeat '\n'
+
+    newCol :: Row -> Col -> Row -> Col -> String
+    newCol oldR oldC newR newC
+      | oldR /= newR = take (newC - 1)    (repeat ' ')
+      | otherwise    = take (newC - oldC) (repeat ' ')
+
+{-
+-- ---------------------------------------------------------------------
+-- |Convert a Ppr list into formatted source code
+renderPpr :: [Ppr] -> String
 renderPpr = renderHDoc . renderPprToHDoc
 -- renderPpr = renderHDoc . renderPprToHDoc'
 
@@ -1241,24 +1322,10 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
           (nextPpr,ps'') = case ps' of
             [] -> (Hempty,[])
             (p:pps) -> (head $ go (lookAheadRc [p]) [p],pps)
-{-
-    go (r,c) (ppt@(PprText rt ct _toks):(PprAbove ro co (_,cc) (er,ec) subs):ps')
-        = ((head $ renderPprText (r,c) ppt)
-          `Hbeside` (renderOffset ro co (colAfterPprText ppt))
-          `Hbeside` Hhcat [(Hvcat (go (rt+ro,ct+co) subs))]
-          )
-          `Hbeside` ((renderOffset er ec cc)
-          `Hbeside` nextPpr)
-        : (go (lookAheadRc ps'') ps'')
-        where
-          (nextPpr,ps'') = case ps' of
-            [] -> (Hempty,[])
-            (p:pps) -> (head $ go (lookAheadRc [p]) [p],pps)
--}
+
     go (r,c) (ppt@(PprText rt ct _toks):ps') = renderPprText (r,c) ppt ++ go (rt,ct) ps'
 
     go (r,c) ((PprOffset rt ct subs):ps')    = (go (r+rt,c+ct) subs) ++ (go (r+rt,c+ct) ps')
-
 
     -- ---------------------------------
 
@@ -1292,42 +1359,6 @@ renderPprToHDoc ps = Hvcat $ go (1,1) ps
 
 -- ---------------------------------------------------------------------
 
-{-
--- |Convert a Ppr list into an HDoc structure
-renderPprToHDoc' :: [Ppr] -> HDoc
-renderPprToHDoc' ps = Hvcat r
-  where
-    (_,r) = foldl' go ((1,1),[]) ps
-
-    go :: ((Int,Int),[HDoc]) -> Ppr -> ((Int,Int),[HDoc])
-
-    go ((r,c),acc) (ppt@(PprText rt ct toks)) = ((rt,colAfterPprText ppt),acc ++ renderPprText (r,c) ppt)
-
-    go ((r,c),acc) (PprOffset rt ct subs)    = ((r',c'),acc ++ roff)
-      where
-        ((r',c'),roff) = foldl' go ((r+rt,c+ct),[]) subs
-
-    go ((r,c),acc) (PprAbove ro co _ _ subs)      = ((r',c'),acc++[(Hvcat rabove)])
-      where
-        ((r',c'),rabove) = foldl' go ((r,c),[]) subs
-
-    renderPprText (r,c) (PprText rt ct toks) =
-         [Hvcat (newLines r rt) `Hbeside` (newCol r c rt ct)
-          `Hbeside` (Htext $ GHC.showRichTokenStream toks)]
-
-    colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
-
-    newLines :: Int -> Int -> [HDoc]
-    newLines oldRow newRow = take (newRow - oldRow) $ repeat (Htext "")
-
-    newCol :: Int -> Int -> Int -> Int -> HDoc
-    newCol oldR oldC newR newC
-      | oldR /= newR = Htext $ take newC (repeat ' ')
-      | otherwise    = Htext $ take (newC - oldC) (repeat ' ')
--}
-
--- ---------------------------------------------------------------------
-
 renderHDoc :: HDoc -> String
 renderHDoc = PP.render . hDocToDoc
 
@@ -1339,7 +1370,7 @@ hDocToDoc (Hnest i d)     = PP.nest i (hDocToDoc d)
 hDocToDoc (a `Hbeside` b) = (hDocToDoc a) PP.<> (hDocToDoc b)
 hDocToDoc (a `Habove` b)  = (hDocToDoc a) PP.$+$ (hDocToDoc b)
 hDocToDoc Hempty          = PP.empty
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |Retrieve all the tokens at the leaves of the tree, in order. No

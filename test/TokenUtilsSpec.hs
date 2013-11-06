@@ -1743,6 +1743,8 @@ tree TId 0:
       -- (show $ renderPprToHDoc pprVal) `shouldBe`  ""
       -- (show $ renderPprToHDoc' pprVal) `shouldBe`  ""
 
+      -- (renderPpr [head pprVal,last pprVal]) `shouldBe` ""
+
       (renderPpr pprVal) `shouldBe`
           "-- A simple let expression, to ensure the layout is detected\n" ++
           "\n" ++
@@ -1817,7 +1819,150 @@ tree TId 0:
       (renderPpr pprVal) `shouldBe`
           "-- A simple let statement, to ensure the layout is detected\n\nmodule Layout.LetStmt where\n\nfoo = do\n        let x = 1\n            y = 2\n        x+y\n"
 
-  -- ---------------------------------------------
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in Ppr format LayoutIn2" $ do
+      (t,toks) <- parsedFileLayoutIn2
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      (GHC.showRichTokenStream $ bypassGHCBug7351 toks) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(14,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,17))\n"++
+          "1:((1,18),(5,42))\n"++
+          "1:((7,1),(7,6))\n"++
+          "2:((7,1),(7,6))\n"++
+          "1:((7,7),(7,9))\n"++
+          "1:((7,10),(7,11))\n"++
+          "1:((7,11),(7,14))\n"++
+          "1:((7,14),(7,15))\n"++
+          "1:((7,16),(7,18))\n"++
+          "1:((7,19),(7,22))\n"++
+          "1:((8,1),(12,43))\n"++
+          "2:((8,1),(12,43))\n"++
+          "3:((8,1),(8,6))\n"++
+          "3:((8,7),(12,43))\n"++
+          "4:((8,7),(8,11))\n"++
+          "5:((8,7),(8,11))\n"++
+          "4:((8,12),(8,13))\n"++
+          "4:((8,14),(12,43))\n"++
+           "5:((8,14),(8,18))\n"++
+           "5:((8,19),(8,23))\n"++
+           "5:((8,24),(8,26))\n"++
+           "5:((8,28),(12,43))(Above 0 2 (12,41) (2,-40))\n"++
+            "6:((8,28),(8,39))\n"++
+             "7:((8,28),(8,34))\n"++
+              "8:((8,28),(8,34))\n"++
+             "7:((8,35),(8,37))\n"++
+             "7:((8,38),(8,39))\n"++
+              "8:((8,38),(8,39))\n"++
+            "6:((9,1),(9,21))\n"++ -- The comment
+            "6:((10,28),(11,66))\n"++
+             "7:((10,28),(10,34))\n"++
+              "8:((10,28),(10,34))\n"++
+             "7:((11,30),(11,46))\n"++
+              "8:((11,30),(11,31))\n"++
+              "8:((11,32),(11,38))\n"++
+               "9:((11,32),(11,33))\n"++
+               "9:((11,34),(11,35))\n"++
+               "9:((11,36),(11,38))\n"++
+              "8:((11,45),(11,46))\n"++
+             "7:((11,48),(11,53))\n"++
+             "7:((11,55),(11,66))(Above 0 2 (11,64) (1,-36))\n"++
+              "8:((11,55),(11,66))\n"++
+               "9:((11,55),(11,66))\n"++
+                "10:((11,55),(11,56))\n"++
+                "10:((11,57),(11,66))\n"++
+                 "11:((11,57),(11,58))\n"++
+                 "11:((11,59),(11,66))\n"++
+                  "12:((11,59),(11,63))\n"++
+                  "12:((11,64),(11,66))\n"++
+            "6:((12,28),(12,43))\n"++
+             "7:((12,28),(12,37))\n"++
+              "8:((12,28),(12,37))\n"++
+             "7:((12,38),(12,40))\n"++
+             "7:((12,41),(12,43))\n"++
+              "8:((12,41),(12,43))\n"++
+          "1:((14,1),(14,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      (show pprVal) `shouldBe`
+          "["++
+          "PprText 1 1 [((((0,0),(0,6)),ITmodule),\"module\"),((((0,7),(0,16)),ITconid \"LayoutIn2\"),\"LayoutIn2\"),((((0,17),(0,22)),ITwhere),\"where\")],"++
+          "PprText 3 1 [((((0,0),(0,55)),ITlineComment \"--Layout rule applies after 'where','let','do' and 'of'\"),\"--Layout rule applies after 'where','let','do' and 'of'\")],"++
+          "PprText 5 1 [((((0,0),(0,41)),ITlineComment \"--In this Example: rename 'list' to 'ls'.\"),\"--In this Example: rename 'list' to 'ls'.\")],"++
+          "PprText 7 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,5)),ITvarid \"silly\"),\"silly\"),((((0,6),(0,8)),ITdcolon),\"::\"),"++
+                       "((((0,9),(0,10)),ITobrack),\"[\"),((((0,10),(0,13)),ITconid \"Int\"),\"Int\"),((((0,13),(0,14)),ITcbrack),\"]\"),"++
+                       "((((0,15),(0,17)),ITrarrow),\"->\"),((((0,18),(0,21)),ITconid \"Int\"),\"Int\")],"++
+          "PprText 8 1 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,5)),ITvarid \"silly\"),\"silly\"),((((0,6),(0,10)),ITvarid \"list\"),\"list\"),"++
+                       "((((0,11),(0,12)),ITequal),\"=\"),((((0,13),(0,17)),ITcase),\"case\"),((((0,18),(0,22)),ITvarid \"list\"),\"list\"),"++
+                       "((((0,23),(0,25)),ITof),\"of\")],"++
+          "PprAbove 0 2 (12,41) (2,-40) "++
+           "[PprText 8 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,1)),IToparen),\"(\"),((((0,1),(0,2)),ITinteger 1),\"1\"),"++
+                         "((((0,2),(0,3)),ITcolon),\":\"),((((0,3),(0,5)),ITvarid \"xs\"),\"xs\"),((((0,5),(0,6)),ITcparen),\")\"),"++
+                         "((((0,7),(0,9)),ITrarrow),\"->\"),((((0,10),(0,11)),ITinteger 1),\"1\")],"++
+            "PprText 9 (-27) [((((0,0),(0,20)),ITlineComment \"--There is a comment\"),\"--There is a comment\")],"++
+            "PprText 10 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),IToparen),\"(\"),((((0,1),(0,2)),ITinteger 2),\"2\"),"++
+                          "((((0,2),(0,3)),ITcolon),\":\"),((((0,3),(0,5)),ITvarid \"xs\"),\"xs\"),((((0,5),(0,6)),ITcparen),\")\")],"++
+            "PprText 11 2 [((((0,0),(0,1)),ITvbar),\"|\"),((((0,2),(0,3)),ITvarid \"x\"),\"x\"),((((0,4),(0,5)),ITvarsym \"<\"),\"<\"),"++
+                          "((((0,6),(0,8)),ITinteger 10),\"10\"),((((0,12),(0,14)),ITrarrow),\"->\"),((((0,15),(0,16)),ITinteger 4),\"4\"),"++
+                          "((((0,18),(0,23)),ITwhere),\"where\")],"++
+            "PprAbove 0 2 (11,64) (1,-36) "++
+              "[PprText 11 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,1)),ITvarid \"x\"),\"x\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,8)),ITvarid \"last\"),\"last\"),((((0,9),(0,11)),ITvarid \"xs\"),\"xs\")]],"++
+            "PprText 12 0 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,9)),ITvarid \"otherwise\"),\"otherwise\"),((((0,10),(0,12)),ITrarrow),\"->\"),((((0,13),(0,15)),ITinteger 12),\"12\")]"++
+           "],"++
+          "PprText 14 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\")]]"
+
+
+      -- (show $ renderPprToHDoc pprVal) `shouldBe`  ""
+      -- (show $ renderPprToHDoc' pprVal) `shouldBe`  ""
+
+      -- (renderPpr pprVal) `shouldBe`
+      (renderPpr pprVal) `shouldBe`
+          "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in Ppr format LetIn1" $ do
+      (t,toks) <- parsedFileLiftLetIn1Ghc
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+      (show pprVal) `shouldBe`
+          "["++
+          "PprText 1 1 [((((0,0),(0,6)),ITmodule),\"module\"),((((0,7),(0,28)),ITqconid (\"LiftToToplevel\",\"LetIn1\")),\"LiftToToplevel.LetIn1\"),((((0,29),(0,34)),ITwhere),\"where\")],"++
+          "PprText 3 1 [((((0,0),(0,80)),ITlineComment \"--A definition can be lifted from a where or let to the top level binding group.\"),\"--A definition can be lifted from a where or let to the top level binding group.\")],"++
+          "PprText 4 1 [((((0,0),(0,58)),ITlineComment \"--Lifting a definition widens the scope of the definition.\"),\"--Lifting a definition widens the scope of the definition.\")],"++
+          "PprText 6 1 [((((0,0),(0,44)),ITlineComment \"--In this example, lift 'sq' in 'sumSquares'\"),\"--In this example, lift 'sq' in 'sumSquares'\")],"++
+          "PprText 7 1 [((((0,0),(0,80)),ITlineComment \"--This example aims to test lifting a definition from a let clause to top level,\"),\"--This example aims to test lifting a definition from a let clause to top level,\")],"++
+          "PprText 8 1 [((((0,0),(0,52)),ITlineComment \"--and the elimination of the keywords 'let' and 'in'\"),\"--and the elimination of the keywords 'let' and 'in'\")],"++
+          "PprText 10 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,10)),ITvarid \"sumSquares\"),\"sumSquares\"),((((0,11),(0,12)),ITvarid \"x\"),\"x\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\"),((((0,15),(0,16)),ITequal),\"=\"),((((0,17),(0,20)),ITlet),\"let\")],"++
+          "PprAbove 0 1 (11,29) (1,-10) "++
+             "[PprText 10 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITinteger 0),\"0\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,5),(0,6)),ITinteger 0),\"0\")],"++
+              "PprText 11 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"z\"),\"z\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,5),(0,6)),ITvarid \"z\"),\"z\"),((((0,6),(0,7)),ITvarsym \"^\"),\"^\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\")]],"++
+              "PprText 12 19 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,2)),ITin),\"in\"),((((0,3),(0,5)),ITvarid \"sq\"),\"sq\"),((((0,6),(0,7)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"+\"),\"+\"),((((0,10),(0,12)),ITvarid \"sq\"),\"sq\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\")],"++
+              "PprText 13 24 [((((0,0),(0,5)),ITwhere),\"where\")],"++
+              "PprAbove 0 1 (13,34) (2,-33) "++
+                  "[PprText 13 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITvarid \"pow\"),\"pow\"),((((0,3),(0,4)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")]],"++
+              "PprText 15 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,10)),ITvarid \"anotherFun\"),\"anotherFun\"),((((0,11),(0,12)),ITinteger 0),\"0\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\"),((((0,15),(0,16)),ITequal),\"=\"),((((0,17),(0,19)),ITvarid \"sq\"),\"sq\"),((((0,20),(0,21)),ITvarid \"y\"),\"y\")],PprText 16 6 [((((0,0),(0,5)),ITwhere),\"where\")],PprAbove 0 1 (16,21) (1,-20) [PprText 16 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"x\"),\"x\"),((((0,5),(0,6)),ITequal),\"=\"),((((0,7),(0,8)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"^\"),\"^\"),((((0,9),(0,10)),ITinteger 2),\"2\")]],PprText 17 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\")]]"
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+
+    -- ---------------------------------------------
 
   describe "updateTokensForSrcSpan" $ do
     it "replaces the tokens for a given span, inserting the span if needed" $ do
@@ -3851,3 +3996,4 @@ parsedFileLayoutLetStmt :: IO (ParseResult,[PosToken])
 parsedFileLayoutLetStmt = parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
 
 -- ---------------------------------------------------------------------
+

@@ -11,6 +11,7 @@ module TestUtils
        , initialState
        , initialLogOnState
        , toksFromState
+       , pprFromState
        , entriesFromState
        , defaultTestSettings
        , logTestSettings
@@ -117,6 +118,15 @@ toksFromState st =
   case (rsModule st) of
     -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
+    Nothing -> []
+
+-- ---------------------------------------------------------------------
+
+pprFromState :: RefactState -> [Ppr]
+pprFromState st =
+  case (rsModule st) of
+    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
+    Just tm -> retrieveTokensPpr $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
 
 -- ---------------------------------------------------------------------
