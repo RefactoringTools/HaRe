@@ -1938,7 +1938,7 @@ tree TId 0:
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
-      (show layout) `shouldBe` ""
+      -- (show layout) `shouldBe` ""
 
       let pprVal = retrieveTokensPpr layout
       (show pprVal) `shouldBe`
@@ -1952,15 +1952,54 @@ tree TId 0:
           "PprText 10 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,10)),ITvarid \"sumSquares\"),\"sumSquares\"),((((0,11),(0,12)),ITvarid \"x\"),\"x\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\"),((((0,15),(0,16)),ITequal),\"=\"),((((0,17),(0,20)),ITlet),\"let\")],"++
           "PprAbove 0 1 (11,29) (1,-10) "++
              "[PprText 10 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITinteger 0),\"0\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,5),(0,6)),ITinteger 0),\"0\")],"++
-              "PprText 11 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"z\"),\"z\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,5),(0,6)),ITvarid \"z\"),\"z\"),((((0,6),(0,7)),ITvarsym \"^\"),\"^\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\")]],"++
-              "PprText 12 19 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,2)),ITin),\"in\"),((((0,3),(0,5)),ITvarid \"sq\"),\"sq\"),((((0,6),(0,7)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"+\"),\"+\"),((((0,10),(0,12)),ITvarid \"sq\"),\"sq\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\")],"++
-              "PprText 13 24 [((((0,0),(0,5)),ITwhere),\"where\")],"++
-              "PprAbove 0 1 (13,34) (2,-33) "++
-                  "[PprText 13 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITvarid \"pow\"),\"pow\"),((((0,3),(0,4)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")]],"++
-              "PprText 15 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,10)),ITvarid \"anotherFun\"),\"anotherFun\"),((((0,11),(0,12)),ITinteger 0),\"0\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\"),((((0,15),(0,16)),ITequal),\"=\"),((((0,17),(0,19)),ITvarid \"sq\"),\"sq\"),((((0,20),(0,21)),ITvarid \"y\"),\"y\")],PprText 16 6 [((((0,0),(0,5)),ITwhere),\"where\")],PprAbove 0 1 (16,21) (1,-20) [PprText 16 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"x\"),\"x\"),((((0,5),(0,6)),ITequal),\"=\"),((((0,7),(0,8)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"^\"),\"^\"),((((0,9),(0,10)),ITinteger 2),\"2\")]],PprText 17 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\")]]"
+              "PprText 11 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"z\"),\"z\"),"++
+                            "((((0,4),(0,5)),ITequal),\"=\"),((((0,5),(0,6)),ITvarid \"z\"),\"z\"),((((0,6),(0,7)),ITvarsym \"^\"),\"^\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\")]"++
+             "],"++
+          "PprText 12 19 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,2)),ITin),\"in\"),((((0,3),(0,5)),ITvarid \"sq\"),\"sq\"),((((0,6),(0,7)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"+\"),\"+\"),((((0,10),(0,12)),ITvarid \"sq\"),\"sq\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\")],"++
+          "PprText 13 24 [((((0,0),(0,5)),ITwhere),\"where\")],"++
+          "PprAbove 0 1 (13,34) (2,-33) "++
+             "[PprText 13 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITvarid \"pow\"),\"pow\"),((((0,3),(0,4)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")]],"++
+           "PprText 15 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,10)),ITvarid \"anotherFun\"),\"anotherFun\"),((((0,11),(0,12)),ITinteger 0),\"0\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\"),((((0,15),(0,16)),ITequal),\"=\"),((((0,17),(0,19)),ITvarid \"sq\"),\"sq\"),((((0,20),(0,21)),ITvarid \"y\"),\"y\")],"++
+           "PprText 16 6 [((((0,0),(0,5)),ITwhere),\"where\")],"++
+           "PprAbove 0 1 (16,21) (1,-20) "++
+               "[PprText 16 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"x\"),\"x\"),((((0,5),(0,6)),ITequal),\"=\"),((((0,7),(0,8)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"^\"),\"^\"),((((0,9),(0,10)),ITinteger 2),\"2\")]],"++
+           "PprText 17 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\")]]"
 
       (renderPpr pprVal) `shouldBe` origSource
 
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format Where" $ do
+      (t,toks) <- parsedFileWhere
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+      (show pprVal) `shouldBe`
+          "["++
+          "PprText 1 1 [((((0,0),(0,6)),ITmodule),\"module\"),((((0,7),(0,27)),ITqconid (\"LiftToToplevel\",\"Where\")),\"LiftToToplevel.Where\"),((((0,28),(0,33)),ITwhere),\"where\")],"++
+          "PprText 3 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,10)),ITvarid \"anotherFun\"),\"anotherFun\"),"++
+                       "((((0,11),(0,12)),ITinteger 0),\"0\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\"),((((0,15),(0,16)),ITequal),\"=\"),"++
+                       "((((0,17),(0,19)),ITvarid \"sq\"),\"sq\"),((((0,20),(0,21)),ITvarid \"y\"),\"y\")],"++
+          "PprText 4 6 [((((0,0),(0,5)),ITwhere),\"where\")],"++
+          "PprAbove 0 1 (4,21) (1,-20) "++
+            "["++
+            "PprText 4 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"x\"),\"x\"),"++
+                         "((((0,5),(0,6)),ITequal),\"=\"),((((0,7),(0,8)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"^\"),\"^\"),((((0,9),(0,10)),ITinteger 2),\"2\")]"++
+            "],"++
+          "PprText 5 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\")]]"
+
+      (renderPpr pprVal) `shouldBe` origSource
 
     -- ---------------------------------------------
 
@@ -3994,6 +4033,11 @@ parsedFileLayoutLetExpr = parsedFileGhc "./test/testdata/Layout/LetExpr.hs"
 
 parsedFileLayoutLetStmt :: IO (ParseResult,[PosToken])
 parsedFileLayoutLetStmt = parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
+
+-- ---------------------------------------------------------------------
+
+parsedFileWhere :: IO (ParseResult,[PosToken])
+parsedFileWhere = parsedFileGhc "./test/testdata/Layout/Where.hs"
 
 -- ---------------------------------------------------------------------
 

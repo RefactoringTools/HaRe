@@ -110,3 +110,8 @@ parsedFileLetStmt :: IO (ParseResult,[PosToken])
 parsedFileLetStmt = parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
 
 -- ---------------------------------------------------------------------
+
+parsedFileWhere :: IO (ParseResult,[PosToken])
+parsedFileWhere = parsedFileGhc "./test/testdata/Layout/Where.hs"
+
+-- ---------------------------------------------------------------------

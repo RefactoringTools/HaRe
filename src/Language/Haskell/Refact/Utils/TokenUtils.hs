@@ -1214,10 +1214,11 @@ renderPpr ps = go 0 (1,1) ps
     go _ _ [] = []
 
     go ci (r,c) (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,cc) (er,ec) _subs):ps')
-        = case er of
-            0 -> firstPart ++ secondPart -- On the same line
-            _ -> firstPart ++ secondPart    -- Go to new line
-          ++ (go ci (lookAheadRc ci ps'') ps'')
+        = firstPart
+          ++ (renderOffset er ec cc)
+          ++ go ci (lookAheadRc ci ps') ps'
+--          ++ secondPart
+--          ++ (go ci (lookAheadRc ci ps'') ps'')
       where
           firstPart = ((renderPprText ci (r,c) ppt)
                        ++ (renderOffset ro co (colAfterPprText ppt))
