@@ -1,5 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -141,6 +143,7 @@ import qualified GHC.SYB.Utils as SYB
 import qualified Data.Foldable as F
 
 import Language.Haskell.Refact.Utils.GhcUtils
+import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -229,6 +232,13 @@ deriving instance Show         Entry
 
 deriving instance Show Ppr
 
+instance Ord LayoutTree where
+  compare (Node a _) (Node b _) = compare (forestSpanFromEntry a) (forestSpanFromEntry b)
+
+instance Eq Entry where
+  (Entry fs1 lay1 toks1) == (Entry fs2 lay2 toks2)
+    = fs1 == fs2 && lay1 == lay2
+   && (show toks1) == (show toks2)
 
 -- ---------------------------------------------------------------------
 

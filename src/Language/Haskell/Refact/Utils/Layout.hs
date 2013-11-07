@@ -642,8 +642,9 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
     bindsLayout = case allocList bindList toksBinds allocBind of
       [] -> []
       bs -> [placeAbove ro co (rt,ct) bs]
+
     sigsLayout = allocList sigs toks1 allocSig
-    r = strip $ (makeLeafFromToks s1) ++ bindsLayout ++ sigsLayout
+    r = strip $ (makeLeafFromToks s1) ++ (sort $ bindsLayout ++ sigsLayout)
 
 allocLocalBinds (GHC.HsIPBinds ib)  toks = error "allocLocalBinds undefined"
 
@@ -667,12 +668,15 @@ allocBind (GHC.L l (GHC.FunBind (GHC.L ln _) _ (GHC.MatchGroup matches _) _ _ _)
 allocSig :: GHC.LSig GHC.RdrName -> [PosToken] -> [LayoutTree]
 allocSig (GHC.L l (GHC.TypeSig ns typ)) toks = r
   where
-    (s1,sigToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s1,sigToks,toks')  = splitToks (ghcSpanStartEnd l) toks
     (s2,nsToks,typToks) = splitToksForList ns sigToks
     nsLayout = allocList ns nsToks allocLocated
     typLayout = allocType typ typToks
-    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+    r' = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
              ++ nsLayout ++ typLayout ++ (makeLeafFromToks toks')
+    r = case toks of
+         [] -> r'
+         _ -> error $ "allocSig:toks=" ++ show toks
 {-
 GenericSig [Located name] (LHsType name)	 
 IdSig Id	 

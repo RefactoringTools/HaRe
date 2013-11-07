@@ -78,7 +78,6 @@ data Entry = Entry !ForestSpan -- The source span contained in this
                      SimpPos     -- ^The gap between this span end and
                                  --  the start of the next in the
                                  --  fringe of the tree.
-
 --             deriving (Show)
 
 type RowOffset = Int
@@ -97,7 +96,7 @@ data Layout = Above RowOffset ColOffset (Row,Col) (RowOffset,ColOffset)
             -- | Offset between the end of an 'Above' entry and the
             -- next one
             | EndOffset RowOffset ColOffset
-            deriving (Show)
+            deriving (Show,Eq)
 
 
 -- ---------------------------------------------------------------------
