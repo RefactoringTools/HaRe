@@ -2017,6 +2017,7 @@ tree TId 0:
       (invariant layout) `shouldBe` []
 
       -- (show layout) `shouldBe` ""
+
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(13,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -2062,6 +2063,7 @@ tree TId 0:
               "5:((10,10),(10,12))\n"++
                "6:((10,10),(10,12))\n"++
           "1:((13,1),(13,1))\n"
+
 
       let pprVal = retrieveTokensPpr layout
       (show pprVal) `shouldBe`
