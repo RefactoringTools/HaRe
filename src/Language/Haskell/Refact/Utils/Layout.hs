@@ -156,6 +156,14 @@ instance Outputable Layout where
   ppr (NoChange)      = text "NoChange"
   ppr (EndOffset r c) = text "EndOffset" <+> ppr r <+> ppr c
 
+instance Outputable Ppr where
+  ppr (PprText r c toks) = text "PprText" <+> ppr r <+> ppr c
+                        <+> text "\"" <> text (GHC.showRichTokenStream toks) <> text "\""
+  ppr (PprAbove ro co rc erc pps) = hang (text "PprAbove" <+> ppr ro <+> ppr co <+> ppr rc <+> ppr erc)
+                                           2 (ppr pps)
+  ppr (PprOffset ro co pps)       = hang (text "PprOffset" <+> ppr ro <+> ppr co)
+                                           2 (ppr pps)
+
 -- ---------------------------------------------------------------------
 
 initTokenLayout :: GHC.ParsedSource -> [PosToken] -> LayoutTree

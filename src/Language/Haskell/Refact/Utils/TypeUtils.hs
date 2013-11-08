@@ -2833,7 +2833,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- was || isTypeSig x -}) decls
 
          newToks <- makeNewToks (newDecl,maybeSig,maybeDeclToks)
-         -- logm $ "addTopLevelDecl:newToks=" ++ (show newToks)
+         logm $ "addTopLevelDecl:newToks=" ++ (show newToks)
 
          let Just sspan = if (emptyList decls2)
                             then getSrcSpan (glast "addTopLevelDecl" decls1)
@@ -2841,11 +2841,6 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          decl' <- putDeclToksAfterSpan sspan newDecl (PlaceOffset 2 0 2) newToks
 
-{-
-         case maybeSig of
-           Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
-           Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
--}
          return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
 
   appendDecl :: (SYB.Data t, HsValBinds t)

@@ -240,6 +240,7 @@ instance Eq Entry where
     = fs1 == fs2 && lay1 == lay2
    && (show toks1) == (show toks2)
 
+
 -- ---------------------------------------------------------------------
 
 -- |Keep track of when tokens are reversed, to avoid confusion
