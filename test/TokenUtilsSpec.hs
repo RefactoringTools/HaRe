@@ -3074,7 +3074,7 @@ tree TId 0:
           "4:((3,18),(3,22))\n"++
           "5:((3,18),(3,20))\n"++
           "5:((3,21),(3,22))\n"++
-          "4:((4,6),(4,11))\n"++
+          "4:((4,6),(4,11))\n"++ -- 'where'
           "4:((4,12),(4,22))(Above 0 1 (4,21) (1,-20))\n"++
            "5:((4,12),(4,22))\n"++
             "6:((4,12),(4,22))\n"++
@@ -3093,16 +3093,22 @@ tree TId 0:
       (showSrcSpanF sspan') `shouldBe` "(((False,0,1,5),6),((False,0,1,5),13))"
       (invariant forest'') `shouldBe` []
 
+      (show forest'') `shouldBe` ""
+
 --
 {-
-      let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
-      let zf = openZipperToNode tree $ Z.fromTree forest'
+      let (forest',tree) = getSrcSpanForDeep forest (srcSpanToForestSpan sspan)
+      let zf = openZipperToNodeDeep tree $ Z.fromTree forest'
       (show $ Z.tree zf) `shouldBe` "foo"
 -}
 --
-
+{-
       let toksFinal = retrieveTokensFinal forest''
       (GHC.showRichTokenStream toksFinal) `shouldBe` ""
+-}
+      let pprFinal = retrieveTokensPpr forest''
+      (show pprFinal) `shouldBe` ""
+      (renderPpr pprFinal) `shouldBe` ""
 
     -- ---------------------------------
 

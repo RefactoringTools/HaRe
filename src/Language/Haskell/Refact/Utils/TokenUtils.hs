@@ -36,6 +36,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , insertSrcSpan
        , removeSrcSpan
        , getSrcSpanFor
+       , getSrcSpanForDeep
        , addNewSrcSpanAndToksAfter
        , addToksAfterSrcSpan
        , addDeclToksAfterSrcSpan
@@ -97,7 +98,9 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , insertNodeAfter
        , retrievePrevLineToks
        , openZipperToNode
+       , openZipperToNodeDeep
        , openZipperToSpan
+       , openZipperToSpanDeep
        , forestSpanToSimpPos
        , forestSpanToGhcPos
 
@@ -832,6 +835,20 @@ getSrcSpanFor forest sspan = (forest',tree)
     forest' = insertSrcSpan forest sspan -- Will NO-OP if already
                                          -- there
     z = openZipperToSpan sspan $ Z.fromTree forest'
+    tree = Z.tree z
+
+-- ---------------------------------------------------------------------
+-- |Retrieve a path to the tree containing a ForestSpan from the forest,
+-- inserting it if not already present.
+-- In the case where there is a nested series of spans as in an
+-- 'Above' layout, return the deepest one
+getSrcSpanForDeep :: Tree Entry -> ForestSpan -> (Tree Entry, Tree Entry)
+getSrcSpanForDeep forest sspan = (forest',tree)
+  where
+    forest' = insertSrcSpan forest sspan -- Will NO-OP if already
+                                         -- there
+    z = openZipperToSpanDeep sspan $ Z.fromTree forest'
+
     tree = Z.tree z
 
 -- ---------------------------------------------------------------------
@@ -1573,7 +1590,7 @@ addNewSrcSpanAndToksAfter ::
                     -- identify this span in its position
 addNewSrcSpanAndToksAfter forest oldSpan newSpan pos toks = (forest'',newSpan')
   where
-    (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
+    (forest',tree) = getSrcSpanForDeep forest (srcSpanToForestSpan oldSpan)
 
     (ghcl,_c) = getGhcLoc newSpan
     (ForestLine ch tr v l) = ghcLineToForestLine ghcl
@@ -1596,7 +1613,7 @@ placeToksForSpan ::
   -> [PosToken]
 placeToksForSpan forest oldSpan tree pos toks = toks'
   where
-    z = openZipperToSpan (srcSpanToForestSpan oldSpan) $ Z.fromTree forest
+    z = openZipperToSpanDeep (srcSpanToForestSpan oldSpan) $ Z.fromTree forest
     prevToks = case (retrievePrevLineToks z) of
                  RT [] -> reverseToks $ retrieveTokensInterim tree
                  xs -> xs
@@ -1619,7 +1636,7 @@ addToksAfterSrcSpan ::
                                -- the new tokens in the TokenTree
 addToksAfterSrcSpan forest oldSpan pos toks = (forest',newSpan')
   where
-    (fwithspan,tree) = getSrcSpanFor forest (srcSpanToForestSpan oldSpan)
+    (fwithspan,tree) = getSrcSpanForDeep forest (srcSpanToForestSpan oldSpan)
 
     toks'' = placeToksForSpan fwithspan oldSpan tree pos toks
 
@@ -1791,19 +1808,9 @@ insertNodeAfter
   :: Tree Entry -> Tree Entry -> Tree Entry -> Tree Entry
 insertNodeAfter oldNode newNode forest = forest'
   where
-    zf = openZipperToNode oldNode $ Z.fromTree forest
+    zf = openZipperToNodeDeep oldNode $ Z.fromTree forest
 
-    -- The tree at the focus may have an 'Above' layout, in which case
-    -- we need to descend into it
-    zf' = case Z.tree zf of
-           (Node (Entry _ (Above _ _ _ _) _) _) ->
-                case getChildrenAsZ zf of
-                  [] -> zf
-                  [x] -> x
-                  xs  -> error $ "insertNodeAfter:unexpected multiple children:" ++ show xs
-           _ -> zf
-
-    zp = gfromJust ("insertNodeAfter:" ++ (show (oldNode,newNode,forest))) $ Z.parent zf'
+    zp = gfromJust ("insertNodeAfter:" ++ (show (oldNode,newNode,forest))) $ Z.parent zf
     tp = Z.tree zp
 
     -- now go through the children of the parent tree, and find the
@@ -1825,6 +1832,15 @@ openZipperToNode
      -> Z.TreePos Z.Full Entry
 openZipperToNode (Node (Entry sspan _ _) _) z
   = openZipperToSpan sspan z
+
+-- |Open a zipper so that its focus is the given node
+--  NOTE: the node must already be in the tree
+openZipperToNodeDeep
+  :: Tree Entry
+     -> Z.TreePos Z.Full Entry
+     -> Z.TreePos Z.Full Entry
+openZipperToNodeDeep (Node (Entry sspan _ _) _) z
+  = openZipperToSpanDeep sspan z
 
 
 getChildrenAsZ :: Z.TreePos Z.Full a -> [Z.TreePos Z.Full a]
@@ -1899,6 +1915,30 @@ openZipperToSpan sspan z
             where
               span2 = treeStartEnd $ Z.tree z2
               isMatch = forestSpanVersions span1 == forestSpanVersions span2
+
+-- ---------------------------------------------------------------------
+
+-- |Open a zipper so that its focus has the given SrcSpan in its
+-- subtree, or the location where the SrcSpan should go, if it is not
+-- in the tree.
+-- In the case of an 'Above' layout with the same SrcSpan below,
+-- return that instead
+openZipperToSpanDeep
+  :: ForestSpan
+     -> Z.TreePos Z.Full Entry
+     -> Z.TreePos Z.Full Entry
+openZipperToSpanDeep sspan z = zf
+  where
+    z' = openZipperToSpan sspan z
+
+    zf = case Z.tree z' of
+           (Node (Entry _ (Above _ _ _ _) _) _) ->
+                case getChildrenAsZ z' of
+                  []  -> z'
+                  [x] -> if (treeStartEnd (Z.tree x) == sspan) then x else z'
+                  _   -> z'
+           _ -> z'
+
 
 -- ---------------------------------------------------------------------
 
