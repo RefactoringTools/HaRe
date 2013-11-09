@@ -1683,6 +1683,21 @@ tree TId 0:
 
   -- ---------------------------------------------
 
+  describe "adjustLinesForDeleted" $ do
+    it "removes Deleted entries and adjusts token lines" $ do
+      (t,toks) <- parsedFileLayoutLetExpr
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      (GHC.showRichTokenStream toks) `shouldBe` "-- A simple let expression, to ensure the layout is detected\n\n module Layout.LetExpr where\n\n foo = let x = 1\n           y = 2\n       in x + y\n\n "
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      "a" `shouldBe` "write this test"
+
+  -- ---------------------------------------------
+
   describe "retrieveTokensPpr" $ do
     it "retrieves the tokens in Ppr format LetExpr" $ do
       (t,toks) <- parsedFileLayoutLetExpr

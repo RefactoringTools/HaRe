@@ -48,9 +48,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , retrieveTokensFinal
        , retrieveTokensPpr
        , renderPpr
-       -- , renderPprToHDoc
-       -- , renderPprToHDoc'
-       -- , renderHDoc
+       , adjustLinesForDeleted
        , retrieveTokensInterim
        , retrieveTokens' -- temporary for debug
 
@@ -1167,10 +1165,12 @@ retrieveTokensFinal forest = monotonicLineToks $ stripForestLines $ reAlignMarke
 retrieveTokensPpr :: Tree Entry -> [Ppr]
 retrieveTokensPpr forest = pps'
   where
-    (pps,lastLine) = retrieveTokensPpr' ([],[]) forest
+    forest' = adjustLinesForDeleted forest
+    (pps,lastLine) = retrieveTokensPpr' ([],[]) forest'
     pps' = pps ++ (mkPprFromLineToks lastLine)
 
 retrieveTokensPpr' :: ([Ppr],[PosToken]) -> Tree Entry -> ([Ppr],[PosToken])
+-- TODO: take cognisance of this to reduce the gap going forward
 retrieveTokensPpr' acc (Node (Deleted _sspan  _eg ) _  ) = acc
 
 retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs) = foldl' retrieveTokensPpr' acc subs
@@ -1231,6 +1231,11 @@ normaliseColumns ps = ps'
 
     removeOffset (PprText r c toks) = (PprText r (c - offset) toks)
     removeOffset x = x
+
+-- ---------------------------------------------------------------------
+
+adjustLinesForDeleted :: Tree Entry -> Tree Entry
+adjustLinesForDeleted = error "undefined adjustLinesForDeleted"
 
 -- ---------------------------------------------------------------------
 
