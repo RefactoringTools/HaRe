@@ -594,9 +594,9 @@ initTokenCacheLayout tree = TK (Map.fromList [((TId 0),tree)]) (TId 0)
 -- ---------------------------------------------------------------------
 
 treeIdIntoTree :: TreeId -> Tree Entry -> Tree Entry
-treeIdIntoTree tid (Node (Entry fs lay toks) subTree) = tree'
+treeIdIntoTree tid (Node (Entry fspan lay toks) subTree) = tree'
   where
-    fs' = treeIdIntoForestSpan tid fs
+    fs' = treeIdIntoForestSpan tid fspan
     tree' = Node (Entry fs' lay toks) subTree
 
 -- ---------------------------------------------------------------------
@@ -657,12 +657,12 @@ replaceTreeInCache sspan tree tk = tk'
     tk' = tk {tkCache = Map.insert tid tree' (tkCache tk) }
 
 putTidInTree :: TreeId -> Tree Entry -> Tree Entry
-putTidInTree tid (Node (Deleted fs eg) []) = (Node (Deleted fs' eg) [])
-  where fs' = treeIdIntoForestSpan tid fs
-putTidInTree tid (Node (Entry fs lay toks) subs) = tree'
+putTidInTree tid (Node (Deleted fspan eg) []) = (Node (Deleted fs' eg) [])
+  where fs' = treeIdIntoForestSpan tid fspan
+putTidInTree tid (Node (Entry fspan lay toks) subs) = tree'
   where
     subs' = map (putTidInTree tid) subs
-    fs' = treeIdIntoForestSpan tid fs
+    fs' = treeIdIntoForestSpan tid fspan
     tree' = Node (Entry fs' lay toks) subs'
 
 -- ---------------------------------------------------------------------
@@ -676,8 +676,8 @@ syncAstToLatestCache tk t = t'
   -- = error $ "syncAstToLatestCache:sspan=" ++ (show sspan)
   where
     mainForest = (tkCache tk) Map.! mainTid
-    forest@(Node (Entry fs _ _) _) = (tkCache tk) Map.! (tkLastTreeId tk)
-    pos = forestSpanToGhcPos fs
+    forest@(Node (Entry fspan _ _) _) = (tkCache tk) Map.! (tkLastTreeId tk)
+    pos = forestSpanToGhcPos fspan
     sspan = posToSrcSpan mainForest pos
     (t',_) = syncAST t sspan forest
 
@@ -1175,7 +1175,7 @@ retrieveTokensPpr' acc (Node (Deleted _sspan  _eg ) _  ) = acc
 
 retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs) = foldl' retrieveTokensPpr' acc subs
 
-retrieveTokensPpr' acc (Node (Entry _sspan (Above ro co (r,c) eo)  []) subs) = acc'
+retrieveTokensPpr' acc (Node (Entry _sspan (Above ro co _ (r,c) eo)  []) subs) = acc'
   where
     (ac,curLineToks) = acc
     (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
@@ -1932,7 +1932,7 @@ openZipperToSpanDeep sspan z = zf
     z' = openZipperToSpan sspan z
 
     zf = case Z.tree z' of
-           (Node (Entry _ (Above _ _ _ _) _) _) ->
+           (Node (Entry _ (Above _ _ _ _ _) _) _) ->
                 case getChildrenAsZ z' of
                   []  -> z'
                   [x] -> if (treeStartEnd (Z.tree x) == sspan) then x else z'
@@ -2190,7 +2190,7 @@ drawEntry (Node (Entry sspan lay _toks) ts0) = ((showForestSpan sspan) ++ (showL
 
 showLayout :: Layout -> String
 showLayout NoChange       = ""
-showLayout (Above ro co (r,c) eo) = "(Above "++ show ro ++ " " ++ show co ++ " " ++ show (r,c) ++ " " ++ show eo ++ ")"
+showLayout (Above ro co p1 (r,c) eo) = "(Above "++ show ro ++ " " ++ show co ++ " " ++ show p1 ++ " " ++ show (r,c) ++ " " ++ show eo ++ ")"
 showLayout (Offset r c)   = "(Offset " ++ show r ++ " " ++ show c ++ ")"
 
 -- ---------------------------------------------------------------------

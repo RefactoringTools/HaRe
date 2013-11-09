@@ -151,7 +151,7 @@ instance Outputable Entry where
   ppr (Entry sspan lay toks) = text "Entry" <+> ppr sspan <+> ppr lay <+> text (show toks)
 
 instance Outputable Layout where
-  ppr (Above ro co (r,c) oe)   = text "Above" <+> ppr ro <+> ppr co <+> ppr (r,c) <+> ppr oe
+  ppr (Above ro co p1 p2 oe)   = text "Above" <+> ppr ro <+> ppr co <+> ppr p1 <+> ppr p2 <+> ppr oe
   ppr (Offset r c)    = text "Offset" <+> ppr r <+> ppr c
   ppr (NoChange)      = text "NoChange"
   ppr (EndOffset r c) = text "EndOffset" <+> ppr r <+> ppr c
@@ -221,7 +221,7 @@ addEndOffsets :: LayoutTree -> [PosToken] -> LayoutTree
 addEndOffsets tree toks = go tree
   where
     go (t@(Node (Entry _ _ _toks) [])) = t
-    go (  (Node (Entry s (Above ro co (r,c) _eo) []) subs)) = (Node (Entry s (Above ro co (r,c) eo') []) (map go subs))
+    go (  (Node (Entry s (Above ro co p1 (r,c) _eo) []) subs)) = (Node (Entry s (Above ro co p1 (r,c) eo') []) (map go subs))
       where
         (_,m,_) = splitToks ((r,c),(99999,1)) toks
         eo' = case m of
@@ -524,6 +524,7 @@ allocExpr (GHC.L _ (GHC.HsCase expr@(GHC.L le _) (GHC.MatchGroup matches _))) to
     exprLayout = allocExpr expr exprToks
 
     firstMatchTok = ghead "allocLocalBinds" $ dropWhile isWhiteSpaceOrIgnored matchToks
+    p1 = (tokenRow firstMatchTok,tokenCol firstMatchTok)
     (ro,co) = case (filter isOf s2) of
                [] -> (0,0)
                (x:_) -> (tokenRow firstMatchTok - tokenRow x,
@@ -533,7 +534,7 @@ allocExpr (GHC.L _ (GHC.HsCase expr@(GHC.L le _) (GHC.MatchGroup matches _))) to
              []    -> (0,0)
              (x:_) -> (tokenRow x,tokenCol x)
 
-    matchesLayout = [placeAbove ro co (rt,ct) (allocMatches matches matchToks)]
+    matchesLayout = [placeAbove ro co p1 (rt,ct) (allocMatches matches matchToks)]
     r = strip $ (makeLeafFromToks s1) ++ exprLayout
              ++ (makeLeafFromToks s2) ++ matchesLayout ++ (makeLeafFromToks toks2)
 allocExpr (GHC.L _ (GHC.HsIf _ e1@(GHC.L l1 _) e2@(GHC.L l2 _) e3)) toks = r
@@ -596,7 +597,7 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
     (s1,toksBinds,toks1) = splitToks (start,end) toks
 
     firstBindTok = ghead "allocLocalBinds" $ dropWhile isWhiteSpaceOrIgnored toksBinds
-
+    p1 = (tokenRow firstBindTok,tokenCol firstBindTok)
     (ro,co) = case (filter isWhereOrLet s1) of
                [] -> (0,0)
                (x:_) -> (tokenRow firstBindTok - tokenRow x,
@@ -610,7 +611,7 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
 
     bindsLayout = case bindsLayout' of
       [] -> []
-      bs -> [placeAbove ro co (rt,ct) bs]
+      bs -> [placeAbove ro co p1 (rt,ct) bs]
 
     r = strip $ (makeLeafFromToks s1) ++ bindsLayout ++ (makeLeafFromToks toks1)
     -- r = error $ "allocLocalBinds:(s1,toksBinds,toks1)=" ++ show (s1,toksBinds,toks1)
@@ -1086,9 +1087,9 @@ splitToksForList xs toks = splitToks (getGhcLoc s, getGhcLocEnd e) toks
 
 -- ---------------------------------------------------------------------
 
-placeAbove :: RowOffset -> ColOffset -> (Row,Col) -> [LayoutTree] -> LayoutTree
-placeAbove _ _ _ [] = error "placeAbove []"
-placeAbove ro co (r,c) ls = Node (Entry loc (Above ro co (r,c) (0,0)) []) ls
+placeAbove :: RowOffset -> ColOffset -> (Row,Col) -> (Row,Col) -> [LayoutTree] -> LayoutTree
+placeAbove _ _ _ _ [] = error "placeAbove []"
+placeAbove ro co p1 p2 ls = Node (Entry loc (Above ro co p1 p2 (0,0)) []) ls
   where
     loc = combineSpans (getLoc $ head ls) (getLoc $ last ls)
 
