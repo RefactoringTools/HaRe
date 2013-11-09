@@ -2441,6 +2441,7 @@ tree TId 0:
       let pprVal = retrieveTokensPpr layout
 
       (showGhc pprVal) `shouldBe`
+
           "[PprText 1 1 \"module MoveDef.Md1 where\",\n"++
           " PprText 3 1 \"toplevel :: Integer -> Integer\",\n"++
           " PprText 4 1 \"toplevel x = c * x\", PprText 6 1 \"c,d :: Integer\",\n"++
@@ -2462,10 +2463,11 @@ tree TId 0:
           " PprAbove 0 1 (32, 12) (1, -9) [PprText 32 0 \"ss = 5\"],\n"++
           " PprText 33 3 \"return (ss + q)\",\n"++
           " PprText 35 1 \"zz1 a = 1 + toplevel a\",\n"++
-        -- ++AZ++ missing comment here ++AZ++
+          " PprText 37 1 \"-- General Comment\",\n"++
           " PprText 38 1 \"-- |haddock comment\",\n"++
           " PprText 39 1 \"tlFunc :: Integer -> Integer\",\n"++
-          " PprText 40 1 \"tlFunc x = c * x\", "++
+          " PprText 40 1 \"tlFunc x = c * x\","++
+          " PprText 41 1 \"-- Comment at end\",\n"++
           " PprText 44 1 \"\"]"
 
 
@@ -2856,7 +2858,7 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "insertNodeAfter" $ do
-    it "Adds a new SrcSpan after a specified one in the forest." $ do
+    it "adds a new SrcSpan after a specified one in the forest." $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -2893,7 +2895,7 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "addNewSrcSpanAndToksAfter" $ do
-    it "Adds a new SrcSpan after an existing one in the forest." $ do
+    it "adds a new SrcSpan after an existing one in the forest." $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -2923,7 +2925,7 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "addToksAfterSrcSpan" $ do
-    it "Adds a new SrcSpan after an existing one in the forest 1." $ do
+    it "adds a new SrcSpan after an existing one in the forest 1." $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -2951,7 +2953,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one in the forest 2." $ do
+    it "adds a new SrcSpan after an existing one in the forest 2." $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -3007,7 +3009,104 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one, with an indent based on whole prior line." $ do
+    it "adds a new SrcSpan after an existing one in the forest, in a where clause." $ do
+      (t,toks) <- parsedFileWhere
+
+      (GHC.showRichTokenStream toks) `shouldBe`
+            "module LiftToToplevel.Where where\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
+
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let forest = allocTokens parsed toks
+
+      (drawTreeCompact forest) `shouldBe`
+          "0:((1,1),(5,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,28))\n"++
+          "1:((1,29),(1,34))\n"++
+          "1:((3,1),(4,22))\n"++
+          "2:((3,1),(4,22))\n"++
+          "3:((3,1),(3,11))\n"++
+          "3:((3,12),(4,22))\n"++
+          "4:((3,12),(3,13))\n"++
+          "5:((3,12),(3,13))\n"++
+          "4:((3,14),(3,15))\n"++
+          "5:((3,14),(3,15))\n"++
+          "4:((3,16),(3,17))\n"++
+          "4:((3,18),(3,22))\n"++
+          "5:((3,18),(3,20))\n"++
+          "5:((3,21),(3,22))\n"++
+           "4:((4,6),(4,11))\n"++
+           "4:((4,12),(4,22))(Above 0 1 (4,21) (1,-20))\n"++
+            "5:((4,12),(4,22))\n"++
+             "6:((4,12),(4,22))\n"++
+              "7:((4,12),(4,14))\n"++
+              "7:((4,15),(4,22))\n"++
+               "8:((4,15),(4,16))\n"++
+                "9:((4,15),(4,16))\n"++
+               "8:((4,17),(4,18))\n"++
+               "8:((4,19),(4,22))\n"++
+                "9:((4,19),(4,20))\n"++
+                "9:((4,20),(4,21))\n"++
+                "9:((4,21),(4,22))\n"++
+          "1:((5,1),(5,1))\n"
+
+      -- let forest = mkTreeFromTokens toks
+
+      let sspan = posToSrcSpan forest ((4,12),(4,22))
+      newToks <- liftIO $ basicTokenise "abc = 3"
+
+      let (forest'',sspan') = addToksAfterSrcSpan forest sspan (PlaceOffset 1 0 1) newToks
+
+      (drawTreeCompact forest'') `shouldBe`
+          "0:((1,1),(5,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,28))\n"++
+          "1:((1,29),(1,34))\n"++
+          "1:((3,1),(4,22))\n"++
+          "2:((3,1),(4,22))\n"++
+          "3:((3,1),(3,11))\n"++
+          "3:((3,12),(4,22))\n"++
+          "4:((3,12),(3,13))\n"++
+          "5:((3,12),(3,13))\n"++
+          "4:((3,14),(3,15))\n"++
+          "5:((3,14),(3,15))\n"++
+          "4:((3,16),(3,17))\n"++
+          "4:((3,18),(3,22))\n"++
+          "5:((3,18),(3,20))\n"++
+          "5:((3,21),(3,22))\n"++
+          "4:((4,6),(4,11))\n"++
+          "4:((4,12),(4,22))(Above 0 1 (4,21) (1,-20))\n"++
+           "5:((4,12),(4,22))\n"++
+            "6:((4,12),(4,22))\n"++
+             "7:((4,12),(4,14))\n"++
+             "7:((4,15),(4,22))\n"++
+              "8:((4,15),(4,16))\n"++
+               "9:((4,15),(4,16))\n"++
+              "8:((4,17),(4,18))\n"++
+              "8:((4,19),(4,22))\n"++
+               "9:((4,19),(4,20))\n"++
+               "9:((4,20),(4,21))\n"++
+               "9:((4,21),(4,22))\n"++
+           "5:((1000005,6),(1000005,13))\n"++
+          "1:((5,1),(5,1))\n"
+
+      (showSrcSpanF sspan') `shouldBe` "(((False,0,1,5),6),((False,0,1,5),13))"
+      (invariant forest'') `shouldBe` []
+
+--
+{-
+      let (forest',tree) = getSrcSpanFor forest (srcSpanToForestSpan sspan)
+      let zf = openZipperToNode tree $ Z.fromTree forest'
+      (show $ Z.tree zf) `shouldBe` "foo"
+-}
+--
+
+      let toksFinal = retrieveTokensFinal forest''
+      (GHC.showRichTokenStream toksFinal) `shouldBe` ""
+
+    -- ---------------------------------
+
+    it "adds a new SrcSpan after an existing one, with an indent based on whole prior line." $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
 
@@ -3054,7 +3153,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one, with an indent catering for comments" $ do
+    it "adds a new SrcSpan after an existing one, with an indent catering for comments" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn5.hs"
       let forest = mkTreeFromTokens toks
 
@@ -3101,7 +3200,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after deleting toks 1" $ do
+    it "adds a new SrcSpan after deleting toks 1" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
 
@@ -3154,7 +3253,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one, in a subtree." $ do
+    it "adds a new SrcSpan after an existing one, in a subtree." $ do
       (_t,toks) <- parsedFileDemoteD1
 
       let forest = mkTreeFromTokens toks
@@ -3254,7 +3353,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after the last one" $ do
+    it "adds a new SrcSpan after the last one" $ do
       (_t,toks)  <- parsedFileGhc "./test/testdata/TypeUtils/JustImports.hs"
 
       let forest = mkTreeFromTokens toks

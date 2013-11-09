@@ -1189,8 +1189,8 @@ retrieveTokensPpr' (acc,curLineToks) (Node (Entry _sspan _     toks) []) = (acc+
                        then ([],curLineToks ++ x)
                        else (mkPprFromLineToks curLineToks,x)
               (x:xs) -> if (toksOnSameLine (last curLineToks) (head x))
-                          then ((mkPprFromLineToks (curLineToks++x)) ++ concatMap mkPprFromLineToks (init xs),last xs)
-                          else ((mkPprFromLineToks curLineToks) ++ concatMap mkPprFromLineToks (init xs),last xs)
+                          then ((mkPprFromLineToks (curLineToks++x)) ++ concatMap mkPprFromLineToks (  init xs),last xs)
+                          else ((mkPprFromLineToks curLineToks     ) ++ concatMap mkPprFromLineToks (x:init xs),last xs)
 
 
 mkPprFromLineToks :: [PosToken] -> [Ppr]
@@ -1792,8 +1792,18 @@ insertNodeAfter
 insertNodeAfter oldNode newNode forest = forest'
   where
     zf = openZipperToNode oldNode $ Z.fromTree forest
-    -- zp = gfromJust "insertNodeAfter" $ Z.parent zf
-    zp = gfromJust ("insertNodeAfter:" ++ (show (oldNode,newNode,forest))) $ Z.parent zf
+
+    -- The tree at the focus may have an 'Above' layout, in which case
+    -- we need to descend into it
+    zf' = case Z.tree zf of
+           (Node (Entry _ (Above _ _ _ _) _) _) ->
+                case getChildrenAsZ zf of
+                  [] -> zf
+                  [x] -> x
+                  xs  -> error $ "insertNodeAfter:unexpected multiple children:" ++ show xs
+           _ -> zf
+
+    zp = gfromJust ("insertNodeAfter:" ++ (show (oldNode,newNode,forest))) $ Z.parent zf'
     tp = Z.tree zp
 
     -- now go through the children of the parent tree, and find the
