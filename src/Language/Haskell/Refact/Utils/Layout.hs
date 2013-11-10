@@ -21,6 +21,7 @@ module Language.Haskell.Refact.Utils.Layout (
 import qualified Bag           as GHC
 import qualified ForeignCall   as GHC
 import qualified GHC           as GHC
+import qualified HsTypes       as GHC
 import qualified Outputable    as GHC
 import qualified SrcLoc        as GHC
 
@@ -315,16 +316,79 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyDecl (GHC.L ln _) vars def _fvs
     r = acc ++ (strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
                      ++ (makeLeafFromToks nToks) ++ varsLayout ++ typeLayout
                      ++ (makeLeafFromToks toks4))
-allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl ctx (GHC.L ln _) vars fds sigs meths ats atdefs docs _fvs))) = (r,toks')
+allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L ln _) vars fds sigs meths ats atdefs docs _fvs))) = (acc++r,toks')
   where
-    (s1,clToks,toks') = splitToks (ghcSpanStartEnd l) toks
-    r = error "allocTyClD ClassDecl undefined"
+    (s1,clToks,  toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,ctxToks, toks1) = splitToks (ghcSpanStartEnd lc) clToks
+    (s3,nToks,   toks2) = splitToks (ghcSpanStartEnd ln) toks1
+    (varsLayout, toks3) = allocTyVarBndrs vars toks2
+    (s5,fdToks,  toks4) = splitToksForList fds toks3
 
+    ctxLayout = allocHsContext ctx ctxToks
+    nLayout   = allocLocated n nToks
+    fdsLayout = allocList fds fdToks allocFunDep
+
+    bindList = GHC.bagToList meths
+    sigMix     = makeMixedListEntry sigs     (shim allocSig)
+    methsMix   = makeMixedListEntry bindList (shim allocBind)
+    atsMix     = makeMixedListEntry ats      (shim allocLTyClDecl)
+    atsdefsMix = makeMixedListEntry atdefs   (shim allocLFamInstDecl)
+    docsMix    = makeMixedListEntry docs     (shim allocLocated)
+
+    bindsLayout = allocMixedList (sigMix++methsMix++atsMix++atsdefsMix++docsMix) toks4
+
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ ctxLayout ++ (makeLeafFromToks s3)
+             ++ nLayout ++ varsLayout ++ (makeLeafFromToks s5)
+             ++ fdsLayout ++ bindsLayout
+
+{-
+ClassDecl
+
+tcdCtxt :: LHsContext name
+
+    Context... 
+tcdLName :: Located name
+
+    Name of the class
+
+    Type constructor 
+tcdTyVars :: LHsTyVarBndrs name
+
+    Class type variables
+
+    Type variables; for an associated type these include outer binders Eg class T a where type F a :: * type F a = a -> a Here the type decl for f includes a in its tcdTyVars 
+tcdFDs :: [Located (FunDep name)]
+
+    Functional deps 
+tcdSigs :: [LSig name]
+
+    Methods' signatures 
+tcdMeths :: LHsBinds name
+
+    Default methods 
+tcdATs :: [LTyClDecl name]
+
+    Associated types; ie only TyFamily 
+tcdATDefs :: [LFamInstDecl name]
+
+    Associated type defaults; ie only TySynonym 
+tcdDocs :: [LDocDecl]
+
+    Haddock docs 
+tcdFVs :: NameSet
+
+
+-}
 -- ---------------------------------------------------------------------
 
 allocInstD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocInstD (acc,toks) d@(GHC.L l (GHC.InstD       _))
-  = error "allocInstD undefined"
+allocInstD (acc,toks) d@(GHC.L l (GHC.InstD inst)) = (r,toks')
+  where
+    (s1,instToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    instLayout = allocInstDecl (GHC.L l inst) instToks
+    r = acc ++ (strip $ (makeLeafFromToks s1) ++ [makeGroup instLayout] )
+
 
 -- ---------------------------------------------------------------------
 
@@ -514,9 +578,13 @@ allocExpr (GHC.L _ (GHC.SectionR e1@(GHC.L l1 _) e2)) toks = r
     e1Layout = allocExpr e1 e1Toks
     e2Layout = allocExpr e2 e2Toks
     r = strip $ (makeLeafFromToks s1) ++ e1Layout ++ e2Layout
-allocExpr (GHC.L _ (GHC.ExplicitTuple tupArgs _)) toks = r
+allocExpr (GHC.L l (GHC.ExplicitTuple tupArgs _)) toks = r
   where
-    r = error $ "allocExpr ExplicitTuple undefined"
+    (s1,tupToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    tupLayout = allocTupArgList tupArgs tupToks
+    r = strip $ (makeLeafFromToks s1) ++ tupLayout
+             ++ (makeLeafFromToks toks')
+-- ExplicitTuple [HsTupArg id] Boxity
 allocExpr (GHC.L _ (GHC.HsCase expr@(GHC.L le _) (GHC.MatchGroup matches _))) toks = r
   where
     (s1,exprToks,toks1) = splitToks (ghcSpanStartEnd le) toks
@@ -576,24 +644,14 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
   where
     bindList = GHC.bagToList binds
 
-    (startBind,_) = case bindList of
-                 [] -> ((100000,0),(0,0))
-                 ((GHC.L ls _):_) -> ghcSpanStartEnd ls
-    (startSig,_) = case sigs of
-                 [] -> ((100000,0),(0,0))
-                 ((GHC.L ls _):_) -> ghcSpanStartEnd ls
+    startBind = startPosForList bindList
+    startSig  = startPosForList sigs
     start = if startSig < startBind then startSig else startBind
 
-    (_,endBind) = case bindList of
-                 [] -> ((0,0),(0,0))
-                 xs -> ghcSpanStartEnd $ GHC.getLoc $ last xs
-    (_,endSig) = case sigs of
-                 [] -> ((0,0),(0,0))
-                 xs -> ghcSpanStartEnd $ GHC.getLoc $ last xs
+    endBind = endPosForList bindList
+    endSig  = endPosForList sigs
     end = if endSig > endBind then endSig else endBind
 
-    -- (s1,toksb)        = break (\t -> tokenPos t >= start) toks
-    -- (toksBinds,toks1) = break (\t -> tokenPos t >= end) toksb
     (s1,toksBinds,toks1) = splitToks (start,end) toks
 
     firstBindTok = ghead "allocLocalBinds" $ dropWhile isWhiteSpaceOrIgnored toksBinds
@@ -617,6 +675,22 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
     -- r = error $ "allocLocalBinds:(s1,toksBinds,toks1)=" ++ show (s1,toksBinds,toks1)
 
 allocLocalBinds (GHC.HsIPBinds ib)  toks = error "allocLocalBinds undefined"
+
+-- ---------------------------------------------------------------------
+
+startPosForList :: [GHC.Located a] -> SimpPos
+startPosForList xs = start
+  where
+    (start,_) = case xs of
+                 [] -> ((100000,0),(0,0))
+                 ((GHC.L ls _):_) -> ghcSpanStartEnd ls
+
+endPosForList :: [GHC.Located a] -> SimpPos
+endPosForList xs = end
+  where
+    (_,end) = case xs of
+                 [] -> ((0,0),(0,0))
+                 ls -> ghcSpanStartEnd $ GHC.getLoc $ last ls
 
 -- ---------------------------------------------------------------------
 
@@ -815,6 +889,8 @@ allocType (GHC.L l (GHC.HsTupleTy _sort types)) toks = r
     typesLayout = allocList types typeToks allocType
     r = strip $ (makeLeafFromToks s1)
              ++ typesLayout ++ (makeLeafFromToks toks')
+allocType t toks = error $ "allocType: not implemented for:" ++ (showGhc t)
+
 {-
 HsOpTy (LHsType name) (LHsTyOp name) (LHsType name)	 
 HsParTy (LHsType name)	 
@@ -832,6 +908,71 @@ HsExplicitTupleTy [PostTcKind] [LHsType name]
 HsTyLit HsTyLit	 
 HsWrapTy HsTyWrapper (HsType name)
 -}
+
+-- ---------------------------------------------------------------------
+
+allocInstDecl :: GHC.LInstDecl GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocInstDecl (GHC.L l (GHC.ClsInstD polyTy@(GHC.L lt _) binds sigs famInsts)) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,polytToks,toks2) = splitToks (ghcSpanStartEnd lt) toks1
+
+    polytLayout = allocType polyTy polytToks
+
+    -- TODO: will require 3-way merge of binds,sigs and famInsts
+    bindList = GHC.bagToList binds
+{-
+    startBind = startPosForList bindList
+    startSig  = startPosForList sigs
+    startFam  = startPosForList famInsts
+    start = minimum [startBind,startSig,startFam]
+
+    endBind = endPosForList (GHC.bagToList binds)
+    endSig  = endPosForList sigs
+    endFam  = endPosForList famInsts
+    end = maximum [endBind,endSig,endFam]
+-}
+    bindMix = makeMixedListEntry bindList (shim allocBind)
+    sigMix  = makeMixedListEntry sigs (shim allocSig)
+    famMix  = makeMixedListEntry famInsts (shim allocLFamInstDecl)
+
+    bindsLayout' = allocMixedList (bindMix++sigMix++famMix) toks2
+    r = bindsLayout'
+
+allocInstDecl (GHC.L l (GHC.FamInstD decl)) toks = r
+  where
+    (s1,toks1,s2) = splitToks (ghcSpanStartEnd l) toks
+    declLayout = allocLFamInstDecl (GHC.L l decl) toks1
+    r = strip $(makeLeafFromToks s1) ++ declLayout ++ (makeLeafFromToks s2)
+
+-- ---------------------------------------------------------------------
+
+allocLFamInstDecl :: GHC.LFamInstDecl GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocLFamInstDecl (GHC.L l (GHC.FamInstDecl n@(GHC.L ln _) (GHC.HsWB typs _ _) defn _fvs)) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,nToks,toks2) = splitToks (ghcSpanStartEnd ln) toks1
+    (s3,typsToks,defnToks) = splitToksForList typs toks2
+
+    nLayout = allocLocated n nToks
+    patsLayout = allocList typs typsToks allocType
+    (defnLayout,s4) = allocHsTyDefn defn defnToks
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ nLayout ++ (makeLeafFromToks s3)
+             ++ patsLayout ++ defnLayout
+             ++ (makeLeafFromToks s4)
+             ++ (makeLeafFromToks toks')
+
+-- ---------------------------------------------------------------------
+
+allocLTyClDecl = error "allocLTyClDecl undefined"
+allocFunDep = error "allocFunDep undefined"
+
+allocHsTupArg :: GHC.HsTupArg GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocHsTupArg = error "allocHsTupArg undefined"
+
+allocTupArgList = undefined
+
 -- ---------------------------------------------------------------------
 
 allocLocated :: GHC.Located b -> [PosToken] -> [LayoutTree]
@@ -852,8 +993,31 @@ allocTyVarBndrs (GHC.HsQTvs _kvs tvs) toks = (r,s1)
 -- ---------------------------------------------------------------------
 
 allocTyVarBndr :: GHC.LHsTyVarBndr GHC.RdrName -> [PosToken] -> [LayoutTree]
-allocTyVarBndr = error "allocTyVarBndr undefined"
+allocTyVarBndr n@(GHC.L l (GHC.UserTyVar _)) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    nLayout = allocLocated n toks1
+    r = strip $ (makeLeafFromToks s1) ++ nLayout
+             ++ (makeLeafFromToks toks')
+allocTyVarBndr (GHC.L l (GHC.KindedTyVar _n k@(GHC.L lk _))) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    (nToks,kToks,toks2) = splitToks (ghcSpanStartEnd lk) toks1
+    nLayout = makeLeafFromToks nToks
+    kindLayout = allocType k kToks
+    r = strip $ (makeLeafFromToks s1) ++ nLayout
+             ++ kindLayout ++ (makeLeafFromToks toks2)
+             ++ (makeLeafFromToks toks')
 
+{-
+
+data HsTyVarBndr name
+
+Constructors
+  UserTyVar name	 
+  KindedTyVar name (LHsKind name)	 
+
+-}
 -- ---------------------------------------------------------------------
 
 allocHsTyDefn :: GHC.HsTyDefn GHC.RdrName -> [PosToken] -> ([LayoutTree],[PosToken])
@@ -1073,6 +1237,95 @@ allocInterleavedLists axs bxs toksIn allocFuncA allocFuncB = r
 
     (layout,s2) = go ([],toksIn) axs bxs
     r = strip $ layout ++ (makeLeafFromToks s2)
+
+-- ---------------------------------------------------------------------
+
+allocInterleavedLists3 :: [GHC.Located a] -> [GHC.Located b] -> [GHC.Located c]
+   -> [PosToken]
+   -> (GHC.Located a -> [PosToken] -> [LayoutTree])
+   -> (GHC.Located b -> [PosToken] -> [LayoutTree])
+   -> (GHC.Located c -> [PosToken] -> [LayoutTree])
+   -> [LayoutTree]
+allocInterleavedLists3 axs bxs cxs toksIn allocFuncA allocFuncB allocFuncC = r
+  where
+    -- go :: ([LayoutTree],[PosToken]) -> [GHC.Located a] -> [GHC.Located b] -> ([LayoutTree],[PosToken])
+    go (acc,ts) []     []    [] = (acc,ts)
+    go (acc,ts) (a:as) []    [] = go (acc ++ aa,ts') as [] []
+        where
+          (aa,ts') = allocA a ts
+    go (acc,ts) []     (b:bs) [] = go (acc ++ bb,ts') [] bs []
+        where
+          (bb,ts') = allocB b ts
+    go (acc,ts) []     [] (c:cs) = go (acc ++ cc,ts') [] [] cs
+        where
+          (cc,ts') = allocC c ts
+
+    go (acc,ts) (a:as) (b:bs) [] = if GHC.getLoc a < GHC.getLoc b
+                             then go (acc ++ aa,tsa') as (b:bs) []
+                             else go (acc ++ bb,tsb') (a:as) bs []
+        where
+          (aa,tsa') = allocA a ts
+          (bb,tsb') = allocB b ts
+
+    -- allocA :: GHC.Located a -> [PosToken] -> ([LayoutTree],[PosToken])
+    allocA x@(GHC.L l _) toks = (r',toks')
+      where
+        (s1,funcToks,toks') = splitToks (ghcSpanStartEnd l) toks
+        funcLayout = allocFuncA x funcToks
+        r' = strip $ (makeLeafFromToks s1) ++ [makeGroup (strip funcLayout)]
+
+    -- allocB :: GHC.Located b -> [PosToken] -> ([LayoutTree],[PosToken])
+    allocB x@(GHC.L l _) toks = (r',toks')
+      where
+        (s1,funcToks,toks') = splitToks (ghcSpanStartEnd l) toks
+        funcLayout = allocFuncB x funcToks
+        r' = strip $ (makeLeafFromToks s1) ++ [makeGroup (strip funcLayout)]
+        -- r' = error $ "allocB:(funcLayout)=" ++ show funcLayout
+
+    -- allocC :: GHC.Located c -> [PosToken] -> ([LayoutTree],[PosToken])
+    allocC x@(GHC.L l _) toks = (r',toks')
+      where
+        (s1,funcToks,toks') = splitToks (ghcSpanStartEnd l) toks
+        funcLayout = allocFuncC x funcToks
+        r' = strip $ (makeLeafFromToks s1) ++ [makeGroup (strip funcLayout)]
+        -- r' = error $ "allocC:(funcLayout)=" ++ show funcLayout
+
+    (layout,s2) = go ([],toksIn) axs bxs cxs
+    r = strip $ layout ++ (makeLeafFromToks s2)
+
+-- ---------------------------------------------------------------------
+
+shim ::
+    (GHC.Located a -> [PosToken] -> [LayoutTree])
+ -> (GHC.Located a -> [PosToken] -> ([LayoutTree],[PosToken]))
+shim f = f'
+  where
+    f' x@(GHC.L l _) toks = (r,toks')
+      where
+        (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+        r = strip $ (makeLeafFromToks s1) ++ f x toks1
+
+makeMixedListEntry ::
+      [GHC.Located a]
+   -> (GHC.Located a -> [PosToken] -> ([LayoutTree],[PosToken]))
+   -> [(SimpPos,([PosToken] -> ([LayoutTree],[PosToken])))]
+makeMixedListEntry xs f = map (\x@(GHC.L l _) -> (fst $ ghcSpanStartEnd l,f x)) xs
+
+allocMixedList ::
+       [(SimpPos,([PosToken] -> ([LayoutTree],[PosToken])))]
+   -> [PosToken] -> [LayoutTree]
+allocMixedList xs toksIn = r
+  where
+    xs' = sortBy (\(p1,_) (p2,_) -> compare p1 p2) xs
+    (layout,toksFin) = foldl' doOne ([],toksIn) xs'
+
+    doOne :: ([LayoutTree],[PosToken]) -> (SimpPos,([PosToken] -> ([LayoutTree],[PosToken])))
+              -> ([LayoutTree],[PosToken])
+    doOne (acc,toks) (_,f) = (acc++lay,toks')
+      where
+        (lay,toks') = f toks
+
+    r = strip $ layout ++ (makeLeafFromToks toksFin)
 
 -- ---------------------------------------------------------------------
 
