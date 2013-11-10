@@ -1021,12 +1021,12 @@ spec = do
       (showGhc n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       -- (show $ toksFromState s) `shouldBe` ""
-      (renderPpr $ pprFromState s) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2 :: Integer -> Integer\n bar2 x = c * x\n\n \n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (renderPpr $ pprFromState s) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nbar2 :: Integer -> Integer\nbar2 x = c * x\n\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
       (showGhc nb) `shouldBe` "[bar2 x = DupDef.Dd1.c GHC.Num.* x]"
 
   -- ---------------------------------------------
 
-    it "Duplicates a bind with a signature, and an offset" $ do
+    it "duplicates a bind with a signature, and an offset" $ do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -1079,12 +1079,12 @@ spec = do
       (showGhc n) `shouldBe` "MoveDef.Md1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (renderPpr $ pprFromState s) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel bar2 x= c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (renderPpr $ pprFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel bar2 x= c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (showGhc $ last $ init nb) `shouldBe` "MoveDef.Md1.toplevel bar2 x = MoveDef.Md1.c GHC.Num.* x"
 
     -- ---------------------------------
 
-    it "Adds parameters to a declaration with multiple matches" $ do
+    it "adds parameters to a declaration with multiple matches" $ do
       (t, toks) <- parsedFileAddParams1
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -1100,12 +1100,12 @@ spec = do
       (showGhc n) `shouldBe` "AddParams1.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n foo = 3\n\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (renderPpr $ pprFromState s) `shouldBe` "module AddParams1 where\n\n sq  pow 0= 0\n sq  pow z= z^2\n\n foo = 3\n\n "
+      (renderPpr $ pprFromState s) `shouldBe` "module AddParams1 where\n\nsq  pow 0= 0\nsq  pow z= z^2\n\nfoo = 3\n\n"
       -- (showGhc $ last $ init nb) `shouldBe` ""
 
     -- ---------------------------------
 
-    it "Adds parameters to a declaration with no existing ones" $ do
+    it "adds parameters to a declaration with no existing ones" $ do
       (t, toks) <- parsedFileAddParams1
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
@@ -1124,13 +1124,13 @@ spec = do
       (showGhc n) `shouldBe` "AddParams1.foo"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n foo = 3\n\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (renderPpr $ pprFromState s) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n foo baz bar= 3\n\n "
+      (renderPpr $ pprFromState s) `shouldBe` "module AddParams1 where\n\nsq  0 = 0\nsq  z = z^2\n\nfoo baz bar= 3\n\n"
       -- (showGhc $ last $ init nb) `shouldBe` ""
 
   -- ---------------------------------------------
 
   describe "addActualParamsToRhs" $ do
-    it "Adds a parameter to the rhs of a declaration, and updates the token stream" $ do
+    it "adds a parameter to the rhs of a declaration, and updates the token stream" $ do
       (t, toks) <- parsedFileLiftD1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -1153,11 +1153,11 @@ spec = do
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (showGhc nb) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = (sq bar2) x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
 
-      (renderPpr $ pprFromState s) `shouldBe` "module LiftToToplevel.D1 where\n\n {-lift 'sq' to top level. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = (sq bar2)x + sumSquares xs\n   where\n      sq x = x ^ pow\n      pow =2\n\n sumSquares [] = 0\n\n main = sumSquares [1..4]\n\n\n "
+      (renderPpr $ pprFromState s) `shouldBe` "module LiftToToplevel.D1 where\n\n{-lift 'sq' to top level. This refactoring\n affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = (sq bar2)x + sumSquares xs\n  where\n     sq x = x ^ pow\n     pow =2\n\nsumSquares [] = 0\n\nmain = sumSquares [1..4]\n\n\n"
 
     -- --------------------
 
-    it "Adds parameters to a complex rhs of a declaration, and updates the token stream" $ do
+    it "adds parameters to a complex rhs of a declaration, and updates the token stream" $ do
       (t, toks) <- parsedFileLiftWhereIn7Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -1179,7 +1179,7 @@ spec = do
       -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "addthree"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (renderPpr $ pprFromState s) `shouldBe` "module LiftToToplevel.WhereIn7 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'addthree' defined in 'fun'.\n --This example aims to test adding parenthese.\n\n\n fun x y z =inc (addthree x1 y1 z1)\n        where inc a =a +1\n              addthree=x+y+z\n "
+      (renderPpr $ pprFromState s) `shouldBe` "module LiftToToplevel.WhereIn7 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'addthree' defined in 'fun'.\n--This example aims to test adding parenthese.\n\n\nfun x y z =inc (addthree x1 y1 z1)\n       where inc a =a +1\n             addthree=x+y+z\n"
       (showGhc nb) `shouldBe` "LiftToToplevel.WhereIn7.fun x y z\n  = inc (addthree x1 y1 z1)\n  where\n      inc a = a GHC.Num.+ 1\n      addthree = x GHC.Num.+ y GHC.Num.+ z"
 
 
@@ -2829,7 +2829,7 @@ This function is not used and has been removed
   -- ---------------------------------------
 
   describe "autoRenameLocalVar" $ do
-    it "Renames an identifier if it is used, no token update" $ do
+    it "renames an identifier if it is used, no token update" $ do
       let
         comp = do
           (t, toks) <- parseSourceFileTest "./test/testdata/Demote/WhereIn4.hs"
@@ -2848,7 +2848,7 @@ This function is not used and has been removed
       (showGhc n2) `shouldBe` "p"
       (showGhc d) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n   where\n       p = 2]"
       (showGhc r) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n   where\n       p_1 = 2]"
-      (renderPpr $ pprFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (renderPpr $ pprFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
 
 
     it "renames an identifier if it is used and updates tokens" $ do
@@ -2870,7 +2870,7 @@ This function is not used and has been removed
       (showGhc n2) `shouldBe` "p"
       (showGhc d) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n   where\n       p = 2]"
       (showGhc r) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n   where\n       p_1 = 2]"
-      (renderPpr $ pprFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p_1 x + sq p_1 y\n          where p_1=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (renderPpr $ pprFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p_1 x + sq p_1 y\n         where p_1=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
 
   -- ---------------------------------------
 
@@ -2964,7 +2964,7 @@ This function is not used and has been removed
   -- ---------------------------------------
 
   describe "addItemsToImport" $ do
-    it "add an item to an import entry with no items." $ do
+    it "adds an item to an import entry with no items" $ do
       let
         comp = do
          (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/JustImports.hs"
@@ -2983,7 +2983,7 @@ This function is not used and has been removed
 
       -- This is the correct behavior. If the import doesn't have an import list, creating 
       -- one for an item effectively reduces the imported interface.
-      (renderPpr $ pprFromState s) `shouldBe` "module JustImports where\n\n import Data.Maybe\n "
+      (renderPpr $ pprFromState s) `shouldBe` "module JustImports where\n\nimport Data.Maybe\n"
       -- (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n "
 
 -- Not sure if this should be a test

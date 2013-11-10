@@ -120,7 +120,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , srcPosToSimpPos
        , showForestSpan
        , deleteGapsToks
-       , deleteGapsToks'
+       -- , deleteGapsToks'
        , calcEndGap
        , stripForestLines
 
@@ -1235,7 +1235,41 @@ normaliseColumns ps = ps'
 -- ---------------------------------------------------------------------
 
 adjustLinesForDeleted :: Tree Entry -> Tree Entry
-adjustLinesForDeleted = error "undefined adjustLinesForDeleted"
+adjustLinesForDeleted forest = forest'
+  where
+    (_,forest') = go (0,0) forest
+
+    go :: (Int,Int) -> Tree Entry -> ((Int,Int),Tree Entry)
+    go (ro,co) (n@(Node (Entry _ss _lay _toks) [])) = ((ro,co),applyOffsetToTreeShallow (ro,co) n)
+    go (ro,co) (n@(Node (Deleted _ (gr,_gc)) []))   = ((ro+gr,co),n)
+    go (ro,co) (n@(Node (Entry _ss _lay []) _subs)) = ((ro',co'),Node (Entry ss lay []) subs')
+      where
+        (Node (Entry ss lay []) subs) = applyOffsetToTreeShallow (ro,co) n
+        ((ro',co'),subs') = foldl' go' ((ro,co),[]) subs
+
+    go' ((ro,co),acc) tree = ((ro',co'),acc++[tree'])
+      where
+        ((ro',co'),tree') = go (ro,co) tree
+
+-- ---------------------------------------------------------------------
+
+applyOffsetToTreeShallow :: (Int,Int) -> Tree Entry -> Tree Entry
+applyOffsetToTreeShallow (ro,co) (Node (Entry sspan lay toks) subs)
+  = (Node (Entry sspan' lay toks') subs')
+  where
+    sspan' = addOffsetToForestSpan (ro,co) sspan
+    toks' = toks -- TODO: addOffsetToToks?
+    subs' = subs
+
+-- ---------------------------------------------------------------------
+
+applyOffsetToTree :: (Int,Int) -> Tree Entry -> Tree Entry
+applyOffsetToTree (ro,co) (Node (Entry sspan lay toks) subs)
+  = (Node (Entry sspan' lay toks') subs')
+  where
+    sspan' = addOffsetToForestSpan (ro,co) sspan
+    toks' = toks -- TODO: addOffsetToToks?
+    subs' = map (applyOffsetToTree (ro,co)) subs
 
 -- ---------------------------------------------------------------------
 
@@ -1452,6 +1486,7 @@ goDeleteGapsToks (fr,fc) (Entry ss _lay1 t1:Deleted _ eg:t2:ts)
 
     t1' = map (increaseSrcSpan (fr,fc)) t1
 
+{-
 --
 -- | Process the leaf nodes of a tree to remove all deleted spans
 deleteGapsToks' :: [Entry] -> [(SimpPos,String,ForestSpan,[PosToken])]
@@ -1477,6 +1512,7 @@ goDeleteGapsToks' (fr,fc) (Entry ss _ t1:Deleted _ _:t2:ts)
     t1' = map (increaseSrcSpan (fr,fc)) t1
 
 --
+-}
 
 -- ---------------------------------------------------------------------
 
