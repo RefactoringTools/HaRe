@@ -1688,11 +1688,83 @@ tree TId 0:
       (t,toks) <- parsedFileLayoutLetExpr
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
       (GHC.showRichTokenStream toks) `shouldBe` "-- A simple let expression, to ensure the layout is detected\n\n module Layout.LetExpr where\n\n foo = let x = 1\n           y = 2\n       in x + y\n\n "
 
       let layout = allocTokens parsed toks
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
+
+      let sspan = posToSrcSpan layout ((6,11),(6,16))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/LetExpr.hs:6:11-15"
+      let (layout1,tree) = removeSrcSpan layout (sf sspan)
+
+      (drawTreeCompact layout1) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(7,15))\n"++
+          "2:((5,1),(7,15))\n"++
+          "3:((5,1),(5,4))\n"++
+          "3:((5,5),(7,15))\n"++
+          "4:((5,5),(5,6))\n"++
+          "4:((5,7),(7,15))\n"++
+          "5:((5,7),(5,10))\n"++
+          "5:((5,11),(6,16))(Above 0 1 (5,11) (6,15) (1,-8))\n"++
+          "6:((5,11),(5,16))\n"++
+          "7:((5,11),(5,16))\n"++
+          "8:((5,11),(5,12))\n"++
+          "8:((5,13),(5,16))\n"++
+          "9:((5,13),(5,14))\n"++
+          "9:((5,15),(5,16))\n"++
+          "10:((5,15),(5,16))\n"++
+          "6:((6,11),(6,16))(1,-9)D\n"++
+          "5:((7,7),(7,9))\n"++
+          "5:((7,10),(7,15))\n"++
+          "6:((7,10),(7,11))\n"++
+          "6:((7,12),(7,13))\n"++
+          "6:((7,14),(7,15))\n"++
+          "1:((9,1),(9,1))\n"
+
+      (drawTreeCompact $ adjustLinesForDeleted layout1) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(7,15))\n"++
+          "2:((5,1),(7,15))\n"++
+          "3:((5,1),(5,4))\n"++
+          "3:((5,5),(7,15))\n"++
+          "4:((5,5),(5,6))\n"++
+          "4:((5,7),(7,15))\n"++
+          "5:((5,7),(5,10))\n"++
+          "5:((5,11),(6,16))(Above 0 1 (5,11) (6,15) (1,-8))\n"++
+          "6:((5,11),(5,16))\n"++
+          "7:((5,11),(5,16))\n"++
+          "8:((5,11),(5,12))\n"++
+          "8:((5,13),(5,16))\n"++
+          "9:((5,13),(5,14))\n"++
+          "9:((5,15),(5,16))\n"++
+          "10:((5,15),(5,16))\n"++
+          "6:((6,11),(6,16))(1,-9)D\n"++
+          "5:((6,7),(6,9))\n"++
+          "5:((6,10),(6,15))\n"++
+          "6:((6,10),(6,11))\n"++
+          "6:((6,12),(6,13))\n"++
+          "6:((6,14),(6,15))\n"++
+          "1:((8,1),(8,1))\n"
+
+      (renderPpr $ retrieveTokensPpr layout1) `shouldBe`
+          "-- A simple let expression, to ensure the layout is detected\n"++
+          "\n"++
+          "module Layout.LetExpr where\n"++
+          "\n"++
+          "foo = let x = 1\n"++
+          "      in x + y\n"++
+          "\n"
 
       "a" `shouldBe` "write this test"
 

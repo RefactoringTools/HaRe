@@ -1167,6 +1167,7 @@ retrieveTokensPpr forest = pps'
   where
     forest' = adjustLinesForDeleted forest
     (pps,lastLine) = retrieveTokensPpr' ([],[]) forest'
+
     pps' = pps ++ (mkPprFromLineToks lastLine)
 
 retrieveTokensPpr' :: ([Ppr],[PosToken]) -> Tree Entry -> ([Ppr],[PosToken])
@@ -1241,7 +1242,7 @@ adjustLinesForDeleted forest = forest'
 
     go :: (Int,Int) -> Tree Entry -> ((Int,Int),Tree Entry)
     go (ro,co) (n@(Node (Entry _ss _lay _toks) [])) = ((ro,co),applyOffsetToTreeShallow (ro,co) n)
-    go (ro,co) (n@(Node (Deleted _ (gr,_gc)) []))   = ((ro+gr,co),n)
+    go (ro,co) (n@(Node (Deleted _ (gr,_gc)) []))   = ((ro-gr,co),n)
     go (ro,co) (n@(Node (Entry _ss _lay []) _subs)) = ((ro',co'),Node (Entry ss lay []) subs')
       where
         (Node (Entry ss lay []) subs) = applyOffsetToTreeShallow (ro,co) n

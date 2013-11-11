@@ -889,25 +889,97 @@ allocType (GHC.L l (GHC.HsTupleTy _sort types)) toks = r
     typesLayout = allocList types typeToks allocType
     r = strip $ (makeLeafFromToks s1)
              ++ typesLayout ++ (makeLeafFromToks toks')
+allocType (GHC.L l (GHC.HsOpTy t1@(GHC.L l1 _) _op t2@(GHC.L l2 _))) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,t1Toks,toks2) = splitToks (ghcSpanStartEnd l1) toks1
+    (s4,t2Toks,toks4) = splitToks (ghcSpanStartEnd l2) toks2
+    t1Layout = allocType t1 t1Toks
+    -- opLayout = allocLocated op opToks
+    t2Layout = allocType t2 t2Toks
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ t1Layout -- ++ (makeLeafFromToks s3)
+             {- ++ opLayout -} ++ (makeLeafFromToks s4)
+             ++ t2Layout ++ (makeLeafFromToks toks4)
+             ++ (makeLeafFromToks toks')
+allocType n@(GHC.L _l (GHC.HsParTy _) ) toks = allocLocated n toks
+allocType (GHC.L l (GHC.HsIParamTy _ typ@(GHC.L lt _)) ) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,typToks,toks2) = splitToks (ghcSpanStartEnd lt) toks1
+    typLayout = allocType typ typToks
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ typLayout ++ (makeLeafFromToks toks2)
+             ++ (makeLeafFromToks toks')
+allocType (GHC.L l (GHC.HsEqTy t1@(GHC.L l1 _) t2@(GHC.L l2 _))) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,t1Toks,toks2) = splitToks (ghcSpanStartEnd l1) toks1
+    (s3,t2Toks,toks3) = splitToks (ghcSpanStartEnd l2) toks2
+    t1Layout = allocType t1 t1Toks
+    t2Layout = allocType t2 t2Toks
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ t1Layout ++ (makeLeafFromToks s3)
+             ++ t2Layout ++ (makeLeafFromToks toks3)
+             ++ (makeLeafFromToks toks')
+allocType (GHC.L l (GHC.HsKindSig t1@(GHC.L l1 _) t2@(GHC.L l2 _))) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,t1Toks,toks2) = splitToks (ghcSpanStartEnd l1) toks1
+    (s3,t2Toks,toks3) = splitToks (ghcSpanStartEnd l2) toks2
+    t1Layout = allocType t1 t1Toks
+    t2Layout = allocType t2 t2Toks
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ t1Layout ++ (makeLeafFromToks s3)
+             ++ t2Layout ++ (makeLeafFromToks toks3)
+             ++ (makeLeafFromToks toks')
+allocType (GHC.L l (GHC.HsQuasiQuoteTy (GHC.HsQuasiQuote _n _lq _)) ) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    quoteLayout = makeLeafFromToks toks1
+    r = strip $ (makeLeafFromToks s1)
+             ++ quoteLayout
+             ++ (makeLeafFromToks toks')
+allocType (GHC.L l (GHC.HsSpliceTy (GHC.HsSplice _n e@(GHC.L le _)) _fv _k) ) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,eToks,toks2) = splitToks (ghcSpanStartEnd le) toks1
+    eLayout = allocExpr e eToks
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ eLayout ++ (makeLeafFromToks toks2)
+             ++ (makeLeafFromToks toks')
+allocType (GHC.L l (GHC.HsDocTy t1@(GHC.L l1 _) t2@(GHC.L l2 _))) toks = r
+  where
+    (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,t1Toks,toks2) = splitToks (ghcSpanStartEnd l1) toks1
+    (s3,t2Toks,toks3) = splitToks (ghcSpanStartEnd l2) toks2
+    t1Layout = allocType t1 t1Toks
+    t2Layout = allocLocated t2 t2Toks
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ t1Layout ++ (makeLeafFromToks s3)
+             ++ t2Layout ++ (makeLeafFromToks toks3)
+             ++ (makeLeafFromToks toks')
+allocType (GHC.L l (GHC.HsBangTy _ t1@(GHC.L l1 _)) ) toks = r
+  where
+    (s1,typeToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    (s2,t1Toks,toks2) = splitToks (ghcSpanStartEnd l1) typeToks
+    t1Layout = allocType t1 t1Toks
+    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+             ++ t1Layout ++ (makeLeafFromToks toks2) ++ (makeLeafFromToks toks')
+allocType (GHC.L l (GHC.HsRecTy decls) ) toks = r
+  where
+    (s1,typeToks,toks') = splitToks (ghcSpanStartEnd l) toks
+    (declsLayout,toks1) = allocConDeclFieldList decls typeToks
+    r = strip $ (makeLeafFromToks s1)
+             ++ declsLayout
+             ++ (makeLeafFromToks toks1)
+             ++ (makeLeafFromToks toks')
+allocType n@(GHC.L _l (GHC.HsCoreTy _) ) toks = allocLocated n toks
+allocType (GHC.L _l (GHC.HsExplicitListTy  _ ts) ) toks = allocList ts toks allocType
+allocType (GHC.L _l (GHC.HsExplicitTupleTy _ ts) ) toks = allocList ts toks allocType
+allocType n@(GHC.L _l (GHC.HsTyLit _) ) toks = allocLocated n toks
+allocType (GHC.L l (GHC.HsWrapTy _ typ) ) toks = allocType (GHC.L l typ) toks
 allocType t toks = error $ "allocType: not implemented for:" ++ (showGhc t)
-
-{-
-HsOpTy (LHsType name) (LHsTyOp name) (LHsType name)	 
-HsParTy (LHsType name)	 
-HsIParamTy HsIPName (LHsType name)	 
-HsEqTy (LHsType name) (LHsType name)	 
-HsKindSig (LHsType name) (LHsKind name)	 
-HsQuasiQuoteTy (HsQuasiQuote name)	 
-HsSpliceTy (HsSplice name) FreeVars PostTcKind	 
-HsDocTy (LHsType name) LHsDocString	 
-HsBangTy HsBang (LHsType name)	 
-HsRecTy [ConDeclField name]	 
-HsCoreTy Type	 
-HsExplicitListTy PostTcKind [LHsType name]	 
-HsExplicitTupleTy [PostTcKind] [LHsType name]	 
-HsTyLit HsTyLit	 
-HsWrapTy HsTyWrapper (HsType name)
--}
 
 -- ---------------------------------------------------------------------
 
@@ -971,7 +1043,21 @@ allocFunDep = error "allocFunDep undefined"
 allocHsTupArg :: GHC.HsTupArg GHC.RdrName -> [PosToken] -> [LayoutTree]
 allocHsTupArg = error "allocHsTupArg undefined"
 
-allocTupArgList = undefined
+-- ---------------------------------------------------------------------
+
+allocTupArgList :: [GHC.HsTupArg GHC.RdrName] -> [PosToken] -> [LayoutTree]
+allocTupArgList tas toksIn = r
+  where
+    go :: ([LayoutTree],[PosToken]) -> [GHC.HsTupArg GHC.RdrName] -> ([LayoutTree],[PosToken])
+    go (acc,toks) [] = (acc,toks)
+    go (acc,toks) ((GHC.Missing _):ts')    = go (acc,toks) ts'
+    go (acc,toks) ((GHC.Present expr@(GHC.L l _)):ts') = go (acc++exprLayout,toks') ts'
+      where
+        (s1,toks1,toks') = splitToks (ghcSpanStartEnd l) toks
+        eLayout = allocExpr expr toks1
+        exprLayout = strip $ (makeLeafFromToks s1) ++ eLayout
+    (lay,toksOut) = go ([],toksIn) tas
+    r = strip $ lay ++ (makeLeafFromToks toksOut)
 
 -- ---------------------------------------------------------------------
 
@@ -1105,14 +1191,7 @@ allocHsConDeclDetails (GHC.PrefixCon ds) toks = (r,toks')
     (s1,dsToks,toks') = splitToksForList ds toks
     dsLayout = allocList ds dsToks allocLBangType
     r = strip $ (makeLeafFromToks s1) ++ dsLayout
-allocHsConDeclDetails (GHC.RecCon conDecls) toks = (r,toks')
-  where
-    (r,toks') = foldl' doOne ([],toks) conDecls
-
-    doOne (acc,toksOne) cdf = (r1,toks2)
-      where
-        (lay,toks2) = allocConDeclField cdf toksOne
-        r1 = acc ++ lay
+allocHsConDeclDetails (GHC.RecCon conDecls) toks = allocConDeclFieldList conDecls toks
 allocHsConDeclDetails (GHC.InfixCon bt1@(GHC.L lb1 _) bt2@(GHC.L lb2 _)) toks = (r,toks')
   where
     (s1,bt1Toks,toks2) = splitToks (ghcSpanStartEnd lb1) toks
@@ -1124,6 +1203,16 @@ allocHsConDeclDetails (GHC.InfixCon bt1@(GHC.L lb1 _) bt2@(GHC.L lb2 _)) toks = 
              ++ (makeLeafFromToks s2) ++ bt2Layout
 
 -- ---------------------------------------------------------------------
+
+allocConDeclFieldList :: [GHC.ConDeclField GHC.RdrName] -> [PosToken] -> ([LayoutTree],[PosToken])
+allocConDeclFieldList conDecls toks = (r,toks')
+  where
+    (r,toks') = foldl' doOne ([],toks) conDecls
+
+    doOne (acc,toksOne) cdf = (r1,toks2)
+      where
+        (lay,toks2) = allocConDeclField cdf toksOne
+        r1 = acc ++ lay
 
 allocConDeclField :: GHC.ConDeclField GHC.RdrName -> [PosToken] -> ([LayoutTree],[PosToken])
 allocConDeclField (GHC.ConDeclField n@(GHC.L ln _) typ@(GHC.L lb _) mdoc) toks = (r,toks')

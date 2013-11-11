@@ -92,9 +92,9 @@ addLayoutAfterSrcSpan lt oldSpan pos layout = (lt',newSpan')
 -}
 -- ---------------------------------------------------------------------
 
-getSrcSpanFor = undefined
-placeLayoutForSpan = undefined
-addNewSrcSpanAndToksAfter = undefined
+-- getSrcSpanFor = error "getSrcSpanFor undefined"
+-- placeLayoutForSpan = undefined
+-- addNewSrcSpanAndToksAfter = undefined
 
 -- ---------------------------------------------------------------------
 
