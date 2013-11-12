@@ -4024,7 +4024,7 @@ adjustLayoutAfterRename oldPN newName t = do
             logm $ "adjustLMatch: (l,off)=" ++ showGhc (l,off)
             return x
 
-    adjustLMatch x = return x
+    -- adjustLMatch x = return x
 
 -- -------------------------------------
 

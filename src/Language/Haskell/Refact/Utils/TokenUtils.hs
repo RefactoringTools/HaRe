@@ -152,7 +152,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Data.Bits
 import Data.List
 import Data.Tree
-import qualified Text.PrettyPrint as PP
+-- import qualified Text.PrettyPrint as PP
 import qualified Data.Map as Map
 import qualified Data.Tree.Zipper as Z
 
@@ -241,6 +241,10 @@ instance Eq Entry where
     = fs1 == fs2 && lay1 == lay2
    && (show toks1) == (show toks2)
 
+  (Deleted fs1 lay1) == (Deleted fs2 lay2)
+    = fs1 == fs2 && lay1 == lay2
+
+  (==) _ _ = False
 
 -- ---------------------------------------------------------------------
 
@@ -596,6 +600,10 @@ treeIdIntoTree tid (Node (Entry fspan lay toks) subTree) = tree'
   where
     fs' = treeIdIntoForestSpan tid fspan
     tree' = Node (Entry fs' lay toks) subTree
+treeIdIntoTree tid (Node (Deleted fspan eg) subTree) = tree'
+  where
+    fs' = treeIdIntoForestSpan tid fspan
+    tree' = Node (Deleted fs' eg) subTree
 
 -- ---------------------------------------------------------------------
 
@@ -655,7 +663,7 @@ replaceTreeInCache sspan tree tk = tk'
     tk' = tk {tkCache = Map.insert tid tree' (tkCache tk) }
 
 putTidInTree :: TreeId -> Tree Entry -> Tree Entry
-putTidInTree tid (Node (Deleted fspan eg) []) = (Node (Deleted fs' eg) [])
+putTidInTree tid (Node (Deleted fspan eg) subs) = (Node (Deleted fs' eg) subs)
   where fs' = treeIdIntoForestSpan tid fspan
 putTidInTree tid (Node (Entry fspan lay toks) subs) = tree'
   where
@@ -747,8 +755,9 @@ replaceTokenForSrcSpan forest sspan tok = forest'
     -- Note: with LayoutTree, the full tree matching the AST has been
     -- built, still need to drill down to the nearest enclosing span
     (tspan,lay,toks) = case Z.tree z' of
-            (Node (Entry ss ly tks) []) -> (ss,ly,tks)
-            (Node (Entry _ _ []) _sub) -> error $ "replaceTokenForSrcSpan:tok pos" ++ (showForestSpan $ sf tl) ++ " expecting tokens, found: " ++ (show $ Z.tree z')
+       (Node (Entry ss ly tks) []) -> (ss,ly,tks)
+       (Node (Entry _ _ _nullToks) _sub) -> error $ "replaceTokenForSrcSpan:tok pos" ++ (showForestSpan $ sf tl) ++ " expecting tokens, found: " ++ (show $ Z.tree z')
+       (Node (Deleted _ _) _sub) -> error $ "replaceTokenForSrcSpan:tok pos" ++ (showForestSpan $ sf tl) ++ " expecting Entry, found: " ++ (show $ Z.tree z')
 
     ((row,col),_) = forestSpanToSimpPos $ srcSpanToForestSpan tl
     toks' = replaceTokNoReAlign toks (row,col) tok
@@ -1174,9 +1183,10 @@ retrieveTokensPpr' :: ([Ppr],[PosToken]) -> Tree Entry -> ([Ppr],[PosToken])
 -- TODO: take cognisance of this to reduce the gap going forward
 retrieveTokensPpr' acc (Node (Deleted _sspan  _eg ) _  ) = acc
 
-retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs) = foldl' retrieveTokensPpr' acc subs
+retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs)
+  = foldl' retrieveTokensPpr' acc subs
 
-retrieveTokensPpr' acc (Node (Entry _sspan (Above ro co _ (r,c) eo)  []) subs) = acc'
+retrieveTokensPpr' acc (Node (Entry _sspan (Above ro co _ (r,c) eo) []) subs) = acc'
   where
     (ac,curLineToks) = acc
     (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
@@ -1210,6 +1220,14 @@ retrieveTokensPpr' (acc,curLineToks) (Node (Entry _sspan _     toks) []) = (acc+
                           then ((mkPprFromLineToks (curLineToks++x)) ++ concatMap mkPprFromLineToks (  init xs),last xs)
                           else ((mkPprFromLineToks curLineToks     ) ++ concatMap mkPprFromLineToks (x:init xs),last xs)
 
+-- Keep -Wall happy
+retrieveTokensPpr' _acc n@(Node (Entry _sspan (Above _ro _co _ (_r,_c) _eo) _toks) _subs)
+  = error $ "retrieveTokensPpr': Above entry with toks:" ++ (show n)
+retrieveTokensPpr' _acc n@(Node (Entry _sspan (Offset _r _c) _toks) _subs)
+  = error $ "retrieveTokensPpr': Offset entry with toks:" ++ (show n)
+retrieveTokensPpr' _acc n@(Node (Entry _sspan (NoChange) _toks) _subs)
+  = error $ "retrieveTokensPpr': NoChange entry with toks:" ++ (show n)
+
 
 mkPprFromLineToks :: [PosToken] -> [Ppr]
 mkPprFromLineToks [] = []
@@ -1242,11 +1260,14 @@ adjustLinesForDeleted forest = forest'
 
     go :: (Int,Int) -> Tree Entry -> ((Int,Int),Tree Entry)
     go (ro,co) (n@(Node (Entry _ss _lay _toks) [])) = ((ro,co),applyOffsetToTreeShallow (ro,co) n)
-    go (ro,co) (n@(Node (Deleted _ (gr,_gc)) []))   = ((ro-gr,co),n)
+    go (ro,co) (n@(Node (Deleted _ (gr,_gc)) _nullSubs))   = ((ro-gr,co),n)
     go (ro,co) (n@(Node (Entry _ss _lay []) _subs)) = ((ro',co'),Node (Entry ss lay []) subs')
       where
         (Node (Entry ss lay []) subs) = applyOffsetToTreeShallow (ro,co) n
         ((ro',co'),subs') = foldl' go' ((ro,co),[]) subs
+
+    go (_ro,_co) (n@(Node (Entry _ss _lay _toks) _subs))
+      = error $ "adjustLinesForDeleted: Entry with toks and subs:" ++ (show n)
 
     go' ((ro,co),acc) tree = ((ro',co'),acc++[tree'])
       where
@@ -1259,11 +1280,12 @@ applyOffsetToTreeShallow (ro,co) (Node (Entry sspan lay toks) subs)
   = (Node (Entry sspan' lay toks') subs')
   where
     sspan' = addOffsetToForestSpan (ro,co) sspan
-    toks' = toks -- TODO: addOffsetToToks?
+    toks' = addOffsetToToks (ro,co) toks
     subs' = subs
+applyOffsetToTreeShallow _ n@(Node (Deleted _ _) _) = n
 
 -- ---------------------------------------------------------------------
-
+{-
 applyOffsetToTree :: (Int,Int) -> Tree Entry -> Tree Entry
 applyOffsetToTree (ro,co) (Node (Entry sspan lay toks) subs)
   = (Node (Entry sspan' lay toks') subs')
@@ -1271,7 +1293,7 @@ applyOffsetToTree (ro,co) (Node (Entry sspan lay toks) subs)
     sspan' = addOffsetToForestSpan (ro,co) sspan
     toks' = toks -- TODO: addOffsetToToks?
     subs' = map (applyOffsetToTree (ro,co)) subs
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |Convert a Ppr list into formatted source code
@@ -1305,6 +1327,7 @@ renderPpr ps = go 0 (1,1) ps
                where
                  (r',c') = (lookAheadRc ci [p])
                  ra' = go ci (r',c') subs
+    renderPprAbove _ ppr = error $ "renderPprAbove:unexpected ppr:" ++ (show ppr)
 
     lookAheadRc _ []                       = (0,0)
     lookAheadRc ci ((PprText r c _):_)      = (r,ci+c)
@@ -1312,6 +1335,7 @@ renderPpr ps = go 0 (1,1) ps
     lookAheadRc ci ((PprAbove r c _ _ _):_) = (r,ci+c)
 
     colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
+    colAfterPprText ppr = error $ "colAfterPprText:unexpected ppr:" ++ (show ppr)
 
     renderPprText :: Col -> (Row,Col) -> Ppr -> String
     renderPprText ci (r,c) (PprText rt ct toks)
@@ -1319,6 +1343,7 @@ renderPpr ps = go 0 (1,1) ps
       ++ (newCol r c rt (ci + ct))
       -- ++ "(" ++ (show (ci,(r,c),(rt,ct))) ++ ")"
       ++ (GHC.showRichTokenStream toks)
+    renderPprText _ _ ppr = error $ "renderPprText:unexpected ppr:" ++ (show ppr)
 
     renderOffset :: Row -> Col -> Col -> String
     renderOffset r c oc = nl ++ (take c' (repeat ' '))
@@ -1874,6 +1899,8 @@ openZipperToNode
      -> Z.TreePos Z.Full Entry
 openZipperToNode (Node (Entry sspan _ _) _) z
   = openZipperToSpan sspan z
+openZipperToNode (Node (Deleted sspan _ ) _) z
+  = openZipperToSpan sspan z
 
 -- |Open a zipper so that its focus is the given node
 --  NOTE: the node must already be in the tree
@@ -1882,6 +1909,8 @@ openZipperToNodeDeep
      -> Z.TreePos Z.Full Entry
      -> Z.TreePos Z.Full Entry
 openZipperToNodeDeep (Node (Entry sspan _ _) _) z
+  = openZipperToSpanDeep sspan z
+openZipperToNodeDeep (Node (Deleted sspan _) _) z
   = openZipperToSpanDeep sspan z
 
 
@@ -2104,6 +2133,7 @@ invariant forest = rsub
     --  span, they do not need to completely fill it, because some may
     --  have been removed during manipulation
     checkInclusion      (Node _                    []) = []
+    checkInclusion      (Node (Deleted _ _)        _) = []
     checkInclusion node@(Node (Entry _sspan _lay _toks)  sub) = rs ++ rseq
       where
         (start,end) = treeStartEnd node
@@ -2252,9 +2282,9 @@ showTree = prettyshow
 
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
-prettyshow (Node (Deleted sspan eg) [])
+prettyshow (Node (Deleted sspan eg) _nullSubs)
   = "Node (Deleted " ++ (showForestSpan sspan) ++ " " ++ (show eg) ++ ")"
-prettyshow (Node (Entry sspan lay toks) sub)
+prettyshow (Node (Entry sspan _lay toks) sub)
   = "Node (Entry " ++ (showForestSpan sspan) ++ " "
      ++ (prettyToks toks) ++ ") "
      -- ++ show (map prettyshow sub)
@@ -2378,9 +2408,10 @@ indentDeclToks decl@(GHC.L sspan _) forest offset = (decl',forest'')
     off = (0,offset)
 
     -- Pretty sure this could be a fold of some kind
-    go (Node (Deleted ss eg) []) = (Node (Deleted (addOffsetToForestSpan off ss) eg) [])
+    go (Node (Deleted ss eg) sub)    = (Node (Deleted (addOffsetToForestSpan off ss) eg) sub)
     go (Node (Entry ss lay []) sub)  = (Node (Entry (addOffsetToForestSpan off ss) lay []) (map go sub))
     go (Node (Entry ss lay toks) []) = (Node (Entry (addOffsetToForestSpan off ss) lay (addOffsetToToks off toks)) [])
+    go n = error $ "indentDeclToks:strange node:" ++ (show n)
 
 -- ---------------------------------------------------------------------
 

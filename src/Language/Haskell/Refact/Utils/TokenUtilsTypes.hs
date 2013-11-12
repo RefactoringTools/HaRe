@@ -96,7 +96,7 @@ data Layout = Above RowOffset ColOffset (Row,Col) (Row,Col) (RowOffset,ColOffset
             | NoChange
             -- | Offset between the end of an 'Above' entry and the
             -- next one
-            | EndOffset RowOffset ColOffset
+            -- | EndOffset RowOffset ColOffset
             deriving (Show,Eq)
 
 

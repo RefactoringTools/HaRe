@@ -2,9 +2,9 @@
 
 module Language.Haskell.Refact.Utils.LayoutUtils
   (
-    getLayoutFor
+  --   getLayoutFor
   -- , addDeclLayoutAfterSrcSpan
-  , showLTOne
+   showLTOne
   -- , openZipper
   ) where
 

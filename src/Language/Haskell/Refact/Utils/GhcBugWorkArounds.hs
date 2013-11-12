@@ -253,8 +253,8 @@ prop_mergeBy xs ys =
                 cmp (x1,_) (x2,_) = compare x1 x2
 -}
 mergeBy :: (a -> a -> Ordering) -> [a] -> [a] -> [a]
-mergeBy cmp [] ys = ys
-mergeBy cmp xs [] = xs
+mergeBy _cmp [] ys = ys
+mergeBy _cmp xs [] = xs
 mergeBy cmp (allx@(x:xs)) (ally@(y:ys))
         -- Ordering derives Eq, Ord, so the comparison below is valid.
         -- Explanation left as an exercise for the reader.

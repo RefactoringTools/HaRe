@@ -21,19 +21,19 @@ module Language.Haskell.Refact.Utils.Layout (
 import qualified Bag           as GHC
 import qualified ForeignCall   as GHC
 import qualified GHC           as GHC
-import qualified HsTypes       as GHC
-import qualified Outputable    as GHC
-import qualified SrcLoc        as GHC
+-- import qualified HsTypes       as GHC
+-- import qualified Outputable    as GHC
+-- import qualified SrcLoc        as GHC
 
 import Outputable
 
-import qualified Data.Generics as SYB
+-- import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import Data.List
-import Data.Maybe
+-- import Data.Maybe
 import Data.Tree
-import Language.Haskell.Refact.Utils.GhcUtils
+-- import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.LocUtils
@@ -41,7 +41,7 @@ import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
-import qualified Data.Tree.Zipper as Z
+-- import qualified Data.Tree.Zipper as Z
 
 -- ---------------------------------------------------------------------
 
@@ -150,12 +150,13 @@ instance Outputable (Tree Entry) where
 
 instance Outputable Entry where
   ppr (Entry sspan lay toks) = text "Entry" <+> ppr sspan <+> ppr lay <+> text (show toks)
+  ppr (Deleted sspan eg)     = text "Deleted" <+> ppr sspan <+> ppr eg
 
 instance Outputable Layout where
   ppr (Above ro co p1 p2 oe)   = text "Above" <+> ppr ro <+> ppr co <+> ppr p1 <+> ppr p2 <+> ppr oe
   ppr (Offset r c)    = text "Offset" <+> ppr r <+> ppr c
   ppr (NoChange)      = text "NoChange"
-  ppr (EndOffset r c) = text "EndOffset" <+> ppr r <+> ppr c
+  -- ppr (EndOffset r c) = text "EndOffset" <+> ppr r <+> ppr c
 
 instance Outputable Ppr where
   ppr (PprText r c toks) = text "PprText" <+> ppr r <+> ppr c
@@ -231,39 +232,7 @@ addEndOffsets tree toks = go tree
         -- eo' = error $ "addEndOffsets:m=" ++ (show m)
         -- eo' = (0,0)
     go (  (Node (Entry s l []) subs)) = (Node (Entry s l []) (map go subs))
-
--- ---------------------------------------------------------------------
-{-
-addEndOffsets :: LayoutTree -> LayoutTree
-addEndOffsets tree = Z.toTree $ doOne (Z.fromTree tree)
-  where
-    doOne z = z''
-      where
-        z' = work z
-        z'' = case (Z.firstChild z') of
-                Nothing -> z'
-                Just zz -> doChild zz
-
-    doChild z
-      | Z.isLast zw = fromJust $ Z.parent zw
-      | isJust z' = doChild $ fromJust z'
-      where
-        zw = doOne z
-        z' = Z.nextTree $ Z.nextSpace zw
-
-    work :: Z.TreePos Z.Full Entry -> Z.TreePos Z.Full Entry
-    work z = z'
-      where
-       z' = case Z.label z of
-         (Entry _ (Above _ _ _) []) -> manipulateTree z
-         _                          -> z
-
-    -- | Use the last token pos in the Above Layout to insert a
-    -- EndOffset layout entry
-    -- This will either be in the next sibling along, or the next leaf
-    -- in order to the right of this one.
-    manipulateTree z = zxxxx -- TODO: broken to carry on from here
--}
+    go n = error $ "addEndOffsets:strange node:" ++ (show n)
 
 -- ---------------------------------------------------------------------
 
@@ -726,20 +695,6 @@ allocBind d@(GHC.L l (GHC.AbsBinds tvs vars exps ev binds)) toks = error "allocV
 -- ---------------------------------------------------------------------
 
 allocSig :: GHC.LSig GHC.RdrName -> [PosToken] -> [LayoutTree]
-allocSig (GHC.L l (GHC.TypeSig ns typ)) toks = r
-  where
-    (s1,sigToks,toks')  = splitToks (ghcSpanStartEnd l) toks
-    (s2,nsToks,typToks) = splitToksForList ns sigToks
-    nsLayout = allocList ns nsToks allocLocated
-    typLayout = allocType typ typToks
-    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
-             ++ nsLayout ++ typLayout ++ (makeLeafFromToks toks')
-{-
-    r = case toks of
-         [] -> error $ "allocSig:toks=" ++ show toks
-         _  -> error $ "allocSig:toks=" ++ show toks
--}
-
 allocSig (GHC.L l (GHC.TypeSig names t@(GHC.L lt _))) toks = r
   where
     (s1,bindToks,toks')  = splitToks (ghcSpanStartEnd l) toks
@@ -1288,6 +1243,7 @@ allocList xs toksIn allocFunc = r
 
 -- ---------------------------------------------------------------------
 
+-- TODO: get rid of this in favour of mix stuf
 allocInterleavedLists :: [GHC.Located a] -> [GHC.Located b] -> [PosToken]
    -> (GHC.Located a -> [PosToken] -> [LayoutTree])
    -> (GHC.Located b -> [PosToken] -> [LayoutTree])
@@ -1328,7 +1284,7 @@ allocInterleavedLists axs bxs toksIn allocFuncA allocFuncB = r
     r = strip $ layout ++ (makeLeafFromToks s2)
 
 -- ---------------------------------------------------------------------
-
+{-
 allocInterleavedLists3 :: [GHC.Located a] -> [GHC.Located b] -> [GHC.Located c]
    -> [PosToken]
    -> (GHC.Located a -> [PosToken] -> [LayoutTree])
@@ -1381,6 +1337,7 @@ allocInterleavedLists3 axs bxs cxs toksIn allocFuncA allocFuncB allocFuncC = r
 
     (layout,s2) = go ([],toksIn) axs bxs cxs
     r = strip $ layout ++ (makeLeafFromToks s2)
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -1474,6 +1431,7 @@ makeLeaf sspan lay toks = Node (Entry (sf sspan) lay toks) []
 
 getLoc :: LayoutTree -> ForestSpan
 getLoc (Node (Entry l _ _) _) = l
+getLoc (Node (Deleted l _) _) = l
 
 -- ---------------------------------------------------------------------
 
@@ -1484,6 +1442,7 @@ retrieveTokens layout = go [] layout
     -- go acc (Leaf _ _ toks) = acc ++ toks
     go acc (Node (Entry _ _ []  ) xs) = acc ++ (concat $ map (go []) xs)
     go acc (Node (Entry _ _ toks)  _) = acc ++ toks
+    go acc (Node (Deleted _ _)     _)  = acc
 
 -- ---------------------------------------------------------------------
 
