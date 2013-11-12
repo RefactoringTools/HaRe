@@ -1341,7 +1341,7 @@ renderPpr ps = go 0 (1,1) ps
     renderPprText ci (r,c) (PprText rt ct toks)
       = (newLines r rt)
       ++ (newCol r c rt (ci + ct))
-      -- ++ "(" ++ (show (ci,(r,c),(rt,ct))) ++ ")"
+      -- ++ "(" ++ (show (ci,(r,c),(rt,ct))) ++ ")"  -- ++AZ++ for debugging
       ++ (GHC.showRichTokenStream toks)
     renderPprText _ _ ppr = error $ "renderPprText:unexpected ppr:" ++ (show ppr)
 
