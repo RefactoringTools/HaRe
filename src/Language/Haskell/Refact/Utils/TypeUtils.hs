@@ -3751,7 +3751,7 @@ renamePN oldPN newName updateTokens useQual t = do
                  ) t
     else
       renamePNworker oldPN newName updateTokens useQual t
-  t'' <- adjustLayoutAfterRename oldPN newName t'
+  -- t'' <- adjustLayoutAfterRename oldPN newName t'
   return t'
   where
     isRenamedSource :: GHC.RenamedSource -> Maybe Bool

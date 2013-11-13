@@ -552,13 +552,13 @@ replaceToks toks startPos endPos newToks =
 -- Note1: does not re-align, else other later replacements may fail.
 -- Note2: must keep original end col, to know what the inter-token gap
 --        was when re-aligning
-replaceTokNoReAlign::[PosToken]->SimpPos->PosToken->[PosToken]
+replaceTokNoReAlign:: [PosToken] -> SimpPos -> PosToken -> [PosToken]
 replaceTokNoReAlign toks pos newTok =
     toks1 ++ [newTok'] ++ toksRest
    where
       (toks1,toks2) = break (\t -> tokenPos t >= pos && tokenLen t > 0) toks
       toksRest = if (emptyList toks2) then [] else (gtail "replaceTokNoReAlign" toks2)
-      oldTok =  if (emptyList toks2) then newTok else (ghead "replaceTokNoReAlign" toks2)
+      oldTok  =  if (emptyList toks2) then newTok else (ghead "replaceTokNoReAlign" toks2)
       -- newTok' = markToken newTok
       newTok' = markToken $ matchTokenPos oldTok newTok
 

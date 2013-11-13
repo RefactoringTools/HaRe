@@ -742,22 +742,24 @@ getTokensBefore forest sspan = (forest', prevToks')
 -- span in the tree, due to the ForestLine annotations that may be present
 
 -- TODO: work at the token level, not the sspan level
+-- TODO: Use start of token span only, with length 1.
 replaceTokenForSrcSpan :: Tree Entry -> GHC.SrcSpan -> PosToken -> Tree Entry
 replaceTokenForSrcSpan forest sspan tok = forest'
   where
     (GHC.L tl _,_) = tok
     -- First open to the sspan, making use of any Forestline annotations
-    z = openZipperToSpan (srcSpanToForestSpan sspan) $ Z.fromTree forest
+    z = openZipperToSpanDeep (srcSpanToForestSpan sspan) $ Z.fromTree forest
 
     -- Then drill down to the specific subtree containing the token
-    z' = openZipperToSpan (srcSpanToForestSpan tl) z
+    -- z' = openZipperToSpan (srcSpanToForestSpan tl) z
+    z' = z -- No, pass in original token span as sspan.
 
     -- Note: with LayoutTree, the full tree matching the AST has been
     -- built, still need to drill down to the nearest enclosing span
     (tspan,lay,toks) = case Z.tree z' of
        (Node (Entry ss ly tks) []) -> (ss,ly,tks)
-       (Node (Entry _ _ _nullToks) _sub) -> error $ "replaceTokenForSrcSpan:tok pos" ++ (showForestSpan $ sf tl) ++ " expecting tokens, found: " ++ (show $ Z.tree z')
-       (Node (Deleted _ _) _sub) -> error $ "replaceTokenForSrcSpan:tok pos" ++ (showForestSpan $ sf tl) ++ " expecting Entry, found: " ++ (show $ Z.tree z')
+       (Node (Entry _ _ _nullToks) _sub) -> error $ "replaceTokenForSrcSpan:tok pos" ++ (showForestSpan $ sf sspan) ++ " expecting tokens, found: " ++ (show $ Z.tree z')
+       (Node (Deleted _ _) _sub)         -> error $ "replaceTokenForSrcSpan:tok pos" ++ (showForestSpan $ sf sspan) ++ " expecting Entry, found: " ++ (show $ Z.tree z')
 
     ((row,col),_) = forestSpanToSimpPos $ srcSpanToForestSpan tl
     toks' = replaceTokNoReAlign toks (row,col) tok

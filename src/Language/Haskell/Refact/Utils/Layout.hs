@@ -225,7 +225,8 @@ addEndOffsets tree toks = go tree
     go (t@(Node (Entry _ _ _toks) [])) = t
     go (  (Node (Entry s (Above ro co p1 (r,c) _eo) []) subs)) = (Node (Entry s (Above ro co p1 (r,c) eo') []) (map go subs))
       where
-        (_,m,_) = splitToksIncComments ((r,c),(99999,1)) toks
+        -- (_,m,_) = splitToksIncComments ((r,c),(99999,1)) toks
+        (_,m,_) = splitToks ((r,c),(99999,1)) toks
         eo' = case m of
                (_x:y:_ts) -> (tokenRow y - r, tokenCol y - c)
                _ -> (0,0)
@@ -1396,7 +1397,8 @@ placeOffset r c ls = Node (Entry loc (Offset r c) []) ls
 -- ---------------------------------------------------------------------
 
 makeGroup :: [LayoutTree] -> LayoutTree
-makeGroup ls = makeGroupLayout NoChange ls
+makeGroup [x] = x
+makeGroup ls  = makeGroupLayout NoChange ls
 
 makeGroupLayout :: Layout -> [LayoutTree] -> LayoutTree
 makeGroupLayout lay ls = Node (Entry loc lay []) ls
