@@ -2503,6 +2503,63 @@ tree TId 0:
 
       (renderPpr pprVal) `shouldBe` origSource
 
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.Comment1" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Comments1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(8,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,24))\n"++
+          "1:((1,25),(1,30))\n"++
+          "1:((3,1),(4,19))\n"++
+           "2:((3,1),(3,5))\n"++
+           "2:((3,6),(4,19))\n"++
+            "3:((3,6),(3,7))\n"++
+            "3:((3,8),(3,9))\n"++
+            "3:((3,10),(3,15))\n"++
+             "4:((3,10),(3,11))\n"++
+             "4:((3,12),(3,13))\n"++
+             "4:((3,14),(3,15))\n"++
+            "3:((4,10),(4,15))\n"++
+            "3:((4,16),(4,19))(Above 0 1 (4,16) (4,18) (0,3))\n"++
+             "4:((4,16),(4,19))\n"++
+              "5:((4,16),(4,17))\n"++
+              "5:((4,17),(4,19))\n"++
+               "6:((4,17),(4,18))\n"++
+               "6:((4,18),(4,19))\n"++
+          "1:((6,1),(6,15))\n"++
+           "2:((6,1),(6,11))\n"++
+           "2:((6,12),(6,15))\n"++
+            "3:((6,12),(6,13))\n"++
+            "3:((6,14),(6,15))\n"++
+          "1:((8,1),(8,1))\n"
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+
+      (showGhc pprVal) `shouldBe`
+          "[PprText 1 1 \"module Layout.Comments1 where\",\n"++
+          " PprText 3 1 \"aFun x = x + p\", PprText 4 10 \"where\",\n"++
+          " PprAbove 0 1 (4, 18) (0, 3)\n"++
+          "   [PprText 4 0 \"p=2  {-There is a comment-}\"],\n"++
+          " PprText 6 1 \"anotherFun = 3\", PprText 8 1 \"\"]"
+
+      (renderPpr pprVal) `shouldBe` origSource
+
     -- --------------------------------------
 
   describe "updateTokensForSrcSpan" $ do
@@ -2515,7 +2572,8 @@ tree TId 0:
       let decl@(GHC.L l _) = head decls
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
-      (showGhc decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
+      (showGhc decl) `shouldBe` "TokenTest.foo x y\n"++
+          "  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
 
       let (forest',newSpan,_) = updateTokensForSrcSpan forest l (take 3 toks)
       -- (showGhc newSpan) `shouldBe` "test/testdata/TokenTest.hs:(18,1)-(1000018,22)"
@@ -2753,11 +2811,12 @@ tree TId 0:
       (showGhc decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       (showGhc n) `shouldBe` "TokenTest.bab"
 
-      let newTok = markToken $ newNameTok False l n
-      let forest' = replaceTokenForSrcSpan forest l newTok
+      let newTok@(GHC.L lt _,_) = markToken $ newNameTok False l n
+      (show newTok) `shouldBe` "((((19,1),(19,4)),ITvarid \"bab\"),\"bab\")"
+      let forest' = replaceTokenForSrcSpan forest lt newTok
 
       (drawTreeCompact forest') `shouldBe`
-         "0:((1,1),(26,1))\n1:((1,1),(1,7))\n1:((1,8),(1,17))\n1:((1,18),(1,23))\n1:((5,1),(6,14))\n2:((5,1),(6,14))\n3:((5,1),(5,4))\n3:((5,5),(6,14))\n4:((5,5),(5,6))\n5:((5,5),(5,6))\n4:((5,7),(5,8))\n5:((5,7),(5,8))\n4:((5,9),(5,10))\n4:((5,11),(5,12))\n5:((5,11),(5,12))\n4:((6,3),(6,8))\n4:((6,9),(6,14))(Above 0 1 (6,9) (6,13) (2,-12))\n5:((6,9),(6,14))\n6:((6,9),(6,14))\n7:((6,9),(6,10))\n7:((6,11),(6,14))\n8:((6,11),(6,12))\n8:((6,13),(6,14))\n9:((6,13),(6,14))\n1:((8,1),(10,10))\n2:((8,1),(10,10))\n3:((8,1),(8,4))\n3:((8,5),(10,10))\n4:((8,5),(8,6))\n5:((8,5),(8,6))\n4:((8,7),(8,8))\n5:((8,7),(8,8))\n4:((8,9),(8,10))\n4:((8,11),(8,12))\n5:((8,11),(8,12))\n4:((9,3),(9,8))\n4:((10,5),(10,10))(Above 1 -3 (10,5) (10,9) (3,-8))\n5:((10,5),(10,10))\n6:((10,5),(10,10))\n7:((10,5),(10,6))\n7:((10,7),(10,10))\n8:((10,7),(10,8))\n8:((10,9),(10,10))\n9:((10,9),(10,10))\n1:((13,1),(15,17))\n2:((13,1),(15,17))\n3:((13,1),(13,4))\n3:((13,5),(15,17))\n4:((13,5),(13,6))\n5:((13,5),(13,6))\n4:((13,7),(13,8))\n5:((13,7),(13,8))\n4:((13,9),(13,10))\n4:((14,3),(15,17))\n5:((14,3),(14,6))\n5:((14,7),(14,14))(Above 0 1 (14,7) (14,13) (1,-10))\n6:((14,7),(14,14))\n7:((14,7),(14,14))\n8:((14,7),(14,10))\n8:((14,11),(14,14))\n9:((14,11),(14,12))\n9:((14,13),(14,14))\n10:((14,13),(14,14))\n5:((15,10),(15,17))\n6:((15,10),(15,11))\n6:((15,12),(15,13))\n6:((15,14),(15,17))\n1:((19,1),(21,14))\n2:((19,1),(21,14))\n3:((19,1),(19,4))\n3:((19,5),(21,14))\n4:((19,5),(19,6))\n5:((19,5),(19,6))\n4:((19,7),(19,8))\n5:((19,7),(19,8))\n4:((19,9),(19,10))\n4:((20,3),(21,14))\n5:((20,3),(20,18))\n6:((20,3),(20,7))\n6:((20,11),(20,18))\n5:((21,6),(21,14))\n6:((21,6),(21,12))\n6:((21,13),(21,14))\n1:((26,1),(26,1))\n"
+         "0:((1,1),(26,1))\n1:((1,1),(1,7))\n1:((1,8),(1,17))\n1:((1,18),(1,23))\n1:((5,1),(6,14))\n2:((5,1),(5,4))\n2:((5,5),(6,14))\n3:((5,5),(5,6))\n3:((5,7),(5,8))\n3:((5,9),(5,10))\n3:((5,11),(5,12))\n3:((6,3),(6,8))\n3:((6,9),(6,14))(Above 0 1 (6,9) (6,13) (2,-12))\n4:((6,9),(6,14))\n5:((6,9),(6,10))\n5:((6,11),(6,14))\n6:((6,11),(6,12))\n6:((6,13),(6,14))\n1:((8,1),(10,10))\n2:((8,1),(8,4))\n2:((8,5),(10,10))\n3:((8,5),(8,6))\n3:((8,7),(8,8))\n3:((8,9),(8,10))\n3:((8,11),(8,12))\n3:((9,3),(9,8))\n3:((10,5),(10,10))(Above 1 -3 (10,5) (10,9) (3,-8))\n4:((10,5),(10,10))\n5:((10,5),(10,6))\n5:((10,7),(10,10))\n6:((10,7),(10,8))\n6:((10,9),(10,10))\n1:((13,1),(15,17))\n2:((13,1),(13,4))\n2:((13,5),(15,17))\n3:((13,5),(13,6))\n3:((13,7),(13,8))\n3:((13,9),(13,10))\n3:((14,3),(15,17))\n4:((14,3),(14,6))\n4:((14,7),(14,14))(Above 0 1 (14,7) (14,13) (1,-10))\n5:((14,7),(14,14))\n6:((14,7),(14,10))\n6:((14,11),(14,14))\n7:((14,11),(14,12))\n7:((14,13),(14,14))\n4:((15,10),(15,17))\n5:((15,10),(15,11))\n5:((15,12),(15,13))\n5:((15,14),(15,17))\n1:((19,1),(21,14))\n2:((19,1),(19,4))\n2:((19,5),(21,14))\n3:((19,5),(19,6))\n3:((19,7),(19,8))\n3:((19,9),(19,10))\n3:((20,3),(21,14))\n4:((20,3),(20,18))\n5:((20,3),(20,7))\n5:((20,11),(20,18))\n4:((21,6),(21,14))\n5:((21,6),(21,12))\n5:((21,13),(21,14))\n1:((26,1),(26,1))\n"
 
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "

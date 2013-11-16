@@ -227,7 +227,8 @@ addEndOffsets tree toks = go tree
       where
         -- (_,m,_) = splitToksIncComments ((r,c),(99999,1)) toks
         (_,m,_) = splitToks ((r,c),(99999,1)) toks
-        eo' = case m of
+        -- eo' = case m of
+        eo' = case (dropWhile isWhiteSpaceOrIgnored m) of
                (_x:y:_ts) -> (tokenRow y - r, tokenCol y - c)
                _ -> (0,0)
         -- eo' = error $ "addEndOffsets:m=" ++ (show m)
