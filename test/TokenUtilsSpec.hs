@@ -2540,6 +2540,60 @@ tree TId 0:
 
       (renderPpr pprVal) `shouldBe` origSource
 
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format LocToName" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/LocToName.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(25,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,17))\n"++
+          "1:((1,18),(12,3))\n"++
+          "1:((20,1),(24,18))\n"++
+          "2:((20,1),(20,11))\n"++
+          "2:((20,12),(20,41))\n"++
+          "3:((20,12),(20,18))\n"++
+          "3:((20,19),(20,20))\n"++
+          "3:((20,21),(20,41))\n"++
+          "4:((20,21),(20,22))\n"++
+          "4:((20,23),(20,24))\n"++
+          "4:((20,24),(20,25))\n"++
+          "4:((20,26),(20,27))\n"++
+          "4:((20,28),(20,38))\n"++
+          "4:((20,39),(20,41))\n"++
+          "2:((24,1),(24,18))\n"++
+          "3:((24,1),(24,11))\n"++
+          "3:((24,12),(24,14))\n"++
+          "3:((24,15),(24,16))\n"++
+          "3:((24,17),(24,18))\n"++
+          "1:((25,1),(25,1))\n"
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+
+      (showGhc pprVal) `shouldBe`
+          "[PprText 1 1 \"module LocToName where\","++
+          " PprText 3 1 \"{-\n\n\n\n\n\n\n\n\n-}\",\n"++
+          " PprText 20 1 \"sumSquares (x:xs) = x ^2 + sumSquares xs\",\n"++
+          " PprText 21 5 \"-- where sq x = x ^pow \",\n"++
+          " PprText 22 5 \"--       pow = 2\", PprText 24 1 \"sumSquares [] = 0\",\n"++
+          " PprText 25 1 \"\"]"
+
+      (renderPpr pprVal) `shouldBe` origSource
+
     -- --------------------------------------
 
   describe "updateTokensForSrcSpan" $ do

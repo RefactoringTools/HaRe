@@ -1315,7 +1315,9 @@ renderPpr ps = go 0 (1,1) ps
                        ++ renderPprAbove (co + (colAfterPprText ppt)) ppa
                       )
 
-    go ci (r,c) (p@(PprText rt ct _toks):ps') = (renderPprText ci (r,c) p) ++ go ci (rt,ct) ps'
+    go ci (r,c) (p@(PprText rt ct toks):ps') = (renderPprText ci (r,c) p) ++ go ci (rt',ct) ps'
+      where
+        rt' = rt + (length $ filter (=='\n') $ GHC.showRichTokenStream toks)
 
     go _ _ pps = error $ "renderPpr: unmatched in go:" ++ (show pps)
 
