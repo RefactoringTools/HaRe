@@ -219,19 +219,26 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
 
 -- ---------------------------------------------------------------------
 
+
 addEndOffsets :: LayoutTree -> [PosToken] -> LayoutTree
 addEndOffsets tree toks = go tree
   where
     go (t@(Node (Entry _ _ _toks) [])) = t
-    go (  (Node (Entry s (Above ro co p1 (r,c) _eo) []) subs)) = (Node (Entry s (Above ro co p1 (r,c) eo') []) (map go subs))
+    go (  (Node (Entry s (Above ro co p1 (r,c) _eo) []) subs)) = (Node (Entry s (Above ro co p1 (r,c) (Just eo')) []) (map go subs))
       where
         -- (_,m,_) = splitToksIncComments ((r,c),(99999,1)) toks
         (_,m,_) = splitToks ((r,c),(99999,1)) toks
-        -- eo' = case m of
-        eo' = case (dropWhile isWhiteSpaceOrIgnored m) of
-               (_x:y:_ts) -> (tokenRow y - r, tokenCol y - c)
-               _ -> (0,0)
+        eo' = case m of
+                []  -> (0,0)
+                [_x] -> (0,0)
+                xs -> off
+                  where
+                   off = case (dropWhile isWhiteSpace $ tail xs) of
+                           []    -> (tokenRow y - r, tokenCol y - c) where y = head $ tail xs
+                           (y:_) -> (tokenRow y - r, tokenCol y - c)
         -- eo' = error $ "addEndOffsets:m=" ++ (show m)
+        -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpaceOrIgnored m)
+        -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpaceOrIgnored $ tail m)
         -- eo' = (0,0)
     go (  (Node (Entry s l []) subs)) = (Node (Entry s l []) (map go subs))
     go n = error $ "addEndOffsets:strange node:" ++ (show n)
@@ -1383,7 +1390,7 @@ splitToksForList xs toks = splitToksIncComments (getGhcLoc s, getGhcLocEnd e) to
 
 placeAbove :: RowOffset -> ColOffset -> (Row,Col) -> (Row,Col) -> [LayoutTree] -> LayoutTree
 placeAbove _ _ _ _ [] = error "placeAbove []"
-placeAbove ro co p1 p2 ls = Node (Entry loc (Above ro co p1 p2 (0,0)) []) ls
+placeAbove ro co p1 p2 ls = Node (Entry loc (Above ro co p1 p2 Nothing) []) ls
   where
     loc = combineSpans (getLoc $ head ls) (getLoc $ last ls)
 

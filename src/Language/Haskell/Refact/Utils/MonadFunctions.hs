@@ -525,7 +525,7 @@ updateToks (GHC.L sspan _) newAST printFun addTrailingNl
        let newToks' = if addTrailingNl
                        then newToks ++ [newLnToken (last newToks)]
                        else newToks
-       putToksForSpan sspan  newToks'
+       void $ putToksForSpan sspan  newToks'
        return ()
 
 -- ---------------------------------------------------------------------

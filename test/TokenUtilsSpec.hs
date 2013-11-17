@@ -1712,7 +1712,7 @@ tree TId 0:
           "3:((5,5),(5,6))\n"++
           "3:((5,7),(7,15))\n"++
           "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above 0 1 (5,11) (6,15) (1,-8))\n"++
+          "4:((5,11),(6,16))(Above 0 1 (5,11) (6,15) Just (1,-8))\n"++
           "5:((5,11),(5,16))\n"++
           "6:((5,11),(5,12))\n"++
           "6:((5,13),(5,16))\n"++
@@ -1737,7 +1737,7 @@ tree TId 0:
           "3:((5,5),(5,6))\n"++
           "3:((5,7),(7,15))\n"++
           "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above 0 1 (5,11) (6,15) (1,-8))\n"++
+          "4:((5,11),(6,16))(Above 0 1 (5,11) (6,15) Just (1,-8))\n"++
           "5:((5,11),(5,16))\n"++
           "6:((5,11),(5,12))\n"++
           "6:((5,13),(5,16))\n"++
@@ -1784,7 +1784,7 @@ tree TId 0:
           "3:((5,5),(5,6))\n"++
           "3:((5,7),(7,15))\n"++
           "4:((5,7),(5,10))\n"++ -- 'let' token
-          "4:((5,11),(6,16))(Above 0 1 (5,11) (6,15) (1,-8))\n"++ -- the grouped expressions
+          "4:((5,11),(6,16))(Above 0 1 (5,11) (6,15) Just (1,-8))\n"++ -- the grouped expressions
            "5:((5,11),(5,16))\n"++
             "6:((5,11),(5,12))\n"++
             "6:((5,13),(5,16))\n"++
@@ -1803,29 +1803,13 @@ tree TId 0:
 
 
       let pprVal = retrieveTokensPpr layout
-      (show pprVal) `shouldBe`
-{-
-          "["++
-          "PprText 1 1 [((((0,0),(0,60)),ITlineComment \"-- A simple let expression, to ensure the layout is detected\"),\"-- A simple let expression, to ensure the layout is detected\")],"++
-          "PprText 3 1 [((((0,0),(0,6)),ITmodule),\"module\"),((((0,7),(0,21)),ITqconid (\"Layout\",\"LetExpr\")),\"Layout.LetExpr\"),((((0,22),(0,27)),ITwhere),\"where\")],"++
-          "PprText 5 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITvarid \"foo\"),\"foo\"),((((0,4),(0,5)),ITequal),\"=\")],"++
-          "PprAbove 0 0 (6,15) (1,-8) "++
-              "[PprText 5 0 [((((0,0),(0,3)),ITlet),\"let\"),((((0,4),(0,4)),ITvocurly),\"\"),((((0,4),(0,5)),ITvarid \"x\"),\"x\"),((((0,6),(0,7)),ITequal),\"=\"),((((0,8),(0,9)),ITinteger 1),\"1\")],"++
-               "PprText 6 4 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),ITvarid \"y\"),\"%y\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")],"++
-               "PprText 7 0 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,2)),ITin),\"in\")]"++
-               "],"++
-          "PprText 7 10 [((((0,0),(0,1)),ITvarid \"x\"),\"x\"),((((0,2),(0,3)),ITvarsym \"+\"),\"+\"),((((0,4),(0,5)),ITvarid \"y\"),\"y\")],"++
-          "PprText 9 1 [((((0,0),(0,0)),ITsemi),\"\")]]"
--}
-          "["++
-          "PprText 1 1 [((((0,0),(0,60)),ITlineComment \"-- A simple let expression, to ensure the layout is detected\"),\"-- A simple let expression, to ensure the layout is detected\")],"++
-          "PprText 3 1 [((((0,0),(0,6)),ITmodule),\"module\"),((((0,7),(0,21)),ITqconid (\"Layout\",\"LetExpr\")),\"Layout.LetExpr\"),((((0,22),(0,27)),ITwhere),\"where\")],"++
-          "PprText 5 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITvarid \"foo\"),\"foo\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,6),(0,9)),ITlet),\"let\")],"++
-          "PprAbove 0 1 (6,15) (1,-8) "++
-           "[PprText 5 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,1)),ITvarid \"x\"),\"x\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 1),\"1\")],"++
-            "PprText 6 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),ITvarid \"y\"),\"y\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")]],"++
-          "PprText 7 7 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,2)),ITin),\"in\"),((((0,3),(0,4)),ITvarid \"x\"),\"x\"),((((0,5),(0,6)),ITvarsym \"+\"),\"+\"),((((0,7),(0,8)),ITvarid \"y\"),\"y\")],"++
-          "PprText 9 1 [((((0,0),(0,0)),ITsemi),\"\")]]"
+      (showGhc pprVal) `shouldBe`
+          "[PprText 1 1 \"-- A simple let expression, to ensure the layout is detected\",\n"++
+          " PprText 3 1 \"module Layout.LetExpr where\", PprText 5 1 \"foo = let\",\n"++
+          " PprAbove 0 1 (6, 15) Just (1, -8)\n"++
+          "   [PprText 5 0 \"x = 1\", PprText 6 0 \"y = 2\"],\n"++
+          " PprText 7 7 \"in x + y\","++
+          " PprText 9 1 \"\"]"
 
       -- (show $ renderPprToHDoc pprVal) `shouldBe`  ""
       -- (show $ renderPprToHDoc' pprVal) `shouldBe`  ""
@@ -1864,7 +1848,7 @@ tree TId 0:
           "3:((5,7),(8,12))\n"++
           "4:((5,7),(7,18))\n"++
           "5:((5,7),(6,12))\n"++
-          "5:((6,13),(7,18))(Above 0 1 (6,13) (7,17) (1,-8))\n"++
+          "5:((6,13),(7,18))(Above 0 1 (6,13) (7,17) Just (1,-8))\n"++
           "6:((6,13),(6,18))\n"++
           "7:((6,13),(6,14))\n"++
           "7:((6,15),(6,18))\n"++
@@ -1888,7 +1872,7 @@ tree TId 0:
           "PprText 3 1 [((((0,0),(0,6)),ITmodule),\"module\"),((((0,7),(0,21)),ITqconid (\"Layout\",\"LetStmt\")),\"Layout.LetStmt\"),((((0,22),(0,27)),ITwhere),\"where\")],"++
           "PprText 5 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITvarid \"foo\"),\"foo\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,6),(0,8)),ITdo),\"do\")],"++
           "PprText 6 9 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITlet),\"let\")],"++
-          "PprAbove 0 1 (7,17) (1,-8) "++
+          "PprAbove 0 1 (7,17) (Just (1,-8)) "++
             "[PprText 6 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,1)),ITvarid \"x\"),\"x\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 1),\"1\")],"++
              "PprText 7 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),ITvarid \"y\"),\"y\"),((((0,2),(0,3)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")]],"++
           "PprText 8 9 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),ITvarid \"x\"),\"x\"),((((0,1),(0,2)),ITvarsym \"+\"),\"+\"),((((0,2),(0,3)),ITvarid \"y\"),\"y\")],"++
@@ -1932,7 +1916,7 @@ tree TId 0:
           "4:((8,14),(8,18))\n"++
           "4:((8,19),(8,23))\n"++
           "4:((8,24),(8,26))\n"++
-          "4:((8,28),(12,43))(Above 0 2 (8,28) (12,41) (2,-40))\n"++
+          "4:((8,28),(12,43))(Above 0 2 (8,28) (12,41) Just (2,-40))\n"++
           "5:((8,28),(8,39))\n"++
           "6:((8,28),(8,34))\n"++
           "6:((8,35),(8,37))\n"++
@@ -1947,7 +1931,7 @@ tree TId 0:
           "8:((11,36),(11,38))\n"++
           "7:((11,45),(11,46))\n"++
           "6:((11,48),(11,53))\n"++
-          "6:((11,55),(11,66))(Above 0 2 (11,55) (11,64) (1,-36))\n"++
+          "6:((11,55),(11,66))(Above 0 2 (11,55) (11,64) Just (1,-36))\n"++
           "7:((11,55),(11,66))\n"++
           "8:((11,55),(11,56))\n"++
           "8:((11,57),(11,66))\n"++
@@ -1968,10 +1952,10 @@ tree TId 0:
           " PprText 5 1 \"--In this Example: rename 'list' to 'ls'.\",\n"++
           " PprText 7 1 \"silly :: [Int] -> Int\",\n"++
           " PprText 8 1 \"silly list = case list of\",\n"++
-          " PprAbove 0 2 (12, 41) (2, -40)\n"++
+          " PprAbove 0 2 (12, 41) Just (2, -40)\n"++
           "   [PprText 8 0 \"(1:xs) -> 1\", PprText 9 -27 \"--There is a comment\",\n"++
           "    PprText 10 0 \"(2:xs)\", PprText 11 2 \"| x < 10    -> 4  where\",\n"++
-          "    PprAbove 0 2 (11, 64) (1, -36) [PprText 11 0 \"x = last xs\"],\n"++
+          "    PprAbove 0 2 (11, 64) Just (1, -36) [PprText 11 0 \"x = last xs\"],\n"++
           "    PprText 12 0 \"otherwise -> 12\"],\n PprText 14 1 \"\"]"
 
 
@@ -1997,29 +1981,22 @@ tree TId 0:
       -- (show layout) `shouldBe` ""
 
       let pprVal = retrieveTokensPpr layout
-      (show pprVal) `shouldBe`
-          "["++
-          "PprText 1 1 [((((0,0),(0,6)),ITmodule),\"module\"),((((0,7),(0,28)),ITqconid (\"LiftToToplevel\",\"LetIn1\")),\"LiftToToplevel.LetIn1\"),((((0,29),(0,34)),ITwhere),\"where\")],"++
-          "PprText 3 1 [((((0,0),(0,80)),ITlineComment \"--A definition can be lifted from a where or let to the top level binding group.\"),\"--A definition can be lifted from a where or let to the top level binding group.\")],"++
-          "PprText 4 1 [((((0,0),(0,58)),ITlineComment \"--Lifting a definition widens the scope of the definition.\"),\"--Lifting a definition widens the scope of the definition.\")],"++
-          "PprText 6 1 [((((0,0),(0,44)),ITlineComment \"--In this example, lift 'sq' in 'sumSquares'\"),\"--In this example, lift 'sq' in 'sumSquares'\")],"++
-          "PprText 7 1 [((((0,0),(0,80)),ITlineComment \"--This example aims to test lifting a definition from a let clause to top level,\"),\"--This example aims to test lifting a definition from a let clause to top level,\")],"++
-          "PprText 8 1 [((((0,0),(0,52)),ITlineComment \"--and the elimination of the keywords 'let' and 'in'\"),\"--and the elimination of the keywords 'let' and 'in'\")],"++
-          "PprText 10 1 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,10)),ITvarid \"sumSquares\"),\"sumSquares\"),((((0,11),(0,12)),ITvarid \"x\"),\"x\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\"),((((0,15),(0,16)),ITequal),\"=\"),((((0,17),(0,20)),ITlet),\"let\")],"++
-          "PprAbove 0 1 (11,29) (1,-10) "++
-             "[PprText 10 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITinteger 0),\"0\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,5),(0,6)),ITinteger 0),\"0\")],"++
-              "PprText 11 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"z\"),\"z\"),"++
-                            "((((0,4),(0,5)),ITequal),\"=\"),((((0,5),(0,6)),ITvarid \"z\"),\"z\"),((((0,6),(0,7)),ITvarsym \"^\"),\"^\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\")]"++
-             "],"++
-          "PprText 12 19 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,2)),ITin),\"in\"),((((0,3),(0,5)),ITvarid \"sq\"),\"sq\"),((((0,6),(0,7)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"+\"),\"+\"),((((0,10),(0,12)),ITvarid \"sq\"),\"sq\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\")],"++
-          "PprText 13 24 [((((0,0),(0,5)),ITwhere),\"where\")],"++
-          "PprAbove 0 1 (13,34) (2,-33) "++
-             "[PprText 13 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,3)),ITvarid \"pow\"),\"pow\"),((((0,3),(0,4)),ITequal),\"=\"),((((0,4),(0,5)),ITinteger 2),\"2\")]],"++
-           "PprText 15 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,10)),ITvarid \"anotherFun\"),\"anotherFun\"),((((0,11),(0,12)),ITinteger 0),\"0\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\"),((((0,15),(0,16)),ITequal),\"=\"),((((0,17),(0,19)),ITvarid \"sq\"),\"sq\"),((((0,20),(0,21)),ITvarid \"y\"),\"y\")],"++
-           "PprText 16 6 [((((0,0),(0,5)),ITwhere),\"where\")],"++
-           "PprAbove 0 1 (16,21) (1,-20) "++
-               "[PprText 16 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"x\"),\"x\"),((((0,5),(0,6)),ITequal),\"=\"),((((0,7),(0,8)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"^\"),\"^\"),((((0,9),(0,10)),ITinteger 2),\"2\")]],"++
-           "PprText 17 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\")]]"
+
+      (showGhc pprVal) `shouldBe`
+          "[PprText 1 1 \"module LiftToToplevel.LetIn1 where\",\n"++
+          " PprText 3 1 \"--A definition can be lifted from a where or let to the top level binding group.\",\n"++
+          " PprText 4 1 \"--Lifting a definition widens the scope of the definition.\",\n"++
+          " PprText 6 1 \"--In this example, lift 'sq' in 'sumSquares'\",\n"++
+          " PprText 7 1 \"--This example aims to test lifting a definition from a let clause to top level,\",\n"++
+          " PprText 8 1 \"--and the elimination of the keywords 'let' and 'in'\",\n"++
+          " PprText 10 1 \"sumSquares x y = let\",\n"++
+          " PprAbove 0 1 (11, 29) Just (1, -10)\n"++
+          "   [PprText 10 0 \"sq 0=0\", PprText 11 0 \"sq z=z^pow\"],\n"++
+          " PprText 12 19 \"in sq x + sq y\", PprText 13 24 \"where\",\n"++
+          " PprAbove 0 1 (13, 34) Just (2, -33) [PprText 13 0 \"pow=2\"],\n"++
+          " PprText 15 1 \"anotherFun 0 y = sq y\", PprText 16 6 \"where\",\n"++
+          " PprAbove 0 1 (16, 21) Just (1, -20) [PprText 16 0 \"sq x = x^2\"],\n"++
+          " PprText 17 1 \"\"]"
 
       (renderPpr pprVal) `shouldBe` origSource
 
@@ -2048,7 +2025,8 @@ tree TId 0:
                        "((((0,11),(0,12)),ITinteger 0),\"0\"),((((0,13),(0,14)),ITvarid \"y\"),\"y\"),((((0,15),(0,16)),ITequal),\"=\"),"++
                        "((((0,17),(0,19)),ITvarid \"sq\"),\"sq\"),((((0,20),(0,21)),ITvarid \"y\"),\"y\")],"++
           "PprText 4 6 [((((0,0),(0,5)),ITwhere),\"where\")],"++
-          "PprAbove 0 1 (4,21) (1,-20) "++
+          "PprAbove 0 1 (4,21) (Just (1,-20)) "++
+          -- "PprAbove 0 1 (4,21) (Just (0,0)) "++
             "["++
             "PprText 4 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"sq\"),\"sq\"),((((0,3),(0,4)),ITvarid \"x\"),\"x\"),"++
                          "((((0,5),(0,6)),ITequal),\"=\"),((((0,7),(0,8)),ITvarid \"x\"),\"x\"),((((0,8),(0,9)),ITvarsym \"^\"),\"^\"),((((0,9),(0,10)),ITinteger 2),\"2\")]"++
@@ -2106,7 +2084,8 @@ tree TId 0:
           "3:((7,33),(7,34))\n"++
           "3:((7,36),(7,38))\n"++
           "2:((8,3),(8,8))\n"++
-          "2:((9,5),(10,12))(Above 1 -3 (9,5) (10,10) (3,-9))\n"++
+          "2:((9,5),(10,12))(Above 1 -3 (9,5) (10,10) Just (3,-9))\n"++
+          -- "2:((9,5),(10,12))(Above 1 -3 (9,5) (10,10) Just (0,0))\n"++
           "3:((9,5),(9,14))\n"++
           "4:((9,5),(9,7))\n"++
           "4:((9,8),(9,10))\n"++
@@ -2129,7 +2108,8 @@ tree TId 0:
           "PprText 6 1 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,1)),ITvarid \"t\"),\"t\"),((((0,2),(0,4)),ITdcolon),\"::\"),((((0,5),(0,8)),ITconid \"Int\"),\"Int\")],"++
           "PprText 7 1 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,3)),ITvarid \"tup\"),\"tup\"),((((0,3),(0,4)),ITat),\"@\"),((((0,4),(0,5)),IToparen),\"(\"),((((0,5),(0,6)),ITvarid \"h\"),\"h\"),((((0,6),(0,7)),ITcomma),\",\"),((((0,7),(0,8)),ITvarid \"t\"),\"t\"),((((0,8),(0,9)),ITcparen),\")\"),((((0,10),(0,11)),ITequal),\"=\"),((((0,12),(0,16)),ITvarid \"head\"),\"head\"),((((0,17),(0,18)),ITvarsym \"$\"),\"$\"),((((0,19),(0,22)),ITvarid \"zip\"),\"zip\"),((((0,23),(0,24)),ITobrack),\"[\"),((((0,24),(0,25)),ITinteger 1),\"1\"),((((0,25),(0,27)),ITdotdot),\"..\"),((((0,27),(0,29)),ITinteger 10),\"10\"),((((0,29),(0,30)),ITcbrack),\"]\"),((((0,31),(0,32)),ITobrack),\"[\"),((((0,32),(0,33)),ITinteger 3),\"3\"),((((0,33),(0,35)),ITdotdot),\"..\"),((((0,35),(0,37)),ITvarid \"ff\"),\"ff\"),((((0,37),(0,38)),ITcbrack),\"]\")],"++
           "PprText 8 3 [((((0,0),(0,5)),ITwhere),\"where\")],"++
-          "PprAbove 1 (-3) (10,10) (3,-9) "++
+          "PprAbove 1 (-3) (10,10) (Just (3,-9)) "++
+          -- "PprAbove 1 (-3) (10,10) (Just (0,0)) "++
              "[PprText 9 0 [((((0,0),(0,0)),ITvocurly),\"\"),((((0,0),(0,2)),ITvarid \"ff\"),\"ff\"),((((0,3),(0,5)),ITdcolon),\"::\"),((((0,6),(0,9)),ITconid \"Int\"),\"Int\")],"++
               "PprText 10 0 [((((0,0),(0,0)),ITsemi),\"\"),((((0,0),(0,2)),ITvarid \"ff\"),\"ff\"),((((0,3),(0,4)),ITequal),\"=\"),((((0,5),(0,7)),ITinteger 15),\"15\")]],"++
           "PprText 13 1 [((((0,0),(0,0)),ITvccurly),\"\"),((((0,0),(0,0)),ITsemi),\"\")]]"
@@ -2166,7 +2146,7 @@ tree TId 0:
           "3:((5,9),(5,10))\n"++
           "3:((5,11),(5,12))\n"++
           "3:((6,3),(6,8))\n"++
-          "3:((6,9),(6,14))(Above 0 1 (6,9) (6,13) (2,-12))\n"++
+          "3:((6,9),(6,14))(Above 0 1 (6,9) (6,13) Just (2,-12))\n"++
           "4:((6,9),(6,14))\n"++
           "5:((6,9),(6,10))\n"++
           "5:((6,11),(6,14))\n"++
@@ -2180,7 +2160,7 @@ tree TId 0:
           "3:((8,9),(8,10))\n"++
           "3:((8,11),(8,12))\n"++
           "3:((9,3),(9,8))\n"++
-          "3:((10,5),(10,10))(Above 1 -3 (10,5) (10,9) (3,-8))\n"++
+          "3:((10,5),(10,10))(Above 1 -3 (10,5) (10,9) Just (3,-8))\n"++
           "4:((10,5),(10,10))\n"++
           "5:((10,5),(10,6))\n"++
           "5:((10,7),(10,10))\n"++
@@ -2194,7 +2174,7 @@ tree TId 0:
           "3:((13,9),(13,10))\n"++
           "3:((14,3),(15,17))\n"++
           "4:((14,3),(14,6))\n"++
-          "4:((14,7),(14,14))(Above 0 1 (14,7) (14,13) (1,-10))\n"++
+          "4:((14,7),(14,14))(Above 0 1 (14,7) (14,13) Just (1,-10))\n"++
           "5:((14,7),(14,14))\n"++
           "6:((14,7),(14,10))\n"++
           "6:((14,11),(14,14))\n"++
@@ -2303,7 +2283,7 @@ tree TId 0:
           "3:((14,33),(14,34))\n"++
           "3:((14,36),(14,38))\n"++
           "2:((15,3),(15,8))\n"++
-          "2:((16,5),(17,12))(Above 1 -3 (16,5) (17,10) (2,-9))\n"++
+          "2:((16,5),(17,12))(Above 1 -3 (16,5) (17,10) Just (2,-9))\n"++
           "3:((16,5),(16,14))\n"++
           "4:((16,5),(16,7))\n"++
           "4:((16,8),(16,10))\n"++
@@ -2338,7 +2318,7 @@ tree TId 0:
           "4:((22,10),(22,11))\n"++
           "4:((22,12),(22,14))\n"++
           "3:((23,3),(23,8))\n"++
-          "3:((24,5),(24,11))(Above 1 -3 (24,5) (24,10) (2,-9))\n"++
+          "3:((24,5),(24,11))(Above 1 -3 (24,5) (24,10) Just (2,-9))\n"++
           "4:((24,5),(24,11))\n"++
           "5:((24,5),(24,7))\n"++
           "5:((24,8),(24,11))\n"++
@@ -2351,7 +2331,7 @@ tree TId 0:
           "3:((26,5),(26,6))\n"++
           "3:((27,3),(29,12))\n"++
           "4:((27,3),(27,6))\n"++
-          "4:((28,5),(28,12))(Above 1 -1 (28,5) (28,10) (1,-7))\n"++
+          "4:((28,5),(28,12))(Above 1 -1 (28,5) (28,10) Just (1,-7))\n"++
           "5:((28,5),(28,12))\n"++
           "6:((28,5),(28,7))\n"++
           "6:((28,8),(28,12))\n"++
@@ -2369,7 +2349,7 @@ tree TId 0:
           "3:((31,8),(33,17))\n"++
           "4:((31,8),(32,13))\n"++
           "5:((31,8),(32,6))\n"++
-          "5:((32,7),(32,13))(Above 0 1 (32,7) (32,12) (1,-9))\n"++
+          "5:((32,7),(32,13))(Above 0 1 (32,7) (32,12) Just (1,-9))\n"++
           "6:((32,7),(32,13))\n"++
           "7:((32,7),(32,9))\n"++
           "7:((32,10),(32,13))\n"++
@@ -2420,17 +2400,17 @@ tree TId 0:
           " PprText 12 1 \"h :: Int\", PprText 13 1 \"t :: Int\",\n"++
           " PprText 14 1 \"tup@(h,t) = head $ zip [1..10] [3..ff]\",\n"++
           " PprText 15 3 \"where\",\n"++
-          " PprAbove 1 -3 (17, 10) (2, -9)\n"++
+          " PprAbove 1 -3 (17, 10) Just (2, -9)\n"++
           "   [PprText 16 0 \"ff :: Int\", PprText 17 0 \"ff = 15\"],\n"++
           " PprText 19 1 \"data D = A | B String | C\",\n"++
           " PprText 21 1 \"ff :: Int -> Int\", PprText 22 1 \"ff y = y + zz\",\n"++
           " PprText 23 3 \"where\",\n"++
-          " PprAbove 1 -3 (24, 10) (2, -9) [PprText 24 0 \"zz = 1\"],\n"++
+          " PprAbove 1 -3 (24, 10) Just (2, -9) [PprText 24 0 \"zz = 1\"],\n"++
           " PprText 26 1 \"l z =\", PprText 27 3 \"let\",\n"++
-          " PprAbove 1 -1 (28, 10) (1, -7) [PprText 28 0 \"ll = 34\"],\n"++
+          " PprAbove 1 -1 (28, 10) Just (1, -7) [PprText 28 0 \"ll = 34\"],\n"++
           " PprText 29 3 \"in ll + z\", PprText 31 1 \"dd q = do\",\n"++
           " PprText 32 3 \"let\",\n"++
-          " PprAbove 0 1 (32, 12) (1, -9) [PprText 32 0 \"ss = 5\"],\n"++
+          " PprAbove 0 1 (32, 12) Just (1, -9) [PprText 32 0 \"ss = 5\"],\n"++
           " PprText 33 3 \"return (ss + q)\",\n"++
           " PprText 35 1 \"zz1 a = 1 + toplevel a\",\n"++
           " PprText 37 1 \"-- General Comment\",\n"++
@@ -2471,7 +2451,7 @@ tree TId 0:
           "3:((6,9),(6,10))\n"++
           "3:((6,11),(8,25))\n"++
           "4:((6,11),(6,14))\n"++
-          "4:((6,15),(7,20))(Above 0 1 (6,15) (7,19) (1,-8))\n"++
+          "4:((6,15),(7,20))(Above 0 1 (6,15) (7,19) Just (1,-8))\n"++
            "5:((6,15),(6,20))\n"++
             "6:((6,15),(6,16))\n"++
             "6:((6,17),(6,20))\n"++
@@ -2497,7 +2477,7 @@ tree TId 0:
           " PprText 3 1 \"-- Simple let expression, rename xxx to something longer or shorter\",\n"++
           " PprText 4 1 \"-- and the let/in layout should adjust accordingly\",\n"++
           " PprText 6 1 \"foo xxx = let\",\n"++
-          " PprAbove 0 1 (7, 19) (1, -8)\n"++
+          " PprAbove 0 1 (7, 19) Just (1, -8)\n"++
           "   [PprText 6 0 \"a = 1\", PprText 7 0 \"b = 2\"],\n"++
           " PprText 8 11 \"in xxx + a + b\", PprText 10 1 \"\"]"
 
@@ -2505,7 +2485,7 @@ tree TId 0:
 
     -- ---------------------------------------------
 
-    it "retrieves the tokens in Ppr format Layout.Comment1" $ do
+    it "retrieves the tokens in Ppr format Layout.Comments1" $ do
       (t,toks) <- parsedFileGhc "./test/testdata/Layout/Comments1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -2534,7 +2514,7 @@ tree TId 0:
              "4:((3,12),(3,13))\n"++
              "4:((3,14),(3,15))\n"++
             "3:((4,10),(4,15))\n"++
-            "3:((4,16),(4,19))(Above 0 1 (4,16) (4,18) (0,3))\n"++
+            "3:((4,16),(4,19))(Above 0 1 (4,16) (4,18) Just (2,-17))\n"++
              "4:((4,16),(4,19))\n"++
               "5:((4,16),(4,17))\n"++
               "5:((4,17),(4,19))\n"++
@@ -2554,7 +2534,7 @@ tree TId 0:
       (showGhc pprVal) `shouldBe`
           "[PprText 1 1 \"module Layout.Comments1 where\",\n"++
           " PprText 3 1 \"aFun x = x + p\", PprText 4 10 \"where\",\n"++
-          " PprAbove 0 1 (4, 18) (0, 3)\n"++
+          " PprAbove 0 1 (4, 18) Just (2, -17)\n"++
           "   [PprText 4 0 \"p=2  {-There is a comment-}\"],\n"++
           " PprText 6 1 \"anotherFun = 3\", PprText 8 1 \"\"]"
 
@@ -2816,7 +2796,7 @@ tree TId 0:
       let forest' = replaceTokenForSrcSpan forest lt newTok
 
       (drawTreeCompact forest') `shouldBe`
-         "0:((1,1),(26,1))\n1:((1,1),(1,7))\n1:((1,8),(1,17))\n1:((1,18),(1,23))\n1:((5,1),(6,14))\n2:((5,1),(5,4))\n2:((5,5),(6,14))\n3:((5,5),(5,6))\n3:((5,7),(5,8))\n3:((5,9),(5,10))\n3:((5,11),(5,12))\n3:((6,3),(6,8))\n3:((6,9),(6,14))(Above 0 1 (6,9) (6,13) (2,-12))\n4:((6,9),(6,14))\n5:((6,9),(6,10))\n5:((6,11),(6,14))\n6:((6,11),(6,12))\n6:((6,13),(6,14))\n1:((8,1),(10,10))\n2:((8,1),(8,4))\n2:((8,5),(10,10))\n3:((8,5),(8,6))\n3:((8,7),(8,8))\n3:((8,9),(8,10))\n3:((8,11),(8,12))\n3:((9,3),(9,8))\n3:((10,5),(10,10))(Above 1 -3 (10,5) (10,9) (3,-8))\n4:((10,5),(10,10))\n5:((10,5),(10,6))\n5:((10,7),(10,10))\n6:((10,7),(10,8))\n6:((10,9),(10,10))\n1:((13,1),(15,17))\n2:((13,1),(13,4))\n2:((13,5),(15,17))\n3:((13,5),(13,6))\n3:((13,7),(13,8))\n3:((13,9),(13,10))\n3:((14,3),(15,17))\n4:((14,3),(14,6))\n4:((14,7),(14,14))(Above 0 1 (14,7) (14,13) (1,-10))\n5:((14,7),(14,14))\n6:((14,7),(14,10))\n6:((14,11),(14,14))\n7:((14,11),(14,12))\n7:((14,13),(14,14))\n4:((15,10),(15,17))\n5:((15,10),(15,11))\n5:((15,12),(15,13))\n5:((15,14),(15,17))\n1:((19,1),(21,14))\n2:((19,1),(19,4))\n2:((19,5),(21,14))\n3:((19,5),(19,6))\n3:((19,7),(19,8))\n3:((19,9),(19,10))\n3:((20,3),(21,14))\n4:((20,3),(20,18))\n5:((20,3),(20,7))\n5:((20,11),(20,18))\n4:((21,6),(21,14))\n5:((21,6),(21,12))\n5:((21,13),(21,14))\n1:((26,1),(26,1))\n"
+         "0:((1,1),(26,1))\n1:((1,1),(1,7))\n1:((1,8),(1,17))\n1:((1,18),(1,23))\n1:((5,1),(6,14))\n2:((5,1),(5,4))\n2:((5,5),(6,14))\n3:((5,5),(5,6))\n3:((5,7),(5,8))\n3:((5,9),(5,10))\n3:((5,11),(5,12))\n3:((6,3),(6,8))\n3:((6,9),(6,14))(Above 0 1 (6,9) (6,13) Just (2,-12))\n4:((6,9),(6,14))\n5:((6,9),(6,10))\n5:((6,11),(6,14))\n6:((6,11),(6,12))\n6:((6,13),(6,14))\n1:((8,1),(10,10))\n2:((8,1),(8,4))\n2:((8,5),(10,10))\n3:((8,5),(8,6))\n3:((8,7),(8,8))\n3:((8,9),(8,10))\n3:((8,11),(8,12))\n3:((9,3),(9,8))\n3:((10,5),(10,10))(Above 1 -3 (10,5) (10,9) Just (3,-8))\n4:((10,5),(10,10))\n5:((10,5),(10,6))\n5:((10,7),(10,10))\n6:((10,7),(10,8))\n6:((10,9),(10,10))\n1:((13,1),(15,17))\n2:((13,1),(13,4))\n2:((13,5),(15,17))\n3:((13,5),(13,6))\n3:((13,7),(13,8))\n3:((13,9),(13,10))\n3:((14,3),(15,17))\n4:((14,3),(14,6))\n4:((14,7),(14,14))(Above 0 1 (14,7) (14,13) Just (1,-10))\n5:((14,7),(14,14))\n6:((14,7),(14,10))\n6:((14,11),(14,14))\n7:((14,11),(14,12))\n7:((14,13),(14,14))\n4:((15,10),(15,17))\n5:((15,10),(15,11))\n5:((15,12),(15,13))\n5:((15,14),(15,17))\n1:((19,1),(21,14))\n2:((19,1),(19,4))\n2:((19,5),(21,14))\n3:((19,5),(19,6))\n3:((19,7),(19,8))\n3:((19,9),(19,10))\n3:((20,3),(21,14))\n4:((20,3),(20,18))\n5:((20,3),(20,7))\n5:((20,11),(20,18))\n4:((21,6),(21,14))\n5:((21,6),(21,12))\n5:((21,13),(21,14))\n1:((26,1),(26,1))\n"
 
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
@@ -2831,7 +2811,7 @@ tree TId 0:
       -- let f1 = mkTreeFromTokens toks
       let f1 = initTokenLayout parsed toks
 
-      (drawTreeCompact f1) `shouldBe` "0:((1,1),(34,1))\n1:((1,1),(1,7))\n1:((1,8),(1,18))\n1:((1,19),(1,24))\n1:((3,1),(3,9))\n1:((3,10),(3,12))\n1:((3,13),(3,20))\n1:((3,21),(3,23))\n1:((3,24),(3,31))\n1:((4,1),(4,19))\n2:((4,1),(4,9))\n2:((4,10),(4,19))\n3:((4,10),(4,11))\n3:((4,12),(4,13))\n3:((4,14),(4,19))\n4:((4,14),(4,15))\n4:((4,16),(4,17))\n4:((4,18),(4,19))\n1:((6,1),(6,2))\n1:((6,2),(6,3))\n1:((6,3),(6,4))\n1:((6,5),(6,7))\n1:((6,8),(6,15))\n1:((7,1),(7,6))\n2:((7,1),(7,2))\n2:((7,3),(7,6))\n3:((7,3),(7,4))\n3:((7,5),(7,6))\n1:((8,1),(8,6))\n2:((8,1),(8,2))\n2:((8,3),(8,6))\n3:((8,3),(8,4))\n3:((8,5),(8,6))\n1:((11,1),(11,4))\n1:((11,5),(11,7))\n1:((11,8),(11,9))\n1:((11,9),(11,12))\n1:((11,12),(11,13))\n1:((11,14),(11,17))\n1:((11,17),(11,18))\n1:((12,1),(12,2))\n1:((12,3),(12,5))\n1:((12,6),(12,9))\n1:((13,1),(13,2))\n1:((13,3),(13,5))\n1:((13,6),(13,9))\n1:((14,1),(17,12))\n2:((14,1),(14,10))\n2:((14,11),(14,12))\n2:((14,13),(14,38))\n3:((14,13),(14,17))\n3:((14,18),(14,19))\n3:((14,20),(14,23))\n3:((14,24),(14,25))\n3:((14,25),(14,26))\n3:((14,28),(14,30))\n3:((14,32),(14,33))\n3:((14,33),(14,34))\n3:((14,36),(14,38))\n2:((15,3),(15,8))\n2:((16,5),(17,12))(Above 1 -3 (16,5) (17,10) (2,-9))\n3:((16,5),(16,14))\n4:((16,5),(16,7))\n4:((16,8),(16,10))\n4:((16,11),(16,14))\n3:((17,5),(17,12))\n4:((17,5),(17,7))\n4:((17,8),(17,12))\n5:((17,8),(17,9))\n5:((17,10),(17,12))\n1:((19,1),(19,5))\n1:((19,6),(19,7))\n1:((19,8),(19,9))\n1:((19,10),(19,11))\n1:((19,12),(19,13))\n1:((19,14),(19,22))\n2:((19,14),(19,15))\n2:((19,16),(19,22))\n1:((19,23),(19,24))\n1:((19,25),(19,26))\n1:((21,1),(23,11))\n2:((21,1),(21,3))\n2:((21,4),(23,11))\n3:((21,4),(21,5))\n3:((21,6),(21,7))\n3:((21,8),(21,14))\n4:((21,8),(21,9))\n4:((21,10),(21,11))\n4:((21,12),(21,14))\n3:((22,3),(22,8))\n3:((23,5),(23,11))(Above 1 -3 (23,5) (23,10) (2,-9))\n4:((23,5),(23,11))\n5:((23,5),(23,7))\n5:((23,8),(23,11))\n6:((23,8),(23,9))\n6:((23,10),(23,11))\n1:((25,1),(28,12))\n2:((25,1),(25,2))\n2:((25,3),(28,12))\n3:((25,3),(25,4))\n3:((25,5),(25,6))\n3:((26,3),(28,12))\n4:((26,3),(26,6))\n4:((27,5),(27,12))(Above 1 -1 (27,5) (27,10) (1,-7))\n5:((27,5),(27,12))\n6:((27,5),(27,7))\n6:((27,8),(27,12))\n7:((27,8),(27,9))\n7:((27,10),(27,12))\n4:((28,6),(28,12))\n5:((28,6),(28,8))\n5:((28,9),(28,10))\n5:((28,11),(28,12))\n1:((30,1),(32,18))\n2:((30,1),(30,3))\n2:((30,4),(32,17))\n3:((30,4),(30,5))\n3:((30,6),(30,7))\n3:((30,8),(32,17))\n4:((30,8),(31,13))\n5:((30,8),(31,6))\n5:((31,7),(31,13))(Above 0 1 (31,7) (31,12) (1,-9))\n6:((31,7),(31,13))\n7:((31,7),(31,9))\n7:((31,10),(31,13))\n8:((31,10),(31,11))\n8:((31,12),(31,13))\n4:((32,3),(32,17))\n5:((32,3),(32,9))\n5:((32,10),(32,11))\n5:((32,11),(32,13))\n5:((32,14),(32,15))\n5:((32,16),(32,17))\n1:((34,1),(34,1))\n"
+      (drawTreeCompact f1) `shouldBe` "0:((1,1),(34,1))\n1:((1,1),(1,7))\n1:((1,8),(1,18))\n1:((1,19),(1,24))\n1:((3,1),(3,9))\n1:((3,10),(3,12))\n1:((3,13),(3,20))\n1:((3,21),(3,23))\n1:((3,24),(3,31))\n1:((4,1),(4,19))\n2:((4,1),(4,9))\n2:((4,10),(4,19))\n3:((4,10),(4,11))\n3:((4,12),(4,13))\n3:((4,14),(4,19))\n4:((4,14),(4,15))\n4:((4,16),(4,17))\n4:((4,18),(4,19))\n1:((6,1),(6,2))\n1:((6,2),(6,3))\n1:((6,3),(6,4))\n1:((6,5),(6,7))\n1:((6,8),(6,15))\n1:((7,1),(7,6))\n2:((7,1),(7,2))\n2:((7,3),(7,6))\n3:((7,3),(7,4))\n3:((7,5),(7,6))\n1:((8,1),(8,6))\n2:((8,1),(8,2))\n2:((8,3),(8,6))\n3:((8,3),(8,4))\n3:((8,5),(8,6))\n1:((11,1),(11,4))\n1:((11,5),(11,7))\n1:((11,8),(11,9))\n1:((11,9),(11,12))\n1:((11,12),(11,13))\n1:((11,14),(11,17))\n1:((11,17),(11,18))\n1:((12,1),(12,2))\n1:((12,3),(12,5))\n1:((12,6),(12,9))\n1:((13,1),(13,2))\n1:((13,3),(13,5))\n1:((13,6),(13,9))\n1:((14,1),(17,12))\n2:((14,1),(14,10))\n2:((14,11),(14,12))\n2:((14,13),(14,38))\n3:((14,13),(14,17))\n3:((14,18),(14,19))\n3:((14,20),(14,23))\n3:((14,24),(14,25))\n3:((14,25),(14,26))\n3:((14,28),(14,30))\n3:((14,32),(14,33))\n3:((14,33),(14,34))\n3:((14,36),(14,38))\n2:((15,3),(15,8))\n2:((16,5),(17,12))(Above 1 -3 (16,5) (17,10) Just (2,-9))\n3:((16,5),(16,14))\n4:((16,5),(16,7))\n4:((16,8),(16,10))\n4:((16,11),(16,14))\n3:((17,5),(17,12))\n4:((17,5),(17,7))\n4:((17,8),(17,12))\n5:((17,8),(17,9))\n5:((17,10),(17,12))\n1:((19,1),(19,5))\n1:((19,6),(19,7))\n1:((19,8),(19,9))\n1:((19,10),(19,11))\n1:((19,12),(19,13))\n1:((19,14),(19,22))\n2:((19,14),(19,15))\n2:((19,16),(19,22))\n1:((19,23),(19,24))\n1:((19,25),(19,26))\n1:((21,1),(23,11))\n2:((21,1),(21,3))\n2:((21,4),(23,11))\n3:((21,4),(21,5))\n3:((21,6),(21,7))\n3:((21,8),(21,14))\n4:((21,8),(21,9))\n4:((21,10),(21,11))\n4:((21,12),(21,14))\n3:((22,3),(22,8))\n3:((23,5),(23,11))(Above 1 -3 (23,5) (23,10) Just (2,-9))\n4:((23,5),(23,11))\n5:((23,5),(23,7))\n5:((23,8),(23,11))\n6:((23,8),(23,9))\n6:((23,10),(23,11))\n1:((25,1),(28,12))\n2:((25,1),(25,2))\n2:((25,3),(28,12))\n3:((25,3),(25,4))\n3:((25,5),(25,6))\n3:((26,3),(28,12))\n4:((26,3),(26,6))\n4:((27,5),(27,12))(Above 1 -1 (27,5) (27,10) Just (1,-7))\n5:((27,5),(27,12))\n6:((27,5),(27,7))\n6:((27,8),(27,12))\n7:((27,8),(27,9))\n7:((27,10),(27,12))\n4:((28,6),(28,12))\n5:((28,6),(28,8))\n5:((28,9),(28,10))\n5:((28,11),(28,12))\n1:((30,1),(32,18))\n2:((30,1),(30,3))\n2:((30,4),(32,17))\n3:((30,4),(30,5))\n3:((30,6),(30,7))\n3:((30,8),(32,17))\n4:((30,8),(31,13))\n5:((30,8),(31,6))\n5:((31,7),(31,13))(Above 0 1 (31,7) (31,12) Just (1,-9))\n6:((31,7),(31,13))\n7:((31,7),(31,9))\n7:((31,10),(31,13))\n8:((31,10),(31,11))\n8:((31,12),(31,13))\n4:((32,3),(32,17))\n5:((32,3),(32,9))\n5:((32,10),(32,11))\n5:((32,11),(32,13))\n5:((32,14),(32,15))\n5:((32,16),(32,17))\n1:((34,1),(34,1))\n"
 
       (invariant f1) `shouldBe` []
 
@@ -3121,7 +3101,7 @@ tree TId 0:
           "4:((3,18),(3,20))\n"++
           "4:((3,21),(3,22))\n"++
           "3:((4,6),(4,11))\n"++
-          "3:((4,12),(4,22))(Above 0 1 (4,12) (4,21) (1,-20))\n"++
+          "3:((4,12),(4,22))(Above 0 1 (4,12) (4,21) Just (1,-20))\n"++
           "4:((4,12),(4,22))\n"++
           "5:((4,12),(4,14))\n"++
           "5:((4,15),(4,22))\n"++
@@ -3155,7 +3135,7 @@ tree TId 0:
           "4:((3,18),(3,20))\n"++
           "4:((3,21),(3,22))\n"++
           "3:((4,6),(4,11))\n"++
-          "3:((4,12),(4,22))(Above 0 1 (4,12) (4,21) (1,-20))\n"++
+          "3:((4,12),(4,22))(Above 0 1 (4,12) (4,21) Just (1,-20))\n"++
           "4:((4,12),(4,22))\n"++
           "5:((4,12),(4,14))\n"++
           "5:((4,15),(4,22))\n"++
@@ -4514,80 +4494,80 @@ nonNullSpan = ((ForestLine False 0 0 0,0),(ForestLine False 0 0 1,0))
 
 -- ---------------------------------------------------------------------
 
-liftD1FileName :: GHC.FastString
-liftD1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/D1.hs"
+-- liftD1FileName :: GHC.FastString
+-- liftD1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/D1.hs"
 
 parsedFileLiftD1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftD1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/D1.hs"
 
 -- ---------------------------------------------------------------------
 
-liftLetIn1FileName :: GHC.FastString
-liftLetIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/LetIn1.hs"
+-- liftLetIn1FileName :: GHC.FastString
+-- liftLetIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/LetIn1.hs"
 
 parsedFileLiftLetIn1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftLetIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/LetIn1.hs"
 
 -- ---------------------------------------------------------------------
 
-tokenTestFileName :: GHC.FastString
-tokenTestFileName = GHC.mkFastString "./test/testdata/TokenTest.hs"
+-- tokenTestFileName :: GHC.FastString
+-- tokenTestFileName = GHC.mkFastString "./test/testdata/TokenTest.hs"
 
 parsedFileTokenTestGhc :: IO (ParseResult,[PosToken])
 parsedFileTokenTestGhc = parsedFileGhc "./test/testdata/TokenTest.hs"
 
 -- ---------------------------------------------------------------------
 
-dupDefDd1FileName :: GHC.FastString
-dupDefDd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
+-- dupDefDd1FileName :: GHC.FastString
+-- dupDefDd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
 parsedFileDupDefDd1 :: IO (ParseResult, [PosToken])
 parsedFileDupDefDd1 = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 
 -- ---------------------------------------------------------------------
 
-moveDefMd1FileName :: GHC.FastString
-moveDefMd1FileName = GHC.mkFastString "./test/testdata/MoveDef/Md1.hs"
+-- moveDefMd1FileName :: GHC.FastString
+-- moveDefMd1FileName = GHC.mkFastString "./test/testdata/MoveDef/Md1.hs"
 
 parsedFileMoveDefMd1 :: IO (ParseResult, [PosToken])
 parsedFileMoveDefMd1 = parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
 
 -- ---------------------------------------------------------------------
 
-demoteD1FileName  :: GHC.FastString
-demoteD1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
+-- demoteD1FileName  :: GHC.FastString
+-- demoteD1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
 
 parsedFileDemoteD1 :: IO (ParseResult, [PosToken])
 parsedFileDemoteD1 = parsedFileGhc "./test/testdata/Demote/D1.hs"
 
 -- ---------------------------------------------------------------------
 
-demoteWherIn4FileName  :: GHC.FastString
-demoteWherIn4FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs"
+-- demoteWherIn4FileName  :: GHC.FastString
+-- demoteWherIn4FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs"
 
 parsedFileDemoteWhereIn4 :: IO (ParseResult, [PosToken])
 parsedFileDemoteWhereIn4 = parsedFileGhc "./test/testdata/Demote/WhereIn4.hs"
 
 -- ---------------------------------------------------------------------
 
-liftWhereIn1FileName :: GHC.FastString
-liftWhereIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/WhereIn1.hs"
+-- liftWhereIn1FileName :: GHC.FastString
+-- liftWhereIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/WhereIn1.hs"
 
 parsedFileLiftWhereIn1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereIn1.hs"
 
 -- ---------------------------------------------------------------------
 
-dd1FileName :: GHC.FastString
-dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
+-- dd1FileName :: GHC.FastString
+-- dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
 parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
 parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 
 -- ---------------------------------------------------------------------
 
-layoutIn2FileName :: GHC.FastString
-layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
+-- layoutIn2FileName :: GHC.FastString
+-- layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
 
 parsedFileLayoutIn2 :: IO (ParseResult, [PosToken])
 parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"

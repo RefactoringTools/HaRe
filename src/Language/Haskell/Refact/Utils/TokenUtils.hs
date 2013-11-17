@@ -1305,9 +1305,9 @@ renderPpr ps = go 0 (1,1) ps
     go :: Col -> (Row,Col) -> [Ppr] -> String
     go _ _ [] = []
 
-    go ci (r,c) (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,cc) (er,ec) _subs):ps')
+    go ci (r,c) (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,cc) eo _subs):ps')
         = firstPart
-          ++ (renderOffset er ec cc)
+          ++ (renderEndOffset eo cc)
           ++ go ci (lookAheadRc ci ps') ps'
       where
           firstPart = ((renderPprText ci (r,c) ppt)
@@ -1346,6 +1346,9 @@ renderPpr ps = go 0 (1,1) ps
       -- ++ "(" ++ (show (ci,(r,c),(rt,ct))) ++ ")"  -- ++AZ++ for debugging
       ++ (GHC.showRichTokenStream toks)
     renderPprText _ _ ppr = error $ "renderPprText:unexpected ppr:" ++ (show ppr)
+
+    renderEndOffset Nothing        oc = renderOffset  0  0 oc
+    renderEndOffset (Just (ro,co)) oc = renderOffset ro co oc
 
     renderOffset :: Row -> Col -> Col -> String
     renderOffset r c oc = nl ++ (take c' (repeat ' '))

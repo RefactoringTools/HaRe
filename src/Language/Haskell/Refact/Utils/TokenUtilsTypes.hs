@@ -85,7 +85,7 @@ type ColOffset = Int
 type Row       = Int
 type Col       = Int
 
-data Layout = Above RowOffset ColOffset (Row,Col) (Row,Col) (RowOffset,ColOffset)
+data Layout = Above RowOffset ColOffset (Row,Col) (Row,Col) (Maybe (RowOffset,ColOffset))
             -- ^ Initial Row and Col offset from token before the
             -- stacked list of items, the (r,c) of the first
             -- non-comment token, the (r,c) of the last non-comment
@@ -153,7 +153,7 @@ data TokenCache = TK
 
 -- |A data structure to make the ppr process visible
 data Ppr = PprText Row Col [PosToken] -- ^Original row and col of the tokens
-         | PprAbove RowOffset ColOffset (Row,Col) (RowOffset,ColOffset) [Ppr]
+         | PprAbove RowOffset ColOffset (Row,Col) (Maybe (RowOffset,ColOffset)) [Ppr]
          -- ^ Offset of start of embedded parts, coords of last token
          | PprOffset RowOffset ColOffset [Ppr]
 
