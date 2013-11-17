@@ -12,6 +12,7 @@ module TestUtils
        , initialLogOnState
        , toksFromState
        , pprFromState
+       , layoutFromState
        , entriesFromState
        , defaultTestSettings
        , logTestSettings
@@ -128,6 +129,15 @@ pprFromState st =
     -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> retrieveTokensPpr $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
+
+-- ---------------------------------------------------------------------
+
+layoutFromState :: RefactState -> Maybe (Tree Entry)
+layoutFromState st =
+  case (rsModule st) of
+    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
+    Just tm -> Just ((tkCache $ rsTokenCache tm) Map.! mainTid)
+    Nothing -> Nothing
 
 -- ---------------------------------------------------------------------
 

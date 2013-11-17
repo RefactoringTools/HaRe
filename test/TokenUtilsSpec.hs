@@ -2584,12 +2584,15 @@ tree TId 0:
 
       let pprVal = retrieveTokensPpr layout
 
+      -- (show pprVal) `shouldBe` ""
+
       (showGhc pprVal) `shouldBe`
           "[PprText 1 1 \"module LocToName where\","++
           " PprText 3 1 \"{-\n\n\n\n\n\n\n\n\n-}\",\n"++
           " PprText 20 1 \"sumSquares (x:xs) = x ^2 + sumSquares xs\",\n"++
           " PprText 21 5 \"-- where sq x = x ^pow \",\n"++
-          " PprText 22 5 \"--       pow = 2\", PprText 24 1 \"sumSquares [] = 0\",\n"++
+          " PprText 22 5 \"--       pow = 2\","++
+          " PprText 24 1 \"sumSquares [] = 0\",\n"++
           " PprText 25 1 \"\"]"
 
       (renderPpr pprVal) `shouldBe` origSource

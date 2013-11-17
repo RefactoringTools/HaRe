@@ -47,6 +47,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        -- * Retrieving tokens
        , retrieveTokensFinal
        , retrieveTokensPpr
+       , renderPpr'
        , renderPpr
        , adjustLinesForDeleted
        , retrieveTokensInterim
@@ -149,8 +150,10 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
+import Control.Monad.Trans.State.Lazy
 import Data.Bits
 import Data.List
+import Data.Maybe
 import Data.Tree
 -- import qualified Text.PrettyPrint as PP
 import qualified Data.Map as Map
@@ -1287,51 +1290,125 @@ applyOffsetToTreeShallow (ro,co) (Node (Entry sspan lay toks) subs)
 applyOffsetToTreeShallow _ n@(Node (Deleted _ _) _) = n
 
 -- ---------------------------------------------------------------------
-{-
-applyOffsetToTree :: (Int,Int) -> Tree Entry -> Tree Entry
-applyOffsetToTree (ro,co) (Node (Entry sspan lay toks) subs)
-  = (Node (Entry sspan' lay toks') subs')
+
+renderPpr :: [Ppr] -> String
+renderPpr ps = res
   where
-    sspan' = addOffsetToForestSpan (ro,co) sspan
-    toks' = toks -- TODO: addOffsetToToks?
-    subs' = map (applyOffsetToTree (ro,co)) subs
--}
+    (_,(_,res)) = runState (go 0 ps) ((1,1),"")
+
+    go _ [] = return ()
+
+    go ci (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,_cc) eo _subs):ps') = do
+      renderPprText ci ppt
+      addOffset ro co
+      renderPprAbove ci ppa
+      case eo of
+        Just (ero,eco) -> addOffset ero eco
+        Nothing        -> return ()
+      go ci ps'
+
+    go ci (p@(PprText _rt _ct _toks):ps') = do
+      renderPprText ci p
+      go ci ps'
+
+    go _ pps = error $ "renderPpr: unmatched in go:" ++ (show pps)
+
+    ------------------------------------
+
+    renderPprAbove _ci (PprAbove _ _ _ _   []) = return ()
+    renderPprAbove  ci (PprAbove _ _ _ _ subs) = go ci subs
+
+    renderPprAbove _ ppr = error $ "renderPprAbove:unexpected ppr:" ++ (show ppr)
+
+    ------------------------------------
+
+    -- renderPprText :: Col -> Ppr -> String
+    renderPprText ci (PprText rt ct toks) = do
+      (r',c') <- getRC
+      -- addDebugString $ "(op" ++ (show (ci,(r',c'),(rt,ct))) ++ ")"  -- ++AZ++ for debugging
+      newPos rt (ci + ct)
+      (r,c) <- getRC
+      -- addDebugString $ "(np:" ++ (show (r,c)) ++ ")"  -- ++AZ++ for debugging
+      addString (GHC.showRichTokenStream toks)
+
+    renderPprText _ ppr = error $ "renderPprText:unexpected ppr:" ++ (show ppr)
+
+    ------------------------------------
+
+    addOffset ro co = do
+      (r',c') <- getRC
+      newPos (r'+ro) (c'+co)
+
+    newPos newRow newCol = do
+      (oldRow,oldCol) <- getRC
+      if oldRow == newRow
+        then addString (take (newCol - oldCol - 1) $ repeat ' ')
+        else
+          addString ( (take (newRow - oldRow) $ repeat '\n') ++
+                      (take (newCol - 1) $ repeat ' ') )
+
+    -- State operations ----------------
+
+    getRC = do
+      (rc,_) <- get
+      return rc
+
+    addString [] = return ()
+    addString str = do
+      ((r,c),curr) <- get
+      let ll = lines str
+          c'' = length $ last ll
+          (r',c') = case length ll of
+                     1 -> (r,c + c'')
+                     _ -> (r + (length ll), c'' + 1)
+      put ((r',c'),curr++str)
+
+    addDebugString str = do
+      ((r,c),curr) <- get
+      put ((r,c),curr++str)
+
 -- ---------------------------------------------------------------------
 
 -- |Convert a Ppr list into formatted source code
-renderPpr :: [Ppr] -> String
-renderPpr ps = go 0 (1,1) ps
+renderPpr' :: [Ppr] -> String
+renderPpr' ps = go False 0 (1,1) ps
   where
-    go :: Col -> (Row,Col) -> [Ppr] -> String
-    go _ _ [] = []
+    go :: Bool -> Col -> (Row,Col) -> [Ppr] -> String
+    go _ _ _ [] = []
 
-    go ci (r,c) (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,cc) eo _subs):ps')
+    go ia ci (r,c) (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,cc) eo _subs):ps')
         = firstPart
-          ++ (renderEndOffset eo cc)
-          ++ go ci (lookAheadRc ci ps') ps'
+          ++ endOffset
+          ++ go ia ci larc ps'
       where
           firstPart = ((renderPprText ci (r,c) ppt)
                        ++ (renderOffset ro co (colAfterPprText ppt))
-                       ++ renderPprAbove (co + (colAfterPprText ppt)) ppa
+                       ++ renderPprAbove ia (co + (colAfterPprText ppt)) ppa
                       )
 
-    go ci (r,c) (p@(PprText rt ct toks):ps') = (renderPprText ci (r,c) p) ++ go ci (rt',ct) ps'
+          larc = lookAheadRc ci ps'
+
+          endOffset = if ia
+            then renderEndOffset eo cc
+            else renderEndOffset eo cc
+
+    go ia ci (r,c) (p@(PprText rt ct toks):ps') = (renderPprText ci (r,c) p) ++ go ia ci (rt',ct) ps'
       where
         rt' = rt + (length $ filter (=='\n') $ GHC.showRichTokenStream toks)
 
-    go _ _ pps = error $ "renderPpr: unmatched in go:" ++ (show pps)
+    go _ _ _ pps = error $ "renderPpr: unmatched in go:" ++ (show pps)
 
     -- ---------------------------------
 
-    renderPprAbove :: Col -> Ppr -> String
-    renderPprAbove ci (PprAbove _ _ _ _ subs)
+    renderPprAbove :: Bool -> Col -> Ppr -> String
+    renderPprAbove _ia ci (PprAbove _ _ _ _ subs)
        = case subs of
              [] -> ""
              (p:_) -> ra'
                where
                  (r',c') = (lookAheadRc ci [p])
-                 ra' = go ci (r',c') subs
-    renderPprAbove _ ppr = error $ "renderPprAbove:unexpected ppr:" ++ (show ppr)
+                 ra' = go True ci (r',c') subs
+    renderPprAbove _ _ ppr = error $ "renderPprAbove:unexpected ppr:" ++ (show ppr)
 
     lookAheadRc _ []                       = (0,0)
     lookAheadRc ci ((PprText r c _):_)      = (r,ci+c)
