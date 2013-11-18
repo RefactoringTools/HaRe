@@ -1887,10 +1887,12 @@ tree TId 0:
     -- -----------------------------------------------------------------
 
     it "retrieves the tokens in Ppr format LayoutIn2" $ do
-      (t,toks) <- parsedFileLayoutIn2
+      (t,toks) <- parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (GHC.showRichTokenStream $ bypassGHCBug7351 toks) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
 
       let layout = allocTokens parsed toks
       (show $ retrieveTokens layout) `shouldBe` (show toks)
@@ -1946,6 +1948,7 @@ tree TId 0:
           "1:((14,1),(14,1))\n"
 
       let pprVal = retrieveTokensPpr layout
+
       (showGhc pprVal) `shouldBe`
           "[PprText 1 1 \"module LayoutIn2 where\",\n"++
           " PprText 3 1 \"--Layout rule applies after 'where','let','do' and 'of'\",\n"++
@@ -1958,13 +1961,14 @@ tree TId 0:
           "    PprAbove 0 2 (11, 64) Just (1, -36) [PprText 11 0 \"x = last xs\"],\n"++
           "    PprText 12 0 \"otherwise -> 12\"],\n PprText 14 1 \"\"]"
 
-
       -- (show $ renderPprToHDoc pprVal) `shouldBe`  ""
       -- (show $ renderPprToHDoc' pprVal) `shouldBe`  ""
 
       -- (renderPpr pprVal) `shouldBe`
-      (renderPpr pprVal) `shouldBe`
+      (renderPpr pprVal) `shouldBe` origSource
+{-
           "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
+-}
 
     -- -----------------------------------------------------------------
 
@@ -2085,7 +2089,6 @@ tree TId 0:
           "3:((7,36),(7,38))\n"++
           "2:((8,3),(8,8))\n"++
           "2:((9,5),(10,12))(Above 1 -3 (9,5) (10,10) Just (3,-9))\n"++
-          -- "2:((9,5),(10,12))(Above 1 -3 (9,5) (10,10) Just (0,0))\n"++
           "3:((9,5),(9,14))\n"++
           "4:((9,5),(9,7))\n"++
           "4:((9,8),(9,10))\n"++

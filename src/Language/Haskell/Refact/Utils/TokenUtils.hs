@@ -1301,9 +1301,10 @@ renderPpr ps = res
     go ci (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,_cc) eo _subs):ps') = do
       renderPprText ci ppt
       addOffset ro co
-      renderPprAbove ci ppa
+      (_,c) <- getRC
+      renderPprAbove c ppa
       case eo of
-        Just (ero,eco) -> addOffset ero eco
+        Just (ero,eco) -> addOffset ero (eco - 1)
         Nothing        -> return ()
       go ci ps'
 
@@ -1336,16 +1337,31 @@ renderPpr ps = res
     ------------------------------------
 
     addOffset ro co = do
-      (r',c') <- getRC
-      newPos (r'+ro) (c'+co)
+      (r,c) <- getRC
+      newPos (r+ro) (c+co)
 
     newPos newRow newCol = do
       (oldRow,oldCol) <- getRC
       if oldRow == newRow
-        then addString (take (newCol - oldCol - 1) $ repeat ' ')
+        then addString (take (newCol - oldCol) $ repeat ' ')
         else
           addString ( (take (newRow - oldRow) $ repeat '\n') ++
                       (take (newCol - 1) $ repeat ' ') )
+      checkInvariant $ "newPos:" ++ (show (newRow,newCol))
+
+    checkInvariant str = do
+      -- Check invariant
+      ((r,c),cur) <- get
+      let ll = 1 + (length $ filter (=='\n') cur)
+      let lc = 1 + (length $ takeWhile (/='\n') $ reverse cur)
+      if r /= ll
+        then error $ "renderPpr.newPos: r /= ll :" ++ (show (r,ll,cur,str))
+        else return ()
+      if c /= lc
+        then error $ "renderPpr.newPos: c /= lc :" ++ (show (c,lc,cur,str))
+        else return ()
+
+      return ()
 
     -- State operations ----------------
 
@@ -1356,12 +1372,18 @@ renderPpr ps = res
     addString [] = return ()
     addString str = do
       ((r,c),curr) <- get
-      let ll = lines str
-          c'' = length $ last ll
-          (r',c') = case length ll of
-                     1 -> (r,c + c'')
-                     _ -> (r + (length ll), c'' + 1)
+      let ll = (length $ filter (=='\n') str)
+      let c'' = (length $ takeWhile (/='\n') $ reverse str)
+
+
+      let -- ll = lines str
+          -- c'' = length $ last ll
+          (r',c') = case ll of
+                     0 -> (r,c + c'')
+                     _ -> (r + ll, c'' + 1)
       put ((r',c'),curr++str)
+
+      checkInvariant $ "addString" ++ show str
 
     addDebugString str = do
       ((r,c),curr) <- get
