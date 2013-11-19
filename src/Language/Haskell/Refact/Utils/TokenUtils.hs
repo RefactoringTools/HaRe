@@ -152,7 +152,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Control.Monad.Trans.State.Lazy
 import Data.Bits
 import Data.List
-import Data.Maybe
+-- import Data.Maybe
 import Data.Tree
 -- import qualified Text.PrettyPrint as PP
 import qualified Data.Map as Map
@@ -1184,7 +1184,7 @@ retrieveTokensPpr forest = pps'
     pps' = pps ++ (mkPprFromLineToks lastLine)
 
 retrieveTokensPpr' :: ([Ppr],[PosToken]) -> Tree Entry -> ([Ppr],[PosToken])
--- TODO: take cognisance of this to reduce the gap going forward
+
 retrieveTokensPpr' acc (Node (Deleted _sspan  _eg ) _  ) = acc
 
 retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs)
@@ -1235,11 +1235,12 @@ retrieveTokensPpr' _acc n@(Node (Entry _sspan (NoChange) _toks) _subs)
 
 mkPprFromLineToks :: [PosToken] -> [Ppr]
 mkPprFromLineToks [] = []
-mkPprFromLineToks toks = [PprText ro co toks']
+mkPprFromLineToks toks = [PprText ro co str]
   where
     ro = tokenRow $ head toks
     co = tokenCol $ head toks
     toks' = addOffsetToToks (-ro,-co) toks
+    str = GHC.showRichTokenStream toks'
 
 
 -- | The PprAbove construct needs all the starting columns to be reset to zero
@@ -1303,9 +1304,14 @@ renderPpr ps = res
       addOffset ro (co - 1)
       (_,c) <- getRC
       renderPprAbove c ppa
+      (cr,_cc) <- getRC
       case eo of
-        Just (ero,eco) -> addOffset ero (eco - 1)
-        Nothing        -> return ()
+        FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
+        -- FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
+        SameLine eco -> addOffset 0 (eco - 1)
+        None        -> return ()
+      -- (r',c') <- getRC
+      -- addDebugString $ "(eo:" ++ show (ci,(r',c')) ++ ")" -- ++AZ++ debug
       go ci ps'
 
     go ci (p@(PprText _rt _ct _toks):ps') = do
@@ -1324,13 +1330,13 @@ renderPpr ps = res
     ------------------------------------
 
     -- renderPprText :: Col -> Ppr -> String
-    renderPprText ci (PprText rt ct toks) = do
-      (r',c') <- getRC
+    renderPprText ci (PprText rt ct str) = do
+      -- (r',c') <- getRC
       -- addDebugString $ "(op" ++ (show (ci,(r',c'),(rt,ct))) ++ ")"  -- ++AZ++ for debugging
       newPos rt (ci + ct)
-      (r,c) <- getRC
+      -- (r,c) <- getRC
       -- addDebugString $ "(np:" ++ (show (r,c)) ++ ")"  -- ++AZ++ for debugging
-      addString (GHC.showRichTokenStream toks)
+      addString str
       -- addDebugString $ "(fp:" ++ (show (r,c)) ++ ")"  -- ++AZ++ for debugging
 
     renderPprText _ ppr = error $ "renderPprText:unexpected ppr:" ++ (show ppr)

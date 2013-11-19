@@ -159,12 +159,17 @@ instance Outputable Layout where
   -- ppr (EndOffset r c) = text "EndOffset" <+> ppr r <+> ppr c
 
 instance Outputable Ppr where
-  ppr (PprText r c toks) = text "PprText" <+> ppr r <+> ppr c
-                        <+> text "\"" <> text (GHC.showRichTokenStream toks) <> text "\""
+  ppr (PprText r c str) = text "PprText" <+> ppr r <+> ppr c
+                        <+> text "\"" <> text str <> text "\""
   ppr (PprAbove ro co rc erc pps) = hang (text "PprAbove" <+> ppr ro <+> ppr co <+> ppr rc <+> ppr erc)
                                            2 (ppr pps)
   ppr (PprOffset ro co pps)       = hang (text "PprOffset" <+> ppr ro <+> ppr co)
                                            2 (ppr pps)
+
+instance Outputable EndOffset where
+  ppr None               = text "None"
+  ppr (SameLine co)      = text "SameLine" <+> ppr co
+  ppr (FromAlignCol off) = text "FromAlignCol" <+> ppr off
 
 -- ---------------------------------------------------------------------
 
@@ -224,20 +229,21 @@ addEndOffsets :: LayoutTree -> [PosToken] -> LayoutTree
 addEndOffsets tree toks = go tree
   where
     go (t@(Node (Entry _ _ _toks) [])) = t
-    go (  (Node (Entry s (Above ro co p1 (r,c) _eo) []) subs)) = (Node (Entry s (Above ro co p1 (r,c) (Just eo')) []) (map go subs))
+    go (  (Node (Entry s (Above ro co p1 (r,c) _eo) []) subs)) = (Node (Entry s (Above ro co p1 (r,c) eo') []) (map go subs))
       where
         -- (_,m,_) = splitToksIncComments ((r,c),(99999,1)) toks
         (_,m,_) = splitToks ((r,c),(99999,1)) toks
         eo' = case m of
-                []  -> (0,0)
-                [_x] -> (0,0)
-                xs -> off
+                []  -> FromAlignCol (0,0)
+                [_] -> FromAlignCol (0,0)
+                xs  -> FromAlignCol off
                   where
-                   -- off = case (dropWhile isWhiteSpace $ tail xs) of
-                   off = case (dropWhile isEmpty $ tail xs) of
+                   off = case (dropWhile isWhiteSpace $ tail xs) of
+                   -- off = case (dropWhile isEmpty $ tail xs) of
                            []    -> (tokenRow y - r, tokenCol y - c - 1) where y = head $ tail xs
                            (y:_) -> (tokenRow y - r, tokenCol y - c - 1)
         -- eo' = error $ "addEndOffsets:m=" ++ (show m)
+        -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpace $ tail m)
         -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpaceOrIgnored m)
         -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpaceOrIgnored $ tail m)
         -- eo' = (0,0)
@@ -577,7 +583,8 @@ allocExpr (GHC.L _ (GHC.HsCase expr@(GHC.L le _) (GHC.MatchGroup matches _))) to
                (x:_) -> (tokenRow firstMatchTok - tokenRow x,
                          tokenCol firstMatchTok - (tokenCol x + tokenLen x))
 
-    (rt,ct) = case (dropWhile isWhiteSpaceOrIgnored (reverse matchToks)) of
+    -- (rt,ct) = case (dropWhile isWhiteSpaceOrIgnored (reverse matchToks)) of
+    (rt,ct) = case (dropWhile isEmpty (reverse matchToks)) of
              []    -> (0,0)
              (x:_) -> (tokenRow x,tokenCol x)
 
@@ -640,7 +647,8 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
                (x:_) -> (tokenRow firstBindTok - tokenRow x,
                          tokenCol firstBindTok - (tokenCol x + tokenLen x))
 
-    (rt,ct) = case (dropWhile isWhiteSpaceOrIgnored (reverse toksBinds)) of
+    -- (rt,ct) = case (dropWhile isWhiteSpaceOrIgnored (reverse toksBinds)) of
+    (rt,ct) = case (dropWhile isEmpty (reverse toksBinds)) of
              [] -> (0,0)
              (x:_) -> (tokenRow x,tokenCol x)
 
@@ -1391,7 +1399,7 @@ splitToksForList xs toks = splitToksIncComments (getGhcLoc s, getGhcLocEnd e) to
 
 placeAbove :: RowOffset -> ColOffset -> (Row,Col) -> (Row,Col) -> [LayoutTree] -> LayoutTree
 placeAbove _ _ _ _ [] = error "placeAbove []"
-placeAbove ro co p1 p2 ls = Node (Entry loc (Above ro co p1 p2 Nothing) []) ls
+placeAbove ro co p1 p2 ls = Node (Entry loc (Above ro co p1 p2 None) []) ls
   where
     loc = combineSpans (getLoc $ head ls) (getLoc $ last ls)
 

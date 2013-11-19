@@ -13,6 +13,7 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        -- * Structure of each tree
        , Entry(..)
        , Layout(..)
+       , EndOffset(..)
        , RowOffset
        , ColOffset
        , Row
@@ -85,7 +86,7 @@ type ColOffset = Int
 type Row       = Int
 type Col       = Int
 
-data Layout = Above RowOffset ColOffset (Row,Col) (Row,Col) (Maybe (RowOffset,ColOffset))
+data Layout = Above RowOffset ColOffset (Row,Col) (Row,Col) EndOffset
             -- ^ Initial Row and Col offset from token before the
             -- stacked list of items, the (r,c) of the first
             -- non-comment token, the (r,c) of the last non-comment
@@ -99,6 +100,10 @@ data Layout = Above RowOffset ColOffset (Row,Col) (Row,Col) (Maybe (RowOffset,Co
             -- | EndOffset RowOffset ColOffset
             deriving (Show,Eq)
 
+data EndOffset = None
+               | SameLine ColOffset
+               | FromAlignCol (RowOffset, ColOffset)
+               deriving (Show,Eq)
 
 -- ---------------------------------------------------------------------
 
@@ -152,9 +157,12 @@ data TokenCache = TK
 -- ---------------------------------------------------------------------
 
 -- |A data structure to make the ppr process visible
-data Ppr = PprText Row Col [PosToken] -- ^Original row and col of the tokens
-         | PprAbove RowOffset ColOffset (Row,Col) (Maybe (RowOffset,ColOffset)) [Ppr]
-         -- ^ Offset of start of embedded parts, coords of last token
+data Ppr = PprText Row Col String -- ^Original row and col of the
+                                  -- tokens making up the string
+         | PprAbove RowOffset ColOffset (Row,Col) EndOffset [Ppr]
+         -- ^ Offset of start of embedded parts, coords of last token,
+         -- offset to start of next part, relative to the column of
+         -- the start
          | PprOffset RowOffset ColOffset [Ppr]
 
 -- ---------------------------------------------------------------------
