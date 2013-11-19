@@ -47,7 +47,6 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        -- * Retrieving tokens
        , retrieveTokensFinal
        , retrieveTokensPpr
-       , renderPpr'
        , renderPpr
        , adjustLinesForDeleted
        , retrieveTokensInterim
@@ -1249,7 +1248,8 @@ normaliseColumns [] = []
 normaliseColumns ps = ps'
   where
     offset = case (head ps) of
-      PprText _r c _ -> c
+      -- PprText _r c _ -> c
+      PprText _r c _ -> c - 1
       _              -> 0
     ps' = map removeOffset ps
 
@@ -1300,7 +1300,7 @@ renderPpr ps = res
 
     go ci (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,_cc) eo _subs):ps') = do
       renderPprText ci ppt
-      addOffset ro co
+      addOffset ro (co - 1)
       (_,c) <- getRC
       renderPprAbove c ppa
       case eo of
@@ -1331,6 +1331,7 @@ renderPpr ps = res
       (r,c) <- getRC
       -- addDebugString $ "(np:" ++ (show (r,c)) ++ ")"  -- ++AZ++ for debugging
       addString (GHC.showRichTokenStream toks)
+      -- addDebugString $ "(fp:" ++ (show (r,c)) ++ ")"  -- ++AZ++ for debugging
 
     renderPprText _ ppr = error $ "renderPprText:unexpected ppr:" ++ (show ppr)
 
@@ -1340,6 +1341,9 @@ renderPpr ps = res
       (r,c) <- getRC
       newPos (r+ro) (c+co)
 
+    -- go to the newRow, and position newCol such that the next
+    -- character will be in the given position, where the positions
+    -- fall between chars. Hence for newCol 1, we need position 0
     newPos newRow newCol = do
       (oldRow,oldCol) <- getRC
       if oldRow == newRow
@@ -1349,8 +1353,13 @@ renderPpr ps = res
                       (take (newCol - 1) $ repeat ' ') )
       checkInvariant $ "newPos:" ++ (show (newRow,newCol))
 
+
+    -- Check invariant
+    --  1. r == number of '\n' + 1
+    --  2. c == number of chars in last line.
+    --     We assume the c val refers to positions between characters
+    --     of output.
     checkInvariant str = do
-      -- Check invariant
       ((r,c),cur) <- get
       let ll = 1 + (length $ filter (=='\n') cur)
       let lc = 1 + (length $ takeWhile (/='\n') $ reverse cur)
@@ -1360,7 +1369,6 @@ renderPpr ps = res
       if c /= lc
         then error $ "renderPpr.newPos: c /= lc :" ++ (show (c,lc,cur,str))
         else return ()
-
       return ()
 
     -- State operations ----------------
@@ -1391,6 +1399,7 @@ renderPpr ps = res
 
 -- ---------------------------------------------------------------------
 
+{- -- most recent prior
 -- |Convert a Ppr list into formatted source code
 renderPpr' :: [Ppr] -> String
 renderPpr' ps = go False 0 (1,1) ps
@@ -1468,6 +1477,7 @@ renderPpr' ps = go False 0 (1,1) ps
     newCol oldR oldC newR newC
       | oldR /= newR = take (newC - 1)    (repeat ' ')
       | otherwise    = take (newC - oldC) (repeat ' ')
+-}
 
 {-
 -- ---------------------------------------------------------------------
