@@ -152,9 +152,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Control.Monad.Trans.State.Lazy
 import Data.Bits
 import Data.List
--- import Data.Maybe
 import Data.Tree
--- import qualified Text.PrettyPrint as PP
 import qualified Data.Map as Map
 import qualified Data.Tree.Zipper as Z
 
@@ -232,8 +230,6 @@ This can perhaps be used to choose appropriate token boundaries.
 
 
 deriving instance Show         Entry
-
-deriving instance Show Ppr
 
 instance Ord LayoutTree where
   compare (Node a _) (Node b _) = compare (forestSpanFromEntry a) (forestSpanFromEntry b)
@@ -1331,10 +1327,10 @@ renderPpr ps = res
 
     -- renderPprText :: Col -> Ppr -> String
     renderPprText ci (PprText rt ct str) = do
-      -- (r',c') <- getRC
+      (r',c') <- getRC
       -- addDebugString $ "(op" ++ (show (ci,(r',c'),(rt,ct))) ++ ")"  -- ++AZ++ for debugging
       newPos rt (ci + ct)
-      -- (r,c) <- getRC
+      (r,c) <- getRC
       -- addDebugString $ "(np:" ++ (show (r,c)) ++ ")"  -- ++AZ++ for debugging
       addString str
       -- addDebugString $ "(fp:" ++ (show (r,c)) ++ ")"  -- ++AZ++ for debugging
@@ -1347,11 +1343,14 @@ renderPpr ps = res
       (r,c) <- getRC
       newPos (r+ro) (c+co)
 
-    -- go to the newRow, and position newCol such that the next
-    -- character will be in the given position, where the positions
-    -- fall between chars. Hence for newCol 1, we need position 0
     newPos newRow newCol = do
-      (oldRow,oldCol) <- getRC
+      (oldRow',oldCol) <- getRC
+
+      -- Allow for out of order additions that result from additions
+      -- to the tree. Will break the invariant.
+      let oldRow = if oldRow' <= newRow then oldRow' else newRow
+      putRC (oldRow,oldCol)
+
       if oldRow == newRow
         then addString (take (newCol - oldCol) $ repeat ' ')
         else
@@ -1366,6 +1365,7 @@ renderPpr ps = res
     --     We assume the c val refers to positions between characters
     --     of output.
     checkInvariant str = do
+{-
       ((r,c),cur) <- get
       let ll = 1 + (length $ filter (=='\n') cur)
       let lc = 1 + (length $ takeWhile (/='\n') $ reverse cur)
@@ -1375,6 +1375,7 @@ renderPpr ps = res
       if c /= lc
         then error $ "renderPpr.newPos: c /= lc :" ++ (show (c,lc,cur,str))
         else return ()
+-}
       return ()
 
     -- State operations ----------------
@@ -1383,6 +1384,10 @@ renderPpr ps = res
       (rc,_) <- get
       return rc
 
+    putRC (r,c) = do
+      (_,str) <- get
+      put ((r,c),str)
+
     addString [] = return ()
     addString str = do
       ((r,c),curr) <- get
@@ -1390,9 +1395,7 @@ renderPpr ps = res
       let c'' = (length $ takeWhile (/='\n') $ reverse str)
 
 
-      let -- ll = lines str
-          -- c'' = length $ last ll
-          (r',c') = case ll of
+      let (r',c') = case ll of
                      0 -> (r,c + c'')
                      _ -> (r + ll, c'' + 1)
       put ((r',c'),curr++str)

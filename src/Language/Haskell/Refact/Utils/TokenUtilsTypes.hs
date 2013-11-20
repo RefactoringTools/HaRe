@@ -164,6 +164,7 @@ data Ppr = PprText Row Col String -- ^Original row and col of the
          -- offset to start of next part, relative to the column of
          -- the start
          | PprOffset RowOffset ColOffset [Ppr]
+         deriving (Eq,Show)
 
 -- ---------------------------------------------------------------------
 {-

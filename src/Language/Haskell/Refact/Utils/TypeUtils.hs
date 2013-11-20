@@ -124,6 +124,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- * Debug stuff
     , getDeclAndToks, getSigAndToks
+    , getToksForDecl, removeToksOffset -- ++AZ++ remove this after debuggging
     -- , allPNT
     --  , allPNTLens
     , newNameTok
@@ -3811,6 +3812,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           logm $ "renamePNworker:rename at :" ++ (show l) ++ (showSrcSpanF l)
+          drawTokenTree "before worker" -- ++AZ++ debug
           worker useQual l
           return (GHC.L l newName)
     rename x = return x
