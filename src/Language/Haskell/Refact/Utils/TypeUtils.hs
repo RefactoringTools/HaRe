@@ -2658,7 +2658,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
 
        newToks <- liftIO $ basicTokenise (showGhc impDecl)
        -- logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
-       putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
+       void $ putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
 
@@ -2892,10 +2892,10 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         if (emptyList localDecls)
           then
-            putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent 2) newToks
+            void $ putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent 2) newToks
             -- putToksAfterPos (startLoc,endLoc) (PlaceAbsolute (r+1) c) newToks
           else
-            putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
+            void $ putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
 
         {-
         case maybeSig of
@@ -3024,7 +3024,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
                 -- toks'=replaceToks toks start end [newToken]
                 -- toks'=replaceTok toks start newToken
 
-            putToksForPos (start,end) [newToken]
+            void $ putToksForPos (start,end) [newToken]
 
             return (replaceHiding imp  (Just (isHide, (map mkNewEnt  pns)++ents)))
 
@@ -3490,7 +3490,7 @@ rmDecl pn incSig t = do
            1 -> do -- Removing the last declaration
             logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
             -- putToksForSpan ss toks
-            putToksForSpan ss $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
+            void $ putToksForSpan ss $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
             return expr
            _ -> do
             logm $ "rmDecl.inLet:length decls /= 1"
@@ -3631,7 +3631,7 @@ rmTypeSig pn t
                                     then extendForwards  toks (startPos1',endPos1') isComma
                                     else extendBackwards toks (startPos1',endPos1') isComma
                      toks' = deleteToks toks startPos1 endPos1
-                 putToksForSpan sspan toks'
+                 void $ putToksForSpan sspan toks'
 
                  -- Construct the old signature, by keeping the
                  -- signature part but discarding the other names
@@ -3640,7 +3640,7 @@ rmTypeSig pn t
                  let typeLoc = extendBackwards toks (getStartEndLoc typ) isDoubleColon
                  let (_,typTok,_) = splitToks typeLoc toks
                  let (_,pntTok,_) = splitToks (getStartEndLoc pnt) toks
-                 putToksForSpan sspan' (pntTok ++ typTok)
+                 void $ putToksForSpan sspan' (pntTok ++ typTok)
                  setStateStorage (StorageSig sig')
 
 

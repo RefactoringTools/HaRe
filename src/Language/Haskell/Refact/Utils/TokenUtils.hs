@@ -868,6 +868,8 @@ insertSrcSpan forest sspan = forest'
     z = openZipperToSpan sspan $ Z.fromTree forest
     forest' = if treeStartEnd (Z.tree z) == sspan
       then forest -- Already in, exactly
+      -- else error $ "insertSrcSpan:span not in tree " ++ show sspan
+
       else if (Z.isLeaf z)
         then  -- TODO: This should be in splitSubToks
           let
@@ -918,6 +920,7 @@ insertSrcSpan forest sspan = forest'
             -- forest'' = error $ "insertSrcSpan:(Z.toTree z')=" ++ (show (Z.toTree z')) -- ++AZ++
             -- forest'' = error $ "insertSrcSpan:(startLoc,endLoc)=" ++ (show (startLoc,endLoc)) -- ++AZ++
             -- forest'' = error $ "insertSrcSpan:(tokStartPos,tokEndPos,toks)=" ++ (show (tokStartPos,tokEndPos,toks)) -- ++AZ++
+
 
 -- ---------------------------------------------------------------------
 

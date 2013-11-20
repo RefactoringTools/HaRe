@@ -1004,7 +1004,7 @@ spec = do
 
   describe "duplicateDecl" $ do
     it "duplicates a RenamedSource bind, and updates the token stream" $ do
-      (t, toks) <-parsedFileDd1Ghc
+      (t, toks) <- parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
@@ -1061,8 +1061,8 @@ spec = do
   -- ---------------------------------------------
 
   describe "addParamsToDecl" $ do
-    it "Adds parameters to a declaration, and updates the token stream" $ do
-      (t, toks) <- parsedFileMd1Ghc
+    it "adds parameters to a declaration, and updates the token stream" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
