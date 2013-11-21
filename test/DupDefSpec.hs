@@ -40,7 +40,7 @@ spec = do
     it "duplicates a definition at the top level" $ do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","tl2","4","1"]
      res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "tl2" (4,1)
-     (show res) `shouldBe` ""
+     (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected"
      diff `shouldBe` []

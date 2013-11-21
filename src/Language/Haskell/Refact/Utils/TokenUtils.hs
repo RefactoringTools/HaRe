@@ -66,6 +66,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , spanStartEnd
        , sf
        , fs
+       , forestSpanFromEntry
        , combineSpans
 
        -- * A token stream with last tokens first, and functions to manipulate it
@@ -95,6 +96,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , ghcSpanStartEnd
        , insertNodeAfter
        , retrievePrevLineToks
+       , getTreeSpansAsList
        , openZipperToNode
        , openZipperToNodeDeep
        , openZipperToSpan
@@ -2061,6 +2063,17 @@ spanContains span1 span2 = (startPos <= nodeStart && endPos >= nodeEnd)
         (nvs,_nve) = forestSpanVersions $ span2
         (startPos,endPos)   = insertVersionsInForestSpan tvs tvs span1
         (nodeStart,nodeEnd) = insertVersionsInForestSpan nvs nvs span2
+
+-- ---------------------------------------------------------------------
+
+getTreeSpansAsList :: Tree Entry -> [(Int,ForestSpan)]
+getTreeSpansAsList = getTreeSpansAsList' 0
+
+getTreeSpansAsList' :: Int -> Tree Entry -> [(Int,ForestSpan)]
+getTreeSpansAsList' level (Node (Deleted sspan  _eg )  _  )   = [(level,sspan)]
+getTreeSpansAsList' level (Node (Entry sspan _lay _toks) ts0) = (level,sspan)
+                       : (concatMap (getTreeSpansAsList' (level + 1)) ts0)
+
 
 -- ---------------------------------------------------------------------
 
