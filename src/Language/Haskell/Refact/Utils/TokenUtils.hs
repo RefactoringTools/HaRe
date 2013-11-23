@@ -1311,7 +1311,7 @@ renderPpr ps = res
       case eo of
         FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
         -- FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
-        SameLine eco -> addOffset 0 (eco - 1)
+        SameLine eco -> addOffset 0 eco
         None        -> return ()
       -- (r',c') <- getRC
       -- addDebugString $ "(eo:" ++ show (ci,(r',c')) ++ ")" -- ++AZ++ debug

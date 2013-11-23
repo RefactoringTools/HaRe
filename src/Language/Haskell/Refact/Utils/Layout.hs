@@ -236,10 +236,10 @@ addEndOffsets tree toks = go tree
         eo' = case m of
                 []  -> FromAlignCol (0,0)
                 [_] -> FromAlignCol (0,0)
-                xs  -> FromAlignCol off
+                xs  -> if ro' /= 0 then FromAlignCol off
+                                   else SameLine co'
                   where
-                   off = case (dropWhile isWhiteSpace $ tail xs) of
-                   -- off = case (dropWhile isEmpty $ tail xs) of
+                   off@(ro',co') = case (dropWhile isWhiteSpace $ tail xs) of
                            []    -> (tokenRow y - r, tokenCol y - c - 1) where y = head $ tail xs
                            (y:_) -> (tokenRow y - r, tokenCol y - c - 1)
         -- eo' = error $ "addEndOffsets:m=" ++ (show m)
@@ -608,7 +608,29 @@ allocExpr (GHC.L _ (GHC.HsLet localBinds expr@(GHC.L le _))) toks = r
     bindLayout = allocLocalBinds localBinds bindToks
     exprLayout = allocExpr expr exprToks
     r = strip $ bindLayout ++ [makeGroup exprLayout] ++ (makeLeafFromToks toks')
-allocExpr (GHC.L _ (GHC.HsDo _ stmts _)) toks = allocList stmts toks allocStmt
+allocExpr (GHC.L l (GHC.HsDo _ stmts _)) toks = r
+  where
+    (s1,toksBinds,toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
+
+    bindsLayout' = allocList stmts toksBinds allocStmt
+
+    firstBindTok = ghead "allocLocalBinds" $ dropWhile isWhiteSpaceOrIgnored toksBinds
+    p1 = (tokenRow firstBindTok,tokenCol firstBindTok)
+    (ro,co) = case (filter isDo toksBinds) of
+               [] -> (0,0)
+               (x:_) -> (tokenRow firstBindTok - tokenRow x,
+                         tokenCol firstBindTok - (tokenCol x + tokenLen x) - 1)
+
+    (rt,ct) = case (dropWhile isEmpty (reverse toksBinds)) of
+             [] -> (0,0)
+             (x:_) -> (tokenRow x,tokenCol x)
+
+    bindsLayout = case bindsLayout' of
+      [] -> []
+      bs -> [placeAbove ro co p1 (rt,ct) bs]
+
+    r = strip $ (makeLeafFromToks s1 ++ bindsLayout ++ makeLeafFromToks toks1)
+    -- r = error $ "allocExpr.HsDo:toksBinds=" ++ (show toksBinds)
 allocExpr (GHC.L _ (GHC.ExplicitList _ exprs)) toks = allocList exprs toks allocExpr
 allocExpr (GHC.L _ (GHC.ExplicitPArr _ exprs)) toks = allocList exprs toks allocExpr
 allocExpr (GHC.L _ (GHC.RecordCon (GHC.L ln _) _ (GHC.HsRecFields fields _))) toks = r

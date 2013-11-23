@@ -2763,6 +2763,111 @@ tree TId 0:
 
     -- --------------------------------------
 
+    it "retrieves the tokens in Ppr format Renaming.LayoutIn4" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/Renaming/LayoutIn4.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+
+      -- (show layout) `shouldBe` ""
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(14,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,17))\n"++
+          "1:((1,18),(1,23))\n"++
+          "1:((7,1),(12,53))\n"++
+          "2:((7,1),(7,5))\n"++
+          "2:((7,6),(12,53))\n"++
+          "3:((7,6),(7,7))\n"++
+          "3:((7,8),(7,21))\n"++
+          "4:((7,8),(7,13))\n"++
+          "4:((7,14),(7,21))\n"++
+          "3:((7,22),(7,27))\n"++
+          "3:((7,28),(12,53))(Above 0 1 (7,28) (12,48) FromAlignCol (2,-48))\n"++
+          "4:((7,28),(12,53))\n"++
+          "5:((7,28),(7,33))\n"++
+          "5:((7,34),(12,53))\n"++
+          "6:((7,34),(7,35))\n"++
+          "6:((7,35),(7,36))\n"++
+          "6:((7,37),(12,53))(Above 0 1 (7,41) (12,48) FromAlignCol (2,-48))\n"++
+          "7:((7,37),(7,59))\n"++
+          "8:((7,37),(7,44))\n"++
+          "8:((7,46),(7,59))(Above 0 2 (7,46) (7,58) FromAlignCol (2,-18))\n"++
+          "9:((7,46),(7,59))\n"++
+          "10:((7,46),(7,47))\n"++
+          "10:((7,48),(7,59))\n"++
+          "11:((7,48),(7,49))\n"++
+          "11:((7,50),(7,59))\n"++
+          "12:((7,50),(7,57))\n"++
+          "12:((7,58),(7,59))\n"++
+          "7:((8,2),(9,53))\n"++
+          "8:((8,2),(9,42))\n"++
+          "8:((9,46),(9,53))\n"++
+          "7:((10,41),(10,58))\n"++
+          "8:((10,41),(10,44))\n"++
+          "8:((10,46),(10,58))(Above 0 2 (10,46) (10,57) FromAlignCol (1,-17))\n"++
+          "9:((10,46),(10,58))\n"++
+          "10:((10,46),(10,47))\n"++
+          "10:((10,48),(10,57))\n"++
+          "11:((10,48),(10,49))\n"++
+          "11:((10,50),(10,57))\n"++
+          "12:((10,50),(10,51))\n"++
+          "12:((10,51),(10,52))\n"++
+          "12:((10,53),(10,55))\n"++
+          "12:((10,56),(10,57))\n"++
+          "7:((11,41),(11,49))\n"++
+          "8:((11,41),(11,47))\n"++
+          "8:((11,48),(11,49))\n"++
+          "7:((12,41),(12,53))\n"++
+          "8:((12,41),(12,47))\n"++
+          "8:((12,48),(12,53))\n"++
+          "1:((14,1),(14,1))\n"
+
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+
+      pprVal `shouldBe`
+         [PprText 1 1 "module LayoutIn4 where",
+         PprText 3 1 "--Layout rule applies after 'where','let','do' and 'of'",
+         PprText 5 1 "--In this Example: rename 'ioFun' to  'io'",
+         PprText 7 1 "main = ioFun \"hello\" where",
+         PprAbove 0 1 (12,48) (FromAlignCol (2,-48))
+           [PprText 7 1 "ioFun s=",
+            PprAbove 0 1 (12,48) (FromAlignCol (2,-48))
+              [PprText 7 1 "do  let",
+               PprAbove 0 2 (7,58) (FromAlignCol (2,-18))
+                 [PprText 7 1 "k = reverse s"],
+               PprText 8 (-34) "--There is a comment",
+               PprText 9 5 "s <- getLine",
+               PprText 10 5 "let",
+               PprAbove 0 2 (10,57) (FromAlignCol (1,-17))
+                 [PprText 10 1 "q = (k ++ s)"],
+               PprText 11 5 "putStr q",
+               PprText 12 5 "putStr \"foo\""
+              ]
+           ],
+         PprText 14 1 ""
+         ]
+
+{-
+      (showGhc pprVal) `shouldBe`
+          ""
+-}
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- --------------------------------------
+
   describe "updateTokensForSrcSpan" $ do
     it "replaces the tokens for a given span, inserting the span if needed" $ do
       (t,toks) <- parsedFileTokenTestGhc
