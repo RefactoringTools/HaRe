@@ -101,6 +101,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , openZipperToNodeDeep
        , openZipperToSpan
        , openZipperToSpanDeep
+       , openZipperToSpanAdded
+       , openZipperToSpanOrig
        , forestSpanToSimpPos
        , forestSpanToGhcPos
 
@@ -2066,17 +2068,6 @@ spanContains span1 span2 = (startPos <= nodeStart && endPos >= nodeEnd)
 
 -- ---------------------------------------------------------------------
 
-getTreeSpansAsList :: Tree Entry -> [(Int,ForestSpan)]
-getTreeSpansAsList = getTreeSpansAsList' 0
-
-getTreeSpansAsList' :: Int -> Tree Entry -> [(Int,ForestSpan)]
-getTreeSpansAsList' level (Node (Deleted sspan  _eg )  _  )   = [(level,sspan)]
-getTreeSpansAsList' level (Node (Entry sspan _lay _toks) ts0) = (level,sspan)
-                       : (concatMap (getTreeSpansAsList' (level + 1)) ts0)
-
-
--- ---------------------------------------------------------------------
-
 -- |Open a zipper so that its focus has the given SrcSpan in its
 -- subtree, or the location where the SrcSpan should go, if it is not
 -- in the tree
@@ -2085,6 +2076,23 @@ openZipperToSpan
      -> Z.TreePos Z.Full Entry
      -> Z.TreePos Z.Full Entry
 openZipperToSpan sspan z
+  | hasVersions = openZipperToSpanAdded sspan z
+  | otherwise   = openZipperToSpanOrig sspan z
+  where
+    (vs,_ve) = forestSpanVersions sspan
+    hasVersions = vs /= 0
+
+
+-- ---------------------------------------------------------------------
+
+-- |Open a zipper so that its focus has the given SrcSpan in its
+-- subtree, or the location where the SrcSpan should go, if it is not
+-- in the tree
+openZipperToSpanOrig
+  :: ForestSpan
+     -> Z.TreePos Z.Full Entry
+     -> Z.TreePos Z.Full Entry
+openZipperToSpanOrig sspan z
   = if (treeStartEnd (Z.tree z) == sspan) || (Z.isLeaf z)
       then z
       else z'
@@ -2150,6 +2158,43 @@ openZipperToSpanDeep sspan z = zf
                   [x] -> if (treeStartEnd (Z.tree x) == sspan) then x else z'
                   _   -> z'
            _ -> z'
+
+
+-- ---------------------------------------------------------------------
+
+-- |Open a zipper to a SrcSpan that has been added in the tree, and
+-- thus does not necessarily fall in the logical hierarchy of the tree
+openZipperToSpanAdded
+  :: ForestSpan
+     -> Z.TreePos Z.Full Entry
+     -> Z.TreePos Z.Full Entry
+openZipperToSpanAdded sspan z = zf
+  where
+    treeAsList = getTreeSpansAsList $ Z.tree z
+
+    -- True if first span contains the second
+    myMatch (((ForestLine _ _ vs1 rs1),cs1),((ForestLine _ _ ve1 re1),ce1))
+            (((ForestLine _ _ vs2 rs2),cs2),((ForestLine _ _ ve2 re2),ce2))
+      = vs1 == vs2 && ve1 == ve2 && ((rs1,cs1) <= (rs2,cs2)) && ((re1,ce1) >= (re2,ce2))
+    tl2 = dropWhile (\(_,s) -> not (myMatch s sspan)) $ reverse treeAsList
+
+    fff acc@((cd,_cs):_) (v,sspan') = if v < cd then (v,sspan'):acc
+                                               else acc
+
+    tl3 = foldl' fff [(head tl2)] tl2
+    -- tl3 now contains the chain of ForestSpans to open in order in the zipper
+
+    zf = foldl' (flip openZipperToSpanOrig) z $ map snd tl3
+
+-- ---------------------------------------------------------------------
+
+getTreeSpansAsList :: Tree Entry -> [(Int,ForestSpan)]
+getTreeSpansAsList = getTreeSpansAsList' 0
+
+getTreeSpansAsList' :: Int -> Tree Entry -> [(Int,ForestSpan)]
+getTreeSpansAsList' level (Node (Deleted sspan  _eg )  _  )   = [(level,sspan)]
+getTreeSpansAsList' level (Node (Entry sspan _lay _toks) ts0) = (level,sspan)
+                       : (concatMap (getTreeSpansAsList' (level + 1)) ts0)
 
 
 -- ---------------------------------------------------------------------
