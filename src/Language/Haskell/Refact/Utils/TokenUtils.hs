@@ -1252,7 +1252,6 @@ normaliseColumns [] = []
 normaliseColumns ps = ps'
   where
     offset = case (head ps) of
-      -- PprText _r c _ -> c
       PprText _r c _ -> c - 1
       _              -> 0
     ps' = map removeOffset ps
@@ -1308,14 +1307,12 @@ renderPpr ps = res
       (_,c) <- getRC
       renderPprAbove c ppa
       (cr,_cc) <- getRC
-      addOffset eo
-{-
+      -- addOffset eo
       case eo of
         FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
-        -- FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
-        SameLine eco -> addOffset 0 eco
-        None        -> return ()
--}
+        SameLine _ -> addOffset eo
+        None       -> return ()
+
       -- (r',c') <- getRC
       -- addDebugString $ "(eo:" ++ show (ci,(r',c')) ++ ")" -- ++AZ++ debug
       go ci ps'
@@ -1337,10 +1334,10 @@ renderPpr ps = res
 
     -- renderPprText :: Col -> Ppr -> String
     renderPprText ci (PprText rt ct str) = do
-      (r',c') <- getRC
+      -- (r',c') <- getRC
       -- addDebugString $ "(op" ++ (show (ci,(r',c'),(rt,ct))) ++ ")"  -- ++AZ++ for debugging
       newPos rt (ci + ct)
-      (r,c) <- getRC
+      -- (r,c) <- getRC
       -- addDebugString $ "(np:" ++ (show (r,c)) ++ ")"  -- ++AZ++ for debugging
       addString str
       -- addDebugString $ "(fp:" ++ (show (r,c)) ++ ")"  -- ++AZ++ for debugging
@@ -1362,7 +1359,7 @@ renderPpr ps = res
 
       -- Allow for out of order additions that result from additions
       -- to the tree. Will break the invariant.
-      let oldRow = if oldRow' <= newRow then oldRow' else newRow
+      let oldRow = if oldRow' <= newRow then oldRow' else (newRow - 1)
       putRC (oldRow,oldCol)
 
       if oldRow == newRow
@@ -1420,174 +1417,6 @@ renderPpr ps = res
       ((r,c),curr) <- get
       put ((r,c),curr++str)
 
--- ---------------------------------------------------------------------
-
-{- -- most recent prior
--- |Convert a Ppr list into formatted source code
-renderPpr' :: [Ppr] -> String
-renderPpr' ps = go False 0 (1,1) ps
-  where
-    go :: Bool -> Col -> (Row,Col) -> [Ppr] -> String
-    go _ _ _ [] = []
-
-    go ia ci (r,c) (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,cc) eo _subs):ps')
-        = firstPart
-          ++ endOffset
-          ++ go ia ci larc ps'
-      where
-          firstPart = ((renderPprText ci (r,c) ppt)
-                       ++ (renderOffset ro co (colAfterPprText ppt))
-                       ++ renderPprAbove ia (co + (colAfterPprText ppt)) ppa
-                      )
-
-          larc = lookAheadRc ci ps'
-
-          endOffset = if ia
-            then renderEndOffset eo cc
-            else renderEndOffset eo cc
-
-    go ia ci (r,c) (p@(PprText rt ct toks):ps') = (renderPprText ci (r,c) p) ++ go ia ci (rt',ct) ps'
-      where
-        rt' = rt + (length $ filter (=='\n') $ GHC.showRichTokenStream toks)
-
-    go _ _ _ pps = error $ "renderPpr: unmatched in go:" ++ (show pps)
-
-    -- ---------------------------------
-
-    renderPprAbove :: Bool -> Col -> Ppr -> String
-    renderPprAbove _ia ci (PprAbove _ _ _ _ subs)
-       = case subs of
-             [] -> ""
-             (p:_) -> ra'
-               where
-                 (r',c') = (lookAheadRc ci [p])
-                 ra' = go True ci (r',c') subs
-    renderPprAbove _ _ ppr = error $ "renderPprAbove:unexpected ppr:" ++ (show ppr)
-
-    lookAheadRc _ []                       = (0,0)
-    lookAheadRc ci ((PprText r c _):_)      = (r,ci+c)
-    lookAheadRc ci ((PprOffset r c _):_)    = (r,ci+c)
-    lookAheadRc ci ((PprAbove r c _ _ _):_) = (r,ci+c)
-
-    colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
-    colAfterPprText ppr = error $ "colAfterPprText:unexpected ppr:" ++ (show ppr)
-
-    renderPprText :: Col -> (Row,Col) -> Ppr -> String
-    renderPprText ci (r,c) (PprText rt ct toks)
-      = (newLines r rt)
-      ++ (newCol r c rt (ci + ct))
-      -- ++ "(" ++ (show (ci,(r,c),(rt,ct))) ++ ")"  -- ++AZ++ for debugging
-      ++ (GHC.showRichTokenStream toks)
-    renderPprText _ _ ppr = error $ "renderPprText:unexpected ppr:" ++ (show ppr)
-
-    renderEndOffset Nothing        oc = renderOffset  0  0 oc
-    renderEndOffset (Just (ro,co)) oc = renderOffset ro co oc
-
-    renderOffset :: Row -> Col -> Col -> String
-    renderOffset r c oc = nl ++ (take c' (repeat ' '))
-      where
-        c' = if r == 0 then c else (c + oc - 1)
-        nl
-         | r /= 0  = take r $ repeat '\n'
-         | otherwise = []
-
-    newLines :: Row -> Row -> String
-    newLines oldRow newRow
-      | oldRow == newRow = ""
-      | otherwise        = take (newRow - oldRow) $ repeat '\n'
-
-    newCol :: Row -> Col -> Row -> Col -> String
-    newCol oldR oldC newR newC
-      | oldR /= newR = take (newC - 1)    (repeat ' ')
-      | otherwise    = take (newC - oldC) (repeat ' ')
--}
-
-{-
--- ---------------------------------------------------------------------
--- |Convert a Ppr list into formatted source code
-renderPpr :: [Ppr] -> String
-renderPpr = renderHDoc . renderPprToHDoc
--- renderPpr = renderHDoc . renderPprToHDoc'
-
--- |Convert a Ppr list into an HDoc structure
-renderPprToHDoc :: [Ppr] -> HDoc
-renderPprToHDoc ps = Hvcat $ go (1,1) ps
-  where
-    go :: (Int,Int) -> [Ppr] -> [HDoc]
-    go _ [] = []
-
-    -- NOTE: PprOffset is likely to disappear
-    go (r,c) (ppt@(PprText rt ct _toks):(PprOffset rto cto subs):ps')
-        = [(head $ renderPprText (r,c) ppt)
-          `Hbeside` (renderOffset rto cto (colAfterPprText ppt))
-          `Hbeside` Hhcat (go (rt+rto,colAfterPprText ppt) subs)] ++ go (rt,ct) ps'
-
-    go (r,c) (ppt@(PprText rt ct _toks):(PprAbove ro co (_,cc) (er,ec) subs):ps')
-        = case er of
-            0 -> [firstPart `Hbeside` secondPart] -- On the same line
-            _ -> [firstPart,secondPart]           -- Go to new line
-          ++ (go (lookAheadRc ps'') ps'')
-        where
-          firstPart = ((head $ renderPprText (r,c) ppt)
-                      `Hbeside` (renderOffset ro co (colAfterPprText ppt))
-                      `Hbeside` Hhcat [(Hvcat (go (rt+ro,ct+co) subs))]
-                      )
-          secondPart =  ((renderOffset er ec cc)
-                        `Hbeside` nextPpr)
-
-
-          (nextPpr,ps'') = case ps' of
-            [] -> (Hempty,[])
-            (p:pps) -> (head $ go (lookAheadRc [p]) [p],pps)
-
-    go (r,c) (ppt@(PprText rt ct _toks):ps') = renderPprText (r,c) ppt ++ go (rt,ct) ps'
-
-    go (r,c) ((PprOffset rt ct subs):ps')    = (go (r+rt,c+ct) subs) ++ (go (r+rt,c+ct) ps')
-
-    -- ---------------------------------
-
-    lookAheadRc []                       = (0,0)
-    lookAheadRc ((PprText r c _):_)      = (r,c)
-    lookAheadRc ((PprOffset r c _):_)    = (r,c)
-    lookAheadRc ((PprAbove r c _ _ _):_) = (r,c)
-
-
-    colAfterPprText (PprText _r c toks) = c + length (GHC.showRichTokenStream toks)
-
-    renderPprText (r,c) (PprText rt ct toks) = [(newLines r rt) `Hbeside` (newCol r c rt ct) `Hbeside` (Htext $ GHC.showRichTokenStream toks)]
-
-    renderOffset :: Row -> Col -> Col -> HDoc
-    renderOffset r c oc = nl `Hbeside` (Htext $ take c' (repeat ' '))
-      where
-        c' = if r == 0 then c else (c + oc - 1)
-        nl
-         | r /= 0  = Hvcat (take r $ repeat (Htext ""))
-         | otherwise = Hempty
-
-    newLines :: Int -> Int -> HDoc
-    newLines oldRow newRow
-      | oldRow == newRow = Hempty
-      | otherwise        = Hvcat $ take (newRow - oldRow) $ repeat (Htext "")
-
-    newCol :: Int -> Int -> Int -> Int -> HDoc
-    newCol oldR oldC newR newC
-      | oldR /= newR = Htext $ take (newC - 1)    (repeat ' ')
-      | otherwise    = Htext $ take (newC - oldC) (repeat ' ')
-
--- ---------------------------------------------------------------------
-
-renderHDoc :: HDoc -> String
-renderHDoc = PP.render . hDocToDoc
-
-hDocToDoc :: HDoc -> PP.Doc
-hDocToDoc (Htext s)       = PP.text s
-hDocToDoc (Hhcat ds)      = PP.hcat (map hDocToDoc ds)
-hDocToDoc (Hvcat ds)      = PP.vcat (map hDocToDoc ds)
-hDocToDoc (Hnest i d)     = PP.nest i (hDocToDoc d)
-hDocToDoc (a `Hbeside` b) = (hDocToDoc a) PP.<> (hDocToDoc b)
-hDocToDoc (a `Habove` b)  = (hDocToDoc a) PP.$+$ (hDocToDoc b)
-hDocToDoc Hempty          = PP.empty
--}
 -- ---------------------------------------------------------------------
 
 -- |Retrieve all the tokens at the leaves of the tree, in order. No
@@ -1953,7 +1782,8 @@ reIndentToks pos prevToks toks = toks''
 
     toks'  = addOffsetToToks (lineOffset,colOffset) toks
     toks'' = if endNewlines > 0
-               then toks' ++ [(newLinesToken endNewlines $ glast "reIndentToks.3" toks')]
+               -- then toks' ++ [(newLinesToken endNewlines $ glast "reIndentToks.3" toks')]
+               then toks' ++ [(newLinesToken (endNewlines - 1) $ glast "reIndentToks.3" toks')]
                else toks'
 
 -- ---------------------------------------------------------------------

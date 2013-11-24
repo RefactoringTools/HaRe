@@ -1662,6 +1662,7 @@ instance HsValBinds (GHC.HsBind GHC.Name) where
 
   -- TODO: ++AZ++ added for compatibility with hsDecls.
   hsValBinds (GHC.FunBind _ _ matches _ _ _) = hsValBinds matches
+  hsValBinds other = error $ "hsValBinds (GHC.HsBind GHC.Name) undefined for:" ++ (showGhc other)
 
   replaceValBinds (GHC.PatBind p (GHC.GRHSs rhs _binds) typ fvs pt) newBinds
     = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt)
@@ -1676,6 +1677,7 @@ instance HsValBinds (GHC.HsExpr GHC.Name) where
 
 instance HsValBinds (GHC.Stmt GHC.Name) where
   hsValBinds (GHC.LetStmt ds) = hsValBinds ds
+  hsValBinds other = error $ "hsValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc other)
   replaceValBinds (GHC.LetStmt ds) new = (GHC.LetStmt (replaceValBinds ds new))
   replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc old)
 
@@ -3097,6 +3099,7 @@ addFormalParams place newParams
            newToks <- liftIO $ tokenise (GHC.realSrcSpanStart ss) 0 False newStr
            _ <- putToksAfterSpan l PlaceAdjacent newToks
            return ()
+         Left ss -> error $ "addFormalParams: expecting RealSrcSpan, got:" ++ (showGhc ss)
          Right (GHC.L l _) -> do
            toks <- getToksForSpan l
            newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False newStr
@@ -3887,7 +3890,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
           let w (GHC.L lm _match) = worker False lm'
                where
                 ((GHC.L lm' _),_) = newNameTok False lm oldPN
-          mapM w $ tail matches
+          mapM_ w $ tail matches
           logm $ "renamePNWorker.renameFunBind.renameFunBind.renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MatchGroup matches typ) co fvs tick))
     renameFunBind x = return x

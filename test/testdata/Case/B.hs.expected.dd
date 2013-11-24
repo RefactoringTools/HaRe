@@ -14,7 +14,6 @@ joe x = case (odd x) of
   True -> "Odd"
   False -> "Even"
 
-
 main = do
   putStrLn $ show $ foo 5
 

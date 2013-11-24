@@ -243,8 +243,6 @@ addEndOffsets tree toks = go tree
                    off@(ro',co') = case (dropWhile isWhiteSpace $ tail xs) of
                      []    -> (tokenRow y - r, tokenCol y - c - 1) where y = head $ tail xs
                      (y:_) -> (tokenRow y - r, tokenCol y - c - 1)
-                      --     []    -> (tokenRow y - r, tokenCol y - c - 2) where y = head $ tail xs
-                      --     (y:_) -> (tokenRow y - r, tokenCol y - c - 2)
         -- eo' = error $ "addEndOffsets:m=" ++ (show m)
         -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpace $ tail m)
         -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpaceOrIgnored m)

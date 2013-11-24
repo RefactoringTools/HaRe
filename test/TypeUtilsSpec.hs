@@ -1053,7 +1053,7 @@ spec = do
       (showGhc fb) `shouldBe` "[ff = 15]"
       (show $ getStartEndLoc fb) `shouldBe` "((17,5),(17,12))"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-      (renderPpr $ pprFromState s) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\n    gg :: Int\n    gg = 15\n\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
+      (renderPpr $ pprFromState s) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\n    gg :: Int\n    gg = 15\n\n\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
       (showGhc newb) `shouldBe` "[gg = 15]"
       (showGhc fb) `shouldBe` "[ff = 15]"
 
@@ -1664,7 +1664,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a local decl with type signature to an existing one with a comment using toks" $ do
-      (t, toks) <- parsedFileWhereIn3Ghc
+      (_t, toks) <- parsedFileWhereIn3Ghc
       let
         comp = do
 
@@ -1763,7 +1763,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "replace a Name with another in limited scope, updating tokens 1" $ do
+    it "replaces a Name with another in limited scope, updating tokens 1" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -1783,22 +1783,80 @@ spec = do
       let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
       (invariant forest'') `shouldBe` []
-{-
+
       (drawTreeEntry forest'') `shouldBe`
-              "((1,1),(21,14))\n|\n"++
-              "+- ((1,1),(15,17))\n|\n"++
-              "+- ((19,1),(21,14))\n|\n"++
-              "`- ((1000019,1),(1000021,14))\n" -- our inserted span
--}
+           "((1,1),(26,1))\n|\n"++
+           "+- ((1,1),(1,7))\n|\n"++
+           "+- ((1,8),(1,17))\n|\n"++
+           "+- ((1,18),(1,23))\n|\n"++
+           "+- ((5,1),(6,14))\n|  |\n"++
+           "|  +- ((5,1),(5,4))\n|  |\n"++
+           "|  `- ((5,5),(6,14))\n|     |\n"++
+           "|     +- ((5,5),(5,6))\n|     |\n"++
+           "|     +- ((5,7),(5,8))\n|     |\n"++
+           "|     +- ((5,9),(5,10))\n|     |\n"++
+           "|     +- ((5,11),(5,12))\n|     |\n"++
+           "|     +- ((6,3),(6,8))\n|     |\n"++
+           "|     `- ((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-14))\n|        |\n"++
+           "|        `- ((6,9),(6,14))\n|           |\n"++
+           "|           +- ((6,9),(6,10))\n|           |\n"++
+           "|           `- ((6,11),(6,14))\n|              |\n"++
+           "|              +- ((6,11),(6,12))\n|              |\n"++
+           "|              `- ((6,13),(6,14))\n|\n"++
+           "+- ((8,1),(10,10))\n|  |\n"++
+           "|  +- ((8,1),(8,4))\n|  |\n"++
+           "|  `- ((8,5),(10,10))\n|     |\n"++
+           "|     +- ((8,5),(8,6))\n|     |\n"++
+           "|     +- ((8,7),(8,8))\n|     |\n"++
+           "|     +- ((8,9),(8,10))\n|     |\n"++
+           "|     +- ((8,11),(8,12))\n|     |\n"++
+           "|     +- ((9,3),(9,8))\n|     |\n"++
+           "|     `- ((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-10))\n|        |\n"++
+           "|        `- ((10,5),(10,10))\n|           |\n"++
+           "|           +- ((10,5),(10,6))\n|           |\n"++
+           "|           `- ((10,7),(10,10))\n|              |\n"++
+           "|              +- ((10,7),(10,8))\n|              |\n"++
+           "|              `- ((10,9),(10,10))\n|\n"++
+           "+- ((13,1),(15,17))\n|  |\n"++
+           "|  +- ((13,1),(13,4))\n|  |\n"++
+           "|  `- ((13,5),(15,17))\n|     |\n"++
+           "|     +- ((13,5),(13,6))\n|     |\n"++
+           "|     +- ((13,7),(13,8))\n|     |\n"++
+           "|     +- ((13,9),(13,10))\n|     |\n"++
+           "|     `- ((14,3),(15,17))\n|        |\n"++
+           "|        +- ((14,3),(14,6))\n|        |\n"++
+           "|        +- ((14,7),(14,14))(Above None (14,7) (14,14) FromAlignCol (1,-12))\n|        |  |\n"++
+           "|        |  `- ((14,7),(14,14))\n|        |     |\n"++
+           "|        |     +- ((14,7),(14,10))\n|        |     |\n"++
+           "|        |     `- ((14,11),(14,14))\n|        |        |\n"++
+           "|        |        +- ((14,11),(14,12))\n|        |        |\n"++
+           "|        |        `- ((14,13),(14,14))\n|        |\n"++
+           "|        `- ((15,10),(15,17))\n|           |\n"++
+           "|           +- ((15,10),(15,11))\n|           |\n"++
+           "|           +- ((15,12),(15,13))\n|           |\n"++
+           "|           `- ((15,14),(15,17))\n|\n"++
+           "+- ((19,1),(21,14))\n|  |\n"++
+           "|  +- ((19,1),(19,4))\n|  |\n"++
+           "|  `- ((19,5),(21,14))\n|     |\n"++
+           "|     +- ((19,5),(19,6))\n|     |\n"++
+           "|     +- ((19,7),(19,8))\n|     |\n"++
+           "|     +- ((19,9),(19,10))\n|     |\n"++
+           "|     `- ((20,3),(21,14))\n|        |\n"++
+           "|        +- ((20,3),(20,5))\n|        |\n"++
+           "|        `- ((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-14))\n|           |\n"++
+           "|           +- ((20,6),(20,18))\n|           |  |\n"++
+           "|           |  +- ((20,6),(20,7))\n|           |  |\n"++
+           "|           |  `- ((20,11),(20,18))\n|           |\n"++
+           "|           `- ((21,6),(21,14))\n|              |\n"++
+           "|              +- ((21,6),(21,12))\n|              |\n"++
+           "|              `- ((21,13),(21,14))\n|\n"++
+           "+- ((1000019,1),(1000021,14))\n|\n"++
+           "`- ((26,1),(26,1))\n"
+
       (showSrcSpanF sspan) `shouldBe` "(((False,0,1,19),1),((False,0,1,21),14))"
 
-{-
-      let toksFinal = retrieveTokensFinal forest''
-      -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
--}
       let pprFinal = retrieveTokensPpr forest''
-      (renderPpr pprFinal) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
+      (renderPpr pprFinal) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
 
       let
         comp = do
@@ -1814,7 +1872,7 @@ spec = do
       (showGhc n) `shouldBe` "TokenTest.foo"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((19,1),(19,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
-      (renderPpr $ pprFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
+      (renderPpr $ pprFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n\n\n\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
       (showGhc nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
 
@@ -1854,7 +1912,7 @@ spec = do
 
       let toksFinal = retrieveTokensFinal forest'''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
 
       let
         comp = do
@@ -1871,7 +1929,7 @@ spec = do
       (showGhc n) `shouldBe` "TokenTest.foo"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((19,1),(19,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
-      (renderPpr $ pprFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n\n"
+      (renderPpr $ pprFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n"
       (showGhc nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
 
@@ -1934,7 +1992,7 @@ spec = do
       (showGhc newSpan) `shouldBe` "test/testdata/DupDef/Dd1.hs:1048582:1-30"
       (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
 
-      let (_forest4',tree4) = getSrcSpanFor forest''' (srcSpanToForestSpan newSpan)
+      -- let (_forest4',_tree4) = getSrcSpanFor forest''' (srcSpanToForestSpan newSpan)
       -- (show forest4') `shouldBe` "" -- Broken, tokens for 1000006,31
                                     -- end at 6,20
       -- (show tree4) `shouldBe` ""
@@ -1980,12 +2038,12 @@ spec = do
       (show (vs,ve)) `shouldBe` "(1,1)"
       let ((s1,_),_) =  srcSpanToForestSpan newSpan
       (hex $ forestLineToGhcLine s1) `shouldBe` "0x100006"
-      let ((s,_),e) = srcSpanToForestSpan tSpan
+      let ((s,_),_e) = srcSpanToForestSpan tSpan
       (hex $ forestLineToGhcLine s) `shouldBe`  "0x40100006"
 
       --
 
-      let (forest5,newSpan2,_) = updateTokensForSrcSpan forest4 newSpan toksSig1
+      let (forest5,_newSpan2,_) = updateTokensForSrcSpan forest4 newSpan toksSig1
       (invariant forest5) `shouldBe` []
       (drawTreeEntry forest5) `shouldBe`
               "((1,1),(32,18))\n|\n"++
@@ -1998,7 +2056,7 @@ spec = do
 
 
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
-      let (decl',forest''') = syncAST decl sspan forest''
+      let (_decl',forest''') = syncAST decl sspan forest''
 
       "a" `shouldBe` "a"
 
@@ -2321,7 +2379,7 @@ spec = do
       (showGhc n) `shouldBe` "sq"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((7,17),(7,23)),ITvarid \"square\",\"square\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn1 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'sq' to 'square'.\n\n sumSquares x y= sq x + sq y where sq x= x^pow\n   --There is a comment.\n                                   pow=2\n "
-      (pprFromState s) `shouldBe` []
+      -- (pprFromState s) `shouldBe` []
       (renderPpr $ pprFromState s) `shouldBe` "module LayoutIn1 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'sq' to 'square'.\n\nsumSquares x y= square x + square y where square x= x^pow\n          --There is a comment.\n                                          pow=2\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutIn1.sumSquares x y\n = square x GHC.Num.+ square y\n where\n square x = x GHC.Real.^ pow\n pow = 2,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2607,7 +2665,7 @@ spec = do
          toks <- fetchToks
 
          return (res,toks,renamed2,toks2)
-      ((_r,t,_r2,_tk2),s) <- runRefactGhcState comp
+      ((_r,t,_r2,_tk2),_s) <- runRefactGhcState comp
       (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1 hiding (n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
     ------------------------------------
@@ -2675,7 +2733,7 @@ spec = do
           let res = usedWithoutQualR name parsed
           return (res,namep,name,n)
       -- ((r,np,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }
-      ((r,np,n1,n2),s) <- runRefactGhcState comp
+      ((r,np,n1,n2),_s) <- runRefactGhcState comp
 
       (myShow np) `shouldBe` "Qual:G:gshow"
       (myShow $ GHC.getRdrName n1) `shouldBe` "Exact:Data.Generics.Text.gshow"
@@ -2763,7 +2821,7 @@ spec = do
           let res = getDeclAndToks name True toks renamed
           return (res,n,name)
 
-      (((d,t),n1,n2),s) <- runRefactGhcState comp
+      (((d,t),n1,_n2),s) <- runRefactGhcState comp
       -- (((d,t),n1,n2),s) <- runRefactGhcStateLog comp Debug
       (showGhc n1) `shouldBe` "MoveDef.Md1.tlFunc"
       (showGhc d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
@@ -2803,12 +2861,12 @@ This function is not used and has been removed
 
           let Just (GHC.L _ sq) = locToName (14, 1) renamed
 
-          let ([sqDecl],declToks) = getDeclAndToks sq True toks renamed
+          let ([sqDecl],_declToks) = getDeclAndToks sq True toks renamed
 
           res <- rmQualifier [sq] sqDecl
           return (res,sqDecl,sq)
 
-      ((r,d,n1),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((r,d,n1),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (showGhc n1) `shouldBe` "Demote.WhereIn3.sq"
       (showGhc d) `shouldBe` "Demote.WhereIn3.sq pow 0 = 0\nDemote.WhereIn3.sq pow z = z GHC.Real.^ pow"
       (showGhc r) `shouldBe` "sq pow 0 = 0\nsq pow z = z GHC.Real.^ pow"
@@ -2836,7 +2894,7 @@ This function is not used and has been removed
 
           return (res,decls,tl,name)
 
-      ((r,d,n1,n2),s) <- runRefactGhcState comp
+      ((r,d,n1,n2),_s) <- runRefactGhcState comp
       (showGhc n1) `shouldBe` "MoveDef.Demote.toplevel"
       (showGhc n2) `shouldBe` "MoveDef.Demote.c"
       (showGhc d) `shouldBe` "[MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x]"
@@ -2920,11 +2978,11 @@ This function is not used and has been removed
 
          return (res,toks,renamed2,toks2)
       ((_r,t,_r2,_tk2),_s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1\n import Data.List\n \n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
+      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1\n import Data.List\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
     -- ---------------------------------
 
-    it "Add an import entry to a module with some declaration, but no explicit imports." $ do
+    it "adds an import entry to a module with some declaration, but no explicit imports." $ do
       let
         comp = do
 
@@ -2938,11 +2996,11 @@ This function is not used and has been removed
 
          return (res,toks,renamed1,_toks1)
       ((_r,t,_r2,_tk2),_s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module Simplest where\n import Data.List\n \n simple x = x\n "
+      (GHC.showRichTokenStream t) `shouldBe` "module Simplest where\n import Data.List\n\n simple x = x\n "
 
     -- ---------------------------------
 
-    it "Add an import entry to a module with explicit imports, but no declarations." $ do
+    it "adds an import entry to a module with explicit imports, but no declarations." $ do
       let
         comp = do
 
@@ -2956,7 +3014,7 @@ This function is not used and has been removed
 
          return (res,toks,renamed1,_toks1)
       ((_r,t,_r2,_tk2),_s) <- runRefactGhcState comp
-      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List\n "
+      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List"
 
     -- ---------------------------------
 
@@ -3440,8 +3498,8 @@ parsedFileLayoutLet1 = parsedFileGhc "./test/testdata/TypeUtils/LayoutLet1.hs"
 -- layoutLet2FileName :: GHC.FastString
 -- layoutLet2FileName = GHC.mkFastString "./test/testdata/TypeUtils/LayoutLet2.hs"
 
-parsedFileLayoutLet2 :: IO (ParseResult, [PosToken])
-parsedFileLayoutLet2 = parsedFileGhc "./test/testdata/TypeUtils/LayoutLet2.hs"
+-- parsedFileLayoutLet2 :: IO (ParseResult, [PosToken])
+-- parsedFileLayoutLet2 = parsedFileGhc "./test/testdata/TypeUtils/LayoutLet2.hs"
 
 -- ----------------------------------------------------
 

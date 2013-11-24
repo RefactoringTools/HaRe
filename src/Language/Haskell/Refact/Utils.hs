@@ -146,7 +146,7 @@ loadModuleGraphGhc maybeTargetFile = do
       -- NOTE: does not seem to be required
       target <- GHC.guessTarget (targetFile) Nothing
       GHC.setTargets [target]
-      GHC.load GHC.LoadAllTargets
+      void $ GHC.load GHC.LoadAllTargets
       return ()
     Nothing -> return ()
   return ()
@@ -217,7 +217,7 @@ parseSourceFileGhc targetFile = do
       target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- The *
                                      -- is to force interpretation, for inscopes
       GHC.setTargets [target]
-      GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
+      void $ GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
 
 {-
       graph <- GHC.getModuleGraph

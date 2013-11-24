@@ -50,6 +50,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , drawTokenTree
        , drawTokenTreeDetailed
        , getTokenTree
+       , showPprDebug
 
        -- * State flags for managing generic traversals
        , getRefactDone
@@ -327,6 +328,15 @@ getTokenTree = do
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   return mainForest
+
+-- ---------------------------------------------------------------------
+
+-- |Get the Ppr structure for debug prurposes
+showPprDebug :: String -> RefactGhc ()
+showPprDebug msg = do
+  ppr <- fetchPprFinal
+  logm $ msg ++ "\ncurrent ppr tree:\n" ++ (showGhc ppr)
+  return ()
 
 -- ---------------------------------------------------------------------
 

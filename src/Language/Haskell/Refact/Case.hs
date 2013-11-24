@@ -50,6 +50,7 @@ reallyDoIfToCase ::
 reallyDoIfToCase expr rs = do
 
    everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
+   showPprDebug "after refactoring"
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
@@ -57,8 +58,7 @@ reallyDoIfToCase expr rs = do
            | sameOccurrence expr exp1
            = do
                newExp <- ifToCaseTransform exp1
-               -- updateToks exp1 newExp prettyprint True
-               -- updateToks exp1 newExp prettyprint2 True
+
                let (GHC.RealSrcLoc rl) = GHC.srcSpanStart l
                caseTok <- liftIO $ tokenise rl 0 False "case"
                condToks <- getToksForSpan l1
@@ -102,6 +102,9 @@ reallyDoIfToCase expr rs = do
                -- drawTokenTreeDetailed "reallyDoIfToCase"
 
                putToksForSpan l caseToks
+
+               -- drawTokenTree "reallyDoIfToCase after putToks"
+               -- drawTokenTreeDetailed "reallyDoIfToCase after putToks"
 
                return newExp
 

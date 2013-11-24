@@ -332,7 +332,7 @@ spec = do
             "+- ((1000007,1),(1000007,19))\n|\n"++
             "`- ((6,1),(32,18))\n"
 
-      (show toks7) `shouldBe` "[((((7,1),(7,1)),ITsemi),\"\"),((((7,1),(7,9)),ITvarid \"toplevel\"),\"toplevel\"),((((7,10),(7,11)),ITvarid \"x\"),\"x\"),((((7,12),(7,13)),ITequal),\"=\"),((((7,14),(7,15)),ITvarid \"c\"),\"c\"),((((7,16),(7,17)),ITstar),\"*\"),((((7,18),(7,19)),ITvarid \"x\"),\"x\"),((((9,1),(9,1)),ITvocurly),\"\")]"
+      (show toks7) `shouldBe` "[((((7,1),(7,1)),ITsemi),\"\"),((((7,1),(7,9)),ITvarid \"toplevel\"),\"toplevel\"),((((7,10),(7,11)),ITvarid \"x\"),\"x\"),((((7,12),(7,13)),ITequal),\"=\"),((((7,14),(7,15)),ITvarid \"c\"),\"c\"),((((7,16),(7,17)),ITstar),\"*\"),((((7,18),(7,19)),ITvarid \"x\"),\"x\"),((((8,1),(8,1)),ITvocurly),\"\")]"
 
     -- ---------------------------------
 
@@ -1472,7 +1472,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Removes a span and tokens without destroying the forest 1" $ do
+    it "removes a span and tokens without destroying the forest 1" $ do
       (_t,toks) <- parsedFileDemoteD1
       let forest = mkTreeFromTokens toks
 
@@ -1527,7 +1527,7 @@ tree TId 0:
 
       let toks' = retrieveTokensFinal forest3
       -- (showToks toks') `shouldBe` ""
-      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
     -- ---------------------------------
 
@@ -2972,6 +2972,54 @@ tree TId 0:
 
     -- --------------------------------------
 
+  describe "renderPpr" $ do
+    it "renders a Ppr with out of sequence lines" $ do
+      let ppr =
+           [PprText 1 1 "module B where",
+            PprText 2 1 "-- Test for refactor of if to case",
+            PprText 4 1 "foo x = case (odd x) of",
+            PprText 5 13 "True  -> \"Odd\"",
+            PprText 6 13 "False -> \"Even\"",
+            PprText 7 1 "",
+            PprText 6 1 "bob x y = x + y",
+            PprText 9 1 "foo' x = case (odd x) of",
+            PprAbove (FromAlignCol (1, -23)) (11, 18) (FromAlignCol (2, -18))
+              [PprText 10 1 "True -> \"Odd\"",
+               PprText 11 1 "False -> \"Even\""],
+            PprText 13 1 "main = do",
+            PprAbove (FromAlignCol (1, -8)) (14, 26) (FromAlignCol (2, -26))
+              [PprText 14 1 "putStrLn $ show $ foo 5"],
+            PprText 16 1 "mary = [1,2,3]",
+            PprText 18 1 "h = bob 1 2",
+            PprText 20 1 ""]
+
+      let expected =
+           "module B where\n"++
+           "-- Test for refactor of if to case\n"++
+           "\n"++
+           "foo x = case (odd x) of\n"++
+           "            True  -> \"Odd\"\n"++
+           "            False -> \"Even\"\n"++
+           "\n"++
+           "bob x y = x + y\n"++
+           "\n"++
+           "\n"++
+           "foo' x = case (odd x) of\n"++
+           "  True -> \"Odd\"\n"++
+           "  False -> \"Even\"\n"++
+           "\n"++
+           "main = do\n"++
+           "  putStrLn $ show $ foo 5\n"++
+           "\n"++
+           "mary = [1,2,3]\n"++
+           "\n"++
+           "h = bob 1 2\n"++
+           "\n"
+
+      (renderPpr ppr) `shouldBe` expected
+
+  -- -----------------------------------
+
   describe "updateTokensForSrcSpan" $ do
     it "replaces the tokens for a given span, inserting the span if needed" $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -3041,7 +3089,7 @@ tree TId 0:
       let toksFinal = retrieveTokensFinal forest'''
 
       -- (show toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bbb x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bbb x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
 
     -- --------------------------------------
 
@@ -3393,7 +3441,7 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "addNewSrcSpanAndToksAfter" $ do
-    it "adds a new SrcSpan after an existing one in the forest." $ do
+    it "adds a new SrcSpan after an existing one in the forest 0" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -3418,12 +3466,12 @@ tree TId 0:
 
       let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
 
   -- ---------------------------------------------
 
   describe "addToksAfterSrcSpan" $ do
-    it "adds a new SrcSpan after an existing one in the forest 1." $ do
+    it "adds a new SrcSpan after an existing one in the forest 1" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -3447,11 +3495,11 @@ tree TId 0:
       (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokensFinal forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
 
     -- ---------------------------------
 
-    it "adds a new SrcSpan after an existing one in the forest 2." $ do
+    it "adds a new SrcSpan after an existing one in the forest 2" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -3475,11 +3523,11 @@ tree TId 0:
       (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokensFinal forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one in the forest, with an indent." $ do
+    it "adds a new SrcSpan after an existing one in the forest, with an indent" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -3503,7 +3551,7 @@ tree TId 0:
       (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokensFinal forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n     -- leading comment\n     foo x y =\n       do c <- getChar\n          return c\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n     -- leading comment\n     foo x y =\n       do c <- getChar\n          return c\n "
 
     -- ---------------------------------
 
@@ -3605,7 +3653,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "adds a new SrcSpan after an existing one, with an indent based on whole prior line." $ do
+    it "adds a new SrcSpan after an existing one, with an indent based on whole prior line" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
 
@@ -3648,7 +3696,7 @@ tree TId 0:
 
       let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n     module MoveDef.Demote where\n\n \n d = 9\n\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n     module MoveDef.Demote where\n d = 9\n\n\n "
 
     -- ---------------------------------
 
@@ -3695,7 +3743,7 @@ tree TId 0:
 
       let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.WhereIn5 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'pow' to 'sq'\n --This example aims to test demoting a function/pattern binding multi-levels.\n\n sumSquares x y = sq x + sq y\n          where sq 0=0\n                sq z=z^pow {-There \nis a comment-}\n                pow=2\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.WhereIn5 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'pow' to 'sq'\n --This example aims to test demoting a function/pattern binding multi-levels.\n\n sumSquares x y = sq x + sq y\n          where sq 0=0\n                sq z=z^pow {-There \nis a comment-}\n                pow=2\n \n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
 
     -- ---------------------------------
 
@@ -3848,7 +3896,7 @@ tree TId 0:
 
       let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq   + sumSquares xs\n     sumSquares (x:xs) = sq x + sumSquares xs\n     sumSquares [] = 0\n\n     sq\n\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq   + sumSquares xs\n     sumSquares (x:xs) = sq x + sumSquares xs\n     sumSquares [] = 0\n\n     sq\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
     -- ---------------------------------
 
@@ -3901,7 +3949,7 @@ tree TId 0:
       (invariant forest') `shouldBe` []
 
       let toksFinal = retrieveTokensFinal forest'
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List"
 
     -- ---------------------------------
 
@@ -3969,7 +4017,7 @@ tree TId 0:
               "((((13,32),(13,33)),ITequal),\"=\"),"++
               "((((13,33),(13,34)),ITinteger 2),\"2\"),"++
               "((((14,26),(14,26)),ITvccurly),\"\"),"++ -- ++AZ++ WTF?
-              "((((16,1),(16,1)),ITvocurly),\"\")]"     -- ++AZ++ WTF?
+              "((((15,1),(15,1)),ITvocurly),\"\")]"     -- ++AZ++ WTF?
       --
       let (forest'',newSpan) = addToksAfterSrcSpan forest' sspan' position newToks
 
@@ -3984,7 +4032,7 @@ tree TId 0:
 
       (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,12),26),((False,0,1,13),34))"
       (invariant forest'') `shouldBe` []
-      (GHC.showRichTokenStream $ retrieveTokensFinal forest'') `shouldBe` "module Demote.LetIn1 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the local  'pow' to 'sq'\n --This example also aims to test the demoting a local declaration in 'let'.\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                          where\n                             pow=2\n                          \n\n \n                  in sq x + sq y\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n   "
+      (GHC.showRichTokenStream $ retrieveTokensFinal forest'') `shouldBe` "module Demote.LetIn1 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the local  'pow' to 'sq'\n --This example also aims to test the demoting a local declaration in 'let'.\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                          where\n                             pow=2\n                          \n \n                  in sq x + sq y\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n   "
 
     -- ---------------------------------
 
@@ -4129,7 +4177,7 @@ tree TId 0:
       let newSpan' = insertForestLineInSrcSpan (ForestLine ch tr (v+1) l) newSpan
       let toks' = placeToksForSpan forest' sspan4 tree' (PlaceOffset 2 0 2) newToks
       let newNode = Node (Entry (srcSpanToForestSpan newSpan') NoChange toks') []
-      (show newNode) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 1 24),1),((ForestLine False 0 1 24),7)) NoChange [((((24,1),(24,3)),ITvarid \"zz\"),\"zz\"),((((24,4),(24,5)),ITequal),\"=\"),((((24,6),(24,7)),ITinteger 1),\"1\"),((((26,1),(26,1)),ITvocurly),\"\")], subForest = []}"
+      (show newNode) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 1 24),1),((ForestLine False 0 1 24),7)) NoChange [((((24,1),(24,3)),ITvarid \"zz\"),\"zz\"),((((24,4),(24,5)),ITequal),\"=\"),((((24,6),(24,7)),ITinteger 1),\"1\"),((((25,1),(25,1)),ITvocurly),\"\")], subForest = []}"
 
       let forest'' = insertNodeAfter tree' newNode forest'
       (drawTreeEntry forest'') `shouldBe`
@@ -4469,7 +4517,7 @@ tree TId 0:
       (take 90 $ SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/TokenTest.hs:(1048589,1)-(1048591,16)} \n (FunBind \n  (L {test/testdata/"
 
       let toksFinal = retrieveTokensFinal forest'''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
   -- ---------------------------------------------
 
@@ -4808,7 +4856,7 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "deleteGapsToks" $ do
-    it "Closes the gap when finding a Deleted Entry" $ do
+    it "closes the gap when finding a Deleted Entry" $ do
       (_t,toks) <- parsedFileLiftWhereIn1Ghc
       let f1 = mkTreeFromTokens toks
 
@@ -4878,7 +4926,7 @@ tree TId 0:
       -- (show $ deleteGapsToks entries) `shouldBe` ""
       -- (show $ deleteGapsToks' entries) `shouldBe` ""
 
-      (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe` "module LiftToToplevel.WhereIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test add parameters to 'sq'.\n\n sumSquares x y = sq x + sq y\n            where\n                  pow=2\n\n sq  pow 0= 0\n sq  pow z= z^pow\n\n \n anotherFun 0 y = sq y\n      where  sq x = x^2\n "
+      (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe` "module LiftToToplevel.WhereIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test add parameters to 'sq'.\n\n sumSquares x y = sq x + sq y\n            where\n                  pow=2\n\n sq  pow 0= 0\n sq  pow z= z^pow\n \n anotherFun 0 y = sq y\n      where  sq x = x^2\n "
 
 
   -- ---------------------------------------------
