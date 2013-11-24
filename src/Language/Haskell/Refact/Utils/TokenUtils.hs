@@ -1193,13 +1193,13 @@ retrieveTokensPpr' acc (Node (Deleted _sspan  _eg ) _  ) = acc
 retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs)
   = foldl' retrieveTokensPpr' acc subs
 
-retrieveTokensPpr' acc (Node (Entry _sspan (Above ro co _ (r,c) eo) []) subs) = acc'
+retrieveTokensPpr' acc (Node (Entry _sspan (Above so _ (r,c) eo) []) subs) = acc'
   where
     (ac,curLineToks) = acc
     (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
     cl2Acc = mkPprFromLineToks cl2
     ll = mkPprFromLineToks curLineToks
-    acc' = (ac ++ ll ++ [PprAbove ro co (r,c) eo (normaliseColumns (sss++cl2Acc))],[])
+    acc' = (ac ++ ll ++ [PprAbove so (r,c) eo (normaliseColumns (sss++cl2Acc))],[])
 
 retrieveTokensPpr' acc (Node (Entry _sspan (Offset r c) []) subs) = acc'
   where
@@ -1228,7 +1228,7 @@ retrieveTokensPpr' (acc,curLineToks) (Node (Entry _sspan _     toks) []) = (acc+
                           else ((mkPprFromLineToks curLineToks     ) ++ concatMap mkPprFromLineToks (x:init xs),last xs)
 
 -- Keep -Wall happy
-retrieveTokensPpr' _acc n@(Node (Entry _sspan (Above _ro _co _ (_r,_c) _eo) _toks) _subs)
+retrieveTokensPpr' _acc n@(Node (Entry _sspan (Above _so _ (_r,_c) _eo) _toks) _subs)
   = error $ "retrieveTokensPpr': Above entry with toks:" ++ (show n)
 retrieveTokensPpr' _acc n@(Node (Entry _sspan (Offset _r _c) _toks) _subs)
   = error $ "retrieveTokensPpr': Offset entry with toks:" ++ (show n)
@@ -1302,17 +1302,20 @@ renderPpr ps = res
 
     go _ [] = return ()
 
-    go ci (ppt@(PprText _rt _ct _toks):ppa@(PprAbove ro co (_,_cc) eo _subs):ps') = do
+    go ci (ppt@(PprText _rt _ct _toks):ppa@(PprAbove so (_,_cc) eo _subs):ps') = do
       renderPprText ci ppt
-      addOffset ro (co - 1)
+      addOffset so
       (_,c) <- getRC
       renderPprAbove c ppa
       (cr,_cc) <- getRC
+      addOffset eo
+{-
       case eo of
         FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
         -- FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
         SameLine eco -> addOffset 0 eco
         None        -> return ()
+-}
       -- (r',c') <- getRC
       -- addDebugString $ "(eo:" ++ show (ci,(r',c')) ++ ")" -- ++AZ++ debug
       go ci ps'
@@ -1325,8 +1328,8 @@ renderPpr ps = res
 
     ------------------------------------
 
-    renderPprAbove _ci (PprAbove _ _ _ _   []) = return ()
-    renderPprAbove  ci (PprAbove _ _ _ _ subs) = go ci subs
+    renderPprAbove _ci (PprAbove _ _ _   []) = return ()
+    renderPprAbove  ci (PprAbove _ _ _ subs) = go ci subs
 
     renderPprAbove _ ppr = error $ "renderPprAbove:unexpected ppr:" ++ (show ppr)
 
@@ -1346,7 +1349,11 @@ renderPpr ps = res
 
     ------------------------------------
 
-    addOffset ro co = do
+    addOffset None = return ()
+    addOffset (SameLine co) = do
+      (r,c) <- getRC
+      newPos r (c+co)
+    addOffset (FromAlignCol (ro,co)) = do
       (r,c) <- getRC
       newPos (r+ro) (c+co)
 
@@ -2152,7 +2159,7 @@ openZipperToSpanDeep sspan z = zf
     z' = openZipperToSpan sspan z
 
     zf = case Z.tree z' of
-           (Node (Entry _ (Above _ _ _ _ _) _) _) ->
+           (Node (Entry _ (Above _ _ _ _) _) _) ->
                 case getChildrenAsZ z' of
                   []  -> z'
                   [x] -> if (treeStartEnd (Z.tree x) == sspan) then x else z'
@@ -2448,7 +2455,7 @@ drawEntry (Node (Entry sspan lay _toks) ts0) = ((showForestSpan sspan) ++ (showL
 
 showLayout :: Layout -> String
 showLayout NoChange       = ""
-showLayout (Above ro co p1 (r,c) eo) = "(Above "++ show ro ++ " " ++ show co ++ " " ++ show p1 ++ " " ++ show (r,c) ++ " " ++ show eo ++ ")"
+showLayout (Above so p1 (r,c) eo) = "(Above "++ show so ++ " " ++ show p1 ++ " " ++ show (r,c) ++ " " ++ show eo ++ ")"
 showLayout (Offset r c)   = "(Offset " ++ show r ++ " " ++ show c ++ ")"
 
 -- ---------------------------------------------------------------------

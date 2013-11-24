@@ -86,10 +86,10 @@ type ColOffset = Int
 type Row       = Int
 type Col       = Int
 
-data Layout = Above RowOffset ColOffset (Row,Col) (Row,Col) EndOffset
-            -- ^ Initial Row and Col offset from token before the
+data Layout = Above EndOffset (Row,Col) (Row,Col) EndOffset
+            -- ^ Initial offset from token before the
             -- stacked list of items, the (r,c) of the first
-            -- non-comment token, the (r,c) of the last non-comment
+            -- non-comment token, the (r,c) of the end of the last non-comment
             -- token in the stacked list to be able to calculate the
             -- (RowOffset,ColOffset) between the last token and the
             -- start of the next item.
@@ -159,29 +159,13 @@ data TokenCache = TK
 -- |A data structure to make the ppr process visible
 data Ppr = PprText Row Col String -- ^Original row and col of the
                                   -- tokens making up the string
-         | PprAbove RowOffset ColOffset (Row,Col) EndOffset [Ppr]
+         | PprAbove EndOffset (Row,Col) EndOffset [Ppr]
          -- ^ Offset of start of embedded parts, coords of last token,
          -- offset to start of next part, relative to the column of
          -- the start
          | PprOffset RowOffset ColOffset [Ppr]
          deriving (Eq,Show)
 
--- ---------------------------------------------------------------------
-{-
-infixl 6 `Hbeside`
-infixl 6 `Habove`
-
--- |A structure to wrap the pretty print commands to make them
--- visible, since Doc constructors are not exported
-data HDoc = Htext String
-          | Hhcat [HDoc]
-          | Hvcat [HDoc]
-          | Hnest Int HDoc
-          | HDoc `Hbeside` HDoc
-          | HDoc `Habove` HDoc
-          | Hempty
-          deriving (Eq,Show)
--}
 -- ---------------------------------------------------------------------
 
 -- EOF
