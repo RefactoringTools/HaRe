@@ -240,11 +240,13 @@ addEndOffsets tree toks = go tree
                 xs  -> if ro' /= 0 then FromAlignCol off
                                    else SameLine co'
                   where
-                   off@(ro',co') = case (dropWhile isWhiteSpace $ tail xs) of
-                     []    -> (tokenRow y - r, tokenCol y - c - 1) where y = head $ tail xs
-                     (y:_) -> (tokenRow y - r, tokenCol y - c - 1)
-        -- eo' = error $ "addEndOffsets:m=" ++ (show m)
-        -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpace $ tail m)
+                   -- off@(ro',co') = case (dropWhile isWhiteSpace $ tail xs) of
+                   -- off@(ro',co') = case (dropWhile isWhiteSpace xs) of
+                   off@(ro',co') = case (dropWhile isEmpty xs) of
+                     []    -> (tokenRow y - r, tokenCol y - c) where y = head $ tail xs
+                     (y:_) -> (tokenRow y - r, tokenCol y - c)
+        -- eo' = error $ "addEndOffsets:m=" ++ (show ((r,c),m))
+        -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpace  m)
         -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpaceOrIgnored m)
         -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpaceOrIgnored $ tail m)
         -- eo' = (0,0)
@@ -289,10 +291,16 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyFamily _f n@(GHC.L ln _) vars _
     (s1,clToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     (s2,nToks,varsToks) = splitToksIncComments (ghcSpanStartEnd ln) toks'
     nLayout = allocLocated n nToks
+#if __GLASGOW_HASKELL__ > 704
     (varsLayout,s3) = allocTyVarBndrs vars varsToks
+#else
+    varsLayout = allocList vars varsToks allocTyVarBndr
+    s3 = []
+#endif
     r = acc ++ (strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks clToks)
                      ++ (makeLeafFromToks s2) ++ nLayout ++ varsLayout
                      ++ (makeLeafFromToks s3))
+#if __GLASGOW_HASKELL__ > 704
 allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyDecl (GHC.L ln _) vars def _fvs))) = (r,toks')
   where
     (s1,clToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
@@ -302,12 +310,18 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyDecl (GHC.L ln _) vars def _fvs
     r = acc ++ (strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
                      ++ (makeLeafFromToks nToks) ++ varsLayout ++ typeLayout
                      ++ (makeLeafFromToks toks4))
+#endif
 allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L ln _) vars fds sigs meths ats atdefs docs _fvs))) = (acc++r,toks')
   where
     (s1,clToks,  toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     (s2,ctxToks, toks1) = splitToksIncComments (ghcSpanStartEnd lc) clToks
     (s3,nToks,   toks2) = splitToksIncComments (ghcSpanStartEnd ln) toks1
+#if __GLASGOW_HASKELL__ > 704
     (varsLayout, toks3) = allocTyVarBndrs vars toks2
+#else
+    varsLayout = allocList vars toks2 allocTyVarBndr
+    toks3 = [] -- hmm
+#endif
     (s5,fdToks,  toks4) = splitToksForList fds toks3
 
     ctxLayout = allocHsContext ctx ctxToks
@@ -855,7 +869,12 @@ allocType :: GHC.LHsType GHC.RdrName -> [PosToken] -> [LayoutTree]
 allocType (GHC.L l (GHC.HsForAllTy _ef vars (GHC.L lc ctx) typ) ) toks = r
   where
     (s1,exprToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
+#if __GLASGOW_HASKELL__ > 704
     (varsLayout,toks2) = allocTyVarBndrs vars exprToks
+#else
+    (s1',tp,toks2) = splitToksForList vars
+    varsLayout = strip $ (makeLeafFromToks s1') ++ allocList vars tp allocTyVarBndr
+#endif
     (s2,ctxToks,toks3) = splitToksIncComments (ghcSpanStartEnd lc) toks2
 
     ctxLayout = allocHsContext ctx ctxToks
@@ -989,13 +1008,16 @@ allocType (GHC.L l (GHC.HsRecTy decls) ) toks = r
 allocType n@(GHC.L _l (GHC.HsCoreTy _) ) toks = allocLocated n toks
 allocType (GHC.L _l (GHC.HsExplicitListTy  _ ts) ) toks = allocList ts toks allocType
 allocType (GHC.L _l (GHC.HsExplicitTupleTy _ ts) ) toks = allocList ts toks allocType
+#if __GLASGOW_HASKELL__ > 704
 allocType n@(GHC.L _l (GHC.HsTyLit _) ) toks = allocLocated n toks
+#endif
 allocType (GHC.L l (GHC.HsWrapTy _ typ) ) toks = allocType (GHC.L l typ) toks
 allocType t toks = error $ "allocType: not implemented for:" ++ (showGhc t)
 
 -- ---------------------------------------------------------------------
 
 allocInstDecl :: GHC.LInstDecl GHC.RdrName -> [PosToken] -> [LayoutTree]
+#if __GLASGOW_HASKELL__ > 704
 allocInstDecl (GHC.L l (GHC.ClsInstD polyTy@(GHC.L lt _) binds sigs famInsts)) toks = r
   where
     (s1,toks1,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
@@ -1013,15 +1035,32 @@ allocInstDecl (GHC.L l (GHC.ClsInstD polyTy@(GHC.L lt _) binds sigs famInsts)) t
     r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
              ++ polytLayout ++ bindsLayout'
              ++ (makeLeafFromToks toks')
-
 allocInstDecl (GHC.L l (GHC.FamInstD decl)) toks = r
   where
     (s1,toks1,s2) = splitToksIncComments (ghcSpanStartEnd l) toks
     declLayout = allocLFamInstDecl (GHC.L l decl) toks1
     r = strip $(makeLeafFromToks s1) ++ declLayout ++ (makeLeafFromToks s2)
+#else
+-- InstDecl (LHsType name) (LHsBinds name) [LSig name] [LTyClDecl name]
+allocInstDecl (GHC.L l (GHC.InstDecl (GHC.L ln _) binds sigs tycldecls)) toks = r
+  where
+    (s1,toks1,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
+
+    -- TODO: will require 3-way merge of binds,sigs and famInsts
+    bindList = GHC.bagToList binds
+    bindMix = makeMixedListEntry bindList (shim allocBind)
+    sigMix  = makeMixedListEntry sigs (shim allocSig)
+    famMix  = makeMixedListEntry tycldecls (shim allocLTyClDecl)
+
+    bindsLayout' = allocMixedList (bindMix++sigMix++famMix) toks1
+    r = strip $ (makeLeafFromToks s1)
+             ++ bindsLayout'
+             ++ (makeLeafFromToks toks')
+#endif
 
 -- ---------------------------------------------------------------------
 
+#if __GLASGOW_HASKELL__ > 704
 allocLFamInstDecl :: GHC.LFamInstDecl GHC.RdrName -> [PosToken] -> [LayoutTree]
 allocLFamInstDecl (GHC.L l (GHC.FamInstDecl n@(GHC.L ln _) (GHC.HsWB typs _ _) defn _fvs)) toks = r
   where
@@ -1037,6 +1076,7 @@ allocLFamInstDecl (GHC.L l (GHC.FamInstDecl n@(GHC.L ln _) (GHC.HsWB typs _ _) d
              ++ patsLayout ++ defnLayout
              ++ (makeLeafFromToks s4)
              ++ (makeLeafFromToks toks')
+#endif
 
 -- ---------------------------------------------------------------------
 
@@ -1072,12 +1112,16 @@ allocLocated (GHC.L l _) toks = r
 
 -- ---------------------------------------------------------------------
 
+#if __GLASGOW_HASKELL__ > 704
 allocTyVarBndrs :: GHC.LHsTyVarBndrs GHC.RdrName -> [PosToken] -> ([LayoutTree],[PosToken])
 allocTyVarBndrs (GHC.HsQTvs _kvs tvs) toks = (r,s1)
   where
     (kvsToks,tyvarToks,s1) = splitToksForList tvs toks
     tyvarLayout = allocList tvs tyvarToks allocTyVarBndr
     r = (strip $ (makeLeafFromToks kvsToks) ++ tyvarLayout)
+#else
+
+#endif
 
 -- ---------------------------------------------------------------------
 
@@ -1109,6 +1153,7 @@ Constructors
 -}
 -- ---------------------------------------------------------------------
 
+#if __GLASGOW_HASKELL__ > 704
 allocHsTyDefn :: GHC.HsTyDefn GHC.RdrName -> [PosToken] -> ([LayoutTree],[PosToken])
 allocHsTyDefn (GHC.TySynonym typ@(GHC.L l _)) toks = (r,toks')
   where
@@ -1150,16 +1195,55 @@ allocHsTyDefn (GHC.TyData _ (GHC.L lc ctx) mc mk cons mderivs) toks = (r,toks')
     toks' = toks6
     r = strip $ (makeLeafFromToks s1) ++ ctxLayout ++ mcLayout ++ mkLayout
              ++ (makeLeafFromToks s2) ++ consLayout ++ mderivsLayout
+#endif
 
 -- ---------------------------------------------------------------------
+{-
+ConDecl	 
 
+con_name :: Located name
+
+    Constructor name. This is used for the DataCon itself, and for the user-callable wrapper Id. 
+con_explicit :: HsExplicitFlag
+
+    Is there an user-written forall? (cf. HsForAllTy) 
+con_qvars :: [LHsTyVarBndr name]
+
+    Type variables. Depending on con_res this describes the following entities
+
+        ResTyH98: the constructor's *existential* type variables - ResTyGADT: *all* the constructor's quantified type variables 
+
+    If con_explicit is Implicit, then con_qvars is irrelevant until after renaming. 
+con_cxt :: LHsContext name
+
+    The context. This does not include the "stupid theta" which lives only in the TyData decl. 
+con_details :: HsConDeclDetails name
+
+    The main payload 
+con_res :: ResType name
+
+    Result type of the constructor 
+con_doc :: Maybe LHsDocString
+
+    A possible Haddock comment. 
+con_old_rec :: Bool
+
+    TEMPORARY field; True = user has employed now-deprecated syntax for GADT-style record decl C { blah } :: T a b Remove this when we no longer parse this stuff, and hence do not need to report decprecated use 
+
+
+-}
 allocConDecl :: GHC.LConDecl GHC.RdrName -> [PosToken] -> [LayoutTree]
 allocConDecl (GHC.L l (GHC.ConDecl n@(GHC.L ln _) _expl qvars (GHC.L lc ctx) details res mdoc _)) toks = r
   where
     (s1,conDeclToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     (s2,nameToks,toks2) = splitToksIncComments (ghcSpanStartEnd ln) conDeclToks
     nameLayout = allocLocated n nameToks
+#if __GLASGOW_HASKELL__ > 704
     (qvarsLayout,toks3) = allocTyVarBndrs qvars toks2
+#else
+    qvarsLayout = allocList toks2 qvars allocTyVarBndr
+    toks3 = []
+#endif
     (s3,ctxToks,toks4) = splitToksIncComments (ghcSpanStartEnd lc) toks3
     ctxLayout = allocHsContext ctx ctxToks
 

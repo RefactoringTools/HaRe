@@ -1344,6 +1344,8 @@ tree TId 0:
       let toks3 = retrieveTokensFinal f3
       (GHC.showRichTokenStream toks3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' defined in 'sumSquares'\n --This example aims to test changing a constant to a function.\n\n sumSquares x = (sq x pow)+ (sq x pow)\n            where\n               sq = x^pow\n               pow =2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n\n "
 
+      (renderPpr $ retrieveTokensPpr f3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' defined in 'sumSquares'\n--This example aims to test changing a constant to a function.\n\nsumSquares x = (sq x pow)+ (sq x pow)\n           where\n              sq = x^pow\n              pow =2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n\n"
+
     ------------------------------------
 
     it "allocates comments in an if then else expression" $ do
@@ -1443,6 +1445,8 @@ tree TId 0:
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment"
 
+      (renderPpr $ retrieveTokensPpr forest'') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment"
+
     -- ---------------------------------
 
     it "removes a span and tokens that were not explicitly in the forest" $ do
@@ -1469,6 +1473,8 @@ tree TId 0:
       let toks' = retrieveTokensFinal forest'
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+
+      (renderPpr $ retrieveTokensPpr forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
     -- ---------------------------------
 
@@ -1528,6 +1534,8 @@ tree TId 0:
       let toks' = retrieveTokensFinal forest3
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+
+      (renderPpr $ retrieveTokensPpr forest3) `shouldBe` "module Demote.D1 where\n\n{-demote 'sq' to 'sumSquares'. This refactoring\n affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = sq x + sumSquares xs\n    where\n       sq = x ^ pow\n     \n\nsumSquares [] = 0\n\npow = 2\n\nmain = sumSquares [1..4]\n\n"
 
     -- ---------------------------------
 
@@ -1714,7 +1722,7 @@ tree TId 0:
           "3:((5,5),(5,6))\n"++
           "3:((5,7),(7,15))\n"++
           "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
           "5:((5,11),(5,16))\n"++
           "6:((5,11),(5,12))\n"++
           "6:((5,13),(5,16))\n"++
@@ -1739,7 +1747,7 @@ tree TId 0:
           "3:((5,5),(5,6))\n"++
           "3:((5,7),(7,15))\n"++
           "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
           "5:((5,11),(5,16))\n"++
           "6:((5,11),(5,12))\n"++
           "6:((5,13),(5,16))\n"++
@@ -1765,6 +1773,66 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "retrieveTokensPpr" $ do
+    it "retrieves the tokens in Ppr format TypeUtils.LayoutLet2" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/TypeUtils/LayoutLet2.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(10,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,18))\n"++
+          "1:((1,19),(1,24))\n"++
+          "1:((7,1),(8,35))\n"++
+          "2:((7,1),(7,4))\n"++
+          "2:((7,5),(8,35))\n"++
+          "3:((7,5),(7,8))\n"++
+          "3:((7,9),(7,10))\n"++
+          "3:((7,11),(8,35))\n"++
+          "4:((7,11),(7,14))\n"++
+          "4:((7,15),(8,20))(Above None (7,15) (8,20) SameLine 1)\n"++
+          "5:((7,15),(7,20))\n"++
+          "6:((7,15),(7,16))\n"++
+          "6:((7,17),(7,20))\n"++
+          "7:((7,17),(7,18))\n"++
+          "7:((7,19),(7,20))\n"++
+          "5:((8,15),(8,20))\n"++
+          "6:((8,15),(8,16))\n"++
+          "6:((8,17),(8,20))\n"++
+          "7:((8,17),(8,18))\n"++
+          "7:((8,19),(8,20))\n"++
+          "4:((8,24),(8,35))\n"++
+          "5:((8,24),(8,27))\n"++
+          "5:((8,28),(8,29))\n"++
+          "5:((8,30),(8,31))\n"++
+          "5:((8,32),(8,33))\n"++
+          "5:((8,34),(8,35))\n"++
+          "1:((10,1),(10,1))\n"
+
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 "module LayoutLet2 where",
+           PprText 3 1 "-- Simple let expression, rename xxx to something longer or shorter",
+           PprText 4 1 "-- and the let/in layout should adjust accordingly",
+           PprText 5 1 "-- In this case the tokens for xxx + a + b should also shift out",
+           PprText 7 1 "foo xxx = let",
+           PprAbove None (8,20) (SameLine 1)
+             [PprText 7 1 "a = 1",
+              PprText 8 1 "b = 2"],
+           PprText 8 21 "in xxx + a + b",
+           PprText 10 1 ""
+          ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- -----------------------------------------------------------------
+
     it "retrieves the tokens in Ppr format Renaming.LayoutIn1" $ do
       (t,toks) <-  parsedFileGhc "./test/testdata/Renaming/LayoutIn1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -1793,7 +1861,7 @@ tree TId 0:
           "4:((7,24),(7,26))\n"++
           "4:((7,27),(7,28))\n"++
           "3:((7,29),(7,34))\n"++
-          "3:((7,35),(9,40))(Above None (7,35) (9,40) FromAlignCol (1,-40))\n"++
+          "3:((7,35),(9,40))(Above None (7,35) (9,40) FromAlignCol (1,-39))\n"++
           "4:((7,35),(7,46))\n"++
           "5:((7,35),(7,37))\n"++
           "5:((7,38),(7,46))\n"++
@@ -1816,7 +1884,7 @@ tree TId 0:
            PprText 3 1 "--Layout rule applies after 'where','let','do' and 'of'",
            PprText 5 1 "--In this Example: rename 'sq' to 'square'.",
            PprText 7 1 "sumSquares x y= sq x + sq y where",
-           PprAbove None (9,40) (FromAlignCol (1,-40))
+           PprAbove None (9,40) (FromAlignCol (1,-39))
              [PprText 7 1 "sq x= x^pow",
               PprText 8 (-31) "--There is a comment.",
               PprText 9 1 "pow=2"],
@@ -1848,7 +1916,7 @@ tree TId 0:
           "3:((5,5),(5,6))\n"++
           "3:((5,7),(7,15))\n"++
           "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
           "5:((5,11),(5,16))\n"++
           "6:((5,11),(5,12))\n"++
           "6:((5,13),(5,16))\n"++
@@ -1871,7 +1939,7 @@ tree TId 0:
           [PprText 1 1 "-- A simple let expression, to ensure the layout is detected",
            PprText 3 1 "module Layout.LetExpr where",
            PprText 5 1 "foo = let",
-           PprAbove None (6,16) (FromAlignCol (1,-10))
+           PprAbove None (6,16) (FromAlignCol (1,-9))
              [PprText 5 1 "x = 1",
               PprText 6 1 "y = 2"
              ],
@@ -1902,10 +1970,10 @@ tree TId 0:
           "3:((5,5),(5,6))\n"++
           "3:((5,7),(8,12))\n"++
           "4:((5,7),(5,9))\n"++
-          "4:((6,9),(8,12))(Above FromAlignCol (1,-1) (6,9) (8,12) FromAlignCol (2,-12))\n"++
+          "4:((6,9),(8,12))(Above FromAlignCol (1,-1) (6,9) (8,12) FromAlignCol (2,-11))\n"++
           "5:((6,9),(7,18))\n"++
           "6:((6,9),(6,12))\n"++
-          "6:((6,13),(7,18))(Above None (6,13) (7,18) FromAlignCol (1,-10))\n"++
+          "6:((6,13),(7,18))(Above None (6,13) (7,18) FromAlignCol (1,-9))\n"++
           "7:((6,13),(6,18))\n"++
           "8:((6,13),(6,14))\n"++
           "8:((6,15),(6,18))\n"++
@@ -1930,9 +1998,9 @@ tree TId 0:
           [PprText 1 1 "-- A simple let statement, to ensure the layout is detected",
            PprText 3 1 "module Layout.LetStmt where",
            PprText 5 1 "foo = do",
-           PprAbove (FromAlignCol (1,-1)) (8,12) (FromAlignCol (2,-12))
+           PprAbove (FromAlignCol (1,-1)) (8,12) (FromAlignCol (2,-11))
              [PprText 6 1 "let",
-              PprAbove None (7,18) (FromAlignCol (1,-10))
+              PprAbove None (7,18) (FromAlignCol (1,-9))
                 [PprText 6 1 "x = 1",
                  PprText 7 1 "y = 2"
                 ],
@@ -1980,7 +2048,7 @@ tree TId 0:
           "4:((8,14),(8,18))\n"++
           "4:((8,19),(8,23))\n"++
           "4:((8,24),(8,26))\n"++
-          "4:((8,28),(12,43))(Above SameLine 1 (8,28) (12,43) FromAlignCol (2,-43))\n"++
+          "4:((8,28),(12,43))(Above SameLine 1 (8,28) (12,43) FromAlignCol (2,-42))\n"++
           "5:((8,28),(8,39))\n"++
           "6:((8,28),(8,34))\n"++
           "6:((8,35),(8,37))\n"++
@@ -1995,7 +2063,7 @@ tree TId 0:
           "8:((11,36),(11,38))\n"++
           "7:((11,45),(11,46))\n"++
           "6:((11,48),(11,53))\n"++
-          "6:((11,55),(11,66))(Above SameLine 1 (11,55) (11,66) FromAlignCol (1,-39))\n"++
+          "6:((11,55),(11,66))(Above SameLine 1 (11,55) (11,66) FromAlignCol (1,-38))\n"++
           "7:((11,55),(11,66))\n"++
           "8:((11,55),(11,56))\n"++
           "8:((11,57),(11,66))\n"++
@@ -2017,12 +2085,12 @@ tree TId 0:
            PprText 5 1 "--In this Example: rename 'list' to 'ls'.",
            PprText 7 1 "silly :: [Int] -> Int",
            PprText 8 1 "silly list = case list of",
-           PprAbove (SameLine 1) (12,43) (FromAlignCol (2,-43))
+           PprAbove (SameLine 1) (12,43) (FromAlignCol (2,-42))
              [PprText 8 1 "(1:xs) -> 1",
               PprText 9 (-26) "--There is a comment",
               PprText 10 1 "(2:xs)",
               PprText 11 3 "| x < 10    -> 4  where",
-              PprAbove (SameLine 1) (11,66) (FromAlignCol (1,-39))
+              PprAbove (SameLine 1) (11,66) (FromAlignCol (1,-38))
                 [PprText 11 1 "x = last xs"
                 ],
               PprText 12 1 "otherwise -> 12"
@@ -2056,18 +2124,18 @@ tree TId 0:
            PprText 7 1 "--This example aims to test lifting a definition from a let clause to top level,",
            PprText 8 1 "--and the elimination of the keywords 'let' and 'in'",
            PprText 10 1 "sumSquares x y = let",
-           PprAbove None (11,32) (FromAlignCol (1,-14))
+           PprAbove None (11,32) (FromAlignCol (1,-13))
              [PprText 10 1 "sq 0=0",
               PprText 11 1 "sq z=z^pow"
              ],
            PprText 12 19 "in sq x + sq y",
            PprText 13 24 "where",
-           PprAbove None (13,35) (FromAlignCol (2,-35))
+           PprAbove None (13,35) (FromAlignCol (2,-34))
              [PprText 13 1 "pow=2"
              ],
            PprText 15 1 "anotherFun 0 y = sq y",
            PprText 16 6 "where",
-           PprAbove None (16,22) (FromAlignCol (1,-22))
+           PprAbove None (16,22) (FromAlignCol (1,-21))
              [PprText 16 1 "sq x = x^2"],
            PprText 17 1 ""
           ]
@@ -2096,7 +2164,7 @@ tree TId 0:
           [PprText 1 1 "module LiftToToplevel.Where where",
            PprText 3 1 "anotherFun 0 y = sq y",
            PprText 4 6 "where",
-           PprAbove None (4,22) (FromAlignCol (1,-22))
+           PprAbove None (4,22) (FromAlignCol (1,-21))
              [PprText 4 1 "sq x = x^2"],
            PprText 5 1 ""
           ]
@@ -2155,7 +2223,7 @@ tree TId 0:
           "3:((7,33),(7,34))\n"++
           "3:((7,36),(7,38))\n"++
           "2:((8,3),(8,8))\n"++
-          "2:((9,5),(10,12))(Above FromAlignCol (1,-4) (9,5) (10,12) FromAlignCol (3,-12))\n"++
+          "2:((9,5),(10,12))(Above FromAlignCol (1,-4) (9,5) (10,12) FromAlignCol (3,-11))\n"++
           "3:((9,5),(9,14))\n"++
           "4:((9,5),(9,7))\n"++
           "4:((9,8),(9,10))\n"++
@@ -2176,7 +2244,7 @@ tree TId 0:
            PprText 6 1 "t :: Int",
            PprText 7 1 "tup@(h,t) = head $ zip [1..10] [3..ff]",
            PprText 8 3 "where",
-           PprAbove (FromAlignCol (1,-4)) (10,12) (FromAlignCol (3,-12))
+           PprAbove (FromAlignCol (1,-4)) (10,12) (FromAlignCol (3,-11))
              [PprText 9 1 "ff :: Int",
               PprText 10 1 "ff = 15"
              ],
@@ -2215,7 +2283,7 @@ tree TId 0:
           "3:((5,9),(5,10))\n"++
           "3:((5,11),(5,12))\n"++
           "3:((6,3),(6,8))\n"++
-          "3:((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-14))\n"++
+          "3:((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-13))\n"++
           "4:((6,9),(6,14))\n"++
           "5:((6,9),(6,10))\n"++
           "5:((6,11),(6,14))\n"++
@@ -2229,7 +2297,7 @@ tree TId 0:
           "3:((8,9),(8,10))\n"++
           "3:((8,11),(8,12))\n"++
           "3:((9,3),(9,8))\n"++
-          "3:((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-10))\n"++
+          "3:((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-9))\n"++
           "4:((10,5),(10,10))\n"++
           "5:((10,5),(10,6))\n"++
           "5:((10,7),(10,10))\n"++
@@ -2243,7 +2311,7 @@ tree TId 0:
           "3:((13,9),(13,10))\n"++
           "3:((14,3),(15,17))\n"++
           "4:((14,3),(14,6))\n"++
-          "4:((14,7),(14,14))(Above None (14,7) (14,14) FromAlignCol (1,-12))\n"++
+          "4:((14,7),(14,14))(Above None (14,7) (14,14) FromAlignCol (1,-11))\n"++
           "5:((14,7),(14,14))\n"++
           "6:((14,7),(14,10))\n"++
           "6:((14,11),(14,14))\n"++
@@ -2261,7 +2329,7 @@ tree TId 0:
           "3:((19,9),(19,10))\n"++
           "3:((20,3),(21,14))\n"++
           "4:((20,3),(20,5))\n"++
-          "4:((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-14))\n"++
+          "4:((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-13))\n"++
           "5:((20,6),(20,18))\n"++
           "6:((20,6),(20,7))\n"++
           "6:((20,11),(20,18))\n"++
@@ -2359,7 +2427,7 @@ tree TId 0:
           "3:((14,33),(14,34))\n"++
           "3:((14,36),(14,38))\n"++
           "2:((15,3),(15,8))\n"++
-          "2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-12))\n"++
+          "2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-11))\n"++
           "3:((16,5),(16,14))\n"++
           "4:((16,5),(16,7))\n"++
           "4:((16,8),(16,10))\n"++
@@ -2395,7 +2463,7 @@ tree TId 0:
           "4:((22,10),(22,11))\n"++
           "4:((22,12),(22,14))\n"++
           "3:((23,3),(23,8))\n"++
-          "3:((24,5),(24,11))(Above FromAlignCol (1,-4) (24,5) (24,11) FromAlignCol (2,-11))\n"++
+          "3:((24,5),(24,11))(Above FromAlignCol (1,-4) (24,5) (24,11) FromAlignCol (2,-10))\n"++
           "4:((24,5),(24,11))\n"++
           "5:((24,5),(24,7))\n"++
           "5:((24,8),(24,11))\n"++
@@ -2408,7 +2476,7 @@ tree TId 0:
           "3:((26,5),(26,6))\n"++
           "3:((27,3),(29,12))\n"++
           "4:((27,3),(27,6))\n"++
-          "4:((28,5),(28,12))(Above FromAlignCol (1,-2) (28,5) (28,12) FromAlignCol (1,-10))\n"++
+          "4:((28,5),(28,12))(Above FromAlignCol (1,-2) (28,5) (28,12) FromAlignCol (1,-9))\n"++
           "5:((28,5),(28,12))\n"++
           "6:((28,5),(28,7))\n"++
           "6:((28,8),(28,12))\n"++
@@ -2425,10 +2493,10 @@ tree TId 0:
           "3:((31,6),(31,7))\n"++
           "3:((31,8),(33,17))\n"++
           "4:((31,8),(31,10))\n"++
-          "4:((32,3),(33,17))(Above FromAlignCol (1,-8) (32,3) (33,18) FromAlignCol (2,-18))\n"++
+          "4:((32,3),(33,17))(Above FromAlignCol (1,-8) (32,3) (33,18) FromAlignCol (2,-17))\n"++
           "5:((32,3),(32,13))\n"++
           "6:((32,3),(32,6))\n"++
-          "6:((32,7),(32,13))(Above None (32,7) (32,13) FromAlignCol (1,-11))\n"++
+          "6:((32,7),(32,13))(Above None (32,7) (32,13) FromAlignCol (1,-10))\n"++
           "7:((32,7),(32,13))\n"++
           "8:((32,7),(32,9))\n"++
           "8:((32,10),(32,13))\n"++
@@ -2482,7 +2550,7 @@ tree TId 0:
            PprText 13 1 "t :: Int",
            PprText 14 1 "tup@(h,t) = head $ zip [1..10] [3..ff]",
            PprText 15 3 "where",
-           PprAbove (FromAlignCol (1,-4)) (17,12) (FromAlignCol (2,-12))
+           PprAbove (FromAlignCol (1,-4)) (17,12) (FromAlignCol (2,-11))
              [PprText 16 1 "ff :: Int",
               PprText 17 1 "ff = 15"
              ],
@@ -2490,17 +2558,17 @@ tree TId 0:
            PprText 21 1 "ff :: Int -> Int",
            PprText 22 1 "ff y = y + zz",
            PprText 23 3 "where",
-           PprAbove (FromAlignCol (1,-4)) (24,11) (FromAlignCol (2,-11))
+           PprAbove (FromAlignCol (1,-4)) (24,11) (FromAlignCol (2,-10))
              [PprText 24 1 "zz = 1"],
            PprText 26 1 "l z =",
            PprText 27 3 "let",
-           PprAbove (FromAlignCol (1,-2)) (28,12) (FromAlignCol (1,-10))
+           PprAbove (FromAlignCol (1,-2)) (28,12) (FromAlignCol (1,-9))
              [PprText 28 1 "ll = 34"],
            PprText 29 3 "in ll + z",
            PprText 31 1 "dd q = do",
-           PprAbove (FromAlignCol (1,-8)) (33,18) (FromAlignCol (2,-18))
+           PprAbove (FromAlignCol (1,-8)) (33,18) (FromAlignCol (2,-17))
              [PprText 32 1 "let",
-              PprAbove None (32,13) (FromAlignCol (1,-11))
+              PprAbove None (32,13) (FromAlignCol (1,-10))
                 [PprText 32 1 "ss = 5"],
               PprText 33 1 "return (ss + q)"
              ],
@@ -2543,7 +2611,7 @@ tree TId 0:
           "3:((6,9),(6,10))\n"++
           "3:((6,11),(8,25))\n"++
           "4:((6,11),(6,14))\n"++
-          "4:((6,15),(7,20))(Above None (6,15) (7,20) FromAlignCol (1,-10))\n"++
+          "4:((6,15),(7,20))(Above None (6,15) (7,20) FromAlignCol (1,-9))\n"++
           "5:((6,15),(6,20))\n"++
           "6:((6,15),(6,16))\n"++
           "6:((6,17),(6,20))\n"++
@@ -2569,7 +2637,7 @@ tree TId 0:
            PprText 3 1 "-- Simple let expression, rename xxx to something longer or shorter",
            PprText 4 1 "-- and the let/in layout should adjust accordingly",
            PprText 6 1 "foo xxx = let",
-           PprAbove None (7,20) (FromAlignCol (1,-10))
+           PprAbove None (7,20) (FromAlignCol (1,-9))
              [PprText 6 1 "a = 1",
               PprText 7 1 "b = 2"
              ],
@@ -2610,7 +2678,7 @@ tree TId 0:
           "4:((3,12),(3,13))\n"++
           "4:((3,14),(3,15))\n"++
           "3:((4,10),(4,15))\n"++
-          "3:((4,16),(4,19))(Above None (4,16) (4,43) FromAlignCol (2,-43))\n"++
+          "3:((4,16),(4,19))(Above None (4,16) (4,43) FromAlignCol (2,-42))\n"++
           "4:((4,16),(4,19))\n"++
           "5:((4,16),(4,17))\n"++
           "5:((4,17),(4,19))\n"++
@@ -2631,7 +2699,7 @@ tree TId 0:
           [PprText 1 1 "module Layout.Comments1 where",
            PprText 3 1 "aFun x = x + p",
            PprText 4 10 "where",
-           PprAbove None (4,43) (FromAlignCol (2,-43))
+           PprAbove None (4,43) (FromAlignCol (2,-42))
              [PprText 4 1 "p=2  {-There is a comment-}"],
            PprText 6 1 "anotherFun = 3",
            PprText 8 1 ""
@@ -2778,7 +2846,7 @@ tree TId 0:
           "3:((14,33),(14,34))\n"++
           "3:((14,36),(14,38))\n"++
           "2:((15,3),(15,8))\n"++
-          "2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-12))\n"++
+          "2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-11))\n"++
           "3:((16,5),(16,14))\n"++
           "4:((16,5),(16,7))\n"++
           "4:((16,8),(16,10))\n"++
@@ -2808,7 +2876,7 @@ tree TId 0:
           "4:((21,10),(21,11))\n"++
           "4:((21,12),(21,14))\n"++
           "3:((22,3),(22,8))\n"++
-          "3:((23,5),(23,11))(Above FromAlignCol (1,-4) (23,5) (23,11) FromAlignCol (2,-11))\n"++
+          "3:((23,5),(23,11))(Above FromAlignCol (1,-4) (23,5) (23,11) FromAlignCol (2,-10))\n"++
           "4:((23,5),(23,11))\n"++
           "5:((23,5),(23,7))\n"++
           "5:((23,8),(23,11))\n"++
@@ -2821,7 +2889,7 @@ tree TId 0:
           "3:((25,5),(25,6))\n"++
           "3:((26,3),(28,12))\n"++
           "4:((26,3),(26,6))\n"++
-          "4:((27,5),(27,12))(Above FromAlignCol (1,-2) (27,5) (27,12) FromAlignCol (1,-10))\n"++
+          "4:((27,5),(27,12))(Above FromAlignCol (1,-2) (27,5) (27,12) FromAlignCol (1,-9))\n"++
           "5:((27,5),(27,12))\n"++
           "6:((27,5),(27,7))\n"++
           "6:((27,8),(27,12))\n"++
@@ -2838,10 +2906,10 @@ tree TId 0:
           "3:((30,6),(30,7))\n"++
           "3:((30,8),(32,17))\n"++
           "4:((30,8),(30,10))\n"++
-          "4:((31,3),(32,17))(Above FromAlignCol (1,-8) (31,3) (32,18) FromAlignCol (2,-18))\n"++
+          "4:((31,3),(32,17))(Above FromAlignCol (1,-8) (31,3) (32,18) FromAlignCol (2,-17))\n"++
           "5:((31,3),(31,13))\n"++
           "6:((31,3),(31,6))\n"++
-          "6:((31,7),(31,13))(Above None (31,7) (31,13) FromAlignCol (1,-11))\n"++
+          "6:((31,7),(31,13))(Above None (31,7) (31,13) FromAlignCol (1,-10))\n"++
           "7:((31,7),(31,13))\n"++
           "8:((31,7),(31,9))\n"++
           "8:((31,10),(31,13))\n"++
@@ -2899,7 +2967,7 @@ tree TId 0:
           "4:((7,8),(7,13))\n"++
           "4:((7,14),(7,21))\n"++
           "3:((7,22),(7,27))\n"++
-          "3:((7,28),(12,53))(Above None (7,28) (12,53) FromAlignCol (2,-53))\n"++
+          "3:((7,28),(12,53))(Above None (7,28) (12,53) FromAlignCol (2,-52))\n"++
           "4:((7,28),(12,53))\n"++
           "5:((7,28),(7,33))\n"++
           "5:((7,34),(12,53))\n"++
@@ -2907,10 +2975,10 @@ tree TId 0:
           "6:((7,35),(7,36))\n"++
           "6:((7,37),(12,53))\n"++
           "7:((7,37),(7,39))\n"++
-          "7:((7,41),(12,53))(Above SameLine 1 (7,41) (12,53) FromAlignCol (2,-53))\n"++
+          "7:((7,41),(12,53))(Above SameLine 1 (7,41) (12,53) FromAlignCol (2,-52))\n"++
           "8:((7,41),(7,59))\n"++
           "9:((7,41),(7,44))\n"++
-          "9:((7,46),(7,59))(Above SameLine 1 (7,46) (7,59) FromAlignCol (2,-19))\n"++
+          "9:((7,46),(7,59))(Above SameLine 1 (7,46) (7,59) FromAlignCol (1,-57))\n"++
           "10:((7,46),(7,59))\n"++
           "11:((7,46),(7,47))\n"++
           "11:((7,48),(7,59))\n"++
@@ -2923,7 +2991,7 @@ tree TId 0:
           "9:((9,46),(9,53))\n"++
           "8:((10,41),(10,58))\n"++
           "9:((10,41),(10,44))\n"++
-          "9:((10,46),(10,58))(Above SameLine 1 (10,46) (10,58) FromAlignCol (1,-18))\n"++
+          "9:((10,46),(10,58))(Above SameLine 1 (10,46) (10,58) FromAlignCol (1,-17))\n"++
           "10:((10,46),(10,58))\n"++
           "11:((10,46),(10,47))\n"++
           "11:((10,48),(10,57))\n"++
@@ -2941,7 +3009,6 @@ tree TId 0:
           "9:((12,48),(12,53))\n"++
           "1:((14,1),(14,1))\n"
 
-
       -- (show layout) `shouldBe` ""
 
       let pprVal = retrieveTokensPpr layout
@@ -2951,15 +3018,15 @@ tree TId 0:
           PprText 3 1 "--Layout rule applies after 'where','let','do' and 'of'",
           PprText 5 1 "--In this Example: rename 'ioFun' to  'io'",
           PprText 7 1 "main = ioFun \"hello\" where",
-          PprAbove None (12,53) (FromAlignCol (2,-53))
+          PprAbove None (12,53) (FromAlignCol (2,-52))
             [PprText 7 1 "ioFun s= do",
-             PprAbove (SameLine 1) (12,53) (FromAlignCol (2,-53))
+             PprAbove (SameLine 1) (12,53) (FromAlignCol (2,-52))
                [PprText 7 1 "let",
-                PprAbove (SameLine 1) (7,59) (FromAlignCol (2,-19))
+                PprAbove (SameLine 1) (7,59) (FromAlignCol (1,-57))
                   [PprText 7 1 "k = reverse s"],
                 PprText 8 (-38) "--There is a comment",
                 PprText 9 1 "s <- getLine",PprText 10 1 "let",
-                PprAbove (SameLine 1) (10,58) (FromAlignCol (1,-18))
+                PprAbove (SameLine 1) (10,58) (FromAlignCol (1,-17))
                   [PprText 10 1 "q = (k ++ s)"],
                 PprText 11 1 "putStr q",
                 PprText 12 1 "putStr \"foo\""
@@ -3046,6 +3113,9 @@ tree TId 0:
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n module TokenTest where"
 
+      (renderPpr $ retrieveTokensPpr forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nmodule TokenTest where"
+
+
     -- --------------------------------------
 
     it "replaces the tokens for a given span, and returns all the tokens later" $ do
@@ -3090,6 +3160,8 @@ tree TId 0:
 
       -- (show toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bbb x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
+
+      (renderPpr $ retrieveTokensPpr  forest''') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbbb x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n"
 
     -- --------------------------------------
 
@@ -3251,6 +3323,13 @@ tree TId 0:
       (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe`
                "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
 
+      "error" `shouldBe` "reinstate the following"
+      -- TODO: the following generates a very large number of '\n'
+      -- chars. Suspect the line is not being cleanly extracted from
+      -- the tree.
+      -- (renderPpr $ retrieveTokensPpr f3) `shouldBe`
+      --          "\n\n\n\n\n\n\n\n\n\n\n\naddthree a b c=x+b+c"
+
   -- ---------------------------------------------
 
   describe "replaceTokenForSrcSpan" $ do
@@ -3274,10 +3353,12 @@ tree TId 0:
       let forest' = replaceTokenForSrcSpan forest lt newTok
 
       (drawTreeCompact forest') `shouldBe`
-         "0:((1,1),(26,1))\n1:((1,1),(1,7))\n1:((1,8),(1,17))\n1:((1,18),(1,23))\n1:((5,1),(6,14))\n2:((5,1),(5,4))\n2:((5,5),(6,14))\n3:((5,5),(5,6))\n3:((5,7),(5,8))\n3:((5,9),(5,10))\n3:((5,11),(5,12))\n3:((6,3),(6,8))\n3:((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-14))\n4:((6,9),(6,14))\n5:((6,9),(6,10))\n5:((6,11),(6,14))\n6:((6,11),(6,12))\n6:((6,13),(6,14))\n1:((8,1),(10,10))\n2:((8,1),(8,4))\n2:((8,5),(10,10))\n3:((8,5),(8,6))\n3:((8,7),(8,8))\n3:((8,9),(8,10))\n3:((8,11),(8,12))\n3:((9,3),(9,8))\n3:((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-10))\n4:((10,5),(10,10))\n5:((10,5),(10,6))\n5:((10,7),(10,10))\n6:((10,7),(10,8))\n6:((10,9),(10,10))\n1:((13,1),(15,17))\n2:((13,1),(13,4))\n2:((13,5),(15,17))\n3:((13,5),(13,6))\n3:((13,7),(13,8))\n3:((13,9),(13,10))\n3:((14,3),(15,17))\n4:((14,3),(14,6))\n4:((14,7),(14,14))(Above None (14,7) (14,14) FromAlignCol (1,-12))\n5:((14,7),(14,14))\n6:((14,7),(14,10))\n6:((14,11),(14,14))\n7:((14,11),(14,12))\n7:((14,13),(14,14))\n4:((15,10),(15,17))\n5:((15,10),(15,11))\n5:((15,12),(15,13))\n5:((15,14),(15,17))\n1:((19,1),(21,14))\n2:((19,1),(19,4))\n2:((19,5),(21,14))\n3:((19,5),(19,6))\n3:((19,7),(19,8))\n3:((19,9),(19,10))\n3:((20,3),(21,14))\n4:((20,3),(20,5))\n4:((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-14))\n5:((20,6),(20,18))\n6:((20,6),(20,7))\n6:((20,11),(20,18))\n5:((21,6),(21,14))\n6:((21,6),(21,12))\n6:((21,13),(21,14))\n1:((26,1),(26,1))\n"
+         "0:((1,1),(26,1))\n1:((1,1),(1,7))\n1:((1,8),(1,17))\n1:((1,18),(1,23))\n1:((5,1),(6,14))\n2:((5,1),(5,4))\n2:((5,5),(6,14))\n3:((5,5),(5,6))\n3:((5,7),(5,8))\n3:((5,9),(5,10))\n3:((5,11),(5,12))\n3:((6,3),(6,8))\n3:((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-13))\n4:((6,9),(6,14))\n5:((6,9),(6,10))\n5:((6,11),(6,14))\n6:((6,11),(6,12))\n6:((6,13),(6,14))\n1:((8,1),(10,10))\n2:((8,1),(8,4))\n2:((8,5),(10,10))\n3:((8,5),(8,6))\n3:((8,7),(8,8))\n3:((8,9),(8,10))\n3:((8,11),(8,12))\n3:((9,3),(9,8))\n3:((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-9))\n4:((10,5),(10,10))\n5:((10,5),(10,6))\n5:((10,7),(10,10))\n6:((10,7),(10,8))\n6:((10,9),(10,10))\n1:((13,1),(15,17))\n2:((13,1),(13,4))\n2:((13,5),(15,17))\n3:((13,5),(13,6))\n3:((13,7),(13,8))\n3:((13,9),(13,10))\n3:((14,3),(15,17))\n4:((14,3),(14,6))\n4:((14,7),(14,14))(Above None (14,7) (14,14) FromAlignCol (1,-11))\n5:((14,7),(14,14))\n6:((14,7),(14,10))\n6:((14,11),(14,14))\n7:((14,11),(14,12))\n7:((14,13),(14,14))\n4:((15,10),(15,17))\n5:((15,10),(15,11))\n5:((15,12),(15,13))\n5:((15,14),(15,17))\n1:((19,1),(21,14))\n2:((19,1),(19,4))\n2:((19,5),(21,14))\n3:((19,5),(19,6))\n3:((19,7),(19,8))\n3:((19,9),(19,10))\n3:((20,3),(21,14))\n4:((20,3),(20,5))\n4:((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-13))\n5:((20,6),(20,18))\n6:((20,6),(20,7))\n6:((20,11),(20,18))\n5:((21,6),(21,14))\n6:((21,6),(21,12))\n6:((21,13),(21,14))\n1:((26,1),(26,1))\n"
 
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+
+      (renderPpr $ retrieveTokensPpr forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbab x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
     -- ---------------------------------
 
@@ -3289,7 +3370,7 @@ tree TId 0:
       -- let f1 = mkTreeFromTokens toks
       let f1 = initTokenLayout parsed toks
 
-      (drawTreeCompact f1) `shouldBe` "0:((1,1),(34,1))\n1:((1,1),(1,7))\n1:((1,8),(1,18))\n1:((1,19),(1,24))\n1:((3,1),(3,31))\n2:((3,1),(3,9))\n2:((3,10),(3,12))\n2:((3,13),(3,20))\n2:((3,21),(3,23))\n2:((3,24),(3,31))\n1:((4,1),(4,19))\n2:((4,1),(4,9))\n2:((4,10),(4,19))\n3:((4,10),(4,11))\n3:((4,12),(4,13))\n3:((4,14),(4,19))\n4:((4,14),(4,15))\n4:((4,16),(4,17))\n4:((4,18),(4,19))\n1:((6,1),(6,15))\n2:((6,1),(6,2))\n2:((6,2),(6,3))\n2:((6,3),(6,4))\n2:((6,5),(6,7))\n2:((6,8),(6,15))\n1:((7,1),(7,6))\n2:((7,1),(7,2))\n2:((7,3),(7,6))\n3:((7,3),(7,4))\n3:((7,5),(7,6))\n1:((8,1),(8,6))\n2:((8,1),(8,2))\n2:((8,3),(8,6))\n3:((8,3),(8,4))\n3:((8,5),(8,6))\n1:((11,1),(11,18))\n2:((11,1),(11,4))\n2:((11,5),(11,7))\n2:((11,8),(11,9))\n2:((11,9),(11,12))\n2:((11,12),(11,13))\n2:((11,14),(11,17))\n2:((11,17),(11,18))\n1:((12,1),(12,9))\n2:((12,1),(12,2))\n2:((12,3),(12,5))\n2:((12,6),(12,9))\n1:((13,1),(13,9))\n2:((13,1),(13,2))\n2:((13,3),(13,5))\n2:((13,6),(13,9))\n1:((14,1),(17,12))\n2:((14,1),(14,10))\n2:((14,11),(14,12))\n2:((14,13),(14,38))\n3:((14,13),(14,17))\n3:((14,18),(14,19))\n3:((14,20),(14,23))\n3:((14,24),(14,25))\n3:((14,25),(14,26))\n3:((14,28),(14,30))\n3:((14,32),(14,33))\n3:((14,33),(14,34))\n3:((14,36),(14,38))\n2:((15,3),(15,8))\n2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-12))\n3:((16,5),(16,14))\n4:((16,5),(16,7))\n4:((16,8),(16,10))\n4:((16,11),(16,14))\n3:((17,5),(17,12))\n4:((17,5),(17,7))\n4:((17,8),(17,12))\n5:((17,8),(17,9))\n5:((17,10),(17,12))\n1:((19,1),(19,5))\n1:((19,6),(19,7))\n1:((19,8),(19,9))\n1:((19,10),(19,11))\n1:((19,12),(19,13))\n1:((19,14),(19,22))\n2:((19,14),(19,15))\n2:((19,16),(19,22))\n1:((19,23),(19,24))\n1:((19,25),(19,26))\n1:((21,1),(23,11))\n2:((21,1),(21,3))\n2:((21,4),(23,11))\n3:((21,4),(21,5))\n3:((21,6),(21,7))\n3:((21,8),(21,14))\n4:((21,8),(21,9))\n4:((21,10),(21,11))\n4:((21,12),(21,14))\n3:((22,3),(22,8))\n3:((23,5),(23,11))(Above FromAlignCol (1,-4) (23,5) (23,11) FromAlignCol (2,-11))\n4:((23,5),(23,11))\n5:((23,5),(23,7))\n5:((23,8),(23,11))\n6:((23,8),(23,9))\n6:((23,10),(23,11))\n1:((25,1),(28,12))\n2:((25,1),(25,2))\n2:((25,3),(28,12))\n3:((25,3),(25,4))\n3:((25,5),(25,6))\n3:((26,3),(28,12))\n4:((26,3),(26,6))\n4:((27,5),(27,12))(Above FromAlignCol (1,-2) (27,5) (27,12) FromAlignCol (1,-10))\n5:((27,5),(27,12))\n6:((27,5),(27,7))\n6:((27,8),(27,12))\n7:((27,8),(27,9))\n7:((27,10),(27,12))\n4:((28,6),(28,12))\n5:((28,6),(28,8))\n5:((28,9),(28,10))\n5:((28,11),(28,12))\n1:((30,1),(32,18))\n2:((30,1),(30,3))\n2:((30,4),(32,17))\n3:((30,4),(30,5))\n3:((30,6),(30,7))\n3:((30,8),(32,17))\n4:((30,8),(30,10))\n4:((31,3),(32,17))(Above FromAlignCol (1,-8) (31,3) (32,18) FromAlignCol (2,-18))\n5:((31,3),(31,13))\n6:((31,3),(31,6))\n6:((31,7),(31,13))(Above None (31,7) (31,13) FromAlignCol (1,-11))\n7:((31,7),(31,13))\n8:((31,7),(31,9))\n8:((31,10),(31,13))\n9:((31,10),(31,11))\n9:((31,12),(31,13))\n5:((32,3),(32,17))\n6:((32,3),(32,9))\n6:((32,10),(32,11))\n6:((32,11),(32,13))\n6:((32,14),(32,15))\n6:((32,16),(32,17))\n1:((34,1),(34,1))\n"
+      (drawTreeCompact f1) `shouldBe` "0:((1,1),(34,1))\n1:((1,1),(1,7))\n1:((1,8),(1,18))\n1:((1,19),(1,24))\n1:((3,1),(3,31))\n2:((3,1),(3,9))\n2:((3,10),(3,12))\n2:((3,13),(3,20))\n2:((3,21),(3,23))\n2:((3,24),(3,31))\n1:((4,1),(4,19))\n2:((4,1),(4,9))\n2:((4,10),(4,19))\n3:((4,10),(4,11))\n3:((4,12),(4,13))\n3:((4,14),(4,19))\n4:((4,14),(4,15))\n4:((4,16),(4,17))\n4:((4,18),(4,19))\n1:((6,1),(6,15))\n2:((6,1),(6,2))\n2:((6,2),(6,3))\n2:((6,3),(6,4))\n2:((6,5),(6,7))\n2:((6,8),(6,15))\n1:((7,1),(7,6))\n2:((7,1),(7,2))\n2:((7,3),(7,6))\n3:((7,3),(7,4))\n3:((7,5),(7,6))\n1:((8,1),(8,6))\n2:((8,1),(8,2))\n2:((8,3),(8,6))\n3:((8,3),(8,4))\n3:((8,5),(8,6))\n1:((11,1),(11,18))\n2:((11,1),(11,4))\n2:((11,5),(11,7))\n2:((11,8),(11,9))\n2:((11,9),(11,12))\n2:((11,12),(11,13))\n2:((11,14),(11,17))\n2:((11,17),(11,18))\n1:((12,1),(12,9))\n2:((12,1),(12,2))\n2:((12,3),(12,5))\n2:((12,6),(12,9))\n1:((13,1),(13,9))\n2:((13,1),(13,2))\n2:((13,3),(13,5))\n2:((13,6),(13,9))\n1:((14,1),(17,12))\n2:((14,1),(14,10))\n2:((14,11),(14,12))\n2:((14,13),(14,38))\n3:((14,13),(14,17))\n3:((14,18),(14,19))\n3:((14,20),(14,23))\n3:((14,24),(14,25))\n3:((14,25),(14,26))\n3:((14,28),(14,30))\n3:((14,32),(14,33))\n3:((14,33),(14,34))\n3:((14,36),(14,38))\n2:((15,3),(15,8))\n2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-11))\n3:((16,5),(16,14))\n4:((16,5),(16,7))\n4:((16,8),(16,10))\n4:((16,11),(16,14))\n3:((17,5),(17,12))\n4:((17,5),(17,7))\n4:((17,8),(17,12))\n5:((17,8),(17,9))\n5:((17,10),(17,12))\n1:((19,1),(19,5))\n1:((19,6),(19,7))\n1:((19,8),(19,9))\n1:((19,10),(19,11))\n1:((19,12),(19,13))\n1:((19,14),(19,22))\n2:((19,14),(19,15))\n2:((19,16),(19,22))\n1:((19,23),(19,24))\n1:((19,25),(19,26))\n1:((21,1),(23,11))\n2:((21,1),(21,3))\n2:((21,4),(23,11))\n3:((21,4),(21,5))\n3:((21,6),(21,7))\n3:((21,8),(21,14))\n4:((21,8),(21,9))\n4:((21,10),(21,11))\n4:((21,12),(21,14))\n3:((22,3),(22,8))\n3:((23,5),(23,11))(Above FromAlignCol (1,-4) (23,5) (23,11) FromAlignCol (2,-10))\n4:((23,5),(23,11))\n5:((23,5),(23,7))\n5:((23,8),(23,11))\n6:((23,8),(23,9))\n6:((23,10),(23,11))\n1:((25,1),(28,12))\n2:((25,1),(25,2))\n2:((25,3),(28,12))\n3:((25,3),(25,4))\n3:((25,5),(25,6))\n3:((26,3),(28,12))\n4:((26,3),(26,6))\n4:((27,5),(27,12))(Above FromAlignCol (1,-2) (27,5) (27,12) FromAlignCol (1,-9))\n5:((27,5),(27,12))\n6:((27,5),(27,7))\n6:((27,8),(27,12))\n7:((27,8),(27,9))\n7:((27,10),(27,12))\n4:((28,6),(28,12))\n5:((28,6),(28,8))\n5:((28,9),(28,10))\n5:((28,11),(28,12))\n1:((30,1),(32,18))\n2:((30,1),(30,3))\n2:((30,4),(32,17))\n3:((30,4),(30,5))\n3:((30,6),(30,7))\n3:((30,8),(32,17))\n4:((30,8),(30,10))\n4:((31,3),(32,17))(Above FromAlignCol (1,-8) (31,3) (32,18) FromAlignCol (2,-17))\n5:((31,3),(31,13))\n6:((31,3),(31,6))\n6:((31,7),(31,13))(Above None (31,7) (31,13) FromAlignCol (1,-10))\n7:((31,7),(31,13))\n8:((31,7),(31,9))\n8:((31,10),(31,13))\n9:((31,10),(31,11))\n9:((31,12),(31,13))\n5:((32,3),(32,17))\n6:((32,3),(32,9))\n6:((32,10),(32,11))\n6:((32,11),(32,13))\n6:((32,14),(32,15))\n6:((32,16),(32,17))\n1:((34,1),(34,1))\n"
 
       (invariant f1) `shouldBe` []
 
@@ -3355,6 +3436,7 @@ tree TId 0:
       let toks' = retrieveTokensFinal f5
       (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2 :: Integer -> Integerc,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 
+      (renderPpr $ retrieveTokensPpr f5) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nbar2 :: Integer -> Integerc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
 
   -- ---------------------------------------------
 
@@ -3579,7 +3661,7 @@ tree TId 0:
           "4:((3,18),(3,20))\n"++
           "4:((3,21),(3,22))\n"++
           "3:((4,6),(4,11))\n"++
-          "3:((4,12),(4,22))(Above None (4,12) (4,22) FromAlignCol (1,-22))\n"++
+          "3:((4,12),(4,22))(Above None (4,12) (4,22) FromAlignCol (1,-21))\n"++
           "4:((4,12),(4,22))\n"++
           "5:((4,12),(4,14))\n"++
           "5:((4,15),(4,22))\n"++
@@ -3614,7 +3696,7 @@ tree TId 0:
           "4:((3,18),(3,20))\n"++
           "4:((3,21),(3,22))\n"++
           "3:((4,6),(4,11))\n"++
-          "3:((4,12),(4,22))(Above None (4,12) (4,22) FromAlignCol (1,-22))\n"++
+          "3:((4,12),(4,22))(Above None (4,12) (4,22) FromAlignCol (1,-21))\n"++
           "4:((4,12),(4,22))\n"++
           "5:((4,12),(4,14))\n"++
           "5:((4,15),(4,22))\n"++
@@ -4853,6 +4935,8 @@ tree TId 0:
       -- (show $ deleteGapsToks es) `shouldBe` ""
       (GHC.showRichTokenStream $ retrieveTokensFinal f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
+      (renderPpr $ retrieveTokensPpr f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
+
   -- ---------------------------------------------
 
   describe "deleteGapsToks" $ do
@@ -4976,7 +5060,7 @@ tree TId 0:
           "3:((5,5),(5,6))\n"++
           "3:((5,7),(7,15))\n"++
           "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
           "5:((5,11),(5,16))\n"++
           "6:((5,11),(5,12))\n"++
           "6:((5,13),(5,16))\n"++
@@ -5016,7 +5100,7 @@ tree TId 0:
           "3:((5,5),(5,6))\n"++
           "3:((5,7),(7,15))\n"++
           "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
           "5:((5,11),(5,16))\n"++
           "6:((5,11),(5,12))\n"++
           "6:((5,13),(5,16))\n"++

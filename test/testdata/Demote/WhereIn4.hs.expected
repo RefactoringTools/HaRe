@@ -13,6 +13,7 @@ sumSquares x y = sq   x + sq   y
                sq z     = z^p    --there is a comment
 
 
+
 anotherFun 0 y = sq y
      where  sq x = x^2
 

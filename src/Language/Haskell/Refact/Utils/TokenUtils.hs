@@ -2170,9 +2170,12 @@ invariant forest = rsub
         rs = if ((start <= sstart) &&
                 ((end >= send) || (forestPosVersionSet send) || (forestPosAstVersionSet send)))
                 || (forestPosLenChanged start)
+                || (forestPosLenChanged sstart)
+                || (forestPosLenChanged send)
 
                then []
                else ["FAIL: subForest start and end does not match entry: " ++ (prettyshow node)]
+               -- else ["FAIL: subForest start and end does not match entry: " ++ (show node)]
 
         rseq = checkSequence node subs
 

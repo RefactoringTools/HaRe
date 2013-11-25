@@ -9,12 +9,12 @@ import           TestUtils
 import qualified Digraph    as GHC
 import qualified FastString as GHC
 import qualified GHC        as GHC
-import qualified GhcMonad   as GHC
+-- import qualified GhcMonad   as GHC
 import qualified HscTypes   as GHC
 
 import Control.Exception
 import Control.Monad.State
-import Data.Algorithm.Diff
+-- import Data.Algorithm.Diff
 import Data.Maybe
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Renaming

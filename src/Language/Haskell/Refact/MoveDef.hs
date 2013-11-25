@@ -317,7 +317,7 @@ moveDecl1 t defName ns sigNames topLevel
         logm $ "moveDecl1: (ns,funBinding)=" ++ (showGhc (ns,funBinding)) -- ++AZ++
 
         let Just sspan = getSrcSpan funBinding
-        -- drawTokenTree "before getting toks" -- ++AZ++
+        drawTokenTree "before getting toks" -- ++AZ++
         funToks <- getToksForSpan sspan
         logm $ "moveDecl1:funToks=" ++ (showToks funToks)
         drawTokenTree "moveDecl1:after getting toks" -- ++AZ++ 'in' present
@@ -912,6 +912,7 @@ doDemoting  pn = do
   putRefactRenamed renamed'
   -- ren <- getRefactRenamed
   -- error ("doDemoting:ren=" ++ (showGhc ren))
+  showPprDebug "doDemoting done"
   return ()
 {-
  =runStateT (applyTP ((once_tdTP (failTP `adhocTP` demoteInMod

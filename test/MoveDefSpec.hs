@@ -118,7 +118,7 @@ spec = do
 
     it "liftToTopLevel WhereIn6 13 29" $ do
      r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/WhereIn6.hs" (13,29)
-     -- r <- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/WhereIn6.hs" (13,29)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/WhereIn6.hs" (13,29)
      (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/WhereIn6.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/WhereIn6.hs.expected"
                           "./test/testdata/LiftToToplevel/WhereIn6.hs.refactored"
@@ -130,7 +130,7 @@ spec = do
     it "liftToTopLevel WhereIn7 12 14" $ do
      r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/WhereIn7.hs" (12,14)
      -- r <- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/WhereIn7.hs" (12,14)
-     (show r) `shouldBe` ""
+     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/WhereIn7.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/WhereIn7.hs.expected"
                           "./test/testdata/LiftToToplevel/WhereIn7.hs.refactored"
      diff `shouldBe` []
@@ -140,7 +140,7 @@ spec = do
     it "liftToTopLevel LetIn1 11 22" $ do
      r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LetIn1.hs" (11,22)
      -- r <- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/LetIn1.hs" (11,22)
-     (show r) `shouldBe` ""
+     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/LetIn1.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/LetIn1.hs.expected"
                           "./test/testdata/LiftToToplevel/LetIn1.hs.refactored"
      diff `shouldBe` []
@@ -151,7 +151,7 @@ spec = do
     it "liftToTopLevel LetIn2 10 22" $ do
      r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LetIn2.hs" (10,22)
      -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/LetIn2.hs" (10,22)
-     (show r) `shouldBe` ""
+     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/LetIn2.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/LetIn2.hs.expected"
                           "./test/testdata/LiftToToplevel/LetIn2.hs.refactored"
      diff `shouldBe` []
@@ -162,7 +162,7 @@ spec = do
     it "liftToTopLevel LetIn3 10 27" $ do
      r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LetIn3.hs" (10,27)
      -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/LetIn3.hs" (10,27)
-     (show r) `shouldBe` ""
+     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/LetIn3.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/LetIn3.hs.expected"
                           "./test/testdata/LiftToToplevel/LetIn3.hs.refactored"
      diff `shouldBe` []
@@ -182,7 +182,7 @@ spec = do
     it "liftToTopLevel PatBindIn3 11 15" $ do
      r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/PatBindIn3.hs" (11,15)
      -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/PatBindIn3.hs" (11,15)
-     (show r) `shouldBe` ""
+     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/PatBindIn3.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/PatBindIn3.hs.expected"
                           "./test/testdata/LiftToToplevel/PatBindIn3.hs.refactored"
      diff `shouldBe` []
@@ -319,7 +319,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     it "LiftOneLevel WhereIn7 12 14" $ do
      r <- liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
      -- r <- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
-     (show r) `shouldBe` ""
+     (show r) `shouldBe` "[\"./test/testdata/LiftOneLevel/WhereIn7.hs\"]"
      diff <- compareFiles "./test/testdata/LiftOneLevel/WhereIn7.hs.expected"
                           "./test/testdata/LiftOneLevel/WhereIn7.hs.refactored"
      diff `shouldBe` []
@@ -350,7 +350,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     it "LiftOneLevel LetIn2 11 22" $ do
      r <- liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/LetIn2.hs" (11,22)
      -- r <- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/LetIn2.hs" (11,22)
-     (show r) `shouldBe` ""
+     (show r) `shouldBe` "[\"./test/testdata/LiftOneLevel/LetIn2.hs\"]"
      diff <- compareFiles "./test/testdata/LiftOneLevel/LetIn2.hs.expected"
                           "./test/testdata/LiftOneLevel/LetIn2.hs.refactored"
      diff `shouldBe` []
@@ -370,7 +370,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     it "LiftOneLevel PatBindIn3 11 15" $ do
      r <- liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/PatBindIn3.hs" (11,15)
      -- r <- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/PatBindIn3.hs" (11,15)
-     (show r) `shouldBe` ""
+     (show r) `shouldBe` "[\"./test/testdata/LiftOneLevel/PatBindIn3.hs\"]"
      diff <- compareFiles "./test/testdata/LiftOneLevel/PatBindIn3.hs.expected"
                           "./test/testdata/LiftOneLevel/PatBindIn3.hs.refactored"
      diff `shouldBe` []
@@ -553,9 +553,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes D2 5 1 when not imported by other module" $ do
-     -- doDemote ["./test/testdata/Demote/D2.hs","5","1"]
      r <- demote defaultTestSettings testCradle "./test/testdata/Demote/D2.hs" (5,1)
-     -- r <- demote logTestSettings testCradle Nothing "./test/testdata/Demote/D2.hs" (5,1)
+     -- r <- demote logTestSettings testCradle "./test/testdata/Demote/D2.hs" (5,1)
      (show r) `shouldBe` "[\"./test/testdata/Demote/D2.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/D2.hs.refactored"
                           "./test/testdata/Demote/D2.hs.expected"
