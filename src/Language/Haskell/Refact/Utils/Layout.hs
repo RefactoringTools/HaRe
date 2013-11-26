@@ -154,7 +154,7 @@ instance Outputable Entry where
 
 instance Outputable Layout where
   ppr (Above so p1 p2 oe)   = text "Above" <+> ppr so <+> ppr p1 <+> ppr p2 <+> ppr oe
-  ppr (Offset r c)    = text "Offset" <+> ppr r <+> ppr c
+  -- ppr (Offset r c)    = text "Offset" <+> ppr r <+> ppr c
   ppr (NoChange)      = text "NoChange"
   -- ppr (EndOffset r c) = text "EndOffset" <+> ppr r <+> ppr c
 
@@ -163,8 +163,10 @@ instance Outputable Ppr where
                         <+> text "\"" <> text str <> text "\""
   ppr (PprAbove so rc erc pps) = hang (text "PprAbove" <+> ppr so <+> ppr rc <+> ppr erc)
                                            2 (ppr pps)
-  ppr (PprOffset ro co pps)       = hang (text "PprOffset" <+> ppr ro <+> ppr co)
-                                           2 (ppr pps)
+  -- ppr (PprOffset ro co pps)       = hang (text "PprOffset" <+> ppr ro <+> ppr co)
+  --                                          2 (ppr pps)
+  ppr (PprDeleted ro co rd)       = text "PprDeleted" <+> ppr ro <+> ppr co
+                                           <+> ppr rd
 
 instance Outputable EndOffset where
   ppr None               = text "None"
@@ -311,7 +313,11 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyDecl (GHC.L ln _) vars def _fvs
                      ++ (makeLeafFromToks nToks) ++ varsLayout ++ typeLayout
                      ++ (makeLeafFromToks toks4))
 #endif
+#if __GLASGOW_HASKELL__ > 704
 allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L ln _) vars fds sigs meths ats atdefs docs _fvs))) = (acc++r,toks')
+#else
+allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L ln _) vars fds sigs meths ats atdefs docs     ))) = (acc++r,toks')
+#endif
   where
     (s1,clToks,  toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     (s2,ctxToks, toks1) = splitToksIncComments (ghcSpanStartEnd lc) clToks
@@ -332,7 +338,11 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L
     sigMix     = makeMixedListEntry sigs     (shim allocSig)
     methsMix   = makeMixedListEntry bindList (shim allocBind)
     atsMix     = makeMixedListEntry ats      (shim allocLTyClDecl)
+#if __GLASGOW_HASKELL__ > 704
     atsdefsMix = makeMixedListEntry atdefs   (shim allocLFamInstDecl)
+#else
+    atsdefsMix = makeMixedListEntry atdefs   (shim allocLTyClDecl)
+#endif
     docsMix    = makeMixedListEntry docs     (shim allocLocated)
 
     bindsLayout = allocMixedList (sigMix++methsMix++atsMix++atsdefsMix++docsMix) toks4
@@ -343,21 +353,27 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L
              ++ fdsLayout ++ bindsLayout
 
 {-
-ClassDecl
+ClassDecl	 
 
 tcdCtxt :: LHsContext name
 
-    Context... 
+    Context...
+
+    Context 
 tcdLName :: Located name
 
     Name of the class
 
+    type constructor
+
     Type constructor 
-tcdTyVars :: LHsTyVarBndrs name
+tcdTyVars :: [LHsTyVarBndr name]
 
     Class type variables
 
-    Type variables; for an associated type these include outer binders Eg class T a where type F a :: * type F a = a -> a Here the type decl for f includes a in its tcdTyVars 
+    type variables
+
+    Type variables 
 tcdFDs :: [Located (FunDep name)]
 
     Functional deps 
@@ -370,14 +386,12 @@ tcdMeths :: LHsBinds name
 tcdATs :: [LTyClDecl name]
 
     Associated types; ie only TyFamily 
-tcdATDefs :: [LFamInstDecl name]
+tcdATDefs :: [LTyClDecl name]
 
     Associated type defaults; ie only TySynonym 
 tcdDocs :: [LDocDecl]
 
     Haddock docs 
-tcdFVs :: NameSet
-
 
 -}
 -- ---------------------------------------------------------------------
@@ -872,7 +886,7 @@ allocType (GHC.L l (GHC.HsForAllTy _ef vars (GHC.L lc ctx) typ) ) toks = r
 #if __GLASGOW_HASKELL__ > 704
     (varsLayout,toks2) = allocTyVarBndrs vars exprToks
 #else
-    (s1',tp,toks2) = splitToksForList vars
+    (s1',tp,toks2) = splitToksForList vars exprToks
     varsLayout = strip $ (makeLeafFromToks s1') ++ allocList vars tp allocTyVarBndr
 #endif
     (s2,ctxToks,toks3) = splitToksIncComments (ghcSpanStartEnd lc) toks2
@@ -1126,13 +1140,21 @@ allocTyVarBndrs (GHC.HsQTvs _kvs tvs) toks = (r,s1)
 -- ---------------------------------------------------------------------
 
 allocTyVarBndr :: GHC.LHsTyVarBndr GHC.RdrName -> [PosToken] -> [LayoutTree]
-allocTyVarBndr n@(GHC.L l (GHC.UserTyVar _)) toks = r
+#if __GLASGOW_HASKELL__ > 704
+allocTyVarBndr n@(GHC.L l (GHC.UserTyVar _  )) toks = r
+#else
+allocTyVarBndr n@(GHC.L l (GHC.UserTyVar _ _)) toks = r
+#endif
   where
     (s1,toks1,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     nLayout = allocLocated n toks1
     r = strip $ (makeLeafFromToks s1) ++ nLayout
              ++ (makeLeafFromToks toks')
-allocTyVarBndr (GHC.L l (GHC.KindedTyVar _n k@(GHC.L lk _))) toks = r
+#if __GLASGOW_HASKELL__ > 704
+allocTyVarBndr (GHC.L l (GHC.KindedTyVar _n k@(GHC.L lk _)  )) toks = r
+#else
+allocTyVarBndr (GHC.L l (GHC.KindedTyVar _n k@(GHC.L lk _) _)) toks = r
+#endif
   where
     (s1,toks1,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     (nToks,kToks,toks2) = splitToksIncComments (ghcSpanStartEnd lk) toks1
@@ -1142,15 +1164,6 @@ allocTyVarBndr (GHC.L l (GHC.KindedTyVar _n k@(GHC.L lk _))) toks = r
              ++ kindLayout ++ (makeLeafFromToks toks2)
              ++ (makeLeafFromToks toks')
 
-{-
-
-data HsTyVarBndr name
-
-Constructors
-  UserTyVar name	 
-  KindedTyVar name (LHsKind name)	 
-
--}
 -- ---------------------------------------------------------------------
 
 #if __GLASGOW_HASKELL__ > 704
@@ -1198,40 +1211,7 @@ allocHsTyDefn (GHC.TyData _ (GHC.L lc ctx) mc mk cons mderivs) toks = (r,toks')
 #endif
 
 -- ---------------------------------------------------------------------
-{-
-ConDecl	 
 
-con_name :: Located name
-
-    Constructor name. This is used for the DataCon itself, and for the user-callable wrapper Id. 
-con_explicit :: HsExplicitFlag
-
-    Is there an user-written forall? (cf. HsForAllTy) 
-con_qvars :: [LHsTyVarBndr name]
-
-    Type variables. Depending on con_res this describes the following entities
-
-        ResTyH98: the constructor's *existential* type variables - ResTyGADT: *all* the constructor's quantified type variables 
-
-    If con_explicit is Implicit, then con_qvars is irrelevant until after renaming. 
-con_cxt :: LHsContext name
-
-    The context. This does not include the "stupid theta" which lives only in the TyData decl. 
-con_details :: HsConDeclDetails name
-
-    The main payload 
-con_res :: ResType name
-
-    Result type of the constructor 
-con_doc :: Maybe LHsDocString
-
-    A possible Haddock comment. 
-con_old_rec :: Bool
-
-    TEMPORARY field; True = user has employed now-deprecated syntax for GADT-style record decl C { blah } :: T a b Remove this when we no longer parse this stuff, and hence do not need to report decprecated use 
-
-
--}
 allocConDecl :: GHC.LConDecl GHC.RdrName -> [PosToken] -> [LayoutTree]
 allocConDecl (GHC.L l (GHC.ConDecl n@(GHC.L ln _) _expl qvars (GHC.L lc ctx) details res mdoc _)) toks = r
   where
@@ -1241,7 +1221,7 @@ allocConDecl (GHC.L l (GHC.ConDecl n@(GHC.L ln _) _expl qvars (GHC.L lc ctx) det
 #if __GLASGOW_HASKELL__ > 704
     (qvarsLayout,toks3) = allocTyVarBndrs qvars toks2
 #else
-    qvarsLayout = allocList toks2 qvars allocTyVarBndr
+    qvarsLayout = allocList qvars toks2 allocTyVarBndr
     toks3 = []
 #endif
     (s3,ctxToks,toks4) = splitToksIncComments (ghcSpanStartEnd lc) toks3
@@ -1537,11 +1517,14 @@ placeAbove so p1 p2 ls = Node (Entry loc (Above so p1 p2 None) []) ls
 
 -- ---------------------------------------------------------------------
 
+{-
 placeOffset :: RowOffset -> ColOffset -> [LayoutTree] -> LayoutTree
 placeOffset _ _ [] = error "placeOffset []"
 placeOffset r c ls = Node (Entry loc (Offset r c) []) ls
   where
     loc = combineSpans (getLoc $ head ls) (getLoc $ last ls)
+-}
+
 
 -- ---------------------------------------------------------------------
 

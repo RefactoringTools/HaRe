@@ -93,7 +93,7 @@ data Layout = Above EndOffset (Row,Col) (Row,Col) EndOffset
             -- token in the stacked list to be able to calculate the
             -- (RowOffset,ColOffset) between the last token and the
             -- start of the next item.
-            | Offset RowOffset ColOffset
+            -- | Offset RowOffset ColOffset
             | NoChange
             -- | Offset between the end of an 'Above' entry and the
             -- next one
@@ -163,7 +163,9 @@ data Ppr = PprText Row Col String -- ^Original row and col of the
          -- ^ Offset of start of embedded parts, coords of last token,
          -- offset to start of next part, relative to the column of
          -- the start
-         | PprOffset RowOffset ColOffset [Ppr]
+         | PprDeleted Row Col RowOffset
+         -- ^ Marks lines that have been deleted together with how
+         -- many lines were originally included.
          deriving (Eq,Show)
 
 -- ---------------------------------------------------------------------

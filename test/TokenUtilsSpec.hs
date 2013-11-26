@@ -4935,6 +4935,20 @@ tree TId 0:
       -- (show $ deleteGapsToks es) `shouldBe` ""
       (GHC.showRichTokenStream $ retrieveTokensFinal f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
+      (retrieveTokensPpr f2) `shouldBe`
+        [PprText 1 1 "module TokenTest where",
+         PprText 3 1 "-- Test new style token manager",
+         PprText 5 1 "bob a b = x",
+         PprText 6 3 "where x = 3",
+         PprText 8 1 "bib a b = x",
+         PprText 9 3 "where",
+         PprText 10 5 "x = 3",
+         PprText 15 1 "-- leading comment",
+         PprText 16 1 "foo x y =",
+         PprText 17 3 "do c <- getChar",
+         PprText 18 6 "return c",
+         PprText 23 1 ""]
+
       (renderPpr $ retrieveTokensPpr f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
   -- ---------------------------------------------

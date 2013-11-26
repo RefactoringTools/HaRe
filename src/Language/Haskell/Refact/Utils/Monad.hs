@@ -162,8 +162,10 @@ initGhcSession cradle importDirs = do
                  , ghcOpts = ghcOptsDirs
                  , operators = False
                  , detailed = False
+                 , qualified = False
                  , expandSplice = False
                  , lineSeparator = rsetLineSeparator settings
+                 , packageId = Nothing -- TODO: work this through if needed
                  }
     (_readLog,mcabal) <- initializeFlagsWithCradle opt cradle (options settings) True
 
