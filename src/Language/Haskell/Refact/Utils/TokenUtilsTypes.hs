@@ -76,6 +76,7 @@ data Entry = Entry !ForestSpan -- The source span contained in this
                    ![PosToken] -- ^The tokens for the SrcSpan if
                                --  subtree is empty
            | Deleted !ForestSpan -- The source span has been deleted
+                     RowOffset   -- prior gap in lines
                      SimpPos     -- ^The gap between this span end and
                                  --  the start of the next in the
                                  --  fringe of the tree.
@@ -163,9 +164,10 @@ data Ppr = PprText Row Col String -- ^Original row and col of the
          -- ^ Offset of start of embedded parts, coords of last token,
          -- offset to start of next part, relative to the column of
          -- the start
-         | PprDeleted Row Col RowOffset
-         -- ^ Marks lines that have been deleted together with how
-         -- many lines were originally included.
+         | PprDeleted Row Col RowOffset RowOffset RowOffset
+         -- ^ Marks lines that have been deleted together with the
+         -- original gap before, how many lines were originally
+         -- included, and gap after.
          deriving (Eq,Show)
 
 -- ---------------------------------------------------------------------

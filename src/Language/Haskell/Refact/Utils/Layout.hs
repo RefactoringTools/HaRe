@@ -150,7 +150,7 @@ instance Outputable (Tree Entry) where
 
 instance Outputable Entry where
   ppr (Entry sspan lay toks) = text "Entry" <+> ppr sspan <+> ppr lay <+> text (show toks)
-  ppr (Deleted sspan eg)     = text "Deleted" <+> ppr sspan <+> ppr eg
+  ppr (Deleted sspan pg eg)     = text "Deleted" <+> ppr sspan <+> ppr pg <+> ppr eg
 
 instance Outputable Layout where
   ppr (Above so p1 p2 oe)   = text "Above" <+> ppr so <+> ppr p1 <+> ppr p2 <+> ppr oe
@@ -165,8 +165,8 @@ instance Outputable Ppr where
                                            2 (ppr pps)
   -- ppr (PprOffset ro co pps)       = hang (text "PprOffset" <+> ppr ro <+> ppr co)
   --                                          2 (ppr pps)
-  ppr (PprDeleted ro co rd)       = text "PprDeleted" <+> ppr ro <+> ppr co
-                                           <+> ppr rd
+  ppr (PprDeleted ro co lb l la)     = text "PprDeleted" <+> ppr ro <+> ppr co
+                                           <+> ppr lb <+> ppr l <+> ppr la
 
 instance Outputable EndOffset where
   ppr None               = text "None"
@@ -1557,8 +1557,8 @@ makeLeaf sspan lay toks = Node (Entry (sf sspan) lay toks) []
 -- ---------------------------------------------------------------------
 
 getLoc :: LayoutTree -> ForestSpan
-getLoc (Node (Entry l _ _) _) = l
-getLoc (Node (Deleted l _) _) = l
+getLoc (Node (Entry   l _ _) _) = l
+getLoc (Node (Deleted l _ _) _) = l
 
 -- ---------------------------------------------------------------------
 
@@ -1569,7 +1569,7 @@ retrieveTokens layout = go [] layout
     -- go acc (Leaf _ _ toks) = acc ++ toks
     go acc (Node (Entry _ _ []  ) xs) = acc ++ (concat $ map (go []) xs)
     go acc (Node (Entry _ _ toks)  _) = acc ++ toks
-    go acc (Node (Deleted _ _)     _)  = acc
+    go acc (Node (Deleted _ _ _)   _) = acc
 
 -- ---------------------------------------------------------------------
 
