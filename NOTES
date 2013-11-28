@@ -106,5 +106,18 @@ elements of the original AST.
 To do this, must identify the critical layout points, REQUIRED by haskell.
 
 
+Even further thoughts
+---------------------
+
+Consider using dual-tree as in diagrams. The theory is explained here
+http://www.cis.upenn.edu/~byorgey/pub/monoid-pearl.pdf.
+
+In this case the u annotation would be the token start and end.
+
+The d actions would be
+  Delete a span
+  Add a span
+
+
 
 

@@ -316,7 +316,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     -- ---------------------------------
 
-    it "LiftOneLevel WhereIn7 12 14" $ do
+    it "liftOneLevel WhereIn7 12 14" $ do
      r <- liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
      -- r <- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/WhereIn7.hs" (12,14)
      (show r) `shouldBe` "[\"./test/testdata/LiftOneLevel/WhereIn7.hs\"]"

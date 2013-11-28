@@ -1474,7 +1474,7 @@ tree TId 0:
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
-      (renderPpr $ retrieveTokensPpr forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
+      (renderPpr $ retrieveTokensPpr forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
     -- ---------------------------------
 
@@ -1535,7 +1535,7 @@ tree TId 0:
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
-      (renderPpr $ retrieveTokensPpr forest3) `shouldBe` "module Demote.D1 where\n\n{-demote 'sq' to 'sumSquares'. This refactoring\n affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = sq x + sumSquares xs\n    where\n       sq = x ^ pow\n     \n\nsumSquares [] = 0\n\npow = 2\n\nmain = sumSquares [1..4]\n\n"
+      (renderPpr $ retrieveTokensPpr forest3) `shouldBe` "module Demote.D1 where\n\n{-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = sq x + sumSquares xs\n    where\n       sq = x ^ pow\n     \n\nsumSquares [] = 0\n\npow = 2\n\nmain = sumSquares [1..4]\n\n"
 
     -- ---------------------------------
 
@@ -4914,7 +4914,11 @@ tree TId 0:
   describe "formatAfterDelete" $ do
     it "does not leave a blank line in toks after deleting" $ do
       (t,toks) <- parsedFileGhc "./test/testdata/TokenTest.hs"
-      let f1 = mkTreeFromTokens toks
+      -- let f1 = mkTreeFromTokens toks
+
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let f1 = allocTokens parsed toks
+
       (GHC.showRichTokenStream $ retrieveTokensFinal f1) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -4925,11 +4929,62 @@ tree TId 0:
 
       let (f2,_) = removeSrcSpan f1 (sf l)
 
-      (drawTreeEntry f2) `shouldBe`
+      (drawTreeCompact f2) `shouldBe`
+            "0:((1,1),(26,1))\n"++
+            "1:((1,1),(1,7))\n"++
+            "1:((1,8),(1,17))\n"++
+            "1:((1,18),(1,23))\n"++
+            "1:((5,1),(6,14))\n"++
+            "2:((5,1),(5,4))\n"++
+            "2:((5,5),(6,14))\n"++
+            "3:((5,5),(5,6))\n"++
+            "3:((5,7),(5,8))\n"++
+            "3:((5,9),(5,10))\n"++
+            "3:((5,11),(5,12))\n"++
+            "3:((6,3),(6,8))\n"++
+            "3:((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-13))\n"++
+            "4:((6,9),(6,14))\n"++
+            "5:((6,9),(6,10))\n"++
+            "5:((6,11),(6,14))\n"++
+            "6:((6,11),(6,12))\n"++
+            "6:((6,13),(6,14))\n"++
+            "1:((8,1),(10,10))\n"++
+            "2:((8,1),(8,4))\n"++
+            "2:((8,5),(10,10))\n"++
+            "3:((8,5),(8,6))\n"++
+            "3:((8,7),(8,8))\n"++
+            "3:((8,9),(8,10))\n"++
+            "3:((8,11),(8,12))\n"++
+            "3:((9,3),(9,8))\n"++
+            "3:((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-9))\n"++
+            "4:((10,5),(10,10))\n"++
+            "5:((10,5),(10,6))\n"++
+            "5:((10,7),(10,10))\n"++
+            "6:((10,7),(10,8))\n"++
+            "6:((10,9),(10,10))\n"++
+            "1:((13,1),(15,17))(3,-16)D\n"++
+            "1:((19,1),(21,14))\n"++
+            "2:((19,1),(19,4))\n"++
+            "2:((19,5),(21,14))\n"++
+            "3:((19,5),(19,6))\n"++
+            "3:((19,7),(19,8))\n"++
+            "3:((19,9),(19,10))\n"++
+            "3:((20,3),(21,14))\n"++
+            "4:((20,3),(20,5))\n"++
+            "4:((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-13))\n"++
+            "5:((20,6),(20,18))\n"++
+            "6:((20,6),(20,7))\n"++
+            "6:((20,11),(20,18))\n"++
+            "5:((21,6),(21,14))\n"++
+            "6:((21,6),(21,12))\n"++
+            "6:((21,13),(21,14))\n"++
+            "1:((26,1),(26,1))\n"
+{-
             "((1,1),(21,14))\n|\n"++
             "+- ((1,1),(10,10))\n|\n"++
             "+- ((13,1),(15,17))(3,-16)D\n|\n"++
             "`- ((19,1),(21,14))\n"
+-}
 
       -- let es = retrieveTokens' f2
       -- (show $ deleteGapsToks es) `shouldBe` ""
@@ -4940,19 +4995,27 @@ tree TId 0:
         [PprText 1 1 "module TokenTest where",
          PprText 3 1 "-- Test new style token manager",
          PprText 5 1 "bob a b = x",
-         PprText 6 3 "where x = 3",
+         PprText 6 3 "where",
+         PprAbove None (6,14) (FromAlignCol (2,-13))
+           [PprText 6 1 "x = 3"],
          PprText 8 1 "bib a b = x",
          PprText 9 3 "where",
-         PprText 10 5 "x = 3",
-         -- PprDeleted 13 1 3,
-         --    21 (originaly 18)
-         PprText 12 1 "-- leading comment",
-         PprText 13 1 "foo x y =",
-         PprText 14 3 "do c <- getChar",
-         PprText 15 6 "return c",
-         PprText 20 1 ""]
+         PprAbove (FromAlignCol (1,-4)) (10,10) (FromAlignCol (3,-9))
+           [PprText 10 1 "x = 3"],
+         PprDeleted 13 1 3 2 3,
 
-      (renderPpr $ retrieveTokensPpr f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
+         -- originally on line 18. Should now be on line 13. So offset
+         -- is -5.
+         PprText 13 1 "-- leading comment",
+         PprText 14 1 "foo x y =",
+         PprText 15 3 "do",
+         PprAbove None (21,14) (FromAlignCol (5,-13))
+           [PprText 15 1 "c <- getChar",
+            PprText 16 1 "return c"],
+         PprText 21 1 ""]
+
+
+      (renderPpr $ retrieveTokensPpr f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
   -- ---------------------------------------------
 

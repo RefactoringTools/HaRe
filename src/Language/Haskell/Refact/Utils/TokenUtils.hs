@@ -1121,8 +1121,11 @@ removeSrcSpan forest sspan = (forest'', delTree)
     z = openZipperToSpan sspan $ Z.fromTree forest'
     zp = gfromJust "removeSrcSpan" $ Z.parent z
 
+{-
     pg = error $ "removeSrcSpan: need calcPriorGap"
     eg = calcEndGap forest' sspan
+-}
+    ((pg,_),eg) = calcPriorAndEndGap forest' sspan
 
     pt = Z.tree zp
     -- subTree = filter (\t -> not (treeStartEnd t == sspan)) $ subForest pt
@@ -1137,6 +1140,56 @@ removeSrcSpan forest sspan = (forest'', delTree)
 
 -- ---------------------------------------------------------------------
 
+-- |For a span about to be deleted, calculate the gap between the end
+-- of the span being deleted and the start of the next one, at a token
+-- level.
+calcPriorAndEndGap :: Tree Entry -> ForestSpan -> (SimpPos,SimpPos)
+calcPriorAndEndGap tree sspan = (pg,eg)
+  where
+    ((spanStartRow,spanStartCol),(spanRow,spanCol)) = forestSpanToSimpPos sspan
+    (spanStart,spanEnd) = sspan
+    entries = retrieveTokens' tree
+    -- NOTE: the entries are the fringe of the tree, the sspan in
+       -- question may be represented by several entries
+    (before,rest)    = span  (\e -> (forestSpanStart $ forestSpanFromEntry e) < spanStart) entries
+    (rafter,rmiddle) = break (\e -> (forestSpanEnd $ forestSpanFromEntry e) <= spanEnd) $ reverse rest
+    _middle = reverse rmiddle
+    after = reverse rafter
+    -- last element of before should be the sspan we care about, first
+    -- of after is the one we are looking for.
+
+    -- NOTE: `after` may contain zero or more Deleted segments in the
+    -- front. These get merged later in mergeDeletes
+    (tokRow,tokCol) = if emptyList after
+        then (spanRow + 2,spanCol)
+        else (r,c)
+            where
+                (r,c) = case ghead ("calcEndGap:after="++(show after)) after of
+                    (Entry _ _ toks) -> (tokenRow t,tokenCol t)
+                        where t = ghead "calcEndGap" toks
+                    (Deleted ss _ _) -> fst $ forestSpanToSimpPos ss
+
+    eg = (tokRow - spanRow, tokCol - spanCol)
+    -- eg = error $ "calcEndGap: (sspan,(before,middle,after))=" ++ (show (sspan,(_before,middle,after)))
+
+    (tokRowPg,tokColPg) = if emptyList before
+        then (spanStartRow - 1,spanStartCol)
+        else (r,c)
+            where
+                (r,c) = case glast ("calcEndGap:before="++(show before)) before of
+                    (Entry _ _ toks) -> (tokenRow t,tokenCol t)
+                        where t = glast "calcEndGap pg" toks
+                    (Deleted ss _ _) -> snd $ forestSpanToSimpPos ss
+
+    -- TODO: what about comments before the span? spanStartRow may be off
+    pg = (spanStartRow - tokRowPg, spanStartCol - tokColPg)
+    -- pg = error $ "calcPriorAndEndGap : (tokRowPg,tokColPg):" ++ (show $ ((tokRowPg,tokColPg),(spanStartRow,spanStartCol)))
+    -- pg = error $ "calcPriorAndEndGap : (head before):" ++ (show $ last before)
+
+
+-- ---------------------------------------------------------------------
+
+-- TODO: delete this, superseded by calcPriorAndEndGap
 -- |For a span about to be deleted, calculate the gap between the end
 -- of the span being deleted and the start of the next one, at a token
 -- level.
@@ -1281,7 +1334,7 @@ adjustPprForDeleted pps = pps'
     go :: ((Int,Int),[Ppr]) -> Ppr -> ((Int,Int),[Ppr])
     go ((ro,co),acc) (PprText r c str)   = ((ro,co),acc++[PprText (r-ro) (c-co) str])
     -- go ((ro,co),acc) (PprDeleted r c rd) = ((ro - rd,co),acc)
-    go ((ro,co),acc) (PprDeleted r c pg l eg) = ((ro - pg,co),acc++[(PprDeleted r c pg l eg)])
+    go ((ro,co),acc) (PprDeleted r c pg l eg) = ((ro + pg + l,co),acc++[(PprDeleted r c pg l eg)])
     -- need (ro',co') = (ro + (sr - dr) + deltaR,co)
     --  where sr is end row of previous line
     --        dr is start row of next line
@@ -1368,6 +1421,8 @@ renderPpr ps = res
     go ci (p@(PprText _rt _ct _toks):ps') = do
       renderPprText ci p
       go ci ps'
+
+    go ci ((PprDeleted _ _ _ _ _):ps') = go ci ps'
 
     go _ pps = error $ "renderPpr: unmatched in go:" ++ (show pps)
 
