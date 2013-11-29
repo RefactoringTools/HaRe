@@ -1409,11 +1409,13 @@ renderPpr ps = res
       renderPprAbove c ppa
       (cr,_cc) <- getRC
       -- addOffset eo
-      case eo of
-        FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
-        SameLine _ -> addOffset eo
-        None       -> return ()
-
+      if ps' /= []
+       then
+         case eo of
+           FromAlignCol (ero,eco) -> newPos (cr+ero) (ci+eco)
+           SameLine _ -> addOffset eo
+           None       -> return ()
+       else return ()
       -- (r',c') <- getRC
       -- addDebugString $ "(eo:" ++ show (ci,(r',c')) ++ ")" -- ++AZ++ debug
       go ci ps'
