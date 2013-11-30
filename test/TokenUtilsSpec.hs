@@ -1983,7 +1983,58 @@ Should be pg :  5 - 3 = 2
            PprText 5 1 "x = 3",
            PprText 6 1 ""]
 
-      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff :: Int -> Int\n\nx = 3\n"
+      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nx = 3\n"
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.Where2 with deletion 4" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Where2.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (drawTreeCompact layout) `shouldBe`
+      --     ""
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 "module Layout.Where2 where",
+           PprText 3 1 "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 4 3 "where",
+           PprAbove (FromAlignCol (1,-4)) (6,12) (FromAlignCol (2,-11))
+             [PprText 5 1 "ff :: Int",
+              PprText 6 1 "ff = 15"],
+           PprText 8 1 "x = 3",
+           PprText 9 1 ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+      -- Now check removing a span
+
+      let sspan = posToSrcSpan layout ((5,5),(5,14))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/Where2.hs:5:5-13"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let pprVal2 = retrieveTokensPpr layout2
+      (pprVal2) `shouldBe`
+          [PprText 1 1 "module Layout.Where2 where",
+           PprText 3 1 "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 4 3 "where",
+           PprAbove (FromAlignCol (1,-4)) (6,12) (FromAlignCol (2,-11))
+             [PprDeleted 5 1 1 0 1,
+              PprText 5 1 "ff = 15"],
+           PprText 7 1 "x = 3",
+           PprText 8 1 ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.Where2 where\n\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff = 15\n\nx = 3\n"
 
 
     -- ---------------------------------

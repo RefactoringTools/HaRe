@@ -1317,11 +1317,13 @@ normaliseColumns [] = []
 normaliseColumns ps = ps'
   where
     offset = case (head ps) of
-      PprText _r c _ -> c - 1
+      PprText    _r c _     -> c - 1
+      PprDeleted _r c _ _ _ -> c - 1
       _              -> 0
     ps' = map removeOffset ps
 
-    removeOffset (PprText r c toks) = (PprText r (c - offset) toks)
+    removeOffset (PprText r c toks)     = (PprText r (c - offset) toks)
+    removeOffset (PprDeleted r c p l e) = (PprDeleted r (c - offset) p l e)
     removeOffset x = x
 
 -- ---------------------------------------------------------------------
@@ -1766,13 +1768,18 @@ retrievePrevLineToks z = RT res' -- error $ "retrievePrevLineToks:done notWhite=
     -- prevToks = retrieveTokens $ Z.tree z
     prevToks = retrieveTokensInterim $ Z.tree z
 
-    res' = reverse $ (concat (go z)) ++ prevToks
+    -- Next one is the usual one
+    -- res' = reverse $ (concat (go z)) ++ prevToks
+    res' =  reverse $ concat $ reverse (prevToks : (go z))
+
+
     -- res' =  (reverse prevToks) ++ (concat (go z))
 
     -- res' = error $ "retrievePrevLineToks:res'=" ++ (show (dropWhile (\tok -> isWhiteSpace tok || tokenRow tok < endLine) res))
     -- res' = error $ "retrievePrevLineToks:prevToks=" ++ (show prevToks)
     -- res' = error $ "retrievePrevLineToks:prevToks=" ++ (show res)
     -- res' = error $ "retrievePrevLineToks:(prevToks : (go z))=" ++ (show (prevToks : (go z)))
+    -- res' = error $ "retrievePrevLineToks:(prevToks : (go z))=" ++ (show $ concat $ reverse (prevToks : (go z)))
 
     -- TODO:  ++AZ++ what is this actually doing?
     go :: Z.TreePos Z.Full Entry -> [[PosToken]]

@@ -455,6 +455,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     it "demotes a definition from the top level D1" $ do
      -- doDemote ["./test/testdata/Demote/D1.hs","9","1"]
      r <- demote defaultTestSettings testCradle "./test/testdata/Demote/D1.hs" (9,1)
+     -- r <- demote logTestSettings testCradle "./test/testdata/Demote/D1.hs" (9,1)
      (show r) `shouldBe` "[\"./test/testdata/Demote/D1.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/D1.hs.refactored"
                           "./test/testdata/Demote/D1.hs.expected"
