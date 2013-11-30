@@ -1234,12 +1234,13 @@ retrieveTokensFinal forest = monotonicLineToks $ stripForestLines $ reAlignMarke
 
 -- |Retrieve the tokens in a ppr format, so they can be rendered
 retrieveTokensPpr :: Tree Entry -> [Ppr]
-retrieveTokensPpr forest = pps''
+retrieveTokensPpr forest = pps'''
   where
     -- forest' = adjustLinesForDeleted forest
     (pps,lastLine) = retrieveTokensPpr' ([],[]) forest
-    pps' = pps ++ (mkPprFromLineToks lastLine)
-    pps'' = adjustPprForDeleted pps'
+    pps'   = pps ++ (mkPprFromLineToks lastLine)
+    pps''  = mergeDeletesPpr pps'
+    pps''' = adjustPprForDeleted pps''
 
 retrieveTokensPpr' :: ([Ppr],[PosToken]) -> Tree Entry -> ([Ppr],[PosToken])
 
@@ -1332,13 +1333,11 @@ adjustPprForDeleted pps = pps'
     (_,pps') = foldl' go ((0,0),[]) pps
 
     go :: ((Int,Int),[Ppr]) -> Ppr -> ((Int,Int),[Ppr])
-    go ((ro,co),acc) (PprText r c str)   = ((ro,co),acc++[PprText (r-ro) (c-co) str])
+    go ((ro,co),acc) (PprText r c str) = ((ro,co),acc++[PprText (r-ro) (c-co) str])
     -- go ((ro,co),acc) (PprDeleted r c rd) = ((ro - rd,co),acc)
-    go ((ro,co),acc) (PprDeleted r c pg l eg) = ((ro + pg + l,co),acc++[(PprDeleted r c pg l eg)])
-    -- need (ro',co') = (ro + (sr - dr) + deltaR,co)
-    --  where sr is end row of previous line
-    --        dr is start row of next line
-    --        deltaR is the number of rows in the end gap
+    go ((ro,co),acc) (PprDeleted r c pg l eg)
+        = ((ro + (pg + l + eg) - (max pg eg),co),acc++[PprDeleted r c pg l eg])
+           -- NOTE: see below for derivation of the above calc
     go ((ro,co),acc) (PprAbove so p1 eo subs) = ((ro',co'),acc++[PprAbove so' p1' eo' subs'])
       where
         so' = so
@@ -1346,6 +1345,149 @@ adjustPprForDeleted pps = pps'
         eo' = eo
         ((ro',co'),subs') = foldl' go ((ro,co),[]) subs
 
+{-
+
+Case 1
+
+Code is
+----
+3:data D = A | B String | C
+4:
+5:ff :: Int -> Int  <<<line to be deleted
+6:ff y = y + zz
+7:  where
+8:    zz = 1
+-----
+PprDeleted 5 1 2 0 1
+So pg is 2 (5 - 3)
+    l is 0 (5 - 5)
+   eg is 1 (6 - 5)
+
+New location needs to be 5, so
+ro needs to be 1
+
+-------------
+
+Case 2
+
+Code is
+----
+ 5:ff :: Int -> Int
+ 6:ff y = y + zz      <<<line to be deleted
+ 7:  where            <<<line to be deleted
+ 8:    zz = 1         <<<line to be deleted
+ 9:
+10:x = 3
+-----
+PprDeleted 6 1 1 2 2
+So pg is 1 ( 6 - 5)
+    l is 2 ( 8 - 6)
+   eg is 2 (10 - 8)
+
+New location needs to be 7, so
+ro needs to be 3
+
+so (pg - 1) + (l + 1) or pg + l
+
+
+-------------
+
+Case 3
+
+Code is
+----
+ 4:ff :: Int -> Int
+ 5:
+ 6:ff y = y + zz      <<<line to be deleted
+ 7:  where            <<<line to be deleted
+ 8:    zz = 1         <<<line to be deleted
+ 9:
+10:x = 3
+-----
+PprDeleted 6 1 2 2 2
+So pg is 2 ( 6 - 4)
+    l is 2 ( 8 - 6)
+   eg is 2 (10 - 8)
+
+New location needs to be 6, so
+ro needs to be 4
+
+so (pg - 1) + (l + 1) or pg + l
+
+=================================
+
+First principles.
+
+We have
+ sr : last non-blank line before deletion area
+ dr : first non-blank line after deletion area
+
+ fd : first line of deletion area
+ ld : last line of deletion area
+
+We need to calculate the offset to bring dr to have the same end
+gap as for the original.
+
+      Case 1   Case 2  Case 3
+ sr    3         5       4
+ fd    5         6       6
+ ld    5         8       8
+ dr    6        10      10
+
+ pg    2         1       2
+ eg    1         2       2
+
+ np    5         7       6
+ ro    1         3       4
+
+i.e. we need to apply the largest of (pg,eg)  to the original sr.
+
+so
+  np = sr + max(pg,eg)
+
+  ro = dr - np
+
+Hence
+
+  ro = dr - sr - max(pg,eg)
+
+In PprDeleted, dr - sr is same as (pg + l + eg)
+
+  ro = (pg + l + eg) - max(pg,eg)
+
+-}
+
+-- ---------------------------------------------------------------------
+
+mergeDeletesPpr :: [Ppr] -> [Ppr]
+mergeDeletesPpr [] = []
+mergeDeletesPpr ((PprDeleted r1 c1 pg1 l1 eg1):(PprDeleted _r _c pg2 l2 eg2):ps)
+  = (PprDeleted r1 c1 pg1 (l1 + eg1 + pg2 + l2 - 1) eg2) : mergeDeletesPpr ps
+{-
+The total gap taken up by each delete is pg+l+eg.
+
+We have
+  pg1 + l1 + eg1 + pg2 + l2 + eg2
+
+The combined span has
+  pg1 + (l1 + eg1 + pg2 + l2) + eg2
+
+Why do we need the (-1)? TBD
+
+pg1 : fb - sr
+eg1 : dr - lb
+ l1 : lb - fb
+sum: (fb - sr) + (dr - lb) + (lb - fb)
+  = -sr + dr  -- fb and lb cancels out
+  = dr - sr
+so we have (dr1 - sr1) + (dr2 - sr2)
+bu, dr1 == sr2
+so (dr1 - sr1 + dr2 - dr1)
+or dr2 - sr1
+-}
+mergeDeletesPpr (p:ps) = p : mergeDeletesPpr ps
+
+-- ---------------------------------------------------------------------
 
 getPprStartRow :: Ppr -> Row
 getPprStartRow (PprText r _ _) = r

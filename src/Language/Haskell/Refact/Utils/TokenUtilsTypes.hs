@@ -164,10 +164,11 @@ data Ppr = PprText Row Col String -- ^Original row and col of the
          -- ^ Offset of start of embedded parts, coords of last token,
          -- offset to start of next part, relative to the column of
          -- the start
-         | PprDeleted Row Col RowOffset RowOffset RowOffset
+         | PprDeleted Row Col RowOffset RowOffset RowOffset -- String
          -- ^ Marks lines that have been deleted together with the
          -- original gap before, how many lines were originally
          -- included, and gap after.
+         -- And a note field for debugging
          deriving (Eq,Show)
 
 -- ---------------------------------------------------------------------

@@ -11,6 +11,3 @@ main = io "hello" where io s= do  let  k = reverse s
                                   putStr q
                                   putStr "foo"
 
-
-
-

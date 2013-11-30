@@ -3430,7 +3430,7 @@ rmDecl pn incSig t = do
   -- drawTokenTreeDetailed "rmDecl.entry tree" -- ++AZ++ 'in' present
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
-  drawTokenTreeDetailed "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
+  -- drawTokenTreeDetailed "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
   t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
 
              -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t

@@ -1773,6 +1773,221 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "retrieveTokensPpr" $ do
+    it "retrieves the tokens in Ppr format Layout.FromMd1 with deletion 1" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/FromMd1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(11,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,22))\n"++
+          "1:((1,23),(1,28))\n"++
+          "1:((3,1),(3,5))\n"++
+          "1:((3,6),(3,7))\n"++
+          "1:((3,8),(3,9))\n"++
+          "1:((3,10),(3,11))\n"++
+          "1:((3,12),(3,13))\n"++
+          "1:((3,14),(3,22))\n"++
+          "2:((3,14),(3,15))\n"++
+          "2:((3,16),(3,22))\n"++
+          "1:((3,23),(3,24))\n"++
+          "1:((3,25),(3,26))\n"++
+          "1:((5,1),(5,17))\n"++
+          "2:((5,1),(5,3))\n"++
+          "2:((5,4),(5,6))\n"++
+          "2:((5,7),(5,10))\n"++
+          "2:((5,11),(5,13))\n"++
+          "2:((5,14),(5,17))\n"++
+          "1:((6,1),(8,11))\n"++
+          "2:((6,1),(6,3))\n"++
+          "2:((6,4),(8,11))\n"++
+          "3:((6,4),(6,5))\n"++
+          "3:((6,6),(6,7))\n"++
+          "3:((6,8),(6,14))\n"++
+          "4:((6,8),(6,9))\n"++
+          "4:((6,10),(6,11))\n"++
+          "4:((6,12),(6,14))\n"++
+          "3:((7,3),(7,8))\n"++
+          "3:((8,5),(8,11))(Above FromAlignCol (1,-4) (8,5) (8,11) FromAlignCol (2,-10))\n"++
+          "4:((8,5),(8,11))\n"++
+          "5:((8,5),(8,7))\n"++
+          "5:((8,8),(8,11))\n"++
+          "6:((8,8),(8,9))\n"++
+          "6:((8,10),(8,11))\n"++
+          "1:((10,1),(10,6))\n"++
+          "2:((10,1),(10,2))\n"++
+          "2:((10,3),(10,6))\n"++
+          "3:((10,3),(10,4))\n"++
+          "3:((10,5),(10,6))\n"++
+          "1:((11,1),(11,1))\n"
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 "module Layout.FromMd1 where",
+           PprText 3 1 "data D = A | B String | C",
+           PprText 5 1 "ff :: Int -> Int",
+           PprText 6 1 "ff y = y + zz",
+           PprText 7 3 "where",
+           PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
+             [PprText 8 1 "zz = 1"],
+           PprText 10 1 "x = 3",
+           PprText 11 1 ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+      -- Now check removing a span
+      -- removeToksForSpan test/testdata/MoveDef/Md1.hs:21:1-16:(((False,0,0,21),1),((False,0,0,21),17))
+      -- Is line 5 in FromMd1
+
+      let sspan = posToSrcSpan layout ((5,1),(5,17))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/FromMd1.hs:5:1-16"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let pprVal2 = retrieveTokensPpr layout2
+      (pprVal2) `shouldBe`
+          [PprText 1 1 "module Layout.FromMd1 where",
+           PprText 3 1 "data D = A | B String | C",
+           PprDeleted 5 1 2 0 1,
+           -- originally line 6, offset is 1
+           PprText 5 1 "ff y = y + zz",
+           PprText 6 3 "where",
+           PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
+             [PprText 7 1 "zz = 1"],
+           PprText 9 1 "x = 3",
+           PprText 10 1 ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nx = 3\n"
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.FromMd1 with deletion 2" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/FromMd1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (drawTreeCompact layout) `shouldBe`
+      --     ""
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 "module Layout.FromMd1 where",
+           PprText 3 1 "data D = A | B String | C",
+           PprText 5 1 "ff :: Int -> Int",
+           PprText 6 1 "ff y = y + zz",
+           PprText 7 3 "where",
+           PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
+             [PprText 8 1 "zz = 1"],
+           PprText 10 1 "x = 3",
+           PprText 11 1 ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+      -- Now check removing a span
+      -- removeToksForPos ((22,1),(24,11))
+      -- Is line 6 in FromMd1
+
+      let sspan = posToSrcSpan layout ((6,1),(8,11))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/FromMd1.hs:(6,1)-(8,10)"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let pprVal2 = retrieveTokensPpr layout2
+      (pprVal2) `shouldBe`
+          [PprText 1 1 "module Layout.FromMd1 where",
+           PprText 3 1 "data D = A | B String | C",
+           PprText 5 1 "ff :: Int -> Int",
+           PprDeleted 6 1 1 2 2,
+
+           -- originally line 10. ro must be 3
+           PprText 7 1 "x = 3",
+           PprText 8 1 ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff :: Int -> Int\n\nx = 3\n"
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.FromMd1 with deletion 3" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/FromMd1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (drawTreeCompact layout) `shouldBe`
+      --     ""
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 "module Layout.FromMd1 where",
+           PprText 3 1 "data D = A | B String | C",
+           PprText 5 1 "ff :: Int -> Int",
+           PprText 6 1 "ff y = y + zz",
+           PprText 7 3 "where",
+           PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
+             [PprText 8 1 "zz = 1"],
+           PprText 10 1 "x = 3",
+           PprText 11 1 ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+      let sspan = posToSrcSpan layout ((5,1),(5,17))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/FromMd1.hs:5:1-16"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan)
+
+
+      -- Now check removing a span
+      -- removeToksForPos ((22,1),(24,11))
+      -- Is line 6 in FromMd1
+
+      let sspan2 = posToSrcSpan layout ((6,1),(8,11))
+      (showGhc sspan2) `shouldBe` "test/testdata/Layout/FromMd1.hs:(6,1)-(8,10)"
+
+      let (layout3,_old) = removeSrcSpan layout2 (srcSpanToForestSpan sspan2)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let pprVal2 = retrieveTokensPpr layout3
+      (pprVal2) `shouldBe`
+          [PprText 1 1 "module Layout.FromMd1 where",
+           PprText 3 1 "data D = A | B String | C",
+
+           -- PprDeleted 5 1 2 0 1,
+           -- PprDeleted 6 1 1 2 2,
+           PprDeleted 5 1 2 3 2,
+{-
+Should be pg :  5 - 3 = 2
+          eg : 10 - 8 = 2
+           l :  8 - 5 = 3
+-}
+           PprText 5 1 "x = 3",
+           PprText 6 1 ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff :: Int -> Int\n\nx = 3\n"
+
+
+    -- ---------------------------------
+
     it "retrieves the tokens in Ppr format TypeUtils.LayoutLet2" $ do
       (t,toks) <-  parsedFileGhc "./test/testdata/TypeUtils/LayoutLet2.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t

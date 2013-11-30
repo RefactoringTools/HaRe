@@ -167,6 +167,7 @@ instance Outputable Ppr where
   --                                          2 (ppr pps)
   ppr (PprDeleted ro co lb l la)     = text "PprDeleted" <+> ppr ro <+> ppr co
                                            <+> ppr lb <+> ppr l <+> ppr la
+                                         --  <+> ppr n
 
 instance Outputable EndOffset where
   ppr None               = text "None"
