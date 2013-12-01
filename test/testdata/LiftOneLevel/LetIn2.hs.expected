@@ -15,6 +15,5 @@ sumSquares x y = let
        sq pow z=z^pow
     
 
-
 anotherFun 0 y = sq y
      where sq x = x^2
