@@ -2,5 +2,6 @@ language: haskell
 before_install:
     - "cabal update"
     - "cabal install hspec"
+    - "cabal install happy"
 notifications:
   irc: "irc.freenode.org#haskell-refactorer"
