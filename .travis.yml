@@ -1,10 +1,6 @@
 language: haskell
 before_install:
     - "cabal update"
-    - "cabal install test-framework"
-    - "cabal install test-framework-hunit"
-    - "cabal install QuickCheck"
     - "cabal install hspec"
-    - "cabal install Strafunski-StrategyLib"
 notifications:
   irc: "irc.freenode.org#haskell-refactorer"
