@@ -1773,6 +1773,127 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "retrieveTokensPpr" $ do
+    it "retrieves the tokens in Ppr format Layout.Lift with deletion/insertion 1" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Lift.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(8,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,19))\n"++
+          "1:((1,20),(1,25))\n"++
+          "1:((3,1),(5,11))\n"++
+          "2:((3,1),(3,3))\n"++
+          "2:((3,4),(5,11))\n"++
+          "3:((3,4),(3,5))\n"++
+          "3:((3,6),(3,7))\n"++
+          "3:((3,8),(3,14))\n"++
+          "4:((3,8),(3,9))\n"++
+          "4:((3,10),(3,11))\n"++
+          "4:((3,12),(3,14))\n"++
+          "3:((4,3),(4,8))\n"++
+          "3:((5,5),(5,11))(Above FromAlignCol (1,-4) (5,5) (5,11) FromAlignCol (2,-10))\n"++
+          "4:((5,5),(5,11))\n"++
+          "5:((5,5),(5,7))\n"++
+          "5:((5,8),(5,11))\n"++
+          "6:((5,8),(5,9))\n"++
+          "6:((5,10),(5,11))\n"++
+          "1:((7,1),(7,6))\n"++
+          "2:((7,1),(7,2))\n"++
+          "2:((7,3),(7,6))\n"++
+          "3:((7,3),(7,4))\n"++
+          "3:((7,5),(7,6))\n"++
+          "1:((8,1),(8,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 "module Layout.Lift where",
+           PprText 3 1 "ff y = y + zz",PprText 4 3 "where",
+           PprAbove (FromAlignCol (1,-4)) (5,11) (FromAlignCol (2,-10))
+            [PprText 5 1 "zz = 1"],
+           PprText 7 1 "x = 1",
+           PprText 8 1 ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+{-
+getToksForSpan test/testdata/MoveDef/Md1.hs:24:5-10:("(((False,0,0,24),5),((False,0,0,24),11))",[((((24,5),(24,5)),ITvocurly),""),((((24,5),(24,7)),ITvarid "zz"),"zz"),((((24,8),(24,9)),ITequal),"="),((((24,10),(24,11)),ITinteger 1),"1")])
+
+removeToksForPos ((24,5),(24,11))
+
+
+rmLocalDecl: where/let tokens are at((23,3),(23,8))
+removeToksForPos ((23,3),(23,8))
+
+putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,22),1),((False,0,0,24),11))",PlaceOffset 2 0 2,[((((1,6),(1,8)),ITvarid "zz"),"zz"),((((1,9),(1,10)),ITequal),"="),((((1,11),(1,12)),ITinteger 1),"1")])
+
+
+-}
+
+      let sspan1 = posToSrcSpan layout ((5,5),(5,11))
+      (showGhc sspan1) `shouldBe` "test/testdata/Layout/Lift.hs:5:5-10"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan1)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let sspan2 = posToSrcSpan layout ((4,3),(4,8))
+      (showGhc sspan2) `shouldBe` "test/testdata/Layout/Lift.hs:4:3-7"
+
+      let (layout3,_old) = removeSrcSpan layout2 (srcSpanToForestSpan sspan2)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let sspan3 = posToSrcSpan layout ((3,1),(5,11))
+      (showGhc sspan3) `shouldBe` "test/testdata/Layout/Lift.hs:(3,1)-(5,10)"
+      newToks <- basicTokenise "zz = 1"
+      let (layout4,_newSpan) = addToksAfterSrcSpan layout3 sspan3 (PlaceOffset 2 0 2) newToks
+
+      (drawTreeCompact layout4) `shouldBe`
+          "0:((1,1),(8,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,19))\n"++
+          "1:((1,20),(1,25))\n"++
+          "1:((3,1),(5,11))\n"++
+           "2:((3,1),(3,3))\n"++
+           "2:((3,4),(5,11))\n"++
+            "3:((3,4),(3,5))\n"++
+            "3:((3,6),(3,7))\n"++
+            "3:((3,8),(3,14))\n"++
+             "4:((3,8),(3,9))\n"++
+             "4:((3,10),(3,11))\n"++
+             "4:((3,12),(3,14))\n"++
+            "3:((4,3),(4,8))(1,-3)D\n"++
+            "3:((5,5),(5,11))(2,-10)D\n"++
+          "1:((1000005,1),(1000005,7))\n"++
+          "1:((7,1),(7,6))\n"++
+           "2:((7,1),(7,2))\n"++
+           "2:((7,3),(7,6))\n"++
+            "3:((7,3),(7,4))\n"++
+            "3:((7,5),(7,6))\n"++
+          "1:((8,1),(8,1))\n"
+
+
+      let pprVal2 = retrieveTokensPpr layout4
+      (pprVal2) `shouldBe`
+          [PprText 1 1 "module Layout.Lift where",
+           PprText 3 1 "ff y = y + zz",
+           PprDeleted 4 3 1 1 2,
+           PprText 5 1 "zz = 1",
+           PprText 6 1 "",
+           PprText 7 1 "x = 1",
+           PprText 8 1 ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nx = 3\n"
+
+    -- ---------------------------------
+
     it "retrieves the tokens in Ppr format Layout.FromMd1 with deletion 1" $ do
       (t,toks) <-  parsedFileGhc "./test/testdata/Layout/FromMd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t

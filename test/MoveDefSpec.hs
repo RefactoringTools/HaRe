@@ -42,9 +42,8 @@ spec = do
     -- ---------------------------------
 
     it "lifts a definition to the top level" $ do
-     -- doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","24","5"]
      r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/MoveDef/Md1.hs" (24,5)
-     -- r <- liftToTopLevel logTestSettings testCradle Nothing "./test/testdata/MoveDef/Md1.hs" (24,5)
+     -- r <- liftToTopLevel logTestSettings testCradle  "./test/testdata/MoveDef/Md1.hs" (24,5)
      (show r) `shouldBe` "[\"./test/testdata/MoveDef/Md1.hs\"]"
      diff <- compareFiles "./test/testdata/MoveDef/Md1.hs.expected"
                           "./test/testdata/MoveDef/Md1.hs.refactored"

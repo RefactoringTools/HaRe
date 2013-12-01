@@ -326,12 +326,12 @@ moveDecl1 t defName ns sigNames topLevel
         -- (t'',sigsRemoved) <- rmTypeSigs ns t
         (t'',sigsRemoved) <- rmTypeSigs sigNames t
         -- drawTokenTree "moveDecl1:after rmTypeSigs" -- ++AZ++
-        drawTokenTreeDetailed "moveDecl1:after rmTypeSigs" -- ++AZ++
+        -- drawTokenTreeDetailed "moveDecl1:after rmTypeSigs" -- ++AZ++
         -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
         -- logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
         -- drawTokenTree "moveDecl1:after rmDecl" -- ++AZ++
-        drawTokenTreeDetailed "moveDecl1:after rmDecl" -- ++AZ++  'in' missing
+        -- drawTokenTreeDetailed "moveDecl1:after rmDecl" -- ++AZ++  'in' missing
 
         let getToksForMaybeSig (GHC.L ss _) =
                              do
