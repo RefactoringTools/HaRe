@@ -1897,6 +1897,155 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
 
     -- ---------------------------------
 
+    it "retrieves the tokens in Ppr format MoveDef.Demote with deletion/insertion 2" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(11,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,22))\n"++
+          "1:((1,23),(1,28))\n"++
+          "1:((3,1),(3,31))\n"++
+          "2:((3,1),(3,9))\n"++
+          "2:((3,10),(3,12))\n"++
+          "2:((3,13),(3,20))\n"++
+          "2:((3,21),(3,23))\n"++
+          "2:((3,24),(3,31))\n"++
+          "1:((4,1),(4,19))\n"++
+          "2:((4,1),(4,9))\n"++
+          "2:((4,10),(4,19))\n"++
+          "3:((4,10),(4,11))\n"++
+          "3:((4,12),(4,13))\n"++
+          "3:((4,14),(4,19))\n"++
+          "4:((4,14),(4,15))\n"++
+          "4:((4,16),(4,17))\n"++
+          "4:((4,18),(4,19))\n"++
+          "1:((7,1),(7,6))\n"++
+          "2:((7,1),(7,2))\n"++
+          "2:((7,3),(7,6))\n"++
+          "3:((7,3),(7,4))\n"++
+          "3:((7,5),(7,6))\n"++
+          "1:((8,1),(8,6))\n"++
+          "2:((8,1),(8,2))\n"++
+          "2:((8,3),(8,6))\n"++
+          "3:((8,3),(8,4))\n"++
+          "3:((8,5),(8,6))\n"++
+          "1:((11,1),(11,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "module MoveDef.Demote where",
+           PprText 3 1 Original "toplevel :: Integer -> Integer",
+           PprText 4 1 Original "toplevel x = c * x",
+           PprText 6 1 Original "-- c,d :: Integer",
+           PprText 7 1 Original "c = 7",
+           PprText 8 1 Original "d = 9",
+           PprText 11 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+{-
+removeToksForPos ((7,1),(7,6))
+
+putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
+   ((((0,1),(0,6)),ITwhere),"where"),
+   ((((1,4),(1,21)),ITlineComment "-- c,d :: Integer"),"-- c,d ::
+                                  -- Integer"),
+   ((((2,4),(2,4)),ITvocurly),""),
+   ((((2,4),(2,5)),ITvarid "c"),"c"),
+   ((((2,6),(2,7)),ITequal),"="),
+   ((((2,8),(2,9)),ITinteger 7),"7"),
+   ((((3,1),(3,1)),ITvccurly),"")]
+-}
+
+
+      let sspan1 = posToSrcSpan layout ((7,1),(7,6))
+      (showGhc sspan1) `shouldBe` "test/testdata/MoveDef/Demote.hs:7:1-5"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan1)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let sspan2 = posToSrcSpan layout ((4,14),(4,19))
+      (showGhc sspan2) `shouldBe` "test/testdata/MoveDef/Demote.hs:4:14-18"
+
+      newToks <- basicTokenise "where\n   -- c,d :: Integer\n   c = 7\n"
+      show newToks `shouldBe`
+         "[((((0,1),(0,6)),ITwhere),\"where\"),((((1,4),(1,21)),ITlineComment \"-- c,d :: Integer\"),\"-- c,d :: Integer\"),((((2,4),(2,4)),ITvocurly),\"\"),((((2,4),(2,5)),ITvarid \"c\"),\"c\"),((((2,6),(2,7)),ITequal),\"=\"),((((2,8),(2,9)),ITinteger 7),\"7\"),((((3,1),(3,1)),ITvccurly),\"\")]"
+
+      let (layout3,_newSpan) = addToksAfterSrcSpan layout2 sspan2 (PlaceOffset 1 4 2) newToks
+
+      (drawTreeCompact layout3) `shouldBe`
+          "0:((1,1),(11,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,22))\n"++
+          "1:((1,23),(1,28))\n"++
+          "1:((3,1),(3,31))\n"++
+          "2:((3,1),(3,9))\n"++
+          "2:((3,10),(3,12))\n"++
+          "2:((3,13),(3,20))\n"++
+          "2:((3,21),(3,23))\n"++
+          "2:((3,24),(3,31))\n"++
+          "1:((4,1),(4,19))\n"++
+           "2:((4,1),(4,9))\n"++
+           "2:((4,10),(4,19))\n"++
+            "3:((4,10),(4,11))\n"++
+            "3:((4,12),(4,13))\n"++
+            "3:((4,14),(4,19))\n"++
+             "4:((4,14),(4,15))\n"++
+             "4:((4,16),(4,17))\n"++
+             "4:((4,18),(4,19))\n"++
+            "3:((1000005,5),(1000007,13))\n"++
+          "1:((7,1),(7,6))(1,-5)D\n"++
+          "1:((8,1),(8,6))\n"++
+           "2:((8,1),(8,2))\n"++
+           "2:((8,3),(8,6))\n"++
+            "3:((8,3),(8,4))\n"++
+            "3:((8,5),(8,6))\n"++
+          "1:((11,1),(11,1))\n"
+
+      -- show layout4 `shouldBe` ""
+
+      let pprVal2 = retrieveTokensPpr layout3
+      (pprVal2) `shouldBe`
+          [PprText 1 1 Original "module MoveDef.Demote where",
+           PprText 3 1 Original "toplevel :: Integer -> Integer",
+           PprText 4 1 Original "toplevel x = c * x",
+           PprText 5 5 Added "where",
+           PprText 6 8 Added "-- c,d :: Integer",
+           PprText 7 8 Added "c = 7",
+           PprText 8 5 Added "",
+           PprText 13 1 Original "",
+           PprDeleted 7 1 3 0 1,
+           PprText 10 1 Original "d = 9",
+           PprText 13 1 Original ""]
+
+
+{-
+          [PprText 1 1 Original "module MoveDef.Demote where",
+           PprText 3 1 Original "toplevel :: Integer -> Integer",
+           PprText 4 1 Original "toplevel x = c * x",
+           PprText 5 5 Added "where",
+           PprText 6 8 Added "-- c,d :: Integer",
+           PprText 7 8 Added "c = 7",
+           PprText 8 5 Added "",
+           PprText 13 1 Original "",
+           PprDeleted 7 1 3 0 1,
+           PprText 11 1 Original "d = 9",
+           PprText 14 1 Original ""]
+-}
+      (renderPpr pprVal2) `shouldBe` ""
+
+
+    -- ---------------------------------
+
     it "retrieves the tokens in Ppr format Layout.FromMd1 with deletion 1" $ do
       (t,toks) <-  parsedFileGhc "./test/testdata/Layout/FromMd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t

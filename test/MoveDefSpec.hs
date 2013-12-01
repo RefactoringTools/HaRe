@@ -440,10 +440,12 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
      res <- catchException (demote defaultTestSettings testCradle "./test/testdata/MoveDef/Md1.hs" (8,1))
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
+    -- -----------------------------------------------------------------
+
     it "demotes a definition from the top level 1" $ do
      -- doDemote ["./test/testdata/MoveDef/Demote.hs","7","1"]
      r <- demote defaultTestSettings testCradle "./test/testdata/MoveDef/Demote.hs" (7,1)
-     -- r <- demote logTestSettings testCradle Nothing "./test/testdata/MoveDef/Demote.hs" (7,1)
+     -- r <- demote logTestSettings testCradle "./test/testdata/MoveDef/Demote.hs" (7,1)
      (show r) `shouldBe` "[\"./test/testdata/MoveDef/Demote.hs\"]"
      diff <- compareFiles "./test/testdata/MoveDef/Demote.hs.refactored"
                           "./test/testdata/MoveDef/Demote.hs.expected"
