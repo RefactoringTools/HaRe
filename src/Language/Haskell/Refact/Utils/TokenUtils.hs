@@ -1305,9 +1305,10 @@ mkPprFromLineToks :: [PosToken] -> [Ppr]
 mkPprFromLineToks [] = []
 mkPprFromLineToks toks = [PprText ro co str]
   where
-    ro = tokenRow $ head toks
-    co = tokenCol $ head toks
-    toks' = addOffsetToToks (-ro,-co) toks
+    ro' = tokenRow $ head toks
+    co' = tokenCol $ head toks
+    (ro,co) = srcPosToSimpPos (tokenRow $ head toks, tokenCol $ head toks)
+    toks' = addOffsetToToks (-ro',-co') toks
     str = GHC.showRichTokenStream toks'
 
 
