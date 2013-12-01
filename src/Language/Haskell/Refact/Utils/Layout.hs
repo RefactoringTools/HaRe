@@ -158,8 +158,12 @@ instance Outputable Layout where
   ppr (NoChange)      = text "NoChange"
   -- ppr (EndOffset r c) = text "EndOffset" <+> ppr r <+> ppr c
 
+instance Outputable PprOrigin where
+  ppr Original = text "Original"
+  ppr Added    = text "Added"
+
 instance Outputable Ppr where
-  ppr (PprText r c str) = text "PprText" <+> ppr r <+> ppr c
+  ppr (PprText r c o str) = text "PprText" <+> ppr r <+> ppr c <+> ppr o
                         <+> text "\"" <> text str <> text "\""
   ppr (PprAbove so rc erc pps) = hang (text "PprAbove" <+> ppr so <+> ppr rc <+> ppr erc)
                                            2 (ppr pps)

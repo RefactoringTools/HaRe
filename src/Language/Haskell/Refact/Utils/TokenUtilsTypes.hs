@@ -21,6 +21,7 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        , ForestLine(..)
        , ForestPos
        , ForestSpan
+       , PprOrigin(..)
        , Ppr(..)
        -- , HDoc(..)
        ) where
@@ -157,9 +158,15 @@ data TokenCache = TK
 
 -- ---------------------------------------------------------------------
 
+data PprOrigin = Original -- ^ Original tokens
+               | Added    -- ^ Added tokens
+               deriving (Eq,Show)
+
+-- ---------------------------------------------------------------------
+
 -- |A data structure to make the ppr process visible
-data Ppr = PprText Row Col String -- ^Original row and col of the
-                                  -- tokens making up the string
+data Ppr = PprText Row Col PprOrigin String
+           -- ^Original row and col of the tokens making up the string
          | PprAbove EndOffset (Row,Col) EndOffset [Ppr]
          -- ^ Offset of start of embedded parts, coords of last token,
          -- offset to start of next part, relative to the column of

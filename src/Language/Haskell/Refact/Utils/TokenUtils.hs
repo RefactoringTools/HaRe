@@ -1237,60 +1237,51 @@ retrieveTokensPpr :: Tree Entry -> [Ppr]
 retrieveTokensPpr forest = pps'''
   where
     -- forest' = adjustLinesForDeleted forest
-    (pps,lastLine) = retrieveTokensPpr' ([],[]) forest
+    (pps,_,lastLine) = retrieveTokensPpr' ([],Original,[]) forest
     pps'   = pps ++ (mkPprFromLineToks lastLine)
     pps''  = mergeDeletesPpr pps'
     pps''' = adjustPprForDeleted pps''
 
-retrieveTokensPpr' :: ([Ppr],[PosToken]) -> Tree Entry -> ([Ppr],[PosToken])
+retrieveTokensPpr' :: ([Ppr],PprOrigin,[PosToken]) -> Tree Entry -> ([Ppr],PprOrigin,[PosToken])
 
 retrieveTokensPpr' acc (Node (Deleted _sspan _pg ( 0,_cd) ) _) = acc
-retrieveTokensPpr' acc (Node (Deleted  sspan pg (rd,_cd) ) _) = acc'
+retrieveTokensPpr' acc (Node (Deleted  sspan  pg (rd,_cd) ) _) = acc'
   where
-    (ac,curLineToks) = acc
+    (ac,o,curLineToks) = acc
     ll = mkPprFromLineToks curLineToks
     ((rs,cs),(re,_ce)) = forestSpanToSimpPos sspan
     ol = re - rs
-    acc' = (ac ++ ll ++ [PprDeleted rs cs pg ol rd],[])
+    acc' = (ac ++ ll ++ [PprDeleted rs cs pg ol rd],o,[])
 
 retrieveTokensPpr' acc (Node (Entry _sspan NoChange     []) subs)
   = foldl' retrieveTokensPpr' acc subs
 
 retrieveTokensPpr' acc (Node (Entry _sspan (Above so _ (r,c) eo) []) subs) = acc'
   where
-    (ac,curLineToks) = acc
-    (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
-    cl2Acc = mkPprFromLineToks cl2
+    (ac,_o,curLineToks) = acc
+    (sss,o2,cl2) = foldl' retrieveTokensPpr' ([],Original,[]) subs
+    cl2Acc = mkPprFromLineToksSrc o2 cl2
     ll = mkPprFromLineToks curLineToks
-    acc' = (ac ++ ll ++ [PprAbove so (r,c) eo (normaliseColumns (sss++cl2Acc))],[])
+    acc' = (ac ++ ll ++ [PprAbove so (r,c) eo (normaliseColumns (sss++cl2Acc))],o2,[])
 
-{-
-retrieveTokensPpr' acc (Node (Entry _sspan (Offset r c) []) subs) = acc'
+retrieveTokensPpr' (acc,oi,curLineToks) (Node (Entry sspan _     toks) []) = (acc++accNew,o,curLineToks')
   where
-    (ac,curLineToks) = acc
-    (sss,cl2) = foldl' retrieveTokensPpr' ([],[]) subs
-    cl2Acc = mkPprFromLineToks cl2
-    ll = mkPprFromLineToks curLineToks
-    acc' = (ac ++ ll ++ [PprOffset r c (sss++cl2Acc)],[])
--}
-
-retrieveTokensPpr' (acc,curLineToks) (Node (Entry _sspan _     toks) []) = (acc++accNew,curLineToks')
-  where
+    o = if (forestSpanVersionSet sspan) then Added else Original
     toksByLine = groupTokensByLine toks
     (accNew,curLineToks') = case curLineToks of
       [] -> case toksByLine of
               [] -> ([],[])
               [x] -> ([],x)
-              xs -> (concatMap mkPprFromLineToks (init xs),last xs)
+              xs -> (concatMap (mkPprFromLineToksSrc o) (init xs),last xs)
 
       _  -> case toksByLine of
               [] -> ([],[])
               [x] -> if (toksOnSameLine (last curLineToks) (head x))
                        then ([],curLineToks ++ x)
-                       else (mkPprFromLineToks curLineToks,x)
+                       else (mkPprFromLineToksSrc oi curLineToks,x)
               (x:xs) -> if (toksOnSameLine (last curLineToks) (head x))
-                          then ((mkPprFromLineToks (curLineToks++x)) ++ concatMap mkPprFromLineToks (  init xs),last xs)
-                          else ((mkPprFromLineToks curLineToks     ) ++ concatMap mkPprFromLineToks (x:init xs),last xs)
+                          then ((mkPprFromLineToksSrc o (curLineToks++x)) ++ concatMap (mkPprFromLineToksSrc o) (  init xs),last xs)
+                          else ((mkPprFromLineToksSrc oi curLineToks    ) ++ concatMap (mkPprFromLineToksSrc o) (x:init xs),last xs)
 
 -- Keep -Wall happy
 retrieveTokensPpr' _acc n@(Node (Entry _sspan (Above _so _ (_r,_c) _eo) _toks) _subs)
@@ -1302,8 +1293,11 @@ retrieveTokensPpr' _acc n@(Node (Entry _sspan (NoChange) _toks) _subs)
 
 
 mkPprFromLineToks :: [PosToken] -> [Ppr]
-mkPprFromLineToks [] = []
-mkPprFromLineToks toks = [PprText ro co str]
+mkPprFromLineToks toks = mkPprFromLineToksSrc Original toks
+
+mkPprFromLineToksSrc :: PprOrigin -> [PosToken] -> [Ppr]
+mkPprFromLineToksSrc _ [] = []
+mkPprFromLineToksSrc o toks = [PprText ro co o str]
   where
     ro' = tokenRow $ head toks
     co' = tokenCol $ head toks
@@ -1318,12 +1312,12 @@ normaliseColumns [] = []
 normaliseColumns ps = ps'
   where
     offset = case (head ps) of
-      PprText    _r c _     -> c - 1
+      PprText    _r c _ _   -> c - 1
       PprDeleted _r c _ _ _ -> c - 1
       _              -> 0
     ps' = map removeOffset ps
 
-    removeOffset (PprText r c toks)     = (PprText r (c - offset) toks)
+    removeOffset (PprText r c o toks)   = (PprText r (c - offset) o toks)
     removeOffset (PprDeleted r c p l e) = (PprDeleted r (c - offset) p l e)
     removeOffset x = x
 
@@ -1336,7 +1330,8 @@ adjustPprForDeleted pps = pps'
     (_,pps') = foldl' go ((0,0),[]) pps
 
     go :: ((Int,Int),[Ppr]) -> Ppr -> ((Int,Int),[Ppr])
-    go ((ro,co),acc) (PprText r c str) = ((ro,co),acc++[PprText (r-ro) (c-co) str])
+    go ((ro,co),acc) (PprText r c Original str) = ((ro,  co),acc++[PprText (r-ro) (c-co) Original str])
+    go ((ro,co),acc) (PprText r c Added    str) = ((ro-1,co),acc++[PprText (r   ) (c   ) Added  str])
     -- go ((ro,co),acc) (PprDeleted r c rd) = ((ro - rd,co),acc)
     go ((ro,co),acc) (PprDeleted r c pg l eg)
         = ((ro + (pg + l + eg) - (max pg eg),co),acc++[PprDeleted r c pg l eg])
@@ -1493,13 +1488,13 @@ mergeDeletesPpr (p:ps) = p : mergeDeletesPpr ps
 -- ---------------------------------------------------------------------
 
 getPprStartRow :: Ppr -> Row
-getPprStartRow (PprText r _ _) = r
+getPprStartRow (PprText r _ _ _) = r
 getPprStartRow (PprDeleted r _ _ _ _) = r
 getPprStartRow (PprAbove _ _ _ []) = error "getPprStartRow: PprAbove with no subs"
 getPprStartRow (PprAbove _ _ _ subs) = getPprStartRow $ head subs
 
 getPprEndRow :: Ppr -> Row
-getPprEndRow (PprText r _ _) = r
+getPprEndRow (PprText r _ _ _) = r
 getPprEndRow (PprDeleted r _ _ _ _) = r
 getPprEndRow (PprAbove _ _ _ []) = error "getPprEndRow: PprAbove with no subs"
 getPprEndRow (PprAbove _ _ _ subs) = getPprEndRow $ last subs
@@ -1547,7 +1542,7 @@ renderPpr ps = res
 
     go _ [] = return ()
 
-    go ci (ppt@(PprText _rt _ct _toks):ppa@(PprAbove so (_,_cc) eo _subs):ps') = do
+    go ci (ppt@(PprText _rt _ct _ _toks):ppa@(PprAbove so (_,_cc) eo _subs):ps') = do
       renderPprText ci ppt
       addOffset so
       (_,c) <- getRC
@@ -1565,7 +1560,7 @@ renderPpr ps = res
       -- addDebugString $ "(eo:" ++ show (ci,(r',c')) ++ ")" -- ++AZ++ debug
       go ci ps'
 
-    go ci (p@(PprText _rt _ct _toks):ps') = do
+    go ci (p@(PprText _rt _ct _ _toks):ps') = do
       renderPprText ci p
       go ci ps'
 
@@ -1583,7 +1578,7 @@ renderPpr ps = res
     ------------------------------------
 
     -- renderPprText :: Col -> Ppr -> String
-    renderPprText ci (PprText rt ct str) = do
+    renderPprText ci (PprText rt ct _ str) = do
       -- (r',c') <- getRC
       -- addDebugString $ "(op" ++ (show (ci,(r',c'),(rt,ct))) ++ ")"  -- ++AZ++ for debugging
       newPos rt (ci + ct)
@@ -2017,10 +2012,14 @@ reIndentToks pos prevToks toks = toks''
                     $ dropWhile isWhiteSpaceOrIgnored prevToks
           -- colStart = prevOffset
           -- colStart = error $ "reIndentToks:prevToks=" ++ (show prevToks)
+
           lineStart = (tokenRow (lastTok)) -- + 1
+          -- lineStart = error $ "reIndentToks:PlaceOffset:lastTok=" ++ show lastTok
+          -- lineStart = error $ "reIndentToks:PlaceOffset:firstTok=" ++ show firstTok
 
           lineOffset' = rowIndent + lineStart - (tokenRow firstTok)
           colOffset'  = colIndent + colStart  - (tokenCol newTokStart)
+          -- colOffset'  = error $ "reIndentToks:placeOffset lineOffset=" ++ show lineOffset
 
       PlaceIndent rowIndent colIndent numLines -> (lineOffset',colOffset',numLines)
         where

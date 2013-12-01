@@ -1813,12 +1813,13 @@ tree TId 0:
 
       let pprVal = retrieveTokensPpr layout
       (pprVal) `shouldBe`
-          [PprText 1 1 "module Layout.Lift where",
-           PprText 3 1 "ff y = y + zz",PprText 4 3 "where",
+          [PprText 1 1 Original "module Layout.Lift where",
+           PprText 3 1 Original "ff y = y + zz",
+           PprText 4 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (5,11) (FromAlignCol (2,-10))
-            [PprText 5 1 "zz = 1"],
-           PprText 7 1 "x = 1",
-           PprText 8 1 ""]
+            [PprText 5 1 Original "zz = 1"],
+           PprText 7 1 Original "x = 1",
+           PprText 8 1 Original ""]
 
       (renderPpr pprVal) `shouldBe` origSource
 
@@ -1853,6 +1854,7 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
       let sspan3 = posToSrcSpan layout ((3,1),(5,11))
       (showGhc sspan3) `shouldBe` "test/testdata/Layout/Lift.hs:(3,1)-(5,10)"
       newToks <- basicTokenise "zz = 1"
+      -- let (layout4,_newSpan) = addToksAfterSrcSpan layout3 sspan3 (PlaceOffset 2 0 2) newToks
       let (layout4,_newSpan) = addToksAfterSrcSpan layout3 sspan3 (PlaceOffset 2 0 2) newToks
 
       (drawTreeCompact layout4) `shouldBe`
@@ -1879,18 +1881,19 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
             "3:((7,5),(7,6))\n"++
           "1:((8,1),(8,1))\n"
 
+      -- show layout4 `shouldBe` ""
 
       let pprVal2 = retrieveTokensPpr layout4
       (pprVal2) `shouldBe`
-          [PprText 1 1 "module Layout.Lift where",
-           PprText 3 1 "ff y = y + zz",
+          [PprText 1 1 Original "module Layout.Lift where",
+           PprText 3 1 Original "ff y = y + zz",
            PprDeleted 4 3 1 1 2,
-           PprText 5 1 "zz = 1",
-           PprText 6 1 "",
-           PprText 7 1 "x = 1",
-           PprText 8 1 ""]
+           PprText 5 1 Added    "zz = 1",
+           PprText 6 1 Added     "",
+           PprText 7 1 Original "x = 1",
+           PprText 8 1 Original ""]
 
-      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nx = 3\n"
+      (renderPpr pprVal2) `shouldBe` "module Layout.Lift where\n\nff y = y + zz\n\nzz = 1\n\nx = 1\n"
 
     -- ---------------------------------
 
@@ -1949,15 +1952,15 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
           "1:((11,1),(11,1))\n"
       let pprVal = retrieveTokensPpr layout
       (pprVal) `shouldBe`
-          [PprText 1 1 "module Layout.FromMd1 where",
-           PprText 3 1 "data D = A | B String | C",
-           PprText 5 1 "ff :: Int -> Int",
-           PprText 6 1 "ff y = y + zz",
-           PprText 7 3 "where",
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+           PprText 5 1 Original "ff :: Int -> Int",
+           PprText 6 1 Original "ff y = y + zz",
+           PprText 7 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
-             [PprText 8 1 "zz = 1"],
-           PprText 10 1 "x = 3",
-           PprText 11 1 ""]
+             [PprText 8 1 Original "zz = 1"],
+           PprText 10 1 Original "x = 3",
+           PprText 11 1 Original ""]
 
       (renderPpr pprVal) `shouldBe` origSource
 
@@ -1974,16 +1977,16 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
 
       let pprVal2 = retrieveTokensPpr layout2
       (pprVal2) `shouldBe`
-          [PprText 1 1 "module Layout.FromMd1 where",
-           PprText 3 1 "data D = A | B String | C",
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
            PprDeleted 5 1 2 0 1,
            -- originally line 6, offset is 1
-           PprText 5 1 "ff y = y + zz",
-           PprText 6 3 "where",
+           PprText 5 1 Original "ff y = y + zz",
+           PprText 6 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
-             [PprText 7 1 "zz = 1"],
-           PprText 9 1 "x = 3",
-           PprText 10 1 ""]
+             [PprText 7 1 Original "zz = 1"],
+           PprText 9 1 Original "x = 3",
+           PprText 10 1 Original ""]
 
       (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nx = 3\n"
 
@@ -2005,15 +2008,15 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
 
       let pprVal = retrieveTokensPpr layout
       (pprVal) `shouldBe`
-          [PprText 1 1 "module Layout.FromMd1 where",
-           PprText 3 1 "data D = A | B String | C",
-           PprText 5 1 "ff :: Int -> Int",
-           PprText 6 1 "ff y = y + zz",
-           PprText 7 3 "where",
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+           PprText 5 1 Original "ff :: Int -> Int",
+           PprText 6 1 Original "ff y = y + zz",
+           PprText 7 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
-             [PprText 8 1 "zz = 1"],
-           PprText 10 1 "x = 3",
-           PprText 11 1 ""]
+             [PprText 8 1 Original "zz = 1"],
+           PprText 10 1 Original "x = 3",
+           PprText 11 1 Original ""]
 
       (renderPpr pprVal) `shouldBe` origSource
 
@@ -2030,14 +2033,14 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
 
       let pprVal2 = retrieveTokensPpr layout2
       (pprVal2) `shouldBe`
-          [PprText 1 1 "module Layout.FromMd1 where",
-           PprText 3 1 "data D = A | B String | C",
-           PprText 5 1 "ff :: Int -> Int",
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+           PprText 5 1 Original "ff :: Int -> Int",
            PprDeleted 6 1 1 2 2,
 
            -- originally line 10. ro must be 3
-           PprText 7 1 "x = 3",
-           PprText 8 1 ""]
+           PprText 7 1 Original "x = 3",
+           PprText 8 1 Original ""]
 
       (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff :: Int -> Int\n\nx = 3\n"
 
@@ -2059,15 +2062,15 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
 
       let pprVal = retrieveTokensPpr layout
       (pprVal) `shouldBe`
-          [PprText 1 1 "module Layout.FromMd1 where",
-           PprText 3 1 "data D = A | B String | C",
-           PprText 5 1 "ff :: Int -> Int",
-           PprText 6 1 "ff y = y + zz",
-           PprText 7 3 "where",
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+           PprText 5 1 Original "ff :: Int -> Int",
+           PprText 6 1 Original "ff y = y + zz",
+           PprText 7 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
-             [PprText 8 1 "zz = 1"],
-           PprText 10 1 "x = 3",
-           PprText 11 1 ""]
+             [PprText 8 1 Original "zz = 1"],
+           PprText 10 1 Original "x = 3",
+           PprText 11 1 Original ""]
 
       (renderPpr pprVal) `shouldBe` origSource
 
@@ -2090,8 +2093,8 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
 
       let pprVal2 = retrieveTokensPpr layout3
       (pprVal2) `shouldBe`
-          [PprText 1 1 "module Layout.FromMd1 where",
-           PprText 3 1 "data D = A | B String | C",
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
 
            -- PprDeleted 5 1 2 0 1,
            -- PprDeleted 6 1 1 2 2,
@@ -2101,8 +2104,8 @@ Should be pg :  5 - 3 = 2
           eg : 10 - 8 = 2
            l :  8 - 5 = 3
 -}
-           PprText 5 1 "x = 3",
-           PprText 6 1 ""]
+           PprText 5 1 Original "x = 3",
+           PprText 6 1 Original ""]
 
       (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nx = 3\n"
 
@@ -2124,14 +2127,14 @@ Should be pg :  5 - 3 = 2
 
       let pprVal = retrieveTokensPpr layout
       (pprVal) `shouldBe`
-          [PprText 1 1 "module Layout.Where2 where",
-           PprText 3 1 "tup@(h,t) = head $ zip [1..10] [3..ff]",
-           PprText 4 3 "where",
+          [PprText 1 1 Original "module Layout.Where2 where",
+           PprText 3 1 Original "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 4 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (6,12) (FromAlignCol (2,-11))
-             [PprText 5 1 "ff :: Int",
-              PprText 6 1 "ff = 15"],
-           PprText 8 1 "x = 3",
-           PprText 9 1 ""]
+             [PprText 5 1 Original "ff :: Int",
+              PprText 6 1 Original "ff = 15"],
+           PprText 8 1 Original "x = 3",
+           PprText 9 1 Original ""]
 
       (renderPpr pprVal) `shouldBe` origSource
 
@@ -2146,14 +2149,14 @@ Should be pg :  5 - 3 = 2
 
       let pprVal2 = retrieveTokensPpr layout2
       (pprVal2) `shouldBe`
-          [PprText 1 1 "module Layout.Where2 where",
-           PprText 3 1 "tup@(h,t) = head $ zip [1..10] [3..ff]",
-           PprText 4 3 "where",
+          [PprText 1 1 Original "module Layout.Where2 where",
+           PprText 3 1 Original "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 4 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (6,12) (FromAlignCol (2,-11))
              [PprDeleted 5 1 1 0 1,
-              PprText 5 1 "ff = 15"],
-           PprText 7 1 "x = 3",
-           PprText 8 1 ""]
+              PprText 5 1 Original "ff = 15"],
+           PprText 7 1 Original "x = 3",
+           PprText 8 1 Original ""]
 
       (renderPpr pprVal2) `shouldBe` "module Layout.Where2 where\n\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff = 15\n\nx = 3\n"
 
@@ -2205,16 +2208,16 @@ Should be pg :  5 - 3 = 2
 
       let pprVal = retrieveTokensPpr layout
       (pprVal) `shouldBe`
-          [PprText 1 1 "module LayoutLet2 where",
-           PprText 3 1 "-- Simple let expression, rename xxx to something longer or shorter",
-           PprText 4 1 "-- and the let/in layout should adjust accordingly",
-           PprText 5 1 "-- In this case the tokens for xxx + a + b should also shift out",
-           PprText 7 1 "foo xxx = let",
+          [PprText 1 1 Original "module LayoutLet2 where",
+           PprText 3 1 Original "-- Simple let expression, rename xxx to something longer or shorter",
+           PprText 4 1 Original "-- and the let/in layout should adjust accordingly",
+           PprText 5 1 Original "-- In this case the tokens for xxx + a + b should also shift out",
+           PprText 7 1 Original "foo xxx = let",
            PprAbove None (8,20) (SameLine 1)
-             [PprText 7 1 "a = 1",
-              PprText 8 1 "b = 2"],
-           PprText 8 21 "in xxx + a + b",
-           PprText 10 1 ""
+             [PprText 7 1 Original "a = 1",
+              PprText 8 1 Original "b = 2"],
+           PprText 8 21 Original "in xxx + a + b",
+           PprText 10 1 Original ""
           ]
 
       (renderPpr pprVal) `shouldBe` origSource
@@ -2270,15 +2273,15 @@ Should be pg :  5 - 3 = 2
 
       let pprVal = retrieveTokensPpr layout
       (pprVal) `shouldBe`
-          [PprText 1 1 "module LayoutIn1 where",
-           PprText 3 1 "--Layout rule applies after 'where','let','do' and 'of'",
-           PprText 5 1 "--In this Example: rename 'sq' to 'square'.",
-           PprText 7 1 "sumSquares x y= sq x + sq y where",
+          [PprText 1 1 Original "module LayoutIn1 where",
+           PprText 3 1 Original "--Layout rule applies after 'where','let','do' and 'of'",
+           PprText 5 1 Original "--In this Example: rename 'sq' to 'square'.",
+           PprText 7 1 Original "sumSquares x y= sq x + sq y where",
            PprAbove None (9,40) (FromAlignCol (1,-39))
-             [PprText 7 1 "sq x= x^pow",
-              PprText 8 (-31) "--There is a comment.",
-              PprText 9 1 "pow=2"],
-           PprText 10 1 ""]
+             [PprText 7 1 Original "sq x= x^pow",
+              PprText 8 (-31) Original "--There is a comment.",
+              PprText 9 1 Original "pow=2"],
+           PprText 10 1 Original ""]
 
       (renderPpr pprVal) `shouldBe` origSource
 
@@ -2326,15 +2329,15 @@ Should be pg :  5 - 3 = 2
 
       let pprVal = retrieveTokensPpr layout
       (pprVal) `shouldBe`
-          [PprText 1 1 "-- A simple let expression, to ensure the layout is detected",
-           PprText 3 1 "module Layout.LetExpr where",
-           PprText 5 1 "foo = let",
+          [PprText 1 1 Original "-- A simple let expression, to ensure the layout is detected",
+           PprText 3 1 Original "module Layout.LetExpr where",
+           PprText 5 1 Original "foo = let",
            PprAbove None (6,16) (FromAlignCol (1,-9))
-             [PprText 5 1 "x = 1",
-              PprText 6 1 "y = 2"
+             [PprText 5 1 Original "x = 1",
+              PprText 6 1 Original "y = 2"
              ],
-           PprText 7 7 "in x + y",
-           PprText 9 1 ""]
+           PprText 7 7 Original "in x + y",
+           PprText 9 1 Original ""]
 
       (renderPpr pprVal) `shouldBe` origSource
 
@@ -2388,18 +2391,18 @@ Should be pg :  5 - 3 = 2
 
       let pprVal = retrieveTokensPpr layout
       (pprVal) `shouldBe`
-          [PprText 1 1 "-- A simple let statement, to ensure the layout is detected",
-           PprText 3 1 "module Layout.LetStmt where",
-           PprText 5 1 "foo = do",
+          [PprText 1 1 Original "-- A simple let statement, to ensure the layout is detected",
+           PprText 3 1 Original "module Layout.LetStmt where",
+           PprText 5 1 Original "foo = do",
            PprAbove (FromAlignCol (1,-1)) (8,12) (FromAlignCol (2,-11))
-             [PprText 6 1 "let",
+             [PprText 6 1 Original "let",
               PprAbove None (7,18) (FromAlignCol (1,-9))
-                [PprText 6 1 "x = 1",
-                 PprText 7 1 "y = 2"
+                [PprText 6 1 Original "x = 1",
+                 PprText 7 1 Original "y = 2"
                 ],
-              PprText 8 1 "x+y"
+              PprText 8 1 Original "x+y"
              ],
-           PprText 10 1 ""
+           PprText 10 1 Original ""
           ]
 
       (renderPpr pprVal) `shouldBe`
@@ -2473,22 +2476,22 @@ Should be pg :  5 - 3 = 2
       let pprVal = retrieveTokensPpr layout
 
       pprVal `shouldBe`
-          [PprText 1 1 "module LayoutIn2 where",
-           PprText 3 1 "--Layout rule applies after 'where','let','do' and 'of'",
-           PprText 5 1 "--In this Example: rename 'list' to 'ls'.",
-           PprText 7 1 "silly :: [Int] -> Int",
-           PprText 8 1 "silly list = case list of",
+          [PprText 1 1 Original "module LayoutIn2 where",
+           PprText 3 1 Original "--Layout rule applies after 'where','let','do' and 'of'",
+           PprText 5 1 Original "--In this Example: rename 'list' to 'ls'.",
+           PprText 7 1 Original "silly :: [Int] -> Int",
+           PprText 8 1 Original "silly list = case list of",
            PprAbove (SameLine 1) (12,43) (FromAlignCol (2,-42))
-             [PprText 8 1 "(1:xs) -> 1",
-              PprText 9 (-26) "--There is a comment",
-              PprText 10 1 "(2:xs)",
-              PprText 11 3 "| x < 10    -> 4  where",
+             [PprText 8 1 Original "(1:xs) -> 1",
+              PprText 9 (-26) Original "--There is a comment",
+              PprText 10 1 Original "(2:xs)",
+              PprText 11 3 Original "| x < 10    -> 4  where",
               PprAbove (SameLine 1) (11,66) (FromAlignCol (1,-38))
-                [PprText 11 1 "x = last xs"
+                [PprText 11 1 Original "x = last xs"
                 ],
-              PprText 12 1 "otherwise -> 12"
+              PprText 12 1 Original "otherwise -> 12"
              ],
-          PprText 14 1 ""
+          PprText 14 1 Original ""
           ]
 
       (renderPpr pprVal) `shouldBe` origSource
@@ -2510,27 +2513,27 @@ Should be pg :  5 - 3 = 2
       let pprVal = retrieveTokensPpr layout
 
       pprVal `shouldBe`
-          [PprText 1 1 "module LiftToToplevel.LetIn1 where",
-           PprText 3 1 "--A definition can be lifted from a where or let to the top level binding group.",
-           PprText 4 1 "--Lifting a definition widens the scope of the definition.",
-           PprText 6 1 "--In this example, lift 'sq' in 'sumSquares'",
-           PprText 7 1 "--This example aims to test lifting a definition from a let clause to top level,",
-           PprText 8 1 "--and the elimination of the keywords 'let' and 'in'",
-           PprText 10 1 "sumSquares x y = let",
+          [PprText 1 1 Original "module LiftToToplevel.LetIn1 where",
+           PprText 3 1 Original "--A definition can be lifted from a where or let to the top level binding group.",
+           PprText 4 1 Original "--Lifting a definition widens the scope of the definition.",
+           PprText 6 1 Original "--In this example, lift 'sq' in 'sumSquares'",
+           PprText 7 1 Original "--This example aims to test lifting a definition from a let clause to top level,",
+           PprText 8 1 Original "--and the elimination of the keywords 'let' and 'in'",
+           PprText 10 1 Original "sumSquares x y = let",
            PprAbove None (11,32) (FromAlignCol (1,-13))
-             [PprText 10 1 "sq 0=0",
-              PprText 11 1 "sq z=z^pow"
+             [PprText 10 1 Original "sq 0=0",
+              PprText 11 1 Original "sq z=z^pow"
              ],
-           PprText 12 19 "in sq x + sq y",
-           PprText 13 24 "where",
+           PprText 12 19 Original "in sq x + sq y",
+           PprText 13 24 Original "where",
            PprAbove None (13,35) (FromAlignCol (2,-34))
-             [PprText 13 1 "pow=2"
+             [PprText 13 1 Original "pow=2"
              ],
-           PprText 15 1 "anotherFun 0 y = sq y",
-           PprText 16 6 "where",
+           PprText 15 1 Original "anotherFun 0 y = sq y",
+           PprText 16 6 Original "where",
            PprAbove None (16,22) (FromAlignCol (1,-21))
-             [PprText 16 1 "sq x = x^2"],
-           PprText 17 1 ""
+             [PprText 16 1 Original "sq x = x^2"],
+           PprText 17 1 Original ""
           ]
 
       (renderPpr pprVal) `shouldBe` origSource
@@ -2554,12 +2557,12 @@ Should be pg :  5 - 3 = 2
 
       let pprVal = retrieveTokensPpr layout
       pprVal `shouldBe`
-          [PprText 1 1 "module LiftToToplevel.Where where",
-           PprText 3 1 "anotherFun 0 y = sq y",
-           PprText 4 6 "where",
+          [PprText 1 1 Original "module LiftToToplevel.Where where",
+           PprText 3 1 Original "anotherFun 0 y = sq y",
+           PprText 4 6 Original "where",
            PprAbove None (4,22) (FromAlignCol (1,-21))
-             [PprText 4 1 "sq x = x^2"],
-           PprText 5 1 ""
+             [PprText 4 1 Original "sq x = x^2"],
+           PprText 5 1 Original ""
           ]
 
       (renderPpr pprVal) `shouldBe` origSource
@@ -2634,18 +2637,18 @@ Should be pg :  5 - 3 = 2
 
       let pprVal = retrieveTokensPpr layout
       pprVal `shouldBe`
-          [PprText 1 1 "module Layout.PatBind where",
-           PprText 3 2 "-- Pattern bind",
-           PprText 4 1 "tup :: (Int, Int)",
-           PprText 5 1 "h :: Int",
-           PprText 6 1 "t :: Int",
-           PprText 7 1 "tup@(h,t) = head $ zip [1..10] [3..ff]",
-           PprText 8 3 "where",
+          [PprText 1 1 Original "module Layout.PatBind where",
+           PprText 3 2 Original "-- Pattern bind",
+           PprText 4 1 Original "tup :: (Int, Int)",
+           PprText 5 1 Original "h :: Int",
+           PprText 6 1 Original "t :: Int",
+           PprText 7 1 Original "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 8 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (10,12) (FromAlignCol (3,-11))
-             [PprText 9 1 "ff :: Int",
-              PprText 10 1 "ff = 15"
+             [PprText 9 1 Original "ff :: Int",
+              PprText 10 1 Original "ff = 15"
              ],
-           PprText 13 1 ""
+           PprText 13 1 Original ""
            ]
 
       (renderPpr pprVal) `shouldBe` origSource
@@ -2943,47 +2946,47 @@ Should be pg :  5 - 3 = 2
       let pprVal = retrieveTokensPpr layout
 
       pprVal `shouldBe`
-          [PprText 1 1 "module MoveDef.Md1 where",
-           PprText 3 1 "toplevel :: Integer -> Integer",
-           PprText 4 1 "toplevel x = c * x",
-           PprText 6 1 "c,d :: Integer",
-           PprText 7 1 "c = 7",
-           PprText 8 1 "d = 9",
-           PprText 10 1 "-- Pattern bind",
-           PprText 11 1 "tup :: (Int, Int)",
-           PprText 12 1 "h :: Int",
-           PprText 13 1 "t :: Int",
-           PprText 14 1 "tup@(h,t) = head $ zip [1..10] [3..ff]",
-           PprText 15 3 "where",
+          [PprText 1 1 Original "module MoveDef.Md1 where",
+           PprText 3 1 Original "toplevel :: Integer -> Integer",
+           PprText 4 1 Original "toplevel x = c * x",
+           PprText 6 1 Original "c,d :: Integer",
+           PprText 7 1 Original "c = 7",
+           PprText 8 1 Original "d = 9",
+           PprText 10 1 Original "-- Pattern bind",
+           PprText 11 1 Original "tup :: (Int, Int)",
+           PprText 12 1 Original "h :: Int",
+           PprText 13 1 Original "t :: Int",
+           PprText 14 1 Original "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 15 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (17,12) (FromAlignCol (2,-11))
-             [PprText 16 1 "ff :: Int",
-              PprText 17 1 "ff = 15"
+             [PprText 16 1 Original "ff :: Int",
+              PprText 17 1 Original "ff = 15"
              ],
-           PprText 19 1 "data D = A | B String | C",
-           PprText 21 1 "ff :: Int -> Int",
-           PprText 22 1 "ff y = y + zz",
-           PprText 23 3 "where",
+           PprText 19 1 Original "data D = A | B String | C",
+           PprText 21 1 Original "ff :: Int -> Int",
+           PprText 22 1 Original "ff y = y + zz",
+           PprText 23 3 Original "where",
            PprAbove (FromAlignCol (1,-4)) (24,11) (FromAlignCol (2,-10))
-             [PprText 24 1 "zz = 1"],
-           PprText 26 1 "l z =",
-           PprText 27 3 "let",
+             [PprText 24 1 Original "zz = 1"],
+           PprText 26 1 Original "l z =",
+           PprText 27 3 Original "let",
            PprAbove (FromAlignCol (1,-2)) (28,12) (FromAlignCol (1,-9))
-             [PprText 28 1 "ll = 34"],
-           PprText 29 3 "in ll + z",
-           PprText 31 1 "dd q = do",
+             [PprText 28 1 Original "ll = 34"],
+           PprText 29 3 Original "in ll + z",
+           PprText 31 1 Original "dd q = do",
            PprAbove (FromAlignCol (1,-8)) (33,18) (FromAlignCol (2,-17))
-             [PprText 32 1 "let",
+             [PprText 32 1 Original "let",
               PprAbove None (32,13) (FromAlignCol (1,-10))
-                [PprText 32 1 "ss = 5"],
-              PprText 33 1 "return (ss + q)"
+                [PprText 32 1 Original "ss = 5"],
+              PprText 33 1 Original "return (ss + q)"
              ],
-           PprText 35 1 "zz1 a = 1 + toplevel a",
-           PprText 37 1 "-- General Comment",
-           PprText 38 1 "-- |haddock comment",
-           PprText 39 1 "tlFunc :: Integer -> Integer",
-           PprText 40 1 "tlFunc x = c * x",
-           PprText 41 1 "-- Comment at end",
-           PprText 44 1 ""
+           PprText 35 1 Original "zz1 a = 1 + toplevel a",
+           PprText 37 1 Original "-- General Comment",
+           PprText 38 1 Original "-- |haddock comment",
+           PprText 39 1 Original "tlFunc :: Integer -> Integer",
+           PprText 40 1 Original "tlFunc x = c * x",
+           PprText 41 1 Original "-- Comment at end",
+           PprText 44 1 Original ""
           ]
 
       (renderPpr pprVal) `shouldBe` origSource
@@ -3039,16 +3042,16 @@ Should be pg :  5 - 3 = 2
       let pprVal = retrieveTokensPpr layout
 
       pprVal `shouldBe`
-          [PprText 1 1 "module LayoutLet1 where",
-           PprText 3 1 "-- Simple let expression, rename xxx to something longer or shorter",
-           PprText 4 1 "-- and the let/in layout should adjust accordingly",
-           PprText 6 1 "foo xxx = let",
+          [PprText 1 1 Original "module LayoutLet1 where",
+           PprText 3 1 Original "-- Simple let expression, rename xxx to something longer or shorter",
+           PprText 4 1 Original "-- and the let/in layout should adjust accordingly",
+           PprText 6 1 Original "foo xxx = let",
            PprAbove None (7,20) (FromAlignCol (1,-9))
-             [PprText 6 1 "a = 1",
-              PprText 7 1 "b = 2"
+             [PprText 6 1 Original "a = 1",
+              PprText 7 1 Original "b = 2"
              ],
-           PprText 8 11 "in xxx + a + b",
-           PprText 10 1 ""
+           PprText 8 11 Original "in xxx + a + b",
+           PprText 10 1 Original ""
           ]
 
       (renderPpr pprVal) `shouldBe` origSource
@@ -3102,13 +3105,13 @@ Should be pg :  5 - 3 = 2
       let pprVal = retrieveTokensPpr layout
 
       pprVal `shouldBe`
-          [PprText 1 1 "module Layout.Comments1 where",
-           PprText 3 1 "aFun x = x + p",
-           PprText 4 10 "where",
+          [PprText 1 1 Original "module Layout.Comments1 where",
+           PprText 3 1 Original "aFun x = x + p",
+           PprText 4 10 Original "where",
            PprAbove None (4,43) (FromAlignCol (2,-42))
-             [PprText 4 1 "p=2  {-There is a comment-}"],
-           PprText 6 1 "anotherFun = 3",
-           PprText 8 1 ""
+             [PprText 4 1 Original "p=2  {-There is a comment-}"],
+           PprText 6 1 Original "anotherFun = 3",
+           PprText 8 1 Original ""
           ]
 
       (renderPpr pprVal) `shouldBe` origSource
@@ -3161,14 +3164,14 @@ Should be pg :  5 - 3 = 2
 
       -- (show pprVal) `shouldBe` ""
 
-      (showGhc pprVal) `shouldBe`
-          "[PprText 1 1 \"module LocToName where\","++
-          " PprText 3 1 \"{-\n\n\n\n\n\n\n\n\n-}\",\n"++
-          " PprText 20 1 \"sumSquares (x:xs) = x ^2 + sumSquares xs\",\n"++
-          " PprText 21 5 \"-- where sq x = x ^pow \",\n"++
-          " PprText 22 5 \"--       pow = 2\","++
-          " PprText 24 1 \"sumSquares [] = 0\",\n"++
-          " PprText 25 1 \"\"]"
+      pprVal `shouldBe`
+          [PprText 1 1 Original "module LocToName where",
+           PprText 3 1 Original "{-\n\n\n\n\n\n\n\n\n-}",
+           PprText 20 1 Original "sumSquares (x:xs) = x ^2 + sumSquares xs",
+           PprText 21 5 Original "-- where sq x = x ^pow ",
+           PprText 22 5 Original "--       pow = 2",
+           PprText 24 1 Original "sumSquares [] = 0",
+           PprText 25 1 Original ""]
 
       (renderPpr pprVal) `shouldBe` origSource
 
@@ -3430,25 +3433,26 @@ Should be pg :  5 - 3 = 2
       let pprVal = retrieveTokensPpr layout
 
       pprVal `shouldBe`
-         [PprText 1 1 "module LayoutIn4 where",
-          PprText 3 1 "--Layout rule applies after 'where','let','do' and 'of'",
-          PprText 5 1 "--In this Example: rename 'ioFun' to  'io'",
-          PprText 7 1 "main = ioFun \"hello\" where",
+         [PprText 1 1 Original "module LayoutIn4 where",
+          PprText 3 1 Original "--Layout rule applies after 'where','let','do' and 'of'",
+          PprText 5 1 Original "--In this Example: rename 'ioFun' to  'io'",
+          PprText 7 1 Original "main = ioFun \"hello\" where",
           PprAbove None (12,53) (FromAlignCol (2,-52))
-            [PprText 7 1 "ioFun s= do",
+            [PprText 7 1 Original "ioFun s= do",
              PprAbove (SameLine 1) (12,53) (FromAlignCol (2,-52))
-               [PprText 7 1 "let",
+               [PprText 7 1 Original "let",
                 PprAbove (SameLine 1) (7,59) (FromAlignCol (1,-57))
-                  [PprText 7 1 "k = reverse s"],
-                PprText 8 (-38) "--There is a comment",
-                PprText 9 1 "s <- getLine",PprText 10 1 "let",
+                  [PprText 7 1 Original "k = reverse s"],
+                PprText 8 (-38) Original "--There is a comment",
+                PprText 9 1 Original "s <- getLine",
+                PprText 10 1 Original "let",
                 PprAbove (SameLine 1) (10,58) (FromAlignCol (1,-17))
-                  [PprText 10 1 "q = (k ++ s)"],
-                PprText 11 1 "putStr q",
-                PprText 12 1 "putStr \"foo\""
+                  [PprText 10 1 Original "q = (k ++ s)"],
+                PprText 11 1 Original "putStr q",
+                PprText 12 1 Original "putStr \"foo\""
                ]
             ],
-          PprText 14 1 ""
+          PprText 14 1 Original ""
          ]
 
       (renderPpr pprVal) `shouldBe` origSource
@@ -3458,23 +3462,23 @@ Should be pg :  5 - 3 = 2
   describe "renderPpr" $ do
     it "renders a Ppr with out of sequence lines" $ do
       let ppr =
-           [PprText 1 1 "module B where",
-            PprText 2 1 "-- Test for refactor of if to case",
-            PprText 4 1 "foo x = case (odd x) of",
-            PprText 5 13 "True  -> \"Odd\"",
-            PprText 6 13 "False -> \"Even\"",
-            PprText 7 1 "",
-            PprText 6 1 "bob x y = x + y",
-            PprText 9 1 "foo' x = case (odd x) of",
+           [PprText 1 1 Original "module B where",
+            PprText 2 1 Original "-- Test for refactor of if to case",
+            PprText 4 1 Original "foo x = case (odd x) of",
+            PprText 5 13 Original "True  -> \"Odd\"",
+            PprText 6 13 Original "False -> \"Even\"",
+            PprText 7 1 Original "",
+            PprText 6 1 Original "bob x y = x + y",
+            PprText 9 1 Original "foo' x = case (odd x) of",
             PprAbove (FromAlignCol (1, -23)) (11, 18) (FromAlignCol (2, -18))
-              [PprText 10 1 "True -> \"Odd\"",
-               PprText 11 1 "False -> \"Even\""],
-            PprText 13 1 "main = do",
+              [PprText 10 1 Original "True -> \"Odd\"",
+               PprText 11 1 Original "False -> \"Even\""],
+            PprText 13 1 Original "main = do",
             PprAbove (FromAlignCol (1, -8)) (14, 26) (FromAlignCol (2, -26))
-              [PprText 14 1 "putStrLn $ show $ foo 5"],
-            PprText 16 1 "mary = [1,2,3]",
-            PprText 18 1 "h = bob 1 2",
-            PprText 20 1 ""]
+              [PprText 14 1 Original "putStrLn $ show $ foo 5"],
+            PprText 16 1 Original "mary = [1,2,3]",
+            PprText 18 1 Original "h = bob 1 2",
+            PprText 20 1 Original ""]
 
       let expected =
            "module B where\n"++
@@ -3577,7 +3581,7 @@ Should be pg :  5 - 3 = 2
       -- (show toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bbb x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
 
-      (renderPpr $ retrieveTokensPpr  forest''') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbbb x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n"
+      (renderPpr $ retrieveTokensPpr  forest''') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbbb x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
     -- --------------------------------------
 
@@ -3745,9 +3749,9 @@ Should be pg :  5 - 3 = 2
       -- the tree.
       let pprVal = retrieveTokensPpr f3
       pprVal `shouldBe`
-        [PprText 13 1 "addthree a b c=",
-         PprText 13 16 "x",
-         PprText 13 17 "+b+c"]
+        [PprText 13 1 Original "addthree a b c=",
+         PprText 13 16 Original "x",
+         PprText 13 17 Original "+b+c"]
       (renderPpr $ retrieveTokensPpr f3) `shouldBe`
                 "\n\n\n\n\n\n\n\n\n\n\n\naddthree a b c=x+b+c"
 
@@ -4152,7 +4156,7 @@ Should be pg :  5 - 3 = 2
 
       -- NOTE: alignment is out, the tokens are supposed to have an
       -- offset when they go in.
-      (renderPpr pprFinal) `shouldBe` "module LiftToToplevel.Where where\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n     abc = 3\n\n"
+      (renderPpr pprFinal) `shouldBe` "module LiftToToplevel.Where where\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n     abc = 3\n"
 
     -- ---------------------------------
 
@@ -5413,27 +5417,27 @@ Should be pg :  5 - 3 = 2
 
       (retrieveTokensPpr f2) `shouldBe`
 
-        [PprText 1 1 "module TokenTest where",
-         PprText 3 1 "-- Test new style token manager",
-         PprText 5 1 "bob a b = x",
-         PprText 6 3 "where",
+        [PprText 1 1 Original "module TokenTest where",
+         PprText 3 1 Original "-- Test new style token manager",
+         PprText 5 1 Original "bob a b = x",
+         PprText 6 3 Original "where",
          PprAbove None (6,14) (FromAlignCol (2,-13))
-           [PprText 6 1 "x = 3"],
-         PprText 8 1 "bib a b = x",
-         PprText 9 3 "where",
+           [PprText 6 1 Original "x = 3"],
+         PprText 8 1 Original "bib a b = x",
+         PprText 9 3 Original "where",
          PprAbove (FromAlignCol (1,-4)) (10,10) (FromAlignCol (3,-9))
-           [PprText 10 1 "x = 3"],
+           [PprText 10 1 Original "x = 3"],
          PprDeleted 13 1 3 2 3,
 
          -- originally on line 18. Should now be on line 13. So offset
          -- is -5.
-         PprText 13 1 "-- leading comment",
-         PprText 14 1 "foo x y =",
-         PprText 15 3 "do",
+         PprText 13 1 Original "-- leading comment",
+         PprText 14 1 Original "foo x y =",
+         PprText 15 3 Original "do",
          PprAbove None (21,14) (FromAlignCol (5,-13))
-           [PprText 15 1 "c <- getChar",
-            PprText 16 1 "return c"],
-         PprText 21 1 ""]
+           [PprText 15 1 Original "c <- getChar",
+            PprText 16 1 Original "return c"],
+         PprText 21 1 Original ""]
 
 
       (renderPpr $ retrieveTokensPpr f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"

@@ -166,7 +166,6 @@ test-suite spec
     , ghc-prim
     , ghc-syb-utils
     , ghc-mod >= 3.1.2
-    -- , lens
     , hspec
     , mtl
     , old-time
