@@ -50,7 +50,11 @@ Library
         Build-Depends:          base >= 4.0  && < 4.7
                                 , containers
                                 , directory
+
                                 , dual-tree
+                                , semigroups
+                                , monoid-extras
+
                                 , filepath
                                 , ghc
                                 , ghc-paths
@@ -112,7 +116,11 @@ Executable ghc-hare
                                 , cmdtheline >= 0.2.1
                                 , containers
                                 , directory
+
                                 , dual-tree
+                                , semigroups
+                                , monoid-extras
+
                                 , filepath
                                 , ghc
                                 , ghc-paths
@@ -157,7 +165,11 @@ test-suite spec
     , HUnit       == 1.2.*
     , QuickCheck  >= 2.5
     , containers
+
     , dual-tree
+    , semigroups
+    , monoid-extras
+
     , deepseq
     , directory
     , filepath
