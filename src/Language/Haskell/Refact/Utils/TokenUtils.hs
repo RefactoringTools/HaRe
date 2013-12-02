@@ -1248,7 +1248,7 @@ retrieveTokensPpr' acc (Node (Deleted _sspan _pg ( 0,_cd) ) _) = acc
 retrieveTokensPpr' acc (Node (Deleted  sspan  pg (rd,_cd) ) _) = acc'
   where
     (ac,o,curLineToks) = acc
-    ll = mkPprFromLineToks curLineToks
+    ll = mkPprFromLineToksSrc o curLineToks
     ((rs,cs),(re,_ce)) = forestSpanToSimpPos sspan
     ol = re - rs
     acc' = (ac ++ ll ++ [PprDeleted rs cs pg ol rd],o,[])
@@ -1267,6 +1267,7 @@ retrieveTokensPpr' acc (Node (Entry _sspan (Above so _ (r,c) eo) []) subs) = acc
 retrieveTokensPpr' (acc,oi,curLineToks) (Node (Entry sspan _     toks) []) = (acc++accNew,o,curLineToks')
   where
     o = if (forestSpanVersionSet sspan) then Added else Original
+    oi' = if o == Added || oi == Added then Added else Original
     toksByLine = groupTokensByLine toks
     (accNew,curLineToks') = case curLineToks of
       [] -> case toksByLine of
@@ -1280,8 +1281,8 @@ retrieveTokensPpr' (acc,oi,curLineToks) (Node (Entry sspan _     toks) []) = (ac
                        then ([],curLineToks ++ x)
                        else (mkPprFromLineToksSrc oi curLineToks,x)
               (x:xs) -> if (toksOnSameLine (last curLineToks) (head x))
-                          then ((mkPprFromLineToksSrc o (curLineToks++x)) ++ concatMap (mkPprFromLineToksSrc o) (  init xs),last xs)
-                          else ((mkPprFromLineToksSrc oi curLineToks    ) ++ concatMap (mkPprFromLineToksSrc o) (x:init xs),last xs)
+                          then ((mkPprFromLineToksSrc oi' (curLineToks++x)) ++ concatMap (mkPprFromLineToksSrc o) (  init xs),last xs)
+                          else ((mkPprFromLineToksSrc oi   curLineToks    ) ++ concatMap (mkPprFromLineToksSrc o) (x:init xs),last xs)
 
 -- Keep -Wall happy
 retrieveTokensPpr' _acc n@(Node (Entry _sspan (Above _so _ (_r,_c) _eo) _toks) _subs)

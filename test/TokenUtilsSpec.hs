@@ -1933,10 +1933,10 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
           "3:((7,3),(7,4))\n"++
           "3:((7,5),(7,6))\n"++
           "1:((8,1),(8,6))\n"++
-          "2:((8,1),(8,2))\n"++
-          "2:((8,3),(8,6))\n"++
-          "3:((8,3),(8,4))\n"++
-          "3:((8,5),(8,6))\n"++
+           "2:((8,1),(8,2))\n"++
+           "2:((8,3),(8,6))\n"++
+           "3:((8,3),(8,4))\n"++
+            "3:((8,5),(8,6))\n"++
           "1:((11,1),(11,1))\n"
 
       let pprVal = retrieveTokensPpr layout
@@ -1950,6 +1950,7 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
            PprText 11 1 Original ""]
 
       (renderPpr pprVal) `shouldBe` origSource
+
 
 {-
 removeToksForPos ((7,1),(7,6))
@@ -2011,9 +2012,10 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
             "3:((8,5),(8,6))\n"++
           "1:((11,1),(11,1))\n"
 
-      -- show layout4 `shouldBe` ""
+      --vshow layout3 `shouldBe` ""
 
       let pprVal2 = retrieveTokensPpr layout3
+
       (pprVal2) `shouldBe`
           [PprText 1 1 Original "module MoveDef.Demote where",
            PprText 3 1 Original "toplevel :: Integer -> Integer",
@@ -2022,12 +2024,23 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
            PprText 6 8 Added "-- c,d :: Integer",
            PprText 7 8 Added "c = 7",
            PprText 8 5 Added "",
-           PprText 13 1 Original "",
+           PprText 9 1 Added "",
            PprDeleted 7 1 3 0 1,
-           PprText 10 1 Original "d = 9",
-           PprText 13 1 Original ""]
+           PprText 10 1 Original "d = 9", -- originaly 8 1
+           PprText 13 1 Original ""] -- originaly 11 1
 
-
+      let xxx
+             = [PprText 1 1 Original "module MoveDef.Demote where",
+                PprText 3 1 Original "toplevel :: Integer -> Integer",
+                PprText 4 1 Original "toplevel x = c * x",
+                PprText 5 5 Added "where",
+                PprText 6 8 Added "-- c,d :: Integer",
+                PprText 7 8 Added "c = 7",
+                PprText 8 5 Added "",
+                PprText 9 1 Original "",
+                PprDeleted 7 1 3 0 1,
+                PprText 8 1 Original "d = 9",
+                PprText 11 1 Original ""]
 {-
           [PprText 1 1 Original "module MoveDef.Demote where",
            PprText 3 1 Original "toplevel :: Integer -> Integer",
