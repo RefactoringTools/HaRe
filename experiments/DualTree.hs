@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Main where
 
@@ -21,14 +22,14 @@ data Prim = Str String
 data Annot = Ann String
            deriving Show
 --                    d             u    a     l
-type Foo = DUALTree Transformation Span Annot Prim
+type SourceTree = DUALTree [Transformation] Span Annot Prim
 
-m1 :: Foo
+m1 :: SourceTree
 m1 = leaf (Span (1,1) (1, 6)) (Str "module")
 
 
-m2 :: Foo
-m2 = leaf (Span (1,8) (1,11)) (Str "Foo")
+m2 :: SourceTree
+m2 = leaf (Span (1,8) (1,11)) (Str "SourceTree")
 
 ff d = applyD d m1
 
@@ -38,10 +39,23 @@ instance Semigroup Span where
 instance Semigroup Transformation where
   T <> T = T
 
-instance (Action Transformation Span) where
-  act T s = s
+instance (Action [Transformation] Span) where
+  act [T] s = s
 
---------------------------------------
+{-
+
+m1 <> m2
+
+DUALTree {unDUALTree = Option {getOption = Just (DUALTreeU {unDUALTreeU = 
+   (Span (1,1) (1,11),
+    Concat (DUALTreeU {unDUALTreeU = (Span (1,1) (1,6),Leaf (Span (1,1) (1,6)) (Str "module"))} 
+        :| [DUALTreeU {unDUALTreeU = (Span (1,8) (1,11),Leaf (Span (1,8) (1,11)) (Str "Foo"))}]))})}}
+
+
+-}
+
+
+------------------------------------------------------------------------
 {-
 
 ff T 
@@ -52,3 +66,6 @@ ff T
            Act T (DUALTreeU {unDUALTreeU = (Span (1,1) (1,6),Leaf (Span (1,1) (1,6)) (Str "module"))}))})}}
 
 -}
+
+-- ---------------------------------------------------------------------
+
