@@ -67,7 +67,7 @@ Library
                                 , pretty
                                 , rosezipper
                                 , syb
-                                -- , hslogger
+                                , hslogger
                                 , transformers
                                 , time
                                 , Strafunski-StrategyLib
@@ -137,7 +137,7 @@ Executable ghc-hare
                                 , syb
                                 , time
                                 , transformers
-                                -- , hslogger
+                                , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
                                 , HaRe >= 0.7.0.0
@@ -190,7 +190,7 @@ test-suite spec
     , syb
     , transformers
     , time
-    -- , hslogger
+    , hslogger
     , Strafunski-StrategyLib
     , syz
     , HaRe >= 0.7.0.0
