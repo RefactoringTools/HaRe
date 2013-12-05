@@ -1384,8 +1384,8 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
       --    ""
 
       let srcTree2 = layoutTreeToSourceTree layout2
-      -- (show srcTree2) `shouldBe`
-      --     ""
+      (showGhc srcTree2) `shouldBe`
+           ""
 
       (renderSourceTree srcTree2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nx = 3\n"
 

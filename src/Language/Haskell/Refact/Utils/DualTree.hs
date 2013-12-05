@@ -9,6 +9,7 @@ module Language.Haskell.Refact.Utils.DualTree (
 import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified Lexer      as GHC
+import qualified Outputable as GHC
 
 import qualified GHC.SYB.Utils as SYB
 
@@ -33,6 +34,7 @@ import Data.Tree.DUAL
 import Data.Semigroup
 import Data.Monoid.Action
 import qualified Data.List.NonEmpty as NE
+import qualified Data.Tree.DUAL.Internal as I
 
 -- ---------------------------------------------------------------------
 
@@ -85,6 +87,46 @@ instance Semigroup Transformation where
 instance (Action Transformation Up) where
   act AsIs s = s
   act (T n) (Up span s) = (Up span s)
+
+-- ---------------------------------------------------------------------
+
+instance GHC.Outputable SourceTree where
+  ppr (I.DUALTree ot)
+      = case getOption ot of
+             Nothing -> GHC.text "Nothing"
+             Just t  -> GHC.ppr t
+
+instance GHC.Outputable (I.DUALTreeU Transformation Up Annot Prim) where
+  ppr (I.DUALTreeU (u,t)) = GHC.parens $ GHC.ppr u GHC.<> GHC.comma GHC.$$ GHC.ppr t
+
+instance GHC.Outputable (I.DUALTreeNE Transformation Up Annot Prim) where
+  ppr (I.Leaf u l)   = GHC.parens $ GHC.hang (GHC.text "Leaf")   1 (GHC.ppr u GHC.$$ GHC.ppr l)
+  ppr (I.LeafU u)    = GHC.parens $ GHC.hang (GHC.text "LeafU")  1 (GHC.ppr u)
+  ppr (I.Concat dts) = GHC.parens $ GHC.hang (GHC.text "Concat") 1 (GHC.ppr dts)
+  ppr (I.Act d t)    = GHC.parens $ GHC.hang (GHC.text "Act")    1 (GHC.ppr d GHC.$$ GHC.ppr t)
+  ppr (I.Annot a t)  = GHC.parens $ GHC.hang (GHC.text "Annot")  1 (GHC.ppr a GHC.$$ GHC.ppr t)
+
+instance GHC.Outputable Prim where
+  ppr (Str toks) = GHC.parens $ GHC.text "Str" GHC.<+> GHC.text (show toks)
+
+instance GHC.Outputable Transformation where
+  ppr (AsIs) = GHC.parens $ GHC.text "AsIs"
+  ppr (T n)  = GHC.parens $ GHC.text "T" GHC.<+> GHC.text (show n)
+
+instance GHC.Outputable Annot where
+  ppr (Ann str) = GHC.parens $ GHC.text "Ann" GHC.<+> GHC.text str
+
+instance GHC.Outputable Up where
+  ppr (Up ss ls) = GHC.parens $ GHC.hang (GHC.text "Up") 1 (GHC.ppr ss GHC.$$ GHC.ppr ls)
+
+instance GHC.Outputable Span where
+  ppr (Span sp ep) = GHC.parens $ GHC.text "Span" GHC.<+> GHC.ppr sp GHC.<+> GHC.ppr ep
+
+instance (GHC.Outputable a) => GHC.Outputable (NE.NonEmpty a) where
+  ppr (x NE.:| xs) = GHC.parens $ GHC.hang (GHC.text "NonEmpty") 1 (GHC.ppr (x:xs))
+
+instance GHC.Outputable Line where
+  ppr (Line r c str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r GHC.<+> GHC.ppr c GHC.<+> GHC.text str
 
 -- ---------------------------------------------------------------------
 
