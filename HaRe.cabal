@@ -84,6 +84,7 @@ Library
            , Language.Haskell.Refact.Renaming
            , Language.Haskell.Refact.SwapArgs
            , Language.Haskell.Refact.Utils
+           , Language.Haskell.Refact.Utils.DualTree
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils

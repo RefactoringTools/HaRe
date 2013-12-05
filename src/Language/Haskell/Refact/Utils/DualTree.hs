@@ -1,7 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Main where
+module Language.Haskell.Refact.Utils.DualTree (
+    layoutTreeToSourceTree
+  , renderSourceTree
+  ) where
 
 import qualified FastString as GHC
 import qualified GHC        as GHC
@@ -34,8 +37,6 @@ import qualified Data.List.NonEmpty as NE
 import TestUtils
 
 -- ---------------------------------------------------------------------
-
-main = foo
 
 data Transformation = AsIs
                     | T Integer
@@ -101,7 +102,7 @@ foo = do
   putStrLn (drawTreeEntry layout)
   putStrLn (drawTreeCompact layout)
 
-  let srcTree = build layout
+  let srcTree = layoutTreeToSourceTree layout
 
   putStrLn (show srcTree)
   putStrLn ""
@@ -121,11 +122,20 @@ roundTrip fname = do
 
   let layout = allocTokens parsed toks
 
-  let srcTree = build layout
+  let srcTree = layoutTreeToSourceTree layout
   let (Just (Up span str)) = getU srcTree
 
   let r = renderLines $ NE.toList str
   return (r == origSource,r)
+
+-- ---------------------------------------------------------------------
+
+renderSourceTree :: SourceTree -> String
+renderSourceTree srcTree = r
+  where
+    r = case getU srcTree of
+         Nothing -> ""
+         Just (Up span str) -> renderLines $ NE.toList str
 
 -- ---------------------------------------------------------------------
 
@@ -184,10 +194,10 @@ renderLines ls = res
 
 -- ---------------------------------------------------------------------
 
-build :: LayoutTree -> SourceTree
-build (T.Node (Deleted _sspan  _pg _eg) _ ) = empty
-build (T.Node (Entry sspan lay [])  ts0)   = mconcat $ map build ts0
-build (T.Node (Entry sspan lay toks) _ts)  = leaf (mkUp sspan toks) (Str toks)
+layoutTreeToSourceTree :: LayoutTree -> SourceTree
+layoutTreeToSourceTree (T.Node (Deleted _sspan  _pg _eg) _ ) = empty
+layoutTreeToSourceTree (T.Node (Entry sspan lay [])  ts0)   = mconcat $ map layoutTreeToSourceTree ts0
+layoutTreeToSourceTree (T.Node (Entry sspan lay toks) _ts)  = leaf (mkUp sspan toks) (Str toks)
 
 -- ---------------------------------------------------------------------
 
@@ -195,7 +205,9 @@ mkUp :: ForestSpan -> [PosToken] -> Up
 mkUp sspan toks = Up ss ls
   where
     ss = mkSpan sspan
-    ls = NE.fromList $ mkLinesFromToks toks
+    toksByLine = groupTokensByLine toks
+
+    ls = NE.fromList $ concatMap mkLinesFromToks toksByLine
 
 -- ---------------------------------------------------------------------
 
