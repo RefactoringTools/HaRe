@@ -34,8 +34,6 @@ import Data.Semigroup
 import Data.Monoid.Action
 import qualified Data.List.NonEmpty as NE
 
-import TestUtils
-
 -- ---------------------------------------------------------------------
 
 data Transformation = AsIs
@@ -90,7 +88,7 @@ instance (Action Transformation Up) where
 
 -- ---------------------------------------------------------------------
 
-
+{-
 foo = do
   -- (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Lift.hs"
   (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Bare.hs"
@@ -127,6 +125,7 @@ roundTrip fname = do
 
   let r = renderLines $ NE.toList str
   return (r == origSource,r)
+-}
 
 -- ---------------------------------------------------------------------
 
