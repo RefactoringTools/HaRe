@@ -293,7 +293,7 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ForeignType ln _))) = (r,toks')
   where
     (s1,clToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     lnToks = allocLocated ln clToks
-    r = acc ++ (strip $ (makeLeafFromToks s1) ++ lnToks)
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ lnToks)]
 allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyFamily _f n@(GHC.L ln _) vars _mk))) = (r,toks')
   where
     (s1,clToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
@@ -305,9 +305,9 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyFamily _f n@(GHC.L ln _) vars _
     varsLayout = allocList vars varsToks allocTyVarBndr
     s3 = []
 #endif
-    r = acc ++ (strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks clToks)
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks clToks)
                      ++ (makeLeafFromToks s2) ++ nLayout ++ varsLayout
-                     ++ (makeLeafFromToks s3))
+                     ++ (makeLeafFromToks s3))]
 #if __GLASGOW_HASKELL__ > 704
 allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyDecl (GHC.L ln _) vars def _fvs))) = (r,toks')
   where
@@ -315,9 +315,9 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyDecl (GHC.L ln _) vars def _fvs
     (s2,nToks,toks'') = splitToksIncComments (ghcSpanStartEnd ln) clToks
     (varsLayout,toks3) = allocTyVarBndrs vars toks''
     (typeLayout,toks4) = allocHsTyDefn def toks3
-    r = acc ++ (strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
                      ++ (makeLeafFromToks nToks) ++ varsLayout ++ typeLayout
-                     ++ (makeLeafFromToks toks4))
+                     ++ (makeLeafFromToks toks4))]
 #endif
 #if __GLASGOW_HASKELL__ > 704
 allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L ln _) vars fds sigs meths ats atdefs docs _fvs))) = (acc++r,toks')
@@ -353,10 +353,10 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L
 
     bindsLayout = allocMixedList (sigMix++methsMix++atsMix++atsdefsMix++docsMix) toks4
 
-    r = strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
+    r = [makeGroup $ strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
              ++ ctxLayout ++ (makeLeafFromToks s3)
              ++ nLayout ++ varsLayout ++ (makeLeafFromToks s5)
-             ++ fdsLayout ++ bindsLayout
+             ++ fdsLayout ++ bindsLayout]
 
 {-
 ClassDecl	 
@@ -407,7 +407,7 @@ allocInstD (acc,toks) (GHC.L l (GHC.InstD inst)) = (r,toks')
   where
     (s1,instToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     instLayout = allocInstDecl (GHC.L l inst) instToks
-    r = acc ++ (strip $ (makeLeafFromToks s1) ++ [makeGroup instLayout] )
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ [makeGroup instLayout] )]
 
 
 -- ---------------------------------------------------------------------
@@ -423,7 +423,7 @@ allocValD (acc,toks) (GHC.L l (GHC.ValD bind)) = (r,toks')
   where
     (s1,bindToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     bindLayout = allocBind (GHC.L l bind) bindToks
-    r = acc ++ (strip $ (makeLeafFromToks s1) ++ [makeGroup bindLayout] )
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ [makeGroup bindLayout] )]
     -- r = error $ "allocValD:bindToks=" ++ show bindToks
 
 -- ---------------------------------------------------------------------
@@ -433,8 +433,8 @@ allocSigD (acc,toks) (GHC.L l (GHC.SigD sig)) = (r,toks')
   where
     (s1,sigToks,toks')  = splitToksIncComments (ghcSpanStartEnd l) toks
     sigLayout = allocSig (GHC.L l sig) sigToks
-    r = acc ++ (strip $ (makeLeafFromToks s1)
-                     ++ sigLayout)
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1)
+                     ++ sigLayout)]
 
 -- ---------------------------------------------------------------------
 
@@ -1229,7 +1229,7 @@ allocHsTyDefn (GHC.TySynonym typ@(GHC.L l _)) toks = (r,toks')
   where
     (s1,typToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     typeLayout = allocType typ typToks
-    r = strip $ (makeLeafFromToks s1) ++ typeLayout
+    r = [makeGroup $ strip $ (makeLeafFromToks s1) ++ typeLayout]
 allocHsTyDefn (GHC.TyData _ (GHC.L lc ctx) mc mk cons mderivs) toks = (r,toks')
   where
     (s1,ctxToks,toks2) = splitToksIncComments (ghcSpanStartEnd lc) toks
@@ -1263,8 +1263,8 @@ allocHsTyDefn (GHC.TyData _ (GHC.L lc ctx) mc mk cons mderivs) toks = (r,toks')
           derivLayout = allocList ds derivToks allocType
           rd = strip $ (makeLeafFromToks sd) ++ derivLayout
     toks' = toks6
-    r = strip $ (makeLeafFromToks s1) ++ ctxLayout ++ mcLayout ++ mkLayout
-             ++ (makeLeafFromToks s2) ++ consLayout ++ mderivsLayout
+    r = [makeGroup $ strip $ (makeLeafFromToks s1) ++ ctxLayout ++ mcLayout ++ mkLayout
+             ++ (makeLeafFromToks s2) ++ consLayout ++ mderivsLayout]
 #endif
 
 -- ---------------------------------------------------------------------

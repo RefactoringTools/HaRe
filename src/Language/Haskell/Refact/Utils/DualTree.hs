@@ -40,6 +40,8 @@ import qualified Data.Tree.DUAL.Internal as I
 
 data Transformation = AsIs
                     | T Integer
+                    | TAbove EndOffset (Row,Col) (Row,Col) EndOffset
+                    | TDeleted ForestSpan RowOffset SimpPos
                     deriving Show
 
 instance Num Transformation where
@@ -48,14 +50,17 @@ instance Num Transformation where
 
 transform :: Transformation -> Prim -> Prim
 transform AsIs p = p
--- transform (T n) (Str s) = (Str (s++"(T"++ (show n) ++")"))
-transform (T n) (Str s) = (Str s)
+-- transform (T n) (PToks s) = (PToks (s++"(T"++ (show n) ++")"))
+transform (T n) (PToks s) = (PToks s)
+transform (TAbove bo p1 p2 eo) (PToks s)  = (PToks s)
+transform (TDeleted sspan ro p) (PToks s) = (PToks s)
 
 -- | The value that bubbles up. This is the Span occupied by the
 -- subtree, together with a string representation of the subtree. The
 -- origin of the string is the start of the span.
 
 data Up = Up Span (NE.NonEmpty Line)
+        | UDeleted Span RowOffset SimpPos
         deriving Show
 
 data Span = Span (Row,Col) (Row,Col)
@@ -65,9 +70,12 @@ data Line = Line Row Col String
           deriving Show
 
 data Annot = Ann String
+           | ADeleted ForestSpan RowOffset SimpPos
+           | ASubtree ForestSpan
            deriving Show
 
-data Prim = Str [PosToken]
+data Prim = PToks [PosToken]
+          | PDeleted ForestSpan RowOffset SimpPos
           deriving Show
 
 
@@ -85,8 +93,11 @@ instance Semigroup Transformation where
   (T n1) <> (T n2) = T (n1 + n2)
 
 instance (Action Transformation Up) where
+  act _ (UDeleted s pg eo) = UDeleted s pg eo
   act AsIs s = s
-  act (T n) (Up span s) = (Up span s)
+  act (T n)                 (Up span s) = (Up span s)
+  act (TAbove bo p1 p2 eo)  (Up span s) = (Up span s)
+  act (TDeleted sspan ro p) (Up span s) = (Up span s)
 
 -- ---------------------------------------------------------------------
 
@@ -107,26 +118,40 @@ instance GHC.Outputable (I.DUALTreeNE Transformation Up Annot Prim) where
   ppr (I.Annot a t)  = GHC.parens $ GHC.hang (GHC.text "Annot")  1 (GHC.ppr a GHC.$$ GHC.ppr t)
 
 instance GHC.Outputable Prim where
-  ppr (Str toks) = GHC.parens $ GHC.text "Str" GHC.<+> GHC.text (show toks)
+  ppr (PToks toks) = GHC.parens $ GHC.text "PToks" GHC.<+> GHC.text (show toks)
+  ppr (PDeleted ss pg p) = GHC.parens $ GHC.text "PDeleted" GHC.<+> GHC.ppr ss
+                               GHC.<+> GHC.ppr pg GHC.<+> GHC.ppr p
 
 instance GHC.Outputable Transformation where
   ppr (AsIs) = GHC.parens $ GHC.text "AsIs"
   ppr (T n)  = GHC.parens $ GHC.text "T" GHC.<+> GHC.text (show n)
+  ppr (TAbove bo p1 p2 eo)  = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr bo
+                              GHC.<+> GHC.ppr p1  GHC.<+> GHC.ppr p2
+                              GHC.<+> GHC.ppr eo
+  ppr (TDeleted sspan ro p) = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr sspan
+                              GHC.<+> GHC.ppr ro  GHC.<+> GHC.ppr p
 
 instance GHC.Outputable Annot where
   ppr (Ann str) = GHC.parens $ GHC.text "Ann" GHC.<+> GHC.text str
+  ppr (ADeleted ss pg p) = GHC.parens $ GHC.text "ADeleted" GHC.<+> GHC.ppr ss
+                           GHC.<+> GHC.ppr pg GHC.<+> GHC.ppr p
+  ppr (ASubtree ss)      = GHC.parens $ GHC.text "ASubtree" GHC.<+> GHC.ppr ss
 
 instance GHC.Outputable Up where
   ppr (Up ss ls) = GHC.parens $ GHC.hang (GHC.text "Up") 1 (GHC.ppr ss GHC.$$ GHC.ppr ls)
+  ppr (UDeleted ss ro p) = GHC.parens $ (GHC.text "UDeleted") GHC.<+> GHC.ppr ss GHC.<+> GHC.ppr ro
+                                       GHC.<+> GHC.ppr p
+
 
 instance GHC.Outputable Span where
   ppr (Span sp ep) = GHC.parens $ GHC.text "Span" GHC.<+> GHC.ppr sp GHC.<+> GHC.ppr ep
 
 instance (GHC.Outputable a) => GHC.Outputable (NE.NonEmpty a) where
-  ppr (x NE.:| xs) = GHC.parens $ GHC.hang (GHC.text "NonEmpty") 1 (GHC.ppr (x:xs))
+  -- ppr (x NE.:| xs) = GHC.parens $ GHC.hang (GHC.text "NonEmpty") 1 (GHC.ppr (x:xs))
+  ppr (x NE.:| xs) = (GHC.ppr (x:xs))
 
 instance GHC.Outputable Line where
-  ppr (Line r c str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r GHC.<+> GHC.ppr c GHC.<+> GHC.text str
+  ppr (Line r c str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r GHC.<+> GHC.ppr c GHC.<+> GHC.text (show str)
 
 -- ---------------------------------------------------------------------
 
@@ -236,9 +261,24 @@ renderLines ls = res
 -- ---------------------------------------------------------------------
 
 layoutTreeToSourceTree :: LayoutTree -> SourceTree
-layoutTreeToSourceTree (T.Node (Deleted _sspan  _pg _eg) _ ) = empty
-layoutTreeToSourceTree (T.Node (Entry sspan lay [])  ts0)   = mconcat $ map layoutTreeToSourceTree ts0
-layoutTreeToSourceTree (T.Node (Entry sspan lay toks) _ts)  = leaf (mkUp sspan toks) (Str toks)
+layoutTreeToSourceTree (T.Node (Deleted sspan  pg eg) _) = leaf (UDeleted (fs2s sspan) pg eg) (PDeleted sspan pg eg)
+
+layoutTreeToSourceTree (T.Node (Entry sspan NoChange [])  ts0)
+  = annot (ASubtree sspan) (mconcatl $ map layoutTreeToSourceTree ts0)
+layoutTreeToSourceTree (T.Node (Entry sspan (Above bo p1 p2 eo) [])  ts0)
+  = annot (ASubtree sspan) (applyD (TAbove bo p1 p2 eo) (mconcatl $ map layoutTreeToSourceTree ts0))
+
+layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts)  = leaf (mkUp sspan toks) (PToks toks)
+
+mconcatl :: (Monoid a) => [a] -> a
+mconcatl = foldl mappend mempty
+
+-- ---------------------------------------------------------------------
+
+fs2s :: ForestSpan -> Span
+fs2s ss = Span sp ep
+  where
+    (sp,ep) = forestSpanToSimpPos ss
 
 -- ---------------------------------------------------------------------
 
@@ -265,6 +305,9 @@ mkLinesFromToks toks = [Line ro co str]
 -- ---------------------------------------------------------------------
 
 combineUps :: Up -> Up -> Up
+combineUps u1@(UDeleted _ _ _) (UDeleted _ _ _) = u1
+combineUps (UDeleted _ _ _) u2 = u2
+combineUps u1 (UDeleted _ _ _) = u1
 combineUps (Up sp1 l1) (Up sp2 l2) = (Up (sp1 <> sp2) l)
   where
     (Span (sr1,sc1) (er1,ec1)) = sp1
