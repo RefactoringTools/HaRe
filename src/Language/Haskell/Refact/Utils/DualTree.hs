@@ -41,10 +41,12 @@ import qualified Data.Tree.DUAL.Internal as I
 data DeletedSpan = DeletedSpan Span RowOffset SimpPos
               deriving (Show,Eq)
 
+-- TODO: We are not actually using any of these
 data Transformation = AsIs
                     | T Integer
                     | TAbove EndOffset (Row,Col) (Row,Col) EndOffset
                     | TDeleted ForestSpan RowOffset SimpPos
+                    | TAdded
                     deriving Show
 
 instance Num Transformation where
@@ -57,20 +59,25 @@ transform AsIs p = p
 transform (T n) (PToks s) = (PToks s)
 transform (TAbove bo p1 p2 eo) (PToks s)  = (PToks s)
 transform (TDeleted sspan ro p) (PToks s) = (PToks s)
+transform TAdded                (PToks s) = (PToks s)
 
 -- | The value that bubbles up. This is the Span occupied by the
 -- subtree, together with a string representation of the subtree. The
 -- origin of the string is the start of the span.
 
 data Up = Up Span (NE.NonEmpty Line) [DeletedSpan]
-        | UDeleted DeletedSpan
+        | UDeleted [DeletedSpan]
         deriving Show
 
 data Span = Span (Row,Col) (Row,Col)
           deriving (Show,Eq)
 
-data Line = Line Row Col String
+data Line = Line Row Col Source String
           deriving Show
+
+data Source = SOriginal
+            | SAdded
+            deriving Show
 
 data Annot = Ann String
            | ADeleted ForestSpan RowOffset SimpPos
@@ -100,6 +107,7 @@ instance (Action Transformation Up) where
   act (T n)                 (Up span s ds) = (Up span s ds)
   act (TAbove bo p1 p2 eo)  (Up span s ds) = (Up span s ds)
   act (TDeleted sspan ro p) (Up span s ds) = (Up span s ds)
+  act TAdded s = s
 
 -- ---------------------------------------------------------------------
 
@@ -132,6 +140,7 @@ instance GHC.Outputable Transformation where
                               GHC.<+> GHC.ppr eo
   ppr (TDeleted sspan ro p) = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr sspan
                               GHC.<+> GHC.ppr ro  GHC.<+> GHC.ppr p
+  ppr (TAdded) = GHC.parens $ GHC.text "TAdded"
 
 instance GHC.Outputable Annot where
   ppr (Ann str) = GHC.parens $ GHC.text "Ann" GHC.<+> GHC.text str
@@ -158,7 +167,13 @@ instance (GHC.Outputable a) => GHC.Outputable (NE.NonEmpty a) where
   ppr (x NE.:| xs) = (GHC.ppr (x:xs))
 
 instance GHC.Outputable Line where
-  ppr (Line r c str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r GHC.<+> GHC.ppr c GHC.<+> GHC.text (show str)
+  ppr (Line r c s str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r
+                         GHC.<+> GHC.ppr c GHC.<+> GHC.ppr s
+                         GHC.<+> GHC.text (show str)
+
+instance GHC.Outputable Source where
+  ppr SOriginal = GHC.text "SOriginal"
+  ppr SAdded    = GHC.text "SAdded"
 
 -- ---------------------------------------------------------------------
 
@@ -177,7 +192,7 @@ renderLines ls = res
     (_,(_,res)) = runState (go 0 ls) ((1,1),"")
 
     go _ [] = do return ()
-    go ci ((Line r c str):ls') = do
+    go ci ((Line r c s str):ls') = do
       newPos r (c+ci)
       addString str
       go ci ls'
@@ -230,7 +245,7 @@ layoutTreeToSourceTree :: LayoutTree -> SourceTree
 
 -- TODO: simplify by getting rid of PDeleted, and use leafU
 layoutTreeToSourceTree (T.Node (Deleted sspan  pg eg) _)
-  = leaf (UDeleted (DeletedSpan (fs2s sspan) pg eg)) (PDeleted sspan pg eg)
+  = leaf (UDeleted [(DeletedSpan (fs2s sspan) pg eg)]) (PDeleted sspan pg eg)
 
 layoutTreeToSourceTree (T.Node (Entry sspan NoChange [])  ts0)
   = annot (ASubtree sspan) (mconcatl $ map layoutTreeToSourceTree ts0)
@@ -238,8 +253,7 @@ layoutTreeToSourceTree (T.Node (Entry sspan (Above bo p1 p2 eo) [])  ts0)
   = annot (ASubtree sspan)
       (applyD (TAbove bo p1 p2 eo) (mconcatl $ map layoutTreeToSourceTree ts0))
 
-layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts)
-  = leaf (mkUp sspan toks) (PToks toks)
+layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts) = leaf (mkUp sspan toks) (PToks toks)
 
 -- -------------------------------------
 
@@ -260,16 +274,17 @@ fs2s ss = Span sp ep
 mkUp :: ForestSpan -> [PosToken] -> Up
 mkUp sspan toks = Up ss ls []
   where
+    s = if forestSpanVersionSet sspan then SAdded else SOriginal
     ss = mkSpan sspan
     toksByLine = groupTokensByLine toks
 
-    ls = NE.fromList $ concatMap mkLinesFromToks toksByLine
+    ls = NE.fromList $ concatMap (mkLinesFromToks s) toksByLine
 
 -- ---------------------------------------------------------------------
 
-mkLinesFromToks :: [PosToken] -> [Line]
-mkLinesFromToks [] = []
-mkLinesFromToks toks = [Line ro co str]
+mkLinesFromToks :: Source -> [PosToken] -> [Line]
+mkLinesFromToks _ [] = []
+mkLinesFromToks s toks = [Line ro co s str]
   where
     ro' = tokenRow $ head toks
     co' = tokenCol $ head toks
@@ -280,12 +295,13 @@ mkLinesFromToks toks = [Line ro co str]
 -- ---------------------------------------------------------------------
 
 combineUps :: Up -> Up -> Up
-combineUps u1@(UDeleted _) (UDeleted _) = u1
-combineUps (UDeleted d1) (Up sp2 l2 d2) = (Up sp2 l ([d1] <> d2))
+combineUps (UDeleted d1) (UDeleted d2)  = UDeleted (d1 <> d2)
+combineUps (UDeleted d1) (Up sp2 l2 d2) = (Up sp2 l (d1 <> d2))
   where
-    deltaL = calcDelta [d1]
-    l = NE.map (\(Line r c str) -> Line (r - deltaL) c str) l2
-combineUps (Up sp1 l1 d1) (UDeleted d2) = (Up sp1 l1 (d1 <> [d2]))
+    -- deltaL = calcDelta d1
+    -- l = NE.map (\(Line r c s str) -> Line (r - deltaL) c s str) l2
+    l = adjustForDeleted d1 l2
+combineUps (Up sp1 l1 d1) (UDeleted d2) = (Up sp1 l1 (d1 <> d2))
 combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
   where
     -- (Span (_sr1,_sc1) (_er1,_ec1)) = sp1
@@ -293,19 +309,20 @@ combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
     -- Assumptions
     --  1. The first character of (head str1) is at (sr1,sc1)
     --  2. The first character of (head str2) is at (sr2,sc2)
+    -- deltaL = calcDelta d1
+    -- l2' = NE.map (\(Line r c s str) -> Line (r - deltaL) c s str) l2
+    l2' = adjustForDeleted d1 l2
 
-    l2' = NE.map (\(Line r c str) -> Line (r - deltaL) c str) l2
-    (Line r1 c1 s1) = NE.last l1
-    (Line r2 c2 s2) = NE.head l2'
+    (Line r1 c1  ss1 s1) = NE.last l1
+    (Line r2 c2 _ss2 s2) = NE.head l2'
 
     l = if r1 == r2
          then NE.fromList $ (NE.init l1) ++ m ++ (NE.tail l2')
          else NE.fromList $ (NE.toList l1) ++ (NE.toList l2')
 
-    m = [Line r1 c1 (s1 ++ gap ++ s2)]
+    m = [Line r1 c1 ss1 (s1 ++ gap ++ s2)]
     gap = take (c2 - (c1 + length s1)) $ repeat ' '
 
-    deltaL = calcDelta d1
 
 
 {-
@@ -342,6 +359,17 @@ combineUps: (u1,u2)=
    []))
 
 -}
+
+adjustForDeleted :: [DeletedSpan] -> NE.NonEmpty Line -> NE.NonEmpty Line
+adjustForDeleted d1 l2 = l
+  where
+    deltaL = calcDelta d1
+    l = NE.map go l2
+
+    go (Line r c SOriginal str) =  Line (r - deltaL) c SOriginal str
+    go (Line r c SAdded    str) =  Line  r           c SAdded    str
+
+-- -------------------------------------
 
 calcDelta :: [DeletedSpan] -> RowOffset
 calcDelta d1 = deltaL
@@ -388,11 +416,11 @@ normaliseColumns [] = []
 normaliseColumns ps = ps'
   where
     offset = case (head ps) of
-      Line    _r c _   -> c - 1
+      Line    _r c _ _ -> c - 1
       _                -> 0
     ps' = map remove ps
 
-    remove (Line r c str) = (Line r (c - offset) str)
+    remove (Line r c s str) = (Line r (c - offset) s str)
     remove x = x
 
 -- ---------------------------------------------------------------------

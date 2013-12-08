@@ -29,6 +29,8 @@ import qualified Data.Map as Map
 import qualified Data.Tree.Zipper as Z
 -- import qualified Text.PrettyPrint as PP
 
+import Data.Tree.DUAL
+
 import TestUtils
 
 -- ---------------------------------------------------------------------
@@ -1165,8 +1167,7 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
       -- show layout4 `shouldBe` ""
 
       let srcTree2 = layoutTreeToSourceTree layout4
-      -- (show srcTree2) `shouldBe`
-      --     ""
+      -- (showGhc srcTree2) `shouldBe` ""
 
       (renderSourceTree srcTree2) `shouldBe` "module Layout.Lift where\n\nff y = y + zz\n\nzz = 1\n\nx = 1\n"
 
@@ -1281,39 +1282,22 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
             "3:((8,5),(8,6))\n"++
           "1:((11,1),(11,1))\n"
 
-      --vshow layout3 `shouldBe` ""
-
       let srcTree2 = layoutTreeToSourceTree layout3
 
-      -- (show srcTree2) `shouldBe`
-      --     ""
+      -- (showGhc srcTree2) `shouldBe` ""
+      (showGhc $ getU srcTree2) `shouldBe`
+          "Just (Up\n"++
+          "       (Span (1, 1) (11, 1))\n"++
+          "       [(Line 1 1 SOriginal \"module MoveDef.Demote where\"),\n"++
+          "        (Line 3 1 SOriginal \"toplevel :: Integer -> Integer\"),\n"++
+          "        (Line 4 1 SOriginal \"toplevel x = c * x\"),\n"++
+          "        (Line 5 5 SAdded \"where\"), (Line 6 8 SAdded \"-- c,d :: Integer\"),\n"++
+          "        (Line 7 8 SAdded \"c = 7\"), (Line 8 5 SAdded \"\"),\n"++
+          "        (Line 9 1 SAdded \"\"), (Line 7 1 SOriginal \"d = 9\"),\n"++
+          "        (Line 10 1 SOriginal \"\")]\n"++
+          "       [(DeletedSpan (Span (7, 1) (7, 6)) 3 (1, -5))])"
 
-      let xxx
-             = [PprText 1 1 Original "module MoveDef.Demote where",
-                PprText 3 1 Original "toplevel :: Integer -> Integer",
-                PprText 4 1 Original "toplevel x = c * x",
-                PprText 5 5 Added "where",
-                PprText 6 8 Added "-- c,d :: Integer",
-                PprText 7 8 Added "c = 7",
-                PprText 8 5 Added "",
-                PprText 9 1 Original "",
-                PprDeleted 7 1 3 0 1,
-                PprText 8 1 Original "d = 9",
-                PprText 11 1 Original ""]
-{-
-          [PprText 1 1 Original "module MoveDef.Demote where",
-           PprText 3 1 Original "toplevel :: Integer -> Integer",
-           PprText 4 1 Original "toplevel x = c * x",
-           PprText 5 5 Added "where",
-           PprText 6 8 Added "-- c,d :: Integer",
-           PprText 7 8 Added "c = 7",
-           PprText 8 5 Added "",
-           PprText 13 1 Original "",
-           PprDeleted 7 1 3 0 1,
-           PprText 11 1 Original "d = 9",
-           PprText 14 1 Original ""]
--}
-      (renderSourceTree srcTree2) `shouldBe` ""
+      (renderSourceTree srcTree2) `shouldBe` "module MoveDef.Demote where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n    where\n       -- c,d :: Integer\n       c = 7\n    \n\nd = 9\n\n\n"
 
 
     -- ---------------------------------
