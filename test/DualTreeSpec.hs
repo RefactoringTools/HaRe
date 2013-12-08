@@ -1433,8 +1433,8 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
           "1:((11,1),(11,1))\n"
 
       let srcTree2 = layoutTreeToSourceTree layout2
-      (showGhc srcTree2) `shouldBe`
-           ""
+      -- (showGhc srcTree2) `shouldBe`
+      --     ""
 
       (renderSourceTree srcTree2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nx = 3\n"
 
@@ -1513,11 +1513,34 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
       (showGhc sspan2) `shouldBe` "test/testdata/Layout/FromMd1.hs:(6,1)-(8,10)"
 
       let (layout3,_old) = removeSrcSpan layout2 (srcSpanToForestSpan sspan2)
-      -- (drawTreeCompact layout2) `shouldBe`
-      --    ""
+      (drawTreeCompact layout3) `shouldBe`
+          "0:((1,1),(11,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,22))\n"++
+          "1:((1,23),(1,28))\n"++
+          "1:((3,1),(3,26))\n"++
+          "2:((3,1),(3,5))\n"++
+          "2:((3,6),(3,7))\n"++
+          "2:((3,8),(3,26))\n"++
+          "3:((3,8),(3,9))\n"++
+          "3:((3,10),(3,11))\n"++
+          "3:((3,12),(3,13))\n"++
+          "3:((3,14),(3,22))\n"++
+          "4:((3,14),(3,15))\n"++
+          "4:((3,16),(3,22))\n"++
+          "3:((3,23),(3,24))\n"++
+          "3:((3,25),(3,26))\n"++
+          "1:((5,1),(5,17))(1,-16)D\n"++
+          "1:((6,1),(8,11))(2,-10)D\n"++
+          "1:((10,1),(10,6))\n"++
+          "2:((10,1),(10,2))\n"++
+          "2:((10,3),(10,6))\n"++
+          "3:((10,3),(10,4))\n"++
+          "3:((10,5),(10,6))\n"++
+          "1:((11,1),(11,1))\n"
 
       let srcTree2 = layoutTreeToSourceTree layout3
-      -- (show srcTree2) `shouldBe`
+      -- (showGhc srcTree2) `shouldBe`
       --     ""
 
       (renderSourceTree srcTree2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nx = 3\n"

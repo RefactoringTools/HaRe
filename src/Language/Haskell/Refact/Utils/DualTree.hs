@@ -285,21 +285,31 @@ combineUps (UDeleted d1) (Up sp2 l2 d2) = (Up sp2 l2 ([d1] <> d2))
 combineUps (Up sp1 l1 d1) (UDeleted d2) = (Up sp1 l1 (d1 <> [d2]))
 combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
   where
-    (Span (sr1,sc1) (er1,ec1)) = sp1
-    (Span (sr2,sc2) (er2,ec2)) = sp2
+    -- (Span (_sr1,_sc1) (_er1,_ec1)) = sp1
+    -- (Span (_sr2,_sc2) (_er2,_ec2)) = sp2
     -- Assumptions
     --  1. The first character of (head str1) is at (sr1,sc1)
     --  2. The first character of (head str2) is at (sr2,sc2)
 
-    l1l@(Line r1 c1 s1) = NE.last l1
-    l2f@(Line r2 c2 s2) = NE.head l2
+    l2' = NE.map (\(Line r c str) -> Line (r - deltaL) c str) l2
+    (Line r1 c1 s1) = NE.last l1
+    (Line r2 c2 s2) = NE.head l2'
 
     l = if r1 == r2
-         then NE.fromList $ (NE.init l1) ++ m ++ (NE.tail l2)
-         else NE.fromList $ (NE.toList l1) ++ (NE.toList l2)
+         then NE.fromList $ (NE.init l1) ++ m ++ (NE.tail l2')
+         else NE.fromList $ (NE.toList l1) ++ (NE.toList l2')
 
     m = [Line r1 c1 (s1 ++ gap ++ s2)]
     gap = take (c2 - (c1 + length s1)) $ repeat ' '
+
+    deltaL = sum $ map calcDelta d1
+
+    calcDelta (DeletedSpan (Span (rs,_cs) (re,_ce)) pg (rd,_cd)) = r
+      where
+        ol = re - rs
+        eg = rd
+        r = (pg + ol + eg) - (max pg eg)
+
 
 {-
     l = if (d1 == [] && d2 == [])
@@ -307,6 +317,9 @@ combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
           else error $ "combineUps: (u1,u2)=" ++ showGhc ((Up sp1 l1 d1),(Up sp2 l2 d2))
 -}
 {-
+
+Must only combine any deleted spans that occur in the join point,
+assumption is that any internal deletions have already been managed
 
 combineUps: (u1,u2)=
 ((Up
