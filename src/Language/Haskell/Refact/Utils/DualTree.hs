@@ -3,31 +3,25 @@
 
 module Language.Haskell.Refact.Utils.DualTree (
     layoutTreeToSourceTree
+  , retrieveLinesFromLayoutTree
+  , retrieveLines
+  , renderLines
   , renderSourceTree
+  , Line(..)
   ) where
 
-import qualified FastString as GHC
 import qualified GHC        as GHC
-import qualified Lexer      as GHC
 import qualified Outputable as GHC
 
-import qualified GHC.SYB.Utils as SYB
-
 import Control.Monad.State
-import Data.List
-import Data.Maybe
 import qualified Data.Tree as T
 
-import Language.Haskell.Refact.Utils.GhcBugWorkArounds
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.Refact.Utils.TypeUtils
+-- import Language.Haskell.Refact.Utils.TypeUtils
 
 -- ----------
 import Data.Tree.DUAL
@@ -142,6 +136,11 @@ instance GHC.Outputable Transformation where
                               GHC.<+> GHC.ppr ro  GHC.<+> GHC.ppr p
   ppr (TAdded) = GHC.parens $ GHC.text "TAdded"
 
+instance GHC.Outputable EndOffset where
+  ppr None = GHC.text "None"
+  ppr (SameLine co)     = GHC.parens $ GHC.text "SameLine" GHC.<+> GHC.ppr co
+  ppr (FromAlignCol rc) = GHC.parens $ GHC.text "FromAlignCol" GHC.<+> GHC.ppr rc
+
 instance GHC.Outputable Annot where
   ppr (Ann str) = GHC.parens $ GHC.text "Ann" GHC.<+> GHC.text str
   ppr (ADeleted ss pg p) = GHC.parens $ GHC.text "ADeleted" GHC.<+> GHC.ppr ss
@@ -177,12 +176,25 @@ instance GHC.Outputable Source where
 
 -- ---------------------------------------------------------------------
 
+retrieveLinesFromLayoutTree :: LayoutTree -> [Line]
+retrieveLinesFromLayoutTree = retrieveLines . layoutTreeToSourceTree
+
+-- ---------------------------------------------------------------------
+
+retrieveLines :: SourceTree -> [Line]
+retrieveLines srcTree
+  = case getU srcTree of
+         Nothing -> []
+         Just (Up _ss str _ds) -> NE.toList str
+
+-- ---------------------------------------------------------------------
+
 renderSourceTree :: SourceTree -> String
 renderSourceTree srcTree = r
   where
     r = case getU srcTree of
          Nothing -> ""
-         Just (Up span str ds) -> renderLines $ NE.toList str
+         Just (Up _ss str _ds) -> renderLines $ NE.toList str
 
 -- ---------------------------------------------------------------------
 

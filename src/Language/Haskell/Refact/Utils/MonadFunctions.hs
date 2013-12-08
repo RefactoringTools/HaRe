@@ -13,6 +13,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
          fetchToksFinal
        , fetchPprFinal
+       , fetchLinesFinal
        , fetchOrigToks
        , fetchToks -- Deprecated
        -- , putToks -- ^Deprecated, destroys token tree
@@ -76,12 +77,13 @@ import qualified GHC           as GHC
 
 import qualified Data.Data as SYB
 
+import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.LayoutUtils
+import Language.Haskell.Refact.Utils.LocUtils
+import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -111,6 +113,7 @@ fetchToksFinal = do
   logm $ "fetchToksFinal (not showing toks)"
   return toks
 
+-- TODO: get rid of this, superseded by dualtree
 -- |fetch the final tokens in Ppr format
 fetchPprFinal :: RefactGhc [Ppr]
 fetchPprFinal = do
@@ -119,6 +122,14 @@ fetchPprFinal = do
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchPprFinal (not showing ppr)"
   return pprVal
+
+-- |fetch the final tokens in Ppr format
+fetchLinesFinal :: RefactGhc [Line]
+fetchLinesFinal = do
+  Just tm <- gets rsModule
+  let linesVal = retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
+  logm $ "fetchLinesFinal (not showing lines)"
+  return linesVal
 
 -- |fetch the pristine token stream
 fetchOrigToks :: RefactGhc [PosToken]

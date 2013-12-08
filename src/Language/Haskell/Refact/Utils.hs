@@ -43,6 +43,7 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Language.Haskell.GhcMod
+import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -239,7 +240,8 @@ parseSourceFileGhc targetFile = do
 
 -- | The result of a refactoring is the file, a flag as to whether it
 -- was modified, the updated token stream, and the updated AST
-type ApplyRefacResult = ((FilePath, Bool), ([Ppr],[PosToken], GHC.RenamedSource))
+-- type ApplyRefacResult = ((FilePath, Bool), ([Ppr],[PosToken], GHC.RenamedSource))
+type ApplyRefacResult = ((FilePath, Bool), ([Line],[PosToken], GHC.RenamedSource))
 
 
 -- | Manage a whole refactor session. Initialise the monad, load the
@@ -315,13 +317,14 @@ applyRefac refac source = do
 
     mod'   <- getRefactRenamed
     toks'  <- fetchToksFinal
-    pprVal <- fetchPprFinal
+    -- pprVal <- fetchPprFinal
+    linesVal <- fetchLinesFinal
     m      <- getRefactStreamModified
 
     -- Clear the refactoring state
     clearParsedModule
 
-    return (((fileName,m),(pprVal,toks', mod')),res)
+    return (((fileName,m),(linesVal,toks', mod')),res)
 
 
 -- ---------------------------------------------------------------------
@@ -490,13 +493,14 @@ writeRefactoredFiles verbosity files
        -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
 
      where
-       modifyFile ((fileName,_),(ppr,ts,renamed)) = do
+       modifyFile ((fileName,_),(finalLines,ts,renamed)) = do
            -- let source = concatMap (snd.snd) ts
 
            let ts' = bypassGHCBug7351 ts
            -- let source = GHC.showRichTokenStream ts'
 
-           let source = renderPpr ppr
+           -- let source = renderPpr ppr
+           let source = renderLines finalLines
 
            -- (Julien personnal remark) seq forces the evaluation of
            -- its first argument and returns its second argument. It
