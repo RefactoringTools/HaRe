@@ -281,7 +281,10 @@ mkLinesFromToks toks = [Line ro co str]
 
 combineUps :: Up -> Up -> Up
 combineUps u1@(UDeleted _) (UDeleted _) = u1
-combineUps (UDeleted d1) (Up sp2 l2 d2) = (Up sp2 l2 ([d1] <> d2))
+combineUps (UDeleted d1) (Up sp2 l2 d2) = (Up sp2 l ([d1] <> d2))
+  where
+    deltaL = calcDelta [d1]
+    l = NE.map (\(Line r c str) -> Line (r - deltaL) c str) l2
 combineUps (Up sp1 l1 d1) (UDeleted d2) = (Up sp1 l1 (d1 <> [d2]))
 combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
   where
@@ -302,19 +305,24 @@ combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
     m = [Line r1 c1 (s1 ++ gap ++ s2)]
     gap = take (c2 - (c1 + length s1)) $ repeat ' '
 
-    deltaL = sum $ map calcDelta d1
-
-    calcDelta (DeletedSpan (Span (rs,_cs) (re,_ce)) pg (rd,_cd)) = r
-      where
-        ol = re - rs
-        eg = rd
-        r = (pg + ol + eg) - (max pg eg)
+    deltaL = calcDelta d1
 
 
 {-
     l = if (d1 == [] && d2 == [])
           then l'
           else error $ "combineUps: (u1,u2)=" ++ showGhc ((Up sp1 l1 d1),(Up sp2 l2 d2))
+-}
+{-
+combineUps: (u1,u2)=((Up
+   (Span (3, 1) (4, 8))
+   [(Line 3 1 "tup@(h,t) = head $ zip [1..10] [3..ff]"),
+    (Line 4 3 "where")]
+   []),
+ (Up
+   (Span (6, 5) (6, 12))
+   [(Line 6 5 "ff = 15")]
+   [(DeletedSpan (Span (5, 5) (5, 14)) 1 (1, -9))]))
 -}
 {-
 
@@ -334,6 +342,20 @@ combineUps: (u1,u2)=
    []))
 
 -}
+
+calcDelta :: [DeletedSpan] -> RowOffset
+calcDelta d1 = deltaL
+  where
+    deltaL = case d1 of
+              [] -> 0
+              _  -> (-1) + (sum $ map calcDelta' d1)
+
+    calcDelta' :: DeletedSpan -> RowOffset
+    calcDelta' (DeletedSpan (Span (rs,_cs) (re,_ce)) pg (rd,_cd)) = r + 1
+      where
+        ol = re - rs
+        eg = rd
+        r = (pg + ol + eg) - (max pg eg)
 
 
 -- ---------------------------------------------------------------------
