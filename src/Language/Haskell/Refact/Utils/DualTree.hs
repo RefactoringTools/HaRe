@@ -38,6 +38,9 @@ import qualified Data.Tree.DUAL.Internal as I
 
 -- ---------------------------------------------------------------------
 
+data DeletedSpan = DeletedSpan Span RowOffset SimpPos
+              deriving (Show,Eq)
+
 data Transformation = AsIs
                     | T Integer
                     | TAbove EndOffset (Row,Col) (Row,Col) EndOffset
@@ -59,12 +62,12 @@ transform (TDeleted sspan ro p) (PToks s) = (PToks s)
 -- subtree, together with a string representation of the subtree. The
 -- origin of the string is the start of the span.
 
-data Up = Up Span (NE.NonEmpty Line)
-        | UDeleted Span RowOffset SimpPos
+data Up = Up Span (NE.NonEmpty Line) [DeletedSpan]
+        | UDeleted DeletedSpan
         deriving Show
 
 data Span = Span (Row,Col) (Row,Col)
-          deriving Show
+          deriving (Show,Eq)
 
 data Line = Line Row Col String
           deriving Show
@@ -93,11 +96,10 @@ instance Semigroup Transformation where
   (T n1) <> (T n2) = T (n1 + n2)
 
 instance (Action Transformation Up) where
-  act _ (UDeleted s pg eo) = UDeleted s pg eo
   act AsIs s = s
-  act (T n)                 (Up span s) = (Up span s)
-  act (TAbove bo p1 p2 eo)  (Up span s) = (Up span s)
-  act (TDeleted sspan ro p) (Up span s) = (Up span s)
+  act (T n)                 (Up span s ds) = (Up span s ds)
+  act (TAbove bo p1 p2 eo)  (Up span s ds) = (Up span s ds)
+  act (TDeleted sspan ro p) (Up span s ds) = (Up span s ds)
 
 -- ---------------------------------------------------------------------
 
@@ -138,9 +140,14 @@ instance GHC.Outputable Annot where
   ppr (ASubtree ss)      = GHC.parens $ GHC.text "ASubtree" GHC.<+> GHC.ppr ss
 
 instance GHC.Outputable Up where
-  ppr (Up ss ls) = GHC.parens $ GHC.hang (GHC.text "Up") 1 (GHC.ppr ss GHC.$$ GHC.ppr ls)
-  ppr (UDeleted ss ro p) = GHC.parens $ (GHC.text "UDeleted") GHC.<+> GHC.ppr ss GHC.<+> GHC.ppr ro
-                                       GHC.<+> GHC.ppr p
+  ppr (Up ss ls ds) = GHC.parens $ GHC.hang (GHC.text "Up") 1
+                                 (GHC.ppr ss GHC.$$ GHC.ppr ls GHC.$$ GHC.ppr ds)
+  ppr (UDeleted d)  = GHC.parens $ GHC.text "UDeleted" GHC.<+> GHC.ppr d
+
+instance GHC.Outputable DeletedSpan where
+  ppr (DeletedSpan ss ro p) = GHC.parens $ (GHC.text "DeletedSpan")
+                               GHC.<+> GHC.ppr ss GHC.<+> GHC.ppr ro
+                               GHC.<+> GHC.ppr p
 
 
 instance GHC.Outputable Span where
@@ -155,53 +162,12 @@ instance GHC.Outputable Line where
 
 -- ---------------------------------------------------------------------
 
-{-
-foo = do
-  -- (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Lift.hs"
-  (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Bare.hs"
-  let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-  let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
-
-  let layout = allocTokens parsed toks
-  putStrLn (drawTreeEntry layout)
-  putStrLn (drawTreeCompact layout)
-
-  let srcTree = layoutTreeToSourceTree layout
-
-  putStrLn (show srcTree)
-  putStrLn ""
-  putStrLn (show $ flatten srcTree)
-  putStrLn ""
-  putStrLn (show $ getU srcTree)
-
-
--- ---------------------------------------------------------------------
-
-roundTrip :: FilePath -> IO (Bool,String)
-roundTrip fname = do
-  (t,toks) <-  parsedFileGhc fname
-  let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-  let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
-
-  let layout = allocTokens parsed toks
-
-  let srcTree = layoutTreeToSourceTree layout
-  let (Just (Up span str)) = getU srcTree
-
-  let r = renderLines $ NE.toList str
-  return (r == origSource,r)
--}
-
--- ---------------------------------------------------------------------
-
 renderSourceTree :: SourceTree -> String
 renderSourceTree srcTree = r
   where
     r = case getU srcTree of
          Nothing -> ""
-         Just (Up span str) -> renderLines $ NE.toList str
+         Just (Up span str ds) -> renderLines $ NE.toList str
 
 -- ---------------------------------------------------------------------
 
@@ -261,15 +227,24 @@ renderLines ls = res
 -- ---------------------------------------------------------------------
 
 layoutTreeToSourceTree :: LayoutTree -> SourceTree
-layoutTreeToSourceTree (T.Node (Deleted sspan  pg eg) _) = leaf (UDeleted (fs2s sspan) pg eg) (PDeleted sspan pg eg)
+
+-- TODO: simplify by getting rid of PDeleted, and use leafU
+layoutTreeToSourceTree (T.Node (Deleted sspan  pg eg) _)
+  = leaf (UDeleted (DeletedSpan (fs2s sspan) pg eg)) (PDeleted sspan pg eg)
 
 layoutTreeToSourceTree (T.Node (Entry sspan NoChange [])  ts0)
   = annot (ASubtree sspan) (mconcatl $ map layoutTreeToSourceTree ts0)
 layoutTreeToSourceTree (T.Node (Entry sspan (Above bo p1 p2 eo) [])  ts0)
-  = annot (ASubtree sspan) (applyD (TAbove bo p1 p2 eo) (mconcatl $ map layoutTreeToSourceTree ts0))
+  = annot (ASubtree sspan)
+      (applyD (TAbove bo p1 p2 eo) (mconcatl $ map layoutTreeToSourceTree ts0))
 
-layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts)  = leaf (mkUp sspan toks) (PToks toks)
+layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts)
+  = leaf (mkUp sspan toks) (PToks toks)
 
+-- -------------------------------------
+
+-- We use the foldl version to get a more bushy tree, else the ppr of
+-- it is very hard to follow
 mconcatl :: (Monoid a) => [a] -> a
 mconcatl = foldl mappend mempty
 
@@ -283,7 +258,7 @@ fs2s ss = Span sp ep
 -- ---------------------------------------------------------------------
 
 mkUp :: ForestSpan -> [PosToken] -> Up
-mkUp sspan toks = Up ss ls
+mkUp sspan toks = Up ss ls []
   where
     ss = mkSpan sspan
     toksByLine = groupTokensByLine toks
@@ -305,10 +280,10 @@ mkLinesFromToks toks = [Line ro co str]
 -- ---------------------------------------------------------------------
 
 combineUps :: Up -> Up -> Up
-combineUps u1@(UDeleted _ _ _) (UDeleted _ _ _) = u1
-combineUps (UDeleted _ _ _) u2 = u2
-combineUps u1 (UDeleted _ _ _) = u1
-combineUps (Up sp1 l1) (Up sp2 l2) = (Up (sp1 <> sp2) l)
+combineUps u1@(UDeleted _) (UDeleted _) = u1
+combineUps (UDeleted d1) (Up sp2 l2 d2) = (Up sp2 l2 ([d1] <> d2))
+combineUps (Up sp1 l1 d1) (UDeleted d2) = (Up sp1 l1 (d1 <> [d2]))
+combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
   where
     (Span (sr1,sc1) (er1,ec1)) = sp1
     (Span (sr2,sc2) (er2,ec2)) = sp2
@@ -325,6 +300,28 @@ combineUps (Up sp1 l1) (Up sp2 l2) = (Up (sp1 <> sp2) l)
 
     m = [Line r1 c1 (s1 ++ gap ++ s2)]
     gap = take (c2 - (c1 + length s1)) $ repeat ' '
+
+{-
+    l = if (d1 == [] && d2 == [])
+          then l'
+          else error $ "combineUps: (u1,u2)=" ++ showGhc ((Up sp1 l1 d1),(Up sp2 l2 d2))
+-}
+{-
+
+combineUps: (u1,u2)=
+((Up
+   (Span (1, 1) (3, 26))
+   [(Line 1 1 "module Layout.FromMd1 where"),
+    (Line 3 1 "data D = A | B String | C")]
+   [(DeletedSpan (Span (5, 1) (5, 17)) 2 (1, -16))]),
+ (Up
+   (Span (6, 1) (8, 11))
+   [(Line 6 1 "ff y = y + zz"), (Line 7 3 "where"),
+    (Line 8 5 "zz = 1")]
+   []))
+
+-}
+
 
 -- ---------------------------------------------------------------------
 
