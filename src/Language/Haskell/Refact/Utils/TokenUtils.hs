@@ -46,8 +46,8 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        -- * Retrieving tokens
        , retrieveTokensFinal
-       , retrieveTokensPpr
-       , renderPpr
+       -- , retrieveTokensPpr
+       -- , renderPpr
        , adjustLinesForDeleted
        , retrieveTokensInterim
        , retrieveTokens' -- temporary for debug

@@ -50,7 +50,7 @@ reallyDoIfToCase ::
 reallyDoIfToCase expr rs = do
 
    everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
-   showPprDebug "after refactoring"
+   showLinesDebug "after refactoring"
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))

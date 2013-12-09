@@ -8,6 +8,7 @@ import qualified FastString as GHC
 import qualified GHC        as GHC
 
 
+import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -44,7 +45,7 @@ spec = do
       (showGhc res) `shouldBe` "case list of {\n  (1 : xs) -> 1\n  (2 : xs)\n    | x GHC.Classes.< 10 -> 4\n    where\n        x = GHC.List.last xs\n  otherwise -> 12 }"
       (showGhc d2) `shouldBe` "LayoutIn2.silly list\n  = case list of {\n      (1 : xs) -> 1\n      (2 : xs)\n        | x GHC.Classes.< 10 -> 4\n        where\n            x = GHC.List.last xs\n      otherwise -> 12 }"
       (showGhc res2) `shouldBe` "LayoutIn2.silly list\n  = case list of {\n      (1 : xs) -> 1\n      (2 : xs)\n        | x GHC.Classes.< 10 -> 4\n        where\n            x = GHC.List.last xs\n      otherwise -> 12 }"
-      (renderPpr $ pprFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\n      silly list =       case list of  (1:xs) -> 1\n            --There is a comment\n                                       (2:xs)\n                                         | x < 10    -> 4  where  x = last xs\n                                       otherwise -> 12\n\n"
+      (renderLines $ linesFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\n      silly list =       case list of  (1:xs) -> 1\n            --There is a comment\n                                       (2:xs)\n                                         | x < 10    -> 4  where  x = last xs\n                                       otherwise -> 12\n\n"
 
     -- ---------------------------------
 

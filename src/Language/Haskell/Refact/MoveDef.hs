@@ -912,7 +912,7 @@ doDemoting  pn = do
   putRefactRenamed renamed'
   -- ren <- getRefactRenamed
   -- error ("doDemoting:ren=" ++ (showGhc ren))
-  showPprDebug "doDemoting done"
+  showLinesDebug "doDemoting done"
   return ()
 {-
  =runStateT (applyTP ((once_tdTP (failTP `adhocTP` demoteInMod

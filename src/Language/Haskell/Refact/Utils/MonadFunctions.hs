@@ -12,7 +12,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Conveniences for state access
 
          fetchToksFinal
-       , fetchPprFinal
+       -- , fetchPprFinal
        , fetchLinesFinal
        , fetchOrigToks
        , fetchToks -- Deprecated
@@ -51,7 +51,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , drawTokenTree
        , drawTokenTreeDetailed
        , getTokenTree
-       , showPprDebug
+       -- , showPprDebug
+       , showLinesDebug
 
        -- * State flags for managing generic traversals
        , getRefactDone
@@ -114,6 +115,7 @@ fetchToksFinal = do
   return toks
 
 -- TODO: get rid of this, superseded by dualtree
+{-
 -- |fetch the final tokens in Ppr format
 fetchPprFinal :: RefactGhc [Ppr]
 fetchPprFinal = do
@@ -122,6 +124,7 @@ fetchPprFinal = do
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchPprFinal (not showing ppr)"
   return pprVal
+-}
 
 -- |fetch the final tokens in Ppr format
 fetchLinesFinal :: RefactGhc [Line]
@@ -342,11 +345,19 @@ getTokenTree = do
 
 -- ---------------------------------------------------------------------
 
+{-
 -- |Get the Ppr structure for debug prurposes
 showPprDebug :: String -> RefactGhc ()
 showPprDebug msg = do
   ppr <- fetchPprFinal
   logm $ msg ++ "\ncurrent ppr tree:\n" ++ (showGhc ppr)
+  return ()
+-}
+
+showLinesDebug :: String -> RefactGhc ()
+showLinesDebug msg = do
+  ppr <- fetchLinesFinal
+  logm $ msg ++ "\ncurrent [Line]:\n" ++ (showGhc ppr)
   return ()
 
 -- ---------------------------------------------------------------------

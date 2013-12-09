@@ -7,7 +7,10 @@ module Language.Haskell.Refact.Utils.DualTree (
   , retrieveLines
   , renderLines
   , renderSourceTree
+  , SourceTree
   , Line(..)
+  , Source(..)
+  , renderLinesFromLayoutTree
   ) where
 
 import qualified GHC        as GHC
@@ -67,11 +70,11 @@ data Span = Span (Row,Col) (Row,Col)
           deriving (Show,Eq)
 
 data Line = Line Row Col Source String
-          deriving Show
+          deriving (Show,Eq)
 
 data Source = SOriginal
             | SAdded
-            deriving Show
+            deriving (Show,Eq)
 
 data Annot = Ann String
            | ADeleted ForestSpan RowOffset SimpPos
@@ -173,6 +176,11 @@ instance GHC.Outputable Line where
 instance GHC.Outputable Source where
   ppr SOriginal = GHC.text "SOriginal"
   ppr SAdded    = GHC.text "SAdded"
+
+-- ---------------------------------------------------------------------
+
+renderLinesFromLayoutTree :: LayoutTree -> String
+renderLinesFromLayoutTree = renderLines . retrieveLinesFromLayoutTree
 
 -- ---------------------------------------------------------------------
 
@@ -288,7 +296,8 @@ mkUp sspan toks = Up ss ls []
   where
     s = if forestSpanVersionSet sspan then SAdded else SOriginal
     ss = mkSpan sspan
-    toksByLine = groupTokensByLine $ reAlignMarked toks
+    -- toksByLine = groupTokensByLine $ reAlignMarked toks
+    toksByLine = groupTokensByLine toks
 
     ls = NE.fromList $ concatMap (mkLinesFromToks s) toksByLine
 

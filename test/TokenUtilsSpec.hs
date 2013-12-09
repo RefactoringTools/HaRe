@@ -13,6 +13,7 @@ import Data.List
 import Data.Maybe
 import Data.Tree
 
+import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Layout
@@ -1344,7 +1345,7 @@ tree TId 0:
       let toks3 = retrieveTokensFinal f3
       (GHC.showRichTokenStream toks3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' defined in 'sumSquares'\n --This example aims to test changing a constant to a function.\n\n sumSquares x = (sq x pow)+ (sq x pow)\n            where\n               sq = x^pow\n               pow =2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n\n "
 
-      (renderPpr $ retrieveTokensPpr f3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' defined in 'sumSquares'\n--This example aims to test changing a constant to a function.\n\nsumSquares x = (sq x pow)+ (sq x pow)\n           where\n              sq = x^pow\n              pow =2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n\n"
+      (renderLinesFromLayoutTree f3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' defined in 'sumSquares'\n--This example aims to test changing a constant to a function.\n\nsumSquares x = (sq x pow) + (sq x pow)\n           where\n              sq = x^pow\n              pow =2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n\n"
 
     ------------------------------------
 
@@ -1445,7 +1446,7 @@ tree TId 0:
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment"
 
-      (renderPpr $ retrieveTokensPpr forest'') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment"
+      (renderLinesFromLayoutTree forest'') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment"
 
     -- ---------------------------------
 
@@ -1474,7 +1475,7 @@ tree TId 0:
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
-      (renderPpr $ retrieveTokensPpr forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
+      (renderLinesFromLayoutTree forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
     -- ---------------------------------
 
@@ -1535,7 +1536,7 @@ tree TId 0:
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
-      (renderPpr $ retrieveTokensPpr forest3) `shouldBe` "module Demote.D1 where\n\n{-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = sq x + sumSquares xs\n    where\n       sq = x ^ pow\n     \n\nsumSquares [] = 0\n\npow = 2\n\nmain = sumSquares [1..4]\n\n"
+      (renderLinesFromLayoutTree forest3) `shouldBe` "module Demote.D1 where\n\n{-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = sq x + sumSquares xs\n    where\n       sq = x ^ pow\n     \n\nsumSquares [] = 0\n\npow = 2\n\nmain = sumSquares [1..4]\n\n"
 
     -- ---------------------------------
 
@@ -1760,7 +1761,7 @@ tree TId 0:
           "5:((6,14),(6,15))\n"++
           "1:((8,1),(8,1))\n"
 
-      (renderPpr $ retrieveTokensPpr layout1) `shouldBe`
+      (renderLinesFromLayoutTree layout1) `shouldBe`
           "-- A simple let expression, to ensure the layout is detected\n"++
           "\n"++
           "module Layout.LetExpr where\n"++
@@ -1773,6 +1774,7 @@ tree TId 0:
   -- ---------------------------------------------
 
   -- TODO: These tests have all been moved to DualTree, remove them
+{-
   describe "retrieveTokensPpr" $ do
     it "retrieves the tokens in Ppr format Layout.Lift with deletion/insertion 1" $ do
       (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Lift.hs"
@@ -3626,9 +3628,10 @@ Should be pg :  5 - 3 = 2
          ]
 
       (renderPpr pprVal) `shouldBe` origSource
-
+-}
     -- --------------------------------------
 
+{- Superseded by DualTree/renderLines
   describe "renderPpr" $ do
     it "renders a Ppr with out of sequence lines" $ do
       let ppr =
@@ -3674,6 +3677,7 @@ Should be pg :  5 - 3 = 2
            "\n"
 
       (renderPpr ppr) `shouldBe` expected
+-}
 
   -- -----------------------------------
 
@@ -3703,7 +3707,7 @@ Should be pg :  5 - 3 = 2
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n module TokenTest where"
 
-      (renderPpr $ retrieveTokensPpr forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nmodule TokenTest where"
+      (renderLinesFromLayoutTree forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nmodule TokenTest where"
 
 
     -- --------------------------------------
@@ -3751,7 +3755,7 @@ Should be pg :  5 - 3 = 2
       -- (show toksFinal) `shouldBe` ""
       (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bbb x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
 
-      (renderPpr $ retrieveTokensPpr  forest''') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbbb x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
+      (renderLinesFromLayoutTree  forest''') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbbb x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n"
 
     -- --------------------------------------
 
@@ -3917,12 +3921,12 @@ Should be pg :  5 - 3 = 2
       -- TODO: the following generates a very large number of '\n'
       -- chars. Suspect the line is not being cleanly extracted from
       -- the tree.
-      let pprVal = retrieveTokensPpr f3
-      pprVal `shouldBe`
-        [PprText 13 1 Original "addthree a b c=",
-         PprText 13 16 Original "x",
-         PprText 13 17 Original "+b+c"]
-      (renderPpr $ retrieveTokensPpr f3) `shouldBe`
+      -- let pprVal = retrieveTokensPpr f3
+      -- pprVal `shouldBe`
+      --   [PprText 13 1 Original "addthree a b c=",
+      --    PprText 13 16 Original "x",
+      --    PprText 13 17 Original "+b+c"]
+      (renderLinesFromLayoutTree f3) `shouldBe`
                 "\n\n\n\n\n\n\n\n\n\n\n\naddthree a b c=x+b+c"
 
   -- ---------------------------------------------
@@ -3953,7 +3957,7 @@ Should be pg :  5 - 3 = 2
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
-      (renderPpr $ retrieveTokensPpr forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbab x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
+      (renderLinesFromLayoutTree forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbab x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
     -- ---------------------------------
 
@@ -4031,7 +4035,7 @@ Should be pg :  5 - 3 = 2
       let toks' = retrieveTokensFinal f5
       (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2 :: Integer -> Integerc,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 
-      (renderPpr $ retrieveTokensPpr f5) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nbar2 :: Integer -> Integerc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
+      (renderLinesFromLayoutTree f5) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nbar2 :: Integer -> Integer c,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
 
   -- ---------------------------------------------
 
@@ -4307,7 +4311,6 @@ Should be pg :  5 - 3 = 2
 
       (showSrcSpanF sspan') `shouldBe` "(((False,0,1,5),6),((False,0,1,5),13))"
       (invariant forest'') `shouldBe` []
-
       -- (show forest'') `shouldBe` ""
 
 --
@@ -4321,12 +4324,18 @@ Should be pg :  5 - 3 = 2
       let toksFinal = retrieveTokensFinal forest''
       (GHC.showRichTokenStream toksFinal) `shouldBe` ""
 -}
-      let pprFinal = retrieveTokensPpr forest''
-      -- (show pprFinal) `shouldBe` ""
+      let pprFinal = retrieveLinesFromLayoutTree forest''
+      pprFinal `shouldBe`
+         [Line 1 1 SOriginal "module LiftToToplevel.Where where",
+          Line 3 1 SOriginal "anotherFun 0 y = sq y",
+          Line 4 6 SOriginal "where sq x = x^2",
+          Line 5 6 SAdded "abc = 3 "
+         ]
+
 
       -- NOTE: alignment is out, the tokens are supposed to have an
       -- offset when they go in.
-      (renderPpr pprFinal) `shouldBe` "module LiftToToplevel.Where where\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n     abc = 3\n"
+      (renderLines pprFinal) `shouldBe` "module LiftToToplevel.Where where\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n     abc = 3 "
 
     -- ---------------------------------
 
@@ -5585,9 +5594,21 @@ Should be pg :  5 - 3 = 2
       -- (show $ deleteGapsToks es) `shouldBe` ""
       (GHC.showRichTokenStream $ retrieveTokensFinal f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
-      (retrieveTokensPpr f2) `shouldBe`
-
-        [PprText 1 1 Original "module TokenTest where",
+      (retrieveLinesFromLayoutTree f2) `shouldBe`
+        [Line 1 1 SOriginal "module TokenTest where",
+         Line 3 1 SOriginal "-- Test new style token manager",
+         Line 5 1 SOriginal "bob a b = x",
+         Line 6 3 SOriginal "where x = 3",
+         Line 8 1 SOriginal "bib a b = x",
+         Line 9 3 SOriginal "where",
+         Line 10 5 SOriginal "x = 3",
+         Line 13 1 SOriginal "-- leading comment",
+         Line 14 1 SOriginal "foo x y =",
+         Line 15 3 SOriginal "do c <- getChar",
+         Line 16 6 SOriginal "return c",
+         Line 21 1 SOriginal ""]
+{-
+        [ PprText 1 1 Original "module TokenTest where",
          PprText 3 1 Original "-- Test new style token manager",
          PprText 5 1 Original "bob a b = x",
          PprText 6 3 Original "where",
@@ -5608,9 +5629,9 @@ Should be pg :  5 - 3 = 2
            [PprText 15 1 Original "c <- getChar",
             PprText 16 1 Original "return c"],
          PprText 21 1 Original ""]
+-}
 
-
-      (renderPpr $ retrieveTokensPpr f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
+      (renderLinesFromLayoutTree f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
   -- ---------------------------------------------
 
