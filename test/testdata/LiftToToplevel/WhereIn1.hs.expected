@@ -6,9 +6,11 @@ module LiftToToplevel.WhereIn1 where
 --In this example, lift 'sq' in 'sumSquares'
 --This example aims to test add parameters to 'sq'.
 
-sumSquares x y = (sq pow)x + (sq pow)y
+sumSquares x y = (sq pow) x + (sq pow) y
            where
                  pow=2
+
+
 
 sq  pow 0= 0
 sq  pow z= z^pow

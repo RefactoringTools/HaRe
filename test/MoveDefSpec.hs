@@ -53,7 +53,7 @@ spec = do
 
     it "liftToTopLevel D1 C1 A1 8 6" $ do
      r <- liftToTopLevel (testSettingsMainfile "./test/testdata/LiftToToplevel/A1.hs") testCradle "./test/testdata/LiftToToplevel/D1.hs" (8,6)
-     -- r <- liftToTopLevel logTestSettings  testCradle    (Just "./test/testdata/LiftToToplevel/A1.hs") "./test/testdata/LiftToToplevel/D1.hs" (8,6)
+     -- r <- liftToTopLevel logTestSettings testCradle (Just "./test/testdata/LiftToToplevel/A1.hs") "./test/testdata/LiftToToplevel/D1.hs" (8,6)
      (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/D1.hs\",\"./test/testdata/LiftToToplevel/C1.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/D1.hs.expected"
                           "./test/testdata/LiftToToplevel/D1.hs.refactored"
@@ -71,7 +71,7 @@ spec = do
 
     it "liftToTopLevel D2 C2 A2 8 6" $ do
      r <- liftToTopLevel (testSettingsMainfile "./test/testdata/LiftToToplevel/A2.hs") testCradle "./test/testdata/LiftToToplevel/D2.hs" (8,6)
-     -- r <- liftToTopLevel logTestSettings  testCradle    (Just "./test/testdata/LiftToToplevel/A2.hs") "./test/testdata/LiftToToplevel/D2.hs" (8,6)
+     -- r <- liftToTopLevel (logTestSettingsMainfile "./test/testdata/LiftToToplevel/A2.hs") testCradle "./test/testdata/LiftToToplevel/D2.hs" (8,6)
      (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/D2.hs\",\"./test/testdata/LiftToToplevel/C2.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/D2.hs.expected"
                           "./test/testdata/LiftToToplevel/D2.hs.refactored"
@@ -376,7 +376,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     -- ---------------------------------
 
-    it "LiftOneLevel CaseIn1 10 28" $ do
+    it "liftOneLevel CaseIn1 10 28" $ do
      r <- liftOneLevel defaultTestSettings testCradle "./test/testdata/LiftOneLevel/CaseIn1.hs" (10,28)
      -- r <- liftOneLevel logTestSettings  testCradle "./test/testdata/LiftOneLevel/CaseIn1.hs" (10,28)
      (show r) `shouldBe` "[\"./test/testdata/LiftOneLevel/CaseIn1.hs\"]"

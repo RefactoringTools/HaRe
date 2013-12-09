@@ -1709,5 +1709,147 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
 
     -- -----------------------------------------------------------------
 
+    it "retrieves the tokens in SourceTree format after renaming Renaming.LayoutIn1" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Renaming/LayoutIn1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(10,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,17))\n"++
+         "1:((1,18),(1,23))\n"++
+         "1:((7,1),(9,40))\n"++
+         "2:((7,1),(7,11))\n"++
+         "2:((7,12),(9,40))\n"++
+         "3:((7,12),(7,13))\n"++
+         "3:((7,14),(7,15))\n"++
+         "3:((7,15),(7,16))\n"++
+         "3:((7,17),(7,28))\n"++
+         "4:((7,17),(7,21))\n"++
+         "5:((7,17),(7,19))\n"++
+         "5:((7,20),(7,21))\n"++
+         "4:((7,22),(7,23))\n"++
+         "4:((7,24),(7,28))\n"++
+         "5:((7,24),(7,26))\n"++
+         "5:((7,27),(7,28))\n"++
+         "3:((7,29),(7,34))\n"++
+         "3:((7,35),(9,40))(Above None (7,35) (9,40) FromAlignCol (1,-39))\n"++
+         "4:((7,35),(7,46))\n"++
+         "5:((7,35),(7,37))\n"++
+         "5:((7,38),(7,46))\n"++
+         "6:((7,38),(7,39))\n"++
+         "6:((7,39),(7,40))\n"++
+         "6:((7,41),(7,46))\n"++
+         "7:((7,41),(7,42))\n"++
+         "7:((7,42),(7,43))\n"++
+         "7:((7,43),(7,46))\n"++
+         "4:((9,35),(9,40))\n"++
+         "5:((9,35),(9,38))\n"++
+         "5:((9,38),(9,40))\n"++
+         "6:((9,38),(9,39))\n"++
+         "6:((9,39),(9,40))\n"++
+         "1:((10,1),(10,1))\n"
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (show srcTree) `shouldBe`
+      --     ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+{-
+
+replaceToken test/testdata/Renaming/LayoutIn1.hs:7:17-18:(((False,0,0,7),17),((False,0,0,7),19))((((7,17),(7,23)),ITvarid "square"),"square")
+replaceToken test/testdata/Renaming/LayoutIn1.hs:7:24-25:(((False,0,0,7),24),((False,0,0,7),26))((((7,24),(7,30)),ITvarid "square"),"square")
+replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((False,0,0,7),37))((((7,35),(7,41)),ITvarid "square"),"square")
+replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((False,0,0,7),37))((((7,35),(7,41)),ITvarid "square"),"square")
+-}
+
+      let ss1 = posToSrcSpan layout ((7,17),(7,19))
+      (showGhc ss1) `shouldBe` "test/testdata/Renaming/LayoutIn1.hs:7:17-18"
+
+      [tok1] <- basicTokenise "\n\n\n\n\n\n\n                square"
+      (show tok1) `shouldBe` "((((7,17),(7,23)),ITvarid \"square\"),\"square\")"
+
+      let layout2 = replaceTokenForSrcSpan layout ss1 tok1
+
+      -- -- -- --
+
+      let ss2 = posToSrcSpan layout ((7,24),(7,26))
+      (showGhc ss2) `shouldBe` "test/testdata/Renaming/LayoutIn1.hs:7:24-25"
+
+      [tok2] <- basicTokenise "\n\n\n\n\n\n\n                       square"
+      (show tok2) `shouldBe` "((((7,24),(7,30)),ITvarid \"square\"),\"square\")"
+
+      let layout3 = replaceTokenForSrcSpan layout2 ss2 tok2
+
+      -- -- -- --
+
+      let ss3 = posToSrcSpan layout ((7,35),(7,37))
+      (showGhc ss3) `shouldBe` "test/testdata/Renaming/LayoutIn1.hs:7:35-36"
+
+      [tok3] <- basicTokenise "\n\n\n\n\n\n\n                                  square"
+      (show tok3) `shouldBe` "((((7,35),(7,41)),ITvarid \"square\"),\"square\")"
+
+      let layout4 = replaceTokenForSrcSpan layout3 ss3 tok3
+
+      -- -- -- --
+
+      let layout5 = replaceTokenForSrcSpan layout4 ss3 tok3
+
+      -- -- -- --
+
+      (drawTreeCompact layout5) `shouldBe`
+         "0:((1,1),(10,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,17))\n"++
+         "1:((1,18),(1,23))\n"++
+         "1:((7,1),(9,40))\n"++
+          "2:((7,1),(7,11))\n"++
+          "2:((7,12),(9,40))\n"++
+           "3:((7,12),(7,13))\n"++
+           "3:((7,14),(7,15))\n"++
+           "3:((7,15),(7,16))\n"++
+           "3:((7,17),(7,28))\n"++
+            "4:((7,17),(7,21))\n"++
+             "5:((7,17),(7,19))\n"++
+             "5:((7,20),(7,21))\n"++
+            "4:((7,22),(7,23))\n"++
+            "4:((7,24),(7,28))\n"++
+             "5:((7,24),(7,26))\n"++
+             "5:((7,27),(7,28))\n"++
+           "3:((7,29),(7,34))\n"++
+           "3:((7,35),(9,40))(Above None (7,35) (9,40) FromAlignCol (1,-39))\n"++
+            "4:((7,35),(7,46))\n"++
+             "5:((7,35),(7,37))\n"++
+             "5:((7,38),(7,46))\n"++
+              "6:((7,38),(7,39))\n"++
+              "6:((7,39),(7,40))\n"++
+              "6:((7,41),(7,46))\n"++
+               "7:((7,41),(7,42))\n"++
+               "7:((7,42),(7,43))\n"++
+               "7:((7,43),(7,46))\n"++
+            "4:((9,35),(9,40))\n"++
+             "5:((9,35),(9,38))\n"++
+             "5:((9,38),(9,40))\n"++
+              "6:((9,38),(9,39))\n"++
+              "6:((9,39),(9,40))\n"++
+         "1:((10,1),(10,1))\n"
+
+
+
+      let srcTree2 = layoutTreeToSourceTree layout5
+      -- (showGhc srcTree2) `shouldBe` ""
+
+
+      (renderSourceTree srcTree2) `shouldBe` "module LayoutIn1 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'sq' to 'square'.\n\nsumSquares x y= square x + square y where square x= x^pow\n  --There is a comment.\n                                  pow=2\n"
+
+    -- -----------------------------------------------------------------
+
   -- -----------------------------------
 

@@ -288,7 +288,7 @@ mkUp sspan toks = Up ss ls []
   where
     s = if forestSpanVersionSet sspan then SAdded else SOriginal
     ss = mkSpan sspan
-    toksByLine = groupTokensByLine toks
+    toksByLine = groupTokensByLine $ reAlignMarked toks
 
     ls = NE.fromList $ concatMap (mkLinesFromToks s) toksByLine
 
@@ -333,8 +333,9 @@ combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
          else NE.fromList $ (NE.toList l1) ++ (NE.toList l2')
 
     m = [Line r1 c1 ss1 (s1 ++ gap ++ s2)]
-    gap = take (c2 - (c1 + length s1)) $ repeat ' '
-
+    gap = if c1 + length s1 <= c2
+            then take (c2 - (c1 + length s1)) $ repeat ' '
+            else " "
 
 
 {-
