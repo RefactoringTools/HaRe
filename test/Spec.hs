@@ -5,4 +5,3 @@ See https://github.com/hspec/hspec/tree/master/hspec-discover#readme
 to understand this module
 
 -}
-q

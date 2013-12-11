@@ -69,8 +69,11 @@ data Up = Up Span (NE.NonEmpty Line) [DeletedSpan]
 data Span = Span (Row,Col) (Row,Col)
           deriving (Show,Eq)
 
-data Line = Line Row Col Source String
-          deriving (Show,Eq)
+data Line = Line Row Col Source [PosToken]
+
+instance Show Line where
+  show (Line r c s toks) = "(" ++ show r ++ " " ++ show c ++ " " ++ show s ++ "\"" ++ GHC.showRichTokenStream toks ++ "\")"
+  -- show (Line r c s toks) = "(" ++ show r ++ " " ++ show c ++ " " ++ show s ++ show toks ++ ")"
 
 data Source = SOriginal
             | SAdded
@@ -171,7 +174,8 @@ instance (GHC.Outputable a) => GHC.Outputable (NE.NonEmpty a) where
 instance GHC.Outputable Line where
   ppr (Line r c s str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r
                          GHC.<+> GHC.ppr c GHC.<+> GHC.ppr s
-                         GHC.<+> GHC.text (show str)
+                         -- GHC.<+> GHC.text (show str)
+                         GHC.<+> GHC.text ("\"" ++ (GHC.showRichTokenStream str) ++ "\"")
 
 instance GHC.Outputable Source where
   ppr SOriginal = GHC.text "SOriginal"
@@ -214,7 +218,7 @@ renderLines ls = res
     go _ [] = do return ()
     go ci ((Line r c s str):ls') = do
       newPos r (c+ci)
-      addString str
+      addString (GHC.showRichTokenStream str)
       go ci ls'
 
     -- State operations ----------------
@@ -305,7 +309,7 @@ mkUp sspan toks = Up ss ls []
 
 mkLinesFromToks :: Source -> [PosToken] -> [Line]
 mkLinesFromToks _ [] = []
-mkLinesFromToks s toks = [Line ro co s str]
+mkLinesFromToks s toks = [Line ro co s toks']
   where
     ro' = tokenRow $ head toks
     co' = tokenCol $ head toks
@@ -341,7 +345,9 @@ combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
          then NE.fromList $ (NE.init l1) ++ m ++ (NE.tail l2')
          else NE.fromList $ (NE.toList l1) ++ (NE.toList l2')
 
-    m = [Line r1 c1 ss1 (s1 ++ gap ++ s2)]
+    s2' = addOffsetToToks (0,c2 - c1) s2
+    -- m = [Line r1 c1 ss1 (s1 ++ gap ++ s2)]
+    m = [Line r1 c1 ss1 (s1 ++ s2')]
     gap = if c1 + length s1 <= c2
             then take (c2 - (c1 + length s1)) $ repeat ' '
             else " "

@@ -4325,13 +4325,15 @@ Should be pg :  5 - 3 = 2
       (GHC.showRichTokenStream toksFinal) `shouldBe` ""
 -}
       let pprFinal = retrieveLinesFromLayoutTree forest''
-      pprFinal `shouldBe`
+      show pprFinal `shouldBe`
+         ""
+{-
          [Line 1 1 SOriginal "module LiftToToplevel.Where where",
           Line 3 1 SOriginal "anotherFun 0 y = sq y",
           Line 4 6 SOriginal "where sq x = x^2",
           Line 5 6 SAdded "abc = 3 "
          ]
-
+-}
 
       -- NOTE: alignment is out, the tokens are supposed to have an
       -- offset when they go in.
@@ -5594,41 +5596,21 @@ Should be pg :  5 - 3 = 2
       -- (show $ deleteGapsToks es) `shouldBe` ""
       (GHC.showRichTokenStream $ retrieveTokensFinal f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
-      (retrieveLinesFromLayoutTree f2) `shouldBe`
-        [Line 1 1 SOriginal "module TokenTest where",
-         Line 3 1 SOriginal "-- Test new style token manager",
-         Line 5 1 SOriginal "bob a b = x",
-         Line 6 3 SOriginal "where x = 3",
-         Line 8 1 SOriginal "bib a b = x",
-         Line 9 3 SOriginal "where",
-         Line 10 5 SOriginal "x = 3",
-         Line 13 1 SOriginal "-- leading comment",
-         Line 14 1 SOriginal "foo x y =",
-         Line 15 3 SOriginal "do c <- getChar",
-         Line 16 6 SOriginal "return c",
-         Line 21 1 SOriginal ""]
+      (show $ retrieveLinesFromLayoutTree f2) `shouldBe`
+        ""
 {-
-        [ PprText 1 1 Original "module TokenTest where",
-         PprText 3 1 Original "-- Test new style token manager",
-         PprText 5 1 Original "bob a b = x",
-         PprText 6 3 Original "where",
-         PprAbove None (6,14) (FromAlignCol (2,-13))
-           [PprText 6 1 Original "x = 3"],
-         PprText 8 1 Original "bib a b = x",
-         PprText 9 3 Original "where",
-         PprAbove (FromAlignCol (1,-4)) (10,10) (FromAlignCol (3,-9))
-           [PprText 10 1 Original "x = 3"],
-         PprDeleted 13 1 3 2 3,
-
-         -- originally on line 18. Should now be on line 13. So offset
-         -- is -5.
-         PprText 13 1 Original "-- leading comment",
-         PprText 14 1 Original "foo x y =",
-         PprText 15 3 Original "do",
-         PprAbove None (21,14) (FromAlignCol (5,-13))
-           [PprText 15 1 Original "c <- getChar",
-            PprText 16 1 Original "return c"],
-         PprText 21 1 Original ""]
+        [Line 1 1 SOriginal \"module TokenTest where\","++
+         Line 3 1 SOriginal \"-- Test new style token manager\","++
+         Line 5 1 SOriginal \"bob a b = x\","++
+         Line 6 3 SOriginal \"where x = 3\","++
+         Line 8 1 SOriginal \"bib a b = x\","++
+         Line 9 3 SOriginal \"where\","++
+         Line 10 5 SOriginal \"x = 3\","++
+         Line 13 1 SOriginal \"-- leading comment\","++
+         Line 14 1 SOriginal \"foo x y =\","++
+         Line 15 3 SOriginal \"do c <- getChar\","++
+         Line 16 6 SOriginal \"return c\","++
+         Line 21 1 SOriginal \"\"]"
 -}
 
       (renderLinesFromLayoutTree f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"

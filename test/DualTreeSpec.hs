@@ -87,8 +87,8 @@ spec = do
 
 
       let srcTree = layoutTreeToSourceTree layout
-      -- (show srcTree) `shouldBe`
-      --     ""
+      -- (showGhc srcTree) `shouldBe` ""
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
 
       (renderSourceTree srcTree) `shouldBe` origSource
 
