@@ -7,16 +7,7 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
+# See http://www.reddit.com/r/haskell/comments/1os3f6/how_to_use_travisci_with_multiple_ghc_versions/
 
 env:
  # - GHCVER=6.12.3
@@ -40,6 +31,7 @@ before_install:
 
 install:
  - cabal-1.18 update
+ - cabal install happy
  - if [ "$GHCVER" = "6.12.3" ]; then
       cabal-1.18 install --only-dependencies;
       cabal-1.18 install 'QuickCheck==2.6.*';
