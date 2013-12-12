@@ -1768,10 +1768,9 @@ spec = do
     -- ---------------------------------
 
     it "replaces a Name with another in limited scope, updating tokens 1" $ do
-      (t,toks) <- parsedFileTokenTestGhc
+      (t,toks) <- parsedFileGhc "./test/testdata/TokenTest.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      -- let forest = mkTreeFromTokens toks
       let forest = allocTokens parsed toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -1787,11 +1786,6 @@ spec = do
       let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
       (invariant forest'') `shouldBe` []
-
-{-
-      (drawTreeEntry forest'') `shouldBe`
-           ""
--}
 
       (showSrcSpanF sspan) `shouldBe` "(((False,0,1,19),1),((False,0,1,21),14))"
 
@@ -1812,7 +1806,7 @@ spec = do
       (showGhc n) `shouldBe` "TokenTest.foo"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((19,1),(19,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
-      (renderLines $ linesFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
+      (renderLines $ linesFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n   do c <- getChar\n      return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
       (showGhc nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
 
@@ -2066,7 +2060,7 @@ spec = do
       (showGhc n) `shouldBe` "LocToName.sumSquares"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
-      (renderLines $ linesFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
+      (renderLines $ linesFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + newPoint xs\n-- where sq x = x ^pow \n--       pow = 2\n\nnewPoint [] = 0\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(newPoint (x : xs) = x GHC.Real.^ 2 GHC.Num.+ newPoint xs\n newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
     ------------------------------------
@@ -2091,7 +2085,7 @@ spec = do
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
       -- (show $ layoutFromState s) `shouldBe` ""
       -- (showGhc $ retrieveTokensPpr $ fromJust $ layoutFromState s) `shouldBe` ""
-      (renderLines $ linesFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + LocToName.newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
+      (renderLines $ linesFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + LocToName.newPoint xs\n          -- where sq x = x ^pow \n          --       pow = 2\n\nnewPoint [] = 0\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
@@ -2117,7 +2111,7 @@ spec = do
       -- (showGhc $ retrieveTokensPpr $ fromJust $ layoutFromState s) `shouldBe` ""
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((8,7),(8,9)),ITvarid \"ls\",\"ls\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of  (1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
-      (showGhc $ sourceTreeFromState s) `shouldBe` ""
+      -- (showGhc $ sourceTreeFromState s) `shouldBe` ""
       (renderLines $ linesFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly ls = case ls of  (1:xs) -> 1\n--There is a comment\n                       (2:xs)\n                         | x < 10    -> 4  where  x = last xs\n                       otherwise -> 12\n\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutIn2.silly :: [GHC.Types.Int] -> GHC.Types.Int\n LayoutIn2.silly ls\n = case ls of {\n (1 : xs) -> 1\n (2 : xs)\n | x GHC.Classes.< 10 -> 4\n where\n x = GHC.List.last xs\n otherwise -> 12 },\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2199,7 +2193,7 @@ spec = do
     ------------------------------------
 
     it "realigns toks in a case for a longer name" $ do
-      (t, toks) <- parsedFileLayoutIn2
+      (t, toks) <- parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just (GHC.L l n) = locToName (8, 7) renamed
@@ -2217,7 +2211,8 @@ spec = do
       (showGhc n) `shouldBe` "list"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((8,7),(8,17)),ITvarid \"listlonger\",\"listlonger\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of  (1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
-      -- (showGhc $ pprFromState s) `shouldBe` ""
+      -- (showGhc $ linesFromState s) `shouldBe` ""
+      -- (showGhc $ sourceTreeFromState s) `shouldBe` ""
       (renderLines $ linesFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly listlonger = case listlonger of  (1:xs) -> 1\n            --There is a comment\n                                       (2:xs)\n                                         | x < 10    -> 4  where  x = last xs\n                                       otherwise -> 12\n\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutIn2.silly :: [GHC.Types.Int] -> GHC.Types.Int\n LayoutIn2.silly listlonger\n = case listlonger of {\n (1 : xs) -> 1\n (2 : xs)\n | x GHC.Classes.< 10 -> 4\n where\n x = GHC.List.last xs\n otherwise -> 12 },\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2345,7 +2340,7 @@ spec = do
       (showGhc n) `shouldBe` "xxx"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((6,5),(6,6)),ITvarid \"x\",\"x\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
-      (renderLines $ linesFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo x = let a = 1\n            b = 2\n          in x + a + b\n\n"
+      (renderLines $ linesFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo x = let a = 1\n            b = 2\n        in x + a + b\n\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo x\n = let\n a = 1\n b = 2\n in x GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
     ------------------------------------
@@ -2370,7 +2365,7 @@ spec = do
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((6,5),(6,12)),ITvarid \"xxxlong\",\"xxxlong\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
       -- (pprFromState s) `shouldBe` []
-      (renderLines $ linesFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo xxxlong = let a = 1\n                  b = 2\n          in xxxlong + a + b\n\n"
+      (renderLines $ linesFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo xxxlong = let a = 1\n                  b = 2\n              in xxxlong + a + b\n\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 

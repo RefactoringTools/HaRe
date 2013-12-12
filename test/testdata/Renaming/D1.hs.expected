@@ -5,7 +5,7 @@ module Renaming.D1 where
 
 data AnotherTree a = Leaf a | Branch (AnotherTree a) (AnotherTree a)
 
-fringe :: AnotherTree a -> [ a ]
+fringe :: AnotherTree a -> [a]
 fringe (Leaf x ) = [x]
 fringe (Branch left right) = fringe left ++ fringe right
 

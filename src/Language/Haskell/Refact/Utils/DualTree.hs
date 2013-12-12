@@ -41,7 +41,7 @@ data DeletedSpan = DeletedSpan Span RowOffset SimpPos
 -- TODO: We are not actually using any of these
 data Transformation = AsIs
                     | T Integer
-                    | TAbove EndOffset (Row,Col) (Row,Col) EndOffset
+                    | TAbove ColOffset EndOffset (Row,Col) (Row,Col) EndOffset
                     | TDeleted ForestSpan RowOffset SimpPos
                     | TAdded
                     deriving Show
@@ -54,7 +54,7 @@ transform :: Transformation -> Prim -> Prim
 transform AsIs p = p
 -- transform (T n) (PToks s) = (PToks (s++"(T"++ (show n) ++")"))
 transform (T n) (PToks s) = (PToks s)
-transform (TAbove bo p1 p2 eo) (PToks s)  = (PToks s)
+transform (TAbove co bo p1 p2 eo) (PToks s)  = (PToks s)
 transform (TDeleted sspan ro p) (PToks s) = (PToks s)
 transform TAdded                (PToks s) = (PToks s)
 
@@ -62,7 +62,7 @@ transform TAdded                (PToks s) = (PToks s)
 -- subtree, together with a string representation of the subtree. The
 -- origin of the string is the start of the span.
 
-data Up = Up Span (NE.NonEmpty Line) [DeletedSpan]
+data Up = Up Span Alignment (NE.NonEmpty Line) [DeletedSpan]
         | UDeleted [DeletedSpan]
         deriving Show
 
@@ -70,6 +70,9 @@ data Span = Span (Row,Col) (Row,Col)
           deriving (Show,Eq)
 
 data Line = Line Row Col Source [PosToken]
+
+data Alignment = ANone | AVertical
+               deriving (Show,Eq)
 
 instance Show Line where
   show (Line r c s toks) = "(" ++ show r ++ " " ++ show c ++ " " ++ show s ++ "\"" ++ GHC.showRichTokenStream toks ++ "\")"
@@ -104,9 +107,12 @@ instance Semigroup Transformation where
 
 instance (Action Transformation Up) where
   act AsIs s = s
-  act (T n)                 (Up span s ds) = (Up span s ds)
-  act (TAbove bo p1 p2 eo)  (Up span s ds) = (Up span s ds)
-  act (TDeleted sspan ro p) (Up span s ds) = (Up span s ds)
+  act (T n)                   (Up span a s ds) = (Up span a s ds)
+  act (TAbove co bo p1 p2 eo) (Up span a s ds) = (Up span a' s ds)
+    where
+      a' = AVertical
+      s' = NE.map (\(Line r c s toks) -> (Line r (c - co) s toks)) s
+  act (TDeleted sspan ro p) (Up span a s ds) = (Up span a s ds)
   act TAdded s = s
 
 -- ---------------------------------------------------------------------
@@ -135,7 +141,8 @@ instance GHC.Outputable Prim where
 instance GHC.Outputable Transformation where
   ppr (AsIs) = GHC.parens $ GHC.text "AsIs"
   ppr (T n)  = GHC.parens $ GHC.text "T" GHC.<+> GHC.text (show n)
-  ppr (TAbove bo p1 p2 eo)  = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr bo
+  ppr (TAbove co bo p1 p2 eo)  = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr co
+                              GHC.<+> GHC.ppr bo
                               GHC.<+> GHC.ppr p1  GHC.<+> GHC.ppr p2
                               GHC.<+> GHC.ppr eo
   ppr (TDeleted sspan ro p) = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr sspan
@@ -154,9 +161,13 @@ instance GHC.Outputable Annot where
   ppr (ASubtree ss)      = GHC.parens $ GHC.text "ASubtree" GHC.<+> GHC.ppr ss
 
 instance GHC.Outputable Up where
-  ppr (Up ss ls ds) = GHC.parens $ GHC.hang (GHC.text "Up") 1
-                                 (GHC.ppr ss GHC.$$ GHC.ppr ls GHC.$$ GHC.ppr ds)
+  ppr (Up ss a ls ds) = GHC.parens $ GHC.hang (GHC.text "Up") 1
+                                 ((GHC.ppr ss GHC.<+> GHC.ppr a) GHC.$$ GHC.ppr ls GHC.$$ GHC.ppr ds)
   ppr (UDeleted d)  = GHC.parens $ GHC.text "UDeleted" GHC.<+> GHC.ppr d
+
+instance GHC.Outputable Alignment where
+  ppr ANone     = GHC.text "ANone"
+  ppr AVertical = GHC.text "AVertical"
 
 instance GHC.Outputable DeletedSpan where
   ppr (DeletedSpan ss ro p) = GHC.parens $ (GHC.text "DeletedSpan")
@@ -174,8 +185,8 @@ instance (GHC.Outputable a) => GHC.Outputable (NE.NonEmpty a) where
 instance GHC.Outputable Line where
   ppr (Line r c s str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r
                          GHC.<+> GHC.ppr c GHC.<+> GHC.ppr s
-                         -- GHC.<+> GHC.text (show str)
                          GHC.<+> GHC.text ("\"" ++ (GHC.showRichTokenStream str) ++ "\"")
+                         GHC.<+> GHC.text (show str) -- ++AZ++ debug
 
 instance GHC.Outputable Source where
   ppr SOriginal = GHC.text "SOriginal"
@@ -197,7 +208,7 @@ retrieveLines :: SourceTree -> [Line]
 retrieveLines srcTree
   = case getU srcTree of
          Nothing -> []
-         Just (Up _ss str _ds) -> NE.toList str
+         Just (Up _ss _a str _ds) -> NE.toList str
 
 -- ---------------------------------------------------------------------
 
@@ -206,7 +217,7 @@ renderSourceTree srcTree = r
   where
     r = case getU srcTree of
          Nothing -> ""
-         Just (Up _ss str _ds) -> renderLines $ NE.toList str
+         Just (Up _ss _a str _ds) -> renderLines $ NE.toList str
 
 -- ---------------------------------------------------------------------
 
@@ -275,7 +286,12 @@ layoutTreeToSourceTree (T.Node (Entry sspan NoChange [])  ts0)
   = annot (ASubtree sspan) (mconcatl $ map layoutTreeToSourceTree ts0)
 layoutTreeToSourceTree (T.Node (Entry sspan (Above bo p1 p2 eo) [])  ts0)
   = annot (ASubtree sspan)
-      (applyD (TAbove bo p1 p2 eo) (mconcatl $ map layoutTreeToSourceTree ts0))
+      (applyD (TAbove co bo p1 p2 eo) subs)
+  where
+    subs = (mconcatl $ map layoutTreeToSourceTree ts0)
+    Just (Up s a ls ds) = getU subs
+    (Line r c so toks) = NE.head ls
+    co = 0
 
 layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts) = leaf (mkUp sspan toks) (PToks toks)
 
@@ -296,8 +312,9 @@ fs2s ss = Span sp ep
 -- ---------------------------------------------------------------------
 
 mkUp :: ForestSpan -> [PosToken] -> Up
-mkUp sspan toks = Up ss ls []
+mkUp sspan toks = Up ss a ls []
   where
+    a = ANone
     s = if forestSpanVersionSet sspan then SAdded else SOriginal
     ss = mkSpan sspan
     -- toksByLine = groupTokensByLine $ reAlignMarked toks
@@ -321,72 +338,76 @@ mkLinesFromToks s toks = [Line ro co s toks']
 
 combineUps :: Up -> Up -> Up
 combineUps (UDeleted d1) (UDeleted d2)  = UDeleted (d1 <> d2)
-combineUps (UDeleted d1) (Up sp2 l2 d2) = (Up sp2 l (d1 <> d2))
+combineUps (UDeleted d1) (Up sp2 a2 l2 d2) = (Up sp2 a2 l (d1 <> d2))
   where
     -- deltaL = calcDelta d1
     -- l = NE.map (\(Line r c s str) -> Line (r - deltaL) c s str) l2
     l = adjustForDeleted d1 l2
-combineUps (Up sp1 l1 d1) (UDeleted d2) = (Up sp1 l1 (d1 <> d2))
-combineUps (Up sp1 l1 d1) (Up sp2 l2 d2) = (Up (sp1 <> sp2) l (d1 <> d2))
+combineUps (Up sp1 a1 l1 d1) (UDeleted d2) = (Up sp1 a1 l1 (d1 <> d2))
+combineUps (Up sp1 _a1 l1 d1) (Up sp2 a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2))
   where
+    a = ANone
+    -- a = if a2 == AVertical then error $ "combineUps:a2==AVertical:" ++ (show l2)
+    --                         else ANone
+
     -- (Span (_sr1,_sc1) (_er1,_ec1)) = sp1
     -- (Span (_sr2,_sc2) (_er2,_ec2)) = sp2
     -- Assumptions
     --  1. The first character of (head str1) is at (sr1,sc1)
     --  2. The first character of (head str2) is at (sr2,sc2)
-    -- deltaL = calcDelta d1
-    -- l2' = NE.map (\(Line r c s str) -> Line (r - deltaL) c s str) l2
     l2' = adjustForDeleted d1 l2
 
     (Line r1 c1  ss1 s1) = NE.last l1
     (Line r2 c2 _ss2 s2) = NE.head l2'
 
     l = if r1 == r2
-         then NE.fromList $ (NE.init l1) ++ m ++ (NE.tail l2')
+         -- then NE.fromList $ (NE.init l1) ++ m ++ (NE.tail l2')
+         then NE.fromList $ (NE.init l1) ++ m ++ ll
          else NE.fromList $ (NE.toList l1) ++ (NE.toList l2')
 
     s2' = addOffsetToToks (0,c2 - c1) s2
-    -- m = [Line r1 c1 ss1 (s1 ++ gap ++ s2)]
-    m = [Line r1 c1 ss1 (s1 ++ s2')]
-    gap = if c1 + length s1 <= c2
-            then take (c2 - (c1 + length s1)) $ repeat ' '
-            else " "
 
+    s1' = s1 ++ s2'
+    m = [Line r1 c1 ss1 s1']
 
+    -- o = c2 - (c1 + length (GHC.showRichTokenStream s1'))
+    -- o = c2 - (c1 + tokenCol (head s2') )
+    o = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) s1
+
+    -- ll = if a2 == AVertical && r1 == r2
+    ll = if r1 == r2
+          then map (\(Line r c aa s) -> (Line r (c + o) aa (addOffsetToToks (0,0) s))) (NE.tail l2')
+          else (NE.tail l2')
 {-
-    l = if (d1 == [] && d2 == [])
-          then l'
-          else error $ "combineUps: (u1,u2)=" ++ showGhc ((Up sp1 l1 d1),(Up sp2 l2 d2))
--}
-{-
-combineUps: (u1,u2)=((Up
-   (Span (3, 1) (4, 8))
-   [(Line 3 1 "tup@(h,t) = head $ zip [1..10] [3..ff]"),
-    (Line 4 3 "where")]
-   []),
- (Up
-   (Span (6, 5) (6, 12))
-   [(Line 6 5 "ff = 15")]
-   [(DeletedSpan (Span (5, 5) (5, 14)) 1 (1, -9))]))
--}
-{-
+r1 = 8
+c1 = 14
+s1 : "case listlonger of"
+((((0,10),(0,12)),ITof),"of")] -- Ok, tokens mean nothing, if they
+                                  -- have been expanded
+length "case listlonger of" == 18
 
-Must only combine any deleted spans that occur in the join point,
-assumption is that any internal deletions have already been managed
+14 + 18 = 32
+c1 + length s1 = 32
 
-combineUps: (u1,u2)=
-((Up
-   (Span (1, 1) (3, 26))
-   [(Line 1 1 "module Layout.FromMd1 where"),
-    (Line 3 1 "data D = A | B String | C")]
-   [(DeletedSpan (Span (5, 1) (5, 17)) 2 (1, -16))]),
- (Up
-   (Span (6, 1) (8, 11))
-   [(Line 6 1 "ff y = y + zz"), (Line 7 3 "where"),
-    (Line 8 5 "zz = 1")]
-   []))
+c2 - c1 = 28 - 14 = 14
+
+r2 = 8
+c2 = 28
+s2 = "(1:xs) -> 1"
+
+Need offset to be 28 + 12
+----
+
+first line becomes: 
+
+"case listlonger of  (1:xs) -> 1"
+
+i.e. the starting point is 20 along
 
 -}
+
+
+-- -------------------------------------
 
 adjustForDeleted :: [DeletedSpan] -> NE.NonEmpty Line -> NE.NonEmpty Line
 adjustForDeleted d1 l2 = l

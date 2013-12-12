@@ -6,7 +6,7 @@ module ConstructorIn1 where
 
 --Rename type Constructor 'BTree' to 'MyBTree' 
 data MyBTree a = Empty | T a (MyBTree a) (MyBTree a)
-               deriving Show
+                 deriving Show
 
 buildtree :: Ord a => [a] -> MyBTree a
 buildtree [] = Empty

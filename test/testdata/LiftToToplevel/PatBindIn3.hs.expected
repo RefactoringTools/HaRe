@@ -6,7 +6,7 @@ module LiftToToplevel.PatBindIn3 where
 --In this example, lift 'sq' defined in 'sumSquares'
 --This example aims to test changing a constant to a function.
 
-sumSquares x = (sq x pow) + (sq x pow)
+sumSquares x = (sq x pow)+ (sq x pow)
            where
               pow =2
 
