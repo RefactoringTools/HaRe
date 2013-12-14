@@ -69,14 +69,14 @@ data Up = Up Span Alignment (NE.NonEmpty Line) [DeletedSpan]
 data Span = Span (Row,Col) (Row,Col)
           deriving (Show,Eq)
 
-data Line = Line Row Col Source [PosToken]
+data Line = Line Row Col RowOffset Source [PosToken]
 
 data Alignment = ANone | AVertical
                deriving (Show,Eq)
 
 instance Show Line where
-  show (Line r c s toks) = "(" ++ show r ++ " " ++ show c ++ " " ++ show s ++ "\"" ++ GHC.showRichTokenStream toks ++ "\")"
-  -- show (Line r c s toks) = "(" ++ show r ++ " " ++ show c ++ " " ++ show s ++ show toks ++ ")"
+  show (Line r c o s toks) = "(" ++ show r ++ " " ++ show c ++ " " ++ show o
+          ++ " " ++ show s ++ "\"" ++ GHC.showRichTokenStream toks ++ "\")"
 
 data Source = SOriginal
             | SAdded
@@ -111,7 +111,7 @@ instance (Action Transformation Up) where
   act (TAbove co bo p1 p2 eo) (Up span a s ds) = (Up span a' s ds)
     where
       a' = AVertical
-      s' = NE.map (\(Line r c s toks) -> (Line r (c - co) s toks)) s
+      s' = NE.map (\(Line r c o s toks) -> (Line r (c - co) o s toks)) s
   act (TDeleted sspan ro p) (Up span a s ds) = (Up span a s ds)
   act TAdded s = s
 
@@ -183,8 +183,9 @@ instance (GHC.Outputable a) => GHC.Outputable (NE.NonEmpty a) where
   ppr (x NE.:| xs) = (GHC.ppr (x:xs))
 
 instance GHC.Outputable Line where
-  ppr (Line r c s str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r
-                         GHC.<+> GHC.ppr c GHC.<+> GHC.ppr s
+  ppr (Line r c o s str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r
+                         GHC.<+> GHC.ppr c GHC.<+> GHC.ppr o
+                         GHC.<+> GHC.ppr s
                          GHC.<+> GHC.text ("\"" ++ (GHC.showRichTokenStream str) ++ "\"")
                          -- GHC.<+> GHC.text (show str) -- ++AZ++ debug
 
@@ -227,7 +228,7 @@ renderLines ls = res
     (_,(_,res)) = runState (go 0 ls) ((1,1),"")
 
     go _ [] = do return ()
-    go ci ((Line r c s str):ls') = do
+    go ci ((Line r c _o _s str):ls') = do
       newPos r (c+ci)
       addString (GHC.showRichTokenStream str)
       go ci ls'
@@ -289,8 +290,8 @@ layoutTreeToSourceTree (T.Node (Entry sspan (Above bo p1 p2 eo) [])  ts0)
       (applyD (TAbove co bo p1 p2 eo) subs)
   where
     subs = (mconcatl $ map layoutTreeToSourceTree ts0)
-    Just (Up s a ls ds) = getU subs
-    (Line r c so toks) = NE.head ls
+    Just (Up _s _a ls _ds) = getU subs
+    (Line _r _c _o _so toks) = NE.head ls
     co = 0
 
 layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts) = leaf (mkUp sspan toks) (PToks toks)
@@ -326,13 +327,13 @@ mkUp sspan toks = Up ss a ls []
 
 mkLinesFromToks :: Source -> [PosToken] -> [Line]
 mkLinesFromToks _ [] = []
-mkLinesFromToks s toks = [Line ro co s toks']
+mkLinesFromToks s toks = [Line ro co 0 s toks']
   where
     ro' = tokenRow $ head toks
     co' = tokenCol $ head toks
     (ro,co) = srcPosToSimpPos (tokenRow $ head toks, tokenCol $ head toks)
     toks' = addOffsetToToks (-ro',-co') toks
-    str = GHC.showRichTokenStream toks'
+    -- str = GHC.showRichTokenStream toks'
 
 -- ---------------------------------------------------------------------
 
@@ -344,7 +345,7 @@ combineUps (UDeleted d1) (Up sp2 a2 l2 d2) = (Up sp2 a2 l (d1 <> d2))
     -- l = NE.map (\(Line r c s str) -> Line (r - deltaL) c s str) l2
     l = adjustForDeleted d1 l2
 combineUps (Up sp1 a1 l1 d1) (UDeleted d2) = (Up sp1 a1 l1 (d1 <> d2))
-combineUps (Up sp1 _a1 l1 d1) (Up sp2 a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2))
+combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2))
   where
     a = ANone
     -- a = if a2 == AVertical then error $ "combineUps:a2==AVertical:" ++ (show l2)
@@ -357,17 +358,35 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2
     --  2. The first character of (head str2) is at (sr2,sc2)
     l2' = adjustForDeleted d1 l2
 
-    (Line r1 c1 ss1 s1) = NE.last l1
-    (Line r2 c2 ss2 s2) = NE.head l2'
+    (Line _ _ o2 _ _) = NE.head l2'
+    --         1    0
+    l2'' = if o1 == o2
+            then l2'
+            else NE.fromList $ map (\(Line r c f aa s) -> (Line (r + (o1-f)) c (o1-f) aa s)) (NE.toList l2')
+
+    (Line r1 c1  o1 ss1 s1) = NE.last l1
+    (Line r2 c2 _o2 ss2 s2) = NE.head l2''
+
+
+    -- conditions to merge the last of l1 with first of d1
+    --  a. same source, i.e. both added or both original
+    --  b. same line number
+    --  c. same offset
+
+{-
+    l = case (r1 == r2, o1 == o2, ss1 == ss2) of
+         (True,True,True) -> (NE.init l1) ++ m' ++ ll
+         (
+-}
 
     l = if r1 == r2
          then NE.fromList $ (NE.init l1) ++ m ++ ll
-         else NE.fromList $ (NE.toList l1) ++ (NE.toList l2')
+         else NE.fromList $ (NE.toList l1) ++ (NE.toList l2'')
 
     s2' = addOffsetToToks (0,c2 - c1) s2
 
     s1' = s1 ++ s2'
-    m' = [Line r1 c1 ss1 s1']
+    m' = [Line r1 c1 o1 ss1 s1']
 
     -- o = c2 - (c1 + length (GHC.showRichTokenStream s1'))
     -- o = c2 - (c1 + tokenCol (head s2') )
@@ -375,9 +394,9 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2
 
     -- ll = if a2 == AVertical && r1 == r2
     (m,ll) = if ss1 == ss2
-          -- then map (\(Line r c aa s) -> (Line r (c + o) aa (addOffsetToToks (0,0) s))) (NE.tail l2')
-          then (m',map (\(Line r c aa s) -> (Line r     (c + o) aa s)) (NE.tail l2'))
-          else ([],map (\(Line r c aa s) -> (Line (r+1) (c + o) aa s)) (NE.toList l2'))
+          -- then map (\(Line r c aa s) -> (Line r (c + o) aa (addOffsetToToks (0,0) s))) (NE.tail l2'')
+          then (m',map (\(Line r c f aa s) -> (Line r     (c + o)     f aa s)) (NE.tail l2''))
+          else ([],map (\(Line r c f aa s) -> (Line (r+1) (c + o) (f+1) aa s)) (NE.toList l2''))
 {-
 r1 = 8
 c1 = 14
@@ -415,8 +434,9 @@ adjustForDeleted d1 l2 = l
     deltaL = calcDelta d1
     l = NE.map go l2
 
-    go (Line r c SOriginal str) =  Line (r - deltaL) c SOriginal str
-    go (Line r c SAdded    str) =  Line  r           c SAdded    str
+    -- go (Line r c o SOriginal str) =  Line (r - deltaL) c (o - deltaL) SOriginal str
+    go (Line r c o SOriginal str) =  Line (r - deltaL) c  o           SOriginal str
+    go (Line r c o SAdded    str) =  Line  r           c  o           SAdded    str
 
 -- -------------------------------------
 
@@ -465,11 +485,11 @@ normaliseColumns [] = []
 normaliseColumns ps = ps'
   where
     offset = case (head ps) of
-      Line    _r c _ _ -> c - 1
+      Line    _r c _ _ _ -> c - 1
       _                -> 0
     ps' = map remove ps
 
-    remove (Line r c s str) = (Line r (c - offset) s str)
+    remove (Line r c o s str) = (Line r (c - offset) o s str)
     remove x = x
 
 -- ---------------------------------------------------------------------

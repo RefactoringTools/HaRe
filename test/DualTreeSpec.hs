@@ -1414,8 +1414,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
           "1:((11,1),(11,1))\n"
 
       let srcTree2 = layoutTreeToSourceTree layout2
-      -- (showGhc srcTree2) `shouldBe`
-      --     ""
+      -- (showGhc srcTree2) `shouldBe` ""
 
       (renderSourceTree srcTree2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nx = 3\n"
 
@@ -1939,7 +1938,6 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
 
       let srcTree2 = layoutTreeToSourceTree layout2
       -- (showGhc srcTree2) `shouldBe` ""
-
 
       (renderSourceTree srcTree2) `shouldBe` "module Layout.Lift where\n\nff y = y + zz\n  where\n    zz = 1\n    nn = nn2\n\nx = 1\n"
 
