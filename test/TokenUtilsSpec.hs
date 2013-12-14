@@ -1345,7 +1345,7 @@ tree TId 0:
       let toks3 = retrieveTokensFinal f3
       (GHC.showRichTokenStream toks3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' defined in 'sumSquares'\n --This example aims to test changing a constant to a function.\n\n sumSquares x = (sq x pow)+ (sq x pow)\n            where\n               sq = x^pow\n               pow =2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n\n "
 
-      (renderLinesFromLayoutTree f3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' defined in 'sumSquares'\n--This example aims to test changing a constant to a function.\n\nsumSquares x = (sq x pow) + (sq x pow)\n           where\n              sq = x^pow\n              pow =2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n\n"
+      (renderLinesFromLayoutTree f3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' defined in 'sumSquares'\n--This example aims to test changing a constant to a function.\n\nsumSquares x = (sq x pow)+ (sq x pow)\n           where\n              sq = x^pow\n              pow =2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n\n"
 
     ------------------------------------
 
@@ -3962,7 +3962,7 @@ Should be pg :  5 - 3 = 2
     -- ---------------------------------
 
     it "replaces a single token in an added span" $ do
-      (t,toks) <- parsedFileDd1Ghc
+      (t,toks) <- parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
       let parsed = (GHC.pm_parsed_source $ GHC.tm_parsed_module t)
       -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
@@ -3979,15 +3979,6 @@ Should be pg :  5 - 3 = 2
       let ss2 = posToSrcSpan f1 ((3,1),(3,31))
       let (f3,toks2) = getTokensFor True f2 ss2
 
-{-
-      (drawTreeEntry f3) `shouldBe`
-              "((1,1),(32,18))\n|\n"++
-              "+- ((1,1),(3,31))\n|  |\n"++
-              "|  +- ((1,1),(1,24))\n|  |\n"++
-              "|  `- ((3,1),(3,31))\n|\n"++
-              "+- ((4,1),(4,19))\n|\n"++
-              "`- ((6,1),(32,18))\n"
--}
 
       -- putDeclToksAfterSpan test/testdata/DupDef/Dd1.hs:4:1-18:("(((False,0,0,4),1),((False,0,0,4),19))",PlaceAbsCol 2 1 0,[((((3,1),(3,1)),ITvocurly),""),((((3,1),(3,9)),ITvarid "toplevel"),"toplevel"),((((3,10),(3,12)),ITdcolon),"::"),((((3,13),(3,20)),ITconid "Integer"),"Integer"),((((3,21),(3,23)),ITrarrow),"->"),((((3,24),(3,31)),ITconid "Integer"),"Integer")])
       let (f4,ss4) = addToksAfterSrcSpan f3 ss1 (PlaceAbsCol 2 1 0) toks2
@@ -4035,7 +4026,8 @@ Should be pg :  5 - 3 = 2
       let toks' = retrieveTokensFinal f5
       (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2 :: Integer -> Integerc,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 
-      (renderLinesFromLayoutTree f5) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nbar2 :: Integer -> Integer c,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
+      -- (showGhc $ layoutTreeToSourceTree f5) `shouldBe` ""
+      (renderLinesFromLayoutTree f5) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nbar2 :: Integer -> Integerc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
 
   -- ---------------------------------------------
 
@@ -4326,7 +4318,10 @@ Should be pg :  5 - 3 = 2
 -}
       let pprFinal = retrieveLinesFromLayoutTree forest''
       show pprFinal `shouldBe`
-         ""
+         "[(1 1 SOriginal\"module LiftToToplevel.Where where\"),"++
+          "(3 1 SOriginal\"anotherFun 0 y = sq y\"),"++
+          "(4 6 SOriginal\"where sq x = x^2\"),"++
+          "(5 6 SAdded\"abc = 3\")]"
 {-
          [Line 1 1 SOriginal "module LiftToToplevel.Where where",
           Line 3 1 SOriginal "anotherFun 0 y = sq y",
@@ -4337,7 +4332,7 @@ Should be pg :  5 - 3 = 2
 
       -- NOTE: alignment is out, the tokens are supposed to have an
       -- offset when they go in.
-      (renderLines pprFinal) `shouldBe` "module LiftToToplevel.Where where\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n     abc = 3 "
+      (renderLines pprFinal) `shouldBe` "module LiftToToplevel.Where where\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n     abc = 3"
 
     -- ---------------------------------
 
@@ -5597,7 +5592,18 @@ Should be pg :  5 - 3 = 2
       (GHC.showRichTokenStream $ retrieveTokensFinal f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
       (show $ retrieveLinesFromLayoutTree f2) `shouldBe`
-        ""
+        "[(1 1 SOriginal\"module TokenTest where\"),"++
+         "(3 1 SOriginal\"-- Test new style token manager\"),"++
+         "(5 1 SOriginal\"bob a b = x\"),"++
+         "(6 3 SOriginal\"where x = 3\"),"++
+         "(8 1 SOriginal\"bib a b = x\"),"++
+         "(9 3 SOriginal\"where\"),"++
+         "(10 5 SOriginal\"x = 3\"),"++
+         "(13 1 SOriginal\"-- leading comment\"),"++
+         "(14 1 SOriginal\"foo x y =\"),"++
+         "(15 3 SOriginal\"do c <- getChar\"),"++
+         "(16 6 SOriginal\"return c\"),"++
+         "(21 1 SOriginal\"\")]"
 {-
         [Line 1 1 SOriginal \"module TokenTest where\","++
          Line 3 1 SOriginal \"-- Test new style token manager\","++

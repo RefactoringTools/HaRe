@@ -2898,6 +2898,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
             -- putToksAfterPos (startLoc,endLoc) (PlaceAbsolute (r+1) c) newToks
           else
             void $ putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
+            -- void $ putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 3) newToks
 
         {-
         case maybeSig of

@@ -186,7 +186,7 @@ instance GHC.Outputable Line where
   ppr (Line r c s str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r
                          GHC.<+> GHC.ppr c GHC.<+> GHC.ppr s
                          GHC.<+> GHC.text ("\"" ++ (GHC.showRichTokenStream str) ++ "\"")
-                         GHC.<+> GHC.text (show str) -- ++AZ++ debug
+                         -- GHC.<+> GHC.text (show str) -- ++AZ++ debug
 
 instance GHC.Outputable Source where
   ppr SOriginal = GHC.text "SOriginal"
@@ -357,27 +357,27 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2
     --  2. The first character of (head str2) is at (sr2,sc2)
     l2' = adjustForDeleted d1 l2
 
-    (Line r1 c1  ss1 s1) = NE.last l1
-    (Line r2 c2 _ss2 s2) = NE.head l2'
+    (Line r1 c1 ss1 s1) = NE.last l1
+    (Line r2 c2 ss2 s2) = NE.head l2'
 
     l = if r1 == r2
-         -- then NE.fromList $ (NE.init l1) ++ m ++ (NE.tail l2')
          then NE.fromList $ (NE.init l1) ++ m ++ ll
          else NE.fromList $ (NE.toList l1) ++ (NE.toList l2')
 
     s2' = addOffsetToToks (0,c2 - c1) s2
 
     s1' = s1 ++ s2'
-    m = [Line r1 c1 ss1 s1']
+    m' = [Line r1 c1 ss1 s1']
 
     -- o = c2 - (c1 + length (GHC.showRichTokenStream s1'))
     -- o = c2 - (c1 + tokenCol (head s2') )
     o = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) s1
 
     -- ll = if a2 == AVertical && r1 == r2
-    ll = if r1 == r2
-          then map (\(Line r c aa s) -> (Line r (c + o) aa (addOffsetToToks (0,0) s))) (NE.tail l2')
-          else (NE.tail l2')
+    (m,ll) = if ss1 == ss2
+          -- then map (\(Line r c aa s) -> (Line r (c + o) aa (addOffsetToToks (0,0) s))) (NE.tail l2')
+          then (m',map (\(Line r c aa s) -> (Line r     (c + o) aa s)) (NE.tail l2'))
+          else ([],map (\(Line r c aa s) -> (Line (r+1) (c + o) aa s)) (NE.toList l2'))
 {-
 r1 = 8
 c1 = 14
