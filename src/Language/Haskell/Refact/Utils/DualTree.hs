@@ -347,7 +347,7 @@ combineUps (UDeleted d1) (Up sp2 a2 l2 d2) = (Up sp2 a2 l (d1 <> d2))
 
 combineUps (Up sp1 a1 l1 d1) (UDeleted d2) = (Up sp1 a1 l1 (d1 <> d2))
 
-combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2))
+combineUps (Up sp1 _a1 l1 d1) (Up sp2 a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2))
   where
     a = ANone
 
@@ -371,61 +371,37 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
     s1' = s1 ++ s2'
     m' = [Line r1 c1 o1 ss1 s1']
 
+    -- 'o' takes account of any length change due to tokens being
+    --     replaced by others of different length
     o = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) s1
 
-    (m,ll) = if ss1 == ss2
-          then (m',map (\(Line r c f aa s) -> (Line r     (c + o)     f aa s)) (NE.tail l2''))
-          else ([NE.last l1],map (\(Line r c f aa s) -> (Line (r+1) (c + o) (f+1) aa s)) (NE.toList l2''))
+    (m,ll) = if (ss1 /= ss2) && (length s1 == 1 && (tokenLen $ head s1) == 0)
+          then ([NE.last l1],map (\(Line r c f aa s) -> (Line (r+1) (c + o) (f+1) aa s)) (NE.toList l2''))
+          else if a2 == AVertical || True
+                then (m',map (\(Line r c f aa s) -> (Line r     (c + o)     f aa s)) (NE.tail l2''))
+                else (m',map (\(Line r c f aa s) -> (Line r     (c   )     f aa s)) (NE.tail l2''))
 {-
 
-(Up
-sp1     (Span (4, 5) (4, 6))
-a1      ANone
-l1      [(Line 4 5 0 SOriginal \"pow\")]
-d1      []),
+o = -7 (10 - 3)
+
+--------------
+((Up
+   (Span (20, 1) (20, 11)) ANone
+   [(Line 20 1 0 SOriginal \"sum\")]
+   []),
+ (Leaf
+   (Up
+     (Span (20, 1) (20, 11)) ANone
+     [(Line 20 1 0 SOriginal \"sum\")]
+     [])
+   (PToks [((((20,1),(20,1)),ITvccurly),\"\"),((((20,1),(20,1)),ITsemi),\"\"),((((20,1),(20,11)),ITvarid \"sum\"),\"sum\")])))
 
 (Up
-sp2     (Span (4, 9) (4, 10))
-a2      ANone
-l2      [(Line 4 9 0 SAdded \"z\")]
-d2      [])
-
-l2'' = [(Line 4 9 0 SAdded \"z\")]
-
-(r1 4
- c1 5
- o1 0
- ss1 SOriginal
- s1 "pow")
-
-(r2 4
- c2 9
- o2 0
- ss2 SAdded
- s2  "z")
-
-
-  (Concat
-    [((Up
-        (Span (4, 5) (4, 6)) ANone
-        [(Line 4 5 0 SOriginal \"pow\")]
-        []),
-      (Leaf
-        (Up
-          (Span (4, 5) (4, 6)) ANone
-          [(Line 4 5 0 SOriginal \"pow\")]
-          [])
-        (PToks [((((4,5),(4,8)),ITvarid \"pow\"),\"pow\")]))),
-     ((Up
-        (Span (4, 9) (4, 10)) ANone
-        [(Line 4 9 0 SAdded \"z\")]
-        []),
-      (Leaf
-        (Up
-          (Span (4, 9) (4, 10)) ANone
-          [(Line 4 9 0 SAdded \"z\")]
-          [])
-        (PToks [((((4,9),(4,10)),ITvarid \"z\"),\"z\")])))]))))])),
+  (Span (20, 12) (22, 18)) ANone
+  [(Line 20 12 0 SOriginal \"(x:xs) = sq x + Renaming.D5.sum xs\"),
+   (Line 21 5 0 SOriginal \"where sq x = x ^pow\"),
+   (Line 22 11 0 SOriginal \"pow = 2\")]
+  [])
 
 -}
 

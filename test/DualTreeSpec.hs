@@ -24,7 +24,7 @@ import Language.Haskell.Refact.Utils.TokenUtils
 -- import Language.Haskell.Refact.Utils.TypeSyn
 -- import Language.Haskell.Refact.Utils.TypeUtils
 
-import Data.Tree.DUAL
+-- import Data.Tree.DUAL
 
 import TestUtils
 
@@ -2082,7 +2082,7 @@ putToksAfterPos ((12,8),(12,25)) at PlaceOffset 1 4 2:[((((0,1),(0,6)),ITwhere),
       let srcTree2 = layoutTreeToSourceTree layout3
       -- (showGhc srcTree2) `shouldBe` ""
 
-      let ll = retrieveLinesFromLayoutTree layout3
+      -- let ll = retrieveLinesFromLayoutTree layout3
       (renderSourceTree srcTree2) `shouldBe` "module Demote.D2 where\n\n\n\nsq x = x ^pow\n\npow = 2\n\nmain = sumSquares [1..4]\n    where\n        --demote  'sumSquares' should fail as it used by module 'A2'.\n\n        sumSquares (x:xs) = sq x + sumSquares xs\n        sumSquares [] = 0\n    \n\n"
 
     -- -----------------------------------------------------------------
@@ -2213,6 +2213,450 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       -- (showGhc $ retrieveLinesFromLayoutTree layout5) `shouldBe` ""
 
       (renderSourceTree srcTree2) `shouldBe` "module AddParams1 where\n\nsq  pow 0= 0\nsq  pow z= z^2\n\nfoo = 3\n\n"
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in SourceTree format after renaming Renaming.D5" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Renaming/D5.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(25,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,19))\n"++
+         "1:((1,20),(4,64))\n"++
+         "1:((6,1),(6,48))\n"++
+         "2:((6,1),(6,5))\n"++
+         "2:((6,6),(6,10))\n"++
+         "2:((6,11),(6,12))\n"++
+         "2:((6,13),(6,48))\n"++
+         "3:((6,13),(6,14))\n"++
+         "3:((6,15),(6,21))\n"++
+         "4:((6,15),(6,19))\n"++
+         "4:((6,20),(6,21))\n"++
+         "3:((6,22),(6,23))\n"++
+         "3:((6,24),(6,48))\n"++
+         "4:((6,24),(6,30))\n"++
+         "4:((6,31),(6,39))\n"++
+         "4:((6,40),(6,48))\n"++
+         "1:((8,1),(8,24))\n"++
+         "2:((8,1),(8,7))\n"++
+         "2:((8,8),(8,10))\n"++
+         "2:((8,11),(8,15))\n"++
+         "2:((8,16),(8,17))\n"++
+         "2:((8,18),(8,20))\n"++
+         "2:((8,21),(8,22))\n"++
+         "2:((8,22),(8,23))\n"++
+         "2:((8,23),(8,24))\n"++
+         "1:((9,1),(10,57))\n"++
+         "2:((9,1),(9,7))\n"++
+         "2:((9,8),(9,23))\n"++
+         "3:((9,8),(9,17))\n"++
+         "3:((9,18),(9,19))\n"++
+         "3:((9,20),(9,23))\n"++
+         "4:((9,20),(9,21))\n"++
+         "4:((9,21),(9,22))\n"++
+         "4:((9,22),(9,23))\n"++
+         "2:((10,1),(10,57))\n"++
+         "3:((10,1),(10,7))\n"++
+         "3:((10,8),(10,27))\n"++
+         "3:((10,28),(10,29))\n"++
+         "3:((10,30),(10,57))\n"++
+         "4:((10,30),(10,41))\n"++
+         "5:((10,30),(10,36))\n"++
+         "5:((10,37),(10,41))\n"++
+         "4:((10,42),(10,44))\n"++
+         "4:((10,45),(10,57))\n"++
+         "5:((10,45),(10,51))\n"++
+         "5:((10,52),(10,57))\n"++
+         "1:((12,1),(14,31))\n"++
+         "2:((12,1),(12,6))\n"++
+         "2:((12,7),(12,16))\n"++
+         "2:((12,17),(12,18))\n"++
+         "2:((12,19),(12,24))\n"++
+         "2:((13,4),(13,29))\n"++
+         "3:((13,4),(13,10))\n"++
+         "3:((13,12),(13,14))\n"++
+         "3:((13,15),(13,16))\n"++
+         "3:((13,17),(13,19))\n"++
+         "3:((13,20),(13,21))\n"++
+         "3:((13,22),(13,24))\n"++
+         "3:((13,25),(13,29))\n"++
+         "2:((14,4),(14,31))\n"++
+         "3:((14,4),(14,13))\n"++
+         "3:((14,14),(14,16))\n"++
+         "3:((14,17),(14,18))\n"++
+         "3:((14,19),(14,21))\n"++
+         "3:((14,22),(14,23))\n"++
+         "3:((14,24),(14,26))\n"++
+         "3:((14,27),(14,31))\n"++
+         "1:((16,1),(18,26))\n"++
+         "2:((16,1),(16,9))\n"++
+         "2:((16,10),(16,19))\n"++
+         "2:((16,20),(16,23))\n"++
+         "2:((16,24),(16,29))\n"++
+         "2:((17,4),(17,24))\n"++
+         "3:((17,4),(17,10))\n"++
+         "3:((17,11),(17,24))\n"++
+         "4:((17,11),(17,12))\n"++
+         "4:((17,14),(17,15))\n"++
+         "4:((17,16),(17,17))\n"++
+         "4:((17,18),(17,24))\n"++
+         "5:((17,18),(17,19))\n"++
+         "5:((17,20),(17,22))\n"++
+         "5:((17,23),(17,24))\n"++
+         "2:((18,4),(18,26))\n"++
+         "3:((18,4),(18,13))\n"++
+         "3:((18,14),(18,26))\n"++
+         "4:((18,14),(18,15))\n"++
+         "4:((18,16),(18,17))\n"++
+         "4:((18,18),(18,19))\n"++
+         "4:((18,20),(18,26))\n"++
+         "5:((18,20),(18,21))\n"++
+         "5:((18,22),(18,24))\n"++
+         "5:((18,25),(18,26))\n"++
+         "1:((20,1),(24,18))\n"++
+         "2:((20,1),(20,11))\n"++
+         "2:((20,12),(22,18))\n"++
+         "3:((20,12),(20,18))\n"++
+         "3:((20,19),(20,20))\n"++
+         "3:((20,21),(20,41))\n"++
+         "4:((20,21),(20,25))\n"++
+         "5:((20,21),(20,23))\n"++
+         "5:((20,24),(20,25))\n"++
+         "4:((20,26),(20,27))\n"++
+         "4:((20,28),(20,41))\n"++
+         "5:((20,28),(20,38))\n"++
+         "5:((20,39),(20,41))\n"++
+         "3:((21,5),(21,10))\n"++
+         "3:((21,11),(22,18))(Above None (21,11) (22,18) FromAlignCol (2,-17))\n"++
+         "4:((21,11),(21,24))\n"++
+         "5:((21,11),(21,13))\n"++
+         "5:((21,14),(21,24))\n"++
+         "6:((21,14),(21,15))\n"++
+         "6:((21,16),(21,17))\n"++
+         "6:((21,18),(21,24))\n"++
+         "7:((21,18),(21,19))\n"++
+         "7:((21,20),(21,21))\n"++
+         "7:((21,21),(21,24))\n"++
+         "4:((22,11),(22,18))\n"++
+         "5:((22,11),(22,14))\n"++
+         "5:((22,15),(22,18))\n"++
+         "6:((22,15),(22,16))\n"++
+         "6:((22,17),(22,18))\n"++
+         "2:((24,1),(24,18))\n"++
+         "3:((24,1),(24,11))\n"++
+         "3:((24,12),(24,14))\n"++
+         "3:((24,15),(24,16))\n"++
+         "3:((24,17),(24,18))\n"++
+         "1:((25,1),(25,1))\n"
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (show srcTree) `shouldBe`
+      --     ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+-- replaceToken test/testdata/Renaming/D5.hs:20:1-10: (((False,0,0,20), 1),((False,0,0,20),11))  ((((20, 1),(20,16)),ITvarid "Renaming.D5.sum"),"Renaming.D5.sum")
+
+      let ss1 = posToSrcSpan layout ((20,1),(20,11))
+      (showGhc ss1) `shouldBe` "test/testdata/Renaming/D5.hs:20:1-10"
+
+      [tok1] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nRenaming.D5.sum"
+      (show tok1) `shouldBe` "((((20,1),(20,16)),ITqvarid (\"Renaming.D5\",\"sum\")),\"Renaming.D5.sum\")"
+
+      let layout2 = replaceTokenForSrcSpan layout ss1 tok1
+
+-- replaceToken test/testdata/Renaming/D5.hs:20:28-37:(((False,0,0,20),28),((False,0,0,20),38))  ((((20,28),(20,43)),ITvarid "Renaming.D5.sum"),"Renaming.D5.sum")
+
+      let ss2 = posToSrcSpan layout ((20,28),(20,38))
+      (showGhc ss2) `shouldBe` "test/testdata/Renaming/D5.hs:20:28-37"
+
+      [tok2] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                           Renaming.D5.sum"
+      (show tok2) `shouldBe` "((((20,28),(20,43)),ITqvarid (\"Renaming.D5\",\"sum\")),\"Renaming.D5.sum\")"
+
+      let layout3 = replaceTokenForSrcSpan layout2 ss2 tok2
+
+-- replaceToken test/testdata/Renaming/D5.hs:20:1-10: (((False,0,0,20), 1),((False,0,0,20),11))  ((((20, 1),(20, 4)),ITvarid "sum"),"sum")
+
+      let ss3 = posToSrcSpan layout ((20,1),(20,11))
+      (showGhc ss3) `shouldBe` "test/testdata/Renaming/D5.hs:20:1-10"
+
+      [tok3] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nsum"
+      (show tok3) `shouldBe` "((((20,1),(20,4)),ITvarid \"sum\"),\"sum\")"
+
+      let layout4 = replaceTokenForSrcSpan layout3 ss3 tok3
+
+-- replaceToken test/testdata/Renaming/D5.hs:24:1-10: (((False,0,0,24), 1),((False,0,0,24),11))  ((((24, 1),(24, 4)),ITvarid "sum"),"sum")
+
+      let ss4 = posToSrcSpan layout ((24,1),(24,11))
+      (showGhc ss4) `shouldBe` "test/testdata/Renaming/D5.hs:24:1-10"
+
+      [tok4] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nsum"
+      (show tok4) `shouldBe` "((((24,1),(24,4)),ITvarid \"sum\"),\"sum\")"
+
+
+      let layout5 = replaceTokenForSrcSpan layout4 ss4 tok4
+
+      -- -- -- --
+
+      (drawTreeCompact layout5) `shouldBe`
+         "0:((1,1),(25,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,19))\n"++
+         "1:((1,20),(4,64))\n"++
+         "1:((6,1),(6,48))\n"++
+         "2:((6,1),(6,5))\n"++
+         "2:((6,6),(6,10))\n"++
+         "2:((6,11),(6,12))\n"++
+         "2:((6,13),(6,48))\n"++
+         "3:((6,13),(6,14))\n"++
+         "3:((6,15),(6,21))\n"++
+         "4:((6,15),(6,19))\n"++
+         "4:((6,20),(6,21))\n"++
+         "3:((6,22),(6,23))\n"++
+         "3:((6,24),(6,48))\n"++
+         "4:((6,24),(6,30))\n"++
+         "4:((6,31),(6,39))\n"++
+         "4:((6,40),(6,48))\n"++
+         "1:((8,1),(8,24))\n"++
+         "2:((8,1),(8,7))\n"++
+         "2:((8,8),(8,10))\n"++
+         "2:((8,11),(8,15))\n"++
+         "2:((8,16),(8,17))\n"++
+         "2:((8,18),(8,20))\n"++
+         "2:((8,21),(8,22))\n"++
+         "2:((8,22),(8,23))\n"++
+         "2:((8,23),(8,24))\n"++
+         "1:((9,1),(10,57))\n"++
+         "2:((9,1),(9,7))\n"++
+         "2:((9,8),(9,23))\n"++
+         "3:((9,8),(9,17))\n"++
+         "3:((9,18),(9,19))\n"++
+         "3:((9,20),(9,23))\n"++
+         "4:((9,20),(9,21))\n"++
+         "4:((9,21),(9,22))\n"++
+         "4:((9,22),(9,23))\n"++
+         "2:((10,1),(10,57))\n"++
+         "3:((10,1),(10,7))\n"++
+         "3:((10,8),(10,27))\n"++
+         "3:((10,28),(10,29))\n"++
+         "3:((10,30),(10,57))\n"++
+         "4:((10,30),(10,41))\n"++
+         "5:((10,30),(10,36))\n"++
+         "5:((10,37),(10,41))\n"++
+         "4:((10,42),(10,44))\n"++
+         "4:((10,45),(10,57))\n"++
+         "5:((10,45),(10,51))\n"++
+         "5:((10,52),(10,57))\n"++
+         "1:((12,1),(14,31))\n"++
+         "2:((12,1),(12,6))\n"++
+         "2:((12,7),(12,16))\n"++
+         "2:((12,17),(12,18))\n"++
+         "2:((12,19),(12,24))\n"++
+         "2:((13,4),(13,29))\n"++
+         "3:((13,4),(13,10))\n"++
+         "3:((13,12),(13,14))\n"++
+         "3:((13,15),(13,16))\n"++
+         "3:((13,17),(13,19))\n"++
+         "3:((13,20),(13,21))\n"++
+         "3:((13,22),(13,24))\n"++
+         "3:((13,25),(13,29))\n"++
+         "2:((14,4),(14,31))\n"++
+         "3:((14,4),(14,13))\n"++
+         "3:((14,14),(14,16))\n"++
+         "3:((14,17),(14,18))\n"++
+         "3:((14,19),(14,21))\n"++
+         "3:((14,22),(14,23))\n"++
+         "3:((14,24),(14,26))\n"++
+         "3:((14,27),(14,31))\n"++
+         "1:((16,1),(18,26))\n"++
+         "2:((16,1),(16,9))\n"++
+         "2:((16,10),(16,19))\n"++
+         "2:((16,20),(16,23))\n"++
+         "2:((16,24),(16,29))\n"++
+         "2:((17,4),(17,24))\n"++
+         "3:((17,4),(17,10))\n"++
+         "3:((17,11),(17,24))\n"++
+         "4:((17,11),(17,12))\n"++
+         "4:((17,14),(17,15))\n"++
+         "4:((17,16),(17,17))\n"++
+         "4:((17,18),(17,24))\n"++
+         "5:((17,18),(17,19))\n"++
+         "5:((17,20),(17,22))\n"++
+         "5:((17,23),(17,24))\n"++
+         "2:((18,4),(18,26))\n"++
+         "3:((18,4),(18,13))\n"++
+         "3:((18,14),(18,26))\n"++
+         "4:((18,14),(18,15))\n"++
+         "4:((18,16),(18,17))\n"++
+         "4:((18,18),(18,19))\n"++
+         "4:((18,20),(18,26))\n"++
+         "5:((18,20),(18,21))\n"++
+         "5:((18,22),(18,24))\n"++
+         "5:((18,25),(18,26))\n"++
+         "1:((20,1),(24,18))\n"++
+          "2:((20,1),(20,11))\n"++
+          "2:((20,12),(22,18))\n"++
+           "3:((20,12),(20,18))\n"++
+           "3:((20,19),(20,20))\n"++
+           "3:((20,21),(20,41))\n"++
+            "4:((20,21),(20,25))\n"++
+             "5:((20,21),(20,23))\n"++
+             "5:((20,24),(20,25))\n"++
+            "4:((20,26),(20,27))\n"++
+            "4:((20,28),(20,41))\n"++
+              "5:((20,28),(20,38))\n"++
+              "5:((20,39),(20,41))\n"++
+           "3:((21,5),(21,10))\n"++   -- "where"
+           "3:((21,11),(22,18))(Above None (21,11) (22,18) FromAlignCol (2,-17))\n"++
+            "4:((21,11),(21,24))\n"++
+             "5:((21,11),(21,13))\n"++
+             "5:((21,14),(21,24))\n"++
+              "6:((21,14),(21,15))\n"++
+              "6:((21,16),(21,17))\n"++
+              "6:((21,18),(21,24))\n"++
+               "7:((21,18),(21,19))\n"++
+               "7:((21,20),(21,21))\n"++
+               "7:((21,21),(21,24))\n"++
+            "4:((22,11),(22,18))\n"++
+             "5:((22,11),(22,14))\n"++
+             "5:((22,15),(22,18))\n"++
+              "6:((22,15),(22,16))\n"++
+              "6:((22,17),(22,18))\n"++
+          "2:((24,1),(24,18))\n"++
+           "3:((24,1),(24,11))\n"++
+           "3:((24,12),(24,14))\n"++
+           "3:((24,15),(24,16))\n"++
+           "3:((24,17),(24,18))\n"++
+         "1:((25,1),(25,1))\n"
+
+
+      let srcTree2 = layoutTreeToSourceTree layout5
+      -- (showGhc srcTree2) `shouldBe` ""
+
+      -- (showGhc $ retrieveLinesFromLayoutTree layout3) `shouldBe` ""
+
+      (renderSourceTree srcTree2) `shouldBe` "module Renaming.D5 where\n\n{-Rename top level identifier 'sumSquares' to 'sum'.\n  This refactoring affects module `D5', 'B5' , 'C5' and 'A5' -}\n\ndata Tree a = Leaf a | Branch (Tree a) (Tree a)\n\nfringe :: Tree a -> [a]\nfringe (Leaf x ) = [x]\nfringe (Branch left right) = fringe left ++ fringe right\n\nclass SameOrNot a where\n   isSame  :: a -> a -> Bool\n   isNotSame :: a -> a -> Bool\n\ninstance SameOrNot Int where\n   isSame a  b = a == b\n   isNotSame a b = a /= b\n\nsum (x:xs) = sq x + Renaming.D5.sum xs\n    where sq x = x ^pow\n          pow = 2\n\nsum [] = 0\n"
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in SourceTree format after renaming TypeUtils.LayoutLet2" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/TypeUtils/LayoutLet2.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(10,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,18))\n"++
+         "1:((1,19),(1,24))\n"++
+         "1:((7,1),(8,35))\n"++
+         "2:((7,1),(7,4))\n"++
+         "2:((7,5),(8,35))\n"++
+         "3:((7,5),(7,8))\n"++
+         "3:((7,9),(7,10))\n"++
+         "3:((7,11),(8,35))\n"++
+         "4:((7,11),(7,14))\n"++
+         "4:((7,15),(8,20))(Above None (7,15) (8,20) SameLine 1)\n"++
+         "5:((7,15),(7,20))\n"++
+         "6:((7,15),(7,16))\n"++
+         "6:((7,17),(7,20))\n"++
+         "7:((7,17),(7,18))\n"++
+         "7:((7,19),(7,20))\n"++
+         "5:((8,15),(8,20))\n"++
+         "6:((8,15),(8,16))\n"++
+         "6:((8,17),(8,20))\n"++
+         "7:((8,17),(8,18))\n"++
+         "7:((8,19),(8,20))\n"++
+         "4:((8,24),(8,35))\n"++
+         "5:((8,24),(8,31))\n"++
+         "6:((8,24),(8,27))\n"++
+         "6:((8,28),(8,29))\n"++
+         "6:((8,30),(8,31))\n"++
+         "5:((8,32),(8,33))\n"++
+         "5:((8,34),(8,35))\n"++
+         "1:((10,1),(10,1))\n"
+
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (show srcTree) `shouldBe`
+      --     ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+
+-- replaceToken test/testdata/TypeUtils/LayoutLet2.hs:7:5-7:(((False,0,0,7),5),((False,0,0,7),8))((((7,5),(7,12)),ITvarid "xxxlong"),"xxxlong")
+
+      let ss1 = posToSrcSpan layout ((7,5),(7,8))
+      (showGhc ss1) `shouldBe` "test/testdata/TypeUtils/LayoutLet2.hs:7:5-7"
+
+      [tok1] <- basicTokenise "\n\n\n\n\n\n\n    xxxlong"
+      (show tok1) `shouldBe` "((((7,5),(7,12)),ITvarid \"xxxlong\"),\"xxxlong\")"
+
+      let layout2 = replaceTokenForSrcSpan layout ss1 tok1
+
+-- replaceToken test/testdata/TypeUtils/LayoutLet2.hs:8:24-26:(((False,0,0,8),24),((False,0,0,8),27))((((8,24),(8,31)),ITvarid "xxxlong"),"xxxlong")
+
+      let ss2 = posToSrcSpan layout ((8,24),(8,27))
+      (showGhc ss2) `shouldBe` "test/testdata/TypeUtils/LayoutLet2.hs:8:24-26"
+
+      [tok2] <- basicTokenise "\n\n\n\n\n\n\n\n                       xxxlong"
+      (show tok2) `shouldBe` "((((8,24),(8,31)),ITvarid \"xxxlong\"),\"xxxlong\")"
+
+      let layout3 = replaceTokenForSrcSpan layout2 ss2 tok2
+
+      -- -- -- --
+
+      (drawTreeCompact layout3) `shouldBe`
+         "0:((1,1),(10,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,18))\n"++
+         "1:((1,19),(1,24))\n"++
+         "1:((7,1),(8,35))\n"++
+          "2:((7,1),(7,4))\n"++
+          "2:((7,5),(8,35))\n"++
+           "3:((7,5),(7,8))\n"++
+           "3:((7,9),(7,10))\n"++
+           "3:((7,11),(8,35))\n"++
+            "4:((7,11),(7,14))\n"++ -- "let"
+            "4:((7,15),(8,20))(Above None (7,15) (8,20) SameLine 1)\n"++
+             "5:((7,15),(7,20))\n"++  -- "a = 1"
+              "6:((7,15),(7,16))\n"++
+              "6:((7,17),(7,20))\n"++
+               "7:((7,17),(7,18))\n"++
+               "7:((7,19),(7,20))\n"++
+             "5:((8,15),(8,20))\n"++  -- b = 2
+              "6:((8,15),(8,16))\n"++
+              "6:((8,17),(8,20))\n"++
+               "7:((8,17),(8,18))\n"++
+               "7:((8,19),(8,20))\n"++
+            "4:((8,24),(8,35))\n"++
+             "5:((8,24),(8,31))\n"++
+              "6:((8,24),(8,27))\n"++  -- "in xxxlong"
+              "6:((8,28),(8,29))\n"++
+              "6:((8,30),(8,31))\n"++
+             "5:((8,32),(8,33))\n"++
+             "5:((8,34),(8,35))\n"++
+         "1:((10,1),(10,1))\n"
+
+      let srcTree2 = layoutTreeToSourceTree layout3
+      -- (showGhc srcTree2) `shouldBe` ""
+
+      -- (showGhc $ retrieveLinesFromLayoutTree layout3) `shouldBe` ""
+
+      (renderSourceTree srcTree2) `shouldBe` "module LayoutLet2 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n-- In this case the tokens for xxx + a + b should also shift out\n\nfoo xxxlong = let a = 1\n                  b = 2 in xxxlong + a + b\n\n"
 
     -- -----------------------------------------------------------------
 

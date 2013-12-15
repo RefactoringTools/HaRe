@@ -24,7 +24,7 @@ import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
-import qualified Data.Foldable as F
+-- import qualified Data.Foldable as F
 import qualified Data.Map as Map
 import qualified Data.Tree.Zipper as Z
 -- import qualified Text.PrettyPrint as PP
@@ -263,7 +263,7 @@ spec = do
       -- putToksForSpan test/testdata/DupDef/Dd1.hs:1048582:1-30:(((False,0,1,6),1),((False,0,1,6),31))
       -- NOTE: shortcut, using same toks, it is the book-keeping we
       -- are testing
-      let (tm5,_sspan5,tree5) = updateTokensForSrcSpan tm4 sspan3 toks4
+      let (tm5,_sspan5,_tree5) = updateTokensForSrcSpan tm4 sspan3 toks4
       (drawTreeEntry tm5) `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
@@ -338,8 +338,8 @@ spec = do
     -- ---------------------------------
 
     it "gets the tokens after renaming" $ do
-      (t,toks) <- parsedFileLiftD1Ghc
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      (_t,toks) <- parsedFileLiftD1Ghc
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let decls = hsBinds renamed
       let forest = mkTreeFromTokens toks
 
@@ -352,7 +352,7 @@ spec = do
       newToks <- liftIO $ basicTokenise "sq (x pow)"
       (show newToks) `shouldBe` "[((((0,1),(0,3)),ITvarid \"sq\"),\"sq\"),((((0,4),(0,5)),IToparen),\"(\"),((((0,5),(0,6)),ITvarid \"x\"),\"x\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\"),((((0,10),(0,11)),ITcparen),\")\")]"
 
-      let (tm2,_sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
+      let (tm2,_sspan2,_tree2) = updateTokensForSrcSpan forest sspan1 newToks
       (drawTreeEntry tm2) `shouldBe`
             "((1,1),(13,25))\n|\n"++
             "+- ((1,1),(6,23))\n|\n"++
@@ -432,8 +432,8 @@ tree TId 0:
     -- ---------------------------------
 
     it "gets the tokens after updating a SrcSpan" $ do
-      (t,toks) <- parsedFileLiftLetIn1Ghc
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      (_t,toks) <- parsedFileLiftLetIn1Ghc
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let decls = hsBinds renamed
       let forest = mkTreeFromTokens toks
 
@@ -455,7 +455,7 @@ tree TId 0:
       newToks <- liftIO $ basicTokenise "(sq pow)"
       (show newToks) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
 
-      let (tm2,_sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
+      let (tm2,_sspan2,_tree2) = updateTokensForSrcSpan forest sspan1 newToks
       -- (show tm2) `shouldBe` ""
       (drawTreeEntry tm2) `shouldBe`
             "((1,1),(16,22))\n|\n"++
@@ -472,7 +472,7 @@ tree TId 0:
       newToks2 <- liftIO $ basicTokenise "(sq pow)"
       (show newToks2) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
 
-      let (tm3,_sspan3,tree3) = updateTokensForSrcSpan tm2 sspan2 newToks2
+      let (tm3,_sspan3,_tree3) = updateTokensForSrcSpan tm2 sspan2 newToks2
       (drawTreeEntry tm3) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(11,32))\n|\n"++
@@ -503,16 +503,19 @@ tree TId 0:
             "|  `- ((12,32),(12,33))\n|\n"++
             "`- ((13,24),(16,22))\n"
 
+{-
       let ss1 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 0  1), 1),
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),21) )
+-}
       let ss2 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine True  0 0 12),22),
                          ((forestLineToGhcLine $ ForestLine True  0 0 12),30) )
+{-
       let ss3 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 0 12),25),
                          ((forestLineToGhcLine $ ForestLine False 0 0 16),22) )
-
+-}
 
       (show $ containsEnd (((ForestLine True 0 0 12),22),((ForestLine True 0 0 12),30)) (srcSpanToForestSpan sspan4)) `shouldBe` "False"
       (show $ containsMiddle (((ForestLine True 0 0 12),22),((ForestLine True 0 0 12),30)) (srcSpanToForestSpan sspan4)) `shouldBe` "True"
@@ -528,10 +531,10 @@ tree TId 0:
 
       (show $ containsMiddle (((ForestLine False 0 0 12),32),((ForestLine False 0 0 16),22)) (srcSpanToForestSpan sspan4)) `shouldBe` "False"
 
-      let (b1,m1@[m1a,m1b],e1) = splitSubtree tm3 (srcSpanToForestSpan sspan4)
+      let (_b1,[_m1a,m1b],_e1) = splitSubtree tm3 (srcSpanToForestSpan sspan4)
       -- (show (b1,m1,e1)) `shouldBe` "([],[],[])"
 
-      let (b2,m2,e2) = splitSubtree m1b (srcSpanToForestSpan sspan4)
+      let (_b2,_m2,_e2) = splitSubtree m1b (srcSpanToForestSpan sspan4)
       -- (show (b2,m2,e2)) `shouldBe` "([],[],[])"
 
 
@@ -545,8 +548,8 @@ tree TId 0:
         [((((12,32),(12,33)),ITvarid \"y\"),\"y\"),
          ((((13,24),(13,29)),ITwhere),\"where\"),
       -}
-      let ss2f@(ss2fs,ss2fe)        = srcSpanToForestSpan ss2
-      let sspan4f@(sspan4s,sspan4e) = srcSpanToForestSpan sspan4
+      let ss2f@(_ss2fs,_ss2fe)        = srcSpanToForestSpan ss2
+      let sspan4f@(_sspan4s,_sspan4e) = srcSpanToForestSpan sspan4
       (show (ss2f,sspan4f)) `shouldBe` "((((ForestLine True 0 0 12),22),((ForestLine True 0 0 12),30)),"++
                                        "(((ForestLine False 0 0 12),22),((ForestLine False 0 0 12),33)))"
       -- (ss2fe >= sspan4s,ss2fe <= sspan4e) `shouldBe` (True,False)
@@ -574,9 +577,9 @@ tree TId 0:
     -- ---------------------------------
 
     it "gets tokens for a span should be same as getTokensForNoIntros" $ do
-      (t,toks) <- parsedFileGhc "./test/testdata/Case/D.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
+      (_t,toks) <- parsedFileGhc "./test/testdata/Case/D.hs"
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- let decls = hsBinds renamed
       let forest = mkTreeFromTokens toks
 
       -- getToksForSpan test/testdata/Case/D.hs:5:12-18:("(((False,0,0,5),12),((False,0,0,5),19))",[((((5,12),(5,13)),IToparen),"("),((((5,13),(5,16)),ITvarid "odd"),"odd"),((((5,17),(5,18)),ITvarid "x"),"x"),((((5,18),(5,19)),ITcparen),")")])
@@ -636,8 +639,8 @@ tree TId 0:
 
   describe "getTokensBefore" $ do
     it "gets the tokens before a given srcloc" $ do
-      (t,toks) <- parsedFileMoveDefMd1
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      (_t,toks) <- parsedFileMoveDefMd1
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let decls = hsBinds renamed
 
       let forest = mkTreeFromTokens toks
@@ -818,7 +821,7 @@ tree TId 0:
 
   describe "containment" $ do
     it "checks containsStart,containsMiddle and containsEnd" $ do
-      let sspan@(s,e) = (((ForestLine False 0 0 24),1),((ForestLine False 0 0 24),4))
+      let sspan@(s,_e) = (((ForestLine False 0 0 24),1),((ForestLine False 0 0 24),4))
       let nspan@(ns,ne) = (((ForestLine False 0 1 24),1),((ForestLine False 0 1 26),14))
 
       (show $ compare s ns) `shouldBe` "LT"
@@ -880,7 +883,7 @@ tree TId 0:
       (show (tokStartPos,tokEndPos)) `shouldBe` "((19,1),(21,14))"
 
       -- (show toksz) `shouldBe` ""
-      let (_begin,middle,end) = splitToks (tokStartPos,tokEndPos) toksz
+      let (_begin,middle,_end) = splitToks (tokStartPos,tokEndPos) toksz
       (show middle) `shouldBe` "[((((19,1),(19,1)),ITsemi),\"\"),((((19,1),(19,4)),ITvarid \"foo\"),\"foo\"),((((19,5),(19,6)),ITvarid \"x\"),\"x\"),((((19,7),(19,8)),ITvarid \"y\"),\"y\"),((((19,9),(19,10)),ITequal),\"=\"),((((20,3),(20,5)),ITdo),\"do\"),((((20,6),(20,6)),ITvocurly),\"\"),((((20,6),(20,7)),ITvarid \"c\"),\"c\"),((((20,8),(20,10)),ITlarrow),\"<-\"),((((20,11),(20,18)),ITvarid \"getChar\"),\"getChar\"),((((21,6),(21,6)),ITsemi),\"\"),((((21,6),(21,12)),ITvarid \"return\"),\"return\"),((((21,13),(21,14)),ITvarid \"c\"),\"c\")]"
 
       let (startLoc,endLoc) = startEndLocIncComments' toksz (tokStartPos,tokEndPos)
@@ -1041,7 +1044,7 @@ tree TId 0:
       let sspan3 = posToSrcSpan forest ((10,18),(12,33))
 
 --
-      let (b1,m1,e1) = splitSubtree f2 (srcSpanToForestSpan sspan3)
+      let (_b1,_m1,_e1) = splitSubtree f2 (srcSpanToForestSpan sspan3)
       -- (show (b1,m1,e1)) `shouldBe` "([],[],[])"
 
 --
@@ -1099,7 +1102,7 @@ tree TId 0:
 
       -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:10:25:("(((False,0,0,10),25),((False,0,0,10),26))",[((((10,25),(10,26)),ITinteger 0),"0")])
       let sspan3 = posToSrcSpan forest ((10,25),(10,26))
-      let (f4,toks4) = getTokensFor True f3 sspan3
+      let (f4,_toks4) = getTokensFor True f3 sspan3
 
       (invariant f4) `shouldBe` []
       (drawTreeEntry f4) `shouldBe`
@@ -1161,7 +1164,7 @@ tree TId 0:
       -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:11:25:("(((False,0,0,11),25),((False,0,0,11),26))",[((((11,25),(11,26)),ITvarid "z"),"z")])
 
       let sspan6 = posToSrcSpan forest ((11,25),(11,26))
-      let (f7,toks7) = getTokensFor True f6 sspan6
+      let (f7,_toks7) = getTokensFor True f6 sspan6
 
       (invariant f7) `shouldBe` []
       (drawTreeEntry f7) `shouldBe`
@@ -1239,8 +1242,8 @@ tree TId 0:
 --
       let z = openZipperToSpan (sf sspan9) $ Z.fromTree f9
       -- let (before,middle,end) = doSplitTree (Z.tree z) (fs sspan9)
-      let (before,middle,end) = splitSubtree (Z.tree z) (sf sspan9)
-      (show (map treeStartEnd before,map treeStartEnd middle,map treeStartEnd end)) `shouldBe`
+      let (before1,middle,end) = splitSubtree (Z.tree z) (sf sspan9)
+      (show (map treeStartEnd before1,map treeStartEnd middle,map treeStartEnd end)) `shouldBe`
                "([],"++
                "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 10),24)),"++
                 "(((ForestLine True 0 0 10),25),((ForestLine True 0 0 10),28)),"++
@@ -1371,13 +1374,13 @@ tree TId 0:
       let sspan = sf s2
       let z = openZipperToSpan (sf s2) $ Z.fromTree t2
       (Z.isLeaf z) `shouldBe` True
-      let (Entry _ _ toks) = Z.label z
+      let (Entry _ _ toks1) = Z.label z
       let (tokStartPos,tokEndPos) = forestSpanToSimpPos sspan
 
-      (GHC.showRichTokenStream toks) `shouldBe` "\n\n\n\n\n           then -- This is an odd result\n             bob x 1\n           else -- This is an even result\n             bob x 2\n\n bob x y = x + y\n\n "
+      (GHC.showRichTokenStream toks1) `shouldBe` "\n\n\n\n\n           then -- This is an odd result\n             bob x 1\n           else -- This is an even result\n             bob x 2\n\n bob x y = x + y\n\n "
 
-      let (startLoc,endLoc) = startEndLocIncComments' toks (tokStartPos,tokEndPos)
-      -- let (startLoc,endLoc) = startEndLocIncCommentsDebug toks (tokStartPos,tokEndPos)
+      let (startLoc,endLoc) = startEndLocIncComments' toks1 (tokStartPos,tokEndPos)
+      -- let (startLoc,endLoc) = startEndLocIncCommentsDebug toks1 (tokStartPos,tokEndPos)
       (show (tokStartPos,tokEndPos)) `shouldBe` "((7,13),(7,20))"
       (show (startLoc,endLoc)) `shouldBe` "((6,11),(7,20))"
 --
@@ -4006,7 +4009,7 @@ Should be pg :  5 - 3 = 2
       (show newTok) `shouldBe` "((((6,1),(6,5)),ITvarid \"bar2\"),\"bar2\")"
 
 --
-      let  (GHC.L tl _,_) = newTok
+      let  (GHC.L _tl _,_) = newTok
       let z = openZipperToSpan (srcSpanToForestSpan ss5) $ Z.fromTree f4
 
       (drawTreeEntry $ Z.tree z) `shouldBe`
@@ -4318,10 +4321,11 @@ Should be pg :  5 - 3 = 2
 -}
       let pprFinal = retrieveLinesFromLayoutTree forest''
       show pprFinal `shouldBe`
-         "[(1 1 SOriginal\"module LiftToToplevel.Where where\"),"++
-          "(3 1 SOriginal\"anotherFun 0 y = sq y\"),"++
-          "(4 6 SOriginal\"where sq x = x^2\"),"++
-          "(5 6 SAdded\"abc = 3\")]"
+         "[(1 1 0 SOriginal\"module LiftToToplevel.Where where\"),"++
+          "(3 1 0 SOriginal\"anotherFun 0 y = sq y\"),"++
+          "(4 6 0 SOriginal\"where sq x = x^2\"),"++
+          "(5 6 0 SWasAdded\"abc = 3\")]"
+
 {-
          [Line 1 1 SOriginal "module LiftToToplevel.Where where",
           Line 3 1 SOriginal "anotherFun 0 y = sq y",
@@ -4538,8 +4542,8 @@ Should be pg :  5 - 3 = 2
       (show $ filter contains childrenAsZ) `shouldBe` "[]"
 
 --
-      let z = openZipperToSpan (sf sspan3) $ Z.fromTree f2
-      let (b1,m1,e1) = splitSubtree (Z.tree z) (sf sspan3)
+      let z1 = openZipperToSpan (sf sspan3) $ Z.fromTree f2
+      let (b1,m1,e1) = splitSubtree (Z.tree z1) (sf sspan3)
       (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
               "([(((ForestLine False 0 0 1),1),((ForestLine False 0 0 6),20))],"++
                "[(((ForestLine True 0 0 6),21),((ForestLine True 0 0 6),23)),"++
@@ -5156,7 +5160,7 @@ Should be pg :  5 - 3 = 2
       -- test/testdata/Case/D.hs:(6,16)-(8,19)}
       (showGhc $ forestSpanToSrcSpan (startPos,endPos)) `shouldBe` "foo:(6,16)-(8,18)"
 
-      let (b,m,e) = splitSubToks forest (startPos,endPos)
+      let (_b,m,_e) = splitSubToks forest (startPos,endPos)
       (show m) `shouldBe` "[Node {rootLabel = Entry (((ForestLine False 0 0 6),16),((ForestLine False 0 0 8),19)) NoChange "++
           "[((((6,16),(6,18)),ITdo),\"do\"),((((7,13),(7,37)),ITlineComment \"-- This is an odd result\"),\"-- This is an odd result\"),((((8,13),(8,13)),ITvocurly),\"\"),((((8,13),(8,16)),ITvarid \"bob\"),\"bob\"),((((8,17),(8,18)),ITvarid \"x\"),\"x\")], subForest = []}]"
 
@@ -5592,32 +5596,19 @@ Should be pg :  5 - 3 = 2
       (GHC.showRichTokenStream $ retrieveTokensFinal f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
       (show $ retrieveLinesFromLayoutTree f2) `shouldBe`
-        "[(1 1 SOriginal\"module TokenTest where\"),"++
-         "(3 1 SOriginal\"-- Test new style token manager\"),"++
-         "(5 1 SOriginal\"bob a b = x\"),"++
-         "(6 3 SOriginal\"where x = 3\"),"++
-         "(8 1 SOriginal\"bib a b = x\"),"++
-         "(9 3 SOriginal\"where\"),"++
-         "(10 5 SOriginal\"x = 3\"),"++
-         "(13 1 SOriginal\"-- leading comment\"),"++
-         "(14 1 SOriginal\"foo x y =\"),"++
-         "(15 3 SOriginal\"do c <- getChar\"),"++
-         "(16 6 SOriginal\"return c\"),"++
-         "(21 1 SOriginal\"\")]"
-{-
-        [Line 1 1 SOriginal \"module TokenTest where\","++
-         Line 3 1 SOriginal \"-- Test new style token manager\","++
-         Line 5 1 SOriginal \"bob a b = x\","++
-         Line 6 3 SOriginal \"where x = 3\","++
-         Line 8 1 SOriginal \"bib a b = x\","++
-         Line 9 3 SOriginal \"where\","++
-         Line 10 5 SOriginal \"x = 3\","++
-         Line 13 1 SOriginal \"-- leading comment\","++
-         Line 14 1 SOriginal \"foo x y =\","++
-         Line 15 3 SOriginal \"do c <- getChar\","++
-         Line 16 6 SOriginal \"return c\","++
-         Line 21 1 SOriginal \"\"]"
--}
+         "[(1 1 0 SOriginal\"module TokenTest where\"),"++
+          "(3 1 0 SOriginal\"-- Test new style token manager\"),"++
+          "(5 1 0 SOriginal\"bob a b = x\"),"++
+          "(6 3 0 SOriginal\"where x = 3\"),"++
+          "(8 1 0 SOriginal\"bib a b = x\"),"++
+          "(9 3 0 SOriginal\"where\"),"++
+          "(10 5 0 SOriginal\"x = 3\"),"++
+          "(13 1 0 SOriginal\"-- leading comment\"),"++
+          "(14 1 0 SOriginal\"foo x y =\"),"++
+          "(15 3 0 SOriginal\"do c <- getChar\"),"++
+          "(16 6 0 SOriginal\"return c\"),"++
+          "(21 1 0 SOriginal\"\")]"
+
 
       (renderLinesFromLayoutTree f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
@@ -5727,7 +5718,7 @@ Should be pg :  5 - 3 = 2
       -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+      -- let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
 
       let layout = allocTokens parsed toks
       (show $ retrieveTokens layout) `shouldBe` (show toks)
@@ -5870,8 +5861,8 @@ Should be pg :  5 - 3 = 2
 
       -- drop all higher indented values, all the way to the root
 
-      let fff acc@((cd,cs):_) (v,sspan) = if v < cd then (v,sspan):acc
-                                                    else acc
+      let fff acc@((cd,_cs):_) (v,sspan1) = if v < cd then (v,sspan1):acc
+                                                      else acc
 
       let tl3 = foldl' fff [(head tl2)] tl2
       (show tl3) `shouldBe`
@@ -5988,8 +5979,8 @@ parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereI
 -- dd1FileName :: GHC.FastString
 -- dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
-parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
-parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+-- parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
+-- parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 
 -- ---------------------------------------------------------------------
 
@@ -6016,8 +6007,8 @@ parsedFileWhere = parsedFileGhc "./test/testdata/Layout/Where.hs"
 
 -- ---------------------------------------------------------------------
 
-parsedFilePatBind :: IO (ParseResult,[PosToken])
-parsedFilePatBind = parsedFileGhc "./test/testdata/Layout/PatBind.hs"
+-- parsedFilePatBind :: IO (ParseResult,[PosToken])
+-- parsedFilePatBind = parsedFileGhc "./test/testdata/Layout/PatBind.hs"
 
 -- ---------------------------------------------------------------------
 

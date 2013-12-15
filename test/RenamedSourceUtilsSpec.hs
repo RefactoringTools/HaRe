@@ -5,16 +5,16 @@ import           Test.Hspec
 import           TestUtils
 
 -- import qualified Digraph    as GHC
-import qualified FastString as GHC
+-- import qualified FastString as GHC
 import qualified GHC        as GHC
-import qualified GhcMonad   as GHC
+-- import qualified GhcMonad   as GHC
 -- import qualified Name       as GHC
 import qualified NameSet    as GHC
 -- import qualified Outputable as GHC
 -- import qualified RdrName    as GHC
 -- import qualified SrcLoc     as GHC
 
-import Control.Monad.State
+-- import Control.Monad.State
 import Data.Maybe
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
@@ -43,30 +43,31 @@ spec = do
 -- ---------------------------------------------------------------------
 -- Helper functions
 
-bFileName :: GHC.FastString
-bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
+-- bFileName :: GHC.FastString
+-- bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
 
 parsedFileBGhc :: IO (ParseResult,[PosToken])
 parsedFileBGhc = parsedFileGhc "./test/testdata/TypeUtils/B.hs"
 
-parsedFileMGhc :: IO (ParseResult,[PosToken])
-parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
+-- parsedFileMGhc :: IO (ParseResult,[PosToken])
+-- parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
 
-parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileBGhc = parseSourceFileTest fileName
-  where
-    fileName = "./test/testdata/B.hs"
+-- parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
+-- parseFileBGhc = parseSourceFileTest fileName
+--   where
+--     fileName = "./test/testdata/B.hs"
 
-parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileMGhc = parseSourceFileTest fileName
-  where
-    fileName = "./test/testdata/M.hs"
+-- parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
+-- parseFileMGhc = parseSourceFileTest fileName
+--   where
+--     fileName = "./test/testdata/M.hs"
 
-parsedFileNoMod = parsedFileGhc fileName
-  where
-    fileName = "./test/testdata/NoMod.hs"
+-- parsedFileNoMod = parsedFileGhc fileName
+--   where
+--     fileName = "./test/testdata/NoMod.hs"
 
 
+{-
 comp :: RefactGhc String
 comp = do
     s <- get
@@ -80,6 +81,7 @@ comp = do
     let tm' = tm {rsStreamModified = True}
     put (s {rsModule = Just tm'})
     return (show gs)
+-}
 
 -- ---------------------------------------------------------------------
 

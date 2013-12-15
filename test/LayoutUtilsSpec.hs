@@ -3,33 +3,33 @@ module LayoutUtilsSpec (main, spec) where
 
 import           Test.Hspec
 
-import qualified FastString as GHC
-import qualified GHC        as GHC
-import qualified Lexer      as GHC
+-- import qualified FastString as GHC
+-- import qualified GHC        as GHC
+-- import qualified Lexer      as GHC
 
-import qualified GHC.SYB.Utils as SYB
+-- import qualified GHC.SYB.Utils as SYB
 
-import Control.Monad.State
-import Data.Maybe
-import Data.Tree
+-- import Control.Monad.State
+-- import Data.Maybe
+-- import Data.Tree
 
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.Layout
-import Language.Haskell.Refact.Utils.LayoutTypes
-import Language.Haskell.Refact.Utils.LayoutUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
-import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.Refact.Utils.TypeUtils
+-- import Language.Haskell.Refact.Utils.GhcVersionSpecific
+-- import Language.Haskell.Refact.Utils.LocUtils
+-- import Language.Haskell.Refact.Utils.Monad
+-- import Language.Haskell.Refact.Utils.TokenUtils
+-- import Language.Haskell.Refact.Utils.Layout
+-- import Language.Haskell.Refact.Utils.LayoutTypes
+-- import Language.Haskell.Refact.Utils.LayoutUtils
+-- import Language.Haskell.Refact.Utils.TokenUtilsTypes
+-- import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TypeUtils
 
-import qualified Data.Tree.Zipper as Z
-import qualified Data.Map as Map
+-- import qualified Data.Tree.Zipper as Z
+-- import qualified Data.Map as Map
 
-import Data.Traversable
+-- import Data.Traversable
 
-import TestUtils
+-- import TestUtils
 
 -- ---------------------------------------------------------------------
 
@@ -96,22 +96,22 @@ spec = do
 
 -- ---------------------------------------------------------------------
 
-parsedFileBare :: IO (ParseResult,[PosToken])
-parsedFileBare = parsedFileGhc "./test/testdata/Layout/Bare.hs"
+-- parsedFileBare :: IO (ParseResult,[PosToken])
+-- parsedFileBare = parsedFileGhc "./test/testdata/Layout/Bare.hs"
 
 -- ---------------------------------------------------------------------
 
-parsedFileLetExpr :: IO (ParseResult,[PosToken])
-parsedFileLetExpr = parsedFileGhc "./test/testdata/Layout/LetExpr.hs"
+-- parsedFileLetExpr :: IO (ParseResult,[PosToken])
+-- parsedFileLetExpr = parsedFileGhc "./test/testdata/Layout/LetExpr.hs"
 
 -- ---------------------------------------------------------------------
 
-parsedFileLetStmt :: IO (ParseResult,[PosToken])
-parsedFileLetStmt = parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
+-- parsedFileLetStmt :: IO (ParseResult,[PosToken])
+-- parsedFileLetStmt = parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
 
 -- ---------------------------------------------------------------------
 
-parsedFileWhere :: IO (ParseResult,[PosToken])
-parsedFileWhere = parsedFileGhc "./test/testdata/Layout/Where.hs"
+-- parsedFileWhere :: IO (ParseResult,[PosToken])
+-- parsedFileWhere = parsedFileGhc "./test/testdata/Layout/Where.hs"
 
 -- ---------------------------------------------------------------------

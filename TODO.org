@@ -40,6 +40,7 @@
 ** TODO Look at refactoring Data.Vault.Lazy. Uses include process
     [2013-09-09 Mon]
 ** TODO Use null instead of isEmptyList/nonEmptyList
+** TODO There is a ITqvarid vs ITvarid for qualified variables
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de

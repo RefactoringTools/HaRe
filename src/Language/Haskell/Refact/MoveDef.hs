@@ -1497,13 +1497,13 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
        rmParamsInParent pn es
          -- =applyTP (full_buTP (idTP `adhocTP` worker))
          = everywhereMStaged SYB.Renamer (SYB.mkM worker)
-            where worker exp@(GHC.L _ (GHC.HsApp e1 e2))
+            where worker expr@(GHC.L _ (GHC.HsApp e1 e2))
                    -- was | findPN pn e1 && (elem (GHC.unLoc e2) es)
                    | findPN pn e1 && (elem (showGhc (GHC.unLoc e2)) (map (showGhc) es))
-                      = update exp e1 exp
-                  worker (exp@(GHC.L _ (GHC.HsPar e1)))
+                      = update expr e1 expr
+                  worker (expr@(GHC.L _ (GHC.HsPar e1)))
                     |pn==expToName e1
-                       = update exp e1 exp
+                       = update expr e1 expr
                   worker x =return x
 
 
@@ -1524,10 +1524,10 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
        -}
        ----- make Substitions between formal and actual parameters.-----------------
        mkSubst :: [GHC.LPat GHC.Name] -> [[GHC.HsExpr GHC.Name]] -> [(GHC.Name,GHC.HsExpr GHC.Name)]
-       mkSubst pats params
+       mkSubst pats1 params
            = catMaybes (zipWith (\x y -> if (patToPNT x/=Nothing) && (length (nub $ map showGhc y)==1)
                                           then Just (fromJust $ patToPNT x,(ghead "mkSubst") y)
-                                          else Nothing) pats params)
+                                          else Nothing) pats1 params)
            {-
            = catMaybes (zipWith (\x y ->if (patToPN x/=defaultPN) && (length (nub y)==1)
                             then Just (patToPN x,(ghead "mkSubst") y)

@@ -1597,7 +1597,7 @@ spec = do
       (showGhc tl) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md2 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x * b\n   where\n     b = 3\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
-      (renderLines $ linesFromState s) `shouldBe` "module MoveDef.Md2 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x * b\n  where\n    b = 3\n    nn = nn2\n\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
+      (renderLines $ linesFromState s) `shouldBe` "module MoveDef.Md2 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x * b\n  where\n    b = 3\n    nn = nn2\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (showGhc nb) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3\n      nn = nn2"
 
     -- -------------------------------------------
@@ -1669,7 +1669,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a local decl with type signature to an existing one with a comment using toks" $ do
-      (t, toks) <- parsedFileWhereIn3Ghc
+      (_t, toks) <- parsedFileWhereIn3Ghc
       let
         comp = do
 
@@ -1937,8 +1937,8 @@ spec = do
       -- (show forest4'') `shouldBe` "" -- Broken, tokens for 1000006,31
 
       -- TODO: It seems the openZipperToSpan is the actual failure point
-      let z = openZipperToSpan (srcSpanToForestSpan newSpan) $ Z.fromTree forest'''
-      let ztoks = retrieveTokensInterim $ Z.toTree z
+      let z1 = openZipperToSpan (srcSpanToForestSpan newSpan) $ Z.fromTree forest'''
+      let _ztoks = retrieveTokensInterim $ Z.toTree z1
       -- (show $ Z.tree z) `shouldBe` "" -- Looks good
 
 
@@ -1991,8 +1991,8 @@ spec = do
               "`- ((6,1),(32,18))\n"
 
 
-      let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
-      let (_decl',forest''') = syncAST decl sspan forest''
+      let (forest3,sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
+      let (_decl',_forest4) = syncAST decl sspan forest3
 
       "a" `shouldBe` "a"
 

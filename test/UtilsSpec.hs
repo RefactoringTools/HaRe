@@ -7,14 +7,12 @@ import           Test.QuickCheck
 import           TestUtils
 
 import qualified Digraph    as GHC
-import qualified FastString as GHC
+-- import qualified FastString as GHC
 import qualified GHC        as GHC
--- import qualified GhcMonad   as GHC
 import qualified HscTypes   as GHC
 
 import Control.Exception
 import Control.Monad.State
--- import Data.Algorithm.Diff
 import Data.Maybe
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Renaming
@@ -40,18 +38,18 @@ spec = do
   describe "locToExp on ParsedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
       (t, _toks) <- parsedFileBGhc
-      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let (Just expr) = locToExp (7,7) (7,43) mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+      let (Just expr) = locToExp (7,7) (7,43) modu :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,9)
       getLocatedEnd   expr `shouldBe` (7,42)
 
     it "finds the largest leftmost expression contained in a given region #2" $ do
       -- ((_, _, mod), toks) <- parsedFileBGhc
       (t, _toks) <- parsedFileBGhc
-      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let (Just expr) = locToExp (7,7) (7,41) mod :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+      let (Just expr) = locToExp (7,7) (7,41) modu :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,12)
       getLocatedEnd   expr `shouldBe` (7,19)
 
@@ -78,10 +76,10 @@ spec = do
 
   describe "loading a file" $ do
     it "loads a file having the LANGUAGE CPP pragma" $ do
-      (t, toks) <- parsedFileGhc "./test/testdata/BCpp.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      (_t, toks) <- parsedFileGhc "./test/testdata/BCpp.hs"
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- let (Just expr) = locToExp (6,1) (12,1) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
 
-      let (Just expr) = locToExp (6,1) (12,1) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
 #if __GLASGOW_HASKELL__ > 704
       (show $ toks) `shouldBe` "[((((1,1),(1,35)),ITblockComment \" FlexibleInstances #\"),\"{-# LANGUAGE FlexibleInstances #-}\"),((((2,1),(2,21)),ITblockComment \" CPP #\"),\"{-# LANGUAGE CPP #-}\"),((((3,1),(3,53)),ITlineComment \"-- Check that we can parse a file which requires CPP\"),\"-- Check that we can parse a file which requires CPP\"),((((4,1),(4,7)),ITmodule),\"module\"),((((4,8),(4,12)),ITconid \"BCpp\"),\"BCpp\"),((((4,13),(4,18)),ITwhere),\"where\"),((((6,1),(6,1)),ITvocurly),\"\"),((((6,1),(6,4)),ITvarid \"bob\"),\"bob\"),((((6,5),(6,7)),ITdcolon),\"::\"),((((6,8),(6,11)),ITconid \"Int\"),\"Int\"),((((6,12),(6,14)),ITrarrow),\"->\"),((((6,15),(6,18)),ITconid \"Int\"),\"Int\"),((((6,19),(6,21)),ITrarrow),\"->\"),((((6,22),(6,25)),ITconid \"Int\"),\"Int\"),((((7,1),(7,29)),ITlineComment \"#if __GLASGOW_HASKELL__ > 704\"),\"#if __GLASGOW_HASKELL__ > 704\"),((((8,1),(8,1)),ITsemi),\"\"),((((8,1),(8,4)),ITvarid \"bob\"),\"bob\"),((((8,5),(8,6)),ITvarid \"x\"),\"x\"),((((8,7),(8,8)),ITvarid \"y\"),\"y\"),((((8,9),(8,10)),ITequal),\"=\"),((((8,11),(8,12)),ITvarid \"x\"),\"x\"),((((8,13),(8,14)),ITvarsym \"+\"),\"+\"),((((8,15),(8,16)),ITvarid \"y\"),\"y\"),((((9,1),(9,5)),ITlineComment \"#else\"),\"#else\"),((((10,1),(10,1)),ITlineComment \"\"),\"\"),((((10,1),(10,4)),ITlineComment \"bob\"),\"bob\"),((((10,5),(10,6)),ITlineComment \"x\"),\"x\"),((((10,7),(10,8)),ITlineComment \"y\"),\"y\"),((((10,9),(10,10)),ITlineComment \"=\"),\"=\"),((((10,11),(10,12)),ITlineComment \"x\"),\"x\"),((((10,13),(10,14)),ITlineComment \"+\"),\"+\"),((((10,15),(10,16)),ITlineComment \"y\"),\"y\"),((((10,17),(10,18)),ITlineComment \"*\"),\"*\"),((((10,19),(10,20)),ITlineComment \"2\"),\"2\"),((((11,1),(11,6)),ITlineComment \"#endif\"),\"#endif\"),((((14,1),(14,1)),ITsemi),\"\")]"
 #else
@@ -171,17 +169,17 @@ spec = do
     it "returns a string for the module name if there is one" $ do
       -- modInfo@((_, _, mod), toks) <- parsedFileBGhc
       (t, _toks) <- parsedFileBGhc
-      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let (Just (_modname,modNameStr)) = getModuleName mod
+      let (Just (_modname,modNameStr)) = getModuleName modu
       -- let modNameStr = "foo"
       modNameStr `shouldBe` "TypeUtils.B"
 
     it "returns Nothing for the module name otherwise" $ do
       -- modInfo@((_, _, mod), toks) <- parsedFileNoMod
       (t, _toks) <- parsedFileNoMod
-      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      getModuleName mod `shouldBe` Nothing
+      let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      getModuleName modu `shouldBe` Nothing
 
   -- -------------------------------------------------------------------
 
@@ -223,7 +221,7 @@ spec = do
     it "gets modules which are directly or indirectly imported by a module #1" $ do
       let
         comp = do
-         (_p,toks) <- parseFileMGhc -- Load the main file first
+         (_p,_toks) <- parseFileMGhc -- Load the main file first
          g <- serverModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
@@ -386,14 +384,14 @@ spec = do
 -- ---------------------------------------------------------------------
 -- Helper functions
 
-bFileName :: GHC.FastString
-bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
+-- bFileName :: GHC.FastString
+-- bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
 
 parsedFileBGhc :: IO (ParseResult,[PosToken])
 parsedFileBGhc = parsedFileGhc "./test/testdata/TypeUtils/B.hs"
 
-parsedFileMGhc :: IO (ParseResult,[PosToken])
-parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
+-- parsedFileMGhc :: IO (ParseResult,[PosToken])
+-- parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
 
 parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
 parseFileBGhc = parseSourceFileTest fileName

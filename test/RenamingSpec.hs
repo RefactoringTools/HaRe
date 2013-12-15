@@ -130,10 +130,11 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in D5 B5 C5 A5 24 1" $ do
+    it "renames in D5 B5 C5 A5 24 1" $ do
      --     (["D5.hs","B5.hs","C5.hs","A5.hs"],["sum","24","1"]),
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/A5.hs") testCradle "./test/testdata/Renaming/D5.hs" "sum" (24,1)
-     -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/A5.hs") "./test/testdata/Renaming/D5.hs" "sum" (24,1)
+     -- rename (logTestSettingsMainfile "./test/testdata/Renaming/A5.hs") testCradle "./test/testdata/Renaming/D5.hs" "sum" (24,1)
+     -- rename logTestSettings testCradle "./test/testdata/Renaming/D5.hs" "sum" (24,1)
 
      r `shouldBe` [ "./test/testdata/Renaming/D5.hs"
                   , "./test/testdata/Renaming/C5.hs"

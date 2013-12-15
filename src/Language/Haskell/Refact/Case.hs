@@ -5,6 +5,7 @@ import qualified GHC.SYB.Utils         as SYB
 
 import qualified GHC           as GHC
 
+import Control.Monad
 import Control.Monad.IO.Class
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils
@@ -102,7 +103,7 @@ reallyDoIfToCase expr rs = do
 
                -- drawTokenTreeDetailed "reallyDoIfToCase"
 
-               putToksForSpan l caseToks
+               void $ putToksForSpan l caseToks
 
                -- drawTokenTree "reallyDoIfToCase after putToks"
                -- drawTokenTreeDetailed "reallyDoIfToCase after putToks"

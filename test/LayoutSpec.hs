@@ -2,27 +2,27 @@ module LayoutSpec (main, spec) where
 
 import           Test.Hspec
 
-import qualified FastString as GHC
+-- import qualified FastString as GHC
 import qualified GHC        as GHC
-import qualified Lexer      as GHC
+-- import qualified Lexer      as GHC
 
-import qualified GHC.SYB.Utils as SYB
+-- import qualified GHC.SYB.Utils as SYB
 
-import Control.Monad.State
-import Data.Maybe
-import Data.Tree
+-- import Control.Monad.State
+-- import Data.Maybe
+-- import Data.Tree
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils
+-- import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.Layout
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
+-- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.Refact.Utils.TypeUtils
+-- import Language.Haskell.Refact.Utils.TypeUtils
 
-import qualified Data.Tree.Zipper as Z
-import qualified Data.Map as Map
+-- import qualified Data.Tree.Zipper as Z
+-- import qualified Data.Map as Map
 
 import TestUtils
 
@@ -89,7 +89,7 @@ spec = do
     it "allocates Tokens for a let expression" $ do
       (t,toks) <- parsedFileLetExpr
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
 
       -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
@@ -132,7 +132,7 @@ spec = do
     it "allocates Tokens for a let statement" $ do
       (t,toks) <- parsedFileLetStmt
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
 
       -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
@@ -179,7 +179,7 @@ spec = do
     it "allocates Tokens for a case expression" $ do
       (t,toks) <- parsedFileCaseExpr
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
 
       -- (SYB.showData SYB.Parser 0 parsed) `shouldBe` ""
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
