@@ -80,6 +80,7 @@ instance Show Line where
 
 data Source = SOriginal
             | SAdded
+            | SWasAdded
             deriving (Show,Eq)
 
 data Annot = Ann String
@@ -98,7 +99,6 @@ type SourceTree = DUALTree Transformation Up Annot Prim
 instance Semigroup Span where
   (Span p1 _p2) <> (Span _q1 q2) = (Span p1 q2)
 
--- TODO: combine the strings according to the relative spans.
 instance Semigroup Up where
   u1 <> u2 = combineUps u1 u2
 
@@ -192,6 +192,7 @@ instance GHC.Outputable Line where
 instance GHC.Outputable Source where
   ppr SOriginal = GHC.text "SOriginal"
   ppr SAdded    = GHC.text "SAdded"
+  ppr SWasAdded = GHC.text "SWasAdded"
 
 -- ---------------------------------------------------------------------
 
@@ -339,23 +340,17 @@ mkLinesFromToks s toks = [Line ro co 0 s toks']
 
 combineUps :: Up -> Up -> Up
 combineUps (UDeleted d1) (UDeleted d2)  = UDeleted (d1 <> d2)
+
 combineUps (UDeleted d1) (Up sp2 a2 l2 d2) = (Up sp2 a2 l (d1 <> d2))
   where
-    -- deltaL = calcDelta d1
-    -- l = NE.map (\(Line r c s str) -> Line (r - deltaL) c s str) l2
     l = adjustForDeleted d1 l2
+
 combineUps (Up sp1 a1 l1 d1) (UDeleted d2) = (Up sp1 a1 l1 (d1 <> d2))
+
 combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2))
   where
     a = ANone
-    -- a = if a2 == AVertical then error $ "combineUps:a2==AVertical:" ++ (show l2)
-    --                         else ANone
 
-    -- (Span (_sr1,_sc1) (_er1,_ec1)) = sp1
-    -- (Span (_sr2,_sc2) (_er2,_ec2)) = sp2
-    -- Assumptions
-    --  1. The first character of (head str1) is at (sr1,sc1)
-    --  2. The first character of (head str2) is at (sr2,sc2)
     l2' = adjustForDeleted d1 l2
 
     (Line _ _ o2 _ _) = NE.head l2'
@@ -367,18 +362,6 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
     (Line r1 c1  o1 ss1 s1) = NE.last l1
     (Line r2 c2 _o2 ss2 s2) = NE.head l2''
 
-
-    -- conditions to merge the last of l1 with first of d1
-    --  a. same source, i.e. both added or both original
-    --  b. same line number
-    --  c. same offset
-
-{-
-    l = case (r1 == r2, o1 == o2, ss1 == ss2) of
-         (True,True,True) -> (NE.init l1) ++ m' ++ ll
-         (
--}
-
     l = if r1 == r2
          then NE.fromList $ (NE.init l1) ++ m ++ ll
          else NE.fromList $ (NE.toList l1) ++ (NE.toList l2'')
@@ -388,40 +371,61 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
     s1' = s1 ++ s2'
     m' = [Line r1 c1 o1 ss1 s1']
 
-    -- o = c2 - (c1 + length (GHC.showRichTokenStream s1'))
-    -- o = c2 - (c1 + tokenCol (head s2') )
     o = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) s1
 
-    -- ll = if a2 == AVertical && r1 == r2
     (m,ll) = if ss1 == ss2
-          -- then map (\(Line r c aa s) -> (Line r (c + o) aa (addOffsetToToks (0,0) s))) (NE.tail l2'')
           then (m',map (\(Line r c f aa s) -> (Line r     (c + o)     f aa s)) (NE.tail l2''))
-          else ([],map (\(Line r c f aa s) -> (Line (r+1) (c + o) (f+1) aa s)) (NE.toList l2''))
+          else ([NE.last l1],map (\(Line r c f aa s) -> (Line (r+1) (c + o) (f+1) aa s)) (NE.toList l2''))
 {-
-r1 = 8
-c1 = 14
-s1 : "case listlonger of"
-((((0,10),(0,12)),ITof),"of")] -- Ok, tokens mean nothing, if they
-                                  -- have been expanded
-length "case listlonger of" == 18
 
-14 + 18 = 32
-c1 + length s1 = 32
+(Up
+sp1     (Span (4, 5) (4, 6))
+a1      ANone
+l1      [(Line 4 5 0 SOriginal \"pow\")]
+d1      []),
 
-c2 - c1 = 28 - 14 = 14
+(Up
+sp2     (Span (4, 9) (4, 10))
+a2      ANone
+l2      [(Line 4 9 0 SAdded \"z\")]
+d2      [])
 
-r2 = 8
-c2 = 28
-s2 = "(1:xs) -> 1"
+l2'' = [(Line 4 9 0 SAdded \"z\")]
 
-Need offset to be 28 + 12
-----
+(r1 4
+ c1 5
+ o1 0
+ ss1 SOriginal
+ s1 "pow")
 
-first line becomes: 
+(r2 4
+ c2 9
+ o2 0
+ ss2 SAdded
+ s2  "z")
 
-"case listlonger of  (1:xs) -> 1"
 
-i.e. the starting point is 20 along
+  (Concat
+    [((Up
+        (Span (4, 5) (4, 6)) ANone
+        [(Line 4 5 0 SOriginal \"pow\")]
+        []),
+      (Leaf
+        (Up
+          (Span (4, 5) (4, 6)) ANone
+          [(Line 4 5 0 SOriginal \"pow\")]
+          [])
+        (PToks [((((4,5),(4,8)),ITvarid \"pow\"),\"pow\")]))),
+     ((Up
+        (Span (4, 9) (4, 10)) ANone
+        [(Line 4 9 0 SAdded \"z\")]
+        []),
+      (Leaf
+        (Up
+          (Span (4, 9) (4, 10)) ANone
+          [(Line 4 9 0 SAdded \"z\")]
+          [])
+        (PToks [((((4,9),(4,10)),ITvarid \"z\"),\"z\")])))]))))])),
 
 -}
 
@@ -436,7 +440,9 @@ adjustForDeleted d1 l2 = l
 
     -- go (Line r c o SOriginal str) =  Line (r - deltaL) c (o - deltaL) SOriginal str
     go (Line r c o SOriginal str) =  Line (r - deltaL) c  o           SOriginal str
-    go (Line r c o SAdded    str) =  Line  r           c  o           SAdded    str
+    go (Line r c o SWasAdded str) =  Line (r - deltaL) c  o           SWasAdded str
+    -- go (Line r c o SAdded    str) =  Line  r           c  o           SAdded    str
+    go (Line r c o SAdded    str) =  Line  r           c  o           SWasAdded str
 
 -- -------------------------------------
 

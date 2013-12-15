@@ -1925,8 +1925,8 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
              "5:((5,5),(5,7))\n"++
              "5:((5,8),(5,11))\n"++
               "6:((5,8),(5,9))\n"++
-              "6:((5,10),(5,11))\n"++
-            "4:((1000006,5),(1000006,13))\n"++
+              "6:((5,10),(5,11))\n"++          -- "zz = 1"
+            "4:((1000006,5),(1000006,13))\n"++ -- "nn = nn2"
          "1:((7,1),(7,6))\n"++
           "2:((7,1),(7,2))\n"++
           "2:((7,3),(7,6))\n"++
@@ -1940,6 +1940,279 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
       -- (showGhc srcTree2) `shouldBe` ""
 
       (renderSourceTree srcTree2) `shouldBe` "module Layout.Lift where\n\nff y = y + zz\n  where\n    zz = 1\n    nn = nn2\n\nx = 1\n"
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in SourceTree format after demoting Demote.D2" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Demote/D2.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(14,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,17))\n"++
+         "1:((1,18),(1,23))\n"++
+         "1:((5,1),(6,18))\n"++
+         "2:((5,1),(5,11))\n"++
+         "2:((5,12),(5,41))\n"++
+         "3:((5,12),(5,18))\n"++
+         "3:((5,19),(5,20))\n"++
+         "3:((5,21),(5,41))\n"++
+         "4:((5,21),(5,25))\n"++
+         "5:((5,21),(5,23))\n"++
+         "5:((5,24),(5,25))\n"++
+         "4:((5,26),(5,27))\n"++
+         "4:((5,28),(5,41))\n"++
+         "5:((5,28),(5,38))\n"++
+         "5:((5,39),(5,41))\n"++
+         "2:((6,1),(6,18))\n"++
+         "3:((6,1),(6,11))\n"++
+         "3:((6,12),(6,14))\n"++
+         "3:((6,15),(6,16))\n"++
+         "3:((6,17),(6,18))\n"++
+         "1:((8,1),(8,14))\n"++
+         "2:((8,1),(8,3))\n"++
+         "2:((8,4),(8,14))\n"++
+         "3:((8,4),(8,5))\n"++
+         "3:((8,6),(8,7))\n"++
+         "3:((8,8),(8,14))\n"++
+         "4:((8,8),(8,9))\n"++
+         "4:((8,10),(8,11))\n"++
+         "4:((8,11),(8,14))\n"++
+         "1:((10,1),(10,8))\n"++
+         "2:((10,1),(10,4))\n"++
+         "2:((10,5),(10,8))\n"++
+         "3:((10,5),(10,6))\n"++
+         "3:((10,7),(10,8))\n"++
+         "1:((12,1),(12,25))\n"++
+          "2:((12,1),(12,5))\n"++
+          "2:((12,6),(12,24))\n"++
+           "3:((12,6),(12,7))\n"++
+           "3:((12,8),(12,24))\n"++
+            "4:((12,8),(12,18))\n"++
+            "4:((12,19),(12,24))\n"++
+             "5:((12,19),(12,20))\n"++
+             "5:((12,20),(12,21))\n"++
+             "5:((12,23),(12,24))\n"++
+         "1:((14,1),(14,1))\n"
+
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (show srcTree) `shouldBe`
+      --     ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+{-
+
+removeToksForPos ((5,1),(6,18))
+
+getToksForSpan test/testdata/Demote/D2.hs:(33554437,1)-(33554438,17):("(((False,1,0,5),1),((False,1,0,6),18))",[((((3,1),(3,62)),ITlineComment "--demote  'sumSquares' should fail as it used by module 'A2'."),"--demote  'sumSquares' should fail as it used by module 'A2'."),((((5,1),(5,1)),ITvocurly),""),((((5,1),(5,11)),ITvarid "sumSquares"),"sumSquares"),((((5,12),(5,13)),IToparen),"("),((((5,13),(5,14)),ITvarid "x"),"x"),((((5,14),(5,15)),ITcolon),":"),((((5,15),(5,17)),ITvarid "xs"),"xs"),((((5,17),(5,18)),ITcparen),")"),((((5,19),(5,20)),ITequal),"="),((((5,21),(5,23)),ITvarid "sq"),"sq"),((((5,24),(5,25)),ITvarid "x"),"x"),((((5,26),(5,27)),ITvarsym "+"),"+"),((((5,28),(5,38)),ITvarid "sumSquares"),"sumSquares"),((((5,39),(5,41)),ITvarid "xs"),"xs"),((((6,1),(6,1)),ITsemi),""),((((6,1),(6,11)),ITvarid "sumSquares"),"sumSquares"),((((6,12),(6,13)),ITobrack),"["),((((6,13),(6,14)),ITcbrack),"]"),((((6,15),(6,16)),ITequal),"="),((((6,17),(6,18)),ITinteger 0),"0")])
+
+putToksAfterPos ((12,8),(12,25)) at PlaceOffset 1 4 2:[((((0,1),(0,6)),ITwhere),"where"),((((1,5),(1,66)),ITlineComment "--demote  'sumSquares' should fail as it used by module 'A2'."),"--demote  'sumSquares' should fail as it used by module 'A2'."),((((3,5),(3,5)),ITvocurly),""),((((3,5),(3,15)),ITvarid "sumSquares"),"sumSquares"),((((3,16),(3,17)),IToparen),"("),((((3,17),(3,18)),ITvarid "x"),"x"),((((3,18),(3,19)),ITcolon),":"),((((3,19),(3,21)),ITvarid "xs"),"xs"),((((3,21),(3,22)),ITcparen),")"),((((3,23),(3,24)),ITequal),"="),((((3,25),(3,27)),ITvarid "sq"),"sq"),((((3,28),(3,29)),ITvarid "x"),"x"),((((3,30),(3,31)),ITvarsym "+"),"+"),((((3,32),(3,42)),ITvarid "sumSquares"),"sumSquares"),((((3,43),(3,45)),ITvarid "xs"),"xs"),((((4,5),(4,5)),ITsemi),""),((((4,5),(4,15)),ITvarid "sumSquares"),"sumSquares"),((((4,16),(4,17)),ITobrack),"["),((((4,17),(4,18)),ITcbrack),"]"),((((4,19),(4,20)),ITequal),"="),((((4,21),(4,22)),ITinteger 0),"0"),((((5,1),(5,1)),ITvccurly),"")]
+
+
+-}
+
+
+      let ss1 = posToSrcSpan layout ((5,1),(6,18))
+      (showGhc ss1) `shouldBe` "test/testdata/Demote/D2.hs:(5,1)-(6,17)"
+
+      let (layout2,_old)  = removeSrcSpan layout (srcSpanToForestSpan ss1)
+
+
+      -- let (_tree,toks1) = getTokensForNoIntros True layout ss1
+      toks1 <- basicTokenise $
+                 "where\n"++
+                 "    --demote  'sumSquares' should fail as it used by module 'A2'.\n"++
+                 "\n"++
+                 "    sumSquares (x:xs) = sq x + sumSquares xs\n"++
+                 "    sumSquares [] = 0\n"++
+                 ""
+
+      (show toks1) `shouldBe` "[((((0,1),(0,6)),ITwhere),\"where\"),((((1,5),(1,66)),ITlineComment \"--demote  'sumSquares' should fail as it used by module 'A2'.\"),\"--demote  'sumSquares' should fail as it used by module 'A2'.\"),((((3,5),(3,5)),ITvocurly),\"\"),((((3,5),(3,15)),ITvarid \"sumSquares\"),\"sumSquares\"),((((3,16),(3,17)),IToparen),\"(\"),((((3,17),(3,18)),ITvarid \"x\"),\"x\"),((((3,18),(3,19)),ITcolon),\":\"),((((3,19),(3,21)),ITvarid \"xs\"),\"xs\"),((((3,21),(3,22)),ITcparen),\")\"),((((3,23),(3,24)),ITequal),\"=\"),((((3,25),(3,27)),ITvarid \"sq\"),\"sq\"),((((3,28),(3,29)),ITvarid \"x\"),\"x\"),((((3,30),(3,31)),ITvarsym \"+\"),\"+\"),((((3,32),(3,42)),ITvarid \"sumSquares\"),\"sumSquares\"),((((3,43),(3,45)),ITvarid \"xs\"),\"xs\"),((((4,5),(4,5)),ITsemi),\"\"),((((4,5),(4,15)),ITvarid \"sumSquares\"),\"sumSquares\"),((((4,16),(4,17)),ITobrack),\"[\"),((((4,17),(4,18)),ITcbrack),\"]\"),((((4,19),(4,20)),ITequal),\"=\"),((((4,21),(4,22)),ITinteger 0),\"0\"),((((5,1),(5,1)),ITvccurly),\"\")]"
+
+      let ss2 = posToSrcSpan layout ((12,8),(12,25))
+      (showGhc ss2) `shouldBe` "test/testdata/Demote/D2.hs:12:8-24"
+
+      let (layout3,_ss2) = addToksAfterSrcSpan layout2 ss2 (PlaceOffset 1 4 2) toks1
+
+      -- -- -- --
+
+      (drawTreeCompact layout3) `shouldBe`
+         "0:((1,1),(14,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,17))\n"++
+         "1:((1,18),(1,23))\n"++
+         "1:((5,1),(6,18))(2,-17)D\n"++
+         "1:((8,1),(8,14))\n"++
+          "2:((8,1),(8,3))\n"++
+          "2:((8,4),(8,14))\n"++
+           "3:((8,4),(8,5))\n"++
+           "3:((8,6),(8,7))\n"++
+           "3:((8,8),(8,14))\n"++
+            "4:((8,8),(8,9))\n"++
+            "4:((8,10),(8,11))\n"++
+            "4:((8,11),(8,14))\n"++
+         "1:((10,1),(10,8))\n"++
+          "2:((10,1),(10,4))\n"++
+          "2:((10,5),(10,8))\n"++
+           "3:((10,5),(10,6))\n"++
+           "3:((10,7),(10,8))\n"++
+         "1:((12,1),(12,25))\n"++
+          "2:((12,1),(12,5))\n"++
+          "2:((12,6),(12,7))\n"++
+          "2:((12,8),(12,25))\n"++
+           "3:((12,8),(12,18))\n"++
+           "3:((12,19),(12,20))\n"++
+           "3:((12,20),(12,21))\n"++
+           "3:((12,23),(12,24))\n"++
+          "2:((1000013,5),(1000017,26))\n"++
+         "1:((14,1),(14,1))\n"
+
+
+      -- (show layout2) `shouldBe` ""
+
+      let srcTree2 = layoutTreeToSourceTree layout3
+      -- (showGhc srcTree2) `shouldBe` ""
+
+      let ll = retrieveLinesFromLayoutTree layout3
+      (renderSourceTree srcTree2) `shouldBe` "module Demote.D2 where\n\n\n\nsq x = x ^pow\n\npow = 2\n\nmain = sumSquares [1..4]\n    where\n        --demote  'sumSquares' should fail as it used by module 'A2'.\n\n        sumSquares (x:xs) = sq x + sumSquares xs\n        sumSquares [] = 0\n    \n\n"
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in SourceTree format after add params AddParams1" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/AddParams1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(8,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,18))\n"++
+         "1:((1,19),(1,24))\n"++
+         "1:((3,1),(4,12))\n"++
+          "2:((3,1),(3,3))\n"++   -- "sq"
+          "2:((3,5),(3,10))\n"++
+           "3:((3,5),(3,6))\n"++  -- "0"
+           "3:((3,7),(3,8))\n"++  -- "="
+           "3:((3,9),(3,10))\n"++ -- "0"
+          "2:((4,1),(4,12))\n"++
+           "3:((4,1),(4,3))\n"++
+           "3:((4,5),(4,6))\n"++
+           "3:((4,7),(4,8))\n"++
+           "3:((4,9),(4,12))\n"++
+            "4:((4,9),(4,10))\n"++
+            "4:((4,10),(4,11))\n"++
+            "4:((4,11),(4,12))\n"++
+         "1:((6,1),(6,8))\n"++
+          "2:((6,1),(6,4))\n"++
+          "2:((6,5),(6,8))\n"++
+           "3:((6,5),(6,6))\n"++
+           "3:((6,7),(6,8))\n"++
+         "1:((8,1),(8,1))\n"
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (show srcTree) `shouldBe`
+      --     ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+{-
+
+getToksForSpan test/testdata/AddParams1.hs:3:5:("(((False,0,0,3),5),((False,0,0,3),6))",[((((3,5),(3,6)),ITinteger 0),"0")])
+putToksForSpan test/testdata/AddParams1.hs:3:5:(((False,0,0,3),5),((False,0,0,3),6))[((((3,6),(3,9)),ITvarid "pow"),"pow")]
+putToksAfterSpan test/testdata/AddParams1.hs:3:5:(((False,0,0,3),5),((False,0,0,3),6)) at PlaceAdjacent:[(((3,5),(3,6)),ITinteger 0,"0")]
+-}
+
+      let ss1 = posToSrcSpan layout ((3,5),(3,6))
+      (showGhc ss1) `shouldBe` "test/testdata/AddParams1.hs:3:5"
+
+      toks1 <- basicTokenise "\n\n\n    0"
+      (show toks1) `shouldBe` "[((((3,5),(3,6)),ITinteger 0),\"0\")]"
+
+      toks2 <- basicTokenise "\n\n\n     pow"
+      (show toks2) `shouldBe` "[((((3,6),(3,9)),ITvarid \"pow\"),\"pow\")]"
+
+      let (layout2,_newSpan,_oldTree) = updateTokensForSrcSpan layout ss1 toks2
+
+      let (layout3,_newSpan2) = addToksAfterSrcSpan layout2 ss1 PlaceAdjacent toks1
+
+----------
+{-
+getToksForSpan test/testdata/AddParams1.hs:4:5:("(((False,0,0,4),5),((False,0,0,4),6))",[((((4,5),(4,6)),ITvarid "z"),"z")])
+putToksForSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,4),6))[((((4,6),(4,9)),ITvarid "pow"),"pow")]
+putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,4),6)) at PlaceAdjacent:[(((4,5),(4,6)),ITvarid "z","z")]
+
+
+-}
+
+      let ss2 = posToSrcSpan layout ((4,5),(4,6))
+      (showGhc ss2) `shouldBe` "test/testdata/AddParams1.hs:4:5"
+
+      toks3 <- basicTokenise "\n\n\n\n    z"
+      (show toks3) `shouldBe` "[((((4,5),(4,6)),ITvarid \"z\"),\"z\")]"
+
+      toks4 <- basicTokenise "\n\n\n\n     pow"
+      (show toks4) `shouldBe` "[((((4,6),(4,9)),ITvarid \"pow\"),\"pow\")]"
+
+      let (layout4,_newSpan3,_oldTree2) = updateTokensForSrcSpan layout3 ss2 toks4
+
+      let (layout5,_newSpan4) = addToksAfterSrcSpan layout4 ss2 PlaceAdjacent toks3
+
+
+      -- -- -- --
+
+      (drawTreeCompact layout5) `shouldBe`
+         "0:((1,1),(8,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,18))\n"++
+         "1:((1,19),(1,24))\n"++
+         "1:((3,1),(4,12))\n"++
+          "2:((3,1),(3,3))\n"++
+          "2:((3,5),(3,10))\n"++
+           "3:((10000000003,5),(10000000003,8))\n"++
+            "4:((3,5),(3,6))\n"++
+            "4:((1000003,9),(1000003,10))\n"++
+           "3:((3,7),(3,8))\n"++
+           "3:((3,9),(3,10))\n"++
+          "2:((4,1),(4,12))\n"++
+           "3:((4,1),(4,3))\n"++
+           "3:((10000000004,5),(10000000004,8))\n"++
+            "4:((4,5),(4,6))\n"++                -- "pow"
+            "4:((1000004,9),(1000004,10))\n"++   -- "z"
+           "3:((4,7),(4,8))\n"++
+           "3:((4,9),(4,12))\n"++
+            "4:((4,9),(4,10))\n"++
+            "4:((4,10),(4,11))\n"++
+            "4:((4,11),(4,12))\n"++
+         "1:((6,1),(6,8))\n"++
+          "2:((6,1),(6,4))\n"++
+          "2:((6,5),(6,8))\n"++
+           "3:((6,5),(6,6))\n"++
+           "3:((6,7),(6,8))\n"++
+         "1:((8,1),(8,1))\n"
+
+
+      -- (show layout2) `shouldBe` ""
+
+      let srcTree2 = layoutTreeToSourceTree layout5
+      -- (showGhc srcTree2) `shouldBe` ""
+
+      -- (showGhc $ retrieveLinesFromLayoutTree layout5) `shouldBe` ""
+
+      (renderSourceTree srcTree2) `shouldBe` "module AddParams1 where\n\nsq  pow 0= 0\nsq  pow z= z^2\n\nfoo = 3\n\n"
 
     -- -----------------------------------------------------------------
 

@@ -1085,7 +1085,7 @@ spec = do
     -- ---------------------------------
 
     it "adds parameters to a declaration with multiple matches" $ do
-      (t, toks) <- parsedFileAddParams1
+      (t, toks) <- parsedFileGhc "./test/testdata/AddParams1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
@@ -1096,7 +1096,8 @@ spec = do
          newBinding <- addParamsToDecls declsr n [newName] True
 
          return newBinding
-      (_nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- (_nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (_nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "AddParams1.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n foo = 3\n\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
