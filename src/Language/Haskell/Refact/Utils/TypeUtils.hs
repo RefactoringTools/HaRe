@@ -2654,12 +2654,16 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
                                in toks1'
                           else toks
 
+       drawTokenTreeDetailed "before starting"
+       logm $ "addImportDecl:toks =" ++ show toks
+       logm $ "addImportDecl:toks1=" ++ show toks1
+
        let lastTok = ghead "addImportDecl" $ dropWhile isWhiteSpace $ reverse toks1
        let startPos = tokenPos    lastTok
        let endPos   = tokenPosEnd lastTok
 
        newToks <- liftIO $ basicTokenise (showGhc impDecl)
-       -- logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
+       logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
        void $ putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where

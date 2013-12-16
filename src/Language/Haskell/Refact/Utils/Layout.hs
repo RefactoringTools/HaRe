@@ -214,14 +214,14 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
           where
             (s3,impToks,toks3') = splitToksForList is toks2
 
-    (declLayout,_toks4) =
+    (declLayout,toks4) =
       case decls of
         [] -> ([],toks3)
         is -> ((makeLeafFromToks s4) ++ allocDecls is declToks ++ (makeLeafFromToks toks4'),[])
           where
             (s4,declToks,toks4') = splitToksForList is toks3
 
-    r' = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout)
+    r' = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout ++ (makeLeafFromToks toks4))
     r = addEndOffsets r' toks
     -- r = error $ "allocTokens:(nameLayout,toks1)=" ++ (show (nameLayout,toks1)) -- ++AZ++
     -- r = error $ "allocTokens:(exportLayout,toks2)=" ++ (show (exportLayout,toks2)) -- ++AZ++

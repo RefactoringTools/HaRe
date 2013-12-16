@@ -3024,5 +3024,31 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
 
     -- -----------------------------------------------------------------
 
+    it "retrieves the tokens in SourceTree format TypeUtils.Empty" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/TypeUtils/Empty.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      (GHC.showRichTokenStream toks) `shouldBe` "module Empty where\n\n "
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(3,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,13))\n"++
+         "1:((1,14),(3,1))\n"
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- -----------------------------------------------------------------
+
+
   -- -----------------------------------
 

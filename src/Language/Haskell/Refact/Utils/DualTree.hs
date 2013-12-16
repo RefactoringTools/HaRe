@@ -46,17 +46,17 @@ data Transformation = AsIs
                     | TAdded
                     deriving Show
 
+-- I have no idea why this is needed, but any dual tree operations fail if it is not present
 instance Num Transformation where
   fromInteger n = T n
 
 
 transform :: Transformation -> Prim -> Prim
 transform AsIs p = p
--- transform (T n) (PToks s) = (PToks (s++"(T"++ (show n) ++")"))
-transform (T n) (PToks s) = (PToks s)
-transform (TAbove co bo p1 p2 eo) (PToks s)  = (PToks s)
-transform (TDeleted sspan ro p) (PToks s) = (PToks s)
-transform TAdded                (PToks s) = (PToks s)
+transform (T _n)                       (PToks s) = (PToks s)
+transform (TAbove _co _bo _p1 _p2 _eo) (PToks s) = (PToks s)
+transform (TDeleted _sspan _ro _p)     (PToks s) = (PToks s)
+transform TAdded                       (PToks s) = (PToks s)
 
 -- | The value that bubbles up. This is the Span occupied by the
 -- subtree, together with a string representation of the subtree. The
@@ -302,8 +302,6 @@ layoutTreeToSourceTree (T.Node (Entry sspan (Above bo p1 p2 eo) [])  ts0)
       (applyD (TAbove co bo p1 p2 eo) subs)
   where
     subs = (mconcatl $ map layoutTreeToSourceTree ts0)
-    Just (Up _s _a ls _ds) = getU subs
-    (Line _r _c _o _so _f toks) = NE.head ls
     co = 0
 
 layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts) = leaf (mkUp sspan toks) (PToks toks)
@@ -346,7 +344,6 @@ mkLinesFromToks s toks = [Line ro co 0 s f toks']
     co' = tokenCol $ head toks
     (ro,co) = srcPosToSimpPos (tokenRow $ head toks, tokenCol $ head toks)
     toks' = addOffsetToToks (-ro',-co') toks
-    -- str = GHC.showRichTokenStream toks'
 
 -- ---------------------------------------------------------------------
 
@@ -379,7 +376,6 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
 
     l = if r1 == r2
          then NE.fromList $ (NE.init l1) ++ m ++ ll
-         -- else NE.fromList $ (NE.toList l1) ++ (NE.toList l2'')
          else NE.fromList $ (NE.toList l1) ++ rest
 
     s2' = addOffsetToToks (0,c2 - c1) s2
@@ -396,9 +392,8 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
     st2 = GHC.showRichTokenStream (s1 ++ s2')
     st3 = drop (length st1) st2
     st4 = takeWhile (==' ') st3
-    oo = length $ takeWhile (/='\n') $ reverse (st1++st4)
+    oo = length (st1++st4)
     coo = c1 + oo
-    -- o = c2 - coo
     o = coo - c2
 
     (m,ll) = if (ss1 /= ss2) && (length s1 == 1 && (tokenLen $ head s1) == 0)
@@ -409,8 +404,6 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
 
     rest = if ff2 == OGroup
             then addOffsetToGroup odiff (NE.toList l2'')
-            -- then error $ "(odiff,s1)=" ++ show (odiff,s1)
-            -- then addOffsetToGroup 6 (NE.toList l2'')
             else NE.toList l2''
 
     addOffsetToGroup _off [] = []
@@ -501,35 +494,5 @@ mkSpan :: ForestSpan -> Span
 mkSpan ss = Span s e
   where
    (s,e) = forestSpanToSimpPos ss
-
--- ---------------------------------------------------------------------
-
-toksToUpStr :: [PosToken] -> [String]
-toksToUpStr = lines . removeOffsetToks
-
--- ---------------------------------------------------------------------
-
-removeOffsetToks :: [PosToken] -> String
-removeOffsetToks [] = ""
-removeOffsetToks toks = str
-  where
-    ro' = tokenRow $ head toks
-    co' = tokenCol $ head toks
-    toks' = addOffsetToToks (-ro',-co') toks
-    str = GHC.showRichTokenStream toks'
-
--- ---------------------------------------------------------------------
-
-normaliseColumns :: [Line] -> [Line]
-normaliseColumns [] = []
-normaliseColumns ps = ps'
-  where
-    offset = case (head ps) of
-      Line    _r c _ _ _ _ -> c - 1
-      _                -> 0
-    ps' = map remove ps
-
-    remove (Line r c o s f str) = (Line r (c - offset) o s f str)
-    remove x = x
 
 -- ---------------------------------------------------------------------

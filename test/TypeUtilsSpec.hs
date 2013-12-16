@@ -2962,17 +2962,20 @@ This function is not used and has been removed
       let
         comp = do
 
-         (t1,_toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/Empty.hs"
-         -- clearParsedModule
-         let renamed1 = fromJust $ GHC.tm_renamed_source t1
+         (t1,toks1)  <- parseSourceFileTest "./test/testdata/TypeUtils/Empty.hs"
+         putParsedModule t1 toks1
+         renamed1 <- getRefactRenamed
+
+         -- let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
 
-         return (res,renamed1,_toks1)
+         return (res,renamed1,toks1)
       ((_r,_r2,_tk2),s) <- runRefactGhcState comp
+      -- ((_r,_r2,_tk2),s) <- runRefactGhcStateLog comp Debug
 
-      (renderLines $ linesFromState s) `shouldBe` "module Empty where\n import Data.List\n "
+      (renderLines $ linesFromState s) `shouldBe` "module Empty where\nimport Data.List"
 
 
   -- ---------------------------------------
@@ -2997,7 +3000,7 @@ This function is not used and has been removed
 
       -- This is the correct behavior. If the import doesn't have an import list, creating 
       -- one for an item effectively reduces the imported interface.
-      (renderLines $ linesFromState s) `shouldBe` "module JustImports where\n\nimport Data.Maybe"
+      (renderLines $ linesFromState s) `shouldBe` "module JustImports where\n\nimport Data.Maybe\n"
       -- (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n "
 
 -- Not sure if this should be a test
