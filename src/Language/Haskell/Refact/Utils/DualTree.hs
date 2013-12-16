@@ -379,7 +379,8 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
 
     l = if r1 == r2
          then NE.fromList $ (NE.init l1) ++ m ++ ll
-         else NE.fromList $ (NE.toList l1) ++ (NE.toList l2'')
+         -- else NE.fromList $ (NE.toList l1) ++ (NE.toList l2'')
+         else NE.fromList $ (NE.toList l1) ++ rest
 
     s2' = addOffsetToToks (0,c2 - c1) s2
 
@@ -389,47 +390,80 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
 
     -- 'o' takes account of any length change due to tokens being
     --     replaced by others of different length
-    o = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) s1
+    odiff = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) s1
+
+    st1 = GHC.showRichTokenStream s1
+    st2 = GHC.showRichTokenStream (s1 ++ s2')
+    st3 = drop (length st1) st2
+    st4 = takeWhile (==' ') st3
+    oo = length $ takeWhile (/='\n') $ reverse (st1++st4)
+    coo = c1 + oo
+    -- o = c2 - coo
+    o = coo - c2
 
     (m,ll) = if (ss1 /= ss2) && (length s1 == 1 && (tokenLen $ head s1) == 0)
           then ([NE.last l1],map (\(Line r c f aa ff s) -> (Line (r+1) (c + o) (f+1) aa ff s)) (NE.toList l2''))
           else if ff' == OGroup
                  then (m',addOffsetToGroup o (NE.tail l2''))
                  else (m',                   (NE.tail l2''))
-{-
-          else if a2 == AVertical || True
-                then (m',map (\(Line r c f aa ff s) -> (Line r     (c + o)     f aa ff s)) (NE.tail l2''))
-                else (m',map (\(Line r c f aa ff s) -> (Line r     (c + o)     f aa ff s)) (NE.tail l2''))
--}
+
+    rest = if ff2 == OGroup
+            then addOffsetToGroup odiff (NE.toList l2'')
+            -- then error $ "(odiff,s1)=" ++ show (odiff,s1)
+            -- then addOffsetToGroup 6 (NE.toList l2'')
+            else NE.toList l2''
+
     addOffsetToGroup _off [] = []
     addOffsetToGroup _off (ls@((Line _r _c _f _aa ONone _s):_)) = ls
-    addOffsetToGroup  off ((Line r c f aa OGroup s):ls) = (Line r (c+off) f aa OGroup s) : addOffsetToGroup o ls
-
+    addOffsetToGroup  off ((Line r c f aa OGroup s):ls) = (Line r (c+off) f aa OGroup s) : addOffsetToGroup off ls
 
 {-
 
-o = -7 (10 - 3)
+((o,st1,st3)=(0,"x y= sq x + sq y where"," sq x= x^pow"))
 
---------------
-((Up
-   (Span (20, 1) (20, 11)) ANone
-   [(Line 20 1 0 SOriginal \"sum\")]
-   []),
- (Leaf
-   (Up
-     (Span (20, 1) (20, 11)) ANone
-     [(Line 20 1 0 SOriginal \"sum\")]
-     [])
-   (PToks [((((20,1),(20,1)),ITvccurly),\"\"),((((20,1),(20,1)),ITsemi),\"\"),((((20,1),(20,11)),ITvarid \"sum\"),\"sum\")])))
+(Line
+r1 = 7
+c1 = 12
+o1 = 0
+ss1 = SOriginal
+ff1 = ONone
+s1 = \"x y= square x + square y where\")
+
+(Line
+r2 = 7
+c2 = 35
+o2 = 0
+ss2 = SOriginal
+ff2 = OGroup
+s2 = \"square x= x^pow\")
+
+------------------------
 
 (Up
-  (Span (20, 12) (22, 18)) ANone
-  [(Line 20 12 0 SOriginal \"(x:xs) = sq x + Renaming.D5.sum xs\"),
-   (Line 21 5 0 SOriginal \"where sq x = x ^pow\"),
-   (Line 22 11 0 SOriginal \"pow = 2\")]
+  (Span (7, 12) (9, 40)) ANone
+  [(Line 7 12 0 SOriginal OGroup \"x y= square x + square y where square x= x^pow\"),
+   (Line 8 -5 0 SOriginal OGroup \"--There is a comment.\"),
+   (Line 9 27 0 SOriginal OGroup \"pow=2\")]
   [])
 
+-------------
+Up1
+(Up
+  (Span (7, 12) (7, 34)) ANone
+  [(Line 7 12 0 SOriginal ONone \"x y= square x + square y where\")]
+  [])
+
+Up2
+(Up
+  (Span (7, 35) (9, 40)) AVertical
+  [(Line 7 35 0 SOriginal OGroup \"square x= x^pow\"),
+   (Line 8 3 0 SOriginal OGroup \"--There is a comment.\"),
+   (Line 9 35 0 SOriginal OGroup \"pow=2\")]
+  [])
+
+
 -}
+
 
 
 -- -------------------------------------
@@ -440,11 +474,9 @@ adjustForDeleted d1 l2 = l
     deltaL = calcDelta d1
     l = NE.map go l2
 
-    -- go (Line r c o SOriginal str) =  Line (r - deltaL) c (o - deltaL) SOriginal str
-    go (Line r c o SOriginal f str) =  Line (r - deltaL) c  o           SOriginal f str
-    go (Line r c o SWasAdded f str) =  Line (r - deltaL) c  o           SWasAdded f str
-    -- go (Line r c o SAdded    str) =  Line  r           c  o           SAdded   f str
-    go (Line r c o SAdded  f  str) =  Line  r           c  o           SWasAdded f str
+    go (Line r c o SOriginal f str) =  Line (r - deltaL) c  o SOriginal f str
+    go (Line r c o SWasAdded f str) =  Line (r - deltaL) c  o SWasAdded f str
+    go (Line r c o SAdded    f str) =  Line  r           c  o SWasAdded f str
 
 -- -------------------------------------
 
