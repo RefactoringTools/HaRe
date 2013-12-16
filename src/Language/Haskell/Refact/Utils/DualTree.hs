@@ -69,19 +69,26 @@ data Up = Up Span Alignment (NE.NonEmpty Line) [DeletedSpan]
 data Span = Span (Row,Col) (Row,Col)
           deriving (Show,Eq)
 
-data Line = Line Row Col RowOffset Source [PosToken]
+data Line = Line Row Col RowOffset Source LineOpt [PosToken]
 
 data Alignment = ANone | AVertical
                deriving (Show,Eq)
 
 instance Show Line where
-  show (Line r c o s toks) = "(" ++ show r ++ " " ++ show c ++ " " ++ show o
+  show (Line r c o f s toks) = "(" ++ show r ++ " " ++ show c ++ " " ++ show o
+          ++ " " ++ show f
           ++ " " ++ show s ++ "\"" ++ GHC.showRichTokenStream toks ++ "\")"
 
 data Source = SOriginal
             | SAdded
             | SWasAdded
             deriving (Show,Eq)
+
+data LineOpt = ONone
+             -- | This line needs to be grouped with the next in terms
+             -- of layout, so any column offsets need to be propagated
+             | OGroup
+             deriving (Show,Eq)
 
 data Annot = Ann String
            | ADeleted ForestSpan RowOffset SimpPos
@@ -107,12 +114,12 @@ instance Semigroup Transformation where
 
 instance (Action Transformation Up) where
   act AsIs s = s
-  act (T n)                   (Up span a s ds) = (Up span a s ds)
-  act (TAbove co bo p1 p2 eo) (Up span a s ds) = (Up span a' s ds)
+  act (T _n)                       (Up sspan  a s ds) = (Up sspan a  s  ds)
+  act (TAbove _co _bo _p1 _p2 _eo) (Up sspan _a s ds) = (Up sspan a' s' ds)
     where
       a' = AVertical
-      s' = NE.map (\(Line r c o s toks) -> (Line r (c - co) o s toks)) s
-  act (TDeleted sspan ro p) (Up span a s ds) = (Up span a s ds)
+      s' = NE.map (\(Line r c o ss _f toks) -> (Line r c o ss OGroup toks)) s
+  act (TDeleted _sspan _ro _p) (Up sspan a s ds) = (Up sspan a s ds)
   act TAdded s = s
 
 -- ---------------------------------------------------------------------
@@ -183,9 +190,9 @@ instance (GHC.Outputable a) => GHC.Outputable (NE.NonEmpty a) where
   ppr (x NE.:| xs) = (GHC.ppr (x:xs))
 
 instance GHC.Outputable Line where
-  ppr (Line r c o s str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r
+  ppr (Line r c o s f str) = GHC.parens $ GHC.text "Line" GHC.<+> GHC.ppr r
                          GHC.<+> GHC.ppr c GHC.<+> GHC.ppr o
-                         GHC.<+> GHC.ppr s
+                         GHC.<+> GHC.ppr s GHC.<+> GHC.ppr f
                          GHC.<+> GHC.text ("\"" ++ (GHC.showRichTokenStream str) ++ "\"")
                          -- GHC.<+> GHC.text (show str) -- ++AZ++ debug
 
@@ -193,6 +200,10 @@ instance GHC.Outputable Source where
   ppr SOriginal = GHC.text "SOriginal"
   ppr SAdded    = GHC.text "SAdded"
   ppr SWasAdded = GHC.text "SWasAdded"
+
+instance GHC.Outputable LineOpt where
+  ppr ONone  = GHC.text "ONone"
+  ppr OGroup = GHC.text "OGroup"
 
 -- ---------------------------------------------------------------------
 
@@ -229,7 +240,7 @@ renderLines ls = res
     (_,(_,res)) = runState (go 0 ls) ((1,1),"")
 
     go _ [] = do return ()
-    go ci ((Line r c _o _s str):ls') = do
+    go ci ((Line r c _o _f _s str):ls') = do
       newPos r (c+ci)
       addString (GHC.showRichTokenStream str)
       go ci ls'
@@ -292,7 +303,7 @@ layoutTreeToSourceTree (T.Node (Entry sspan (Above bo p1 p2 eo) [])  ts0)
   where
     subs = (mconcatl $ map layoutTreeToSourceTree ts0)
     Just (Up _s _a ls _ds) = getU subs
-    (Line _r _c _o _so toks) = NE.head ls
+    (Line _r _c _o _so _f toks) = NE.head ls
     co = 0
 
 layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts) = leaf (mkUp sspan toks) (PToks toks)
@@ -328,8 +339,9 @@ mkUp sspan toks = Up ss a ls []
 
 mkLinesFromToks :: Source -> [PosToken] -> [Line]
 mkLinesFromToks _ [] = []
-mkLinesFromToks s toks = [Line ro co 0 s toks']
+mkLinesFromToks s toks = [Line ro co 0 s f toks']
   where
+    f = ONone
     ro' = tokenRow $ head toks
     co' = tokenCol $ head toks
     (ro,co) = srcPosToSimpPos (tokenRow $ head toks, tokenCol $ head toks)
@@ -338,6 +350,9 @@ mkLinesFromToks s toks = [Line ro co 0 s toks']
 
 -- ---------------------------------------------------------------------
 
+-- | Combine the 'U' annotations as they propagate from the leafs to
+-- be cached at the root of the tree. This is the heart of the
+-- DualTree functionality
 combineUps :: Up -> Up -> Up
 combineUps (UDeleted d1) (UDeleted d2)  = UDeleted (d1 <> d2)
 
@@ -347,20 +362,20 @@ combineUps (UDeleted d1) (Up sp2 a2 l2 d2) = (Up sp2 a2 l (d1 <> d2))
 
 combineUps (Up sp1 a1 l1 d1) (UDeleted d2) = (Up sp1 a1 l1 (d1 <> d2))
 
-combineUps (Up sp1 _a1 l1 d1) (Up sp2 a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2))
+combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2))
   where
     a = ANone
 
     l2' = adjustForDeleted d1 l2
 
-    (Line _ _ o2 _ _) = NE.head l2'
+    (Line _ _ o2 _ _ _) = NE.head l2'
     --         1    0
     l2'' = if o1 == o2
             then l2'
-            else NE.fromList $ map (\(Line r c f aa s) -> (Line (r + (o1-f)) c (o1-f) aa s)) (NE.toList l2')
+            else NE.fromList $ map (\(Line r c f aa ff s) -> (Line (r + (o1-f)) c (o1-f) aa ff s)) (NE.toList l2')
 
-    (Line r1 c1  o1 ss1 s1) = NE.last l1
-    (Line r2 c2 _o2 ss2 s2) = NE.head l2''
+    (Line r1 c1  o1 ss1 ff1 s1) = NE.last l1
+    (Line r2 c2 _o2 ss2 ff2 s2) = NE.head l2''
 
     l = if r1 == r2
          then NE.fromList $ (NE.init l1) ++ m ++ ll
@@ -369,17 +384,28 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d2
     s2' = addOffsetToToks (0,c2 - c1) s2
 
     s1' = s1 ++ s2'
-    m' = [Line r1 c1 o1 ss1 s1']
+    ff' = if ff1 == OGroup || ff2 == OGroup then OGroup else ONone
+    m' = [Line r1 c1 o1 ss1 ff' s1']
 
     -- 'o' takes account of any length change due to tokens being
     --     replaced by others of different length
     o = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) s1
 
     (m,ll) = if (ss1 /= ss2) && (length s1 == 1 && (tokenLen $ head s1) == 0)
-          then ([NE.last l1],map (\(Line r c f aa s) -> (Line (r+1) (c + o) (f+1) aa s)) (NE.toList l2''))
+          then ([NE.last l1],map (\(Line r c f aa ff s) -> (Line (r+1) (c + o) (f+1) aa ff s)) (NE.toList l2''))
+          else if ff' == OGroup
+                 then (m',addOffsetToGroup o (NE.tail l2''))
+                 else (m',                   (NE.tail l2''))
+{-
           else if a2 == AVertical || True
-                then (m',map (\(Line r c f aa s) -> (Line r     (c + o)     f aa s)) (NE.tail l2''))
-                else (m',map (\(Line r c f aa s) -> (Line r     (c   )     f aa s)) (NE.tail l2''))
+                then (m',map (\(Line r c f aa ff s) -> (Line r     (c + o)     f aa ff s)) (NE.tail l2''))
+                else (m',map (\(Line r c f aa ff s) -> (Line r     (c + o)     f aa ff s)) (NE.tail l2''))
+-}
+    addOffsetToGroup _off [] = []
+    addOffsetToGroup _off (ls@((Line _r _c _f _aa ONone _s):_)) = ls
+    addOffsetToGroup  off ((Line r c f aa OGroup s):ls) = (Line r (c+off) f aa OGroup s) : addOffsetToGroup o ls
+
+
 {-
 
 o = -7 (10 - 3)
@@ -415,10 +441,10 @@ adjustForDeleted d1 l2 = l
     l = NE.map go l2
 
     -- go (Line r c o SOriginal str) =  Line (r - deltaL) c (o - deltaL) SOriginal str
-    go (Line r c o SOriginal str) =  Line (r - deltaL) c  o           SOriginal str
-    go (Line r c o SWasAdded str) =  Line (r - deltaL) c  o           SWasAdded str
-    -- go (Line r c o SAdded    str) =  Line  r           c  o           SAdded    str
-    go (Line r c o SAdded    str) =  Line  r           c  o           SWasAdded str
+    go (Line r c o SOriginal f str) =  Line (r - deltaL) c  o           SOriginal f str
+    go (Line r c o SWasAdded f str) =  Line (r - deltaL) c  o           SWasAdded f str
+    -- go (Line r c o SAdded    str) =  Line  r           c  o           SAdded   f str
+    go (Line r c o SAdded  f  str) =  Line  r           c  o           SWasAdded f str
 
 -- -------------------------------------
 
@@ -467,11 +493,11 @@ normaliseColumns [] = []
 normaliseColumns ps = ps'
   where
     offset = case (head ps) of
-      Line    _r c _ _ _ -> c - 1
+      Line    _r c _ _ _ _ -> c - 1
       _                -> 0
     ps' = map remove ps
 
-    remove (Line r c o s str) = (Line r (c - offset) o s str)
+    remove (Line r c o s f str) = (Line r (c - offset) o s f str)
     remove x = x
 
 -- ---------------------------------------------------------------------

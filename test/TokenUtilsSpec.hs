@@ -4321,10 +4321,10 @@ Should be pg :  5 - 3 = 2
 -}
       let pprFinal = retrieveLinesFromLayoutTree forest''
       show pprFinal `shouldBe`
-         "[(1 1 0 SOriginal\"module LiftToToplevel.Where where\"),"++
-          "(3 1 0 SOriginal\"anotherFun 0 y = sq y\"),"++
-          "(4 6 0 SOriginal\"where sq x = x^2\"),"++
-          "(5 6 0 SWasAdded\"abc = 3\")]"
+         "[(1 1 0 SOriginal ONone\"module LiftToToplevel.Where where\"),"++
+          "(3 1 0 SOriginal ONone\"anotherFun 0 y = sq y\"),"++
+          "(4 6 0 SOriginal OGroup\"where sq x = x^2\"),"++
+          "(5 6 0 SWasAdded OGroup\"abc = 3\")]"
 
 {-
          [Line 1 1 SOriginal "module LiftToToplevel.Where where",
@@ -5596,19 +5596,18 @@ Should be pg :  5 - 3 = 2
       (GHC.showRichTokenStream $ retrieveTokensFinal f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
       (show $ retrieveLinesFromLayoutTree f2) `shouldBe`
-         "[(1 1 0 SOriginal\"module TokenTest where\"),"++
-          "(3 1 0 SOriginal\"-- Test new style token manager\"),"++
-          "(5 1 0 SOriginal\"bob a b = x\"),"++
-          "(6 3 0 SOriginal\"where x = 3\"),"++
-          "(8 1 0 SOriginal\"bib a b = x\"),"++
-          "(9 3 0 SOriginal\"where\"),"++
-          "(10 5 0 SOriginal\"x = 3\"),"++
-          "(13 1 0 SOriginal\"-- leading comment\"),"++
-          "(14 1 0 SOriginal\"foo x y =\"),"++
-          "(15 3 0 SOriginal\"do c <- getChar\"),"++
-          "(16 6 0 SOriginal\"return c\"),"++
-          "(21 1 0 SOriginal\"\")]"
-
+         "[(1 1 0 SOriginal ONone\"module TokenTest where\"),"++
+          "(3 1 0 SOriginal ONone\"-- Test new style token manager\"),"++
+          "(5 1 0 SOriginal ONone\"bob a b = x\"),"++
+          "(6 3 0 SOriginal OGroup\"where x = 3\"),"++
+          "(8 1 0 SOriginal ONone\"bib a b = x\"),"++
+          "(9 3 0 SOriginal ONone\"where\"),"++
+          "(10 5 0 SOriginal OGroup\"x = 3\"),"++
+          "(13 1 0 SOriginal ONone\"-- leading comment\"),"++
+          "(14 1 0 SOriginal ONone\"foo x y =\"),"++
+          "(15 3 0 SOriginal OGroup\"do c <- getChar\"),"++
+          "(16 6 0 SOriginal OGroup\"return c\"),"++
+          "(21 1 0 SOriginal ONone\"\")]"
 
       (renderLinesFromLayoutTree f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 

@@ -2547,6 +2547,158 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
 
     -- -----------------------------------------------------------------
 
+    it "retrieves the tokens in SourceTree format after renaming Layout.D5Simple" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/D5Simple.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(8,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,23))\n"++
+         "1:((1,24),(1,29))\n"++
+         "1:((3,1),(7,18))\n"++
+         "2:((3,1),(3,11))\n"++
+         "2:((3,12),(5,18))\n"++
+         "3:((3,12),(3,18))\n"++
+         "3:((3,19),(3,20))\n"++
+         "3:((3,21),(3,41))\n"++
+         "4:((3,21),(3,25))\n"++
+         "5:((3,21),(3,23))\n"++
+         "5:((3,24),(3,25))\n"++
+         "4:((3,26),(3,27))\n"++
+         "4:((3,28),(3,41))\n"++
+         "5:((3,28),(3,38))\n"++
+         "5:((3,39),(3,41))\n"++
+         "3:((4,5),(4,10))\n"++
+         "3:((4,11),(5,18))(Above None (4,11) (5,18) FromAlignCol (2,-17))\n"++
+         "4:((4,11),(4,24))\n"++
+         "5:((4,11),(4,13))\n"++
+         "5:((4,14),(4,24))\n"++
+         "6:((4,14),(4,15))\n"++
+         "6:((4,16),(4,17))\n"++
+         "6:((4,18),(4,24))\n"++
+         "7:((4,18),(4,19))\n"++
+         "7:((4,20),(4,21))\n"++
+         "7:((4,21),(4,24))\n"++
+         "4:((5,11),(5,18))\n"++
+         "5:((5,11),(5,14))\n"++
+         "5:((5,15),(5,18))\n"++
+         "6:((5,15),(5,16))\n"++
+         "6:((5,17),(5,18))\n"++
+         "2:((7,1),(7,18))\n"++
+         "3:((7,1),(7,11))\n"++
+         "3:((7,12),(7,14))\n"++
+         "3:((7,15),(7,16))\n"++
+         "3:((7,17),(7,18))\n"++
+         "1:((8,1),(8,1))\n"
+
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (show srcTree) `shouldBe`
+      --     ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+-- replaceToken test/testdata/Renaming/D5.hs:20:1-10: (((False,0,0,20), 1),((False,0,0,20),11))  ((((20, 1),(20,16)),ITvarid "Renaming.D5.sum"),"Renaming.D5.sum")
+
+      let ss1 = posToSrcSpan layout ((3,1),(3,11))
+      (showGhc ss1) `shouldBe` "test/testdata/Layout/D5Simple.hs:3:1-10"
+
+      [tok1] <- basicTokenise "\n\n\nRenaming.D5.sum"
+      (show tok1) `shouldBe` "((((3,1),(3,16)),ITqvarid (\"Renaming.D5\",\"sum\")),\"Renaming.D5.sum\")"
+
+      let layout2 = replaceTokenForSrcSpan layout ss1 tok1
+
+-- replaceToken test/testdata/Renaming/D5.hs:20:28-37:(((False,0,0,20),28),((False,0,0,20),38))  ((((20,28),(20,43)),ITvarid "Renaming.D5.sum"),"Renaming.D5.sum")
+
+      let ss2 = posToSrcSpan layout ((3,28),(3,38))
+      (showGhc ss2) `shouldBe` "test/testdata/Layout/D5Simple.hs:3:28-37"
+
+      [tok2] <- basicTokenise "\n\n\n                           Renaming.D5.sum"
+      (show tok2) `shouldBe` "((((3,28),(3,43)),ITqvarid (\"Renaming.D5\",\"sum\")),\"Renaming.D5.sum\")"
+
+      let layout3 = replaceTokenForSrcSpan layout2 ss2 tok2
+
+-- replaceToken test/testdata/Renaming/D5.hs:20:1-10: (((False,0,0,20), 1),((False,0,0,20),11))  ((((20, 1),(20, 4)),ITvarid "sum"),"sum")
+
+      let ss3 = posToSrcSpan layout ((3,1),(3,11))
+      (showGhc ss3) `shouldBe` "test/testdata/Layout/D5Simple.hs:3:1-10"
+
+      [tok3] <- basicTokenise "\n\n\nsum"
+      (show tok3) `shouldBe` "((((3,1),(3,4)),ITvarid \"sum\"),\"sum\")"
+
+      let layout4 = replaceTokenForSrcSpan layout3 ss3 tok3
+
+-- replaceToken test/testdata/Renaming/D5.hs:24:1-10: (((False,0,0,24), 1),((False,0,0,24),11))  ((((24, 1),(24, 4)),ITvarid "sum"),"sum")
+
+      let ss4 = posToSrcSpan layout ((7,1),(7,11))
+      (showGhc ss4) `shouldBe` "test/testdata/Layout/D5Simple.hs:7:1-10"
+
+      [tok4] <- basicTokenise "\n\n\n\n\n\n\nsum"
+      (show tok4) `shouldBe` "((((7,1),(7,4)),ITvarid \"sum\"),\"sum\")"
+
+
+      let layout5 = replaceTokenForSrcSpan layout4 ss4 tok4
+
+      -- -- -- --
+
+      (drawTreeCompact layout5) `shouldBe`
+         "0:((1,1),(8,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,23))\n"++
+         "1:((1,24),(1,29))\n"++
+         "1:((3,1),(7,18))\n"++
+          "2:((3,1),(3,11))\n"++   -- sumSquares (x:xs) = sq x + sumSquares xs
+          "2:((3,12),(5,18))\n"++
+           "3:((3,12),(3,18))\n"++
+           "3:((3,19),(3,20))\n"++
+           "3:((3,21),(3,41))\n"++
+            "4:((3,21),(3,25))\n"++
+             "5:((3,21),(3,23))\n"++
+             "5:((3,24),(3,25))\n"++
+            "4:((3,26),(3,27))\n"++
+            "4:((3,28),(3,41))\n"++
+             "5:((3,28),(3,38))\n"++
+             "5:((3,39),(3,41))\n"++
+           "3:((4,5),(4,10))\n"++          -- "where"
+           "3:((4,11),(5,18))(Above None (4,11) (5,18) FromAlignCol (2,-17))\n"++
+            "4:((4,11),(4,24))\n"++       -- sq x = x ^pow
+             "5:((4,11),(4,13))\n"++
+             "5:((4,14),(4,24))\n"++
+              "6:((4,14),(4,15))\n"++
+              "6:((4,16),(4,17))\n"++
+              "6:((4,18),(4,24))\n"++
+               "7:((4,18),(4,19))\n"++
+               "7:((4,20),(4,21))\n"++
+               "7:((4,21),(4,24))\n"++
+            "4:((5,11),(5,18))\n"++       -- pow = 2
+             "5:((5,11),(5,14))\n"++
+             "5:((5,15),(5,18))\n"++
+              "6:((5,15),(5,16))\n"++
+              "6:((5,17),(5,18))\n"++
+          "2:((7,1),(7,18))\n"++        -- sumSquares [] = 0
+           "3:((7,1),(7,11))\n"++
+           "3:((7,12),(7,14))\n"++
+           "3:((7,15),(7,16))\n"++
+           "3:((7,17),(7,18))\n"++
+         "1:((8,1),(8,1))\n"
+
+
+      let srcTree2 = layoutTreeToSourceTree layout5
+      -- (showGhc srcTree2) `shouldBe` ""
+
+      -- (showGhc $ retrieveLinesFromLayoutTree layout3) `shouldBe` ""
+
+      (renderSourceTree srcTree2) `shouldBe` "module Layout.D5Simple where\n\nsum (x:xs) = sq x + Renaming.D5.sum xs\n    where sq x = x ^pow\n          pow = 2\n\nsum [] = 0\n"
+
+    -- -----------------------------------------------------------------
+
     it "retrieves the tokens in SourceTree format after renaming TypeUtils.LayoutLet2" $ do
       (t,toks) <-  parsedFileGhc "./test/testdata/TypeUtils/LayoutLet2.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t

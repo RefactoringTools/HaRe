@@ -1808,7 +1808,7 @@ spec = do
       (showGhc n) `shouldBe` "TokenTest.foo"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((19,1),(19,5)),ITvarid \"bar2\",\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
-      (renderLines $ linesFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n   do c <- getChar\n      return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
+      (renderLines $ linesFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
       (showGhc nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
 
@@ -2062,7 +2062,7 @@ spec = do
       (showGhc n) `shouldBe` "LocToName.sumSquares"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((20,1),(20,9)),ITvarid \"newPoint\",\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
-      (renderLines $ linesFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + newPoint xs\n-- where sq x = x ^pow \n--       pow = 2\n\nnewPoint [] = 0\n"
+      (renderLines $ linesFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(newPoint (x : xs) = x GHC.Real.^ 2 GHC.Num.+ newPoint xs\n newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
     ------------------------------------
@@ -2087,7 +2087,7 @@ spec = do
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
       -- (show $ layoutFromState s) `shouldBe` ""
       -- (showGhc $ retrieveTokensPpr $ fromJust $ layoutFromState s) `shouldBe` ""
-      (renderLines $ linesFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + LocToName.newPoint xs\n          -- where sq x = x ^pow \n          --       pow = 2\n\nnewPoint [] = 0\n"
+      (renderLines $ linesFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + LocToName.newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
@@ -2342,7 +2342,7 @@ spec = do
       (showGhc n) `shouldBe` "xxx"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((6,5),(6,6)),ITvarid \"x\",\"x\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
-      (renderLines $ linesFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo x = let a = 1\n            b = 2\n        in x + a + b\n\n"
+      (renderLines $ linesFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo x = let a = 1\n            b = 2\n          in x + a + b\n\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo x\n = let\n a = 1\n b = 2\n in x GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
     ------------------------------------
@@ -2367,7 +2367,7 @@ spec = do
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((6,5),(6,12)),ITvarid \"xxxlong\",\"xxxlong\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
       -- (pprFromState s) `shouldBe` []
-      (renderLines $ linesFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo xxxlong = let a = 1\n                  b = 2\n              in xxxlong + a + b\n\n"
+      (renderLines $ linesFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo xxxlong = let a = 1\n                  b = 2\n          in xxxlong + a + b\n\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(LayoutLet1.foo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
 
