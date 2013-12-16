@@ -73,7 +73,7 @@ Question: is the latter statement valid? ++AZ++
 -- | An entry in the data structure for a particular srcspan.
 data Entry = Entry !ForestSpan -- The source span contained in this
                                   -- Node
-                   !Layout     -- ^How the sub-elements nest
+                   !Layout     -- How the sub-elements nest
                    ![PosToken] -- ^The tokens for the SrcSpan if
                                --  subtree is empty
            | Deleted !ForestSpan -- The source span has been deleted
@@ -95,11 +95,7 @@ data Layout = Above EndOffset (Row,Col) (Row,Col) EndOffset
             -- token in the stacked list to be able to calculate the
             -- (RowOffset,ColOffset) between the last token and the
             -- start of the next item.
-            -- | Offset RowOffset ColOffset
             | NoChange
-            -- | Offset between the end of an 'Above' entry and the
-            -- next one
-            -- | EndOffset RowOffset ColOffset
             deriving (Show,Eq)
 
 data EndOffset = None

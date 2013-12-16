@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.0.7
+Version:                        0.7.0.8
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -21,10 +21,6 @@ Description:
    warranties, use at your own risk. May frighten children and dogs.
    .
    Current known defects:
-   .
-     * After renaming, the layout of nested let/where clauses is not adjusted.
-       This can cause problems if the new name is a different length from the
-       old one.
    .
      * liftToTopLevel of a recursive function may introduce parameter
        errors. e.g. lifting 'g' in the 'zmapQ' function from 'syz-0.2.0.0'

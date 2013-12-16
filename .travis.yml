@@ -32,6 +32,8 @@ before_install:
 install:
  - cabal-1.18 update
  - cabal-1.18 install happy
+ - cabal-1.18 install alex
+ - cabal-1.18 install haddock
  - if [ "$GHCVER" = "6.12.3" ]; then
       cabal-1.18 install --only-dependencies;
       cabal-1.18 install 'QuickCheck==2.6.*';
