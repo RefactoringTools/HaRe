@@ -10,7 +10,7 @@
 Check that it works from the command line
 
     $ ghc-hare --version
-    0.7.0.0
+    0.7.0.x
 
 Running the bare command lists available refactorings and their parameters
 
@@ -21,9 +21,9 @@ Currently only emacs integration is offered. Add the following to your
 your machine.
 
     (add-to-list 'load-path
-        "~/.cabal/share/HaRe-0.7.0.3/elisp")
+        "~/.cabal/share/HaRe-0.7.0.8/elisp")
     (add-to-list 'load-path
-        "~/.cabal/share/i386-linux-ghc-7.6.3/HaRe-0.7.0.3/elisp")
+        "~/.cabal/share/i386-linux-ghc-7.6.3/HaRe-0.7.0.8/elisp")
     (require 'hare)
     (autoload 'hare-init "hare" nil t)
 
@@ -100,6 +100,9 @@ see <http://travis-ci.org/#alanz/HaRe> for continuous build results
     Applications") (if only for the diagram of GHC phases and data structures)
   * [GHC 7.6.3 API docs](http://www.haskell.org/ghc/docs/7.6.3/html/libraries/ghc-7.6.3/GHC.html)
   * [GHC 7.4.2 API docs](http://www.haskell.org/ghc/docs/7.4.2/html/libraries/ghc-7.4.2/GHC.html)
+  * [Monoids: Theme and Variations](http://www.cis.upenn.edu/~byorgey/pub/monoid-pearl.pdf) 
+    The background to how the dual tree data structure used for token
+    output works
 
 ## Coding style
 
@@ -108,8 +111,16 @@ Note:A consistent coding layout style is more important than what specific on is
 
 ## Contributors
 
+ * Simon Thompson
  * Christopher Brown
  * Huiqing Li
  * Alan Zimmerman
  * Many others, ..
+
+## Logo
+
+![Logo](https://github.com/alanz/HaRe/blob/master/HareLogo.svg?raw=true)
+
+The logo was designed by Christi du Toit,
+<http://www.behance.net/christidutoit>
 
