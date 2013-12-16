@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module DualTreeSpec (main, spec) where
 
 import           Test.Hspec
@@ -2226,6 +2227,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+#if __GLASGOW_HASKELL__ > 704
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(25,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2356,6 +2358,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
          "3:((24,15),(24,16))\n"++
          "3:((24,17),(24,18))\n"++
          "1:((25,1),(25,1))\n"
+#endif
 
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
@@ -2406,6 +2409,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
 
       -- -- -- --
 
+#if __GLASGOW_HASKELL__ > 704
       (drawTreeCompact layout5) `shouldBe`
          "0:((1,1),(25,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2536,7 +2540,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
            "3:((24,15),(24,16))\n"++
            "3:((24,17),(24,18))\n"++
          "1:((25,1),(25,1))\n"
-
+#endif
 
       let srcTree2 = layoutTreeToSourceTree layout5
       -- (showGhc srcTree2) `shouldBe` ""

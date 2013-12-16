@@ -318,6 +318,86 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyDecl (GHC.L ln _) vars def _fvs
     r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ (makeLeafFromToks s2)
                      ++ (makeLeafFromToks nToks) ++ varsLayout ++ typeLayout
                      ++ (makeLeafFromToks toks4))]
+#else
+allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TyData _ (GHC.L lc ctx) (GHC.L ln _) vars mpats mkind cons mderivs))) = (r,toks')
+  where
+    (s1,clToks,toks')    = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s15,ctxToks,toks'a) = splitToksIncComments (ghcSpanStartEnd lc) clToks
+    (s2,nToks,toks'')    = splitToksIncComments (ghcSpanStartEnd ln) toks'a
+    (s21,vToks,toks3)    = splitToksForList vars toks''
+    ctxLayout = allocHsContext ctx ctxToks
+    varsLayout = allocList vars vToks allocTyVarBndr
+    (patsLayout,toks4) = case mpats of
+       Nothing -> ([],toks3)
+       Just pats -> ([makeGroup (strip $ (makeLeafFromToks s3) ++ (allocList pats patsToks allocType))],toks4')
+          where (s3,patsToks,toks4') = splitToksForList pats toks3
+    (kindLayout,toks5) = case mkind of
+       Nothing -> ([],toks4)
+       Just k@(GHC.L lk _k) -> (kLayout,toks5')
+         where
+           (s4,kToks,toks5') = splitToksIncComments (ghcSpanStartEnd lk) toks4
+           kLayout = [makeGroup (strip $ (makeLeafFromToks s4) ++ allocHsKind k kToks)]
+    (s5,consToks,toks6) = splitToksForList cons toks5
+    consLayout = [makeGroup (strip $ (makeLeafFromToks s5) ++ (allocList cons consToks allocConDecl))]
+    (derivsLayout,toks7) = case mderivs of
+      Nothing -> ([],toks6)
+      Just derivs -> (dLayout,toks7')
+        where
+          (s6,dToks,toks7') = splitToksForList derivs toks6
+          dLayout = [makeGroup (strip $ (makeLeafFromToks s6) ++ (allocList derivs dToks allocType))]
+
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1)
+                     ++ (makeLeafFromToks s15)
+                     ++ ctxLayout
+                     ++ (makeLeafFromToks s2)
+                     ++ (makeLeafFromToks nToks)
+                     ++ (makeLeafFromToks s21)
+                     ++ varsLayout ++ patsLayout
+                     ++ kindLayout
+                     ++ consLayout ++ derivsLayout
+                     ++ (makeLeafFromToks toks7))]
+{-
+tcdND :: NewOrData
+tcdCtxt :: LHsContext name
+
+    Context...
+
+    Context 
+tcdLName :: Located name
+
+    Name of the class
+
+    type constructor
+
+    Type constructor 
+tcdTyVars :: [LHsTyVarBndr name]
+
+    Class type variables
+
+    type variables
+
+    Type variables 
+tcdTyPats :: Maybe [LHsType name]
+
+    Type patterns See Note [tcdTyVars and tcdTyPats]
+
+    Type patterns. See Note [tcdTyVars and tcdTyPats] 
+tcdKindSig :: Maybe (LHsKind name)
+
+    Optional kind signature.
+
+    (Just k) for a GADT-style data, or data instance decl with explicit kind sig 
+tcdCons :: [LConDecl name]
+
+    Data constructors
+
+    For data T a = T1 | T2 a the LConDecls all have ResTyH98. For data T a where { T1 :: T a } the LConDecls all have ResTyGADT. 
+tcdDerivs :: Maybe [LHsType name]
+
+    Derivings; Nothing => not specified, Just [] => derive exactly what is asked
+
+    These types must be of form forall ab. C ty1 ty2 Typically the foralls and ty args are empty, but they are non-empty for the newtype-deriving case 
+-}
 #endif
 #if __GLASGOW_HASKELL__ > 704
 allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L ln _) vars fds sigs meths ats atdefs docs _fvs))) = (acc++r,toks')
@@ -357,6 +437,8 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L
              ++ ctxLayout ++ (makeLeafFromToks s3)
              ++ nLayout ++ varsLayout ++ (makeLeafFromToks s5)
              ++ fdsLayout ++ bindsLayout]
+
+allocTyClD (acc,toks) x = error $ "allocTyClD:unknown value:" ++ showGhc x
 
 {-
 ClassDecl	 
