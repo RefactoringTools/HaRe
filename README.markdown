@@ -119,7 +119,8 @@ Note:A consistent coding layout style is more important than what specific on is
 
 ## Logo
 
-![Logo](https://github.com/alanz/HaRe/blob/master/HaReLogo.svg?raw=true)
+<img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg"
+width="400" height="300" />
 
 The logo was designed by Christi du Toit,
 <http://www.behance.net/christidutoit>
