@@ -39,22 +39,8 @@ data DeletedSpan = DeletedSpan Span RowOffset SimpPos
               deriving (Show,Eq)
 
 -- TODO: We are not actually using any of these
-data Transformation = {- AsIs
-                    |  T Integer
-                    | -} TAbove ColOffset EndOffset (Row,Col) (Row,Col) EndOffset
-                    -- | TDeleted ForestSpan RowOffset SimpPos
-                    -- | TAdded
+data Transformation = TAbove ColOffset EndOffset (Row,Col) (Row,Col) EndOffset
                     deriving Show
-
-{-
--- I have no idea why this is needed, but any dual tree operations fail if it is not present
-instance Num Transformation where
-  fromInteger n = T n
-  (T a) + (T b) = T (a + b)
-  (T a) * (T b) = T (a * b)
-  abs (T a)     = T (abs a)
-  signum (T a)  = T (signum a)
--}
 
 {-
 transform :: Transformation -> Prim -> Prim
@@ -415,13 +401,57 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
                  then (m',addOffsetToGroup o (NE.tail l2''))
                  else (m',                   (NE.tail l2''))
 
-    rest = if ff2 == OGroup
+    -- rest = if ff2 == OGroup
+    rest = if ff2 == OGroup && ff1 == OGroup
             then addOffsetToGroup odiff (NE.toList l2'')
             else NE.toList l2''
 
     addOffsetToGroup _off [] = []
     addOffsetToGroup _off (ls@((Line _r _c _f _aa ONone _s):_)) = ls
     addOffsetToGroup  off ((Line r c f aa OGroup s):ls) = (Line r (c+off) f aa OGroup s) : addOffsetToGroup off ls
+
+{-
+
+(Line
+r1 = 10
+c1 = 3
+o1 = 0
+ss1 = SOriginal
+ff1 = ONone
+s1 = \"g2 <- getCurrentModuleGraph\")
+
+(Line
+r2 = 11
+c2 = 3
+o2 = 0
+ss2 = SOriginal
+ff2 = OGroup
+s2 = \"let scc = topSortModuleGraph False g2 Nothing\")
+
+---
+(Up
+   (Span (9, 3) (11, 47)) ANone
+   [(Line 9 3 0 SOriginal ONone \"-- g <- GHC.getModuleGraph\"),
+    (Line 10 3 0 SOriginal ONone \"g2 <- getCurrentModuleGraph\"),
+    (Line 11 4 0 SOriginal OGroup \"let scc = topSortModuleGraph False g2 Nothing\")]
+   [])
+
+-------------------------
+
+Up1
+(Up
+  (Span (9, 3) (10, 29)) ANone
+  [(Line 9 3 0 SOriginal ONone \"-- g <- GHC.getModuleGraph\"),
+   (Line 10 3 0 SOriginal ONone \"g2 <- getCurrentModuleGraph\")]
+  [])
+
+Up2
+(Up
+  (Span (11, 3) (11, 47)) ANone
+  [(Line 11 3 0 SOriginal OGroup \"let scc = topSortModuleGraph False g2 Nothing\")]
+  [])
+
+-}
 
 {-
 
