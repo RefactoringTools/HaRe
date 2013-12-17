@@ -15,7 +15,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -- ,lengthOfToks
                      -- , mkToken, mkZeroToken {-,defaultToken, -}
                      {-whiteSpacesToken -}
-                     ,whiteSpaceTokens
+                     , whiteSpaceTokens
                      , realSrcLocFromTok
                      , isWhite
                      , notWhite
@@ -60,6 +60,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , prettyprint -- , prettyprintGhc
                      , prettyprintPatList
                      , groupTokensByLine
+                     , toksOnSameLine
                      , addLocInfo
                      -- , getIndentOffset
                      , getLineOffset
@@ -74,6 +75,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , tokenRow
                      , tokenPos
                      , tokenPosEnd
+                     , tokenSrcSpan
                      , tokenCon
                      , increaseSrcSpan
                      , getGhcLoc
@@ -550,13 +552,13 @@ replaceToks toks startPos endPos newToks =
 -- Note1: does not re-align, else other later replacements may fail.
 -- Note2: must keep original end col, to know what the inter-token gap
 --        was when re-aligning
-replaceTokNoReAlign::[PosToken]->SimpPos->PosToken->[PosToken]
+replaceTokNoReAlign:: [PosToken] -> SimpPos -> PosToken -> [PosToken]
 replaceTokNoReAlign toks pos newTok =
     toks1 ++ [newTok'] ++ toksRest
    where
       (toks1,toks2) = break (\t -> tokenPos t >= pos && tokenLen t > 0) toks
       toksRest = if (emptyList toks2) then [] else (gtail "replaceTokNoReAlign" toks2)
-      oldTok =  if (emptyList toks2) then newTok else (ghead "replaceTokNoReAlign" toks2)
+      oldTok  =  if (emptyList toks2) then newTok else (ghead "replaceTokNoReAlign" toks2)
       -- newTok' = markToken newTok
       newTok' = markToken $ matchTokenPos oldTok newTok
 
@@ -1017,6 +1019,9 @@ tokenPos (GHC.L l _,_)     = getGhcLoc l
 tokenPosEnd :: (GHC.GenLocated GHC.SrcSpan t1, t) -> SimpPos
 tokenPosEnd (GHC.L l _,_)     = getGhcLocEnd l
 
+tokenSrcSpan :: (GHC.Located t1, t) -> GHC.SrcSpan
+tokenSrcSpan (GHC.L l _,_)     = l
+
 -- TODO: badly named function
 tokenCon :: PosToken -> String
 tokenCon (_,s)     = s
@@ -1105,7 +1110,6 @@ splitToks (startPos, endPos) toks =
     (toks1,toks21,toks22)
 
 
-
 -- ----------------------------------------------------------------------
 
 -- |Get around lack of instance Eq when simply testing for empty list
@@ -1133,13 +1137,11 @@ startEndLocIncComments' toks (startLoc,endLoc) =
 
     notIgnored tt = not (isWhiteSpaceOrIgnored tt)
 
-    -- (leadinr,leadr) = break notWhiteSpace $ reverse begin
     (leadinr,leadr) = break notIgnored $ reverse begin
     leadr' = filter (\t -> not (isEmpty t)) leadr
     prevLine  = if (emptyList leadr') then 0 else (tokenRow $ ghead "startEndLocIncComments'1" leadr')
     firstLine = if (emptyList middle) then 0 else (tokenRow $ ghead "startEndLocIncComments'1" middle)
     (_nonleadComments,leadComments') = divideComments prevLine firstLine $ reverse leadinr
-    -- leadComments = dropWhile (\tt -> (isThen tt || isElse tt || isEmpty tt || isIn tt || isDo tt)) leadComments'
     leadComments = dropWhile (\tt -> (isEmpty tt)) leadComments'
 
     (trail,trailrest) = break notWhiteSpace end
@@ -1396,9 +1398,10 @@ newLinesToken jump (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
 -- ---------------------------------------------------------------------
 
 groupTokensByLine :: [PosToken] -> [[PosToken]]
-groupTokensByLine xs = groupBy fn xs
-  where
-    fn t1 t2 = tokenRow t1 == tokenRow t2
+groupTokensByLine xs = groupBy toksOnSameLine xs
+
+toksOnSameLine :: PosToken -> PosToken -> Bool
+toksOnSameLine t1 t2 = tokenRow t1 == tokenRow t2
 
 {-
 groupTokensByLine :: [PosToken] -> [[PosToken]]

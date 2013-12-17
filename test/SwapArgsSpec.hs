@@ -29,7 +29,8 @@ spec = do
 
 
     it "swaps arguments for a definition at the top level" $ do
-     swapArgs defaultTestSettings testCradle ["./test/testdata/SwapArgs/B.hs","9","1"]
+     r <- swapArgs defaultTestSettings testCradle ["./test/testdata/SwapArgs/B.hs","9","1"]
+     (show r) `shouldBe` "[\"./test/testdata/SwapArgs/B.hs\"]"
      diff <- compareFiles "./test/testdata/SwapArgs/B.hs.refactored"
                           "./test/testdata/SwapArgs/B.hs.expected"
      diff `shouldBe` []

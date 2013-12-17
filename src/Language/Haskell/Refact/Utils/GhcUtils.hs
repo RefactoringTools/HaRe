@@ -17,6 +17,7 @@ module Language.Haskell.Refact.Utils.GhcUtils (
     -- * SYB versions
       everythingButStaged
     , somethingStaged
+    , everythingStaged
     , somewhereMStaged
     , somewhereMStagedBu
     , everywhereMStaged

@@ -8,7 +8,6 @@ sumSquares (x:xs) = sq   + sumSquares xs
        sq   = x ^pow
     
 
-
 sumSquares [] = 0
 
 pow = 2

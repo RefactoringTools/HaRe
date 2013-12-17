@@ -39,7 +39,8 @@ spec = do
 
     it "duplicates a definition at the top level" $ do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","tl2","4","1"]
-     duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "tl2" (4,1)
+     res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "tl2" (4,1)
+     (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected"
      diff `shouldBe` []
@@ -47,7 +48,8 @@ spec = do
 
     it "duplicates a definition in a match" $ do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","23","5"]
-     duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "mm" (23,5)
+     res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "mm" (23,5)
+     (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
@@ -55,27 +57,31 @@ spec = do
 
     it "duplicates a definition in a pattern match" $ do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","gg","17","5"]
-     duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "gg" (17,5)
+     res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "gg" (17,5)
+     (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.gg"
      diff `shouldBe` []
 
     it "duplicates a definition in a let expression" $ do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","lll","27","5"]
-     duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "lll" (27,5)
+     res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "lll" (27,5)
+     (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.ll"
      diff `shouldBe` []
 
     it "duplicates a definition in a let statement" $ do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","sss","31","7"]
-     duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "sss" (31,7)
+     res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "sss" (31,7)
+     (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.dd"
      diff `shouldBe` []
 
     it "hides the new definition if it will cause problems in client mods" $ do
-     duplicateDef (testSettingsMainfile "./test/testdata/DupDef/Dd2.hs") testCradle "./test/testdata/DupDef/Dd1.hs" "mm" (23,5)
+     res <- duplicateDef (testSettingsMainfile "./test/testdata/DupDef/Dd2.hs") testCradle "./test/testdata/DupDef/Dd1.hs" "mm" (23,5)
+     (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\",\"./test/testdata/DupDef/Dd2.hs\"]"
      diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
@@ -84,8 +90,10 @@ spec = do
      diff2 `shouldBe` []
 
     it "duplicates a definition and formats properly" $ do
-     duplicateDef defaultTestSettings testCradle "./test/testdata/Case/B.hs" "joe" (9,1)
-     -- duplicateDef logTestSettings Nothing "./test/testdata/Case/B.hs" "joe" (9,1)
+     res <- duplicateDef defaultTestSettings testCradle "./test/testdata/Case/B.hs" "joe" (9,1)
+     -- duplicateDef logTestSettings Nothing
+        -- "./test/testdata/Case/B.hs" "joe" (9,1)
+     (show res) `shouldBe` "[\"./test/testdata/Case/B.hs\"]"
      diff <- compareFiles "./test/testdata/Case/B.hs.refactored"
                           "./test/testdata/Case/B.hs.expected.dd"
      diff `shouldBe` []

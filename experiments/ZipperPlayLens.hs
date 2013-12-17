@@ -94,7 +94,7 @@ eg2' = zipper tree1
     <&> focus .~ tree2
     <&> rezip
 
-{- 
+{-
 *Main> fdt eg2'
 a
 |
@@ -105,7 +105,7 @@ a
    +- ba
    |
    `- bb
-*Main> 
+*Main>
 -}
 
 
@@ -113,10 +113,10 @@ a
 eg5 :: (Functor f, MonadPlus f) => f (Tree String)
 eg5 = zipper tree1
     & downward  branches -- focus is now [aa,ab]
-    & fromWithin traverse 
+    & fromWithin traverse
     -- (&) :: a -> (a -> b) -> b
-    & rightward  
-    -- & rightward  
+    & rightward
+    -- & rightward
     <&> focus .~ tree2
     <&> rezip
 
@@ -124,7 +124,7 @@ eg5 = zipper tree1
 {-
 eg6 = ft
   where
-    z  = zipper tree1 & downward  branches & fromWithin traverse 
+    z  = zipper tree1 & downward  branches & fromWithin traverse
     ft = findSubTree z "ab"
 
 findSubTree
@@ -139,10 +139,10 @@ findSubTree
         (Tree [Char])
 -- findSubTree z w = tree1
 findSubTree tr what = res
-      where 
+      where
         ft = tr & view focus :: Tree [Char]
-        res = if (rootLabel ft == what) 
-          then tr 
+        res = if (rootLabel ft == what)
+          then tr
           else findSubTree (tr & rightward) what
         -- res = tr
 -}
@@ -153,7 +153,7 @@ findSubTree tr what = res
 -- root :: Lens' (Tree a) a
 -- branches :: Lens' (Tree a) [Tree a]
 --
--- The branches are a list, 
+-- The branches are a list,
 
 eg3 :: Tree [Char]
 eg3 = zipper tree1
@@ -183,7 +183,7 @@ eg4 = z1'
 ------------------------------------------------------------------------
 -- how to search for a specific element in the tree?
 
--- Assumption: 
+-- Assumption:
 --   1. the root strings are arranged in a prefix tree, i.e. all sub
 --      elements have the same prefix as the parent, and the branches
 --      are sorted. [as in tree1 and tree2]
@@ -193,14 +193,14 @@ focusOn tree key = z
  where
    z1 = zipper tree
 
-focusOn' z key = 
+focusOn' z key =
   let
     node = view focus z
     z' = if key == rootLabel node
          then z
          else -- find the sub tree
            where
-             
+
 -}
 
 eg6:: Top :>> (Tree [Char]) :>> [(Tree [Char])]
@@ -210,7 +210,7 @@ eg6 = z1
       & downward branches
     -- z1 = view focus z
     z1 = z
-  
+
 
 
 
@@ -242,25 +242,25 @@ s1 = zipper s
 
 testTree = Node 1 [ Node 2 [ Node 4 [ Node 6 [], Node 8 [] ],
                              Node 5 [ Node 7 [], Node 9 [] ] ],
-                    Node 3 [ Node 10 [], 
-                             Node 11 [] ] 
+                    Node 3 [ Node 10 [],
+                             Node 11 [] ]
                   ]
 
 zipperTree = zipper testTree
 
 
-z1 = zipperTree & downward branches 
-                & fromWithin traverse 
-                & downward root 
-                & focus .~ 500 
+z1 = zipperTree & downward branches
+                & fromWithin traverse
+                & downward root
+                & focus .~ 500
                 & rezip
 
 z1' = Node 1 [ Node 500 [Node {rootLabel = 4, subForest = [Node {rootLabel = 6, subForest = []},Node {rootLabel = 8, subForest = []}]},Node {rootLabel = 5, subForest = [Node {rootLabel = 7, subForest = []},Node {rootLabel = 9, subForest = []}]}],
                        Node {rootLabel = 3, subForest = [Node {rootLabel = 10, subForest = []},Node {rootLabel = 11, subForest = []}]}]
 
-tape = zipperTree & downward branches 
-                  & fromWithin traverse 
-                  & downward root 
+tape = zipperTree & downward branches
+                  & fromWithin traverse
+                  & downward root
                   & saveTape
 
 z2 :: Maybe (Tree Integer)
@@ -268,5 +268,5 @@ z2 = do
       t  <- (restoreTape tape testTree)
       return (t & focus .~ 15 & rezip)
 
-z3 = zipperTree & downward branches 
---                & fromWithin traverse 
+z3 = zipperTree & downward branches
+--                & fromWithin traverse

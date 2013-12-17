@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.0.6
+Version:                        0.7.0.8
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -21,10 +21,6 @@ Description:
    warranties, use at your own risk. May frighten children and dogs.
    .
    Current known defects:
-   .
-     * After renaming, the layout of nested let/where clauses is not adjusted.
-       This can cause problems if the new name is a different length from the
-       old one.
    .
      * liftToTopLevel of a recursive function may introduce parameter
        errors. e.g. lifting 'g' in the 'zmapQ' function from 'syz-0.2.0.0'
@@ -50,12 +46,18 @@ Library
         Build-Depends:          base >= 4.0  && < 4.7
                                 , containers
                                 , directory
+
+                                , dual-tree
+                                , semigroups
+                                , monoid-extras
+
                                 , filepath
                                 , ghc
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 3.1.2
+                                , ghc-mod >= 3.1.4
+                                -- , lens
                                 , mtl
                                 , old-time
                                 , pretty
@@ -67,7 +69,7 @@ Library
                                 , Strafunski-StrategyLib
                                 , syz
 
-        -- GHC-Options:             -Wall
+        GHC-Options:             -Wall
 
         Hs-Source-Dirs:         src
         Other-Modules:          Paths_HaRe
@@ -78,10 +80,14 @@ Library
            , Language.Haskell.Refact.Renaming
            , Language.Haskell.Refact.SwapArgs
            , Language.Haskell.Refact.Utils
+           , Language.Haskell.Refact.Utils.DualTree
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils
            , Language.Haskell.Refact.Utils.GhcVersionSpecific
+           , Language.Haskell.Refact.Utils.Layout
+           , Language.Haskell.Refact.Utils.LayoutTypes
+           , Language.Haskell.Refact.Utils.LayoutUtils
            , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
            , Language.Haskell.Refact.Utils.MonadFunctions
@@ -97,22 +103,26 @@ Library
 Executable ghc-hare
         Main-Is:                MainHaRe.hs
         -- Other-Modules:          Paths_HaRe
-        -- GHC-Options:            -Wall
+        GHC-Options:            -Wall
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
         Build-Depends:          base >= 4.0  && < 4.7
                                 , array
-                                -- TODO: remove cmdtheline
-                                , cmdtheline >= 0.2.1
                                 , containers
                                 , directory
+
+                                , dual-tree
+                                , semigroups
+                                , monoid-extras
+
                                 , filepath
                                 , ghc
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 3.1.2
+                                , ghc-mod >= 3.1.4
+                                -- , lens
                                 , mtl
                                 , old-time
                                 , parsec
@@ -124,7 +134,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , HaRe >= 0.7.0.0
+                                , HaRe >= 0.7.0.8
         Extensions:      CPP
 
 
@@ -146,11 +156,15 @@ test-suite spec
     test
   build-depends:
       base        >= 4.0  && < 4.7
-    -- , Diff == 0.1.3
-    , Diff
+    , Diff >= 0.3.0
     , HUnit       == 1.2.*
     , QuickCheck  >= 2.5
     , containers
+
+    , dual-tree
+    , semigroups
+    , monoid-extras
+
     , deepseq
     , directory
     , filepath
@@ -159,8 +173,8 @@ test-suite spec
     , ghc-prim
     , ghc-syb-utils
     , ghc-mod >= 3.1.2
-    -- , hspec       == 1.4.*
     , hspec
+    , hspec-discover
     , mtl
     , old-time
     , process
@@ -173,7 +187,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , HaRe >= 0.7.0.0
+    , HaRe >= 0.7.0.8
   Extensions:      CPP
 
 source-repository head

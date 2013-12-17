@@ -9,10 +9,14 @@ import qualified Lexer      as GHC
 import qualified GHC.SYB.Utils as SYB
 
 import Control.Monad.State
+import Data.List
 import Data.Maybe
 import Data.Tree
 
+import Language.Haskell.Refact.Utils.DualTree
+import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
+import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
@@ -20,8 +24,10 @@ import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
-import qualified Data.Tree.Zipper as Z
+-- import qualified Data.Foldable as F
 import qualified Data.Map as Map
+import qualified Data.Tree.Zipper as Z
+-- import qualified Text.PrettyPrint as PP
 
 import TestUtils
 
@@ -257,7 +263,7 @@ spec = do
       -- putToksForSpan test/testdata/DupDef/Dd1.hs:1048582:1-30:(((False,0,1,6),1),((False,0,1,6),31))
       -- NOTE: shortcut, using same toks, it is the book-keeping we
       -- are testing
-      let (tm5,_sspan5,tree5) = updateTokensForSrcSpan tm4 sspan3 toks4
+      let (tm5,_sspan5,_tree5) = updateTokensForSrcSpan tm4 sspan3 toks4
       (drawTreeEntry tm5) `shouldBe`
             "((1,1),(32,18))\n|\n"++
             "+- ((1,1),(3,31))\n|  |\n"++
@@ -327,13 +333,13 @@ spec = do
             "+- ((1000007,1),(1000007,19))\n|\n"++
             "`- ((6,1),(32,18))\n"
 
-      (show toks7) `shouldBe` "[((((7,1),(7,1)),ITsemi),\"\"),((((7,1),(7,9)),ITvarid \"toplevel\"),\"toplevel\"),((((7,10),(7,11)),ITvarid \"x\"),\"x\"),((((7,12),(7,13)),ITequal),\"=\"),((((7,14),(7,15)),ITvarid \"c\"),\"c\"),((((7,16),(7,17)),ITstar),\"*\"),((((7,18),(7,19)),ITvarid \"x\"),\"x\"),((((9,1),(9,1)),ITvocurly),\"\")]"
+      (show toks7) `shouldBe` "[((((7,1),(7,1)),ITsemi),\"\"),((((7,1),(7,9)),ITvarid \"toplevel\"),\"toplevel\"),((((7,10),(7,11)),ITvarid \"x\"),\"x\"),((((7,12),(7,13)),ITequal),\"=\"),((((7,14),(7,15)),ITvarid \"c\"),\"c\"),((((7,16),(7,17)),ITstar),\"*\"),((((7,18),(7,19)),ITvarid \"x\"),\"x\"),((((8,1),(8,1)),ITvocurly),\"\")]"
 
     -- ---------------------------------
 
     it "gets the tokens after renaming" $ do
-      (t,toks) <- parsedFileLiftD1Ghc
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      (_t,toks) <- parsedFileLiftD1Ghc
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let decls = hsBinds renamed
       let forest = mkTreeFromTokens toks
 
@@ -346,7 +352,7 @@ spec = do
       newToks <- liftIO $ basicTokenise "sq (x pow)"
       (show newToks) `shouldBe` "[((((0,1),(0,3)),ITvarid \"sq\"),\"sq\"),((((0,4),(0,5)),IToparen),\"(\"),((((0,5),(0,6)),ITvarid \"x\"),\"x\"),((((0,7),(0,10)),ITvarid \"pow\"),\"pow\"),((((0,10),(0,11)),ITcparen),\")\")]"
 
-      let (tm2,_sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
+      let (tm2,_sspan2,_tree2) = updateTokensForSrcSpan forest sspan1 newToks
       (drawTreeEntry tm2) `shouldBe`
             "((1,1),(13,25))\n|\n"++
             "+- ((1,1),(6,23))\n|\n"++
@@ -426,8 +432,8 @@ tree TId 0:
     -- ---------------------------------
 
     it "gets the tokens after updating a SrcSpan" $ do
-      (t,toks) <- parsedFileLiftLetIn1Ghc
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      (_t,toks) <- parsedFileLiftLetIn1Ghc
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let decls = hsBinds renamed
       let forest = mkTreeFromTokens toks
 
@@ -438,7 +444,7 @@ tree TId 0:
                         (((forestLineToGhcLine $ ForestLine False 0 0 12),22),
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),24) )
 --
-      let ff = insertSrcSpan forest (fs sspan1)
+      let ff = insertSrcSpan forest (sf sspan1)
       (drawTreeEntry ff) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(11,32))\n|\n"++
@@ -449,7 +455,7 @@ tree TId 0:
       newToks <- liftIO $ basicTokenise "(sq pow)"
       (show newToks) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
 
-      let (tm2,_sspan2,tree2) = updateTokensForSrcSpan forest sspan1 newToks
+      let (tm2,_sspan2,_tree2) = updateTokensForSrcSpan forest sspan1 newToks
       -- (show tm2) `shouldBe` ""
       (drawTreeEntry tm2) `shouldBe`
             "((1,1),(16,22))\n|\n"++
@@ -466,7 +472,7 @@ tree TId 0:
       newToks2 <- liftIO $ basicTokenise "(sq pow)"
       (show newToks2) `shouldBe` "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,4)),ITvarid \"sq\"),\"sq\"),((((0,5),(0,8)),ITvarid \"pow\"),\"pow\"),((((0,8),(0,9)),ITcparen),\")\")]"
 
-      let (tm3,_sspan3,tree3) = updateTokensForSrcSpan tm2 sspan2 newToks2
+      let (tm3,_sspan3,_tree3) = updateTokensForSrcSpan tm2 sspan2 newToks2
       (drawTreeEntry tm3) `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(11,32))\n|\n"++
@@ -497,16 +503,19 @@ tree TId 0:
             "|  `- ((12,32),(12,33))\n|\n"++
             "`- ((13,24),(16,22))\n"
 
+{-
       let ss1 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 0  1), 1),
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),21) )
+-}
       let ss2 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine True  0 0 12),22),
                          ((forestLineToGhcLine $ ForestLine True  0 0 12),30) )
+{-
       let ss3 = posToSrcSpan forest $
                         (((forestLineToGhcLine $ ForestLine False 0 0 12),25),
                          ((forestLineToGhcLine $ ForestLine False 0 0 16),22) )
-
+-}
 
       (show $ containsEnd (((ForestLine True 0 0 12),22),((ForestLine True 0 0 12),30)) (srcSpanToForestSpan sspan4)) `shouldBe` "False"
       (show $ containsMiddle (((ForestLine True 0 0 12),22),((ForestLine True 0 0 12),30)) (srcSpanToForestSpan sspan4)) `shouldBe` "True"
@@ -522,10 +531,10 @@ tree TId 0:
 
       (show $ containsMiddle (((ForestLine False 0 0 12),32),((ForestLine False 0 0 16),22)) (srcSpanToForestSpan sspan4)) `shouldBe` "False"
 
-      let (b1,m1@[m1a,m1b],e1) = splitSubtree tm3 (srcSpanToForestSpan sspan4)
+      let (_b1,[_m1a,m1b],_e1) = splitSubtree tm3 (srcSpanToForestSpan sspan4)
       -- (show (b1,m1,e1)) `shouldBe` "([],[],[])"
 
-      let (b2,m2,e2) = splitSubtree m1b (srcSpanToForestSpan sspan4)
+      let (_b2,_m2,_e2) = splitSubtree m1b (srcSpanToForestSpan sspan4)
       -- (show (b2,m2,e2)) `shouldBe` "([],[],[])"
 
 
@@ -539,8 +548,8 @@ tree TId 0:
         [((((12,32),(12,33)),ITvarid \"y\"),\"y\"),
          ((((13,24),(13,29)),ITwhere),\"where\"),
       -}
-      let ss2f@(ss2fs,ss2fe)        = srcSpanToForestSpan ss2
-      let sspan4f@(sspan4s,sspan4e) = srcSpanToForestSpan sspan4
+      let ss2f@(_ss2fs,_ss2fe)        = srcSpanToForestSpan ss2
+      let sspan4f@(_sspan4s,_sspan4e) = srcSpanToForestSpan sspan4
       (show (ss2f,sspan4f)) `shouldBe` "((((ForestLine True 0 0 12),22),((ForestLine True 0 0 12),30)),"++
                                        "(((ForestLine False 0 0 12),22),((ForestLine False 0 0 12),33)))"
       -- (ss2fe >= sspan4s,ss2fe <= sspan4e) `shouldBe` (True,False)
@@ -568,9 +577,9 @@ tree TId 0:
     -- ---------------------------------
 
     it "gets tokens for a span should be same as getTokensForNoIntros" $ do
-      (t,toks) <- parsedFileGhc "./test/testdata/Case/D.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
+      (_t,toks) <- parsedFileGhc "./test/testdata/Case/D.hs"
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- let decls = hsBinds renamed
       let forest = mkTreeFromTokens toks
 
       -- getToksForSpan test/testdata/Case/D.hs:5:12-18:("(((False,0,0,5),12),((False,0,0,5),19))",[((((5,12),(5,13)),IToparen),"("),((((5,13),(5,16)),ITvarid "odd"),"odd"),((((5,17),(5,18)),ITvarid "x"),"x"),((((5,18),(5,19)),ITcparen),")")])
@@ -630,8 +639,8 @@ tree TId 0:
 
   describe "getTokensBefore" $ do
     it "gets the tokens before a given srcloc" $ do
-      (t,toks) <- parsedFileMoveDefMd1
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      (_t,toks) <- parsedFileMoveDefMd1
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let decls = hsBinds renamed
 
       let forest = mkTreeFromTokens toks
@@ -670,11 +679,11 @@ tree TId 0:
       let (GHC.L l _) = head decls
       let forest = mkTreeFromTokens toks
 
-      let (forest',tree) = getSrcSpanFor forest (fs l)
+      let (forest',tree) = getSrcSpanFor forest (sf l)
 
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
-      (showForestSpan (fs l)) `shouldBe` "((19,1),(21,14))"
+      (showForestSpan (sf l)) `shouldBe` "((19,1),(21,14))"
       (drawTreeEntry forest') `shouldBe`
             "((1,1),(21,14))\n|\n"++
             "+- ((1,1),(15,17))\n|\n"++
@@ -812,7 +821,7 @@ tree TId 0:
 
   describe "containment" $ do
     it "checks containsStart,containsMiddle and containsEnd" $ do
-      let sspan@(s,e) = (((ForestLine False 0 0 24),1),((ForestLine False 0 0 24),4))
+      let sspan@(s,_e) = (((ForestLine False 0 0 24),1),((ForestLine False 0 0 24),4))
       let nspan@(ns,ne) = (((ForestLine False 0 1 24),1),((ForestLine False 0 1 26),14))
 
       (show $ compare s ns) `shouldBe` "LT"
@@ -848,7 +857,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let (begin,middle,end) = splitForestOnSpan (subForest forest) (fs l)
+      let (begin,middle,end) = splitForestOnSpan (subForest forest) (sf l)
       (map showForestSpan $ map treeStartEnd begin) `shouldBe`
              ["((1,1),(8,8))","((8,9),(13,4))","((13,5),(15,17))"]
       (map showForestSpan $ map treeStartEnd middle) `shouldBe` ["((19,1),(21,14))"]
@@ -868,13 +877,13 @@ tree TId 0:
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
       --
-      let z = openZipperToSpan (fs l) $ Z.fromTree forest
+      let z = openZipperToSpan (sf l) $ Z.fromTree forest
       let toksz = retrieveTokensInterim $ Z.tree z
-      let (tokStartPos,tokEndPos) = forestSpanToSimpPos (fs l)
+      let (tokStartPos,tokEndPos) = forestSpanToSimpPos (sf l)
       (show (tokStartPos,tokEndPos)) `shouldBe` "((19,1),(21,14))"
 
       -- (show toksz) `shouldBe` ""
-      let (_begin,middle,end) = splitToks (tokStartPos,tokEndPos) toksz
+      let (_begin,middle,_end) = splitToks (tokStartPos,tokEndPos) toksz
       (show middle) `shouldBe` "[((((19,1),(19,1)),ITsemi),\"\"),((((19,1),(19,4)),ITvarid \"foo\"),\"foo\"),((((19,5),(19,6)),ITvarid \"x\"),\"x\"),((((19,7),(19,8)),ITvarid \"y\"),\"y\"),((((19,9),(19,10)),ITequal),\"=\"),((((20,3),(20,5)),ITdo),\"do\"),((((20,6),(20,6)),ITvocurly),\"\"),((((20,6),(20,7)),ITvarid \"c\"),\"c\"),((((20,8),(20,10)),ITlarrow),\"<-\"),((((20,11),(20,18)),ITvarid \"getChar\"),\"getChar\"),((((21,6),(21,6)),ITsemi),\"\"),((((21,6),(21,12)),ITvarid \"return\"),\"return\"),((((21,13),(21,14)),ITvarid \"c\"),\"c\")]"
 
       let (startLoc,endLoc) = startEndLocIncComments' toksz (tokStartPos,tokEndPos)
@@ -882,7 +891,7 @@ tree TId 0:
 
       --
 
-      let forest' = insertSrcSpan forest (fs l)
+      let forest' = insertSrcSpan forest (sf l)
       (invariant forest') `shouldBe` []
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(21,14))\n|\n"++
@@ -901,7 +910,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let forest' = insertSrcSpan forest (fs l)
+      let forest' = insertSrcSpan forest (sf l)
       (invariant forest') `shouldBe` []
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(21,14))\n|\n"++
@@ -912,7 +921,7 @@ tree TId 0:
       (showGhc l') `shouldBe` "test/testdata/TokenTest.hs:(8,1)-(10,9)"
       (showSrcSpan l') `shouldBe` "((8,1),(10,10))"
 
-      let forest'' = insertSrcSpan forest' (fs l')
+      let forest'' = insertSrcSpan forest' (sf l')
       (invariant forest'') `shouldBe` []
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(21,14))\n|\n"++
@@ -932,7 +941,7 @@ tree TId 0:
       (showGhc sspan) `shouldBe` "test/testdata/Demote/D1.hs:6:21-40"
       (showSrcSpan sspan) `shouldBe` "((6,21),(6,41))"
 
-      let forest1 = insertSrcSpan forest (fs sspan)
+      let forest1 = insertSrcSpan forest (sf sspan)
 
       declToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "where\n  sq = x ^ pow\n"
       -- putToksAfterPos ((6,21),(6,41)) at PlaceIndent 1 4 2
@@ -951,7 +960,7 @@ tree TId 0:
       let sspan2 = posToSrcSpan forest ((9,1),(9,14))
       (showGhc sspan2) `shouldBe` "test/testdata/Demote/D1.hs:9:1-13"
 
-      let z = openZipperToSpan (fs sspan2) $ Z.fromTree forest2
+      let z = openZipperToSpan (sf sspan2) $ Z.fromTree forest2
       (drawTreeEntry $ Z.tree z) `shouldBe` "((7,1),(13,25))\n"
       -- (show $ treeStartEnd (Z.tree z)) `shouldBe` "((ForestLine {flInsertVersion = 0, flLine = 1},1),(ForestLine {flInsertVersion = 0, flLine = 13},25))"
       -- (show (Z.firstChild z)) `shouldBe` ""
@@ -984,7 +993,7 @@ tree TId 0:
 -}
 
 
-      (drawTreeEntry $ insertSrcSpan forest2 (fs sspan2)) `shouldBe`
+      (drawTreeEntry $ insertSrcSpan forest2 (sf sspan2)) `shouldBe`
                "((1,1),(13,25))\n|\n"++
                "+- ((1,1),(6,20))\n|\n"++
                "+- ((6,21),(6,41))\n|\n"++
@@ -1035,7 +1044,7 @@ tree TId 0:
       let sspan3 = posToSrcSpan forest ((10,18),(12,33))
 
 --
-      let (b1,m1,e1) = splitSubtree f2 (srcSpanToForestSpan sspan3)
+      let (_b1,_m1,_e1) = splitSubtree f2 (srcSpanToForestSpan sspan3)
       -- (show (b1,m1,e1)) `shouldBe` "([],[],[])"
 
 --
@@ -1093,7 +1102,7 @@ tree TId 0:
 
       -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:10:25:("(((False,0,0,10),25),((False,0,0,10),26))",[((((10,25),(10,26)),ITinteger 0),"0")])
       let sspan3 = posToSrcSpan forest ((10,25),(10,26))
-      let (f4,toks4) = getTokensFor True f3 sspan3
+      let (f4,_toks4) = getTokensFor True f3 sspan3
 
       (invariant f4) `shouldBe` []
       (drawTreeEntry f4) `shouldBe`
@@ -1155,7 +1164,7 @@ tree TId 0:
       -- getToksForSpan test/testdata/LiftToToplevel/LetIn1.hs:11:25:("(((False,0,0,11),25),((False,0,0,11),26))",[((((11,25),(11,26)),ITvarid "z"),"z")])
 
       let sspan6 = posToSrcSpan forest ((11,25),(11,26))
-      let (f7,toks7) = getTokensFor True f6 sspan6
+      let (f7,_toks7) = getTokensFor True f6 sspan6
 
       (invariant f7) `shouldBe` []
       (drawTreeEntry f7) `shouldBe`
@@ -1231,18 +1240,18 @@ tree TId 0:
       let (f10,_toks10) = getTokensFor True f9 sspan9
 
 --
-      let z = openZipperToSpan (fs sspan9) $ Z.fromTree f9
+      let z = openZipperToSpan (sf sspan9) $ Z.fromTree f9
       -- let (before,middle,end) = doSplitTree (Z.tree z) (fs sspan9)
-      let (before,middle,end) = splitSubtree (Z.tree z) (fs sspan9)
-      (show (map treeStartEnd before,map treeStartEnd middle,map treeStartEnd end)) `shouldBe`
+      let (before1,middle,end) = splitSubtree (Z.tree z) (sf sspan9)
+      (show (map treeStartEnd before1,map treeStartEnd middle,map treeStartEnd end)) `shouldBe`
                "([],"++
                "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 10),24)),"++
                 "(((ForestLine True 0 0 10),25),((ForestLine True 0 0 10),28)),"++
                 "(((ForestLine False 0 0 10),26),((ForestLine False 0 0 11),32))],"++
                "[])"
-      let (b2,m2,e2) = splitSubToks (head middle) (fs sspan9)
+      -- let (b2,m2,e2) = splitSubToks (head middle) (sf sspan9)
       -- (show (b2,m2,e2)) `shouldBe` ""
-      let (b3,m3,e3) = splitSubtree (last middle) (fs sspan9)
+      let (b3,m3,e3) = splitSubtree (last middle) (sf sspan9)
       (show (map treeStartEnd b3,map treeStartEnd m3,map treeStartEnd  e3)) `shouldBe` 
                "([],"++
                "[(((ForestLine False 0 0 10),26),((ForestLine False 0 0 11),24)),"++
@@ -1250,8 +1259,8 @@ tree TId 0:
                 "(((ForestLine False 0 0 11),26),((ForestLine False 0 0 11),32))],"++
                "[])"
       let ss9 = (((ForestLine False 0 0 11),26),((ForestLine False 0 0 12),21))
-      (show (containsStart ss9 (fs sspan9),containsEnd ss9 (fs sspan9))) `shouldBe` "(False,True)"
-      let (b4,m4,e4) = splitSubToks (last m3) (fs sspan9)
+      (show (containsStart ss9 (sf sspan9),containsEnd ss9 (sf sspan9))) `shouldBe` "(False,True)"
+      -- let (b4,m4,e4) = splitSubToks (last m3) (sf sspan9)
       -- (show (b4,m4,e4)) `shouldBe` ""
 --
 
@@ -1339,6 +1348,8 @@ tree TId 0:
       let toks3 = retrieveTokensFinal f3
       (GHC.showRichTokenStream toks3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' defined in 'sumSquares'\n --This example aims to test changing a constant to a function.\n\n sumSquares x = (sq x pow)+ (sq x pow)\n            where\n               sq = x^pow\n               pow =2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n\n "
 
+      (renderLinesFromLayoutTree f3) `shouldBe` "module LiftToToplevel.PatBindIn3 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' defined in 'sumSquares'\n--This example aims to test changing a constant to a function.\n\nsumSquares x = (sq x pow)+ (sq x pow)\n           where\n              sq = x^pow\n              pow =2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n\n"
+
     ------------------------------------
 
     it "allocates comments in an if then else expression" $ do
@@ -1350,26 +1361,26 @@ tree TId 0:
                  (((forestLineToGhcLine $ ForestLine False 0 0 5),12),
                   ((forestLineToGhcLine $ ForestLine False 0 0 5),19) )
       (showGhc s1) `shouldBe` "test/testdata/Case/C.hs:5:12-18"
-      let t2 = insertSrcSpan t1 (fs s1)
+      let t2 = insertSrcSpan t1 (sf s1)
 
       -- getToksForSpan test/testdata/Case/C.hs:7:13-19:("(((False,0,0,7),13),((False,0,0,7),20))
       let s2 = posToSrcSpan t1 $
                  (((forestLineToGhcLine $ ForestLine False 0 0 7),13),
                   ((forestLineToGhcLine $ ForestLine False 0 0 7),20) )
       (showGhc s2) `shouldBe` "test/testdata/Case/C.hs:7:13-19"
-      let t3 = insertSrcSpan t2 (fs s2)
+      let t3 = insertSrcSpan t2 (sf s2)
 
 -- innards of insertSrcSpan
-      let sspan = fs s2
-      let z = openZipperToSpan (fs s2) $ Z.fromTree t2
+      let sspan = sf s2
+      let z = openZipperToSpan (sf s2) $ Z.fromTree t2
       (Z.isLeaf z) `shouldBe` True
-      let (Entry _ toks) = Z.label z
+      let (Entry _ _ toks1) = Z.label z
       let (tokStartPos,tokEndPos) = forestSpanToSimpPos sspan
 
-      (GHC.showRichTokenStream toks) `shouldBe` "\n\n\n\n\n           then -- This is an odd result\n             bob x 1\n           else -- This is an even result\n             bob x 2\n\n bob x y = x + y\n\n "
+      (GHC.showRichTokenStream toks1) `shouldBe` "\n\n\n\n\n           then -- This is an odd result\n             bob x 1\n           else -- This is an even result\n             bob x 2\n\n bob x y = x + y\n\n "
 
-      let (startLoc,endLoc) = startEndLocIncComments' toks (tokStartPos,tokEndPos)
-      -- let (startLoc,endLoc) = startEndLocIncCommentsDebug toks (tokStartPos,tokEndPos)
+      let (startLoc,endLoc) = startEndLocIncComments' toks1 (tokStartPos,tokEndPos)
+      -- let (startLoc,endLoc) = startEndLocIncCommentsDebug toks1 (tokStartPos,tokEndPos)
       (show (tokStartPos,tokEndPos)) `shouldBe` "((7,13),(7,20))"
       (show (startLoc,endLoc)) `shouldBe` "((6,11),(7,20))"
 --
@@ -1380,7 +1391,7 @@ tree TId 0:
                  (((forestLineToGhcLine $ ForestLine False 0 0 9),13),
                   ((forestLineToGhcLine $ ForestLine False 0 0 9),20) )
       (showGhc s3) `shouldBe` "test/testdata/Case/C.hs:9:13-19"
-      let t4 = insertSrcSpan t3 (fs s3)
+      let t4 = insertSrcSpan t3 (sf s3)
 
       (drawTreeEntry t4) `shouldBe`
             "((1,1),(11,16))\n|\n"++
@@ -1416,14 +1427,14 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let forest' = insertSrcSpan forest (fs l)
+      let forest' = insertSrcSpan forest (sf l)
       (invariant forest') `shouldBe` []
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(21,14))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
               "`- ((19,1),(21,14))\n" -- our inserted span
 
-      let (forest'',delTree) = removeSrcSpan forest' (fs l)
+      let (forest'',delTree) = removeSrcSpan forest' (sf l)
       (drawTreeEntry forest'') `shouldBe`
               "((1,1),(21,14))\n|\n"++
                "+- ((1,1),(15,17))\n|\n"++
@@ -1438,6 +1449,8 @@ tree TId 0:
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment"
 
+      (renderLinesFromLayoutTree forest'') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment"
+
     -- ---------------------------------
 
     it "removes a span and tokens that were not explicitly in the forest" $ do
@@ -1450,7 +1463,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
       (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
 
-      let (forest',delTree) = removeSrcSpan forest (fs l)
+      let (forest',delTree) = removeSrcSpan forest (sf l)
       (invariant forest') `shouldBe` []
       (drawTreeEntry forest') `shouldBe`
                "((1,1),(21,14))\n|\n"++
@@ -1465,9 +1478,11 @@ tree TId 0:
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
+      (renderLinesFromLayoutTree forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
+
     -- ---------------------------------
 
-    it "Removes a span and tokens without destroying the forest 1" $ do
+    it "removes a span and tokens without destroying the forest 1" $ do
       (_t,toks) <- parsedFileDemoteD1
       let forest = mkTreeFromTokens toks
 
@@ -1475,7 +1490,7 @@ tree TId 0:
       (showGhc sspan) `shouldBe` "test/testdata/Demote/D1.hs:6:21-40"
       (showSrcSpan sspan) `shouldBe` "((6,21),(6,41))"
 
-      let forest1 = insertSrcSpan forest (fs sspan)
+      let forest1 = insertSrcSpan forest (sf sspan)
 
       declToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True "where\n  sq = x ^ pow\n"
       -- putToksAfterPos ((6,21),(6,41)) at PlaceIndent 1 4 2
@@ -1493,9 +1508,9 @@ tree TId 0:
 
       let sspan2 = posToSrcSpan forest ((9,1),(9,14))
       (showGhc sspan2) `shouldBe` "test/testdata/Demote/D1.hs:9:1-13"
-      let (forest3,delTree) = removeSrcSpan forest2 (fs sspan2)
+      let (forest3,delTree) = removeSrcSpan forest2 (sf sspan2)
 
-      (drawTreeEntry $ insertSrcSpan forest2 (fs sspan2)) `shouldBe`
+      (drawTreeEntry $ insertSrcSpan forest2 (sf sspan2)) `shouldBe`
                "((1,1),(13,25))\n|\n"++
                "+- ((1,1),(6,20))\n|\n"++
                "+- ((6,21),(6,41))\n|\n"++
@@ -1522,7 +1537,9 @@ tree TId 0:
 
       let toks' = retrieveTokensFinal forest3
       -- (showToks toks') `shouldBe` ""
-      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+      (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+
+      (renderLinesFromLayoutTree forest3) `shouldBe` "module Demote.D1 where\n\n{-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = sq x + sumSquares xs\n    where\n       sq = x ^ pow\n     \n\nsumSquares [] = 0\n\npow = 2\n\nmain = sumSquares [1..4]\n\n"
 
     -- ---------------------------------
 
@@ -1655,7 +1672,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let forest' = insertSrcSpan forest (fs l)
+      let forest' = insertSrcSpan forest (sf l)
       (drawTreeEntry forest') `shouldBe`
               "((1,1),(21,14))\n|\n"++
               "+- ((1,1),(15,17))\n|\n"++
@@ -1680,6 +1697,1993 @@ tree TId 0:
 
   -- ---------------------------------------------
 
+  describe "adjustLinesForDeleted" $ do
+    it "removes Deleted entries and adjusts token lines" $ do
+      (t,toks) <- parsedFileLayoutLetExpr
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      (GHC.showRichTokenStream toks) `shouldBe` "-- A simple let expression, to ensure the layout is detected\n\n module Layout.LetExpr where\n\n foo = let x = 1\n           y = 2\n       in x + y\n\n "
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      let sspan = posToSrcSpan layout ((6,11),(6,16))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/LetExpr.hs:6:11-15"
+      let (layout1,_tree) = removeSrcSpan layout (sf sspan)
+
+      (drawTreeCompact layout1) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(7,15))\n"++
+          "2:((5,1),(5,4))\n"++
+          "2:((5,5),(7,15))\n"++
+          "3:((5,5),(5,6))\n"++
+          "3:((5,7),(7,15))\n"++
+          "4:((5,7),(5,10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+          "5:((5,11),(5,16))\n"++
+          "6:((5,11),(5,12))\n"++
+          "6:((5,13),(5,16))\n"++
+          "7:((5,13),(5,14))\n"++
+          "7:((5,15),(5,16))\n"++
+          "5:((6,11),(6,16))(1,-9)D\n"++
+          "4:((7,10),(7,15))\n"++
+          "5:((7,10),(7,11))\n"++
+          "5:((7,12),(7,13))\n"++
+          "5:((7,14),(7,15))\n"++
+          "1:((9,1),(9,1))\n"
+
+
+      (drawTreeCompact $ adjustLinesForDeleted layout1) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(7,15))\n"++
+          "2:((5,1),(5,4))\n"++
+          "2:((5,5),(7,15))\n"++
+          "3:((5,5),(5,6))\n"++
+          "3:((5,7),(7,15))\n"++
+          "4:((5,7),(5,10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+          "5:((5,11),(5,16))\n"++
+          "6:((5,11),(5,12))\n"++
+          "6:((5,13),(5,16))\n"++
+          "7:((5,13),(5,14))\n"++
+          "7:((5,15),(5,16))\n"++
+          "5:((6,11),(6,16))(1,-9)D\n"++
+          "4:((6,10),(6,15))\n"++
+          "5:((6,10),(6,11))\n"++
+          "5:((6,12),(6,13))\n"++
+          "5:((6,14),(6,15))\n"++
+          "1:((8,1),(8,1))\n"
+
+      (renderLinesFromLayoutTree layout1) `shouldBe`
+          "-- A simple let expression, to ensure the layout is detected\n"++
+          "\n"++
+          "module Layout.LetExpr where\n"++
+          "\n"++
+          "foo = let x = 1\n"++
+          "      in x + y\n"++
+          "\n"
+
+
+  -- ---------------------------------------------
+
+  -- TODO: These tests have all been moved to DualTree, remove them
+{-
+  describe "retrieveTokensPpr" $ do
+    it "retrieves the tokens in Ppr format Layout.Lift with deletion/insertion 1" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Lift.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(8,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,19))\n"++
+          "1:((1,20),(1,25))\n"++
+          "1:((3,1),(5,11))\n"++
+          "2:((3,1),(3,3))\n"++
+          "2:((3,4),(5,11))\n"++
+          "3:((3,4),(3,5))\n"++
+          "3:((3,6),(3,7))\n"++
+          "3:((3,8),(3,14))\n"++
+          "4:((3,8),(3,9))\n"++
+          "4:((3,10),(3,11))\n"++
+          "4:((3,12),(3,14))\n"++
+          "3:((4,3),(4,8))\n"++
+          "3:((5,5),(5,11))(Above FromAlignCol (1,-4) (5,5) (5,11) FromAlignCol (2,-10))\n"++
+          "4:((5,5),(5,11))\n"++
+          "5:((5,5),(5,7))\n"++
+          "5:((5,8),(5,11))\n"++
+          "6:((5,8),(5,9))\n"++
+          "6:((5,10),(5,11))\n"++
+          "1:((7,1),(7,6))\n"++
+          "2:((7,1),(7,2))\n"++
+          "2:((7,3),(7,6))\n"++
+          "3:((7,3),(7,4))\n"++
+          "3:((7,5),(7,6))\n"++
+          "1:((8,1),(8,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "module Layout.Lift where",
+           PprText 3 1 Original "ff y = y + zz",
+           PprText 4 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (5,11) (FromAlignCol (2,-10))
+            [PprText 5 1 Original "zz = 1"],
+           PprText 7 1 Original "x = 1",
+           PprText 8 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+{-
+getToksForSpan test/testdata/MoveDef/Md1.hs:24:5-10:("(((False,0,0,24),5),((False,0,0,24),11))",[((((24,5),(24,5)),ITvocurly),""),((((24,5),(24,7)),ITvarid "zz"),"zz"),((((24,8),(24,9)),ITequal),"="),((((24,10),(24,11)),ITinteger 1),"1")])
+
+removeToksForPos ((24,5),(24,11))
+
+
+rmLocalDecl: where/let tokens are at((23,3),(23,8))
+removeToksForPos ((23,3),(23,8))
+
+putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,22),1),((False,0,0,24),11))",PlaceOffset 2 0 2,[((((1,6),(1,8)),ITvarid "zz"),"zz"),((((1,9),(1,10)),ITequal),"="),((((1,11),(1,12)),ITinteger 1),"1")])
+
+
+-}
+
+      let sspan1 = posToSrcSpan layout ((5,5),(5,11))
+      (showGhc sspan1) `shouldBe` "test/testdata/Layout/Lift.hs:5:5-10"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan1)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let sspan2 = posToSrcSpan layout ((4,3),(4,8))
+      (showGhc sspan2) `shouldBe` "test/testdata/Layout/Lift.hs:4:3-7"
+
+      let (layout3,_old) = removeSrcSpan layout2 (srcSpanToForestSpan sspan2)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let sspan3 = posToSrcSpan layout ((3,1),(5,11))
+      (showGhc sspan3) `shouldBe` "test/testdata/Layout/Lift.hs:(3,1)-(5,10)"
+      newToks <- basicTokenise "zz = 1"
+      -- let (layout4,_newSpan) = addToksAfterSrcSpan layout3 sspan3 (PlaceOffset 2 0 2) newToks
+      let (layout4,_newSpan) = addToksAfterSrcSpan layout3 sspan3 (PlaceOffset 2 0 2) newToks
+
+      (drawTreeCompact layout4) `shouldBe`
+          "0:((1,1),(8,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,19))\n"++
+          "1:((1,20),(1,25))\n"++
+          "1:((3,1),(5,11))\n"++
+           "2:((3,1),(3,3))\n"++
+           "2:((3,4),(5,11))\n"++
+            "3:((3,4),(3,5))\n"++
+            "3:((3,6),(3,7))\n"++
+            "3:((3,8),(3,14))\n"++
+             "4:((3,8),(3,9))\n"++
+             "4:((3,10),(3,11))\n"++
+             "4:((3,12),(3,14))\n"++
+            "3:((4,3),(4,8))(1,-3)D\n"++
+            "3:((5,5),(5,11))(2,-10)D\n"++
+          "1:((1000005,1),(1000005,7))\n"++
+          "1:((7,1),(7,6))\n"++
+           "2:((7,1),(7,2))\n"++
+           "2:((7,3),(7,6))\n"++
+            "3:((7,3),(7,4))\n"++
+            "3:((7,5),(7,6))\n"++
+          "1:((8,1),(8,1))\n"
+
+      -- show layout4 `shouldBe` ""
+
+      let pprVal2 = retrieveTokensPpr layout4
+      (pprVal2) `shouldBe`
+          [PprText 1 1 Original "module Layout.Lift where",
+           PprText 3 1 Original "ff y = y + zz",
+           PprDeleted 4 3 1 1 2,
+           PprText 5 1 Added    "zz = 1",
+           PprText 6 1 Added     "",
+           PprText 7 1 Original "x = 1",
+           PprText 8 1 Original ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.Lift where\n\nff y = y + zz\n\nzz = 1\n\nx = 1\n"
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in Ppr format MoveDef.Demote with deletion/insertion 2" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(11,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,22))\n"++
+          "1:((1,23),(1,28))\n"++
+          "1:((3,1),(3,31))\n"++
+          "2:((3,1),(3,9))\n"++
+          "2:((3,10),(3,12))\n"++
+          "2:((3,13),(3,20))\n"++
+          "2:((3,21),(3,23))\n"++
+          "2:((3,24),(3,31))\n"++
+          "1:((4,1),(4,19))\n"++
+          "2:((4,1),(4,9))\n"++
+          "2:((4,10),(4,19))\n"++
+          "3:((4,10),(4,11))\n"++
+          "3:((4,12),(4,13))\n"++
+          "3:((4,14),(4,19))\n"++
+          "4:((4,14),(4,15))\n"++
+          "4:((4,16),(4,17))\n"++
+          "4:((4,18),(4,19))\n"++
+          "1:((7,1),(7,6))\n"++
+          "2:((7,1),(7,2))\n"++
+          "2:((7,3),(7,6))\n"++
+          "3:((7,3),(7,4))\n"++
+          "3:((7,5),(7,6))\n"++
+          "1:((8,1),(8,6))\n"++
+           "2:((8,1),(8,2))\n"++
+           "2:((8,3),(8,6))\n"++
+           "3:((8,3),(8,4))\n"++
+            "3:((8,5),(8,6))\n"++
+          "1:((11,1),(11,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "module MoveDef.Demote where",
+           PprText 3 1 Original "toplevel :: Integer -> Integer",
+           PprText 4 1 Original "toplevel x = c * x",
+           PprText 6 1 Original "-- c,d :: Integer",
+           PprText 7 1 Original "c = 7",
+           PprText 8 1 Original "d = 9",
+           PprText 11 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+
+{-
+removeToksForPos ((7,1),(7,6))
+
+putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
+   ((((0,1),(0,6)),ITwhere),"where"),
+   ((((1,4),(1,21)),ITlineComment "-- c,d :: Integer"),"-- c,d ::
+                                  -- Integer"),
+   ((((2,4),(2,4)),ITvocurly),""),
+   ((((2,4),(2,5)),ITvarid "c"),"c"),
+   ((((2,6),(2,7)),ITequal),"="),
+   ((((2,8),(2,9)),ITinteger 7),"7"),
+   ((((3,1),(3,1)),ITvccurly),"")]
+-}
+
+
+      let sspan1 = posToSrcSpan layout ((7,1),(7,6))
+      (showGhc sspan1) `shouldBe` "test/testdata/MoveDef/Demote.hs:7:1-5"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan1)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let sspan2 = posToSrcSpan layout ((4,14),(4,19))
+      (showGhc sspan2) `shouldBe` "test/testdata/MoveDef/Demote.hs:4:14-18"
+
+      newToks <- basicTokenise "where\n   -- c,d :: Integer\n   c = 7\n"
+      show newToks `shouldBe`
+         "[((((0,1),(0,6)),ITwhere),\"where\"),((((1,4),(1,21)),ITlineComment \"-- c,d :: Integer\"),\"-- c,d :: Integer\"),((((2,4),(2,4)),ITvocurly),\"\"),((((2,4),(2,5)),ITvarid \"c\"),\"c\"),((((2,6),(2,7)),ITequal),\"=\"),((((2,8),(2,9)),ITinteger 7),\"7\"),((((3,1),(3,1)),ITvccurly),\"\")]"
+
+      let (layout3,_newSpan) = addToksAfterSrcSpan layout2 sspan2 (PlaceOffset 1 4 2) newToks
+
+      (drawTreeCompact layout3) `shouldBe`
+          "0:((1,1),(11,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,22))\n"++
+          "1:((1,23),(1,28))\n"++
+          "1:((3,1),(3,31))\n"++
+          "2:((3,1),(3,9))\n"++
+          "2:((3,10),(3,12))\n"++
+          "2:((3,13),(3,20))\n"++
+          "2:((3,21),(3,23))\n"++
+          "2:((3,24),(3,31))\n"++
+          "1:((4,1),(4,19))\n"++
+           "2:((4,1),(4,9))\n"++
+           "2:((4,10),(4,19))\n"++
+            "3:((4,10),(4,11))\n"++
+            "3:((4,12),(4,13))\n"++
+            "3:((4,14),(4,19))\n"++
+             "4:((4,14),(4,15))\n"++
+             "4:((4,16),(4,17))\n"++
+             "4:((4,18),(4,19))\n"++
+            "3:((1000005,5),(1000007,13))\n"++
+          "1:((7,1),(7,6))(1,-5)D\n"++
+          "1:((8,1),(8,6))\n"++
+           "2:((8,1),(8,2))\n"++
+           "2:((8,3),(8,6))\n"++
+            "3:((8,3),(8,4))\n"++
+            "3:((8,5),(8,6))\n"++
+          "1:((11,1),(11,1))\n"
+
+      --vshow layout3 `shouldBe` ""
+
+      let pprVal2 = retrieveTokensPpr layout3
+
+      (pprVal2) `shouldBe`
+          [PprText 1 1 Original "module MoveDef.Demote where",
+           PprText 3 1 Original "toplevel :: Integer -> Integer",
+           PprText 4 1 Original "toplevel x = c * x",
+           PprText 5 5 Added "where",
+           PprText 6 8 Added "-- c,d :: Integer",
+           PprText 7 8 Added "c = 7",
+           PprText 8 5 Added "",
+           PprText 9 1 Added "",
+           PprDeleted 7 1 3 0 1,
+           PprText 10 1 Original "d = 9", -- originaly 8 1
+           PprText 13 1 Original ""] -- originaly 11 1
+
+      let xxx
+             = [PprText 1 1 Original "module MoveDef.Demote where",
+                PprText 3 1 Original "toplevel :: Integer -> Integer",
+                PprText 4 1 Original "toplevel x = c * x",
+                PprText 5 5 Added "where",
+                PprText 6 8 Added "-- c,d :: Integer",
+                PprText 7 8 Added "c = 7",
+                PprText 8 5 Added "",
+                PprText 9 1 Original "",
+                PprDeleted 7 1 3 0 1,
+                PprText 8 1 Original "d = 9",
+                PprText 11 1 Original ""]
+{-
+          [PprText 1 1 Original "module MoveDef.Demote where",
+           PprText 3 1 Original "toplevel :: Integer -> Integer",
+           PprText 4 1 Original "toplevel x = c * x",
+           PprText 5 5 Added "where",
+           PprText 6 8 Added "-- c,d :: Integer",
+           PprText 7 8 Added "c = 7",
+           PprText 8 5 Added "",
+           PprText 13 1 Original "",
+           PprDeleted 7 1 3 0 1,
+           PprText 11 1 Original "d = 9",
+           PprText 14 1 Original ""]
+-}
+      (renderPpr pprVal2) `shouldBe` ""
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.FromMd1 with deletion 1" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/FromMd1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(11,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,22))\n"++
+         "1:((1,23),(1,28))\n"++
+         "1:((3,1),(3,26))\n"++
+         "2:((3,1),(3,5))\n"++
+         "2:((3,6),(3,7))\n"++
+         "2:((3,8),(3,26))\n"++
+         "3:((3,8),(3,9))\n"++
+         "3:((3,10),(3,11))\n"++
+         "3:((3,12),(3,13))\n"++
+         "3:((3,14),(3,22))\n"++
+         "4:((3,14),(3,15))\n"++
+         "4:((3,16),(3,22))\n"++
+         "3:((3,23),(3,24))\n"++
+         "3:((3,25),(3,26))\n"++
+         "1:((5,1),(5,17))\n"++
+         "2:((5,1),(5,3))\n"++
+         "2:((5,4),(5,6))\n"++
+         "2:((5,7),(5,10))\n"++
+         "2:((5,11),(5,13))\n"++
+         "2:((5,14),(5,17))\n"++
+         "1:((6,1),(8,11))\n"++
+         "2:((6,1),(6,3))\n"++
+         "2:((6,4),(8,11))\n"++
+         "3:((6,4),(6,5))\n"++
+         "3:((6,6),(6,7))\n"++
+         "3:((6,8),(6,14))\n"++
+         "4:((6,8),(6,9))\n"++
+         "4:((6,10),(6,11))\n"++
+         "4:((6,12),(6,14))\n"++
+         "3:((7,3),(7,8))\n"++
+         "3:((8,5),(8,11))(Above FromAlignCol (1,-4) (8,5) (8,11) FromAlignCol (2,-10))\n"++
+         "4:((8,5),(8,11))\n"++
+         "5:((8,5),(8,7))\n"++
+         "5:((8,8),(8,11))\n"++
+         "6:((8,8),(8,9))\n"++
+         "6:((8,10),(8,11))\n"++
+         "1:((10,1),(10,6))\n"++
+         "2:((10,1),(10,2))\n"++
+         "2:((10,3),(10,6))\n"++
+         "3:((10,3),(10,4))\n"++
+         "3:((10,5),(10,6))\n"++
+         "1:((11,1),(11,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+           PprText 5 1 Original "ff :: Int -> Int",
+           PprText 6 1 Original "ff y = y + zz",
+           PprText 7 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
+             [PprText 8 1 Original "zz = 1"],
+           PprText 10 1 Original "x = 3",
+           PprText 11 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+      -- Now check removing a span
+      -- removeToksForSpan test/testdata/MoveDef/Md1.hs:21:1-16:(((False,0,0,21),1),((False,0,0,21),17))
+      -- Is line 5 in FromMd1
+
+      let sspan = posToSrcSpan layout ((5,1),(5,17))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/FromMd1.hs:5:1-16"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let pprVal2 = retrieveTokensPpr layout2
+      (pprVal2) `shouldBe`
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+           PprDeleted 5 1 2 0 1,
+           -- originally line 6, offset is 1
+           PprText 5 1 Original "ff y = y + zz",
+           PprText 6 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
+             [PprText 7 1 Original "zz = 1"],
+           PprText 9 1 Original "x = 3",
+           PprText 10 1 Original ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nx = 3\n"
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.FromMd1 with deletion 2" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/FromMd1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (drawTreeCompact layout) `shouldBe`
+      --     ""
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+           PprText 5 1 Original "ff :: Int -> Int",
+           PprText 6 1 Original "ff y = y + zz",
+           PprText 7 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
+             [PprText 8 1 Original "zz = 1"],
+           PprText 10 1 Original "x = 3",
+           PprText 11 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+      -- Now check removing a span
+      -- removeToksForPos ((22,1),(24,11))
+      -- Is line 6 in FromMd1
+
+      let sspan = posToSrcSpan layout ((6,1),(8,11))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/FromMd1.hs:(6,1)-(8,10)"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let pprVal2 = retrieveTokensPpr layout2
+      (pprVal2) `shouldBe`
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+           PprText 5 1 Original "ff :: Int -> Int",
+           PprDeleted 6 1 1 2 2,
+
+           -- originally line 10. ro must be 3
+           PprText 7 1 Original "x = 3",
+           PprText 8 1 Original ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nff :: Int -> Int\n\nx = 3\n"
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.FromMd1 with deletion 3" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/FromMd1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (drawTreeCompact layout) `shouldBe`
+      --     ""
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+           PprText 5 1 Original "ff :: Int -> Int",
+           PprText 6 1 Original "ff y = y + zz",
+           PprText 7 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (8,11) (FromAlignCol (2,-10))
+             [PprText 8 1 Original "zz = 1"],
+           PprText 10 1 Original "x = 3",
+           PprText 11 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+      let sspan = posToSrcSpan layout ((5,1),(5,17))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/FromMd1.hs:5:1-16"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan)
+
+
+      -- Now check removing a span
+      -- removeToksForPos ((22,1),(24,11))
+      -- Is line 6 in FromMd1
+
+      let sspan2 = posToSrcSpan layout ((6,1),(8,11))
+      (showGhc sspan2) `shouldBe` "test/testdata/Layout/FromMd1.hs:(6,1)-(8,10)"
+
+      let (layout3,_old) = removeSrcSpan layout2 (srcSpanToForestSpan sspan2)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let pprVal2 = retrieveTokensPpr layout3
+      (pprVal2) `shouldBe`
+          [PprText 1 1 Original "module Layout.FromMd1 where",
+           PprText 3 1 Original "data D = A | B String | C",
+
+           -- PprDeleted 5 1 2 0 1,
+           -- PprDeleted 6 1 1 2 2,
+           PprDeleted 5 1 2 3 2,
+{-
+Should be pg :  5 - 3 = 2
+          eg : 10 - 8 = 2
+           l :  8 - 5 = 3
+-}
+           PprText 5 1 Original "x = 3",
+           PprText 6 1 Original ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.FromMd1 where\n\ndata D = A | B String | C\n\nx = 3\n"
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.Where2 with deletion 4" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Where2.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (drawTreeCompact layout) `shouldBe`
+      --     ""
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "module Layout.Where2 where",
+           PprText 3 1 Original "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 4 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (6,12) (FromAlignCol (2,-11))
+             [PprText 5 1 Original "ff :: Int",
+              PprText 6 1 Original "ff = 15"],
+           PprText 8 1 Original "x = 3",
+           PprText 9 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+      -- Now check removing a span
+
+      let sspan = posToSrcSpan layout ((5,5),(5,14))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/Where2.hs:5:5-13"
+
+      let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan)
+      -- (drawTreeCompact layout2) `shouldBe`
+      --    ""
+
+      let pprVal2 = retrieveTokensPpr layout2
+      (pprVal2) `shouldBe`
+          [PprText 1 1 Original "module Layout.Where2 where",
+           PprText 3 1 Original "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 4 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (6,12) (FromAlignCol (2,-11))
+             [PprDeleted 5 1 1 0 1,
+              PprText 5 1 Original "ff = 15"],
+           PprText 7 1 Original "x = 3",
+           PprText 8 1 Original ""]
+
+      (renderPpr pprVal2) `shouldBe` "module Layout.Where2 where\n\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff = 15\n\nx = 3\n"
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in Ppr format TypeUtils.LayoutLet2" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/TypeUtils/LayoutLet2.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(10,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,18))\n"++
+         "1:((1,19),(1,24))\n"++
+         "1:((7,1),(8,35))\n"++
+         "2:((7,1),(7,4))\n"++
+         "2:((7,5),(8,35))\n"++
+         "3:((7,5),(7,8))\n"++
+         "3:((7,9),(7,10))\n"++
+         "3:((7,11),(8,35))\n"++
+         "4:((7,11),(7,14))\n"++
+         "4:((7,15),(8,20))(Above None (7,15) (8,20) SameLine 1)\n"++
+         "5:((7,15),(7,20))\n"++
+         "6:((7,15),(7,16))\n"++
+         "6:((7,17),(7,20))\n"++
+         "7:((7,17),(7,18))\n"++
+         "7:((7,19),(7,20))\n"++
+         "5:((8,15),(8,20))\n"++
+         "6:((8,15),(8,16))\n"++
+         "6:((8,17),(8,20))\n"++
+         "7:((8,17),(8,18))\n"++
+         "7:((8,19),(8,20))\n"++
+         "4:((8,24),(8,35))\n"++
+         "5:((8,24),(8,31))\n"++
+         "6:((8,24),(8,27))\n"++
+         "6:((8,28),(8,29))\n"++
+         "6:((8,30),(8,31))\n"++
+         "5:((8,32),(8,33))\n"++
+         "5:((8,34),(8,35))\n"++
+         "1:((10,1),(10,1))\n"
+
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "module LayoutLet2 where",
+           PprText 3 1 Original "-- Simple let expression, rename xxx to something longer or shorter",
+           PprText 4 1 Original "-- and the let/in layout should adjust accordingly",
+           PprText 5 1 Original "-- In this case the tokens for xxx + a + b should also shift out",
+           PprText 7 1 Original "foo xxx = let",
+           PprAbove None (8,20) (SameLine 1)
+             [PprText 7 1 Original "a = 1",
+              PprText 8 1 Original "b = 2"],
+           PprText 8 21 Original "in xxx + a + b",
+           PprText 10 1 Original ""
+          ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in Ppr format Renaming.LayoutIn1" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Renaming/LayoutIn1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(10,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,17))\n"++
+         "1:((1,18),(1,23))\n"++
+         "1:((7,1),(9,40))\n"++
+         "2:((7,1),(7,11))\n"++
+         "2:((7,12),(9,40))\n"++
+         "3:((7,12),(7,13))\n"++
+         "3:((7,14),(7,15))\n"++
+         "3:((7,15),(7,16))\n"++
+         "3:((7,17),(7,28))\n"++
+         "4:((7,17),(7,21))\n"++
+         "5:((7,17),(7,19))\n"++
+         "5:((7,20),(7,21))\n"++
+         "4:((7,22),(7,23))\n"++
+         "4:((7,24),(7,28))\n"++
+         "5:((7,24),(7,26))\n"++
+         "5:((7,27),(7,28))\n"++
+         "3:((7,29),(7,34))\n"++
+         "3:((7,35),(9,40))(Above None (7,35) (9,40) FromAlignCol (1,-39))\n"++
+         "4:((7,35),(7,46))\n"++
+         "5:((7,35),(7,37))\n"++
+         "5:((7,38),(7,46))\n"++
+         "6:((7,38),(7,39))\n"++
+         "6:((7,39),(7,40))\n"++
+         "6:((7,41),(7,46))\n"++
+         "7:((7,41),(7,42))\n"++
+         "7:((7,42),(7,43))\n"++
+         "7:((7,43),(7,46))\n"++
+         "4:((9,35),(9,40))\n"++
+         "5:((9,35),(9,38))\n"++
+         "5:((9,38),(9,40))\n"++
+         "6:((9,38),(9,39))\n"++
+         "6:((9,39),(9,40))\n"++
+         "1:((10,1),(10,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "module LayoutIn1 where",
+           PprText 3 1 Original "--Layout rule applies after 'where','let','do' and 'of'",
+           PprText 5 1 Original "--In this Example: rename 'sq' to 'square'.",
+           PprText 7 1 Original "sumSquares x y= sq x + sq y where",
+           PprAbove None (9,40) (FromAlignCol (1,-39))
+             [PprText 7 1 Original "sq x= x^pow",
+              PprText 8 (-31) Original "--There is a comment.",
+              PprText 9 1 Original "pow=2"],
+           PprText 10 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in Ppr format LetExpr" $ do
+      (t,toks) <- parsedFileLayoutLetExpr
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      (GHC.showRichTokenStream toks) `shouldBe` "-- A simple let expression, to ensure the layout is detected\n\n module Layout.LetExpr where\n\n foo = let x = 1\n           y = 2\n       in x + y\n\n "
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(7,15))\n"++
+          "2:((5,1),(5,4))\n"++
+          "2:((5,5),(7,15))\n"++
+          "3:((5,5),(5,6))\n"++
+          "3:((5,7),(7,15))\n"++
+          "4:((5,7),(5,10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+          "5:((5,11),(5,16))\n"++
+          "6:((5,11),(5,12))\n"++
+          "6:((5,13),(5,16))\n"++
+          "7:((5,13),(5,14))\n"++
+          "7:((5,15),(5,16))\n"++
+          "5:((6,11),(6,16))\n"++
+          "6:((6,11),(6,12))\n"++
+          "6:((6,13),(6,16))\n"++
+          "7:((6,13),(6,14))\n"++
+          "7:((6,15),(6,16))\n"++
+          "4:((7,10),(7,15))\n"++
+          "5:((7,10),(7,11))\n"++
+          "5:((7,12),(7,13))\n"++
+          "5:((7,14),(7,15))\n"++
+          "1:((9,1),(9,1))\n"
+
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "-- A simple let expression, to ensure the layout is detected",
+           PprText 3 1 Original "module Layout.LetExpr where",
+           PprText 5 1 Original "foo = let",
+           PprAbove None (6,16) (FromAlignCol (1,-9))
+             [PprText 5 1 Original "x = 1",
+              PprText 6 1 Original "y = 2"
+             ],
+           PprText 7 7 Original "in x + y",
+           PprText 9 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in Ppr format LetStmt" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      (GHC.showRichTokenStream $ bypassGHCBug7351 toks) `shouldBe` "-- A simple let statement, to ensure the layout is detected\n\nmodule Layout.LetStmt where\n\nfoo = do\n        let x = 1\n            y = 2\n        x+y\n\n"
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(10,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(8,12))\n"++
+          "2:((5,1),(5,4))\n"++
+          "2:((5,5),(8,12))\n"++
+          "3:((5,5),(5,6))\n"++
+          "3:((5,7),(8,12))\n"++
+          "4:((5,7),(5,9))\n"++
+          "4:((6,9),(8,12))(Above FromAlignCol (1,-1) (6,9) (8,12) FromAlignCol (2,-11))\n"++
+          "5:((6,9),(7,18))\n"++
+          "6:((6,9),(6,12))\n"++
+          "6:((6,13),(7,18))(Above None (6,13) (7,18) FromAlignCol (1,-9))\n"++
+          "7:((6,13),(6,18))\n"++
+          "8:((6,13),(6,14))\n"++
+          "8:((6,15),(6,18))\n"++
+          "9:((6,15),(6,16))\n"++
+          "9:((6,17),(6,18))\n"++
+          "7:((7,13),(7,18))\n"++
+          "8:((7,13),(7,14))\n"++
+          "8:((7,15),(7,18))\n"++
+          "9:((7,15),(7,16))\n"++
+          "9:((7,17),(7,18))\n"++
+          "5:((8,9),(8,12))\n"++
+          "6:((8,9),(8,10))\n"++
+          "6:((8,10),(8,11))\n"++
+          "6:((8,11),(8,12))\n"++
+          "1:((10,1),(10,1))\n"
+
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+      (pprVal) `shouldBe`
+          [PprText 1 1 Original "-- A simple let statement, to ensure the layout is detected",
+           PprText 3 1 Original "module Layout.LetStmt where",
+           PprText 5 1 Original "foo = do",
+           PprAbove (FromAlignCol (1,-1)) (8,12) (FromAlignCol (2,-11))
+             [PprText 6 1 Original "let",
+              PprAbove None (7,18) (FromAlignCol (1,-9))
+                [PprText 6 1 Original "x = 1",
+                 PprText 7 1 Original "y = 2"
+                ],
+              PprText 8 1 Original "x+y"
+             ],
+           PprText 10 1 Original ""
+          ]
+
+      (renderPpr pprVal) `shouldBe`
+          "-- A simple let statement, to ensure the layout is detected\n\nmodule Layout.LetStmt where\n\nfoo = do\n        let x = 1\n            y = 2\n        x+y\n\n"
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in Ppr format LayoutIn2" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      (GHC.showRichTokenStream $ bypassGHCBug7351 toks) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(14,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,17))\n"++
+          "1:((1,18),(1,23))\n"++
+          "1:((7,1),(7,22))\n"++
+          "2:((7,1),(7,6))\n"++
+          "2:((7,7),(7,9))\n"++
+          "2:((7,10),(7,11))\n"++
+          "2:((7,11),(7,14))\n"++
+          "2:((7,14),(7,15))\n"++
+          "2:((7,16),(7,18))\n"++
+          "2:((7,19),(7,22))\n"++
+          "1:((8,1),(12,43))\n"++
+          "2:((8,1),(8,6))\n"++
+          "2:((8,7),(12,43))\n"++
+          "3:((8,7),(8,11))\n"++
+          "3:((8,12),(8,13))\n"++
+          "3:((8,14),(12,43))\n"++
+          "4:((8,14),(8,18))\n"++
+          "4:((8,19),(8,23))\n"++
+          "4:((8,24),(8,26))\n"++
+          "4:((8,28),(12,43))(Above SameLine 1 (8,28) (12,43) FromAlignCol (2,-42))\n"++
+          "5:((8,28),(8,39))\n"++
+          "6:((8,28),(8,34))\n"++
+          "6:((8,35),(8,37))\n"++
+          "6:((8,38),(8,39))\n"++
+          "5:((9,1),(11,66))\n"++
+          "6:((9,1),(10,34))\n"++
+          "6:((11,30),(11,46))\n"++
+          "7:((11,30),(11,31))\n"++
+          "7:((11,32),(11,38))\n"++
+          "8:((11,32),(11,33))\n"++
+          "8:((11,34),(11,35))\n"++
+          "8:((11,36),(11,38))\n"++
+          "7:((11,45),(11,46))\n"++
+          "6:((11,48),(11,53))\n"++
+          "6:((11,55),(11,66))(Above SameLine 1 (11,55) (11,66) FromAlignCol (1,-38))\n"++
+          "7:((11,55),(11,66))\n"++
+          "8:((11,55),(11,56))\n"++
+          "8:((11,57),(11,66))\n"++
+          "9:((11,57),(11,58))\n"++
+          "9:((11,59),(11,66))\n"++
+          "10:((11,59),(11,63))\n"++
+          "10:((11,64),(11,66))\n"++
+          "5:((12,28),(12,43))\n"++
+          "6:((12,28),(12,37))\n"++
+          "6:((12,38),(12,40))\n"++
+          "6:((12,41),(12,43))\n"++
+          "1:((14,1),(14,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+
+      pprVal `shouldBe`
+          [PprText 1 1 Original "module LayoutIn2 where",
+           PprText 3 1 Original "--Layout rule applies after 'where','let','do' and 'of'",
+           PprText 5 1 Original "--In this Example: rename 'list' to 'ls'.",
+           PprText 7 1 Original "silly :: [Int] -> Int",
+           PprText 8 1 Original "silly list = case list of",
+           PprAbove (SameLine 1) (12,43) (FromAlignCol (2,-42))
+             [PprText 8 1 Original "(1:xs) -> 1",
+              PprText 9 (-26) Original "--There is a comment",
+              PprText 10 1 Original "(2:xs)",
+              PprText 11 3 Original "| x < 10    -> 4  where",
+              PprAbove (SameLine 1) (11,66) (FromAlignCol (1,-38))
+                [PprText 11 1 Original "x = last xs"
+                ],
+              PprText 12 1 Original "otherwise -> 12"
+             ],
+          PprText 14 1 Original ""
+          ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- -----------------------------------------------------------------
+
+    it "retrieves the tokens in Ppr format LetIn1" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/LiftToToplevel/LetIn1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+
+      pprVal `shouldBe`
+          [PprText 1 1 Original "module LiftToToplevel.LetIn1 where",
+           PprText 3 1 Original "--A definition can be lifted from a where or let to the top level binding group.",
+           PprText 4 1 Original "--Lifting a definition widens the scope of the definition.",
+           PprText 6 1 Original "--In this example, lift 'sq' in 'sumSquares'",
+           PprText 7 1 Original "--This example aims to test lifting a definition from a let clause to top level,",
+           PprText 8 1 Original "--and the elimination of the keywords 'let' and 'in'",
+           PprText 10 1 Original "sumSquares x y = let",
+           PprAbove None (11,32) (FromAlignCol (1,-13))
+             [PprText 10 1 Original "sq 0=0",
+              PprText 11 1 Original "sq z=z^pow"
+             ],
+           PprText 12 19 Original "in sq x + sq y",
+           PprText 13 24 Original "where",
+           PprAbove None (13,35) (FromAlignCol (2,-34))
+             [PprText 13 1 Original "pow=2"
+             ],
+           PprText 15 1 Original "anotherFun 0 y = sq y",
+           PprText 16 6 Original "where",
+           PprAbove None (16,22) (FromAlignCol (1,-21))
+             [PprText 16 1 Original "sq x = x^2"],
+           PprText 17 1 Original ""
+          ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format Where" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Where.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+      pprVal `shouldBe`
+          [PprText 1 1 Original "module LiftToToplevel.Where where",
+           PprText 3 1 Original "anotherFun 0 y = sq y",
+           PprText 4 6 Original "where",
+           PprAbove None (4,22) (FromAlignCol (1,-21))
+             [PprText 4 1 Original "sq x = x^2"],
+           PprText 5 1 Original ""
+          ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format PatBind" $ do
+      (t,toks) <- parsedFilePatBind
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(13,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,22))\n"++
+         "1:((1,23),(1,28))\n"++
+         "1:((4,1),(4,18))\n"++
+         "2:((4,1),(4,4))\n"++
+         "2:((4,5),(4,7))\n"++
+         "2:((4,8),(4,9))\n"++
+         "2:((4,9),(4,12))\n"++
+         "2:((4,12),(4,13))\n"++
+         "2:((4,14),(4,17))\n"++
+         "2:((4,17),(4,18))\n"++
+         "1:((5,1),(5,9))\n"++
+         "2:((5,1),(5,2))\n"++
+         "2:((5,3),(5,5))\n"++
+         "2:((5,6),(5,9))\n"++
+         "1:((6,1),(6,9))\n"++
+         "2:((6,1),(6,2))\n"++
+         "2:((6,3),(6,5))\n"++
+         "2:((6,6),(6,9))\n"++
+         "1:((7,1),(10,12))\n"++
+         "2:((7,1),(7,10))\n"++
+         "2:((7,11),(7,12))\n"++
+         "2:((7,13),(7,38))\n"++
+         "3:((7,13),(7,17))\n"++
+         "3:((7,18),(7,19))\n"++
+         "3:((7,20),(7,38))\n"++
+         "4:((7,20),(7,30))\n"++
+         "5:((7,20),(7,23))\n"++
+         "5:((7,24),(7,30))\n"++
+         "6:((7,24),(7,25))\n"++
+         "6:((7,25),(7,26))\n"++
+         "6:((7,28),(7,30))\n"++
+         "4:((7,32),(7,38))\n"++
+         "5:((7,32),(7,33))\n"++
+         "5:((7,33),(7,34))\n"++
+         "5:((7,36),(7,38))\n"++
+         "2:((8,3),(8,8))\n"++
+         "2:((9,5),(10,12))(Above FromAlignCol (1,-4) (9,5) (10,12) FromAlignCol (3,-11))\n"++
+         "3:((9,5),(9,14))\n"++
+         "4:((9,5),(9,7))\n"++
+         "4:((9,8),(9,10))\n"++
+         "4:((9,11),(9,14))\n"++
+         "3:((10,5),(10,12))\n"++
+         "4:((10,5),(10,7))\n"++
+         "4:((10,8),(10,12))\n"++
+         "5:((10,8),(10,9))\n"++
+         "5:((10,10),(10,12))\n"++
+         "1:((13,1),(13,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+      pprVal `shouldBe`
+          [PprText 1 1 Original "module Layout.PatBind where",
+           PprText 3 2 Original "-- Pattern bind",
+           PprText 4 1 Original "tup :: (Int, Int)",
+           PprText 5 1 Original "h :: Int",
+           PprText 6 1 Original "t :: Int",
+           PprText 7 1 Original "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 8 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (10,12) (FromAlignCol (3,-11))
+             [PprText 9 1 Original "ff :: Int",
+              PprText 10 1 Original "ff = 15"
+             ],
+           PprText 13 1 Original ""
+           ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format TokenTest" $ do
+      (t,toks) <- parsedFileTokenTestGhc
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(26,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,17))\n"++
+          "1:((1,18),(1,23))\n"++
+          "1:((5,1),(6,14))\n"++
+          "2:((5,1),(5,4))\n"++
+          "2:((5,5),(6,14))\n"++
+          "3:((5,5),(5,6))\n"++
+          "3:((5,7),(5,8))\n"++
+          "3:((5,9),(5,10))\n"++
+          "3:((5,11),(5,12))\n"++
+          "3:((6,3),(6,8))\n"++
+          "3:((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-13))\n"++
+          "4:((6,9),(6,14))\n"++
+          "5:((6,9),(6,10))\n"++
+          "5:((6,11),(6,14))\n"++
+          "6:((6,11),(6,12))\n"++
+          "6:((6,13),(6,14))\n"++
+          "1:((8,1),(10,10))\n"++
+          "2:((8,1),(8,4))\n"++
+          "2:((8,5),(10,10))\n"++
+          "3:((8,5),(8,6))\n"++
+          "3:((8,7),(8,8))\n"++
+          "3:((8,9),(8,10))\n"++
+          "3:((8,11),(8,12))\n"++
+          "3:((9,3),(9,8))\n"++
+          "3:((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-9))\n"++
+          "4:((10,5),(10,10))\n"++
+          "5:((10,5),(10,6))\n"++
+          "5:((10,7),(10,10))\n"++
+          "6:((10,7),(10,8))\n"++
+          "6:((10,9),(10,10))\n"++
+          "1:((13,1),(15,17))\n"++
+          "2:((13,1),(13,4))\n"++
+          "2:((13,5),(15,17))\n"++
+          "3:((13,5),(13,6))\n"++
+          "3:((13,7),(13,8))\n"++
+          "3:((13,9),(13,10))\n"++
+          "3:((14,3),(15,17))\n"++
+          "4:((14,3),(14,6))\n"++
+          "4:((14,7),(14,14))(Above None (14,7) (14,14) FromAlignCol (1,-11))\n"++
+          "5:((14,7),(14,14))\n"++
+          "6:((14,7),(14,10))\n"++
+          "6:((14,11),(14,14))\n"++
+          "7:((14,11),(14,12))\n"++
+          "7:((14,13),(14,14))\n"++
+          "4:((15,10),(15,17))\n"++
+          "5:((15,10),(15,11))\n"++
+          "5:((15,12),(15,13))\n"++
+          "5:((15,14),(15,17))\n"++
+          "1:((19,1),(21,14))\n"++
+          "2:((19,1),(19,4))\n"++
+          "2:((19,5),(21,14))\n"++
+          "3:((19,5),(19,6))\n"++
+          "3:((19,7),(19,8))\n"++
+          "3:((19,9),(19,10))\n"++
+          "3:((20,3),(21,14))\n"++
+          "4:((20,3),(20,5))\n"++
+          "4:((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-13))\n"++
+          "5:((20,6),(20,18))\n"++
+          "6:((20,6),(20,7))\n"++
+          "6:((20,11),(20,18))\n"++
+          "5:((21,6),(21,14))\n"++
+          "6:((21,6),(21,12))\n"++
+          "6:((21,13),(21,14))\n"++
+          "1:((26,1),(26,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+{-
+      pprVal `shouldBe`
+          []
+-}
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format Md1" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(44,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,19))\n"++
+         "1:((1,20),(1,25))\n"++
+         "1:((3,1),(3,31))\n"++
+         "2:((3,1),(3,9))\n"++
+         "2:((3,10),(3,12))\n"++
+         "2:((3,13),(3,20))\n"++
+         "2:((3,21),(3,23))\n"++
+         "2:((3,24),(3,31))\n"++
+         "1:((4,1),(4,19))\n"++
+         "2:((4,1),(4,9))\n"++
+         "2:((4,10),(4,19))\n"++
+         "3:((4,10),(4,11))\n"++
+         "3:((4,12),(4,13))\n"++
+         "3:((4,14),(4,19))\n"++
+         "4:((4,14),(4,15))\n"++
+         "4:((4,16),(4,17))\n"++
+         "4:((4,18),(4,19))\n"++
+         "1:((6,1),(6,15))\n"++
+         "2:((6,1),(6,2))\n"++
+         "2:((6,2),(6,3))\n"++
+         "2:((6,3),(6,4))\n"++
+         "2:((6,5),(6,7))\n"++
+         "2:((6,8),(6,15))\n"++
+         "1:((7,1),(7,6))\n"++
+         "2:((7,1),(7,2))\n"++
+         "2:((7,3),(7,6))\n"++
+         "3:((7,3),(7,4))\n"++
+         "3:((7,5),(7,6))\n"++
+         "1:((8,1),(8,6))\n"++
+         "2:((8,1),(8,2))\n"++
+         "2:((8,3),(8,6))\n"++
+         "3:((8,3),(8,4))\n"++
+         "3:((8,5),(8,6))\n"++
+         "1:((11,1),(11,18))\n"++
+         "2:((11,1),(11,4))\n"++
+         "2:((11,5),(11,7))\n"++
+         "2:((11,8),(11,9))\n"++
+         "2:((11,9),(11,12))\n"++
+         "2:((11,12),(11,13))\n"++
+         "2:((11,14),(11,17))\n"++
+         "2:((11,17),(11,18))\n"++
+         "1:((12,1),(12,9))\n"++
+         "2:((12,1),(12,2))\n"++
+         "2:((12,3),(12,5))\n"++
+         "2:((12,6),(12,9))\n"++
+         "1:((13,1),(13,9))\n"++
+         "2:((13,1),(13,2))\n"++
+         "2:((13,3),(13,5))\n"++
+         "2:((13,6),(13,9))\n"++
+         "1:((14,1),(17,12))\n"++
+         "2:((14,1),(14,10))\n"++
+         "2:((14,11),(14,12))\n"++
+         "2:((14,13),(14,38))\n"++
+         "3:((14,13),(14,17))\n"++
+         "3:((14,18),(14,19))\n"++
+         "3:((14,20),(14,38))\n"++
+         "4:((14,20),(14,30))\n"++
+         "5:((14,20),(14,23))\n"++
+         "5:((14,24),(14,30))\n"++
+         "6:((14,24),(14,25))\n"++
+         "6:((14,25),(14,26))\n"++
+         "6:((14,28),(14,30))\n"++
+         "4:((14,32),(14,38))\n"++
+         "5:((14,32),(14,33))\n"++
+         "5:((14,33),(14,34))\n"++
+         "5:((14,36),(14,38))\n"++
+         "2:((15,3),(15,8))\n"++
+         "2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-11))\n"++
+         "3:((16,5),(16,14))\n"++
+         "4:((16,5),(16,7))\n"++
+         "4:((16,8),(16,10))\n"++
+         "4:((16,11),(16,14))\n"++
+         "3:((17,5),(17,12))\n"++
+         "4:((17,5),(17,7))\n"++
+         "4:((17,8),(17,12))\n"++
+         "5:((17,8),(17,9))\n"++
+         "5:((17,10),(17,12))\n"++
+         "1:((19,1),(19,26))\n"++
+         "2:((19,1),(19,5))\n"++
+         "2:((19,6),(19,7))\n"++
+         "2:((19,8),(19,26))\n"++
+         "3:((19,8),(19,9))\n"++
+         "3:((19,10),(19,11))\n"++
+         "3:((19,12),(19,13))\n"++
+         "3:((19,14),(19,22))\n"++
+         "4:((19,14),(19,15))\n"++
+         "4:((19,16),(19,22))\n"++
+         "3:((19,23),(19,24))\n"++
+         "3:((19,25),(19,26))\n"++
+         "1:((21,1),(21,17))\n"++
+         "2:((21,1),(21,3))\n"++
+         "2:((21,4),(21,6))\n"++
+         "2:((21,7),(21,10))\n"++
+         "2:((21,11),(21,13))\n"++
+         "2:((21,14),(21,17))\n"++
+         "1:((22,1),(24,11))\n"++
+         "2:((22,1),(22,3))\n"++
+         "2:((22,4),(24,11))\n"++
+         "3:((22,4),(22,5))\n"++
+         "3:((22,6),(22,7))\n"++
+         "3:((22,8),(22,14))\n"++
+         "4:((22,8),(22,9))\n"++
+         "4:((22,10),(22,11))\n"++
+         "4:((22,12),(22,14))\n"++
+         "3:((23,3),(23,8))\n"++
+         "3:((24,5),(24,11))(Above FromAlignCol (1,-4) (24,5) (24,11) FromAlignCol (2,-10))\n"++
+         "4:((24,5),(24,11))\n"++
+         "5:((24,5),(24,7))\n"++
+         "5:((24,8),(24,11))\n"++
+         "6:((24,8),(24,9))\n"++
+         "6:((24,10),(24,11))\n"++
+         "1:((26,1),(29,12))\n"++
+         "2:((26,1),(26,2))\n"++
+         "2:((26,3),(29,12))\n"++
+         "3:((26,3),(26,4))\n"++
+         "3:((26,5),(26,6))\n"++
+         "3:((27,3),(29,12))\n"++
+         "4:((27,3),(27,6))\n"++
+         "4:((28,5),(28,12))(Above FromAlignCol (1,-2) (28,5) (28,12) FromAlignCol (1,-9))\n"++
+         "5:((28,5),(28,12))\n"++
+         "6:((28,5),(28,7))\n"++
+         "6:((28,8),(28,12))\n"++
+         "7:((28,8),(28,9))\n"++
+         "7:((28,10),(28,12))\n"++
+         "4:((29,6),(29,12))\n"++
+         "5:((29,6),(29,8))\n"++
+         "5:((29,9),(29,10))\n"++
+         "5:((29,11),(29,12))\n"++
+         "1:((31,1),(33,18))\n"++
+         "2:((31,1),(31,3))\n"++
+         "2:((31,4),(33,18))\n"++
+         "3:((31,4),(31,5))\n"++
+         "3:((31,6),(31,7))\n"++
+         "3:((31,8),(33,18))\n"++
+         "4:((31,8),(31,10))\n"++
+         "4:((32,3),(33,18))(Above FromAlignCol (1,-8) (32,3) (33,18) FromAlignCol (2,-17))\n"++
+         "5:((32,3),(32,13))\n"++
+         "6:((32,3),(32,6))\n"++
+         "6:((32,7),(32,13))(Above None (32,7) (32,13) FromAlignCol (1,-10))\n"++
+         "7:((32,7),(32,13))\n"++
+         "8:((32,7),(32,9))\n"++
+         "8:((32,10),(32,13))\n"++
+         "9:((32,10),(32,11))\n"++
+         "9:((32,12),(32,13))\n"++
+         "5:((33,3),(33,18))\n"++
+         "6:((33,3),(33,9))\n"++
+         "6:((33,10),(33,18))\n"++
+         "7:((33,10),(33,11))\n"++
+         "7:((33,11),(33,17))\n"++
+         "8:((33,11),(33,13))\n"++
+         "8:((33,14),(33,15))\n"++
+         "8:((33,16),(33,17))\n"++
+         "7:((33,17),(33,18))\n"++
+         "1:((35,1),(35,23))\n"++
+         "2:((35,1),(35,4))\n"++
+         "2:((35,5),(35,23))\n"++
+         "3:((35,5),(35,6))\n"++
+         "3:((35,7),(35,8))\n"++
+         "3:((35,9),(35,23))\n"++
+         "4:((35,9),(35,10))\n"++
+         "4:((35,11),(35,12))\n"++
+         "4:((35,13),(35,23))\n"++
+         "5:((35,13),(35,21))\n"++
+         "5:((35,22),(35,23))\n"++
+         "1:((39,1),(39,29))\n"++
+         "2:((39,1),(39,7))\n"++
+         "2:((39,8),(39,10))\n"++
+         "2:((39,11),(39,18))\n"++
+         "2:((39,19),(39,21))\n"++
+         "2:((39,22),(39,29))\n"++
+         "1:((40,1),(40,17))\n"++
+         "2:((40,1),(40,7))\n"++
+         "2:((40,8),(40,17))\n"++
+         "3:((40,8),(40,9))\n"++
+         "3:((40,10),(40,11))\n"++
+         "3:((40,12),(40,17))\n"++
+         "4:((40,12),(40,13))\n"++
+         "4:((40,14),(40,15))\n"++
+         "4:((40,16),(40,17))\n"++
+         "1:((44,1),(44,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+
+      pprVal `shouldBe`
+          [PprText 1 1 Original "module MoveDef.Md1 where",
+           PprText 3 1 Original "toplevel :: Integer -> Integer",
+           PprText 4 1 Original "toplevel x = c * x",
+           PprText 6 1 Original "c,d :: Integer",
+           PprText 7 1 Original "c = 7",
+           PprText 8 1 Original "d = 9",
+           PprText 10 1 Original "-- Pattern bind",
+           PprText 11 1 Original "tup :: (Int, Int)",
+           PprText 12 1 Original "h :: Int",
+           PprText 13 1 Original "t :: Int",
+           PprText 14 1 Original "tup@(h,t) = head $ zip [1..10] [3..ff]",
+           PprText 15 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (17,12) (FromAlignCol (2,-11))
+             [PprText 16 1 Original "ff :: Int",
+              PprText 17 1 Original "ff = 15"
+             ],
+           PprText 19 1 Original "data D = A | B String | C",
+           PprText 21 1 Original "ff :: Int -> Int",
+           PprText 22 1 Original "ff y = y + zz",
+           PprText 23 3 Original "where",
+           PprAbove (FromAlignCol (1,-4)) (24,11) (FromAlignCol (2,-10))
+             [PprText 24 1 Original "zz = 1"],
+           PprText 26 1 Original "l z =",
+           PprText 27 3 Original "let",
+           PprAbove (FromAlignCol (1,-2)) (28,12) (FromAlignCol (1,-9))
+             [PprText 28 1 Original "ll = 34"],
+           PprText 29 3 Original "in ll + z",
+           PprText 31 1 Original "dd q = do",
+           PprAbove (FromAlignCol (1,-8)) (33,18) (FromAlignCol (2,-17))
+             [PprText 32 1 Original "let",
+              PprAbove None (32,13) (FromAlignCol (1,-10))
+                [PprText 32 1 Original "ss = 5"],
+              PprText 33 1 Original "return (ss + q)"
+             ],
+           PprText 35 1 Original "zz1 a = 1 + toplevel a",
+           PprText 37 1 Original "-- General Comment",
+           PprText 38 1 Original "-- |haddock comment",
+           PprText 39 1 Original "tlFunc :: Integer -> Integer",
+           PprText 40 1 Original "tlFunc x = c * x",
+           PprText 41 1 Original "-- Comment at end",
+           PprText 44 1 Original ""
+          ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.LetIn1" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/TypeUtils/LayoutLet1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(10,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,18))\n"++
+         "1:((1,19),(1,24))\n"++
+         "1:((6,1),(8,25))\n"++
+         "2:((6,1),(6,4))\n"++
+         "2:((6,5),(8,25))\n"++
+         "3:((6,5),(6,8))\n"++
+         "3:((6,9),(6,10))\n"++
+         "3:((6,11),(8,25))\n"++
+         "4:((6,11),(6,14))\n"++
+         "4:((6,15),(7,20))(Above None (6,15) (7,20) FromAlignCol (1,-9))\n"++
+         "5:((6,15),(6,20))\n"++
+         "6:((6,15),(6,16))\n"++
+         "6:((6,17),(6,20))\n"++
+         "7:((6,17),(6,18))\n"++
+         "7:((6,19),(6,20))\n"++
+         "5:((7,15),(7,20))\n"++
+         "6:((7,15),(7,16))\n"++
+         "6:((7,17),(7,20))\n"++
+         "7:((7,17),(7,18))\n"++
+         "7:((7,19),(7,20))\n"++
+         "4:((8,14),(8,25))\n"++
+         "5:((8,14),(8,21))\n"++
+         "6:((8,14),(8,17))\n"++
+         "6:((8,18),(8,19))\n"++
+         "6:((8,20),(8,21))\n"++
+         "5:((8,22),(8,23))\n"++
+         "5:((8,24),(8,25))\n"++
+         "1:((10,1),(10,1))\n"
+
+      let pprVal = retrieveTokensPpr layout
+
+      pprVal `shouldBe`
+          [PprText 1 1 Original "module LayoutLet1 where",
+           PprText 3 1 Original "-- Simple let expression, rename xxx to something longer or shorter",
+           PprText 4 1 Original "-- and the let/in layout should adjust accordingly",
+           PprText 6 1 Original "foo xxx = let",
+           PprAbove None (7,20) (FromAlignCol (1,-9))
+             [PprText 6 1 Original "a = 1",
+              PprText 7 1 Original "b = 2"
+             ],
+           PprText 8 11 Original "in xxx + a + b",
+           PprText 10 1 Original ""
+          ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format Layout.Comments1" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Comments1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(8,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,24))\n"++
+          "1:((1,25),(1,30))\n"++
+          "1:((3,1),(4,19))\n"++
+          "2:((3,1),(3,5))\n"++
+          "2:((3,6),(4,19))\n"++
+          "3:((3,6),(3,7))\n"++
+          "3:((3,8),(3,9))\n"++
+          "3:((3,10),(3,15))\n"++
+          "4:((3,10),(3,11))\n"++
+          "4:((3,12),(3,13))\n"++
+          "4:((3,14),(3,15))\n"++
+          "3:((4,10),(4,15))\n"++
+          "3:((4,16),(4,19))(Above None (4,16) (4,43) FromAlignCol (2,-42))\n"++
+          "4:((4,16),(4,19))\n"++
+          "5:((4,16),(4,17))\n"++
+          "5:((4,17),(4,19))\n"++
+          "6:((4,17),(4,18))\n"++
+          "6:((4,18),(4,19))\n"++
+          "1:((6,1),(6,15))\n"++
+          "2:((6,1),(6,11))\n"++
+          "2:((6,12),(6,15))\n"++
+          "3:((6,12),(6,13))\n"++
+          "3:((6,14),(6,15))\n"++
+          "1:((8,1),(8,1))\n"
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+
+      pprVal `shouldBe`
+          [PprText 1 1 Original "module Layout.Comments1 where",
+           PprText 3 1 Original "aFun x = x + p",
+           PprText 4 10 Original "where",
+           PprAbove None (4,43) (FromAlignCol (2,-42))
+             [PprText 4 1 Original "p=2  {-There is a comment-}"],
+           PprText 6 1 Original "anotherFun = 3",
+           PprText 8 1 Original ""
+          ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format LocToName" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/LocToName.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(25,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,17))\n"++
+         "1:((1,18),(12,3))\n"++
+         "1:((20,1),(24,18))\n"++
+         "2:((20,1),(20,11))\n"++
+         "2:((20,12),(20,41))\n"++
+         "3:((20,12),(20,18))\n"++
+         "3:((20,19),(20,20))\n"++
+         "3:((20,21),(20,41))\n"++
+         "4:((20,21),(20,25))\n"++
+         "5:((20,21),(20,22))\n"++
+         "5:((20,23),(20,24))\n"++
+         "5:((20,24),(20,25))\n"++
+         "4:((20,26),(20,27))\n"++
+         "4:((20,28),(20,41))\n"++
+         "5:((20,28),(20,38))\n"++
+         "5:((20,39),(20,41))\n"++
+         "2:((24,1),(24,18))\n"++
+         "3:((24,1),(24,11))\n"++
+         "3:((24,12),(24,14))\n"++
+         "3:((24,15),(24,16))\n"++
+         "3:((24,17),(24,18))\n"++
+         "1:((25,1),(25,1))\n"
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+
+      -- (show pprVal) `shouldBe` ""
+
+      pprVal `shouldBe`
+          [PprText 1 1 Original "module LocToName where",
+           PprText 3 1 Original "{-\n\n\n\n\n\n\n\n\n-}",
+           PprText 20 1 Original "sumSquares (x:xs) = x ^2 + sumSquares xs",
+           PprText 21 5 Original "-- where sq x = x ^pow ",
+           PprText 22 5 Original "--       pow = 2",
+           PprText 24 1 Original "sumSquares [] = 0",
+           PprText 25 1 Original ""]
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- ---------------------------------------------
+
+    it "retrieves the tokens in Ppr format DupDef.Dd1" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      -- (show layout) `shouldBe` ""
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(34,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,18))\n"++
+         "1:((1,19),(1,24))\n"++
+         "1:((3,1),(3,31))\n"++
+         "2:((3,1),(3,9))\n"++
+         "2:((3,10),(3,12))\n"++
+         "2:((3,13),(3,20))\n"++
+         "2:((3,21),(3,23))\n"++
+         "2:((3,24),(3,31))\n"++
+         "1:((4,1),(4,19))\n"++
+         "2:((4,1),(4,9))\n"++
+         "2:((4,10),(4,19))\n"++
+         "3:((4,10),(4,11))\n"++
+         "3:((4,12),(4,13))\n"++
+         "3:((4,14),(4,19))\n"++
+         "4:((4,14),(4,15))\n"++
+         "4:((4,16),(4,17))\n"++
+         "4:((4,18),(4,19))\n"++
+         "1:((6,1),(6,15))\n"++
+         "2:((6,1),(6,2))\n"++
+         "2:((6,2),(6,3))\n"++
+         "2:((6,3),(6,4))\n"++
+         "2:((6,5),(6,7))\n"++
+         "2:((6,8),(6,15))\n"++
+         "1:((7,1),(7,6))\n"++
+         "2:((7,1),(7,2))\n"++
+         "2:((7,3),(7,6))\n"++
+         "3:((7,3),(7,4))\n"++
+         "3:((7,5),(7,6))\n"++
+         "1:((8,1),(8,6))\n"++
+         "2:((8,1),(8,2))\n"++
+         "2:((8,3),(8,6))\n"++
+         "3:((8,3),(8,4))\n"++
+         "3:((8,5),(8,6))\n"++
+         "1:((11,1),(11,18))\n"++
+         "2:((11,1),(11,4))\n"++
+         "2:((11,5),(11,7))\n"++
+         "2:((11,8),(11,9))\n"++
+         "2:((11,9),(11,12))\n"++
+         "2:((11,12),(11,13))\n"++
+         "2:((11,14),(11,17))\n"++
+         "2:((11,17),(11,18))\n"++
+         "1:((12,1),(12,9))\n"++
+         "2:((12,1),(12,2))\n"++
+         "2:((12,3),(12,5))\n"++
+         "2:((12,6),(12,9))\n"++
+         "1:((13,1),(13,9))\n"++
+         "2:((13,1),(13,2))\n"++
+         "2:((13,3),(13,5))\n"++
+         "2:((13,6),(13,9))\n"++
+         "1:((14,1),(17,12))\n"++
+         "2:((14,1),(14,10))\n"++
+         "2:((14,11),(14,12))\n"++
+         "2:((14,13),(14,38))\n"++
+         "3:((14,13),(14,17))\n"++
+         "3:((14,18),(14,19))\n"++
+         "3:((14,20),(14,38))\n"++
+         "4:((14,20),(14,30))\n"++
+         "5:((14,20),(14,23))\n"++
+         "5:((14,24),(14,30))\n"++
+         "6:((14,24),(14,25))\n"++
+         "6:((14,25),(14,26))\n"++
+         "6:((14,28),(14,30))\n"++
+         "4:((14,32),(14,38))\n"++
+         "5:((14,32),(14,33))\n"++
+         "5:((14,33),(14,34))\n"++
+         "5:((14,36),(14,38))\n"++
+         "2:((15,3),(15,8))\n"++
+         "2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-11))\n"++
+         "3:((16,5),(16,14))\n"++
+         "4:((16,5),(16,7))\n"++
+         "4:((16,8),(16,10))\n"++
+         "4:((16,11),(16,14))\n"++
+         "3:((17,5),(17,12))\n"++
+         "4:((17,5),(17,7))\n"++
+         "4:((17,8),(17,12))\n"++
+         "5:((17,8),(17,9))\n"++
+         "5:((17,10),(17,12))\n"++
+         "1:((19,1),(19,26))\n"++
+         "2:((19,1),(19,5))\n"++
+         "2:((19,6),(19,7))\n"++
+         "2:((19,8),(19,26))\n"++
+         "3:((19,8),(19,9))\n"++
+         "3:((19,10),(19,11))\n"++
+         "3:((19,12),(19,13))\n"++
+         "3:((19,14),(19,22))\n"++
+         "4:((19,14),(19,15))\n"++
+         "4:((19,16),(19,22))\n"++
+         "3:((19,23),(19,24))\n"++
+         "3:((19,25),(19,26))\n"++
+         "1:((21,1),(23,11))\n"++
+         "2:((21,1),(21,3))\n"++
+         "2:((21,4),(23,11))\n"++
+         "3:((21,4),(21,5))\n"++
+         "3:((21,6),(21,7))\n"++
+         "3:((21,8),(21,14))\n"++
+         "4:((21,8),(21,9))\n"++
+         "4:((21,10),(21,11))\n"++
+         "4:((21,12),(21,14))\n"++
+         "3:((22,3),(22,8))\n"++
+         "3:((23,5),(23,11))(Above FromAlignCol (1,-4) (23,5) (23,11) FromAlignCol (2,-10))\n"++
+         "4:((23,5),(23,11))\n"++
+         "5:((23,5),(23,7))\n"++
+         "5:((23,8),(23,11))\n"++
+         "6:((23,8),(23,9))\n"++
+         "6:((23,10),(23,11))\n"++
+         "1:((25,1),(28,12))\n"++
+         "2:((25,1),(25,2))\n"++
+         "2:((25,3),(28,12))\n"++
+         "3:((25,3),(25,4))\n"++
+         "3:((25,5),(25,6))\n"++
+         "3:((26,3),(28,12))\n"++
+         "4:((26,3),(26,6))\n"++
+         "4:((27,5),(27,12))(Above FromAlignCol (1,-2) (27,5) (27,12) FromAlignCol (1,-9))\n"++
+         "5:((27,5),(27,12))\n"++
+         "6:((27,5),(27,7))\n"++
+         "6:((27,8),(27,12))\n"++
+         "7:((27,8),(27,9))\n"++
+         "7:((27,10),(27,12))\n"++
+         "4:((28,6),(28,12))\n"++
+         "5:((28,6),(28,8))\n"++
+         "5:((28,9),(28,10))\n"++
+         "5:((28,11),(28,12))\n"++
+         "1:((30,1),(32,18))\n"++
+         "2:((30,1),(30,3))\n"++
+         "2:((30,4),(32,18))\n"++
+         "3:((30,4),(30,5))\n"++
+         "3:((30,6),(30,7))\n"++
+         "3:((30,8),(32,18))\n"++
+         "4:((30,8),(30,10))\n"++
+         "4:((31,3),(32,18))(Above FromAlignCol (1,-8) (31,3) (32,18) FromAlignCol (2,-17))\n"++
+         "5:((31,3),(31,13))\n"++
+         "6:((31,3),(31,6))\n"++
+         "6:((31,7),(31,13))(Above None (31,7) (31,13) FromAlignCol (1,-10))\n"++
+         "7:((31,7),(31,13))\n"++
+         "8:((31,7),(31,9))\n"++
+         "8:((31,10),(31,13))\n"++
+         "9:((31,10),(31,11))\n"++
+         "9:((31,12),(31,13))\n"++
+         "5:((32,3),(32,18))\n"++
+         "6:((32,3),(32,9))\n"++
+         "6:((32,10),(32,18))\n"++
+         "7:((32,10),(32,11))\n"++
+         "7:((32,11),(32,17))\n"++
+         "8:((32,11),(32,13))\n"++
+         "8:((32,14),(32,15))\n"++
+         "8:((32,16),(32,17))\n"++
+         "7:((32,17),(32,18))\n"++
+         "1:((34,1),(34,1))\n"
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+
+      -- (show pprVal) `shouldBe` ""
+
+{-
+      pprVal `shouldBe`
+          []
+-}
+
+      (renderPpr pprVal) `shouldBe` origSource
+
+    -- --------------------------------------
+
+    it "retrieves the tokens in Ppr format Renaming.LayoutIn4" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/Renaming/LayoutIn4.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+
+      -- (show layout) `shouldBe` ""
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(14,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,17))\n"++
+         "1:((1,18),(1,23))\n"++
+         "1:((7,1),(12,53))\n"++
+         "2:((7,1),(7,5))\n"++
+         "2:((7,6),(12,53))\n"++
+         "3:((7,6),(7,7))\n"++
+         "3:((7,8),(7,21))\n"++
+         "4:((7,8),(7,13))\n"++
+         "4:((7,14),(7,21))\n"++
+         "3:((7,22),(7,27))\n"++
+         "3:((7,28),(12,53))(Above None (7,28) (12,53) FromAlignCol (2,-52))\n"++
+         "4:((7,28),(12,53))\n"++
+         "5:((7,28),(7,33))\n"++
+         "5:((7,34),(12,53))\n"++
+         "6:((7,34),(7,35))\n"++
+         "6:((7,35),(7,36))\n"++
+         "6:((7,37),(12,53))\n"++
+         "7:((7,37),(7,39))\n"++
+         "7:((7,41),(12,53))(Above SameLine 1 (7,41) (12,53) FromAlignCol (2,-52))\n"++
+         "8:((7,41),(7,59))\n"++
+         "9:((7,41),(7,44))\n"++
+         "9:((7,46),(7,59))(Above SameLine 1 (7,46) (7,59) FromAlignCol (1,-57))\n"++
+         "10:((7,46),(7,59))\n"++
+         "11:((7,46),(7,47))\n"++
+         "11:((7,48),(7,59))\n"++
+         "12:((7,48),(7,49))\n"++
+         "12:((7,50),(7,59))\n"++
+         "13:((7,50),(7,57))\n"++
+         "13:((7,58),(7,59))\n"++
+         "8:((8,2),(9,53))\n"++
+         "9:((8,2),(9,42))\n"++
+         "9:((9,46),(9,53))\n"++
+         "8:((10,41),(10,58))\n"++
+         "9:((10,41),(10,44))\n"++
+         "9:((10,46),(10,58))(Above SameLine 1 (10,46) (10,58) FromAlignCol (1,-17))\n"++
+         "10:((10,46),(10,58))\n"++
+         "11:((10,46),(10,47))\n"++
+         "11:((10,48),(10,58))\n"++
+         "12:((10,48),(10,49))\n"++
+         "12:((10,50),(10,58))\n"++
+         "13:((10,50),(10,51))\n"++
+         "13:((10,51),(10,57))\n"++
+         "14:((10,51),(10,52))\n"++
+         "14:((10,53),(10,55))\n"++
+         "14:((10,56),(10,57))\n"++
+         "13:((10,57),(10,58))\n"++
+         "8:((11,41),(11,49))\n"++
+         "9:((11,41),(11,47))\n"++
+         "9:((11,48),(11,49))\n"++
+         "8:((12,41),(12,53))\n"++
+         "9:((12,41),(12,47))\n"++
+         "9:((12,48),(12,53))\n"++
+         "1:((14,1),(14,1))\n"
+
+      -- (show layout) `shouldBe` ""
+
+      let pprVal = retrieveTokensPpr layout
+
+      pprVal `shouldBe`
+         [PprText 1 1 Original "module LayoutIn4 where",
+          PprText 3 1 Original "--Layout rule applies after 'where','let','do' and 'of'",
+          PprText 5 1 Original "--In this Example: rename 'ioFun' to  'io'",
+          PprText 7 1 Original "main = ioFun \"hello\" where",
+          PprAbove None (12,53) (FromAlignCol (2,-52))
+            [PprText 7 1 Original "ioFun s= do",
+             PprAbove (SameLine 1) (12,53) (FromAlignCol (2,-52))
+               [PprText 7 1 Original "let",
+                PprAbove (SameLine 1) (7,59) (FromAlignCol (1,-57))
+                  [PprText 7 1 Original "k = reverse s"],
+                PprText 8 (-38) Original "--There is a comment",
+                PprText 9 1 Original "s <- getLine",
+                PprText 10 1 Original "let",
+                PprAbove (SameLine 1) (10,58) (FromAlignCol (1,-17))
+                  [PprText 10 1 Original "q = (k ++ s)"],
+                PprText 11 1 Original "putStr q",
+                PprText 12 1 Original "putStr \"foo\""
+               ]
+            ],
+          PprText 14 1 Original ""
+         ]
+
+      (renderPpr pprVal) `shouldBe` origSource
+-}
+    -- --------------------------------------
+
+{- Superseded by DualTree/renderLines
+  describe "renderPpr" $ do
+    it "renders a Ppr with out of sequence lines" $ do
+      let ppr =
+           [PprText 1 1 Original "module B where",
+            PprText 2 1 Original "-- Test for refactor of if to case",
+            PprText 4 1 Original "foo x = case (odd x) of",
+            PprText 5 13 Original "True  -> \"Odd\"",
+            PprText 6 13 Original "False -> \"Even\"",
+            PprText 7 1 Original "",
+            PprText 6 1 Original "bob x y = x + y",
+            PprText 9 1 Original "foo' x = case (odd x) of",
+            PprAbove (FromAlignCol (1, -23)) (11, 18) (FromAlignCol (2, -18))
+              [PprText 10 1 Original "True -> \"Odd\"",
+               PprText 11 1 Original "False -> \"Even\""],
+            PprText 13 1 Original "main = do",
+            PprAbove (FromAlignCol (1, -8)) (14, 26) (FromAlignCol (2, -26))
+              [PprText 14 1 Original "putStrLn $ show $ foo 5"],
+            PprText 16 1 Original "mary = [1,2,3]",
+            PprText 18 1 Original "h = bob 1 2",
+            PprText 20 1 Original ""]
+
+      let expected =
+           "module B where\n"++
+           "-- Test for refactor of if to case\n"++
+           "\n"++
+           "foo x = case (odd x) of\n"++
+           "            True  -> \"Odd\"\n"++
+           "            False -> \"Even\"\n"++
+           "\n"++
+           "bob x y = x + y\n"++
+           "\n"++
+           "\n"++
+           "foo' x = case (odd x) of\n"++
+           "  True -> \"Odd\"\n"++
+           "  False -> \"Even\"\n"++
+           "\n"++
+           "main = do\n"++
+           "  putStrLn $ show $ foo 5\n"++
+           "\n"++
+           "mary = [1,2,3]\n"++
+           "\n"++
+           "h = bob 1 2\n"++
+           "\n"
+
+      (renderPpr ppr) `shouldBe` expected
+-}
+
+  -- -----------------------------------
+
   describe "updateTokensForSrcSpan" $ do
     it "replaces the tokens for a given span, inserting the span if needed" $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -1690,7 +3694,8 @@ tree TId 0:
       let decl@(GHC.L l _) = head decls
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
-      (showGhc decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
+      (showGhc decl) `shouldBe` "TokenTest.foo x y\n"++
+          "  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
 
       let (forest',newSpan,_) = updateTokensForSrcSpan forest l (take 3 toks)
       -- (showGhc newSpan) `shouldBe` "test/testdata/TokenTest.hs:(18,1)-(1000018,22)"
@@ -1705,6 +3710,9 @@ tree TId 0:
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n module TokenTest where"
 
+      (renderLinesFromLayoutTree forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nmodule TokenTest where"
+
+
     -- --------------------------------------
 
     it "replaces the tokens for a given span, and returns all the tokens later" $ do
@@ -1717,7 +3725,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let (forest',tree) = getSrcSpanFor forest (fs l)
+      let (forest',tree) = getSrcSpanFor forest (sf l)
 
       let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
@@ -1748,7 +3756,9 @@ tree TId 0:
       let toksFinal = retrieveTokensFinal forest'''
 
       -- (show toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bbb x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bbb x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
+
+      (renderLinesFromLayoutTree  forest''') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbbb x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n"
 
     -- --------------------------------------
 
@@ -1910,39 +3920,61 @@ tree TId 0:
       (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe`
                "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
 
+      -- "error" `shouldBe` "reinstate the following"
+      -- TODO: the following generates a very large number of '\n'
+      -- chars. Suspect the line is not being cleanly extracted from
+      -- the tree.
+      -- let pprVal = retrieveTokensPpr f3
+      -- pprVal `shouldBe`
+      --   [PprText 13 1 Original "addthree a b c=",
+      --    PprText 13 16 Original "x",
+      --    PprText 13 17 Original "+b+c"]
+      (renderLinesFromLayoutTree f3) `shouldBe`
+                "\n\n\n\n\n\n\n\n\n\n\n\naddthree a b c=x+b+c"
+
   -- ---------------------------------------------
 
   describe "replaceTokenForSrcSpan" $ do
     it "replaces a single token in a given span, without disturbing the tree" $ do
       (t,toks) <- parsedFileTokenTestGhc
-      let forest = mkTreeFromTokens toks
+      -- let forest = mkTreeFromTokens toks
+      let forest = initTokenLayout (GHC.pm_parsed_source $ GHC.tm_parsed_module t) toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
       let decl@(GHC.L l _) = head decls
-      let Just (GHC.L ln n) = locToName (13, 1) renamed
-
+      let Just (GHC.L _ln n) = locToName (13, 1) renamed
 
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
       (showGhc decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       (showGhc n) `shouldBe` "TokenTest.bab"
 
-      let newTok = markToken $ newNameTok False l n
-      let forest' = replaceTokenForSrcSpan forest l newTok
+      let newTok@(GHC.L lt _,_) = markToken $ newNameTok False l n
+      (show newTok) `shouldBe` "((((19,1),(19,4)),ITvarid \"bab\"),\"bab\")"
+      let forest' = replaceTokenForSrcSpan forest lt newTok
 
-      (drawTreeEntry forest') `shouldBe`
-              "((1,1),(21,14))\n"
+      (drawTreeCompact forest') `shouldBe`
+         "0:((1,1),(26,1))\n1:((1,1),(1,7))\n1:((1,8),(1,17))\n1:((1,18),(1,23))\n1:((5,1),(6,14))\n2:((5,1),(5,4))\n2:((5,5),(6,14))\n3:((5,5),(5,6))\n3:((5,7),(5,8))\n3:((5,9),(5,10))\n3:((5,11),(5,12))\n3:((6,3),(6,8))\n3:((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-13))\n4:((6,9),(6,14))\n5:((6,9),(6,10))\n5:((6,11),(6,14))\n6:((6,11),(6,12))\n6:((6,13),(6,14))\n1:((8,1),(10,10))\n2:((8,1),(8,4))\n2:((8,5),(10,10))\n3:((8,5),(8,6))\n3:((8,7),(8,8))\n3:((8,9),(8,10))\n3:((8,11),(8,12))\n3:((9,3),(9,8))\n3:((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-9))\n4:((10,5),(10,10))\n5:((10,5),(10,6))\n5:((10,7),(10,10))\n6:((10,7),(10,8))\n6:((10,9),(10,10))\n1:((13,1),(15,17))\n2:((13,1),(13,4))\n2:((13,5),(15,17))\n3:((13,5),(13,6))\n3:((13,7),(13,8))\n3:((13,9),(13,10))\n3:((14,3),(15,17))\n4:((14,3),(14,6))\n4:((14,7),(14,14))(Above None (14,7) (14,14) FromAlignCol (1,-11))\n5:((14,7),(14,14))\n6:((14,7),(14,10))\n6:((14,11),(14,14))\n7:((14,11),(14,12))\n7:((14,13),(14,14))\n4:((15,10),(15,17))\n5:((15,10),(15,11))\n5:((15,12),(15,13))\n5:((15,14),(15,17))\n1:((19,1),(21,14))\n2:((19,1),(19,4))\n2:((19,5),(21,14))\n3:((19,5),(19,6))\n3:((19,7),(19,8))\n3:((19,9),(19,10))\n3:((20,3),(21,14))\n4:((20,3),(20,5))\n4:((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-13))\n5:((20,6),(20,18))\n6:((20,6),(20,7))\n6:((20,11),(20,18))\n5:((21,6),(21,14))\n6:((21,6),(21,12))\n6:((21,13),(21,14))\n1:((26,1),(26,1))\n"
 
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
+      (renderLinesFromLayoutTree forest') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbab x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
+
     -- ---------------------------------
 
     it "replaces a single token in an added span" $ do
-      (_t,toks) <- parsedFileDd1Ghc
+      (t,toks) <- parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+      let parsed = (GHC.pm_parsed_source $ GHC.tm_parsed_module t)
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+      -- let f1 = mkTreeFromTokens toks
+      let f1 = initTokenLayout parsed toks
 
-      let f1 = mkTreeFromTokens toks
+      (drawTreeCompact f1) `shouldBe` "0:((1,1),(34,1))\n1:((1,1),(1,7))\n1:((1,8),(1,18))\n1:((1,19),(1,24))\n1:((3,1),(3,31))\n2:((3,1),(3,9))\n2:((3,10),(3,12))\n2:((3,13),(3,20))\n2:((3,21),(3,23))\n2:((3,24),(3,31))\n1:((4,1),(4,19))\n2:((4,1),(4,9))\n2:((4,10),(4,19))\n3:((4,10),(4,11))\n3:((4,12),(4,13))\n3:((4,14),(4,19))\n4:((4,14),(4,15))\n4:((4,16),(4,17))\n4:((4,18),(4,19))\n1:((6,1),(6,15))\n2:((6,1),(6,2))\n2:((6,2),(6,3))\n2:((6,3),(6,4))\n2:((6,5),(6,7))\n2:((6,8),(6,15))\n1:((7,1),(7,6))\n2:((7,1),(7,2))\n2:((7,3),(7,6))\n3:((7,3),(7,4))\n3:((7,5),(7,6))\n1:((8,1),(8,6))\n2:((8,1),(8,2))\n2:((8,3),(8,6))\n3:((8,3),(8,4))\n3:((8,5),(8,6))\n1:((11,1),(11,18))\n2:((11,1),(11,4))\n2:((11,5),(11,7))\n2:((11,8),(11,9))\n2:((11,9),(11,12))\n2:((11,12),(11,13))\n2:((11,14),(11,17))\n2:((11,17),(11,18))\n1:((12,1),(12,9))\n2:((12,1),(12,2))\n2:((12,3),(12,5))\n2:((12,6),(12,9))\n1:((13,1),(13,9))\n2:((13,1),(13,2))\n2:((13,3),(13,5))\n2:((13,6),(13,9))\n1:((14,1),(17,12))\n2:((14,1),(14,10))\n2:((14,11),(14,12))\n2:((14,13),(14,38))\n3:((14,13),(14,17))\n3:((14,18),(14,19))\n3:((14,20),(14,38))\n4:((14,20),(14,30))\n5:((14,20),(14,23))\n5:((14,24),(14,30))\n6:((14,24),(14,25))\n6:((14,25),(14,26))\n6:((14,28),(14,30))\n4:((14,32),(14,38))\n5:((14,32),(14,33))\n5:((14,33),(14,34))\n5:((14,36),(14,38))\n2:((15,3),(15,8))\n2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-11))\n3:((16,5),(16,14))\n4:((16,5),(16,7))\n4:((16,8),(16,10))\n4:((16,11),(16,14))\n3:((17,5),(17,12))\n4:((17,5),(17,7))\n4:((17,8),(17,12))\n5:((17,8),(17,9))\n5:((17,10),(17,12))\n1:((19,1),(19,26))\n2:((19,1),(19,5))\n2:((19,6),(19,7))\n2:((19,8),(19,26))\n3:((19,8),(19,9))\n3:((19,10),(19,11))\n3:((19,12),(19,13))\n3:((19,14),(19,22))\n4:((19,14),(19,15))\n4:((19,16),(19,22))\n3:((19,23),(19,24))\n3:((19,25),(19,26))\n1:((21,1),(23,11))\n2:((21,1),(21,3))\n2:((21,4),(23,11))\n3:((21,4),(21,5))\n3:((21,6),(21,7))\n3:((21,8),(21,14))\n4:((21,8),(21,9))\n4:((21,10),(21,11))\n4:((21,12),(21,14))\n3:((22,3),(22,8))\n3:((23,5),(23,11))(Above FromAlignCol (1,-4) (23,5) (23,11) FromAlignCol (2,-10))\n4:((23,5),(23,11))\n5:((23,5),(23,7))\n5:((23,8),(23,11))\n6:((23,8),(23,9))\n6:((23,10),(23,11))\n1:((25,1),(28,12))\n2:((25,1),(25,2))\n2:((25,3),(28,12))\n3:((25,3),(25,4))\n3:((25,5),(25,6))\n3:((26,3),(28,12))\n4:((26,3),(26,6))\n4:((27,5),(27,12))(Above FromAlignCol (1,-2) (27,5) (27,12) FromAlignCol (1,-9))\n5:((27,5),(27,12))\n6:((27,5),(27,7))\n6:((27,8),(27,12))\n7:((27,8),(27,9))\n7:((27,10),(27,12))\n4:((28,6),(28,12))\n5:((28,6),(28,8))\n5:((28,9),(28,10))\n5:((28,11),(28,12))\n1:((30,1),(32,18))\n2:((30,1),(30,3))\n2:((30,4),(32,18))\n3:((30,4),(30,5))\n3:((30,6),(30,7))\n3:((30,8),(32,18))\n4:((30,8),(30,10))\n4:((31,3),(32,18))(Above FromAlignCol (1,-8) (31,3) (32,18) FromAlignCol (2,-17))\n5:((31,3),(31,13))\n6:((31,3),(31,6))\n6:((31,7),(31,13))(Above None (31,7) (31,13) FromAlignCol (1,-10))\n7:((31,7),(31,13))\n8:((31,7),(31,9))\n8:((31,10),(31,13))\n9:((31,10),(31,11))\n9:((31,12),(31,13))\n5:((32,3),(32,18))\n6:((32,3),(32,9))\n6:((32,10),(32,18))\n7:((32,10),(32,11))\n7:((32,11),(32,17))\n8:((32,11),(32,13))\n8:((32,14),(32,15))\n8:((32,16),(32,17))\n7:((32,17),(32,18))\n1:((34,1),(34,1))\n"
+
+      (invariant f1) `shouldBe` []
 
       let ss1 = posToSrcSpan f1 ((4,1),(4,19))
       let (f2,_toks1) = getTokensFor True f1 ss1
@@ -1950,17 +3982,10 @@ tree TId 0:
       let ss2 = posToSrcSpan f1 ((3,1),(3,31))
       let (f3,toks2) = getTokensFor True f2 ss2
 
-      (drawTreeEntry f3) `shouldBe`
-              "((1,1),(32,18))\n|\n"++
-              "+- ((1,1),(3,31))\n|  |\n"++
-              "|  +- ((1,1),(1,24))\n|  |\n"++
-              "|  `- ((3,1),(3,31))\n|\n"++
-              "+- ((4,1),(4,19))\n|\n"++
-              "`- ((6,1),(32,18))\n"
 
       -- putDeclToksAfterSpan test/testdata/DupDef/Dd1.hs:4:1-18:("(((False,0,0,4),1),((False,0,0,4),19))",PlaceAbsCol 2 1 0,[((((3,1),(3,1)),ITvocurly),""),((((3,1),(3,9)),ITvarid "toplevel"),"toplevel"),((((3,10),(3,12)),ITdcolon),"::"),((((3,13),(3,20)),ITconid "Integer"),"Integer"),((((3,21),(3,23)),ITrarrow),"->"),((((3,24),(3,31)),ITconid "Integer"),"Integer")])
       let (f4,ss4) = addToksAfterSrcSpan f3 ss1 (PlaceAbsCol 2 1 0) toks2
-
+{-
       (drawTreeEntry f4) `shouldBe`
               "((1,1),(32,18))\n|\n"++
               "+- ((1,1),(3,31))\n|  |\n"++
@@ -1969,7 +3994,7 @@ tree TId 0:
               "+- ((4,1),(4,19))\n|\n"++
               "+- ((1000006,1),(1000006,31))\n|\n"++
               "`- ((6,1),(32,18))\n"
-
+-}
       (showSrcSpan ss4) `shouldBe` "((1048582,1),(1048582,31))"
       (showSrcSpanF ss4) `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
 
@@ -1984,13 +4009,14 @@ tree TId 0:
       (show newTok) `shouldBe` "((((6,1),(6,5)),ITvarid \"bar2\"),\"bar2\")"
 
 --
-      let  (GHC.L tl _,_) = newTok
+      let  (GHC.L _tl _,_) = newTok
       let z = openZipperToSpan (srcSpanToForestSpan ss5) $ Z.fromTree f4
 
       (drawTreeEntry $ Z.tree z) `shouldBe`
                     "((1000006,1),(1000006,31))\n"
 --
       let f5 = replaceTokenForSrcSpan f4 ss5 newTok
+{-
       (drawTreeEntry f5) `shouldBe`
               "((1,1),(32,18))\n|\n"++
               "+- ((1,1),(3,31))\n|  |\n"++
@@ -1999,10 +4025,12 @@ tree TId 0:
               "+- ((4,1),(4,19))\n|\n"++
               "+- ((1000006,1),(1000006,31))\n|\n"++
               "`- ((6,1),(32,18))\n"
-
+-}
       let toks' = retrieveTokensFinal f5
       (GHC.showRichTokenStream toks') `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n bar2 :: Integer -> Integerc,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
 
+      -- (showGhc $ layoutTreeToSourceTree f5) `shouldBe` ""
+      (renderLinesFromLayoutTree f5) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nbar2 :: Integer -> Integerc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
 
   -- ---------------------------------------------
 
@@ -2052,7 +4080,7 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "insertNodeAfter" $ do
-    it "Adds a new SrcSpan after a specified one in the forest." $ do
+    it "adds a new SrcSpan after a specified one in the forest." $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -2062,14 +4090,14 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let (forest',tree) = getSrcSpanFor forest (fs l)
+      let (forest',tree) = getSrcSpanFor forest (sf l)
 
       let (ghcl,_c) = getGhcLoc l
       let (ForestLine ch tr v lin) = ghcLineToForestLine ghcl
       let newSpan' = insertForestLineInSrcSpan (ForestLine ch tr (v+1) lin) l
 
       let toksNew = take 3 toks
-      let newNode = Node (Entry (fs newSpan') toksNew) []
+      let newNode = Node (Entry (sf newSpan') NoChange toksNew) []
       -- let newNode = Node (Entry l toks) []
 
       -- let toks' = retrieveTokens tree
@@ -2089,7 +4117,7 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "addNewSrcSpanAndToksAfter" $ do
-    it "Adds a new SrcSpan after an existing one in the forest." $ do
+    it "adds a new SrcSpan after an existing one in the forest 0" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -2099,7 +4127,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let (forest',tree) = getSrcSpanFor forest (fs l)
+      let (forest',tree) = getSrcSpanFor forest (sf l)
 
       let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
@@ -2114,12 +4142,12 @@ tree TId 0:
 
       let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
 
   -- ---------------------------------------------
 
   describe "addToksAfterSrcSpan" $ do
-    it "Adds a new SrcSpan after an existing one in the forest 1." $ do
+    it "adds a new SrcSpan after an existing one in the forest 1" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -2129,7 +4157,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let (forest',tree) = getSrcSpanFor forest (fs l)
+      let (forest',tree) = getSrcSpanFor forest (sf l)
 
       let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
@@ -2143,11 +4171,11 @@ tree TId 0:
       (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokensFinal forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n "
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one in the forest 2." $ do
+    it "adds a new SrcSpan after an existing one in the forest 2" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -2157,7 +4185,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
       (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
 
-      let (forest',tree) = getSrcSpanFor forest (fs l)
+      let (forest',tree) = getSrcSpanFor forest (sf l)
 
       let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 0 2) toks'
@@ -2171,11 +4199,11 @@ tree TId 0:
       (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokensFinal forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one in the forest, with an indent." $ do
+    it "adds a new SrcSpan after an existing one in the forest, with an indent" $ do
       (t,toks) <- parsedFileTokenTestGhc
       let forest = mkTreeFromTokens toks
 
@@ -2185,7 +4213,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
 
-      let (forest',tree) = getSrcSpanFor forest (fs l)
+      let (forest',tree) = getSrcSpanFor forest (sf l)
 
       let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addToksAfterSrcSpan forest' l (PlaceOffset 2 4 2) toks'
@@ -2199,11 +4227,120 @@ tree TId 0:
       (invariant forest'') `shouldBe` []
 
       let toksFinal = retrieveTokensFinal forest''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n     -- leading comment\n     foo x y =\n       do c <- getChar\n          return c\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n     -- leading comment\n     foo x y =\n       do c <- getChar\n          return c\n "
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one, with an indent based on whole prior line." $ do
+    it "adds a new SrcSpan after an existing one in the forest, in a where clause" $ do
+      (t,toks) <- parsedFileWhere
+
+      (GHC.showRichTokenStream toks) `shouldBe`
+            "module LiftToToplevel.Where where\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
+
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let forest = allocTokens parsed toks
+
+      (drawTreeCompact forest) `shouldBe`
+          "0:((1,1),(5,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,28))\n"++
+          "1:((1,29),(1,34))\n"++
+          "1:((3,1),(4,22))\n"++
+          "2:((3,1),(3,11))\n"++
+          "2:((3,12),(4,22))\n"++
+          "3:((3,12),(3,13))\n"++
+          "3:((3,14),(3,15))\n"++
+          "3:((3,16),(3,17))\n"++
+          "3:((3,18),(3,22))\n"++
+          "4:((3,18),(3,20))\n"++
+          "4:((3,21),(3,22))\n"++
+          "3:((4,6),(4,11))\n"++
+          "3:((4,12),(4,22))(Above None (4,12) (4,22) FromAlignCol (1,-21))\n"++
+          "4:((4,12),(4,22))\n"++
+          "5:((4,12),(4,14))\n"++
+          "5:((4,15),(4,22))\n"++
+          "6:((4,15),(4,16))\n"++
+          "6:((4,17),(4,18))\n"++
+          "6:((4,19),(4,22))\n"++
+          "7:((4,19),(4,20))\n"++
+          "7:((4,20),(4,21))\n"++
+          "7:((4,21),(4,22))\n"++
+          "1:((5,1),(5,1))\n"
+
+
+      -- let forest = mkTreeFromTokens toks
+
+      let sspan = posToSrcSpan forest ((4,12),(4,22))
+      newToks <- liftIO $ basicTokenise "abc = 3"
+
+      let (forest'',sspan') = addToksAfterSrcSpan forest sspan (PlaceOffset 1 0 1) newToks
+
+      (drawTreeCompact forest'') `shouldBe`
+          "0:((1,1),(5,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,28))\n"++
+          "1:((1,29),(1,34))\n"++
+          "1:((3,1),(4,22))\n"++
+          "2:((3,1),(3,11))\n"++
+          "2:((3,12),(4,22))\n"++
+          "3:((3,12),(3,13))\n"++
+          "3:((3,14),(3,15))\n"++
+          "3:((3,16),(3,17))\n"++
+          "3:((3,18),(3,22))\n"++
+          "4:((3,18),(3,20))\n"++
+          "4:((3,21),(3,22))\n"++
+          "3:((4,6),(4,11))\n"++
+          "3:((4,12),(4,22))(Above None (4,12) (4,22) FromAlignCol (1,-21))\n"++
+          "4:((4,12),(4,22))\n"++
+          "5:((4,12),(4,14))\n"++
+          "5:((4,15),(4,22))\n"++
+          "6:((4,15),(4,16))\n"++
+          "6:((4,17),(4,18))\n"++
+          "6:((4,19),(4,22))\n"++
+          "7:((4,19),(4,20))\n"++
+          "7:((4,20),(4,21))\n"++
+          "7:((4,21),(4,22))\n"++
+          "4:((1000005,6),(1000005,13))\n"++
+          "1:((5,1),(5,1))\n"
+
+
+      (showSrcSpanF sspan') `shouldBe` "(((False,0,1,5),6),((False,0,1,5),13))"
+      (invariant forest'') `shouldBe` []
+      -- (show forest'') `shouldBe` ""
+
+--
+{-
+      let (forest',tree) = getSrcSpanForDeep forest (srcSpanToForestSpan sspan)
+      let zf = openZipperToNodeDeep tree $ Z.fromTree forest'
+      (show $ Z.tree zf) `shouldBe` "foo"
+-}
+--
+{-
+      let toksFinal = retrieveTokensFinal forest''
+      (GHC.showRichTokenStream toksFinal) `shouldBe` ""
+-}
+      let pprFinal = retrieveLinesFromLayoutTree forest''
+      show pprFinal `shouldBe`
+         "[(1 1 0 SOriginal ONone\"module LiftToToplevel.Where where\"),"++
+          "(3 1 0 SOriginal ONone\"anotherFun 0 y = sq y\"),"++
+          "(4 6 0 SOriginal OGroup\"where sq x = x^2\"),"++
+          "(5 6 0 SWasAdded OGroup\"abc = 3\")]"
+
+{-
+         [Line 1 1 SOriginal "module LiftToToplevel.Where where",
+          Line 3 1 SOriginal "anotherFun 0 y = sq y",
+          Line 4 6 SOriginal "where sq x = x^2",
+          Line 5 6 SAdded "abc = 3 "
+         ]
+-}
+
+      -- NOTE: alignment is out, the tokens are supposed to have an
+      -- offset when they go in.
+      (renderLines pprFinal) `shouldBe` "module LiftToToplevel.Where where\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n     abc = 3"
+
+    -- ---------------------------------
+
+    it "adds a new SrcSpan after an existing one, with an indent based on whole prior line" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
 
@@ -2246,11 +4383,11 @@ tree TId 0:
 
       let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n     module MoveDef.Demote where\n\n \n d = 9\n\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n     module MoveDef.Demote where\n d = 9\n\n\n "
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one, with an indent catering for comments" $ do
+    it "adds a new SrcSpan after an existing one, with an indent catering for comments" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/Demote/WhereIn5.hs"
       let forest = mkTreeFromTokens toks
 
@@ -2293,11 +4430,11 @@ tree TId 0:
 
       let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.WhereIn5 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'pow' to 'sq'\n --This example aims to test demoting a function/pattern binding multi-levels.\n\n sumSquares x y = sq x + sq y\n          where sq 0=0\n                sq z=z^pow {-There \nis a comment-}\n                pow=2\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.WhereIn5 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'pow' to 'sq'\n --This example aims to test demoting a function/pattern binding multi-levels.\n\n sumSquares x y = sq x + sq y\n          where sq 0=0\n                sq z=z^pow {-There \nis a comment-}\n                pow=2\n \n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after deleting toks 1" $ do
+    it "adds a new SrcSpan after deleting toks 1" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
       let forest = mkTreeFromTokens toks
 
@@ -2350,7 +4487,7 @@ tree TId 0:
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after an existing one, in a subtree." $ do
+    it "adds a new SrcSpan after an existing one, in a subtree." $ do
       (_t,toks) <- parsedFileDemoteD1
 
       let forest = mkTreeFromTokens toks
@@ -2405,14 +4542,14 @@ tree TId 0:
       (show $ filter contains childrenAsZ) `shouldBe` "[]"
 
 --
-      let z = openZipperToSpan (fs sspan3) $ Z.fromTree f2
-      let (b1,m1,e1) = splitSubtree (Z.tree z) (fs sspan3)
+      let z1 = openZipperToSpan (sf sspan3) $ Z.fromTree f2
+      let (b1,m1,e1) = splitSubtree (Z.tree z1) (sf sspan3)
       (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
               "([(((ForestLine False 0 0 1),1),((ForestLine False 0 0 6),20))],"++
                "[(((ForestLine True 0 0 6),21),((ForestLine True 0 0 6),23)),"++
                 "(((ForestLine False 0 0 6),26),((ForestLine False 0 0 7),18))],"++
                "[])"
-      let (b2,m2,e2) = splitSubToks (head m1) (fs sspan3)
+      let (_b2,_m2,_e2) = splitSubToks (head m1) (sf sspan3)
       -- (show (b2,m2,e2)) `shouldBe` ""
 --
       let fss = insertSrcSpan f2 (srcSpanToForestSpan sspan3)
@@ -2446,11 +4583,11 @@ tree TId 0:
 
       let toksFinal = retrieveTokensFinal forest''
       -- (showToks toksFinal) `shouldBe` ""
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq   + sumSquares xs\n     sumSquares (x:xs) = sq x + sumSquares xs\n     sumSquares [] = 0\n\n     sq\n\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq   + sumSquares xs\n     sumSquares (x:xs) = sq x + sumSquares xs\n     sumSquares [] = 0\n\n     sq\n \n sumSquares [] = 0\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 
     -- ---------------------------------
 
-    it "Adds a new SrcSpan after the last one" $ do
+    it "adds a new SrcSpan after the last one" $ do
       (_t,toks)  <- parsedFileGhc "./test/testdata/TypeUtils/JustImports.hs"
 
       let forest = mkTreeFromTokens toks
@@ -2499,7 +4636,7 @@ tree TId 0:
       (invariant forest') `shouldBe` []
 
       let toksFinal = retrieveTokensFinal forest'
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List"
 
     -- ---------------------------------
 
@@ -2567,7 +4704,7 @@ tree TId 0:
               "((((13,32),(13,33)),ITequal),\"=\"),"++
               "((((13,33),(13,34)),ITinteger 2),\"2\"),"++
               "((((14,26),(14,26)),ITvccurly),\"\"),"++ -- ++AZ++ WTF?
-              "((((16,1),(16,1)),ITvocurly),\"\")]"     -- ++AZ++ WTF?
+              "((((15,1),(15,1)),ITvocurly),\"\")]"     -- ++AZ++ WTF?
       --
       let (forest'',newSpan) = addToksAfterSrcSpan forest' sspan' position newToks
 
@@ -2582,11 +4719,11 @@ tree TId 0:
 
       (showSrcSpanF newSpan) `shouldBe` "(((False,0,1,12),26),((False,0,1,13),34))"
       (invariant forest'') `shouldBe` []
-      (GHC.showRichTokenStream $ retrieveTokensFinal forest'') `shouldBe` "module Demote.LetIn1 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the local  'pow' to 'sq'\n --This example also aims to test the demoting a local declaration in 'let'.\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                          where\n                             pow=2\n                          \n\n \n                  in sq x + sq y\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n   "
+      (GHC.showRichTokenStream $ retrieveTokensFinal forest'') `shouldBe` "module Demote.LetIn1 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the local  'pow' to 'sq'\n --This example also aims to test the demoting a local declaration in 'let'.\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                          where\n                             pow=2\n                          \n \n                  in sq x + sq y\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n   "
 
     -- ---------------------------------
 
-    it "Adds a SrcSpan, chasing a bug in MoveDef" $ do
+    it "adds a SrcSpan, chasing a bug in MoveDef" $ do
       (_t,toks)  <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
       let forest = mkTreeFromTokens toks
 
@@ -2622,6 +4759,7 @@ tree TId 0:
                "`- ((26,1),(40,17))\n"
       (invariant f3) `shouldBe` []
 
+
       -- Context set, time for test
 
       -- putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,22),1),((False,0,0,24),11))",PlaceOffset 2 0 2,[((((1,6),(1,8)),ITvarid "zz"),"zz"),((((1,9),(1,10)),ITequal),"="),((((1,11),(1,12)),ITinteger 1),"1")])
@@ -2631,7 +4769,7 @@ tree TId 0:
       let sspan4 = posToSrcSpan forest ((22,1),(24,11))
 
 --
-      let z = openZipperToSpan (fs sspan4) $ Z.fromTree f3
+      let z = openZipperToSpan (sf sspan4) $ Z.fromTree f3
       (drawTreeEntry $ Z.tree z) `shouldBe`
               "((1,1),(40,17))\n|\n"++
                "+- ((1,1),(23,8))\n|  |\n"++
@@ -2643,7 +4781,7 @@ tree TId 0:
       -- (show $ subForest (Z.tree z)) `shouldBe` ""
 
       -- let (b1,m1,e1) = doSplitTree (Z.tree z) (fs sspan4)
-      let (b1,m1,e1) = splitSubtree (Z.tree z) (fs sspan4)
+      let (b1,m1,e1) = splitSubtree (Z.tree z) (sf sspan4)
       (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
               "([],"++
 
@@ -2652,18 +4790,18 @@ tree TId 0:
 
               "[(((ForestLine False 0 0 26),1),((ForestLine False 0 0 40),17))])"
 
-      let (b2,m2,e2) = splitSubtree (head m1) (fs sspan4)
+      let (b2,m2,e2) = splitSubtree (head m1) (sf sspan4)
       (show (map treeStartEnd b2,map treeStartEnd m2,map treeStartEnd e2)) `shouldBe` 
               "([],"++
               "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 22),14)),"++
                "(((ForestLine False 0 0 23),3),((ForestLine False 0 0 23),8))],"++ 
               "[])"
 
-      let (Node (Entry ss toks2) _) = head m2
+      let (Node (Entry ss _ toks2) _) = head m2
 
-      (containsStart ss (fs sspan4),containsEnd ss (fs sspan4)) `shouldBe` (True,False)
+      (containsStart ss (sf sspan4),containsEnd ss (sf sspan4)) `shouldBe` (True,False)
 
-      let (sspanStart,_sspanEnd) = fs sspan4
+      let (sspanStart,_sspanEnd) = sf sspan4
 
       let (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks2
       (show (head toksb,last toksb)) `shouldBe`
@@ -2673,7 +4811,7 @@ tree TId 0:
                "(((((22,1),(22,1)),ITsemi),\"\"),"++
                "((((22,12),(22,14)),ITvarid \"zz\"),\"zz\"))"
 
-      let (b3,m3,e3) = splitSubToks (head m2) (fs sspan4)
+      let (b3,m3,e3) = splitSubToks (head m2) (sf sspan4)
       (show (map treeStartEnd b3,map treeStartEnd m3,map treeStartEnd e3)) `shouldBe`
               "([(((ForestLine False 0 0 1),1),((ForestLine False 0 0 21),17))],"++
               -- ++AZ++ How does this get to (24,11), input only goes to (23,8)?
@@ -2681,7 +4819,7 @@ tree TId 0:
                "[])"
 
       -- TODO: span is deleted twice. Deal with it.
-      let f3' = insertSrcSpan f3 (fs sspan4)
+      let f3' = insertSrcSpan f3 (sf sspan4)
       (drawTreeEntry f3') `shouldBe`
               "((1,1),(40,17))\n|\n"++
               "+- ((1,1),(21,17))\n|\n"++
@@ -2725,8 +4863,8 @@ tree TId 0:
       let (ForestLine ch tr v l) = ghcLineToForestLine ghcl
       let newSpan' = insertForestLineInSrcSpan (ForestLine ch tr (v+1) l) newSpan
       let toks' = placeToksForSpan forest' sspan4 tree' (PlaceOffset 2 0 2) newToks
-      let newNode = Node (Entry (srcSpanToForestSpan newSpan') toks') []
-      (show newNode) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 1 24),1),((ForestLine False 0 1 24),7)) [((((24,1),(24,3)),ITvarid \"zz\"),\"zz\"),((((24,4),(24,5)),ITequal),\"=\"),((((24,6),(24,7)),ITinteger 1),\"1\"),((((26,1),(26,1)),ITvocurly),\"\")], subForest = []}"
+      let newNode = Node (Entry (srcSpanToForestSpan newSpan') NoChange toks') []
+      (show newNode) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 1 24),1),((ForestLine False 0 1 24),7)) NoChange [((((24,1),(24,3)),ITvarid \"zz\"),\"zz\"),((((24,4),(24,5)),ITequal),\"=\"),((((24,6),(24,7)),ITinteger 1),\"1\"),((((25,1),(25,1)),ITvocurly),\"\")], subForest = []}"
 
       let forest'' = insertNodeAfter tree' newNode forest'
       (drawTreeEntry forest'') `shouldBe`
@@ -2904,60 +5042,59 @@ tree TId 0:
 
   describe "invariant 1" $ do
     it "checks that a tree with empty tokens and empty subForest fails" $ do
-      (invariant $ Node (Entry nonNullSpan []) []) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
+      (invariant $ Node (Entry nonNullSpan NoChange []) []) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
 
     -- -----------------------
     it "checks that a tree nonempty tokens and empty subForest passes" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      (invariant $ Node (Entry nonNullSpan (take 3 toks)) []) `shouldBe` []
+      (invariant $ Node (Entry nonNullSpan NoChange (take 3 toks)) []) `shouldBe` []
 
     -- -----------------------
     it "checks that a tree with nonempty tokens and nonempty subForest fails" $ do
       (_t,toks) <- parsedFileTokenTestGhc
 
-      (invariant (Node (Entry (simpPosToForestSpan ((1,1),(1,7))) (take 1 toks)) [emptyTree])) `shouldBe`
-             ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [\"Node (Entry ((0,0),(1,0)) []) []\"]",
-              "FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [\"Node (Entry ((0,0),(1,0)) []) []\"]",
+      (invariant (Node (Entry (simpPosToForestSpan ((1,1),(1,7))) NoChange (take 1 toks)) [emptyTree])) `shouldBe`
+             ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [Node (Entry ((0,0),(1,0)) []) []]",
+              "FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(1,7)) [(((1,1),(1,7)),ITmodule,\"module\")]) [Node (Entry ((0,0),(1,0)) []) []]",
               "FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
-
 
     -- -----------------------
     it "checks that a tree with empty tokens and nonempty subForest passes" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      let tree@(Node (Entry sspan _) _) = mkTreeFromTokens toks
+      let tree@(Node (Entry sspan _ _) _) = mkTreeFromTokens toks
 
-      (invariant (Node (Entry sspan []) [tree])) `shouldBe` []
+      (invariant (Node (Entry sspan NoChange []) [tree])) `shouldBe` []
 
     -- -----------------------
     it "checks the subtrees too" $ do
       (_t,_toks) <- parsedFileTokenTestGhc
 
-      (invariant (Node (Entry nonNullSpan []) [emptyTree])) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
+      (invariant (Node (Entry nonNullSpan NoChange []) [emptyTree])) `shouldBe` ["FAIL: exactly one of toks or subforest must be empty: Node (Entry ((0,0),(1,0)) []) []"]
 
   -- ---------------------------------------------
 
   describe "invariant 2" $ do
     it "checks that a the subree fully includes the parent" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      let tree1@(Node (Entry sspan _) _)  = mkTreeFromTokens toks
-      let tree2@(Node (Entry sspan2 _) _) = mkTreeFromTokens (tail toks)
-      let tree3@(Node (Entry sspan3 _) _) = mkTreeFromTokens (take 10 toks)
+      let tree1@(Node (Entry sspan _ _) _)  = mkTreeFromTokens toks
+      let tree2@(Node (Entry sspan2 _ _) _) = mkTreeFromTokens (tail toks)
+      let tree3@(Node (Entry sspan3 _ _) _) = mkTreeFromTokens (take 10 toks)
       let tree4 = mkTreeFromTokens (drop 10 toks)
       (showTree tree1) `shouldBe` "Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
       (showTree tree2) `shouldBe` "Node (Entry ((1,8),(21,14)) [(((1,8),(1,17)),ITconid \"TokenTest\",\"TokenTest\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []"
       (showTree tree3) `shouldBe` "Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) []"
 
-      (invariant (Node (Entry sspan2 []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,8),(21,14)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan2 NoChange []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,8),(21,14)) []) [Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []]"]
 
-      (invariant (Node (Entry sspan3 []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(5,12)) []) [\"Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan3 NoChange []) [tree1])) `shouldBe` ["FAIL: subForest start and end does not match entry: Node (Entry ((1,1),(5,12)) []) [Node (Entry ((1,1),(21,14)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []]"]
 
-      (invariant (Node (Entry sspan []) [tree3,tree4])) `shouldBe` []
+      (invariant (Node (Entry sspan NoChange []) [tree3,tree4])) `shouldBe` []
 
     -- -----------------------------------------------------------------
 
     it "checks that a the subree is in span order" $ do
       (_t,toks) <- parsedFileTokenTestGhc
-      let (Node (Entry sspan _) _) = mkTreeFromTokens toks
+      let (Node (Entry sspan _ _) _) = mkTreeFromTokens toks
       let tree1 = mkTreeFromTokens (take 10 toks)
       let tree2 = mkTreeFromTokens (take 10 $ drop 10 toks)
       let tree3 = mkTreeFromTokens (take 10 $ drop 20 toks)
@@ -2968,8 +5105,8 @@ tree TId 0:
       (showForestSpan $ treeStartEnd tree3) `shouldBe` "((8,9),(13,4))"
       (showForestSpan $ treeStartEnd tree4) `shouldBe` "((13,5),(21,14))"
 
-      (invariant (Node (Entry sspan []) [tree1,tree2,tree3,tree4])) `shouldBe` []
-      (invariant (Node (Entry sspan []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: ((ForestLine False 0 0 13),4) not < ((ForestLine False 0 0 6),3):Node (Entry ((1,1),(21,14)) []) [\"Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\\\"module\\\")]..[(((5,11),(5,12)),ITvarid \\\"x\\\",\\\"x\\\")]) []\",\"Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\\\"=\\\")]..[(((13,1),(13,4)),ITvarid \\\"bab\\\",\\\"bab\\\")]) []\",\"Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\\\"where\\\")]..[(((8,7),(8,8)),ITvarid \\\"b\\\",\\\"b\\\")]) []\",\"Node (Entry ((13,5),(21,14)) [(((13,5),(13,6)),ITvarid \\\"a\\\",\\\"a\\\")]..[(((26,1),(26,1)),ITsemi,\\\"\\\")]) []\"]"]
+      (invariant (Node (Entry sspan NoChange []) [tree1,tree2,tree3,tree4])) `shouldBe` []
+      (invariant (Node (Entry sspan NoChange []) [tree1,tree3,tree2,tree4])) `shouldBe` ["FAIL: subForest not in order: ((ForestLine False 0 0 13),4) not < ((ForestLine False 0 0 6),3):Node (Entry ((1,1),(21,14)) []) [Node (Entry ((1,1),(5,12)) [(((1,1),(1,7)),ITmodule,\"module\")]..[(((5,11),(5,12)),ITvarid \"x\",\"x\")]) [],Node (Entry ((8,9),(13,4)) [(((8,9),(8,10)),ITequal,\"=\")]..[(((13,1),(13,4)),ITvarid \"bab\",\"bab\")]) [],Node (Entry ((6,3),(8,8)) [(((6,3),(6,8)),ITwhere,\"where\")]..[(((8,7),(8,8)),ITvarid \"b\",\"b\")]) [],Node (Entry ((13,5),(21,14)) [(((13,5),(13,6)),ITvarid \"a\",\"a\")]..[(((26,1),(26,1)),ITsemi,\"\")]) []]"]
 
   -- ---------------------------------------------
 {-
@@ -2999,7 +5136,7 @@ tree TId 0:
 
   describe "mkTreeFromTokens" $ do
     it "creates a tree from an empty token list" $ do
-      (show $ mkTreeFromTokens []) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 0 0),0),((ForestLine False 0 0 0),0)) [], subForest = []}"
+      (show $ mkTreeFromTokens []) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 0 0),0),((ForestLine False 0 0 0),0)) NoChange [], subForest = []}"
 
     -- -----------------------
 
@@ -3008,12 +5145,12 @@ tree TId 0:
       let toks' = take 2 $ drop 5 toks
       let tree = mkTreeFromTokens toks'
       (show toks') `shouldBe` "[((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")]"
-      (show tree) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),6)) [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
+      (show tree) `shouldBe` "Node {rootLabel = Entry (((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),6)) NoChange [((((5,1),(5,4)),ITvarid \"bob\"),\"bob\"),((((5,5),(5,6)),ITvarid \"a\"),\"a\")], subForest = []}"
 
   -- ---------------------------------------------
 
   describe "splitSubToks" $ do
-    it "Splits sub tokens" $ do
+    it "splits sub tokens" $ do
       (_t,toks) <- parsedFileGhc "./test/testdata/Case/D.hs"
       let forest = mkTreeFromTokens toks
 
@@ -3023,8 +5160,8 @@ tree TId 0:
       -- test/testdata/Case/D.hs:(6,16)-(8,19)}
       (showGhc $ forestSpanToSrcSpan (startPos,endPos)) `shouldBe` "foo:(6,16)-(8,18)"
 
-      let (b,m,e) = splitSubToks forest (startPos,endPos)
-      (show m) `shouldBe` "[Node {rootLabel = Entry (((ForestLine False 0 0 6),16),((ForestLine False 0 0 8),19)) "++
+      let (_b,m,_e) = splitSubToks forest (startPos,endPos)
+      (show m) `shouldBe` "[Node {rootLabel = Entry (((ForestLine False 0 0 6),16),((ForestLine False 0 0 8),19)) NoChange "++
           "[((((6,16),(6,18)),ITdo),\"do\"),((((7,13),(7,37)),ITlineComment \"-- This is an odd result\"),\"-- This is an odd result\"),((((8,13),(8,13)),ITvocurly),\"\"),((((8,13),(8,16)),ITvarid \"bob\"),\"bob\"),((((8,17),(8,18)),ITvarid \"x\"),\"x\")], subForest = []}]"
 
   -- ---------------------------------------------
@@ -3033,7 +5170,7 @@ tree TId 0:
     it "checks that a tree with a null SrcSpan fails" $ do
       (_t,toks) <- parsedFileTokenTestGhc
       let toks' = take 2 $ drop 5 toks
-      (invariant $ Node (Entry nullSpan toks') []) `shouldBe` ["FAIL: null SrcSpan in tree: Node (Entry ((0,0),(0,0)) [(((5,1),(5,4)),ITvarid \"bob\",\"bob\"),(((5,5),(5,6)),ITvarid \"a\",\"a\")]) []"]
+      (invariant $ Node (Entry nullSpan NoChange toks') []) `shouldBe` ["FAIL: null SrcSpan in tree: Node (Entry ((0,0),(0,0)) [(((5,1),(5,4)),ITvarid \"bob\",\"bob\"),(((5,5),(5,6)),ITvarid \"a\",\"a\")]) []"]
 
   -- ---------------------------------------------
 
@@ -3048,7 +5185,7 @@ tree TId 0:
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
       (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
 
-      let (forest',tree) = getSrcSpanFor forest (fs l)
+      let (forest',tree) = getSrcSpanFor forest (sf l)
 
       let toks' = retrieveTokensInterim tree
       let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' l l (PlaceOffset 2 0 2) toks'
@@ -3067,7 +5204,7 @@ tree TId 0:
       (take 90 $ SYB.showData SYB.Renamer 0 decl') `shouldBe` "\n(L {test/testdata/TokenTest.hs:(1048589,1)-(1048591,16)} \n (FunBind \n  (L {test/testdata/"
 
       let toksFinal = retrieveTokensFinal forest'''
-      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream toksFinal) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n \n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
   -- ---------------------------------------------
 
@@ -3077,7 +5214,7 @@ tree TId 0:
       let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
+      -- let decls = hsBinds renamed
 
       let Just decl@(GHC.L l _) = (locToExp (8,13) (12,43) renamed) :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
 
@@ -3121,7 +5258,7 @@ tree TId 0:
       let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
+      -- let decls = hsBinds renamed
 
       let Just decl@(GHC.L l _) = (locToExp (8,13) (12,43) renamed) :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
 
@@ -3380,34 +5517,105 @@ tree TId 0:
   -- ---------------------------------------------
 
   describe "formatAfterDelete" $ do
-    it "Does not leave a blank line in toks after deleting" $ do
-      (t,toks) <- parsedFileTokenTestGhc
-      let f1 = mkTreeFromTokens toks
+    it "does not leave a blank line in toks after deleting" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/TokenTest.hs"
+      -- let f1 = mkTreeFromTokens toks
+
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let f1 = allocTokens parsed toks
+
       (GHC.showRichTokenStream $ retrieveTokensFinal f1) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head $ drop 1 decls
+      let (GHC.L l _) = head $ drop 1 decls
       (showGhc l) `shouldBe` "test/testdata/TokenTest.hs:(13,1)-(15,16)"
       (showSrcSpan l) `shouldBe` "((13,1),(15,17))"
 
-      let (f2,_) = removeSrcSpan f1 (fs l)
+      let (f2,_) = removeSrcSpan f1 (sf l)
 
-      (drawTreeEntry f2) `shouldBe`
+      (drawTreeCompact f2) `shouldBe`
+            "0:((1,1),(26,1))\n"++
+            "1:((1,1),(1,7))\n"++
+            "1:((1,8),(1,17))\n"++
+            "1:((1,18),(1,23))\n"++
+            "1:((5,1),(6,14))\n"++
+            "2:((5,1),(5,4))\n"++
+            "2:((5,5),(6,14))\n"++
+            "3:((5,5),(5,6))\n"++
+            "3:((5,7),(5,8))\n"++
+            "3:((5,9),(5,10))\n"++
+            "3:((5,11),(5,12))\n"++
+            "3:((6,3),(6,8))\n"++
+            "3:((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-13))\n"++
+            "4:((6,9),(6,14))\n"++
+            "5:((6,9),(6,10))\n"++
+            "5:((6,11),(6,14))\n"++
+            "6:((6,11),(6,12))\n"++
+            "6:((6,13),(6,14))\n"++
+            "1:((8,1),(10,10))\n"++
+            "2:((8,1),(8,4))\n"++
+            "2:((8,5),(10,10))\n"++
+            "3:((8,5),(8,6))\n"++
+            "3:((8,7),(8,8))\n"++
+            "3:((8,9),(8,10))\n"++
+            "3:((8,11),(8,12))\n"++
+            "3:((9,3),(9,8))\n"++
+            "3:((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-9))\n"++
+            "4:((10,5),(10,10))\n"++
+            "5:((10,5),(10,6))\n"++
+            "5:((10,7),(10,10))\n"++
+            "6:((10,7),(10,8))\n"++
+            "6:((10,9),(10,10))\n"++
+            "1:((13,1),(15,17))(3,-16)D\n"++
+            "1:((19,1),(21,14))\n"++
+            "2:((19,1),(19,4))\n"++
+            "2:((19,5),(21,14))\n"++
+            "3:((19,5),(19,6))\n"++
+            "3:((19,7),(19,8))\n"++
+            "3:((19,9),(19,10))\n"++
+            "3:((20,3),(21,14))\n"++
+            "4:((20,3),(20,5))\n"++
+            "4:((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-13))\n"++
+            "5:((20,6),(20,18))\n"++
+            "6:((20,6),(20,7))\n"++
+            "6:((20,11),(20,18))\n"++
+            "5:((21,6),(21,14))\n"++
+            "6:((21,6),(21,12))\n"++
+            "6:((21,13),(21,14))\n"++
+            "1:((26,1),(26,1))\n"
+{-
             "((1,1),(21,14))\n|\n"++
             "+- ((1,1),(10,10))\n|\n"++
             "+- ((13,1),(15,17))(3,-16)D\n|\n"++
             "`- ((19,1),(21,14))\n"
+-}
 
-      let es = retrieveTokens' f2
+      -- let es = retrieveTokens' f2
       -- (show $ deleteGapsToks es) `shouldBe` ""
       (GHC.showRichTokenStream $ retrieveTokensFinal f2) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+
+      (show $ retrieveLinesFromLayoutTree f2) `shouldBe`
+         "[(1 1 0 SOriginal ONone\"module TokenTest where\"),"++
+          "(3 1 0 SOriginal ONone\"-- Test new style token manager\"),"++
+          "(5 1 0 SOriginal ONone\"bob a b = x\"),"++
+          "(6 3 0 SOriginal OGroup\"where x = 3\"),"++
+          "(8 1 0 SOriginal ONone\"bib a b = x\"),"++
+          "(9 3 0 SOriginal ONone\"where\"),"++
+          "(10 5 0 SOriginal OGroup\"x = 3\"),"++
+          "(13 1 0 SOriginal ONone\"-- leading comment\"),"++
+          "(14 1 0 SOriginal ONone\"foo x y =\"),"++
+          "(15 3 0 SOriginal OGroup\"do c <- getChar\"),"++
+          "(16 6 0 SOriginal OGroup\"return c\"),"++
+          "(21 1 0 SOriginal ONone\"\")]"
+
+      (renderLinesFromLayoutTree f2) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
 
   -- ---------------------------------------------
 
   describe "deleteGapsToks" $ do
-    it "Closes the gap when finding a Deleted Entry" $ do
-      (t,toks) <- parsedFileLiftWhereIn1Ghc
+    it "closes the gap when finding a Deleted Entry" $ do
+      (_t,toks) <- parsedFileLiftWhereIn1Ghc
       let f1 = mkTreeFromTokens toks
 
       -- removeToksForPos ((11,18),(12,32))
@@ -3451,7 +5659,7 @@ tree TId 0:
                    xs -> xs
 
       let prevToks' = limitPrevToks prevToks sspan2
-      let toks' = reIndentToks pos2 (unReverseToks prevToks') newToks
+      -- let toks' = reIndentToks pos2 (unReverseToks prevToks') newToks
 
       -- Hmmm. This is the final position, after taking into account
       -- the deleted entry. BUT, we are putting it back into the
@@ -3469,14 +5677,14 @@ tree TId 0:
 
       -- (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe` ""
 
-      let entries = retrieveTokens' f3
+      -- let entries = retrieveTokens' f3
 
       -- (show entries) `shouldBe` ""
 
       -- (show $ deleteGapsToks entries) `shouldBe` ""
       -- (show $ deleteGapsToks' entries) `shouldBe` ""
 
-      (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe` "module LiftToToplevel.WhereIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test add parameters to 'sq'.\n\n sumSquares x y = sq x + sq y\n            where\n                  pow=2\n\n sq  pow 0= 0\n sq  pow z= z^pow\n\n \n anotherFun 0 y = sq y\n      where  sq x = x^2\n "
+      (GHC.showRichTokenStream $ retrieveTokensFinal f3) `shouldBe` "module LiftToToplevel.WhereIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test add parameters to 'sq'.\n\n sumSquares x y = sq x + sq y\n            where\n                  pow=2\n\n sq  pow 0= 0\n sq  pow z= z^pow\n \n anotherFun 0 y = sq y\n      where  sq x = x^2\n "
 
 
   -- ---------------------------------------------
@@ -3496,24 +5704,203 @@ tree TId 0:
             "+- ((11,18),(12,32))(1,-14)D\n|\n"++
             "`- ((13,18),(16,23))\n"
 
-      (calcEndGap f2 (fs sspan)) `shouldBe` (1,-14)
-      
+      (calcEndGap f2 (sf sspan)) `shouldBe` (1,-14)
+
+  -- ---------------------------------------------
+
+  describe "openZipperToSpan" $ do
+    it "opens a zipper to a span, even if it has been added and is partly out of alignment" $ do
+      (t,toks) <- parsedFileLayoutLetExpr
+
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      -- let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(7,15))\n"++
+          "2:((5,1),(5,4))\n"++
+          "2:((5,5),(7,15))\n"++
+          "3:((5,5),(5,6))\n"++
+          "3:((5,7),(7,15))\n"++
+          "4:((5,7),(5,10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+          "5:((5,11),(5,16))\n"++
+          "6:((5,11),(5,12))\n"++
+          "6:((5,13),(5,16))\n"++
+          "7:((5,13),(5,14))\n"++
+          "7:((5,15),(5,16))\n"++
+          "5:((6,11),(6,16))\n"++
+          "6:((6,11),(6,12))\n"++
+          "6:((6,13),(6,16))\n"++
+          "7:((6,13),(6,14))\n"++
+          "7:((6,15),(6,16))\n"++
+          "4:((7,10),(7,15))\n"++
+          "5:((7,10),(7,11))\n"++
+          "5:((7,12),(7,13))\n"++
+          "5:((7,14),(7,15))\n"++
+          "1:((9,1),(9,1))\n"
+
+
+      let sspan = posToSrcSpan layout ((6,11),(6,16))
+      (showGhc sspan) `shouldBe` "test/testdata/Layout/LetExpr.hs:6:11-15"
+
+      newToks <- liftIO $ basicTokenise "\n               ff :: Int"
+      (show newToks) `shouldBe` "[((((1,16),(1,18)),ITvarid \"ff\"),\"ff\"),((((1,19),(1,21)),ITdcolon),\"::\"),((((1,22),(1,25)),ITconid \"Int\"),\"Int\")]"
+
+      let pos = (PlaceAbsCol 2 5 50)
+      let (layout2,newSpan) = addToksAfterSrcSpan layout sspan pos newToks
+
+      (showGhc newSpan) `shouldBe` "test/testdata/Layout/LetExpr.hs:1048584:5-13"
+      (show $ sf newSpan) `shouldBe` "(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))"
+      (drawTreeCompact layout2) `shouldBe`
+          "0:((1,1),(9,1))\n"++
+          "1:((1,1),(3,7))\n"++
+          "1:((3,8),(3,22))\n"++
+          "1:((3,23),(3,28))\n"++
+          "1:((5,1),(7,15))\n"++
+          "2:((5,1),(5,4))\n"++
+          "2:((5,5),(7,15))\n"++
+          "3:((5,5),(5,6))\n"++
+          "3:((5,7),(7,15))\n"++
+          "4:((5,7),(5,10))\n"++
+          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+          "5:((5,11),(5,16))\n"++
+          "6:((5,11),(5,12))\n"++
+          "6:((5,13),(5,16))\n"++
+          "7:((5,13),(5,14))\n"++
+          "7:((5,15),(5,16))\n"++
+          "5:((6,11),(6,16))\n"++
+          "6:((6,11),(6,12))\n"++
+          "6:((6,13),(6,16))\n"++
+          "7:((6,13),(6,14))\n"++
+          "7:((6,15),(6,16))\n"++
+          "5:((1000008,5),(1000008,14))\n"++
+          "4:((7,10),(7,15))\n"++
+          "5:((7,10),(7,11))\n"++
+          "5:((7,12),(7,13))\n"++
+          "5:((7,14),(7,15))\n"++
+          "1:((9,1),(9,1))\n"
+
+
+      let treeAsList = getTreeSpansAsList layout2
+      (show treeAsList) `shouldBe`
+          "[(0,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1))),"++
+            "(1,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 3),7))),"++
+            "(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),"++
+            "(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),"++
+            "(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),"++
+             "(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),"++
+             "(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),"++
+              "(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),"++
+              "(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),"++
+               "(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),"++
+               "(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),"++
+                "(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),"++
+                 "(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),"++
+                 "(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),"++
+                  "(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),"++
+                  "(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),"++
+                "(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),"++
+                 "(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),"++
+                 "(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),"++
+                  "(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),"++
+                  "(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),"++
+                "(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),"++ -- The span we want
+               "(4,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),15))),"++
+                "(5,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),11))),"++
+                "(5,(((ForestLine False 0 0 7),12),((ForestLine False 0 0 7),13))),"++
+                "(5,(((ForestLine False 0 0 7),14),((ForestLine False 0 0 7),15))),"++
+            "(1,(((ForestLine False 0 0 9),1),((ForestLine False 0 0 9),1)))]"
+
+      let ssWanted = (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7))
+      (spanContains (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14)) ssWanted) `shouldBe` True
+      (spanContains (((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1)) ssWanted) `shouldBe` True
+
+          -- True if first span contains the second
+      let myMatch (((ForestLine _ _ vs1 rs1),cs1),((ForestLine _ _ ve1 re1),ce1))
+                  (((ForestLine _ _ vs2 rs2),cs2),((ForestLine _ _ ve2 re2),ce2))
+            = vs1 == vs2 && ve1 == ve2 && ((rs1,cs1) <= (rs2,cs2)) && ((re1,ce1) >= (re2,ce2))
+
+      -- let tl2 = dropWhile (\(_,s) -> not (spanContains s ssWanted)) $ reverse treeAsList
+      let tl2 = dropWhile (\(_,s) -> not (myMatch s ssWanted)) $ reverse treeAsList
+      (show tl2) `shouldBe`
+          "[(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),"++
+             "(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),"++
+             "(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),"++
+             "(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),"++
+             "(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),"++
+             "(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),"++
+             "(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),"++
+             "(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),"++
+             "(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),"++
+             "(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),"++
+             "(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),"++
+           "(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),"++
+             "(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),"++
+           "(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),"++
+             "(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),"++
+           "(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),"++
+             "(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),"++
+           "(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),"++
+             "(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),"++
+             "(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),"++
+             "(1,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 3),7))),"++
+           "(0,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1)))]"
+
+      -- drop all higher indented values, all the way to the root
+
+      let fff acc@((cd,_cs):_) (v,sspan1) = if v < cd then (v,sspan1):acc
+                                                      else acc
+
+      let tl3 = foldl' fff [(head tl2)] tl2
+      (show tl3) `shouldBe`
+          "[(0,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1))),"++
+           "(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),"++
+           "(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),"++
+           "(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),"++
+           "(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),"++
+           "(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14)))]"
+
+      ------------
+{-
+      let ff :: [ForestSpan] -> Entry -> [ForestSpan]
+          ff acc entry = acc ++ [forestSpanFromEntry entry]
+      (show $ F.foldl ff [] layout2) `shouldBe` ""
+-}
+
+      let zo = openZipperToSpanOrig (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7)) $ Z.fromTree layout2
+      (show $ treeStartEnd (Z.tree zo)) `shouldBe` "(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1))"
+
+      let z = openZipperToSpanAdded (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7)) $ Z.fromTree layout2
+      (show $ treeStartEnd (Z.tree z)) `shouldBe` "(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))"
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 
 
-fs :: GHC.SrcSpan -> ForestSpan
-fs = srcSpanToForestSpan
+-- fs :: GHC.SrcSpan -> ForestSpan
+-- fs = srcSpanToForestSpan
 
 emptyTree :: Tree Entry
-emptyTree = Node (Entry nonNullSpan []) []
+emptyTree = Node (Entry nonNullSpan NoChange []) []
 
 mkTreeFromSubTrees :: [Tree Entry] -> Tree Entry
-mkTreeFromSubTrees [] = Node (Entry nullSpan []) []
-mkTreeFromSubTrees trees = Node (Entry sspan []) trees
+mkTreeFromSubTrees [] = Node (Entry nullSpan NoChange []) []
+mkTreeFromSubTrees trees = Node (Entry sspan NoChange []) trees
   where
-   (Node (Entry _ startToks) _) = head trees
-   (Node (Entry _ endToks) _) = last trees
+   (Node (Entry _ _ startToks) _) = head trees
+   (Node (Entry _ _ endToks) _) = last trees
    startLoc = tokenPos $ head startToks
    endLoc   = tokenPosEnd $ last endToks -- SrcSpans count from start of token, not end
    sspan    = simpPosToForestSpan (startLoc,endLoc)
@@ -3524,82 +5911,112 @@ nonNullSpan = ((ForestLine False 0 0 0,0),(ForestLine False 0 0 1,0))
 
 -- ---------------------------------------------------------------------
 
-liftD1FileName :: GHC.FastString
-liftD1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/D1.hs"
+-- liftD1FileName :: GHC.FastString
+-- liftD1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/D1.hs"
 
 parsedFileLiftD1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftD1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/D1.hs"
 
 -- ---------------------------------------------------------------------
 
-liftLetIn1FileName :: GHC.FastString
-liftLetIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/LetIn1.hs"
+-- liftLetIn1FileName :: GHC.FastString
+-- liftLetIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/LetIn1.hs"
 
 parsedFileLiftLetIn1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftLetIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/LetIn1.hs"
 
 -- ---------------------------------------------------------------------
 
-tokenTestFileName :: GHC.FastString
-tokenTestFileName = GHC.mkFastString "./test/testdata/TokenTest.hs"
+-- tokenTestFileName :: GHC.FastString
+-- tokenTestFileName = GHC.mkFastString "./test/testdata/TokenTest.hs"
 
 parsedFileTokenTestGhc :: IO (ParseResult,[PosToken])
 parsedFileTokenTestGhc = parsedFileGhc "./test/testdata/TokenTest.hs"
 
 -- ---------------------------------------------------------------------
 
-dupDefDd1FileName :: GHC.FastString
-dupDefDd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
+-- dupDefDd1FileName :: GHC.FastString
+-- dupDefDd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
 parsedFileDupDefDd1 :: IO (ParseResult, [PosToken])
 parsedFileDupDefDd1 = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 
 -- ---------------------------------------------------------------------
 
-moveDefMd1FileName :: GHC.FastString
-moveDefMd1FileName = GHC.mkFastString "./test/testdata/MoveDef/Md1.hs"
+-- moveDefMd1FileName :: GHC.FastString
+-- moveDefMd1FileName = GHC.mkFastString "./test/testdata/MoveDef/Md1.hs"
 
 parsedFileMoveDefMd1 :: IO (ParseResult, [PosToken])
 parsedFileMoveDefMd1 = parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
 
 -- ---------------------------------------------------------------------
 
-demoteD1FileName  :: GHC.FastString
-demoteD1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
+-- demoteD1FileName  :: GHC.FastString
+-- demoteD1FileName = GHC.mkFastString "./test/testdata/Demote/D1.hs"
 
 parsedFileDemoteD1 :: IO (ParseResult, [PosToken])
 parsedFileDemoteD1 = parsedFileGhc "./test/testdata/Demote/D1.hs"
 
 -- ---------------------------------------------------------------------
 
-demoteWherIn4FileName  :: GHC.FastString
-demoteWherIn4FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs"
+-- demoteWherIn4FileName  :: GHC.FastString
+-- demoteWherIn4FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs"
 
 parsedFileDemoteWhereIn4 :: IO (ParseResult, [PosToken])
 parsedFileDemoteWhereIn4 = parsedFileGhc "./test/testdata/Demote/WhereIn4.hs"
 
 -- ---------------------------------------------------------------------
 
-liftWhereIn1FileName :: GHC.FastString
-liftWhereIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/WhereIn1.hs"
+-- liftWhereIn1FileName :: GHC.FastString
+-- liftWhereIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/WhereIn1.hs"
 
 parsedFileLiftWhereIn1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereIn1.hs"
 
 -- ---------------------------------------------------------------------
 
-dd1FileName :: GHC.FastString
-dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
+-- dd1FileName :: GHC.FastString
+-- dd1FileName = GHC.mkFastString "./test/testdata/DupDef/Dd1.hs"
 
-parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
-parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+-- parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
+-- parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 
 -- ---------------------------------------------------------------------
 
-layoutIn2FileName :: GHC.FastString
-layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
+-- layoutIn2FileName :: GHC.FastString
+-- layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
 
 parsedFileLayoutIn2 :: IO (ParseResult, [PosToken])
 parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
 
 -- ---------------------------------------------------------------------
+
+parsedFileLayoutLetExpr :: IO (ParseResult,[PosToken])
+parsedFileLayoutLetExpr = parsedFileGhc "./test/testdata/Layout/LetExpr.hs"
+
+-- ---------------------------------------------------------------------
+
+-- parsedFileLayoutLetStmt :: IO (ParseResult,[PosToken])
+-- parsedFileLayoutLetStmt = parsedFileGhc "./test/testdata/Layout/LetStmt.hs"
+
+-- ---------------------------------------------------------------------
+
+parsedFileWhere :: IO (ParseResult,[PosToken])
+parsedFileWhere = parsedFileGhc "./test/testdata/Layout/Where.hs"
+
+-- ---------------------------------------------------------------------
+
+-- parsedFilePatBind :: IO (ParseResult,[PosToken])
+-- parsedFilePatBind = parsedFileGhc "./test/testdata/Layout/PatBind.hs"
+
+-- ---------------------------------------------------------------------
+
+-- parsedFileMd1Ghc :: IO (ParseResult,[PosToken])
+-- parsedFileMd1Ghc = parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
+
+-- ---------------------------------------------------------------------
+
+-- parsedFileLayoutLet1 :: IO (ParseResult, [PosToken])
+-- parsedFileLayoutLet1 = parsedFileGhc "./test/testdata/TypeUtils/LayoutLet1.hs"
+
+-- ----------------------------------------------------

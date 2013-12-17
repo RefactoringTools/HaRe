@@ -11,6 +11,7 @@ main = foo 3
 
 foo :: Int -> Int
 foo x = h + t + (snd tup)
+
 h :: Int
 t :: Int
 tup :: (Int,Int)

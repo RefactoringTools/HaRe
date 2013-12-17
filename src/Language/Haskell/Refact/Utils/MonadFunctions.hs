@@ -12,6 +12,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Conveniences for state access
 
          fetchToksFinal
+       -- , fetchPprFinal
+       , fetchLinesFinal
        , fetchOrigToks
        , fetchToks -- Deprecated
        -- , putToks -- ^Deprecated, destroys token tree
@@ -41,10 +43,16 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , syncDeclToLatestStash
        , indentDeclAndToks
 
+       -- * LayoutUtils API
+       -- , getLayoutForSpan
+       -- , putDeclLayoutAfterSpan
+
        -- * For debugging
        , drawTokenTree
        , drawTokenTreeDetailed
        , getTokenTree
+       -- , showPprDebug
+       , showLinesDebug
 
        -- * State flags for managing generic traversals
        , getRefactDone
@@ -70,9 +78,13 @@ import qualified GHC           as GHC
 
 import qualified Data.Data as SYB
 
+import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.Layout
+import Language.Haskell.Refact.Utils.LayoutTypes
+import Language.Haskell.Refact.Utils.LayoutUtils
 import Language.Haskell.Refact.Utils.LocUtils
+import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
@@ -101,6 +113,26 @@ fetchToksFinal = do
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchToksFinal (not showing toks)"
   return toks
+
+-- TODO: get rid of this, superseded by dualtree
+{-
+-- |fetch the final tokens in Ppr format
+fetchPprFinal :: RefactGhc [Ppr]
+fetchPprFinal = do
+  Just tm <- gets rsModule
+  let pprVal = retrieveTokensPpr $ (tkCache $ rsTokenCache tm) Map.! mainTid
+  -- logm $ "fetchToks" ++ (showToks toks)
+  logm $ "fetchPprFinal (not showing ppr)"
+  return pprVal
+-}
+
+-- |fetch the final tokens in Ppr format
+fetchLinesFinal :: RefactGhc [Line]
+fetchLinesFinal = do
+  Just tm <- gets rsModule
+  let linesVal = retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
+  logm $ "fetchLinesFinal (not showing lines)"
+  return linesVal
 
 -- |fetch the pristine token stream
 fetchOrigToks :: RefactGhc [PosToken]
@@ -313,6 +345,23 @@ getTokenTree = do
 
 -- ---------------------------------------------------------------------
 
+{-
+-- |Get the Ppr structure for debug prurposes
+showPprDebug :: String -> RefactGhc ()
+showPprDebug msg = do
+  ppr <- fetchPprFinal
+  logm $ msg ++ "\ncurrent ppr tree:\n" ++ (showGhc ppr)
+  return ()
+-}
+
+showLinesDebug :: String -> RefactGhc ()
+showLinesDebug msg = do
+  ppr <- fetchLinesFinal
+  logm $ msg ++ "\ncurrent [Line]:\n" ++ (showGhc ppr)
+  return ()
+
+-- ---------------------------------------------------------------------
+
 syncDeclToLatestStash :: (SYB.Data t) => (GHC.Located t) -> RefactGhc (GHC.Located t)
 syncDeclToLatestStash t = do
   st <- get
@@ -338,7 +387,34 @@ indentDeclAndToks t offset = do
   drawTokenTree "indentDeclToks result"
   return t'
 
+-- =====================================================================
+-- Layout Tree stuff
 -- ---------------------------------------------------------------------
+{-
+getLayoutForSpan :: GHC.SrcSpan -> RefactGhc LayoutTree
+getLayoutForSpan sspan = do
+  st <- get
+  let Just tm = rsModule st
+  let lay = getLayoutFor sspan (rsTokenLayout tm)
+  logm $ "getLayoutForSpan " ++ (showGhc sspan) ++ ":" ++ (showGhc lay)
+  return lay
+-}
+{-
+putDeclLayoutAfterSpan :: (SYB.Data t)
+   => GHC.SrcSpan -> GHC.Located t -> Positioning -> LayoutTree
+   -> RefactGhc (GHC.Located t)
+putDeclLayoutAfterSpan oldSpan t pos lay = do
+  logm $ "putDeclLayoutAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,lay))
+  st <- get
+  let Just tm = rsModule st
+  let (TL layoutTree) = rsTokenLayout tm
+  let (tl',_newSpan, t') = addDeclLayoutAfterSrcSpan layoutTree oldSpan pos lay t
+  let rsModule' = Just (tm {rsTokenLayout = tl', rsStreamModified = True})
+  put $ st { rsModule = rsModule' }
+  return t'
+-}
+
+-- =====================================================================
 
 getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
 getTypecheckedModule = do
@@ -459,7 +535,10 @@ initRefactModule
 initRefactModule tm toks
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsOrigTokenStream = toks
-                 , rsTokenCache = initTokenCache toks
+                 -- , rsTokenCache = initTokenCache toks
+                 , rsTokenCache = initTokenCacheLayout (initTokenLayout
+                                    (GHC.pm_parsed_source $ GHC.tm_parsed_module tm) 
+                                    toks)
                  , rsStreamModified = False
                  })
 
@@ -478,7 +557,7 @@ updateToks (GHC.L sspan _) newAST printFun addTrailingNl
        let newToks' = if addTrailingNl
                        then newToks ++ [newLnToken (last newToks)]
                        else newToks
-       putToksForSpan sspan  newToks'
+       void $ putToksForSpan sspan  newToks'
        return ()
 
 -- ---------------------------------------------------------------------

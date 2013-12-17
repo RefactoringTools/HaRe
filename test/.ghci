@@ -1,5 +1,7 @@
 -- ghci startup file
 
+:set -Wall
+
 :set -i./src
 :set -i../src
 :set -i./test

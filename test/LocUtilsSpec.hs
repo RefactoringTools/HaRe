@@ -6,11 +6,11 @@ import           TestUtils
 
 import qualified FastString as GHC
 import qualified GHC        as GHC
-import qualified GhcMonad   as GHC
+-- import qualified GhcMonad   as GHC
 import qualified Lexer      as GHC
 import qualified SrcLoc     as GHC
 
-import Control.Monad.State
+-- import Control.Monad.State
 import Data.Maybe
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -78,7 +78,7 @@ spec = do
       (t, toks) <- parsedFileWhereIn3Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = hsBinds renamed
+      -- let declsr = hsBinds renamed
 
       let Just (GHC.L _ sq) = locToName (14, 1) renamed
       let (Just sqSig, _sigToks) =
@@ -87,7 +87,7 @@ spec = do
               Nothing -> (Nothing,[])
 
 
-      let decls = filter isFunOrPatBindR declsr
+      -- let decls = filter isFunOrPatBindR declsr
 
       -- let decl = head $ drop 1 decls
       let (startPos,endPos) = startEndLocIncComments toks sqSig
@@ -417,8 +417,8 @@ spec = do
       let startLoc = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 3 4)
       toks <- lexStringToRichTokens startLoc "toplevel x y z"
       (showToks toks) `shouldBe` ("[(((3,4),(3,12)),ITvarid \"toplevel\",\"toplevel\")," ++ 
-                                   "(((3,13),(3,14)),ITvarid \"x\",\"x\")," ++ 
-                                   "(((3,15),(3,16)),ITvarid \"y\",\"y\")," ++ 
+                                   "(((3,13),(3,14)),ITvarid \"x\",\"x\")," ++
+                                   "(((3,15),(3,16)),ITvarid \"y\",\"y\")," ++
                                    "(((3,17),(3,18)),ITvarid \"z\",\"z\")]")
 
   -- -------------------------------------------------------------------
@@ -431,7 +431,7 @@ spec = do
 
   describe "splitToks" $ do
     it "Split the tokens into a front, middle and end" $ do
-      (t,toks) <- parsedFileCaseBGhc
+      (_t,toks) <- parsedFileCaseBGhc
       let -- renamed = fromJust $ GHC.tm_renamed_source t
           (_front,middle,_back) = splitToks ((4,9),(4,42)) toks
       (showToks middle) `shouldBe`
@@ -617,7 +617,7 @@ spec = do
     -- ---------------------------------------------------------------
 
     it "Deletes a set of tokens from a token stream2" $ do
-      (_t,toks) <- parsedFileWhereIn3Ghc
+      (_t,_toks) <- parsedFileWhereIn3Ghc
       -- let toks' = take 30 $ drop 25 toks
       let toks' =
            [
@@ -746,11 +746,11 @@ spec = do
       let decls = filter isFunOrPatBindR declsr
 
       let decl = head $ drop 4 decls
-      let (_startPos,endPos) = startEndLocIncComments toks decl
+      let (_startPos,_endPos) = startEndLocIncComments toks decl
 
       (showGhc decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
-      (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe` 
+      (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe`
              ("[(((18,1),(18,1)),ITsemi,\"\")," ++
              "(((18,1),(18,5)),ITdata,\"data\")," ++
              "(((18,6),(18,7)),ITconid \"D\",\"D\")," ++
@@ -1087,44 +1087,45 @@ mkMySrcSpan (((r1,c1),(r2,c2)),tok,s) = (GHC.L sspan tok,s)
 
 -- ---------------------------------------------------------------------
 
-bFileName :: GHC.FastString
-bFileName = GHC.mkFastString "./test/testdata/B.hs"
+-- bFileName :: GHC.FastString
+-- bFileName = GHC.mkFastString "./test/testdata/B.hs"
 
-parsedFileBGhc :: IO (ParseResult,[PosToken])
-parsedFileBGhc = parsedFileGhc "./test/testdata/B.hs"
+-- parsedFileBGhc :: IO (ParseResult,[PosToken])
+-- parsedFileBGhc = parsedFileGhc "./test/testdata/B.hs"
 
-offsetFileName :: GHC.FastString
-offsetFileName = GHC.mkFastString "./test/testdata/Offset.hs"
+-- offsetFileName :: GHC.FastString
+-- offsetFileName = GHC.mkFastString "./test/testdata/Offset.hs"
 
 parsedFileOffsetGhc :: IO (ParseResult,[PosToken])
 parsedFileOffsetGhc = parsedFileGhc "./test/testdata/Offset.hs"
 
-caseBFileName :: GHC.FastString
-caseBFileName = GHC.mkFastString "./test/testdata/Case/B.hs"
+-- caseBFileName :: GHC.FastString
+-- caseBFileName = GHC.mkFastString "./test/testdata/Case/B.hs"
 
 parsedFileCaseBGhc :: IO (ParseResult,[PosToken])
 parsedFileCaseBGhc = parsedFileGhc "./test/testdata/Case/B.hs"
 
-parsedFileMGhc :: IO (ParseResult,[PosToken])
-parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
+-- parsedFileMGhc :: IO (ParseResult,[PosToken])
+-- parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
 
-parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileBGhc = parseSourceFileTest fileName
-  where
-    fileName = "./test/testdata/B.hs"
+-- parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
+-- parseFileBGhc = parseSourceFileTest fileName
+--   where
+--     fileName = "./test/testdata/B.hs"
 
-parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileMGhc = parseSourceFileTest fileName
-  where
-    fileName = "./test/testdata/M.hs"
+-- parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
+-- parseFileMGhc = parseSourceFileTest fileName
+--   where
+--     fileName = "./test/testdata/M.hs"
 
-parsedFileNoMod = parsedFileGhc fileName
-  where
-    fileName = "./test/testdata/NoMod.hs"
+-- parsedFileNoMod = parsedFileGhc fileName
+--   where
+--     fileName = "./test/testdata/NoMod.hs"
 
 parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
 parsedFileDd1Ghc = parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
 
+{-
 comp :: RefactGhc String
 comp = do
     s <- get
@@ -1139,6 +1140,7 @@ comp = do
     put (s {rsModule = Just tm'})
 
     return (show gs)
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -1153,8 +1155,8 @@ parsedFileWhereIn6Ghc = parsedFileGhc "./test/testdata/Demote/WhereIn6.hs"
 parsedFileDemoteGhc :: IO (ParseResult,[PosToken])
 parsedFileDemoteGhc = parsedFileGhc "./test/testdata/MoveDef/Demote.hs"
 
-demoteFileName :: GHC.FastString
-demoteFileName = GHC.mkFastString "./test/testdata/MoveDef/Demote.hs"
+-- demoteFileName :: GHC.FastString
+-- demoteFileName = GHC.mkFastString "./test/testdata/MoveDef/Demote.hs"
 
 -- -----------
 
@@ -1166,16 +1168,16 @@ whereIn3FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn3.hs"
 
 -- -----------
 
-tokenTestFileName :: GHC.FastString
-tokenTestFileName = GHC.mkFastString "./test/testdata/TokenTest.hs"
+-- tokenTestFileName :: GHC.FastString
+-- tokenTestFileName = GHC.mkFastString "./test/testdata/TokenTest.hs"
 
 parsedFileTokenTestGhc :: IO (ParseResult,[PosToken])
 parsedFileTokenTestGhc = parsedFileGhc "./test/testdata/TokenTest.hs"
 
 -- ----------------------------------------------------
 
-typeSigsFileName :: GHC.FastString
-typeSigsFileName = GHC.mkFastString "./test/testdata/TypeUtils/TypeSigs.hs"
+-- typeSigsFileName :: GHC.FastString
+-- typeSigsFileName = GHC.mkFastString "./test/testdata/TypeUtils/TypeSigs.hs"
 
 parsedFileTypeSigs :: IO (ParseResult, [PosToken])
 parsedFileTypeSigs = parsedFileGhc "./test/testdata/TypeUtils/TypeSigs.hs"

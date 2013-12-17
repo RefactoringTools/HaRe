@@ -124,6 +124,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- * Debug stuff
     , getDeclAndToks, getSigAndToks
+    , getToksForDecl, removeToksOffset -- ++AZ++ remove this after debuggging
     -- , allPNT
     --  , allPNTLens
     , newNameTok
@@ -1661,6 +1662,7 @@ instance HsValBinds (GHC.HsBind GHC.Name) where
 
   -- TODO: ++AZ++ added for compatibility with hsDecls.
   hsValBinds (GHC.FunBind _ _ matches _ _ _) = hsValBinds matches
+  hsValBinds other = error $ "hsValBinds (GHC.HsBind GHC.Name) undefined for:" ++ (showGhc other)
 
   replaceValBinds (GHC.PatBind p (GHC.GRHSs rhs _binds) typ fvs pt) newBinds
     = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt)
@@ -1675,6 +1677,7 @@ instance HsValBinds (GHC.HsExpr GHC.Name) where
 
 instance HsValBinds (GHC.Stmt GHC.Name) where
   hsValBinds (GHC.LetStmt ds) = hsValBinds ds
+  hsValBinds other = error $ "hsValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc other)
   replaceValBinds (GHC.LetStmt ds) new = (GHC.LetStmt (replaceValBinds ds new))
   replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc old)
 
@@ -2628,8 +2631,14 @@ addItemsToImport serverModName pn ids t
 -- ---------------------------------------------------------------------
 
 addImportDecl ::
-    GHC.RenamedSource -> GHC.ModuleName -> Maybe GHC.FastString -> Bool -> Bool -> Bool ->
-        Maybe String -> Bool -> [GHC.Name] -> RefactGhc GHC.RenamedSource
+    GHC.RenamedSource
+    -> GHC.ModuleName
+    -> Maybe GHC.FastString -- ^qualifier
+    -> Bool -> Bool -> Bool
+    -> Maybe String         -- ^alias
+    -> Bool
+    -> [GHC.Name]
+    -> RefactGhc GHC.RenamedSource
 addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias hide idNames
   = do
        toks <- fetchToks
@@ -2645,13 +2654,17 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
                                in toks1'
                           else toks
 
+       drawTokenTreeDetailed "before starting"
+       logm $ "addImportDecl:toks =" ++ show toks
+       logm $ "addImportDecl:toks1=" ++ show toks1
+
        let lastTok = ghead "addImportDecl" $ dropWhile isWhiteSpace $ reverse toks1
        let startPos = tokenPos    lastTok
        let endPos   = tokenPosEnd lastTok
 
        newToks <- liftIO $ basicTokenise (showGhc impDecl)
-       -- logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
-       putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
+       logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
+       void $ putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
 
@@ -2789,8 +2802,7 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- ---------------------------------------------------------------------
 
 -- | Adding a declaration to the declaration list of the given syntax
--- phrase(so far only adding function\/pattern binding has been
--- tested). If the second argument is Nothing, then the declaration
+-- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
 addDecl:: (SYB.Data t,HsValBinds t)
@@ -2828,7 +2840,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- was || isTypeSig x -}) decls
 
          newToks <- makeNewToks (newDecl,maybeSig,maybeDeclToks)
-         -- logm $ "addTopLevelDecl:newToks=" ++ (show newToks)
+         logm $ "addTopLevelDecl:newToks=" ++ (show newToks)
 
          let Just sspan = if (emptyList decls2)
                             then getSrcSpan (glast "addTopLevelDecl" decls1)
@@ -2836,11 +2848,6 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          decl' <- putDeclToksAfterSpan sspan newDecl (PlaceOffset 2 0 2) newToks
 
-{-
-         case maybeSig of
-           Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
-           Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
--}
          return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
 
   appendDecl :: (SYB.Data t, HsValBinds t)
@@ -2891,10 +2898,11 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         if (emptyList localDecls)
           then
-            putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent 2) newToks
+            void $ putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent 2) newToks
             -- putToksAfterPos (startLoc,endLoc) (PlaceAbsolute (r+1) c) newToks
           else
-            putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
+            void $ putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
+            -- void $ putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 3) newToks
 
         {-
         case maybeSig of
@@ -3023,7 +3031,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
                 -- toks'=replaceToks toks start end [newToken]
                 -- toks'=replaceTok toks start newToken
 
-            putToksForPos (start,end) [newToken]
+            void $ putToksForPos (start,end) [newToken]
 
             return (replaceHiding imp  (Just (isHide, (map mkNewEnt  pns)++ents)))
 
@@ -3096,6 +3104,7 @@ addFormalParams place newParams
            newToks <- liftIO $ tokenise (GHC.realSrcSpanStart ss) 0 False newStr
            _ <- putToksAfterSpan l PlaceAdjacent newToks
            return ()
+         Left ss -> error $ "addFormalParams: expecting RealSrcSpan, got:" ++ (showGhc ss)
          Right (GHC.L l _) -> do
            toks <- getToksForSpan l
            newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False newStr
@@ -3368,12 +3377,14 @@ duplicateDecl decls sigs n newFunName
  = do
       let Just sspan = getSrcSpan funBinding
       toks <- getToksForSpan sspan
+      -- lay <- getLayoutForSpan sspan
 
       newSpan <- case typeSig of
         [] -> return sspan
         _  -> do
           let Just sspanSig = getSrcSpan typeSig
-          toksSig  <- getToksForSpan sspanSig
+          toksSig <- getToksForSpan sspanSig
+          -- laySig  <- getLayoutForSpan sspanSig
 
           let colStart  = tokenCol $ ghead "duplicateDecl.sig"
                     $ dropWhile isWhiteSpace toksSig
@@ -3424,7 +3435,7 @@ rmDecl pn incSig t = do
   -- drawTokenTreeDetailed "rmDecl.entry tree" -- ++AZ++ 'in' present
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
-  drawTokenTreeDetailed "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
+  -- drawTokenTreeDetailed "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
   t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
 
              -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
@@ -3487,7 +3498,7 @@ rmDecl pn incSig t = do
            1 -> do -- Removing the last declaration
             logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
             -- putToksForSpan ss toks
-            putToksForSpan ss $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
+            void $ putToksForSpan ss $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
             return expr
            _ -> do
             logm $ "rmDecl.inLet:length decls /= 1"
@@ -3628,7 +3639,7 @@ rmTypeSig pn t
                                     then extendForwards  toks (startPos1',endPos1') isComma
                                     else extendBackwards toks (startPos1',endPos1') isComma
                      toks' = deleteToks toks startPos1 endPos1
-                 putToksForSpan sspan toks'
+                 void $ putToksForSpan sspan toks'
 
                  -- Construct the old signature, by keeping the
                  -- signature part but discarding the other names
@@ -3637,7 +3648,7 @@ rmTypeSig pn t
                  let typeLoc = extendBackwards toks (getStartEndLoc typ) isDoubleColon
                  let (_,typTok,_) = splitToks typeLoc toks
                  let (_,pntTok,_) = splitToks (getStartEndLoc pnt) toks
-                 putToksForSpan sspan' (pntTok ++ typTok)
+                 void $ putToksForSpan sspan' (pntTok ++ typTok)
                  setStateStorage (StorageSig sig')
 
 
@@ -3712,7 +3723,7 @@ qualifyToplevelName :: GHC.Name -> RefactGhc ()
 qualifyToplevelName n = do
     renamed <- getRefactRenamed
     logm $ "qualifyToplevelName:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed)
-    renamePN n n True True renamed
+    _ <- renamePN n n True True renamed
     return ()
 
 -- ---------------------------------------------------------------------
@@ -3735,6 +3746,7 @@ renamePN::(SYB.Data t)
 renamePN oldPN newName updateTokens useQual t = do
   -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
   -- logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
+  logm $ "renamePN': t=" ++ (SYB.showData SYB.Renamer 0 t)
   -- Note: bottom-up traversal
   let isRenamed = somethingStaged SYB.Renamer Nothing
                    (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t
@@ -3748,8 +3760,8 @@ renamePN oldPN newName updateTokens useQual t = do
                  ) t
     else
       renamePNworker oldPN newName updateTokens useQual t
-  t'' <- adjustLayoutAfterRename oldPN newName t'
-  return t''
+  -- t'' <- adjustLayoutAfterRename oldPN newName t'
+  return t'
   where
     isRenamedSource :: GHC.RenamedSource -> Maybe Bool
     isRenamedSource (_g,_i,_e,_d) = Just True
@@ -3808,7 +3820,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           logm $ "renamePNworker:rename at :" ++ (show l) ++ (showSrcSpanF l)
-          worker useQual l n
+          drawTokenTree "before worker" -- ++AZ++ debug
+          worker useQual l
           return (GHC.L l newName)
     rename x = return x
 
@@ -3816,8 +3829,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
     renameVar (GHC.L l (GHC.HsVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
-          -- logm $ "renamePNworker:renameVar at :" ++ (show (row,col))
-          worker useQual l n
+          logm $ "renamePNworker:renameVar at :" ++ (showGhc l)
+          worker useQual l
           return (GHC.L l (GHC.HsVar newName))
     renameVar x = return x
 
@@ -3826,8 +3839,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
     renameTyVar (GHC.L l (GHC.HsTyVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
-          -- logm $ "renamePNworker:renameTyVar at :" ++ (show (row,col))
-          worker useQual l n
+          logm $ "renamePNworker:renameTyVar at :" ++ (showGhc l)
+          worker useQual l
           return (GHC.L l (GHC.HsTyVar newName))
     renameTyVar x = return x
 
@@ -3840,8 +3853,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
 #endif
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
-          -- logm $ "renamePNworker:renameHsTyVarBndr at :" ++ (show (row,col))
-          worker useQual l n
+          logm $ "renamePNworker:renameHsTyVarBndr at :" ++ (showGhc l)
+          worker useQual l
 #if __GLASGOW_HASKELL__ > 704
           return (GHC.L l (GHC.UserTyVar newName))
 #else
@@ -3853,8 +3866,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
     renameLIE (GHC.L l (GHC.IEVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
-          -- logm $ "renamePNworker:renameLIE at :" ++ (show (row,col))
-          worker useQual l n
+          logm $ "renamePNworker:renameLIE at :" ++ (showGhc l)
+          worker useQual l
           return (GHC.L l (GHC.IEVar newName))
     renameLIE x = return x
 
@@ -3862,8 +3875,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
     renameLPat (GHC.L l (GHC.VarPat n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
-          -- logm $ "renamePNworker:renameLPat at :" ++ (show (row,col))
-          worker False l n
+          logm $ "renamePNworker:renameLPat at :" ++ (showGhc l)
+          worker False l
           return (GHC.L l (GHC.VarPat newName))
     renameLPat x = return x
 
@@ -3876,12 +3889,14 @@ renamePNworker oldPN newName updateTokens useQual t = do
           --         (b) rename each of 'tail matches'
           --             (head is renamed in (a) )
           -- logm $ "renamePNWorker.renameFunBind"
-          worker False l n
+          worker False ln
           -- Now do (b)
-          -- logm $ "renamePNWorker.renameFunBind.renameFunBind:starting matches"
-          let w (GHC.L lm _match) = worker False lm n
-          mapM w $ tail matches
-          -- logm $ "renamePNWorker.renameFunBind.renameFunBind.renameFunBind:matches done"
+          logm $ "renamePNWorker.renameFunBind.renameFunBind:starting matches"
+          let w (GHC.L lm _match) = worker False lm'
+               where
+                ((GHC.L lm' _),_) = newNameTok False lm oldPN
+          mapM_ w $ tail matches
+          logm $ "renamePNWorker.renameFunBind.renameFunBind.renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MatchGroup matches typ) co fvs tick))
     renameFunBind x = return x
 
@@ -3897,7 +3912,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
          return (GHC.L l (GHC.TypeSig ns' typ'))
 
     -- The param l is only useful for the start of the token pos
-    worker useQual' l _n
+    worker :: Bool -> GHC.SrcSpan -> RefactGhc ()
+    worker useQual' l
      = do if updateTokens
            then  do
              replaceToken l (markToken $ newNameTok useQual' l newName)
@@ -4016,9 +4032,11 @@ adjustLayoutAfterRename oldPN newName t = do
 
             local' <- indentList (sortBy compareLocated $ hsBinds local) off
             return (GHC.L l (GHC.Match pats mtyp (GHC.GRHSs grhs (replaceBinds local local'))))
-          else return x
+          else do
+            logm $ "adjustLMatch: (l,off)=" ++ showGhc (l,off)
+            return x
 
-    adjustLMatch x = return x
+    -- adjustLMatch x = return x
 
 -- -------------------------------------
 

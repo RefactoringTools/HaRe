@@ -1,3 +1,9 @@
+2013-12-16 v0.7.0.8
+	* Major rewrite of the token output stage. It now makes use of a
+	dual-tree structure to manage the maintenance of required vertical
+	layout while refactoring.
+2013-10-21 v0.7.0.7
+	* Bump the lower bound on Diff
 2013-10-01 v0.7.0.6
 	* Sort out most of the do/in/let layout when renaming. Only nested
 	layout changes to be dealt with.

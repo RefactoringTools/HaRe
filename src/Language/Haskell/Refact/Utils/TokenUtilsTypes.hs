@@ -12,14 +12,25 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        , mainTid
        -- * Structure of each tree
        , Entry(..)
+       , Layout(..)
+       , EndOffset(..)
+       , RowOffset
+       , ColOffset
+       , Row
+       , Col
        , ForestLine(..)
        , ForestPos
        , ForestSpan
+       , PprOrigin(..)
+       , Ppr(..)
+       -- , HDoc(..)
        ) where
 
 import Language.Haskell.Refact.Utils.TypeSyn
 import Data.Tree
 import qualified Data.Map as Map
+
+import Outputable
 
 -- ---------------------------------------------------------------------
 
@@ -60,15 +71,37 @@ Question: is the latter statement valid? ++AZ++
 
 -- TODO: turn this into a record, with named accessors
 -- | An entry in the data structure for a particular srcspan.
-data Entry = Entry !ForestSpan -- The source span contained in this Node
+data Entry = Entry !ForestSpan -- The source span contained in this
+                                  -- Node
+                   !Layout     -- How the sub-elements nest
                    ![PosToken] -- ^The tokens for the SrcSpan if
                                --  subtree is empty
            | Deleted !ForestSpan -- The source span has been deleted
+                     RowOffset   -- prior gap in lines
                      SimpPos     -- ^The gap between this span end and
                                  --  the start of the next in the
                                  --  fringe of the tree.
-
 --             deriving (Show)
+
+type RowOffset = Int
+type ColOffset = Int
+type Row       = Int
+type Col       = Int
+
+data Layout = Above EndOffset (Row,Col) (Row,Col) EndOffset
+            -- ^ Initial offset from token before the
+            -- stacked list of items, the (r,c) of the first
+            -- non-comment token, the (r,c) of the end of the last non-comment
+            -- token in the stacked list to be able to calculate the
+            -- (RowOffset,ColOffset) between the last token and the
+            -- start of the next item.
+            | NoChange
+            deriving (Show,Eq)
+
+data EndOffset = None
+               | SameLine ColOffset
+               | FromAlignCol (RowOffset, ColOffset)
+               deriving (Show,Eq)
 
 -- ---------------------------------------------------------------------
 
@@ -94,6 +127,8 @@ instance Show ForestLine where
          ++ " " ++ (show $ flLine s)
          ++ ")"
 
+instance Outputable ForestLine where
+  ppr fl = text (show fl)
 
 -- ---------------------------------------------------------------------
 
@@ -116,6 +151,28 @@ data TokenCache = TK
   { tkCache :: !(Map.Map TreeId (Tree Entry))
   , tkLastTreeId :: !TreeId
   }
+
+-- ---------------------------------------------------------------------
+
+data PprOrigin = Original -- ^ Original tokens
+               | Added    -- ^ Added tokens
+               deriving (Eq,Show)
+
+-- ---------------------------------------------------------------------
+
+-- |A data structure to make the ppr process visible
+data Ppr = PprText Row Col PprOrigin String
+           -- ^Original row and col of the tokens making up the string
+         | PprAbove EndOffset (Row,Col) EndOffset [Ppr]
+         -- ^ Offset of start of embedded parts, coords of last token,
+         -- offset to start of next part, relative to the column of
+         -- the start
+         | PprDeleted Row Col RowOffset RowOffset RowOffset -- String
+         -- ^ Marks lines that have been deleted together with the
+         -- original gap before, how many lines were originally
+         -- included, and gap after.
+         -- And a note field for debugging
+         deriving (Eq,Show)
 
 -- ---------------------------------------------------------------------
 

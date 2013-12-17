@@ -317,7 +317,7 @@ moveDecl1 t defName ns sigNames topLevel
         logm $ "moveDecl1: (ns,funBinding)=" ++ (showGhc (ns,funBinding)) -- ++AZ++
 
         let Just sspan = getSrcSpan funBinding
-        -- drawTokenTree "before getting toks" -- ++AZ++
+        drawTokenTree "before getting toks" -- ++AZ++
         funToks <- getToksForSpan sspan
         logm $ "moveDecl1:funToks=" ++ (showToks funToks)
         drawTokenTree "moveDecl1:after getting toks" -- ++AZ++ 'in' present
@@ -326,12 +326,12 @@ moveDecl1 t defName ns sigNames topLevel
         -- (t'',sigsRemoved) <- rmTypeSigs ns t
         (t'',sigsRemoved) <- rmTypeSigs sigNames t
         -- drawTokenTree "moveDecl1:after rmTypeSigs" -- ++AZ++
-        drawTokenTreeDetailed "moveDecl1:after rmTypeSigs" -- ++AZ++
+        -- drawTokenTreeDetailed "moveDecl1:after rmTypeSigs" -- ++AZ++
         -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
         (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
         -- logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
         -- drawTokenTree "moveDecl1:after rmDecl" -- ++AZ++
-        drawTokenTreeDetailed "moveDecl1:after rmDecl" -- ++AZ++  'in' missing
+        -- drawTokenTreeDetailed "moveDecl1:after rmDecl" -- ++AZ++  'in' missing
 
         let getToksForMaybeSig (GHC.L ss _) =
                              do
@@ -912,6 +912,7 @@ doDemoting  pn = do
   putRefactRenamed renamed'
   -- ren <- getRefactRenamed
   -- error ("doDemoting:ren=" ++ (showGhc ren))
+  showLinesDebug "doDemoting done"
   return ()
 {-
  =runStateT (applyTP ((once_tdTP (failTP `adhocTP` demoteInMod
@@ -1496,13 +1497,13 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
        rmParamsInParent pn es
          -- =applyTP (full_buTP (idTP `adhocTP` worker))
          = everywhereMStaged SYB.Renamer (SYB.mkM worker)
-            where worker exp@(GHC.L _ (GHC.HsApp e1 e2))
+            where worker expr@(GHC.L _ (GHC.HsApp e1 e2))
                    -- was | findPN pn e1 && (elem (GHC.unLoc e2) es)
                    | findPN pn e1 && (elem (showGhc (GHC.unLoc e2)) (map (showGhc) es))
-                      = update exp e1 exp
-                  worker (exp@(GHC.L _ (GHC.HsPar e1)))
+                      = update expr e1 expr
+                  worker (expr@(GHC.L _ (GHC.HsPar e1)))
                     |pn==expToName e1
-                       = update exp e1 exp
+                       = update expr e1 expr
                   worker x =return x
 
 
@@ -1523,10 +1524,10 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
        -}
        ----- make Substitions between formal and actual parameters.-----------------
        mkSubst :: [GHC.LPat GHC.Name] -> [[GHC.HsExpr GHC.Name]] -> [(GHC.Name,GHC.HsExpr GHC.Name)]
-       mkSubst pats params
+       mkSubst pats1 params
            = catMaybes (zipWith (\x y -> if (patToPNT x/=Nothing) && (length (nub $ map showGhc y)==1)
                                           then Just (fromJust $ patToPNT x,(ghead "mkSubst") y)
-                                          else Nothing) pats params)
+                                          else Nothing) pats1 params)
            {-
            = catMaybes (zipWith (\x y ->if (patToPN x/=defaultPN) && (length (nub y)==1)
                             then Just (patToPN x,(ghead "mkSubst") y)

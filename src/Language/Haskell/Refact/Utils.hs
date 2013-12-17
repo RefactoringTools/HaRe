@@ -43,6 +43,7 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Language.Haskell.GhcMod
+import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -50,6 +51,8 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
+import Language.Haskell.Refact.Utils.TokenUtils
+import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.Directory
@@ -144,7 +147,7 @@ loadModuleGraphGhc maybeTargetFile = do
       -- NOTE: does not seem to be required
       target <- GHC.guessTarget (targetFile) Nothing
       GHC.setTargets [target]
-      GHC.load GHC.LoadAllTargets
+      void $ GHC.load GHC.LoadAllTargets
       return ()
     Nothing -> return ()
   return ()
@@ -215,7 +218,7 @@ parseSourceFileGhc targetFile = do
       target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- The *
                                      -- is to force interpretation, for inscopes
       GHC.setTargets [target]
-      GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
+      void $ GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
 
 {-
       graph <- GHC.getModuleGraph
@@ -237,7 +240,8 @@ parseSourceFileGhc targetFile = do
 
 -- | The result of a refactoring is the file, a flag as to whether it
 -- was modified, the updated token stream, and the updated AST
-type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.RenamedSource))
+-- type ApplyRefacResult = ((FilePath, Bool), ([Ppr],[PosToken], GHC.RenamedSource))
+type ApplyRefacResult = ((FilePath, Bool), ([Line],[PosToken], GHC.RenamedSource))
 
 
 -- | Manage a whole refactor session. Initialise the monad, load the
@@ -247,7 +251,8 @@ type ApplyRefacResult = ((FilePath, Bool), ([PosToken], GHC.RenamedSource))
 -- It is intended that this forms the umbrella function, in which
 -- applyRefac is called
 --
-runRefacSession :: RefactSettings
+runRefacSession ::
+       RefactSettings
     -> Cradle                       -- ^ Identifies the surrounding
                                     -- project
     -> RefactGhc [ApplyRefacResult] -- ^ The computation doing the
@@ -310,14 +315,16 @@ applyRefac refac source = do
 
     res <- refac  -- Run the refactoring, updating the state as required
 
-    mod'  <- getRefactRenamed
-    toks' <- fetchToksFinal
-    m     <- getRefactStreamModified
+    mod'   <- getRefactRenamed
+    toks'  <- fetchToksFinal
+    -- pprVal <- fetchPprFinal
+    linesVal <- fetchLinesFinal
+    m      <- getRefactStreamModified
 
     -- Clear the refactoring state
     clearParsedModule
 
-    return (((fileName,m),(toks', mod')),res)
+    return (((fileName,m),(linesVal,toks', mod')),res)
 
 
 -- ---------------------------------------------------------------------
@@ -337,7 +344,7 @@ applyRefacToClientMods refac fileName
 -- ---------------------------------------------------------------------
 
 
-modifiedFiles :: [((String, Bool), ([PosToken], GHC.RenamedSource))] -> [String]
+modifiedFiles :: [ApplyRefacResult] -> [String]
 modifiedFiles refactResult = map (\((s,_),_) -> s)
                            $ filter (\((_,b),_) -> b) refactResult
 
@@ -476,7 +483,7 @@ instance (SYB.Data t) => Update [GHC.Located HsPatP] t where
 
 -- | Write refactored program source to files.
 writeRefactoredFiles ::
-  VerboseLevel -> [((String, Bool), ([PosToken], GHC.RenamedSource))] -> IO ()
+  VerboseLevel -> [ApplyRefacResult] -> IO ()
 writeRefactoredFiles verbosity files
   = do let filesModified = filter (\((_f,m),_) -> m == modified) files
 
@@ -486,13 +493,14 @@ writeRefactoredFiles verbosity files
        -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
 
      where
-       modifyFile ((fileName,_),(ts,renamed)) = do
+       modifyFile ((fileName,_),(finalLines,ts,renamed)) = do
            -- let source = concatMap (snd.snd) ts
 
-           -- The bug fix only works if we strip any empty tokens
-           -- let ts' = bypassGHCBug7351 $ filter (\t -> not $ isEmpty t) ts
            let ts' = bypassGHCBug7351 ts
-           let source = GHC.showRichTokenStream ts'
+           -- let source = GHC.showRichTokenStream ts'
+
+           -- let source = renderPpr ppr
+           let source = renderLines finalLines
 
            -- (Julien personnal remark) seq forces the evaluation of
            -- its first argument and returns its second argument. It

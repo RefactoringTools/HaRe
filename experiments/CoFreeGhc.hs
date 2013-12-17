@@ -51,20 +51,20 @@ data PFExpr r = ConstF Int | AddF r r      | MulF r r
 type Expr' = Fix PFExpr
 
 class Regular a where
-  deepFrom :: a -> Fix (PF a) 
+  deepFrom :: a -> Fix (PF a)
   deepTo   ::      Fix (PF a) -> a
 
   from :: a -> PF a a
   to   ::      PF a a -> a
-    
+
 type family PF a :: * -> *
 
 type instance PF Expr = PFExpr
 
 
-instance Functor PFExpr where 
-  fmap f (ConstF i) =ConstF i 
-  fmap f (AddF e e')=AddF (f e) (f e') 
+instance Functor PFExpr where
+  fmap f (ConstF i) =ConstF i
+  fmap f (AddF e e')=AddF (f e) (f e')
   fmap f (MulF e e')=MulF (f e) (f e')
 
 

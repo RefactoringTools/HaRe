@@ -16,7 +16,7 @@ spec :: Spec
 spec = do
 
   describe "Renaming" $ do
-    it "Renames in D1 B1 C1 A1 6 6" $ do
+    it "renames in D1 B1 C1 A1 6 6" $ do
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/A1.hs") testCradle "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
      -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
 
@@ -130,10 +130,11 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in D5 B5 C5 A5 24 1" $ do
+    it "renames in D5 B5 C5 A5 24 1" $ do
      --     (["D5.hs","B5.hs","C5.hs","A5.hs"],["sum","24","1"]),
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/A5.hs") testCradle "./test/testdata/Renaming/D5.hs" "sum" (24,1)
-     -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/A5.hs") "./test/testdata/Renaming/D5.hs" "sum" (24,1)
+     -- rename (logTestSettingsMainfile "./test/testdata/Renaming/A5.hs") testCradle "./test/testdata/Renaming/D5.hs" "sum" (24,1)
+     -- rename logTestSettings testCradle "./test/testdata/Renaming/D5.hs" "sum" (24,1)
 
      r `shouldBe` [ "./test/testdata/Renaming/D5.hs"
                   , "./test/testdata/Renaming/C5.hs"
@@ -297,7 +298,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in LayoutIn1 7 17" $ do
+    it "renames in LayoutIn1 7 17" $ do
      --     (["LayoutIn1.hs"],["square","7","17"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/LayoutIn1.hs" "square" (7,17)
      -- rename logTestSettings testCradle "./test/testdata/Renaming/LayoutIn1.hs" "square" (7,17)
@@ -321,7 +322,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in LayoutIn3 7 13" $ do
+    it "renames in LayoutIn3 7 13" $ do
      --     (["LayoutIn3.hs"],["anotherX","7","13"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/LayoutIn3.hs" "anotherX" (7,13)
      -- rename logTestSettings testCradle "./test/testdata/Renaming/LayoutIn3.hs" "anotherX" (7,13)
@@ -333,7 +334,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in LayoutIn4 7 8" $ do
+    it "renames in LayoutIn4 7 8" $ do
      --     (["LayoutIn4.hs"],["io","7","8"])],
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/LayoutIn4.hs" "io" (7,8)
      -- rename logTestSettings testCradle "./test/testdata/Renaming/LayoutIn4.hs" "io" (7,8)

@@ -239,7 +239,7 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
         | True = do
            logm $ "renameInMod"
            renameTopLevelVarName oldn newNameStr newNameGhc modName ren True True
-     renameInMod _ren = mzero
+     -- renameInMod _ren = mzero
 
 {- original
 doRenaming oldPNT@(PNT oldPN Value loc) newName modName mod inscps exps env
