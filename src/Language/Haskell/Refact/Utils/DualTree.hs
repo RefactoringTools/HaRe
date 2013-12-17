@@ -39,24 +39,31 @@ data DeletedSpan = DeletedSpan Span RowOffset SimpPos
               deriving (Show,Eq)
 
 -- TODO: We are not actually using any of these
-data Transformation = AsIs
-                    | T Integer
-                    | TAbove ColOffset EndOffset (Row,Col) (Row,Col) EndOffset
-                    | TDeleted ForestSpan RowOffset SimpPos
-                    | TAdded
+data Transformation = {- AsIs
+                    |  T Integer
+                    | -} TAbove ColOffset EndOffset (Row,Col) (Row,Col) EndOffset
+                    -- | TDeleted ForestSpan RowOffset SimpPos
+                    -- | TAdded
                     deriving Show
 
+{-
 -- I have no idea why this is needed, but any dual tree operations fail if it is not present
 instance Num Transformation where
   fromInteger n = T n
+  (T a) + (T b) = T (a + b)
+  (T a) * (T b) = T (a * b)
+  abs (T a)     = T (abs a)
+  signum (T a)  = T (signum a)
+-}
 
-
+{-
 transform :: Transformation -> Prim -> Prim
 transform AsIs p = p
 transform (T _n)                       (PToks s) = (PToks s)
 transform (TAbove _co _bo _p1 _p2 _eo) (PToks s) = (PToks s)
 transform (TDeleted _sspan _ro _p)     (PToks s) = (PToks s)
 transform TAdded                       (PToks s) = (PToks s)
+-}
 
 -- | The value that bubbles up. This is the Span occupied by the
 -- subtree, together with a string representation of the subtree. The
@@ -99,7 +106,7 @@ data Prim = PToks [PosToken]
           | PDeleted ForestSpan RowOffset SimpPos
           deriving Show
 
-
+-- | The main data structure for this module
 type SourceTree = DUALTree Transformation Up Annot Prim
 
 
@@ -109,18 +116,22 @@ instance Semigroup Span where
 instance Semigroup Up where
   u1 <> u2 = combineUps u1 u2
 
+
 instance Semigroup Transformation where
-  (T n1) <> (T n2) = T (n1 + n2)
+ (TAbove co1 bo1 p11 _p21 _eo1) <> (TAbove _co2 _bo2 _p12 p22 eo2)
+    =  (TAbove co1 bo1 p11 p22 eo2)
+
 
 instance (Action Transformation Up) where
-  act AsIs s = s
-  act (T _n)                       (Up sspan  a s ds) = (Up sspan a  s  ds)
+  -- act AsIs s = s
+  -- act (T _n)                       (Up sspan  a s ds) = (Up sspan a  s  ds)
   act (TAbove _co _bo _p1 _p2 _eo) (Up sspan _a s ds) = (Up sspan a' s' ds)
     where
       a' = AVertical
       s' = NE.map (\(Line r c o ss _f toks) -> (Line r c o ss OGroup toks)) s
-  act (TDeleted _sspan _ro _p) (Up sspan a s ds) = (Up sspan a s ds)
-  act TAdded s = s
+  act (TAbove _co _bo _p1 _p2 _eo) (UDeleted ds) = UDeleted ds
+  -- act (TDeleted _sspan _ro _p) (Up sspan a s ds) = (Up sspan a s ds)
+  -- act TAdded s = s
 
 -- ---------------------------------------------------------------------
 
@@ -146,15 +157,15 @@ instance GHC.Outputable Prim where
                                GHC.<+> GHC.ppr pg GHC.<+> GHC.ppr p
 
 instance GHC.Outputable Transformation where
-  ppr (AsIs) = GHC.parens $ GHC.text "AsIs"
-  ppr (T n)  = GHC.parens $ GHC.text "T" GHC.<+> GHC.text (show n)
+  -- ppr (AsIs) = GHC.parens $ GHC.text "AsIs"
+  -- ppr (T n)  = GHC.parens $ GHC.text "T" GHC.<+> GHC.text (show n)
   ppr (TAbove co bo p1 p2 eo)  = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr co
                               GHC.<+> GHC.ppr bo
                               GHC.<+> GHC.ppr p1  GHC.<+> GHC.ppr p2
                               GHC.<+> GHC.ppr eo
-  ppr (TDeleted sspan ro p) = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr sspan
-                              GHC.<+> GHC.ppr ro  GHC.<+> GHC.ppr p
-  ppr (TAdded) = GHC.parens $ GHC.text "TAdded"
+  -- ppr (TDeleted sspan ro p) = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr sspan
+  --                             GHC.<+> GHC.ppr ro  GHC.<+> GHC.ppr p
+  -- ppr (TAdded) = GHC.parens $ GHC.text "TAdded"
 
 instance GHC.Outputable EndOffset where
   ppr None = GHC.text "None"
@@ -222,6 +233,7 @@ retrieveLines srcTree
   = case getU srcTree of
          Nothing -> []
          Just (Up _ss _a str _ds) -> NE.toList str
+         Just (UDeleted _) -> []
 
 -- ---------------------------------------------------------------------
 
