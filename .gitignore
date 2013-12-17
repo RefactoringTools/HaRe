@@ -328,3 +328,6 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/cabal/cabal1/src/main.hs.tokens
 /.vagrant/machines/default/virtualbox/id
 /Vagrantfile
+/test/testdata/Layout/Do1.hs.AST_out
+/test/testdata/Layout/Do1.hs.renamed_out
+/test/testdata/Layout/Do1.hs.tokens

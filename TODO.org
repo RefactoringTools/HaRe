@@ -43,7 +43,10 @@
 ** TODO There is a ITqvarid vs ITvarid for qualified variables
 ** TODO After renaming, block comments with {- -} start one away from the margin
    e.g. syz-0.2.0.0/Data/Generics/Zipper.hs rename reduceAncestors to
-   reduceAncestors1 on line 354, the comment starting on line 362 shifts
+   reduceAncestors1 on line 354, the comment starting on line 362
+   shifts
+** TODO complete the undefined's in Layout.hs
+** TODO after accepting a refactoring, reload the buffer into emacs
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
