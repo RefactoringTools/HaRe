@@ -695,6 +695,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         let (_,dd) = hsFreeAndDeclaredPNs dsl
                         dsl' <- worker1 l (hsBinds ds) pn dd False
                         return dsl'
+                      wlet x = return x
 
                       wvalbinds (vb::GHC.HsValBinds GHC.Name) = do
                          let (_,dd) = (hsFreeAndDeclaredPNs vb)
@@ -1102,10 +1103,10 @@ doDemoting' t pn
           ---find how many matches/pattern bindings use  'pn'-------
           -- uses :: (SYB.Data t) => [GHC.Name] -> [t] -> [Int]
           -- uses :: (SYB.Data t) => [GHC.Name] -> t -> [Int]
-          uses pns t
+          uses pns t2
                = concat $ SYB.everythingStaged SYB.Renamer (++) []
                    ([] `SYB.mkQ`  usedInMatch
-                       `SYB.extQ` usedInPat) t
+                       `SYB.extQ` usedInPat) t2
                 where
                   -- ++AZ++ Not in pattern, but is in RHS
                   -- usedInMatch (match@(HsMatch _ (PNT pname _ _) _ _ _)::HsMatchP)
@@ -1332,7 +1333,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
 
        -- patsInMatch ((HsMatch loc1 name pats rhs ds)::HsMatchP)
        --   =pats
-       patsInMatch (GHC.L _ (GHC.Match pats _ _)) = pats
+       patsInMatch (GHC.L _ (GHC.Match pats' _ _)) = pats'
 
        -- demotedDecls = map GHC.unLoc $ definingDeclsNames pns decls True False
 
@@ -1342,12 +1343,12 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
                           -> [(GHC.Name, GHC.HsExpr GHC.Name)] -- ^Parameter substitutions required
                           -> [GHC.LHsBind GHC.Name] -- ^Binds of original top level entiity, including src and dst
                           -> RefactGhc [GHC.LHsBind GHC.Name]
-       foldInDemotedDecls  pns clashedNames subst decls
+       foldInDemotedDecls  pns' clashedNames subst decls
           = everywhereMStaged SYB.Renamer (SYB.mkM worker) decls
           where
           -- worker (match@(HsMatch loc1 (PNT pname _ _) pats rhs ds)::HsMatchP)
           worker (match@(GHC.FunBind (GHC.L _ pname) _ (GHC.MatchGroup _matches _) _ _ _) :: GHC.HsBind GHC.Name)
-            | isJust (find (==pname) pns)
+            | isJust (find (==pname) pns')
             = do
                  match'  <- foldM (flip (autoRenameLocalVar True)) match clashedNames
                  match'' <- foldM replaceExpWithUpdToks match' subst

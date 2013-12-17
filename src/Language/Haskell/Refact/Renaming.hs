@@ -370,7 +370,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                                return r'
                                           else do
                                                logm $ "renameTopLevelVarName start.."
-                                               renamePN oldPN newNameGhc True False renamed
+                                               void $ renamePN oldPN newNameGhc True False renamed
                                                logm $ "renameTopLevelVarName done"
                                                r' <- getRefactRenamed
                                                return r'
@@ -489,14 +489,14 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
      worker oldPN newName newNameGhc = do
        logm $ "renameInClientMod.worker"
        renamed <- getRefactRenamed
-       isInScopeUnqual <- isInScopeAndUnqualifiedGhc (nameToString oldPN) Nothing
+       -- isInScopeUnqual <- isInScopeAndUnqualifiedGhc (nameToString oldPN) Nothing
        isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName Nothing
        let vs = hsVisibleNames oldPN renamed   --Does this check names other than variable names?
        if elem newName ((nub vs) \\ [nameToString oldPN])  || isInScopeUnqualNew
          -- then renamePN oldPN (Just qual) newName True mod  --rename to qualified Name
          -- else do renamePN oldPN Nothing newName True mod
-         then renamePN oldPN newNameGhc True True renamed --rename to qualified Name
-         else renamePN oldPN newNameGhc True False renamed -- do not qualify
+         then void $ renamePN oldPN newNameGhc True True renamed --rename to qualified Name
+         else void $ renamePN oldPN newNameGhc True False renamed -- do not qualify
        return ()
 
 {- original

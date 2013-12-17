@@ -167,8 +167,8 @@ import qualified GHC.SYB.Utils as SYB
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
-import Debug.Trace
-debug = flip trace
+-- import Debug.Trace
+-- debug = flip trace
 
 -- ---------------------------------------------------------------------
 -- |Process the inscope relation returned from the parsing and module
@@ -622,8 +622,8 @@ hsFreeAndDeclaredPNs' t = do
             (ef,_ed) <- hsFreeAndDeclaredPNs' expre
             -- sf_sd <- hsFreeAndDeclaredPNs' [bindOp,failOp]
             -- let (sf,_sd) = fromMaybe ([],[]) sf_sd
-            let sf = []
-            return (pf `union` ef `union` (sf\\pd),[]) -- pd) -- Check this
+            let sf1 = []
+            return (pf `union` ef `union` (sf1\\pd),[]) -- pd) -- Check this
 
           stmts ((GHC.LetStmt binds') :: GHC.Stmt GHC.Name) =
             hsFreeAndDeclaredPNs' binds'
@@ -1058,12 +1058,12 @@ hsFDsFromInside t = res
      res = (nub f, nub d)
 
      hsFDsFromInside' :: (SYB.Data t) => t -> Maybe ([GHC.Name],[GHC.Name])
-     hsFDsFromInside' t = do
+     hsFDsFromInside' t1 = do
           let r1 = applyTU (once_tdTU (failTU  `adhocTU` renamed
                                                `adhocTU` decl
                                                `adhocTU` match
                                                `adhocTU` expr
-                                               `adhocTU` stmts )) t
+                                               `adhocTU` stmts )) t1
           let (f',d') = fromMaybe ([],[]) r1
           return (nub f', nub d')
 
@@ -1668,9 +1668,12 @@ instance HsValBinds (GHC.HsBind GHC.Name) where
     = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt)
       where
         binds' = (GHC.HsValBinds newBinds)
+  replaceValBinds x _newBinds
+      = error $ "replaceValBinds (GHC.HsBind GHC.Name) undefined for:" ++ (showGhc x)
 
 instance HsValBinds (GHC.HsExpr GHC.Name) where
   hsValBinds (GHC.HsLet ds _) = hsValBinds ds
+  hsValBinds x = error $ "TypeUtils.hsValBinds undefined for:" ++ showGhc x
 
   replaceValBinds (GHC.HsLet binds ex) new = (GHC.HsLet (replaceValBinds binds new) ex)
   replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" ++ (showGhc old)
@@ -3910,6 +3913,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
          typ' <- renamePN oldPN newName updateTokens False typ
          -- logm $ "renamePNWorker:renameTypeSig done"
          return (GHC.L l (GHC.TypeSig ns' typ'))
+    renameTypeSig x = return x
 
     -- The param l is only useful for the start of the token pos
     worker :: Bool -> GHC.SrcSpan -> RefactGhc ()

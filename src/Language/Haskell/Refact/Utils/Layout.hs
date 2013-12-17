@@ -490,13 +490,14 @@ allocInstD (acc,toks) (GHC.L l (GHC.InstD inst)) = (r,toks')
     (s1,instToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     instLayout = allocInstDecl (GHC.L l inst) instToks
     r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ [makeGroup instLayout] )]
-
+allocInstD _ x = error $ "allocInstD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocDerivD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocDerivD (acc,toks) d@(GHC.L l (GHC.DerivD      _))
   = error "allocDerivD undefined"
+allocDerivD _ x = error $ "allocDerivD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
@@ -507,6 +508,7 @@ allocValD (acc,toks) (GHC.L l (GHC.ValD bind)) = (r,toks')
     bindLayout = allocBind (GHC.L l bind) bindToks
     r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ [makeGroup bindLayout] )]
     -- r = error $ "allocValD:bindToks=" ++ show bindToks
+allocValD _ x = error $ "allocValD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
@@ -517,12 +519,14 @@ allocSigD (acc,toks) (GHC.L l (GHC.SigD sig)) = (r,toks')
     sigLayout = allocSig (GHC.L l sig) sigToks
     r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1)
                      ++ sigLayout)]
+allocSigD _ x = error $ "allocSigD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocDefD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocDefD (acc,toks) d@(GHC.L l (GHC.DefD        _))
   = error "allocDefD undefined"
+allocDefD _ x = error $ "allocDefD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
@@ -535,42 +539,49 @@ allocForD (acc,toks) d@(GHC.L l (GHC.ForD        _))
 allocWarningD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocWarningD (acc,toks) d@(GHC.L l (GHC.WarningD    _))
   = error "allocWarningD undefined"
+allocWarningD _ x = error $ "allocWarningD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocAnnD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocAnnD (acc,toks) d@(GHC.L l (GHC.AnnD        _))
   = error "allocAnnD undefined"
+allocAnnD _ x = error $ "allocAnnD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocRuleD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocRuleD (acc,toks) d@(GHC.L l (GHC.RuleD       _))
   = error "allocRuleD undefined"
+allocRuleD _ x = error $ "allocRuleD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocVectD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocVectD (acc,toks) d@(GHC.L l (GHC.VectD       _))
   = error "allocVectD undefined"
+allocVectD _ x = error $ "allocVectD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocSpliceD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocSpliceD (acc,toks) d@(GHC.L l (GHC.SpliceD     _))
   = error "allocSpliceD undefined"
+allocSpliceD _ x = error $ "allocSpliceD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocDocD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocDocD (acc,toks) d@(GHC.L l (GHC.DocD        _))
   = error "allocDocD undefined"
+allocDocD _ x = error $ "allocDocD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocQuasiQuoteD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocQuasiQuoteD (acc,toks) d@(GHC.L l (GHC.QuasiQuoteD _))
   = error "allocQuasiQuoteD undefined"
+allocQuasiQuoteD _ x = error $ "allocQuasiQuoteD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
@@ -820,6 +831,19 @@ allocExpr (GHC.L l (GHC.ArithSeq _ info)) toks = r
     (sb,toksExpr,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
     exprLayout = [makeGroup $ allocArithSeqInfo info toksExpr]
     r = strip $ (makeLeafFromToks sb) ++ exprLayout ++ (makeLeafFromToks sa)
+
+allocExpr (GHC.L l (GHC.ExprWithTySig (GHC.L le expr) (GHC.L lt typ))) toks = r
+  where
+    (sb,toksExpr,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s1,toksE,toks2) = splitToksIncComments (ghcSpanStartEnd le) toksExpr
+    (s2,toksType,toks3) = splitToksIncComments (ghcSpanStartEnd lt) toks2
+
+    exprLayout = allocExpr (GHC.L le expr) toksE
+    typeLayout = allocType (GHC.L lt typ) toksType
+    layout = [makeGroup $ strip $ (makeLeafFromToks s1) ++ exprLayout
+                              ++ (makeLeafFromToks s2) ++ typeLayout
+                              ++ (makeLeafFromToks toks3)]
+    r = strip $ (makeLeafFromToks sb) ++ layout ++ (makeLeafFromToks sa)
 
 allocExpr e toks = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 
