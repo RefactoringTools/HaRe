@@ -820,15 +820,30 @@ allocExpr (GHC.L l (GHC.ExplicitPArr _ exprs)) toks = r
     (sb,toksExpr,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
     exprLayout = [makeGroup $ allocList exprs toksExpr allocExpr]
     r = strip $ (makeLeafFromToks sb) ++ exprLayout ++ (makeLeafFromToks sa)
-allocExpr (GHC.L l (GHC.RecordCon (GHC.L ln _) _ (GHC.HsRecFields fields _))) toks = r
+allocExpr (GHC.L l (GHC.RecordCon (GHC.L ln _) _ binds)) toks = r
   where
     (sb,toksExpr,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
     (s1,nameToks,fieldsToks) = splitToksIncComments (ghcSpanStartEnd ln) toksExpr
     nameLayout = [makeLeaf ln NoChange nameToks]
-    fieldsLayout = error "allocExpr allocRecField needs work"
-    exprLayout = [makeGroup $ strip $ (makeLeafFromToks s1) ++ nameLayout ++ fieldsLayout]
+    (bindsLayout,toks3) = allocHsRecordBinds binds fieldsToks
+    exprLayout = [makeGroup $ strip $ (makeLeafFromToks s1)
+                 ++ nameLayout ++ bindsLayout
+                 ++ (makeLeafFromToks toks3)]
+
     r = strip $ (makeLeafFromToks sb) ++ exprLayout ++ (makeLeafFromToks sa)
 
+allocExpr (GHC.L l (GHC.RecordUpd expr@(GHC.L le _) binds _cons _ptctypes1 _ptctypes2)) toks = r
+  where
+    (sb,toksExpr,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s1,toksE,toks2) = splitToksIncComments (ghcSpanStartEnd le) toksExpr
+    (bindsLayout,toks3) = allocHsRecordBinds binds toks2
+    exprLayout = allocExpr expr toksE
+    recLayout = [makeGroup $ strip $ (makeLeafFromToks s1) ++ exprLayout
+                              ++ bindsLayout ++ (makeLeafFromToks toks3)]
+    r = strip $ (makeLeafFromToks sb) ++ recLayout ++ (makeLeafFromToks sa)
+{-
+RecordUpd (LHsExpr id) (HsRecordBinds id) [DataCon] [PostTcType] [PostTcType]
+-}
 allocExpr (GHC.L l (GHC.ArithSeq _ info)) toks = r
   where
     (sb,toksExpr,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
@@ -849,6 +864,50 @@ allocExpr (GHC.L l (GHC.ExprWithTySig (GHC.L le expr) (GHC.L lt typ))) toks = r
     r = strip $ (makeLeafFromToks sb) ++ layout ++ (makeLeafFromToks sa)
 
 allocExpr e _toks = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+
+-- ---------------------------------------------------------------------
+
+allocHsRecordBinds :: GHC.HsRecordBinds GHC.RdrName -> [PosToken] -> ([LayoutTree],[PosToken])
+allocHsRecordBinds (GHC.HsRecFields flds _dot) toks = (r,toks')
+  where
+    (r,toks') = foldl doOne ([],toks) flds
+
+    doOne (r1,toks1) fld = (r1',toks1')
+      where
+        (r2,toks1') = allocHsRecField fld toks1
+        r1' = r1 ++ r2
+{-
+type HsRecordBinds id = HsRecFields id (LHsExpr id)
+
+data HsRecFields id arg
+
+Constructors
+  HsRecFields
+    rec_flds :: [HsRecField id arg]
+    rec_dotdot :: Maybe Int
+
+data HsRecField id arg
+
+Constructors
+  HsRecField
+    hsRecFieldId :: Located id
+    hsRecFieldArg :: arg
+    hsRecPun :: Bool
+
+-}
+
+allocHsRecField ::
+ GHC.HsRecField GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> [PosToken]
+ -> ([LayoutTree],[PosToken])
+allocHsRecField (GHC.HsRecField (GHC.L ln _) expr@(GHC.L le _) _) toks = (r,toks')
+  where
+    (s1,toksN,toks1) = splitToksIncComments (ghcSpanStartEnd ln) toks
+    (s2,toksE,toks2) = splitToksIncComments (ghcSpanStartEnd le) toks1
+    nLayout = makeLeafFromToks toksN
+    exprLayout = allocExpr expr toksE
+    toks' = toks2
+    r = [makeGroup $ strip $ (makeLeafFromToks s1) ++ nLayout
+                    ++ (makeLeafFromToks s2) ++ exprLayout]
 
 -- ---------------------------------------------------------------------
 

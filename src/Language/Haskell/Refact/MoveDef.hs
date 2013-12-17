@@ -1377,17 +1377,17 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
                      else return initial
         where
            getOneParam :: (SYB.Data t) => GHC.Name -> t -> [GHC.HsExpr GHC.Name]
-           getOneParam pn
+           getOneParam pn1
               = SYB.everythingStaged SYB.Renamer (++) []
                    ([] `SYB.mkQ`  worker)
               -- =applyTU (stop_tdTU (failTU `adhocTU` worker))
                 where
                   worker :: GHC.HsExpr GHC.Name -> [GHC.HsExpr GHC.Name]
                   worker (GHC.HsApp e1 e2)
-                   |(expToName e1==pn) = [GHC.unLoc e2]
+                   |(expToName e1==pn1) = [GHC.unLoc e2]
                   worker _ = []
            rmOneParam :: (SYB.Data t) => GHC.Name -> t -> RefactGhc t
-           rmOneParam pn t
+           rmOneParam pn1 t
               -- This genuinely needs to be done once only. Damn.
               -- =applyTP (stop_tdTP (failTP `adhocTP` worker))
              = do
@@ -1398,14 +1398,14 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
                   worker :: GHC.HsExpr GHC.Name -> RefactGhc (GHC.HsExpr GHC.Name)
                   worker e@(GHC.HsApp e1 e2 ) = do -- The param being removed is e2
                     done <- getRefactDone
-                    case (not done) && expToName e1==pn of
+                    case (not done) && expToName e1==pn1 of
                       True ->  do setRefactDone
                                   return (GHC.unLoc e1)
                       False -> return e
                   worker x = return x
                   -}
                   worker (GHC.HsApp e1 _e2 ) -- The param being removed is e2
-                    |expToName e1==pn = return (GHC.unLoc e1)
+                    |expToName e1==pn1 = return (GHC.unLoc e1)
                   worker x = return x
 {-
               AST output

@@ -5,7 +5,7 @@ module Language.Haskell.Refact.SwapArgs (swapArgs) where
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
-import qualified FastString            as GHC
+-- import qualified FastString            as GHC
 import qualified Name                  as GHC
 import qualified GHC
 -- import qualified DynFlags              as GHC
@@ -22,7 +22,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeUtils
 
-import Debug.Trace
+-- import Debug.Trace
 
 -- TODO: replace args with specific parameters
 swapArgs :: RefactSettings -> Cradle -> [String] -> IO [FilePath]
@@ -95,21 +95,21 @@ reallyDoSwap (GHC.L _s n1) renamed = do
          inMod func = return func
 
          -- 2. All call sites of the function...
-         inExp exp@((GHC.L x (GHC.HsApp (GHC.L y (GHC.HsApp e e1)) e2))::GHC.Located (GHC.HsExpr GHC.Name))
+         inExp expr@((GHC.L _x (GHC.HsApp (GHC.L _y (GHC.HsApp e e1)) e2))::GHC.Located (GHC.HsExpr GHC.Name))
             | GHC.nameUnique (expToName e) == GHC.nameUnique n1
-                   =  update e2 e1 =<< update e1 e2 exp
+                   =  update e2 e1 =<< update e1 e2 expr
          inExp e = return e
 
          -- 3. Type signature...
-         inType ty@(GHC.L x (GHC.TypeSig [GHC.L x2 name] types)::GHC.LSig GHC.Name)
+         inType (GHC.L x (GHC.TypeSig [GHC.L x2 name] types)::GHC.LSig GHC.Name)
            | GHC.nameUnique name == GHC.nameUnique n1
                 = do let (t1:t2:ts) = tyFunToList types
                      t1' <- update t1 t2 t1
                      t2' <- update t2 t1 t2
                      return (GHC.L x (GHC.TypeSig [GHC.L x2 name] (tyListToFun (t1':t2':ts))))
 
-         inType ty@(GHC.L x (GHC.TypeSig (n:ns) types)::GHC.LSig GHC.Name)
-           | GHC.nameUnique n1 `elem` (map (\(GHC.L _ n) -> GHC.nameUnique n) (n:ns))
+         inType (GHC.L _x (GHC.TypeSig (n:ns) _types)::GHC.LSig GHC.Name)
+           | GHC.nameUnique n1 `elem` (map (\(GHC.L _ n') -> GHC.nameUnique n') (n:ns))
             = error "Error in swapping arguments in type signature: signauture bound to muliple entities!"
 
          inType ty = return ty
@@ -122,7 +122,7 @@ reallyDoSwap (GHC.L _s n1) renamed = do
          tyListToFun (t1:ts) = GHC.noLoc (GHC.HsFunTy t1 (tyListToFun ts))
 
          updateMatches [] = return []
-         updateMatches (i@(GHC.L x m@(GHC.Match pats nothing rhs)::GHC.Located (GHC.Match GHC.Name)):matches)
+         updateMatches ((GHC.L x (GHC.Match pats nothing rhs)::GHC.Located (GHC.Match GHC.Name)):matches)
            = case pats of
                (p1:p2:ps) -> do p1' <- update p1 p2 p1
                                 p2' <- update p2 p1 p2
