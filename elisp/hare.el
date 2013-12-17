@@ -91,6 +91,7 @@
     (define-key haskell-mode-map "\C-c\C-rlo"  'hare-refactor-lift-one)
     (define-key haskell-mode-map "\C-c\C-rlt"  'hare-refactor-lifttotop)
     (define-key haskell-mode-map "\C-c\C-rr"   'hare-refactor-rename)
+    (define-key haskell-mode-map "\C-c\C-rsh"  'hare-refactor-show)
     (hare-init-menu)
     (setq hare-initialized t)))
 
@@ -111,6 +112,7 @@
   (define-key haskell-mode-map [menu-bar mymenu lo] '("Lift one level"       . hare-refactor-lift-one))
   (define-key haskell-mode-map [menu-bar mymenu lt] '("Lift to top level"    . hare-refactor-lifttotop))
   (define-key haskell-mode-map [menu-bar mymenu r ] '("Rename"               . hare-refactor-rename))
+  (define-key haskell-mode-map [menu-bar mymenu sh ] '("Show"                 . hare-refactor-show))
 )
 
 (defun hare-init-interactive ()
@@ -1044,6 +1046,23 @@
         (hare-refactor-command current-file-name line-no column-no
                          `("rename" ,current-file-name ,name
                          ,(number-to-string line-no) ,(number-to-string column-no)
+                         )
+                         hare-search-paths 'emacs tab-width)
+      (message "Refactoring aborted."))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun hare-refactor-show ()
+  "Show ghc-hare config."
+  (interactive)
+  ;(interactive (list (read-string "new identifier name: ")))
+  (let ((current-file-name (buffer-file-name))
+        (line-no           (current-line-no))
+        (column-no         (current-column-no))
+        (buffer (current-buffer)))
+    (if (buffers-saved)
+        (hare-refactor-command current-file-name line-no column-no
+                         `("show"
                          )
                          hare-search-paths 'emacs tab-width)
       (message "Refactoring aborted."))))
