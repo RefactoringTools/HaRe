@@ -81,8 +81,8 @@ import qualified Data.Data as SYB
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Layout
-import Language.Haskell.Refact.Utils.LayoutTypes
-import Language.Haskell.Refact.Utils.LayoutUtils
+-- import Language.Haskell.Refact.Utils.LayoutTypes
+-- import Language.Haskell.Refact.Utils.LayoutUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
@@ -575,7 +575,7 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
        let newToks' = if addTrailingNl
                        then newToks ++ [newLnToken (last newToks)]
                        else newToks
-       putToksForPos (startPos,endPos) newToks'
+       void $ putToksForPos (startPos,endPos) newToks'
 
        return ()
 

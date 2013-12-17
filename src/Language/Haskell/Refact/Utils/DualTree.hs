@@ -243,6 +243,7 @@ renderSourceTree srcTree = r
     r = case getU srcTree of
          Nothing -> ""
          Just (Up _ss _a str _ds) -> renderLines $ NE.toList str
+         Just (UDeleted _) -> ""
 
 -- ---------------------------------------------------------------------
 

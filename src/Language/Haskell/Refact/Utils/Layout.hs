@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 --
@@ -438,7 +439,7 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L
              ++ nLayout ++ varsLayout ++ (makeLeafFromToks s5)
              ++ fdsLayout ++ bindsLayout]
 
-allocTyClD (acc,toks) x = error $ "allocTyClD:unknown value:" ++ showGhc x
+allocTyClD _ x = error $ "allocTyClD:unknown value:" ++ showGhc x
 
 {-
 ClassDecl	 
@@ -533,6 +534,7 @@ allocDefD _ x = error $ "allocDefD:unexpected value:" ++ showGhc x
 allocForD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
 allocForD (acc,toks) d@(GHC.L l (GHC.ForD        _))
   = error "allocForD undefined"
+allocForD _ x = error $ "allocForD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
@@ -627,8 +629,9 @@ allocGRHSs (GHC.GRHSs rhs localBinds) toks = r
 
 -- ---------------------------------------------------------------------
 
+-- TODO: should this use the span from the LPat?
 allocPat :: GHC.LPat GHC.RdrName -> [PosToken] -> [LayoutTree]
-allocPat (GHC.L l _) toks = makeLeafFromToks toks
+allocPat (GHC.L _ _) toks = makeLeafFromToks toks
 
 -- ---------------------------------------------------------------------
 
@@ -845,7 +848,7 @@ allocExpr (GHC.L l (GHC.ExprWithTySig (GHC.L le expr) (GHC.L lt typ))) toks = r
                               ++ (makeLeafFromToks toks3)]
     r = strip $ (makeLeafFromToks sb) ++ layout ++ (makeLeafFromToks sa)
 
-allocExpr e toks = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e _toks = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 
 -- ---------------------------------------------------------------------
 

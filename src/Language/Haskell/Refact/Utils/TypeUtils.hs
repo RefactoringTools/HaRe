@@ -1104,6 +1104,8 @@ hsFDsFromInside t = res
            (nub (pf `union` (rf \\ pd)),
             nub (pd `union` rd))
 
+     decl _ = return ([],[])
+
      expr ((GHC.HsLet decls e) :: GHC.HsExpr GHC.Name) =
        do
          let (df,dd) = hsFreeAndDeclaredPNs decls
@@ -3925,7 +3927,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
            else return ()
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Once a rename is complete, adjust the layout for any affected
 -- where/let/of/do elements
 --
@@ -4041,20 +4043,20 @@ adjustLayoutAfterRename oldPN newName t = do
             return x
 
     -- adjustLMatch x = return x
-
+-}
 -- -------------------------------------
-
+{-
 startLineForToks :: [PosToken] -> Int
 startLineForToks toks = tokenRow $ ghead "startLineForToks" toks
-
+-}
 -- -------------------------------------
-
+{-
 compareLocated ::
   Ord a => GHC.GenLocated a t -> GHC.GenLocated a t1 -> Ordering
 compareLocated (GHC.L l1 _) (GHC.L l2 _) = compare l1 l2
-
+-}
 -- -------------------------------------
-
+{-
 -- |Get all the tokens on the same line as the do/let/of etc token
 getLineToks :: GHC.SrcSpan -> (PosToken -> Bool) -> RefactGhc [PosToken]
 getLineToks l isToken = do
@@ -4076,9 +4078,9 @@ getLineToks l isToken = do
   let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) forLine
   logm $ "getLineToks:up to match=" ++ show upToOf
   return upToOf
-
+-}
 -- -------------------------------------
-
+{-
 calcOffset :: [PosToken] -> Int
 calcOffset toks = sum $ map tokenDelta toks
   where
@@ -4088,9 +4090,9 @@ calcOffset toks = sum $ map tokenDelta toks
         (_sl,sc) = getLocatedStart tt
         (_el,ec) = getLocatedEnd   tt
         deltac = (length s) - (ec - sc)
-
+-}
 -- -------------------------------------
-
+{-
 indentList :: SYB.Data t
    => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
 indentList ms off = do
@@ -4098,7 +4100,7 @@ indentList ms off = do
   -- drawTokenTreeDetailed "after indentList"
   let hm = ghead "indentList.2" ms
   return (hm:ms')
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Create a new name token. If 'useQual' then use the qualified
