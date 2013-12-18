@@ -56,6 +56,7 @@
 
                          let (startPos,endPos) = getBiggestStartEndLoc pats1
 
+** TODO add a "roundtrip" function to ghc-hare to simply parse and output a file, comparing for fidelity
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
