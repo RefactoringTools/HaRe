@@ -47,6 +47,15 @@
    shifts
 ** TODO complete the undefined's in Layout.hs
 ** TODO after accepting a refactoring, reload the buffer into emacs
+** TODO layout problem after renaming pats1 (1469,38) of MoveDef.hs
+   The second let in the subordinate do clause is shifted right by one
+            where worker (GHC.Match pats1 typ rhs)
+                    = do
+                         let pats'=filter (\x->not ((patToPNT x /= Nothing) &&
+                                          elem (fromJust $ patToPNT x) ps)) pats1
+
+                         let (startPos,endPos) = getBiggestStartEndLoc pats1
+
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
