@@ -439,50 +439,66 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L
              ++ nLayout ++ varsLayout ++ (makeLeafFromToks s5)
              ++ fdsLayout ++ bindsLayout]
 
+#if __GLASGOW_HASKELL__ > 704
+#else
+allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TySynonym n@(GHC.L ln _) vars mpats synrhs@(GHC.L lr _)))) = (acc++r,toks')
+  where
+    (s1,clToks,toks')   = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s2,nToks,toks2)    = splitToksIncComments (ghcSpanStartEnd ln) clToks
+    (s25,vToks,toks3)    = splitToksForList vars toks2
+    (patsLayout,toks4) = case mpats of
+       Nothing -> ([],toks3)
+       Just pats -> ([makeGroup (strip $ (makeLeafFromToks s3) ++ (allocList pats patsToks allocType))],toks4')
+          where (s3,patsToks,toks4') = splitToksForList pats toks3
+    (s4,rToks,toks5)    = splitToksIncComments (ghcSpanStartEnd lr) toks4
+    varsLayout = allocList vars vToks allocTyVarBndr
+    synrhsLayout = allocType synrhs rToks
+
+    r = [makeGroup (strip $ (makeLeafFromToks s1)
+                     ++ (makeLeafFromToks s2)
+                     ++ (makeLeafFromToks nToks)
+                     ++ (makeLeafFromToks s25)
+                     ++ varsLayout ++ patsLayout
+                     ++ (makeLeafFromToks s4)
+                     ++ synrhsLayout
+                     ++ (makeLeafFromToks toks5))]
+#endif
+
 allocTyClD _ x = error $ "allocTyClD:unknown value:" ++ showGhc x
 
 {-
-ClassDecl	 
+7.4.2
+1) DualTree.layoutTreeToSourceTree retrieves the tokens in SourceTree format Move1
 
-tcdCtxt :: LHsContext name
+uncaught exception: ErrorCall (allocTyClD:unknown value:type Name = String)
 
-    Context...
+TySynonym	 
 
-    Context 
-tcdLName :: Located name
+  tcdLName :: Located name
 
-    Name of the class
+      Name of the class
+ 
+      type constructor
+ 
+      Type constructor 
+  tcdTyVars :: [LHsTyVarBndr name]
 
-    type constructor
+      Class type variables
 
-    Type constructor 
-tcdTyVars :: [LHsTyVarBndr name]
+      type variables
+  
+      Type variables 
+  tcdTyPats :: Maybe [LHsType name]
 
-    Class type variables
+    Type patterns See Note [tcdTyVars and tcdTyPats]
 
-    type variables
+    Type patterns. See Note [tcdTyVars and tcdTyPats] 
+  tcdSynRhs :: LHsType name
 
-    Type variables 
-tcdFDs :: [Located (FunDep name)]
-
-    Functional deps 
-tcdSigs :: [LSig name]
-
-    Methods' signatures 
-tcdMeths :: LHsBinds name
-
-    Default methods 
-tcdATs :: [LTyClDecl name]
-
-    Associated types; ie only TyFamily 
-tcdATDefs :: [LTyClDecl name]
-
-    Associated type defaults; ie only TySynonym 
-tcdDocs :: [LDocDecl]
-
-    Haddock docs 
+    synonym expansion 
 
 -}
+
 -- ---------------------------------------------------------------------
 
 allocInstD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
