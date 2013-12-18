@@ -174,7 +174,7 @@ test-suite spec
     , ghc-syb-utils
     , ghc-mod >= 3.1.2
     , hspec
-    , hspec-discover
+    -- , hspec-discover
     , mtl
     , old-time
     , process
