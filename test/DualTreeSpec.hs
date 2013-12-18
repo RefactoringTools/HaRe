@@ -3207,6 +3207,30 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
 
       (renderSourceTree srcTree2) `shouldBe` "module Layout.Do1 where\n\ngetCurrentModuleGraph = undefined\ntopSortModuleGraph = undefined\n\n-- sortCurrentModuleGraph :: GHC.Ghc [GHC.SCC GHC.ModSummary]\nsortCurrentModuleGraph :: IO [Int]\nsortCurrentModuleGraph = do\n  -- g <- GHC.getModuleGraph\n  g2 <- getCurrentModuleGraph\n  let scc = topSortModuleGraph False g2 Nothing\n  return scc\n\n"
 
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format Move1" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Move1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
 
   -- -----------------------------------
 

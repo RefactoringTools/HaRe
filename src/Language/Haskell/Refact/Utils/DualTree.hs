@@ -334,6 +334,7 @@ mkUp sspan toks = Up ss a ls []
 
 -- ---------------------------------------------------------------------
 
+-- TODO: What if the toks comprise multiple lines, e.g. in a block comment?
 mkLinesFromToks :: Source -> [PosToken] -> [Line]
 mkLinesFromToks _ [] = []
 mkLinesFromToks s toks = [Line ro co 0 s f toks']
@@ -385,7 +386,7 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
 
     -- 'o' takes account of any length change due to tokens being
     --     replaced by others of different length
-    odiff = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) s1
+    odiff = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) $ filter (not.isComment) s1
 
     st1 = GHC.showRichTokenStream s1
     st2 = GHC.showRichTokenStream (s1 ++ s2')
@@ -410,6 +411,35 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
     addOffsetToGroup _off (ls@((Line _r _c _f _aa ONone _s):_)) = ls
     addOffsetToGroup  off ((Line r c f aa OGroup s):ls) = (Line r (c+off) f aa OGroup s) : addOffsetToGroup off ls
 
+{-
+
+((((36,23),(41,25)),ITblockComment \" ++AZ++ : hsBinds does not re
+
+(Up
+   (Span (31, 23) (34,
+                   72)) ANone
+   [(Line 31 23 0 SOriginal ONone \"-- renamed <- getRefactRenamed\"),
+    (Line 32 23 0 SOriginal OGroup \"let renamed = undefined\"),
+    (Line 33 23 0 SOriginal OGroup \"let declsr = hsBinds renamed\"),
+    (Line 34 23 0 SOriginal OGroup \"let (before,parent,after) = divideDecls declsr pn\"),
+    (Line 35 23 0 SOriginal OGroup \"-- error (\"liftToMod:(before,parent,after)=\" ++ (showGhc (before,parent,after))) -- ++AZ++\"),
+    (Line 36 23 0 SOriginal OGroup \"{- ++AZ++ : hsBinds does not return class or instance definitions
+                      when (isClassDecl $ ghead \"liftToMod\" parent)
+                            $ error \"Sorry, the refactorer cannot lift a definition from a class declaration!\"
+                      when (isInstDecl $ ghead \"liftToMod\" parent)
+                            $ error \"Sorry, the refactorer cannot lift a definition from an instance declaration!\"
+                      -}\")]
+    [])
+
+------------------------
+
+(Up
+    (Span (42, 23) (43,
+                    79)) ANone
+    [(Line 42 23 0 SOriginal OGroup \"let liftedDecls = definingDeclsNames [n] parent True True\"),
+     (Line 43 27 0 SOriginal OGroup \"declaredPns = nub $ concatMap definedPNs liftedDecls\")]
+    [])
+-}
 {-
 
 (Line
