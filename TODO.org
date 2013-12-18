@@ -1,12 +1,12 @@
 * HaRe todo
 ** TODO splitSubToks does not take cognizance of leading/trailing comments
-** TODO renaming with length change does not adjust surrounding layout for do/let/where/of etc
+** DONE renaming with length change does not adjust surrounding layout for do/let/where/of etc
     - 'of' complete
     - 'do' complete
     - 'let' complete
     - 'where' complete
-    - nested layout incomplete
-** TODO rename tid to tidlong in MissingH-1.2.0.2/src/Data/Progress/Meter.hs (164,16) does not fix layout after the do
+    - nested layout complete
+** DONE rename tid to tidlong in MissingH-1.2.0.2/src/Data/Progress/Meter.hs (164,16) does not fix layout after the do
 ** TODO rename mod to parsed complains of existing variable named parsed.
      - This is not the case. Line 36 col 10
    [2013-09-10 Tue]
@@ -28,7 +28,8 @@
       becomes
       zmapQ f z = reverse $ downQ [] (g f g)z
       g f z'g= query f z' : leftQ [] (g f g)g f g)z'
-** TODO adjustLayoutAfterRename might be usable once only when realigning for the final tokens.
+** DONE adjustLayoutAfterRename might be usable once only when realigning for the final tokens.
+   - no longer using this routine
 ** TODO Provide a warning if refactoring is done on code using CPP.
      State that refactoring may only affect current flags code, not others.
 ** TODO Make undo (M-x u) undo a refactoring.
