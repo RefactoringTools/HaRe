@@ -39,24 +39,17 @@ data DeletedSpan = DeletedSpan Span RowOffset SimpPos
               deriving (Show,Eq)
 
 -- TODO: We are not actually using any of these
-data Transformation = AsIs
-                    | T Integer
-                    | TAbove ColOffset EndOffset (Row,Col) (Row,Col) EndOffset
-                    | TDeleted ForestSpan RowOffset SimpPos
-                    | TAdded
+data Transformation = TAbove ColOffset EndOffset (Row,Col) (Row,Col) EndOffset
                     deriving Show
 
--- I have no idea why this is needed, but any dual tree operations fail if it is not present
-instance Num Transformation where
-  fromInteger n = T n
-
-
+{-
 transform :: Transformation -> Prim -> Prim
 transform AsIs p = p
 transform (T _n)                       (PToks s) = (PToks s)
 transform (TAbove _co _bo _p1 _p2 _eo) (PToks s) = (PToks s)
 transform (TDeleted _sspan _ro _p)     (PToks s) = (PToks s)
 transform TAdded                       (PToks s) = (PToks s)
+-}
 
 -- | The value that bubbles up. This is the Span occupied by the
 -- subtree, together with a string representation of the subtree. The
@@ -99,7 +92,7 @@ data Prim = PToks [PosToken]
           | PDeleted ForestSpan RowOffset SimpPos
           deriving Show
 
-
+-- | The main data structure for this module
 type SourceTree = DUALTree Transformation Up Annot Prim
 
 
@@ -109,18 +102,22 @@ instance Semigroup Span where
 instance Semigroup Up where
   u1 <> u2 = combineUps u1 u2
 
+
 instance Semigroup Transformation where
-  (T n1) <> (T n2) = T (n1 + n2)
+ (TAbove co1 bo1 p11 _p21 _eo1) <> (TAbove _co2 _bo2 _p12 p22 eo2)
+    =  (TAbove co1 bo1 p11 p22 eo2)
+
 
 instance (Action Transformation Up) where
-  act AsIs s = s
-  act (T _n)                       (Up sspan  a s ds) = (Up sspan a  s  ds)
+  -- act AsIs s = s
+  -- act (T _n)                       (Up sspan  a s ds) = (Up sspan a  s  ds)
   act (TAbove _co _bo _p1 _p2 _eo) (Up sspan _a s ds) = (Up sspan a' s' ds)
     where
       a' = AVertical
       s' = NE.map (\(Line r c o ss _f toks) -> (Line r c o ss OGroup toks)) s
-  act (TDeleted _sspan _ro _p) (Up sspan a s ds) = (Up sspan a s ds)
-  act TAdded s = s
+  act (TAbove _co _bo _p1 _p2 _eo) (UDeleted ds) = UDeleted ds
+  -- act (TDeleted _sspan _ro _p) (Up sspan a s ds) = (Up sspan a s ds)
+  -- act TAdded s = s
 
 -- ---------------------------------------------------------------------
 
@@ -146,15 +143,15 @@ instance GHC.Outputable Prim where
                                GHC.<+> GHC.ppr pg GHC.<+> GHC.ppr p
 
 instance GHC.Outputable Transformation where
-  ppr (AsIs) = GHC.parens $ GHC.text "AsIs"
-  ppr (T n)  = GHC.parens $ GHC.text "T" GHC.<+> GHC.text (show n)
+  -- ppr (AsIs) = GHC.parens $ GHC.text "AsIs"
+  -- ppr (T n)  = GHC.parens $ GHC.text "T" GHC.<+> GHC.text (show n)
   ppr (TAbove co bo p1 p2 eo)  = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr co
                               GHC.<+> GHC.ppr bo
                               GHC.<+> GHC.ppr p1  GHC.<+> GHC.ppr p2
                               GHC.<+> GHC.ppr eo
-  ppr (TDeleted sspan ro p) = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr sspan
-                              GHC.<+> GHC.ppr ro  GHC.<+> GHC.ppr p
-  ppr (TAdded) = GHC.parens $ GHC.text "TAdded"
+  -- ppr (TDeleted sspan ro p) = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr sspan
+  --                             GHC.<+> GHC.ppr ro  GHC.<+> GHC.ppr p
+  -- ppr (TAdded) = GHC.parens $ GHC.text "TAdded"
 
 instance GHC.Outputable EndOffset where
   ppr None = GHC.text "None"
@@ -222,6 +219,7 @@ retrieveLines srcTree
   = case getU srcTree of
          Nothing -> []
          Just (Up _ss _a str _ds) -> NE.toList str
+         Just (UDeleted _) -> []
 
 -- ---------------------------------------------------------------------
 
@@ -231,6 +229,7 @@ renderSourceTree srcTree = r
     r = case getU srcTree of
          Nothing -> ""
          Just (Up _ss _a str _ds) -> renderLines $ NE.toList str
+         Just (UDeleted _) -> ""
 
 -- ---------------------------------------------------------------------
 
@@ -335,6 +334,7 @@ mkUp sspan toks = Up ss a ls []
 
 -- ---------------------------------------------------------------------
 
+-- TODO: What if the toks comprise multiple lines, e.g. in a block comment?
 mkLinesFromToks :: Source -> [PosToken] -> [Line]
 mkLinesFromToks _ [] = []
 mkLinesFromToks s toks = [Line ro co 0 s f toks']
@@ -386,7 +386,7 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
 
     -- 'o' takes account of any length change due to tokens being
     --     replaced by others of different length
-    odiff = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) s1
+    odiff = sum $ map (\t@(_,s) -> (length s) - (tokenColEnd t - tokenCol t)) $ filter (not.isComment) s1
 
     st1 = GHC.showRichTokenStream s1
     st2 = GHC.showRichTokenStream (s1 ++ s2')
@@ -402,13 +402,86 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
                  then (m',addOffsetToGroup o (NE.tail l2''))
                  else (m',                   (NE.tail l2''))
 
-    rest = if ff2 == OGroup
+    -- rest = if ff2 == OGroup
+    rest = if ff2 == OGroup && ff1 == OGroup
             then addOffsetToGroup odiff (NE.toList l2'')
             else NE.toList l2''
 
     addOffsetToGroup _off [] = []
     addOffsetToGroup _off (ls@((Line _r _c _f _aa ONone _s):_)) = ls
     addOffsetToGroup  off ((Line r c f aa OGroup s):ls) = (Line r (c+off) f aa OGroup s) : addOffsetToGroup off ls
+
+{-
+
+((((36,23),(41,25)),ITblockComment \" ++AZ++ : hsBinds does not re
+
+(Up
+   (Span (31, 23) (34,
+                   72)) ANone
+   [(Line 31 23 0 SOriginal ONone \"-- renamed <- getRefactRenamed\"),
+    (Line 32 23 0 SOriginal OGroup \"let renamed = undefined\"),
+    (Line 33 23 0 SOriginal OGroup \"let declsr = hsBinds renamed\"),
+    (Line 34 23 0 SOriginal OGroup \"let (before,parent,after) = divideDecls declsr pn\"),
+    (Line 35 23 0 SOriginal OGroup \"-- error (\"liftToMod:(before,parent,after)=\" ++ (showGhc (before,parent,after))) -- ++AZ++\"),
+    (Line 36 23 0 SOriginal OGroup \"{- ++AZ++ : hsBinds does not return class or instance definitions
+                      when (isClassDecl $ ghead \"liftToMod\" parent)
+                            $ error \"Sorry, the refactorer cannot lift a definition from a class declaration!\"
+                      when (isInstDecl $ ghead \"liftToMod\" parent)
+                            $ error \"Sorry, the refactorer cannot lift a definition from an instance declaration!\"
+                      -}\")]
+    [])
+
+------------------------
+
+(Up
+    (Span (42, 23) (43,
+                    79)) ANone
+    [(Line 42 23 0 SOriginal OGroup \"let liftedDecls = definingDeclsNames [n] parent True True\"),
+     (Line 43 27 0 SOriginal OGroup \"declaredPns = nub $ concatMap definedPNs liftedDecls\")]
+    [])
+-}
+{-
+
+(Line
+r1 = 10
+c1 = 3
+o1 = 0
+ss1 = SOriginal
+ff1 = ONone
+s1 = \"g2 <- getCurrentModuleGraph\")
+
+(Line
+r2 = 11
+c2 = 3
+o2 = 0
+ss2 = SOriginal
+ff2 = OGroup
+s2 = \"let scc = topSortModuleGraph False g2 Nothing\")
+
+---
+(Up
+   (Span (9, 3) (11, 47)) ANone
+   [(Line 9 3 0 SOriginal ONone \"-- g <- GHC.getModuleGraph\"),
+    (Line 10 3 0 SOriginal ONone \"g2 <- getCurrentModuleGraph\"),
+    (Line 11 4 0 SOriginal OGroup \"let scc = topSortModuleGraph False g2 Nothing\")]
+   [])
+
+-------------------------
+
+Up1
+(Up
+  (Span (9, 3) (10, 29)) ANone
+  [(Line 9 3 0 SOriginal ONone \"-- g <- GHC.getModuleGraph\"),
+   (Line 10 3 0 SOriginal ONone \"g2 <- getCurrentModuleGraph\")]
+  [])
+
+Up2
+(Up
+  (Span (11, 3) (11, 47)) ANone
+  [(Line 11 3 0 SOriginal OGroup \"let scc = topSortModuleGraph False g2 Nothing\")]
+  [])
+
+-}
 
 {-
 

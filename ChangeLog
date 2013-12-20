@@ -1,3 +1,9 @@
+2013-12-18 v0.7.0.9
+	* Tweaks to output stage based on real world use. Renaming seems
+	stable, liftXXX, demote have issues
+	* Removed deprecated hspec-discover dependency
+	* added ghc-hare show command to the elisp as well to be able to
+	check that it is using the correct cabal file
 2013-12-16 v0.7.0.8
 	* Major rewrite of the token output stage. It now makes use of a
 	dual-tree structure to manage the maintenance of required vertical

@@ -3053,6 +3053,184 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
 
     -- -----------------------------------------------------------------
 
+    it "retrieves the tokens in SourceTree format after renaming Layout.Do1" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Do1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+         "0:((1,1),(14,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,18))\n"++
+         "1:((1,19),(1,24))\n"++
+         "1:((3,1),(3,34))\n"++
+         "2:((3,1),(3,22))\n"++
+         "2:((3,23),(3,34))\n"++
+         "3:((3,23),(3,24))\n"++
+         "3:((3,25),(3,34))\n"++
+         "1:((4,1),(4,31))\n"++
+         "2:((4,1),(4,19))\n"++
+         "2:((4,20),(4,31))\n"++
+         "3:((4,20),(4,21))\n"++
+         "3:((4,22),(4,31))\n"++
+         "1:((7,1),(7,35))\n"++
+         "2:((7,1),(7,23))\n"++
+         "2:((7,24),(7,26))\n"++
+         "2:((7,27),(7,29))\n"++
+         "2:((7,30),(7,31))\n"++
+         "2:((7,31),(7,34))\n"++
+         "2:((7,34),(7,35))\n"++
+         "1:((8,1),(12,13))\n"++
+         "2:((8,1),(8,23))\n"++
+         "2:((8,24),(12,13))\n"++
+         "3:((8,24),(8,25))\n"++
+         "3:((8,26),(12,13))\n"++
+         "4:((8,26),(8,28))\n"++
+         "4:((9,3),(12,13))(Above FromAlignCol (2,-26) (10,3) (12,13) FromAlignCol (2,-12))\n"++
+         "5:((9,3),(10,29))\n"++
+         "6:((9,3),(10,4))\n"++
+         "6:((10,8),(10,29))\n"++
+         "5:((11,3),(11,47))\n"++
+         "6:((11,3),(11,6))\n"++
+         "6:((11,7),(11,47))(Above None (11,7) (11,47) FromAlignCol (1,-44))\n"++
+         "7:((11,7),(11,47))\n"++
+         "8:((11,7),(11,10))\n"++
+         "8:((11,11),(11,47))\n"++
+         "9:((11,11),(11,12))\n"++
+         "9:((11,13),(11,47))\n"++
+         "10:((11,13),(11,39))\n"++
+         "11:((11,13),(11,37))\n"++
+         "12:((11,13),(11,31))\n"++
+         "12:((11,32),(11,37))\n"++
+         "11:((11,38),(11,39))\n"++
+         "10:((11,40),(11,47))\n"++
+         "5:((12,3),(12,13))\n"++
+         "6:((12,3),(12,9))\n"++
+         "6:((12,10),(12,13))\n"++
+         "1:((14,1),(14,1))\n"
+
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (show srcTree) `shouldBe`
+      --     ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+{-
+
+
+-}
+
+-- replaceToken test/testdata/Layout/Do1.hs:10:3:(((False,0,0,10),3),((False,0,0,10),4))((((10,3),(10,5)),ITvarid "g2"),"g2")
+
+      let ss1 = posToSrcSpan layout ((10,3),(10,4))
+      (showGhc ss1) `shouldBe` "test/testdata/Layout/Do1.hs:10:3"
+
+      [tok1] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n  g2"
+      (show tok1) `shouldBe` "((((10,3),(10,5)),ITvarid \"g2\"),\"g2\")"
+
+      let layout2 = replaceTokenForSrcSpan layout ss1 tok1
+
+-- replaceToken test/testdata/Layout/Do1.hs:11:38:(((False,0,0,11),38),((False,0,0,11),39))((((11,38),(11,40)),ITvarid "g2"),"g2")
+
+      let ss2 = posToSrcSpan layout ((11,38),(11,39))
+      (showGhc ss2) `shouldBe` "test/testdata/Layout/Do1.hs:11:38"
+
+      [tok2] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n\n                                     g2"
+      (show tok2) `shouldBe` "((((11,38),(11,40)),ITvarid \"g2\"),\"g2\")"
+
+      let layout3 = replaceTokenForSrcSpan layout2 ss2 tok2
+
+      -- -- -- --
+
+      (drawTreeCompact layout3) `shouldBe`
+         "0:((1,1),(14,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,18))\n"++
+         "1:((1,19),(1,24))\n"++
+         "1:((3,1),(3,34))\n"++
+         "2:((3,1),(3,22))\n"++
+         "2:((3,23),(3,34))\n"++
+         "3:((3,23),(3,24))\n"++
+         "3:((3,25),(3,34))\n"++
+         "1:((4,1),(4,31))\n"++
+         "2:((4,1),(4,19))\n"++
+         "2:((4,20),(4,31))\n"++
+         "3:((4,20),(4,21))\n"++
+         "3:((4,22),(4,31))\n"++
+         "1:((7,1),(7,35))\n"++
+         "2:((7,1),(7,23))\n"++
+         "2:((7,24),(7,26))\n"++
+         "2:((7,27),(7,29))\n"++
+         "2:((7,30),(7,31))\n"++
+         "2:((7,31),(7,34))\n"++
+         "2:((7,34),(7,35))\n"++
+         "1:((8,1),(12,13))\n"++
+         "2:((8,1),(8,23))\n"++
+         "2:((8,24),(12,13))\n"++
+         "3:((8,24),(8,25))\n"++
+         "3:((8,26),(12,13))\n"++
+         "4:((8,26),(8,28))\n"++
+         "4:((9,3),(12,13))(Above FromAlignCol (2,-26) (10,3) (12,13) FromAlignCol (2,-12))\n"++
+         "5:((9,3),(10,29))\n"++
+         "6:((9,3),(10,4))\n"++
+         "6:((10,8),(10,29))\n"++
+         "5:((11,3),(11,47))\n"++
+         "6:((11,3),(11,6))\n"++
+         "6:((11,7),(11,47))(Above None (11,7) (11,47) FromAlignCol (1,-44))\n"++
+         "7:((11,7),(11,47))\n"++
+         "8:((11,7),(11,10))\n"++
+         "8:((11,11),(11,47))\n"++
+         "9:((11,11),(11,12))\n"++
+         "9:((11,13),(11,47))\n"++
+         "10:((11,13),(11,39))\n"++
+         "11:((11,13),(11,37))\n"++
+         "12:((11,13),(11,31))\n"++
+         "12:((11,32),(11,37))\n"++
+         "11:((11,38),(11,39))\n"++
+         "10:((11,40),(11,47))\n"++
+         "5:((12,3),(12,13))\n"++
+         "6:((12,3),(12,9))\n"++
+         "6:((12,10),(12,13))\n"++
+         "1:((14,1),(14,1))\n"
+
+
+      let srcTree2 = layoutTreeToSourceTree layout3
+      -- (showGhc srcTree2) `shouldBe` ""
+
+      -- (showGhc $ retrieveLinesFromLayoutTree layout3) `shouldBe` ""
+
+      (renderSourceTree srcTree2) `shouldBe` "module Layout.Do1 where\n\ngetCurrentModuleGraph = undefined\ntopSortModuleGraph = undefined\n\n-- sortCurrentModuleGraph :: GHC.Ghc [GHC.SCC GHC.ModSummary]\nsortCurrentModuleGraph :: IO [Int]\nsortCurrentModuleGraph = do\n  -- g <- GHC.getModuleGraph\n  g2 <- getCurrentModuleGraph\n  let scc = topSortModuleGraph False g2 Nothing\n  return scc\n\n"
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format Move1" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Move1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
 
   -- -----------------------------------
 

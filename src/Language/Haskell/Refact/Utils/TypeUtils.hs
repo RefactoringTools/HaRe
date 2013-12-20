@@ -167,8 +167,8 @@ import qualified GHC.SYB.Utils as SYB
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
-import Debug.Trace
-debug = flip trace
+-- import Debug.Trace
+-- debug = flip trace
 
 -- ---------------------------------------------------------------------
 -- |Process the inscope relation returned from the parsing and module
@@ -622,8 +622,8 @@ hsFreeAndDeclaredPNs' t = do
             (ef,_ed) <- hsFreeAndDeclaredPNs' expre
             -- sf_sd <- hsFreeAndDeclaredPNs' [bindOp,failOp]
             -- let (sf,_sd) = fromMaybe ([],[]) sf_sd
-            let sf = []
-            return (pf `union` ef `union` (sf\\pd),[]) -- pd) -- Check this
+            let sf1 = []
+            return (pf `union` ef `union` (sf1\\pd),[]) -- pd) -- Check this
 
           stmts ((GHC.LetStmt binds') :: GHC.Stmt GHC.Name) =
             hsFreeAndDeclaredPNs' binds'
@@ -1058,12 +1058,12 @@ hsFDsFromInside t = res
      res = (nub f, nub d)
 
      hsFDsFromInside' :: (SYB.Data t) => t -> Maybe ([GHC.Name],[GHC.Name])
-     hsFDsFromInside' t = do
+     hsFDsFromInside' t1 = do
           let r1 = applyTU (once_tdTU (failTU  `adhocTU` renamed
                                                `adhocTU` decl
                                                `adhocTU` match
                                                `adhocTU` expr
-                                               `adhocTU` stmts )) t
+                                               `adhocTU` stmts )) t1
           let (f',d') = fromMaybe ([],[]) r1
           return (nub f', nub d')
 
@@ -1103,6 +1103,8 @@ hsFDsFromInside t = res
          return
            (nub (pf `union` (rf \\ pd)),
             nub (pd `union` rd))
+
+     decl _ = return ([],[])
 
      expr ((GHC.HsLet decls e) :: GHC.HsExpr GHC.Name) =
        do
@@ -1668,9 +1670,12 @@ instance HsValBinds (GHC.HsBind GHC.Name) where
     = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt)
       where
         binds' = (GHC.HsValBinds newBinds)
+  replaceValBinds x _newBinds
+      = error $ "replaceValBinds (GHC.HsBind GHC.Name) undefined for:" ++ (showGhc x)
 
 instance HsValBinds (GHC.HsExpr GHC.Name) where
   hsValBinds (GHC.HsLet ds _) = hsValBinds ds
+  hsValBinds x = error $ "TypeUtils.hsValBinds undefined for:" ++ showGhc x
 
   replaceValBinds (GHC.HsLet binds ex) new = (GHC.HsLet (replaceValBinds binds new) ex)
   replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" ++ (showGhc old)
@@ -3910,6 +3915,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
          typ' <- renamePN oldPN newName updateTokens False typ
          -- logm $ "renamePNWorker:renameTypeSig done"
          return (GHC.L l (GHC.TypeSig ns' typ'))
+    renameTypeSig x = return x
 
     -- The param l is only useful for the start of the token pos
     worker :: Bool -> GHC.SrcSpan -> RefactGhc ()
@@ -3921,7 +3927,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
            else return ()
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Once a rename is complete, adjust the layout for any affected
 -- where/let/of/do elements
 --
@@ -4037,20 +4043,20 @@ adjustLayoutAfterRename oldPN newName t = do
             return x
 
     -- adjustLMatch x = return x
-
+-}
 -- -------------------------------------
-
+{-
 startLineForToks :: [PosToken] -> Int
 startLineForToks toks = tokenRow $ ghead "startLineForToks" toks
-
+-}
 -- -------------------------------------
-
+{-
 compareLocated ::
   Ord a => GHC.GenLocated a t -> GHC.GenLocated a t1 -> Ordering
 compareLocated (GHC.L l1 _) (GHC.L l2 _) = compare l1 l2
-
+-}
 -- -------------------------------------
-
+{-
 -- |Get all the tokens on the same line as the do/let/of etc token
 getLineToks :: GHC.SrcSpan -> (PosToken -> Bool) -> RefactGhc [PosToken]
 getLineToks l isToken = do
@@ -4072,9 +4078,9 @@ getLineToks l isToken = do
   let upToOf = reverse $ dropWhile (\tok -> not (isToken tok)) forLine
   logm $ "getLineToks:up to match=" ++ show upToOf
   return upToOf
-
+-}
 -- -------------------------------------
-
+{-
 calcOffset :: [PosToken] -> Int
 calcOffset toks = sum $ map tokenDelta toks
   where
@@ -4084,9 +4090,9 @@ calcOffset toks = sum $ map tokenDelta toks
         (_sl,sc) = getLocatedStart tt
         (_el,ec) = getLocatedEnd   tt
         deltac = (length s) - (ec - sc)
-
+-}
 -- -------------------------------------
-
+{-
 indentList :: SYB.Data t
    => [GHC.Located t] -> Int -> RefactGhc [GHC.Located t]
 indentList ms off = do
@@ -4094,7 +4100,7 @@ indentList ms off = do
   -- drawTokenTreeDetailed "after indentList"
   let hm = ghead "indentList.2" ms
   return (hm:ms')
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Create a new name token. If 'useQual' then use the qualified

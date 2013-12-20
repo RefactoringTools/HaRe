@@ -85,7 +85,7 @@ comp fileName newName (row,col) = do
            logm $ "Renaming: rdrName=" ++ (SYB.showData SYB.Parser 0 rdrName)
            logm $ "Renaming: occname rdrName=" ++ (show $ GHC.occNameString $ GHC.rdrNameOcc rdrName)
 
-           unless (nameToString n /= newName) $ error "The new name is same as the old name" 
+           unless (nameToString n /= newName) $ error "The new name is same as the old name"
            unless (isValidNewName n rdrNameStr newName) $ error $ "Invalid new name:" ++ newName ++ "!"
 
 
@@ -96,7 +96,7 @@ comp fileName newName (row,col) = do
                             Just mn -> GHC.moduleName mn
                             Nothing -> modName
 
-           unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++ 
+           unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++
                                          ", please do renaming in that module!"))
            -- logm $ "Renaming.comp:(isMainModule modu,pn)=" ++ (showGhc (isMainModule modu,pn))
            if isMainModule modu && (showGhc pn) == "Main.main"
@@ -109,7 +109,7 @@ comp fileName newName (row,col) = do
                if nIsExported  --no matter whether this pn is used or not.
                    then do clients <- clientModsAndFiles modName
                            logm ("Renaming: clients=" ++ (showGhc clients)) -- ++AZ++ debug
-                           refactoredClients <- mapM (renameInClientMod n newName newNameGhc) clients 
+                           refactoredClients <- mapM (renameInClientMod n newName newNameGhc) clients
                            return $ refactoredMod:(concat refactoredClients)
                    else  return [refactoredMod]
         Nothing -> error "Invalid cursor position!"
@@ -343,9 +343,9 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
        else if existChecking && elem newNameStr (d \\ [nameToString oldPN])  --only check the declared names here.
              then error ("Name '"++newName++"'  already existed\n") --the same name has been declared in this module.
              else if exportChecking && causeNameClashInExports oldPN newNameGhc modName renamed
-                    then error ("The new name will cause conflicting exports, please select another new name!") 
+                    then error ("The new name will cause conflicting exports, please select another new name!")
                     else if exportChecking && causeAmbiguity -- causeAmbiguityInExports oldPN  newNameGhc {- inscps -} renamed
-                          then error $"The new name will cause ambiguity in the exports of module "++ show modName ++ ", please select another name!"   
+                          then error $"The new name will cause ambiguity in the exports of module "++ show modName ++ ", please select another name!"
                           else do  -- get all of those declared names visible to oldPN at where oldPN is used.
 
                                  logm $ "renameTopLevelVarName:basic tests done"
@@ -370,7 +370,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                                return r'
                                           else do
                                                logm $ "renameTopLevelVarName start.."
-                                               renamePN oldPN newNameGhc True False renamed
+                                               void $ renamePN oldPN newNameGhc True False renamed
                                                logm $ "renameTopLevelVarName done"
                                                r' <- getRefactRenamed
                                                return r'
@@ -486,17 +486,14 @@ renameInClientMod oldPN newName newNameGhc modSummary = do
        return ()
 
      worker :: GHC.Name -> String -> GHC.Name -> RefactGhc ()
-     worker oldPN newName newNameGhc = do
+     worker oldPN' newName' newNameGhc' = do
        logm $ "renameInClientMod.worker"
        renamed <- getRefactRenamed
-       isInScopeUnqual <- isInScopeAndUnqualifiedGhc (nameToString oldPN) Nothing
-       isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName Nothing
-       let vs = hsVisibleNames oldPN renamed   --Does this check names other than variable names?
-       if elem newName ((nub vs) \\ [nameToString oldPN])  || isInScopeUnqualNew
-         -- then renamePN oldPN (Just qual) newName True mod  --rename to qualified Name
-         -- else do renamePN oldPN Nothing newName True mod
-         then renamePN oldPN newNameGhc True True renamed --rename to qualified Name
-         else renamePN oldPN newNameGhc True False renamed -- do not qualify
+       isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName' Nothing
+       let vs = hsVisibleNames oldPN' renamed   --Does this check names other than variable names?
+       if elem newName' ((nub vs) \\ [nameToString oldPN'])  || isInScopeUnqualNew
+         then void $ renamePN oldPN' newNameGhc' True True renamed --rename to qualified Name
+         else void $ renamePN oldPN' newNameGhc' True False renamed -- do not qualify
        return ()
 
 {- original

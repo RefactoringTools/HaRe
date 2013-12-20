@@ -6,6 +6,8 @@ import Language.Haskell.Refact.Renaming
 
 import TestUtils
 
+import Language.Haskell.GhcMod
+
 -- ---------------------------------------------------------------------
 
 main :: IO ()
@@ -420,6 +422,32 @@ spec = do
      diff <- compareFiles "./test/testdata/Renaming/Main2.hs.expected"
                           "./test/testdata/Renaming/Main2.hs.refactored"
      diff `shouldBe` []
+
+    -- ---------------------------------
+
+    it "rename in a do statement" $ do
+     -- rename logTestSettings testCradle "./test/testdata/Layout/Do1.hs" "g2" (10,3)
+     r <- rename defaultTestSettings testCradle "./test/testdata/Layout/Do1.hs" "g2" (10,3)
+
+     r `shouldBe` [ "./test/testdata/Layout/Do1.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Layout/Do1.hs.expected"
+                          "./test/testdata/Layout/Do1.hs.refactored"
+     diff `shouldBe` []
+
+    -- ---------------------------------
+
+{-
+    it "rename gives noRebindableInfo MoveDef" $ do
+     -- rename logTestSettings testCradle "./src/Language/Haskell/Refact/MoveDef.hs" "t2" (1105,20)
+     r <- rename defaultTestSettings (testCradle { cradleCabalDir = Just ".", cradleCabalFile = Just "HaRe.cabal"}) "./src/Language/Haskell/Refact/MoveDef.hs" "t2" (1105,20)
+
+     r `shouldBe` [ "./test/testdata/Renaming/Main2.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/Main2.hs.expected"
+                          "./test/testdata/Renaming/Main2.hs.refactored"
+     diff `shouldBe` []
+-}
 
     -- ---------------------------------
 

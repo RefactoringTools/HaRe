@@ -153,7 +153,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
-import Control.Monad.Trans.State.Lazy
+-- import Control.Monad.Trans.State.Lazy
 import Data.Bits
 import Data.List
 import Data.Tree
@@ -1232,6 +1232,7 @@ retrieveTokensFinal forest = monotonicLineToks $ stripForestLines $ reAlignMarke
 
 -- ---------------------------------------------------------------------
 
+{-
 -- |Retrieve the tokens in a ppr format, so they can be rendered
 retrieveTokensPpr :: Tree Entry -> [Ppr]
 retrieveTokensPpr forest = pps'''
@@ -1291,8 +1292,9 @@ retrieveTokensPpr' _acc n@(Node (Entry _sspan (Above _so _ (_r,_c) _eo) _toks) _
 --   = error $ "retrieveTokensPpr': Offset entry with toks:" ++ (show n)
 retrieveTokensPpr' _acc n@(Node (Entry _sspan (NoChange) _toks) _subs)
   = error $ "retrieveTokensPpr': NoChange entry with toks:" ++ (show n)
+-}
 
-
+{-
 mkPprFromLineToks :: [PosToken] -> [Ppr]
 mkPprFromLineToks toks = mkPprFromLineToksSrc Original toks
 
@@ -1321,9 +1323,9 @@ normaliseColumns ps = ps'
     removeOffset (PprText r c o toks)   = (PprText r (c - offset) o toks)
     removeOffset (PprDeleted r c p l e) = (PprDeleted r (c - offset) p l e)
     removeOffset x = x
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 adjustPprForDeleted :: [Ppr] -> [Ppr]
 adjustPprForDeleted [] = []
 adjustPprForDeleted pps = pps'
@@ -1343,7 +1345,7 @@ adjustPprForDeleted pps = pps'
         p1' = p1
         eo' = eo
         ((ro',co'),subs') = foldl' go ((ro,co),[]) subs
-
+-}
 {-
 
 Case 1
@@ -1457,11 +1459,12 @@ In PprDeleted, dr - sr is same as (pg + l + eg)
 -}
 
 -- ---------------------------------------------------------------------
-
+{-
 mergeDeletesPpr :: [Ppr] -> [Ppr]
 mergeDeletesPpr [] = []
 mergeDeletesPpr ((PprDeleted r1 c1 pg1 l1 eg1):(PprDeleted _r _c pg2 l2 eg2):ps)
   = (PprDeleted r1 c1 pg1 (l1 + eg1 + pg2 + l2 - 1) eg2) : mergeDeletesPpr ps
+-}
 {-
 The total gap taken up by each delete is pg+l+eg.
 
@@ -1484,10 +1487,11 @@ bu, dr1 == sr2
 so (dr1 - sr1 + dr2 - dr1)
 or dr2 - sr1
 -}
+{-
 mergeDeletesPpr (p:ps) = p : mergeDeletesPpr ps
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 getPprStartRow :: Ppr -> Row
 getPprStartRow (PprText r _ _ _) = r
 getPprStartRow (PprDeleted r _ _ _ _) = r
@@ -1499,6 +1503,7 @@ getPprEndRow (PprText r _ _ _) = r
 getPprEndRow (PprDeleted r _ _ _ _) = r
 getPprEndRow (PprAbove _ _ _ []) = error "getPprEndRow: PprAbove with no subs"
 getPprEndRow (PprAbove _ _ _ subs) = getPprEndRow $ last subs
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -1535,7 +1540,7 @@ applyOffsetToTreeShallow (ro,co) (Node (Entry sspan lay toks) subs)
 applyOffsetToTreeShallow _ n@(Node (Deleted _ _ _) _) = n
 
 -- ---------------------------------------------------------------------
-
+{-
 renderPpr :: [Ppr] -> String
 renderPpr ps = res
   where
@@ -1662,6 +1667,7 @@ renderPpr ps = res
     addDebugString str = do
       ((r,c),curr) <- get
       put ((r,c),curr++str)
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -2267,6 +2273,7 @@ openZipperToSpanAdded sspan z = zf
       = vs1 == vs2 && ve1 == ve2 && ((rs1,cs1) <= (rs2,cs2)) && ((re1,ce1) >= (re2,ce2))
     tl2 = dropWhile (\(_,s) -> not (myMatch s sspan)) $ reverse treeAsList
 
+    fff [] _ = []
     fff acc@((cd,_cs):_) (v,sspan') = if v < cd then (v,sspan'):acc
                                                else acc
 
@@ -2527,7 +2534,7 @@ drawForestEntry :: Forest Entry -> String
 drawForestEntry  = unlines . map drawTreeEntry
 
 drawEntry :: Tree Entry -> [String]
-drawEntry (Node (Deleted sspan  pg eg )  _ ) = [(showForestSpan sspan) ++ (show eg) ++ "D"]
+drawEntry (Node (Deleted sspan  _pg eg )  _ ) = [(showForestSpan sspan) ++ (show eg) ++ "D"]
 drawEntry (Node (Entry sspan lay _toks) ts0) = ((showForestSpan sspan) ++ (showLayout lay)): drawSubTrees ts0
   where
     drawSubTrees [] = []
@@ -2549,7 +2556,7 @@ drawTreeCompact :: Tree Entry -> String
 drawTreeCompact = unlines . drawTreeCompact' 0
 
 drawTreeCompact' :: Int -> Tree Entry -> [String]
-drawTreeCompact' level (Node (Deleted sspan pg eg )  _  ) = [(show level) ++ ":" ++ (showForestSpan sspan) ++ (show eg) ++ "D"]
+drawTreeCompact' level (Node (Deleted sspan _pg eg )  _  ) = [(show level) ++ ":" ++ (showForestSpan sspan) ++ (show eg) ++ "D"]
 drawTreeCompact' level (Node (Entry sspan lay _toks) ts0) = ((show level) ++ ":" ++ (showForestSpan sspan) ++ (showLayout lay))
                                                           : (concatMap (drawTreeCompact' (level + 1)) ts0)
 
@@ -2560,7 +2567,7 @@ showTree = prettyshow
 
 -- |Represent a tree in a more concise/pretty way
 prettyshow :: Tree Entry -> String
-prettyshow (Node (Deleted sspan pg eg) _nullSubs)
+prettyshow (Node (Deleted sspan _pg eg) _nullSubs)
   = "Node (Deleted " ++ (showForestSpan sspan) ++ " " ++ (show eg) ++ ")"
 prettyshow (Node (Entry sspan _lay toks) sub)
   = "Node (Entry " ++ (showForestSpan sspan) ++ " "
