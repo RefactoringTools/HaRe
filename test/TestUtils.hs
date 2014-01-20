@@ -48,6 +48,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Numeric
 
 import Data.Tree
+import System.Directory
 import System.Log.Handler.Simple
 import System.Log.Logger
 import qualified Data.Map as Map

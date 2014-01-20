@@ -115,7 +115,7 @@ spec = do
 
   -- -----------------------------------
 
-    it "loads a series of files based on cabal2" $ do
+    it "loads a series of files based on cabal2, which has 2 exe" $ do
 
       currentDir <- getCurrentDirectory
       -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
@@ -124,14 +124,18 @@ spec = do
       -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
+      (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
 
-      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
+      --                                                     lib,exe,test,bench
+      -- let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False)
+                                       , rsetVerboseLevel = Debug }
 
       let handler = [Handler handler1]
           handler1 :: GHC.SourceError -> IO [String]
-          handler1 _e = do
+          handler1 e = do
              setCurrentDirectory currentDir
-             return []
+             return [show e]
 
       r <- catches (rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)) handler
       -- r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
@@ -140,8 +144,9 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      pending -- "complete this"
-      -- (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main.hs\"]"
+      -- pending -- "complete this"
+      (show r) `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main.hs\"]"
+      (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main.hs\"]"
 
 
   -- -------------------------------------------------------------------

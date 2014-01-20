@@ -96,6 +96,7 @@ comp fileName newName (row,col) = do
                             Just mn -> GHC.moduleName mn
                             Nothing -> modName
 
+           -- TODO: why do we have this restriction?
            unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++
                                          ", please do renaming in that module!"))
            -- logm $ "Renaming.comp:(isMainModule modu,pn)=" ++ (showGhc (isMainModule modu,pn))

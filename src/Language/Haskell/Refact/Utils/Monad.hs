@@ -22,6 +22,7 @@ module Language.Haskell.Refact.Utils.Monad
        , logSettings
        , initGhcSession
 
+       , loadModuleGraphGhc
        ) where
 
 
@@ -38,6 +39,7 @@ import Language.Haskell.GhcMod.Internal
 -- import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
+import System.Log.Logger
 import qualified Control.Monad.IO.Class as MU
 
 -- ---------------------------------------------------------------------
@@ -144,7 +146,6 @@ instance (MonadPlus m,Functor m,GHC.MonadIO m,ExceptionMonad m) => MonadPlus (GH
   mzero = GHC.GhcT $ \_s -> mzero
   x `mplus` y = GHC.GhcT $ \_s -> (GHC.runGhcT (Just GHC.libdir) x) `mplus` (GHC.runGhcT (Just GHC.libdir) y)
 
-
 -- ---------------------------------------------------------------------
 
 -- | Initialise the GHC session, when starting a refactoring.
@@ -173,6 +174,8 @@ initGhcSession cradle importDirs = do
       Just cabal -> do
         targets <- liftIO $ cabalAllTargets cabal
         -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
+        -- error $ "initGhcSession:targets=" ++ show targets
+        -- error $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
         -- each main module and retrieve its module graph, and then
@@ -180,17 +183,22 @@ initGhcSession cradle importDirs = do
 
         let targets' = getEnabledTargets settings targets
         -- let (libt,exet,testt,bencht) = targets
-        -- case libt ++ exet ++ testt ++ bencht of
-        -- case libt {- ++ exet -} ++ testt ++ bencht of
+        -- error $ "initGhcSession:targets'=" ++ show targets'
+
         case targets' of
           [] -> return ()
           tgts -> do
                      -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show tgts)
                      setTargetFiles tgts
-                     checkSlowAndSet
+                     -- error $ "initGhcSession:after setTargetFiles"
+                     -- checkSlowAndSet
+                     -- error $ "initGhcSession:after checkSlowAndSet"
                      void $ GHC.load GHC.LoadAllTargets
 
-      Nothing -> return()
+      Nothing -> do
+          let maybeMainFile = rsetMainFile settings
+          loadModuleGraphGhc maybeMainFile
+          return()
 
     return ()
     where
@@ -198,12 +206,26 @@ initGhcSession cradle importDirs = do
         | rsetExpandSplice opt = "-w:"   : rsetGhcOpts opt
         | otherwise            = "-Wall" : rsetGhcOpts opt
 
+-- ---------------------------------------------------------------------
+
+-- | Load a module graph into the GHC session, starting from main
+loadModuleGraphGhc ::
+  Maybe FilePath -> RefactGhc ()
+loadModuleGraphGhc maybeTargetFile = do
+  case maybeTargetFile of
+    Just targetFile -> do
+      setTargetFiles [targetFile]
+      void $ GHC.load GHC.LoadAllTargets
+      return ()
+    Nothing -> return ()
+  return ()
+
+-- ---------------------------------------------------------------------
 
 runRefactGhc ::
   RefactGhc a -> RefactState -> IO (a, RefactState)
 runRefactGhc comp initState = do
     runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
-    -- runStateT (GHC.runGhcT (Just GHC.libdir) (initGhcSession >> comp)) initState
 
 getRefacSettings :: RefactGhc RefactSettings
 getRefacSettings = do
@@ -223,36 +245,4 @@ getEnabledTargets settings (libt,exet,testt,bencht) = targets
 
     on flag xs = if flag then xs else []
 
--- ---------------------------------------------------------------------
--- ++AZ++ trying to wrap this in GhcT, or vice versa
--- For inspiration:
--- https://github.com/bjpop/berp/blob/200fa0f26a4da7c6f6ff6fcdc29a2468a1c39e60/src/Berp/Interpreter/Monad.hs
-{-
-type Repl a = GhcT (StateT ReplState Compile) a
-
-data ReplState = ReplState { repl_inputState :: !InputState }
-
-runRepl :: Maybe FilePath -> Repl a -> IO a
-runRepl filePath comp = do
-   initInputState <- initializeInput defaultSettings
-   let initReplState = ReplState { repl_inputState = initInputState }
-   runCompileMonad $ (flip evalStateT) initReplState $ runGhcT filePath comp
-
-withInputState :: (InputState -> Repl a) -> Repl a
-withInputState f = do
-   state <- liftGhcT $ gets repl_inputState
-   f state
-
--- Ugliness because GHC has its own MonadIO class
-instance MU.MonadIO m => MonadIO (GhcT m) where
-   liftIO = MU.liftIO
-
-instance MonadIO m => MU.MonadIO (StateT s m) where
-   liftIO = MT.liftIO
-
-instance ExceptionMonad m => ExceptionMonad (StateT s m) where
-    gcatch f h = StateT $ \s -> gcatch (runStateT f s) (\e -> runStateT (h e) s)
-    gblock = mapStateT gblock
-    gunblock = mapStateT gunblock
--}
 

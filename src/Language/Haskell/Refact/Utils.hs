@@ -10,7 +10,7 @@ module Language.Haskell.Refact.Utils
          sameOccurrence
 
        -- * Managing the GHC / project environment
-       , loadModuleGraphGhc
+       -- , loadModuleGraphGhc
        , getModuleGhc
        , parseSourceFileGhc
        , getModuleDetails
@@ -37,6 +37,7 @@ module Language.Haskell.Refact.Utils
        -- , initGhcSession
        -- , prettyprint
        , pwd
+       , cd
        ) where
 
 import Control.Monad.State
@@ -51,8 +52,6 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TokenUtils
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.Directory
@@ -71,6 +70,9 @@ import qualified GHC.SYB.Utils as SYB
 
 pwd :: IO FilePath
 pwd = getCurrentDirectory
+
+cd :: FilePath -> IO ()
+cd = setCurrentDirectory
 
 -- ---------------------------------------------------------------------
 
@@ -133,24 +135,6 @@ getModuleName (GHC.L _ modn) =
   case (GHC.hsmodName modn) of
     Nothing -> Nothing
     Just (GHC.L _ modname) -> Just $ (modname,GHC.moduleNameString modname)
-
--- ---------------------------------------------------------------------
-
--- | Load a module graph into the GHC session, starting from main
-loadModuleGraphGhc ::
-  Maybe FilePath -> RefactGhc ()
-loadModuleGraphGhc maybeTargetFile = do
-  case maybeTargetFile of
-    Just targetFile -> do
-      -- Prefix with * to force interpretation, for inscopes
-      -- target <- GHC.guessTarget ("*" ++ targetFile) Nothing
-      -- NOTE: does not seem to be required
-      target <- GHC.guessTarget (targetFile) Nothing
-      GHC.setTargets [target]
-      void $ GHC.load GHC.LoadAllTargets
-      return ()
-    Nothing -> return ()
-  return ()
 
 -- ---------------------------------------------------------------------
 
@@ -269,12 +253,7 @@ runRefacSession settings cradle comp = do
         , rsModule = Nothing
         }
 
-   maybeMainFile = rsetMainFile settings
-  -- readLog <- initializeFlagsWithCradle opt cradle options True
-  -- setTargetFile fileName
-
   (refactoredMods,_s) <- runRefactGhc (initGhcSession cradle (rsetImportPaths settings) >>
-                                       loadModuleGraphGhc maybeMainFile >>
                                        comp) initialState
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)
@@ -523,6 +502,7 @@ writeRefactoredFiles verbosity files
 -- import module m.
 
 -- TODO: deal with an anonymous main module, by taking Maybe GHC.ModuleName
+-- TODO: deal with multiple main modules for this, each with their own dependency graph.
 clientModsAndFiles
   :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
 clientModsAndFiles m = do
