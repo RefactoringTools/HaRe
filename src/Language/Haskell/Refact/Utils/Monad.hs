@@ -23,6 +23,7 @@ module Language.Haskell.Refact.Utils.Monad
        , initGhcSession
 
        , loadModuleGraphGhc
+       , canonicalizeGraph
        ) where
 
 
@@ -36,9 +37,9 @@ import Data.List
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
--- import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
+import System.Directory
 import System.Log.Logger
 import qualified Control.Monad.IO.Class as MU
 
@@ -60,7 +61,6 @@ data RefactSettings = RefSet
 
 deriving instance Show LineSeparator
 
-
 defaultSettings :: RefactSettings
 defaultSettings = RefSet
     { rsetGhcOpts = []
@@ -76,6 +76,7 @@ defaultSettings = RefSet
 logSettings :: RefactSettings
 logSettings = defaultSettings { rsetVerboseLevel = Debug }
 
+-- ---------------------------------------------------------------------
 
 data RefactStashId = Stash !String deriving (Show,Eq,Ord)
 
@@ -83,7 +84,6 @@ data RefactModule = RefMod
         { rsTypecheckedMod  :: !GHC.TypecheckedModule
         , rsOrigTokenStream :: ![PosToken]  -- ^Original Token stream for the current module
         , rsTokenCache      :: !TokenCache  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
-        -- , rsTokenLayout     :: !TokenLayout -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
         , rsStreamModified  :: !Bool        -- ^current module has updated the token stream
         }
 
@@ -99,8 +99,11 @@ data RefactState = RefSt
         , rsFlags     :: !RefactFlags -- ^ Flags for controlling generic traversals
         , rsStorage   :: !StateStorage -- ^Temporary storage of values
                                       -- while refactoring takes place
+        , rsGraph     :: [TargetGraph]
         , rsModule    :: !(Maybe RefactModule) -- ^The current module being refactored
         }
+
+type TargetGraph = (FilePath,[(Maybe FilePath,GHC.ModSummary)])
 
 -- |Result of parsing a Haskell source file. It is simply the
 -- TypeCheckedModule produced by GHC.
@@ -175,7 +178,6 @@ initGhcSession cradle importDirs = do
         targets <- liftIO $ cabalAllTargets cabal
         -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
         -- error $ "initGhcSession:targets=" ++ show targets
-        -- error $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
         -- each main module and retrieve its module graph, and then
@@ -189,11 +191,10 @@ initGhcSession cradle importDirs = do
           [] -> return ()
           tgts -> do
                      -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show tgts)
-                     setTargetFiles tgts
-                     -- error $ "initGhcSession:after setTargetFiles"
-                     -- checkSlowAndSet
-                     -- error $ "initGhcSession:after checkSlowAndSet"
-                     void $ GHC.load GHC.LoadAllTargets
+                     -- setTargetFiles tgts
+                     -- void $ GHC.load GHC.LoadAllTargets
+
+                     mapM_ loadModuleGraphGhc $ map Just tgts
 
       Nothing -> do
           let maybeMainFile = rsetMainFile settings
@@ -216,9 +217,31 @@ loadModuleGraphGhc maybeTargetFile = do
     Just targetFile -> do
       setTargetFiles [targetFile]
       void $ GHC.load GHC.LoadAllTargets
+
+      graph <- GHC.getModuleGraph
+      cgraph <- liftIO $ canonicalizeGraph graph
+
+      settings <- get
+      put $ settings {rsGraph = (rsGraph settings) ++ [(targetFile,cgraph)]}
+
       return ()
     Nothing -> return ()
   return ()
+
+-- ---------------------------------------------------------------------
+
+canonicalizeGraph ::
+  [GHC.ModSummary] -> IO [(Maybe (FilePath), GHC.ModSummary)]
+canonicalizeGraph graph = do
+  let mm = map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
+      canon ((Just fp),m) = do
+        fp' <- canonicalizePath fp
+        return $ (Just fp',m)
+      canon (Nothing,m)  = return (Nothing,m)
+
+  mm' <- mapM canon mm
+
+  return mm'
 
 -- ---------------------------------------------------------------------
 

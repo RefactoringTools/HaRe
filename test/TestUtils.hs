@@ -27,6 +27,9 @@ module TestUtils
        , unspace
        , mkTestGhcName
        , setLogger
+
+       , pwd
+       , cd
        ) where
 
 
@@ -53,6 +56,14 @@ import System.Log.Handler.Simple
 import System.Log.Logger
 import qualified Data.Map as Map
 
+
+-- ---------------------------------------------------------------------
+
+pwd :: IO FilePath
+pwd = getCurrentDirectory
+
+cd :: FilePath -> IO ()
+cd = setCurrentDirectory
 
 -- ---------------------------------------------------------------------
 
@@ -102,6 +113,7 @@ initialState = RefSt
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
+  , rsGraph = []
   , rsModule = Nothing
   }
 
@@ -113,6 +125,7 @@ initialLogOnState = RefSt
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
+  , rsGraph = []
   , rsModule = Nothing
   }
 
@@ -212,6 +225,7 @@ runRefactGhcStateLog paramcomp logOn  = do
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
+        , rsGraph = []
         , rsModule = Nothing
         }
   (r,s) <- runRefactGhc (initGhcSession testCradle (rsetImportPaths defaultTestSettings) >> 

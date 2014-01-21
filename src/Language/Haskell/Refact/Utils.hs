@@ -30,14 +30,14 @@ module Language.Haskell.Refact.Utils
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
-       , getCurrentModuleGraph
-       , sortCurrentModuleGraph
+       -- , getCurrentModuleGraph
+       -- , sortCurrentModuleGraph
 
        -- * For testing
        -- , initGhcSession
        -- , prettyprint
-       , pwd
-       , cd
+       -- , pwd
+       -- , cd
        ) where
 
 import Control.Monad.State
@@ -68,14 +68,6 @@ import qualified GHC.SYB.Utils as SYB
 
 -- ---------------------------------------------------------------------
 
-pwd :: IO FilePath
-pwd = getCurrentDirectory
-
-cd :: FilePath -> IO ()
-cd = setCurrentDirectory
-
--- ---------------------------------------------------------------------
-
 -- | From file name to module name.
 fileNameToModName :: FilePath -> RefactGhc GHC.ModuleName
 fileNameToModName fileName = do
@@ -102,30 +94,20 @@ fileNameToModName fileName = do
 
 getModuleMaybe :: FilePath -> RefactGhc (Maybe GHC.ModSummary)
 getModuleMaybe fileName = do
-  graph <- GHC.getModuleGraph
-  cgraph <- liftIO $ canonicalizeGraph graph
   cfileName <- liftIO $ canonicalizePath fileName
+
+  graphs <- gets rsGraph
+  logm $ "getModuleMaybe " ++ show fileName ++ ":" ++ show (length graphs)
+
+  let cgraph = concatMap (\(_,cg) -> cg) graphs
+  -- graph <- GHC.getModuleGraph
+  -- cgraph <- liftIO $ canonicalizeGraph graph
 
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
 
   case mm of
     [] -> return Nothing
     _ -> return $ Just $ snd (ghead "getModuleMaybe" mm)
-
--- ---------------------------------------------------------------------
-
-canonicalizeGraph ::
-  [GHC.ModSummary] -> IO [(Maybe (FilePath), GHC.ModSummary)]
-canonicalizeGraph graph = do
-  let mm = map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-      canon ((Just fp),m) = do
-        fp' <- canonicalizePath fp
-        return $ (Just fp',m)
-      canon (Nothing,m)  = return (Nothing,m)
-
-  mm' <- mapM canon mm
-
-  return mm'
 
 -- ---------------------------------------------------------------------
 
@@ -158,6 +140,9 @@ getModuleGhc targetFile = do
     [(_,modSum)] -> getModuleDetails modSum
     _            -> parseSourceFileGhc targetFile
 -}
+
+  -- TODO: consult cached store of multiple module graphs, one for
+  --       each main file.
   mm <- getModuleMaybe targetFile
   case mm of
     Just ms -> getModuleDetails ms
@@ -199,22 +184,14 @@ getModuleDetails modSum = do
 -- | Parse a single source file into a GHC session
 parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
+     {-
       target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- The *
                                      -- is to force interpretation, for inscopes
       GHC.setTargets [target]
       void $ GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
+     -}
+      loadModuleGraphGhc (Just targetFile)
 
-{-
-      graph <- GHC.getModuleGraph
-
--- TODO: canonicalize paths
-      let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
-           map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-
-      -- let modSum = head g
-      let [(_,modSum)] = mm
-      getModuleDetails modSum
--}
       mm <- getModuleMaybe targetFile
       case mm of
         Nothing -> error $ "HaRe:unexpected error parsing " ++ targetFile
@@ -250,6 +227,7 @@ runRefacSession settings cradle comp = do
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
+        , rsGraph = []
         , rsModule = Nothing
         }
 
@@ -545,15 +523,17 @@ instance (Show GHC.ModuleName) where
 
 -- ---------------------------------------------------------------------
 
+{- ++AZ++ what is using this?
 -- | Get the current module graph, provided we are in a live GHC session
 getCurrentModuleGraph :: RefactGhc GHC.ModuleGraph
 getCurrentModuleGraph = GHC.getModuleGraph
 
 sortCurrentModuleGraph :: RefactGhc [GHC.SCC GHC.ModSummary]
 sortCurrentModuleGraph = do
-  -- g <- GHC.getModuleGraph
   g <- getCurrentModuleGraph
   let scc = GHC.topSortModuleGraph False g Nothing
   return scc
 
+
+++AZ++ -}
 

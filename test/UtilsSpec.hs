@@ -129,7 +129,8 @@ spec = do
       --                                                     lib,exe,test,bench
       -- let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
       let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False)
-                                       , rsetVerboseLevel = Debug }
+                                     --  , rsetVerboseLevel = Debug
+                                     }
 
       let handler = [Handler handler1]
           handler1 :: GHC.SourceError -> IO [String]
@@ -145,8 +146,8 @@ spec = do
       r' <- mapM makeRelativeToCurrentDirectory r
 
       -- pending -- "complete this"
-      (show r) `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main.hs\"]"
-      (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main.hs\"]"
+      -- (show r) `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main1.hs\",\"src/main2.hs\"]"
+      (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main1.hs\",\"src/main2.hs\"]"
 
 
   -- -------------------------------------------------------------------
@@ -243,7 +244,7 @@ spec = do
 
 
   -- -------------------------------------------------------------------
-
+{-
   describe "getCurrentModuleGraph" $ do
     it "gets the module graph for the currently loaded modules" $ do
       let
@@ -259,9 +260,9 @@ spec = do
 
     it "gets the updated graph, after a refactor" $ do
       pending -- "write this test"
-
+-}
   -- -------------------------------------------------------------------
-
+{-
   describe "sortCurrentModuleGraph" $ do
     it "needs a test or two" $ do
       let
@@ -271,7 +272,7 @@ spec = do
          return g
       (mg,_s) <- runRefactGhcState comp
       (showGhc $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:TypeUtils.C, main:TypeUtils.B]"
-
+-}
   -- -------------------------------------------------------------------
 
   describe "getModuleGhc" $ do
