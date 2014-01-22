@@ -127,20 +127,6 @@ getModuleName (GHC.L _ modn) =
 getModuleGhc ::
   FilePath -> RefactGhc ()
 getModuleGhc targetFile = do
-{-
-  graph <- GHC.getModuleGraph
-
-  let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
-       map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-
---  let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
---       map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-
-  case mm of
-    [(_,modSum)] -> getModuleDetails modSum
-    _            -> parseSourceFileGhc targetFile
--}
-
   -- TODO: consult cached store of multiple module graphs, one for
   --       each main file.
   mm <- getModuleMaybe targetFile

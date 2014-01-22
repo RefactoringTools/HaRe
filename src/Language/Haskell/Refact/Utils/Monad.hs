@@ -24,6 +24,8 @@ module Language.Haskell.Refact.Utils.Monad
 
        , loadModuleGraphGhc
        , canonicalizeGraph
+
+       , logm
        ) where
 
 
@@ -40,6 +42,8 @@ import Language.Haskell.GhcMod.Internal
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import System.Directory
+import Data.Time.Clock
+import Data.Tree
 import System.Log.Logger
 import qualified Control.Monad.IO.Class as MU
 
@@ -70,7 +74,8 @@ defaultSettings = RefSet
     , rsetMainFile = Nothing
     , rsetCheckTokenUtilsInvariant = False
     , rsetVerboseLevel = Normal
-    , rsetEnabledTargets = (True,False,True,False)
+    -- , rsetEnabledTargets = (True,False,True,False)
+    , rsetEnabledTargets = (True,True,True,True)
     }
 
 logSettings :: RefactSettings
@@ -176,7 +181,7 @@ initGhcSession cradle importDirs = do
     case mcabal of
       Just cabal -> do
         targets <- liftIO $ cabalAllTargets cabal
-        -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
+        liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
         -- error $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
@@ -186,6 +191,7 @@ initGhcSession cradle importDirs = do
         let targets' = getEnabledTargets settings targets
         -- let (libt,exet,testt,bencht) = targets
         -- error $ "initGhcSession:targets'=" ++ show targets'
+        liftIO $ warningM "HaRe" $ "initGhcSession:targets'=" ++ show targets'
 
         case targets' of
           [] -> return ()
@@ -201,6 +207,8 @@ initGhcSession cradle importDirs = do
           loadModuleGraphGhc maybeMainFile
           return()
 
+    graph <- gets rsGraph
+    liftIO $ warningM "HaRe" $ "initGhcSession:graph=" ++ show graph
     return ()
     where
       options opt
@@ -213,6 +221,7 @@ initGhcSession cradle importDirs = do
 loadModuleGraphGhc ::
   Maybe FilePath -> RefactGhc ()
 loadModuleGraphGhc maybeTargetFile = do
+  -- liftIO $ warningM "HaRe" $ "loadModuleGraphGhc:maybeTargetFile=" ++ show maybeTargetFile
   case maybeTargetFile of
     Just targetFile -> do
       setTargetFiles [targetFile]
@@ -223,6 +232,8 @@ loadModuleGraphGhc maybeTargetFile = do
 
       settings <- get
       put $ settings {rsGraph = (rsGraph settings) ++ [(targetFile,cgraph)]}
+
+      logm $ "loadModuleGraphGhc:cgraph=" ++ show (map fst cgraph)
 
       return ()
     Nothing -> return ()
@@ -269,3 +280,30 @@ getEnabledTargets settings (libt,exet,testt,bencht) = targets
     on flag xs = if flag then xs else []
 
 
+-- ---------------------------------------------------------------------
+
+logm :: String -> RefactGhc ()
+logm string = do
+  settings <- getRefacSettings
+  let loggingOn = (rsetVerboseLevel settings == Debug)
+             --     || (rsetVerboseLevel settings == Normal)
+  when loggingOn $ do
+     -- ts <- liftIO timeStamp
+     -- liftIO $ warningM "HaRe" (ts ++ ":" ++ string)
+     liftIO $ warningM "HaRe" (string)
+  return ()
+
+timeStamp :: IO String
+timeStamp = do
+  k <- getCurrentTime
+  return (show k)
+
+-- ---------------------------------------------------------------------
+
+instance Show GHC.ModSummary where
+  show m = show $ GHC.ms_mod m
+
+instance Show GHC.Module where
+  show m = GHC.moduleNameString $ GHC.moduleName m
+
+-- ---------------------------------------------------------------------

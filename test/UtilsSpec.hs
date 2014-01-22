@@ -199,6 +199,8 @@ spec = do
     it "can only be called in a live RefactGhc session" $ do
       pending  -- "write this test"
 
+    ------------------------------------
+
     it "gets modules which directly or indirectly import a module #1" $ do
       -- TODO: harvest this commonality
       let
@@ -209,6 +211,8 @@ spec = do
       (mg,_s) <- runRefactGhcState comp
       showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
 
+    ------------------------------------
+
     it "gets modules which directly or indirectly import a module #2" $ do
       let
         comp = do
@@ -217,6 +221,30 @@ spec = do
          return g
       (mg,_s) <- runRefactGhcState comp
       showGhc (map GHC.ms_mod mg) `shouldBe` "[main:Main]"
+
+    ------------------------------------
+
+    it "gets modules which import a module in different cabal targets" $ do
+      currentDir <- getCurrentDirectory
+      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      setCurrentDirectory "./test/testdata/cabal/cabal2"
+      -- d <- getCurrentDirectory
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
+      cradle <- findCradle
+      -- (show cradle) `shouldBe` ""
+      (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
+
+      let
+        comp = do
+         -- initGhcSession cradle (rsetImportPaths defaultSettings)
+         initGhcSession cradle (rsetImportPaths logSettings)
+         -- getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
+         g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
+         return g
+      (mg,_s) <- runRefactGhcState comp
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:Main,main:Main]"
+
+      setCurrentDirectory currentDir
 
   -- -------------------------------------------------------------------
 
