@@ -214,6 +214,7 @@ runRefacSession settings cradle comp = do
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
         , rsGraph = []
+        , rsModuleGraph = []
         , rsModule = Nothing
         }
 
@@ -468,17 +469,33 @@ writeRefactoredFiles verbosity files
 -- TODO: deal with an anonymous main module, by taking Maybe GHC.ModuleName
 -- TODO: deal with multiple main modules for this, each with their own dependency graph.
 clientModsAndFiles
-  :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
+  :: GHC.ModuleName -> RefactGhc [(FilePath,GHC.ModSummary)]
 clientModsAndFiles m = do
-  ms <- GHC.getModuleGraph
   modsum <- GHC.getModSummary m
+
+{-
+  ms <- GHC.getModuleGraph
   let mg = getModulesAsGraph False ms Nothing
       rg = GHC.transposeG mg
       modNode = fromJust $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
       clientMods = filter (\msum' -> not (mycomp msum' modsum))
                  $ map summaryNodeSummary $ GHC.reachableG rg modNode
+-}
 
-  return clientMods
+  -- ms' <- GHC.getModuleGraph
+  ms' <- gets rsModuleGraph
+
+  let getClients ms = clientMods
+        where
+          mg = getModulesAsGraph False ms Nothing
+          rg = GHC.transposeG mg
+          modNode = fromJust $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
+          clientMods = filter (\msum' -> not (mycomp msum' modsum))
+                     $ map summaryNodeSummary $ GHC.reachableG rg modNode
+
+  let clients = concatMap (\(f,mg) -> zip (repeat f) (getClients mg)) ms'
+  -- return (concatMap getClients ms')
+  return clients
 
 -- TODO : find decent name and place for this.
 mycomp :: GHC.ModSummary -> GHC.ModSummary -> Bool

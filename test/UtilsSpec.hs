@@ -129,7 +129,7 @@ spec = do
       --                                                     lib,exe,test,bench
       -- let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
       let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False)
-                                     --  , rsetVerboseLevel = Debug
+                                     , rsetVerboseLevel = Debug
                                      }
 
       let handler = [Handler handler1]
@@ -236,13 +236,13 @@ spec = do
 
       let
         comp = do
-         -- initGhcSession cradle (rsetImportPaths defaultSettings)
-         initGhcSession cradle (rsetImportPaths logSettings)
+         initGhcSession cradle (rsetImportPaths defaultSettings)
+         -- initGhcSession cradle (rsetImportPaths logSettings)
          -- getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
          g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:Main,main:Main]"
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:Main, main:Main]"
 
       setCurrentDirectory currentDir
 

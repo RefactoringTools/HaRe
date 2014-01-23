@@ -421,9 +421,9 @@ renameLocalVarName oldPN newName t
                   else renamePN oldPN Nothing newName True t
 -}
 
-renameInClientMod :: GHC.Name -> String -> GHC.Name -> GHC.ModSummary
+renameInClientMod :: GHC.Name -> String -> GHC.Name -> (FilePath,GHC.ModSummary)
  -> RefactGhc [ApplyRefacResult]
-renameInClientMod oldPN newName newNameGhc modSummary = do
+renameInClientMod oldPN newName newNameGhc (target,modSummary) = do
       logm $ "renameInClientMod:(oldPN,newNameGhc,modSummary)=" ++ (showGhc (oldPN,newNameGhc,modSummary)) -- ++AZ++
       getModuleDetails modSummary
       {- ++AZ++ debug stuff -}

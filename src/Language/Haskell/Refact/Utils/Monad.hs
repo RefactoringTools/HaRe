@@ -36,14 +36,15 @@ import qualified MonadUtils    as GHC
 
 import Control.Monad.State
 import Data.List
+import Data.Time.Clock
+import Data.Tree
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import System.Directory
-import Data.Time.Clock
-import Data.Tree
 import System.Log.Logger
 import qualified Control.Monad.IO.Class as MU
 
@@ -105,6 +106,7 @@ data RefactState = RefSt
         , rsStorage   :: !StateStorage -- ^Temporary storage of values
                                       -- while refactoring takes place
         , rsGraph     :: [TargetGraph]
+        , rsModuleGraph :: [(FilePath,GHC.ModuleGraph)]
         , rsModule    :: !(Maybe RefactModule) -- ^The current module being refactored
         }
 
@@ -181,7 +183,7 @@ initGhcSession cradle importDirs = do
     case mcabal of
       Just cabal -> do
         targets <- liftIO $ cabalAllTargets cabal
-        liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
+        -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
         -- error $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
@@ -191,7 +193,7 @@ initGhcSession cradle importDirs = do
         let targets' = getEnabledTargets settings targets
         -- let (libt,exet,testt,bencht) = targets
         -- error $ "initGhcSession:targets'=" ++ show targets'
-        liftIO $ warningM "HaRe" $ "initGhcSession:targets'=" ++ show targets'
+        -- liftIO $ warningM "HaRe" $ "initGhcSession:targets'=" ++ show targets'
 
         case targets' of
           [] -> return ()
@@ -207,8 +209,8 @@ initGhcSession cradle importDirs = do
           loadModuleGraphGhc maybeMainFile
           return()
 
-    graph <- gets rsGraph
-    liftIO $ warningM "HaRe" $ "initGhcSession:graph=" ++ show graph
+    -- graph <- gets rsGraph
+    -- liftIO $ warningM "HaRe" $ "initGhcSession:graph=" ++ show graph
     return ()
     where
       options opt
@@ -231,9 +233,12 @@ loadModuleGraphGhc maybeTargetFile = do
       cgraph <- liftIO $ canonicalizeGraph graph
 
       settings <- get
-      put $ settings {rsGraph = (rsGraph settings) ++ [(targetFile,cgraph)]}
+      put $ settings { rsGraph = (rsGraph settings) ++ [(targetFile,cgraph)]
+                     , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFile,graph)]
+                     }
 
-      logm $ "loadModuleGraphGhc:cgraph=" ++ show (map fst cgraph)
+      -- logm $ "loadModuleGraphGhc:cgraph=" ++ show (map fst cgraph)
+      logm $ "loadModuleGraphGhc:cgraph=" ++ showGhc graph
 
       return ()
     Nothing -> return ()
