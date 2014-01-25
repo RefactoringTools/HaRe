@@ -10,6 +10,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactSettings(..)
        , RefactState(..)
        , RefactModule(..)
+       , TargetModule
        , RefactStashId(..)
        , RefactFlags(..)
        , StateStorage(..)
@@ -23,6 +24,7 @@ module Language.Haskell.Refact.Utils.Monad
        , initGhcSession
 
        , loadModuleGraphGhc
+       , ensureTargetLoaded
        , canonicalizeGraph
 
        , logm
@@ -107,10 +109,13 @@ data RefactState = RefSt
                                       -- while refactoring takes place
         , rsGraph     :: [TargetGraph]
         , rsModuleGraph :: [(FilePath,GHC.ModuleGraph)]
+        , rsCurrentTarget :: Maybe FilePath
         , rsModule    :: !(Maybe RefactModule) -- ^The current module being refactored
         }
 
-type TargetGraph = (FilePath,[(Maybe FilePath,GHC.ModSummary)])
+type TargetModule = (FilePath, GHC.ModSummary)
+
+type TargetGraph = (FilePath,[(Maybe FilePath, GHC.ModSummary)])
 
 -- |Result of parsing a Haskell source file. It is simply the
 -- TypeCheckedModule produced by GHC.
@@ -226,8 +231,9 @@ loadModuleGraphGhc maybeTargetFile = do
   -- liftIO $ warningM "HaRe" $ "loadModuleGraphGhc:maybeTargetFile=" ++ show maybeTargetFile
   case maybeTargetFile of
     Just targetFile -> do
-      setTargetFiles [targetFile]
-      void $ GHC.load GHC.LoadAllTargets
+      loadTarget targetFile
+      -- setTargetFiles [targetFile]
+      -- void $ GHC.load GHC.LoadAllTargets
 
       graph <- GHC.getModuleGraph
       cgraph <- liftIO $ canonicalizeGraph graph
@@ -235,6 +241,7 @@ loadModuleGraphGhc maybeTargetFile = do
       settings <- get
       put $ settings { rsGraph = (rsGraph settings) ++ [(targetFile,cgraph)]
                      , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFile,graph)]
+                     , rsCurrentTarget = maybeTargetFile
                      }
 
       -- logm $ "loadModuleGraphGhc:cgraph=" ++ show (map fst cgraph)
@@ -243,6 +250,29 @@ loadModuleGraphGhc maybeTargetFile = do
       return ()
     Nothing -> return ()
   return ()
+
+-- ---------------------------------------------------------------------
+
+loadTarget :: FilePath -> RefactGhc ()
+loadTarget targetFile = do
+      setTargetFiles [targetFile]
+      void $ GHC.load GHC.LoadAllTargets
+
+-- ---------------------------------------------------------------------
+
+-- | Make sure the given file is the currently loaded target, and load
+-- it if not. Assumes that all the module graphs had been generated
+-- before, so these are not updated.
+ensureTargetLoaded :: FilePath -> RefactGhc ()
+ensureTargetLoaded target = do
+  settings <- get
+  let currentTarget = rsCurrentTarget settings
+  if currentTarget == Just target
+    then return ()
+    else do
+      loadTarget target
+      put $ settings { rsCurrentTarget = Just target}
+      return ()
 
 -- ---------------------------------------------------------------------
 

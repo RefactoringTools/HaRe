@@ -115,6 +115,7 @@ initialState = RefSt
   , rsStorage = StorageNone
   , rsGraph = []
   , rsModuleGraph = []
+  , rsCurrentTarget = Nothing
   , rsModule = Nothing
   }
 
@@ -128,6 +129,7 @@ initialLogOnState = RefSt
   , rsStorage = StorageNone
   , rsGraph = []
   , rsModuleGraph = []
+  , rsCurrentTarget = Nothing
   , rsModule = Nothing
   }
 
@@ -229,6 +231,7 @@ runRefactGhcStateLog paramcomp logOn  = do
         , rsStorage = StorageNone
         , rsGraph = []
         , rsModuleGraph = []
+        , rsCurrentTarget = Nothing
         , rsModule = Nothing
         }
   (r,s) <- runRefactGhc (initGhcSession testCradle (rsetImportPaths defaultTestSettings) >> 

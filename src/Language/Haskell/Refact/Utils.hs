@@ -13,6 +13,7 @@ module Language.Haskell.Refact.Utils
        -- , loadModuleGraphGhc
        , getModuleGhc
        , parseSourceFileGhc
+       , activateModule
        , getModuleDetails
 
        -- * The bits that do the work
@@ -137,6 +138,17 @@ getModuleGhc targetFile = do
 -- ---------------------------------------------------------------------
 
 -- | In the existing GHC session, put the requested TypeCheckedModule
+-- into the RefactGhc Monad, after ensuring that its originating
+-- target is the currently loaded one
+
+activateModule :: TargetModule -> RefactGhc ()
+activateModule (target, modSum) = do
+  ensureTargetLoaded target
+  getModuleDetails modSum
+
+-- ---------------------------------------------------------------------
+
+-- | In the existing GHC session, put the requested TypeCheckedModule
 -- into the RefactGhc monad
 
 -- TODO: rename this function, it is not clear in a refactoring what
@@ -215,6 +227,7 @@ runRefacSession settings cradle comp = do
         , rsStorage = StorageNone
         , rsGraph = []
         , rsModuleGraph = []
+        , rsCurrentTarget = Nothing
         , rsModule = Nothing
         }
 

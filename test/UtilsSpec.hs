@@ -126,10 +126,8 @@ spec = do
       -- (show cradle) `shouldBe` ""
       (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
 
-      --                                                     lib,exe,test,bench
-      -- let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
-      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False)
-                                     , rsetVerboseLevel = Debug
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
+                                     -- , rsetVerboseLevel = Debug
                                      }
 
       let handler = [Handler handler1]
@@ -139,15 +137,11 @@ spec = do
              return [show e]
 
       r <- catches (rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)) handler
-      -- r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
-      -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       setCurrentDirectory currentDir
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      -- pending -- "complete this"
-      -- (show r) `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main1.hs\",\"src/main2.hs\"]"
-      (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main1.hs\",\"src/main2.hs\"]"
+      (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main2.hs\",\"src/main1.hs\"]"
 
 
   -- -------------------------------------------------------------------
@@ -209,7 +203,7 @@ spec = do
          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:M2, main:M3, main:Main]"
 
     ------------------------------------
 
@@ -220,7 +214,7 @@ spec = do
          g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:Main]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:Main]"
 
     ------------------------------------
 
@@ -242,7 +236,7 @@ spec = do
          g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:Main, main:Main]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:Main, main:Main]"
 
       setCurrentDirectory currentDir
 
@@ -319,7 +313,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:M2, main:M3, main:Main]"
 
     -- ---------------------------------
 
@@ -337,7 +331,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[]"
 
     -- ---------------------------------
 
@@ -355,7 +349,7 @@ spec = do
       (( ( (t,_)), mg ), _s) <- runRefactGhcState comp
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (show $ getModuleName parsed) `shouldBe` "Just (DupDef.Dd1,\"DupDef.Dd1\")"
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:DupDef.Dd2]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:DupDef.Dd2]"
 
 
   -- -------------------------------------------------------------------

@@ -405,10 +405,10 @@ addParamsToParent  pn params t = do
 -- |Do refactoring in the client module. that is to hide the identifer
 -- in the import declaration if it will cause any problem in the
 -- client module.
-liftingInClientMod :: GHC.ModuleName -> [GHC.Name] -> GHC.ModSummary
+liftingInClientMod :: GHC.ModuleName -> [GHC.Name] -> (FilePath,GHC.ModSummary)
   -> RefactGhc [ApplyRefacResult]
-liftingInClientMod serverModName pns modSummary = do
-       getModuleDetails modSummary
+liftingInClientMod serverModName pns targetModule@(_,modSummary) = do
+       activateModule targetModule
        renamed <- getRefactRenamed
        -- logm $ "liftingInClientMod:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        let clientModule = GHC.ms_mod modSummary
@@ -873,10 +873,10 @@ demote' modName (GHC.L _ pn) = do
 --  b) If the identifier is not used but is hided by the import
 --     declaration, then remove it from the hiding.
 demotingInClientMod ::
-  [GHC.Name] -> GHC.ModSummary
+  [GHC.Name] -> TargetModule
   -> RefactGhc ApplyRefacResult
-demotingInClientMod pns modSummary = do
-  getModuleDetails modSummary
+demotingInClientMod pns targetModule@(_,modSummary) = do
+  activateModule targetModule
   (refactoredMod,_) <- applyRefac (doDemotingInClientMod pns (GHC.ms_mod modSummary)) RSAlreadyLoaded
   return refactoredMod
 
