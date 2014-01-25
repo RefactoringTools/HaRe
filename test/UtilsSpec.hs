@@ -124,7 +124,7 @@ spec = do
       -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
-      (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
+      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
                                      -- , rsetVerboseLevel = Debug
@@ -226,7 +226,7 @@ spec = do
       -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
-      (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
+      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
 
       let
         comp = do
