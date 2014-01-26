@@ -257,10 +257,10 @@ logTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
                                   }
 
 testSettingsMainfile :: FilePath -> RefactSettings
-testSettingsMainfile mainFile = defaultTestSettings { rsetMainFile = Just mainFile }
+testSettingsMainfile mainFile = defaultTestSettings { rsetMainFile = Just [mainFile] }
 
 logTestSettingsMainfile :: FilePath -> RefactSettings
-logTestSettingsMainfile mainFile = logTestSettings { rsetMainFile = Just mainFile }
+logTestSettingsMainfile mainFile = logTestSettings { rsetMainFile = Just [mainFile] }
 
 -- ---------------------------------------------------------------------
 

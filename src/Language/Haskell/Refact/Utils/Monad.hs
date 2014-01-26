@@ -39,14 +39,15 @@ import qualified MonadUtils    as GHC
 import Control.Monad.State
 import Data.List
 import Data.Time.Clock
-import Data.Tree
+-- import Data.Tree
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
+-- import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import System.Directory
+import System.FilePath.Posix
 import System.Log.Logger
 import qualified Control.Monad.IO.Class as MU
 
@@ -60,7 +61,7 @@ data RefactSettings = RefSet
         , rsetImportPaths :: ![FilePath]
         , rsetExpandSplice :: Bool
         , rsetLineSeparator :: LineSeparator
-        , rsetMainFile     :: Maybe FilePath
+        , rsetMainFile     :: Maybe [FilePath]
         , rsetCheckTokenUtilsInvariant :: !Bool
         , rsetVerboseLevel :: !VerboseLevel
         , rsetEnabledTargets :: (Bool,Bool,Bool,Bool)
@@ -108,14 +109,14 @@ data RefactState = RefSt
         , rsStorage   :: !StateStorage -- ^Temporary storage of values
                                       -- while refactoring takes place
         , rsGraph     :: [TargetGraph]
-        , rsModuleGraph :: [(FilePath,GHC.ModuleGraph)]
-        , rsCurrentTarget :: Maybe FilePath
+        , rsModuleGraph :: [([FilePath],GHC.ModuleGraph)]
+        , rsCurrentTarget :: Maybe [FilePath]
         , rsModule    :: !(Maybe RefactModule) -- ^The current module being refactored
         }
 
-type TargetModule = (FilePath, GHC.ModSummary)
+type TargetModule = ([FilePath], GHC.ModSummary)
 
-type TargetGraph = (FilePath,[(Maybe FilePath, GHC.ModSummary)])
+type TargetGraph = ([FilePath],[(Maybe FilePath, GHC.ModSummary)])
 
 -- |Result of parsing a Haskell source file. It is simply the
 -- TypeCheckedModule produced by GHC.
@@ -187,28 +188,29 @@ initGhcSession cradle importDirs = do
 
     case mcabal of
       Just cabal -> do
-        targets <- liftIO $ cabalAllTargets cabal
-        liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
-        -- error $ "initGhcSession:targets=" ++ show targets
+        -- targets <- liftIO $ cabalAllTargets cabal
+        targets <- liftIO $ getCabalAllTargets cradle cabal
+        -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
         -- each main module and retrieve its module graph, and then
         -- set the targets to this superset.
 
         let targets' = getEnabledTargets settings targets
-        -- let (libt,exet,testt,bencht) = targets
-        -- error $ "initGhcSession:targets'=" ++ show targets'
-        -- liftIO $ warningM "HaRe" $ "initGhcSession:targets'=" ++ show targets'
 
         case targets' of
-          [] -> return ()
-          tgts -> do
-                     liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show tgts)
+          ([],[]) -> return ()
+          (libTgts,exeTgts) -> do
+                     -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show (libTgts,exeTgts))
                      -- setTargetFiles tgts
                      -- void $ GHC.load GHC.LoadAllTargets
 
-                     mapM_ loadModuleGraphGhc $ map Just tgts
-                     liftIO $ warningM "HaRe" $ "initGhcSession:loadModuleGraphGhc done"
+                     case libTgts of
+                       [] -> return ()
+                       _ -> loadModuleGraphGhc (Just libTgts)
+
+                     mapM_ loadModuleGraphGhc $ map (\t -> Just [t]) exeTgts
+                     -- liftIO $ warningM "HaRe" $ "initGhcSession:loadModuleGraphGhc done"
 
       Nothing -> do
           let maybeMainFile = rsetMainFile settings
@@ -225,14 +227,34 @@ initGhcSession cradle importDirs = do
 
 -- ---------------------------------------------------------------------
 
+-- getCabalAllTargets :: Cradle -> PackageDescription -> IO ([FilePath],[FilePath],[FilePath],[FilePath])
+getCabalAllTargets cradle cabal = do
+   currentDir <- getCurrentDirectory
+   setCurrentDirectory $ gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
+
+   (libs,exes,tests,benches) <- liftIO $ cabalAllTargets cabal
+   setCurrentDirectory currentDir
+
+   let -- libs'    = addCurrentDir libs
+       exes'    = addCurrentDir exes
+       tests'   = addCurrentDir tests
+       benches' = addCurrentDir benches
+
+       addCurrentDir ts = map (\t -> combine currentDir t) ts
+
+   return (libs,exes',tests',benches')
+
+-- ---------------------------------------------------------------------
+
 -- | Load a module graph into the GHC session, starting from main
 loadModuleGraphGhc ::
-  Maybe FilePath -> RefactGhc ()
-loadModuleGraphGhc maybeTargetFile = do
-  liftIO $ warningM "HaRe" $ "loadModuleGraphGhc:maybeTargetFile=" ++ show maybeTargetFile
-  case maybeTargetFile of
-    Just targetFile -> do
-      loadTarget targetFile
+  Maybe [FilePath] -> RefactGhc ()
+loadModuleGraphGhc maybeTargetFiles = do
+  -- currentDir <- liftIO getCurrentDirectory
+  -- liftIO $ warningM "HaRe" $ "loadModuleGraphGhc:maybeTargetFiles=" ++ show (maybeTargetFiles,currentDir)
+  case maybeTargetFiles of
+    Just targetFiles -> do
+      loadTarget targetFiles
       -- setTargetFiles [targetFile]
       -- void $ GHC.load GHC.LoadAllTargets
 
@@ -240,9 +262,9 @@ loadModuleGraphGhc maybeTargetFile = do
       cgraph <- liftIO $ canonicalizeGraph graph
 
       settings <- get
-      put $ settings { rsGraph = (rsGraph settings) ++ [(targetFile,cgraph)]
-                     , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFile,graph)]
-                     , rsCurrentTarget = maybeTargetFile
+      put $ settings { rsGraph = (rsGraph settings) ++ [(targetFiles,cgraph)]
+                     , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFiles,graph)]
+                     , rsCurrentTarget = maybeTargetFiles
                      }
 
       -- logm $ "loadModuleGraphGhc:cgraph=" ++ show (map fst cgraph)
@@ -254,9 +276,9 @@ loadModuleGraphGhc maybeTargetFile = do
 
 -- ---------------------------------------------------------------------
 
-loadTarget :: FilePath -> RefactGhc ()
-loadTarget targetFile = do
-      setTargetFiles [targetFile]
+loadTarget :: [FilePath] -> RefactGhc ()
+loadTarget targetFiles = do
+      setTargetFiles targetFiles
       void $ GHC.load GHC.LoadAllTargets
 
 -- ---------------------------------------------------------------------
@@ -306,14 +328,14 @@ getRefacSettings = do
 
 -- ---------------------------------------------------------------------
 
-getEnabledTargets :: RefactSettings -> ([FilePath],[FilePath],[FilePath],[FilePath]) -> [FilePath]
-getEnabledTargets settings (libt,exet,testt,bencht) = targets
+getEnabledTargets :: RefactSettings -> ([FilePath],[FilePath],[FilePath],[FilePath]) -> ([FilePath],[FilePath])
+getEnabledTargets settings (libt,exet,testt,bencht) = (targetsLib,targetsExe)
   where
     (libEnabled, exeEnabled, testEnabled, benchEnabled) = rsetEnabledTargets settings
-    targets = on libEnabled libt
-           ++ on exeEnabled exet
-           ++ on testEnabled testt
-           ++ on benchEnabled bencht
+    targetsLib = on libEnabled libt
+    targetsExe = on exeEnabled exet
+              ++ on testEnabled testt
+              ++ on benchEnabled bencht
 
     on flag xs = if flag then xs else []
 

@@ -177,7 +177,7 @@ parseSourceFileGhc targetFile = do
       void $ GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
      -}
       logm $ "parseSourceFileGhc:about to loadModuleGraphGhc for" ++ (show targetFile)
-      loadModuleGraphGhc (Just targetFile)
+      loadModuleGraphGhc (Just [targetFile])
       logm $ "parseSourceFileGhc:loadModuleGraphGhc done"
 
       mm <- getModuleMaybe targetFile
@@ -471,13 +471,13 @@ writeRefactoredFiles verbosity files
 
 -- TODO: deal with an anonymous main module, by taking Maybe GHC.ModuleName
 clientModsAndFiles
-  :: GHC.ModuleName -> RefactGhc [(FilePath,GHC.ModSummary)]
+  :: GHC.ModuleName -> RefactGhc [([FilePath],GHC.ModSummary)]
 clientModsAndFiles m = do
   modsum <- GHC.getModSummary m
 
   -- ms' <- GHC.getModuleGraph
   ms' <- gets rsModuleGraph
-  target <- gets rsCurrentTarget
+  -- target <- gets rsCurrentTarget
 
   let getClients ms = clientMods
         where

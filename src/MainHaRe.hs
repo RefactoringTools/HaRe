@@ -20,6 +20,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Paths_HaRe
 import Prelude
 import System.Console.GetOpt
+-- import System.Directory
 import System.Environment (getArgs)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 
@@ -61,7 +62,7 @@ usage =    "ghc-hare version " ++ showVersion version ++ "\n"
 
 argspec :: [OptDescr (RefactSettings -> RefactSettings)]
 argspec = [ Option "m" ["mainfile"]
-              (ReqArg (\mf opts -> opts { rsetMainFile = Just mf }) "FILE")
+              (ReqArg (\mf opts -> opts { rsetMainFile = Just [mf] }) "FILE")
               "Main file name if not specified in cabal file"
 
           -- , Option "l" ["tolisp"]
@@ -109,9 +110,13 @@ main = flip catches handlers $ do
 -- #if __GLASGOW_HASKELL__ >= 611
     hSetEncoding stdout utf8
 -- #endif
+    -- currentDirectory <- getCurrentDirectory
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
     cradle <- findCradle
+    -- case (cradleCabalDir cradle) of
+    --   Nothing -> return ()
+    --   Just dir -> setCurrentDirectory dir
     -- hPutStrLn stderr $ "cabal file=" ++ show (cradleCabalFile cradle) -- ++AZ++ debug
     let cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
@@ -142,6 +147,7 @@ main = flip catches handlers $ do
       "show" -> putStrLn  (show (opt,cradle))
 
       cmd      -> throw (NoSuchCommand cmd)
+    -- setCurrentDirectory currentDirectory
     putStr (show res)
     -- putStr $ "(ok " ++ showLisp mfs ++ ")"
   where

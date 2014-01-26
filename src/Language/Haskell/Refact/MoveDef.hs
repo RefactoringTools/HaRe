@@ -405,7 +405,7 @@ addParamsToParent  pn params t = do
 -- |Do refactoring in the client module. that is to hide the identifer
 -- in the import declaration if it will cause any problem in the
 -- client module.
-liftingInClientMod :: GHC.ModuleName -> [GHC.Name] -> (FilePath,GHC.ModSummary)
+liftingInClientMod :: GHC.ModuleName -> [GHC.Name] -> TargetModule
   -> RefactGhc [ApplyRefacResult]
 liftingInClientMod serverModName pns targetModule@(_,modSummary) = do
        activateModule targetModule
