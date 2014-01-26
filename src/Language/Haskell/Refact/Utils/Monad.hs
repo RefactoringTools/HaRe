@@ -188,7 +188,7 @@ initGhcSession cradle importDirs = do
     case mcabal of
       Just cabal -> do
         targets <- liftIO $ cabalAllTargets cabal
-        -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
+        liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
         -- error $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
@@ -203,11 +203,12 @@ initGhcSession cradle importDirs = do
         case targets' of
           [] -> return ()
           tgts -> do
-                     -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show tgts)
+                     liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show tgts)
                      -- setTargetFiles tgts
                      -- void $ GHC.load GHC.LoadAllTargets
 
                      mapM_ loadModuleGraphGhc $ map Just tgts
+                     liftIO $ warningM "HaRe" $ "initGhcSession:loadModuleGraphGhc done"
 
       Nothing -> do
           let maybeMainFile = rsetMainFile settings
@@ -228,7 +229,7 @@ initGhcSession cradle importDirs = do
 loadModuleGraphGhc ::
   Maybe FilePath -> RefactGhc ()
 loadModuleGraphGhc maybeTargetFile = do
-  -- liftIO $ warningM "HaRe" $ "loadModuleGraphGhc:maybeTargetFile=" ++ show maybeTargetFile
+  liftIO $ warningM "HaRe" $ "loadModuleGraphGhc:maybeTargetFile=" ++ show maybeTargetFile
   case maybeTargetFile of
     Just targetFile -> do
       loadTarget targetFile
@@ -245,7 +246,7 @@ loadModuleGraphGhc maybeTargetFile = do
                      }
 
       -- logm $ "loadModuleGraphGhc:cgraph=" ++ show (map fst cgraph)
-      logm $ "loadModuleGraphGhc:cgraph=" ++ showGhc graph
+      -- logm $ "loadModuleGraphGhc:cgraph=" ++ showGhc graph
 
       return ()
     Nothing -> return ()
@@ -263,16 +264,18 @@ loadTarget targetFile = do
 -- | Make sure the given file is the currently loaded target, and load
 -- it if not. Assumes that all the module graphs had been generated
 -- before, so these are not updated.
-ensureTargetLoaded :: FilePath -> RefactGhc ()
-ensureTargetLoaded target = do
+ensureTargetLoaded :: TargetModule -> RefactGhc GHC.ModSummary
+ensureTargetLoaded (target,modSum) = do
   settings <- get
   let currentTarget = rsCurrentTarget settings
   if currentTarget == Just target
-    then return ()
+    then return modSum
     else do
       loadTarget target
       put $ settings { rsCurrentTarget = Just target}
-      return ()
+      graph <- GHC.getModuleGraph
+      let newModSum = filter (\ms -> GHC.ms_mod modSum == GHC.ms_mod ms) graph
+      return $ ghead "ensureTargetLoaded" newModSum
 
 -- ---------------------------------------------------------------------
 

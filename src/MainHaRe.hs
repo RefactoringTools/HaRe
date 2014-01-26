@@ -112,6 +112,7 @@ main = flip catches handlers $ do
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
     cradle <- findCradle
+    -- hPutStrLn stderr $ "cabal file=" ++ show (cradleCabalFile cradle) -- ++AZ++ debug
     let cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
         cmdArg2 = cmdArg !. 2

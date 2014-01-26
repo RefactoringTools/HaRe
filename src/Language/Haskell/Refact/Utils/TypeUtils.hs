@@ -2695,7 +2695,7 @@ addDecl:: (SYB.Data t,HsValBinds t)
 
 addDecl parent pn (decl, msig, declToks) topLevel
  = if isJust pn
-     then appendDecl parent (fromJust pn) (decl, msig, declToks)
+     then appendDecl parent (gfromJust "addDecl" pn) (decl, msig, declToks)
      else if topLevel
             then addTopLevelDecl (decl, msig, declToks) parent
             else addLocalDecl parent (decl,msig,declToks)
@@ -2875,7 +2875,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
 
     inImport :: GHC.LImportDecl GHC.Name -> RefactGhc (GHC.LImportDecl GHC.Name)
     inImport imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit _as h))
-      | serverModName == modName  && not isQualified -- && (if isJust pn then findPN (fromJust pn) h else True)
+      | serverModName == modName  && not isQualified -- && (if isJust pn then findPN (gfromJust "addItemsToImport" pn) h else True)
        = case h of
            Nothing              -> insertEnts imp [] True
            Just (_isHide, ents) -> insertEnts imp ents False

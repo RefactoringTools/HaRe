@@ -237,7 +237,7 @@ willBeUnQualImportedBy modName (_,imps,_,_)
                        && not isQualified
                               && (isNothing h  -- not hiding
                                   ||
-                                   (isJust h && ((fst (fromJust h))==True))
+                                   (isJust h && ((fst (gfromJust "willBeUnQualImportedBy" h))==True))
                                   ))
                       imps
          in if (emptyList ms) then Nothing

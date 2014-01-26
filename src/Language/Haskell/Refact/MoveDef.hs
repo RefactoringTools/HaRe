@@ -419,7 +419,7 @@ liftingInClientMod serverModName pns targetModule@(_,modSummary) = do
        logm $ "liftingInClientMod:modNames=" ++ (showGhc modNames)
        if isJust modNames
         then do
-             pns' <- namesNeedToBeHided clientModule (fromJust modNames) pns
+             pns' <- namesNeedToBeHided clientModule (gfromJust "liftingInClientMod" modNames) pns
              logm $ "liftingInClientMod:pns'=" ++ (showGhc pns')
              -- in if pns' /= []
              if (nonEmptyList pns')
@@ -436,7 +436,7 @@ willBeExportedByClientMod names renamed =
   let (_,_,exps,_) = renamed
   in if isNothing exps
         then False
-        else any isJust $ map (\y-> (find (\x-> (simpModule x==Just y)) (fromJust exps))) names
+        else any isJust $ map (\y-> (find (\x-> (simpModule x==Just y)) (gfromJust "willBeExportedByClientMod" exps))) names
      where simpModule (GHC.L _ (GHC.IEModuleContents m)) = Just m
            simpModule _  = Nothing
 
@@ -1469,7 +1469,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
             where worker (GHC.Match pats1 typ rhs)
                     = do
                          let pats'=filter (\x->not ((patToPNT x /= Nothing) &&
-                                          elem (fromJust $ patToPNT x) ps)) pats1
+                                          elem (gfromJust "rmParamsInDemotedDecls" $ patToPNT x) ps)) pats1
 
                          let (startPos,endPos) = getBiggestStartEndLoc pats1
                          -- error $ "rmParamsInDemotedDecls:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
@@ -1525,7 +1525,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
        mkSubst :: [GHC.LPat GHC.Name] -> [[GHC.HsExpr GHC.Name]] -> [(GHC.Name,GHC.HsExpr GHC.Name)]
        mkSubst pats1 params
            = catMaybes (zipWith (\x y -> if (patToPNT x/=Nothing) && (length (nub $ map showGhc y)==1)
-                                          then Just (fromJust $ patToPNT x,(ghead "mkSubst") y)
+                                          then Just (gfromJust "mkSubst" $ patToPNT x,(ghead "mkSubst") y)
                                           else Nothing) pats1 params)
            {-
            = catMaybes (zipWith (\x y ->if (patToPN x/=defaultPN) && (length (nub y)==1)

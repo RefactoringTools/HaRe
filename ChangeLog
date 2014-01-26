@@ -1,3 +1,6 @@
+2014-01-25 v0.7.1.0
+	* Rework the module loading to load each target in turn, so that
+	all exe, test, benchmark etc will be refactored in one go
 2013-12-18 v0.7.0.9
 	* Tweaks to output stage based on real world use. Renaming seems
 	stable, liftXXX, demote have issues
