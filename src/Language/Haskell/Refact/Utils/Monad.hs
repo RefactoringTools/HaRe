@@ -191,6 +191,7 @@ initGhcSession cradle importDirs = do
         -- targets <- liftIO $ cabalAllTargets cabal
         targets <- liftIO $ getCabalAllTargets cradle cabal
         -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
+        logm $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
         -- each main module and retrieve its module graph, and then
@@ -202,14 +203,17 @@ initGhcSession cradle importDirs = do
           ([],[]) -> return ()
           (libTgts,exeTgts) -> do
                      -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show (libTgts,exeTgts))
+                     logm $ "initGhcSession:(libTgts,exeTgts)=" ++ (show (libTgts,exeTgts))
                      -- setTargetFiles tgts
                      -- void $ GHC.load GHC.LoadAllTargets
 
+                     mapM_ loadModuleGraphGhc $ map (\t -> Just [t]) exeTgts
+
+                     -- Load the library last, most likely in context
                      case libTgts of
                        [] -> return ()
                        _ -> loadModuleGraphGhc (Just libTgts)
 
-                     mapM_ loadModuleGraphGhc $ map (\t -> Just [t]) exeTgts
                      -- liftIO $ warningM "HaRe" $ "initGhcSession:loadModuleGraphGhc done"
 
       Nothing -> do
