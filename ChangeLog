@@ -1,3 +1,5 @@
+2014-01-27 v0.7.1.1
+	* The non-library targets were having the wrong path prepended
 2014-01-26 v0.7.1.0
 	* Rework the module loading to load each target in turn, so that
 	all exe, test, benchmark etc will be refactored in one go

@@ -12,7 +12,7 @@
      - [ ] should possibly make a setting to include targets from
        test/benchmark categories
      - [x] Need to manage current directory in terms of cabal.
-     - [ ] Cannot load multiple main modules. Consider generating the
+     - [x] Cannot load multiple main modules. Consider generating the
        union of all targets excluding the main modules, and putting
        those in the setTargets list.
 ** TODO make sure clientModsAndFiles and serverModsAndFiles us rsGraph
@@ -50,18 +50,16 @@
                          let (startPos,endPos) = getBiggestStartEndLoc pats1
 
 ** TODO add a "roundtrip" function to ghc-hare to simply parse and output a file, comparing for fidelity
-** TODO renaming in MissingH-1.2.0.2/src/Control/Concurrent/Thread/Utils.hs
+** DONE renaming in MissingH-1.2.0.2/src/Control/Concurrent/Thread/Utils.hs
    - rename (34,0) to runInThread1, gives
      "Cannot add module Control.Concurrent.Thread.Utils to context: not a home module"
      See http://parenz.wordpress.com/2013/08/17/ghc-api-interpreted-compiled-and-package-modules/ for pointers
-** TODO renaming in HaRe/src/Language/Haskell/Refact/Utils.hs
+** DONE renaming in HaRe/src/Language/Haskell/Refact/Utils.hs
    - (486,6) to clientModsAndFiles1 gives
      "attempting to use module `main:Language.Haskell.Refact.Utils.DualTree'
-       (/home/alanz/mysrc/github/alanz/HaRe/./src/Language/Haskell/Refact/Utils/DualTree.hs) which is not loaded"
-** DONE cabalAllTargets seems to no return exe and test for HaRe.cabal
-   - but only if not operating from the actual directory holding the
-     cabal file. Hmm.
-** DONE initGhcSession must lump all the library files into a single target.
+       (/home/alanz/mysrc/github/alanz/HaRe/./src/Language/Haskell/Refact/Utils/DualTree.hs)
+     which is not loaded"
+** TODO clientModsAndFiles must take the nub of all files generated from the various targets
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
