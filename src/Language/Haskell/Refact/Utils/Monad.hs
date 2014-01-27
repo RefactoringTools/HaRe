@@ -234,17 +234,18 @@ initGhcSession cradle importDirs = do
 -- getCabalAllTargets :: Cradle -> PackageDescription -> IO ([FilePath],[FilePath],[FilePath],[FilePath])
 getCabalAllTargets cradle cabal = do
    currentDir <- getCurrentDirectory
-   setCurrentDirectory $ gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
+   let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
+   setCurrentDirectory cabalDir
 
    (libs,exes,tests,benches) <- liftIO $ cabalAllTargets cabal
    setCurrentDirectory currentDir
 
    let -- libs'    = addCurrentDir libs
-       exes'    = addCurrentDir exes
-       tests'   = addCurrentDir tests
-       benches' = addCurrentDir benches
+       exes'    = addCabalDir exes
+       tests'   = addCabalDir tests
+       benches' = addCabalDir benches
 
-       addCurrentDir ts = map (\t -> combine currentDir t) ts
+       addCabalDir ts = map (\t -> combine cabalDir t) ts
 
    return (libs,exes',tests',benches')
 
