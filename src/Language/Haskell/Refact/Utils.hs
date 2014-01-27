@@ -497,8 +497,16 @@ clientModsAndFiles m = do
                            $ map summaryNodeSummary $ GHC.reachableG rg modNode
 
   let clients = concatMap (\(f,mg) -> zip (repeat f) (getClients mg)) ms'
-  -- return (concatMap getClients ms')
-  return clients
+  -- Need to strip out duplicates, based on the snd of the tuple
+      clients' = nubBy cc clients
+      cc (_,mg1) (_,mg2)
+        = if (show $ GHC.ms_mod mg1) == "Main" || (show $ GHC.ms_mod mg2) == "Main" 
+            then False
+            else mycomp mg1 mg2
+
+  logm $ "clientModsAndFiles:clients=" ++ show clients
+  logm $ "clientModsAndFiles:clients'=" ++ show clients'
+  return clients'
 
 -- TODO : find decent name and place for this.
 mycomp :: GHC.ModSummary -> GHC.ModSummary -> Bool
