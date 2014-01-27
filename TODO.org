@@ -1,21 +1,24 @@
 * HaRe todo
 ** TODO splitSubToks does not take cognizance of leading/trailing comments
 ** TODO rename mod to parsed complains of existing variable named parsed.
-     - This is not the case. Line 36 col 10
+     - This is not the case. Line 41 col 10
    [2013-09-10 Tue]
    [[file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let%20mod%20%3D%20GHC.pm_parsed_source%20$%20GHC.tm_parsed_module%20t][file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t]]
+     - Also, get "error attempting to use module `main:TestUtils' (/home/alanz/mysrc/github/alanz/HaRe/test/TestUtils.hs) which is not loaded" 
 ** TODO The elisp test for buffers to save includes directories that have been modified
-** TODO check cabal support
+** DONE check cabal support
      - [x] It does not seem to pick up the main files. Need to see how to
          set those.
      - [x] pull request for ghc-mod to return those
-     - [ ] should possibly make a setting to include targets from
+     - [x] should possibly make a setting to include targets from
        test/benchmark categories
      - [x] Need to manage current directory in terms of cabal.
      - [x] Cannot load multiple main modules. Consider generating the
        union of all targets excluding the main modules, and putting
        those in the setTargets list.
-** TODO make sure clientModsAndFiles and serverModsAndFiles us rsGraph
+** DONE make sure clientModsAndFiles and serverModsAndFiles us rsGraph
+   - clientModsAndFiles does
+   - serverModsAndFiles does not require it
 ** TODO liftToTopLevel in syz Zipper of g from zmapQ introduces param errors
       zmapQ f z = reverse $ downQ [] g z where
            g z' = query f z' : leftQ [] g z'
@@ -34,13 +37,13 @@
     [2013-09-09 Mon]
 ** TODO Use null instead of isEmptyList/nonEmptyList
 ** TODO There is a ITqvarid vs ITvarid for qualified variables
-** TODO After renaming, block comments with {- -} start one away from the margin
+** DONE After renaming, block comments with {- -} start one away from the margin
    e.g. syz-0.2.0.0/Data/Generics/Zipper.hs rename reduceAncestors to
    reduceAncestors1 on line 354, the comment starting on line 362
    shifts
 ** TODO complete the undefined's in Layout.hs
 ** TODO after accepting a refactoring, reload the buffer into emacs
-** TODO layout problem after renaming pats1 (1469,38) of MoveDef.hs
+** DONE layout problem after renaming pats1 (1469,38) of MoveDef.hs
    The second let in the subordinate do clause is shifted right by one
             where worker (GHC.Match pats1 typ rhs)
                     = do
@@ -50,15 +53,6 @@
                          let (startPos,endPos) = getBiggestStartEndLoc pats1
 
 ** TODO add a "roundtrip" function to ghc-hare to simply parse and output a file, comparing for fidelity
-** DONE renaming in MissingH-1.2.0.2/src/Control/Concurrent/Thread/Utils.hs
-   - rename (34,0) to runInThread1, gives
-     "Cannot add module Control.Concurrent.Thread.Utils to context: not a home module"
-     See http://parenz.wordpress.com/2013/08/17/ghc-api-interpreted-compiled-and-package-modules/ for pointers
-** DONE renaming in HaRe/src/Language/Haskell/Refact/Utils.hs
-   - (486,6) to clientModsAndFiles1 gives
-     "attempting to use module `main:Language.Haskell.Refact.Utils.DualTree'
-       (/home/alanz/mysrc/github/alanz/HaRe/./src/Language/Haskell/Refact/Utils/DualTree.hs)
-     which is not loaded"
 ** TODO clientModsAndFiles must take the nub of all files generated from the various targets
 ** TODO from the source files
    :PROPERTIES:
