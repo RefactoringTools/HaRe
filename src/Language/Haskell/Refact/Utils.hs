@@ -56,6 +56,7 @@ import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.Directory
+import System.FilePath.Posix
 
 import qualified Digraph       as GHC
 import qualified FastString    as GHC
@@ -117,10 +118,43 @@ getModuleGhc ::
 getModuleGhc targetFile = do
   -- TODO: consult cached store of multiple module graphs, one for
   --       each main file.
+  mTarget <- identifyTargetModule targetFile
+  case mTarget of
+    Nothing -> return ()
+    Just tm -> do
+      activateModule tm
+      return ()
+
   mm <- getModuleMaybe targetFile
   case mm of
     Just ms -> getModuleDetails ms
     Nothing -> parseSourceFileGhc targetFile
+
+-- ---------------------------------------------------------------------
+
+identifyTargetModule :: FilePath -> RefactGhc (Maybe TargetModule)
+identifyTargetModule targetFile = do
+  currentDirectory <- liftIO getCurrentDirectory
+  target1 <- liftIO $ canonicalizePath targetFile
+  target2 <- liftIO $ canonicalizePath (combine currentDirectory targetFile)
+  graphs <- gets rsModuleGraph
+
+  let ff = catMaybes $ map (findInTarget target1 target2) graphs
+  case ff of
+    [] -> return Nothing
+    ms -> return (Just (head ms))
+
+findInTarget :: FilePath -> FilePath -> ([FilePath],GHC.ModuleGraph) -> Maybe TargetModule
+findInTarget f1 f2 (fps,graph) = r
+  where
+    r = case filter (compModFiles f1 f2) graph of
+          [] -> Nothing
+          ms -> Just (fps,head ms)
+    compModFiles :: FilePath-> FilePath -> GHC.ModSummary -> Bool
+    compModFiles fileName1 fileName2 ms =
+      case GHC.ml_hs_file $ GHC.ms_location ms of
+        Nothing -> False
+        Just fn -> fn == fileName1 || fn == fileName2
 
 -- ---------------------------------------------------------------------
 
@@ -130,6 +164,7 @@ getModuleGhc targetFile = do
 
 activateModule :: TargetModule -> RefactGhc GHC.ModSummary
 activateModule (target, modSum) = do
+  logm $ "activateModule:" ++ show (target,GHC.ms_mod modSum)
   newModSum <- ensureTargetLoaded (target,modSum)
   getModuleDetails newModSum
   return newModSum

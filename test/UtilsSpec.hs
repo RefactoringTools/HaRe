@@ -149,7 +149,7 @@ spec = do
 
   -- -----------------------------------
 {- TODO: this test fails on travis, due to missing hspec-discover
-    it "renames in HaRe Utils" $ do
+    it "renames in HaRe Utils 1" $ do
 
       currentDir <- getCurrentDirectory
       -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
@@ -189,6 +189,47 @@ spec = do
            "\"./src/Language/Haskell/Refact/DupDef.hs\"]"
 -}
 
+  -- -----------------------------------
+{-
+    it "renames in HaRe Utils 2" $ do
+
+      currentDir <- getCurrentDirectory
+      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      setCurrentDirectory "./"
+      -- d <- getCurrentDirectory
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      cradle <- findCradle
+      -- (show cradle) `shouldBe` ""
+      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
+                                     , rsetVerboseLevel = Debug
+                                     }
+
+      let handler = [Handler handler1]
+          handler1 :: GHC.SourceError -> IO [String]
+          handler1 e = do
+             setCurrentDirectory currentDir
+             return [show e]
+
+      r <- catches (rename settings cradle "./test/UtilsSpec.hs" "parsed" (41, 10)) handler
+      setCurrentDirectory currentDir
+
+      r' <- mapM makeRelativeToCurrentDirectory r
+
+      (show r') `shouldBe`
+          "[\"./src/Language/Haskell/Refact/Utils.hs\","++
+           "\"./src/Language/Haskell/Refact/Renaming.hs\","++
+           "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
+           "\"./src/Language/Haskell/Refact/DupDef.hs\","++
+           "\"./src/Language/Haskell/Refact/Renaming.hs\","++
+           "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
+           "\"./src/Language/Haskell/Refact/DupDef.hs\","++
+           "\"test/UtilsSpec.hs\","++
+           "\"./src/Language/Haskell/Refact/Renaming.hs\","++
+           "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
+           "\"./src/Language/Haskell/Refact/DupDef.hs\"]"
+-}
   -- -------------------------------------------------------------------
 
   describe "sameOccurrence" $ do
