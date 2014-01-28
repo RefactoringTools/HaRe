@@ -1,10 +1,10 @@
 * HaRe todo
 ** TODO splitSubToks does not take cognizance of leading/trailing comments
 ** TODO rename mod to parsed complains of existing variable named parsed.
-     - This is not the case. Line 41 col 10
+     - [ ] This is not the case. Line 41 col 10
    [2013-09-10 Tue]
    [[file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let%20mod%20%3D%20GHC.pm_parsed_source%20$%20GHC.tm_parsed_module%20t][file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t]]
-     - Also, get "error attempting to use module `main:TestUtils' (/home/alanz/mysrc/github/alanz/HaRe/test/TestUtils.hs) which is not loaded" 
+     - [x] Also, get "error attempting to use module `main:TestUtils' (/home/alanz/mysrc/github/alanz/HaRe/test/TestUtils.hs) which is not loaded" 
 ** TODO The elisp test for buffers to save includes directories that have been modified
 ** DONE check cabal support
      - [x] It does not seem to pick up the main files. Need to see how to
