@@ -27,6 +27,9 @@ module TestUtils
        , unspace
        , mkTestGhcName
        , setLogger
+
+       , pwd
+       , cd
        ) where
 
 
@@ -48,10 +51,19 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Numeric
 
 import Data.Tree
+import System.Directory
 import System.Log.Handler.Simple
 import System.Log.Logger
 import qualified Data.Map as Map
 
+
+-- ---------------------------------------------------------------------
+
+pwd :: IO FilePath
+pwd = getCurrentDirectory
+
+cd :: FilePath -> IO ()
+cd = setCurrentDirectory
 
 -- ---------------------------------------------------------------------
 
@@ -101,6 +113,9 @@ initialState = RefSt
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
+  , rsGraph = []
+  , rsModuleGraph = []
+  , rsCurrentTarget = Nothing
   , rsModule = Nothing
   }
 
@@ -112,6 +127,9 @@ initialLogOnState = RefSt
   , rsUniqState = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
+  , rsGraph = []
+  , rsModuleGraph = []
+  , rsCurrentTarget = Nothing
   , rsModule = Nothing
   }
 
@@ -211,6 +229,9 @@ runRefactGhcStateLog paramcomp logOn  = do
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
+        , rsGraph = []
+        , rsModuleGraph = []
+        , rsCurrentTarget = Nothing
         , rsModule = Nothing
         }
   (r,s) <- runRefactGhc (initGhcSession testCradle (rsetImportPaths defaultTestSettings) >> 
@@ -236,10 +257,10 @@ logTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
                                   }
 
 testSettingsMainfile :: FilePath -> RefactSettings
-testSettingsMainfile mainFile = defaultTestSettings { rsetMainFile = Just mainFile }
+testSettingsMainfile mainFile = defaultTestSettings { rsetMainFile = Just [mainFile] }
 
 logTestSettingsMainfile :: FilePath -> RefactSettings
-logTestSettingsMainfile mainFile = logTestSettings { rsetMainFile = Just mainFile }
+logTestSettingsMainfile mainFile = logTestSettings { rsetMainFile = Just [mainFile] }
 
 -- ---------------------------------------------------------------------
 

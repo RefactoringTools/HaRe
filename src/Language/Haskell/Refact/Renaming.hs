@@ -96,6 +96,7 @@ comp fileName newName (row,col) = do
                             Just mn -> GHC.moduleName mn
                             Nothing -> modName
 
+           -- TODO: why do we have this restriction?
            unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++
                                          ", please do renaming in that module!"))
            -- logm $ "Renaming.comp:(isMainModule modu,pn)=" ++ (showGhc (isMainModule modu,pn))
@@ -420,11 +421,11 @@ renameLocalVarName oldPN newName t
                   else renamePN oldPN Nothing newName True t
 -}
 
-renameInClientMod :: GHC.Name -> String -> GHC.Name -> GHC.ModSummary
+renameInClientMod :: GHC.Name -> String -> GHC.Name -> TargetModule
  -> RefactGhc [ApplyRefacResult]
-renameInClientMod oldPN newName newNameGhc modSummary = do
-      logm $ "renameInClientMod:(oldPN,newNameGhc,modSummary)=" ++ (showGhc (oldPN,newNameGhc,modSummary)) -- ++AZ++
-      getModuleDetails modSummary
+renameInClientMod oldPN newName newNameGhc targetModule@(_,modSummary) = do
+      logm $ "renameInClientMod:(oldPN,newNameGhc,modSummary)=" ++ (showGhc (oldPN,newNameGhc,targetModule)) -- ++AZ++
+      activateModule targetModule
       {- ++AZ++ debug stuff -}
       names <- ghandle handler (GHC.parseName $ nameToString oldPN)
       nameInfo <- mapM GHC.lookupName names

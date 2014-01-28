@@ -166,15 +166,18 @@ findNewPName name renamed = gfromJust "findNewPName" res
 -- | Do refactoring in the client module. That is to hide the
 -- identifer in the import declaration if it will cause any problem in
 -- the client module.
-refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> GHC.ModSummary
+refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> TargetModule
                     -> RefactGhc ApplyRefacResult
-refactorInClientMod oldPN serverModName newPName modSummary
+refactorInClientMod oldPN serverModName newPName targetModule@(_,modSummary)
   = do
        logm ("refactorInClientMod: (serverModName,newPName)=" ++ (showGhc (serverModName,newPName))) -- ++AZ++ debug
+       activateModule targetModule
+
        let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
+{-
        -- modInfo@(t,ts) <- getModuleGhc fileName
        getModuleGhc fileName
-
+-}
        renamed <- getRefactRenamed
        parsed <- getRefactParsed
 
@@ -234,7 +237,7 @@ willBeUnQualImportedBy modName (_,imps,_,_)
                        && not isQualified
                               && (isNothing h  -- not hiding
                                   ||
-                                   (isJust h && ((fst (fromJust h))==True))
+                                   (isJust h && ((fst (gfromJust "willBeUnQualImportedBy" h))==True))
                                   ))
                       imps
          in if (emptyList ms) then Nothing

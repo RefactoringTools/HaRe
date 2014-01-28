@@ -62,7 +62,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , setStateStorage
        , getStateStorage
 
-       , logm
+       -- , logm
 
        , updateToks
        , updateToksWithPos
@@ -509,24 +509,6 @@ getStateStorage :: RefactGhc StateStorage
 getStateStorage = do
   storage <- gets rsStorage
   return storage
-
--- ---------------------------------------------------------------------
-
-logm :: String -> RefactGhc ()
-logm string = do
-  settings <- getRefacSettings
-  let loggingOn = (rsetVerboseLevel settings == Debug)
-             --     || (rsetVerboseLevel settings == Normal)
-  when loggingOn $ do
-     -- ts <- liftIO timeStamp
-     -- liftIO $ warningM "HaRe" (ts ++ ":" ++ string)
-     liftIO $ warningM "HaRe" (string)
-  return ()
-
-timeStamp :: IO String
-timeStamp = do
-  k <- getCurrentTime
-  return (show k)
 
 -- ---------------------------------------------------------------------
 

@@ -1,7 +1,6 @@
 # HaRe : The Haskell Refactorer
 
-
-[![Build Status](https://secure.travis-ci.org/alanz/HaRe.png?branch=master)](http://travis-ci.org/alanz/HaRe)
+[![Build Status](https://travis-ci.org/alanz/HaRe.png?branch=master)](https://travis-ci.org/alanz/HaRe)
 
 ## Getting Started
 

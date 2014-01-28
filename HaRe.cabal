@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.0.9
+Version:                        0.7.1.1
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -74,7 +74,7 @@ Library
         GHC-Options:             -Wall
 
         Hs-Source-Dirs:         src
-        Other-Modules:          Paths_HaRe
+        -- Other-Modules:          Paths_HaRe
         Exposed-modules:
              Language.Haskell.Refact.Case
            , Language.Haskell.Refact.DupDef
@@ -98,6 +98,7 @@ Library
            , Language.Haskell.Refact.Utils.TokenUtilsTypes
            , Language.Haskell.Refact.Utils.TypeSyn
            , Language.Haskell.Refact.Utils.TypeUtils
+           , Paths_HaRe
         Extensions:      CPP
 
 

@@ -10,9 +10,10 @@ module Language.Haskell.Refact.Utils
          sameOccurrence
 
        -- * Managing the GHC / project environment
-       , loadModuleGraphGhc
+       -- , loadModuleGraphGhc
        , getModuleGhc
        , parseSourceFileGhc
+       , activateModule
        , getModuleDetails
 
        -- * The bits that do the work
@@ -30,13 +31,14 @@ module Language.Haskell.Refact.Utils
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
-       , getCurrentModuleGraph
-       , sortCurrentModuleGraph
+       -- , getCurrentModuleGraph
+       -- , sortCurrentModuleGraph
 
        -- * For testing
        -- , initGhcSession
        -- , prettyprint
-       , pwd
+       -- , pwd
+       -- , cd
        ) where
 
 import Control.Monad.State
@@ -51,8 +53,6 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TokenUtils
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import System.Directory
@@ -69,28 +69,9 @@ import qualified GHC.SYB.Utils as SYB
 
 -- ---------------------------------------------------------------------
 
-pwd :: IO FilePath
-pwd = getCurrentDirectory
-
--- ---------------------------------------------------------------------
-
 -- | From file name to module name.
 fileNameToModName :: FilePath -> RefactGhc GHC.ModuleName
 fileNameToModName fileName = do
-{-
-  graph <- GHC.getModuleGraph
-  cgraph <- liftIO $ canonicalizeGraph graph
-  cfileName <- liftIO $ canonicalizePath fileName
-
-  let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
-
-  -- let mm = filter (\(mfn,_ms) -> mfn == Just fileName) $
-  --       map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-
-  case mm of
-    [] -> error $ "Can't find module name"
-    _ ->  return $ GHC.moduleName $ GHC.ms_mod $ snd $ head mm
--}
   mm <- getModuleMaybe fileName
   case mm of
     Nothing -> error $ "Can't find module name"
@@ -100,30 +81,21 @@ fileNameToModName fileName = do
 
 getModuleMaybe :: FilePath -> RefactGhc (Maybe GHC.ModSummary)
 getModuleMaybe fileName = do
-  graph <- GHC.getModuleGraph
-  cgraph <- liftIO $ canonicalizeGraph graph
   cfileName <- liftIO $ canonicalizePath fileName
+
+  graphs <- gets rsGraph
+  currentTgt <- gets rsCurrentTarget
+  logm $ "getModuleMaybe " ++ show fileName ++ ":" ++ show (length graphs,currentTgt)
+
+  let cgraph = concatMap (\(_,cg) -> cg) graphs
+  -- graph <- GHC.getModuleGraph
+  -- cgraph <- liftIO $ canonicalizeGraph graph
 
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
 
   case mm of
     [] -> return Nothing
     _ -> return $ Just $ snd (ghead "getModuleMaybe" mm)
-
--- ---------------------------------------------------------------------
-
-canonicalizeGraph ::
-  [GHC.ModSummary] -> IO [(Maybe (FilePath), GHC.ModSummary)]
-canonicalizeGraph graph = do
-  let mm = map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-      canon ((Just fp),m) = do
-        fp' <- canonicalizePath fp
-        return $ (Just fp',m)
-      canon (Nothing,m)  = return (Nothing,m)
-
-  mm' <- mapM canon mm
-
-  return mm'
 
 -- ---------------------------------------------------------------------
 
@@ -136,24 +108,6 @@ getModuleName (GHC.L _ modn) =
 
 -- ---------------------------------------------------------------------
 
--- | Load a module graph into the GHC session, starting from main
-loadModuleGraphGhc ::
-  Maybe FilePath -> RefactGhc ()
-loadModuleGraphGhc maybeTargetFile = do
-  case maybeTargetFile of
-    Just targetFile -> do
-      -- Prefix with * to force interpretation, for inscopes
-      -- target <- GHC.guessTarget ("*" ++ targetFile) Nothing
-      -- NOTE: does not seem to be required
-      target <- GHC.guessTarget (targetFile) Nothing
-      GHC.setTargets [target]
-      void $ GHC.load GHC.LoadAllTargets
-      return ()
-    Nothing -> return ()
-  return ()
-
--- ---------------------------------------------------------------------
-
 -- | Once the module graph has been loaded, load the given module into
 -- the RefactGhc monad
 -- TODO: relax the equality test, if the file is loaded via cabal it
@@ -161,23 +115,24 @@ loadModuleGraphGhc maybeTargetFile = do
 getModuleGhc ::
   FilePath -> RefactGhc ()
 getModuleGhc targetFile = do
-{-
-  graph <- GHC.getModuleGraph
-
-  let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
-       map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-
---  let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
---       map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-
-  case mm of
-    [(_,modSum)] -> getModuleDetails modSum
-    _            -> parseSourceFileGhc targetFile
--}
+  -- TODO: consult cached store of multiple module graphs, one for
+  --       each main file.
   mm <- getModuleMaybe targetFile
   case mm of
     Just ms -> getModuleDetails ms
     Nothing -> parseSourceFileGhc targetFile
+
+-- ---------------------------------------------------------------------
+
+-- | In the existing GHC session, put the requested TypeCheckedModule
+-- into the RefactGhc Monad, after ensuring that its originating
+-- target is the currently loaded one
+
+activateModule :: TargetModule -> RefactGhc GHC.ModSummary
+activateModule (target, modSum) = do
+  newModSum <- ensureTargetLoaded (target,modSum)
+  getModuleDetails newModSum
+  return newModSum
 
 -- ---------------------------------------------------------------------
 
@@ -215,22 +170,16 @@ getModuleDetails modSum = do
 -- | Parse a single source file into a GHC session
 parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
+     {-
       target <- GHC.guessTarget ("*" ++ targetFile) Nothing -- The *
                                      -- is to force interpretation, for inscopes
       GHC.setTargets [target]
       void $ GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
+     -}
+      logm $ "parseSourceFileGhc:about to loadModuleGraphGhc for" ++ (show targetFile)
+      loadModuleGraphGhc (Just [targetFile])
+      logm $ "parseSourceFileGhc:loadModuleGraphGhc done"
 
-{-
-      graph <- GHC.getModuleGraph
-
--- TODO: canonicalize paths
-      let mm = filter (\(mfn,_ms) -> mfn == Just targetFile) $
-           map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-
-      -- let modSum = head g
-      let [(_,modSum)] = mm
-      getModuleDetails modSum
--}
       mm <- getModuleMaybe targetFile
       case mm of
         Nothing -> error $ "HaRe:unexpected error parsing " ++ targetFile
@@ -266,15 +215,13 @@ runRefacSession settings cradle comp = do
         , rsUniqState = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
+        , rsGraph = []
+        , rsModuleGraph = []
+        , rsCurrentTarget = Nothing
         , rsModule = Nothing
         }
 
-   maybeMainFile = rsetMainFile settings
-  -- readLog <- initializeFlagsWithCradle opt cradle options True
-  -- setTargetFile fileName
-
   (refactoredMods,_s) <- runRefactGhc (initGhcSession cradle (rsetImportPaths settings) >>
-                                       loadModuleGraphGhc maybeMainFile >>
                                        comp) initialState
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)
@@ -524,17 +471,42 @@ writeRefactoredFiles verbosity files
 
 -- TODO: deal with an anonymous main module, by taking Maybe GHC.ModuleName
 clientModsAndFiles
-  :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
+  :: GHC.ModuleName -> RefactGhc [([FilePath],GHC.ModSummary)]
 clientModsAndFiles m = do
-  ms <- GHC.getModuleGraph
   modsum <- GHC.getModSummary m
-  let mg = getModulesAsGraph False ms Nothing
-      rg = GHC.transposeG mg
-      modNode = fromJust $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
-      clientMods = filter (\msum' -> not (mycomp msum' modsum))
-                 $ map summaryNodeSummary $ GHC.reachableG rg modNode
 
-  return clientMods
+  -- ms' <- GHC.getModuleGraph
+  ms' <- gets rsModuleGraph
+  -- target <- gets rsCurrentTarget
+
+  let getClients ms = clientMods
+        where
+          mg = getModulesAsGraph False ms Nothing
+          rg = GHC.transposeG mg
+          {-
+          modNode = gfromJust ("clientModsAndFiles:" ++ (showGhc (GHC.ms_mod modsum,target,mg))) 
+                  $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
+          clientMods = filter (\msum' -> not (mycomp msum' modsum))
+                     $ map summaryNodeSummary $ GHC.reachableG rg modNode
+          -}
+          maybeModNode = find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
+          clientMods = case maybeModNode of
+                         Nothing -> []
+                         Just modNode ->
+                           filter (\msum' -> not (mycomp msum' modsum))
+                           $ map summaryNodeSummary $ GHC.reachableG rg modNode
+
+  let clients = concatMap (\(f,mg) -> zip (repeat f) (getClients mg)) ms'
+  -- Need to strip out duplicates, based on the snd of the tuple
+      clients' = nubBy cc clients
+      cc (_,mg1) (_,mg2)
+        = if (show $ GHC.ms_mod mg1) == "Main" || (show $ GHC.ms_mod mg2) == "Main" 
+            then False
+            else mycomp mg1 mg2
+
+  logm $ "clientModsAndFiles:clients=" ++ show clients
+  logm $ "clientModsAndFiles:clients'=" ++ show clients'
+  return clients'
 
 -- TODO : find decent name and place for this.
 mycomp :: GHC.ModSummary -> GHC.ModSummary -> Bool
@@ -546,13 +518,14 @@ mycomp ms1 ms2 = (GHC.ms_mod ms1) == (GHC.ms_mod ms2)
 -- | Return the server module and file names. The server modules of
 -- module, say m, are those modules which are directly or indirectly
 -- imported by module m. This can only be called in a live GHC session
+-- TODO: make sure this works with multiple targets. Is that needed? No?
 serverModsAndFiles
   :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
 serverModsAndFiles m = do
   ms <- GHC.getModuleGraph
   modsum <- GHC.getModSummary m
   let mg = getModulesAsGraph False ms Nothing
-      modNode = fromJust $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG mg)
+      modNode = gfromJust "serverModsAndFiles" $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG mg)
       serverMods = filter (\msum' -> not (mycomp msum' modsum))
                  $ map summaryNodeSummary $ GHC.reachableG mg modNode
 
@@ -565,15 +538,17 @@ instance (Show GHC.ModuleName) where
 
 -- ---------------------------------------------------------------------
 
+{- ++AZ++ what is using this?
 -- | Get the current module graph, provided we are in a live GHC session
 getCurrentModuleGraph :: RefactGhc GHC.ModuleGraph
 getCurrentModuleGraph = GHC.getModuleGraph
 
 sortCurrentModuleGraph :: RefactGhc [GHC.SCC GHC.ModSummary]
 sortCurrentModuleGraph = do
-  -- g <- GHC.getModuleGraph
   g <- getCurrentModuleGraph
   let scc = GHC.topSortModuleGraph False g Nothing
   return scc
 
+
+++AZ++ -}
 

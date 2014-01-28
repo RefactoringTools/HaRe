@@ -110,12 +110,13 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"test/testdata/cabal/cabal1/src/Foo/Bar.hs\",\"src/main.hs\"]"
+      (show r') `shouldBe` "[\"test/testdata/cabal/cabal1/src/Foo/Bar.hs\","++
+                            "\"test/testdata/cabal/cabal1/src/main.hs\"]"
 
 
   -- -----------------------------------
 
-    it "loads a series of files based on cabal2" $ do
+    it "loads a series of files based on cabal2, which has 2 exe" $ do
 
       currentDir <- getCurrentDirectory
       -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
@@ -124,25 +125,69 @@ spec = do
       -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
+      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
 
-      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
+                                     -- , rsetVerboseLevel = Debug
+                                     }
 
       let handler = [Handler handler1]
           handler1 :: GHC.SourceError -> IO [String]
-          handler1 _e = do
+          handler1 e = do
              setCurrentDirectory currentDir
-             return []
+             return [show e]
 
       r <- catches (rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)) handler
-      -- r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
-      -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       setCurrentDirectory currentDir
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      pending -- "complete this"
-      -- (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\",\"src/main.hs\"]"
+      (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\","++
+                            "\"test/testdata/cabal/cabal2/src/main2.hs\","++
+                            "\"test/testdata/cabal/cabal2/src/main1.hs\"]"
 
+
+  -- -----------------------------------
+{- TODO: this test fails on travis, due to missing hspec-discover
+    it "renames in HaRe Utils" $ do
+
+      currentDir <- getCurrentDirectory
+      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      setCurrentDirectory "./"
+      -- d <- getCurrentDirectory
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      cradle <- findCradle
+      -- (show cradle) `shouldBe` ""
+      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
+                                     -- , rsetVerboseLevel = Debug
+                                     }
+
+      let handler = [Handler handler1]
+          handler1 :: GHC.SourceError -> IO [String]
+          handler1 e = do
+             setCurrentDirectory currentDir
+             return [show e]
+
+      r <- catches (rename settings cradle "./src/Language/Haskell/Refact/Utils.hs" "clientModsAndFiles1" (473, 6)) handler
+      setCurrentDirectory currentDir
+
+      r' <- mapM makeRelativeToCurrentDirectory r
+
+      (show r') `shouldBe`
+          "[\"./src/Language/Haskell/Refact/Utils.hs\","++
+           "\"./src/Language/Haskell/Refact/Renaming.hs\","++
+           "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
+           "\"./src/Language/Haskell/Refact/DupDef.hs\","++
+           "\"./src/Language/Haskell/Refact/Renaming.hs\","++
+           "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
+           "\"./src/Language/Haskell/Refact/DupDef.hs\","++
+           "\"test/UtilsSpec.hs\","++
+           "\"./src/Language/Haskell/Refact/Renaming.hs\","++
+           "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
+           "\"./src/Language/Haskell/Refact/DupDef.hs\"]"
+-}
 
   -- -------------------------------------------------------------------
 
@@ -193,6 +238,8 @@ spec = do
     it "can only be called in a live RefactGhc session" $ do
       pending  -- "write this test"
 
+    ------------------------------------
+
     it "gets modules which directly or indirectly import a module #1" $ do
       -- TODO: harvest this commonality
       let
@@ -201,7 +248,9 @@ spec = do
          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+
+    ------------------------------------
 
     it "gets modules which directly or indirectly import a module #2" $ do
       let
@@ -210,7 +259,31 @@ spec = do
          g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:Main]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:Main]"
+
+    ------------------------------------
+
+    it "gets modules which import a module in different cabal targets" $ do
+      currentDir <- getCurrentDirectory
+      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      setCurrentDirectory "./test/testdata/cabal/cabal2"
+      -- d <- getCurrentDirectory
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
+      cradle <- findCradle
+      -- (show cradle) `shouldBe` ""
+      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
+
+      let
+        comp = do
+         initGhcSession cradle (rsetImportPaths defaultSettings)
+         -- initGhcSession cradle (rsetImportPaths logSettings)
+         -- getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
+         g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
+         return g
+      (mg,_s) <- runRefactGhcState comp
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:Main, main:Main]"
+
+      setCurrentDirectory currentDir
 
   -- -------------------------------------------------------------------
 
@@ -238,7 +311,7 @@ spec = do
 
 
   -- -------------------------------------------------------------------
-
+{-
   describe "getCurrentModuleGraph" $ do
     it "gets the module graph for the currently loaded modules" $ do
       let
@@ -254,9 +327,9 @@ spec = do
 
     it "gets the updated graph, after a refactor" $ do
       pending -- "write this test"
-
+-}
   -- -------------------------------------------------------------------
-
+{-
   describe "sortCurrentModuleGraph" $ do
     it "needs a test or two" $ do
       let
@@ -266,14 +339,14 @@ spec = do
          return g
       (mg,_s) <- runRefactGhcState comp
       (showGhc $ map (\m -> GHC.ms_mod m) (GHC.flattenSCCs mg)) `shouldBe` "[main:TypeUtils.C, main:TypeUtils.B]"
-
+-}
   -- -------------------------------------------------------------------
 
   describe "getModuleGhc" $ do
     it "retrieves a module from an existing module graph" $ do
       let
         comp = do
-          loadModuleGraphGhc $ Just "./test/testdata/M.hs"
+          loadModuleGraphGhc $ Just ["./test/testdata/M.hs"]
           getModuleGhc "./test/testdata/S1.hs"
           pr <- getTypecheckedModule
           toks <- fetchOrigToks
@@ -285,7 +358,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:M2, main:M3, main:Main]"
 
     -- ---------------------------------
 
@@ -303,14 +376,14 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[]"
 
     -- ---------------------------------
 
     it "retrieves a module from an existing module graph #2" $ do
       let
         comp = do
-          loadModuleGraphGhc $ Just "./test/testdata/DupDef/Dd2.hs"
+          loadModuleGraphGhc $ Just ["./test/testdata/DupDef/Dd2.hs"]
           getModuleGhc "./test/testdata/DupDef/Dd1.hs"
           pr <- getTypecheckedModule
           toks <- fetchOrigToks
@@ -321,7 +394,7 @@ spec = do
       (( ( (t,_)), mg ), _s) <- runRefactGhcState comp
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (show $ getModuleName parsed) `shouldBe` "Just (DupDef.Dd1,\"DupDef.Dd1\")"
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:DupDef.Dd2]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:DupDef.Dd2]"
 
 
   -- -------------------------------------------------------------------
