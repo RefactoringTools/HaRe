@@ -2,7 +2,7 @@
 *.hs.20*
 *.o
 *.swp
-*.refactored
+*.refactored.hs
 /.hpc/
 /debug.log
 /hareview/.vagrant
@@ -23,6 +23,9 @@
 /src/ZipperPlayRose.hs
 /src/strafunski.hs
 /test/debug.log
+/test/testdata/cabal/cabal2/src/*.AST_out
+/test/testdata/cabal/cabal2/src/*.renamed_out
+/test/testdata/cabal/cabal2/src/*.tokens
 /test/testdata/Case/B.hs.AST_out
 /test/testdata/Case/B.hs.renamed_out
 /test/testdata/Case/B.hs.tokens

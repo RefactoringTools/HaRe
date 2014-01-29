@@ -41,7 +41,7 @@ spec = do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","tl2","4","1"]
      res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "tl2" (4,1)
      (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
-     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.refactored.hs"
                           "./test/testdata/DupDef/Dd1.hs.expected"
      diff `shouldBe` []
 
@@ -50,7 +50,7 @@ spec = do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","mm","23","5"]
      res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "mm" (23,5)
      (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
-     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.refactored.hs"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
 
@@ -59,7 +59,7 @@ spec = do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","gg","17","5"]
      res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "gg" (17,5)
      (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
-     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.refactored.hs"
                           "./test/testdata/DupDef/Dd1.hs.expected.gg"
      diff `shouldBe` []
 
@@ -67,7 +67,7 @@ spec = do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","lll","27","5"]
      res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "lll" (27,5)
      (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
-     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.refactored.hs"
                           "./test/testdata/DupDef/Dd1.hs.expected.ll"
      diff `shouldBe` []
 
@@ -75,17 +75,17 @@ spec = do
      -- doDuplicateDef ["./test/testdata/DupDef/Dd1.hs","sss","31","7"]
      res <- duplicateDef defaultTestSettings testCradle "./test/testdata/DupDef/Dd1.hs" "sss" (31,7)
      (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\"]"
-     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.refactored.hs"
                           "./test/testdata/DupDef/Dd1.hs.expected.dd"
      diff `shouldBe` []
 
     it "hides the new definition if it will cause problems in client mods" $ do
      res <- duplicateDef (testSettingsMainfile "./test/testdata/DupDef/Dd2.hs") testCradle "./test/testdata/DupDef/Dd1.hs" "mm" (23,5)
      (show res) `shouldBe` "[\"./test/testdata/DupDef/Dd1.hs\",\"./test/testdata/DupDef/Dd2.hs\"]"
-     diff <- compareFiles "./test/testdata/DupDef/Dd1.hs.refactored"
+     diff <- compareFiles "./test/testdata/DupDef/Dd1.refactored.hs"
                           "./test/testdata/DupDef/Dd1.hs.expected.mm"
      diff `shouldBe` []
-     diff2 <- compareFiles "./test/testdata/DupDef/Dd2.hs.refactored"
+     diff2 <- compareFiles "./test/testdata/DupDef/Dd2.refactored.hs"
                            "./test/testdata/DupDef/Dd2.hs.expected"
      diff2 `shouldBe` []
 
@@ -94,7 +94,7 @@ spec = do
      -- duplicateDef logTestSettings Nothing
         -- "./test/testdata/Case/B.hs" "joe" (9,1)
      (show res) `shouldBe` "[\"./test/testdata/Case/B.hs\"]"
-     diff <- compareFiles "./test/testdata/Case/B.hs.refactored"
+     diff <- compareFiles "./test/testdata/Case/B.refactored.hs"
                           "./test/testdata/Case/B.hs.expected.dd"
      diff `shouldBe` []
 

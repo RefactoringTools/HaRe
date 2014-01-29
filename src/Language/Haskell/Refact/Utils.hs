@@ -488,7 +488,8 @@ writeRefactoredFiles verbosity files
            -- its first argument and returns its second argument. It
            -- is unclear for me why (length source) evaluation is
            -- forced.
-           seq (length source) (writeFile (fileName ++ ".refactored") source)
+           let (baseFileName,ext) = splitExtension fileName
+           seq (length source) (writeFile (baseFileName ++ ".refactored" ++ ext) source)
 
            when (verbosity == Debug) $
              do
