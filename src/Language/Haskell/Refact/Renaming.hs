@@ -64,11 +64,8 @@ comp fileName newName (row,col) = do
     getModuleGhc fileName
     renamed <- getRefactRenamed
     parsed  <- getRefactParsed
-    logm $ "comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+    -- logm $ "comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
     -- logm $ "comp:parsed=" ++ (SYB.showData SYB.Parser 0 parsed) -- ++AZ++
-
-    let (GHC.L _ rdrName') = gfromJust "Renaming.comp" $ locToRdrName (row, col) parsed
-    logm $ "Renaming.comp:rdrName'=" ++ (showGhc rdrName')
 
     modu <- getModule
     -- let (Just (modName,_)) = getModuleName parsed
@@ -80,7 +77,10 @@ comp fileName newName (row,col) = do
     case maybePn of
         Just pn@(GHC.L _ n) -> do
            logm $ "Renaming:(n,modu)=" ++ (showGhc (n,modu))
-           let (GHC.L _ rdrName) = gfromJust "Renaming.comp" $ locToRdrName (row, col) parsed
+           -- let (GHC.L _ rdrName') = gfromJust "Renaming.comp.1" $ locToRdrName (row, col) parsed
+           -- logm $ "Renaming.comp:rdrName'=" ++ (showGhc rdrName')
+
+           let (GHC.L _ rdrName) = gfromJust "Renaming.comp.2" $ locToRdrName (row, col) parsed
            let rdrNameStr = GHC.occNameString $ GHC.rdrNameOcc rdrName
            logm $ "Renaming: rdrName=" ++ (SYB.showData SYB.Parser 0 rdrName)
            logm $ "Renaming: occname rdrName=" ++ (show $ GHC.occNameString $ GHC.rdrNameOcc rdrName)
@@ -354,6 +354,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                  -- isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName Nothing
                                  isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName (Just newNameGhc)
                                  logm $ "renameTopLevelVarName:after isInScopeUnqual"
+                                 logm $ "renameTopLevelVarName:oldPN=" ++ showGhc oldPN
                                  let ds = hsVisibleNames oldPN renamed
                                  logm $ "renameTopLevelVarName:ds computed=" ++ (show ds)
                                  -- '\\[pNtoName oldPN]' handles the case in which the new name is same as the old name   

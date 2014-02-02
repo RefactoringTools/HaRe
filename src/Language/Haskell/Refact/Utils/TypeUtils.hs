@@ -49,7 +49,9 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,hsPNs -- ,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
     ,isDeclaredIn
-    ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNames
+    ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNameStrings
+    ,hsFreeAndDeclaredPNsGhc
+    ,getDeclaredTypes
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
     ,hsVisiblePNs, hsVisibleNames
@@ -737,8 +739,8 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned
 -- variables are in the String format.
-hsFreeAndDeclaredNames::(SYB.Data t) => t -> ([String],[String])
-hsFreeAndDeclaredNames t = res
+hsFreeAndDeclaredNameStrings::(SYB.Data t) => t -> ([String],[String])
+hsFreeAndDeclaredNameStrings t = res
   where
     (f1,d1) = hsFreeAndDeclaredPNs t
     res = ((nub.map showGhc) f1, (nub.map showGhc) d1)
@@ -747,22 +749,44 @@ hsFreeAndDeclaredNames t = res
 -- hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
 --                              return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
 
--- ---------------------------------------------------------------------
-{-
--- |Experiment with GHC fvs stuff
-getFvsAll :: (SYB.Data t) => t -> [([GHC.Name], GHC.NameSet)]
-getFvsAll t
-  = SYB.everythingStaged SYB.Renamer
-                             (++) []
-                             ([]
-                              `SYB.mkQ`  binds
-                             ) t
+
+hsFreeAndDeclaredPNsGhc:: (HsValBinds t) => t -> ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNsGhc t = res
   where
-      binds :: (GHC.HsBind GHC.Name) -> [([GHC.Name],GHC.NameSet)]
-      binds (GHC.FunBind (GHC.L _ pname) _ _ _ fvs _) = [([pname],     fvs)]
-      binds (GHC.PatBind p _rhs _ty fvs _)            = [((hsNamess p),fvs)]
-      binds _ = []
--}
+    bs = hsBinds t
+
+    getFd :: (GHC.NameSet,[GHC.Name]) -> GHC.LHsBind GHC.Name -> (GHC.NameSet,[GHC.Name])
+    getFd (facc,dacc) b = (GHC.unionNameSets facc f,dacc ++ d)
+      where
+        -- d = getDeclaredVars [b]
+        -- f = getFreeVars [b]
+        [(d,f)] = getFvs [b]
+
+    tds = concatMap getDeclaredTypes $ concat $ hsTyDecls t
+    (fs,ds) = foldl' getFd (GHC.emptyNameSet,[]) bs
+
+    fs' = GHC.nameSetToList $ GHC.minusNameSet fs (GHC.mkNameSet (ds ++ tds))
+    res = (fs',ds ++ tds)
+
+-- ---------------------------------------------------------------------
+
+getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
+getDeclaredTypes (GHC.L _ (GHC.ForeignType (GHC.L _ n) _)) = [n]
+getDeclaredTypes (GHC.L _ (GHC.TyFamily _ (GHC.L _ n) bs _)) = [n] ++ bsn
+  where
+    bsn = [] -- TODO: pull these out of bs
+getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) vars defn fvs)) = [n] ++ vsn ++ dsn
+  where
+    vsn = [] -- TODO: extract from vars
+    dsn = [] -- TODO: extract from defn
+getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) vars _fds _sigs meths ats _atdefs _ fvs))
+  = [n] ++ vsn ++ msn ++ asn
+  where
+    -- TODO: extract these from the appropriate fields
+    vsn = []
+    msn = []
+    asn = []
+
 -- |Experiment with GHC fvs stuff
 getFvs :: [GHC.LHsBind GHC.Name] -> [([GHC.Name], GHC.NameSet)]
 getFvs bs = concatMap binds bs
@@ -1583,6 +1607,11 @@ class (SYB.Data t) => HsValBinds t where
     -- given syntax phrase.
     -- isDeclaredIn :: GHC.Name -> t -> Bool
 
+    -- | Return the type class definitions that are directly enclosed
+    -- in the given syntax phrase. Note: only makes sense for
+    -- GHC.RenamedSource
+    hsTyDecls :: t -> [[GHC.LTyClDecl GHC.Name]]
+
 -- ++AZ++ see if we can get away with one only..
 isDeclaredIn :: (HsValBinds t) => GHC.Name -> t -> Bool
 isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
@@ -1595,10 +1624,13 @@ instance HsValBinds (GHC.RenamedSource) where
     where
       grp' = grp {GHC.hs_valds = binds}
 
+  hsTyDecls (grp,_,_,_) = (GHC.hs_tyclds grp)
+
 
 instance HsValBinds (GHC.HsValBinds GHC.Name) where
   hsValBinds vb = vb
   replaceValBinds _old new = new
+  hsTyDecls _ = []
 
 instance HsValBinds (GHC.HsGroup GHC.Name) where
   hsValBinds grp = (GHC.hs_valds grp)
@@ -1606,6 +1638,8 @@ instance HsValBinds (GHC.HsGroup GHC.Name) where
   replaceValBinds (GHC.HsGroup b t i d f de fo w a r v doc) binds
     = (GHC.HsGroup b' t i d f de fo w a r v doc)
        where b' = replaceValBinds b binds
+
+  hsTyDecls _ = []
 
 instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
   hsValBinds lb = case lb of
@@ -1617,11 +1651,14 @@ instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
   replaceValBinds (GHC.HsIPBinds _b) _new    = error "undefined replaceValBinds HsIPBinds"
   replaceValBinds (GHC.EmptyLocalBinds) new  = (GHC.HsValBinds new)
 
+  hsTyDecls _ = []
+
 instance HsValBinds (GHC.GRHSs GHC.Name) where
   hsValBinds (GHC.GRHSs _ lb) = hsValBinds lb
 
   replaceValBinds (GHC.GRHSs rhss b) new = (GHC.GRHSs rhss (replaceValBinds b new))
 
+  hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
@@ -1631,6 +1668,8 @@ instance HsValBinds (GHC.MatchGroup GHC.Name) where
   replaceValBinds (GHC.MatchGroup matches a) newBinds
                = (GHC.MatchGroup (replaceValBinds matches newBinds) a)
 
+  hsTyDecls _ = []
+
 -- ---------------------------------------------------------------------
 
 instance HsValBinds [GHC.LMatch GHC.Name] where
@@ -1639,6 +1678,8 @@ instance HsValBinds [GHC.LMatch GHC.Name] where
   replaceValBinds [] _        = error "empty match list in replaceValBinds [GHC.LMatch GHC.Name]"
   replaceValBinds ms newBinds = (replaceValBinds (ghead "replaceValBinds" ms) newBinds):(tail ms)
 
+  hsTyDecls _ = []
+
 -- ---------------------------------------------------------------------
 
 instance HsValBinds (GHC.LMatch GHC.Name) where
@@ -1646,6 +1687,7 @@ instance HsValBinds (GHC.LMatch GHC.Name) where
 
   replaceValBinds (GHC.L l m) newBinds = (GHC.L l (replaceValBinds m newBinds))
 
+  hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
@@ -1658,6 +1700,7 @@ instance HsValBinds (GHC.Match GHC.Name) where
       where
         binds' = (GHC.HsValBinds newBinds)
 
+  hsTyDecls _ = []
 
 instance HsValBinds (GHC.HsBind GHC.Name) where
   hsValBinds (GHC.PatBind _p rhs _typ _fvs _) = hsValBinds rhs
@@ -1673,6 +1716,8 @@ instance HsValBinds (GHC.HsBind GHC.Name) where
   replaceValBinds x _newBinds
       = error $ "replaceValBinds (GHC.HsBind GHC.Name) undefined for:" ++ (showGhc x)
 
+  hsTyDecls _ = []
+
 instance HsValBinds (GHC.HsExpr GHC.Name) where
   hsValBinds (GHC.HsLet ds _) = hsValBinds ds
   hsValBinds x = error $ "TypeUtils.hsValBinds undefined for:" ++ showGhc x
@@ -1680,18 +1725,22 @@ instance HsValBinds (GHC.HsExpr GHC.Name) where
   replaceValBinds (GHC.HsLet binds ex) new = (GHC.HsLet (replaceValBinds binds new) ex)
   replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" ++ (showGhc old)
 
+  hsTyDecls _ = []
+
 instance HsValBinds (GHC.Stmt GHC.Name) where
   hsValBinds (GHC.LetStmt ds) = hsValBinds ds
   hsValBinds other = error $ "hsValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc other)
   replaceValBinds (GHC.LetStmt ds) new = (GHC.LetStmt (replaceValBinds ds new))
   replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc old)
 
+  hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
 instance HsValBinds (GHC.LHsBinds GHC.Name) where
   hsValBinds binds = hsValBinds $ GHC.bagToList binds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsBinds GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
@@ -1711,6 +1760,8 @@ instance HsValBinds (GHC.LHsBind GHC.Name) where
   replaceValBinds (GHC.L l (GHC.AbsBinds a b c d binds)) newBinds
                = (GHC.L l (GHC.AbsBinds a b c d (replaceValBinds binds newBinds)))
 
+  hsTyDecls _ = []
+
 -- ---------------------------------------------------------------------
 
 instance HsValBinds ([GHC.LHsBind GHC.Name]) where
@@ -1722,28 +1773,34 @@ instance HsValBinds ([GHC.LHsBind GHC.Name]) where
 
   -- replaceValBinds old new = error ("replaceValBinds (old,new)=" ++ (showGhc (old,new)))
 
+  hsTyDecls _ = []
+
 instance HsValBinds (GHC.LHsExpr GHC.Name) where
   hsValBinds (GHC.L _ (GHC.HsLet binds _ex)) = hsValBinds binds
   hsValBinds _                               = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsExpr GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
 instance HsValBinds [GHC.LGRHS GHC.Name] where
   hsValBinds xs = unionBinds $ map hsValBinds xs
   replaceValBinds _old _new = error $ "replaceValBinds [GHC.LGRHS GHC.Name] undefined for:" -- ++ (showGhc old)
+  hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
 instance HsValBinds (GHC.LGRHS GHC.Name) where
   hsValBinds (GHC.L _ (GHC.GRHS stmts _expr)) = hsValBinds stmts
   replaceValBinds _old _new = error $ "replaceValBinds (GHC.LHGRHS GHC.Name) undefined for:" -- ++ (showGhc _old)
+  hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
 instance HsValBinds [GHC.LStmt GHC.Name] where
   hsValBinds xs = unionBinds $ map hsValBinds xs
   replaceValBinds old _new = error $ "replaceValBinds [GHC.LStmt GHC.Name] undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
@@ -1751,6 +1808,7 @@ instance HsValBinds (GHC.LStmt GHC.Name) where
   hsValBinds (GHC.L _ (GHC.LetStmt binds)) = hsValBinds binds
   hsValBinds _                             = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.LStmt GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
@@ -1917,6 +1975,7 @@ instance FindEntity GHC.Name where
 
 -- ---------------------------------------------------------------------
 
+-- TODO: should the location be matched too in this case?
 instance FindEntity (GHC.Located GHC.Name) where
 
   findEntity n t = fromMaybe False res
