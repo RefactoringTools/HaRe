@@ -49,8 +49,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,hsPNs -- ,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
     ,isDeclaredIn
-    ,hsFreeAndDeclaredPNs, hsFreeAndDeclaredNameStrings
-    ,hsFreeAndDeclaredPNsGhc
+    ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
+    ,hsFreeAndDeclaredPNs
     ,getDeclaredTypes
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
@@ -489,8 +489,8 @@ causeNameClashInExports  pn newName mod exps
 -- the free variables, and the second list contains the declared
 -- variables.
 -- Expects RenamedSource
-hsFreeAndDeclaredPNs:: (SYB.Data t) => t -> ([GHC.Name],[GHC.Name])
-hsFreeAndDeclaredPNs t = res
+hsFreeAndDeclaredPNsOld:: (SYB.Data t) => t -> ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNsOld t = res
   where
     fd = hsFreeAndDeclaredPNs' t
     (f,d) = fromMaybe ([],[]) fd
@@ -739,7 +739,7 @@ hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned
 -- variables are in the String format.
-hsFreeAndDeclaredNameStrings::(SYB.Data t) => t -> ([String],[String])
+hsFreeAndDeclaredNameStrings::(HsValBinds t) => t -> ([String],[String])
 hsFreeAndDeclaredNameStrings t = res
   where
     (f1,d1) = hsFreeAndDeclaredPNs t
@@ -750,16 +750,14 @@ hsFreeAndDeclaredNameStrings t = res
 --                              return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
 
 
-hsFreeAndDeclaredPNsGhc:: (HsValBinds t) => t -> ([GHC.Name],[GHC.Name])
-hsFreeAndDeclaredPNsGhc t = res
+hsFreeAndDeclaredPNs :: (HsValBinds t) => t -> ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNs t = res
   where
     bs = hsBinds t
 
     getFd :: (GHC.NameSet,[GHC.Name]) -> GHC.LHsBind GHC.Name -> (GHC.NameSet,[GHC.Name])
     getFd (facc,dacc) b = (GHC.unionNameSets facc f,dacc ++ d)
       where
-        -- d = getDeclaredVars [b]
-        -- f = getFreeVars [b]
         [(d,f)] = getFvs [b]
 
     tds = concatMap getDeclaredTypes $ concat $ hsTyDecls t
@@ -838,7 +836,7 @@ getDeclaredVars bs = concatMap vars bs
 --------------------------------------------------------------------------------
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
-hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2)
+hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2,HsValBinds t2)
   => t1 -> t2 -> [String]
 hsVisibleNames e t = res
   where
@@ -848,7 +846,7 @@ hsVisibleNames e t = res
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisiblePNs :: (FindEntity e, SYB.Data e, SYB.Data t)
+hsVisiblePNs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
              => e -> t -> [GHC.Name]
 
 {-
@@ -888,6 +886,11 @@ hsVisiblePNs e t = res
           expr ((GHC.HsLet decls e1) :: GHC.HsExpr GHC.Name)
              |findEntity e e1 || findEntity e decls = do
               let (_df,dd) = hsFreeAndDeclaredPNs decls
+              return dd
+
+          expr ((GHC.HsDo _ctx ss _) :: GHC.HsExpr GHC.Name)
+             | findEntity e ss = do
+              let (_df,dd) = hsFreeAndDeclaredPNs ss
               return dd
 
           expr _ = return []
@@ -1831,6 +1834,34 @@ instance HsValBinds (GHC.LStmt GHC.Name) where
   hsValBinds (GHC.L _ (GHC.LetStmt binds)) = hsValBinds binds
   hsValBinds _                             = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.LStmt GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.LPat GHC.Name] where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LPat GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LPat GHC.Name) where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LPat GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.Name) where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.SyntaxExpr GHC.Name] where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.SyntaxExpr GHC.Name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------

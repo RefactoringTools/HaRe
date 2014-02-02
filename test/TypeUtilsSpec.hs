@@ -582,14 +582,14 @@ spec = do
 
       let
         comp = do
-          let r = hsFreeAndDeclaredPNs renamed
-          let rg = hsFreeAndDeclaredPNsGhc renamed
+          let r = hsFreeAndDeclaredPNsOld renamed
+          let rg = hsFreeAndDeclaredPNs renamed
           let ff = map (\b -> getFreeVars [b]) $ hsBinds renamed
           return (r,rg,ff)
       ((res,resg,_fff),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
-      -- (showGhc fff) `shouldBe` ""
+      -- (showGhc _fff) `shouldBe` ""
 
       -- Free Vars
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
@@ -633,7 +633,40 @@ spec = do
                    "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
                    "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
                    "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
-                   "(FreeAndDeclared.Declare.toplevel, (6, 1))]"
+                   "(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
+                   "(FreeAndDeclared.Declare.D, (18, 6)),\n "++
+                   "(FreeAndDeclared.Declare.A, (18, 10)),\n "++
+                   "(FreeAndDeclared.Declare.B, (18, 14)),\n "++
+                   "(FreeAndDeclared.Declare.C, (18, 25)),\n "++
+                   "(FreeAndDeclared.Declare.F, (25, 6)),\n "++
+                   "(FreeAndDeclared.Declare.G, (25, 10)),\n "++
+                   "(FreeAndDeclared.Declare.:|, (25, 14))]"
+
+    -- ---------------------------------
+
+    it "finds free and declared in a single bind" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let
+        comp = do
+          let b = head $ drop 4 $ hsBinds renamed
+          let rg = hsFreeAndDeclaredPNs [b]
+          return (b,rg)
+      ((bb,resg),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      (showGhc bb) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
+
+      -- GHC version
+      -- Free Vars
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe` 
+                   "[(FreeAndDeclared.Declare.B, (18, 14))]"
+
+      -- Declared Vars
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe` 
+                   "[(FreeAndDeclared.Declare.unD, (21, 1))]"
 
     -- -----------------------------------------------------------------
 
@@ -656,7 +689,7 @@ spec = do
 
     -- -----------------------------------------------------------------
 
-    it "Finds free and declared in a single bind" $ do
+    it "finds free and declared in a single bind" $ do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -671,8 +704,7 @@ spec = do
 
       -- Free Vars
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
-                   "[(GHC.Num.+, (-1, -1)), "++
-                   "(GHC.Num.fromInteger, (-1, -1))]"
+                   "[]"
 
       -- Declared Vars
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
@@ -680,7 +712,7 @@ spec = do
 
     -- -----------------------------------------------------------------
 
-    it "Finds free and declared at the top level 1" $ do
+    it "finds free and declared at the top level 1" $ do
       (t, toks) <- parsedFileLiftWhereIn1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -698,14 +730,11 @@ spec = do
 
       -- Free Vars
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
-                   "[(GHC.Num.fromInteger, (-1, -1)), "++
-                   "(GHC.Classes.==, (-1, -1)),\n "++
-                   "(GHC.Real.^, (-1, -1)), "++
-                   "(GHC.Num.+, (-1, -1))]"
+                   "[]"
 
     -- -----------------------------------------------------------------
 
-    it "Finds free and declared at the top level 2" $ do
+    it "finds free and declared at the top level 2" $ do
       (t, toks) <- parsedFileIdIn3
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -726,13 +755,11 @@ spec = do
 
       -- Free Vars
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
-                   "[(GHC.Num.+, (-1, -1)), "++
-                   "(GHC.Num.fromInteger, (-1, -1))]"
-
+                   "[]"
 
     -- -----------------------------------------------------------------
 
-    it "Finds free and declared in a single bind" $ do
+    it "finds free and declared in a single bind" $ do
       pending -- "fix the prior test"
 
     -- -----------------------------------------------------------------
@@ -811,7 +838,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "returns visible vars if e does occur in t #1" $ do
-      (t,toks) <- parsedFileDd1Ghc
+      (t,toks) <- parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
@@ -851,25 +878,46 @@ spec = do
 
     it "returns visible vars if e does occur in t #3" $ do
       (t,toks) <- parsedFileGhc "./test/testdata/TypeUtils/VisiblePNs.hs"
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      -- let Just tl1  = locToExp (4,1) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-
-      -- let Just rhs  = locToExp (26,1) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-      -- (showGhc rhs) `shouldBe` "let ll = 34 in ll GHC.Num.+ z"
       let
         comp = do
           renamed <- getRefactRenamed
           let Just tl1  = locToName (41,11) renamed  --  :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
           let r = hsVisiblePNs tl1 renamed
+          -- let r = hsVisiblePNsGhc tl1 renamed
           let fvs = map (\b -> (showGhc b,getFreeVars [b])) (hsBinds renamed)
           let dvs = getDeclaredVars $ hsBinds renamed
           return (tl1,r,fvs,dvs)
-      ((tl,res,f,d),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
       (showGhc tl) `shouldBe` "modu"
       -- (showGhc f) `shouldBe` ""
-      (showGhc d) `shouldBe` ""
-      (showGhc res) `shouldBe` "[ll]"
+      (showGhc d) `shouldBe`
+           "[TypeUtils.VisiblePNs.parsedFileGhc,\n"++
+           " TypeUtils.VisiblePNs.parsedFileBGhc,\n"++
+           " TypeUtils.VisiblePNs.runRefactGhcState,"++
+           " TypeUtils.VisiblePNs.zz,\n"++
+           " TypeUtils.VisiblePNs.yy,"++
+           " TypeUtils.VisiblePNs.xx,\n"++
+           " TypeUtils.VisiblePNs.ww,"++
+           " TypeUtils.VisiblePNs.spec,\n"++
+           " TypeUtils.VisiblePNs.main]"
+      (showGhc res) `shouldBe`
+           "[TypeUtils.VisiblePNs.parsedFileGhc,\n"++
+           " TypeUtils.VisiblePNs.parsedFileBGhc,\n"++
+           " TypeUtils.VisiblePNs.runRefactGhcState,"++
+           " TypeUtils.VisiblePNs.zz,\n"++
+           " TypeUtils.VisiblePNs.yy,"++
+           " TypeUtils.VisiblePNs.xx,\n"++
+           " TypeUtils.VisiblePNs.ww,"++
+           " TypeUtils.VisiblePNs.spec,\n"++
+           " TypeUtils.VisiblePNs.main,"++
+           " modu,"++
+           " t,"++
+           " _toks,"++
+           " expr]"
 
   -- ---------------------------------------------
 

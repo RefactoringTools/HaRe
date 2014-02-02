@@ -340,3 +340,6 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/cabal/cabal2/src/main1.hs.AST_out
 /test/testdata/cabal/cabal2/src/main1.hs.renamed_out
 /test/testdata/cabal/cabal2/src/main1.hs.tokens
+/test/UtilsSpec.hs.AST_out
+/test/UtilsSpec.hs.renamed_out
+/test/UtilsSpec.hs.tokens

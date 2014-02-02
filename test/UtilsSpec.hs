@@ -244,7 +244,7 @@ spec = do
       -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
-                                     , rsetVerboseLevel = Debug
+                                     -- , rsetVerboseLevel = Debug
                                      }
 
       let handler = [Handler handler1]
@@ -259,17 +259,7 @@ spec = do
       r' <- mapM makeRelativeToCurrentDirectory r
 
       (show r') `shouldBe`
-          "[\"./src/Language/Haskell/Refact/Utils.hs\","++
-           "\"./src/Language/Haskell/Refact/Renaming.hs\","++
-           "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
-           "\"./src/Language/Haskell/Refact/DupDef.hs\","++
-           "\"./src/Language/Haskell/Refact/Renaming.hs\","++
-           "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
-           "\"./src/Language/Haskell/Refact/DupDef.hs\","++
-           "\"test/UtilsSpec.hs\","++
-           "\"./src/Language/Haskell/Refact/Renaming.hs\","++
-           "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
-           "\"./src/Language/Haskell/Refact/DupDef.hs\"]"
+          "[\"test/UtilsSpec.hs\"]"
 
   -- -------------------------------------------------------------------
 
