@@ -772,21 +772,44 @@ hsFreeAndDeclaredPNsGhc t = res
 
 getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
 getDeclaredTypes (GHC.L _ (GHC.ForeignType (GHC.L _ n) _)) = [n]
-getDeclaredTypes (GHC.L _ (GHC.TyFamily _ (GHC.L _ n) bs _)) = [n] ++ bsn
+getDeclaredTypes (GHC.L _ (GHC.TyFamily _ (GHC.L _ n) _bs _)) = [n]
+getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn fvs)) = [n] ++ dsn
   where
-    bsn = [] -- TODO: pull these out of bs
-getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) vars defn fvs)) = [n] ++ vsn ++ dsn
+    dsn = getHsTyDefn defn
+getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats _atdefs _ fvs))
+  = [n] ++ ssn ++ msn ++ asn
   where
-    vsn = [] -- TODO: extract from vars
-    dsn = [] -- TODO: extract from defn
-getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) vars _fds _sigs meths ats _atdefs _ fvs))
-  = [n] ++ vsn ++ msn ++ asn
-  where
-    -- TODO: extract these from the appropriate fields
-    vsn = []
-    msn = []
-    asn = []
+    getLSig :: GHC.LSig GHC.Name -> [GHC.Name]
+    getLSig (GHC.L _ (GHC.TypeSig ns _)) = map GHC.unLoc ns
+    getLSig (GHC.L _ (GHC.GenericSig ns _)) = map GHC.unLoc ns
+    getLSig (GHC.L _ (GHC.IdSig _n)) = []
+    getLSig (GHC.L _ (GHC.InlineSig (GHC.L _ n2) _)) = [n2]
+    getLSig (GHC.L _ (GHC.SpecSig (GHC.L _ n2) _ _)) = [n2]
+    getLSig (GHC.L _ (GHC.SpecInstSig _)) = []
 
+    ssn = concatMap getLSig sigs
+    msn = getDeclaredVars $ hsBinds meths
+    asn = concatMap getDeclaredTypes ats
+
+-- -------------------------------------
+
+getHsTyDefn :: GHC.HsTyDefn GHC.Name -> [GHC.Name]
+getHsTyDefn (GHC.TySynonym _) = []
+getHsTyDefn (GHC.TyData _ _  _ _ cons _) = r
+  where
+    getConDecl (GHC.L _ (GHC.ConDecl (GHC.L _ n) _ _ _ _ _ _ _)) = n
+    r = map getConDecl cons
+
+-- -------------------------------------
+{-
+getDeclaredTyVarBndrs :: [GHC.LHsTyVarBndrs GHC.Name] -> [GHC.Name]
+getDeclaredTyVarBndrs bs = r
+  where
+    go 
+
+    r = []
+-}
+-- ---------------------------------------------------------------------
 -- |Experiment with GHC fvs stuff
 getFvs :: [GHC.LHsBind GHC.Name] -> [([GHC.Name], GHC.NameSet)]
 getFvs bs = concatMap binds bs

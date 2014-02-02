@@ -549,8 +549,8 @@ spec = do
   -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredPNs" $ do
-    it "Finds declared in type class definitions" $ do
-      (t, toks) <- parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
+    it "finds declared in type class definitions" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/FreeAndDeclared/DeclareTypes.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -561,11 +561,21 @@ spec = do
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (res)) `shouldBe` ""
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (res)) `shouldBe` 
+          "[(FreeAndDeclared.DeclareTypes.XList, (8, 13)),\n"++
+          " (FreeAndDeclared.DeclareTypes.Foo, (21, 6)),\n"++
+          " (FreeAndDeclared.DeclareTypes.X, (19, 6)),\n"++
+          " (FreeAndDeclared.DeclareTypes.Y, (19, 10)),\n"++
+          " (FreeAndDeclared.DeclareTypes.Z, (19, 22)),\n"++
+          " (FreeAndDeclared.DeclareTypes.W, (19, 26)),\n"++
+          " (FreeAndDeclared.DeclareTypes.Bar, (23, 7)),\n"++
+          " (FreeAndDeclared.DeclareTypes.doBar, (27, 3)),\n"++
+          " (FreeAndDeclared.DeclareTypes.BarVar, (24, 8)),\n"++
+          " (FreeAndDeclared.DeclareTypes.BarData, (25, 8))]"
 
     -- ---------------------------------
 
-    it "Finds declared HsVar" $ do
+    it "finds declared HsVar" $ do
       (t, toks) <- parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
@@ -576,7 +586,7 @@ spec = do
           let rg = hsFreeAndDeclaredPNsGhc renamed
           let ff = map (\b -> getFreeVars [b]) $ hsBinds renamed
           return (r,rg,ff)
-      ((res,resg,fff),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((res,resg,_fff),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       -- (showGhc fff) `shouldBe` ""
@@ -608,17 +618,8 @@ spec = do
 
       -- GHC version
       -- Free Vars
-
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe` 
-                   "[(Data.Generics.Text.gshow, (-1, -1)),\n "++
-                   "(System.IO.getChar, (-1, -1)), "++
-                   "(System.IO.putStrLn, (-1, -1)),\n "++
-                   "(GHC.Base.return, (-1, -1)), "++
-                   "(GHC.Base.$, (-1, -1)),\n "++
-                   "(GHC.List.head, (-1, -1)), "++
-                   "(GHC.List.zip, (-1, -1)),\n "++
-                   "(GHC.Num.fromInteger, (-1, -1)), "++
-                   "(GHC.Num.*, (-1, -1))]"
+                   "[]"
 
       -- Declared Vars
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe` 
