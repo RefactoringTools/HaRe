@@ -24,6 +24,7 @@ module Language.Haskell.Refact.Utils.GhcUtils (
     , everywhereMStaged'
     , everywhereStaged
     , everywhereStaged'
+    , onelayerStaged
     , listifyStaged
     -- ** SYB Utility
     , checkItemRenamer
@@ -206,12 +207,28 @@ everythingStaged stage k z f x
   | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
 
 
+-- ---------------------------------------------------------------------
+
+-- |Perform a query on the immediate subterms only, avoiding holes
+onelayerStaged :: SYB.Stage -> r -> SYB.GenericQ r -> SYB.GenericQ [r]
+{-
+onelayerStaged stage z f = gmapQ stagedF
+  where
+    stagedF x
+      | checkItemStage stage x = z
+      | otherwise = f x
+-}
+onelayerStaged stage z f = gmapQ f
+
+-- ---------------------------------------------------------------------
+
 -- | Staged variation of SYB.listify
 -- The stage must be provided to avoid trying to modify elements which
 -- may not be present at all stages of AST processing.
 listifyStaged
   :: (Data a, Typeable a1) => SYB.Stage -> (a1 -> Bool) -> a -> [a1]
 listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x | p x ]))
+
 
 
 -- ---------------------------------------------------------------------

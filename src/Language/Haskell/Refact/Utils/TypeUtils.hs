@@ -841,22 +841,13 @@ hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2,HsValBinds t2)
 hsVisibleNames e t = res
   where
     d = hsVisiblePNs e t
-    res = ((nub.map showGhc) d)
+    res = ((nub . map showGhc) d)
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
 hsVisiblePNs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
              => e -> t -> [GHC.Name]
-
-{-
-hsVisiblePNs e t = nub $ SYB.everythingStaged SYB.Renamer (++) []
-                  ([] `SYB.mkQ`  top
-                      `SYB.extQ` expr
-                      `SYB.extQ` decl
-                      `SYB.extQ` match
-                      `SYB.extQ` stmts) t
--}
 hsVisiblePNs e t = res
   where
     {- -}
@@ -894,6 +885,11 @@ hsVisiblePNs e t = res
               return dd
 
           expr _ = return []
+
+          decl ((GHC.FunBind n _ matches _ _fvs _) :: GHC.HsBind GHC.Name)
+            |findEntity e matches = do
+             let (_pf,pd) = hsFreeAndDeclaredPNs matches
+             return (pd)
 
           decl ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
             |findEntity e rhs = do
@@ -2013,6 +2009,7 @@ class (SYB.Data a, SYB.Typeable a) => FindEntity a where
 
   -- | Returns True is a syntax phrase, say a, is part of another
   -- syntax phrase, say b.
+  -- NOTE: very important: only do a shallow check
   findEntity:: (SYB.Data b, SYB.Typeable b) => a -> b -> Bool
 
 -- ---------------------------------------------------------------------
@@ -2021,10 +2018,16 @@ instance FindEntity GHC.Name where
 
   findEntity n t = fromMaybe False res
    where
-    res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+    -- res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+    {-
+    res = Just $ any (==True) $ catMaybes
+         $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+    -}
+    res = error $ "findEntity:n:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t)
 
     worker (name::GHC.Name)
       | n == name = Just True
+      -- | True = error $ "findEntity:n:res=" ++ (showGhc (n,name))
     worker _ = Nothing
 
 -- ---------------------------------------------------------------------
@@ -2034,10 +2037,17 @@ instance FindEntity (GHC.Located GHC.Name) where
 
   findEntity n t = fromMaybe False res
    where
-    res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+    -- res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+    {-
+    res = Just $ any (==True) $ catMaybes
+         $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+    -}
+    res = error $ "findEntity:ln:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t)
 
     worker (name::GHC.Located GHC.Name)
       | n == name = Just True
+      -- | True = error $ "findEntity:ln:res=" ++ (showGhc (n,name))
+
     worker _ = Nothing
 
 -- ---------------------------------------------------------------------

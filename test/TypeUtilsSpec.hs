@@ -689,7 +689,7 @@ spec = do
 
     -- -----------------------------------------------------------------
 
-    it "finds free and declared in a single bind" $ do
+    it "finds free and declared in a single bind #2" $ do
       (t, toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -698,9 +698,12 @@ spec = do
 
       let
         comp = do
-          let r = hsFreeAndDeclaredPNs decl
-          return r
-      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+          -- let r = hsFreeAndDeclaredPNs decl
+          let r = hsFreeAndDeclaredPNs [decl]
+          return (r,decl)
+      ((res,d),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+
+      (showGhc d) `shouldBe` "DupDef.Dd1.ff y\n  = y GHC.Num.+ zz\n  where\n      zz = 1"
 
       -- Free Vars
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
@@ -840,6 +843,7 @@ spec = do
     it "returns visible vars if e does occur in t #1" $ do
       (t,toks) <- parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       (showGhc tl1) `shouldBe` "ll GHC.Num.+ z"
@@ -2551,7 +2555,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "findEntity" $ do
-    it "Returns true if a syntax phrase is part of another" $ do
+    it "returns true if a (Located) Name is part of a HsBind 1" $ do
       let
         comp = do
          (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
@@ -2565,18 +2569,49 @@ spec = do
              duplicatedDecls = definingDeclsNames [n] declsr True False
 
              res = findEntity ln duplicatedDecls
+             res2 = findEntity n duplicatedDecls
              -- res = findEntity' ln duplicatedDecls
 
-         return (res,duplicatedDecls,ln)
-      ((r,d,_l),_s) <- runRefactGhcState comp
+         return (res,res2,duplicatedDecls,ln)
+      ((r,r2,d,_l),_s) <- runRefactGhcState comp
       (showGhc d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
-      -- (show l) `shouldBe` "foo"
-      -- (show r) `shouldBe` "foo"
-      r `shouldBe` True
+      (showGhc _l) `shouldBe` "DupDef.Dd1.toplevel"
+      r `shouldBe` False
+      r2 `shouldBe` False -- Because unlocated name is one layer deeper
+
+    -- ---------------------------------
+
+    it "returns true if a (Located) Name is part of a HsBind 2" $ do
+      let
+        comp = do
+         (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
+         putParsedModule t toks
+         parentr <- getRefactRenamed
+
+         let mn = locToName (31,7) parentr
+         let (Just (ln@(GHC.L _ n))) = mn
+
+         let mnd = locToName (30,1) parentr
+         let (Just ((GHC.L _ nd))) = mnd
+
+         let declsr = hsBinds parentr
+             duplicatedDecls = definingDeclsNames [nd] declsr True False
+
+             res = findEntity ln duplicatedDecls
+             res2 = findEntity  n duplicatedDecls
+             -- res = findEntity' ln duplicatedDecls
+
+         return (res,res2,duplicatedDecls,ln)
+      ((r,r2,d,_l),_s) <- runRefactGhcState comp
+      (showGhc d) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n"++
+                             "          GHC.Base.return (ss GHC.Num.+ q) }]"
+      (showGhc _l) `shouldBe` "ss"
+      r `shouldBe` False
+      r2 `shouldBe` False
 
     -- -----------------------------------------------------------------
 
-    it "Returns false if a syntax phrase is not part of another" $ do
+    it "returns false if a syntax phrase is not part of another" $ do
       let
         comp = do
          (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
