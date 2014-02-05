@@ -2019,16 +2019,15 @@ instance FindEntity GHC.Name where
   findEntity n t = fromMaybe False res
    where
     -- res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
-    {-
     res = Just $ any (==True) $ catMaybes
-         $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
-    -}
-    res = error $ "findEntity:n:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t)
+         $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` hsbind) t
+    -- res = error $ "findEntity:n:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t)
 
-    worker (name::GHC.Name)
-      | n == name = Just True
-      -- | True = error $ "findEntity:n:res=" ++ (showGhc (n,name))
-    worker _ = Nothing
+    hsbind ((GHC.L _ (GHC.FunBind (GHC.L _ n') _ (GHC.MatchGroup matches _) _ _ _))::GHC.Located (GHC.HsBind GHC.Name))
+      | n' == n || isInMatch = Just True
+      where
+        isInMatch = any (==True) $ map (\(GHC.L _ (GHC.Match pats _mtyp _rhs)) -> findPN n pats) matches
+    hsbind _ = Nothing
 
 -- ---------------------------------------------------------------------
 
@@ -2038,17 +2037,15 @@ instance FindEntity (GHC.Located GHC.Name) where
   findEntity n t = fromMaybe False res
    where
     -- res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
-    {-
     res = Just $ any (==True) $ catMaybes
-         $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
-    -}
-    res = error $ "findEntity:ln:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t)
+         $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` hsbind) t
+    -- res = error $ "findEntity:ln:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` hsbind) t)
 
-    worker (name::GHC.Located GHC.Name)
-      | n == name = Just True
-      -- | True = error $ "findEntity:ln:res=" ++ (showGhc (n,name))
-
-    worker _ = Nothing
+    hsbind ((GHC.L _ (GHC.FunBind n' _ (GHC.MatchGroup matches _) _ _ _))::GHC.Located (GHC.HsBind GHC.Name))
+      | n' == n || isInMatch = Just True
+      where
+        isInMatch = any (==True) $ map (\(GHC.L _ (GHC.Match pats _mtyp _rhs)) -> findPNT n pats) matches
+    hsbind _ = Nothing
 
 -- ---------------------------------------------------------------------
 
