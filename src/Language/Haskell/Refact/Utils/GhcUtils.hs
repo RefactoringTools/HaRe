@@ -211,14 +211,14 @@ everythingStaged stage k z f x
 
 -- |Perform a query on the immediate subterms only, avoiding holes
 onelayerStaged :: SYB.Stage -> r -> SYB.GenericQ r -> SYB.GenericQ [r]
-{-
+
 onelayerStaged stage z f = gmapQ stagedF
   where
     stagedF x
       | checkItemStage stage x = z
       | otherwise = f x
--}
-onelayerStaged stage z f = gmapQ f
+
+-- onelayerStaged stage z f x = gmapQ f x
 
 -- ---------------------------------------------------------------------
 
