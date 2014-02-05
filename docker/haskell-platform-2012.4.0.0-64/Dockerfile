@@ -2,6 +2,8 @@ FROM debian
 
 MAINTAINER alan.zimm@gmail.com
 
+ENV DEBIAN_FRONTEND noninteractive
+
 ####### GHC 7.4.2 ######################
 RUN apt-get update
 RUN apt-get install -y wget
