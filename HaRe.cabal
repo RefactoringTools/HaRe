@@ -58,7 +58,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 3.1.4
+                                , ghc-mod >= 3.1.6
                                 -- , lens
                                 , mtl
                                 , old-time
@@ -124,7 +124,7 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 3.1.4
+                                , ghc-mod >= 3.1.6
                                 -- , lens
                                 , mtl
                                 , old-time
@@ -175,7 +175,7 @@ test-suite spec
     , ghc-paths   == 0.1.*
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 3.1.2
+    , ghc-mod >= 3.1.6
     , hspec
     -- , hspec-discover
     , mtl

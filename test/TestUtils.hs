@@ -241,7 +241,7 @@ runRefactGhcStateLog paramcomp logOn  = do
 -- ---------------------------------------------------------------------
 
 testCradle :: Cradle
-testCradle = Cradle "./test/testdata/" Nothing Nothing []
+testCradle = Cradle "./test/testdata/" Nothing Nothing [] []
 
 -- ---------------------------------------------------------------------
 
