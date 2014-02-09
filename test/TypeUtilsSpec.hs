@@ -822,6 +822,38 @@ spec = do
   -- ---------------------------------------------------------------------
 
   describe "hsVisiblePNs" $ do
+    it "experiments with GHC checkDupAndShadowedNames" $ do
+      (t,toks) <- parsedFileDd1Ghc
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      (showGhc tl1) `shouldBe` "ll GHC.Num.+ z"
+
+      let Just tup = getName "DupDef.Dd1.l" renamed
+      let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
+
+      let binds = hsValBinds [decl]
+      let bound_names = GHC.collectHsValBinders binds
+
+{-
+
+In GHC compiler:
+
+check_dup_names :: [Name] -> RnM ()
+check_dup_names names
+  = mapM_ (dupNamesErr nameSrcSpan) dups
+  where
+    (_, dups) = removeDups (\n1 n2 -> nameOccName n1 `compare` nameOccName n2) names
+
+-}
+
+
+
+      (showGhc bound_names) `shouldBe` ""
+      "a" `shouldBe` "b"
+
+    -- ---------------------------------
+
     it "Returns [] if e does not occur in t" $ do
       -- ((_,Just renamed,_parsed),_toks) <- parsedFileDd1Ghc
       (t,toks) <- parsedFileDd1Ghc
