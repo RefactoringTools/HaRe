@@ -1,3 +1,7 @@
+2014-01-28 v0.7.1.2
+	* Ensure that the right target is activated for the primary file
+	when it belongs to a non-library target,not just for client
+	modules of it.
 2014-01-27 v0.7.1.1
 	* The non-library targets were having the wrong path prepended
 2014-01-26 v0.7.1.0

@@ -214,7 +214,8 @@ initGhcSession cradle importDirs = do
                        [] -> return ()
                        _ -> loadModuleGraphGhc (Just libTgts)
 
-                     -- liftIO $ warningM "HaRe" $ "initGhcSession:loadModuleGraphGhc done"
+                     -- moduleGraph <- gets rsModuleGraph
+                     -- logm $ "initGhcSession:rsModuleGraph=" ++ (show moduleGraph)
 
       Nothing -> do
           let maybeMainFile = rsetMainFile settings

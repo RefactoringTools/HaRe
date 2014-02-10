@@ -1466,12 +1466,12 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
          -- =applyTP (once_tdTP (failTP `adhocTP` worker))
          = everywhereMStaged SYB.Renamer (SYB.mkM worker) bind
             -- where worker ((HsMatch loc1 name pats rhs ds)::HsMatchP)
-            where worker (GHC.Match pats1 typ rhs)
+            where worker (GHC.Match pats2 typ rhs)
                     = do
                          let pats'=filter (\x->not ((patToPNT x /= Nothing) &&
-                                          elem (gfromJust "rmParamsInDemotedDecls" $ patToPNT x) ps)) pats1
+                                          elem (gfromJust "rmParamsInDemotedDecls" $ patToPNT x) ps)) pats2
 
-                         let (startPos,endPos) = getBiggestStartEndLoc pats1
+                         let (startPos,endPos) = getBiggestStartEndLoc pats2
                          -- error $ "rmParamsInDemotedDecls:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
                          -- error $ "rmParamsInDemotedDecls:(prettyprint pats')=" ++ (prettyprint pats) -- ++AZ++
                          if (emptyList pats')
