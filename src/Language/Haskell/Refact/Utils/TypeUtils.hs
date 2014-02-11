@@ -56,6 +56,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     ,hsVisiblePNs, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
+    ,hsVisibleFDs
 
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN -- ,isTopLevelPNT
@@ -171,6 +172,23 @@ import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 -- import Debug.Trace
 -- debug = flip trace
+
+-- ---------------------------------------------------------------------
+
+-- | For free variables
+data FreeNames = FN [GHC.Name]
+
+-- | For declared variables
+data DeclaredNames = DN [GHC.Name]
+
+instance Show FreeNames where
+  show (FN ls) = "(FN " ++ showGhc ls ++ ")"
+
+instance Show DeclaredNames where
+  show (DN ls) = "(DN " ++ showGhc ls ++ ")"
+
+emptyFD :: (FreeNames,DeclaredNames)
+emptyFD = (FN [], DN [])
 
 -- ---------------------------------------------------------------------
 -- |Process the inscope relation returned from the parsing and module
@@ -979,6 +997,29 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
           stmts _ =return []
 
 -}
+
+------------------------------------------------------------------------
+
+-- | Given syntax phrases e and t, if e occurs in t, then return those
+-- free and declared variables which are visible from e in t.
+hsVisibleFDs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
+             => e -> t -> (FreeNames,DeclaredNames)
+hsVisibleFDs e t = res
+  where
+    r = onelayerStaged SYB.Renamer emptyFD (emptyFD `SYB.mkQ` hsbind) t
+    -- TODO: implement instance Monoid instead of this
+    res = foldl (\(FN fs,DN ds) (FN f1,DN d1) -> (FN (fs++f1),DN (ds++d1))) emptyFD r
+
+    hsbind :: (GHC.LHsBind GHC.Name) -> (FreeNames,DeclaredNames)
+    -- hsbind = undefined
+    hsbind ((GHC.L _ (GHC.FunBind _n _ (GHC.MatchGroup matches _) _ _ _)))
+      | findEntity e matches = (FN df,DN dd)
+      where
+       (df,dd) = hsFreeAndDeclaredPNs matches
+    hsbind _ = emptyFD
+
+
+
 
 ------------------------------------------------------------------------
 
@@ -2018,7 +2059,12 @@ instance FindEntity GHC.Name where
 
   findEntity n t = fromMaybe False res
    where
-    -- res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+    res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (name::GHC.Name)
+      | n == name = Just True
+    worker _ = Nothing
+{-
     res = Just $ any (==True) $ catMaybes
          $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` hsbind) t
     -- res = error $ "findEntity:n:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t)
@@ -2028,6 +2074,7 @@ instance FindEntity GHC.Name where
       where
         isInMatch = any (==True) $ map (\(GHC.L _ (GHC.Match pats _mtyp _rhs)) -> findPN n pats) matches
     hsbind _ = Nothing
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -2036,7 +2083,13 @@ instance FindEntity (GHC.Located GHC.Name) where
 
   findEntity n t = fromMaybe False res
    where
-    -- res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+    res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (name::GHC.Located GHC.Name)
+      | n == name = Just True
+    worker _ = Nothing
+
+{-
     res = Just $ any (==True) $ catMaybes
          $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` hsbind) t
     -- res = error $ "findEntity:ln:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` hsbind) t)
@@ -2046,6 +2099,7 @@ instance FindEntity (GHC.Located GHC.Name) where
       where
         isInMatch = any (==True) $ map (\(GHC.L _ (GHC.Match pats _mtyp _rhs)) -> findPNT n pats) matches
     hsbind _ = Nothing
+-}
 
 -- ---------------------------------------------------------------------
 

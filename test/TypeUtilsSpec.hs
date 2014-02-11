@@ -883,6 +883,7 @@ check_dup_names names
       let Just tup = getName "DupDef.Dd1.l" renamed
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       (showGhc decl) `shouldBe` "DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z"
+      -- (SYB.showData SYB.Renamer 0 decl) `shouldBe` ""
       let
         comp = do
          let r = hsVisiblePNs tl1 decl
@@ -890,6 +891,26 @@ check_dup_names names
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
       (showGhc res ) `shouldBe` "[z, ll]"
+
+  -- ---------------------------------------------------------------------
+
+  describe "hsVisibleFDs" $ do
+    it "finds function arguments visible in RHS" $ do
+      (t,_toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      (showGhc e) `shouldBe` "a GHC.Num.+ b"
+
+      let Just n = getName "Visible.Simple.params" renamed
+      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+
+      let binds = hsValBinds [decl]
+      let bound_names = hsVisibleFDs e binds
+
+
+      (show bound_names) `shouldBe` ""
+      "a" `shouldBe` "b"
 
     -- -----------------------------------------------------------------
 
