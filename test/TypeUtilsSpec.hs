@@ -16,6 +16,7 @@ import Data.Maybe
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
+import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -892,26 +893,6 @@ check_dup_names names
 
       (showGhc res ) `shouldBe` "[z, ll]"
 
-  -- ---------------------------------------------------------------------
-
-  describe "hsVisibleFDs" $ do
-    it "finds function arguments visible in RHS" $ do
-      (t,_toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-
-      let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-      (showGhc e) `shouldBe` "a GHC.Num.+ b"
-
-      let Just n = getName "Visible.Simple.params" renamed
-      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-
-      let binds = hsValBinds [decl]
-      let bound_names = hsVisibleFDs e binds
-
-
-      (show bound_names) `shouldBe` ""
-      "a" `shouldBe` "b"
-
     -- -----------------------------------------------------------------
 
     it "returns visible vars if e does occur in t #2" $ do
@@ -975,6 +956,25 @@ check_dup_names names
            " t,"++
            " _toks,"++
            " expr]"
+
+  -- ---------------------------------------------------------------------
+
+  describe "hsVisibleFDs" $ do
+    it "finds function arguments visible in RHS" $ do
+      (t,_toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      (showGhc e) `shouldBe` "a GHC.Num.+ b"
+
+      let Just n = getName "Visible.Simple.params" renamed
+      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+
+      let binds = hsValBinds [decl]
+      let bound_names = hsVisibleFDs e $  head $ hsBinds binds
+
+      (show bound_names) `shouldBe` ""
+      "a" `shouldBe` "b"
 
   -- ---------------------------------------------
 

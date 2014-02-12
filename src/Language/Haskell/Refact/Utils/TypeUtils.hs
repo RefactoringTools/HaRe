@@ -51,6 +51,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isDeclaredIn
     ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
     ,hsFreeAndDeclaredPNs
+    ,hsFreeAndDeclaredGhc
     ,getDeclaredTypes
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
@@ -182,10 +183,19 @@ data FreeNames = FN [GHC.Name]
 data DeclaredNames = DN [GHC.Name]
 
 instance Show FreeNames where
-  show (FN ls) = "(FN " ++ showGhc ls ++ ")"
+  show (FN ls) = "FN " ++ showGhc ls
 
 instance Show DeclaredNames where
-  show (DN ls) = "(DN " ++ showGhc ls ++ ")"
+  show (DN ls) = "DN " ++ showGhc ls
+
+instance Monoid FreeNames where
+  mempty = FN []
+  mappend (FN a) (FN b) = FN (a `mappend` b)
+
+instance Monoid DeclaredNames where
+  mempty = DN []
+  mappend (DN a) (DN b) = DN (a `mappend` b)
+
 
 emptyFD :: (FreeNames,DeclaredNames)
 emptyFD = (FN [], DN [])
@@ -786,6 +796,21 @@ hsFreeAndDeclaredPNs t = res
 
 -- ---------------------------------------------------------------------
 
+hsFreeAndDeclaredGhc :: (SYB.Typeable t) => t -> (FreeNames,DeclaredNames)
+hsFreeAndDeclaredGhc t = res
+  where
+    res = (const emptyFD `SYB.extQ` hsbind) t
+
+    hsbind :: (GHC.HsBind GHC.Name) -> (FreeNames,DeclaredNames)
+    hsbind b = r
+      where
+        d = GHC.collectHsBindBinders b
+        r = (FN [],DN d)
+
+
+
+-- ---------------------------------------------------------------------
+
 getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
 getDeclaredTypes (GHC.L _ (GHC.ForeignType (GHC.L _ n) _)) = [n]
 getDeclaredTypes (GHC.L _ (GHC.TyFamily _ (GHC.L _ n) _bs _)) = [n]
@@ -1006,20 +1031,33 @@ hsVisibleFDs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
              => e -> t -> (FreeNames,DeclaredNames)
 hsVisibleFDs e t = res
   where
-    r = onelayerStaged SYB.Renamer emptyFD (emptyFD `SYB.mkQ` hsbind) t
-    -- TODO: implement instance Monoid instead of this
-    res = foldl (\(FN fs,DN ds) (FN f1,DN d1) -> (FN (fs++f1),DN (ds++d1))) emptyFD r
+    res = (const emptyFD
+          `SYB.extQ` hsbind
+          `SYB.extQ` lmatch
+          `SYB.extQ` grhss
+          ) t
+
 
     hsbind :: (GHC.LHsBind GHC.Name) -> (FreeNames,DeclaredNames)
-    -- hsbind = undefined
-    hsbind ((GHC.L _ (GHC.FunBind _n _ (GHC.MatchGroup matches _) _ _ _)))
-      | findEntity e matches = (FN df,DN dd)
+    hsbind ((GHC.L _ (GHC.FunBind _n _ m@(GHC.MatchGroup matches _) _ _ _)))
+      | findEntity e matches = (df,dd)
       where
-       (df,dd) = hsFreeAndDeclaredPNs matches
+       (df,dd) = mconcat $ map (hsVisibleFDs e) matches
     hsbind _ = emptyFD
 
+    lmatch :: (GHC.LMatch GHC.Name) -> (FreeNames,DeclaredNames)
+    lmatch (GHC.L _ (GHC.Match pats mtyp rhs))
+      | findEntity e pats = emptyFD
+      -- | findEntity e rhs = hsVisibleFDs e rhs
+      | findEntity e rhs = error $ "hsVisibleFDs.rhs:emptyFD"
+    -- lmatch _ = emptyFD
+    lmatch _ = error $ "hsVisibleFDs.lmatch:emptyFD"
 
-
+    grhss :: (GHC.GRHSs GHC.Name) -> (FreeNames,DeclaredNames)
+    grhss (GHC.GRHSs guards lstmts)
+      | findEntity e guards = hsVisibleFDs e guards
+      | findEntity e lstmts = hsVisibleFDs e lstmts
+    grhss _ = error $ "hsVisibleFDs.grhss:emptyFD"
 
 ------------------------------------------------------------------------
 
