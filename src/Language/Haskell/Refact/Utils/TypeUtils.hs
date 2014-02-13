@@ -141,6 +141,7 @@ import Control.Monad.State
 import Data.Char
 import Data.List
 import Data.Maybe
+import Data.Monoid
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -153,17 +154,32 @@ import Language.Haskell.Refact.Utils.TypeSyn
 -- Modules from GHC
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
+import qualified DataCon       as GHC
+import qualified ErrUtils      as GHC
 import qualified FastString    as GHC
+import qualified FamInstEnv    as GHC
 import qualified GHC           as GHC
+import qualified HscTypes      as GHC
+import qualified Id            as GHC
+import qualified InstEnv       as GHC
 import qualified Lexer         as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
+import qualified NameEnv       as GHC
 import qualified NameSet       as GHC
 import qualified Outputable    as GHC
+import qualified PrelNames     as GHC
 import qualified RdrName       as GHC
+import qualified RnSource      as GHC
 import qualified SrcLoc        as GHC
+import qualified TcEnv         as GHC
+import qualified TcHsSyn       as GHC
+import qualified TcSimplify    as GHC
+import qualified TcRnTypes     as GHC
+import qualified TyCon         as GHC
 import qualified Unique        as GHC
 import qualified UniqSet       as GHC
+import qualified Util          as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -796,10 +812,15 @@ hsFreeAndDeclaredPNs t = res
 
 -- ---------------------------------------------------------------------
 
-hsFreeAndDeclaredGhc :: (SYB.Typeable t) => t -> (FreeNames,DeclaredNames)
+-- hsFreeAndDeclaredGhc :: (SYB.Typeable t) => t -> (FreeNames,DeclaredNames)
+hsFreeAndDeclaredGhc :: (SYB.Data t) => t -> (FreeNames,DeclaredNames)
 hsFreeAndDeclaredGhc t = res
   where
-    res = (const emptyFD `SYB.extQ` hsbind) t
+    res = (const err -- emptyFD
+          `SYB.extQ` hsbind
+          `SYB.extQ` lpats
+          `SYB.extQ` lpat
+          ) t
 
     hsbind :: (GHC.HsBind GHC.Name) -> (FreeNames,DeclaredNames)
     hsbind b = r
@@ -807,7 +828,17 @@ hsFreeAndDeclaredGhc t = res
         d = GHC.collectHsBindBinders b
         r = (FN [],DN d)
 
+    lpats :: [GHC.LPat GHC.Name] -> (FreeNames,DeclaredNames)
+    lpats xs = mconcat $ map hsFreeAndDeclaredGhc xs
 
+
+    lpat :: GHC.LPat GHC.Name -> (FreeNames,DeclaredNames)
+    lpat lp = (FN [],DN dn)
+      where
+        dn = GHC.collectPatBinders lp
+
+
+    err = error $ "hsFreeAndDeclaredGhc:not matched:" ++ (SYB.showData SYB.Renamer 0 t)
 
 -- ---------------------------------------------------------------------
 
@@ -1031,33 +1062,230 @@ hsVisibleFDs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
              => e -> t -> (FreeNames,DeclaredNames)
 hsVisibleFDs e t = res
   where
-    res = (const emptyFD
+    res = (const err -- emptyFD
           `SYB.extQ` hsbind
           `SYB.extQ` lmatch
           `SYB.extQ` grhss
+          `SYB.extQ` lgrhs
+          `SYB.extQ` lexpr
           ) t
 
-
     hsbind :: (GHC.LHsBind GHC.Name) -> (FreeNames,DeclaredNames)
-    hsbind ((GHC.L _ (GHC.FunBind _n _ m@(GHC.MatchGroup matches _) _ _ _)))
+    hsbind ((GHC.L _ (GHC.FunBind _n _ (GHC.MatchGroup matches _) _ _ _)))
       | findEntity e matches = (df,dd)
       where
        (df,dd) = mconcat $ map (hsVisibleFDs e) matches
     hsbind _ = emptyFD
 
     lmatch :: (GHC.LMatch GHC.Name) -> (FreeNames,DeclaredNames)
-    lmatch (GHC.L _ (GHC.Match pats mtyp rhs))
-      | findEntity e pats = emptyFD
-      -- | findEntity e rhs = hsVisibleFDs e rhs
-      | findEntity e rhs = error $ "hsVisibleFDs.rhs:emptyFD"
-    -- lmatch _ = emptyFD
-    lmatch _ = error $ "hsVisibleFDs.lmatch:emptyFD"
+    lmatch (GHC.L _ (GHC.Match pats _mtyp rhs))
+      | findEntity e pats = emptyFD -- TODO: extend this
+      | findEntity e rhs = (rf,pd <> rd)
+      -- | findEntity e rhs = error $ "hsVisibleFDs:lmatch.rhs:" ++ show (rf,pd,rd)
+      where
+        (_pf,pd) = hsFreeAndDeclaredGhc pats
+        ( rf,rd) = hsVisibleFDs e rhs
+      -- | findEntity e rhs = error $ "hsVisibleFDs.rhs:emptyFD"
+    lmatch _ = emptyFD
 
     grhss :: (GHC.GRHSs GHC.Name) -> (FreeNames,DeclaredNames)
-    grhss (GHC.GRHSs guards lstmts)
-      | findEntity e guards = hsVisibleFDs e guards
-      | findEntity e lstmts = hsVisibleFDs e lstmts
+    grhss (GHC.GRHSs guardedRhss lstmts)
+      | findEntity e guardedRhss = mconcat $ map (hsVisibleFDs e) guardedRhss
+      | findEntity e guardedRhss = error $ "hsVisibleFDs.grhss:guar"
+    --  | findEntity e lstmts = hsVisibleFDs e lstmts
+      | findEntity e lstmts = error $ "hsVisibleFDs.grhss:lstmts"
     grhss _ = error $ "hsVisibleFDs.grhss:emptyFD"
+
+    lgrhs :: GHC.LGRHS GHC.Name -> (FreeNames,DeclaredNames)
+    lgrhs (GHC.L _ (GHC.GRHS stmts ex))
+      | findEntity e stmts = hsVisibleFDs e stmts
+      | findEntity e ex    = hsVisibleFDs e ex
+    lgrhs _ = error $ "hsVisibleFDs.lgrhs:emptyFD"
+
+    lexpr :: GHC.LHsExpr GHC.Name -> (FreeNames,DeclaredNames)
+    lexpr (GHC.L _ e) = emptyFD
+    -- lexpr = error $ "hsVisibleFDs.lexpr undefined"
+
+    err = error $ "hsVisibleFDs:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
+
+-- ---------------------------------------------------------------------
+-- TODO:Drive parts of the renamer to pull out free variables
+--  See GHC source for TcRnDriver.tcRnDeclsi 
+-- driverRenamer = do
+
+-- =======================================================================
+
+tcRnDeclsi :: GHC.HscEnv
+           -> GHC.InteractiveContext
+           -> [GHC.LHsDecl GHC.RdrName]
+           -> IO (GHC.Messages, Maybe GHC.TcGblEnv)
+
+tcRnDeclsi hsc_env ictxt local_decls =
+    GHC.initTcPrintErrors hsc_env GHC.iNTERACTIVE $
+    setInteractiveContext hsc_env ictxt $ do
+
+    ((tcg_env, tclcl_env), lie) <-
+        GHC.captureConstraints $ tc_rn_src_decls GHC.emptyModDetails local_decls
+    GHC.setEnvs (tcg_env, tclcl_env) $ do
+
+    new_ev_binds <- GHC.simplifyTop lie
+    GHC.failIfErrsM
+    let GHC.TcGblEnv { GHC.tcg_type_env  = type_env,
+                       GHC.tcg_binds     = binds,
+                       GHC.tcg_sigs      = sig_ns,
+                       GHC.tcg_ev_binds  = cur_ev_binds,
+                       GHC.tcg_imp_specs = imp_specs,
+                       GHC.tcg_rules     = rules,
+                       GHC.tcg_vects     = vects,
+                       GHC.tcg_fords     = fords } = tcg_env
+        all_ev_binds = cur_ev_binds `GHC.unionBags` new_ev_binds
+
+    (bind_ids, ev_binds', binds', fords', imp_specs', rules', vects')
+        <- GHC.zonkTopDecls all_ev_binds binds sig_ns rules vects imp_specs fords
+
+    let --global_ids = map globaliseAndTidyId bind_ids
+        final_type_env = GHC.extendTypeEnvWithIds type_env bind_ids --global_ids
+        tcg_env' = tcg_env { GHC.tcg_binds     = binds',
+                             GHC.tcg_ev_binds  = ev_binds',
+                             GHC.tcg_imp_specs = imp_specs',
+                             GHC.tcg_rules     = rules',
+                             GHC.tcg_vects     = vects',
+                             GHC.tcg_fords     = fords' }
+
+    tcg_env'' <- GHC.setGlobalTypeEnv tcg_env' final_type_env
+
+    return tcg_env''
+
+-- From GHC TcRnDriver
+
+setInteractiveContext :: GHC.HscEnv -> GHC.InteractiveContext -> GHC.TcRn a -> GHC.TcRn a
+setInteractiveContext hsc_env icxt thing_inside
+  = let -- Initialise the tcg_inst_env with instances from all home modules.
+        -- This mimics the more selective call to hptInstances in tcRnImports
+        (home_insts, home_fam_insts) = GHC.hptInstances hsc_env (\_ -> True)
+        (ic_insts, ic_finsts) = GHC.ic_instances icxt
+
+        -- Note [GHCi temporary Ids]
+        -- Ideally we would just make a type_env from ic_tythings
+        -- and ic_sys_vars, adding in implicit things.  However, Ids
+        -- bound interactively might have some free type variables
+        -- (RuntimeUnk things), and if we don't register these free
+        -- TyVars as global TyVars then the typechecker will try to
+        -- quantify over them and fall over in zonkQuantifiedTyVar.
+        --
+        -- So we must add any free TyVars to the typechecker's global
+        -- TyVar set.  This is what happens when the local environment
+        -- is extended, so we use tcExtendGhciEnv below which extends
+        -- the local environment with the Ids.
+        --
+        -- However, any Ids bound this way will shadow other Ids in
+        -- the GlobalRdrEnv, so we have to be careful to only add Ids
+        -- which are visible in the GlobalRdrEnv.
+        --
+        -- Perhaps it would be better to just extend the global TyVar
+        -- list from the free tyvars in the Ids here?  Anyway, at least
+        -- this hack is localised.
+        --
+        -- Note [delete shadowed tcg_rdr_env entries]
+        -- We also *delete* entries from tcg_rdr_env that we have
+        -- shadowed in the local env (see above).  This isn't strictly
+        -- necessary, but in an out-of-scope error when GHC suggests
+        -- names it can be confusing to see multiple identical
+        -- entries. (#5564)
+        --
+        (tmp_ids, types_n_classes) = GHC.partitionWith sel_id (GHC.ic_tythings icxt)
+          where sel_id (GHC.AnId id) = Left id
+                sel_id other     = Right other
+
+        type_env = GHC.mkTypeEnvWithImplicits
+                       (map GHC.AnId (GHC.ic_sys_vars icxt) ++ types_n_classes)
+
+        visible_tmp_ids = filter visible tmp_ids
+          where visible id = not (null (GHC.lookupGRE_Name (GHC.ic_rn_gbl_env icxt)
+                                                           (GHC.idName id)))
+
+        con_fields = [ (GHC.dataConName c, GHC.dataConFieldLabels c)
+                     | GHC.ATyCon t <- types_n_classes
+                     , c <- GHC.tyConDataCons t ]
+    in
+    GHC.updGblEnv (\env -> env {
+          GHC.tcg_rdr_env      = GHC.delListFromOccEnv (GHC.ic_rn_gbl_env icxt)
+                                                       (map GHC.getOccName visible_tmp_ids)
+                                 -- Note [delete shadowed tcg_rdr_env entries]
+        , GHC.tcg_type_env     = type_env
+        , GHC.tcg_insts        = ic_insts
+        , GHC.tcg_inst_env     = GHC.extendInstEnvList
+                                  (GHC.extendInstEnvList (GHC.tcg_inst_env env) ic_insts)
+                              home_insts
+        , GHC.tcg_fam_insts    = ic_finsts
+        , GHC.tcg_fam_inst_env = GHC.extendFamInstEnvList
+                                  (GHC.extendFamInstEnvList (GHC.tcg_fam_inst_env env)
+                                                    ic_finsts)
+                              home_fam_insts
+        , GHC.tcg_field_env    = GHC.RecFields (GHC.mkNameEnv con_fields)
+                                       (GHC.mkNameSet (concatMap snd con_fields))
+             -- setting tcg_field_env is necessary to make RecordWildCards work
+             -- (test: ghci049)
+        , GHC.tcg_fix_env      = GHC.ic_fix_env icxt
+        , GHC.tcg_default      = GHC.ic_default icxt
+        }) $
+
+        GHC.tcExtendGhciEnv visible_tmp_ids $ -- Note [GHCi temporary Ids]
+          thing_inside
+
+-- ---------------------
+
+tc_rn_src_decls :: GHC.ModDetails
+                    -> [GHC.LHsDecl GHC.RdrName]
+                    -> GHC.TcM (GHC.TcGblEnv, GHC.TcLclEnv)
+-- Loops around dealing with each top level inter-splice group
+-- in turn, until it's dealt with the entire module
+tc_rn_src_decls boot_details ds
+ = {-# SCC "tc_rn_src_decls" #-}
+   do { (first_group, group_tail) <- GHC.findSplice ds  ;
+                -- If ds is [] we get ([], Nothing)
+
+        -- The extra_deps are needed while renaming type and class declarations
+        -- See Note [Extra dependencies from .hs-boot files] in RnSource
+        let { extra_deps = map GHC.tyConName (GHC.typeEnvTyCons (GHC.md_types boot_details)) } ;
+        -- Deal with decls up to, but not including, the first splice
+        (tcg_env, rn_decls) <- GHC.rnTopSrcDecls extra_deps first_group ;
+                -- rnTopSrcDecls fails if there are any errors
+
+        (tcg_env, tcl_env) <- GHC.setGblEnv GHC.tcg_env $
+                              GHC.tcTopSrcDecls boot_details rn_decls ;
+
+        -- If there is no splice, we're nearly done
+        GHC.setEnvs (tcg_env, tcl_env) $
+        case group_tail of {
+           Nothing -> do { tcg_env <- checkMain ;       -- Check for `main'
+                           return (tcg_env, tcl_env)
+                      } ;
+
+#ifndef GHCI
+        -- There shouldn't be a splice
+           Just (SpliceDecl {}, _) -> do {
+        failWithTc (text "Can't do a top-level splice; need a bootstrapped compiler")
+#else
+        -- If there's a splice, we must carry on
+           Just (SpliceDecl splice_expr _, rest_ds) -> do {
+
+        -- Rename the splice expression, and get its supporting decls
+        (rn_splice_expr, splice_fvs) <- checkNoErrs (rnLExpr splice_expr) ;
+                -- checkNoErrs: don't typecheck if renaming failed
+        rnDump (ppr rn_splice_expr) ;
+
+        -- Execute the splice
+        spliced_decls <- tcSpliceDecls rn_splice_expr ;
+
+        -- Glue them on the front of the remaining decls and loop
+        setGblEnv (tcg_env `addTcgDUs` usesOnly splice_fvs) $
+        tc_rn_src_decls boot_details (spliced_decls ++ rest_ds)
+#endif /* GHCI */
+    } } }
+
+
+-- ========================================================================
 
 ------------------------------------------------------------------------
 

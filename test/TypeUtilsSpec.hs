@@ -963,6 +963,7 @@ check_dup_names names
     it "finds function arguments visible in RHS" $ do
       (t,_toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       (showGhc e) `shouldBe` "a GHC.Num.+ b"
@@ -971,10 +972,26 @@ check_dup_names names
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
-      let bound_names = hsVisibleFDs e $  head $ hsBinds binds
+      let fds= hsVisibleFDs e $  head $ hsBinds binds
 
-      (show bound_names) `shouldBe` ""
-      "a" `shouldBe` "b"
+      (show fds) `shouldBe` "(FN [],DN [a, b])"
+
+    it "finds function arguments and free vars visible in RHS" $ do
+      (t,_toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just e  = locToExp (9,15) (9,17) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
+      (showGhc e) `shouldBe` "x"
+
+      let Just n = getName "Visible.Simple.param2" renamed
+      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+
+      let binds = hsValBinds [decl]
+      let fds= hsVisibleFDs e $  head $ hsBinds binds
+
+      (show fds) `shouldBe` "(FN [B],DN [x])"
+
 
   -- ---------------------------------------------
 
