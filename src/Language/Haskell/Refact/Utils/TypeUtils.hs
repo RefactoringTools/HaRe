@@ -156,13 +156,13 @@ import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
 import qualified DataCon       as GHC
 import qualified ErrUtils      as GHC
-import qualified FastString    as GHC
 import qualified FamInstEnv    as GHC
+import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified HscTypes      as GHC
 import qualified Id            as GHC
 import qualified InstEnv       as GHC
-import qualified Lexer         as GHC
+import qualified Lexer         as GHC hiding (getSrcLoc)
 import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified NameEnv       as GHC
@@ -170,15 +170,22 @@ import qualified NameSet       as GHC
 import qualified Outputable    as GHC
 import qualified PrelNames     as GHC
 import qualified RdrName       as GHC
+import qualified RnEnv         as GHC
 import qualified RnSource      as GHC
 import qualified SrcLoc        as GHC
 import qualified TcEnv         as GHC
+import qualified TcEvidence    as GHC
+import qualified TcExpr        as GHC
 import qualified TcHsSyn       as GHC
-import qualified TcSimplify    as GHC
+import qualified TcMType       as GHC
+import qualified TcRnDriver    as GHC
+import qualified TcRnMonad     as GHC
 import qualified TcRnTypes     as GHC
+import qualified TcSimplify    as GHC
+import qualified TcType        as GHC
 import qualified TyCon         as GHC
-import qualified Unique        as GHC
 import qualified UniqSet       as GHC
+import qualified Unique        as GHC
 import qualified Util          as GHC
 
 import qualified Data.Generics as SYB
@@ -1110,7 +1117,7 @@ hsVisibleFDs e t = res
 
 -- ---------------------------------------------------------------------
 -- TODO:Drive parts of the renamer to pull out free variables
---  See GHC source for TcRnDriver.tcRnDeclsi 
+--  See GHC source for TcRnDriver.tcRnDeclsi
 -- driverRenamer = do
 
 -- =======================================================================
@@ -1155,6 +1162,9 @@ tcRnDeclsi hsc_env ictxt local_decls =
     tcg_env'' <- GHC.setGlobalTypeEnv tcg_env' final_type_env
 
     return tcg_env''
+
+
+-- --------------------
 
 -- From GHC TcRnDriver
 
@@ -1249,10 +1259,10 @@ tc_rn_src_decls boot_details ds
         -- See Note [Extra dependencies from .hs-boot files] in RnSource
         let { extra_deps = map GHC.tyConName (GHC.typeEnvTyCons (GHC.md_types boot_details)) } ;
         -- Deal with decls up to, but not including, the first splice
-        (tcg_env, rn_decls) <- GHC.rnTopSrcDecls extra_deps first_group ;
+        (tcg_env, rn_decls) <- rnTopSrcDecls extra_deps first_group ;
                 -- rnTopSrcDecls fails if there are any errors
 
-        (tcg_env, tcl_env) <- GHC.setGblEnv GHC.tcg_env $
+        (tcg_env, tcl_env) <- GHC.setGblEnv tcg_env $
                               GHC.tcTopSrcDecls boot_details rn_decls ;
 
         -- If there is no splice, we're nearly done
@@ -1264,8 +1274,8 @@ tc_rn_src_decls boot_details ds
 
 #ifndef GHCI
         -- There shouldn't be a splice
-           Just (SpliceDecl {}, _) -> do {
-        failWithTc (text "Can't do a top-level splice; need a bootstrapped compiler")
+           Just (GHC.SpliceDecl {}, _) -> do {
+        GHC.failWithTc (GHC.text "Can't do a top-level splice; need a bootstrapped compiler")
 #else
         -- If there's a splice, we must carry on
            Just (SpliceDecl splice_expr _, rest_ds) -> do {
@@ -1284,6 +1294,118 @@ tc_rn_src_decls boot_details ds
 #endif /* GHCI */
     } } }
 
+-- ----------------------
+
+rnTopSrcDecls :: [GHC.Name] -> GHC.HsGroup GHC.RdrName -> GHC.TcM (GHC.TcGblEnv, GHC.HsGroup GHC.Name)
+-- Fails if there are any errors
+rnTopSrcDecls extra_deps group
+ = do { -- Rename the source decls
+        GHC.traceTc "rn12" GHC.empty ;
+        (tcg_env, rn_decls) <- GHC.checkNoErrs $ GHC.rnSrcDecls extra_deps group ;
+        GHC.traceTc "rn13" GHC.empty ;
+
+        -- save the renamed syntax, if we want it
+        let { tcg_env'
+                | Just grp <- GHC.tcg_rn_decls tcg_env
+                  = tcg_env{ GHC.tcg_rn_decls = Just (GHC.appendGroups grp rn_decls) }
+                | otherwise
+                   = tcg_env };
+
+                -- Dump trace of renaming part
+        rnDump (GHC.ppr rn_decls) ;
+
+        return (tcg_env', rn_decls)
+   }
+
+
+checkMain :: GHC.TcM GHC.TcGblEnv
+-- If we are in module Main, check that 'main' is defined.
+checkMain
+  = do { tcg_env   <- GHC.getGblEnv ;
+         dflags    <- GHC.getDynFlags ;
+         check_main dflags tcg_env
+    }
+
+check_main :: GHC.DynFlags -> GHC.TcGblEnv -> GHC.TcM GHC.TcGblEnv
+check_main dflags tcg_env
+ | mod /= main_mod
+ = GHC.traceTc "checkMain not" (GHC.ppr main_mod GHC.<+> GHC.ppr mod) >>
+   return tcg_env
+
+ | otherwise
+ = do   { mb_main <- GHC.lookupGlobalOccRn_maybe main_fn
+                -- Check that 'main' is in scope
+                -- It might be imported from another module!
+        ; case mb_main of {
+             Nothing -> do { GHC.traceTc "checkMain fail" (GHC.ppr main_mod GHC.<+> GHC.ppr main_fn)
+                           ; complain_no_main
+                           ; return tcg_env } ;
+             Just main_name -> do
+
+        { GHC.traceTc "checkMain found" (GHC.ppr main_mod GHC.<+> GHC.ppr main_fn)
+        ; let loc = GHC.srcLocSpan (GHC.getSrcLoc main_name)
+        ; ioTyCon <- GHC.tcLookupTyCon GHC.ioTyConName
+        ; res_ty <- GHC.newFlexiTyVarTy GHC.liftedTypeKind
+        ; main_expr
+                <- GHC.addErrCtxt mainCtxt    $
+                   GHC.tcMonoExpr (GHC.L loc (GHC.HsVar main_name)) (GHC.mkTyConApp ioTyCon [res_ty])
+
+                -- See Note [Root-main Id]
+                -- Construct the binding
+                --      :Main.main :: IO res_ty = runMainIO res_ty main
+        ; run_main_id <- GHC.tcLookupId GHC.runMainIOName
+        ; let { root_main_name =  GHC.mkExternalName GHC.rootMainKey GHC.rOOT_MAIN
+                                   (GHC.mkVarOccFS (GHC.fsLit "main"))
+                                   (GHC.getSrcSpan main_name)
+              ; root_main_id = GHC.mkExportedLocalId root_main_name
+                                                    (GHC.mkTyConApp ioTyCon [res_ty])
+              ; co  = GHC.mkWpTyApps [res_ty]
+              ; rhs = GHC.nlHsApp (GHC.mkLHsWrap co (GHC.nlHsVar run_main_id)) main_expr
+              ; main_bind = GHC.mkVarBind root_main_id rhs }
+
+        ; return (tcg_env { GHC.tcg_main  = Just main_name,
+                            GHC.tcg_binds = GHC.tcg_binds tcg_env
+                                            `GHC.snocBag` main_bind,
+                            GHC.tcg_dus   = GHC.tcg_dus tcg_env
+                                            `GHC.plusDU` GHC.usesOnly (GHC.unitFV main_name)
+                        -- Record the use of 'main', so that we don't
+                        -- complain about it being defined but not used
+                 })
+    }}}
+  where
+    mod          = GHC.tcg_mod tcg_env
+    main_mod     = GHC.mainModIs dflags
+    main_fn      = getMainFun dflags
+
+    complain_no_main | GHC.ghcLink dflags == GHC.LinkInMemory = return ()
+                     | otherwise = GHC.failWithTc noMainMsg
+        -- In interactive mode, don't worry about the absence of 'main'
+        -- In other modes, fail altogether, so that we don't go on
+        -- and complain a second time when processing the export list.
+
+    mainCtxt  = GHC.ptext (GHC.sLit "When checking the type of the") GHC.<+> pp_main_fn
+    noMainMsg = GHC.ptext (GHC.sLit "The") GHC.<+> pp_main_fn
+                GHC.<+> GHC.ptext (GHC.sLit "is not defined in module") GHC.<+> GHC.quotes (GHC.ppr main_mod)
+    pp_main_fn = ppMainFn main_fn
+
+
+rnDump :: GHC.SDoc -> GHC.TcRn ()
+-- Dump, with a banner, if -ddump-rn
+rnDump doc = do { GHC.dumpOptTcRn GHC.Opt_D_dump_rn (GHC.mkDumpDoc "Renamer" doc) }
+
+ppMainFn :: GHC.RdrName -> GHC.SDoc
+ppMainFn main_fn
+  | main_fn == GHC.main_RDR_Unqual
+  = GHC.ptext (GHC.sLit "function") GHC.<+> GHC.quotes (GHC.ppr main_fn)
+  | otherwise
+  = GHC.ptext (GHC.sLit "main function") GHC.<+> GHC.quotes (GHC.ppr main_fn)
+
+-- | Get the unqualified name of the function to use as the \"main\" for the main module.
+-- Either returns the default name or the one configured on the command line with -main-is
+getMainFun :: GHC.DynFlags -> GHC.RdrName
+getMainFun dflags = case (GHC.mainFunIs dflags) of
+    Just fn -> GHC.mkRdrUnqual (GHC.mkVarOccFS (GHC.mkFastString fn))
+    Nothing -> GHC.main_RDR_Unqual
 
 -- ========================================================================
 
