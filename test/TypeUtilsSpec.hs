@@ -961,7 +961,7 @@ check_dup_names names
 
   describe "hsVisibleFDs" $ do
     it "finds function arguments visible in RHS" $ do
-      (t,_toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
+      (t,toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -972,12 +972,20 @@ check_dup_names names
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
-      let fds= hsVisibleFDs e $  head $ hsBinds binds
+      -- let fds= hsVisibleFDs' parsed e $  head $ hsBinds binds
+
+      let
+        comp = do
+          fds' <- hsVisibleFDs e $  head $ hsBinds binds
+          return (fds')
+      ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
       (show fds) `shouldBe` "(FN [],DN [a, b])"
 
+    -- -----------------------------------
+
     it "finds function arguments and free vars visible in RHS" $ do
-      (t,_toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
+      (t,toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -988,9 +996,67 @@ check_dup_names names
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
-      let fds= hsVisibleFDs e $  head $ hsBinds binds
+      -- let fds= hsVisibleFDs' parsed e $  head $ hsBinds binds
+
+      let
+        comp = do
+          fds' <- hsVisibleFDs e $  head $ hsBinds binds
+          return (fds')
+      ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
       (show fds) `shouldBe` "(FN [B],DN [x])"
+
+
+  -- ---------------------------------------------
+
+  describe "getParsedForRenamedLPat" $ do
+    it "gets the ParsedSource version of a RenamedSource LPat" $ do
+      (t,_toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let Just e  = locToExp (9,15) (9,17) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
+      (showGhc e) `shouldBe` "x"
+
+      let Just n = getName "Visible.Simple.param2" renamed
+      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+
+      let binds = hsValBinds [decl]
+      let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup matches _) _ _ _)) = head $ hsBinds binds
+      let [(GHC.L _ (GHC.Match pats _ _))] = matches
+      let pat@(GHC.L lp _) = head pats
+
+      let pat' = getParsedForRenamedLPat parsed pat
+
+      let (GHC.L lp' _) = pat'
+      lp `shouldBe` lp'
+
+      (SYB.showData SYB.Renamer 0 pat') `shouldBe`
+           "\n"++
+           "(L {test/testdata/Visible/Simple.hs:9:8-12} \n"++
+           " (ParPat \n"++
+           "  (L {test/testdata/Visible/Simple.hs:9:9-11} \n"++
+           "   (ConPatIn \n"++
+           "    (L {test/testdata/Visible/Simple.hs:9:9} \n"++
+           "     (Unqual {OccName: B})) \n"++
+           "    (PrefixCon \n"++
+           "     [\n"++
+           "      (L {test/testdata/Visible/Simple.hs:9:11} \n"++
+           "       (VarPat \n"++
+           "        (Unqual {OccName: x})))])))))"
+
+      (SYB.showData SYB.Renamer 0 pat) `shouldBe`
+           "\n"++
+           "(L {test/testdata/Visible/Simple.hs:9:8-12} \n"++
+           " (ParPat \n"++
+           "  (L {test/testdata/Visible/Simple.hs:9:9-11} \n"++
+           "   (ConPatIn \n"++
+           "    (L {test/testdata/Visible/Simple.hs:9:9} {Name: Visible.Simple.B}) \n"++
+           "    (PrefixCon \n"++
+           "     [\n"++
+           "      (L {test/testdata/Visible/Simple.hs:9:11} \n"++
+           "       (VarPat {Name: x}))])))))"
 
 
   -- ---------------------------------------------

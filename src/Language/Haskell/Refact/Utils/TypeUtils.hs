@@ -51,7 +51,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isDeclaredIn
     ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
     ,hsFreeAndDeclaredPNs
-    ,hsFreeAndDeclaredGhc
+    ,hsFreeAndDeclaredGhc,hsFreeAndDeclaredGhc'
     ,getDeclaredTypes
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
@@ -129,6 +129,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- * Debug stuff
     , getDeclAndToks, getSigAndToks
     , getToksForDecl, removeToksOffset -- ++AZ++ remove this after debuggging
+    , getParsedForRenamedLPat
     -- , allPNT
     --  , allPNTLens
     , newNameTok
@@ -155,10 +156,12 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
 import qualified DataCon       as GHC
+import qualified DynFlags      as GHC
 import qualified ErrUtils      as GHC
 import qualified FamInstEnv    as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
+import qualified HscMain       as GHC
 import qualified HscTypes      as GHC
 import qualified Id            as GHC
 import qualified InstEnv       as GHC
@@ -171,8 +174,10 @@ import qualified Outputable    as GHC
 import qualified PrelNames     as GHC
 import qualified RdrName       as GHC
 import qualified RnEnv         as GHC
+import qualified RnPat         as GHC
 import qualified RnSource      as GHC
 import qualified SrcLoc        as GHC
+import qualified SysTools      as GHC
 import qualified TcEnv         as GHC
 import qualified TcEvidence    as GHC
 import qualified TcExpr        as GHC
@@ -819,9 +824,16 @@ hsFreeAndDeclaredPNs t = res
 
 -- ---------------------------------------------------------------------
 
--- hsFreeAndDeclaredGhc :: (SYB.Typeable t) => t -> (FreeNames,DeclaredNames)
-hsFreeAndDeclaredGhc :: (SYB.Data t) => t -> (FreeNames,DeclaredNames)
-hsFreeAndDeclaredGhc t = res
+
+hsFreeAndDeclaredGhc :: (SYB.Data t) => t -> RefactGhc (FreeNames,DeclaredNames)
+hsFreeAndDeclaredGhc t = do
+  parsed <- getRefactParsed
+  hsFreeAndDeclaredGhc' parsed t
+
+-- ---------------------------------------------------------------------
+
+hsFreeAndDeclaredGhc' :: (SYB.Data t) => GHC.ParsedSource -> t -> RefactGhc (FreeNames,DeclaredNames)
+hsFreeAndDeclaredGhc' parsed t = res
   where
     res = (const err -- emptyFD
           `SYB.extQ` hsbind
@@ -829,23 +841,58 @@ hsFreeAndDeclaredGhc t = res
           `SYB.extQ` lpat
           ) t
 
-    hsbind :: (GHC.HsBind GHC.Name) -> (FreeNames,DeclaredNames)
-    hsbind b = r
-      where
-        d = GHC.collectHsBindBinders b
-        r = (FN [],DN d)
+    hsbind :: (GHC.HsBind GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
+    hsbind b = do
+        let d = GHC.collectHsBindBinders b
+        return (FN [],DN d)
 
-    lpats :: [GHC.LPat GHC.Name] -> (FreeNames,DeclaredNames)
-    lpats xs = mconcat $ map hsFreeAndDeclaredGhc xs
+    lpats :: [GHC.LPat GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
+    lpats xs = do
+      fds <- mapM (hsFreeAndDeclaredGhc' parsed) xs
+      return $ mconcat fds
 
-
-    lpat :: GHC.LPat GHC.Name -> (FreeNames,DeclaredNames)
-    lpat lp = (FN [],DN dn)
-      where
+    lpat :: GHC.LPat GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lpat lp = do
+      let
         dn = GHC.collectPatBinders lp
-
+        lpatParsed = getParsedForRenamedLPat parsed lp
+        nameMaker = GHC.topRecNameMaker (GHC.emptyFsEnv) -- emptyFsEnv
+        -- (lpatName,fvs) = liftIO $ inRnM $ GHC.rnBindPat nameMaker lpatParsed
+        gg = inRnM undefined undefined $ GHC.rnBindPat nameMaker lpatParsed
+        -- fn = GHC.rnBindPat
+        fn = error "carry on here"
+      return (FN fn,DN dn)
 
     err = error $ "hsFreeAndDeclaredGhc:not matched:" ++ (SYB.showData SYB.Renamer 0 t)
+
+inRnM :: GHC.HscEnv -> GHC.DynFlags -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
+inRnM hsc_env dflags fn = do
+  -- mySettings <- liftIO $ GHC. initSysTools Nothing
+  -- dflags <- liftIO $ GHC.initDynFlags (GHC.defaultDynFlags mySettings)
+  -- hsc_env <- GHC.newHscEnv dflags
+  let ictxt = undefined
+  GHC.initTcPrintErrors hsc_env GHC.iNTERACTIVE $ setInteractiveContext hsc_env ictxt fn
+
+-- ---------------------------------------------------------------------
+
+-- | Given a RenamedSource LPAT, return the equivalent
+-- ParsedSource part.
+-- NOTE: returns pristine ParsedSource, since HaRe does not change it
+getParsedForRenamedLPat :: GHC.ParsedSource -> GHC.LPat GHC.Name -> GHC.LPat GHC.RdrName
+getParsedForRenamedLPat parsed lpatParam@(GHC.L l _pat) = r
+  where
+    mres = res parsed
+    r = case mres of
+      Just rr -> rr
+      Nothing -> error $ "HaRe error: could not find Parsed LPat for"
+                 ++ (SYB.showData SYB.Renamer 0 lpatParam)
+
+    res t = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` lpat) t
+
+    lpat :: (GHC.LPat GHC.RdrName) -> (Maybe (GHC.LPat GHC.RdrName))
+    lpat p@(GHC.L lp _)
+       | lp == l = Just p
+    lpat _ = Nothing
 
 -- ---------------------------------------------------------------------
 
@@ -1066,8 +1113,15 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- free and declared variables which are visible from e in t.
 hsVisibleFDs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
-             => e -> t -> (FreeNames,DeclaredNames)
-hsVisibleFDs e t = res
+             => e -> t -> RefactGhc (FreeNames,DeclaredNames)
+hsVisibleFDs e t = do
+  parsed <- getRefactParsed
+  hsVisibleFDs'' parsed e t
+
+hsVisibleFDs'' :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
+             => GHC.ParsedSource -> e -> t -> RefactGhc (FreeNames,DeclaredNames)
+hsVisibleFDs'' parsed e t = do
+  res
   where
     res = (const err -- emptyFD
           `SYB.extQ` hsbind
@@ -1077,40 +1131,41 @@ hsVisibleFDs e t = res
           `SYB.extQ` lexpr
           ) t
 
-    hsbind :: (GHC.LHsBind GHC.Name) -> (FreeNames,DeclaredNames)
+    hsbind :: (GHC.LHsBind GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
     hsbind ((GHC.L _ (GHC.FunBind _n _ (GHC.MatchGroup matches _) _ _ _)))
-      | findEntity e matches = (df,dd)
-      where
-       (df,dd) = mconcat $ map (hsVisibleFDs e) matches
-    hsbind _ = emptyFD
+      | findEntity e matches = do
+          fds <- mapM (hsVisibleFDs'' parsed e) matches
+          return $ mconcat fds
+    hsbind _ = return emptyFD
 
-    lmatch :: (GHC.LMatch GHC.Name) -> (FreeNames,DeclaredNames)
+    lmatch :: (GHC.LMatch GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
     lmatch (GHC.L _ (GHC.Match pats _mtyp rhs))
-      | findEntity e pats = emptyFD -- TODO: extend this
-      | findEntity e rhs = (rf,pd <> rd)
+      | findEntity e pats = return emptyFD -- TODO: extend this
+      | findEntity e rhs = do
+           (_pf,pd) <- hsFreeAndDeclaredGhc pats
+           ( rf,rd) <- hsVisibleFDs'' parsed e rhs
+           return (rf,pd <> rd)
       -- | findEntity e rhs = error $ "hsVisibleFDs:lmatch.rhs:" ++ show (rf,pd,rd)
-      where
-        (_pf,pd) = hsFreeAndDeclaredGhc pats
-        ( rf,rd) = hsVisibleFDs e rhs
-      -- | findEntity e rhs = error $ "hsVisibleFDs.rhs:emptyFD"
-    lmatch _ = emptyFD
+    lmatch _ =return  emptyFD
 
-    grhss :: (GHC.GRHSs GHC.Name) -> (FreeNames,DeclaredNames)
+    grhss :: (GHC.GRHSs GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
     grhss (GHC.GRHSs guardedRhss lstmts)
-      | findEntity e guardedRhss = mconcat $ map (hsVisibleFDs e) guardedRhss
+      | findEntity e guardedRhss = do
+          fds <- mapM (hsVisibleFDs'' parsed e) guardedRhss
+          return $ mconcat fds
       | findEntity e guardedRhss = error $ "hsVisibleFDs.grhss:guar"
     --  | findEntity e lstmts = hsVisibleFDs e lstmts
       | findEntity e lstmts = error $ "hsVisibleFDs.grhss:lstmts"
     grhss _ = error $ "hsVisibleFDs.grhss:emptyFD"
 
-    lgrhs :: GHC.LGRHS GHC.Name -> (FreeNames,DeclaredNames)
+    lgrhs :: GHC.LGRHS GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lgrhs (GHC.L _ (GHC.GRHS stmts ex))
-      | findEntity e stmts = hsVisibleFDs e stmts
-      | findEntity e ex    = hsVisibleFDs e ex
+      | findEntity e stmts = hsVisibleFDs'' parsed e stmts
+      | findEntity e ex    = hsVisibleFDs'' parsed e ex
     lgrhs _ = error $ "hsVisibleFDs.lgrhs:emptyFD"
 
-    lexpr :: GHC.LHsExpr GHC.Name -> (FreeNames,DeclaredNames)
-    lexpr (GHC.L _ e) = emptyFD
+    lexpr :: GHC.LHsExpr GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lexpr (GHC.L _ e) = return emptyFD
     -- lexpr = error $ "hsVisibleFDs.lexpr undefined"
 
     err = error $ "hsVisibleFDs:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
@@ -1121,6 +1176,12 @@ hsVisibleFDs e t = res
 -- driverRenamer = do
 
 -- =======================================================================
+-- This next section is taken from the GHC compiler (7.6.3), as it is
+-- not all exposed in the GHC API.
+-- The intention is to use it as a reference, and put in a stripped
+-- down one doing only what we need.
+
+
 
 tcRnDeclsi :: GHC.HscEnv
            -> GHC.InteractiveContext
@@ -1128,6 +1189,7 @@ tcRnDeclsi :: GHC.HscEnv
            -> IO (GHC.Messages, Maybe GHC.TcGblEnv)
 
 tcRnDeclsi hsc_env ictxt local_decls =
+    -- ictxt = GHC.emptyInteractiveContext
     GHC.initTcPrintErrors hsc_env GHC.iNTERACTIVE $
     setInteractiveContext hsc_env ictxt $ do
 
