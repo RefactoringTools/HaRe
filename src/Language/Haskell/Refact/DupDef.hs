@@ -131,7 +131,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
                     --f: names that might be shadowd by the new name,
                     --d: names that might clash with the new name
 
-                let dv = hsVisibleNames ln declsr --dv: names may shadow new name
+                dv <- hsVisibleNames ln declsr --dv: names may shadow new name
                 let vars        = nub (f `union` d `union` dv)
 
                 newNameGhc <- mkNewGhcName Nothing newName

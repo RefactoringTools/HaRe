@@ -988,18 +988,17 @@ getDeclaredVars bs = concatMap vars bs
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
 hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2,HsValBinds t2)
-  => t1 -> t2 -> [String]
-hsVisibleNames e t = res
-  where
-    d = hsVisiblePNs e t
-    res = ((nub . map showGhc) d)
+  => t1 -> t2 -> RefactGhc [String]
+hsVisibleNames e t = do
+    d <- hsVisiblePNs e t
+    return ((nub . map showGhc) d)
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisiblePNs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
+hsVisiblePNsOld :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
              => e -> t -> [GHC.Name]
-hsVisiblePNs e t = res
+hsVisiblePNsOld e t = res
   where
     {- -}
           r = (applyTU (full_tdTUGhc (constTU [] `adhocTU` top
@@ -1134,30 +1133,60 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 ------------------------------------------------------------------------
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
+-- variables which are declared in t and accessible to e, otherwise
+-- return [].
+hsVisiblePNs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
+             => e -> t -> RefactGhc [GHC.Name]
+hsVisiblePNs e t = do
+  (_fn,DN dn) <- hsVisibleFDs e t
+  return dn
+
+------------------------------------------------------------------------
+
+-- | Given syntax phrases e and t, if e occurs in t, then return those
 -- free and declared variables which are visible from e in t.
 hsVisibleFDs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
              => e -> t -> RefactGhc (FreeNames,DeclaredNames)
 hsVisibleFDs e t = do
-  parsed <- getRefactParsed
-  hsVisibleFDs'' parsed e t
-
-hsVisibleFDs'' :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
-             => GHC.ParsedSource -> e -> t -> RefactGhc (FreeNames,DeclaredNames)
-hsVisibleFDs'' parsed e t = do
   res
   where
+    -- TODO: this is effectively a recursive descent approach, where
+    --       each syntax element processor knows exactly what it needs
+    --       in terms of sub-elements. Hence as an optimisation,
+    --       consider calling the relevent element directly, instead
+    --       of looping back into the main function.
     res = (const err -- emptyFD
+          `SYB.extQ` renamed
+          `SYB.extQ` valbinds
           `SYB.extQ` hsbind
           `SYB.extQ` lmatch
           `SYB.extQ` grhss
           `SYB.extQ` lgrhs
           `SYB.extQ` lexpr
+          `SYB.extQ` tycldecls
           ) t
+
+    renamed :: GHC.RenamedSource -> RefactGhc (FreeNames,DeclaredNames)
+    renamed (g,_i,_ex,_d)
+      | findEntity e g = do
+         dfds <- hsVisibleFDs e $ GHC.hs_valds g
+         tfds <- hsVisibleFDs e $ GHC.hs_tyclds g
+         ifds <- hsVisibleFDs e $ GHC.hs_instds g
+         return $ dfds <> tfds <> ifds
+    renamed _ = return emptyFD
+
+    valbinds :: (GHC.HsValBindsLR GHC.Name GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
+    valbinds vb@(GHC.ValBindsIn bindsBag sigs)
+      | findEntity e vb = do
+          fdsb <- mapM (hsVisibleFDs e) $ hsBinds bindsBag
+          fdss <- mapM (hsVisibleFDs e) sigs
+          return $ mconcat fdss <> mconcat fdsb
+    valbinds _ = return emptyFD
 
     hsbind :: (GHC.LHsBind GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
     hsbind ((GHC.L _ (GHC.FunBind _n _ (GHC.MatchGroup matches _) _ _ _)))
       | findEntity e matches = do
-          fds <- mapM (hsVisibleFDs'' parsed e) matches
+          fds <- mapM (hsVisibleFDs e) matches
           return $ mconcat fds
     hsbind _ = return emptyFD
 
@@ -1166,7 +1195,7 @@ hsVisibleFDs'' parsed e t = do
       | findEntity e pats = return emptyFD -- TODO: extend this
       | findEntity e rhs = do
            ( pf,pd) <- hsFreeAndDeclaredGhc pats
-           ( rf,rd) <- hsVisibleFDs'' parsed e rhs
+           ( rf,rd) <- hsVisibleFDs e rhs
            return (pf <> rf,pd <> rd)
       -- | findEntity e rhs = error $ "hsVisibleFDs:lmatch.rhs:" ++ show (rf,pd,rd)
     lmatch _ =return  emptyFD
@@ -1174,7 +1203,7 @@ hsVisibleFDs'' parsed e t = do
     grhss :: (GHC.GRHSs GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
     grhss (GHC.GRHSs guardedRhss lstmts)
       | findEntity e guardedRhss = do
-          fds <- mapM (hsVisibleFDs'' parsed e) guardedRhss
+          fds <- mapM (hsVisibleFDs e) guardedRhss
           return $ mconcat fds
       | findEntity e guardedRhss = error $ "hsVisibleFDs.grhss:guar"
     --  | findEntity e lstmts = hsVisibleFDs e lstmts
@@ -1183,13 +1212,21 @@ hsVisibleFDs'' parsed e t = do
 
     lgrhs :: GHC.LGRHS GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lgrhs (GHC.L _ (GHC.GRHS stmts ex))
-      | findEntity e stmts = hsVisibleFDs'' parsed e stmts
-      | findEntity e ex    = hsVisibleFDs'' parsed e ex
+      | findEntity e stmts = hsVisibleFDs e stmts
+      | findEntity e ex    = hsVisibleFDs e ex
     lgrhs _ = error $ "hsVisibleFDs.lgrhs:emptyFD"
 
     lexpr :: GHC.LHsExpr GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
-    lexpr (GHC.L _ e) = return emptyFD
+    lexpr (GHC.L _ _ex) = return emptyFD
     -- lexpr = error $ "hsVisibleFDs.lexpr undefined"
+
+
+    tycldecls :: [[GHC.LTyClDecl GHC.Name]] -> RefactGhc (FreeNames,DeclaredNames)
+    tycldecls tcds
+      | findEntity e tcds = do
+        fds <- mapM (hsVisibleFDs e) tcds
+        return $ mconcat fds
+    tycldecls _ = return emptyFD
 
     err = error $ "hsVisibleFDs:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
 
@@ -2372,6 +2409,41 @@ instance HsValBinds (GHC.Name) where
 instance HsValBinds [GHC.SyntaxExpr GHC.Name] where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.SyntaxExpr GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LSig GHC.Name) where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LSig GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [[GHC.LTyClDecl GHC.Name]] where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds [[GHC.LTyClDecl GHC.Name]] undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.LTyClDecl GHC.Name] where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LTyClDecl GHC.Name] undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LTyClDecl GHC.Name) where
+  hsValBinds _ = error $ "hsValBinds (GHC.LTyClDecl GHC.Name) must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LTyClDecl GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.LInstDecl GHC.Name] where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LInstDecl GHC.Name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
@@ -4487,7 +4559,7 @@ autoRenameLocalVar modifyToks pn t = do
 
       where
          worker tt =do (f,d) <- hsFDNamesFromInside tt
-                       let ds = hsVisibleNames pn (hsValBinds tt)
+                       ds <- hsVisibleNames pn (hsValBinds tt)
                        let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
                        newName <- mkNewGhcName Nothing newNameStr
                        if modifyToks

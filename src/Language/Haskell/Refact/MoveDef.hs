@@ -380,7 +380,7 @@ pnsNeedRenaming dest parent _liftedDecls pns
        = do
             let (f,d) = hsFDsFromInside dest --f: free variable names that may be shadowed by pn
                                              --d: declaread variables names that may clash with pn
-            let vs = hsVisiblePNs pn parent  --vs: declarad variables that may shadow pn
+            vs <- hsVisiblePNs pn parent  --vs: declarad variables that may shadow pn
             let -- inscpNames = map (\(x,_,_,_)->x) $ inScopeInfo inscps
                 vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
             -- if elem (pNtoName pn) vars  || isInScopeAndUnqualified (pNtoName pn) inscps && findEntity pn dest
@@ -1509,7 +1509,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
        getClashedNames oldNames newNames match
          = do  let (_f,d) = hsFDsFromInside match
                -- ds' <- mapM (flip hsVisiblePNs match) oldNames
-               let ds' = map (flip hsVisiblePNs match) oldNames
+               ds' <- mapM (flip hsVisiblePNs match) oldNames
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub
                                    ( nub (d `union` (nub.concat) ds')))

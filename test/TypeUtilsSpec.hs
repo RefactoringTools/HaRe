@@ -865,7 +865,7 @@ check_dup_names names
       -- let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       let
         comp = do
-          let r = hsVisiblePNs tl1 tup
+          r <- hsVisiblePNs tl1 tup
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
@@ -887,7 +887,7 @@ check_dup_names names
       -- (SYB.showData SYB.Renamer 0 decl) `shouldBe` ""
       let
         comp = do
-         let r = hsVisiblePNs tl1 decl
+         r <- hsVisiblePNs tl1 decl
          return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
@@ -906,7 +906,7 @@ check_dup_names names
       (showGhc rhs) `shouldBe` "let ll = 34 in ll GHC.Num.+ z"
       let
         comp = do
-          let r = hsVisiblePNs tl1 rhs
+          r <- hsVisiblePNs tl1 rhs
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
@@ -923,12 +923,13 @@ check_dup_names names
         comp = do
           renamed <- getRefactRenamed
           let Just tl1  = locToName (41,11) renamed  --  :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-          let r = hsVisiblePNs tl1 renamed
+          r <- hsVisiblePNs tl1 renamed
           -- let r = hsVisiblePNsGhc tl1 renamed
           let fvs = map (\b -> (showGhc b,getFreeVars [b])) (hsBinds renamed)
           let dvs = getDeclaredVars $ hsBinds renamed
           return (tl1,r,fvs,dvs)
-      ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc tl) `shouldBe` "modu"
       -- (showGhc f) `shouldBe` ""
