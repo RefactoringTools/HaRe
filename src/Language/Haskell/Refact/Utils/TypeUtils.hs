@@ -51,7 +51,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isDeclaredIn
     ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
     ,hsFreeAndDeclaredPNs
-    ,hsFreeAndDeclaredGhc,hsFreeAndDeclaredGhc'
+    ,hsFreeAndDeclaredGhc
     ,getDeclaredTypes
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
@@ -173,6 +173,7 @@ import qualified NameSet       as GHC
 import qualified Outputable    as GHC
 import qualified PrelNames     as GHC
 import qualified RdrName       as GHC
+import qualified RnBinds       as GHC
 import qualified RnEnv         as GHC
 import qualified RnPat         as GHC
 import qualified RnSource      as GHC
@@ -806,6 +807,11 @@ hsFreeAndDeclaredNameStrings t = res
 --                              return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
 
 
+-- | Collect the free and declared variables (in the GHC.Name format)
+-- in a given syntax phrase t. In the result, the first list contains
+-- the free variables, and the second list contains the declared
+-- variables.
+-- Expects RenamedSource
 hsFreeAndDeclaredPNs :: (HsValBinds t) => t -> ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = res
   where
@@ -824,16 +830,18 @@ hsFreeAndDeclaredPNs t = res
 
 -- ---------------------------------------------------------------------
 
-
-hsFreeAndDeclaredGhc :: (SYB.Data t) => t -> RefactGhc (FreeNames,DeclaredNames)
+-- | Collect the free and declared variables (in the GHC.Name format)
+-- in a given syntax phrase t. In the result, the first list contains
+-- the free variables, and the second list contains the declared
+-- variables.
+-- Expects RenamedSource
+hsFreeAndDeclaredGhc :: (SYB.Data t,GHC.Outputable t) => t -> RefactGhc (FreeNames,DeclaredNames)
 hsFreeAndDeclaredGhc t = do
-  parsed <- getRefactParsed
-  hsFreeAndDeclaredGhc' parsed t
+  logm $ "hsFreeAndDeclaredGhc:t=" ++ showGhc t
+  r <- res
+  logm $ "hsFreeAndDeclaredGhc:res=" ++ show r
+  return r
 
--- ---------------------------------------------------------------------
-
-hsFreeAndDeclaredGhc' :: (SYB.Data t) => GHC.ParsedSource -> t -> RefactGhc (FreeNames,DeclaredNames)
-hsFreeAndDeclaredGhc' parsed t = res
   where
     res = (const err -- emptyFD
           `SYB.extQ` hsbind
@@ -848,29 +856,44 @@ hsFreeAndDeclaredGhc' parsed t = res
 
     lpats :: [GHC.LPat GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
     lpats xs = do
-      fds <- mapM (hsFreeAndDeclaredGhc' parsed) xs
+      fds <- mapM hsFreeAndDeclaredGhc xs
       return $ mconcat fds
 
     lpat :: GHC.LPat GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lpat lp = do
+      parsed <- getRefactParsed
       let
         dn = GHC.collectPatBinders lp
         lpatParsed = getParsedForRenamedLPat parsed lp
         nameMaker = GHC.topRecNameMaker (GHC.emptyFsEnv) -- emptyFsEnv
         -- (lpatName,fvs) = liftIO $ inRnM $ GHC.rnBindPat nameMaker lpatParsed
-        gg = inRnM undefined undefined $ GHC.rnBindPat nameMaker lpatParsed
         -- fn = GHC.rnBindPat
-        fn = error "carry on here"
+        -- fn = error "carry on here"
+      df <- GHC.getDynFlags
+      typechecked <- getTypecheckedModule
+      let (glblEnv,_) = GHC.tm_internals_ typechecked
+      -- logm $ "hsFreeAndDeclaredGhc:glblEnv=" ++ (GHC.showSDoc df $ GHC.pprGlobalRdrEnv $ GHC.tcg_rdr_env glblEnv)
+      env <- GHC.getSession
+      let glbRdrEnv = GHC.tcg_rdr_env glblEnv
+      ((wm,em),mf) <- liftIO $ inRnM env glbRdrEnv $ GHC.rnBindPat nameMaker lpatParsed
+      let fn = case mf of
+                Just (_,f) -> GHC.nameSetToList f
+                Nothing -> error $ "HaRe:hsFreeAndDeclaredGhc:wtf"
+                                ++ (GHC.showSDoc df $ GHC.vcat $ GHC.pprErrMsgBag wm)
+                                ++ (GHC.showSDoc df $ GHC.vcat $ GHC.pprErrMsgBag em)
+      -- logm $ "hsFreeAndDeclaredGhc:fn=" ++ (showGhc fn)
       return (FN fn,DN dn)
 
     err = error $ "hsFreeAndDeclaredGhc:not matched:" ++ (SYB.showData SYB.Renamer 0 t)
 
-inRnM :: GHC.HscEnv -> GHC.DynFlags -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
-inRnM hsc_env dflags fn = do
-  -- mySettings <- liftIO $ GHC. initSysTools Nothing
-  -- dflags <- liftIO $ GHC.initDynFlags (GHC.defaultDynFlags mySettings)
-  -- hsc_env <- GHC.newHscEnv dflags
-  let ictxt = undefined
+-- ---------------------------------------------------------------------
+
+
+-- ---------------------------------------------------------------------
+
+inRnM :: GHC.HscEnv -> GHC.GlobalRdrEnv -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
+inRnM hsc_env glbRdrEnv fn = do
+  let ictxt = (GHC.hsc_IC hsc_env) { GHC.ic_rn_gbl_env = glbRdrEnv }
   GHC.initTcPrintErrors hsc_env GHC.iNTERACTIVE $ setInteractiveContext hsc_env ictxt fn
 
 -- ---------------------------------------------------------------------
@@ -1142,9 +1165,9 @@ hsVisibleFDs'' parsed e t = do
     lmatch (GHC.L _ (GHC.Match pats _mtyp rhs))
       | findEntity e pats = return emptyFD -- TODO: extend this
       | findEntity e rhs = do
-           (_pf,pd) <- hsFreeAndDeclaredGhc pats
+           ( pf,pd) <- hsFreeAndDeclaredGhc pats
            ( rf,rd) <- hsVisibleFDs'' parsed e rhs
-           return (rf,pd <> rd)
+           return (pf <> rf,pd <> rd)
       -- | findEntity e rhs = error $ "hsVisibleFDs:lmatch.rhs:" ++ show (rf,pd,rd)
     lmatch _ =return  emptyFD
 

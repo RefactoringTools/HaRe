@@ -979,6 +979,7 @@ check_dup_names names
           fds' <- hsVisibleFDs e $  head $ hsBinds binds
           return (fds')
       ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (show fds) `shouldBe` "(FN [],DN [a, b])"
 
@@ -996,15 +997,15 @@ check_dup_names names
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
-      -- let fds= hsVisibleFDs' parsed e $  head $ hsBinds binds
 
       let
         comp = do
           fds' <- hsVisibleFDs e $  head $ hsBinds binds
           return (fds')
       ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
-      (show fds) `shouldBe` "(FN [B],DN [x])"
+      (show fds) `shouldBe` "(FN [Visible.Simple.B],DN [x])"
 
 
   -- ---------------------------------------------
