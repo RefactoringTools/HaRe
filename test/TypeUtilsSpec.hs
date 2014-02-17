@@ -823,6 +823,8 @@ spec = do
   -- ---------------------------------------------------------------------
 
   describe "hsVisiblePNs" $ do
+
+{-
     it "experiments with GHC checkDupAndShadowedNames" $ do
       (t,toks) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -852,12 +854,12 @@ check_dup_names names
 
       (showGhc bound_names) `shouldBe` ""
       "a" `shouldBe` "b"
+-}
 
     -- ---------------------------------
 
-    it "Returns [] if e does not occur in t" $ do
-      -- ((_,Just renamed,_parsed),_toks) <- parsedFileDd1Ghc
-      (t,toks) <- parsedFileDd1Ghc
+    it "returns [] if e does not occur in t" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tl1  = locToExp (4,13) (4,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
@@ -865,9 +867,10 @@ check_dup_names names
       -- let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       let
         comp = do
-          r <- hsVisiblePNs tl1 tup
+          r <- hsVisiblePNs tup tl1
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc $ res) `shouldBe` "[]"
 
@@ -885,11 +888,13 @@ check_dup_names names
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
       (showGhc decl) `shouldBe` "DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z"
       -- (SYB.showData SYB.Renamer 0 decl) `shouldBe` ""
+
       let
         comp = do
          r <- hsVisiblePNs tl1 decl
          return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc res ) `shouldBe` "[z, ll]"
 
@@ -904,6 +909,7 @@ check_dup_names names
 
       let Just rhs  = locToExp (26,1) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       (showGhc rhs) `shouldBe` "let ll = 34 in ll GHC.Num.+ z"
+
       let
         comp = do
           r <- hsVisiblePNs tl1 rhs
@@ -2706,7 +2712,7 @@ check_dup_names names
          let declsr = hsBinds parentr
              duplicatedDecls = definingDeclsNames [n] declsr True False
 
-             res = findEntity ln duplicatedDecls
+             res  = findEntity ln duplicatedDecls
              res2 = findEntity n duplicatedDecls
              -- res = findEntity' ln duplicatedDecls
 
@@ -2714,8 +2720,8 @@ check_dup_names names
       ((r,r2,d,_l),_s) <- runRefactGhcState comp
       (showGhc d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       (showGhc _l) `shouldBe` "DupDef.Dd1.toplevel"
-      r `shouldBe` False
-      r2 `shouldBe` False -- Because unlocated name is one layer deeper
+      ("1" ++ show r) `shouldBe` "1True"
+      ("2" ++ show r2) `shouldBe` "2True"
 
     -- ---------------------------------
 
@@ -2744,8 +2750,9 @@ check_dup_names names
       (showGhc d) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n"++
                              "          GHC.Base.return (ss GHC.Num.+ q) }]"
       (showGhc _l) `shouldBe` "ss"
-      r `shouldBe` False
-      r2 `shouldBe` False
+      ("1" ++ show r) `shouldBe` "1True"
+      ("2" ++ show r2) `shouldBe` "2True"
+
 
     -- -----------------------------------------------------------------
 
@@ -2773,7 +2780,8 @@ check_dup_names names
       (showGhc d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       -- (show l) `shouldBe` "foo"
       -- (show r) `shouldBe` "foo"
-      r `shouldBe` False
+      ("1" ++ show r) `shouldBe` "1False"
+      -- ("2" ++ show r2) `shouldBe` "2False"
 
     -- -----------------------------------------------------------------
 

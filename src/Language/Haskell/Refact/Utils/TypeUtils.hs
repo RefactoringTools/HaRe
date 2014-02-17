@@ -844,15 +844,56 @@ hsFreeAndDeclaredGhc t = do
 
   where
     res = (const err -- emptyFD
+          `SYB.extQ` lhsbind
           `SYB.extQ` hsbind
+          `SYB.extQ` lhsbinds
+          `SYB.extQ` lhsbindslr
+          `SYB.extQ` hslocalbinds
+          `SYB.extQ` hsvalbinds
           `SYB.extQ` lpats
           `SYB.extQ` lpat
+          `SYB.extQ` ltydecls
+          `SYB.extQ` ltydecl
+          `SYB.extQ` lfaminstdecls
+          `SYB.extQ` lfaminstdecl
+          `SYB.extQ` lsigs
+          `SYB.extQ` lsig
+          `SYB.extQ` lexpr
           ) t
 
-    hsbind :: (GHC.HsBind GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
+    lhsbinds :: [GHC.LHsBinds GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
+    lhsbinds bs = do
+      fds <- mapM hsFreeAndDeclaredGhc bs
+      return $ mconcat fds
+
+    lhsbind :: GHC.LHsBind GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lhsbind (GHC.L _ b) = hsFreeAndDeclaredGhc b
+
+    hsbind :: GHC.HsBind GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     hsbind b = do
         let d = GHC.collectHsBindBinders b
         return (FN [],DN d)
+
+    lhsbindslr :: GHC.LHsBindsLR GHC.Name GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lhsbindslr bs = do
+      fds <- mapM hsFreeAndDeclaredGhc $ GHC.bagToList bs
+      return $ mconcat fds
+
+    hslocalbinds :: GHC.HsLocalBinds GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    hslocalbinds (GHC.HsValBinds binds) = hsFreeAndDeclaredGhc binds
+    hslocalbinds (GHC.HsIPBinds binds)  = hsFreeAndDeclaredGhc binds
+    hslocalbinds GHC.EmptyLocalBinds    = return emptyFD
+
+
+    hsvalbinds :: GHC.HsValBinds GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    hsvalbinds (GHC.ValBindsIn binds sigs) = do
+      bfds <- hsFreeAndDeclaredGhc binds
+      sfds <- hsFreeAndDeclaredGhc sigs
+      return $ bfds <> sfds
+    hsvalbinds (GHC.ValBindsOut binds sigs) = do
+      bfds <- hsFreeAndDeclaredGhc $ map snd binds
+      sfds <- hsFreeAndDeclaredGhc sigs
+      return $ bfds <> sfds
 
     lpats :: [GHC.LPat GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
     lpats xs = do
@@ -883,6 +924,56 @@ hsFreeAndDeclaredGhc t = do
                                 ++ (GHC.showSDoc df $ GHC.vcat $ GHC.pprErrMsgBag em)
       -- logm $ "hsFreeAndDeclaredGhc:fn=" ++ (showGhc fn)
       return (FN fn,DN dn)
+
+    ltydecls :: [GHC.LTyClDecl GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
+    ltydecls ds = do
+      fds <- mapM hsFreeAndDeclaredGhc ds
+      return $ mconcat fds
+
+    ltydecl :: GHC.LTyClDecl GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    ltydecl (GHC.L _ (GHC.ForeignType (GHC.L _ n) _)) = return (FN [],DN [n])
+    ltydecl (GHC.L _ (GHC.TyFamily _ (GHC.L _ n) _bndrs _)) = return (FN [],DN [n])
+    ltydecl (GHC.L _ (GHC.TyDecl (GHC.L _ n) _bndrs _defn fvs))
+        = return (FN (GHC.nameSetToList fvs),DN [n])
+    ltydecl (GHC.L _ (GHC.ClassDecl _ctx (GHC.L _ n) _tyvars
+                     _fds _sigs meths ats atds _docs fvs)) = do
+       -- (_,td) <- hsFreeAndDeclaredGhc tyvars
+       (_,md) <- hsFreeAndDeclaredGhc meths
+       (_,ad) <- hsFreeAndDeclaredGhc ats
+       (_,atd) <- hsFreeAndDeclaredGhc atds
+       return (FN (GHC.nameSetToList fvs),DN [n] <> md <> ad <> atd)
+
+    lfaminstdecls :: [GHC.LFamInstDecl GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
+    lfaminstdecls ds = do
+      fds <- mapM hsFreeAndDeclaredGhc ds
+      return $ mconcat fds
+
+    lfaminstdecl :: GHC.LFamInstDecl GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lfaminstdecl (GHC.L _ (GHC.FamInstDecl (GHC.L _ n) _pats _defn fvs)) = do
+      return (FN (GHC.nameSetToList fvs), DN [n])
+
+
+    lsigs :: [GHC.LSig GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
+    lsigs ss = do
+      fds <- mapM hsFreeAndDeclaredGhc ss
+      return $ mconcat fds
+
+    lsig :: GHC.LSig GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lsig (GHC.L _ (GHC.TypeSig n typ)) = do
+      tfds <- hsFreeAndDeclaredGhc typ
+      return $ (FN [],DN (map GHC.unLoc n)) <> tfds
+    lsig (GHC.L _ (GHC.GenericSig n typ)) = do
+      tfds <- hsFreeAndDeclaredGhc typ
+      return $ (FN [],DN (map GHC.unLoc n)) <> tfds
+    lsig (GHC.L _ (GHC.IdSig _)) = return emptyFD
+    lsig (GHC.L _ (GHC.InlineSig _ _)) = return emptyFD
+    lsig (GHC.L _ (GHC.SpecSig n typ _)) = do
+      tfds <- hsFreeAndDeclaredGhc typ
+      return $ (FN [],DN [GHC.unLoc n]) <> tfds
+    lsig (GHC.L _ (GHC.SpecInstSig _)) = return emptyFD
+
+    lexpr :: GHC.LHsExpr GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lexpr (GHC.L _ e) = return emptyFD -- TODO: extend this
 
     err = error $ "hsFreeAndDeclaredGhc:not matched:" ++ (SYB.showData SYB.Renamer 0 t)
 
@@ -1158,12 +1249,20 @@ hsVisibleFDs e t = do
     res = (const err -- emptyFD
           `SYB.extQ` renamed
           `SYB.extQ` valbinds
+          `SYB.extQ` lhsbindslr
+          `SYB.extQ` hsbinds
           `SYB.extQ` hsbind
+          `SYB.extQ` hslocalbinds
           `SYB.extQ` lmatch
           `SYB.extQ` grhss
           `SYB.extQ` lgrhs
           `SYB.extQ` lexpr
+          `SYB.extQ` tycldeclss
           `SYB.extQ` tycldecls
+          `SYB.extQ` tycldecl
+          `SYB.extQ` instdecls
+          `SYB.extQ` instdecl
+          `SYB.extQ` lhstype
           ) t
 
     renamed :: GHC.RenamedSource -> RefactGhc (FreeNames,DeclaredNames)
@@ -1183,12 +1282,32 @@ hsVisibleFDs e t = do
           return $ mconcat fdss <> mconcat fdsb
     valbinds _ = return emptyFD
 
+    lhsbindslr :: GHC.LHsBindsLR GHC.Name GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lhsbindslr bs = do
+      fds <- mapM (hsVisibleFDs e) $ GHC.bagToList bs
+      return $ mconcat fds
+
+    hsbinds :: [GHC.LHsBind GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
+    hsbinds ds
+      | findEntity e ds = do
+        fds <- mapM (hsVisibleFDs e) ds
+        return $ mconcat fds
+    hsbinds _ = return emptyFD
+
     hsbind :: (GHC.LHsBind GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
     hsbind ((GHC.L _ (GHC.FunBind _n _ (GHC.MatchGroup matches _) _ _ _)))
       | findEntity e matches = do
           fds <- mapM (hsVisibleFDs e) matches
           return $ mconcat fds
     hsbind _ = return emptyFD
+
+    hslocalbinds :: (GHC.HsLocalBinds GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
+    hslocalbinds (GHC.HsValBinds binds)
+      | findEntity e binds = hsVisibleFDs e binds
+    hslocalbinds (GHC.HsIPBinds binds)
+      | findEntity e binds = hsVisibleFDs e binds
+    hslocalbinds (GHC.EmptyLocalBinds) = return emptyFD
+
 
     lmatch :: (GHC.LMatch GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
     lmatch (GHC.L _ (GHC.Match pats _mtyp rhs))
@@ -1197,7 +1316,6 @@ hsVisibleFDs e t = do
            ( pf,pd) <- hsFreeAndDeclaredGhc pats
            ( rf,rd) <- hsVisibleFDs e rhs
            return (pf <> rf,pd <> rd)
-      -- | findEntity e rhs = error $ "hsVisibleFDs:lmatch.rhs:" ++ show (rf,pd,rd)
     lmatch _ =return  emptyFD
 
     grhss :: (GHC.GRHSs GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
@@ -1205,28 +1323,68 @@ hsVisibleFDs e t = do
       | findEntity e guardedRhss = do
           fds <- mapM (hsVisibleFDs e) guardedRhss
           return $ mconcat fds
-      | findEntity e guardedRhss = error $ "hsVisibleFDs.grhss:guar"
-    --  | findEntity e lstmts = hsVisibleFDs e lstmts
-      | findEntity e lstmts = error $ "hsVisibleFDs.grhss:lstmts"
-    grhss _ = error $ "hsVisibleFDs.grhss:emptyFD"
+      | findEntity e lstmts = hsVisibleFDs e lstmts
+    grhss _ = return emptyFD
 
     lgrhs :: GHC.LGRHS GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lgrhs (GHC.L _ (GHC.GRHS stmts ex))
       | findEntity e stmts = hsVisibleFDs e stmts
       | findEntity e ex    = hsVisibleFDs e ex
-    lgrhs _ = error $ "hsVisibleFDs.lgrhs:emptyFD"
+    lgrhs _ = return emptyFD
+
 
     lexpr :: GHC.LHsExpr GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
-    lexpr (GHC.L _ _ex) = return emptyFD
-    -- lexpr = error $ "hsVisibleFDs.lexpr undefined"
+    lexpr (GHC.L _ (GHC.HsVar n))
+      | findEntity e n  = return (FN [],DN [n])
+    lexpr (GHC.L _ (GHC.HsLet lbinds expr))
+      | findEntity e lbinds || findEntity e expr  = do
+        lfds <- hsFreeAndDeclaredGhc lbinds
+        efds <- hsFreeAndDeclaredGhc expr
+        return $ lfds <> efds
+
+    lexpr _ = return emptyFD
 
 
-    tycldecls :: [[GHC.LTyClDecl GHC.Name]] -> RefactGhc (FreeNames,DeclaredNames)
+    tycldeclss :: [[GHC.LTyClDecl GHC.Name]] -> RefactGhc (FreeNames,DeclaredNames)
+    tycldeclss tcds
+      | findEntity e tcds = do
+        fds <- mapM (hsVisibleFDs e) tcds
+        return $ mconcat fds
+    tycldeclss _ = return emptyFD
+
+    tycldecls :: [GHC.LTyClDecl GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
     tycldecls tcds
       | findEntity e tcds = do
         fds <- mapM (hsVisibleFDs e) tcds
         return $ mconcat fds
     tycldecls _ = return emptyFD
+
+    tycldecl :: GHC.LTyClDecl GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    tycldecl tcd
+      | findEntity e tcd = do
+        fds <- hsFreeAndDeclaredGhc tcd
+        return fds
+    tycldecl _ = return emptyFD
+
+    instdecls :: [GHC.LInstDecl GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
+    instdecls ds
+      | findEntity e ds = do
+        fds <- mapM (hsVisibleFDs e) ds
+        return $ mconcat fds
+    instdecls _ = return emptyFD
+
+    instdecl :: GHC.LInstDecl GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    instdecl (GHC.L _ (GHC.ClsInstD polytyp binds sigs faminsts))
+      | findEntity e polytyp  = hsVisibleFDs e polytyp
+      | findEntity e binds    = hsVisibleFDs e binds
+      | findEntity e sigs     = hsVisibleFDs e sigs
+      | findEntity e faminsts = hsVisibleFDs e faminsts
+    instdecl _ = return emptyFD
+
+    lhstype :: GHC.LHsType GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lhstype tv@(GHC.L _ (GHC.HsTyVar n))
+      | findEntity e tv = return (FN [],DN [n])
+    lhstype _ = return emptyFD
 
     err = error $ "hsVisibleFDs:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
 
@@ -2413,13 +2571,6 @@ instance HsValBinds [GHC.SyntaxExpr GHC.Name] where
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LSig GHC.Name) where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LSig GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
 instance HsValBinds [[GHC.LTyClDecl GHC.Name]] where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds [[GHC.LTyClDecl GHC.Name]] undefined for:" ++ (showGhc old)
@@ -2444,6 +2595,55 @@ instance HsValBinds (GHC.LTyClDecl GHC.Name) where
 instance HsValBinds [GHC.LInstDecl GHC.Name] where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds [GHC.LInstDecl GHC.Name] undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LInstDecl GHC.Name) where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LInstDecl GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LHsType GHC.Name) where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsType GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.LSig GHC.Name] where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LSig GHC.Name] undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LSig GHC.Name) where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LSig GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.LFamInstDecl GHC.Name] where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LFamInstDecl GHC.Name] undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LFamInstDecl GHC.Name) where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LFamInstDecl GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.HsIPBinds GHC.Name) where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsIPBinds GHC.Name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------

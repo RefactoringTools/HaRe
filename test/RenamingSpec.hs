@@ -77,7 +77,7 @@ spec = do
     it "Renames in D3 B3 C3 A3 12 7" $ do
      --     (["D3.hs","B3.hs","C3.hs","A3.hs"],["Same","12","7"]),
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/A3.hs") testCradle "./test/testdata/Renaming/D3.hs" "Same" (12,7)
-     -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/A3.hs") "./test/testdata/Renaming/D3.hs" "Same" (12,7)
+     -- rename (logTestSettingsMainfile "./test/testdata/Renaming/A3.hs") testCradle "./test/testdata/Renaming/D3.hs" "Same" (12,7)
 
      r `shouldBe` [ "./test/testdata/Renaming/D3.hs"
                   , "./test/testdata/Renaming/C3.hs"
