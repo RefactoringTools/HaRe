@@ -368,7 +368,7 @@ spec = do
 
     it "naming clash IdIn5" $ do
      --     (["IdIn5.hs"],["y","10","1"]),
-     -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/IdIn5.hs" "y" (10,1)
+     -- rename logTestSettings testCradle "./test/testdata/Renaming/IdIn5.hs" "y" (10,1)
      res <- catchException (rename defaultTestSettings testCradle "./test/testdata/Renaming/IdIn5.hs" "y" (10,1))
      (show res) `shouldBe` "Just \"Name 'y'  already existed, or rename 'IdIn5.x' to 'y' will change the program's semantics!\\n\""
 

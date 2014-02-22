@@ -345,3 +345,6 @@ testing/addCon/Case2.hs.temp.hs
 /test/UtilsSpec.hs.tokens
 /docker/HaRe-7.6.3/HaRe.cabal
 /test/TAGS
+/test/testdata/Renaming/IdIn5.hs.AST_out
+/test/testdata/Renaming/IdIn5.hs.renamed_out
+/test/testdata/Renaming/IdIn5.hs.tokens

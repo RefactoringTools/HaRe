@@ -824,38 +824,6 @@ spec = do
 
   describe "hsVisiblePNs" $ do
 
-{-
-    it "experiments with GHC checkDupAndShadowedNames" $ do
-      (t,toks) <- parsedFileDd1Ghc
-      let renamed = fromJust $ GHC.tm_renamed_source t
-
-      let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-      (showGhc tl1) `shouldBe` "ll GHC.Num.+ z"
-
-      let Just tup = getName "DupDef.Dd1.l" renamed
-      let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
-
-      let binds = hsValBinds [decl]
-      let bound_names = GHC.collectHsValBinders binds
-
-{-
-
-In GHC compiler:
-
-check_dup_names :: [Name] -> RnM ()
-check_dup_names names
-  = mapM_ (dupNamesErr nameSrcSpan) dups
-  where
-    (_, dups) = removeDups (\n1 n2 -> nameOccName n1 `compare` nameOccName n2) names
-
--}
-
-
-
-      (showGhc bound_names) `shouldBe` ""
-      "a" `shouldBe` "b"
--}
-
     -- ---------------------------------
 
     it "returns [] if e does not occur in t" $ do
@@ -892,11 +860,13 @@ check_dup_names names
       let
         comp = do
          r <- hsVisiblePNs tl1 decl
-         return r
-      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+         let r2 = hsVisiblePNsOld tl1 decl
+         return (r,r2)
+      ((res,res2),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc res ) `shouldBe` "[z, ll]"
+      (showGhc res2 ) `shouldBe` "[z, ll]"
 
     -- -----------------------------------------------------------------
 
@@ -966,8 +936,8 @@ check_dup_names names
 
   -- ---------------------------------------------------------------------
 
-  describe "hsVisibleFDs" $ do
-    it "finds function arguments visible in RHS" $ do
+  describe "hsVisibleDs" $ do
+    it "finds function arguments visible in RHS 1" $ do
       (t,toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
@@ -979,16 +949,94 @@ check_dup_names names
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
-      -- let fds= hsVisibleFDs' parsed e $  head $ hsBinds binds
+
+      -- (SYB.showData SYB.Renamer 0 $ head $ hsBinds binds) `shouldBe` ""
 
       let
         comp = do
-          fds' <- hsVisibleFDs e $  head $ hsBinds binds
+          fds' <- hsVisibleDs e $  head $ hsBinds binds
+          let fds'o = hsVisiblePNsOld e $  head $ hsBinds binds
+          return (fds',fds'o)
+      ((fds,fdso),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      -- (showGhc fdso) `shouldBe` "[a, b]"
+      (show fds) `shouldBe` "DN [a, b]"
+
+    -- -----------------------------------
+
+    it "finds function arguments visible in RHS 2" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just e  = locToExp (9,15) (9,17) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
+      (showGhc e) `shouldBe` "x"
+
+      let Just n = getName "Visible.Simple.param2" renamed
+      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+
+      let binds = hsValBinds [decl]
+
+      let
+        comp = do
+          fds' <- hsVisibleDs e $  head $ hsBinds binds
           return (fds')
       ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
-      (show fds) `shouldBe` "(FN [],DN [a, b])"
+      (show fds) `shouldBe` "DN [x]"
+
+
+    -- -----------------------------------
+
+    it "finds visible vars inside a function" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Renaming/IdIn5.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just rhs  = locToExp (14,6) (15,14) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
+      (showGhc rhs) `shouldBe` "IdIn5.x GHC.Num.+ y GHC.Num.+ z"
+      -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
+
+      let Just e = getName "IdIn5.x" renamed
+
+      let
+        comp = do
+          fds' <- hsVisibleDs e rhs
+          ffds <- hsFreeAndDeclaredGhc rhs
+          return (fds',ffds)
+      -- ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((fds,_fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      (show _fds) `shouldBe` "DN [y,z]"
+      (show fds) `shouldBe` "DN [y,z]"
+
+
+  -- ---------------------------------------------------------------------
+
+  describe "hsFreeAndDeclaredGhc" $ do
+    it "finds function arguments visible in RHS fd" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Visible/Simple.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      (showGhc e) `shouldBe` "a GHC.Num.+ b"
+
+      let Just n = getName "Visible.Simple.params" renamed
+      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+
+      let binds = hsValBinds [decl]
+
+      let
+        comp = do
+          fds' <- hsFreeAndDeclaredGhc $  head $ hsBinds binds
+          return (fds')
+      ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      (show fds) `shouldBe` "(FN [],DN [Visible.Simple.params])"
 
     -- -----------------------------------
 
@@ -1004,10 +1052,13 @@ check_dup_names names
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
+      let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup matches _) _ _ _)) = head $ hsBinds binds
+      let [(GHC.L _ (GHC.Match pats _ _))] = matches
+      let lpat = head pats
 
       let
         comp = do
-          fds' <- hsVisibleFDs e $  head $ hsBinds binds
+          fds' <- hsFreeAndDeclaredGhc $ lpat
           return (fds')
       ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }

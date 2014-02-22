@@ -799,12 +799,13 @@ allocExpr (GHC.L l (GHC.HsLet localBinds expr@(GHC.L le _))) toks = r
     exprMainLayout = [makeGroup $ strip $ bindLayout ++ [makeGroup exprLayout] ++ (makeLeafFromToks toks')]
     r = strip $ (makeLeafFromToks sb) ++ exprMainLayout ++ (makeLeafFromToks sa)
 allocExpr (GHC.L l (GHC.HsDo _ stmts _)) toks = r
+  -- HsDo (HsStmtContext Name) [LStmt id] PostTcType
   where
     (s1,toksBinds',toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
 
     (before,including) = break isDo toksBinds'
     doToks = before ++ [ghead "allocExpr" including]
-    toksBinds = gtail ("allocExpr.HsDo" ++ show (before,including,toks)) including
+    toksBinds = gtail ("allocExpr.HsDo" ++ show (l,before,including,toks)) including
 
     bindsLayout' = allocList stmts toksBinds allocStmt
 
