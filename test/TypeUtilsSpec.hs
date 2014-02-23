@@ -851,6 +851,7 @@ spec = do
 
       let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       (showGhc tl1) `shouldBe` "ll GHC.Num.+ z"
+      -- (SYB.showData SYB.Renamer 0 tl1) `shouldBe` ""
 
       let Just tup = getName "DupDef.Dd1.l" renamed
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
@@ -863,10 +864,10 @@ spec = do
          let r2 = hsVisiblePNsOld tl1 decl
          return (r,r2)
       ((res,res2),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- ((res,res2),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc res ) `shouldBe` "[z, ll]"
-      (showGhc res2 ) `shouldBe` "[z, ll]"
+      -- (showGhc res2 ) `shouldBe` "[z, ll]"
 
     -- -----------------------------------------------------------------
 
@@ -961,7 +962,7 @@ spec = do
       -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       -- (showGhc fdso) `shouldBe` "[a, b]"
-      (show fds) `shouldBe` "DN [a, b]"
+      (show fds) `shouldBe` "DN [a, b, GHC.Num.+]"
 
     -- -----------------------------------
 
@@ -1006,11 +1007,11 @@ spec = do
           fds' <- hsVisibleDs e rhs
           ffds <- hsFreeAndDeclaredGhc rhs
           return (fds',ffds)
-      -- ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((fds,_fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      ((fds,_fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((fds,_fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
-      (show _fds) `shouldBe` "DN [y,z]"
-      (show fds) `shouldBe` "DN [y,z]"
+      (show _fds) `shouldBe` "(FN [IdIn5.x, GHC.Num.+, y, z],DN [])"
+      (show fds) `shouldBe` "DN [GHC.Num.+, y, z]"
 
 
   -- ---------------------------------------------------------------------

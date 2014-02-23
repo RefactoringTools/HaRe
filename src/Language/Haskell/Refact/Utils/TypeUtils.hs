@@ -838,9 +838,9 @@ hsFreeAndDeclaredPNs t = res
 hsFreeAndDeclaredGhc :: (SYB.Data t, GHC.Outputable t) => t -> RefactGhc (FreeNames,DeclaredNames)
 hsFreeAndDeclaredGhc t = do
   logm $ "hsFreeAndDeclaredGhc:t=" ++ showGhc t
-  r <- res
+  r@(FN f,DN d) <- res
   logm $ "hsFreeAndDeclaredGhc:res=" ++ show r
-  return r
+  return (FN (nub f),DN (nub d))
 
   where
     res = (const err -- emptyFD
@@ -859,6 +859,7 @@ hsFreeAndDeclaredGhc t = do
           `SYB.extQ` lsigs
           `SYB.extQ` lsig
           `SYB.extQ` lexpr
+          `SYB.extQ` name
           ) t
 
     lhsbinds :: [GHC.LHsBinds GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
@@ -1079,10 +1080,55 @@ hsFreeAndDeclaredGhc t = do
     lexpr (GHC.L _ (GHC.HsQuasiQuoteE q))
       = hsFreeAndDeclaredGhc q
 
+    lexpr (GHC.L _ (GHC.HsProc pat cmd)) = do
+      fdp <- hsFreeAndDeclaredGhc pat
+      fdc <- hsFreeAndDeclaredGhc cmd
+      return $ fdp <> fdc
+
+    lexpr (GHC.L _ (GHC.HsArrApp e1 e2 _typ _atyp _)) = do
+      fd1 <- hsFreeAndDeclaredGhc e1
+      fd2 <- hsFreeAndDeclaredGhc e2
+      return $ fd1 <> fd2
+
+    lexpr (GHC.L _ (GHC.HsArrForm e1 _fix cmds)) = do
+      fd1 <- hsFreeAndDeclaredGhc e1
+      fdc <- hsFreeAndDeclaredGhc cmds
+      return $ fd1 <> fdc
+
+    lexpr (GHC.L _ (GHC.HsTick _ e))
+      = hsFreeAndDeclaredGhc e
+
+    lexpr (GHC.L _ (GHC.HsBinTick _ _ e))
+      = hsFreeAndDeclaredGhc e
+
+    lexpr (GHC.L _ (GHC.HsTickPragma _ e))
+      = hsFreeAndDeclaredGhc e
+
+    lexpr (GHC.L _ (GHC.EWildPat)) = return emptyFD
+
+    lexpr (GHC.L _ (GHC.EAsPat (GHC.L _ n) e)) = do
+      fde <- hsFreeAndDeclaredGhc e
+      return $ (FN [],DN [n]) <> fde
+
+    lexpr (GHC.L _ (GHC.EViewPat e1 e2)) = do
+      fd1 <- hsFreeAndDeclaredGhc e1
+      fd2 <- hsFreeAndDeclaredGhc e2
+      return $ fd1 <> fd2
+
+    lexpr (GHC.L _ (GHC.ELazyPat e))
+      = hsFreeAndDeclaredGhc e
+
+    lexpr (GHC.L _ (GHC.HsType typ))
+      = hsFreeAndDeclaredGhc typ
+
+    lexpr (GHC.L _ (GHC.HsWrap _wrap e))
+      = hsFreeAndDeclaredGhc e
 
 
-    lexpr (GHC.L _ e) = return emptyFD -- TODO: extend this
+    -- -----------------------
 
+    name :: GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    name n = return (FN [],DN [n])
 
     err = error $ "hsFreeAndDeclaredGhc:not matched:" ++ (SYB.showData SYB.Renamer 0 t)
 
@@ -1187,7 +1233,7 @@ getDeclaredVars bs = concatMap vars bs
 --------------------------------------------------------------------------------
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
-hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2,HsValBinds t2)
+hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2,HsValBinds t2,GHC.Outputable t1)
   => t1 -> t2 -> RefactGhc [String]
 hsVisibleNames e t = do
     d <- hsVisiblePNs e t
@@ -1335,7 +1381,7 @@ hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisiblePNs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
+hsVisiblePNs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t,GHC.Outputable e)
              => e -> t -> RefactGhc [GHC.Name]
 hsVisiblePNs e t = do
   (DN dn) <- hsVisibleDs e t
@@ -1346,11 +1392,12 @@ hsVisiblePNs e t = do
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisibleDs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
+hsVisibleDs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t,GHC.Outputable e)
              => e -> t -> RefactGhc DeclaredNames
 hsVisibleDs e t = do
   logm $ "hsVisibleDs:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
-  res
+  (DN d) <- res
+  return (DN (nub d))
   where
     -- TODO: this is effectively a recursive descent approach, where
     --       each syntax element processor knows exactly what it needs
@@ -1409,6 +1456,7 @@ hsVisibleDs e t = do
     hsbind ((GHC.L _ (GHC.FunBind _n _ (GHC.MatchGroup matches _) _ _ _)))
       | findEntity e matches = do
           fds <- mapM (hsVisibleDs e) matches
+          logm $ "hsVisibleDs.hsbind:fds=" ++ show fds
           return $ mconcat fds
     hsbind _ = return (DN [])
 
@@ -1425,6 +1473,7 @@ hsVisibleDs e t = do
       | findEntity e pats = return (DN []) -- TODO: extend this
       | findEntity e rhs = do
            ( pf,pd) <- hsFreeAndDeclaredGhc pats
+           logm $ "hsVisibleDs.lmatch:(pf,pd)=" ++ (show (pf,pd))
            (    rd) <- hsVisibleDs e rhs
            return (pd <> rd)
     lmatch _ =return  (DN [])
@@ -1453,17 +1502,13 @@ hsVisibleDs e t = do
         (_,eds) <- hsFreeAndDeclaredGhc expr
         return $ lds <> eds
 
-    lexpr (GHC.L _ (GHC.OpApp e1 _eOp _ e2))
-      | findEntity e e1 = do
+    lexpr expr
+      | findEntity e expr = do
         -- logm $ "hsVisibleDs.lexpr.e1:" ++ (showGhc (e1,_eOp,e2))
-        e1ds <- hsVisibleDs e e1
-        e2ds <- hsVisibleDs e e2
-        return (e1ds <> e2ds)
-      | findEntity e e2 = do
-        -- logm $ "hsVisibleDs.lexpr.e2:" ++ (showGhc (e1,_eOp,e2))
-        e1ds <- hsVisibleDs e e1
-        e2ds <- hsVisibleDs e e2
-        return (e1ds <> e2ds)
+        (FN efs,_) <- hsFreeAndDeclaredGhc expr
+        (FN _eefs,DN eeds) <- hsFreeAndDeclaredGhc e
+        -- return (DN e1fs <> DN eofs <> DN e2fs)
+        return (DN (efs \\ eeds))
 
     lexpr _ = return (DN [])
 

@@ -28,6 +28,7 @@
 ** TODO after accepting a refactoring, reload the buffer into emacs
 ** TODO add a "roundtrip" function to ghc-hare to simply parse and output a file, comparing for fidelity
 ** TODO clientModsAndFiles must take the nub of all files generated from the various targets
+** TODO use GHC.NameSet for hsFreeAndDeclaredGhc,hsVisibleDs etc
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
