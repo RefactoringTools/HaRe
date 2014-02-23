@@ -392,7 +392,7 @@ spec = do
 
     it "must qualify clashes Qualifier" $ do
      --     (["Qualifier.hs"],["sum","13","1"]),
-     -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/Qualifier.hs" "sum" (13,1)
+     -- rename logTestSettings testCradle "./test/testdata/Renaming/Qualifier.hs" "sum" (13,1)
      res <- catchException (rename defaultTestSettings testCradle "./test/testdata/Renaming/Qualifier.hs" "sum" (13,1))
      (show res) `shouldBe` "Just \"The new name will cause ambiguous occurrence problem, please select another new name or qualify the use of ' sum' before renaming!\\n\""
 

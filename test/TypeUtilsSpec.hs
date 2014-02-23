@@ -584,7 +584,7 @@ spec = do
       let
         comp = do
           let r = hsFreeAndDeclaredPNsOld renamed
-          let rg = hsFreeAndDeclaredPNs renamed
+          rg <- hsFreeAndDeclaredPNs renamed
           let ff = map (\b -> getFreeVars [b]) $ hsBinds renamed
           return (r,rg,ff)
       ((res,resg,_fff),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -653,7 +653,7 @@ spec = do
       let
         comp = do
           let b = head $ drop 4 $ hsBinds renamed
-          let rg = hsFreeAndDeclaredPNs [b]
+          rg <- hsFreeAndDeclaredPNs [b]
           return (b,rg)
       ((bb,resg),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
@@ -677,7 +677,7 @@ spec = do
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
       let
         comp = do
-          let r = hsFreeAndDeclaredPNs renamed
+          r <- hsFreeAndDeclaredPNs renamed
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
@@ -700,7 +700,7 @@ spec = do
       let
         comp = do
           -- let r = hsFreeAndDeclaredPNs decl
-          let r = hsFreeAndDeclaredPNs [decl]
+          r <- hsFreeAndDeclaredPNs [decl]
           return (r,decl)
       ((res,d),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
@@ -723,7 +723,7 @@ spec = do
       let
         comp = do
           -- r <- hsFreeAndDeclaredPNs renamed
-          let r = hsFreeAndDeclaredPNs $ hsBinds renamed
+          r <- hsFreeAndDeclaredPNs $ hsBinds renamed
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
@@ -744,7 +744,7 @@ spec = do
 
       let
         comp = do
-          let r = hsFreeAndDeclaredPNs renamed
+          r <- hsFreeAndDeclaredPNs renamed
           -- r <- hsFreeAndDeclaredPNs $ hsBinds renamed
           return r
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -861,9 +861,9 @@ spec = do
       let
         comp = do
          r <- hsVisiblePNs tl1 decl
-         let r2 = hsVisiblePNsOld tl1 decl
-         return (r,r2)
-      ((res,res2),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+         -- let r2 = hsVisiblePNsOld tl1 decl
+         return (r)
+      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res,res2),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc res ) `shouldBe` "[z, ll]"
@@ -956,9 +956,9 @@ spec = do
       let
         comp = do
           fds' <- hsVisibleDs e $  head $ hsBinds binds
-          let fds'o = hsVisiblePNsOld e $  head $ hsBinds binds
-          return (fds',fds'o)
-      ((fds,fdso),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+          -- let fds'o = hsVisiblePNsOld e $  head $ hsBinds binds
+          return (fds')
+      ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       -- (showGhc fdso) `shouldBe` "[a, b]"

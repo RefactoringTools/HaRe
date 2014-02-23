@@ -324,7 +324,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
      causeAmbiguity <- causeAmbiguityInExports oldPN newNameGhc
       -- f' contains names imported from other modules;
       -- d' contains the top level names declared in this module;
-     let (f',d') = hsFDsFromInside renamed
+     (f',d') <- hsFDsFromInside renamed
       --filter those qualified free variables in f'
      -- let (f,d) = ((nub.map pNtoName.filter (not.isQualifiedPN)) f', (nub.map pNtoName) d')
      let (f,d) = (map nameToString f',map nameToString d')
@@ -333,6 +333,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
      let newNameStr = nameToString newNameGhc
      logm $ "renameTopLevelVarName:(newName,newNameStr)=" ++ (show (newName,newNameStr))
      scopeClashNames <- inScopeNames newName
+     logm $ "renameTopLevelVarName:(f')=" ++ (showGhc f')
      logm $ "renameTopLevelVarName:(scopeClashNames,intersection)=" ++ (showGhc (scopeClashNames,intersect scopeClashNames f'))
      logm $ "renameTopLevelVarName:(oldPN,modName)=" ++ (showGhc (oldPN,modName))
      if (nonEmptyList $ intersect scopeClashNames f')
