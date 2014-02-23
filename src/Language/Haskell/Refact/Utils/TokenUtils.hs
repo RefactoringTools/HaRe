@@ -107,6 +107,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , forestSpanToGhcPos
 
        , ghcLineToForestLine
+       , stripForestLineFromGhc
        , forestLineToGhcLine
        , forestSpanToSrcSpan
        , forestPosVersionSet
@@ -1803,6 +1804,14 @@ stripForestLines toks = map doOne toks
       where
        ((ForestLine _ _ _ ls,_),(_,_)) = srcSpanToForestSpan l
        l' = insertForestLineInSrcSpan (ForestLine False 0 0 ls) l
+
+-- ---------------------------------------------------------------------
+
+stripForestLineFromGhc :: GHC.SrcSpan -> GHC.SrcSpan
+stripForestLineFromGhc l = l'
+  where
+    ((ForestLine _ _ _ ls,_),(_,_)) = srcSpanToForestSpan l
+    l' = insertForestLineInSrcSpan (ForestLine False 0 0 ls) l
 
 -- ---------------------------------------------------------------------
 

@@ -75,6 +75,12 @@ instance GHC.Outputable (GHC.HsTupArg GHC.Name) where
   ppr (GHC.Present e)    = GHC.text "Present" GHC.<+> GHC.ppr e
   ppr (GHC.Missing _typ) = GHC.text "Missing"
 
+instance GHC.Outputable (GHC.ConDeclField GHC.Name) where
+  ppr (GHC.ConDeclField name typ doc) = GHC.text "ConDeclField"
+                                          GHC.<+> GHC.ppr name
+                                          GHC.<+> GHC.ppr typ
+                                          GHC.<+> GHC.ppr doc
+
 -- ---------------------------------------------------------------------
 
 type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)

@@ -587,8 +587,8 @@ spec = do
           rg <- hsFreeAndDeclaredPNs renamed
           let ff = map (\b -> getFreeVars [b]) $ hsBinds renamed
           return (r,rg,ff)
-      ((res,resg,_fff),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- ((res,resg,_fff),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((res,resg,_fff),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       -- (showGhc _fff) `shouldBe` ""
 
@@ -635,6 +635,7 @@ spec = do
                    "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
                    "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
                    "(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
+                   "(GHC.Types.Int, (-1, -1)), (GHC.Integer.Type.Integer, (-1, -1)),\n "++
                    "(FreeAndDeclared.Declare.D, (18, 6)),\n "++
                    "(FreeAndDeclared.Declare.A, (18, 10)),\n "++
                    "(FreeAndDeclared.Declare.B, (18, 14)),\n "++
@@ -645,7 +646,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "finds free and declared in a single bind" $ do
+    it "finds free and declared in a single bind #1" $ do
       (t, toks) <- parsedFileGhc "./test/testdata/FreeAndDeclared/Declare.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
@@ -656,9 +657,10 @@ spec = do
           rg <- hsFreeAndDeclaredPNs [b]
           return (b,rg)
       ((bb,resg),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- ((bb,resg),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc bb) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
+      -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""
 
       -- GHC version
       -- Free Vars
