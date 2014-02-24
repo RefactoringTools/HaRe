@@ -46,7 +46,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in D2 B2 C2 A2 6 24" $ do
+    it "renames in D2 B2 C2 A2 6 24" $ do
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/A2.hs") testCradle "./test/testdata/Renaming/D2.hs" "SubTree" (6,24)
      -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/A2.hs") "./test/testdata/Renaming/D2.hs" "SubTree" (6,24)
 
@@ -74,7 +74,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in D3 B3 C3 A3 12 7" $ do
+    it "renames in D3 B3 C3 A3 12 7" $ do
      --     (["D3.hs","B3.hs","C3.hs","A3.hs"],["Same","12","7"]),
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/A3.hs") testCradle "./test/testdata/Renaming/D3.hs" "Same" (12,7)
      -- rename (logTestSettingsMainfile "./test/testdata/Renaming/A3.hs") testCradle "./test/testdata/Renaming/D3.hs" "Same" (12,7)
@@ -103,7 +103,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in D4 B4 C4 A4 13 4" $ do
+    it "renames in D4 B4 C4 A4 13 4" $ do
      --     (["D4.hs","B4.hs","C4.hs","A4.hs"],["isSameOrNot","13","4"]),
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/A4.hs") testCradle "./test/testdata/Renaming/D4.hs" "isSameOrNot" (13,4)
      -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/A4.hs") "./test/testdata/Renaming/D4.hs" "isSameOrNot" (13,4)
@@ -162,7 +162,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in D7 C7  10 1" $ do
+    it "renames in D7 C7  10 1" $ do
      --     (["D7.hs","C7.hs"],["myFringe","10","1"]),
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/C7.hs") testCradle "./test/testdata/Renaming/D7.hs" "myFringe" (10,1)
      -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/C7.hs") "./test/testdata/Renaming/D7.hs" "myFringe" (10,1)
@@ -182,7 +182,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in Field1 5 18" $ do
+    it "renames in Field1 5 18" $ do
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)
      -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/Field1.hs" "pointx1" (5,18)
      r `shouldBe` [ "./test/testdata/Renaming/Field1.hs"
@@ -193,7 +193,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in Field3 9 1" $ do
+    it "renames in Field3 9 1" $ do
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/Field3.hs" "abs" (9,1)
      -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/Field3.hs" "abs" (9,1)
      r `shouldBe` [ "./test/testdata/Renaming/Field3.hs"
@@ -204,7 +204,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in Field4 5 23" $ do
+    it "renames in Field4 5 23" $ do
      --     (["Field4.hs"],["value2","5","23"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/Field4.hs" "value2" (5,23)
      -- rename logTestSettings Nothing "./test/testdata/Renaming/Field4.hs" "value2" (5,23)
@@ -216,7 +216,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in IdIn1 11 1" $ do
+    it "renames in IdIn1 11 1" $ do
      --     (["IdIn1.hs"],["x1","11","1"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/IdIn1.hs" "x1" (11,1)
      -- rename logTestSettings Nothing "./test/testdata/Renaming/IdIn1.hs" "x1" (11,1)
@@ -228,7 +228,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in IdIn2 15 7" $ do
+    it "renames in IdIn2 15 7" $ do
      --     (["IdIn2.hs"],["x1","15","7"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/IdIn2.hs" "x1" (15,7)
      -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/IdIn2.hs" "x1" (15,7)
@@ -240,7 +240,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in ClassIn1 7 7" $ do
+    it "renames in ClassIn1 7 7" $ do
      --     (["ClassIn1.hs"],["MyReversable","7","7"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/ClassIn1.hs" "MyReversable" (7,7)
      -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/ClassIn1.hs" "MyReversable" (7,7)
@@ -252,7 +252,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in ClassIn2 8 3" $ do
+    it "renames in ClassIn2 8 3" $ do
      --     (["ClassIn2.hs"],["reversable","8","3"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/ClassIn2.hs" "reversable" (8,3)
      -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/ClassIn2.hs" "reversable" (8,3)
@@ -264,10 +264,10 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in ConstructorIn1 8 6" $ do
+    it "renames in ConstructorIn1 8 6" $ do
      --     (["ConstructorIn1.hs"],["MyBTree","8","6"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
-     -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
+     -- rename logTestSettings testCradle "./test/testdata/Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
      r `shouldBe` [ "./test/testdata/Renaming/ConstructorIn1.hs"
                   ]
      diff <- compareFiles "./test/testdata/Renaming/ConstructorIn1.hs.expected"
@@ -276,7 +276,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in ConstructorIn2 8 6" $ do
+    it "renames in ConstructorIn2 8 6" $ do
      --     (["ConstructorIn2.hs"],["Tree","8","24"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/ConstructorIn2.hs" "Tree" (8,24)
      -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/ConstructorIn2.hs" "Tree" (8,24)
@@ -288,7 +288,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in ConstructorIn3 9 12" $ do
+    it "renames in ConstructorIn3 9 12" $ do
      --     (["ConstructorIn3.hs"],["b","9","12"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/ConstructorIn3.hs" "b" (9,13)
      -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/ConstructorIn3.hs" "b" (9,13)
@@ -312,7 +312,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "Renames in LayoutIn2 8 7" $ do
+    it "renames in LayoutIn2 8 7" $ do
      --     (["LayoutIn2.hs"],["ls","8","7"]),
      r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/LayoutIn2.hs" "ls" (8,7)
      -- rename logTestSettings testCradle Nothing "./test/testdata/Renaming/LayoutIn2.hs" "ls" (8,7)

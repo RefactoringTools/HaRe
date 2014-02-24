@@ -193,12 +193,16 @@ import qualified TyCon         as GHC
 import qualified UniqSet       as GHC
 import qualified Unique        as GHC
 import qualified Util          as GHC
+import qualified VarEnv        as GHC
+import qualified VarSet        as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 -- import qualified Data.Generics.Zipper as Z
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
+import Data.IORef
+import qualified Data.Set as Set
 
 -- import Debug.Trace
 -- debug = flip trace
@@ -956,16 +960,18 @@ hsFreeAndDeclaredGhc t = do
       let
         dn = GHC.collectPatBinders lp
         lpatParsed = getParsedForRenamedLPat parsed lp
-        nameMaker = GHC.topRecNameMaker (GHC.emptyFsEnv) -- emptyFsEnv
+        nameMaker = GHC.topRecNameMaker (GHC.emptyFsEnv)
       logm $ "hsFreeAndDeclaredGhc.lpatParsed:" ++ (showGhc lpatParsed)
 
       df <- GHC.getDynFlags
+      -- logm $ "hsFreeAndDeclaredGhc:df:" ++ (show $ GHC.sTopDir $ GHC.settings df)
       typechecked <- getTypecheckedModule
-      let (glblEnv,_) = GHC.tm_internals_ typechecked
+      let (glblEnv,_modDetails) = GHC.tm_internals_ typechecked
       -- logm $ "hsFreeAndDeclaredGhc:glblEnv=" ++ (GHC.showSDoc df $ GHC.pprGlobalRdrEnv $ GHC.tcg_rdr_env glblEnv)
       env <- GHC.getSession
-      let glbRdrEnv = GHC.tcg_rdr_env glblEnv
-      ((wm,em),mf) <- liftIO $ inRnM env glbRdrEnv $ GHC.rnBindPat nameMaker lpatParsed
+      -- let glbRdrEnv = GHC.tcg_rdr_env glblEnv
+      -- ((wm,em),mf) <- liftIO $ inRnM env glbRdrEnv $ GHC.rnBindPat nameMaker lpatParsed
+      ((wm,em),mf) <- liftIO $ inRnM3 env glblEnv $ GHC.rnBindPat nameMaker lpatParsed
       let fn = case mf of
                 Just (_,f) -> GHC.nameSetToList f
                 Nothing -> error $ "HaRe:hsFreeAndDeclaredGhc:wtf"
@@ -1308,11 +1314,75 @@ hsFreeAndDeclaredGhc t = do
 
 -- ---------------------------------------------------------------------
 
-inRnM :: GHC.HscEnv -> GHC.GlobalRdrEnv -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
-inRnM hsc_env glbRdrEnv fn = do
+
+inRnM2 :: GHC.HscEnv -> GHC.GlobalRdrEnv -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
+inRnM2 hsc_env glbRdrEnv fn = do
   let ictxt = (GHC.hsc_IC hsc_env) { GHC.ic_rn_gbl_env = glbRdrEnv }
   GHC.initTcPrintErrors hsc_env GHC.iNTERACTIVE $ setInteractiveContext hsc_env ictxt fn
 
+
+inRnM :: GHC.HscEnv -> GHC.GlobalRdrEnv {- -> GHC.Module -} -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
+inRnM hsc_env glbRdrEnv {- modu -} fn = do
+  GHC.initTc hsc_env GHC.HsSrcFile True GHC.iNTERACTIVE fn
+
+-- initTc :: HscEnv -> HscSource -> Bool -> Module -> TcM r -> IO (Messages, Maybe r)
+
+-- inRnM3 :: GHC.HscEnv -> GHC.GlobalRdrEnv -> GHC.LocalRdrEnv -> GHC.TcRnIf GHC.GlobalRdrEnv GHC.LocalRdrEnv a -> IO a
+inRnM3 :: GHC.HscEnv -> GHC.TcGblEnv -> GHC.TcRn a -> IO (GHC.Messages,Maybe a)
+inRnM3 hsc_env glbRdrEnv do_this = do
+
+  errs_var     <- newIORef (GHC.emptyBag, GHC.emptyBag) ;
+  meta_var     <- newIORef GHC.initTyVarUnique ;
+  tvs_var      <- newIORef GHC.emptyVarSet ;
+  -- keep_var     <- newIORef GHC.emptyNameSet ;
+  -- used_rdr_var <- newIORef Set.empty ;
+  -- th_var       <- newIORef False ;
+  -- th_splice_var<- newIORef False ;
+  -- infer_var    <- newIORef True ;
+  lie_var      <- newIORef GHC.emptyWC ;
+  -- dfun_n_var   <- newIORef GHC.emptyOccSet ;
+{-
+  type_env_var <- case hsc_type_env_var hsc_env of {
+                     Just (_mod, te_var) -> return te_var ;
+                     Nothing             -> newIORef emptyNameEnv } ;
+-}
+
+  let lcl_env = GHC.TcLclEnv {
+     GHC.tcl_errs       = errs_var,
+     GHC.tcl_loc        = GHC.mkGeneralSrcSpan (GHC.fsLit "Top level"),
+     GHC.tcl_ctxt       = [],
+     GHC.tcl_rdr        = GHC.emptyLocalRdrEnv,
+     -- GHC.tcl_rdr        = localRdrEnv
+     GHC.tcl_th_ctxt    = GHC.topStage,
+     GHC.tcl_arrow_ctxt = GHC.NoArrowCtxt,
+     GHC.tcl_env        = GHC.emptyNameEnv,
+     GHC.tcl_tidy       = GHC.emptyTidyEnv,
+     GHC.tcl_tyvars     = tvs_var,
+     GHC.tcl_lie        = lie_var,
+     GHC.tcl_meta       = meta_var,
+     GHC.tcl_untch      = GHC.initTyVarUnique
+  }
+
+  -- putStrLn $ "inRnM3: about to do it"
+
+  maybe_res <- GHC.initTcRnIf 'a' hsc_env glbRdrEnv lcl_env $
+               do { r <- GHC.tryM do_this
+                  ; case r of
+                    Right res -> return (Just res)
+                    Left _    -> return Nothing } ;
+  putStrLn $ "inRnM3: done"
+
+  -- Collect any error messages
+  msgs <- readIORef errs_var ;
+
+  let { dflags = GHC.hsc_dflags hsc_env
+      ; final_res | GHC.errorsFound dflags msgs = Nothing
+                  | otherwise                   = maybe_res } ;
+
+  return (msgs,final_res)
+
+-- initTcRnIf :: Char -> HscEnv -> gbl -> lcl -> TcRnIf gbl lcl a -> IO a
+-- type TcRn a = TcRnIf TcGblEnv TcLclEnv a
 -- ---------------------------------------------------------------------
 
 -- | Given a RenamedSource LPAT, return the equivalent
