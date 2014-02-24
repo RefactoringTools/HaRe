@@ -656,8 +656,8 @@ spec = do
           let b = head $ drop 4 $ hsBinds renamed
           rg <- hsFreeAndDeclaredPNs [b]
           return (b,rg)
-      ((bb,resg),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      -- ((bb,resg),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- ((bb,resg),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((bb,resg),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc bb) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
       -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""

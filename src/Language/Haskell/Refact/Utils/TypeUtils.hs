@@ -952,7 +952,58 @@ hsFreeAndDeclaredGhc t = do
     -- -----------------------
 
     lpat :: GHC.LPat GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
-    lpat lp = do
+    lpat lp@(GHC.L _ p) = do
+      logm $ "hsFreeAndDeclaredGhc.lpat:" ++ (showGhc lp)
+      let
+        dn = GHC.collectPatBinders lp
+
+      (FN fn,_) <- pat p
+      logm $ "hsFreeAndDeclaredGhc.lpat:fn=" ++ (showGhc fn)
+      return (FN fn,DN dn)
+
+    pat :: GHC.Pat GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    pat (GHC.WildPat _) = return emptyFD
+    pat (GHC.VarPat n) = return (FN [n],DN [])
+    pat (GHC.LazyPat (GHC.L _ p)) = pat p
+    pat (GHC.AsPat (GHC.L _ n) (GHC.L _ p)) = do
+      fd <- pat p
+      return $ (FN [], DN [n]) <> fd
+    pat (GHC.ParPat (GHC.L _ p)) = pat p
+    pat (GHC.BangPat (GHC.L _ p)) = pat p
+    pat (GHC.ListPat ps _) = do
+      fds <- mapM pat $ map GHC.unLoc ps
+      return $ mconcat fds
+    pat (GHC.TuplePat ps _ _) = do
+      fds <- mapM pat $ map GHC.unLoc ps
+      return $ mconcat fds
+    pat (GHC.PArrPat ps _) = do
+      fds <- mapM pat $ map GHC.unLoc ps
+      return $ mconcat fds
+    pat (GHC.ConPatIn (GHC.L _ n) details) = do
+      logm $ "hsFreeAndDeclaredGhc.pat.ConPatIn:details=" -- ++ (showGhc details)
+      return (FN [],DN [n])
+    -- pat (GHC.ConPatOut )
+    pat (GHC.ViewPat expr (GHC.L _ p) _) = do
+      fde <- hsFreeAndDeclaredGhc expr
+      fdp <- pat p
+      return $ fde <> fdp
+    -- pat (GHC.QuasiQuotePat _)
+    pat (GHC.LitPat _) = return emptyFD
+    pat (GHC.NPat _ _ _) = return emptyFD
+    pat (GHC.NPlusKPat (GHC.L _ n) _ _ _) = return (FN [],DN [n])
+    pat (GHC.SigPatIn (GHC.L _ p) bndrs) = do
+      fdp <- pat p
+      fdb <- hsFreeAndDeclaredGhc bndrs
+      return $ fdp <> fdb
+    pat (GHC.SigPatOut (GHC.L _ p) _) = pat p
+    pat (GHC.CoPat _ p _) = pat p
+
+    pat p = error $ "hsFreeAndDeclaredGhc.pat:unimplemented:" ++ (showGhc p)
+
+    -- ---------------------------------
+
+    lpatold :: GHC.LPat GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    lpatold lp = do
       logm $ "hsFreeAndDeclaredGhc.lpat:" ++ (showGhc lp)
       -- NOTE: we have to call into the bowels of the renamer to get
       --       the free variables for the pat
