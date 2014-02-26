@@ -240,7 +240,7 @@ putToksForPos pos toks = do
   let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  drawTokenTree ""
+  -- drawTokenTree ""
   return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan
@@ -269,7 +269,7 @@ putToksAfterPos pos position toks = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  logm $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
+  -- logm $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
   return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST
@@ -308,7 +308,7 @@ removeToksForPos pos = do
   let tk' = removeToksFromCache (rsTokenCache tm) sspan
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  drawTokenTree "removeToksForPos result"
+  -- drawTokenTree "removeToksForPos result"
   return ()
 
 -- ---------------------------------------------------------------------
@@ -384,7 +384,7 @@ indentDeclAndToks t offset = do
   let tk' = tk {tkCache = Map.insert mainTid forest' (tkCache tk) }
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  drawTokenTree "indentDeclToks result"
+  -- drawTokenTree "indentDeclToks result"
   return t'
 
 -- =====================================================================

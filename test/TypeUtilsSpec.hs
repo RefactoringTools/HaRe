@@ -822,6 +822,35 @@ spec = do
 
     -- -----------------------------------------------------------------
 
+    it "finds free and declared in a GRHSs" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/LiftOneLevel/LetIn2.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just tup = getName "LiftOneLevel.LetIn2.sumSquares" renamed
+      let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
+
+      let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [match] _) _ _ _)) = decl
+      let (GHC.L _ (GHC.Match _pat _ grhss)) = match
+      -- (SYB.showData SYB.Renamer 0 grhss) `shouldBe` ""
+
+      let
+        comp = do
+          r <- hsFreeAndDeclaredPNs grhss
+          -- r <- hsFreeAndDeclaredPNs $ hsBinds renamed
+          return r
+      ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      -- Declared Vars
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+                   "[]"
+
+      -- Free Vars
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+                   "[(x, (10, 12)), (y, (10, 14))]"
+
+    -- -----------------------------------------------------------------
+
     it "finds free and declared in a single bind" $ do
       pending -- "fix the prior test"
 
