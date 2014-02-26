@@ -16,13 +16,13 @@ import           Test.Hspec
 -- import Data.Maybe
 -- import Language.Haskell.GhcMod
 -- import Language.Haskell.Refact.Renaming
-import Language.Haskell.Refact.Utils
+-- import Language.Haskell.Refact.Utils
 -- import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 -- import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.LocUtils
+-- import Language.Haskell.Refact.Utils.Monad
+-- import Language.Haskell.Refact.Utils.MonadFunctions
+-- import Language.Haskell.Refact.Utils.TypeSyn
 -- import Language.Haskell.Refact.Utils.TypeUtils
 -- import System.Directory
 
@@ -80,6 +80,15 @@ yy = undefined
 zz = undefined
 runRefactGhcState = undefined
 parsedFileGhc = undefined
+getTypecheckedModule = undefined
+fetchOrigToks = undefined
+data PosToken = PT
+data ParseResult = PR
+loadModuleGraphGhc = undefined
+getLocatedStart = undefined
+getLocatedEnd = undefined
+getModuleGhc = undefined
+getModuleName= undefined
 
 -- ---------------------------------------------------------------------
 -- Helper functions
@@ -92,7 +101,6 @@ parsedFileBGhc = parsedFileGhc "./test/testdata/TypeUtils/B.hs"
 
 -- parsedFileMGhc :: IO (ParseResult,[PosToken])
 -- parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
-
 
 -- ---------------------------------------------------------------------
 

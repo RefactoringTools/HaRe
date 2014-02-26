@@ -60,7 +60,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,hsVisibleDs
 
     -- ** Property checking
-    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN -- ,isTopLevelPNT
+    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
     ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
@@ -162,6 +162,7 @@ import qualified FamInstEnv    as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified HscMain       as GHC
+import qualified HsPat         as GHC
 import qualified HscTypes      as GHC
 import qualified Id            as GHC
 import qualified InstEnv       as GHC
@@ -846,9 +847,11 @@ hsFreeAndDeclaredPNs t = do
 hsFreeAndDeclaredGhc :: (SYB.Data t, GHC.Outputable t) => t -> RefactGhc (FreeNames,DeclaredNames)
 hsFreeAndDeclaredGhc t = do
   logm $ "hsFreeAndDeclaredGhc:t=" ++ showGhc t
-  r@(FN f,DN d) <- res
-  logm $ "hsFreeAndDeclaredGhc:res=" ++ show r
-  return (FN (nub f),DN (nub d))
+  (FN f,DN d) <- res
+  let f' = nub $ filter isNonLibraryName f
+  let d' = nub $ filter isNonLibraryName d
+  logm $ "hsFreeAndDeclaredGhc:res=" ++ showGhc (f',d')
+  return (FN (f' \\ d'), DN d')
 
   where
     res = (const err -- emptyFD
@@ -892,7 +895,11 @@ hsFreeAndDeclaredGhc t = do
 
 
     lhsbinds :: [GHC.LHsBind GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
-    lhsbinds bs = recurseList bs
+    lhsbinds bs = do
+      (FN fn,DN dn) <- recurseList bs
+      let r = (FN (fn \\ dn),DN dn)
+      logm $ "hsFreeAndDeclaredGhc.hsbinds:r=" ++ (show r)
+      return r
 
     lhsbind :: GHC.LHsBind GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lhsbind (GHC.L _ b) = hsFreeAndDeclaredGhc b
@@ -903,9 +910,13 @@ hsFreeAndDeclaredGhc t = do
     hsbind b@(GHC.FunBind _n _ (GHC.MatchGroup matches _) _ _ _) = do
         logm $ "hsFreeAndDeclaredGhc.hsbind:b=" ++ (showGhc b)
         let d = GHC.collectHsBindBinders b
-        let pats = concatMap (\(GHC.L _ (GHC.Match pat _ _)) -> pat) matches
-        (fp,_dp) <- lpats pats
-        return $ (fp,DN []) <> (FN [],DN d)
+        -- let pats = concatMap (\(GHC.L _ (GHC.Match pat _ _)) -> pat) matches
+        (fp,_dp) <- hsFreeAndDeclaredGhc matches
+        logm $ "hsFreeAndDeclaredGhc.hsbind:(fp,_dp)=" ++ (show (fp,_dp))
+        logm $ "hsFreeAndDeclaredGhc.hsbind:(d)=" ++ (showGhc (d))
+        let r = (fp,DN []) <> (FN [],DN d)
+        logm $ "hsFreeAndDeclaredGhc.hsbind:r=" ++ (show (r))
+        return $ r
     hsbind b@(GHC.PatBind pat _ _ _ _) = do
         logm $ "hsFreeAndDeclaredGhc.hsbind:b=" ++ (showGhc b)
         let d = GHC.collectHsBindBinders b
@@ -925,8 +936,7 @@ hsFreeAndDeclaredGhc t = do
 
     lhsbindslr :: GHC.LHsBindsLR GHC.Name GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lhsbindslr bs = do
-      fds <- mapM hsFreeAndDeclaredGhc $ GHC.bagToList bs
-      return $ mconcat fds
+      hsFreeAndDeclaredGhc $ GHC.bagToList bs
 
     hslocalbinds :: GHC.HsLocalBinds GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     hslocalbinds (GHC.HsValBinds binds) = hsFreeAndDeclaredGhc binds
@@ -957,13 +967,15 @@ hsFreeAndDeclaredGhc t = do
       let
         dn = GHC.collectPatBinders lp
 
-      (FN fn,_) <- pat p
-      logm $ "hsFreeAndDeclaredGhc.lpat:fn=" ++ (showGhc fn)
+      logm $ "hsFreeAndDeclaredGhc.lpat p=" ++ (SYB.showData SYB.Renamer 0 p)
+
+      (FN fn,DN _dn) <- pat p
+      logm $ "hsFreeAndDeclaredGhc.lpat:(fn,dn)=" ++ (showGhc (fn,dn))
       return (FN fn,DN dn)
 
     pat :: GHC.Pat GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     pat (GHC.WildPat _) = return emptyFD
-    pat (GHC.VarPat n) = return (FN [n],DN [])
+    pat (GHC.VarPat n) = return (FN [],DN [n])
     pat (GHC.LazyPat (GHC.L _ p)) = pat p
     pat (GHC.AsPat (GHC.L _ n) (GHC.L _ p)) = do
       fd <- pat p
@@ -979,12 +991,13 @@ hsFreeAndDeclaredGhc t = do
     pat (GHC.PArrPat ps _) = do
       fds <- mapM pat $ map GHC.unLoc ps
       return $ mconcat fds
-    pat (GHC.ConPatIn (GHC.L _ n) details) = do
-      logm $ "hsFreeAndDeclaredGhc.pat.ConPatIn:details=" -- ++ (showGhc details)
-      return (FN [],DN [n])
+    pat (GHC.ConPatIn (GHC.L _ n) det) = do
+      logm $ "hsFreeAndDeclaredGhc.pat.ConPatIn:details=" ++ (SYB.showData SYB.Renamer 0 det)
+      (FN f,DN _d) <- details det
+      return $ (FN [n],DN []) <> (FN [],DN f)
     -- pat (GHC.ConPatOut )
-    pat (GHC.ViewPat expr (GHC.L _ p) _) = do
-      fde <- hsFreeAndDeclaredGhc expr
+    pat (GHC.ViewPat e (GHC.L _ p) _) = do
+      fde <- hsFreeAndDeclaredGhc e
       fdp <- pat p
       return $ fde <> fdp
     -- pat (GHC.QuasiQuotePat _)
@@ -999,6 +1012,26 @@ hsFreeAndDeclaredGhc t = do
     pat (GHC.CoPat _ p _) = pat p
 
     pat p = error $ "hsFreeAndDeclaredGhc.pat:unimplemented:" ++ (showGhc p)
+
+    --  HsConDetails (LPat id) (HsRecFields id (LPat id))
+    details :: GHC.HsConPatDetails GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    details (GHC.PrefixCon  args) = do
+      logm $ "hsFreeAndDeclaredGhc.details:args=" ++ (showGhc args)
+      fds <- mapM pat $ map GHC.unLoc args
+      return $ mconcat fds
+    details (GHC.RecCon recf) =
+      recfields recf
+      -- error $ "hsFreeAndDeclaredGhc.pat:unimplemented:" ++ (showGhc recf)
+      -- error $ "hsFreeAndDeclaredGhc.pat:unimplemented:" ++ (SYB.showData SYB.Renamer 0 recf)
+    details (GHC.InfixCon arg1 arg2) = do
+      fds <- mapM pat $ map GHC.unLoc [arg1,arg2]
+      return $ mconcat fds
+
+    recfields :: (GHC.HsRecFields GHC.Name (GHC.LPat GHC.Name)) -> RefactGhc (FreeNames,DeclaredNames)
+    recfields (GHC.HsRecFields fields _) = do
+      let args = map (\(GHC.HsRecField _ (GHC.L _ arg) _) -> arg) fields
+      fds <- mapM pat args
+      return $ mconcat fds
 
     -- ---------------------------------
 
@@ -1028,7 +1061,7 @@ hsFreeAndDeclaredGhc t = do
                 Nothing -> error $ "HaRe:hsFreeAndDeclaredGhc:wtf"
                                 ++ (GHC.showSDoc df $ GHC.vcat $ GHC.pprErrMsgBag wm)
                                 ++ (GHC.showSDoc df $ GHC.vcat $ GHC.pprErrMsgBag em)
-      logm $ "hsFreeAndDeclaredGhc.lpat:fn=" ++ (showGhc fn)
+      logm $ "hsFreeAndDeclaredGhc.lpatold:fn=" ++ (showGhc fn)
       return (FN fn,DN dn)
 
     -- -----------------------
@@ -1344,10 +1377,15 @@ hsFreeAndDeclaredGhc t = do
     -- -----------------------
 
     lmatch :: GHC.LMatch GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
-    lmatch (GHC.L _ (GHC.Match pats _ rhs)) = do
-      fdp <- recurseList pats
-      fdr <- hsFreeAndDeclaredGhc rhs
-      return $ fdp <>fdr
+    lmatch (GHC.L _ m@(GHC.Match pats _ rhs)) = do
+      logm $ "hsFreeAndDeclaredGhc.lmatch for:" ++ (showGhc m)
+      (fp,DN dp) <- recurseList pats
+      (FN fr,DN dr) <- hsFreeAndDeclaredGhc rhs
+      logm $ "hsFreeAndDeclaredGhc.lmatch:(fp,dp)=" ++ (show (fp,DN dp))
+      logm $ "hsFreeAndDeclaredGhc.lmatch:fdr=" ++ (showGhc (fr,dr))
+      let r = (fp,DN []) <> (FN (fr \\ (dr ++ dp)), DN [])
+      logm $ "hsFreeAndDeclaredGhc.lmatch end:r=" ++ (show r)
+      return $ r
 
     -- -----------------------
 
@@ -2596,6 +2634,13 @@ isLocalPN::GHC.Name -> Bool
 isLocalPN = GHC.isInternalName
 -- isLocalPN (PN i (UniqueNames.S _)) = True
 -- isLocalPN _ = False
+
+-- |Return True if the name has a @GHC.SrcSpan@, i.e. is declared in
+-- source we care about
+isNonLibraryName :: GHC.Name -> Bool
+isNonLibraryName n = case (GHC.nameSrcSpan n) of
+  GHC.UnhelpfulSpan _ -> False
+  _                   -> True
 
 {-
 -- |Return True if a PName is a qualified PName.

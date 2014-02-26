@@ -1044,10 +1044,14 @@ increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L _l t), s)
 
 -- ---------------------------------------------------------------------
 
+-- | gets the (row,col) of the start of the @GHC.SrcSpan@, or (-1,-1)
+-- if there is an @GHC.UnhelpfulSpan@
 getGhcLoc :: GHC.SrcSpan -> (Int, Int)
 getGhcLoc (GHC.RealSrcSpan ss)  = (GHC.srcSpanStartLine ss, GHC.srcSpanStartCol ss)
 getGhcLoc (GHC.UnhelpfulSpan _) = (-1,-1)
 
+-- | gets the (row,col) of the end of the @GHC.SrcSpan@, or (-1,-1)
+-- if there is an @GHC.UnhelpfulSpan@
 getGhcLocEnd :: GHC.SrcSpan -> (Int, Int)
 getGhcLocEnd (GHC.RealSrcSpan ss)  = (GHC.srcSpanEndLine ss, GHC.srcSpanEndCol ss)
 getGhcLocEnd (GHC.UnhelpfulSpan _) = (-1,-1)
