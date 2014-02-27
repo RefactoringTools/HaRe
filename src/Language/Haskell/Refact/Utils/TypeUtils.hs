@@ -844,13 +844,17 @@ hsFreeAndDeclaredPNs t = do
 -- in a given syntax phrase t. In the result, the first list contains
 -- the free variables, and the second list contains the declared
 -- variables.
--- Expects RenamedSource
+-- TODO: use GHC.NameSet instead of lists for FreeNames/DeclaredNames
+-- NOTE: The GHC fvs fields only carry non-GHC values, as they are
+-- used in the renaming process
 hsFreeAndDeclaredGhc :: (SYB.Data t, GHC.Outputable t) => t -> RefactGhc (FreeNames,DeclaredNames)
 hsFreeAndDeclaredGhc t = do
   -- logm $ "hsFreeAndDeclaredGhc:t=" ++ showGhc t
   (FN f,DN d) <- res
-  let f' = nub $ filter isNonLibraryName f
-  let d' = nub $ filter isNonLibraryName d
+  -- let f' = nub $ filter isNonLibraryName f
+  -- let d' = nub $ filter isNonLibraryName d
+  let f' = nub f
+  let d' = nub d
   -- logm $ "hsFreeAndDeclaredGhc:res=" ++ showGhc (f',d')
   return (FN (f' \\ d'), DN d')
 
@@ -886,6 +890,8 @@ hsFreeAndDeclaredGhc t = do
           `SYB.extQ` matchgroup
           `SYB.extQ` lmatches
           `SYB.extQ` lmatch
+          `SYB.extQ` hsrecordbinds
+          `SYB.extQ` hsrecordbind
           ) t
 
     renamed :: GHC.RenamedSource ->  RefactGhc (FreeNames,DeclaredNames)
@@ -918,11 +924,13 @@ hsFreeAndDeclaredGhc t = do
         let r = (fp,DN []) <> (FN [],DN d)
         -- logm $ "hsFreeAndDeclaredGhc.hsbind:r=" ++ (show (r))
         return $ r
-    hsbind b@(GHC.PatBind pat _ _ _ _) = do
-        -- logm $ "hsFreeAndDeclaredGhc.hsbind:b=" ++ (showGhc b)
+    hsbind b@(GHC.PatBind pa rhs _ _ _) = do
+        -- logm $ "hsFreeAndDeclaredGhc.hsbind.PatBind:b=" ++ (showGhc b)
         let d = GHC.collectHsBindBinders b
-        (fp,_) <- lpat pat
-        return $ (fp,DN []) <> (FN [],DN d)
+        (FN fr,DN dr) <- hsFreeAndDeclaredGhc rhs
+        (fp,_) <- lpat pa
+        -- logm $ "hsFreeAndDeclaredGhc.hsbind.PatBind:f=" ++ (showGhc fr)
+        return $ (fp,DN []) <> (FN fr,DN d)
     hsbind b = do
         -- logm $ "hsFreeAndDeclaredGhc.hsbind:b=" ++ (showGhc b)
         let d = GHC.collectHsBindBinders b
@@ -1028,6 +1036,7 @@ hsFreeAndDeclaredGhc t = do
       fds <- mapM pat $ map GHC.unLoc [arg1,arg2]
       return $ mconcat fds
 
+    -- Note: this one applies to HsRecFields in LPats
     recfields :: (GHC.HsRecFields GHC.Name (GHC.LPat GHC.Name)) -> RefactGhc (FreeNames,DeclaredNames)
     recfields (GHC.HsRecFields fields _) = do
       let args = map (\(GHC.HsRecField _ (GHC.L _ arg) _) -> arg) fields
@@ -1035,7 +1044,7 @@ hsFreeAndDeclaredGhc t = do
       return $ mconcat fds
 
     -- ---------------------------------
-
+{-
     lpatold :: GHC.LPat GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lpatold lp = do
       -- logm $ "hsFreeAndDeclaredGhc.lpat:" ++ (showGhc lp)
@@ -1064,7 +1073,7 @@ hsFreeAndDeclaredGhc t = do
                                 ++ (GHC.showSDoc df $ GHC.vcat $ GHC.pprErrMsgBag em)
       -- logm $ "hsFreeAndDeclaredGhc.lpatold:fn=" ++ (showGhc fn)
       return (FN fn,DN dn)
-
+-}
     -- -----------------------
 
     ltydecls :: [GHC.LTyClDecl GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
@@ -1236,7 +1245,7 @@ hsFreeAndDeclaredGhc t = do
     expr ((GHC.HsBracket b))
       = hsFreeAndDeclaredGhc b
 
-    expr ((GHC.HsBracketOut b ps))
+    expr ((GHC.HsBracketOut b _ps))
       = hsFreeAndDeclaredGhc b
 
     expr ((GHC.HsSpliceE e))
@@ -1245,8 +1254,8 @@ hsFreeAndDeclaredGhc t = do
     expr ((GHC.HsQuasiQuoteE q))
       = hsFreeAndDeclaredGhc q
 
-    expr ((GHC.HsProc pat cmd)) = do
-      fdp <- hsFreeAndDeclaredGhc pat
+    expr ((GHC.HsProc pa cmd)) = do
+      fdp <- hsFreeAndDeclaredGhc pa
       fdc <- hsFreeAndDeclaredGhc cmd
       return $ fdp <> fdc
 
@@ -1301,8 +1310,8 @@ hsFreeAndDeclaredGhc t = do
 
     lstmt :: GHC.LStmt GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lstmt (GHC.L _ (GHC.LastStmt e _)) = hsFreeAndDeclaredGhc e
-    lstmt (GHC.L _ (GHC.BindStmt pat e _ _)) = do
-      fdp <- hsFreeAndDeclaredGhc pat
+    lstmt (GHC.L _ (GHC.BindStmt pa e _ _)) = do
+      fdp <- hsFreeAndDeclaredGhc pa
       fde <- hsFreeAndDeclaredGhc e
       return (fdp <> fde)
     lstmt (GHC.L _ (GHC.ExprStmt e _ _ _)) = hsFreeAndDeclaredGhc e
@@ -1361,7 +1370,7 @@ hsFreeAndDeclaredGhc t = do
 
     grhss :: GHC.GRHSs GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     grhss (GHC.GRHSs g binds) = do
-      (fg,dg) <- hsFreeAndDeclaredGhc g
+      (fg,_dg) <- hsFreeAndDeclaredGhc g
       fdb <- hsFreeAndDeclaredGhc binds
       return $  (fg,DN[]) <> fdb
 
@@ -1387,6 +1396,16 @@ hsFreeAndDeclaredGhc t = do
       let r = (fp,DN []) <> (FN (fr \\ (dr ++ dp)), DN [])
       -- logm $ "hsFreeAndDeclaredGhc.lmatch end:r=" ++ (show r)
       return $ r
+
+    -- -----------------------
+
+    hsrecordbinds :: (GHC.HsRecordBinds GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
+    hsrecordbinds (GHC.HsRecFields fields _) = recurseList fields
+
+    hsrecordbind :: (GHC.HsRecField GHC.Name (GHC.LHsExpr GHC.Name)) -> RefactGhc (FreeNames,DeclaredNames)
+    hsrecordbind (GHC.HsRecField (GHC.L _ n) arg _) = do
+      fda <- hsFreeAndDeclaredGhc arg
+      return $ (FN [n],DN []) <> fda
 
     -- -----------------------
 

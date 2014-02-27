@@ -11,27 +11,11 @@ import qualified NameSet as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
--- import Control.Monad.State
--- import Data.Maybe
--- import Data.Tree
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.GhcUtils
--- import Language.Haskell.Refact.Utils.LocUtils
--- import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TokenUtils
--- import Language.Haskell.Refact.Utils.Layout
--- import Language.Haskell.Refact.Utils.LayoutTypes
--- import Language.Haskell.Refact.Utils.LayoutUtils
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes
--- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
-
--- import qualified Data.Tree.Zipper as Z
--- import qualified Data.Map as Map
-
--- import Data.Traversable
 
 -- import TestUtils
 
@@ -127,7 +111,7 @@ spec = do
       (show gg2) `shouldBe` "[[\"found\"],[\"-10\"]]"
       r `shouldBe` True
       r2 `shouldBe` True
-      rx `shouldBe` True
+      rx `shouldBe` False
       rx2 `shouldBe` True
 
 
