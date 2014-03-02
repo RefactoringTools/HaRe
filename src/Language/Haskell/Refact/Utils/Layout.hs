@@ -22,19 +22,13 @@ module Language.Haskell.Refact.Utils.Layout (
 import qualified Bag           as GHC
 import qualified ForeignCall   as GHC
 import qualified GHC           as GHC
--- import qualified HsTypes       as GHC
--- import qualified Outputable    as GHC
--- import qualified SrcLoc        as GHC
 
 import Outputable
 
--- import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import Data.List
--- import Data.Maybe
 import Data.Tree
--- import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LayoutTypes
 import Language.Haskell.Refact.Utils.LocUtils
@@ -512,8 +506,11 @@ allocInstD _ x = error $ "allocInstD:unexpected value:" ++ showGhc x
 -- ---------------------------------------------------------------------
 
 allocDerivD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocDerivD (acc,toks) d@(GHC.L l (GHC.DerivD      _))
-  = error "allocDerivD undefined"
+allocDerivD (acc,toks) (GHC.L l (GHC.DerivD (GHC.DerivDecl typ))) = (r,toks')
+  where
+    (s1,bindToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
+    typLayout = allocType typ bindToks
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ [makeGroup typLayout] )]
 allocDerivD _ x = error $ "allocDerivD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
@@ -541,64 +538,64 @@ allocSigD _ x = error $ "allocSigD:unexpected value:" ++ showGhc x
 -- ---------------------------------------------------------------------
 
 allocDefD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocDefD (acc,toks) d@(GHC.L l (GHC.DefD        _))
-  = error "allocDefD undefined"
+-- allocDefD (acc,toks) d@(GHC.L l (GHC.DefD        _))
+--   = error "allocDefD undefined"
 allocDefD _ x = error $ "allocDefD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocForD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocForD (acc,toks) d@(GHC.L l (GHC.ForD        _))
-  = error "allocForD undefined"
+-- allocForD (acc,toks) d@(GHC.L l (GHC.ForD        _))
+--   = error "allocForD undefined"
 allocForD _ x = error $ "allocForD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocWarningD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocWarningD (acc,toks) d@(GHC.L l (GHC.WarningD    _))
-  = error "allocWarningD undefined"
+-- allocWarningD (acc,toks) d@(GHC.L l (GHC.WarningD    _))
+--   = error "allocWarningD undefined"
 allocWarningD _ x = error $ "allocWarningD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocAnnD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocAnnD (acc,toks) d@(GHC.L l (GHC.AnnD        _))
-  = error "allocAnnD undefined"
+-- allocAnnD (acc,toks) d@(GHC.L l (GHC.AnnD        _))
+--   = error "allocAnnD undefined"
 allocAnnD _ x = error $ "allocAnnD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocRuleD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocRuleD (acc,toks) d@(GHC.L l (GHC.RuleD       _))
-  = error "allocRuleD undefined"
+-- allocRuleD (acc,toks) d@(GHC.L l (GHC.RuleD       _))
+--   = error "allocRuleD undefined"
 allocRuleD _ x = error $ "allocRuleD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocVectD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocVectD (acc,toks) d@(GHC.L l (GHC.VectD       _))
-  = error "allocVectD undefined"
+-- allocVectD (acc,toks) d@(GHC.L l (GHC.VectD       _))
+--   = error "allocVectD undefined"
 allocVectD _ x = error $ "allocVectD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocSpliceD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocSpliceD (acc,toks) d@(GHC.L l (GHC.SpliceD     _))
-  = error "allocSpliceD undefined"
+-- allocSpliceD (acc,toks) d@(GHC.L l (GHC.SpliceD     _))
+--   = error "allocSpliceD undefined"
 allocSpliceD _ x = error $ "allocSpliceD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocDocD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocDocD (acc,toks) d@(GHC.L l (GHC.DocD        _))
-  = error "allocDocD undefined"
+-- allocDocD (acc,toks) d@(GHC.L l (GHC.DocD        _))
+--   = error "allocDocD undefined"
 allocDocD _ x = error $ "allocDocD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocQuasiQuoteD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
-allocQuasiQuoteD (acc,toks) d@(GHC.L l (GHC.QuasiQuoteD _))
-  = error "allocQuasiQuoteD undefined"
+-- allocQuasiQuoteD (acc,toks) d@(GHC.L l (GHC.QuasiQuoteD _))
+--   = error "allocQuasiQuoteD undefined"
 allocQuasiQuoteD _ x = error $ "allocQuasiQuoteD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
