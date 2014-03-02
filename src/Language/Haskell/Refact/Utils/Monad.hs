@@ -232,6 +232,7 @@ initGhcSession cradle importDirs = do
 
 -- ---------------------------------------------------------------------
 
+
 -- getCabalAllTargets :: Cradle -> PackageDescription -> IO ([FilePath],[FilePath],[FilePath],[FilePath])
 getCabalAllTargets cradle cabal = do
    currentDir <- getCurrentDirectory

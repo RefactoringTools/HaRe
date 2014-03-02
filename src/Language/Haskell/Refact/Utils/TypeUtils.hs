@@ -155,55 +155,54 @@ import Language.Haskell.Refact.Utils.TypeSyn
 -- Modules from GHC
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
-import qualified DataCon       as GHC
-import qualified DynFlags      as GHC
-import qualified ErrUtils      as GHC
-import qualified FamInstEnv    as GHC
+-- import qualified DataCon       as GHC
+-- import qualified DynFlags      as GHC
+-- import qualified ErrUtils      as GHC
+-- import qualified FamInstEnv    as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
-import qualified HscMain       as GHC
-import qualified HsPat         as GHC
-import qualified HscTypes      as GHC
-import qualified Id            as GHC
-import qualified InstEnv       as GHC
+-- import qualified HscMain       as GHC
+-- import qualified HsPat         as GHC
+-- import qualified HscTypes      as GHC
+-- import qualified Id            as GHC
+-- import qualified InstEnv       as GHC
 import qualified Lexer         as GHC hiding (getSrcLoc)
 import qualified Module        as GHC
 import qualified Name          as GHC
-import qualified NameEnv       as GHC
+-- import qualified NameEnv       as GHC
 import qualified NameSet       as GHC
 import qualified Outputable    as GHC
-import qualified PrelNames     as GHC
+-- import qualified PrelNames     as GHC
 import qualified RdrName       as GHC
-import qualified RnBinds       as GHC
-import qualified RnEnv         as GHC
-import qualified RnPat         as GHC
-import qualified RnSource      as GHC
+-- import qualified RnBinds       as GHC
+-- import qualified RnEnv         as GHC
+-- import qualified RnPat         as GHC
+-- import qualified RnSource      as GHC
 import qualified SrcLoc        as GHC
-import qualified SysTools      as GHC
-import qualified TcEnv         as GHC
-import qualified TcEvidence    as GHC
-import qualified TcExpr        as GHC
-import qualified TcHsSyn       as GHC
-import qualified TcMType       as GHC
-import qualified TcRnDriver    as GHC
-import qualified TcRnMonad     as GHC
-import qualified TcRnTypes     as GHC
-import qualified TcSimplify    as GHC
-import qualified TcType        as GHC
-import qualified TyCon         as GHC
+-- import qualified SysTools      as GHC
+-- import qualified TcEnv         as GHC
+-- import qualified TcEvidence    as GHC
+-- import qualified TcExpr        as GHC
+-- import qualified TcHsSyn       as GHC
+-- import qualified TcMType       as GHC
+-- import qualified TcRnDriver    as GHC
+-- import qualified TcRnMonad     as GHC
+-- import qualified TcRnTypes     as GHC
+-- import qualified TcSimplify    as GHC
+-- import qualified TcType        as GHC
+-- import qualified TyCon         as GHC
 import qualified UniqSet       as GHC
 import qualified Unique        as GHC
-import qualified Util          as GHC
-import qualified VarEnv        as GHC
-import qualified VarSet        as GHC
+-- import qualified Util          as GHC
+-- import qualified VarEnv        as GHC
+-- import qualified VarSet        as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 -- import qualified Data.Generics.Zipper as Z
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
-import Data.IORef
-import qualified Data.Set as Set
+-- import Data.IORef
 
 -- import Debug.Trace
 -- debug = flip trace
@@ -810,7 +809,7 @@ hsFreeAndDeclaredNameStrings t = do
 -- hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
 --                              return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
 
-
+{-
 -- | Collect the free and declared variables (in the GHC.Name format)
 -- in a given syntax phrase t. In the result, the first list contains
 -- the free variables, and the second list contains the declared
@@ -831,6 +830,7 @@ hsFreeAndDeclaredPNsOld2 t = res
 
     fs' = GHC.nameSetToList $ GHC.minusNameSet fs (GHC.mkNameSet (ds ++ tds))
     res = (fs',ds ++ tds)
+-}
 
 hsFreeAndDeclaredPNs :: (SYB.Data t, GHC.Outputable t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
@@ -927,7 +927,7 @@ hsFreeAndDeclaredGhc t = do
     hsbind b@(GHC.PatBind pa rhs _ _ _) = do
         -- logm $ "hsFreeAndDeclaredGhc.hsbind.PatBind:b=" ++ (showGhc b)
         let d = GHC.collectHsBindBinders b
-        (FN fr,DN dr) <- hsFreeAndDeclaredGhc rhs
+        (FN fr,DN _dr) <- hsFreeAndDeclaredGhc rhs
         (fp,_) <- lpat pa
         -- logm $ "hsFreeAndDeclaredGhc.hsbind.PatBind:f=" ++ (showGhc fr)
         return $ (fp,DN []) <> (FN fr,DN d)
@@ -1214,7 +1214,7 @@ hsFreeAndDeclaredGhc t = do
       fdb <- hsFreeAndDeclaredGhc binds
       return $ (FN [],DN [n]) <> fdb
 
-    expr ((GHC.RecordUpd e1 binds cons _typ1 _typ2)) = do
+    expr ((GHC.RecordUpd e1 binds _cons _typ1 _typ2)) = do
       fde <- hsFreeAndDeclaredGhc e1
       fdb <- hsFreeAndDeclaredGhc binds
       return $ fde <> fdb
@@ -1423,7 +1423,7 @@ hsFreeAndDeclaredGhc t = do
 
 -- ---------------------------------------------------------------------
 
-
+{-
 inRnM2 :: GHC.HscEnv -> GHC.GlobalRdrEnv -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
 inRnM2 hsc_env glbRdrEnv fn = do
   let ictxt = (GHC.hsc_IC hsc_env) { GHC.ic_rn_gbl_env = glbRdrEnv }
@@ -1433,9 +1433,9 @@ inRnM2 hsc_env glbRdrEnv fn = do
 inRnM :: GHC.HscEnv -> GHC.GlobalRdrEnv {- -> GHC.Module -} -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
 inRnM hsc_env glbRdrEnv {- modu -} fn = do
   GHC.initTc hsc_env GHC.HsSrcFile True GHC.iNTERACTIVE fn
-
+-}
 -- initTc :: HscEnv -> HscSource -> Bool -> Module -> TcM r -> IO (Messages, Maybe r)
-
+{-
 -- inRnM3 :: GHC.HscEnv -> GHC.GlobalRdrEnv -> GHC.LocalRdrEnv -> GHC.TcRnIf GHC.GlobalRdrEnv GHC.LocalRdrEnv a -> IO a
 inRnM3 :: GHC.HscEnv -> GHC.TcGblEnv -> GHC.TcRn a -> IO (GHC.Messages,Maybe a)
 inRnM3 hsc_env glbRdrEnv do_this = do
@@ -1489,7 +1489,7 @@ inRnM3 hsc_env glbRdrEnv do_this = do
                   | otherwise                   = maybe_res } ;
 
   return (msgs,final_res)
-
+-}
 -- initTcRnIf :: Char -> HscEnv -> gbl -> lcl -> TcRnIf gbl lcl a -> IO a
 -- type TcRn a = TcRnIf TcGblEnv TcLclEnv a
 -- ---------------------------------------------------------------------
@@ -1519,10 +1519,10 @@ getParsedForRenamedLPat parsed lpatParam@(GHC.L l _pat) = r
 getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
 getDeclaredTypes (GHC.L _ (GHC.ForeignType (GHC.L _ n) _)) = [n]
 getDeclaredTypes (GHC.L _ (GHC.TyFamily _ (GHC.L _ n) _bs _)) = [n]
-getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn fvs)) = [n] ++ dsn
+getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn _fvs)) = [n] ++ dsn
   where
     dsn = getHsTyDefn defn
-getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats _atdefs _ fvs))
+getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats _atdefs _ _fvs))
   = [n] ++ ssn ++ msn ++ asn
   where
     getLSig :: GHC.LSig GHC.Name -> [GHC.Name]
@@ -1551,7 +1551,7 @@ getHsTyDefn (GHC.TyData _ _  _ _ cons _) = r
 getDeclaredTyVarBndrs :: [GHC.LHsTyVarBndrs GHC.Name] -> [GHC.Name]
 getDeclaredTyVarBndrs bs = r
   where
-    go 
+    go
 
     r = []
 -}
@@ -1957,7 +1957,7 @@ hsVisibleDs e t = do
 -- down one doing only what we need.
 
 
-
+{-
 tcRnDeclsi :: GHC.HscEnv
            -> GHC.InteractiveContext
            -> [GHC.LHsDecl GHC.RdrName]
@@ -2079,60 +2079,9 @@ setInteractiveContext hsc_env icxt thing_inside
 
         GHC.tcExtendGhciEnv visible_tmp_ids $ -- Note [GHCi temporary Ids]
           thing_inside
-
--- ---------------------
-
-tc_rn_src_decls :: GHC.ModDetails
-                    -> [GHC.LHsDecl GHC.RdrName]
-                    -> GHC.TcM (GHC.TcGblEnv, GHC.TcLclEnv)
--- Loops around dealing with each top level inter-splice group
--- in turn, until it's dealt with the entire module
-tc_rn_src_decls boot_details ds
- = {-# SCC "tc_rn_src_decls" #-}
-   do { (first_group, group_tail) <- GHC.findSplice ds  ;
-                -- If ds is [] we get ([], Nothing)
-
-        -- The extra_deps are needed while renaming type and class declarations
-        -- See Note [Extra dependencies from .hs-boot files] in RnSource
-        let { extra_deps = map GHC.tyConName (GHC.typeEnvTyCons (GHC.md_types boot_details)) } ;
-        -- Deal with decls up to, but not including, the first splice
-        (tcg_env, rn_decls) <- rnTopSrcDecls extra_deps first_group ;
-                -- rnTopSrcDecls fails if there are any errors
-
-        (tcg_env, tcl_env) <- GHC.setGblEnv tcg_env $
-                              GHC.tcTopSrcDecls boot_details rn_decls ;
-
-        -- If there is no splice, we're nearly done
-        GHC.setEnvs (tcg_env, tcl_env) $
-        case group_tail of {
-           Nothing -> do { tcg_env <- checkMain ;       -- Check for `main'
-                           return (tcg_env, tcl_env)
-                      } ;
-
-#ifndef GHCI
-        -- There shouldn't be a splice
-           Just (GHC.SpliceDecl {}, _) -> do {
-        GHC.failWithTc (GHC.text "Can't do a top-level splice; need a bootstrapped compiler")
-#else
-        -- If there's a splice, we must carry on
-           Just (SpliceDecl splice_expr _, rest_ds) -> do {
-
-        -- Rename the splice expression, and get its supporting decls
-        (rn_splice_expr, splice_fvs) <- checkNoErrs (rnLExpr splice_expr) ;
-                -- checkNoErrs: don't typecheck if renaming failed
-        rnDump (ppr rn_splice_expr) ;
-
-        -- Execute the splice
-        spliced_decls <- tcSpliceDecls rn_splice_expr ;
-
-        -- Glue them on the front of the remaining decls and loop
-        setGblEnv (tcg_env `addTcgDUs` usesOnly splice_fvs) $
-        tc_rn_src_decls boot_details (spliced_decls ++ rest_ds)
-#endif /* GHCI */
-    } } }
-
+-}
 -- ----------------------
-
+{-
 rnTopSrcDecls :: [GHC.Name] -> GHC.HsGroup GHC.RdrName -> GHC.TcM (GHC.TcGblEnv, GHC.HsGroup GHC.Name)
 -- Fails if there are any errors
 rnTopSrcDecls extra_deps group
@@ -2224,8 +2173,9 @@ check_main dflags tcg_env
     noMainMsg = GHC.ptext (GHC.sLit "The") GHC.<+> pp_main_fn
                 GHC.<+> GHC.ptext (GHC.sLit "is not defined in module") GHC.<+> GHC.quotes (GHC.ppr main_mod)
     pp_main_fn = ppMainFn main_fn
+-}
 
-
+{-
 rnDump :: GHC.SDoc -> GHC.TcRn ()
 -- Dump, with a banner, if -ddump-rn
 rnDump doc = do { GHC.dumpOptTcRn GHC.Opt_D_dump_rn (GHC.mkDumpDoc "Renamer" doc) }
@@ -2243,7 +2193,7 @@ getMainFun :: GHC.DynFlags -> GHC.RdrName
 getMainFun dflags = case (GHC.mainFunIs dflags) of
     Just fn -> GHC.mkRdrUnqual (GHC.mkVarOccFS (GHC.mkFastString fn))
     Nothing -> GHC.main_RDR_Unqual
-
+-}
 -- ========================================================================
 
 ------------------------------------------------------------------------
