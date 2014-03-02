@@ -1184,6 +1184,31 @@ spec = do
             "DN [FreeAndDeclared.Declare.tup, FreeAndDeclared.Declare.h,\n "++
                 "FreeAndDeclared.Declare.t])"
 
+    -- -----------------------------------
+
+    it "finds free vars in  HsWithBndrs" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/FreeAndDeclared/Binders.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just n = getName "FreeAndDeclared.Binders.findNewPName" renamed
+      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+      let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [match] _) _ _ _)) = decl
+      let (GHC.L _ (GHC.Match _pats _rhs binds)) = match
+      -- (SYB.showData SYB.Renamer 0 binds) `shouldBe` ""
+
+      let
+        comp = do
+          fds' <- hsFreeAndDeclaredGhc $ binds
+          return (fds')
+      ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      (show fds) `shouldBe`
+            "(FN [GHC.List.head, GHC.Base.$, GHC.List.zip],"++
+            "DN [FreeAndDeclared.Declare.tup, FreeAndDeclared.Declare.h,\n "++
+                "FreeAndDeclared.Declare.t])"
+
   -- ---------------------------------------------
 
   describe "getParsedForRenamedLPat" $ do
