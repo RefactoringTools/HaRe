@@ -576,29 +576,25 @@ allocForD _ x = error $ "allocForD:unexpected value:" ++ showGhc x
 -- ---------------------------------------------------------------------
 
 allocWarningD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
--- allocWarningD (acc,toks) d@(GHC.L l (GHC.WarningD    _))
---   = error "allocWarningD undefined"
+allocWarningD (acc,toks) (GHC.L _l (GHC.WarningD _)) = (acc,toks)
 allocWarningD _ x = error $ "allocWarningD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocAnnD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
--- allocAnnD (acc,toks) d@(GHC.L l (GHC.AnnD        _))
---   = error "allocAnnD undefined"
+allocAnnD (acc,toks) (GHC.L _l (GHC.AnnD _)) = (acc,toks)
 allocAnnD _ x = error $ "allocAnnD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocRuleD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
--- allocRuleD (acc,toks) d@(GHC.L l (GHC.RuleD       _))
---   = error "allocRuleD undefined"
+allocRuleD (acc,toks) (GHC.L _l (GHC.RuleD _)) = (acc,toks)
 allocRuleD _ x = error $ "allocRuleD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocVectD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
--- allocVectD (acc,toks) d@(GHC.L l (GHC.VectD       _))
---   = error "allocVectD undefined"
+allocVectD (acc,toks) (GHC.L _l (GHC.VectD       _)) = (acc,toks)
 allocVectD _ x = error $ "allocVectD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
@@ -695,12 +691,28 @@ allocStmt (GHC.L _ (GHC.BindStmt pat@(GHC.L lp _) expr _ _)) toks = r
 allocStmt (GHC.L _ (GHC.ExprStmt expr _ _ _)) toks = allocExpr expr toks
 allocStmt (GHC.L _ (GHC.LetStmt binds))       toks = allocLocalBinds binds toks
 #if __GLASGOW_HASKELL__ > 704
-allocStmt (GHC.L _ (GHC.ParStmt stmts _ _))          toks = error "allocStmt ParStmt undefined"
+allocStmt (GHC.L l (GHC.ParStmt blocks _ _))  toks = r
+  where
+    (s1,blocksToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
+    (blocksLayout,toks2) = foldl' allocParStmtBlock ([],blocksToks) blocks
+    r = [makeGroup $ strip $ (makeLeafFromToks s1) ++ blocksLayout
+              ++ (makeLeafFromToks toks2)
+              ++ (makeLeafFromToks toks')]
 #else
 allocStmt (GHC.L _ (GHC.ParStmt stmts _ _ _))        toks = error "allocStmt ParStmt undefined"
 #endif
 allocStmt (GHC.L _ (GHC.TransStmt _ _ _ _ _ _ _ _ )) toks = error "allocStmt TransStmt undefined"
 allocStmt (GHC.L _ (GHC.RecStmt _ _ _ _ _ _ _ _ _))  toks = error "allocStmt RecStmt undefined"
+
+-- ---------------------------------------------------------------------
+
+allocParStmtBlock :: ([LayoutTree],[PosToken]) -> GHC.ParStmtBlock GHC.RdrName GHC.RdrName -> ([LayoutTree],[PosToken])
+allocParStmtBlock (acc,toks) (GHC.ParStmtBlock stmts ns _) = (r,toks')
+  where
+    (s1,stmtToks,toks') = splitToksForList stmts toks
+    stmtLayout = allocList stmts stmtToks allocStmt
+    r = [makeGroup $ strip $ (makeLeafFromToks s1)
+                      ++ stmtLayout]
 
 -- ---------------------------------------------------------------------
 
@@ -853,6 +865,19 @@ allocExpr _e@(GHC.L l (GHC.HsDo GHC.DoExpr stmts _)) toks = r
     r = strip $ (makeLeafFromToks (s1++doToks) ++ bindsLayout ++ makeLeafFromToks toks1)
     -- r = error $ "allocExpr.HsDo:toksBinds=" ++ (show toksBinds)
     -- r = error $ "allocExpr.HsDo:toks=" ++ (show toks)
+allocExpr (GHC.L l (GHC.HsDo GHC.MonadComp stmts _)) toks = r
+  where
+    (s1,toksBinds,toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
+    bindsLayout = allocList stmts toksBinds allocStmt
+    r = strip $ ((makeLeafFromToks s1) ++ bindsLayout ++ makeLeafFromToks toks1)
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.PArrComp _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.MDoExpr _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.ArrowExpr _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.GhciStmt _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsDo (GHC.PatGuard _) _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsDo (GHC.ParStmtCtxt _) _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsDo (GHC.TransStmtCtxt _) _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+
 allocExpr (GHC.L l (GHC.ExplicitList _ exprs)) toks = r
   where
     (sb,toksExpr,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
@@ -906,7 +931,43 @@ allocExpr (GHC.L l (GHC.ExprWithTySig (GHC.L le expr) (GHC.L lt typ))) toks = r
                               ++ (makeLeafFromToks toks3)]
     r = strip $ (makeLeafFromToks sb) ++ layout ++ (makeLeafFromToks sa)
 
-allocExpr e _toks = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsIPVar _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.ExprWithTySigOut _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.PArrSeq _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsSCC _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsCoreAnn _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr (GHC.L l (GHC.HsBracket bracket)) toks = r
+  where
+    (sb,toksBrack,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
+    layoutBrack = case bracket of
+      GHC.ExpBr ex -> allocExpr ex toksBrack
+      GHC.PatBr p -> allocPat p toksBrack
+      GHC.DecBrL decs -> allocDecls decs toksBrack
+      GHC.DecBrG g -> error $ "allocExpr.DecNrG undefined for " ++ (SYB.showData SYB.Parser 0 g)
+      GHC.TypBr typ -> allocType typ toksBrack
+      GHC.VarBr _ _ -> makeLeafFromToks toksBrack
+    r = [makeGroup $ strip $ (makeLeafFromToks sb)
+                   ++ layoutBrack
+                   ++ (makeLeafFromToks sa)]
+
+allocExpr e@(GHC.L _ (GHC.HsBracketOut _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsSpliceE _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsQuasiQuoteE _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsProc _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsArrApp _ _ _ _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsArrForm _ _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsTick _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsBinTick _ _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsTickPragma _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.EWildPat)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.EAsPat _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.EViewPat _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.ELazyPat _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsType _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr e@(GHC.L _ (GHC.HsWrap _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+
+
+-- allocExpr e _toks = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 
 -- ---------------------------------------------------------------------
 
