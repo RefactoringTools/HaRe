@@ -1141,7 +1141,7 @@ allocType (GHC.L l (GHC.HsForAllTy _ef vars (GHC.L lc ctx) typ) ) toks = r
     ctxLayout = allocHsContext ctx ctxToks
     typLayout = allocType typ toks3
 
-    r = strip $ (makeLeafFromToks s1) ++ varsLayout ++ (makeLeafFromToks s2)
+    r = strip $ (makeLeafFromToks s1) ++ varsLayout
              ++ (makeLeafFromToks s2) ++ ctxLayout
              ++ typLayout ++ (makeLeafFromToks toks')
 allocType n@(GHC.L _l (GHC.HsTyVar _) ) toks = allocLocated n toks

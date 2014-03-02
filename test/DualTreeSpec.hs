@@ -3,27 +3,17 @@ module DualTreeSpec (main, spec) where
 
 import           Test.Hspec
 
--- import qualified FastString as GHC
 import qualified GHC        as GHC
--- import qualified Lexer      as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
-
--- import Control.Monad.State
--- import Data.List
 -- import Data.Maybe
--- import Data.Tree
 
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
--- import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes
--- import Language.Haskell.Refact.Utils.TypeSyn
--- import Language.Haskell.Refact.Utils.TypeUtils
 
 -- import Data.Tree.DUAL
 
@@ -3236,6 +3226,33 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
     it "retrieves the tokens in SourceTree format HsDo" $ do
       (t,toks) <- parsedFileGhc "./test/testdata/Layout/HsDo.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format forall" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/ForAll.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
 
