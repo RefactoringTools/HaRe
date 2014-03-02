@@ -931,11 +931,10 @@ allocExpr (GHC.L l (GHC.ExprWithTySig (GHC.L le expr) (GHC.L lt typ))) toks = r
                               ++ (makeLeafFromToks toks3)]
     r = strip $ (makeLeafFromToks sb) ++ layout ++ (makeLeafFromToks sa)
 
-allocExpr e@(GHC.L _ (GHC.HsIPVar _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
-allocExpr e@(GHC.L _ (GHC.ExprWithTySigOut _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr (GHC.L _ (GHC.HsIPVar _)) toks = makeLeafFromToks toks
 allocExpr e@(GHC.L _ (GHC.PArrSeq _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
-allocExpr e@(GHC.L _ (GHC.HsSCC _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
-allocExpr e@(GHC.L _ (GHC.HsCoreAnn _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr (GHC.L _ (GHC.HsSCC _ ex)) toks = allocExpr ex toks
+allocExpr (GHC.L _ (GHC.HsCoreAnn _ ex)) toks = allocExpr ex toks
 allocExpr (GHC.L l (GHC.HsBracket bracket)) toks = r
   where
     (sb,toksBrack,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
@@ -950,11 +949,43 @@ allocExpr (GHC.L l (GHC.HsBracket bracket)) toks = r
                    ++ layoutBrack
                    ++ (makeLeafFromToks sa)]
 
+-- Note: these are only present after the typechecker
+allocExpr e@(GHC.L _ (GHC.ExprWithTySigOut _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 allocExpr e@(GHC.L _ (GHC.HsBracketOut _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+
+
 allocExpr e@(GHC.L _ (GHC.HsSpliceE _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 allocExpr e@(GHC.L _ (GHC.HsQuasiQuoteE _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
-allocExpr e@(GHC.L _ (GHC.HsProc _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
-allocExpr e@(GHC.L _ (GHC.HsArrApp _ _ _ _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr (GHC.L l (GHC.HsProc p@(GHC.L lp _) (GHC.L lc (GHC.HsCmdTop cmd _ _ _)))) toks = r
+  where
+    (sb,toksBrack,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s1,toksPat,toks1) = splitToksIncComments (ghcSpanStartEnd lp) toksBrack
+    (s2,toksCmd,toks2) = splitToksIncComments (ghcSpanStartEnd lc) toks1
+    layoutPat = allocPat p toksPat
+    layoutCmd = allocExpr cmd toksCmd
+    r = [makeGroup $ strip $ (makeLeafFromToks sb)
+                   ++ (makeLeafFromToks s1)
+                   ++ layoutPat
+                   ++ (makeLeafFromToks s2)
+                   ++ layoutCmd
+                   ++ (makeLeafFromToks toks2)
+                   ++ (makeLeafFromToks sa)]
+
+allocExpr (GHC.L l (GHC.HsArrApp e1@(GHC.L l1 _) e2@(GHC.L l2 _) _ _ _)) toks = r
+  where
+    (sb,toksApp,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s1,toksE1,toks1) = splitToksIncComments (ghcSpanStartEnd l1) toksApp
+    (s2,toksE2,toks2) = splitToksIncComments (ghcSpanStartEnd l2) toks1
+    layoutE1 = allocExpr e1 toksE1
+    layoutE2 = allocExpr e2 toksE2
+    r = [makeGroup $ strip $ (makeLeafFromToks sb)
+                   ++ (makeLeafFromToks s1)
+                   ++ layoutE1
+                   ++ (makeLeafFromToks s2)
+                   ++ layoutE2
+                   ++ (makeLeafFromToks toks2)
+                   ++ (makeLeafFromToks sa)]
+
 allocExpr e@(GHC.L _ (GHC.HsArrForm _ _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 allocExpr e@(GHC.L _ (GHC.HsTick _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 allocExpr e@(GHC.L _ (GHC.HsBinTick _ _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
