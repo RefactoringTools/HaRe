@@ -1196,6 +1196,7 @@ spec = do
       let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [match] _) _ _ _)) = decl
       let (GHC.L _ (GHC.Match _pats _rhs binds)) = match
       -- (SYB.showData SYB.Renamer 0 binds) `shouldBe` ""
+      -- (showGhc binds) `shouldBe` ""
 
       let
         comp = do
@@ -1205,9 +1206,18 @@ spec = do
       -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (show fds) `shouldBe`
-            "(FN [GHC.List.head, GHC.Base.$, GHC.List.zip],"++
-            "DN [FreeAndDeclared.Declare.tup, FreeAndDeclared.Declare.h,\n "++
-                "FreeAndDeclared.Declare.t])"
+            "(FN [FreeAndDeclared.Binders.gfromJust,"++
+            " FreeAndDeclared.Binders.Name,\n"++
+            " FreeAndDeclared.Binders.occNameString,"++
+            " GHC.Base.$,\n"++
+            " FreeAndDeclared.Binders.getOccName,"++
+            " GHC.Classes.==,"++
+            " name,\n"++
+            " Data.Maybe.Just,"++
+            " Data.Maybe.Nothing,\n"++
+            " FreeAndDeclared.Binders.somethingStaged,\n"++
+            " FreeAndDeclared.Binders.Renamer, renamed],"++
+            "DN [worker, res])"
 
   -- ---------------------------------------------
 

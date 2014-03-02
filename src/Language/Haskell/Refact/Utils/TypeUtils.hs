@@ -870,6 +870,7 @@ hsFreeAndDeclaredGhc t = do
           `SYB.extQ` hsvalbinds
           `SYB.extQ` lpats
           `SYB.extQ` lpat
+          `SYB.extQ` bndrs
           `SYB.extQ` ltydecls
           `SYB.extQ` ltydecl
           `SYB.extQ` lfaminstdecls
@@ -883,6 +884,7 @@ hsFreeAndDeclaredGhc t = do
           `SYB.extQ` lstmts
           `SYB.extQ` lstmt
           `SYB.extQ` lhstype
+          `SYB.extQ` hstype
           `SYB.extQ` grhs_s
           `SYB.extQ` grhs
           `SYB.extQ` grhsss
@@ -1043,37 +1045,14 @@ hsFreeAndDeclaredGhc t = do
       fds <- mapM pat args
       return $ mconcat fds
 
-    -- ---------------------------------
-{-
-    lpatold :: GHC.LPat GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
-    lpatold lp = do
-      -- logm $ "hsFreeAndDeclaredGhc.lpat:" ++ (showGhc lp)
-      -- NOTE: we have to call into the bowels of the renamer to get
-      --       the free variables for the pat
-      parsed <- getRefactParsed
-      let
-        dn = GHC.collectPatBinders lp
-        lpatParsed = getParsedForRenamedLPat parsed lp
-        nameMaker = GHC.topRecNameMaker (GHC.emptyFsEnv)
-      -- logm $ "hsFreeAndDeclaredGhc.lpatParsed:" ++ (showGhc lpatParsed)
+    -- -----------------------
 
-      df <- GHC.getDynFlags
-      -- logm $ "hsFreeAndDeclaredGhc:df:" ++ (show $ GHC.sTopDir $ GHC.settings df)
-      typechecked <- getTypecheckedModule
-      let (glblEnv,_modDetails) = GHC.tm_internals_ typechecked
-      -- logm $ "hsFreeAndDeclaredGhc:glblEnv=" ++ (GHC.showSDoc df $ GHC.pprGlobalRdrEnv $ GHC.tcg_rdr_env glblEnv)
-      env <- GHC.getSession
-      -- let glbRdrEnv = GHC.tcg_rdr_env glblEnv
-      -- ((wm,em),mf) <- liftIO $ inRnM env glbRdrEnv $ GHC.rnBindPat nameMaker lpatParsed
-      ((wm,em),mf) <- liftIO $ inRnM3 env glblEnv $ GHC.rnBindPat nameMaker lpatParsed
-      let fn = case mf of
-                Just (_,f) -> GHC.nameSetToList f
-                Nothing -> error $ "HaRe:hsFreeAndDeclaredGhc:wtf"
-                                ++ (GHC.showSDoc df $ GHC.vcat $ GHC.pprErrMsgBag wm)
-                                ++ (GHC.showSDoc df $ GHC.vcat $ GHC.pprErrMsgBag em)
-      -- logm $ "hsFreeAndDeclaredGhc.lpatold:fn=" ++ (showGhc fn)
-      return (FN fn,DN dn)
--}
+    bndrs :: GHC.HsWithBndrs (GHC.LHsType GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
+    bndrs (GHC.HsWB (GHC.L _ thing) _kindVars _typeVars) = do
+      (_ft,DN dt) <- hsFreeAndDeclaredGhc thing
+      -- logm $ "hsFreeAndDeclaredGhc.bndrs (ft,dt)=" ++ show (_ft,dt)
+      return (FN dt,DN [])
+
     -- -----------------------
 
     ltydecls :: [GHC.LTyClDecl GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
@@ -1323,29 +1302,33 @@ hsFreeAndDeclaredGhc t = do
     -- -----------------------
 
     lhstype :: GHC.LHsType GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
-    lhstype (GHC.L _ (GHC.HsForAllTy _ _ _ typ)) = hsFreeAndDeclaredGhc typ
+    lhstype (GHC.L _ typ) = hstype typ
 
-    lhstype (GHC.L _ (GHC.HsTyVar n)) = return (FN [],DN [n])
-    lhstype (GHC.L _ (GHC.HsAppTy t1 t2)) = recurseList [t1,t2]
-    lhstype (GHC.L _ (GHC.HsFunTy t1 t2)) = recurseList [t1,t2]
-    lhstype (GHC.L _ (GHC.HsListTy typ)) = hsFreeAndDeclaredGhc typ
-    lhstype (GHC.L _ (GHC.HsPArrTy typ)) = hsFreeAndDeclaredGhc typ
-    lhstype (GHC.L _ (GHC.HsTupleTy _ typs)) = recurseList typs
-    lhstype (GHC.L _ (GHC.HsOpTy t1 _ t2)) = recurseList [t1,t2]
-    lhstype (GHC.L _ (GHC.HsParTy typ)) = hsFreeAndDeclaredGhc typ
-    lhstype (GHC.L _ (GHC.HsIParamTy _ typ)) = hsFreeAndDeclaredGhc typ
-    lhstype (GHC.L _ (GHC.HsEqTy t1 t2)) = recurseList [t1,t2]
-    lhstype (GHC.L _ (GHC.HsKindSig t1 t2)) = recurseList [t1,t2]
-    lhstype (GHC.L _ (GHC.HsQuasiQuoteTy _)) = return emptyFD
-    lhstype (GHC.L _ (GHC.HsSpliceTy _ fvs _)) = return (FN (GHC.nameSetToList fvs),DN [])
-    lhstype (GHC.L _ (GHC.HsDocTy _ typ)) = hsFreeAndDeclaredGhc typ
-    lhstype (GHC.L _ (GHC.HsBangTy _ typ)) = hsFreeAndDeclaredGhc typ
-    lhstype (GHC.L _ (GHC.HsRecTy cons)) = recurseList cons
-    lhstype (GHC.L _ (GHC.HsCoreTy _)) = return emptyFD
-    lhstype (GHC.L _ (GHC.HsExplicitListTy _ typs)) = recurseList typs
-    lhstype (GHC.L _ (GHC.HsExplicitTupleTy _ typs)) = recurseList typs
-    lhstype (GHC.L _ (GHC.HsTyLit _)) = return emptyFD
-    lhstype (GHC.L _ (GHC.HsWrapTy _ typ)) = hsFreeAndDeclaredGhc typ
+    -- -----------------------
+
+    hstype :: GHC.HsType GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
+    hstype (GHC.HsForAllTy _ _ _ typ) = hsFreeAndDeclaredGhc typ
+    hstype (GHC.HsTyVar n) = return (FN [],DN [n])
+    hstype (GHC.HsAppTy t1 t2) = recurseList [t1,t2]
+    hstype (GHC.HsFunTy t1 t2) = recurseList [t1,t2]
+    hstype (GHC.HsListTy typ) = hsFreeAndDeclaredGhc typ
+    hstype (GHC.HsPArrTy typ) = hsFreeAndDeclaredGhc typ
+    hstype (GHC.HsTupleTy _ typs) = recurseList typs
+    hstype (GHC.HsOpTy t1 _ t2) = recurseList [t1,t2]
+    hstype (GHC.HsParTy typ) = hsFreeAndDeclaredGhc typ
+    hstype (GHC.HsIParamTy _ typ) = hsFreeAndDeclaredGhc typ
+    hstype (GHC.HsEqTy t1 t2) = recurseList [t1,t2]
+    hstype (GHC.HsKindSig t1 t2) = recurseList [t1,t2]
+    hstype (GHC.HsQuasiQuoteTy _) = return emptyFD
+    hstype (GHC.HsSpliceTy _ fvs _) = return (FN (GHC.nameSetToList fvs),DN [])
+    hstype (GHC.HsDocTy _ typ) = hsFreeAndDeclaredGhc typ
+    hstype (GHC.HsBangTy _ typ) = hsFreeAndDeclaredGhc typ
+    hstype (GHC.HsRecTy cons) = recurseList cons
+    hstype (GHC.HsCoreTy _) = return emptyFD
+    hstype (GHC.HsExplicitListTy _ typs) = recurseList typs
+    hstype (GHC.HsExplicitTupleTy _ typs) = recurseList typs
+    hstype (GHC.HsTyLit _) = return emptyFD
+    hstype (GHC.HsWrapTy _ typ) = hsFreeAndDeclaredGhc typ
 
 
     -- -----------------------
@@ -1387,8 +1370,8 @@ hsFreeAndDeclaredGhc t = do
     -- -----------------------
 
     lmatch :: GHC.LMatch GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
-    lmatch (GHC.L _ (GHC.Match pats _ rhs)) = do
-      -- logm $ "hsFreeAndDeclaredGhc.lmatch for:" ++ (showGhc m)
+    lmatch (GHC.L _ _m@(GHC.Match pats _ rhs)) = do
+      logm $ "hsFreeAndDeclaredGhc.lmatch for:" ++ (showGhc _m)
       (fp,DN dp) <- recurseList pats
       (FN fr,DN dr) <- hsFreeAndDeclaredGhc rhs
       -- logm $ "hsFreeAndDeclaredGhc.lmatch:(fp,dp)=" ++ (show (fp,DN dp))
