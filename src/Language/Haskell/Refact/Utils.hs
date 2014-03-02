@@ -122,7 +122,7 @@ getModuleGhc targetFile = do
   case mTarget of
     Nothing -> return ()
     Just tm -> do
-      activateModule tm
+      void $ activateModule tm
       return ()
 
   mm <- getModuleMaybe targetFile

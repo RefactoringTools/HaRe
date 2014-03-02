@@ -798,13 +798,18 @@ allocExpr (GHC.L l (GHC.HsLet localBinds expr@(GHC.L le _))) toks = r
     exprLayout = allocExpr expr exprToks
     exprMainLayout = [makeGroup $ strip $ bindLayout ++ [makeGroup exprLayout] ++ (makeLeafFromToks toks')]
     r = strip $ (makeLeafFromToks sb) ++ exprMainLayout ++ (makeLeafFromToks sa)
-allocExpr (GHC.L l (GHC.HsDo _ stmts _)) toks = r
+allocExpr _e@(GHC.L l (GHC.HsDo GHC.ListComp stmts _)) toks = r
+  where
+    (s1,toksBinds,toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
+    bindsLayout = allocList stmts toksBinds allocStmt
+    r = strip $ ((makeLeafFromToks s1) ++ bindsLayout ++ makeLeafFromToks toks1)
+allocExpr _e@(GHC.L l (GHC.HsDo GHC.DoExpr stmts _)) toks = r
   -- HsDo (HsStmtContext Name) [LStmt id] PostTcType
   where
     (s1,toksBinds',toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
 
     (before,including) = break isDo toksBinds'
-    doToks = before ++ [ghead "allocExpr" including]
+    doToks = before ++ [ghead ("allocExpr:" ++ (show toksBinds') ++ (SYB.showData SYB.Renamer 0 _e)) including]
     toksBinds = gtail ("allocExpr.HsDo" ++ show (l,before,including,toks)) including
 
     bindsLayout' = allocList stmts toksBinds allocStmt
@@ -1268,7 +1273,7 @@ allocType (GHC.L _l (GHC.HsExplicitTupleTy _ ts) ) toks = allocList ts toks allo
 allocType n@(GHC.L _l (GHC.HsTyLit _) ) toks = allocLocated n toks
 #endif
 allocType (GHC.L l (GHC.HsWrapTy _ typ) ) toks = allocType (GHC.L l typ) toks
-allocType t toks = error $ "allocType: not implemented for:" ++ (showGhc t)
+-- allocType t toks = error $ "allocType: not implemented for:" ++ (showGhc t)
 
 -- ---------------------------------------------------------------------
 

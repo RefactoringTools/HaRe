@@ -6,7 +6,7 @@ import           Test.QuickCheck
 
 import           TestUtils
 
-import qualified Digraph    as GHC
+-- import qualified Digraph    as GHC
 -- import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified HscTypes   as GHC
@@ -539,10 +539,10 @@ parsedFileBGhc = parsedFileGhc "./test/testdata/TypeUtils/B.hs"
 -- parsedFileMGhc :: IO (ParseResult,[PosToken])
 -- parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
 
-parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileBGhc = parseSourceFileTest fileName
-  where
-    fileName = "./test/testdata/TypeUtils/B.hs"
+-- parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
+-- parseFileBGhc = parseSourceFileTest fileName
+--   where
+--     fileName = "./test/testdata/TypeUtils/B.hs"
 
 parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
 parseFileMGhc = parseSourceFileTest fileName

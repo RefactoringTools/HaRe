@@ -30,14 +30,14 @@ spec = do
 
   describe "onelayerStaged" $ do
     it "only descends one layer into a structure" $ do
-      let s = ([2,1,3,4,5],[6,7,8]) :: ([Int],[Int])
+      -- let s = ([2,1,3,4,5],[6,7,8]) :: ([Int],[Int])
       let s' = (2,[3,4],5) :: (Int,[Int],Int)
-      let worker (i :: Int)
-           | i == 2 = ["f"]
-          worker _ = []
+      let -- worker (i :: Int)
+          --  | i == 2 = ["f"]
+          -- worker _ = []
 
           worker' (i::Int) = [i]
-          worker'' (i::[Int]) = [head i]
+          -- worker'' (i::[Int]) = [head i]
 
       let g = onelayerStaged SYB.Renamer [] ([] `SYB.mkQ` worker') s'
       let g1 = SYB.gmapQ ([] `SYB.mkQ` worker') s'
@@ -52,12 +52,12 @@ spec = do
     it "avoids GHC holes in the structure" $ do
       let s' = ([3,4],error "blowup",5,error "ptc",6,error "fix",7)
                 :: ([Int],GHC.NameSet,Int,GHC.PostTcType,Int,GHC.Fixity,Int)
-      let worker (i :: Int)
-           | i == 2 = ["f"]
-          worker _ = []
+      let -- worker (i :: Int)
+          --  | i == 2 = ["f"]
+          -- worker _ = []
 
           worker' (i::Int) = [i]
-          worker'' (i::[Int]) = [head i]
+          -- worker'' (i::[Int]) = [head i]
 
       let g = onelayerStaged SYB.Renamer [-1] ([-10] `SYB.mkQ` worker') s'
       let g1 = SYB.gmapQ ([-2] `SYB.mkQ` worker') s'

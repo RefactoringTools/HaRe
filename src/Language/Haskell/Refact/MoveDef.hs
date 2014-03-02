@@ -273,9 +273,9 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                       drawTokenTree "liftToMod.a"
 
                       if pns==[]
-                        then do (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl n dd parent liftedDecls
-                                let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
-                                                                else liftedDecls'
+                        then do (parent',_liftedDecls',_paramAdded)<-addParamsToParentAndLiftedDecl n dd parent liftedDecls
+                                -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
+                                --                                 else liftedDecls'
 
                                 drawTokenTree "liftToMod.c"
                                 logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
@@ -409,7 +409,7 @@ addParamsToParent  pn params t = do
 liftingInClientMod :: GHC.ModuleName -> [GHC.Name] -> TargetModule
   -> RefactGhc [ApplyRefacResult]
 liftingInClientMod serverModName pns targetModule@(_,modSummary) = do
-       activateModule targetModule
+       void $ activateModule targetModule
        renamed <- getRefactRenamed
        -- logm $ "liftingInClientMod:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        let clientModule = GHC.ms_mod modSummary
@@ -728,10 +728,10 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (parent',liftedDecls',paramAdded)<-addParamsToParentAndLiftedDecl n dd
+                                (parent',_liftedDecls',_paramAdded)<-addParamsToParentAndLiftedDecl n dd
                                                                      parent liftedDecls
-                                let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
-                                                                else liftedDecls'
+                                -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
+                                --                                 else liftedDecls'
                                 --True means the new decl will be at the same level with its parant. 
                                 dest'<-moveDecl1 (replaceBinds dest (before++parent'++after))
                                            (Just (ghead "worker" (definedPNs (ghead "worker" parent'))))
@@ -772,11 +772,11 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (dest',liftedDecls',paramAdded)
+                                (dest',_liftedDecls',_paramAdded)
                                     -- <- addParamsToParentAndLiftedDecl n dd decl liftedDecls 
                                     <- addParamsToParentAndLiftedDecl n dd dest liftedDecls
-                                let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
-                                                                else liftedDecls'
+                                -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
+                                --                                 else liftedDecls'
                                 -- logm $ "MoveDef.worker1:liftedDecls''=" ++ (showGhc liftedDecls'')
                                 -- logm $ "MoveDef.worker1:dest'=" ++ (SYB.showData SYB.Renamer 0 dest')
                                 --True means the new decl will be at the same level with its parant. 
@@ -882,7 +882,7 @@ demotingInClientMod ::
   [GHC.Name] -> TargetModule
   -> RefactGhc ApplyRefacResult
 demotingInClientMod pns targetModule@(_,modSummary) = do
-  activateModule targetModule
+  void $ activateModule targetModule
   (refactoredMod,_) <- applyRefac (doDemotingInClientMod pns (GHC.ms_mod modSummary)) RSAlreadyLoaded
   return refactoredMod
 
@@ -1472,7 +1472,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
          -- =applyTP (once_tdTP (failTP `adhocTP` worker))
          = everywhereMStaged SYB.Renamer (SYB.mkM worker) bind
             -- where worker ((HsMatch loc1 name pats rhs ds)::HsMatchP)
-            where worker (GHC.Match pats2 typ rhs)
+            where worker (GHC.Match pats2 typ rhs1)
                     = do
                          let pats'=filter (\x->not ((patToPNT x /= Nothing) &&
                                           elem (gfromJust "rmParamsInDemotedDecls" $ patToPNT x) ps)) pats2
@@ -1491,7 +1491,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
 
                          -- pats'' <- update pats pats' pats
 
-                         return (GHC.Match pats' typ rhs)
+                         return (GHC.Match pats' typ rhs1)
 
        pprPat pat = intercalate " " $ map (\p -> (prettyprint p )) pat
 

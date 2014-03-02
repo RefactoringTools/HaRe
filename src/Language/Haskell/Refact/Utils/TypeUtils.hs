@@ -1015,9 +1015,9 @@ hsFreeAndDeclaredGhc t = do
     pat (GHC.LitPat _) = return emptyFD
     pat (GHC.NPat _ _ _) = return emptyFD
     pat (GHC.NPlusKPat (GHC.L _ n) _ _ _) = return (FN [],DN [n])
-    pat (GHC.SigPatIn (GHC.L _ p) bndrs) = do
+    pat (GHC.SigPatIn (GHC.L _ p) b) = do
       fdp <- pat p
-      fdb <- hsFreeAndDeclaredGhc bndrs
+      fdb <- hsFreeAndDeclaredGhc b
       return $ fdp <> fdb
     pat (GHC.SigPatOut (GHC.L _ p) _) = pat p
     pat (GHC.CoPat _ p _) = pat p
@@ -1104,6 +1104,7 @@ hsFreeAndDeclaredGhc t = do
       tfds <- hsFreeAndDeclaredGhc typ
       return $ (FN [],DN [GHC.unLoc n]) <> tfds
     lsig (GHC.L _ (GHC.SpecInstSig _)) = return emptyFD
+    lsig (GHC.L _ (GHC.FixSig _)) = return emptyFD
 
     -- -----------------------
 
@@ -1140,6 +1141,8 @@ hsFreeAndDeclaredGhc t = do
       fdeop <- hsFreeAndDeclaredGhc eop
       fde2 <- hsFreeAndDeclaredGhc e2
       return $ fde1 <> fdeop <> fde2
+
+    expr ((GHC.NegApp e _)) = hsFreeAndDeclaredGhc e
 
     expr ((GHC.HsPar e)) = hsFreeAndDeclaredGhc e
 
@@ -1276,6 +1279,9 @@ hsFreeAndDeclaredGhc t = do
 
     expr ((GHC.HsWrap _wrap e))
       = hsFreeAndDeclaredGhc e
+
+    -- expr e = error $ "hsFreeAndDeclaredGhc.expr: unimplemented for"
+    --               ++ (SYB.showData SYB.Renamer 0 e)
 
     -- -----------------------
 
@@ -1515,6 +1521,7 @@ getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats
     getLSig (GHC.L _ (GHC.InlineSig (GHC.L _ n2) _)) = [n2]
     getLSig (GHC.L _ (GHC.SpecSig (GHC.L _ n2) _ _)) = [n2]
     getLSig (GHC.L _ (GHC.SpecInstSig _)) = []
+    getLSig (GHC.L _ (GHC.FixSig _)) = []
 
     ssn = concatMap getLSig sigs
     msn = getDeclaredVars $ hsBinds meths
@@ -1813,7 +1820,7 @@ hsVisibleDs e t = do
     hslocalbinds (GHC.HsIPBinds binds)
       | findEntity e binds = hsVisibleDs e binds
     hslocalbinds (GHC.EmptyLocalBinds) = return (DN [])
-
+    hslocalbinds _ = return (DN [])
 
     lmatch :: (GHC.LMatch GHC.Name) -> RefactGhc DeclaredNames
     lmatch (GHC.L _ (GHC.Match pats _mtyp rhs))

@@ -6,7 +6,7 @@ import Language.Haskell.Refact.Renaming
 
 import TestUtils
 
-import Language.Haskell.GhcMod
+-- import Language.Haskell.GhcMod
 
 -- ---------------------------------------------------------------------
 

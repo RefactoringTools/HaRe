@@ -16,7 +16,7 @@ import Data.Maybe
 import Language.Haskell.Refact.Utils
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.GhcUtils
+-- import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -3825,8 +3825,8 @@ parsedFileLiftOneD1Ghc = parsedFileGhc "./test/testdata/LiftOneLevel/D1.hs"
 -- liftWhereIn1FileName :: GHC.FastString
 -- liftWhereIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/WhereIn1.hs"
 
-parsedFileLiftWhereIn1Ghc :: IO (ParseResult,[PosToken])
-parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereIn1.hs"
+-- parsedFileLiftWhereIn1Ghc :: IO (ParseResult,[PosToken])
+-- parsedFileLiftWhereIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereIn1.hs"
 
 -- -----------
 
@@ -3977,7 +3977,7 @@ parsedFileLayoutIn4 = parsedFileGhc "./test/testdata/Renaming/LayoutIn4.hs"
 -- idIn3FileName :: GHC.FastString
 -- idIn3FileName = GHC.mkFastString "./test/testdata/Renaming/IdIn3.hs"
 
-parsedFileIdIn3 :: IO (ParseResult, [PosToken])
-parsedFileIdIn3 = parsedFileGhc "./test/testdata/Renaming/IdIn3.hs"
+-- parsedFileIdIn3 :: IO (ParseResult, [PosToken])
+-- parsedFileIdIn3 = parsedFileGhc "./test/testdata/Renaming/IdIn3.hs"
 
 -- ----------------------------------------------------

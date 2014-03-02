@@ -7,6 +7,7 @@ import qualified GHC.SYB.Utils as SYB
 import qualified GHC
 import qualified OccName               as GHC
 
+import Control.Monad
 import Data.List
 import Data.Maybe
 
@@ -171,7 +172,7 @@ refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> TargetModule
 refactorInClientMod oldPN serverModName newPName targetModule@(_,modSummary)
   = do
        logm ("refactorInClientMod: (serverModName,newPName)=" ++ (showGhc (serverModName,newPName))) -- ++AZ++ debug
-       activateModule targetModule
+       void $ activateModule targetModule
 
        let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
 {-

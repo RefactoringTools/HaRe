@@ -128,6 +128,8 @@ reallyDoSwap (GHC.L _s n1) renamed = do
                                 p2' <- update p2 p1 p2
                                 matches' <- updateMatches matches
                                 return ((GHC.L x (GHC.Match (p1':p2':ps) nothing rhs)):matches')
+               [p] -> return [GHC.L x (GHC.Match [p] nothing rhs)]
+               []  -> return [GHC.L x (GHC.Match [] nothing rhs)]
 
 
 {-        inMatch i@(GHC.L x m@(GHC.Match (p1:p2:ps) nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )

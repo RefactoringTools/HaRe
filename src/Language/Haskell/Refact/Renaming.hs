@@ -226,7 +226,7 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
                                 )) renamed
                                 -}
   -- somewhereMStagedBu SYB.Renamer (SYB.mkM renameInMod
-  everywhereMStaged SYB.Renamer (SYB.mkM renameInMod
+  void $ everywhereMStaged SYB.Renamer (SYB.mkM renameInMod
                                  ) renamed
   logm $ "doRenaming done"
   nIsExported <- isExported oldn
@@ -366,7 +366,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                    else if exportChecking && isInScopeUnqual -- isInScopeAndUnqualifiedGhc newName Nothing
                                           then do
                                                logm $ "renameTopLevelVarName start..:should have qualified"
-                                               renamePN oldPN newNameGhc True True renamed
+                                               void $ renamePN oldPN newNameGhc True True renamed
                                                logm $ "renameTopLevelVarName done:should have qualified"
                                                -- drawTokenTreeDetailed "should be qualified" -- ++AZ++ debug
                                                r' <- getRefactRenamed
@@ -427,7 +427,7 @@ renameInClientMod :: GHC.Name -> String -> GHC.Name -> TargetModule
  -> RefactGhc [ApplyRefacResult]
 renameInClientMod oldPN newName newNameGhc targetModule@(_,modSummary) = do
       logm $ "renameInClientMod:(oldPN,newNameGhc,modSummary)=" ++ (showGhc (oldPN,newNameGhc,targetModule)) -- ++AZ++
-      activateModule targetModule
+      void $ activateModule targetModule
       {- ++AZ++ debug stuff -}
       names <- ghandle handler (GHC.parseName $ nameToString oldPN)
       nameInfo <- mapM GHC.lookupName names
@@ -471,7 +471,7 @@ renameInClientMod oldPN newName newNameGhc targetModule@(_,modSummary) = do
        qualifyTopLevelVar newStr
        renamed <- getRefactRenamed
        logm $ "renameInClientMod.refactRename:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
-       renamePN old new True useQual renamed
+       void $ renamePN old new True useQual renamed
        return ()
 
      refactRenameComplex :: GHC.Name -> String -> GHC.Name -> RefactGhc ()
@@ -582,9 +582,9 @@ isValidNewName oldName rdrNameStr newName = res
                       (isConId newName)
                       "Invalid data constructor name!"
 
-   fieldOk = doTest (isFieldName oldName)
-                    (isVarId newName)
-                    "Invalid field name!"
+   -- fieldOk = doTest (isFieldName oldName)
+   --                  (isVarId newName)
+   --                  "Invalid field name!"
 
    -- instanceOk = doTest (isInstanceName oldName)
    --                     (isVarId newName)

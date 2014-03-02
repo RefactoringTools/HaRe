@@ -14,7 +14,7 @@ import Data.Maybe
 import Data.Tree
 
 import Language.Haskell.Refact.Utils.DualTree
-import Language.Haskell.Refact.Utils.GhcBugWorkArounds
+-- import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
@@ -5860,8 +5860,8 @@ Should be pg :  5 - 3 = 2
 
       -- drop all higher indented values, all the way to the root
 
-      let fff acc@((cd,_cs):_) (v,sspan1) = if v < cd then (v,sspan1):acc
-                                                      else acc
+      let fff acc@((cd1,_cs):_) (v,sspan1) = if v < cd1 then (v,sspan1):acc
+                                                        else acc
 
       let tl3 = foldl' fff [(head tl2)] tl2
       (show tl3) `shouldBe`
