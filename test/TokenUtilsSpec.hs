@@ -276,8 +276,8 @@ spec = do
       -- putDeclToksAfterSpan test/testdata/DupDef/Dd1.hs:1048582:1-30:("(((False,0,1,6),1),((False,0,1,6),31))",PlaceIndent 1 0 2
 
       -- --
-      let newSpan = posToSrcSpan tm5 ((7,1),(7,19))
-      (showSrcSpanF newSpan) `shouldBe` "(((False,0,0,7),1),((False,0,0,7),19))"
+      let newSpan111 = posToSrcSpan tm5 ((7,1),(7,19))
+      (showSrcSpanF newSpan111) `shouldBe` "(((False,0,0,7),1),((False,0,0,7),19))"
       -- let (forest',newSpan') = addNewSrcSpanAndToksAfter tm5 sspan3 newSpan (PlaceIndent 1 0 2) declToks
 
       let z = openZipperToSpan (srcSpanToForestSpan sspan3) $ Z.fromTree tm5
@@ -1252,7 +1252,7 @@ tree TId 0:
       -- let (b2,m2,e2) = splitSubToks (head middle) (sf sspan9)
       -- (show (b2,m2,e2)) `shouldBe` ""
       let (b3,m3,e3) = splitSubtree (last middle) (sf sspan9)
-      (show (map treeStartEnd b3,map treeStartEnd m3,map treeStartEnd  e3)) `shouldBe` 
+      (show (map treeStartEnd b3,map treeStartEnd m3,map treeStartEnd  e3)) `shouldBe`
                "([],"++
                "[(((ForestLine False 0 0 10),26),((ForestLine False 0 0 11),24)),"++
                 "(((ForestLine True 0 0 11),25),((ForestLine True 0 0 11),28)),"++
@@ -1587,7 +1587,7 @@ tree TId 0:
 
       -- (show $ retrieveTokensInterim $ getTreeFromCache ss2 tk3) `shouldBe` "" 
       -- (show $ getTreeFromCache ss2 tk3) `shouldBe` ""
-      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk3) `shouldBe` 
+      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk3) `shouldBe`
                 "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
 
       -- putToksForSpan test/testdata/Demote/WhereIn6.hs:100000013:18:[((((0,1),(0,2)),ITvarid "y"),"y")]
@@ -1619,7 +1619,7 @@ tree TId 0:
                "tree TId 3:\n"++
                "((300000013,18),(300000013,19))\n"
 
-      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk4) `shouldBe` 
+      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk4) `shouldBe`
                 "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+y+c"
 
 
@@ -3780,7 +3780,7 @@ Should be pg :  5 - 3 = 2
 
       let (forest2,_ss1',_) = updateTokensForSrcSpan forest ss1 ss1Tok
 
-      (drawTreeEntry forest2) `shouldBe` 
+      (drawTreeEntry forest2) `shouldBe`
            "((1,1),(18,23))\n|\n"++
            "+- ((1,1),(11,17))\n|\n"++
            "+- ((10000000011,18),(10000000011,20))\n|\n"++
@@ -3797,7 +3797,7 @@ Should be pg :  5 - 3 = 2
 
       let (forest3,_ss2',_) = updateTokensForSrcSpan forest2 ss2 ss2Tok
 
-      (drawTreeEntry forest3) `shouldBe` 
+      (drawTreeEntry forest3) `shouldBe`
            "((1,1),(18,23))\n|\n"++
            "+- ((1,1),(11,17))\n|\n"++
            "+- ((10000000011,18),(10000000011,20))\n|\n"++
@@ -4544,7 +4544,7 @@ Should be pg :  5 - 3 = 2
 --
       let z1 = openZipperToSpan (sf sspan3) $ Z.fromTree f2
       let (b1,m1,e1) = splitSubtree (Z.tree z1) (sf sspan3)
-      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
+      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe`
               "([(((ForestLine False 0 0 1),1),((ForestLine False 0 0 6),20))],"++
                "[(((ForestLine True 0 0 6),21),((ForestLine True 0 0 6),23)),"++
                 "(((ForestLine False 0 0 6),26),((ForestLine False 0 0 7),18))],"++
@@ -4782,7 +4782,7 @@ Should be pg :  5 - 3 = 2
 
       -- let (b1,m1,e1) = doSplitTree (Z.tree z) (fs sspan4)
       let (b1,m1,e1) = splitSubtree (Z.tree z) (sf sspan4)
-      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
+      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe`
               "([],"++
 
               "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 23),8)),"++
@@ -4791,10 +4791,10 @@ Should be pg :  5 - 3 = 2
               "[(((ForestLine False 0 0 26),1),((ForestLine False 0 0 40),17))])"
 
       let (b2,m2,e2) = splitSubtree (head m1) (sf sspan4)
-      (show (map treeStartEnd b2,map treeStartEnd m2,map treeStartEnd e2)) `shouldBe` 
+      (show (map treeStartEnd b2,map treeStartEnd m2,map treeStartEnd e2)) `shouldBe`
               "([],"++
               "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 22),14)),"++
-               "(((ForestLine False 0 0 23),3),((ForestLine False 0 0 23),8))],"++ 
+               "(((ForestLine False 0 0 23),3),((ForestLine False 0 0 23),8))],"++
               "[])"
 
       let (Node (Entry ss _ toks2) _) = head m2

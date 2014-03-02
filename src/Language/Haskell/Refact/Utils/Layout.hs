@@ -538,15 +538,39 @@ allocSigD _ x = error $ "allocSigD:unexpected value:" ++ showGhc x
 -- ---------------------------------------------------------------------
 
 allocDefD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
--- allocDefD (acc,toks) d@(GHC.L l (GHC.DefD        _))
---   = error "allocDefD undefined"
+allocDefD (acc,toks) (GHC.L l (GHC.DefD (GHC.DefaultDecl typs))) = (r,toks')
+  where
+    (s1,typsToks,toks')  = splitToksIncComments (ghcSpanStartEnd l) toks
+    typsLayout = allocList typs typsToks allocType
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1)
+                     ++ typsLayout)]
 allocDefD _ x = error $ "allocDefD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
 allocForD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
--- allocForD (acc,toks) d@(GHC.L l (GHC.ForD        _))
---   = error "allocForD undefined"
+allocForD (acc,toks) (GHC.L l (GHC.ForD (GHC.ForeignImport (GHC.L ln _) typ@(GHC.L lt _) _coer _imp))) = (r,toks')
+  where
+    (s1,declToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s2,nameToks,toks1) = splitToksIncComments (ghcSpanStartEnd ln) declToks
+    (s3,typToks,toks2)  = splitToksIncComments (ghcSpanStartEnd lt) toks1
+    nameLayout = [makeLeaf ln NoChange nameToks]
+    typLayout = allocType typ typToks
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1)
+                      ++ (makeLeafFromToks s2) ++ nameLayout
+                      ++ (makeLeafFromToks s3) ++ typLayout
+                      ++ (makeLeafFromToks toks2))]
+allocForD (acc,toks) (GHC.L l (GHC.ForD (GHC.ForeignExport (GHC.L ln _) typ@(GHC.L lt _) _coer _imp))) = (r,toks')
+  where
+    (s1,declToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s2,nameToks,toks1) = splitToksIncComments (ghcSpanStartEnd ln) declToks
+    (s3,typToks,toks2)  = splitToksIncComments (ghcSpanStartEnd lt) toks1
+    nameLayout = [makeLeaf ln NoChange nameToks]
+    typLayout = allocType typ typToks
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1)
+                      ++ (makeLeafFromToks s2) ++ nameLayout
+                      ++ (makeLeafFromToks s3) ++ typLayout
+                      ++ (makeLeafFromToks toks2))]
 allocForD _ x = error $ "allocForD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
