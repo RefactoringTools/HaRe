@@ -2617,7 +2617,7 @@ spec = do
       (showGhc n) `shouldBe` "Data.List.sum"
       (showToks $ [newNameTok False l nn]) `shouldBe` "[(((4,24),(4,29)),ITvarid \"mySum\",\"mySum\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module ScopeAndQual where\n\n import qualified Data.List as L\n import Prelude hiding (sum)\n\n main :: IO ()\n main = putStrLn (show $ L.sum [1,2,3])\n\n sum a b = a + b\n\n sumSquares xs = L.sum $ map (\\x -> x*x) xs\n\n mySumSq = sumSquares\n "
-      (renderLines $ linesFromState s) `shouldBe` "module ScopeAndQual where\n\nimport qualified Data.List as L\nimport Prelude hiding (mySum)\n\nmain :: IO ()\nmain = putStrLn (show $ LocToName.mySum [1,2,3])\n\nsum a b = a + b\n\nsumSquares xs = LocToName.mySum $ map (\\x -> x*x) xs\n\nmySumSq = sumSquares\n"
+      (renderLines $ linesFromState s) `shouldBe` "module ScopeAndQual where\n\nimport qualified Data.List as L\nimport Prelude hiding (mySum)\n\nmain :: IO ()\nmain = putStrLn (show $ L.mySum [1,2,3])\n\nsum a b = a + b\n\nsumSquares xs = L.mySum $ map (\\x -> x*x) xs\n\nmySumSq = sumSquares\n"
       (unspace $ showGhc nb) `shouldBe` unspace "(ScopeAndQual.main :: GHC.Types.IO ()\n ScopeAndQual.main\n = System.IO.putStrLn\n (GHC.Show.show GHC.Base.$ LocToName.mySum [1, 2, 3])\n ScopeAndQual.sum a b = a GHC.Num.+ b\n ScopeAndQual.sumSquares xs\n = LocToName.mySum GHC.Base.$ GHC.Base.map (\\ x -> x GHC.Num.* x) xs\n ScopeAndQual.mySumSq = ScopeAndQual.sumSquares,\n [import qualified Data.List as L,\n import Prelude hiding ( LocToName.mySum )],\n Nothing,\n Nothing)"
 
 

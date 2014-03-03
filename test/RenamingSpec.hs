@@ -437,6 +437,24 @@ spec = do
 
     -- ---------------------------------
 
+    it "renames in QualServer QualClient" $ do
+     r <- rename (testSettingsMainfile "./test/testdata/Renaming/QualClient.hs") testCradle "./test/testdata/Renaming/QualServer.hs" "foo1" (11,1)
+     -- rename (logTestSettingsMainfile "./test/testdata/Renaming/QualClient.hs") testCradle "./test/testdata/Renaming/QualServer.hs" "foo1" (11,1)
+
+     r `shouldBe` ["./test/testdata/Renaming/QualServer.hs",
+                   "./test/testdata/Renaming/QualClient.hs"
+                  ]
+
+     diffD <- compareFiles "./test/testdata/Renaming/QualServer.expected.hs"
+                           "./test/testdata/Renaming/QualServer.refactored.hs"
+     diffD `shouldBe` []
+
+     diffC <- compareFiles "./test/testdata/Renaming/QualClient.expected.hs"
+                           "./test/testdata/Renaming/QualClient.refactored.hs"
+     diffC `shouldBe` []
+
+    -- ---------------------------------
+
 {-
     it "rename gives noRebindableInfo MoveDef" $ do
      -- rename logTestSettings testCradle "./src/Language/Haskell/Refact/MoveDef.hs" "t2" (1105,20)

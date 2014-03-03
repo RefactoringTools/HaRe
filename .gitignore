@@ -349,3 +349,9 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/IdIn5.hs.renamed_out
 /test/testdata/Renaming/IdIn5.hs.tokens
 /test/tags
+/test/testdata/Renaming/QualClient.hs.AST_out
+/test/testdata/Renaming/QualClient.hs.renamed_out
+/test/testdata/Renaming/QualClient.hs.tokens
+/test/testdata/Renaming/QualServer.hs.AST_out
+/test/testdata/Renaming/QualServer.hs.renamed_out
+/test/testdata/Renaming/QualServer.hs.tokens

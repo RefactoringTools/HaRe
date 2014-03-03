@@ -32,6 +32,7 @@
 ** TODO manage RefactGhc to separate Hare exceptions from GHC ones
    see http://parenz.wordpress.com/2013/07/23/on-custom-error-handlers-for-ghc-api/
 ** TODO elisp: cancel option is not implemented
+** TODO renaming getPid in hroq mnesia removes HM. qualification in client file
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
