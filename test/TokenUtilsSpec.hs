@@ -1716,53 +1716,53 @@ tree TId 0:
       let (layout1,_tree) = removeSrcSpan layout (sf sspan)
 
       (drawTreeCompact layout1) `shouldBe`
-          "0:((1,1),(9,1))\n"++
-          "1:((1,1),(3,7))\n"++
-          "1:((3,8),(3,22))\n"++
-          "1:((3,23),(3,28))\n"++
-          "1:((5,1),(7,15))\n"++
-          "2:((5,1),(5,4))\n"++
-          "2:((5,5),(7,15))\n"++
-          "3:((5,5),(5,6))\n"++
-          "3:((5,7),(7,15))\n"++
-          "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
-          "5:((5,11),(5,16))\n"++
-          "6:((5,11),(5,12))\n"++
-          "6:((5,13),(5,16))\n"++
-          "7:((5,13),(5,14))\n"++
-          "7:((5,15),(5,16))\n"++
-          "5:((6,11),(6,16))(1,-9)D\n"++
-          "4:((7,10),(7,15))\n"++
-          "5:((7,10),(7,11))\n"++
-          "5:((7,12),(7,13))\n"++
-          "5:((7,14),(7,15))\n"++
-          "1:((9,1),(9,1))\n"
+         "0:((3,1),(9,1))\n"++
+         "1:((3,1),(3,7))\n"++
+         "1:((3,8),(3,22))\n"++
+         "1:((3,23),(3,28))\n"++
+         "1:((5,1),(7,15))\n"++
+         "2:((5,1),(5,4))\n"++
+         "2:((5,5),(7,15))\n"++
+         "3:((5,5),(5,6))\n"++
+         "3:((5,7),(7,15))\n"++
+         "4:((5,7),(5,10))\n"++
+         "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+         "5:((5,11),(5,16))\n"++
+         "6:((5,11),(5,12))\n"++
+         "6:((5,13),(5,16))\n"++
+         "7:((5,13),(5,14))\n"++
+         "7:((5,15),(5,16))\n"++
+         "5:((6,11),(6,16))(1,-9)D\n"++
+         "4:((7,10),(7,15))\n"++
+         "5:((7,10),(7,11))\n"++
+         "5:((7,12),(7,13))\n"++
+         "5:((7,14),(7,15))\n"++
+         "1:((9,1),(9,1))\n"
 
 
       (drawTreeCompact $ adjustLinesForDeleted layout1) `shouldBe`
-          "0:((1,1),(9,1))\n"++
-          "1:((1,1),(3,7))\n"++
-          "1:((3,8),(3,22))\n"++
-          "1:((3,23),(3,28))\n"++
-          "1:((5,1),(7,15))\n"++
-          "2:((5,1),(5,4))\n"++
-          "2:((5,5),(7,15))\n"++
-          "3:((5,5),(5,6))\n"++
-          "3:((5,7),(7,15))\n"++
-          "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
-          "5:((5,11),(5,16))\n"++
-          "6:((5,11),(5,12))\n"++
-          "6:((5,13),(5,16))\n"++
-          "7:((5,13),(5,14))\n"++
-          "7:((5,15),(5,16))\n"++
-          "5:((6,11),(6,16))(1,-9)D\n"++
-          "4:((6,10),(6,15))\n"++
-          "5:((6,10),(6,11))\n"++
-          "5:((6,12),(6,13))\n"++
-          "5:((6,14),(6,15))\n"++
-          "1:((8,1),(8,1))\n"
+         "0:((3,1),(9,1))\n"++
+         "1:((3,1),(3,7))\n"++
+         "1:((3,8),(3,22))\n"++
+         "1:((3,23),(3,28))\n"++
+         "1:((5,1),(7,15))\n"++
+         "2:((5,1),(5,4))\n"++
+         "2:((5,5),(7,15))\n"++
+         "3:((5,5),(5,6))\n"++
+         "3:((5,7),(7,15))\n"++
+         "4:((5,7),(5,10))\n"++
+         "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+         "5:((5,11),(5,16))\n"++
+         "6:((5,11),(5,12))\n"++
+         "6:((5,13),(5,16))\n"++
+         "7:((5,13),(5,14))\n"++
+         "7:((5,15),(5,16))\n"++
+         "5:((6,11),(6,16))(1,-9)D\n"++
+         "4:((6,10),(6,15))\n"++
+         "5:((6,10),(6,11))\n"++
+         "5:((6,12),(6,13))\n"++
+         "5:((6,14),(6,15))\n"++
+         "1:((8,1),(8,1))\n"
 
       (renderLinesFromLayoutTree layout1) `shouldBe`
           "-- A simple let expression, to ensure the layout is detected\n"++
@@ -5724,32 +5724,32 @@ Should be pg :  5 - 3 = 2
       (invariant layout) `shouldBe` []
 
       (drawTreeCompact layout) `shouldBe`
-          "0:((1,1),(9,1))\n"++
-          "1:((1,1),(3,7))\n"++
-          "1:((3,8),(3,22))\n"++
-          "1:((3,23),(3,28))\n"++
-          "1:((5,1),(7,15))\n"++
-          "2:((5,1),(5,4))\n"++
-          "2:((5,5),(7,15))\n"++
-          "3:((5,5),(5,6))\n"++
-          "3:((5,7),(7,15))\n"++
-          "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
-          "5:((5,11),(5,16))\n"++
-          "6:((5,11),(5,12))\n"++
-          "6:((5,13),(5,16))\n"++
-          "7:((5,13),(5,14))\n"++
-          "7:((5,15),(5,16))\n"++
-          "5:((6,11),(6,16))\n"++
-          "6:((6,11),(6,12))\n"++
-          "6:((6,13),(6,16))\n"++
-          "7:((6,13),(6,14))\n"++
-          "7:((6,15),(6,16))\n"++
-          "4:((7,10),(7,15))\n"++
-          "5:((7,10),(7,11))\n"++
-          "5:((7,12),(7,13))\n"++
-          "5:((7,14),(7,15))\n"++
-          "1:((9,1),(9,1))\n"
+         "0:((3,1),(9,1))\n"++
+         "1:((3,1),(3,7))\n"++
+         "1:((3,8),(3,22))\n"++
+         "1:((3,23),(3,28))\n"++
+         "1:((5,1),(7,15))\n"++
+         "2:((5,1),(5,4))\n"++
+         "2:((5,5),(7,15))\n"++
+         "3:((5,5),(5,6))\n"++
+         "3:((5,7),(7,15))\n"++
+         "4:((5,7),(5,10))\n"++
+         "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+         "5:((5,11),(5,16))\n"++
+         "6:((5,11),(5,12))\n"++
+         "6:((5,13),(5,16))\n"++
+         "7:((5,13),(5,14))\n"++
+         "7:((5,15),(5,16))\n"++
+         "5:((6,11),(6,16))\n"++
+         "6:((6,11),(6,12))\n"++
+         "6:((6,13),(6,16))\n"++
+         "7:((6,13),(6,14))\n"++
+         "7:((6,15),(6,16))\n"++
+         "4:((7,10),(7,15))\n"++
+         "5:((7,10),(7,11))\n"++
+         "5:((7,12),(7,13))\n"++
+         "5:((7,14),(7,15))\n"++
+         "1:((9,1),(9,1))\n"
 
 
       let sspan = posToSrcSpan layout ((6,11),(6,16))
@@ -5764,64 +5764,39 @@ Should be pg :  5 - 3 = 2
       (showGhc newSpan) `shouldBe` "test/testdata/Layout/LetExpr.hs:1048584:5-13"
       (show $ sf newSpan) `shouldBe` "(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))"
       (drawTreeCompact layout2) `shouldBe`
-          "0:((1,1),(9,1))\n"++
-          "1:((1,1),(3,7))\n"++
-          "1:((3,8),(3,22))\n"++
-          "1:((3,23),(3,28))\n"++
-          "1:((5,1),(7,15))\n"++
-          "2:((5,1),(5,4))\n"++
-          "2:((5,5),(7,15))\n"++
-          "3:((5,5),(5,6))\n"++
-          "3:((5,7),(7,15))\n"++
-          "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
-          "5:((5,11),(5,16))\n"++
-          "6:((5,11),(5,12))\n"++
-          "6:((5,13),(5,16))\n"++
-          "7:((5,13),(5,14))\n"++
-          "7:((5,15),(5,16))\n"++
-          "5:((6,11),(6,16))\n"++
-          "6:((6,11),(6,12))\n"++
-          "6:((6,13),(6,16))\n"++
-          "7:((6,13),(6,14))\n"++
-          "7:((6,15),(6,16))\n"++
-          "5:((1000008,5),(1000008,14))\n"++
-          "4:((7,10),(7,15))\n"++
-          "5:((7,10),(7,11))\n"++
-          "5:((7,12),(7,13))\n"++
-          "5:((7,14),(7,15))\n"++
-          "1:((9,1),(9,1))\n"
+         "0:((3,1),(9,1))\n"++
+         "1:((3,1),(3,7))\n"++
+         "1:((3,8),(3,22))\n"++
+         "1:((3,23),(3,28))\n"++
+         "1:((5,1),(7,15))\n"++
+         "2:((5,1),(5,4))\n"++
+         "2:((5,5),(7,15))\n"++
+         "3:((5,5),(5,6))\n"++
+         "3:((5,7),(7,15))\n"++
+         "4:((5,7),(5,10))\n"++
+         "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+         "5:((5,11),(5,16))\n"++
+         "6:((5,11),(5,12))\n"++
+         "6:((5,13),(5,16))\n"++
+         "7:((5,13),(5,14))\n"++
+         "7:((5,15),(5,16))\n"++
+         "5:((6,11),(6,16))\n"++
+         "6:((6,11),(6,12))\n"++
+         "6:((6,13),(6,16))\n"++
+         "7:((6,13),(6,14))\n"++
+         "7:((6,15),(6,16))\n"++
+         "5:((1000008,5),(1000008,14))\n"++
+         "4:((7,10),(7,15))\n"++
+         "5:((7,10),(7,11))\n"++
+         "5:((7,12),(7,13))\n"++
+         "5:((7,14),(7,15))\n"++
+         "1:((9,1),(9,1))\n"
 
 
       let treeAsList = getTreeSpansAsList layout2
       (show treeAsList) `shouldBe`
-          "[(0,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1))),"++
-            "(1,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 3),7))),"++
-            "(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),"++
-            "(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),"++
-            "(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),"++
-             "(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),"++
-             "(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),"++
-              "(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),"++
-              "(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),"++
-               "(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),"++
-               "(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),"++
-                "(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),"++
-                 "(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),"++
-                 "(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),"++
-                  "(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),"++
-                  "(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),"++
-                "(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),"++
-                 "(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),"++
-                 "(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),"++
-                  "(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),"++
-                  "(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),"++
-                "(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),"++ -- The span we want
-               "(4,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),15))),"++
-                "(5,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),11))),"++
-                "(5,(((ForestLine False 0 0 7),12),((ForestLine False 0 0 7),13))),"++
-                "(5,(((ForestLine False 0 0 7),14),((ForestLine False 0 0 7),15))),"++
-            "(1,(((ForestLine False 0 0 9),1),((ForestLine False 0 0 9),1)))]"
+         "[(0,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 9),1))),(1,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 3),7))),(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),(4,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),15))),(5,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),11))),(5,(((ForestLine False 0 0 7),12),((ForestLine False 0 0 7),13))),(5,(((ForestLine False 0 0 7),14),((ForestLine False 0 0 7),15))),(1,(((ForestLine False 0 0 9),1),((ForestLine False 0 0 9),1)))]"
+
 
       let ssWanted = (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7))
       (spanContains (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14)) ssWanted) `shouldBe` True
@@ -5835,28 +5810,7 @@ Should be pg :  5 - 3 = 2
       -- let tl2 = dropWhile (\(_,s) -> not (spanContains s ssWanted)) $ reverse treeAsList
       let tl2 = dropWhile (\(_,s) -> not (myMatch s ssWanted)) $ reverse treeAsList
       (show tl2) `shouldBe`
-          "[(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),"++
-             "(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),"++
-             "(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),"++
-             "(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),"++
-             "(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),"++
-             "(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),"++
-             "(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),"++
-             "(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),"++
-             "(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),"++
-             "(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),"++
-             "(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),"++
-           "(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),"++
-             "(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),"++
-           "(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),"++
-             "(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),"++
-           "(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),"++
-             "(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),"++
-           "(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),"++
-             "(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),"++
-             "(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),"++
-             "(1,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 3),7))),"++
-           "(0,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1)))]"
+          "[(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),(1,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 3),7))),(0,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 9),1)))]"
 
       -- drop all higher indented values, all the way to the root
 
@@ -5865,7 +5819,7 @@ Should be pg :  5 - 3 = 2
 
       let tl3 = foldl' fff [(head tl2)] tl2
       (show tl3) `shouldBe`
-          "[(0,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1))),"++
+          "[(0,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 9),1))),"++
            "(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),"++
            "(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),"++
            "(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),"++
@@ -5880,7 +5834,7 @@ Should be pg :  5 - 3 = 2
 -}
 
       let zo = openZipperToSpanOrig (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7)) $ Z.fromTree layout2
-      (show $ treeStartEnd (Z.tree zo)) `shouldBe` "(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1))"
+      (show $ treeStartEnd (Z.tree zo)) `shouldBe` "(((ForestLine False 0 0 3),1),((ForestLine False 0 0 9),1))"
 
       let z = openZipperToSpanAdded (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7)) $ Z.fromTree layout2
       (show $ treeStartEnd (Z.tree z)) `shouldBe` "(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))"

@@ -218,10 +218,6 @@ allocTokens (GHC.L _l (GHC.HsModule maybeName maybeExports imports decls _warns 
 
     r' = makeGroup (strip $ nameLayout ++ exportLayout ++ importLayout ++ declLayout ++ (makeLeafFromToks toks4))
     r = addEndOffsets r' toks
-    -- r = error $ "allocTokens:(nameLayout,toks1)=" ++ (show (nameLayout,toks1)) -- ++AZ++
-    -- r = error $ "allocTokens:(exportLayout,toks2)=" ++ (show (exportLayout,toks2)) -- ++AZ++
-    -- r = error $ "allocTokens:(importLayout,toks3)=" ++ (show (importLayout,toks3)) -- ++AZ++
-    -- r = error $ "allocTokens:(declLayout,toks4)=" ++ (show (declLayout,_toks4)) -- ++AZ++
 
 -- ---------------------------------------------------------------------
 
@@ -246,11 +242,6 @@ addEndOffsets tree toks = go tree
                    off@(ro',co') = case (dropWhile isEmpty xs) of
                      []    -> (tokenRow y - r, tokenCol y - c) where y = head $ tail xs
                      (y:_) -> (tokenRow y - r, tokenCol y - c)
-        -- eo' = error $ "addEndOffsets:m=" ++ (show ((r,c),m))
-        -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpace  m)
-        -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpaceOrIgnored m)
-        -- eo' = error $ "addEndOffsets:m dropped=" ++ (show $ dropWhile isWhiteSpaceOrIgnored $ tail m)
-        -- eo' = (0,0)
     go (  (Node (Entry s l []) subs)) = (Node (Entry s l []) (map go subs))
     go n = error $ "addEndOffsets:strange node:" ++ (show n)
 
@@ -600,8 +591,12 @@ allocVectD _ x = error $ "allocVectD:unexpected value:" ++ showGhc x
 -- ---------------------------------------------------------------------
 
 allocSpliceD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
--- allocSpliceD (acc,toks) d@(GHC.L l (GHC.SpliceD     _))
---   = error "allocSpliceD undefined"
+allocSpliceD (acc,toks) (GHC.L l (GHC.SpliceD (GHC.SpliceDecl ex _))) = (r,toks')
+  where
+    (s1,exprToks,toks')  = splitToksIncComments (ghcSpanStartEnd l) toks
+    exprLayout = allocExpr ex exprToks
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1)
+                     ++ exprLayout)]
 allocSpliceD _ x = error $ "allocSpliceD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
@@ -614,8 +609,12 @@ allocDocD _ x = error $ "allocDocD:unexpected value:" ++ showGhc x
 -- ---------------------------------------------------------------------
 
 allocQuasiQuoteD :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
--- allocQuasiQuoteD (acc,toks) d@(GHC.L l (GHC.QuasiQuoteD _))
---   = error "allocQuasiQuoteD undefined"
+allocQuasiQuoteD (acc,toks) (GHC.L l (GHC.QuasiQuoteD (GHC.HsQuasiQuote _n _ss _))) = (r,toks')
+  where
+    (s1,qqToks,toks')  = splitToksIncComments (ghcSpanStartEnd l) toks
+    qqLayout = makeLeafFromToks qqToks
+    r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1)
+                     ++ qqLayout)]
 allocQuasiQuoteD _ x = error $ "allocQuasiQuoteD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
@@ -641,12 +640,11 @@ allocMatches matches toksIn = allocList matches toksIn doOne
         matchLayout = [makeGroup $ strip $ (makeLeafFromToks s2)
                            ++ patLayout ++ mtypLayout
                            ++ (makeLeafFromToks s3) ++ grhsLayout
-                          -- ++ (makeLeafFromToks toks2)
                       ]
         r = (strip $ (makeLeafFromToks sb)
                   ++ matchLayout
                   ++ (makeLeafFromToks sa))
-        -- r = error $ "allocMatches.doOne:toks=" ++ show toks
+
 
 -- ---------------------------------------------------------------------
 
@@ -657,8 +655,6 @@ allocGRHSs (GHC.GRHSs rhs localBinds) toks = r
     rhsLayout = allocList rhs rhsToks allocRhs
     localBindsLayout = allocLocalBinds localBinds bindsToks
     r = (strip $ (makeLeafFromToks s1) ++ rhsLayout ++ localBindsLayout)
-    -- r = error $ "allocGRHSs:toks=" ++ (show localBindsLayout)
-    -- r = error $ "allocGRHSs:toks=" ++ (show toks)
 
 -- ---------------------------------------------------------------------
 
@@ -677,7 +673,7 @@ allocRhs (GHC.L l (GHC.GRHS stmts expr)) toksIn = r
     exprLayout = allocExpr expr toks'
     exprMainLayout = [makeGroup $ strip $ (makeLeafFromToks s1) ++ stmtsLayout ++ exprLayout]
     r = strip $ (makeLeafFromToks sb) ++ exprMainLayout ++ (makeLeafFromToks sa)
-    -- r = error $ "allocRhs.GRHS:toksIn=" ++ show toksIn
+
 -- ---------------------------------------------------------------------
 
 allocStmt :: GHC.LStmt GHC.RdrName -> [PosToken] -> [LayoutTree]
@@ -831,49 +827,21 @@ allocExpr (GHC.L l (GHC.HsLet localBinds expr@(GHC.L le _))) toks = r
     exprLayout = allocExpr expr exprToks
     exprMainLayout = [makeGroup $ strip $ bindLayout ++ [makeGroup exprLayout] ++ (makeLeafFromToks toks')]
     r = strip $ (makeLeafFromToks sb) ++ exprMainLayout ++ (makeLeafFromToks sa)
-allocExpr _e@(GHC.L l (GHC.HsDo GHC.ListComp stmts _)) toks = r
-  where
-    (s1,toksBinds,toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
-    bindsLayout = allocList stmts toksBinds allocStmt
-    r = strip $ ((makeLeafFromToks s1) ++ bindsLayout ++ makeLeafFromToks toks1)
-allocExpr _e@(GHC.L l (GHC.HsDo GHC.DoExpr stmts _)) toks = r
-  -- HsDo (HsStmtContext Name) [LStmt id] PostTcType
-  where
-    (s1,toksBinds',toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
 
-    (before,including) = break isDo toksBinds'
-    doToks = before ++ [ghead ("allocExpr:" ++ (show toksBinds') ++ (SYB.showData SYB.Renamer 0 _e)) including]
-    toksBinds = gtail ("allocExpr.HsDo" ++ show (l,before,including,toks)) including
 
-    bindsLayout' = allocList stmts toksBinds allocStmt
+-- various kinds of list comprehension
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.ListComp  _ _)) toks = allocExprListComp e toks
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.MonadComp _ _)) toks = allocExprListComp e toks
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.PArrComp  _ _)) toks = allocExprListComp e toks
 
-    firstBindTok = ghead "allocLocalBinds" $ dropWhile isWhiteSpaceOrIgnored toksBinds
-    p1 = (tokenRow firstBindTok,tokenCol firstBindTok)
-    (ro,co) = case (filter isDo doToks) of
-               [] -> (0,0)
-               (x:_) -> (tokenRow firstBindTok - tokenRow x,
-                         tokenCol firstBindTok - (tokenCol x + tokenLen x))
 
-    (rt,ct) = calcLastTokenPos toksBinds
+-- various kinds of do
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.DoExpr   _ _)) toks = allocDoExpr e toks
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.GhciStmt _ _)) toks = allocDoExpr e toks
+allocExpr e@(GHC.L _ (GHC.HsDo GHC.MDoExpr  _ _)) toks = allocDoExpr e toks
 
-    so = makeOffset ro (co -1)
 
-    bindsLayout = case bindsLayout' of
-      [] -> []
-      bs -> [placeAbove so p1 (rt,ct) bs]
-
-    r = strip $ (makeLeafFromToks (s1++doToks) ++ bindsLayout ++ makeLeafFromToks toks1)
-    -- r = error $ "allocExpr.HsDo:toksBinds=" ++ (show toksBinds)
-    -- r = error $ "allocExpr.HsDo:toks=" ++ (show toks)
-allocExpr (GHC.L l (GHC.HsDo GHC.MonadComp stmts _)) toks = r
-  where
-    (s1,toksBinds,toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
-    bindsLayout = allocList stmts toksBinds allocStmt
-    r = strip $ ((makeLeafFromToks s1) ++ bindsLayout ++ makeLeafFromToks toks1)
-allocExpr e@(GHC.L _ (GHC.HsDo GHC.PArrComp _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
-allocExpr e@(GHC.L _ (GHC.HsDo GHC.MDoExpr _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 allocExpr e@(GHC.L _ (GHC.HsDo GHC.ArrowExpr _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
-allocExpr e@(GHC.L _ (GHC.HsDo GHC.GhciStmt _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 allocExpr e@(GHC.L _ (GHC.HsDo (GHC.PatGuard _) _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 allocExpr e@(GHC.L _ (GHC.HsDo (GHC.ParStmtCtxt _) _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 allocExpr e@(GHC.L _ (GHC.HsDo (GHC.TransStmtCtxt _) _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
@@ -1046,6 +1014,45 @@ allocExpr (GHC.L l (GHC.EViewPat e1@(GHC.L l1 _) e2@(GHC.L l2 _))) toks = r
 allocExpr (GHC.L _ (GHC.ELazyPat e)) toks = allocExpr e toks
 allocExpr (GHC.L _ (GHC.HsType typ)) toks = allocType typ toks
 allocExpr e@(GHC.L _ (GHC.HsWrap _ _)) toks = allocExpr e toks
+
+-- -------------------------------------
+
+allocDoExpr :: GHC.LHsExpr GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocDoExpr _e@(GHC.L l (GHC.HsDo _ stmts _)) toks = r
+  where
+    (s1,toksBinds',toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
+
+    (before,including) = break isDo toksBinds'
+    doToks = before ++ [ghead ("allocExpr:" ++ (show toksBinds') ++ (SYB.showData SYB.Renamer 0 _e)) including]
+    toksBinds = gtail ("allocExpr.HsDo" ++ show (l,before,including,toks)) including
+
+    bindsLayout' = allocList stmts toksBinds allocStmt
+
+    firstBindTok = ghead "allocLocalBinds" $ dropWhile isWhiteSpaceOrIgnored toksBinds
+    p1 = (tokenRow firstBindTok,tokenCol firstBindTok)
+    (ro,co) = case (filter isDo doToks) of
+               [] -> (0,0)
+               (x:_) -> (tokenRow firstBindTok - tokenRow x,
+                         tokenCol firstBindTok - (tokenCol x + tokenLen x))
+
+    (rt,ct) = calcLastTokenPos toksBinds
+
+    so = makeOffset ro (co -1)
+
+    bindsLayout = case bindsLayout' of
+      [] -> []
+      bs -> [placeAbove so p1 (rt,ct) bs]
+
+    r = strip $ (makeLeafFromToks (s1++doToks) ++ bindsLayout ++ makeLeafFromToks toks1)
+
+-- -------------------------------------
+
+allocExprListComp :: GHC.LHsExpr GHC.RdrName -> [PosToken] -> [LayoutTree]
+allocExprListComp _e@(GHC.L l (GHC.HsDo _ stmts _)) toks = r
+  where
+    (s1,toksBinds,toks1) = splitToksIncComments (ghcSpanStartEnd l) toks
+    bindsLayout = allocList stmts toksBinds allocStmt
+    r = strip $ ((makeLeafFromToks s1) ++ bindsLayout ++ makeLeafFromToks toks1)
 
 
 -- ---------------------------------------------------------------------
@@ -1968,7 +1975,30 @@ makeLeafFromToks [] = []
 makeLeafFromToks toks = [Node (Entry loc NoChange toks) []]
   where
     -- TODO: ignore leading/trailing comments etc
-    loc = combineSpans (sf $ tokenSrcSpan $ head toks) (sf $ tokenSrcSpan $ last toks)
+    -- loc = combineSpans (sf $ tokenSrcSpan $ head toks) (sf $ tokenSrcSpan $ last toks)
+
+    loc = sspan
+
+    (startLoc',endLoc') = nonCommentSpanLayout toks
+    sspan    = if (startLoc',endLoc') == ((0,0),(0,0))
+      then error $ "mkLeafFromToks:null span for:" ++ (show toks)
+      else simpPosToForestSpan (startLoc',endLoc')
+
+-- |Extract the start and end position of a span, without any leading
+-- or trailing comments
+nonCommentSpanLayout :: [PosToken] -> (SimpPos,SimpPos)
+nonCommentSpanLayout [] = ((0,0),(0,0))
+nonCommentSpanLayout toks = (startPos,endPos)
+  where
+    stripped = dropWhile isComment $ toks
+    (startPos,endPos) = case stripped of
+      -- [] -> ((0,0),(0,0))
+      [] -> (tokenPos $ head toks,tokenPosEnd $ last toks)
+      _ -> (tokenPos startTok,tokenPosEnd endTok)
+       where
+        startTok = ghead "nonCommentSpan.1" $ dropWhile isComment $ toks
+        endTok   = ghead "nonCommentSpan.2" $ dropWhile isComment $ reverse toks
+
 
 makeLeaf :: GHC.SrcSpan -> Layout -> [PosToken] -> LayoutTree
 makeLeaf sspan lay toks = Node (Entry (sf sspan) lay toks) []

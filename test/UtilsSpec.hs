@@ -102,7 +102,9 @@ spec = do
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
 
-      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) 
+                                     -- , rsetVerboseLevel = Debug
+                                     }
 
       r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
