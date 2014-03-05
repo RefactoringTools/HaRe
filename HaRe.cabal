@@ -43,6 +43,7 @@ Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 data-files:                     elisp/*.el
 data-Dir:                       .
+extra-source-files:             CHANGES.md
 
 Library
         Build-Depends:          base >= 4.0  && < 4.7
