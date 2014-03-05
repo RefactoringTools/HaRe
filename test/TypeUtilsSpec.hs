@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module TypeUtilsSpec (main, spec) where
 
 import           Test.Hspec
@@ -550,10 +551,12 @@ spec = do
   -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredPNs" $ do
+
     it "finds declared in type class definitions" $ do
       (t, toks) <- parsedFileGhc "./test/testdata/FreeAndDeclared/DeclareTypes.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+      -- (SYB.showData SYB.Renamer 0 $ hsTyDecls renamed) `shouldBe` ""
 
       let
         comp = do
@@ -564,9 +567,12 @@ spec = do
 
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (res)) `shouldBe` 
           "[(FreeAndDeclared.DeclareTypes.XList, (8, 13)),\n"++
+#if __GLASGOW_HASKELL__ > 704
+#else
           " (FreeAndDeclared.DeclareTypes.XListUnit, (14, 26)),\n"++
           " (FreeAndDeclared.DeclareTypes.XCons, (11, 28)),\n"++
           " (FreeAndDeclared.DeclareTypes.XNil, (11, 56)),\n"++
+#endif
           " (FreeAndDeclared.DeclareTypes.Foo, (21, 6)),\n"++
           " (FreeAndDeclared.DeclareTypes.X, (19, 6)),\n"++
           " (FreeAndDeclared.DeclareTypes.Y, (19, 10)),\n"++
