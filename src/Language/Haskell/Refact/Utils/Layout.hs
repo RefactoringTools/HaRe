@@ -695,7 +695,23 @@ allocStmt (GHC.L l (GHC.ParStmt blocks _ _))  toks = r
               ++ (makeLeafFromToks toks2)
               ++ (makeLeafFromToks toks')]
 #else
-allocStmt (GHC.L _ (GHC.ParStmt stmts _ _ _))        toks = error "allocStmt ParStmt undefined"
+allocStmt (GHC.L l (GHC.ParStmt blocks _ _ _)) toks = r
+  where
+    (s1,blocksToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
+    (blocksLayout,toks2) = foldl' allocParStmtBlock ([],blocksToks) blocks
+    r = [makeGroup $ strip $ (makeLeafFromToks s1) ++ blocksLayout
+              ++ (makeLeafFromToks toks2)
+              ++ (makeLeafFromToks toks')]
+
+    allocParStmtBlock :: ([LayoutTree],[PosToken])
+         -> ([GHC.LStmt GHC.RdrName],[GHC.RdrName]) -> ([LayoutTree],[PosToken])
+    allocParStmtBlock (acc,toks) (stmts,ns) = (r1,toks')
+      where
+        (s1,stmtToks,toks') = splitToksForList stmts toks
+        stmtLayout = allocList stmts stmtToks allocStmt
+        r1 = [makeGroup $ strip $ (makeLeafFromToks s1)
+                      ++ stmtLayout]
+-- ParStmt [([LStmt idL], [idR])] (SyntaxExpr idR) (SyntaxExpr idR) (SyntaxExpr idR)
 #endif
 allocStmt (GHC.L _ (GHC.TransStmt _ _ _ _ _ _ _ _ )) toks = error "allocStmt TransStmt undefined"
 allocStmt (GHC.L _ (GHC.RecStmt _ _ _ _ _ _ _ _ _))  toks = error "allocStmt RecStmt undefined"
