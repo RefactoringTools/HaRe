@@ -1021,10 +1021,12 @@ hsFreeAndDeclaredGhc t = do
     pat (GHC.LitPat _) = return emptyFD
     pat (GHC.NPat _ _ _) = return emptyFD
     pat (GHC.NPlusKPat (GHC.L _ n) _ _ _) = return (FN [],DN [n])
-    pat (GHC.SigPatIn (GHC.L _ p) b) = do
+    pat _p@(GHC.SigPatIn (GHC.L _ p) b) = do
       fdp <- pat p
-      fdb <- hsFreeAndDeclaredGhc b
-      return $ fdp <> fdb
+      (FN fb,DN db) <- hsFreeAndDeclaredGhc b
+      -- logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:p=" ++ showGhc _p
+      -- logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:(fdp,(FN fb,DN db))=" ++ show (fdp,(FN fb,DN db))
+      return $ fdp <> (FN db,DN [])
     pat (GHC.SigPatOut (GHC.L _ p) _) = pat p
     pat (GHC.CoPat _ p _) = pat p
 
@@ -1597,13 +1599,13 @@ getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
 getDeclaredTypes (GHC.L _ (GHC.ForeignType (GHC.L _ n) _)) = [n]
 getDeclaredTypes (GHC.L _ (GHC.TyFamily _ (GHC.L _ n) _bs _)) = [n]
 #if __GLASGOW_HASKELL__ > 704
-getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn _fvs)) = [n] ++ dsn
+getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn _fvs)) = nub $ [n] ++ dsn
   where
     dsn = getHsTyDefn defn
 #else
 -- data,
 getDeclaredTypes (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind cons _derivs)) 
-  = [n] ++ cs
+  = nub $ [n] ++ cs
   where
     getConDecl (GHC.L _ (GHC.ConDecl (GHC.L _ n2) _ _ _ _ _ _ _)) = n2
     cs = map getConDecl cons
@@ -1615,7 +1617,7 @@ getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats
 #else
 getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats _atdefs _))
 #endif
-  = [n] ++ ssn ++ msn ++ asn
+  = nub $ [n] ++ ssn ++ msn ++ asn
   where
     getLSig :: GHC.LSig GHC.Name -> [GHC.Name]
     getLSig (GHC.L _ (GHC.TypeSig ns _)) = map GHC.unLoc ns

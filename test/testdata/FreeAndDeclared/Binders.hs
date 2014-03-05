@@ -17,7 +17,7 @@ findNewPName name renamed = gfromJust "findNewPName" res
 
 data Renamer = Renamer
 somethingStaged = undefined
-data Name = Name deriving Typeable
+data Name = NameCon deriving Typeable
 occNameString = undefined
 getOccName = undefined
 data RenamedSource = RNS

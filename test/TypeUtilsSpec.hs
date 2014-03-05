@@ -557,13 +557,16 @@ spec = do
 
       let
         comp = do
-          let tds = concatMap getDeclaredTypes $ concat $ hsTyDecls renamed
+          let tds = nub $ concatMap getDeclaredTypes $ concat $ hsTyDecls renamed
           return (tds)
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (res)) `shouldBe` 
           "[(FreeAndDeclared.DeclareTypes.XList, (8, 13)),\n"++
+          " (FreeAndDeclared.DeclareTypes.XListUnit, (14, 26)),\n"++
+          " (FreeAndDeclared.DeclareTypes.XCons, (11, 28)),\n"++
+          " (FreeAndDeclared.DeclareTypes.XNil, (11, 56)),\n"++
           " (FreeAndDeclared.DeclareTypes.Foo, (21, 6)),\n"++
           " (FreeAndDeclared.DeclareTypes.X, (19, 6)),\n"++
           " (FreeAndDeclared.DeclareTypes.Y, (19, 10)),\n"++
