@@ -1195,7 +1195,7 @@ spec = do
 
     -- -----------------------------------
 
-    it "finds free vars in  HsWithBndrs" $ do
+    it "finds free vars in HsWithBndrs" $ do
       (t,toks) <- parsedFileGhc "./test/testdata/FreeAndDeclared/Binders.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
