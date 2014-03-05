@@ -702,6 +702,7 @@ allocStmt (GHC.L _ (GHC.RecStmt _ _ _ _ _ _ _ _ _))  toks = error "allocStmt Rec
 
 -- ---------------------------------------------------------------------
 
+#if __GLASGOW_HASKELL__ > 704
 allocParStmtBlock :: ([LayoutTree],[PosToken]) -> GHC.ParStmtBlock GHC.RdrName GHC.RdrName -> ([LayoutTree],[PosToken])
 allocParStmtBlock (acc,toks) (GHC.ParStmtBlock stmts ns _) = (r,toks')
   where
@@ -709,6 +710,7 @@ allocParStmtBlock (acc,toks) (GHC.ParStmtBlock stmts ns _) = (r,toks')
     stmtLayout = allocList stmts stmtToks allocStmt
     r = [makeGroup $ strip $ (makeLeafFromToks s1)
                       ++ stmtLayout]
+#endif
 
 -- ---------------------------------------------------------------------
 

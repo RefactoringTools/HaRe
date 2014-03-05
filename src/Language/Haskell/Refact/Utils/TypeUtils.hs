@@ -872,11 +872,15 @@ hsFreeAndDeclaredGhc t = do
           `SYB.extQ` hsvalbinds
           `SYB.extQ` lpats
           `SYB.extQ` lpat
+#if __GLASGOW_HASKELL__ > 704
           `SYB.extQ` bndrs
+#endif
           `SYB.extQ` ltydecls
           `SYB.extQ` ltydecl
+#if __GLASGOW_HASKELL__ > 704
           `SYB.extQ` lfaminstdecls
           `SYB.extQ` lfaminstdecl
+#endif
           `SYB.extQ` lsigs
           `SYB.extQ` lsig
           `SYB.extQ` lexprs
@@ -1049,11 +1053,13 @@ hsFreeAndDeclaredGhc t = do
 
     -- -----------------------
 
+#if __GLASGOW_HASKELL__ > 704
     bndrs :: GHC.HsWithBndrs (GHC.LHsType GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
     bndrs (GHC.HsWB (GHC.L _ thing) _kindVars _typeVars) = do
       (_ft,DN dt) <- hsFreeAndDeclaredGhc thing
       -- logm $ "hsFreeAndDeclaredGhc.bndrs (ft,dt)=" ++ show (_ft,dt)
       return (FN dt,DN [])
+#endif
 
     -- -----------------------
 
@@ -1064,25 +1070,48 @@ hsFreeAndDeclaredGhc t = do
 
     ltydecl :: GHC.LTyClDecl GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     ltydecl (GHC.L _ (GHC.ForeignType (GHC.L _ n) _)) = return (FN [],DN [n])
+
     ltydecl (GHC.L _ (GHC.TyFamily _ (GHC.L _ n) _bndrs _)) = return (FN [],DN [n])
+#if __GLASGOW_HASKELL__ > 704
     ltydecl (GHC.L _ (GHC.TyDecl (GHC.L _ n) _bndrs _defn fvs))
         = return (FN (GHC.nameSetToList fvs),DN [n])
+#else
+    ltydecl (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind _cons _derivs)) 
+        = return (FN [],DN [n]) -- TODO: calc fvs for cons
+    ltydecl (GHC.L _ (GHC.TySynonym (GHC.L _ n) _vars _pats _rhs))
+        = return (FN [],DN [n]) -- TODO fvs?
+#endif
+#if __GLASGOW_HASKELL__ > 704
     ltydecl (GHC.L _ (GHC.ClassDecl _ctx (GHC.L _ n) _tyvars
                      _fds _sigs meths ats atds _docs fvs)) = do
+#else
+    ltydecl (GHC.L _ (GHC.ClassDecl _ctx (GHC.L _ n) _tyvars
+                     _fds _sigs meths ats atds _docs)) = do
+#endif
        -- (_,td) <- hsFreeAndDeclaredGhc tyvars
        (_,md) <- hsFreeAndDeclaredGhc meths
        (_,ad) <- hsFreeAndDeclaredGhc ats
        (_,atd) <- hsFreeAndDeclaredGhc atds
+#if __GLASGOW_HASKELL__ > 704
        return (FN (GHC.nameSetToList fvs),DN [n] <> md <> ad <> atd)
+#else
+       return (FN [],DN [n] <> md <> ad <> atd) -- TODO: fvs
+#endif
 
+#if __GLASGOW_HASKELL__ > 704
     lfaminstdecls :: [GHC.LFamInstDecl GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
     lfaminstdecls ds = do
       fds <- mapM hsFreeAndDeclaredGhc ds
       return $ mconcat fds
+#endif
 
+#if __GLASGOW_HASKELL__ > 704
     lfaminstdecl :: GHC.LFamInstDecl GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lfaminstdecl (GHC.L _ (GHC.FamInstDecl (GHC.L _ n) _pats _defn fvs)) = do
       return (FN (GHC.nameSetToList fvs), DN [n])
+#else
+    -- lfaminstdecl (GHC.L _ (GHC.InstDecl typ binds sigs decls))
+#endif
 
     -- -----------------------
 
@@ -1131,7 +1160,9 @@ hsFreeAndDeclaredGhc t = do
 
     expr ((GHC.HsLam mg)) = hsFreeAndDeclaredGhc mg
 
+#if __GLASGOW_HASKELL__ > 704
     expr ((GHC.HsLamCase _ mg)) = hsFreeAndDeclaredGhc mg
+#endif
 
     expr ((GHC.HsApp e1 e2)) = do
       fde1 <- hsFreeAndDeclaredGhc e1
@@ -1177,8 +1208,10 @@ hsFreeAndDeclaredGhc t = do
       fde3 <- hsFreeAndDeclaredGhc e3
       return $ fde1 <> fde2 <> fde3
 
+#if __GLASGOW_HASKELL__ > 704
     expr ((GHC.HsMultiIf _typ rhs))
       = hsFreeAndDeclaredGhc rhs
+#endif
 
     expr ((GHC.HsLet binds e)) = do
       fdb <- hsFreeAndDeclaredGhc binds
@@ -1303,7 +1336,11 @@ hsFreeAndDeclaredGhc t = do
       return (fdp <> fde)
     lstmt (GHC.L _ (GHC.ExprStmt e _ _ _)) = hsFreeAndDeclaredGhc e
     lstmt (GHC.L _ (GHC.LetStmt bs)) = hsFreeAndDeclaredGhc bs
+#if __GLASGOW_HASKELL__ > 704
     lstmt (GHC.L _ (GHC.ParStmt ps _ _)) = hsFreeAndDeclaredGhc ps
+#else
+    lstmt (GHC.L _ (GHC.ParStmt ps _ _ _)) = hsFreeAndDeclaredGhc ps
+#endif
     -- TransStmt
     -- RecStmt
 
@@ -1335,7 +1372,9 @@ hsFreeAndDeclaredGhc t = do
     hstype (GHC.HsCoreTy _) = return emptyFD
     hstype (GHC.HsExplicitListTy _ typs) = recurseList typs
     hstype (GHC.HsExplicitTupleTy _ typs) = recurseList typs
+#if __GLASGOW_HASKELL__ > 704
     hstype (GHC.HsTyLit _) = return emptyFD
+#endif
     hstype (GHC.HsWrapTy _ typ) = hsFreeAndDeclaredGhc typ
 
 
@@ -1512,7 +1551,7 @@ getParsedForRenamedLPat parsed lpatParam@(GHC.L l _pat) = r
 -- NOTE: returns pristine ParsedSource, since HaRe does not change it
 getParsedForRenamedLocated :: ({- SYB.Typeable a, SYB.Data a, -} SYB.Typeable b {- , SYB.Data b -})
   => GHC.Located a -> RefactGhc (GHC.Located b)
-getParsedForRenamedLocated n@(GHC.L l _n) = do
+getParsedForRenamedLocated (GHC.L l _n) = do
   parsed <- getRefactParsed
   let
     mres = res parsed
@@ -1557,10 +1596,25 @@ getParsedForRenamedName parsed n@(GHC.L l _n) = r
 getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
 getDeclaredTypes (GHC.L _ (GHC.ForeignType (GHC.L _ n) _)) = [n]
 getDeclaredTypes (GHC.L _ (GHC.TyFamily _ (GHC.L _ n) _bs _)) = [n]
+#if __GLASGOW_HASKELL__ > 704
 getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn _fvs)) = [n] ++ dsn
   where
     dsn = getHsTyDefn defn
+#else
+-- data,
+getDeclaredTypes (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind cons _derivs)) 
+  = [n] ++ cs
+  where
+    getConDecl (GHC.L _ (GHC.ConDecl (GHC.L _ n2) _ _ _ _ _ _ _)) = n2
+    cs = map getConDecl cons
+-- synonym
+getDeclaredTypes (GHC.L _ (GHC.TySynonym (GHC.L _ n) _vars _pats _rhs)) = [n]
+#endif
+#if __GLASGOW_HASKELL__ > 704
 getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats _atdefs _ _fvs))
+#else
+getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats _atdefs _))
+#endif
   = [n] ++ ssn ++ msn ++ asn
   where
     getLSig :: GHC.LSig GHC.Name -> [GHC.Name]
@@ -1578,12 +1632,14 @@ getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats
 
 -- -------------------------------------
 
+#if __GLASGOW_HASKELL__ > 704
 getHsTyDefn :: GHC.HsTyDefn GHC.Name -> [GHC.Name]
 getHsTyDefn (GHC.TySynonym _) = []
 getHsTyDefn (GHC.TyData _ _  _ _ cons _) = r
   where
     getConDecl (GHC.L _ (GHC.ConDecl (GHC.L _ n) _ _ _ _ _ _ _)) = n
     r = map getConDecl cons
+#endif
 
 -- -------------------------------------
 {-
@@ -1947,7 +2003,11 @@ hsVisibleDs e t = do
     instdecls _ = return (DN [])
 
     instdecl :: GHC.LInstDecl GHC.Name -> RefactGhc DeclaredNames
+#if __GLASGOW_HASKELL__ > 704
     instdecl (GHC.L _ (GHC.ClsInstD polytyp binds sigs faminsts))
+#else
+    instdecl (GHC.L _ (GHC.InstDecl polytyp binds sigs faminsts))
+#endif
       | findEntity e polytyp  = hsVisibleDs e polytyp
       | findEntity e binds    = hsVisibleDs e binds
       | findEntity e sigs     = hsVisibleDs e sigs
@@ -3189,17 +3249,21 @@ instance HsValBinds (GHC.LSig GHC.Name) where
 
 -- ---------------------------------------------------------------------
 
+#if __GLASGOW_HASKELL__ > 704
 instance HsValBinds [GHC.LFamInstDecl GHC.Name] where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds [GHC.LFamInstDecl GHC.Name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
+#endif
 
 -- ---------------------------------------------------------------------
 
+#if __GLASGOW_HASKELL__ > 704
 instance HsValBinds (GHC.LFamInstDecl GHC.Name) where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.LFamInstDecl GHC.Name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
+#endif
 
 -- ---------------------------------------------------------------------
 
