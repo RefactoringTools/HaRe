@@ -25,6 +25,7 @@
 ** TODO Use null instead of isEmptyList/nonEmptyList
 ** TODO There is a ITqvarid vs ITvarid for qualified variables
 ** TODO complete the undefined's in Layout.hs
+   mostly done
 ** TODO after accepting a refactoring, reload the buffer into emacs
 ** TODO add a "roundtrip" function to ghc-hare to simply parse and output a file, comparing for fidelity
 ** TODO clientModsAndFiles must take the nub of all files generated from the various targets
