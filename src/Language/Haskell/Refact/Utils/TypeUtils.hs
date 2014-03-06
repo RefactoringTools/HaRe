@@ -1024,10 +1024,13 @@ hsFreeAndDeclaredGhc t = do
     pat _p@(GHC.SigPatIn (GHC.L _ p) b) = do
       fdp <- pat p
       (FN fb,DN db) <- hsFreeAndDeclaredGhc b
-      logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:p=" ++ showGhc _p
-      logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:(fdp,(FN fb,DN db))=" ++ show (fdp,(FN fb,DN db))
-      -- return $ fdp <> (FN db,DN [])
+      -- logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:p=" ++ showGhc _p
+      -- logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:(fdp,(FN fb,DN db))=" ++ show (fdp,(FN fb,DN db))
+#if __GLASGOW_HASKELL__ > 704
       return $ fdp <> (FN fb,DN [])
+#else
+      return $ fdp <> (FN db,DN [])
+#endif
     pat (GHC.SigPatOut (GHC.L _ p) _) = pat p
     pat (GHC.CoPat _ p _) = pat p
 
@@ -1060,7 +1063,7 @@ hsFreeAndDeclaredGhc t = do
     bndrs :: GHC.HsWithBndrs (GHC.LHsType GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
     bndrs (GHC.HsWB (GHC.L _ thing) _kindVars _typeVars) = do
       (_ft,DN dt) <- hsFreeAndDeclaredGhc thing
-      logm $ "hsFreeAndDeclaredGhc.bndrs (_ft,dt)=" ++ show (_ft,DN dt)
+      -- logm $ "hsFreeAndDeclaredGhc.bndrs (_ft,dt)=" ++ show (_ft,DN dt)
       return (FN dt,DN [])
 #endif
 
@@ -1111,7 +1114,7 @@ hsFreeAndDeclaredGhc t = do
 #if __GLASGOW_HASKELL__ > 704
     lfaminstdecl :: GHC.LFamInstDecl GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lfaminstdecl _f@(GHC.L _ (GHC.FamInstDecl (GHC.L _ n) _pats _defn fvs)) = do
-      logm $ "hsFreeAndDeclaredGhc.lfaminstdecl:" ++ showGhc _f
+      -- logm $ "hsFreeAndDeclaredGhc.lfaminstdecl:" ++ showGhc _f
       return (FN (GHC.nameSetToList fvs), DN [n])
 #else
     -- lfaminstdecl (GHC.L _ (GHC.InstDecl typ binds sigs decls))
@@ -1422,14 +1425,14 @@ hsFreeAndDeclaredGhc t = do
 
     lmatch :: GHC.LMatch GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lmatch (GHC.L _ _m@(GHC.Match pats _ rhs)) = do
-      logm $ "hsFreeAndDeclaredGhc.lmatch for:" ++ (showGhc _m)
+      -- logm $ "hsFreeAndDeclaredGhc.lmatch for:" ++ (showGhc _m)
       (fp,DN dp) <- recurseList pats
-      logm $ "hsFreeAndDeclaredGhc.lmatch pats done"
+      -- logm $ "hsFreeAndDeclaredGhc.lmatch pats done"
       (FN fr,DN dr) <- hsFreeAndDeclaredGhc rhs
-      logm $ "hsFreeAndDeclaredGhc.lmatch:(fp,dp)=" ++ (show (fp,DN dp))
-      logm $ "hsFreeAndDeclaredGhc.lmatch:fdr=" ++ (showGhc (fr,dr))
+      -- logm $ "hsFreeAndDeclaredGhc.lmatch:(fp,dp)=" ++ (show (fp,DN dp))
+      -- logm $ "hsFreeAndDeclaredGhc.lmatch:fdr=" ++ (showGhc (fr,dr))
       let r = (fp,DN []) <> (FN (fr \\ (dr ++ dp)), DN [])
-      logm $ "hsFreeAndDeclaredGhc.lmatch end:r=" ++ (show r)
+      -- logm $ "hsFreeAndDeclaredGhc.lmatch end:r=" ++ (show r)
       return $ r
 
     -- -----------------------
