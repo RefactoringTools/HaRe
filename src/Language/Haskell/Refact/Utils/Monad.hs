@@ -286,6 +286,7 @@ loadModuleGraphGhc maybeTargetFiles = do
 loadTarget :: [FilePath] -> RefactGhc ()
 loadTarget targetFiles = do
       setTargetFiles targetFiles
+      checkSlowAndSet
       void $ GHC.load GHC.LoadAllTargets
 
 -- ---------------------------------------------------------------------
