@@ -6,7 +6,7 @@ Stability:                      Alpha
 Bug-Reports:                    http://github.com/alanz/HaRe/issues
 License:                        BSD3
 License-File:                   LICENSE
-Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
+Homepage:                       https://github.com/RefactoringTools/HaRe/wiki
 Description:
    A Haskell 2010 refactoring tool. HaRe supports the full
    Haskell 2010 standard, through making use of the GHC API.
