@@ -733,20 +733,31 @@ allocStmt (GHC.L l (GHC.TransStmt _ stmts _ using@(GHC.L lu _) mby _ _ _ )) toks
                   ++ (makeLeafFromToks sa)
         ]
 
+allocStmt (GHC.L l (GHC.RecStmt stmts _ _ _ _ _ _ _ _))  toks = r
+  where
+    -- Note: everything after the first field is filled in from the
+    -- renamer onwards, can be ignored here
+    (sb,toksExpr,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s1,stmtsToks,toks1) = splitToksForList stmts toksExpr
+    stmtsLayout = allocList stmts stmtsToks allocStmt
+
+    r = [makeGroup $ strip $ (makeLeafFromToks sb)
+                  ++ (makeLeafFromToks s1) ++ stmtsLayout
+                  ++ (makeLeafFromToks toks1)
+                  ++ (makeLeafFromToks sa)
+        ]
 {-
-TransStmt
-  trS_form :: TransForm
-  trS_stmts :: [LStmt idL]
-  trS_bndrs :: [(idR, idR)]
-  trS_using :: LHsExpr idR
-  trS_by :: Maybe (LHsExpr idR)
-  trS_ret :: SyntaxExpr idR
-  trS_bind :: SyntaxExpr idR
-  trS_fmap :: SyntaxExpr idR
+RecStmt
+  recS_stmts :: [LStmtLR idL idR]
+  recS_later_ids :: [idR]
+  recS_rec_ids :: [idR]
+  recS_bind_fn :: SyntaxExpr idR
+  recS_ret_fn :: SyntaxExpr idR
+  recS_mfix_fn :: SyntaxExpr idR
+  recS_later_rets :: [PostTcExpr]
+  recS_rec_rets :: [PostTcExpr]
+  recS_ret_ty :: PostTcType
 -}
-
-allocStmt (GHC.L _ (GHC.RecStmt _ _ _ _ _ _ _ _ _))  toks = error "allocStmt RecStmt undefined"
-
 -- ---------------------------------------------------------------------
 
 #if __GLASGOW_HASKELL__ > 704
