@@ -240,6 +240,18 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
 -}
 
+    -- ---------------------------------
+
+    it "liftToTopLevel Zmapq" $ do
+     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/Zmapq.hs" (6,3)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Zmapq.hs" (6,3)
+     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/Zmapq.hs\"]"
+     diff <- compareFiles "./test/testdata/LiftToToplevel/Zmapq.expected.hs"
+                          "./test/testdata/LiftToToplevel/zmapq.refactored.hs"
+     diff `shouldBe` []
+
+
+
   -- -------------------------------------------------------------------
 
   describe "LiftOneLevel" $ do

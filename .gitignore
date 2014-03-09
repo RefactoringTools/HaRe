@@ -358,3 +358,6 @@ testing/addCon/Case2.hs.temp.hs
 /src/MainHaRe.hs.AST_out
 /src/MainHaRe.hs.renamed_out
 /src/MainHaRe.hs.tokens
+/test/testdata/LiftToToplevel/Zmapq.hs.AST_out
+/test/testdata/LiftToToplevel/Zmapq.hs.renamed_out
+/test/testdata/LiftToToplevel/Zmapq.hs.tokens
