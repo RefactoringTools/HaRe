@@ -1029,7 +1029,7 @@ hsFreeAndDeclaredGhc t = do
 #if __GLASGOW_HASKELL__ > 704
       return $ fdp <> (FN fb,DN [])
 #else
-      return $ fdp <> (FN db,DN [])
+      return $ fdp <> (FN _db,DN [])
 #endif
     pat (GHC.SigPatOut (GHC.L _ p) _) = pat p
     pat (GHC.CoPat _ p _) = pat p
