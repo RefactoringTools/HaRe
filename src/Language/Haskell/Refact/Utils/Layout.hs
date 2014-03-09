@@ -599,7 +599,7 @@ allocLTyClD (GHC.L l (GHC.TySynonym n@(GHC.L ln _) vars mpats synrhs@(GHC.L lr _
          )]
 #endif
 
--- allocLTyClDecl x _ = error $ "allocLTyClDecl:unknown value:" ++ showGhc x
+allocLTyClDecl x _ = error $ "allocLTyClDecl:unknown value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
 
