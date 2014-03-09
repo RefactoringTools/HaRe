@@ -40,7 +40,7 @@ spec = do
       (t, _toks) <- parsedFileBGhc
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-        let (Just expr) = locToExp (7,7) (7,43) parsed :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+      let (Just expr) = locToExp (7,7) (7,43) parsed :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,9)
       getLocatedEnd   expr `shouldBe` (7,42)
 

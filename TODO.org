@@ -1,10 +1,12 @@
 * HaRe todo
 ** TODO splitSubToks does not take cognizance of leading/trailing comments
-** DONE rename mod to parsed complains of existing variable named parsed.
+** TODO rename mod to parsed complains of existing variable named parsed.
      - [ ] This is not the case. Line 41 col 10
    [2013-09-10 Tue]
    [[file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let%20mod%20%3D%20GHC.pm_parsed_source%20$%20GHC.tm_parsed_module%20t][file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t]]
      - [x] Also, get "error attempting to use module `main:TestUtils' (/home/alanz/mysrc/github/alanz/HaRe/test/TestUtils.hs) which is not loaded" 
+     - no longer complains of parsed, but moves the next non blank
+       line on 2 columns. formatting problem.
 ** TODO The elisp test for buffers to save includes directories that have been modified
 ** TODO liftToTopLevel in syz Zipper of g from zmapQ introduces param errors
       zmapQ f z = reverse $ downQ [] g z where
@@ -53,6 +55,7 @@
            (Unqual {OccName: requeuer})))))))))"
 
 ** TODO check renaming in TH file
+** TODO Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de

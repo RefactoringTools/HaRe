@@ -83,6 +83,7 @@ fileNameToModName fileName = do
 getModuleMaybe :: FilePath -> RefactGhc (Maybe GHC.ModSummary)
 getModuleMaybe fileName = do
   cfileName <- liftIO $ canonicalizePath fileName
+  -- logm $ "getModuleMaybe for (fileName,cfileName):" ++ show (fileName,cfileName)
 
   graphs <- gets rsGraph
   currentTgt <- gets rsCurrentTarget
@@ -92,11 +93,17 @@ getModuleMaybe fileName = do
   -- graph <- GHC.getModuleGraph
   -- cgraph <- liftIO $ canonicalizeGraph graph
 
+  -- logm $ "getModuleMaybe: [mfn]=" ++ show (map (\(mfn,_ms) -> mfn) cgraph)
+
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
+  -- logm $ "getModuleMaybe: mm=" ++ show mm
 
   case mm of
     [] -> return Nothing
-    _ -> return $ Just $ snd (ghead "getModuleMaybe" mm)
+    _ -> do
+      let (mfn,ms) = (ghead "getModuleMaybe" mm)
+      -- activateModule (fromJust mfn,ms)
+      return $ Just ms
 
 -- ---------------------------------------------------------------------
 
@@ -137,9 +144,13 @@ identifyTargetModule targetFile = do
   currentDirectory <- liftIO getCurrentDirectory
   target1 <- liftIO $ canonicalizePath targetFile
   target2 <- liftIO $ canonicalizePath (combine currentDirectory targetFile)
+  logm $ "identifyTargetModule:(targetFile,target1,target2)=" ++ show (targetFile,target1,target2)
   graphs <- gets rsModuleGraph
 
+  logm $ "identifyTargetModule:graphs=" ++ show graphs
+
   let ff = catMaybes $ map (findInTarget target1 target2) graphs
+  logm $ "identifyTargetModule:ff=" ++ show ff
   case ff of
     [] -> return Nothing
     ms -> return (Just (head ms))

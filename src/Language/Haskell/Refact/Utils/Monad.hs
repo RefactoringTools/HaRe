@@ -266,9 +266,17 @@ loadModuleGraphGhc maybeTargetFiles = do
       graph <- GHC.getModuleGraph
       cgraph <- liftIO $ canonicalizeGraph graph
 
+      let canonMaybe filepath = ghandle handler (canonicalizePath filepath)
+            where
+              handler :: SomeException -> IO FilePath
+              handler _e = return filepath
+
+      ctargetFiles <- liftIO $ mapM canonMaybe targetFiles
+
       settings <- get
       put $ settings { rsGraph = (rsGraph settings) ++ [(targetFiles,cgraph)]
-                     , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFiles,graph)]
+                     -- , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFiles,graph)]
+                     , rsModuleGraph = (rsModuleGraph settings) ++ [(ctargetFiles,graph)]
                      , rsCurrentTarget = maybeTargetFiles
                      }
 
