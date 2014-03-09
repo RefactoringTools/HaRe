@@ -15,7 +15,7 @@ import qualified GHC
 -- import qualified OccName               as GHC
 
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad

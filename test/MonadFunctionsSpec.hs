@@ -4,7 +4,6 @@ import           Test.Hspec
 
 import TestUtils
 
--- import qualified FastString as GHC
 import qualified GHC        as GHC
 
 
@@ -12,7 +11,6 @@ import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 

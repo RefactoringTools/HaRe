@@ -8,7 +8,7 @@ import qualified GHC           as GHC
 import Control.Monad
 import Control.Monad.IO.Class
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad

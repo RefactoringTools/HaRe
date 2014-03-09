@@ -13,7 +13,7 @@ import Data.List
 import Exception
 
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils

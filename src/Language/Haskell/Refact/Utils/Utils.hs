@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Language.Haskell.Refact.Utils
+module Language.Haskell.Refact.Utils.Utils
        (
          sameOccurrence
 

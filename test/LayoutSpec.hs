@@ -2,27 +2,16 @@ module LayoutSpec (main, spec) where
 
 import           Test.Hspec
 
--- import qualified FastString as GHC
 import qualified GHC        as GHC
--- import qualified Lexer      as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
 
--- import Control.Monad.State
--- import Data.Maybe
--- import Data.Tree
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
--- import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.Layout
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
--- import Language.Haskell.Refact.Utils.TypeUtils
-
--- import qualified Data.Tree.Zipper as Z
--- import qualified Data.Map as Map
 
 import TestUtils
 

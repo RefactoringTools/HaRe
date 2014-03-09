@@ -154,7 +154,6 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 
--- import Control.Monad.Trans.State.Lazy
 import Data.Bits
 import Data.List
 import Data.Tree

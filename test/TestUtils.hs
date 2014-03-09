@@ -40,7 +40,7 @@ import qualified Unique        as GHC
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad

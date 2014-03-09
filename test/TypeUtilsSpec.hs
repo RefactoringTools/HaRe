@@ -14,7 +14,7 @@ import qualified RdrName    as GHC
 import qualified Module     as GHC
 
 import Data.Maybe
-import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 -- import Language.Haskell.Refact.Utils.GhcUtils

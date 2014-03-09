@@ -14,7 +14,6 @@ import Data.Maybe
 import Data.Tree
 
 import Language.Haskell.Refact.Utils.DualTree
--- import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
