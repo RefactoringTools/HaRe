@@ -34,6 +34,24 @@
    see http://parenz.wordpress.com/2013/07/23/on-custom-error-handlers-for-ghc-api/
 ** TODO elisp: cancel option is not implemented
 ** TODO renaming getPid in hroq mnesia removes HM. qualification in client file
+** DONE handle TH splices, e.g. renaming Queue.hs getSid to getServerPid
+   
+   Refactoring failed: "allocExpr undefined for 
+   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/DlqWorkers.hs:53:16-37} 
+    (HsSpliceE 
+     (HsSplice 
+      (Unqual {OccName: splice}) 
+      (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/DlqWorkers.hs:53:18-36} 
+       (HsApp 
+        (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/DlqWorkers.hs:53:18-26} 
+         (HsVar 
+          (Unqual {OccName: mkClosure}))) 
+        (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/DlqWorkers.hs:53:28-36} 
+         (HsBracket 
+          (VarBr 
+           (True) 
+           (Unqual {OccName: requeuer})))))))))"
+
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de

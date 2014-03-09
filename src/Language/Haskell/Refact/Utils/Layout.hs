@@ -253,8 +253,6 @@ allocDecls decls toks = r
     (declLayout,tailToks) = foldl' doOne ([],toks) decls
 
     r = strip $ declLayout ++ (makeLeafFromToks tailToks)
-    -- r = error $ "allocDecls:tailToks=" ++ (show tailToks)
-    -- r = error $ "allocDecls:declLayout=" ++ (show declLayout)
 
     doOne :: ([LayoutTree],[PosToken]) -> GHC.LHsDecl GHC.RdrName -> ([LayoutTree],[PosToken])
     doOne acc d@(GHC.L _ (GHC.TyClD       _)) = allocTyClD       acc d
@@ -940,7 +938,8 @@ allocExpr e@(GHC.L _ (GHC.ExprWithTySigOut _ _)) _ = error $ "allocExpr undefine
 allocExpr e@(GHC.L _ (GHC.HsBracketOut _ _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 
 
-allocExpr e@(GHC.L _ (GHC.HsSpliceE _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
+allocExpr (GHC.L _l (GHC.HsSpliceE (GHC.HsSplice _ expr))) toks = allocExpr expr toks
+
 allocExpr e@(GHC.L _ (GHC.HsQuasiQuoteE _)) _ = error $ "allocExpr undefined for " ++ (SYB.showData SYB.Parser 0  e)
 
 allocExpr (GHC.L l (GHC.HsProc p@(GHC.L lp _) cmd@(GHC.L lc _))) toks = r
@@ -1292,8 +1291,8 @@ allocSig (GHC.L l (GHC.SpecInstSig t)) toks = r
 
 -- ---------------------------------------------------------------------
 
-allocRecField :: GHC.HsRecFields GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> [PosToken] -> [LayoutTree]
-allocRecField = error "Layout.allocRecField undefined"
+-- allocRecField :: GHC.HsRecFields GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> [PosToken] -> [LayoutTree]
+-- allocRecField = error "Layout.allocRecField undefined"
 
 -- ---------------------------------------------------------------------
 
@@ -1541,8 +1540,8 @@ allocLFamInstDecl (GHC.L l (GHC.FamInstDecl n@(GHC.L ln _) (GHC.HsWB typs _ _) d
 allocLTyClDecl = error "allocLTyClDecl undefined"
 allocFunDep = error "allocFunDep undefined"
 
-allocHsTupArg :: GHC.HsTupArg GHC.RdrName -> [PosToken] -> [LayoutTree]
-allocHsTupArg = error "allocHsTupArg undefined"
+-- allocHsTupArg :: GHC.HsTupArg GHC.RdrName -> [PosToken] -> [LayoutTree]
+-- allocHsTupArg = error "allocHsTupArg undefined"
 
 -- ---------------------------------------------------------------------
 

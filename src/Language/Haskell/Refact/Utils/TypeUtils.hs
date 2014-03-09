@@ -1023,7 +1023,7 @@ hsFreeAndDeclaredGhc t = do
     pat (GHC.NPlusKPat (GHC.L _ n) _ _ _) = return (FN [],DN [n])
     pat _p@(GHC.SigPatIn (GHC.L _ p) b) = do
       fdp <- pat p
-      (FN fb,DN db) <- hsFreeAndDeclaredGhc b
+      (FN fb,DN _db) <- hsFreeAndDeclaredGhc b
       -- logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:p=" ++ showGhc _p
       -- logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:(fdp,(FN fb,DN db))=" ++ show (fdp,(FN fb,DN db))
 #if __GLASGOW_HASKELL__ > 704
