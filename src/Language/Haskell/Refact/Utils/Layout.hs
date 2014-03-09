@@ -447,7 +447,7 @@ allocTyClD (acc,toks) (GHC.L l (GHC.TyClD (GHC.TySynonym n@(GHC.L ln _) vars mpa
                      ++ (makeLeafFromToks toks5))]
 #endif
 
--- allocTyClD _ x = error $ "allocTyClD:unknown value:" ++ showGhc x
+allocTyClD _ x = error $ "allocTyClD:unknown value:" ++ showGhc x
 
 {-
 7.4.2
@@ -1271,8 +1271,32 @@ allocBind (GHC.L l (GHC.PatBind lhs@(GHC.L ll _) grhs@(GHC.GRHSs rhs _) _ _ _)) 
               ++ lhsLayout ++ (makeLeafFromToks s3) ++ grhsLayout
               ++ (makeLeafFromToks toks')) ]
 
-allocBind d@(GHC.L l (GHC.VarBind n rhs _)) toks  = error "allocValD:VarBinds"
-allocBind d@(GHC.L l (GHC.AbsBinds tvs vars exps ev binds)) toks = error "allocValD:AbsBinds"
+allocBind (GHC.L l (GHC.VarBind _n rhs@(GHC.L lr _) _)) toks  = r
+  where
+    (sb,toksBind,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s1,exprToks,toks2) = splitToksIncComments (ghcSpanStartEnd lr) toksBind
+    exprLayout = allocExpr rhs exprToks
+    r = [makeGroup $ (strip $ (makeLeafFromToks sb)
+              ++ (makeLeafFromToks s1)
+              ++ exprLayout
+              ++ (makeLeafFromToks toks2)
+              ++ (makeLeafFromToks sa)
+             )
+         ]
+
+allocBind (GHC.L l (GHC.AbsBinds _tvs _vars _exps _ev binds)) toks = r
+  where
+    bindsList = GHC.bagToList binds
+    (sb,toksBind,sa) = splitToksIncComments (ghcSpanStartEnd l) toks
+    (s1,bindsToks,toks2) = splitToksForList bindsList toksBind
+    bindsLayout = allocList bindsList bindsToks allocBind
+    r = [makeGroup $ (strip $ (makeLeafFromToks sb)
+              ++ (makeLeafFromToks s1)
+              ++ bindsLayout
+              ++ (makeLeafFromToks toks2)
+              ++ (makeLeafFromToks sa)
+             )
+         ]
 
 -- ---------------------------------------------------------------------
 
