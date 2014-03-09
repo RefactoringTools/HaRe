@@ -355,3 +355,6 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/QualServer.hs.AST_out
 /test/testdata/Renaming/QualServer.hs.renamed_out
 /test/testdata/Renaming/QualServer.hs.tokens
+/src/MainHaRe.hs.AST_out
+/src/MainHaRe.hs.renamed_out
+/src/MainHaRe.hs.tokens

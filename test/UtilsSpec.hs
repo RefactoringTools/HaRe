@@ -148,6 +148,36 @@ spec = do
                             "\"test/testdata/cabal/cabal2/src/main2.hs\","++
                             "\"test/testdata/cabal/cabal2/src/main1.hs\"]"
 
+  -- -----------------------------------
+
+    it "loads a series of files based on cabal3, which has a lib and an exe" $ do
+
+      currentDir <- getCurrentDirectory
+      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      setCurrentDirectory "./test/testdata/cabal/cabal3"
+      -- d <- getCurrentDirectory
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal3"
+      cradle <- findCradle
+      -- (show cradle) `shouldBe` ""
+      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal3"
+
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
+                                     -- , rsetVerboseLevel = Debug
+                                     }
+
+      let handler = [Handler handler1]
+          handler1 :: GHC.SourceError -> IO [String]
+          handler1 e = do
+             setCurrentDirectory currentDir
+             return [show e]
+
+      r <- catches (rename settings cradle "./src/main1.hs" "baz1" (7, 1)) handler
+      setCurrentDirectory currentDir
+
+      r' <- mapM makeRelativeToCurrentDirectory r
+
+      (show r') `shouldBe` "[\"test/testdata/cabal/cabal3/src/main1.hs\"]"
+
 
   -- -----------------------------------
 {- TODO: this test fails on travis, due to missing hspec-discover

@@ -44,6 +44,7 @@ module Language.Haskell.Refact.Utils.Utils
 import Control.Monad.State
 import Data.List
 import Data.Maybe
+import Data.Monoid
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
@@ -144,28 +145,42 @@ identifyTargetModule targetFile = do
   currentDirectory <- liftIO getCurrentDirectory
   target1 <- liftIO $ canonicalizePath targetFile
   target2 <- liftIO $ canonicalizePath (combine currentDirectory targetFile)
-  logm $ "identifyTargetModule:(targetFile,target1,target2)=" ++ show (targetFile,target1,target2)
+  -- logm $ "identifyTargetModule:(targetFile,target1,target2)=" ++ show (targetFile,target1,target2)
   graphs <- gets rsModuleGraph
 
-  logm $ "identifyTargetModule:graphs=" ++ show graphs
+  -- logm $ "identifyTargetModule:graphs=" ++ show graphs
 
   let ff = catMaybes $ map (findInTarget target1 target2) graphs
-  logm $ "identifyTargetModule:ff=" ++ show ff
+  -- logm $ "identifyTargetModule:ff=" ++ show ff
   case ff of
     [] -> return Nothing
-    ms -> return (Just (head ms))
+    ms -> return (Just (ghead ("identifyTargetModule:" ++ (show ms)) ms))
 
 findInTarget :: FilePath -> FilePath -> ([FilePath],GHC.ModuleGraph) -> Maybe TargetModule
-findInTarget f1 f2 (fps,graph) = r
+findInTarget f1 f2 (fps,graph) = r'
   where
+    -- We also need to process the case where it is a main file for an exe.
+    re :: Maybe TargetModule
+    re = case fps of
+      [x] -> re' -- single target, could be an exe
+       where
+         re' = case filter isMainModSummary graph of
+           [] -> Nothing
+           ms -> if x == f1 || x == f2 then Just (fps,ghead "findInTarget" ms)
+                                      else Nothing
+      _  -> Nothing
+    isMainModSummary ms = (show $ GHC.ms_mod ms) == "Main"
+
     r = case filter (compModFiles f1 f2) graph of
           [] -> Nothing
-          ms -> Just (fps,head ms)
+          ms -> Just (fps,ghead "findInTarget.2" ms)
     compModFiles :: FilePath-> FilePath -> GHC.ModSummary -> Bool
     compModFiles fileName1 fileName2 ms =
       case GHC.ml_hs_file $ GHC.ms_location ms of
         Nothing -> False
         Just fn -> fn == fileName1 || fn == fileName2
+
+    r' = listToMaybe $ catMaybes [r,re]
 
 -- ---------------------------------------------------------------------
 
@@ -205,7 +220,9 @@ getModuleDetails modSum = do
                       && ((GHC.mkFastString $ fileNameFromModSummary modSum) ==
                           (fileNameFromTok $ ghead "getModuleDetails" tokens)))
                      then return ()
-                     else error "getModuleDetails: trying to load a module without finishing with active one"
+                     else if rsStreamModified tm == False
+                            then putParsedModule t tokens
+                            else error $ "getModuleDetails: trying to load a module without finishing with active one."
 
         Nothing -> putParsedModule t tokens
 
@@ -222,9 +239,9 @@ parseSourceFileGhc targetFile = do
       GHC.setTargets [target]
       void $ GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
      -}
-      logm $ "parseSourceFileGhc:about to loadModuleGraphGhc for" ++ (show targetFile)
+      -- logm $ "parseSourceFileGhc:about to loadModuleGraphGhc for" ++ (show targetFile)
       loadModuleGraphGhc (Just [targetFile])
-      logm $ "parseSourceFileGhc:loadModuleGraphGhc done"
+      -- logm $ "parseSourceFileGhc:loadModuleGraphGhc done"
 
       mm <- getModuleMaybe targetFile
       case mm of

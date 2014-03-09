@@ -274,7 +274,8 @@ loadModuleGraphGhc maybeTargetFiles = do
       ctargetFiles <- liftIO $ mapM canonMaybe targetFiles
 
       settings <- get
-      put $ settings { rsGraph = (rsGraph settings) ++ [(targetFiles,cgraph)]
+      put $ settings { -- rsGraph = (rsGraph settings) ++ [(targetFiles,cgraph)]
+                       rsGraph = (rsGraph settings) ++ [(ctargetFiles,cgraph)]
                      -- , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFiles,graph)]
                      , rsModuleGraph = (rsModuleGraph settings) ++ [(ctargetFiles,graph)]
                      , rsCurrentTarget = maybeTargetFiles
@@ -307,6 +308,7 @@ ensureTargetLoaded (target,modSum) = do
   if currentTarget == Just target
     then return modSum
     else do
+      logm $ "ensureTargetLoaded: loading:" ++ show target
       loadTarget target
       put $ settings { rsCurrentTarget = Just target}
       graph <- GHC.getModuleGraph

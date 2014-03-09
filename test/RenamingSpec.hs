@@ -6,6 +6,8 @@ import Language.Haskell.Refact.Renaming
 
 import TestUtils
 
+import System.Directory
+
 -- import Language.Haskell.GhcMod
 
 -- ---------------------------------------------------------------------
@@ -22,9 +24,11 @@ spec = do
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/A1.hs") testCradle "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
      -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/A1.hs") "./test/testdata/Renaming/D1.hs" "AnotherTree" (6,6)
 
-     r `shouldBe` [ "./test/testdata/Renaming/D1.hs"
+     r' <- mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` [ "./test/testdata/Renaming/D1.hs"
                   , "./test/testdata/Renaming/C1.hs"
-                  , "./test/testdata/Renaming/A1.hs"
+                  , "test/testdata/Renaming/A1.hs"
                   , "./test/testdata/Renaming/B1.hs"
                   ]
 
@@ -108,10 +112,12 @@ spec = do
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/A4.hs") testCradle "./test/testdata/Renaming/D4.hs" "isSameOrNot" (13,4)
      -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/A4.hs") "./test/testdata/Renaming/D4.hs" "isSameOrNot" (13,4)
 
-     r `shouldBe` [ "./test/testdata/Renaming/D4.hs"
-                  , "./test/testdata/Renaming/C4.hs"
-                  , "./test/testdata/Renaming/A4.hs"
-                  , "./test/testdata/Renaming/B4.hs"
+     r' <- mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` [ "./test/testdata/Renaming/D4.hs"
+                   , "./test/testdata/Renaming/C4.hs"
+                   , "test/testdata/Renaming/A4.hs"
+                   , "./test/testdata/Renaming/B4.hs"
                   ]
 
      diffD <- compareFiles "./test/testdata/Renaming/D4.hs.expected"
@@ -138,11 +144,13 @@ spec = do
      -- rename (logTestSettingsMainfile "./test/testdata/Renaming/A5.hs") testCradle "./test/testdata/Renaming/D5.hs" "sum" (24,1)
      -- rename logTestSettings testCradle "./test/testdata/Renaming/D5.hs" "sum" (24,1)
 
-     r `shouldBe` [ "./test/testdata/Renaming/D5.hs"
-                  , "./test/testdata/Renaming/C5.hs"
-                  , "./test/testdata/Renaming/A5.hs"
-                  , "./test/testdata/Renaming/B5.hs"
-                  ]
+     r' <- mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` [ "./test/testdata/Renaming/D5.hs"
+                   , "./test/testdata/Renaming/C5.hs"
+                   , "test/testdata/Renaming/A5.hs"
+                   , "./test/testdata/Renaming/B5.hs"
+                   ]
 
      diffD <- compareFiles "./test/testdata/Renaming/D5.hs.expected"
                            "./test/testdata/Renaming/D5.refactored.hs"
@@ -167,9 +175,10 @@ spec = do
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/C7.hs") testCradle "./test/testdata/Renaming/D7.hs" "myFringe" (10,1)
      -- rename logTestSettings testCradle (Just "./test/testdata/Renaming/C7.hs") "./test/testdata/Renaming/D7.hs" "myFringe" (10,1)
 
-     r `shouldBe` [ "./test/testdata/Renaming/D7.hs"
-                  , "./test/testdata/Renaming/C7.hs"
-                  ]
+     r' <- mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "./test/testdata/Renaming/D7.hs"
+                   , "test/testdata/Renaming/C7.hs"
+                   ]
 
      diffD <- compareFiles "./test/testdata/Renaming/D7.hs.expected"
                            "./test/testdata/Renaming/D7.refactored.hs"
@@ -441,8 +450,9 @@ spec = do
      r <- rename (testSettingsMainfile "./test/testdata/Renaming/QualClient.hs") testCradle "./test/testdata/Renaming/QualServer.hs" "foo1" (11,1)
      -- rename (logTestSettingsMainfile "./test/testdata/Renaming/QualClient.hs") testCradle "./test/testdata/Renaming/QualServer.hs" "foo1" (11,1)
 
-     r `shouldBe` ["./test/testdata/Renaming/QualServer.hs",
-                   "./test/testdata/Renaming/QualClient.hs"
+     r' <- mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` ["./test/testdata/Renaming/QualServer.hs",
+                    "test/testdata/Renaming/QualClient.hs"
                   ]
 
      diffD <- compareFiles "./test/testdata/Renaming/QualServer.expected.hs"
