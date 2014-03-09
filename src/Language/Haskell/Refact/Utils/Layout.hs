@@ -308,7 +308,6 @@ allocValD (acc,toks) (GHC.L l (GHC.ValD bind)) = (r,toks')
     (s1,bindToks,toks') = splitToksIncComments (ghcSpanStartEnd l) toks
     bindLayout = allocBind (GHC.L l bind) bindToks
     r = acc ++ [makeGroup (strip $ (makeLeafFromToks s1) ++ [makeGroup bindLayout] )]
-    -- r = error $ "allocValD:bindToks=" ++ show bindToks
 allocValD _ x = error $ "allocValD:unexpected value:" ++ showGhc x
 
 -- ---------------------------------------------------------------------
@@ -550,7 +549,8 @@ allocLTyClDecl (GHC.L l (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L ln _) vars fds si
 
     ctxLayout = allocHsContext ctx ctxToks
     nLayout   = allocLocated n nToks
-    fdsLayout = allocList fds fdToks allocFunDep
+    -- fdsLayout = allocList fds fdToks allocFunDep
+    fdsLayout = makeLeafFromToks fdToks
 
     bindList = GHC.bagToList meths
     sigMix     = makeMixedListEntry sigs     (shim allocSig)
@@ -595,7 +595,7 @@ allocLTyClD (GHC.L l (GHC.TySynonym n@(GHC.L ln _) vars mpats synrhs@(GHC.L lr _
                      ++ (makeLeafFromToks s4)
                      ++ synrhsLayout
                      ++ (makeLeafFromToks toks5)
-                     ++ (makeLeafFromToks toks;)
+                     ++ (makeLeafFromToks toks')
          )]
 #endif
 
@@ -956,7 +956,7 @@ allocExpr (GHC.L l (GHC.HsBracket bracket)) toks = r
       GHC.ExpBr ex -> allocExpr ex toksBrack
       GHC.PatBr p -> allocPat p toksBrack
       GHC.DecBrL decs -> allocDecls decs toksBrack
-      GHC.DecBrG g -> error $ "allocExpr.DecNrG undefined for " ++ (SYB.showData SYB.Parser 0 g)
+      GHC.DecBrG g -> error $ "allocExpr.DecBrG undefined for " ++ (SYB.showData SYB.Parser 0 g)
       GHC.TypBr typ -> allocType typ toksBrack
       GHC.VarBr _ _ -> makeLeafFromToks toksBrack
     r = [makeGroup $ strip $ (makeLeafFromToks sb)
@@ -1346,11 +1346,6 @@ allocSig (GHC.L l (GHC.SpecInstSig t)) toks = r
 
 -- ---------------------------------------------------------------------
 
--- allocRecField :: GHC.HsRecFields GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> [PosToken] -> [LayoutTree]
--- allocRecField = error "Layout.allocRecField undefined"
-
--- ---------------------------------------------------------------------
-
 allocArithSeqInfo :: GHC.ArithSeqInfo GHC.RdrName -> [PosToken] -> [LayoutTree]
 allocArithSeqInfo (GHC.From e) toks = allocExpr e toks
 allocArithSeqInfo (GHC.FromThen e1@(GHC.L l _) e2) toksIn = r
@@ -1588,13 +1583,6 @@ allocLFamInstDecl (GHC.L l (GHC.FamInstDecl n@(GHC.L ln _) (GHC.HsWB typs _ _) d
              ++ (makeLeafFromToks s4)
              ++ (makeLeafFromToks toks')
 #endif
-
--- ---------------------------------------------------------------------
-
--- allocLTyClDecl :: GHC.LTyClDecl GHC.RdrName -> [PosToken] -> [LayoutTree]
--- allocLTyClDecl (GHC.L l (GHC.TyClDecl GHC.RdrName)) _ = error "allocLTyClDecl undefined"
-
-allocFunDep = error "allocFunDep undefined"
 
 -- ---------------------------------------------------------------------
 
