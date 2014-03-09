@@ -102,11 +102,6 @@
     :END:
     [2013-07-11 Thu]
     [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO:%20This%20looks%20like%20a%20no-op?][file:./src/Language/Haskell/Refact/Utils/TokenUtils.hs::-- TODO: This looks like a no-op?]]
-*** TODO generic TODO
-    :PROPERTIES:
-    :ID:       f7f75aad-8804-4dc3-9511-d7357c1755e7
-    :END:
-    [[file:src/Language/Haskell/Refact/Utils/TokenUtils.hs::--%20TODO][todos]]
 *** TODO move buffers-saved test into hare-refactor-command
     [2013-07-20 Sat]
     [[file:~/mysrc/github/alanz/HaRe/elisp/hare.el::TODO:%20move%20this%20test%20into%20hare-refactor-command][file:~/mysrc/github/alanz/HaRe/elisp/hare.el::TODO: move this test into hare-refactor-command]]
