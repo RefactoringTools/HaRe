@@ -574,7 +574,7 @@ allocLTyClDecl (GHC.L l (GHC.ClassDecl (GHC.L lc ctx) n@(GHC.L ln _) vars fds si
 
 #if __GLASGOW_HASKELL__ > 704
 #else
-allocLTyClD (GHC.L l (GHC.TySynonym n@(GHC.L ln _) vars mpats synrhs@(GHC.L lr _))) toks = r
+allocLTyClDecl (GHC.L l (GHC.TySynonym n@(GHC.L ln _) vars mpats synrhs@(GHC.L lr _))) toks = r
   where
     (s1,clToks,toks')   = splitToksIncComments (ghcSpanStartEnd l) toks
     (s2,nToks,toks2)    = splitToksIncComments (ghcSpanStartEnd ln) clToks
