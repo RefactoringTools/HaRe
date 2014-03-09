@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cp ../HaRe.cabal ./HaRe-7.6.3/
+#cp ../HaRe.cabal ./HaRe-7.6.3/
 
 docker build -t alanz/HaRe-7.6.3-64 ./HaRe-7.6.3
 
