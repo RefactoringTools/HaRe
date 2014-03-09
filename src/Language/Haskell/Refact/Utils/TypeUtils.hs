@@ -1348,8 +1348,14 @@ hsFreeAndDeclaredGhc t = do
 #else
     lstmt (GHC.L _ (GHC.ParStmt ps _ _ _)) = hsFreeAndDeclaredGhc ps
 #endif
-    -- TransStmt
-    -- RecStmt
+    lstmt (GHC.L _ (GHC.TransStmt _ stmts _ using mby _ _ _)) = do
+      fds <- hsFreeAndDeclaredGhc stmts
+      fdu <- hsFreeAndDeclaredGhc using
+      fdb <- case mby of
+        Nothing -> return emptyFD
+        Just e -> hsFreeAndDeclaredGhc e
+      return $ fds <> fdu <> fdb
+    lstmt (GHC.L _ (GHC.RecStmt stmts _ _ _ _ _ _ _ _)) = hsFreeAndDeclaredGhc stmts
 
     -- -----------------------
 
