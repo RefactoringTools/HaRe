@@ -90,7 +90,6 @@ Library
            , Language.Haskell.Refact.Utils.GhcVersionSpecific
            , Language.Haskell.Refact.Utils.Layout
            , Language.Haskell.Refact.Utils.LayoutTypes
-           , Language.Haskell.Refact.Utils.LayoutUtils
            , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
            , Language.Haskell.Refact.Utils.MonadFunctions
