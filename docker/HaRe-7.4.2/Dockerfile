@@ -16,29 +16,45 @@ RUN apt-get -y install git
 RUN apt-get -y install emacs24
 
 #-----------------------------------------------------------------------
+#DOCKER_PASSWORD=password
+#echo User: docker Password: $DOCKER_PASSWORD
+#DOCKER_ENCRYPYTED_PASSWORD=`perl -e 'print crypt('"$DOCKER_PASSWORD"', "aa"),"\n"'`
+# result of above is aajfMKNH1hTm2
+#useradd -m -d /home/docker -p $DOCKER_ENCRYPYTED_PASSWORD docker
+RUN useradd -m -d /home/docker -p 'aajfMKNH1hTm2' docker
+#RUN useradd -m -d /home/docker docker
+RUN sed -Ei 's/adm:x:4:/docker:x:4:docker/' /etc/group
+RUN adduser docker sudo
 
-#ENV WD /opt/haskell
+# Set the default shell as bash for docker user.
+RUN chsh -s /bin/bash docker
 
-#ADD HaRe.cabal /opt/haskell/HaRe.cabal
+#-----------------------------------------------------------------------
 
-#RUN echo $WD
+RUN sudo -i -u docker bash -c 'echo "export PATH=~/.cabal/bin:$PATH" >> ~/.bashrc'
 
-#RUN cabal update
+RUN sudo -i -u docker bash -c 'cabal update'
+RUN sudo -i -u docker bash -c 'cabal install cabal-install'
+RUN sudo -i -u docker bash -c 'cabal update'
+RUN sudo -i -u docker bash -c 'cabal install HaRe'
+RUN sudo -i -u docker bash -c 'cabal install Diff hspec silently stringbuilder'
+
+#-----------------------------------------------------------------------
+
+RUN sudo -u docker mkdir /home/docker/emacs.d
+#RUN sudo -i -u docker bash -c 'git clone https://github.com/alanz/emacs24-starter-kit.git /home/docker/emacs.d'
+
 
 #RUN (cd $WD && cabal install --only-dependencies)
 
 
 #RUN (cd $WD && cabal clean && cabal configure --enable-tests && cabal build)
 
-# Note: to debug the partial build do the following
-# docker run -i -t alanz/HaRe-7.4.2-64 /bin/bash
-
-#RUN mkdir /var/run/sshd
 
 # Copy the files into the container
 ADD . /src
 
-RUN /src/setup.sh
+#RUN /src/setup.sh
 
 #RUN /src/startssh.sh
 

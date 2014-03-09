@@ -38,9 +38,9 @@ spec = do
   describe "locToExp on ParsedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
       (t, _toks) <- parsedFileBGhc
-      let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let (Just expr) = locToExp (7,7) (7,43) modu :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+        let (Just expr) = locToExp (7,7) (7,43) parsed :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,9)
       getLocatedEnd   expr `shouldBe` (7,42)
 
@@ -102,7 +102,7 @@ spec = do
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
 
-      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) 
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False)
                                      -- , rsetVerboseLevel = Debug
                                      }
 
