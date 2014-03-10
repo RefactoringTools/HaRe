@@ -247,7 +247,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
      -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Zmapq.hs" (6,3)
      (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/Zmapq.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/Zmapq.expected.hs"
-                          "./test/testdata/LiftToToplevel/zmapq.refactored.hs"
+                          "./test/testdata/LiftToToplevel/Zmapq.refactored.hs"
      diff `shouldBe` []
 
 

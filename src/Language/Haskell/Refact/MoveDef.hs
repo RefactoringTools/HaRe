@@ -238,58 +238,61 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
       else error "\nThe identifier is not a local function/pattern name!"
 
     where
-          {-step1: divide the module's top level declaration list into three parts:
-            'parent' is the top level declaration containing the lifted declaration,
-            'before' and `after` are those declarations before and after 'parent'.
-            step2: get the declarations to be lifted from parent, bind it to liftedDecls 
-            step3: remove the lifted declarations from parent and extra arguments may be introduce.
-            step4. test whether there are any names need to be renamed.
-          -}
+       {-step1: divide the module's top level declaration list into three parts:
+         'parent' is the top level declaration containing the lifted declaration,
+         'before' and `after` are those declarations before and after 'parent'.
+         step2: get the declarations to be lifted from parent, bind it to liftedDecls 
+         step3: remove the lifted declarations from parent and extra arguments may be introduce.
+         step4. test whether there are any names need to be renamed.
+       -}
        liftToMod = do
-                      renamed <- getRefactRenamed
-                      let declsr = hsBinds renamed
-                      let (before,parent,after) = divideDecls declsr pn
-                      -- error ("liftToMod:(before,parent,after)=" ++ (showGhc (before,parent,after))) -- ++AZ++
-                      {- ++AZ++ : hsBinds does not return class or instance definitions
-                      when (isClassDecl $ ghead "liftToMod" parent)
-                            $ error "Sorry, the refactorer cannot lift a definition from a class declaration!"
-                      when (isInstDecl $ ghead "liftToMod" parent)
-                            $ error "Sorry, the refactorer cannot lift a definition from an instance declaration!"
-                      -}
-                      let liftedDecls = definingDeclsNames [n] parent True True
-                          declaredPns = nub $ concatMap definedPNs liftedDecls
+         renamed <- getRefactRenamed
+         let declsr = hsBinds renamed
+         let (before,parent,after) = divideDecls declsr pn
+         -- error ("liftToMod:(before,parent,after)=" ++ (showGhc (before,parent,after))) -- ++AZ++
+         {- ++AZ++ : hsBinds does not return class or instance definitions
+         when (isClassDecl $ ghead "liftToMod" parent)
+               $ error "Sorry, the refactorer cannot lift a definition from a class declaration!"
+         when (isInstDecl $ ghead "liftToMod" parent)
+               $ error "Sorry, the refactorer cannot lift a definition from an instance declaration!"
+         -}
+         let liftedDecls = definingDeclsNames [n] parent True True
+             declaredPns = nub $ concatMap definedPNs liftedDecls
 
-                      -- TODO: what about declarations between this
-                      -- one and the top level that are used in this one?
+         -- TODO: what about declarations between this
+         -- one and the top level that are used in this one?
 
-                      logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (showGhc (liftedDecls,declaredPns))
-                      -- original : pns<-pnsNeedRenaming inscps mod parent liftedDecls declaredPns
-                      pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
+         logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (showGhc (liftedDecls,declaredPns))
+         -- original : pns<-pnsNeedRenaming inscps mod parent liftedDecls declaredPns
+         pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
 
-                      -- (_,dd) <- hsFreeAndDeclaredPNs renamed
-                      let dd = getDeclaredVars $ hsBinds renamed
-                      logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
+         -- (_,dd) <- hsFreeAndDeclaredPNs renamed
+         let dd = getDeclaredVars $ hsBinds renamed
+         logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
 
-                      drawTokenTree "liftToMod.a"
+         -- drawTokenTree "liftToMod.a"
 
-                      if pns==[]
-                        then do (parent',_liftedDecls',_paramAdded)<-addParamsToParentAndLiftedDecl n dd parent liftedDecls
-                                -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
-                                --                                 else liftedDecls'
+         if pns==[]
+           then do
+             -- TODO: change the order, first move the decls then add params,
+             --       else the liftedDecls get mangled while still in the parent
+             (parent',_liftedDecls',_paramAdded) <- addParamsToParentAndLiftedDecl n dd parent liftedDecls
+             -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
+             --                                 else liftedDecls'
 
-                                drawTokenTree "liftToMod.c"
-                                logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
+             drawTokenTree "liftToMod.c"
+             logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
 
-                                -- error ("liftToMod:newBinds=" ++ (showGhc (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
-                                void $ moveDecl1 (replaceBinds renamed (before++parent'++after))
-                                       (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent'))))
-                                       [GHC.unLoc pn] declaredPns True
+             -- error ("liftToMod:newBinds=" ++ (showGhc (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
+             void $ moveDecl1 (replaceBinds renamed (before++parent'++after))
+                    (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent'))))
+                    [GHC.unLoc pn] declaredPns True
 
-                                drawTokenTree "liftToMod.b"
+             -- drawTokenTree "liftToMod.b"
 
-                                return declaredPns
+             return declaredPns
 
-                        else askRenamingMsg pns "lifting"
+           else askRenamingMsg pns "lifting"
 
 
 
@@ -772,7 +775,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (dest',_liftedDecls',_paramAdded)
+                                (parent',_liftedDecls',_paramAdded)
                                     -- <- addParamsToParentAndLiftedDecl n dd decl liftedDecls 
                                     <- addParamsToParentAndLiftedDecl n dd dest liftedDecls
                                 -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
@@ -780,9 +783,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 -- logm $ "MoveDef.worker1:liftedDecls''=" ++ (showGhc liftedDecls'')
                                 -- logm $ "MoveDef.worker1:dest'=" ++ (SYB.showData SYB.Renamer 0 dest')
                                 --True means the new decl will be at the same level with its parant. 
-                                dest''<-moveDecl1 dest' Nothing
-                                           [n] declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
-                                return dest''
+                                parent'' <- moveDecl1 parent' Nothing
+                                             [n] declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                return parent''
                                 --decl'<-doMoving declaredPns (ghead "worker" decl) True  paramAdded decl'
                                 --return (before++decl'++liftedDecls''++after)
                         else askRenamingMsg pns "lifting"
@@ -799,10 +802,10 @@ liftedToTopLevel pnt@(GHC.L _ pn) renamed
 
 
 addParamsToParentAndLiftedDecl :: (HsValBinds t,GHC.Outputable t) =>
-     GHC.Name
+     GHC.Name   -- name of decl being lifted
   -> [GHC.Name] -- ^Declared names in parent
-  -> t
-  -> [GHC.LHsBind GHC.Name]
+  -> t          -- parent
+  -> [GHC.LHsBind GHC.Name] -- decls being lifted
   -> RefactGhc (t, [GHC.LHsBind GHC.Name], Bool)
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls
   =do  (ef,_) <- hsFreeAndDeclaredPNs parent
@@ -810,20 +813,26 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
 
        logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
 
-       let eff = getFreeVars $ hsBinds parent
-       let lff = getFreeVars liftedDecls
+       -- let eff = getFreeVars $ hsBinds parent
+       -- let lff = getFreeVars liftedDecls
        logm $ "addParamsToParentAndLiftedDecl:(ef,lf)=" ++ (showGhc (ef,lf))
-       logm $ "addParamsToParentAndLiftedDecl:(eff,lff)=" ++ (showGhc (eff,lff))
+       -- logm $ "addParamsToParentAndLiftedDecl:(eff,lff)=" ++ (showGhc (eff,lff))
        logm $ "addParamsToParentAndLiftedDecl:(dd)=" ++ (showGhc dd)
 
-       let newParams=((nub lf)\\ (nub ef)) \\ dd  --parameters (in PName format) to be added to pn because of lifting
+       -- parameters to be added to pn because of lifting
+       let newParams=((nub lf) \\ (nub ef)) \\ dd
        -- let newParams=((nub lff)\\ (nub eff)) \\ dd  --parameters (in PName format) to be added to pn because of lifting
+
        logm $ "addParamsToParentAndLiftedDecl:(newParams,ef,lf,dd)=" ++ (showGhc (newParams,ef,lf,dd))
-       if newParams/=[]
+
+       if newParams /= []
          then if  (any isComplexPatBind liftedDecls)
                 then error "This pattern binding cannot be lifted, as it uses some other local bindings!"
                 else do parent' <- addParamsToParent pn newParams parent
-                        liftedDecls'<-addParamsToDecls liftedDecls pn newParams True
+                        -- let parent' = parent
+                        logm $ "addParamsToParentAndLiftedDecl: parent done"
+                        liftedDecls' <- addParamsToDecls liftedDecls pn newParams True
+                        logm $ "addParamsToParentAndLiftedDecl: liftedDecls done"
                         return (parent', liftedDecls',True)
          else return (parent,liftedDecls,False)
 
@@ -1566,17 +1575,16 @@ removeTypeSig pn decls = decls
   -- ++ AZ++ TODO: make use of rmTypeSig pn decls from TypeUtils
 -}
 
+-- ---------------------------------------------------------------------
+
 -- |Divide a declaration list into three parts (before, parent, after)
 -- according to the PNT, where 'parent' is the first decl containing
 -- the PNT, 'before' are those decls before 'parent' and 'after' are
 -- those decls after 'parent'.
 
--- ++AZ++ : Not sure if this is meaningful with renamed source.
-
--- divideDecls::[HsDeclP]->PNT->([HsDeclP],[HsDeclP],[HsDeclP])
 divideDecls ::
-  SYB.Data a =>
-  [a] -> GHC.Located GHC.Name -> ([a], [a], [a])
+  SYB.Data t =>
+  [t] -> GHC.Located GHC.Name -> ([t], [t], [t])
 divideDecls ds pnt
   -- = error "undefined divideDecls"
   = let (before,after)=break (\x->findPNT pnt x) ds

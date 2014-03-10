@@ -3679,6 +3679,7 @@ isTypeSigOf pnt (TiDecorate.Dec (HsTypeSig loc is c tp))= elem pnt is
 isTypeSigOf _  _ =False
 -}
 
+
 -- | Return the list of identifiers (in PName format) defined by a function\/pattern binding.
 definedPNs::GHC.LHsBind GHC.Name -> [GHC.Name]
 definedPNs (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)) = [pname]
@@ -4483,16 +4484,15 @@ addParamsToDecls::
 
 addParamsToDecls decls pn paramPNames modifyToks = do
   logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhc (pn,paramPNames,modifyToks))
+  -- logm $ "addParamsToDecls: decls=" ++ (SYB.showData SYB.Renamer 0 decls)
   if (paramPNames/=[])
         then mapM addParamToDecl decls
         else return decls
   where
    addParamToDecl :: GHC.LHsBind GHC.Name -> RefactGhc (GHC.LHsBind GHC.Name)
-   -- addParamToDecl (TiDecorate.Dec (HsFunBind loc matches@((HsMatch _ fun pats rhs ds):ms)))
    addParamToDecl (GHC.L l1 (GHC.FunBind (GHC.L l2 pname) i (GHC.MatchGroup matches ptt) co fvs t))
     | pname == pn
     = do matches' <- mapM addParamtoMatch matches
-         -- return (TiDecorate.Dec (HsFunBind loc matches'))
          return (GHC.L l1 (GHC.FunBind (GHC.L l2 pname) i (GHC.MatchGroup matches' ptt) co fvs t))
       where
        -- addParamtoMatch (HsMatch loc fun pats rhs  decls)
@@ -4541,8 +4541,16 @@ addFormalParams place newParams
          Right (GHC.L l _) -> do
            toks <- getToksForSpan l
            newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False newStr
+           -- Note: the order of the next two is important, replacing
+              -- the toks for a given span can change the span, in which
            _ <- putToksForSpan l newToks
            _ <- putToksAfterSpan l PlaceAdjacent toks
+
+           -- l' <- putToksForSpan l newToks
+           -- _  <- putToksAfterSpan l' PlaceAdjacent toks
+
+           -- _ <- putToksAfterSpan l PlaceAdjacent toks
+           -- _ <- putToksForSpan l newToks
            return ()
 
 -- ---------------------------------------------------------------------
@@ -5507,16 +5515,6 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
       inDecl _ = Nothing
 
 -- ---------------------------------------------------------------------
-
--- | Return True if the identifier occurs in the given syntax phrase.
-findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
-findPNT (GHC.L _ pn)
-   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
-     where
-        worker (n::GHC.Name)
-           | GHC.nameUnique pn == GHC.nameUnique n = Just True
-        worker _ = Nothing
-
 -- | Find all occurrences with location of the given name
 findAllNameOccurences :: (SYB.Data t) => GHC.Name -> t -> [(GHC.Located GHC.Name)]
 findAllNameOccurences  name t
@@ -5537,29 +5535,18 @@ findAllNameOccurences  name t
           | GHC.nameUnique n == GHC.nameUnique name  = [(GHC.L l n)]
         workerExpr _ = []
 
+-- ---------------------------------------------------------------------
 
+-- | Return True if the identifier occurs in the given syntax phrase.
+findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
+findPNT (GHC.L _ pn) = findPN pn
 {-
--- | Find all locations where names occur in the given syntax phrase
-findAllNames:: (SYB.Data t) => t -> [(GHC.Located GHC.Name)]
-findAllNames  t
-  = res
-       where
-        res = SYB.everythingStaged SYB.Renamer (++) []
-            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
-
-        worker (ln@(GHC.L _l _n) :: (GHC.Located GHC.Name))
-          | True = [ln]
-        worker _ = []
-
-        workerBind (GHC.L l (GHC.VarPat n) :: (GHC.Located (GHC.Pat GHC.Name)))
-          | True = [(GHC.L l n)]
-        workerBind _ = []
-
-        workerExpr (GHC.L l (GHC.HsVar n) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-          | True = [(GHC.L l n)]
-        workerExpr _ = []
+   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
+     where
+        worker (n::GHC.Name)
+           | GHC.nameUnique pn == GHC.nameUnique n = Just True
+        worker _ = Nothing
 -}
-
 
 -- | Return True if the identifier occurs in the given syntax phrase.
 findPN::(SYB.Data t)=> GHC.Name -> t -> Bool

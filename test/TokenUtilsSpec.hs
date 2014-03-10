@@ -4722,6 +4722,155 @@ Should be pg :  5 - 3 = 2
 
     -- ---------------------------------
 
+    it "adds a parameter, chasing a bug in MoveDef" $ do
+      (t,toks)  <- parsedFileGhc "./test/testdata/LiftToToplevel/Zmapq.hs"
+
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let forest = allocTokens parsed toks
+
+{-
+addParamsToDecls (pn,paramPNames,modifyToks)=(g, [f], True)
+updateToks test/testdata/LiftToToplevel/Zmapq.hs:6:32:"(((False,0,0,6),32),((False,0,0,6),33))"
+putToksForSpan test/testdata/LiftToToplevel/Zmapq.hs:6:32:
+  (((False,0,0,6),32),((False,0,0,6),33))
+  [((((0,1),(0,2)),IToparen),"("),
+   ((((0,2),(0,3)),ITvarid "g"),"g"),((((0,4),(0,5)),ITvarid "f"),"f"),((((0,5),(0,6)),ITcparen),")")]
+-}
+      toks1 <- liftIO $ basicTokenise "(g f)"
+      (show toks1) `shouldBe`
+         "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,3)),ITvarid \"g\"),\"g\"),"++
+          "((((0,4),(0,5)),ITvarid \"f\"),\"f\"),((((0,5),(0,6)),ITcparen),\")\")]"
+
+      let sspan1 = posToSrcSpan forest ((6,32),(6,33))
+      let (f2,_sspan1,_forest) = updateTokensForSrcSpan forest sspan1 (map markToken toks1)
+      (invariant f2) `shouldBe` []
+
+{-
+addParamtoMatch:l=test/testdata/LiftToToplevel/Zmapq.hs:6:3-35
+
+getToksForSpan test/testdata/LiftToToplevel/Zmapq.hs:6:5-6:
+  ("(((False,0,0,6),5),((False,0,0,6),7))",[((((6,5),(6,7)),ITvarid "z'"),"z'")])
+
+putToksForSpan test/testdata/LiftToToplevel/Zmapq.hs:6:5-6:
+  (((False,0,0,6),5),((False,0,0,6),7))
+    [((((6,6),(6,7)),ITvarid "f"),"f")]
+-}
+      toks2 <- liftIO $ basicTokenise "\n\n\n\n\n\n     f"
+      (show toks2) `shouldBe` "[((((6,6),(6,7)),ITvarid \"f\"),\"f\")]"
+
+      let sspan2 = posToSrcSpan forest ((6,5),(6,7))
+      let (f3,_sspan2,_f2) = updateTokensForSrcSpan f2 sspan2 (map markToken toks2)
+      (showSrcSpanF _sspan2) `shouldBe` "(((True,0,0,6),5),((True,0,0,6),6))"
+      (invariant f3) `shouldBe` []
+
+      (drawTreeCompact f3) `shouldBe`
+         "0:((1,1),(12,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,28))\n"++
+         "1:((1,29),(1,34))\n"++
+         "1:((5,1),(6,36))\n"++
+         "2:((5,1),(5,6))\n"++
+         "2:((5,7),(6,36))\n"++
+         "3:((5,7),(5,8))\n"++
+         "3:((5,9),(5,10))\n"++
+         "3:((5,11),(5,12))\n"++
+         "3:((5,13),(5,35))\n"++
+         "4:((5,13),(5,20))\n"++
+         "4:((5,21),(5,22))\n"++
+         "4:((5,23),(5,35))\n"++
+         "5:((5,23),(5,33))\n"++
+         "6:((5,23),(5,31))\n"++
+         "7:((5,23),(5,28))\n"++
+         "7:((5,29),(5,31))\n"++
+         "6:((5,32),(5,33))\n"++
+         "5:((5,34),(5,35))\n"++
+         "3:((5,36),(5,41))\n"++
+         "3:((6,3),(6,36))(Above FromAlignCol (1,-39) (6,3) (6,36) FromAlignCol (3,-35))\n"++
+          "4:((6,3),(6,36))\n"++
+           "5:((6,3),(6,4))\n"++
+           "5:((6,5),(6,36))\n"++
+            "6:((10000000006,5),(10000000006,6))\n"++
+            "6:((6,8),(6,9))\n"++
+            "6:((6,10),(6,36))\n"++
+             "7:((6,10),(6,20))\n"++
+              "8:((6,10),(6,17))\n"++
+               "9:((6,10),(6,15))\n"++
+               "9:((6,16),(6,17))\n"++
+              "8:((6,18),(6,20))\n"++
+             "7:((6,21),(6,22))\n"++
+             "7:((6,23),(6,36))\n"++
+              "8:((6,23),(6,33))\n"++
+               "9:((6,23),(6,31))\n"++
+                "10:((6,23),(6,28))\n"++
+                "10:((6,29),(6,31))\n"++
+               "9:((10000000006,32),(10000000006,37))\n"++
+         "8:((6,34),(6,36))\n"++
+         "1:((9,1),(9,18))\n"++
+         "2:((9,1),(9,6))\n"++
+         "2:((9,7),(9,18))\n"++
+         "3:((9,7),(9,8))\n"++
+         "3:((9,9),(9,18))\n"++
+         "1:((10,1),(10,18))\n"++
+         "2:((10,1),(10,6))\n"++
+         "2:((10,7),(10,18))\n"++
+         "3:((10,7),(10,8))\n"++
+         "3:((10,9),(10,18))\n"++
+         "1:((11,1),(11,18))\n"++
+         "2:((11,1),(11,6))\n"++
+         "2:((11,7),(11,18))\n"++
+         "3:((11,7),(11,8))\n"++
+         "3:((11,9),(11,18))\n"++
+         "1:((12,1),(12,1))\n"
+
+      let ppr3 = retrieveLinesFromLayoutTree f3
+      (renderLines ppr3) `shouldBe`
+         "module LiftToTopLevel.Zmapq where\n"++
+         "\n"++
+         "-- | Apply a generic query to the immediate children.\n"++
+         "-- zmapQ :: GenericQ b -> Zipper a -> [b]\n"++
+         "zmapQ f z = reverse $ downQ [] g z where\n"++
+         "  g f  = query f z' : leftQ [] (g f)z'\n"++
+         "\n"++
+         "\n"++
+         "downQ = undefined\n"++
+         "query = undefined\n"++
+         "leftQ = undefined\n"
+
+{-
+putToksAfterSpan test/testdata/LiftToToplevel/Zmapq.hs:6:5-6:
+  (((False,0,0,6),5),((False,0,0,6),7)) at PlaceAdjacent:
+    [(((6,5),(6,7)),ITvarid "z'","z'")]
+addParamsToParentAndLiftedDecl: liftedDecls done
+-}
+      toks3 <- liftIO $ basicTokenise "\n\n\n\n\n\n    z'"
+      (show toks3) `shouldBe` "[((((6,5),(6,7)),ITvarid \"z'\"),\"z'\")]"
+
+      -- let sspan3 = posToSrcSpan forest ((6,5),(6,7))
+      let sspan3 = posToSrcSpan forest ((6,5),(6,6))
+      let (f4,_) = addToksAfterSrcSpan f3 sspan3 PlaceAdjacent (map markToken toks3)
+      (invariant f4) `shouldBe` []
+
+      -- (drawTreeCompact f4) `shouldBe`
+      --    "0:((1,1),(12,1))\n"
+
+      let ppr4 = retrieveLinesFromLayoutTree f4
+      (renderLines ppr4) `shouldBe`
+         "module LiftToTopLevel.Zmapq where\n"++
+         "\n"++
+         "-- | Apply a generic query to the immediate children.\n"++
+         "-- zmapQ :: GenericQ b -> Zipper a -> [b]\n"++
+         "zmapQ f z = reverse $ downQ [] g z where\n"++
+         "  g f z'= query f z' : leftQ [] (g f)z'\n"++
+         "\n"++
+         "\n"++
+         "downQ = undefined\n"++
+         "query = undefined\n"++
+         "leftQ = undefined\n"
+      "a" `shouldBe` "b"
+
+
+    -- ---------------------------------
+
     it "adds a SrcSpan, chasing a bug in MoveDef" $ do
       (_t,toks)  <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
       let forest = mkTreeFromTokens toks

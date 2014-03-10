@@ -361,3 +361,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/LiftToToplevel/Zmapq.hs.AST_out
 /test/testdata/LiftToToplevel/Zmapq.hs.renamed_out
 /test/testdata/LiftToToplevel/Zmapq.hs.tokens
+/src/TAGS
