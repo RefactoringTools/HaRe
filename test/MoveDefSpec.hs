@@ -138,7 +138,7 @@ spec = do
 
     it "liftToTopLevel LetIn1 11 22" $ do
      r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LetIn1.hs" (11,22)
-     -- r <- liftToTopLevel logTestSettings  testCradle    Nothing "./test/testdata/LiftToToplevel/LetIn1.hs" (11,22)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/LetIn1.hs" (11,22)
      (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/LetIn1.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/LetIn1.hs.expected"
                           "./test/testdata/LiftToToplevel/LetIn1.refactored.hs"
