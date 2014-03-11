@@ -50,10 +50,6 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      {-,
                      prettyprint ,deleteFromToks, prettyprintGuardsAlt,
                      -}
-                     {-, addFormalParams -} {- ,  adjustOffset, -- try to remove it
-                     StartEndLoc, isArrow,-- swapInToks,
-                     commentToks
-                     -}
                      , tokenise
                      , basicTokenise
                      , lexStringToRichTokens
@@ -507,45 +503,6 @@ getToks (startPos,endPos) toks =
     -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks21=" ++ (showToks toks21) -- ++AZ++ debug
 
 -- ---------------------------------------------------------------------
-{-
--- | Add tokens corresponding to the new parameters to the end of the
--- syntax element provided
-addFormalParams :: (SYB.Data t, SYB.Typeable t) =>
-                t -> [GHC.Located (GHC.Pat GHC.Name)] -> RefactGhc ()
-addFormalParams t newParams
-  = do
-       let (startPos,endPos) = getStartEndLoc t
-
-       newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
-       -- error $ "addFormalParams:newToks=" ++ (showToks newToks) -- ++AZ++
-       _ <- putToksAfterPos (startPos,endPos) PlaceAdjacent $ map markToken newToks
-
-       return ()
--}
--- ---------------------------------------------------------------------
-
-{-
--- |Replace a list of tokens in the token stream by a new list of
--- tokens, adjust the layout as well. To use this function make sure
--- the start and end positions really exist in the token stream.
--- QN: what happens if the start or end position does not exist?
-
--- TODO: ++AZ++ pretty sure this should be deprecated
-replaceToks::[PosToken]->SimpPos->SimpPos->[PosToken]->[PosToken]
-replaceToks toks startPos endPos newToks =
- -- error $ "replaceToks: startPos=" ++ (show startPos)
-    (if length toks22 == 0
-        then toks1 ++ newToks'
-        else let {-(pos::(Int,Int)) = tokenPos (ghead "replaceToks" toks22)-} -- JULIEN
-                 -- oldOffset = {-getOffset toks pos  -}  lengthOfLastLine (toks1++toks21) --JULIEN
-                 -- newOffset = {-getOffset (toks1++newToks'++ toks22) pos -} lengthOfLastLine (toks1++newToks) -- JULIEN
-             in  toks1 ++ (newToks' ++ toks22))  -- adjustLayout toks22 oldOffset newOffset) ) 
-   where
-      (toks1, _toks21, toks22) = splitToks (startPos, endPos) toks
-      newToks' = map markToken newToks
--}
-
--- ---------------------------------------------------------------------
 
 -- |Replace a single token in the token stream by a new token, without
 -- adjusting the layout.
@@ -610,24 +567,6 @@ srcLocs t =(nub.srcLocs') t \\ [simpPos0]
          literalInPat (Pat (HsPNeg (SrcLoc _  _ row col) _)) = return [(row,col)]
          literalInPat _ =return []
 -}
-
-
-
-{-
----REFACTORING: GENERALISE THIS FUNCTION.
-addFormalParams t newParams
-  = do ((toks,_),(v1, v2))<-get
-       let (startPos,endPos) = getStartEndLoc toks t
-           tToks     = getToks (startPos, endPos) toks
-           (toks1, _) = let (toks1', toks2') = break (\t-> tokenPos t == endPos) toks
-                        in (toks1' ++ [ghead "addFormalParams" toks2'], gtail "addFormalParams"  toks2')
-           offset  = lengthOfLastLine toks1
-           newToks = tokenise (Pos 0 v1 1) offset False (prettyprintPatList True newParams )
-           toks'   = replaceToks toks startPos endPos (tToks++newToks)
-       put ((toks',modified), ((tokenRow (glast "addFormalParams" newToks) -10), v2))
-       addLocInfo (newParams, newToks)
--}
-
 
 
 
