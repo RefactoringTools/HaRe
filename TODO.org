@@ -8,7 +8,7 @@
      - no longer complains of parsed, but moves the next non blank
        line on 2 columns. formatting problem.
 ** TODO The elisp test for buffers to save includes directories that have been modified
-** TODO liftToTopLevel in syz Zipper of g from zmapQ introduces param errors
+** DONE liftToTopLevel in syz Zipper of g from zmapQ introduces param errors
       zmapQ f z = reverse $ downQ [] g z where
            g z' = query f z' : leftQ [] g z'
       becomes

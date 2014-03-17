@@ -1,3 +1,5 @@
+2014-03-17 v0.7.1.5
+	* Adding parameters to lifted declarations now works as expected
 2014-03-09 v0.7.1.4
 	* Load and process files using TH and/or QuasiQuotes
 	* Make loading of multiple targets from a cabal file more robust

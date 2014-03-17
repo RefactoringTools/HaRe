@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.1.4
+Version:                        0.7.1.5
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -18,24 +18,10 @@ Description:
    .
    Warning: This is alpha code. Always commit code to your version
    control system before refactoring. The developers make no
-   warranties, use at your own risk. May frighten children and dogs.
+   warranties, use at your own risk.
    .
    The renaming refactoring seems reasonably reliable.
    .
-   Current known defects:
-   .
-     * liftToTopLevel of a recursive function may introduce parameter
-       errors. e.g. lifting 'g' in the 'zmapQ' function from 'syz-0.2.0.0'
-       'Data.Generics.Zipper' results in the following
-   .
-   >  zmapQ f z = reverse $ downQ [] g z where
-   >       g z' = query f z' : leftQ [] g z'
-   .
-      becomes
-   .
-   >  zmapQ f z = reverse $ downQ [] (g f g)z
-   >
-   >  g f z'g= query f z' : leftQ [] (g f g)g f g)z'
 
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
