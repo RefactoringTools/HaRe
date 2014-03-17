@@ -258,7 +258,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "liftOneLevel.liftToMod D1 C1 A1 8 6" $ do
      r <- liftOneLevel (testSettingsMainfile "./test/testdata/LiftOneLevel/A1.hs") testCradle "./test/testdata/LiftOneLevel/D1.hs" (8,6)
-     -- r <- liftOneLevel logTestSettings  testCradle    (Just "./test/testdata/LiftOneLevel/A1.hs") "./test/testdata/LiftOneLevel/D1.hs" (8,6)
+     -- liftOneLevel (logTestSettingsMainfile "./test/testdata/LiftOneLevel/A1.hs") testCradle  "./test/testdata/LiftOneLevel/D1.hs" (8,6)
      (show r) `shouldBe` "[\"./test/testdata/LiftOneLevel/D1.hs\",\"./test/testdata/LiftOneLevel/C1.hs\"]"
      diff <- compareFiles "./test/testdata/LiftOneLevel/D1.hs.expected"
                           "./test/testdata/LiftOneLevel/D1.refactored.hs"

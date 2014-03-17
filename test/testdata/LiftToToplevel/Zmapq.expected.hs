@@ -4,7 +4,7 @@ module LiftToTopLevel.Zmapq where
 -- zmapQ :: GenericQ b -> Zipper a -> [b]
 zmapQ f z = reverse $ downQ [] (g f)z
 
-g f z' = query f z' : leftQ [] (g f) z'
+g f z'= query f z' : leftQ [] (g f)z'
 
 downQ = undefined
 query = undefined

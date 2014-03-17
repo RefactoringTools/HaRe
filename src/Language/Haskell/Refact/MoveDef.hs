@@ -276,17 +276,19 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
            then do
              -- TODO: change the order, first move the decls then add params,
              --       else the liftedDecls get mangled while still in the parent
-             (parent',_liftedDecls',_paramAdded) <- addParamsToParentAndLiftedDecl n dd parent liftedDecls
+             (parent',liftedDecls',_paramAdded) <- addParamsToParentAndLiftedDecl n dd parent liftedDecls
              -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
              --                                 else liftedDecls'
 
-             drawTokenTree "liftToMod.c"
-             logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
+             -- drawTokenTree "liftToMod.c"
+             -- logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
+             -- logm $ "liftToMod:(liftedDecls')=" ++ (showGhc liftedDecls')
 
              -- error ("liftToMod:newBinds=" ++ (showGhc (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
+
              void $ moveDecl1 (replaceBinds renamed (before++parent'++after))
                     (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent'))))
-                    [GHC.unLoc pn] declaredPns True
+                    [GHC.unLoc pn] (Just liftedDecls') declaredPns True
 
              -- drawTokenTree "liftToMod.b"
 
@@ -296,7 +298,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
 
 
--- TODO: move this to TypeUtils, as moveDecl
+-- ---------------------------------------------------------------------
+
 moveDecl1 :: (HsValBinds t)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
@@ -304,62 +307,60 @@ moveDecl1 :: (HsValBinds t)
      -- TODO: make this next parameter a single value, not a list,
      -- after module complete
   -> [GHC.Name]     -- ^ The first one is the decl to move
+  -> Maybe [GHC.LHsBind GHC.Name]
   -> [GHC.Name]     -- ^ The signatures to remove. May be multiple if
                     --   decl being moved has a patbind.
   -> Bool           -- ^ True if moving to the top level
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
-moveDecl1 t defName ns sigNames topLevel
-   = do
-        -- logm $ "moveDecl1:t=" ++ (SYB.showData SYB.Renamer 0 t) -- ++AZ++
-        -- TODO: work with all of ns, not just the first
-        let n = ghead "moveDecl1" ns
-        -- let funBinding = definingDeclsNames [n] (hsBinds t) True True
-        let funBinding = definingDeclsNames' [n] t
+moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
+  -- logm $ "moveDecl1:t=" ++ (SYB.showData SYB.Renamer 0 t) -- ++AZ++
+  logm $ "moveDecl1:mliftedDecls=" ++ (showGhc mliftedDecls)
+  drawTokenTree "moveDecl1 on entry"
 
-        logm $ "moveDecl1: (ns,funBinding)=" ++ (showGhc (ns,funBinding)) -- ++AZ++
+  -- TODO: work with all of ns, not just the first
+  let n = ghead "moveDecl1" ns
+  -- let funBinding = definingDeclsNames [n] (hsBinds t) True True
+  let funBinding = case mliftedDecls of
+        Nothing -> definingDeclsNames' [n] t
+        Just liftedDecls -> liftedDecls
 
-        let Just sspan = getSrcSpan funBinding
-        -- drawTokenTree "before getting toks" -- ++AZ++
-        funToks <- getToksForSpan sspan
-        logm $ "moveDecl1:funToks=" ++ (showToks funToks)
-        -- drawTokenTree "moveDecl1:after getting toks" -- ++AZ++ 'in' present
-        --- drawTokenTreeDetailed "moveDecl1:after getting toks" -- ++AZ++
+  logm $ "moveDecl1: (ns,funBinding)=" ++ (showGhc (ns,funBinding)) -- ++AZ++
 
-        -- (t'',sigsRemoved) <- rmTypeSigs ns t
-        (t'',sigsRemoved) <- rmTypeSigs sigNames t
-        -- drawTokenTree "moveDecl1:after rmTypeSigs" -- ++AZ++
-        -- drawTokenTreeDetailed "moveDecl1:after rmTypeSigs" -- ++AZ++
-        -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
-        (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
-        -- logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
-        -- drawTokenTree "moveDecl1:after rmDecl" -- ++AZ++
-        -- drawTokenTreeDetailed "moveDecl1:after rmDecl" -- ++AZ++  'in' missing
+  let Just sspan = getSrcSpan funBinding
+  -- drawTokenTree "before getting toks" -- ++AZ++
+  funToks <- getToksForSpan sspan
+  logm $ "moveDecl1:funToks=" ++ (showToks funToks)
+  -- drawTokenTree "moveDecl1:after getting toks" -- ++AZ++ 'in' present
+  --- drawTokenTreeDetailed "moveDecl1:after getting toks" -- ++AZ++
 
-        let getToksForMaybeSig (GHC.L ss _) =
-                             do
-                               sigToks <- getToksForSpan ss
-                               return sigToks
+  -- (t'',sigsRemoved) <- rmTypeSigs ns t
+  (t'',sigsRemoved) <- rmTypeSigs sigNames t
+  -- drawTokenTree "moveDecl1:after rmTypeSigs" -- ++AZ++
+  -- drawTokenTreeDetailed "moveDecl1:after rmTypeSigs" -- ++AZ++
+  -- logm $ "moveDecl1:t''=" ++ (SYB.showData SYB.Renamer 0 t'') -- ++AZ++
+  (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
+  -- logm $ "moveDecl1:t'=" ++ (SYB.showData SYB.Renamer 0 t') -- ++AZ++
+  -- drawTokenTree "moveDecl1:after rmDecl" -- ++AZ++
+  -- drawTokenTreeDetailed "moveDecl1:after rmDecl" -- ++AZ++  'in' missing
 
-        -- maybeToksSigMulti <- mapM getToksForMaybeSig sigsRemoved
-        maybeToksSigMulti <- mapM getToksForMaybeSig
-                             $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (srcSpanToForestSpan s1) (srcSpanToForestSpan s2))
-                                sigsRemoved
-        let maybeToksSig = concat maybeToksSigMulti
+  let getToksForMaybeSig (GHC.L ss _) =
+                       do
+                         sigToks <- getToksForSpan ss
+                         return sigToks
 
-        logm $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
-        logm $ "moveDecl1:(defName,topLevel)" ++ (showGhc (defName,topLevel)) -- ++AZ++
+  -- maybeToksSigMulti <- mapM getToksForMaybeSig sigsRemoved
+  maybeToksSigMulti <- mapM getToksForMaybeSig
+                       $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (srcSpanToForestSpan s1) (srcSpanToForestSpan s2))
+                          sigsRemoved
+  let maybeToksSig = concat maybeToksSigMulti
 
-        addDecl t' defName (ghead "moveDecl1 2" funBinding,sigsRemoved,Just (maybeToksSig ++ funToks)) topLevel
+  logm $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
+  logm $ "moveDecl1:(defName,topLevel)" ++ (showGhc (defName,topLevel)) -- ++AZ++
 
-
-
-{-
---get all the declarations define in the scope of t
-allDeclsIn t = fromMaybe [] (applyTU (full_tdTU (constTU [] `adhocTU` decl)) t)
-               where decl (d::HsDeclP)
-                       |isFunBind d || isPatBind d || isTypeSig d = Just [d]
-                     decl _ = Just []
--}
+  drawTokenTree "moveDecl1 about to addDecl"
+  r <- addDecl t' defName (ghead "moveDecl1 2" funBinding,sigsRemoved,Just (maybeToksSig ++ funToks)) topLevel
+  drawTokenTree "moveDecl1 done"
+  return r
 
 
 askRenamingMsg :: [GHC.Name] -> String -> t
@@ -401,9 +402,7 @@ addParamsToParent :: (HsValBinds t) => GHC.Name -> [GHC.Name] -> t -> RefactGhc 
 addParamsToParent _pn [] t = return t
 addParamsToParent  pn params t = do
   logm $ "addParamsToParent:(pn,params)" ++ (showGhc (pn,params))
-  t' <- addActualParamsToRhs True pn params t
-  -- drawTokenTreeDetailed "addParamsToParent done"
-  return t'
+  addActualParamsToRhs True pn params t
 
 
 -- |Do refactoring in the client module. that is to hide the identifer
@@ -731,14 +730,14 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (parent',_liftedDecls',_paramAdded)<-addParamsToParentAndLiftedDecl n dd
+                                (parent',liftedDecls',_paramAdded)<-addParamsToParentAndLiftedDecl n dd
                                                                      parent liftedDecls
                                 -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
                                 --                                 else liftedDecls'
                                 --True means the new decl will be at the same level with its parant. 
-                                dest'<-moveDecl1 (replaceBinds dest (before++parent'++after))
+                                dest' <- moveDecl1 (replaceBinds dest (before++parent'++after))
                                            (Just (ghead "worker" (definedPNs (ghead "worker" parent'))))
-                                           [n] declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                           [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
                                 return dest'
                                 --parent'<-doMoving declaredPns (ghead "worker" parent) True  paramAdded parent'
                                 --return (before++parent'++liftedDecls''++after)
@@ -775,7 +774,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (parent',_liftedDecls',_paramAdded)
+                                (parent',liftedDecls',_paramAdded)
                                     -- <- addParamsToParentAndLiftedDecl n dd decl liftedDecls 
                                     <- addParamsToParentAndLiftedDecl n dd dest liftedDecls
                                 -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
@@ -784,7 +783,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 -- logm $ "MoveDef.worker1:dest'=" ++ (SYB.showData SYB.Renamer 0 dest')
                                 --True means the new decl will be at the same level with its parant. 
                                 parent'' <- moveDecl1 parent' Nothing
-                                             [n] declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                             [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
                                 return parent''
                                 --decl'<-doMoving declaredPns (ghead "worker" decl) True  paramAdded decl'
                                 --return (before++decl'++liftedDecls''++after)
@@ -813,26 +812,29 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
 
        logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
 
-       -- let eff = getFreeVars $ hsBinds parent
-       -- let lff = getFreeVars liftedDecls
-       logm $ "addParamsToParentAndLiftedDecl:(ef,lf)=" ++ (showGhc (ef,lf))
-       -- logm $ "addParamsToParentAndLiftedDecl:(eff,lff)=" ++ (showGhc (eff,lff))
-       logm $ "addParamsToParentAndLiftedDecl:(dd)=" ++ (showGhc dd)
-
        -- parameters to be added to pn because of lifting
        let newParams=((nub lf) \\ (nub ef)) \\ dd
-       -- let newParams=((nub lff)\\ (nub eff)) \\ dd  --parameters (in PName format) to be added to pn because of lifting
 
        logm $ "addParamsToParentAndLiftedDecl:(newParams,ef,lf,dd)=" ++ (showGhc (newParams,ef,lf,dd))
 
        if newParams /= []
          then if  (any isComplexPatBind liftedDecls)
                 then error "This pattern binding cannot be lifted, as it uses some other local bindings!"
-                else do parent' <- addParamsToParent pn newParams parent
+                else do -- first remove the decls to be lifted, so they are not disturbed
+                        (parent'',liftedDecls'',_msig) <- rmDecl pn False parent
+                        drawTokenTree "addParamsToParentAndLiftedDecl: rmDecl done"
+                        logm $ "addParamsToParentAndLiftedDecl:parent''=" ++ (SYB.showData SYB.Renamer 0 parent'')
+                        logm $ "addParamsToParentAndLiftedDecl:parent''=" ++ (showGhc parent'')
+
+                        parent' <- addParamsToParent pn newParams parent''
                         -- let parent' = parent
                         logm $ "addParamsToParentAndLiftedDecl: parent done"
-                        liftedDecls' <- addParamsToDecls liftedDecls pn newParams True
+                        drawTokenTree "addParamsToParentAndLiftedDecl: parent params done"
+
+                        liftedDecls' <- addParamsToDecls [liftedDecls''] pn newParams True
                         logm $ "addParamsToParentAndLiftedDecl: liftedDecls done"
+                        drawTokenTree "addParamsToParentAndLiftedDecl: liftedDecls done"
+
                         return (parent', liftedDecls',True)
          else return (parent,liftedDecls,False)
 
@@ -1197,7 +1199,7 @@ doDemoting' t pn
                        -- rhs' <- moveDecl pns rhs False decls False
                        -- TODO: what wbout dtoks?
                        -- error "dupInPat" -- ++AZ++
-                       rhs' <- moveDecl1 rhs Nothing pns pns False
+                       rhs' <- moveDecl1 rhs Nothing pns Nothing pns False
                        return (GHC.PatBind pat rhs' ty fvs ticks)
                  -- dupInPat _ =mzero
                  dupInPat x = return x

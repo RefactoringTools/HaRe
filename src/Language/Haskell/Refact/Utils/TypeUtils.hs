@@ -4251,7 +4251,7 @@ addDecl:: (SYB.Data t,HsValBinds t)
              -- include the signature too
         -> Bool              -- ^ True means the declaration is a
                              -- toplevel declaration.
-        -> RefactGhc t --[GHC.LHsBind GHC.Name]
+        -> RefactGhc t
 
 addDecl parent pn (decl, msig, declToks) topLevel
  = if isJust pn
@@ -4535,7 +4535,7 @@ addFormalParams
  -> RefactGhc ()
 addFormalParams place newParams
   = do
-       logm $ "addFormalParams:(place,newParams):" ++ (SYB.showData SYB.Renamer 0 (place,newParams))
+       -- logm $ "addFormalParams:(place,newParams):" ++ (SYB.showData SYB.Renamer 0 (place,newParams))
        -- newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
        let newStr = (prettyprintPatList prettyprint True newParams)
 
@@ -4548,32 +4548,20 @@ addFormalParams place newParams
          Left ss -> error $ "addFormalParams: expecting RealSrcSpan, got:" ++ (showGhc ss)
          Right pats -> do
            let l = GHC.combineLocs (ghead "addFormalParams" pats) (glast "addFormalParams" pats)
-           logm $ "addFormalParams:(l,pats)=" ++ (SYB.showData SYB.Renamer 0 (l,pats))
+           -- logm $ "addFormalParams:(l,pats)=" ++ (SYB.showData SYB.Renamer 0 (l,pats))
            toks <- getToksForSpan l
-           newToks' <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False newStr
-           let newToks = map markToken newToks'
 
            let oldStr = GHC.showRichTokenStream $ rmOffsetFromToks toks
-           combinedToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False (newStr ++ " " ++ oldStr)
-           -- Note: the order of the next two is important, replacing
-              -- the toks for a given span can change the span, in which
-           -- nl1 <- putToksForSpan l newToks
-           -- nl2 <- putToksAfterSpan l PlaceAdjacent toks
-
-           -- logm $ "addFormalParams:nl1=" ++ (showGhc nl1) ++ ":" ++ (showSrcSpanF nl1)
-           -- logm $ "addFormalParams:nl2=" ++ (showGhc nl2) ++ ":" ++ (showSrcSpanF nl2)
-
-           -- l' <- putToksForSpan l newToks
-           -- _  <- putToksAfterSpan l' PlaceAdjacent toks
-
-           -- _ <- putToksAfterSpan l PlaceAdjacent toks
-           -- _ <- putToksForSpan l newToks
+           combinedToks <- liftIO $ tokenise (realSrcLocFromTok
+                                  $ ghead "addFormalParams" toks)
+                                     0 False (newStr ++ " " ++ oldStr)
 
            _ <- putToksForSpan l combinedToks
-           -- putToksForSpan l (newToks ++ toks)
+
            return ()
 
-       drawTokenTreeDetailed "after addFormalParams"
+       -- drawTokenTree "after addFormalParams"
+       -- drawTokenTreeDetailed "after addFormalParams"
 
 -- ---------------------------------------------------------------------
 
@@ -4583,7 +4571,6 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
     -- logm $ "addActualParamsToRhs:rhs=" ++ (SYB.showData SYB.Renamer 0 $ rhs)
     r <- everywhereMStaged SYB.Renamer (SYB.mkM grhs) rhs
     return r
-    -- = applyTP (stop_tdTP (failTP `adhocTP` worker))
      where
 
        -- |Limit the action to actual RHS elements
@@ -4882,9 +4869,9 @@ duplicateDecl decls sigs n newFunName
 -- parameter is True) that defines the given identifier from the
 -- declaration list.
 rmDecl:: (SYB.Data t)
-    =>GHC.Name     -- ^ The identifier whose definition is to be removed.
-    ->Bool         -- ^ True means including the type signature.
-    ->t            -- ^ The declaration list.
+    => GHC.Name     -- ^ The identifier whose definition is to be removed.
+    -> Bool         -- ^ True means including the type signature.
+    -> t            -- ^ The declaration list.
     -> RefactGhc
         (t,
         GHC.LHsBind GHC.Name,
@@ -4899,6 +4886,7 @@ rmDecl pn incSig t = do
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
   -- drawTokenTreeDetailed "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
+  drawTokenTree "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
   t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
 
              -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
@@ -4955,14 +4943,17 @@ rmDecl pn incSig t = do
          -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ missing
          -- toks <- getToksForSpanWithIntros l
          removeToksForPos (getStartEndLoc decl)
+         drawTokenTree "rmDecl.inLet after removeToksForPos"
          decl' <- syncDeclToLatestStash decl
          setStateStorage (StorageBind decl')
+         drawTokenTree "rmDecl.inLet after syncDeclToLatestStash"
          case length decls of
            1 -> do -- Removing the last declaration
             logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
             -- putToksForSpan ss toks
-            void $ putToksForSpan ss $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
-            return expr
+            (_,expr') <- putDeclToksForSpan ss expr $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
+            drawTokenTree "rmDecl.inLet after putToksForSpan"
+            return expr'
            _ -> do
             logm $ "rmDecl.inLet:length decls /= 1"
             -- drawTokenTreeDetailed "rmDecl.inLet tree"

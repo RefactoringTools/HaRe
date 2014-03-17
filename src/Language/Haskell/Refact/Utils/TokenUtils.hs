@@ -21,6 +21,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
 
        -- * Operations at 'TokenCache' level
        , putToksInCache
+       , putDeclToksInCache
        , replaceTokenInCache
        , removeToksFromCache
        , getTreeFromCache
@@ -635,6 +636,20 @@ putToksInCache tk sspan toks = (tk'',newSpan)
    forest = getTreeFromCache sspan tk
    (forest',newSpan,oldTree) = updateTokensForSrcSpan forest sspan toks
    tk' = replaceTreeInCache sspan forest' tk
+   tk'' = stash tk' oldTree
+
+-- ---------------------------------------------------------------------
+
+putDeclToksInCache :: (SYB.Data t) =>
+    TokenCache -> GHC.SrcSpan -> [PosToken] -> GHC.Located t
+ -> (TokenCache,GHC.SrcSpan,GHC.Located t)
+putDeclToksInCache tk sspan toks t = (tk'',newSpan,t')
+  where
+   forest = getTreeFromCache sspan tk
+   (forest',newSpan,oldTree) = updateTokensForSrcSpan forest sspan toks
+   (t',forest'') = syncAST t newSpan forest'
+
+   tk' = replaceTreeInCache sspan forest'' tk
    tk'' = stash tk' oldTree
 
 -- ---------------------------------------------------------------------

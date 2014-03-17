@@ -30,6 +30,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * TokenUtils API
        , replaceToken
        , putToksForSpan
+       , putDeclToksForSpan
        , getToksForSpan
        , getToksForSpanNoInv
        , getToksForSpanWithIntros
@@ -227,6 +228,19 @@ putToksForSpan sspan toks = do
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   return newSpan
+
+-- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
+-- delimiting new tokens, and update the AST fragment to reflect it
+putDeclToksForSpan ::  (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> [PosToken]
+   -> RefactGhc (GHC.SrcSpan,GHC.Located t)
+putDeclToksForSpan sspan t toks = do
+  logm $ "putDeclToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show toks)
+  st <- get
+  let Just tm = rsModule st
+  let (tk',newSpan,t') = putDeclToksInCache (rsTokenCache tm) sspan toks t
+  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
+  put $ st { rsModule = rsModule' }
+  return (newSpan,t')
 
 -- |Replace the tokens for a given GHC.SrcSpan, return GHC.SrcSpan
 -- they are placed in
