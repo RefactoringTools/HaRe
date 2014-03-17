@@ -519,6 +519,18 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
 }
 -}
 
+    -- ---------------------------------
+
+    it "rename preserving layout Utils.hs" $ do
+     -- rename logTestSettings testCradle "./test/testdata/Renaming/Utils.hs" "parsed1" (13,11)
+     r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/Utils.hs" "parsed1" (13,11)
+
+     r `shouldBe` [ "./test/testdata/Renaming/Utils.hs"
+                  ]
+     diff <- compareFiles "./test/testdata/Renaming/Utils.expected.hs"
+                          "./test/testdata/Renaming/Utils.refactored.hs"
+     diff `shouldBe` []
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 
