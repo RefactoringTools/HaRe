@@ -161,6 +161,7 @@ spec = do
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((3,1),(10,1))\n"++
          "1:((3,1),(3,7))\n"++
@@ -191,6 +192,7 @@ spec = do
          "6:((8,10),(8,11))\n"++
          "6:((8,11),(8,12))\n"++
          "1:((10,1),(10,1))\n"
+-}
 
   -- ---------------------------------------------
 
@@ -207,6 +209,8 @@ spec = do
       let layout = allocTokens parsed toks
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
+
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((3,1),(9,1))\n"++
          "1:((3,1),(3,7))\n"++
@@ -231,6 +235,7 @@ spec = do
          "6:((7,6),(7,8))\n"++
          "6:((7,9),(7,12))\n"++
          "1:((9,1),(9,1))\n"
+-}
 
 -- ---------------------------------------------------------------------
 

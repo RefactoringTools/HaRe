@@ -242,6 +242,8 @@ renderLines ls = res
     go ci ((Line r c _o _f _s str):ls') = do
       newPos r (c+ci)
       addString (GHC.showRichTokenStream str)
+      -- addString (GHC.showRichTokenStream $ reAlignMarked str)
+      -- addString (GHC.showRichTokenStream $ reAlignMarked str)
       go ci ls'
 
     -- State operations ----------------
