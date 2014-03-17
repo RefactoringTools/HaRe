@@ -1216,12 +1216,7 @@ doDemoting' t pn
                             => GHC.Name -> t
                             -- -> RefactGhc [GHC.Name]
                             -> RefactGhc [GHC.Name]
-{-
-          declaredNamesInTargetPlace pn
-             = SYB.everythingStaged SYB.Renamer (++) []
-                   ([] `SYB.mkQ`  inMatch
-                       `SYB.extQ` inPat)
--}
+
           declaredNamesInTargetPlace pn' t' = do
              logm $ "declaredNamesInTargetPlace:pn=" ++ (showGhc pn')
              res <- applyTU (stop_tdTUGhc (failTU
@@ -1249,19 +1244,6 @@ doDemoting' t pn
                      -- (return.snd) =<< hsFDsFromInside pat
                  -- inPat _=  mzero
                  inPat _=  return mzero
-
-
-{-
-                 inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-                    | findPN pn rhs
-                     =(return.snd)=<<hsFDsFromInside match
-                 inMatch _ =mzero
-
-                 inPat (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
-                    |findPN pn rhs
-                     =(return.snd)=<<hsFDsFromInside pat
-                 inPat _=mzero
--}
 
 
 
@@ -1530,25 +1512,13 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub
                                    ( nub (d `union` (nub.concat) ds')))
-       {-
-       getClashedNames oldNames newNames (match::HsMatchP)
-         = do  (f,d)<-hsFDsFromInside match
-               ds'<-mapM (flip hsVisiblePNs match) oldNames
-               -- return clashed names
-               return (filter (\x->elem (pNtoName x) newNames)  --Attention: nub
-                                   ( nub (d `union` (nub.concat) ds')))
-       -}
+
        ----- make Substitions between formal and actual parameters.-----------------
        mkSubst :: [GHC.LPat GHC.Name] -> [[GHC.HsExpr GHC.Name]] -> [(GHC.Name,GHC.HsExpr GHC.Name)]
        mkSubst pats1 params
            = catMaybes (zipWith (\x y -> if (patToPNT x/=Nothing) && (length (nub $ map showGhc y)==1)
                                           then Just (gfromJust "mkSubst" $ patToPNT x,(ghead "mkSubst") y)
                                           else Nothing) pats1 params)
-           {-
-           = catMaybes (zipWith (\x y ->if (patToPN x/=defaultPN) && (length (nub y)==1)
-                            then Just (patToPN x,(ghead "mkSubst") y)
-                            else Nothing) pats params)
-           -}
 
 
 -- |substitute an old expression by new expression
@@ -1564,18 +1534,10 @@ replaceExpWithUpdToks  decls subst
                worker x=return x
 
 
-
 -- | return True if pn is a local function/pattern name
 isLocalFunOrPatName :: SYB.Data t => GHC.Name -> t -> Bool
 isLocalFunOrPatName pn scope
  = isLocalPN pn && isFunOrPatName pn scope
-
-{-
--- |removeTypeSig removes the signature declaration for pn from the decl list.
--- removeTypeSig :: GHC.Name->[HsDeclP]->[HsDeclP]
-removeTypeSig pn decls = decls
-  -- ++ AZ++ TODO: make use of rmTypeSig pn decls from TypeUtils
--}
 
 -- ---------------------------------------------------------------------
 
