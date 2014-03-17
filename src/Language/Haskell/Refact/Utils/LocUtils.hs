@@ -108,6 +108,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , isMarked
                      , addOffsetToToks
                      , matchTokenPos
+                     , rmOffsetFromToks
   ) where
 
 
@@ -1442,6 +1443,17 @@ isMarked (GHC.L l _,_) =
   case l of
     GHC.RealSrcSpan ss -> GHC.srcSpanFile ss == tokenFileMark
     _                  -> False
+
+-- ---------------------------------------------------------------------
+
+rmOffsetFromToks :: [PosToken] -> [PosToken]
+rmOffsetFromToks [] = []
+rmOffsetFromToks toks = toks'
+  where
+    ro' = tokenRow $ head toks
+    co' = tokenCol $ head toks
+    -- (ro,co) = srcPosToSimpPos (tokenRow $ head toks, tokenCol $ head toks)
+    toks' = addOffsetToToks (-ro',-co') toks
 
 -- ---------------------------------------------------------------------
 

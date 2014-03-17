@@ -4505,7 +4505,7 @@ addParamsToDecls decls pn paramPNames modifyToks = do
                        logm $ "addParamtoMatch:l=" ++ (showGhc l)
                        if emptyList pats
                          then addFormalParams (Left l2) pats'
-                         else addFormalParams (Right (ghead "addParamtoMatch" pats)) pats'
+                         else addFormalParams (Right pats) pats'
                        return pats'
 
                else return pats'
@@ -4517,41 +4517,63 @@ addParamsToDecls decls pn paramPNames modifyToks = do
      | p == pn
        = do _rhs'<-addActualParamsToRhs modifyToks pn paramPNames rhs
             let pats' = map GHC.noLoc $ map pNtoPat paramPNames
-            _pats'' <- if modifyToks  then do _ <- addFormalParams (Right pat) pats'
+            _pats'' <- if modifyToks  then do _ <- addFormalParams (Right [pat]) pats'
                                               return pats'
                                      else return pats'
             -- return (TiDecorate.Dec (HsFunBind loc [HsMatch loc (patToPNT p) pats' rhs ds]))
             return (GHC.L l1 (GHC.PatBind pat rhs ty fvs t))
    addParamToDecl x=return x
 
+
 -- | Add tokens corresponding to the new parameters to the end of the
 -- syntax element provided
-addFormalParams :: Either GHC.SrcSpan (GHC.LPat GHC.Name) -> [GHC.Located (GHC.Pat GHC.Name)] -> RefactGhc ()
+addFormalParams
+ :: Either GHC.SrcSpan [(GHC.LPat GHC.Name)] -- location: SrcSpan only
+                                 -- if no existing params, else list
+                                 -- of current params
+ -> [(GHC.LPat GHC.Name)] -- params to add
+ -> RefactGhc ()
 addFormalParams place newParams
   = do
+       logm $ "addFormalParams:(place,newParams):" ++ (SYB.showData SYB.Renamer 0 (place,newParams))
        -- newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
        let newStr = (prettyprintPatList prettyprint True newParams)
 
        case place of
          Left l@(GHC.RealSrcSpan ss) -> do
-           newToks <- liftIO $ tokenise (GHC.realSrcSpanStart ss) 0 False newStr
+           newToks' <- liftIO $ tokenise (GHC.realSrcSpanStart ss) 0 False newStr
+           let newToks = map markToken newToks'
            _ <- putToksAfterSpan l PlaceAdjacent newToks
            return ()
          Left ss -> error $ "addFormalParams: expecting RealSrcSpan, got:" ++ (showGhc ss)
-         Right (GHC.L l _) -> do
+         Right pats -> do
+           let l = GHC.combineLocs (ghead "addFormalParams" pats) (glast "addFormalParams" pats)
+           logm $ "addFormalParams:(l,pats)=" ++ (SYB.showData SYB.Renamer 0 (l,pats))
            toks <- getToksForSpan l
-           newToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False newStr
+           newToks' <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False newStr
+           let newToks = map markToken newToks'
+
+           let oldStr = GHC.showRichTokenStream $ rmOffsetFromToks toks
+           combinedToks <- liftIO $ tokenise (realSrcLocFromTok $ ghead "addFormalParams" toks) 0 False (newStr ++ " " ++ oldStr)
            -- Note: the order of the next two is important, replacing
               -- the toks for a given span can change the span, in which
-           _ <- putToksForSpan l newToks
-           _ <- putToksAfterSpan l PlaceAdjacent toks
+           -- nl1 <- putToksForSpan l newToks
+           -- nl2 <- putToksAfterSpan l PlaceAdjacent toks
+
+           -- logm $ "addFormalParams:nl1=" ++ (showGhc nl1) ++ ":" ++ (showSrcSpanF nl1)
+           -- logm $ "addFormalParams:nl2=" ++ (showGhc nl2) ++ ":" ++ (showSrcSpanF nl2)
 
            -- l' <- putToksForSpan l newToks
            -- _  <- putToksAfterSpan l' PlaceAdjacent toks
 
            -- _ <- putToksAfterSpan l PlaceAdjacent toks
            -- _ <- putToksForSpan l newToks
+
+           _ <- putToksForSpan l combinedToks
+           -- putToksForSpan l (newToks ++ toks)
            return ()
+
+       drawTokenTreeDetailed "after addFormalParams"
 
 -- ---------------------------------------------------------------------
 

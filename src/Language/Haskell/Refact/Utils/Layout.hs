@@ -619,11 +619,19 @@ allocMatches matches toksIn = allocList matches toksIn doOne
               typeLayout = strip $ (makeLeafFromToks t1) ++ allocType typ typToks
 
         (s3,rhsToks,bindsToks) = splitToksForList rhs toks'
-        patLayout = allocList pats patsToks allocPat
+        -- patLayout = allocList pats patsToks allocPat
+
+        -- Insert a SrcSpan over the parameters, if there are any
+        patLayout = case (strip $ allocList pats patsToks allocPat) of
+                     [] -> []
+                     ps -> [makeGroup ps]
+
         grhsLayout = allocGRHSs grhs (rhsToks++bindsToks)
         matchLayout = [makeGroup $ strip $ (makeLeafFromToks s2)
-                           ++ patLayout ++ mtypLayout
-                           ++ (makeLeafFromToks s3) ++ grhsLayout
+                           ++ patLayout
+                           ++ mtypLayout
+                           ++ (makeLeafFromToks s3)
+                           ++ grhsLayout
                       ]
         r = (strip $ (makeLeafFromToks sb)
                   ++ matchLayout
@@ -1816,13 +1824,15 @@ strip ls = filter (not . emptyNode) ls
 
 -- ---------------------------------------------------------------------
 
-allocList :: [GHC.Located b] -> [PosToken]
+allocList ::
+      [GHC.Located b]
+   -> [PosToken]
    -> (GHC.Located b -> [PosToken] -> [LayoutTree])
    -> [LayoutTree]
 allocList xs toksIn allocFunc = r
   where
     (s2,listToks,toks2') = splitToksForList xs toksIn
-    (layout,toks2) = ((makeLeafFromToks s2) ++ allocAll xs listToks,toks2')
+    (layout,toks2) = (allocAll xs listToks,toks2')
 
     allocAll xs' toks = res
       where
@@ -1837,7 +1847,8 @@ allocList xs toksIn allocFunc = r
             layout' = (makeLeafFromToks s1) ++ [makeGroup (strip $ allocFunc x funcToks)]
             r1 = (acc ++ (strip layout'),toks')
 
-    r = strip $ layout ++ (makeLeafFromToks toks2)
+    -- r = strip $ (makeLeafFromToks s2) ++ layout ++ (makeLeafFromToks toks2)
+    r = strip $ (makeLeafFromToks s2) ++ [makeGroup $ strip $ layout] ++ (makeLeafFromToks toks2)
 
 -- ---------------------------------------------------------------------
 
