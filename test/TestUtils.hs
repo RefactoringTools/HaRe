@@ -138,30 +138,19 @@ initialLogOnState = RefSt
 toksFromState :: RefactState -> [PosToken]
 toksFromState st =
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
 
 -- ---------------------------------------------------------------------
 
-{-
-pprFromState :: RefactState -> [Ppr]
-pprFromState st =
-  case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
-    Just tm -> retrieveTokensPpr $ (tkCache $ rsTokenCache tm) Map.! mainTid
-    Nothing -> []
--}
--- ---------------------------------------------------------------------
-
 sourceTreeFromState :: RefactState -> Maybe SourceTree
 sourceTreeFromState st =
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> Just $ layoutTreeToSourceTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> Nothing
 
 -- ---------------------------------------------------------------------
+
 
 linesFromState :: RefactState -> [Line]
 linesFromState st =
@@ -174,7 +163,6 @@ linesFromState st =
 layoutFromState :: RefactState -> Maybe (Tree Entry)
 layoutFromState st =
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> Just ((tkCache $ rsTokenCache tm) Map.! mainTid)
     Nothing -> Nothing
 

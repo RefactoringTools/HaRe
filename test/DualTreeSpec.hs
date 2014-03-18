@@ -5,6 +5,7 @@ import           Test.Hspec
 
 
 import qualified GHC        as GHC
+import qualified Outputable as GHC
 
 import qualified GHC.SYB.Utils as SYB
 import Data.Maybe
@@ -3589,11 +3590,20 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
 
       let
         comp = do
-          newName <- mkNewGhcName Nothing "parsed1"
+          -- newName <- mkNewGhcName Nothing "parsed1"
+          newName <- mkNewGhcName Nothing "park"
           new <- renamePN n newName True False renamed
           return (new,newName)
       ((n,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((n,nn),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      let Just treeFinal = layoutFromState s
+      -- (show treeFinal) `shouldBe` ""
+      (showGhc treeFinal) `shouldBe` ""
+
+      let sourceTree = layoutTreeToSourceTree treeFinal
+      (showGhc sourceTree) `shouldBe` ""
+
 
       (show $ linesFromState s) `shouldBe`
           "[(1 1 0 SOriginal ONone\"module Layout.Utils where\"),"++
