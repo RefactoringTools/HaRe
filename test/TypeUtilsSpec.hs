@@ -14,10 +14,9 @@ import qualified RdrName    as GHC
 import qualified Module     as GHC
 
 import Data.Maybe
-import Language.Haskell.Refact.Utils.Utils
+
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
--- import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -26,6 +25,7 @@ import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.Utils
 
 import qualified Data.Tree.Zipper as Z
 

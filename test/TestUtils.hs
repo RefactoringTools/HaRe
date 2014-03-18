@@ -166,7 +166,6 @@ sourceTreeFromState st =
 linesFromState :: RefactState -> [Line]
 linesFromState st =
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
 

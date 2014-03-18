@@ -3,6 +3,7 @@ module DualTreeSpec (main, spec) where
 
 import           Test.Hspec
 
+
 import qualified GHC        as GHC
 
 import qualified GHC.SYB.Utils as SYB
@@ -13,7 +14,10 @@ import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
+import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
+import Language.Haskell.Refact.Utils.TypeUtils
 
 -- import Data.Tree.DUAL
 
@@ -3524,6 +3528,91 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       -- (show $ retrieveLines srcTree) `shouldBe` ""
 
       (renderSourceTree srcTree) `shouldBe` origSource
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format Utils.hs" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Renaming/Utils.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format Utils.hs with renaming" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Renaming/Utils.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+      let Just (GHC.L _l n) = locToName (5, 11) renamed
+
+      let
+        comp = do
+          newName <- mkNewGhcName Nothing "parsed1"
+          new <- renamePN n newName True False renamed
+          return (new,newName)
+      ((n,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((n,nn),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      (show $ linesFromState s) `shouldBe`
+          "[(1 1 0 SOriginal ONone\"module Layout.Utils where\"),"++
+           "(3 1 0 SOriginal ONone\"foo :: IO ()\"),"++
+           "(4 1 0 SOriginal ONone\"foo = do\"),"++
+           "(5 7 0 SOriginal OGroup\"let parsed1 = 3\"),"++
+           "(7 7 0 SOriginal OGroup\"let expr = 2\"),"++
+           "(8 7 0 SOriginal OGroup\"return ()\"),"++
+           "(9 1 0 SOriginal ONone\"\")]"
+
+      (renderLines $ linesFromState s) `shouldBe`
+          "module Layout.Utils where\n"++
+          "\n"++
+          "foo :: IO ()\n"++
+          "foo = do\n"++
+          "      let parsed1 = 3\n"++
+          "\n"++
+          "      let expr = 2\n"++
+          "      return ()\n"
 
 
   -- -----------------------------------

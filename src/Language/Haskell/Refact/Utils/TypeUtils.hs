@@ -4088,7 +4088,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
                                in toks1'
                           else toks
 
-       drawTokenTreeDetailed "before starting"
+       -- drawTokenTreeDetailed "before starting"
        logm $ "addImportDecl:toks =" ++ show toks
        logm $ "addImportDecl:toks1=" ++ show toks1
 
@@ -4886,7 +4886,7 @@ rmDecl pn incSig t = do
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
   -- drawTokenTreeDetailed "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
-  drawTokenTree "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
+  -- drawTokenTree "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
   t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
 
              -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
@@ -4943,16 +4943,16 @@ rmDecl pn incSig t = do
          -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ missing
          -- toks <- getToksForSpanWithIntros l
          removeToksForPos (getStartEndLoc decl)
-         drawTokenTree "rmDecl.inLet after removeToksForPos"
+         -- drawTokenTree "rmDecl.inLet after removeToksForPos"
          decl' <- syncDeclToLatestStash decl
          setStateStorage (StorageBind decl')
-         drawTokenTree "rmDecl.inLet after syncDeclToLatestStash"
+         -- drawTokenTree "rmDecl.inLet after syncDeclToLatestStash"
          case length decls of
            1 -> do -- Removing the last declaration
             logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
             -- putToksForSpan ss toks
             (_,expr') <- putDeclToksForSpan ss expr $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
-            drawTokenTree "rmDecl.inLet after putToksForSpan"
+            -- drawTokenTree "rmDecl.inLet after putToksForSpan"
             return expr'
            _ -> do
             logm $ "rmDecl.inLet:length decls /= 1"
@@ -5274,7 +5274,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
           logm $ "renamePNworker:rename at :" ++ (show l) ++ (showSrcSpanF l)
-          drawTokenTree "before worker" -- ++AZ++ debug
+          -- drawTokenTree "before worker" -- ++AZ++ debug
           worker useQual l Nothing
           return (GHC.L l newName)
     rename x = return x

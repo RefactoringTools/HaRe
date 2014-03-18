@@ -385,9 +385,9 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
                = do
-                    drawTokenTree "update Located HsExpr starting" -- ++AZ++
+                    -- drawTokenTree "update Located HsExpr starting" -- ++AZ++
                     _ <- updateToks oldExp newExp prettyprint False
-                    drawTokenTree "update Located HsExpr done" -- ++AZ++
+                    -- drawTokenTree "update Located HsExpr done" -- ++AZ++
 
                 -- error "update: updated tokens" -- ++AZ++ debug
                     -- TODO: make sure to call syncAST

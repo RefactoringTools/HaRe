@@ -58,7 +58,7 @@ reallyDoIfToCase expr rs = do
          inExp exp1@(GHC.L l (GHC.HsIf _se (GHC.L l1 _) (GHC.L l2 _) (GHC.L l3 _)))
            | sameOccurrence expr exp1
            = do
-               drawTokenTreeDetailed "reallyDoIfToCase" -- ++AZ++ debug
+               -- drawTokenTreeDetailed "reallyDoIfToCase" -- ++AZ++ debug
                newExp <- ifToCaseTransform exp1
 
                let (GHC.RealSrcLoc rl) = GHC.srcSpanStart l

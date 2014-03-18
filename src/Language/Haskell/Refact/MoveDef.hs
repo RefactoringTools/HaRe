@@ -315,7 +315,7 @@ moveDecl1 :: (HsValBinds t)
 moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
   -- logm $ "moveDecl1:t=" ++ (SYB.showData SYB.Renamer 0 t) -- ++AZ++
   logm $ "moveDecl1:mliftedDecls=" ++ (showGhc mliftedDecls)
-  drawTokenTree "moveDecl1 on entry"
+  -- drawTokenTree "moveDecl1 on entry"
 
   -- TODO: work with all of ns, not just the first
   let n = ghead "moveDecl1" ns
@@ -357,9 +357,9 @@ moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
   logm $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
   logm $ "moveDecl1:(defName,topLevel)" ++ (showGhc (defName,topLevel)) -- ++AZ++
 
-  drawTokenTree "moveDecl1 about to addDecl"
+  -- drawTokenTree "moveDecl1 about to addDecl"
   r <- addDecl t' defName (ghead "moveDecl1 2" funBinding,sigsRemoved,Just (maybeToksSig ++ funToks)) topLevel
-  drawTokenTree "moveDecl1 done"
+  -- drawTokenTree "moveDecl1 done"
   return r
 
 
@@ -822,18 +822,18 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
                 then error "This pattern binding cannot be lifted, as it uses some other local bindings!"
                 else do -- first remove the decls to be lifted, so they are not disturbed
                         (parent'',liftedDecls'',_msig) <- rmDecl pn False parent
-                        drawTokenTree "addParamsToParentAndLiftedDecl: rmDecl done"
+                        -- drawTokenTree "addParamsToParentAndLiftedDecl: rmDecl done"
                         logm $ "addParamsToParentAndLiftedDecl:parent''=" ++ (SYB.showData SYB.Renamer 0 parent'')
                         logm $ "addParamsToParentAndLiftedDecl:parent''=" ++ (showGhc parent'')
 
                         parent' <- addParamsToParent pn newParams parent''
                         -- let parent' = parent
                         logm $ "addParamsToParentAndLiftedDecl: parent done"
-                        drawTokenTree "addParamsToParentAndLiftedDecl: parent params done"
+                        -- drawTokenTree "addParamsToParentAndLiftedDecl: parent params done"
 
                         liftedDecls' <- addParamsToDecls [liftedDecls''] pn newParams True
                         logm $ "addParamsToParentAndLiftedDecl: liftedDecls done"
-                        drawTokenTree "addParamsToParentAndLiftedDecl: liftedDecls done"
+                        -- drawTokenTree "addParamsToParentAndLiftedDecl: liftedDecls done"
 
                         return (parent', liftedDecls',True)
          else return (parent,liftedDecls,False)
