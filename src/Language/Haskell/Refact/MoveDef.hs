@@ -143,6 +143,8 @@ compDemote fileName (row,col) = do
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
 
+      -- TODO: make the next one an API call, that also gets the
+      -- parsed source
       let (Just (modName,_)) = getModuleName parsed
       let maybePn = locToName (row, col) renamed
       case maybePn of
@@ -930,15 +932,6 @@ doDemoting  pn = do
   -- error ("doDemoting:ren=" ++ (showGhc ren))
   showLinesDebug "doDemoting done"
   return ()
-{-
- =runStateT (applyTP ((once_tdTP (failTP `adhocTP` demoteInMod
-                                         `adhocTP` demoteInMatch
-                                         `adhocTP` demoteInPat
-                                         `adhocTP` demoteInLet
-                                         `adhocTP` demoteInAlt
-                                         `adhocTP` demoteInStmt)) `choiceTP` failure) mod)
-                     ((toks,unmodified),(-1000,0))
--}
     where
        --1. demote from top level
        -- demoteInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
@@ -1027,13 +1020,13 @@ doDemoting  pn = do
 
 
 
+-- |Demote the declaration of 'pn' in the context of 't'.
 doDemoting' :: (HsValBinds t, UsedByRhs t) => t -> GHC.Name -> RefactGhc t
 doDemoting' t pn
  = let origDecls = hsBinds t
        demotedDecls'= definingDeclsNames [pn] origDecls True False
        declaredPns = nub $ concatMap definedPNs demotedDecls'
    in if not (usedByRhs t declaredPns)
-      -- if True -- ++AZ++ temporary
        then do
               -- drawTokenTree "" -- ++AZ++ debug
               let demotedDecls = definingDeclsNames [pn] (hsBinds t) True True
@@ -1049,10 +1042,13 @@ doDemoting' t pn
                   -- uselist = concatMap (\r -> if (emptyList r) then [] else ["Used"]) $ map (\b -> uses declaredPns [b]) otherBinds
                   xx = map (\b -> (b,uses declaredPns [b])) otherBinds
                   uselist = concatMap (\(b,r) -> if (emptyList r) then [] else [b]) xx
+                  useCount = sum $ concatMap snd xx
               logm $ "doDemoting': uses xx=" ++ (showGhc xx)
               logm $ "doDemoting': uses uselist=" ++ (showGhc uselist)
+              logm $ "doDemoting': uses useCount=" ++ (show useCount)
 
-              case length uselist  of
+              -- case length uselist  of
+              case useCount  of
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function
                       do
@@ -1105,19 +1101,12 @@ doDemoting' t pn
 
                                     return (replaceBinds t' ds'')
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
-                  -- _ ->error $ "\nThis function/pattern binding is used by more than one friend bindings:\n" ++ (showGhc yy)
-                  -- _ ->error $ "\nThis function/pattern binding is used by more than one friend bindings\n" ++ (showGhc (uselist,declaredPns,otherBinds)) -- ++AZ++
 
        else error "This function can not be demoted as it is used in current level!\n"
-       -- else error ("doDemoting': demotedDecls=" ++ (showGhc demotedDecls)) -- ++AZ++
-       -- else error ("doDemoting': declaredPns=" ++ (showGhc declaredPns)) -- ++AZ++
-       -- else error ("doDemoting': (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns))=" ++ (showGhc (origDecls,demotedDecls',declaredPns,(usedByRhs t declaredPns)))) -- ++AZ++
 
 
     where
           ---find how many matches/pattern bindings use  'pn'-------
-          -- uses :: (SYB.Data t) => [GHC.Name] -> [t] -> [Int]
-          -- uses :: (SYB.Data t) => [GHC.Name] -> t -> [Int]
           uses pns t2
                = concat $ SYB.everythingStaged SYB.Renamer (++) []
                    ([] `SYB.mkQ`  usedInMatch

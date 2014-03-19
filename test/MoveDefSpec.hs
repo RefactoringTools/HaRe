@@ -648,11 +648,24 @@ negative=[(["WhereIn2.hs"],["14","1"]), x
 -}
 
     -- -----------------------------------------------------------------
-{-
+
     it "fails MultiLeg.hs" $ do
      res <- catchException (demote defaultTestSettings testCradle "./test/testdata/Demote/MultiLeg.hs" (14,1))
-     (show res) `shouldBe` "Just \"This definition can not be demoted, as it is used in more than one definition\""
--}
+     -- demote logTestSettings testCradle "./test/testdata/Demote/MultiLeg.hs" (14,1)
+     (show res) `shouldBe` "Just \"\\nThis function/pattern binding is used by more than one friend bindings\\n\""
+
+
+    -- -----------------------------------------------------------------
+
+    it "passes MultiLeg2.hs" $ do
+     r <- demote defaultTestSettings testCradle "./test/testdata/Demote/MultiLeg2.hs" (14,1)
+     -- demote logTestSettings testCradle "./test/testdata/Demote/MultiLeg2.hs" (14,1)
+
+     (show r) `shouldBe` "[\"./test/testdata/Demote/MultiLeg2.hs\"]"
+     diff <- compareFiles "./test/testdata/Demote/MultiLeg2.refactored.hs"
+                          "./test/testdata/Demote/MultiLeg2.hs.expected"
+     diff `shouldBe` []
+
 
 -- ---------------------------------------------------------------------
 -- Helper functions

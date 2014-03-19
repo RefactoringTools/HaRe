@@ -366,3 +366,6 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/Utils.hs.AST_out
 /test/testdata/Renaming/Utils.hs.renamed_out
 /test/testdata/Renaming/Utils.hs.tokens
+/test/testdata/Demote/MultiLeg.hs.AST_out
+/test/testdata/Demote/MultiLeg.hs.renamed_out
+/test/testdata/Demote/MultiLeg.hs.tokens
