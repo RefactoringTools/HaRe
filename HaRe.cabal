@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.1.5
+Version:                        0.7.1.6
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -20,7 +20,13 @@ Description:
    control system before refactoring. The developers make no
    warranties, use at your own risk.
    .
-   The renaming refactoring seems reasonably reliable.
+   Despite the disclaimer, HaRe attempts to operate in a safe way, by
+   first writing new files with proposed changes, and only swapping
+   these with the originals when the change is accepted. In the
+   process the original file is renamed to have the current date/time
+   as a suffix. Thus it should be possible to (manually) undo changes.
+   .
+   The renaming refactoring seems reasonably reliable, as does lifting.
    .
 
 Synopsis:                       the Haskell Refactorer.
