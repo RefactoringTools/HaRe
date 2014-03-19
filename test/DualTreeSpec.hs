@@ -3590,8 +3590,8 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
 
       let
         comp = do
-          -- newName <- mkNewGhcName Nothing "parsed1"
-          newName <- mkNewGhcName Nothing "park"
+          newName <- mkNewGhcName Nothing "parsed1"
+          -- newName <- mkNewGhcName Nothing "park"
           new <- renamePN n newName True False renamed
           return (new,newName)
       ((n,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
@@ -3599,12 +3599,12 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
 
       let Just treeFinal = layoutFromState s
       -- (show treeFinal) `shouldBe` ""
-      (showGhc treeFinal) `shouldBe` ""
+      -- (showGhc treeFinal) `shouldBe` ""
 
       let sourceTree = layoutTreeToSourceTree treeFinal
-      (showGhc sourceTree) `shouldBe` ""
+      -- (showGhc sourceTree) `shouldBe` ""
 
-
+{-
       (show $ linesFromState s) `shouldBe`
           "[(1 1 0 SOriginal ONone\"module Layout.Utils where\"),"++
            "(3 1 0 SOriginal ONone\"foo :: IO ()\"),"++
@@ -3613,6 +3613,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
            "(7 7 0 SOriginal OGroup\"let expr = 2\"),"++
            "(8 7 0 SOriginal OGroup\"return ()\"),"++
            "(9 1 0 SOriginal ONone\"\")]"
+-}
 
       (renderLines $ linesFromState s) `shouldBe`
           "module Layout.Utils where\n"++

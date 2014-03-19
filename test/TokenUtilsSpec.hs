@@ -5755,10 +5755,12 @@ addParamsToParentAndLiftedDecl: liftedDecls done
          "[(1 1 0 SOriginal ONone\"module TokenTest where\"),"++
           "(3 1 0 SOriginal ONone\"-- Test new style token manager\"),"++
           "(5 1 0 SOriginal ONone\"bob a b = x\"),"++
-          "(6 3 0 SOriginal OGroup\"where x = 3\"),"++
+          -- "(6 3 0 SOriginal OGroup\"where x = 3\"),"++
+          "(6 3 0 SOriginal ONone\"where x = 3\"),"++
           "(8 1 0 SOriginal ONone\"bib a b = x\"),"++
           "(9 3 0 SOriginal ONone\"where\"),"++
-          "(10 5 0 SOriginal OGroup\"x = 3\"),"++
+          -- "(10 5 0 SOriginal OGroup\"x = 3\"),"++
+          "(10 5 0 SOriginal ONone\"x = 3\"),"++
           "(13 1 0 SOriginal ONone\"-- leading comment\"),"++
           "(14 1 0 SOriginal ONone\"foo x y =\"),"++
           "(15 3 0 SOriginal OGroup\"do c <- getChar\"),"++

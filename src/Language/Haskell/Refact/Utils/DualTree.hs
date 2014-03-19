@@ -291,13 +291,21 @@ layoutTreeToSourceTree (T.Node (Deleted sspan  pg eg) _)
 layoutTreeToSourceTree (T.Node (Entry sspan NoChange [])  ts0)
   = annot (ASubtree sspan) (mconcatl $ map layoutTreeToSourceTree ts0)
 
--- TODO: only apply TAbove if the subs go on to the next line
+--  TODO: only apply TAbove if the subs go on to the next line
 layoutTreeToSourceTree (T.Node (Entry sspan (Above bo p1 p2 eo) [])  ts0)
-  = annot (ASubtree sspan)
-      (applyD (TAbove co bo p1 p2 eo) subs)
+  = case (numLines ts0) of
+     0 -> annot (ASubtree sspan) (mconcatl $ map layoutTreeToSourceTree ts0)
+     _ -> annot (ASubtree sspan)
+           (applyD (TAbove co bo p1 p2 eo) subs)
   where
     subs = (mconcatl $ map layoutTreeToSourceTree ts0)
     co = 0
+    numLines :: [T.Tree Entry] -> Int
+    numLines [] = 0
+    numLines sts = l - f
+      where
+        ((f,_),_    ) = forestSpanToSimpPos $ treeStartEnd $ head sts
+        (_    ,(l,_)) = forestSpanToSimpPos $ treeStartEnd $ last sts
 
 layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts) = leaf (mkUp sspan toks) (PToks toks)
 
