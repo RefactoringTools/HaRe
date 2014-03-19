@@ -1,11 +1,12 @@
 * HaRe todo
 ** TODO splitSubToks does not take cognizance of leading/trailing comments
-** TODO rename mod to parsed complains of existing variable named parsed.
+** TODO rationalise all the various hsFreeAndDeclaredXX functions
+** DONE rename mod to parsed complains of existing variable named parsed.
      - [ ] This is not the case. Line 41 col 10
    [2013-09-10 Tue]
    [[file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let%20mod%20%3D%20GHC.pm_parsed_source%20$%20GHC.tm_parsed_module%20t][file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t]]
      - [x] Also, get "error attempting to use module `main:TestUtils' (/home/alanz/mysrc/github/alanz/HaRe/test/TestUtils.hs) which is not loaded" 
-     - no longer complains of parsed, but moves the next non blank
+     - [x] no longer complains of parsed, but moves the next non blank
        line on 2 columns. formatting problem.
 ** TODO The elisp test for buffers to save includes directories that have been modified
 ** DONE liftToTopLevel in syz Zipper of g from zmapQ introduces param errors
@@ -54,7 +55,29 @@
            (True) 
            (Unqual {OccName: requeuer})))))))))"
 
-** TODO check renaming in TH file
+** DONE renaming in TH file fails
+   fails. e.g. Renaming in Data.Concurrent.Queue.Roq.AlarmServer
+   (89,25) to stLastCheckTime causes error
+    error hsFreeAndDeclaredGhc:not matched:
+(HsSplice {Name: splice} 
+ (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:32-65} 
+  (HsApp 
+   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:32-46} 
+    (HsVar {Name: Control.Distributed.Process.Internal.Closure.TH.mkStaticClosure})) 
+   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:48-65} 
+    (HsBracket 
+     (VarBr 
+      (True) {Name: Data.Concurrent.Queue.Roq.AlarmServer.hroq_alarm_server})))))) [Just /home/alanz/mysrc/github/alanz/hroq/hroq.cabal])
+Refactoring failed: "hsFreeAndDeclaredGhc:not matched:
+(HsSplice {Name: splice} 
+ (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:32-65} 
+  (HsApp 
+   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:32-46} 
+    (HsVar {Name: Control.Distributed.Process.Internal.Closure.TH.mkStaticClosure})) 
+   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:48-65} 
+    (HsBracket 
+     (VarBr 
+      (True) {Name: Data.Concurrent.Queue.Roq.AlarmServer.hroq_alarm_server}))))))
 ** TODO Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
 ** TODO liftToTopLevel of liftToMod in MoveDef.hs does not remove 'where'
 ** TODO from the source files

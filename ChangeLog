@@ -1,3 +1,7 @@
+2014-03-19 v0.7.1.6
+	* Do not treat single-line layout as a group, hence preserving
+	layout of adjacent let expressions when renaming.
+	* Process Template Haskell expressions instead of blowing up
 2014-03-17 v0.7.1.5
 	* Adding parameters to lifted declarations now works as expected
 2014-03-09 v0.7.1.4

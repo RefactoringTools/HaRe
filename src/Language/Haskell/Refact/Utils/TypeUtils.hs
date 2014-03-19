@@ -1266,17 +1266,28 @@ hsFreeAndDeclaredGhc t = do
     expr ((GHC.HsCoreAnn _ e))
       = hsFreeAndDeclaredGhc e
 
-    expr ((GHC.HsBracket b))
+    expr ((GHC.HsBracket (GHC.ExpBr b)))
       = hsFreeAndDeclaredGhc b
+    expr ((GHC.HsBracket (GHC.PatBr b)))
+      = hsFreeAndDeclaredGhc b
+    expr ((GHC.HsBracket (GHC.DecBrL b)))
+      = hsFreeAndDeclaredGhc b
+    expr ((GHC.HsBracket (GHC.DecBrG b)))
+      = hsFreeAndDeclaredGhc b
+    expr ((GHC.HsBracket (GHC.TypBr b)))
+      = hsFreeAndDeclaredGhc b
+    expr ((GHC.HsBracket (GHC.VarBr _ n)))
+      = return (FN [],DN [n])
+
 
     expr ((GHC.HsBracketOut b _ps))
       = hsFreeAndDeclaredGhc b
 
-    expr ((GHC.HsSpliceE e))
+    expr ((GHC.HsSpliceE (GHC.HsSplice _ e)))
       = hsFreeAndDeclaredGhc e
 
-    expr ((GHC.HsQuasiQuoteE q))
-      = hsFreeAndDeclaredGhc q
+    expr ((GHC.HsQuasiQuoteE _q))
+      = return emptyFD
 
     expr ((GHC.HsProc pa cmd)) = do
       fdp <- hsFreeAndDeclaredGhc pa

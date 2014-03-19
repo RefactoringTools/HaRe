@@ -1228,6 +1228,27 @@ spec = do
             " FreeAndDeclared.Binders.Renamer, renamed],"++
             "DN [worker, res])"
 
+    -- -----------------------------------
+
+    it "finds free vars in TH files" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/TH/Main.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      -- (SYB.showData SYB.Renamer 0 binds) `shouldBe` ""
+      -- (showGhc binds) `shouldBe` ""
+
+      let
+        comp = do
+          fds' <- hsFreeAndDeclaredGhc renamed
+          return (fds')
+      ((fds),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((fds),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      (show fds) `shouldBe`
+            "(FN [System.IO.putStrLn, TH.Printf.pr],"++
+             "DN [TH.Main.baz, TH.Main.sillyString, TH.Main.main])"
+
   -- ---------------------------------------------
 
   describe "getParsedForRenamedLPat" $ do
