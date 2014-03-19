@@ -647,6 +647,13 @@ negative=[(["WhereIn2.hs"],["14","1"]), x
 }
 -}
 
+    -- -----------------------------------------------------------------
+{-
+    it "fails MultiLeg.hs" $ do
+     res <- catchException (demote defaultTestSettings testCradle "./test/testdata/Demote/MultiLeg.hs" (14,1))
+     (show res) `shouldBe` "Just \"This definition can not be demoted, as it is used in more than one definition\""
+-}
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 

@@ -1,7 +1,7 @@
 * HaRe todo
 ** TODO splitSubToks does not take cognizance of leading/trailing comments
 ** TODO rationalise all the various hsFreeAndDeclaredXX functions
-** DONE rename mod to parsed complains of existing variable named parsed.
+** DONE rename mod to parsed complains of existing variable named parsed. :ARCHIVE:
      - [ ] This is not the case. Line 41 col 10
    [2013-09-10 Tue]
    [[file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let%20mod%20%3D%20GHC.pm_parsed_source%20$%20GHC.tm_parsed_module%20t][file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t]]
@@ -9,7 +9,7 @@
      - [x] no longer complains of parsed, but moves the next non blank
        line on 2 columns. formatting problem.
 ** TODO The elisp test for buffers to save includes directories that have been modified
-** DONE liftToTopLevel in syz Zipper of g from zmapQ introduces param errors
+** DONE liftToTopLevel in syz Zipper of g from zmapQ introduces param errors :ARCHIVE:
       zmapQ f z = reverse $ downQ [] g z where
            g z' = query f z' : leftQ [] g z'
       becomes
@@ -27,7 +27,7 @@
     [2013-09-09 Mon]
 ** TODO Use null instead of isEmptyList/nonEmptyList
 ** TODO There is a ITqvarid vs ITvarid for qualified variables
-** DONE complete the undefined's in Layout.hs
+** DONE complete the undefined's in Layout.hs                       :ARCHIVE:
    mostly done
 ** TODO after accepting a refactoring, reload the buffer into emacs
 ** TODO add a "roundtrip" function to ghc-hare to simply parse and output a file, comparing for fidelity
@@ -36,8 +36,8 @@
 ** TODO manage RefactGhc to separate Hare exceptions from GHC ones
    see http://parenz.wordpress.com/2013/07/23/on-custom-error-handlers-for-ghc-api/
 ** TODO elisp: cancel option is not implemented
-** DONE renaming getPid in hroq mnesia removes HM. qualification in client file
-** DONE handle TH splices, e.g. renaming Queue.hs getSid to getServerPid
+** DONE renaming getPid in hroq mnesia removes HM. qualification in client file :ARCHIVE:
+** DONE handle TH splices, e.g. renaming Queue.hs getSid to getServerPid :ARCHIVE:
    
    Refactoring failed: "allocExpr undefined for 
    (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/DlqWorkers.hs:53:16-37} 
@@ -55,7 +55,7 @@
            (True) 
            (Unqual {OccName: requeuer})))))))))"
 
-** DONE renaming in TH file fails
+** DONE renaming in TH file fails                                   :ARCHIVE:
    fails. e.g. Renaming in Data.Concurrent.Queue.Roq.AlarmServer
    (89,25) to stLastCheckTime causes error
     error hsFreeAndDeclaredGhc:not matched:
