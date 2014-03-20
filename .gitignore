@@ -369,3 +369,9 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Demote/MultiLeg.hs.AST_out
 /test/testdata/Demote/MultiLeg.hs.renamed_out
 /test/testdata/Demote/MultiLeg.hs.tokens
+/src/Language/Haskell/Refact/MoveDef.hs.AST_out
+/src/Language/Haskell/Refact/MoveDef.hs.renamed_out
+/src/Language/Haskell/Refact/MoveDef.hs.tokens
+/test/testdata/LiftToToplevel/LiftInLambda.hs.AST_out
+/test/testdata/LiftToToplevel/LiftInLambda.hs.renamed_out
+/test/testdata/LiftToToplevel/LiftInLambda.hs.tokens

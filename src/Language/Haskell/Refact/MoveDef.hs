@@ -222,7 +222,7 @@ liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
                 -> RefactGhc [ApplyRefacResult]
 liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
-  logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+  -- logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
   logm $ "liftToTopLevel':pn=" ++ (showGhc pn)
   if isLocalFunOrPatName n renamed
       then do
@@ -264,7 +264,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          -- TODO: what about declarations between this
          -- one and the top level that are used in this one?
 
-         logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (showGhc (liftedDecls,declaredPns))
+         -- logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (showGhc (liftedDecls,declaredPns))
          -- original : pns<-pnsNeedRenaming inscps mod parent liftedDecls declaredPns
          pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
 
@@ -316,7 +316,7 @@ moveDecl1 :: (HsValBinds t)
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
   -- logm $ "moveDecl1:t=" ++ (SYB.showData SYB.Renamer 0 t) -- ++AZ++
-  logm $ "moveDecl1:mliftedDecls=" ++ (showGhc mliftedDecls)
+  -- logm $ "moveDecl1:mliftedDecls=" ++ (showGhc mliftedDecls)
   -- drawTokenTree "moveDecl1 on entry"
 
   -- TODO: work with all of ns, not just the first
@@ -326,12 +326,12 @@ moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
         Nothing -> definingDeclsNames' [n] t
         Just liftedDecls -> liftedDecls
 
-  logm $ "moveDecl1: (ns,funBinding)=" ++ (showGhc (ns,funBinding)) -- ++AZ++
+  -- logm $ "moveDecl1: (ns,funBinding)=" ++ (showGhc (ns,funBinding)) -- ++AZ++
 
   let Just sspan = getSrcSpan funBinding
   -- drawTokenTree "before getting toks" -- ++AZ++
   funToks <- getToksForSpan sspan
-  logm $ "moveDecl1:funToks=" ++ (showToks funToks)
+  -- logm $ "moveDecl1:funToks=" ++ (showToks funToks)
   -- drawTokenTree "moveDecl1:after getting toks" -- ++AZ++ 'in' present
   --- drawTokenTreeDetailed "moveDecl1:after getting toks" -- ++AZ++
 
@@ -356,8 +356,8 @@ moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
                           sigsRemoved
   let maybeToksSig = concat maybeToksSigMulti
 
-  logm $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
-  logm $ "moveDecl1:(defName,topLevel)" ++ (showGhc (defName,topLevel)) -- ++AZ++
+  -- logm $ "moveDecl1:maybeToksSig=" ++ (show maybeToksSig) -- ++AZ++
+  -- logm $ "moveDecl1:(defName,topLevel)" ++ (showGhc (defName,topLevel)) -- ++AZ++
 
   -- drawTokenTree "moveDecl1 about to addDecl"
   r <- addDecl t' defName (ghead "moveDecl1 2" funBinding,sigsRemoved,Just (maybeToksSig ++ funToks)) topLevel
@@ -724,8 +724,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                           liftedDecls=definingDeclsNames [n] parent True  True
                           declaredPns=nub $ concatMap definedPNs liftedDecls
                       -- logm $ "MoveDef.worker: (dest)=" ++ (SYB.showData SYB.Renamer 0 dest)
-                      logm $ "MoveDef.worker: (ds)=" ++ (showGhc (ds))
-                      logm $ "MoveDef.worker: parent=" ++ (showGhc parent)
+                      -- logm $ "MoveDef.worker: (ds)=" ++ (showGhc (ds))
+                      -- logm $ "MoveDef.worker: parent=" ++ (showGhc parent)
                       (_, dd) <- hsFreeAndDeclaredPNs dest
                       -- pns<-pnsNeedRenaming inscps dest parent liftedDecls declaredPns
                       pns<-pnsNeedRenaming dest parent liftedDecls declaredPns
@@ -768,9 +768,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                           liftedDecls=definingDeclsNames [n] decl True  True
                           declaredPns=nub $ concatMap definedPNs liftedDecls
                       -- logm $ "MoveDef.worker1: (dest)=" ++ (SYB.showData SYB.Renamer 0 dest)
-                      logm $ "MoveDef.worker1: (ds)=" ++ (showGhc (ds))
-                      logm $ "MoveDef.worker1: decl=" ++ (showGhc decl)
-                      logm $ "MoveDef.worker1: dd=" ++ (showGhc dd)
+                      -- logm $ "MoveDef.worker1: (ds)=" ++ (showGhc (ds))
+                      -- logm $ "MoveDef.worker1: decl=" ++ (showGhc decl)
+                      -- logm $ "MoveDef.worker1: dd=" ++ (showGhc dd)
 
                       pns <- pnsNeedRenaming dest decl liftedDecls declaredPns
                       logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
@@ -812,7 +812,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
   =do  (ef,_) <- hsFreeAndDeclaredPNs parent
        (lf,_) <- hsFreeAndDeclaredPNs liftedDecls
 
-       logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
+       -- logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
 
        -- parameters to be added to pn because of lifting
        let newParams=((nub lf) \\ (nub ef)) \\ dd
@@ -825,16 +825,16 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
                 else do -- first remove the decls to be lifted, so they are not disturbed
                         (parent'',liftedDecls'',_msig) <- rmDecl pn False parent
                         -- drawTokenTree "addParamsToParentAndLiftedDecl: rmDecl done"
-                        logm $ "addParamsToParentAndLiftedDecl:parent''=" ++ (SYB.showData SYB.Renamer 0 parent'')
-                        logm $ "addParamsToParentAndLiftedDecl:parent''=" ++ (showGhc parent'')
+                        -- logm $ "addParamsToParentAndLiftedDecl:parent''=" ++ (SYB.showData SYB.Renamer 0 parent'')
+                        -- logm $ "addParamsToParentAndLiftedDecl:parent''=" ++ (showGhc parent'')
 
                         parent' <- addParamsToParent pn newParams parent''
                         -- let parent' = parent
-                        logm $ "addParamsToParentAndLiftedDecl: parent done"
+                        -- logm $ "addParamsToParentAndLiftedDecl: parent done"
                         -- drawTokenTree "addParamsToParentAndLiftedDecl: parent params done"
 
                         liftedDecls' <- addParamsToDecls [liftedDecls''] pn newParams True
-                        logm $ "addParamsToParentAndLiftedDecl: liftedDecls done"
+                        -- logm $ "addParamsToParentAndLiftedDecl: liftedDecls done"
                         -- drawTokenTree "addParamsToParentAndLiftedDecl: liftedDecls done"
 
                         return (parent', liftedDecls',True)
@@ -1073,9 +1073,9 @@ doDemoting' t pn
                          -- end TODO
 
                          logm $ "MoveDef:declaredPns=" ++ (showGhc declaredPns) -- ++AZ++
-                         logm $ "MoveDef:demotedSigToks=" ++ (show demotedSigToks) -- ++AZ++
+                         -- logm $ "MoveDef:demotedSigToks=" ++ (show demotedSigToks) -- ++AZ++
 
-                         logm $ "MoveDef:sig and decl toks[" ++ (GHC.showRichTokenStream (demotedSigToks ++ demotedToks)) ++ "]" -- ++AZ++
+                         -- logm $ "MoveDef:sig and decl toks[" ++ (GHC.showRichTokenStream (demotedSigToks ++ demotedToks)) ++ "]" -- ++AZ++
 
                          --get those variables declared at where the demotedDecls will be demoted to
                          -- let dl = map (flip declaredNamesInTargetPlace ds) declaredPns
@@ -1107,7 +1107,30 @@ doDemoting' t pn
 
     where
           ---find how many matches/pattern bindings use  'pn'-------
+          uses :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> [Int]
           uses pns t2
+               = concatMap used t2
+                where
+
+                  used :: GHC.LHsBind GHC.Name -> [Int]
+                  used (GHC.L _ (GHC.FunBind _n _ (GHC.MatchGroup matches _) _ _ _))
+                     = concatMap (usedInMatch pns) matches
+
+                  used (GHC.L _ (GHC.PatBind pat rhs _ _ _))
+                    -- was | hsPNs p `intersect` pns ==[]  && any  (flip findPN pat) pns
+                    | (not $ findPNs pns pat) && findPNs pns rhs
+                    = [1::Int]
+                  used  _ = []
+
+          usedInMatch pns (GHC.L _ (GHC.Match pats _ rhs))
+            -- was | isNothing (find (==pname) pns) && any  (flip findPN match) pns
+            | (not $ findPNs pns pats) && findPNs pns rhs
+             = [1::Int]
+          usedInMatch _ _ = []
+
+
+          uses' :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> [Int]
+          uses' pns t2
                = concat $ SYB.everythingStaged SYB.Renamer (++) []
                    ([] `SYB.mkQ`  usedInMatch
                        `SYB.extQ` usedInPat) t2
@@ -1305,7 +1328,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
                    return (GHC.Match pats mt rhs'')
            else  do  -- moveDecl pns match False decls True
                      -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding 
-                     logm $ "MoveDef.foldParams about to addDecl:dtoks=" ++ (show dtoks)
+                     -- logm $ "MoveDef.foldParams about to addDecl:dtoks=" ++ (show dtoks)
                      -- drawTokenTree "" -- ++AZ++ debug
                      rhs' <- addDecl rhs Nothing (demotedDecls,dsig,dtoks) False
                      return (GHC.Match pats mt rhs')

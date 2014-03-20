@@ -250,6 +250,16 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
                           "./test/testdata/LiftToToplevel/Zmapq.refactored.hs"
      diff `shouldBe` []
 
+    -- ---------------------------------
+
+    it "liftToTopLevel LiftInLambda 17 5" $ do
+     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LiftInLambda.hs" (17,5)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/LiftInLambda.hs" (17,5)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./src/Language/Haskell/Refact/MoveDef.hs" (1111,11)
+     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/LiftInLambda.hs\"]"
+     diff <- compareFiles "./test/testdata/LiftToToplevel/LiftInLambda.hs.expected"
+                          "./test/testdata/LiftToToplevel/LiftInLambda.refactored.hs"
+     diff `shouldBe` []
 
 
   -- -------------------------------------------------------------------
@@ -507,8 +517,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn5 14 1" $ do
-     -- r <- doDemote ["./test/testdata/Demote/WhereIn5.hs","14","1"]
      r <- demote defaultTestSettings testCradle "./test/testdata/Demote/WhereIn5.hs" (14,1)
+     -- r <- demote logTestSettings testCradle "./test/testdata/Demote/WhereIn5.hs" (14,1)
      (show r) `shouldBe` "[\"./test/testdata/Demote/WhereIn5.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/WhereIn5.refactored.hs"
                           "./test/testdata/Demote/WhereIn5.hs.expected"

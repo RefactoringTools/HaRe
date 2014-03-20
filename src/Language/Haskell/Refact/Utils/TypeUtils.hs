@@ -836,7 +836,7 @@ hsFreeAndDeclaredPNsOld2 t = res
 
 hsFreeAndDeclaredPNs :: (SYB.Data t, GHC.Outputable t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
-  logm $ "hsFreeAndDeclaredPNs:t=" ++ (showGhc t)
+  -- logm $ "hsFreeAndDeclaredPNs:t=" ++ (showGhc t)
   (FN f,DN d) <- hsFreeAndDeclaredGhc t
   return (f,d)
 

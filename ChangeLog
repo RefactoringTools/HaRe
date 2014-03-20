@@ -1,3 +1,5 @@
+2014-03-xx v0.7.1.7
+	* Do not demote a decl if it is used in more than one match
 2014-03-19 v0.7.1.6
 	* Do not treat single-line layout as a group, hence preserving
 	layout of adjacent let expressions when renaming.

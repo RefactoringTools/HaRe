@@ -1,5 +1,11 @@
 * HaRe todo
 ** TODO splitSubToks does not take cognizance of leading/trailing comments
+** TODO liftToTopLevel adds spurious 'Name' value for lifting 'uses' in MoveDef.hs line 1110
+   It also changes
+     xx = map (\b -> (b,uses declaredPns [b])) otherBinds
+   to
+     xx = map (\b -> (b,(uses Name)Name)Name)declaredPns [b])) otherBinds
+
 ** TODO rationalise all the various hsFreeAndDeclaredXX functions
 ** DONE rename mod to parsed complains of existing variable named parsed. :ARCHIVE:
      - [ ] This is not the case. Line 41 col 10
