@@ -803,10 +803,10 @@ liftedToTopLevel pnt@(GHC.L _ pn) renamed
 
 
 addParamsToParentAndLiftedDecl :: (HsValBinds t,GHC.Outputable t) =>
-     GHC.Name   -- name of decl being lifted
+     GHC.Name   -- ^name of decl being lifted
   -> [GHC.Name] -- ^Declared names in parent
-  -> t          -- parent
-  -> [GHC.LHsBind GHC.Name] -- decls being lifted
+  -> t          -- ^parent
+  -> [GHC.LHsBind GHC.Name] -- ^decls being lifted
   -> RefactGhc (t, [GHC.LHsBind GHC.Name], Bool)
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls
   =do  (ef,_) <- hsFreeAndDeclaredPNs parent

@@ -26,19 +26,24 @@ module Language.Haskell.Refact.Utils.GhcUtils (
     , everywhereStaged'
     , onelayerStaged
     , listifyStaged
+
     -- ** SYB Utility
     , checkItemRenamer
+
     -- * Strafunski StrategyLib versions
     , full_tdTUGhc
     , stop_tdTUGhc
+    , stop_tdTPGhc
     , allTUGhc'
     , once_tdTPGhc
     , once_buTPGhc
     , oneTPGhc
     , allTUGhc
+
     -- ** Strafunski utility
     , checkItemStage'
     , checkItemRenamer'
+
     -- * Scrap Your Zipper versions
     , zeverywhereStaged
     , zopenStaged
@@ -243,8 +248,12 @@ full_tdTUGhc s  =  op2TU mappend s (allTUGhc' (full_tdTUGhc s))
 -- | Top-down type-unifying traversal that is cut of below nodes
 --   where the argument strategy succeeds.
 stop_tdTUGhc :: (MonadPlus m, Monoid a) => TU a m -> TU a m
--- stop_tdTUGhc s = ifTU checkItemRenamer' (const s) (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
 stop_tdTUGhc s = (s `choiceTU` (allTUGhc' (stop_tdTUGhc s)))
+
+-- | Top-down type-preserving traversal that is cut of below nodes
+--   where the argument strategy succeeds.
+stop_tdTPGhc 	:: MonadPlus m => TP m -> TP m
+stop_tdTPGhc s	=  s `choiceTP` (allTPGhc (stop_tdTPGhc s))
 
 
 allTUGhc' :: (MonadPlus m, Monoid a) => TU a m -> TU a m
@@ -262,9 +271,11 @@ once_buTPGhc s  =  (oneTPGhc (once_buTPGhc s)) `choiceTP` s
 
 -- Succeed for one child; don't care about the other children
 oneTPGhc          :: MonadPlus m => TP m -> TP m
--- oneTPGhc s      =  ifTP checkItemRenamer' (const s) (oneTP s)
 oneTPGhc s         =  ifTP checkItemRenamer' (const failTP) (oneTP s)
 
+-- Succeed for all children
+allTPGhc :: MonadPlus m => TP m -> TP m
+allTPGhc s = ifTP checkItemRenamer' (const failTP) (oneTP s)
 
 ------------------------------------------
 
@@ -278,15 +289,6 @@ checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` n
   where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: GHC.NameSet -> m ()
         postTcType = const (guard $ stage<SYB.TypeChecker) :: GHC.PostTcType -> m ()
         fixity     = const (guard $ stage<SYB.Renamer) :: GHC.Fixity -> m ()
-
-{-
--- | Check the Typeable1 items
-checkItemStage2' :: forall m. (MonadPlus m) => SYB.Stage -> TU () m
-checkItemStage2' stage x = failTU `adhocTU` hsWithBndrs
-  where
-    hsWithBndrs :: (Data t) => GHC.HsWithBndrs t -> m ()
-    hsWithBndrs = const (guard $ stage < SYB.Renamer)
--}
 
 checkItemRenamer' :: (MonadPlus m) => TU () m
 checkItemRenamer' = checkItemStage' SYB.Renamer

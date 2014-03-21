@@ -4580,19 +4580,25 @@ addActualParamsToRhs :: (SYB.Typeable t, SYB.Data t) =>
                         Bool -> GHC.Name -> [GHC.Name] -> t -> RefactGhc t
 addActualParamsToRhs modifyToks pn paramPNames rhs = do
     -- logm $ "addActualParamsToRhs:rhs=" ++ (SYB.showData SYB.Renamer 0 $ rhs)
-    r <- everywhereMStaged SYB.Renamer (SYB.mkM grhs) rhs
+
+    -- = applyTP (stop_tdTP (failTP `adhocTP` worker))
+
+    r <- applyTP (stop_tdTPGhc (failTP `adhocTP` grhs)) rhs
+    -- r <- everywhereMStaged SYB.Renamer (SYB.mkM grhs) rhs
     return r
      where
 
        -- |Limit the action to actual RHS elements
        grhs :: (GHC.GRHSs GHC.Name) -> RefactGhc (GHC.GRHSs GHC.Name)
        grhs (GHC.GRHSs g lb) = do
+         -- logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
          g' <- everywhereMStaged SYB.Renamer (SYB.mkM worker) g
          return (GHC.GRHSs g' lb)
 
        worker :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
        worker oldExp@(GHC.L l2 (GHC.HsVar pname))
         | pname == pn = do
+              -- logm $ "addActualParamsToRhs:oldExp=" ++ (SYB.showData SYB.Renamer 0 oldExp)
               let newExp' = foldl addParamToExp oldExp paramPNames
               let newExp  = (GHC.L l2 (GHC.HsPar newExp'))
               -- TODO: updateToks must add a space at the end of the
