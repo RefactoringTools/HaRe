@@ -252,9 +252,9 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     -- ---------------------------------
 
-    it "liftToTopLevel LiftInLambda 17 5" $ do
-     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LiftInLambda.hs" (17,5)
-     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/LiftInLambda.hs" (17,5)
+    it "liftToTopLevel LiftInLambda 10 5" $ do
+     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/LiftInLambda.hs" (10,5)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/LiftInLambda.hs" (10,5)
      -- r <- liftToTopLevel logTestSettings  testCradle "./src/Language/Haskell/Refact/MoveDef.hs" (1111,11)
      (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/LiftInLambda.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/LiftInLambda.hs.expected"
