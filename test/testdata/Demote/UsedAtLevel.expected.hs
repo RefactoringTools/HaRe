@@ -16,8 +16,7 @@ foo = do
                   used (L _ (FunBind _n _ (MatchGroup matches _) _ _ _))
                      = usedInMatch pns matches
 
-          usedInMatch _ _ = []
-
+                  usedInMatch _ _ = []
 
 data HsBind a = FunBind a Int (MatchGroup a) Int Int Int
                | PatBind String String Int Int a

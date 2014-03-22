@@ -3156,7 +3156,11 @@ instance HsValBinds ([GHC.LHsBind GHC.Name]) where
 instance HsValBinds (GHC.LHsExpr GHC.Name) where
   hsValBinds (GHC.L _ (GHC.HsLet binds _ex)) = hsValBinds binds
   hsValBinds _                               = emptyValBinds
+
+  replaceValBinds (GHC.L l (GHC.HsLet binds ex)) newBinds
+     = (GHC.L l (GHC.HsLet (replaceValBinds binds newBinds) ex))
   replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsExpr GHC.Name) undefined for:" ++ (showGhc old)
+
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
@@ -3743,7 +3747,8 @@ instance UsedByRhs (GHC.HsValBinds GHC.Name) where
   usedByRhs (GHC.ValBindsOut binds _sigs) pns = or $ map (\(_,b) -> usedByRhs b pns) binds
 
 instance UsedByRhs (GHC.Match GHC.Name) where
-  usedByRhs (GHC.Match _ _ rhs) pns = usedByRhs (hsValBinds rhs) pns
+  usedByRhs (GHC.Match _ _ (GHC.GRHSs rhs _)) pns -- = usedByRhs (hsValBinds rhs) pns
+                                                  = findPNs pns rhs
 
 instance UsedByRhs [GHC.LHsBind GHC.Name] where
   usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
@@ -3756,6 +3761,9 @@ instance UsedByRhs (GHC.HsBind GHC.Name) where
 
 instance UsedByRhs (GHC.LHsBind GHC.Name) where
   usedByRhs (GHC.L _ bind) pns = usedByRhs bind pns
+
+instance UsedByRhs (GHC.LHsExpr GHC.Name) where
+  usedByRhs (GHC.L _ e) pns = usedByRhs e pns
 
 instance UsedByRhs (GHC.HsExpr GHC.Name) where
   usedByRhs (GHC.HsLet _lb e) pns = findPNs pns e
@@ -4329,7 +4337,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
     =do
         let binds = hsValBinds parent'
 
-        let (startLoc,endLoc)
+        let (startLoc@((_,prevCol)),endLoc)
              = if (emptyList localDecls)
                  then getStartEndLoc parent'
                  else getStartEndLoc localDecls
@@ -4343,11 +4351,12 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         if (emptyList localDecls)
           then
-            void $ putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent colIndent 2) newToks
+            void $ putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent 4 2) newToks
             -- putToksAfterPos (startLoc,endLoc) (PlaceAbsolute (r+1) c) newToks
           else
-            void $ putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
-            -- void $ putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 3) newToks
+            -- void $ putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
+            void $ putToksAfterPos (startLoc,endLoc) (PlaceAbsCol (rowIndent+1) prevCol 2) newToks
+
 
         {-
         case maybeSig of
@@ -4888,7 +4897,7 @@ duplicateDecl decls sigs n newFunName
 rmDecl:: (SYB.Data t)
     => GHC.Name     -- ^ The identifier whose definition is to be removed.
     -> Bool         -- ^ True means including the type signature.
-    -> t            -- ^ The declaration list.
+    -> t            -- ^ The AST fragment containting the declarations
     -> RefactGhc
         (t,
         GHC.LHsBind GHC.Name,
@@ -4966,7 +4975,7 @@ rmDecl pn incSig t = do
          -- drawTokenTree "rmDecl.inLet after syncDeclToLatestStash"
          case length decls of
            1 -> do -- Removing the last declaration
-            logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
+            -- logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
             -- putToksForSpan ss toks
             (_,expr') <- putDeclToksForSpan ss expr $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
             -- drawTokenTree "rmDecl.inLet after putToksForSpan"
@@ -5193,7 +5202,7 @@ rmQualifier pns t =
 qualifyToplevelName :: GHC.Name -> RefactGhc ()
 qualifyToplevelName n = do
     renamed <- getRefactRenamed
-    logm $ "qualifyToplevelName:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed)
+    -- logm $ "qualifyToplevelName:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed)
     _ <- renamePN n n True True renamed
     return ()
 
@@ -5217,7 +5226,7 @@ renamePN::(SYB.Data t)
 renamePN oldPN newName updateTokens useQual t = do
   -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
   -- logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
-  logm $ "renamePN: t=" ++ (SYB.showData SYB.Renamer 0 t)
+  -- logm $ "renamePN: t=" ++ (SYB.showData SYB.Renamer 0 t)
   -- Note: bottom-up traversal
   let isRenamed = somethingStaged SYB.Renamer Nothing
                    (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t

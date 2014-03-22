@@ -916,9 +916,20 @@ insertSrcSpan forest sspan = forest'
 
             subTree = tree1 ++ tree2 ++ tree3
             subTree' = filter (\t -> treeStartEnd t /= nullSpan) subTree
-            (Entry sspan2 _ _) = Z.label z
+            -- (Entry sspan2 _ _) = Z.label z
+            sspan2 = case Z.label z of
+              (Entry ss _ _) -> ss
+              (Deleted ss _ _) -> ss
 
-            z' = Z.setTree (Node (Entry sspan2 NoChange []) subTree') z
+
+            -- z' = Z.setTree (Node (Entry sspan2 NoChange []) subTree') z
+            z' = case Z.label z of
+              (Entry _ _ _) -> Z.setTree (Node (Entry sspan2 NoChange []) subTree') z
+              (Deleted _ _ _) -> Z.setTree (Node (Entry sspan2 NoChange []) subTreeD) z
+                where
+                  (tb,tm,te) = splitSubToks (Z.tree z) sspan
+                  subTreeD = tb ++ tm ++ te
+
             forest'' = Z.toTree z'
           in forest''
         else

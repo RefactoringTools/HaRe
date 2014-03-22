@@ -557,8 +557,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes LetIn1 12 22" $ do
-     -- r <- doDemote ["./test/testdata/Demote/LetIn1.hs","12","22"]
      r <- demote defaultTestSettings testCradle "./test/testdata/Demote/LetIn1.hs" (12,22)
+     -- r <- demote logTestSettings testCradle "./test/testdata/Demote/LetIn1.hs" (12,22)
      (show r) `shouldBe` "[\"./test/testdata/Demote/LetIn1.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/LetIn1.refactored.hs"
                           "./test/testdata/Demote/LetIn1.hs.expected"
@@ -681,11 +681,11 @@ negative=[(["WhereIn2.hs"],["14","1"]), x
 
     it "passes UsedAtLevel.hs" $ do
      r <- demote defaultTestSettings testCradle "./test/testdata/Demote/UsedAtLevel.hs" (19,12)
-     -- demote logTestSettings testCradle "./test/testdata/Demote/MultiLeg2.hs" (19,12)
+     -- demote logTestSettings testCradle "./test/testdata/Demote/UsedAtLevel.hs" (19,12)
 
      (show r) `shouldBe` "[\"./test/testdata/Demote/UsedAtLevel.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/UsedAtLevel.refactored.hs"
-                          "./test/testdata/Demote/UsedAtLevel.hs.expected"
+                          "./test/testdata/Demote/UsedAtLevel.expected.hs"
      diff `shouldBe` []
 
 

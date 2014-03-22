@@ -919,7 +919,8 @@ doDemoting  pn = do
 
   renamed  <- getRefactRenamed
   -- logm $ "MoveDef.doDemoting:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
-  -- everywhereMStaged' is top-down
+
+  -- everywhereMStaged' is top-down, does all
   renamed' <- everywhereMStaged' SYB.Renamer (SYB.mkM   demoteInMod
                                              `SYB.extM` demoteInMatch
                                              `SYB.extM` demoteInPat
@@ -947,9 +948,9 @@ doDemoting  pn = do
 
        --2. The demoted definition is a local decl in a match
        -- demoteInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-       demoteInMatch (match@(GHC.Match _pats _mt rhs)::GHC.Match GHC.Name)
+       demoteInMatch (match@(GHC.Match _pats _mt (GHC.GRHSs _ ds))::GHC.Match GHC.Name)
          -- was | definingDecls [pn] ds False False/=[]
-         | not $ emptyList (definingDeclsNames [pn] (hsBinds rhs) False False)
+         | not $ emptyList (definingDeclsNames [pn] (hsBinds ds) False False)
          = do
               logm "MoveDef:demoteInMatch" -- ++AZ++
               done <- getRefactDone
@@ -975,7 +976,7 @@ doDemoting  pn = do
 
        --4: The demoted definition is a local decl in a Let expression
        -- demoteInLet (letExp@(Exp (HsLet ds e))::HsExpP)
-       demoteInLet (letExp@(GHC.HsLet ds _e)::GHC.HsExpr GHC.Name)
+       demoteInLet (letExp@(GHC.L _ (GHC.HsLet ds _e))::GHC.LHsExpr GHC.Name)
          -- was | definingDecls [pn] ds False False/=[]
          | not $ emptyList (definingDeclsNames [pn] (hsBinds ds) False False)
           = do
@@ -1022,11 +1023,15 @@ doDemoting  pn = do
 
 -- |Demote the declaration of 'pn' in the context of 't'.
 doDemoting' :: (HsValBinds t, UsedByRhs t) => t -> GHC.Name -> RefactGhc t
-doDemoting' t pn
- = let origDecls = hsBinds t
+doDemoting' t pn = do
+   let origDecls = hsBinds t
        demotedDecls'= definingDeclsNames [pn] origDecls True False
        declaredPns = nub $ concatMap definedPNs demotedDecls'
-   in if not (usedByRhs t declaredPns)
+       pnsUsed = usedByRhs t declaredPns
+   logm $ "doDemoting':(pn,declaredPns)=" ++ showGhc (pn,declaredPns)
+   -- logm $ "doDemoting':t=" ++ (SYB.showData SYB.Renamer 0 t)
+   logm $ "doDemoting':(declaredPns,pnsUsed)=" ++ showGhc (declaredPns,pnsUsed)
+   r <-  if not pnsUsed -- (usedByRhs t declaredPns)
        then do
               -- drawTokenTree "" -- ++AZ++ debug
               let demotedDecls = definingDeclsNames [pn] (hsBinds t) True True
@@ -1041,13 +1046,10 @@ doDemoting' t pn
                        -}
                   -- uselist = concatMap (\r -> if (emptyList r) then [] else ["Used"]) $ map (\b -> uses declaredPns [b]) otherBinds
                   xx = map (\b -> (b,uses declaredPns [b])) otherBinds
-                  uselist = concatMap (\(b,r) -> if (emptyList r) then [] else [b]) xx
                   useCount = sum $ concatMap snd xx
-              logm $ "doDemoting': uses xx=" ++ (showGhc xx)
-              logm $ "doDemoting': uses uselist=" ++ (showGhc uselist)
-              logm $ "doDemoting': uses useCount=" ++ (show useCount)
+              -- logm $ "doDemoting': uses xx=" ++ (showGhc xx)
+              -- logm $ "doDemoting': uses useCount=" ++ (show useCount)
 
-              -- case length uselist  of
               case useCount  of
                   0 ->do error "\n Nowhere to demote this function!\n"
                   1 -> --This function is only used by one friend function
@@ -1057,8 +1059,11 @@ doDemoting' t pn
                          -- (f,d)<-hsFreeAndDeclaredPNs demotedDecls
                          (f,_d) <- hsFreeAndDeclaredPNs demotedDecls
                          -- remove demoted declarations
-                         (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
-                         (t',demotedSigs) <- rmTypeSigs declaredPns t
+                         -- logm $ "MoveDef.doDemoting':t=" ++ (SYB.showData SYB.Renamer 0 t)
+                         -- (ds,removedDecl,_sigRemoved) <- rmDecl pn False (hsBinds t)
+                         (ds,removedDecl,_sigRemoved) <- rmDecl pn False t
+                         -- (t',demotedSigs) <- rmTypeSigs declaredPns t
+                         (t',demotedSigs) <- rmTypeSigs declaredPns ds
 
                          let (GHC.L ssd _) = removedDecl
                          demotedToks <- getToksForSpan ssd
@@ -1094,7 +1099,8 @@ doDemoting' t pn
                                  do
                                     logm $ "MoveDef: about to duplicateDecls"
                                     -- ds'' <- duplicateDecls declaredPns removedDecl demotedSigs (Just (demotedSigToks ++ demotedToks)) origDecls
-                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSigs (Just (demotedSigToks ++ demotedToks)) ds
+                                    -- ds'' <- duplicateDecls declaredPns removedDecl demotedSigs (Just (demotedSigToks ++ demotedToks)) ds
+                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSigs (Just (demotedSigToks ++ demotedToks)) (hsBinds ds)
                                     logm $ "MoveDef:duplicateDecls done"
 
                                     -- drawTokenTree "" -- ++AZ++ debug
@@ -1104,10 +1110,11 @@ doDemoting' t pn
 
        else error "This function can not be demoted as it is used in current level!\n"
 
+   return r
 
     where
           ---find how many matches/pattern bindings use  'pn'-------
-          uses :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> [Int]
+          -- uses :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> [Int]
           uses pns t2
                = concatMap used t2
                 where
@@ -1154,14 +1161,12 @@ doDemoting' t pn
 
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).
-          -- duplicateDecls :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> RefactGhc [GHC.LHsBind GHC.Name]
           duplicateDecls :: [GHC.Name] -- ^ function names to be demoted
                          -> GHC.LHsBind GHC.Name -- ^Bind being demoted
                          -> [GHC.LSig GHC.Name] -- ^Signatures being demoted, if any
                          -> Maybe [PosToken]          -- ^Tokens if provided
                          -> [GHC.LHsBind GHC.Name]    -- ^Binds of original top level entiity, including src and dst
                          -> RefactGhc [GHC.LHsBind GHC.Name]
-          -- duplicateDecls :: (SYB.Data t) =>[GHC.Name] -> t -> RefactGhc [GHC.LHsBind GHC.Name]
           duplicateDecls pns demoted dsig dtoks decls
              -- = do everywhereMStaged SYB.Renamer (SYB.mkM dupInMatch
              = do
@@ -1183,7 +1188,7 @@ doDemoting' t pn
                    | (not $ findPNs pns pats) && findPNs pns rhs
                    =  do
                         done <- getRefactDone
-                        logm $ "duplicateDecls:value of done=" ++ (show done) -- ++AZ++
+                        logm $ "duplicateDecls.dupInMatch:value of done=" ++ (show done) -- ++AZ++
                         if done
                           then return match
                           else do
@@ -1208,6 +1213,7 @@ doDemoting' t pn
                     | (not $ findPNs pns pat) && findPNs pns rhs
                    -- =  moveDecl pns pat False decls False
                    = do
+                       logm $ "duplicateDecls.dupInPat"
                        -- rhs' <- moveDecl pns rhs False decls False
                        -- TODO: what wbout dtoks?
                        -- error "dupInPat" -- ++AZ++
@@ -1324,13 +1330,14 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
                    declToks <- getToksForSpan declSpan
                    -- logm $ "MoveDef.foldParams addDecl adding to (hsBinds):[" ++ (SYB.showData SYB.Renamer 0 $ hsBinds rhs') ++ "]" -- ++AZ++
                    rhs'' <- addDecl rhs' Nothing (ghead "foldParams 2" demotedDecls''',[],Just declToks) False
-                   logm $ "MoveDef.foldParams addDecl done"
+                   logm $ "MoveDef.foldParams addDecl done 1"
                    return (GHC.Match pats mt rhs'')
            else  do  -- moveDecl pns match False decls True
                      -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding 
                      -- logm $ "MoveDef.foldParams about to addDecl:dtoks=" ++ (show dtoks)
                      -- drawTokenTree "" -- ++AZ++ debug
                      rhs' <- addDecl rhs Nothing (demotedDecls,dsig,dtoks) False
+                     logm $ "MoveDef.foldParams addDecl done 2"
                      return (GHC.Match pats mt rhs')
 
          -- return match
@@ -1380,8 +1387,6 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
             let p = getOneParam pn rhs1
             -- putStrLn (show p)
             if (nonEmptyList p) then do rhs' <- rmOneParam pn rhs1
-                                        -- error $ "allParams: rhs=" ++ (SYB.showData SYB.Renamer 0 rhs) -- ++AZ++
-                                        -- error $ "allParams: rhs'=" ++ (SYB.showData SYB.Renamer 0 rhs') -- ++AZ++
                                         allParams pn rhs' (initial++[p])
                      else return initial
         where
@@ -1483,16 +1488,10 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
                                           elem (gfromJust "rmParamsInDemotedDecls" $ patToPNT x) ps)) pats2
 
                          let (startPos,endPos) = getBiggestStartEndLoc pats2
-                         -- error $ "rmParamsInDemotedDecls:(startPos,endPos)=" ++ (show (startPos,endPos)) -- ++AZ++
-                         -- error $ "rmParamsInDemotedDecls:(prettyprint pats')=" ++ (prettyprint pats) -- ++AZ++
                          if (emptyList pats')
                            then removeToksForPos (startPos,endPos)
                            else -- updateToksWithPos (startPos,endPos) pats' prettyprint False
                                 updateToksWithPos (startPos,endPos) pats' pprPat False
-                         -- toks <- fetchToks
-                         -- error $ "rmParamsInDemotedDecls:(toks)=" ++ (showToks toks) -- ++AZ++
-                         -- let (toks1, _, toks2)  = splitToks (startPos, (endRow,(endCol - 1))) toks
-                         -- error $ "rmParamsInDemotedDecls:(last toks1,head toks2)=" ++ (showToks [last toks1, head toks2]) -- ++AZ++
 
                          -- pats'' <- update pats pats' pats
 
