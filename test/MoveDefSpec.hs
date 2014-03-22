@@ -677,6 +677,18 @@ negative=[(["WhereIn2.hs"],["14","1"]), x
      diff `shouldBe` []
 
 
+    -- -----------------------------------------------------------------
+
+    it "passes UsedAtLevel.hs" $ do
+     r <- demote defaultTestSettings testCradle "./test/testdata/Demote/UsedAtLevel.hs" (25,12)
+     -- demote logTestSettings testCradle "./test/testdata/Demote/MultiLeg2.hs" (25,12)
+
+     (show r) `shouldBe` "[\"./test/testdata/Demote/UsedAtLevel.hs\"]"
+     diff <- compareFiles "./test/testdata/Demote/UsedAtLevel.refactored.hs"
+                          "./test/testdata/Demote/UsedAtLevel.hs.expected"
+     diff `shouldBe` []
+
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 
