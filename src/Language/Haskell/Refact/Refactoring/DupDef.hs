@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+
 module Language.Haskell.Refact.Refactoring.DupDef(duplicateDef) where
 
 import qualified Data.Generics as SYB
@@ -12,14 +13,8 @@ import Data.List
 import Data.Maybe
 
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils.Utils
-import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.API
+
 
 -- ---------------------------------------------------------------------
 -- | This refactoring duplicates a definition (function binding or

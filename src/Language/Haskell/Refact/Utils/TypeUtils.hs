@@ -118,7 +118,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
-    , causeNameClashInExports {- , inRegion , unmodified -}, prettyprint, prettyprint2
+    , causeNameClashInExports {- , inRegion , unmodified -}
 
     , removeOffset
 

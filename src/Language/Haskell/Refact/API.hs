@@ -4,14 +4,11 @@ module Language.Haskell.Refact.API
          ParseResult
        , VerboseLevel(..)
        , RefactSettings(..)
-       -- , RefactState(..)
-       -- , RefactModule(..)
        , TargetModule
-       -- , RefactStashId(..)
        , RefactFlags(..)
        , StateStorage(..)
 
-       -- * The GHC Monad
+       -- ** The GHC Monad
        , RefactGhc
        , runRefactGhc
        , getRefacSettings
@@ -25,15 +22,39 @@ module Language.Haskell.Refact.API
 
        , logm
 
+ -- * from `Language.Haskell.Refact.Utils.Utils`
+       , sameOccurrence
+
+       -- ** Managing the GHC / project environment
+       -- , loadModuleGraphGhc
+       , getModuleGhc
+       , parseSourceFileGhc
+       , activateModule
+       , getModuleDetails
+
+       -- ** The bits that do the work
+       , runRefacSession
+       , applyRefac
+       , refactDone
+       , ApplyRefacResult
+       , RefacSource(..)
+
+       , update
+       , fileNameToModName
+       , fileNameFromModSummary
+       , getModuleName
+       , clientModsAndFiles
+       , serverModsAndFiles
+
+
  -- * from `Language.Haskell.Refact.Utils.MonadFunctions`
 
-       -- * Conveniences for state access
+       -- ** Conveniences for state access
 
        , fetchToksFinal
        , fetchLinesFinal
        , fetchOrigToks
        , fetchToks -- Deprecated
-       -- , putToks -- ^Deprecated, destroys token tree
        , getTypecheckedModule
        , getRefactStreamModified
        , getRefactInscopes
@@ -44,7 +65,7 @@ module Language.Haskell.Refact.API
        , clearParsedModule
        , getRefactFileName
 
-       -- * TokenUtils API
+       -- ** TokenUtils API
        , replaceToken
        , putToksForSpan
        , putDeclToksForSpan
@@ -61,18 +82,15 @@ module Language.Haskell.Refact.API
        , syncDeclToLatestStash
        , indentDeclAndToks
 
-       -- * LayoutUtils API
-       -- , getLayoutForSpan
-       -- , putDeclLayoutAfterSpan
+       -- ** LayoutUtils API
 
-       -- * For debugging
+       -- ** For debugging
        , drawTokenTree
        , drawTokenTreeDetailed
        , getTokenTree
-       -- , showPprDebug
        , showLinesDebug
 
-       -- * State flags for managing generic traversals
+       -- ** State flags for managing generic traversals
        , getRefactDone
        , setRefactDone
        , clearRefactDone
@@ -85,24 +103,12 @@ module Language.Haskell.Refact.API
        , updateToks
        , updateToksWithPos
 
-       -- * For use by the tests only
-       , initRefactModule
-
  -- * from `Language.Haskell.Refact.Utils.LocUtils`
 
-                     {-
-                     module HsTokens,
-                     PosToken,simpPos,
-                     -}
                      , SimpPos,unmodified,modified
                      , simpPos0
                      , nullSrcSpan
-                     -- , emptyList, nonEmptyList
                      , showToks
-                     -- , tokenLen
-                     -- ,lengthOfToks
-                     -- , mkToken, mkZeroToken {-,defaultToken, -}
-                     {-whiteSpacesToken -}
                      , whiteSpaceTokens
                      , realSrcLocFromTok
                      , isWhite
@@ -135,13 +141,8 @@ module Language.Haskell.Refact.API
                      startEndLoc,extendBothSides -},extendForwards,extendBackwards
                      , startEndLocIncFowComment{- ,startEndLocIncFowNewLn -}
                      , startEndLocIncComments, startEndLocIncComments'
-                     {-,
-                     prettyprint ,deleteFromToks, prettyprintGuardsAlt,
-                     -}
                      , tokenise
                      , basicTokenise
-                     , lexStringToRichTokens
-                     , prettyprint -- , prettyprintGhc
                      , prettyprintPatList
                      , groupTokensByLine
                      , toksOnSameLine
@@ -198,10 +199,183 @@ module Language.Haskell.Refact.API
                      , matchTokenPos
                      , rmOffsetFromToks
 
+ -- * from `Language.Haskell.Refact.Utils.TypeSyn`
+    , InScopes
+    , PosToken(..)
+    , ghead
+    , glast
+    , gtail
+    , gfromJust
 
+ -- * from `Language.Haskell.Refact.Utils.TypeUtils`
+
+ -- ** Program Analysis
+    -- ** Imports and exports
+   , inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
+   -- , hsQualifier, {-This function should be removed-} rmPrelude
+   {-,exportInfo -}, isExported, isExplicitlyExported, modIsExported
+
+    -- *** Variable analysis
+    , isFieldName
+    , isClassName
+    , isInstanceName
+    ,hsPNs -- ,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
+    {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
+    ,isDeclaredIn
+    ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
+    ,hsFreeAndDeclaredPNs
+    ,hsFreeAndDeclaredGhc
+    ,getDeclaredTypes
+    ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
+
+    ,hsVisiblePNs {- , hsVisiblePNsOld -}, hsVisibleNames
+    ,hsFDsFromInside, hsFDNamesFromInside
+    ,hsVisibleDs
+
+    -- *** Property checking
+    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
+    ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
+    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
+    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
+    ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
+    ,findPNT,findPN,findAllNameOccurences
+    ,findPNs, findEntity, findEntity'
+    ,sameOccurrence
+    ,defines, definesP,definesTypeSig -- , isTypeSigOf
+    -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
+    ,sameBind
+    {- ,usedByRhs -},UsedByRhs(..)
+
+    -- *** Modules and files
+    -- ,clientModsAndFiles,serverModsAndFiles,isAnExistingMod
+    -- ,fileNameToModName, strToModName, modNameToStr
+    , isMainModule
+    , getModule
+
+    -- *** Locations
+    ,defineLoc, useLoc, locToExp  -- , getStartEndLoc
+    ,locToName, locToRdrName
+    ,getName
+
+ -- * Program transformation
+    -- *** Adding
+    ,addDecl, addItemsToImport, addHiding --, rmItemsFromImport, addItemsToExport
+    ,addParamsToDecls, addActualParamsToRhs {- , addGuardsToRhs-}, addImportDecl, duplicateDecl -- , moveDecl
+    -- *** Removing
+    ,rmDecl, rmTypeSig, rmTypeSigs -- , commentOutTypeSig, rmParams
+    -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
+
+    -- *** Updating
+    -- ,Update(update)
+    {- ,qualifyPName-},rmQualifier,qualifyToplevelName,renamePN {- ,replaceNameInPN -},autoRenameLocalVar
+
+    -- ** Miscellous
+    -- *** Parsing, writing and showing
+    {- ,parseSourceFile,writeRefactoredFiles-}, showEntities,showPNwithLoc -- , newProj, addFile, chase
+    -- *** Locations
+    -- ,toRelativeLocs, rmLocs
+    -- *** Default values
+   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
+
+
+    -- *** Identifiers, expressions, patterns and declarations
+    ,ghcToPN,lghcToPN, expToName
+    ,nameToString
+    {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
+    {- ,definingDecls -}, definedPNs
+    ,definingDeclsNames, definingDeclsNames', definingSigsNames
+    , allNames
+    -- ,simplifyDecl
+
+    -- *** Others
+    , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+
+    -- The following functions are not in the the API yet.
+    , causeNameClashInExports {- , inRegion , unmodified -}
+
+    , removeOffset
+
+    -- ** Typed AST traversals (added by CMB)
+    -- ** Miscellous
+    -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
+
+    -- ** Debug stuff
+    , getDeclAndToks, getSigAndToks
+    , getToksForDecl, removeToksOffset -- ++AZ++ remove this after debuggging
+    , getParsedForRenamedLPat
+    , getParsedForRenamedName
+    , getParsedForRenamedLocated
+    -- , allPNT
+    --  , allPNTLens
+    , newNameTok
+    , stripLeadingSpaces
+    -- , lookupNameGhc
+
+ -- ** from `Language.Haskell.Refact.Utils.GhcUtils`
+    -- ** SYB versions
+    , everythingButStaged
+    , somethingStaged
+    , everythingStaged
+    , somewhereMStaged
+    , somewhereMStagedBu
+    , everywhereMStaged
+    , everywhereMStaged'
+    , everywhereStaged
+    , everywhereStaged'
+    , onelayerStaged
+    , listifyStaged
+
+    -- *** SYB Utility
+    , checkItemRenamer
+
+    -- ** Strafunski StrategyLib versions
+    , full_tdTUGhc
+    , stop_tdTUGhc
+    , stop_tdTPGhc
+    , allTUGhc'
+    , once_tdTPGhc
+    , once_buTPGhc
+    , oneTPGhc
+    , allTUGhc
+
+    -- *** Strafunski utility
+    , checkItemStage'
+    , checkItemRenamer'
+
+    -- ** Scrap Your Zipper versions
+    , zeverywhereStaged
+    , zopenStaged
+    , zsomewhereStaged
+    , transZ
+    , transZM
+    , zopenStaged'
+    , ztransformStagedM
+    -- *** SYZ utilities
+    , checkZipperStaged
+    , upUntil
+    , findAbove
+
+ -- * from `Language.Haskell.Refact.Utils.GhcVersionSpecific`
+  , showGhc
+  , prettyprint
+  , prettyprint2
+  , lexStringToRichTokens
+  , getDataConstructors
+  , setGhcContext
+
+ -- * from `Language.Haskell.Refact.Utils.TokenUtils`
+ , Positioning(..)
+ , reIndentToks
+ , srcSpanToForestSpan
  ) where
 
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.GhcUtils
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
+import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadFunctions
+import Language.Haskell.Refact.Utils.TokenUtils
+import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.Utils
 

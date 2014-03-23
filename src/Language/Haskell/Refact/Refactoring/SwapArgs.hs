@@ -8,13 +8,7 @@ import qualified Name                  as GHC
 import qualified GHC
 
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils.Utils
-import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeUtils
-
+import Language.Haskell.Refact.API
 
 -- TODO: replace args with specific parameters
 swapArgs :: RefactSettings -> Cradle -> [String] -> IO [FilePath]

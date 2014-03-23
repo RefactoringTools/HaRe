@@ -24,21 +24,12 @@ module Language.Haskell.Refact.Utils.Utils
        , RefacSource(..)
 
        , update
-       -- , writeRefactoredFiles
-       -- , Refact -- ^ deprecated
        , fileNameToModName
        , fileNameFromModSummary
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
-       -- , getCurrentModuleGraph
-       -- , sortCurrentModuleGraph
 
-       -- * For testing
-       -- , initGhcSession
-       -- , prettyprint
-       -- , pwd
-       -- , cd
        ) where
 
 import Control.Monad.State

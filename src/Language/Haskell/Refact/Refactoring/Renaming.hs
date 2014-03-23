@@ -13,14 +13,9 @@ import Data.List
 import Exception
 
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils.Utils
-import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.API
+
+-- import Language.Haskell.Refact.Utils.GhcVersionSpecific
 
 {-This refactoring renames an indentifier to a user-specified name.
 

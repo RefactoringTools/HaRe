@@ -52,8 +52,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      -}
                      , tokenise
                      , basicTokenise
-                     , lexStringToRichTokens
-                     , prettyprint -- , prettyprintGhc
+                     -- , prettyprint -- , prettyprintGhc
                      , prettyprintPatList
                      , groupTokensByLine
                      , toksOnSameLine
