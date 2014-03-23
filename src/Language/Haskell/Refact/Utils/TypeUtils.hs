@@ -157,57 +157,22 @@ import Language.Haskell.Refact.Utils.TypeSyn
 -- Modules from GHC
 import qualified Bag           as GHC
 import qualified BasicTypes    as GHC
--- import qualified DataCon       as GHC
--- import qualified DynFlags      as GHC
--- import qualified ErrUtils      as GHC
--- import qualified FamInstEnv    as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
--- import qualified HscMain       as GHC
--- import qualified HsPat         as GHC
--- import qualified HscTypes      as GHC
--- import qualified Id            as GHC
--- import qualified InstEnv       as GHC
 import qualified Lexer         as GHC hiding (getSrcLoc)
 import qualified Module        as GHC
 import qualified Name          as GHC
--- import qualified NameEnv       as GHC
 import qualified NameSet       as GHC
 import qualified Outputable    as GHC
--- import qualified PrelNames     as GHC
 import qualified RdrName       as GHC
--- import qualified RnBinds       as GHC
--- import qualified RnEnv         as GHC
--- import qualified RnPat         as GHC
--- import qualified RnSource      as GHC
 import qualified SrcLoc        as GHC
--- import qualified SysTools      as GHC
--- import qualified TcEnv         as GHC
--- import qualified TcEvidence    as GHC
--- import qualified TcExpr        as GHC
--- import qualified TcHsSyn       as GHC
--- import qualified TcMType       as GHC
--- import qualified TcRnDriver    as GHC
--- import qualified TcRnMonad     as GHC
--- import qualified TcRnTypes     as GHC
--- import qualified TcSimplify    as GHC
--- import qualified TcType        as GHC
--- import qualified TyCon         as GHC
 import qualified UniqSet       as GHC
 import qualified Unique        as GHC
--- import qualified Util          as GHC
--- import qualified VarEnv        as GHC
--- import qualified VarSet        as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
--- import qualified Data.Generics.Zipper as Z
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
--- import Data.IORef
-
--- import Debug.Trace
--- debug = flip trace
 
 -- ---------------------------------------------------------------------
 
@@ -284,9 +249,6 @@ isInScopeAndUnqualified::String       -- ^ The identifier name.
 isInScopeAndUnqualified n names
  = isJust $ find (\ (x, _,_, qual) -> x == n && isNothing qual ) $ inScopeInfo names
 
--- isInScopeAndUnqualified id inScopeRel
---  = isJust $ find (\ (x, _,_, qual) -> x == id && isNothing qual ) $ inScopeInfo inScopeRel
-
 -- | Return True if the identifier is inscope and can be used without
 -- a qualifier. The identifier name string may have a qualifier
 -- already
@@ -329,27 +291,6 @@ inScopeNames n = do
       return []
 
 -- ---------------------------------------------------------------------
-{-
--- | Return True if the identifier is inscope and can be used without
--- a qualifier. The identifier name string may have a qualifier already
-lookupNameGhc :: String         -- ^ The identifier name.
-                           -> RefactGhc [GHC.Name] -- ^ The result.
-lookupNameGhc n = do
-  names <- ghandle handler (GHC.parseName n)
-  nameInfo <- mapM GHC.lookupName names
-  let nameList = map (\(GHC.AnId n) -> GHCV.varName n) $ filter isId $ catMaybes nameInfo
-  return nameList
-
-  where
-    isId (GHC.AnId _) = True
-    isId _            = False
-
-    -- handler:: (Exception e,GHC.GhcMonad m) => e -> m [GHC.Name]
-    handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
-    handler _ = return []
--}
-
--- ---------------------------------------------------------------------
 -- | Show a PName in a format like: 'pn'(at row:r, col: c).
 showPNwithLoc:: GHC.Located GHC.Name -> String
 showPNwithLoc pn@(GHC.L l _n)
@@ -358,13 +299,6 @@ showPNwithLoc pn@(GHC.L l _n)
     in  " '"++showGhc pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
 
 -- ---------------------------------------------------------------------
-
-{- ++AZ++ getting rid of PNT
--- | Default identifier in the PNT format.
--- defaultPNT:: GHC.GenLocated GHC.SrcSpan GHC.RdrName   -- GHC.RdrName
-defaultPNT:: PNT
-defaultPNT = PNT (GHC.L GHC.noSrcSpan (mkRdrName "nothing"))
--}
 
 defaultPN :: PName
 defaultPN = PN (mkRdrName "nothing")
@@ -489,9 +423,6 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
                ( any (modIsUnQualifedImported renamed) modNames
                  || elem modName modNames)
     in res
-    -- in error $ "causeNameClashInExports:modNames=" ++ (showGhc modNames)
-    -- in error $ "causeNameClashInExports:explicitlyExported=" ++ (showGhc (isExplicitlyExported pn renamed))
-    -- in error $ "causeNameClashInExports:any unqualImp=" ++ (showGhc (any (modIsUnQualifedImported renamed) modNames))
  where
     isImpVar (GHC.L _ x) = case x of
       GHC.IEVar _ -> True
@@ -568,28 +499,6 @@ hsFreeAndDeclaredPNs' t = do
           -- hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
 
    where
-          -- cc :: Maybe ([GHC.Name],[GHC.Name]) -> Maybe ([GHC.Name],[GHC.Name]) -> Maybe ([GHC.Name],[GHC.Name])
-          -- cc = mappend
-          -- cc Nothing Nothing = Nothing
-          -- -- cc (Just (f1,d1)) (Just (f2,d2)) = Just (f1++f2,d1++d2)
-          -- cc (Just (f1,d1)) (Just (f2,d2)) = Just (f1,d1)
-          -- cc Nothing x = x
-          -- cc x Nothing = x
-{-
-          -- hsFreeAndDeclared' :: RefactGhc (Maybe ([GHC.Name],[GHC.Name]))
-          hsFreeAndDeclared' :: Maybe ([GHC.Name],[GHC.Name])
-          hsFreeAndDeclared' = somethingStaged SYB.Renamer Nothing
-          -- hsFreeAndDeclared' = everythingStaged SYB.Renamer cc Nothing
-                                       (Nothing
-                                           `SYB.mkQ` expr
-                                           `SYB.extQ` pattern
-                                           `SYB.extQ` bindList
-                                           `SYB.extQ` binds
-                                           `SYB.extQ` match
-                                           `SYB.extQ` stmts
-                                           `SYB.extQ` rhs
-                                       ) t
--}
 
           hsFreeAndDeclared' = applyTU (stop_tdTUGhc (failTU
                                                          `adhocTU` expr
@@ -608,8 +517,6 @@ hsFreeAndDeclaredPNs' t = do
           expr (GHC.HsVar n) = return ([n],[])
 
           expr (GHC.OpApp e1 (GHC.L _ (GHC.HsVar n)) _ e2) = do
-              -- (ef,ed) <- hsFreeAndDeclaredPNs' [e1,e2]
-              -- (f,d)   <- addFree n (ef,ed)
               efed <- hsFreeAndDeclaredPNs' [e1,e2]
               fd   <- addFree n efed
               return fd
@@ -640,7 +547,6 @@ hsFreeAndDeclaredPNs' t = do
                  (ef,ed) <- hsFreeAndDeclaredPNs' ds
                  return (df ++ ef, dd ++ ed)
 
-          -- rhs _ = mzero
 
           -- pat --
           pattern (GHC.VarPat n) = return ([],[n])
@@ -660,8 +566,6 @@ hsFreeAndDeclaredPNs' t = do
             = do
                 (pf,_pd) <- hsFreeAndDeclaredPNs' matches
 
-                -- ((pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))),[fun])
-                -- return ((GHC.uniqSetToList fvs),[n])
                 return (pf \\ [n] ,[n])
 
           -- patBind --
@@ -685,8 +589,6 @@ hsFreeAndDeclaredPNs' t = do
             --               anything out of bindOp/failOp
             (pf,pd)  <- hsFreeAndDeclaredPNs' pat
             (ef,_ed) <- hsFreeAndDeclaredPNs' expre
-            -- sf_sd <- hsFreeAndDeclaredPNs' [bindOp,failOp]
-            -- let (sf,_sd) = fromMaybe ([],[]) sf_sd
             let sf1 = []
             return (pf `union` ef `union` (sf1\\pd),[]) -- pd) -- Check this
 
@@ -705,100 +607,6 @@ hsFreeAndDeclaredPNs' t = do
                                              foldr union [] (map snd fds))
 
 
-{-
-hsFreeAndDeclaredPNs:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
-hsFreeAndDeclaredPNs t=do (f,d)<-hsFreeAndDeclared' t
-                          return (nub f, nub d)
-   where
-          hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
-                                                         `adhocTU` pat
-                                                         `adhocTU` match
-                                                         `adhocTU` patBind
-                                                         `adhocTU` alt
-                                                         `adhocTU` decls
-                                                         `adhocTU` stmts
-                                                         `adhocTU` recDecl))
-
-          exp (TiDecorate.Exp (HsId (HsVar (PNT pn _ _))))=return ([pn],[])
-          exp (TiDecorate.Exp (HsId (HsCon (PNT pn _ _))))=return ([pn],[])
-          exp (TiDecorate.Exp (HsInfixApp e1 (HsVar (PNT pn _ _)) e2))
-              =addFree pn (hsFreeAndDeclaredPNs [e1,e2])
-          exp (TiDecorate.Exp (HsLambda pats body))
-              = do (pf,pd) <-hsFreeAndDeclaredPNs pats
-                   (bf,_) <-hsFreeAndDeclaredPNs body
-                   return ((bf `union` pf) \\ pd, [])
-          exp (TiDecorate.Exp (HsLet decls exp))
-              = do (df,dd)<- hsFreeAndDeclaredPNs decls
-                   (ef,_)<- hsFreeAndDeclaredPNs exp
-                   return ((df `union` (ef \\ dd)),[])
-          exp (TiDecorate.Exp (HsRecConstr _  (PNT pn _ _) e))
-               =addFree  pn  (hsFreeAndDeclaredPNs e)   --Need Testing
-          exp (TiDecorate.Exp (HsAsPat (PNT pn _ _) e))
-              =addFree  pn  (hsFreeAndDeclaredPNs e)
-          exp _ = mzero
-
-
-          pat (TiDecorate.Pat (HsPId (HsVar (PNT pn _ _))))=return ([],[pn])
-          pat (TiDecorate.Pat (HsPInfixApp p1 (PNT pn _ _) p2))=addFree pn (hsFreeAndDeclaredPNs [p1,p2])
-          pat (TiDecorate.Pat (HsPApp (PNT pn _ _) pats))=addFree pn (hsFreeAndDeclaredPNs pats)
-          pat (TiDecorate.Pat (HsPRec (PNT pn _ _) fields))=addFree pn (hsFreeAndDeclaredPNs fields)
-          pat _ =mzero
-
-
-          match ((HsMatch _ (PNT fun _ _)  pats rhs  decls)::HsMatchP)
-            = do (pf,pd) <- hsFreeAndDeclaredPNs pats
-                 (rf,rd) <- hsFreeAndDeclaredPNs rhs
-                 (df,dd) <- hsFreeAndDeclaredPNs decls
-                 return ((pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))),[fun])
-
-         -------Added by Huiqing Li-------------------------------------------------------------------
-
-          patBind ((TiDecorate.Dec (HsPatBind _ pat (HsBody rhs) decls))::HsDeclP)
-             =do (pf,pd) <- hsFreeAndDeclaredPNs pat
-                 (rf,rd) <- hsFreeAndDeclaredPNs rhs
-                 (df,dd) <- hsFreeAndDeclaredPNs decls
-                 return (pf `union` ((rf `union` df) \\(dd `union` pd)),pd)
-          patBind _=mzero
-         ------------------------------------------------------------------------------------------- 
-
-          alt ((HsAlt _ pat exp decls)::(HsAlt (HsExpP) (HsPatP) HsDeclsP))
-             = do (pf,pd) <- hsFreeAndDeclaredPNs pat
-                  (ef,ed) <- hsFreeAndDeclaredPNs exp
-                  (df,dd) <- hsFreeAndDeclaredPNs decls
-                  return (pf `union` (((ef \\ dd) `union` df) \\ pd),[])
-
-
-          decls (ds :: [HsDeclP])
-             =do (f,d) <-hsFreeAndDeclaredList ds
-                 return (f\\d,d)
-
-          stmts ((HsGenerator _ pat exp stmts) :: HsStmt (HsExpP) (HsPatP) HsDeclsP) -- Claus
-             =do (pf,pd) <-hsFreeAndDeclaredPNs pat
-                 (ef,ed) <-hsFreeAndDeclaredPNs exp
-                 (sf,sd) <-hsFreeAndDeclaredPNs stmts
-                 return (pf `union` ef `union` (sf\\pd),[]) -- pd) -- Check this 
-
-          stmts ((HsLetStmt decls stmts) :: HsStmt (HsExpP) (HsPatP) HsDeclsP)
-             =do (df,dd) <-hsFreeAndDeclaredPNs decls
-                 (sf,sd) <-hsFreeAndDeclaredPNs stmts
-                 return (df `union` (sf \\dd),[])
-          stmts _ =mzero
-
-          recDecl ((HsRecDecl _ _ _ _ is) :: HsConDeclI PNT (HsTypeI PNT) [HsTypeI PNT])
-                =do let d=map pNTtoPN $ concatMap fst is
-                    return ([],d)
-          recDecl _ =mzero
-
-
-          addFree free mfd=do (f,d)<-mfd
-                              return ([free] `union` f, d)
-
-          hsFreeAndDeclaredList l=do fds<-mapM hsFreeAndDeclaredPNs l
-                                     return (foldr union [] (map fst fds),
-                                             foldr union [] (map snd fds))
--}
-
-
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned
 -- variables are in the String format.
@@ -807,32 +615,6 @@ hsFreeAndDeclaredNameStrings t = do
   (f1,d1) <- hsFreeAndDeclaredPNs t
   return ((nub.map showGhc) f1, (nub.map showGhc) d1)
 
--- hsFreeAndDeclaredNames::(Term t, MonadPlus m)=> t->m([String],[String])
--- hsFreeAndDeclaredNames t =do (f1,d1)<-hsFreeAndDeclaredPNs t
---                              return ((nub.map pNtoName) f1, (nub.map pNtoName) d1)
-
-{-
--- | Collect the free and declared variables (in the GHC.Name format)
--- in a given syntax phrase t. In the result, the first list contains
--- the free variables, and the second list contains the declared
--- variables.
--- Expects RenamedSource
-hsFreeAndDeclaredPNsOld2 :: (HsValBinds t) => t -> ([GHC.Name],[GHC.Name])
-hsFreeAndDeclaredPNsOld2 t = res
-  where
-    bs = hsBinds t
-
-    getFd :: (GHC.NameSet,[GHC.Name]) -> GHC.LHsBind GHC.Name -> (GHC.NameSet,[GHC.Name])
-    getFd (facc,dacc) b = (GHC.unionNameSets facc f,dacc ++ d)
-      where
-        [(d,f)] = getFvs [b]
-
-    tds = concatMap getDeclaredTypes $ concat $ hsTyDecls t
-    (fs,ds) = foldl' getFd (GHC.emptyNameSet,[]) bs
-
-    fs' = GHC.nameSetToList $ GHC.minusNameSet fs (GHC.mkNameSet (ds ++ tds))
-    res = (fs',ds ++ tds)
--}
 
 hsFreeAndDeclaredPNs :: (SYB.Data t, GHC.Outputable t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
@@ -853,8 +635,6 @@ hsFreeAndDeclaredGhc :: (SYB.Data t, GHC.Outputable t) => t -> RefactGhc (FreeNa
 hsFreeAndDeclaredGhc t = do
   -- logm $ "hsFreeAndDeclaredGhc:t=" ++ showGhc t
   (FN f,DN d) <- res
-  -- let f' = nub $ filter isNonLibraryName f
-  -- let d' = nub $ filter isNonLibraryName d
   let f' = nub f
   let d' = nub d
   -- logm $ "hsFreeAndDeclaredGhc:res=" ++ showGhc (f',d')
@@ -1024,8 +804,6 @@ hsFreeAndDeclaredGhc t = do
     pat _p@(GHC.SigPatIn (GHC.L _ p) b) = do
       fdp <- pat p
       (FN fb,DN _db) <- hsFreeAndDeclaredGhc b
-      -- logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:p=" ++ showGhc _p
-      -- logm $ "hsFreeAndDeclaredGhc.pat.SigPatIn:(fdp,(FN fb,DN db))=" ++ show (fdp,(FN fb,DN db))
 #if __GLASGOW_HASKELL__ > 704
       return $ fdp <> (FN fb,DN [])
 #else
@@ -1044,8 +822,6 @@ hsFreeAndDeclaredGhc t = do
       return $ mconcat fds
     details (GHC.RecCon recf) =
       recfields recf
-      -- error $ "hsFreeAndDeclaredGhc.pat:unimplemented:" ++ (showGhc recf)
-      -- error $ "hsFreeAndDeclaredGhc.pat:unimplemented:" ++ (SYB.showData SYB.Renamer 0 recf)
     details (GHC.InfixCon arg1 arg2) = do
       fds <- mapM pat $ map GHC.unLoc [arg1,arg2]
       return $ mconcat fds
@@ -1094,7 +870,6 @@ hsFreeAndDeclaredGhc t = do
     ltydecl (GHC.L _ (GHC.ClassDecl _ctx (GHC.L _ n) _tyvars
                      _fds _sigs meths ats atds _docs)) = do
 #endif
-       -- (_,td) <- hsFreeAndDeclaredGhc tyvars
        (_,md) <- hsFreeAndDeclaredGhc meths
        (_,ad) <- hsFreeAndDeclaredGhc ats
        (_,atd) <- hsFreeAndDeclaredGhc atds
@@ -1333,9 +1108,6 @@ hsFreeAndDeclaredGhc t = do
     expr ((GHC.HsWrap _wrap e))
       = hsFreeAndDeclaredGhc e
 
-    -- expr e = error $ "hsFreeAndDeclaredGhc.expr: unimplemented for"
-    --               ++ (SYB.showData SYB.Renamer 0 e)
-
     -- -----------------------
 
     name :: GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
@@ -1442,14 +1214,9 @@ hsFreeAndDeclaredGhc t = do
 
     lmatch :: GHC.LMatch GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     lmatch (GHC.L _ _m@(GHC.Match pats _ rhs)) = do
-      -- logm $ "hsFreeAndDeclaredGhc.lmatch for:" ++ (showGhc _m)
       (fp,DN dp) <- recurseList pats
-      -- logm $ "hsFreeAndDeclaredGhc.lmatch pats done"
       (FN fr,DN dr) <- hsFreeAndDeclaredGhc rhs
-      -- logm $ "hsFreeAndDeclaredGhc.lmatch:(fp,dp)=" ++ (show (fp,DN dp))
-      -- logm $ "hsFreeAndDeclaredGhc.lmatch:fdr=" ++ (showGhc (fr,dr))
       let r = (fp,DN []) <> (FN (fr \\ (dr ++ dp)), DN [])
-      -- logm $ "hsFreeAndDeclaredGhc.lmatch end:r=" ++ (show r)
       return $ r
 
     -- -----------------------
@@ -1473,80 +1240,6 @@ hsFreeAndDeclaredGhc t = do
       fds <- mapM hsFreeAndDeclaredGhc xs
       return $ mconcat fds
 
--- ---------------------------------------------------------------------
-
-
--- ---------------------------------------------------------------------
-
-{-
-inRnM2 :: GHC.HscEnv -> GHC.GlobalRdrEnv -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
-inRnM2 hsc_env glbRdrEnv fn = do
-  let ictxt = (GHC.hsc_IC hsc_env) { GHC.ic_rn_gbl_env = glbRdrEnv }
-  GHC.initTcPrintErrors hsc_env GHC.iNTERACTIVE $ setInteractiveContext hsc_env ictxt fn
-
-
-inRnM :: GHC.HscEnv -> GHC.GlobalRdrEnv {- -> GHC.Module -} -> GHC.TcRn r -> IO (GHC.Messages, Maybe r)
-inRnM hsc_env glbRdrEnv {- modu -} fn = do
-  GHC.initTc hsc_env GHC.HsSrcFile True GHC.iNTERACTIVE fn
--}
--- initTc :: HscEnv -> HscSource -> Bool -> Module -> TcM r -> IO (Messages, Maybe r)
-{-
--- inRnM3 :: GHC.HscEnv -> GHC.GlobalRdrEnv -> GHC.LocalRdrEnv -> GHC.TcRnIf GHC.GlobalRdrEnv GHC.LocalRdrEnv a -> IO a
-inRnM3 :: GHC.HscEnv -> GHC.TcGblEnv -> GHC.TcRn a -> IO (GHC.Messages,Maybe a)
-inRnM3 hsc_env glbRdrEnv do_this = do
-
-  errs_var     <- newIORef (GHC.emptyBag, GHC.emptyBag) ;
-  meta_var     <- newIORef GHC.initTyVarUnique ;
-  tvs_var      <- newIORef GHC.emptyVarSet ;
-  -- keep_var     <- newIORef GHC.emptyNameSet ;
-  -- used_rdr_var <- newIORef Set.empty ;
-  -- th_var       <- newIORef False ;
-  -- th_splice_var<- newIORef False ;
-  -- infer_var    <- newIORef True ;
-  lie_var      <- newIORef GHC.emptyWC ;
-  -- dfun_n_var   <- newIORef GHC.emptyOccSet ;
-{-
-  type_env_var <- case hsc_type_env_var hsc_env of {
-                     Just (_mod, te_var) -> return te_var ;
-                     Nothing             -> newIORef emptyNameEnv } ;
--}
-
-  let lcl_env = GHC.TcLclEnv {
-     GHC.tcl_errs       = errs_var,
-     GHC.tcl_loc        = GHC.mkGeneralSrcSpan (GHC.fsLit "Top level"),
-     GHC.tcl_ctxt       = [],
-     GHC.tcl_rdr        = GHC.emptyLocalRdrEnv,
-     -- GHC.tcl_rdr        = localRdrEnv
-     GHC.tcl_th_ctxt    = GHC.topStage,
-     GHC.tcl_arrow_ctxt = GHC.NoArrowCtxt,
-     GHC.tcl_env        = GHC.emptyNameEnv,
-     GHC.tcl_tidy       = GHC.emptyTidyEnv,
-     GHC.tcl_tyvars     = tvs_var,
-     GHC.tcl_lie        = lie_var,
-     GHC.tcl_meta       = meta_var,
-     GHC.tcl_untch      = GHC.initTyVarUnique
-  }
-
-  -- putStrLn $ "inRnM3: about to do it"
-
-  maybe_res <- GHC.initTcRnIf 'a' hsc_env glbRdrEnv lcl_env $
-               do { r <- GHC.tryM do_this
-                  ; case r of
-                    Right res -> return (Just res)
-                    Left _    -> return Nothing } ;
-  putStrLn $ "inRnM3: done"
-
-  -- Collect any error messages
-  msgs <- readIORef errs_var ;
-
-  let { dflags = GHC.hsc_dflags hsc_env
-      ; final_res | GHC.errorsFound dflags msgs = Nothing
-                  | otherwise                   = maybe_res } ;
-
-  return (msgs,final_res)
--}
--- initTcRnIf :: Char -> HscEnv -> gbl -> lcl -> TcRnIf gbl lcl a -> IO a
--- type TcRn a = TcRnIf TcGblEnv TcLclEnv a
 -- ---------------------------------------------------------------------
 
 -- | Given a RenamedSource LPAT, return the equivalent
@@ -1666,15 +1359,6 @@ getHsTyDefn (GHC.TyData _ _  _ _ cons _) = r
     r = map getConDecl cons
 #endif
 
--- -------------------------------------
-{-
-getDeclaredTyVarBndrs :: [GHC.LHsTyVarBndrs GHC.Name] -> [GHC.Name]
-getDeclaredTyVarBndrs bs = r
-  where
-    go
-
-    r = []
--}
 -- ---------------------------------------------------------------------
 -- |Experiment with GHC fvs stuff
 getFvs :: [GHC.LHsBind GHC.Name] -> [([GHC.Name], GHC.NameSet)]
@@ -1709,145 +1393,6 @@ hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2,HsValBinds t2,GHC.Outp
 hsVisibleNames e t = do
     d <- hsVisiblePNs e t
     return ((nub . map showGhc) d)
-
-{-
--- | Given syntax phrases e and t, if e occurs in t, then return those
--- variables which are declared in t and accessible to e, otherwise
--- return [].
-hsVisiblePNsOld :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t)
-             => e -> t -> [GHC.Name]
-hsVisiblePNsOld e t = res
-  where
-    {- -}
-          r = (applyTU (full_tdTUGhc (constTU [] `adhocTU` top
-                                           `adhocTU` expr
-                                           `adhocTU` decl
-                                           `adhocTU` match
-                                           `adhocTU` stmts)) t) :: Maybe [GHC.Name]
-   {- -}
-{-
-    r <- SYB.everythingStaged SYB.Renamer (++) []
-                  ([] `SYB.mkQ`  top
-                      `SYB.extQ` expr
-                      `SYB.extQ` decl
-                      `SYB.extQ` match
-                      `SYB.extQ` stmts) t
--}
-          res =  fromMaybe [] r
-      -- where
-          top :: (MonadPlus m) => GHC.RenamedSource -> m [GHC.Name]
-          top ((groups,_,_,_) :: GHC.RenamedSource)
-            | findEntity e (GHC.hs_valds groups) = do -- ++AZ++:TODO: Should be GHC.HsValBinds GHC.Name, not groups
-             let (_df,dd) = hsFreeAndDeclaredPNs (GHC.hs_valds groups)
-             return dd
-          top _ = return []
-
-          expr ((GHC.HsLet decls e1) :: GHC.HsExpr GHC.Name)
-             |findEntity e e1 || findEntity e decls = do
-              let (_df,dd) = hsFreeAndDeclaredPNs decls
-              return dd
-
-          expr ((GHC.HsDo _ctx ss _) :: GHC.HsExpr GHC.Name)
-             | findEntity e ss = do
-              let (_df,dd) = hsFreeAndDeclaredPNs ss
-              return dd
-
-          expr _ = return []
-
-          decl ((GHC.FunBind n _ matches _ _fvs _) :: GHC.HsBind GHC.Name)
-            |findEntity e matches = do
-             let (_pf,pd) = hsFreeAndDeclaredPNs matches
-             return (pd)
-
-          decl ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
-            |findEntity e rhs = do
-             let (_pf,pd) = hsFreeAndDeclaredPNs pat
-             let (_df,dd) = hsFreeAndDeclaredPNs rhs
-             return (pd `union` dd)
-          decl _ = return []
-
-          -- Pick up from HsAlt etc
-          match ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
-            |findEntity e rhs = do
-             let (_pf,pd) = hsFreeAndDeclaredPNs pats
-             let (_df,dd) = hsFreeAndDeclaredPNs rhs
-             return (pd `union` dd)
-          match _ = return []
-
-          stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name)
-            | findEntity e binds = do
-             let (_df,dd) = hsFreeAndDeclaredPNs binds
-             return dd
-
-          stmts ((GHC.BindStmt pat rhs _ _) :: GHC.Stmt GHC.Name)
-            | findEntity e rhs = do
-             let (_df,dd) = hsFreeAndDeclaredPNs pat
-             return dd
-
-          stmts _ = return []
--}
-
-{- ++ original ++
--- | Given syntax phrases e and t, if e occurs in  t, then return those vairables
---  which are declared in t and accessible to e, otherwise return [].
-hsVisiblePNs :: (Term t1, Term t2, FindEntity t1, MonadPlus m) => t1 -> t2 -> m [PName]
-hsVisiblePNs e t =applyTU (full_tdTU (constTU [] `adhocTU` mod
-                                                  `adhocTU` exp
-                                                  `adhocTU` match
-                                                  `adhocTU` patBind
-                                                  `adhocTU` alt
-                                                  `adhocTU` stmts)) t
-      where
-          mod ((HsModule loc modName exps imps decls)::HsModuleP)
-            |findEntity e decls
-           =do (df,dd)<-hsFreeAndDeclaredPNs decls
-               return dd
-          mod _=return []
-
-          exp ((Exp (HsLambda pats body))::HsExpP)
-            |findEntity e body
-             = do (pf,pd) <-hsFreeAndDeclaredPNs pats
-                  return pd
-
-          exp (Exp (HsLet decls e1))
-             |findEntity e e1 || findEntity e decls
-             = do (df,dd)<- hsFreeAndDeclaredPNs decls
-                  return dd
-          exp _ =return []
-
-          match (m@(HsMatch _ (PNT fun _ _)  pats rhs  decls)::HsMatchP)
-            |findEntity e rhs || findEntity e decls
-            = do (pf,pd) <- hsFreeAndDeclaredPNs pats
-                 (df,dd) <- hsFreeAndDeclaredPNs decls
-                 return  (pd `union` dd `union` [fun])
-          match _=return []
-
-          patBind (p@(Dec (HsPatBind _ pat rhs decls))::HsDeclP)
-            |findEntity e rhs || findEntity e decls
-             =do (pf,pd) <- hsFreeAndDeclaredPNs pat
-                 (df,dd) <- hsFreeAndDeclaredPNs decls
-                 return (pd `union` dd)
-          patBind _=return []
-
-          alt ((HsAlt _ pat exp decls)::HsAltP)
-             |findEntity e exp || findEntity e decls
-             = do (pf,pd) <- hsFreeAndDeclaredPNs pat
-                  (df,dd) <- hsFreeAndDeclaredPNs decls
-                  return (pd `union` dd)
-          alt _=return []
-
-          stmts ((HsGenerator _ pat exp stmts) :: HsStmtP)
-            |findEntity e stmts
-             =do (pf,pd) <-hsFreeAndDeclaredPNs pat
-                 return pd
-
-          stmts (HsLetStmt decls stmts)
-            |findEntity e decls || findEntity e stmts
-             =do (df,dd) <-hsFreeAndDeclaredPNs decls
-                 return dd
-          stmts _ =return []
-
--}
 
 ------------------------------------------------------------------------
 
@@ -2069,323 +1614,8 @@ hsVisibleDs e t = do
     -- -----------------------
     err = error $ "hsVisibleDs:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
 
--- ---------------------------------------------------------------------
--- TODO:Drive parts of the renamer to pull out free variables
---  See GHC source for TcRnDriver.tcRnDeclsi
--- driverRenamer = do
-
--- =======================================================================
--- This next section is taken from the GHC compiler (7.6.3), as it is
--- not all exposed in the GHC API.
--- The intention is to use it as a reference, and put in a stripped
--- down one doing only what we need.
-
-
-{-
-tcRnDeclsi :: GHC.HscEnv
-           -> GHC.InteractiveContext
-           -> [GHC.LHsDecl GHC.RdrName]
-           -> IO (GHC.Messages, Maybe GHC.TcGblEnv)
-
-tcRnDeclsi hsc_env ictxt local_decls =
-    -- ictxt = GHC.emptyInteractiveContext
-    GHC.initTcPrintErrors hsc_env GHC.iNTERACTIVE $
-    setInteractiveContext hsc_env ictxt $ do
-
-    ((tcg_env, tclcl_env), lie) <-
-        GHC.captureConstraints $ tc_rn_src_decls GHC.emptyModDetails local_decls
-    GHC.setEnvs (tcg_env, tclcl_env) $ do
-
-    new_ev_binds <- GHC.simplifyTop lie
-    GHC.failIfErrsM
-    let GHC.TcGblEnv { GHC.tcg_type_env  = type_env,
-                       GHC.tcg_binds     = binds,
-                       GHC.tcg_sigs      = sig_ns,
-                       GHC.tcg_ev_binds  = cur_ev_binds,
-                       GHC.tcg_imp_specs = imp_specs,
-                       GHC.tcg_rules     = rules,
-                       GHC.tcg_vects     = vects,
-                       GHC.tcg_fords     = fords } = tcg_env
-        all_ev_binds = cur_ev_binds `GHC.unionBags` new_ev_binds
-
-    (bind_ids, ev_binds', binds', fords', imp_specs', rules', vects')
-        <- GHC.zonkTopDecls all_ev_binds binds sig_ns rules vects imp_specs fords
-
-    let --global_ids = map globaliseAndTidyId bind_ids
-        final_type_env = GHC.extendTypeEnvWithIds type_env bind_ids --global_ids
-        tcg_env' = tcg_env { GHC.tcg_binds     = binds',
-                             GHC.tcg_ev_binds  = ev_binds',
-                             GHC.tcg_imp_specs = imp_specs',
-                             GHC.tcg_rules     = rules',
-                             GHC.tcg_vects     = vects',
-                             GHC.tcg_fords     = fords' }
-
-    tcg_env'' <- GHC.setGlobalTypeEnv tcg_env' final_type_env
-
-    return tcg_env''
-
-
--- --------------------
-
--- From GHC TcRnDriver
-
-setInteractiveContext :: GHC.HscEnv -> GHC.InteractiveContext -> GHC.TcRn a -> GHC.TcRn a
-setInteractiveContext hsc_env icxt thing_inside
-  = let -- Initialise the tcg_inst_env with instances from all home modules.
-        -- This mimics the more selective call to hptInstances in tcRnImports
-        (home_insts, home_fam_insts) = GHC.hptInstances hsc_env (\_ -> True)
-        (ic_insts, ic_finsts) = GHC.ic_instances icxt
-
-        -- Note [GHCi temporary Ids]
-        -- Ideally we would just make a type_env from ic_tythings
-        -- and ic_sys_vars, adding in implicit things.  However, Ids
-        -- bound interactively might have some free type variables
-        -- (RuntimeUnk things), and if we don't register these free
-        -- TyVars as global TyVars then the typechecker will try to
-        -- quantify over them and fall over in zonkQuantifiedTyVar.
-        --
-        -- So we must add any free TyVars to the typechecker's global
-        -- TyVar set.  This is what happens when the local environment
-        -- is extended, so we use tcExtendGhciEnv below which extends
-        -- the local environment with the Ids.
-        --
-        -- However, any Ids bound this way will shadow other Ids in
-        -- the GlobalRdrEnv, so we have to be careful to only add Ids
-        -- which are visible in the GlobalRdrEnv.
-        --
-        -- Perhaps it would be better to just extend the global TyVar
-        -- list from the free tyvars in the Ids here?  Anyway, at least
-        -- this hack is localised.
-        --
-        -- Note [delete shadowed tcg_rdr_env entries]
-        -- We also *delete* entries from tcg_rdr_env that we have
-        -- shadowed in the local env (see above).  This isn't strictly
-        -- necessary, but in an out-of-scope error when GHC suggests
-        -- names it can be confusing to see multiple identical
-        -- entries. (#5564)
-        --
-        (tmp_ids, types_n_classes) = GHC.partitionWith sel_id (GHC.ic_tythings icxt)
-          where sel_id (GHC.AnId id) = Left id
-                sel_id other     = Right other
-
-        type_env = GHC.mkTypeEnvWithImplicits
-                       (map GHC.AnId (GHC.ic_sys_vars icxt) ++ types_n_classes)
-
-        visible_tmp_ids = filter visible tmp_ids
-          where visible id = not (null (GHC.lookupGRE_Name (GHC.ic_rn_gbl_env icxt)
-                                                           (GHC.idName id)))
-
-        con_fields = [ (GHC.dataConName c, GHC.dataConFieldLabels c)
-                     | GHC.ATyCon t <- types_n_classes
-                     , c <- GHC.tyConDataCons t ]
-    in
-    GHC.updGblEnv (\env -> env {
-          GHC.tcg_rdr_env      = GHC.delListFromOccEnv (GHC.ic_rn_gbl_env icxt)
-                                                       (map GHC.getOccName visible_tmp_ids)
-                                 -- Note [delete shadowed tcg_rdr_env entries]
-        , GHC.tcg_type_env     = type_env
-        , GHC.tcg_insts        = ic_insts
-        , GHC.tcg_inst_env     = GHC.extendInstEnvList
-                                  (GHC.extendInstEnvList (GHC.tcg_inst_env env) ic_insts)
-                              home_insts
-        , GHC.tcg_fam_insts    = ic_finsts
-        , GHC.tcg_fam_inst_env = GHC.extendFamInstEnvList
-                                  (GHC.extendFamInstEnvList (GHC.tcg_fam_inst_env env)
-                                                    ic_finsts)
-                              home_fam_insts
-        , GHC.tcg_field_env    = GHC.RecFields (GHC.mkNameEnv con_fields)
-                                       (GHC.mkNameSet (concatMap snd con_fields))
-             -- setting tcg_field_env is necessary to make RecordWildCards work
-             -- (test: ghci049)
-        , GHC.tcg_fix_env      = GHC.ic_fix_env icxt
-        , GHC.tcg_default      = GHC.ic_default icxt
-        }) $
-
-        GHC.tcExtendGhciEnv visible_tmp_ids $ -- Note [GHCi temporary Ids]
-          thing_inside
--}
--- ----------------------
-{-
-rnTopSrcDecls :: [GHC.Name] -> GHC.HsGroup GHC.RdrName -> GHC.TcM (GHC.TcGblEnv, GHC.HsGroup GHC.Name)
--- Fails if there are any errors
-rnTopSrcDecls extra_deps group
- = do { -- Rename the source decls
-        GHC.traceTc "rn12" GHC.empty ;
-        (tcg_env, rn_decls) <- GHC.checkNoErrs $ GHC.rnSrcDecls extra_deps group ;
-        GHC.traceTc "rn13" GHC.empty ;
-
-        -- save the renamed syntax, if we want it
-        let { tcg_env'
-                | Just grp <- GHC.tcg_rn_decls tcg_env
-                  = tcg_env{ GHC.tcg_rn_decls = Just (GHC.appendGroups grp rn_decls) }
-                | otherwise
-                   = tcg_env };
-
-                -- Dump trace of renaming part
-        rnDump (GHC.ppr rn_decls) ;
-
-        return (tcg_env', rn_decls)
-   }
-
-
-checkMain :: GHC.TcM GHC.TcGblEnv
--- If we are in module Main, check that 'main' is defined.
-checkMain
-  = do { tcg_env   <- GHC.getGblEnv ;
-         dflags    <- GHC.getDynFlags ;
-         check_main dflags tcg_env
-    }
-
-check_main :: GHC.DynFlags -> GHC.TcGblEnv -> GHC.TcM GHC.TcGblEnv
-check_main dflags tcg_env
- | mod /= main_mod
- = GHC.traceTc "checkMain not" (GHC.ppr main_mod GHC.<+> GHC.ppr mod) >>
-   return tcg_env
-
- | otherwise
- = do   { mb_main <- GHC.lookupGlobalOccRn_maybe main_fn
-                -- Check that 'main' is in scope
-                -- It might be imported from another module!
-        ; case mb_main of {
-             Nothing -> do { GHC.traceTc "checkMain fail" (GHC.ppr main_mod GHC.<+> GHC.ppr main_fn)
-                           ; complain_no_main
-                           ; return tcg_env } ;
-             Just main_name -> do
-
-        { GHC.traceTc "checkMain found" (GHC.ppr main_mod GHC.<+> GHC.ppr main_fn)
-        ; let loc = GHC.srcLocSpan (GHC.getSrcLoc main_name)
-        ; ioTyCon <- GHC.tcLookupTyCon GHC.ioTyConName
-        ; res_ty <- GHC.newFlexiTyVarTy GHC.liftedTypeKind
-        ; main_expr
-                <- GHC.addErrCtxt mainCtxt    $
-                   GHC.tcMonoExpr (GHC.L loc (GHC.HsVar main_name)) (GHC.mkTyConApp ioTyCon [res_ty])
-
-                -- See Note [Root-main Id]
-                -- Construct the binding
-                --      :Main.main :: IO res_ty = runMainIO res_ty main
-        ; run_main_id <- GHC.tcLookupId GHC.runMainIOName
-        ; let { root_main_name =  GHC.mkExternalName GHC.rootMainKey GHC.rOOT_MAIN
-                                   (GHC.mkVarOccFS (GHC.fsLit "main"))
-                                   (GHC.getSrcSpan main_name)
-              ; root_main_id = GHC.mkExportedLocalId root_main_name
-                                                    (GHC.mkTyConApp ioTyCon [res_ty])
-              ; co  = GHC.mkWpTyApps [res_ty]
-              ; rhs = GHC.nlHsApp (GHC.mkLHsWrap co (GHC.nlHsVar run_main_id)) main_expr
-              ; main_bind = GHC.mkVarBind root_main_id rhs }
-
-        ; return (tcg_env { GHC.tcg_main  = Just main_name,
-                            GHC.tcg_binds = GHC.tcg_binds tcg_env
-                                            `GHC.snocBag` main_bind,
-                            GHC.tcg_dus   = GHC.tcg_dus tcg_env
-                                            `GHC.plusDU` GHC.usesOnly (GHC.unitFV main_name)
-                        -- Record the use of 'main', so that we don't
-                        -- complain about it being defined but not used
-                 })
-    }}}
-  where
-    mod          = GHC.tcg_mod tcg_env
-    main_mod     = GHC.mainModIs dflags
-    main_fn      = getMainFun dflags
-
-    complain_no_main | GHC.ghcLink dflags == GHC.LinkInMemory = return ()
-                     | otherwise = GHC.failWithTc noMainMsg
-        -- In interactive mode, don't worry about the absence of 'main'
-        -- In other modes, fail altogether, so that we don't go on
-        -- and complain a second time when processing the export list.
-
-    mainCtxt  = GHC.ptext (GHC.sLit "When checking the type of the") GHC.<+> pp_main_fn
-    noMainMsg = GHC.ptext (GHC.sLit "The") GHC.<+> pp_main_fn
-                GHC.<+> GHC.ptext (GHC.sLit "is not defined in module") GHC.<+> GHC.quotes (GHC.ppr main_mod)
-    pp_main_fn = ppMainFn main_fn
--}
-
-{-
-rnDump :: GHC.SDoc -> GHC.TcRn ()
--- Dump, with a banner, if -ddump-rn
-rnDump doc = do { GHC.dumpOptTcRn GHC.Opt_D_dump_rn (GHC.mkDumpDoc "Renamer" doc) }
-
-ppMainFn :: GHC.RdrName -> GHC.SDoc
-ppMainFn main_fn
-  | main_fn == GHC.main_RDR_Unqual
-  = GHC.ptext (GHC.sLit "function") GHC.<+> GHC.quotes (GHC.ppr main_fn)
-  | otherwise
-  = GHC.ptext (GHC.sLit "main function") GHC.<+> GHC.quotes (GHC.ppr main_fn)
-
--- | Get the unqualified name of the function to use as the \"main\" for the main module.
--- Either returns the default name or the one configured on the command line with -main-is
-getMainFun :: GHC.DynFlags -> GHC.RdrName
-getMainFun dflags = case (GHC.mainFunIs dflags) of
-    Just fn -> GHC.mkRdrUnqual (GHC.mkVarOccFS (GHC.mkFastString fn))
-    Nothing -> GHC.main_RDR_Unqual
--}
--- ========================================================================
 
 ------------------------------------------------------------------------
-
-{- ++ replaced by usedWithoutQualR
--- | Return True if the identifier is unqualifiedly used in the given
--- syntax phrase.
-usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
-usedWithoutQual name renamed = do
-  logm $ "usedWithoutQual:name="  ++ (showGhc (name,GHC.nameUnique name))
-  -- logm $ "usedWithoutQual:t="  ++ (SYB.showData SYB.Renamer 0 renamed)
-  let names = findAllNameOccurences name renamed
-  logm $ "usedWithoutQual:names=" ++ (showGhc names)
-
-  -- let allNames = findAllNames renamed
-  -- logm $ "usedWithoutQual:allNames=" ++ (showGhc $ map (\(GHC.L _ n) -> (n,GHC.nameUnique n)) allNames)
-
-  toks <- fetchToks
-  res <- mapM (isUsedWithoutQual toks) names
-  return $ or res
-  where
-    isUsedWithoutQual toks (GHC.L l _) = do
-       logm ("usedWithoutQual") -- ++AZ++ debug
-       let (_,s) = ghead "usedWithoutQual" $ getToks (getGhcLoc l, getGhcLocEnd l) toks
-       return $ not $ elem '.' s
--}
-
-{- ++original++
--- | Return True if the identifier is unqualifiedly used in the given
--- syntax phrase.
-usedWithoutQual :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
-usedWithoutQual name renamed = do
-  logm $ "usedWithoutQual:name="  ++ (showGhc name)
-  -- logm $ "usedWithoutQual:t="  ++ (SYB.showData SYB.Renamer 0 renamed)
-  case res of
-     Just (GHC.L l _) -> do
-       logm ("usedWithoutQual") -- ++AZ++ debug
-       toks <- fetchToks
-
-       let (_,s) = ghead "usedWithoutQual"  $ getToks (getGhcLoc l, getGhcLocEnd l) toks
-       return $ not $ elem '.' s
-     Nothing -> return False
-  where
-     res = somethingStaged SYB.Renamer Nothing
-            (Nothing `SYB.mkQ` worker
-            `SYB.extQ` workerBind
-            `SYB.extQ` workerExpr
-            ) renamed
-
-     worker  (pname :: GHC.Located GHC.Name) =
-       checkName pname
-
-     workerBind (GHC.L l (GHC.VarPat n) :: (GHC.Located (GHC.Pat GHC.Name))) =
-       checkName (GHC.L l n)
-     workerBind _ = Nothing
-
-     workerExpr ((GHC.L l (GHC.HsVar n)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-       = checkName (GHC.L l n)
-     workerExpr _ = Nothing
-
-     -- ----------------
-
-     checkName (pname@(GHC.L _l pn)::GHC.Located GHC.Name)
-        | ((GHC.nameUnique pn) == (GHC.nameUnique name)) &&
-          isUsedInRhs pname renamed = Just pname
-     checkName _ = Nothing
-
--}
 
 -- | Return True if the identifier is unqualifiedly used in the given
 -- syntax phrase.
@@ -2419,14 +1649,6 @@ usedWithoutQualR name parsed = fromMaybe False res
           GHC.isUnqual pn     = Just True
      checkName _ = Nothing
 
-   {-
-   =(fromMaybe False) (applyTU (once_tdTU (failTU `adhocTU` worker)) t)
-      where
-         worker (pnt::PNT)
-           |pNTtoName pnt ==name && isUsedInRhs pnt t && not (isQualifiedPN (pNTtoPN pnt)) 
-          = Just True
-         worker _ =Nothing
-    -}
 
 -- ---------------------------------------------------------------------
 
@@ -2442,10 +1664,6 @@ hsFDsFromInside t = do
    r <- hsFDsFromInside' t
    return r
    where
-     -- (f,d) = fromMaybe ([],[]) $ hsFDsFromInside' t
-     -- res = (nub f, nub d)
-
-     -- hsFDsFromInside' :: (SYB.Data t) => t -> Maybe ([GHC.Name],[GHC.Name])
      hsFDsFromInside' :: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
      hsFDsFromInside' t1 = do
           r1 <- applyTU (once_tdTU (failTU  `adhocTU` renamed
@@ -2461,9 +1679,6 @@ hsFDsFromInside t = do
      renamed ((grp,_,_,_)::GHC.RenamedSource)
         = hsFreeAndDeclaredPNs $ GHC.hs_valds grp
 
- {-    decls (ds::[HsDeclP])                    --CHECK THIS.
-       = hsFreeAndDeclaredPNs decls
--}
      -- Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
      match :: GHC.Match GHC.Name -> RefactGhc ([GHC.Name],[GHC.Name])
      match ((GHC.Match pats _type rhs):: GHC.Match GHC.Name ) = do
@@ -2533,77 +1748,6 @@ hsFDsFromInside t = do
      -- stmts _ = return ([],[])
      stmts _ = mzero
 
--- -----
-
-{-
-hsFDsFromInside:: (Term t, MonadPlus m)=> t-> m ([PName],[PName])
-hsFDsFromInside t = do (f,d)<-hsFDsFromInside' t
-                       return (nub f, nub d)
-   where
-     hsFDsFromInside' = applyTU (once_tdTU (failTU  `adhocTU` mod
-                                                    -- `adhocTU` decls
-                                                     `adhocTU` decl
-                                                     `adhocTU` match
-                                                     `adhocTU` exp
-                                                     `adhocTU` alt
-                                                     `adhocTU` stmts ))
-
-
-     mod ((HsModule loc modName exps imps ds)::HsModuleP)
-        = hsFreeAndDeclaredPNs ds
-
- {-    decls (ds::[HsDeclP])                    --CHECK THIS.
-       = hsFreeAndDeclaredPNs decls
--}
-     match ((HsMatch loc1 (PNT fun _ _) pats rhs ds) ::HsMatchP)
-       = do (pf, pd) <-hsFreeAndDeclaredPNs pats
-            (rf, rd) <-hsFreeAndDeclaredPNs rhs
-            (df, dd) <-hsFreeAndDeclaredPNs ds
-            return (nub (pf `union` ((rf `union` df) \\ (dd `union` pd `union` [fun]))), 
-                    nub (pd `union` rd `union` dd `union` [fun]))
-
-     decl ((TiDecorate.Dec (HsPatBind loc p rhs ds))::HsDeclP)
-      = do (pf, pd)<-hsFreeAndDeclaredPNs p
-           (rf, rd)<-hsFreeAndDeclaredPNs rhs
-           (df, dd)<-hsFreeAndDeclaredPNs ds
-           return (nub (pf `union` ((rf `union` df) \\ (dd `union` pd))),
-                   nub ((pd `union` rd `union` dd)))
-
-     decl (TiDecorate.Dec (HsFunBind loc matches))
-         =do fds <-mapM hsFDsFromInside matches
-             return (nub (concatMap fst fds), nub(concatMap snd fds))
-
-     decl _ = mzero
-
-     exp ((TiDecorate.Exp (HsLet decls exp))::HsExpP)
-          = do (df,dd)<- hsFreeAndDeclaredPNs decls
-               (ef,_)<- hsFreeAndDeclaredPNs exp
-               return (nub (df `union` (ef \\ dd)), nub dd)
-     exp (TiDecorate.Exp (HsLambda pats body))
-            = do (pf,pd) <-hsFreeAndDeclaredPNs pats
-                 (bf,_) <-hsFreeAndDeclaredPNs body
-                 return (nub ((bf `union` pf) \\ pd), nub pd)
-     exp _ = mzero
-
-     alt ((HsAlt _ pat exp decls)::HsAltP)
-         = do (pf,pd) <- hsFreeAndDeclaredPNs pat
-              (ef,ed) <- hsFreeAndDeclaredPNs exp
-              (df,dd) <- hsFreeAndDeclaredPNs decls
-              return (nub (pf `union` (((ef \\ dd) `union` df) \\ pd)), nub (pd `union` dd))      
-
-     stmts ((HsLetStmt decls stmts)::HsStmtP)
-          = do (df,dd) <-hsFreeAndDeclaredPNs decls
-               (sf,sd) <-hsFreeAndDeclaredPNs stmts
-               return (nub (df `union` (sf \\dd)),[]) -- dd)
-
-     stmts (HsGenerator _ pat exp stmts)
-          = do (pf,pd) <-hsFreeAndDeclaredPNs pat
-               (ef,ed) <-hsFreeAndDeclaredPNs exp
-               (sf,sd) <-hsFreeAndDeclaredPNs stmts
-               return (nub (pf `union` ef `union` (sf\\pd)),[]) -- pd)
-
-     stmts _ = mzero
--}
 
 
 -- | The same as `hsFDsFromInside` except that the returned variables
@@ -2613,10 +1757,6 @@ hsFDNamesFromInside t = do
   (f,d) <- hsFDsFromInside t
   return
     ((nub.map showGhc) f, (nub.map showGhc) d)
--- hsFDNamesFromInside::(Term t, MonadPlus m)=>t->m ([String],[String])
--- hsFDNamesFromInside t =do (f,d)<-hsFDsFromInside t
---                           return ((nub.map pNtoName) f, (nub.map pNtoName) d)
-
 
 -- ---------------------------------------------------------------------
 -- | True if the name is a field name
@@ -2654,16 +1794,6 @@ hsNamess t = nub $ concat res
      res = SYB.everythingStaged SYB.Renamer (++) [] ([] `SYB.mkQ` inName) t
 
      inName (pname :: GHC.Name) = return [pname]
-
-
-
-{-
--- | Collect the identifiers (in PNT format) in a given syntax phrase.
-hsPNTs ::(Term t)=>t->[PNT]
-hsPNTs =(nub.ghead "hsPNTs").applyTU (full_tdTU (constTU [] `adhocTU` inPnt))
-   where
-     inPnt pnt@(PNT _  _ _) = return [pnt]
--}
 
 -----------------------------------------------------------------------------
 
@@ -2736,16 +1866,6 @@ isNonLibraryName n = case (GHC.nameSrcSpan n) of
   GHC.UnhelpfulSpan _ -> False
   _                   -> True
 
-{-
--- |Return True if a PName is a qualified PName.
-isQualifiedPN::PName->Bool
-isQualifiedPN (PN (Qual mod id) _)=True
-isQualifiedPN _ =False
-
--- |Return True if an PNT is a toplevel PNT.
-isTopLevelPNT::PNT->Bool
-isTopLevelPNT = isTopLevelPN.pNTtoPN
--}
 
 -- |Return True if a PName is a function\/pattern name defined in t.
 isFunOrPatName::(SYB.Data t) => GHC.Name -> t -> Bool
@@ -2757,28 +1877,6 @@ isFunOrPatName pn
            | defines pn decl = Just True
         worker _ = Nothing
 
-{-
--- |Return True if a PNT is a function name defined in t.
-isFunPNT::(Term t)=>PNT -> t -> Bool
-isFunPNT pnt t = isFunName (pNTtoPN pnt) t
-
-isFunName::(Term t)=>PName->t->Bool
-isFunName pn
-   =isJust.(applyTU (once_tdTU (failTU `adhocTU` worker)))
-     where
-        worker (decl::HsDeclP)
-           | isFunBind decl && defines pn decl =Just True
-        worker _ =Nothing
-
--- |Return True if a PName is a pattern name defined in t.
-isPatName::(Term t)=>PName->t->Bool
-isPatName pn
-   =isJust.(applyTU (once_tdTU (failTU `adhocTU` worker)))
-     where
-        worker (decl::HsDeclP)
-           | isPatBind decl && defines pn decl =Just True
-        worker _ =Nothing
--}
 -------------------------------------------------------------------------------
 -- |Return True if a PName is a qualified PName.
 --  AZ:NOTE: this tests the use instance, the underlying name may be qualified.
@@ -2787,32 +1885,8 @@ isPatName pn
 isQualifiedPN :: GHC.Name -> RefactGhc Bool
 isQualifiedPN name = return $ GHC.isQual $ GHC.nameRdrName name
 
-{-
-isQualifiedPN' :: GHC.Name -> Bool
-isQualifiedPN' name = GHC.isQual $ GHC.nameRdrName name
--}
-
-{-
-  = case (GHC.nameModule_maybe name) of
-      Just _ -> True
-      _      -> False
--}
-
-{-
--- | Return True if a PNT is a type constructor.
-isTypeCon :: PNT -> Bool
-isTypeCon (PNT pn (Type typeInfo) _) = defType typeInfo == Just TypedIds.Data
-isTypeCon _ = False
 
 -- | Return True if a declaration is a type signature declaration.
-isTypeSig ::HsDeclP->Bool
-isTypeSig (TiDecorate.Dec (HsTypeSig loc is c tp))=True
-isTypeSig _=False
--}
-
--- | Return True if a declaration is a type signature declaration.
--- isTypeSig ::HsDeclP->Bool
--- isTypeSig (TiDecorate.Dec (HsTypeSig loc is c tp))=True
 isTypeSig :: GHC.Located (GHC.Sig a) -> Bool
 isTypeSig (GHC.L _ (GHC.TypeSig _ _)) = True
 isTypeSig _ = False
@@ -2842,10 +1916,6 @@ isSimplePatBind :: (SYB.Data t) => GHC.LHsBind t-> Bool
 isSimplePatBind decl = case decl of
      (GHC.L _l (GHC.PatBind p _rhs _ty _fvs _)) -> hsPNs p /= []
      _ -> False
--- isSimplePatBind :: HsDeclP -> Bool
--- isSimplePatBind decl = case decl of
---      (GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _))) -> hsPNs p /= []
---      _ -> False
 
 -- | Return True if a declaration is a pattern binding but not a simple one.
 isComplexPatBind::GHC.LHsBind GHC.Name -> Bool
@@ -2883,55 +1953,6 @@ isDirectRecursiveDef (TiDecorate.Dec (HsFunBind loc ms))
 isDirectRecursiveDef _ = False
 -}
 -------------------------------------------------------------------------------
-
-{- ++AZ++ This class is being removed
-{- | The HsDecls class -}
-class (SYB.Data t) => HsDecls t where
-
-    -- | Return the declarations that are directly enclosed in the
-    -- given syntax phrase.
-    hsDecls :: t -> [HsDeclP]
-
-    -- | Replace the directly enclosed declaration list by the given
-    --  declaration list. Note: This function does not modify the
-    --  token stream.
-    -- replaceDecls :: t -> HsDeclsP -> t -- ++AZ++ TODO: what are HsDeclsP?
-
-    -- | Return True if the specified identifier is declared in the
-    -- given syntax phrase.
-    isDeclaredIn :: PName -> t -> Bool
-
-instance HsDecls GHC.ParsedSource where
-   hsDecls (GHC.L _ (GHC.HsModule _ _ _ ds _ _)) = ds
-
-   isDeclaredIn pn (GHC.L _ (GHC.HsModule _ _ _ ds _ _))
-     = length (definingDecls [pn] ds False False) /= 0
-++AZ++ end -}
-
-{-
--- | Replace the directly enclosed declaration list by the given
---  declaration list. Note: This function does not modify the
---  token stream.
-replaceDecls :: [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name] -> [GHC.LHsBind GHC.Name]
-replaceDecls t decls = decls
--}
-
-{-
-Note re ValBindsOut in the GHC source
-
- | ValBindsOut            -- After renaming RHS; idR can be Name or Id
-        [(RecFlag, LHsBinds idL)]       -- Dependency analysed, later bindings
-                                        -- in the list may depend on earlier
-                                        -- ones.
-        [LSig Name]
--}
-
-{-
-getValBinds :: GHC.HsValBinds t -> [GHC.LHsBind t]
-getValBinds binds = case binds of
-    GHC.ValBindsIn   binds _sigs -> GHC.bagToList binds
-    GHC.ValBindsOut rbinds _sigs -> GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
--}
 
 getValBindSigs :: GHC.HsValBinds GHC.Name -> [GHC.LSig GHC.Name]
 getValBindSigs binds = case binds of
@@ -3304,146 +2325,6 @@ instance HsValBinds (GHC.HsIPBinds GHC.Name) where
 -- ---------------------------------------------------------------------
 
 
-
-
-{-
-instance HsDecls HsMatchP where
-    hsDecls (HsMatch loc1 fun pats rhs ds@(Decs x y))=x
-
-    replaceDecls (HsMatch loc1 fun pats rhs ds) ds'
-      =(HsMatch loc1 fun pats rhs ds')
-
-    isDeclaredIn  pn match@(HsMatch loc1 (PNT fun _ _) pats rhs ds)
-       =fromMaybe False ( do (_,d)<-hsFDsFromInside match
-                             Just (elem pn (d \\ [fun])))
-instance HsDecls HsDeclP where
-    hsDecls (TiDecorate.Dec (HsPatBind loc p rhs ds@(Decs x y)))=x
-    hsDecls (TiDecorate.Dec (HsFunBind loc matches))=concatMap hsDecls matches
-    hsDecls _ =[]
-
-    replaceDecls (TiDecorate.Dec (HsPatBind loc p rhs ds)) ds'
-        =TiDecorate.Dec (HsPatBind loc p rhs ds')
-    replaceDecls x ds' =x
-
-    isDeclaredIn pn (TiDecorate.Dec (HsPatBind loc p rhs ds))
-      = fromMaybe False (do (_, rd)<-hsFreeAndDeclaredPNs rhs
-                            (_, dd)<-hsFreeAndDeclaredPNs ds
-                            Just (elem pn (rd `union` dd)))
-    isDeclaredIn pn _ =False
-
-instance HsDecls HsDeclsP where
-    hsDecls ds@(Decs x y) = concatMap hsDecls x
-    replaceDecls ds _ = ds
-    isDeclaredIn _ ds@(Decs x y) = False
-
-instance HsDecls [HsDeclP] where
-    hsDecls ds= concatMap hsDecls ds
-    replaceDecls ds _ = ds             -- This should not happen.
-    isDeclaredIn _ ds = False            -- This should not happen.
-
-instance HsDecls HsModuleP where
-    hsDecls (HsModule loc modName exps imps ds@(Decs x y))=x
-
-    replaceDecls (HsModule loc modName exps imps ds) ds'
-       = HsModule loc modName exps imps ds'
-
-    isDeclaredIn pn (HsModule loc modName exps imps ds)
-       =fromMaybe False  (do (rf,rd)<-hsFreeAndDeclaredPNs ds
-                             Just (elem pn rd))
-
-instance HsDecls RhsP where
-    hsDecls rhs=fromMaybe [] (applyTU (stop_tdTU (failTU `adhocTU` inLet
-                                                                        `adhocTU` inAlt
-                                                                        `adhocTU` inStmt)) rhs) 
-             where inLet ((TiDecorate.Exp (HsLet ds@(Decs x y) e)) ::HsExpP)=Just x
-                   inLet _ =mzero
-
-                   inAlt ((HsAlt _ p rhs ds@(Decs x y))::HsAlt HsExpP HsPatP HsDeclsP)=Just x
-
-                   inStmt ((HsLetStmt ds@(Decs x y) _)::HsStmt HsExpP HsPatP HsDeclsP)=Just x
-                   inStmt _=mzero
-
-    replaceDecls rhs _ = rhs           -- This should not happen.
-    isDeclaredIn _ _  = False            -- This should not happen.
-
-instance HsDecls HsExpP where
-    hsDecls rhs=fromMaybe [] (applyTU (stop_tdTU (failTU `adhocTU` inLet
-                                                         `adhocTU` inAlt
-                                                         `adhocTU` inStmt)) rhs)
-             where inLet ((TiDecorate.Exp (HsLet ds@(Decs x y) e)) ::HsExpP)=Just x
-                   inLet (TiDecorate.Exp (HsListComp (HsLetStmt ds@(Decs x y) stmts)))=Just x
-                   inLet (TiDecorate.Exp (HsDo (HsLetStmt ds@(Decs x y) stmts)))=Just x
-                   inLet _ =Nothing
-
-                   inAlt ((HsAlt _ p rhs ds@(Decs x y))::HsAlt HsExpP HsPatP HsDeclsP)=Just x
-
-                   inStmt ((HsLetStmt ds@(Decs x y) _)::HsStmt HsExpP HsPatP HsDeclsP)=Just x
-                   inStmt _=Nothing
-
-    replaceDecls (TiDecorate.Exp (HsLet ds e)) ds'
-            =if ds'== Decs [] ([], [])
-                then e
-                else (TiDecorate.Exp (HsLet ds' e))
-
-    replaceDecls (TiDecorate.Exp (HsListComp (HsLetStmt ds stmts))) ds'@(Decs x y)
-            =if x==[] && isLast stmts
-               then (TiDecorate.Exp (HsList [fromJust (expInLast stmts)]))
-               else (TiDecorate.Exp (HsListComp (HsLetStmt ds' stmts)))
-       where
-         isLast (HsLast e)=True
-         isLast _=False
-
-         expInLast (HsLast e)=Just e
-         expInLast _=Nothing
-
-    replaceDecls (TiDecorate.Exp (HsDo (HsLetStmt ds stmts))) ds'@(Decs x y)
-            =if x==[]
-                then (TiDecorate.Exp (HsDo stmts))
-                else (TiDecorate.Exp (HsDo (HsLetStmt ds' stmts)))
-    replaceDecls x ds'=x
-
-
-    isDeclaredIn pn (TiDecorate.Exp (HsLambda pats body))
-            = fromMaybe False (do (pf,pd) <-hsFreeAndDeclaredPNs pats
-                                  Just (elem pn  pd))
-
-    isDeclaredIn pn (TiDecorate.Exp (HsLet decls e))
-           =fromMaybe False (do (df,dd)<- hsFreeAndDeclaredPNs decls
-                                Just (elem pn dd))
-
-    isDeclaredIn pn _=False
-
-
-instance HsDecls HsStmtP where
-    hsDecls (HsLetStmt ds@(Decs x y) stmts)=x
-    hsDecls  _ = []
-
-    replaceDecls (HsLetStmt ds stmts) ds'@(Decs x y)
-     = if x/=[] then  HsLetStmt ds' stmts
-                  else stmts
-
-    isDeclaredIn pn (HsGenerator _ pat exp stmts) -- Claus
-        =fromMaybe False (do (pf,pd) <-hsFreeAndDeclaredPNs pat
-                             Just (elem pn pd))
-
-    isDeclaredIn pn (HsLetStmt decls stmts)
-        =fromMaybe False (do (df,dd) <-hsFreeAndDeclaredPNs decls
-                             Just (elem pn dd))
-
-    isDeclaredIn pn _=False
-
-instance HsDecls HsAltP where
-    hsDecls (HsAlt _ p rhs ds@(Decs x y))=x
-
-    replaceDecls (HsAlt loc p rhs ds) ds'=HsAlt loc p rhs ds'
-
-    isDeclaredIn pn (HsAlt _ pat exp decls)
-       =fromMaybe False ( do (pf,pd) <- hsFreeAndDeclaredPNs pat
-                             (df,dd) <- hsFreeAndDeclaredPNs decls
-                             Just (elem pn (pd `union` dd)))
-
--}
-
 -- ---------------------------------------------------------------------
 
 class (SYB.Data a, SYB.Typeable a) => FindEntity a where
@@ -3464,17 +2345,6 @@ instance FindEntity GHC.Name where
     worker (name::GHC.Name)
       | n == name = Just True
     worker _ = Nothing
-{-
-    res = Just $ any (==True) $ catMaybes
-         $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` hsbind) t
-    -- res = error $ "findEntity:n:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t)
-
-    hsbind ((GHC.L _ (GHC.FunBind (GHC.L _ n') _ (GHC.MatchGroup matches _) _ _ _))::GHC.Located (GHC.HsBind GHC.Name))
-      | n' == n || isInMatch = Just True
-      where
-        isInMatch = any (==True) $ map (\(GHC.L _ (GHC.Match pats _mtyp _rhs)) -> findPN n pats) matches
-    hsbind _ = Nothing
--}
 
 -- ---------------------------------------------------------------------
 
@@ -3489,17 +2359,6 @@ instance FindEntity (GHC.Located GHC.Name) where
       | n == name = Just True
     worker _ = Nothing
 
-{-
-    res = Just $ any (==True) $ catMaybes
-         $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` hsbind) t
-    -- res = error $ "findEntity:ln:res=" ++ (show $ onelayerStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` hsbind) t)
-
-    hsbind ((GHC.L _ (GHC.FunBind n' _ (GHC.MatchGroup matches _) _ _ _))::GHC.Located (GHC.HsBind GHC.Name))
-      | n' == n || isInMatch = Just True
-      where
-        isInMatch = any (==True) $ map (\(GHC.L _ (GHC.Match pats _mtyp _rhs)) -> findPNT n pats) matches
-    hsbind _ = Nothing
--}
 
 -- ---------------------------------------------------------------------
 
@@ -3563,17 +2422,6 @@ findEntity' a b = res
                  -- then Just (getStartEndLoc b == getStartEndLoc a)
                  then Just (getStartEndLoc x)
                  else Nothing
-
-{-
-    worker :: ( SYB.Typeable a{-, SYB.Typeable b-})
-      => Maybe Bool
-      -- -> (b -> r)
-      -> a
-      -> Maybe Bool
-    worker a = case SYB.cast a of
-               Just b -> Just True
-               Nothing -> r
--}
 
 -- ---------------------------------------------------------------------
 
@@ -3672,13 +2520,6 @@ definesP pn (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _)))
  = elem pn (hsPNs p)
 definesP _ _= False
 
--- defines::PName->HsDeclP->Bool
--- defines pn (GHC.L l (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
---  = PN pname == pn
--- defines pn (GHC.L l (GHC.ValD (GHC.PatBind p rhs ty fvs _)))
---  = elem pn (hsPNs p)
--- defines _ _= False
-
 
 -- | Return True if the declaration defines the type signature of the
 -- specified identifier.
@@ -3704,25 +2545,11 @@ definedPNs (GHC.L _ (GHC.VarBind pname _rhs _))              = [pname]
 -- TODO: what about GHC.AbsBinds?
 definedPNs  _ = []
 
-{-
--- |Return True if the given syntax phrase contains any free variables.
-hasFreeVars::(Term t)=>t->Bool
-hasFreeVars t = fromMaybe False (do (f,_)<-hsFreeAndDeclaredPNs t
-                                    if f/=[] then Just True
-                                             else Nothing)
--}
 
 --------------------------------------------------------------------------------
 
 sameBind :: GHC.LHsBind GHC.Name -> GHC.LHsBind GHC.Name -> Bool
 sameBind b1 b2 = (definedPNs b1) == (definedPNs b2)
-{-
-sameBind b1 b2 = (definesNames b1) == (definesNames b2)
-  where
-    definesNames (GHC.L _ (GHC.PatBind p _rhs _ _ _))             = hsNamess p
-    definesNames (GHC.L _ (GHC.FunBind (GHC.L _ name) _ _ _ _ _)) = [name]
-    definesNames (GHC.L _ (GHC.VarBind name _ _))                 = [name]
--}
 
 -- ---------------------------------------------------------------------
 
@@ -3773,30 +2600,6 @@ instance UsedByRhs (GHC.Stmt GHC.Name) where
   usedByRhs (GHC.LetStmt lb) pns = findPNs pns lb
   usedByRhs s               _pns = error $ "undefined usedByRhs:" ++ (showGhc s)
 
-{- ++ original
-class (Term t) =>UsedByRhs t where
-
-    usedByRhs:: t->[PName]->Bool
-
-instance UsedByRhs HsExpP where
-    usedByRhs (Exp (HsLet ds e)) pns = or $ map (flip findPN e) pns
-
-instance UsedByRhs HsAltP where
-    usedByRhs (HsAlt _ _ rhs _) pns  =or $ map (flip findPN rhs) pns
-
-instance UsedByRhs HsStmtP where
-    usedByRhs (HsLetStmt _ stmt) pns =or $ map (flip findPN stmt) pns
-
-instance UsedByRhs HsMatchP where
-    usedByRhs (HsMatch loc1 fun pats rhs ds) pns =or $ map (flip findPN rhs) pns
-
-instance UsedByRhs  HsDeclP where
-    usedByRhs (Dec (HsPatBind loc p rhs ds)) pns =or $ map (flip findPN rhs) pns
-    usedByRhs _ pn=False
-
-instance UsedByRhs HsModuleP where
-    usedByRhs mod pns=False
--}
 
 --------------------------------------------------------------------------------
 
@@ -4194,43 +2997,6 @@ rmPreludeImports ::
 rmPreludeImports = filter isPrelude where
             isPrelude = (/="Prelude") . GHC.moduleNameString . GHC.unLoc . GHC.ideclName . GHC.unLoc
 
-{-addImportDecl mod@(HsModule _ _ _ imp decls) moduleName qualify alias hide idNames
-  = do ((toks, _),(v,v1)) <- get
-       let (toks1, toks2)
-               =if imps' /= []
-                   then let (startLoc, endLoc) = startEndLocIncComments toks (last imps')
-                            (toks1, toks2)= break (\t->tokenPos t==endLoc) toks
-                        in (toks1 ++ [ghead "addImportDecl1" toks2], tail toks2)
-                   else if decls /=[]
-                          then let startLoc = fst $ startEndLocIncComments toks (ghead "addImportDecl1" decls)
-                                   (toks1, toks2) = break (\t ->tokenPos t==startLoc) toks
-                               in (toks1,  toks2)
-                          else (toks,[])
-           before = if toks1/=[] && endsWithNewLn (glast "addImportDecl1" toks1) then "" else "\n"
-           after  = if (toks2 /=[] && startsWithNewLn (ghead "addImportDecl1" toks2)) then "" else "\n"
-           colOffset = if imps'==[] && decls==[]
-                        then 1
-                        else getOffset toks
-                                $ if imps'/=[] then fst $ startEndLoc toks  (ghead "addImportDecl1" imps')
-                                               else fst $ startEndLoc toks  (ghead "addImportDecl1" decls)
-           impToks =tokenise (Pos 0 v1 1) (colOffset-1) True
-                      $ before++(render.ppi) impDecl++"\n" ++ after  --- refactorer this
-       (impDecl', _) <- addLocInfo (impDecl,impToks)
-       let toks' = toks1++impToks++toks2
-       put ((toks',modified), ((tokenRow (glast "addImportDecl1" impToks) - 10,v1)))  -- 10: step ; generalise this.
-       return (mod {hsModImports = imp ++ [impDecl']})
-  where
-     alias' = case alias of
-                  Just m -> Just $ SN (PlainModule m) loc0
-                  _      -> Nothing
-     impDecl = HsImportDecl loc0 (SN (PlainModule moduleName) loc0) qualify alias'
-                      (if idNames==[] && hide==False
-                          then Nothing
-                          else  (Just (hide, map nameToEnt idNames)))  -- what about "Main"
-     imps' = imp \\ prelimps
-     nameToEnt name = Var (nameToPNT name)-}
-
-
 
 -- ---------------------------------------------------------------------
 
@@ -4346,23 +3112,15 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         (newFun',_) <- addLocInfo (newFun, newToks)
 
-        let colIndent = if (emptyList localDecls) then 4 else 0
-            rowIndent = 1
+        let rowIndent = 1
 
         if (emptyList localDecls)
           then
             void $ putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent 4 2) newToks
-            -- putToksAfterPos (startLoc,endLoc) (PlaceAbsolute (r+1) c) newToks
           else
-            -- void $ putToksAfterPos (startLoc,endLoc) (PlaceIndent rowIndent colIndent 2) newToks
             void $ putToksAfterPos (startLoc,endLoc) (PlaceAbsCol (rowIndent+1) prevCol 2) newToks
 
 
-        {-
-        case maybeSig of
-           Nothing  -> return (replaceBinds parent ((hsBinds parent ++ [newFun']) ))
-           Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent ++ [newFun']))) (sig:(getValBindSigs binds))))
-        -}
         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun']))) (maybeSig++(getValBindSigs binds))))
     where
          localDecls = hsBinds parent'
@@ -4380,11 +3138,6 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
             sigStr  = case newFunToks of
                         Just _ts -> ""
-                        {-
-                        Nothing -> case maybeSig of
-                                     Just sig -> (prettyprint sig) ++ "\n"
-                                     Nothing -> ""
-                        -}
                         Nothing -> if (emptyList maybeSig)
                                      then ""
                                      else (intercalate "\n" $ map prettyprint maybeSig) ++ "\n"
@@ -5580,13 +4333,6 @@ findAllNameOccurences  name t
 -- | Return True if the identifier occurs in the given syntax phrase.
 findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
 findPNT (GHC.L _ pn) = findPN pn
-{-
-   = isJust.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
-     where
-        worker (n::GHC.Name)
-           | GHC.nameUnique pn == GHC.nameUnique n = Just True
-        worker _ = Nothing
--}
 
 -- | Return True if the identifier occurs in the given syntax phrase.
 findPN::(SYB.Data t)=> GHC.Name -> t -> Bool
@@ -5665,16 +4411,6 @@ patToPNT::GHC.LPat GHC.Name -> Maybe GHC.Name
 patToPNT (GHC.L _ (GHC.VarPat n)) = Just n
 patToPNT _ = Nothing
 
-
-
-
-
-{-
--- | If a pattern consists of only one identifier then returns this identifier in the PName format,
---   otherwise returns the default PName.
-patToPN::HsPatP->PName
-patToPN=pNTtoPN.patToPNT
--}
 
 -- | Compose a pattern from a pName.
 pNtoPat :: GHC.Name -> GHC.Pat GHC.Name

@@ -23,14 +23,6 @@ type LayoutTree = Tree Entry
 -- ---------------------------------------------------------------------
 
 
-{-
-data LayoutTree a = Group GHC.SrcSpan Layout [LayoutTree a]  -- Same as current
-                                       -- TokenUtils internal tree node
-                | Leaf  GHC.SrcSpan Layout [PosToken] -- Same as current
-                                      -- TokenUtils leaf node
-                deriving (Foldable,Traversable,Functor)
--}
-
 data Label = Label GHC.SrcSpan Layout [PosToken]
 
 

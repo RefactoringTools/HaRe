@@ -3890,146 +3890,60 @@ parsedFileLiftWhereIn7Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/WhereI
 
 -- -----------
 
--- liftLetIn1FileName :: GHC.FastString
--- liftLetIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/LetIn1.hs"
-
-parsedFileLiftLetIn1Ghc :: IO (ParseResult,[PosToken])
-parsedFileLiftLetIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/LetIn1.hs"
-
--- -----------
-
--- rmLocalFileName :: GHC.FastString
--- rmLocalFileName = GHC.mkFastString "./test/testdata/RmLocal.hs"
-
--- parsedFileRmLocalGhc :: IO (ParseResult,[PosToken])
--- parsedFileRmLocalGhc = parsedFileGhc "./test/testdata/RmLocal.hs"
-
--- -----------
-
--- liftOneLetIn1FileName :: GHC.FastString
--- liftOneLetIn1FileName = GHC.mkFastString "./test/testdata/LiftOneLevel/LetIn1.hs"
-
--- parsedFileLiftOneLetIn1Ghc :: IO (ParseResult,[PosToken])
--- parsedFileLiftOneLetIn1Ghc = parsedFileGhc "./test/testdata/LiftOneLevel/LetIn1.hs"
-
--- -----------
-
 parsedFileWhereIn3Ghc :: IO (ParseResult,[PosToken])
 parsedFileWhereIn3Ghc = parsedFileGhc "./test/testdata/Demote/WhereIn3.hs"
-
--- whereIn3FileName :: GHC.FastString
--- whereIn3FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn3.hs"
 
 -- ----------------------------------------------------
 
 parsedFileWhereIn4Ghc :: IO (ParseResult,[PosToken])
 parsedFileWhereIn4Ghc = parsedFileGhc "./test/testdata/Demote/WhereIn4.hs"
 
--- whereIn4FileName :: GHC.FastString
--- whereIn4FileName = GHC.mkFastString "./test/testdata/Demote/WhereIn4.hs"
-
 -- ----------------------------------------------------
-
--- tokenTestFileName :: GHC.FastString
--- tokenTestFileName = GHC.mkFastString "./test/testdata/TokenTest.hs"
 
 parsedFileTokenTestGhc :: IO (ParseResult,[PosToken])
 parsedFileTokenTestGhc = parsedFileGhc "./test/testdata/TokenTest.hs"
 
 -- ----------------------------------------------------
 
--- typeSigsFileName :: GHC.FastString
--- typeSigsFileName = GHC.mkFastString "./test/testdata/TypeUtils/TypeSigs.hs"
-
 parsedFileTypeSigs :: IO (ParseResult, [PosToken])
 parsedFileTypeSigs = parsedFileGhc "./test/testdata/TypeUtils/TypeSigs.hs"
 
 -- ----------------------------------------------------
-
--- addParams1FileName :: GHC.FastString
--- addParams1FileName = GHC.mkFastString "./test/testdata/AddParams1.hs"
 
 parsedFileAddParams1 :: IO (ParseResult, [PosToken])
 parsedFileAddParams1 = parsedFileGhc "./test/testdata/AddParams1.hs"
 
 -- ----------------------------------------------------
 
--- renamingField1FileName :: GHC.FastString
--- renamingField1FileName = GHC.mkFastString "./test/testdata/Renaming/Field1.hs"
-
 parsedFileRenamingField1 :: IO (ParseResult, [PosToken])
 parsedFileRenamingField1 = parsedFileGhc "./test/testdata/Renaming/Field1.hs"
 
 -- ----------------------------------------------------
-
--- renamingB1FileName :: GHC.FastString
--- renamingB1FileName = GHC.mkFastString "./test/testdata/Renaming/B1.hs"
 
 parsedFileRenamingB1 :: IO (ParseResult, [PosToken])
 parsedFileRenamingB1 = parsedFileGhc "./test/testdata/Renaming/B1.hs"
 
 -- ----------------------------------------------------
 
--- renamingC5FileName :: GHC.FastString
--- renamingC5FileName = GHC.mkFastString "./test/testdata/Renaming/C5.hs"
-
--- parsedFileRenamingC5 :: IO (ParseResult, [PosToken])
--- parsedFileRenamingC5 = parsedFileGhc "./test/testdata/Renaming/C5.hs"
-
--- ----------------------------------------------------
-
--- scopeAndQualFileName :: GHC.FastString
--- scopeAndQualFileName = GHC.mkFastString "./test/testdata/ScopeAndQual.hs"
-
 parsedFileScopeAndQual :: IO (ParseResult, [PosToken])
 parsedFileScopeAndQual = parsedFileGhc "./test/testdata/ScopeAndQual.hs"
 
 -- ----------------------------------------------------
-
--- layoutIn2FileName :: GHC.FastString
--- layoutIn2FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn2.hs"
 
 parsedFileLayoutIn2 :: IO (ParseResult, [PosToken])
 parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
 
 -- ----------------------------------------------------
 
--- layoutLet1FileName :: GHC.FastString
--- layoutLet1FileName = GHC.mkFastString "./test/testdata/TypeUtils/LayoutLet1.hs"
-
 parsedFileLayoutLet1 :: IO (ParseResult, [PosToken])
 parsedFileLayoutLet1 = parsedFileGhc "./test/testdata/TypeUtils/LayoutLet1.hs"
 
 -- ----------------------------------------------------
-
--- layoutLet2FileName :: GHC.FastString
--- layoutLet2FileName = GHC.mkFastString "./test/testdata/TypeUtils/LayoutLet2.hs"
-
--- parsedFileLayoutLet2 :: IO (ParseResult, [PosToken])
--- parsedFileLayoutLet2 = parsedFileGhc "./test/testdata/TypeUtils/LayoutLet2.hs"
-
--- ----------------------------------------------------
-
--- layoutIn1FileName :: GHC.FastString
--- layoutIn1FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn1.hs"
-
 parsedFileLayoutIn1 :: IO (ParseResult, [PosToken])
 parsedFileLayoutIn1 = parsedFileGhc "./test/testdata/Renaming/LayoutIn1.hs"
 
 -- ----------------------------------------------------
-
--- layoutIn4FileName :: GHC.FastString
--- layoutIn4FileName = GHC.mkFastString "./test/testdata/Renaming/LayoutIn4.hs"
-
 parsedFileLayoutIn4 :: IO (ParseResult, [PosToken])
 parsedFileLayoutIn4 = parsedFileGhc "./test/testdata/Renaming/LayoutIn4.hs"
-
--- ----------------------------------------------------
-
--- idIn3FileName :: GHC.FastString
--- idIn3FileName = GHC.mkFastString "./test/testdata/Renaming/IdIn3.hs"
-
--- parsedFileIdIn3 :: IO (ParseResult, [PosToken])
--- parsedFileIdIn3 = parsedFileGhc "./test/testdata/Renaming/IdIn3.hs"
 
 -- ----------------------------------------------------

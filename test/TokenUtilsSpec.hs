@@ -434,8 +434,8 @@ tree TId 0:
       (_t,toks) <- parsedFileLiftLetIn1Ghc
       -- (show toks) `shouldBe` ""
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module _t
-      let f1 = allocTokens parsed toks
-      -- (show f1) `shouldBe` ""
+      let _f1 = allocTokens parsed toks
+      -- (show _f1) `shouldBe` ""
 
       -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let decls = hsBinds renamed
@@ -494,9 +494,9 @@ tree TId 0:
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),33) )
       --
 
-      let f1 = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
+      let f1' = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
       -- (show f1) `shouldBe` ""
-      (drawTreeEntry f1) `shouldBe`
+      (drawTreeEntry f1') `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(11,32))\n|\n"++
             "+- ((12,19),(12,21))\n|\n"++
@@ -1677,7 +1677,7 @@ tree TId 0:
       let sspan = posToSrcSpan forest ((6,5),(6,10))
       (showGhc sspan) `shouldBe` "test/testdata/LiftToToplevel/NoWhere.hs:6:5-9"
 
-      let (f2,f1') = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      let (f2,_f1') = removeSrcSpan forest (srcSpanToForestSpan sspan)
       (drawTreeCompact f2) `shouldBe`
                "0:((1,1),(18,1))\n"++
                "1:((1,1),(1,7))\n"++

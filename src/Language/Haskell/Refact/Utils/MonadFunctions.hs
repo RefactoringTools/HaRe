@@ -115,18 +115,6 @@ fetchToksFinal = do
   logm $ "fetchToksFinal (not showing toks)"
   return toks
 
--- TODO: get rid of this, superseded by dualtree
-{-
--- |fetch the final tokens in Ppr format
-fetchPprFinal :: RefactGhc [Ppr]
-fetchPprFinal = do
-  Just tm <- gets rsModule
-  let pprVal = retrieveTokensPpr $ (tkCache $ rsTokenCache tm) Map.! mainTid
-  -- logm $ "fetchToks" ++ (showToks toks)
-  logm $ "fetchPprFinal (not showing ppr)"
-  return pprVal
--}
-
 -- |fetch the final tokens in Ppr format
 fetchLinesFinal :: RefactGhc [Line]
 fetchLinesFinal = do
@@ -401,34 +389,6 @@ indentDeclAndToks t offset = do
   -- drawTokenTree "indentDeclToks result"
   return t'
 
--- =====================================================================
--- Layout Tree stuff
--- ---------------------------------------------------------------------
-{-
-getLayoutForSpan :: GHC.SrcSpan -> RefactGhc LayoutTree
-getLayoutForSpan sspan = do
-  st <- get
-  let Just tm = rsModule st
-  let lay = getLayoutFor sspan (rsTokenLayout tm)
-  logm $ "getLayoutForSpan " ++ (showGhc sspan) ++ ":" ++ (showGhc lay)
-  return lay
--}
-{-
-putDeclLayoutAfterSpan :: (SYB.Data t)
-   => GHC.SrcSpan -> GHC.Located t -> Positioning -> LayoutTree
-   -> RefactGhc (GHC.Located t)
-putDeclLayoutAfterSpan oldSpan t pos lay = do
-  logm $ "putDeclLayoutAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,lay))
-  st <- get
-  let Just tm = rsModule st
-  let (TL layoutTree) = rsTokenLayout tm
-  let (tl',_newSpan, t') = addDeclLayoutAfterSrcSpan layoutTree oldSpan pos lay t
-  let rsModule' = Just (tm {rsTokenLayout = tl', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
-  return t'
--}
-
--- =====================================================================
 
 getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
 getTypecheckedModule = do

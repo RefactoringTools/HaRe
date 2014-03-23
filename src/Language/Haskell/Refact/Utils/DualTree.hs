@@ -234,8 +234,6 @@ renderLines ls = res
     go ci ((Line r c _o _f _s str):ls') = do
       newPos r (c+ci)
       addString (GHC.showRichTokenStream str)
-      -- addString (GHC.showRichTokenStream $ reAlignMarked str)
-      -- addString (GHC.showRichTokenStream $ reAlignMarked str)
       go ci ls'
 
     -- State operations ----------------
@@ -418,42 +416,6 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
 
 {-
 
-
-Should be 7 7 0 on second line
-
-    (Up
-      (Span (5, 7) (7, 19)) ANone
-      [(Line 5 7 0 SOriginal OGroup \"let park = 3\"),
-       (Line 7 5 0 SOriginal OGroup \"let expr = 2\")]
-      []),
-
-combining (where "park" was originally "parsed" i.e. 2 letters shorter
-
-  [((Up
-      (Span (5, 7) (5, 21)) ANone
-      [(Line 5 7 0 SOriginal OGroup \"let park = 3\")]
-      []),
-
-   ((Up
-      (Span (7, 7) (7, 19)) ANone
-      [(Line 7 7 0 SOriginal OGroup \"let expr = 2\")]
-      []),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---------------------------------------------------------
 
 ((((36,23),(41,25)),ITblockComment \" ++AZ++ : hsBinds does not re
 

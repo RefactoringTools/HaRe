@@ -2,7 +2,7 @@
 module UtilsSpec (main, spec) where
 
 import           Test.Hspec
-import           Test.QuickCheck
+-- import           Test.QuickCheck
 
 import           TestUtils
 
@@ -299,9 +299,6 @@ spec = do
   describe "sameOccurrence" $ do
     it "checks that a given syntax element is the same occurrence as another" $ do
       pending -- "write this test"
-
-    it "gives the original list, if applied twice" $ property $
-      \xs -> reverse (reverse xs) == (xs :: [Int])
 
   -- -------------------------------------------------------------------
 
