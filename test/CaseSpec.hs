@@ -2,7 +2,7 @@ module CaseSpec (main, spec) where
 
 import           Test.Hspec
 
-import Language.Haskell.Refact.Case
+import Language.Haskell.Refact.Refactoring.Case
 
 import TestUtils
 

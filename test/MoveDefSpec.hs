@@ -2,7 +2,7 @@ module MoveDefSpec (main, spec) where
 
 import           Test.Hspec
 
-import Language.Haskell.Refact.MoveDef
+import Language.Haskell.Refact.Refactoring.MoveDef
 import System.Directory
 
 import TestUtils
@@ -696,6 +696,17 @@ negative=[(["WhereIn2.hs"],["14","1"]), x
      (show r) `shouldBe` "[\"./test/testdata/Demote/UsedAtLevel.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/UsedAtLevel.refactored.hs"
                           "./test/testdata/Demote/UsedAtLevel.expected.hs"
+     diff `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
+    it "passes UsedAtLevel.hs2" $ do
+     r <- demote defaultTestSettings testCradle "./test/testdata/Demote/UsedAtLevel2.hs" (23,12)
+     -- demote logTestSettings testCradle "./test/testdata/Demote/UsedAtLevel2.hs" (23,12)
+
+     (show r) `shouldBe` "[\"./test/testdata/Demote/UsedAtLevel2.hs\"]"
+     diff <- compareFiles "./test/testdata/Demote/UsedAtLevel2.refactored.hs"
+                          "./test/testdata/Demote/UsedAtLevel2.expected.hs"
      diff `shouldBe` []
 
 

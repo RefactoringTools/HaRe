@@ -2,7 +2,7 @@ module RenamingSpec (main, spec) where
 
 import           Test.Hspec
 
-import Language.Haskell.Refact.Renaming
+import Language.Haskell.Refact.Refactoring.Renaming
 
 import TestUtils
 

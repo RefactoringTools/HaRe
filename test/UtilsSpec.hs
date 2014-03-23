@@ -15,7 +15,7 @@ import Control.Exception
 import Control.Monad.State
 import Data.Maybe
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Renaming
+import Language.Haskell.Refact.Refactoring.Renaming
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils

@@ -11,10 +11,10 @@ import Data.Maybe
 import Data.Typeable
 import Data.Version
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Case
-import Language.Haskell.Refact.DupDef
-import Language.Haskell.Refact.MoveDef
-import Language.Haskell.Refact.Renaming
+import Language.Haskell.Refact.Refactoring.Case
+import Language.Haskell.Refact.Refactoring.DupDef
+import Language.Haskell.Refact.Refactoring.MoveDef
+import Language.Haskell.Refact.Refactoring.Renaming
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Paths_HaRe
@@ -36,28 +36,14 @@ ghcOptHelp = " [-g GHC_opt1 -g GHC_opt2 ...] "
 usage :: String
 usage =    "ghc-hare version " ++ showVersion version ++ "\n"
         ++ "Usage:\n"
-        ++ "\t ghc-hare demote" ++ ghcOptHelp ++ "filename line col\n"
-        ++ "\t ghc-hare dupdef" ++ ghcOptHelp ++ "filename newname line col\n"
-        ++ "\t ghc-hare iftocase" ++ ghcOptHelp ++ "filename startline startcol endline endcol\n"
-        ++ "\t ghc-hare liftOneLevel" ++ ghcOptHelp ++ "filename line col\n"
+        ++ "\t ghc-hare demote"         ++ ghcOptHelp ++ "filename line col\n"
+        ++ "\t ghc-hare dupdef"         ++ ghcOptHelp ++ "filename newname line col\n"
+        ++ "\t ghc-hare iftocase"       ++ ghcOptHelp ++ "filename startline startcol endline endcol\n"
+        ++ "\t ghc-hare liftOneLevel"   ++ ghcOptHelp ++ "filename line col\n"
         ++ "\t ghc-hare liftToTopLevel" ++ ghcOptHelp ++ "filename line col\n"
-        ++ "\t ghc-hare rename" ++ ghcOptHelp ++ "filename newname line col\n"
+        ++ "\t ghc-hare rename"         ++ ghcOptHelp ++ "filename newname line col\n"
         ++ "\t ghc-hare help\n"
 
-{-
-        ++ "\t ghc-hare list" ++ ghcOptHelp ++ "[-l]\n"
-        ++ "\t ghc-hare lang [-l]\n"
-        ++ "\t ghc-hare flag [-l]\n"
-        ++ "\t ghc-hare browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] <module> [<module> ...]\n"
-        ++ "\t ghc-hare check" ++ ghcOptHelp ++ "<HaskellFile>\n"
-        ++ "\t ghc-hare expand" ++ ghcOptHelp ++ "<HaskellFile>\n"
-        ++ "\t ghc-hare debug" ++ ghcOptHelp ++ "<HaskellFile>\n"
-        ++ "\t ghc-hare info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
-        ++ "\t ghc-hare type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
-        ++ "\t ghc-hare lint [-h opt] <HaskellFile>\n"
-        ++ "\t ghc-hare boot\n"
-        ++ "\t ghc-hare help\n"
--}
 ----------------------------------------------------------------
 
 argspec :: [OptDescr (RefactSettings -> RefactSettings)]

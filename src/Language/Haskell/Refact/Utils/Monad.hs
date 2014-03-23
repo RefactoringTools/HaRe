@@ -5,7 +5,8 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.Refact.Utils.Monad
-       ( ParseResult
+       (
+         ParseResult
        , VerboseLevel(..)
        , RefactSettings(..)
        , RefactState(..)
@@ -15,7 +16,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactFlags(..)
        , StateStorage(..)
 
-       -- GHC monad stuff
+       -- The GHC Monad
        , RefactGhc
        , runRefactGhc
        , getRefacSettings

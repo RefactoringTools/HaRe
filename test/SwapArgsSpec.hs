@@ -7,7 +7,7 @@ import           Test.Hspec
 -- import qualified RdrName  as GHC
 -- import qualified SrcLoc   as GHC
 
-import Language.Haskell.Refact.SwapArgs
+import Language.Haskell.Refact.Refactoring.SwapArgs
 
 import TestUtils
 

@@ -69,11 +69,13 @@ Library
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe
         Exposed-modules:
-             Language.Haskell.Refact.Case
-           , Language.Haskell.Refact.DupDef
-           , Language.Haskell.Refact.MoveDef
-           , Language.Haskell.Refact.Renaming
-           , Language.Haskell.Refact.SwapArgs
+             Language.Haskell.Refact.API
+           , Language.Haskell.Refact.HaRe
+           , Language.Haskell.Refact.Refactoring.Case
+           , Language.Haskell.Refact.Refactoring.DupDef
+           , Language.Haskell.Refact.Refactoring.MoveDef
+           , Language.Haskell.Refact.Refactoring.Renaming
+           , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Utils.DualTree
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph

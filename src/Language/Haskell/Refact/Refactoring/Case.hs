@@ -1,4 +1,4 @@
-module Language.Haskell.Refact.Case(ifToCase) where
+module Language.Haskell.Refact.Refactoring.Case(ifToCase) where
 
 import qualified Data.Generics         as SYB
 import qualified GHC.SYB.Utils         as SYB

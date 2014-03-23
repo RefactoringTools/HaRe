@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.Haskell.Refact.SwapArgs (swapArgs) where
+module Language.Haskell.Refact.Refactoring.SwapArgs (swapArgs) where
 
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB

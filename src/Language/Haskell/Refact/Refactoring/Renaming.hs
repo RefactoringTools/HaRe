@@ -1,4 +1,4 @@
-module Language.Haskell.Refact.Renaming(rename) where
+module Language.Haskell.Refact.Refactoring.Renaming(rename) where
 
 -- import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB

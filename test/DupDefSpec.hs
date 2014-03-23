@@ -2,7 +2,7 @@ module DupDefSpec (main, spec) where
 
 import           Test.Hspec
 
-import Language.Haskell.Refact.DupDef
+import Language.Haskell.Refact.Refactoring.DupDef
 
 import TestUtils
 

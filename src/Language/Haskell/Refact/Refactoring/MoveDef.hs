@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Language.Haskell.Refact.MoveDef
+module Language.Haskell.Refact.Refactoring.MoveDef
   ( liftToTopLevel
   , liftOneLevel
   , demote

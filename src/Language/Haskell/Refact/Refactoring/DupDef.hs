@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.Haskell.Refact.DupDef(duplicateDef) where
+module Language.Haskell.Refact.Refactoring.DupDef(duplicateDef) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
