@@ -1136,30 +1136,6 @@ doDemoting' t pn = do
           usedInMatch _ _ = []
 
 
-          uses' :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> [Int]
-          uses' pns t2
-               = concat $ SYB.everythingStaged SYB.Renamer (++) []
-                   ([] `SYB.mkQ`  usedInMatch
-                       `SYB.extQ` usedInPat) t2
-                where
-                  -- ++AZ++ Not in pattern, but is in RHS
-                  -- usedInMatch (match@(HsMatch _ (PNT pname _ _) _ _ _)::HsMatchP)
-                  usedInMatch ((GHC.Match pats _ rhs) :: GHC.Match GHC.Name)
-                    -- was | isNothing (find (==pname) pns) && any  (flip findPN match) pns
-                    | (not $ findPNs pns pats) && findPNs pns rhs
-                     = return [1::Int]
-                  usedInMatch _ = return []
-                  -- usedInMatch _ = mzero
-
-                  -- usedInPat (pat@(Dec (HsPatBind _ p _ _)):: HsDeclP)
-                  usedInPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
-                    -- was | hsPNs p `intersect` pns ==[]  && any  (flip findPN pat) pns
-                    | (not $ findPNs pns pat) && findPNs pns rhs
-                    = return [1::Int]
-                  usedInPat  _ = return []
-                  -- usedInPat  _ = mzero
-
-
           -- duplicate demotedDecls to the right place (the outer most level where it is used).
           duplicateDecls :: [GHC.Name] -- ^ function names to be demoted
                          -> GHC.LHsBind GHC.Name -- ^Bind being demoted

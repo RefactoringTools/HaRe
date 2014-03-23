@@ -1,27 +1,9 @@
 * HaRe todo
 ** TODO splitSubToks does not take cognizance of leading/trailing comments
-** DONE liftToTopLevel adds spurious 'Name' value for lifting 'uses' in MoveDef.hs line 1110
-   It also changes
-     xx = map (\b -> (b,uses declaredPns [b])) otherBinds
-   to
-     xx = map (\b -> (b,(uses Name)Name)Name)declaredPns [b])) otherBinds
 ** TODO liftToTopLevel does not update the signature when adding a param
     e.g.for lifting 'uses' in MoveDef.hs line 1111
 ** TODO rationalise all the various hsFreeAndDeclaredXX functions
-** DONE rename mod to parsed complains of existing variable named parsed. :ARCHIVE:
-     - [ ] This is not the case. Line 41 col 10
-   [2013-09-10 Tue]
-   [[file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let%20mod%20%3D%20GHC.pm_parsed_source%20$%20GHC.tm_parsed_module%20t][file:~/mysrc/github/alanz/HaRe/test/UtilsSpec.hs::let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t]]
-     - [x] Also, get "error attempting to use module `main:TestUtils' (/home/alanz/mysrc/github/alanz/HaRe/test/TestUtils.hs) which is not loaded" 
-     - [x] no longer complains of parsed, but moves the next non blank
-       line on 2 columns. formatting problem.
 ** TODO The elisp test for buffers to save includes directories that have been modified
-** DONE liftToTopLevel in syz Zipper of g from zmapQ introduces param errors :ARCHIVE:
-      zmapQ f z = reverse $ downQ [] g z where
-           g z' = query f z' : leftQ [] g z'
-      becomes
-      zmapQ f z = reverse $ downQ [] (g f g)z
-      g f z'g= query f z' : leftQ [] (g f g)g f g)z'
 ** TODO Provide a warning if refactoring is done on code using CPP.
      State that refactoring may only affect current flags code, not others.
 ** TODO Make undo (M-x u) undo a refactoring.
@@ -34,8 +16,6 @@
     [2013-09-09 Mon]
 ** TODO Use null instead of isEmptyList/nonEmptyList
 ** TODO There is a ITqvarid vs ITvarid for qualified variables
-** DONE complete the undefined's in Layout.hs                       :ARCHIVE:
-   mostly done
 ** TODO after accepting a refactoring, reload the buffer into emacs
 ** TODO add a "roundtrip" function to ghc-hare to simply parse and output a file, comparing for fidelity
 ** TODO clientModsAndFiles must take the nub of all files generated from the various targets
@@ -43,48 +23,6 @@
 ** TODO manage RefactGhc to separate Hare exceptions from GHC ones
    see http://parenz.wordpress.com/2013/07/23/on-custom-error-handlers-for-ghc-api/
 ** TODO elisp: cancel option is not implemented
-** DONE renaming getPid in hroq mnesia removes HM. qualification in client file :ARCHIVE:
-** DONE handle TH splices, e.g. renaming Queue.hs getSid to getServerPid :ARCHIVE:
-   
-   Refactoring failed: "allocExpr undefined for 
-   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/DlqWorkers.hs:53:16-37} 
-    (HsSpliceE 
-     (HsSplice 
-      (Unqual {OccName: splice}) 
-      (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/DlqWorkers.hs:53:18-36} 
-       (HsApp 
-        (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/DlqWorkers.hs:53:18-26} 
-         (HsVar 
-          (Unqual {OccName: mkClosure}))) 
-        (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/DlqWorkers.hs:53:28-36} 
-         (HsBracket 
-          (VarBr 
-           (True) 
-           (Unqual {OccName: requeuer})))))))))"
-
-** DONE renaming in TH file fails                                   :ARCHIVE:
-   fails. e.g. Renaming in Data.Concurrent.Queue.Roq.AlarmServer
-   (89,25) to stLastCheckTime causes error
-    error hsFreeAndDeclaredGhc:not matched:
-(HsSplice {Name: splice} 
- (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:32-65} 
-  (HsApp 
-   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:32-46} 
-    (HsVar {Name: Control.Distributed.Process.Internal.Closure.TH.mkStaticClosure})) 
-   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:48-65} 
-    (HsBracket 
-     (VarBr 
-      (True) {Name: Data.Concurrent.Queue.Roq.AlarmServer.hroq_alarm_server})))))) [Just /home/alanz/mysrc/github/alanz/hroq/hroq.cabal])
-Refactoring failed: "hsFreeAndDeclaredGhc:not matched:
-(HsSplice {Name: splice} 
- (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:32-65} 
-  (HsApp 
-   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:32-46} 
-    (HsVar {Name: Control.Distributed.Process.Internal.Closure.TH.mkStaticClosure})) 
-   (L {/home/alanz/mysrc/github/alanz/hroq/src/Data/Concurrent/Queue/Roq/AlarmServer.hs:709:48-65} 
-    (HsBracket 
-     (VarBr 
-      (True) {Name: Data.Concurrent.Queue.Roq.AlarmServer.hroq_alarm_server}))))))
 ** TODO Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
 ** TODO liftToTopLevel of liftToMod in MoveDef.hs does not remove 'where'
 ** TODO from the source files
