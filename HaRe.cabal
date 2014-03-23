@@ -130,7 +130,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , HaRe >= 0.7.0.8
+                                , HaRe >= 0.7.1.6
         Extensions:      CPP
 
 
@@ -170,7 +170,6 @@ test-suite spec
     , ghc-syb-utils
     , ghc-mod >= 3.1.6
     , hspec
-    -- , hspec-discover
     , mtl
     , old-time
     , process
@@ -183,7 +182,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , HaRe >= 0.7.0.8
+    , HaRe >= 0.7.1.6
   Extensions:      CPP
 
 source-repository head

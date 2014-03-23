@@ -11,16 +11,10 @@ import Data.Maybe
 import Data.Typeable
 import Data.Version
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Refactoring.Case
-import Language.Haskell.Refact.Refactoring.DupDef
-import Language.Haskell.Refact.Refactoring.MoveDef
-import Language.Haskell.Refact.Refactoring.Renaming
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.HaRe
 import Paths_HaRe
 import Prelude
 import System.Console.GetOpt
--- import System.Directory
 import System.Environment (getArgs)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 

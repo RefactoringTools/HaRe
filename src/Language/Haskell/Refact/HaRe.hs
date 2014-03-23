@@ -1,6 +1,14 @@
 module Language.Haskell.Refact.HaRe
  (
-   ifToCase
+ -- * Data Structures
+   RefactSettings(..)
+ , VerboseLevel (..)
+ , defaultSettings
+ , SimpPos
+
+ -- * Refactorings
+ -- |Note: the 'Cradle' in the type signatures is the one from ghc-mod
+ , ifToCase
  , duplicateDef
  , liftToTopLevel
  , liftOneLevel
@@ -15,4 +23,5 @@ import Language.Haskell.Refact.Refactoring.DupDef
 import Language.Haskell.Refact.Refactoring.MoveDef
 import Language.Haskell.Refact.Refactoring.Renaming
 import Language.Haskell.Refact.Refactoring.SwapArgs
-
+import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.TypeSyn
