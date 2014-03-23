@@ -1,4 +1,5 @@
 2014-03-xx v0.7.1.8
+	* liftToMod of last local decl having preceding comment now removes 'where'
 	* Correctly determine the location for a demoted decl
 2014-03-22 v0.7.1.7
 	* Correctly determine what parameters to add when lifting a decl
