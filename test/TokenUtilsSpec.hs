@@ -1663,6 +1663,67 @@ tree TId 0:
       (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n\n  sumSquares [] = 0\n\n\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 -}
 
+    -- ---------------------------------
+
+    it "removes a where token followed by a comment" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/LiftToToplevel/NoWhere.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let forest = allocTokens parsed toks
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      -- removeToksForPos ((6,5),(13,10))
+      let sspan = posToSrcSpan forest ((6,5),(6,10))
+      (showGhc sspan) `shouldBe` "test/testdata/LiftToToplevel/NoWhere.hs:6:5-9"
+
+      let (f2,f1') = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      (drawTreeCompact f2) `shouldBe`
+               "0:((1,1),(18,1))\n"++
+               "1:((1,1),(1,7))\n"++
+               "1:((1,8),(1,30))\n"++
+               "1:((1,31),(1,36))\n"++
+               "1:((3,1),(14,25))\n"++
+               "2:((3,1),(3,16))\n"++
+               "2:((3,17),(14,25))\n"++
+               "3:((3,17),(3,27))\n"++
+               "4:((3,17),(3,24))\n"++
+               "4:((3,25),(3,27))\n"++
+               "3:((3,28),(3,29))\n"++
+               "3:((3,30),(5,12))\n"++
+               "4:((3,30),(3,32))\n"++
+               "4:((4,3),(5,12))(Above FromAlignCol (1,-30) (4,3) (5,12) FromAlignCol (1,-7))\n"++
+               "5:((4,3),(5,12))\n"++
+               "6:((4,3),(4,30))\n"++
+               "7:((4,3),(4,10))\n"++
+               "7:((4,14),(4,30))\n"++
+               "6:((5,3),(5,12))\n"++
+               "7:((5,3),(5,9))\n"++
+               "7:((5,10),(5,12))\n"++
+               "3:((6,5),(6,10))(1,-2)D\n"++
+               "3:((7,8),(13,10))\n"++
+               "3:((14,8),(14,25))(Above FromAlignCol (8,-3) (14,8) (14,31) FromAlignCol (2,-30))\n"++
+               "4:((14,8),(14,25))\n"++
+               "5:((14,8),(14,17))\n"++
+               "5:((14,18),(14,25))\n"++
+               "6:((14,18),(14,19))\n"++
+               "6:((14,20),(14,25))\n"++
+               "7:((14,20),(14,21))\n"++
+               "7:((14,21),(14,24))\n"++
+               "7:((14,24),(14,25))\n"++
+               "1:((16,1),(16,30))\n"++
+               "2:((16,1),(16,17))\n"++
+               "2:((16,18),(16,20))\n"++
+               "2:((16,21),(16,23))\n"++
+               "2:((16,24),(16,30))\n"++
+               "1:((17,1),(17,29))\n"++
+               "2:((17,1),(17,17))\n"++
+               "2:((17,18),(17,29))\n"++
+               "3:((17,18),(17,19))\n"++
+               "3:((17,20),(17,29))\n"++
+               "1:((18,1),(18,1))\n"
+
+
   -- ---------------------------------------------
 
   describe "retrieveTokens" $ do

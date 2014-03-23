@@ -378,3 +378,6 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Demote/UsedAtLevel.hs.AST_out
 /test/testdata/Demote/UsedAtLevel.hs.renamed_out
 /test/testdata/Demote/UsedAtLevel.hs.tokens
+/test/testdata/LiftToToplevel/NoWhere.hs.AST_out
+/test/testdata/LiftToToplevel/NoWhere.hs.renamed_out
+/test/testdata/LiftToToplevel/NoWhere.hs.tokens

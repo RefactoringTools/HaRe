@@ -1147,22 +1147,17 @@ removeSrcSpan forest sspan = (forest'', delTree)
     z = openZipperToSpan sspan $ Z.fromTree forest'
     zp = gfromJust "removeSrcSpan" $ Z.parent z
 
-{-
-    pg = error $ "removeSrcSpan: need calcPriorGap"
-    eg = calcEndGap forest' sspan
--}
     ((pg,_),eg) = calcPriorAndEndGap forest' sspan
 
     pt = Z.tree zp
-    -- subTree = filter (\t -> not (treeStartEnd t == sspan)) $ subForest pt
+
     subTree = map (\t -> if (treeStartEnd t == sspan) then (Node (Deleted sspan pg eg) []) else t) $ subForest pt
 
     z' = Z.setTree (pt { subForest = subTree}) zp
     forest'' = Z.toTree z'
-    -- forest'' = error $ "removeSrcSpan: initial tree\n" ++ (drawTreeEntry forest) -- ++AZ++
-    -- forest'' = error $ "removeSrcSpan: after insertSrcSpan\n" ++ (drawTreeEntry forest') -- ++AZ++
 
     delTree = Z.tree z
+    -- forest'' = error $ "removeSrcSpan: forest'=" ++ drawTreeCompact forest'
 
 -- ---------------------------------------------------------------------
 

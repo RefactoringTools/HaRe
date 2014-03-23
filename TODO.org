@@ -24,7 +24,7 @@
    see http://parenz.wordpress.com/2013/07/23/on-custom-error-handlers-for-ghc-api/
 ** TODO elisp: cancel option is not implemented
 ** TODO Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
-** TODO liftToTopLevel of liftToMod in MoveDef.hs does not remove 'where'
+** DONE liftToTopLevel of liftToMod in MoveDef.hs does not remove 'where'
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de

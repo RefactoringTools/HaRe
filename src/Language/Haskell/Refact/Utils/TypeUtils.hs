@@ -5004,12 +5004,13 @@ rmDecl pn incSig t = do
           return $ (decls1 ++ decls2')
           -- return (decls \\ [decl])
 
-  {- The difference between removing a top level declaration and a
-     local declaration is: if the local declaration to be removed is
-     the only declaration in current declaration list, then the 'where'/
-     'let'/'in' enclosing this declaration should also be removed. Whereas,
-     when a only top level decl is removed, the 'where' can not be removed.
-  -}
+
+    {- The difference between removing a top level declaration and a
+       local declaration is: if the local declaration to be removed is
+       the only declaration in current declaration list, then the 'where'/
+       'let'/'in' enclosing this declaration should also be removed. Whereas,
+       when a only top level decl is removed, the 'where' can not be removed.
+    -}
 
     -- |Remove a location declaration that defines pn.
     rmLocalDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
@@ -5035,16 +5036,16 @@ rmDecl pn incSig t = do
          case length decls of
            1 -> do
              -- Get rid of preceding where or let token
-             -- prevToks <- getToksBeforeSpan sspan
              let startPos = getGhcLoc sspan
-                 (_toks1,toks2)=break (\t1->tokenPos t1 < startPos) $ reversedToks prevToks --divide the token stream.
+                  --divide the token stream.
+                 (_toks1,toks2)=break (\t1->tokenPos t1 < startPos) $ reversedToks prevToks
                  --get the  'where' or 'let' token
                  rvToks1 = dropWhile (not.isWhereOrLet) toks2
                  --There must be a 'where' or 'let', so rvToks1 can not be empty.
-                 whereOrLet=ghead "rmLocalDecl:whereOrLet" rvToks1
+                 whereOrLet = ghead "rmLocalDecl:whereOrLet" rvToks1
                  --drop the 'where' 'or 'let' token
-
-                 rmEndPos   = tokenPosEnd $ ghead "rmLocalDecl.2" toks2
+                 -- rmEndPos   = tokenPosEnd $ ghead "rmLocalDecl.2" toks2
+                 rmEndPos   = tokenPosEnd whereOrLet
                  rmStartPos = tokenPos whereOrLet
 
              -- logm $ "rmLocalDecl: where/let tokens:" ++ (show (_toks1,toks2)) -- ++AZ++ 

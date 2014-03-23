@@ -1186,6 +1186,13 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
 
     (s1,toksBinds,toks1) = splitToksIncComments (start,end) toks
 
+    -- s1 will contain the 'where' token, split into prior comments,
+    -- the token, and post comments so that if the 'where' token must
+    -- be removed the comments will stay
+    (s1p,s1r) = break isWhereOrLet s1
+    (w,s1a)   = break (not.isWhereOrLet) s1r
+    whereLayout = makeLeafFromToks s1p ++ makeLeafFromToks w ++ makeLeafFromToks s1a
+
     firstBindTok = ghead "allocLocalBinds" $ dropWhile isWhiteSpaceOrIgnored toksBinds
     p1 = (tokenRow firstBindTok,tokenCol firstBindTok)
     (ro,co) = case (filter isWhereOrLet s1) of
@@ -1203,7 +1210,8 @@ allocLocalBinds (GHC.HsValBinds (GHC.ValBindsIn binds sigs)) toks = r
       [] -> []
       bs -> [placeAbove so p1 (rt,ct) bs]
 
-    r = strip $ (makeLeafFromToks s1) ++ bindsLayout ++ (makeLeafFromToks toks1)
+    -- r = strip $ (makeLeafFromToks s1) ++ bindsLayout ++ (makeLeafFromToks toks1)
+    r = strip $ whereLayout ++ bindsLayout ++ (makeLeafFromToks toks1)
 allocLocalBinds (GHC.HsValBinds (GHC.ValBindsOut _ _)) _
    = error "allocLocalBinds (GHC.HsValBinds (GHC.ValBindsOut..)) should not be required"
 

@@ -3,7 +3,6 @@ module LiftToToplevel.NoWhere where
 liftToTopLevel' modName pn = do
   renamed <- getRefactRenamed
   return []
-
        {-step1: divide the module's top level declaration list into three parts:
          'parent' is the top level declaration containing the lifted declaration,
          'before' and `after` are those declarations before and after 'parent'.
@@ -12,8 +11,6 @@ liftToTopLevel' modName pn = do
          step4. test whether there are any names need to be renamed.
        -}
 liftToMod = ['a'] -- do
-
-
 
 
 getRefactRenamed :: IO String
