@@ -23,7 +23,6 @@ module Language.Haskell.Refact.API
        , logm
 
  -- * from `Language.Haskell.Refact.Utils.Utils`
-       , sameOccurrence
 
        -- ** Managing the GHC / project environment
        -- , loadModuleGraphGhc
@@ -241,6 +240,8 @@ module Language.Haskell.Refact.API
     ,findPNT,findPN,findAllNameOccurences
     ,findPNs, findEntity, findEntity'
     ,sameOccurrence
+    , findIdForName
+    , getTypeForName
     ,defines, definesP,definesTypeSig -- , isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
     ,sameBind

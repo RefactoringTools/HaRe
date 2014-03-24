@@ -7,11 +7,8 @@
 
 module Language.Haskell.Refact.Utils.Utils
        (
-         sameOccurrence
-
        -- * Managing the GHC / project environment
-       -- , loadModuleGraphGhc
-       , getModuleGhc
+         getModuleGhc
        , parseSourceFileGhc
        , activateModule
        , getModuleDetails

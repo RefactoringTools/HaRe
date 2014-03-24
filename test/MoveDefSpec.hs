@@ -271,6 +271,16 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
                           "./test/testdata/LiftToToplevel/NoWhere.refactored.hs"
      diff `shouldBe` []
 
+    -- ---------------------------------
+
+    it "liftToTopLevel Signature" $ do
+     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/Signature.hs" (6,5)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Signature.hs" (6,5)
+     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/Signature.hs\"]"
+     diff <- compareFiles "./test/testdata/LiftToToplevel/Signature.expected.hs"
+                          "./test/testdata/LiftToToplevel/Signature.refactored.hs"
+     diff `shouldBe` []
+
 
   -- -------------------------------------------------------------------
 

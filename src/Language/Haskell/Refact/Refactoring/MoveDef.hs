@@ -14,8 +14,11 @@ import qualified GHC.SYB.Utils as SYB
 
 import qualified Exception             as GHC
 import qualified GHC
+import qualified HsBinds               as GHC
 import qualified Name                  as GHC
 import qualified Outputable            as GHC
+import qualified TypeRep               as GHC
+import qualified Var                   as Var
 
 import Control.Exception
 import Control.Monad.State
@@ -214,7 +217,7 @@ liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
                 -> RefactGhc [ApplyRefacResult]
 liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
-  -- logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+  logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
   logm $ "liftToTopLevel':pn=" ++ (showGhc pn)
   if isLocalFunOrPatName n renamed
       then do
@@ -252,6 +255,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          -}
          let liftedDecls = definingDeclsNames [n] parent True True
              declaredPns = nub $ concatMap definedPNs liftedDecls
+             liftedSigs = definingSigsNames [n] parent
+             mLiftedSigs = listToMaybe liftedSigs
 
          -- TODO: what about declarations between this
          -- one and the top level that are used in this one?
@@ -270,7 +275,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
            then do
              -- TODO: change the order, first move the decls then add params,
              --       else the liftedDecls get mangled while still in the parent
-             (parent',liftedDecls',_paramAdded) <- addParamsToParentAndLiftedDecl n dd parent liftedDecls
+             (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
              -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
              --                                 else liftedDecls'
 
@@ -697,8 +702,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (parent',liftedDecls',_paramAdded)<-addParamsToParentAndLiftedDecl n dd
-                                                                     parent liftedDecls
+                                (parent',liftedDecls',mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
+                                                                     parent liftedDecls Nothing
                                 --True means the new decl will be at the same level with its parant. 
                                 dest' <- moveDecl1 (replaceBinds dest (before++parent'++after))
                                            (Just (ghead "worker" (definedPNs (ghead "worker" parent'))))
@@ -735,8 +740,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (parent',liftedDecls',_paramAdded)
-                                    <- addParamsToParentAndLiftedDecl n dd dest liftedDecls
+                                (parent',liftedDecls',mLiftedSigs')
+                                    <- addParamsToParentAndLiftedDecl n dd dest liftedDecls Nothing
                                 --True means the new decl will be at the same level with its parant. 
                                 parent'' <- moveDecl1 parent' Nothing
                                              [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
@@ -761,15 +766,16 @@ addParamsToParentAndLiftedDecl :: (HsValBinds t,GHC.Outputable t) =>
   -> [GHC.Name] -- ^Declared names in parent
   -> t          -- ^parent
   -> [GHC.LHsBind GHC.Name] -- ^decls being lifted
-  -> RefactGhc (t, [GHC.LHsBind GHC.Name], Bool)
-addParamsToParentAndLiftedDecl pn dd parent liftedDecls
+  -> Maybe (GHC.LSig GHC.Name) -- ^ lifted decls signature if present
+  -> RefactGhc (t, [GHC.LHsBind GHC.Name], Maybe (GHC.LSig GHC.Name))
+addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
   =do  (ef,_) <- hsFreeAndDeclaredPNs parent
        (lf,_) <- hsFreeAndDeclaredPNs liftedDecls
 
        -- logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
 
        -- parameters to be added to pn because of lifting
-       let newParams=((nub lf) \\ (nub ef)) \\ dd
+       let newParams= ((nub lf) \\ (nub ef)) \\ dd
 
        logm $ "addParamsToParentAndLiftedDecl:(newParams,ef,lf,dd)=" ++ (showGhc (newParams,ef,lf,dd))
 
@@ -782,10 +788,89 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls
                         parent' <- addParamsToParent pn newParams parent''
 
                         liftedDecls' <- addParamsToDecls [liftedDecls''] pn newParams True
+                        -- let mLiftedSigs' = mLiftedSigs
 
-                        return (parent', liftedDecls',True)
-         else return (parent,liftedDecls,False)
+                        mLiftedSigs' <- addParamsToSigs newParams mLiftedSigs
+                        -- ii <- getTypeForName (ghead "addParamsToParentAndLiftedDecl" newParams)
+                        -- logm $ "addParamsToParentAndLiftedDecl:ii=" ++ showGhc ii
+                        logm $ "addParamsToParentAndLiftedDecl:mLiftedSigs'=" ++ showGhc mLiftedSigs'
 
+                        return (parent',liftedDecls', mLiftedSigs')
+         else return (parent,liftedDecls,mLiftedSigs)
+
+-- ---------------------------------------------------------------------
+-- foldl :: (a -> b -> a) -> a -> [b] -> a
+
+addParamsToSigs :: [GHC.Name] -> Maybe (GHC.LSig GHC.Name) -> RefactGhc (Maybe (GHC.LSig GHC.Name))
+addParamsToSigs _ Nothing = return Nothing
+addParamsToSigs [] ms = return ms
+addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig ns typ))) = do
+  ts <- mapM getTypeForName newParams
+  let typ' = foldl addOneType typ $ catMaybes ts
+  return $ Just (GHC.L l (GHC.TypeSig ns typ'))
+  where
+    addOneType :: GHC.LHsType GHC.Name -> GHC.Type -> GHC.LHsType GHC.Name
+    addOneType et t = GHC.noLoc (GHC.HsFunTy (GHC.noLoc hst) et)
+      where
+        hst = typeToHsType t
+
+addParamsToSigs np ls = error $ "addParamsToSigs: no match for:" ++ showGhc (np,ls)
+
+-- ---------------------------------------------------------------------
+
+typeToHsType :: GHC.Type -> GHC.HsType GHC.Name
+typeToHsType (GHC.TyVarTy v) = GHC.HsTyVar (Var.varName v)
+typeToHsType (GHC.AppTy t1 t2) = GHC.HsAppTy (GHC.noLoc $ typeToHsType t1)
+                                             (GHC.noLoc $ typeToHsType t2)
+typeToHsType t@(GHC.TyConApp _tc _ts) = error $ "typeToHsType: unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+typeToHsType (GHC.FunTy t1 t2) = GHC.HsFunTy (GHC.noLoc $ typeToHsType t1)
+                                             (GHC.noLoc $ typeToHsType t2)
+typeToHsType (GHC.ForAllTy v t) = GHC.HsForAllTy GHC.Explicit (GHC.HsQTvs [] []) (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
+typeToHsType (GHC.LitTy (GHC.NumTyLit i)) = GHC.HsTyLit (GHC.HsNumTy i)
+typeToHsType (GHC.LitTy (GHC.StrTyLit s)) = GHC.HsTyLit (GHC.HsStrTy s)
+
+{-
+data Type
+  = TyVarTy Var	-- ^ Vanilla type or kind variable (*never* a coercion variable)
+
+  | AppTy         -- See Note [AppTy invariant]
+	Type
+	Type		-- ^ Type application to something other than a 'TyCon'. Parameters:
+	                --
+                        --  1) Function: must /not/ be a 'TyConApp',
+                        --     must be another 'AppTy', or 'TyVarTy'
+	                --
+	                --  2) Argument type
+
+  | TyConApp      -- See Note [AppTy invariant]
+	TyCon
+	[KindOrType]	-- ^ Application of a 'TyCon', including newtypes /and/ synonyms.
+	                -- Invariant: saturated appliations of 'FunTyCon' must
+	                -- use 'FunTy' and saturated synonyms must use their own
+                        -- constructors. However, /unsaturated/ 'FunTyCon's
+                        -- do appear as 'TyConApp's.
+	                -- Parameters:
+	                --
+	                -- 1) Type constructor being applied to.
+	                --
+                        -- 2) Type arguments. Might not have enough type arguments
+                        --    here to saturate the constructor.
+                        --    Even type synonyms are not necessarily saturated;
+                        --    for example unsaturated type synonyms
+	                --    can appear as the right hand side of a type synonym.
+
+  | FunTy
+	Type
+	Type		-- ^ Special case of 'TyConApp': @TyConApp FunTyCon [t1, t2]@
+			-- See Note [Equality-constrained types]
+
+  | ForAllTy
+	Var         -- Type or kind variable
+	Type	        -- ^ A polymorphic type
+
+  | LitTy TyLit     -- ^ Type literals are simillar to type constructors.
+
+-}
 
 --------------------------------End of Lifting-----------------------------------------
 

@@ -67,6 +67,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     ,findPNT,findPN,findAllNameOccurences
     ,findPNs, findEntity, findEntity'
+    , findIdForName
+    , getTypeForName
     ,sameOccurrence
     ,defines, definesP,definesTypeSig -- , isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
@@ -168,6 +170,7 @@ import qualified RdrName       as GHC
 import qualified SrcLoc        as GHC
 import qualified UniqSet       as GHC
 import qualified Unique        as GHC
+import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -4353,6 +4356,29 @@ findPNs pns
         worker (n::GHC.Name)
            | elem (GHC.nameUnique n) uns = Just True
         worker _ = Nothing
+
+-- | Return the type checked `GHC.Id` corresponding to the given
+-- `GHC.Name`
+
+-- TODO: there has to be a simpler way, using the appropriate GHC internals
+findIdForName :: GHC.Name -> RefactGhc (Maybe GHC.Id)
+findIdForName n = do
+  tm <- getTypecheckedModule
+  let t = GHC.tm_typechecked_source tm
+  let r = somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
+      worker (i::GHC.Id)
+         | (GHC.nameUnique n) ==  (GHC.varUnique i) = Just i
+      worker _ = Nothing
+  return r
+
+-- ---------------------------------------------------------------------
+
+getTypeForName :: GHC.Name -> RefactGhc (Maybe GHC.Type)
+getTypeForName n = do
+  mId <-  findIdForName n
+  case mId of
+    Nothing -> return Nothing
+    Just i -> return $ Just (GHC.varType i)
 
 -- ---------------------------------------------------------------------
 

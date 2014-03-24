@@ -1,5 +1,4 @@
 * HaRe todo
-** DONE splitSubToks does not take cognizance of leading/trailing comments
 ** TODO liftToTopLevel does not update the signature when adding a param
     e.g.for lifting 'uses' in MoveDef.hs line 1111
 ** TODO rationalise all the various hsFreeAndDeclaredXX functions
@@ -15,7 +14,6 @@
 ** TODO Look at refactoring Data.Vault.Lazy. Uses include process
     [2013-09-09 Mon]
 ** TODO Use null instead of isEmptyList/nonEmptyList
-** DONE There is a ITqvarid vs ITvarid for qualified variables
 ** TODO after accepting a refactoring, reload the buffer into emacs
 ** TODO add a "roundtrip" function to ghc-hare to simply parse and output a file, comparing for fidelity
 ** TODO clientModsAndFiles must take the nub of all files generated from the various targets
@@ -24,9 +22,8 @@
    see http://parenz.wordpress.com/2013/07/23/on-custom-error-handlers-for-ghc-api/
 ** TODO elisp: cancel option is not implemented
 ** TODO Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
-** DONE liftToTopLevel of liftToMod in MoveDef.hs does not remove 'where'
 ** TODO SwapArgs does not process client files
-** TOOD demote does not process client files
+** TODO demote does not process client files
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
