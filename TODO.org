@@ -24,6 +24,7 @@
 ** TODO Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
 ** TODO SwapArgs does not process client files
 ** TODO demote does not process client files
+** TODO provide simple wrapper for one-file refactor in the API
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de

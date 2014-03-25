@@ -474,6 +474,77 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "definingTyClDeclsNames" $ do
+    it "returns [] if not found" $ do
+      (t, _toks) <- parsedFileGhc "./test/testdata/TypeUtils/TyClDecls.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just ((GHC.L _ n)) = locToName (10,29) renamed
+      let res = definingTyClDeclsNames [n] renamed
+      showGhc res `shouldBe` "[]"
+
+    -- ---------------------------------
+
+    it "finds foreign type declarations" $ do
+      pending
+
+    -- ---------------------------------
+
+    it "finds family declarations" $ do
+      (t, _toks) <- parsedFileGhc "./test/testdata/TypeUtils/TyClDecls.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L _ n) = locToName (7,14) renamed
+      let res = definingTyClDeclsNames [n] renamed
+      showGhc res `shouldBe` "[data family TypeUtils.TyClDEcls.XList a]"
+
+    -- ---------------------------------
+
+    it "finds data declarations" $ do
+      (t, _toks) <- parsedFileGhc "./test/testdata/TypeUtils/TyClDecls.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L _ n) = locToName (12,6) renamed
+      let res = definingTyClDeclsNames [n] renamed
+      showGhc res `shouldBe` "[data TypeUtils.TyClDEcls.Foo\n   = TypeUtils.TyClDEcls.Foo GHC.Types.Int]"
+
+    -- ---------------------------------
+
+    it "finds type declarations" $ do
+      (t, _toks) <- parsedFileGhc "./test/testdata/TypeUtils/TyClDecls.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L _ n) = locToName (14,6) renamed
+      let res = definingTyClDeclsNames [n] renamed
+      showGhc res `shouldBe` "[type TypeUtils.TyClDEcls.Foo2 = GHC.Base.String]"
+
+    -- ---------------------------------
+
+    it "finds clase declarations" $ do
+      (t, _toks) <- parsedFileGhc "./test/testdata/TypeUtils/TyClDecls.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L _ n) = locToName (16,7) renamed
+      let res = definingTyClDeclsNames [n] renamed
+      showGhc res `shouldBe` "[class TypeUtils.TyClDEcls.Bar a where\n   TypeUtils.TyClDEcls.bar :: a -> GHC.Types.Bool]"
+
+    -- ---------------------------------
+
+    it "finds multiple declarations" $ do
+      (t, _toks) <- parsedFileGhc "./test/testdata/TypeUtils/TyClDecls.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+
+      let Just (GHC.L _ n1) = locToName (14,6) renamed
+      let Just (GHC.L _ n2) = locToName (16,7) renamed
+      let res = definingTyClDeclsNames [n1,n2] renamed
+      showGhc res `shouldBe`
+            "[type TypeUtils.TyClDEcls.Foo2 = GHC.Base.String,\n"++
+            " class TypeUtils.TyClDEcls.Bar a where\n"++
+            "   TypeUtils.TyClDEcls.bar :: a -> GHC.Types.Bool]"
+
+
+  -- -------------------------------------------------------------------
+
   describe "isFunBindR" $ do
     it "Returns False if not a function definition" $ do
       -- modInfo@((_,Just renamed, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
@@ -1778,8 +1849,8 @@ spec = do
          (newDecls,_removedDecl,_removedSig) <- rmDecl n False declsr
 
          return newDecls
-      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- (nb,s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "pow"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.LetIn1 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the local  'pow' to 'sq'\n --This example also aims to test the demoting a local declaration in 'let'.\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                      pow=2\n                  in sq x + sq y\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n   "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""

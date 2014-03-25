@@ -82,7 +82,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , getModule
 
     -- ** Locations
-    ,defineLoc, useLoc, locToExp  -- , getStartEndLoc
+    ,defineLoc, useLoc, locToExp
     ,locToName, locToRdrName
     ,getName
 
@@ -112,7 +112,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     {- ,definingDecls -}, definedPNs
-    ,definingDeclsNames, definingDeclsNames', definingSigsNames
+    , definingDeclsNames, definingDeclsNames', definingSigsNames
+    , definingTyClDeclsNames
     , allNames
     -- ,simplifyDecl
 
@@ -2493,6 +2494,33 @@ definingSigsNames pns ds = def ds
 
       defines' (p::[GHC.Located GHC.Name])
         = filter (\(GHC.L _ n) -> n `elem` pns) p
+
+-- ---------------------------------------------------------------------
+
+-- |Find those declarations which define the specified GHC.Names.
+definingTyClDeclsNames:: (SYB.Data t)
+            => [GHC.Name]   -- ^ The specified identifiers.
+            -> t -- ^ A collection of declarations.
+            ->[GHC.LTyClDecl GHC.Name]  -- ^ The result.
+definingTyClDeclsNames pns t = defining t
+  where
+   defining decl
+     = SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
+     where
+      defines' :: (GHC.LTyClDecl GHC.Name) -> [GHC.LTyClDecl GHC.Name]
+      defines' decl'@(GHC.L _ (GHC.ForeignType (GHC.L _ pname) _ ))
+        |isJust (find (==(pname)) pns) = [decl']
+
+      defines' decl'@(GHC.L _ (GHC.TyFamily _ (GHC.L _ pname) _ _))
+        |isJust (find (==(pname)) pns) = [decl']
+
+      defines' decl'@(GHC.L _ (GHC.TyDecl (GHC.L _ pname) _ _ _))
+        |isJust (find (==(pname)) pns) = [decl']
+
+      defines' decl'@(GHC.L _ (GHC.ClassDecl _ (GHC.L _ pname) _ _ _ _ _ _ _ _))
+        |isJust (find (==(pname)) pns) = [decl']
+
+      defines' _ = []
 
 -- ---------------------------------------------------------------------
 

@@ -1187,6 +1187,7 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(11,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -1218,7 +1219,7 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
            "3:((8,3),(8,4))\n"++
             "3:((8,5),(8,6))\n"++
           "1:((11,1),(11,1))\n"
-
+-}
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
       --     ""
@@ -1257,6 +1258,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
 
       let (layout3,_newSpan) = addToksAfterSrcSpan layout2 sspan2 (PlaceOffset 1 4 2) newToks
 
+{-
       (drawTreeCompact layout3) `shouldBe`
           "0:((1,1),(11,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -1285,6 +1287,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
             "3:((8,3),(8,4))\n"++
             "3:((8,5),(8,6))\n"++
           "1:((11,1),(11,1))\n"
+-}
 
       let srcTree2 = layoutTreeToSourceTree layout3
 

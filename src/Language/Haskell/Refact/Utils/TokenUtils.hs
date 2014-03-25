@@ -14,7 +14,7 @@
 
 module Language.Haskell.Refact.Utils.TokenUtils(
        -- * Creating
-        initTokenCache
+         initTokenCache
        , initTokenCacheLayout
        , mkTreeFromTokens
        , mkTreeFromSpanTokens
@@ -87,7 +87,6 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , containsStart, containsMiddle, containsEnd
        , doSplitTree, splitSubtree, splitSubToks
        , nonCommentSpan
-       -- , lookupSrcSpan
        , invariantOk
        , invariant
        , showForest
@@ -121,7 +120,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , insertLenChangedInSrcSpan
        , insertVersionsInSrcSpan
        , srcSpanToForestSpan
-       , nullSpan,nullPos
+       , nullSpan, nullPos
        , simpPosToForestSpan
        , srcPosToSimpPos
        , showForestSpan

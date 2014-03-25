@@ -1,3 +1,6 @@
+-- | This module should provide all that is required to write further
+-- refactorings.
+-- NOTE: it is currently unstable, and may change without notice on minor version number bumps
 module Language.Haskell.Refact.API
  (
  -- * from `Language.Haskell.Refact.Utils.Monad`
@@ -284,7 +287,8 @@ module Language.Haskell.Refact.API
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     {- ,definingDecls -}, definedPNs
-    ,definingDeclsNames, definingDeclsNames', definingSigsNames
+    , definingDeclsNames, definingDeclsNames', definingSigsNames
+    , definingTyClDeclsNames
     , allNames
     -- ,simplifyDecl
 

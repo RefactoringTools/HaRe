@@ -13,10 +13,12 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import qualified Exception             as GHC
+import qualified FastString            as GHC
 import qualified GHC
 import qualified HsBinds               as GHC
 import qualified Name                  as GHC
 import qualified Outputable            as GHC
+import qualified TyCon                 as GHC
 import qualified TypeRep               as GHC
 import qualified Var                   as Var
 
@@ -217,7 +219,7 @@ liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
                 -> RefactGhc [ApplyRefacResult]
 liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
-  logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+  -- logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
   logm $ "liftToTopLevel':pn=" ++ (showGhc pn)
   if isLocalFunOrPatName n renamed
       then do
@@ -270,6 +272,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
 
          -- drawTokenTree "liftToMod.a"
+         drawTokenTreeDetailed "liftToMod.a"
 
          if pns==[]
            then do
@@ -283,10 +286,10 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              -- logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
              -- logm $ "liftToMod:(liftedDecls')=" ++ (showGhc liftedDecls')
 
-             -- error ("liftToMod:newBinds=" ++ (showGhc (replaceBinds declsr (before++parent'++after)))) -- ++AZ++
-
-             void $ moveDecl1 (replaceBinds renamed (before++parent'++after))
-                    (Just (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent'))))
+             let renamed' = replaceBinds renamed (before++parent'++after)
+                 defName  = (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))
+             void $ moveDecl1 renamed'
+                    (Just defName)
                     [GHC.unLoc pn] (Just liftedDecls') declaredPns True
 
              -- drawTokenTree "liftToMod.b"
@@ -788,26 +791,36 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
                         parent' <- addParamsToParent pn newParams parent''
 
                         liftedDecls' <- addParamsToDecls [liftedDecls''] pn newParams True
-                        -- let mLiftedSigs' = mLiftedSigs
 
                         mLiftedSigs' <- addParamsToSigs newParams mLiftedSigs
-                        -- ii <- getTypeForName (ghead "addParamsToParentAndLiftedDecl" newParams)
-                        -- logm $ "addParamsToParentAndLiftedDecl:ii=" ++ showGhc ii
+
                         logm $ "addParamsToParentAndLiftedDecl:mLiftedSigs'=" ++ showGhc mLiftedSigs'
 
                         return (parent',liftedDecls', mLiftedSigs')
          else return (parent,liftedDecls,mLiftedSigs)
 
 -- ---------------------------------------------------------------------
--- foldl :: (a -> b -> a) -> a -> [b] -> a
 
+-- TODO: update the token stream
 addParamsToSigs :: [GHC.Name] -> Maybe (GHC.LSig GHC.Name) -> RefactGhc (Maybe (GHC.LSig GHC.Name))
 addParamsToSigs _ Nothing = return Nothing
 addParamsToSigs [] ms = return ms
-addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig ns typ))) = do
+addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _)))) = do
   ts <- mapM getTypeForName newParams
-  let typ' = foldl addOneType typ $ catMaybes ts
-  return $ Just (GHC.L l (GHC.TypeSig ns typ'))
+  -- Note : the '::' symbol lies between the lns and the ltyp. Hence
+  --        construct a new location covering this gap, to insert the mew
+  --        params. This span has been specifically inserted into the
+  --        TokenTree when it is initially loaded.
+  let ne = GHC.srcSpanEnd $ GHC.getLoc  $ glast "addParamsToSigs" lns
+      ls = GHC.srcSpanStart $ lt
+      replaceSpan = GHC.mkSrcSpan ne ls
+      newStr = ":: " ++ (intercalate " -> " $ map prettyprint $ catMaybes ts) ++ " -> "
+  logm $ "addParamsToSigs:replaceSpan=" ++ showGhc replaceSpan
+  logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
+  newToks <- liftIO $ basicTokenise newStr
+  putToksForSpan replaceSpan newToks
+  let typ' = foldl addOneType ltyp $ catMaybes ts
+  return $ Just (GHC.L l (GHC.TypeSig lns typ'))
   where
     addOneType :: GHC.LHsType GHC.Name -> GHC.Type -> GHC.LHsType GHC.Name
     addOneType et t = GHC.noLoc (GHC.HsFunTy (GHC.noLoc hst) et)
@@ -822,7 +835,9 @@ typeToHsType :: GHC.Type -> GHC.HsType GHC.Name
 typeToHsType (GHC.TyVarTy v) = GHC.HsTyVar (Var.varName v)
 typeToHsType (GHC.AppTy t1 t2) = GHC.HsAppTy (GHC.noLoc $ typeToHsType t1)
                                              (GHC.noLoc $ typeToHsType t2)
-typeToHsType t@(GHC.TyConApp _tc _ts) = error $ "typeToHsType: unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+
+typeToHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
+
 typeToHsType (GHC.FunTy t1 t2) = GHC.HsFunTy (GHC.noLoc $ typeToHsType t1)
                                              (GHC.noLoc $ typeToHsType t2)
 typeToHsType (GHC.ForAllTy v t) = GHC.HsForAllTy GHC.Explicit (GHC.HsQTvs [] []) (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
@@ -869,6 +884,181 @@ data Type
 	Type	        -- ^ A polymorphic type
 
   | LitTy TyLit     -- ^ Type literals are simillar to type constructors.
+
+-}
+
+tyConAppToHsType :: GHC.Type -> GHC.HsType GHC.Name
+tyConAppToHsType t@(GHC.TyConApp tc _ts)
+  | GHC.isFunTyCon tc = r "isFunTyCon"
+  | GHC.isAlgTyCon tc = r "isAlgTyCon"
+  | GHC.isTupleTyCon tc = r "isTupleTyCon"
+  | GHC.isSynTyCon tc = r "isSynTyCon"
+  | GHC.isPrimTyCon tc = r "isPrimTyCon"
+  | GHC.isPromotedDataCon tc = r "isPromotedDataTyCon"
+  | GHC.isPromotedTyCon tc =  r "isPromotedTyCon"
+  where
+    -- r str = error $ "tyConAppToHsType: " ++ str ++ " unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+    r str = GHC.HsTyLit (GHC.HsStrTy $ GHC.mkFastString str)
+
+tyConAppToHsType t@(GHC.TyConApp _tc _ts)
+   = error $ "tyConAppToHsType: unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+
+{-
+HsType
+HsForAllTy HsExplicitFlag (LHsTyVarBndrs name) (LHsContext name) (LHsType name)
+HsTyVar name
+HsAppTy (LHsType name) (LHsType name)
+HsFunTy (LHsType name) (LHsType name)
+HsListTy (LHsType name)
+HsPArrTy (LHsType name)
+HsTupleTy HsTupleSort [LHsType name]
+HsOpTy (LHsType name) (LHsTyOp name) (LHsType name)
+HsParTy (LHsType name)
+HsIParamTy HsIPName (LHsType name)
+HsEqTy (LHsType name) (LHsType name)
+HsKindSig (LHsType name) (LHsKind name)
+HsQuasiQuoteTy (HsQuasiQuote name)
+HsSpliceTy (HsSplice name) FreeVars PostTcKind
+HsDocTy (LHsType name) LHsDocString
+HsBangTy HsBang (LHsType name)
+HsRecTy [ConDeclField name]
+HsCoreTy Type
+HsExplicitListTy PostTcKind [LHsType name]
+HsExplicitTupleTy [PostTcKind] [LHsType name]
+HsTyLit HsTyLit
+HsWrapTy HsTyWrapper (HsType name)
+-}
+
+
+
+
+{-
+  = -- | The function type constructor, @(->)@
+    FunTyCon {
+        tyConUnique :: Unique,
+        tyConName   :: Name,
+        tc_kind   :: Kind,
+        tyConArity  :: Arity
+    }
+
+  -- | Algebraic type constructors, which are defined to be those
+  -- arising @data@ type and @newtype@ declarations.  All these
+  -- constructors are lifted and boxed. See 'AlgTyConRhs' for more
+  -- information.
+  | AlgTyCon {
+        tyConUnique :: Unique,
+        tyConName   :: Name,
+        tc_kind     :: Kind,
+        tyConArity  :: Arity,
+
+        tyConTyVars :: [TyVar],   -- ^ The kind and type variables used in the type constructor.
+                                  -- Invariant: length tyvars = arity
+                                  -- Precisely, this list scopes over:
+                                  --
+                                  -- 1. The 'algTcStupidTheta'
+                                  -- 2. The cached types in 'algTyConRhs.NewTyCon'
+                                  -- 3. The family instance types if present
+                                  --
+                                  -- Note that it does /not/ scope over the data constructors.
+        tyConCType   :: Maybe CType, -- The C type that should be used
+                                     -- for this type when using the FFI
+                                     -- and CAPI
+
+        algTcGadtSyntax  :: Bool,       -- ^ Was the data type declared with GADT syntax?
+                                        -- If so, that doesn't mean it's a true GADT;
+                                        -- only that the "where" form was used.
+                                        -- This field is used only to guide pretty-printing
+
+        algTcStupidTheta :: [PredType], -- ^ The \"stupid theta\" for the data type
+                                        -- (always empty for GADTs).
+                                        -- A \"stupid theta\" is the context to the left
+                                        -- of an algebraic type declaration,
+                                        -- e.g. @Eq a@ in the declaration
+                                        --    @data Eq a => T a ...@.
+
+        algTcRhs :: AlgTyConRhs,  -- ^ Contains information about the
+                                  -- data constructors of the algebraic type
+
+        algTcRec :: RecFlag,      -- ^ Tells us whether the data type is part
+                                  -- of a mutually-recursive group or not
+
+        algTcParent :: TyConParent      -- ^ Gives the class or family declaration 'TyCon'
+                                        -- for derived 'TyCon's representing class
+                                        -- or family instances, respectively.
+                                        -- See also 'synTcParent'
+    }
+
+  -- | Represents the infinite family of tuple type constructors,
+  --   @()@, @(a,b)@, @(# a, b #)@ etc.
+  | TupleTyCon {
+        tyConUnique    :: Unique,
+        tyConName      :: Name,
+        tc_kind        :: Kind,
+        tyConArity     :: Arity,
+        tyConTupleSort :: TupleSort,
+        tyConTyVars    :: [TyVar],
+        dataCon        :: DataCon -- ^ Corresponding tuple data constructor
+    }
+
+  -- | Represents type synonyms
+  | SynTyCon {
+        tyConUnique  :: Unique,
+        tyConName    :: Name,
+        tc_kind    :: Kind,
+        tyConArity   :: Arity,
+
+        tyConTyVars  :: [TyVar],        -- Bound tyvars
+
+        synTcRhs     :: SynTyConRhs,    -- ^ Contains information about the
+                                        -- expansion of the synonym
+
+        synTcParent  :: TyConParent     -- ^ Gives the family declaration 'TyCon'
+                                        -- of 'TyCon's representing family instances
+
+    }
+
+  -- | Primitive types; cannot be defined in Haskell. This includes
+  -- the usual suspects (such as @Int#@) as well as foreign-imported
+  -- types and kinds
+  | PrimTyCon {
+        tyConUnique   :: Unique,
+        tyConName     :: Name,
+        tc_kind       :: Kind,
+        tyConArity    :: Arity,         -- SLPJ Oct06: I'm not sure what the significance
+                                        --             of the arity of a primtycon is!
+
+        primTyConRep  :: PrimRep,       -- ^ Many primitive tycons are unboxed, but some are
+                                        --   boxed (represented by pointers). This 'PrimRep'
+                                        --   holds that information.
+                                        -- Only relevant if tc_kind = *
+
+        isUnLifted   :: Bool,           -- ^ Most primitive tycons are unlifted
+                                        --   (may not contain bottom)
+                                        --   but foreign-imported ones may be lifted
+
+        tyConExtName :: Maybe FastString   -- ^ @Just e@ for foreign-imported types,
+                                           --   holds the name of the imported thing
+    }
+
+  -- | Represents promoted data constructor.
+  | PromotedDataCon {         -- See Note [Promoted data constructors]
+        tyConUnique :: Unique, -- ^ Same Unique as the data constructor
+        tyConName   :: Name,   -- ^ Same Name as the data constructor
+        tyConArity  :: Arity,
+        tc_kind     :: Kind,   -- ^ Translated type of the data constructor
+        dataCon     :: DataCon -- ^ Corresponding data constructor
+    }
+
+  -- | Represents promoted type constructor.
+  | PromotedTyCon {
+        tyConUnique :: Unique, -- ^ Same Unique as the type constructor
+        tyConName   :: Name,   -- ^ Same Name as the type constructor
+        tyConArity  :: Arity,  -- ^ n if ty_con :: * -> ... -> *  n times
+        tc_kind     :: Kind,   -- ^ Always TysPrim.superKind
+        ty_con      :: TyCon   -- ^ Corresponding type constructor
+    }
+
+  deriving Typeable
 
 -}
 
