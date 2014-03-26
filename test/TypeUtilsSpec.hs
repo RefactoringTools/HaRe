@@ -39,58 +39,6 @@ main = do
 spec :: Spec
 spec = do
 
-  {-
-  describe "pNTtoPN" $ do
-    it "Converts a PNT (located ) to a PN (unlocated)" $ do
-      let pnt = PNT (GHC.L GHC.noSrcSpan (mkRdrName "aname"))
-      (pNTtoPN pnt) == (PN (mkRdrName "aname")) `shouldBe` True
-  -}
-  -- -------------------------------------------------------------------
-{-
-  describe "locToPNT" $ do
-    it "returns a pnt for a given source location, if it falls anywhere in an identifier" $ do
-      -- ((_, _, parsed), toks) <- parsedFileBGhc
-      (t, toks) <- parsedFileBGhc
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-      let (PNT res@(GHC.L l n)) = locToPNT bFileName (7,3) parsed
-      showGhc l `shouldBe` "test/testdata/TypeUtils/B.hs:7:1-3"
-      getLocatedStart res `shouldBe` (7,1)
-      -- GHC.showRdrName n `shouldBe` "foo"
-      showGhc n `shouldBe` "foo"
-
-    it "returns a pnt for a given source location, if it falls anywhere in an identifier #2" $ do
-      -- ((_, _, parsed), toks) <- parsedFileBGhc
-      (t, toks) <- parsedFileBGhc
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let (PNT res@(GHC.L l n)) = locToPNT bFileName (25,8) parsed
-      -- GHC.showRdrName n `shouldBe` "bob"
-      (showGhc n) `shouldBe` "bob"
-      (showGhc l) `shouldBe` "test/testdata/TypeUtils/B.hs:25:7-9"
-      getLocatedStart res `shouldBe` (25,7)
-
-    it "returns the default pnt for a given source location, if it does not fall in an identifier" $ do
-      -- modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      modInfo@(t, toks) <- parsedFileBGhc
-      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-      let (PNT res@(GHC.L _ n)) = locToPNT bFileName (7,7) mod
-      getLocatedStart res `shouldBe` (-1,-1)
-      -- GHC.showRdrName n `shouldBe` "nothing"
-      (showGhc n) `shouldBe` "nothing"
--}
-
-    -- it "lists all PNTs" $ do
-    --   pending
-{-
-      -- modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      modInfo@(t, toks) <- parsedFileSGhc
-      let mod = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-      let res = allPNT bFileName (7,6) mod
-      (showGhc res) `shouldBe`  "[(PNT test/testdata/TypeUtils/S.hs:4:1-3 foo),(PNT test/testdata/TypeUtils/S.hs:4:5 x),(PNT test/testdata/TypeUtils/S.hs:4:13-15 odd),(PNT test/testdata/TypeUtils/S.hs:4:17 x),(PNT test/testdata/TypeUtils/S.hs:6:6 D),(PNT test/testdata/TypeUtils/S.hs:6:10 A),(PNT test/testdata/TypeUtils/S.hs:6:14 B),(PNT test/testdata/TypeUtils/S.hs:6:25 C),(PNT test/testdata/TypeUtils/S.hs:8:1-7 subdecl),(PNT test/testdata/TypeUtils/S.hs:8:9 x),(PNT test/testdata/TypeUtils/S.hs:8:13-14 zz),(PNT test/testdata/TypeUtils/S.hs:8:16 x),(PNT test/testdata/TypeUtils/S.hs:10:5-6 zz),(PNT test/testdata/TypeUtils/S.hs:10:8 n),(PNT test/testdata/TypeUtils/S.hs:10:12 n),(PNT test/testdata/TypeUtils/S.hs:10:14 +)]"
--}
-
   -- -------------------------------------------------------------------
 
   describe "findAllNameOccurences" $ do
@@ -493,10 +441,19 @@ spec = do
     it "finds family declarations" $ do
       (t, _toks) <- parsedFileGhc "./test/testdata/TypeUtils/TyClDecls.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       let Just (GHC.L _ n) = locToName (7,14) renamed
       let res = definingTyClDeclsNames [n] renamed
+#if __GLASGOW_HASKELL__ > 704
       showGhc res `shouldBe` "[data family TypeUtils.TyClDEcls.XList a]"
+#else
+      showGhc res `shouldBe`
+          "[data instance TypeUtils.TyClDEcls.XList GHC.Types.Char\n"++
+          "     = TypeUtils.TyClDEcls.XCons !GHC.Types.Char !TypeUtils.TyClDEcls.XList GHC.Types.Char |\n"++
+          "       TypeUtils.TyClDEcls.XNil,\n"++
+          " data family TypeUtils.TyClDEcls.XList a]"
+#endif
 
     -- ---------------------------------
 
@@ -506,7 +463,7 @@ spec = do
 
       let Just (GHC.L _ n) = locToName (12,6) renamed
       let res = definingTyClDeclsNames [n] renamed
-      showGhc res `shouldBe` "[data TypeUtils.TyClDEcls.Foo\n   = TypeUtils.TyClDEcls.Foo GHC.Types.Int]"
+      (unspace $ showGhc res) `shouldBe` "[data TypeUtils.TyClDEcls.Foo\n = TypeUtils.TyClDEcls.Foo GHC.Types.Int]"
 
     -- ---------------------------------
 
@@ -520,7 +477,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "finds clase declarations" $ do
+    it "finds class declarations" $ do
       (t, _toks) <- parsedFileGhc "./test/testdata/TypeUtils/TyClDecls.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 

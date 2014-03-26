@@ -25,6 +25,7 @@
 ** TODO SwapArgs does not process client files
 ** TODO demote does not process client files
 ** TODO provide simple wrapper for one-file refactor in the API
+** TODO note: haddock 2.11.0 builds the 7.4.2 docs without problem
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de
