@@ -2511,6 +2511,9 @@ definingTyClDeclsNames pns t = defining t
       defines' decl'@(GHC.L _ (GHC.ForeignType (GHC.L _ pname) _ ))
         |isJust (find (==(pname)) pns) = [decl']
 
+      -- NOTE: GHC 7.4.2 returns family instances as TyData, GHC 7.6.3
+      -- returns them as a separate FamInstDecl
+
       defines' decl'@(GHC.L _ (GHC.TyFamily _ (GHC.L _ pname) _ _))
         |isJust (find (==(pname)) pns) = [decl']
 
@@ -2520,6 +2523,12 @@ definingTyClDeclsNames pns t = defining t
       defines' decl'@(GHC.L _ (GHC.TyData _ _ (GHC.L _ pname) _ _ _ __ _))
 #endif
         |isJust (find (==(pname)) pns) = [decl']
+
+#if __GLASGOW_HASKELL__ > 704
+#else
+      defines' decl'@(GHC.L _ (GHC.TySynonym (GHC.L _ pname) _ _ _))
+        |isJust (find (==(pname)) pns) = [decl']
+#endif
 
 #if __GLASGOW_HASKELL__ > 704
       defines' decl'@(GHC.L _ (GHC.ClassDecl _ (GHC.L _ pname) _ _ _ _ _ _ _ _))
