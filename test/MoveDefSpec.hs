@@ -285,11 +285,21 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- ---------------------------------
 
     it "liftToTopLevel Signature2" $ do
-     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (9,5)
-     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (9,5)
+     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (15,5)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (15,5)
      (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/Signature2.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/Signature2.expected.hs"
                           "./test/testdata/LiftToToplevel/Signature2.refactored.hs"
+     diff `shouldBe` []
+
+    -- ---------------------------------
+
+    it "liftToTopLevel Signature2r" $ do
+     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/Signature2r.hs" (12,5)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Signature2r.hs" (12,5)
+     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/Signature2r.hs\"]"
+     diff <- compareFiles "./test/testdata/LiftToToplevel/Signature2r.expected.hs"
+                          "./test/testdata/LiftToToplevel/Signature2r.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
