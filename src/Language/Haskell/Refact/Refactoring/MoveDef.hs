@@ -13,12 +13,18 @@ module Language.Haskell.Refact.Refactoring.MoveDef
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+import qualified DynFlags      as GHC
 import qualified Exception             as GHC
 import qualified FastString            as GHC
 import qualified GHC
+import qualified GHC           as GHC
+import qualified GHC.Paths     as GHC
 import qualified HsBinds               as GHC
+import qualified Lexer         as GHC
 import qualified Name                  as GHC
 import qualified Outputable            as GHC
+import qualified Outputable    as GHC
+import qualified StringBuffer  as GHC
 import qualified TyCon                 as GHC
 import qualified TypeRep               as GHC
 import qualified Var                   as Var
@@ -802,7 +808,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
 
 -- ---------------------------------------------------------------------
 
--- TODO: update the token stream
+
 addParamsToSigs :: [GHC.Name] -> Maybe (GHC.LSig GHC.Name) -> RefactGhc (Maybe (GHC.LSig GHC.Name))
 addParamsToSigs _ Nothing = return Nothing
 addParamsToSigs [] ms = return ms
@@ -815,7 +821,7 @@ addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _)))) =
   let ne = GHC.srcSpanEnd $ GHC.getLoc  $ glast "addParamsToSigs" lns
       ls = GHC.srcSpanStart $ lt
       replaceSpan = GHC.mkSrcSpan ne ls
-      newStr = ":: " ++ (intercalate " -> " $ map prettyprint $ catMaybes ts) ++ " -> "
+      newStr = ":: " ++ (intercalate " -> " $ map printSigComponent $ catMaybes ts) ++ " -> "
   logm $ "addParamsToSigs:replaceSpan=" ++ showGhc replaceSpan
   logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
   newToks <- liftIO $ basicTokenise newStr
@@ -829,6 +835,22 @@ addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _)))) =
         hst = typeToHsType t
 
 addParamsToSigs np ls = error $ "addParamsToSigs: no match for:" ++ showGhc (np,ls)
+
+-- ---------------------------------------------------------------------
+
+printSigComponent :: GHC.Type -> String
+-- printSigComponent t@(GHC.FunTy _ _) = "(" ++ prettyprint t ++ ")"
+-- printSigComponent t@(GHC.ForAllTy v tt) = "(" ++ prettyprint t ++ ")"
+-- printSigComponent x = prettyprint x
+printSigComponent x = ppType x
+
+
+ppType :: GHC.Type -> String
+#if __GLASGOW_HASKELL__ > 704
+ppType x = GHC.renderWithStyle GHC.tracingDynFlags (GHC.pprParendType x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
+#else
+ppType x = GHC.renderWithStyle                     (GHC.pprParendType x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
+#endif
 
 -- ---------------------------------------------------------------------
 
