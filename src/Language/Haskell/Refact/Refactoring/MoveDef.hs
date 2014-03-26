@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -840,9 +841,16 @@ typeToHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
 
 typeToHsType (GHC.FunTy t1 t2) = GHC.HsFunTy (GHC.noLoc $ typeToHsType t1)
                                              (GHC.noLoc $ typeToHsType t2)
+#if __GLASGOW_HASKELL__ > 704
 typeToHsType (GHC.ForAllTy v t) = GHC.HsForAllTy GHC.Explicit (GHC.HsQTvs [] []) (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
+#else
+typeToHsType (GHC.ForAllTy v t) = GHC.HsForAllTy GHC.Explicit [] (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
+#endif
+
+#if __GLASGOW_HASKELL__ > 704
 typeToHsType (GHC.LitTy (GHC.NumTyLit i)) = GHC.HsTyLit (GHC.HsNumTy i)
 typeToHsType (GHC.LitTy (GHC.StrTyLit s)) = GHC.HsTyLit (GHC.HsStrTy s)
+#endif
 
 {-
 data Type
@@ -894,11 +902,17 @@ tyConAppToHsType t@(GHC.TyConApp tc _ts)
   | GHC.isTupleTyCon tc = r "isTupleTyCon"
   | GHC.isSynTyCon tc = r "isSynTyCon"
   | GHC.isPrimTyCon tc = r "isPrimTyCon"
+#if __GLASGOW_HASKELL__ > 704
   | GHC.isPromotedDataCon tc = r "isPromotedDataTyCon"
   | GHC.isPromotedTyCon tc =  r "isPromotedTyCon"
+#endif
   where
-    -- r str = error $ "tyConAppToHsType: " ++ str ++ " unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+
+#if __GLASGOW_HASKELL__ > 704
     r str = GHC.HsTyLit (GHC.HsStrTy $ GHC.mkFastString str)
+#else
+    r str = error $ "tyConAppToHsType: " ++ str ++ " unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+#endif
 
 tyConAppToHsType t@(GHC.TyConApp _tc _ts)
    = error $ "tyConAppToHsType: unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)

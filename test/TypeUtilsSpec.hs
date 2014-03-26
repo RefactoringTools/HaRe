@@ -506,7 +506,7 @@ spec = do
 
       let Just (GHC.L _ n) = locToName (12,6) renamed
       let res = definingTyClDeclsNames [n] renamed
-      showGhc res `shouldBe` "[data TypeUtils.TyClDEcls.Foo\n   = TypeUtils.TyClDEcls.Foo GHC.Types.Int]"
+      (unspace $ showGhc res) `shouldBe` "[data TypeUtils.TyClDEcls.Foo\n = TypeUtils.TyClDEcls.Foo GHC.Types.Int]"
 
     -- ---------------------------------
 
@@ -520,7 +520,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "finds clase declarations" $ do
+    it "finds class declarations" $ do
       (t, _toks) <- parsedFileGhc "./test/testdata/TypeUtils/TyClDecls.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
