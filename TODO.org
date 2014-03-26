@@ -1,6 +1,9 @@
 * HaRe todo
 ** TODO liftToTopLevel does not update the signature when adding a param
-    e.g.for lifting 'uses' in MoveDef.hs line 1111
+    e.g.for lifting 'uses' in MoveDef.hs line 1374 now complains
+    about requiring an existential type.
+    - Consider offering a version that does the lift but comments out
+      the proposed signature
 ** TODO rationalise all the various hsFreeAndDeclaredXX functions
 ** TODO The elisp test for buffers to save includes directories that have been modified
 ** TODO Provide a warning if refactoring is done on code using CPP.
@@ -21,7 +24,7 @@
 ** TODO manage RefactGhc to separate Hare exceptions from GHC ones
    see http://parenz.wordpress.com/2013/07/23/on-custom-error-handlers-for-ghc-api/
 ** TODO elisp: cancel option is not implemented
-** TODO Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
+** DONE Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
 ** TODO SwapArgs does not process client files
 ** TODO demote does not process client files
 ** TODO provide simple wrapper for one-file refactor in the API

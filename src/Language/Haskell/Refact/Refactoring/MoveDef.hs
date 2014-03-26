@@ -13,18 +13,12 @@ module Language.Haskell.Refact.Refactoring.MoveDef
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import qualified DynFlags      as GHC
+-- import qualified DynFlags      as GHC
 import qualified Exception             as GHC
 import qualified FastString            as GHC
-import qualified GHC
-import qualified GHC           as GHC
-import qualified GHC.Paths     as GHC
-import qualified HsBinds               as GHC
-import qualified Lexer         as GHC
+import qualified GHC                   as GHC
 import qualified Name                  as GHC
 import qualified Outputable            as GHC
-import qualified Outputable    as GHC
-import qualified StringBuffer  as GHC
 import qualified TyCon                 as GHC
 import qualified TypeRep               as GHC
 import qualified Var                   as Var
@@ -285,7 +279,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
            then do
              -- TODO: change the order, first move the decls then add params,
              --       else the liftedDecls get mangled while still in the parent
-             (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
+             (parent',liftedDecls',_mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
              -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
              --                                 else liftedDecls'
 
@@ -712,7 +706,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (parent',liftedDecls',mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
+                                (parent',liftedDecls',_mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
                                                                      parent liftedDecls Nothing
                                 --True means the new decl will be at the same level with its parant. 
                                 dest' <- moveDecl1 (replaceBinds dest (before++parent'++after))
@@ -750,7 +744,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
                       if pns==[]
                         then do
-                                (parent',liftedDecls',mLiftedSigs')
+                                (parent',liftedDecls',_mLiftedSigs')
                                     <- addParamsToParentAndLiftedDecl n dd dest liftedDecls Nothing
                                 --True means the new decl will be at the same level with its parant. 
                                 parent'' <- moveDecl1 parent' Nothing
@@ -808,6 +802,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
 
 -- ---------------------------------------------------------------------
 
+-- TODO: perhaps move this to TypeUtils
 addParamsToSigs :: [GHC.Name] -> Maybe (GHC.LSig GHC.Name) -> RefactGhc (Maybe (GHC.LSig GHC.Name))
 addParamsToSigs _ Nothing = return Nothing
 addParamsToSigs [] ms = return ms
@@ -863,7 +858,7 @@ isNewSignatureOk types = do
   let
     r = SYB.everythingStaged SYB.TypeChecker (++) []
           ([] `SYB.mkQ` usesForAll) types
-    usesForAll (GHC.ForAllTy _ _) = [1]
+    usesForAll (GHC.ForAllTy _ _) = [1::Int]
     usesForAll _                  = []
 
   -- logm $ "isNewSignatureOk:r=" ++ show r
@@ -871,6 +866,8 @@ isNewSignatureOk types = do
 
 -- ---------------------------------------------------------------------
 
+-- TODO: perhaps move this to TypeUtils
+-- TODO: complete this
 typeToHsType :: GHC.Type -> GHC.HsType GHC.Name
 typeToHsType (GHC.TyVarTy v) = GHC.HsTyVar (Var.varName v)
 typeToHsType (GHC.AppTy t1 t2) = GHC.HsAppTy (GHC.noLoc $ typeToHsType t1)
