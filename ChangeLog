@@ -1,3 +1,7 @@
+2014-03-xx v0.7.2.1
+	* Added disclaimer that API is subject to change without notice
+	* liftToTopLevel now brings along an updated type signature,
+	provided there are no constraints on any of the types
 2014-03-23 v0.7.2.0
 	* Reorganised package structure to have
 	Language.Haskell.Refact.HaRe which provides all the functions

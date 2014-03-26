@@ -808,12 +808,12 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
 
 -- ---------------------------------------------------------------------
 
-
 addParamsToSigs :: [GHC.Name] -> Maybe (GHC.LSig GHC.Name) -> RefactGhc (Maybe (GHC.LSig GHC.Name))
 addParamsToSigs _ Nothing = return Nothing
 addParamsToSigs [] ms = return ms
 addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _)))) = do
-  ts <- mapM getTypeForName newParams
+  mts <- mapM getTypeForName newParams
+  let ts = catMaybes mts
   -- Note : the '::' symbol lies between the lns and the ltyp. Hence
   --        construct a new location covering this gap, to insert the mew
   --        params. This span has been specifically inserted into the
@@ -821,13 +821,17 @@ addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _)))) =
   let ne = GHC.srcSpanEnd $ GHC.getLoc  $ glast "addParamsToSigs" lns
       ls = GHC.srcSpanStart $ lt
       replaceSpan = GHC.mkSrcSpan ne ls
-      newStr = ":: " ++ (intercalate " -> " $ map printSigComponent $ catMaybes ts) ++ " -> "
+      newStr = ":: " ++ (intercalate " -> " $ map printSigComponent ts) ++ " -> "
   logm $ "addParamsToSigs:replaceSpan=" ++ showGhc replaceSpan
   logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
   newToks <- liftIO $ basicTokenise newStr
   putToksForSpan replaceSpan newToks
-  let typ' = foldl addOneType ltyp $ catMaybes ts
-  return $ Just (GHC.L l (GHC.TypeSig lns typ'))
+  let typ' = foldl addOneType ltyp ts
+  sigOk <- isNewSignatureOk ts
+  logm $ "addParamsToSigs:(sigOk,newStr)=" ++ show (sigOk,newStr)
+  if sigOk
+    then return $ Just (GHC.L l (GHC.TypeSig lns typ'))
+    else error $ "\nNew type signature may fail type checking: " ++ newStr ++ "\n"
   where
     addOneType :: GHC.LHsType GHC.Name -> GHC.Type -> GHC.LHsType GHC.Name
     addOneType et t = GHC.noLoc (GHC.HsFunTy (GHC.noLoc hst) et)
@@ -839,18 +843,31 @@ addParamsToSigs np ls = error $ "addParamsToSigs: no match for:" ++ showGhc (np,
 -- ---------------------------------------------------------------------
 
 printSigComponent :: GHC.Type -> String
--- printSigComponent t@(GHC.FunTy _ _) = "(" ++ prettyprint t ++ ")"
--- printSigComponent t@(GHC.ForAllTy v tt) = "(" ++ prettyprint t ++ ")"
--- printSigComponent x = prettyprint x
 printSigComponent x = ppType x
 
+-- ---------------------------------------------------------------------
 
-ppType :: GHC.Type -> String
-#if __GLASGOW_HASKELL__ > 704
-ppType x = GHC.renderWithStyle GHC.tracingDynFlags (GHC.pprParendType x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
-#else
-ppType x = GHC.renderWithStyle                     (GHC.pprParendType x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
-#endif
+-- |Fail any signature having a forall in it.
+-- TODO: this is unnecesarily restrictive, but needs
+-- a) proper reversing of GHC.Type to GHC.LhsType
+-- b) some serious reverse type inference to ensure that the
+--    constraints are modified properly to merge the old signature
+--    part and the new.
+isNewSignatureOk :: [GHC.Type] -> RefactGhc Bool
+isNewSignatureOk types = do
+  -- NOTE: under some circumstances enabling Rank2Types or RankNTypes
+  --       can resolve the type conflict, this can potentially be checked
+  --       for.
+  -- NOTE2: perhaps proceed and reload the tentative refactoring into
+  --        the GHC session and accept it only if it type checks
+  let
+    r = SYB.everythingStaged SYB.TypeChecker (++) []
+          ([] `SYB.mkQ` usesForAll) types
+    usesForAll (GHC.ForAllTy _ _) = [1]
+    usesForAll _                  = []
+
+  -- logm $ "isNewSignatureOk:r=" ++ show r
+  return $ emptyList r
 
 -- ---------------------------------------------------------------------
 

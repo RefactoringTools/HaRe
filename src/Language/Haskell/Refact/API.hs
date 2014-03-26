@@ -364,6 +364,7 @@ module Language.Haskell.Refact.API
   , showGhc
   , prettyprint
   , prettyprint2
+  , ppType
   , lexStringToRichTokens
   , getDataConstructors
   , setGhcContext
