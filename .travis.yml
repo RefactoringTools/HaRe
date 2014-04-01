@@ -56,7 +56,14 @@ script:
  - cabal-1.18 build
  - cabal-1.18 test
  - cabal-1.18 check
- - cabal-1.18 haddock
+
+ - if [ "$GHCVER" = "7.4.2" ]; then
+      : # no-op
+   else
+      cabal-1.18 haddock
+   fi
+
+
  - cabal-1.18 sdist
 
 notifications:
