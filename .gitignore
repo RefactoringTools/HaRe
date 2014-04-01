@@ -387,3 +387,8 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/LiftToToplevel/Signature2.hs.AST_out
 /test/testdata/LiftToToplevel/Signature2.hs.renamed_out
 /test/testdata/LiftToToplevel/Signature2.hs.tokens
+/src/Language/Haskell/Refact/Utils/Monad_flymake.hs
+/test/CaseSpec_flymake.hs
+/test/TestUtils_flymake.hs
+/test/testdata/Layout/Foreign_flymake.hs
+/test/testdata/Layout/FromMd1_flymake.hs
