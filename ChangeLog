@@ -1,3 +1,37 @@
+2014-04-01 v0.7.2.1
+	* limit ghc-mod to <= 3.1.7, new version 4.0 does not deal with
+	FFI exports. This does not stop ghc-mod >= 4.0 being used in the
+	editor, it is just the library linked into ghc-hare
+	* Added disclaimer that API is subject to change without notice
+	* liftToTopLevel now brings along an updated type signature,
+	provided there are no constraints on any of the types
+2014-03-23 v0.7.2.0
+	* Reorganised package structure to have
+	Language.Haskell.Refact.HaRe which provides all the functions
+	needed to call the refactorer from external code, and
+	Language.Haskell.Refact.API which provides the interfaces to write
+	new refactorings
+	* liftToMod of last local decl having preceding comment now removes 'where'
+	* Correctly determine the location for a demoted decl
+2014-03-22 v0.7.1.7
+	* Correctly determine what parameters to add when lifting a decl
+	* Do not demote a decl if it is used in more than one match
+2014-03-19 v0.7.1.6
+	* Do not treat single-line layout as a group, hence preserving
+	layout of adjacent let expressions when renaming.
+	* Process Template Haskell expressions instead of blowing up
+2014-03-17 v0.7.1.5
+	* Adding parameters to lifted declarations now works as expected
+2014-03-09 v0.7.1.4
+	* Load and process files using TH and/or QuasiQuotes
+	* Make loading of multiple targets from a cabal file more robust
+2014-03-06 v0.7.1.3
+	* Various fixes for robustness based on real world trials
+	* Rework the free and declared variable calculation to be more accurate
+	* Extend the range of syntax elements that HaRe can handle when
+	reading a file.  Most bar parallel extensions are in place.
+	* Make sure the refactored file retains its original extension, so
+	that syntax highlighting still works while the preview is being done.
 2014-01-28 v0.7.1.2
 	* Ensure that the right target is activated for the primary file
 	when it belongs to a non-library target,not just for client

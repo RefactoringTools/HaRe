@@ -2,11 +2,11 @@
 module UtilsSpec (main, spec) where
 
 import           Test.Hspec
-import           Test.QuickCheck
+-- import           Test.QuickCheck
 
 import           TestUtils
 
-import qualified Digraph    as GHC
+-- import qualified Digraph    as GHC
 -- import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified HscTypes   as GHC
@@ -15,8 +15,7 @@ import Control.Exception
 import Control.Monad.State
 import Data.Maybe
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Renaming
-import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Refactoring.Renaming
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -24,6 +23,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.Utils
 import System.Directory
 
 -- ---------------------------------------------------------------------
@@ -38,9 +38,9 @@ spec = do
   describe "locToExp on ParsedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
       (t, _toks) <- parsedFileBGhc
-      let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let (Just expr) = locToExp (7,7) (7,43) modu :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+      let (Just expr) = locToExp (7,7) (7,43) parsed :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,9)
       getLocatedEnd   expr `shouldBe` (7,42)
 
@@ -102,7 +102,9 @@ spec = do
       cradle <- findCradle
       -- (show cradle) `shouldBe` ""
 
-      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False) }
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False)
+                                     -- , rsetVerboseLevel = Debug
+                                     }
 
       r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
@@ -145,6 +147,36 @@ spec = do
       (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\","++
                             "\"test/testdata/cabal/cabal2/src/main2.hs\","++
                             "\"test/testdata/cabal/cabal2/src/main1.hs\"]"
+
+  -- -----------------------------------
+
+    it "loads a series of files based on cabal3, which has a lib and an exe" $ do
+
+      currentDir <- getCurrentDirectory
+      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      setCurrentDirectory "./test/testdata/cabal/cabal3"
+      -- d <- getCurrentDirectory
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal3"
+      cradle <- findCradle
+      -- (show cradle) `shouldBe` ""
+      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal3"
+
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
+                                     -- , rsetVerboseLevel = Debug
+                                     }
+
+      let handler = [Handler handler1]
+          handler1 :: GHC.SourceError -> IO [String]
+          handler1 e = do
+             setCurrentDirectory currentDir
+             return [show e]
+
+      r <- catches (rename settings cradle "./src/main1.hs" "baz1" (7, 1)) handler
+      setCurrentDirectory currentDir
+
+      r' <- mapM makeRelativeToCurrentDirectory r
+
+      (show r') `shouldBe` "[\"test/testdata/cabal/cabal3/src/main1.hs\"]"
 
 
   -- -----------------------------------
@@ -230,14 +262,43 @@ spec = do
            "\"./src/Language/Haskell/Refact/MoveDef.hs\","++
            "\"./src/Language/Haskell/Refact/DupDef.hs\"]"
 -}
+  -- -----------------------------------
+{-
+  -- This test does not work properly on Travis, missing hspec-discover
+    it "renames in HaRe Utils 3" $ do
+
+      currentDir <- getCurrentDirectory
+      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      setCurrentDirectory "./"
+      -- d <- getCurrentDirectory
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+      cradle <- findCradle
+      -- (show cradle) `shouldBe` ""
+      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
+
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
+                                     -- , rsetVerboseLevel = Debug
+                                     }
+
+      let handler = [Handler handler1]
+          handler1 :: GHC.SourceError -> IO [String]
+          handler1 e = do
+             setCurrentDirectory currentDir
+             return [show e]
+
+      r <- catches (rename settings cradle "./test/UtilsSpec.hs" "parsed" (41, 11)) handler
+      setCurrentDirectory currentDir
+
+      r' <- mapM makeRelativeToCurrentDirectory r
+
+      (show r') `shouldBe`
+          "[\"test/UtilsSpec.hs\"]"
+-}
   -- -------------------------------------------------------------------
 
   describe "sameOccurrence" $ do
     it "checks that a given syntax element is the same occurrence as another" $ do
       pending -- "write this test"
-
-    it "gives the original list, if applied twice" $ property $
-      \xs -> reverse (reverse xs) == (xs :: [Int])
 
   -- -------------------------------------------------------------------
 
@@ -507,10 +568,10 @@ parsedFileBGhc = parsedFileGhc "./test/testdata/TypeUtils/B.hs"
 -- parsedFileMGhc :: IO (ParseResult,[PosToken])
 -- parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
 
-parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
-parseFileBGhc = parseSourceFileTest fileName
-  where
-    fileName = "./test/testdata/TypeUtils/B.hs"
+-- parseFileBGhc :: RefactGhc (ParseResult, [PosToken])
+-- parseFileBGhc = parseSourceFileTest fileName
+--   where
+--     fileName = "./test/testdata/TypeUtils/B.hs"
 
 parseFileMGhc :: RefactGhc (ParseResult, [PosToken])
 parseFileMGhc = parseSourceFileTest fileName

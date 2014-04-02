@@ -14,7 +14,6 @@ import Data.Maybe
 import Data.Tree
 
 import Language.Haskell.Refact.Utils.DualTree
-import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
@@ -276,8 +275,8 @@ spec = do
       -- putDeclToksAfterSpan test/testdata/DupDef/Dd1.hs:1048582:1-30:("(((False,0,1,6),1),((False,0,1,6),31))",PlaceIndent 1 0 2
 
       -- --
-      let newSpan = posToSrcSpan tm5 ((7,1),(7,19))
-      (showSrcSpanF newSpan) `shouldBe` "(((False,0,0,7),1),((False,0,0,7),19))"
+      let newSpan111 = posToSrcSpan tm5 ((7,1),(7,19))
+      (showSrcSpanF newSpan111) `shouldBe` "(((False,0,0,7),1),((False,0,0,7),19))"
       -- let (forest',newSpan') = addNewSrcSpanAndToksAfter tm5 sspan3 newSpan (PlaceIndent 1 0 2) declToks
 
       let z = openZipperToSpan (srcSpanToForestSpan sspan3) $ Z.fromTree tm5
@@ -433,6 +432,11 @@ tree TId 0:
 
     it "gets the tokens after updating a SrcSpan" $ do
       (_t,toks) <- parsedFileLiftLetIn1Ghc
+      -- (show toks) `shouldBe` ""
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module _t
+      let _f1 = allocTokens parsed toks
+      -- (show _f1) `shouldBe` ""
+
       -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let decls = hsBinds renamed
       let forest = mkTreeFromTokens toks
@@ -490,9 +494,9 @@ tree TId 0:
                          ((forestLineToGhcLine $ ForestLine False 0 0 12),33) )
       --
 
-      let f1 = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
+      let f1' = insertSrcSpan tm3 (srcSpanToForestSpan sspan4)
       -- (show f1) `shouldBe` ""
-      (drawTreeEntry f1) `shouldBe`
+      (drawTreeEntry f1') `shouldBe`
             "((1,1),(16,22))\n|\n"++
             "+- ((1,1),(11,32))\n|\n"++
             "+- ((12,19),(12,21))\n|\n"++
@@ -1252,7 +1256,7 @@ tree TId 0:
       -- let (b2,m2,e2) = splitSubToks (head middle) (sf sspan9)
       -- (show (b2,m2,e2)) `shouldBe` ""
       let (b3,m3,e3) = splitSubtree (last middle) (sf sspan9)
-      (show (map treeStartEnd b3,map treeStartEnd m3,map treeStartEnd  e3)) `shouldBe` 
+      (show (map treeStartEnd b3,map treeStartEnd m3,map treeStartEnd  e3)) `shouldBe`
                "([],"++
                "[(((ForestLine False 0 0 10),26),((ForestLine False 0 0 11),24)),"++
                 "(((ForestLine True 0 0 11),25),((ForestLine True 0 0 11),28)),"++
@@ -1587,7 +1591,7 @@ tree TId 0:
 
       -- (show $ retrieveTokensInterim $ getTreeFromCache ss2 tk3) `shouldBe` "" 
       -- (show $ getTreeFromCache ss2 tk3) `shouldBe` ""
-      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk3) `shouldBe` 
+      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk3) `shouldBe`
                 "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+b+c"
 
       -- putToksForSpan test/testdata/Demote/WhereIn6.hs:100000013:18:[((((0,1),(0,2)),ITvarid "y"),"y")]
@@ -1619,7 +1623,7 @@ tree TId 0:
                "tree TId 3:\n"++
                "((300000013,18),(300000013,19))\n"
 
-      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk4) `shouldBe` 
+      (GHC.showRichTokenStream $ retrieveTokensInterim $ getTreeFromCache ss2 tk4) `shouldBe`
                 "\n\n\n\n\n\n\n\n\n\n\n\n addthree a b c=x+y+c"
 
 
@@ -1658,6 +1662,69 @@ tree TId 0:
       -- (showToks toks') `shouldBe` ""
       (GHC.showRichTokenStream toks') `shouldBe` "module Demote.D1 where\n\n {-demote 'sq' to 'sumSquares'. This refactoring\n  affects module 'D1' and 'C1' -}\n\n sumSquares (x:xs) = sq x + sumSquares xs\n     where\n        sq = x ^ pow\n      \n\n \n\n  sumSquares [] = 0\n\n\n\n pow = 2\n\n main = sumSquares [1..4]\n\n "
 -}
+
+    -- ---------------------------------
+
+    it "removes a where token followed by a comment" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/LiftToToplevel/NoWhere.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let forest = allocTokens parsed toks
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      -- removeToksForPos ((6,5),(13,10))
+      let sspan = posToSrcSpan forest ((6,5),(6,10))
+      (showGhc sspan) `shouldBe` "test/testdata/LiftToToplevel/NoWhere.hs:6:5-9"
+
+      let (f2,_f1') = removeSrcSpan forest (srcSpanToForestSpan sspan)
+      (drawTreeCompact f2) `shouldBe`
+               "0:((1,1),(18,1))\n"++
+               "1:((1,1),(1,7))\n"++
+               "1:((1,8),(1,30))\n"++
+               "1:((1,31),(1,36))\n"++
+               "1:((3,1),(14,25))\n"++
+               "2:((3,1),(3,16))\n"++
+               "2:((3,17),(14,25))\n"++
+               "3:((3,17),(3,27))\n"++
+               "4:((3,17),(3,24))\n"++
+               "4:((3,25),(3,27))\n"++
+               "3:((3,28),(3,29))\n"++
+               "3:((3,30),(5,12))\n"++
+               "4:((3,30),(3,32))\n"++
+               "4:((4,3),(5,12))(Above FromAlignCol (1,-30) (4,3) (5,12) FromAlignCol (1,-7))\n"++
+               "5:((4,3),(5,12))\n"++
+               "6:((4,3),(4,30))\n"++
+               "7:((4,3),(4,10))\n"++
+               "7:((4,14),(4,30))\n"++
+               "6:((5,3),(5,12))\n"++
+               "7:((5,3),(5,9))\n"++
+               "7:((5,10),(5,12))\n"++
+               "3:((6,5),(6,10))(1,-2)D\n"++
+               "3:((7,8),(13,10))\n"++
+               "3:((14,8),(14,25))(Above FromAlignCol (8,-3) (14,8) (14,31) FromAlignCol (2,-30))\n"++
+               "4:((14,8),(14,25))\n"++
+               "5:((14,8),(14,17))\n"++
+               "5:((14,18),(14,25))\n"++
+               "6:((14,18),(14,19))\n"++
+               "6:((14,20),(14,25))\n"++
+               "7:((14,20),(14,21))\n"++
+               "7:((14,21),(14,24))\n"++
+               "7:((14,24),(14,25))\n"++
+               "1:((16,1),(16,30))\n"++
+               "2:((16,1),(16,17))\n"++
+               "2:((16,17),(16,21))\n"++
+               "3:((16,18),(16,20))\n"++
+               "2:((16,21),(16,30))\n"++
+               "3:((16,21),(16,23))\n"++
+               "3:((16,24),(16,30))\n"++
+               "1:((17,1),(17,29))\n"++
+               "2:((17,1),(17,17))\n"++
+               "2:((17,18),(17,29))\n"++
+               "3:((17,18),(17,19))\n"++
+               "3:((17,20),(17,29))\n"++
+               "1:((18,1),(18,1))\n"
+
 
   -- ---------------------------------------------
 
@@ -1716,53 +1783,53 @@ tree TId 0:
       let (layout1,_tree) = removeSrcSpan layout (sf sspan)
 
       (drawTreeCompact layout1) `shouldBe`
-          "0:((1,1),(9,1))\n"++
-          "1:((1,1),(3,7))\n"++
-          "1:((3,8),(3,22))\n"++
-          "1:((3,23),(3,28))\n"++
-          "1:((5,1),(7,15))\n"++
-          "2:((5,1),(5,4))\n"++
-          "2:((5,5),(7,15))\n"++
-          "3:((5,5),(5,6))\n"++
-          "3:((5,7),(7,15))\n"++
-          "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
-          "5:((5,11),(5,16))\n"++
-          "6:((5,11),(5,12))\n"++
-          "6:((5,13),(5,16))\n"++
-          "7:((5,13),(5,14))\n"++
-          "7:((5,15),(5,16))\n"++
-          "5:((6,11),(6,16))(1,-9)D\n"++
-          "4:((7,10),(7,15))\n"++
-          "5:((7,10),(7,11))\n"++
-          "5:((7,12),(7,13))\n"++
-          "5:((7,14),(7,15))\n"++
-          "1:((9,1),(9,1))\n"
+         "0:((3,1),(9,1))\n"++
+         "1:((3,1),(3,7))\n"++
+         "1:((3,8),(3,22))\n"++
+         "1:((3,23),(3,28))\n"++
+         "1:((5,1),(7,15))\n"++
+         "2:((5,1),(5,4))\n"++
+         "2:((5,5),(7,15))\n"++
+         "3:((5,5),(5,6))\n"++
+         "3:((5,7),(7,15))\n"++
+         "4:((5,7),(5,10))\n"++
+         "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+         "5:((5,11),(5,16))\n"++
+         "6:((5,11),(5,12))\n"++
+         "6:((5,13),(5,16))\n"++
+         "7:((5,13),(5,14))\n"++
+         "7:((5,15),(5,16))\n"++
+         "5:((6,11),(6,16))(1,-9)D\n"++
+         "4:((7,10),(7,15))\n"++
+         "5:((7,10),(7,11))\n"++
+         "5:((7,12),(7,13))\n"++
+         "5:((7,14),(7,15))\n"++
+         "1:((9,1),(9,1))\n"
 
 
       (drawTreeCompact $ adjustLinesForDeleted layout1) `shouldBe`
-          "0:((1,1),(9,1))\n"++
-          "1:((1,1),(3,7))\n"++
-          "1:((3,8),(3,22))\n"++
-          "1:((3,23),(3,28))\n"++
-          "1:((5,1),(7,15))\n"++
-          "2:((5,1),(5,4))\n"++
-          "2:((5,5),(7,15))\n"++
-          "3:((5,5),(5,6))\n"++
-          "3:((5,7),(7,15))\n"++
-          "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
-          "5:((5,11),(5,16))\n"++
-          "6:((5,11),(5,12))\n"++
-          "6:((5,13),(5,16))\n"++
-          "7:((5,13),(5,14))\n"++
-          "7:((5,15),(5,16))\n"++
-          "5:((6,11),(6,16))(1,-9)D\n"++
-          "4:((6,10),(6,15))\n"++
-          "5:((6,10),(6,11))\n"++
-          "5:((6,12),(6,13))\n"++
-          "5:((6,14),(6,15))\n"++
-          "1:((8,1),(8,1))\n"
+         "0:((3,1),(9,1))\n"++
+         "1:((3,1),(3,7))\n"++
+         "1:((3,8),(3,22))\n"++
+         "1:((3,23),(3,28))\n"++
+         "1:((5,1),(7,15))\n"++
+         "2:((5,1),(5,4))\n"++
+         "2:((5,5),(7,15))\n"++
+         "3:((5,5),(5,6))\n"++
+         "3:((5,7),(7,15))\n"++
+         "4:((5,7),(5,10))\n"++
+         "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+         "5:((5,11),(5,16))\n"++
+         "6:((5,11),(5,12))\n"++
+         "6:((5,13),(5,16))\n"++
+         "7:((5,13),(5,14))\n"++
+         "7:((5,15),(5,16))\n"++
+         "5:((6,11),(6,16))(1,-9)D\n"++
+         "4:((6,10),(6,15))\n"++
+         "5:((6,10),(6,11))\n"++
+         "5:((6,12),(6,13))\n"++
+         "5:((6,14),(6,15))\n"++
+         "1:((8,1),(8,1))\n"
 
       (renderLinesFromLayoutTree layout1) `shouldBe`
           "-- A simple let expression, to ensure the layout is detected\n"++
@@ -3780,7 +3847,7 @@ Should be pg :  5 - 3 = 2
 
       let (forest2,_ss1',_) = updateTokensForSrcSpan forest ss1 ss1Tok
 
-      (drawTreeEntry forest2) `shouldBe` 
+      (drawTreeEntry forest2) `shouldBe`
            "((1,1),(18,23))\n|\n"++
            "+- ((1,1),(11,17))\n|\n"++
            "+- ((10000000011,18),(10000000011,20))\n|\n"++
@@ -3797,7 +3864,7 @@ Should be pg :  5 - 3 = 2
 
       let (forest3,_ss2',_) = updateTokensForSrcSpan forest2 ss2 ss2Tok
 
-      (drawTreeEntry forest3) `shouldBe` 
+      (drawTreeEntry forest3) `shouldBe`
            "((1,1),(18,23))\n|\n"++
            "+- ((1,1),(11,17))\n|\n"++
            "+- ((10000000011,18),(10000000011,20))\n|\n"++
@@ -3954,8 +4021,10 @@ Should be pg :  5 - 3 = 2
       (show newTok) `shouldBe` "((((19,1),(19,4)),ITvarid \"bab\"),\"bab\")"
       let forest' = replaceTokenForSrcSpan forest lt newTok
 
+{-
       (drawTreeCompact forest') `shouldBe`
          "0:((1,1),(26,1))\n1:((1,1),(1,7))\n1:((1,8),(1,17))\n1:((1,18),(1,23))\n1:((5,1),(6,14))\n2:((5,1),(5,4))\n2:((5,5),(6,14))\n3:((5,5),(5,6))\n3:((5,7),(5,8))\n3:((5,9),(5,10))\n3:((5,11),(5,12))\n3:((6,3),(6,8))\n3:((6,9),(6,14))(Above None (6,9) (6,14) FromAlignCol (2,-13))\n4:((6,9),(6,14))\n5:((6,9),(6,10))\n5:((6,11),(6,14))\n6:((6,11),(6,12))\n6:((6,13),(6,14))\n1:((8,1),(10,10))\n2:((8,1),(8,4))\n2:((8,5),(10,10))\n3:((8,5),(8,6))\n3:((8,7),(8,8))\n3:((8,9),(8,10))\n3:((8,11),(8,12))\n3:((9,3),(9,8))\n3:((10,5),(10,10))(Above FromAlignCol (1,-4) (10,5) (10,10) FromAlignCol (3,-9))\n4:((10,5),(10,10))\n5:((10,5),(10,6))\n5:((10,7),(10,10))\n6:((10,7),(10,8))\n6:((10,9),(10,10))\n1:((13,1),(15,17))\n2:((13,1),(13,4))\n2:((13,5),(15,17))\n3:((13,5),(13,6))\n3:((13,7),(13,8))\n3:((13,9),(13,10))\n3:((14,3),(15,17))\n4:((14,3),(14,6))\n4:((14,7),(14,14))(Above None (14,7) (14,14) FromAlignCol (1,-11))\n5:((14,7),(14,14))\n6:((14,7),(14,10))\n6:((14,11),(14,14))\n7:((14,11),(14,12))\n7:((14,13),(14,14))\n4:((15,10),(15,17))\n5:((15,10),(15,11))\n5:((15,12),(15,13))\n5:((15,14),(15,17))\n1:((19,1),(21,14))\n2:((19,1),(19,4))\n2:((19,5),(21,14))\n3:((19,5),(19,6))\n3:((19,7),(19,8))\n3:((19,9),(19,10))\n3:((20,3),(21,14))\n4:((20,3),(20,5))\n4:((20,6),(21,14))(Above None (20,6) (21,14) FromAlignCol (5,-13))\n5:((20,6),(20,18))\n6:((20,6),(20,7))\n6:((20,11),(20,18))\n5:((21,6),(21,14))\n6:((21,6),(21,12))\n6:((21,13),(21,14))\n1:((26,1),(26,1))\n"
+-}
 
       let toks' = retrieveTokensFinal forest'
       (GHC.showRichTokenStream toks') `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n bab x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
@@ -3972,7 +4041,9 @@ Should be pg :  5 - 3 = 2
       -- let f1 = mkTreeFromTokens toks
       let f1 = initTokenLayout parsed toks
 
+{-
       (drawTreeCompact f1) `shouldBe` "0:((1,1),(34,1))\n1:((1,1),(1,7))\n1:((1,8),(1,18))\n1:((1,19),(1,24))\n1:((3,1),(3,31))\n2:((3,1),(3,9))\n2:((3,10),(3,12))\n2:((3,13),(3,20))\n2:((3,21),(3,23))\n2:((3,24),(3,31))\n1:((4,1),(4,19))\n2:((4,1),(4,9))\n2:((4,10),(4,19))\n3:((4,10),(4,11))\n3:((4,12),(4,13))\n3:((4,14),(4,19))\n4:((4,14),(4,15))\n4:((4,16),(4,17))\n4:((4,18),(4,19))\n1:((6,1),(6,15))\n2:((6,1),(6,2))\n2:((6,2),(6,3))\n2:((6,3),(6,4))\n2:((6,5),(6,7))\n2:((6,8),(6,15))\n1:((7,1),(7,6))\n2:((7,1),(7,2))\n2:((7,3),(7,6))\n3:((7,3),(7,4))\n3:((7,5),(7,6))\n1:((8,1),(8,6))\n2:((8,1),(8,2))\n2:((8,3),(8,6))\n3:((8,3),(8,4))\n3:((8,5),(8,6))\n1:((11,1),(11,18))\n2:((11,1),(11,4))\n2:((11,5),(11,7))\n2:((11,8),(11,9))\n2:((11,9),(11,12))\n2:((11,12),(11,13))\n2:((11,14),(11,17))\n2:((11,17),(11,18))\n1:((12,1),(12,9))\n2:((12,1),(12,2))\n2:((12,3),(12,5))\n2:((12,6),(12,9))\n1:((13,1),(13,9))\n2:((13,1),(13,2))\n2:((13,3),(13,5))\n2:((13,6),(13,9))\n1:((14,1),(17,12))\n2:((14,1),(14,10))\n2:((14,11),(14,12))\n2:((14,13),(14,38))\n3:((14,13),(14,17))\n3:((14,18),(14,19))\n3:((14,20),(14,38))\n4:((14,20),(14,30))\n5:((14,20),(14,23))\n5:((14,24),(14,30))\n6:((14,24),(14,25))\n6:((14,25),(14,26))\n6:((14,28),(14,30))\n4:((14,32),(14,38))\n5:((14,32),(14,33))\n5:((14,33),(14,34))\n5:((14,36),(14,38))\n2:((15,3),(15,8))\n2:((16,5),(17,12))(Above FromAlignCol (1,-4) (16,5) (17,12) FromAlignCol (2,-11))\n3:((16,5),(16,14))\n4:((16,5),(16,7))\n4:((16,8),(16,10))\n4:((16,11),(16,14))\n3:((17,5),(17,12))\n4:((17,5),(17,7))\n4:((17,8),(17,12))\n5:((17,8),(17,9))\n5:((17,10),(17,12))\n1:((19,1),(19,26))\n2:((19,1),(19,5))\n2:((19,6),(19,7))\n2:((19,8),(19,26))\n3:((19,8),(19,9))\n3:((19,10),(19,11))\n3:((19,12),(19,13))\n3:((19,14),(19,22))\n4:((19,14),(19,15))\n4:((19,16),(19,22))\n3:((19,23),(19,24))\n3:((19,25),(19,26))\n1:((21,1),(23,11))\n2:((21,1),(21,3))\n2:((21,4),(23,11))\n3:((21,4),(21,5))\n3:((21,6),(21,7))\n3:((21,8),(21,14))\n4:((21,8),(21,9))\n4:((21,10),(21,11))\n4:((21,12),(21,14))\n3:((22,3),(22,8))\n3:((23,5),(23,11))(Above FromAlignCol (1,-4) (23,5) (23,11) FromAlignCol (2,-10))\n4:((23,5),(23,11))\n5:((23,5),(23,7))\n5:((23,8),(23,11))\n6:((23,8),(23,9))\n6:((23,10),(23,11))\n1:((25,1),(28,12))\n2:((25,1),(25,2))\n2:((25,3),(28,12))\n3:((25,3),(25,4))\n3:((25,5),(25,6))\n3:((26,3),(28,12))\n4:((26,3),(26,6))\n4:((27,5),(27,12))(Above FromAlignCol (1,-2) (27,5) (27,12) FromAlignCol (1,-9))\n5:((27,5),(27,12))\n6:((27,5),(27,7))\n6:((27,8),(27,12))\n7:((27,8),(27,9))\n7:((27,10),(27,12))\n4:((28,6),(28,12))\n5:((28,6),(28,8))\n5:((28,9),(28,10))\n5:((28,11),(28,12))\n1:((30,1),(32,18))\n2:((30,1),(30,3))\n2:((30,4),(32,18))\n3:((30,4),(30,5))\n3:((30,6),(30,7))\n3:((30,8),(32,18))\n4:((30,8),(30,10))\n4:((31,3),(32,18))(Above FromAlignCol (1,-8) (31,3) (32,18) FromAlignCol (2,-17))\n5:((31,3),(31,13))\n6:((31,3),(31,6))\n6:((31,7),(31,13))(Above None (31,7) (31,13) FromAlignCol (1,-10))\n7:((31,7),(31,13))\n8:((31,7),(31,9))\n8:((31,10),(31,13))\n9:((31,10),(31,11))\n9:((31,12),(31,13))\n5:((32,3),(32,18))\n6:((32,3),(32,9))\n6:((32,10),(32,18))\n7:((32,10),(32,11))\n7:((32,11),(32,17))\n8:((32,11),(32,13))\n8:((32,14),(32,15))\n8:((32,16),(32,17))\n7:((32,17),(32,18))\n1:((34,1),(34,1))\n"
+-}
 
       (invariant f1) `shouldBe` []
 
@@ -4240,6 +4311,7 @@ Should be pg :  5 - 3 = 2
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let forest = allocTokens parsed toks
 
+{-
       (drawTreeCompact forest) `shouldBe`
           "0:((1,1),(5,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -4266,7 +4338,7 @@ Should be pg :  5 - 3 = 2
           "7:((4,20),(4,21))\n"++
           "7:((4,21),(4,22))\n"++
           "1:((5,1),(5,1))\n"
-
+-}
 
       -- let forest = mkTreeFromTokens toks
 
@@ -4275,6 +4347,7 @@ Should be pg :  5 - 3 = 2
 
       let (forest'',sspan') = addToksAfterSrcSpan forest sspan (PlaceOffset 1 0 1) newToks
 
+{-
       (drawTreeCompact forest'') `shouldBe`
           "0:((1,1),(5,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -4302,6 +4375,7 @@ Should be pg :  5 - 3 = 2
           "7:((4,21),(4,22))\n"++
           "4:((1000005,6),(1000005,13))\n"++
           "1:((5,1),(5,1))\n"
+-}
 
 
       (showSrcSpanF sspan') `shouldBe` "(((False,0,1,5),6),((False,0,1,5),13))"
@@ -4544,7 +4618,7 @@ Should be pg :  5 - 3 = 2
 --
       let z1 = openZipperToSpan (sf sspan3) $ Z.fromTree f2
       let (b1,m1,e1) = splitSubtree (Z.tree z1) (sf sspan3)
-      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
+      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe`
               "([(((ForestLine False 0 0 1),1),((ForestLine False 0 0 6),20))],"++
                "[(((ForestLine True 0 0 6),21),((ForestLine True 0 0 6),23)),"++
                 "(((ForestLine False 0 0 6),26),((ForestLine False 0 0 7),18))],"++
@@ -4723,6 +4797,155 @@ Should be pg :  5 - 3 = 2
 
     -- ---------------------------------
 
+    it "adds a parameter, chasing a bug in MoveDef" $ do
+      (t,toks)  <- parsedFileGhc "./test/testdata/LiftToToplevel/Zmapq.hs"
+
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let forest = allocTokens parsed toks
+
+{-
+addParamsToDecls (pn,paramPNames,modifyToks)=(g, [f], True)
+updateToks test/testdata/LiftToToplevel/Zmapq.hs:6:32:"(((False,0,0,6),32),((False,0,0,6),33))"
+putToksForSpan test/testdata/LiftToToplevel/Zmapq.hs:6:32:
+  (((False,0,0,6),32),((False,0,0,6),33))
+  [((((0,1),(0,2)),IToparen),"("),
+   ((((0,2),(0,3)),ITvarid "g"),"g"),((((0,4),(0,5)),ITvarid "f"),"f"),((((0,5),(0,6)),ITcparen),")")]
+-}
+      toks1 <- liftIO $ basicTokenise "(g f)"
+      (show toks1) `shouldBe`
+         "[((((0,1),(0,2)),IToparen),\"(\"),((((0,2),(0,3)),ITvarid \"g\"),\"g\"),"++
+          "((((0,4),(0,5)),ITvarid \"f\"),\"f\"),((((0,5),(0,6)),ITcparen),\")\")]"
+
+      let sspan1 = posToSrcSpan forest ((6,32),(6,33))
+      let (f2,_sspan1,_forest) = updateTokensForSrcSpan forest sspan1 (map markToken toks1)
+      (invariant f2) `shouldBe` []
+
+{-
+addParamtoMatch:l=test/testdata/LiftToToplevel/Zmapq.hs:6:3-35
+
+getToksForSpan test/testdata/LiftToToplevel/Zmapq.hs:6:5-6:
+  ("(((False,0,0,6),5),((False,0,0,6),7))",[((((6,5),(6,7)),ITvarid "z'"),"z'")])
+
+putToksForSpan test/testdata/LiftToToplevel/Zmapq.hs:6:5-6:
+  (((False,0,0,6),5),((False,0,0,6),7))
+    [((((6,6),(6,7)),ITvarid "f"),"f")]
+-}
+      toks2 <- liftIO $ basicTokenise "\n\n\n\n\n\n     f"
+      (show toks2) `shouldBe` "[((((6,6),(6,7)),ITvarid \"f\"),\"f\")]"
+
+      let sspan2 = posToSrcSpan forest ((6,5),(6,7))
+      let (f3,_sspan2,_f2) = updateTokensForSrcSpan f2 sspan2 (map markToken toks2)
+      (showSrcSpanF _sspan2) `shouldBe` "(((True,0,0,6),5),((True,0,0,6),6))"
+      (invariant f3) `shouldBe` []
+
+{-
+      (drawTreeCompact f3) `shouldBe`
+         "0:((1,1),(12,1))\n"++
+         "1:((1,1),(1,7))\n"++
+         "1:((1,8),(1,28))\n"++
+         "1:((1,29),(1,34))\n"++
+         "1:((5,1),(6,36))\n"++
+         "2:((5,1),(5,6))\n"++
+         "2:((5,7),(6,36))\n"++
+         "3:((5,7),(5,8))\n"++
+         "3:((5,9),(5,10))\n"++
+         "3:((5,11),(5,12))\n"++
+         "3:((5,13),(5,35))\n"++
+         "4:((5,13),(5,20))\n"++
+         "4:((5,21),(5,22))\n"++
+         "4:((5,23),(5,35))\n"++
+         "5:((5,23),(5,33))\n"++
+         "6:((5,23),(5,31))\n"++
+         "7:((5,23),(5,28))\n"++
+         "7:((5,29),(5,31))\n"++
+         "6:((5,32),(5,33))\n"++
+         "5:((5,34),(5,35))\n"++
+         "3:((5,36),(5,41))\n"++
+         "3:((6,3),(6,36))(Above FromAlignCol (1,-39) (6,3) (6,36) FromAlignCol (3,-35))\n"++
+          "4:((6,3),(6,36))\n"++
+           "5:((6,3),(6,4))\n"++
+           "5:((6,5),(6,36))\n"++
+            "6:((10000000006,5),(10000000006,6))\n"++
+            "6:((6,8),(6,9))\n"++
+            "6:((6,10),(6,36))\n"++
+             "7:((6,10),(6,20))\n"++
+              "8:((6,10),(6,17))\n"++
+               "9:((6,10),(6,15))\n"++
+               "9:((6,16),(6,17))\n"++
+              "8:((6,18),(6,20))\n"++
+             "7:((6,21),(6,22))\n"++
+             "7:((6,23),(6,36))\n"++
+              "8:((6,23),(6,33))\n"++
+               "9:((6,23),(6,31))\n"++
+                "10:((6,23),(6,28))\n"++
+                "10:((6,29),(6,31))\n"++
+               "9:((10000000006,32),(10000000006,37))\n"++
+         "8:((6,34),(6,36))\n"++
+         "1:((9,1),(9,18))\n"++
+         "2:((9,1),(9,6))\n"++
+         "2:((9,7),(9,18))\n"++
+         "3:((9,7),(9,8))\n"++
+         "3:((9,9),(9,18))\n"++
+         "1:((10,1),(10,18))\n"++
+         "2:((10,1),(10,6))\n"++
+         "2:((10,7),(10,18))\n"++
+         "3:((10,7),(10,8))\n"++
+         "3:((10,9),(10,18))\n"++
+         "1:((11,1),(11,18))\n"++
+         "2:((11,1),(11,6))\n"++
+         "2:((11,7),(11,18))\n"++
+         "3:((11,7),(11,8))\n"++
+         "3:((11,9),(11,18))\n"++
+         "1:((12,1),(12,1))\n"
+-}
+
+      let ppr3 = retrieveLinesFromLayoutTree f3
+      (renderLines ppr3) `shouldBe`
+         "module LiftToTopLevel.Zmapq where\n"++
+         "\n"++
+         "-- | Apply a generic query to the immediate children.\n"++
+         "-- zmapQ :: GenericQ b -> Zipper a -> [b]\n"++
+         "zmapQ f z = reverse $ downQ [] g z where\n"++
+         "  g f  = query f z' : leftQ [] (g f)z'\n"++
+         "\n"++
+         "\n"++
+         "downQ = undefined\n"++
+         "query = undefined\n"++
+         "leftQ = undefined\n"
+
+{-
+putToksAfterSpan test/testdata/LiftToToplevel/Zmapq.hs:6:5-6:
+  (((False,0,0,6),5),((False,0,0,6),7)) at PlaceAdjacent:
+    [(((6,5),(6,7)),ITvarid "z'","z'")]
+addParamsToParentAndLiftedDecl: liftedDecls done
+-}
+      toks3 <- liftIO $ basicTokenise "\n\n\n\n\n\n    z'"
+      (show toks3) `shouldBe` "[((((6,5),(6,7)),ITvarid \"z'\"),\"z'\")]"
+
+      -- let sspan3 = posToSrcSpan forest ((6,5),(6,7))
+      let sspan3 = posToSrcSpan forest ((6,5),(6,6))
+      let (f4,_) = addToksAfterSrcSpan f3 sspan3 PlaceAdjacent (map markToken toks3)
+      (invariant f4) `shouldBe` []
+
+      -- (drawTreeCompact f4) `shouldBe`
+      --    "0:((1,1),(12,1))\n"
+
+      let ppr4 = retrieveLinesFromLayoutTree f4
+      (renderLines ppr4) `shouldBe`
+         "module LiftToTopLevel.Zmapq where\n"++
+         "\n"++
+         "-- | Apply a generic query to the immediate children.\n"++
+         "-- zmapQ :: GenericQ b -> Zipper a -> [b]\n"++
+         "zmapQ f z = reverse $ downQ [] g z where\n"++
+         "  g f z'= query f z' : leftQ [] (g f)z'\n"++
+         "\n"++
+         "\n"++
+         "downQ = undefined\n"++
+         "query = undefined\n"++
+         "leftQ = undefined\n"
+
+    -- ---------------------------------
+
     it "adds a SrcSpan, chasing a bug in MoveDef" $ do
       (_t,toks)  <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
       let forest = mkTreeFromTokens toks
@@ -4782,7 +5005,7 @@ Should be pg :  5 - 3 = 2
 
       -- let (b1,m1,e1) = doSplitTree (Z.tree z) (fs sspan4)
       let (b1,m1,e1) = splitSubtree (Z.tree z) (sf sspan4)
-      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe` 
+      (show (map treeStartEnd b1,map treeStartEnd m1,map treeStartEnd e1)) `shouldBe`
               "([],"++
 
               "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 23),8)),"++
@@ -4791,10 +5014,10 @@ Should be pg :  5 - 3 = 2
               "[(((ForestLine False 0 0 26),1),((ForestLine False 0 0 40),17))])"
 
       let (b2,m2,e2) = splitSubtree (head m1) (sf sspan4)
-      (show (map treeStartEnd b2,map treeStartEnd m2,map treeStartEnd e2)) `shouldBe` 
+      (show (map treeStartEnd b2,map treeStartEnd m2,map treeStartEnd e2)) `shouldBe`
               "([],"++
               "[(((ForestLine False 0 0 1),1),((ForestLine False 0 0 22),14)),"++
-               "(((ForestLine False 0 0 23),3),((ForestLine False 0 0 23),8))],"++ 
+               "(((ForestLine False 0 0 23),3),((ForestLine False 0 0 23),8))],"++
               "[])"
 
       let (Node (Entry ss _ toks2) _) = head m2
@@ -5534,6 +5757,7 @@ Should be pg :  5 - 3 = 2
 
       let (f2,_) = removeSrcSpan f1 (sf l)
 
+{-
       (drawTreeCompact f2) `shouldBe`
             "0:((1,1),(26,1))\n"++
             "1:((1,1),(1,7))\n"++
@@ -5584,11 +5808,6 @@ Should be pg :  5 - 3 = 2
             "6:((21,6),(21,12))\n"++
             "6:((21,13),(21,14))\n"++
             "1:((26,1),(26,1))\n"
-{-
-            "((1,1),(21,14))\n|\n"++
-            "+- ((1,1),(10,10))\n|\n"++
-            "+- ((13,1),(15,17))(3,-16)D\n|\n"++
-            "`- ((19,1),(21,14))\n"
 -}
 
       -- let es = retrieveTokens' f2
@@ -5599,10 +5818,12 @@ Should be pg :  5 - 3 = 2
          "[(1 1 0 SOriginal ONone\"module TokenTest where\"),"++
           "(3 1 0 SOriginal ONone\"-- Test new style token manager\"),"++
           "(5 1 0 SOriginal ONone\"bob a b = x\"),"++
-          "(6 3 0 SOriginal OGroup\"where x = 3\"),"++
+          -- "(6 3 0 SOriginal OGroup\"where x = 3\"),"++
+          "(6 3 0 SOriginal ONone\"where x = 3\"),"++
           "(8 1 0 SOriginal ONone\"bib a b = x\"),"++
           "(9 3 0 SOriginal ONone\"where\"),"++
-          "(10 5 0 SOriginal OGroup\"x = 3\"),"++
+          -- "(10 5 0 SOriginal OGroup\"x = 3\"),"++
+          "(10 5 0 SOriginal ONone\"x = 3\"),"++
           "(13 1 0 SOriginal ONone\"-- leading comment\"),"++
           "(14 1 0 SOriginal ONone\"foo x y =\"),"++
           "(15 3 0 SOriginal OGroup\"do c <- getChar\"),"++
@@ -5724,32 +5945,32 @@ Should be pg :  5 - 3 = 2
       (invariant layout) `shouldBe` []
 
       (drawTreeCompact layout) `shouldBe`
-          "0:((1,1),(9,1))\n"++
-          "1:((1,1),(3,7))\n"++
-          "1:((3,8),(3,22))\n"++
-          "1:((3,23),(3,28))\n"++
-          "1:((5,1),(7,15))\n"++
-          "2:((5,1),(5,4))\n"++
-          "2:((5,5),(7,15))\n"++
-          "3:((5,5),(5,6))\n"++
-          "3:((5,7),(7,15))\n"++
-          "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
-          "5:((5,11),(5,16))\n"++
-          "6:((5,11),(5,12))\n"++
-          "6:((5,13),(5,16))\n"++
-          "7:((5,13),(5,14))\n"++
-          "7:((5,15),(5,16))\n"++
-          "5:((6,11),(6,16))\n"++
-          "6:((6,11),(6,12))\n"++
-          "6:((6,13),(6,16))\n"++
-          "7:((6,13),(6,14))\n"++
-          "7:((6,15),(6,16))\n"++
-          "4:((7,10),(7,15))\n"++
-          "5:((7,10),(7,11))\n"++
-          "5:((7,12),(7,13))\n"++
-          "5:((7,14),(7,15))\n"++
-          "1:((9,1),(9,1))\n"
+         "0:((3,1),(9,1))\n"++
+         "1:((3,1),(3,7))\n"++
+         "1:((3,8),(3,22))\n"++
+         "1:((3,23),(3,28))\n"++
+         "1:((5,1),(7,15))\n"++
+         "2:((5,1),(5,4))\n"++
+         "2:((5,5),(7,15))\n"++
+         "3:((5,5),(5,6))\n"++
+         "3:((5,7),(7,15))\n"++
+         "4:((5,7),(5,10))\n"++
+         "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+         "5:((5,11),(5,16))\n"++
+         "6:((5,11),(5,12))\n"++
+         "6:((5,13),(5,16))\n"++
+         "7:((5,13),(5,14))\n"++
+         "7:((5,15),(5,16))\n"++
+         "5:((6,11),(6,16))\n"++
+         "6:((6,11),(6,12))\n"++
+         "6:((6,13),(6,16))\n"++
+         "7:((6,13),(6,14))\n"++
+         "7:((6,15),(6,16))\n"++
+         "4:((7,10),(7,15))\n"++
+         "5:((7,10),(7,11))\n"++
+         "5:((7,12),(7,13))\n"++
+         "5:((7,14),(7,15))\n"++
+         "1:((9,1),(9,1))\n"
 
 
       let sspan = posToSrcSpan layout ((6,11),(6,16))
@@ -5764,64 +5985,39 @@ Should be pg :  5 - 3 = 2
       (showGhc newSpan) `shouldBe` "test/testdata/Layout/LetExpr.hs:1048584:5-13"
       (show $ sf newSpan) `shouldBe` "(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))"
       (drawTreeCompact layout2) `shouldBe`
-          "0:((1,1),(9,1))\n"++
-          "1:((1,1),(3,7))\n"++
-          "1:((3,8),(3,22))\n"++
-          "1:((3,23),(3,28))\n"++
-          "1:((5,1),(7,15))\n"++
-          "2:((5,1),(5,4))\n"++
-          "2:((5,5),(7,15))\n"++
-          "3:((5,5),(5,6))\n"++
-          "3:((5,7),(7,15))\n"++
-          "4:((5,7),(5,10))\n"++
-          "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
-          "5:((5,11),(5,16))\n"++
-          "6:((5,11),(5,12))\n"++
-          "6:((5,13),(5,16))\n"++
-          "7:((5,13),(5,14))\n"++
-          "7:((5,15),(5,16))\n"++
-          "5:((6,11),(6,16))\n"++
-          "6:((6,11),(6,12))\n"++
-          "6:((6,13),(6,16))\n"++
-          "7:((6,13),(6,14))\n"++
-          "7:((6,15),(6,16))\n"++
-          "5:((1000008,5),(1000008,14))\n"++
-          "4:((7,10),(7,15))\n"++
-          "5:((7,10),(7,11))\n"++
-          "5:((7,12),(7,13))\n"++
-          "5:((7,14),(7,15))\n"++
-          "1:((9,1),(9,1))\n"
+         "0:((3,1),(9,1))\n"++
+         "1:((3,1),(3,7))\n"++
+         "1:((3,8),(3,22))\n"++
+         "1:((3,23),(3,28))\n"++
+         "1:((5,1),(7,15))\n"++
+         "2:((5,1),(5,4))\n"++
+         "2:((5,5),(7,15))\n"++
+         "3:((5,5),(5,6))\n"++
+         "3:((5,7),(7,15))\n"++
+         "4:((5,7),(5,10))\n"++
+         "4:((5,11),(6,16))(Above None (5,11) (6,16) FromAlignCol (1,-9))\n"++
+         "5:((5,11),(5,16))\n"++
+         "6:((5,11),(5,12))\n"++
+         "6:((5,13),(5,16))\n"++
+         "7:((5,13),(5,14))\n"++
+         "7:((5,15),(5,16))\n"++
+         "5:((6,11),(6,16))\n"++
+         "6:((6,11),(6,12))\n"++
+         "6:((6,13),(6,16))\n"++
+         "7:((6,13),(6,14))\n"++
+         "7:((6,15),(6,16))\n"++
+         "5:((1000008,5),(1000008,14))\n"++
+         "4:((7,10),(7,15))\n"++
+         "5:((7,10),(7,11))\n"++
+         "5:((7,12),(7,13))\n"++
+         "5:((7,14),(7,15))\n"++
+         "1:((9,1),(9,1))\n"
 
 
       let treeAsList = getTreeSpansAsList layout2
       (show treeAsList) `shouldBe`
-          "[(0,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1))),"++
-            "(1,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 3),7))),"++
-            "(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),"++
-            "(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),"++
-            "(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),"++
-             "(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),"++
-             "(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),"++
-              "(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),"++
-              "(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),"++
-               "(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),"++
-               "(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),"++
-                "(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),"++
-                 "(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),"++
-                 "(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),"++
-                  "(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),"++
-                  "(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),"++
-                "(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),"++
-                 "(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),"++
-                 "(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),"++
-                  "(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),"++
-                  "(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),"++
-                "(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),"++ -- The span we want
-               "(4,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),15))),"++
-                "(5,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),11))),"++
-                "(5,(((ForestLine False 0 0 7),12),((ForestLine False 0 0 7),13))),"++
-                "(5,(((ForestLine False 0 0 7),14),((ForestLine False 0 0 7),15))),"++
-            "(1,(((ForestLine False 0 0 9),1),((ForestLine False 0 0 9),1)))]"
+         "[(0,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 9),1))),(1,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 3),7))),(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),(4,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),15))),(5,(((ForestLine False 0 0 7),10),((ForestLine False 0 0 7),11))),(5,(((ForestLine False 0 0 7),12),((ForestLine False 0 0 7),13))),(5,(((ForestLine False 0 0 7),14),((ForestLine False 0 0 7),15))),(1,(((ForestLine False 0 0 9),1),((ForestLine False 0 0 9),1)))]"
+
 
       let ssWanted = (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7))
       (spanContains (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14)) ssWanted) `shouldBe` True
@@ -5835,37 +6031,16 @@ Should be pg :  5 - 3 = 2
       -- let tl2 = dropWhile (\(_,s) -> not (spanContains s ssWanted)) $ reverse treeAsList
       let tl2 = dropWhile (\(_,s) -> not (myMatch s ssWanted)) $ reverse treeAsList
       (show tl2) `shouldBe`
-          "[(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),"++
-             "(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),"++
-             "(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),"++
-             "(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),"++
-             "(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),"++
-             "(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),"++
-             "(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),"++
-             "(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),"++
-             "(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),"++
-             "(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),"++
-             "(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),"++
-           "(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),"++
-             "(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),"++
-           "(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),"++
-             "(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),"++
-           "(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),"++
-             "(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),"++
-           "(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),"++
-             "(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),"++
-             "(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),"++
-             "(1,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 3),7))),"++
-           "(0,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1)))]"
+          "[(5,(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))),(7,(((ForestLine False 0 0 6),15),((ForestLine False 0 0 6),16))),(7,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),14))),(6,(((ForestLine False 0 0 6),13),((ForestLine False 0 0 6),16))),(6,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),12))),(5,(((ForestLine False 0 0 6),11),((ForestLine False 0 0 6),16))),(7,(((ForestLine False 0 0 5),15),((ForestLine False 0 0 5),16))),(7,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),14))),(6,(((ForestLine False 0 0 5),13),((ForestLine False 0 0 5),16))),(6,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),12))),(5,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 5),16))),(4,(((ForestLine False 0 0 5),11),((ForestLine False 0 0 6),16))),(4,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 5),10))),(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),(3,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 5),6))),(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),(2,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 5),4))),(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),(1,(((ForestLine False 0 0 3),23),((ForestLine False 0 0 3),28))),(1,(((ForestLine False 0 0 3),8),((ForestLine False 0 0 3),22))),(1,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 3),7))),(0,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 9),1)))]"
 
       -- drop all higher indented values, all the way to the root
 
-      let fff acc@((cd,_cs):_) (v,sspan1) = if v < cd then (v,sspan1):acc
-                                                      else acc
+      let fff acc@((cd1,_cs):_) (v,sspan1) = if v < cd1 then (v,sspan1):acc
+                                                        else acc
 
       let tl3 = foldl' fff [(head tl2)] tl2
       (show tl3) `shouldBe`
-          "[(0,(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1))),"++
+          "[(0,(((ForestLine False 0 0 3),1),((ForestLine False 0 0 9),1))),"++
            "(1,(((ForestLine False 0 0 5),1),((ForestLine False 0 0 7),15))),"++
            "(2,(((ForestLine False 0 0 5),5),((ForestLine False 0 0 7),15))),"++
            "(3,(((ForestLine False 0 0 5),7),((ForestLine False 0 0 7),15))),"++
@@ -5880,7 +6055,7 @@ Should be pg :  5 - 3 = 2
 -}
 
       let zo = openZipperToSpanOrig (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7)) $ Z.fromTree layout2
-      (show $ treeStartEnd (Z.tree zo)) `shouldBe` "(((ForestLine False 0 0 1),1),((ForestLine False 0 0 9),1))"
+      (show $ treeStartEnd (Z.tree zo)) `shouldBe` "(((ForestLine False 0 0 3),1),((ForestLine False 0 0 9),1))"
 
       let z = openZipperToSpanAdded (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7)) $ Z.fromTree layout2
       (show $ treeStartEnd (Z.tree z)) `shouldBe` "(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))"
@@ -5918,9 +6093,6 @@ parsedFileLiftD1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftD1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/D1.hs"
 
 -- ---------------------------------------------------------------------
-
--- liftLetIn1FileName :: GHC.FastString
--- liftLetIn1FileName = GHC.mkFastString "./test/testdata/LiftToToplevel/LetIn1.hs"
 
 parsedFileLiftLetIn1Ghc :: IO (ParseResult,[PosToken])
 parsedFileLiftLetIn1Ghc = parsedFileGhc "./test/testdata/LiftToToplevel/LetIn1.hs"

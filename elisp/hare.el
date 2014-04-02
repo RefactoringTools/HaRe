@@ -197,7 +197,8 @@
                 (setq unopened-files (cons file-to-diff unopened-files))
                 )
               (hare-ediff file-to-diff (concat (file-name-sans-extension file-to-diff) 
-                                                   (file-name-extension file-to-diff t) ".refactored")))
+                                                ".refactored"
+                                                (file-name-extension file-to-diff t) )))
           (progn
             (setq modified-files nil)
             (commit-or-abort))))
@@ -331,7 +332,8 @@
               (setq files (cons
                            (list uf uf
                            (concat (file-name-sans-extension uf)
-                                   (file-name-extension uf t) ".refactored"))
+                                   ".refactored"
+                                   (file-name-extension uf t) ))
                            files))))
           (message "files=%s" (prin1-to-string files))
           (delete-swp-file-and-buffers files)
@@ -876,7 +878,8 @@
            (setq modified-files (cdr modified))
            (hare-ediff first-file
                            (concat (file-name-sans-extension first-file)
-                                   (file-name-extension first-file t) ".refactored")))
+                                   ".refactored"
+                                   (file-name-extension first-file t))))
           ((equal answer 'c)
            (commit))
           ((equal answer 'n)

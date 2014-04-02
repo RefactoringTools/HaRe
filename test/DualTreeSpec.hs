@@ -3,27 +3,22 @@ module DualTreeSpec (main, spec) where
 
 import           Test.Hspec
 
--- import qualified FastString as GHC
+
 import qualified GHC        as GHC
--- import qualified Lexer      as GHC
+-- import qualified Outputable as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
-
--- import Control.Monad.State
--- import Data.List
--- import Data.Maybe
--- import Data.Tree
+import Data.Maybe
 
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
--- import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes
--- import Language.Haskell.Refact.Utils.TypeSyn
--- import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.TypeUtils
 
 -- import Data.Tree.DUAL
 
@@ -53,6 +48,7 @@ spec = do
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(9,1))\n"++
           "1:((1,1),(3,7))\n"++
@@ -80,7 +76,7 @@ spec = do
           "5:((7,12),(7,13))\n"++
           "5:((7,14),(7,15))\n"++
           "1:((9,1),(9,1))\n"
-
+-}
 
       let srcTree = layoutTreeToSourceTree layout
       -- (showGhc srcTree) `shouldBe` ""
@@ -102,6 +98,7 @@ spec = do
       let layout = allocTokens parsed toks
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
+{-
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(10,1))\n"++
           "1:((1,1),(3,7))\n"++
@@ -132,7 +129,7 @@ spec = do
           "6:((8,10),(8,11))\n"++
           "6:((8,11),(8,12))\n"++
           "1:((10,1),(10,1))\n"
-
+-}
 
       -- (show layout) `shouldBe` ""
 
@@ -157,6 +154,7 @@ spec = do
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(14,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -207,6 +205,7 @@ spec = do
           "6:((12,38),(12,40))\n"++
           "6:((12,41),(12,43))\n"++
           "1:((14,1),(14,1))\n"
+-}
 
       let srcTree = layoutTreeToSourceTree layout
 
@@ -276,6 +275,7 @@ spec = do
 
       -- (show layout) `shouldBe` ""
 
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(13,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -326,6 +326,7 @@ spec = do
          "5:((10,8),(10,9))\n"++
          "5:((10,10),(10,12))\n"++
          "1:((13,1),(13,1))\n"
+-}
 
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
@@ -350,6 +351,7 @@ spec = do
 
       -- (show layout) `shouldBe` ""
 
+{-
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(26,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -417,6 +419,7 @@ spec = do
           "6:((21,6),(21,12))\n"++
           "6:((21,13),(21,14))\n"++
           "1:((26,1),(26,1))\n"
+-}
 
       let srcTree = layoutTreeToSourceTree layout
 {-
@@ -441,6 +444,7 @@ spec = do
       (invariant layout) `shouldBe` []
 
       -- (show layout) `shouldBe` ""
+{-
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(44,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -624,7 +628,7 @@ spec = do
           "4:((40,14),(40,15))\n"++
           "4:((40,16),(40,17))\n"++
           "1:((44,1),(44,1))\n"
-
+-}
 
       let srcTree = layoutTreeToSourceTree layout
 
@@ -757,6 +761,7 @@ spec = do
       (invariant layout) `shouldBe` []
 
       -- (show layout) `shouldBe` ""
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(25,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -782,7 +787,7 @@ spec = do
          "3:((24,15),(24,16))\n"++
          "3:((24,17),(24,18))\n"++
          "1:((25,1),(25,1))\n"
-
+-}
       -- (show layout) `shouldBe` ""
 
       let srcTree = layoutTreeToSourceTree layout
@@ -808,6 +813,7 @@ spec = do
       (invariant layout) `shouldBe` []
 
       -- (show layout) `shouldBe` ""
+{-
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(34,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -959,6 +965,7 @@ spec = do
           "8:((32,16),(32,17))\n"++
           "7:((32,17),(32,18))\n"++
           "1:((34,1),(34,1))\n"
+-}
 
       -- (show layout) `shouldBe` ""
 
@@ -990,6 +997,7 @@ spec = do
 
 
       -- (show layout) `shouldBe` ""
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(14,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -1046,7 +1054,7 @@ spec = do
          "9:((12,41),(12,47))\n"++
          "9:((12,48),(12,53))\n"++
          "1:((14,1),(14,1))\n"
-
+-}
       -- (show layout) `shouldBe` ""
 
       let srcTree = layoutTreeToSourceTree layout
@@ -1179,6 +1187,7 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(11,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -1210,7 +1219,7 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
            "3:((8,3),(8,4))\n"++
             "3:((8,5),(8,6))\n"++
           "1:((11,1),(11,1))\n"
-
+-}
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
       --     ""
@@ -1249,6 +1258,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
 
       let (layout3,_newSpan) = addToksAfterSrcSpan layout2 sspan2 (PlaceOffset 1 4 2) newToks
 
+{-
       (drawTreeCompact layout3) `shouldBe`
           "0:((1,1),(11,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -1277,6 +1287,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
             "3:((8,3),(8,4))\n"++
             "3:((8,5),(8,6))\n"++
           "1:((11,1),(11,1))\n"
+-}
 
       let srcTree2 = layoutTreeToSourceTree layout3
 
@@ -1313,6 +1324,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
           "0:((1,1),(11,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -1358,6 +1370,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
             "3:((10,3),(10,4))\n"++
             "3:((10,5),(10,6))\n"++
           "1:((11,1),(11,1))\n"
+-}
 
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
@@ -1373,6 +1386,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
       (showGhc sspan) `shouldBe` "test/testdata/Layout/FromMd1.hs:5:1-16"
 
       let (layout2,_old) = removeSrcSpan layout (srcSpanToForestSpan sspan)
+{-
       (drawTreeCompact layout2) `shouldBe`
           "0:((1,1),(11,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -1413,6 +1427,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
             "3:((10,3),(10,4))\n"++
             "3:((10,5),(10,6))\n"++
           "1:((11,1),(11,1))\n"
+-}
 
       let srcTree2 = layoutTreeToSourceTree layout2
       -- (showGhc srcTree2) `shouldBe` ""
@@ -1494,6 +1509,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
       (showGhc sspan2) `shouldBe` "test/testdata/Layout/FromMd1.hs:(6,1)-(8,10)"
 
       let (layout3,_old) = removeSrcSpan layout2 (srcSpanToForestSpan sspan2)
+{-
       (drawTreeCompact layout3) `shouldBe`
           "0:((1,1),(11,1))\n"++
           "1:((1,1),(1,7))\n"++
@@ -1519,6 +1535,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
             "3:((10,3),(10,4))\n"++
             "3:((10,5),(10,6))\n"++
           "1:((11,1),(11,1))\n"
+-}
 
       let srcTree2 = layoutTreeToSourceTree layout3
       -- (showGhc srcTree2) `shouldBe`
@@ -1661,6 +1678,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(10,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -1697,6 +1715,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
          "6:((9,38),(9,39))\n"++
          "6:((9,39),(9,40))\n"++
          "1:((10,1),(10,1))\n"
+-}
 
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
@@ -1716,6 +1735,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(10,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -1752,6 +1772,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
          "6:((9,38),(9,39))\n"++
          "6:((9,39),(9,40))\n"++
          "1:((10,1),(10,1))\n"
+-}
 
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
@@ -1801,6 +1822,7 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
 
       -- -- -- --
 
+{-
       (drawTreeCompact layout5) `shouldBe`
          "0:((1,1),(10,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -1837,7 +1859,7 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
               "6:((9,38),(9,39))\n"++
               "6:((9,39),(9,40))\n"++
          "1:((10,1),(10,1))\n"
-
+-}
 
 
       let srcTree2 = layoutTreeToSourceTree layout5
@@ -1954,6 +1976,7 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(14,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2002,7 +2025,7 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
              "5:((12,20),(12,21))\n"++
              "5:((12,23),(12,24))\n"++
          "1:((14,1),(14,1))\n"
-
+-}
 
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
@@ -2046,6 +2069,7 @@ putToksAfterPos ((12,8),(12,25)) at PlaceOffset 1 4 2:[((((0,1),(0,6)),ITwhere),
 
       -- -- -- --
 
+{-
       (drawTreeCompact layout3) `shouldBe`
          "0:((1,1),(14,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2076,7 +2100,7 @@ putToksAfterPos ((12,8),(12,25)) at PlaceOffset 1 4 2:[((((0,1),(0,6)),ITwhere),
            "3:((12,23),(12,24))\n"++
           "2:((1000013,5),(1000017,26))\n"++
          "1:((14,1),(14,1))\n"
-
+-}
 
       -- (show layout2) `shouldBe` ""
 
@@ -2098,6 +2122,7 @@ putToksAfterPos ((12,8),(12,25)) at PlaceOffset 1 4 2:[((((0,1),(0,6)),ITwhere),
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(8,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2123,7 +2148,7 @@ putToksAfterPos ((12,8),(12,25)) at PlaceOffset 1 4 2:[((((0,1),(0,6)),ITwhere),
            "3:((6,5),(6,6))\n"++
            "3:((6,7),(6,8))\n"++
          "1:((8,1),(8,1))\n"
-
+-}
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
       --     ""
@@ -2174,7 +2199,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
 
 
       -- -- -- --
-
+{-
       (drawTreeCompact layout5) `shouldBe`
          "0:((1,1),(8,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2204,7 +2229,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
            "3:((6,5),(6,6))\n"++
            "3:((6,7),(6,8))\n"++
          "1:((8,1),(8,1))\n"
-
+-}
 
       -- (show layout2) `shouldBe` ""
 
@@ -2228,6 +2253,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       (invariant layout) `shouldBe` []
 
 #if __GLASGOW_HASKELL__ > 704
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(25,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2358,6 +2384,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
          "3:((24,15),(24,16))\n"++
          "3:((24,17),(24,18))\n"++
          "1:((25,1),(25,1))\n"
+-}
 #endif
 
       let srcTree = layoutTreeToSourceTree layout
@@ -2410,6 +2437,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       -- -- -- --
 
 #if __GLASGOW_HASKELL__ > 704
+{-
       (drawTreeCompact layout5) `shouldBe`
          "0:((1,1),(25,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2540,6 +2568,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
            "3:((24,15),(24,16))\n"++
            "3:((24,17),(24,18))\n"++
          "1:((25,1),(25,1))\n"
+-}
 #endif
 
       let srcTree2 = layoutTreeToSourceTree layout5
@@ -2561,6 +2590,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(8,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2601,7 +2631,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
          "3:((7,15),(7,16))\n"++
          "3:((7,17),(7,18))\n"++
          "1:((8,1),(8,1))\n"
-
+-}
 
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
@@ -2651,7 +2681,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       let layout5 = replaceTokenForSrcSpan layout4 ss4 tok4
 
       -- -- -- --
-
+{-
       (drawTreeCompact layout5) `shouldBe`
          "0:((1,1),(8,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -2692,7 +2722,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
            "3:((7,15),(7,16))\n"++
            "3:((7,17),(7,18))\n"++
          "1:((8,1),(8,1))\n"
-
+-}
 
       let srcTree2 = layoutTreeToSourceTree layout5
       -- (showGhc srcTree2) `shouldBe` ""
@@ -3063,6 +3093,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
+{-
       (drawTreeCompact layout) `shouldBe`
          "0:((1,1),(14,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -3113,7 +3144,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
          "6:((12,3),(12,9))\n"++
          "6:((12,10),(12,13))\n"++
          "1:((14,1),(14,1))\n"
-
+-}
 
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
@@ -3147,7 +3178,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       let layout3 = replaceTokenForSrcSpan layout2 ss2 tok2
 
       -- -- -- --
-
+{-
       (drawTreeCompact layout3) `shouldBe`
          "0:((1,1),(14,1))\n"++
          "1:((1,1),(1,7))\n"++
@@ -3198,7 +3229,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
          "6:((12,3),(12,9))\n"++
          "6:((12,10),(12,13))\n"++
          "1:((14,1),(14,1))\n"
-
+-}
 
       let srcTree2 = layoutTreeToSourceTree layout3
       -- (showGhc srcTree2) `shouldBe` ""
@@ -3230,6 +3261,372 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       -- (show $ retrieveLines srcTree) `shouldBe` ""
 
       (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format HsDo" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/HsDo.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format forall" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/ForAll.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format DerivD" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Derive.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format Class" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Class.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format default decl" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Default.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format foreign decl" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Foreign.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format template haskell" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/TH.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format PArr" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/PArr.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- (show toks) `shouldBe` ""
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format Arrow" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Layout/Arrow.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format TemplateHaskell" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/TH/Main.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format Utils.hs" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Renaming/Utils.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+
+    -- ---------------------------------
+
+    it "retrieves the tokens in SourceTree format Utils.hs with renaming" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/Renaming/Utils.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+{-
+      (drawTreeCompact layout) `shouldBe`
+          ""
+-}
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (showGhc srcTree) `shouldBe` ""
+
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
+
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+      let Just (GHC.L _l n) = locToName (5, 11) renamed
+
+      let
+        comp = do
+          newName <- mkNewGhcName Nothing "parsed1"
+          -- newName <- mkNewGhcName Nothing "park"
+          new <- renamePN n newName True False renamed
+          return (new,newName)
+      ((_n,_nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      -- ((n,nn),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+
+      let Just treeFinal = layoutFromState s
+      -- (show treeFinal) `shouldBe` ""
+      -- (showGhc treeFinal) `shouldBe` ""
+
+      let _sourceTree = layoutTreeToSourceTree treeFinal
+      -- (showGhc _sourceTree) `shouldBe` ""
+
+{-
+      (show $ linesFromState s) `shouldBe`
+          "[(1 1 0 SOriginal ONone\"module Layout.Utils where\"),"++
+           "(3 1 0 SOriginal ONone\"foo :: IO ()\"),"++
+           "(4 1 0 SOriginal ONone\"foo = do\"),"++
+           "(5 7 0 SOriginal OGroup\"let parsed1 = 3\"),"++
+           "(7 7 0 SOriginal OGroup\"let expr = 2\"),"++
+           "(8 7 0 SOriginal OGroup\"return ()\"),"++
+           "(9 1 0 SOriginal ONone\"\")]"
+-}
+
+      (renderLines $ linesFromState s) `shouldBe`
+          "module Layout.Utils where\n"++
+          "\n"++
+          "foo :: IO ()\n"++
+          "foo = do\n"++
+          "      let parsed1 = 3\n"++
+          "\n"++
+          "      let expr = 2\n"++
+          "      return ()\n"
 
 
   -- -----------------------------------

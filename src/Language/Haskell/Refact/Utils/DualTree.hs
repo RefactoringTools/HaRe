@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.Refact.Utils.DualTree (
     layoutTreeToSourceTree
@@ -24,7 +25,6 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
--- import Language.Haskell.Refact.Utils.TypeUtils
 
 -- ----------
 import Data.Tree.DUAL
@@ -109,15 +109,12 @@ instance Semigroup Transformation where
 
 
 instance (Action Transformation Up) where
-  -- act AsIs s = s
-  -- act (T _n)                       (Up sspan  a s ds) = (Up sspan a  s  ds)
   act (TAbove _co _bo _p1 _p2 _eo) (Up sspan _a s ds) = (Up sspan a' s' ds)
     where
       a' = AVertical
       s' = NE.map (\(Line r c o ss _f toks) -> (Line r c o ss OGroup toks)) s
+
   act (TAbove _co _bo _p1 _p2 _eo) (UDeleted ds) = UDeleted ds
-  -- act (TDeleted _sspan _ro _p) (Up sspan a s ds) = (Up sspan a s ds)
-  -- act TAdded s = s
 
 -- ---------------------------------------------------------------------
 
@@ -143,15 +140,10 @@ instance GHC.Outputable Prim where
                                GHC.<+> GHC.ppr pg GHC.<+> GHC.ppr p
 
 instance GHC.Outputable Transformation where
-  -- ppr (AsIs) = GHC.parens $ GHC.text "AsIs"
-  -- ppr (T n)  = GHC.parens $ GHC.text "T" GHC.<+> GHC.text (show n)
   ppr (TAbove co bo p1 p2 eo)  = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr co
                               GHC.<+> GHC.ppr bo
                               GHC.<+> GHC.ppr p1  GHC.<+> GHC.ppr p2
                               GHC.<+> GHC.ppr eo
-  -- ppr (TDeleted sspan ro p) = GHC.parens $ GHC.text "TAbove" GHC.<+> GHC.ppr sspan
-  --                             GHC.<+> GHC.ppr ro  GHC.<+> GHC.ppr p
-  -- ppr (TAdded) = GHC.parens $ GHC.text "TAdded"
 
 instance GHC.Outputable EndOffset where
   ppr None = GHC.text "None"
@@ -296,12 +288,22 @@ layoutTreeToSourceTree (T.Node (Deleted sspan  pg eg) _)
 
 layoutTreeToSourceTree (T.Node (Entry sspan NoChange [])  ts0)
   = annot (ASubtree sspan) (mconcatl $ map layoutTreeToSourceTree ts0)
+
+--  TODO: only apply TAbove if the subs go on to the next line
 layoutTreeToSourceTree (T.Node (Entry sspan (Above bo p1 p2 eo) [])  ts0)
-  = annot (ASubtree sspan)
-      (applyD (TAbove co bo p1 p2 eo) subs)
+  = case (numLines ts0) of
+     0 -> annot (ASubtree sspan) (mconcatl $ map layoutTreeToSourceTree ts0)
+     _ -> annot (ASubtree sspan)
+           (applyD (TAbove co bo p1 p2 eo) subs)
   where
     subs = (mconcatl $ map layoutTreeToSourceTree ts0)
     co = 0
+    numLines :: [T.Tree Entry] -> Int
+    numLines [] = 0
+    numLines sts = l - f
+      where
+        ((f,_),_    ) = forestSpanToSimpPos $ treeStartEnd $ head sts
+        (_    ,(l,_)) = forestSpanToSimpPos $ treeStartEnd $ last sts
 
 layoutTreeToSourceTree (T.Node (Entry sspan _lay toks) _ts) = leaf (mkUp sspan toks) (PToks toks)
 
@@ -409,9 +411,11 @@ combineUps (Up sp1 _a1 l1 d1) (Up sp2 _a2 l2 d2) = (Up (sp1 <> sp2) a l (d1 <> d
 
     addOffsetToGroup _off [] = []
     addOffsetToGroup _off (ls@((Line _r _c _f _aa ONone _s):_)) = ls
-    addOffsetToGroup  off ((Line r c f aa OGroup s):ls) = (Line r (c+off) f aa OGroup s) : addOffsetToGroup off ls
+    addOffsetToGroup  off ((Line r c f aa OGroup s):ls)
+               = (Line r (c+off) f aa OGroup s) : addOffsetToGroup off ls
 
 {-
+
 
 ((((36,23),(41,25)),ITblockComment \" ++AZ++ : hsBinds does not re
 

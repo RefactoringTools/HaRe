@@ -7,6 +7,7 @@ module Language.Haskell.Refact.Utils.GhcVersionSpecific
     showGhc
   , prettyprint
   , prettyprint2
+  , ppType
   , lexStringToRichTokens
   , getDataConstructors
   , setGhcContext
@@ -51,6 +52,16 @@ prettyprint2 x = GHC.renderWithStyle GHC.tracingDynFlags (GHC.ppr x) (GHC.cmdlin
 #else
 prettyprint2 x = GHC.renderWithStyle                     (GHC.ppr x) (GHC.cmdlineParserStyle)
 #endif
+
+-- ---------------------------------------------------------------------
+
+ppType :: GHC.Type -> String
+#if __GLASGOW_HASKELL__ > 704
+ppType x = GHC.renderWithStyle GHC.tracingDynFlags (GHC.pprParendType x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
+#else
+ppType x = GHC.renderWithStyle                     (GHC.pprParendType x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
+#endif
+
 
 -- ---------------------------------------------------------------------
 

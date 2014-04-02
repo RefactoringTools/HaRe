@@ -40,7 +40,7 @@ import qualified Unique        as GHC
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils
+import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -138,35 +138,23 @@ initialLogOnState = RefSt
 toksFromState :: RefactState -> [PosToken]
 toksFromState st =
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
 
 -- ---------------------------------------------------------------------
 
-{-
-pprFromState :: RefactState -> [Ppr]
-pprFromState st =
-  case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
-    Just tm -> retrieveTokensPpr $ (tkCache $ rsTokenCache tm) Map.! mainTid
-    Nothing -> []
--}
--- ---------------------------------------------------------------------
-
 sourceTreeFromState :: RefactState -> Maybe SourceTree
 sourceTreeFromState st =
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> Just $ layoutTreeToSourceTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> Nothing
 
 -- ---------------------------------------------------------------------
 
+
 linesFromState :: RefactState -> [Line]
 linesFromState st =
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
 
@@ -175,7 +163,6 @@ linesFromState st =
 layoutFromState :: RefactState -> Maybe (Tree Entry)
 layoutFromState st =
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> Just ((tkCache $ rsTokenCache tm) Map.! mainTid)
     Nothing -> Nothing
 
@@ -241,7 +228,10 @@ runRefactGhcStateLog paramcomp logOn  = do
 -- ---------------------------------------------------------------------
 
 testCradle :: Cradle
-testCradle = Cradle "./test/testdata/" Nothing Nothing []
+testCradle = Cradle "./test/testdata/" Nothing Nothing [] []
+-- testCradle = Cradle "./test/testdata/" "./test/testdata/" Nothing Nothing []
+
+
 
 -- ---------------------------------------------------------------------
 

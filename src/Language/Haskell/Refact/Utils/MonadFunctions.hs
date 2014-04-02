@@ -30,6 +30,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * TokenUtils API
        , replaceToken
        , putToksForSpan
+       , putDeclToksForSpan
        , getToksForSpan
        , getToksForSpanNoInv
        , getToksForSpanWithIntros
@@ -113,18 +114,6 @@ fetchToksFinal = do
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchToksFinal (not showing toks)"
   return toks
-
--- TODO: get rid of this, superseded by dualtree
-{-
--- |fetch the final tokens in Ppr format
-fetchPprFinal :: RefactGhc [Ppr]
-fetchPprFinal = do
-  Just tm <- gets rsModule
-  let pprVal = retrieveTokensPpr $ (tkCache $ rsTokenCache tm) Map.! mainTid
-  -- logm $ "fetchToks" ++ (showToks toks)
-  logm $ "fetchPprFinal (not showing ppr)"
-  return pprVal
--}
 
 -- |fetch the final tokens in Ppr format
 fetchLinesFinal :: RefactGhc [Line]
@@ -228,6 +217,19 @@ putToksForSpan sspan toks = do
   put $ st { rsModule = rsModule' }
   return newSpan
 
+-- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
+-- delimiting new tokens, and update the AST fragment to reflect it
+putDeclToksForSpan ::  (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> [PosToken]
+   -> RefactGhc (GHC.SrcSpan,GHC.Located t)
+putDeclToksForSpan sspan t toks = do
+  logm $ "putDeclToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show toks)
+  st <- get
+  let Just tm = rsModule st
+  let (tk',newSpan,t') = putDeclToksInCache (rsTokenCache tm) sspan toks t
+  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
+  put $ st { rsModule = rsModule' }
+  return (newSpan,t')
+
 -- |Replace the tokens for a given GHC.SrcSpan, return GHC.SrcSpan
 -- they are placed in
 putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc GHC.SrcSpan
@@ -240,7 +242,7 @@ putToksForPos pos toks = do
   let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  drawTokenTree ""
+  -- drawTokenTree ""
   return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan
@@ -269,7 +271,7 @@ putToksAfterPos pos position toks = do
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  logm $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
+  -- logm $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
   return newSpan
 
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST
@@ -308,7 +310,7 @@ removeToksForPos pos = do
   let tk' = removeToksFromCache (rsTokenCache tm) sspan
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  drawTokenTree "removeToksForPos result"
+  -- drawTokenTree "removeToksForPos result"
   return ()
 
 -- ---------------------------------------------------------------------
@@ -384,37 +386,9 @@ indentDeclAndToks t offset = do
   let tk' = tk {tkCache = Map.insert mainTid forest' (tkCache tk) }
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  drawTokenTree "indentDeclToks result"
+  -- drawTokenTree "indentDeclToks result"
   return t'
 
--- =====================================================================
--- Layout Tree stuff
--- ---------------------------------------------------------------------
-{-
-getLayoutForSpan :: GHC.SrcSpan -> RefactGhc LayoutTree
-getLayoutForSpan sspan = do
-  st <- get
-  let Just tm = rsModule st
-  let lay = getLayoutFor sspan (rsTokenLayout tm)
-  logm $ "getLayoutForSpan " ++ (showGhc sspan) ++ ":" ++ (showGhc lay)
-  return lay
--}
-{-
-putDeclLayoutAfterSpan :: (SYB.Data t)
-   => GHC.SrcSpan -> GHC.Located t -> Positioning -> LayoutTree
-   -> RefactGhc (GHC.Located t)
-putDeclLayoutAfterSpan oldSpan t pos lay = do
-  logm $ "putDeclLayoutAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,lay))
-  st <- get
-  let Just tm = rsModule st
-  let (TL layoutTree) = rsTokenLayout tm
-  let (tl',_newSpan, t') = addDeclLayoutAfterSrcSpan layoutTree oldSpan pos lay t
-  let rsModule' = Just (tm {rsTokenLayout = tl', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
-  return t'
--}
-
--- =====================================================================
 
 getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
 getTypecheckedModule = do

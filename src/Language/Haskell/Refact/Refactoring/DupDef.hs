@@ -1,5 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.Haskell.Refact.DupDef(duplicateDef) where
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
+module Language.Haskell.Refact.Refactoring.DupDef(duplicateDef) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -7,18 +10,13 @@ import qualified GHC.SYB.Utils as SYB
 import qualified GHC
 import qualified OccName               as GHC
 
+import Control.Monad
 import Data.List
 import Data.Maybe
 
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils
-import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.API
+
 
 -- ---------------------------------------------------------------------
 -- | This refactoring duplicates a definition (function binding or
@@ -131,7 +129,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
                     --f: names that might be shadowd by the new name,
                     --d: names that might clash with the new name
 
-                let dv = hsVisibleNames ln declsr --dv: names may shadow new name
+                dv <- hsVisibleNames ln declsr --dv: names may shadow new name
                 let vars        = nub (f `union` d `union` dv)
 
                 newNameGhc <- mkNewGhcName Nothing newName
@@ -171,7 +169,7 @@ refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> TargetModule
 refactorInClientMod oldPN serverModName newPName targetModule@(_,modSummary)
   = do
        logm ("refactorInClientMod: (serverModName,newPName)=" ++ (showGhc (serverModName,newPName))) -- ++AZ++ debug
-       activateModule targetModule
+       void $ activateModule targetModule
 
        let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
 {-
@@ -208,22 +206,6 @@ doDuplicatingClient serverModName newPNames = do
   putRefactRenamed renamed'
   return ()
 
-{-
---Do refactoring in the client module.
--- that is to hide the identifer in the import declaration if it will cause any problem in the client module.
-refactorInClientMod serverModName newPName (modName, fileName)
-  = do (inscps, exps,parsed ,ts) <- parseSourceFile fileName
-       let modNames = willBeUnQualImportedBy serverModName parsed
-       if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
-        then do (parsed', ((ts',m),_))<-runStateT (addHiding serverModName parsed [newPName]) ((ts,unmodified),fileName)
-                return ((fileName,m), (ts',parsed'))
-        else return ((fileName,unmodified),(ts,parsed))
-   where
-     needToBeHided name exps parsed
-         =usedWithoutQual name (hsModDecls parsed)
-          || causeNameClashInExports newPName name parsed exps
--}
-
 
 
 --Check here:
@@ -248,20 +230,3 @@ willBeUnQualImportedBy modName (_,imps,_,_)
                                 else modName
                -- simpModName (SN m loc) = m
 
-{- ++AZ++ original
---Check here:
---get the module name or alias name by which the duplicated definition will be imported automatically.
-willBeUnQualImportedBy::HsName.ModuleName->HsModuleP->Maybe [HsName.ModuleName]
-willBeUnQualImportedBy modName parsed
-   = let imps = hsModImports parsed
-         ms   = filter (\(HsImportDecl _ (SN modName1 _) qualify  as h)->modName==modName1 && (not qualify) && 
-                          (isNothing h || (isJust h && ((fst (fromJust h))==True)))) imps
-         in if ms==[] then Nothing
-                      else Just $ nub $ map getModName ms
-
-         where getModName (HsImportDecl _ (SN modName _) qualify  as h)
-                 = if isJust as then simpModName (fromJust as)
-                                else modName
-               simpModName (SN m loc) = m
-
--}

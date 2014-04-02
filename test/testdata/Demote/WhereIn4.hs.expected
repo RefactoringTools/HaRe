@@ -10,6 +10,7 @@ module Demote.WhereIn4 where
 
 sumSquares x y = sq   x + sq   y
          where p=2  {-There is a comment-}
+
                sq z     = z^p    --there is a comment
 
 anotherFun 0 y = sq y

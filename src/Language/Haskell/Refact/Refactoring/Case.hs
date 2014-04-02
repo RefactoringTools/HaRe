@@ -1,4 +1,4 @@
-module Language.Haskell.Refact.Case(ifToCase) where
+module Language.Haskell.Refact.Refactoring.Case(ifToCase) where
 
 import qualified Data.Generics         as SYB
 import qualified GHC.SYB.Utils         as SYB
@@ -8,14 +8,7 @@ import qualified GHC           as GHC
 import Control.Monad
 import Control.Monad.IO.Class
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils
-import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TypeUtils
-import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.API
 
 -- ---------------------------------------------------------------------
 
@@ -50,7 +43,7 @@ reallyDoIfToCase ::
   -> RefactGhc ()
 reallyDoIfToCase expr rs = do
 
-   everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
+   void $ everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
    showLinesDebug "after refactoring"
    return ()
        where
@@ -58,7 +51,7 @@ reallyDoIfToCase expr rs = do
          inExp exp1@(GHC.L l (GHC.HsIf _se (GHC.L l1 _) (GHC.L l2 _) (GHC.L l3 _)))
            | sameOccurrence expr exp1
            = do
-               drawTokenTreeDetailed "reallyDoIfToCase" -- ++AZ++ debug
+               -- drawTokenTreeDetailed "reallyDoIfToCase" -- ++AZ++ debug
                newExp <- ifToCaseTransform exp1
 
                let (GHC.RealSrcLoc rl) = GHC.srcSpanStart l

@@ -5,7 +5,8 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.Refact.Utils.Monad
-       ( ParseResult
+       (
+         ParseResult
        , VerboseLevel(..)
        , RefactSettings(..)
        , RefactState(..)
@@ -15,7 +16,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactFlags(..)
        , StateStorage(..)
 
-       -- GHC monad stuff
+       -- The GHC Monad
        , RefactGhc
        , runRefactGhc
        , getRefacSettings
@@ -39,11 +40,9 @@ import qualified MonadUtils    as GHC
 import Control.Monad.State
 import Data.List
 import Data.Time.Clock
--- import Data.Tree
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
--- import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import System.Directory
@@ -232,10 +231,13 @@ initGhcSession cradle importDirs = do
 
 -- ---------------------------------------------------------------------
 
+
 -- getCabalAllTargets :: Cradle -> PackageDescription -> IO ([FilePath],[FilePath],[FilePath],[FilePath])
 getCabalAllTargets cradle cabal = do
    currentDir <- getCurrentDirectory
    let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
+   -- let cabalDir = cradleRootDir cradle
+
    setCurrentDirectory cabalDir
 
    (libs,exes,tests,benches) <- liftIO $ cabalAllTargets cabal
@@ -267,9 +269,18 @@ loadModuleGraphGhc maybeTargetFiles = do
       graph <- GHC.getModuleGraph
       cgraph <- liftIO $ canonicalizeGraph graph
 
+      let canonMaybe filepath = ghandle handler (canonicalizePath filepath)
+            where
+              handler :: SomeException -> IO FilePath
+              handler _e = return filepath
+
+      ctargetFiles <- liftIO $ mapM canonMaybe targetFiles
+
       settings <- get
-      put $ settings { rsGraph = (rsGraph settings) ++ [(targetFiles,cgraph)]
-                     , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFiles,graph)]
+      put $ settings { -- rsGraph = (rsGraph settings) ++ [(targetFiles,cgraph)]
+                       rsGraph = (rsGraph settings) ++ [(ctargetFiles,cgraph)]
+                     -- , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFiles,graph)]
+                     , rsModuleGraph = (rsModuleGraph settings) ++ [(ctargetFiles,graph)]
                      , rsCurrentTarget = maybeTargetFiles
                      }
 
@@ -285,6 +296,7 @@ loadModuleGraphGhc maybeTargetFiles = do
 loadTarget :: [FilePath] -> RefactGhc ()
 loadTarget targetFiles = do
       setTargetFiles targetFiles
+      checkSlowAndSet
       void $ GHC.load GHC.LoadAllTargets
 
 -- ---------------------------------------------------------------------
@@ -299,6 +311,7 @@ ensureTargetLoaded (target,modSum) = do
   if currentTarget == Just target
     then return modSum
     else do
+      logm $ "ensureTargetLoaded: loading:" ++ show target
       loadTarget target
       put $ settings { rsCurrentTarget = Just target}
       graph <- GHC.getModuleGraph

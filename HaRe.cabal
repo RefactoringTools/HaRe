@@ -1,12 +1,12 @@
 Name:                           HaRe
-Version:                        0.7.1.2
+Version:                        0.7.2.1
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
 Bug-Reports:                    http://github.com/alanz/HaRe/issues
 License:                        BSD3
 License-File:                   LICENSE
-Homepage:                       http://www.cs.kent.ac.uk/projects/refactor-fp
+Homepage:                       https://github.com/RefactoringTools/HaRe/wiki
 Description:
    A Haskell 2010 refactoring tool. HaRe supports the full
    Haskell 2010 standard, through making use of the GHC API.
@@ -18,24 +18,17 @@ Description:
    .
    Warning: This is alpha code. Always commit code to your version
    control system before refactoring. The developers make no
-   warranties, use at your own risk. May frighten children and dogs.
+   warranties, use at your own risk.
    .
-   The renaming refactoring seems reasonably reliable.
+   Despite the disclaimer, HaRe attempts to operate in a safe way, by
+   first writing new files with proposed changes, and only swapping
+   these with the originals when the change is accepted. In the
+   process the original file is renamed to have the current date/time
+   as a suffix. Thus it should be possible to (manually) undo changes.
    .
-   Current known defects:
+   The renaming refactoring seems reasonably reliable, as does lifting
+   and demoting
    .
-     * liftToTopLevel of a recursive function may introduce parameter
-       errors. e.g. lifting 'g' in the 'zmapQ' function from 'syz-0.2.0.0'
-       'Data.Generics.Zipper' results in the following
-   .
-   >  zmapQ f z = reverse $ downQ [] g z where
-   >       g z' = query f z' : leftQ [] g z'
-   .
-      becomes
-   .
-   >  zmapQ f z = reverse $ downQ [] (g f g)z
-   >
-   >  g f z'g= query f z' : leftQ [] (g f g)g f g)z'
 
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
@@ -43,6 +36,7 @@ Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 data-files:                     elisp/*.el
 data-Dir:                       .
+extra-source-files:             ChangeLog
 
 Library
         Build-Depends:          base >= 4.0  && < 4.7
@@ -58,7 +52,8 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 3.1.4
+                                -- , ghc-mod >= 4.0
+                                , ghc-mod >= 3.1.6 && <= 3.1.7
                                 -- , lens
                                 , mtl
                                 , old-time
@@ -76,12 +71,13 @@ Library
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe
         Exposed-modules:
-             Language.Haskell.Refact.Case
-           , Language.Haskell.Refact.DupDef
-           , Language.Haskell.Refact.MoveDef
-           , Language.Haskell.Refact.Renaming
-           , Language.Haskell.Refact.SwapArgs
-           , Language.Haskell.Refact.Utils
+             Language.Haskell.Refact.API
+           , Language.Haskell.Refact.HaRe
+           , Language.Haskell.Refact.Refactoring.Case
+           , Language.Haskell.Refact.Refactoring.DupDef
+           , Language.Haskell.Refact.Refactoring.MoveDef
+           , Language.Haskell.Refact.Refactoring.Renaming
+           , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Utils.DualTree
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
@@ -89,15 +85,14 @@ Library
            , Language.Haskell.Refact.Utils.GhcVersionSpecific
            , Language.Haskell.Refact.Utils.Layout
            , Language.Haskell.Refact.Utils.LayoutTypes
-           , Language.Haskell.Refact.Utils.LayoutUtils
            , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
            , Language.Haskell.Refact.Utils.MonadFunctions
-           , Language.Haskell.Refact.Utils.RenamedSourceUtils
            , Language.Haskell.Refact.Utils.TokenUtils
            , Language.Haskell.Refact.Utils.TokenUtilsTypes
            , Language.Haskell.Refact.Utils.TypeSyn
            , Language.Haskell.Refact.Utils.TypeUtils
+           , Language.Haskell.Refact.Utils.Utils
            , Paths_HaRe
         Extensions:      CPP
 
@@ -124,7 +119,8 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 3.1.4
+                                -- , ghc-mod >= 4.0
+                                , ghc-mod >= 3.1.6 && <= 3.1.7
                                 -- , lens
                                 , mtl
                                 , old-time
@@ -137,7 +133,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , HaRe >= 0.7.0.8
+                                , HaRe >= 0.7.1.6
         Extensions:      CPP
 
 
@@ -175,9 +171,9 @@ test-suite spec
     , ghc-paths   == 0.1.*
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 3.1.2
+    -- , ghc-mod >= 4.0
+    , ghc-mod >= 3.1.6 && <= 3.1.7
     , hspec
-    -- , hspec-discover
     , mtl
     , old-time
     , process
@@ -190,7 +186,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , HaRe >= 0.7.0.8
+    , HaRe >= 0.7.1.6
   Extensions:      CPP
 
 source-repository head

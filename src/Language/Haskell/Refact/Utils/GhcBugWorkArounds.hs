@@ -22,7 +22,7 @@ import qualified StringBuffer          as GHC
 
 import Control.Exception
 import Data.IORef
--- import Data.List.Utils
+
 import System.Directory
 import System.FilePath
 import qualified Data.Map as Map

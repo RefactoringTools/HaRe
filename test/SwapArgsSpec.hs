@@ -7,7 +7,7 @@ import           Test.Hspec
 -- import qualified RdrName  as GHC
 -- import qualified SrcLoc   as GHC
 
-import Language.Haskell.Refact.SwapArgs
+import Language.Haskell.Refact.Refactoring.SwapArgs
 
 import TestUtils
 
@@ -31,7 +31,7 @@ spec = do
     it "swaps arguments for a definition at the top level" $ do
      r <- swapArgs defaultTestSettings testCradle ["./test/testdata/SwapArgs/B.hs","9","1"]
      (show r) `shouldBe` "[\"./test/testdata/SwapArgs/B.hs\"]"
-     diff <- compareFiles "./test/testdata/SwapArgs/B.hs.refactored"
+     diff <- compareFiles "./test/testdata/SwapArgs/B.refactored.hs"
                           "./test/testdata/SwapArgs/B.hs.expected"
      diff `shouldBe` []
 

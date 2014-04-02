@@ -2,7 +2,7 @@ module CaseSpec (main, spec) where
 
 import           Test.Hspec
 
-import Language.Haskell.Refact.Case
+import Language.Haskell.Refact.Refactoring.Case
 
 import TestUtils
 
@@ -17,7 +17,7 @@ spec = do
       r <- ifToCase defaultTestSettings testCradle "./test/testdata/Case/B.hs" (4,7) (4,43)
       -- r <- ifToCase logTestSettings testCradle "./test/testdata/Case/B.hs" (4,7) (4,43)
       r `shouldBe` ["./test/testdata/Case/B.hs"]
-      diff <- compareFiles "./test/testdata/Case/B.hs.refactored"
+      diff <- compareFiles "./test/testdata/Case/B.refactored.hs"
                            "./test/testdata/Case/B.hs.expected"
       diff `shouldBe` []
 
@@ -28,7 +28,7 @@ spec = do
       r <- ifToCase defaultTestSettings testCradle "./test/testdata/Case/C.hs" (5,7) (10,1)
       -- ifToCase logTestSettings testCradle "./test/testdata/Case/C.hs" (5,7) (10,1)
       r `shouldBe` ["./test/testdata/Case/C.hs"]
-      diff <- compareFiles "./test/testdata/Case/C.hs.refactored"
+      diff <- compareFiles "./test/testdata/Case/C.refactored.hs"
                            "./test/testdata/Case/C.hs.expected"
       diff `shouldBe` []
 
@@ -38,7 +38,7 @@ spec = do
       r <- ifToCase defaultTestSettings testCradle "./test/testdata/Case/D.hs" (5,7) (12,1)
       -- ifToCase logTestSettings testCradle "./test/testdata/Case/D.hs" (5,7) (12,1)
       r `shouldBe` ["./test/testdata/Case/D.hs"]
-      diff <- compareFiles "./test/testdata/Case/D.hs.refactored"
+      diff <- compareFiles "./test/testdata/Case/D.refactored.hs"
                            "./test/testdata/Case/D.hs.expected"
       diff `shouldBe` []
 
@@ -48,7 +48,7 @@ spec = do
       r <- ifToCase defaultTestSettings testCradle "./test/testdata/Case/E.hs" (7,8) (13,20)
       -- ifToCase logTestSettings testCradle "./test/testdata/Case/E.hs" (7,8) (13,20)
       r `shouldBe` ["./test/testdata/Case/E.hs"]
-      diff <- compareFiles "./test/testdata/Case/E.hs.refactored"
+      diff <- compareFiles "./test/testdata/Case/E.refactored.hs"
                            "./test/testdata/Case/E.hs.expected"
       diff `shouldBe` []
 

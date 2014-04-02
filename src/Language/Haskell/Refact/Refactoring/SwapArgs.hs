@@ -1,28 +1,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.Haskell.Refact.SwapArgs (swapArgs) where
+module Language.Haskell.Refact.Refactoring.SwapArgs (swapArgs) where
 
--- import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
--- import qualified FastString            as GHC
 import qualified Name                  as GHC
 import qualified GHC
--- import qualified DynFlags              as GHC
--- import qualified Outputable            as GHC
--- import qualified MonadUtils            as GHC
--- import qualified RdrName               as GHC
--- import qualified OccName               as GHC
 
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils
-import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeUtils
-
--- import Debug.Trace
+import Language.Haskell.Refact.API
 
 -- TODO: replace args with specific parameters
 swapArgs :: RefactSettings -> Cradle -> [String] -> IO [FilePath]
@@ -36,24 +22,14 @@ swapArgs settings cradle args
 comp :: String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName (row, col) = do
-       -- loadModuleGraphGhc maybeMainFile
-       -- modInfo@(_t, _tokList) <- getModuleGhc fileName
        getModuleGhc fileName
        renamed <- getRefactRenamed
-       -- parsed  <- getRefactParsed
-       -- modInfo@((_, renamed, mod), toks) <- parseSourceFileGhc fileName
-       -- putStrLn $ showParsedModule mod
-       -- let pnt = locToPNT fileName (row, col) mod
 
        let name = locToName (row, col) renamed
-       -- error (SYB.showData SYB.Parser 0 name)
 
        case name of
             -- (Just pn) -> do refactoredMod@(_, (_t, s)) <- applyRefac (doSwap pnt pn) (Just modInfo) fileName
             (Just pn) -> do
-                            -- let pnt = locToPNT (GHC.mkFastString fileName) (row, col) renamed
-                            -- let pnt = gfromJust "SwapArgs.comp" $ locToRdrName (GHC.mkFastString fileName) (row, col) renamed
-
                             (refactoredMod,_) <- applyRefac (doSwap pn) (RSFile fileName)
                             return [refactoredMod]
             Nothing   -> error "Incorrect identifier selected!"
@@ -128,29 +104,7 @@ reallyDoSwap (GHC.L _s n1) renamed = do
                                 p2' <- update p2 p1 p2
                                 matches' <- updateMatches matches
                                 return ((GHC.L x (GHC.Match (p1':p2':ps) nothing rhs)):matches')
+               [p] -> return [GHC.L x (GHC.Match [p] nothing rhs)]
+               []  -> return [GHC.L x (GHC.Match [] nothing rhs)]
 
-
-{-        inMatch i@(GHC.L x m@(GHC.Match (p1:p2:ps) nothing rhs)::GHC.Located (GHC.Match GHC.RdrName) )
-		  -- = error (SYB.showData SYB.Parser 0 pnt)
-            | GHC.srcSpanStart s == GHC.srcSpanStart x
-              = do logm ("inMatch>" ++ SYB.showData SYB.Parser 0 (p1:p2:ps) ++ "<")
-                   p1' <- update p1 p2 p1 --pats
-                   p2' <- update p2 p1 p2
-                   return (GHC.L x (GHC.Match (p1':p2':ps) nothing rhs))
-        inMatch i = return i
-
-        inExp exp@((GHC.L x (GHC.HsApp (GHC.L y (GHC.HsApp e e1)) e2))::GHC.Located (GHC.HsExpr GHC.RdrName))
-          {- | (fromJust $ expToName e) == (GHC.L s (GHC.nameRdrName n))-} -- = error (SYB.showData SYB.Parser 0 (GHC.L s (GHC.nameRdrName n)))  -- update e2 e1 =<< update e1 e2 exp
-       -- inExp e = return e -}
-        -- In the call-site.
-   {- inExp exp@((Exp (HsApp (Exp (HsApp e e1)) e2))::HsExpP)
-      | expToPNT e == pnt
-      = update e2 e1 =<< update e1 e2 exp
-    inExp e = return e -}
--- pats nothing rhss ds)
-
--- expToPNT x = undefined
-
--- prettyprint :: (GHC.Outputable a) => a -> String
--- prettyprint x = GHC.showSDoc $ GHC.ppr x
 
