@@ -4200,6 +4200,22 @@ renamePNworker oldPN newName updateTokens useQual t = do
           logm $ "renamePNworker:renameLIE.IEThingWith at :" ++ (showGhc l)
           worker useQual l Nothing
           return (GHC.L l (GHC.IEThingWith newName ns))
+     | any (\nn -> (GHC.nameUnique nn == GHC.nameUnique oldPN)) ns
+     = do
+          -- We have to find the right token, no locations to help
+          toks <- getToksForSpan l
+          -- find the opening parenthesis
+          let (_,pt) = break isOpenParen $ filter (not . isWhiteSpaceOrIgnored) toks
+          -- logm $ "renamePNworker:renameLIE.IEThingWith ns pt=" ++ (show pt)
+          let nstoks = gtail "renamePNworker" pt
+          let unQualOld = (GHC.occNameString $ GHC.getOccName oldPN)
+          -- logm $ "renamePNworker:renameLIE.IEThingWith unquaOld=" ++ (show unQualOld)
+          let tok@(GHC.L lt _,_) = ghead "renamePNworker" $ filter (\t -> tokenCon t == showGhc oldPN || tokenCon t == unQualOld) nstoks
+          -- logm $ "renamePNworker:renameLIE.IEThingWith ns tok=" ++ (show tok)
+          logm $ "renamePNworker:renameLIE.IEThingWith ns at :" ++ (showGhc lt)
+          worker useQual lt Nothing
+          -- TODO: update ns
+          return (GHC.L l (GHC.IEThingWith newName ns))
 
     renameLIE x = do
          -- logm $ "renamePNworker:renameLIE miss for :" ++ (showGhc x)
