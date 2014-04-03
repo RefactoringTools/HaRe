@@ -1,4 +1,8 @@
 * HaRe todo
+** TODO Renaming does not rename exported type in exports list
+   -- See
+   /home/alanz/mysrc/github/alanz/htelehash/src/TeleHash/Utils.hs.2014-04-03T13:03:21+0200
+   renaming HashContainer to HashCrypto at (97,11)
 ** TODO liftToTopLevel does not update the signature when adding a param
     e.g.for lifting 'uses' in MoveDef.hs line 1374 now complains
     about requiring an existential type.
