@@ -235,8 +235,8 @@ initGhcSession cradle importDirs = do
 -- getCabalAllTargets :: Cradle -> PackageDescription -> IO ([FilePath],[FilePath],[FilePath],[FilePath])
 getCabalAllTargets cradle cabal = do
    currentDir <- getCurrentDirectory
-   let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
-   -- let cabalDir = cradleRootDir cradle
+   -- let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
+   let cabalDir = cradleRootDir cradle
 
    setCurrentDirectory cabalDir
 
@@ -296,7 +296,7 @@ loadModuleGraphGhc maybeTargetFiles = do
 loadTarget :: [FilePath] -> RefactGhc ()
 loadTarget targetFiles = do
       setTargetFiles targetFiles
-      checkSlowAndSet
+      -- checkSlowAndSet
       void $ GHC.load GHC.LoadAllTargets
 
 -- ---------------------------------------------------------------------

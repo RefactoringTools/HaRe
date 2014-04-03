@@ -532,10 +532,10 @@ spec = do
         return (show gs)
 
       (r,_) <- runRefactGhcState comp
-      -- r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, interpreted )\""
-      --             ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, interpreted )\"]")
-      r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, nothing )\""
-                  ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, nothing )\"]")
+      r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, interpreted )\""
+                  ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, interpreted )\"]")
+      -- r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, nothing )\""
+      --             ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, nothing )\"]")
 
 
   -- -------------------------------------------------------------------

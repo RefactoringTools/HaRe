@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.2.1
+Version:                        0.7.2.2
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -29,6 +29,8 @@ Description:
    The renaming refactoring seems reasonably reliable, as does lifting
    and demoting
    .
+   At the moment parsing of any file with FFI exports will fail.
+   .
 
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
@@ -52,8 +54,8 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                -- , ghc-mod >= 4.0
-                                , ghc-mod >= 3.1.6 && <= 3.1.7
+                                , ghc-mod >= 4.0
+                                -- , ghc-mod >= 3.1.6 && <= 3.1.7
                                 -- , lens
                                 , mtl
                                 , old-time
@@ -119,8 +121,8 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                -- , ghc-mod >= 4.0
-                                , ghc-mod >= 3.1.6 && <= 3.1.7
+                                , ghc-mod >= 4.0
+                                -- , ghc-mod >= 3.1.6 && <= 3.1.7
                                 -- , lens
                                 , mtl
                                 , old-time
@@ -171,8 +173,8 @@ test-suite spec
     , ghc-paths   == 0.1.*
     , ghc-prim
     , ghc-syb-utils
-    -- , ghc-mod >= 4.0
-    , ghc-mod >= 3.1.6 && <= 3.1.7
+    , ghc-mod >= 4.0
+    -- , ghc-mod >= 3.1.6 && <= 3.1.7
     , hspec
     , mtl
     , old-time

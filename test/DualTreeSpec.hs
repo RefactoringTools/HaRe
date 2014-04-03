@@ -3397,6 +3397,8 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
     -- ---------------------------------
 
     it "retrieves the tokens in SourceTree format foreign decl" $ do
+      pendingWith "ghc-mod 4.x cannot load this file"
+{-
       (t,toks) <- parsedFileGhc "./test/testdata/Layout/Foreign.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -3409,10 +3411,6 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
-{-
-      (drawTreeCompact layout) `shouldBe`
-          ""
--}
 
       let srcTree = layoutTreeToSourceTree layout
       -- (showGhc srcTree) `shouldBe` ""
@@ -3420,7 +3418,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       -- (show $ retrieveLines srcTree) `shouldBe` ""
 
       (renderSourceTree srcTree) `shouldBe` origSource
-
+-}
 
     -- ---------------------------------
 

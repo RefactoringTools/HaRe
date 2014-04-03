@@ -4210,8 +4210,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
           let nstoks = gtail "renamePNworker" pt
           let unQualOld = (GHC.occNameString $ GHC.getOccName oldPN)
           -- logm $ "renamePNworker:renameLIE.IEThingWith unquaOld=" ++ (show unQualOld)
-          let tok@(GHC.L lt _,_) = ghead "renamePNworker" $ filter (\t -> tokenCon t == showGhc oldPN || tokenCon t == unQualOld) nstoks
-          -- logm $ "renamePNworker:renameLIE.IEThingWith ns tok=" ++ (show tok)
+          let _tok@(GHC.L lt _,_) = ghead "renamePNworker" $ filter (\tt -> tokenCon tt == showGhc oldPN || tokenCon tt == unQualOld) nstoks
+          -- logm $ "renamePNworker:renameLIE.IEThingWith ns tok=" ++ (show _tok)
           logm $ "renamePNworker:renameLIE.IEThingWith ns at :" ++ (showGhc lt)
           worker useQual lt Nothing
           -- TODO: update ns
