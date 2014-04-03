@@ -392,3 +392,6 @@ testing/addCon/Case2.hs.temp.hs
 /test/TestUtils_flymake.hs
 /test/testdata/Layout/Foreign_flymake.hs
 /test/testdata/Layout/FromMd1_flymake.hs
+/test/testdata/Renaming/RenameInExportedType.hs.AST_out
+/test/testdata/Renaming/RenameInExportedType.hs.renamed_out
+/test/testdata/Renaming/RenameInExportedType.hs.tokens

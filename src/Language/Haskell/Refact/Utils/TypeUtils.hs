@@ -4169,14 +4169,44 @@ renamePNworker oldPN newName updateTokens useQual t = do
 #endif
     renameHsTyVarBndr x = return x
 
+    -- ---------------------------------
+
     renameLIE :: (GHC.LIE GHC.Name) -> RefactGhc (GHC.LIE GHC.Name)
     renameLIE (GHC.L l (GHC.IEVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
-          logm $ "renamePNworker:renameLIE at :" ++ (showGhc l)
+          -- logm $ "renamePNworker:renameLIE.IEVar at :" ++ (showGhc l)
           worker useQual l Nothing
           return (GHC.L l (GHC.IEVar newName))
-    renameLIE x = return x
+
+    renameLIE (GHC.L l (GHC.IEThingAbs n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          -- logm $ "renamePNworker:renameLIE.IEThingAbs at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEThingAbs newName))
+
+    renameLIE (GHC.L l (GHC.IEThingAll n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          -- logm $ "renamePNworker:renameLIE.IEThingAll at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEThingAll newName))
+
+    -- TODO: check inside the ns here too
+    renameLIE (GHC.L l (GHC.IEThingWith n ns))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          logm $ "renamePNworker:renameLIE.IEThingWith at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEThingWith newName ns))
+
+    renameLIE x = do
+         -- logm $ "renamePNworker:renameLIE miss for :" ++ (showGhc x)
+         return x
+
+    -- ---------------------------------
+
 
     renameLPat :: (GHC.LPat GHC.Name) -> RefactGhc (GHC.LPat GHC.Name)
     renameLPat v@(GHC.L l (GHC.VarPat n))
