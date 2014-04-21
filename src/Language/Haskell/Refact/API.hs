@@ -279,7 +279,7 @@ module Language.Haskell.Refact.API
     -- *** Locations
     -- ,toRelativeLocs, rmLocs
     -- *** Default values
-   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
+   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp, defaultExpr -- ,defaultPat, defaultExpUnTyped
 
 
     -- *** Identifiers, expressions, patterns and declarations

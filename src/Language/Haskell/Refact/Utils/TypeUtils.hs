@@ -104,7 +104,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Locations
     -- ,toRelativeLocs, rmLocs
     -- ** Default values
-   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
+   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp, defaultExpr -- ,defaultPat, defaultExpUnTyped,
 
 
     -- ** Identifiers, expressions, patterns and declarations
@@ -317,6 +317,9 @@ defaultName = n
 defaultExp::HsExpP
 -- defaultExp=Exp (HsId (HsVar defaultPNT))
 defaultExp=GHC.HsVar $ mkRdrName "nothing"
+
+defaultExpr::GHC.Located (GHC.HsExpr GHC.Name)
+defaultExpr = GHC.noLoc $ GHC.HsVar defaultName
 
 
 mkRdrName :: String -> GHC.RdrName

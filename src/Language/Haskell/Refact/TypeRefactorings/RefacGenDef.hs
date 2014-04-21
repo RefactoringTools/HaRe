@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.TypeRefactorings.RefacGenDef(generaliseDef) where
 
 import Language.Haskell.Refact.API
@@ -8,6 +9,7 @@ import qualified GHC.SYB.Utils as SYB
 import qualified GHC
 import qualified Name                  as GHC
 import Data.Maybe
+import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 {-A definition can be generialised by selecting a sub-expression of the RHS of the definition,
   and introducing that sub-expression as a new argument to the function/constant at each of its 
@@ -36,13 +38,29 @@ generaliseDef settings cradle fileName newParamName beginPos endPos = runRefacSe
 
 comp ::FilePath -> String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName newParamName beginPos endPos = do
+  logm $ "GenDef.comp: (FileName, NewName, (BeginRow, BeginCol), (EndRow, EndCol))= " ++ (show (fileName, newParamName, beginPos, endPos)) 
   getModuleGhc fileName
   renamed <- getRefactRenamed
   parsed  <- getRefactParsed
+
   return []
 
---findDefNameAndExp :: (SYB.Data t) => SimpPos -> SimpPos -> t -> (GHC.Name,t) 
---findDefNameAndExp startPos endPos renamed = do fromMaybe (defaultPNT, defaultExp) ((getModuleName renamed), return ())
+findDefNameAndExp :: SimpPos -> SimpPos -> RefactGhc (Maybe (GHC.Name, GHC.Located (GHC.HsExpr GHC.Name)))
+findDefNameAndExp startPos endPos = do 
+  renamed <- getRefactRenamed
+  checkedModule <- getTypecheckedModule
+  let checkedSource = GHC.tm_typechecked_source checkedModule
+  --let expression = locToExp startPos endPos renamed
+  return (applyTU (once_tdTU (failTU `adhocTU` inMatch )) renamed)
+  where 
+    inMatch ((match@(GHC.Match pats mtype (GHC.GRHSs rhs ds))):: GHC.Match GHC.Name)
+      = Just (fromMaybe defaultName (patToPNT (head pats)), fromMaybe defaultExpr (locToExp startPos endPos rhs))
+    inMatch _ = Nothing
+ 
+    inPat _ = Nothing
+
+  --Just ((getModuleName renamed), return ())
+
 {-generaliseDef args
  = let fileName     = args!!0
        newParamName = args!!1            

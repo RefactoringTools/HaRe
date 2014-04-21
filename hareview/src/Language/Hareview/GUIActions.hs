@@ -41,6 +41,7 @@ import Language.Hareview.Language
 
 -- generated on-the-fly by cabal
 import Paths_hareview (getDataFileName,getDataDir)
+import Control.Exception
 
 -- |suffix of window title
 suffix :: String
@@ -140,16 +141,16 @@ actionLoadHeadless area file ref = do
   s <- getAstState ref
 
   let langs = languages $ state s
-  windowSetTitle
+  windowSetTitle (
     (window $ gui s)
-    (takeFileName file ++ suffix)
-  catch
+    (takeFileName file ++ suffix))
+  {-catch
     (do
       contents <- withFile
         file ReadMode (fmap BS.unpack . BS.hGetContents)
       textBufferSetText sb contents
       deleteStar area ref
-    )
+    )-}
     print
   whenJustM
     (getLanguage area ref) $
