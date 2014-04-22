@@ -42,21 +42,27 @@ comp fileName newParamName beginPos endPos = do
   getModuleGhc fileName
   renamed <- getRefactRenamed
   parsed  <- getRefactParsed
+  (pnt,subExp) <- findDefNameAndExp beginPos endPos
+  logm $ "GenDef.comp: Gotten pnt and subExp"
+  if pnt == defaultName || isDefaultExpr subExp
+    then error ("The highlighted source does not contain a rhs sub-expression, " ++
+                       "or the selected sub-expression does not contain any identifiers so that the refactor could not locate it.")
+    else return []
 
-  return []
-
-findDefNameAndExp :: SimpPos -> SimpPos -> RefactGhc (Maybe (GHC.Name, GHC.Located (GHC.HsExpr GHC.Name)))
+findDefNameAndExp :: SimpPos -> SimpPos -> RefactGhc (GHC.Name, GHC.Located (GHC.HsExpr GHC.Name))
 findDefNameAndExp startPos endPos = do 
   renamed <- getRefactRenamed
-  checkedModule <- getTypecheckedModule
-  let checkedSource = GHC.tm_typechecked_source checkedModule
   --let expression = locToExp startPos endPos renamed
-  return (applyTU (once_tdTU (failTU `adhocTU` inMatch )) renamed)
+  return (fromMaybe (defaultName, defaultExpr) (applyTU (once_tdTU (failTU `adhocTU` inMatch `adhocTU` inPat)) renamed))
   where 
     inMatch ((match@(GHC.Match pats mtype (GHC.GRHSs rhs ds))):: GHC.Match GHC.Name)
       = Just (fromMaybe defaultName (patToPNT (head pats)), fromMaybe defaultExpr (locToExp startPos endPos rhs))
     inMatch _ = Nothing
- 
+
+    inPat (pat@(GHC.PatBind lpat (GHC.GRHSs rhs ds) rtype nameset ticks))
+      = if hsBindLRIsSimple pat
+          then Just (fromMaybe defaultName (patToPNT lpat), fromMaybe defaultExpr (locToExp startPos endPos rhs))
+          else error "A complex pattern binding can not be generalised!"
     inPat _ = Nothing
 
   --Just ((getModuleName renamed), return ())

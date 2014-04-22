@@ -237,7 +237,7 @@ module Language.Haskell.Refact.API
     -- *** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
     ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
-    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
+    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,hsBindLRIsSimple
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
     ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     ,findPNT,findPN,findAllNameOccurences
@@ -279,7 +279,7 @@ module Language.Haskell.Refact.API
     -- *** Locations
     -- ,toRelativeLocs, rmLocs
     -- *** Default values
-   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp, defaultExpr -- ,defaultPat, defaultExpUnTyped
+   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp, defaultExpr, isDefaultExpr -- ,defaultPat, defaultExpUnTyped
 
 
     -- *** Identifiers, expressions, patterns and declarations

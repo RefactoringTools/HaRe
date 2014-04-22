@@ -62,7 +62,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
     ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
-    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
+    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,hsBindLRIsSimple
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
     ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     ,findPNT,findPN,findAllNameOccurences
@@ -104,7 +104,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Locations
     -- ,toRelativeLocs, rmLocs
     -- ** Default values
-   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp, defaultExpr -- ,defaultPat, defaultExpUnTyped,
+   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp, defaultExpr, isDefaultExpr -- ,defaultPat, defaultExpUnTyped,
 
 
     -- ** Identifiers, expressions, patterns and declarations
@@ -321,6 +321,9 @@ defaultExp=GHC.HsVar $ mkRdrName "nothing"
 defaultExpr::GHC.Located (GHC.HsExpr GHC.Name)
 defaultExpr = GHC.noLoc $ GHC.HsVar defaultName
 
+isDefaultExpr ::  GHC.Located (GHC.HsExpr GHC.Name) -> Bool
+isDefaultExpr (GHC.L loc (GHC.HsVar i)) = (loc == GHC.noSrcSpan) && (i == defaultName)
+isDefaultExpr _ = False
 
 mkRdrName :: String -> GHC.RdrName
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
@@ -1923,6 +1926,11 @@ isSimplePatBind :: (SYB.Data t) => GHC.LHsBind t-> Bool
 isSimplePatBind decl = case decl of
      (GHC.L _l (GHC.PatBind p _rhs _ty _fvs _)) -> hsPNs p /= []
      _ -> False
+
+hsBindLRIsSimple :: (SYB.Data t) => GHC.HsBindLR t t -> Bool
+hsBindLRIsSimple decl = case decl of
+  (GHC.PatBind p _rhs _ty _fvs _) -> hsPNs p /= []
+  _ -> False
 
 -- | Return True if a declaration is a pattern binding but not a simple one.
 isComplexPatBind::GHC.LHsBind GHC.Name -> Bool
