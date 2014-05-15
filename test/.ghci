@@ -8,4 +8,6 @@
 :set -i./dist/build/autogen
 :set -package ghc
 :set -hide-package monads-tf
+-- :set -hide-package ghc-mod-4.0.0
+-- :set -hide-package ghc-mod-4.0.1
 

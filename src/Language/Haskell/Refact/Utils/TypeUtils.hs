@@ -4180,14 +4180,60 @@ renamePNworker oldPN newName updateTokens useQual t = do
 #endif
     renameHsTyVarBndr x = return x
 
+    -- ---------------------------------
+
     renameLIE :: (GHC.LIE GHC.Name) -> RefactGhc (GHC.LIE GHC.Name)
     renameLIE (GHC.L l (GHC.IEVar n))
      | (GHC.nameUnique n == GHC.nameUnique oldPN)
      = do
-          logm $ "renamePNworker:renameLIE at :" ++ (showGhc l)
+          -- logm $ "renamePNworker:renameLIE.IEVar at :" ++ (showGhc l)
           worker useQual l Nothing
           return (GHC.L l (GHC.IEVar newName))
-    renameLIE x = return x
+
+    renameLIE (GHC.L l (GHC.IEThingAbs n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          -- logm $ "renamePNworker:renameLIE.IEThingAbs at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEThingAbs newName))
+
+    renameLIE (GHC.L l (GHC.IEThingAll n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          -- logm $ "renamePNworker:renameLIE.IEThingAll at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEThingAll newName))
+
+    -- TODO: check inside the ns here too
+    renameLIE (GHC.L l (GHC.IEThingWith n ns))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          logm $ "renamePNworker:renameLIE.IEThingWith at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEThingWith newName ns))
+     | any (\nn -> (GHC.nameUnique nn == GHC.nameUnique oldPN)) ns
+     = do
+          -- We have to find the right token, no locations to help
+          toks <- getToksForSpan l
+          -- find the opening parenthesis
+          let (_,pt) = break isOpenParen $ filter (not . isWhiteSpaceOrIgnored) toks
+          -- logm $ "renamePNworker:renameLIE.IEThingWith ns pt=" ++ (show pt)
+          let nstoks = gtail "renamePNworker" pt
+          let unQualOld = (GHC.occNameString $ GHC.getOccName oldPN)
+          -- logm $ "renamePNworker:renameLIE.IEThingWith unquaOld=" ++ (show unQualOld)
+          let _tok@(GHC.L lt _,_) = ghead "renamePNworker" $ filter (\tt -> tokenCon tt == showGhc oldPN || tokenCon tt == unQualOld) nstoks
+          -- logm $ "renamePNworker:renameLIE.IEThingWith ns tok=" ++ (show _tok)
+          logm $ "renamePNworker:renameLIE.IEThingWith ns at :" ++ (showGhc lt)
+          worker useQual lt Nothing
+          -- TODO: update ns
+          return (GHC.L l (GHC.IEThingWith newName ns))
+
+    renameLIE x = do
+         -- logm $ "renamePNworker:renameLIE miss for :" ++ (showGhc x)
+         return x
+
+    -- ---------------------------------
+
 
     renameLPat :: (GHC.LPat GHC.Name) -> RefactGhc (GHC.LPat GHC.Name)
     renameLPat v@(GHC.L l (GHC.VarPat n))

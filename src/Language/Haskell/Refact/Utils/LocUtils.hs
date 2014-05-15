@@ -28,7 +28,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      isNestedComment-},isMultiLineComment {-,isOpenBracket,isCloseBracket, -}
                      ,isOpenSquareBracket,isCloseSquareBracket {- ,isOpenBrace,isConid,
                      isLit,isWhereOrLet,isWhere,isLet-},isIn {- ,isCase,isDo,isIf,isForall,
-                     isHiding,isModule-} ,isComma {-,isEqual,isLambda,isIrrefute -},isBar --,isMinus,
+                     isHiding,isModule-} ,isComma, isOpenParen {-,isEqual,isLambda,isIrrefute -},isBar --,isMinus,
                      ,endsWithNewLn,startsWithNewLn,hasNewLn {- ,startsWithEmptyLn,
                      lastNonSpaceToken,firstNonSpaceToken -} ,compressPreNewLns,compressEndNewLns
 
@@ -221,6 +221,12 @@ isComma :: PosToken -> Bool
 isComma ((GHC.L _ t),_s) = case t of
                          GHC.ITcomma -> True
                          _           -> False
+
+isOpenParen :: PosToken -> Bool
+isOpenParen ((GHC.L _ t),_s) = case t of
+                         GHC.IToparen -> True
+                         _            -> False
+
 {-
 isEqual  (t,(_,s))   = t==Reservedop && s=="="
 isLambda (t,(_,s))   = t==Reservedop && s=="\\"

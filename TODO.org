@@ -1,4 +1,28 @@
 * HaRe todo
+** TODO Renaming does not rename exported type in exports list
+   -- See
+   /home/alanz/mysrc/github/alanz/htelehash/src/TeleHash/Utils.hs.2014-04-03T13:03:21+0200
+   renaming HashContainer to HashCrypto at (97,11)
+** TODO Renaming in htelehash Switch.hs complains of Crypto1a.hs not loaded
+   (1137,7) rename mpath to path
+   send mpath msg mto = do
+   [Just /home/alanz/mysrc/github/alanz/htelehash/htelehash.cabal])
+   Refactoring failed: "attempting to use module `main:TeleHash.Crypto1a' (/home/alanz/mysrc/github/alanz/htelehash/src/TeleHash/Crypto1a.hs) which is not loaded
+
+
+   alanz@alanz-laptop:~/mysrc/github/alanz/htelehash$ ghc-hare -v rename ./src/TeleHash/Switch.hs path 1137 7
+   initGhcSession:targets=(["TeleHash.Switch","TeleHash.Utils","TeleHash.Crypto1a","TeleHash.Packet"],["/home/alanz/mysrc/github/alanz/htelehash/./ping.hs"],[],[])
+   initGhcSession:(libTgts,exeTgts)=(["TeleHash.Switch","TeleHash.Utils","TeleHash.Crypto1a","TeleHash.Packet"],["/home/alanz/mysrc/github/alanz/htelehash/./ping.hs"])
+   Renaming.comp: (fileName,newName,(row,col))=("./src/TeleHash/Switch.hs","path",(1137,7))
+   activateModule:(["/home/alanz/mysrc/github/alanz/htelehash/ping.hs"],TeleHash.Switch)
+   ensureTargetLoaded: loading:["/home/alanz/mysrc/github/alanz/htelehash/ping.hs"]
+   (error "attempting to use module `main:TeleHash.Crypto1a' (/home/alanz/mysrc/github/alanz/htelehash/src/TeleHash/Crypto1a.hs) which is not loaded\n"[Just "/home/alanz/mysrc/github/alanz/htelehash/htelehash.cabal"])
+
+   root cause is program cannot load due to syntax errors. Provide
+   decent error reporting
+
+** TOOO cannot select (data) item to be renamed from the module exports list
+** TODO when renaming, tell the user the original name, in the elisp
 ** TODO liftToTopLevel does not update the signature when adding a param
     e.g.for lifting 'uses' in MoveDef.hs line 1374 now complains
     about requiring an existential type.
@@ -29,6 +53,7 @@
 ** TODO demote does not process client files
 ** TODO provide simple wrapper for one-file refactor in the API
 ** TODO note: haddock 2.11.0 builds the 7.4.2 docs without problem
+** TODO renaming: what if the old name appears in comments too?
 ** TODO from the source files
    :PROPERTIES:
    :ID:       2930a92b-9989-427f-b02e-e47ca11a84de

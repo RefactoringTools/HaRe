@@ -9,7 +9,7 @@
 Check that it works from the command line
 
     $ ghc-hare --version
-    0.7.0.x
+    0.7.2.x
 
 Running the bare command lists available refactorings and their parameters
 
@@ -20,24 +20,23 @@ Currently only emacs integration is offered. Add the following to your
 your machine.
 
     (add-to-list 'load-path
-        "~/.cabal/share/HaRe-0.7.0.8/elisp")
+        "~/.cabal/share/HaRe-0.7.2.2/elisp")
     (add-to-list 'load-path
-        "~/.cabal/share/i386-linux-ghc-7.6.3/HaRe-0.7.0.8/elisp")
+        "~/.cabal/share/i386-linux-ghc-7.6.3/HaRe-0.7.2.2/elisp")
     (require 'hare)
     (autoload 'hare-init "hare" nil t)
 
 Add an intializer hook to the ghc-mode command
 
-    (add-hook 'haskell-mode-hook (lambda () (ghc-init) (hare-init) (flymake-mode)))
+    (add-hook 'haskell-mode-hook (lambda () (ghc-init) (hare-init)))
 
 Alternatively, if using haskell-mode, and initializing via a function
 
     ;; Haskell main editing mode key bindings.
     (defun haskell-hook ()
 
-      ;(lambda nil (ghc-init) (flymake-mode))
+      ;(lambda nil (ghc-init))
       (ghc-init)
-      (flymake-mode)
       (hare-init)
       ...
     )
@@ -114,7 +113,8 @@ Note:A consistent coding layout style is more important than what specific on is
  * Christopher Brown
  * Huiqing Li
  * Alan Zimmerman
- * Many others, ..
+
+Please put a pull request for this list if you are missing.
 
 ## Logo
 

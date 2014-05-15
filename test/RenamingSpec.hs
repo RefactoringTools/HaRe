@@ -531,6 +531,30 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
                           "./test/testdata/Renaming/Utils.refactored.hs"
      diff `shouldBe` []
 
+    -- -----------------------------------------------------------------
+
+    it "passes RenameInExportedType.hs 1" $ do
+     r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/RenameInExportedType.hs" "NewType" (6,6)
+     -- rename logTestSettings testCradle "./test/testdata/Renaming/RenameInExportedType.hs" "NewType" (6,6)
+
+     (show r) `shouldBe` "[\"./test/testdata/Renaming/RenameInExportedType.hs\"]"
+     diff <- compareFiles "./test/testdata/Renaming/RenameInExportedType.refactored.hs"
+                          "./test/testdata/Renaming/RenameInExportedType.expected.hs"
+     diff `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
+    it "passes RenameInExportedType2.hs" $ do
+     r <- rename defaultTestSettings testCradle "./test/testdata/Renaming/RenameInExportedType2.hs" "NewType" (6,24)
+     -- rename logTestSettings testCradle "./test/testdata/Renaming/RenameInExportedType2.hs" "NewType" (6,24)
+
+     (show r) `shouldBe` "[\"./test/testdata/Renaming/RenameInExportedType2.hs\"]"
+     diff <- compareFiles "./test/testdata/Renaming/RenameInExportedType2.refactored.hs"
+                          "./test/testdata/Renaming/RenameInExportedType2.expected.hs"
+     diff `shouldBe` []
+
+
+
 -- ---------------------------------------------------------------------
 -- Helper functions
 

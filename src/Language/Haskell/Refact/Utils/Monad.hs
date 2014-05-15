@@ -179,16 +179,16 @@ initGhcSession cradle importDirs = do
                  , operators = False
                  , detailed = False
                  , qualified = False
-                 , expandSplice = False
                  , lineSeparator = rsetLineSeparator settings
-                 , packageId = Nothing -- TODO: work this through if needed
                  }
-    (_readLog,mcabal) <- initializeFlagsWithCradle opt cradle (options settings) True
 
-    case mcabal of
-      Just cabal -> do
+    -- (_readLog,mcabal) <- initializeFlagsWithCradle opt cradle (options settings) True
+    initializeFlagsWithCradle opt cradle
+    -- initializeFlagsWithCradle :: GhcMonad m => Options -> Cradle -> m ()
+    case cradleCabalFile cradle of
+      Just cabalFile -> do
         -- targets <- liftIO $ cabalAllTargets cabal
-        targets <- liftIO $ getCabalAllTargets cradle cabal
+        targets <- liftIO $ getCabalAllTargets cradle cabalFile
         -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
         logm $ "initGhcSession:targets=" ++ show targets
 
@@ -232,15 +232,16 @@ initGhcSession cradle importDirs = do
 -- ---------------------------------------------------------------------
 
 
--- getCabalAllTargets :: Cradle -> PackageDescription -> IO ([FilePath],[FilePath],[FilePath],[FilePath])
-getCabalAllTargets cradle cabal = do
+getCabalAllTargets :: Cradle -> FilePath -> IO ([FilePath],[FilePath],[FilePath],[FilePath])
+getCabalAllTargets cradle cabalFile = do
    currentDir <- getCurrentDirectory
-   let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
-   -- let cabalDir = cradleRootDir cradle
+   -- let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
+   let cabalDir = cradleRootDir cradle
 
    setCurrentDirectory cabalDir
 
-   (libs,exes,tests,benches) <- liftIO $ cabalAllTargets cabal
+   pkgDesc <- liftIO $ parseCabalFile cabalFile
+   (libs,exes,tests,benches) <- liftIO $ cabalAllTargets pkgDesc
    setCurrentDirectory currentDir
 
    let -- libs'    = addCurrentDir libs
@@ -296,7 +297,7 @@ loadModuleGraphGhc maybeTargetFiles = do
 loadTarget :: [FilePath] -> RefactGhc ()
 loadTarget targetFiles = do
       setTargetFiles targetFiles
-      checkSlowAndSet
+      -- checkSlowAndSet
       void $ GHC.load GHC.LoadAllTargets
 
 -- ---------------------------------------------------------------------
