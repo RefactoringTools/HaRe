@@ -113,7 +113,8 @@ Note:A consistent coding layout style is more important than what specific on is
  * Christopher Brown
  * Huiqing Li
  * Alan Zimmerman
- * Many others, ..
+
+Please put a pull request for this list if you are missing.
 
 ## Logo
 
