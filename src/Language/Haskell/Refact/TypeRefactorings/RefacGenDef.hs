@@ -4,6 +4,7 @@ module Language.Haskell.Refact.TypeRefactorings.RefacGenDef(generaliseDef) where
 import Language.Haskell.Refact.API
 import Language.Haskell.GhcMod
 import qualified Data.Generics as SYB
+import qualified Data.Generics.Text as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import qualified GHC
@@ -32,22 +33,52 @@ import Data.Generics.Strafunski.StrategyLib.StrategyLib
         into account when creating the new function name.
 -}
 
+defaultShowData :: SYB.Data a => a -> String
+defaultShowData = SYB.showData SYB.Renamer 2 
 
 generaliseDef :: RefactSettings -> Cradle -> FilePath -> String -> SimpPos -> SimpPos -> IO [FilePath]
 generaliseDef settings cradle fileName newParamName beginPos endPos = runRefacSession settings cradle (comp fileName newParamName beginPos endPos)
 
 comp ::FilePath -> String -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName newParamName beginPos endPos = do
+comp fileName newParamName beginPos@(sLine,sCol) endPos@(eLine, eCol) = do
   logm $ "GenDef.comp: (FileName, NewName, (BeginRow, BeginCol), (EndRow, EndCol))= " ++ (show (fileName, newParamName, beginPos, endPos)) 
   getModuleGhc fileName
   renamed <- getRefactRenamed
   parsed  <- getRefactParsed
-  (pnt,subExp) <- findDefNameAndExp beginPos endPos
-  logm $ "GenDef.comp: Gotten pnt and subExp"
+  typedMod <- getTypecheckedModule
+  let typed = GHC.tm_typechecked_source typedMod
+  let loc :: GHC.Located (GHC.HsExpr GHC.RdrName)= fromJust  $ locToExp beginPos endPos parsed
+  let expr = GHC.unLoc loc
+  let name = expToName loc
+  
+  logm "============================================"
+  --logm $ defaultShowData expr
+
+  return []
+  {-(pnt,subExp) <- findDefNameAndExp beginPos endPos
+  --logm $ "GenDef.comp: Gotten pnt and subExp ==============\n" ++ (defaultShowData  subExp)-- ++ " PNT: " ++ (SYB.gshow pnt)
   if pnt == defaultName || isDefaultExpr subExp
     then error ("The highlighted source does not contain a rhs sub-expression, " ++
                        "or the selected sub-expression does not contain any identifiers so that the refactor could not locate it.")
-    else return []
+    else return []-}
+{-findDefNameAndExp toks beginPos endPos t 
+    = fromMaybe (defaultPNT, defaultExp) (applyTU (once_tdTU (failTU `adhocTU` inMatch
+                                                                     `adhocTU` inPat)) t)  --CAN NOT USE 'once_tdTU' here. 
+
+     where  --The selected sub-expression is in the rhs of a match
+           inMatch (match@(HsMatch loc1  pnt pats rhs ds)::HsMatchP)
+             | locToExp beginPos endPos toks rhs /= defaultExp
+             
+             = Just (pnt, locToExp beginPos endPos toks rhs)
+           inMatch _ = Nothing
+        
+           --The selected sub-expression is in the rhs of a pattern-binding
+           inPat (pat@(Dec (HsPatBind loc1 ps rhs ds))::HsDeclP)
+             | locToExp beginPos endPos toks rhs /= defaultExp
+             = if isSimplePatBind pat
+                then Just (patToPNT ps, locToExp beginPos endPos toks rhs)    
+                else error "A complex pattern binding can not be generalised!"
+           inPat _ = Nothing -}
 
 findDefNameAndExp :: SimpPos -> SimpPos -> RefactGhc (GHC.Name, GHC.Located (GHC.HsExpr GHC.Name))
 findDefNameAndExp startPos endPos = do 
@@ -55,8 +86,10 @@ findDefNameAndExp startPos endPos = do
   --let expression = locToExp startPos endPos renamed
   return (fromMaybe (defaultName, defaultExpr) (applyTU (once_tdTU (failTU `adhocTU` inMatch `adhocTU` inPat)) renamed))
   where 
-    inMatch ((match@(GHC.Match pats mtype (GHC.GRHSs rhs ds))):: GHC.Match GHC.Name)
-      = Just (fromMaybe defaultName (patToPNT (head pats)), fromMaybe defaultExpr (locToExp startPos endPos rhs))
+    inMatch ((match@(GHC.Match pats mtype (GHC.GRHSs rhs ds))):: GHC.Match GHC.Name) =
+      case (locToExp startPos endPos rhs)::(Maybe (GHC.Located (GHC.HsExpr GHC.Name))) of
+        Nothing -> Nothing
+        _ -> Just (fromMaybe defaultName (patToPNT (head pats)), fromMaybe defaultExpr (locToExp startPos endPos rhs))
     inMatch _ = Nothing
 
     inPat (pat@(GHC.PatBind lpat (GHC.GRHSs rhs ds) rtype nameset ticks))
@@ -64,6 +97,22 @@ findDefNameAndExp startPos endPos = do
           then Just (fromMaybe defaultName (patToPNT lpat), fromMaybe defaultExpr (locToExp startPos endPos rhs))
           else error "A complex pattern binding can not be generalised!"
     inPat _ = Nothing
+
+
+{-doAddingActulaArg pnt pntExp subExp addParen = do 
+  let newExp = if isSimpleExp subExp || isParenExp subExp 
+                         then if addParen then (Exp (HsParen (Exp (HsApp pntExp subExp)))) 
+                                          else (Exp (HsApp pntExp subExp))
+                         else if addParen then (Exp (HsParen (Exp (HsApp pntExp (Exp (HsParen subExp))))))
+                                          else (Exp (HsApp pntExp (Exp (HsParen subExp))))
+  update pntExp newExp pntExp          
+    where 
+       isSimpleExp (Exp (HsId _))=True
+       isSimpleExp (Exp (HsLit _ _))=True
+       isSimpleExp _ =False
+
+       isParenExp (Exp (HsParen _))=True
+       isParenExp _=False -}
 
   --Just ((getModuleName renamed), return ())
 
