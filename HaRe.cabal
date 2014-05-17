@@ -186,6 +186,13 @@ test-suite spec
     , HaRe >= 0.7.1.6
   Extensions:      CPP
 
+test-suite doctests
+  type:          exitcode-stdio-1.0
+  ghc-options:   -threaded
+  main-is:       doctests.hs
+  build-depends: base, doctest >= 0.8
+
+
 source-repository head
   type:     git
   location: https://github.com/alanz/HaRe.git
