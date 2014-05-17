@@ -154,7 +154,8 @@ test-suite spec
   build-depends:
       base        >= 4.0  && < 4.7
     , Diff >= 0.3.0
-    , HUnit       == 1.2.*
+    -- , HUnit       == 1.2.*
+    , HUnit
     , QuickCheck  >= 2.5
     , containers
 
@@ -166,7 +167,8 @@ test-suite spec
     , directory
     , filepath
     , ghc         >= 7.0.1 && < 7.8
-    , ghc-paths   == 0.1.*
+    -- , ghc-paths   == 0.1.*
+    , ghc-paths
     , ghc-prim
     , ghc-syb-utils
     , ghc-mod >= 4.1.0
