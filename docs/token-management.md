@@ -65,7 +65,7 @@ for the longer name.
 sumSquares x y= square x + square y where square x= x^pow
   --There is a comment.
                                           pow=2
-```haskell
+```
 
 The third problem is that the very close tie up between the AST and
 the token stream only holds before any changes are made, and the token
