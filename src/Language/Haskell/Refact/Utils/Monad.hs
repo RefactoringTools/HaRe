@@ -244,14 +244,14 @@ getCabalAllTargets cradle cabalFile = do
    (libs,exes,tests,benches) <- liftIO $ cabalAllTargets pkgDesc
    setCurrentDirectory currentDir
 
-   let -- libs'    = addCurrentDir libs
+   let libs'    = filter (\l -> not (isPrefixOf "Paths_" l)) libs
        exes'    = addCabalDir exes
        tests'   = addCabalDir tests
        benches' = addCabalDir benches
 
        addCabalDir ts = map (\t -> combine cabalDir t) ts
 
-   return (libs,exes',tests',benches')
+   return (libs',exes',tests',benches')
 
 -- ---------------------------------------------------------------------
 
