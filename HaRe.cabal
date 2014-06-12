@@ -66,6 +66,8 @@ Library
                                 , Strafunski-StrategyLib
                                 , syz
 
+                                , haskell-token-utils
+
         GHC-Options:             -Wall
 
         Hs-Source-Dirs:         src
@@ -131,6 +133,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
+                                , haskell-token-utils
                                 , HaRe >= 0.7.1.6
         Extensions:      CPP
 
@@ -185,6 +188,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
+    , haskell-token-utils
     , HaRe >= 0.7.1.6
   Extensions:      CPP
 
@@ -192,7 +196,9 @@ test-suite doctests
   type:          exitcode-stdio-1.0
   ghc-options:   -threaded
   main-is:       doctests.hs
-  build-depends: base, doctest >= 0.8
+  build-depends: base
+               , doctest >= 0.8
+               , ghc-mod
   Hs-Source-Dirs:
     -- src
     test
