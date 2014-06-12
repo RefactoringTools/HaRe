@@ -193,6 +193,9 @@ test-suite doctests
   ghc-options:   -threaded
   main-is:       doctests.hs
   build-depends: base, doctest >= 0.8
+  Hs-Source-Dirs:
+    -- src
+    test
 
 
 source-repository head
