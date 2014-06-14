@@ -120,7 +120,7 @@ module Language.Haskell.Refact.Utils.TokenUtils(
        , insertLenChangedInSrcSpan
        , insertVersionsInSrcSpan
        , srcSpanToForestSpan
-       , nullSpan, nullPos
+       , nullForestSpan, nullForestPos
        , simpPosToForestSpan
        , srcPosToSimpPos
        , showForestSpan
@@ -482,11 +482,11 @@ forestSpanStart (start,_) = start
 forestSpanEnd :: ForestSpan -> ForestPos
 forestSpanEnd (_,end) = end
 
-nullSpan :: ForestSpan
-nullSpan = (nullPos,nullPos)
+nullForestSpan :: ForestSpan
+nullForestSpan = (nullForestPos,nullForestPos)
 
-nullPos :: ForestPos
-nullPos = (ForestLine False 0 0 0,0)
+nullForestPos :: ForestPos
+nullForestPos = (ForestLine False 0 0 0,0)
 
 showForestSpan :: ForestSpan -> String
 showForestSpan ((sr,sc),(er,ec))
@@ -903,7 +903,7 @@ insertSrcSpan forest sspan = forest'
                        else [mkTreeFromTokens endToks]
 
             subTree = tree1 ++ tree2 ++ tree3
-            subTree' = filter (\t -> treeStartEnd t /= nullSpan) subTree
+            subTree' = filter (\t -> treeStartEnd t /= nullForestSpan) subTree
             -- (Entry sspan2 _ _) = Z.label z
             sspan2 = case Z.label z of
               (Entry ss _ _) -> ss
@@ -1027,7 +1027,7 @@ splitSubToks tree sspan = (b',m',e')
       (True, False) -> (b'',m'',e'') -- Start only
                        -- error $ "splitSubToks:StartOnly:(sspan,tree,(b'',m''))=" ++ (show (sspan,tree,(b'',m'')))
         where
-         (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks
+         (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullForestPos,sspanStart)) toks
 --         b'' = if (emptyList toksb) then [] else [Node (Entry (treeStart, sspanEnd) toksb) []]
          b'' = if (emptyList toksb || nonCommentSpan toksb == ((0,0),(0,0)))
                  then []
@@ -1056,7 +1056,7 @@ splitSubToks tree sspan = (b',m',e')
 
       (False,True) -> (b'',m'',e'') -- End only
         where
-         (_,toksm,tokse) = splitToks (forestSpanToSimpPos (nullPos,sspanEnd)) toks
+         (_,toksm,tokse) = splitToks (forestSpanToSimpPos (nullForestPos,sspanEnd)) toks
          b'' = []
          m'' = let -- If the last span is changed, make sure it stays
                    -- as it was
@@ -1898,7 +1898,7 @@ invariantOk forest = ok
 --   2b. The subForest is in SrcSpan order
 --   3. A given SrcSpan can only appear (or be included) in a single tree of the forest.
 --   4. The parent link for all sub-trees does exist, and actually points to the parent. 
---   5. There are no nullSpan entries in the tree
+--   5. There are no nullForestSpan entries in the tree
 -- NOTE: the tokens may extend before or after the SrcSpan, due to comments only
 -- NOTE2: this will have to be revisited when edits to the tokens are made
 invariant :: Tree (Entry PosToken) -> [String]
@@ -1925,7 +1925,7 @@ invariant forest = rsub
 
         rinc = checkInclusion node
 
-        rnull = if (sspan == nullSpan)
+        rnull = if (sspan == nullForestSpan)
                  then ["FAIL: null SrcSpan in tree: " ++ (prettyshow node)]
                  else []
 
@@ -2106,7 +2106,7 @@ prettyToks toks = showToks [ghead "prettyToks" toks] ++ ".." ++ showToks [last t
 
 -- |Make a tree representing a particular set of tokens
 mkTreeFromTokens :: [PosToken] -> Tree (Entry PosToken)
-mkTreeFromTokens []   = Node (Entry nullSpan NoChange []) []
+mkTreeFromTokens []   = Node (Entry nullForestSpan NoChange []) []
 mkTreeFromTokens toks = Node (Entry sspan NoChange toks) []
   where
    (startLoc',endLoc') = nonCommentSpan toks

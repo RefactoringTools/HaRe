@@ -80,12 +80,12 @@ Library
            , Language.Haskell.Refact.Refactoring.MoveDef
            , Language.Haskell.Refact.Refactoring.Renaming
            , Language.Haskell.Refact.Refactoring.SwapArgs
-           , Language.Haskell.Refact.Utils.DualTree
+           -- , Language.Haskell.Refact.Utils.DualTree
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils
            , Language.Haskell.Refact.Utils.GhcVersionSpecific
-           , Language.Haskell.Refact.Utils.Layout
+           -- , Language.Haskell.Refact.Utils.Layout
            , Language.Haskell.Refact.Utils.LayoutTypes
            , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
@@ -134,7 +134,7 @@ Executable ghc-hare
                                 , Strafunski-StrategyLib
                                 , syz
                                 , haskell-token-utils
-                                , HaRe >= 0.7.1.6
+                                , HaRe >= 0.7.2.3
         Extensions:      CPP
 
 
@@ -189,7 +189,7 @@ test-suite spec
     , Strafunski-StrategyLib
     , syz
     , haskell-token-utils
-    , HaRe >= 0.7.1.6
+    , HaRe >= 0.7.2.3
   Extensions:      CPP
 
 test-suite doctests

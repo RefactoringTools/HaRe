@@ -13,13 +13,13 @@ import Data.List
 import Data.Maybe
 import Data.Tree
 
-import Language.Haskell.Refact.Utils.DualTree
+-- import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.Layout
-import Language.Haskell.Refact.Utils.LocUtils
+-- import Language.Haskell.Refact.Utils.Layout
+import Language.Haskell.Refact.Utils.LocUtils hiding (addOffsetToToks,isIgnoredNonComment,tokenPosEnd,tokenCol,tokenPos,tokenRow,isComment,isWhiteSpaceOrIgnored,tokenColEnd,isEmpty,tokenLen,increaseSrcSpan,groupTokensByLine,isIgnored,nullSrcSpan)
+import Language.Haskell.Refact.Utils.TokenUtilsTypes hiding (TokenCache(..),Entry(..),TreeId(..),mainTid,ForestSpan(..),ForestLine(..),Layout(..),ForestPos(..))
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
@@ -27,6 +27,10 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import qualified Data.Map as Map
 import qualified Data.Tree.Zipper as Z
 -- import qualified Text.PrettyPrint as PP
+
+import Language.Haskell.TokenUtils.DualTree
+import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.GHC.Layout
 
 import TestUtils
 
@@ -5026,7 +5030,7 @@ addParamsToParentAndLiftedDecl: liftedDecls done
 
       let (sspanStart,_sspanEnd) = sf sspan4
 
-      let (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullPos,sspanStart)) toks2
+      let (_,toksb,toksm) = splitToks (forestSpanToSimpPos (nullForestPos,sspanStart)) toks2
       (show (head toksb,last toksb)) `shouldBe`
                "(((((1,1),(1,7)),ITmodule),\"module\"),"++
                "((((21,14),(21,17)),ITconid \"Int\"),\"Int\"))"
@@ -5393,7 +5397,7 @@ addParamsToParentAndLiftedDecl: liftedDecls done
     it "checks that a tree with a null SrcSpan fails" $ do
       (_t,toks) <- parsedFileTokenTestGhc
       let toks' = take 2 $ drop 5 toks
-      (invariant $ Node (Entry nullSpan NoChange toks') []) `shouldBe` ["FAIL: null SrcSpan in tree: Node (Entry ((0,0),(0,0)) [(((5,1),(5,4)),ITvarid \"bob\",\"bob\"),(((5,5),(5,6)),ITvarid \"a\",\"a\")]) []"]
+      (invariant $ Node (Entry nullForestSpan NoChange toks') []) `shouldBe` ["FAIL: null SrcSpan in tree: Node (Entry ((0,0),(0,0)) [(((5,1),(5,4)),ITvarid \"bob\",\"bob\"),(((5,5),(5,6)),ITvarid \"a\",\"a\")]) []"]
 
   -- ---------------------------------------------
 
@@ -6067,11 +6071,11 @@ addParamsToParentAndLiftedDecl: liftedDecls done
 -- fs :: GHC.SrcSpan -> ForestSpan
 -- fs = srcSpanToForestSpan
 
-emptyTree :: Tree Entry
+emptyTree :: Tree (Entry PosToken)
 emptyTree = Node (Entry nonNullSpan NoChange []) []
 
-mkTreeFromSubTrees :: [Tree Entry] -> Tree Entry
-mkTreeFromSubTrees [] = Node (Entry nullSpan NoChange []) []
+mkTreeFromSubTrees :: [Tree (Entry PosToken)] -> Tree (Entry PosToken)
+mkTreeFromSubTrees [] = Node (Entry nullForestSpan NoChange []) []
 mkTreeFromSubTrees trees = Node (Entry sspan NoChange []) trees
   where
    (Node (Entry _ _ startToks) _) = head trees

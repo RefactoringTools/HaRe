@@ -7,12 +7,16 @@ import TestUtils
 import qualified GHC        as GHC
 
 
-import Language.Haskell.Refact.Utils.DualTree
+-- import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+
+import Language.Haskell.TokenUtils.DualTree
+import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.GHC.Layout
 
 
 main :: IO ()

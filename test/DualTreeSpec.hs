@@ -10,15 +10,19 @@ import qualified GHC        as GHC
 -- import qualified GHC.SYB.Utils as SYB
 import Data.Maybe
 
-import Language.Haskell.Refact.Utils.DualTree
+-- import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.Layout
+-- import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeUtils
+
+import Language.Haskell.TokenUtils.DualTree
+import Language.Haskell.TokenUtils.GHC.Layout
+import Language.Haskell.TokenUtils.Types
 
 -- import Data.Tree.DUAL
 

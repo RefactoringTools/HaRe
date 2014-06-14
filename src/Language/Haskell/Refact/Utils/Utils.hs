@@ -242,7 +242,7 @@ parseSourceFileGhc targetFile = do
 -- | The result of a refactoring is the file, a flag as to whether it
 -- was modified, the updated token stream, and the updated AST
 -- type ApplyRefacResult = ((FilePath, Bool), ([Ppr],[PosToken], GHC.RenamedSource))
-type ApplyRefacResult = ((FilePath, Bool), ([Line],[PosToken], GHC.RenamedSource))
+type ApplyRefacResult = ((FilePath, Bool), ([Line PosToken],[PosToken], GHC.RenamedSource))
 
 
 -- | Manage a whole refactor session. Initialise the monad, load the
