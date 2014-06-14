@@ -58,28 +58,34 @@ instance GHC.Outputable GHC.NameSpace where
 instance GHC.Outputable (GHC.MatchGroup GHC.Name) where
   ppr (GHC.MatchGroup ms _ptctyp) = GHC.text "MatchGroup" GHC.<+> GHC.ppr ms
 
+
 instance GHC.Outputable (GHC.Match GHC.Name) where
   ppr (GHC.Match pats mtyp grhs) = GHC.text "Match" GHC.<+> GHC.ppr pats
                                                     GHC.<+> GHC.ppr mtyp
                                                     GHC.<+> GHC.ppr grhs
 
+
 instance GHC.Outputable (GHC.GRHSs GHC.Name) where
   ppr (GHC.GRHSs grhss binds) = GHC.text "GRHSs" GHC.<+> GHC.ppr grhss
                                                  GHC.<+> GHC.ppr binds
+
 
 instance GHC.Outputable (GHC.GRHS GHC.Name) where
   ppr (GHC.GRHS guards rhs) = GHC.text "GRHS" GHC.<+> GHC.ppr guards
                                               GHC.<+> GHC.ppr rhs
 
+
 instance GHC.Outputable (GHC.HsTupArg GHC.Name) where
   ppr (GHC.Present e)    = GHC.text "Present" GHC.<+> GHC.ppr e
   ppr (GHC.Missing _typ) = GHC.text "Missing"
+
 
 instance GHC.Outputable (GHC.ConDeclField GHC.Name) where
   ppr (GHC.ConDeclField name typ doc) = GHC.text "ConDeclField"
                                           GHC.<+> GHC.ppr name
                                           GHC.<+> GHC.ppr typ
                                           GHC.<+> GHC.ppr doc
+
 
 -- ---------------------------------------------------------------------
 

@@ -34,7 +34,7 @@ import Data.List
 import Data.Maybe
 -- import Data.Monoid
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils.DualTree
+-- import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -44,6 +44,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.TokenUtils.DualTree
 import System.Directory
 import System.FilePath.Posix
 

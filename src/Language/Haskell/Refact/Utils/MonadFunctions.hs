@@ -79,16 +79,17 @@ import qualified GHC           as GHC
 
 import qualified Data.Data as SYB
 
-import Language.Haskell.Refact.Utils.DualTree
+-- import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.Layout
--- import Language.Haskell.Refact.Utils.LayoutTypes
--- import Language.Haskell.Refact.Utils.LayoutUtils
-import Language.Haskell.Refact.Utils.LocUtils
+-- import Language.Haskell.Refact.Utils.Layout
+import Language.Haskell.Refact.Utils.LocUtils hiding (SimpPos)
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
-import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.TokenUtilsTypes hiding (TokenCache(..),Entry(..),mainTid)
+import Language.Haskell.Refact.Utils.TypeSyn hiding (SimpPos)
+import Language.Haskell.TokenUtils.DualTree
+import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.GHC.Layout
 
 import Data.Time.Clock
 import Data.Tree
@@ -116,7 +117,7 @@ fetchToksFinal = do
   return toks
 
 -- |fetch the final tokens in Ppr format
-fetchLinesFinal :: RefactGhc [Line]
+fetchLinesFinal :: RefactGhc [Line PosToken]
 fetchLinesFinal = do
   Just tm <- gets rsModule
   let linesVal = retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
@@ -338,7 +339,7 @@ drawTokenTreeDetailed msg = do
 -- ---------------------------------------------------------------------
 
 -- |Get the Token Tree for debug purposes
-getTokenTree :: RefactGhc (Tree Entry)
+getTokenTree :: RefactGhc (Tree (Entry PosToken))
 getTokenTree = do
   st <- get
   let Just tm = rsModule st

@@ -6,7 +6,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      module HsTokens,
                      PosToken,simpPos,
                      -}
-                     SimpPos,unmodified,modified
+                       unmodified,modified
                      , simpPos0
                      , nullSrcSpan
                      -- , emptyList, nonEmptyList
@@ -134,9 +134,10 @@ showToks :: [PosToken] -> String
 showToks toks = show $ map (\(t@(GHC.L _ tok),s) ->
                  ((getLocatedStart t, getLocatedEnd t),tok,s)) toks
 
+{- moved to haskell-token-utils
 instance Show (GHC.GenLocated GHC.SrcSpan GHC.Token) where
   show t@(GHC.L _l tok) = show ((getLocatedStart t, getLocatedEnd t),tok)
-
+-}
 
 --A flag used to indicate whether the token stream has been modified or not.
 unmodified, modified :: Bool

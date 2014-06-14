@@ -43,7 +43,8 @@ import Data.Time.Clock
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
+import Language.Haskell.Refact.Utils.TokenUtilsTypes hiding (TokenCache(..))
+import Language.Haskell.TokenUtils.Types
 import Language.Haskell.Refact.Utils.TypeSyn
 import System.Directory
 import System.FilePath.Posix
@@ -91,7 +92,7 @@ data RefactStashId = Stash !String deriving (Show,Eq,Ord)
 data RefactModule = RefMod
         { rsTypecheckedMod  :: !GHC.TypecheckedModule
         , rsOrigTokenStream :: ![PosToken]  -- ^Original Token stream for the current module
-        , rsTokenCache      :: !TokenCache  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
+        , rsTokenCache      :: !(TokenCache PosToken)  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
         , rsStreamModified  :: !Bool        -- ^current module has updated the token stream
         }
 

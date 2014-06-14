@@ -41,7 +41,7 @@ import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.Utils
-import Language.Haskell.Refact.Utils.DualTree
+-- import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -49,6 +49,8 @@ import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Numeric
+
+import Language.Haskell.TokenUtils.DualTree
 
 import Data.Tree
 import System.Directory
