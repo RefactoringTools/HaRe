@@ -397,8 +397,8 @@ replaceTokNoReAlign toks pos newTok =
       (toks1,toks2) = break (\t -> tokenPos t >= pos && tokenLen t > 0) toks
       toksRest = if (emptyList toks2) then [] else (gtail "replaceTokNoReAlign" toks2)
       oldTok  =  if (emptyList toks2) then newTok else (ghead "replaceTokNoReAlign" toks2)
-      -- newTok' = markToken newTok
-      newTok' = markToken $ matchTokenPos oldTok newTok
+      -- newTok' = markToken $ matchTokenPos oldTok newTok
+      newTok' = matchTokenPos oldTok newTok
 
 -- ---------------------------------------------------------------------
 
