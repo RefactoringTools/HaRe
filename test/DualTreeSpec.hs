@@ -402,6 +402,55 @@ spec = do
 
       -- (show layout) `shouldBe` ""
 
+----------------
+
+      let srcTree = layoutTreeToSourceTree layout
+      -- (show srcTree) `shouldBe`
+      --     ""
+      (renderSourceTree srcTree) `shouldBe` origSource
+
+    -- --------------------------------------
+
+    it "retrieves the tokens in SourceTree format Layout.Lift with deletion/insertion 1" $ do
+      (t,toks) <-  parsedFileGhc "./test/testdata/Layout/Lift.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
+
+      let layout = allocTokens parsed toks
+      (show $ retrieveTokens layout) `shouldBe` (show toks)
+      (invariant layout) `shouldBe` []
+
+      (drawTreeCompact layout) `shouldBe`
+          "0:((1,1),(8,1))\n"++
+          "1:((1,1),(1,7))\n"++
+          "1:((1,8),(1,19))\n"++
+          "1:((1,20),(1,25))\n"++
+          "1:((3,1),(5,11))\n"++
+          "2:((3,1),(3,3))\n"++
+          "2:((3,4),(5,11))\n"++
+          "3:((3,4),(3,5))\n"++
+          "3:((3,6),(3,7))\n"++
+          "3:((3,8),(3,14))\n"++
+          "4:((3,8),(3,9))\n"++
+          "4:((3,10),(3,11))\n"++
+          "4:((3,12),(3,14))\n"++
+          "3:((4,3),(4,8))\n"++
+          "3:((5,5),(5,11))(Above FromAlignCol (1,-4) (5,5) (5,11) FromAlignCol (2,-10))\n"++
+          "4:((5,5),(5,11))\n"++
+          "5:((5,5),(5,7))\n"++
+          "5:((5,8),(5,11))\n"++
+          "6:((5,8),(5,9))\n"++
+          "6:((5,10),(5,11))\n"++
+          "1:((7,1),(7,6))\n"++
+          "2:((7,1),(7,2))\n"++
+          "2:((7,3),(7,6))\n"++
+          "3:((7,3),(7,4))\n"++
+          "3:((7,5),(7,6))\n"++
+          "1:((8,1),(8,1))\n"
+----------------
+
+
       let srcTree = layoutTreeToSourceTree layout
       -- (show srcTree) `shouldBe`
       --     ""
