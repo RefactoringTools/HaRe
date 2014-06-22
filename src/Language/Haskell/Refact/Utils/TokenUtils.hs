@@ -574,7 +574,7 @@ srcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToF
     (endRow,endCol)     = getGhcLocEnd sspan
 
 -- --------------------------------------------------------------------
-
+{-
 forestSpanFromEntry :: (Entry PosToken) -> ForestSpan
 forestSpanFromEntry (Entry   ss _ _) = ss
 forestSpanFromEntry (Deleted ss _ _) = ss
@@ -582,7 +582,7 @@ forestSpanFromEntry (Deleted ss _ _) = ss
 putForestSpanInEntry :: (Entry PosToken) -> ForestSpan -> (Entry PosToken)
 putForestSpanInEntry (Entry   _ss lay toks) ssnew = (Entry ssnew lay toks)
 putForestSpanInEntry (Deleted _ss pg eg) ssnew = (Deleted ssnew pg eg)
-
+-}
 -- --------------------------------------------------------------------
 
 treeIdFromForestSpan :: ForestSpan -> TreeId

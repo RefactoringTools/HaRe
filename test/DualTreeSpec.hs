@@ -10,10 +10,8 @@ import qualified GHC        as GHC
 -- import qualified GHC.SYB.Utils as SYB
 import Data.Maybe
 
--- import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
--- import Language.Haskell.Refact.Utils.Layout
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -22,7 +20,9 @@ import Language.Haskell.Refact.Utils.TypeUtils
 
 import Language.Haskell.TokenUtils.DualTree
 import Language.Haskell.TokenUtils.GHC.Layout
+import Language.Haskell.TokenUtils.Pretty
 import Language.Haskell.TokenUtils.Types
+
 
 -- import Data.Tree.DUAL
 
@@ -843,13 +843,14 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
       let origSource = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
 
       let layout = allocTokens parsed toks
+      -- (drawTreeCompact layout) `shouldBe` ""
+
       (show $ retrieveTokens layout) `shouldBe` (show toks)
       (invariant layout) `shouldBe` []
 
-
       let srcTree = layoutTreeToSourceTree layout
-      -- (show srcTree) `shouldBe`
-      --     ""
+      -- (showPpr srcTree) `shouldBe` ""
+      -- (show $ retrieveLines srcTree) `shouldBe` ""
 
       (renderSourceTree srcTree) `shouldBe` origSource
 
@@ -916,7 +917,12 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
 
 
       let srcTree2 = layoutTreeToSourceTree layout5
+
+      -- (show srcTree2) `shouldBe` ""
+      -- (showPpr srcTree2) `shouldBe` ""
+      -- "a" `shouldBe` "b"
       -- (showGhc srcTree2) `shouldBe` ""
+      -- (drawTreeCompact layout5) `shouldBe` ""
 
 
       (renderSourceTree srcTree2) `shouldBe` "module LayoutIn1 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'sq' to 'square'.\n\nsumSquares x y= square x + square y where square x= x^pow\n          --There is a comment.\n                                          pow=2\n"
