@@ -178,7 +178,7 @@ import qualified Var           as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import Data.Generics.Strafunski.StrategyLib.StrategyLib
+import Data.Generics.Strafunski.StrategyLib.StrategyLib hiding (liftIO)
 
 -- ---------------------------------------------------------------------
 
