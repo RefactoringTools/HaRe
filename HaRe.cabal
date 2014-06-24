@@ -196,7 +196,7 @@ test-suite doctests
   type:          exitcode-stdio-1.0
   ghc-options:   -threaded
   main-is:       doctests.hs
-  build-depends: base
+  build-depends: base        >= 4.0  && < 4.7
                , doctest >= 0.8
                , ghc-mod
   Hs-Source-Dirs:

@@ -79,21 +79,19 @@ import qualified GHC           as GHC
 
 import qualified Data.Data as SYB
 
--- import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
--- import Language.Haskell.Refact.Utils.Layout
-import Language.Haskell.Refact.Utils.LocUtils hiding (SimpPos)
+import Language.Haskell.Refact.Utils.LocUtils -- hiding (SimpPos)
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes hiding (TokenCache(..),Entry(..),mainTid)
-import Language.Haskell.Refact.Utils.TypeSyn hiding (SimpPos)
+import Language.Haskell.Refact.Utils.TokenUtilsTypes -- hiding (TokenCache(..),Entry(..),mainTid)
+import Language.Haskell.Refact.Utils.TypeSyn -- hiding (SimpPos)
 import Language.Haskell.TokenUtils.DualTree
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.GHC.Layout
 
-import Data.Time.Clock
+-- import Data.Time.Clock
 import Data.Tree
-import System.Log.Logger
+-- import System.Log.Logger
 import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------

@@ -21,7 +21,7 @@ type HsDeclsP = GHC.HsGroup GHC.Name
 -- type InScopes=((Relations.Rel Names.QName (Ents.Ent PosName.Id)))
 type InScopes = [GHC.Name]
 
-type SimpPos = (Int,Int) -- Line, column
+-- type SimpPos = (Int,Int) -- Line, column
 
 -- Additions for GHC
 type PosToken = (GHC.Located GHC.Token, String)

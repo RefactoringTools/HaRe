@@ -26,11 +26,14 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        -- , HDoc(..)
        ) where
 
-import Language.Haskell.Refact.Utils.TypeSyn
-import Data.Tree
-import qualified Data.Map as Map
+-- import Language.Haskell.Refact.Utils.TypeSyn
+-- import Data.Tree
+-- import qualified Data.Map as Map
 
-import Outputable
+import Language.Haskell.TokenUtils.Types
+-- import Language.Haskell.TokenUtils.GHC.Layout
+
+-- import Outputable
 
 -- ---------------------------------------------------------------------
 
@@ -69,6 +72,7 @@ Question: is the latter statement valid? ++AZ++
 
 -}
 
+{-
 -- TODO: turn this into a record, with named accessors
 -- | An entry in the data structure for a particular srcspan.
 data Entry = Entry !ForestSpan -- The source span contained in this
@@ -82,12 +86,14 @@ data Entry = Entry !ForestSpan -- The source span contained in this
                                  --  the start of the next in the
                                  --  fringe of the tree.
 --             deriving (Show)
-
+-}
+{-
 type RowOffset = Int
 type ColOffset = Int
 type Row       = Int
 type Col       = Int
-
+-}
+{-
 data Layout = Above EndOffset (Row,Col) (Row,Col) EndOffset
             -- ^ Initial offset from token before the
             -- stacked list of items, the (r,c) of the first
@@ -97,14 +103,16 @@ data Layout = Above EndOffset (Row,Col) (Row,Col) EndOffset
             -- start of the next item.
             | NoChange
             deriving (Show,Eq)
-
+-}
+{-
 data EndOffset = None
                | SameLine ColOffset
                | FromAlignCol (RowOffset, ColOffset)
                deriving (Show,Eq)
+-}
 
 -- ---------------------------------------------------------------------
-
+{-
 data ForestLine = ForestLine
                   { flSpanLengthChanged :: !Bool -- ^The length of the
                                                  -- span may have
@@ -114,7 +122,8 @@ data ForestLine = ForestLine
                   , flInsertVersion :: !Int
                   , flLine          :: !Int
                   } -- deriving (Eq)
-
+-}
+{-
 instance Eq ForestLine where
   -- TODO: make this undefined, and patch all broken code to use the
   --       specific fun here directly instead.
@@ -129,29 +138,32 @@ instance Show ForestLine where
 
 instance Outputable ForestLine where
   ppr fl = text (show fl)
+-}
 
 -- ---------------------------------------------------------------------
-
+{-
 type ForestPos = (ForestLine,Int)
 
 
 -- |Match a SrcSpan, using a ForestLine as the marker
 type ForestSpan = (ForestPos,ForestPos)
-
+-}
 -- ---------------------------------------------------------------------
 
+{-
 data TreeId = TId !Int deriving (Eq,Ord,Show)
 
 -- |Identifies the tree carrying the main tokens, not any work in
 -- progress or deleted ones
 mainTid :: TreeId
 mainTid = TId 0
-
+-}
+{-
 data TokenCache = TK
   { tkCache :: !(Map.Map TreeId (Tree Entry))
   , tkLastTreeId :: !TreeId
   }
-
+-}
 -- ---------------------------------------------------------------------
 
 data PprOrigin = Original -- ^ Original tokens

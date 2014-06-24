@@ -16,9 +16,9 @@ import Language.Haskell.Refact.Utils.TokenUtilsTypes
 
 -- ---------------------------------------------------------------------
 
-data TokenLayout = TL (Tree Entry)
+data TokenLayout a = TL (Tree (Entry a))
 
-type LayoutTree = Tree Entry
+type LayoutTree a = Tree (Entry a)
 
 -- ---------------------------------------------------------------------
 

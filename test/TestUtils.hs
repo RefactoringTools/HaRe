@@ -42,15 +42,15 @@ import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.Utils
 -- import Language.Haskell.Refact.Utils.DualTree
-import Language.Haskell.Refact.Utils.LocUtils hiding (addOffsetToToks,isIgnoredNonComment,tokenPosEnd,tokenCol,tokenPos,tokenRow,isComment,isWhiteSpaceOrIgnored,tokenColEnd,isEmpty,tokenLen,increaseSrcSpan,groupTokensByLine,isIgnored,nullSrcSpan)
-import Language.Haskell.Refact.Utils.TokenUtilsTypes hiding (TokenCache(..),Entry(..),TreeId(..),mainTid,ForestSpan(..),ForestLine(..),Layout(..),ForestPos(..))
+import Language.Haskell.Refact.Utils.LocUtils -- hiding (isWhiteSpaceOrIgnored,isEmpty,tokenLen,increaseSrcSpan,groupTokensByLine,isIgnored,nullSrcSpan)
+import Language.Haskell.Refact.Utils.TokenUtilsTypes -- hiding (TokenCache(..),Entry(..),TreeId(..),mainTid,ForestSpan(..),ForestLine(..),Layout(..),ForestPos(..))
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 
-import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.GHC.Layout
+-- import Language.Haskell.TokenUtils.Types
+-- import Language.Haskell.TokenUtils.GHC.Layout
 
 import Numeric
 

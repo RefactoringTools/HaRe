@@ -22,9 +22,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , isWhiteSpace
                      , isWhiteSpaceOrIgnored
                      , isIgnored
-                     , isIgnoredNonComment
                      {-
-                     ,isNewLn,isCommentStart -},isComment {-,
                      isNestedComment-},isMultiLineComment {-,isOpenBracket,isCloseBracket, -}
                      ,isOpenSquareBracket,isCloseSquareBracket {- ,isOpenBrace,isConid,
                      isLit,isWhereOrLet,isWhere,isLet-},isIn {- ,isCase,isDo,isIf,isForall,
@@ -65,11 +63,6 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , insertComments,
                      extractComments, insertTerms
                      -}
-                     , tokenCol
-                     , tokenColEnd
-                     , tokenRow
-                     , tokenPos
-                     , tokenPosEnd
                      , tokenSrcSpan
                      , tokenCon
                      , increaseSrcSpan
@@ -105,7 +98,6 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , mkZeroToken
                      , markToken
                      , isMarked
-                     , addOffsetToToks
                      , matchTokenPos
                      , rmOffsetFromToks
   ) where
@@ -123,6 +115,9 @@ import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
+
+import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.GHC.Layout
 
 import Data.Maybe
 import Data.List
@@ -148,8 +143,8 @@ modified   = True
 simpPos0 :: (Int,Int)
 simpPos0 = (0,0)
 
-nullSrcSpan :: GHC.SrcSpan
-nullSrcSpan = GHC.UnhelpfulSpan $ GHC.mkFastString "HaRe nullSrcSpan"
+-- nullSrcSpan :: GHC.SrcSpan
+-- nullSrcSpan = GHC.UnhelpfulSpan $ GHC.mkFastString "HaRe nullSrcSpan"
 
 ------------------------------------------------
 
@@ -205,12 +200,12 @@ isDefault (t, (_,s)) = t == Reservedid && s=="default"
 isClass (t, (_,s)) = t == Reservedid && s=="class"
 isInstance (t, (_,s)) = t == Reservedid && s=="instance"
 isNewtype (t, (_,s)) = t == Reservedid && s=="newtype"
--}
+
 isIn :: PosToken -> Bool
 isIn    ((GHC.L _ t),_s) = case t of
                       GHC.ITin -> True
                       _        -> False
-{-
+
 isCase  (t,(_,s))  = t==Reservedid && s=="case"
 isDo    (t,(_,s))  = t==Reservedid && s=="do"
 isIf    (t,(_,s))  = t==Reservedid && s=="if"
@@ -609,25 +604,8 @@ startEndLocIncFowComment toks t
 
 
 -- ---------------------------------------------------------------------
--- Returned from TokenUtils
-
 
 --Some functions for fetching a specific field of a token
-tokenCol :: PosToken -> Int
-tokenCol (GHC.L l _,_) = c where (_,c) = getGhcLoc l
-
-tokenColEnd :: PosToken -> Int
-tokenColEnd (GHC.L l _,_) = c where (_,c) = getGhcLocEnd l
-
-tokenRow :: PosToken -> Int
-tokenRow (GHC.L l _,_) = r where (r,_) = getGhcLoc l
-
-tokenPos :: (GHC.GenLocated GHC.SrcSpan t1, t) -> SimpPos
-tokenPos (GHC.L l _,_)     = getGhcLoc l
-
-tokenPosEnd :: (GHC.GenLocated GHC.SrcSpan t1, t) -> SimpPos
-tokenPosEnd (GHC.L l _,_)     = getGhcLocEnd l
-
 tokenSrcSpan :: (GHC.Located t1, t) -> GHC.SrcSpan
 tokenSrcSpan (GHC.L l _,_)     = l
 
@@ -636,7 +614,7 @@ tokenCon :: PosToken -> String
 tokenCon (_,s)     = s
 
 -- ---------------------------------------------------------------------
-
+{-
 increaseSrcSpan :: SimpPos -> PosToken -> PosToken
 increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L _l t), s)
     = (GHC.L newL t, s)
@@ -650,7 +628,7 @@ increaseSrcSpan (lineAmount,colAmount) posToken@(lt@(GHC.L _l t), s)
         add1 :: (Int, Int) -> (Int, Int)
         add1 (r,c) = (r+lineAmount,c+colAmount)
 
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | gets the (row,col) of the start of the @GHC.SrcSpan@, or (-1,-1)
@@ -818,57 +796,39 @@ divideComments startLine endLine toks = (first,second)
 
 isWhiteSpace :: PosToken -> Bool
 isWhiteSpace tok = isComment tok || isEmpty tok
-
+{-
 notWhiteSpace :: PosToken -> Bool
 notWhiteSpace tok = not (isWhiteSpace tok)
-
-isWhiteSpaceOrIgnored :: PosToken -> Bool
-isWhiteSpaceOrIgnored tok = isWhiteSpace tok || isIgnored tok
 
 -- Tokens that are ignored when allocating tokens to a SrcSpan
 isIgnored :: PosToken -> Bool
 isIgnored tok = isThen tok || isElse tok || isIn tok || isDo tok
-
--- | Tokens that are ignored when determining the first non-comment
--- token in a span
-isIgnoredNonComment :: PosToken -> Bool
-isIgnoredNonComment tok = isThen tok || isElse tok || isWhiteSpace tok
-
-
+-}
 -- ---------------------------------------------------------------------
 
 isDoubleColon :: PosToken -> Bool
 isDoubleColon ((GHC.L _ (GHC.ITdcolon)), "::") = True
 isDoubleColon _                                = False
 
-isComment :: PosToken -> Bool
-isComment ((GHC.L _ (GHC.ITdocCommentNext _)),_s)  = True
-isComment ((GHC.L _ (GHC.ITdocCommentPrev _)),_s)  = True
-isComment ((GHC.L _ (GHC.ITdocCommentNamed _)),_s) = True
-isComment ((GHC.L _ (GHC.ITdocSection _ _)),_s)    = True
-isComment ((GHC.L _ (GHC.ITdocOptions _)),_s)      = True
-isComment ((GHC.L _ (GHC.ITdocOptionsOld _)),_s)   = True
-isComment ((GHC.L _ (GHC.ITlineComment _)),_s)     = True
-isComment ((GHC.L _ (GHC.ITblockComment _)),_s)    = True
-isComment ((GHC.L _ _),_s)                         = False
-
+{-
 isEmpty :: PosToken -> Bool
 isEmpty ((GHC.L _ (GHC.ITsemi)),    "") = True
 isEmpty ((GHC.L _ (GHC.ITvocurly)), "") = True
 isEmpty ((GHC.L _ _),               "") = True
 isEmpty _                               = False
-
-isWhereOrLet :: PosToken -> Bool
-isWhereOrLet t = isWhere t || isLet t
+-}
+-- isWhereOrLet :: PosToken -> Bool
+-- isWhereOrLet t = isWhere t || isLet t
 
 -- ---------------------------------------------------------------------
 -- This section is horrible because there is no Eq instance for
 -- GHC.Token
 
+{-                       _           -> False
 isWhere :: PosToken -> Bool
 isWhere ((GHC.L _ t),_s) =  case t of
                        GHC.ITwhere -> True
-                       _           -> False
+
 isLet :: PosToken -> Bool
 isLet   ((GHC.L _ t),_s) =  case t of
                        GHC.ITlet -> True
@@ -893,7 +853,7 @@ isDo :: PosToken -> Bool
 isDo   ((GHC.L _ t),_s) =  case t of
                        GHC.ITdo -> True
                        _        -> False
-
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -979,10 +939,10 @@ splitOnNewLn toks = go [] toks
 
 
 -- ---------------------------------------------------------------------
-
+{-
 tokenLen :: PosToken -> Int
 tokenLen (_,s)     = length s   --check this again! need to handle the tab key.
-
+-}
 -- ---------------------------------------------------------------------
 
 newLnToken :: PosToken -> PosToken
@@ -1003,8 +963,8 @@ newLinesToken jump (GHC.L l _,_) = (GHC.L l' GHC.ITvocurly,"")
 
 -- ---------------------------------------------------------------------
 
-groupTokensByLine :: [PosToken] -> [[PosToken]]
-groupTokensByLine xs = groupBy toksOnSameLine xs
+-- groupTokensByLine :: [PosToken] -> [[PosToken]]
+-- groupTokensByLine xs = groupBy toksOnSameLine xs
 
 toksOnSameLine :: PosToken -> PosToken -> Bool
 toksOnSameLine t1 t2 = tokenRow t1 == tokenRow t2
@@ -1048,12 +1008,6 @@ mkToken t (row,col) c = ((GHC.L l t),c)
 
 mkZeroToken :: PosToken
 mkZeroToken = mkToken GHC.ITsemi (0,0) ""
-
--- ---------------------------------------------------------------------
-
--- |Add a constant line and column offset to a span of tokens
-addOffsetToToks :: SimpPos -> [PosToken] -> [PosToken]
-addOffsetToToks (r,c) toks = map (\t -> increaseSrcSpan (r,c) t) toks
 
 -- ---------------------------------------------------------------------
 
