@@ -43,7 +43,6 @@ import Data.Time.Clock
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes --  hiding (TokenCache(..))
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.Refact.Utils.TypeSyn
 import System.Directory

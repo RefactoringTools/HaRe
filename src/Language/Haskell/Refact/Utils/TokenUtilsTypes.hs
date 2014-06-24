@@ -6,6 +6,7 @@
 --
 
 module Language.Haskell.Refact.Utils.TokenUtilsTypes(
+{-
        -- * The cache of trees comprising the manipulated tokens
          TokenCache(..)
        , TreeId(..)
@@ -21,17 +22,13 @@ module Language.Haskell.Refact.Utils.TokenUtilsTypes(
        , ForestLine(..)
        , ForestPos
        , ForestSpan
-       , PprOrigin(..)
+-}
+         PprOrigin(..)
        , Ppr(..)
        -- , HDoc(..)
        ) where
 
--- import Language.Haskell.Refact.Utils.TypeSyn
--- import Data.Tree
--- import qualified Data.Map as Map
-
 import Language.Haskell.TokenUtils.Types
--- import Language.Haskell.TokenUtils.GHC.Layout
 
 -- import Outputable
 

@@ -15,8 +15,6 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
 import Language.Haskell.TokenUtils.DualTree
-import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.GHC.Layout
 
 
 main :: IO ()

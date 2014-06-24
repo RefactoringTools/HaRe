@@ -149,10 +149,9 @@ import qualified GHC.SYB.Utils as SYB
 import qualified Data.Foldable as F
 
 import Language.Haskell.Refact.Utils.GhcUtils
--- import Language.Haskell.Refact.Utils.LayoutTypes -- hiding (LayoutTree(..))
-import Language.Haskell.Refact.Utils.LocUtils -- hiding (addOffsetToToks,isIgnoredNonComment,tokenPosEnd,tokenCol,tokenPos,tokenRow,isComment,isWhiteSpaceOrIgnored,tokenColEnd,isEmpty,tokenLen,increaseSrcSpan,groupTokensByLine,isIgnored)
-import Language.Haskell.Refact.Utils.TokenUtilsTypes -- hiding (TokenCache(..),Entry(..),TreeId(..),mainTid,ForestSpan(..),ForestLine(..),Layout(..),ForestPos(..))
-import Language.Haskell.Refact.Utils.TypeSyn -- hiding (SimpPos)
+import Language.Haskell.Refact.Utils.LocUtils
+import Language.Haskell.Refact.Utils.TokenUtilsTypes
+import Language.Haskell.Refact.Utils.TypeSyn
 
 import Language.Haskell.TokenUtils.Types
 -- import Language.Haskell.TokenUtils.GHC.Layout

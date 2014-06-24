@@ -20,7 +20,7 @@ import Language.Haskell.Refact.Utils.TypeUtils
 
 import Language.Haskell.TokenUtils.DualTree
 import Language.Haskell.TokenUtils.GHC.Layout
-import Language.Haskell.TokenUtils.Pretty
+-- import Language.Haskell.TokenUtils.Pretty
 import Language.Haskell.TokenUtils.Types
 
 

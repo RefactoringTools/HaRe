@@ -150,14 +150,14 @@ import Data.Maybe
 import Data.Monoid
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils -- hiding (addOffsetToToks,isIgnoredNonComment,tokenPosEnd,tokenCol,tokenPos,tokenRow,isComment,isWhiteSpaceOrIgnored,tokenColEnd,isEmpty,tokenLen,increaseSrcSpan,groupTokensByLine,isIgnored,nullSrcSpan,isIn,isWhereOrLet)
+import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes -- hiding (TokenCache(..),Entry(..),mainTid,ForestLine(..))
-import Language.Haskell.Refact.Utils.TypeSyn -- hiding (SimpPos)
+import Language.Haskell.Refact.Utils.TokenUtilsTypes
+import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.GHC.Layout
+-- import Language.Haskell.TokenUtils.GHC.Layout
 
 -- Modules from GHC
 import qualified Bag           as GHC

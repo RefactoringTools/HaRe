@@ -80,11 +80,11 @@ import qualified GHC           as GHC
 import qualified Data.Data as SYB
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils -- hiding (SimpPos)
+import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes -- hiding (TokenCache(..),Entry(..),mainTid)
-import Language.Haskell.Refact.Utils.TypeSyn -- hiding (SimpPos)
+import Language.Haskell.Refact.Utils.TokenUtilsTypes
+import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.TokenUtils.DualTree
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.GHC.Layout

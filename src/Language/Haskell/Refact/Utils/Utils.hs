@@ -32,9 +32,7 @@ module Language.Haskell.Refact.Utils.Utils
 import Control.Monad.State
 import Data.List
 import Data.Maybe
--- import Data.Monoid
 import Language.Haskell.GhcMod
--- import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
