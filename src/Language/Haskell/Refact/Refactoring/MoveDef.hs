@@ -820,7 +820,7 @@ addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _)))) =
   logm $ "addParamsToSigs:replaceSpan=" ++ showGhc replaceSpan
   logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
   newToks <- liftIO $ basicTokenise newStr
-  putToksForSpan replaceSpan newToks
+  void $ putToksForSpan replaceSpan newToks
   let typ' = foldl addOneType ltyp ts
   sigOk <- isNewSignatureOk ts
   logm $ "addParamsToSigs:(sigOk,newStr)=" ++ show (sigOk,newStr)
@@ -878,9 +878,9 @@ typeToHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
 typeToHsType (GHC.FunTy t1 t2) = GHC.HsFunTy (GHC.noLoc $ typeToHsType t1)
                                              (GHC.noLoc $ typeToHsType t2)
 #if __GLASGOW_HASKELL__ > 704
-typeToHsType (GHC.ForAllTy v t) = GHC.HsForAllTy GHC.Explicit (GHC.HsQTvs [] []) (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
+typeToHsType (GHC.ForAllTy _v t) = GHC.HsForAllTy GHC.Explicit (GHC.HsQTvs [] []) (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
 #else
-typeToHsType (GHC.ForAllTy v t) = GHC.HsForAllTy GHC.Explicit [] (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
+typeToHsType (GHC.ForAllTy _v t) = GHC.HsForAllTy GHC.Explicit [] (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
 #endif
 
 #if __GLASGOW_HASKELL__ > 704
@@ -932,7 +932,7 @@ data Type
 -}
 
 tyConAppToHsType :: GHC.Type -> GHC.HsType GHC.Name
-tyConAppToHsType t@(GHC.TyConApp tc _ts)
+tyConAppToHsType (GHC.TyConApp tc _ts)
   | GHC.isFunTyCon tc = r "isFunTyCon"
   | GHC.isAlgTyCon tc = r "isAlgTyCon"
   | GHC.isTupleTyCon tc = r "isTupleTyCon"

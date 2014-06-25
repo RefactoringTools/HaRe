@@ -313,7 +313,8 @@ applyRefac refac source = do
     res <- refac  -- Run the refactoring, updating the state as required
 
     mod'   <- getRefactRenamed
-    toks'  <- fetchToksFinal
+    -- toks'  <- fetchToksFinal
+    let toks' = []
     -- pprVal <- fetchPprFinal
     linesVal <- fetchLinesFinal
     m      <- getRefactStreamModified

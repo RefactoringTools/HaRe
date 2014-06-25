@@ -11,9 +11,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        (
        -- * Conveniences for state access
 
-         fetchToksFinal
+       --   fetchToksFinal
        -- , fetchPprFinal
-       , fetchLinesFinal
+         fetchLinesFinal
        , fetchOrigToks
        , fetchToks -- Deprecated
        -- , putToks -- ^Deprecated, destroys token tree
@@ -83,7 +83,7 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
+-- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.TokenUtils.DualTree
 import Language.Haskell.TokenUtils.Types
@@ -105,6 +105,7 @@ fetchToks = do
   logm $ "fetchToks (not showing toks"
   return toks
 
+{-
 -- |fetch the final tokens
 fetchToksFinal :: RefactGhc [PosToken]
 fetchToksFinal = do
@@ -113,6 +114,7 @@ fetchToksFinal = do
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchToksFinal (not showing toks)"
   return toks
+-}
 
 -- |fetch the final tokens in Ppr format
 fetchLinesFinal :: RefactGhc [Line PosToken]

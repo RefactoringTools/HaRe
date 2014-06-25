@@ -203,7 +203,7 @@ module Language.Haskell.Refact.API
 
  -- * from `Language.Haskell.Refact.Utils.TypeSyn`
     , InScopes
-    , PosToken(..)
+    , PosToken
     , ghead
     , glast
     , gtail
