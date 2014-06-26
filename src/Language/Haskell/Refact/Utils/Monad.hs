@@ -45,6 +45,7 @@ import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.TokenUtils.Utils
 import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger

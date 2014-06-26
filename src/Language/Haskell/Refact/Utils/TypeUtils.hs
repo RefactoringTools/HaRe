@@ -157,6 +157,8 @@ import Language.Haskell.Refact.Utils.TokenUtils
 -- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.TokenUtils
+import Language.Haskell.TokenUtils.Utils
 -- import Language.Haskell.TokenUtils.GHC.Layout
 
 -- Modules from GHC
@@ -4305,7 +4307,7 @@ newNameTok useQual l newName =
    l' =  case l of
      GHC.RealSrcSpan ss ->
        let
-         ((ForestLine _ _ _ startRow,startCol),_) = srcSpanToForestSpan l
+         ((ForestLine _ _ _ startRow,startCol),_) = ghcSrcSpanToForestSpan l
 
          locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) startRow startCol
          locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) startRow (length newNameStr + startCol)

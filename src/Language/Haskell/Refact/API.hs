@@ -53,7 +53,7 @@ module Language.Haskell.Refact.API
 
        -- ** Conveniences for state access
 
-       , fetchToksFinal
+       -- , fetchToksFinal
        , fetchLinesFinal
        , fetchOrigToks
        , fetchToks -- Deprecated
@@ -110,7 +110,7 @@ module Language.Haskell.Refact.API
                      , SimpPos,unmodified,modified
                      , simpPos0
                      , nullSrcSpan
-                     , showToks
+                     -- , showToks
                      , whiteSpaceTokens
                      , realSrcLocFromTok
                      , isWhite
@@ -175,7 +175,7 @@ module Language.Haskell.Refact.API
                      , fileNameFromTok
                      , splitToks
                      , emptyList, nonEmptyList
-                     , divideComments
+                     -- , divideComments
                      , notWhiteSpace
                      , isDoubleColon
                      , isEmpty
@@ -190,8 +190,8 @@ module Language.Haskell.Refact.API
                      , splitOnNewLn
                      , tokenLen
                      , newLnToken
-                     , newLinesToken
-                     , monotonicLineToks
+                     -- , newLinesToken
+                     -- , monotonicLineToks
                      , reSequenceToks
                      , mkToken
                      , mkZeroToken
@@ -372,7 +372,7 @@ module Language.Haskell.Refact.API
  -- * from `Language.Haskell.Refact.Utils.TokenUtils`
  , Positioning(..)
  , reIndentToks
- , srcSpanToForestSpan
+ , ghcSrcSpanToForestSpan
  ) where
 
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -386,4 +386,6 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 
 import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.TokenUtils
+import Language.Haskell.TokenUtils.Utils
 -- import Language.Haskell.TokenUtils.GHC.Layout

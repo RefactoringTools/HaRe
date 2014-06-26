@@ -83,11 +83,13 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.TokenUtils.DualTree
-import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.GHC.Layout
+import Language.Haskell.TokenUtils.TokenUtils
+import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.Utils
+
 
 -- import Data.Time.Clock
 import Data.Tree
@@ -139,7 +141,7 @@ getToksForSpan sspan = do
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
   -- let (forest',toks) = getTokensFor checkInv forest sspan
-  let (forest',toks) = getTokensForNoIntros checkInv forest sspan
+  let (forest',toks) = getTokensForNoIntros checkInv forest (ss2s sspan)
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
@@ -155,7 +157,7 @@ getToksForSpanNoInv sspan = do
   let checkInv = False
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensFor checkInv forest sspan
+  let (forest',toks) = getTokensFor checkInv forest (ss2s sspan)
   -- let (forest',toks) = getTokensForNoIntros checkInv forest sspan
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
@@ -172,7 +174,7 @@ getToksForSpanWithIntros sspan = do
   let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensFor checkInv forest sspan
+  let (forest',toks) = getTokensFor checkInv forest (ss2s sspan)
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
@@ -180,12 +182,12 @@ getToksForSpanWithIntros sspan = do
   return toks
 
 -- |Get the current tokens preceding a given GHC.SrcSpan.
-getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc ReversedToks
+getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc (ReversedToks PosToken)
 getToksBeforeSpan sspan = do
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensBefore forest sspan
+  let (forest',toks) = getTokensBefore forest (ss2s sspan)
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
@@ -200,7 +202,7 @@ replaceToken sspan tok = do
   st <- get
   let Just tm = rsModule st
 
-  let tk' = replaceTokenInCache (rsTokenCache tm) sspan tok
+  let tk' = replaceTokenInCache (rsTokenCache tm) (ss2s sspan) tok
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   return ()
@@ -213,10 +215,10 @@ putToksForSpan sspan toks = do
   st <- get
   let Just tm = rsModule st
 
-  let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
+  let (tk',newSpan) = putToksInCache (rsTokenCache tm) (ss2s sspan) toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  return newSpan
+  return (s2ss newSpan)
 
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens, and update the AST fragment to reflect it
@@ -240,11 +242,11 @@ putToksForPos pos toks = do
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
-  let (tk',newSpan) = putToksInCache (rsTokenCache tm) sspan toks
+  let (tk',newSpan) = putToksInCache (rsTokenCache tm) (ss2s sspan) toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   -- drawTokenTree ""
-  return newSpan
+  return (s2ss newSpan)
 
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterSpan :: GHC.SrcSpan -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
@@ -253,11 +255,11 @@ putToksAfterSpan oldSpan pos toks = do
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache oldSpan (rsTokenCache tm)
-  let (forest',newSpan) = addToksAfterSrcSpan forest oldSpan pos toks
+  let (forest',newSpan) = addToksAfterSrcSpan forest (ss2s oldSpan) pos toks
   let tk' = replaceTreeInCache oldSpan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  return newSpan
+  return (s2ss newSpan)
 
 -- |Add tokens after a designated position
 putToksAfterPos :: (SimpPos,SimpPos) -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
@@ -268,12 +270,12 @@ putToksAfterPos pos position toks = do
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',newSpan) = addToksAfterSrcSpan forest sspan position toks
+  let (forest',newSpan) = addToksAfterSrcSpan forest (ss2s sspan) position toks
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   -- logm $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
-  return newSpan
+  return (s2ss newSpan)
 
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST
 -- fragment to reflect it
@@ -295,7 +297,7 @@ removeToksForSpan sspan = do
   logm $ "removeToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan)
   st <- get
   let Just tm = rsModule st
-  let tk' = removeToksFromCache (rsTokenCache tm) sspan
+  let tk' = removeToksFromCache (rsTokenCache tm) (ss2s sspan)
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return ()
@@ -308,7 +310,7 @@ removeToksForPos pos = do
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
-  let tk' = removeToksFromCache (rsTokenCache tm) sspan
+  let tk' = removeToksFromCache (rsTokenCache tm) (ss2s sspan)
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   -- drawTokenTree "removeToksForPos result"
@@ -383,7 +385,7 @@ indentDeclAndToks t offset = do
   let Just tm = rsModule st
   let tk = rsTokenCache tm
   let forest = (tkCache tk) Map.! mainTid
-  let (t',forest') = indentDeclToks t forest offset
+  let (t',forest') = indentDeclToks syncAST t forest offset
   let tk' = tk {tkCache = Map.insert mainTid forest' (tkCache tk) }
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }

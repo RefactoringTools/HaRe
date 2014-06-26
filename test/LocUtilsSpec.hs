@@ -20,7 +20,9 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
 import Language.Haskell.TokenUtils.Types
--- import Language.Haskell.TokenUtils.GHC.Layout
+import Language.Haskell.TokenUtils.TokenUtils
+import Language.Haskell.TokenUtils.Utils
+import Language.Haskell.TokenUtils.GHC.Layout
 
 -- ---------------------------------------------------------------------
 
@@ -387,7 +389,7 @@ spec = do
       let commentToks = getToks ((15,18),(18,19)) toks
       let (first,second) = divideComments 15 19 commentToks
 
-      (showToks $ getToks ((15,14),(19,1)) toks) `shouldBe` 
+      (showToks $ getToks ((15,14),(19,1)) toks) `shouldBe`
              ("[(((15,14),(15,17)),ITvarid \"bar\",\"bar\"),"++
               "(((15,18),(15,38)),ITlineComment \"-- ^trailing comment\",\"-- ^trailing comment\"),"++
               "(((18,1),(18,19)),ITlineComment \"-- leading comment\",\"-- leading comment\"),"++
@@ -395,7 +397,7 @@ spec = do
 
       (showToks first) `shouldBe` "[(((15,18),(15,38)),ITlineComment \"-- ^trailing comment\",\"-- ^trailing comment\")]"
       (showToks second) `shouldBe` "[(((18,1),(18,19)),ITlineComment \"-- leading comment\",\"-- leading comment\")]"
-             
+
   -- -------------------------------------------------------------------
 
   describe "tokenise" $ do
@@ -996,7 +998,7 @@ spec = do
 
     it "Gets a sane indent for empty tokens" $ do
       (_t,_toks) <- parsedFileOffsetGhc
-      getIndentOffset [] (19,1) `shouldBe` 1
+      getIndentOffset ([]::[PosToken]) (19,1) `shouldBe` 1
 
     -- ---------------------------------
 
@@ -1009,7 +1011,7 @@ spec = do
   describe "extendBackwards" $ do
     it "needs a test or two" $ do
       (_t, toks) <- parsedFileTypeSigs
-      (show $ take 12 toks) `shouldBe` 
+      (show $ take 12 toks) `shouldBe`
                "[((((1,1),(1,7)),ITmodule),\"module\"),"++
                "((((1,8),(1,16)),ITconid \"TypeSigs\"),\"TypeSigs\"),"++
                "((((1,17),(1,22)),ITwhere),\"where\"),"++
@@ -1023,7 +1025,7 @@ spec = do
                "((((3,25),(3,28)),ITconid \"Int\"),\"Int\"),"++
                "((((4,1),(4,1)),ITsemi),\"\")]"
       let (_,middle,_) = splitToks ((3,1),(3,28)) toks
-      (show middle) `shouldBe` 
+      (show middle) `shouldBe`
                "[((((3,1),(3,1)),ITvocurly),\"\"),"++
                "((((3,1),(3,3)),ITvarid \"sq\"),\"sq\"),"++
                "((((3,3),(3,4)),ITcomma),\",\"),"++

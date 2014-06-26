@@ -335,7 +335,7 @@ moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
                          return sigToks
 
   maybeToksSigMulti <- mapM getToksForMaybeSig
-                       $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (srcSpanToForestSpan s1) (srcSpanToForestSpan s2))
+                       $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (ghcSrcSpanToForestSpan s1) (ghcSrcSpanToForestSpan s2))
                           sigsRemoved
   let maybeToksSig = concat maybeToksSigMulti
 

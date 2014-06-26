@@ -116,9 +116,10 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 
-import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.GHC.Layout
+import Language.Haskell.TokenUtils.TokenUtils
+import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.Utils
 
 import Data.Maybe
 import Data.List
@@ -687,7 +688,7 @@ fileNameFromTok (GHC.L (GHC.RealSrcSpan srcspan) _,_) = GHC.srcSpanFile srcspan
 fileNameFromTok (GHC.L _ _,_) = GHC.mkFastString "f"
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Split the token stream into three parts: the tokens before the
 -- startPos, the tokens between startPos and endPos, and the tokens
 -- after endPos.
@@ -701,7 +702,7 @@ splitToks (startPos, endPos) toks =
   in
     (toks1,toks21,toks22)
 
-
+-}
 -- ----------------------------------------------------------------------
 
 -- |Get around lack of instance Eq when simply testing for empty list
@@ -1020,7 +1021,7 @@ onSameLn (GHC.L l1 _,_) (GHC.L l2 _,_) = r1 == r2
     (r2,_) = getGhcLoc l2
 -}
 -- ---------------------------------------------------------------------
-
+{-
 -- |Used as a marker in the filename part of the SrcSpan on modified
 -- tokens, to trigger re-alignment when retrieving the tokens.
 tokenFileMark :: GHC.FastString
@@ -1049,7 +1050,7 @@ isMarked (GHC.L l _,_) =
   case l of
     GHC.RealSrcSpan ss -> GHC.srcSpanFile ss == tokenFileMark
     _                  -> False
-
+-}
 -- ---------------------------------------------------------------------
 
 rmOffsetFromToks :: [PosToken] -> [PosToken]

@@ -11,6 +11,7 @@ module TestUtils
        , initialState
        , initialLogOnState
        , toksFromState
+       , renderTree
        -- , pprFromState
        , sourceTreeFromState
        , linesFromState
@@ -140,11 +141,22 @@ initialLogOnState = RefSt
 
 -- ---------------------------------------------------------------------
 
-toksFromState :: RefactState -> [PosToken]
+-- toksFromState :: RefactState -> [PosToken]
+toksFromState :: RefactState -> String
 toksFromState st =
+  case (rsModule st) of
+    Just tm -> renderSourceTree $ layoutTreeToSourceTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
+    Nothing -> ""
+{-
   case (rsModule st) of
     Just tm -> retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
+-}
+
+-- ---------------------------------------------------------------------
+
+renderTree :: Tree (Entry PosToken) -> String
+renderTree tree = renderSourceTree $ layoutTreeToSourceTree tree
 
 -- ---------------------------------------------------------------------
 
@@ -174,12 +186,12 @@ layoutFromState st =
 -- ---------------------------------------------------------------------
 
 entriesFromState :: RefactState -> [Entry PosToken]
-entriesFromState st =
+entriesFromState st = error $ "entriesFromState deprecated"
+{-
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
-
+-}
 -- ---------------------------------------------------------------------
 
 mkTokenCache :: Tree (Entry PosToken) -> TokenCache PosToken

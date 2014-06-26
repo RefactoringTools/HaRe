@@ -14,6 +14,8 @@ import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 
 import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.TokenUtils
+import Language.Haskell.TokenUtils.Utils
 import Language.Haskell.TokenUtils.GHC.Layout
 
 import TestUtils

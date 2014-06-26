@@ -93,7 +93,7 @@ type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)
 
 -- ---------------------------------------------------------------------
 -- Putting these here for the time being, to avoid import loops
-
+{-
 ghead :: String -> [a] -> a
 ghead  info []    = error $ "ghead "++info++" []"
 ghead _info (h:_) = h
@@ -109,5 +109,5 @@ gtail _info h    = tail h
 gfromJust :: [Char] -> Maybe a -> a
 gfromJust _info (Just h) = h
 gfromJust  info Nothing = error $ "gfromJust " ++ info ++ " Nothing"
-
+-}
 -- ---------------------------------------------------------------------
