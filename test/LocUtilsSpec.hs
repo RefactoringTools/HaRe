@@ -35,7 +35,7 @@ spec :: Spec
 spec = do
 
   describe "startEndLocIncComments" $ do
-    it "get start&end loc, including leading and trailing comments" $ do
+    it "gets start&end loc, including leading and trailing comments" $ do
       (t, toks) <- parsedFileDeclareGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -48,6 +48,7 @@ spec = do
       (showGhc decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
       (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe`
+             {-
              ("[(((18,1),(18,1)),ITsemi,\"\")," ++
              "(((18,1),(18,5)),ITdata,\"data\")," ++
              "(((18,6),(18,7)),ITconid \"D\",\"D\")," ++
@@ -72,6 +73,8 @@ spec = do
                                              "\"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\")," ++
              "(((25,1),(25,1)),ITsemi,\"\")," ++
              "(((25,1),(25,5)),ITdata,\"data\")]")
+             -}
+           "[((18,1),(18,1),((((18,1),(18,1)),ITsemi),\"\")),((18,1),(18,5),((((18,1),(18,5)),ITdata),\"data\")),((18,6),(18,7),((((18,6),(18,7)),ITconid \"D\"),\"D\")),((18,8),(18,9),((((18,8),(18,9)),ITequal),\"=\")),((18,10),(18,11),((((18,10),(18,11)),ITconid \"A\"),\"A\")),((18,12),(18,13),((((18,12),(18,13)),ITvbar),\"|\")),((18,14),(18,15),((((18,14),(18,15)),ITconid \"B\"),\"B\")),((18,16),(18,22),((((18,16),(18,22)),ITconid \"String\"),\"String\")),((18,23),(18,24),((((18,23),(18,24)),ITvbar),\"|\")),((18,25),(18,26),((((18,25),(18,26)),ITconid \"C\"),\"C\")),((20,1),(20,32),((((20,1),(20,32)),ITlineComment \"-- Retrieve the String from a B\"),\"-- Retrieve the String from a B\")),((21,1),(21,1),((((21,1),(21,1)),ITsemi),\"\")),((21,1),(21,4),((((21,1),(21,4)),ITvarid \"unD\"),\"unD\")),((21,5),(21,6),((((21,5),(21,6)),IToparen),\"(\")),((21,6),(21,7),((((21,6),(21,7)),ITconid \"B\"),\"B\")),((21,8),(21,9),((((21,8),(21,9)),ITvarid \"y\"),\"y\")),((21,9),(21,10),((((21,9),(21,10)),ITcparen),\")\")),((21,11),(21,12),((((21,11),(21,12)),ITequal),\"=\")),((21,13),(21,14),((((21,13),(21,14)),ITvarid \"y\"),\"y\")),((22,1),(22,18),((((22,1),(22,18)),ITlineComment \"-- But no others.\"),\"-- But no others.\")),((24,1),(24,73),((((24,1),(24,73)),ITlineComment \"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\"),\"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\")),((25,1),(25,1),((((25,1),(25,1)),ITsemi),\"\")),((25,1),(25,5),((((25,1),(25,5)),ITdata),\"data\"))]"
 
 
       (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
@@ -79,7 +82,7 @@ spec = do
 
     -- -----------------------------------------------------------------
 
-    it "get start&end loc, including leading comments which belong" $ do
+    it "gets start&end loc, including leading comments which belong" $ do
       (t, toks) <- parsedFileWhereIn3Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -101,6 +104,7 @@ spec = do
       (showGhc sqSig) `shouldBe` "Demote.WhereIn3.sq ::\n  GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int"
 
       (showToks $ getToks ((11,1),(15,1)) toks) `shouldBe`
+             {-
              ("[(((11,10),(11,15)),ITwhere,\"where\"),"++
              "(((11,16),(11,16)),ITvocurly,\"\"),"++
              "(((11,16),(11,17)),ITvarid \"p\",\"p\"),"++
@@ -124,14 +128,15 @@ spec = do
              "(((14,12),(14,13)),ITinteger 0,\"0\"),"++
              "(((15,1),(15,1)),ITsemi,\"\"),"++
              "(((15,1),(15,3)),ITvarid \"sq\",\"sq\")]")
-
+             -}
+        "[((11,10),(11,15),((((11,10),(11,15)),ITwhere),\"where\")),((11,16),(11,16),((((11,16),(11,16)),ITvocurly),\"\")),((11,16),(11,17),((((11,16),(11,17)),ITvarid \"p\"),\"p\")),((11,17),(11,18),((((11,17),(11,18)),ITequal),\"=\")),((11,18),(11,19),((((11,18),(11,19)),ITinteger 2),\"2\")),((11,21),(11,43),((((11,21),(11,43)),ITblockComment \"There is a comment\"),\"{-There is a comment-}\")),((13,1),(13,1),((((13,1),(13,1)),ITvccurly),\"\")),((13,1),(13,1),((((13,1),(13,1)),ITsemi),\"\")),((13,1),(13,3),((((13,1),(13,3)),ITvarid \"sq\"),\"sq\")),((13,4),(13,6),((((13,4),(13,6)),ITdcolon),\"::\")),((13,7),(13,10),((((13,7),(13,10)),ITconid \"Int\"),\"Int\")),((13,11),(13,13),((((13,11),(13,13)),ITrarrow),\"->\")),((13,14),(13,17),((((13,14),(13,17)),ITconid \"Int\"),\"Int\")),((13,18),(13,20),((((13,18),(13,20)),ITrarrow),\"->\")),((13,21),(13,24),((((13,21),(13,24)),ITconid \"Int\"),\"Int\")),((14,1),(14,1),((((14,1),(14,1)),ITsemi),\"\")),((14,1),(14,3),((((14,1),(14,3)),ITvarid \"sq\"),\"sq\")),((14,4),(14,7),((((14,4),(14,7)),ITvarid \"pow\"),\"pow\")),((14,8),(14,9),((((14,8),(14,9)),ITinteger 0),\"0\")),((14,10),(14,11),((((14,10),(14,11)),ITequal),\"=\")),((14,12),(14,13),((((14,12),(14,13)),ITinteger 0),\"0\")),((15,1),(15,1),((((15,1),(15,1)),ITsemi),\"\")),((15,1),(15,3),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"))]"
 
       (show $ getStartEndLoc sqSig) `shouldBe` "((13,1),(13,24))"
       (show   (startPos,endPos)) `shouldBe` "((13,1),(13,24))"
 
     -- -----------------------------------------------------------------
 
-    it "get start&end loc, including leading comments which belong 2" $ do
+    it "gets start&end loc, including leading comments which belong 2" $ do
       (t, toks) <- parsedFileTokenTestGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -148,6 +153,7 @@ spec = do
       (showGhc decl) `shouldBe` "TokenTest.foo x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
 
       (showToks $ getToks ((14,1),(26,1)) toks) `shouldBe`
+             {-
              ("[(((14,3),(14,6)),ITlet,\"let\"),"++
              "(((14,7),(14,7)),ITvocurly,\"\"),"++
              "(((14,7),(14,10)),ITvarid \"bar\",\"bar\"),"++
@@ -175,7 +181,8 @@ spec = do
              "(((21,13),(21,14)),ITvarid \"c\",\"c\"),"++
              "(((26,1),(26,1)),ITvccurly,\"\"),"++
              "(((26,1),(26,1)),ITsemi,\"\")]")
-
+             -}
+          "[((14,3),(14,6),((((14,3),(14,6)),ITlet),\"let\")),((14,7),(14,7),((((14,7),(14,7)),ITvocurly),\"\")),((14,7),(14,10),((((14,7),(14,10)),ITvarid \"bar\"),\"bar\")),((14,11),(14,12),((((14,11),(14,12)),ITequal),\"=\")),((14,13),(14,14),((((14,13),(14,14)),ITinteger 3),\"3\")),((15,3),(15,3),((((15,3),(15,3)),ITvccurly),\"\")),((15,3),(15,5),((((15,3),(15,5)),ITin),\"in\")),((15,10),(15,11),((((15,10),(15,11)),ITvarid \"b\"),\"b\")),((15,12),(15,13),((((15,12),(15,13)),ITvarsym \"+\"),\"+\")),((15,14),(15,17),((((15,14),(15,17)),ITvarid \"bar\"),\"bar\")),((15,18),(15,38),((((15,18),(15,38)),ITlineComment \"-- ^trailing comment\"),\"-- ^trailing comment\")),((18,1),(18,19),((((18,1),(18,19)),ITlineComment \"-- leading comment\"),\"-- leading comment\")),((19,1),(19,1),((((19,1),(19,1)),ITsemi),\"\")),((19,1),(19,4),((((19,1),(19,4)),ITvarid \"foo\"),\"foo\")),((19,5),(19,6),((((19,5),(19,6)),ITvarid \"x\"),\"x\")),((19,7),(19,8),((((19,7),(19,8)),ITvarid \"y\"),\"y\")),((19,9),(19,10),((((19,9),(19,10)),ITequal),\"=\")),((20,3),(20,5),((((20,3),(20,5)),ITdo),\"do\")),((20,6),(20,6),((((20,6),(20,6)),ITvocurly),\"\")),((20,6),(20,7),((((20,6),(20,7)),ITvarid \"c\"),\"c\")),((20,8),(20,10),((((20,8),(20,10)),ITlarrow),\"<-\")),((20,11),(20,18),((((20,11),(20,18)),ITvarid \"getChar\"),\"getChar\")),((21,6),(21,6),((((21,6),(21,6)),ITsemi),\"\")),((21,6),(21,12),((((21,6),(21,12)),ITvarid \"return\"),\"return\")),((21,13),(21,14),((((21,13),(21,14)),ITvarid \"c\"),\"c\")),((26,1),(26,1),((((26,1),(26,1)),ITvccurly),\"\")),((26,1),(26,1),((((26,1),(26,1)),ITsemi),\"\"))]"
 
       (show $ getStartEndLoc decl) `shouldBe` "((19,1),(21,14))"
       (show   (startPos,endPos)) `shouldBe` "((18,1),(21,14))"
@@ -193,6 +200,7 @@ spec = do
       (showGhc expr) `shouldBe` "b GHC.Num.+ bar"
 
       (showToks $ getToks ((14,1),(26,1)) toks) `shouldBe`
+             {-
              ("[(((14,3),(14,6)),ITlet,\"let\"),"++
              "(((14,7),(14,7)),ITvocurly,\"\"),"++
              "(((14,7),(14,10)),ITvarid \"bar\",\"bar\"),"++
@@ -220,6 +228,8 @@ spec = do
              "(((21,13),(21,14)),ITvarid \"c\",\"c\"),"++
              "(((26,1),(26,1)),ITvccurly,\"\"),"++
              "(((26,1),(26,1)),ITsemi,\"\")]")
+             -}
+         "[((14,3),(14,6),((((14,3),(14,6)),ITlet),\"let\")),((14,7),(14,7),((((14,7),(14,7)),ITvocurly),\"\")),((14,7),(14,10),((((14,7),(14,10)),ITvarid \"bar\"),\"bar\")),((14,11),(14,12),((((14,11),(14,12)),ITequal),\"=\")),((14,13),(14,14),((((14,13),(14,14)),ITinteger 3),\"3\")),((15,3),(15,3),((((15,3),(15,3)),ITvccurly),\"\")),((15,3),(15,5),((((15,3),(15,5)),ITin),\"in\")),((15,10),(15,11),((((15,10),(15,11)),ITvarid \"b\"),\"b\")),((15,12),(15,13),((((15,12),(15,13)),ITvarsym \"+\"),\"+\")),((15,14),(15,17),((((15,14),(15,17)),ITvarid \"bar\"),\"bar\")),((15,18),(15,38),((((15,18),(15,38)),ITlineComment \"-- ^trailing comment\"),\"-- ^trailing comment\")),((18,1),(18,19),((((18,1),(18,19)),ITlineComment \"-- leading comment\"),\"-- leading comment\")),((19,1),(19,1),((((19,1),(19,1)),ITsemi),\"\")),((19,1),(19,4),((((19,1),(19,4)),ITvarid \"foo\"),\"foo\")),((19,5),(19,6),((((19,5),(19,6)),ITvarid \"x\"),\"x\")),((19,7),(19,8),((((19,7),(19,8)),ITvarid \"y\"),\"y\")),((19,9),(19,10),((((19,9),(19,10)),ITequal),\"=\")),((20,3),(20,5),((((20,3),(20,5)),ITdo),\"do\")),((20,6),(20,6),((((20,6),(20,6)),ITvocurly),\"\")),((20,6),(20,7),((((20,6),(20,7)),ITvarid \"c\"),\"c\")),((20,8),(20,10),((((20,8),(20,10)),ITlarrow),\"<-\")),((20,11),(20,18),((((20,11),(20,18)),ITvarid \"getChar\"),\"getChar\")),((21,6),(21,6),((((21,6),(21,6)),ITsemi),\"\")),((21,6),(21,12),((((21,6),(21,12)),ITvarid \"return\"),\"return\")),((21,13),(21,14),((((21,13),(21,14)),ITvarid \"c\"),\"c\")),((26,1),(26,1),((((26,1),(26,1)),ITvccurly),\"\")),((26,1),(26,1),((((26,1),(26,1)),ITsemi),\"\"))]"
 
       (show $ getStartEndLoc expr) `shouldBe` "((15,10),(15,17))"
       (show   (startPos,endPos)) `shouldBe` "((15,3),(15,38))"
@@ -239,6 +249,7 @@ spec = do
       (showGhc decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
       -- (SYB.showData SYB.Renamer 0 decl) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
       (showToks $ getToks ((13,1),(22,1)) toks) `shouldBe`
+             {-
              ("[(((13,1),(13,1)),ITvccurly,\"\"),"++
               "(((13,1),(13,1)),ITsemi,\"\"),"++
               "(((13,1),(13,9)),ITvarid \"addthree\",\"addthree\"),"++
@@ -252,7 +263,8 @@ spec = do
               "(((13,19),(13,20)),ITvarsym \"+\",\"+\"),"++
               "(((13,20),(13,21)),ITvarid \"c\",\"c\"),"++
               "(((16,1),(16,1)),ITsemi,\"\")]")
-
+              -}
+          "[((13,1),(13,1),((((13,1),(13,1)),ITvccurly),\"\")),((13,1),(13,1),((((13,1),(13,1)),ITsemi),\"\")),((13,1),(13,9),((((13,1),(13,9)),ITvarid \"addthree\"),\"addthree\")),((13,10),(13,11),((((13,10),(13,11)),ITvarid \"a\"),\"a\")),((13,12),(13,13),((((13,12),(13,13)),ITvarid \"b\"),\"b\")),((13,14),(13,15),((((13,14),(13,15)),ITvarid \"c\"),\"c\")),((13,15),(13,16),((((13,15),(13,16)),ITequal),\"=\")),((13,16),(13,17),((((13,16),(13,17)),ITvarid \"a\"),\"a\")),((13,17),(13,18),((((13,17),(13,18)),ITvarsym \"+\"),\"+\")),((13,18),(13,19),((((13,18),(13,19)),ITvarid \"b\"),\"b\")),((13,19),(13,20),((((13,19),(13,20)),ITvarsym \"+\"),\"+\")),((13,20),(13,21),((((13,20),(13,21)),ITvarid \"c\"),\"c\")),((16,1),(16,1),((((16,1),(16,1)),ITsemi),\"\"))]"
 
       (show $ getStartEndLoc decl) `shouldBe` "((13,1),(13,21))"
       (show   (startPos,endPos)) `shouldBe` "((13,1),(13,21))"
@@ -260,7 +272,7 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "startEndLocIncFowComment" $ do
-    it "get start&end loc, including trailing comments" $ do
+    it "gets start&end loc, including trailing comments" $ do
       (t, toks) <- parsedFileDeclareGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -274,6 +286,7 @@ spec = do
       (showGhc decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
       (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe`
+             {-
              ("[(((18,1),(18,1)),ITsemi,\"\")," ++
              "(((18,1),(18,5)),ITdata,\"data\")," ++
              "(((18,6),(18,7)),ITconid \"D\",\"D\")," ++
@@ -298,14 +311,15 @@ spec = do
                                              "\"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\")," ++
              "(((25,1),(25,1)),ITsemi,\"\")," ++
              "(((25,1),(25,5)),ITdata,\"data\")]")
-
+             -}
+          "[((18,1),(18,1),((((18,1),(18,1)),ITsemi),\"\")),((18,1),(18,5),((((18,1),(18,5)),ITdata),\"data\")),((18,6),(18,7),((((18,6),(18,7)),ITconid \"D\"),\"D\")),((18,8),(18,9),((((18,8),(18,9)),ITequal),\"=\")),((18,10),(18,11),((((18,10),(18,11)),ITconid \"A\"),\"A\")),((18,12),(18,13),((((18,12),(18,13)),ITvbar),\"|\")),((18,14),(18,15),((((18,14),(18,15)),ITconid \"B\"),\"B\")),((18,16),(18,22),((((18,16),(18,22)),ITconid \"String\"),\"String\")),((18,23),(18,24),((((18,23),(18,24)),ITvbar),\"|\")),((18,25),(18,26),((((18,25),(18,26)),ITconid \"C\"),\"C\")),((20,1),(20,32),((((20,1),(20,32)),ITlineComment \"-- Retrieve the String from a B\"),\"-- Retrieve the String from a B\")),((21,1),(21,1),((((21,1),(21,1)),ITsemi),\"\")),((21,1),(21,4),((((21,1),(21,4)),ITvarid \"unD\"),\"unD\")),((21,5),(21,6),((((21,5),(21,6)),IToparen),\"(\")),((21,6),(21,7),((((21,6),(21,7)),ITconid \"B\"),\"B\")),((21,8),(21,9),((((21,8),(21,9)),ITvarid \"y\"),\"y\")),((21,9),(21,10),((((21,9),(21,10)),ITcparen),\")\")),((21,11),(21,12),((((21,11),(21,12)),ITequal),\"=\")),((21,13),(21,14),((((21,13),(21,14)),ITvarid \"y\"),\"y\")),((22,1),(22,18),((((22,1),(22,18)),ITlineComment \"-- But no others.\"),\"-- But no others.\")),((24,1),(24,73),((((24,1),(24,73)),ITlineComment \"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\"),\"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\")),((25,1),(25,1),((((25,1),(25,1)),ITsemi),\"\")),((25,1),(25,5),((((25,1),(25,5)),ITdata),\"data\"))]"
 
       (show $ getStartEndLoc decl) `shouldBe` "((21,1),(21,14))"
       (show   (startPos,endPos)) `shouldBe` "((21,1),(22,18))"
 
     -- -----------------------------------------------------------------
 
-    it "get start&end loc, including trailing comments, but not next from next decl 1" $ do
+    it "gets start&end loc, including trailing comments, but not next from next decl 1" $ do
       (t, toks) <- parsedFileDemoteGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -319,7 +333,8 @@ spec = do
       (showGhc decls) `shouldBe` "[MoveDef.Demote.d = 9, MoveDef.Demote.c = 7,\n MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x]"
       (showGhc decl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
 
-      (showToks $ getToks ((4,1),(8,1)) toks) `shouldBe` 
+      (showToks $ getToks ((4,1),(8,1)) toks) `shouldBe`
+             {-
              ("[(((4,1),(4,1)),ITsemi,\"\"),"++
              "(((4,1),(4,9)),ITvarid \"toplevel\",\"toplevel\"),"++
              "(((4,10),(4,11)),ITvarid \"x\",\"x\"),"++
@@ -334,7 +349,8 @@ spec = do
              "(((7,5),(7,6)),ITinteger 7,\"7\"),"++
              "(((8,1),(8,1)),ITsemi,\"\"),"++
              "(((8,1),(8,2)),ITvarid \"d\",\"d\")]")
-
+             -}
+          "[((4,1),(4,1),((((4,1),(4,1)),ITsemi),\"\")),((4,1),(4,9),((((4,1),(4,9)),ITvarid \"toplevel\"),\"toplevel\")),((4,10),(4,11),((((4,10),(4,11)),ITvarid \"x\"),\"x\")),((4,12),(4,13),((((4,12),(4,13)),ITequal),\"=\")),((4,14),(4,15),((((4,14),(4,15)),ITvarid \"c\"),\"c\")),((4,16),(4,17),((((4,16),(4,17)),ITstar),\"*\")),((4,18),(4,19),((((4,18),(4,19)),ITvarid \"x\"),\"x\")),((6,1),(6,18),((((6,1),(6,18)),ITlineComment \"-- c,d :: Integer\"),\"-- c,d :: Integer\")),((7,1),(7,1),((((7,1),(7,1)),ITsemi),\"\")),((7,1),(7,2),((((7,1),(7,2)),ITvarid \"c\"),\"c\")),((7,3),(7,4),((((7,3),(7,4)),ITequal),\"=\")),((7,5),(7,6),((((7,5),(7,6)),ITinteger 7),\"7\")),((8,1),(8,1),((((8,1),(8,1)),ITsemi),\"\")),((8,1),(8,2),((((8,1),(8,2)),ITvarid \"d\"),\"d\"))]"
 
       (show $ getStartEndLoc decl) `shouldBe` "((4,1),(4,19))"
       (show   (startPos,endPos)) `shouldBe` "((4,1),(4,19))"
@@ -355,7 +371,8 @@ spec = do
       (showGhc decls) `shouldBe` "[TokenTest.foo x y\n   = do { c <- System.IO.getChar;\n          GHC.Base.return c },\n TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar,\n TokenTest.bib a b\n   = x\n   where\n       x = 3,\n TokenTest.bob a b\n   = x\n   where\n       x = 3]"
       (showGhc decl) `shouldBe` "TokenTest.bab a b = let bar = 3 in b GHC.Num.+ bar"
 
-      (showToks $ getToks ((13,1),(19,1)) toks) `shouldBe` 
+      (showToks $ getToks ((13,1),(19,1)) toks) `shouldBe`
+             {-
              ("[(((13,1),(13,1)),ITvccurly,\"\"),"++
               "(((13,1),(13,1)),ITsemi,\"\"),"++
               "(((13,1),(13,4)),ITvarid \"bab\",\"bab\"),"++
@@ -375,7 +392,8 @@ spec = do
               "(((15,18),(15,38)),ITlineComment \"-- ^trailing comment\",\"-- ^trailing comment\"),"++
               "(((18,1),(18,19)),ITlineComment \"-- leading comment\",\"-- leading comment\"),"++
               "(((19,1),(19,1)),ITsemi,\"\"),(((19,1),(19,4)),ITvarid \"foo\",\"foo\")]")
-
+              -}
+          "[((13,1),(13,1),((((13,1),(13,1)),ITvccurly),\"\")),((13,1),(13,1),((((13,1),(13,1)),ITsemi),\"\")),((13,1),(13,4),((((13,1),(13,4)),ITvarid \"bab\"),\"bab\")),((13,5),(13,6),((((13,5),(13,6)),ITvarid \"a\"),\"a\")),((13,7),(13,8),((((13,7),(13,8)),ITvarid \"b\"),\"b\")),((13,9),(13,10),((((13,9),(13,10)),ITequal),\"=\")),((14,3),(14,6),((((14,3),(14,6)),ITlet),\"let\")),((14,7),(14,7),((((14,7),(14,7)),ITvocurly),\"\")),((14,7),(14,10),((((14,7),(14,10)),ITvarid \"bar\"),\"bar\")),((14,11),(14,12),((((14,11),(14,12)),ITequal),\"=\")),((14,13),(14,14),((((14,13),(14,14)),ITinteger 3),\"3\")),((15,3),(15,3),((((15,3),(15,3)),ITvccurly),\"\")),((15,3),(15,5),((((15,3),(15,5)),ITin),\"in\")),((15,10),(15,11),((((15,10),(15,11)),ITvarid \"b\"),\"b\")),((15,12),(15,13),((((15,12),(15,13)),ITvarsym \"+\"),\"+\")),((15,14),(15,17),((((15,14),(15,17)),ITvarid \"bar\"),\"bar\")),((15,18),(15,38),((((15,18),(15,38)),ITlineComment \"-- ^trailing comment\"),\"-- ^trailing comment\")),((18,1),(18,19),((((18,1),(18,19)),ITlineComment \"-- leading comment\"),\"-- leading comment\")),((19,1),(19,1),((((19,1),(19,1)),ITsemi),\"\")),((19,1),(19,4),((((19,1),(19,4)),ITvarid \"foo\"),\"foo\"))]"
 
       (show $ getStartEndLoc decl) `shouldBe` "((13,1),(15,17))"
       (show   (startPos,endPos)) `shouldBe` "((13,1),(15,38))"
@@ -390,13 +408,16 @@ spec = do
       let (first,second) = divideComments 15 19 commentToks
 
       (showToks $ getToks ((15,14),(19,1)) toks) `shouldBe`
+            {-
              ("[(((15,14),(15,17)),ITvarid \"bar\",\"bar\"),"++
               "(((15,18),(15,38)),ITlineComment \"-- ^trailing comment\",\"-- ^trailing comment\"),"++
               "(((18,1),(18,19)),ITlineComment \"-- leading comment\",\"-- leading comment\"),"++
               "(((19,1),(19,1)),ITsemi,\"\"),(((19,1),(19,4)),ITvarid \"foo\",\"foo\")]")
+            -}
+          "[((15,14),(15,17),((((15,14),(15,17)),ITvarid \"bar\"),\"bar\")),((15,18),(15,38),((((15,18),(15,38)),ITlineComment \"-- ^trailing comment\"),\"-- ^trailing comment\")),((18,1),(18,19),((((18,1),(18,19)),ITlineComment \"-- leading comment\"),\"-- leading comment\")),((19,1),(19,1),((((19,1),(19,1)),ITsemi),\"\")),((19,1),(19,4),((((19,1),(19,4)),ITvarid \"foo\"),\"foo\"))]"
 
-      (showToks first) `shouldBe` "[(((15,18),(15,38)),ITlineComment \"-- ^trailing comment\",\"-- ^trailing comment\")]"
-      (showToks second) `shouldBe` "[(((18,1),(18,19)),ITlineComment \"-- leading comment\",\"-- leading comment\")]"
+      (showToks first) `shouldBe` "[((15,18),(15,38),((((15,18),(15,38)),ITlineComment \"-- ^trailing comment\"),\"-- ^trailing comment\"))]"
+      (showToks second) `shouldBe` "[((18,1),(18,19),((((18,1),(18,19)),ITlineComment \"-- leading comment\"),\"-- leading comment\"))]"
 
   -- -------------------------------------------------------------------
 
@@ -404,16 +425,20 @@ spec = do
     it "converts a string to Haskell tokens" $ do
       let startLoc = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 3 4)
       toks <- tokenise startLoc 0 False "x y\n  z"
-      (showToks toks) `shouldBe` ("[(((3,4),(3,5)),ITvarid \"x\",\"x\")," ++
+      (showToks toks) `shouldBe` {- ("[(((3,4),(3,5)),ITvarid \"x\",\"x\")," ++
                                    "(((3,6),(3,7)),ITvarid \"y\",\"y\")," ++
                                    "(((4,3),(4,4)),ITvarid \"z\",\"z\")]")
+                                 -}
+         "[((3,4),(3,5),((((3,4),(3,5)),ITvarid \"x\"),\"x\")),((3,6),(3,7),((((3,6),(3,7)),ITvarid \"y\"),\"y\")),((4,3),(4,4),((((4,3),(4,4)),ITvarid \"z\"),\"z\"))]"
 
     it "indents the string of tokens if required" $ do
       let startLoc = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 3 4)
       toks <- tokenise startLoc 5 True "x y\n  z"
-      (showToks toks) `shouldBe` ("[(((3,9),(3,10)),ITvarid \"x\",\"x\")," ++
+      (showToks toks) `shouldBe` {- ("[(((3,9),(3,10)),ITvarid \"x\",\"x\")," ++
                                    "(((3,11),(3,12)),ITvarid \"y\",\"y\")," ++
                                    "(((4,8),(4,9)),ITvarid \"z\",\"z\")]")
+                                 -}
+                  "[((3,9),(3,10),((((3,9),(3,10)),ITvarid \"x\"),\"x\")),((3,11),(3,12),((((3,11),(3,12)),ITvarid \"y\"),\"y\")),((4,8),(4,9),((((4,8),(4,9)),ITvarid \"z\"),\"z\"))]"
 
   -- -------------------------------------------------------------------
 
@@ -421,10 +446,12 @@ spec = do
     it "parses a string to Haskell tokens" $ do
       let startLoc = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 3 4)
       toks <- lexStringToRichTokens startLoc "toplevel x y z"
-      (showToks toks) `shouldBe` ("[(((3,4),(3,12)),ITvarid \"toplevel\",\"toplevel\")," ++ 
+      (showToks toks) `shouldBe` {- ("[(((3,4),(3,12)),ITvarid \"toplevel\",\"toplevel\")," ++ 
                                    "(((3,13),(3,14)),ITvarid \"x\",\"x\")," ++
                                    "(((3,15),(3,16)),ITvarid \"y\",\"y\")," ++
                                    "(((3,17),(3,18)),ITvarid \"z\",\"z\")]")
+                                  -}
+         "[((3,4),(3,12),((((3,4),(3,12)),ITvarid \"toplevel\"),\"toplevel\")),((3,13),(3,14),((((3,13),(3,14)),ITvarid \"x\"),\"x\")),((3,15),(3,16),((((3,15),(3,16)),ITvarid \"y\"),\"y\")),((3,17),(3,18),((((3,17),(3,18)),ITvarid \"z\"),\"z\"))]"
 
   -- -------------------------------------------------------------------
 
@@ -435,11 +462,12 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "splitToks" $ do
-    it "Split the tokens into a front, middle and end" $ do
+    it "splits the tokens into a front, middle and end" $ do
       (_t,toks) <- parsedFileCaseBGhc
       let -- renamed = fromJust $ GHC.tm_renamed_source t
           (_front,middle,_back) = splitToks ((4,9),(4,42)) toks
       (showToks middle) `shouldBe`
+               {-
                "[(((4,9),(4,11)),ITif,\"if\")," ++
                "(((4,12),(4,13)),IToparen,\"(\")," ++
                "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
@@ -449,28 +477,33 @@ spec = do
                "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
                "(((4,31),(4,35)),ITelse,\"else\")," ++
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
+               -}
+               "[((4,9),(4,11),((((4,9),(4,11)),ITif),\"if\")),((4,12),(4,13),((((4,12),(4,13)),IToparen),\"(\")),((4,13),(4,16),((((4,13),(4,16)),ITvarid \"odd\"),\"odd\")),((4,17),(4,18),((((4,17),(4,18)),ITvarid \"x\"),\"x\")),((4,18),(4,19),((((4,18),(4,19)),ITcparen),\")\")),((4,20),(4,24),((((4,20),(4,24)),ITthen),\"then\")),((4,25),(4,30),((((4,25),(4,30)),ITstring \"Odd\"),\"\\\"Odd\\\"\")),((4,31),(4,35),((((4,31),(4,35)),ITelse),\"else\")),((4,36),(4,42),((((4,36),(4,42)),ITstring \"Even\"),\"\\\"Even\\\"\"))]"
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n         if (odd x) then \"Odd\" else \"Even\""
 
     -- ---------------------------------------------
 
-    it "Split the tokens into a front, middle and end 2" $ do
+    it "splits the tokens into a front, middle and end 2" $ do
       (_t,toks) <- parsedFileWhereIn6Ghc
 
       let (_front,middle,_back) = splitToks ((13,10),(13,15)) toks
       (showToks middle) `shouldBe`
+              {-
               "[(((13,10),(13,11)),ITvarid \"a\",\"a\"),"
               ++"(((13,12),(13,13)),ITvarid \"b\",\"b\"),"
               ++"(((13,14),(13,15)),ITvarid \"c\",\"c\")]"
+              -}
+              "[((13,10),(13,11),((((13,10),(13,11)),ITvarid \"a\"),\"a\")),((13,12),(13,13),((((13,12),(13,13)),ITvarid \"b\"),\"b\")),((13,14),(13,15),((((13,14),(13,15)),ITvarid \"c\"),\"c\"))]"
 
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n          a b c"
 
     -- ---------------------------------------------
 
-    it "Split the tokens into a front, middle and end, for a single token" $ do
+    it "splits the tokens into a front, middle and end, for a single token" $ do
       (_t,toks) <- parsedFileWhereIn6Ghc
 
       let (_front,middle,_back) = splitToks ((13,10),(13,11)) toks
-      (showToks middle) `shouldBe` "[(((13,10),(13,11)),ITvarid \"a\",\"a\")]"
+      (showToks middle) `shouldBe` "[((13,10),(13,11),((((13,10),(13,11)),ITvarid \"a\"),\"a\"))]"
 
   -- -------------------------------------------------------------------
 
@@ -557,10 +590,11 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "deleteToks" $ do
-    it "Deletes a set of tokens from a token stream" $ do
+    it "deletes a set of tokens from a token stream" $ do
       (_t,toks) <- parsedFileCaseBGhc
       let toks' = take 25 toks
       (showToks toks') `shouldBe`
+               {-
                "[(((1,1),(1,7)),ITmodule,\"module\")," ++
                 "(((1,8),(1,9)),ITconid \"B\",\"B\")," ++
                 "(((1,10),(1,15)),ITwhere,\"where\")," ++
@@ -586,12 +620,15 @@ spec = do
                 "(((6,11),(6,12)),ITvarid \"x\",\"x\")," ++
                 "(((6,13),(6,14)),ITvarsym \"+\",\"+\")," ++
                 "(((6,15),(6,16)),ITvarid \"y\",\"y\")]"
+                -}
+                "[((1,1),(1,7),((((1,1),(1,7)),ITmodule),\"module\")),((1,8),(1,9),((((1,8),(1,9)),ITconid \"B\"),\"B\")),((1,10),(1,15),((((1,10),(1,15)),ITwhere),\"where\")),((2,1),(2,35),((((2,1),(2,35)),ITlineComment \"-- Test for refactor of if to case\"),\"-- Test for refactor of if to case\")),((4,1),(4,1),((((4,1),(4,1)),ITvocurly),\"\")),((4,1),(4,4),((((4,1),(4,4)),ITvarid \"foo\"),\"foo\")),((4,5),(4,6),((((4,5),(4,6)),ITvarid \"x\"),\"x\")),((4,7),(4,8),((((4,7),(4,8)),ITequal),\"=\")),((4,9),(4,11),((((4,9),(4,11)),ITif),\"if\")),((4,12),(4,13),((((4,12),(4,13)),IToparen),\"(\")),((4,13),(4,16),((((4,13),(4,16)),ITvarid \"odd\"),\"odd\")),((4,17),(4,18),((((4,17),(4,18)),ITvarid \"x\"),\"x\")),((4,18),(4,19),((((4,18),(4,19)),ITcparen),\")\")),((4,20),(4,24),((((4,20),(4,24)),ITthen),\"then\")),((4,25),(4,30),((((4,25),(4,30)),ITstring \"Odd\"),\"\\\"Odd\\\"\")),((4,31),(4,35),((((4,31),(4,35)),ITelse),\"else\")),((4,36),(4,42),((((4,36),(4,42)),ITstring \"Even\"),\"\\\"Even\\\"\")),((6,1),(6,1),((((6,1),(6,1)),ITsemi),\"\")),((6,1),(6,4),((((6,1),(6,4)),ITvarid \"bob\"),\"bob\")),((6,5),(6,6),((((6,5),(6,6)),ITvarid \"x\"),\"x\")),((6,7),(6,8),((((6,7),(6,8)),ITvarid \"y\"),\"y\")),((6,9),(6,10),((((6,9),(6,10)),ITequal),\"=\")),((6,11),(6,12),((((6,11),(6,12)),ITvarid \"x\"),\"x\")),((6,13),(6,14),((((6,13),(6,14)),ITvarsym \"+\"),\"+\")),((6,15),(6,16),((((6,15),(6,16)),ITvarid \"y\"),\"y\"))]"
       (GHC.showRichTokenStream toks') `shouldBe` "module B where\n -- Test for refactor of if to case\n\n foo x = if (odd x) then \"Odd\" else \"Even\"\n\n bob x y = x + y"
 
       -- ---------------------------------------------------------------
 
       let newToks = deleteToks toks' (4,9) (4,42)
       (showToks newToks) `shouldBe`
+               {-
                "[(((1,1),(1,7)),ITmodule,\"module\")," ++
                 "(((1,8),(1,9)),ITconid \"B\",\"B\")," ++
                 "(((1,10),(1,15)),ITwhere,\"where\")," ++
@@ -617,11 +654,12 @@ spec = do
                 "(((6,11),(6,12)),ITvarid \"x\",\"x\")," ++
                 "(((6,13),(6,14)),ITvarsym \"+\",\"+\")," ++
                 "(((6,15),(6,16)),ITvarid \"y\",\"y\")]"
-
+                -}
+                "[((1,1),(1,7),((((1,1),(1,7)),ITmodule),\"module\")),((1,8),(1,9),((((1,8),(1,9)),ITconid \"B\"),\"B\")),((1,10),(1,15),((((1,10),(1,15)),ITwhere),\"where\")),((2,1),(2,35),((((2,1),(2,35)),ITlineComment \"-- Test for refactor of if to case\"),\"-- Test for refactor of if to case\")),((4,1),(4,1),((((4,1),(4,1)),ITvocurly),\"\")),((4,1),(4,4),((((4,1),(4,4)),ITvarid \"foo\"),\"foo\")),((4,5),(4,6),((((4,5),(4,6)),ITvarid \"x\"),\"x\")),((4,7),(4,8),((((4,7),(4,8)),ITequal),\"=\")),((6,1),(6,1),((((6,1),(6,1)),ITsemi),\"\")),((6,1),(6,4),((((6,1),(6,4)),ITvarid \"bob\"),\"bob\")),((6,5),(6,6),((((6,5),(6,6)),ITvarid \"x\"),\"x\")),((6,7),(6,8),((((6,7),(6,8)),ITvarid \"y\"),\"y\")),((6,9),(6,10),((((6,9),(6,10)),ITequal),\"=\")),((6,11),(6,12),((((6,11),(6,12)),ITvarid \"x\"),\"x\")),((6,13),(6,14),((((6,13),(6,14)),ITvarsym \"+\"),\"+\")),((6,15),(6,16),((((6,15),(6,16)),ITvarid \"y\"),\"y\"))]"
 
     -- ---------------------------------------------------------------
 
-    it "Deletes a set of tokens from a token stream2" $ do
+    it "deletes a set of tokens from a token stream2" $ do
       (_t,_toks) <- parsedFileWhereIn3Ghc
       -- let toks' = take 30 $ drop 25 toks
       let toks' =
@@ -653,6 +691,7 @@ spec = do
 
       let newToks = deleteToks toks' (13,1) (13,24)
       (showToks newToks) `shouldBe`
+            {-
             ("[(((11,10),(11,15)),ITwhere,\"where\"),"++
             "(((11,16),(11,16)),ITvocurly,\"\"),"++
             "(((11,16),(11,17)),ITvarid \"p\",\"p\"),"++
@@ -675,15 +714,18 @@ spec = do
             "(((17,18),(17,20)),ITvarid \"sq\",\"sq\"),"++
             "(((17,21),(17,22)),ITvarid \"y\",\"y\"),"++
             "(((18,6),(18,11)),ITwhere,\"where\")]")
+            -}
+            "[((11,10),(11,15),((((11,10),(11,15)),ITwhere),\"where\")),((11,16),(11,16),((((11,16),(11,16)),ITvocurly),\"\")),((11,16),(11,17),((((11,16),(11,17)),ITvarid \"p\"),\"p\")),((11,17),(11,18),((((11,17),(11,18)),ITequal),\"=\")),((11,18),(11,19),((((11,18),(11,19)),ITinteger 2),\"2\")),((11,21),(11,43),((((11,21),(11,43)),ITblockComment \"There is a comment\"),\"{-There is a comment-}\")),((17,1),(17,11),((((17,1),(17,11)),ITvarid \"anotherFun\"),\"anotherFun\")),((17,12),(17,13),((((17,12),(17,13)),ITinteger 0),\"0\")),((17,14),(17,15),((((17,14),(17,15)),ITvarid \"y\"),\"y\")),((17,16),(17,17),((((17,16),(17,17)),ITequal),\"=\")),((17,18),(17,20),((((17,18),(17,20)),ITvarid \"sq\"),\"sq\")),((17,21),(17,22),((((17,21),(17,22)),ITvarid \"y\"),\"y\")),((18,6),(18,11),((((18,6),(18,11)),ITwhere),\"where\"))]"
 
 
   -- -------------------------------------------------------------------
 
   describe "groupTokensByLine" $ do
-    it "Groups a list of tokens by line" $ do
+    it "groups a list of tokens by line" $ do
       (_t,toks) <- parsedFileCaseBGhc
       let toks' = take 25 toks
       (showToks toks') `shouldBe`
+               {-
                "[(((1,1),(1,7)),ITmodule,\"module\")," ++
                 "(((1,8),(1,9)),ITconid \"B\",\"B\")," ++
                 "(((1,10),(1,15)),ITwhere,\"where\")," ++
@@ -709,14 +751,23 @@ spec = do
                 "(((6,11),(6,12)),ITvarid \"x\",\"x\")," ++
                 "(((6,13),(6,14)),ITvarsym \"+\",\"+\")," ++
                 "(((6,15),(6,16)),ITvarid \"y\",\"y\")]"
+                -}
+                "[((1,1),(1,7),((((1,1),(1,7)),ITmodule),\"module\")),((1,8),(1,9),((((1,8),(1,9)),ITconid \"B\"),\"B\")),((1,10),(1,15),((((1,10),(1,15)),ITwhere),\"where\")),((2,1),(2,35),((((2,1),(2,35)),ITlineComment \"-- Test for refactor of if to case\"),\"-- Test for refactor of if to case\")),((4,1),(4,1),((((4,1),(4,1)),ITvocurly),\"\")),((4,1),(4,4),((((4,1),(4,4)),ITvarid \"foo\"),\"foo\")),((4,5),(4,6),((((4,5),(4,6)),ITvarid \"x\"),\"x\")),((4,7),(4,8),((((4,7),(4,8)),ITequal),\"=\")),((4,9),(4,11),((((4,9),(4,11)),ITif),\"if\")),((4,12),(4,13),((((4,12),(4,13)),IToparen),\"(\")),((4,13),(4,16),((((4,13),(4,16)),ITvarid \"odd\"),\"odd\")),((4,17),(4,18),((((4,17),(4,18)),ITvarid \"x\"),\"x\")),((4,18),(4,19),((((4,18),(4,19)),ITcparen),\")\")),((4,20),(4,24),((((4,20),(4,24)),ITthen),\"then\")),((4,25),(4,30),((((4,25),(4,30)),ITstring \"Odd\"),\"\\\"Odd\\\"\")),((4,31),(4,35),((((4,31),(4,35)),ITelse),\"else\")),((4,36),(4,42),((((4,36),(4,42)),ITstring \"Even\"),\"\\\"Even\\\"\")),((6,1),(6,1),((((6,1),(6,1)),ITsemi),\"\")),((6,1),(6,4),((((6,1),(6,4)),ITvarid \"bob\"),\"bob\")),((6,5),(6,6),((((6,5),(6,6)),ITvarid \"x\"),\"x\")),((6,7),(6,8),((((6,7),(6,8)),ITvarid \"y\"),\"y\")),((6,9),(6,10),((((6,9),(6,10)),ITequal),\"=\")),((6,11),(6,12),((((6,11),(6,12)),ITvarid \"x\"),\"x\")),((6,13),(6,14),((((6,13),(6,14)),ITvarsym \"+\"),\"+\")),((6,15),(6,16),((((6,15),(6,16)),ITvarid \"y\"),\"y\"))]"
 
       let grouped = groupTokensByLine toks'
       (map showToks grouped) `shouldBe`
+         {-
          ["[(((1,1),(1,7)),ITmodule,\"module\"),(((1,8),(1,9)),ITconid \"B\",\"B\"),(((1,10),(1,15)),ITwhere,\"where\")]",
           "[(((2,1),(2,35)),ITlineComment \"-- Test for refactor of if to case\",\"-- Test for refactor of if to case\")]",
           "[(((4,1),(4,1)),ITvocurly,\"\"),(((4,1),(4,4)),ITvarid \"foo\",\"foo\"),(((4,5),(4,6)),ITvarid \"x\",\"x\"),(((4,7),(4,8)),ITequal,\"=\"),(((4,9),(4,11)),ITif,\"if\"),(((4,12),(4,13)),IToparen,\"(\"),(((4,13),(4,16)),ITvarid \"odd\",\"odd\"),(((4,17),(4,18)),ITvarid \"x\",\"x\"),(((4,18),(4,19)),ITcparen,\")\"),(((4,20),(4,24)),ITthen,\"then\"),(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\"),(((4,31),(4,35)),ITelse,\"else\"),(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]",
           "[(((6,1),(6,1)),ITsemi,\"\"),(((6,1),(6,4)),ITvarid \"bob\",\"bob\"),(((6,5),(6,6)),ITvarid \"x\",\"x\"),(((6,7),(6,8)),ITvarid \"y\",\"y\"),(((6,9),(6,10)),ITequal,\"=\"),(((6,11),(6,12)),ITvarid \"x\",\"x\"),(((6,13),(6,14)),ITvarsym \"+\",\"+\"),(((6,15),(6,16)),ITvarid \"y\",\"y\")]"
          ]
+         -}
+         ["[((1,1),(1,7),((((1,1),(1,7)),ITmodule),\"module\")),((1,8),(1,9),((((1,8),(1,9)),ITconid \"B\"),\"B\")),((1,10),(1,15),((((1,10),(1,15)),ITwhere),\"where\"))]",
+          "[((2,1),(2,35),((((2,1),(2,35)),ITlineComment \"-- Test for refactor of if to case\"),\"-- Test for refactor of if to case\"))]",
+          "[((4,1),(4,1),((((4,1),(4,1)),ITvocurly),\"\")),((4,1),(4,4),((((4,1),(4,4)),ITvarid \"foo\"),\"foo\")),((4,5),(4,6),((((4,5),(4,6)),ITvarid \"x\"),\"x\")),((4,7),(4,8),((((4,7),(4,8)),ITequal),\"=\")),((4,9),(4,11),((((4,9),(4,11)),ITif),\"if\")),((4,12),(4,13),((((4,12),(4,13)),IToparen),\"(\")),((4,13),(4,16),((((4,13),(4,16)),ITvarid \"odd\"),\"odd\")),((4,17),(4,18),((((4,17),(4,18)),ITvarid \"x\"),\"x\")),((4,18),(4,19),((((4,18),(4,19)),ITcparen),\")\")),((4,20),(4,24),((((4,20),(4,24)),ITthen),\"then\")),((4,25),(4,30),((((4,25),(4,30)),ITstring \"Odd\"),\"\\\"Odd\\\"\")),((4,31),(4,35),((((4,31),(4,35)),ITelse),\"else\")),((4,36),(4,42),((((4,36),(4,42)),ITstring \"Even\"),\"\\\"Even\\\"\"))]",
+          "[((6,1),(6,1),((((6,1),(6,1)),ITsemi),\"\")),((6,1),(6,4),((((6,1),(6,4)),ITvarid \"bob\"),\"bob\")),((6,5),(6,6),((((6,5),(6,6)),ITvarid \"x\"),\"x\")),((6,7),(6,8),((((6,7),(6,8)),ITvarid \"y\"),\"y\")),((6,9),(6,10),((((6,9),(6,10)),ITequal),\"=\")),((6,11),(6,12),((((6,11),(6,12)),ITvarid \"x\"),\"x\")),((6,13),(6,14),((((6,13),(6,14)),ITvarsym \"+\"),\"+\")),((6,15),(6,16),((((6,15),(6,16)),ITvarid \"y\"),\"y\"))]"
+          ]
 
   -- -------------------------------------------------------------------
 
@@ -756,6 +807,7 @@ spec = do
       (showGhc decl) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
 
       (showToks $ getToks ((18,1),(25,1)) toks) `shouldBe`
+             {-
              ("[(((18,1),(18,1)),ITsemi,\"\")," ++
              "(((18,1),(18,5)),ITdata,\"data\")," ++
              "(((18,6),(18,7)),ITconid \"D\",\"D\")," ++
@@ -780,6 +832,8 @@ spec = do
                                              "\"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\")," ++
              "(((25,1),(25,1)),ITsemi,\"\")," ++
              "(((25,1),(25,5)),ITdata,\"data\")]")
+             -}
+             "[((18,1),(18,1),((((18,1),(18,1)),ITsemi),\"\")),((18,1),(18,5),((((18,1),(18,5)),ITdata),\"data\")),((18,6),(18,7),((((18,6),(18,7)),ITconid \"D\"),\"D\")),((18,8),(18,9),((((18,8),(18,9)),ITequal),\"=\")),((18,10),(18,11),((((18,10),(18,11)),ITconid \"A\"),\"A\")),((18,12),(18,13),((((18,12),(18,13)),ITvbar),\"|\")),((18,14),(18,15),((((18,14),(18,15)),ITconid \"B\"),\"B\")),((18,16),(18,22),((((18,16),(18,22)),ITconid \"String\"),\"String\")),((18,23),(18,24),((((18,23),(18,24)),ITvbar),\"|\")),((18,25),(18,26),((((18,25),(18,26)),ITconid \"C\"),\"C\")),((20,1),(20,32),((((20,1),(20,32)),ITlineComment \"-- Retrieve the String from a B\"),\"-- Retrieve the String from a B\")),((21,1),(21,1),((((21,1),(21,1)),ITsemi),\"\")),((21,1),(21,4),((((21,1),(21,4)),ITvarid \"unD\"),\"unD\")),((21,5),(21,6),((((21,5),(21,6)),IToparen),\"(\")),((21,6),(21,7),((((21,6),(21,7)),ITconid \"B\"),\"B\")),((21,8),(21,9),((((21,8),(21,9)),ITvarid \"y\"),\"y\")),((21,9),(21,10),((((21,9),(21,10)),ITcparen),\")\")),((21,11),(21,12),((((21,11),(21,12)),ITequal),\"=\")),((21,13),(21,14),((((21,13),(21,14)),ITvarid \"y\"),\"y\")),((22,1),(22,18),((((22,1),(22,18)),ITlineComment \"-- But no others.\"),\"-- But no others.\")),((24,1),(24,73),((((24,1),(24,73)),ITlineComment \"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\"),\"-- Infix data constructor, see http://stackoverflow.com/a/6420943/595714\")),((25,1),(25,1),((((25,1),(25,1)),ITsemi),\"\")),((25,1),(25,5),((((25,1),(25,5)),ITdata),\"data\"))]"
 
       (show $ getAllSrcLocs decl) `shouldBe` "[((21,1),(21,14)),((21,1),(21,4)),((21,5),(21,10)),((21,6),(21,9)),((21,6),(21,7)),((21,8),(21,9)),((21,13),(21,14))]"
 
@@ -805,7 +859,8 @@ spec = do
       let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup matches _)  _ _ _)) = decl
       -- (SYB.showData SYB.Renamer 0 matches) `shouldBe` "Demote.WhereIn6.addthree a b c = a GHC.Num.+ b GHC.Num.+ c"
 
-      (showToks $ getToks ((12,1),(25,1)) toks) `shouldBe` 
+      (showToks $ getToks ((12,1),(25,1)) toks) `shouldBe`
+             {-
              ("[(((13,1),(13,1)),ITvccurly,\"\"),"
              ++"(((13,1),(13,1)),ITsemi,\"\"),"
              ++"(((13,1),(13,9)),ITvarid \"addthree\",\"addthree\"),"
@@ -819,6 +874,8 @@ spec = do
              ++"(((13,19),(13,20)),ITvarsym \"+\",\"+\"),"
              ++"(((13,20),(13,21)),ITvarid \"c\",\"c\"),"
              ++"(((16,1),(16,1)),ITsemi,\"\")]")
+             -}
+             "[((13,1),(13,1),((((13,1),(13,1)),ITvccurly),\"\")),((13,1),(13,1),((((13,1),(13,1)),ITsemi),\"\")),((13,1),(13,9),((((13,1),(13,9)),ITvarid \"addthree\"),\"addthree\")),((13,10),(13,11),((((13,10),(13,11)),ITvarid \"a\"),\"a\")),((13,12),(13,13),((((13,12),(13,13)),ITvarid \"b\"),\"b\")),((13,14),(13,15),((((13,14),(13,15)),ITvarid \"c\"),\"c\")),((13,15),(13,16),((((13,15),(13,16)),ITequal),\"=\")),((13,16),(13,17),((((13,16),(13,17)),ITvarid \"a\"),\"a\")),((13,17),(13,18),((((13,17),(13,18)),ITvarsym \"+\"),\"+\")),((13,18),(13,19),((((13,18),(13,19)),ITvarid \"b\"),\"b\")),((13,19),(13,20),((((13,19),(13,20)),ITvarsym \"+\"),\"+\")),((13,20),(13,21),((((13,20),(13,21)),ITvarid \"c\"),\"c\")),((16,1),(16,1),((((16,1),(16,1)),ITsemi),\"\"))]"
 
       (show $ getBiggestStartEndLoc matches) `shouldBe` "((13,10),(13,21))"
       (show   (startPos,endPos)) `shouldBe` "((13,1),(13,21))"
@@ -827,11 +884,12 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "getToks" $ do
-    it "get a token stream from the middle of tokens" $ do
+    it "gets a token stream from the middle of tokens" $ do
       (_t,toks) <- parsedFileCaseBGhc
       let
           middle = getToks ((4,9),(4,36)) toks
       (showToks middle) `shouldBe`
+               {-
                "[(((4,9),(4,11)),ITif,\"if\")," ++
                "(((4,12),(4,13)),IToparen,\"(\")," ++
                "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
@@ -841,17 +899,22 @@ spec = do
                "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
                "(((4,31),(4,35)),ITelse,\"else\")," ++
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
+               -}
+               "[((4,9),(4,11),((((4,9),(4,11)),ITif),\"if\")),((4,12),(4,13),((((4,12),(4,13)),IToparen),\"(\")),((4,13),(4,16),((((4,13),(4,16)),ITvarid \"odd\"),\"odd\")),((4,17),(4,18),((((4,17),(4,18)),ITvarid \"x\"),\"x\")),((4,18),(4,19),((((4,18),(4,19)),ITcparen),\")\")),((4,20),(4,24),((((4,20),(4,24)),ITthen),\"then\")),((4,25),(4,30),((((4,25),(4,30)),ITstring \"Odd\"),\"\\\"Odd\\\"\")),((4,31),(4,35),((((4,31),(4,35)),ITelse),\"else\")),((4,36),(4,42),((((4,36),(4,42)),ITstring \"Even\"),\"\\\"Even\\\"\"))]"
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n         if (odd x) then \"Odd\" else \"Even\""
 
-    it "get a token stream from the middle of tokens 2" $ do
+    it "gets a token stream from the middle of tokens 2" $ do
       (_t,toks) <- parsedFileDd1Ghc
       let
           middle = getToks ((17,5),(17,23)) toks
       (showToks middle) `shouldBe`
+               {-
                "[(((17,5),(17,5)),ITsemi,\"\")," ++
                "(((17,5),(17,7)),ITvarid \"ff\",\"ff\")," ++
                "(((17,8),(17,9)),ITequal,\"=\")," ++
                "(((17,10),(17,12)),ITinteger 15,\"15\")]"
+               -}
+               "[((17,5),(17,5),((((17,5),(17,5)),ITsemi),\"\")),((17,5),(17,7),((((17,5),(17,7)),ITvarid \"ff\"),\"ff\")),((17,8),(17,9),((((17,8),(17,9)),ITequal),\"=\")),((17,10),(17,12),((((17,10),(17,12)),ITinteger 15),\"15\"))]"
       (GHC.showRichTokenStream middle) `shouldBe` "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n     ff = 15"
 
   -- -------------------------------------------------------------------
@@ -903,6 +966,7 @@ spec = do
       let
           middle = getToks ((4,9),(4,36)) toks
       (showToks middle) `shouldBe`
+               {-
                "[(((4,9),(4,11)),ITif,\"if\")," ++
                "(((4,12),(4,13)),IToparen,\"(\")," ++
                "(((4,13),(4,16)),ITvarid \"odd\",\"odd\")," ++
@@ -912,7 +976,9 @@ spec = do
                "(((4,25),(4,30)),ITstring \"Odd\",\"\\\"Odd\\\"\")," ++
                "(((4,31),(4,35)),ITelse,\"else\")," ++
                "(((4,36),(4,42)),ITstring \"Even\",\"\\\"Even\\\"\")]"
-      (showToks [newLnToken (head middle)]) `shouldBe` "[(((5,1),(5,1)),ITvocurly,\"\")]"
+               -}
+               "[((4,9),(4,11),((((4,9),(4,11)),ITif),\"if\")),((4,12),(4,13),((((4,12),(4,13)),IToparen),\"(\")),((4,13),(4,16),((((4,13),(4,16)),ITvarid \"odd\"),\"odd\")),((4,17),(4,18),((((4,17),(4,18)),ITvarid \"x\"),\"x\")),((4,18),(4,19),((((4,18),(4,19)),ITcparen),\")\")),((4,20),(4,24),((((4,20),(4,24)),ITthen),\"then\")),((4,25),(4,30),((((4,25),(4,30)),ITstring \"Odd\"),\"\\\"Odd\\\"\")),((4,31),(4,35),((((4,31),(4,35)),ITelse),\"else\")),((4,36),(4,42),((((4,36),(4,42)),ITstring \"Even\"),\"\\\"Even\\\"\"))]"
+      (showToks [newLnToken (head middle)]) `shouldBe` "[((5,1),(5,1),((((5,1),(5,1)),ITsemi),\"\"))]"
 
   -- -------------------------------------------------------------------
 
@@ -934,75 +1000,67 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "getIndentOffset" $ do
-    it "Get the indent of the line prior to the current pos" $ do
+    it "gets the indent of the line prior to the current pos" $ do
       (_t,toks) <- parsedFileCaseBGhc
       getIndentOffset toks (12,1) `shouldBe` 2
 
     -- ---------------------------------
 
-    it "Get the indent of the line prior to the current pos2" $ do
+    it "gets the indent of the line prior to the current pos2" $ do
       (_t,toks) <- parsedFileCaseBGhc
       getIndentOffset toks (17,1) `shouldBe` 0
 
     -- ---------------------------------
 
-    it "Get the indent after inline where clause" $ do
+    it "gets the indent after inline where clause" $ do
       (_t,toks) <- parsedFileOffsetGhc
       let middle = getToks ((6,1),(7,1)) toks
       (showToks middle) `shouldBe`
-                "[(((6,3),(6,8)),ITwhere,\"where\")"++
-                ",(((6,9),(6,9)),ITvocurly,\"\")"++
-                ",(((6,9),(6,10)),ITvarid \"x\",\"x\")"++
-                ",(((6,11),(6,12)),ITequal,\"=\")"++
-                ",(((6,13),(6,14)),ITinteger 3,\"3\")]"
+                "[((6,3),(6,8),((((6,3),(6,8)),ITwhere),\"where\")),((6,9),(6,9),((((6,9),(6,9)),ITvocurly),\"\")),((6,9),(6,10),((((6,9),(6,10)),ITvarid \"x\"),\"x\")),((6,11),(6,12),((((6,11),(6,12)),ITequal),\"=\")),((6,13),(6,14),((((6,13),(6,14)),ITinteger 3),\"3\"))]"
       getIndentOffset toks (7,1) `shouldBe` 8
 
     -- ---------------------------------
 
-    it "Get the indent after where clause" $ do
+    it "gets the indent after where clause" $ do
       (_t,toks) <- parsedFileOffsetGhc
       getIndentOffset toks (11,1) `shouldBe` 4
 
     -- ---------------------------------
 
-    it "Get the indent after inline let clause" $ do
+    it "gets the indent after inline let clause" $ do
       (_t,toks) <- parsedFileOffsetGhc
       getIndentOffset toks (15,1) `shouldBe` 6
 
     -- ---------------------------------
 
-    it "Get the indent after embedded let clause" $ do
+    it "gets the indent after embedded let clause" $ do
       (_t,toks) <- parsedFileOffsetGhc
       getIndentOffset toks (22,1) `shouldBe` 14
 
     -- ---------------------------------
 
-    it "Get the indent after inline in clause" $ do
+    it "gets the indent after inline in clause" $ do
       (_t,toks) <- parsedFileOffsetGhc
       let middle = getToks ((15,1),(16,1)) toks
       (showToks middle) `shouldBe`
-                "[(((15,3),(15,3)),ITvccurly,\"\")"++
-                ",(((15,3),(15,5)),ITin,\"in\")"++
-                ",(((15,10),(15,11)),ITvarid \"b\",\"b\")"++
-                ",(((15,12),(15,13)),ITvarsym \"+\",\"+\")"++
-                ",(((15,14),(15,17)),ITvarid \"bar\",\"bar\")]"
+                "[((15,3),(15,3),((((15,3),(15,3)),ITvccurly),\"\")),((15,3),(15,5),((((15,3),(15,5)),ITin),\"in\")),((15,10),(15,11),((((15,10),(15,11)),ITvarid \"b\"),\"b\")),((15,12),(15,13),((((15,12),(15,13)),ITvarsym \"+\"),\"+\")),((15,14),(15,17),((((15,14),(15,17)),ITvarid \"bar\"),\"bar\"))]"
       getIndentOffset toks (16,1) `shouldBe` 9
 
     -- ---------------------------------
 
-    it "Get the indent after inline do clause" $ do
+    it "gets the indent after inline do clause" $ do
       (_t,toks) <- parsedFileOffsetGhc
       getIndentOffset toks (19,1) `shouldBe` 5
 
     -- ---------------------------------
 
-    it "Gets a sane indent for empty tokens" $ do
+    it "gets a sane indent for empty tokens" $ do
       (_t,_toks) <- parsedFileOffsetGhc
       getIndentOffset ([]::[PosToken]) (19,1) `shouldBe` 1
 
     -- ---------------------------------
 
-    it "Gets a sane indent for (0,0)" $ do
+    it "gets a sane indent for (0,0)" $ do
       (_t,toks) <- parsedFileOffsetGhc
       getIndentOffset toks (0,0) `shouldBe` 1
 
