@@ -142,24 +142,23 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- , lookupNameGhc
  ) where
 
-import Exception
+import Control.Monad.IO.Class ()
 import Control.Monad.State
 import Data.Char
 import Data.List
 import Data.Maybe
 import Data.Monoid
+import Exception
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.TokenUtils
+import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.Utils
--- import Language.Haskell.TokenUtils.GHC.Layout
 
 -- Modules from GHC
 import qualified Bag           as GHC
