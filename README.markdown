@@ -1,5 +1,16 @@
 # HaRe : The Haskell Refactorer
 
+[![Available on Hackage][badge-hackage]][hackage]
+[![License BSD3][badge-license]][license]
+[![Build Status][badge-travis]][travis]
+
+[badge-travis]: https://travis-ci.org/alanz/HaRe.png?branch=master
+[travis]: https://travis-ci.org/alanz/HaRe
+[badge-hackage]: https://img.shields.io/hackage/v/HaRe.svg?dummy
+[hackage]: https://hackage.haskell.org/package/HaRe
+[badge-license]: https://img.shields.io/badge/license-BSD3-green.svg?dummy
+[license]: https://github.com/alanz/HaRe/blob/master/LICENSE
+
 [![Build Status](https://travis-ci.org/alanz/HaRe.png?branch=master)](https://travis-ci.org/alanz/HaRe)
 
 ## Getting Started

@@ -947,7 +947,7 @@ tyConAppToHsType (GHC.TyConApp tc _ts)
 #if __GLASGOW_HASKELL__ > 704
     r str = GHC.HsTyLit (GHC.HsStrTy $ GHC.mkFastString str)
 #else
-    r str = error $ "tyConAppToHsType: " ++ str ++ " unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+    r str = error $ "tyConAppToHsType: " ++ str ++ " unexpected:" ++ (SYB.showData SYB.TypeChecker 0 r)
 #endif
 
 tyConAppToHsType t@(GHC.TyConApp _tc _ts)
