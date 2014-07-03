@@ -11,8 +11,6 @@
 [badge-license]: https://img.shields.io/badge/license-BSD3-green.svg?dummy
 [license]: https://github.com/alanz/HaRe/blob/master/LICENSE
 
-[![Build Status](https://travis-ci.org/alanz/HaRe.png?branch=master)](https://travis-ci.org/alanz/HaRe)
-
 ## Getting Started
 
     cabal install HaRe
