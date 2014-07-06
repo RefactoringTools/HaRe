@@ -1,4 +1,5 @@
 * HaRe todo
+** TODO when using a cabal sandbox with 'cabal add-source', refactor into the added src too
 ** TODO Renaming does not rename exported type in exports list
    -- See
    /home/alanz/mysrc/github/alanz/htelehash/src/TeleHash/Utils.hs.2014-04-03T13:03:21+0200

@@ -97,7 +97,7 @@ Join in at `#haskell-refactorer` on freenode.
     # Next line assumes haskell-token-utils checked out at same level
     cabal sandbox add-source ../haskell-token-utils/
     cabal install --dependencies-only
-    
+
 ### Running test suite
 
 To run the test suite do:
