@@ -76,8 +76,8 @@ module Language.Haskell.Refact.API
        -- , getToksForSpanWithIntros
        , getToksBeforeSpan
        , putToksForPos
-       , putToksAfterSpan
-       , putToksAfterPos
+       , addToksAfterSpan
+       , addToksAfterPos
        , putDeclToksAfterSpan
        , removeToksForSpan
        , removeToksForPos

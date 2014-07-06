@@ -1,4 +1,5 @@
 * HaRe todo
+** TODO renaming : check that new name is not the same as the old
 ** TODO when using a cabal sandbox with 'cabal add-source', refactor into the added src too
 ** TODO Renaming does not rename exported type in exports list
    -- See

@@ -865,7 +865,7 @@ hsFreeAndDeclaredGhc t = do
     ltydecl (GHC.L _ (GHC.TyDecl (GHC.L _ n) _bndrs _defn fvs))
         = return (FN (GHC.nameSetToList fvs),DN [n])
 #else
-    ltydecl (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind _cons _derivs)) 
+    ltydecl (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind _cons _derivs))
         = return (FN [],DN [n]) -- TODO: calc fvs for cons
     ltydecl (GHC.L _ (GHC.TySynonym (GHC.L _ n) _vars _pats _rhs))
         = return (FN [],DN [n]) -- TODO fvs?
@@ -1327,7 +1327,7 @@ getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn _fvs)) = nub $ [n] 
     dsn = getHsTyDefn defn
 #else
 -- data,
-getDeclaredTypes (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind cons _derivs)) 
+getDeclaredTypes (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind cons _derivs))
   = nub $ [n] ++ cs
   where
     getConDecl (GHC.L _ (GHC.ConDecl (GHC.L _ n2) _ _ _ _ _ _ _)) = n2
@@ -2971,7 +2971,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
 
        newToks <- liftIO $ basicTokenise (showGhc impDecl)
        logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
-       void $ putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
+       void $ addToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
 
@@ -3167,9 +3167,9 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         if (emptyList localDecls)
           then
-            void $ putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent 4 2) newToks
+            void $ addToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent 4 2) newToks
           else
-            void $ putToksAfterPos (startLoc,endLoc) (PlaceAbsCol (rowIndent+1) prevCol 2) newToks
+            void $ addToksAfterPos (startLoc,endLoc) (PlaceAbsCol (rowIndent+1) prevCol 2) newToks
 
 
         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun']))) (maybeSig++(getValBindSigs binds))))
@@ -3367,7 +3367,7 @@ addFormalParams place newParams
          Left l@(GHC.RealSrcSpan ss) -> do
            newToks' <- liftIO $ tokenise (GHC.realSrcSpanStart ss) 0 False newStr
            let newToks = map markToken newToks'
-           _ <- putToksAfterSpan l PlaceAdjacent newToks
+           _ <- addToksAfterSpan l PlaceAdjacent newToks
            return ()
          Left ss -> error $ "addFormalParams: expecting RealSrcSpan, got:" ++ (showGhc ss)
          Right pats -> do
