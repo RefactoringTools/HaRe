@@ -11,12 +11,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        (
        -- * Conveniences for state access
 
-       --   fetchToksFinal
-       -- , fetchPprFinal
          fetchLinesFinal
        , fetchOrigToks
        , fetchToks -- Deprecated
-       -- , putToks -- ^Deprecated, destroys token tree
        , getTypecheckedModule
        , getRefactStreamModified
        , getRefactInscopes
@@ -158,7 +155,6 @@ getToksForSpanNoInv sspan = do
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
   let (forest',toks) = getTokensFor checkInv forest (gs2ss sspan)
-  -- let (forest',toks) = getTokensForNoIntros checkInv forest sspan
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
@@ -494,8 +490,8 @@ initRefactModule
 initRefactModule tm toks
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsOrigTokenStream = toks
-                 -- , rsTokenCache = initTokenCache toks
-                 , rsTokenCache = initTokenCacheLayout (initTokenLayout
+                 -- , rsTokenCache = initTokenCacheLayout (initTokenLayout
+                 , rsTokenCache = initTokenCacheLayout (allocTokens
                                     (GHC.pm_parsed_source $ GHC.tm_parsed_module tm) 
                                     toks)
                  , rsStreamModified = False
