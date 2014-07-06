@@ -141,7 +141,7 @@ getToksForSpan sspan = do
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
   -- let (forest',toks) = getTokensFor checkInv forest sspan
-  let (forest',toks) = getTokensForNoIntros checkInv forest (ss2s sspan)
+  let (forest',toks) = getTokensForNoIntros checkInv forest (gs2ss sspan)
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
@@ -157,7 +157,7 @@ getToksForSpanNoInv sspan = do
   let checkInv = False
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensFor checkInv forest (ss2s sspan)
+  let (forest',toks) = getTokensFor checkInv forest (gs2ss sspan)
   -- let (forest',toks) = getTokensForNoIntros checkInv forest sspan
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
@@ -174,7 +174,7 @@ getToksForSpanWithIntros sspan = do
   let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensFor checkInv forest (ss2s sspan)
+  let (forest',toks) = getTokensFor checkInv forest (gs2ss sspan)
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
@@ -187,7 +187,7 @@ getToksBeforeSpan sspan = do
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensBefore forest (ss2s sspan)
+  let (forest',toks) = getTokensBefore forest (gs2ss sspan)
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
@@ -202,7 +202,7 @@ replaceToken sspan tok = do
   st <- get
   let Just tm = rsModule st
 
-  let tk' = replaceTokenInCache (rsTokenCache tm) (ss2s sspan) tok
+  let tk' = replaceTokenInCache (rsTokenCache tm) (gs2ss sspan) tok
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   return ()
@@ -215,10 +215,10 @@ putToksForSpan sspan toks = do
   st <- get
   let Just tm = rsModule st
 
-  let (tk',newSpan) = putToksInCache (rsTokenCache tm) (ss2s sspan) toks
+  let (tk',newSpan) = putToksInCache (rsTokenCache tm) (gs2ss sspan) toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
-  return (s2ss newSpan)
+  return (ss2gs newSpan)
 
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens, and update the AST fragment to reflect it
@@ -242,11 +242,11 @@ putToksForPos pos toks = do
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
-  let (tk',newSpan) = putToksInCache (rsTokenCache tm) (ss2s sspan) toks
+  let (tk',newSpan) = putToksInCache (rsTokenCache tm) (gs2ss sspan) toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   -- drawTokenTree ""
-  return (s2ss newSpan)
+  return (ss2gs newSpan)
 
 -- |Add tokens after a designated GHC.SrcSpan
 putToksAfterSpan :: GHC.SrcSpan -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
@@ -255,11 +255,11 @@ putToksAfterSpan oldSpan pos toks = do
   st <- get
   let Just tm = rsModule st
   let forest = getTreeFromCache oldSpan (rsTokenCache tm)
-  let (forest',newSpan) = addToksAfterSrcSpan forest (ss2s oldSpan) pos toks
+  let (forest',newSpan) = addToksAfterSrcSpan forest (gs2ss oldSpan) pos toks
   let tk' = replaceTreeInCache oldSpan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
-  return (s2ss newSpan)
+  return (ss2gs newSpan)
 
 -- |Add tokens after a designated position
 putToksAfterPos :: (SimpPos,SimpPos) -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
@@ -270,12 +270,12 @@ putToksAfterPos pos position toks = do
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
   let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',newSpan) = addToksAfterSrcSpan forest (ss2s sspan) position toks
+  let (forest',newSpan) = addToksAfterSrcSpan forest (gs2ss sspan) position toks
   let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   -- logm $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
-  return (s2ss newSpan)
+  return (ss2gs newSpan)
 
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST
 -- fragment to reflect it
@@ -297,7 +297,7 @@ removeToksForSpan sspan = do
   logm $ "removeToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan)
   st <- get
   let Just tm = rsModule st
-  let tk' = removeToksFromCache (rsTokenCache tm) (ss2s sspan)
+  let tk' = removeToksFromCache (rsTokenCache tm) (gs2ss sspan)
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return ()
@@ -310,7 +310,7 @@ removeToksForPos pos = do
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   let sspan = posToSrcSpan mainForest pos
-  let tk' = removeToksFromCache (rsTokenCache tm) (ss2s sspan)
+  let tk' = removeToksFromCache (rsTokenCache tm) (gs2ss sspan)
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   -- drawTokenTree "removeToksForPos result"
@@ -361,8 +361,8 @@ showPprDebug msg = do
 
 showLinesDebug :: String -> RefactGhc ()
 showLinesDebug msg = do
-  ppr <- fetchLinesFinal
-  logm $ msg ++ "\ncurrent [Line]:\n" ++ (showGhc ppr)
+  pprVal <- fetchLinesFinal
+  logm $ msg ++ "\ncurrent [Line]:\n" ++ (showGhc pprVal)
   return ()
 
 -- ---------------------------------------------------------------------

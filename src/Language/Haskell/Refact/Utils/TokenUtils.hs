@@ -66,10 +66,10 @@ module Language.Haskell.Refact.Utils.TokenUtils (
        , fileNameFromTok
        , treeStartEnd
        -- , spanStartEnd
-       , sf
-       , fs
-       , ss2f,f2ss
-       , ss2s,s2ss
+       -- , sf
+       -- , fs
+       , gs2f,f2gs
+       , gs2ss,ss2gs
        , forestSpanFromEntry
        -- , combineSpans
 
@@ -641,10 +641,10 @@ putToksInCache tk sspan toks = (tk'',newSpan)
 putDeclToksInCache :: (SYB.Data t) =>
     TokenCache PosToken -> GHC.SrcSpan -> [PosToken] -> GHC.Located t
  -> (TokenCache PosToken,GHC.SrcSpan,GHC.Located t)
-putDeclToksInCache tk sspan toks t = (tk'',s2ss newSpan,t')
+putDeclToksInCache tk sspan toks t = (tk'',ss2gs newSpan,t')
   where
-   (tk'',newSpan) = putToksInCache tk (ss2s sspan) toks
-   t' = syncAST t (sf newSpan)
+   (tk'',newSpan) = putToksInCache tk (gs2ss sspan) toks
+   t' = syncAST t (ss2f newSpan)
 
 -- ---------------------------------------------------------------------
 {-
@@ -693,7 +693,7 @@ syncAstToLatestCache tk t = t'
     (Node (Entry fspan _ _) _) = (tkCache tk) Map.! (tkLastTreeId tk)
     pos = forestSpanToGhcPos fspan
     sspan = posToSrcSpan mainForest pos
-    t' = syncAST t (ss2f sspan)
+    t' = syncAST t (gs2f sspan)
 
 -- ---------------------------------------------------------------------
 {-
@@ -1525,10 +1525,10 @@ addDeclToksAfterSrcSpan :: (SYB.Data t) =>
   -- -> (Tree (Entry PosToken), GHC.SrcSpan,t) -- ^ updated TokenTree ,SrcSpan location for
                                -- the new tokens in the TokenTree, and
                                -- updated AST element
-addDeclToksAfterSrcSpan forest oldSpan pos toks t = (forest',(s2ss newSpan),t')
+addDeclToksAfterSrcSpan forest oldSpan pos toks t = (forest',(ss2gs newSpan),t')
   where
-    (forest',newSpan) = addToksAfterSrcSpan forest (ss2s oldSpan) pos toks
-    t' = syncAST t (sf newSpan)
+    (forest',newSpan) = addToksAfterSrcSpan forest (gs2ss oldSpan) pos toks
+    t' = syncAST t (ss2f newSpan)
 
 -- ---------------------------------------------------------------------
 {-
@@ -2132,7 +2132,7 @@ syncAST :: (SYB.Data t)
   -> (GHC.Located t) -- ^Updated AST and tokens
 syncAST ast@(GHC.L l _t) fspan = GHC.L sspan xx
   where
-    sspan = f2ss fspan
+    sspan = f2gs fspan
     (( sr, sc),( _er, _ec)) = ghcSpanStartEnd l
     ((nsr,nsc),(_ner,_nec)) = ghcSpanStartEnd sspan
 
@@ -2253,21 +2253,22 @@ showSrcSpanF sspan = show (((chs,trs,vs,ls),cs),((che,tre,ve,le),ce))
 
 -- ---------------------------------------------------------------------
 
-ss2f :: GHC.SrcSpan -> ForestSpan
-ss2f = ghcSrcSpanToForestSpan
+gs2f :: GHC.SrcSpan -> ForestSpan
+gs2f = ghcSrcSpanToForestSpan
 
-f2ss :: ForestSpan -> GHC.SrcSpan
-f2ss = forestSpanToGhcSrcSpan
+f2gs :: ForestSpan -> GHC.SrcSpan
+f2gs = forestSpanToGhcSrcSpan
 
-ss2s :: GHC.SrcSpan -> Span
-ss2s ss = Span (getGhcLoc ss) (getGhcLocEnd ss)
+gs2ss :: GHC.SrcSpan -> SimpSpan
+gs2ss ss = ((getGhcLoc ss),(getGhcLocEnd ss))
 
-s2ss :: Span -> GHC.SrcSpan
-s2ss (Span (sr,sc) (er,ec)) = GHC.mkSrcSpan locStart locEnd
+ss2gs :: SimpSpan -> GHC.SrcSpan
+ss2gs ((sr,sc),(er,ec)) = GHC.mkSrcSpan locStart locEnd
   where
     fname = GHC.mkFastString "foo"
     locStart = GHC.mkSrcLoc fname sr sc
     locEnd   = GHC.mkSrcLoc fname er ec
+
 {-
 -- | ForestSpan version of GHC combineSrcSpans
 combineSpans :: ForestSpan -> ForestSpan -> ForestSpan

@@ -142,7 +142,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- , lookupNameGhc
  ) where
 
-import Control.Monad.IO.Class ()
+-- import Control.Monad.IO.Class ()
 import Control.Monad.State
 import Data.Char
 import Data.List

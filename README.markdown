@@ -90,6 +90,14 @@ required. In theory.
 
 Join in at `#haskell-refactorer` on freenode.
 
+### Developing in sandbox with haskell-token-utils locally
+
+    cabal clean
+    cabal sandbox init
+    # Next line assumes haskell-token-utils checked out at same level
+    cabal sandbox add-source ../haskell-token-utils/
+    cabal install --dependencies-only
+    
 ### Running test suite
 
 To run the test suite do:

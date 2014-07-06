@@ -22,6 +22,7 @@ import Language.Haskell.TokenUtils.DualTree
 import Language.Haskell.TokenUtils.GHC.Layout
 import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.Types
+-- import Language.Haskell.TokenUtils.Utils
 
 import TestUtils
 
@@ -487,7 +488,7 @@ putDeclToksAfterSpan test/testdata/MoveDef/Md1.hs:(22,1)-(24,10):("(((False,0,0,
       (showGhc sspan3) `shouldBe` "f:(3,1)-(5,10)"
       newToks <- basicTokenise "zz = 1"
       -- let (layout4,_newSpan) = addToksAfterSrcSpan layout3 sspan3 (PlaceOffset 2 0 2) newToks
-      let (layout4,_newSpan) = addToksAfterSrcSpan layout3 (ss2s sspan3) (PlaceOffset 2 0 2) newToks
+      let (layout4,_newSpan) = addToksAfterSrcSpan layout3 (gs2ss sspan3) (PlaceOffset 2 0 2) newToks
 
       (drawTreeCompact layout4) `shouldBe`
           "0:((1,1),(8,1))\n"++
@@ -568,7 +569,7 @@ putToksAfterPos ((4,14),(4,19)) at PlaceOffset 1 4 2:[
       show newToks `shouldBe`
          "[((((0,1),(0,6)),ITwhere),\"where\"),((((1,4),(1,21)),ITlineComment \"-- c,d :: Integer\"),\"-- c,d :: Integer\"),((((2,4),(2,4)),ITvocurly),\"\"),((((2,4),(2,5)),ITvarid \"c\"),\"c\"),((((2,6),(2,7)),ITequal),\"=\"),((((2,8),(2,9)),ITinteger 7),\"7\"),((((3,1),(3,1)),ITvccurly),\"\")]"
 
-      let (layout3,_newSpan) = addToksAfterSrcSpan layout2 (ss2s sspan2) (PlaceOffset 1 4 2) newToks
+      let (layout3,_newSpan) = addToksAfterSrcSpan layout2 (gs2ss sspan2) (PlaceOffset 1 4 2) newToks
 
 
       let srcTree2 = layoutTreeToSourceTree layout3
@@ -885,7 +886,7 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
       [tok1] <- basicTokenise "\n\n\n\n\n\n\n                square"
       (show tok1) `shouldBe` "((((7,17),(7,23)),ITvarid \"square\"),\"square\")"
 
-      let layout2 = replaceTokenForSrcSpan layout (ss2s ss1) tok1
+      let layout2 = replaceTokenForSrcSpan layout (gs2ss ss1) tok1
 
       -- -- -- --
 
@@ -895,7 +896,7 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
       [tok2] <- basicTokenise "\n\n\n\n\n\n\n                       square"
       (show tok2) `shouldBe` "((((7,24),(7,30)),ITvarid \"square\"),\"square\")"
 
-      let layout3 = replaceTokenForSrcSpan layout2 (ss2s ss2) tok2
+      let layout3 = replaceTokenForSrcSpan layout2 (gs2ss ss2) tok2
 
       -- -- -- --
 
@@ -905,11 +906,11 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
       [tok3] <- basicTokenise "\n\n\n\n\n\n\n                                  square"
       (show tok3) `shouldBe` "((((7,35),(7,41)),ITvarid \"square\"),\"square\")"
 
-      let layout4 = replaceTokenForSrcSpan layout3 (ss2s ss3) tok3
+      let layout4 = replaceTokenForSrcSpan layout3 (gs2ss ss3) tok3
 
       -- -- -- --
 
-      let layout5 = replaceTokenForSrcSpan layout4 (ss2s ss3) tok3
+      let layout5 = replaceTokenForSrcSpan layout4 (gs2ss ss3) tok3
 
       -- -- -- --
 
@@ -981,7 +982,7 @@ replaceToken test/testdata/Renaming/LayoutIn1.hs:7:35-36:(((False,0,0,7),35),((F
       toks1 <- basicTokenise "nn = nn2"
       (show toks1) `shouldBe` "[((((0,1),(0,3)),ITvarid \"nn\"),\"nn\"),((((0,4),(0,5)),ITequal),\"=\"),((((0,6),(0,9)),ITvarid \"nn2\"),\"nn2\")]"
 
-      let (layout2,_ss2) = addToksAfterSrcSpan layout (ss2s ss1) (PlaceIndent 1 0 2) toks1
+      let (layout2,_ss2) = addToksAfterSrcSpan layout (gs2ss ss1) (PlaceIndent 1 0 2) toks1
 
       -- -- -- --
 
@@ -1072,7 +1073,7 @@ putToksAfterPos ((12,8),(12,25)) at PlaceOffset 1 4 2:[((((0,1),(0,6)),ITwhere),
       let ss2 = posToSrcSpan layout ((12,8),(12,25))
       (showGhc ss2) `shouldBe` "f:12:8-24"
 
-      let (layout3,_ss2) = addToksAfterSrcSpan layout2 (ss2s ss2) (PlaceOffset 1 4 2) toks1
+      let (layout3,_ss2) = addToksAfterSrcSpan layout2 (gs2ss ss2) (PlaceOffset 1 4 2) toks1
 
       -- -- -- --
 
@@ -1119,9 +1120,9 @@ putToksAfterSpan test/testdata/AddParams1.hs:3:5:(((False,0,0,3),5),((False,0,0,
       toks2 <- basicTokenise "\n\n\n     pow"
       (show toks2) `shouldBe` "[((((3,6),(3,9)),ITvarid \"pow\"),\"pow\")]"
 
-      let (layout2,_newSpan,_oldTree) = updateTokensForSrcSpan layout (ss2s ss1) toks2
+      let (layout2,_newSpan,_oldTree) = updateTokensForSrcSpan layout (gs2ss ss1) toks2
 
-      let (layout3,_newSpan2) = addToksAfterSrcSpan layout2 (ss2s ss1) PlaceAdjacent toks1
+      let (layout3,_newSpan2) = addToksAfterSrcSpan layout2 (gs2ss ss1) PlaceAdjacent toks1
 
 ----------
 {-
@@ -1141,9 +1142,9 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       toks4 <- basicTokenise "\n\n\n\n     pow"
       (show toks4) `shouldBe` "[((((4,6),(4,9)),ITvarid \"pow\"),\"pow\")]"
 
-      let (layout4,_newSpan3,_oldTree2) = updateTokensForSrcSpan layout3 (ss2s ss2) toks4
+      let (layout4,_newSpan3,_oldTree2) = updateTokensForSrcSpan layout3 (gs2ss ss2) toks4
 
-      let (layout5,_newSpan4) = addToksAfterSrcSpan layout4 (ss2s ss2) PlaceAdjacent toks3
+      let (layout5,_newSpan4) = addToksAfterSrcSpan layout4 (gs2ss ss2) PlaceAdjacent toks3
 
 
       -- -- -- --
@@ -1184,7 +1185,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok1] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nRenaming.D5.sum"
       (show tok1) `shouldBe` "((((20,1),(20,16)),ITqvarid (\"Renaming.D5\",\"sum\")),\"Renaming.D5.sum\")"
 
-      let layout2 = replaceTokenForSrcSpan layout (ss2s ss1) tok1
+      let layout2 = replaceTokenForSrcSpan layout (gs2ss ss1) tok1
 
 -- replaceToken test/testdata/Renaming/D5.hs:20:28-37:(((False,0,0,20),28),((False,0,0,20),38))  ((((20,28),(20,43)),ITvarid "Renaming.D5.sum"),"Renaming.D5.sum")
 
@@ -1194,7 +1195,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok2] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                           Renaming.D5.sum"
       (show tok2) `shouldBe` "((((20,28),(20,43)),ITqvarid (\"Renaming.D5\",\"sum\")),\"Renaming.D5.sum\")"
 
-      let layout3 = replaceTokenForSrcSpan layout2 (ss2s ss2) tok2
+      let layout3 = replaceTokenForSrcSpan layout2 (gs2ss ss2) tok2
 
 -- replaceToken test/testdata/Renaming/D5.hs:20:1-10: (((False,0,0,20), 1),((False,0,0,20),11))  ((((20, 1),(20, 4)),ITvarid "sum"),"sum")
 
@@ -1204,7 +1205,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok3] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nsum"
       (show tok3) `shouldBe` "((((20,1),(20,4)),ITvarid \"sum\"),\"sum\")"
 
-      let layout4 = replaceTokenForSrcSpan layout3 (ss2s ss3) tok3
+      let layout4 = replaceTokenForSrcSpan layout3 (gs2ss ss3) tok3
 
 -- replaceToken test/testdata/Renaming/D5.hs:24:1-10: (((False,0,0,24), 1),((False,0,0,24),11))  ((((24, 1),(24, 4)),ITvarid "sum"),"sum")
 
@@ -1215,7 +1216,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       (show tok4) `shouldBe` "((((24,1),(24,4)),ITvarid \"sum\"),\"sum\")"
 
 
-      let layout5 = replaceTokenForSrcSpan layout4 (ss2s ss4) tok4
+      let layout5 = replaceTokenForSrcSpan layout4 (gs2ss ss4) tok4
 
       -- -- -- --
 
@@ -1254,7 +1255,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok1] <- basicTokenise "\n\n\nRenaming.D5.sum"
       (show tok1) `shouldBe` "((((3,1),(3,16)),ITqvarid (\"Renaming.D5\",\"sum\")),\"Renaming.D5.sum\")"
 
-      let layout2 = replaceTokenForSrcSpan layout (ss2s ss1) tok1
+      let layout2 = replaceTokenForSrcSpan layout (gs2ss ss1) tok1
 
 -- replaceToken test/testdata/Renaming/D5.hs:20:28-37:(((False,0,0,20),28),((False,0,0,20),38))  ((((20,28),(20,43)),ITvarid "Renaming.D5.sum"),"Renaming.D5.sum")
 
@@ -1264,7 +1265,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok2] <- basicTokenise "\n\n\n                           Renaming.D5.sum"
       (show tok2) `shouldBe` "((((3,28),(3,43)),ITqvarid (\"Renaming.D5\",\"sum\")),\"Renaming.D5.sum\")"
 
-      let layout3 = replaceTokenForSrcSpan layout2 (ss2s ss2) tok2
+      let layout3 = replaceTokenForSrcSpan layout2 (gs2ss ss2) tok2
 
 -- replaceToken test/testdata/Renaming/D5.hs:20:1-10: (((False,0,0,20), 1),((False,0,0,20),11))  ((((20, 1),(20, 4)),ITvarid "sum"),"sum")
 
@@ -1274,7 +1275,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok3] <- basicTokenise "\n\n\nsum"
       (show tok3) `shouldBe` "((((3,1),(3,4)),ITvarid \"sum\"),\"sum\")"
 
-      let layout4 = replaceTokenForSrcSpan layout3 (ss2s ss3) tok3
+      let layout4 = replaceTokenForSrcSpan layout3 (gs2ss ss3) tok3
 
 -- replaceToken test/testdata/Renaming/D5.hs:24:1-10: (((False,0,0,24), 1),((False,0,0,24),11))  ((((24, 1),(24, 4)),ITvarid "sum"),"sum")
 
@@ -1285,7 +1286,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       (show tok4) `shouldBe` "((((7,1),(7,4)),ITvarid \"sum\"),\"sum\")"
 
 
-      let layout5 = replaceTokenForSrcSpan layout4 (ss2s ss4) tok4
+      let layout5 = replaceTokenForSrcSpan layout4 (gs2ss ss4) tok4
 
       -- -- -- --
 
@@ -1356,7 +1357,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok1] <- basicTokenise "\n\n\n\n\n\n\n    xxxlong"
       (show tok1) `shouldBe` "((((7,5),(7,12)),ITvarid \"xxxlong\"),\"xxxlong\")"
 
-      let layout2 = replaceTokenForSrcSpan layout (ss2s ss1) tok1
+      let layout2 = replaceTokenForSrcSpan layout (gs2ss ss1) tok1
 
 -- replaceToken test/testdata/TypeUtils/LayoutLet2.hs:8:24-26:(((False,0,0,8),24),((False,0,0,8),27))((((8,24),(8,31)),ITvarid "xxxlong"),"xxxlong")
 
@@ -1366,7 +1367,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok2] <- basicTokenise "\n\n\n\n\n\n\n\n                       xxxlong"
       (show tok2) `shouldBe` "((((8,24),(8,31)),ITvarid \"xxxlong\"),\"xxxlong\")"
 
-      let layout3 = replaceTokenForSrcSpan layout2 (ss2s ss2) tok2
+      let layout3 = replaceTokenForSrcSpan layout2 (gs2ss ss2) tok2
 
       -- -- -- --
 
@@ -1513,7 +1514,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok1] <- basicTokenise "\n\n\n\n\n\n\n            anotherX"
       (show tok1) `shouldBe` "((((7,13),(7,21)),ITvarid \"anotherX\"),\"anotherX\")"
 
-      let layout2 = replaceTokenForSrcSpan layout (ss2s ss1) tok1
+      let layout2 = replaceTokenForSrcSpan layout (gs2ss ss1) tok1
 
 -- replaceToken test/testdata/Renaming/LayoutIn3.hs:7:13:(((False,0,0,7),13),((False,0,0,7),14))((((7,13),(7,21)),ITvarid "anotherX"),"anotherX")
 
@@ -1523,7 +1524,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok2] <- basicTokenise "\n\n\n\n\n\n\n            anotherX"
       (show tok2) `shouldBe` "((((7,13),(7,21)),ITvarid \"anotherX\"),\"anotherX\")"
 
-      let layout3 = replaceTokenForSrcSpan layout2 (ss2s ss2) tok2
+      let layout3 = replaceTokenForSrcSpan layout2 (gs2ss ss2) tok2
 
 -- replaceToken test/testdata/Renaming/LayoutIn3.hs:8:37:(((False,0,0,8),37),((False,0,0,8),38))((((8,37),(8,45)),ITvarid "anotherX"),"an
 
@@ -1533,7 +1534,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok3] <- basicTokenise "\n\n\n\n\n\n\n\n                                    anotherX"
       (show tok3) `shouldBe` "((((8,37),(8,45)),ITvarid \"anotherX\"),\"anotherX\")"
 
-      let layout4 = replaceTokenForSrcSpan layout3 (ss2s ss3) tok3
+      let layout4 = replaceTokenForSrcSpan layout3 (gs2ss ss3) tok3
 
       -- -- -- --
 
@@ -1678,7 +1679,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok1] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n  g2"
       (show tok1) `shouldBe` "((((10,3),(10,5)),ITvarid \"g2\"),\"g2\")"
 
-      let layout2 = replaceTokenForSrcSpan layout (ss2s ss1) tok1
+      let layout2 = replaceTokenForSrcSpan layout (gs2ss ss1) tok1
 
 -- replaceToken test/testdata/Layout/Do1.hs:11:38:(((False,0,0,11),38),((False,0,0,11),39))((((11,38),(11,40)),ITvarid "g2"),"g2")
 
@@ -1688,7 +1689,7 @@ putToksAfterSpan test/testdata/AddParams1.hs:4:5:(((False,0,0,4),5),((False,0,0,
       [tok2] <- basicTokenise "\n\n\n\n\n\n\n\n\n\n\n                                     g2"
       (show tok2) `shouldBe` "((((11,38),(11,40)),ITvarid \"g2\"),\"g2\")"
 
-      let layout3 = replaceTokenForSrcSpan layout2 (ss2s ss2) tok2
+      let layout3 = replaceTokenForSrcSpan layout2 (gs2ss ss2) tok2
 
       -- -- -- --
 
