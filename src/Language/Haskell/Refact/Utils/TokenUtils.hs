@@ -2238,7 +2238,7 @@ addOffsetToSrcSpan (lineOffset,colOffset) sspan = sspan'
      _ -> sspan
 
 -- ---------------------------------------------------------------------
-
+{-
 showSrcSpan :: GHC.SrcSpan -> String
 showSrcSpan sspan = show (getGhcLoc sspan, (r,c))
   where
@@ -2251,7 +2251,7 @@ showSrcSpanF sspan = show (((chs,trs,vs,ls),cs),((che,tre,ve,le),ce))
     -- chsn = if chs then 1 else 0
     -- chen = if che then 1 else 0
 
-
+-}
 -- ---------------------------------------------------------------------
 {-
 gs2f :: GHC.SrcSpan -> ForestSpan
