@@ -21,9 +21,9 @@ module Language.Haskell.Refact.Utils.TokenUtils (
        , mkTreeFromSpanTokens
 -}
        -- * Operations at 'TokenCache' level
-         putToksInCache
-       , putDeclToksInCache
-       , replaceTokenInCache
+       --  putToksInCache
+         putDeclToksInCache
+       -- , replaceTokenInCache
        -- , removeToksFromCache
        , getTreeFromCache
        , replaceTreeInCache
@@ -40,22 +40,22 @@ module Language.Haskell.Refact.Utils.TokenUtils (
        -- , getSrcSpanFor
        -- , getSrcSpanForDeep
        -- , addNewSrcSpanAndToksAfter
-       , addToksAfterSrcSpan
+       -- , addToksAfterSrcSpan
        , addDeclToksAfterSrcSpan
        , syncAST
-       , indentDeclToks
-       , Positioning(..)
+       -- , indentDeclToks
+       -- , Positioning(..)
 
        -- * Retrieving tokens
        -- , retrieveTokensFinal
        -- , retrieveTokensPpr
        -- , renderPpr
        -- , adjustLinesForDeleted
-       , retrieveTokensInterim
+       -- , retrieveTokensInterim
        -- , retrieveTokens' -- temporary for debug
 
        -- * Token Tree Selection
-       , treeIdFromForestSpan
+       -- , treeIdFromForestSpan
 
        -- * Token marking and re-alignment
        -- , reAlignMarked
@@ -63,14 +63,14 @@ module Language.Haskell.Refact.Utils.TokenUtils (
        -- * Utility
        , posToSrcSpan
        , posToSrcSpanTok
-       , fileNameFromTok
-       , treeStartEnd
+       -- , fileNameFromTok
+       -- , treeStartEnd
        -- , spanStartEnd
        -- , sf
        -- , fs
-       , gs2f,f2gs
-       , gs2ss,ss2gs
-       , forestSpanFromEntry
+       -- , gs2f,f2gs
+       -- , gs2ss,ss2gs
+       -- , forestSpanFromEntry
        -- , combineSpans
 
        -- * A token stream with last tokens first, and functions to manipulate it
@@ -93,7 +93,7 @@ module Language.Haskell.Refact.Utils.TokenUtils (
        -- , invariantOk
        -- , invariant
        -- , showForest
-       , showTree
+       -- , showTree
        , showSrcSpan
        , showSrcSpanF
        , ghcSpanStartEnd
@@ -106,39 +106,39 @@ module Language.Haskell.Refact.Utils.TokenUtils (
        -- , openZipperToSpanDeep
        -- , openZipperToSpanAdded
        -- , openZipperToSpanOrig
-       , forestSpanToSimpPos
-       , forestSpanToGhcPos
+       -- , forestSpanToSimpPos
+       -- , forestSpanToGhcPos
 
-       , ghcLineToForestLine
+       -- , ghcLineToForestLine
        , stripForestLineFromGhc
-       , forestLineToGhcLine
-       , forestSpanToGhcSrcSpan
+       -- , forestLineToGhcLine
+       -- , forestSpanToGhcSrcSpan
        -- , forestPosVersionSet
        -- , forestPosVersionNotSet
        -- , forestSpanLenChanged
-       , forestSpanVersions
-       , forestSpanVersionSet
+       -- , forestSpanVersions
+       -- , forestSpanVersionSet
        -- , forestSpanVersionNotSet
-       , insertForestLineInSrcSpan
+       -- , insertForestLineInSrcSpan
        -- , insertLenChangedInSrcSpan
        -- , insertVersionsInSrcSpan
        , ghcSrcSpanToForestSpan
-       , nullForestSpan, nullForestPos
+       -- , nullForestSpan, nullForestPos
        -- , simpPosToForestSpan
-       , srcPosToSimpPos
-       , showForestSpan
+       -- , srcPosToSimpPos
+       -- , showForestSpan
        , deleteGapsToks
        -- , deleteGapsToks'
        -- , calcEndGap
        -- , stripForestLines
 
        -- * Based on Data.Tree
-       , drawTreeEntry
+       -- , drawTreeEntry
        -- , drawTokenCache
        -- , drawTokenCacheDetailed
-       , drawForestEntry
+       -- , drawForestEntry
        -- , drawEntry
-       , drawTreeCompact
+       -- , drawTreeCompact
 
        ) where
 
@@ -155,6 +155,7 @@ import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 
+import Language.Haskell.TokenUtils.GHC.Layout
 import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.Utils
@@ -388,7 +389,7 @@ forestLineToGhcLine fl =  (if (flSpanLengthChanged fl) then forestLenChangedMask
                         + (shiftL (flInsertVersion fl) forestVersionShift)
                         + (flLine fl)
 -}
-
+{-
 forestSpanToGhcSrcSpan :: ForestSpan -> GHC.SrcSpan
 forestSpanToGhcSrcSpan ((fls,sc),(fle,ec)) = sspan
   where
@@ -397,7 +398,7 @@ forestSpanToGhcSrcSpan ((fls,sc),(fle,ec)) = sspan
     locStart = GHC.mkSrcLoc (GHC.mkFastString "foo") lineStart sc
     locEnd   = GHC.mkSrcLoc (GHC.mkFastString "foo") lineEnd   ec
     sspan = GHC.mkSrcSpan locStart locEnd
-
+-}
 
 {- moved to haskell-token-utils
 instance Ord ForestLine where
@@ -506,7 +507,7 @@ showForestSpan ((sr,sc),(er,ec))
                                    + (fromIntegral l)
 -}
 -- ---------------------------------------------------------------------
-
+{-
 -- | Replace any ForestLine flags already in a SrcSpan with the given ones
 insertForestLineInSrcSpan :: ForestLine -> GHC.SrcSpan -> GHC.SrcSpan
 insertForestLineInSrcSpan fl@(ForestLine ch tr v _l) (GHC.RealSrcSpan ss) = ss'
@@ -519,7 +520,7 @@ insertForestLineInSrcSpan fl@(ForestLine ch tr v _l) (GHC.RealSrcSpan ss) = ss'
     ss' = GHC.mkSrcSpan locStart locEnd
 
 insertForestLineInSrcSpan _ _ss = error $ "insertForestLineInSrcSpan: expecting a RealSrcSpan, got:" -- ++ (showGhc ss)
-
+-}
 -- ---------------------------------------------------------------------
 {-
 insertVersionsInSrcSpan :: Int -> Int -> GHC.SrcSpan -> GHC.SrcSpan
@@ -2252,7 +2253,7 @@ showSrcSpanF sspan = show (((chs,trs,vs,ls),cs),((che,tre,ve,le),ce))
 
 
 -- ---------------------------------------------------------------------
-
+{-
 gs2f :: GHC.SrcSpan -> ForestSpan
 gs2f = ghcSrcSpanToForestSpan
 
@@ -2268,7 +2269,7 @@ ss2gs ((sr,sc),(er,ec)) = GHC.mkSrcSpan locStart locEnd
     fname = GHC.mkFastString "foo"
     locStart = GHC.mkSrcLoc fname sr sc
     locEnd   = GHC.mkSrcLoc fname er ec
-
+-}
 {-
 -- | ForestSpan version of GHC combineSrcSpans
 combineSpans :: ForestSpan -> ForestSpan -> ForestSpan
