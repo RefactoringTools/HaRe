@@ -43,7 +43,7 @@ spec :: Spec
 spec = do
 
   -- ---------------------------------------------
-
+{- ++AZ++ Start of moved to haskell-token-utils
   describe "getTokensFor" $ do
     it "gets the tokens for a given srcloc, and caches them in the tree" $ do
       (t,toks) <- parsedFileTokenTestGhc
@@ -4108,6 +4108,7 @@ Should be pg :  5 - 3 = 2
 
       -- (showGhc $ layoutTreeToSourceTree f5) `shouldBe` ""
       (renderLinesFromLayoutTree f5) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nbar2 :: Integer -> Integerc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
+ ++AZ++ end of moved to haskell-token-utils -}
 
   -- ---------------------------------------------
 
@@ -4121,6 +4122,7 @@ Should be pg :  5 - 3 = 2
       (showSrcSpan sspan) `shouldBe` "((1,2),(3,5))"
 
   -- ---------------------------------------------
+{-  ++AZ++ start of moved to haskell-token-utils 
 
   describe "ghcLineToForestLine" $ do
     it "converts a GHC line to a ForestLine" $ do
@@ -5375,6 +5377,7 @@ addParamsToParentAndLiftedDecl: liftedDecls done
       (_t,toks) <- parsedFileTokenTestGhc
       let toks' = take 2 $ drop 5 toks
       (invariant $ Node (Entry nullForestSpan NoChange toks') []) `shouldBe` ["FAIL: null SrcSpan in tree: Node (Entry ((0,0),(0,0)) [((5,1),(5,4),((((5,1),(5,4)),ITvarid \"bob\"),\"bob\")),((5,5),(5,6),((((5,5),(5,6)),ITvarid \"a\"),\"a\"))]) []"]
+  ++AZ++ end of moved to haskell-token-utils -}
 
   -- ---------------------------------------------
 
@@ -5527,6 +5530,7 @@ addParamsToParentAndLiftedDecl: liftedDecls done
       (take 320 $ SYB.showData SYB.Renamer 0 decl2) `shouldBe` "\n(L {test/testdata/Renaming/LayoutIn2.hs:(8,14)-(12,42)} \n (HsCase \n  (L {test/testdata/Renaming/LayoutIn2.hs:8:19-22} \n   (HsVar {Name: list})) \n  (MatchGroup \n   [\n    (L {foo:8:26-36} \n     (Match \n      [\n       (L {test/testdata/Renaming/LayoutIn2.hs:8:26-31} \n        (ParPat \n         (L {test/testdata/Renaming/L"
 
   -- ---------------------------------------------
+{-  ++AZ++ start of moved to haskell-token-utils 
 
   describe "reSequenceToks" $ do
     it "Modifies a token stream to cater for changes in length of a token after e.g. renaming" $ do
@@ -5683,6 +5687,7 @@ addParamsToParentAndLiftedDecl: liftedDecls done
 
       let tree3 = (tkCache tk3) Map.! (TId 1)
       (show $ retrieveTokensInterim tree3) `shouldBe` "[((((15,1),(15,1)),ITsemi),\"\"),((((15,1),(15,3)),ITvarid \"sq\"),\"sq\"),((((15,4),(15,7)),ITvarid \"pow\"),\"pow\"),((((15,8),(15,9)),ITvarid \"z\"),\"z\"),((((15,10),(15,11)),ITequal),\"=\"),((((15,12),(15,13)),ITvarid \"z\"),\"z\"),((((15,13),(15,14)),ITvarsym \"^\"),\"^\"),((((15,14),(15,15)),ITvarid \"p\"),\"p\"),((((15,19),(15,39)),ITlineComment \"--there is a comment\"),\"--there is a comment\")]"
+  ++AZ++ end of moved to haskell-token-utils -}
 
   -- ---------------------------------------------
 
@@ -5720,6 +5725,7 @@ addParamsToParentAndLiftedDecl: liftedDecls done
       (showSrcSpanF ss') `shouldBe` "(((False,1,0,11),1),((False,1,0,11),8))"
 
   -- ---------------------------------------------
+{-  ++AZ++ start of moved to haskell-token-utils
 
   describe "formatAfterDelete" $ do
     it "does not leave a blank line in toks after deleting" $ do
@@ -6044,6 +6050,7 @@ addParamsToParentAndLiftedDecl: liftedDecls done
       let z = openZipperToSpanAdded (((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),7)) $ Z.fromTree layout2
       (show $ treeStartEnd (Z.tree z)) `shouldBe` "(((ForestLine False 0 1 8),5),((ForestLine False 0 1 8),14))"
 
+ ++AZ++ end of moved to haskell-token-utils -}
 -- ---------------------------------------------------------------------
 -- Helper functions
 

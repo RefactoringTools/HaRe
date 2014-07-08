@@ -297,9 +297,9 @@ putDeclToksAfterSpan oldSpan t pos toks = do
   logm $ "putDeclToksAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,toks))
   st <- get
   let Just tm = rsModule st
-  let forest = getTreeFromCache oldSpan (rsTokenCache tm)
+  let forest = getTreeFromCache (gs2ss oldSpan) (rsTokenCache tm)
   let (forest',_newSpan, t') = addDeclToksAfterSrcSpan forest oldSpan pos toks t
-  let tk' = replaceTreeInCache oldSpan forest' (rsTokenCache tm)
+  let tk' = replaceTreeInCache (gs2ss oldSpan) forest' (rsTokenCache tm)
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return t'

@@ -33,7 +33,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , lengthOfLastLine
                      , getToks
                      -- , replaceToks,replaceTok
-                     ,replaceTokNoReAlign,deleteToks,doRmWhites -- ,doAddWhites
+                     -- ,replaceTokNoReAlign
+                     ,deleteToks,doRmWhites -- ,doAddWhites
                      , srcLocs
                      , getSrcSpan, getAllSrcLocs
                      -- , ghcSrcLocs -- Test version
@@ -98,7 +99,7 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      , mkZeroToken
                      , markToken
                      , isMarked
-                     , matchTokenPos
+                     -- , matchTokenPos
                      , rmOffsetFromToks
   ) where
 
@@ -381,7 +382,7 @@ getToks (startPos,endPos) toks =
     -- error $ "getToks:startPos=" ++ (show startPos) ++ ",endPos=" ++ (show endPos) ++ ",toks21=" ++ (showToks toks21) -- ++AZ++ debug
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Replace a single token in the token stream by a new token, without
 -- adjusting the layout.
 -- Note1: does not re-align, else other later replacements may fail.
@@ -396,13 +397,13 @@ replaceTokNoReAlign toks pos newTok =
       oldTok  =  if (emptyList toks2) then newTok else (ghead "replaceTokNoReAlign" toks2)
       -- newTok' = markToken $ matchTokenPos oldTok newTok
       newTok' = matchTokenPos oldTok newTok
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 -- |Transfer the location information from the first param to the second
 matchTokenPos :: PosToken -> PosToken -> PosToken
 matchTokenPos (GHC.L l _,_) (GHC.L _ t,s) = (GHC.L l t,s)
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Get the start of the line before the pos,

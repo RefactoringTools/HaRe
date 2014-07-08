@@ -137,7 +137,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , getParsedForRenamedLocated
     -- , allPNT
     --  , allPNTLens
-    , newNameTok
+    -- , newNameTok
     , stripLeadingSpaces
     -- , lookupNameGhc
  ) where
@@ -156,6 +156,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.TokenUtils.GHC.Layout
 import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.Utils
@@ -4291,7 +4292,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
            else return ()
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Create a new name token. If 'useQual' then use the qualified
 -- name, if it exists.
 -- The end position is not changed, so the eventual realignment can
@@ -4313,7 +4314,7 @@ newNameTok useQual l newName =
        in
          GHC.mkSrcSpan locStart locEnd
      _ -> l
-
+-}
 
 ----------------------------------------------------------------------------------------
 -- | Check whether the specified identifier is declared in the given syntax phrase t,

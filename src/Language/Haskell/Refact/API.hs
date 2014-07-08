@@ -312,7 +312,7 @@ module Language.Haskell.Refact.API
     , getParsedForRenamedLocated
     -- , allPNT
     --  , allPNTLens
-    , newNameTok
+    -- , newNameTok
     , stripLeadingSpaces
     -- , lookupNameGhc
 

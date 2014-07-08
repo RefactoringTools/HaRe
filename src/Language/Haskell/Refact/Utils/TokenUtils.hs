@@ -25,8 +25,8 @@ module Language.Haskell.Refact.Utils.TokenUtils (
          putDeclToksInCache
        -- , replaceTokenInCache
        -- , removeToksFromCache
-       , getTreeFromCache
-       , replaceTreeInCache
+       -- , getTreeFromCache
+       -- , replaceTreeInCache
        , syncAstToLatestCache
 
        -- * Operations at 'Tree' 'Entry' level
@@ -658,14 +658,14 @@ removeToksFromCache tk sspan = tk''
     tk'' = stash tk' oldTree
 -}
 -- ---------------------------------------------------------------------
-
+{-
 getTreeFromCache :: GHC.SrcSpan -> TokenCache PosToken -> Tree (Entry PosToken)
 getTreeFromCache sspan tk = (tkCache tk) Map.! tid
   where
     tid = treeIdFromForestSpan $ ghcSrcSpanToForestSpan sspan
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 replaceTreeInCache :: GHC.SrcSpan -> Tree (Entry PosToken) -> TokenCache PosToken -> TokenCache PosToken
 replaceTreeInCache sspan tree tk = tk'
   where
@@ -682,7 +682,7 @@ putTidInTree tid (Node (Entry fspan lay toks) subs) = tree'
     subs' = map (putTidInTree tid) subs
     fs' = treeIdIntoForestSpan tid fspan
     tree' = Node (Entry fs' lay toks) subs'
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |Assuming most recent operation has stashed the old tokens, sync
