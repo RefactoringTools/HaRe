@@ -38,39 +38,40 @@ module Language.Haskell.Refact.Utils.TypeUtils
        (
  -- * Program Analysis
     -- ** Imports and exports
-   inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
-   -- , hsQualifier, {-This function should be removed-} rmPrelude
-   {-,exportInfo -}, isExported, isExplicitlyExported, modIsExported
+    inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
+   , isExported, isExplicitlyExported, modIsExported
 
     -- ** Variable analysis
     , isFieldName
     , isClassName
     , isInstanceName
-    ,hsPNs -- ,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
-    {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
+    ,hsPNs
     ,isDeclaredIn
-    ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
+    ,hsFreeAndDeclaredPNsOld
+    ,hsFreeAndDeclaredNameStrings
     ,hsFreeAndDeclaredPNs
     ,hsFreeAndDeclaredGhc
     ,getDeclaredTypes
-    ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
-
-    ,hsVisiblePNs {- , hsVisiblePNsOld -}, hsVisibleNames
+    ,getFvs, getFreeVars, getDeclaredVars
+    ,hsVisiblePNs, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
     ,hsVisibleDs
 
     -- ** Property checking
-    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
-    ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
+    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
+    ,isQualifiedPN, isFunOrPatName, isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
-    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
-    ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
+    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR
+    ,usedWithoutQualR,isUsedInRhs
+
+    -- ** Getting
     ,findPNT,findPN,findAllNameOccurences
     ,findPNs, findEntity, findEntity'
-    , findIdForName
-    , getTypeForName
+    ,findIdForName
+    ,getTypeForName
+
     ,sameOccurrence
-    ,defines, definesP,definesTypeSig -- , isTypeSigOf
+    ,defines, definesP,definesTypeSig
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
     ,sameBind
     {- ,usedByRhs -},UsedByRhs(..)
@@ -88,8 +89,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
  -- * Program transformation
     -- ** Adding
-    ,addDecl, addItemsToImport, addHiding --, rmItemsFromImport, addItemsToExport
-    ,addParamsToDecls, addActualParamsToRhs {- , addGuardsToRhs-}, addImportDecl, duplicateDecl -- , moveDecl
+    ,addDecl, addItemsToImport, addHiding
+    ,addParamsToDecls, addActualParamsToRhs, addImportDecl, duplicateDecl
     -- ** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -149,6 +150,8 @@ import Data.List
 import Data.Maybe
 import Data.Monoid
 import Exception
+
+import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -156,6 +159,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
+
 import Language.Haskell.TokenUtils.GHC.Layout
 import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.Types
@@ -163,7 +167,7 @@ import Language.Haskell.TokenUtils.Utils
 
 -- Modules from GHC
 import qualified Bag           as GHC
-import qualified BasicTypes    as GHC
+-- import qualified BasicTypes    as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 -- import qualified Lexer         as GHC hiding (getSrcLoc)
@@ -1894,7 +1898,7 @@ isFunOrPatBindR::GHC.LHsBind t -> Bool
 isFunOrPatBindR decl = isFunBindR decl || isPatBindR decl
 
 -------------------------------------------------------------------------------
-
+{-
 getValBindSigs :: GHC.HsValBinds GHC.Name -> [GHC.LSig GHC.Name]
 getValBindSigs binds = case binds of
     GHC.ValBindsIn  _ sigs -> sigs
@@ -1913,9 +1917,10 @@ unionBinds (x1:x2:xs) = unionBinds ((mergeBinds x1 x2):xs)
     mergeBinds (GHC.ValBindsOut b1 s1) (GHC.ValBindsOut b2 s2) = (GHC.ValBindsOut (b1++b2) (s1++s2))
     mergeBinds y1@(GHC.ValBindsIn _ _) y2@(GHC.ValBindsOut _  _) = mergeBinds y2 y1
     mergeBinds    (GHC.ValBindsOut b1 s1) (GHC.ValBindsIn b2 s2) = (GHC.ValBindsOut (b1++[(GHC.NonRecursive,b2)]) (s1++s2))
+-}
 
 -- NOTE: ValBindsIn are found before the Renamer, ValBindsOut after
-
+{-
 hsBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name]
 hsBinds t = case hsValBinds t of
   GHC.ValBindsIn binds _sigs -> GHC.bagToList binds
@@ -1928,7 +1933,8 @@ replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) sigs)
     sigs = case hsValBinds t of
       GHC.ValBindsIn  _ s -> s
       GHC.ValBindsOut _ s -> s
-
+-}
+{-
 -- This class replaces the HsDecls one
 class (SYB.Data t) => HsValBinds t where
 
@@ -1951,12 +1957,12 @@ class (SYB.Data t) => HsValBinds t where
     -- in the given syntax phrase. Note: only makes sense for
     -- GHC.RenamedSource
     hsTyDecls :: t -> [[GHC.LTyClDecl GHC.Name]]
-
+-}
 -- ++AZ++ see if we can get away with one only..
 isDeclaredIn :: (HsValBinds t) => GHC.Name -> t -> Bool
 isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
 
-
+{-
 instance HsValBinds (GHC.RenamedSource) where
   hsValBinds (grp,_,_,_) = (GHC.hs_valds grp)
 
@@ -2264,7 +2270,7 @@ instance HsValBinds (GHC.HsIPBinds GHC.Name) where
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
-
+-}
 
 -- ---------------------------------------------------------------------
 

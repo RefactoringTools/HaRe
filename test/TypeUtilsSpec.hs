@@ -15,13 +15,12 @@ import qualified Module     as GHC
 
 import Data.Maybe
 
+import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
--- import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
-
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
@@ -2556,7 +2555,7 @@ spec = do
               "`- ((6,1),(32,18))\n"
 
 
-      let (forest3,sspan) = addToksAfterSrcSpan forest' (gs2ss l) (PlaceOffset 2 0 2) toks'
+      let (_forest3,sspan) = addToksAfterSrcSpan forest' (gs2ss l) (PlaceOffset 2 0 2) toks'
       let _decl' = syncAST decl (ss2f sspan)
 
       "a" `shouldBe` "a"

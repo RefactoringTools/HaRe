@@ -8,25 +8,19 @@ import qualified GHC        as GHC
 
 import qualified GHC.SYB.Utils as SYB
 
--- import Control.Monad.State
--- import Data.List
 import Data.Maybe
--- import Data.Tree
 
--- import Language.Haskell.Refact.Utils.GhcBugWorkArounds
+import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
--- import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 
 import qualified Data.Map as Map
--- import qualified Data.Tree.Zipper as Z
 
 import Language.Haskell.TokenUtils.DualTree
 import Language.Haskell.TokenUtils.GHC.Layout
--- import Language.Haskell.TokenUtils.Layout
 import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.Utils
@@ -42,7 +36,6 @@ main = do
 spec :: Spec
 spec = do
 
-  -- ---------------------------------------------
   -- ---------------------------------------------
 
   describe "syncAST" $ do

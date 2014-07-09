@@ -12,6 +12,7 @@ import qualified SrcLoc     as GHC
 
 -- import Control.Monad.State
 import Data.Maybe
+import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
