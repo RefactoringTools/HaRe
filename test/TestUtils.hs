@@ -16,7 +16,7 @@ module TestUtils
        , sourceTreeFromState
        , linesFromState
        , layoutFromState
-       , entriesFromState
+       -- , entriesFromState
        , defaultTestSettings
        , logTestSettings
        , testSettingsMainfile
@@ -45,7 +45,7 @@ import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
+-- import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 
 import Language.Haskell.TokenUtils.Types
@@ -182,13 +182,14 @@ layoutFromState st =
     Nothing -> Nothing
 
 -- ---------------------------------------------------------------------
-
+{-
 entriesFromState :: RefactState -> [Entry PosToken]
 entriesFromState st = error $ "entriesFromState deprecated"
 {-
   case (rsModule st) of
     Just tm -> retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
+-}
 -}
 -- ---------------------------------------------------------------------
 

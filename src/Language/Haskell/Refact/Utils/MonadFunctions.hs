@@ -103,17 +103,6 @@ fetchToks = do
   logm $ "fetchToks (not showing toks"
   return toks
 
-{-
--- |fetch the final tokens
-fetchToksFinal :: RefactGhc [PosToken]
-fetchToksFinal = do
-  Just tm <- gets rsModule
-  let toks = retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
-  -- logm $ "fetchToks" ++ (showToks toks)
-  logm $ "fetchToksFinal (not showing toks)"
-  return toks
--}
-
 -- |fetch the final tokens in Ppr format
 fetchLinesFinal :: RefactGhc [Line PosToken]
 fetchLinesFinal = do
@@ -135,66 +124,18 @@ getToksForSpan sspan = do
   st <- get
   let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
   let Just tm = rsModule st
-{-
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensForNoIntros checkInv forest (gs2ss sspan)
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
--}
   let (tk',toks) = getTokensNoIntrosFromCache checkInv (rsTokenCache tm) (gs2ss sspan)
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
   logm $ "getToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
 
-{-
--- |Get the current tokens for a given GHC.SrcSpan, without checking
--- the invariant.
--- TODO: this should not be necessary
-getToksForSpanNoInv ::  GHC.SrcSpan -> RefactGhc [PosToken]
-getToksForSpanNoInv sspan = do
-  st <- get
-  let checkInv = False
-  let Just tm = rsModule st
-{-
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensFor checkInv forest (gs2ss sspan)
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
--}
-  let (tk',toks) = getTokensFromCache checkInv (rsTokenCache tm) (gs2ss sspan)
-  let rsModule' = Just (tm {rsTokenCache = tk'})
-  put $ st { rsModule = rsModule' }
-  logm $ "getToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
-  return toks
--}
-
-{-
--- TODO: looks like we are not using this one
--- |Get the current tokens for a given GHC.SrcSpan, leaving out any
--- leading 'then', 'else', 'of', 'do' or 'in' tokens
-getToksForSpanWithIntros ::  GHC.SrcSpan -> RefactGhc [PosToken]
-getToksForSpanWithIntros sspan = do
-  st <- get
-  let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
-  let Just tm = rsModule st
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensFor checkInv forest (gs2ss sspan)
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
-  let rsModule' = Just (tm {rsTokenCache = tk'})
-  put $ st { rsModule = rsModule' }
-  logm $ "getToksForSpanNoIntros " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
-  return toks
--}
 
 -- |Get the current tokens preceding a given GHC.SrcSpan.
 getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc (ReversedToks PosToken)
 getToksBeforeSpan sspan = do
   st <- get
   let Just tm = rsModule st
-{-
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',toks) = getTokensBefore forest (gs2ss sspan)
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
--}
   let (tk', toks) = getTokensBeforeFromCache (rsTokenCache tm) (gs2ss sspan)
   let rsModule' = Just (tm {rsTokenCache = tk'})
   put $ st { rsModule = rsModule' }
@@ -247,8 +188,6 @@ putToksForPos pos toks = do
   logm $ "putToksForPos " ++ (show pos) ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
-  -- let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
-  -- let sspan = posToSrcSpan mainForest pos
   let (tk',newSpan) = putToksInCache (rsTokenCache tm) pos toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
@@ -261,11 +200,6 @@ addToksAfterSpan oldSpan pos toks = do
   logm $ "putToksAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (showSrcSpanF oldSpan) ++ " at " ++ (show pos) ++ ":" ++ (showToks toks)
   st <- get
   let Just tm = rsModule st
-{-
-  let forest = getTreeFromCache oldSpan (rsTokenCache tm)
-  let (forest',newSpan) = addToksAfterSrcSpan forest (gs2ss oldSpan) pos toks
-  let tk' = replaceTreeInCache oldSpan forest' $ rsTokenCache tm
--}
   let (tk',newSpan) = addTokensAfterSpanInCache (rsTokenCache tm) (gs2ss oldSpan) pos toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
@@ -277,13 +211,8 @@ addToksAfterPos pos position toks = do
   logm $ "putToksAfterPos " ++ (show pos) ++ " at "  ++ (show position) ++ ":" ++ (show toks)
   st <- get
   let Just tm = rsModule st
-  let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
-  let sspan = posToSrcSpan mainForest pos
-{-
-  let forest = getTreeFromCache sspan (rsTokenCache tm)
-  let (forest',newSpan) = addToksAfterSrcSpan forest (gs2ss sspan) position toks
-  let tk' = replaceTreeInCache sspan forest' $ rsTokenCache tm
--}
+  -- let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
+  -- let sspan = posToSrcSpan mainForest pos
   let (tk',newSpan) = addTokensAfterSpanInCache (rsTokenCache tm) pos position toks
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
@@ -336,8 +265,6 @@ drawTokenTree :: String -> RefactGhc ()
 drawTokenTree msg = do
   st <- get
   let Just tm = rsModule st
-  -- let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
-  -- logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTreeEntry mainForest)
   logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTokenCache (rsTokenCache tm))
   return ()
 
@@ -362,15 +289,6 @@ getTokenTree = do
   return mainForest
 
 -- ---------------------------------------------------------------------
-
-{-
--- |Get the Ppr structure for debug prurposes
-showPprDebug :: String -> RefactGhc ()
-showPprDebug msg = do
-  ppr <- fetchPprFinal
-  logm $ msg ++ "\ncurrent ppr tree:\n" ++ (showGhc ppr)
-  return ()
--}
 
 showLinesDebug :: String -> RefactGhc ()
 showLinesDebug msg = do

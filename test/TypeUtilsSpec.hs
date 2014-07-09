@@ -3359,7 +3359,7 @@ spec = do
           let res = getDeclAndToks name True toks renamed
           return (res,n,name)
 
-      (((d,t),n1,_n2),s) <- runRefactGhcState comp
+      (((d,t),n1,_n2),_s) <- runRefactGhcState comp
       -- (((d,t),n1,n2),s) <- runRefactGhcStateLog comp Debug
       (showGhc n1) `shouldBe` "MoveDef.Md1.tlFunc"
       (showGhc d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"

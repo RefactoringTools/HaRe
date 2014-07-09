@@ -225,11 +225,12 @@ initGhcSession cradle importDirs = do
     -- graph <- gets rsGraph
     -- liftIO $ warningM "HaRe" $ "initGhcSession:graph=" ++ show graph
     return ()
+{-
     where
       options opt
         | rsetExpandSplice opt = "-w:"   : rsetGhcOpts opt
         | otherwise            = "-Wall" : rsetGhcOpts opt
-
+-}
 -- ---------------------------------------------------------------------
 
 

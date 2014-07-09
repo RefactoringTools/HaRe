@@ -21,8 +21,6 @@ type HsDeclsP = GHC.HsGroup GHC.Name
 -- type InScopes=((Relations.Rel Names.QName (Ents.Ent PosName.Id)))
 type InScopes = [GHC.Name]
 
--- type SimpPos = (Int,Int) -- Line, column
-
 -- Additions for GHC
 type PosToken = (GHC.Located GHC.Token, String)
 
@@ -89,25 +87,6 @@ instance GHC.Outputable (GHC.ConDeclField GHC.Name) where
 
 -- ---------------------------------------------------------------------
 
-type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)
+-- type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)
 
--- ---------------------------------------------------------------------
--- Putting these here for the time being, to avoid import loops
-{-
-ghead :: String -> [a] -> a
-ghead  info []    = error $ "ghead "++info++" []"
-ghead _info (h:_) = h
-
-glast :: String -> [a] -> a
-glast  info []    = error $ "glast " ++ info ++ " []"
-glast _info h     = last h
-
-gtail :: String -> [a] -> [a]
-gtail  info []   = error $ "gtail " ++ info ++ " []"
-gtail _info h    = tail h
-
-gfromJust :: [Char] -> Maybe a -> a
-gfromJust _info (Just h) = h
-gfromJust  info Nothing = error $ "gfromJust " ++ info ++ " Nothing"
--}
 -- ---------------------------------------------------------------------
