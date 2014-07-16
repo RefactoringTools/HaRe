@@ -1,3 +1,6 @@
+2014-07-16 v0.7.2.5
+	Fix incompatibility with haskell-token-utils 0.0.0.3, closing
+	issue #14
 2014-07-03 v0.7.2.4
 	Re-architect to split out haskell-token-utils as a separate
 	package, usable with haskell-src-exts too
