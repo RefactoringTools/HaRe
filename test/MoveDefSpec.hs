@@ -286,13 +286,13 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "liftToTopLevel Signature2" $ do
     -- should throw exception for forall in signature
-     res <- catchException (liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (15,5))
-     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (15,5)
+     res <- catchException (liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (16,5))
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (16,5)
      (show res) `shouldBe` "Just \"\\nNew type signature may fail type checking: :: (forall t. Num t => t -> t -> t) -> Int -> \\n\""
 
      {-
-     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (15,5)
-     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (15,5)
+     r <- liftToTopLevel defaultTestSettings testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (16,5)
+     -- r <- liftToTopLevel logTestSettings  testCradle "./test/testdata/LiftToToplevel/Signature2.hs" (16,5)
      (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/Signature2.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/Signature2.expected.hs"
                           "./test/testdata/LiftToToplevel/Signature2.refactored.hs"
