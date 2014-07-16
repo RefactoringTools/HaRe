@@ -41,7 +41,7 @@ data-Dir:                       .
 extra-source-files:             ChangeLog
 
 Library
-        Build-Depends:          base >= 4.0  && < 4.7
+        Build-Depends:          base >= 4.0  && < 4.8
                                 , containers
                                 , directory
 
@@ -104,7 +104,7 @@ Executable ghc-hare
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
-        Build-Depends:          base >= 4.0  && < 4.7
+        Build-Depends:          base >= 4.0  && < 4.8
                                 , array
                                 , containers
                                 , directory
@@ -152,7 +152,7 @@ test-suite spec
     -- src
     test
   build-depends:
-      base        >= 4.0  && < 4.7
+      base        >= 4.0  && < 4.8
     , Diff >= 0.3.0
     -- , HUnit       == 1.2.*
     , HUnit
@@ -194,7 +194,7 @@ test-suite spec
 --   type:          exitcode-stdio-1.0
 --   ghc-options:   -threaded
 --   main-is:       doctests.hs
---   build-depends: base        >= 4.0  && < 4.7
+--   build-depends: base        >= 4.0  && < 4.8
 --                , doctest >= 0.8
 --                , ghc-mod
 --   Hs-Source-Dirs:

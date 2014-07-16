@@ -7,6 +7,7 @@ module LiftToTopLevel.Signature2 where
    requires Rank2Types
 
     baz:: (forall t. Num t => t -> t -> t) -> Int ->Int
+    baz :: Num a => (a -> t1 -> t) -> t1 -> t
     baz xx a= xx 1 a
 
 -}

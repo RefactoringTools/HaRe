@@ -23,7 +23,7 @@
    root cause is program cannot load due to syntax errors. Provide
    decent error reporting
 
-** TOOO cannot select (data) item to be renamed from the module exports list
+** TODO cannot select (data) item to be renamed from the module exports list
 ** TODO when renaming, tell the user the original name, in the elisp
 ** TODO liftToTopLevel does not update the signature when adding a param
     e.g.for lifting 'uses' in MoveDef.hs line 1374 now complains
@@ -50,7 +50,6 @@
 ** TODO manage RefactGhc to separate Hare exceptions from GHC ones
    see http://parenz.wordpress.com/2013/07/23/on-custom-error-handlers-for-ghc-api/
 ** TODO elisp: cancel option is not implemented
-** DONE Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
 ** TODO SwapArgs does not process client files
 ** TODO demote does not process client files
 ** TODO provide simple wrapper for one-file refactor in the API

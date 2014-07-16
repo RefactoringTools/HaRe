@@ -22,6 +22,7 @@ env:
 # - GHCVER=7.6.1
 # - GHCVER=7.6.2
  - GHCVER=7.6.3
+ - GHCVER=7.8.2
 # - GHCVER=head
 
 # matrix:
