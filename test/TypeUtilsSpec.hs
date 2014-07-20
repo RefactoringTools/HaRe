@@ -2294,7 +2294,7 @@ spec = do
       ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((nb,nn),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "DupDef.Dd1.toplevel"
-      (showToks $ [newNameTok False l nn]) `shouldBe` "[((3,1),(3,5),((((3,1),(3,5)),ITvarid \"bar2\"),\"bar2\"))]"
+      (showToks $ [newNameTok False l nn]) `shouldBe` "[((3,1),(3,5),\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       (renderLines $ linesFromState s) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\nbar2 x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
       (showGhc nb) `shouldBe` "bar2 x = DupDef.Dd1.c GHC.Num.* x"

@@ -819,7 +819,7 @@ addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _)))) =
       newStr = ":: " ++ (intercalate " -> " $ map printSigComponent ts) ++ " -> "
   logm $ "addParamsToSigs:replaceSpan=" ++ showGhc replaceSpan
   logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
-  newToks <- liftIO $ basicTokenise newStr
+  let newToks = basicTokenise newStr
   void $ putToksForSpan replaceSpan newToks
   let typ' = foldl addOneType ltyp ts
   sigOk <- isNewSignatureOk ts

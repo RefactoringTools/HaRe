@@ -2788,7 +2788,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
        let startPos = tokenPos    lastTok
        let endPos   = tokenPosEnd lastTok
 
-       newToks <- liftIO $ basicTokenise (showGhc impDecl)
+       let newToks = basicTokenise (showGhc impDecl)
        logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
        void $ addToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
@@ -2885,7 +2885,7 @@ makeNewToks (decl, maybeSig, declToks) = do
                 Just _ts -> ""
                 Nothing -> "\n" ++ (intercalate "\n" $ map prettyprint maybeSig)
    -- logm $ "makeNewToks:declStr=[" ++ declStr ++ "]"
-   newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
+   let newToks = tokenise ((0,0),(0,0)) 0 True (sigStr ++ declStr)
    return newToks
 
 -- ---------------------------------------------------------------------
@@ -2978,7 +2978,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                  then getStartEndLoc parent'
                  else getStartEndLoc localDecls
 
-        newToks <- liftIO $ basicTokenise newSource
+        let newToks = basicTokenise newSource
 
         (newFun',_) <- addLocInfo (newFun, newToks)
 
@@ -3183,8 +3183,8 @@ addFormalParams place newParams
        let newStr = (prettyprintPatList prettyprint True newParams)
 
        case place of
-         Left l@(GHC.RealSrcSpan ss) -> do
-           newToks' <- liftIO $ tokenise (GHC.realSrcSpanStart ss) 0 False newStr
+         Left l@(GHC.RealSrcSpan _ss) -> do
+           let newToks' = tokenise (gs2ss l) 0 False newStr
            let newToks = map markToken newToks'
            _ <- addToksAfterSpan l PlaceAdjacent newToks
            return ()
@@ -3195,8 +3195,7 @@ addFormalParams place newParams
            toks <- getToksForSpan l
 
            let oldStr = GHC.showRichTokenStream $ rmOffsetFromToks toks
-           combinedToks <- liftIO $ tokenise (realSrcLocFromTok
-                                  $ ghead "addFormalParams" toks)
+           let combinedToks = tokenise (gs2ss $ tokenSrcSpan $ ghead "addFormalParams" toks)
                                      0 False (newStr ++ " " ++ oldStr)
 
            _ <- putToksForSpan l combinedToks

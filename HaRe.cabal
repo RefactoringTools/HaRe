@@ -66,7 +66,7 @@ Library
                                 , Strafunski-StrategyLib
                                 , syz
 
-                                , haskell-token-utils >= 0.0.0.3
+                                , haskell-token-utils >= 0.0.0.4
 
         GHC-Options:             -Wall
 

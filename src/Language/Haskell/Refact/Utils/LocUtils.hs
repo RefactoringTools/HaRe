@@ -49,8 +49,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
                      {-,
                      prettyprint ,deleteFromToks, prettyprintGuardsAlt,
                      -}
-                     , tokenise
-                     , basicTokenise
+                     -- , tokenise
+                     -- , basicTokenise
                      -- , prettyprint -- , prettyprintGhc
                      , prettyprintPatList
                      , groupTokensByLine
@@ -307,7 +307,7 @@ replaceTabBySpaces (s:ss)
               else s:replaceTabBySpaces ss
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Convert a string into a set of Haskell tokens, following the
 -- given position, with each line indented by a given column offset if
 -- required
@@ -340,7 +340,7 @@ basicTokenise str = tokenise startPos 0 False str
   where
     -- startPos = (GHC.mkRealSrcLoc tokenFileMark 0 1)
     startPos = (GHC.mkRealSrcLoc (GHC.mkFastString "foo") 0 1)
-
+-}
 -- ---------------------------------------------------------------------
 
 --Should add cases for literals.

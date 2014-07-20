@@ -365,7 +365,7 @@ module Language.Haskell.Refact.API
   , prettyprint
   , prettyprint2
   , ppType
-  , lexStringToRichTokens
+  , lexStringToTokens
   , getDataConstructors
   , setGhcContext
 
@@ -373,6 +373,10 @@ module Language.Haskell.Refact.API
  , Positioning(..)
  , reIndentToks
  , ghcSrcSpanToForestSpan
+
+ -- * Span conversion functions
+ , gs2f,f2gs
+ , gs2ss,ss2gs
  ) where
 
 import Language.Haskell.Refact.Utils.Binds
@@ -389,4 +393,4 @@ import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.Utils
--- import Language.Haskell.TokenUtils.GHC.Layout
+import Language.Haskell.TokenUtils.GHC.Layout
