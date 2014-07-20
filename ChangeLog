@@ -1,3 +1,5 @@
+2014-07-20 v0.7.2.6
+	tokenise / basicTokenise moved to haskell-token-utils
 2014-07-16 v0.7.2.5
 	Fix incompatibility with haskell-token-utils 0.0.0.3, closing
 	issue #14
