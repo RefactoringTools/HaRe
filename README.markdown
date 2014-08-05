@@ -11,6 +11,8 @@
 [badge-license]: https://img.shields.io/badge/license-BSD3-green.svg?dummy
 [license]: https://github.com/alanz/HaRe/blob/master/LICENSE
 
+Note: The current version (0.7.2.6) does not install with GHC 7.8.x
+
 ## Getting Started
 
     cabal install HaRe
