@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.2.6
+Version:                        0.7.2.7
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -54,7 +54,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 4.1.0
+                                , ghc-mod >= 4.1.0 && < 5
                                 , mtl
                                 , old-time
                                 , pretty
@@ -118,7 +118,7 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 4.1.0
+                                , ghc-mod >= 4.1.0 && < 5
                                 , mtl
                                 , old-time
                                 , parsec
@@ -171,7 +171,7 @@ test-suite spec
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 4.1.0
+    , ghc-mod >= 4.1.0 && < 5
     , hspec
     , mtl
     , old-time
