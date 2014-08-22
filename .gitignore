@@ -398,3 +398,5 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/RenameInExportedType2.hs.AST_out
 /test/testdata/Renaming/RenameInExportedType2.hs.renamed_out
 /test/testdata/Renaming/RenameInExportedType2.hs.tokens
+/.cabal-sandbox/
+/cabal.sandbox.config

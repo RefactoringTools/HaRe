@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.2.3
+Version:                        0.7.2.7
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -41,7 +41,7 @@ data-Dir:                       .
 extra-source-files:             ChangeLog
 
 Library
-        Build-Depends:          base >= 4.0  && < 4.7
+        Build-Depends:          base >= 4.0  && < 4.8
                                 , containers
                                 , directory
 
@@ -54,7 +54,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 4.1.0
+                                , ghc-mod >= 4.1.0 && < 5
                                 , mtl
                                 , old-time
                                 , pretty
@@ -65,6 +65,8 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
+
+                                , haskell-token-utils >= 0.0.0.4
 
         GHC-Options:             -Wall
 
@@ -78,19 +80,20 @@ Library
            , Language.Haskell.Refact.Refactoring.MoveDef
            , Language.Haskell.Refact.Refactoring.Renaming
            , Language.Haskell.Refact.Refactoring.SwapArgs
+<<<<<<< HEAD
            , Language.Haskell.Refact.TypeRefactorings.RefacGenDef
            , Language.Haskell.Refact.Utils.DualTree
+=======
+           , Language.Haskell.Refact.Utils.Binds
+>>>>>>> 45ddf94a46c6cae05db71ff94e797d1c35f73a51
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils
            , Language.Haskell.Refact.Utils.GhcVersionSpecific
-           , Language.Haskell.Refact.Utils.Layout
-           , Language.Haskell.Refact.Utils.LayoutTypes
            , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
            , Language.Haskell.Refact.Utils.MonadFunctions
            , Language.Haskell.Refact.Utils.TokenUtils
-           , Language.Haskell.Refact.Utils.TokenUtilsTypes
            , Language.Haskell.Refact.Utils.TypeSyn
            , Language.Haskell.Refact.Utils.TypeUtils
            , Language.Haskell.Refact.Utils.Utils
@@ -106,7 +109,7 @@ Executable ghc-hare
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
-        Build-Depends:          base >= 4.0  && < 4.7
+        Build-Depends:          base >= 4.0  && < 4.8
                                 , array
                                 , containers
                                 , directory
@@ -120,7 +123,7 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 4.1.0
+                                , ghc-mod >= 4.1.0 && < 5
                                 , mtl
                                 , old-time
                                 , parsec
@@ -132,7 +135,8 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , HaRe >= 0.7.1.6
+                                , haskell-token-utils
+                                , HaRe >= 0.7.2.3
         Extensions:      CPP
 
 
@@ -153,9 +157,10 @@ test-suite spec
     -- src
     test
   build-depends:
-      base        >= 4.0  && < 4.7
+      base        >= 4.0  && < 4.8
     , Diff >= 0.3.0
-    , HUnit       == 1.2.*
+    -- , HUnit       == 1.2.*
+    , HUnit
     , QuickCheck  >= 2.5
     , containers
 
@@ -167,10 +172,11 @@ test-suite spec
     , directory
     , filepath
     , ghc         >= 7.0.1 && < 7.8
-    , ghc-paths   == 0.1.*
+    -- , ghc-paths   == 0.1.*
+    , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 4.1.0
+    , ghc-mod >= 4.1.0 && < 5
     , hspec
     , mtl
     , old-time
@@ -184,8 +190,22 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , HaRe >= 0.7.1.6
+    , haskell-token-utils
+    , HaRe >= 0.7.2.3
   Extensions:      CPP
+
+
+-- test-suite doctests
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -threaded
+--   main-is:       doctests.hs
+--   build-depends: base        >= 4.0  && < 4.8
+--                , doctest >= 0.8
+--                , ghc-mod
+--   Hs-Source-Dirs:
+--     -- src
+--     test
+
 
 source-repository head
   type:     git

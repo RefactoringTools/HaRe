@@ -6,8 +6,6 @@ import           Test.Hspec
 
 import           TestUtils
 
--- import qualified Digraph    as GHC
--- import qualified FastString as GHC
 import qualified GHC        as GHC
 import qualified HscTypes   as GHC
 

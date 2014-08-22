@@ -1,4 +1,6 @@
 * HaRe todo
+** TODO renaming : check that new name is not the same as the old
+** TODO when using a cabal sandbox with 'cabal add-source', refactor into the added src too
 ** TODO Renaming does not rename exported type in exports list
    -- See
    /home/alanz/mysrc/github/alanz/htelehash/src/TeleHash/Utils.hs.2014-04-03T13:03:21+0200
@@ -21,7 +23,7 @@
    root cause is program cannot load due to syntax errors. Provide
    decent error reporting
 
-** TOOO cannot select (data) item to be renamed from the module exports list
+** TODO cannot select (data) item to be renamed from the module exports list
 ** TODO when renaming, tell the user the original name, in the elisp
 ** TODO liftToTopLevel does not update the signature when adding a param
     e.g.for lifting 'uses' in MoveDef.hs line 1374 now complains
@@ -48,7 +50,6 @@
 ** TODO manage RefactGhc to separate Hare exceptions from GHC ones
    see http://parenz.wordpress.com/2013/07/23/on-custom-error-handlers-for-ghc-api/
 ** TODO elisp: cancel option is not implemented
-** DONE Does not properly load a cabal exe Main module if not called Main.hs e.g. MainHare.hs
 ** TODO SwapArgs does not process client files
 ** TODO demote does not process client files
 ** TODO provide simple wrapper for one-file refactor in the API

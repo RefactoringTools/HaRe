@@ -43,8 +43,9 @@ import Data.Time.Clock
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
+import Language.Haskell.TokenUtils.Types
 import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.TokenUtils.Utils
 import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger
@@ -91,7 +92,7 @@ data RefactStashId = Stash !String deriving (Show,Eq,Ord)
 data RefactModule = RefMod
         { rsTypecheckedMod  :: !GHC.TypecheckedModule
         , rsOrigTokenStream :: ![PosToken]  -- ^Original Token stream for the current module
-        , rsTokenCache      :: !TokenCache  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
+        , rsTokenCache      :: !(TokenCache PosToken)  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
         , rsStreamModified  :: !Bool        -- ^current module has updated the token stream
         }
 
@@ -224,11 +225,12 @@ initGhcSession cradle importDirs = do
     -- graph <- gets rsGraph
     -- liftIO $ warningM "HaRe" $ "initGhcSession:graph=" ++ show graph
     return ()
+{-
     where
       options opt
         | rsetExpandSplice opt = "-w:"   : rsetGhcOpts opt
         | otherwise            = "-Wall" : rsetGhcOpts opt
-
+-}
 -- ---------------------------------------------------------------------
 
 
@@ -244,14 +246,14 @@ getCabalAllTargets cradle cabalFile = do
    (libs,exes,tests,benches) <- liftIO $ cabalAllTargets pkgDesc
    setCurrentDirectory currentDir
 
-   let -- libs'    = addCurrentDir libs
+   let libs'    = filter (\l -> not (isPrefixOf "Paths_" l)) libs
        exes'    = addCabalDir exes
        tests'   = addCabalDir tests
        benches' = addCabalDir benches
 
        addCabalDir ts = map (\t -> combine cabalDir t) ts
 
-   return (libs,exes',tests',benches')
+   return (libs',exes',tests',benches')
 
 -- ---------------------------------------------------------------------
 

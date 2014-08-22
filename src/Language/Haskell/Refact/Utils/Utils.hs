@@ -32,9 +32,7 @@ module Language.Haskell.Refact.Utils.Utils
 import Control.Monad.State
 import Data.List
 import Data.Maybe
--- import Data.Monoid
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -44,6 +42,9 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.TokenUtils.DualTree
+import Language.Haskell.TokenUtils.TokenUtils
+import Language.Haskell.TokenUtils.Utils
 import System.Directory
 import System.FilePath.Posix
 
@@ -241,7 +242,7 @@ parseSourceFileGhc targetFile = do
 -- | The result of a refactoring is the file, a flag as to whether it
 -- was modified, the updated token stream, and the updated AST
 -- type ApplyRefacResult = ((FilePath, Bool), ([Ppr],[PosToken], GHC.RenamedSource))
-type ApplyRefacResult = ((FilePath, Bool), ([Line],[PosToken], GHC.RenamedSource))
+type ApplyRefacResult = ((FilePath, Bool), ([Line PosToken],[PosToken], GHC.RenamedSource))
 
 
 -- | Manage a whole refactor session. Initialise the monad, load the
@@ -314,7 +315,8 @@ applyRefac refac source = do
     res <- refac  -- Run the refactoring, updating the state as required
 
     mod'   <- getRefactRenamed
-    toks'  <- fetchToksFinal
+    -- toks'  <- fetchToksFinal
+    let toks' = []
     -- pprVal <- fetchPprFinal
     linesVal <- fetchLinesFinal
     m      <- getRefactStreamModified

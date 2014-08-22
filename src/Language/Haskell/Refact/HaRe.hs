@@ -27,4 +27,5 @@ import Language.Haskell.Refact.Refactoring.Renaming
 import Language.Haskell.Refact.Refactoring.SwapArgs
 import Language.Haskell.Refact.TypeRefactorings.RefacGenDef
 import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.TokenUtils.Types
+

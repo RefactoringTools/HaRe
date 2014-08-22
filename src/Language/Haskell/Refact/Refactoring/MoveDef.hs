@@ -335,7 +335,7 @@ moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
                          return sigToks
 
   maybeToksSigMulti <- mapM getToksForMaybeSig
-                       $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (srcSpanToForestSpan s1) (srcSpanToForestSpan s2))
+                       $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (ghcSrcSpanToForestSpan s1) (ghcSrcSpanToForestSpan s2))
                           sigsRemoved
   let maybeToksSig = concat maybeToksSigMulti
 
@@ -819,8 +819,8 @@ addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _)))) =
       newStr = ":: " ++ (intercalate " -> " $ map printSigComponent ts) ++ " -> "
   logm $ "addParamsToSigs:replaceSpan=" ++ showGhc replaceSpan
   logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
-  newToks <- liftIO $ basicTokenise newStr
-  putToksForSpan replaceSpan newToks
+  let newToks = basicTokenise newStr
+  void $ putToksForSpan replaceSpan newToks
   let typ' = foldl addOneType ltyp ts
   sigOk <- isNewSignatureOk ts
   logm $ "addParamsToSigs:(sigOk,newStr)=" ++ show (sigOk,newStr)
@@ -878,9 +878,9 @@ typeToHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
 typeToHsType (GHC.FunTy t1 t2) = GHC.HsFunTy (GHC.noLoc $ typeToHsType t1)
                                              (GHC.noLoc $ typeToHsType t2)
 #if __GLASGOW_HASKELL__ > 704
-typeToHsType (GHC.ForAllTy v t) = GHC.HsForAllTy GHC.Explicit (GHC.HsQTvs [] []) (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
+typeToHsType (GHC.ForAllTy _v t) = GHC.HsForAllTy GHC.Explicit (GHC.HsQTvs [] []) (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
 #else
-typeToHsType (GHC.ForAllTy v t) = GHC.HsForAllTy GHC.Explicit [] (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
+typeToHsType (GHC.ForAllTy _v t) = GHC.HsForAllTy GHC.Explicit [] (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
 #endif
 
 #if __GLASGOW_HASKELL__ > 704
@@ -932,7 +932,7 @@ data Type
 -}
 
 tyConAppToHsType :: GHC.Type -> GHC.HsType GHC.Name
-tyConAppToHsType t@(GHC.TyConApp tc _ts)
+tyConAppToHsType (GHC.TyConApp tc _ts)
   | GHC.isFunTyCon tc = r "isFunTyCon"
   | GHC.isAlgTyCon tc = r "isAlgTyCon"
   | GHC.isTupleTyCon tc = r "isTupleTyCon"
@@ -947,7 +947,7 @@ tyConAppToHsType t@(GHC.TyConApp tc _ts)
 #if __GLASGOW_HASKELL__ > 704
     r str = GHC.HsTyLit (GHC.HsStrTy $ GHC.mkFastString str)
 #else
-    r str = error $ "tyConAppToHsType: " ++ str ++ " unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+    r str = error $ "tyConAppToHsType: " ++ str ++ " unexpected:" ++ (SYB.showData SYB.TypeChecker 0 r)
 #endif
 
 tyConAppToHsType t@(GHC.TyConApp _tc _ts)

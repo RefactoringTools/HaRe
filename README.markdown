@@ -1,6 +1,17 @@
 # HaRe : The Haskell Refactorer
 
-[![Build Status](https://travis-ci.org/alanz/HaRe.png?branch=master)](https://travis-ci.org/alanz/HaRe)
+[![Available on Hackage][badge-hackage]][hackage]
+[![License BSD3][badge-license]][license]
+[![Build Status][badge-travis]][travis]
+
+[badge-travis]: https://travis-ci.org/alanz/HaRe.png?branch=master
+[travis]: https://travis-ci.org/alanz/HaRe
+[badge-hackage]: https://img.shields.io/hackage/v/HaRe.svg?dummy
+[hackage]: https://hackage.haskell.org/package/HaRe
+[badge-license]: https://img.shields.io/badge/license-BSD3-green.svg?dummy
+[license]: https://github.com/alanz/HaRe/blob/master/LICENSE
+
+Note: The current version (0.7.2.6) does not install with GHC 7.8.x
 
 ## Getting Started
 
@@ -80,6 +91,14 @@ required. In theory.
 ## Development & Support
 
 Join in at `#haskell-refactorer` on freenode.
+
+### Developing in sandbox with haskell-token-utils locally
+
+    cabal clean
+    cabal sandbox init
+    # Next line assumes haskell-token-utils checked out at same level
+    cabal sandbox add-source ../haskell-token-utils/
+    cabal install --dependencies-only
 
 ### Running test suite
 
