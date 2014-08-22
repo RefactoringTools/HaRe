@@ -127,7 +127,7 @@ main = flip catches handlers $ do
       "rename" -> runFunc cradle $ rename opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
 
       -- gendef takes a FilePath -> String -> SimpPos -> SimpPos
-      "gendef" -> runFunc cradle $ generaliseDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4) (parseSimpPos cmdArg5 cmdArg6) 
+ --     "gendef" -> runFunc cradle $ generaliseDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4) (parseSimpPos cmdArg5 cmdArg6) 
 
       "show" -> putStrLn  (show (opt,cradle))
 

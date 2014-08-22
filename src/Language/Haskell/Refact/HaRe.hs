@@ -16,7 +16,6 @@ module Language.Haskell.Refact.HaRe
  , demote
  , rename
  , swapArgs
- , generaliseDef
  )
 where
 
@@ -25,7 +24,7 @@ import Language.Haskell.Refact.Refactoring.DupDef
 import Language.Haskell.Refact.Refactoring.MoveDef
 import Language.Haskell.Refact.Refactoring.Renaming
 import Language.Haskell.Refact.Refactoring.SwapArgs
-import Language.Haskell.Refact.TypeRefactorings.RefacGenDef
+--import Language.Haskell.Refact.TypeRefactorings.RefacGenDef
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.TokenUtils.Types
 

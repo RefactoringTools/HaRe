@@ -58,12 +58,12 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,hsVisibleDs
 
     -- ** Property checking
-    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
-    ,isQualifiedPN, isFunOrPatName, isTypeSig
-    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
-    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR
-    ,usedWithoutQualR,isUsedInRhs
 
+    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
+    ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
+    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,hsBindLRIsSimple
+    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
+    ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     -- ** Getting
     ,findPNT,findPN,findAllNameOccurences
     ,findPNs, findEntity, findEntity'
