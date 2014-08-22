@@ -80,12 +80,7 @@ Library
            , Language.Haskell.Refact.Refactoring.MoveDef
            , Language.Haskell.Refact.Refactoring.Renaming
            , Language.Haskell.Refact.Refactoring.SwapArgs
-<<<<<<< HEAD
-           , Language.Haskell.Refact.TypeRefactorings.RefacGenDef
-           , Language.Haskell.Refact.Utils.DualTree
-=======
            , Language.Haskell.Refact.Utils.Binds
->>>>>>> 45ddf94a46c6cae05db71ff94e797d1c35f73a51
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils
