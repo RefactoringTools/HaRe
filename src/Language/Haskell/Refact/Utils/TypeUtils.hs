@@ -38,39 +38,40 @@ module Language.Haskell.Refact.Utils.TypeUtils
        (
  -- * Program Analysis
     -- ** Imports and exports
-   inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
-   -- , hsQualifier, {-This function should be removed-} rmPrelude
-   {-,exportInfo -}, isExported, isExplicitlyExported, modIsExported
+    inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
+   , isExported, isExplicitlyExported, modIsExported
 
     -- ** Variable analysis
     , isFieldName
     , isClassName
     , isInstanceName
-    ,hsPNs -- ,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
-    {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
+    ,hsPNs
     ,isDeclaredIn
-    ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
+    ,hsFreeAndDeclaredPNsOld
+    ,hsFreeAndDeclaredNameStrings
     ,hsFreeAndDeclaredPNs
     ,hsFreeAndDeclaredGhc
     ,getDeclaredTypes
-    ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
-
-    ,hsVisiblePNs {- , hsVisiblePNsOld -}, hsVisibleNames
+    ,getFvs, getFreeVars, getDeclaredVars
+    ,hsVisiblePNs, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
     ,hsVisibleDs
 
     -- ** Property checking
-    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
-    ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
-    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,hsBindLRIsSimple
-    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
-    ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
+    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
+    ,isQualifiedPN, isFunOrPatName, isTypeSig
+    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
+    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR
+    ,usedWithoutQualR,isUsedInRhs
+
+    -- ** Getting
     ,findPNT,findPN,findAllNameOccurences
     ,findPNs, findEntity, findEntity'
-    , findIdForName
-    , getTypeForName
+    ,findIdForName
+    ,getTypeForName
+
     ,sameOccurrence
-    ,defines, definesP,definesTypeSig -- , isTypeSigOf
+    ,defines, definesP,definesTypeSig
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
     ,sameBind
     {- ,usedByRhs -},UsedByRhs(..)
@@ -88,8 +89,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
  -- * Program transformation
     -- ** Adding
-    ,addDecl, addItemsToImport, addHiding --, rmItemsFromImport, addItemsToExport
-    ,addParamsToDecls, addActualParamsToRhs {- , addGuardsToRhs-}, addImportDecl, duplicateDecl -- , moveDecl
+    ,addDecl, addItemsToImport, addHiding
+    ,addParamsToDecls, addActualParamsToRhs, addImportDecl, duplicateDecl
     -- ** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -137,32 +138,39 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , getParsedForRenamedLocated
     -- , allPNT
     --  , allPNTLens
-    , newNameTok
+    -- , newNameTok
     , stripLeadingSpaces
     -- , lookupNameGhc
  ) where
 
-import Exception
+-- import Control.Monad.IO.Class ()
 import Control.Monad.State
 import Data.Char
 import Data.List
 import Data.Maybe
 import Data.Monoid
+import Exception
+
+import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
 import Language.Haskell.Refact.Utils.TypeSyn
+
+import Language.Haskell.TokenUtils.GHC.Layout
+import Language.Haskell.TokenUtils.TokenUtils
+import Language.Haskell.TokenUtils.Types
+import Language.Haskell.TokenUtils.Utils
 
 -- Modules from GHC
 import qualified Bag           as GHC
-import qualified BasicTypes    as GHC
+-- import qualified BasicTypes    as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
-import qualified Lexer         as GHC hiding (getSrcLoc)
+-- import qualified Lexer         as GHC hiding (getSrcLoc)
 import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified NameSet       as GHC
@@ -176,7 +184,7 @@ import qualified Var           as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import Data.Generics.Strafunski.StrategyLib.StrategyLib
+import Data.Generics.Strafunski.StrategyLib.StrategyLib hiding (liftIO,MonadPlus,mzero)
 
 -- ---------------------------------------------------------------------
 
@@ -230,20 +238,7 @@ inScopeInfo names = nub $  map getEntInfo $ names
        GHC.Qual modName _occName -> Just modName
        _                         -> Nothing
 
-     -- getEntInfo (qual, ent@(Ent modName ident _))
-     --   =(identToName ident, hasNameSpace ent,  modName, getQualifier qual)
 
-{-
--- | Process the export relation returned from the parsing and module analysis pass, and
---   return a list of trhee-element tuples. Each tuple contains an identifier name, the
---   identifier's namespace info, and the identifier's define module.
-exportInfo::Exports                             -- ^ The export relation.
-          -> [(String, NameSpace, ModuleName)]  -- ^ The result
-exportInfo exports = nub $ map getEntInfo  exports
-  where
-    getEntInfo (_, ent@(Ent modName ident _))
-      =(identToName ident, hasNameSpace ent,  modName)
--}
 
 -- | Return True if the identifier is inscope and can be used without
 -- a qualifier.
@@ -453,39 +448,6 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
 --   3.  if so, if the new module is exported unqualified
 --        or belongs to the current module
 --       then it will cause a clash
-{-
-
-modNames capture potential clashes e.g.
-
-@
-module Exports (head) where
-
-import Data.Text (head)
-@
-
-So if the new name was 'head', then the modNames would be
- [Data.Text]
-
--}
-
-
-{- ++AZ++ Original
-
--- Note that in the abstract representation of exps, there is no qualified entities.
-causeNameClashInExports  pn newName mod exps
-  = let modNames=nub (concatMap (\(x, Ent modName _ _)->if show x==show newName
-                                                        then [modName]
-                                                        else []) exps)
-    in (isExplicitlyExported pn mod) &&
-        ( any (modIsUnQualifedImported mod) modNames
-            || elem (let (SN modName1 _) =hsModName mod
-                     in modName1)  modNames)
- where
-    modIsUnQualifedImported mod modName
-     =let imps =hsModImports mod
-      in isJust $ find (\(HsImportDecl _ (SN modName1 _) qualify  _ h)->modName==modName1 && (not qualify)) imps
-
--}
 
 -- ---------------------------------------------------------------------
 -- | Collect the free and declared variables (in the GHC.Name format)
@@ -868,7 +830,7 @@ hsFreeAndDeclaredGhc t = do
     ltydecl (GHC.L _ (GHC.TyDecl (GHC.L _ n) _bndrs _defn fvs))
         = return (FN (GHC.nameSetToList fvs),DN [n])
 #else
-    ltydecl (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind _cons _derivs)) 
+    ltydecl (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind _cons _derivs))
         = return (FN [],DN [n]) -- TODO: calc fvs for cons
     ltydecl (GHC.L _ (GHC.TySynonym (GHC.L _ n) _vars _pats _rhs))
         = return (FN [],DN [n]) -- TODO fvs?
@@ -1330,7 +1292,7 @@ getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn _fvs)) = nub $ [n] 
     dsn = getHsTyDefn defn
 #else
 -- data,
-getDeclaredTypes (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind cons _derivs)) 
+getDeclaredTypes (GHC.L _ (GHC.TyData _ _ctx (GHC.L _ n) _vars _pats _kind cons _derivs))
   = nub $ [n] ++ cs
   where
     getConDecl (GHC.L _ (GHC.ConDecl (GHC.L _ n2) _ _ _ _ _ _ _)) = n2
@@ -1946,29 +1908,8 @@ isFunOrPatBindP decl = isFunBindP decl || isPatBindP decl
 isFunOrPatBindR::GHC.LHsBind t -> Bool
 isFunOrPatBindR decl = isFunBindR decl || isPatBindR decl
 
-{-
--- | Return True if a declaration is a Class declaration.
-isClassDecl :: HsDeclP ->Bool
-isClassDecl (TiDecorate.Dec (HsClassDecl _ _ _ _ _)) = True
-isClassDecl _ = False
-
--- | Return True if a declaration is a Class instance declaration.
-isInstDecl :: HsDeclP -> Bool
-isInstDecl (TiDecorate.Dec (HsInstDecl _ _ _ _ _)) = True
-isInstDecl _ = False
--}
-{-
--- | Return True if a function is a directly recursive function.
-isDirectRecursiveDef::HsDeclP->Bool
-isDirectRecursiveDef (TiDecorate.Dec (HsFunBind loc ms))
-   = any isUsedInDef ms
-  where
-   isUsedInDef (HsMatch loc1 fun pats rhs ds)
-     = findEntity (pNTtoPN fun) rhs
-isDirectRecursiveDef _ = False
--}
 -------------------------------------------------------------------------------
-
+{-
 getValBindSigs :: GHC.HsValBinds GHC.Name -> [GHC.LSig GHC.Name]
 getValBindSigs binds = case binds of
     GHC.ValBindsIn  _ sigs -> sigs
@@ -1987,9 +1928,10 @@ unionBinds (x1:x2:xs) = unionBinds ((mergeBinds x1 x2):xs)
     mergeBinds (GHC.ValBindsOut b1 s1) (GHC.ValBindsOut b2 s2) = (GHC.ValBindsOut (b1++b2) (s1++s2))
     mergeBinds y1@(GHC.ValBindsIn _ _) y2@(GHC.ValBindsOut _  _) = mergeBinds y2 y1
     mergeBinds    (GHC.ValBindsOut b1 s1) (GHC.ValBindsIn b2 s2) = (GHC.ValBindsOut (b1++[(GHC.NonRecursive,b2)]) (s1++s2))
+-}
 
 -- NOTE: ValBindsIn are found before the Renamer, ValBindsOut after
-
+{-
 hsBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name]
 hsBinds t = case hsValBinds t of
   GHC.ValBindsIn binds _sigs -> GHC.bagToList binds
@@ -2002,7 +1944,8 @@ replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) sigs)
     sigs = case hsValBinds t of
       GHC.ValBindsIn  _ s -> s
       GHC.ValBindsOut _ s -> s
-
+-}
+{-
 -- This class replaces the HsDecls one
 class (SYB.Data t) => HsValBinds t where
 
@@ -2025,12 +1968,12 @@ class (SYB.Data t) => HsValBinds t where
     -- in the given syntax phrase. Note: only makes sense for
     -- GHC.RenamedSource
     hsTyDecls :: t -> [[GHC.LTyClDecl GHC.Name]]
-
+-}
 -- ++AZ++ see if we can get away with one only..
 isDeclaredIn :: (HsValBinds t) => GHC.Name -> t -> Bool
 isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
 
-
+{-
 instance HsValBinds (GHC.RenamedSource) where
   hsValBinds (grp,_,_,_) = (GHC.hs_valds grp)
 
@@ -2338,7 +2281,7 @@ instance HsValBinds (GHC.HsIPBinds GHC.Name) where
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
-
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -2409,21 +2352,10 @@ instance FindEntity (GHC.Located (GHC.HsDecl GHC.Name)) where
 
 -- ---------------------------------------------------------------------
 
-{-
+
 -- | Returns True is a syntax phrase, say a, is part of another syntax
 -- phrase, say b.
 -- Expects to be at least Parser output
-findEntity:: (SYB.Data a, SYB.Data b)=> a -> b -> Bool
-findEntity a b = fromMaybe False res
-  where
-    res = somethingStaged SYB.Parser Nothing worker b
-
-    worker :: (SYB.Typeable b, SYB.Data b) => b -> Maybe Bool
-    worker b = if SYB.typeOf a == SYB.typeOf b
-                 -- then Just (getStartEndLoc b == getStartEndLoc a)
-                 then Just True -- ++AZ++ test for now
-                 else Nothing
--}
 findEntity':: (SYB.Data a, SYB.Data b)
               => a -> b -> Maybe (SimpPos,SimpPos)
 findEntity' a b = res
@@ -2828,122 +2760,12 @@ getName str t
           | showGhc name == str = Just name
         workerExpr _ = Nothing
 
-
-
-------------------------------------------------------------------------------------
-
-
 -- ---------------------------------------------------------------------
 
 -- | Add identifiers to the export list of a module. If the second argument is like: Just p, then do the adding only if p occurs
 -- in the export list, and the new identifiers are added right after p in the export list. Otherwise the new identifiers are add
 -- to the beginning of the export list. In the case that the export list is emport, then if the third argument is True, then create
 -- an explict export list to contain only the new identifiers, otherwise do nothing.
-{-
-addItemsToExport::( )
-                 => HsModuleP                           -- The module AST.
-                   -> Maybe PName                       -- The condtion identifier.
-                   -> Bool                              -- Create an explicit list or not
-                   -> Either [String] [HsExportEntP]    -- The identifiers to add in either String or HsExportEntP format.
-                   -> m HsModuleP                       -- The result.
--}
-{-
-addItemsToExport::(MonadState (([PosToken],Bool), t1) m)
-                 => HsModuleP                           -- The module AST.
-                   -> Maybe PName                       -- The condtion identifier.
-                   -> Bool                              -- Create an explicit list or not
-                   -> Either [String] [HsExportEntP]    -- The identifiers to add in either String or HsExportEntP format.
-                   -> m HsModuleP                       -- The result.
-
-
-addItemsToExport mod _  _ (Left [])  = return mod
-addItemsToExport mod _  _ (Right []) = return mod
-addItemsToExport mod@(HsModule loc modName exps imps ds) (Just pn) _ ids
-  =  case exps  of
-       Just ents ->let (e1,e2) = break (findEntity pn) ents
-                   in if e2 /=[]
-                        then do ((toks,_),others)<-get
-                                let e = (ghead "addVarItemInExport" e2)
-                                    es = case ids of
-                                          (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
-                                          (Right es') -> es'
-                                let (_,endPos) = getStartEndLoc toks e
-                                    (t, (_,s)) = ghead "addVarItemInExport" $ getToks (endPos,endPos) toks
-                                    newToken = mkToken t endPos (s++","++ showEntities (render.ppi) es) 
-                                    toks' = replaceToks toks endPos endPos [newToken]
-                                put ((toks',modified),others)
-                                return (HsModule loc modName (Just (e1++(e:es)++tail e2)) imps ds)
-                        else return mod
-       Nothing   -> return mod
-
-addItemsToExport mod@(HsModule _ _ (Just ents) _ _) Nothing createExp ids
-    = do ((toks,_),others)<-get
-         let es = case ids of
-                    (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
-                    (Right es') -> es'
-             (t, (pos,s))=fromJust $ find isOpenBracket toks  -- s is the '('
-             newToken = if ents /=[] then  (t, (pos,(s++showEntities (render.ppi) es++",")))
-                                     else  (t, (pos,(s++showEntities (render.ppi) es)))
-             pos'= simpPos pos
-             toks' = replaceToks toks pos' pos' [newToken]
-         put ((toks',modified),others)
-         return mod {hsModExports=Just (es++ ents)}
-
-addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _)  Nothing createExp ids
-  =case createExp of
-       True ->do ((toks,_),others)<-get
-                 let es = case ids of
-                               (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
-                               (Right es') -> es'
-                     pos = (row,col)
-                     newToken = mkToken Varid pos (modNameToStr modName++ "("
-                                         ++ showEntities (render.ppi) es++")")
-                     toks' = replaceToks toks pos pos [newToken]
-                 put  ((toks', modified), others)
-                 return mod {hsModExports=Just es}
-       False ->return mod
--}
-
-{-
-addItemsToImport::( )
-                 =>ModuleName                  -- ^ The imported module name.
-                 ->Maybe PName                 -- ^ The condition identifier.
-                 ->Either [String] [EntSpecP]  -- ^ The identifiers to add in either String or EntSpecP format.
-                 ->t                           -- ^ The given syntax phrase.
-                 ->m t                         -- ^ The result.
--}
-
-{-
-addItemsToImport::(Term t,MonadState (([PosToken],Bool),t1) m)
-                 =>ModuleName                  -- ^ The imported module name.
-                 ->Maybe PName                 -- ^ The condition identifier.
-                 ->Either [String] [EntSpecP]  -- ^ The identifiers to add in either String or EntSpecP format.
-                 ->t                           -- ^ The given syntax phrase.
-                 ->m t                         -- ^ The result.
-
-addItemsToImport serverModName pn (Left [])  t = return t
-addItemsToImport serverModName pn (Right []) t = return t
-addItemsToImport serverModName pn ids t
- =applyTP (full_buTP (idTP `adhocTP` inImport)) t
-  where
-    inImport (imp@(HsImportDecl loc m@(SN modName _) qual  as h):: HsImportDeclP)
-      | serverModName == modName && (if isJust pn then findPN (fromJust pn) h else True)
-       = case h of
-           Nothing        -> return imp
-           Just (b, ents) -> do let ents'=case ids of
-                                          Left  is'  -> map (\x-> Var (nameToPNT x)) is'
-                                          Right es   -> es
-                                ((toks,_),others)<-get
-                                let (_,endPos)=getStartEndLoc toks (glast "addItemsToImport" ents)
-                                    (t,(_,s))=ghead "addItemsToImport" $ getToks (endPos,endPos) toks
-                                    newToken = mkToken t endPos (s++","++showEntities (render.ppi) ents')
-                                    toks'=replaceToks toks endPos endPos [newToken]
-                                put ((toks',modified),others)
-                                return (HsImportDecl loc m qual as (Just (b, ents++ents')))
-    inImport imp = return imp
--}
-
--- ---------------------------------------------------------------------
 
 addImportDecl ::
     GHC.RenamedSource
@@ -2977,9 +2799,9 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
        let startPos = tokenPos    lastTok
        let endPos   = tokenPosEnd lastTok
 
-       newToks <- liftIO $ basicTokenise (showGhc impDecl)
+       let newToks = basicTokenise (showGhc impDecl)
        logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
-       void $ putToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
+       void $ addToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
        return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
   where
 
@@ -3074,7 +2896,7 @@ makeNewToks (decl, maybeSig, declToks) = do
                 Just _ts -> ""
                 Nothing -> "\n" ++ (intercalate "\n" $ map prettyprint maybeSig)
    -- logm $ "makeNewToks:declStr=[" ++ declStr ++ "]"
-   newToks <- liftIO $ tokenise (realSrcLocFromTok mkZeroToken) 0 True (sigStr ++ declStr)
+   let newToks = tokenise ((0,0),(0,0)) 0 True (sigStr ++ declStr)
    return newToks
 
 -- ---------------------------------------------------------------------
@@ -3167,7 +2989,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
                  then getStartEndLoc parent'
                  else getStartEndLoc localDecls
 
-        newToks <- liftIO $ basicTokenise newSource
+        let newToks = basicTokenise newSource
 
         (newFun',_) <- addLocInfo (newFun, newToks)
 
@@ -3175,9 +2997,9 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
         if (emptyList localDecls)
           then
-            void $ putToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent 4 2) newToks
+            void $ addToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent 4 2) newToks
           else
-            void $ putToksAfterPos (startLoc,endLoc) (PlaceAbsCol (rowIndent+1) prevCol 2) newToks
+            void $ addToksAfterPos (startLoc,endLoc) (PlaceAbsCol (rowIndent+1) prevCol 2) newToks
 
 
         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun']))) (maybeSig++(getValBindSigs binds))))
@@ -3372,10 +3194,10 @@ addFormalParams place newParams
        let newStr = (prettyprintPatList prettyprint True newParams)
 
        case place of
-         Left l@(GHC.RealSrcSpan ss) -> do
-           newToks' <- liftIO $ tokenise (GHC.realSrcSpanStart ss) 0 False newStr
+         Left l@(GHC.RealSrcSpan _ss) -> do
+           let newToks' = tokenise (gs2ss l) 0 False newStr
            let newToks = map markToken newToks'
-           _ <- putToksAfterSpan l PlaceAdjacent newToks
+           _ <- addToksAfterSpan l PlaceAdjacent newToks
            return ()
          Left ss -> error $ "addFormalParams: expecting RealSrcSpan, got:" ++ (showGhc ss)
          Right pats -> do
@@ -3384,8 +3206,7 @@ addFormalParams place newParams
            toks <- getToksForSpan l
 
            let oldStr = GHC.showRichTokenStream $ rmOffsetFromToks toks
-           combinedToks <- liftIO $ tokenise (realSrcLocFromTok
-                                  $ ghead "addFormalParams" toks)
+           let combinedToks = tokenise (gs2ss $ tokenSrcSpan $ ghead "addFormalParams" toks)
                                      0 False (newStr ++ " " ++ oldStr)
 
            _ <- putToksForSpan l combinedToks
@@ -3510,145 +3331,6 @@ Original : sq x + sumSquares xs
                     (L {test/testdata/LiftToToplevel/D2.hs:6:39-40} 
                      (HsVar {Name: xs}))))))))] 
 
--}
-
-
-{-
-   addActualParamsToRhs pn paramPNames
-    = applyTP (stop_tdTP (failTP `adhocTP` worker))
-     where
-       worker exp@(TiDecorate.Exp (HsId (HsVar (PNT pname ty loc))))
-        | pname==pn
-         = do let newExp=TiDecorate.Exp (HsParen (foldl addParamToExp exp (map pNtoExp paramPNames)))
-              if modifyToks then do (newExp', _) <- updateToks exp newExp prettyprint
-                                    return newExp'
-                            else return newExp
-       worker x =mzero
-
-       addParamToExp  exp param=(TiDecorate.Exp (HsApp exp param))
--}
-
-
-
--- | Remove those specified items from the entity list in the import declaration.
-{-
- rmItemsFromImport::( )
-                   =>HsModuleP    -- ^ The module AST
-                   ->[PName]      -- ^ The items to be removed
-                   ->m HsModuleP  -- ^ The result
--}
-
-{-
-rmItemsFromImport::(MonadState (([PosToken],Bool),t1) m)
-                   =>HsModuleP    -- ^ The module AST
-                   ->[PName]      -- ^ The items to be removed
-                   ->m HsModuleP  -- ^ The result
-
-
-rmItemsFromImport mod pns
-  = applyTP (full_buTP (idTP `adhocTP` inImport)) mod
-   where
-     inImport (imp@(HsImportDecl loc modName qual  as h)::HsImportDeclP)
-      | any (flip findEntity imp) pns
-       = case h of
-           Just (b, ents) ->
-             do let matchedEnts=findEnts pns ents
-                if  matchedEnts==[]
-                  then return imp
-                  else if length matchedEnts == length ents
-                         then do ((toks,_),others)<-get
-                                 let (startPos,endPos)=getStartEndLoc toks ents
-                                     toks'=deleteToks toks startPos endPos
-                                 put ((toks',modified),others)
-                                 return (HsImportDecl loc modName qual as (Just (b,[])))
-                         else do ((toks,_),others)<-get
-                                 let remainedEnts=concatMap (\pn->filter (not.match pn) ents) pns 
-                                     toks'=foldl deleteEnt toks $ map (getStartEndLoc toks) matchedEnts
-                                 put ((toks',modified),others)
-                                 return (HsImportDecl loc modName qual as (Just (b, remainedEnts)))
-           _ ->return imp
-     inImport x = return x
-
-     findEnts pns ents =nub $ concatMap (\pn->filter (match pn) ents) pns
-
-     -- this function does not check this sub entities of the ListSubs. any problems?
-     match::PName -> EntSpec PNT ->Bool
-     match pn (Var pnt) = pNTtoPN pnt == pn
-     match pn (Abs pnt) = pNTtoPN pnt == pn
-     match pn (AllSubs pnt) = pNTtoPN pnt == pn
-     match pn (ListSubs pnt _) = pNTtoPN pnt == pn
--}
-
-
-{-
--- | Remove the sub entities of a type constructor or class from the export list.
-rmSubEntsFromExport::(MonadState (([PosToken],Bool),(Int,Int)) m)
-                     =>PName       -- ^ The type constructor or class name
-                     ->HsModuleP   -- ^ The module AST
-                     ->m HsModuleP -- ^ The result
-rmSubEntsFromExport typeCon
-  = applyTP (full_buTP (idTP `adhocTP` inEntSpec))
-  where
-   inEntSpec (ent@(AllSubs pnt)::EntSpec PNT)
-     | pNTtoPN pnt == typeCon
-      =do (ent', _)<-updateToks ent (Abs pnt) prettyprint
-          return ent'
-   inEntSpec (ent@(ListSubs pnt _))
-     | pNTtoPN pnt == typeCon
-     = do (ent', _) <- updateToks ent (Abs pnt) prettyprint
-          return ent'
-   inEntSpec ent = return ent
--}
-
----------------------------------------------------------------------------------------
--- | Remove the specified entities from the module's exports. The entities can be specified in either of two formats:
--- i.e. either specify the module names and identifier names to be removed, so just given the exact AST for these entities.
-{-rmItemsFromExport::( )
-                   =>HsModuleP                                      -- ^ The module AST.
-                    ->Either ([ModuleName],[PName]) [HsExportEntP]  -- ^ The entities to remove. 
-                    ->m HsModuleP                                   -- ^ The result.
--}
-{-
-rmItemsFromExport::(MonadState (([PosToken],Bool),t1) m)
-                   =>HsModuleP                                      -- ^ The module AST.
-                    ->Either ([ModuleName],[PName]) [HsExportEntP]  -- ^ The entities to remove.
-                    ->m HsModuleP                                   -- ^ The result.
-
-rmItemsFromExport mod@(HsModule loc modName exps imps ds)  (Left (modNames, pns))
-  =if isNothing exps
-     then return mod
-     else do let ents =findEnts (modNames, pns) (fromJust exps)
-             rmItemsFromExport mod (Right ents)
-  where
-    findEnts (modNames, pns) ents
-      =let ms = concatMap (\m ->filter (\e -> case e of
-                                         ModuleE (SN m' _) -> m==m'
-                                         EntE e'    -> False) ents) modNames
-           es =concatMap (\pn->filter (\e ->case e of
-                                            ModuleE _ -> False
-                                            EntE e'    -> match pn e') ents) pns
-       in (ms++es)
-    match::PName -> EntSpec PNT ->Bool
-    match pn (Var pnt) = pNTtoPN pnt == pn
-    match pn (Abs pnt) = pNTtoPN pnt == pn
-    match pn (AllSubs pnt) = pNTtoPN pnt == pn
-    match pn (ListSubs pnt _) = pNTtoPN pnt == pn
-
-rmItemsFromExport mod@(HsModule loc modName exps@(Just es) imps ds) (Right ents)
-  = do exps'<- if ents==[]
-                  then return exps
-                  else if length ents == length es
-                         then do ((toks,_),others)<-get
-                                 let (startPos,endPos) = getStartEndLoc toks ents
-                                     toks'= deleteToks toks startPos endPos
-                                 put ((toks',modified),others)
-                                 return (Just [] )  -- should not remove the empty bracket!!!
-                         else do ((toks,_),others)<-get
-                                 let toks' = foldl deleteEnt toks $ map (getStartEndLoc toks) ents
-                                 put ((toks',modified),others)
-                                 return (Just (es \\ ents))
-       return (HsModule loc modName exps' imps ds)
-rmItemsFromExport mod _ = return mod
 -}
 
 -- ---------------------------------------------------------------------
@@ -4298,31 +3980,6 @@ renamePNworker oldPN newName updateTokens useQual t = do
              return ()
            else return ()
 
--- ---------------------------------------------------------------------
-
--- | Create a new name token. If 'useQual' then use the qualified
--- name, if it exists.
--- The end position is not changed, so the eventual realignment can
--- know what the difference in length in the token is
-newNameTok :: Bool -> GHC.SrcSpan -> GHC.Name -> PosToken
-newNameTok useQual l newName =
-  ((GHC.L l' (GHC.ITvarid (GHC.mkFastString newNameStr))),newNameStr)
-  where
-   newNameStr = if useQual then (showGhc newName)
-                           else (GHC.occNameString $ GHC.getOccName newName)
-
-   l' =  case l of
-     GHC.RealSrcSpan ss ->
-       let
-         ((ForestLine _ _ _ startRow,startCol),_) = srcSpanToForestSpan l
-
-         locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) startRow startCol
-         locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) startRow (length newNameStr + startCol)
-       in
-         GHC.mkSrcSpan locStart locEnd
-     _ -> l
-
-
 ----------------------------------------------------------------------------------------
 -- | Check whether the specified identifier is declared in the given syntax phrase t,
 -- if so, rename the identifier by creating a new name automatically. If the Bool parameter 
@@ -4358,22 +4015,6 @@ showEntities:: (t->String) -> [t] ->String
 showEntities _ [] = ""
 showEntities f [pn] = f pn
 showEntities f (pn:pns) =f pn ++ "," ++ showEntities f pns
-
-
--- ---------------------------------------------------------------------
-{-
--- | Return True if the identifier can become qualified.
-canBeQualified::(Term t)=>PNT->t->Bool
-canBeQualified pnt t
-  = isTopLevelPNT pnt && isUsedInRhs pnt t && not (findPntInImp pnt t)
-  where
-    findPntInImp pnt
-      = (fromMaybe False).(applyTU (once_tdTU (failTU `adhocTU` inImp)))
-      where
-       inImp ((HsImportDecl loc modName qual  as h)::HsImportDeclP)
-        |findEntity pnt h = Just True
-       inImp _ = Nothing
--}
 
 
 -- ---------------------------------------------------------------------

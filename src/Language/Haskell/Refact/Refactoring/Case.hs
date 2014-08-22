@@ -54,12 +54,15 @@ reallyDoIfToCase expr rs = do
                -- drawTokenTreeDetailed "reallyDoIfToCase" -- ++AZ++ debug
                newExp <- ifToCaseTransform exp1
 
-               let (GHC.RealSrcLoc rl) = GHC.srcSpanStart l
-               caseTok <- liftIO $ tokenise rl 0 False "case"
+               -- let (GHC.RealSrcLoc rl) = GHC.srcSpanStart l
+               let caseTok = tokenise (gs2ss l) 0 False "case"
                condToks <- getToksForSpan l1
-               ofTok <- liftIO $ tokenise (realSrcLocFromTok (glast "reallyDoIfToCase" condToks)) 1 True "of"
-               trueToks  <- liftIO $ basicTokenise "True  ->"
-               falseToks <- liftIO $ basicTokenise "False ->"
+               let ofTok = tokenise
+                     (gs2ss $ tokenSrcSpan (glast "reallyDoIfToCase" condToks))
+                     -- (realSrcLocFromTok (glast "reallyDoIfToCase" condToks))
+                           1 True "of"
+               let trueToks = basicTokenise "True  ->"
+               let falseToks = basicTokenise "False ->"
                thenToksRaw <- getToksForSpan l2
                elseToksRaw <- getToksForSpan l3
 

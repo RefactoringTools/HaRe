@@ -11,7 +11,7 @@ import qualified NameSet as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-
+import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.MonadFunctions

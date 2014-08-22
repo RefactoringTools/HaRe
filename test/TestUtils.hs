@@ -11,11 +11,12 @@ module TestUtils
        , initialState
        , initialLogOnState
        , toksFromState
+       , renderTree
        -- , pprFromState
        , sourceTreeFromState
        , linesFromState
        , layoutFromState
-       , entriesFromState
+       -- , entriesFromState
        , defaultTestSettings
        , logTestSettings
        , testSettingsMainfile
@@ -41,14 +42,17 @@ import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.Utils
-import Language.Haskell.Refact.Utils.DualTree
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TokenUtilsTypes
+-- import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
+
+import Language.Haskell.TokenUtils.Types
+
 import Numeric
+
+import Language.Haskell.TokenUtils.DualTree
 
 import Data.Tree
 import System.Directory
@@ -135,15 +139,26 @@ initialLogOnState = RefSt
 
 -- ---------------------------------------------------------------------
 
-toksFromState :: RefactState -> [PosToken]
+-- toksFromState :: RefactState -> [PosToken]
+toksFromState :: RefactState -> String
 toksFromState st =
+  case (rsModule st) of
+    Just tm -> renderSourceTree $ layoutTreeToSourceTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
+    Nothing -> ""
+{-
   case (rsModule st) of
     Just tm -> retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
+-}
 
 -- ---------------------------------------------------------------------
 
-sourceTreeFromState :: RefactState -> Maybe SourceTree
+renderTree :: Tree (Entry PosToken) -> String
+renderTree tree = renderSourceTree $ layoutTreeToSourceTree tree
+
+-- ---------------------------------------------------------------------
+
+sourceTreeFromState :: RefactState -> Maybe (SourceTree PosToken)
 sourceTreeFromState st =
   case (rsModule st) of
     Just tm -> Just $ layoutTreeToSourceTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
@@ -152,7 +167,7 @@ sourceTreeFromState st =
 -- ---------------------------------------------------------------------
 
 
-linesFromState :: RefactState -> [Line]
+linesFromState :: RefactState -> [Line PosToken]
 linesFromState st =
   case (rsModule st) of
     Just tm -> retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
@@ -160,24 +175,25 @@ linesFromState st =
 
 -- ---------------------------------------------------------------------
 
-layoutFromState :: RefactState -> Maybe (Tree Entry)
+layoutFromState :: RefactState -> Maybe (Tree (Entry PosToken))
 layoutFromState st =
   case (rsModule st) of
     Just tm -> Just ((tkCache $ rsTokenCache tm) Map.! mainTid)
     Nothing -> Nothing
 
 -- ---------------------------------------------------------------------
-
-entriesFromState :: RefactState -> [Entry]
-entriesFromState st =
+{-
+entriesFromState :: RefactState -> [Entry PosToken]
+entriesFromState st = error $ "entriesFromState deprecated"
+{-
   case (rsModule st) of
-    -- Just tm -> retrieveTokens $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Just tm -> retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
-
+-}
+-}
 -- ---------------------------------------------------------------------
 
-mkTokenCache :: Tree Entry -> TokenCache
+mkTokenCache :: Tree (Entry PosToken) -> TokenCache PosToken
 mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 
 -- ---------------------------------------------------------------------
