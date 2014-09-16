@@ -80,7 +80,7 @@ Library
            , Language.Haskell.Refact.Refactoring.MoveDef
            , Language.Haskell.Refact.Refactoring.Renaming
            , Language.Haskell.Refact.Refactoring.SwapArgs
-           , Language.Haskell.Refact.TypeRefactorings.RefacGenDef
+           , Language.Haskell.Refact.Refactoring.DeleteDef
            , Language.Haskell.Refact.Utils.Binds
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph

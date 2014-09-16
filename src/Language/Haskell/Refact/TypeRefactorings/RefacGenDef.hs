@@ -33,7 +33,7 @@ import Data.Generics.Strafunski.StrategyLib.StrategyLib
         in the client modules, we take the visble names both in the current module and in the client modules 
         into account when creating the new function name.
 -}
-{-
+
 defaultShowData :: SYB.Data a => a -> String
 defaultShowData = SYB.showData SYB.Renamer 2 
 
@@ -95,8 +95,8 @@ findDefNameAndExp startPos endPos = do
 
     inPat (pat@(GHC.PatBind lpat (GHC.GRHSs rhs ds) rtype nameset ticks))
       = if hsBindLRIsSimple pat
-          then Just (fromMaybe defaultName (patToPNT lpat), fromMaybe defaultExpr (locToExp startPos endPos rhs))
-          else error "A complex pattern binding can not be generalised!"
+        then Just (fromMaybe defaultName (patToPNT lpat), fromMaybe defaultExpr (locToExp startPos endPos rhs))
+        else error "A complex pattern binding can not be generalised!"
     inPat _ = Nothing
 
 
@@ -424,4 +424,3 @@ mkNewFunPName pn e modName inscopeNames
    =do  (f1,d1) <- hsFDsFromInside e
         let name=mkNewName ((pNtoName pn)++"_gen") (nub ((map pNtoName (f1 `union` d1)) `union` inscopeNames)) 0  
         return (PN (UnQual name) (G modName name (N (Just loc0))))-}
--}

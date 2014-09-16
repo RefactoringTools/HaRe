@@ -37,6 +37,7 @@ usage =    "ghc-hare version " ++ showVersion version ++ "\n"
         ++ "\t ghc-hare liftToTopLevel" ++ ghcOptHelp ++ "filename line col\n"
         ++ "\t ghc-hare rename"         ++ ghcOptHelp ++ "filename newname line col\n"
         ++ "\t ghc-hare gendef"         ++ ghcOptHelp ++ "filename newname startline startcol endline endcol\n"
+        ++ "\t ghc-hare deletedef"      ++ ghcOptHelp ++ "filename line col"
         ++ "\t ghc-hare help\n"
 
 ----------------------------------------------------------------
@@ -128,7 +129,7 @@ main = flip catches handlers $ do
 
       -- gendef takes a FilePath -> String -> SimpPos -> SimpPos
  --     "gendef" -> runFunc cradle $ generaliseDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4) (parseSimpPos cmdArg5 cmdArg6) 
-
+      "deletedef" -> runFunc cradle $ deleteDef opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
       "show" -> putStrLn  (show (opt,cradle))
 
       cmd      -> throw (NoSuchCommand cmd)
