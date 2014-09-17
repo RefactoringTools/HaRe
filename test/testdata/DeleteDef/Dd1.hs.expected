@@ -1,6 +1,6 @@
 module DeleteDef.Dd1 where
 
---simple bind
+
 
 remove5s :: [Integer] -> [Integer]
 remove5s [] = []
