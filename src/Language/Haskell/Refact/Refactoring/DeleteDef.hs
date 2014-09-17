@@ -34,13 +34,13 @@ comp fileName (row,col) = do
 
 doDeletion :: GHC.Located GHC.Name -> RefactGhc ()
 doDeletion pn = do
-  inscopes <- getRefactInscopes
   renamed  <- getRefactRenamed
-  reallyDoDeletion pn inscopes renamed
-
-reallyDoDeletion :: GHC.Located GHC.Name -> InScopes -> GHC.RenamedSource -> RefactGhc ()
-reallyDoDeletion (GHC.L _ n) inscopes renamed = do
+  reallyDoDeletion pn renamed
+  
+reallyDoDeletion :: GHC.Located GHC.Name -> GHC.RenamedSource -> RefactGhc ()
+reallyDoDeletion (GHC.L _ n) renamed = do
   renamed'<- everywhereMStaged SYB.Renamer (SYB.mkM delInMod) renamed
+  logm $ SYB.showData SYB.Renamer 2 renamed'
   putRefactRenamed renamed'
   return ()
     where
@@ -48,13 +48,14 @@ reallyDoDeletion (GHC.L _ n) inscopes renamed = do
       delInMod :: (GHC.HsValBindsLR GHC.Name GHC.Name) -> RefactGhc (GHC.HsValBindsLR GHC.Name GHC.Name)
       delInMod (GHC.ValBindsOut tups sigs) =
         do
-          let newTups = removePNfromList tups
-          logm $ "\n==========================================\n" ++ (SYB.showData SYB.Parser 2 newTups) ++ "\n"
+          --logm $ "\nIn delInMod\n" ++ SYB.showData SYB.Renamer 2 tups
+          let newTups = [tups!!0]--removePNfromList tups
+          logm $ SYB.showData SYB.Renamer 2 newTups
           return $ (GHC.ValBindsOut newTups sigs)
-      removePNfromList [] = []
+      {-removePNfromList [] = []
       removePNfromList (x@(_recFlag, bind) :xs) =
         if isPn bind
            then removePNfromList xs
         else x : removePNfromList xs
       isPn = SYB.everything (||) (False `SYB.mkQ` ncomp)
-      ncomp name = n == name
+      ncomp name = n == name-}
