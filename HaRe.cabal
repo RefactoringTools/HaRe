@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.7.2.7
+Version:                        0.7.2.8
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -66,7 +66,7 @@ Library
                                 , Strafunski-StrategyLib
                                 , syz
 
-                                , haskell-token-utils >= 0.0.0.4
+                                , haskell-token-utils >= 0.0.0.6
 
         GHC-Options:             -Wall
 
@@ -121,7 +121,7 @@ Executable ghc-hare
                                 , ghc-mod >= 4.1.0 && < 5
                                 , mtl
                                 , old-time
-                                , parsec
+                                , parsec >= 3.1.6
                                 , pretty
                                 , rosezipper
                                 , syb
@@ -130,7 +130,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , haskell-token-utils
+                                , haskell-token-utils >= 0.0.0.6
                                 , HaRe >= 0.7.2.3
         Extensions:      CPP
 
@@ -185,7 +185,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , haskell-token-utils
+    , haskell-token-utils >= 0.0.0.6
     , HaRe >= 0.7.2.3
   Extensions:      CPP
 
