@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.DeleteDef where
 
 import qualified Data.Generics as SYB
@@ -25,6 +26,7 @@ comp fileName (row,col) = do
   case maybePn of
     Just pn@(GHC.L _ n) ->
       do
+        logm $ "DeleteDef.comp: before isPNUsed"
         pnIsUsed <- isPNUsed n modName fileName
         if pnIsUsed
            then error "The def to be deleted is still being used"
@@ -41,7 +43,8 @@ comp fileName (row,col) = do
 
 isPNUsed :: GHC.Name -> GHC.ModuleName -> FilePath -> RefactGhc Bool
 isPNUsed pn modName filePath = do
-  pnUsedLocally <- isPNUsedInLocal pn modName filePath
+  renamed <- getRefactRenamed
+  pnUsedLocally <- pnUsedInScope pn renamed
   if pnUsedLocally
      then return True
     else do
@@ -49,14 +52,20 @@ isPNUsed pn modName filePath = do
 
 pnUsedInScope :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 pnUsedInScope pn t' = do
-  res <- applyTU (stop_tdTUGhc  bind) t'
-  if res > 0
-     then return True
-    else return False
+  res <- applyTU (stop_tdTUGhc (failTU `adhocTU`
+                                bind `adhocTU`
+                                var)) t'
+  --logm $ "Res: " ++ (showGhc res)
+  return $ (length res) > 0
   where
-    bind (GHC.HsVar pn) = return 1
+    var ((GHC.HsVar pn) :: GHC.HsExpr GHC.Name) = do
+      logm $ "Found var"
+      return [pn]
+    var _ = return mzero
+    bind ((GHC.FunBind (GHC.L _ pn) _ _ _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name) = do
+      logm "FoundBinding"
+      return []
     bind _ = return mzero
-
 isPNUsedInLocal :: GHC.Name -> GHC.ModuleName -> FilePath -> RefactGhc Bool
 isPNUsedInLocal pn modName filePath = do
   modSum <- GHC.getModSummary modName
