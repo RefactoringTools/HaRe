@@ -58,14 +58,20 @@ pnUsedInScope pn t' = do
   --logm $ "Res: " ++ (showGhc res)
   return $ (length res) > 0
   where
-    var ((GHC.HsVar pn) :: GHC.HsExpr GHC.Name) = do
-      logm $ "Found var"
-      return [pn]
-    var _ = return mzero
-    bind ((GHC.FunBind (GHC.L _ pn) _ _ _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name) = do
-      logm "FoundBinding"
-      return []
-    bind _ = return mzero
+    var ((GHC.HsVar name) :: GHC.HsExpr GHC.Name)
+      | name == pn = do
+        logm $ "Found var"
+        return [pn]
+    var other = do
+      logm $ "Var other case: " ++ (showGhc other)
+      return mzero
+    bind ((GHC.FunBind (GHC.L l name) _ _ _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
+      | name == pn = do
+        logm $ "Found Binding at: " ++ (showGhc l) 
+        return []
+    bind other = do
+      logm $ "Binding other case: " ++ (showGhc other)
+      return mzero
 isPNUsedInLocal :: GHC.Name -> GHC.ModuleName -> FilePath -> RefactGhc Bool
 isPNUsedInLocal pn modName filePath = do
   modSum <- GHC.getModSummary modName
