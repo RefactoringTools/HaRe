@@ -52,26 +52,20 @@ isPNUsed pn modName filePath = do
 
 pnUsedInScope :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 pnUsedInScope pn t' = do
-  res <- applyTU (stop_tdTUGhc (failTU `adhocTU`
-                                bind `adhocTU`
-                                var)) t'
-  --logm $ "Res: " ++ (showGhc res)
+  res <- applyTU (stop_tdTUGhc (failTU `adhocTU` bind)) t'
   return $ (length res) > 0
-  where
-    var ((GHC.HsVar name) :: GHC.HsExpr GHC.Name)
-      | name == pn = do
-        logm $ "Found var"
-        return [pn]
-    var other = do
-      logm $ "Var other case: " ++ (showGhc other)
-      return mzero
-    bind ((GHC.FunBind (GHC.L l name) _ _ _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
-      | name == pn = do
-        logm $ "Found Binding at: " ++ (showGhc l) 
-        return []
-    bind other = do
-      logm $ "Binding other case: " ++ (showGhc other)
-      return mzero
+    where
+      bind ((GHC.FunBind (GHC.L l name) _ match _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
+        | name == pn = do
+            logm $ "Found Binding at: " ++ (showGhc l) 
+            return []
+        | findPN pn match = do
+            logm $ "PN is used in fun: " ++ (showGhc name)
+            return [pn]
+      bind other = do
+        logm $ "Binding other case: " ++ (showGhc other)
+        return mzero
+                  
 isPNUsedInLocal :: GHC.Name -> GHC.ModuleName -> FilePath -> RefactGhc Bool
 isPNUsedInLocal pn modName filePath = do
   modSum <- GHC.getModSummary modName
