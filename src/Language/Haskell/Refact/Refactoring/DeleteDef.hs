@@ -52,26 +52,21 @@ isPNUsed pn modName filePath = do
 
 pnUsedInScope :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 pnUsedInScope pn t' = do
-  res <- applyTU (stop_tdTUGhc (failTU `adhocTU` bind)) t'
+  res <- applyTU (stop_tdTUGhc (failTU `adhocTU` bind `adhocTU` var)) t'
   return $ (length res) > 0
     where
       bind ((GHC.FunBind (GHC.L l name) _ match _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
         | name == pn = do
             logm $ "Found Binding at: " ++ (showGhc l) 
             return []
-        | findPN pn match = do
-            logm $ "PN is used in fun: " ++ (showGhc name)
+      bind other = mzero
+      var ((GHC.HsVar name) :: GHC.HsExpr GHC.Name)
+        | name == pn = do
+            logm $ "Found var"
             return [pn]
-      bind other = do
-        logm $ "Binding other case: " ++ (showGhc other)
-        return mzero
+      var other = mzero
                   
-isPNUsedInLocal :: GHC.Name -> GHC.ModuleName -> FilePath -> RefactGhc Bool
-isPNUsedInLocal pn modName filePath = do
-  modSum <- GHC.getModSummary modName
-  let tm = ([filePath],modSum)
-  return False
-      
+     
 isPNUsedInClients :: GHC.Name -> GHC.ModuleName -> RefactGhc Bool
 isPNUsedInClients pn modName = do
         pnIsExported <- isExported pn
