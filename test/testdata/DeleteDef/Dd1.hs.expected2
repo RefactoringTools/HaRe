@@ -1,5 +1,8 @@
 module DeleteDef.Dd1 where
 
+--simple bind
+c :: Integer
+c = 5
 
 remove5s :: [Integer] -> [Integer]
 remove5s [] = []
@@ -13,7 +16,3 @@ funcWithLet x = let c = 12 in
 funcWithWhere :: (Num a) => a -> a
 funcWithWhere x = x + c
   where c = 12
-
-fact :: Integer -> Integer
-fact 0 = 1
-fact n = n * fact (n - 1)

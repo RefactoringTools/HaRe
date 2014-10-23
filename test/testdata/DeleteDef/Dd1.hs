@@ -16,3 +16,7 @@ funcWithLet x = let c = 12 in
 funcWithWhere :: (Num a) => a -> a
 funcWithWhere x = x + c
   where c = 12
+
+fact :: Integer -> Integer
+fact 0 = 1
+fact n = n * fact (n - 1)
