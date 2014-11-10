@@ -11,7 +11,21 @@
 [badge-license]: https://img.shields.io/badge/license-BSD3-green.svg?dummy
 [license]: https://github.com/alanz/HaRe/blob/master/LICENSE
 
-Note: The current version (0.7.2.6) does not install with GHC 7.8.x
+Note: The current version (0.7.2.8) does not install with GHC 7.8.x
+
+## Roadmap
+
+The token management utilities [haskell-token-utils](https://github.com/alanz/haskell-token-utils)
+are too brittle, and will not be updated for GHC 7.8.x and beyond.
+
+There are substantial changes coming in GHC 7.10, which will form the
+basis of the new token management, based on
+[ghc-exactprint](https://github.com/alanz/ghc-exactprint)
+
+For coming changes in GHC 7.10, see
+
+  * https://ghc.haskell.org/trac/ghc/wiki/GhcApi
+  * https://ghc.haskell.org/trac/ghc/wiki/GhcAstAnnotations
 
 ## Getting Started
 
