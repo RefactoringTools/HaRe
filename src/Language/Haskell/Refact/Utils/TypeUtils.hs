@@ -160,10 +160,12 @@ import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 
+{-
 import Language.Haskell.TokenUtils.GHC.Layout
 import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.Utils
+-}
 
 -- Modules from GHC
 import qualified Bag           as GHC

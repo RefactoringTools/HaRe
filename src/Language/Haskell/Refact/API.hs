@@ -390,7 +390,9 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 
+{-
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.Utils
 import Language.Haskell.TokenUtils.GHC.Layout
+-}

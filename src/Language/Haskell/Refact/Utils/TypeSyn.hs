@@ -53,6 +53,7 @@ instance Show GHC.NameSpace where
 instance GHC.Outputable GHC.NameSpace where
   ppr x = GHC.text $ show x
 
+{-
 instance GHC.Outputable (GHC.MatchGroup GHC.Name) where
   ppr (GHC.MatchGroup ms _ptctyp) = GHC.text "MatchGroup" GHC.<+> GHC.ppr ms
 
@@ -84,7 +85,7 @@ instance GHC.Outputable (GHC.ConDeclField GHC.Name) where
                                           GHC.<+> GHC.ppr typ
                                           GHC.<+> GHC.ppr doc
 
-
+-}
 -- ---------------------------------------------------------------------
 
 -- type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)

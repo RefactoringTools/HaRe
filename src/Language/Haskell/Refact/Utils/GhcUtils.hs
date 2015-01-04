@@ -15,12 +15,12 @@ of the GHC library problematic.
 
 module Language.Haskell.Refact.Utils.GhcUtils (
     -- * SYB versions
-      everythingButStaged
-    , somethingStaged
-    , everythingStaged
-    , somewhereMStaged
+    --  everythingButStaged
+    -- , somethingStaged
+    -- , everythingStaged
+      somewhereMStaged
     , somewhereMStagedBu
-    , everywhereMStaged
+    -- , everywhereMStaged
     , everywhereMStaged'
     , everywhereStaged
     , everywhereStaged'
@@ -28,9 +28,10 @@ module Language.Haskell.Refact.Utils.GhcUtils (
     , listifyStaged
 
     -- ** SYB Utility
-    , checkItemRenamer
+    -- , checkItemRenamer
 
     -- * Strafunski StrategyLib versions
+{-
     , full_tdTUGhc
     , stop_tdTUGhc
     , stop_tdTPGhc
@@ -39,10 +40,10 @@ module Language.Haskell.Refact.Utils.GhcUtils (
     , once_buTPGhc
     , oneTPGhc
     , allTUGhc
-
+-}
     -- ** Strafunski utility
-    , checkItemStage'
-    , checkItemRenamer'
+    -- , checkItemStage'
+    -- , checkItemRenamer'
 
     -- * Scrap Your Zipper versions
     , zeverywhereStaged
@@ -53,7 +54,7 @@ module Language.Haskell.Refact.Utils.GhcUtils (
     , zopenStaged'
     , ztransformStagedM
     -- ** SYZ utilities
-    , checkZipperStaged
+    -- , checkZipperStaged
     , upUntil
     , findAbove
     ) where
@@ -65,13 +66,16 @@ import Control.Monad
 import Data.Data
 import Data.Maybe
 
+#if __GLASGOW_HASKELL__ <= 708
 import qualified GHC     as GHC
 import qualified NameSet as GHC
+#endif
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 import qualified Data.Generics.Zipper as Z
 
+{- now in ghc-cyb
 -- TODO: pass this routine back to syb-utils (when it works properly)
 -- Question: how to handle partial results in the otherwise step?
 everythingButStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ (r,Bool) -> SYB.GenericQ r
@@ -80,6 +84,7 @@ everythingButStaged stage k z f x
   | stop == True = v
   | otherwise = foldl k v (gmapQ (everythingButStaged stage k z f) x)
   where (v, stop) = f x
+-}
 
 
 {-
@@ -92,6 +97,7 @@ something :: GenericQ (Maybe u) -> GenericQ (Maybe u)
 something = everything orElse
 -}
 
+{- now in syb-utils
 -- | Look up a subterm by means of a maybe-typed filter
 somethingStaged :: SYB.Stage -> (Maybe u) -> SYB.GenericQ (Maybe u) -> SYB.GenericQ (Maybe u)
 
@@ -99,6 +105,7 @@ somethingStaged :: SYB.Stage -> (Maybe u) -> SYB.GenericQ (Maybe u) -> SYB.Gener
 -- when a suitable "choice" operator is used for reduction
 --
 somethingStaged stage z = everythingStaged stage SYB.orElse z
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -121,7 +128,9 @@ somewhereMStaged :: MonadPlus m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
 -- everywhere, say succeeds nowhere.
 --
 somewhereMStaged stage f x
+#if __GLASGOW_HASKELL__ <= 708
   | checkItemStage stage x = mzero
+#endif
   | otherwise = f x `mplus` gmapMp (somewhereMStaged stage f) x
 
 -- ---------------------------------------------------------------------
@@ -129,13 +138,16 @@ somewhereMStaged stage f x
 -- | Apply a monadic transformation at least somewhere, in bottom up order
 somewhereMStagedBu :: MonadPlus m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
 somewhereMStagedBu stage f x
+#if __GLASGOW_HASKELL__ <= 708
   | checkItemStage stage x = mzero
+#endif
   -- was | otherwise = f x `mplus` gmapMp (somewhereMStaged stage f) x
   | otherwise =  gmapMp (somewhereMStagedBu stage f) x `mplus` f x
 
 
 -- ---------------------------------------------------------------------
 
+{- now in ghc-syb
 -- | Monadic variation on everywhere
 everywhereMStaged :: Monad m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
 
@@ -144,14 +156,16 @@ everywhereMStaged stage f x
   | checkItemStage stage x = return x
   | otherwise = do x' <- gmapM (everywhereMStaged stage f) x
                    f x'
-
+-}
 
 -- | Monadic variation on everywhere'
 everywhereMStaged' :: Monad m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
 
 -- Top-down order is also reflected in order of do-actions
 everywhereMStaged' stage f x
+#if __GLASGOW_HASKELL__ <= 708
   | checkItemStage stage x = return x
+#endif
   | otherwise = do x' <- f x
                    gmapM (everywhereMStaged' stage f) x'
 
@@ -161,19 +175,24 @@ everywhereMStaged' stage f x
 -- | Bottom-up transformation
 everywhereStaged ::  SYB.Stage -> (forall a. Data a => a -> a) -> forall a. Data a => a -> a
 everywhereStaged stage f x
+#if __GLASGOW_HASKELL__ <= 708
   | checkItemStage stage x = x
+#endif
   | otherwise = (f . gmapT (everywhereStaged stage f)) x
 
 -- | Top-down version of everywhereStaged
 everywhereStaged' ::  SYB.Stage -> (forall a. Data a => a -> a) -> forall a. Data a => a -> a
 everywhereStaged' stage f x
+#if __GLASGOW_HASKELL__ <= 708
   | checkItemStage stage x = x
+#endif
   | otherwise = (gmapT (everywhereStaged stage f) . f) x
 
 -- ---------------------------------------------------------------------
 
 -- From @frsoares
 
+#if __GLASGOW_HASKELL__ <= 708
 -- | Checks whether the current item is undesirable for analysis in the current
 -- AST Stage.
 checkItemStage :: (Typeable a, Data a) => SYB.Stage -> a -> Bool
@@ -199,9 +218,10 @@ checkItemStage2 stage x = (const False `SYB.ext1Q` hsWithBndrs) x
 
 checkItemRenamer :: (Data a, Typeable a) => a -> Bool
 checkItemRenamer x = checkItemStage SYB.Renamer x
+#endif
 
 
-
+{- now in ghc-syb
 -- | Staged variation of SYB.everything
 -- The stage must be provided to avoid trying to modify elements which
 -- may not be present at all stages of AST processing.
@@ -210,7 +230,7 @@ everythingStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ r -> SYB.Gen
 everythingStaged stage k z f x
   | checkItemStage stage x = z
   | otherwise = foldl k (f x) (gmapQ (everythingStaged stage k z f) x)
-
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -220,7 +240,9 @@ onelayerStaged stage z f t = gmapQ stagedF t
 -- onelayerStaged stage z f t = (stagedF t) : gmapQ stagedF t
   where
     stagedF x
+#if __GLASGOW_HASKELL__ <= 708
       | checkItemStage stage x = z
+#endif
       | otherwise = f x
 
 -- ---------------------------------------------------------------------
@@ -230,7 +252,7 @@ onelayerStaged stage z f t = gmapQ stagedF t
 -- may not be present at all stages of AST processing.
 listifyStaged
   :: (Data a, Typeable a1) => SYB.Stage -> (a1 -> Bool) -> a -> [a1]
-listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x | p x ]))
+listifyStaged stage p = SYB.everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x | p x ]))
 
 
 
@@ -239,6 +261,7 @@ listifyStaged stage p = everythingStaged stage (++) [] ([] `SYB.mkQ` (\x -> [ x 
 -- Strafunski StrategyLib adaptations
 
 -- ---------------------------------------------------------------------
+#if __GLASGOW_HASKELL__ <= 708
 
 -- | Full type-unifying traversal in top-down order.
 full_tdTUGhc    :: (MonadPlus m, Monoid a) => TU a m -> TU a m
@@ -276,14 +299,16 @@ oneTPGhc s         =  ifTP checkItemRenamer' (const failTP) (oneTP s)
 -- Succeed for all children
 allTPGhc :: MonadPlus m => TP m -> TP m
 allTPGhc s = ifTP checkItemRenamer' (const failTP) (oneTP s)
-
+#endif
 ------------------------------------------
 
+#if __GLASGOW_HASKELL__ <= 708
 -- This section courtesy of @jkoppel (James Koppel)
 allTUGhc :: (MonadPlus m) => (a -> a -> a) -> a -> TU a m -> TU a m
 allTUGhc op2 u s  = ifTU checkItemRenamer' (const $ constTU u) (allTU op2 u s)
+#endif
 
-
+#if __GLASGOW_HASKELL__ <= 708
 checkItemStage' :: forall m. (MonadPlus m) => SYB.Stage -> TU () m
 checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` nameSet
   where nameSet    = const (guard $ stage `elem` [SYB.Parser,SYB.TypeChecker]) :: GHC.NameSet -> m ()
@@ -292,6 +317,7 @@ checkItemStage' stage = failTU `adhocTU` postTcType `adhocTU` fixity `adhocTU` n
 
 checkItemRenamer' :: (MonadPlus m) => TU () m
 checkItemRenamer' = checkItemStage' SYB.Renamer
+#endif
 
 -- ---------------------------------------------------------------------
 
@@ -300,7 +326,9 @@ checkItemRenamer' = checkItemStage' SYB.Renamer
 -- | Apply a generic transformation everywhere in a bottom-up manner.
 zeverywhereStaged :: (Typeable a) => SYB.Stage -> SYB.GenericT -> Z.Zipper a -> Z.Zipper a
 zeverywhereStaged stage f z
+#if __GLASGOW_HASKELL__ <= 708
   | checkZipperStaged stage z = z
+#endif
   | otherwise = Z.trans f (Z.downT g z)
   where
     g z' = Z.leftT g (zeverywhereStaged stage f z')
@@ -310,7 +338,9 @@ zeverywhereStaged stage f z
 -- returns the original zipper if the query does not pass (check this)
 zopenStaged :: (Typeable a) => SYB.Stage -> SYB.GenericQ Bool -> Z.Zipper a -> [Z.Zipper a]
 zopenStaged stage q z
+#if __GLASGOW_HASKELL__ <= 708
   | checkZipperStaged stage z = []
+#endif
   | Z.query q z = [z]
   | otherwise = reverse $ Z.downQ [] g z
   where
@@ -320,7 +350,9 @@ zopenStaged stage q z
 -- leftmost successful location, avoiding holes in the GHC structures
 zsomewhereStaged :: (MonadPlus m) => SYB.Stage -> SYB.GenericM m -> Z.Zipper a -> m (Z.Zipper a)
 zsomewhereStaged stage f z
+#if __GLASGOW_HASKELL__ <= 708
   | checkZipperStaged stage z = return z
+#endif
   | otherwise = Z.transM f z `mplus` Z.downM mzero (g . Z.leftmost) z
   where
     g z' = Z.transM f z `mplus` Z.rightM mzero (zsomewhereStaged stage f) z'
@@ -343,7 +375,7 @@ transZM stage q t z
   | Z.query q z = t stage z
   | otherwise = return z
 
-
+#if __GLASGOW_HASKELL__ <= 708
 checkZipperStaged :: SYB.Stage -> Z.Zipper a -> Bool
 checkZipperStaged stage z
   | isJust maybeNameSet    = checkItemStage stage (fromJust maybeNameSet)
@@ -363,6 +395,7 @@ checkZipperStaged stage z
 
     -- maybeHsWithBndrs :: (Data b) => Maybe (GHC.HsWithBndrs b)
     -- maybeHsWithBndrs = Z.getHole z
+#endif
 
 -- ---------------------------------------------------------------------
 
@@ -394,7 +427,9 @@ zopenStaged' :: (Typeable a)
   -> Z.Zipper a
   -> [(Z.Zipper a,b)]
 zopenStaged' stage q z
+#if __GLASGOW_HASKELL__ <= 708
   | checkZipperStaged stage z = []
+#endif
   | isJust zq = [(z,fromJust zq)]
   | otherwise = reverse $ Z.downQ [] g z
   where

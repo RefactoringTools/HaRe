@@ -54,7 +54,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 4.1.0 && < 5
+                                , ghc-mod
                                 , mtl
                                 , old-time
                                 , pretty
@@ -65,8 +65,8 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
-
-                                , haskell-token-utils >= 0.0.0.6
+                                , ghc-exactprint
+                                -- , haskell-token-utils >= 0.0.0.6
 
         GHC-Options:             -Wall
 
@@ -118,7 +118,7 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 4.1.0 && < 5
+                                , ghc-mod
                                 , mtl
                                 , old-time
                                 , parsec >= 3.1.6
@@ -130,7 +130,8 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , haskell-token-utils >= 0.0.0.6
+                                , ghc-exactprint
+                                -- , haskell-token-utils >= 0.0.0.6
                                 , HaRe >= 0.7.2.3
         Extensions:      CPP
 
@@ -171,7 +172,7 @@ test-suite spec
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 4.1.0 && < 5
+    , ghc-mod
     , hspec
     , mtl
     , old-time
@@ -185,7 +186,8 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , haskell-token-utils >= 0.0.0.6
+    , ghc-exactprint
+    -- , haskell-token-utils >= 0.0.0.6
     , HaRe >= 0.7.2.3
   Extensions:      CPP
 
