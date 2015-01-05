@@ -400,3 +400,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/RenameInExportedType2.hs.tokens
 /.cabal-sandbox/
 /cabal.sandbox.config
+/foo.nix
+/my-dev-env.nix
+/ocharles.nix
+/shell763-ghcmod5.nix
