@@ -49,7 +49,7 @@ prettyprint2 x = GHC.renderWithStyle                     (GHC.ppr x) (GHC.cmdlin
 -- ---------------------------------------------------------------------
 
 ppType :: GHC.Type -> String
-#elif __GLASGOW_HASKELL__ > 706
+#if __GLASGOW_HASKELL__ > 706
 ppType x = GHC.renderWithStyle GHC.unsafeGlobalDynFlags (GHC.pprParendType x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
 #elif __GLASGOW_HASKELL__ > 704
 ppType x = GHC.renderWithStyle GHC.tracingDynFlags (GHC.pprParendType x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)

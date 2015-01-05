@@ -44,9 +44,8 @@ module Language.Haskell.Refact.Utils.Binds
    , HsValBinds(..)
  ) where
 
--- import Control.Monad.IO.Class ()
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
--- import Language.Haskell.TokenUtils.Utils
+import Language.Haskell.GHC.ExactPrint.Utils
 
 -- Modules from GHC
 import qualified Bag           as GHC
@@ -122,7 +121,7 @@ instance HsValBinds (GHC.RenamedSource) where
     where
       grp' = grp {GHC.hs_valds = binds}
 
-  hsTyDecls (grp,_,_,_) = (GHC.hs_tyclds grp)
+  hsTyDecls (grp,_,_,_) = map GHC.group_tyclds (GHC.hs_tyclds grp)
 
 
 instance HsValBinds (GHC.HsValBinds GHC.Name) where
@@ -133,10 +132,9 @@ instance HsValBinds (GHC.HsValBinds GHC.Name) where
 instance HsValBinds (GHC.HsGroup GHC.Name) where
   hsValBinds grp = (GHC.hs_valds grp)
 
-  replaceValBinds (GHC.HsGroup b t i d f de fo w a r v doc) binds
-    = (GHC.HsGroup b' t i d f de fo w a r v doc)
+  replaceValBinds (GHC.HsGroup b s t i d f de fo w a r v doc) binds
+    = (GHC.HsGroup b' s t i d f de fo w a r v doc)
        where b' = replaceValBinds b binds
-
   hsTyDecls _ = []
 
 instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
@@ -151,7 +149,7 @@ instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
 
   hsTyDecls _ = []
 
-instance HsValBinds (GHC.GRHSs GHC.Name) where
+instance HsValBinds (GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name)) where
   hsValBinds (GHC.GRHSs _ lb) = hsValBinds lb
 
   replaceValBinds (GHC.GRHSs rhss b) new = (GHC.GRHSs rhss (replaceValBinds b new))
@@ -160,17 +158,17 @@ instance HsValBinds (GHC.GRHSs GHC.Name) where
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.MatchGroup GHC.Name) where
-  hsValBinds (GHC.MatchGroup matches _) = hsValBinds matches
+instance HsValBinds (GHC.MatchGroup GHC.Name (GHC.LHsExpr GHC.Name)) where
+  hsValBinds (GHC.MG matches _ _ _) = hsValBinds matches
 
-  replaceValBinds (GHC.MatchGroup matches a) newBinds
-               = (GHC.MatchGroup (replaceValBinds matches newBinds) a)
+  replaceValBinds (GHC.MG matches a r o) newBinds
+               = (GHC.MG (replaceValBinds matches newBinds) a r o)
 
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LMatch GHC.Name] where
+instance HsValBinds [GHC.LMatch GHC.Name (GHC.LHsExpr GHC.Name)] where
   hsValBinds ms = unionBinds $ map (\m -> hsValBinds $ GHC.unLoc m) ms
 
   replaceValBinds [] _        = error "empty match list in replaceValBinds [GHC.LMatch GHC.Name]"
@@ -180,7 +178,7 @@ instance HsValBinds [GHC.LMatch GHC.Name] where
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LMatch GHC.Name) where
+instance HsValBinds (GHC.LMatch GHC.Name (GHC.LHsExpr GHC.Name)) where
   hsValBinds m = hsValBinds $ GHC.unLoc m
 
   replaceValBinds (GHC.L l m) newBinds = (GHC.L l (replaceValBinds m newBinds))
@@ -190,11 +188,11 @@ instance HsValBinds (GHC.LMatch GHC.Name) where
 -- ---------------------------------------------------------------------
 
 
-instance HsValBinds (GHC.Match GHC.Name) where
-  hsValBinds (GHC.Match _ _ grhs) = hsValBinds grhs
+instance HsValBinds (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
+  hsValBinds (GHC.Match _ _ _ grhs) = hsValBinds grhs
 
-  replaceValBinds (GHC.Match p t (GHC.GRHSs rhs _binds)) newBinds
-    = (GHC.Match p t (GHC.GRHSs rhs binds'))
+  replaceValBinds (GHC.Match mf p t (GHC.GRHSs rhs _binds)) newBinds
+    = (GHC.Match mf p t (GHC.GRHSs rhs binds'))
       where
         binds' = (GHC.HsValBinds newBinds)
 
@@ -225,7 +223,7 @@ instance HsValBinds (GHC.HsExpr GHC.Name) where
 
   hsTyDecls _ = []
 
-instance HsValBinds (GHC.Stmt GHC.Name) where
+instance HsValBinds (GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name)) where
   hsValBinds (GHC.LetStmt ds) = hsValBinds ds
   hsValBinds other = error $ "hsValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc other)
   replaceValBinds (GHC.LetStmt ds) new = (GHC.LetStmt (replaceValBinds ds new))
@@ -285,28 +283,28 @@ instance HsValBinds (GHC.LHsExpr GHC.Name) where
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LGRHS GHC.Name] where
+instance HsValBinds [GHC.LGRHS GHC.Name (GHC.LHsExpr GHC.Name)] where
   hsValBinds xs = unionBinds $ map hsValBinds xs
   replaceValBinds _old _new = error $ "replaceValBinds [GHC.LGRHS GHC.Name] undefined for:" -- ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LGRHS GHC.Name) where
+instance HsValBinds (GHC.LGRHS GHC.Name (GHC.LHsExpr GHC.Name)) where
   hsValBinds (GHC.L _ (GHC.GRHS stmts _expr)) = hsValBinds stmts
   replaceValBinds _old _new = error $ "replaceValBinds (GHC.LHGRHS GHC.Name) undefined for:" -- ++ (showGhc _old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LStmt GHC.Name] where
+instance HsValBinds [GHC.LStmt GHC.Name (GHC.LHsExpr GHC.Name)] where
   hsValBinds xs = unionBinds $ map hsValBinds xs
   replaceValBinds old _new = error $ "replaceValBinds [GHC.LStmt GHC.Name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LStmt GHC.Name) where
+instance HsValBinds (GHC.LStmt GHC.Name (GHC.LHsExpr GHC.Name)) where
   hsValBinds (GHC.L _ (GHC.LetStmt binds)) = hsValBinds binds
   hsValBinds _                             = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.LStmt GHC.Name) undefined for:" ++ (showGhc old)
@@ -397,22 +395,19 @@ instance HsValBinds (GHC.LSig GHC.Name) where
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
-
-#if __GLASGOW_HASKELL__ > 704
+{-
 instance HsValBinds [GHC.LFamInstDecl GHC.Name] where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds [GHC.LFamInstDecl GHC.Name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
-#endif
-
+-}
 -- ---------------------------------------------------------------------
-
-#if __GLASGOW_HASKELL__ > 704
+{-
 instance HsValBinds (GHC.LFamInstDecl GHC.Name) where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.LFamInstDecl GHC.Name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
-#endif
+-}
 
 -- ---------------------------------------------------------------------
 

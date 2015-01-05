@@ -37,15 +37,16 @@ import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
 import qualified MonadUtils    as GHC
 
+import Control.Applicative
 import Control.Monad.State
 import Data.List
 import Data.Time.Clock
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
--- import Language.Haskell.TokenUtils.Types
+import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.TypeSyn
--- import Language.Haskell.TokenUtils.Utils
+-- import Language.Haskell.Refact.Utils.Utils
 import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger
@@ -67,7 +68,7 @@ data RefactSettings = RefSet
         , rsetEnabledTargets :: (Bool,Bool,Bool,Bool)
         } deriving (Show)
 
-deriving instance Show LineSeparator
+-- deriving instance Show LineSeparator
 
 defaultSettings :: RefactSettings
 defaultSettings = RefSet
@@ -138,17 +139,20 @@ instance Show StateStorage where
 
 type RefactGhc a = GHC.GhcT (StateT RefactState IO) a
 
+{-
 instance (MU.MonadIO (GHC.GhcT (StateT RefactState IO))) where
          liftIO = GHC.liftIO
-
+-}
+{-
 instance GHC.MonadIO (StateT RefactState IO) where
          liftIO f = MU.liftIO f
+-}
 
 instance ExceptionMonad m => ExceptionMonad (StateT s m) where
     gcatch f h = StateT $ \s -> gcatch (runStateT f s) (\e -> runStateT (h e) s)
-    gblock = mapStateT gblock
-    gunblock = mapStateT gunblock
-
+    -- gblock = mapStateT gblock
+    -- gunblock = mapStateT gunblock
+    gmask = mapStateT gmask
 
 instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
     get = lift get
@@ -157,6 +161,10 @@ instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
 
 instance (MonadTrans GHC.GhcT) where
    lift = GHC.liftGhcT
+
+instance (Applicative m) => Alternative (GHC.GhcT m) where
+  empty = empty
+  (<|>) = (<|>)
 
 instance (MonadPlus m,Functor m,GHC.MonadIO m,ExceptionMonad m) => MonadPlus (GHC.GhcT m) where
   mzero = GHC.GhcT $ \_s -> mzero
@@ -173,18 +181,21 @@ initGhcSession cradle importDirs = do
          case importDirs of
            [] -> (rsetGhcOpts settings)
            _  -> ("-i" ++ (intercalate ":" importDirs)):(rsetGhcOpts settings)
-    let opt = Options {
-                 outputStyle = PlainStyle
-                 , hlintOpts = []
-                 , ghcOpts = ghcOptsDirs
+    let opt = Options
+                 { outputStyle = PlainStyle
+                 , lineSeparator = rsetLineSeparator settings
+                 , ghcProgram = "ghc"
+                 , cabalProgram = "cabal"
+                 , ghcUserOptions = []
+                 -- , ghcOpts = ghcOptsDirs
                  , operators = False
                  , detailed = False
                  , qualified = False
-                 , lineSeparator = rsetLineSeparator settings
+                 , hlintOpts = []
                  }
 
     -- (_readLog,mcabal) <- initializeFlagsWithCradle opt cradle (options settings) True
-    initializeFlagsWithCradle opt cradle
+    -- initializeFlagsWithCradle opt cradle
     -- initializeFlagsWithCradle :: GhcMonad m => Options -> Cradle -> m ()
     case cradleCabalFile cradle of
       Just cabalFile -> do
@@ -242,7 +253,7 @@ getCabalAllTargets cradle cabalFile = do
 
    setCurrentDirectory cabalDir
 
-   pkgDesc <- liftIO $ parseCabalFile cabalFile
+   pkgDesc <- liftIO $ parseCabalFile cradle cabalFile
    (libs,exes,tests,benches) <- liftIO $ cabalAllTargets pkgDesc
    setCurrentDirectory currentDir
 
