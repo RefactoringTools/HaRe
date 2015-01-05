@@ -35,4 +35,6 @@ spec = do
 
   describe "foo" $ do
     it "bar" $ do
+      (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       "a" `shouldBe` "b"

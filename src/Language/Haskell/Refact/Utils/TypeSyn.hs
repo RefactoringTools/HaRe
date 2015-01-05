@@ -53,23 +53,23 @@ instance Show GHC.NameSpace where
 instance GHC.Outputable GHC.NameSpace where
   ppr x = GHC.text $ show x
 
-{-
-instance GHC.Outputable (GHC.MatchGroup GHC.Name) where
-  ppr (GHC.MatchGroup ms _ptctyp) = GHC.text "MatchGroup" GHC.<+> GHC.ppr ms
+
+instance GHC.Outputable (GHC.MatchGroup GHC.Name (GHC.LHsExpr GHC.Name)) where
+  ppr (GHC.MG ms _ _ _) = GHC.text "MatchGroup" GHC.<+> GHC.ppr ms
 
 
-instance GHC.Outputable (GHC.Match GHC.Name) where
-  ppr (GHC.Match pats mtyp grhs) = GHC.text "Match" GHC.<+> GHC.ppr pats
+instance GHC.Outputable (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
+  ppr (GHC.Match fn pats mtyp grhs) = GHC.text "Match" GHC.<+> GHC.ppr pats
                                                     GHC.<+> GHC.ppr mtyp
                                                     GHC.<+> GHC.ppr grhs
 
 
-instance GHC.Outputable (GHC.GRHSs GHC.Name) where
+instance GHC.Outputable (GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name)) where
   ppr (GHC.GRHSs grhss binds) = GHC.text "GRHSs" GHC.<+> GHC.ppr grhss
                                                  GHC.<+> GHC.ppr binds
 
 
-instance GHC.Outputable (GHC.GRHS GHC.Name) where
+instance GHC.Outputable (GHC.GRHS GHC.Name (GHC.LHsExpr GHC.Name)) where
   ppr (GHC.GRHS guards rhs) = GHC.text "GRHS" GHC.<+> GHC.ppr guards
                                               GHC.<+> GHC.ppr rhs
 
@@ -85,7 +85,12 @@ instance GHC.Outputable (GHC.ConDeclField GHC.Name) where
                                           GHC.<+> GHC.ppr typ
                                           GHC.<+> GHC.ppr doc
 
--}
+instance GHC.Outputable (GHC.TyFamEqn GHC.Name (GHC.LHsTyVarBndrs GHC.Name)) where
+  ppr (GHC.TyFamEqn name pats rhs) = GHC.text "TyFamEqn"
+                                          GHC.<+> GHC.ppr name
+                                          GHC.<+> GHC.ppr pats
+                                          GHC.<+> GHC.ppr rhs
+
 -- ---------------------------------------------------------------------
 
 -- type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)

@@ -653,7 +653,7 @@ hsFreeAndDeclaredGhc t = do
     renamed :: GHC.RenamedSource ->  RefactGhc (FreeNames,DeclaredNames)
     renamed (g,_i,_e,_d) = do
       gfds <- hsFreeAndDeclaredGhc $ GHC.hs_valds g
-      let tds = concatMap getDeclaredTypes $ concat (GHC.hs_tyclds g)
+      let tds = concatMap getDeclaredTypes $ concatMap GHC.group_tyclds (GHC.hs_tyclds g)
       return $ gfds <> (FN [],DN tds)
 
 
@@ -1007,7 +1007,7 @@ ClassDecl
     expr ((GHC.HsSCC _ _ e))
       = hsFreeAndDeclaredGhc e
 
-    expr ((GHC.HsCoreAnn _ e))
+    expr ((GHC.HsCoreAnn _ _ e))
       = hsFreeAndDeclaredGhc e
 
     expr ((GHC.HsBracket (GHC.ExpBr b)))
@@ -1029,7 +1029,7 @@ ClassDecl
     expr ((GHC.HsTcBracketOut b _ps))
       = hsFreeAndDeclaredGhc b
 
-    expr ((GHC.HsSpliceE (GHC.HsSplice _ e)))
+    expr ((GHC.HsSpliceE _ (GHC.HsSplice _ e)))
       = hsFreeAndDeclaredGhc e
 
     expr ((GHC.HsQuasiQuoteE _q))
@@ -1058,7 +1058,7 @@ ClassDecl
     expr ((GHC.HsBinTick _ _ e))
       = hsFreeAndDeclaredGhc e
 
-    expr ((GHC.HsTickPragma _ e))
+    expr ((GHC.HsTickPragma _ _ e))
       = hsFreeAndDeclaredGhc e
 
     expr ((GHC.EWildPat)) = return emptyFD
@@ -1289,7 +1289,7 @@ getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn _fvs)) = nub $ [n] 
     dsn = getHsTyDefn defn
 -}
 getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats _atdefs _ _fvs))
-  = nub $ [n] ++ ssn ++ msn ++ asn
+  = nub $ [n] ++ ssn ++ msn -- ++ asn
   where
     getLSig :: GHC.LSig GHC.Name -> [GHC.Name]
     getLSig (GHC.L _ (GHC.TypeSig ns _ _)) = map GHC.unLoc ns
@@ -1302,7 +1302,7 @@ getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats
 
     ssn = concatMap getLSig sigs
     msn = getDeclaredVars $ hsBinds meths
-    asn = concatMap getDeclaredTypes ats
+    -- asn = concatMap getDeclaredTypes ats
 
 {-
 FamDecl -- type/data family T :: *->*
@@ -1557,17 +1557,25 @@ hsVisibleDs e t = do
     instdecls _ = return (DN [])
 
     instdecl :: GHC.LInstDecl GHC.Name -> RefactGhc DeclaredNames
-    instdecl (GHC.L _ (GHC.ClsInstD polytyp binds sigs faminsts))
-      | findEntity e polytyp  = hsVisibleDs e polytyp
-      | findEntity e binds    = hsVisibleDs e binds
-      | findEntity e sigs     = hsVisibleDs e sigs
-      | findEntity e faminsts = hsVisibleDs e faminsts
-    instdecl _ = return (DN [])
+    instdecl (GHC.L _ (GHC.ClsInstD (GHC.ClsInstDecl polytyp binds sigs tyfaminsts dfaminsts _)))
+      | findEntity e polytyp    = hsVisibleDs e polytyp
+      | findEntity e binds      = hsVisibleDs e binds
+      | findEntity e sigs       = hsVisibleDs e sigs
+      | findEntity e tyfaminsts = hsVisibleDs e tyfaminsts
+      | findEntity e dfaminsts  = hsVisibleDs e dfaminsts
+      | otherwise = return (DN [])
+    instdecl (GHC.L _ (GHC.DataFamInstD (GHC.DataFamInstDecl ln pats defn _)))
+      | findEntity e pats = hsVisibleDs e pats
+      | findEntity e defn = hsVisibleDs e defn
+      | otherwise = return (DN [])
+    instdecl (GHC.L _ (GHC.TyFamInstD (GHC.TyFamInstDecl eqn _)))
+      | findEntity e eqn = hsVisibleDs e eqn
+      | otherwise = return (DN [])
 
     lhstype :: GHC.LHsType GHC.Name -> RefactGhc DeclaredNames
     lhstype tv@(GHC.L _ (GHC.HsTyVar n))
       | findEntity e tv = return (DN [n])
-    lhstype _ = return (DN [])
+      | otherwise       = return (DN [])
 
     -- -----------------------
 
@@ -1976,311 +1984,6 @@ class (SYB.Data t) => HsValBinds t where
 isDeclaredIn :: (HsValBinds t) => GHC.Name -> t -> Bool
 isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
 
-{-
-instance HsValBinds (GHC.RenamedSource) where
-  hsValBinds (grp,_,_,_) = (GHC.hs_valds grp)
-
-  replaceValBinds (grp,imps,exps,docs) binds = (grp',imps,exps,docs)
-    where
-      grp' = grp {GHC.hs_valds = binds}
-
-  hsTyDecls (grp,_,_,_) = (GHC.hs_tyclds grp)
-
-
-instance HsValBinds (GHC.HsValBinds GHC.Name) where
-  hsValBinds vb = vb
-  replaceValBinds _old new = new
-  hsTyDecls _ = []
-
-instance HsValBinds (GHC.HsGroup GHC.Name) where
-  hsValBinds grp = (GHC.hs_valds grp)
-
-  replaceValBinds (GHC.HsGroup b t i d f de fo w a r v doc) binds
-    = (GHC.HsGroup b' t i d f de fo w a r v doc)
-       where b' = replaceValBinds b binds
-
-  hsTyDecls _ = []
-
-instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
-  hsValBinds lb = case lb of
-    GHC.HsValBinds b    -> b
-    GHC.HsIPBinds _     -> emptyValBinds
-    GHC.EmptyLocalBinds -> emptyValBinds
-
-  replaceValBinds (GHC.HsValBinds _b) new    = (GHC.HsValBinds new)
-  replaceValBinds (GHC.HsIPBinds _b) _new    = error "undefined replaceValBinds HsIPBinds"
-  replaceValBinds (GHC.EmptyLocalBinds) new  = (GHC.HsValBinds new)
-
-  hsTyDecls _ = []
-
-instance HsValBinds (GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name)) where
-  hsValBinds (GHC.GRHSs _ lb) = hsValBinds lb
-
-  replaceValBinds (GHC.GRHSs rhss b) new = (GHC.GRHSs rhss (replaceValBinds b new))
-
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.MatchGroup GHC.Name) where
-  hsValBinds (GHC.MatchGroup matches _) = hsValBinds matches
-
-  replaceValBinds (GHC.MatchGroup matches a) newBinds
-               = (GHC.MatchGroup (replaceValBinds matches newBinds) a)
-
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [GHC.LMatch GHC.Name] where
-  hsValBinds ms = unionBinds $ map (\m -> hsValBinds $ GHC.unLoc m) ms
-
-  replaceValBinds [] _        = error "empty match list in replaceValBinds [GHC.LMatch GHC.Name]"
-  replaceValBinds ms newBinds = (replaceValBinds (ghead "replaceValBinds" ms) newBinds):(tail ms)
-
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LMatch GHC.Name) where
-  hsValBinds m = hsValBinds $ GHC.unLoc m
-
-  replaceValBinds (GHC.L l m) newBinds = (GHC.L l (replaceValBinds m newBinds))
-
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-
-instance HsValBinds (GHC.Match GHC.Name) where
-  hsValBinds (GHC.Match _ _ grhs) = hsValBinds grhs
-
-  replaceValBinds (GHC.Match p t (GHC.GRHSs rhs _binds)) newBinds
-    = (GHC.Match p t (GHC.GRHSs rhs binds'))
-      where
-        binds' = (GHC.HsValBinds newBinds)
-
-  hsTyDecls _ = []
-
-instance HsValBinds (GHC.HsBind GHC.Name) where
-  hsValBinds (GHC.PatBind _p rhs _typ _fvs _) = hsValBinds rhs
-
-  -- TODO: ++AZ++ added for compatibility with hsDecls.
-  hsValBinds (GHC.FunBind _ _ matches _ _ _) = hsValBinds matches
-  hsValBinds other = error $ "hsValBinds (GHC.HsBind GHC.Name) undefined for:" ++ (showGhc other)
-
-  replaceValBinds (GHC.PatBind p (GHC.GRHSs rhs _binds) typ fvs pt) newBinds
-    = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt)
-      where
-        binds' = (GHC.HsValBinds newBinds)
-  replaceValBinds x _newBinds
-      = error $ "replaceValBinds (GHC.HsBind GHC.Name) undefined for:" ++ (showGhc x)
-
-  hsTyDecls _ = []
-
-instance HsValBinds (GHC.HsExpr GHC.Name) where
-  hsValBinds (GHC.HsLet ds _) = hsValBinds ds
-  hsValBinds x = error $ "TypeUtils.hsValBinds undefined for:" ++ showGhc x
-
-  replaceValBinds (GHC.HsLet binds ex) new = (GHC.HsLet (replaceValBinds binds new) ex)
-  replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" ++ (showGhc old)
-
-  hsTyDecls _ = []
-
-instance HsValBinds (GHC.Stmt GHC.Name) where
-  hsValBinds (GHC.LetStmt ds) = hsValBinds ds
-  hsValBinds other = error $ "hsValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc other)
-  replaceValBinds (GHC.LetStmt ds) new = (GHC.LetStmt (replaceValBinds ds new))
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc old)
-
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LHsBinds GHC.Name) where
-  hsValBinds binds = hsValBinds $ GHC.bagToList binds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsBinds GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LHsBind GHC.Name) where
-  hsValBinds (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) = hsValBinds matches
-  hsValBinds (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsValBinds rhs
-  hsValBinds (GHC.L _ (GHC.VarBind _ rhs _))           = hsValBinds rhs
-  hsValBinds (GHC.L _ (GHC.AbsBinds _ _ _ _ binds))    = hsValBinds binds
-
-
-  replaceValBinds (GHC.L l (GHC.FunBind a b matches c d e)) newBinds
-               = (GHC.L l (GHC.FunBind a b (replaceValBinds matches newBinds) c d e))
-  replaceValBinds (GHC.L l (GHC.PatBind a rhs b c d)) newBinds
-               = (GHC.L l (GHC.PatBind a (replaceValBinds rhs newBinds) b c d))
-  replaceValBinds (GHC.L l (GHC.VarBind a rhs b)) newBinds
-               = (GHC.L l (GHC.VarBind a (replaceValBinds rhs newBinds) b))
-  replaceValBinds (GHC.L l (GHC.AbsBinds a b c d binds)) newBinds
-               = (GHC.L l (GHC.AbsBinds a b c d (replaceValBinds binds newBinds)))
-
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds ([GHC.LHsBind GHC.Name]) where
-  -- hsValBinds xs = concatMap hsValBinds xs -- As in original
-  hsValBinds xs = GHC.ValBindsIn (GHC.listToBag xs) []
-
-  replaceValBinds _old (GHC.ValBindsIn b _sigs) = GHC.bagToList b
-  replaceValBinds _old (GHC.ValBindsOut rbinds _sigs) = GHC.bagToList $ GHC.unionManyBags $ map (\(_,b) -> b) rbinds
-
-  -- replaceValBinds old new = error ("replaceValBinds (old,new)=" ++ (showGhc (old,new)))
-
-  hsTyDecls _ = []
-
-instance HsValBinds (GHC.LHsExpr GHC.Name) where
-  hsValBinds (GHC.L _ (GHC.HsLet binds _ex)) = hsValBinds binds
-  hsValBinds _                               = emptyValBinds
-
-  replaceValBinds (GHC.L l (GHC.HsLet binds ex)) newBinds
-     = (GHC.L l (GHC.HsLet (replaceValBinds binds newBinds) ex))
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsExpr GHC.Name) undefined for:" ++ (showGhc old)
-
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [GHC.LGRHS GHC.Name] where
-  hsValBinds xs = unionBinds $ map hsValBinds xs
-  replaceValBinds _old _new = error $ "replaceValBinds [GHC.LGRHS GHC.Name] undefined for:" -- ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LGRHS GHC.Name) where
-  hsValBinds (GHC.L _ (GHC.GRHS stmts _expr)) = hsValBinds stmts
-  replaceValBinds _old _new = error $ "replaceValBinds (GHC.LHGRHS GHC.Name) undefined for:" -- ++ (showGhc _old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [GHC.LStmt GHC.Name] where
-  hsValBinds xs = unionBinds $ map hsValBinds xs
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LStmt GHC.Name] undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LStmt GHC.Name) where
-  hsValBinds (GHC.L _ (GHC.LetStmt binds)) = hsValBinds binds
-  hsValBinds _                             = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LStmt GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [GHC.LPat GHC.Name] where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LPat GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LPat GHC.Name) where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LPat GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.Name) where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [GHC.SyntaxExpr GHC.Name] where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.SyntaxExpr GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [[GHC.LTyClDecl GHC.Name]] where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [[GHC.LTyClDecl GHC.Name]] undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [GHC.LTyClDecl GHC.Name] where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LTyClDecl GHC.Name] undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LTyClDecl GHC.Name) where
-  hsValBinds _ = error $ "hsValBinds (GHC.LTyClDecl GHC.Name) must pull out tcdMeths"
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LTyClDecl GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [GHC.LInstDecl GHC.Name] where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LInstDecl GHC.Name] undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LInstDecl GHC.Name) where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LInstDecl GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LHsType GHC.Name) where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsType GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [GHC.LSig GHC.Name] where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LSig GHC.Name] undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LSig GHC.Name) where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LSig GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds [GHC.LFamInstDecl GHC.Name] where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LFamInstDecl GHC.Name] undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.LFamInstDecl GHC.Name) where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LFamInstDecl GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
-
-instance HsValBinds (GHC.HsIPBinds GHC.Name) where
-  hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsIPBinds GHC.Name) undefined for:" ++ (showGhc old)
-  hsTyDecls _ = []
-
--- ---------------------------------------------------------------------
--}
 
 -- ---------------------------------------------------------------------
 
@@ -2793,8 +2496,9 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
                   Just stringName -> Just $ GHC.mkModuleName stringName
                   _               -> Nothing
 
-     impDecl = GHC.ImportDecl {
-                        GHC.ideclName        = mkNewLModuleName modName
+     impDecl = GHC.ImportDecl
+                        { GHC.ideclSourceSrc = Nothing
+                        , GHC.ideclName      = mkNewLModuleName modName
                         , GHC.ideclPkgQual   = pkgQual
                         , GHC.ideclSource    = source
                         , GHC.ideclSafe      = safe

@@ -99,7 +99,7 @@ data RefactModule = RefMod
         { rsTypecheckedMod  :: !GHC.TypecheckedModule
         , rsOrigTokenStream :: ![PosToken]  -- ^Original Token stream for the current module
         , rsTokenCache      :: !(TokenCache Anns)  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
-        , rsStreamModified  :: !Bool        -- ^current module has updated the token stream
+        , rsStreamModified  :: !RefacResult        -- ^current module has updated the AST
         }
 
 data RefactFlags = RefFlags

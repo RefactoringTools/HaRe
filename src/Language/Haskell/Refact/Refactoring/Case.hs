@@ -43,8 +43,8 @@ reallyDoIfToCase ::
   -> RefactGhc ()
 reallyDoIfToCase expr rs = do
 
-   void $ everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
-   showLinesDebug "after refactoring"
+   void $ SYB.everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
+   -- showLinesDebug "after refactoring"
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))

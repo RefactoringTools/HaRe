@@ -340,6 +340,13 @@ instance HsValBinds [GHC.SyntaxExpr GHC.Name] where
 
 -- ---------------------------------------------------------------------
 
+instance HsValBinds [GHC.TyClGroup GHC.Name] where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.TyClGroup GHC.Name] undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
 instance HsValBinds [[GHC.LTyClDecl GHC.Name]] where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds [[GHC.LTyClDecl GHC.Name]] undefined for:" ++ (showGhc old)
@@ -361,6 +368,48 @@ instance HsValBinds (GHC.LTyClDecl GHC.Name) where
 
 -- ---------------------------------------------------------------------
 
+instance HsValBinds [GHC.LTyFamInstDecl GHC.Name] where
+  hsValBinds _ = error $ "hsValBinds [GHC.LTyFamInstDecl GHC.Name] must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LTyFamInstDecl GHC.Name] undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.LDataFamInstDecl GHC.Name] where
+  hsValBinds _ = error $ "hsValBinds [GHC.LDataFamInstDecl GHC.Name] must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LDataFamInstDecl GHC.Name] undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.LTyFamInstEqn GHC.Name] where
+  hsValBinds _ = error $ "hsValBinds [GHC.LTyFamInstEqn GHC.Name] must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LTyFamInstEqn GHC.Name] undefined for:"
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.LTyFamInstEqn GHC.Name) where
+  hsValBinds _ = error $ "hsValBinds (GHC.LTyFamInstEqn GHC.Name) must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LTyFamInstEqn GHC.Name) undefined for:"
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.HsDataDefn GHC.Name) where
+  hsValBinds _ = error $ "hsValBinds (GHC.HsDataDefn GHC.Name) must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsDataDefn GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds (GHC.HsTyPats GHC.Name) where
+  hsValBinds _ = error $ "hsValBinds (GHC.HsTyPats GHC.Name) must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsTyPats GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
 instance HsValBinds [GHC.LInstDecl GHC.Name] where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds [GHC.LInstDecl GHC.Name] undefined for:" ++ (showGhc old)
@@ -371,6 +420,13 @@ instance HsValBinds [GHC.LInstDecl GHC.Name] where
 instance HsValBinds (GHC.LInstDecl GHC.Name) where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.LInstDecl GHC.Name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance HsValBinds [GHC.LHsType GHC.Name] where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsType GHC.Name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------

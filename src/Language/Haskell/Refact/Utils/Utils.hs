@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
 module Language.Haskell.Refact.Utils.Utils
@@ -17,8 +18,6 @@ module Language.Haskell.Refact.Utils.Utils
        , runRefacSession
        , applyRefac
        , refactDone
-       , ApplyRefacResult
-       , RefacSource(..)
 
        , update
        , fileNameToModName
@@ -41,8 +40,10 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
--- import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.Types
 {-
 import Language.Haskell.TokenUtils.DualTree
 import Language.Haskell.TokenUtils.TokenUtils
@@ -208,11 +209,12 @@ getModuleDetails modSum = do
       tokens <- getRichTokenStreamWA (GHC.ms_mod modSum)
       mtm <- gets rsModule
       case mtm of
-        Just tm -> if ((rsStreamModified tm == False)
-                      && ((GHC.mkFastString $ fileNameFromModSummary modSum) ==
-                          (fileNameFromTok $ ghead "getModuleDetails" tokens)))
+        Just tm -> if ((rsStreamModified tm == RefacUnmodifed)
+                      && True
+                         {- ((GHC.mkFastString $ fileNameFromModSummary modSum) ==
+                          (fileNameFromTok $ ghead "getModuleDetails" tokens)) -})
                      then return ()
-                     else if rsStreamModified tm == False
+                     else if rsStreamModified tm == RefacUnmodifed
                             then putParsedModule t tokens
                             else error $ "getModuleDetails: trying to load a module without finishing with active one."
 
@@ -241,12 +243,6 @@ parseSourceFileGhc targetFile = do
         Just modSum -> getModuleDetails modSum
 
 -- ---------------------------------------------------------------------
-
--- | The result of a refactoring is the file, a flag as to whether it
--- was modified, the updated token stream, and the updated AST
--- type ApplyRefacResult = ((FilePath, Bool), ([Ppr],[PosToken], GHC.RenamedSource))
-type ApplyRefacResult = ((FilePath, Bool), ([Line PosToken],[PosToken], GHC.RenamedSource))
-
 
 -- | Manage a whole refactor session. Initialise the monad, load the
 -- whole project if required, and then apply the individual
@@ -284,11 +280,6 @@ runRefacSession settings cradle comp = do
   return $ modifiedFiles refactoredMods
 
 -- ---------------------------------------------------------------------
-
-data RefacSource = RSFile FilePath
-                 | RSMod GHC.ModSummary
-                 | RSAlreadyLoaded
-
 -- TODO: the module should be stored in the state, and returned if it
 -- has been modified in a prior refactoring, instead of being parsed
 -- afresh each time.
@@ -317,31 +308,31 @@ applyRefac refac source = do
 
     res <- refac  -- Run the refactoring, updating the state as required
 
-    mod'   <- getRefactRenamed
+    -- mod'   <- getRefactRenamed
+    mod'   <- getRefactParsed
     -- toks'  <- fetchToksFinal
     let toks' = []
     -- pprVal <- fetchPprFinal
-    linesVal <- fetchLinesFinal
-    m      <- getRefactStreamModified
+    anns <- fetchAnnsFinal
+    m    <- getRefactStreamModified
 
     -- Clear the refactoring state
     clearParsedModule
 
-    return (((fileName,m),(linesVal,toks', mod')),res)
+    return (((fileName,m),(anns, mod')),res)
 
 
 -- ---------------------------------------------------------------------
 
 -- |Returns True if any of the results has its modified flag set
 refactDone :: [ApplyRefacResult] -> Bool
-refactDone rs = any (\((_,d),_) -> d) rs
+refactDone rs = any (\((_,d),_) -> d == RefacModified) rs
 
 -- ---------------------------------------------------------------------
 
-
 modifiedFiles :: [ApplyRefacResult] -> [String]
 modifiedFiles refactResult = map (\((s,_),_) -> s)
-                           $ filter (\((_,b),_) -> b) refactResult
+                           $ filter (\((_,b),_) -> b == RefacModified) refactResult
 
 -- ---------------------------------------------------------------------
 
@@ -363,15 +354,15 @@ class (SYB.Data t, SYB.Data t1) => Update t t1 where
          -> t1    -- ^ The contex where the old syntax phrase occurs.
          -> RefactGhc t1  -- ^ The result.
 
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.HsExpr n)) t where
+instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.HsExpr n)) t where
     update oldExp newExp t
-           = everywhereMStaged SYB.Parser (SYB.mkM inExp) t
+           = SYB.everywhereMStaged SYB.Parser (SYB.mkM inExp) t
        where
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
                = do
                     -- drawTokenTree "update Located HsExpr starting" -- ++AZ++
-                    _ <- updateToks oldExp newExp prettyprint False
+                    -- _ <- updateToks oldExp newExp prettyprint False
                     -- drawTokenTree "update Located HsExpr done" -- ++AZ++
 
                 -- error "update: updated tokens" -- ++AZ++ debug
@@ -379,38 +370,38 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (
                     return newExp
           | otherwise = return e
 
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t where
+instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t where
     update oldPat newPat t
            = SYB.everywhereMStaged SYB.Parser (SYB.mkM inPat) t
         where
           inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
                 = do
-                     _ <- updateToks oldPat newPat prettyprint False
+                     -- _ <- updateToks oldPat newPat prettyprint False
                      -- TODO: make sure to call syncAST
                      return newPat
             | otherwise = return p
 
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n) t where
+instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n) t where
      update oldTy newTy t
-           = everywhereMStaged SYB.Parser (SYB.mkM inTyp) t
+           = SYB.everywhereMStaged SYB.Parser (SYB.mkM inTyp) t
         where
           inTyp (t'::GHC.LHsType n)
             | sameOccurrence t' oldTy
                 = do
-                     _ <- updateToks oldTy newTy prettyprint False
+                     -- _ <- updateToks oldTy newTy prettyprint False
                      -- TODO: make sure to call syncAST
                      return newTy
             | otherwise = return t'
 
-instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1, SYB.Data n2) => Update (GHC.LHsBindLR n1 n2) t where
+instance (GHC.DataId n1,GHC.DataId n2,SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1, SYB.Data n2) => Update (GHC.LHsBindLR n1 n2) t where
        update oldBind newBind t
-             = everywhereMStaged SYB.Parser (SYB.mkM inBind) t
+             = SYB.everywhereMStaged SYB.Parser (SYB.mkM inBind) t
           where
             inBind (t'::GHC.LHsBindLR n1 n2)
               | sameOccurrence t' oldBind
                   = do
-                       _ <- updateToks oldBind newBind prettyprint False
+                       -- _ <- updateToks oldBind newBind prettyprint False
                        -- TODO: make sure to call syncAST
                        return newBind
               | otherwise = return t'
@@ -422,7 +413,7 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1,
 writeRefactoredFiles ::
   VerboseLevel -> [ApplyRefacResult] -> IO ()
 writeRefactoredFiles verbosity files
-  = do let filesModified = filter (\((_f,m),_) -> m == modified) files
+  = do let filesModified = filter (\((_f,m),_) -> m == RefacModified) files
 
        -- TODO: restore the history function
        -- ++AZ++ PFE0.addToHistory isSubRefactor (map (fst.fst) filesModified)
@@ -430,15 +421,15 @@ writeRefactoredFiles verbosity files
        -- mapM_ writeTestDataForFile files   -- This should be removed for the release version.
 
      where
-       modifyFile ((fileName,_),(finalLines,ts,renamed)) = do
+       modifyFile ((fileName,_),(ann,parsed)) = do
            -- let source = concatMap (snd.snd) ts
 
-           let ts' = bypassGHCBug7351 ts
+           -- let ts' = bypassGHCBug7351 ts
            -- let source = GHC.showRichTokenStream ts'
 
            -- let source = renderPpr ppr
-           let source = renderLines finalLines
-
+           -- let source = renderLines finalLines
+           let source = exactPrintAnnotation parsed [] ann
            -- (Julien personnal remark) seq forces the evaluation of
            -- its first argument and returns its second argument. It
            -- is unclear for me why (length source) evaluation is
@@ -448,11 +439,11 @@ writeRefactoredFiles verbosity files
 
            when (verbosity == Debug) $
              do
-               writeFile (fileName ++ ".tokens") (showToks ts')
-               writeFile (fileName ++ ".renamed_out") (showGhc renamed)
-               writeFile (fileName ++ ".AST_out") $ ((showGhc renamed) ++
+               -- writeFile (fileName ++ ".tokens") (showToks ts')
+               writeFile (fileName ++ ".parsed_out") (showGhc parsed)
+               writeFile (fileName ++ ".AST_out") $ ((showGhc parsed) ++
                       "\n\n----------------------\n\n" ++
-                      (SYB.showData SYB.Renamer 0 renamed))
+                      (SYB.showData SYB.Parser 0 parsed))
 
 -- ---------------------------------------------------------------------
 

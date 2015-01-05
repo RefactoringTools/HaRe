@@ -11,8 +11,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        (
        -- * Conveniences for state access
 
+       fetchAnnsFinal
        --  fetchLinesFinal
-         fetchOrigToks
+       , fetchOrigToks
        , fetchToks -- Deprecated
        , getTypecheckedModule
        , getRefactStreamModified
@@ -108,6 +109,11 @@ fetchToks = do
   -- return toks
   error $ "fetchToks no longer used"
 
+-- |fetch the final annotations
+fetchAnnsFinal :: RefactGhc Anns
+fetchAnnsFinal = do
+  let anns = error "implement fetchAnnsFinal"
+  return anns
 {-
 -- |fetch the final tokens in Ppr format
 fetchLinesFinal :: RefactGhc [Line PosToken]
@@ -359,7 +365,7 @@ getTypecheckedModule = do
     Just tm -> return $ rsTypecheckedMod tm
     Nothing -> error "HaRe: file not loaded for refactoring"
 
-getRefactStreamModified :: RefactGhc Bool
+getRefactStreamModified :: RefactGhc RefacResult
 getRefactStreamModified = do
   Just tm <- gets rsModule
   return $ rsStreamModified tm
@@ -457,7 +463,7 @@ initRefactModule tm toks
                  , rsTokenCache = initTokenCacheLayout (annotateAST
                                     (GHC.pm_parsed_source $ GHC.tm_parsed_module tm)
                                     (GHC.pm_annotations $ GHC.tm_parsed_module tm))
-                 , rsStreamModified = False
+                 , rsStreamModified = RefacUnmodifed
                  })
 
 

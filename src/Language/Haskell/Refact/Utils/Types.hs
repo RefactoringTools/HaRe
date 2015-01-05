@@ -1,6 +1,10 @@
 module Language.Haskell.Refact.Utils.Types
        (
-         TreeId(..)
+        ApplyRefacResult
+       , RefacResult(..)
+       , RefacSource(..)
+       -- *
+       , TreeId(..)
        , mainTid
        , TokenCache(..)
        , SimpPos
@@ -8,7 +12,25 @@ module Language.Haskell.Refact.Utils.Types
        , Positioning(..)
        ) where
 
+import qualified GHC      as GHC
+
+import Language.Haskell.GHC.ExactPrint
+
 import qualified Data.Map as Map
+
+
+-- ---------------------------------------------------------------------
+-- | The result of a refactoring is the file, a flag as to whether it
+-- was modified, and the updated AST
+type ApplyRefacResult = ((FilePath, RefacResult), (Anns,GHC.ParsedSource))
+
+data RefacResult = RefacModified | RefacUnmodifed
+                 deriving (Show,Ord,Eq)
+
+
+data RefacSource = RSFile FilePath
+                 | RSMod GHC.ModSummary
+                 | RSAlreadyLoaded
 
 -- ---------------------------------------------------------------------
 

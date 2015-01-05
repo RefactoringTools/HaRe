@@ -10,12 +10,12 @@ module TestUtils
        , runRefactGhcStateLog
        , initialState
        , initialLogOnState
-       , toksFromState
-       , renderTree
+       -- , toksFromState
+       -- , renderTree
        -- , pprFromState
-       , sourceTreeFromState
-       , linesFromState
-       , layoutFromState
+       -- , sourceTreeFromState
+       -- , linesFromState
+       -- , layoutFromState
        -- , entriesFromState
        , defaultTestSettings
        , logTestSettings
@@ -44,7 +44,7 @@ import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
--- import Language.Haskell.Refact.Utils.MonadFunctions
+import Language.Haskell.Refact.Utils.MonadFunctions
 -- import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
@@ -137,48 +137,45 @@ initialLogOnState = RefSt
 
 -- ---------------------------------------------------------------------
 
+{-
 -- toksFromState :: RefactState -> [PosToken]
 toksFromState :: RefactState -> String
 toksFromState st =
   case (rsModule st) of
     Just tm -> renderSourceTree $ layoutTreeToSourceTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> ""
-{-
-  case (rsModule st) of
-    Just tm -> retrieveTokensFinal $ (tkCache $ rsTokenCache tm) Map.! mainTid
-    Nothing -> []
 -}
 
 -- ---------------------------------------------------------------------
-
+{-
 renderTree :: Tree (Entry PosToken) -> String
 renderTree tree = renderSourceTree $ layoutTreeToSourceTree tree
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 sourceTreeFromState :: RefactState -> Maybe (SourceTree PosToken)
 sourceTreeFromState st =
   case (rsModule st) of
     Just tm -> Just $ layoutTreeToSourceTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> Nothing
-
+-}
 -- ---------------------------------------------------------------------
 
-
+{-
 linesFromState :: RefactState -> [Line PosToken]
 linesFromState st =
   case (rsModule st) of
     Just tm -> retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
     Nothing -> []
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 layoutFromState :: RefactState -> Maybe (Tree (Entry PosToken))
 layoutFromState st =
   case (rsModule st) of
     Just tm -> Just ((tkCache $ rsTokenCache tm) Map.! mainTid)
     Nothing -> Nothing
-
+-}
 -- ---------------------------------------------------------------------
 {-
 entriesFromState :: RefactState -> [Entry PosToken]
@@ -191,7 +188,7 @@ entriesFromState st = error $ "entriesFromState deprecated"
 -}
 -- ---------------------------------------------------------------------
 
-mkTokenCache :: Tree (Entry PosToken) -> TokenCache PosToken
+mkTokenCache :: a -> TokenCache a
 mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 
 -- ---------------------------------------------------------------------
@@ -242,8 +239,23 @@ runRefactGhcStateLog paramcomp logOn  = do
 -- ---------------------------------------------------------------------
 
 testCradle :: Cradle
-testCradle = Cradle "./test/testdata/" "./test/testdata/" Nothing []
+testCradle = Cradle "./test/testdata/" "./test/testdata/" "/tmp" Nothing []
+{-
 
+-- | The environment where this library is used.
+data Cradle = Cradle {
+  -- | The directory where this library is executed.
+    cradleCurrentDir :: FilePath
+  -- | The project root directory.
+  , cradleRootDir    :: FilePath
+  -- | Per-Project temporary directory
+  , cradleTempDir    :: FilePath
+  -- | The file name of the found cabal file.
+  , cradleCabalFile  :: Maybe FilePath
+  -- | Package database stack
+  , cradlePkgDbStack  :: [GhcPkgDb]
+  } deriving (Eq, Show)
+-}
 -- ---------------------------------------------------------------------
 
 defaultTestSettings :: RefactSettings
