@@ -14,25 +14,25 @@
 
 module Language.Haskell.Refact.Utils.TokenUtils (
        -- * Operations at 'TokenCache' level
-         putDeclToksInCache
-       , syncAstToLatestCache
+       --  putDeclToksInCache
+       --  syncAstToLatestCache
 
        -- * Operations at 'Tree' 'Entry' level
-       , addDeclToksAfterSrcSpan
-       , syncAST
+       --  addDeclToksAfterSrcSpan
+       --  syncAST
 
        -- * Utility
-       , posToSrcSpan
-       , posToSrcSpanTok
+       --  posToSrcSpan
+         posToSrcSpanTok
 
        -- * Internal, for testing
-       , nonCommentSpan
+       -- , nonCommentSpan
        , showSrcSpan
-       , showSrcSpanF
+       -- , showSrcSpanF
        , ghcSpanStartEnd
-       , stripForestLineFromGhc
-       , ghcSrcSpanToForestSpan
-       , deleteGapsToks
+       -- , stripForestLineFromGhc
+       -- , ghcSrcSpanToForestSpan
+       -- , deleteGapsToks
        ) where
 
 -- import qualified FastString    as GHC
@@ -44,6 +44,7 @@ import qualified GHC.SYB.Utils as SYB
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.Types
 
 {-
 import Language.Haskell.TokenUtils.GHC.Layout
@@ -59,15 +60,15 @@ import qualified Data.Map as Map
 -- debug = flip trace
 
 -- ---------------------------------------------------------------------
-
+{-
 ghcSrcSpanToForestSpan :: GHC.SrcSpan -> ForestSpan
 ghcSrcSpanToForestSpan sspan = ((ghcLineToForestLine startRow,startCol),(ghcLineToForestLine endRow,endCol))
   where
     (startRow,startCol) = getGhcLoc sspan
     (endRow,endCol)     = getGhcLocEnd sspan
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 putDeclToksInCache :: (SYB.Data t) =>
     TokenCache PosToken -> GHC.SrcSpan -> [PosToken] -> GHC.Located t
  -> (TokenCache PosToken,GHC.SrcSpan,GHC.Located t)
@@ -75,9 +76,10 @@ putDeclToksInCache tk sspan toks t = (tk'',ss2gs newSpan,t')
   where
    (tk'',newSpan) = putToksInCache tk (gs2ss sspan) toks
    t' = syncAST t (ss2f newSpan)
-
+-}
 -- ---------------------------------------------------------------------
 
+{-
 -- |Assuming most recent operation has stashed the old tokens, sync
 -- the given AST to the most recent stash entry
 syncAstToLatestCache :: (SYB.Data t) => TokenCache PosToken -> GHC.Located t -> GHC.Located t
@@ -88,9 +90,9 @@ syncAstToLatestCache tk t = t'
     pos = forestSpanToGhcPos fspan
     sspan = posToSrcSpan mainForest pos
     t' = syncAST t (gs2f sspan)
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 -- | Process the leaf nodes of a tree to remove all deleted spans
 deleteGapsToks :: [Entry PosToken] -> [PosToken]
 deleteGapsToks toks = goDeleteGapsToks (0,0) toks
@@ -114,17 +116,17 @@ goDeleteGapsToks (fr,fc) (Entry ss _lay1 t1:Deleted _ _ eg:t2:ts)
     offset' = (fr + (sr - dr) + deltaR, fc)
 
     t1' = map (increaseSrcSpan (fr,fc)) t1
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 stripForestLineFromGhc :: GHC.SrcSpan -> GHC.SrcSpan
 stripForestLineFromGhc l = l'
   where
     ((ForestLine _ _ _ ls,_),(_,_)) = ghcSrcSpanToForestSpan l
     l' = insertForestLineInSrcSpan (ForestLine False 0 0 ls) l
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 -- |Add new tokens belonging to an AST fragment after a given SrcSpan,
 -- and re-sync the AST fragment to match the new location
 addDeclToksAfterSrcSpan :: (SYB.Data t) =>
@@ -141,9 +143,10 @@ addDeclToksAfterSrcSpan forest oldSpan pos toks t = (forest',(ss2gs newSpan),t')
   where
     (forest',newSpan) = addToksAfterSrcSpan forest (gs2ss oldSpan) pos toks
     t' = syncAST t (ss2f newSpan)
-
+-}
 -- ---------------------------------------------------------------------
 
+{-
 -- |Convert a simple (start,end) position to a SrcSpan belonging to
 -- the file in the tree
 posToSrcSpan :: Tree (Entry PosToken) -> (SimpPos,SimpPos) -> GHC.SrcSpan
@@ -158,7 +161,7 @@ posToSrcSpan forest ((rs,cs),(re,ce)) = sspan
         in
           GHC.mkSrcSpan locStart locEnd
       _ -> error "posToSrcSpan: invalid SrcSpan in first tok"
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |Convert a simple (start,end) position to a SrcSpan belonging to
@@ -186,13 +189,16 @@ spanStartEnd sspan = ((ghcLineToForestLine sr,sc),(ghcLineToForestLine er,ec))
   where
     ((sr,sc),(er,ec)) = (getGhcLoc sspan,getGhcLocEnd sspan)
 -}
--- ---------------------------------------------------------------------
-
-ghcSpanStartEnd :: GHC.SrcSpan -> ((Int, Int), (Int, Int))
-ghcSpanStartEnd sspan = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 -- ---------------------------------------------------------------------
 
+showSrcSpan :: GHC.SrcSpan -> String
+showSrcSpan sspan = show (getGhcLoc sspan, (r,c))
+  where
+    (r,c) = getGhcLocEnd sspan
+
+-- ---------------------------------------------------------------------
+{-
 -- |Synchronise a located AST fragment to use a newly created SrcSpan
 -- in the token tree.
 -- TODO: Should this indent the tokens as well?
@@ -232,7 +238,7 @@ syncAST ast@(GHC.L l _t) fspan = GHC.L sspan xx
     lpat (GHC.L s p)        = (GHC.L (syncSpan s) p) :: GHC.LPat GHC.Name
     limportdecl (GHC.L s n) = (GHC.L (syncSpan s) n) :: GHC.LImportDecl GHC.Name
     lmatch (GHC.L s m)      = (GHC.L (syncSpan s) m) :: GHC.LMatch GHC.Name
-
+-}
 -- ---------------------------------------------------------------------
 
 addOffsetToSrcSpan :: (Int,Int) -> GHC.SrcSpan -> GHC.SrcSpan

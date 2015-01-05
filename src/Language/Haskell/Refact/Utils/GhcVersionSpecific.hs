@@ -15,12 +15,12 @@ module Language.Haskell.Refact.Utils.GhcVersionSpecific
 
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
-import qualified GHC.Paths     as GHC
-import qualified Lexer         as GHC
+-- import qualified GHC.Paths     as GHC
+-- import qualified Lexer         as GHC
 import qualified Outputable    as GHC
-import qualified StringBuffer  as GHC
+-- import qualified StringBuffer  as GHC
 
-import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TypeSyn
 
 
 -- ---------------------------------------------------------------------

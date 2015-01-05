@@ -11,7 +11,6 @@ import Digraph
 import FastString
 import GHC
 import HscTypes
-import Maybes
 import Panic
 
 -- Other imports
@@ -158,7 +157,7 @@ mapCatMaybes f (x:xs) = case f x of
 
 
 type NodeKey   = (ModuleName, HscSource)  -- The nodes of the graph are
-type NodeMap a = Map.Map NodeKey a	  -- keyed by (mod, src_file_type) pairs
+type NodeMap a = Map.Map NodeKey a        -- keyed by (mod, src_file_type) pairs
 
 {-
 msKey :: ModSummary -> NodeKey

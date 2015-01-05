@@ -66,6 +66,7 @@ Library
                                 , Strafunski-StrategyLib
                                 , syz
                                 , ghc-exactprint
+                                , monad-control
                                 -- , haskell-token-utils >= 0.0.0.6
 
         GHC-Options:             -Wall
@@ -85,7 +86,7 @@ Library
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils
            , Language.Haskell.Refact.Utils.GhcVersionSpecific
-           , Language.Haskell.Refact.Utils.LocUtils
+           -- , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
            , Language.Haskell.Refact.Utils.MonadFunctions
            , Language.Haskell.Refact.Utils.TokenUtils
@@ -132,6 +133,7 @@ Executable ghc-hare
                                 , Strafunski-StrategyLib
                                 , syz
                                 , ghc-exactprint
+                                , monad-control
                                 -- , haskell-token-utils >= 0.0.0.6
                                 , HaRe >= 0.7.2.3
         Extensions:      CPP
@@ -188,6 +190,7 @@ test-suite spec
     , Strafunski-StrategyLib
     , syz
     , ghc-exactprint
+    , monad-control
     -- , haskell-token-utils >= 0.0.0.6
     , HaRe >= 0.7.2.3
   Extensions:      CPP

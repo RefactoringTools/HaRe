@@ -71,7 +71,7 @@ import qualified GHC     as GHC
 import qualified NameSet as GHC
 #endif
 
-import Data.Generics.Strafunski.StrategyLib.StrategyLib
+-- import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 import qualified Data.Generics.Zipper as Z
 

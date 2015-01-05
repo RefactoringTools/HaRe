@@ -11,8 +11,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        (
        -- * Conveniences for state access
 
-         fetchLinesFinal
-       , fetchOrigToks
+       --  fetchLinesFinal
+         fetchOrigToks
        , fetchToks -- Deprecated
        , getTypecheckedModule
        , getRefactStreamModified
@@ -25,31 +25,31 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactFileName
 
        -- * TokenUtils API
-       , replaceToken
-       , putToksForSpan
-       , putDeclToksForSpan
+       -- , replaceToken
+       -- , putToksForSpan
+       -- , putDeclToksForSpan
        , getToksForSpan
        -- , getToksForSpanWithIntros
-       , getToksBeforeSpan
-       , putToksForPos
-       , addToksAfterSpan
-       , addToksAfterPos
-       , putDeclToksAfterSpan
-       , removeToksForSpan
-       , removeToksForPos
-       , syncDeclToLatestStash
-       , indentDeclAndToks
+       -- , getToksBeforeSpan
+       -- , putToksForPos
+       -- , addToksAfterSpan
+       -- , addToksAfterPos
+       -- , putDeclToksAfterSpan
+       -- , removeToksForSpan
+       -- , removeToksForPos
+       -- , syncDeclToLatestStash
+       -- , indentDeclAndToks
 
        -- * LayoutUtils API
        -- , getLayoutForSpan
        -- , putDeclLayoutAfterSpan
 
        -- * For debugging
-       , drawTokenTree
-       , drawTokenTreeDetailed
-       , getTokenTree
+       -- , drawTokenTree
+       -- , drawTokenTreeDetailed
+       -- , getTokenTree
        -- , showPprDebug
-       , showLinesDebug
+       -- , showLinesDebug
 
        -- * State flags for managing generic traversals
        , getRefactDone
@@ -61,8 +61,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        -- , logm
 
-       , updateToks
-       , updateToksWithPos
+       -- , updateToks
+       -- , updateToksWithPos
 
        -- * For use by the tests only
        , initRefactModule
@@ -80,6 +80,9 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.Types
+import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Utils
 {-
 import Language.Haskell.TokenUtils.DualTree
 import Language.Haskell.TokenUtils.GHC.Layout
@@ -99,11 +102,13 @@ import qualified Data.Map as Map
 fetchToks :: RefactGhc [PosToken]
 fetchToks = do
   Just tm <- gets rsModule
-  let toks = retrieveTokensInterim $ (tkCache $ rsTokenCache tm) Map.! mainTid
+  -- let toks = retrieveTokensInterim $ (tkCache $ rsTokenCache tm) Map.! mainTid
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchToks (not showing toks"
-  return toks
+  -- return toks
+  error $ "fetchToks no longer used"
 
+{-
 -- |fetch the final tokens in Ppr format
 fetchLinesFinal :: RefactGhc [Line PosToken]
 fetchLinesFinal = do
@@ -111,6 +116,7 @@ fetchLinesFinal = do
   let linesVal = retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
   logm $ "fetchLinesFinal (not showing lines)"
   return linesVal
+-}
 
 -- |fetch the pristine token stream
 fetchOrigToks :: RefactGhc [PosToken]
@@ -122,6 +128,7 @@ fetchOrigToks = do
 -- |Get the current tokens for a given GHC.SrcSpan.
 getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
 getToksForSpan sspan = do
+  {-
   st <- get
   let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
   let Just tm = rsModule st
@@ -130,8 +137,10 @@ getToksForSpan sspan = do
   put $ st { rsModule = rsModule' }
   logm $ "getToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
+  -}
+  error $ "getToksForSpan no longer used"
 
-
+{-
 -- |Get the current tokens preceding a given GHC.SrcSpan.
 getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc (ReversedToks PosToken)
 getToksBeforeSpan sspan = do
@@ -142,8 +151,9 @@ getToksBeforeSpan sspan = do
   put $ st { rsModule = rsModule' }
   logm $ "getToksBeforeSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
   return toks
+-}
 
-
+{-
 -- |Replace a token occurring in a given GHC.SrcSpan
 replaceToken ::  GHC.SrcSpan -> PosToken -> RefactGhc ()
 replaceToken sspan tok = do
@@ -155,7 +165,9 @@ replaceToken sspan tok = do
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   return ()
+-}
 
+{-
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens
 putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc GHC.SrcSpan
@@ -168,20 +180,24 @@ putToksForSpan sspan toks = do
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   return (ss2gs newSpan)
+-}
 
+{-
 -- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
 -- delimiting new tokens, and update the AST fragment to reflect it
 putDeclToksForSpan ::  (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> [PosToken]
    -> RefactGhc (GHC.SrcSpan,GHC.Located t)
 putDeclToksForSpan sspan t toks = do
-  logm $ "putDeclToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show toks)
+  logm $ "putDeclToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show toks)
   st <- get
   let Just tm = rsModule st
   let (tk',newSpan,t') = putDeclToksInCache (rsTokenCache tm) sspan toks t
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
   put $ st { rsModule = rsModule' }
   return (newSpan,t')
+-}
 
+{-
 -- |Replace the tokens for a given GHC.SrcSpan, return GHC.SrcSpan
 -- they are placed in
 putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc GHC.SrcSpan
@@ -194,7 +210,9 @@ putToksForPos pos toks = do
   put $ st { rsModule = rsModule' }
   -- drawTokenTree ""
   return (ss2gs newSpan)
+-}
 
+{-
 -- |Add tokens after a designated GHC.SrcSpan
 addToksAfterSpan :: GHC.SrcSpan -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
 addToksAfterSpan oldSpan pos toks = do
@@ -205,7 +223,9 @@ addToksAfterSpan oldSpan pos toks = do
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return (ss2gs newSpan)
+-}
 
+{-
 -- |Add tokens after a designated position
 addToksAfterPos :: (SimpPos,SimpPos) -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
 addToksAfterPos pos position toks = do
@@ -219,7 +239,9 @@ addToksAfterPos pos position toks = do
   put $ st { rsModule = rsModule' }
   -- logm $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
   return (ss2gs newSpan)
+-}
 
+{-
 -- |Add tokens after a designated GHC.SrcSpan, and update the AST
 -- fragment to reflect it
 putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc (GHC.Located t)
@@ -233,7 +255,9 @@ putDeclToksAfterSpan oldSpan t pos toks = do
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return t'
+-}
 
+{-
 -- |Remove a GHC.SrcSpan and its associated tokens
 removeToksForSpan :: GHC.SrcSpan -> RefactGhc ()
 removeToksForSpan sspan = do
@@ -244,7 +268,9 @@ removeToksForSpan sspan = do
   let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
   put $ st { rsModule = rsModule' }
   return ()
+-}
 
+{-
 -- |Remove a GHC.SrcSpan and its associated tokens
 removeToksForPos :: (SimpPos,SimpPos) -> RefactGhc ()
 removeToksForPos pos = do
@@ -258,9 +284,10 @@ removeToksForPos pos = do
   put $ st { rsModule = rsModule' }
   -- drawTokenTree "removeToksForPos result"
   return ()
+-}
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Print the Token Tree for debug purposes
 drawTokenTree :: String -> RefactGhc ()
 drawTokenTree msg = do
@@ -268,9 +295,9 @@ drawTokenTree msg = do
   let Just tm = rsModule st
   logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTokenCache (rsTokenCache tm))
   return ()
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 -- |Print detailed Token Tree for debug purposes
 drawTokenTreeDetailed :: String -> RefactGhc ()
 drawTokenTreeDetailed msg = do
@@ -278,9 +305,9 @@ drawTokenTreeDetailed msg = do
   let Just tm = rsModule st
   logm $ msg ++ "\ncurrent detailed token tree:\n" ++ (drawTokenCacheDetailed (rsTokenCache tm))
   return ()
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 -- |Get the Token Tree for debug purposes
 getTokenTree :: RefactGhc (Tree (Entry PosToken))
 getTokenTree = do
@@ -288,26 +315,26 @@ getTokenTree = do
   let Just tm = rsModule st
   let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
   return mainForest
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 showLinesDebug :: String -> RefactGhc ()
 showLinesDebug msg = do
   pprVal <- fetchLinesFinal
   logm $ msg ++ "\ncurrent [Line]:\n" ++ (showGhc pprVal)
   return ()
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 syncDeclToLatestStash :: (SYB.Data t) => (GHC.Located t) -> RefactGhc (GHC.Located t)
 syncDeclToLatestStash t = do
   st <- get
   let Just tm = rsModule st
   let t' = syncAstToLatestCache (rsTokenCache tm) t
   return t'
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 -- | Indent an AST fragment and its associated tokens by a set amount
 indentDeclAndToks :: (SYB.Data t) => (GHC.Located t) -> Int -> RefactGhc (GHC.Located t)
 indentDeclAndToks t offset = do
@@ -323,7 +350,7 @@ indentDeclAndToks t offset = do
   put $ st { rsModule = rsModule' }
   -- drawTokenTree "indentDeclToks result"
   return t'
-
+-}
 
 getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
 getTypecheckedModule = do
@@ -427,14 +454,18 @@ initRefactModule tm toks
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsOrigTokenStream = toks
                  -- , rsTokenCache = initTokenCacheLayout (initTokenLayout
-                 , rsTokenCache = initTokenCacheLayout (allocTokens
+                 , rsTokenCache = initTokenCacheLayout (annotateAST
                                     (GHC.pm_parsed_source $ GHC.tm_parsed_module tm)
-                                    toks)
+                                    (GHC.pm_annotations $ GHC.tm_parsed_module tm))
                  , rsStreamModified = False
                  })
 
--- ---------------------------------------------------------------------
 
+initTokenCacheLayout :: a -> TokenCache a
+initTokenCacheLayout a = TK (Map.fromList [((TId 0),a)]) (TId 0)
+
+-- ---------------------------------------------------------------------
+{-
 updateToks :: (SYB.Data t)
   => GHC.Located t -- ^ Old element
   -> GHC.Located t -- ^ New element
@@ -450,9 +481,9 @@ updateToks (GHC.L sspan _) newAST printFun addTrailingNl
                        else newToks
        void $ putToksForSpan sspan  newToks'
        return ()
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 updateToksWithPos :: (SYB.Data t)
   => (SimpPos, SimpPos) -- ^Start and end pos of old element
   -> t             -- ^ New element
@@ -469,6 +500,6 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
        void $ putToksForPos (startPos,endPos) newToks'
 
        return ()
-
+-}
 -- EOF
 
