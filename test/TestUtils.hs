@@ -2,6 +2,7 @@ module TestUtils
        ( compareFiles
        , compareStrings
        , parsedFileGhc
+       , parsedFileGhcCd
        , parseSourceFileTest
        , getTestDynFlags
        , runLogTestGhc
@@ -21,6 +22,7 @@ module TestUtils
        , logTestSettings
        , testSettingsMainfile
        , logTestSettingsMainfile
+       , testOptions
        , testCradle
        , catchException
        , mkTokenCache
@@ -96,6 +98,20 @@ parsedFileGhc fileName = do
        res <- parseSourceFileTest fileName
        return res
   (parseResult,_s) <- runRefactGhcState comp
+  return parseResult
+
+-- ---------------------------------------------------------------------
+
+parsedFileGhcCd :: FilePath -> FilePath -> IO (ParseResult,[PosToken])
+parsedFileGhcCd path fileName = do
+  old <- getCurrentDirectory
+  let
+    comp = do
+       res <- parseSourceFileTest fileName
+       return res
+    newDir = setCurrentDirectory path
+    oldDir _ = setCurrentDirectory old
+  (parseResult,_s) <- GHC.gbracket newDir oldDir $ \_ -> runRefactGhcState comp
   return parseResult
 
 -- ---------------------------------------------------------------------
@@ -202,14 +218,14 @@ getTestDynFlags = do
 
 runLogTestGhc :: RefactGhc a -> IO (a, RefactState)
 runLogTestGhc comp = do
-   res <- runRefactGhc comp $ initialLogOnState
+   res <- runRefactGhc comp initialLogOnState testOptions
    return res
 
 -- ---------------------------------------------------------------------
 
 runTestGhc :: RefactGhc a -> IO (a, RefactState)
 runTestGhc comp = do
-   res <- runRefactGhc comp $ initialState
+   res <- runRefactGhc comp initialState testOptions
    return res
 
 -- ---------------------------------------------------------------------
@@ -232,9 +248,15 @@ runRefactGhcStateLog paramcomp logOn  = do
         , rsCurrentTarget = Nothing
         , rsModule = Nothing
         }
-  (r,s) <- runRefactGhc (initGhcSession testCradle (rsetImportPaths defaultTestSettings) >> 
-                                                paramcomp) initState
+  putStrLn "runRefactGhcStateLog:about to runRefactGhc"
+  (r,s) <- runRefactGhc (initGhcSession (rsetImportPaths defaultTestSettings) >>
+                                                paramcomp) initState testOptions
   return (r,s)
+
+-- ---------------------------------------------------------------------
+
+testOptions :: Options
+testOptions = defaultOptions { ghcUserOptions = ["keep-raw-token-stream"] }
 
 -- ---------------------------------------------------------------------
 

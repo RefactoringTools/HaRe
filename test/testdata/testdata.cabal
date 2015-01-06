@@ -1,0 +1,9 @@
+Name: HaRe-tests
+Version: 0
+Author: Alan Zimmerman
+Maintainer: Alan Zimmerman
+Cabal-Version: >= 1.8
+Build-Type: Simple
+Executable foo
+  Main-Is: TokenTest.hs
+  Build-Depends:          base >= 4.0  && < 4.9

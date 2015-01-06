@@ -41,7 +41,7 @@ data-Dir:                       .
 extra-source-files:             ChangeLog
 
 Library
-        Build-Depends:          base >= 4.0  && < 4.8
+        Build-Depends:          base >= 4.0  && < 4.9
                                 , containers
                                 , directory
 
@@ -54,7 +54,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod
+                                , ghc-mod == 0
                                 , mtl
                                 , old-time
                                 , pretty
@@ -62,6 +62,7 @@ Library
                                 , syb
                                 , hslogger
                                 , transformers
+                                , transformers-base
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
@@ -82,6 +83,7 @@ Library
            , Language.Haskell.Refact.Refactoring.Renaming
            , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Utils.Binds
+           , Language.Haskell.Refact.Utils.Cabal
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils
@@ -106,7 +108,7 @@ Executable ghc-hare
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
-        Build-Depends:          base >= 4.0  && < 4.8
+        Build-Depends:          base >= 4.0  && < 4.9
                                 , array
                                 , containers
                                 , directory
@@ -120,7 +122,7 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod
+                                , ghc-mod == 0
                                 , mtl
                                 , old-time
                                 , parsec >= 3.1.6
@@ -129,6 +131,7 @@ Executable ghc-hare
                                 , syb
                                 , time
                                 , transformers
+                                , transformers-base
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
@@ -156,7 +159,7 @@ test-suite spec
     -- src
     test
   build-depends:
-      base        >= 4.0  && < 4.8
+      base        >= 4.0  && < 4.9
     , Diff >= 0.3.0
     -- , HUnit       == 1.2.*
     , HUnit
@@ -170,12 +173,12 @@ test-suite spec
     , deepseq
     , directory
     , filepath
-    , ghc         >= 7.0.1 && < 7.8
+    , ghc
     -- , ghc-paths   == 0.1.*
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod
+    , ghc-mod == 0
     , hspec
     , mtl
     , old-time
@@ -185,6 +188,7 @@ test-suite spec
     , rosezipper
     , syb
     , transformers
+    , transformers-base
     , time
     , hslogger
     , Strafunski-StrategyLib
@@ -200,7 +204,7 @@ test-suite spec
 --   type:          exitcode-stdio-1.0
 --   ghc-options:   -threaded
 --   main-is:       doctests.hs
---   build-depends: base        >= 4.0  && < 4.8
+--   build-depends: base        >= 4.0  && < 4.9
 --                , doctest >= 0.8
 --                , ghc-mod
 --   Hs-Source-Dirs:

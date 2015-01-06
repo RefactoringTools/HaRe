@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -32,11 +33,14 @@ module Language.Haskell.Refact.Utils.Monad
        ) where
 
 
+import qualified DynFlags      as GHC
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
 import qualified MonadUtils    as GHC
 
+import Control.Monad.Base (MonadBase, liftBase)
+import Control.Arrow (first)
 import Control.Applicative
 import Control.Monad.State
 import Data.List
@@ -44,6 +48,7 @@ import Data.Time.Clock
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
+import Language.Haskell.Refact.Utils.Cabal
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
@@ -192,29 +197,17 @@ instance ExceptionMonad (StateT RefactState IO) where
 
 -- | Initialise the GHC session, when starting a refactoring.
 --   This should never be called directly.
-initGhcSession :: Cradle -> [FilePath] -> RefactGhc ()
-initGhcSession cr importDirs = do
+initGhcSession :: [FilePath] -> RefactGhc ()
+initGhcSession importDirs = do
     settings <- getRefacSettings
-    let ghcOptsDirs =
-         case importDirs of
-           [] -> (rsetGhcOpts settings)
-           _  -> ("-i" ++ (intercalate ":" importDirs)):(rsetGhcOpts settings)
-    let opt = Options
-                 { outputStyle = PlainStyle
-                 , lineSeparator = rsetLineSeparator settings
-                 , ghcProgram = "ghc"
-                 , cabalProgram = "cabal"
-                 , ghcUserOptions = []
-                 -- , ghcOpts = ghcOptsDirs
-                 , operators = False
-                 , detailed = False
-                 , qualified = False
-                 , hlintOpts = []
-                 }
+    df <- GHC.getSessionDynFlags
+    let df2 = GHC.gopt_set df GHC.Opt_KeepRawTokenStream
+    void $ GHC.setSessionDynFlags df2
 
-    -- (_readLog,mcabal) <- initializeFlagsWithCradle opt cradle (options settings) True
-    -- initializeFlagsWithCradle opt cradle
-    -- initializeFlagsWithCradle :: GhcMonad m => Options -> Cradle -> m ()
+    liftIO $ putStrLn "initGhcSession:entered (IO)"
+    logm $ "initGhcSession:entered"
+    cr <- cradle
+    logm $ "initGhcSession:cr=" ++ show cr
     case cradleCabalFile cr of
       Just cabalFile -> do
         -- targets <- liftIO $ cabalAllTargets cabal
@@ -251,15 +244,8 @@ initGhcSession cr importDirs = do
           loadModuleGraphGhc maybeMainFile
           return()
 
-    -- graph <- gets rsGraph
-    -- liftIO $ warningM "HaRe" $ "initGhcSession:graph=" ++ show graph
     return ()
-{-
-    where
-      options opt
-        | rsetExpandSplice opt = "-w:"   : rsetGhcOpts opt
-        | otherwise            = "-Wall" : rsetGhcOpts opt
--}
+
 -- ---------------------------------------------------------------------
 
 
@@ -368,14 +354,70 @@ canonicalizeGraph graph = do
 -- ---------------------------------------------------------------------
 
 runRefactGhc ::
-  RefactGhc a -> RefactState -> IO (a, RefactState)
-runRefactGhc comp initState = do
-    let opts = undefined
+  RefactGhc a -> RefactState -> Options -> IO (a, RefactState)
+runRefactGhc comp initState opt = do
+    putStrLn "runRefactGhc:entered (IO)"
+
     -- runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
-    ((merr,_log),s) <- runStateT (runGhcModT opts comp) initState
+    -- ((merr,_log),s) <- runStateT (runGhcModT opt comp) initState
+    ((merr,_log),s) <- runStateT (runGhcModTHaRe opt comp) initState
+    -- logm $ "runRefactGhc : log=" ++ show _log
     case merr of
       Left err -> error (show err)
       Right a -> return (a,s)
+
+-- | Run a @GhcModT m@ computation.
+runGhcModTHaRe :: IOish m
+           => Options
+           -> GhcModT m a
+           -> m (Either GhcModError a, GhcModLog)
+runGhcModTHaRe opt action = gbracket newEnv delEnv $ \env -> do
+    r <- first (fst <$>) <$> (runGhcModT' env defaultState $ do
+        liftIO $ putStrLn $ "runGhcModTHaRe:getting dflags"
+        dflags <- GHC.getSessionDynFlags
+        GHC.defaultCleanupHandler dflags $ do
+            liftIO $ putStrLn $ "runGhcModTHaRe:about to initializeFlagsWithCradle:" ++ show (gmCradle env)
+            initializeFlagsWithCradle opt (gmCradle env)
+            action)
+    return r
+
+ where
+   newEnv = liftBase $ newGhcModEnv opt =<< getCurrentDirectory
+   delEnv = liftBase . cleanupGhcModEnv
+
+{-
+newGhcModEnv :: Options -> FilePath -> IO GhcModEnv
+newGhcModEnv opt dir = do
+      session <- newIORef (error "empty session")
+      c <- findCradle' dir
+      return GhcModEnv {
+          gmGhcSession = session
+        , gmOptions = opt
+        , gmCradle = c
+        }
+-}
+
+{-
+-- | Run a @GhcModT m@ computation.
+runGhcModT :: IOish m
+           => Options
+           -> GhcModT m a
+           -> m (Either GhcModError a, GhcModLog)
+runGhcModT opt action = gbracket newEnv delEnv $ \env -> do
+    r <- first (fst <$>) <$> (runGhcModT' env defaultState $ do
+        dflags <- getSessionDynFlags
+        defaultCleanupHandler dflags $ do
+            initializeFlagsWithCradle opt (gmCradle env)
+            action)
+    return r
+
+ where
+   newEnv = liftBase $ newGhcModEnv opt =<< getCurrentDirectory
+   delEnv = liftBase . cleanupGhcModEnv
+
+-}
+
+-- ---------------------------------------------------------------------
 
 getRefacSettings :: RefactGhc RefactSettings
 getRefacSettings = do

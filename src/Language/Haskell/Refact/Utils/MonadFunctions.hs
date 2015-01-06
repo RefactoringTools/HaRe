@@ -17,6 +17,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , fetchToks -- Deprecated
        , getTypecheckedModule
        , getRefactStreamModified
+       , setRefactStreamModified
        , getRefactInscopes
        , getRefactRenamed
        , putRefactRenamed
@@ -112,8 +113,10 @@ fetchToks = do
 -- |fetch the final annotations
 fetchAnnsFinal :: RefactGhc Anns
 fetchAnnsFinal = do
-  let anns = error "implement fetchAnnsFinal"
+  Just tm <- gets rsModule
+  let anns = (tkCache $ rsTokenCache tm) Map.! mainTid
   return anns
+
 {-
 -- |fetch the final tokens in Ppr format
 fetchLinesFinal :: RefactGhc [Line PosToken]
@@ -369,6 +372,14 @@ getRefactStreamModified :: RefactGhc RefacResult
 getRefactStreamModified = do
   Just tm <- gets rsModule
   return $ rsStreamModified tm
+
+-- |For testing
+setRefactStreamModified :: RefacResult -> RefactGhc ()
+setRefactStreamModified rr = do
+  st <- get
+  let (Just tm) = rsModule st
+  put $ st { rsModule = Just (tm { rsStreamModified = rr })}
+  return ()
 
 getRefactInscopes :: RefactGhc InScopes
 getRefactInscopes = GHC.getNamesInScope
