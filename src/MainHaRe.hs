@@ -105,7 +105,7 @@ main = flip catches handlers $ do
         cmdArg4 = cmdArg !. 4
         cmdArg5 = cmdArg !. 5
     res <- case cmdArg0 of
-
+{-
       -- demote wants FilePath -> SimpPos
       "demote" -> runFunc cradle $ demote opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
@@ -123,6 +123,9 @@ main = flip catches handlers $ do
 
       -- rename wants FilePath -> String -> SimpPos
       "rename" -> runFunc cradle $ rename opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+-}
+      -- roundtrip wants FilePath
+      "roundtrip" -> runFunc cradle $ roundTrip opt defaultOptions cmdArg1
 
       "show" -> putStrLn  (show (opt,cradle))
 

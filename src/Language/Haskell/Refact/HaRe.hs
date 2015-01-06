@@ -9,6 +9,7 @@ module Language.Haskell.Refact.HaRe
 
  -- * Refactorings
  -- |Note: the 'Cradle' in the type signatures is the one from ghc-mod
+{-
  , ifToCase
  , duplicateDef
  , liftToTopLevel
@@ -16,14 +17,18 @@ module Language.Haskell.Refact.HaRe
  , demote
  , rename
  , swapArgs
+ -}
+ , roundTrip
  )
 where
 
-import Language.Haskell.Refact.Refactoring.Case
-import Language.Haskell.Refact.Refactoring.DupDef
-import Language.Haskell.Refact.Refactoring.MoveDef
-import Language.Haskell.Refact.Refactoring.Renaming
-import Language.Haskell.Refact.Refactoring.SwapArgs
+-- import Language.Haskell.Refact.Refactoring.Case
+-- import Language.Haskell.Refact.Refactoring.DupDef
+-- import Language.Haskell.Refact.Refactoring.MoveDef
+-- import Language.Haskell.Refact.Refactoring.Renaming
+-- import Language.Haskell.Refact.Refactoring.SwapArgs
+import Language.Haskell.Refact.Refactoring.RoundTrip
 import Language.Haskell.Refact.Utils.Monad
--- import Language.Haskell.TokenUtils.Types
+import Language.Haskell.Refact.Utils.Types
+
 

@@ -68,6 +68,7 @@ Library
                                 , syz
                                 , ghc-exactprint
                                 , monad-control
+                                , Cabal >= 1.22
                                 -- , haskell-token-utils >= 0.0.0.6
 
         GHC-Options:             -Wall
@@ -77,11 +78,12 @@ Library
         Exposed-modules:
              Language.Haskell.Refact.API
            , Language.Haskell.Refact.HaRe
-           , Language.Haskell.Refact.Refactoring.Case
-           , Language.Haskell.Refact.Refactoring.DupDef
-           , Language.Haskell.Refact.Refactoring.MoveDef
-           , Language.Haskell.Refact.Refactoring.Renaming
-           , Language.Haskell.Refact.Refactoring.SwapArgs
+           -- , Language.Haskell.Refact.Refactoring.Case
+           -- , Language.Haskell.Refact.Refactoring.DupDef
+           -- , Language.Haskell.Refact.Refactoring.MoveDef
+           -- , Language.Haskell.Refact.Refactoring.Renaming
+           , Language.Haskell.Refact.Refactoring.RoundTrip
+           -- , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Utils.Binds
            , Language.Haskell.Refact.Utils.Cabal
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
@@ -137,6 +139,7 @@ Executable ghc-hare
                                 , syz
                                 , ghc-exactprint
                                 , monad-control
+                                , Cabal >= 1.22
                                 -- , haskell-token-utils >= 0.0.0.6
                                 , HaRe >= 0.7.2.3
         Extensions:      CPP
@@ -195,6 +198,7 @@ test-suite spec
     , syz
     , ghc-exactprint
     , monad-control
+    , Cabal >= 1.22
     -- , haskell-token-utils >= 0.0.0.6
     , HaRe >= 0.7.2.3
   Extensions:      CPP

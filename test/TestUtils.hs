@@ -30,6 +30,7 @@ module TestUtils
        , unspace
        , mkTestGhcName
        , setLogger
+       , cdAndDo
 
        , pwd
        , cd
@@ -113,6 +114,15 @@ parsedFileGhcCd path fileName = do
     oldDir _ = setCurrentDirectory old
   (parseResult,_s) <- GHC.gbracket newDir oldDir $ \_ -> runRefactGhcState comp
   return parseResult
+
+-- ---------------------------------------------------------------------
+
+cdAndDo :: FilePath -> IO a -> IO a
+cdAndDo path fn = do
+  old <- getCurrentDirectory
+  r <- GHC.gbracket (setCurrentDirectory path) (\_ -> setCurrentDirectory old)
+          $ \_ -> fn
+  return r
 
 -- ---------------------------------------------------------------------
 
@@ -256,7 +266,7 @@ runRefactGhcStateLog paramcomp logOn  = do
 -- ---------------------------------------------------------------------
 
 testOptions :: Options
-testOptions = defaultOptions { ghcUserOptions = ["keep-raw-token-stream"] }
+testOptions = defaultOptions
 
 -- ---------------------------------------------------------------------
 

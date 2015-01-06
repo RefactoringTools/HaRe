@@ -356,11 +356,11 @@ canonicalizeGraph graph = do
 runRefactGhc ::
   RefactGhc a -> RefactState -> Options -> IO (a, RefactState)
 runRefactGhc comp initState opt = do
-    putStrLn "runRefactGhc:entered (IO)"
+    -- putStrLn "runRefactGhc:entered (IO)"
 
     -- runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
-    -- ((merr,_log),s) <- runStateT (runGhcModT opt comp) initState
-    ((merr,_log),s) <- runStateT (runGhcModTHaRe opt comp) initState
+    ((merr,_log),s) <- runStateT (runGhcModT opt comp) initState
+    -- ((merr,_log),s) <- runStateT (runGhcModTHaRe opt comp) initState
     -- logm $ "runRefactGhc : log=" ++ show _log
     case merr of
       Left err -> error (show err)

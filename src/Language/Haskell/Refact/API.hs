@@ -58,7 +58,9 @@ module Language.Haskell.Refact.API
        , fetchOrigToks
        , fetchToks -- Deprecated
        , getTypecheckedModule
+       , RefacResult(..)
        , getRefactStreamModified
+       , setRefactStreamModified
        , getRefactInscopes
        , getRefactRenamed
        , putRefactRenamed
