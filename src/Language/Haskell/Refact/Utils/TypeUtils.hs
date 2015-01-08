@@ -602,7 +602,7 @@ hsFreeAndDeclaredPNs t = do
 -- TODO: use GHC.NameSet instead of lists for FreeNames/DeclaredNames
 -- NOTE: The GHC fvs fields only carry non-GHC values, as they are
 -- used in the renaming process
-hsFreeAndDeclaredGhc :: (SYB.Data t, GHC.Outputable t)
+hsFreeAndDeclaredGhc :: (SYB.Data t)
                      => t -> RefactGhc (FreeNames,DeclaredNames)
 hsFreeAndDeclaredGhc t = do
   -- logm $ "hsFreeAndDeclaredGhc:t=" ++ showGhc t
@@ -1372,7 +1372,7 @@ getDeclaredVars bs = concatMap vars bs
 --------------------------------------------------------------------------------
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
-hsVisibleNames:: (FindEntity t1, SYB.Data t1, SYB.Data t2,HsValBinds t2,GHC.Outputable t1)
+hsVisibleNames:: (FindEntity t1,HsValBinds t2,GHC.Outputable t1)
   => t1 -> t2 -> RefactGhc [String]
 hsVisibleNames e t = do
     d <- hsVisiblePNs e t
@@ -1383,7 +1383,7 @@ hsVisibleNames e t = do
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisiblePNs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t,GHC.Outputable e)
+hsVisiblePNs :: (FindEntity e,HsValBinds t,GHC.Outputable e)
              => e -> t -> RefactGhc [GHC.Name]
 hsVisiblePNs e t = do
   (DN dn) <- hsVisibleDs e t
@@ -1394,7 +1394,7 @@ hsVisiblePNs e t = do
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisibleDs :: (FindEntity e, SYB.Data e, SYB.Data t,HsValBinds t,GHC.Outputable e)
+hsVisibleDs :: (FindEntity e, SYB.Data t,HsValBinds t,GHC.Outputable e)
              => e -> t -> RefactGhc DeclaredNames
 hsVisibleDs e t = do
   -- logm $ "hsVisibleDs:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
@@ -2620,7 +2620,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
   -- list, but after the data type declarations if there is any. The
   -- definition will be pretty-printed if its token stream is not
   -- provided.
-  addTopLevelDecl :: (SYB.Data t, HsValBinds t)
+  addTopLevelDecl :: (HsValBinds t)
        => (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig, maybeDeclToks) parent'
@@ -2640,7 +2640,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
 
-  appendDecl :: (SYB.Data t, HsValBinds t)
+  appendDecl :: (HsValBinds t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
       -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken]) -- ^declaration and maybe sig/tokens
@@ -2668,7 +2668,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
         (before,after) = break (defines pn') decls -- Need to handle the case that 'after' is empty?
 
 
-  addLocalDecl :: (SYB.Data t, HsValBinds t)
+  addLocalDecl :: (HsValBinds t)
                => t -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
                -> RefactGhc t
   addLocalDecl parent' (newFun, maybeSig, newFunToks)
@@ -2914,7 +2914,7 @@ addFormalParams place newParams
 
 -- ---------------------------------------------------------------------
 
-addActualParamsToRhs :: (SYB.Typeable t, SYB.Data t) =>
+addActualParamsToRhs :: (SYB.Data t) =>
                         Bool -> GHC.Name -> [GHC.Name] -> t -> RefactGhc t
 addActualParamsToRhs modifyToks pn paramPNames rhs = do
     -- logm $ "addActualParamsToRhs:rhs=" ++ (SYB.showData SYB.Renamer 0 $ rhs)
@@ -3033,7 +3033,7 @@ Original : sq x + sumSquares xs
 
 -- | Duplicate a function\/pattern binding declaration under a new name
 -- right after the original one. Also updates the token stream.
-duplicateDecl::(SYB.Data t) =>
+duplicateDecl:: (SYB.Data t) =>
   [GHC.LHsBind GHC.Name]  -- ^ The declaration list
   ->t                     -- ^ Any signatures are in here
   ->GHC.Name              -- ^ The identifier whose definition is to be duplicated

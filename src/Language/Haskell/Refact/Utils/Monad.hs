@@ -178,7 +178,7 @@ instance (Applicative m) => Alternative (GHC.GhcT m) where
   empty = empty
   (<|>) = (<|>)
 
-instance (MonadPlus m,Functor m,GHC.MonadIO m,ExceptionMonad m) => MonadPlus (GHC.GhcT m) where
+instance (MonadPlus m,ExceptionMonad m) => MonadPlus (GHC.GhcT m) where
   mzero = GHC.GhcT $ \_s -> mzero
   x `mplus` y = GHC.GhcT $ \_s -> (GHC.runGhcT (Just GHC.libdir) x) `mplus` (GHC.runGhcT (Just GHC.libdir) y)
 
@@ -204,7 +204,7 @@ initGhcSession importDirs = do
     let df2 = GHC.gopt_set df GHC.Opt_KeepRawTokenStream
     void $ GHC.setSessionDynFlags df2
 
-    liftIO $ putStrLn "initGhcSession:entered (IO)"
+    -- liftIO $ putStrLn "initGhcSession:entered (IO)"
     logm $ "initGhcSession:entered"
     cr <- cradle
     logm $ "initGhcSession:cr=" ++ show cr

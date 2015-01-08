@@ -19,7 +19,7 @@ module Language.Haskell.Refact.Utils.Utils
        , applyRefac
        , refactDone
 
-       , update
+       -- , update
        , fileNameToModName
        , fileNameFromModSummary
        , getModuleName
@@ -343,7 +343,7 @@ fileNameFromModSummary modSummary = fileName
     Just fileName = GHC.ml_hs_file (GHC.ms_location modSummary)
 
 -- ---------------------------------------------------------------------
-
+{-
 class (SYB.Data t, SYB.Data t1) => Update t t1 where
 
   -- | Update the occurrence of one syntax phrase in a given scope by
@@ -353,7 +353,9 @@ class (SYB.Data t, SYB.Data t1) => Update t t1 where
          -> t1    -- ^ The contex where the old syntax phrase occurs.
          -> RefactGhc t1  -- ^ The result.
 
-instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.HsExpr n)) t where
+-- instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.HsExpr n)) t where
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n)
+  => Update (GHC.Located (GHC.HsExpr n)) t where
     update oldExp newExp t
            = SYB.everywhereMStaged SYB.Parser (SYB.mkM inExp) t
        where
@@ -369,7 +371,8 @@ instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (
                     return newExp
           | otherwise = return e
 
-instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LPat n) t where
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n)
+   => Update (GHC.LPat n) t where
     update oldPat newPat t
            = SYB.everywhereMStaged SYB.Parser (SYB.mkM inPat) t
         where
@@ -381,7 +384,8 @@ instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (
                      return newPat
             | otherwise = return p
 
-instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.LHsType n) t where
+instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n)
+  => Update (GHC.LHsType n) t where
      update oldTy newTy t
            = SYB.everywhereMStaged SYB.Parser (SYB.mkM inTyp) t
         where
@@ -393,7 +397,8 @@ instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (
                      return newTy
             | otherwise = return t'
 
-instance (GHC.DataId n1,GHC.DataId n2,SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1, SYB.Data n2) => Update (GHC.LHsBindLR n1 n2) t where
+instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1, SYB.Data n2)
+   => Update (GHC.LHsBindLR n1 n2) t where
        update oldBind newBind t
              = SYB.everywhereMStaged SYB.Parser (SYB.mkM inBind) t
           where
@@ -404,7 +409,7 @@ instance (GHC.DataId n1,GHC.DataId n2,SYB.Data t, GHC.OutputableBndr n1, GHC.Out
                        -- TODO: make sure to call syncAST
                        return newBind
               | otherwise = return t'
-
+-}
 
 -- ---------------------------------------------------------------------
 

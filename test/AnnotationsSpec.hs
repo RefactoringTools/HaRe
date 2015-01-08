@@ -50,9 +50,24 @@ spec = do
 
     -- ---------------------------------
 
-    it "can round-trip a file" $ do
+    it "can round-trip a file 1" $ do
       -- (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
       (t,toks) <- parsedFileGhcCd "./test/testdata/" "TokenTest.hs"
+      let
+        comp = do
+          (r,_) <- applyRefac (setRefactStreamModified RefacModified) RSAlreadyLoaded
+          return r
+      (((fn,m),(anns,mod')),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      (show (fn,m)) `shouldBe` "(\"TokenTest.hs\",RefacModified)"
+      putStrLn $ SYB.showData SYB.Parser 0 mod'
+      let !printed = exactPrintAnnotation mod' [] anns
+      printed `shouldBe` "foo"
+
+    -- ---------------------------------
+
+    it "can round-trip a file 2" $ do
+      -- (t,toks) <- parsedFileGhc "./test/testdata/MoveDef/Md1.hs"
+      (t,toks) <- parsedFileGhcCd "/home/alanz/mysrc/github/alanz/ghc-exactprint/src/" "./Language/Haskell/GHC/ExactPrint/Utils.hs"
       let
         comp = do
           (r,_) <- applyRefac (setRefactStreamModified RefacModified) RSAlreadyLoaded

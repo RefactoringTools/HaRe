@@ -99,7 +99,6 @@ Library
            , Language.Haskell.Refact.Utils.Types
            , Language.Haskell.Refact.Utils.Utils
            , Paths_HaRe
-        Extensions:      CPP
 
 
 
@@ -140,8 +139,9 @@ Executable ghc-hare
                                 , ghc-exactprint
                                 , monad-control
                                 , Cabal >= 1.22
+                                -- , Paths_HaRe
                                 -- , haskell-token-utils >= 0.0.0.6
-                                , HaRe >= 0.7.2.3
+                                , HaRe >= 0.8
         Extensions:      CPP
 
 
@@ -199,8 +199,9 @@ test-suite spec
     , ghc-exactprint
     , monad-control
     , Cabal >= 1.22
+    -- , Paths_HaRe
     -- , haskell-token-utils >= 0.0.0.6
-    , HaRe >= 0.7.2.3
+    , HaRe >= 0.8
   Extensions:      CPP
 
 

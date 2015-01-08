@@ -41,7 +41,7 @@ module Language.Haskell.Refact.API
        , ApplyRefacResult
        , RefacSource(..)
 
-       , update
+       -- , update
        , fileNameToModName
        , fileNameFromModSummary
        , getModuleName
