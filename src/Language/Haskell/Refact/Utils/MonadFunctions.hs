@@ -22,6 +22,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactRenamed
        , putRefactRenamed
        , getRefactParsed
+       , putRefactParsed
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
@@ -116,16 +117,6 @@ fetchAnnsFinal = do
   Just tm <- gets rsModule
   let anns = (tkCache $ rsTokenCache tm) Map.! mainTid
   return anns
-
-{-
--- |fetch the final tokens in Ppr format
-fetchLinesFinal :: RefactGhc [Line PosToken]
-fetchLinesFinal = do
-  Just tm <- gets rsModule
-  let linesVal = retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
-  logm $ "fetchLinesFinal (not showing lines)"
-  return linesVal
--}
 
 -- |fetch the pristine token stream
 fetchOrigToks :: RefactGhc [PosToken]
@@ -408,6 +399,27 @@ getRefactParsed = do
 
   let pm = GHC.tm_parsed_module t
   return $ GHC.pm_parsed_source pm
+
+putRefactParsed :: GHC.ParsedSource -> Anns -> RefactGhc ()
+putRefactParsed parsed newAnns = do
+  st <- get
+  mrm <- gets rsModule
+  let rm = gfromJust "putRefactParsed" mrm
+  let tm = rsTypecheckedMod rm
+  let tk' = addAnns (rsTokenCache rm) newAnns
+
+  let pm = (GHC.tm_parsed_module tm) { GHC.pm_parsed_source = parsed }
+  let tm' = tm { GHC.tm_parsed_module = pm }
+  let rm' = rm { rsTypecheckedMod = tm', rsTokenCache = tk', rsStreamModified = RefacModified }
+  put $ st {rsModule = Just rm'}
+
+addAnns :: TokenCache Anns -> Anns -> TokenCache Anns
+addAnns tk (ncanns,noanns) = tk'
+  where
+    (canns,oanns) = (tkCache tk) Map.! mainTid
+    tk' = tk {tkCache = Map.insert mainTid
+                                   (Map.union ncanns canns,Map.union noanns oanns)
+                                   (tkCache tk) }
 
 putParsedModule
   :: GHC.TypecheckedModule -> [PosToken] -> RefactGhc ()

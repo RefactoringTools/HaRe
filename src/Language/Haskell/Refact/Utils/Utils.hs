@@ -263,6 +263,7 @@ runRefacSession settings opt comp = do
    initialState = RefSt
         { rsSettings = settings
         , rsUniqState = 1
+        , rsSrcSpanCol = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
         , rsGraph = []
@@ -447,7 +448,9 @@ writeRefactoredFiles verbosity files
                writeFile (fileName ++ ".parsed_out") (showGhc parsed)
                writeFile (fileName ++ ".AST_out") $ ((showGhc parsed) ++
                       "\n\n----------------------\n\n" ++
-                      (SYB.showData SYB.Parser 0 parsed))
+                      (SYB.showData SYB.Parser 0 parsed) ++
+                      "\n\n----------------------\n\n" ++
+                      (showGhc ann))
 
 -- ---------------------------------------------------------------------
 

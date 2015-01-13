@@ -581,13 +581,13 @@ hsFreeAndDeclaredPNs' t = do
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned
 -- variables are in the String format.
-hsFreeAndDeclaredNameStrings::(SYB.Data t,GHC.Outputable t) => t -> RefactGhc ([String],[String])
+hsFreeAndDeclaredNameStrings::(SYB.Data t) => t -> RefactGhc ([String],[String])
 hsFreeAndDeclaredNameStrings t = do
   (f1,d1) <- hsFreeAndDeclaredPNs t
   return ((nub.map showGhc) f1, (nub.map showGhc) d1)
 
 
-hsFreeAndDeclaredPNs :: (SYB.Data t, GHC.Outputable t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNs :: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
   -- logm $ "hsFreeAndDeclaredPNs:t=" ++ (showGhc t)
   (FN f,DN d) <- hsFreeAndDeclaredGhc t
@@ -1992,7 +1992,7 @@ class (SYB.Data a, SYB.Typeable a) => FindEntity a where
   -- | Returns True is a syntax phrase, say a, is part of another
   -- syntax phrase, say b.
   -- NOTE: very important: only do a shallow check
-  findEntity:: (SYB.Data b, SYB.Typeable b) => a -> b -> Bool
+  findEntity:: (SYB.Data b) => a -> b -> Bool
 
 -- ---------------------------------------------------------------------
 
@@ -2065,7 +2065,7 @@ findEntity' a b = res
     -- ++AZ++ do a generic traversal, and see if it matches.
     res = SYB.somethingStaged SYB.Parser Nothing worker b
 
-    worker :: (SYB.Typeable c,SYB.Data c)
+    worker :: (SYB.Data c)
            => c -> Maybe (SimpPos,SimpPos)
     worker x = if SYB.typeOf a == SYB.typeOf x
                  -- then Just (getStartEndLoc b == getStartEndLoc a)
@@ -2305,7 +2305,7 @@ locToRdrName (row,col) t = locToName' (row,col) t
 -- NOTE: provides for FunBind MatchGroups where only the first name is
 -- retained in the AST
 
-locToName':: forall a t.(SYB.Data t, SYB.Typeable a, SYB.Data a, Eq a,GHC.Outputable a)
+locToName':: forall a t.(SYB.Data t, SYB.Data a, Eq a)
                     =>SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located a)  -- ^ The result
@@ -2594,7 +2594,7 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (SYB.Data t,HsValBinds t)
+addDecl:: (HsValBinds t)
         => t              -- ^The AST to be updated
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
@@ -3033,7 +3033,7 @@ Original : sq x + sumSquares xs
 
 -- | Duplicate a function\/pattern binding declaration under a new name
 -- right after the original one. Also updates the token stream.
-duplicateDecl:: (SYB.Data t) =>
+duplicateDecl :: (SYB.Data t) =>
   [GHC.LHsBind GHC.Name]  -- ^ The declaration list
   ->t                     -- ^ Any signatures are in here
   ->GHC.Name              -- ^ The identifier whose definition is to be duplicated

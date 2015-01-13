@@ -37,9 +37,9 @@ import qualified DynFlags      as GHC
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
-import qualified MonadUtils    as GHC
+-- import qualified MonadUtils    as GHC
 
-import Control.Monad.Base (MonadBase, liftBase)
+import Control.Monad.Base ( liftBase)
 import Control.Arrow (first)
 import Control.Applicative
 import Control.Monad.State
@@ -56,11 +56,9 @@ import Language.Haskell.GHC.ExactPrint.Utils
 import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger
--- import qualified Control.Monad.IO.Class as MU
 
 -- Monad transformer stuff
-import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
-  control, liftBaseOp, liftBaseOp_)
+import Control.Monad.Trans.Control ( control, liftBaseOp, liftBaseOp_)
 
 -- ---------------------------------------------------------------------
 
@@ -114,16 +112,30 @@ data RefactFlags = RefFlags
 -- | State for refactoring a single file. Holds/hides the token
 -- stream, which gets updated transparently at key points.
 data RefactState = RefSt
-        { rsSettings  :: !RefactSettings -- ^Session level settings
-        , rsUniqState :: !Int -- ^ Current Unique creator value, incremented every time it is used
-        , rsFlags     :: !RefactFlags -- ^ Flags for controlling generic traversals
-        , rsStorage   :: !StateStorage -- ^Temporary storage of values
+        { rsSettings   :: !RefactSettings -- ^Session level settings
+        , rsUniqState  :: !Int -- ^ Current Unique creator value, incremented every time it is used
+        , rsSrcSpanCol :: !Int -- ^ Current SrcSpan creator value, incremented every time it is used
+        , rsFlags      :: !RefactFlags -- ^ Flags for controlling generic traversals
+        , rsStorage    :: !StateStorage -- ^Temporary storage of values
                                       -- while refactoring takes place
         , rsGraph     :: [TargetGraph]
         , rsModuleGraph :: [([FilePath],GHC.ModuleGraph)]
         , rsCurrentTarget :: Maybe [FilePath]
         , rsModule    :: !(Maybe RefactModule) -- ^The current module being refactored
         }
+{-
+Note [rsSrcSpanCol]
+~~~~~~~~~~~~~~~~~~~
+
+The ghc-exactprint annotations are tied to a SrcSpan, and provide
+deltas for the spaces between the elements in the source.
+
+As such, the SrcSpan itself is only used as an index into the
+annotation database.
+
+When HaRe needs a new SrcSpan, for this, it generates it from this
+field, to ensure uniqueness.
+-}
 
 type TargetModule = ([FilePath], GHC.ModSummary)
 

@@ -65,6 +65,7 @@ module Language.Haskell.Refact.API
        , getRefactRenamed
        , putRefactRenamed
        , getRefactParsed
+       , putRefactParsed
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
@@ -379,6 +380,9 @@ module Language.Haskell.Refact.API
  -- * Span conversion functions
  -- , gs2f,f2gs
  -- , gs2ss,ss2gs
+
+ -- * from `Language.Haskell.Refact.Utils.ExactPrint`
+ , resequenceAnnotations
  ) where
 
 import Language.Haskell.Refact.Utils.Binds
@@ -388,6 +392,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TokenUtils
+import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils

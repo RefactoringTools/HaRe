@@ -78,7 +78,7 @@ Library
         Exposed-modules:
              Language.Haskell.Refact.API
            , Language.Haskell.Refact.HaRe
-           -- , Language.Haskell.Refact.Refactoring.Case
+           , Language.Haskell.Refact.Refactoring.Case
            -- , Language.Haskell.Refact.Refactoring.DupDef
            -- , Language.Haskell.Refact.Refactoring.MoveDef
            -- , Language.Haskell.Refact.Refactoring.Renaming
@@ -86,6 +86,7 @@ Library
            -- , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Utils.Binds
            , Language.Haskell.Refact.Utils.Cabal
+           , Language.Haskell.Refact.Utils.ExactPrint
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils

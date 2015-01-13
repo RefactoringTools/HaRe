@@ -31,13 +31,14 @@ module TestUtils
        , mkTestGhcName
        , setLogger
        , cdAndDo
-
+       , ct
        , pwd
        , cd
        ) where
 
 
 import qualified GHC           as GHC
+import qualified FastString    as GHC
 import qualified Name          as GHC
 import qualified Unique        as GHC
 
@@ -45,7 +46,7 @@ import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.Utils
-import Language.Haskell.Refact.Utils.LocUtils
+-- import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 -- import Language.Haskell.Refact.Utils.TokenUtils
@@ -55,7 +56,6 @@ import Language.Haskell.Refact.Utils.Types
 
 import Numeric
 
-import Data.Tree
 import System.Directory
 import System.Log.Handler.Simple
 import System.Log.Logger
@@ -117,6 +117,9 @@ parsedFileGhcCd path fileName = do
 
 -- ---------------------------------------------------------------------
 
+ct :: IO a -> IO a
+ct = cdAndDo "./test/testdata/"
+
 cdAndDo :: FilePath -> IO a -> IO a
 cdAndDo path fn = do
   old <- getCurrentDirectory
@@ -139,6 +142,7 @@ initialState :: RefactState
 initialState = RefSt
   { rsSettings = defaultTestSettings
   , rsUniqState = 1
+  , rsSrcSpanCol = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
   , rsGraph = []
@@ -153,6 +157,7 @@ initialLogOnState :: RefactState
 initialLogOnState = RefSt
   { rsSettings = logTestSettings
   , rsUniqState = 1
+  , rsSrcSpanCol = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
   , rsGraph = []
@@ -251,6 +256,7 @@ runRefactGhcStateLog paramcomp logOn  = do
      initState = RefSt
         { rsSettings = defaultTestSettings { rsetVerboseLevel = logOn }
         , rsUniqState = 1
+        , rsSrcSpanCol = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
         , rsGraph = []
@@ -351,6 +357,9 @@ mkTestGhcName u maybeMod name = n
       n = case maybeMod of
                Nothing -> GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
                Just modu -> GHC.mkExternalName un modu (GHC.mkVarOcc name) nullSrcSpan
+
+nullSrcSpan :: GHC.SrcSpan
+nullSrcSpan = GHC.UnhelpfulSpan $ GHC.mkFastString "HaRe nullSrcSpan"
 
 -- ---------------------------------------------------------------------
 

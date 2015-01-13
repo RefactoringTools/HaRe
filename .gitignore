@@ -404,3 +404,6 @@ testing/addCon/Case2.hs.temp.hs
 /my-dev-env.nix
 /ocharles.nix
 /shell763-ghcmod5.nix
+/test/testdata/Case/B.hs.parsed_out
+/test/testdata/Case/BSimple.hs.AST_out
+/test/testdata/Case/BSimple.hs.parsed_out

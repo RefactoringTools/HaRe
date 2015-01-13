@@ -3,6 +3,7 @@ module Language.Haskell.Refact.Refactoring.Case(ifToCase) where
 import qualified Data.Generics         as SYB
 import qualified GHC.SYB.Utils         as SYB
 
+import qualified BasicTypes    as GHC
 import qualified GHC           as GHC
 
 import Control.Monad
@@ -10,19 +11,21 @@ import Control.Monad.IO.Class
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
+import qualified Data.Map as Map
+
 -- ---------------------------------------------------------------------
 
 -- | Convert an if expression to a case expression
-ifToCase :: RefactSettings -> Cradle -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
-ifToCase settings cradle fileName beginPos endPos =
-  runRefacSession settings cradle (comp fileName beginPos endPos)
+ifToCase :: RefactSettings -> Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
+ifToCase settings opts fileName beginPos endPos =
+  runRefacSession settings opts (comp fileName beginPos endPos)
 
 comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
        getModuleGhc fileName
-       renamed <- getRefactRenamed
-       logm $ "Case.comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
-       let expr = locToExp beginPos endPos renamed
+       parsed <- getRefactParsed
+       logm $ "Case.comp:parsed=" ++ (SYB.showData SYB.Parser 0 parsed) -- ++AZ++
+       let expr = locToExp beginPos endPos parsed
        -- logm $ "Case.comp:expr=" ++ (SYB.showData SYB.Renamer 0 expr) -- ++AZ++
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
@@ -31,92 +34,43 @@ comp fileName beginPos endPos = do
          _      -> error $ "You haven't selected an if-then-else  expression!" --  ++ (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
 
 doIfToCaseInternal ::
-  GHC.Located (GHC.HsExpr GHC.Name)
+  GHC.Located (GHC.HsExpr GHC.RdrName)
   -> RefactGhc ()
 doIfToCaseInternal expr = do
-  rs <- getRefactRenamed
+  rs <- getRefactParsed
   reallyDoIfToCase expr rs
 
 reallyDoIfToCase ::
-  GHC.Located (GHC.HsExpr GHC.Name)
-  -> GHC.RenamedSource
+  GHC.Located (GHC.HsExpr GHC.RdrName)
+  -> GHC.ParsedSource
   -> RefactGhc ()
-reallyDoIfToCase expr rs = do
+reallyDoIfToCase expr p = do
 
-   void $ SYB.everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
-   -- showLinesDebug "after refactoring"
+   p2 <- SYB.everywhereMStaged SYB.Parser (SYB.mkM inExp) p
+   -- logm $ "reallyDoIfToCase:p2=" ++ (SYB.showData SYB.Parser 0 p2)
+   putRefactParsed p2 (Map.empty,Map.empty)
    return ()
        where
-         inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
+         inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
          inExp exp1@(GHC.L l (GHC.HsIf _se (GHC.L l1 _) (GHC.L l2 _) (GHC.L l3 _)))
            | sameOccurrence expr exp1
            = do
-               -- drawTokenTreeDetailed "reallyDoIfToCase" -- ++AZ++ debug
                newExp <- ifToCaseTransform exp1
-
-               -- let (GHC.RealSrcLoc rl) = GHC.srcSpanStart l
-               let caseTok = tokenise (gs2ss l) 0 False "case"
-               condToks <- getToksForSpan l1
-               let ofTok = tokenise
-                     (gs2ss $ tokenSrcSpan (glast "reallyDoIfToCase" condToks))
-                     -- (realSrcLocFromTok (glast "reallyDoIfToCase" condToks))
-                           1 True "of"
-               let trueToks = basicTokenise "True  ->"
-               let falseToks = basicTokenise "False ->"
-               thenToksRaw <- getToksForSpan l2
-               elseToksRaw <- getToksForSpan l3
-
-               let thenToks = dropWhile isEmpty thenToksRaw
-               let elseToks = dropWhile isEmpty elseToksRaw
-
-               logm $ "reallyDoIfToCase:elseToks=" ++ (show elseToks)
-
-               let t0 = reIndentToks PlaceAdjacent caseTok condToks
-               let t1' = reIndentToks PlaceAdjacent (caseTok ++ t0) ofTok
-               let t1 = caseTok ++ t0 ++ t1'
-
-               let t2 = reIndentToks (PlaceIndent 1 4 0) t1 trueToks
-               let t3 = reIndentToks PlaceAdjacent (t1++t2) thenToks
-
-               let (_,col) = tokenPos $ ghead "reallyDoIfToCase" t2
-
-               let t4 = reIndentToks (PlaceAbsCol 1 col 0) (t1++t2++t3) falseToks
-               -- logm $ "reallyDoIfToCase:(t1++t2++t3++t4)=" ++ (show (t1++t2++t3++t4))
-               let t5 = reIndentToks PlaceAdjacent (t1++t2++t3++t4) elseToks
-
-               let caseToks = t1++t2++t3++t4++t5 ++ [newLnToken (last t5)]
-
-               logm $ "reallyDoIfToCase:t1=[" ++ (GHC.showRichTokenStream t1) ++ "]"
-               logm $ "reallyDoIfToCase:t2=[" ++ (GHC.showRichTokenStream t2) ++ "]"
-               logm $ "reallyDoIfToCase:t3=[" ++ (GHC.showRichTokenStream t3) ++ "]"
-
-               -- logm $ "reallyDoIfToCase:t1++t2++t3=" ++ (show (t1++t2++t3))
-
-               logm $ "reallyDoIfToCase:t4=[" ++ (GHC.showRichTokenStream t4) ++ "]"
-               logm $ "reallyDoIfToCase:t5=[" ++ (GHC.showRichTokenStream t5) ++ "]"
-
-               logm $ "reallyDoIfToCase:caseToks=" ++ (show caseToks)
-
-               -- drawTokenTreeDetailed "reallyDoIfToCase"
-
-               void $ putToksForSpan l caseToks
-
-               -- drawTokenTree "reallyDoIfToCase after putToks"
-               -- drawTokenTreeDetailed "reallyDoIfToCase after putToks"
-
                return newExp
 
          inExp e = return e
 
 -- TODO: rearrange the structure and preserve the comments in the original, e.g. in e1,e2,e3
-ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
+ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
+                  -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
 ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
-  trueName  <- mkNewGhcName Nothing "True"
-  falseName <- mkNewGhcName Nothing "False"
+  let trueName  = mkRdrName "True"
+  let falseName = mkRdrName "False"
   let ret = GHC.L l (GHC.HsCase e1
-             (GHC.MatchGroup
+             (GHC.MG
               [
                 (GHC.noLoc $ GHC.Match
+                 Nothing
                  [
                    GHC.noLoc $ GHC.ConPatIn (GHC.noLoc trueName) (GHC.PrefixCon [])
                  ]
@@ -127,6 +81,7 @@ ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
                    ] GHC.EmptyLocalBinds))
                 )
               , (GHC.noLoc $ GHC.Match
+                 Nothing
                  [
                    GHC.noLoc $ GHC.ConPatIn (GHC.noLoc falseName) (GHC.PrefixCon [])
                  ]
@@ -136,10 +91,190 @@ ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
                      GHC.noLoc $ GHC.GRHS [] e3
                    ] GHC.EmptyLocalBinds))
                 )
-              ] undefined))
-  return ret
+              ] [] GHC.placeHolderType GHC.Generated))
+  ret2 <- resequenceAnnotations ret
+  return ret2
 ifToCaseTransform x = return x
 
+
+{-
+
+foo x = case (odd x) of
+            True  -> "Odd"
+            False -> "Even"
+
+becomes
+
+(L {examples/B.hs:1:1} 
+ (HsModule 
+  (Nothing) 
+  (Nothing) 
+  [] 
+  [
+   (L {examples/B.hs:(2,1)-(4,27)} 
+    (ValD 
+     (FunBind 
+      (L {examples/B.hs:2:1-3} 
+       (Unqual {OccName: foo})) 
+      (False) 
+      (MG 
+       [
+        (L {examples/B.hs:(2,1)-(4,27)} 
+         (Match 
+          (Just 
+           ((,) 
+            (L {examples/B.hs:2:1-3} 
+             (Unqual {OccName: foo})) 
+            (False))) 
+          [
+           (L {examples/B.hs:2:5} 
+            (VarPat 
+             (Unqual {OccName: x})))] 
+          (Nothing) 
+          (GRHSs 
+           [
+            (L {examples/B.hs:2:7} 
+             (GRHS 
+              [] 
+              (L {examples/B.hs:(2,9)-(4,27)} 
+               (HsCase 
+                (L {examples/B.hs:2:14-20} 
+                 (HsPar 
+                  (L {examples/B.hs:2:15-19} 
+                   (HsApp 
+                    (L {examples/B.hs:2:15-17} 
+                     (HsVar 
+                      (Unqual {OccName: odd}))) 
+                    (L {examples/B.hs:2:19} 
+                     (HsVar 
+                      (Unqual {OccName: x}))))))) 
+                (MG 
+                 [
+                  (L {examples/B.hs:3:13-26} 
+                   (Match 
+                    (Nothing) 
+                    [
+                     (L {examples/B.hs:3:13-16} 
+                      (ConPatIn 
+                       (L {examples/B.hs:3:13-16} 
+                        (Unqual {OccName: True})) 
+                       (PrefixCon 
+                        [])))] 
+                    (Nothing) 
+                    (GRHSs 
+                     [
+                      (L {examples/B.hs:3:19-26} 
+                       (GRHS 
+                        [] 
+                        (L {examples/B.hs:3:22-26} 
+                         (HsLit 
+                          (HsString "\"Odd\"" {FastString: "Odd"})))))] 
+                     (EmptyLocalBinds)))),
+                  (L {examples/B.hs:4:13-27} 
+                   (Match 
+                    (Nothing) 
+                    [
+                     (L {examples/B.hs:4:13-17} 
+                      (ConPatIn 
+                       (L {examples/B.hs:4:13-17} 
+                        (Unqual {OccName: False})) 
+                       (PrefixCon 
+                        [])))] 
+                    (Nothing) 
+                    (GRHSs 
+                     [
+                      (L {examples/B.hs:4:19-27} 
+                       (GRHS 
+                        [] 
+                        (L {examples/B.hs:4:22-27} 
+                         (HsLit 
+                          (HsString "\"Even\"" {FastString: "Even"})))))] 
+                     (EmptyLocalBinds))))] 
+                 [] 
+                 (PlaceHolder) 
+                 (FromSource))))))] 
+           (EmptyLocalBinds))))] 
+       [] 
+       (PlaceHolder) 
+       (FromSource)) 
+      (WpHole) 
+      (PlaceHolder) 
+      [])))] 
+  (Nothing) 
+  (Nothing)))
+
+with
+
+ann=([((examples/B.hs:1:1, HsModule RdrName),
+   Ann {ann_comments = [], ann_delta = DP (-4,1)}),
+  ((examples/B.hs:2:1-3, RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-3)}),
+  ((examples/B.hs:(2,1)-(4,27), HsDecl RdrName),
+   Ann {ann_comments = [], ann_delta = DP (-2,1)}),
+  ((examples/B.hs:(2,1)-(4,27),
+    Match RdrName (GenLocated SrcSpan (HsExpr RdrName))),
+   Ann {ann_comments = [], ann_delta = DP (-2,1)}),
+  ((examples/B.hs:2:5, Pat RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-1)}),
+  ((examples/B.hs:2:7,
+    GRHS RdrName (GenLocated SrcSpan (HsExpr RdrName))),
+   Ann {ann_comments = [], ann_delta = DP (-2,7)}),
+  ((examples/B.hs:(2,9)-(4,27), HsExpr RdrName),
+   Ann {ann_comments = [], ann_delta = DP (-2,9)}),
+  ((examples/B.hs:2:14-20, HsExpr RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-7)}),
+  ((examples/B.hs:2:15-17, HsExpr RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-3)}),
+  ((examples/B.hs:2:15-19, HsExpr RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-5)}),
+  ((examples/B.hs:2:19, HsExpr RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-1)}),
+  ((examples/B.hs:3:13-16, Pat RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-4)}),
+  ((examples/B.hs:3:13-16, RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-4)}),
+  ((examples/B.hs:3:13-26,
+    Match RdrName (GenLocated SrcSpan (HsExpr RdrName))),
+   Ann {ann_comments = [], ann_delta = DP (0,-14)}),
+  ((examples/B.hs:3:19-26,
+    GRHS RdrName (GenLocated SrcSpan (HsExpr RdrName))),
+   Ann {ann_comments = [], ann_delta = DP (0,-8)}),
+  ((examples/B.hs:3:22-26, HsExpr RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-5)}),
+  ((examples/B.hs:4:13-17, Pat RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-5)}),
+  ((examples/B.hs:4:13-17, RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-5)}),
+  ((examples/B.hs:4:13-27,
+    Match RdrName (GenLocated SrcSpan (HsExpr RdrName))),
+   Ann {ann_comments = [], ann_delta = DP (0,-15)}),
+  ((examples/B.hs:4:19-27,
+    GRHS RdrName (GenLocated SrcSpan (HsExpr RdrName))),
+   Ann {ann_comments = [], ann_delta = DP (0,-9)}),
+  ((examples/B.hs:4:22-27, HsExpr RdrName),
+   Ann {ann_comments = [], ann_delta = DP (0,-6)}),
+  ((<no location info>, ()),
+   Ann {ann_comments = [], ann_delta = DP (0,0)})],
+ [((examples/B.hs:1:1, G AnnEofPos), [DP (1,1)]),
+  ((examples/B.hs:2:1-3, G AnnVal), [DP (1,1)]),
+  ((examples/B.hs:(2,1)-(4,27), G AnnEqual), [DP (0,1)]),
+  ((examples/B.hs:2:5, G AnnVal), [DP (0,1)]),
+  ((examples/B.hs:(2,9)-(4,27), G AnnCase), [DP (0,1)]),
+  ((examples/B.hs:(2,9)-(4,27), G AnnOf), [DP (0,1)]),
+  ((examples/B.hs:2:14-20, G AnnCloseP), [DP (0,0)]),
+  ((examples/B.hs:2:14-20, G AnnOpenP), [DP (0,1)]),
+  ((examples/B.hs:2:15-17, G AnnVal), [DP (0,0)]),
+  ((examples/B.hs:2:19, G AnnVal), [DP (0,1)]),
+  ((examples/B.hs:3:13-16, G AnnVal), [DP (1,13)]),
+  ((examples/B.hs:3:19-26, G AnnRarrow), [DP (0,2)]),
+  ((examples/B.hs:3:22-26, G AnnVal), [DP (0,1)]),
+  ((examples/B.hs:4:13-17, G AnnVal), [DP (1,13)]),
+  ((examples/B.hs:4:19-27, G AnnRarrow), [DP (0,1)]),
+  ((examples/B.hs:4:22-27, G AnnVal), [DP (0,1)])])
+
+
+
+-}
 -- ---------------------------------------------------------------------
 {-
 HsIf (Maybe (SyntaxExpr id)) (LHsExpr id) (LHsExpr id) (LHsExpr id)
