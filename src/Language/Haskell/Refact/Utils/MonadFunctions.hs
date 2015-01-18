@@ -23,6 +23,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , putRefactRenamed
        , getRefactParsed
        , putRefactParsed
+       , addRefactAnns
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
@@ -411,6 +412,15 @@ putRefactParsed parsed newAnns = do
   let pm = (GHC.tm_parsed_module tm) { GHC.pm_parsed_source = parsed }
   let tm' = tm { GHC.tm_parsed_module = pm }
   let rm' = rm { rsTypecheckedMod = tm', rsTokenCache = tk', rsStreamModified = RefacModified }
+  put $ st {rsModule = Just rm'}
+
+addRefactAnns :: Anns -> RefactGhc ()
+addRefactAnns newAnns = do
+  st <- get
+  mrm <- gets rsModule
+  let rm = gfromJust "addRefactAnns" mrm
+  let tk' = addAnns (rsTokenCache rm) newAnns
+  let rm' = rm { rsTokenCache = tk', rsStreamModified = RefacModified }
   put $ st {rsModule = Just rm'}
 
 addAnns :: TokenCache Anns -> Anns -> TokenCache Anns

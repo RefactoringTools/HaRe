@@ -9,6 +9,10 @@ import qualified GHC           as GHC
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
+-- To be moved into HaRe API
+import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.Refact.Utils.ExactPrint
+
 import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
@@ -58,42 +62,62 @@ reallyDoIfToCase expr p = do
 
          inExp e = return e
 
--- TODO: rearrange the structure and preserve the comments in the original, e.g. in e1,e2,e3
+-- TODO: rearrange the structure and preserve the comments in the
+--       original, e.g. in e1,e2,e3
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
                   -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
 ifToCaseTransform (GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
+  caseLoc     <- uniqueSrcSpan
+  trueLoc     <- uniqueSrcSpan
+  trueRhsLoc  <- uniqueSrcSpan
+  falseLoc    <- uniqueSrcSpan
+  falseRhsLoc <- uniqueSrcSpan
   let trueName  = mkRdrName "True"
   let falseName = mkRdrName "False"
-  let ret = GHC.noLoc (GHC.HsCase e1
+  let ret = GHC.L caseLoc (GHC.HsCase e1
              (GHC.MG
               [
                 (GHC.noLoc $ GHC.Match
                  Nothing
                  [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc trueName) (GHC.PrefixCon [])
+                   GHC.noLoc $ GHC.ConPatIn (GHC.L trueLoc trueName) (GHC.PrefixCon [])
                  ]
                  Nothing
                  ((GHC.GRHSs
                    [
-                     GHC.noLoc $ GHC.GRHS [] e2
+                     GHC.L trueRhsLoc $ GHC.GRHS [] e2
                    ] GHC.EmptyLocalBinds))
                 )
               , (GHC.noLoc $ GHC.Match
                  Nothing
                  [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc falseName) (GHC.PrefixCon [])
+                   GHC.noLoc $ GHC.ConPatIn (GHC.L falseLoc falseName) (GHC.PrefixCon [])
                  ]
                  Nothing
                  ((GHC.GRHSs
                    [
-                     GHC.noLoc $ GHC.GRHS [] e3
+                     GHC.L falseRhsLoc $ GHC.GRHS [] e3
                    ] GHC.EmptyLocalBinds))
                 )
               ] [] GHC.placeHolderType GHC.Generated))
-  ret2 <- resequenceAnnotations ret
+  (ret2,anne) <- resequenceAnnotations ret
+  let annf' = addAnnKeywords anne "HsCase"
+                [(G GHC.AnnCase,[DP (0,1)])
+                ,(G GHC.AnnOf,  [DP (0,1)])]
+  let annf = Map.fromList [((caseLoc,     G GHC.AnnCase),   [DP (0,1)])
+                          ,((caseLoc,     G GHC.AnnOf),     [DP (0,1)])
+                          ,((trueLoc,     G GHC.AnnVal),    [DP (1,13)])
+                          ,((trueRhsLoc,  G GHC.AnnRarrow), [DP (0,2)])
+                          ,((falseLoc,    G GHC.AnnVal),    [DP (1,13)])
+                          ,((falseRhsLoc, G GHC.AnnRarrow), [DP (0,1)])
+                          ]
+  logm $ "Case:anns=" ++ showGhc (anne,annf)
+  addRefactAnns (anne,annf)
   return ret2
 ifToCaseTransform x = return x
 
+
+-- ---------------------------------------------------------------------
 
 {-
 
