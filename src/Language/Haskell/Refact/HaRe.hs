@@ -9,8 +9,8 @@ module Language.Haskell.Refact.HaRe
 
  -- * Refactorings
  -- |Note: the 'Cradle' in the type signatures is the one from ghc-mod
-{-
  , ifToCase
+{-
  , duplicateDef
  , liftToTopLevel
  , liftOneLevel
@@ -22,7 +22,7 @@ module Language.Haskell.Refact.HaRe
  )
 where
 
--- import Language.Haskell.Refact.Refactoring.Case
+import Language.Haskell.Refact.Refactoring.Case
 -- import Language.Haskell.Refact.Refactoring.DupDef
 -- import Language.Haskell.Refact.Refactoring.MoveDef
 -- import Language.Haskell.Refact.Refactoring.Renaming
