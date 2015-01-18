@@ -23,6 +23,16 @@ spec = do
 
     -- ---------------------------------
 
+    it "converts an if expression to a case expression Foo" $ do
+      r <- ct $ ifToCase defaultTestSettings testOptions "Case/Foo.hs" (4,1) (9,1)
+      -- r <- ct $ ifToCase logTestSettings testOptions  "Case/Foo.hs" (4,1) (9,1)
+      r `shouldBe` ["Case/Foo.hs"]
+      diff <- compareFiles "./test/testdata/Case/Foo.refactored.hs"
+                           "./test/testdata/Case/Foo.hs.expected"
+      diff `shouldBe` []
+
+    -- ---------------------------------
+
     it "converts an if expression to a case expression B" $ do
       r <- ct $ ifToCase defaultTestSettings testOptions "Case/B.hs" (4,7) (4,43)
       -- r <- ct $ ifToCase logTestSettings testOptions  "Case/B.hs" (4,7) (4,43)
