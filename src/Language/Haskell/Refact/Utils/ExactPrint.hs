@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Utils.ExactPrint
@@ -40,7 +41,7 @@ resequenceAnnotations t = do
   t1 <- insertUniqueSrcSpans t
   let aa = extractAnnsEP t1
   logm $ "resequenceAnnotations:annsEP=" ++ (show aa)
-  logm $ "resequenceAnnotations:locatedConstr=" ++ (SYB.showConstr locatedConstructor)
+  -- logm $ "resequenceAnnotations:locatedConstr=" ++ (SYB.showConstr locatedConstructor)
   return t1
 
 -- ---------------------------------------------------------------------
@@ -50,7 +51,9 @@ insertUniqueSrcSpans t = do
   SYB.everywhereM (SYB.mkM newSrcSpan) t
   where
     newSrcSpan :: GHC.SrcSpan -> RefactGhc GHC.SrcSpan
-    newSrcSpan _ = uniqueSrcSpan
+    newSrcSpan ss = if ss == GHC.noSrcSpan
+                      then uniqueSrcSpan
+                      else return ss
 
 -- ---------------------------------------------------------------------
 
@@ -60,12 +63,13 @@ extractAnnsEP t = Map.fromList as
     sts = extractSrcSpanTypeRep t
     as = map (\k -> (k,Ann [] (DP (0,0)))) sts
 
-extractSrcSpanTypeRep :: forall t. (SYB.Data t) => t -> [(GHC.SrcSpan,SYB.TypeRep)]
+
+extractSrcSpanTypeRep :: forall t. (SYB.Data t) => t -> [(GHC.SrcSpan,AnnConName)]
 extractSrcSpanTypeRep  =
   generic
-  where generic :: SYB.Data a => a -> [(GHC.SrcSpan,SYB.TypeRep)]
+  where generic :: (SYB.Data a) => a -> [(GHC.SrcSpan,AnnConName)]
         generic t = if SYB.showConstr (SYB.toConstr t) == "L" -- SYB.toConstr t == locatedConstructor
-                       then [ (ghead "extractAnnsEP" (SYB.gmapQi 0 getSrcSpan t), (SYB.gmapQi 1 getTypeRep t)) ]
+                       then [ (ghead "extractAnnsEP" (SYB.gmapQi 0 getSrcSpan t), (SYB.gmapQi 1 getConName t)) ]
                             ++ SYB.gmapQi 1 extractSrcSpanTypeRep t
                        else concat (SYB.gmapQ extractSrcSpanTypeRep t)
 
@@ -75,8 +79,8 @@ extractSrcSpanTypeRep  =
             getSrcSpan' :: GHC.SrcSpan -> [GHC.SrcSpan]
             getSrcSpan' ss = [ss]
 
-        getTypeRep :: forall d. SYB.Data d => d -> SYB.TypeRep
-        getTypeRep = SYB.typeOf
+        getConName :: forall d. SYB.Data d => d -> AnnConName
+        getConName = annGetConstr
 
 {-
   -- | A generic query that processes the immediate subterms and returns a list

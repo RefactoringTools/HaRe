@@ -6,8 +6,6 @@ import qualified GHC.SYB.Utils         as SYB
 import qualified BasicTypes    as GHC
 import qualified GHC           as GHC
 
-import Control.Monad
-import Control.Monad.IO.Class
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
@@ -63,10 +61,10 @@ reallyDoIfToCase expr p = do
 -- TODO: rearrange the structure and preserve the comments in the original, e.g. in e1,e2,e3
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
                   -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
-ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
+ifToCaseTransform (GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
   let trueName  = mkRdrName "True"
   let falseName = mkRdrName "False"
-  let ret = GHC.L l (GHC.HsCase e1
+  let ret = GHC.noLoc (GHC.HsCase e1
              (GHC.MG
               [
                 (GHC.noLoc $ GHC.Match
