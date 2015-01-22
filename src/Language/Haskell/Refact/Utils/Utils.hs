@@ -450,8 +450,10 @@ writeRefactoredFiles verbosity files
                       "\n\n----------------------\n\n" ++
                       (SYB.showData SYB.Parser 0 parsed) ++
                       "\n\n----------------------\n\n" ++
-                      (showGhc ann))
-
+                      (showGhc ann) ++
+                      "\n\n----------------------\n\n" ++
+                      (showAnnData (organiseAnns ann) 0 parsed)
+                      )
 -- ---------------------------------------------------------------------
 
 -- | Return the client modules and file names. The client modules of

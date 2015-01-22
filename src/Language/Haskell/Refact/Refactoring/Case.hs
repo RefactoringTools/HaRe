@@ -67,20 +67,22 @@ reallyDoIfToCase expr p = do
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
                   -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
 ifToCaseTransform (GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
-  caseLoc     <- uniqueSrcSpan
-  trueLoc     <- uniqueSrcSpan
-  trueRhsLoc  <- uniqueSrcSpan
-  falseLoc    <- uniqueSrcSpan
-  falseRhsLoc <- uniqueSrcSpan
+  caseLoc       <- uniqueSrcSpan
+  trueMatchLoc  <- uniqueSrcSpan
+  trueLoc       <- uniqueSrcSpan
+  trueRhsLoc    <- uniqueSrcSpan
+  falseLoc      <- uniqueSrcSpan
+  falseMatchLoc <- uniqueSrcSpan
+  falseRhsLoc   <- uniqueSrcSpan
   let trueName  = mkRdrName "True"
   let falseName = mkRdrName "False"
   let ret = GHC.L caseLoc (GHC.HsCase e1
              (GHC.MG
               [
-                (GHC.noLoc $ GHC.Match
+                (GHC.L trueMatchLoc $ GHC.Match
                  Nothing
                  [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.L trueLoc trueName) (GHC.PrefixCon [])
+                   GHC.L trueLoc $ GHC.ConPatIn (GHC.L trueLoc trueName) (GHC.PrefixCon [])
                  ]
                  Nothing
                  ((GHC.GRHSs
@@ -88,7 +90,7 @@ ifToCaseTransform (GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
                      GHC.L trueRhsLoc $ GHC.GRHS [] e2
                    ] GHC.EmptyLocalBinds))
                 )
-              , (GHC.noLoc $ GHC.Match
+              , (GHC.L falseMatchLoc $ GHC.Match
                  Nothing
                  [
                    GHC.noLoc $ GHC.ConPatIn (GHC.L falseLoc falseName) (GHC.PrefixCon [])
@@ -100,20 +102,28 @@ ifToCaseTransform (GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
                    ] GHC.EmptyLocalBinds))
                 )
               ] [] GHC.placeHolderType GHC.Generated))
-  (ret2,anne) <- resequenceAnnotations ret
-  let annf' = addAnnKeywords anne "HsCase"
-                [(G GHC.AnnCase,[DP (0,1)])
-                ,(G GHC.AnnOf,  [DP (0,1)])]
-  let annf = Map.fromList [((caseLoc,     G GHC.AnnCase),   [DP (0,1)])
+  (_ret2,anne) <- resequenceAnnotations ret
+  let anne2 = setOffsets anne [ ( (caseLoc,CN "HsCase"), (DP (1,2)) )
+                              , ( (trueRhsLoc,  CN "GRHS"),  (DP (0,6)) )
+                              , ( (trueMatchLoc,CN "Match"), (DP (1,4)) )
+                              , ( (falseRhsLoc,  CN "GRHS"),  (DP (0,6)) )
+                              , ( (falseMatchLoc,CN "Match"), (DP (1,4)) )
+                              ]
+  let anne3 = setLocatedDp anne2 e2 (DP (0,3))
+  let anne4 = setLocatedDp anne3 e3 (DP (0,3))
+  -- let annf' = addAnnKeywords anne "HsCase"
+  --               [(G GHC.AnnCase,[DP (1,0)])
+  --               ,(G GHC.AnnOf,  [DP (0,1)])]
+  let annf = Map.fromList [((caseLoc,     G GHC.AnnCase),   [DP (1,0)])
                           ,((caseLoc,     G GHC.AnnOf),     [DP (0,1)])
-                          ,((trueLoc,     G GHC.AnnVal),    [DP (1,13)])
+                          ,((trueLoc,     G GHC.AnnVal),    [DP (1,0)])
                           ,((trueRhsLoc,  G GHC.AnnRarrow), [DP (0,2)])
-                          ,((falseLoc,    G GHC.AnnVal),    [DP (1,13)])
+                          ,((falseLoc,    G GHC.AnnVal),    [DP (1,0)])
                           ,((falseRhsLoc, G GHC.AnnRarrow), [DP (0,1)])
                           ]
-  logm $ "Case:anns=" ++ showGhc (anne,annf)
-  addRefactAnns (anne,annf)
-  return ret2
+  logm $ "Case:anns=" ++ showGhc (anne2,annf)
+  addRefactAnns (anne4,annf)
+  return ret
 ifToCaseTransform x = return x
 
 

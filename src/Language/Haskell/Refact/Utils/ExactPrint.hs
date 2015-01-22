@@ -6,6 +6,9 @@ module Language.Haskell.Refact.Utils.ExactPrint
     resequenceAnnotations
   , uniqueSrcSpan
   , addAnnKeywords
+  , setOffsets
+  , setOffset
+  , setLocatedDp
   ) where
 
 import qualified FastString    as GHC
@@ -23,6 +26,7 @@ import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import Control.Monad.State
+import Data.List
 
 import qualified Data.Map as Map
 
@@ -33,9 +37,10 @@ resequenceAnnotations :: (SYB.Data t)
 resequenceAnnotations t = do
   t1 <- insertUniqueSrcSpans t
   let aa = extractAnnsEP t1
+      bb = uniqueSpansOnly aa
   logm $ "resequenceAnnotations:annsEP=" ++ (show aa)
   -- logm $ "resequenceAnnotations:locatedConstr=" ++ (SYB.showConstr locatedConstructor)
-  return (t1,aa)
+  return (t1,bb)
 
 -- ---------------------------------------------------------------------
 
@@ -50,6 +55,12 @@ insertUniqueSrcSpans t = do
 
 -- ---------------------------------------------------------------------
 
+uniqueSpansOnly :: AnnsEP -> AnnsEP
+uniqueSpansOnly anns
+  = Map.fromList $ filter (\((ss,_),_) -> isUniqueSrcSpan ss) $ Map.toList anns
+
+-- ---------------------------------------------------------------------
+
 -- TODO: do we have to match the filename for GHC compare functions?
 uniqueSrcSpan :: RefactGhc GHC.SrcSpan
 uniqueSrcSpan = do
@@ -59,6 +70,9 @@ uniqueSrcSpan = do
 
   let pos = GHC.mkSrcLoc (GHC.mkFastString "HaRe") (-1) col
   return $ GHC.mkSrcSpan pos pos
+
+isUniqueSrcSpan :: GHC.SrcSpan -> Bool
+isUniqueSrcSpan ss = srcSpanStartLine ss == -1
 
 -- ---------------------------------------------------------------------
 
@@ -98,6 +112,24 @@ addAnnKeywords anns conName ks = r
     ((ss,_),_) = ghead "addAnnKeywords" $ filter (\((_ss,s),_) -> unConName s == conName) $ Map.toList anns
     -- Then add the annotations
     r = Map.fromList $ map (\(kw,dps) -> ((ss,kw),dps)) ks
+
+-- ---------------------------------------------------------------------
+
+-- |Update the DeltaPos for the given
+setOffsets :: AnnsEP -> [((GHC.SrcSpan,AnnConName),DeltaPos)] -> AnnsEP
+setOffsets anne kvs = foldl' setOffset anne kvs
+
+-- |Update the DeltaPos for the given
+setOffset :: AnnsEP -> ((GHC.SrcSpan,AnnConName),DeltaPos) -> AnnsEP
+setOffset anne (k,v) = case
+  Map.lookup k anne of
+    Nothing         -> Map.insert k (Ann [] v) anne
+    Just (Ann cs _) -> Map.insert k (Ann cs v) anne
+
+-- ---------------------------------------------------------------------
+
+setLocatedDp :: (SYB.Data a) => AnnsEP -> GHC.Located a -> DeltaPos -> AnnsEP
+setLocatedDp aane (GHC.L l v) dp = setOffset aane ((l,annGetConstr v),dp)
 
 -- ---------------------------------------------------------------------
 
