@@ -54,7 +54,7 @@ reallyDoIfToCase expr p = do
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
-         inExp exp1@(GHC.L l (GHC.HsIf _se (GHC.L l1 _) (GHC.L l2 _) (GHC.L l3 _)))
+         inExp exp1@(GHC.L _ (GHC.HsIf _se (GHC.L _ _) (GHC.L _ _) (GHC.L _ _)))
            | sameOccurrence expr exp1
            = do
                newExp <- ifToCaseTransform exp1

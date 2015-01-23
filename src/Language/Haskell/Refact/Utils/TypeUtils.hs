@@ -158,7 +158,7 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
+--import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint.Utils
@@ -181,7 +181,7 @@ import qualified Name          as GHC
 import qualified NameSet       as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
-import qualified SrcLoc        as GHC
+--import qualified SrcLoc        as GHC
 import qualified UniqSet       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHC
@@ -548,7 +548,7 @@ hsFreeAndDeclaredPNs' t = do
 
           binds _ = mzero
 
-          match ((GHC.Match fn pats _mtype mrhs) :: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
+          match ((GHC.Match _fn pats _mtype mrhs) :: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
             = do
               (pf,pd) <- hsFreeAndDeclaredPNs' pats
               (rf,rd) <- hsFreeAndDeclaredPNs' mrhs
@@ -891,6 +891,8 @@ ClassDecl
       return $ (FN [],DN [GHC.unLoc n]) <> tfds
     lsig (GHC.L _ (GHC.SpecInstSig _ _)) = return emptyFD
     lsig (GHC.L _ (GHC.FixSig _)) = return emptyFD
+    lsig (GHC.L _ (GHC.PatSynSig _ _ _ _ _)) = error "lsig: PatSynSig: toImplement"
+    lsig (GHC.L _ (GHC.MinimalSig _ _)) = error "lsig FixSig: toImplement"
 
     -- -----------------------
 
@@ -1022,6 +1024,8 @@ ClassDecl
       = hsFreeAndDeclaredGhc b
     expr ((GHC.HsBracket (GHC.VarBr _ n)))
       = return (FN [],DN [n])
+    expr ((GHC.HsBracket (GHC.TExpBr _)))
+      = error "expr: GHC.HsBracket (GHC.TExpBr), to implement"
 
     expr ((GHC.HsRnBracketOut b _ps))
       = hsFreeAndDeclaredGhc b
@@ -1143,6 +1147,9 @@ ClassDecl
     hstype (GHC.HsExplicitTupleTy _ typs) = recurseList typs
     hstype (GHC.HsTyLit _) = return emptyFD
     hstype (GHC.HsWrapTy _ typ) = hsFreeAndDeclaredGhc typ
+    hstype (GHC.HsWildcardTy) = error "To implement: hstype, HsWildcardTy"
+    hstype (GHC.HsNamedWildcardTy _) = error "To implement: HsNamedWildcardTy"
+
 
 
     -- -----------------------
@@ -1184,7 +1191,7 @@ ClassDecl
     -- -----------------------
 
     lmatch :: GHC.LMatch GHC.Name (GHC.LHsExpr GHC.Name) -> RefactGhc (FreeNames,DeclaredNames)
-    lmatch (GHC.L _ _m@(GHC.Match fn pats _ rhs)) = do
+    lmatch (GHC.L _ _m@(GHC.Match _fn pats _ rhs)) = do
       (fp,DN dp) <- recurseList pats
       (FN fr,DN dr) <- hsFreeAndDeclaredGhc rhs
       let r = (fp,DN []) <> (FN (fr \\ (dr ++ dp)), DN [])
@@ -1288,7 +1295,7 @@ getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn _fvs)) = nub $ [n] 
   where
     dsn = getHsTyDefn defn
 -}
-getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats _atdefs _ _fvs))
+getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths _ats _atdefs _ _fvs))
   = nub $ [n] ++ ssn ++ msn -- ++ asn
   where
     getLSig :: GHC.LSig GHC.Name -> [GHC.Name]
@@ -1299,6 +1306,8 @@ getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths ats
     getLSig (GHC.L _ (GHC.SpecSig (GHC.L _ n2) _ _)) = [n2]
     getLSig (GHC.L _ (GHC.SpecInstSig _ _)) = []
     getLSig (GHC.L _ (GHC.FixSig _)) = []
+    getLSig (GHC.L _ (GHC.PatSynSig _ _ _ _ _)) = error "To implement: getLSig PatSynSig"
+    getLSig (GHC.L _ (GHC.MinimalSig _ _)) = error "To implement: getLSig PatSynSig"
 
     ssn = concatMap getLSig sigs
     msn = getDeclaredVars $ hsBinds meths
@@ -1482,7 +1491,7 @@ hsVisibleDs e t = do
     hslocalbinds _ = return (DN [])
 
     lmatch :: (GHC.LMatch GHC.Name (GHC.LHsExpr GHC.Name)) -> RefactGhc DeclaredNames
-    lmatch (GHC.L _ (GHC.Match fn pats _mtyp rhs))
+    lmatch (GHC.L _ (GHC.Match _fn pats _mtyp rhs))
       | findEntity e pats = do
            logm $ "hsVisibleDs.lmatch:in pats="
            return (DN []) -- TODO: extend this
@@ -1564,7 +1573,7 @@ hsVisibleDs e t = do
       | findEntity e tyfaminsts = hsVisibleDs e tyfaminsts
       | findEntity e dfaminsts  = hsVisibleDs e dfaminsts
       | otherwise = return (DN [])
-    instdecl (GHC.L _ (GHC.DataFamInstD (GHC.DataFamInstDecl ln pats defn _)))
+    instdecl (GHC.L _ (GHC.DataFamInstD (GHC.DataFamInstDecl _ln pats defn _)))
       | findEntity e pats = hsVisibleDs e pats
       | findEntity e defn = hsVisibleDs e defn
       | otherwise = return (DN [])
@@ -1576,6 +1585,7 @@ hsVisibleDs e t = do
     lhstype tv@(GHC.L _ (GHC.HsTyVar n))
       | findEntity e tv = return (DN [n])
       | otherwise       = return (DN [])
+    lhstype _ = error "lshtype: TypeUtils 1588"
 
     -- -----------------------
 
@@ -1669,7 +1679,7 @@ hsFDsFromInside t = do
 
      -- Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
      match :: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name) -> RefactGhc ([GHC.Name],[GHC.Name])
-     match ((GHC.Match fn pats _type rhs):: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) = do
+     match ((GHC.Match _fn pats _type rhs):: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) = do
        (pf, pd) <- hsFreeAndDeclaredPNs pats
        (rf, rd) <- hsFreeAndDeclaredPNs rhs
        return (nub (pf `union` (rf \\ pd)),
@@ -2081,7 +2091,7 @@ definingDeclsNames::
             [GHC.Name]   -- ^ The specified identifiers.
             ->[GHC.LHsBind GHC.Name] -- ^ A collection of declarations.
             ->Bool       -- ^ True means to include the type signature.
-            ->Bool       -- ^ True means to look at the local declarations as well. 
+            ->Bool       -- ^ True means to look at the local declarations as well.
             ->[GHC.LHsBind GHC.Name]  -- ^ The result.
 definingDeclsNames pns ds _incTypeSig recursive = concatMap defining ds
   where
@@ -2264,6 +2274,8 @@ instance UsedByRhs (GHC.HsBind GHC.Name) where
   usedByRhs (GHC.PatBind _ rhs _ _ _)       pns = findPNs pns rhs
   usedByRhs (GHC.VarBind _ rhs _)           pns = findPNs pns rhs
   usedByRhs (GHC.AbsBinds _ _ _ _ _)       _pns = False
+  usedByRhs (GHC.PatSynBind _)             _pns = error "To implement: usedByRhs PaySynBind"
+
 
 instance UsedByRhs (GHC.LHsBind GHC.Name) where
   usedByRhs (GHC.L _ bind) pns = usedByRhs bind pns
@@ -2366,7 +2378,7 @@ locToName' (row,col) t =
           | inScope pnt = Just (GHC.L l name)
         workerExpr _ = Nothing
 
-        workerLIE (pnt@(GHC.L l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
+        workerLIE (pnt@(GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
           | inScope pnt = Just (GHC.L ln name)
         workerLIE _ = Nothing
 
@@ -2511,7 +2523,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
                                        else
                                             (Just (hide, GHC.noLoc $ map mkNewEnt idNames)))
                 }
-     imps' = rmPreludeImports imp
+     _imps' = rmPreludeImports imp
 
      mkNewLSomething :: a -> GHC.Located a
      mkNewLSomething a = (GHC.L l a) where
@@ -2523,7 +2535,7 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
      mkNewLModuleName moduName = mkNewLSomething moduName
 
 -- ---------------------------------------------------------------------
-
+{-
 isEmptyGroup :: GHC.HsGroup id -> Bool
 isEmptyGroup x = (==0) $ sum $
    [valds, tyclds, instds, derivds, fixds, defds, fords, warnds, annds, ruleds, vects, docs]
@@ -2555,6 +2567,7 @@ isEmptyGroup x = (==0) $ sum $
     vects = length $ GHC.hs_vects x
 
     docs = length $ GHC.hs_docs x
+-}
 
 
 -- | Remove ImportDecl from the imports list, commonly returned from a RenamedSource type, so it can
@@ -2623,7 +2636,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
   addTopLevelDecl :: (HsValBinds t)
        => (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
        -> t -> RefactGhc t
-  addTopLevelDecl (newDecl, maybeSig, maybeDeclToks) parent'
+  addTopLevelDecl (newDecl, maybeSig, _maybeDeclToks) parent'
     = do let binds = hsValBinds parent'
              decls = hsBinds parent'
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- was || isTypeSig x -}) decls
@@ -2631,7 +2644,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
          -- newToks <- makeNewToks (newDecl,maybeSig,maybeDeclToks)
          -- logm $ "addTopLevelDecl:newToks=" ++ (show newToks)
 
-         let Just sspan = if (emptyList decls2)
+         let Just _sspan = if (emptyList decls2)
                             then getSrcSpan (glast "addTopLevelDecl" decls1)
                             else getSrcSpan (ghead "addTopLevelDecl" decls2)
 
@@ -2645,13 +2658,13 @@ addDecl parent pn (decl, msig, declToks) topLevel
       -> GHC.Name -- ^Name to add the declaration after
       -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken]) -- ^declaration and maybe sig/tokens
       -> RefactGhc t -- ^updated AST
-  appendDecl parent' pn' (newDecl, maybeSig, declToks')
+  appendDecl parent' pn' (newDecl, maybeSig, _declToks')
     = do let binds = hsValBinds parent'
          -- logm $ "appendDecl:declToks=" ++ (show declToks')
          -- newToks <- makeNewToks (newDecl,maybeSig,declToks')
          -- logm $ "appendDecl:newToks=" ++ (show newToks)
 
-         let Just sspan = getSrcSpan $ ghead "appendDecl" after
+         let Just _sspan = getSrcSpan $ ghead "appendDecl" after
          -- decl' <- putDeclToksAfterSpan sspan newDecl (PlaceOffset 2 0 2) newToks
          let decl' = newDecl
 
@@ -2671,11 +2684,11 @@ addDecl parent pn (decl, msig, declToks) topLevel
   addLocalDecl :: (HsValBinds t)
                => t -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
                -> RefactGhc t
-  addLocalDecl parent' (newFun, maybeSig, newFunToks)
+  addLocalDecl parent' (newFun, maybeSig, _newFunToks)
     =do
         let binds = hsValBinds parent'
 
-        let (startLoc@((_,prevCol)),endLoc)
+        let (((_,_prevCol)),_endLoc)
              = if (emptyList localDecls)
                  then getStartEndLoc parent'
                  else getStartEndLoc localDecls
@@ -2753,7 +2766,7 @@ data ImportType = Hide     -- ^ Used for addHiding
                 | Import   -- ^ Used for addItemsToImport
 
 -- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
---   specified module name. This function does nothing if the import declaration does not have an explicit entity list. 
+--   specified module name. This function does nothing if the import declaration does not have an explicit entity list.
 addItemsToImport::
     GHC.ModuleName       -- ^ The imported module name
   ->GHC.RenamedSource    -- ^ The current module
@@ -2764,7 +2777,7 @@ addItemsToImport a b c = addItemsToImport' a b c Import
 
 -- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
 --   specified module name. If the ImportType argument is Hide, then the items will be added to the "hiding"
---   list. If it is Import, they will be added to the explicit import entries. This function does nothing if 
+--   list. If it is Import, they will be added to the explicit import entries. This function does nothing if
 --   the import declaration does not have an explicit entity list and ImportType is Import.
 addItemsToImport'::
     GHC.ModuleName       -- ^ The imported module name
@@ -2782,11 +2795,11 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
              Import -> False
 
     inImport :: GHC.LImportDecl GHC.Name -> RefactGhc (GHC.LImportDecl GHC.Name)
-    inImport imp@(GHC.L _ (GHC.ImportDecl st (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit _as h))
+    inImport imp@(GHC.L _ (GHC.ImportDecl _st (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit _as h))
       | serverModName == modName  && not isQualified -- && (if isJust pn then findPN (gfromJust "addItemsToImport" pn) h else True)
        = case h of
            Nothing                         -> insertEnts imp [] True
-           Just (_isHide, (GHC.L le ents)) -> insertEnts imp ents False
+           Just (_isHide, (GHC.L _le ents)) -> insertEnts imp ents False
     inImport x = return x
 
     insertEnts ::
@@ -2886,19 +2899,19 @@ addFormalParams place newParams
   = do
        -- logm $ "addFormalParams:(place,newParams):" ++ (SYB.showData SYB.Renamer 0 (place,newParams))
        -- newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
-       let newStr = (prettyprintPatList prettyprint True newParams)
+       let _newStr = (prettyprintPatList prettyprint True newParams)
 
        case place of
-         Left l@(GHC.RealSrcSpan _ss) -> do
+         Left (GHC.RealSrcSpan _ss) -> do
            -- let newToks' = tokenise (gs2ss l) 0 False newStr
            -- let newToks = map markToken newToks'
            -- _ <- addToksAfterSpan l PlaceAdjacent newToks
            return ()
          Left ss -> error $ "addFormalParams: expecting RealSrcSpan, got:" ++ (showGhc ss)
-         Right pats -> do
-           let l = GHC.combineLocs (ghead "addFormalParams" pats) (glast "addFormalParams" pats)
+         Right _pats -> do
+           -- let l = GHC.combineLocs (ghead "addFormalParams" pats) (glast "addFormalParams" pats)
            -- logm $ "addFormalParams:(l,pats)=" ++ (SYB.showData SYB.Renamer 0 (l,pats))
-           toks <- getToksForSpan l
+           -- toks <- getToksForSpan l
 
            {-
            let oldStr = GHC.showRichTokenStream $ rmOffsetFromToks toks
@@ -3042,14 +3055,14 @@ duplicateDecl :: (SYB.Data t) =>
 duplicateDecl decls sigs n newFunName
  = do
       let Just sspan = getSrcSpan funBinding
-      toks <- getToksForSpan sspan
+      -- toks <- getToksForSpan sspan
       -- lay <- getLayoutForSpan sspan
 
-      newSpan <- case typeSig of
-        [] -> return sspan
-        _  -> do
-          let Just sspanSig = getSrcSpan typeSig
-          toksSig <- getToksForSpan sspanSig
+      _ <- case typeSig of
+         [] -> return sspan
+         _  -> do
+          -- let Just sspanSig = getSrcSpan typeSig
+          -- toksSig <- getToksForSpan sspanSig
           -- laySig  <- getLayoutForSpan sspanSig
 
           {-
@@ -3063,10 +3076,11 @@ duplicateDecl decls sigs n newFunName
           let [(GHC.L sspanSig' _)] = typeSig
 
           return sspanSig'
-
+      {-
       let rowOffset = case typeSig of
                         [] -> 2
                         _  -> 1
+      -}
 
       {-
       let colStart  = tokenCol $ ghead "duplicateDecl.decl"
@@ -3148,7 +3162,7 @@ rmDecl pn incSig t = do
     inDecls x = return x
 
     inLet :: GHC.LHsExpr GHC.Name -> RefactGhc (GHC.LHsExpr GHC.Name)
-    inLet (GHC.L ss (GHC.HsLet localDecls expr@(GHC.L l _)))
+    inLet (GHC.L ss (GHC.HsLet localDecls expr@(GHC.L _ _)))
       | not $ emptyList (snd (break (defines pn) (hsBinds localDecls)))
       = do
          -- putSrcSpan ss -- Make sure the tree includes a SrcSpan for
@@ -3208,7 +3222,7 @@ rmDecl pn incSig t = do
     -- |Remove a location declaration that defines pn.
     rmLocalDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
                 -> RefactGhc [GHC.LHsBind GHC.Name]
-    rmLocalDecl decl@(GHC.L sspan _) decls
+    rmLocalDecl decl@(GHC.L _sspan _) decls
      = do
 
          -- TODO: The let/in version is wrapped in a GHC.HsLet expression.
@@ -3659,7 +3673,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
 
     -- The param l is only useful for the start of the token pos
     worker :: Bool -> GHC.SrcSpan -> Maybe (GHC.ModuleName, GHC.OccName) -> RefactGhc ()
-    worker useQual' l mmo
+    worker _useQual' _l _mmo
      = do if updateTokens
            then do
              {-
@@ -3898,7 +3912,7 @@ getToksForDecl decl toks
 getDeclAndToks :: (HsValBinds t)
      => GHC.Name -> Bool -> [PosToken] -> t
      -> ([GHC.LHsBind GHC.Name],[PosToken])
-getDeclAndToks pn _incSig toks t =
+getDeclAndToks pn _incSig _toks t =
   let
     decls     = definingDeclsNames [pn] (hsBinds t) True True
     -- declToks  = getToksForDecl decls toks
@@ -3912,7 +3926,7 @@ getDeclAndToks pn _incSig toks t =
 -- | Get the signature and tokens for a declaration
 getSigAndToks :: (SYB.Data t) => GHC.Name -> t -> [PosToken]
      -> Maybe (GHC.LSig GHC.Name,[PosToken])
-getSigAndToks pn t toks
+getSigAndToks pn t _toks
   = case (getSig pn t) of
       Nothing -> Nothing
       -- Just sig -> Just (sig, removeToksOffset $ getToksForDecl sig toks)

@@ -39,12 +39,12 @@ import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
 -- import qualified MonadUtils    as GHC
 
-import Control.Monad.Base ( liftBase)
-import Control.Arrow (first)
+--import Control.Monad.Base ( liftBase)
+--import Control.Arrow (first)
 import Control.Applicative
 import Control.Monad.State
 import Data.List
-import Data.Time.Clock
+--import Data.Time.Clock
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
@@ -210,7 +210,7 @@ instance ExceptionMonad (StateT RefactState IO) where
 -- | Initialise the GHC session, when starting a refactoring.
 --   This should never be called directly.
 initGhcSession :: [FilePath] -> RefactGhc ()
-initGhcSession importDirs = do
+initGhcSession _importDirs = do
     settings <- getRefacSettings
     df <- GHC.getSessionDynFlags
     let df2 = GHC.gopt_set df GHC.Opt_KeepRawTokenStream
@@ -378,6 +378,7 @@ runRefactGhc comp initState opt = do
       Left err -> error (show err)
       Right a -> return (a,s)
 
+{-
 -- | Run a @GhcModT m@ computation.
 runGhcModTHaRe :: IOish m
            => Options
@@ -396,6 +397,7 @@ runGhcModTHaRe opt action = gbracket newEnv delEnv $ \env -> do
  where
    newEnv = liftBase $ newGhcModEnv opt =<< getCurrentDirectory
    delEnv = liftBase . cleanupGhcModEnv
+-}
 
 {-
 newGhcModEnv :: Options -> FilePath -> IO GhcModEnv
@@ -463,10 +465,12 @@ logm string = do
      liftIO $ warningM "HaRe" (string)
   return ()
 
+{-
 timeStamp :: IO String
 timeStamp = do
   k <- getCurrentTime
   return (show k)
+-}
 
 -- ---------------------------------------------------------------------
 

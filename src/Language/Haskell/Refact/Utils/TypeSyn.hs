@@ -59,7 +59,7 @@ instance GHC.Outputable (GHC.MatchGroup GHC.Name (GHC.LHsExpr GHC.Name)) where
 
 
 instance GHC.Outputable (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
-  ppr (GHC.Match fn pats mtyp grhs) = GHC.text "Match" GHC.<+> GHC.ppr pats
+  ppr (GHC.Match _fn pats mtyp grhs) = GHC.text "Match" GHC.<+> GHC.ppr pats
                                                     GHC.<+> GHC.ppr mtyp
                                                     GHC.<+> GHC.ppr grhs
 

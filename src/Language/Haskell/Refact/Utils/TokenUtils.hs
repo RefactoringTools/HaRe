@@ -38,10 +38,10 @@ module Language.Haskell.Refact.Utils.TokenUtils (
 -- import qualified FastString    as GHC
 import qualified GHC           as GHC
 
-import qualified Data.Generics as SYB
-import qualified GHC.SYB.Utils as SYB
+--import qualified Data.Generics as SYB
+--import qualified GHC.SYB.Utils as SYB
 
-import Language.Haskell.Refact.Utils.GhcUtils
+--import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
@@ -53,8 +53,8 @@ import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.Utils
 -}
 
-import Data.Tree
-import qualified Data.Map as Map
+--import Data.Tree
+--import qualified Data.Map as Map
 
 -- import Debug.Trace
 -- debug = flip trace
@@ -240,19 +240,19 @@ syncAST ast@(GHC.L l _t) fspan = GHC.L sspan xx
     lmatch (GHC.L s m)      = (GHC.L (syncSpan s) m) :: GHC.LMatch GHC.Name
 -}
 -- ---------------------------------------------------------------------
-
+{-
 addOffsetToSrcSpan :: (Int,Int) -> GHC.SrcSpan -> GHC.SrcSpan
 addOffsetToSrcSpan (lineOffset,colOffset) sspan = sspan'
   where
    sspan' =  case sspan of
      GHC.RealSrcSpan ss ->
        let
-         locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) (lineOffset + GHC.srcSpanStartLine ss) (colOffset + GHC.srcSpanStartCol ss) 
-         locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) (lineOffset + GHC.srcSpanEndLine ss)  (colOffset + GHC.srcSpanEndCol ss) 
+         locStart = GHC.mkSrcLoc (GHC.srcSpanFile ss) (lineOffset + GHC.srcSpanStartLine ss) (colOffset + GHC.srcSpanStartCol ss)
+         locEnd   = GHC.mkSrcLoc (GHC.srcSpanFile ss) (lineOffset + GHC.srcSpanEndLine ss)  (colOffset + GHC.srcSpanEndCol ss)
        in
          GHC.mkSrcSpan locStart locEnd
      _ -> sspan
-
+-}
 -- ---------------------------------------------------------------------
 
 -- EOF
