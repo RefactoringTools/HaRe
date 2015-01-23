@@ -2966,79 +2966,79 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
 {-
 Required end result : (sq pow) x + sumSquares xs
 
-                (L {test/testdata/LiftToToplevel/D2.hs:6:21-46} 
-                 (OpApp 
+                (L {test/testdata/LiftToToplevel/D2.hs:6:21-46}
+                 (OpApp
 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-30} 
-                   (HsApp 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-28} 
-                     (HsPar 
-                      (L {test/testdata/LiftToToplevel/D2.hs:6:22-27} 
-                       (HsApp 
-                        (L {test/testdata/LiftToToplevel/D2.hs:6:22-23} 
-                         (HsVar {Name: LiftToToplevel.D2.sq})) 
-                        (L {test/testdata/LiftToToplevel/D2.hs:6:25-27} 
-                         (HsVar {Name: pow})))))) 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:30} 
-                     (HsVar {Name: x})))) 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-30}
+                   (HsApp
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-28}
+                     (HsPar
+                      (L {test/testdata/LiftToToplevel/D2.hs:6:22-27}
+                       (HsApp
+                        (L {test/testdata/LiftToToplevel/D2.hs:6:22-23}
+                         (HsVar {Name: LiftToToplevel.D2.sq}))
+                        (L {test/testdata/LiftToToplevel/D2.hs:6:25-27}
+                         (HsVar {Name: pow}))))))
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:30}
+                     (HsVar {Name: x}))))
 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:32} 
-                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6} 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:34-46} 
-                   (HsApp 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:34-43} 
-                     (HsVar {Name: LiftToToplevel.D2.sumSquares})) 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:45-46} 
-                     (HsVar {Name: xs}))))))))] 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:32}
+                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6}
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:34-46}
+                   (HsApp
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:34-43}
+                     (HsVar {Name: LiftToToplevel.D2.sumSquares}))
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:45-46}
+                     (HsVar {Name: xs}))))))))]
 
 Alternate, no parens : sq pow x + sumSquares xs
 
-                (L {test/testdata/LiftToToplevel/D2.hs:6:21-44} 
-                 (OpApp 
+                (L {test/testdata/LiftToToplevel/D2.hs:6:21-44}
+                 (OpApp
 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-28} 
-                   (HsApp 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-26} 
-                     (HsApp 
-                      (L {test/testdata/LiftToToplevel/D2.hs:6:21-22} 
-                       (HsVar {Name: LiftToToplevel.D2.sq})) 
-                      (L {test/testdata/LiftToToplevel/D2.hs:6:24-26} 
-                       (HsVar {Name: pow})))) 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:28} 
-                     (HsVar {Name: x})))) 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-28}
+                   (HsApp
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-26}
+                     (HsApp
+                      (L {test/testdata/LiftToToplevel/D2.hs:6:21-22}
+                       (HsVar {Name: LiftToToplevel.D2.sq}))
+                      (L {test/testdata/LiftToToplevel/D2.hs:6:24-26}
+                       (HsVar {Name: pow}))))
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:28}
+                     (HsVar {Name: x}))))
 
 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:30} 
-                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6} 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:32-44} 
-                   (HsApp 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:32-41} 
-                     (HsVar {Name: LiftToToplevel.D2.sumSquares})) 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:43-44} 
-                     (HsVar {Name: xs}))))))))] 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:30}
+                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6}
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:32-44}
+                   (HsApp
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:32-41}
+                     (HsVar {Name: LiftToToplevel.D2.sumSquares}))
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:43-44}
+                     (HsVar {Name: xs}))))))))]
 
 
 Original : sq x + sumSquares xs
 
-                (L {test/testdata/LiftToToplevel/D2.hs:6:21-40} 
-                 (OpApp 
+                (L {test/testdata/LiftToToplevel/D2.hs:6:21-40}
+                 (OpApp
 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-24} 
-                   (HsApp 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-22} 
-                     (HsVar {Name: sq})) 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:24} 
-                     (HsVar {Name: x})))) 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:21-24}
+                   (HsApp
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:21-22}
+                     (HsVar {Name: sq}))
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:24}
+                     (HsVar {Name: x}))))
 
 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:26} 
-                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6} 
-                  (L {test/testdata/LiftToToplevel/D2.hs:6:28-40} 
-                   (HsApp 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:28-37} 
-                     (HsVar {Name: LiftToToplevel.D2.sumSquares})) 
-                    (L {test/testdata/LiftToToplevel/D2.hs:6:39-40} 
-                     (HsVar {Name: xs}))))))))] 
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:26}
+                   (HsVar {Name: GHC.Num.+})) {Fixity: infixl 6}
+                  (L {test/testdata/LiftToToplevel/D2.hs:6:28-40}
+                   (HsApp
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:28-37}
+                     (HsVar {Name: LiftToToplevel.D2.sumSquares}))
+                    (L {test/testdata/LiftToToplevel/D2.hs:6:39-40}
+                     (HsVar {Name: xs}))))))))]
 
 -}
 
@@ -3256,8 +3256,8 @@ rmDecl pn incSig t = do
                  rmEndPos   = tokenPosEnd whereOrLet
                  rmStartPos = tokenPos whereOrLet
              -}
-             -- logm $ "rmLocalDecl: where/let tokens:" ++ (show (_toks1,toks2)) -- ++AZ++ 
-             -- logm $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++ 
+             -- logm $ "rmLocalDecl: where/let tokens:" ++ (show (_toks1,toks2)) -- ++AZ++
+             -- logm $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++
              -- removeToksForPos (rmStartPos,rmEndPos)
 
              return ()
@@ -3356,19 +3356,19 @@ rmTypeSig pn t
                 (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:7-14}
                  (TypeSig
                   [
-                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:7} {Name: h})] 
+                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:7} {Name: h})]
                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:12-14}
                    (HsTyVar {Name: GHC.Types.Int})))),
                 (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:7-14}
                  (TypeSig
                   [
-                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:7} {Name: t})] 
+                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:7} {Name: t})]
                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:12-14}
                    (HsTyVar {Name: GHC.Types.Int})))),
                 (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:7-22}
                  (TypeSig
                   [
-                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:7-9} {Name: tup})] 
+                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:7-9} {Name: tup})]
                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:14-22}
                    (HsTupleTy
                     (HsBoxedOrConstraintTuple)

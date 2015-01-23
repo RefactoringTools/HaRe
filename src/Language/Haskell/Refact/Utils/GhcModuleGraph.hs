@@ -126,7 +126,7 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
             , let out_keys = out_edge_keys hs_boot_key (map unLoc (ms_home_srcimps s)) ++
                              out_edge_keys HsSrcFile   (map unLoc (ms_home_imps s)) ++
                              (-- see [boot-edges] below
-                              if drop_hs_boot_nodes || ms_hsc_src s == HsBootFile 
+                              if drop_hs_boot_nodes || ms_hsc_src s == HsBootFile
                               then []
                               else case lookup_key HsBootFile (ms_mod_name s) of
                                     Nothing -> []

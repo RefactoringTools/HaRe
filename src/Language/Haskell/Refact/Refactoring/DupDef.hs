@@ -49,7 +49,7 @@ comp fileName newName (row, col) = do
                           if modIsExported modName renamed
                            then do clients <- clientModsAndFiles modName
                                    logm ("DupDef: clients=" ++ (showGhc clients)) -- ++AZ++ debug
-                                   refactoredClients <- mapM (refactorInClientMod (GHC.unLoc pn) modName 
+                                   refactoredClients <- mapM (refactorInClientMod (GHC.unLoc pn) modName
                                                              (findNewPName newName renamed')) clients
                                    return $ refactoredMod:refactoredClients
                            else  return [refactoredMod]
@@ -139,7 +139,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
                 -- logm ("DupDef: nameAlreadyInScope =" ++ (show nameAlreadyInScope)) -- ++AZ++ debug
                 -- logm ("DupDef: ln =" ++ (show ln)) -- ++AZ++ debug
 
-                if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls) 
+                if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls)
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
                    else do newBinding <- duplicateDecl declsr parentr n newNameGhc
