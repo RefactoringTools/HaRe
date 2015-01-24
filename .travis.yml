@@ -20,7 +20,7 @@ before_install:
    else
      travis_retry sudo apt-get install happy alex
    fi
-  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
  - |
    if [ $GHCVER = "head" ] || [ ${GHCVER%.*} = "7.8" ] || [ ${GHCVER%.*} = "7.10" ]; then
      travis_retry sudo apt-get install happy-1.19.4 alex-3.1.3
