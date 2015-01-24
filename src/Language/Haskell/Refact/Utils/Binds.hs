@@ -44,7 +44,7 @@ module Language.Haskell.Refact.Utils.Binds
    , HsValBinds(..)
  ) where
 
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
+--import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.GHC.ExactPrint.Utils
 
 -- Modules from GHC
@@ -245,6 +245,7 @@ instance HsValBinds (GHC.LHsBind GHC.Name) where
   hsValBinds (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsValBinds rhs
   hsValBinds (GHC.L _ (GHC.VarBind _ rhs _))           = hsValBinds rhs
   hsValBinds (GHC.L _ (GHC.AbsBinds _ _ _ _ binds))    = hsValBinds binds
+  hsValBinds (GHC.L _ (GHC.PatSynBind _))      = error "hsValBinds: PaySynBind to implement"
 
 
   replaceValBinds (GHC.L l (GHC.FunBind a b matches c d e)) newBinds
@@ -255,6 +256,7 @@ instance HsValBinds (GHC.LHsBind GHC.Name) where
                = (GHC.L l (GHC.VarBind a (replaceValBinds rhs newBinds) b))
   replaceValBinds (GHC.L l (GHC.AbsBinds a b c d binds)) newBinds
                = (GHC.L l (GHC.AbsBinds a b c d (replaceValBinds binds newBinds)))
+  replaceValBinds (GHC.L _ (GHC.PatSynBind _)) _ = error "replaceValBind: PatSynBind to implement"
 
   hsTyDecls _ = []
 
@@ -384,14 +386,14 @@ instance HsValBinds [GHC.LDataFamInstDecl GHC.Name] where
 
 instance HsValBinds [GHC.LTyFamInstEqn GHC.Name] where
   hsValBinds _ = error $ "hsValBinds [GHC.LTyFamInstEqn GHC.Name] must pull out tcdMeths"
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LTyFamInstEqn GHC.Name] undefined for:"
+  replaceValBinds _old _new = error $ "replaceValBinds [GHC.LTyFamInstEqn GHC.Name] undefined for:"
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
 instance HsValBinds (GHC.LTyFamInstEqn GHC.Name) where
   hsValBinds _ = error $ "hsValBinds (GHC.LTyFamInstEqn GHC.Name) must pull out tcdMeths"
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LTyFamInstEqn GHC.Name) undefined for:"
+  replaceValBinds _old _new = error $ "replaceValBinds (GHC.LTyFamInstEqn GHC.Name) undefined for:"
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------

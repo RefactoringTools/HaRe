@@ -120,7 +120,7 @@
     returns wrong point.
     [2013-07-23 Tue]
     [[file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TypeUtils.hs::logm%20$%20"renamePN:***ERROR**:do%20not%20use%20getSrcSpan"][file:~/mysrc/github/alanz/HaRe/src/Language/Haskell/Refact/Utils/TypeUtils.hs::logm $ "renamePN:***ERROR**:do not use getSrcSpan"]]
-    
+
 *** DONE cmdtheline 0.2.2 has broken output for --help
     [2013-07-31 Wed]
     [[file:~/mysrc/github/erudify/colog/colog.cabal::cmdtheline%20>%3D%200.2%20&&%20<%200.2.2,][file:~/mysrc/github/erudify/colog/colog.cabal::cmdtheline >= 0.2 && < 0.2.2,]]

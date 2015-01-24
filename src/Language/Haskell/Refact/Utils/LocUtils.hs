@@ -113,8 +113,8 @@ import qualified SrcLoc        as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
+--import Language.Haskell.Refact.Utils.GhcUtils
+--import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
@@ -243,9 +243,11 @@ compressPreNewLns toks = toks
 compressEndNewLns::[PosToken]->[PosToken]
 compressEndNewLns toks = toks
 
+{-
 ---Restriction: the refactorer should not modify refactorer-modified/created tokens.
 defaultToken :: PosToken
 defaultToken = (GHC.noLoc (GHC.ITlineComment "defaultToken"), "defaultToken")
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -367,11 +369,12 @@ deleteToks toks startPos endPos
                                     else ts
 -}
 -- ---------------------------------------------------------------------
-
+{-
 -- | Adjust the layout to compensate the change in the token stream.
 adjustLayout:: [PosToken] -> Int -> Int -> [PosToken]
 adjustLayout [] _ _ = []
 adjustLayout toks _oldOffset _newOffset = toks -- ++AZ++ temporary while plumbing the rest
+-}
 
 -- | remove at most n white space tokens from the beginning of ts
 doRmWhites::Int -> [PosToken] -> [PosToken]

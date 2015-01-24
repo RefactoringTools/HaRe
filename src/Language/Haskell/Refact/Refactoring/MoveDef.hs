@@ -241,7 +241,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
        {-step1: divide the module's top level declaration list into three parts:
          'parent' is the top level declaration containing the lifted declaration,
          'before' and `after` are those declarations before and after 'parent'.
-         step2: get the declarations to be lifted from parent, bind it to liftedDecls 
+         step2: get the declarations to be lifted from parent, bind it to liftedDecls
          step3: remove the lifted declarations from parent and extra arguments may be introduce.
          step4. test whether there are any names need to be renamed.
        -}
@@ -519,7 +519,7 @@ namesNeedToBeHided clientModule modNames pns = do
     By 'lifting one-level up' ,I mean:
 
     case1: In a module (HsModule SrcLoc ModuleName (Maybe [HsExportSpecI i]) [HsImportDeclI i] ds):
-           A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
+           A local declaration D  will be lifted to the same level as the 'ds', if D is in the
            where clause of one of ds's element declaration.
 
         new: (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
@@ -528,7 +528,7 @@ namesNeedToBeHided clientModule modNames pns = do
 
 
     case2: In a match ( HsMatch SrcLoc i [p] (HsRhs e) ds) :
-          A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
+          A local declaration D  will be lifted to the same level as the 'ds', if D is in the
            where clause of one of ds's element declaration.
            A declaration D,say,in the rhs expression 'e' will be lifted to 'ds' if D is Not local to
            other declaration list in 'e'
@@ -538,7 +538,7 @@ namesNeedToBeHided clientModule modNames pns = do
 
 
     case3: In a pattern  binding (HsPatBind SrcLoc p (HsRhs e) ds):
-           A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
+           A local declaration D  will be lifted to the same level as the 'ds', if D is in the
            where clause of one of ds's element declaration.
            A declaration D,say,in the rhs expression 'e' will be lifted to 'ds' if D is Not local to
            other declaration list in 'e'
@@ -548,7 +548,7 @@ namesNeedToBeHided clientModule modNames pns = do
 
 
     case4: In the Let expression (Exp (HsLet ds e):
-           A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
+           A local declaration D  will be lifted to the same level as the 'ds', if D is in the
            where clause of one of ds's element declaration.
            A declaration D, say, in the expression 'e' will be lifted to 'ds' if D is not local to
            other declaration list in 'e'
@@ -557,9 +557,9 @@ namesNeedToBeHided clientModule modNames pns = do
 
 
     case5: In the case Alternative expression:(HsAlt loc p rhs ds)
-           A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
+           A local declaration D  will be lifted to the same level as the 'ds', if D is in the
            where clause of one of ds's element declaration.
-           A declaration D in 'rhs' will be lifted to 'ds' if D is not local to other declaration 
+           A declaration D in 'rhs' will be lifted to 'ds' if D is not local to other declaration
            list in 'rhs'.
 
         new: HsCase (LHsExpr id) (MatchGroup id)
@@ -567,9 +567,9 @@ namesNeedToBeHided clientModule modNames pns = do
 
 
     case6: In the do statement expression:(HsLetStmt ds stmts)
-           A local declaration D  will be lifted to the same level as the 'ds', if D is in the 
+           A local declaration D  will be lifted to the same level as the 'ds', if D is in the
            where clause of one of ds's element declaration.
-           A declaration D in 'stmts' will be lifted to 'ds' if D is not local to other declaration 
+           A declaration D in 'stmts' will be lifted to 'ds' if D is not local to other declaration
            list in 'stmts'.
 
         new: LetStmt (HsLocalBindsLR idL idR)
@@ -708,7 +708,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         then do
                                 (parent',liftedDecls',_mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
                                                                      parent liftedDecls Nothing
-                                --True means the new decl will be at the same level with its parant. 
+                                --True means the new decl will be at the same level with its parant.
                                 dest' <- moveDecl1 (replaceBinds dest (before++parent'++after))
                                            (Just (ghead "worker" (definedPNs (ghead "worker" parent'))))
                                            [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
@@ -746,7 +746,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         then do
                                 (parent',liftedDecls',_mLiftedSigs')
                                     <- addParamsToParentAndLiftedDecl n dd dest liftedDecls Nothing
-                                --True means the new decl will be at the same level with its parant. 
+                                --True means the new decl will be at the same level with its parant.
                                 parent'' <- moveDecl1 parent' Nothing
                                              [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
                                 return parent''
@@ -1115,9 +1115,9 @@ HsWrapTy HsTyWrapper (HsType name)
 --------------------------------End of Lifting-----------------------------------------
 
 {-Refactoring : demote a function/pattern binding(simpe or complex) to the declaration where it is used.
-  Descritption: if a declaration D, say, is only used by another declaration F,say, then D can be 
+  Descritption: if a declaration D, say, is only used by another declaration F,say, then D can be
                 demoted into the local declaration list (where clause) in F.
-                So currently, D can not be demoted if more than one declaration use it. 
+                So currently, D can not be demoted if more than one declaration use it.
 
                 In a multi-module context, a top-level definition can not be demoted if it is used
                 by other modules. In the case that the demoted identifer is in the hiding list of
@@ -1411,7 +1411,7 @@ doDemoting' t pn = do
              = do applyTP (once_tdTP (failTP `adhocTP` dupInMatch
                                              `adhocTP` dupInPat)) decls
                   --error (show decls' ++ "\n" ++ prettyprint decls')
-                  -- rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) decls' pns 
+                  -- rmDecl (ghead "moveDecl3"  pns) False =<<foldM (flip rmTypeSig) decls' pns
              -}
                where
                  -- dupInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
@@ -1530,7 +1530,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
          let matches=concatMap matchesInDecls [GHC.unLoc demotedDecls]
              pn=ghead "foldParams" pns    --pns /=[]
          params <- allParams pn rhs []
-         if (length.nub.map length) params==1                  -- have same number of param 
+         if (length.nub.map length) params==1                  -- have same number of param
              && ((length matches)==1)      -- only one 'match' in the demoted declaration
            then do
                    let patsInDemotedDecls=(patsInMatch.(ghead "foldParams")) matches
@@ -1565,7 +1565,7 @@ foldParams pns ((GHC.Match pats mt rhs)::GHC.Match GHC.Name) _decls demotedDecls
                    logm $ "MoveDef.foldParams addDecl done 1"
                    return (GHC.Match pats mt rhs'')
            else  do  -- moveDecl pns match False decls True
-                     -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding 
+                     -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding
                      -- logm $ "MoveDef.foldParams about to addDecl:dtoks=" ++ (show dtoks)
                      -- drawTokenTree "" -- ++AZ++ debug
                      rhs' <- addDecl rhs Nothing (demotedDecls,dsig,dtoks) False

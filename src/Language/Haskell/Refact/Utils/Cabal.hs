@@ -12,29 +12,29 @@ module Language.Haskell.Refact.Utils.Cabal
 -- import Language.Haskell.GhcMod.GhcPkg
 -- import Language.Haskell.GhcMod.Types
 
-import System.Directory (getCurrentDirectory, removeDirectoryRecursive)
+--import System.Directory (getCurrentDirectory, removeDirectoryRecursive)
 import Language.Haskell.GhcMod.Internal
-import Language.Haskell.GhcMod
+--import Language.Haskell.GhcMod
 import MonadUtils (liftIO)
-import Control.Applicative ((<$>))
-import qualified Control.Exception as E
+--import Control.Applicative ((<$>))
+--import qualified Control.Exception as E
 import Control.Monad (filterM)
-import Data.Maybe (maybeToList)
-import Data.Set (fromList, toList)
-import Distribution.Package (Dependency(Dependency)
-                           , PackageName(PackageName))
-import qualified Distribution.Package as C
-import Distribution.PackageDescription (PackageDescription, BuildInfo, TestSuite, TestSuiteInterface(..), Executable)
+--import Data.Maybe (maybeToList)
+--import Data.Set (fromList, toList)
+--import Distribution.Package (Dependency(Dependency)
+--                           , PackageName(PackageName))
+--import qualified Distribution.Package as C
+import Distribution.PackageDescription (PackageDescription, TestSuite, TestSuiteInterface(..), Executable)
 import qualified Distribution.PackageDescription as P
-import Distribution.PackageDescription.Configuration (finalizePackageDescription)
-import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.Simple.Compiler (CompilerInfo(..),AbiTag(..),CompilerId(..), CompilerFlavor(..))
-import Distribution.Simple.Program as C (ghcProgram)
-import Distribution.Simple.Program.Types (programName, programFindVersion)
-import Distribution.System (buildPlatform)
-import Distribution.Text (display)
-import Distribution.Verbosity (silent)
-import Distribution.Version (Version)
+--import Distribution.PackageDescription.Configuration (finalizePackageDescription)
+--import Distribution.PackageDescription.Parse (readPackageDescription)
+--import Distribution.Simple.Compiler (CompilerInfo(..),AbiTag(..),CompilerId(..), CompilerFlavor(..))
+--import Distribution.Simple.Program as C (ghcProgram)
+--import Distribution.Simple.Program.Types (programName, programFindVersion)
+--import Distribution.System (buildPlatform)
+--import Distribution.Text (display)
+--import Distribution.Verbosity (silent)
+--import Distribution.Version (Version)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 

@@ -13,15 +13,15 @@ module Language.Haskell.Refact.Utils.ExactPrint
 
 import qualified FastString    as GHC
 import qualified GHC
-import qualified Outputable    as GHC
+--import qualified Outputable    as GHC
 
 import qualified Data.Generics as SYB
-import qualified GHC.SYB.Utils as SYB
+--import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.GHC.ExactPrint
+--import Language.Haskell.Refact.Utils.MonadFunctions
+--import Language.Haskell.Refact.Utils.TypeSyn
+--import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
@@ -132,9 +132,10 @@ setLocatedDp :: (SYB.Data a) => AnnsEP -> GHC.Located a -> DeltaPos -> AnnsEP
 setLocatedDp aane (GHC.L l v) dp = setOffset aane ((l,annGetConstr v),dp)
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |The constructor for 'GHC.L'
 locatedConstructor :: SYB.Constr
 locatedConstructor = head (SYB.dataTypeConstrs (SYB.dataTypeOf (GHC.noLoc ())))
+-}
 
 -- ---------------------------------------------------------------------

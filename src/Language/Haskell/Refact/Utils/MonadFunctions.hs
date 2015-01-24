@@ -77,12 +77,12 @@ import Control.Monad.State
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 
-import qualified Data.Data as SYB
+--import qualified Data.Data as SYB
 
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
+--import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.TokenUtils
+--import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
@@ -96,7 +96,7 @@ import Language.Haskell.TokenUtils.Utils
 -}
 
 -- import Data.Time.Clock
-import Data.Tree
+--import Data.Tree
 -- import System.Log.Logger
 import qualified Data.Map as Map
 
@@ -105,7 +105,7 @@ import qualified Data.Map as Map
 -- |fetch the possibly modified tokens. Deprecated
 fetchToks :: RefactGhc [PosToken]
 fetchToks = do
-  Just tm <- gets rsModule
+  Just _tm <- gets rsModule
   -- let toks = retrieveTokensInterim $ (tkCache $ rsTokenCache tm) Map.! mainTid
   -- logm $ "fetchToks" ++ (showToks toks)
   logm $ "fetchToks (not showing toks"
@@ -128,7 +128,7 @@ fetchOrigToks = do
 
 -- |Get the current tokens for a given GHC.SrcSpan.
 getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
-getToksForSpan sspan = do
+getToksForSpan _sspan = do
   {-
   st <- get
   let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st

@@ -34,15 +34,15 @@ import Data.Maybe
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcModuleGraph
-import Language.Haskell.Refact.Utils.GhcUtils
+--import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 -- import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
+--import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.Refact.Utils.TypeUtils
+--import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Types
 {-
 import Language.Haskell.TokenUtils.DualTree
@@ -53,11 +53,11 @@ import System.Directory
 import System.FilePath.Posix
 
 import qualified Digraph       as GHC
-import qualified FastString    as GHC
+--import qualified FastString    as GHC
 import qualified GHC
-import qualified Outputable    as GHC
+--import qualified Outputable    as GHC
 
-import qualified Data.Generics as SYB
+--import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 -- import Debug.Trace
@@ -311,7 +311,7 @@ applyRefac refac source = do
     -- mod'   <- getRefactRenamed
     mod'   <- getRefactParsed
     -- toks'  <- fetchToksFinal
-    let toks' = []
+    -- let toks' = []
     -- pprVal <- fetchPprFinal
     anns <- fetchAnnsFinal
     m    <- getRefactStreamModified
@@ -475,7 +475,7 @@ clientModsAndFiles m = do
           mg = getModulesAsGraph False ms Nothing
           rg = GHC.transposeG mg
           {-
-          modNode = gfromJust ("clientModsAndFiles:" ++ (showGhc (GHC.ms_mod modsum,target,mg))) 
+          modNode = gfromJust ("clientModsAndFiles:" ++ (showGhc (GHC.ms_mod modsum,target,mg)))
                   $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
           clientMods = filter (\msum' -> not (mycomp msum' modsum))
                      $ map summaryNodeSummary $ GHC.reachableG rg modNode
@@ -491,7 +491,7 @@ clientModsAndFiles m = do
   -- Need to strip out duplicates, based on the snd of the tuple
       clients' = nubBy cc clients
       cc (_,mg1) (_,mg2)
-        = if (show $ GHC.ms_mod mg1) == "Main" || (show $ GHC.ms_mod mg2) == "Main" 
+        = if (show $ GHC.ms_mod mg1) == "Main" || (show $ GHC.ms_mod mg2) == "Main"
             then False
             else mycomp mg1 mg2
 

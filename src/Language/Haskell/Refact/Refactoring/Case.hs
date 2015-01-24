@@ -33,7 +33,7 @@ comp fileName beginPos endPos = do
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do (refactoredMod,_) <- applyRefac (doIfToCaseInternal exp1) RSAlreadyLoaded
                       return [refactoredMod]
-         _      -> error $ "You haven't selected an if-then-else  expression!" --  ++ (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
+         _      -> error $ "You haven't selected an if-then-else  expression!" -- (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
 
 doIfToCaseInternal ::
   GHC.Located (GHC.HsExpr GHC.RdrName)
@@ -54,7 +54,7 @@ reallyDoIfToCase expr p = do
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
-         inExp exp1@(GHC.L l (GHC.HsIf _se (GHC.L l1 _) (GHC.L l2 _) (GHC.L l3 _)))
+         inExp exp1@(GHC.L _ (GHC.HsIf _se (GHC.L _ _) (GHC.L _ _) (GHC.L _ _)))
            | sameOccurrence expr exp1
            = do
                newExp <- ifToCaseTransform exp1
@@ -137,102 +137,102 @@ foo x = case (odd x) of
 
 becomes
 
-(L {examples/B.hs:1:1} 
- (HsModule 
-  (Nothing) 
-  (Nothing) 
-  [] 
+(L {examples/B.hs:1:1}
+ (HsModule
+  (Nothing)
+  (Nothing)
+  []
   [
-   (L {examples/B.hs:(2,1)-(4,27)} 
-    (ValD 
-     (FunBind 
-      (L {examples/B.hs:2:1-3} 
-       (Unqual {OccName: foo})) 
-      (False) 
-      (MG 
+   (L {examples/B.hs:(2,1)-(4,27)}
+    (ValD
+     (FunBind
+      (L {examples/B.hs:2:1-3}
+       (Unqual {OccName: foo}))
+      (False)
+      (MG
        [
-        (L {examples/B.hs:(2,1)-(4,27)} 
-         (Match 
-          (Just 
-           ((,) 
-            (L {examples/B.hs:2:1-3} 
-             (Unqual {OccName: foo})) 
-            (False))) 
+        (L {examples/B.hs:(2,1)-(4,27)}
+         (Match
+          (Just
+           ((,)
+            (L {examples/B.hs:2:1-3}
+             (Unqual {OccName: foo}))
+            (False)))
           [
-           (L {examples/B.hs:2:5} 
-            (VarPat 
-             (Unqual {OccName: x})))] 
-          (Nothing) 
-          (GRHSs 
+           (L {examples/B.hs:2:5}
+            (VarPat
+             (Unqual {OccName: x})))]
+          (Nothing)
+          (GRHSs
            [
-            (L {examples/B.hs:2:7} 
-             (GRHS 
-              [] 
-              (L {examples/B.hs:(2,9)-(4,27)} 
-               (HsCase 
-                (L {examples/B.hs:2:14-20} 
-                 (HsPar 
-                  (L {examples/B.hs:2:15-19} 
-                   (HsApp 
-                    (L {examples/B.hs:2:15-17} 
-                     (HsVar 
-                      (Unqual {OccName: odd}))) 
-                    (L {examples/B.hs:2:19} 
-                     (HsVar 
-                      (Unqual {OccName: x}))))))) 
-                (MG 
+            (L {examples/B.hs:2:7}
+             (GRHS
+              []
+              (L {examples/B.hs:(2,9)-(4,27)}
+               (HsCase
+                (L {examples/B.hs:2:14-20}
+                 (HsPar
+                  (L {examples/B.hs:2:15-19}
+                   (HsApp
+                    (L {examples/B.hs:2:15-17}
+                     (HsVar
+                      (Unqual {OccName: odd})))
+                    (L {examples/B.hs:2:19}
+                     (HsVar
+                      (Unqual {OccName: x})))))))
+                (MG
                  [
-                  (L {examples/B.hs:3:13-26} 
-                   (Match 
-                    (Nothing) 
+                  (L {examples/B.hs:3:13-26}
+                   (Match
+                    (Nothing)
                     [
-                     (L {examples/B.hs:3:13-16} 
-                      (ConPatIn 
-                       (L {examples/B.hs:3:13-16} 
-                        (Unqual {OccName: True})) 
-                       (PrefixCon 
-                        [])))] 
-                    (Nothing) 
-                    (GRHSs 
+                     (L {examples/B.hs:3:13-16}
+                      (ConPatIn
+                       (L {examples/B.hs:3:13-16}
+                        (Unqual {OccName: True}))
+                       (PrefixCon
+                        [])))]
+                    (Nothing)
+                    (GRHSs
                      [
-                      (L {examples/B.hs:3:19-26} 
-                       (GRHS 
-                        [] 
-                        (L {examples/B.hs:3:22-26} 
-                         (HsLit 
-                          (HsString "\"Odd\"" {FastString: "Odd"})))))] 
+                      (L {examples/B.hs:3:19-26}
+                       (GRHS
+                        []
+                        (L {examples/B.hs:3:22-26}
+                         (HsLit
+                          (HsString "\"Odd\"" {FastString: "Odd"})))))]
                      (EmptyLocalBinds)))),
-                  (L {examples/B.hs:4:13-27} 
-                   (Match 
-                    (Nothing) 
+                  (L {examples/B.hs:4:13-27}
+                   (Match
+                    (Nothing)
                     [
-                     (L {examples/B.hs:4:13-17} 
-                      (ConPatIn 
-                       (L {examples/B.hs:4:13-17} 
-                        (Unqual {OccName: False})) 
-                       (PrefixCon 
-                        [])))] 
-                    (Nothing) 
-                    (GRHSs 
+                     (L {examples/B.hs:4:13-17}
+                      (ConPatIn
+                       (L {examples/B.hs:4:13-17}
+                        (Unqual {OccName: False}))
+                       (PrefixCon
+                        [])))]
+                    (Nothing)
+                    (GRHSs
                      [
-                      (L {examples/B.hs:4:19-27} 
-                       (GRHS 
-                        [] 
-                        (L {examples/B.hs:4:22-27} 
-                         (HsLit 
-                          (HsString "\"Even\"" {FastString: "Even"})))))] 
-                     (EmptyLocalBinds))))] 
-                 [] 
-                 (PlaceHolder) 
-                 (FromSource))))))] 
-           (EmptyLocalBinds))))] 
-       [] 
-       (PlaceHolder) 
-       (FromSource)) 
-      (WpHole) 
-      (PlaceHolder) 
-      [])))] 
-  (Nothing) 
+                      (L {examples/B.hs:4:19-27}
+                       (GRHS
+                        []
+                        (L {examples/B.hs:4:22-27}
+                         (HsLit
+                          (HsString "\"Even\"" {FastString: "Even"})))))]
+                     (EmptyLocalBinds))))]
+                 []
+                 (PlaceHolder)
+                 (FromSource))))))]
+           (EmptyLocalBinds))))]
+       []
+       (PlaceHolder)
+       (FromSource))
+      (WpHole)
+      (PlaceHolder)
+      [])))]
+  (Nothing)
   (Nothing)))
 
 with
@@ -321,73 +321,73 @@ HsCase (LHsExpr id) (MatchGroup id)
 {-
 Need to move to
 
-(L {test/testdata/Case/B.hs:(9,10)-(11,17)} 
-                 (HsCase 
-                  (L {test/testdata/Case/B.hs:9:15-21} 
-                   (HsPar 
-                    (L {test/testdata/Case/B.hs:9:16-20} 
-                     (HsApp 
-                      (L {test/testdata/Case/B.hs:9:16-18} 
-                       (HsVar {Name: GHC.Real.odd})) 
-                      (L {test/testdata/Case/B.hs:9:20} 
-                       (HsVar {Name: x})))))) 
-                  (MatchGroup 
+(L {test/testdata/Case/B.hs:(9,10)-(11,17)}
+                 (HsCase
+                  (L {test/testdata/Case/B.hs:9:15-21}
+                   (HsPar
+                    (L {test/testdata/Case/B.hs:9:16-20}
+                     (HsApp
+                      (L {test/testdata/Case/B.hs:9:16-18}
+                       (HsVar {Name: GHC.Real.odd}))
+                      (L {test/testdata/Case/B.hs:9:20}
+                       (HsVar {Name: x}))))))
+                  (MatchGroup
                    [
-                    (L {test/testdata/Case/B.hs:10:3-15} 
-                     (Match 
+                    (L {test/testdata/Case/B.hs:10:3-15}
+                     (Match
                       [
-                       (L {test/testdata/Case/B.hs:10:3-6} 
-                        (ConPatIn 
-                         (L {test/testdata/Case/B.hs:10:3-6} {Name: GHC.Types.True}) 
-                         (PrefixCon 
-                          [])))] 
-                      (Nothing) 
-                      (GRHSs 
+                       (L {test/testdata/Case/B.hs:10:3-6}
+                        (ConPatIn
+                         (L {test/testdata/Case/B.hs:10:3-6} {Name: GHC.Types.True})
+                         (PrefixCon
+                          [])))]
+                      (Nothing)
+                      (GRHSs
                        [
-                        (L {test/testdata/Case/B.hs:10:11-15} 
-                         (GRHS 
-                          [] 
-                          (L {test/testdata/Case/B.hs:10:11-15} 
-                           (HsLit 
-                            (HsString {FastString: "Odd"})))))] 
+                        (L {test/testdata/Case/B.hs:10:11-15}
+                         (GRHS
+                          []
+                          (L {test/testdata/Case/B.hs:10:11-15}
+                           (HsLit
+                            (HsString {FastString: "Odd"})))))]
                        (EmptyLocalBinds)))),
-                    (L {test/testdata/Case/B.hs:11:3-17} 
-                     (Match 
+                    (L {test/testdata/Case/B.hs:11:3-17}
+                     (Match
                       [
-                       (L {test/testdata/Case/B.hs:11:3-7} 
-                        (ConPatIn 
-                         (L {test/testdata/Case/B.hs:11:3-7} {Name: GHC.Types.False}) 
-                         (PrefixCon 
-                          [])))] 
-                      (Nothing) 
-                      (GRHSs 
+                       (L {test/testdata/Case/B.hs:11:3-7}
+                        (ConPatIn
+                         (L {test/testdata/Case/B.hs:11:3-7} {Name: GHC.Types.False})
+                         (PrefixCon
+                          [])))]
+                      (Nothing)
+                      (GRHSs
                        [
-                        (L {test/testdata/Case/B.hs:11:12-17} 
-                         (GRHS 
-                          [] 
-                          (L {test/testdata/Case/B.hs:11:12-17} 
-                           (HsLit 
-                            (HsString {FastString: "Even"})))))] 
+                        (L {test/testdata/Case/B.hs:11:12-17}
+                         (GRHS
+                          []
+                          (L {test/testdata/Case/B.hs:11:12-17}
+                           (HsLit
+                            (HsString {FastString: "Even"})))))]
                        (EmptyLocalBinds))))] {!type placeholder here?!})))
 
 from ---
 
-(L {test/testdata/Case/B.hs:4:9-41} 
-                 (HsIf 
-                  (Nothing) 
-                  (L {test/testdata/Case/B.hs:4:12-18} 
-                   (HsPar 
-                    (L {test/testdata/Case/B.hs:4:13-17} 
-                     (HsApp 
-                      (L {test/testdata/Case/B.hs:4:13-15} 
-                       (HsVar {Name: GHC.Real.odd})) 
-                      (L {test/testdata/Case/B.hs:4:17} 
-                       (HsVar {Name: x})))))) 
-                  (L {test/testdata/Case/B.hs:4:25-29} 
-                   (HsLit 
-                    (HsString {FastString: "Odd"}))) 
-                  (L {test/testdata/Case/B.hs:4:36-41} 
-                   (HsLit 
+(L {test/testdata/Case/B.hs:4:9-41}
+                 (HsIf
+                  (Nothing)
+                  (L {test/testdata/Case/B.hs:4:12-18}
+                   (HsPar
+                    (L {test/testdata/Case/B.hs:4:13-17}
+                     (HsApp
+                      (L {test/testdata/Case/B.hs:4:13-15}
+                       (HsVar {Name: GHC.Real.odd}))
+                      (L {test/testdata/Case/B.hs:4:17}
+                       (HsVar {Name: x}))))))
+                  (L {test/testdata/Case/B.hs:4:25-29}
+                   (HsLit
+                    (HsString {FastString: "Odd"})))
+                  (L {test/testdata/Case/B.hs:4:36-41}
+                   (HsLit
                     (HsString {FastString: "Even"})))))
 
 -}

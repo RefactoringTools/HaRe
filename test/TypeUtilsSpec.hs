@@ -597,7 +597,7 @@ spec = do
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (res)) `shouldBe`
           "[(FreeAndDeclared.DeclareTypes.XList, (8, 13)),\n"++
 #if __GLASGOW_HASKELL__ > 704
 #else
@@ -634,7 +634,7 @@ spec = do
       -- (showGhc _fff) `shouldBe` ""
 
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe`
                    "[(Data.Generics.Text.gshow, (-1, -1)),\n "++
                    "(System.IO.getChar, (-1, -1)), "++
                    "(System.IO.putStrLn, (-1, -1)),\n "++
@@ -646,7 +646,7 @@ spec = do
                    "(GHC.Num.*, (-1, -1))]"
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
                    "[(FreeAndDeclared.Declare.ff, (36, 1)),\n "++
                    "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
                    "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
@@ -660,7 +660,7 @@ spec = do
 
       -- GHC version
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
                    "[(Data.Generics.Text.gshow, (-1, -1)),\n "++
                    "(System.IO.getChar, (-1, -1)), "++
                    "(System.IO.putStrLn, (-1, -1)),\n "++
@@ -670,7 +670,7 @@ spec = do
                    "(GHC.Num.*, (-1, -1))]"
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
                    "[(FreeAndDeclared.Declare.ff, (36, 1)),\n "++
                    "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
                    "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
@@ -711,11 +711,11 @@ spec = do
 
       -- GHC version
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
                    "[(FreeAndDeclared.Declare.B, (18, 14))]"
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
                    "[(FreeAndDeclared.Declare.unD, (21, 1))]"
 
     -- ---------------------------------
@@ -738,11 +738,11 @@ spec = do
 
       -- GHC version
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
                    "[(FreeAndDeclared.Declare.:|, (25, 14))]"
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
                    "[(FreeAndDeclared.Declare.unF, (27, 1))]"
 
     -- ---------------------------------
@@ -765,11 +765,11 @@ spec = do
 
       -- GHC version
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
                    "[(FreeAndDeclared.DeclareRec.RCon, (3, 10))]"
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
                    "[(FreeAndDeclared.DeclareRec.unR2, (7, 1))]"
 
     -- -----------------------------------------------------------------
@@ -812,11 +812,11 @@ spec = do
       -- (SYB.showData SYB.Renamer 0 d) `shouldBe` ""
 
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe`
                    "[(GHC.Num.+, (-1, -1))]"
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
                    "[(DupDef.Dd1.ff, (21, 1))]"
 
     -- -----------------------------------------------------------------
@@ -833,12 +833,12 @@ spec = do
       ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
                    "[(LiftToToplevel.WhereIn1.anotherFun, (15, 1)),\n "++
                    "(LiftToToplevel.WhereIn1.sumSquares, (9, 1))]"
 
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe`
                    "[(GHC.Real.^, (-1, -1)), (GHC.Num.+, (-1, -1))]"
 
     -- -----------------------------------------------------------------
@@ -856,7 +856,7 @@ spec = do
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
                    "[(IdIn3.bar, (14, 1))"++
                   ", (IdIn3.x, (10, 1))"++
                   ", (IdIn3.foo, (12, 1)),\n "++
@@ -864,7 +864,7 @@ spec = do
 
 
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe`
                    "[(GHC.Num.+, (-1, -1))]"
 
     -- -----------------------------------------------------------------
@@ -889,11 +889,11 @@ spec = do
       -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
                    "[]"
 
       -- Free Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe`
                    "[(GHC.Real.^, (-1, -1)), (x, (10, 12)), (GHC.Num.+, (-1, -1)),\n (y, (10, 14))]"
 
     -- -----------------------------------------------------------------
@@ -920,7 +920,7 @@ spec = do
 
       -- Free Vars
       {-
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe`
                    "[(GHC.Num.+, (-1, -1)), "++
                     "(sq, (8, 6)), "++
                     "(x, (6, 13)),\n "++
@@ -932,7 +932,7 @@ spec = do
       -}
 
       -- Declared Vars
-      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` 
+      (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
                    "[(LiftToToplevel.D1.sumSquares, (6, 1)), "++
                     "(x, (6, 13)),\n "++
                     "(xs, (6, 15)), "++
@@ -1934,7 +1934,7 @@ spec = do
          oldSigToks <- getToksForSpan ss
          return (renamed',removedSig,oldSigToks)
       -- ((nb,os,ot),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((nb,os,ot),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks } 
+      ((nb,os,ot),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
       (showGhc n) `shouldBe` "tup"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftToToplevel.PatBindIn1 where\n\n --A definition can be lifted from a where or let into the surrounding binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'tup' defined in 'foo'\n --This example aims to test renaming and the lifting of type signatures.\n\n main :: Int\n main = foo 3\n\n foo :: Int -> Int\n foo x = h + t + (snd tup)\n       where\n       h :: Int\n       t :: Int\n       tup :: (Int,Int)\n       tup@(h,t) = head $ zip [1..10] [3..15]\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
@@ -2474,7 +2474,7 @@ spec = do
       (show toks'2) `shouldBe` "[((((6,1),(6,1)),ITvocurly),\"\"),((((6,1),(6,9)),ITvarid \"toplevel\"),\"toplevel\"),((((6,10),(6,12)),ITdcolon),\"::\"),((((6,13),(6,20)),ITconid \"Integer\"),\"Integer\"),((((6,21),(6,23)),ITrarrow),\"->\"),((((6,24),(6,31)),ITconid \"Integer\"),\"Integer\")]"
 --
       -- typeSig'  <- putDeclToksAfterSpan l (head typeSig) (PlaceOffset 2 0 0) toksSig
-      let (forest''',newSpan,_typeSig') = addDeclToksAfterSrcSpan forest'' l (PlaceOffset 2 0 0) toksSig (head typeSig) 
+      let (forest''',newSpan,_typeSig') = addDeclToksAfterSrcSpan forest'' l (PlaceOffset 2 0 0) toksSig (head typeSig)
       -- typeSig'' <- renamePN n "tl1" True typeSig'
       -- (show forest''') `shouldBe` "" -- ++AZ++ : as expected
 
@@ -2528,7 +2528,7 @@ spec = do
 
       let (startPos,endPos) = ((6,1),(6,31))
       let tSpan = insertLenChangedInSrcSpan True False
-                $ insertVersionsInSrcSpan vs ve $ gs2ss $ posToSrcSpan forest (startPos,endPos) 
+                $ insertVersionsInSrcSpan vs ve $ gs2ss $ posToSrcSpan forest (startPos,endPos)
       (showSrcSpanF $ ss2gs $ insertVersionsInSrcSpan vs ve $ gs2ss $ posToSrcSpan forest (startPos,endPos))
                                   `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
       (showSrcSpanF newSpan)      `shouldBe` "(((False,0,1,6),1),((False,0,1,6),31))"
@@ -3510,7 +3510,7 @@ This function is not used and has been removed
          let listModName  = GHC.mkModuleName "Data.List"
          -- n1   <- mkNewGhcName Nothing "n1"
          -- n2   <- mkNewGhcName Nothing "n2"
-         res  <- addImportDecl renamed2 listModName Nothing False False False Nothing False [] 
+         res  <- addImportDecl renamed2 listModName Nothing False False False Nothing False []
          toks <- fetchToks
 
          return (res,toks,renamed2,toks2)
@@ -3528,7 +3528,7 @@ This function is not used and has been removed
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let listModName  = GHC.mkModuleName "Data.List"
-         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
+         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False []
          toks <- fetchToks
 
          return (res,toks,renamed1,_toks1)
@@ -3546,7 +3546,7 @@ This function is not used and has been removed
          let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let listModName  = GHC.mkModuleName "Data.List"
-         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
+         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False []
          toks <- fetchToks
 
          return (res,toks,renamed1,_toks1)
@@ -3566,7 +3566,7 @@ This function is not used and has been removed
          -- let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let listModName  = GHC.mkModuleName "Data.List"
-         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False [] 
+         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False []
 
          return (res,renamed1,toks1)
       ((_r,_r2,_tk2),s) <- runRefactGhcState comp
@@ -3595,7 +3595,7 @@ This function is not used and has been removed
       ((_r,_t,_r2,_tk2),s) <- runRefactGhcState comp
       -- ((_r,t,r2,tk2),s) <- runRefactGhcStateLog comp Debug
 
-      -- This is the correct behavior. If the import doesn't have an import list, creating 
+      -- This is the correct behavior. If the import doesn't have an import list, creating
       -- one for an item effectively reduces the imported interface.
       (renderLines $ linesFromState s) `shouldBe` "module JustImports where\n\nimport Data.Maybe\n"
       -- (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n "
@@ -3611,7 +3611,7 @@ This function is not used and has been removed
          let modName  = GHC.mkModuleName "Data.Maybe"
          itemName <- mkNewGhcName Nothing "fromJust"
 
-         res  <- addItemsToImport modName renamed1 [itemName] --listModName Nothing False False False Nothing False [] 
+         res  <- addItemsToImport modName renamed1 [itemName] --listModName Nothing False False False Nothing False []
 
          itemName2 <- mkNewGhcName Nothing "isJust"
 
@@ -3652,7 +3652,7 @@ This function is not used and has been removed
          itemName <- mkNewGhcName Nothing "isJust"
          conditionalId <- mkNewGhcName Nothing "fromJust"
 
-         res  <- addItemsToImport modName renamed1 [itemName] (Just conditionalId) 
+         res  <- addItemsToImport modName renamed1 [itemName] (Just conditionalId)
          toks <- fetchToks
 
          return (res,toks,renamed1,_toks1)
