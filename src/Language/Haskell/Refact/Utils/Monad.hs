@@ -368,68 +368,12 @@ canonicalizeGraph graph = do
 runRefactGhc ::
   RefactGhc a -> RefactState -> Options -> IO (a, RefactState)
 runRefactGhc comp initState opt = do
-    -- putStrLn "runRefactGhc:entered (IO)"
 
-    -- runStateT (GHC.runGhcT (Just GHC.libdir) comp) initState
     ((merr,_log),s) <- runStateT (runGhcModT opt comp) initState
-    -- ((merr,_log),s) <- runStateT (runGhcModTHaRe opt comp) initState
-    -- logm $ "runRefactGhc : log=" ++ show _log
     case merr of
       Left err -> error (show err)
       Right a -> return (a,s)
 
-{-
--- | Run a @GhcModT m@ computation.
-runGhcModTHaRe :: IOish m
-           => Options
-           -> GhcModT m a
-           -> m (Either GhcModError a, GhcModLog)
-runGhcModTHaRe opt action = gbracket newEnv delEnv $ \env -> do
-    r <- first (fst <$>) <$> (runGhcModT' env defaultState $ do
-        liftIO $ putStrLn $ "runGhcModTHaRe:getting dflags"
-        dflags <- GHC.getSessionDynFlags
-        GHC.defaultCleanupHandler dflags $ do
-            liftIO $ putStrLn $ "runGhcModTHaRe:about to initializeFlagsWithCradle:" ++ show (gmCradle env)
-            initializeFlagsWithCradle opt (gmCradle env)
-            action)
-    return r
-
- where
-   newEnv = liftBase $ newGhcModEnv opt =<< getCurrentDirectory
-   delEnv = liftBase . cleanupGhcModEnv
--}
-
-{-
-newGhcModEnv :: Options -> FilePath -> IO GhcModEnv
-newGhcModEnv opt dir = do
-      session <- newIORef (error "empty session")
-      c <- findCradle' dir
-      return GhcModEnv {
-          gmGhcSession = session
-        , gmOptions = opt
-        , gmCradle = c
-        }
--}
-
-{-
--- | Run a @GhcModT m@ computation.
-runGhcModT :: IOish m
-           => Options
-           -> GhcModT m a
-           -> m (Either GhcModError a, GhcModLog)
-runGhcModT opt action = gbracket newEnv delEnv $ \env -> do
-    r <- first (fst <$>) <$> (runGhcModT' env defaultState $ do
-        dflags <- getSessionDynFlags
-        defaultCleanupHandler dflags $ do
-            initializeFlagsWithCradle opt (gmCradle env)
-            action)
-    return r
-
- where
-   newEnv = liftBase $ newGhcModEnv opt =<< getCurrentDirectory
-   delEnv = liftBase . cleanupGhcModEnv
-
--}
 
 -- ---------------------------------------------------------------------
 

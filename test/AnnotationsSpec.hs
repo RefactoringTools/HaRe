@@ -3,29 +3,15 @@ module AnnotationsSpec (main, spec) where
 
 import           Test.Hspec
 
--- import qualified FastString as GHC
 import qualified GHC        as GHC
--- import qualified Lexer      as GHC
 
 import qualified GHC.SYB.Utils as SYB
 
-import Data.Maybe
-
-import Language.Haskell.Refact.Utils.Binds
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TokenUtils
-import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
-import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Utils
-
-import qualified Data.Map as Map
-
-import qualified GHC.SYB.Utils as SYB
 
 import TestUtils
 

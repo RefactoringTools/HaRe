@@ -11,13 +11,7 @@ module TestUtils
        , runRefactGhcStateLog
        , initialState
        , initialLogOnState
-       -- , toksFromState
-       -- , renderTree
-       -- , pprFromState
-       -- , sourceTreeFromState
-       -- , linesFromState
-       -- , layoutFromState
-       -- , entriesFromState
+       , sourceFromState
        , defaultTestSettings
        , logTestSettings
        , testSettingsMainfile
@@ -44,21 +38,19 @@ import qualified Unique        as GHC
 
 import Data.Algorithm.Diff
 import Exception
+import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils.Utils
--- import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
-
-
+import Language.Haskell.Refact.Utils.Utils
 import Numeric
-
 import System.Directory
 import System.Log.Handler.Simple
 import System.Log.Logger
+
 import qualified Data.Map as Map
 
 
@@ -271,6 +263,19 @@ catchException f = do
   where
     handler:: SomeException -> IO (Maybe String)
     handler e = return (Just (show e))
+
+-- ---------------------------------------------------------------------
+
+sourceFromState :: RefactState -> String
+sourceFromState st =
+  case (rsModule st) of
+    Just tm -> r
+      where
+        anns = (tkCache $ rsTokenCache tm) Map.! mainTid
+        parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module
+                 $ rsTypecheckedMod tm
+        r = exactPrintAnnotation parsed [] anns
+    Nothing -> []
 
 -- ---------------------------------------------------------------------
 

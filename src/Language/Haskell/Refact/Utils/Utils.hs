@@ -29,26 +29,21 @@ module Language.Haskell.Refact.Utils.Utils
        ) where
 
 import Control.Monad.State
+
 import Data.List
 import Data.Maybe
-import Language.Haskell.GhcMod
-import Language.Haskell.Refact.Utils.GhcBugWorkArounds
-import Language.Haskell.Refact.Utils.GhcModuleGraph
---import Language.Haskell.Refact.Utils.GhcUtils
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
--- import Language.Haskell.Refact.Utils.LocUtils
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
---import Language.Haskell.Refact.Utils.TypeSyn
+
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
---import Language.Haskell.Refact.Utils.TypeUtils
+
+import Language.Haskell.GhcMod
+
+import Language.Haskell.Refact.Utils.GhcBugWorkArounds
+import Language.Haskell.Refact.Utils.GhcModuleGraph
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
+import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types
-{-
-import Language.Haskell.TokenUtils.DualTree
-import Language.Haskell.TokenUtils.TokenUtils
-import Language.Haskell.TokenUtils.Utils
--}
 import System.Directory
 import System.FilePath.Posix
 
