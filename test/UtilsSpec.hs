@@ -12,7 +12,11 @@ import qualified HscTypes   as GHC
 import Control.Exception
 import Control.Monad.State
 import Data.Maybe
+
+import Language.Haskell.GHC.ExactPrint.Utils
+
 import Language.Haskell.GhcMod
+
 import Language.Haskell.Refact.Refactoring.Renaming
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -22,6 +26,7 @@ import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
+
 import System.Directory
 
 -- ---------------------------------------------------------------------
@@ -104,7 +109,7 @@ spec = do
                                      -- , rsetVerboseLevel = Debug
                                      }
 
-      r <- rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
+      r <- rename settings testOptions "./src/Foo/Bar.hs" "baz1" (3, 1)
       -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
       setCurrentDirectory currentDir
 
@@ -137,7 +142,7 @@ spec = do
              setCurrentDirectory currentDir
              return [show e]
 
-      r <- catches (rename settings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)) handler
+      r <- catches (rename settings testOptions "./src/Foo/Bar.hs" "baz1" (3, 1)) handler
       setCurrentDirectory currentDir
 
       r' <- mapM makeRelativeToCurrentDirectory r
@@ -169,7 +174,7 @@ spec = do
              setCurrentDirectory currentDir
              return [show e]
 
-      r <- catches (rename settings cradle "./src/main1.hs" "baz1" (7, 1)) handler
+      r <- catches (rename settings testOptions "./src/main1.hs" "baz1" (7, 1)) handler
       setCurrentDirectory currentDir
 
       r' <- mapM makeRelativeToCurrentDirectory r
@@ -375,7 +380,7 @@ spec = do
 
       let
         comp = do
-         initGhcSession cradle (rsetImportPaths defaultSettings)
+         initGhcSession []
          -- initGhcSession cradle (rsetImportPaths logSettings)
          -- getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
          g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"

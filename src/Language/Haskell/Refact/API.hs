@@ -274,7 +274,7 @@ module Language.Haskell.Refact.API
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
 
     -- *** Updating
-    -- ,Update(update)
+    ,Update(update)
     {- ,qualifyPName-},rmQualifier,qualifyToplevelName,renamePN {- ,replaceNameInPN -},autoRenameLocalVar
 
     -- ** Miscellous

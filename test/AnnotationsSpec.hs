@@ -11,6 +11,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Utils
+
 import Language.Haskell.GHC.ExactPrint
 
 import TestUtils

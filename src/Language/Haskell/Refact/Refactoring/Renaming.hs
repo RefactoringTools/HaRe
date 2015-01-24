@@ -46,11 +46,11 @@ modules.
 -}
 
 -- | Rename the given identifier.
-rename :: RefactSettings -> Cradle
+rename :: RefactSettings -> Options
    -> FilePath -> String -> SimpPos
    -> IO [FilePath]
-rename settings cradle fileName newName (row,col) =
-  runRefacSession settings cradle (comp fileName newName (row,col))
+rename settings opts fileName newName (row,col) =
+  runRefacSession settings opts (comp fileName newName (row,col))
 
 -- | Body of the refactoring
 comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
@@ -129,7 +129,7 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
                                 )) renamed
                                 -}
   -- somewhereMStagedBu SYB.Renamer (SYB.mkM renameInMod
-  void $ everywhereMStaged SYB.Renamer (SYB.mkM renameInMod
+  void $ SYB.everywhereMStaged SYB.Renamer (SYB.mkM renameInMod
                                  ) renamed
   logm $ "doRenaming done"
   nIsExported <- isExported oldn

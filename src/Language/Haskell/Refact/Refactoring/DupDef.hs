@@ -71,7 +71,7 @@ reallyDoDuplicating :: GHC.Located GHC.Name -> String
               -> RefactGhc ()
 reallyDoDuplicating pn newName inscopes renamed = do
 
-   renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
+   renamed' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
                                   `SYB.extM` dupInMatch
                                   `SYB.extM` dupInPat
                                   `SYB.extM` dupInLet
@@ -153,7 +153,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
 findNewPName :: String -> GHC.RenamedSource -> GHC.Name
 findNewPName name renamed = gfromJust "findNewPName" res
   where
-     res = somethingStaged SYB.Renamer Nothing
+     res = SYB.somethingStaged SYB.Renamer Nothing
             (Nothing `SYB.mkQ` worker) renamed
 
      worker  (pname::GHC.Name)

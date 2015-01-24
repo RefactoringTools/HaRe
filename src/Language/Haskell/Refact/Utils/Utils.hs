@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE UndecidableInstances #-} -- for GHC.DataId
 
 module Language.Haskell.Refact.Utils.Utils
        (
@@ -19,7 +20,7 @@ module Language.Haskell.Refact.Utils.Utils
        , applyRefac
        , refactDone
 
-       -- , update
+       , Update(..)
        , fileNameToModName
        , fileNameFromModSummary
        , getModuleName
@@ -44,15 +45,16 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types
+import Language.Haskell.Refact.Utils.TypeUtils
 import System.Directory
 import System.FilePath.Posix
 
 import qualified Digraph       as GHC
 --import qualified FastString    as GHC
 import qualified GHC
---import qualified Outputable    as GHC
+import qualified Outputable    as GHC
 
---import qualified Data.Generics as SYB
+import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 -- import Debug.Trace
@@ -339,7 +341,7 @@ fileNameFromModSummary modSummary = fileName
     Just fileName = GHC.ml_hs_file (GHC.ms_location modSummary)
 
 -- ---------------------------------------------------------------------
-{-
+
 class (SYB.Data t, SYB.Data t1) => Update t t1 where
 
   -- | Update the occurrence of one syntax phrase in a given scope by
@@ -349,8 +351,7 @@ class (SYB.Data t, SYB.Data t1) => Update t t1 where
          -> t1    -- ^ The contex where the old syntax phrase occurs.
          -> RefactGhc t1  -- ^ The result.
 
--- instance (GHC.DataId n,SYB.Data t, GHC.OutputableBndr n, SYB.Data n) => Update (GHC.Located (GHC.HsExpr n)) t where
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n)
+instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
   => Update (GHC.Located (GHC.HsExpr n)) t where
     update oldExp newExp t
            = SYB.everywhereMStaged SYB.Parser (SYB.mkM inExp) t
@@ -367,7 +368,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n)
                     return newExp
           | otherwise = return e
 
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n)
+instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
    => Update (GHC.LPat n) t where
     update oldPat newPat t
            = SYB.everywhereMStaged SYB.Parser (SYB.mkM inPat) t
@@ -380,7 +381,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n)
                      return newPat
             | otherwise = return p
 
-instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n)
+instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
   => Update (GHC.LHsType n) t where
      update oldTy newTy t
            = SYB.everywhereMStaged SYB.Parser (SYB.mkM inTyp) t
@@ -393,7 +394,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, SYB.Data n)
                      return newTy
             | otherwise = return t'
 
-instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1, SYB.Data n2)
+instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, GHC.DataId n1, GHC.DataId n2)
    => Update (GHC.LHsBindLR n1 n2) t where
        update oldBind newBind t
              = SYB.everywhereMStaged SYB.Parser (SYB.mkM inBind) t
@@ -405,7 +406,7 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, SYB.Data n1,
                        -- TODO: make sure to call syncAST
                        return newBind
               | otherwise = return t'
--}
+
 
 -- ---------------------------------------------------------------------
 

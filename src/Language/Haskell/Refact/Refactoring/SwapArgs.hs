@@ -11,12 +11,12 @@ import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
 -- TODO: replace args with specific parameters
-swapArgs :: RefactSettings -> Cradle -> [String] -> IO [FilePath]
-swapArgs settings cradle args
+swapArgs :: RefactSettings -> Options -> [String] -> IO [FilePath]
+swapArgs settings opts args
   = do let fileName = args!!0
            row = (read (args!!1)::Int)
            col = (read (args!!2)::Int)
-       runRefacSession settings cradle (comp fileName (row,col))
+       runRefacSession settings opts (comp fileName (row,col))
 
 
 comp :: String -> SimpPos
@@ -57,17 +57,17 @@ doSwap name = do
 
 reallyDoSwap :: (GHC.Located GHC.Name) -> GHC.RenamedSource -> RefactGhc ()
 reallyDoSwap (GHC.L _s n1) renamed = do
-    renamed' <- everywhereMStaged SYB.Renamer (SYB.mkM inMod `SYB.extM` inExp `SYB.extM` inType) renamed -- this needs to be bottom up +++ CMB +++
+    renamed' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inMod `SYB.extM` inExp `SYB.extM` inType) renamed -- this needs to be bottom up +++ CMB +++
     putRefactRenamed renamed'
     return ()
 
     where
          -- 1. The definition is at top level...
-         inMod (_func@(GHC.FunBind (GHC.L x n2) infixity (GHC.MatchGroup matches p) a locals tick)::(GHC.HsBindLR GHC.Name GHC.Name ))
+         inMod (_func@(GHC.FunBind (GHC.L x n2) infixity (GHC.MG matches p m1 m2) a locals tick)::(GHC.HsBindLR GHC.Name GHC.Name ))
             | GHC.nameUnique n1 == GHC.nameUnique n2
                     = do logm ("inMatch>" ++ SYB.showData SYB.Parser 0 (GHC.L x n2) ++ "<")
                          newMatches <- updateMatches matches
-                         return (GHC.FunBind (GHC.L x n2) infixity (GHC.MatchGroup newMatches p) a locals tick)
+                         return (GHC.FunBind (GHC.L x n2) infixity (GHC.MG newMatches p m1 m2) a locals tick)
          inMod func = return func
 
          -- 2. All call sites of the function...
@@ -77,20 +77,20 @@ reallyDoSwap (GHC.L _s n1) renamed = do
          inExp e = return e
 
          -- 3. Type signature...
-         inType (GHC.L x (GHC.TypeSig [GHC.L x2 name] types)::GHC.LSig GHC.Name)
+         inType (GHC.L x (GHC.TypeSig [GHC.L x2 name] types pns)::GHC.LSig GHC.Name)
            | GHC.nameUnique name == GHC.nameUnique n1
                 = do let (t1:t2:ts) = tyFunToList types
                      t1' <- update t1 t2 t1
                      t2' <- update t2 t1 t2
-                     return (GHC.L x (GHC.TypeSig [GHC.L x2 name] (tyListToFun (t1':t2':ts))))
+                     return (GHC.L x (GHC.TypeSig [GHC.L x2 name] (tyListToFun (t1':t2':ts)) pns))
 
-         inType (GHC.L _x (GHC.TypeSig (n:ns) _types)::GHC.LSig GHC.Name)
+         inType (GHC.L _x (GHC.TypeSig (n:ns) _types _)::GHC.LSig GHC.Name)
            | GHC.nameUnique n1 `elem` (map (\(GHC.L _ n') -> GHC.nameUnique n') (n:ns))
             = error "Error in swapping arguments in type signature: signauture bound to muliple entities!"
 
          inType ty = return ty
 
-         tyFunToList (GHC.L _ (GHC.HsForAllTy _ _ _ (GHC.L _ (GHC.HsFunTy t1 t2)))) = t1 : (tyFunToList t2)
+         tyFunToList (GHC.L _ (GHC.HsForAllTy _ _ _ _ (GHC.L _ (GHC.HsFunTy t1 t2)))) = t1 : (tyFunToList t2)
          tyFunToList (GHC.L _ (GHC.HsFunTy t1 t2)) = t1 : (tyFunToList t2)
          tyFunToList t = [t]
 
@@ -98,13 +98,13 @@ reallyDoSwap (GHC.L _s n1) renamed = do
          tyListToFun (t1:ts) = GHC.noLoc (GHC.HsFunTy t1 (tyListToFun ts))
 
          updateMatches [] = return []
-         updateMatches ((GHC.L x (GHC.Match pats nothing rhs)::GHC.Located (GHC.Match GHC.Name)):matches)
+         updateMatches ((GHC.L x (GHC.Match mfn pats nothing rhs)::GHC.Located (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))):matches)
            = case pats of
                (p1:p2:ps) -> do p1' <- update p1 p2 p1
                                 p2' <- update p2 p1 p2
                                 matches' <- updateMatches matches
-                                return ((GHC.L x (GHC.Match (p1':p2':ps) nothing rhs)):matches')
-               [p] -> return [GHC.L x (GHC.Match [p] nothing rhs)]
-               []  -> return [GHC.L x (GHC.Match [] nothing rhs)]
+                                return ((GHC.L x (GHC.Match mfn (p1':p2':ps) nothing rhs)):matches')
+               [p] -> return [GHC.L x (GHC.Match mfn [p] nothing rhs)]
+               []  -> return [GHC.L x (GHC.Match mfn [] nothing rhs)]
 
 
