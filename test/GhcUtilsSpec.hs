@@ -6,13 +6,13 @@ import           Test.Hspec
 import           TestUtils
 
 import qualified GHC     as GHC
-import qualified NameSet as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
+import Language.Haskell.GHC.ExactPrint.Utils
+
 import Language.Haskell.Refact.Utils.Binds
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeUtils
@@ -46,26 +46,6 @@ spec = do
       (show g) `shouldBe` "[[2],[],[5]]"
       (show g1) `shouldBe` "[[2],[],[5]]"
       (show g2) `shouldBe` "[2,5]"
-
-    -- ---------------------------------
-
-    it "avoids GHC holes in the structure" $ do
-      let s' = ([3,4],error "blowup",5,error "ptc",6,error "fix",7)
-                :: ([Int],GHC.NameSet,Int,GHC.PostTcType,Int,GHC.Fixity,Int)
-      let -- worker (i :: Int)
-          --  | i == 2 = ["f"]
-          -- worker _ = []
-
-          worker' (i::Int) = [i]
-          -- worker'' (i::[Int]) = [head i]
-
-      let g = onelayerStaged SYB.Renamer [-1] ([-10] `SYB.mkQ` worker') s'
-      let g1 = SYB.gmapQ ([-2] `SYB.mkQ` worker') s'
-      let g2 = SYB.gmapQl (++) [-3] ([-30] `SYB.mkQ` worker') s'
-
-      (show g) `shouldBe` "[[-10],[-10],[5],[-1],[6],[-10],[7]]"
-      (show g1) `shouldBe` "[[-2],[-2],[5],[-2],[6],[-2],[7]]"
-      (show g2) `shouldBe` "[-3,-30,-30,5,-30,6,-30,7]"
 
     -- ---------------------------------
 

@@ -87,13 +87,6 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
-{-
-import Language.Haskell.TokenUtils.DualTree
-import Language.Haskell.TokenUtils.GHC.Layout
-import Language.Haskell.TokenUtils.TokenUtils
-import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.Utils
--}
 
 -- import Data.Time.Clock
 --import Data.Tree

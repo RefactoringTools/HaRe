@@ -168,57 +168,6 @@ initialLogOnState = RefSt
 
 -- ---------------------------------------------------------------------
 
-{-
--- toksFromState :: RefactState -> [PosToken]
-toksFromState :: RefactState -> String
-toksFromState st =
-  case (rsModule st) of
-    Just tm -> renderSourceTree $ layoutTreeToSourceTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
-    Nothing -> ""
--}
-
--- ---------------------------------------------------------------------
-{-
-renderTree :: Tree (Entry PosToken) -> String
-renderTree tree = renderSourceTree $ layoutTreeToSourceTree tree
--}
--- ---------------------------------------------------------------------
-{-
-sourceTreeFromState :: RefactState -> Maybe (SourceTree PosToken)
-sourceTreeFromState st =
-  case (rsModule st) of
-    Just tm -> Just $ layoutTreeToSourceTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
-    Nothing -> Nothing
--}
--- ---------------------------------------------------------------------
-
-{-
-linesFromState :: RefactState -> [Line PosToken]
-linesFromState st =
-  case (rsModule st) of
-    Just tm -> retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
-    Nothing -> []
--}
--- ---------------------------------------------------------------------
-{-
-layoutFromState :: RefactState -> Maybe (Tree (Entry PosToken))
-layoutFromState st =
-  case (rsModule st) of
-    Just tm -> Just ((tkCache $ rsTokenCache tm) Map.! mainTid)
-    Nothing -> Nothing
--}
--- ---------------------------------------------------------------------
-{-
-entriesFromState :: RefactState -> [Entry PosToken]
-entriesFromState st = error $ "entriesFromState deprecated"
-{-
-  case (rsModule st) of
-    Just tm -> retrieveTokens' $ (tkCache $ rsTokenCache tm) Map.! mainTid
-    Nothing -> []
--}
--}
--- ---------------------------------------------------------------------
-
 mkTokenCache :: a -> TokenCache a
 mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 

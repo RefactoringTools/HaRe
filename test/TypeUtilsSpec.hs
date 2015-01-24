@@ -16,6 +16,7 @@ import qualified Module     as GHC
 import Data.Maybe
 
 import Language.Haskell.GHC.ExactPrint.Utils
+
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -1559,7 +1560,8 @@ spec = do
 
          let
            declsToDup = definingDeclsNames [n] declsr True True
-           funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
+           funBinding = filter isFunOrPatBindR declsToD
+                        up     --get the fun binding.
 
          newBinding <- duplicateDecl declsToDup renamed n newName2
 
