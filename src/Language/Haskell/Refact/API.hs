@@ -175,13 +175,13 @@ module Language.Haskell.Refact.API
                      , getLocatedEnd
                      , getStartEndLoc
                      , startEndLocGhc
-                     , realSrcLocEndTok
+                     -- , realSrcLocEndTok
                      , fileNameFromTok
                      -- , splitToks
                      , emptyList, nonEmptyList
                      -- , divideComments
                      -- , notWhiteSpace
-                     , isDoubleColon
+                     -- , isDoubleColon
                      -- , isEmpty
                      -- , isWhereOrLet
                      -- , isWhere
@@ -196,7 +196,7 @@ module Language.Haskell.Refact.API
                      -- , newLnToken
                      -- , newLinesToken
                      -- , monotonicLineToks
-                     , reSequenceToks
+                     -- , reSequenceToks
                      -- , mkToken
                      -- , mkZeroToken
                      -- , markToken
