@@ -15,6 +15,7 @@ import qualified Module     as GHC
 
 import Data.Maybe
 
+import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -25,13 +26,6 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 
-{-
-import Language.Haskell.TokenUtils.GHC.Layout
-import Language.Haskell.TokenUtils.DualTree
-import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.TokenUtils
-import Language.Haskell.TokenUtils.Utils
--}
 
 import qualified Data.Tree.Zipper as Z
 
@@ -878,7 +872,7 @@ spec = do
       let Just tup = getName "LiftOneLevel.LetIn2.sumSquares" renamed
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
 
-      let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [match] _) _ _ _)) = decl
+      let (GHC.L _ (GHC.FunBind _ _ (GHC.MG [match] _ _ _) _ _ _)) = decl
       let (GHC.L _ (GHC.Match _pat _ grhss)) = match
       -- (SYB.showData SYB.Renamer 0 grhss) `shouldBe` ""
 
@@ -1191,7 +1185,7 @@ spec = do
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
-      let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup matches _) _ _ _)) = head $ hsBinds binds
+      let (GHC.L _ (GHC.FunBind _ _ (GHC.MG matches _ _ _) _ _ _)) = head $ hsBinds binds
       let [(GHC.L _ (GHC.Match pats _ _))] = matches
       let lpat = head pats
 
@@ -1236,7 +1230,7 @@ spec = do
 
       let Just n = getName "FreeAndDeclared.Binders.findNewPName" renamed
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-      let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [match] _) _ _ _)) = decl
+      let (GHC.L _ (GHC.FunBind _ _ (GHC.MG [match] _ _ _) _ _ _)) = decl
       let (GHC.L _ (GHC.Match _pats _rhs binds)) = match
       -- (SYB.showData SYB.Renamer 0 binds) `shouldBe` ""
       -- (showGhc binds) `shouldBe` ""
@@ -1299,7 +1293,7 @@ spec = do
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
-      let (GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup matches _) _ _ _)) = head $ hsBinds binds
+      let (GHC.L _ (GHC.FunBind _ _ (GHC.MG matches _ _ _) _ _ _)) = head $ hsBinds binds
       let [(GHC.L _ (GHC.Match pats _ _))] = matches
       let pat@(GHC.L lp _) = head pats
 
@@ -1489,7 +1483,7 @@ spec = do
 
   describe "mkNewGhcName" $ do
     it "Creates a new GHC.Name" $ do
-      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "F1")
+      let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "F1")
       let
         comp = do
          name1 <- mkNewGhcName Nothing "foo"
@@ -1508,25 +1502,6 @@ spec = do
       (showGhc $ GHC.nameUnique n1) `shouldBe` "H2"
       (showGhc $ GHC.nameUnique n2) `shouldBe` "H3"
       (showGhc $ GHC.nameUnique n3) `shouldBe` "H4"
-
-  -- ---------------------------------------------
-
-  describe "newNameTok" $ do
-    it "Creates a new token from a GHC.Name" $ do
-      (_t, toks) <-parsedFileDd1Ghc
-      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "F1")
-      let
-        comp = do
-         name1 <- mkNewGhcName Nothing "foo"
-         name2 <- mkNewGhcName (Just modu) "baz"
-         return (name1,name2)
-      ((n1,n2),_s) <- runRefactGhcState comp
-      let sspan = posToSrcSpanTok (head toks) ((10,1),(10,15))
-      (show $ newNameTok False sspan n1) `shouldBe` "((((10,1),(10,4)),ITvarid \"foo\"),\"foo\")"
-      (show $ newNameTok True sspan n1) `shouldBe` "((((10,1),(10,4)),ITvarid \"foo\"),\"foo\")"
-
-      (show $ newNameTok False sspan n2) `shouldBe` "((((10,1),(10,4)),ITvarid \"baz\"),\"baz\")"
-      (show $ newNameTok True sspan n2) `shouldBe` "((((10,1),(10,7)),ITvarid \"F1.baz\"),\"F1.baz\")"
 
   -- ---------------------------------------------
 
@@ -2636,7 +2611,7 @@ spec = do
     it "replaces a qualified name in a FunBind with multiple patterns" $ do
       (t, toks) <- parsedFileLocToName
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
+      let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
 
       let Just (GHC.L l n) = locToName (20, 1) renamed
       let
@@ -2689,7 +2664,7 @@ spec = do
     it "does not qualify a name in an import hiding clause" $ do
       (t,toks) <- parsedFileScopeAndQual
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
+      let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
 
       let Just (GHC.L l n) = locToName (4, 24) renamed
       let
@@ -2713,7 +2688,7 @@ spec = do
     it "does not qualify the subject of a type signature" $ do
       (t,toks) <- parsedFileRenamingC7
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let modu = GHC.mkModule (GHC.stringToPackageId "mypackage-1.0") (GHC.mkModuleName "LocToName")
+      let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
 
       let Just (GHC.L l n) = locToName (5, 1) renamed
       let
