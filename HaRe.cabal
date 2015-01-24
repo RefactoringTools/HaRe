@@ -69,7 +69,6 @@ Library
                                 , ghc-exactprint
                                 , monad-control
                                 , Cabal >= 1.22
-                                -- , haskell-token-utils >= 0.0.0.6
 
         GHC-Options:             -Wall
 
@@ -141,7 +140,6 @@ Executable ghc-hare
                                 , monad-control
                                 , Cabal >= 1.22
                                 -- , Paths_HaRe
-                                -- , haskell-token-utils >= 0.0.0.6
                                 , HaRe >= 0.8
         Extensions:      CPP
 
@@ -165,7 +163,6 @@ test-suite spec
   build-depends:
       base        >= 4.0  && < 4.9
     , Diff >= 0.3.0
-    -- , HUnit       == 1.2.*
     , HUnit
     , QuickCheck  >= 2.5
     , containers
