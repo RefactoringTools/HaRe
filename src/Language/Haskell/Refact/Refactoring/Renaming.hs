@@ -128,7 +128,6 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
                                 -- `adhocTP` renameInStmts
                                 )) renamed
                                 -}
-  -- somewhereMStagedBu SYB.Renamer (SYB.mkM renameInMod
   void $ SYB.everywhereMStaged SYB.Renamer (SYB.mkM renameInMod
                                  ) renamed
   logm $ "doRenaming done"

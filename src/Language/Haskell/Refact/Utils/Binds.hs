@@ -44,7 +44,6 @@ module Language.Haskell.Refact.Utils.Binds
    , HsValBinds(..)
  ) where
 
---import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.GHC.ExactPrint.Utils
 
 -- Modules from GHC

@@ -46,17 +46,18 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , isFieldName
     , isClassName
     , isInstanceName
-    ,hsPNs
-    ,isDeclaredIn
-    ,hsFreeAndDeclaredPNsOld
-    ,hsFreeAndDeclaredNameStrings
-    ,hsFreeAndDeclaredPNs
-    ,hsFreeAndDeclaredGhc
-    ,getDeclaredTypes
-    ,getFvs, getFreeVars, getDeclaredVars
-    ,hsVisiblePNs, hsVisibleNames
-    ,hsFDsFromInside, hsFDNamesFromInside
-    ,hsVisibleDs
+    , hsPNs
+    , isDeclaredIn
+    , hsFreeAndDeclaredPNsOld
+    , hsFreeAndDeclaredNameStrings
+    , hsFreeAndDeclaredPNs
+    , hsFreeAndDeclaredGhc
+    , getDeclaredTypes
+    , getFvs, getFreeVars, getDeclaredVars
+    , hsVisiblePNs, hsVisibleNames
+    , hsFDsFromInside, hsFDNamesFromInside
+    , hsVisibleDs
+    , rdrName2Name
 
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
@@ -144,7 +145,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- , lookupNameGhc
  ) where
 
--- import Control.Monad.IO.Class ()
 import Control.Monad.State
 import Data.Char
 import Data.List
@@ -158,30 +158,21 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
---import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
-{-
-import Language.Haskell.TokenUtils.GHC.Layout
-import Language.Haskell.TokenUtils.TokenUtils
-import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.Utils
--}
 
 -- Modules from GHC
 import qualified Bag           as GHC
--- import qualified BasicTypes    as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
--- import qualified Lexer         as GHC hiding (getSrcLoc)
 import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified NameSet       as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
---import qualified SrcLoc        as GHC
+import qualified RnEnv         as GHC
 import qualified UniqSet       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHC
@@ -3991,6 +3982,14 @@ getSig pn t = maybeSig
                    else sig
        in [sig']
    inDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+rdrName2Name :: GHC.Located GHC.RdrName -> RefactGhc GHC.Name
+rdrName2Name (GHC.L l rdr) = do
+  renamed <- getRefactRenamed
+  let mn = locToName (getGhcLoc l) renamed
+  return (GHC.unLoc $ gfromJust ("rdrName2Name:failed for:" ++ showGhc (GHC.L l rdr)) mn)
 
 -- ---------------------------------------------------------------------
 

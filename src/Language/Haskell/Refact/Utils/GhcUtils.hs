@@ -15,13 +15,7 @@ of the GHC library problematic.
 
 module Language.Haskell.Refact.Utils.GhcUtils (
     -- * SYB versions
-    --  everythingButStaged
-    -- , somethingStaged
-    -- , everythingStaged
-      somewhereMStaged
-    , somewhereMStagedBu
-    -- , everywhereMStaged
-    , everywhereMStaged'
+      everywhereMStaged'
     , everywhereStaged
     , everywhereStaged'
     , onelayerStaged
@@ -29,21 +23,6 @@ module Language.Haskell.Refact.Utils.GhcUtils (
 
     -- ** SYB Utility
     -- , checkItemRenamer
-
-    -- * Strafunski StrategyLib versions
-{-
-    , full_tdTUGhc
-    , stop_tdTUGhc
-    , stop_tdTPGhc
-    , allTUGhc'
-    , once_tdTPGhc
-    , once_buTPGhc
-    , oneTPGhc
-    , allTUGhc
--}
-    -- ** Strafunski utility
-    -- , checkItemStage'
-    -- , checkItemRenamer'
 
     -- * Scrap Your Zipper versions
     , zeverywhereStaged
@@ -54,7 +33,6 @@ module Language.Haskell.Refact.Utils.GhcUtils (
     , zopenStaged'
     , ztransformStagedM
     -- ** SYZ utilities
-    -- , checkZipperStaged
     , upUntil
     , findAbove
     ) where
@@ -66,84 +44,8 @@ import Control.Monad
 import Data.Data
 import Data.Maybe
 
-#if __GLASGOW_HASKELL__ <= 708
-import qualified GHC     as GHC
-import qualified NameSet as GHC
-#endif
-
--- import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 import qualified Data.Generics.Zipper as Z
-
-{- now in ghc-cyb
--- TODO: pass this routine back to syb-utils (when it works properly)
--- Question: how to handle partial results in the otherwise step?
-everythingButStaged :: SYB.Stage -> (r -> r -> r) -> r -> SYB.GenericQ (r,Bool) -> SYB.GenericQ r
-everythingButStaged stage k z f x
-  | checkItemStage stage x = z
-  | stop == True = v
-  | otherwise = foldl k v (gmapQ (everythingButStaged stage k z f) x)
-  where (v, stop) = f x
--}
-
-
-{-
--- | Look up a subterm by means of a maybe-typed filter
-something :: GenericQ (Maybe u) -> GenericQ (Maybe u)
-
--- "something" can be defined in terms of "everything"
--- when a suitable "choice" operator is used for reduction
---
-something = everything orElse
--}
-
-{- now in syb-utils
--- | Look up a subterm by means of a maybe-typed filter
-somethingStaged :: SYB.Stage -> (Maybe u) -> SYB.GenericQ (Maybe u) -> SYB.GenericQ (Maybe u)
-
--- "something" can be defined in terms of "everything"
--- when a suitable "choice" operator is used for reduction
---
-somethingStaged stage z = everythingStaged stage SYB.orElse z
--}
-
--- ---------------------------------------------------------------------
-
-{-
--- | Apply a monadic transformation at least somewhere
-somewhere :: MonadPlus m => GenericM m -> GenericM m
-
--- We try "f" in top-down manner, but descent into "x" when we fail
--- at the root of the term. The transformation fails if "f" fails
--- everywhere, say succeeds nowhere.
---
-somewhere f x = f x `mplus` gmapMp (somewhere f) x
--}
-
--- | Apply a monadic transformation at least somewhere
-somewhereMStaged :: MonadPlus m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
-
--- We try "f" in top-down manner, but descent into "x" when we fail
--- at the root of the term. The transformation fails if "f" fails
--- everywhere, say succeeds nowhere.
---
-somewhereMStaged stage f x
-#if __GLASGOW_HASKELL__ <= 708
-  | checkItemStage stage x = mzero
-#endif
-  | otherwise = f x `mplus` gmapMp (somewhereMStaged stage f) x
-
--- ---------------------------------------------------------------------
-
--- | Apply a monadic transformation at least somewhere, in bottom up order
-somewhereMStagedBu :: MonadPlus m => SYB.Stage -> SYB.GenericM m -> SYB.GenericM m
-somewhereMStagedBu stage f x
-#if __GLASGOW_HASKELL__ <= 708
-  | checkItemStage stage x = mzero
-#endif
-  -- was | otherwise = f x `mplus` gmapMp (somewhereMStaged stage f) x
-  | otherwise =  gmapMp (somewhereMStagedBu stage f) x `mplus` f x
-
 
 -- ---------------------------------------------------------------------
 

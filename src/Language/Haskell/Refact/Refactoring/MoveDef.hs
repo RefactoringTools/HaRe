@@ -1396,7 +1396,6 @@ doDemoting' t pn = do
                   -- logm "duplicateDecls:clearing done"  -- ++AZ++
                   -- clearRefactDone
                   everywhereMStaged' SYB.Renamer (SYB.mkM dupInMatch -- top-down approach
-             -- = do somewhereMStaged SYB.Renamer (SYB.mkM dupInMatch -- need working MonadPlus for somewhereMStaged
                                                 `SYB.extM` dupInPat) decls
              {-
              = do applyTP (once_tdTP (failTP `adhocTP` dupInMatch

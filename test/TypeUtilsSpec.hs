@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module TypeUtilsSpec (main, spec) where
 
 import           Test.Hspec
@@ -442,15 +441,7 @@ spec = do
 
       let Just (GHC.L _ n) = locToName (7,14) renamed
       let res = definingTyClDeclsNames [n] renamed
-#if __GLASGOW_HASKELL__ > 704
       showGhc res `shouldBe` "[data family TypeUtils.TyClDEcls.XList a]"
-#else
-      showGhc res `shouldBe`
-          "[data instance TypeUtils.TyClDEcls.XList GHC.Types.Char\n"++
-          "     = TypeUtils.TyClDEcls.XCons !GHC.Types.Char !TypeUtils.TyClDEcls.XList GHC.Types.Char |\n"++
-          "       TypeUtils.TyClDEcls.XNil,\n"++
-          " data family TypeUtils.TyClDEcls.XList a]"
-#endif
 
     -- ---------------------------------
 
@@ -589,7 +580,6 @@ spec = do
           return (tds)
       -- ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initialStateRefactModule t toks }
       ((res),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((res),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
 
       (showGhc $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (res)) `shouldBe`
           "[(FreeAndDeclared.DeclareTypes.XList, (8, 13)),\n"++
@@ -3654,6 +3644,46 @@ This function is not used and has been removed
 
       -- (show $ isFieldName n3) `shouldBe` "True"
       -- (show $ isFieldName n2) `shouldBe` "False"
+
+  -- ---------------------------------------------------------------------
+
+  describe "rdrName2Name" $ do
+
+    it "finds a Name for a top-level RdrName" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/TokenTest.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let
+        comp = do
+          let (Just rdr)  = locToRdrName (5,1) parsed
+              (Just name) = locToName    (5,1) renamed
+          nname <- rdrName2Name rdr
+          return (rdr,name,nname)
+      ((r,n,nn),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((r,n,nn),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+
+      -- (showGhc (r,nn,GHC.nameUnique nn)) `shouldBe` ""
+      (showGhc (r,n,nn)) `shouldBe` "(bob, bob, bob)"
+
+    -- ---------------------------------
+
+    it "finds a Name for a local RdrName" $ do
+      (t, toks) <- parsedFileGhc "./test/testdata/TokenTest.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let
+        comp = do
+          let (Just rdr)  = locToRdrName (14,7) parsed
+              (Just name) = locToName    (14,7) renamed
+          nname <- rdrName2Name rdr
+          return (rdr,name,nname)
+      ((r,n,nn),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((r,n,nn),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+
+      -- (showGhc (r,nn,GHC.nameUnique nn)) `shouldBe` ""
+      (showGhc (r,n,nn)) `shouldBe` "(bar, bar, bar)"
 
   -- ---------------------------------------
 
