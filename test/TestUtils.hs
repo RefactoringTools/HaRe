@@ -31,15 +31,16 @@ module TestUtils
        ) where
 
 
-import qualified GHC           as GHC
+import qualified DynFlags      as GHC
 import qualified FastString    as GHC
+import qualified GHC           as GHC
 import qualified Name          as GHC
+import qualified Outputable    as GHC
 import qualified Unique        as GHC
 
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -205,7 +206,7 @@ runRefactGhcStateLog paramcomp logOn  = do
         , rsCurrentTarget = Nothing
         , rsModule = Nothing
         }
-  putStrLn "runRefactGhcStateLog:about to runRefactGhc"
+  -- putStrLn "runRefactGhcStateLog:about to runRefactGhc"
   (r,s) <- runRefactGhc (initGhcSession (rsetImportPaths defaultTestSettings) >>
                                                 paramcomp) initState testOptions
   return (r,s)

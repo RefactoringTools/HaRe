@@ -1277,15 +1277,11 @@ getParsedForRenamedName parsed n@(GHC.L l _n) = r
 
 -- ---------------------------------------------------------------------
 
+-- |Get the names of all types declared in the given declaration
 getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
 getDeclaredTypes (GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ (GHC.L _ n) _ _))) = [n]
 getDeclaredTypes (GHC.L _ (GHC.SynDecl (GHC.L _ n)  _ _ _)) = [n]
 getDeclaredTypes (GHC.L _ (GHC.DataDecl (GHC.L _ n) _ _ _)) = [n] -- ++?
-{-
-getDeclaredTypes (GHC.L _ (GHC.TyDecl (GHC.L _ n) _vars defn _fvs)) = nub $ [n] ++ dsn
-  where
-    dsn = getHsTyDefn defn
--}
 getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths _ats _atdefs _ _fvs))
   = nub $ [n] ++ ssn ++ msn -- ++ asn
   where
@@ -1302,47 +1298,7 @@ getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths _at
 
     ssn = concatMap getLSig sigs
     msn = getDeclaredVars $ hsBinds meths
-    -- asn = concatMap getDeclaredTypes ats
 
-{-
-FamDecl -- type/data family T :: *->*
-  tcdFam :: FamilyDecl name
-
-SynDecl  -- type declaration
-  tcdLName :: Located name
-  tcdTyVars :: LHsTyVarBndrs name
-  tcdRhs :: LHsType name
-  tcdFVs :: PostRn name NameSet
-
-DataDecl
-  tcdLName :: Located name
-  tcdTyVars :: LHsTyVarBndrs name
-  tcdDataDefn :: HsDataDefn name
-  tcdFVs :: PostRn name NameSet
-
-ClassDecl
-  tcdCtxt :: LHsContext name
-  tcdLName :: Located name
-  tcdTyVars :: LHsTyVarBndrs name
-  tcdFDs :: [Located (FunDep (Located name))]
-  tcdSigs :: [LSig name]
-  tcdMeths :: LHsBinds name
-  tcdATs :: [LFamilyDecl name]
-  tcdATDefs :: [LTyFamDefltEqn name]
-  tcdDocs :: [LDocDecl]
-  tcdFVs :: PostRn name NameSet
-
--}
-
--- -------------------------------------
-{-
-getHsTyDefn :: GHC.HsTyDefn GHC.Name -> [GHC.Name]
-getHsTyDefn (GHC.TySynonym _) = []
-getHsTyDefn (GHC.TyData _ _  _ _ cons _) = r
-  where
-    getConDecl (GHC.L _ (GHC.ConDecl (GHC.L _ n) _ _ _ _ _ _ _)) = n
-    r = map getConDecl cons
--}
 -- ---------------------------------------------------------------------
 -- |Experiment with GHC fvs stuff
 getFvs :: [GHC.LHsBind GHC.Name] -> [([GHC.Name], GHC.NameSet)]
@@ -2437,16 +2393,16 @@ getName str t
             (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
 
         worker ((GHC.L _ n) :: (GHC.Located GHC.Name))
-          | showGhc n == str = Just n
+          | showGhcQual n == str = Just n
         worker _ = Nothing
 
         workerBind (GHC.L _ (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
-          | showGhc name == str = Just name
+          | showGhcQual name == str = Just name
         workerBind _ = Nothing
 
 
         workerExpr ((GHC.L _ (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-          | showGhc name == str = Just name
+          | showGhcQual name == str = Just name
         workerExpr _ = Nothing
 
 -- ---------------------------------------------------------------------

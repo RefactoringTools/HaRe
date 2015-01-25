@@ -10,6 +10,7 @@ module Language.Haskell.Refact.Utils.GhcVersionSpecific
   -- , lexStringToRichTokens
   -- , getDataConstructors
   , setGhcContext
+  , showGhcQual 
   )
   where
 
@@ -80,3 +81,9 @@ setGhcContext modSum = GHC.setContext [GHC.IIModule (GHC.moduleName $ GHC.ms_mod
 #else
 setGhcContext modSum = GHC.setContext [GHC.IIModule (                 GHC.ms_mod modSum)]
 #endif
+
+-- ---------------------------------------------------------------------
+
+showGhcQual :: (GHC.Outputable a) => a -> String
+showGhcQual x = GHC.showSDocForUser GHC.unsafeGlobalDynFlags GHC.alwaysQualify $ GHC.ppr x
+

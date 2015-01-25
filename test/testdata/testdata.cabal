@@ -7,3 +7,4 @@ Build-Type: Simple
 Executable foo
   Main-Is: TokenTest.hs
   Build-Depends:          base >= 4.0  && < 4.9
+                        , syb
