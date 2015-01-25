@@ -9,6 +9,7 @@ import qualified GHC.SYB.Utils as SYB
 
 import qualified GHC
 import qualified OccName               as GHC
+import qualified RdrName               as GHC
 
 import Control.Monad
 import Data.List
@@ -22,39 +23,40 @@ import Language.Haskell.Refact.API
 -- | This refactoring duplicates a definition (function binding or
 -- simple pattern binding) at the same level with a new name provided by
 -- the user. The new name should not cause name clash/capture.
-duplicateDef :: RefactSettings -> Cradle -> FilePath -> String -> SimpPos -> IO [FilePath]
-duplicateDef settings cradle fileName newName (row,col) =
-  runRefacSession settings cradle (comp fileName newName (row,col))
+duplicateDef :: RefactSettings -> Options -> FilePath -> String -> SimpPos -> IO [FilePath]
+duplicateDef settings opts fileName newName (row,col) =
+  runRefacSession settings opts (comp fileName newName (row,col))
 
 comp :: FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
-      if isVarId newName
-        then do
-                getModuleGhc fileName
-                renamed <- getRefactRenamed
-                parsed  <- getRefactParsed
+  if isVarId newName
+    then
+      do
+        getModuleGhc fileName
+        renamed <- getRefactRenamed
+        parsed  <- getRefactParsed
 
-                let (Just (modName,_)) = getModuleName parsed
-                let maybePn = locToName (row, col) renamed
-                case maybePn of
-                  Just pn ->
-                       do
-                          -- refactoredMod@((_fp,ismod),(_toks',renamed')) <- applyRefac (doDuplicating pn newName) (Just modInfo) fileName
-                          (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
-                          case (ismod) of
-                            False -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
-                            True -> return ()
+        let (Just (modName,_)) = getModuleName parsed
+        let maybePn = locToName (row, col) renamed
+        case maybePn of
+          Just pn ->
+            do
+              (refactoredMod@((_fp,ismod),(anns',renamed')),_) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
+              case (ismod) of
+                RefacUnmodifed-> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
+                RefacModified -> return ()
 
-                          if modIsExported modName renamed
-                           then do clients <- clientModsAndFiles modName
-                                   logm ("DupDef: clients=" ++ (showGhc clients)) -- ++AZ++ debug
-                                   refactoredClients <- mapM (refactorInClientMod (GHC.unLoc pn) modName
-                                                             (findNewPName newName renamed')) clients
-                                   return $ refactoredMod:refactoredClients
-                           else  return [refactoredMod]
-                  Nothing -> error "Invalid cursor position!"
-        else error $ "Invalid new function name:" ++ newName ++ "!"
+              if modIsExported modName renamed
+               then
+                do clients <- clientModsAndFiles modName
+                   logm ("DupDef: clients=" ++ (showGhc clients)) -- ++AZ++ debug
+                   refactoredClients <- mapM (refactorInClientMod (GHC.unLoc pn) modName
+                                             (findNewPName newName renamed')) clients
+                   return $ refactoredMod:refactoredClients
+               else  return [refactoredMod]
+          Nothing -> error "Invalid cursor position!"
+    else error $ "Invalid new function name:" ++ newName ++ "!"
 
 
 
@@ -88,7 +90,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
         dupInMod grp = return grp
 
         --2. The definition to be duplicated is a local declaration in a match
-        dupInMatch (match@(GHC.Match _pats _typ rhs)::GHC.Match GHC.Name)
+        dupInMatch (match@(GHC.Match _ _pats _typ rhs)::GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
           | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes match pn
         dupInMatch match = return match
 
@@ -106,7 +108,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
         -- Note: The local declarations in a case alternative are covered in #2 above.
 
         --6.The definition to be duplicated is a local decl in a Let statement.
-        dupInLetStmt (letStmt@(GHC.LetStmt ds):: GHC.Stmt GHC.Name)
+        dupInLetStmt (letStmt@(GHC.LetStmt ds):: GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name))
            -- was |findFunOrPatBind pn ds /=[]=doDuplicating' inscps letStmt pn
            |not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letStmt pn
         dupInLetStmt letStmt = return letStmt
@@ -150,6 +152,21 @@ reallyDoDuplicating pn newName inscopes renamed = do
 
 
 -- | Find the the new definition name in GHC.Name format.
+findNewPName :: (SYB.Data t) => String -> t -> GHC.Name
+findNewPName name renamed = gfromJust "findNewPName" res
+  where
+     res = SYB.something (Nothing `SYB.mkQ` workerN `SYB.extQ` workerR) renamed
+
+     workerN  (pname::GHC.Name)
+        | (GHC.occNameString $ GHC.getOccName pname) == name = Just pname
+     workerN _ = Nothing
+
+     workerR  (pname::GHC.RdrName)
+        | (GHC.occNameString $ GHC.rdrNameOcc pname) == name = Just (error $ "need to call rdrNameToName")
+     workerR _ = Nothing
+
+{-
+-- | Find the the new definition name in GHC.Name format.
 findNewPName :: String -> GHC.RenamedSource -> GHC.Name
 findNewPName name renamed = gfromJust "findNewPName" res
   where
@@ -159,7 +176,7 @@ findNewPName name renamed = gfromJust "findNewPName" res
      worker  (pname::GHC.Name)
         | (GHC.occNameString $ GHC.getOccName pname) == name = Just pname
      worker _ = Nothing
-
+-}
 
 -- | Do refactoring in the client module. That is to hide the
 -- identifer in the import declaration if it will cause any problem in
@@ -190,7 +207,7 @@ refactorInClientMod oldPN serverModName newPName targetModule@(_,modSummary)
                 -- refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
                 (refactoredMod,_) <- applyRefac (doDuplicatingClient serverModName [newPName]) (RSFile fileName)
                 return refactoredMod
-        else return ((fileName,unmodified),([],[],renamed))
+        else return ((fileName,RefacUnmodifed),(mempty,parsed))
    where
      needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
      needToBeHided name exps parsed = do
@@ -214,7 +231,7 @@ doDuplicatingClient serverModName newPNames = do
 willBeUnQualImportedBy :: GHC.ModuleName -> GHC.RenamedSource -> Maybe [GHC.ModuleName]
 willBeUnQualImportedBy modName (_,imps,_,_)
    = let
-         ms = filter (\(GHC.L _ (GHC.ImportDecl (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as h))
+         ms = filter (\(GHC.L _ (GHC.ImportDecl _ (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as h))
                     -> modName == modName1
                        && not isQualified
                               && (isNothing h  -- not hiding
@@ -225,7 +242,7 @@ willBeUnQualImportedBy modName (_,imps,_,_)
          in if (emptyList ms) then Nothing
                       else Just $ nub $ map getModName ms
 
-         where getModName (GHC.L _ (GHC.ImportDecl _modName1 _qualify _source _safe _isQualified _isImplicit as _h))
+         where getModName (GHC.L _ (GHC.ImportDecl _ _modName1 _qualify _source _safe _isQualified _isImplicit as _h))
                  = if isJust as then (fromJust as)
                                 else modName
                -- simpModName (SN m loc) = m
