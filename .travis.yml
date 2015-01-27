@@ -2,6 +2,7 @@
 
 # See also https://github.com/hvr/multi-ghc-travis for more information
 env:
+ - CABALVER=1.22 GHCVER=7.10.1
  - CABALVER=1.22 GHCVER=head   # see section about GHC HEAD snapshots
 
 # matrix:
