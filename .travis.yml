@@ -41,7 +41,7 @@ install:
    (cd ghc-mod && git checkout ghc-7.10 && cabal install)
  - pwd
  # Must remove --allow-newer in future
- - cabal install --only-dependencies --enable-tests --enable-benchmarks --enable-newer
+ - cabal install --only-dependencies --enable-tests --enable-benchmarks --allow-newer
 
 # Here starts the actual work to be performed for the package under
 # test; any command which exits with a non-zero exit code causes the
