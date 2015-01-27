@@ -35,10 +35,11 @@ install:
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - travis_retry cabal update
  - |
-   git clone https://github.com/alanz/ghc-mod.git
-   cd ghc-mod && git checkout ghc-7.10 && cabal install
    git clone https://github.com/alanz/hslogger.git
-   cd hslogger && cabal install
+   (cd hslogger && cabal install)
+   git clone https://github.com/alanz/ghc-mod.git
+   (cd ghc-mod && git checkout ghc-7.10 && cabal install)
+ - pwd
  - cabal install --only-dependencies --enable-tests --enable-benchmarks
 
 # Here starts the actual work to be performed for the package under
