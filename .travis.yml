@@ -40,7 +40,8 @@ install:
    git clone https://github.com/alanz/ghc-mod.git
    (cd ghc-mod && git checkout ghc-7.10 && cabal install)
  - pwd
- - cabal install --only-dependencies --enable-tests --enable-benchmarks
+ # Must remove --allow-newer in future
+ - cabal install --only-dependencies --enable-tests --enable-benchmarks --enable-newer
 
 # Here starts the actual work to be performed for the package under
 # test; any command which exits with a non-zero exit code causes the
