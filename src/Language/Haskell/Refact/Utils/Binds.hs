@@ -1,7 +1,11 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE UndecidableInstances #-} -- for GHC.DataId
 
 --------------------------------------------------------------------------------
 -- Module      : TypeUtils
@@ -40,7 +44,6 @@ module Language.Haskell.Refact.Utils.Binds
    , replaceBinds
    , getValBindSigs
    , emptyValBinds
-   -- , unionBinds
    , HsValBinds(..)
  ) where
 
@@ -48,10 +51,10 @@ import Language.Haskell.GHC.ExactPrint.Utils
 
 -- Modules from GHC
 import qualified Bag           as GHC
-import qualified BasicTypes    as GHC
 import qualified GHC           as GHC
+import qualified Outputable    as GHC
 
-import qualified Data.Generics as SYB
+import Data.Generics
 
 -- ---------------------------------------------------------------------
 
@@ -60,48 +63,55 @@ getValBindSigs binds = case binds of
     GHC.ValBindsIn  _ sigs -> sigs
     GHC.ValBindsOut _ sigs -> sigs
 
-emptyValBinds :: GHC.HsValBinds GHC.Name
+emptyValBinds :: GHC.HsValBinds name
 emptyValBinds = GHC.ValBindsIn (GHC.listToBag []) []
 
-unionBinds :: [GHC.HsValBinds GHC.Name] ->  GHC.HsValBinds GHC.Name
+unionBinds :: [GHC.HsValBinds name] ->  GHC.HsValBinds name
 unionBinds [] = emptyValBinds
 unionBinds [x] = x
 unionBinds (x1:x2:xs) = unionBinds ((mergeBinds x1 x2):xs)
   where
-    mergeBinds :: GHC.HsValBinds GHC.Name -> GHC.HsValBinds GHC.Name -> GHC.HsValBinds GHC.Name
+    mergeBinds :: GHC.HsValBinds name -> GHC.HsValBinds name -> GHC.HsValBinds name
     mergeBinds (GHC.ValBindsIn b1 s1) (GHC.ValBindsIn b2 s2) = (GHC.ValBindsIn (GHC.unionBags b1 b2) (s1++s2))
     mergeBinds (GHC.ValBindsOut b1 s1) (GHC.ValBindsOut b2 s2) = (GHC.ValBindsOut (b1++b2) (s1++s2))
     mergeBinds y1@(GHC.ValBindsIn _ _) y2@(GHC.ValBindsOut _  _) = mergeBinds y2 y1
-    mergeBinds    (GHC.ValBindsOut b1 s1) (GHC.ValBindsIn b2 s2) = (GHC.ValBindsOut (b1++[(GHC.NonRecursive,b2)]) (s1++s2))
+    mergeBinds    (GHC.ValBindsOut _ _) (GHC.ValBindsIn _ _) = error $ "unionBinds:cannot merge ValBindsOut and ValBindsIn"
 
 -- NOTE: ValBindsIn are found before the Renamer, ValBindsOut after
 
-hsBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name]
+hsBinds :: (HsValBinds t name) => t -> [GHC.LHsBind name]
 hsBinds t = case hsValBinds t of
   GHC.ValBindsIn binds _sigs -> GHC.bagToList binds
   GHC.ValBindsOut bs _sigs -> concatMap (\(_,b) -> GHC.bagToList b) bs
 
-replaceBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name] -> t
+replaceBinds :: (HsValBinds t name) => t -> [GHC.LHsBind name] -> t
 -- replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) [])
-replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) sigs)
+replaceBinds t bs =
+  if isName then error $ "replaceBinds:GHC.ValBindsOut:need to work in rec flag"
+                  -- replaceValBinds t (GHC.ValBindsOut (GHC.listToBag bs) sigs)
+            else replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) sigs)
   where
+    isName :: Bool
+    isName = case cast bs :: Maybe [GHC.LHsBind GHC.Name] of
+      Just _ -> True
+      Nothing -> False
     sigs = case hsValBinds t of
       GHC.ValBindsIn  _ s -> s
-      GHC.ValBindsOut _ s -> s
+      -- GHC.ValBindsOut _ s -> s
 
 -- This class replaces the HsDecls one
-class (SYB.Data t) => HsValBinds t where
+class (Data t,Data name) => HsValBinds t name |  t -> name where
 
     -- | Return the binds that are directly enclosed in the
     -- given syntax phrase.
     -- hsValBinds :: t -> [GHC.LHsBind GHC.Name]
-    hsValBinds :: t -> GHC.HsValBinds GHC.Name
+    hsValBinds :: t -> GHC.HsValBinds name
 
     -- | Replace the directly enclosed bind list by the given
     --  bind list. Note: This function does not modify the
     --  token stream.
     -- replaceBinds :: t -> [GHC.LHsBind GHC.Name] -> t
-    replaceValBinds :: t -> GHC.HsValBinds GHC.Name -> t
+    replaceValBinds :: t -> GHC.HsValBinds name -> t
 
     -- | Return True if the specified identifier is declared in the
     -- given syntax phrase.
@@ -110,10 +120,10 @@ class (SYB.Data t) => HsValBinds t where
     -- | Return the type class definitions that are directly enclosed
     -- in the given syntax phrase. Note: only makes sense for
     -- GHC.RenamedSource
-    hsTyDecls :: t -> [[GHC.LTyClDecl GHC.Name]]
+    hsTyDecls :: t -> [[GHC.LTyClDecl name]]
 
 
-instance HsValBinds (GHC.RenamedSource) where
+instance HsValBinds GHC.RenamedSource GHC.Name where
   hsValBinds (grp,_,_,_) = (GHC.hs_valds grp)
 
   replaceValBinds (grp,imps,exps,docs) binds = (grp',imps,exps,docs)
@@ -122,13 +132,14 @@ instance HsValBinds (GHC.RenamedSource) where
 
   hsTyDecls (grp,_,_,_) = map GHC.group_tyclds (GHC.hs_tyclds grp)
 
-
-instance HsValBinds (GHC.HsValBinds GHC.Name) where
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.HsValBinds name) name where
   hsValBinds vb = vb
   replaceValBinds _old new = new
   hsTyDecls _ = []
 
-instance HsValBinds (GHC.HsGroup GHC.Name) where
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.HsGroup name) name where
   hsValBinds grp = (GHC.hs_valds grp)
 
   replaceValBinds (GHC.HsGroup b s t i d f de fo w a r v doc) binds
@@ -136,7 +147,8 @@ instance HsValBinds (GHC.HsGroup GHC.Name) where
        where b' = replaceValBinds b binds
   hsTyDecls _ = []
 
-instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.HsLocalBinds name) name where
   hsValBinds lb = case lb of
     GHC.HsValBinds b    -> b
     GHC.HsIPBinds _     -> emptyValBinds
@@ -148,7 +160,8 @@ instance HsValBinds (GHC.HsLocalBinds GHC.Name) where
 
   hsTyDecls _ = []
 
-instance HsValBinds (GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name)) where
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.GRHSs name (GHC.LHsExpr name)) name where
   hsValBinds (GHC.GRHSs _ lb) = hsValBinds lb
 
   replaceValBinds (GHC.GRHSs rhss b) new = (GHC.GRHSs rhss (replaceValBinds b new))
@@ -157,7 +170,8 @@ instance HsValBinds (GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name)) where
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.MatchGroup GHC.Name (GHC.LHsExpr GHC.Name)) where
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.MatchGroup name (GHC.LHsExpr name)) name where
   hsValBinds (GHC.MG matches _ _ _) = hsValBinds matches
 
   replaceValBinds (GHC.MG matches a r o) newBinds
@@ -167,7 +181,8 @@ instance HsValBinds (GHC.MatchGroup GHC.Name (GHC.LHsExpr GHC.Name)) where
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LMatch GHC.Name (GHC.LHsExpr GHC.Name)] where
+instance (GHC.DataId name,Data name)
+  => HsValBinds [GHC.LMatch name (GHC.LHsExpr name)] name where
   hsValBinds ms = unionBinds $ map (\m -> hsValBinds $ GHC.unLoc m) ms
 
   replaceValBinds [] _        = error "empty match list in replaceValBinds [GHC.LMatch GHC.Name]"
@@ -177,7 +192,8 @@ instance HsValBinds [GHC.LMatch GHC.Name (GHC.LHsExpr GHC.Name)] where
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LMatch GHC.Name (GHC.LHsExpr GHC.Name)) where
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.LMatch name (GHC.LHsExpr name)) name where
   hsValBinds m = hsValBinds $ GHC.unLoc m
 
   replaceValBinds (GHC.L l m) newBinds = (GHC.L l (replaceValBinds m newBinds))
@@ -187,7 +203,8 @@ instance HsValBinds (GHC.LMatch GHC.Name (GHC.LHsExpr GHC.Name)) where
 -- ---------------------------------------------------------------------
 
 
-instance HsValBinds (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.Match name (GHC.LHsExpr name)) name where
   hsValBinds (GHC.Match _ _ _ grhs) = hsValBinds grhs
 
   replaceValBinds (GHC.Match mf p t (GHC.GRHSs rhs _binds)) newBinds
@@ -197,49 +214,54 @@ instance HsValBinds (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
 
   hsTyDecls _ = []
 
-instance HsValBinds (GHC.HsBind GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.HsBind name) name where
   hsValBinds (GHC.PatBind _p rhs _typ _fvs _) = hsValBinds rhs
 
   -- TODO: ++AZ++ added for compatibility with hsDecls.
   hsValBinds (GHC.FunBind _ _ matches _ _ _) = hsValBinds matches
-  hsValBinds other = error $ "hsValBinds (GHC.HsBind GHC.Name) undefined for:" ++ (showGhc other)
+  hsValBinds other = error $ "hsValBinds (GHC.HsBind name) undefined for:" ++ (showGhc other)
 
   replaceValBinds (GHC.PatBind p (GHC.GRHSs rhs _binds) typ fvs pt) newBinds
     = (GHC.PatBind p (GHC.GRHSs rhs binds') typ fvs pt)
       where
         binds' = (GHC.HsValBinds newBinds)
   replaceValBinds x _newBinds
-      = error $ "replaceValBinds (GHC.HsBind GHC.Name) undefined for:" ++ (showGhc x)
+      = error $ "replaceValBinds (GHC.HsBind name) undefined for:" ++ (showGhc x)
 
   hsTyDecls _ = []
 
-instance HsValBinds (GHC.HsExpr GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.HsExpr name) name where
   hsValBinds (GHC.HsLet ds _) = hsValBinds ds
   hsValBinds x = error $ "TypeUtils.hsValBinds undefined for:" ++ showGhc x
 
   replaceValBinds (GHC.HsLet binds ex) new = (GHC.HsLet (replaceValBinds binds new) ex)
-  replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr GHC.Name) for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "undefined replaceValBinds (GHC.HsExpr name) for:" ++ (showGhc old)
 
   hsTyDecls _ = []
 
-instance HsValBinds (GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name)) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.Stmt name (GHC.LHsExpr name)) name where
   hsValBinds (GHC.LetStmt ds) = hsValBinds ds
-  hsValBinds other = error $ "hsValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc other)
+  hsValBinds other = error $ "hsValBinds (GHC.Stmt name) undefined for:" ++ (showGhc other)
   replaceValBinds (GHC.LetStmt ds) new = (GHC.LetStmt (replaceValBinds ds new))
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.Stmt name) undefined for:" ++ (showGhc old)
 
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LHsBinds GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LHsBinds name) name where
   hsValBinds binds = hsValBinds $ GHC.bagToList binds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsBinds GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsBinds name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LHsBind GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LHsBind name) name where
   hsValBinds (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) = hsValBinds matches
   hsValBinds (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsValBinds rhs
   hsValBinds (GHC.L _ (GHC.VarBind _ rhs _))           = hsValBinds rhs
@@ -261,7 +283,8 @@ instance HsValBinds (GHC.LHsBind GHC.Name) where
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds ([GHC.LHsBind GHC.Name]) where
+instance (GHC.DataId name,Data name)
+  => HsValBinds ([GHC.LHsBind name]) name where
   -- hsValBinds xs = concatMap hsValBinds xs -- As in original
   hsValBinds xs = GHC.ValBindsIn (GHC.listToBag xs) []
 
@@ -272,205 +295,232 @@ instance HsValBinds ([GHC.LHsBind GHC.Name]) where
 
   hsTyDecls _ = []
 
-instance HsValBinds (GHC.LHsExpr GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LHsExpr name) name where
   hsValBinds (GHC.L _ (GHC.HsLet binds _ex)) = hsValBinds binds
   hsValBinds _                               = emptyValBinds
 
   replaceValBinds (GHC.L l (GHC.HsLet binds ex)) newBinds
      = (GHC.L l (GHC.HsLet (replaceValBinds binds newBinds) ex))
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsExpr GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsExpr name) undefined for:" ++ (showGhc old)
 
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LGRHS GHC.Name (GHC.LHsExpr GHC.Name)] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LGRHS name (GHC.LHsExpr name)] name where
   hsValBinds xs = unionBinds $ map hsValBinds xs
-  replaceValBinds _old _new = error $ "replaceValBinds [GHC.LGRHS GHC.Name] undefined for:" -- ++ (showGhc old)
+  replaceValBinds _old _new = error $ "replaceValBinds [GHC.LGRHS name] undefined for:" -- ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LGRHS GHC.Name (GHC.LHsExpr GHC.Name)) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LGRHS name (GHC.LHsExpr name)) name where
   hsValBinds (GHC.L _ (GHC.GRHS stmts _expr)) = hsValBinds stmts
-  replaceValBinds _old _new = error $ "replaceValBinds (GHC.LHGRHS GHC.Name) undefined for:" -- ++ (showGhc _old)
+  replaceValBinds _old _new = error $ "replaceValBinds (GHC.LHGRHS name) undefined for:" -- ++ (showGhc _old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LStmt GHC.Name (GHC.LHsExpr GHC.Name)] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LStmt name (GHC.LHsExpr name)] name where
   hsValBinds xs = unionBinds $ map hsValBinds xs
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LStmt GHC.Name] undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LStmt name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LStmt GHC.Name (GHC.LHsExpr GHC.Name)) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LStmt name (GHC.LHsExpr name)) name where
   hsValBinds (GHC.L _ (GHC.LetStmt binds)) = hsValBinds binds
   hsValBinds _                             = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LStmt GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LStmt name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LPat GHC.Name] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LPat name] name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LPat GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LPat name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LPat GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LPat name) name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LPat GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LPat name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.Name) where
+
+instance HsValBinds (GHC.Name) GHC.Name where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds (GHC.Name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
+
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.SyntaxExpr GHC.Name] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.SyntaxExpr name] name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.SyntaxExpr GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.SyntaxExpr name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.TyClGroup GHC.Name] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.TyClGroup name] name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.TyClGroup GHC.Name] undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.TyClGroup name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [[GHC.LTyClDecl GHC.Name]] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [[GHC.LTyClDecl name]] name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [[GHC.LTyClDecl GHC.Name]] undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds [[GHC.LTyClDecl name]] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LTyClDecl GHC.Name] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LTyClDecl name] name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LTyClDecl GHC.Name] undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LTyClDecl name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LTyClDecl GHC.Name) where
-  hsValBinds _ = error $ "hsValBinds (GHC.LTyClDecl GHC.Name) must pull out tcdMeths"
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LTyClDecl GHC.Name) undefined for:" ++ (showGhc old)
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LTyClDecl name) name where
+  hsValBinds _ = error $ "hsValBinds (GHC.LTyClDecl name) must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LTyClDecl name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LTyFamInstDecl GHC.Name] where
-  hsValBinds _ = error $ "hsValBinds [GHC.LTyFamInstDecl GHC.Name] must pull out tcdMeths"
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LTyFamInstDecl GHC.Name] undefined for:" ++ (showGhc old)
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LTyFamInstDecl name] name where
+  hsValBinds _ = error $ "hsValBinds [GHC.LTyFamInstDecl name] must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LTyFamInstDecl name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LDataFamInstDecl GHC.Name] where
-  hsValBinds _ = error $ "hsValBinds [GHC.LDataFamInstDecl GHC.Name] must pull out tcdMeths"
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LDataFamInstDecl GHC.Name] undefined for:" ++ (showGhc old)
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LDataFamInstDecl name] name where
+  hsValBinds _ = error $ "hsValBinds [GHC.LDataFamInstDecl name] must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LDataFamInstDecl name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LTyFamInstEqn GHC.Name] where
-  hsValBinds _ = error $ "hsValBinds [GHC.LTyFamInstEqn GHC.Name] must pull out tcdMeths"
-  replaceValBinds _old _new = error $ "replaceValBinds [GHC.LTyFamInstEqn GHC.Name] undefined for:"
+instance (GHC.DataId name,Data name)
+  => HsValBinds [GHC.LTyFamInstEqn name] name where
+  hsValBinds _ = error $ "hsValBinds [GHC.LTyFamInstEqn name] must pull out tcdMeths"
+  replaceValBinds _old _new = error $ "replaceValBinds [GHC.LTyFamInstEqn name] undefined for:"
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LTyFamInstEqn GHC.Name) where
-  hsValBinds _ = error $ "hsValBinds (GHC.LTyFamInstEqn GHC.Name) must pull out tcdMeths"
-  replaceValBinds _old _new = error $ "replaceValBinds (GHC.LTyFamInstEqn GHC.Name) undefined for:"
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.LTyFamInstEqn name) name where
+  hsValBinds _ = error $ "hsValBinds (GHC.LTyFamInstEqn name) must pull out tcdMeths"
+  replaceValBinds _old _new = error $ "replaceValBinds (GHC.LTyFamInstEqn name) undefined for:"
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.HsDataDefn GHC.Name) where
-  hsValBinds _ = error $ "hsValBinds (GHC.HsDataDefn GHC.Name) must pull out tcdMeths"
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsDataDefn GHC.Name) undefined for:" ++ (showGhc old)
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.HsDataDefn name) name where
+  hsValBinds _ = error $ "hsValBinds (GHC.HsDataDefn name) must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsDataDefn name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.HsTyPats GHC.Name) where
-  hsValBinds _ = error $ "hsValBinds (GHC.HsTyPats GHC.Name) must pull out tcdMeths"
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsTyPats GHC.Name) undefined for:" ++ (showGhc old)
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.HsTyPats name) name where
+  hsValBinds _ = error $ "hsValBinds (GHC.HsTyPats name) must pull out tcdMeths"
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsTyPats name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LInstDecl GHC.Name] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LInstDecl name] name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LInstDecl GHC.Name] undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LInstDecl name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LInstDecl GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LInstDecl name) name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LInstDecl GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LInstDecl name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LHsType GHC.Name] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LHsType name] name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsType GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsType name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LHsType GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LHsType name) name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsType GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LHsType name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds [GHC.LSig GHC.Name] where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LSig name] name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LSig GHC.Name] undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LSig name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.LSig GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LSig name) name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LSig GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LSig name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
 {-
-instance HsValBinds [GHC.LFamInstDecl GHC.Name] where
+instance HsValBinds [GHC.LFamInstDecl name] where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds [GHC.LFamInstDecl GHC.Name] undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds [GHC.LFamInstDecl name] undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 -}
 -- ---------------------------------------------------------------------
 {-
-instance HsValBinds (GHC.LFamInstDecl GHC.Name) where
+instance HsValBinds (GHC.LFamInstDecl name) where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.LFamInstDecl GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.LFamInstDecl name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 -}
 
 -- ---------------------------------------------------------------------
 
-instance HsValBinds (GHC.HsIPBinds GHC.Name) where
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.HsIPBinds name) name where
   hsValBinds _ = emptyValBinds
-  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsIPBinds GHC.Name) undefined for:" ++ (showGhc old)
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.HsIPBinds name) undefined for:" ++ (showGhc old)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------

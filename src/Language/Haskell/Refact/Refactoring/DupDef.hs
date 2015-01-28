@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Language.Haskell.Refact.Refactoring.DupDef(duplicateDef) where
@@ -118,7 +119,7 @@ reallyDoDuplicating pn newName inscopes renamed = do
         findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
 
 
-        doDuplicating' :: (HsValBinds t) => InScopes -> t -> GHC.Located GHC.Name
+        doDuplicating' :: (HsValBinds t GHC.Name) => InScopes -> t -> GHC.Located GHC.Name
                        -> RefactGhc (t)
         doDuplicating' _inscps parentr ln@(GHC.L _ n)
            = do let

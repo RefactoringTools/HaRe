@@ -304,7 +304,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
 -- ---------------------------------------------------------------------
 
-moveDecl1 :: (HsValBinds t)
+moveDecl1 :: (HsValBinds t GHC.Name)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
 
@@ -382,7 +382,7 @@ pnsNeedRenaming dest parent _liftedDecls pns
      pNtoName = showGhc
 
 
-addParamsToParent :: (HsValBinds t) => GHC.Name -> [GHC.Name] -> t -> RefactGhc t
+addParamsToParent :: (HsValBinds t GHC.Name) => GHC.Name -> [GHC.Name] -> t -> RefactGhc t
 addParamsToParent _pn [] t = return t
 addParamsToParent  pn params t = do
   logm $ "addParamsToParent:(pn,params)" ++ (showGhc (pn,params))
@@ -652,7 +652,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                | otherwise = Nothing
              liftToLet' _ = Nothing
 
-             doLiftZ :: (HsValBinds t)
+             doLiftZ :: (HsValBinds t GHC.Name)
                => t -> SYB.Stage -> Z.Zipper a
                -> RefactGhc (Z.Zipper a)
              doLiftZ ds _stage z =
@@ -692,7 +692,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                     return ds'
 
              -- TODO: merge worker and worker1
-             worker :: (HsValBinds t,GHC.Outputable t)
+             worker :: (HsValBinds t GHC.Name,GHC.Outputable t)
                 => t -- ^The destination of the lift operation
                 -> [GHC.LHsBind GHC.Name] -- ^ list containing the
                                 -- decl to be lifted
@@ -720,7 +720,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 --return (before++parent'++liftedDecls''++after)
                         else askRenamingMsg pns "lifting"
 
-             worker1 :: (HsValBinds t,GHC.Outputable t)
+             worker1 :: (HsValBinds t GHC.Name,GHC.Outputable t)
                 => t -- ^The destination of the lift operation
                 -> [GHC.LHsBind GHC.Name] -- ^ list containing the
                                 -- decl to be lifted
@@ -768,7 +768,7 @@ liftedToTopLevel pnt@(GHC.L _ pn) renamed
      else (False, [])
 
 
-addParamsToParentAndLiftedDecl :: (HsValBinds t,GHC.Outputable t) =>
+addParamsToParentAndLiftedDecl :: (HsValBinds t GHC.Name,GHC.Outputable t) =>
      GHC.Name   -- ^name of decl being lifted
   -> [GHC.Name] -- ^Declared names in parent
   -> t          -- ^parent
@@ -1283,7 +1283,7 @@ doDemoting  pn = do
 
 
 -- |Demote the declaration of 'pn' in the context of 't'.
-doDemoting' :: (HsValBinds t, UsedByRhs t) => t -> GHC.Name -> RefactGhc t
+doDemoting' :: (HsValBinds t GHC.Name, UsedByRhs t) => t -> GHC.Name -> RefactGhc t
 doDemoting' t pn = do
    let origDecls = hsBinds t
        demotedDecls'= definingDeclsNames [pn] origDecls True False

@@ -172,7 +172,6 @@ import qualified Name          as GHC
 import qualified NameSet       as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
-import qualified RnEnv         as GHC
 import qualified UniqSet       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHC
@@ -1328,7 +1327,7 @@ getDeclaredVars bs = concatMap vars bs
 --------------------------------------------------------------------------------
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
-hsVisibleNames:: (FindEntity t1,HsValBinds t2,GHC.Outputable t1)
+hsVisibleNames:: (FindEntity t1,HsValBinds t2 GHC.Name,GHC.Outputable t1)
   => t1 -> t2 -> RefactGhc [String]
 hsVisibleNames e t = do
     d <- hsVisiblePNs e t
@@ -1339,7 +1338,7 @@ hsVisibleNames e t = do
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisiblePNs :: (FindEntity e,HsValBinds t,GHC.Outputable e)
+hsVisiblePNs :: (FindEntity e,HsValBinds t GHC.Name,GHC.Outputable e)
              => e -> t -> RefactGhc [GHC.Name]
 hsVisiblePNs e t = do
   (DN dn) <- hsVisibleDs e t
@@ -1350,7 +1349,7 @@ hsVisiblePNs e t = do
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisibleDs :: (FindEntity e, SYB.Data t,HsValBinds t,GHC.Outputable e)
+hsVisibleDs :: (FindEntity e, SYB.Data t,HsValBinds t GHC.Name,GHC.Outputable e)
              => e -> t -> RefactGhc DeclaredNames
 hsVisibleDs e t = do
   -- logm $ "hsVisibleDs:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
@@ -1877,68 +1876,8 @@ isFunOrPatBindR::GHC.LHsBind t -> Bool
 isFunOrPatBindR decl = isFunBindR decl || isPatBindR decl
 
 -------------------------------------------------------------------------------
-{-
-getValBindSigs :: GHC.HsValBinds GHC.Name -> [GHC.LSig GHC.Name]
-getValBindSigs binds = case binds of
-    GHC.ValBindsIn  _ sigs -> sigs
-    GHC.ValBindsOut _ sigs -> sigs
-
-emptyValBinds :: GHC.HsValBinds GHC.Name
-emptyValBinds = GHC.ValBindsIn (GHC.listToBag []) []
-
-unionBinds :: [GHC.HsValBinds GHC.Name] ->  GHC.HsValBinds GHC.Name
-unionBinds [] = emptyValBinds
-unionBinds [x] = x
-unionBinds (x1:x2:xs) = unionBinds ((mergeBinds x1 x2):xs)
-  where
-    mergeBinds :: GHC.HsValBinds GHC.Name -> GHC.HsValBinds GHC.Name -> GHC.HsValBinds GHC.Name
-    mergeBinds (GHC.ValBindsIn b1 s1) (GHC.ValBindsIn b2 s2) = (GHC.ValBindsIn (GHC.unionBags b1 b2) (s1++s2))
-    mergeBinds (GHC.ValBindsOut b1 s1) (GHC.ValBindsOut b2 s2) = (GHC.ValBindsOut (b1++b2) (s1++s2))
-    mergeBinds y1@(GHC.ValBindsIn _ _) y2@(GHC.ValBindsOut _  _) = mergeBinds y2 y1
-    mergeBinds    (GHC.ValBindsOut b1 s1) (GHC.ValBindsIn b2 s2) = (GHC.ValBindsOut (b1++[(GHC.NonRecursive,b2)]) (s1++s2))
--}
-
--- NOTE: ValBindsIn are found before the Renamer, ValBindsOut after
-{-
-hsBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name]
-hsBinds t = case hsValBinds t of
-  GHC.ValBindsIn binds _sigs -> GHC.bagToList binds
-  GHC.ValBindsOut bs _sigs -> concatMap (\(_,b) -> GHC.bagToList b) bs
-
-replaceBinds :: (HsValBinds t) => t -> [GHC.LHsBind GHC.Name] -> t
--- replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) [])
-replaceBinds t bs = replaceValBinds t (GHC.ValBindsIn (GHC.listToBag bs) sigs)
-  where
-    sigs = case hsValBinds t of
-      GHC.ValBindsIn  _ s -> s
-      GHC.ValBindsOut _ s -> s
--}
-{-
--- This class replaces the HsDecls one
-class (SYB.Data t) => HsValBinds t where
-
-    -- | Return the binds that are directly enclosed in the
-    -- given syntax phrase.
-    -- hsValBinds :: t -> [GHC.LHsBind GHC.Name]
-    hsValBinds :: t -> GHC.HsValBinds GHC.Name
-
-    -- | Replace the directly enclosed bind list by the given
-    --  bind list. Note: This function does not modify the
-    --  token stream.
-    -- replaceBinds :: t -> [GHC.LHsBind GHC.Name] -> t
-    replaceValBinds :: t -> GHC.HsValBinds GHC.Name -> t
-
-    -- | Return True if the specified identifier is declared in the
-    -- given syntax phrase.
-    -- isDeclaredIn :: GHC.Name -> t -> Bool
-
-    -- | Return the type class definitions that are directly enclosed
-    -- in the given syntax phrase. Note: only makes sense for
-    -- GHC.RenamedSource
-    hsTyDecls :: t -> [[GHC.LTyClDecl GHC.Name]]
--}
 -- ++AZ++ see if we can get away with one only..
-isDeclaredIn :: (HsValBinds t) => GHC.Name -> t -> Bool
+isDeclaredIn :: (HsValBinds t GHC.Name) => GHC.Name -> t -> Bool
 isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
 
 
@@ -2554,7 +2493,7 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (HsValBinds t)
+addDecl:: (HsValBinds t GHC.Name)
         => t              -- ^The AST to be updated
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
@@ -2580,7 +2519,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
   -- list, but after the data type declarations if there is any. The
   -- definition will be pretty-printed if its token stream is not
   -- provided.
-  addTopLevelDecl :: (HsValBinds t)
+  addTopLevelDecl :: (HsValBinds t GHC.Name)
        => (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig, _maybeDeclToks) parent'
@@ -2600,7 +2539,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
          return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
 
-  appendDecl :: (HsValBinds t)
+  appendDecl :: (HsValBinds t GHC.Name)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
       -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken]) -- ^declaration and maybe sig/tokens
@@ -2628,7 +2567,7 @@ addDecl parent pn (decl, msig, declToks) topLevel
         (before,after) = break (defines pn') decls -- Need to handle the case that 'after' is empty?
 
 
-  addLocalDecl :: (HsValBinds t)
+  addLocalDecl :: (HsValBinds t GHC.Name)
                => t -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
                -> RefactGhc t
   addLocalDecl parent' (newFun, maybeSig, _newFunToks)
@@ -3639,7 +3578,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
 -- if so, rename the identifier by creating a new name automatically. If the Bool parameter
 -- is True, the token stream will be modified, otherwise only the AST is modified.
 
-autoRenameLocalVar:: (HsValBinds t)
+autoRenameLocalVar:: (HsValBinds t GHC.Name)
                     =>Bool          -- ^ True means modfiying the token stream as well.
                      ->GHC.Name     -- ^ The identifier.
                      ->t            -- ^ The syntax phrase.
@@ -3856,7 +3795,7 @@ getToksForDecl decl toks
 
 -- TODO: this is currently only used in a test
 -- Get the toks for a declaration, and adjust its offset to 0.
-getDeclAndToks :: (HsValBinds t)
+getDeclAndToks :: (HsValBinds t GHC.Name)
      => GHC.Name -> Bool -> [PosToken] -> t
      -> ([GHC.LHsBind GHC.Name],[PosToken])
 getDeclAndToks pn _incSig _toks t =
