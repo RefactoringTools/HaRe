@@ -28,6 +28,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , clearParsedModule
        , getRefactFileName
 
+       -- * New ghc-exactprint interfacing
+       , replaceRdrName
+
        -- * TokenUtils API
        , getToksForSpan
 
@@ -48,13 +51,14 @@ import Control.Monad.State
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 
+import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Utils
 
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
-import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Data.Map as Map
 
@@ -191,6 +195,14 @@ clearParsedModule = do
   st <- get
   put $ st { rsModule = Nothing }
 
+-- ---------------------------------------------------------------------
+
+-- |Replace the Located RdrName in the ParsedSource
+replaceRdrName :: GHC.Located GHC.RdrName -> RefactGhc ()
+replaceRdrName newName = do
+  logm $ "replaceRdrName:" ++ showGhcQual (GHC.getLoc newName,newName)
+  logm $ "replaceRdrName:NOT IMPLEMENTED"
+  return ()
 
 -- ---------------------------------------------------------------------
 

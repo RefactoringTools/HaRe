@@ -15,7 +15,6 @@ import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
--- import Language.Haskell.Refact.Utils.GhcVersionSpecific
 
 {-This refactoring renames an indentifier to a user-specified name.
 

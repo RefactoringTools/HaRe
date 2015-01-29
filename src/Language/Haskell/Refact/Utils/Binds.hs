@@ -375,6 +375,14 @@ instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
 -- ---------------------------------------------------------------------
 
 instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.TyClGroup name) name where
+  hsValBinds _ = emptyValBinds
+  replaceValBinds old _new = error $ "replaceValBinds (GHC.TyClGroup name) undefined for:" ++ (showGhc old)
+  hsTyDecls _ = []
+
+-- ---------------------------------------------------------------------
+
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
   => HsValBinds [GHC.TyClGroup name] name where
   hsValBinds _ = emptyValBinds
   replaceValBinds old _new = error $ "replaceValBinds [GHC.TyClGroup name] undefined for:" ++ (showGhc old)

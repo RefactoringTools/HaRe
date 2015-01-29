@@ -10,7 +10,7 @@ module Language.Haskell.Refact.Utils.GhcVersionSpecific
   -- , lexStringToRichTokens
   -- , getDataConstructors
   , setGhcContext
-  , showGhcQual 
+  , showGhcQual
   )
   where
 

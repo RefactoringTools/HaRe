@@ -35,7 +35,7 @@ import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Name          as GHC
-import qualified Outputable    as GHC
+-- import qualified Outputable    as GHC
 import qualified Unique        as GHC
 
 import Data.Algorithm.Diff

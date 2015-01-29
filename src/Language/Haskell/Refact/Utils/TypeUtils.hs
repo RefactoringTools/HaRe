@@ -140,7 +140,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , getParsedForRenamedLocated
     -- , allPNT
     --  , allPNTLens
-    -- , newNameTok
+    -- , rdrNameFromName
     , stripLeadingSpaces
     -- , lookupNameGhc
  ) where
@@ -190,10 +190,10 @@ data FreeNames = FN [GHC.Name]
 data DeclaredNames = DN [GHC.Name]
 
 instance Show FreeNames where
-  show (FN ls) = "FN " ++ showGhc ls
+  show (FN ls) = "FN " ++ showGhcQual ls
 
 instance Show DeclaredNames where
-  show (DN ls) = "DN " ++ showGhc ls
+  show (DN ls) = "DN " ++ showGhcQual ls
 
 instance Monoid FreeNames where
   mempty = FN []
@@ -1199,7 +1199,6 @@ ClassDecl
 
     -- -----------------------
 
-
     err = error $ "hsFreeAndDeclaredGhc:not matched:" ++ (SYB.showData SYB.Renamer 0 t)
 
     -- ---------------------------------
@@ -1349,10 +1348,11 @@ hsVisiblePNs e t = do
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
-hsVisibleDs :: (FindEntity e, SYB.Data t,HsValBinds t GHC.Name,GHC.Outputable e)
+hsVisibleDs :: (FindEntity e, GHC.Outputable e
+               ,SYB.Data t,HsValBinds t GHC.Name)
              => e -> t -> RefactGhc DeclaredNames
 hsVisibleDs e t = do
-  -- logm $ "hsVisibleDs:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
+  logm $ "hsVisibleDs:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
   (DN d) <- res
   return (DN (nub d))
   where
@@ -1372,6 +1372,8 @@ hsVisibleDs e t = do
           `SYB.extQ` grhss
           `SYB.extQ` lgrhs
           `SYB.extQ` lexpr
+          `SYB.extQ` tyclgroups
+          `SYB.extQ` tyclgroup
           `SYB.extQ` tycldeclss
           `SYB.extQ` tycldecls
           `SYB.extQ` tycldecl
@@ -1386,8 +1388,11 @@ hsVisibleDs e t = do
     renamed (g,_i,_ex,_d)
       | findEntity e g = do
          dfds <- hsVisibleDs e $ GHC.hs_valds g
+         logm $ "hsVisibleDs.renamedSource:valds done"
          tfds <- hsVisibleDs e $ GHC.hs_tyclds g
+         logm $ "hsVisibleDs.renamedSource:tyclds done"
          ifds <- hsVisibleDs e $ GHC.hs_instds g
+         logm $ "hsVisibleDs.renamedSource:instds done"
          return $ dfds <> tfds <> ifds
     renamed _ = return (DN [])
 
@@ -1442,6 +1447,7 @@ hsVisibleDs e t = do
            logm $ "hsVisibleDs.lmatch:in pats="
            return (DN []) -- TODO: extend this
       | findEntity e rhs = do
+           logm $ "hsVisibleDs.lmatch:doing rhs"
            ( pf,pd) <- hsFreeAndDeclaredGhc pats
            logm $ "hsVisibleDs.lmatch:(pf,pd)=" ++ (show (pf,pd))
            (    rd) <- hsVisibleDs e rhs
@@ -1451,15 +1457,19 @@ hsVisibleDs e t = do
     grhss :: (GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name)) -> RefactGhc DeclaredNames
     grhss (GHC.GRHSs guardedRhss lstmts)
       | findEntity e guardedRhss = do
+          logm "hsVisibleDs.grhss:about to do grhss"
           fds <- mapM (hsVisibleDs e) guardedRhss
+          logm "hsVisibleDs.grhss:grhss done"
           return $ mconcat fds
-      | findEntity e lstmts = hsVisibleDs e lstmts
+      | findEntity e lstmts = do
+          logm "hsVisibleDs.grhss:about to do lstmts"
+          hsVisibleDs e lstmts
     grhss _ = return (DN [])
 
     lgrhs :: GHC.LGRHS GHC.Name (GHC.LHsExpr GHC.Name) -> RefactGhc DeclaredNames
-    lgrhs (GHC.L _ (GHC.GRHS stmts ex))
-      | findEntity e stmts = hsVisibleDs e stmts
-      | findEntity e ex    = hsVisibleDs e ex
+    lgrhs (GHC.L _ (GHC.GRHS guards ex))
+      | findEntity e guards = logm "hsVisibleDs.lgrhs.guards" >> hsVisibleDs e guards
+      | findEntity e ex     = logm "hsVisibleDs.lgrhs.ex" >> hsVisibleDs e ex
     lgrhs _ = return (DN [])
 
 
@@ -1474,14 +1484,30 @@ hsVisibleDs e t = do
 
     lexpr expr
       | findEntity e expr = do
-        -- logm $ "hsVisibleDs.lexpr.e1:" ++ (showGhc (e1,_eOp,e2))
-        (FN efs,_) <- hsFreeAndDeclaredGhc expr
+        logm $ "hsVisibleDs.lexpr.(e,expr):" ++ (showGhc (e,expr))
+        (FN efs,_)         <- hsFreeAndDeclaredGhc expr
         (FN _eefs,DN eeds) <- hsFreeAndDeclaredGhc e
+        logm $ "hsVisibleDs.lexpr done"
         -- return (DN e1fs <> DN eofs <> DN e2fs)
         return (DN (efs \\ eeds))
 
     lexpr _ = return (DN [])
 
+    -- ---------------------------------
+
+    tyclgroups :: [GHC.TyClGroup GHC.Name] -> RefactGhc DeclaredNames
+    tyclgroups tgrps
+      | findEntity e tgrps = do
+        fds <- mapM (hsVisibleDs e) tgrps
+        return $ mconcat fds
+    tyclgroups _ = return (DN [])
+
+    tyclgroup :: GHC.TyClGroup GHC.Name -> RefactGhc DeclaredNames
+    tyclgroup (GHC.TyClGroup tyclds _roles)
+      | findEntity e tyclds = do
+        fds <- mapM (hsVisibleDs e) tyclds
+        return $ mconcat fds
+    tyclgroup _ = return (DN [])
 
     tycldeclss :: [[GHC.LTyClDecl GHC.Name]] -> RefactGhc DeclaredNames
     tycldeclss tcds
@@ -1493,6 +1519,7 @@ hsVisibleDs e t = do
     tycldecls :: [GHC.LTyClDecl GHC.Name] -> RefactGhc DeclaredNames
     tycldecls tcds
       | findEntity e tcds = do
+        logm $ "hsVisibleDs.tycldecls"
         fds <- mapM (hsVisibleDs e) tcds
         return $ mconcat fds
     tycldecls _ = return (DN [])
@@ -1500,9 +1527,12 @@ hsVisibleDs e t = do
     tycldecl :: GHC.LTyClDecl GHC.Name -> RefactGhc DeclaredNames
     tycldecl tcd
       | findEntity e tcd = do
+        logm $ "hsVisibleDs.tycldecl"
         (_,ds) <- hsFreeAndDeclaredGhc tcd
         return ds
     tycldecl _ = return (DN [])
+
+    -- ---------------------------------
 
     instdecls :: [GHC.LInstDecl GHC.Name] -> RefactGhc DeclaredNames
     instdecls ds
@@ -1556,8 +1586,8 @@ hsVisibleDs e t = do
     lsig _ = return (DN [])
 
     -- -----------------------
-    err = error $ "hsVisibleDs:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
 
+    err = error $ "hsVisibleDs:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
 
 ------------------------------------------------------------------------
 
@@ -2618,6 +2648,16 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
 -- ---------------------------------------------------------------------
 
+rdrNameFromName :: Bool -> GHC.Name -> GHC.RdrName
+rdrNameFromName useQual newName =
+  if useQual
+    then GHC.mkRdrQual mname (GHC.nameOccName newName)
+    else GHC.mkRdrUnqual (GHC.nameOccName newName)
+  where
+    GHC.Module _ mname = (GHC.nameModule newName)
+
+-- ---------------------------------------------------------------------
+
 -- |Take a list of strings and return a list with the longest prefix
 -- of spaces removed
 stripLeadingSpaces :: [String] -> [String]
@@ -3325,13 +3365,13 @@ renamePN oldPN newName updateTokens useQual t = do
   -- logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- logm $ "renamePN: t=" ++ (SYB.showData SYB.Renamer 0 t)
   -- Note: bottom-up traversal
-  let isRenamed = SYB.somethingStaged SYB.Renamer Nothing
+  let isRenamed = SYB.something
                    (Nothing `SYB.mkQ` isRenamedSource `SYB.extQ` isRenamedGroup) t
 
 
   t' <- if isRenamed == (Just True)
     then
-      SYB.everywhereMStaged SYB.Renamer
+      SYB.everywhereM
                  (SYB.mkM renameRenamedSource
                  `SYB.extM` renameGroup
                  ) t
@@ -3381,16 +3421,16 @@ renamePNworker::(SYB.Data t)
 renamePNworker oldPN newName updateTokens useQual t = do
   -- logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal (no ' at end)
-  SYB.everywhereMStaged SYB.Renamer (SYB.mkM rename
+  SYB.everywhereM (SYB.mkM rename
   -- everywhereMStaged' SYB.Renamer (SYB.mkM rename
-                               `SYB.extM` renameVar
-                               `SYB.extM` renameTyVar
-                               `SYB.extM` renameHsTyVarBndr
-                               `SYB.extM` renameLIE
-                               `SYB.extM` renameLPat
-                               `SYB.extM` renameTypeSig
-                               `SYB.extM` renameFunBind
-                               ) t
+                  `SYB.extM` renameVar
+                  `SYB.extM` renameTyVar
+                  `SYB.extM` renameHsTyVarBndr
+                  `SYB.extM` renameLIE
+                  `SYB.extM` renameLPat
+                  `SYB.extM` renameTypeSig
+                  `SYB.extM` renameFunBind
+                  ) t
   where
     rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
     rename (GHC.L l n)
@@ -3539,7 +3579,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
           logm $ "renamePNWorker.renameFunBind.renameFunBind:starting matches"
           let w (GHC.L lm _match) = worker False lm Nothing
                where
-                -- ((GHC.L lm' _),_) = newNameTok False lm oldPN
+                -- ((GHC.L lm' _),_) = rdrNameFromName False lm oldPN
           mapM_ w $ tail matches
           logm $ "renamePNWorker.renameFunBind.renameFunBind.renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MG matches a typ o) co fvs tick))
@@ -3559,17 +3599,15 @@ renamePNworker oldPN newName updateTokens useQual t = do
 
     -- The param l is only useful for the start of the token pos
     worker :: Bool -> GHC.SrcSpan -> Maybe (GHC.ModuleName, GHC.OccName) -> RefactGhc ()
-    worker _useQual' _l _mmo
+    worker useQual' l mmo
      = do if updateTokens
            then do
-             {-
              newTok <- case mmo of
-                   Nothing -> return $ newNameTok useQual' l newName
+                   Nothing -> return $ rdrNameFromName useQual' newName
                    Just (modu,_) -> do
                      newName' <- mkNewGhcName (Just $ GHC.mkModule GHC.mainPackageKey modu) (GHC.occNameString $ GHC.getOccName newName)
-                     return $ newNameTok True l newName'
-             replaceToken l (markToken $ newTok)
-             -}
+                     return $ rdrNameFromName True newName'
+             replaceRdrName (GHC.L l newTok)
              return ()
            else return ()
 
