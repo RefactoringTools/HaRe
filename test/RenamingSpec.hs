@@ -32,20 +32,20 @@ spec = do
                   , "./Renaming/B1.hs"
                   ]
 
-     diffD <- compareFiles "./Renaming/D1.hs.expected"
-                           "./Renaming/D1.refactored.hs"
+     diffD <- ct $ compareFiles "./Renaming/D1.hs.expected"
+                                "./Renaming/D1.refactored.hs"
      diffD `shouldBe` []
 
-     diffC <- compareFiles "./Renaming/C1.hs.expected"
-                           "./Renaming/C1.refactored.hs"
+     diffC <- ct $ compareFiles "./Renaming/C1.hs.expected"
+                                "./Renaming/C1.refactored.hs"
      diffC `shouldBe` []
 
-     diffB <- compareFiles "./Renaming/B1.hs.expected"
-                           "./Renaming/B1.refactored.hs"
+     diffB <- ct $ compareFiles "./Renaming/B1.hs.expected"
+                                "./Renaming/B1.refactored.hs"
      diffB `shouldBe` []
 
-     diffA <- compareFiles "./Renaming/A1.hs.expected"
-                           "./Renaming/A1.refactored.hs"
+     diffA <- ct $ compareFiles "./Renaming/A1.hs.expected"
+                                "./Renaming/A1.refactored.hs"
      diffA `shouldBe` []
 
     -- ---------------------------------
@@ -60,20 +60,20 @@ spec = do
                   , "./Renaming/B2.hs"
                   ]
 
-     diffD <- compareFiles "./Renaming/D2.hs.expected"
-                           "./Renaming/D2.refactored.hs"
+     diffD <- ct $  compareFiles "./Renaming/D2.hs.expected"
+                                 "./Renaming/D2.refactored.hs"
      diffD `shouldBe` []
 
-     diffC <- compareFiles "./Renaming/C2.hs.expected"
-                           "./Renaming/C2.refactored.hs"
+     diffC <- ct $ compareFiles "./Renaming/C2.hs.expected"
+                                "./Renaming/C2.refactored.hs"
      diffC `shouldBe` []
 
-     diffB <- compareFiles "./Renaming/B2.hs.expected"
-                           "./Renaming/B2.refactored.hs"
+     diffB <- ct $ compareFiles "./Renaming/B2.hs.expected"
+                                "./Renaming/B2.refactored.hs"
      diffB `shouldBe` []
 
-     -- diffA <- compareFiles "./Renaming/A2.hs.expected"
-     --                       "./Renaming/A2.refactored.hs"
+     -- diffA <- ct $ compareFiles "./Renaming/A2.hs.expected"
+     --                            "./Renaming/A2.refactored.hs"
      -- diffA `shouldBe` []
 
     -- ---------------------------------
@@ -89,20 +89,20 @@ spec = do
                   , "./Renaming/B3.hs"
                   ]
 
-     diffD <- compareFiles "./Renaming/D3.hs.expected"
-                           "./Renaming/D3.refactored.hs"
+     diffD <- ct $ compareFiles "./Renaming/D3.hs.expected"
+                                "./Renaming/D3.refactored.hs"
      diffD `shouldBe` []
 
-     diffC <- compareFiles "./Renaming/C3.hs.expected"
-                           "./Renaming/C3.refactored.hs"
+     diffC <- ct $ compareFiles "./Renaming/C3.hs.expected"
+                                "./Renaming/C3.refactored.hs"
      diffC `shouldBe` []
 
-     diffB <- compareFiles "./Renaming/B3.hs.expected"
-                           "./Renaming/B3.refactored.hs"
+     diffB <- ct $ compareFiles "./Renaming/B3.hs.expected"
+                                "./Renaming/B3.refactored.hs"
      diffB `shouldBe` []
 
-     -- diffA <- compareFiles "./Renaming/A3.hs.expected"
-     --                       "./Renaming/A3.refactored.hs"
+     -- diffA <- ct $ compareFiles "./Renaming/A3.hs.expected"
+     --                            "./Renaming/A3.refactored.hs"
      -- diffA `shouldBe` []
 
     -- ---------------------------------
@@ -120,20 +120,20 @@ spec = do
                    , "./Renaming/B4.hs"
                   ]
 
-     diffD <- compareFiles "./Renaming/D4.hs.expected"
-                           "./Renaming/D4.refactored.hs"
+     diffD <- ct $ compareFiles "./Renaming/D4.hs.expected"
+                                "./Renaming/D4.refactored.hs"
      diffD `shouldBe` []
 
-     diffC <- compareFiles "./Renaming/C4.hs.expected"
-                           "./Renaming/C4.refactored.hs"
+     diffC <- ct $ compareFiles "./Renaming/C4.hs.expected"
+                                "./Renaming/C4.refactored.hs"
      diffC `shouldBe` []
 
-     diffB <- compareFiles "./Renaming/B4.hs.expected"
-                           "./Renaming/B4.refactored.hs"
+     diffB <- ct $ compareFiles "./Renaming/B4.hs.expected"
+                                "./Renaming/B4.refactored.hs"
      diffB `shouldBe` []
 
-     diffA <- compareFiles "./Renaming/A4.hs.expected"
-                           "./Renaming/A4.refactored.hs"
+     diffA <- ct $ compareFiles "./Renaming/A4.hs.expected"
+                                "./Renaming/A4.refactored.hs"
      diffA `shouldBe` []
 
     -- ---------------------------------
@@ -152,20 +152,20 @@ spec = do
                    , "./Renaming/B5.hs"
                    ]
 
-     diffD <- compareFiles "./Renaming/D5.hs.expected"
-                           "./Renaming/D5.refactored.hs"
+     diffD <- ct $ compareFiles "./Renaming/D5.hs.expected"
+                                "./Renaming/D5.refactored.hs"
      diffD `shouldBe` []
 
-     diffC <- compareFiles "./Renaming/C5.hs.expected"
-                           "./Renaming/C5.refactored.hs"
+     diffC <- ct $ compareFiles "./Renaming/C5.hs.expected"
+                                "./Renaming/C5.refactored.hs"
      diffC `shouldBe` []
 
-     diffB <- compareFiles "./Renaming/B5.hs.expected"
-                           "./Renaming/B5.refactored.hs"
+     diffB <- ct $ compareFiles "./Renaming/B5.hs.expected"
+                                "./Renaming/B5.refactored.hs"
      diffB `shouldBe` []
 
-     diffA <- compareFiles "./Renaming/A5.hs.expected"
-                           "./Renaming/A5.refactored.hs"
+     diffA <- ct $ compareFiles "./Renaming/A5.hs.expected"
+                                "./Renaming/A5.refactored.hs"
      diffA `shouldBe` []
 
     -- ---------------------------------
@@ -180,12 +180,12 @@ spec = do
                    , "test/testdata/Renaming/C7.hs"
                    ]
 
-     diffD <- compareFiles "./Renaming/D7.hs.expected"
-                           "./Renaming/D7.refactored.hs"
+     diffD <- ct $ compareFiles "./Renaming/D7.hs.expected"
+                               "./Renaming/D7.refactored.hs"
      diffD `shouldBe` []
 
-     diffC <- compareFiles "./Renaming/C7.hs.expected"
-                           "./Renaming/C7.refactored.hs"
+     diffC <- ct $ compareFiles "./Renaming/C7.hs.expected"
+                                "./Renaming/C7.refactored.hs"
      diffC `shouldBe` []
 
 
@@ -196,8 +196,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/Field1.hs" "pointx1" (5,18)
      r `shouldBe` [ "./Renaming/Field1.hs"
                   ]
-     diff <- compareFiles "./Renaming/Field1.hs.expected"
-                          "./Renaming/Field1.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/Field1.hs.expected"
+                               "./Renaming/Field1.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -207,8 +207,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/Field3.hs" "abs" (9,1)
      r `shouldBe` [ "./Renaming/Field3.hs"
                   ]
-     diff <- compareFiles "./Renaming/Field3.hs.expected"
-                          "./Renaming/Field3.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/Field3.hs.expected"
+                               "./Renaming/Field3.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -219,8 +219,8 @@ spec = do
      -- ct $ rename logTestSettings Nothing "./Renaming/Field4.hs" "value2" (5,23)
      r `shouldBe` [ "./Renaming/Field4.hs"
                   ]
-     diff <- compareFiles "./Renaming/Field4.hs.expected"
-                          "./Renaming/Field4.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/Field4.hs.expected"
+                               "./Renaming/Field4.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -231,8 +231,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions "./Renaming/IdIn1.hs" "x1" (11,1)
      r `shouldBe` [ "./Renaming/IdIn1.hs"
                   ]
-     diff <- compareFiles "./Renaming/IdIn1.hs.expected"
-                          "./Renaming/IdIn1.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/IdIn1.hs.expected"
+                               "./Renaming/IdIn1.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -243,8 +243,8 @@ spec = do
      -- r <- ct $ rename logTestSettings testOptions "./Renaming/IdIn2.hs" "x1" (15,7)
      r `shouldBe` [ "./Renaming/IdIn2.hs"
                   ]
-     diff <- compareFiles "./Renaming/IdIn2.hs.expected"
-                          "./Renaming/IdIn2.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/IdIn2.hs.expected"
+                               "./Renaming/IdIn2.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -255,8 +255,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ClassIn1.hs" "MyReversable" (7,7)
      r `shouldBe` [ "./Renaming/ClassIn1.hs"
                   ]
-     diff <- compareFiles "./Renaming/ClassIn1.hs.expected"
-                          "./Renaming/ClassIn1.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/ClassIn1.hs.expected"
+                               "./Renaming/ClassIn1.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -267,8 +267,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ClassIn2.hs" "reversable" (8,3)
      r `shouldBe` [ "./Renaming/ClassIn2.hs"
                   ]
-     diff <- compareFiles "./Renaming/ClassIn2.hs.expected"
-                          "./Renaming/ClassIn2.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/ClassIn2.hs.expected"
+                               "./Renaming/ClassIn2.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -279,8 +279,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions "./Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
      r `shouldBe` [ "./Renaming/ConstructorIn1.hs"
                   ]
-     diff <- compareFiles "./Renaming/ConstructorIn1.hs.expected"
-                          "./Renaming/ConstructorIn1.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/ConstructorIn1.hs.expected"
+                               "./Renaming/ConstructorIn1.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -291,8 +291,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ConstructorIn2.hs" "Tree" (8,24)
      r `shouldBe` [ "./Renaming/ConstructorIn2.hs"
                   ]
-     diff <- compareFiles "./Renaming/ConstructorIn2.hs.expected"
-                          "./Renaming/ConstructorIn2.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/ConstructorIn2.hs.expected"
+                               "./Renaming/ConstructorIn2.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -303,8 +303,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ConstructorIn3.hs" "b" (9,13)
      r `shouldBe` [ "./Renaming/ConstructorIn3.hs"
                   ]
-     diff <- compareFiles "./Renaming/ConstructorIn3.hs.expected"
-                          "./Renaming/ConstructorIn3.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/ConstructorIn3.hs.expected"
+                               "./Renaming/ConstructorIn3.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -315,8 +315,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn1.hs" "square" (7,17)
      r `shouldBe` [ "./Renaming/LayoutIn1.hs"
                   ]
-     diff <- compareFiles "./Renaming/LayoutIn1.hs.expected"
-                          "./Renaming/LayoutIn1.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/LayoutIn1.hs.expected"
+                               "./Renaming/LayoutIn1.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -327,8 +327,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/LayoutIn2.hs" "ls" (8,7)
      r `shouldBe` [ "./Renaming/LayoutIn2.hs"
                   ]
-     diff <- compareFiles "./Renaming/LayoutIn2.hs.expected"
-                          "./Renaming/LayoutIn2.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/LayoutIn2.hs.expected"
+                               "./Renaming/LayoutIn2.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -339,8 +339,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn3.hs" "anotherX" (7,13)
      r `shouldBe` [ "./Renaming/LayoutIn3.hs"
                   ]
-     diff <- compareFiles "./Renaming/LayoutIn3.hs.expected"
-                          "./Renaming/LayoutIn3.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/LayoutIn3.hs.expected"
+                               "./Renaming/LayoutIn3.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -351,8 +351,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn4.hs" "io" (7,8)
      r `shouldBe` [ "./Renaming/LayoutIn4.hs"
                   ]
-     diff <- compareFiles "./Renaming/LayoutIn4.hs.expected"
-                          "./Renaming/LayoutIn4.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/LayoutIn4.hs.expected"
+                               "./Renaming/LayoutIn4.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -428,8 +428,8 @@ spec = do
 
      r `shouldBe` [ "./Renaming/Main2.hs"
                   ]
-     diff <- compareFiles "./Renaming/Main2.hs.expected"
-                          "./Renaming/Main2.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/Main2.hs.expected"
+                               "./Renaming/Main2.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -440,8 +440,8 @@ spec = do
 
      r `shouldBe` [ "./Layout/Do1.hs"
                   ]
-     diff <- compareFiles "./Layout/Do1.hs.expected"
-                          "./Layout/Do1.refactored.hs"
+     diff <- ct $ compareFiles "./Layout/Do1.hs.expected"
+                               "./Layout/Do1.refactored.hs"
      diff `shouldBe` []
 
     -- ---------------------------------
@@ -455,12 +455,12 @@ spec = do
                     "test/testdata/Renaming/QualClient.hs"
                   ]
 
-     diffD <- compareFiles "./Renaming/QualServer.expected.hs"
-                           "./Renaming/QualServer.refactored.hs"
+     diffD <- ct $ compareFiles "./Renaming/QualServer.expected.hs"
+                                "./Renaming/QualServer.refactored.hs"
      diffD `shouldBe` []
 
-     diffC <- compareFiles "./Renaming/QualClient.expected.hs"
-                           "./Renaming/QualClient.refactored.hs"
+     diffC <- ct $ compareFiles "./Renaming/QualClient.expected.hs"
+                                "./Renaming/QualClient.refactored.hs"
      diffC `shouldBe` []
 
     -- ---------------------------------
@@ -472,8 +472,8 @@ spec = do
 
      r `shouldBe` [ "./Renaming/Main2.hs"
                   ]
-     diff <- compareFiles "./Renaming/Main2.hs.expected"
-                          "./Renaming/Main2.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/Main2.hs.expected"
+                               "./Renaming/Main2.refactored.hs"
      diff `shouldBe` []
 -}
 
@@ -527,8 +527,8 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
 
      r `shouldBe` [ "./Renaming/Utils.hs"
                   ]
-     diff <- compareFiles "./Renaming/Utils.expected.hs"
-                          "./Renaming/Utils.refactored.hs"
+     diff <- ct $ compareFiles "./Renaming/Utils.expected.hs"
+                               "./Renaming/Utils.refactored.hs"
      diff `shouldBe` []
 
     -- -----------------------------------------------------------------
@@ -538,8 +538,8 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
      -- ct $ rename logTestSettings testOptions "./Renaming/RenameInExportedType.hs" "NewType" (6,6)
 
      (show r) `shouldBe` "[\"./Renaming/RenameInExportedType.hs\"]"
-     diff <- compareFiles "./Renaming/RenameInExportedType.refactored.hs"
-                          "./Renaming/RenameInExportedType.expected.hs"
+     diff <- ct $ compareFiles "./Renaming/RenameInExportedType.refactored.hs"
+                               "./Renaming/RenameInExportedType.expected.hs"
      diff `shouldBe` []
 
     -- -----------------------------------------------------------------
@@ -549,8 +549,8 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
      -- ct $ rename logTestSettings testOptions "./Renaming/RenameInExportedType2.hs" "NewType" (6,24)
 
      (show r) `shouldBe` "[\"./Renaming/RenameInExportedType2.hs\"]"
-     diff <- compareFiles "./Renaming/RenameInExportedType2.refactored.hs"
-                          "./Renaming/RenameInExportedType2.expected.hs"
+     diff <- ct $ compareFiles "./Renaming/RenameInExportedType2.refactored.hs"
+                               "./Renaming/RenameInExportedType2.expected.hs"
      diff `shouldBe` []
 
 

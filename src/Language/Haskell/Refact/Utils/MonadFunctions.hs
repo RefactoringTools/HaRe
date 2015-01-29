@@ -51,6 +51,9 @@ import Control.Monad.State
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 
+import qualified Data.Generics as SYB
+import qualified GHC.SYB.Utils as SYB
+
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
 
@@ -199,9 +202,22 @@ clearParsedModule = do
 
 -- |Replace the Located RdrName in the ParsedSource
 replaceRdrName :: GHC.Located GHC.RdrName -> RefactGhc ()
-replaceRdrName newName = do
-  logm $ "replaceRdrName:" ++ showGhcQual (GHC.getLoc newName,newName)
+replaceRdrName (GHC.L l newName) = do
+  logm $ "replaceRdrName:" ++ showGhcQual (l,newName)
+  parsed <- getRefactParsed
   logm $ "replaceRdrName:NOT IMPLEMENTED"
+  logm $ "replaceRdrName:before:parsed=" ++ showGhc parsed
+  let replaceRdr :: GHC.Located GHC.RdrName -> GHC.Located GHC.RdrName
+      replaceRdr (GHC.L ln _)
+        | l == ln = GHC.L l newName
+      replaceRdr x = x
+      replaceHsVar :: GHC.LHsExpr GHC.RdrName -> GHC.LHsExpr GHC.RdrName
+      replaceHsVar (GHC.L ln (GHC.HsVar _))
+        | l == ln = GHC.L l (GHC.HsVar newName)
+      replaceHsVar x = x
+      parsed' = SYB.everywhere (SYB.mkT replaceRdr `SYB.extT` replaceHsVar) parsed
+  logm $ "replaceRdrName:after:parsed'=" ++ showGhc parsed'
+  putRefactParsed parsed' mempty
   return ()
 
 -- ---------------------------------------------------------------------

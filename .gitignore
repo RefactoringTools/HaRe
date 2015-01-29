@@ -409,3 +409,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Case/BSimple.hs.parsed_out
 /test/testdata/Case/Foo.hs.AST_out
 /test/testdata/Case/Foo.hs.parsed_out
+/test/testdata/Renaming/IdIn1.hs.parsed_out
