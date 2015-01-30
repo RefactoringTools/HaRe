@@ -1273,22 +1273,28 @@ spec = do
 
   describe "mkNewGhcName" $ do
     it "Creates a new GHC.Name" $ do
-      let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "F1")
+      (t, toks) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
+         renamed <- getRefactRenamed
+         let Just (GHC.L _ topLevel) = locToName (3,1) renamed
+
          name1 <- mkNewGhcName Nothing "foo"
          name2 <- mkNewGhcName Nothing "bar"
-         name3 <- mkNewGhcName (Just modu) "baz"
+         name3 <- mkNewGhcName (Just (GHC.nameModule topLevel)) "baz"
+
          return (name1,name2,name3)
-      ((n1,n2,n3),_s) <- ct $ runRefactGhcState comp
+      -- ((n1,n2,n3),_s) <- ct $ runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      ((n1,n2,n3),_s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+
       GHC.getOccString n1 `shouldBe` "foo"
       showGhcQual n1 `shouldBe` "foo"
       GHC.getOccString n2 `shouldBe` "bar"
       showGhcQual n2 `shouldBe` "bar"
-      (showGhcQual $ GHC.nameModule n3) `shouldBe` "(unknown)@mypackage-1.0:F1"
+      (showGhcQual $ GHC.nameModule n3) `shouldBe` "main@main:DupDef.Dd1"
       (SYB.showData SYB.Renamer 0 n3) `shouldBe` "{Name: baz}"
       GHC.getOccString n3 `shouldBe` "baz"
-      showGhcQual n3 `shouldBe` "F1.baz"
+      showGhcQual n3 `shouldBe` "DupDef.Dd1.baz"
       (showGhcQual $ GHC.nameUnique n1) `shouldBe` "H2"
       (showGhcQual $ GHC.nameUnique n2) `shouldBe` "H3"
       (showGhcQual $ GHC.nameUnique n3) `shouldBe` "H4"
@@ -2082,14 +2088,14 @@ spec = do
       -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
       (showGhcQual n) `shouldBe` "DupDef.Dd1.toplevel"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
       (sourceFromState s) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\nbar2 x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
       (showGhcQual nb) `shouldBe` "bar2 x = DupDef.Dd1.c GHC.Num.* x"
 
     -- -----------------------------------------------------------------
 
     it "replaces a Name with another, updating tokens 2" $ do
-      (t, toks) <- parsedFileWhereIn4Ghc
+      (t, toks) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
 
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -2097,7 +2103,7 @@ spec = do
       let decl = head $ drop 2 declsr
       (showGhcQual decl) `shouldBe` "Demote.WhereIn4.sumSquares x y\n  = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n  where\n      p = 2"
 
-      let Just (GHC.L l n) = locToName (11, 21) renamed
+      let Just (GHC.L _l n) = locToName (11, 21) renamed
       let
         comp = do
          newName <- mkNewGhcName Nothing "p_1"
@@ -2108,55 +2114,36 @@ spec = do
 
       -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
-      (showGhcQual n) `shouldBe` "p"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there is single matches), if possible,\n --the parameters will be folded after demoting and type sigature will be removed.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq::Int->Int->Int\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
+      (showGhcQual (n,nn)) `shouldBe` "(p, p_1)"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
       (sourceFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p_1 x + sq p_1 y\n         where p_1=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
       (showGhcQual nb) `shouldBe` "Demote.WhereIn4.sumSquares x y\n  = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n  where\n      p_1 = 2"
-      -- (showToks $ take 20 $ toks) `shouldBe` "[((1,1),(1,7),\"module\"),((1,8),(1,23),\"Demote.WhereIn4\"),((1,24),(1,29),\"where\"),((3,1),(3,84),\"--A definition can be demoted to the local 'where' binding of a friend declaration,\"),((4,1),(4,49),\"--if it is only used by this friend declaration.\"),((6,1),(6,66),\"--Demoting a definition narrows down the scope of the definition.\"),((7,1),(7,61),\"--In this example, demote the top level 'sq' to 'sumSquares'\"),((8,1),(8,55),\"--In this case (there is single matches), if possible,\"),((9,1),(9,82),\"--the parameters will be folded after demoting and type sigature will be removed.\"),((11,1),(11,1),\"\"),((11,1),(11,11),\"sumSquares\"),((11,12),(11,13),\"x\"),((11,14),(11,15),\"y\"),((11,16),(11,17),\"=\"),((11,18),(11,20),\"sq\"),((11,21),(11,22),\"p\"),((11,23),(11,24),\"x\"),((11,25),(11,26),\"+\"),((11,27),(11,29),\"sq\"),((11,30),(11,31),\"p\")]"
-      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
+
 
     -- ---------------------------------
 
     it "replaces a Name with another in limited scope, updating tokens 1" $ do
       (t,toks) <- ct $ parsedFileGhc "./TokenTest.hs"
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-      -- let forest = allocTokens parsed toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
       let decls = hsBinds renamed
       let (GHC.L l _) = head decls
-      (showGhcQual l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
-      -- (showSrcSpan l) `shouldBe` "((19,1),(21,14))"
+      (showGhcQual (ss2span l)) `shouldBe` "((19, 1), (21, 14))"
       let Just (GHC.L _ n) = locToName (19, 1) renamed
       (showGhcQual n) `shouldBe` "TokenTest.foo"
-
-      -- let (forest',tree) = getSrcSpanFor forest (ghcSrcSpanToForestSpan l)
-
-      -- let toks' = retrieveTokensInterim tree
-      -- let (forest'',sspan) = addNewSrcSpanAndToksAfter forest' (gs2ss l) (gs2ss l) (PlaceOffset 2 0 2) toks'
-      -- (invariant forest'') `shouldBe` []
-
-      -- (showSrcSpanF $ ss2gs sspan) `shouldBe` "(((False,0,1,19),1),((False,0,1,21),14))"
-
-      -- let pprFinal = retrieveLinesFromLayoutTree forest''
-      -- (renderLines pprFinal) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
 
       let
         comp = do
          newName <- mkNewGhcName Nothing "bar2"
-         toksForOp <- getToksForSpan l
          new <- renamePN n newName True False (head decls)
 
-         return (new,newName,toksForOp)
+         return (new,newName)
       let
 
-      -- ((nb,nn,_tfo),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = undefined, rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
-      ((nb,nn,_tfo),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- (show _tfo) `shouldBe` ""
-      (showGhcQual n) `shouldBe` "TokenTest.foo"
-      -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((19,1),(19,5),\"bar2\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = undefined, rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
+      ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      (showGhcQual (n,nn)) `shouldBe` "(TokenTest.foo, bar2)"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
       (sourceFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n"
       (showGhcQual nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
@@ -2206,7 +2193,7 @@ spec = do
       -- (show tfo) `shouldBe` ""
       (showGhcQual n) `shouldBe` "TokenTest.foo"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((19,1),(19,5),\"bar2\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n -- Test new style token manager\n\n bob a b = x\n   where x = 3\n\n bib a b = x\n   where\n     x = 3\n\n\n bab a b =\n   let bar = 3\n   in     b + bar -- ^trailing comment\n\n\n -- leading comment\n foo x y =\n   do c <- getChar\n      return c\n\n\n\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
       (sourceFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n"
       (showGhcQual nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
@@ -2231,7 +2218,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "Field1.pointx"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((5,18),(5,25),\"pointx1\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx, pointy :: Float}\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx p * pointx p +\n                  pointy p * pointy p)\n\n"
       (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx1, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p +\n                  pointy p * pointy p)\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(Field1.absPoint :: Field1.Point -> GHC.Types.Float\n Field1.absPoint p\n   = GHC.Float.sqrt\n       (pointx1 p GHC.Num.* pointx1 p\n        GHC.Num.+ Field1.pointy p GHC.Num.* Field1.pointy p)\n \n data Field1.Point\n   = Field1.Pt {pointx1 :: GHC.Types.Float,\n                Field1.pointy :: GHC.Types.Float},\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2255,7 +2242,7 @@ spec = do
       ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
       (showGhcQual n) `shouldBe` "Field1.Point"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((5,6),(5,14),\"NewPoint\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n --Rename field name 'pointx' to 'pointx1'\n\n data Point = Pt {pointx, pointy :: Float}\n\n absPoint :: Point -> Float\n absPoint p = sqrt (pointx p * pointx p +\n                   pointy p * pointy p)\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx p * pointx p +\n                  pointy p * pointy p)\n\n"
       (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata NewPoint = Pt {pointx, pointy :: Float}\n\nabsPoint :: NewPoint -> Float\nabsPoint p = sqrt (pointx p * pointx p +\n                  pointy p * pointy p)\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(Field1.absPoint :: NewPoint -> GHC.Types.Float\n Field1.absPoint p\n   = GHC.Float.sqrt\n       (Field1.pointx p GHC.Num.* Field1.pointx p\n        GHC.Num.+ Field1.pointy p GHC.Num.* Field1.pointy p)\n \n data NewPoint\n   = Field1.Pt {Field1.pointx :: GHC.Types.Float,\n                Field1.pointy :: GHC.Types.Float},\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2278,7 +2265,7 @@ spec = do
       ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
       (showGhcQual n) `shouldBe` "LocToName.sumSquares"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((20,1),(20,9),\"newPoint\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nsumSquares (x:xs) = x ^2 + sumSquares xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nsumSquares [] = 0\n"
       (sourceFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(newPoint (x : xs) = x GHC.Real.^ 2 GHC.Num.+ newPoint xs\n newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2301,7 +2288,7 @@ spec = do
       ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
       (showGhcQual n) `shouldBe` "LocToName.sumSquares"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((20,1),(20,9),\"newPoint\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n {-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\n sumSquares (x:xs) = x ^2 + sumSquares xs\n     -- where sq x = x ^pow \n     --       pow = 2\n\n sumSquares [] = 0\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nsumSquares (x:xs) = x ^2 + sumSquares xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nsumSquares [] = 0\n"
       -- (show $ layoutFromState s) `shouldBe` ""
       -- (showGhcQual $ retrieveTokensPpr $ fromJust $ layoutFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + LocToName.newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
@@ -2329,7 +2316,7 @@ spec = do
       -- (showGhcQual n) `shouldBe` "list"
       -- (showGhcQual $ retrieveTokensPpr $ fromJust $ layoutFromState s) `shouldBe` ""
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((8,7),(8,9),\"ls\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of  (1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
       -- (showGhcQual $ sourceTreeFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly ls = case ls of  (1:xs) -> 1\n--There is a comment\n                       (2:xs)\n                         | x < 10    -> 4  where  x = last xs\n                       otherwise -> 12\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutIn2.silly :: [GHC.Types.Int] -> GHC.Types.Int\n LayoutIn2.silly ls\n = case ls of {\n (1 : xs) -> 1\n (2 : xs)\n | x GHC.Classes.< 10 -> 4\n where\n x = GHC.List.last xs\n otherwise -> 12 },\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
@@ -2355,7 +2342,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "Data.List.sum"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((4,24),(4,29),\"mySum\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module ScopeAndQual where\n\n import qualified Data.List as L\n import Prelude hiding (sum)\n\n main :: IO ()\n main = putStrLn (show $ L.sum [1,2,3])\n\n sum a b = a + b\n\n sumSquares xs = L.sum $ map (\\x -> x*x) xs\n\n mySumSq = sumSquares\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module ScopeAndQual where\n\nimport qualified Data.List as L\nimport Prelude hiding (sum)\n\nmain :: IO ()\nmain = putStrLn (show $ L.sum [1,2,3])\n\nsum a b = a + b\n\nsumSquares xs = L.sum $ map (\\x -> x*x) xs\n\nmySumSq = sumSquares\n"
       (sourceFromState s) `shouldBe` "module ScopeAndQual where\n\nimport qualified Data.List as L\nimport Prelude hiding (mySum)\n\nmain :: IO ()\nmain = putStrLn (show $ L.mySum [1,2,3])\n\nsum a b = a + b\n\nsumSquares xs = L.mySum $ map (\\x -> x*x) xs\n\nmySumSq = sumSquares\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(ScopeAndQual.main :: GHC.Types.IO ()\n ScopeAndQual.main\n = System.IO.putStrLn\n (GHC.Show.show GHC.Base.$ LocToName.mySum [1, 2, 3])\n ScopeAndQual.sum a b = a GHC.Num.+ b\n ScopeAndQual.sumSquares xs\n = LocToName.mySum GHC.Base.$ GHC.Base.map (\\ x -> x GHC.Num.* x) xs\n ScopeAndQual.mySumSq = ScopeAndQual.sumSquares,\n [import qualified Data.List as L,\n import Prelude hiding ( LocToName.mySum )],\n Nothing,\n Nothing)"
 
@@ -2381,7 +2368,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "Renaming.C7.myFringe"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((5,1),(5,12),\"myNewFringe\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.C7(myFringe)  where\n\n import Renaming.D7\n\n myFringe:: Tree a -> [a]\n myFringe (Leaf x ) = [x]\n myFringe (Branch left right) = myFringe left ++ fringe right\n\n\n\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.C7(myFringe)  where\n\nimport Renaming.D7\n\nmyFringe:: Tree a -> [a]\nmyFringe (Leaf x ) = [x]\nmyFringe (Branch left right) = myFringe left ++ fringe right\n\n\n\n\n"
       (sourceFromState s) `shouldBe` "module Renaming.C7(LocToName.myNewFringe)  where\n\nimport Renaming.D7\n\nmyNewFringe:: Tree a -> [a]\nmyNewFringe (Leaf x ) = [x]\nmyNewFringe (Branch left right) = LocToName.myNewFringe left ++ fringe right\n\n\n\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LocToName.myNewFringe :: Renaming.D7.Tree a -> [a]\n LocToName.myNewFringe (Renaming.D7.Leaf x) = [x]\n LocToName.myNewFringe (Renaming.D7.Branch left right)\n = LocToName.myNewFringe left GHC.Base.++ Renaming.D7.fringe right,\n [import (implicit) Prelude, import Renaming.D7],\n Just [LocToName.myNewFringe],\n Nothing)"
 
@@ -2406,7 +2393,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "list"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((8,7),(8,9),\"ls\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of  (1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
       (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly ls = case ls of  (1:xs) -> 1\n--There is a comment\n                       (2:xs)\n                         | x < 10    -> 4  where  x = last xs\n                       otherwise -> 12\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutIn2.silly :: [GHC.Types.Int] -> GHC.Types.Int\n LayoutIn2.silly ls\n = case ls of {\n (1 : xs) -> 1\n (2 : xs)\n | x GHC.Classes.< 10 -> 4\n where\n x = GHC.List.last xs\n otherwise -> 12 },\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2433,7 +2420,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "list"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((8,7),(8,17),\"listlonger\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'list' to 'ls'.\n\n silly :: [Int] -> Int\n silly list = case list of  (1:xs) -> 1\n --There is a comment\n                            (2:xs)\n                              | x < 10    -> 4  where  x = last xs\n                            otherwise -> 12\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
       -- (showGhcQual $ linesFromState s) `shouldBe` ""
       -- (showGhcQual $ sourceTreeFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly listlonger = case listlonger of  (1:xs) -> 1\n            --There is a comment\n                                       (2:xs)\n                                         | x < 10    -> 4  where  x = last xs\n                                       otherwise -> 12\n\n"
@@ -2463,7 +2450,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "ioFun"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,8),(7,10),\"io\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn4 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'ioFun' to  'io'\n\n main = ioFun \"hello\" where ioFun s= do  let  k = reverse s\n  --There is a comment\n                                         s <- getLine\n                                         let  q = (k ++ s)\n                                         putStr q\n                                         putStr \"foo\"\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn4 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'ioFun' to  'io'\n\nmain = ioFun \"hello\" where ioFun s= do  let  k = reverse s\n --There is a comment\n                                        s <- getLine\n                                        let  q = (k ++ s)\n                                        putStr q\n                                        putStr \"foo\"\n\n"
       -- (pprFromState s) `shouldBe` []
       (sourceFromState s) `shouldBe` "module LayoutIn4 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'ioFun' to  'io'\n\nmain = io \"hello\" where io s= do  let  k = reverse s\n--There is a comment\n                                  s <- getLine\n                                  let  q = (k ++ s)\n                                  putStr q\n                                  putStr \"foo\"\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutIn4.main\n = io \"hello\"\n where\n io s\n = do { let k = GHC.List.reverse s;\n s <- System.IO.getLine;\n let q = (k GHC.Base.++ s);\n System.IO.putStr q;\n System.IO.putStr \"foo\" },\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
@@ -2490,7 +2477,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "ioFun"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,8),(7,17),\"ioFunLong\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn4 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'ioFun' to  'io'\n\n main = ioFun \"hello\" where ioFun s= do  let  k = reverse s\n  --There is a comment\n                                         s <- getLine\n                                         let  q = (k ++ s)\n                                         putStr q\n                                         putStr \"foo\"\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn4 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'ioFun' to  'io'\n\nmain = ioFun \"hello\" where ioFun s= do  let  k = reverse s\n --There is a comment\n                                        s <- getLine\n                                        let  q = (k ++ s)\n                                        putStr q\n                                        putStr \"foo\"\n\n"
       (sourceFromState s) `shouldBe` "module LayoutIn4 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'ioFun' to  'io'\n\nmain = ioFunLong \"hello\" where ioFunLong s= do  let  k = reverse s\n         --There is a comment\n                                                s <- getLine\n                                                let  q = (k ++ s)\n                                                putStr q\n                                                putStr \"foo\"\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutIn4.main\n = ioFunLong \"hello\"\n where\n ioFunLong s\n = do { let k = GHC.List.reverse s;\n s <- System.IO.getLine;\n let q = (k GHC.Base.++ s);\n System.IO.putStr q;\n System.IO.putStr \"foo\" },\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2515,7 +2502,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "sq"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,17),(7,18),\"q\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn1 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'sq' to 'square'.\n\n sumSquares x y= sq x + sq y where sq x= x^pow\n   --There is a comment.\n                                   pow=2\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn1 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'sq' to 'square'.\n\nsumSquares x y= sq x + sq y where sq x= x^pow\n  --There is a comment.\n                                  pow=2\n"
       (sourceFromState s) `shouldBe` "module LayoutIn1 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'sq' to 'square'.\n\nsumSquares x y= q x + q y where q x= x^pow\n--There is a comment.\n                                pow=2\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutIn1.sumSquares x y\n = q x GHC.Num.+ q y\n where\n q x = x GHC.Real.^ pow\n pow = 2,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2541,7 +2528,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "sq"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,17),(7,23),\"square\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn1 where\n\n --Layout rule applies after 'where','let','do' and 'of'\n\n --In this Example: rename 'sq' to 'square'.\n\n sumSquares x y= sq x + sq y where sq x= x^pow\n   --There is a comment.\n                                   pow=2\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn1 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'sq' to 'square'.\n\nsumSquares x y= sq x + sq y where sq x= x^pow\n  --There is a comment.\n                                  pow=2\n"
       -- (pprFromState s) `shouldBe` []
       (sourceFromState s) `shouldBe` "module LayoutIn1 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'sq' to 'square'.\n\nsumSquares x y= square x + square y where square x= x^pow\n          --There is a comment.\n                                          pow=2\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutIn1.sumSquares x y\n = square x GHC.Num.+ square y\n where\n square x = x GHC.Real.^ pow\n pow = 2,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
@@ -2567,7 +2554,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "xxx"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((6,5),(6,6),\"x\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo xxx = let a = 1\n              b = 2\n          in xxx + a + b\n\n"
       (sourceFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo x = let a = 1\n            b = 2\n          in x + a + b\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutLet1.foo x\n = let\n a = 1\n b = 2\n in x GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2592,7 +2579,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "xxx"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((6,5),(6,12),\"xxxlong\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n\n foo xxx = let a = 1\n               b = 2\n           in xxx + a + b\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo xxx = let a = 1\n              b = 2\n          in xxx + a + b\n\n"
       -- (pprFromState s) `shouldBe` []
       (sourceFromState s) `shouldBe` "module LayoutLet1 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n\nfoo xxxlong = let a = 1\n                  b = 2\n          in xxxlong + a + b\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutLet1.foo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
@@ -2614,12 +2601,12 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,nn),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,nn),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual n) `shouldBe` "xxx"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,5),(7,12),\"xxxlong\")]"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet2 where\n\n -- Simple let expression, rename xxx to something longer or shorter\n -- and the let/in layout should adjust accordingly\n -- In this case the tokens for xxx + a + b should also shift out\n\n foo xxx = let a = 1\n               b = 2 in xxx + a + b\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet2 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n-- In this case the tokens for xxx + a + b should also shift out\n\nfoo xxx = let a = 1\n              b = 2 in xxx + a + b\n\n"
       -- (pprFromState s) `shouldBe` []
       (sourceFromState s) `shouldBe` "module LayoutLet2 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n-- In this case the tokens for xxx + a + b should also shift out\n\nfoo xxxlong = let a = 1\n                  b = 2 in xxxlong + a + b\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutLet2.foo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong GHC.Num.+ a GHC.Num.+ b,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
@@ -2977,7 +2964,7 @@ spec = do
       -- new name is "Renaming.ConflictExport.fringe"
       let newName = mkTestGhcName 1 (Just modu) "fringe"
 
-      (showGhcQual modu) `shouldBe` "main:Renaming.ConflictExport"
+      (showGhcQual modu) `shouldBe` "main@main:Renaming.ConflictExport"
       (showGhcQual newName) `shouldBe` "Renaming.ConflictExport.fringe"
 
       (showGhcQual $ GHC.localiseName newName) `shouldBe` "fringe"
@@ -3002,7 +2989,7 @@ spec = do
       -- new name is "Renaming.ConflictExport.fringe"
       let newName = mkTestGhcName 1 (Just modu) "fringeOk"
 
-      (showGhcQual modu) `shouldBe` "main:Renaming.ConflictExport"
+      (showGhcQual modu) `shouldBe` "main@main:Renaming.ConflictExport"
       (showGhcQual newName) `shouldBe` "Renaming.ConflictExport.fringeOk"
 
       (showGhcQual $ GHC.localiseName newName) `shouldBe` "fringeOk"
@@ -3512,9 +3499,6 @@ parsedFileRenamingC7 = ct $ parsedFileGhc "./Renaming/C7.hs"
 parsedFileLocToName :: IO (ParseResult,[PosToken])
 parsedFileLocToName = ct $ parsedFileGhc "./LocToName.hs"
 
-parsedFileSGhc :: IO (ParseResult,[PosToken])
-parsedFileSGhc = ct $ parsedFileGhc "./TypeUtils/S.hs"
-
 parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
 parsedFileDd1Ghc = ct $ parsedFileGhc "./DupDef/Dd1.hs"
 
@@ -3548,10 +3532,6 @@ parsedFileLiftWhereIn7Ghc = ct $ parsedFileGhc "./LiftToToplevel/WhereIn7.hs"
 
 parsedFileWhereIn3Ghc :: IO (ParseResult,[PosToken])
 parsedFileWhereIn3Ghc = ct $ parsedFileGhc "./Demote/WhereIn3.hs"
-
-
-parsedFileWhereIn4Ghc :: IO (ParseResult,[PosToken])
-parsedFileWhereIn4Ghc = ct $ parsedFileGhc "./Demote/WhereIn4.hs"
 
 
 parsedFileTokenTestGhc :: IO (ParseResult,[PosToken])

@@ -140,7 +140,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , getParsedForRenamedLocated
     -- , allPNT
     --  , allPNTLens
-    -- , rdrNameFromName
+    , rdrNameFromName
     , stripLeadingSpaces
     -- , lookupNameGhc
  ) where
@@ -321,7 +321,6 @@ mkNewGhcName maybeMod name = do
   put s { rsUniqState = (u+1) }
 
   let un = GHC.mkUnique 'H' (u+1) -- H for HaRe :)
-      -- n = GHC.mkSystemName un (GHC.mkVarOcc name)
       n = case maybeMod of
                Nothing -> GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
                Just modu -> GHC.mkExternalName un modu (GHC.mkVarOcc name) nullSrcSpan
@@ -2699,7 +2698,7 @@ addItemsToImport::
   ->[GHC.Name]           -- ^ The items to be added
 --  ->Maybe GHC.Name       -- ^ The condition identifier.
   ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
-addItemsToImport a b c = addItemsToImport' a b c Import
+addItemsToImport mn r ns = addItemsToImport' mn r ns Import
 
 -- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
 --   specified module name. If the ImportType argument is Hide, then the items will be added to the "hiding"
@@ -2724,7 +2723,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
     inImport imp@(GHC.L _ (GHC.ImportDecl _st (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit _as h))
       | serverModName == modName  && not isQualified -- && (if isJust pn then findPN (gfromJust "addItemsToImport" pn) h else True)
        = case h of
-           Nothing                         -> insertEnts imp [] True
+           Nothing                          -> insertEnts imp [] True
            Just (_isHide, (GHC.L _le ents)) -> insertEnts imp ents False
     inImport x = return x
 
@@ -2759,7 +2758,7 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
 
 
     replaceHiding (GHC.L l (GHC.ImportDecl st mn q src safe isQ isImp as _h)) h1 =
-         (GHC.L l (GHC.ImportDecl st mn q src safe isQ isImp as h1))
+                  (GHC.L l (GHC.ImportDecl st mn q src safe isQ isImp as h1))
 
 -- ---------------------------------------------------------------------
 
@@ -3605,7 +3604,9 @@ renamePNworker oldPN newName updateTokens useQual t = do
              newTok <- case mmo of
                    Nothing -> return $ rdrNameFromName useQual' newName
                    Just (modu,_) -> do
-                     newName' <- mkNewGhcName (Just $ GHC.mkModule GHC.mainPackageKey modu) (GHC.occNameString $ GHC.getOccName newName)
+                     logm $ "renamePNWorker.worker:modu=" ++ showGhcQual modu
+                     newName' <- mkNewGhcName (Just $ GHC.mkModule GHC.mainPackageKey modu)
+                                              (GHC.occNameString $ GHC.getOccName newName)
                      return $ rdrNameFromName True newName'
              replaceRdrName (GHC.L l newTok)
              return ()

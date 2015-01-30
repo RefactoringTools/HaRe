@@ -78,11 +78,11 @@ Library
              Language.Haskell.Refact.API
            , Language.Haskell.Refact.HaRe
            , Language.Haskell.Refact.Refactoring.Case
-           -- , Language.Haskell.Refact.Refactoring.DupDef
-           -- , Language.Haskell.Refact.Refactoring.MoveDef
-           -- , Language.Haskell.Refact.Refactoring.Renaming
+           , Language.Haskell.Refact.Refactoring.DupDef
+           , Language.Haskell.Refact.Refactoring.MoveDef
+           , Language.Haskell.Refact.Refactoring.Renaming
            , Language.Haskell.Refact.Refactoring.RoundTrip
-           -- , Language.Haskell.Refact.Refactoring.SwapArgs
+           , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Utils.Binds
            , Language.Haskell.Refact.Utils.Cabal
            , Language.Haskell.Refact.Utils.ExactPrint

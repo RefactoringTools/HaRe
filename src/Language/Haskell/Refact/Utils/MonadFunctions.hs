@@ -52,7 +52,7 @@ import qualified FastString    as GHC
 import qualified GHC           as GHC
 
 import qualified Data.Generics as SYB
-import qualified GHC.SYB.Utils as SYB
+-- import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
