@@ -27,6 +27,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
+       , getRefactModule
 
        -- * New ghc-exactprint interfacing
        , replaceRdrName
@@ -215,7 +216,10 @@ replaceRdrName (GHC.L l newName) = do
       replaceHsVar (GHC.L ln (GHC.HsVar _))
         | l == ln = GHC.L l (GHC.HsVar newName)
       replaceHsVar x = x
-      parsed' = SYB.everywhere (SYB.mkT replaceRdr `SYB.extT` replaceHsVar) parsed
+      replacePat (GHC.L ln (GHC.VarPat _))
+        | l == ln = GHC.L l (GHC.VarPat newName)
+      replacePat x = x
+      parsed' = SYB.everywhere (SYB.mkT replaceRdr `SYB.extT` replaceHsVar `SYB.extT` replacePat) parsed
   logm $ "replaceRdrName:after:parsed'=" ++ showGhc parsed'
   putRefactParsed parsed' mempty
   return ()
@@ -229,6 +233,18 @@ getRefactFileName = do
     Nothing  -> return Nothing
     Just _tm -> do toks <- fetchOrigToks
                    return $ Just (GHC.unpackFS $ fileNameFromTok $ ghead "getRefactFileName" toks)
+
+-- ---------------------------------------------------------------------
+
+getRefactModule :: RefactGhc GHC.Module
+getRefactModule = do
+  mtm <- gets rsModule
+  case mtm of
+    Nothing  -> error $ "Hare.MonadFunctions.getRefactModule:no module loaded"
+    Just tm -> do
+      let t  = rsTypecheckedMod tm
+      let pm = GHC.tm_parsed_module t
+      return $ GHC.ms_mod $ GHC.pm_mod_summary pm
 
 -- ---------------------------------------------------------------------
 

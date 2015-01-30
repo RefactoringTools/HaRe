@@ -312,6 +312,8 @@ defaultExp=GHC.HsVar $ mkRdrName "nothing"
 mkRdrName :: String -> GHC.RdrName
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
+-- ---------------------------------------------------------------------
+
 -- | Make a new GHC.Name, using the Unique Int sequence stored in the
 -- RefactState.
 mkNewGhcName :: Maybe GHC.Module -> String -> RefactGhc GHC.Name
@@ -322,9 +324,11 @@ mkNewGhcName maybeMod name = do
 
   let un = GHC.mkUnique 'H' (u+1) -- H for HaRe :)
       n = case maybeMod of
-               Nothing -> GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
-               Just modu -> GHC.mkExternalName un modu (GHC.mkVarOcc name) nullSrcSpan
+               Nothing   -> GHC.mkInternalName un      (GHC.mkVarOcc name) GHC.noSrcSpan
+               Just modu -> GHC.mkExternalName un modu (GHC.mkVarOcc name) GHC.noSrcSpan
   return n
+
+-- ---------------------------------------------------------------------
 
 mkNewToplevelName :: GHC.Module -> String -> GHC.SrcSpan -> RefactGhc GHC.Name
 mkNewToplevelName modid name defLoc = do
@@ -2647,13 +2651,17 @@ addDecl parent pn (decl, msig, declToks) topLevel
 
 -- ---------------------------------------------------------------------
 
-rdrNameFromName :: Bool -> GHC.Name -> GHC.RdrName
-rdrNameFromName useQual newName =
+rdrNameFromName :: Bool -> GHC.Name -> RefactGhc GHC.RdrName
+rdrNameFromName useQual newName = do
+  mname <- case (GHC.nameModule_maybe newName) of
+      Just (GHC.Module _ mn) -> return mn
+      Nothing -> do
+        GHC.Module _ mn <- getRefactModule
+        return mn
+
   if useQual
-    then GHC.mkRdrQual mname (GHC.nameOccName newName)
-    else GHC.mkRdrUnqual (GHC.nameOccName newName)
-  where
-    GHC.Module _ mname = (GHC.nameModule newName)
+    then return $ GHC.mkRdrQual mname (GHC.nameOccName newName)
+    else return $ GHC.mkRdrUnqual     (GHC.nameOccName newName)
 
 -- ---------------------------------------------------------------------
 
@@ -3601,13 +3609,14 @@ renamePNworker oldPN newName updateTokens useQual t = do
     worker useQual' l mmo
      = do if updateTokens
            then do
+             logm $ "renamePNWorker.worker:(useQual',l,mmo)=" ++ showGhc (useQual',l,mmo)
              newTok <- case mmo of
-                   Nothing -> return $ rdrNameFromName useQual' newName
+                   Nothing -> rdrNameFromName useQual' newName
                    Just (modu,_) -> do
                      logm $ "renamePNWorker.worker:modu=" ++ showGhcQual modu
                      newName' <- mkNewGhcName (Just $ GHC.mkModule GHC.mainPackageKey modu)
                                               (GHC.occNameString $ GHC.getOccName newName)
-                     return $ rdrNameFromName True newName'
+                     rdrNameFromName True newName'
              replaceRdrName (GHC.L l newTok)
              return ()
            else return ()
