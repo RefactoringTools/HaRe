@@ -1,10 +1,9 @@
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 module Language.Haskell.Refact.Refactoring.Simple(removeBracket) where
 
 import qualified Data.Generics         as SYB
-import qualified GHC.SYB.Utils         as SYB
 
-import qualified BasicTypes    as GHC
 import qualified GHC           as GHC
 
 import Language.Haskell.GhcMod
@@ -13,7 +12,7 @@ import Language.Haskell.Refact.API
 -- To be moved into HaRe API
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.Refact.Utils.ExactPrint
-import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.MonadFunctions
 
 import qualified Data.Map as Map
 import Control.Applicative
@@ -26,8 +25,7 @@ import Debug.Trace
 removeBracket :: RefactSettings -> Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
 removeBracket settings opts fileName beginPos endPos =
   let applied = (:[]) . fst <$> applyRefac
-                  (getModuleGhc fileName
-                   >> removeBracketTransform fileName beginPos endPos)
+                  (removeBracketTransform fileName beginPos endPos)
                   (RSFile fileName) in
   runRefacSession settings opts applied
 
@@ -40,13 +38,20 @@ removeBracketTransform fileName beginPos endPos = do
        parsed <- getRefactParsed
        let expr :: GHC.Located (GHC.HsExpr GHC.RdrName)
            expr = fromJust $ locToExp beginPos endPos parsed
-           removePar :: (HsExpr GHC.RdrName -> HsExpr GHC.RdrName) -> HsExpr GHC.RdrName -> HsExpr GHC.RdrName
-           removePar k e@(HsPar l s)
-            | sameOccurrence e expr = s
-           removePar k e = k e
-           transform :: (HsExpr GHC.RdrName) -> RefactGhc (HsExpr GHC.RdrName)
-           transform = return . removePar id
-       p2 <- SYB.everywhereMStaged SYB.Parser (SYB.mkM transform) parsed
-       putRefactParsed p2 (Map.empty,Map.empty)
-       logm $ showGhc p2
-       return ()
+           removePar :: HsExpr GHC.RdrName -> RefactGhc (HsExpr GHC.RdrName)
+           removePar e@(HsPar _ s)
+            | sameOccurrence e expr = do
+              (commentAnns, otherAnns) <- getRefactAnns
+              let r' = fromJust . trace (showGhc expr) $ Map.lookup (GHC.getLoc e, G GHC.AnnOpenP) otherAnns
+              let newOtherAnns = deleteAnnotations
+                            [(GHC.getLoc e, G ann)
+                              | ann <- [GHC.AnnCloseP, GHC.AnnOpenP]]
+                            . Map.insert (GHC.getLoc s, G GHC.AnnVal) r'
+                            $ otherAnns
+              setRefactAnns (commentAnns, newOtherAnns)
+              return s
+           removePar e = return e
+       p2 <- SYB.everywhereM (SYB.mkM removePar) parsed
+       getRefactAnns >>= putRefactParsed p2
+       logm $ "logm: after refactor\n" ++ showGhc p2
+
