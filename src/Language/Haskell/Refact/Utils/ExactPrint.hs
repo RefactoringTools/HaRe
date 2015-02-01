@@ -8,7 +8,9 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , addAnnKeywords
   , setOffsets
   , setOffset
+  , deleteAnnotations
   , setLocatedDp
+  , extractAnnsEP
   ) where
 
 import qualified FastString    as GHC
@@ -127,6 +129,15 @@ setOffset anne (k,v) = case
     Just (Ann cs _) -> Map.insert k (Ann cs v) anne
 
 -- ---------------------------------------------------------------------
+
+-- | Delete an annotation
+deleteAnnotation :: (GHC.SrcSpan, KeywordId) -> AnnsFinal -> AnnsFinal
+deleteAnnotation = Map.delete
+
+deleteAnnotations :: [(GHC.SrcSpan, KeywordId)] -> AnnsFinal -> AnnsFinal
+deleteAnnotations vs anne = foldr deleteAnnotation anne vs
+
+-- -------------------------
 
 setLocatedDp :: (SYB.Data a) => AnnsEP -> GHC.Located a -> DeltaPos -> AnnsEP
 setLocatedDp aane (GHC.L l v) dp = setOffset aane ((l,annGetConstr v),dp)

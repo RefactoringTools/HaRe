@@ -24,6 +24,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactParsed
        , putRefactParsed
        , addRefactAnns
+       , setRefactAnns
+       , getRefactAnns
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
@@ -65,6 +67,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 
 import qualified Data.Map as Map
+import Control.Applicative
 
 -- ---------------------------------------------------------------------
 
@@ -164,28 +167,43 @@ putRefactParsed parsed newAnns = do
   mrm <- gets rsModule
   let rm = gfromJust "putRefactParsed" mrm
   let tm = rsTypecheckedMod rm
-  let tk' = addAnns (rsTokenCache rm) newAnns
+  let tk' = modifyAnns (rsTokenCache rm) (const newAnns)
 
   let pm = (GHC.tm_parsed_module tm) { GHC.pm_parsed_source = parsed }
   let tm' = tm { GHC.tm_parsed_module = pm }
   let rm' = rm { rsTypecheckedMod = tm', rsTokenCache = tk', rsStreamModified = RefacModified }
   put $ st {rsModule = Just rm'}
 
+getRefactAnns :: RefactGhc Anns
+getRefactAnns =
+  (Map.! mainTid) . tkCache . rsTokenCache . gfromJust "getRefactAnns"
+    <$> gets rsModule
+
+setRefactAnns :: Anns -> RefactGhc ()
+setRefactAnns anns = modifyRefactAnns (const anns)
+
 addRefactAnns :: Anns -> RefactGhc ()
-addRefactAnns newAnns = do
+addRefactAnns newAnns = modifyRefactAnns (unionAnns newAnns)
+
+unionAnns :: Anns -> Anns -> Anns
+unionAnns (canns, oanns) (ocanns, ooanns)=
+  (Map.union canns ocanns, Map.union oanns ooanns)
+
+modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
+modifyRefactAnns f = do
   st <- get
   mrm <- gets rsModule
   let rm = gfromJust "addRefactAnns" mrm
-  let tk' = addAnns (rsTokenCache rm) newAnns
+  let tk' = modifyAnns (rsTokenCache rm) f
   let rm' = rm { rsTokenCache = tk', rsStreamModified = RefacModified }
   put $ st {rsModule = Just rm'}
 
-addAnns :: TokenCache Anns -> Anns -> TokenCache Anns
-addAnns tk (ncanns,noanns) = tk'
+modifyAnns :: TokenCache Anns -> (Anns -> Anns) -> TokenCache Anns
+modifyAnns tk f = tk'
   where
-    (canns,oanns) = (tkCache tk) Map.! mainTid
+    anns = (tkCache tk) Map.! mainTid
     tk' = tk {tkCache = Map.insert mainTid
-                                   (Map.union ncanns canns,Map.union noanns oanns)
+                                   (f anns)
                                    (tkCache tk) }
 
 putParsedModule
