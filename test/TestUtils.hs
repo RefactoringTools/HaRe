@@ -12,6 +12,7 @@ module TestUtils
        , initialState
        , initialLogOnState
        , sourceFromState
+       , annsFromState
        , defaultTestSettings
        , logTestSettings
        , testSettingsMainfile
@@ -277,6 +278,14 @@ sourceFromState st =
                  $ rsTypecheckedMod tm
         r = exactPrintAnnotation parsed [] anns
     Nothing -> []
+
+-- ---------------------------------------------------------------------
+
+annsFromState :: RefactState -> Anns
+annsFromState st =
+  case (rsModule st) of
+    Just tm -> (tkCache $ rsTokenCache tm) Map.! mainTid
+    Nothing -> error $ "annsFromState: no rsModule"
 
 -- ---------------------------------------------------------------------
 

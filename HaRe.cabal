@@ -200,7 +200,7 @@ test-suite spec
     , Cabal >= 1.22
     -- , Paths_HaRe
     -- , haskell-token-utils >= 0.0.0.6
-    -- , HaRe >= 0.8
+    , HaRe >= 0.8
   Extensions:      CPP
 
 

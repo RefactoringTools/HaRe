@@ -167,7 +167,8 @@ putRefactParsed parsed newAnns = do
   mrm <- gets rsModule
   let rm = gfromJust "putRefactParsed" mrm
   let tm = rsTypecheckedMod rm
-  let tk' = modifyAnns (rsTokenCache rm) (const newAnns)
+  -- let tk' = modifyAnns (rsTokenCache rm) (const newAnns)
+  let tk' = modifyAnns (rsTokenCache rm) (unionAnns newAnns)
 
   let pm = (GHC.tm_parsed_module tm) { GHC.pm_parsed_source = parsed }
   let tm' = tm { GHC.tm_parsed_module = pm }
@@ -185,9 +186,10 @@ setRefactAnns anns = modifyRefactAnns (const anns)
 addRefactAnns :: Anns -> RefactGhc ()
 addRefactAnns newAnns = modifyRefactAnns (unionAnns newAnns)
 
+-- | Combine the new with old, such that the new take priority
 unionAnns :: Anns -> Anns -> Anns
-unionAnns (canns, oanns) (ocanns, ooanns)=
-  (Map.union canns ocanns, Map.union oanns ooanns)
+unionAnns (ncanns,noanns) (canns,oanns)=
+  (Map.union ncanns canns,Map.union noanns oanns)
 
 modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
 modifyRefactAnns f = do
