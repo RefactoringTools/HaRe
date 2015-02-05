@@ -188,8 +188,7 @@ addRefactAnns newAnns = modifyRefactAnns (unionAnns newAnns)
 
 -- | Combine the new with old, such that the new take priority
 unionAnns :: Anns -> Anns -> Anns
-unionAnns (ncanns,noanns) (canns,oanns)=
-  (Map.union ncanns canns,Map.union noanns oanns)
+unionAnns newanns oldanns = Map.union newanns oldanns
 
 modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
 modifyRefactAnns f = do

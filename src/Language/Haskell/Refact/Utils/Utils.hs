@@ -447,8 +447,8 @@ writeRefactoredFiles verbosity files
                       (SYB.showData SYB.Parser 0 parsed) ++
                       "\n\n----------------------\n\n" ++
                       (showGhc ann) ++
-                      "\n\n----------------------\n\n" ++
-                      (showAnnData (organiseAnns ann) 0 parsed)
+                      "\n\n----------------------\n\n"
+--                      (showAnnData (organiseAnns ann) 0 parsed)
                       )
 -- ---------------------------------------------------------------------
 

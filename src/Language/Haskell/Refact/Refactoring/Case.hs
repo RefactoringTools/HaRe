@@ -50,7 +50,7 @@ reallyDoIfToCase expr p = do
 
    p2 <- SYB.everywhereMStaged SYB.Parser (SYB.mkM inExp) p
    -- logm $ "reallyDoIfToCase:p2=" ++ (SYB.showData SYB.Parser 0 p2)
-   putRefactParsed p2 (Map.empty,Map.empty)
+   putRefactParsed p2 Map.empty
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
@@ -108,17 +108,19 @@ ifToCaseTransform (GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
                               , ( (falseRhsLoc,  CN "GRHS"),  (DP (0,6)) )
                               , ( (falseMatchLoc,CN "Match"), (DP (1,4)) )
                               ]
-  let anne3 = setLocatedDp anne2 e2 (DP (0,3))
+  let annf =  Map.fromList $ map (\(k, v) -> (k,(annNone, v)))
+              [((caseLoc, CN "HsCase"),   [ (G GHC.AnnCase, DP (1,0))
+                                          , (G GHC.AnnOf, DP (0,1) )
+                                          ])
+              ,((trueLoc, annGetConstr trueName),    [(G GHC.AnnVal,  DP (1,0))])
+              ,((trueRhsLoc,  CN "GRHS"), [(G GHC.AnnRarrow, DP (0,2))])
+              ,((falseLoc,    annGetConstr falseName), [(G GHC.AnnVal,DP (1,0))])
+              ,((falseRhsLoc, CN "GRHS"), [(G GHC.AnnRarrow, DP (0,1))])
+              ]
+  let anne3 = setLocatedDp annf e2 (DP (0,3))
   let anne4 = setLocatedDp anne3 e3 (DP (0,3))
-  let annf = Map.fromList [((caseLoc,     G GHC.AnnCase),   [DP (1,0)])
-                          ,((caseLoc,     G GHC.AnnOf),     [DP (0,1)])
-                          ,((trueLoc,     G GHC.AnnVal),    [DP (1,0)])
-                          ,((trueRhsLoc,  G GHC.AnnRarrow), [DP (0,2)])
-                          ,((falseLoc,    G GHC.AnnVal),    [DP (1,0)])
-                          ,((falseRhsLoc, G GHC.AnnRarrow), [DP (0,1)])
-                          ]
   logm $ "Case:anns=" ++ showGhc (anne2,annf)
-  addRefactAnns (anne4,annf)
+  addRefactAnns (annf) --`Map.union` anne4) --`Map.union` annf)
   return ret
 ifToCaseTransform x = return x
 

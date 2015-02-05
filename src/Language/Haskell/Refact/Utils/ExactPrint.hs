@@ -8,7 +8,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , addAnnKeywords
   , setOffsets
   , setOffset
-  , deleteAnnotations
+  , deleteAnnotation
   , setLocatedDp
   , extractAnnsEP
   ) where
@@ -35,7 +35,7 @@ import qualified Data.Map as Map
 -- ---------------------------------------------------------------------
 
 resequenceAnnotations :: (SYB.Data t)
-                      => GHC.Located t -> RefactGhc ((GHC.Located t),AnnsEP)
+                      => GHC.Located t -> RefactGhc ((GHC.Located t),Anns)
 resequenceAnnotations t = do
   t1 <- insertUniqueSrcSpans t
   let aa = extractAnnsEP t1
@@ -46,6 +46,8 @@ resequenceAnnotations t = do
 
 -- ---------------------------------------------------------------------
 
+-- | Replace empty source spans with a unique SrcSpan which is used as
+-- a key. It doesn't matter what it is.
 insertUniqueSrcSpans :: (SYB.Data t) => GHC.Located t -> RefactGhc (GHC.Located t)
 insertUniqueSrcSpans t = do
   SYB.everywhereM (SYB.mkM newSrcSpan) t
@@ -56,8 +58,8 @@ insertUniqueSrcSpans t = do
                       else return ss
 
 -- ---------------------------------------------------------------------
-
-uniqueSpansOnly :: AnnsEP -> AnnsEP
+-- | Filter annotations to get ones corresponding to SrcSpans.
+uniqueSpansOnly :: Anns -> Anns
 uniqueSpansOnly anns
   = Map.fromList $ filter (\((ss,_),_) -> isUniqueSrcSpan ss) $ Map.toList anns
 
@@ -77,21 +79,20 @@ isUniqueSrcSpan :: GHC.SrcSpan -> Bool
 isUniqueSrcSpan ss = srcSpanStartLine ss == -1
 
 -- ---------------------------------------------------------------------
-
 -- |Get the map of (SrcSpan,AnnConName) with empty annotations
-extractAnnsEP :: forall t. (SYB.Data t) => t -> AnnsEP
+extractAnnsEP :: forall t. (SYB.Data t) => t -> Anns
 extractAnnsEP t = Map.fromList as
   where
     sts = extractSrcSpanConName t
-    as = map (\k -> (k,Ann [] (DP (0,0)))) sts
-
+    as :: [((GHC.SrcSpan, AnnConName), (Annotation, [(KeywordId, DeltaPos)]))]
+    as = map (\k -> (k,(Ann [] (DP (0,0)) 0 , []))) sts
 
 extractSrcSpanConName :: forall t. (SYB.Data t) => t -> [(GHC.SrcSpan,AnnConName)]
 extractSrcSpanConName  =
   generic
   where generic :: (SYB.Data a) => a -> [(GHC.SrcSpan,AnnConName)]
         generic t = if SYB.showConstr (SYB.toConstr t) == "L" -- SYB.toConstr t == locatedConstructor
-                       then [ (ghead "extractAnnsEP" (SYB.gmapQi 0 getSrcSpan t), (SYB.gmapQi 1 getConName t)) ]
+                       then [ (ghead "extractAnns" (SYB.gmapQi 0 getSrcSpan t), (SYB.gmapQi 1 getConName t)) ]
                             ++ SYB.gmapQi 1 extractSrcSpanConName t
                        else concat (SYB.gmapQ extractSrcSpanConName t)
 
@@ -107,39 +108,37 @@ extractSrcSpanConName  =
 
 -- ---------------------------------------------------------------------
 
-addAnnKeywords :: AnnsEP -> String -> [(KeywordId,[DeltaPos])] -> AnnsFinal
-addAnnKeywords anns conName ks = r
+addAnnKeywords :: Anns -> AnnConName -> [(KeywordId, DeltaPos)] -> Anns
+addAnnKeywords anns conName ks = Map.insert (ss, conName) (annNone, ks) anns
   where
     -- First find the first srcspan having the conName
-    ((ss,_),_) = ghead "addAnnKeywords" $ filter (\((_ss,s),_) -> unConName s == conName) $ Map.toList anns
-    -- Then add the annotations
-    r = Map.fromList $ map (\(kw,dps) -> ((ss,kw),dps)) ks
+    ((ss,_),_) = ghead "addAnnKeywords" $ filter (\((_ss,s),_) -> s == conName) $ Map.toList anns
 
 -- ---------------------------------------------------------------------
 
--- |Update the DeltaPos for the given
-setOffsets :: AnnsEP -> [((GHC.SrcSpan,AnnConName),DeltaPos)] -> AnnsEP
+-- |Update the DeltaPos for the given comments
+setOffsets :: Anns -> [((GHC.SrcSpan,AnnConName),DeltaPos)] -> Anns
 setOffsets anne kvs = foldl' setOffset anne kvs
 
--- |Update the DeltaPos for the given
-setOffset :: AnnsEP -> ((GHC.SrcSpan,AnnConName),DeltaPos) -> AnnsEP
+-- |Update the DeltaPos for the given comment set
+setOffset :: Anns -> ((GHC.SrcSpan,AnnConName),DeltaPos) -> Anns
 setOffset anne (k,v) = case
   Map.lookup k anne of
-    Nothing         -> Map.insert k (Ann [] v) anne
-    Just (Ann cs _) -> Map.insert k (Ann cs v) anne
+    Nothing         -> Map.insert k (Ann [] v 0, []) anne
+    Just (Ann cs _ c, ks) -> Map.insert k (Ann cs v c, ks) anne
 
 -- ---------------------------------------------------------------------
 
 -- | Delete an annotation
-deleteAnnotation :: (GHC.SrcSpan, KeywordId) -> AnnsFinal -> AnnsFinal
-deleteAnnotation = Map.delete
+deleteAnnotation :: (GHC.SrcSpan, AnnConName) -> KeywordId -> Anns -> Anns
+deleteAnnotation k kw = Map.adjust (\(a,xs) -> (a, filter (\x -> fst x /= kw) xs)) k
 
-deleteAnnotations :: [(GHC.SrcSpan, KeywordId)] -> AnnsFinal -> AnnsFinal
-deleteAnnotations vs anne = foldr deleteAnnotation anne vs
+--deleteAnnotations :: [(GHC.SrcSpan, KeywordId)] -> Anns -> Anns
+--deleteAnnotations vs anne = foldr deleteAnnotation anne vs
 
 -- -------------------------
 
-setLocatedDp :: (SYB.Data a) => AnnsEP -> GHC.Located a -> DeltaPos -> AnnsEP
+setLocatedDp :: (SYB.Data a) => Anns -> GHC.Located a -> DeltaPos -> Anns
 setLocatedDp aane (GHC.L l v) dp = setOffset aane ((l,annGetConstr v),dp)
 
 -- ---------------------------------------------------------------------
