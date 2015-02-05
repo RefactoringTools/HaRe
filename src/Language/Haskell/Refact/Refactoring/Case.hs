@@ -9,6 +9,8 @@ import qualified GHC           as GHC
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
+import Language.Haskell.Refact.Utils.MonadFunctions
+
 -- To be moved into HaRe API
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.Refact.Utils.ExactPrint
@@ -65,7 +67,7 @@ reallyDoIfToCase expr p = do
 -- |Actually do the transformation
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
                   -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
-ifToCaseTransform (GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
+ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
   caseLoc       <- uniqueSrcSpan
   trueMatchLoc  <- uniqueSrcSpan
   trueLoc       <- uniqueSrcSpan
@@ -101,26 +103,39 @@ ifToCaseTransform (GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
                    ] GHC.EmptyLocalBinds))
                 )
               ] [] GHC.placeHolderType GHC.Generated))
-  (_ret2,anne) <- resequenceAnnotations ret
-  let anne2 = setOffsets anne [ ( (caseLoc,CN "HsCase"), (DP (1,2)) )
-                              , ( (trueRhsLoc,  CN "GRHS"),  (DP (0,6)) )
-                              , ( (trueMatchLoc,CN "Match"), (DP (1,4)) )
-                              , ( (falseRhsLoc,  CN "GRHS"),  (DP (0,6)) )
-                              , ( (falseMatchLoc,CN "Match"), (DP (1,4)) )
-                              ]
-  let annf =  Map.fromList $ map (\(k, v) -> (k,(annNone, v)))
-              [((caseLoc, CN "HsCase"),   [ (G GHC.AnnCase, DP (1,0))
+  --(_ret2,anne) <- resequenceAnnotations ret
+  logm $ "annGetConstr\n\n:" ++ show (annGetConstr trueName)
+
+  let annf =  Map.union (Map.fromList $ map (\(k, v) -> (k,(annNone, v)))
+              [((caseLoc, CN "HsCase"),   [ (G GHC.AnnCase, DP (0,1))
                                           , (G GHC.AnnOf, DP (0,1) )
                                           ])
-              ,((trueLoc, annGetConstr trueName),    [(G GHC.AnnVal,  DP (1,0))])
+              ,((trueLoc,     CN "Unqual"),    [(G GHC.AnnVal,  DP (1,0))])
               ,((trueRhsLoc,  CN "GRHS"), [(G GHC.AnnRarrow, DP (0,2))])
-              ,((falseLoc,    annGetConstr falseName), [(G GHC.AnnVal,DP (1,0))])
+              ,((falseLoc,    CN "Unqual"), [(G GHC.AnnVal,DP (1,0))])
               ,((falseRhsLoc, CN "GRHS"), [(G GHC.AnnRarrow, DP (0,1))])
-              ]
-  let anne3 = setLocatedDp annf e2 (DP (0,3))
-  let anne4 = setLocatedDp anne3 e3 (DP (0,3))
-  logm $ "Case:anns=" ++ showGhc (anne2,annf)
-  addRefactAnns (annf) --`Map.union` anne4) --`Map.union` annf)
+              ]) Map.empty
+  logm $ "\n\n\n" ++ showGhc annf
+  let anne2 = setOffsets annf [ ( (caseLoc,CN "HsCase"), ((DP (0,1), 2) ))
+                              , ( (trueRhsLoc,  CN "GRHS"),  (DP (0,2), 6) )
+                              , ( (trueMatchLoc,CN "Match"), (DP (1,4), 4) )
+                              , ( (falseRhsLoc,  CN "GRHS"),  (DP (0,1), 6) )
+                              , ( (falseMatchLoc,CN "Match"), (DP (1,4), 4) )
+                              , ( (trueLoc, CN "ConPatIn"), (DP (1,0), 0))
+                              , ( (trueLoc, CN "Unqual"), (DP (1,0), 0))
+                              , ( (falseLoc, CN "ConPatIn"), (DP (1,0), 0))
+                              , ( (falseLoc, CN "Unqual"), (DP (1,0), 0))
+                              ]
+  let anne3 = setLocatedDp anne2 e2 (DP (0,1)) 3
+  let anne4 = setLocatedDp anne3 e3 (DP (0,1)) 3
+  let anne5 = setLocatedDp anne4 e1 (DP (0,1)) 5
+
+  logm $ "Case:anns=" ++ showGhc anne2
+  oldAnns <- getRefactAnns
+  let anne1 = Map.delete (l, CN "HsIf") oldAnns
+      final = mergeAnns anne5 anne1
+  logm $ "Case:final=" ++ showGhc final
+  setRefactAnns final --`Map.union` anne4) --`Map.union` annf)
   return ret
 ifToCaseTransform x = return x
 

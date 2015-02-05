@@ -14,11 +14,11 @@ spec :: Spec
 spec = do
   describe "roundtrip" $ do
     it "roundtrips B" $ do
-      r <- ct $ roundTrip defaultTestSettings testOptions "./Case/B.hs"
+      r <- ct $ roundTrip logTestSettings testOptions "Case/res.hs"
       -- r <- ifToCase logTestSettings testCradle "./test/testdata/Case/B.hs" (4,7) (4,43)
-      r `shouldBe` ["./Case/B.hs"]
-      diff <- compareFiles "./test/testdata/Case/B.refactored.hs"
-                           "./test/testdata/Case/B.hs"
+      r `shouldBe` ["./Case/BSimple.hs"]
+      diff <- compareFiles "./test/testdata/Case/BSimple.refactored.hs"
+                           "./test/testdata/Case/BSimple.hs"
       diff `shouldBe` []
 
     -- ---------------------------------

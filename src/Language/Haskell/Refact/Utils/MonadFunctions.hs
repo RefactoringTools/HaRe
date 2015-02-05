@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- |
 
@@ -65,6 +66,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
+import Language.Haskell.Refact.Utils.ExactPrint
 
 import qualified Data.Map as Map
 import Control.Applicative
@@ -188,7 +190,7 @@ addRefactAnns newAnns = modifyRefactAnns (unionAnns newAnns)
 
 -- | Combine the new with old, such that the new take priority
 unionAnns :: Anns -> Anns -> Anns
-unionAnns newanns oldanns = Map.union newanns oldanns
+unionAnns = mergeAnns
 
 modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
 modifyRefactAnns f = do
@@ -198,6 +200,7 @@ modifyRefactAnns f = do
   let tk' = modifyAnns (rsTokenCache rm) f
   let rm' = rm { rsTokenCache = tk', rsStreamModified = RefacModified }
   put $ st {rsModule = Just rm'}
+
 
 modifyAnns :: TokenCache Anns -> (Anns -> Anns) -> TokenCache Anns
 modifyAnns tk f = tk'

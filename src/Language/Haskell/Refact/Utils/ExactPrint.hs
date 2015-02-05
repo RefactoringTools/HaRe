@@ -11,6 +11,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , deleteAnnotation
   , setLocatedDp
   , extractAnnsEP
+  , mergeAnns
   ) where
 
 import qualified FastString    as GHC
@@ -117,15 +118,15 @@ addAnnKeywords anns conName ks = Map.insert (ss, conName) (annNone, ks) anns
 -- ---------------------------------------------------------------------
 
 -- |Update the DeltaPos for the given comments
-setOffsets :: Anns -> [((GHC.SrcSpan,AnnConName),DeltaPos)] -> Anns
+setOffsets :: Anns -> [((GHC.SrcSpan,AnnConName),(DeltaPos, Int))] -> Anns
 setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given comment set
-setOffset :: Anns -> ((GHC.SrcSpan,AnnConName),DeltaPos) -> Anns
-setOffset anne (k,v) = case
+setOffset :: Anns -> ((GHC.SrcSpan,AnnConName),(DeltaPos, Int)) -> Anns
+setOffset anne (k,(dp, col)) = case
   Map.lookup k anne of
-    Nothing         -> Map.insert k (Ann [] v 0, []) anne
-    Just (Ann cs _ c, ks) -> Map.insert k (Ann cs v c, ks) anne
+    Nothing         -> Map.insert k (Ann [] dp col, []) anne
+    Just (Ann cs _ _ , ks) -> Map.insert k (Ann cs dp col, ks) anne
 
 -- ---------------------------------------------------------------------
 
@@ -133,13 +134,19 @@ setOffset anne (k,v) = case
 deleteAnnotation :: (GHC.SrcSpan, AnnConName) -> KeywordId -> Anns -> Anns
 deleteAnnotation k kw = Map.adjust (\(a,xs) -> (a, filter (\x -> fst x /= kw) xs)) k
 
+mergeAnns :: Anns -> Anns -> Anns
+mergeAnns = Map.unionWith annUnion
+
+annUnion :: AnnValue -> AnnValue -> AnnValue
+annUnion (Ann ncs ed d, kws) (Ann ocs _ _, okws) = (Ann (ncs ++ ocs) ed d, kws ++ okws)
+
 --deleteAnnotations :: [(GHC.SrcSpan, KeywordId)] -> Anns -> Anns
 --deleteAnnotations vs anne = foldr deleteAnnotation anne vs
 
 -- -------------------------
 
-setLocatedDp :: (SYB.Data a) => Anns -> GHC.Located a -> DeltaPos -> Anns
-setLocatedDp aane (GHC.L l v) dp = setOffset aane ((l,annGetConstr v),dp)
+setLocatedDp :: (SYB.Data a) => Anns -> GHC.Located a -> DeltaPos -> Int ->  Anns
+setLocatedDp aane (GHC.L l v) dp col = setOffset aane ((l,annGetConstr v),(dp, col))
 
 -- ---------------------------------------------------------------------
 {-
