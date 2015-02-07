@@ -41,17 +41,16 @@ removeBracketTransform fileName beginPos endPos = do
            removePar :: HsExpr GHC.RdrName -> RefactGhc (HsExpr GHC.RdrName)
            removePar e@(HsPar _ s)
             | sameOccurrence e expr = do
-              (commentAnns, otherAnns) <- getRefactAnns
-              let r' = fromJust . trace (showGhc expr) $ Map.lookup (GHC.getLoc e, G GHC.AnnOpenP) otherAnns
-              let newOtherAnns = deleteAnnotations
-                            [(GHC.getLoc e, G ann)
-                              | ann <- [GHC.AnnCloseP, GHC.AnnOpenP]]
-                            . Map.insert (GHC.getLoc s, G GHC.AnnVal) r'
-                            $ otherAnns
-              setRefactAnns (commentAnns, newOtherAnns)
+              startAnns <- getRefactAnns
+              let oldkey = mkKey e
+                  newkey = mkKey s
+                  newanns = fromMaybe startAnns $ replace oldkey newkey startAnns
+              setRefactAnns newanns
               return s
            removePar e = return e
        p2 <- SYB.everywhereM (SYB.mkM removePar) parsed
        getRefactAnns >>= putRefactParsed p2
        logm $ "logm: after refactor\n" ++ showGhc p2
+
+
 

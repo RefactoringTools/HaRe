@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Language.Haskell.Refact.Utils.ExactPrint
   (
     resequenceAnnotations
@@ -12,6 +13,9 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , setLocatedDp
   , extractAnnsEP
   , mergeAnns
+  , deleteAnnotations
+  , replace
+  , mkKey
   ) where
 
 import qualified FastString    as GHC
@@ -30,6 +34,7 @@ import Language.Haskell.GHC.ExactPrint.Utils
 
 import Control.Monad.State
 import Data.List
+import Data.Monoid
 
 import qualified Data.Map as Map
 
@@ -62,7 +67,7 @@ insertUniqueSrcSpans t = do
 -- | Filter annotations to get ones corresponding to SrcSpans.
 uniqueSpansOnly :: Anns -> Anns
 uniqueSpansOnly anns
-  = Map.fromList $ filter (\((ss,_),_) -> isUniqueSrcSpan ss) $ Map.toList anns
+  = Map.filterWithKey (\(AnnKey ss _) _ -> isUniqueSrcSpan ss) anns
 
 -- ---------------------------------------------------------------------
 
@@ -85,17 +90,21 @@ extractAnnsEP :: forall t. (SYB.Data t) => t -> Anns
 extractAnnsEP t = Map.fromList as
   where
     sts = extractSrcSpanConName t
-    as :: [((GHC.SrcSpan, AnnConName), (Annotation, [(KeywordId, DeltaPos)]))]
-    as = map (\k -> (k,(Ann [] (DP (0,0)) 0 , []))) sts
+    as :: [(AnnKey, Annotation)]
+    as = map (\k -> (k, annNone)) sts
 
-extractSrcSpanConName :: forall t. (SYB.Data t) => t -> [(GHC.SrcSpan,AnnConName)]
+extractSrcSpanConName :: forall t. (SYB.Data t) => t -> [AnnKey]
 extractSrcSpanConName  =
   generic
-  where generic :: (SYB.Data a) => a -> [(GHC.SrcSpan,AnnConName)]
-        generic t = if SYB.showConstr (SYB.toConstr t) == "L" -- SYB.toConstr t == locatedConstructor
-                       then [ (ghead "extractAnns" (SYB.gmapQi 0 getSrcSpan t), (SYB.gmapQi 1 getConName t)) ]
-                            ++ SYB.gmapQi 1 extractSrcSpanConName t
-                       else concat (SYB.gmapQ extractSrcSpanConName t)
+  where generic :: (SYB.Data a) => a -> [AnnKey]
+        generic t =
+          if SYB.showConstr (SYB.toConstr t) == "L" -- SYB.toConstr t == locatedConstructor
+            then [ AnnKey
+                    (ghead "extractAnns" (SYB.gmapQi 0 getSrcSpan t))
+                    (SYB.gmapQi 1 getConName t)
+                 ]
+                  ++ SYB.gmapQi 1 extractSrcSpanConName t
+            else concat (SYB.gmapQ extractSrcSpanConName t)
 
         getSrcSpan :: forall d. SYB.Data d => d -> [GHC.SrcSpan]
         getSrcSpan = SYB.mkQ [] getSrcSpan'
@@ -110,43 +119,64 @@ extractSrcSpanConName  =
 -- ---------------------------------------------------------------------
 
 addAnnKeywords :: Anns -> AnnConName -> [(KeywordId, DeltaPos)] -> Anns
-addAnnKeywords anns conName ks = Map.insert (ss, conName) (annNone, ks) anns
+addAnnKeywords anns conName ks = Map.insert (AnnKey ss conName) (annNone {anns = ks}) anns
   where
     -- First find the first srcspan having the conName
-    ((ss,_),_) = ghead "addAnnKeywords" $ filter (\((_ss,s),_) -> s == conName) $ Map.toList anns
+    -- MP: First in what sense?
+    AnnKey ss _ = ghead "addAnnKeywords" $ filter (\(AnnKey _ s) -> s == conName) $ Map.keys anns
 
 -- ---------------------------------------------------------------------
 
 -- |Update the DeltaPos for the given comments
-setOffsets :: Anns -> [((GHC.SrcSpan,AnnConName),(DeltaPos, Int))] -> Anns
+setOffsets :: Anns -> [(AnnKey,(DeltaPos, Int))] -> Anns
 setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given comment set
-setOffset :: Anns -> ((GHC.SrcSpan,AnnConName),(DeltaPos, Int)) -> Anns
+setOffset :: Anns -> (AnnKey, (DeltaPos, Int)) -> Anns
 setOffset anne (k,(dp, col)) = case
   Map.lookup k anne of
-    Nothing         -> Map.insert k (Ann [] dp col, []) anne
-    Just (Ann cs _ _ , ks) -> Map.insert k (Ann cs dp col, ks) anne
+    Nothing         -> Map.insert k (Ann dp col []) anne
+    Just (Ann _ _ ks) -> Map.insert k (Ann dp col ks) anne
 
 -- ---------------------------------------------------------------------
 
+-- | Replaces an old expression with a new expression
+replace :: AnnKey -> AnnKey -> Anns -> Maybe Anns
+replace old new as = do
+  oldan <- Map.lookup old as
+  newan <- Map.lookup new as
+  let newan' = Ann
+                { ann_entry_delta = ann_entry_delta oldan
+                , ann_delta       = ann_delta oldan
+                , anns            = moveAnns (anns oldan) (anns newan)
+                }
+  return . Map.delete old . Map.insert new newan' $ as
+
+mkKey :: (SYB.Data a) => GHC.Located a -> AnnKey
+mkKey (GHC.L l s) = AnnKey l (annGetConstr s)
+
+
+-- | Shift the first output annotation into the correct place
+moveAnns :: [(KeywordId, DeltaPos)] -> [(KeywordId, DeltaPos)] -> [(KeywordId, DeltaPos)]
+moveAnns [] xs        = xs
+moveAnns ((_, dp): _) ((kw, _):xs) = (kw,dp) : xs
+
+
 -- | Delete an annotation
-deleteAnnotation :: (GHC.SrcSpan, AnnConName) -> KeywordId -> Anns -> Anns
-deleteAnnotation k kw = Map.adjust (\(a,xs) -> (a, filter (\x -> fst x /= kw) xs)) k
+deleteAnnotation :: AnnKey -> KeywordId -> Anns -> Anns
+deleteAnnotation k kw =
+  Map.adjust (\(s@Ann{anns}) -> s { anns = filter (\x -> fst x /= kw) anns}) k
 
 mergeAnns :: Anns -> Anns -> Anns
-mergeAnns = Map.unionWith annUnion
+mergeAnns = Map.unionWith (<>)
 
-annUnion :: AnnValue -> AnnValue -> AnnValue
-annUnion (Ann ncs ed d, kws) (Ann ocs _ _, okws) = (Ann (ncs ++ ocs) ed d, kws ++ okws)
-
---deleteAnnotations :: [(GHC.SrcSpan, KeywordId)] -> Anns -> Anns
---deleteAnnotations vs anne = foldr deleteAnnotation anne vs
+deleteAnnotations :: [(AnnKey, KeywordId)] -> Anns -> Anns
+deleteAnnotations vs anne = foldr (uncurry deleteAnnotation) anne vs
 
 -- -------------------------
 
 setLocatedDp :: (SYB.Data a) => Anns -> GHC.Located a -> DeltaPos -> Int ->  Anns
-setLocatedDp aane (GHC.L l v) dp col = setOffset aane ((l,annGetConstr v),(dp, col))
+setLocatedDp aane loc dp col = setOffset aane ((mkKey loc),(dp, col))
 
 -- ---------------------------------------------------------------------
 {-
