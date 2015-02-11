@@ -2,10 +2,10 @@ module SwapTuple.St1 where
    import Control.Concurrent
 
    type Foo = (String, Int)
-
+   
    mkFoo :: Int -> String -> Foo
    mkFoo i s = (s,i)
-
+   
    getStr :: Foo -> String
    getStr foo = fst foo
 

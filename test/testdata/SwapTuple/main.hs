@@ -1,6 +1,6 @@
 module Main where
    import Test.QuickCheck
-   import St1
+   import SwapTuple.St1
 
    prop_getStr :: Int -> String -> Bool
    prop_getStr i s = getStr (mkFoo i s) == s
