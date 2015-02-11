@@ -205,10 +205,12 @@ rowCol = do
 
 type P = Parsec String ()
 
+{-
 instance (Monad m) => Stream String m Char where
     -- uncons = return . T.uncons
     uncons [] = return Nothing
     uncons s  = return $ Just (head s,tail s)
+-}
 
 number :: String -> P Integer
 number expectedStr = do { ds <- many1 digit; return (read ds) } <?> expectedStr
