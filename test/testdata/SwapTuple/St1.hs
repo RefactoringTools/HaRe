@@ -18,6 +18,11 @@ module SwapTuple.St1 where
    dec :: Foo -> Foo
    dec (s,i) = (s, i-1)
 
+   replaceMsg :: String -> Foo -> Foo
+   replaceMsg s f = (s, (getInt f))
+
+   replaceInt :: Foo -> Int -> Foo
+   replaceInt f i = (getStr f, i)
    countDown :: Foo -> IO ()
    countDown foo = do
       putStrLn $ fst foo
