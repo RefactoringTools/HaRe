@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes #-}
 module Language.Haskell.Refact.Utils.ExactPrint
   (
     resequenceAnnotations
@@ -16,6 +17,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , deleteAnnotations
   , replace
   , mkKey
+  , setColRec
   ) where
 
 import qualified FastString    as GHC
@@ -35,6 +37,7 @@ import Language.Haskell.GHC.ExactPrint.Utils
 import Control.Monad.State
 import Data.List
 import Data.Monoid
+import Debug.Trace
 
 import qualified Data.Map as Map
 
@@ -49,6 +52,7 @@ resequenceAnnotations t = do
   logm $ "resequenceAnnotations:annsEP=" ++ (show aa)
   -- logm $ "resequenceAnnotations:locatedConstr=" ++ (SYB.showConstr locatedConstructor)
   return (t1,bb)
+
 
 -- ---------------------------------------------------------------------
 
@@ -92,6 +96,23 @@ extractAnnsEP t = Map.fromList as
     sts = extractSrcSpanConName t
     as :: [(AnnKey, Annotation)]
     as = map (\k -> (k, annNone)) sts
+
+locFold :: forall r b . (SYB.Data b) => (r -> r -> r) -> (forall a . (SYB.Data a) => GHC.Located a -> r) ->  r -> b -> r
+locFold f g v nil = generic v
+  where generic :: b -> r
+        generic t =
+          if SYB.showConstr (SYB.toConstr t) == "L" -- SYB.toConstr t == locatedConstructor
+            then
+              g (GHC.L
+                (ghead "extractAnns" (SYB.gmapQi 0 getSrcSpan t))
+                (SYB.gmapQi 1 id t))
+                `f` SYB.gmapQi 1 generic t
+             else foldr f nil (SYB.gmapQ generic t)
+        getSrcSpan :: forall d. SYB.Data d => d -> [GHC.SrcSpan]
+        getSrcSpan = SYB.mkQ [] getSrcSpan'
+          where
+            getSrcSpan' :: GHC.SrcSpan -> [GHC.SrcSpan]
+            getSrcSpan' ss = [ss]
 
 extractSrcSpanConName :: forall t. (SYB.Data t) => t -> [AnnKey]
 extractSrcSpanConName  =
@@ -177,6 +198,34 @@ deleteAnnotations vs anne = foldr (uncurry deleteAnnotation) anne vs
 
 setLocatedDp :: (SYB.Data a) => Anns -> GHC.Located a -> DeltaPos -> Int ->  Anns
 setLocatedDp aane loc dp col = setOffset aane ((mkKey loc),(dp, col))
+
+-- | Recursively change the col offsets
+setColRec :: (SYB.Data a) => (Int -> Int) -> a -> (Anns -> Anns)
+setColRec f loc = transform loc
+  where
+    transform :: SYB.Data a => a -> (Anns -> Anns)
+    transform t =
+          if SYB.showConstr (SYB.toConstr t) == "L" -- SYB.toConstr t == locatedConstructor
+            then setCol f (ghead "hereh" $ SYB.gmapQi 0 getSrcSpan t)
+                          (SYB.gmapQi 1 getConName t)
+                  . SYB.gmapQi 1 transform t
+            else foldr (.) id (SYB.gmapQ transform t)
+    getSrcSpan :: forall d. SYB.Data d => d -> [GHC.SrcSpan]
+    getSrcSpan = SYB.mkQ [] getSrcSpan'
+      where
+        getSrcSpan' :: GHC.SrcSpan -> [GHC.SrcSpan]
+        getSrcSpan' ss = [ss]
+
+    getConName :: forall d. SYB.Data d => d -> AnnConName
+    getConName = annGetConstr
+
+setCol :: (Int -> Int) -> GHC.SrcSpan -> AnnConName -> (Anns -> Anns)
+setCol f ss cn anns =
+  let key = AnnKey ss cn
+      res = Map.adjust (\s -> s { ann_delta = f (ann_delta s) }) key anns in
+      res
+
+
 
 -- ---------------------------------------------------------------------
 {-
