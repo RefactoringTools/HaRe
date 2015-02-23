@@ -120,16 +120,28 @@ ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
               ,((falseRhsLoc, CN "GRHS"), [(G GHC.AnnRarrow, DP (0,1))])
               ]) Map.empty
   logm $ "\n\n\n" ++ showGhc annf
-  let anne2 = setOffsets annf [ ( AnnKey caseLoc (CN "HsCase"), ((DP (0,1), 0) ))
-                              , ( AnnKey trueRhsLoc (CN "GRHS"),  (DP (0,2), 0) )
-                              , ( AnnKey trueMatchLoc (CN "Match"), (DP (1,0), 0) )
-                              , ( AnnKey falseRhsLoc (CN "GRHS"),  (DP (0,1), 0) )
+  let anne2 = setOffsets annf [ ( AnnKey caseLoc (CN "HsCase"), ((DP (0,1), 2) ))
+                              , ( AnnKey trueRhsLoc (CN "GRHS"),  (DP (0,2), 6) )
+                              , ( AnnKey trueMatchLoc (CN "Match"), (DP (1,4), 0) )
+                              , ( AnnKey falseRhsLoc (CN "GRHS"),  (DP (0,1), 6) )
                               , ( AnnKey falseMatchLoc (CN "Match"), (DP (1,0), 0) )
                               , ( AnnKey trueLoc (CN "ConPatIn"), (DP (1,0), 0))
                               , ( AnnKey trueLoc  (CN "Unqual"), (DP (1,0), 0))
                               , ( AnnKey falseLoc (CN "ConPatIn"), (DP (1,0), 0))
                               , ( AnnKey falseLoc (CN "Unqual"), (DP (1,0), 0))
                               ]
+
+  {-
+We need ann_delta = 2 for HsCase
+        ann_delta = 5 for HsPar
+
+(AnnKey (RealSrcSpan SrcSpanPoint "HaRe" -1 1) (CN "HsCase"),
+  Ann {ann_entry_delta = DP (0,1), ann_delta = 2, anns = [(G AnnCase,DP (0,1)),(G AnnOf,DP (0,1))]}),
+
+(AnnKey (RealSrcSpan SrcSpanOneLine "Case/BSimple.hs" 4 12 19) (CN "HsPar"),
+  Ann {ann_entry_delta = DP (0,1), ann_delta = 0, anns = [(G AnnOpenP,DP (0,1)),(G AnnCloseP,DP (0,0))]}),
+
+-}
 
   oldAnns <- getRefactAnns
   let anne1 = Map.delete (AnnKey l (CN "HsIf")) oldAnns
@@ -138,7 +150,7 @@ ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
   let anne4 = setLocatedDp anne3 e3 (DP (0,1)) 0
   let anne5 = setLocatedDp anne4 e1 (DP (0,1)) 0
   let out = (setColRec (const 0) ret) . setColRec (const 0) e $ anne5
-  logm $ "Case:fi=" ++ out
+  -- logm $ "Case:fi=" ++ out
   setRefactAnns out --`Map.union` anne4) --`Map.union` annf)
   return ret
 ifToCaseTransform x = return x

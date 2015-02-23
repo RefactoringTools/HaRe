@@ -14,18 +14,18 @@ spec :: Spec
 spec = do
   describe "roundtrip" $ do
     it "roundtrips B" $ do
-      r <- ct $ roundTrip logTestSettings testOptions "Case/res.hs"
-      -- r <- ifToCase logTestSettings testCradle "./test/testdata/Case/B.hs" (4,7) (4,43)
-      r `shouldBe` ["./Case/BSimple.hs"]
-      diff <- compareFiles "./test/testdata/Case/BSimple.refactored.hs"
-                           "./test/testdata/Case/BSimple.hs"
+      r <- ct $ roundTrip defaultTestSettings testOptions "Case/BSimpleExpected.hs"
+      -- r <- ct $ roundTrip logTestSettings testOptions "Case/BSimpleExpected.hs"
+      r `shouldBe` ["Case/BSimpleExpected.hs"]
+      diff <- compareFiles "./test/testdata/Case/BSimpleExpected.refactored.hs"
+                           "./test/testdata/Case/BSimpleExpected.hs"
       diff `shouldBe` []
 
     -- ---------------------------------
 
     it "roundtrips Zipper.hs" $ do
       r <- cdAndDo "/home/alanz/tmp/hackage/syz-0.2.0.0/" $ roundTrip defaultTestSettings testOptions "./Data/Generics/Zipper.hs"
-      r `shouldBe` ["./Zipper.hs"]
+      r `shouldBe` ["/home/alanz/tmp/hackage/syz-0.2.0.0/Data/Generics/Zipper.hs"]
       diff <- compareFiles "/home/alanz/tmp/hackage/syz-0.2.0.0/Data/Generics/Zipper.refactored.hs"
                            "/home/alanz/tmp/hackage/syz-0.2.0.0/Data/Generics/Zipper.hs"
       diff `shouldBe` []

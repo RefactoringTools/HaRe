@@ -444,7 +444,8 @@ writeRefactoredFiles verbosity files
                writeFile (fileName ++ ".parsed_out") (showGhc parsed)
                writeFile (fileName ++ ".AST_out") $ ((showGhc parsed) ++
                       "\n\n----------------------\n\n" ++
-                      (SYB.showData SYB.Parser 0 parsed) ++
+                      -- (SYB.showData SYB.Parser 0 parsed) ++
+                      (showAnnData ann 0 parsed) ++
                       "\n\n----------------------\n\n" ++
                       (showGhc ann) ++
                       "\n\n----------------------\n\n"
