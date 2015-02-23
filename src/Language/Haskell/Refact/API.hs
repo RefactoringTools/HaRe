@@ -22,9 +22,7 @@ module Language.Haskell.Refact.API
        , loadModuleGraphGhc
        , ensureTargetLoaded
        , canonicalizeGraph
-
        , logm
-
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
        -- ** Managing the GHC / project environment

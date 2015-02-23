@@ -48,7 +48,7 @@ Library
                                 , dual-tree
                                 , semigroups
                                 , monoid-extras
-
+                                , template-haskell
                                 , filepath
                                 , ghc
                                 , ghc-paths
@@ -65,8 +65,9 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
-
+                                , TYB
                                 , haskell-token-utils >= 0.0.0.6
+
 
         GHC-Options:             -Wall
 
@@ -81,6 +82,7 @@ Library
            , Language.Haskell.Refact.Refactoring.Renaming
            , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Refactoring.DeleteDef
+           , Language.Haskell.Refact.Refactoring.SimplifyArithmetic
            , Language.Haskell.Refact.Utils.Binds
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
