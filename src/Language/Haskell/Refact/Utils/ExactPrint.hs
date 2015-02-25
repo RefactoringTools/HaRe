@@ -10,6 +10,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , addAnnKeywords
   , setOffsets
   , setOffset
+  , setLocatedOffsets
   , deleteAnnotation
   , setLocatedDp
   , extractAnnsEP
@@ -97,6 +98,8 @@ extractAnnsEP t = Map.fromList as
     as :: [(AnnKey, Annotation)]
     as = map (\k -> (k, annNone)) sts
 
+{-
+++AZ++ Temporarily commenting this output
 locFold :: forall r b . (SYB.Data b) => (r -> r -> r) -> (forall a . (SYB.Data a) => GHC.Located a -> r) ->  r -> b -> r
 locFold f g v nil = generic v
   where generic :: b -> r
@@ -113,6 +116,7 @@ locFold f g v nil = generic v
           where
             getSrcSpan' :: GHC.SrcSpan -> [GHC.SrcSpan]
             getSrcSpan' ss = [ss]
+-}
 
 extractSrcSpanConName :: forall t. (SYB.Data t) => t -> [AnnKey]
 extractSrcSpanConName  =
@@ -148,16 +152,23 @@ addAnnKeywords anns conName ks = Map.insert (AnnKey ss conName) (annNone {anns =
 
 -- ---------------------------------------------------------------------
 
--- |Update the DeltaPos for the given comments
+-- |Update the DeltaPos for the given annotation keys
 setOffsets :: Anns -> [(AnnKey,(DeltaPos, Int))] -> Anns
 setOffsets anne kvs = foldl' setOffset anne kvs
 
--- |Update the DeltaPos for the given comment set
+-- |Update the DeltaPos for the given annotation key/val
 setOffset :: Anns -> (AnnKey, (DeltaPos, Int)) -> Anns
 setOffset anne (k,(dp, col)) = case
   Map.lookup k anne of
-    Nothing         -> Map.insert k (Ann dp col []) anne
+    Nothing           -> Map.insert k (Ann dp col []) anne
     Just (Ann _ _ ks) -> Map.insert k (Ann dp col ks) anne
+
+-- |Update the DeltaPos for the given annotation keys
+setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,(DeltaPos, Int))] -> Anns
+setLocatedOffsets anne kvs = foldl' setLocatedDp anne kvs
+
+setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, (DeltaPos, Int)) ->  Anns
+setLocatedDp aane (loc, (dp, col)) = setOffset aane ((mkKey loc),(dp, col))
 
 -- ---------------------------------------------------------------------
 
@@ -195,9 +206,6 @@ deleteAnnotations :: [(AnnKey, KeywordId)] -> Anns -> Anns
 deleteAnnotations vs anne = foldr (uncurry deleteAnnotation) anne vs
 
 -- -------------------------
-
-setLocatedDp :: (SYB.Data a) => Anns -> GHC.Located a -> DeltaPos -> Int ->  Anns
-setLocatedDp aane loc dp col = setOffset aane ((mkKey loc),(dp, col))
 
 -- | Recursively change the col offsets
 setColRec :: (SYB.Data a) => (Int -> Int) -> a -> (Anns -> Anns)

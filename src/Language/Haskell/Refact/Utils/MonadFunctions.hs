@@ -196,7 +196,7 @@ modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
 modifyRefactAnns f = do
   st <- get
   mrm <- gets rsModule
-  let rm = gfromJust "addRefactAnns" mrm
+  let rm = gfromJust "modifyRefactAnns" mrm
   let tk' = modifyAnns (rsTokenCache rm) f
   let rm' = rm { rsTokenCache = tk', rsStreamModified = RefacModified }
   put $ st {rsModule = Just rm'}

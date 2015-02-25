@@ -74,8 +74,10 @@ ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
 ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
   caseLoc       <- uniqueSrcSpan
   trueMatchLoc  <- uniqueSrcSpan
+  trueLoc1      <- uniqueSrcSpan
   trueLoc       <- uniqueSrcSpan
   trueRhsLoc    <- uniqueSrcSpan
+  falseLoc1     <- uniqueSrcSpan
   falseLoc      <- uniqueSrcSpan
   falseMatchLoc <- uniqueSrcSpan
   falseRhsLoc   <- uniqueSrcSpan
@@ -87,7 +89,7 @@ ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
                 (GHC.L trueMatchLoc $ GHC.Match
                  Nothing
                  [
-                   GHC.L trueLoc $ GHC.ConPatIn (GHC.L trueLoc trueName) (GHC.PrefixCon [])
+                   GHC.L trueLoc1 $ GHC.ConPatIn (GHC.L trueLoc trueName) (GHC.PrefixCon [])
                  ]
                  Nothing
                  ((GHC.GRHSs
@@ -98,7 +100,7 @@ ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
               , (GHC.L falseMatchLoc $ GHC.Match
                  Nothing
                  [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.L falseLoc falseName) (GHC.PrefixCon [])
+                   GHC.L falseLoc1 $ GHC.ConPatIn (GHC.L falseLoc falseName) (GHC.PrefixCon [])
                  ]
                  Nothing
                  ((GHC.GRHSs
@@ -106,52 +108,49 @@ ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
                      GHC.L falseRhsLoc $ GHC.GRHS [] e3
                    ] GHC.EmptyLocalBinds))
                 )
-              ] [] GHC.placeHolderType GHC.Generated))
+              ] [] GHC.placeHolderType GHC.FromSource))
   --(_ret2,anne) <- resequenceAnnotations ret
   logm $ "annGetConstr\n\n:" ++ show (annGetConstr trueName)
 
   let annf =  Map.union (Map.fromList $ map (\(k, v) -> (uncurry AnnKey k, annNone { anns = v}))
-              [((caseLoc, CN "HsCase"),   [ (G GHC.AnnCase, DP (0,1))
-                                          , (G GHC.AnnOf, DP (0,1) )
-                                          ])
-              ,((trueLoc,     CN "Unqual"),    [(G GHC.AnnVal,  DP (1,0))])
-              ,((trueRhsLoc,  CN "GRHS"), [(G GHC.AnnRarrow, DP (0,2))])
-              ,((falseLoc,    CN "Unqual"), [(G GHC.AnnVal,DP (1,0))])
-              ,((falseRhsLoc, CN "GRHS"), [(G GHC.AnnRarrow, DP (0,1))])
+              [((caseLoc,     CN "HsCase"), [ (G GHC.AnnCase, DP (0,1))
+                                            , (G GHC.AnnOf,   DP (0,1) )
+                                            ])
+              ,((trueLoc,     CN "Unqual"), [(G GHC.AnnVal,    DP (1,0))])
+              ,((trueRhsLoc,  CN "GRHS"),   [(G GHC.AnnRarrow, DP (0,2))])
+              ,((falseLoc,    CN "Unqual"), [(G GHC.AnnVal,    DP (1,0))])
+              ,((falseRhsLoc, CN "GRHS"),   [(G GHC.AnnRarrow, DP (0,1))])
               ]) Map.empty
   logm $ "\n\n\n" ++ showGhc annf
-  let anne2 = setOffsets annf [ ( AnnKey caseLoc (CN "HsCase"), ((DP (0,1), 2) ))
-                              , ( AnnKey trueRhsLoc (CN "GRHS"),  (DP (0,2), 6) )
-                              , ( AnnKey trueMatchLoc (CN "Match"), (DP (1,4), 0) )
-                              , ( AnnKey falseRhsLoc (CN "GRHS"),  (DP (0,1), 6) )
-                              , ( AnnKey falseMatchLoc (CN "Match"), (DP (1,0), 0) )
-                              , ( AnnKey trueLoc (CN "ConPatIn"), (DP (1,0), 0))
-                              , ( AnnKey trueLoc  (CN "Unqual"), (DP (1,0), 0))
-                              , ( AnnKey falseLoc (CN "ConPatIn"), (DP (1,0), 0))
-                              , ( AnnKey falseLoc (CN "Unqual"), (DP (1,0), 0))
+  let anne2 = setOffsets annf [ ( AnnKey caseLoc       (CN "HsCase"),   (DP (0,1), 2) )
+                              , ( AnnKey trueRhsLoc    (CN "GRHS"),     (DP (0,2), 6) )
+                              , ( AnnKey trueMatchLoc  (CN "Match"),    (DP (1,4), 4) )
+                              , ( AnnKey falseRhsLoc   (CN "GRHS"),     (DP (0,1), 6) )
+                              , ( AnnKey falseMatchLoc (CN "Match"),    (DP (1,4), 4) )
+                              , ( AnnKey trueLoc1      (CN "ConPatIn"), (DP (1,0), 0) )
+                              , ( AnnKey trueLoc       (CN "Unqual"),   (DP (1,0), 0) )
+                              , ( AnnKey falseLoc1     (CN "ConPatIn"), (DP (1,0), 0) )
+                              , ( AnnKey falseLoc      (CN "Unqual"),   (DP (1,0), 0))
                               ]
 
-  {-
-We need ann_delta = 2 for HsCase
-        ann_delta = 5 for HsPar
-
-(AnnKey (RealSrcSpan SrcSpanPoint "HaRe" -1 1) (CN "HsCase"),
-  Ann {ann_entry_delta = DP (0,1), ann_delta = 2, anns = [(G AnnCase,DP (0,1)),(G AnnOf,DP (0,1))]}),
-
-(AnnKey (RealSrcSpan SrcSpanOneLine "Case/BSimple.hs" 4 12 19) (CN "HsPar"),
-  Ann {ann_entry_delta = DP (0,1), ann_delta = 0, anns = [(G AnnOpenP,DP (0,1)),(G AnnCloseP,DP (0,0))]}),
-
--}
+  logm $ "\n\n\nanne2" ++ showGhc anne2
 
   oldAnns <- getRefactAnns
   let anne1 = Map.delete (AnnKey l (CN "HsIf")) oldAnns
       final = mergeAnns anne1 anne2
-  let anne3 = setLocatedDp final e2 (DP (0,1)) 0
-  let anne4 = setLocatedDp anne3 e3 (DP (0,1)) 0
-  let anne5 = setLocatedDp anne4 e1 (DP (0,1)) 0
-  let out = (setColRec (const 0) ret) . setColRec (const 0) e $ anne5
+      anne3 = setLocatedOffsets final
+                [ (e1, (DP (0,1),5))
+                , (e2, (DP (0,1),5))
+                , (e3, (DP (0,1),5))
+                ]
+  -- let anne3 = setLocatedDp final e2 (DP (0,1)) 5
+  -- let anne4 = setLocatedDp anne3 e3 (DP (0,1)) 0
+  -- let anne5 = setLocatedDp anne4 e1 (DP (0,1)) 5
+  -- let out = (setColRec (const 0) ret) . setColRec (const 0) e $ anne5
   -- logm $ "Case:fi=" ++ out
-  setRefactAnns out --`Map.union` anne4) --`Map.union` annf)
+  logm $ "Case:anne5=" ++ showGhc anne3
+  -- setRefactAnns out
+  setRefactAnns anne3
   return ret
 ifToCaseTransform x = return x
 

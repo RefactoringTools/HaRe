@@ -423,24 +423,13 @@ writeRefactoredFiles verbosity files
 
      where
        modifyFile ((fileName,_),(ann,parsed)) = do
-           -- let source = concatMap (snd.snd) ts
 
-           -- let ts' = bypassGHCBug7351 ts
-           -- let source = GHC.showRichTokenStream ts'
-
-           -- let source = renderPpr ppr
-           -- let source = renderLines finalLines
            let source = exactPrintAnnotation parsed [] ann
-           -- (Julien personnal remark) seq forces the evaluation of
-           -- its first argument and returns its second argument. It
-           -- is unclear for me why (length source) evaluation is
-           -- forced.
            let (baseFileName,ext) = splitExtension fileName
            seq (length source) (writeFile (baseFileName ++ ".refactored" ++ ext) source)
 
            when (verbosity == Debug) $
              do
-               -- writeFile (fileName ++ ".tokens") (showToks ts')
                writeFile (fileName ++ ".parsed_out") (showGhc parsed)
                writeFile (fileName ++ ".AST_out") $ ((showGhc parsed) ++
                       "\n\n----------------------\n\n" ++
