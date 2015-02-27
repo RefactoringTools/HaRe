@@ -153,22 +153,22 @@ addAnnKeywords anns conName ks = Map.insert (AnnKey ss conName) (annNone {anns =
 -- ---------------------------------------------------------------------
 
 -- |Update the DeltaPos for the given annotation keys
-setOffsets :: Anns -> [(AnnKey,(DeltaPos, Int))] -> Anns
+setOffsets :: Anns -> [(AnnKey,(DeltaPos, Col, ColOffset))] -> Anns
 setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given annotation key/val
-setOffset :: Anns -> (AnnKey, (DeltaPos, Int)) -> Anns
-setOffset anne (k,(dp, col)) = case
+setOffset :: Anns -> (AnnKey, (DeltaPos, Col, ColOffset)) -> Anns
+setOffset anne (k,(dp, sc, col)) = case
   Map.lookup k anne of
-    Nothing           -> Map.insert k (Ann dp col []) anne
-    Just (Ann _ _ ks) -> Map.insert k (Ann dp col ks) anne
+    Nothing             -> Map.insert k (Ann dp sc col []) anne
+    Just (Ann _ _ _ ks) -> Map.insert k (Ann dp sc col ks) anne
 
 -- |Update the DeltaPos for the given annotation keys
-setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,(DeltaPos, Int))] -> Anns
+setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,(DeltaPos, Col, ColOffset))] -> Anns
 setLocatedOffsets anne kvs = foldl' setLocatedDp anne kvs
 
-setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, (DeltaPos, Int)) ->  Anns
-setLocatedDp aane (loc, (dp, col)) = setOffset aane ((mkKey loc),(dp, col))
+setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, (DeltaPos, Col, ColOffset)) ->  Anns
+setLocatedDp aane (loc, (dp, sc, col)) = setOffset aane ((mkKey loc),(dp, sc, col))
 
 -- ---------------------------------------------------------------------
 
@@ -178,9 +178,10 @@ replace old new as = do
   oldan <- Map.lookup old as
   newan <- Map.lookup new as
   let newan' = Ann
-                { ann_entry_delta = ann_entry_delta oldan
-                , ann_delta       = ann_delta oldan
-                , anns            = moveAnns (anns oldan) (anns newan)
+                { ann_entry_delta  = ann_entry_delta oldan
+                , ann_original_col = ann_original_col oldan
+                , ann_delta        = ann_delta oldan
+                , anns             = moveAnns (anns oldan) (anns newan)
                 }
   return . Map.delete old . Map.insert new newan' $ as
 
