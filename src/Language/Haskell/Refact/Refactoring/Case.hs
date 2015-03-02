@@ -122,15 +122,15 @@ ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
               ,((falseRhsLoc, CN "GRHS"),   [(G GHC.AnnRarrow, DP (0,1))])
               ]) Map.empty
   logm $ "\n\n\n" ++ showGhc annf
-  let anne2 = setOffsets annf [ ( AnnKey caseLoc       (CN "HsCase"),   (DP (0,1), 0, 2) )
-                              , ( AnnKey trueRhsLoc    (CN "GRHS"),     (DP (0,2), 0, 6) )
-                              , ( AnnKey trueMatchLoc  (CN "Match"),    (DP (1,4), 0, 4) )
-                              , ( AnnKey falseRhsLoc   (CN "GRHS"),     (DP (0,1), 0, 6) )
-                              , ( AnnKey falseMatchLoc (CN "Match"),    (DP (1,4), 0, 4) )
-                              , ( AnnKey trueLoc1      (CN "ConPatIn"), (DP (1,0), 0, 0) )
-                              , ( AnnKey trueLoc       (CN "Unqual"),   (DP (1,0), 0, 0) )
-                              , ( AnnKey falseLoc1     (CN "ConPatIn"), (DP (1,0), 0, 0) )
-                              , ( AnnKey falseLoc      (CN "Unqual"),   (DP (1,0), 0, 0))
+  let anne2 = setOffsets annf [ ( AnnKey caseLoc       (CN "HsCase"),   (DP (0,1),LineSame, 0, 2) )
+                              , ( AnnKey trueRhsLoc    (CN "GRHS"),     (DP (0,2),LineSame, 0, 6) )
+                              , ( AnnKey trueMatchLoc  (CN "Match"),    (DP (1,4),LineChanged, 0, 4) )
+                              , ( AnnKey falseRhsLoc   (CN "GRHS"),     (DP (0,1),LineSame, 0, 6) )
+                              , ( AnnKey falseMatchLoc (CN "Match"),    (DP (1,4),LineChanged, 0, 4) )
+                              , ( AnnKey trueLoc1      (CN "ConPatIn"), (DP (1,0),LineSame, 0, 0) )
+                              , ( AnnKey trueLoc       (CN "Unqual"),   (DP (1,0),LineSame, 0, 0) )
+                              , ( AnnKey falseLoc1     (CN "ConPatIn"), (DP (1,0),LineSame, 0, 0) )
+                              , ( AnnKey falseLoc      (CN "Unqual"),   (DP (1,0),LineSame, 0, 0))
                               ]
 
   logm $ "\n\n\nanne2" ++ showGhc anne2
@@ -139,9 +139,9 @@ ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
   let anne1 = Map.delete (AnnKey l (CN "HsIf")) oldAnns
       final = mergeAnns anne1 anne2
       anne3 = setLocatedOffsets final
-                [ (e1, (DP (0,1),0,5))
-                , (e2, (DP (0,1),0,5))
-                , (e3, (DP (0,1),0,5))
+                [ (e1, (DP (0,1),LineSame,0,5))
+                , (e2, (DP (0,1),LineSame,0,5))
+                , (e3, (DP (0,1),LineSame,0,5))
                 ]
   -- let anne3 = setLocatedDp final e2 (DP (0,1)) 5
   -- let anne4 = setLocatedDp anne3 e3 (DP (0,1)) 0

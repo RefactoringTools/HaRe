@@ -153,22 +153,22 @@ addAnnKeywords anns conName ks = Map.insert (AnnKey ss conName) (annNone {anns =
 -- ---------------------------------------------------------------------
 
 -- |Update the DeltaPos for the given annotation keys
-setOffsets :: Anns -> [(AnnKey,(DeltaPos, Col, ColOffset))] -> Anns
+setOffsets :: Anns -> [(AnnKey,(DeltaPos, LineChanged, Col, ColOffset))] -> Anns
 setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given annotation key/val
-setOffset :: Anns -> (AnnKey, (DeltaPos, Col, ColOffset)) -> Anns
-setOffset anne (k,(dp, sc, col)) = case
+setOffset :: Anns -> (AnnKey, (DeltaPos, LineChanged, Col, ColOffset)) -> Anns
+setOffset anne (k,(dp, nl, sc, col)) = case
   Map.lookup k anne of
-    Nothing             -> Map.insert k (Ann dp sc col []) anne
-    Just (Ann _ _ _ ks) -> Map.insert k (Ann dp sc col ks) anne
+    Nothing               -> Map.insert k (Ann dp nl sc col []) anne
+    Just (Ann _ _ _ _ ks) -> Map.insert k (Ann dp nl sc col ks) anne
 
 -- |Update the DeltaPos for the given annotation keys
-setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,(DeltaPos, Col, ColOffset))] -> Anns
+setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,(DeltaPos, LineChanged, Col, ColOffset))] -> Anns
 setLocatedOffsets anne kvs = foldl' setLocatedDp anne kvs
 
-setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, (DeltaPos, Col, ColOffset)) ->  Anns
-setLocatedDp aane (loc, (dp, sc, col)) = setOffset aane ((mkKey loc),(dp, sc, col))
+setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, (DeltaPos, LineChanged, Col, ColOffset)) ->  Anns
+setLocatedDp aane (loc, (dp, nl, sc, col)) = setOffset aane ((mkKey loc),(dp, nl, sc, col))
 
 -- ---------------------------------------------------------------------
 
@@ -179,6 +179,7 @@ replace old new as = do
   newan <- Map.lookup new as
   let newan' = Ann
                 { ann_entry_delta  = ann_entry_delta oldan
+                , ann_original_nl  = ann_original_nl oldan
                 , ann_original_col = ann_original_col oldan
                 , ann_delta        = ann_delta oldan
                 , anns             = moveAnns (anns oldan) (anns newan)
