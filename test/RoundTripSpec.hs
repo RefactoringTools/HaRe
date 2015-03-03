@@ -21,6 +21,14 @@ spec = do
                            "./test/testdata/Case/BSimpleExpected.hs"
       diff `shouldBe` []
 
+    it "roundtrips FooExpected" $ do
+      r <- ct $ roundTrip defaultTestSettings testOptions "Case/FooExpected.hs"
+      -- r <- ct $ roundTrip logTestSettings testOptions "Case/FooExpected.hs"
+      r `shouldBe` ["Case/FooExpected.hs"]
+      diff <- compareFiles "./test/testdata/Case/FooExpected.refactored.hs"
+                           "./test/testdata/Case/FooExpected.hs"
+      diff `shouldBe` []
+
     -- ---------------------------------
 
     it "roundtrips Zipper.hs" $ do

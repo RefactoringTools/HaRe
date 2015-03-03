@@ -143,13 +143,6 @@ ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
                 , (e2, (DP (0,1),LineSame,22,3))
                 , (e3, (DP (0,1),LineSame,22,3))
                 ]
-  -- let anne3 = setLocatedDp final e2 (DP (0,1)) 5
-  -- let anne4 = setLocatedDp anne3 e3 (DP (0,1)) 0
-  -- let anne5 = setLocatedDp anne4 e1 (DP (0,1)) 5
-  -- let out = (setColRec (const 0) ret) . setColRec (const 0) e $ anne5
-  -- logm $ "Case:fi=" ++ out
-  -- logm $ "Case:anne5=" ++ showGhc anne3
-  -- setRefactAnns out
   setRefactAnns anne3
   return ret
 ifToCaseTransform x = return x
