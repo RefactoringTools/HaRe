@@ -151,22 +151,22 @@ addAnnKeywords anns conName ks = Map.insert (AnnKey ss conName) (annNone {anns =
 -- ---------------------------------------------------------------------
 
 -- |Update the DeltaPos for the given annotation keys
-setOffsets :: Anns -> [(AnnKey,(DeltaPos, LineChanged, Col, ColOffset))] -> Anns
+setOffsets :: Anns -> [(AnnKey,Annotation)] -> Anns
 setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given annotation key/val
-setOffset :: Anns -> (AnnKey, (DeltaPos, LineChanged, Col, ColOffset)) -> Anns
-setOffset anne (k,(dp, nl, sc, col)) = case
+setOffset :: Anns -> (AnnKey, Annotation) -> Anns
+setOffset anne (k, Ann dp nl sc col _) = case
   Map.lookup k anne of
     Nothing               -> Map.insert k (Ann dp nl sc col []) anne
     Just (Ann _ _ _ _ ks) -> Map.insert k (Ann dp nl sc col ks) anne
 
 -- |Update the DeltaPos for the given annotation keys
-setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,(DeltaPos, LineChanged, Col, ColOffset))] -> Anns
+setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,Annotation)] -> Anns
 setLocatedOffsets anne kvs = foldl' setLocatedDp anne kvs
 
-setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, (DeltaPos, LineChanged, Col, ColOffset)) ->  Anns
-setLocatedDp aane (loc, (dp, nl, sc, col)) = setOffset aane (mkKey loc,(dp, nl, sc, col))
+setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, Annotation) ->  Anns
+setLocatedDp aane (loc, annVal) = setOffset aane (mkKey loc,annVal)
 
 -- ---------------------------------------------------------------------
 

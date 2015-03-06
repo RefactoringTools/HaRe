@@ -43,6 +43,16 @@ spec = do
 
     -- ---------------------------------
 
+    it "roundtrips CExpected" $ do
+      r <- ct $ roundTrip defaultTestSettings testOptions "Case/CExpected.hs"
+      -- r <- ct $ roundTrip logTestSettings testOptions "Case/CExpected.hs"
+      r `shouldBe` ["Case/CExpected.hs"]
+      diff <- compareFiles "./test/testdata/Case/CExpected.refactored.hs"
+                           "./test/testdata/Case/CExpected.hs"
+      diff `shouldBe` []
+
+    -- ---------------------------------
+
     it "roundtrips Zipper.hs" $ do
       r <- cdAndDo "/home/alanz/tmp/hackage/syz-0.2.0.0/" $ roundTrip defaultTestSettings testOptions "./Data/Generics/Zipper.hs"
       r `shouldBe` ["/home/alanz/tmp/hackage/syz-0.2.0.0/Data/Generics/Zipper.hs"]

@@ -112,7 +112,12 @@ ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
 
   oldAnns <- getRefactAnns
   let annIf = gfromJust "Case.annIf" $ Map.lookup (AnnKey l (CN "HsIf")) oldAnns
-  logm $ "Case:annIf=" ++ show annIf
+
+  let annThen = gfromJust "Case.annThen" $ getAnnotationEP e2 oldAnns
+  let annElse = gfromJust "Case.annElse" $ getAnnotationEP e3 oldAnns
+  logm $ "Case:annIf="   ++ show annIf
+  logm $ "Case:annThen=" ++ show annThen
+  logm $ "Case:annElse=" ++ show annElse
 
   let (thenPos@(_thenr,thenc),thenDP) = getOriginalPos oldAnns li (G GHC.AnnThen)
   logm $ "Case:thenPos=" ++ show thenPos
@@ -137,9 +142,9 @@ ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
       final = mergeAnns anne1 (Map.fromList anne2')
       newCol = srcSpanStartColumn (GHC.getLoc e2)
       anne3 = setLocatedOffsets final
-                [ (e1, (DP (0,1),LineSame,14,5))
-                , (e2, (DP (0,1),LineSame,newCol,3))
-                , (e3, (DP (0,1),LineSame,newCol,3))
+                [ (e1, Ann (DP (0,1)) LineSame 14     5 [])
+                , (e2, annThen)
+                , (e3, annElse)
                 ]
   setRefactAnns anne3
   return ret
