@@ -19,19 +19,16 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , replace
   , mkKey
   , setColRec
+  , getOriginalPos
   ) where
 
 import qualified FastString    as GHC
 import qualified GHC
---import qualified Outputable    as GHC
 
 import qualified Data.Generics as SYB
 --import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.Refact.Utils.Monad
---import Language.Haskell.Refact.Utils.MonadFunctions
---import Language.Haskell.Refact.Utils.TypeSyn
---import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
@@ -45,7 +42,7 @@ import qualified Data.Map as Map
 -- ---------------------------------------------------------------------
 
 resequenceAnnotations :: (SYB.Data t)
-                      => GHC.Located t -> RefactGhc ((GHC.Located t),Anns)
+                      => GHC.Located t -> RefactGhc (GHC.Located t,Anns)
 resequenceAnnotations t = do
   t1 <- insertUniqueSrcSpans t
   let aa = extractAnnsEP t1
@@ -60,8 +57,8 @@ resequenceAnnotations t = do
 -- | Replace empty source spans with a unique SrcSpan which is used as
 -- a key. It doesn't matter what it is.
 insertUniqueSrcSpans :: (SYB.Data t) => GHC.Located t -> RefactGhc (GHC.Located t)
-insertUniqueSrcSpans t = do
-  SYB.everywhereM (SYB.mkM newSrcSpan) t
+insertUniqueSrcSpans t
+  = SYB.everywhereM (SYB.mkM newSrcSpan) t
   where
     newSrcSpan :: GHC.SrcSpan -> RefactGhc GHC.SrcSpan
     newSrcSpan ss = if ss == GHC.noSrcSpan
@@ -81,7 +78,7 @@ uniqueSrcSpan :: RefactGhc GHC.SrcSpan
 uniqueSrcSpan = do
   s <- get
   col <- gets rsSrcSpanCol
-  put s { rsSrcSpanCol = (col+1) }
+  put s { rsSrcSpanCol = col + 1 }
 
   let pos = GHC.mkSrcLoc (GHC.mkFastString "HaRe") (-1) col
   return $ GHC.mkSrcSpan pos pos
@@ -90,6 +87,7 @@ isUniqueSrcSpan :: GHC.SrcSpan -> Bool
 isUniqueSrcSpan ss = srcSpanStartLine ss == -1
 
 -- ---------------------------------------------------------------------
+
 -- |Get the map of (SrcSpan,AnnConName) with empty annotations
 extractAnnsEP :: forall t. (SYB.Data t) => t -> Anns
 extractAnnsEP t = Map.fromList as
@@ -168,7 +166,7 @@ setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,(DeltaPos, LineChan
 setLocatedOffsets anne kvs = foldl' setLocatedDp anne kvs
 
 setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, (DeltaPos, LineChanged, Col, ColOffset)) ->  Anns
-setLocatedDp aane (loc, (dp, nl, sc, col)) = setOffset aane ((mkKey loc),(dp, nl, sc, col))
+setLocatedDp aane (loc, (dp, nl, sc, col)) = setOffset aane (mkKey loc,(dp, nl, sc, col))
 
 -- ---------------------------------------------------------------------
 
@@ -236,12 +234,13 @@ setCol f ss cn anns =
       res
 
 
-
 -- ---------------------------------------------------------------------
-{-
--- |The constructor for 'GHC.L'
-locatedConstructor :: SYB.Constr
-locatedConstructor = head (SYB.dataTypeConstrs (SYB.dataTypeOf (GHC.noLoc ())))
--}
 
--- ---------------------------------------------------------------------
+getOriginalPos :: (SYB.Data a) => Anns -> GHC.Located a -> KeywordId -> (Pos,DeltaPos)
+getOriginalPos ann la@(GHC.L ss _) kw =
+  let
+    an = gfromJust ("getOriginalPos" ++ showGhc (ss,kw)) $ getAnnotationEP la ann
+    mdp = lookup kw (anns an)
+  in case mdp of
+    Nothing -> ((0,0),DP (0,0))
+    Just dp@(DP (ro,co)) -> ((ro + srcSpanStartLine ss, co + srcSpanStartColumn ss),dp)

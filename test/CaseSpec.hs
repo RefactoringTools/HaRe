@@ -14,8 +14,8 @@ spec :: Spec
 spec = do
   describe "ifToCase" $ do
     it "converts an if expression to a case expression BSimple" $ do
-      --r <- ct $ ifToCase defaultTestSettings testOptions "Case/BSimple.hs" (4,7) (4,43)
-      r <- ct $ ifToCase logTestSettings testOptions  "Case/BSimple.hs" (4,7) (4,43)
+      r <- ct $ ifToCase defaultTestSettings testOptions "Case/BSimple.hs" (4,7) (4,43)
+      -- r <- ct $ ifToCase logTestSettings testOptions  "Case/BSimple.hs" (4,7) (4,43)
       r `shouldBe` ["Case/BSimple.hs"]
       diff <- compareFiles "./test/testdata/Case/BSimple.refactored.hs"
                            "./test/testdata/Case/BSimple.hs.expected"

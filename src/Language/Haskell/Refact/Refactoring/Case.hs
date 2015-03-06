@@ -13,7 +13,9 @@ import Language.Haskell.Refact.API
 import Language.Haskell.Refact.Utils.MonadFunctions
 
 -- To be moved into HaRe API
+import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.ExactPrint
 
 import qualified Data.Map as Map
@@ -30,9 +32,9 @@ comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
        getModuleGhc fileName
        parsed <- getRefactParsed
-       logm $ "Case.comp:parsed=" ++ (SYB.showData SYB.Parser 0 parsed) -- ++AZ++
+       oldAnns <- getRefactAnns
+       logm $ "Case.comp:parsed=" ++ (showAnnData oldAnns 0 parsed) -- ++AZ++
        let expr = locToExp beginPos endPos parsed
-       -- logm $ "Case.comp:expr=" ++ (SYB.showData SYB.Renamer 0 expr) -- ++AZ++
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do (refactoredMod,_) <- applyRefac (doIfToCaseInternal exp1) RSAlreadyLoaded
@@ -66,12 +68,10 @@ reallyDoIfToCase expr p = do
 
          inExp e = return e
 
-deriving instance Eq Annotation
-
 -- |Actually do the transformation
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
                   -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
-ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
+ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
   caseLoc       <- uniqueSrcSpan
   trueMatchLoc  <- uniqueSrcSpan
   trueLoc1      <- uniqueSrcSpan
@@ -109,35 +109,32 @@ ifToCaseTransform e@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
                    ] GHC.EmptyLocalBinds)
                 )
               ] [] GHC.placeHolderType GHC.FromSource))
-  --(_ret2,anne) <- resequenceAnnotations ret
-  -- logm $ "annGetConstr\n\n:" ++ show (annGetConstr trueName)
 
-  let annf =  Map.union (Map.fromList $ map (\(k, v) -> (uncurry AnnKey k, annNone { anns = v}))
-              [((caseLoc,     CN "HsCase"), [ (G GHC.AnnCase, DP (0,1))
-                                            , (G GHC.AnnOf,   DP (0,1) )
-                                            ])
-              ,((trueLoc,     CN "Unqual"), [(G GHC.AnnVal,    DP (1,0))])
-              ,((trueRhsLoc,  CN "GRHS"),   [(G GHC.AnnRarrow, DP (0,2))])
-              ,((falseLoc,    CN "Unqual"), [(G GHC.AnnVal,    DP (1,0))])
-              ,((falseRhsLoc, CN "GRHS"),   [(G GHC.AnnRarrow, DP (0,1))])
-              ]) Map.empty
-  -- logm $ "\n\n\n" ++ showGhc annf
-  let anne2 = setOffsets annf [ ( AnnKey caseLoc       (CN "HsCase"),   (DP (0,1),LineSame, 9, 2) )
-                              , ( AnnKey trueRhsLoc    (CN "GRHS"),     (DP (0,2),LineSame, 19, 6) )
-                              , ( AnnKey trueMatchLoc  (CN "Match"),    (DP (1,4),LineChanged, 13, 13) )
-                              , ( AnnKey trueLoc1      (CN "ConPatIn"), (DP (1,0),LineSame, 13, 0) )
-                              , ( AnnKey trueLoc       (CN "Unqual"),   (DP (1,0),LineSame, 13, 0) )
-                              , ( AnnKey falseRhsLoc   (CN "GRHS"),     (DP (0,2),LineSame, 19, 6) )
-                              , ( AnnKey falseMatchLoc (CN "Match"),    (DP (1,4),LineChanged, 13, 13) )
-                              , ( AnnKey falseLoc1     (CN "ConPatIn"), (DP (1,0),LineSame, 13, 0) )
-                              , ( AnnKey falseLoc      (CN "Unqual"),   (DP (1,0),LineSame, 13, 0))
-                              ]
+  oldAnns <- getRefactAnns
+  let annIf = gfromJust "Case.annIf" $ Map.lookup (AnnKey l (CN "HsIf")) oldAnns
+  logm $ "Case:annIf=" ++ show annIf
+
+  let (thenPos@(_thenr,thenc),thenDP) = getOriginalPos oldAnns li (G GHC.AnnThen)
+  logm $ "Case:thenPos=" ++ show thenPos
+
+  let ifDelta = gfromJust "Case.ifDelta" $ lookup (G GHC.AnnIf) (anns annIf)
+  let anne2' = [ ( AnnKey caseLoc       (CN "HsCase"),   annIf { anns = [ (G GHC.AnnCase,   ifDelta)
+                                                                        , (G GHC.AnnOf,     DP (0,1))] } )
+               , ( AnnKey trueRhsLoc    (CN "GRHS"),     Ann (DP (0,2)) LineSame    19  6       [ (G GHC.AnnRarrow, DP (0,2))] )
+               , ( AnnKey trueMatchLoc  (CN "Match"),    Ann thenDP     LineChanged thenc thenc [] )
+               , ( AnnKey trueLoc1      (CN "ConPatIn"), Ann (DP (1,0)) LineSame    thenc 0     [] )
+               , ( AnnKey trueLoc       (CN "Unqual"),   Ann (DP (1,0)) LineSame    thenc 0     [ (G GHC.AnnVal,    DP (1,0))] )
+
+               , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,2)) LineSame    19  6       [ (G GHC.AnnRarrow, DP (0,1))] )
+               , ( AnnKey falseMatchLoc (CN "Match"),    Ann thenDP     LineChanged thenc thenc [] )
+               , ( AnnKey falseLoc1     (CN "ConPatIn"), Ann (DP (1,0)) LineSame    thenc 0     [] )
+               , ( AnnKey falseLoc      (CN "Unqual"),   Ann (DP (1,0)) LineSame    thenc 0     [ (G GHC.AnnVal,    DP (1,0))] )
+               ]
 
   -- logm $ "\n\n\nanne2" ++ showGhc anne2
 
-  oldAnns <- getRefactAnns
   let anne1 = Map.delete (AnnKey l (CN "HsIf")) oldAnns
-      final = mergeAnns anne1 anne2
+      final = mergeAnns anne1 (Map.fromList anne2')
       anne3 = setLocatedOffsets final
                 [ (e1, (DP (0,1),LineSame,14,5))
                 , (e2, (DP (0,1),LineSame,22,3))
