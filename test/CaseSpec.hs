@@ -45,9 +45,9 @@ spec = do
 
     it "converts an if expression with comments to a case expression 1 C" $ do
 
-      r <- ifToCase defaultTestSettings testOptions "./test/testdata/Case/C.hs" (5,7) (10,1)
-      -- ifToCase logTestSettings testOptions "./test/testdata/Case/C.hs" (5,7) (10,1)
-      r `shouldBe` ["./test/testdata/Case/C.hs"]
+      r <- ct $ ifToCase defaultTestSettings testOptions "Case/C.hs" (5,7) (10,1)
+      -- ct $ ifToCase logTestSettings testOptions "Case/C.hs" (5,7) (10,1)
+      r `shouldBe` ["Case/C.hs"]
       diff <- compareFiles "./test/testdata/Case/C.refactored.hs"
                            "./test/testdata/Case/C.hs.expected"
       diff `shouldBe` []
@@ -55,9 +55,9 @@ spec = do
     -- ---------------------------------
 
     it "converts an if expression with comments to a case expression 2 D" $ do
-      r <- ifToCase defaultTestSettings testOptions "./test/testdata/Case/D.hs" (5,7) (12,1)
-      -- ifToCase logTestSettings testOptions "./test/testdata/Case/D.hs" (5,7) (12,1)
-      r `shouldBe` ["./test/testdata/Case/D.hs"]
+      r <- ct $ ifToCase defaultTestSettings testOptions "Case/D.hs" (5,7) (12,1)
+      -- ct $ ifToCase logTestSettings testOptions "Case/D.hs" (5,7) (12,1)
+      r `shouldBe` ["Case/D.hs"]
       diff <- compareFiles "./test/testdata/Case/D.refactored.hs"
                            "./test/testdata/Case/D.hs.expected"
       diff `shouldBe` []
@@ -65,17 +65,27 @@ spec = do
     -- ---------------------------------
 
     it "converts in complex sub level expression 2 E" $ do
-      r <- ifToCase defaultTestSettings testOptions "./test/testdata/Case/E.hs" (7,8) (13,20)
-      -- ifToCase logTestSettings testOptions "./test/testdata/Case/E.hs" (7,8) (13,20)
-      r `shouldBe` ["./test/testdata/Case/E.hs"]
+      r <- ct $ ifToCase defaultTestSettings testOptions "Case/E.hs" (7,8) (13,20)
+      -- ct $ ifToCase logTestSettings testOptions "Case/E.hs" (7,8) (13,20)
+      r `shouldBe` ["Case/E.hs"]
       diff <- compareFiles "./test/testdata/Case/E.refactored.hs"
                            "./test/testdata/Case/E.hs.expected"
       diff `shouldBe` []
 
     -- ---------------------------------
 
+    it "converts in complex sub level expression F" $ do
+      r <- ct $ ifToCase defaultTestSettings testOptions "Case/F.hs" (4,7) (8,20)
+      -- ct $ ifToCase logTestSettings testOptions "Case/F.hs" (4,7) (8,20)
+      r `shouldBe` ["Case/F.hs"]
+      diff <- compareFiles "./test/testdata/Case/F.refactored.hs"
+                           "./test/testdata/Case/F.hs.expected"
+      diff `shouldBe` []
+
+   -- ---------------------------------
+
     it "complains if an if-then-else is not selected" $ do
-      res <- catchException(ifToCase defaultTestSettings testOptions "./test/testdata/Case/C.hs" (4,7) (9,1))
+      res <- catchException(ct $ ifToCase defaultTestSettings testOptions "Case/C.hs" (4,7) (9,1))
       -- ifToCase logTestSettings testOptions "./test/testdata/Case/C.hs" (4,7) (9,1)
       (show res) `shouldBe` "Just \"You haven't selected an if-then-else  expression!\""
 

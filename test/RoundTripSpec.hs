@@ -21,12 +21,24 @@ spec = do
                            "./test/testdata/Case/BSimpleExpected.hs"
       diff `shouldBe` []
 
+    -- ---------------------------------
+
     it "roundtrips FooExpected" $ do
       r <- ct $ roundTrip defaultTestSettings testOptions "Case/FooExpected.hs"
       -- r <- ct $ roundTrip logTestSettings testOptions "Case/FooExpected.hs"
       r `shouldBe` ["Case/FooExpected.hs"]
       diff <- compareFiles "./test/testdata/Case/FooExpected.refactored.hs"
                            "./test/testdata/Case/FooExpected.hs"
+      diff `shouldBe` []
+
+    -- ---------------------------------
+
+    it "roundtrips FExpected" $ do
+      r <- ct $ roundTrip defaultTestSettings testOptions "Case/FExpected.hs"
+      -- r <- ct $ roundTrip logTestSettings testOptions "Case/FExpected.hs"
+      r `shouldBe` ["Case/FExpected.hs"]
+      diff <- compareFiles "./test/testdata/Case/FExpected.refactored.hs"
+                           "./test/testdata/Case/FExpected.hs"
       diff `shouldBe` []
 
     -- ---------------------------------

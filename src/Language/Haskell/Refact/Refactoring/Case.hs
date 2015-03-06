@@ -72,15 +72,15 @@ reallyDoIfToCase expr p = do
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
                   -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
 ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
-  caseLoc       <- uniqueSrcSpan
-  trueMatchLoc  <- uniqueSrcSpan
-  trueLoc1      <- uniqueSrcSpan
-  trueLoc       <- uniqueSrcSpan
-  trueRhsLoc    <- uniqueSrcSpan
-  falseLoc1     <- uniqueSrcSpan
-  falseLoc      <- uniqueSrcSpan
-  falseMatchLoc <- uniqueSrcSpan
-  falseRhsLoc   <- uniqueSrcSpan
+  caseLoc       <- uniqueSrcSpan -- HaRe:-1:1
+  trueMatchLoc  <- uniqueSrcSpan -- HaRe:-1:2
+  trueLoc1      <- uniqueSrcSpan -- HaRe:-1:3
+  trueLoc       <- uniqueSrcSpan -- HaRe:-1:4
+  trueRhsLoc    <- uniqueSrcSpan -- HaRe:-1:5
+  falseLoc1     <- uniqueSrcSpan -- HaRe:-1:6
+  falseLoc      <- uniqueSrcSpan -- HaRe:-1:7
+  falseMatchLoc <- uniqueSrcSpan -- HaRe:-1:8
+  falseRhsLoc   <- uniqueSrcSpan -- HaRe:-1:9
   let trueName  = mkRdrName "True"
   let falseName = mkRdrName "False"
   let ret = GHC.L caseLoc (GHC.HsCase e1
@@ -120,12 +120,12 @@ ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
   let ifDelta = gfromJust "Case.ifDelta" $ lookup (G GHC.AnnIf) (anns annIf)
   let anne2' = [ ( AnnKey caseLoc       (CN "HsCase"),   annIf { anns = [ (G GHC.AnnCase,   ifDelta)
                                                                         , (G GHC.AnnOf,     DP (0,1))] } )
-               , ( AnnKey trueRhsLoc    (CN "GRHS"),     Ann (DP (0,2)) LineSame    19  6       [ (G GHC.AnnRarrow, DP (0,2))] )
+               , ( AnnKey trueRhsLoc    (CN "GRHS"),     Ann (DP (0,2)) LineSame    17  6       [ (G GHC.AnnRarrow, DP (0,2))] )
                , ( AnnKey trueMatchLoc  (CN "Match"),    Ann thenDP     LineChanged thenc thenc [] )
                , ( AnnKey trueLoc1      (CN "ConPatIn"), Ann (DP (1,0)) LineSame    thenc 0     [] )
                , ( AnnKey trueLoc       (CN "Unqual"),   Ann (DP (1,0)) LineSame    thenc 0     [ (G GHC.AnnVal,    DP (1,0))] )
 
-               , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,2)) LineSame    19  6       [ (G GHC.AnnRarrow, DP (0,1))] )
+               , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,2)) LineSame    17  6       [ (G GHC.AnnRarrow, DP (0,1))] )
                , ( AnnKey falseMatchLoc (CN "Match"),    Ann thenDP     LineChanged thenc thenc [] )
                , ( AnnKey falseLoc1     (CN "ConPatIn"), Ann (DP (1,0)) LineSame    thenc 0     [] )
                , ( AnnKey falseLoc      (CN "Unqual"),   Ann (DP (1,0)) LineSame    thenc 0     [ (G GHC.AnnVal,    DP (1,0))] )
@@ -135,10 +135,11 @@ ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
 
   let anne1 = Map.delete (AnnKey l (CN "HsIf")) oldAnns
       final = mergeAnns anne1 (Map.fromList anne2')
+      newCol = srcSpanStartColumn (GHC.getLoc e2)
       anne3 = setLocatedOffsets final
                 [ (e1, (DP (0,1),LineSame,14,5))
-                , (e2, (DP (0,1),LineSame,22,3))
-                , (e3, (DP (0,1),LineSame,22,3))
+                , (e2, (DP (0,1),LineSame,newCol,3))
+                , (e3, (DP (0,1),LineSame,newCol,3))
                 ]
   setRefactAnns anne3
   return ret

@@ -418,3 +418,7 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Case/BSimpleExpected.log
 /test/testdata/Case/FooExpected.hs.AST_out
 /test/testdata/Case/FooExpected.hs.parsed_out
+/test/testdata/Case/F.hs.AST_out
+/test/testdata/Case/F.hs.parsed_out
+/test/testdata/Case/FExpected.hs.AST_out
+/test/testdata/Case/FExpected.hs.parsed_out
