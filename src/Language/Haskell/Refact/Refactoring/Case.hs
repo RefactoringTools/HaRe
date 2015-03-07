@@ -111,38 +111,45 @@ ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
               ] [] GHC.placeHolderType GHC.FromSource))
 
   oldAnns <- getRefactAnns
-  let annIf = gfromJust "Case.annIf" $ Map.lookup (AnnKey l (CN "HsIf")) oldAnns
-
+  let annIf   = gfromJust "Case.annIf"   $ getAnnotationEP li oldAnns
+  let annCond = gfromJust "Case.annCond" $ getAnnotationEP e1 oldAnns
   let annThen = gfromJust "Case.annThen" $ getAnnotationEP e2 oldAnns
   let annElse = gfromJust "Case.annElse" $ getAnnotationEP e3 oldAnns
   logm $ "Case:annIf="   ++ show annIf
   logm $ "Case:annThen=" ++ show annThen
   logm $ "Case:annElse=" ++ show annElse
 
-  let (thenPos@(_thenr,thenc),thenDP) = getOriginalPos oldAnns li (G GHC.AnnThen)
-  logm $ "Case:thenPos=" ++ show thenPos
+  let ((_thenr,thenc),thenDP) = getOriginalPos oldAnns li (G GHC.AnnThen)
+  let ((_elser,elsec),elseDP) = getOriginalPos oldAnns li (G GHC.AnnElse)
 
+  -- AZ:TODO: under some circumstances the GRHS annotations need LineSame, in others LineChanged.
   let ifDelta = gfromJust "Case.ifDelta" $ lookup (G GHC.AnnIf) (anns annIf)
   let anne2' = [ ( AnnKey caseLoc       (CN "HsCase"),   annIf { anns = [ (G GHC.AnnCase,   ifDelta)
                                                                         , (G GHC.AnnOf,     DP (0,1))] } )
-               , ( AnnKey trueRhsLoc    (CN "GRHS"),     Ann (DP (0,2)) LineSame    17  6       [ (G GHC.AnnRarrow, DP (0,2))] )
+               , ( AnnKey trueRhsLoc    (CN "GRHS"),     Ann (DP (0,2)) LineSame    18  6       [ (G GHC.AnnRarrow, DP (0,2))] )
                , ( AnnKey trueMatchLoc  (CN "Match"),    Ann thenDP     LineChanged thenc thenc [] )
                , ( AnnKey trueLoc1      (CN "ConPatIn"), Ann (DP (1,0)) LineSame    thenc 0     [] )
                , ( AnnKey trueLoc       (CN "Unqual"),   Ann (DP (1,0)) LineSame    thenc 0     [ (G GHC.AnnVal,    DP (1,0))] )
 
-               , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,2)) LineSame    17  6       [ (G GHC.AnnRarrow, DP (0,1))] )
-               , ( AnnKey falseMatchLoc (CN "Match"),    Ann thenDP     LineChanged thenc thenc [] )
-               , ( AnnKey falseLoc1     (CN "ConPatIn"), Ann (DP (1,0)) LineSame    thenc 0     [] )
-               , ( AnnKey falseLoc      (CN "Unqual"),   Ann (DP (1,0)) LineSame    thenc 0     [ (G GHC.AnnVal,    DP (1,0))] )
+               , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,2)) LineSame    18  6       [ (G GHC.AnnRarrow, DP (0,1))] )
+               , ( AnnKey falseMatchLoc (CN "Match"),    Ann elseDP     LineChanged elsec elsec [] )
+               , ( AnnKey falseLoc1     (CN "ConPatIn"), Ann (DP (1,0)) LineSame    elsec 0     [] )
+               , ( AnnKey falseLoc      (CN "Unqual"),   Ann (DP (1,0)) LineSame    elsec 0     [ (G GHC.AnnVal,    DP (1,0))] )
                ]
 
+{- For falseRhsLoc we have
+  nd = - (sc - oc) = - (17 - (c + 2))
+     = - (17 - 2 - c)
+     = c - 15
+  oc = c + edc [because the line offset is 0]
+
+-}
   -- logm $ "\n\n\nanne2" ++ showGhc anne2
 
   let anne1 = Map.delete (AnnKey l (CN "HsIf")) oldAnns
       final = mergeAnns anne1 (Map.fromList anne2')
-      newCol = srcSpanStartColumn (GHC.getLoc e2)
       anne3 = setLocatedOffsets final
-                [ (e1, Ann (DP (0,1)) LineSame 14     5 [])
+                [ (e1, annCond)
                 , (e2, annThen)
                 , (e3, annElse)
                 ]
