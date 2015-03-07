@@ -9,8 +9,8 @@ foo x = bob x f
             -- This is an odd result
             bob x 1
           False -> do
-             -- This is an even result
-             bob x 2) + 2
+            -- This is an even result
+            bob x 2) + 2
 
 bob x y = x + y
 
