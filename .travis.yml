@@ -5,9 +5,9 @@ env:
  - CABALVER=1.22 GHCVER=7.10.1
  - CABALVER=1.22 GHCVER=head   # see section about GHC HEAD snapshots
 
-# matrix:
-#   allow_failures:
-#    - env: GHCVER=head  CABALVER=1.20
+matrix:
+  allow_failures:
+   - env: CABALVER=1.22 GHCVER=head
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
@@ -39,6 +39,8 @@ install:
    (cd hslogger && cabal install)
    git clone https://github.com/alanz/ghc-mod.git
    (cd ghc-mod && git checkout ghc-7.10 && cabal install)
+   git clone https://github.com/alanz/ghc-exactprint.git
+   (cd ghc-exactprint && git checkout wip && cabal install)
  - pwd
  # Must remove --allow-newer in future
  - cabal install --only-dependencies --enable-tests --enable-benchmarks --allow-newer
