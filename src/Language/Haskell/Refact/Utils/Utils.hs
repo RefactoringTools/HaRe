@@ -424,14 +424,14 @@ writeRefactoredFiles verbosity files
      where
        modifyFile ((fileName,_),(ann,parsed)) = do
 
-           let source = exactPrintAnnotation parsed [] ann
+           let source = exactPrintAnnotation parsed ann
            let (baseFileName,ext) = splitExtension fileName
            seq (length source) (writeFile (baseFileName ++ ".refactored" ++ ext) source)
 
            when (verbosity == Debug) $
              do
                writeFile (fileName ++ ".parsed_out") (showGhc parsed)
-               writeFile (fileName ++ ".AST_out") $ ((showGhc parsed) ++
+               writeFile (fileName ++ ".AST_out")   ((showGhc parsed) ++
                       "\n\n----------------------\n\n" ++
                       -- (SYB.showData SYB.Parser 0 parsed) ++
                       (showAnnData ann 0 parsed) ++

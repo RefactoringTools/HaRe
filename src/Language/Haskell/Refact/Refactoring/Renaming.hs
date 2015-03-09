@@ -1,6 +1,6 @@
 module Language.Haskell.Refact.Refactoring.Renaming(rename) where
 
--- import qualified Data.Generics.Schemes as SYB
+import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
@@ -54,36 +54,36 @@ rename settings opts fileName newName (row,col) =
 -- | Body of the refactoring
 comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row,col) = do
-    logm $ "Renaming.comp: (fileName,newName,(row,col))=" ++ (show (fileName,newName,(row,col)))
+    logm $ "Renaming.comp: (fileName,newName,(row,col))=" ++ show (fileName,newName,(row,col))
     getModuleGhc fileName
     renamed <- getRefactRenamed
     parsed  <- getRefactParsed
-    logm $ "comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+    logm $ "comp:renamed=" ++ SYB.showData SYB.Renamer 0 renamed -- ++AZ++
     -- logm $ "comp:parsed=" ++ (SYB.showData SYB.Parser 0 parsed) -- ++AZ++
 
     modu <- getModule
     -- let (Just (modName,_)) = getModuleName parsed
-    let modName = case (getModuleName parsed) of
+    let modName = case getModuleName parsed of
                     Just (mn,_) -> mn
                     Nothing -> GHC.mkModuleName "Main"
     let maybePn = locToName (row, col) renamed
-    logm $ "Renamed.comp:maybePn=" ++ (showGhc maybePn) -- ++AZ++
+    logm $ "Renamed.comp:maybePn=" ++ showGhc maybePn -- ++AZ++
     case maybePn of
         Just pn@(GHC.L _ n) -> do
-           logm $ "Renaming:(n,modu)=" ++ (showGhc (n,modu))
+           logm $ "Renaming:(n,modu)=" ++ showGhc (n,modu)
            -- let (GHC.L _ rdrName') = gfromJust "Renaming.comp.1" $ locToRdrName (row, col) parsed
            -- logm $ "Renaming.comp:rdrName'=" ++ (showGhc rdrName')
 
            let (GHC.L _ rdrName) = gfromJust "Renaming.comp.2" $ locToRdrName (row, col) parsed
            let rdrNameStr = GHC.occNameString $ GHC.rdrNameOcc rdrName
-           logm $ "Renaming: rdrName=" ++ (SYB.showData SYB.Parser 0 rdrName)
-           logm $ "Renaming: occname rdrName=" ++ (show $ GHC.occNameString $ GHC.rdrNameOcc rdrName)
+           logm $ "Renaming: rdrName=" ++ SYB.showData SYB.Parser 0 rdrName
+           logm $ "Renaming: occname rdrName=" ++ show (GHC.occNameString $ GHC.rdrNameOcc rdrName)
 
            unless (nameToString n /= newName) $ error "The new name is same as the old name"
            unless (isValidNewName n rdrNameStr newName) $ error $ "Invalid new name:" ++ newName ++ "!"
 
 
-           logm $ "Renaming.comp: before GHC.nameModule,n=" ++ (showGhc n)
+           logm $ "Renaming.comp: before GHC.nameModule,n=" ++ showGhc n
            -- let defineMod = GHC.moduleName $ GHC.nameModule n
 
            let defineMod = case GHC.nameModule_maybe n of
@@ -91,19 +91,19 @@ comp fileName newName (row,col) = do
                             Nothing -> modName
 
            -- TODO: why do we have this restriction?
-           unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ (show defineMod) ++
+           unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ show defineMod ++
                                          ", please do renaming in that module!"))
            -- logm $ "Renaming.comp:(isMainModule modu,pn)=" ++ (showGhc (isMainModule modu,pn))
-           if isMainModule modu && (showGhc pn) == "Main.main"
-             then error ("The 'main' function defined in a 'Main' module should not be renamed!")
+           if isMainModule modu && showGhc pn == "Main.main"
+             then error "The 'main' function defined in a 'Main' module should not be renamed!"
              else do
                logm $ "Renaming.comp: not main module"
                newNameGhc <- mkNewGhcName (Just modu) newName
                (refactoredMod,nIsExported) <- applyRefac (doRenaming pn rdrNameStr newName newNameGhc modName) RSAlreadyLoaded
-               logm $ "Renaming:nIsExported=" ++ (show nIsExported)
+               logm $ "Renaming:nIsExported=" ++ show nIsExported
                if nIsExported  --no matter whether this pn is used or not.
                    then do clients <- clientModsAndFiles modName
-                           logm ("Renaming: clients=" ++ (showGhc clients)) -- ++AZ++ debug
+                           logm ("Renaming: clients=" ++ showGhc clients) -- ++AZ++ debug
                            refactoredClients <- mapM (renameInClientMod n newName newNameGhc) clients
                            return $ refactoredMod:(concat refactoredClients)
                    else  return [refactoredMod]
@@ -127,9 +127,9 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
                                 -- `adhocTP` renameInStmts
                                 )) renamed
                                 -}
-  void $ SYB.everywhereMStaged SYB.Renamer (SYB.mkM renameInMod
-                                 ) renamed
-  logm $ "doRenaming done"
+  void $ SYB.everywhereM (SYB.mkM renameInMod
+                         ) renamed
+  logm "doRenaming done"
   nIsExported <- isExported oldn
   return nIsExported
    where

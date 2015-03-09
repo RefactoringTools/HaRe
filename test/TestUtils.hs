@@ -276,7 +276,7 @@ sourceFromState st =
         anns = (tkCache $ rsTokenCache tm) Map.! mainTid
         parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module
                  $ rsTypecheckedMod tm
-        r = exactPrintAnnotation parsed [] anns
+        r = exactPrintAnnotation parsed anns
     Nothing -> []
 
 -- ---------------------------------------------------------------------

@@ -193,7 +193,7 @@ spec = do
 
     it "renames in Field1 5 18" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Field1.hs" "pointx1" (5,18)
-     -- ct $ rename logTestSettings testOptions Nothing "./Renaming/Field1.hs" "pointx1" (5,18)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/Field1.hs" "pointx1" (5,18)
      r `shouldBe` [ "./Renaming/Field1.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/Field1.hs.expected"
@@ -204,7 +204,7 @@ spec = do
 
     it "renames in Field3 9 1" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Field3.hs" "abs" (9,1)
-     -- ct $ rename logTestSettings testOptions Nothing "./Renaming/Field3.hs" "abs" (9,1)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/Field3.hs" "abs" (9,1)
      r `shouldBe` [ "./Renaming/Field3.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/Field3.hs.expected"
@@ -362,7 +362,7 @@ spec = do
     it "naming clash at top level IdIn3" $ do
      -- (["IdIn3.hs"],["foo","10","1"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/IdIn3.hs" "foo" (10,1)
-     res <- catchException (rename defaultTestSettings testOptions "./Renaming/IdIn3.hs" "foo" (10,1))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn3.hs" "foo" (10,1))
      (show res) `shouldBe` "Just \"Name 'foo'  already existed\\n\""
 
     -- ---------------------------------
@@ -370,7 +370,7 @@ spec = do
     it "upper case name for fn fails IdIn4" $ do
      --     (["IdIn4.hs"],["Foo","12","1"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/IdIn4.hs" "Foo" (12,1)
-     res <- catchException (rename defaultTestSettings testOptions "./Renaming/IdIn4.hs" "Foo" (12,1))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn4.hs" "Foo" (12,1))
      (show res) `shouldBe` "Just \"The new name should be an identifier!\""
 
     -- ---------------------------------
@@ -378,7 +378,7 @@ spec = do
     it "naming clash IdIn5" $ do
      --     (["IdIn5.hs"],["y","10","1"]),
      -- rename logTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1)
-     res <- catchException (rename defaultTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1))
      (show res) `shouldBe` "Just \"Name 'y'  already existed, or rename 'IdIn5.x' to 'y' will change the program's semantics!\\n\""
 
     -- ---------------------------------
@@ -386,7 +386,7 @@ spec = do
     it "must rename in home module ClassIn3" $ do
      --     (["ClassIn3.hs"],["Eq1","16","10"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/ClassIn3.hs" "Eq1" (16,10)
-     res <- catchException (rename defaultTestSettings testOptions "./Renaming/ClassIn3.hs" "Eq1" (16,10))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/ClassIn3.hs" "Eq1" (16,10))
      (show res) `shouldBe` "Just \"This identifier is defined in module GHC.Classes, please do renaming in that module!\""
 
     -- ---------------------------------
@@ -394,7 +394,7 @@ spec = do
     it "will not rename existing name Field2" $ do
      --     (["Field2.hs"], ["absPoint", "5", "18"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/Field2.hs" "absPoint" (5,18)
-     res <- catchException (rename defaultTestSettings testOptions "./Renaming/Field2.hs" "absPoint" (5,18))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Field2.hs" "absPoint" (5,18))
      (show res) `shouldBe` "Just \"Name 'absPoint'  already existed\\n\""
 
     -- ---------------------------------
@@ -402,7 +402,7 @@ spec = do
     it "must qualify clashes Qualifier" $ do
      --     (["Qualifier.hs"],["sum","13","1"]),
      -- rename logTestSettings testOptions "./Renaming/Qualifier.hs" "sum" (13,1)
-     res <- catchException (rename defaultTestSettings testOptions "./Renaming/Qualifier.hs" "sum" (13,1))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Qualifier.hs" "sum" (13,1))
      (show res) `shouldBe` "Just \"The new name will cause ambiguous occurrence problem, please select another new name or qualify the use of ' sum' before renaming!\\n\""
 
     -- ---------------------------------
@@ -410,14 +410,14 @@ spec = do
     it "cannot rename main Main" $ do
      --     (["Main.hs"],["main1", "11","1"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/Main.hs" "main1" (11,1)
-     res <- catchException (rename defaultTestSettings testOptions "./Renaming/Main.hs" "main1" (11,1))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Main.hs" "main1" (11,1))
      (show res) `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
 
     -- ---------------------------------
 
     it "cannot rename main Main2" $ do
      -- rename logTestSettings testOptions Nothing "./Renaming/Main2.hs" "main1" (4,1)
-     res <- catchException (rename defaultTestSettings testOptions "./Renaming/Main2.hs" "main1" (4,1))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Main2.hs" "main1" (4,1))
      (show res) `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
 
     -- ---------------------------------
@@ -482,7 +482,7 @@ spec = do
     it "ConflictExports" $ do
      --     (["ConflictExport.hs","D6.hs"],["fringe","7","1"])]
      -- rename (logTestSettingsMainfile "./Renaming/ConflictExport.hs") testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1)
-     res <- catchException (rename (testSettingsMainfile "./Renaming/ConflictExport.hs") testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1))
+     res <- catchException (ct $ rename (testSettingsMainfile "./Renaming/ConflictExport.hs") testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1))
      (show res) `shouldBe` "Just \"The new name will cause conflicting exports, please select another new name!\""
 
 {-
