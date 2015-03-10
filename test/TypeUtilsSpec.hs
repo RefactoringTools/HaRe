@@ -2278,21 +2278,19 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
 
-      let Just (GHC.L l n) = locToName (20, 1) renamed
+      let Just (GHC.L _l n) = locToName (20, 1) renamed
       let
         comp = do
+         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
          newName <- mkNewGhcName (Just modu) "newPoint"
          new <- renamePN n newName True True renamed
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
       (showGhcQual n) `shouldBe` "LocToName.sumSquares"
-      -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((20,1),(20,9),\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nsumSquares (x:xs) = x ^2 + sumSquares xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nsumSquares [] = 0\n"
-      -- (show $ layoutFromState s) `shouldBe` ""
-      -- (showGhcQual $ retrieveTokensPpr $ fromJust $ layoutFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + LocToName.newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
@@ -2303,7 +2301,7 @@ spec = do
       (t, toks) <- ct $ parsedFileGhc "./Renaming/LayoutIn2.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName (8, 7) renamed
+      let Just (GHC.L _ n) = locToName (8, 7) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2313,8 +2311,7 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
       -- (showGhcQual n) `shouldBe` "list"
       -- (showGhcQual $ retrieveTokensPpr $ fromJust $ layoutFromState s) `shouldBe` ""
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((8,7),(8,9),\"ls\")]"
@@ -2377,24 +2374,22 @@ spec = do
     ------------------------------------
 
     it "realigns toks in a case for a shorter name" $ do
-      (t, toks) <- parsedFileLayoutIn2
+      (t, toks) <- ct $ parsedFileGhc "./Renaming/LayoutIn2.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName (8, 7) renamed
+      let Just (GHC.L _l n) = locToName (8, 7) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "ls"
-         new <- renamePN n newName True True renamed
+         new <- renamePN n newName True False renamed
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual n) `shouldBe` "list"
-      -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((8,7),(8,9),\"ls\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
       (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly ls = case ls of  (1:xs) -> 1\n--There is a comment\n                       (2:xs)\n                         | x < 10    -> 4  where  x = last xs\n                       otherwise -> 12\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "(LayoutIn2.silly :: [GHC.Types.Int] -> GHC.Types.Int\n LayoutIn2.silly ls\n = case ls of {\n (1 : xs) -> 1\n (2 : xs)\n | x GHC.Classes.< 10 -> 4\n where\n x = GHC.List.last xs\n otherwise -> 12 },\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
@@ -2515,7 +2510,7 @@ spec = do
       (t, toks) <- ct $ parsedFileGhc "./Renaming/LayoutIn1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let Just (GHC.L l n) = locToName (7, 17) renamed
+      let Just (GHC.L _l n) = locToName (7, 17) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
@@ -2525,8 +2520,7 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual n) `shouldBe` "sq"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,17),(7,23),\"square\")]"
