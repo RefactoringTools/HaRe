@@ -3429,7 +3429,6 @@ renamePNworker oldPN newName updateTokens useQual t = do
   -- logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal (no ' at end)
   SYB.everywhereM (SYB.mkM rename
-  -- everywhereMStaged' SYB.Renamer (SYB.mkM rename
                   `SYB.extM` renameVar
                   `SYB.extM` renameTyVar
                   `SYB.extM` renameHsTyVarBndr
