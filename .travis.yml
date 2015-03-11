@@ -39,8 +39,8 @@ install:
    (cd hslogger && cabal install)
    git clone https://github.com/alanz/ghc-mod.git
    (cd ghc-mod && git checkout ghc-7.10 && cabal install)
-   git clone https://github.com/alanz/ghc-exactprint.git
-   (cd ghc-exactprint && git checkout wip && cabal install)
+   # git clone https://github.com/alanz/ghc-exactprint.git
+   # (cd ghc-exactprint && git checkout wip && cabal install)
  - pwd
  # Must remove --allow-newer in future
  - cabal install --only-dependencies --enable-tests --enable-benchmarks --allow-newer
