@@ -228,7 +228,6 @@ replaceRdrName :: GHC.Located GHC.RdrName -> RefactGhc ()
 replaceRdrName (GHC.L l newName) = do
   logm $ "replaceRdrName:" ++ showGhcQual (l,newName)
   parsed <- getRefactParsed
-  -- logm $ "replaceRdrName:NOT IMPLEMENTED"
   logm $ "replaceRdrName:before:parsed=" ++ showGhc parsed
   let replaceRdr :: GHC.Located GHC.RdrName -> GHC.Located GHC.RdrName
       replaceRdr (GHC.L ln _)
@@ -244,7 +243,10 @@ replaceRdrName (GHC.L l newName) = do
       replacePat (GHC.L ln (GHC.VarPat _))
         | l == ln = GHC.L l (GHC.VarPat newName)
       replacePat x = x
-      parsed' = SYB.everywhere (SYB.mkT replaceRdr `SYB.extT` replaceHsTyVar `SYB.extT` replaceHsVar `SYB.extT` replacePat) parsed
+      parsed' = SYB.everywhere (SYB.mkT replaceRdr
+                              `SYB.extT` replaceHsTyVar
+                              `SYB.extT` replaceHsVar
+                              `SYB.extT` replacePat) parsed
   logm $ "replaceRdrName:after:parsed'=" ++ showGhc parsed'
   putRefactParsed parsed' mempty
   return ()

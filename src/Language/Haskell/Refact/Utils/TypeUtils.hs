@@ -3004,7 +3004,7 @@ duplicateDecl decls sigs n newFunName
           -}
 
           -- typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceAbsCol 2 colStart 0) toksSig
-          _typeSig'' <- renamePN n newFunName True False typeSig
+          _typeSig'' <- renamePN n newFunName False typeSig
 
           let [(GHC.L sspanSig' _)] = typeSig
 
@@ -3021,7 +3021,7 @@ duplicateDecl decls sigs n newFunName
       -}
 
       -- funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceAbsCol rowOffset colStart 2) toks
-      funBinding'' <- renamePN n newFunName True False funBinding
+      funBinding'' <- renamePN n newFunName False funBinding
 
       -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
       return funBinding''
@@ -3347,7 +3347,7 @@ qualifyToplevelName :: GHC.Name -> RefactGhc ()
 qualifyToplevelName n = do
     renamed <- getRefactRenamed
     -- logm $ "qualifyToplevelName:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed)
-    _ <- renamePN n n True True renamed
+    _ <- renamePN n n True renamed
     return ()
 
 -- ---------------------------------------------------------------------
@@ -3362,12 +3362,11 @@ qualifyToplevelName n = do
 renamePN::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
    ->GHC.Name             -- ^ The new name, including possible qualifier
-   ->Bool                 -- ^ True means modifying the token stream as well.
    ->Bool                 -- ^ True means use the qualified form for
                           --   the new name.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
-renamePN oldPN newName updateTokens useQual t = do
+renamePN oldPN newName useQual t = do
   -- = error $ "renamePN: sspan=" ++ (showGhc sspan) -- ++AZ++
   -- logm $ "renamePN': (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- logm $ "renamePN: t=" ++ (SYB.showData SYB.Renamer 0 t)
@@ -3383,7 +3382,7 @@ renamePN oldPN newName updateTokens useQual t = do
                  `SYB.extM` renameGroup
                  ) t
     else
-      renamePNworker oldPN newName updateTokens useQual t
+      renamePNworker oldPN newName useQual t
   -- t'' <- adjustLayoutAfterRename oldPN newName t'
   return t'
   where
@@ -3397,15 +3396,15 @@ renamePN oldPN newName updateTokens useQual t = do
 
     renameRenamedSource :: GHC.RenamedSource -> RefactGhc GHC.RenamedSource
     renameRenamedSource (g,i,e,d) = do
-      i' <- renamePNworker oldPN newName updateTokens False i
-      e' <- renamePNworker oldPN newName updateTokens useQual e
+      i' <- renamePNworker oldPN newName False i
+      e' <- renamePNworker oldPN newName useQual e
       return (g,i',e',d)
 
     renameGroup :: (GHC.HsGroup GHC.Name) -> RefactGhc (GHC.HsGroup GHC.Name)
     renameGroup  g
      = do
           logm $ "renamePN:renameGroup"
-          g' <- renamePNworker oldPN newName updateTokens useQual g
+          g' <- renamePNworker oldPN newName useQual g
           return g'
     -- renameGroup x = return x
 
@@ -3420,12 +3419,11 @@ renamePN oldPN newName updateTokens useQual t = do
 renamePNworker::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
    ->GHC.Name             -- ^ The new name, including possible qualifier
-   ->Bool                 -- ^ True means modifying the token stream as well.
    ->Bool                 -- ^ True means use the qualified form for
                           --   the new name.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
-renamePNworker oldPN newName updateTokens useQual t = do
+renamePNworker oldPN newName useQual t = do
   -- logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- Note: bottom-up traversal (no ' at end)
   SYB.everywhereM (SYB.mkM rename
@@ -3438,11 +3436,11 @@ renamePNworker oldPN newName updateTokens useQual t = do
                   `SYB.extM` renameFunBind
                   ) t
   where
-    rename :: (GHC.Located GHC.Name) -> RefactGhc (GHC.Located GHC.Name)
+    rename :: GHC.Located GHC.Name -> RefactGhc (GHC.Located GHC.Name)
     rename (GHC.L l n)
-     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     | GHC.nameUnique n == GHC.nameUnique oldPN
      = do
-          logm $ "renamePNworker:rename at :" ++ (show l)
+          logm $ "renamePNworker:rename at :" ++ show l
           -- drawTokenTree "before worker" -- ++AZ++ debug
           worker useQual l Nothing
           return (GHC.L l newName)
@@ -3482,9 +3480,9 @@ renamePNworker oldPN newName updateTokens useQual t = do
     renameTyVar x = return x
 
 
-    renameHsTyVarBndr :: (GHC.LHsTyVarBndr GHC.Name) -> RefactGhc (GHC.LHsTyVarBndr GHC.Name)
+    renameHsTyVarBndr :: GHC.LHsTyVarBndr GHC.Name -> RefactGhc (GHC.LHsTyVarBndr GHC.Name)
     renameHsTyVarBndr v@(GHC.L l (GHC.UserTyVar n))
-     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     | GHC.nameUnique n == GHC.nameUnique oldPN
      = do
           logm $ "renamePNworker:renameHsTyVarBndr at :" ++ (showGhc l)
 
@@ -3509,14 +3507,14 @@ renamePNworker oldPN newName updateTokens useQual t = do
           return (GHC.L l (GHC.IEVar (GHC.L ln newName)))
 
     renameLIE (GHC.L l (GHC.IEThingAbs (GHC.L ln n)))
-     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     | GHC.nameUnique n == GHC.nameUnique oldPN
      = do
           -- logm $ "renamePNworker:renameLIE.IEThingAbs at :" ++ (showGhc l)
           worker useQual l Nothing
           return (GHC.L l (GHC.IEThingAbs (GHC.L ln newName)))
 
     renameLIE (GHC.L l (GHC.IEThingAll (GHC.L ln n)))
-     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     | GHC.nameUnique n == GHC.nameUnique oldPN
      = do
           -- logm $ "renamePNworker:renameLIE.IEThingAll at :" ++ (showGhc l)
           worker useQual l Nothing
@@ -3524,7 +3522,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
 
     -- TODO: check inside the ns here too
     renameLIE (GHC.L l (GHC.IEThingWith (GHC.L ln n) ns))
-     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     | GHC.nameUnique n == GHC.nameUnique oldPN
      = do
           logm $ "renamePNworker:renameLIE.IEThingWith at :" ++ (showGhc l)
           worker useQual l Nothing
@@ -3571,7 +3569,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
           return (GHC.L l (GHC.VarPat newName))
     renameLPat x = return x
 
-    renameFunBind :: (GHC.LHsBindLR GHC.Name GHC.Name) -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
+    renameFunBind :: GHC.LHsBindLR GHC.Name GHC.Name -> RefactGhc (GHC.LHsBindLR GHC.Name GHC.Name)
     renameFunBind (GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick))
      | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
      = do -- Need to (a) rename the actual funbind name
@@ -3583,9 +3581,8 @@ renamePNworker oldPN newName updateTokens useQual t = do
           worker False ln Nothing
           -- Now do (b)
           logm $ "renamePNWorker.renameFunBind.renameFunBind:starting matches"
-          let w (GHC.L lm _match) = worker False lm Nothing
-               where
-                -- ((GHC.L lm' _),_) = rdrNameFromName False lm oldPN
+          let w (GHC.L lm (GHC.Match mln pats _typ (GHC.GRHSs grhs lb))) = do
+                worker False lm Nothing
           mapM_ w $ tail matches
           logm $ "renamePNWorker.renameFunBind.renameFunBind.renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MG matches a typ o) co fvs tick))
@@ -3595,10 +3592,10 @@ renamePNworker oldPN newName updateTokens useQual t = do
     renameTypeSig (GHC.L l (GHC.TypeSig ns typ p))
      = do
          -- logm $ "renamePNWorker:renameTypeSig"
-         _ns' <- renamePN oldPN newName updateTokens False ns
+         -- _ns' <- renamePN oldPN newName False ns
          -- Has already been renamed, make sure qualifier is removed
-         ns' <- renamePN newName newName updateTokens False ns
-         typ' <- renamePN oldPN newName updateTokens False typ
+         ns' <- renamePN newName newName False ns
+         typ' <- renamePN oldPN newName False typ
          -- logm $ "renamePNWorker:renameTypeSig done"
          return (GHC.L l (GHC.TypeSig ns' typ' p))
     renameTypeSig x = return x
@@ -3606,9 +3603,7 @@ renamePNworker oldPN newName updateTokens useQual t = do
     -- The param l is only useful for the start of the token pos
     worker :: Bool -> GHC.SrcSpan -> Maybe (GHC.ModuleName, GHC.OccName) -> RefactGhc ()
     worker useQual' l mmo
-     = do if updateTokens
-           then do
-             logm $ "renamePNWorker.worker:(useQual',l,mmo)=" ++ showGhc (useQual',l,mmo)
+     = do    logm $ "renamePNWorker.worker:(useQual',l,mmo)=" ++ showGhc (useQual',l,mmo)
              newTok <- case mmo of
                    Nothing -> rdrNameFromName useQual' newName
                    Just (modu,_) -> do
@@ -3618,7 +3613,6 @@ renamePNworker oldPN newName updateTokens useQual t = do
                      rdrNameFromName True newName'
              replaceRdrName (GHC.L l newTok)
              return ()
-           else return ()
 
 ----------------------------------------------------------------------------------------
 -- | Check whether the specified identifier is declared in the given syntax phrase t,
@@ -3644,8 +3638,8 @@ autoRenameLocalVar modifyToks pn t = do
                        let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
                        newName <- mkNewGhcName Nothing newNameStr
                        if modifyToks
-                         then renamePN pn newName True False tt
-                         else renamePN pn newName False False tt
+                         then renamePN pn newName False tt
+                         else renamePN pn newName False tt
 
 -- ---------------------------------------------------------------------
 

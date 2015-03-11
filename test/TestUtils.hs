@@ -11,6 +11,7 @@ module TestUtils
        , runRefactGhcStateLog
        , initialState
        , initialLogOnState
+       , showAnnDataFromState 
        , sourceFromState
        , annsFromState
        , defaultTestSettings
@@ -42,6 +43,7 @@ import qualified Unique        as GHC
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -268,12 +270,25 @@ catchException f = do
 
 -- ---------------------------------------------------------------------
 
-sourceFromState :: RefactState -> String
-sourceFromState st =
-  case (rsModule st) of
+showAnnDataFromState :: RefactState -> String
+showAnnDataFromState st =
+  case rsModule st of
     Just tm -> r
       where
-        anns = (tkCache $ rsTokenCache tm) Map.! mainTid
+        anns = tkCache (rsTokenCache tm) Map.! mainTid
+        parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module
+                 $ rsTypecheckedMod tm
+        r = showAnnData anns 0 parsed
+    Nothing -> []
+
+-- ---------------------------------------------------------------------
+
+sourceFromState :: RefactState -> String
+sourceFromState st =
+  case rsModule st of
+    Just tm -> r
+      where
+        anns = tkCache (rsTokenCache tm) Map.! mainTid
         parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module
                  $ rsTypecheckedMod tm
         r = exactPrintAnnotation parsed anns
@@ -283,8 +298,8 @@ sourceFromState st =
 
 annsFromState :: RefactState -> Anns
 annsFromState st =
-  case (rsModule st) of
-    Just tm -> (tkCache $ rsTokenCache tm) Map.! mainTid
+  case rsModule st of
+    Just tm -> tkCache (rsTokenCache tm) Map.! mainTid
     Nothing -> error $ "annsFromState: no rsModule"
 
 -- ---------------------------------------------------------------------
