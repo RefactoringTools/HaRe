@@ -69,6 +69,7 @@ Library
                                 , ghc-exactprint >= 0.1.1
                                 , monad-control
                                 , Cabal >= 1.22
+                                , uniplate
 
         GHC-Options:             -Wall
 
@@ -140,6 +141,7 @@ Executable ghc-hare
                                 , ghc-exactprint >= 0.1.1
                                 , monad-control
                                 , Cabal >= 1.22
+                                , uniplate
                                 -- , Paths_HaRe
                                 -- , HaRe >= 0.8
         Extensions:      CPP
@@ -198,6 +200,7 @@ test-suite spec
     , ghc-exactprint >= 0.1.1
     , monad-control
     , Cabal >= 1.22
+    , uniplate
     -- , Paths_HaRe
     -- , haskell-token-utils >= 0.0.0.6
     , HaRe >= 0.8

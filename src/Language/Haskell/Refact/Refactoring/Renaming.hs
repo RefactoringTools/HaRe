@@ -193,14 +193,14 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                    else if exportChecking && isInScopeUnqual -- isInScopeAndUnqualifiedGhc newName Nothing
                                           then do
                                                logm $ "renameTopLevelVarName start..:should have qualified"
-                                               void $ renamePN oldPN newNameGhc True True renamed
+                                               void $ renamePN oldPN newNameGhc True renamed
                                                logm $ "renameTopLevelVarName done:should have qualified"
                                                -- drawTokenTreeDetailed "should be qualified" -- ++AZ++ debug
                                                r' <- getRefactRenamed
                                                return r'
                                           else do
                                                logm $ "renameTopLevelVarName start.."
-                                               void $ renamePN oldPN newNameGhc True False renamed
+                                               void $ renamePN oldPN newNameGhc False renamed
                                                logm $ "renameTopLevelVarName done"
                                                r' <- getRefactRenamed
                                                return r'
@@ -254,7 +254,7 @@ renameInClientMod oldPN newName newNameGhc targetModule@(_,modSummary) = do
        qualifyTopLevelVar newStr
        renamed <- getRefactRenamed
        logm $ "renameInClientMod.refactRename:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
-       void $ renamePN old new True useQual renamed
+       void $ renamePN old new useQual renamed
        return ()
 
      refactRenameComplex :: GHC.Name -> String -> GHC.Name -> RefactGhc ()
@@ -278,8 +278,8 @@ renameInClientMod oldPN newName newNameGhc targetModule@(_,modSummary) = do
        isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName' Nothing
        vs <- hsVisibleNames oldPN' renamed   --Does this check names other than variable names?
        if elem newName' ((nub vs) \\ [nameToString oldPN'])  || isInScopeUnqualNew
-         then void $ renamePN oldPN' newNameGhc' True True renamed --rename to qualified Name
-         else void $ renamePN oldPN' newNameGhc' True False renamed -- do not qualify
+         then void $ renamePN oldPN' newNameGhc' True renamed --rename to qualified Name
+         else void $ renamePN oldPN' newNameGhc' False renamed -- do not qualify
        return ()
 
 

@@ -100,6 +100,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Updating
     -- ,Update(update)
     {- ,qualifyPName-},rmQualifier,qualifyToplevelName,renamePN {- ,replaceNameInPN -},autoRenameLocalVar
+    , renamePlated
 
     -- * Miscellous
     -- ** Parsing, writing and showing
@@ -151,6 +152,7 @@ import Data.List
 import Data.Maybe
 import Data.Monoid
 import Exception
+import Data.Generics.Uniplate.Data
 
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcUtils
@@ -3352,10 +3354,21 @@ qualifyToplevelName n = do
 
 -- ---------------------------------------------------------------------
 
+renamePlated::(SYB.Data t)
+   =>GHC.Name             -- ^ The identifier to be renamed.
+   ->GHC.Name             -- ^ The new name, including possible qualifier
+   ->Bool                 -- ^ True means use the qualified form for
+                          --   the new name.
+   ->t                    -- ^ The syntax phrase
+   ->RefactGhc t
+renamePlated oldPN newName useQual t = do
+  return t
+
+-- ---------------------------------------------------------------------
+
 -- | Rename each occurrences of the identifier in the given syntax
--- phrase with the new name. If the Bool parameter is True, then
--- modify both the AST and the token stream, otherwise only modify the
--- AST.
+-- phrase with the new name.
+
 -- TODO: the syntax phrase is required to be GHC.Located, not sure how
 -- to specify this without breaking the everywhereMStaged call
 
@@ -3465,7 +3478,7 @@ renamePNworker oldPN newName useQual t = do
     -- HsTyVar {Name: Renaming.D1.Tree}))
     renameTyVar :: (GHC.Located (GHC.HsType GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsType GHC.Name))
     renameTyVar v@(GHC.L l (GHC.HsTyVar n))
-     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     | GHC.nameUnique n == GHC.nameUnique oldPN
      = do
           logm $ "renamePNworker:renameTyVar at :" ++ (showGhc l)
 

@@ -228,27 +228,41 @@ replaceRdrName :: GHC.Located GHC.RdrName -> RefactGhc ()
 replaceRdrName (GHC.L l newName) = do
   logm $ "replaceRdrName:" ++ showGhcQual (l,newName)
   parsed <- getRefactParsed
+  anns <- getRefactAnns
   logm $ "replaceRdrName:before:parsed=" ++ showGhc parsed
-  let replaceRdr :: GHC.Located GHC.RdrName -> GHC.Located GHC.RdrName
-      replaceRdr (GHC.L ln _)
-        | l == ln = GHC.L l newName
-      replaceRdr x = x
-      replaceHsVar :: GHC.LHsExpr GHC.RdrName -> GHC.LHsExpr GHC.RdrName
+  let replaceRdr :: GHC.Located GHC.RdrName -> State Anns (GHC.Located GHC.RdrName)
+      replaceRdr old@(GHC.L ln _)
+        | l == ln = do
+           an <- get
+           let new = (GHC.L l newName)
+           put $ replaceAnnKey an old new
+           return new
+      replaceRdr x = return x
+
+      replaceHsVar :: GHC.LHsExpr GHC.RdrName -> State Anns (GHC.LHsExpr GHC.RdrName)
       replaceHsVar (GHC.L ln (GHC.HsVar _))
-        | l == ln = GHC.L l (GHC.HsVar newName)
-      replaceHsVar x = x
+        | l == ln = return (GHC.L l (GHC.HsVar newName))
+      replaceHsVar x = return x
+
       replaceHsTyVar (GHC.L ln (GHC.HsTyVar _))
-        | l == ln = GHC.L l (GHC.HsTyVar newName)
-      replaceHsTyVar x = x
+        | l == ln = return (GHC.L l (GHC.HsTyVar newName))
+      replaceHsTyVar x = return x
+
       replacePat (GHC.L ln (GHC.VarPat _))
-        | l == ln = GHC.L l (GHC.VarPat newName)
-      replacePat x = x
-      parsed' = SYB.everywhere (SYB.mkT replaceRdr
-                              `SYB.extT` replaceHsTyVar
-                              `SYB.extT` replaceHsVar
-                              `SYB.extT` replacePat) parsed
+        | l == ln = return (GHC.L l (GHC.VarPat newName))
+      replacePat x = return x
+
+      fn :: State Anns GHC.ParsedSource
+      fn = do
+             r <- SYB.everywhereM (SYB.mkM replaceRdr
+                              `SYB.extM` replaceHsTyVar
+                              `SYB.extM` replaceHsVar
+                              `SYB.extM` replacePat) parsed
+             return r
+      (parsed',anns') = runState fn anns
   logm $ "replaceRdrName:after:parsed'=" ++ showGhc parsed'
   putRefactParsed parsed' mempty
+  setRefactAnns anns'
   return ()
 
 -- ---------------------------------------------------------------------

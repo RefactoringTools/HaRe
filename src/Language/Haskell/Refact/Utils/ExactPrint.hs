@@ -17,6 +17,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , mergeAnns
   , deleteAnnotations
   , replace
+  , replaceAnnKey
   , mkKey
   , setColRec
   , getOriginalPos
@@ -150,6 +151,17 @@ addAnnKeywords anns conName ks = Map.insert (AnnKey ss conName) (annNone {anns =
 
 -- ---------------------------------------------------------------------
 
+replaceAnnKey :: (SYB.Data old,SYB.Data new)
+  => Anns -> GHC.Located old -> GHC.Located new -> Anns
+replaceAnnKey anns old new =
+  case Map.lookup (mkAnnKey old) anns of
+    Nothing -> anns
+    Just v -> anns'
+      where
+        anns1 = Map.delete (mkAnnKey old) anns
+        anns' = Map.insert (mkAnnKey new) v anns1
+
+-- ---------------------------------------------------------------------
 -- |Update the DeltaPos for the given annotation keys
 setOffsets :: Anns -> [(AnnKey,Annotation)] -> Anns
 setOffsets anne kvs = foldl' setOffset anne kvs
