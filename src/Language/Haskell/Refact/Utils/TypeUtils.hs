@@ -3595,7 +3595,9 @@ renamePNworker oldPN newName useQual t = do
           -- Now do (b)
           logm $ "renamePNWorker.renameFunBind.renameFunBind:starting matches"
           let w (GHC.L lm (GHC.Match mln pats _typ (GHC.GRHSs grhs lb))) = do
-                worker False lm Nothing
+                case mln of
+                  Just (GHC.L lmn _,_) -> worker False lmn Nothing
+                  Nothing -> return ()
           mapM_ w $ tail matches
           logm $ "renamePNWorker.renameFunBind.renameFunBind.renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MG matches a typ o) co fvs tick))

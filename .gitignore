@@ -428,3 +428,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/DupDef/Dd1.hs.parsed_out
 /test/testdata/Renaming/Field1.hs.parsed_out
 /test/testdata/Renaming/Field3.hs.parsed_out
+/src/Language/Haskell/Refact/Utils/HLint.hs

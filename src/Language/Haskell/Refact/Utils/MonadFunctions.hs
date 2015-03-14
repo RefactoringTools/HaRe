@@ -261,6 +261,7 @@ replaceRdrName (GHC.L l newName) = do
              return r
       (parsed',anns') = runState fn anns
   logm $ "replaceRdrName:after:parsed'=" ++ showGhc parsed'
+  -- logm $ "replaceRdrName:after:parsed'=" ++ SYB.showData SYB.Parser 0 parsed'
   putRefactParsed parsed' mempty
   setRefactAnns anns'
   return ()

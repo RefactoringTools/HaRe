@@ -2289,8 +2289,8 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
-      ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
       -- putStrLn $ "annotated parsed':" ++ showAnnDataFromState s
       -- putStrLn $ "annotated anns':" ++ showGhc (annsFromState s)
       (showGhcQual n) `shouldBe` "LocToName.sumSquares"
