@@ -147,7 +147,7 @@ addAnnKeywords anns conName ks = Map.insert (AnnKey ss conName) (annNone {anns =
   where
     -- First find the first srcspan having the conName
     -- MP: First in what sense?
-    AnnKey ss _ = ghead "addAnnKeywords" $ filter (\(AnnKey _ s) -> s == conName) $ Map.keys anns
+    AnnKey ss _ = ghead "addAnnKeywords" . filter (\(AnnKey _ s) -> s == conName) $ Map.keys anns
 
 -- ---------------------------------------------------------------------
 

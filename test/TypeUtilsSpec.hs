@@ -92,9 +92,8 @@ spec = do
 
       let Just (res@(GHC.L l n)) = locToName (14,1) renamed
       showGhcQual n `shouldBe` "Demote.WhereIn2.sq"
-      -- Note: loc does not line up due to multiple matches in FunBind
-      showGhcQual l `shouldBe` "Demote/WhereIn2.hs:13:1-2"
-      getLocatedStart res `shouldBe` (13,1)
+      showGhcQual l `shouldBe` "Demote/WhereIn2.hs:14:1-2"
+      getLocatedStart res `shouldBe` (14,1)
 
     -- ---------------------------------
 
@@ -1508,7 +1507,7 @@ spec = do
 
   describe "rmDecl" $ do
     it "removes a top level declaration, leaving type signature" $ do
-      (t, toks) <- parsedFileMd1Ghc
+      (t, toks) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
@@ -1518,11 +1517,11 @@ spec = do
          (newDecls,_removedDecl,_removedSig) <- rmDecl n False declsr
 
          return newDecls
-      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      (nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      -- (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       -- (drawTreeCompact ((tkCache $ rsTokenCache $ fromJust $ rsModule s) Map.! mainTid)) `shouldBe` ""
       -- (drawTreeCompact $ adjustLinesForDeleted ((tkCache $ rsTokenCache $ fromJust $ rsModule s) Map.! mainTid)) `shouldBe` ""
       -- (showGhcQual $ retrieveTokensPpr ((tkCache $ rsTokenCache $ fromJust $ rsModule s) Map.! mainTid)) `shouldBe` ""

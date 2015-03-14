@@ -37,10 +37,7 @@ import qualified DynFlags      as GHC
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
--- import qualified MonadUtils    as GHC
 
---import Control.Monad.Base ( liftBase)
---import Control.Arrow (first)
 import Control.Applicative
 import Control.Monad.State
 import Data.List
@@ -56,6 +53,8 @@ import Language.Haskell.GHC.ExactPrint.Utils
 import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger
+
+import qualified Data.Map as Map
 
 -- Monad transformer stuff
 import Control.Monad.Trans.Control ( control, liftBaseOp, liftBaseOp_)
@@ -100,7 +99,12 @@ data RefactStashId = Stash !String deriving (Show,Eq,Ord)
 
 data RefactModule = RefMod
         { rsTypecheckedMod  :: !GHC.TypecheckedModule
-        , rsOrigTokenStream :: ![PosToken]  -- ^Original Token stream for the current module
+        , rsOrigTokenStream :: ![PosToken]         -- ^Original Token stream for the current module
+        , rsNameMap         :: NameMap
+          -- ^ Mapping from the names in the ParsedSource to the renamed
+          -- versions. Note: No strict mark, can be computed lazily.
+
+          -- ++AZ++ TODO: Once HaRe can rename again, change rsTokenCache to something more approriate. Ditto rsStreamModified
         , rsTokenCache      :: !(TokenCache Anns)  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
         , rsStreamModified  :: !RefacResult        -- ^current module has updated the AST
         }

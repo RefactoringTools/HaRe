@@ -58,6 +58,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , hsFDsFromInside, hsFDNamesFromInside
     , hsVisibleDs
     , rdrName2Name
+    , rdrName2Name'
 
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
@@ -129,6 +130,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     , removeOffset
 
+    , nameSybQuery
+
     -- * Typed AST traversals (added by CMB)
     -- * Miscellous
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
@@ -180,6 +183,8 @@ import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
+
+import qualified Data.Map as Map
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib hiding (liftIO,MonadPlus,mzero)
 
@@ -2242,76 +2247,17 @@ locToName':: forall a t.(SYB.Data t, SYB.Data a, Eq a)
                     =>SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located a)  -- ^ The result
--- locToName':: _
-locToName' (row,col) t =
-      if res1 /= Nothing
-        then res1
-        else res2
+locToName' (row,col) t = res1
      where
         res1 :: Maybe (GHC.Located a)
-        res1 = SYB.something
-            (Nothing `SYB.mkQ` worker
-                     `SYB.extQ` workerBind
-                     `SYB.extQ` workerExpr
-                     `SYB.extQ` workerLIE
-                     `SYB.extQ` workerHsTyVarBndr
-                     `SYB.extQ` workerLHsType
-                     ) t
-        res2 :: Maybe (GHC.Located a)
-        res2 = SYB.something
-            (Nothing `SYB.mkQ` workerFunBind) t
+        res1 = SYB.something (nameSybQuery checker) t
 
-        {-
-        res = reverse $ everythingStaged SYB.Renamer (++) []
-            ([] `SYB.mkQ` workerFunBind `SYB.extQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+        checker pnt =
+          if inScope pnt
+             then Just pnt
+             else Nothing
 
-        res' = case res of
-          [] -> Nothing
-          xs -> Just (head xs)
-        -}
-        -- A FunBind has a MatchGroup, which lists all the possible
-        -- bindings. Hence
-        --   x 0 = 0
-        --   x y = 2 * y
-        -- Will have a single FunBind, with name x and using the
-        -- specific (GHC.L l GHC.Name) of the x on the first line.
-        -- Attempting to find the variable x on the second line will
-        -- fail, it needs to be deduced from a FunBind having more
-        -- than one match. The Located Match includes the original
-        -- variable name in the location, but not in the match contents
-        workerFunBind ((GHC.FunBind pnt _ (GHC.MG matches _ _ _) _ _ _) :: (GHC.HsBindLR a a))
-          | nonEmptyList match = Just pnt
-          where
-            -- match = error $ "locToName':matches=" ++ (showGhc $ map (\(GHC.L l _) -> l) matches)
-            match = filter inScope (tail matches)
-            -- match = filter inScope (matches)
-        workerFunBind _ = Nothing
-
-        worker (pnt :: (GHC.Located a))
-          | inScope pnt = Just pnt
-        worker _ = Nothing
-
-        workerBind pnt@(GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat a)))
-          | inScope pnt = Just (GHC.L l name)
-        workerBind _ = Nothing
-
-        workerExpr (pnt@(GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr a)))
-          | inScope pnt = Just (GHC.L l name)
-        workerExpr _ = Nothing
-
-        workerLIE (pnt@(GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
-          | inScope pnt = Just (GHC.L ln name)
-        workerLIE _ = Nothing
-
-        workerHsTyVarBndr (pnt@(GHC.L l (GHC.UserTyVar name))::  (GHC.LHsTyVarBndr a))
-          | inScope pnt = Just (GHC.L l name)
-        workerHsTyVarBndr _ = Nothing
-
-        workerLHsType (pnt@(GHC.L l (GHC.HsTyVar name)):: (GHC.LHsType a))
-          | inScope pnt = Just (GHC.L l name)
-        workerLHsType _ = Nothing
-
-
+        -- ++AZ++:TODO: Is inScope actually required?
         inScope :: GHC.Located e -> Bool
         inScope (GHC.L l _) =
           case l of
@@ -2323,8 +2269,43 @@ locToName' (row,col) t =
               (col >= (GHC.srcSpanStartCol ss)) &&
               (col <= (GHC.srcSpanEndCol   ss))
 
+-- ---------------------------------------------------------------------
 
---------------------------------------------------------------------------------
+nameSybQuery :: (SYB.Typeable a, SYB.Typeable t)
+             => (GHC.Located a -> Maybe r) -> t -> Maybe r
+nameSybQuery checker = q
+  where
+    q = Nothing `SYB.mkQ` worker
+                `SYB.extQ` workerBind
+                `SYB.extQ` workerExpr
+                `SYB.extQ` workerLIE
+                `SYB.extQ` workerHsTyVarBndr
+                `SYB.extQ` workerLHsType
+
+    worker (pnt :: (GHC.Located a))
+      = checker pnt
+
+    workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat a)))
+      = checker (GHC.L l name)
+    workerBind _ = Nothing
+
+    workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr a)))
+      = checker (GHC.L l name)
+    workerExpr _ = Nothing
+
+    workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
+      = checker (GHC.L ln name)
+    workerLIE _ = Nothing
+
+    workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name))::  (GHC.LHsTyVarBndr a))
+      = checker (GHC.L l name)
+    workerHsTyVarBndr _ = Nothing
+
+    workerLHsType ((GHC.L l (GHC.HsTyVar name)):: (GHC.LHsType a))
+      = checker (GHC.L l name)
+    workerLHsType _ = Nothing
+
+-- ---------------------------------------------------------------------
 
 -- |Find all Located Names in the given Syntax phrase.
 allNames::(SYB.Data t)
@@ -3051,14 +3032,11 @@ rmDecl:: (SYB.Data t)
                                    -- siganture
 rmDecl pn incSig t = do
   logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
-  -- drawTokenTreeDetailed "rmDecl.entry tree" -- ++AZ++ 'in' present
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
-  -- drawTokenTreeDetailed "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
-  -- drawTokenTree "rmDecl.entry after inLet" -- ++AZ++ 'in' missing
   t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
 
-             -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
+         -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
   -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
   (t'',sig') <- if incSig
                   then rmTypeSig pn t'
@@ -3091,6 +3069,7 @@ rmDecl pn incSig t = do
                decl = ghead "rmDecl" decls2
            -- error $ (render.ppi) t -- ecl ++ (show decl)
            topLevel <- isTopLevelPN pn
+           -- logm $ "rmDecl.inDecls(topLevel,decl)=" ++ showGhc (topLevel,decl)
            case topLevel of
                      True   -> rmTopLevelDecl decl decls
                      False  -> rmLocalDecl decl decls
@@ -3135,7 +3114,7 @@ rmDecl pn incSig t = do
                 -> RefactGhc [GHC.LHsBind GHC.Name]
     rmTopLevelDecl decl decls
       =do
-          logm $ "rmTopLevelDecl:" -- ++AZ++
+          logm $ "rmTopLevelDecl:" ++ showGhc decl -- ++AZ++
 
           -- removeToksForPos (getStartEndLoc decl)
           -- decl' <- syncDeclToLatestStash decl
@@ -3363,6 +3342,204 @@ renamePlated::(SYB.Data t)
    ->RefactGhc t
 renamePlated oldPN newName useQual t = do
   return t
+
+-- ---------------------------------------------------------------------
+
+-- | Rename each occurrences of the identifier in the given syntax
+-- phrase with the new name.
+
+-- TODO: the syntax phrase is required to be GHC.Located, not sure how
+-- to specify this without breaking the everywhereMStaged call
+
+renamePN'::(SYB.Data t)
+   =>GHC.Name             -- ^ The identifier to be renamed.
+   ->GHC.Name             -- ^ The new name, including possible qualifier
+   ->Bool                 -- ^ True means use the qualified form for
+                          --   the new name.
+   ->t                    -- ^ The syntax phrase
+   ->RefactGhc t
+renamePN' oldPN newName useQual t = do
+  -- logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
+  nameMap <- getRefactNameMap
+  -- Note: bottom-up traversal (no ' at end)
+  SYB.everywhereM (SYB.mkM rename
+                  `SYB.extM` renameVar
+                  `SYB.extM` renameTyVar
+                  `SYB.extM` renameHsTyVarBndr
+                  `SYB.extM` renameLIE
+                  `SYB.extM` renameLPat
+                  `SYB.extM` renameTypeSig
+                  `SYB.extM` renameFunBind
+                  ) t
+  where
+    newNameQual   = rdrNameFromName True  newName
+    newNameUnqual = rdrNameFromName False newName
+    newNameRdr    = rdrNameFromName useQual newName
+
+    rename :: GHC.Located GHC.RdrName -> RefactGhc (GHC.Located GHC.RdrName)
+    rename (GHC.L l n)
+     | GHC.nameUnique n == GHC.nameUnique oldPN
+     = do
+          logm $ "renamePN:rename at :" ++ show l
+          worker useQual l Nothing
+          return (GHC.L l newName)
+    rename x = return x
+
+    renameVar :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
+    renameVar v@(GHC.L l (GHC.HsVar n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          logm $ "renamePN:renameVar at :" ++ (showGhc l)
+
+          -- Get the original qualification, if any
+          rn <- (getParsedForRenamedLocated v :: RefactGhc (GHC.LHsExpr GHC.RdrName))
+          let (GHC.L _ (GHC.HsVar mqn)) = rn
+          let mrnq = GHC.isQual_maybe mqn
+          logm $ "renamePN:renameVar mrn,mrnq :" ++ (showGhc (rn,mrnq))
+
+          worker useQual l mrnq
+          return (GHC.L l (GHC.HsVar newName))
+    renameVar x = return x
+
+    -- HsTyVar {Name: Renaming.D1.Tree}))
+    renameTyVar :: (GHC.Located (GHC.HsType GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsType GHC.RdrName))
+    renameTyVar v@(GHC.L l (GHC.HsTyVar n))
+     | GHC.nameUnique n == GHC.nameUnique oldPN
+     = do
+          logm $ "renamePN:renameTyVar at :" ++ (showGhc l)
+
+          -- Get the original qualification, if any
+          rn <- (getParsedForRenamedLocated v :: RefactGhc (GHC.LHsType GHC.RdrName))
+          let (GHC.L _ (GHC.HsTyVar mqn)) = rn
+          let mrnq = GHC.isQual_maybe mqn
+          logm $ "renamePN:renameVar mrn,mrnq :" ++ (showGhc (rn,mrnq))
+
+          worker useQual l mrnq
+          return (GHC.L l (GHC.HsTyVar newName))
+    renameTyVar x = return x
+
+
+    renameHsTyVarBndr :: GHC.LHsTyVarBndr GHC.RdrName -> RefactGhc (GHC.LHsTyVarBndr GHC.RdrName)
+    renameHsTyVarBndr v@(GHC.L l (GHC.UserTyVar n))
+     | GHC.nameUnique n == GHC.nameUnique oldPN
+     = do
+          logm $ "renamePN:renameHsTyVarBndr at :" ++ (showGhc l)
+
+          -- Get the original qualification, if any
+          rn <- (getParsedForRenamedLocated v :: RefactGhc (GHC.LHsTyVarBndr GHC.RdrName))
+          let (GHC.L _ (GHC.UserTyVar mqn)) = rn
+          let mrnq = GHC.isQual_maybe mqn
+          logm $ "renamePN:renameVar mrn,mrnq :" ++ (showGhc (rn,mrnq))
+
+          worker useQual l mrnq
+          return (GHC.L l (GHC.UserTyVar newName))
+    renameHsTyVarBndr x = return x
+
+    -- ---------------------------------
+
+    renameLIE :: (GHC.LIE GHC.RdrName) -> RefactGhc (GHC.LIE GHC.RdrName)
+    renameLIE (GHC.L l (GHC.IEVar (GHC.L ln n)))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          -- logm $ "renamePN:renameLIE.IEVar at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEVar (GHC.L ln newName)))
+
+    renameLIE (GHC.L l (GHC.IEThingAbs (GHC.L ln n)))
+     | GHC.nameUnique n == GHC.nameUnique oldPN
+     = do
+          -- logm $ "renamePN:renameLIE.IEThingAbs at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEThingAbs (GHC.L ln newName)))
+
+    renameLIE (GHC.L l (GHC.IEThingAll (GHC.L ln n)))
+     | GHC.nameUnique n == GHC.nameUnique oldPN
+     = do
+          -- logm $ "renamePN:renameLIE.IEThingAll at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEThingAll (GHC.L ln newName)))
+
+    -- TODO: check inside the ns here too
+    renameLIE (GHC.L l (GHC.IEThingWith (GHC.L ln n) ns))
+     | GHC.nameUnique n == GHC.nameUnique oldPN
+     = do
+          logm $ "renamePN:renameLIE.IEThingWith at :" ++ (showGhc l)
+          worker useQual l Nothing
+          return (GHC.L l (GHC.IEThingWith (GHC.L ln newName) ns))
+     | any (\(GHC.L _ nn) -> (GHC.nameUnique nn == GHC.nameUnique oldPN)) ns
+     = do
+          worker useQual l Nothing
+          -- TODO: update ns
+          return (GHC.L l (GHC.IEThingWith (GHC.L ln newName) ns))
+
+    renameLIE x = do
+         -- logm $ "renamePN:renameLIE miss for :" ++ (showGhc x)
+         return x
+
+    -- ---------------------------------
+
+    renameLPat :: (GHC.LPat GHC.RdrName) -> RefactGhc (GHC.LPat GHC.RdrName)
+    renameLPat v@(GHC.L l (GHC.VarPat n))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN)
+     = do
+          logm $ "renamePNworker:renameLPat at :" ++ (showGhc l)
+
+          -- Get the original qualification, if any
+          rn <- (getParsedForRenamedLocated v :: RefactGhc (GHC.LPat GHC.RdrName))
+          let (GHC.L _ (GHC.VarPat mqn)) = rn
+          let mrnq = GHC.isQual_maybe mqn
+          logm $ "renamePN:renameVar mrn,mrnq :" ++ (showGhc (rn,mrnq))
+
+          worker False l mrnq
+          return (GHC.L l (GHC.VarPat newName))
+    renameLPat x = return x
+
+    renameFunBind :: GHC.LHsBindLR GHC.RdrName GHC.RdrName -> RefactGhc (GHC.LHsBindLR GHC.RdrName GHC.RdrName)
+    renameFunBind (GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick))
+     | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
+     = do -- Need to (a) rename the actual funbind name
+          --         NOTE: due to bottom-up traversal, (a) should
+          --               already have been done.
+          --         (b) rename each of 'tail matches'
+          --             (head is renamed in (a) )
+          -- logm $ "renamePN.renameFunBind"
+          worker False ln Nothing
+          -- Now do (b)
+          logm $ "renamePN.renameFunBind.renameFunBind:starting matches"
+          let w (GHC.L lm (GHC.Match mln pats _typ (GHC.GRHSs grhs lb))) = do
+                case mln of
+                  Just (GHC.L lmn _,_) -> worker False lmn Nothing
+                  Nothing -> return ()
+          mapM_ w $ tail matches
+          logm $ "renamePN.renameFunBind.renameFunBind.renameFunBind:matches done"
+          return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MG matches a typ o) co fvs tick))
+    renameFunBind x = return x
+
+    renameTypeSig :: (GHC.LSig GHC.RdrName) -> RefactGhc (GHC.LSig GHC.RdrName)
+    renameTypeSig (GHC.L l (GHC.TypeSig ns typ p))
+     = do
+         -- logm $ "renamePN:renameTypeSig"
+         -- _ns' <- renamePN oldPN newName False ns
+         -- Has already been renamed, make sure qualifier is removed
+         ns' <- renamePN newName newName False ns
+         typ' <- renamePN oldPN newName False typ
+         -- logm $ "renamePN:renameTypeSig done"
+         return (GHC.L l (GHC.TypeSig ns' typ' p))
+    renameTypeSig x = return x
+
+    -- The param l is only useful for the start of the token pos
+    worker :: Bool -> GHC.SrcSpan -> Maybe (GHC.ModuleName, GHC.OccName) -> RefactGhc ()
+    worker useQual' l mmo
+     = do    logm $ "renamePN.worker:(useQual',l,mmo)=" ++ showGhc (useQual',l,mmo)
+             newTok <- case mmo of
+                   Nothing -> rdrNameFromName useQual' newName
+                   Just (modu,_) -> do
+                     logm $ "renamePN.worker:modu=" ++ showGhcQual modu
+                     newName' <- mkNewGhcName (Just $ GHC.mkModule GHC.mainPackageKey modu)
+                                              (GHC.occNameString $ GHC.getOccName newName)
+                     rdrNameFromName True newName'
+             replaceRdrName (GHC.L l newTok)
+             return ()
 
 -- ---------------------------------------------------------------------
 
@@ -3936,12 +4113,18 @@ getSig pn t = maybeSig
 
 -- ---------------------------------------------------------------------
 
-rdrName2Name :: GHC.Located GHC.RdrName -> RefactGhc GHC.Name
-rdrName2Name (GHC.L l rdr) = do
+rdrName2Name' :: GHC.Located GHC.RdrName -> RefactGhc GHC.Name
+rdrName2Name' (GHC.L l rdr) = do
   renamed <- getRefactRenamed
   let mn = locToName (getGhcLoc l) renamed
-  return (GHC.unLoc $ gfromJust ("rdrName2Name:failed for:" ++ showGhc (GHC.L l rdr)) mn)
+  return (GHC.unLoc $ gfromJust ("rdrName2Name':failed for:" ++ showGhc (GHC.L l rdr)) mn)
 
 -- ---------------------------------------------------------------------
 
+rdrName2Name :: GHC.Located GHC.RdrName -> RefactGhc GHC.Name
+rdrName2Name lrn = do
+  nameMap <- getRefactNameMap
+  return (fromMaybe (error $ "rdrName2Name: no name found for" ++ showGhc lrn)
+                     (Map.lookup lrn nameMap))
 
+-- ---------------------------------------------------------------------

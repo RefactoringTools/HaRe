@@ -10,6 +10,7 @@ module Language.Haskell.Refact.Utils.Types
        , SimpPos
        , SimpSpan
        , Positioning(..)
+       , NameMap
        ) where
 
 import qualified GHC      as GHC
@@ -70,3 +71,6 @@ data Positioning = PlaceAdjacent -- ^Only a single space between the
                  deriving (Show)
 
 
+-- ---------------------------------------------------------------------
+
+type NameMap = Map.Map (GHC.Located GHC.RdrName) GHC.Name

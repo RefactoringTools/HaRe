@@ -31,6 +31,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , clearParsedModule
        , getRefactFileName
        , getRefactModule
+       , getRefactNameMap
 
        -- * New ghc-exactprint interfacing
        , replaceRdrName
@@ -51,6 +52,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        ) where
 
 import Control.Monad.State
+import Control.Exception
+import Data.Maybe
 
 import qualified FastString    as GHC
 import qualified GHC           as GHC
@@ -226,6 +229,7 @@ clearParsedModule = do
 -- |Replace the Located RdrName in the ParsedSource
 replaceRdrName :: GHC.Located GHC.RdrName -> RefactGhc ()
 replaceRdrName (GHC.L l newName) = do
+  -- ++AZ++ TODO: move this body to somewhere appropriate
   logm $ "replaceRdrName:" ++ showGhcQual (l,newName)
   parsed <- getRefactParsed
   anns <- getRefactAnns
@@ -261,7 +265,6 @@ replaceRdrName (GHC.L l newName) = do
              return r
       (parsed',anns') = runState fn anns
   logm $ "replaceRdrName:after:parsed'=" ++ showGhc parsed'
-  -- logm $ "replaceRdrName:after:parsed'=" ++ SYB.showData SYB.Parser 0 parsed'
   putRefactParsed parsed' mempty
   setRefactAnns anns'
   return ()
@@ -286,7 +289,16 @@ getRefactModule = do
     Just tm -> do
       let t  = rsTypecheckedMod tm
       let pm = GHC.tm_parsed_module t
-      return $ GHC.ms_mod $ GHC.pm_mod_summary pm
+      return (GHC.ms_mod $ GHC.pm_mod_summary pm)
+
+-- ---------------------------------------------------------------------
+
+getRefactNameMap :: RefactGhc NameMap
+getRefactNameMap = do
+  mtm <- gets rsModule
+  case mtm of
+    Nothing  -> error $ "Hare.MonadFunctions.getRefacNameMap:no module loaded"
+    Just tm -> return (rsNameMap tm)
 
 -- ---------------------------------------------------------------------
 
@@ -327,7 +339,7 @@ initRefactModule
 initRefactModule tm toks
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsOrigTokenStream = toks
-                 -- , rsTokenCache = initTokenCacheLayout (initTokenLayout
+                 , rsNameMap = initRdrNameMap tm
                  , rsTokenCache = initTokenCacheLayout (annotateAST
                                     (GHC.pm_parsed_source $ GHC.tm_parsed_module tm)
                                     (GHC.pm_annotations $ GHC.tm_parsed_module tm))
@@ -337,6 +349,25 @@ initRefactModule tm toks
 
 initTokenCacheLayout :: a -> TokenCache a
 initTokenCacheLayout a = TK (Map.fromList [((TId 0),a)]) (TId 0)
+
+initRdrNameMap :: GHC.TypecheckedModule -> NameMap
+initRdrNameMap tm = r
+  where
+    parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module tm
+    renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
+    isLocatedRdrName :: GHC.Located GHC.RdrName -> Bool
+    isLocatedRdrName _ = True
+
+    isLocatedName :: GHC.Located GHC.Name -> Bool
+    isLocatedName _ = True
+
+    rdrNames = SYB.listify isLocatedRdrName parsed
+    names    = SYB.listify isLocatedName    renamed
+
+    nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
+
+    r1 = Map.fromList $ map (\lr@(GHC.L l r) -> (lr,Map.lookup l nameMap)) rdrNames
+    r = Map.map (fromMaybe (error "initRdrNameMap:no val")) r1
 
 -- ---------------------------------------------------------------------
 {-
@@ -376,4 +407,3 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
        return ()
 -}
 -- EOF
-
