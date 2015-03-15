@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{- # LANGUAGE CPP # -}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -53,10 +53,36 @@ import Language.Haskell.GHC.ExactPrint.Utils
 import qualified Bag           as GHC
 import qualified GHC           as GHC
 import qualified Outputable    as GHC
+import qualified SrcLoc        as GHC
 
 import Data.Generics
 
 -- ---------------------------------------------------------------------
+
+bindsFromDecls :: [GHC.LHsDecl name] -> GHC.HsValBinds name
+bindsFromDecls ds = GHC.ValBindsIn (GHC.listToBag binds) sigs
+  where
+    binds = concatMap goBind ds
+    goBind (GHC.L l (GHC.ValD d)) = [(GHC.L l d)]
+    goBind _ = []
+
+    sigs = concatMap goSig ds
+    goSig (GHC.L l (GHC.SigD d)) = [(GHC.L l d)]
+    goSig _ = []
+
+-- ---------------------------------------------------------------------
+
+declsFromBinds :: GHC.HsValBinds name -> [GHC.LHsDecl name]
+declsFromBinds (GHC.ValBindsIn bs sigs) = ds
+  where
+    sigds = map (\(GHC.L l s) -> (GHC.L l (GHC.SigD s))) sigs
+    binds = map (\(GHC.L l s) -> (GHC.L l (GHC.ValD s))) (GHC.bagToList bs)
+
+    ds = GHC.sortLocated (sigds ++ binds)
+declsFromBinds (GHC.ValBindsOut _ _) = error "declsFromBinds:ValBindsOut"
+
+-- ---------------------------------------------------------------------
+
 
 getValBindSigs :: GHC.HsValBinds GHC.Name -> [GHC.LSig GHC.Name]
 getValBindSigs binds = case binds of
@@ -122,6 +148,17 @@ class (Data t,Data name) => HsValBinds t name |  t -> name where
     -- GHC.RenamedSource
     hsTyDecls :: t -> [[GHC.LTyClDecl name]]
 
+
+instance HsValBinds GHC.ParsedSource GHC.RdrName where
+  hsValBinds (GHC.L _ (GHC.HsModule _ _ _ ds _ _)) = bindsFromDecls ds
+
+  replaceValBinds (GHC.L l (GHC.HsModule mn exps imps _ds deps hm)) binds =
+    (GHC.L l (GHC.HsModule mn exps imps ds' deps hm))
+    where
+      ds' = declsFromBinds binds
+
+  -- hsTyDecls (grp,_,_,_) = map GHC.group_tyclds (GHC.hs_tyclds grp)
+  hsTyDecls (GHC.L _ (GHC.HsModule _ _ _ _ds _ _)) = []
 
 instance HsValBinds GHC.RenamedSource GHC.Name where
   hsValBinds (grp,_,_,_) = (GHC.hs_valds grp)

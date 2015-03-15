@@ -21,6 +21,11 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , mkKey
   , setColRec
   , getOriginalPos
+
+  -- * TransForm
+  , Transform
+  , runTransform
+  , logTr
   ) where
 
 import qualified FastString    as GHC
@@ -33,6 +38,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
+import Control.Monad.RWS
 import Control.Monad.State
 import Data.List
 import Data.Monoid
@@ -256,3 +262,15 @@ getOriginalPos ann la@(GHC.L ss _) kw =
   in case mdp of
     Nothing -> ((0,0),DP (0,0))
     Just dp@(DP (ro,co)) -> ((ro + srcSpanStartLine ss, co + srcSpanStartColumn ss),dp)
+
+-- ---------------------------------------------------------------------
+
+-- | Monad type for updating the AST and managing the annotations at the same
+-- time. The W state is used to generate logging information if required.
+type Transform a = RWS () [String] Anns a
+
+runTransform :: Anns ->Transform a -> (a,Anns,[String])
+runTransform ans f = runRWS f () ans
+
+logTr :: String -> Transform ()
+logTr str = tell [str]
