@@ -73,4 +73,4 @@ data Positioning = PlaceAdjacent -- ^Only a single space between the
 
 -- ---------------------------------------------------------------------
 
-type NameMap = Map.Map (GHC.Located GHC.RdrName) GHC.Name
+type NameMap = Map.Map GHC.SrcSpan GHC.Name

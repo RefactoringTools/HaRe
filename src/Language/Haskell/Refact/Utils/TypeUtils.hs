@@ -130,8 +130,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     , removeOffset
 
-    , nameSybQuery
-
     -- * Typed AST traversals (added by CMB)
     -- * Miscellous
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
@@ -2271,7 +2269,7 @@ locToName' (row,col) t = res1
               (col <= (GHC.srcSpanEndCol   ss))
 
 -- ---------------------------------------------------------------------
-
+{-
 nameSybQuery :: (SYB.Typeable a, SYB.Typeable t)
              => (GHC.Located a -> Maybe r) -> t -> Maybe r
 nameSybQuery checker = q
@@ -2286,26 +2284,30 @@ nameSybQuery checker = q
     worker (pnt :: (GHC.Located a))
       = checker pnt
 
-    workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat a)))
+    -- workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat a)))
+    workerBind (GHC.L l (GHC.VarPat name))
       = checker (GHC.L l name)
     workerBind _ = Nothing
 
-    workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr a)))
+    -- workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr a)))
+    workerExpr ((GHC.L l (GHC.HsVar name)))
       = checker (GHC.L l name)
     workerExpr _ = Nothing
 
     workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
+    -- workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))))
       = checker (GHC.L ln name)
     workerLIE _ = Nothing
 
-    workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name))::  (GHC.LHsTyVarBndr a))
+    -- workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name))::  (GHC.LHsTyVarBndr a))
+    workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name)))
       = checker (GHC.L l name)
     workerHsTyVarBndr _ = Nothing
 
-    workerLHsType ((GHC.L l (GHC.HsTyVar name)):: (GHC.LHsType a))
+    workerLHsType ((GHC.L l (GHC.HsTyVar name)))
       = checker (GHC.L l name)
     workerLHsType _ = Nothing
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |Find all Located Names in the given Syntax phrase.
@@ -3361,13 +3363,14 @@ renamePN'::(SYB.Data t)
    ->RefactGhc t
 renamePN' oldPN newName useQual t = do
   -- logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
+  logm $ "renamePN: t=" ++ (SYB.showData SYB.Parser 0 t)
   nameMap <- getRefactNameMap
   newNameQual   <- rdrNameFromName True  newName
   newNameUnqual <- rdrNameFromName False newName
   newNameRdr    <- rdrNameFromName useQual newName
   let
     cond :: GHC.Located GHC.RdrName -> Bool
-    cond ln =
+    cond (GHC.L ln _) =
       case Map.lookup ln nameMap of
         Nothing -> False
         Just n -> GHC.nameUnique n == GHC.nameUnique oldPN
@@ -3377,7 +3380,7 @@ renamePN' oldPN newName useQual t = do
     rename (GHC.L l n)
      | cond (GHC.L l n)
      = do
-          logTr $ "renamePN:rename at :" ++ show l
+          logTr $ "renamePN:rename at :" ++ showGhc l
           return (GHC.L l newNameRdr)
     rename x = return x
 
@@ -3553,7 +3556,7 @@ renamePN' oldPN newName useQual t = do
                   -- `SYB.extM` renameTypeSig
                   `SYB.extM` renameFunBind
                    ) t)
-  logm $ "renamePN':transform:" ++ unlines logOut
+  logm $ "renamePN':transform:\n" ++ unlines logOut
   setRefactAnns ans'
   return t'
 
@@ -4138,7 +4141,7 @@ rdrName2Name' (GHC.L l rdr) = do
 -- ---------------------------------------------------------------------
 
 rdrName2Name :: GHC.Located GHC.RdrName -> RefactGhc GHC.Name
-rdrName2Name lrn = do
+rdrName2Name (GHC.L lrn _) = do
   nameMap <- getRefactNameMap
   return (fromMaybe (error $ "rdrName2Name: no name found for" ++ showGhc lrn)
                      (Map.lookup lrn nameMap))

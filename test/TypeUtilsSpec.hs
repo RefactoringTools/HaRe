@@ -2102,26 +2102,30 @@ spec = do
       (t, toks) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
 
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let declsr = hsBinds renamed
-      let decl = head $ drop 2 declsr
-      (showGhcQual decl) `shouldBe` "Demote.WhereIn4.sumSquares x y\n  = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n  where\n      p = 2"
+      -- let declsr = hsBinds renamed
+      let declsr = hsBinds parsed
+      let decl = head $ drop 0 declsr
+      (showGhcQual decl) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      p = 2"
 
       let Just (GHC.L _l n) = locToName (11, 21) renamed
       let
         comp = do
          newName <- mkNewGhcName Nothing "p_1"
-         new <- renamePN n newName False decl
-
+         -- new <- renamePN n newName False decl
+         new <- renamePN' n newName False decl
+         let parsed' = replaceBinds parsed (new:tail declsr)
+         putRefactParsed parsed' mempty
          return (new,newName)
       let
 
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       ((nb,nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
       (showGhcQual (n,nn)) `shouldBe` "(p, p_1)"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
       (sourceFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p_1 x + sq p_1 y\n         where p_1=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
-      (showGhcQual nb) `shouldBe` "Demote.WhereIn4.sumSquares x y\n  = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n  where\n      p_1 = 2"
+      (showGhcQual nb) `shouldBe` "sumSquares x y\n  = sq p_1 x + sq p_1 y\n  where\n      p_1 = 2"
 
 
     -- ---------------------------------

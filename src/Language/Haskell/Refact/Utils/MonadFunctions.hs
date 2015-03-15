@@ -1,5 +1,6 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 -- |
@@ -46,6 +47,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        , setStateStorage
        , getStateStorage
+
+       -- * Utility
+       , nameSybQuery
 
        -- * For use by the tests only
        , initRefactModule
@@ -355,19 +359,62 @@ initRdrNameMap tm = r
   where
     parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module tm
     renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
-    isLocatedRdrName :: GHC.Located GHC.RdrName -> Bool
-    isLocatedRdrName _ = True
 
-    isLocatedName :: GHC.Located GHC.Name -> Bool
-    isLocatedName _ = True
+    checkRdr :: GHC.Located GHC.RdrName -> Maybe [GHC.SrcSpan]
+    checkRdr (GHC.L l _)= Just [l]
 
-    rdrNames = SYB.listify isLocatedRdrName parsed
-    names    = SYB.listify isLocatedName    renamed
+    checkName :: GHC.Located GHC.Name -> Maybe [GHC.Located GHC.Name]
+    checkName ln = Just [ln]
+
+    rdrNames = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkRdr) parsed
+    -- rdrNames = SYB.listify isLocatedRdrName parsed
+    -- names    = SYB.listify isLocatedName    renamed
+    names = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
 
     nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
 
-    r1 = Map.fromList $ map (\lr@(GHC.L l r) -> (lr,Map.lookup l nameMap)) rdrNames
+    r1 = Map.fromList $ map (\l -> (l,Map.lookup l nameMap)) rdrNames
     r = Map.map (fromMaybe (error "initRdrNameMap:no val")) r1
+
+-- ---------------------------------------------------------------------
+
+nameSybQuery :: (SYB.Typeable a, SYB.Typeable t)
+             => (GHC.Located a -> Maybe r) -> t -> Maybe r
+nameSybQuery checker = q
+  where
+    q = Nothing `SYB.mkQ` worker
+                `SYB.extQ` workerBind
+                `SYB.extQ` workerExpr
+                `SYB.extQ` workerLIE
+                `SYB.extQ` workerHsTyVarBndr
+                `SYB.extQ` workerLHsType
+
+    worker (pnt :: (GHC.Located a))
+      = checker pnt
+
+    -- workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat a)))
+    workerBind (GHC.L l (GHC.VarPat name))
+      = checker (GHC.L l name)
+    workerBind _ = Nothing
+
+    -- workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr a)))
+    workerExpr ((GHC.L l (GHC.HsVar name)))
+      = checker (GHC.L l name)
+    workerExpr _ = Nothing
+
+    workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
+    -- workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))))
+      = checker (GHC.L ln name)
+    workerLIE _ = Nothing
+
+    -- workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name))::  (GHC.LHsTyVarBndr a))
+    workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name)))
+      = checker (GHC.L l name)
+    workerHsTyVarBndr _ = Nothing
+
+    workerLHsType ((GHC.L l (GHC.HsTyVar name)))
+      = checker (GHC.L l name)
+    workerLHsType _ = Nothing
 
 -- ---------------------------------------------------------------------
 {-
