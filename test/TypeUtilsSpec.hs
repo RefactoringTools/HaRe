@@ -2075,7 +2075,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       -- let declsr = hsBinds renamed
-      let declsr = hsBinds parsed
+      -- let declsr = hsBinds parsed
       -- (showGhcQual declsr) `shouldBe` ""
       let Just (GHC.L _l n) = locToName (3, 1) renamed
       let
@@ -2134,8 +2134,10 @@ spec = do
       (t,toks) <- ct $ parsedFileGhc "./TokenTest.hs"
 
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
-      let (GHC.L l _) = head decls
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- let decls = hsBinds renamed
+      let decls = hsBinds parsed
+      let (GHC.L l _) = head $ drop 3 decls
       (showGhcQual (ss2span l)) `shouldBe` "((19, 1), (21, 14))"
       let Just (GHC.L _ n) = locToName (19, 1) renamed
       (showGhcQual n) `shouldBe` "TokenTest.foo"
@@ -2143,8 +2145,10 @@ spec = do
       let
         comp = do
          newName <- mkNewGhcName Nothing "bar2"
-         new <- renamePN n newName False (head decls)
-
+         -- new <- renamePN n newName False (head decls)
+         new <- renamePN' n newName False (head $ drop 3 decls)
+         let parsed' = replaceBinds parsed (take 3 decls ++ [new] ++ drop 4 decls)
+         putRefactParsed parsed' mempty
          return (new,newName)
       let
 
@@ -2153,7 +2157,7 @@ spec = do
       (showGhcQual (n,nn)) `shouldBe` "(TokenTest.foo, bar2)"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
       (sourceFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
-      (showGhcQual nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
+      (showGhcQual nb) `shouldBe` "bar2 x y\n  = do { c <- getChar;\n         return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
 
     -- ---------------------------------
@@ -2163,39 +2167,29 @@ spec = do
       -- let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let decls = hsBinds renamed
-      let decl@(GHC.L l _) = head decls
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- let decls = hsBinds renamed
+      let decls = hsBinds parsed
+      let decl@(GHC.L l _) = head $ drop 3 decls
       -- (showGhcQual l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
       (show $ ss2span l) `shouldBe` "((19,1),(21,14))"
       let Just (GHC.L _ n) = locToName (19, 1) renamed
       (showGhcQual n) `shouldBe` "TokenTest.foo"
 
-      -- let (forest',tree) = getSrcSpanFor forest (ghcSrcSpanToForestSpan l)
-
-      -- let toks' = retrieveTokensInterim tree
-      -- let (forest'',sspan) = addToksAfterSrcSpan forest' (gs2ss l) (PlaceOffset 2 0 2) toks'
       let decl' = decl
-      -- let decl' = syncAST decl (ss2f sspan)
-      --     forest''' = forest''
-
-      -- (showGhcQual $ getSrcSpan decl') `shouldBe` "Just foo:(1048600,1)-(1048602,13)"
-      -- (showSrcSpanF $ fromJust $ getSrcSpan decl') `shouldBe` "(((False,0,1,24),1),((False,0,1,26),14))"
-
-      -- (invariant forest''') `shouldBe` []
-      -- (showSrcSpanF $ ss2gs sspan) `shouldBe` "(((False,0,1,24),1),((False,0,1,26),14))"
-
-
-      -- (renderTree forest''') `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n"
 
       let
         comp = do
          newName <- mkNewGhcName Nothing "bar2"
          -- toksForOp <- getToksForSpan sspan -- The new span this time
-         new <- renamePN n newName False decl'
+         -- new <- renamePN n newName False decl'
+         new <- renamePN' n newName False decl'
+
+         let parsed' = replaceBinds parsed (take 3 decls ++ [new] ++ drop 4 decls)
+         putRefactParsed parsed' mempty
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp $ initialState { rsModule = Just (RefMod {rsTokenCache = undefined, rsTypecheckedMod = t, rsOrigTokenStream = toks, rsStreamModified=True})}
       ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
 
       -- (show tfo) `shouldBe` ""
@@ -2203,7 +2197,7 @@ spec = do
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((19,1),(19,5),\"bar2\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
       (sourceFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
-      (showGhcQual nb) `shouldBe` "bar2 x y\n  = do { c <- System.IO.getChar;\n         GHC.Base.return c }"
+      (showGhcQual nb) `shouldBe` "bar2 x y\n  = do { c <- getChar;\n         return c }"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
 
     ------------------------------------
@@ -2211,12 +2205,17 @@ spec = do
     it "replaces a name in a data declaration too" $ do
       (t, toks) <- parsedFileRenamingField1
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let Just (GHC.L _l n) = locToName (5, 19) renamed
+      -- let Just (GHC.L _l n) = locToName (5, 19) parsed
       let
         comp = do
          newName <- mkNewGhcName Nothing "pointx1"
-         new <- renamePN n newName False renamed
+         -- new <- renamePN n newName False renamed
+         new <- renamePN' n newName False parsed
+
+         putRefactParsed new mempty
 
          return (new,newName)
       let
@@ -2228,7 +2227,7 @@ spec = do
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((5,18),(5,25),\"pointx1\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx p * pointx p +\n                  pointy p * pointy p)\n\n"
       (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx1, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p +\n                  pointy p * pointy p)\n\n"
-      (unspace $ showGhcQual nb) `shouldBe` unspace "(Field1.absPoint :: Field1.Point -> GHC.Types.Float\n Field1.absPoint p\n = GHC.Float.sqrt\n (pointx1 p GHC.Num.* pointx1 p\n GHC.Num.+ Field1.pointy p GHC.Num.* Field1.pointy p)\n \n data Field1.Point\n = Field1.Pt {pointx1, Field1.pointy :: GHC.Types.Float},\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+      (unspace $ showGhcQual nb) `shouldBe` "module Field1 where\ndata Point = Pt {pointx1, pointy :: Float}\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p + pointy p * pointy p)"
 
 
     ------------------------------------
@@ -2236,13 +2235,17 @@ spec = do
     it "replaces a name in a type signature too" $ do
       (t, toks) <- parsedFileRenamingField1
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let Just (GHC.L _l n) = locToName (5, 6) renamed
       let
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
          newName <- mkNewGhcName Nothing "NewPoint"
-         new <- renamePN n newName False renamed
+         -- new <- renamePN n newName False renamed
+         new <- renamePN' n newName False parsed
+
+         putRefactParsed new mempty
 
          return (new,newName)
       let
@@ -2253,19 +2256,23 @@ spec = do
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((5,6),(5,14),\"NewPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx p * pointx p +\n                  pointy p * pointy p)\n\n"
       (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata NewPoint = Pt {pointx, pointy :: Float}\n\nabsPoint :: NewPoint -> Float\nabsPoint p = sqrt (pointx p * pointx p +\n                  pointy p * pointy p)\n\n"
-      (unspace $ showGhcQual nb) `shouldBe` unspace "(Field1.absPoint :: NewPoint -> GHC.Types.Float\n Field1.absPoint p\n = GHC.Float.sqrt\n (Field1.pointx p GHC.Num.* Field1.pointx p\n GHC.Num.+ Field1.pointy p GHC.Num.* Field1.pointy p)\n \n data NewPoint\n = Field1.Pt {Field1.pointx, Field1.pointy :: GHC.Types.Float},\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+      (unspace $ showGhcQual nb) `shouldBe` "module Field1 where\ndata NewPoint = Pt {pointx, pointy :: Float}\nabsPoint :: NewPoint -> Float\nabsPoint p = sqrt (pointx p * pointx p + pointy p * pointy p)"
 
     ------------------------------------
 
     it "replace a name in a FunBind with multiple patterns" $ do
       (t, toks) <- ct $ parsedFileGhc "./LocToName.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let Just (GHC.L _l n) = locToName (20, 1) renamed
       let
         comp = do
          newName <- mkNewGhcName Nothing "newPoint"
-         new <- renamePN n newName False renamed
+         -- new <- renamePN n newName False renamed
+         new <- renamePN' n newName False parsed
+
+         putRefactParsed new mempty
 
          return (new,newName)
       let
@@ -2276,14 +2283,14 @@ spec = do
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((20,1),(20,9),\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nsumSquares (x:xs) = x ^2 + sumSquares xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nsumSquares [] = 0\n"
       (sourceFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
-      (unspace $ showGhcQual nb) `shouldBe` unspace "(newPoint (x : xs) = x GHC.Real.^ 2 GHC.Num.+ newPoint xs\n newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+      (unspace $ showGhcQual nb) `shouldBe` "module LocToName where\nnewPoint (x : xs) = x ^ 2 + newPoint xs\nnewPoint [] = 0"
 
     ------------------------------------
 
     it "replaces a qualified name in a FunBind with multiple patterns" $ do
       (t, toks) <- ct $ parsedFileGhc "./LocToName.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- putStrLn $ "original parsed:" ++ SYB.showData SYB.Parser 0 parsed
       let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
 
@@ -2292,7 +2299,10 @@ spec = do
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
          newName <- mkNewGhcName (Just modu) "newPoint"
-         new <- renamePN n newName True renamed
+         -- new <- renamePN n newName True renamed
+         new <- renamePN' n newName True parsed
+
+         putRefactParsed new mempty
 
          return (new,newName)
 
@@ -2302,7 +2312,7 @@ spec = do
       -- putStrLn $ "annotated anns':" ++ showGhc (annsFromState s)
       (showGhcQual n) `shouldBe` "LocToName.sumSquares"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nsumSquares (x:xs) = x ^2 + sumSquares xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nsumSquares [] = 0\n"
-      (unspace $ showGhcQual nb) `shouldBe` unspace "(LocToName.newPoint (x : xs)\n = x GHC.Real.^ 2 GHC.Num.+ LocToName.newPoint xs\n LocToName.newPoint [] = 0,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+      (unspace $ showGhcQual nb) `shouldBe` "module LocToName where\nLocToName.newPoint (x : xs) = x ^ 2 + LocToName.newPoint xs\nLocToName.newPoint [] = 0"
       (sourceFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + LocToName.newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
 
 

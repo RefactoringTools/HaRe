@@ -101,7 +101,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Updating
     -- ,Update(update)
     {- ,qualifyPName-},rmQualifier,qualifyToplevelName,renamePN,renamePN' {- ,replaceNameInPN -},autoRenameLocalVar
-    , renamePlated
 
     -- * Miscellous
     -- ** Parsing, writing and showing
@@ -3336,18 +3335,6 @@ qualifyToplevelName n = do
 
 -- ---------------------------------------------------------------------
 
-renamePlated::(SYB.Data t)
-   =>GHC.Name             -- ^ The identifier to be renamed.
-   ->GHC.Name             -- ^ The new name, including possible qualifier
-   ->Bool                 -- ^ True means use the qualified form for
-                          --   the new name.
-   ->t                    -- ^ The syntax phrase
-   ->RefactGhc t
-renamePlated oldPN newName useQual t = do
-  return t
-
--- ---------------------------------------------------------------------
-
 -- | Rename each occurrences of the identifier in the given syntax
 -- phrase with the new name.
 
@@ -3368,6 +3355,7 @@ renamePN' oldPN newName useQual t = do
   newNameQual   <- rdrNameFromName True  newName
   newNameUnqual <- rdrNameFromName False newName
   newNameRdr    <- rdrNameFromName useQual newName
+  logm $ "renamePN: (newNameQual,newNameUnqual,newNameRdr)=" ++ showGhc (newNameQual,newNameUnqual,newNameRdr)
   let
     cond :: GHC.Located GHC.RdrName -> Bool
     cond (GHC.L ln _) =
@@ -3377,10 +3365,17 @@ renamePN' oldPN newName useQual t = do
 
 
     rename :: GHC.Located GHC.RdrName -> Transform (GHC.Located GHC.RdrName)
-    rename (GHC.L l n)
+    rename old@(GHC.L l n)
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:rename at :" ++ showGhc l
+          -- A RdrName Can have a number of constructors, which are used to
+          -- index the annotations associated with it. Make sure the annotation
+          -- lines up.
+          an <- get
+          let new = (GHC.L l newNameRdr)
+          put $ replaceAnnKey an old new
+
           return (GHC.L l newNameRdr)
     rename x = return x
 
@@ -3495,8 +3490,8 @@ renamePN' oldPN newName useQual t = do
           return (GHC.L l (GHC.VarPat newNameRdr))
     renameLPat x = return x
 
-    renameFunBind :: GHC.LHsBindLR GHC.RdrName GHC.RdrName -> Transform (GHC.LHsBindLR GHC.RdrName GHC.RdrName)
-    renameFunBind (GHC.L l (GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick))
+    renameFunBind :: GHC.HsBindLR GHC.RdrName GHC.RdrName -> Transform (GHC.HsBindLR GHC.RdrName GHC.RdrName)
+    renameFunBind fb@(GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick)
      -- | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
      | cond (GHC.L ln n) -- || (GHC.nameUnique n == GHC.nameUnique newName)
      = do -- Need to (a) rename the actual funbind name
@@ -3508,13 +3503,21 @@ renamePN' oldPN newName useQual t = do
           -- worker False ln Nothing
           -- Now do (b)
           logTr $ "renamePN.renameFunBind.renameFunBind:starting matches"
-          let w (GHC.L lm (GHC.Match mln pats _typ (GHC.GRHSs grhs lb))) = do
+          let w lmatch@(GHC.L lm (GHC.Match mln pats typ grhss)) = do
                 case mln of
-                  Just (GHC.L lmn _,_) -> return () -- worker False lmn Nothing
-                  Nothing -> return ()
-          mapM_ w $ tail matches
+                  Just (old@(GHC.L lmn _),f) -> do
+                    -- A RdrName Can have a number of constructors, which are used to
+                    -- index the annotations associated with it. Make sure the annotation
+                    -- lines up.
+                    an <- get
+                    let new = (GHC.L lmn newNameUnqual)
+                    put $ replaceAnnKey an old new
+
+                    return (GHC.L lm (GHC.Match (Just (new,f)) pats typ grhss))
+                  Nothing -> return lmatch
+          matches' <- mapM w matches
           logTr $ "renamePN.renameFunBind.renameFunBind.renameFunBind:matches done"
-          return (GHC.L l (GHC.FunBind (GHC.L ln newNameRdr) fi (GHC.MG matches a typ o) co fvs tick))
+          return (GHC.FunBind (GHC.L ln newNameRdr) fi (GHC.MG matches' a typ o) co fvs tick)
     renameFunBind x = return x
 {-
     renameTypeSig :: (GHC.LSig GHC.RdrName) -> Transform (GHC.LSig GHC.RdrName)
