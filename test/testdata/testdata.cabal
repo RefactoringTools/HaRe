@@ -24,3 +24,23 @@ Executable a2
   Main-Is: Renaming/A2.hs
   Build-Depends:          base >= 4.0  && < 4.9
                         , syb
+
+Executable a3
+  Main-Is: Renaming/A3.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb
+
+Executable a4
+  Main-Is: Renaming/A4.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb
+
+Executable a5
+  Main-Is: Renaming/A5.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb
+
+Executable c7
+  Main-Is: Renaming/C7.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb

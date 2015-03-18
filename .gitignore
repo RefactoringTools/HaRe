@@ -434,3 +434,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/C1.hs.parsed_out
 /test/testdata/Renaming/D1.hs.parsed_out
 /timing-test.txt
+/test/testdata/Renaming/D3.hs.parsed_out

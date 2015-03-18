@@ -85,11 +85,13 @@ spec = do
      r <- ct $ rename (testSettingsMainfile "./Renaming/A3.hs") testOptions "./Renaming/D3.hs" "Same" (12,7)
      -- ct $ rename (logTestSettingsMainfile "./Renaming/A3.hs") testOptions "./Renaming/D3.hs" "Same" (12,7)
 
-     r `shouldBe` [ "Renaming/D3.hs"
-                  , "Renaming/C3.hs"
-                  -- , "Renaming/A3.hs"
-                  , "Renaming/B3.hs"
-                  ]
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` [ "Renaming/D3.hs"
+                   , "Renaming/C3.hs"
+                   , "Renaming/A3.hs"
+                   , "Renaming/B3.hs"
+                   ]
 
      diffD <- ct $ compareFiles "./Renaming/D3.hs.expected"
                                 "./Renaming/D3.refactored.hs"

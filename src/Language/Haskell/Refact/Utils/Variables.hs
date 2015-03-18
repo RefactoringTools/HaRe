@@ -57,6 +57,8 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
+
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 
@@ -71,8 +73,8 @@ import qualified Outputable    as GHC
 -- import qualified RdrName       as GHC
 import qualified UniqSet       as GHC
 -- import qualified Unique        as GHC
-import qualified Var           as GHC
-  -- 
+-- import qualified Var           as GHC
+ 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
@@ -280,13 +282,14 @@ hsFreeAndDeclaredPNs' t = do
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned
 -- variables are in the String format.
-hsFreeAndDeclaredNameStrings::(SYB.Data t) => t -> RefactGhc ([String],[String])
+hsFreeAndDeclaredNameStrings::(SYB.Data t,GHC.Outputable t)
+  => t -> RefactGhc ([String],[String])
 hsFreeAndDeclaredNameStrings t = do
   (f1,d1) <- hsFreeAndDeclaredPNs t
   return ((nub.map showGhc) f1, (nub.map showGhc) d1)
 
 
-hsFreeAndDeclaredPNs :: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNs :: (SYB.Data t,GHC.Outputable t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
   -- logm $ "hsFreeAndDeclaredPNs:t=" ++ (showGhc t)
   (FN f,DN d) <- hsFreeAndDeclaredGhc t
@@ -301,10 +304,11 @@ hsFreeAndDeclaredPNs t = do
 -- TODO: use GHC.NameSet instead of lists for FreeNames/DeclaredNames
 -- NOTE: The GHC fvs fields only carry non-GHC values, as they are
 -- used in the renaming process
-hsFreeAndDeclaredGhc :: (SYB.Data t)
+hsFreeAndDeclaredGhc :: (SYB.Data t,GHC.Outputable t)
                      => t -> RefactGhc (FreeNames,DeclaredNames)
 hsFreeAndDeclaredGhc t = do
   -- logm $ "hsFreeAndDeclaredGhc:t=" ++ showGhc t
+  -- logm $ "hsFreeAndDeclaredGhc:t=" ++ SYB.showData SYB.Renamer 0 t
   (FN f,DN d) <- res
   let f' = nub f
   let d' = nub d
@@ -312,7 +316,7 @@ hsFreeAndDeclaredGhc t = do
   return (FN (f' \\ d'), DN d')
 
   where
-    res = (const err -- emptyFD
+    res = (const err
           `SYB.extQ` renamed
           `SYB.extQ` lhsbind
           `SYB.extQ` hsbind
@@ -521,9 +525,13 @@ hsFreeAndDeclaredGhc t = do
         = return (FN (GHC.nameSetElems fvs),DN [n])
     ltydecl (GHC.L _ (GHC.ClassDecl _ctx (GHC.L _ n) _tyvars
                      _fds _sigs meths ats atds _docs fvs)) = do
+       -- logm $ "hsFreeAndDeclaredGhc.ltydecl.ClassDecl.meths"
        (_,md) <- hsFreeAndDeclaredGhc meths
+       -- logm $ "hsFreeAndDeclaredGhc.ltydecl.ClassDecl.ats"
        (_,ad) <- hsFreeAndDeclaredGhc ats
+       -- logm $ "hsFreeAndDeclaredGhc.ltydecl.ClassDecl.atds"
        (_,atd) <- hsFreeAndDeclaredGhc atds
+       -- logm $ "hsFreeAndDeclaredGhc.ltydecl.ClassDecl.done"
        return (FN (GHC.nameSetElems fvs),DN [n] <> md <> ad <> atd)
 {-
 FamDecl -- type/data family T :: *->*
@@ -552,6 +560,7 @@ ClassDecl
   tcdATDefs :: [LTyFamDefltEqn name]
   tcdDocs :: [LDocDecl]
   tcdFVs :: PostRn name NameSet
+
 
 -}
 
@@ -908,7 +917,11 @@ ClassDecl
 
     -- -----------------------
 
-    err = error $ "hsFreeAndDeclaredGhc:not matched:" ++ (SYB.showData SYB.Renamer 0 t)
+    err = do
+      logm $ "hsFreeAndDeclaredGhc:not matched:"
+               ++ show (annGetConstr t) ++ ":"
+               ++ (SYB.showData SYB.Renamer 0 t)
+      return emptyFD
 
     -- ---------------------------------
 
@@ -1357,7 +1370,9 @@ hsVisibleDs e t = do
     lhstype (GHC.L _ (GHC.HsForAllTy _ _ _bndrs _ctxt _typ))
         = return (DN [])
     lhstype (GHC.L _ (GHC.HsFunTy{})) = return (DN [])
-    lhstype ty = error $ "lshtype: TypeUtils 1588" ++ SYB.showData SYB.Renamer 0 ty
+    lhstype ty = do
+      logm $ "lshtype: TypeUtils 1588" ++ SYB.showData SYB.Renamer 0 ty
+      return (DN [])
 
     -- -----------------------
 
