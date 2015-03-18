@@ -54,11 +54,13 @@ spec = do
      r <- ct $ rename (testSettingsMainfile "./Renaming/A2.hs") testOptions "./Renaming/D2.hs" "SubTree" (6,24)
      -- ct $ rename logTestSettings testOptions (Just "./Renaming/A2.hs") "./Renaming/D2.hs" "SubTree" (6,24)
 
-     r `shouldBe` [ "./Renaming/D2.hs"
-                  , "./Renaming/C2.hs"
-                  -- , "./Renaming/A2.hs"
-                  , "./Renaming/B2.hs"
-                  ]
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` [ "Renaming/D2.hs"
+                   , "Renaming/C2.hs"
+                   , "Renaming/A2.hs"
+                   , "Renaming/B2.hs"
+                   ]
 
      diffD <- ct $  compareFiles "./Renaming/D2.hs.expected"
                                  "./Renaming/D2.refactored.hs"
@@ -83,10 +85,10 @@ spec = do
      r <- ct $ rename (testSettingsMainfile "./Renaming/A3.hs") testOptions "./Renaming/D3.hs" "Same" (12,7)
      -- ct $ rename (logTestSettingsMainfile "./Renaming/A3.hs") testOptions "./Renaming/D3.hs" "Same" (12,7)
 
-     r `shouldBe` [ "./Renaming/D3.hs"
-                  , "./Renaming/C3.hs"
-                  -- , "./Renaming/A3.hs"
-                  , "./Renaming/B3.hs"
+     r `shouldBe` [ "Renaming/D3.hs"
+                  , "Renaming/C3.hs"
+                  -- , "Renaming/A3.hs"
+                  , "Renaming/B3.hs"
                   ]
 
      diffD <- ct $ compareFiles "./Renaming/D3.hs.expected"
@@ -112,12 +114,12 @@ spec = do
      r <- ct $ rename (testSettingsMainfile "./Renaming/A4.hs") testOptions "./Renaming/D4.hs" "isSameOrNot" (13,4)
      -- ct $ rename logTestSettings testOptions (Just "./Renaming/A4.hs") "./Renaming/D4.hs" "isSameOrNot" (13,4)
 
-     r' <- mapM makeRelativeToCurrentDirectory r
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "./Renaming/D4.hs"
-                   , "./Renaming/C4.hs"
-                   , "test/testdata/Renaming/A4.hs"
-                   , "./Renaming/B4.hs"
+     r' `shouldBe` [ "Renaming/D4.hs"
+                   , "Renaming/C4.hs"
+                   , "Renaming/A4.hs"
+                   , "Renaming/B4.hs"
                   ]
 
      diffD <- ct $ compareFiles "./Renaming/D4.hs.expected"
@@ -144,12 +146,12 @@ spec = do
      -- ct $ rename (logTestSettingsMainfile "./Renaming/A5.hs") testOptions "./Renaming/D5.hs" "sum" (24,1)
      -- ct $ rename logTestSettings testOptions "./Renaming/D5.hs" "sum" (24,1)
 
-     r' <- mapM makeRelativeToCurrentDirectory r
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "./Renaming/D5.hs"
-                   , "./Renaming/C5.hs"
-                   , "test/testdata/Renaming/A5.hs"
-                   , "./Renaming/B5.hs"
+     r' `shouldBe` [ "Renaming/D5.hs"
+                   , "Renaming/C5.hs"
+                   , "Renaming/A5.hs"
+                   , "Renaming/B5.hs"
                    ]
 
      diffD <- ct $ compareFiles "./Renaming/D5.hs.expected"
@@ -175,9 +177,10 @@ spec = do
      r <- ct $ rename (testSettingsMainfile "./Renaming/C7.hs") testOptions "./Renaming/D7.hs" "myFringe" (10,1)
      -- ct $ rename logTestSettings testOptions (Just "./Renaming/C7.hs") "./Renaming/D7.hs" "myFringe" (10,1)
 
-     r' <- mapM makeRelativeToCurrentDirectory r
-     r' `shouldBe` [ "./Renaming/D7.hs"
-                   , "test/testdata/Renaming/C7.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` [ "Renaming/D7.hs"
+                   , "Renaming/C7.hs"
                    ]
 
      diffD <- ct $ compareFiles "./Renaming/D7.hs.expected"
@@ -557,4 +560,3 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
 
 -- ---------------------------------------------------------------------
 -- Helper functions
-

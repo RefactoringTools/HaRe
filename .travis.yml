@@ -3,11 +3,11 @@
 # See also https://github.com/hvr/multi-ghc-travis for more information
 env:
  - CABALVER=1.22 GHCVER=7.10.1
- - CABALVER=1.22 GHCVER=head   # see section about GHC HEAD snapshots
+ # - CABALVER=1.22 GHCVER=head   # see section about GHC HEAD snapshots
 
-matrix:
-  allow_failures:
-   - env: CABALVER=1.22 GHCVER=head
+# matrix:
+#   allow_failures:
+#    - env: CABALVER=1.22 GHCVER=head
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
@@ -35,15 +35,14 @@ install:
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - travis_retry cabal update
  - |
-   git clone https://github.com/alanz/hslogger.git
-   (cd hslogger && cabal install)
    git clone https://github.com/alanz/ghc-mod.git
    (cd ghc-mod && git checkout ghc-7.10 && cabal install)
-   # git clone https://github.com/alanz/ghc-exactprint.git
-   # (cd ghc-exactprint && git checkout wip && cabal install)
+   cabal install Strafunski-StrategyLib --allow-newer
+   cabal install monoid-extras --allow-newer
+   cabal install dual-tree --allow-newer
  - pwd
  # Must remove --allow-newer in future
- - cabal install --only-dependencies --enable-tests --enable-benchmarks --allow-newer
+ - cabal install --only-dependencies --enable-tests
 
 # Here starts the actual work to be performed for the package under
 # test; any command which exits with a non-zero exit code causes the

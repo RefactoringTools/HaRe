@@ -2,6 +2,9 @@
 
 #(cd ../../alanz/hslogger            && cabal clean && cabal install --allow-newer)
 (cd ../../alanz/ghc-mod             && cabal clean && cabal install --allow-newer)
+cabal install Strafunski-StrategyLib --allow-newer
+cabal install monoid-extras --allow-newer
+cabal install dual-tree --allow-newer
 
 #cabal clean && cabal install   --allow-newer --enable-tests --dependencies-only
 cabal clean && cabal install    --enable-tests --dependencies-only

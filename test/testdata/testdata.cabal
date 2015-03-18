@@ -19,3 +19,8 @@ Executable a1
   Main-Is: Renaming/A1.hs
   Build-Depends:          base >= 4.0  && < 4.9
                         , syb
+
+Executable a2
+  Main-Is: Renaming/A2.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb
