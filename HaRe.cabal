@@ -100,6 +100,7 @@ Library
            , Language.Haskell.Refact.Utils.TypeUtils
            , Language.Haskell.Refact.Utils.Types
            , Language.Haskell.Refact.Utils.Utils
+           , Language.Haskell.Refact.Utils.Variables
            , Paths_HaRe
 
 

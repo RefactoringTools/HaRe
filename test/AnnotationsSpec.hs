@@ -11,6 +11,7 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Utils
+import Language.Haskell.Refact.Utils.Variables
 
 import Language.Haskell.GHC.ExactPrint
 
@@ -47,7 +48,7 @@ spec = do
       (((fn,m),(anns,mod')),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
       (show (fn,m)) `shouldBe` "(\"TokenTest.hs\",RefacModified)"
       putStrLn $ SYB.showData SYB.Parser 0 mod'
-      let !printed = exactPrintAnnotation mod' [] anns
+      let !printed = exactPrintAnnotation mod' anns
       printed `shouldBe` "foo"
 
     -- ---------------------------------
@@ -62,5 +63,5 @@ spec = do
       (((fn,m),(anns,mod')),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
       (show (fn,m)) `shouldBe` "(\"TokenTest.hs\",RefacModified)"
       putStrLn $ SYB.showData SYB.Parser 0 mod'
-      let !printed = exactPrintAnnotation mod' [] anns
+      let !printed = exactPrintAnnotation mod' anns
       printed `shouldBe` "foo"
