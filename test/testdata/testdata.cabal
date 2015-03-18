@@ -44,3 +44,8 @@ Executable c7
   Main-Is: Renaming/C7.hs
   Build-Depends:          base >= 4.0  && < 4.9
                         , syb
+
+Executable qualclient
+  Main-Is: Renaming/QualClient.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb

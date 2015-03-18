@@ -455,9 +455,10 @@ spec = do
      r <- ct $ rename (testSettingsMainfile "./Renaming/QualClient.hs") testOptions "./Renaming/QualServer.hs" "foo1" (11,1)
      -- ct $ rename (logTestSettingsMainfile "./Renaming/QualClient.hs") testOptions "./Renaming/QualServer.hs" "foo1" (11,1)
 
-     r' <- mapM makeRelativeToCurrentDirectory r
-     r' `shouldBe` ["./Renaming/QualServer.hs",
-                    "test/testdata/Renaming/QualClient.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` ["Renaming/QualServer.hs",
+                    "Renaming/QualClient.hs"
                   ]
 
      diffD <- ct $ compareFiles "./Renaming/QualServer.expected.hs"
