@@ -71,7 +71,7 @@ Library
                                 , Cabal >= 1.22
                                 , uniplate
 
-        GHC-Options:             -Wall
+        GHC-Options:             -Wall -O0
 
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe
@@ -108,7 +108,7 @@ Library
 Executable ghc-hare
         Main-Is:                MainHaRe.hs
         -- Other-Modules:          Paths_HaRe
-        GHC-Options:            -Wall
+        GHC-Options:            -Wall -O0
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
