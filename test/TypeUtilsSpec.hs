@@ -933,6 +933,30 @@ spec = do
       (show fds) `shouldBe` "DN [GHC.Num.+, y, z]"
 
 
+    -- -----------------------------------
+
+    it "finds visible vars inside a data declaration" $ do
+      (t,toks) <- ct $ parsedFileGhc "./Renaming/D1.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just (GHC.L _ n) = locToName (6, 6) renamed
+      (showGhcQual n) `shouldBe` "Renaming.D1.Tree"
+
+      let
+        comp = do
+          fds' <- hsVisibleDs n renamed
+          ffds <- hsFreeAndDeclaredGhc renamed
+          return (fds',ffds)
+      ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+
+      (show _fds) `shouldBe` "(FN [:, GHC.Num.+, GHC.Real.^, [], Renaming.D1.Leaf,\n"
+                            ++" Renaming.D1.Branch, GHC.Base.++],DN [Renaming.D1.sumSquares,"
+                            ++" Renaming.D1.fringe, Renaming.D1.Tree, a,\n"
+                            ++" Renaming.D1.SameOrNot, Renaming.D1.isSame, Renaming.D1.isNotSame])"
+      (show fds) `shouldBe` "DN [Renaming.D1.Tree]"
+
+
   -- ---------------------------------------------------------------------
 
   describe "hsFreeAndDeclaredGhc" $ do

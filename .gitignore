@@ -429,3 +429,8 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/Field1.hs.parsed_out
 /test/testdata/Renaming/Field3.hs.parsed_out
 /src/Language/Haskell/Refact/Utils/HLint.hs
+/test/testdata/Renaming/A1.hs.parsed_out
+/test/testdata/Renaming/B1.hs.parsed_out
+/test/testdata/Renaming/C1.hs.parsed_out
+/test/testdata/Renaming/D1.hs.parsed_out
+/timing-test.txt

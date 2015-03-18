@@ -193,14 +193,20 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                    else if exportChecking && isInScopeUnqual -- isInScopeAndUnqualifiedGhc newName Nothing
                                           then do
                                                logm $ "renameTopLevelVarName start..:should have qualified"
-                                               void $ renamePN oldPN newNameGhc True renamed
+                                               parsed <- getRefactParsed
+                                               -- void $ renamePN oldPN newNameGhc True renamed
+                                               parsed' <- renamePN' oldPN newNameGhc True parsed
+                                               putRefactParsed parsed' mempty
                                                logm $ "renameTopLevelVarName done:should have qualified"
                                                -- drawTokenTreeDetailed "should be qualified" -- ++AZ++ debug
                                                r' <- getRefactRenamed
                                                return r'
                                           else do
                                                logm $ "renameTopLevelVarName start.."
-                                               void $ renamePN oldPN newNameGhc False renamed
+                                               parsed <- getRefactParsed
+                                               -- void $ renamePN oldPN newNameGhc False renamed
+                                               parsed' <- renamePN' oldPN newNameGhc False parsed
+                                               putRefactParsed parsed' mempty
                                                logm $ "renameTopLevelVarName done"
                                                r' <- getRefactRenamed
                                                return r'
@@ -254,7 +260,10 @@ renameInClientMod oldPN newName newNameGhc targetModule@(_,modSummary) = do
        qualifyTopLevelVar newStr
        renamed <- getRefactRenamed
        logm $ "renameInClientMod.refactRename:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
-       void $ renamePN old new useQual renamed
+       parsed <- getRefactParsed
+       -- void $ renamePN old new useQual renamed
+       parsed' <- renamePN' old new useQual parsed
+       putRefactParsed parsed' mempty
        return ()
 
      refactRenameComplex :: GHC.Name -> String -> GHC.Name -> RefactGhc ()
@@ -275,11 +284,13 @@ renameInClientMod oldPN newName newNameGhc targetModule@(_,modSummary) = do
      worker oldPN' newName' newNameGhc' = do
        logm $ "renameInClientMod.worker"
        renamed <- getRefactRenamed
+       parsed <- getRefactParsed
        isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName' Nothing
        vs <- hsVisibleNames oldPN' renamed   --Does this check names other than variable names?
-       if elem newName' ((nub vs) \\ [nameToString oldPN'])  || isInScopeUnqualNew
-         then void $ renamePN oldPN' newNameGhc' True renamed --rename to qualified Name
-         else void $ renamePN oldPN' newNameGhc' False renamed -- do not qualify
+       parsed' <- if elem newName' ((nub vs) \\ [nameToString oldPN'])  || isInScopeUnqualNew
+         then renamePN' oldPN' newNameGhc' True parsed --rename to qualified Name
+         else renamePN' oldPN' newNameGhc' False parsed -- do not qualify
+       putRefactParsed parsed' mempty
        return ()
 
 

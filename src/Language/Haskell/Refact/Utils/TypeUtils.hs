@@ -100,7 +100,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Updating
     -- ,Update(update)
-    {- ,qualifyPName-},rmQualifier,qualifyToplevelName,renamePN,renamePN' {- ,replaceNameInPN -},autoRenameLocalVar
+    {- ,qualifyPName-},rmQualifier,qualifyToplevelName,{- renamePN, -} renamePN' {- ,replaceNameInPN -},autoRenameLocalVar
 
     -- * Miscellous
     -- ** Parsing, writing and showing
@@ -1360,7 +1360,7 @@ hsVisibleDs :: (FindEntity e, GHC.Outputable e
                ,SYB.Data t,HsValBinds t GHC.Name)
              => e -> t -> RefactGhc DeclaredNames
 hsVisibleDs e t = do
-  logm $ "hsVisibleDs:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
+  -- logm $ "hsVisibleDs:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
   (DN d) <- res
   return (DN (nub d))
   where
@@ -1569,7 +1569,10 @@ hsVisibleDs e t = do
     lhstype tv@(GHC.L _ (GHC.HsTyVar n))
       | findEntity e tv = return (DN [n])
       | otherwise       = return (DN [])
-    lhstype _ = error "lshtype: TypeUtils 1588"
+    lhstype (GHC.L _ (GHC.HsForAllTy _ _ _bndrs _ctxt _typ))
+        = return (DN [])
+    lhstype (GHC.L _ (GHC.HsFunTy{})) = return (DN [])
+    lhstype ty = error $ "lshtype: TypeUtils 1588" ++ SYB.showData SYB.Renamer 0 ty
 
     -- -----------------------
 

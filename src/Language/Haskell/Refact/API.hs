@@ -275,7 +275,7 @@ module Language.Haskell.Refact.API
 
     -- *** Updating
     ,Update(update)
-    {- ,qualifyPName-},rmQualifier,qualifyToplevelName,renamePN {- ,replaceNameInPN -},autoRenameLocalVar
+    {- ,qualifyPName-},rmQualifier,qualifyToplevelName,renamePN' {- ,replaceNameInPN -},autoRenameLocalVar
 
     -- ** Miscellous
     -- *** Parsing, writing and showing

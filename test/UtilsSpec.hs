@@ -83,11 +83,7 @@ spec = do
       -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let (Just expr) = locToExp (6,1) (12,1) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
 
-#if __GLASGOW_HASKELL__ > 704
-      (show $ toks) `shouldBe` "[((((1,1),(1,35)),ITblockComment \" FlexibleInstances #\"),\"{-# LANGUAGE FlexibleInstances #-}\"),((((2,1),(2,21)),ITblockComment \" CPP #\"),\"{-# LANGUAGE CPP #-}\"),((((3,1),(3,53)),ITlineComment \"-- Check that we can parse a file which requires CPP\"),\"-- Check that we can parse a file which requires CPP\"),((((4,1),(4,7)),ITmodule),\"module\"),((((4,8),(4,12)),ITconid \"BCpp\"),\"BCpp\"),((((4,13),(4,18)),ITwhere),\"where\"),((((6,1),(6,1)),ITvocurly),\"\"),((((6,1),(6,4)),ITvarid \"bob\"),\"bob\"),((((6,5),(6,7)),ITdcolon),\"::\"),((((6,8),(6,11)),ITconid \"Int\"),\"Int\"),((((6,12),(6,14)),ITrarrow),\"->\"),((((6,15),(6,18)),ITconid \"Int\"),\"Int\"),((((6,19),(6,21)),ITrarrow),\"->\"),((((6,22),(6,25)),ITconid \"Int\"),\"Int\"),((((7,1),(7,29)),ITlineComment \"#if __GLASGOW_HASKELL__ > 704\"),\"#if __GLASGOW_HASKELL__ > 704\"),((((8,1),(8,1)),ITsemi),\"\"),((((8,1),(8,4)),ITvarid \"bob\"),\"bob\"),((((8,5),(8,6)),ITvarid \"x\"),\"x\"),((((8,7),(8,8)),ITvarid \"y\"),\"y\"),((((8,9),(8,10)),ITequal),\"=\"),((((8,11),(8,12)),ITvarid \"x\"),\"x\"),((((8,13),(8,14)),ITvarsym \"+\"),\"+\"),((((8,15),(8,16)),ITvarid \"y\"),\"y\"),((((9,1),(9,5)),ITlineComment \"#else\"),\"#else\"),((((10,1),(10,1)),ITlineComment \"\"),\"\"),((((10,1),(10,4)),ITlineComment \"bob\"),\"bob\"),((((10,5),(10,6)),ITlineComment \"x\"),\"x\"),((((10,7),(10,8)),ITlineComment \"y\"),\"y\"),((((10,9),(10,10)),ITlineComment \"=\"),\"=\"),((((10,11),(10,12)),ITlineComment \"x\"),\"x\"),((((10,13),(10,14)),ITlineComment \"+\"),\"+\"),((((10,15),(10,16)),ITlineComment \"y\"),\"y\"),((((10,17),(10,18)),ITlineComment \"*\"),\"*\"),((((10,19),(10,20)),ITlineComment \"2\"),\"2\"),((((11,1),(11,6)),ITlineComment \"#endif\"),\"#endif\"),((((14,1),(14,1)),ITsemi),\"\")]"
-#else
-      (show $ toks) `shouldBe` "[((((1,1),(1,35)),ITblockComment \" FlexibleInstances #\"),\"{-# LANGUAGE FlexibleInstances #-}\"),((((2,1),(2,21)),ITblockComment \" CPP #\"),\"{-# LANGUAGE CPP #-}\"),((((3,1),(3,53)),ITlineComment \"-- Check that we can parse a file which requires CPP\"),\"-- Check that we can parse a file which requires CPP\"),((((4,1),(4,7)),ITmodule),\"module\"),((((4,8),(4,12)),ITconid \"BCpp\"),\"BCpp\"),((((4,13),(4,18)),ITwhere),\"where\"),((((6,1),(6,1)),ITvocurly),\"\"),((((6,1),(6,4)),ITvarid \"bob\"),\"bob\"),((((6,5),(6,7)),ITdcolon),\"::\"),((((6,8),(6,11)),ITconid \"Int\"),\"Int\"),((((6,12),(6,14)),ITrarrow),\"->\"),((((6,15),(6,18)),ITconid \"Int\"),\"Int\"),((((6,19),(6,21)),ITrarrow),\"->\"),((((6,22),(6,25)),ITconid \"Int\"),\"Int\"),((((7,1),(7,29)),ITlineComment \"#if __GLASGOW_HASKELL__ > 704\"),\"#if __GLASGOW_HASKELL__ > 704\"),((((8,1),(8,1)),ITlineComment \"\"),\"\"),((((8,1),(8,4)),ITlineComment \"bob\"),\"bob\"),((((8,5),(8,6)),ITlineComment \"x\"),\"x\"),((((8,7),(8,8)),ITlineComment \"y\"),\"y\"),((((8,9),(8,10)),ITlineComment \"=\"),\"=\"),((((8,11),(8,12)),ITlineComment \"x\"),\"x\"),((((8,13),(8,14)),ITlineComment \"+\"),\"+\"),((((8,15),(8,16)),ITlineComment \"y\"),\"y\"),((((9,1),(9,5)),ITlineComment \"#else\"),\"#else\"),((((10,1),(10,1)),ITsemi),\"\"),((((10,1),(10,4)),ITvarid \"bob\"),\"bob\"),((((10,5),(10,6)),ITvarid \"x\"),\"x\"),((((10,7),(10,8)),ITvarid \"y\"),\"y\"),((((10,9),(10,10)),ITequal),\"=\"),((((10,11),(10,12)),ITvarid \"x\"),\"x\"),((((10,13),(10,14)),ITvarsym \"+\"),\"+\"),((((10,15),(10,16)),ITvarid \"y\"),\"y\"),((((10,17),(10,18)),ITstar),\"*\"),((((10,19),(10,20)),ITinteger 2),\"2\"),((((11,1),(11,6)),ITlineComment \"#endif\"),\"#endif\"),((((14,1),(14,1)),ITsemi),\"\")]"
-#endif
+      -- (show $ toks) `shouldBe` "[((((1,1),(1,35)),ITblockComment \" FlexibleInstances #\"),\"{-# LANGUAGE FlexibleInstances #-}\"),((((2,1),(2,21)),ITblockComment \" CPP #\"),\"{-# LANGUAGE CPP #-}\"),((((3,1),(3,53)),ITlineComment \"-- Check that we can parse a file which requires CPP\"),\"-- Check that we can parse a file which requires CPP\"),((((4,1),(4,7)),ITmodule),\"module\"),((((4,8),(4,12)),ITconid \"BCpp\"),\"BCpp\"),((((4,13),(4,18)),ITwhere),\"where\"),((((6,1),(6,1)),ITvocurly),\"\"),((((6,1),(6,4)),ITvarid \"bob\"),\"bob\"),((((6,5),(6,7)),ITdcolon),\"::\"),((((6,8),(6,11)),ITconid \"Int\"),\"Int\"),((((6,12),(6,14)),ITrarrow),\"->\"),((((6,15),(6,18)),ITconid \"Int\"),\"Int\"),((((6,19),(6,21)),ITrarrow),\"->\"),((((6,22),(6,25)),ITconid \"Int\"),\"Int\"),((((7,1),(7,29)),ITlineComment \"#if __GLASGOW_HASKELL__ > 704\"),\"#if __GLASGOW_HASKELL__ > 704\"),((((8,1),(8,1)),ITsemi),\"\"),((((8,1),(8,4)),ITvarid \"bob\"),\"bob\"),((((8,5),(8,6)),ITvarid \"x\"),\"x\"),((((8,7),(8,8)),ITvarid \"y\"),\"y\"),((((8,9),(8,10)),ITequal),\"=\"),((((8,11),(8,12)),ITvarid \"x\"),\"x\"),((((8,13),(8,14)),ITvarsym \"+\"),\"+\"),((((8,15),(8,16)),ITvarid \"y\"),\"y\"),((((9,1),(9,5)),ITlineComment \"#else\"),\"#else\"),((((10,1),(10,1)),ITlineComment \"\"),\"\"),((((10,1),(10,4)),ITlineComment \"bob\"),\"bob\"),((((10,5),(10,6)),ITlineComment \"x\"),\"x\"),((((10,7),(10,8)),ITlineComment \"y\"),\"y\"),((((10,9),(10,10)),ITlineComment \"=\"),\"=\"),((((10,11),(10,12)),ITlineComment \"x\"),\"x\"),((((10,13),(10,14)),ITlineComment \"+\"),\"+\"),((((10,15),(10,16)),ITlineComment \"y\"),\"y\"),((((10,17),(10,18)),ITlineComment \"*\"),\"*\"),((((10,19),(10,20)),ITlineComment \"2\"),\"2\"),((((11,1),(11,6)),ITlineComment \"#endif\"),\"#endif\"),((((14,1),(14,1)),ITsemi),\"\")]"
       origStr <- readFile "./test/testdata/BCpp.hs"
       let toksStr = (GHC.showRichTokenStream $ bypassGHCBug7351 toks)
       -- (show (filter (\(c,_) -> c /= B) $ getGroupedDiff (lines toksStr) (lines origStr))) `shouldBe` "[]"
@@ -349,22 +345,23 @@ spec = do
       -- TODO: harvest this commonality
       let
         comp = do
-         (_p,_toks) <- parseFileMGhc -- Load the main file first
+         (_p,_toks) <- parseSourceFileTest "./M.hs"  -- Load the main file first
          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          return g
       (mg,_s) <- ct $ runRefactGhcState comp
-      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      -- (mg,_s) <- ct $ runRefactGhcStateLog comp Debug
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[M2, M3, Main, Main]"
 
     ------------------------------------
 
     it "gets modules which directly or indirectly import a module #2" $ do
       let
         comp = do
-         (_p,_toks) <- parseFileMGhc -- Load the main file first
+         (_p,_toks) <- parseSourceFileTest "./M.hs" -- Load the main file first
          g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- ct $ runRefactGhcState comp
-      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:Main]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[Main, Main]"
 
     ------------------------------------
 
@@ -386,7 +383,7 @@ spec = do
          g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
          return g
       (mg,_s) <- runRefactGhcState comp
-      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:Main, main:Main]"
+      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[Main, Main, Main, Main]"
 
       setCurrentDirectory currentDir
 

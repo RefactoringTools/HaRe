@@ -8,3 +8,14 @@ Executable foo
   Main-Is: TokenTest.hs
   Build-Depends:          base >= 4.0  && < 4.9
                         , syb
+
+
+Executable m
+  Main-Is: M.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb
+
+Executable a1
+  Main-Is: Renaming/A1.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb

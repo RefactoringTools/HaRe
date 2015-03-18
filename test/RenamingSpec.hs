@@ -22,15 +22,15 @@ spec = do
   describe "Renaming" $ do
     it "renames in D1 B1 C1 A1 6 6" $ do
      r <- ct $ rename (testSettingsMainfile "./Renaming/A1.hs") testOptions "./Renaming/D1.hs" "AnotherTree" (6,6)
-     -- ct $ rename logTestSettings testOptions (Just "./Renaming/A1.hs") "./Renaming/D1.hs" "AnotherTree" (6,6)
+     -- r <- ct $ rename (logTestSettingsMainfile "./Renaming/A1.hs") testOptions "./Renaming/D1.hs" "AnotherTree" (6,6)
 
-     r' <- mapM makeRelativeToCurrentDirectory r
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "./Renaming/D1.hs"
-                  , "./Renaming/C1.hs"
-                  , "test/testdata/Renaming/A1.hs"
-                  , "./Renaming/B1.hs"
-                  ]
+     r' `shouldBe` [ "Renaming/D1.hs"
+                   , "Renaming/C1.hs"
+                   , "Renaming/A1.hs"
+                   , "Renaming/B1.hs"
+                   ]
 
      diffD <- ct $ compareFiles "./Renaming/D1.hs.expected"
                                 "./Renaming/D1.refactored.hs"
