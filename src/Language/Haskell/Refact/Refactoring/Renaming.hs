@@ -14,6 +14,7 @@ import Exception
 
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 
 
 {-This refactoring renames an indentifier to a user-specified name.
@@ -93,8 +94,8 @@ comp fileName newName (row,col) = do
            -- TODO: why do we have this restriction?
            unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ show defineMod ++
                                          ", please do renaming in that module!"))
-           -- logm $ "Renaming.comp:(isMainModule modu,pn)=" ++ (showGhc (isMainModule modu,pn))
-           if isMainModule modu && showGhc pn == "Main.main"
+           logm $ "Renaming.comp:(isMainModule modu,pn)=" ++ (showGhcQual (isMainModule modu,pn))
+           if isMainModule modu && showGhcQual pn == "Main.main"
              then error "The 'main' function defined in a 'Main' module should not be renamed!"
              else do
                logm $ "Renaming.comp: not main module"

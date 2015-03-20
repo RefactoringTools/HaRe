@@ -56,7 +56,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        ) where
 
 import Control.Monad.State
-import Control.Exception
+-- import Control.Exception
 import Data.Maybe
 
 import qualified FastString    as GHC
@@ -76,7 +76,7 @@ import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.ExactPrint
 
 import qualified Data.Map as Map
-import Control.Applicative
+-- import Control.Applicative
 
 -- ---------------------------------------------------------------------
 

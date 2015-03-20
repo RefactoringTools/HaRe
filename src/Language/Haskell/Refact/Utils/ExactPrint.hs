@@ -39,10 +39,10 @@ import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import Control.Monad.RWS
-import Control.Monad.State
+-- import Control.Monad.State
 import Data.List
-import Data.Monoid
-import Debug.Trace
+-- import Data.Monoid
+-- import Debug.Trace
 
 import qualified Data.Map as Map
 

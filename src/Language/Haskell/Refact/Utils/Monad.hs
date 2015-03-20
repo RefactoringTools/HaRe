@@ -54,7 +54,7 @@ import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger
 
-import qualified Data.Map as Map
+-- import qualified Data.Map as Map
 
 -- Monad transformer stuff
 import Control.Monad.Trans.Control ( control, liftBaseOp, liftBaseOp_)
@@ -153,12 +153,17 @@ type ParseResult = GHC.TypecheckedModule
 -- place
 data StateStorage = StorageNone
                   | StorageBind (GHC.LHsBind GHC.Name)
-                  | StorageSig (GHC.LSig GHC.Name)
+                  | StorageSig  (GHC.LSig GHC.Name)
+                  | StorageBindRdr (GHC.LHsBind GHC.RdrName)
+                  | StorageSigRdr  (GHC.LSig GHC.RdrName)
+
 
 instance Show StateStorage where
-  show StorageNone        = "StorageNone"
+  show StorageNone         = "StorageNone"
   show (StorageBind _bind) = "(StorageBind " {- ++ (showGhc bind) -} ++ ")"
   show (StorageSig _sig)   = "(StorageSig " {- ++ (showGhc sig) -} ++ ")"
+  show (StorageBindRdr _bind) = "(StorageBindRdr " {- ++ (showGhc bind) -} ++ ")"
+  show (StorageSigRdr _sig)   = "(StorageSigRdr " {- ++ (showGhc sig) -} ++ ")"
 
 -- ---------------------------------------------------------------------
 -- StateT and GhcT stack

@@ -1534,26 +1534,26 @@ spec = do
     it "removes a top level declaration, leaving type signature" $ do
       (t, toks) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- putStrLn $ SYB.showData SYB.Parser 0 parsed
       let declsr = hsBinds renamed
+      let declsp = hsBinds parsed
       let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
-         (newDecls,_removedDecl,_removedSig) <- rmDecl n False declsr
+         -- (newDecls,_removedDecl,_removedSig) <- rmDecl n False declsr
+         -- (newDecls,_removedDecl,_removedSig) <- rmDecl n False parsed
+         (newDecls,_removedDecl,_removedSig) <- rmDecl n False declsp
 
+         let parsed' = replaceBinds parsed newDecls
+         putRefactParsed parsed' mempty
          return newDecls
-      (nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
-      -- (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      (_nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      -- (drawTreeCompact ((tkCache $ rsTokenCache $ fromJust $ rsModule s) Map.! mainTid)) `shouldBe` ""
-      -- (drawTreeCompact $ adjustLinesForDeleted ((tkCache $ rsTokenCache $ fromJust $ rsModule s) Map.! mainTid)) `shouldBe` ""
-      -- (showGhcQual $ retrieveTokensPpr ((tkCache $ rsTokenCache $ fromJust $ rsModule s) Map.! mainTid)) `shouldBe` ""
-      -- (renderPpr $ retrieveTokensPpr $ adjustLinesForDeleted ((tkCache $ rsTokenCache $ fromJust $ rsModule s) Map.! mainTid)) `shouldBe` ""
-      -- (showGhcQual $ pprFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      (showGhcQual nb) `shouldBe` "[MoveDef.Md1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) },\n MoveDef.Md1.l z = let ll = 34 in ll GHC.Num.+ z,\n MoveDef.Md1.tup@(MoveDef.Md1.h, MoveDef.Md1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15,\n MoveDef.Md1.d = 9, MoveDef.Md1.c = 7,\n MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x,\n MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x,\n MoveDef.Md1.zz1 a = 1 GHC.Num.+ MoveDef.Md1.toplevel a]"
 
     -- ---------------------------------
 
@@ -2694,6 +2694,34 @@ spec = do
       (showGhcQual (n,nn)) `shouldBe` "(xxx, xxxlong)"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet2 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n-- In this case the tokens for xxx + a + b should also shift out\n\nfoo xxx = let a = 1\n              b = 2 in xxx + a + b\n\n"
       (sourceFromState s) `shouldBe` "module LayoutLet2 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n-- In this case the tokens for xxx + a + b should also shift out\n\nfoo xxxlong = let a = 1\n                  b = 2 in xxxlong + a + b\n\n"
+      (unspace $ showGhcQual nb) `shouldBe` "module LayoutLet2 where\nfoo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong + a + b"
+
+
+    ------------------------------------
+
+    it "renames an exported data type" $ do
+      (t, toks) <- ct $ parsedFileGhc "./Renaming/RenameInExportedType2.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let Just (GHC.L _l n) = locToName (6, 24) renamed
+      let
+        comp = do
+         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+
+         newName <- mkNewGhcName Nothing "NewType"
+         new <- renamePN' n newName False parsed
+
+         putRefactParsed new mempty
+
+         return (new,newName)
+
+      -- ((nb,nn),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,nn),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+
+      (showGhcQual (n,nn)) `shouldBe` "(Renaming.RenameInExportedType.NT, NewType)"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.RenameInExportedType\n  (\n  MyType (NT)\n  ) where\n\ndata MyType = MT Int | NT\n\n\n"
+      (sourceFromState s) `shouldBe` "module Renaming.RenameInExportedType\n  (\n  MyType (NewType)\n  ) where\n\ndata MyType = MT Int | NewType\n\n\n"
       (unspace $ showGhcQual nb) `shouldBe` "module LayoutLet2 where\nfoo xxxlong\n = let\n a = 1\n b = 2\n in xxxlong + a + b"
 
 

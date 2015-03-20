@@ -421,7 +421,7 @@ spec = do
     -- ---------------------------------
 
     it "cannot rename main Main2" $ do
-     -- rename logTestSettings testOptions Nothing "./Renaming/Main2.hs" "main1" (4,1)
+     -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/Main2.hs" "main1" (4,1))
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Main2.hs" "main1" (4,1))
      (show res) `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
 

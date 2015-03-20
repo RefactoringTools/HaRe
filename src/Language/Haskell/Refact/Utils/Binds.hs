@@ -152,10 +152,18 @@ class (Data t,Data name) => HsValBinds t name |  t -> name where
 instance HsValBinds GHC.ParsedSource GHC.RdrName where
   hsValBinds (GHC.L _ (GHC.HsModule _ _ _ ds _ _)) = bindsFromDecls ds
 
-  replaceValBinds (GHC.L l (GHC.HsModule mn exps imps _ds deps hm)) binds =
-    (GHC.L l (GHC.HsModule mn exps imps ds' deps hm))
+  replaceValBinds (GHC.L l (GHC.HsModule mn exps imps ds deps hm)) binds =
+    (GHC.L l (GHC.HsModule mn exps imps ds2 deps hm))
     where
+      isSig (GHC.L _ (GHC.SigD _)) = True
+      isSig _ = False
+
+      isVal (GHC.L _ (GHC.ValD _)) = True
+      isVal _ = False
+
+      no_ds = filter (\d -> not (isSig d || isVal d)) ds
       ds' = declsFromBinds binds
+      ds2 = GHC.sortLocated (ds' ++ no_ds)
 
   -- hsTyDecls (grp,_,_,_) = map GHC.group_tyclds (GHC.hs_tyclds grp)
   hsTyDecls (GHC.L _ (GHC.HsModule _ _ _ _ds _ _)) = []

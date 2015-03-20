@@ -1,5 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 --------------------------------------------------------------------------------
 -- Module      : Variables
 
@@ -25,18 +27,19 @@ module Language.Haskell.Refact.Utils.Variables
   , hsVisiblePNs, hsVisibleNames
   , hsFDsFromInside, hsFDNamesFromInside
   , hsVisibleDs
-  , rdrName2Name
+  , rdrName2Name, rdrName2NamePure
   , rdrName2Name'
 
   -- ** Identifiers, expressions, patterns and declarations
   , FindEntity(..)
+  , sameOccurrence
   {- ,definingDecls -}, definedPNs
   , definingDeclsNames, definingDeclsNames', definingSigsNames
   , definingTyClDeclsNames
   , allNames
   -- ,simplifyDecl
 
-  , hsPNs, hsNamess
+  , hsPNs, hsNamess, hsNamessRdr
   , locToName, locToRdrName
   ) where
 
@@ -91,6 +94,75 @@ class (SYB.Data a, SYB.Typeable a) => FindEntity a where
   -- syntax phrase, say b.
   -- NOTE: very important: only do a shallow check
   findEntity:: (SYB.Data b) => a -> b -> Bool
+
+-- ---------------------------------------------------------------------
+
+instance FindEntity GHC.Name where
+
+  findEntity n t = fromMaybe False res
+   where
+    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (name::GHC.Name)
+      | n == name = Just True
+    worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
+-- TODO: should the location be matched too in this case?
+instance FindEntity (GHC.Located GHC.Name) where
+
+  findEntity n t = fromMaybe False res
+   where
+    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (name::GHC.Located GHC.Name)
+      | n == name = Just True
+    worker _ = Nothing
+
+
+-- ---------------------------------------------------------------------
+
+instance FindEntity (GHC.Located (GHC.HsExpr GHC.Name)) where
+
+  findEntity e t = fromMaybe False res
+   where
+    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (expr::GHC.Located (GHC.HsExpr GHC.Name))
+      | sameOccurrence e expr = Just True
+    worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
+instance FindEntity (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) where
+  findEntity e t = fromMaybe False res
+   where
+    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (expr::(GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)))
+      | sameOccurrence e expr = Just True
+    worker _ = Nothing
+
+instance FindEntity (GHC.Located (GHC.HsDecl GHC.Name)) where
+  findEntity d t = fromMaybe False res
+   where
+    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+
+    worker (decl::(GHC.Located (GHC.HsDecl GHC.Name)))
+      | sameOccurrence d decl = Just True
+    worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
+-- TODO: AZ: pretty sure this can be simplified, depends if we need to
+--          manage transformed stuff too though.
+
+-- | Return True if syntax phrases t1 and t2 refer to the same one.
+sameOccurrence :: (GHC.Located t) -> (GHC.Located t) -> Bool
+sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
+ = l1 == l2
+
 
 -- ---------------------------------------------------------------------
 
@@ -1094,12 +1166,23 @@ allNames t
 
 -- |Get all the names in the given syntax element
 hsNamess :: (SYB.Data t) => t -> [GHC.Name]
--- hsNamess t = (nub.ghead "hsNamess") res
 hsNamess t = nub $ concat res
   where
      res = SYB.everythingStaged SYB.Renamer (++) [] ([] `SYB.mkQ` inName) t
 
      inName (pname :: GHC.Name) = return [pname]
+
+-- |Get all the names in the given syntax element
+hsNamessRdr :: (SYB.Data t) => t -> [GHC.Located GHC.RdrName]
+hsNamessRdr t = nub $ fromMaybe [] r
+  where
+     r = (SYB.everythingStaged SYB.Renamer mappend mempty (inName) t)
+
+     checker :: GHC.Located GHC.RdrName -> Maybe [GHC.Located GHC.RdrName]
+     checker x = Just [x]
+
+     inName :: (SYB.Typeable a) => a -> Maybe [GHC.Located GHC.RdrName]
+     inName = nameSybQuery checker
 
 -- ---------------------------------------------------------------------
 
@@ -1518,10 +1601,14 @@ rdrName2Name' (GHC.L l rdr) = do
 -- ---------------------------------------------------------------------
 
 rdrName2Name :: GHC.Located GHC.RdrName -> RefactGhc GHC.Name
-rdrName2Name (GHC.L lrn _) = do
+rdrName2Name ln = do
   nameMap <- getRefactNameMap
-  return (fromMaybe (error $ "rdrName2Name: no name found for" ++ showGhc lrn)
-                     (Map.lookup lrn nameMap))
+  return (rdrName2NamePure nameMap ln)
+
+rdrName2NamePure :: NameMap -> GHC.Located GHC.RdrName -> GHC.Name
+rdrName2NamePure nameMap (GHC.L lrn _) =
+  fromMaybe (error $ "rdrName2NamePure: no name found for" ++ showGhc lrn)
+             (Map.lookup lrn nameMap)
 
 -- ---------------------------------------------------------------------
 

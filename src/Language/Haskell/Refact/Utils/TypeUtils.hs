@@ -55,7 +55,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,findIdForName
     ,getTypeForName
 
-    ,sameOccurrence
     ,defines, definesP,definesTypeSig
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
     ,sameBind
@@ -639,64 +638,6 @@ isFunOrPatBindR decl = isFunBindR decl || isPatBindR decl
 
 -- ---------------------------------------------------------------------
 
-instance FindEntity GHC.Name where
-
-  findEntity n t = fromMaybe False res
-   where
-    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
-
-    worker (name::GHC.Name)
-      | n == name = Just True
-    worker _ = Nothing
-
--- ---------------------------------------------------------------------
-
--- TODO: should the location be matched too in this case?
-instance FindEntity (GHC.Located GHC.Name) where
-
-  findEntity n t = fromMaybe False res
-   where
-    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
-
-    worker (name::GHC.Located GHC.Name)
-      | n == name = Just True
-    worker _ = Nothing
-
-
--- ---------------------------------------------------------------------
-
-instance FindEntity (GHC.Located (GHC.HsExpr GHC.Name)) where
-
-  findEntity e t = fromMaybe False res
-   where
-    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
-
-    worker (expr::GHC.Located (GHC.HsExpr GHC.Name))
-      | sameOccurrence e expr = Just True
-    worker _ = Nothing
-
--- ---------------------------------------------------------------------
-
-instance FindEntity (GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)) where
-  findEntity e t = fromMaybe False res
-   where
-    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
-
-    worker (expr::(GHC.Located (GHC.HsBindLR GHC.Name GHC.Name)))
-      | sameOccurrence e expr = Just True
-    worker _ = Nothing
-
-instance FindEntity (GHC.Located (GHC.HsDecl GHC.Name)) where
-  findEntity d t = fromMaybe False res
-   where
-    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
-
-    worker (decl::(GHC.Located (GHC.HsDecl GHC.Name)))
-      | sameOccurrence d decl = Just True
-    worker _ = Nothing
-
--- ---------------------------------------------------------------------
-
 
 -- | Returns True is a syntax phrase, say a, is part of another syntax
 -- phrase, say b.
@@ -717,17 +658,6 @@ findEntity' a b = res
 
 -- ---------------------------------------------------------------------
 
--- TODO: AZ: pretty sure this can be simplified, depends if we need to
---          manage transformed stuff too though.
-
--- | Return True if syntax phrases t1 and t2 refer to the same one.
-sameOccurrence :: (GHC.Located t) -> (GHC.Located t) -> Bool
-sameOccurrence (GHC.L l1 _) (GHC.L l2 _)
- = l1 == l2
-
-
--- ---------------------------------------------------------------------
-
 -- | Return True if the function\/pattern binding defines the
 -- specified identifier.
 defines:: GHC.Name -> GHC.LHsBind GHC.Name -> Bool
@@ -737,6 +667,19 @@ defines n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))
  = elem n (hsNamess p)
 defines _ _= False
 
+-- | Return True if the function\/pattern binding defines the
+-- specified identifier.
+definesRdr :: NameMap -> GHC.Name -> GHC.LHsBind GHC.RdrName -> Bool
+definesRdr nameMap nin (GHC.L _ (GHC.FunBind (GHC.L ln pname) _ _ _ _ _)) =
+  case Map.lookup ln nameMap of
+    Nothing -> False
+    Just n ->  GHC.nameUnique n == GHC.nameUnique nin
+definesRdr nameMap n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _)) =
+  -- names <- map (rdrName2Name nameMap) (hsNamessRdr p)
+ -- = elem n (hsNamess p)
+  elem n (map (rdrName2NamePure nameMap) (hsNamessRdr p))
+definesRdr _ _ _= False
+
 definesP::PName->HsDeclP->Bool
 definesP pn (GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
  = PN pname == pn
@@ -744,6 +687,7 @@ definesP pn (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _)))
  = elem pn (hsPNs p)
 definesP _ _= False
 
+-- ---------------------------------------------------------------------
 
 -- | Return True if the declaration defines the type signature of the
 -- specified identifier.
@@ -1507,20 +1451,18 @@ duplicateDecl decls sigs n newFunName
 rmDecl:: (SYB.Data t)
     => GHC.Name     -- ^ The identifier whose definition is to be removed.
     -> Bool         -- ^ True means including the type signature.
-    -> t            -- ^ The AST fragment containting the declarations
+    -> t            -- ^ The AST fragment containting the declarations,
+                    -- originating from the ParsedSource
     -> RefactGhc
         (t,
-        GHC.LHsBind GHC.Name,
-        Maybe (GHC.LSig GHC.Name))  -- ^ The result and the removed
-                                   -- declaration, with SrcSpans
-                                   -- adjusted to reflect the stashed
-                                   -- tokens and the possibly removed
-                                   -- siganture
+        GHC.LHsBind GHC.RdrName,
+        Maybe (GHC.LSig GHC.RdrName))  -- ^ The result and the removed declaration
+                                   -- and the possibly removed siganture
 rmDecl pn incSig t = do
   logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
-  t2  <- everywhereMStaged' SYB.Renamer (SYB.mkM inLet) t -- top down
-  t'  <- everywhereMStaged' SYB.Renamer (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
+  t2  <- everywhereMStaged' SYB.Parser (SYB.mkM inLet) t -- top down
+  t'  <- everywhereMStaged' SYB.Parser (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
 
          -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
   -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
@@ -1529,84 +1471,95 @@ rmDecl pn incSig t = do
                   else return (t', Nothing)
   storage <- getStateStorage
   let decl' = case storage of
-                StorageBind bind -> bind
-                x                -> error $ "rmDecl: unexpected value in StateStorage:" ++ (show x)
+                StorageBindRdr bind -> bind
+                x                   -> error $ "rmDecl: unexpected value in StateStorage:" ++ (show x)
   return (t'',decl',sig')
   where
-    inGRHSs ((GHC.GRHSs a localDecls)::GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name))
+    inGRHSs x@((GHC.GRHSs a localDecls)::GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
       -- was | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
-      | not $ emptyList (snd (break (defines pn) (hsBinds localDecls))) -- /=[]
+      -- x| not $ emptyList (snd (break (definesRdr pn) (hsBinds localDecls)))
       = do
+         nameMap <- getRefactNameMap
          let decls = hsBinds localDecls
-         -- logm $ "rmDecl:inGRHSs decls=" ++ (SYB.showData SYB.Renamer 0 $ decls)
-         -- logm $ "rmDecl:inGRHSs localDecls=" ++ (SYB.showData SYB.Renamer 0 $ localDecls)
-         let (_decls1, decls2) = break (defines pn) decls
-             decl = ghead "rmDecl" decls2
-         topLevel <- isTopLevelPN pn
-         decls' <- case topLevel of
-                     True   -> rmTopLevelDecl decl decls
-                     False  -> rmLocalDecl decl decls
-         return (GHC.GRHSs a (replaceBinds localDecls decls'))
+         if not $ emptyList (snd (break (definesRdr nameMap pn) (hsBinds localDecls)))
+           then do
+            let (_decls1, decls2) = break (definesRdr nameMap pn) decls
+                decl = ghead "rmDecl" decls2
+            topLevel <- isTopLevelPN pn
+            decls' <- case topLevel of
+                        True   -> rmTopLevelDecl decl decls
+                        False  -> rmLocalDecl decl decls
+            return (GHC.GRHSs a (replaceBinds localDecls decls'))
+          else return x
     inGRHSs x = return x
 
-    inDecls (decls::[GHC.LHsBind GHC.Name])
-      | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
-      = do let (_decls1, decls2) = break (defines pn) decls
-               decl = ghead "rmDecl" decls2
-           -- error $ (render.ppi) t -- ecl ++ (show decl)
-           topLevel <- isTopLevelPN pn
-           -- logm $ "rmDecl.inDecls(topLevel,decl)=" ++ showGhc (topLevel,decl)
-           case topLevel of
-                     True   -> rmTopLevelDecl decl decls
-                     False  -> rmLocalDecl decl decls
+    inDecls x@(decls::[GHC.LHsBind GHC.RdrName])
+      -- x| not $ emptyList (snd (break (defines pn) decls)) -- /=[]
+      = do
+           nameMap <- getRefactNameMap
+           if not $ emptyList (snd (break (definesRdr nameMap pn) decls))
+              then do
+                let (_decls1, decls2) = break (definesRdr nameMap pn) decls
+                    decl = ghead "rmDecl" decls2
+                -- error $ (render.ppi) t -- ecl ++ (show decl)
+                topLevel <- isTopLevelPN pn
+                -- logm $ "rmDecl.inDecls(topLevel,decl)=" ++ showGhc (topLevel,decl)
+                case topLevel of
+                            True   -> rmTopLevelDecl decl decls
+                            False  -> rmLocalDecl decl decls
+              else return x
     inDecls x = return x
 
-    inLet :: GHC.LHsExpr GHC.Name -> RefactGhc (GHC.LHsExpr GHC.Name)
-    inLet (GHC.L ss (GHC.HsLet localDecls expr@(GHC.L _ _)))
-      | not $ emptyList (snd (break (defines pn) (hsBinds localDecls)))
+    inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+    inLet x@(GHC.L ss (GHC.HsLet localDecls expr@(GHC.L _ _)))
+      -- x| not $ emptyList (snd (break (defines pn) (hsBinds localDecls)))
       = do
+         nameMap <- getRefactNameMap
          -- putSrcSpan ss -- Make sure the tree includes a SrcSpan for
                           -- the HsLet, for when it is replaced later
+         if not $ emptyList (snd (break (definesRdr nameMap pn) (hsBinds localDecls)))
+            then do
+              let decls = hsBinds localDecls
+              let (decls1, decls2) = break (definesRdr nameMap pn) decls
+                  decl = ghead "rmDecl" decls2
 
-         let decls = hsBinds localDecls
-         let (decls1, decls2) = break (defines pn) decls
-             decl = ghead "rmDecl" decls2
-
-         -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ present
-         -- toks <- getToksForSpan l
-         -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ missing
-         -- removeToksForPos (getStartEndLoc decl)
-         -- drawTokenTree "rmDecl.inLet after removeToksForPos"
-         -- decl' <- syncDeclToLatestStash decl
-         setStateStorage (StorageBind decl)
-         -- drawTokenTree "rmDecl.inLet after syncDeclToLatestStash"
-         case length decls of
-           1 -> do -- Removing the last declaration
-            -- logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
-            -- putToksForSpan ss toks
-            -- (_,expr') <- putDeclToksForSpan ss expr $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
-            -- drawTokenTree "rmDecl.inLet after putToksForSpan"
-            return expr
-           _ -> do
-            logm $ "rmDecl.inLet:length decls /= 1"
-            -- drawTokenTreeDetailed "rmDecl.inLet tree"
-            let decls2' = gtail "inLet" decls2
-            return $ (GHC.L ss (GHC.HsLet (replaceBinds localDecls (decls1 ++ decls2')) expr))
+              -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ present
+              -- toks <- getToksForSpan l
+              -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ missing
+              -- removeToksForPos (getStartEndLoc decl)
+              -- drawTokenTree "rmDecl.inLet after removeToksForPos"
+              -- decl' <- syncDeclToLatestStash decl
+              setStateStorage (StorageBindRdr decl)
+              -- drawTokenTree "rmDecl.inLet after syncDeclToLatestStash"
+              case length decls of
+                1 -> do -- Removing the last declaration
+                 -- logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
+                 -- putToksForSpan ss toks
+                 -- (_,expr') <- putDeclToksForSpan ss expr $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
+                 -- drawTokenTree "rmDecl.inLet after putToksForSpan"
+                 return expr
+                _ -> do
+                 logm $ "rmDecl.inLet:length decls /= 1"
+                 -- drawTokenTreeDetailed "rmDecl.inLet tree"
+                 let decls2' = gtail "inLet" decls2
+                 return $ (GHC.L ss (GHC.HsLet (replaceBinds localDecls (decls1 ++ decls2')) expr))
+            else return x
 
     inLet x = return x
 
 
-    rmTopLevelDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
-                -> RefactGhc [GHC.LHsBind GHC.Name]
+    rmTopLevelDecl :: GHC.LHsBind GHC.RdrName -> [GHC.LHsBind GHC.RdrName]
+                -> RefactGhc [GHC.LHsBind GHC.RdrName]
     rmTopLevelDecl decl decls
       =do
           logm $ "rmTopLevelDecl:" ++ showGhc decl -- ++AZ++
 
           -- removeToksForPos (getStartEndLoc decl)
           -- decl' <- syncDeclToLatestStash decl
-          setStateStorage (StorageBind decl)
+          setStateStorage (StorageBindRdr decl)
 
-          let (decls1, decls2) = break (defines pn) decls
+          nameMap <- getRefactNameMap
+          let (decls1, decls2) = break (definesRdr nameMap pn) decls
               decls2' = gtail "rmTopLevelDecl 1" decls2
           return $ (decls1 ++ decls2')
           -- return (decls \\ [decl])
@@ -1620,8 +1573,8 @@ rmDecl pn incSig t = do
     -}
 
     -- |Remove a location declaration that defines pn.
-    rmLocalDecl :: GHC.LHsBind GHC.Name -> [GHC.LHsBind GHC.Name]
-                -> RefactGhc [GHC.LHsBind GHC.Name]
+    rmLocalDecl :: GHC.LHsBind GHC.RdrName -> [GHC.LHsBind GHC.RdrName]
+                -> RefactGhc [GHC.LHsBind GHC.RdrName]
     rmLocalDecl decl@(GHC.L _sspan _) decls
      = do
 
@@ -1638,7 +1591,7 @@ rmDecl pn incSig t = do
                                              -- sspan is deleted
          -- removeToksForPos (getStartEndLoc decl)
          -- decl' <- syncDeclToLatestStash decl
-         setStateStorage (StorageBind decl)
+         setStateStorage (StorageBindRdr decl)
 
          case length decls of
            1 -> do
@@ -1663,7 +1616,8 @@ rmDecl pn incSig t = do
              return ()
            _ -> return ()
 
-         let (decls1, decls2) = break (defines pn) decls
+         nameMap <- getRefactNameMap
+         let (decls1, decls2) = break (definesRdr nameMap pn) decls
              decls2' = gtail "rmLocalDecl 3" decls2
          return $ (decls1 ++ decls2')
 
@@ -1673,7 +1627,7 @@ rmDecl pn incSig t = do
 rmTypeSigs :: (SYB.Data t) =>
          [GHC.Name]  -- ^ The identifiers whose type signatures are to be removed.
       -> t           -- ^ The declarations
-      -> RefactGhc (t,[GHC.LSig GHC.Name])
+      -> RefactGhc (t,[GHC.LSig GHC.RdrName])
                      -- ^ The result and removed signatures, if there
                      -- were any
 rmTypeSigs pns t = do
@@ -1686,7 +1640,7 @@ rmTypeSigs pns t = do
 rmTypeSig :: (SYB.Data t) =>
          GHC.Name    -- ^ The identifier whose type signature is to be removed.
       -> t           -- ^ The declarations
-      -> RefactGhc (t,Maybe (GHC.LSig GHC.Name))
+      -> RefactGhc (t,Maybe (GHC.LSig GHC.RdrName))
                      -- ^ The result and removed signature, if there
                      -- was one
 rmTypeSig pn t
@@ -1697,8 +1651,8 @@ rmTypeSig pn t
      t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inSigs) t
      storage <- getStateStorage
      let sig' = case storage of
-                  StorageSig sig -> Just sig
-                  StorageNone    -> Nothing
+                  StorageSigRdr sig -> Just sig
+                  StorageNone       -> Nothing
                   x -> error $ "rmTypeSig: unexpected value in StateStorage:" ++ (show x)
      return (t',sig')
   where
@@ -2499,7 +2453,8 @@ expToName _ = defaultName
 
 
 nameToString :: GHC.Name -> String
-nameToString name = showGhc name
+-- nameToString name = showGhc name
+nameToString name = showGhcQual name
 
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing
