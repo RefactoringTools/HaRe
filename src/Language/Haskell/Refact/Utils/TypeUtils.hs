@@ -55,7 +55,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,findIdForName
     ,getTypeForName
 
-    ,defines, definesP,definesTypeSig
+    ,defines, definesP,definesTypeSig,definesTypeSigRdr
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
     ,sameBind
     {- ,usedByRhs -},UsedByRhs(..)
@@ -662,9 +662,9 @@ findEntity' a b = res
 -- specified identifier.
 defines:: GHC.Name -> GHC.LHsBind GHC.Name -> Bool
 defines n (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
- = pname == n
+ = GHC.nameUnique pname == GHC.nameUnique n
 defines n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))
- = elem n (hsNamess p)
+ = elem (GHC.nameUnique n) (map GHC.nameUnique $ hsNamess p)
 defines _ _= False
 
 -- | Return True if the function\/pattern binding defines the
@@ -692,9 +692,16 @@ definesP _ _= False
 -- | Return True if the declaration defines the type signature of the
 -- specified identifier.
 definesTypeSig :: GHC.Name -> GHC.LSig GHC.Name -> Bool
-definesTypeSig pn (GHC.L _ (GHC.TypeSig names _typ _)) = elem pn $ map (\(GHC.L _ n)->n) names
-definesTypeSig _  _ =False
+definesTypeSig pn (GHC.L _ (GHC.TypeSig names _typ _)) = elem (GHC.nameUnique pn) $ map (\(GHC.L _ n)->GHC.nameUnique n) names
+definesTypeSig _  _ = False
 
+-- | Return True if the declaration defines the type signature of the
+-- specified identifier.
+definesTypeSigRdr :: NameMap -> GHC.Name -> GHC.Sig GHC.RdrName -> Bool
+definesTypeSigRdr nameMap pn (GHC.TypeSig names _typ _)
+  = elem (GHC.nameUnique pn) (map (GHC.nameUnique . rdrName2NamePure nameMap) names)
+-- definesTypeSigRdr _ _  _ = False
+definesTypeSigRdr _ _  x = error $ "definesTypeSigRdr : got " ++ SYB.showData SYB.Parser 0 x
 
 {-
 -- | Return True if the declaration defines the type signature of the specified identifier.
@@ -1643,12 +1650,13 @@ rmTypeSig :: (SYB.Data t) =>
       -> RefactGhc (t,Maybe (GHC.LSig GHC.RdrName))
                      -- ^ The result and removed signature, if there
                      -- was one
+                     -- NOTE: It may have originated from a SigD, it is up to the calling function to insert this if required
 rmTypeSig pn t
   = do
      -- logm $ "rmTypeSig:t="  ++ (SYB.showData SYB.Renamer 0 t)
 
      setStateStorage StorageNone
-     t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inSigs) t
+     t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inSigs `SYB.extM` inDecls) t
      storage <- getStateStorage
      let sig' = case storage of
                   StorageSigRdr sig -> Just sig
@@ -1656,82 +1664,103 @@ rmTypeSig pn t
                   x -> error $ "rmTypeSig: unexpected value in StateStorage:" ++ (show x)
      return (t',sig')
   where
-   inSigs (sigs::[GHC.LSig GHC.Name])
-      | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
+   {-
+   Note: In ParsedSource, GHC.Sig can occur either as a top level declaration in
+   which case it is wrapped in a SigD, or on a ValBindsIn construct.
+   -}
+   inDecls (decls :: [GHC.LHsDecl GHC.RdrName])
      = do
-         let (decls1,decls2)= break (definesTypeSig pn) sigs
-         let sig@(GHC.L sspan (GHC.TypeSig names typ p)) = ghead "rmTypeSig" decls2
-         if length names > 1
-             then do
-                 -- We have the following cases
-                 -- [pn,x..], [..x,pn,y..], [..x,pn]
-                 -- We must handle the commas correctly in
-                 -- all cases
-                 -- so [pn,x..] : take front comma
-                 --    [..x,pn,y..] : take either front or back comma,
-                 --                   but only one
-                 --    [..x,pn] : take back comma
-                 let newSig=(GHC.L sspan (GHC.TypeSig (filter (\(GHC.L _ x) -> x /= pn) names) typ p))
+         let getSig s@(GHC.L _ (GHC.SigD _)) = [s]
+             getSig _ = []
+             sigds = concatMap getSig decls
 
-                 toks <- getToksForSpan sspan
-                 -- logm $ "rmTypeSig: fetched toks:" ++ (show toks) -- ++AZ++
-                 let pnt = ghead "rmTypeSig" (filter (\(GHC.L _ x) -> x == pn) names)
-                 {-
-                     (startPos1, endPos1) =
-                         let (startPos1', endPos1') = getStartEndLoc pnt
-                             in if gfromJust "rmTypeSig" (elemIndex pnt names) == 0
-                                    then extendForwards  toks (startPos1',endPos1') isComma
-                                    else extendBackwards toks (startPos1',endPos1') isComma
-                     toks' = deleteToks toks startPos1 endPos1
-                 -}
-                 -- void $ putToksForSpan sspan toks'
+             sigFromDecl (GHC.L _ (GHC.SigD s)) = s
 
-                 -- Construct the old signature, by keeping the
-                 -- signature part but discarding the other names
-                 let oldSig = (GHC.L sspan (GHC.TypeSig [pnt] typ p))
-                 -- sig'@(GHC.L sspan' _) <- syncDeclToLatestStash oldSig
-                 -- let typeLoc = extendBackwards toks (getStartEndLoc typ) isDoubleColon
-                 -- let (_,typTok,_) = splitToks typeLoc toks
-                 -- let (_,pntTok,_) = splitToks (getStartEndLoc pnt) toks
-                 -- void $ putToksForSpan sspan' (pntTok ++ typTok)
-                 setStateStorage (StorageSig oldSig)
+         logm $ "rmTypeSig:checking for  " ++ showGhcQual (pn,GHC.nameUnique pn,GHC.nameSrcSpan pn,decls)
+         -- logm $ "rmTypeSig:checking as data  " ++ SYB.showData SYB.Parser 0 decls
+         nameMap <- getRefactNameMap
+         let nsn = case decls of
+               [(GHC.L _ (GHC.SigD (GHC.TypeSig ns _ _)))] -> map (rdrName2NamePure nameMap) ns
+               _ -> []
 
+             definesSigD (GHC.L _ (GHC.SigD s)) = definesTypeSigRdr nameMap pn s
+             definesSigD _ = False
+         logm $ "rmTypeSig:definesTypeSigRdr ns  " ++ showGhcQual (map (\n -> (n,GHC.nameUnique n,GHC.nameSrcSpan n)) nsn)
+         -- logm $ "rmTypeSig:definesTypeSigRdr for  " ++ showGhcQual (map (definesTypeSigRdr nameMap pn . GHC.unLoc) decls)
+         if not $ emptyList (snd (break (definesTypeSigRdr nameMap pn . sigFromDecl) sigds))
+            then do
+              logm $ "rmTypeSig:processing " ++ showGhcQual decls
+              let (decls1,decls2)= break definesSigD decls
+              let sig@(GHC.L sspan (GHC.SigD (GHC.TypeSig names typ p))) = ghead "rmTypeSig" decls2
+              if length names > 1
+                  then do
+                      -- We have the following cases
+                      -- [pn,x..], [..x,pn,y..], [..x,pn]
+                      -- We must handle the commas correctly in
+                      -- all cases
+                      -- so [pn,x..] : take front comma
+                      --    [..x,pn,y..] : take either front or back comma,
+                      --                   but only one
+                      --    [..x,pn] : take back comma
+                      let newSig = (GHC.L sspan (GHC.SigD (GHC.TypeSig (filter (\rn -> rdrName2NamePure nameMap rn /= pn) names) typ p)))
 
-                 return (decls1++[newSig]++tail decls2)
-             else do
-                 -- removeToksForSpan sspan
-                 -- sig' <- syncDeclToLatestStash sig
-                 setStateStorage (StorageSig sig)
-                 return (decls1++tail decls2)
+                      let pnt = ghead "rmTypeSig" (filter (\rn -> rdrName2NamePure nameMap rn == pn) names)
+
+                      -- Construct the old signature, by keeping the
+                      -- signature part but discarding the other names
+                      let oldSig = (GHC.L sspan (GHC.TypeSig [pnt] typ p))
+                      setStateStorage (StorageSigRdr oldSig)
+
+                      return (decls1++[newSig]++tail decls2)
+                  else do
+                      let oldSig = (GHC.L sspan (sigFromDecl sig))
+                      setStateStorage (StorageSigRdr oldSig)
+                      return (decls1++tail decls2)
+            else return decls
+   inDecls x = return x
+
+   inSigs (sigs::[GHC.LSig GHC.RdrName])
+     = do
+         logm $ "rmTypeSig:checking for  " ++ showGhcQual (pn,GHC.nameUnique pn,GHC.nameSrcSpan pn,sigs)
+         -- logm $ "rmTypeSig:checking as data  " ++ SYB.showData SYB.Parser 0 sigs
+         nameMap <- getRefactNameMap
+         let nsn = case sigs of
+               [(GHC.L _ (GHC.TypeSig ns _ _))] -> map (rdrName2NamePure nameMap) ns
+               _ -> []
+         logm $ "rmTypeSig:definesTypeSigRdr ns  " ++ showGhcQual (map (\n -> (n,GHC.nameUnique n,GHC.nameSrcSpan n)) nsn)
+         logm $ "rmTypeSig:definesTypeSigRdr for  " ++ showGhcQual (map (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs)
+         if not $ emptyList (snd (break (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs))
+            then do
+              logm $ "rmTypeSig:processing " ++ showGhcQual sigs
+              let (decls1,decls2)= break (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs
+              let sig@(GHC.L sspan (GHC.TypeSig names typ p)) = ghead "rmTypeSig" decls2
+              if length names > 1
+                  then do
+                      -- We have the following cases
+                      -- [pn,x..], [..x,pn,y..], [..x,pn]
+                      -- We must handle the commas correctly in
+                      -- all cases
+                      -- so [pn,x..] : take front comma
+                      --    [..x,pn,y..] : take either front or back comma,
+                      --                   but only one
+                      --    [..x,pn] : take back comma
+                      let newSig = (GHC.L sspan (GHC.TypeSig (filter (\rn -> rdrName2NamePure nameMap rn /= pn) names) typ p))
+
+                      let pnt = ghead "rmTypeSig" (filter (\rn -> rdrName2NamePure nameMap rn == pn) names)
+
+                      -- Construct the old signature, by keeping the
+                      -- signature part but discarding the other names
+                      let oldSig = (GHC.L sspan (GHC.TypeSig [pnt] typ p))
+                      setStateStorage (StorageSigRdr oldSig)
+
+                      return (decls1++[newSig]++tail decls2)
+                  else do
+                      -- removeToksForSpan sspan
+                      -- sig' <- syncDeclToLatestStash sig
+                      setStateStorage (StorageSigRdr sig)
+                      return (decls1++tail decls2)
+            else return sigs
    inSigs x = return x
-
-{-
-               [
-                (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:7-14}
-                 (TypeSig
-                  [
-                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:7} {Name: h})]
-                  (L {test/testdata/LiftToToplevel/PatBindIn1.hs:15:12-14}
-                   (HsTyVar {Name: GHC.Types.Int})))),
-                (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:7-14}
-                 (TypeSig
-                  [
-                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:7} {Name: t})]
-                  (L {test/testdata/LiftToToplevel/PatBindIn1.hs:16:12-14}
-                   (HsTyVar {Name: GHC.Types.Int})))),
-                (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:7-22}
-                 (TypeSig
-                  [
-                   (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:7-9} {Name: tup})]
-                  (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:14-22}
-                   (HsTupleTy
-                    (HsBoxedOrConstraintTuple)
-                    [
-                     (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:15-17}
-                      (HsTyVar {Name: GHC.Types.Int})),
-                     (L {test/testdata/LiftToToplevel/PatBindIn1.hs:17:19-21}
-                      (HsTyVar {Name: GHC.Types.Int}))]))))]
--}
 
 -- ---------------------------------------------------------------------
 
