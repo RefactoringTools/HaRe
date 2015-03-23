@@ -1,6 +1,6 @@
 module TS1 where
 
-type Foo = (String, Int)
+type Name = String
 
-getInt :: Foo -> Int
-getInt (_, i) = i
+count :: Name -> Int
+count s = length s

@@ -26,11 +26,22 @@ comp fileName (row,col) = do
   case maybePn of
     Just pn@(GHC.TyDecl (GHC.L _ name) _ tyDefn _) ->
       case tyDefn of
-        (GHC.TySynonym (GHC.L _ ty)) -> error $ show (SYB.typeOf ty)
-        _ -> error "Given type is not simple type synonym"
+        (GHC.TySynonym (GHC.L _ ty)) -> do
+          (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (doIntro name ty) RSAlreadyLoaded
+          case (ismod) of
+            False -> error "Introduce type synonym failed"
+            True -> return ()
+          return [refactoredMod]
+        _ -> error "Given type is not type synonym"
     Nothing -> error "Given location does not correspond to type"
       
-      
+
+doIntro :: GHC.Name -> GHC.HsType GHC.Name -> RefactGhc ()
+doIntro name ty =
+  case ty of
+    (GHC.HsTupleTy sort ts) -> error "Tuple type"
+    (GHC.HsTyVar n) -> error "Type var"
+    _ -> error "Unsupported type synonym"
       {-
       do
       logm $ "TypeSyn.comp: Inside nothing branch"
