@@ -1670,13 +1670,13 @@ rmTypeSig pn t
    -}
    inDecls (decls :: [GHC.LHsDecl GHC.RdrName])
      = do
-         let getSig s@(GHC.L _ (GHC.SigD _)) = [s]
-             getSig _ = []
-             sigds = concatMap getSig decls
+         let getValDSig s@(GHC.L _ (GHC.SigD _)) = [s]
+             getValDSig _ = []
+             sigds = concatMap getValDSig decls
 
              sigFromDecl (GHC.L _ (GHC.SigD s)) = s
 
-         logm $ "rmTypeSig:checking for  " ++ showGhcQual (pn,GHC.nameUnique pn,GHC.nameSrcSpan pn,decls)
+         -- logm $ "rmTypeSig:checking for  " ++ showGhcQual (pn,GHC.nameUnique pn,GHC.nameSrcSpan pn,decls)
          -- logm $ "rmTypeSig:checking as data  " ++ SYB.showData SYB.Parser 0 decls
          nameMap <- getRefactNameMap
          let nsn = case decls of
@@ -1685,23 +1685,15 @@ rmTypeSig pn t
 
              definesSigD (GHC.L _ (GHC.SigD s)) = definesTypeSigRdr nameMap pn s
              definesSigD _ = False
-         logm $ "rmTypeSig:definesTypeSigRdr ns  " ++ showGhcQual (map (\n -> (n,GHC.nameUnique n,GHC.nameSrcSpan n)) nsn)
+         -- logm $ "rmTypeSig:definesTypeSigRdr ns  " ++ showGhcQual (map (\n -> (n,GHC.nameUnique n,GHC.nameSrcSpan n)) nsn)
          -- logm $ "rmTypeSig:definesTypeSigRdr for  " ++ showGhcQual (map (definesTypeSigRdr nameMap pn . GHC.unLoc) decls)
          if not $ emptyList (snd (break (definesTypeSigRdr nameMap pn . sigFromDecl) sigds))
             then do
-              logm $ "rmTypeSig:processing " ++ showGhcQual decls
+              -- logm $ "rmTypeSig.inDecl:processing " ++ showGhcQual decls
               let (decls1,decls2)= break definesSigD decls
               let sig@(GHC.L sspan (GHC.SigD (GHC.TypeSig names typ p))) = ghead "rmTypeSig" decls2
               if length names > 1
                   then do
-                      -- We have the following cases
-                      -- [pn,x..], [..x,pn,y..], [..x,pn]
-                      -- We must handle the commas correctly in
-                      -- all cases
-                      -- so [pn,x..] : take front comma
-                      --    [..x,pn,y..] : take either front or back comma,
-                      --                   but only one
-                      --    [..x,pn] : take back comma
                       let newSig = (GHC.L sspan (GHC.SigD (GHC.TypeSig (filter (\rn -> rdrName2NamePure nameMap rn /= pn) names) typ p)))
 
                       let pnt = ghead "rmTypeSig" (filter (\rn -> rdrName2NamePure nameMap rn == pn) names)
@@ -1721,29 +1713,21 @@ rmTypeSig pn t
 
    inSigs (sigs::[GHC.LSig GHC.RdrName])
      = do
-         logm $ "rmTypeSig:checking for  " ++ showGhcQual (pn,GHC.nameUnique pn,GHC.nameSrcSpan pn,sigs)
+         -- logm $ "rmTypeSig:checking for  " ++ showGhcQual (pn,GHC.nameUnique pn,GHC.nameSrcSpan pn,sigs)
          -- logm $ "rmTypeSig:checking as data  " ++ SYB.showData SYB.Parser 0 sigs
          nameMap <- getRefactNameMap
          let nsn = case sigs of
                [(GHC.L _ (GHC.TypeSig ns _ _))] -> map (rdrName2NamePure nameMap) ns
                _ -> []
-         logm $ "rmTypeSig:definesTypeSigRdr ns  " ++ showGhcQual (map (\n -> (n,GHC.nameUnique n,GHC.nameSrcSpan n)) nsn)
-         logm $ "rmTypeSig:definesTypeSigRdr for  " ++ showGhcQual (map (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs)
+         -- logm $ "rmTypeSig:definesTypeSigRdr ns  " ++ showGhcQual (map (\n -> (n,GHC.nameUnique n,GHC.nameSrcSpan n)) nsn)
+         -- logm $ "rmTypeSig:definesTypeSigRdr for  " ++ showGhcQual (map (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs)
          if not $ emptyList (snd (break (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs))
             then do
-              logm $ "rmTypeSig:processing " ++ showGhcQual sigs
+              -- logm $ "rmTypeSig:processing " ++ showGhcQual sigs
               let (decls1,decls2)= break (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs
               let sig@(GHC.L sspan (GHC.TypeSig names typ p)) = ghead "rmTypeSig" decls2
               if length names > 1
                   then do
-                      -- We have the following cases
-                      -- [pn,x..], [..x,pn,y..], [..x,pn]
-                      -- We must handle the commas correctly in
-                      -- all cases
-                      -- so [pn,x..] : take front comma
-                      --    [..x,pn,y..] : take either front or back comma,
-                      --                   but only one
-                      --    [..x,pn] : take back comma
                       let newSig = (GHC.L sspan (GHC.TypeSig (filter (\rn -> rdrName2NamePure nameMap rn /= pn) names) typ p))
 
                       let pnt = ghead "rmTypeSig" (filter (\rn -> rdrName2NamePure nameMap rn == pn) names)
@@ -1755,8 +1739,6 @@ rmTypeSig pn t
 
                       return (decls1++[newSig]++tail decls2)
                   else do
-                      -- removeToksForSpan sspan
-                      -- sig' <- syncDeclToLatestStash sig
                       setStateStorage (StorageSigRdr sig)
                       return (decls1++tail decls2)
             else return sigs
@@ -1925,23 +1907,25 @@ renamePN' oldPN newName useQual t = do
 
     -- TODO: check inside the ns here too
     renameLIE useQual' (GHC.L l (GHC.IEThingWith old@(GHC.L ln n) ns))
-     | cond (GHC.L ln n)
      = do
-          logTr $ "renamePN:renameLIE.IEThingWith at :" ++ (showGhc l)
-          -- worker useQual l Nothing
-          -- let new = if useQual' then newNameQual else newNameUnqual
-          let new = newNameCalc useQual' n
 
-          an <- get
-          let newn = (GHC.L ln new)
-          put $ replaceAnnKey an old newn
+         old' <- if (cond (GHC.L ln n))
+           then do
+             logTr $ "renamePN:renameLIE.IEThingWith at :" ++ (showGhc l)
+             let new = newNameCalc useQual' n
 
-          return (GHC.L l (GHC.IEThingWith (GHC.L ln new) ns))
-     -- | any (\(GHC.L _ nn) -> (GHC.nameUnique nn == GHC.nameUnique oldPN)) ns
-     | any (\(GHC.L lnn nn) -> cond (GHC.L lnn nn)) ns
-     = do
-          let new = newNameCalc useQual' n
-          return (GHC.L l (GHC.IEThingWith (GHC.L ln new) ns))
+             an <- get
+             let newn = (GHC.L ln new)
+             put $ replaceAnnKey an old newn
+
+             return (GHC.L ln new)
+           else return old
+
+
+         ns' <- if (any (\(GHC.L lnn nn) -> cond (GHC.L lnn nn)) ns)
+           then renameTransform useQual' ns
+           else return ns
+         return (GHC.L l (GHC.IEThingWith old' ns'))
 
     renameLIE _ x = do
          -- logTr $ "renamePN:renameLIE miss for :" ++ (showGhc x)
