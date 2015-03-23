@@ -257,7 +257,7 @@ module Language.Haskell.Refact.API
     -- *** Locations
     ,defineLoc, useLoc, locToExp  -- , getStartEndLoc
     ,locToName, locToRdrName
-    ,getName
+    ,getName, locToType
 
  -- * Program transformation
     -- *** Adding

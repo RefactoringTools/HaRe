@@ -23,6 +23,7 @@ module SwapTuple.St1 where
 
    replaceInt :: Foo -> Int -> Foo
    replaceInt f i = (getStr f, i)
+   
    countDown :: Foo -> IO ()
    countDown foo = do
       putStrLn $ fst foo

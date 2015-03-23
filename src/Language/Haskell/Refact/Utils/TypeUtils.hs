@@ -85,7 +85,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Locations
     ,defineLoc, useLoc, locToExp
     ,locToName, locToRdrName
-    ,getName
+    ,getName,
+     locToType
 
  -- * Program transformation
     -- ** Adding
@@ -2704,7 +2705,23 @@ locToName' stage (row,col) t =
               (col >= (GHC.srcSpanStartCol ss)) &&
               (col <= (GHC.srcSpanEndCol   ss))
 
-
+locToType :: (SYB.Data t) 
+             => SimpPos
+             -> t
+             -> Maybe (GHC.TyClDecl GHC.Name)
+locToType (row,col) t = res
+  where res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+        worker (ty@(GHC.TyDecl pnt@(GHC.L l _) _ _ _) :: (GHC.TyClDecl GHC.Name))
+          | inScope pnt = Just ty
+        worker _ = Nothing
+        
+        inScope :: GHC.Located e -> Bool
+        inScope (GHC.L l _) =
+          case l of
+            (GHC.UnhelpfulSpan _) -> False
+            (GHC.RealSrcSpan ss)  ->
+              (GHC.srcSpanStartLine ss <= row) &&
+              (GHC.srcSpanEndLine ss   >= row) 
 --------------------------------------------------------------------------------
 
 -- |Find all Located Names in the given Syntax phrase.
@@ -4154,6 +4171,7 @@ locToExp beginPos endPos t = res
         (startLoc>=beginPos) && (startLoc<= endPos) && (endLoc>= beginPos) && (endLoc<=endPos)
 
 --------------------------------------------------------------------------------
+
 
 
 ghcToPN :: GHC.RdrName -> PName
