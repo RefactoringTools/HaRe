@@ -52,21 +52,22 @@ doIntro name ty = do
     newTyVar = (GHC.HsTyVar name)    
     replaceTypeVar :: (GHC.LHsType GHC.Name) -> RefactGhc (GHC.LHsType GHC.Name)
     replaceTypeVar (GHC.L l oldTy@(GHC.HsTyVar n))
-      | compareTyVar oldTy ty
+      | compareHsType oldTy ty
       = do
-        worker l Nothing
+        worker l
         return (GHC.L l newTyVar)
     replaceTypeVar x = return x
-    worker :: GHC.SrcSpan -> Maybe (GHC.ModuleName, GHC.OccName) -> RefactGhc ()
-    worker l mmo = do
-      let newTok = newNameTok False l name
-      replaceToken l (markToken $ newTok)
-      return ()
+    worker :: GHC.SrcSpan -> RefactGhc ()
+    worker l = do
+       let newTok = newNameTok False l name        
+       replaceToken l (markToken $ newTok)
+       return ()
       
 
 --TODO implement this 
-compareTyVar :: (GHC.HsType GHC.Name) -> (GHC.HsType GHC.Name) -> Bool
-compareTyVar t1 t2 = True
+compareHsType :: (GHC.HsType GHC.Name) -> (GHC.HsType GHC.Name) -> Bool
+compareHsType (GHC.HsTyVar n1) (GHC.HsTyVar n2) = n1 == n2
+compareHsType t1 t2 = False
 
 getTypeSigs :: (SYB.Data t, SYB.Typeable t) => t -> [GHC.LSig GHC.Name]
 getTypeSigs t =
