@@ -10,6 +10,7 @@ import Control.Monad
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
+import Language.Haskell.TokenUtils.GHC.Layout (newNameTok)
 
 introduceTypeSyn :: RefactSettings -> Cradle -> FilePath -> SimpPos -> IO [FilePath]
 introduceTypeSyn settings cradle fileName (row,col) =
@@ -37,11 +38,44 @@ comp fileName (row,col) = do
       
 
 doIntro :: GHC.Name -> GHC.HsType GHC.Name -> RefactGhc ()
-doIntro name ty =
+doIntro name ty = do
+  renamed <- getRefactRenamed
   case ty of
     (GHC.HsTupleTy sort ts) -> error "Tuple type"
-    (GHC.HsTyVar n) -> error "Type var"
+    (GHC.HsTyVar n) -> do
+      renamed <- getRefactRenamed
+      let sigs = getTypeSigs renamed
+      everywhereMStaged SYB.Renamer (SYB.mkM replaceTypeVar) sigs
+      return ()
     _ -> error "Unsupported type synonym"
+  where
+    newTyVar = (GHC.HsTyVar name)    
+    replaceTypeVar :: (GHC.LHsType GHC.Name) -> RefactGhc (GHC.LHsType GHC.Name)
+    replaceTypeVar (GHC.L l oldTy@(GHC.HsTyVar n))
+      | compareTyVar oldTy ty
+      = do
+        worker l Nothing
+        return (GHC.L l newTyVar)
+    replaceTypeVar x = return x
+    worker :: GHC.SrcSpan -> Maybe (GHC.ModuleName, GHC.OccName) -> RefactGhc ()
+    worker l mmo = do
+      let newTok = newNameTok False l name
+      replaceToken l (markToken $ newTok)
+      return ()
+      
+
+--TODO implement this 
+compareTyVar :: (GHC.HsType GHC.Name) -> (GHC.HsType GHC.Name) -> Bool
+compareTyVar t1 t2 = True
+
+getTypeSigs :: (SYB.Data t, SYB.Typeable t) => t -> [GHC.LSig GHC.Name]
+getTypeSigs t =
+  case res of
+    Just a -> a
+    Nothing -> error "No type signatures found in module"
+  
+  where res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+        worker ((GHC.ValBindsOut _ lst):: GHC.HsValBinds GHC.Name) = Just lst
       {-
       do
       logm $ "TypeSyn.comp: Inside nothing branch"

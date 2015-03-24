@@ -139,7 +139,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , getParsedForRenamedLocated
     -- , allPNT
     --  , allPNTLens
-    -- , newNameTok
+    --, newNameTok
     , stripLeadingSpaces
     -- , lookupNameGhc
  ) where
