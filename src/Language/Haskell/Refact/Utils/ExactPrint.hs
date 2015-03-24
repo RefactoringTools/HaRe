@@ -149,7 +149,7 @@ extractSrcSpanConName  =
 -- ---------------------------------------------------------------------
 
 addAnnKeywords :: Anns -> AnnConName -> [(KeywordId, DeltaPos)] -> Anns
-addAnnKeywords anns conName ks = Map.insert (AnnKey ss conName) (annNone {anns = ks}) anns
+addAnnKeywords anns conName ks = Map.insert (AnnKey ss conName) (annNone {annsDP = ks}) anns
   where
     -- First find the first srcspan having the conName
     -- MP: First in what sense?
@@ -174,10 +174,10 @@ setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given annotation key/val
 setOffset :: Anns -> (AnnKey, Annotation) -> Anns
-setOffset anne (k, Ann dp nl sc col _) = case
+setOffset anne (k, Ann dp col _) = case
   Map.lookup k anne of
-    Nothing               -> Map.insert k (Ann dp nl sc col []) anne
-    Just (Ann _ _ _ _ ks) -> Map.insert k (Ann dp nl sc col ks) anne
+    Nothing           -> Map.insert k (Ann dp col []) anne
+    Just (Ann _ _ ks) -> Map.insert k (Ann dp col ks) anne
 
 -- |Update the DeltaPos for the given annotation keys
 setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,Annotation)] -> Anns
@@ -194,11 +194,9 @@ replace old new as = do
   oldan <- Map.lookup old as
   newan <- Map.lookup new as
   let newan' = Ann
-                { ann_entry_delta  = ann_entry_delta oldan
-                , ann_original_nl  = ann_original_nl oldan
-                , ann_original_col = ann_original_col oldan
-                , ann_delta        = ann_delta oldan
-                , anns             = moveAnns (anns oldan) (anns newan)
+                { annEntryDelta = annEntryDelta oldan
+                , annDelta      = annDelta oldan
+                , annsDP        = moveAnns (annsDP oldan) (annsDP newan)
                 }
   return . Map.delete old . Map.insert new newan' $ as
 
@@ -215,7 +213,7 @@ moveAnns ((_, dp): _) ((kw, _):xs) = (kw,dp) : xs
 -- | Delete an annotation
 deleteAnnotation :: AnnKey -> KeywordId -> Anns -> Anns
 deleteAnnotation k kw =
-  Map.adjust (\(s@Ann{anns}) -> s { anns = filter (\x -> fst x /= kw) anns}) k
+  Map.adjust (\(s@Ann{annsDP}) -> s { annsDP = filter (\x -> fst x /= kw) annsDP}) k
 
 mergeAnns :: Anns -> Anns -> Anns
 mergeAnns = Map.unionWith (<>)
@@ -248,7 +246,7 @@ setColRec f loc = transform loc
 setCol :: (Int -> Int) -> GHC.SrcSpan -> AnnConName -> (Anns -> Anns)
 setCol f ss cn anns =
   let key = AnnKey ss cn
-      res = Map.adjust (\s -> s { ann_delta = f (ann_delta s) }) key anns in
+      res = Map.adjust (\s -> s { annDelta = f (annDelta s) }) key anns in
       res
 
 
@@ -258,7 +256,7 @@ getOriginalPos :: (SYB.Data a) => Anns -> GHC.Located a -> KeywordId -> (Pos,Del
 getOriginalPos ann la@(GHC.L ss _) kw =
   let
     an = gfromJust ("getOriginalPos" ++ showGhc (ss,kw)) $ getAnnotationEP la ann
-    mdp = lookup kw (anns an)
+    mdp = lookup kw (annsDP an)
   in case mdp of
     Nothing -> ((0,0),DP (0,0))
     Just dp@(DP (ro,co)) -> ((ro + srcSpanStartLine ss, co + srcSpanStartColumn ss),dp)

@@ -1519,31 +1519,18 @@ rmDecl pn incSig t = do
 
     inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
     inLet x@(GHC.L ss (GHC.HsLet localDecls expr@(GHC.L _ _)))
-      -- x| not $ emptyList (snd (break (defines pn) (hsBinds localDecls)))
       = do
          nameMap <- getRefactNameMap
-         -- putSrcSpan ss -- Make sure the tree includes a SrcSpan for
-                          -- the HsLet, for when it is replaced later
          if not $ emptyList (snd (break (definesRdr nameMap pn) (hsBinds localDecls)))
             then do
               let decls = hsBinds localDecls
               let (decls1, decls2) = break (definesRdr nameMap pn) decls
                   decl = ghead "rmDecl" decls2
 
-              -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ present
-              -- toks <- getToksForSpan l
-              -- drawTokenTreeDetailed "rmDecl.inLet tree" -- ++AZ++ missing
-              -- removeToksForPos (getStartEndLoc decl)
-              -- drawTokenTree "rmDecl.inLet after removeToksForPos"
-              -- decl' <- syncDeclToLatestStash decl
               setStateStorage (StorageBindRdr decl)
-              -- drawTokenTree "rmDecl.inLet after syncDeclToLatestStash"
               case length decls of
                 1 -> do -- Removing the last declaration
                  -- logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
-                 -- putToksForSpan ss toks
-                 -- (_,expr') <- putDeclToksForSpan ss expr $ dropWhile (\tok -> isEmpty tok || isIn tok) toks
-                 -- drawTokenTree "rmDecl.inLet after putToksForSpan"
                  return expr
                 _ -> do
                  logm $ "rmDecl.inLet:length decls /= 1"

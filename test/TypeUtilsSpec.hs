@@ -1578,53 +1578,62 @@ spec = do
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       -- (show $ entriesFromState s) `shouldBe` "[]"
       (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      (unspace $ showGhcQual nb) `shouldBe` "(MoveDef.Md1.toplevel ::\n GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x\n MoveDef.Md1.c, MoveDef.Md1.d :: GHC.Integer.Type.Integer\n MoveDef.Md1.c = 7\n MoveDef.Md1.d = 9\n MoveDef.Md1.tup :: (GHC.Types.Int, GHC.Types.Int)\n MoveDef.Md1.h :: GHC.Types.Int\n MoveDef.Md1.t :: GHC.Types.Int\n MoveDef.Md1.tup@(MoveDef.Md1.h, MoveDef.Md1.t)\n = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n where\n ff :: GHC.Types.Int\n ff = 15\n MoveDef.Md1.l z = let ll = 34 in ll GHC.Num.+ z\n MoveDef.Md1.dd q\n = do { let ss = 5;\n GHC.Base.return (ss GHC.Num.+ q) }\n MoveDef.Md1.zz1 a = 1 GHC.Num.+ MoveDef.Md1.toplevel a\n MoveDef.Md1.tlFunc ::\n GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x\n \n data MoveDef.Md1.D\n = MoveDef.Md1.A | MoveDef.Md1.B GHC.Base.String | MoveDef.Md1.C,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
 
     -- -----------------------------------
 
     it "removes the last local decl in a let/in clause" $ do
       (t, toks) <- ct $ parsedFileGhc "./LiftToToplevel/LetIn1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      let declsr = hsBinds renamed
+      -- let declsr = hsBinds renamed
+      let declsp = hsBinds parsed
       let Just (GHC.L _ n) = locToName (11, 22) renamed
       let
         comp = do
-         (newDecls,_removedDecl,_removedSig) <- rmDecl n True declsr
+         -- (newDecls,_removedDecl,_removedSig) <- rmDecl n True declsr
+         (newDecls,_removedDecl,_removedSig) <- rmDecl n True declsp
+
+         let parsed' = replaceBinds parsed newDecls
+         putRefactParsed parsed' mempty
 
          return newDecls
-      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual n) `shouldBe` "sq"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n --A definition can be lifted from a where or let to the top level binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'sq' in 'sumSquares'\n --This example aims to test lifting a definition from a let clause to top level,\n --and the elimination of the keywords 'let' and 'in'\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                   in sq x + sq y\n                        where pow=2\n\n anotherFun 0 y = sq y\n      where sq x = x^2\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' in 'sumSquares'\n--This example aims to test lifting a definition from a let clause to top level,\n--and the elimination of the keywords 'let' and 'in'\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                  in sq x + sq y\n                       where pow=2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (sourceFromState s) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' in 'sumSquares'\n--This example aims to test lifting a definition from a let clause to top level,\n--and the elimination of the keywords 'let' and 'in'\n\nsumSquares x y = sq x + sq y\n\n\n                       where pow=2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n"
-      (showGhcQual nb) `shouldBe` "[LiftToToplevel.LetIn1.anotherFun 0 y\n   = sq y\n   where\n       sq x = x GHC.Real.^ 2,\n LiftToToplevel.LetIn1.sumSquares x y\n   = sq x GHC.Num.+ sq y\n   where\n       pow = 2]"
+      (sourceFromState s) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' in 'sumSquares'\n--This example aims to test lifting a definition from a let clause to top level,\n--and the elimination of the keywords 'let' and 'in'\n\nsumSquares x y = sq x + sq y\n                       where pow=2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n"
 
     -- -----------------------------------
 
     it "removes the non last local decl in a let/in clause" $ do
       (t, toks) <- ct $ parsedFileGhc "./Demote/LetIn1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      let declsr = hsBinds renamed
+      -- let declsr = hsBinds renamed
+      let declsp = hsBinds parsed
       let Just (GHC.L _ n) = locToName (12, 22) renamed
       let
         comp = do
-         (newDecls,_removedDecl,_removedSig) <- rmDecl n False declsr
+         (newDecls,_removedDecl,_removedSig) <- rmDecl n False declsp
+
+         let parsed' = replaceBinds parsed newDecls
+         putRefactParsed parsed' mempty
 
          return newDecls
-      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
       (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
 
+      -- putStrLn $ "anntree\n" ++ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "pow"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.LetIn1 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the local  'pow' to 'sq'\n --This example also aims to test the demoting a local declaration in 'let'.\n\n sumSquares x y = let sq 0=0\n                      sq z=z^pow\n                      pow=2\n                  in sq x + sq y\n\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n   "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.LetIn1 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' to 'sq'\n--This example also aims to test the demoting a local declaration in 'let'.\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                     pow=2\n                 in sq x + sq y\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n  "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module Demote.LetIn1 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' to 'sq'\n--This example also aims to test the demoting a local declaration in 'let'.\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                 in sq x + sq y\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n  "
-      (showGhcQual nb) `shouldBe` "[Demote.LetIn1.anotherFun 0 y\n   = sq y\n   where\n       sq x = x GHC.Real.^ 2,\n Demote.LetIn1.sumSquares x y\n   = let\n       sq 0 = 0\n       sq z = z GHC.Real.^ pow\n     in sq x GHC.Num.+ sq y]"
 
   -- ---------------------------------------------
 
@@ -1646,7 +1655,7 @@ spec = do
       -- ((nb,os),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
       ((nb,os),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
 
-      -- putStrLn $ "anntree\n" ++ showAnnDataFromState s 
+      -- putStrLn $ "anntree\n" ++ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n where\n   ff :: Int\n   ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n where\n   zz = 1\n\nl z =\n let\n   ll = 34\n in ll + z\n\ndd q = do\n let ss = 5\n return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
