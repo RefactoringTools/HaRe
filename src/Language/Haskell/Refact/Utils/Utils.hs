@@ -26,7 +26,6 @@ module Language.Haskell.Refact.Utils.Utils
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
-
        ) where
 
 import Control.Monad.State

@@ -49,7 +49,6 @@ import Language.Haskell.Refact.Utils.Cabal
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Utils
 import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger

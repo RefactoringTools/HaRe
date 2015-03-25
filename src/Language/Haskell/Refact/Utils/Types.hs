@@ -11,6 +11,11 @@ module Language.Haskell.Refact.Utils.Types
        , SimpSpan
        , Positioning(..)
        , NameMap
+
+       , ghead
+       , glast
+       , gtail
+       , gfromJust
        ) where
 
 import qualified GHC      as GHC
@@ -74,3 +79,22 @@ data Positioning = PlaceAdjacent -- ^Only a single space between the
 -- ---------------------------------------------------------------------
 
 type NameMap = Map.Map GHC.SrcSpan GHC.Name
+
+-- ---------------------------------------------------------------------
+-- Putting these here for the time being, to avoid import loops
+
+ghead :: String -> [a] -> a
+ghead  info []    = error $ "ghead "++info++" []"
+ghead _info (h:_) = h
+
+glast :: String -> [a] -> a
+glast  info []    = error $ "glast " ++ info ++ " []"
+glast _info h     = last h
+
+gtail :: String -> [a] -> [a]
+gtail  info []   = error $ "gtail " ++ info ++ " []"
+gtail _info h    = tail h
+
+gfromJust :: [Char] -> Maybe a -> a
+gfromJust _info (Just h) = h
+gfromJust  info Nothing = error $ "gfromJust " ++ info ++ " Nothing"

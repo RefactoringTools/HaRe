@@ -22,6 +22,9 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , setColRec
   , getOriginalPos
 
+  -- * Operations
+  , transferEntryDP
+
   -- * TransForm
   , Transform
   , runTransform
@@ -35,14 +38,13 @@ import qualified Data.Generics as SYB
 --import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import Control.Monad.RWS
--- import Control.Monad.State
 import Data.List
--- import Data.Monoid
--- import Debug.Trace
+import Data.Maybe
 
 import qualified Data.Map as Map
 
@@ -200,6 +202,24 @@ replace old new as = do
                 }
   return . Map.delete old . Map.insert new newan' $ as
 
+-- ---------------------------------------------------------------------
+
+-- |Take the annEntryDelta associated with the first item and associate it with the second.
+transferEntryDP :: (SYB.Data a, SYB.Data b) => Anns -> GHC.Located a -> GHC.Located b -> Anns
+transferEntryDP anns a b = anns'
+  where
+    maybeAnns = do
+      anA <- Map.lookup (mkKey a) anns
+      anB <- Map.lookup (mkKey b) anns
+      let anB'  = anB { annEntryDelta = annEntryDelta anA }
+      -- return (Map.insert (mkKey b) anB' anns)
+      return (error $ "transferEntryDP: (mkKey a,mkKey b,anA,anB,anB')" ++ showGhc (mkKey a,mkKey b,anA,anB,anB') )
+    anns' = fromMaybe
+              (error $ "transferEntryDP: lookup failed (a,b)=" ++ show (mkKey a,mkKey b))
+              maybeAnns
+
+-- ---------------------------------------------------------------------
+
 mkKey :: (SYB.Data a) => GHC.Located a -> AnnKey
 mkKey (GHC.L l s) = AnnKey l (annGetConstr s)
 
@@ -224,7 +244,7 @@ deleteAnnotations vs anne = foldr (uncurry deleteAnnotation) anne vs
 -- -------------------------
 
 -- | Recursively change the col offsets
-setColRec :: (SYB.Data a) => (Int -> Int) -> a -> (Anns -> Anns)
+setColRec :: (SYB.Data a) => (ColDelta -> ColDelta) -> a -> (Anns -> Anns)
 setColRec f loc = transform loc
   where
     transform :: SYB.Data a => a -> (Anns -> Anns)
@@ -243,7 +263,7 @@ setColRec f loc = transform loc
     getConName :: forall d. SYB.Data d => d -> AnnConName
     getConName = annGetConstr
 
-setCol :: (Int -> Int) -> GHC.SrcSpan -> AnnConName -> (Anns -> Anns)
+setCol :: (ColDelta -> ColDelta) -> GHC.SrcSpan -> AnnConName -> (Anns -> Anns)
 setCol f ss cn anns =
   let key = AnnKey ss cn
       res = Map.adjust (\s -> s { annDelta = f (annDelta s) }) key anns in

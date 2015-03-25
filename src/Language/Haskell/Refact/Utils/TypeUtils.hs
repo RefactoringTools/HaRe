@@ -1654,6 +1654,7 @@ rmTypeSig pn t
    {-
    Note: In ParsedSource, GHC.Sig can occur either as a top level declaration in
    which case it is wrapped in a SigD, or on a ValBindsIn construct.
+   TODO: unify the common workings
    -}
    inDecls (decls :: [GHC.LHsDecl GHC.RdrName])
      = do
@@ -1694,6 +1695,10 @@ rmTypeSig pn t
                   else do
                       let oldSig = (GHC.L sspan (sigFromDecl sig))
                       setStateStorage (StorageSigRdr oldSig)
+                      -- ++ AZ : Need to take the ED from the removed decl and apply it to the tail.
+                      unless (null (tail decls2)) $ do
+                        anns <- getRefactAnns
+                        setRefactAnns (transferEntryDP anns (head decls2) (head $ tail decls2) )
                       return (decls1++tail decls2)
             else return decls
    inDecls x = return x
