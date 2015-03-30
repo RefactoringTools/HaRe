@@ -1,0 +1,12 @@
+module TS2 where
+
+type Foo = (String, Int)
+
+getInt :: Foo -> Int
+getInt (_, i) = i
+
+count :: String -> (Int, String)
+count s = (length s, s)
+
+mk :: Int -> String -> Foo
+mk i s = (s, i)

@@ -40,34 +40,39 @@ comp fileName (row,col) = do
 doIntro :: GHC.Name -> GHC.HsType GHC.Name -> RefactGhc ()
 doIntro name ty = do
   renamed <- getRefactRenamed
-  case ty of
-    (GHC.HsTupleTy sort ts) -> error "Tuple type"
-    (GHC.HsTyVar n) -> do
-      renamed <- getRefactRenamed
-      let sigs = getTypeSigs renamed
-      everywhereMStaged SYB.Renamer (SYB.mkM replaceTypeVar) sigs
-      return ()
-    _ -> error "Unsupported type synonym"
+  let sigs = getTypeSigs renamed
+  everywhereMStaged SYB.Renamer (SYB.mkM replaceTypeVar) sigs
+  return ()
   where
     newTyVar = (GHC.HsTyVar name)    
     replaceTypeVar :: (GHC.LHsType GHC.Name) -> RefactGhc (GHC.LHsType GHC.Name)
-    replaceTypeVar (GHC.L l oldTy@(GHC.HsTyVar n))
+    replaceTypeVar (GHC.L l oldTy)
       | compareHsType oldTy ty
       = do
         worker l
         return (GHC.L l newTyVar)
     replaceTypeVar x = return x
-    worker :: GHC.SrcSpan -> RefactGhc ()
+--   worker :: GHC.SrcSpan -> RefactG
     worker l = do
        let newTok = newNameTok False l name        
        replaceToken l (markToken $ newTok)
        return ()
+--       removeToksForSpan l
+--       putDeclToksAfterSpan l newTok PlaceAdjacent
+--       return
       
 
 --TODO implement this 
 compareHsType :: (GHC.HsType GHC.Name) -> (GHC.HsType GHC.Name) -> Bool
 compareHsType (GHC.HsTyVar n1) (GHC.HsTyVar n2) = n1 == n2
+compareHsType (GHC.HsTupleTy _ lst1) (GHC.HsTupleTy _ lst2) = compareTyList lst1 lst2
 compareHsType t1 t2 = False
+
+compareTyList :: [GHC.LHsType GHC.Name] -> [GHC.LHsType GHC.Name] -> Bool
+compareTyList [] [] = True
+compareTyList ((GHC.L _ ty1):rst1) ((GHC.L _ ty2):rst2) = (compareHsType ty1 ty2) && (compareTyList rst1 rst2)
+compareTyList _ _ = False
+
 
 getTypeSigs :: (SYB.Data t, SYB.Typeable t) => t -> [GHC.LSig GHC.Name]
 getTypeSigs t =
