@@ -1469,10 +1469,10 @@ rmDecl pn incSig t = do
   logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Parser (SYB.mkM inLet) t -- top down
-  t'  <- everywhereMStaged' SYB.Parser (SYB.mkM inDecls `SYB.extM` inGRHSs) t2 -- top down
+  t'  <- everywhereMStaged' SYB.Parser (SYB.mkM inBinds `SYB.extM` inGRHSs) t2 -- top down
 
-         -- applyTP (once_tdTP (failTP `adhocTP` inDecls)) t
-  -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inDecls) t
+         -- applyTP (once_tdTP (failTP `adhocTP` inBinds)) t
+  -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inBinds) t
   (t'',sig') <- if incSig
                   then rmTypeSig pn t'
                   else return (t', Nothing)
@@ -1483,8 +1483,6 @@ rmDecl pn incSig t = do
   return (t'',decl',sig')
   where
     inGRHSs x@((GHC.GRHSs a localDecls)::GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-      -- was | not $ emptyList (snd (break (defines pn) decls)) -- /=[]
-      -- x| not $ emptyList (snd (break (definesRdr pn) (hsBinds localDecls)))
       = do
          nameMap <- getRefactNameMap
          let decls = hsBinds localDecls
@@ -1492,30 +1490,21 @@ rmDecl pn incSig t = do
            then do
             let (_decls1, decls2) = break (definesRdr nameMap pn) decls
                 decl = ghead "rmDecl" decls2
-            topLevel <- isTopLevelPN pn
-            decls' <- case topLevel of
-                        True   -> rmTopLevelDecl decl decls
-                        False  -> rmLocalDecl decl decls
+            decls' <- doRmDecl decl decls
             return (GHC.GRHSs a (replaceBinds localDecls decls'))
           else return x
     inGRHSs x = return x
 
-    inDecls x@(decls::[GHC.LHsBind GHC.RdrName])
-      -- x| not $ emptyList (snd (break (defines pn) decls)) -- /=[]
+    inBinds x@(decls::[GHC.LHsBind GHC.RdrName])
       = do
            nameMap <- getRefactNameMap
            if not $ emptyList (snd (break (definesRdr nameMap pn) decls))
               then do
                 let (_decls1, decls2) = break (definesRdr nameMap pn) decls
                     decl = ghead "rmDecl" decls2
-                -- error $ (render.ppi) t -- ecl ++ (show decl)
-                topLevel <- isTopLevelPN pn
-                -- logm $ "rmDecl.inDecls(topLevel,decl)=" ++ showGhc (topLevel,decl)
-                case topLevel of
-                            True   -> rmTopLevelDecl decl decls
-                            False  -> rmLocalDecl decl decls
+                doRmDecl decl decls
               else return x
-    inDecls x = return x
+    inBinds x = return x
 
     inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
     inLet x@(GHC.L ss (GHC.HsLet localDecls expr@(GHC.L _ _)))
@@ -1542,78 +1531,18 @@ rmDecl pn incSig t = do
     inLet x = return x
 
 
-    rmTopLevelDecl :: GHC.LHsBind GHC.RdrName -> [GHC.LHsBind GHC.RdrName]
+    doRmDecl :: GHC.LHsBind GHC.RdrName -> [GHC.LHsBind GHC.RdrName]
                 -> RefactGhc [GHC.LHsBind GHC.RdrName]
-    rmTopLevelDecl decl decls
+    doRmDecl decl decls
       =do
-          logm $ "rmTopLevelDecl:" ++ showGhc decl -- ++AZ++
+          logm $ "doRmDecl:" ++ showGhc decl -- ++AZ++
 
-          -- removeToksForPos (getStartEndLoc decl)
-          -- decl' <- syncDeclToLatestStash decl
           setStateStorage (StorageBindRdr decl)
 
           nameMap <- getRefactNameMap
           let (decls1, decls2) = break (definesRdr nameMap pn) decls
-              decls2' = gtail "rmTopLevelDecl 1" decls2
+              decls2' = gtail "doRmDecl 1" decls2
           return $ (decls1 ++ decls2')
-          -- return (decls \\ [decl])
-
-
-    {- The difference between removing a top level declaration and a
-       local declaration is: if the local declaration to be removed is
-       the only declaration in current declaration list, then the 'where'/
-       'let'/'in' enclosing this declaration should also be removed. Whereas,
-       when a only top level decl is removed, the 'where' can not be removed.
-    -}
-
-    -- |Remove a location declaration that defines pn.
-    rmLocalDecl :: GHC.LHsBind GHC.RdrName -> [GHC.LHsBind GHC.RdrName]
-                -> RefactGhc [GHC.LHsBind GHC.RdrName]
-    rmLocalDecl decl@(GHC.L _sspan _) decls
-     = do
-
-         -- TODO: The let/in version is wrapped in a GHC.HsLet expression.
-         -- The sspan of HsLet runs from the let keyword to the end of
-         -- the in clause.
-         -- (GHC.L l (HsLet (HsLocalBinds id) (LHsExpr id))
-         -- So we must remove the tokens from the start of l to the
-         -- start of the LHsExpr
-
-         logm $ "rmLocalDecl: decls=" ++ (showGhc decls)
-         -- drawTokenTreeDetailed $ "Before getToksForSpan :" ++ (show sspan) -- ++AZ++
-         -- prevToks <- getToksBeforeSpan sspan -- Need these before
-                                             -- sspan is deleted
-         -- removeToksForPos (getStartEndLoc decl)
-         -- decl' <- syncDeclToLatestStash decl
-         setStateStorage (StorageBindRdr decl)
-
-         case length decls of
-           1 -> do
-             -- Get rid of preceding where or let token
-             {-
-             let startPos = getGhcLoc sspan
-                  --divide the token stream.
-                 (_toks1,toks2)=break (\t1->tokenPos t1 < startPos) $ reversedToks prevToks
-                 --get the  'where' or 'let' token
-                 rvToks1 = dropWhile (not.isWhereOrLet) toks2
-                 --There must be a 'where' or 'let', so rvToks1 can not be empty.
-                 whereOrLet = ghead "rmLocalDecl:whereOrLet" rvToks1
-                 --drop the 'where' 'or 'let' token
-                 -- rmEndPos   = tokenPosEnd $ ghead "rmLocalDecl.2" toks2
-                 rmEndPos   = tokenPosEnd whereOrLet
-                 rmStartPos = tokenPos whereOrLet
-             -}
-             -- logm $ "rmLocalDecl: where/let tokens:" ++ (show (_toks1,toks2)) -- ++AZ++
-             -- logm $ "rmLocalDecl: where/let tokens are at" ++ (show (rmStartPos,rmEndPos)) -- ++AZ++
-             -- removeToksForPos (rmStartPos,rmEndPos)
-
-             return ()
-           _ -> return ()
-
-         nameMap <- getRefactNameMap
-         let (decls1, decls2) = break (definesRdr nameMap pn) decls
-             decls2' = gtail "rmLocalDecl 3" decls2
-         return $ (decls1 ++ decls2')
 
 -- ---------------------------------------------------------------------
 
@@ -1640,8 +1569,6 @@ rmTypeSig :: (SYB.Data t) =>
                      -- NOTE: It may have originated from a SigD, it is up to the calling function to insert this if required
 rmTypeSig pn t
   = do
-     -- logm $ "rmTypeSig:t="  ++ (SYB.showData SYB.Renamer 0 t)
-
      setStateStorage StorageNone
      t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inSigs `SYB.extM` inDecls) t
      storage <- getStateStorage
@@ -1664,20 +1591,11 @@ rmTypeSig pn t
 
              sigFromDecl (GHC.L _ (GHC.SigD s)) = s
 
-         -- logm $ "rmTypeSig:checking for  " ++ showGhcQual (pn,GHC.nameUnique pn,GHC.nameSrcSpan pn,decls)
-         -- logm $ "rmTypeSig:checking as data  " ++ SYB.showData SYB.Parser 0 decls
          nameMap <- getRefactNameMap
-         let nsn = case decls of
-               [(GHC.L _ (GHC.SigD (GHC.TypeSig ns _ _)))] -> map (rdrName2NamePure nameMap) ns
-               _ -> []
-
-             definesSigD (GHC.L _ (GHC.SigD s)) = definesTypeSigRdr nameMap pn s
+         let definesSigD (GHC.L _ (GHC.SigD s)) = definesTypeSigRdr nameMap pn s
              definesSigD _ = False
-         -- logm $ "rmTypeSig:definesTypeSigRdr ns  " ++ showGhcQual (map (\n -> (n,GHC.nameUnique n,GHC.nameSrcSpan n)) nsn)
-         -- logm $ "rmTypeSig:definesTypeSigRdr for  " ++ showGhcQual (map (definesTypeSigRdr nameMap pn . GHC.unLoc) decls)
          if not $ emptyList (snd (break (definesTypeSigRdr nameMap pn . sigFromDecl) sigds))
             then do
-              -- logm $ "rmTypeSig.inDecl:processing " ++ showGhcQual decls
               let (decls1,decls2)= break definesSigD decls
               let sig@(GHC.L sspan (GHC.SigD (GHC.TypeSig names typ p))) = ghead "rmTypeSig" decls2
               if length names > 1
@@ -1705,17 +1623,9 @@ rmTypeSig pn t
 
    inSigs (sigs::[GHC.LSig GHC.RdrName])
      = do
-         -- logm $ "rmTypeSig:checking for  " ++ showGhcQual (pn,GHC.nameUnique pn,GHC.nameSrcSpan pn,sigs)
-         -- logm $ "rmTypeSig:checking as data  " ++ SYB.showData SYB.Parser 0 sigs
          nameMap <- getRefactNameMap
-         let nsn = case sigs of
-               [(GHC.L _ (GHC.TypeSig ns _ _))] -> map (rdrName2NamePure nameMap) ns
-               _ -> []
-         -- logm $ "rmTypeSig:definesTypeSigRdr ns  " ++ showGhcQual (map (\n -> (n,GHC.nameUnique n,GHC.nameSrcSpan n)) nsn)
-         -- logm $ "rmTypeSig:definesTypeSigRdr for  " ++ showGhcQual (map (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs)
          if not $ emptyList (snd (break (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs))
             then do
-              -- logm $ "rmTypeSig:processing " ++ showGhcQual sigs
               let (decls1,decls2)= break (definesTypeSigRdr nameMap pn . GHC.unLoc) sigs
               let sig@(GHC.L sspan (GHC.TypeSig names typ p)) = ghead "rmTypeSig" decls2
               if length names > 1

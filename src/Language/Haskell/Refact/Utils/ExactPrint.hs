@@ -205,15 +205,23 @@ replace old new as = do
 -- ---------------------------------------------------------------------
 
 -- |Take the annEntryDelta associated with the first item and associate it with the second.
+-- Also transfer the AnnSpanEntry value, and any comments occuring before it.
 transferEntryDP :: (SYB.Data a, SYB.Data b) => Anns -> GHC.Located a -> GHC.Located b -> Anns
 transferEntryDP anns a b = anns'
   where
     maybeAnns = do
       anA <- Map.lookup (mkKey a) anns
       anB <- Map.lookup (mkKey b) anns
-      let anB'  = anB { annEntryDelta = annEntryDelta anA }
-      -- return (Map.insert (mkKey b) anB' anns)
-      return (error $ "transferEntryDP: (mkKey a,mkKey b,anA,anB,anB')" ++ showGhc (mkKey a,mkKey b,anA,anB,anB') )
+      let anB'  = anB { annEntryDelta = annEntryDelta anA, annsDP = dpB }
+          seA   = ghead "transferEntryDP" . filter (\(kw,_) -> kw == AnnSpanEntry) $ annsDP anA
+
+          isCommentKD (AnnComment{},_) = True
+          isCommentKD _ = False
+
+          leadingCommentsA = takeWhile isCommentKD (annsDP anA)
+          dpB   = leadingCommentsA ++ (seA : (filter (\(kw,_) -> kw /= AnnSpanEntry) $ annsDP anB))
+      return (Map.insert (mkKey b) anB' anns)
+      -- return (error $ "transferEntryDP: (mkKey a,mkKey b,anA,anB,anB')" ++ showGhc (mkKey a,mkKey b,anA,anB,anB') )
     anns' = fromMaybe
               (error $ "transferEntryDP: lookup failed (a,b)=" ++ show (mkKey a,mkKey b))
               maybeAnns
