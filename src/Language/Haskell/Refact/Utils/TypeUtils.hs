@@ -680,6 +680,12 @@ definesRdr nameMap n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _)) =
   elem n (map (rdrName2NamePure nameMap) (hsNamessRdr p))
 definesRdr _ _ _= False
 
+-- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind
+definesDeclRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
+definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.L l d)
+definesDeclRdr _ _ _ = False
+
+
 definesP::PName->HsDeclP->Bool
 definesP pn (GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
  = PN pname == pn
@@ -1469,7 +1475,8 @@ rmDecl pn incSig t = do
   logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Parser (SYB.mkM inLet) t -- top down
-  t'  <- everywhereMStaged' SYB.Parser (SYB.mkM inBinds `SYB.extM` inGRHSs) t2 -- top down
+  t'  <- everywhereMStaged' SYB.Parser (SYB.mkM inBinds `SYB.extM` inDecls
+                                                        `SYB.extM` inGRHSs) t2 -- top down
 
          -- applyTP (once_tdTP (failTP `adhocTP` inBinds)) t
   -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inBinds) t
@@ -1494,6 +1501,19 @@ rmDecl pn incSig t = do
             return (GHC.GRHSs a (replaceBinds localDecls decls'))
           else return x
     inGRHSs x = return x
+
+    inDecls x@(decls::[GHC.LHsDecl GHC.RdrName])
+      = do
+           nameMap <- getRefactNameMap
+           if not $ emptyList (snd (break (definesDeclRdr nameMap pn) decls))
+              then do
+                let (decls1, decls2) = break (definesDeclRdr nameMap pn) decls
+                    (GHC.L l (GHC.ValD d)) = ghead "rmDecl" decls2
+                    decls2' = gtail "doRmDecl 1" decls2
+                setStateStorage (StorageBindRdr (GHC.L l d))
+                return $ (decls1 ++ decls2')
+              else return x
+    inDecls x = return x
 
     inBinds x@(decls::[GHC.LHsBind GHC.RdrName])
       = do
