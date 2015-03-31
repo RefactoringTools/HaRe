@@ -18,7 +18,7 @@ spec = do
       -- r <- ct $ ifToCase logTestSettings testOptions  "Case/BSimple.hs" (4,7) (4,43)
       r `shouldBe` ["Case/BSimple.hs"]
       diff <- compareFiles "./test/testdata/Case/BSimple.refactored.hs"
-                           "./test/testdata/Case/BSimple.hs.expected"
+                           "./test/testdata/Case/BSimpleExpected.hs"
       diff `shouldBe` []
 
     -- ---------------------------------

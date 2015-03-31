@@ -45,7 +45,7 @@ Library
                                 , containers
                                 , directory
 
-                                , dual-tree
+                                -- , dual-tree
                                 , semigroups
                                 , monoid-extras
 
@@ -69,7 +69,7 @@ Library
                                 , ghc-exactprint >= 0.1.1
                                 , monad-control
                                 , Cabal >= 1.22
-                                , uniplate
+                                -- , uniplate
 
         GHC-Options:             -Wall -O0
 
@@ -117,7 +117,7 @@ Executable ghc-hare
                                 , containers
                                 , directory
 
-                                , dual-tree
+                                -- , dual-tree
                                 , semigroups
                                 , monoid-extras
 
@@ -142,7 +142,7 @@ Executable ghc-hare
                                 , ghc-exactprint >= 0.1.1
                                 , monad-control
                                 , Cabal >= 1.22
-                                , uniplate
+                                -- , uniplate
                                 -- , Paths_HaRe
                                 -- , HaRe >= 0.8
         Extensions:      CPP
@@ -172,7 +172,7 @@ test-suite spec
     , QuickCheck  >= 2.5
     , containers
 
-    , dual-tree
+    -- , dual-tree
     , semigroups
     , monoid-extras
 
@@ -202,7 +202,7 @@ test-suite spec
     , ghc-exactprint >= 0.1.1
     , monad-control
     , Cabal >= 1.22
-    , uniplate
+    -- , uniplate
     -- , Paths_HaRe
     -- , haskell-token-utils >= 0.0.0.6
     , HaRe >= 0.8

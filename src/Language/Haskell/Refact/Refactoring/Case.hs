@@ -72,15 +72,16 @@ reallyDoIfToCase expr p = do
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
                   -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
 ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
-  caseLoc       <- uniqueSrcSpan -- HaRe:-1:1
-  trueMatchLoc  <- uniqueSrcSpan -- HaRe:-1:2
-  trueLoc1      <- uniqueSrcSpan -- HaRe:-1:3
-  trueLoc       <- uniqueSrcSpan -- HaRe:-1:4
-  trueRhsLoc    <- uniqueSrcSpan -- HaRe:-1:5
-  falseLoc1     <- uniqueSrcSpan -- HaRe:-1:6
-  falseLoc      <- uniqueSrcSpan -- HaRe:-1:7
-  falseMatchLoc <- uniqueSrcSpan -- HaRe:-1:8
-  falseRhsLoc   <- uniqueSrcSpan -- HaRe:-1:9
+  caseLoc        <- uniqueSrcSpan -- HaRe:-1:1
+  trueMatchLoc   <- uniqueSrcSpan -- HaRe:-1:2
+  trueLoc1       <- uniqueSrcSpan -- HaRe:-1:3
+  trueLoc        <- uniqueSrcSpan -- HaRe:-1:4
+  trueRhsLoc     <- uniqueSrcSpan -- HaRe:-1:5
+  falseLoc1      <- uniqueSrcSpan -- HaRe:-1:6
+  falseLoc       <- uniqueSrcSpan -- HaRe:-1:7
+  falseMatchLoc  <- uniqueSrcSpan -- HaRe:-1:8
+  falseRhsLoc    <- uniqueSrcSpan -- HaRe:-1:9
+  caseVirtualLoc <- uniqueSrcSpan -- HaRe:-1:10
   let trueName  = mkRdrName "True"
   let falseName = mkRdrName "False"
   let ret = GHC.L caseLoc (GHC.HsCase e1
@@ -119,23 +120,29 @@ ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
   logm $ "Case:annThen=" ++ show annThen
   logm $ "Case:annElse=" ++ show annElse
 
+  let ((_ifr,    ifc),  ifDP) = getOriginalPos oldAnns li (G GHC.AnnIf)
   let ((_thenr,thenc),thenDP) = getOriginalPos oldAnns li (G GHC.AnnThen)
   let ((_elser,elsec),elseDP) = getOriginalPos oldAnns li (G GHC.AnnElse)
+  let newCol = ifc + 2
 
   -- AZ:TODO: under some circumstances the GRHS annotations need LineSame, in others LineChanged.
-  let ifDelta = gfromJust "Case.ifDelta" $ lookup (G GHC.AnnIf) (anns annIf)
-  let anne2' = [ ( AnnKey caseLoc       (CN "HsCase"),   annIf { anns = [ (G GHC.AnnCase,   ifDelta)
-                                                                        , (G GHC.AnnOf,     DP (0,1))] } )
-               , ( AnnKey trueRhsLoc    (CN "GRHS"),     Ann (DP (0,2)) KeepOffset    18  6       [ (G GHC.AnnRarrow, DP (0,2))] )
-               , ( AnnKey trueMatchLoc  (CN "Match"),    Ann thenDP     LineChanged thenc thenc [] )
-               , ( AnnKey trueLoc1      (CN "ConPatIn"), Ann (DP (1,0)) LineSame    thenc 0     [] )
-               , ( AnnKey trueLoc       (CN "Unqual"),   Ann (DP (1,0)) LineSame    thenc 0     [ (G GHC.AnnVal,    DP (1,0))] )
+  let ifDelta     = gfromJust "Case.ifDelta"     $ lookup (G GHC.AnnIf) (annsDP annIf)
+  let ifSpanEntry = gfromJust "Case.ifSpanEntry" $ lookup (AnnSpanEntry) (annsDP annIf)
+  let anne2' =
+        [ ( AnnKey caseLoc       (CN "HsCase"),   annIf { annsDP = [ (AnnSpanEntry,ifSpanEntry),(G GHC.AnnCase, ifDelta)
+                                                                 , (G GHC.AnnOf,     DP (0,1))
+                                                                 ,(AnnList caseVirtualLoc,DP (0,0))] } )
+        , ( AnnKey caseVirtualLoc (CN "(:)"),     Ann (DP (1,newCol)) (ColDelta newCol)  [(AnnSpanEntry,DP (1,0))])
+        , ( AnnKey trueMatchLoc  (CN "Match"),    Ann (DP (0,0)) 0 [] )
+        , ( AnnKey trueLoc1      (CN "ConPatIn"), Ann (DP (0,0)) 0 [] )
+        , ( AnnKey trueLoc       (CN "Unqual"),   Ann (DP (0,0)) 0 [(G GHC.AnnVal, DP (0,0))] )
+        , ( AnnKey trueRhsLoc    (CN "GRHS"),     Ann (DP (0,2)) 6 [(AnnSpanEntry,DP (0,2)),(G GHC.AnnRarrow, DP (0,0))] )
 
-               , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,2)) KeepOffset    18  6       [ (G GHC.AnnRarrow, DP (0,1))] )
-               , ( AnnKey falseMatchLoc (CN "Match"),    Ann elseDP     LineChanged elsec elsec [] )
-               , ( AnnKey falseLoc1     (CN "ConPatIn"), Ann (DP (1,0)) LineSame    elsec 0     [] )
-               , ( AnnKey falseLoc      (CN "Unqual"),   Ann (DP (1,0)) LineSame    elsec 0     [ (G GHC.AnnVal,    DP (1,0))] )
-               ]
+        , ( AnnKey falseMatchLoc (CN "Match"),    Ann (DP (1,0)) 0  [(AnnSpanEntry,DP (1,0))] )
+        , ( AnnKey falseLoc1     (CN "ConPatIn"), Ann (DP (0,0)) 0  [] )
+        , ( AnnKey falseLoc      (CN "Unqual"),   Ann (DP (0,0)) 0  [ (G GHC.AnnVal, DP (0,0))] )
+        , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,1)) 6  [(AnnSpanEntry,DP (0,1)),(G GHC.AnnRarrow, DP (0,0))] )
+        ]
 
 {- For falseRhsLoc we have
   nd = - (sc - oc) = - (17 - (c + 2))

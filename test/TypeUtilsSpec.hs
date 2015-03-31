@@ -1536,13 +1536,10 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- putStrLn $ SYB.showData SYB.Parser 0 parsed
-      let declsr = hsBinds renamed
       let declsp = hsBinds parsed
       let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
-         -- (newDecls,_removedDecl,_removedSig) <- rmDecl n False declsr
-         -- (newDecls,_removedDecl,_removedSig) <- rmDecl n False parsed
          (newDecls,_removedDecl,_removedSig) <- rmDecl n False declsp
 
          let parsed' = replaceBinds parsed newDecls
@@ -1596,8 +1593,8 @@ spec = do
          putRefactParsed parsed' mempty
 
          return newDecls
-      (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- (nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      (_nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual n) `shouldBe` "sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' in 'sumSquares'\n--This example aims to test lifting a definition from a let clause to top level,\n--and the elimination of the keywords 'let' and 'in'\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                  in sq x + sq y\n                       where pow=2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n"
@@ -1623,8 +1620,8 @@ spec = do
          putRefactParsed parsed' mempty
 
          return newDecls
-      (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- (nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      (_nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
 
       -- putStrLn $ "anntree\n" ++ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "pow"
@@ -1643,7 +1640,7 @@ spec = do
       let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
-         anns <- getRefactAnns
+         -- anns <- getRefactAnns
          -- logm $ "pristine\n" ++ showAnnData anns 0 parsed
          -- (renamed',sigRemoved) <- rmTypeSig n renamed
          (renamed',sigRemoved) <- rmTypeSig n parsed
@@ -1673,8 +1670,8 @@ spec = do
          putRefactParsed parsed2 mempty
 
          return parsed2
-      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (_nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual n) `shouldBe` "Demote.WhereIn3.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
@@ -1697,8 +1694,8 @@ spec = do
          (renamed',_removedSig) <- rmTypeSig n parsed
          putRefactParsed renamed' mempty
          return renamed'
-      -- (nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
+      (_nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual n) `shouldBe` "ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
@@ -1718,9 +1715,10 @@ spec = do
          putRefactParsed renamed' mempty
          return renamed'
       (_nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- putStrLn $ showAnnDataFromState s
       (showGhcQual b) `shouldBe` "TypeSigs.b"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TypeSigs where\n\nsq,anotherFun :: Int -> Int\nsq 0 = 0\nsq z = z^2\n\nanotherFun x = x^2\n\na,b,c::Int->Integer->Char\n\na x y = undefined\nb x y = undefined\nc x y = undefined\n\n"
-      (sourceFromState s) `shouldBe` "module TypeSigs where\n\nsq,anotherFun :: Int -> Int\nsq 0 = 0\nsq z = z^2\n\nanotherFun x = x^2\n\na  ,c::Int->Integer->Char\n\na x y = undefined\nb x y = undefined\nc x y = undefined\n\n"
+      (sourceFromState s) `shouldBe` "module TypeSigs where\n\nsq,anotherFun :: Int -> Int\nsq 0 = 0\nsq z = z^2\n\nanotherFun x = x^2\n\na,c::Int->Integer->Char\n\na x y = undefined\nb x y = undefined\nc x y = undefined\n\n"
 
     -- -----------------------------------------------------------------
 
@@ -2727,8 +2725,8 @@ spec = do
 
          return (new,newName)
 
-      ((nb,nn),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,nn),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((_nb,nn),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((_nb,nn),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
 
       (showGhcQual (n,nn)) `shouldBe` "(Renaming.RenameInExportedType.NT, NewType)"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.RenameInExportedType\n  (\n  MyType (NT)\n  ) where\n\ndata MyType = MT Int | NT\n\n\n"

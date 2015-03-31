@@ -126,9 +126,7 @@ import Control.Monad.State
 import Data.Char
 import Data.List
 import Data.Maybe
-import Data.Monoid
 import Exception
-import Data.Generics.Uniplate.Data
 
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.ExactPrint
@@ -1500,7 +1498,6 @@ rmDecl pn incSig t = do
             decls' <- doRmDecl decl decls
             return (GHC.GRHSs a (replaceBinds localDecls decls'))
           else return x
-    inGRHSs x = return x
 
     inDecls x@(decls::[GHC.LHsDecl GHC.RdrName])
       = do
@@ -1513,7 +1510,6 @@ rmDecl pn incSig t = do
                 setStateStorage (StorageBindRdr (GHC.L l d))
                 return $ (decls1 ++ decls2')
               else return x
-    inDecls x = return x
 
     inBinds x@(decls::[GHC.LHsBind GHC.RdrName])
       = do
@@ -1524,7 +1520,6 @@ rmDecl pn incSig t = do
                     decl = ghead "rmDecl" decls2
                 doRmDecl decl decls
               else return x
-    inBinds x = return x
 
     inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
     inLet x@(GHC.L ss (GHC.HsLet localDecls expr@(GHC.L _ _)))
@@ -1639,7 +1634,6 @@ rmTypeSig pn t
                         setRefactAnns (transferEntryDP anns (head decls2) (head $ tail decls2) )
                       return (decls1++tail decls2)
             else return decls
-   inDecls x = return x
 
    inSigs (sigs::[GHC.LSig GHC.RdrName])
      = do

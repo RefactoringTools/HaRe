@@ -1,7 +1,7 @@
-module BSimpleExpected where
+module BSimple where
 -- Test for refactor of if to case
 
 foo x = case (odd x) of
-            True  -> "Odd"
-            False -> "Even"
+          True  -> "Odd"
+          False -> "Even"
 
