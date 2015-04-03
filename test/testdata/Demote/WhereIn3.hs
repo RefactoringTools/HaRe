@@ -7,7 +7,7 @@ module Demote.WhereIn3 where
 --In this example, demote the top level 'sq' to 'sumSquares'
 --In this case (there are multi matches), the parameters are not folded after demoting.
 
-sumSquares x y = sq p x + sq p y       
+sumSquares x y = sq p x + sq p y
          where p=2  {-There is a comment-}
 
 sq :: Int -> Int -> Int
@@ -16,4 +16,3 @@ sq pow z = z^pow  --there is a comment
 
 anotherFun 0 y = sq y
      where  sq x = x^2
-

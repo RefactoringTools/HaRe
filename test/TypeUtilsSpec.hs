@@ -1631,6 +1631,28 @@ spec = do
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module Demote.LetIn1 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' to 'sq'\n--This example also aims to test the demoting a local declaration in 'let'.\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                 in sq x + sq y\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n "
 
+    -- -----------------------------------------------------------------
+
+    it "removes a decl with a trailing comment" $ do
+      (t, toks) <- ct $ parsedFileGhc "./Demote/WhereIn3.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let Just (GHC.L _ n) = locToName (14, 1) renamed
+      let
+        comp = do
+         (ds,_removedDecl,_removedSig1) <- rmDecl n False (hsBinds parsed)
+         let parsed' = replaceBinds parsed ds
+         putRefactParsed parsed' mempty
+
+         return parsed'
+      -- (_nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      (_nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      -- putStrLn $ showAnnDataFromState s
+      (showGhcQual n) `shouldBe` "Demote.WhereIn3.sq"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
+      (sourceFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
+
+
   -- ---------------------------------------------
 
   describe "rmTypeSig" $ do
@@ -1642,9 +1664,8 @@ spec = do
       let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
-         -- anns <- getRefactAnns
-         -- logm $ "pristine\n" ++ showAnnData anns 0 parsed
-         -- (renamed',sigRemoved) <- rmTypeSig n renamed
+         anns <- getRefactAnns
+         logm $ "pristine\n" ++ showAnnData anns 0 parsed
          (renamed',sigRemoved) <- rmTypeSig n parsed
          putRefactParsed renamed' mempty
          return (renamed',sigRemoved)
@@ -1660,7 +1681,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "removes a type signature from the top level, after decl removed" $ do
-      (t, toks) <- parsedFileWhereIn3Ghc
+      (t, toks) <- ct $ parsedFileGhc "./Demote/WhereIn3.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let Just (GHC.L _ n) = locToName (14, 1) renamed
@@ -1672,15 +1693,12 @@ spec = do
          putRefactParsed parsed2 mempty
 
          return parsed2
-      -- (_nb,s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      (_nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
-
+      -- (_nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t toks }) testOptions
+      (_nb,s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      putStrLn $ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "Demote.WhereIn3.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
-      -- (showToks $ take 40 $ drop 15 $ toksFromState s) `shouldBe` ""
-      -- (showGhcQual $ pprFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
-      -- (showGhcQual renamed) `shouldBe` ""
 
 
     -- -----------------------------------------------------------------

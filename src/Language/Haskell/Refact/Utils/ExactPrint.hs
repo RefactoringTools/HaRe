@@ -178,17 +178,10 @@ setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given annotation key/val
 setOffset :: Anns -> (AnnKey, Annotation) -> Anns
-{-
 setOffset anne (k, Ann dp col dps cs _) = case
   Map.lookup k anne of
     Nothing               -> Map.insert k (Ann dp col dps cs []) anne
     Just (Ann _ _ _ _ ks) -> Map.insert k (Ann dp col dps cs ks) anne
--}
-setOffset anne (k, Ann dp col _) = case
-  Map.lookup k anne of
-    Nothing           -> Map.insert k (Ann dp col []) anne
-    Just (Ann _ _ ks) -> Map.insert k (Ann dp col ks) anne
-
 
 -- |Update the DeltaPos for the given annotation keys
 setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,Annotation)] -> Anns
@@ -208,17 +201,10 @@ setLocatedAnn aane (loc, annVal) = setAnn aane (mkKey loc,annVal)
 
 -- |Update the DeltaPos for the given annotation key/val
 setAnn :: Anns -> (AnnKey, Annotation) -> Anns
-{-
 setAnn anne (k, Ann dp col dps cs _) = case
   Map.lookup k anne of
     Nothing               -> Map.insert k (Ann dp col dps cs []) anne
     Just (Ann _ _ _ _ ks) -> Map.insert k (Ann dp col dps cs ks) anne
--}
-setAnn anne (k, Ann dp col _) = case
-  Map.lookup k anne of
-    Nothing           -> Map.insert k (Ann dp col []) anne
-    Just (Ann _ _ ks) -> Map.insert k (Ann dp col ks) anne
-
 
 -- ---------------------------------------------------------------------
 
@@ -228,9 +214,11 @@ replace old new as = do
   oldan <- Map.lookup old as
   newan <- Map.lookup new as
   let newan' = Ann
-                { annEntryDelta = annEntryDelta oldan
-                , annDelta      = annDelta oldan
-                , annsDP        = moveAnns (annsDP oldan) (annsDP newan)
+                { annEntryDelta     = annEntryDelta oldan
+                , annDelta          = annDelta oldan
+                , annTrueEntryDelta = annTrueEntryDelta oldan
+                , annPriorComments  = annPriorComments oldan
+                , annsDP            = moveAnns (annsDP oldan) (annsDP newan)
                 }
   return . Map.delete old . Map.insert new newan' $ as
 
@@ -244,14 +232,11 @@ transferEntryDP anns a b = anns'
     maybeAnns = do
       anA <- Map.lookup (mkKey a) anns
       anB <- Map.lookup (mkKey b) anns
-      let anB'  = anB { annEntryDelta = annEntryDelta anA, annsDP = dpB }
-          seA   = ghead "transferEntryDP" . filter (\(kw,_) -> kw == AnnSpanEntry) $ annsDP anA
-
-          isCommentKD (AnnComment{},_) = True
-          isCommentKD _ = False
-
-          leadingCommentsA = takeWhile isCommentKD (annsDP anA)
-          dpB   = leadingCommentsA ++ (seA : (filter (\(kw,_) -> kw /= AnnSpanEntry) $ annsDP anB))
+      let anB'  = Ann { annEntryDelta     = annEntryDelta anA
+                      , annDelta          = annDelta anA
+                      , annTrueEntryDelta = annTrueEntryDelta anA
+                      , annPriorComments  = annPriorComments anA ++ annPriorComments anB
+                      , annsDP            = annsDP anB }
       return (Map.insert (mkKey b) anB' anns)
       -- return (error $ "transferEntryDP: (mkKey a,mkKey b,anA,anB,anB')" ++ showGhc (mkKey a,mkKey b,anA,anB,anB') )
     anns' = fromMaybe
@@ -261,8 +246,8 @@ transferEntryDP anns a b = anns'
 -- ---------------------------------------------------------------------
 
 adjustAnnOffset :: ColDelta -> Annotation -> Annotation
--- adjustAnnOffset cd an = an
-
+adjustAnnOffset cd an = an
+{-
 adjustAnnOffset (ColDelta cd) (Ann (DP (ro,co)) (ColDelta ad) kds) = Ann edp cd' kds'
   where
     edp = case ro of
@@ -275,7 +260,7 @@ adjustAnnOffset (ColDelta cd) (Ann (DP (ro,co)) (ColDelta ad) kds) = Ann edp cd'
         DP (0,c) -> (AnnSpanEntry,DP (0,c))
         DP (r,c) -> (AnnSpanEntry,DP (r, c - cd))
     adjustEntrySpan x = x
-
+-}
 -- ---------------------------------------------------------------------
 
 mkKey :: (SYB.Data a) => GHC.Located a -> AnnKey
