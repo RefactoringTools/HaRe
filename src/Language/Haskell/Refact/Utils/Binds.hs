@@ -124,7 +124,7 @@ replaceBinds t bs =
       Nothing -> False
     sigs = case hsValBinds t of
       GHC.ValBindsIn  _ s -> s
-      GHC.ValBindsOut _ s -> [] -- Should never happen
+      GHC.ValBindsOut _ _ -> [] -- Should never happen
 
 -- This class replaces the HsDecls one
 class (Data t,Data name) => HsValBinds t name |  t -> name where

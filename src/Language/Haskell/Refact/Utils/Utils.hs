@@ -44,7 +44,7 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types
-import Language.Haskell.Refact.Utils.TypeUtils
+-- import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Variables
 
 import System.Directory

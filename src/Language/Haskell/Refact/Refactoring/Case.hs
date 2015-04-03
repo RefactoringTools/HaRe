@@ -144,20 +144,30 @@ ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
         , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,1)) 6  [(AnnSpanEntry,DP (0,1)),(G GHC.AnnRarrow, DP (0,0))] )
         ]
 
-{- For falseRhsLoc we have
-  nd = - (sc - oc) = - (17 - (c + 2))
-     = - (17 - 2 - c)
-     = c - 15
-  oc = c + edc [because the line offset is 0]
-
--}
   -- logm $ "\n\n\nanne2" ++ showGhc anne2
-
+  {-
+  let (Ann thenEDP (ColDelta thenCD) thenKDs) = annThen
+      currOffset = 6
+      thenEDP' = case thenEDP of
+        DP (0,co)  -> thenEDP
+        DP (ro,co) -> DP (ro, co - currOffset)
+      thenCD' = ColDelta (thenCD - currOffset)
+  thenKDs' = case filter 
+      annThen' = Ann thenEDP' thenCD' thenKDs'
+Wrong:HsApp
+ ({ Case/C.hs:7:13-19 }
+   Just (Ann (DP (1,13)) (ColDelta 13)  [((AnnComment DComment (DP (0,1),DP (0,25)) "-- This is an odd result"),DP (0,1)),(AnnSpanEntry,DP (1,13))])
+Right: HsApp
+ ({ Case/CExpected.hs:7:13-19 }
+   Just (Ann (DP (1,2)) (ColDelta 2)  [((AnnComment DComment (DP (0,4),DP (0,28)) "-- This is an odd result"),DP (0,4)),(AnnSpanEntry,DP (1,2))])
+-}
+  let annThen' = adjustAnnOffset (ColDelta 6) annThen
   let anne1 = Map.delete (AnnKey l (CN "HsIf")) oldAnns
       final = mergeAnns anne1 (Map.fromList anne2')
-      anne3 = setLocatedOffsets final
+      -- anne3 = setLocatedOffsets final
+      anne3 = setLocatedAnns final
                 [ (e1, annCond)
-                , (e2, annThen)
+                , (e2, annThen')
                 , (e3, annElse)
                 ]
   setRefactAnns anne3

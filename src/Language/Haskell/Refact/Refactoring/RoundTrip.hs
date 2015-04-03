@@ -1,12 +1,12 @@
 module Language.Haskell.Refact.Refactoring.RoundTrip(roundTrip) where
 
-import qualified Data.Generics         as SYB
-import qualified GHC.SYB.Utils         as SYB
+-- import qualified Data.Generics         as SYB
+-- import qualified GHC.SYB.Utils         as SYB
 
-import qualified GHC           as GHC
+-- import qualified GHC           as GHC
 
-import Control.Monad
-import Control.Monad.IO.Class
+-- import Control.Monad
+-- import Control.Monad.IO.Class
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 

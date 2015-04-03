@@ -127,7 +127,8 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let Just (res@(GHC.L l n)) = locToRdrName (20,1) parsed
-      showGhcQual l `shouldBe` "Renaming/D5.hs:20:1-10"
+      -- showGhcQual l `shouldBe` "Renaming/D5.hs:20:1-10"
+      (show $ ss2span l) `shouldBe` "((20,1),(20,11))"
       getLocatedStart res `shouldBe` (20,1)
       showGhcQual n `shouldBe` "sumSquares"
 
@@ -156,16 +157,17 @@ spec = do
       (sort $ Map.elems res'') `shouldBe`
              ["(TypeUtils/S.hs:10:12, TypeUtils/S.hs:10:8, n)(TypeUtils/S.hs:10:8, TypeUtils/S.hs:10:8, n)"
              ,"(TypeUtils/S.hs:10:14, <no location info>, GHC.Num.+)"
-             ,"(TypeUtils/S.hs:10:5-6, TypeUtils/S.hs:10:5-6, zz)(TypeUtils/S.hs:8:13-14, TypeUtils/S.hs:10:5-6, zz)"
-             ,"(TypeUtils/S.hs:4:1-3, TypeUtils/S.hs:4:1-3, TypeUtils.S.foo)"
+             ,"(TypeUtils/S.hs:10:5-6, TypeUtils/S.hs:10:5-6, zz)(TypeUtils/S.hs:10:5-6, TypeUtils/S.hs:10:5-6, zz)(TypeUtils/S.hs:8:13-14, TypeUtils/S.hs:10:5-6, zz)"
+             ,"(TypeUtils/S.hs:4:1-3, TypeUtils/S.hs:4:1-3, TypeUtils.S.foo)(TypeUtils/S.hs:4:1-3, TypeUtils/S.hs:4:1-3, TypeUtils.S.foo)"
              ,"(TypeUtils/S.hs:4:13-15, <no location info>, GHC.Real.odd)"
              ,"(TypeUtils/S.hs:4:17, TypeUtils/S.hs:4:5, x)(TypeUtils/S.hs:4:5, TypeUtils/S.hs:4:5, x)"
              ,"(TypeUtils/S.hs:6:10, TypeUtils/S.hs:6:10, TypeUtils.S.A)"
              ,"(TypeUtils/S.hs:6:14, TypeUtils/S.hs:6:14-21, TypeUtils.S.B)"
              ,"(TypeUtils/S.hs:6:25, TypeUtils/S.hs:6:25, TypeUtils.S.C)"
              ,"(TypeUtils/S.hs:6:6, TypeUtils/S.hs:6:1-25, TypeUtils.S.D)"
-             ,"(TypeUtils/S.hs:8:1-7, TypeUtils/S.hs:8:1-7, TypeUtils.S.subdecl)"
-             ,"(TypeUtils/S.hs:8:16, TypeUtils/S.hs:8:9, x)(TypeUtils/S.hs:8:9, TypeUtils/S.hs:8:9, x)"]
+             ,"(TypeUtils/S.hs:8:1-7, TypeUtils/S.hs:8:1-7, TypeUtils.S.subdecl)(TypeUtils/S.hs:8:1-7, TypeUtils/S.hs:8:1-7, TypeUtils.S.subdecl)"
+             ,"(TypeUtils/S.hs:8:16, TypeUtils/S.hs:8:9, x)(TypeUtils/S.hs:8:9, TypeUtils/S.hs:8:9, x)"
+             ]
 
   -- -------------------------------------------------------------------
 
@@ -962,7 +964,7 @@ spec = do
 
   describe "hsFreeAndDeclaredGhc" $ do
     it "finds function arguments visible in RHS fd" $ do
-      (t,toks) <- ct $ parsedFileGhc ".Visible/Simple.hs"
+      (t,toks) <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -1116,28 +1118,28 @@ spec = do
 
       (SYB.showData SYB.Renamer 0 pat') `shouldBe`
            "\n"++
-           "(L {test/testdata/Visible/Simple.hs:9:8-12} \n"++
+           "(L {Visible/Simple.hs:9:8-12} \n"++
            " (ParPat \n"++
-           "  (L {test/testdata/Visible/Simple.hs:9:9-11} \n"++
+           "  (L {Visible/Simple.hs:9:9-11} \n"++
            "   (ConPatIn \n"++
-           "    (L {test/testdata/Visible/Simple.hs:9:9} \n"++
+           "    (L {Visible/Simple.hs:9:9} \n"++
            "     (Unqual {OccName: B})) \n"++
            "    (PrefixCon \n"++
            "     [\n"++
-           "      (L {test/testdata/Visible/Simple.hs:9:11} \n"++
+           "      (L {Visible/Simple.hs:9:11} \n"++
            "       (VarPat \n"++
            "        (Unqual {OccName: x})))])))))"
 
       (SYB.showData SYB.Renamer 0 pat) `shouldBe`
            "\n"++
-           "(L {test/testdata/Visible/Simple.hs:9:8-12} \n"++
+           "(L {Visible/Simple.hs:9:8-12} \n"++
            " (ParPat \n"++
-           "  (L {test/testdata/Visible/Simple.hs:9:9-11} \n"++
+           "  (L {Visible/Simple.hs:9:9-11} \n"++
            "   (ConPatIn \n"++
-           "    (L {test/testdata/Visible/Simple.hs:9:9} {Name: Visible.Simple.B}) \n"++
+           "    (L {Visible/Simple.hs:9:9} {Name: B}) \n"++
            "    (PrefixCon \n"++
            "     [\n"++
-           "      (L {test/testdata/Visible/Simple.hs:9:11} \n"++
+           "      (L {Visible/Simple.hs:9:11} \n"++
            "       (VarPat {Name: x}))])))))"
 
 

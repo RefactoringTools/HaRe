@@ -11,6 +11,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , setOffsets
   , setOffset
   , setLocatedOffsets
+  , setLocatedAnns
   , deleteAnnotation
   , setLocatedDp
   , extractAnnsEP
@@ -24,6 +25,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
 
   -- * Operations
   , transferEntryDP
+  , adjustAnnOffset
 
   -- * TransForm
   , Transform
@@ -176,10 +178,17 @@ setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given annotation key/val
 setOffset :: Anns -> (AnnKey, Annotation) -> Anns
+{-
+setOffset anne (k, Ann dp col dps cs _) = case
+  Map.lookup k anne of
+    Nothing               -> Map.insert k (Ann dp col dps cs []) anne
+    Just (Ann _ _ _ _ ks) -> Map.insert k (Ann dp col dps cs ks) anne
+-}
 setOffset anne (k, Ann dp col _) = case
   Map.lookup k anne of
     Nothing           -> Map.insert k (Ann dp col []) anne
     Just (Ann _ _ ks) -> Map.insert k (Ann dp col ks) anne
+
 
 -- |Update the DeltaPos for the given annotation keys
 setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,Annotation)] -> Anns
@@ -187,6 +196,29 @@ setLocatedOffsets anne kvs = foldl' setLocatedDp anne kvs
 
 setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, Annotation) ->  Anns
 setLocatedDp aane (loc, annVal) = setOffset aane (mkKey loc,annVal)
+
+-- ---------------------------------------------------------------------
+
+-- |Update the DeltaPos for the given annotation keys
+setLocatedAnns :: (SYB.Data a) => Anns -> [(GHC.Located a,Annotation)] -> Anns
+setLocatedAnns anne kvs = foldl' setLocatedAnn anne kvs
+
+setLocatedAnn :: (SYB.Data a) => Anns -> (GHC.Located a, Annotation) ->  Anns
+setLocatedAnn aane (loc, annVal) = setAnn aane (mkKey loc,annVal)
+
+-- |Update the DeltaPos for the given annotation key/val
+setAnn :: Anns -> (AnnKey, Annotation) -> Anns
+{-
+setAnn anne (k, Ann dp col dps cs _) = case
+  Map.lookup k anne of
+    Nothing               -> Map.insert k (Ann dp col dps cs []) anne
+    Just (Ann _ _ _ _ ks) -> Map.insert k (Ann dp col dps cs ks) anne
+-}
+setAnn anne (k, Ann dp col _) = case
+  Map.lookup k anne of
+    Nothing           -> Map.insert k (Ann dp col []) anne
+    Just (Ann _ _ ks) -> Map.insert k (Ann dp col ks) anne
+
 
 -- ---------------------------------------------------------------------
 
@@ -225,6 +257,24 @@ transferEntryDP anns a b = anns'
     anns' = fromMaybe
               (error $ "transferEntryDP: lookup failed (a,b)=" ++ show (mkKey a,mkKey b))
               maybeAnns
+
+-- ---------------------------------------------------------------------
+
+adjustAnnOffset :: ColDelta -> Annotation -> Annotation
+-- adjustAnnOffset cd an = an
+
+adjustAnnOffset (ColDelta cd) (Ann (DP (ro,co)) (ColDelta ad) kds) = Ann edp cd' kds'
+  where
+    edp = case ro of
+      0 -> DP (ro,co)
+      _ -> DP (ro,co - cd)
+    cd' = ColDelta (ad - cd)
+    kds' = fmap adjustEntrySpan kds
+    adjustEntrySpan (AnnSpanEntry,dp) =
+      case dp of
+        DP (0,c) -> (AnnSpanEntry,DP (0,c))
+        DP (r,c) -> (AnnSpanEntry,DP (r, c - cd))
+    adjustEntrySpan x = x
 
 -- ---------------------------------------------------------------------
 

@@ -148,10 +148,10 @@ import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
-import qualified NameSet       as GHC
-import qualified Outputable    as GHC
+-- import qualified NameSet       as GHC
+-- import qualified Outputable    as GHC
 import qualified RdrName       as GHC
-import qualified UniqSet       as GHC
+-- import qualified UniqSet       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHC
 
@@ -1754,7 +1754,7 @@ renamePN' oldPN newName useQual t = do
     rename _ x = return x
 
     renameVar :: Bool -> (GHC.Located (GHC.HsExpr GHC.RdrName)) -> Transform (GHC.Located (GHC.HsExpr GHC.RdrName))
-    renameVar useQual v@(GHC.L l (GHC.HsVar n))
+    renameVar useQual (GHC.L l (GHC.HsVar n))
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameVar at :" ++ (showGhc l)
@@ -1850,7 +1850,7 @@ renamePN' oldPN newName useQual t = do
     -- ---------------------------------
 
     renameLPat :: Bool -> (GHC.LPat GHC.RdrName) -> Transform (GHC.LPat GHC.RdrName)
-    renameLPat useQual v@(GHC.L l (GHC.VarPat n))
+    renameLPat useQual (GHC.L l (GHC.VarPat n))
      | cond (GHC.L l n)
      = do
           logTr $ "renamePNworker:renameLPat at :" ++ (showGhc l)
@@ -1859,7 +1859,7 @@ renamePN' oldPN newName useQual t = do
     renameLPat _ x = return x
 
     renameFunBind :: Bool -> GHC.HsBindLR GHC.RdrName GHC.RdrName -> Transform (GHC.HsBindLR GHC.RdrName GHC.RdrName)
-    renameFunBind useQual fb@(GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick)
+    renameFunBind useQual (GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick)
      -- | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
      | cond (GHC.L ln n) -- || (GHC.nameUnique n == GHC.nameUnique newName)
      = do -- Need to (a) rename the actual funbind name
@@ -1905,7 +1905,7 @@ renamePN' oldPN newName useQual t = do
          return (GHC.TypeSig ns' typ' p)
     renameTypeSig _ x = return x
 
-    renameTransform useQual t =
+    renameTransform useQual t' =
           -- Note: bottom-up traversal (no ' at end)
             (SYB.everywhereM (
                    SYB.mkM   (rename useQual)
@@ -1917,7 +1917,7 @@ renamePN' oldPN newName useQual t = do
                   `SYB.extM` (renameTypeSig useQual)
                   `SYB.extM` (renameImportDecl useQual)
                   `SYB.extM` (renameFunBind useQual)
-                   ) t)
+                   ) t')
   ans <- getRefactAnns
   let (t',ans',logOut) = runTransform ans (renameTransform useQual t)
 

@@ -49,3 +49,9 @@ Executable qualclient
   Main-Is: Renaming/QualClient.hs
   Build-Depends:          base >= 4.0  && < 4.9
                         , syb
+
+Executable th
+  Main-Is: TH/Main.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb
+                        , template-haskell
