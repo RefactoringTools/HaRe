@@ -13,12 +13,12 @@ import Data.Generics.Strafunski.StrategyLib.StrategyLib
 import Language.Haskell.TokenUtils.GHC.Layout (newNameTok)
 import FastString
 import Lexer
-introduceTypeSyn :: RefactSettings -> Cradle -> FilePath -> SimpPos -> IO [FilePath]
-introduceTypeSyn settings cradle fileName (row,col) =
-  runRefacSession settings cradle (comp fileName (row,col))
+introduceTypeSyn :: RefactSettings -> Cradle -> FilePath -> SimpPos -> String -> String -> IO [FilePath]
+introduceTypeSyn settings cradle fileName (row,col) newName typeRep=
+  runRefacSession settings cradle (comp fileName (row,col)) newName typeRep
 
-comp ::FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName (row,col) = do
+comp ::FilePath -> SimpPos -> String -> String -> RefactGhc [ApplyRefacResult]
+comp fileName (row,col) newName typeRep = do
   getModuleGhc fileName
   renamed <- getRefactRenamed
   parsed <- getRefactParsed
