@@ -11,7 +11,8 @@ import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 import Language.Haskell.TokenUtils.GHC.Layout (newNameTok)
-
+import FastString
+import Lexer
 introduceTypeSyn :: RefactSettings -> Cradle -> FilePath -> SimpPos -> IO [FilePath]
 introduceTypeSyn settings cradle fileName (row,col) =
   runRefacSession settings cradle (comp fileName (row,col))
@@ -46,27 +47,25 @@ doIntro name ty = do
   where
     newTyVar = (GHC.HsTyVar name)    
     replaceTypeVar :: (GHC.LHsType GHC.Name) -> RefactGhc (GHC.LHsType GHC.Name)
-    replaceTypeVar (GHC.L l oldTy)
+    replaceTypeVar old@(GHC.L l oldTy)
       | compareHsType oldTy ty
       = do
-        worker l
-        return (GHC.L l newTyVar)
+           new <- worker l old
+           return (GHC.L l newTyVar)
     replaceTypeVar x = return x
---   worker :: GHC.SrcSpan -> RefactG
-    worker l = do
-       let newTok = newNameTok False l name        
-       replaceToken l (markToken $ newTok)
-       return ()
---       removeToksForSpan l
---       putDeclToksAfterSpan l newTok PlaceAdjacent
---       return
-      
+    worker loc old= do
+      let str = GHC.getOccString name
+          fastStr = fsLit str
+          tok = (GHC.L loc (ITconid fastStr), str)
+      (_, expr') <- putDeclToksForSpan loc old [tok]
+      return ()
+    
 
 --TODO implement this 
 compareHsType :: (GHC.HsType GHC.Name) -> (GHC.HsType GHC.Name) -> Bool
 compareHsType (GHC.HsTyVar n1) (GHC.HsTyVar n2) = n1 == n2
 compareHsType (GHC.HsTupleTy _ lst1) (GHC.HsTupleTy _ lst2) = compareTyList lst1 lst2
-compareHsType t1 t2 = False
+compareHsType _ _ = False
 
 compareTyList :: [GHC.LHsType GHC.Name] -> [GHC.LHsType GHC.Name] -> Bool
 compareTyList [] [] = True
@@ -82,31 +81,3 @@ getTypeSigs t =
   
   where res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
         worker ((GHC.ValBindsOut _ lst):: GHC.HsValBinds GHC.Name) = Just lst
-      {-
-      do
-      logm $ "TypeSyn.comp: Inside nothing branch"
-      validName <- isValidTypeName synonym
-      unless validName (error "The new type name either conflicts with an existing identifier or is not a valid type name.")
-      validType <- isValidType typeStr
-      unless validType (error "The type string is not a valid type description")
-      return []
-
-isValidType :: String -> RefactGhc Bool
-isValidType typeDesc = do
-  ty <- GHC.exprType typeDesc
-  logm $ "TypeSyn.isValidType: typeDesc is: " ++ showGhc ty
-  return True
-
-isValidTypeName :: String -> RefactGhc Bool
-isValidTypeName newName = do
-  renamed <- getRefactRenamed
-  res <- applyTU (stop_tdTUGhc (failTU `adhocTU` named)) renamed
-  return $ (isConId newName) && (res==(0::Int))
-  where named (decl@(GHC.TyDecl (GHC.L l name) _ _ _)::GHC.TyClDecl GHC.Name) =
-          if (GHC.getOccString name) == newName
-          then return (1::Int)
-          else return (0::Int)
-  -}
-  
-                          
-
