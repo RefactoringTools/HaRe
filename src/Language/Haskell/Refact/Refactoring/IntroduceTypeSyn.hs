@@ -15,7 +15,7 @@ import FastString
 import Lexer
 introduceTypeSyn :: RefactSettings -> Cradle -> FilePath -> SimpPos -> String -> String -> IO [FilePath]
 introduceTypeSyn settings cradle fileName (row,col) newName typeRep=
-  runRefacSession settings cradle (comp fileName (row,col)) newName typeRep
+  runRefacSession settings cradle (comp fileName (row,col) newName typeRep)
 
 comp ::FilePath -> SimpPos -> String -> String -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) newName typeRep = do
@@ -23,6 +23,7 @@ comp fileName (row,col) newName typeRep = do
   renamed <- getRefactRenamed
   parsed <- getRefactParsed
   m <- getModule
+  (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (addSyn (row,col) newName typeRep) RSAlreadyLoaded
   let (Just (modName,_)) = getModuleName parsed
       maybePn = locToType (row, col) renamed
   case maybePn of
@@ -37,6 +38,15 @@ comp fileName (row,col) newName typeRep = do
         _ -> error "Given type is not type synonym"
     Nothing -> error "Given location does not correspond to type"
       
+
+addSyn :: SimpPos -> String -> String -> RefactGhc ()
+addSyn (row, col) newName typeRep = do
+  renamed <- getRefactRenamed
+  let maybePn = locToName (row,col) renamed
+  case maybePn of
+    Just _ -> error "Introduce type synonym failed value already defined at source location"
+    Nothing -> do
+      let fullStr = "type " ++ newName ++ " = " ++ typeRep 
 
 doIntro :: GHC.Name -> GHC.HsType GHC.Name -> RefactGhc ()
 doIntro name ty = do
