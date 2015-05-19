@@ -13,6 +13,10 @@ import Data.Generics.Strafunski.StrategyLib.StrategyLib
 import Language.Haskell.TokenUtils.GHC.Layout (newNameTok)
 import FastString
 import Lexer
+import DynFlags
+import StringBuffer
+import Bag
+
 introduceTypeSyn :: RefactSettings -> Cradle -> FilePath -> SimpPos -> String -> String -> IO [FilePath]
 introduceTypeSyn settings cradle fileName (row,col) newName typeRep=
   runRefacSession settings cradle (comp fileName (row,col) newName typeRep)
@@ -23,7 +27,7 @@ comp fileName (row,col) newName typeRep = do
   renamed <- getRefactRenamed
   parsed <- getRefactParsed
   m <- getModule
-  (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (addSyn (row,col) newName typeRep) RSAlreadyLoaded
+  (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (addSyn (row,col) newName typeRep fileName) RSAlreadyLoaded
   let (Just (modName,_)) = getModuleName parsed
       maybePn = locToType (row, col) renamed
   case maybePn of
@@ -39,15 +43,24 @@ comp fileName (row,col) newName typeRep = do
     Nothing -> error "Given location does not correspond to type"
       
 
-addSyn :: SimpPos -> String -> String -> RefactGhc ()
-addSyn (row, col) newName typeRep = do
+addSyn :: SimpPos -> String -> String -> FilePath -> RefactGhc ()
+addSyn (row, col) newName typeRep fileName = do
   renamed <- getRefactRenamed
+  parsed <- getRefactParsed
   let maybePn = locToName (row,col) renamed
   case maybePn of
     Just _ -> error "Introduce type synonym failed value already defined at source location"
     Nothing -> do
-      let fullStr = "type " ++ newName ++ " = " ++ typeRep 
-
+      let fullStr = "type " ++ newName ++ " = " ++ typeRep
+          (modName, str) = gfromJust "Tried to get mod name" $ getModuleName parsed
+          buff = stringToStringBuffer fullStr
+      modSum <- GHC.getModSummary modName
+      let newSum = modSum {GHC.ms_hspp_buf = Just buff}
+      typedMod <- GHC.parseModule newSum >>= GHC.typecheckModule
+      let Just binds = GHC.tm_renamed_source typedMod
+      error $ SYB.showData SYB.TypeChecker 3 binds
+      return ()
+      
 doIntro :: GHC.Name -> GHC.HsType GHC.Name -> RefactGhc ()
 doIntro name ty = do
   renamed <- getRefactRenamed
