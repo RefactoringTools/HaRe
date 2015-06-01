@@ -57,8 +57,13 @@ addSyn (row, col) newName typeRep fileName = do
       modSum <- GHC.getModSummary modName
       let newSum = modSum {GHC.ms_hspp_buf = Just buff}
       typedMod <- GHC.parseModule newSum >>= GHC.typecheckModule
-      let Just binds = GHC.tm_renamed_source typedMod
-      error $ SYB.showData SYB.TypeChecker 3 binds
+      let Just (group, _ , _ , _ ) = GHC.tm_renamed_source typedMod
+          [[(GHC.L _ decl)]] = GHC.hs_tyclds group
+          lsyn@(GHC.L _ syn) = GHC.td_synRhs $ GHC.tcdTyDefn decl
+          names = GHC.hsExplicitTvs lsyn
+{-TODO syn is the type synonym that needs to be inserted into the renamed AST -}
+      error $ SYB.showData SYB.TypeChecker 3 syn
+      --doIntro name syn
       return ()
       
 doIntro :: GHC.Name -> GHC.HsType GHC.Name -> RefactGhc ()
