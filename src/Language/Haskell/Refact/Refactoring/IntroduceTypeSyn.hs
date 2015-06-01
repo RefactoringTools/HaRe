@@ -12,6 +12,7 @@ import Language.Haskell.Refact.API
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 import Language.Haskell.TokenUtils.GHC.Layout (newNameTok)
 import FastString
+import Unique
 import Lexer
 import DynFlags
 import StringBuffer
@@ -28,7 +29,11 @@ comp fileName (row,col) newName typeRep = do
   parsed <- getRefactParsed
   m <- getModule
   (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (addSyn (row,col) newName typeRep fileName) RSAlreadyLoaded
-  let (Just (modName,_)) = getModuleName parsed
+  case ismod of
+    False -> error "Introduce type synonym failed"
+    True -> return ()
+  return [refactoredMod]
+  {-let (Just (modName,_)) = getModuleName parsed
       maybePn = locToType (row, col) renamed
   case maybePn of
     Just pn@(GHC.TyDecl (GHC.L _ name) _ tyDefn _) ->
@@ -40,7 +45,7 @@ comp fileName (row,col) newName typeRep = do
             True -> return ()
           return [refactoredMod]
         _ -> error "Given type is not type synonym"
-    Nothing -> error "Given location does not correspond to type"
+    Nothing -> error "Given location does not correspond to type"-}
       
 
 addSyn :: SimpPos -> String -> String -> FilePath -> RefactGhc ()
@@ -59,13 +64,22 @@ addSyn (row, col) newName typeRep fileName = do
       typedMod <- GHC.parseModule newSum >>= GHC.typecheckModule
       let Just (group, _ , _ , _ ) = GHC.tm_renamed_source typedMod
           [[(GHC.L _ decl)]] = GHC.hs_tyclds group
-          lsyn@(GHC.L _ syn) = GHC.td_synRhs $ GHC.tcdTyDefn decl
-          names = GHC.hsExplicitTvs lsyn
+          GHC.L _ syn = GHC.td_synRhs $ GHC.tcdTyDefn decl
+          name = mkName newName
 {-TODO syn is the type synonym that needs to be inserted into the renamed AST -}
-      error $ SYB.showData SYB.TypeChecker 3 syn
-      --doIntro name syn
+      --error $ SYB.showData SYB.TypeChecker 3 syn
+      doIntro name syn 
       return ()
-      
+
+mkName :: String -> GHC.Name
+mkName str = GHC.mkSystemName unique occ
+  where unique = getUnique $ fsLit str
+        occ = GHC.mkTyVarOcc str
+
+addTypeDecl :: GHC.HsType GHC.Name -> SimpPos -> RefactGhc ()
+addTypeDecl decl (row,col) = do
+  renamed <- getRefactRenamed
+
 doIntro :: GHC.Name -> GHC.HsType GHC.Name -> RefactGhc ()
 doIntro name ty = do
   renamed <- getRefactRenamed
