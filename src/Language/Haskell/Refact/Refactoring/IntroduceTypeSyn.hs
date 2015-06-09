@@ -17,6 +17,8 @@ import Lexer
 import DynFlags
 import StringBuffer
 import Bag
+import SrcLoc
+import Outputable
 
 introduceTypeSyn :: RefactSettings -> Cradle -> FilePath -> SimpPos -> String -> String -> IO [FilePath]
 introduceTypeSyn settings cradle fileName (row,col) newName typeRep=
@@ -26,7 +28,6 @@ comp ::FilePath -> SimpPos -> String -> String -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) newName typeRep = do
   getModuleGhc fileName
   renamed <- getRefactRenamed
-  parsed <- getRefactParsed
   m <- getModule
   (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (addSyn (row,col) newName typeRep fileName) RSAlreadyLoaded
   case ismod of
@@ -68,6 +69,7 @@ addSyn (row, col) newName typeRep fileName = do
           name = mkName newName
 {-TODO syn is the type synonym that needs to be inserted into the renamed AST -}
       --error $ SYB.showData SYB.TypeChecker 3 syn
+      addTypeDecl fullStr (row, col) decl
       doIntro name syn 
       return ()
 
@@ -76,9 +78,20 @@ mkName str = GHC.mkSystemName unique occ
   where unique = getUnique $ fsLit str
         occ = GHC.mkTyVarOcc str
 
-addTypeDecl :: GHC.HsType GHC.Name -> SimpPos -> RefactGhc ()
-addTypeDecl decl (row,col) = do
-  renamed <- getRefactRenamed
+addTypeDecl :: String -> SimpPos -> GHC.TyClDecl GHC.Name -> RefactGhc ()
+addTypeDecl declStr (row,col) decl = do
+  (group, _,_,_) <- getRefactRenamed
+  dflags <- getDynFlags
+  let srcLoc = mkRealSrcLoc (fsLit declStr) row col
+      buff = stringToStringBuffer declStr
+      pres = Lexer.lexTokenStream buff srcLoc dflags
+  case pres of
+    Lexer.POk pstate toks -> do 
+      --let lDecl = (GHC.L )
+      --everywhereMStaged SYB.Renamer
+
+      return ()
+    Lexer.PFailed _ msg -> error $ "Lexer error: " ++  (showSDoc dflags msg)
 
 doIntro :: GHC.Name -> GHC.HsType GHC.Name -> RefactGhc ()
 doIntro name ty = do
