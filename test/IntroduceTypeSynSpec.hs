@@ -14,7 +14,7 @@ spec :: Spec
 spec = do
   describe "doIntroduceTypeSyn" $ do
     it "Introduces a small synonym and modifies the type of a single function." $ do
-      res <- introduceTypeSyn defaultTestSettings testCradle "./test/testdata/IntroduceTypeSyn/TS1.hs" (3,0) "Name" "String"
+      res <- introduceTypeSyn logTestSettings testCradle "./test/testdata/IntroduceTypeSyn/TS1.hs" (3,0) "Name" "String"
       (show res) `shouldBe` "[\"./test/testdata/IntroduceTypeSyn/TS1.hs\"]"
       diff <- compareFiles "./test/testdata/IntroduceTypeSyn/TS1.refactored.hs"
                            "./test/testdata/IntroduceTypeSyn/TS1.hs.expected"

@@ -80,16 +80,25 @@ mkName str = GHC.mkSystemName unique occ
 
 addTypeDecl :: String -> SimpPos -> GHC.TyClDecl GHC.Name -> RefactGhc ()
 addTypeDecl declStr (row,col) decl = do
-  (group, _,_,_) <- getRefactRenamed
+  --TODO the fast strings in the srclocs should have module information
+  r@(group,id,lie,ds) <- getRefactRenamed
   dflags <- getDynFlags
   let srcLoc = mkRealSrcLoc (fsLit declStr) row col
       buff = stringToStringBuffer declStr
       pres = Lexer.lexTokenStream buff srcLoc dflags
   case pres of
     Lexer.POk pstate toks -> do 
-      --let lDecl = (GHC.L )
-      --everywhereMStaged SYB.Renamer
-
+      let l1 = mkSrcLoc (fsLit "") row col
+          l2 = mkSrcLoc (fsLit "") row (col + (length declStr))
+          span = mkSrcSpan l1 l2
+          ldecl = (GHC.L span decl)
+          posTokens = GHC.addSourceToTokens srcLoc buff toks
+          tyclds = GHC.hs_tyclds group
+          newR = (group {GHC.hs_tyclds = tyclds ++ [[ldecl]]}, id, lie, ds)
+--      putRefactRenamed newR
+--      error $ SYB.showData SYB.Renamer 3 ldecl
+--      error $ show posTokens
+      void $ putToksForSpan span posTokens    
       return ()
     Lexer.PFailed _ msg -> error $ "Lexer error: " ++  (showSDoc dflags msg)
 
@@ -113,8 +122,7 @@ doIntro name ty = do
           fastStr = fsLit str
           tok = (GHC.L loc (ITconid fastStr), str)
       (_, expr') <- putDeclToksForSpan loc old [tok]
-      return ()
-    
+      return ()    
 
 --TODO implement this 
 compareHsType :: (GHC.HsType GHC.Name) -> (GHC.HsType GHC.Name) -> Bool
@@ -136,3 +144,30 @@ getTypeSigs t =
   
   where res = somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
         worker ((GHC.ValBindsOut _ lst):: GHC.HsValBinds GHC.Name) = Just lst
+
+adjustPosTokens :: [PosToken] -> Int -> Int -> [PosToken]
+adjustPosTokens [] _ _ = []
+adjustPosTokens (((GHC.L l t), str):rst) row col = (new:rest)
+  where rest = adjustPosTokens rst row col
+        new = ((GHC.L new_span t), str)
+        new_span = updateSrcSpan l row col
+
+updateSrcLoc :: RealSrcLoc -> Int -> Int -> RealSrcLoc
+updateSrcLoc old_loc row col = mkRealSrcLoc fs new_row new_col
+  where fs = srcLocFile old_loc
+        new_row = row + (srcLocLine old_loc)
+        new_col = col + (srcLocCol old_loc)
+
+updateSrcSpan :: SrcSpan -> Int -> Int -> SrcSpan
+updateSrcSpan span row col = mkSrcSpan start end
+  where start = wrapSrcLoc $ updateSrcLoc (unwrapSrcLoc $ srcSpanStart span) row col
+        end = wrapSrcLoc $ updateSrcLoc (unwrapSrcLoc $ srcSpanEnd span) row col
+
+unwrapSrcLoc :: SrcLoc -> RealSrcLoc
+unwrapSrcLoc loc =
+  case loc of
+    RealSrcLoc rl -> rl
+    UnhelpfulLoc _ -> error "Given unhelpful source location."
+
+wrapSrcLoc :: RealSrcLoc -> SrcLoc
+wrapSrcLoc rl = RealSrcLoc rl
