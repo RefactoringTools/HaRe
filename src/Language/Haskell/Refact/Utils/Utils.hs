@@ -511,7 +511,8 @@ serverModsAndFiles m = do
 
 -- ---------------------------------------------------------------------
 
+{-
 instance (Show GHC.ModuleName) where
   show = GHC.moduleNameString
-
+-}
 -- ---------------------------------------------------------------------

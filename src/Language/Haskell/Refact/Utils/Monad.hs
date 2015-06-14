@@ -1,6 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -37,14 +40,18 @@ import qualified DynFlags      as GHC
 import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
+import qualified HscTypes      as GHC
 
 import Control.Applicative
 import Control.Monad.State
 import Data.List
 --import Data.Time.Clock
+import Distribution.Helper
 import Exception
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal
+-- import qualified Control.Monad.IO.Class as MTL
+import qualified Language.Haskell.GhcMod.Internal as GM
+import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.Refact.Utils.Cabal
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
@@ -53,7 +60,7 @@ import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger
 
--- import qualified Data.Map as Map
+import qualified Data.Map as Map
 
 -- Monad transformer stuff
 import Control.Monad.Trans.Control ( control, liftBaseOp, liftBaseOp_)
@@ -121,10 +128,10 @@ data RefactState = RefSt
         , rsFlags      :: !RefactFlags -- ^ Flags for controlling generic traversals
         , rsStorage    :: !StateStorage -- ^Temporary storage of values
                                       -- while refactoring takes place
-        , rsGraph     :: [TargetGraph]
-        , rsModuleGraph :: [([FilePath],GHC.ModuleGraph)]
-        , rsCurrentTarget :: Maybe [FilePath]
-        , rsModule    :: !(Maybe RefactModule) -- ^The current module being refactored
+        , rsGraph         :: ![TargetGraph]
+        , rsModuleGraph   :: ![([FilePath],GHC.ModuleGraph)]
+        , rsCurrentTarget :: !(Maybe [FilePath])
+        , rsModule        :: !(Maybe RefactModule) -- ^The current module being refactored
         }
 {-
 Note [rsSrcSpanCol]
@@ -168,8 +175,73 @@ instance Show StateStorage where
 -- StateT and GhcT stack
 
 -- type RefactGhc a = GHC.GhcT (StateT RefactState IO) a
-type RefactGhc a = GhcModT (StateT RefactState IO) a
+-- type RefactGhc a = GhcModT (StateT RefactState IO) a
+-- type RefactGhc a = GM.GmlT (GhcModT (StateT RefactState IO)) a
+newtype RefactGhc a = RefactGhc
+    -- { unRefactGhc :: GM.GmlT (GhcModT (StateT RefactState IO)) a
+    -- { unRefactGhc :: GhcModT (StateT RefactState (GM.GmlT IO)) a
+    { unRefactGhc :: GM.GmlT (StateT RefactState IO) a
+    } deriving ( Functor
+               , Applicative
+               , Alternative
+               , Monad
+               , MonadPlus
+               , MonadIO
+               , GM.GmEnv
+               , GM.MonadIO
+               , ExceptionMonad
+               )
 
+-- type RefactGhc a = GHC.GhcT (GhcModT (StateT RefactState IO)) a
+
+-- ---------------------------------------------------------------------
+
+runRefactGhc ::
+  RefactGhc a -> RefactState -> Options -> IO (a, RefactState)
+runRefactGhc comp initState opt = do
+    -- ((merr,_log),s) <- runStateT (runGhcModT opt comp) initState
+    -- case merr of
+    --   Left err -> error (show err)
+    --   Right a -> return (a,s)
+    -- r <- GM.runGmlT [] (runStateT (runGhcModT opt (unRefactGhc comp)) initState)
+    -- ((merr,_log),s) <- runStateT (runGhcModT opt (GM.runGmlT [] (unRefactGhc comp))) initState
+    ((merr,_log),s) <- runStateT (runGhcModT opt (GM.runGmlT [] (unRefactGhc comp))) initState
+    -- ((merr,_log),s) <- GM.runGmlT [] (runStateT (runGhcModT opt (unRefactGhc comp)) initState)
+    case merr of
+      Left err -> error (show err)
+      Right a -> return (a,s)
+
+-- ---------------------------------------------------------------------
+
+instance GM.MonadIO (StateT RefactState IO) where
+  liftIO = GM.liftIO
+
+instance MonadState RefactState RefactGhc where
+    get = RefactGhc (lift get)
+    put s = RefactGhc (lift (put s))
+
+instance GHC.GhcMonad RefactGhc where
+  getSession     = RefactGhc (GM.gmlGetSession)
+  setSession env = RefactGhc (GM.gmlSetSession env)
+
+instance GHC.HasDynFlags RefactGhc where
+  getDynFlags = RefactGhc (GHC.hsc_dflags <$> gmlGetSession)
+
+{-
+runGhcT
+:: (ExceptionMonad m, Functor m, MonadIO m)
+=> Maybe FilePath
+-> GhcT m a
+-> m a
+
+-}
+{-
+instance (GM.MonadIO (GHC.GhcT (StateT RefactState IO))) where
+  liftIO = GHC.liftIO
+
+instance (GM.MonadIO (StateT RefactState IO)) where
+  liftIO = GHC.liftIO
+-}
 {-
 instance (MU.MonadIO (GHC.GhcT (StateT RefactState IO))) where
          liftIO = GHC.liftIO
@@ -267,8 +339,104 @@ initGhcSession _importDirs = do
     return ()
 
 -- ---------------------------------------------------------------------
+{-
+myCabalDebug :: IOish m => GhcModT m [String]
+myCabalDebug = do
+    crdl@Cradle {..} <- cradle
+    mcs <- resolveGmComponents Nothing =<< mapM (resolveEntrypoint crdl) =<< getComponents
+    let entrypoints = Map.map gmcEntrypoints mcs
+    --     graphs      = Map.map gmcHomeModuleGraph mcs
+    --     opts        = Map.map gmcGhcOpts mcs
+    --     srcOpts     = Map.map gmcGhcSrcOpts mcs
+
+    -- return $
+    --      [ "Cabal file:           " ++ show cradleCabalFile
+    --      , "Cabal entrypoints:\n"       ++ render (nest 4 $
+    --           mapDoc gmComponentNameDoc smpDoc entrypoints)
+    --      , "Cabal components:\n"        ++ render (nest 4 $
+    --           mapDoc gmComponentNameDoc graphDoc graphs)
+    --      , "GHC Cabal options:\n"       ++ render (nest 4 $
+    --           mapDoc gmComponentNameDoc (fsep . map text) opts)
+    --      , "GHC search path options:\n" ++ render (nest 4 $
+    --           mapDoc gmComponentNameDoc (fsep . map text) srcOpts)
+    --      ]
+    return []
+-}
+-- ---------------------------------------------------------------------
+{-
+Working out the monad from ghc-mod
+
+debugInfo :: IOish m => GhcModT m String
+debugInfo = do
+    Options {..} <- options
+    Cradle {..} <- cradle
 
 
+-}
+getCabalAllTargets :: Cradle -> FilePath -> RefactGhc ([FilePath],[FilePath],[FilePath],[FilePath])
+getCabalAllTargets cr cabalFile = do
+   undefined
+{-
+   currentDir <- liftIO getCurrentDirectory
+   -- let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
+   let cabalDir = cradleRootDir cr
+
+   liftIO $ setCurrentDirectory cabalDir
+
+   mcs <- resolveGmComponents Nothing =<< mapM (resolveEntrypoint cr) =<< getComponents
+   let entrypoints = Map.map gmcEntrypoints mcs
+       -- graphs      = Map.map gmcHomeModuleGraph mcs
+       -- opts        = Map.map gmcGhcOpts mcs
+       -- srcOpts     = Map.map gmcGhcSrcOpts mcs
+-}
+
+{-
+   pkgDesc <- parseCabalFile cr cabalFile
+   (libs,exes,tests,benches) <- liftIO $ cabalAllTargets pkgDesc
+   liftIO $ setCurrentDirectory currentDir
+
+   let libs'    = filter (\l -> not (isPrefixOf "Paths_" l)) libs
+       exes'    = addCabalDir exes
+       tests'   = addCabalDir tests
+       benches' = addCabalDir benches
+
+       addCabalDir ts = map (\t -> combine cabalDir t) ts
+-}
+   let libs' = [""]
+       exes' = [""]
+       tests' = [""]
+       benches' = [""]
+   return (libs',exes',tests',benches')
+
+ {-
+getCabalAllTargets :: Cradle -> FilePath -> RefactGhc ([FilePath],[FilePath],[FilePath],[FilePath])
+getCabalAllTargets cr cabalFile = do
+   currentDir <- liftIO getCurrentDirectory
+   -- let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
+   let cabalDir = cradleRootDir cr
+
+   liftIO $ setCurrentDirectory cabalDir
+
+   mcs <- resolveGmComponents Nothing =<< mapM (resolveEntrypoint cr) =<< getComponents
+   let entrypoints = Map.map gmcEntrypoints mcs
+       graphs      = Map.map gmcHomeModuleGraph mcs
+       opts        = Map.map gmcGhcOpts mcs
+       srcOpts     = Map.map gmcGhcSrcOpts mcs
+
+   pkgDesc <- parseCabalFile cr cabalFile
+   (libs,exes,tests,benches) <- liftIO $ cabalAllTargets pkgDesc
+   liftIO $ setCurrentDirectory currentDir
+
+   let libs'    = filter (\l -> not (isPrefixOf "Paths_" l)) libs
+       exes'    = addCabalDir exes
+       tests'   = addCabalDir tests
+       benches' = addCabalDir benches
+
+       addCabalDir ts = map (\t -> combine cabalDir t) ts
+
+   return (libs',exes',tests',benches')
+-}
+{-
 getCabalAllTargets :: Cradle -> FilePath -> RefactGhc ([FilePath],[FilePath],[FilePath],[FilePath])
 getCabalAllTargets cr cabalFile = do
    currentDir <- liftIO getCurrentDirectory
@@ -289,6 +457,7 @@ getCabalAllTargets cr cabalFile = do
        addCabalDir ts = map (\t -> combine cabalDir t) ts
 
    return (libs',exes',tests',benches')
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -305,7 +474,7 @@ loadModuleGraphGhc maybeTargetFiles = do
       -- void $ GHC.load GHC.LoadAllTargets
 
       graph <- GHC.getModuleGraph
-      cgraph <- liftIO $ canonicalizeGraph graph
+      cgraph <- canonicalizeGraph graph
 
       let canonMaybe filepath = ghandle handler (canonicalizePath filepath)
             where
@@ -333,9 +502,18 @@ loadModuleGraphGhc maybeTargetFiles = do
 
 loadTarget :: [FilePath] -> RefactGhc ()
 loadTarget targetFiles = do
-      setTargetFiles targetFiles
-      -- checkSlowAndSet
-      void $ GHC.load GHC.LoadAllTargets
+  error $ "loadTarget:sort this out"
+  {-
+  let
+    guessOne :: FilePath -> RefactGhc GHC.Target
+    guessOne f = GHC.guessTarget f Nothing
+  targets <- mapM guessOne targetFiles
+  GHC.setTargets targets
+
+  -- setTargetFiles targetFiles
+  -- checkSlowAndSet
+  void $ GHC.load GHC.LoadAllTargets
+  -}
 
 -- ---------------------------------------------------------------------
 
@@ -359,7 +537,7 @@ ensureTargetLoaded (target,modSum) = do
 -- ---------------------------------------------------------------------
 
 canonicalizeGraph ::
-  [GHC.ModSummary] -> IO [(Maybe (FilePath), GHC.ModSummary)]
+  [GHC.ModSummary] -> RefactGhc [(Maybe (FilePath), GHC.ModSummary)]
 canonicalizeGraph graph = do
   let mm = map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
       canon ((Just fp),m) = do
@@ -367,21 +545,9 @@ canonicalizeGraph graph = do
         return $ (Just fp',m)
       canon (Nothing,m)  = return (Nothing,m)
 
-  mm' <- mapM canon mm
+  mm' <- mapM (liftIO . canon) mm
 
   return mm'
-
--- ---------------------------------------------------------------------
-
-runRefactGhc ::
-  RefactGhc a -> RefactState -> Options -> IO (a, RefactState)
-runRefactGhc comp initState opt = do
-
-    ((merr,_log),s) <- runStateT (runGhcModT opt comp) initState
-    case merr of
-      Left err -> error (show err)
-      Right a -> return (a,s)
-
 
 -- ---------------------------------------------------------------------
 

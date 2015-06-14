@@ -1,8 +1,8 @@
 module Language.Haskell.Refact.Utils.Cabal
   (
     cabalAllTargets
-  , cleanupGhcModEnv
-  , cleanupCradle
+  -- , cleanupGhcModEnv
+  -- , cleanupCradle
   ) where
 
 -- import Language.Haskell.GhcMod.CabalConfig
@@ -14,18 +14,15 @@ module Language.Haskell.Refact.Utils.Cabal
 
 --import System.Directory (getCurrentDirectory, removeDirectoryRecursive)
 import Language.Haskell.GhcMod.Internal
---import Language.Haskell.GhcMod
-import MonadUtils (liftIO)
---import Control.Applicative ((<$>))
---import qualified Control.Exception as E
+import Language.Haskell.GhcMod
 import Control.Monad (filterM)
 --import Data.Maybe (maybeToList)
 --import Data.Set (fromList, toList)
 --import Distribution.Package (Dependency(Dependency)
 --                           , PackageName(PackageName))
 --import qualified Distribution.Package as C
-import Distribution.PackageDescription (PackageDescription, TestSuite, TestSuiteInterface(..), Executable)
-import qualified Distribution.PackageDescription as P
+-- import Distribution.PackageDescription (PackageDescription, TestSuite, TestSuiteInterface(..), Executable)
+-- import qualified Distribution.PackageDescription as P
 --import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 --import Distribution.PackageDescription.Parse (readPackageDescription)
 --import Distribution.Simple.Compiler (CompilerInfo(..),AbiTag(..),CompilerId(..), CompilerFlavor(..))
@@ -38,10 +35,19 @@ import qualified Distribution.PackageDescription as P
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 
-import qualified Distribution.ModuleName as M (ModuleName,toFilePath)
+-- import qualified Distribution.ModuleName as M (ModuleName,toFilePath)
+import Distribution.Helper
 
+-- ---------------------------------------------------------------------
+
+cabalAllTargets = do
+  cr <- findCradle
+  r <- runQuery distDir
+  
+  return cr
 
 ----------------------------------------------------------------
+{- originally from an older ghc-mod
 
 -- | Extracting all 'Module' 'FilePath's for libraries, executables,
 -- tests and benchmarks.
@@ -82,7 +88,7 @@ toModuleString mn = fromFilePath $ M.toFilePath mn
   where
     fromFilePath :: FilePath -> String
     fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
-
+-}
 -- ---------------------------------------------------------------------
 {-
 cleanupGhcModEnv :: GhcModEnv -> IO ()

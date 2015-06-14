@@ -49,6 +49,7 @@ Library
                                 , semigroups
                                 , monoid-extras
 
+                                , cabal-helper
                                 , filepath
                                 , ghc
                                 , ghc-paths
@@ -121,6 +122,7 @@ Executable ghc-hare
                                 , semigroups
                                 , monoid-extras
 
+                                , cabal-helper
                                 , filepath
                                 , ghc
                                 , ghc-paths

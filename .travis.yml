@@ -2,7 +2,8 @@
 
 # See also https://github.com/hvr/multi-ghc-travis for more information
 env:
- - CABALVER=1.22 GHCVER=7.10.1
+ # - CABALVER=1.22 GHCVER=7.10.1
+ - CABALVER=head GHCVER=7.10.2
  # - CABALVER=1.22 GHCVER=head   # see section about GHC HEAD snapshots
 
 # matrix:
@@ -36,13 +37,11 @@ install:
  - travis_retry cabal update
  - |
    git clone https://github.com/alanz/ghc-mod.git
-   (cd ghc-mod && git checkout ghc-7.10 && cabal install)
+   (cd ghc-mod && git checkout HaRe && cabal install)
    cabal install Strafunski-StrategyLib --allow-newer
-   cabal install monoid-extras --allow-newer
-   cabal install dual-tree --allow-newer
  - pwd
  # Must remove --allow-newer in future
- - cabal install --only-dependencies --enable-tests
+ - cabal install --dependencies-only --enable-tests
 
 # Here starts the actual work to be performed for the package under
 # test; any command which exits with a non-zero exit code causes the
