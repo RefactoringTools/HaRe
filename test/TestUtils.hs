@@ -4,7 +4,7 @@ module TestUtils
        , parsedFileGhc
        , parsedFileGhcCd
        , parseSourceFileTest
-       , getTestDynFlags
+       -- , getTestDynFlags
        , runLogTestGhc
        , runTestGhc
        , runRefactGhcState
@@ -43,6 +43,7 @@ import qualified Unique        as GHC
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.Utils.Monad
@@ -56,7 +57,7 @@ import System.Log.Handler.Simple
 import System.Log.Logger
 
 import qualified Data.Map as Map
-
+import Control.Monad.IO.Class
 
 -- ---------------------------------------------------------------------
 
@@ -88,18 +89,19 @@ compareStrings astr bstr = filter (\c -> not( isBoth c)) $ getGroupedDiff (lines
 
 -- ---------------------------------------------------------------------
 
-parsedFileGhc :: String -> IO (ParseResult,[PosToken])
+parsedFileGhc :: String -> IO (ParseResult,[PosToken],Targets)
 parsedFileGhc fileName = do
   let
     comp = do
        res <- parseSourceFileTest fileName
        return res
-  (parseResult,_s) <- runRefactGhcState comp
+  (parseResult,_s) <- runRefactGhcStateLog comp [Left fileName] Normal
+  -- (parseResult,_s) <- runRefactGhcState comp
   return parseResult
 
 -- ---------------------------------------------------------------------
 
-parsedFileGhcCd :: FilePath -> FilePath -> IO (ParseResult,[PosToken])
+parsedFileGhcCd :: FilePath -> FilePath -> IO (ParseResult,[PosToken],Targets)
 parsedFileGhcCd path fileName = do
   old <- getCurrentDirectory
   let
@@ -108,7 +110,7 @@ parsedFileGhcCd path fileName = do
        return res
     newDir = setCurrentDirectory path
     oldDir _ = setCurrentDirectory old
-  (parseResult,_s) <- GHC.gbracket newDir oldDir $ \_ -> runRefactGhcState comp
+  (parseResult,_s) <- GHC.gbracket newDir oldDir $ \_ -> runRefactGhcState comp [Left fileName]
   return parseResult
 
 -- ---------------------------------------------------------------------
@@ -125,12 +127,13 @@ cdAndDo path fn = do
 
 -- ---------------------------------------------------------------------
 
-parseSourceFileTest :: FilePath -> RefactGhc (ParseResult,[PosToken])
+parseSourceFileTest :: FilePath -> RefactGhc (ParseResult,[PosToken],Targets)
 parseSourceFileTest fileName = do
   parseSourceFileGhc fileName -- Load the file first
   p <- getTypecheckedModule
   toks <- fetchOrigToks
-  return (p,toks)
+  absFileName <- liftIO $ canonicalizePath fileName
+  return (p,toks,[Left absFileName])
 
 -- ---------------------------------------------------------------------
 
@@ -168,35 +171,35 @@ mkTokenCache :: a -> TokenCache a
 mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 
 -- ---------------------------------------------------------------------
-
+{-
 getTestDynFlags :: IO GHC.DynFlags
 getTestDynFlags = do
   (df,_) <- runTestGhc $ GHC.getSessionDynFlags
   return df
-
+-}
 -- ---------------------------------------------------------------------
 
-runLogTestGhc :: RefactGhc a -> IO (a, RefactState)
-runLogTestGhc comp = do
-   res <- runRefactGhc comp initialLogOnState testOptions
+runLogTestGhc :: RefactGhc a -> Targets -> IO (a, RefactState)
+runLogTestGhc comp targets = do
+   res <- runRefactGhc comp targets initialLogOnState testOptions
    return res
 
 -- ---------------------------------------------------------------------
 
-runTestGhc :: RefactGhc a -> IO (a, RefactState)
-runTestGhc comp = do
-   res <- runRefactGhc comp initialState testOptions
+runTestGhc :: RefactGhc a -> Targets -> IO (a, RefactState)
+runTestGhc comp targets = do
+   res <- runRefactGhc comp targets initialState testOptions
    return res
 
 -- ---------------------------------------------------------------------
 
-runRefactGhcState :: RefactGhc t -> IO (t, RefactState)
-runRefactGhcState paramcomp = runRefactGhcStateLog paramcomp Normal
+runRefactGhcState :: RefactGhc t -> Targets -> IO (t, RefactState)
+runRefactGhcState comp targets = runRefactGhcStateLog comp targets Normal
 
 -- ---------------------------------------------------------------------
 
-runRefactGhcStateLog :: RefactGhc t -> VerboseLevel -> IO (t, RefactState)
-runRefactGhcStateLog paramcomp logOn  = do
+runRefactGhcStateLog :: RefactGhc t -> Targets -> VerboseLevel -> IO (t, RefactState)
+runRefactGhcStateLog comp targets logOn  = do
   let
      initState = RefSt
         { rsSettings = defaultTestSettings { rsetVerboseLevel = logOn }
@@ -210,8 +213,9 @@ runRefactGhcStateLog paramcomp logOn  = do
         , rsModule = Nothing
         }
   -- putStrLn "runRefactGhcStateLog:about to runRefactGhc"
-  (r,s) <- runRefactGhc (initGhcSession (rsetImportPaths defaultTestSettings) >>
-                                                paramcomp) initState testOptions
+  -- (r,s) <- runRefactGhc (initGhcSession (rsetImportPaths defaultTestSettings) >>
+  --                                               paramcomp) initState testOptions
+  (r,s) <- runRefactGhc comp targets initState testOptions
   return (r,s)
 
 -- ---------------------------------------------------------------------

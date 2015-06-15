@@ -36,19 +36,15 @@ import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 
 -- import qualified Distribution.ModuleName as M (ModuleName,toFilePath)
-import Distribution.Helper
+-- import Distribution.Helper
 
 -- ---------------------------------------------------------------------
 
 cabalAllTargets = do
-  cr <- findCradle
-  r <- runQuery distDir
-  
-  return cr
+  error $ "cabalAllTargets undefined"
 
 ----------------------------------------------------------------
-{- originally from an older ghc-mod
-
+{-
 -- | Extracting all 'Module' 'FilePath's for libraries, executables,
 -- tests and benchmarks.
 cabalAllTargets :: PackageDescription -> IO ([String],[String],[String],[String])

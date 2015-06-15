@@ -22,7 +22,7 @@ type HsDeclsP = GHC.HsGroup GHC.Name
 type InScopes = [GHC.Name]
 
 -- Additions for GHC
-type PosToken = (GHC.Located GHC.Token, String)
+-- type PosToken = (GHC.Located GHC.Token, String)
 
 type Export = GHC.LIE GHC.RdrName
 

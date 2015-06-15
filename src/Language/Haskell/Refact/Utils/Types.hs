@@ -50,7 +50,7 @@ mainTid = TId 0
 data TokenCache a = TK
   { tkCache :: !(Map.Map TreeId a)
   , tkLastTreeId :: !TreeId
-  }
+  } deriving (Show)
 
 type SimpPos = (Int,Int) -- Line, column
 type SimpSpan = (SimpPos,SimpPos)

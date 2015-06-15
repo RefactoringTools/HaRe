@@ -16,6 +16,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactState(..)
        , RefactModule(..)
        , TargetModule
+       , Targets
        , RefactStashId(..)
        , RefactFlags(..)
        , StateStorage(..)
@@ -44,18 +45,17 @@ import qualified HscTypes      as GHC
 
 import Control.Applicative
 import Control.Monad.State
-import Data.List
 --import Data.Time.Clock
 import Distribution.Helper
 import Exception
 import Language.Haskell.GhcMod
--- import qualified Control.Monad.IO.Class as MTL
 import qualified Language.Haskell.GhcMod.Internal as GM
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.Refact.Utils.Cabal
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Types
 import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger
@@ -113,11 +113,19 @@ data RefactModule = RefMod
           -- ++AZ++ TODO: Once HaRe can rename again, change rsTokenCache to something more approriate. Ditto rsStreamModified
         , rsTokenCache      :: !(TokenCache Anns)  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
         , rsStreamModified  :: !RefacResult        -- ^current module has updated the AST
-        }
+        } deriving (Show)
+
+instance Show GHC.Name where
+  show n = showGhc n
+
+deriving instance Show (GHC.Located GHC.Token)
+
+instance Show GHC.TypecheckedModule where
+  show t = showGhc (GHC.pm_parsed_source $ GHC.tm_parsed_module t)
 
 data RefactFlags = RefFlags
        { rsDone :: !Bool -- ^Current traversal has already made a change
-       }
+       } deriving (Show)
 
 -- | State for refactoring a single file. Holds/hides the token
 -- stream, which gets updated transparently at key points.
@@ -132,7 +140,7 @@ data RefactState = RefSt
         , rsModuleGraph   :: ![([FilePath],GHC.ModuleGraph)]
         , rsCurrentTarget :: !(Maybe [FilePath])
         , rsModule        :: !(Maybe RefactModule) -- ^The current module being refactored
-        }
+        } deriving (Show)
 {-
 Note [rsSrcSpanCol]
 ~~~~~~~~~~~~~~~~~~~
@@ -150,6 +158,8 @@ field, to ensure uniqueness.
 type TargetModule = ([FilePath], GHC.ModSummary)
 
 type TargetGraph = ([FilePath],[(Maybe FilePath, GHC.ModSummary)])
+
+type Targets = [Either FilePath GHC.ModuleName]
 
 -- |Result of parsing a Haskell source file. It is simply the
 -- TypeCheckedModule produced by GHC.
@@ -197,66 +207,30 @@ newtype RefactGhc a = RefactGhc
 -- ---------------------------------------------------------------------
 
 runRefactGhc ::
-  RefactGhc a -> RefactState -> Options -> IO (a, RefactState)
-runRefactGhc comp initState opt = do
-    -- ((merr,_log),s) <- runStateT (runGhcModT opt comp) initState
-    -- case merr of
-    --   Left err -> error (show err)
-    --   Right a -> return (a,s)
-    -- r <- GM.runGmlT [] (runStateT (runGhcModT opt (unRefactGhc comp)) initState)
-    -- ((merr,_log),s) <- runStateT (runGhcModT opt (GM.runGmlT [] (unRefactGhc comp))) initState
-    ((merr,_log),s) <- runStateT (runGhcModT opt (GM.runGmlT [] (unRefactGhc comp))) initState
-    -- ((merr,_log),s) <- GM.runGmlT [] (runStateT (runGhcModT opt (unRefactGhc comp)) initState)
+  RefactGhc a -> Targets -> RefactState -> Options -> IO (a, RefactState)
+runRefactGhc comp targets initState opt = do
+    ((merr,_log),s) <- runStateT (runGhcModT opt (GM.runGmlT targets (unRefactGhc comp))) initState
     case merr of
       Left err -> error (show err)
-      Right a -> return (a,s)
+      Right a  -> return (a,s)
+
 
 -- ---------------------------------------------------------------------
 
 instance GM.MonadIO (StateT RefactState IO) where
-  liftIO = GM.liftIO
+  liftIO = liftIO
 
 instance MonadState RefactState RefactGhc where
-    get = RefactGhc (lift get)
+    get   = RefactGhc (lift get)
     put s = RefactGhc (lift (put s))
 
 instance GHC.GhcMonad RefactGhc where
-  getSession     = RefactGhc (GM.gmlGetSession)
+  getSession     = RefactGhc GM.gmlGetSession
   setSession env = RefactGhc (GM.gmlSetSession env)
 
 instance GHC.HasDynFlags RefactGhc where
   getDynFlags = RefactGhc (GHC.hsc_dflags <$> gmlGetSession)
 
-{-
-runGhcT
-:: (ExceptionMonad m, Functor m, MonadIO m)
-=> Maybe FilePath
--> GhcT m a
--> m a
-
--}
-{-
-instance (GM.MonadIO (GHC.GhcT (StateT RefactState IO))) where
-  liftIO = GHC.liftIO
-
-instance (GM.MonadIO (StateT RefactState IO)) where
-  liftIO = GHC.liftIO
--}
-{-
-instance (MU.MonadIO (GHC.GhcT (StateT RefactState IO))) where
-         liftIO = GHC.liftIO
--}
-{-
-instance GHC.MonadIO (StateT RefactState IO) where
-         liftIO f = MU.liftIO f
--}
-{-
-instance ExceptionMonad m => ExceptionMonad (StateT s m) where
-    gcatch f h = StateT $ \s -> gcatch (runStateT f s) (\e -> runStateT (h e) s)
-    -- gblock = mapStateT gblock
-    -- gunblock = mapStateT gunblock
-    gmask = mapStateT gmask
--}
 
 instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
     get = lift get
@@ -277,8 +251,6 @@ instance (MonadPlus m,ExceptionMonad m) => MonadPlus (GHC.GhcT m) where
 -- ---------------------------------------------------------------------
 
 instance ExceptionMonad (StateT RefactState IO) where
--- instance (MonadIO m, MonadBaseControl IO m)
---       => ExceptionMonad (GhcModT m) where
     gcatch act handler = control $ \run ->
         run act `gcatch` (run . handler)
 
@@ -291,13 +263,14 @@ instance ExceptionMonad (StateT RefactState IO) where
 --   This should never be called directly.
 initGhcSession :: [FilePath] -> RefactGhc ()
 initGhcSession _importDirs = do
+    logm $ "initGhcSession:entered"
     settings <- getRefacSettings
     df <- GHC.getSessionDynFlags
     let df2 = GHC.gopt_set df GHC.Opt_KeepRawTokenStream
     void $ GHC.setSessionDynFlags df2
 
     -- liftIO $ putStrLn "initGhcSession:entered (IO)"
-    logm $ "initGhcSession:entered"
+    logm $ "initGhcSession:entered2"
     cr <- cradle
     logm $ "initGhcSession:cr=" ++ show cr
     case cradleCabalFile cr of
@@ -502,8 +475,6 @@ loadModuleGraphGhc maybeTargetFiles = do
 
 loadTarget :: [FilePath] -> RefactGhc ()
 loadTarget targetFiles = do
-  error $ "loadTarget:sort this out"
-  {-
   let
     guessOne :: FilePath -> RefactGhc GHC.Target
     guessOne f = GHC.guessTarget f Nothing
@@ -513,7 +484,6 @@ loadTarget targetFiles = do
   -- setTargetFiles targetFiles
   -- checkSlowAndSet
   void $ GHC.load GHC.LoadAllTargets
-  -}
 
 -- ---------------------------------------------------------------------
 

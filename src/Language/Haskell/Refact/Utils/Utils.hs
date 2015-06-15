@@ -252,13 +252,14 @@ parseSourceFileGhc targetFile = do
 runRefacSession ::
        RefactSettings
     -> Options                      -- ^ ghc-mod options
+    -> Targets                      -- ^ files/modules to load for the session
     -> RefactGhc [ApplyRefacResult] -- ^ The computation doing the
                                     -- refactoring. Normally created
                                     -- via 'applyRefac'
     -> IO [FilePath]
-runRefacSession settings opt comp = do
+runRefacSession settings opt targets comp = do
   let
-   initialState = RefSt
+    initialState = RefSt
         { rsSettings = settings
         , rsUniqState = 1
         , rsSrcSpanCol = 1
@@ -270,8 +271,8 @@ runRefacSession settings opt comp = do
         , rsModule = Nothing
         }
 
-  (refactoredMods,_s) <- runRefactGhc (initGhcSession (rsetImportPaths settings) >>
-                                       comp) initialState opt
+    comp' = initGhcSession (rsetImportPaths settings) >> comp
+  (refactoredMods,_s) <- runRefactGhc comp targets initialState opt
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)
   writeRefactoredFiles verbosity refactoredMods
