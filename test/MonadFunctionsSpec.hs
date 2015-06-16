@@ -7,6 +7,7 @@ import TestUtils
 import qualified GHC        as GHC
 
 import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.GHC.ExactPrint.Types
 
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -32,6 +33,6 @@ spec = do
 
 -- ---------------------------------------------------------------------
 
-parsedFileLayoutIn2 :: IO (ParseResult, [PosToken])
+parsedFileLayoutIn2 :: IO (ParseResult, [PosToken],Targets)
 parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
 

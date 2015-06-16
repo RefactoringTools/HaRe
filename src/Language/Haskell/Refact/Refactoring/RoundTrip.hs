@@ -15,7 +15,7 @@ import Language.Haskell.Refact.API
 -- | Roundtrip the source code, to check that the infrastructure is solid
 roundTrip :: RefactSettings -> Options -> FilePath -> IO [FilePath]
 roundTrip settings opts fileName =
-  runRefacSession settings opts (comp fileName)
+  runRefacSession settings opts [Left fileName] (comp fileName)
 
 comp :: FilePath -> RefactGhc [ApplyRefacResult]
 comp fileName = do

@@ -395,6 +395,7 @@ import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 
 import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.GHC.ExactPrint.Types
 
 {-
 import Language.Haskell.TokenUtils.Types

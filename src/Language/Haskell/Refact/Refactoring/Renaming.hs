@@ -50,7 +50,7 @@ rename :: RefactSettings -> Options
    -> FilePath -> String -> SimpPos
    -> IO [FilePath]
 rename settings opts fileName newName (row,col) =
-  runRefacSession settings opts (comp fileName newName (row,col))
+  runRefacSession settings opts [Left fileName] (comp fileName newName (row,col))
 
 -- | Body of the refactoring
 comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]

@@ -9,6 +9,7 @@ import qualified GHC        as GHC
 import Data.Maybe
 
 import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.GHC.ExactPrint.Types
 
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.LocUtils
@@ -30,7 +31,7 @@ spec = do
 
   describe "getSrcSpan" $ do
     it "Finds the top SrcSpan" $ do
-      (t, _toks) <- parsedFileDd1Ghc
+      (t, _toks,_) <- parsedFileDd1Ghc
       let renamed = fromJust $ GHC.tm_renamed_source t
       let declsr = hsBinds renamed
           ss = getSrcSpan declsr
@@ -39,7 +40,7 @@ spec = do
 
     -- -------------------------------
     it "Finds the SrcSpan for a top level decl" $ do
-      (t, _toks) <- parsedFileDemoteGhc
+      (t, _toks,_) <- parsedFileDemoteGhc
       let renamed = fromJust $ GHC.tm_renamed_source t
       let declsr = hsBinds renamed
           decl = head $ drop 2 declsr
@@ -49,12 +50,12 @@ spec = do
 
 -- ---------------------------------------------------------------------
 
-parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
+parsedFileDd1Ghc :: IO (ParseResult,[PosToken],Targets)
 parsedFileDd1Ghc = ct $ parsedFileGhc "./DupDef/Dd1.hs"
 
 -- -----------
 
-parsedFileDemoteGhc :: IO (ParseResult,[PosToken])
+parsedFileDemoteGhc :: IO (ParseResult,[PosToken],Targets)
 parsedFileDemoteGhc = ct $ parsedFileGhc "./MoveDef/Demote.hs"
 
 

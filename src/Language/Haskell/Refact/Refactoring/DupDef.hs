@@ -26,7 +26,7 @@ import Language.Haskell.Refact.API
 -- the user. The new name should not cause name clash/capture.
 duplicateDef :: RefactSettings -> Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 duplicateDef settings opts fileName newName (row,col) =
-  runRefacSession settings opts (comp fileName newName (row,col))
+  runRefacSession settings opts [Left fileName] (comp fileName newName (row,col))
 
 comp :: FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]

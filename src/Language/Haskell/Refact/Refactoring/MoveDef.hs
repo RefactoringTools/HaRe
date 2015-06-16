@@ -77,7 +77,7 @@ the following six contexts:
 -- | Lift a definition to the top level
 liftToTopLevel :: RefactSettings -> Options -> FilePath -> SimpPos -> IO [FilePath]
 liftToTopLevel settings opts fileName (row,col) =
-  runRefacSession settings opts (compLiftToTopLevel fileName (row,col))
+  runRefacSession settings opts [Left fileName] (compLiftToTopLevel fileName (row,col))
 
 
 compLiftToTopLevel :: FilePath -> SimpPos
@@ -100,7 +100,7 @@ compLiftToTopLevel fileName (row,col) = do
 -- | Move a definition one level up from where it is now
 liftOneLevel :: RefactSettings -> Options -> FilePath -> SimpPos -> IO [FilePath]
 liftOneLevel settings opts fileName (row,col) =
-  runRefacSession settings opts (compLiftOneLevel fileName (row,col))
+  runRefacSession settings opts [Left fileName] (compLiftOneLevel fileName (row,col))
 
 
 compLiftOneLevel :: FilePath -> SimpPos
@@ -133,7 +133,7 @@ compLiftOneLevel fileName (row,col) = do
 -- | Move a definition one level down
 demote :: RefactSettings -> Options -> FilePath -> SimpPos -> IO [FilePath]
 demote settings opts fileName (row,col) =
-  runRefacSession settings opts (compDemote fileName (row,col))
+  runRefacSession settings opts [Left fileName] (compDemote fileName (row,col))
 
 compDemote ::FilePath -> SimpPos
          -> RefactGhc [ApplyRefacResult]
