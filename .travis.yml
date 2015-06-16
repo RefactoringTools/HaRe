@@ -36,10 +36,11 @@ install:
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - travis_retry cabal update
  - |
+   git clone https://github.com/alanz/ghc-exactprint.git
+   (cd ghc-exactprint && git checkout master && cabal install)
+ - |
    git clone https://github.com/alanz/ghc-mod.git
    (cd ghc-mod && git checkout HaRe && cabal install)
-   git clone https://github.com/alanz/ghc-exactprint.git
-   (cd ghc-mod && git checkout master && cabal install)
  - pwd
  # Must remove --allow-newer in future
  - cabal install --dependencies-only --enable-tests
