@@ -38,7 +38,8 @@ install:
  - |
    git clone https://github.com/alanz/ghc-mod.git
    (cd ghc-mod && git checkout HaRe && cabal install)
-   cabal install Strafunski-StrategyLib --allow-newer
+   git clone https://github.com/alanz/ghc-exactprint.git
+   (cd ghc-mod && git checkout master && cabal install)
  - pwd
  # Must remove --allow-newer in future
  - cabal install --dependencies-only --enable-tests
