@@ -26,7 +26,7 @@ import Debug.Trace
 -- | Convert an if expression to a case expression
 ifToCase :: RefactSettings -> Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
 ifToCase settings opts fileName beginPos endPos =
-  runRefacSession settings opts (comp fileName beginPos endPos)
+  runRefacSession settings opts [Left fileName] (comp fileName beginPos endPos)
 
 comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
@@ -56,7 +56,7 @@ reallyDoIfToCase expr p = do
 
    p2 <- SYB.everywhereMStaged SYB.Parser (SYB.mkM inExp) p
    -- logm $ "reallyDoIfToCase:p2=" ++ (SYB.showData SYB.Parser 0 p2)
-   putRefactParsed p2 Map.empty
+   putRefactParsed p2 mempty
    return ()
        where
          inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
@@ -112,10 +112,10 @@ ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
               ] [] GHC.placeHolderType GHC.FromSource))
 
   oldAnns <- getRefactAnns
-  let annIf   = gfromJust "Case.annIf"   $ getAnnotationEP li oldAnns
-  let annCond = gfromJust "Case.annCond" $ getAnnotationEP e1 oldAnns
-  let annThen = gfromJust "Case.annThen" $ getAnnotationEP e2 oldAnns
-  let annElse = gfromJust "Case.annElse" $ getAnnotationEP e3 oldAnns
+  let annIf   = gfromJust "Case.annIf"   $ getAnnotationEP li NotNeeded oldAnns
+  let annCond = gfromJust "Case.annCond" $ getAnnotationEP e1 NotNeeded oldAnns
+  let annThen = gfromJust "Case.annThen" $ getAnnotationEP e2 NotNeeded oldAnns
+  let annElse = gfromJust "Case.annElse" $ getAnnotationEP e3 NotNeeded oldAnns
   logm $ "Case:annIf="   ++ show annIf
   logm $ "Case:annThen=" ++ show annThen
   logm $ "Case:annElse=" ++ show annElse
@@ -129,19 +129,19 @@ ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
   let ifDelta     = gfromJust "Case.ifDelta"     $ lookup (G GHC.AnnIf) (annsDP annIf)
   let ifSpanEntry = gfromJust "Case.ifSpanEntry" $ lookup (AnnSpanEntry) (annsDP annIf)
   let anne2' =
-        [ ( AnnKey caseLoc       (CN "HsCase"),   annIf { annsDP = [ (AnnSpanEntry,ifSpanEntry),(G GHC.AnnCase, ifDelta)
+        [ ( AnnKey caseLoc       (CN "HsCase") NotNeeded,   annIf { annsDP = [ (AnnSpanEntry,ifSpanEntry),(G GHC.AnnCase, ifDelta)
                                                                  , (G GHC.AnnOf,     DP (0,1))
-                                                                 ,(AnnList caseVirtualLoc,DP (0,0))] } )
-        , ( AnnKey caseVirtualLoc (CN "(:)"),     Ann (DP (1,newCol)) (ColDelta newCol)  [(AnnSpanEntry,DP (1,0))])
-        , ( AnnKey trueMatchLoc  (CN "Match"),    Ann (DP (0,0)) 0 [] )
-        , ( AnnKey trueLoc1      (CN "ConPatIn"), Ann (DP (0,0)) 0 [] )
-        , ( AnnKey trueLoc       (CN "Unqual"),   Ann (DP (0,0)) 0 [(G GHC.AnnVal, DP (0,0))] )
-        , ( AnnKey trueRhsLoc    (CN "GRHS"),     Ann (DP (0,2)) 6 [(AnnSpanEntry,DP (0,2)),(G GHC.AnnRarrow, DP (0,0))] )
+                                                                 ,(AnnList caseVirtualLoc NotNeeded,DP (0,0))] } )
+        , ( AnnKey caseVirtualLoc (CN "(:)") NotNeeded,     Ann (DP (1,newCol)) (ColDelta newCol) (DP (1,newCol)) [] [(AnnSpanEntry,DP (1,0))])
+        , ( AnnKey trueMatchLoc  (CN "Match") NotNeeded,    Ann (DP (0,0)) 0 (DP (0,0)) [] [] )
+        , ( AnnKey trueLoc1      (CN "ConPatIn") NotNeeded, Ann (DP (0,0)) 0 (DP (0,0)) [] [] )
+        , ( AnnKey trueLoc       (CN "Unqual") NotNeeded,   Ann (DP (0,0)) 0 (DP (0,0)) [] [(G GHC.AnnVal, DP (0,0))] )
+        , ( AnnKey trueRhsLoc    (CN "GRHS") NotNeeded,     Ann (DP (0,2)) 6 (DP (0,2)) [] [(AnnSpanEntry,DP (0,2)),(G GHC.AnnRarrow, DP (0,0))] )
 
-        , ( AnnKey falseMatchLoc (CN "Match"),    Ann (DP (1,0)) 0  [(AnnSpanEntry,DP (1,0))] )
-        , ( AnnKey falseLoc1     (CN "ConPatIn"), Ann (DP (0,0)) 0  [] )
-        , ( AnnKey falseLoc      (CN "Unqual"),   Ann (DP (0,0)) 0  [ (G GHC.AnnVal, DP (0,0))] )
-        , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,1)) 6  [(AnnSpanEntry,DP (0,1)),(G GHC.AnnRarrow, DP (0,0))] )
+        , ( AnnKey falseMatchLoc (CN "Match") NotNeeded,    Ann (DP (1,0)) 0 (DP (1,0)) [] [(AnnSpanEntry,DP (1,0))] )
+        , ( AnnKey falseLoc1     (CN "ConPatIn") NotNeeded, Ann (DP (0,0)) 0 (DP (0,0)) [] [] )
+        , ( AnnKey falseLoc      (CN "Unqual") NotNeeded,   Ann (DP (0,0)) 0 (DP (0,0)) [] [(G GHC.AnnVal, DP (0,0))] )
+        , ( AnnKey falseRhsLoc   (CN "GRHS") NotNeeded,     Ann (DP (0,1)) 6 (DP (0,1)) [] [(AnnSpanEntry,DP (0,1)),(G GHC.AnnRarrow, DP (0,0))] )
         ]
 
   -- logm $ "\n\n\nanne2" ++ showGhc anne2
@@ -162,8 +162,8 @@ Right: HsApp
    Just (Ann (DP (1,2)) (ColDelta 2)  [((AnnComment DComment (DP (0,4),DP (0,28)) "-- This is an odd result"),DP (0,4)),(AnnSpanEntry,DP (1,2))])
 -}
   let annThen' = adjustAnnOffset (ColDelta 6) annThen
-  let anne1 = Map.delete (AnnKey l (CN "HsIf")) oldAnns
-      final = mergeAnns anne1 (Map.fromList anne2')
+  let anne1 = (Map.delete (AnnKey l (CN "HsIf") NotNeeded) (fst oldAnns),snd oldAnns)
+      final = mergeAnns anne1 (Map.fromList anne2',mempty)
       -- anne3 = setLocatedOffsets final
       anne3 = setLocatedAnns final
                 [ (e1, annCond)

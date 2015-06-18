@@ -13,6 +13,7 @@ import qualified Module     as GHC
 
 import Data.Maybe
 
+import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
@@ -224,7 +225,7 @@ spec = do
 
     it "finds recursively in sub-binds" $ do
       {-
-      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let res = definingDecls [(PN (mkRdrName "zz"))] ds False True
       showGhcQual res `shouldBe` "[zz n = n + 1]" -- TODO: Currently fails, will come back to it
       -}
@@ -232,7 +233,7 @@ spec = do
 
     it "only finds recursively in sub-binds if asked" $ do
       {-
-      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- parsedFileDd1Ghc
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let res = definingDecls [(PN (mkRdrName "zz"))] ds False False
       showGhcQual res `shouldBe` "[]"
       -}
@@ -421,7 +422,7 @@ spec = do
           let tds = nub $ concatMap getDeclaredTypes $ concat $ hsTyDecls renamed
           return (tds)
       -- ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initialStateRefactModule t toks }
-      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (res)) `shouldBe`
           "[(FreeAndDeclared.DeclareTypes.XList, (8, 13)),\n"++
@@ -448,8 +449,8 @@ spec = do
           rg <- hsFreeAndDeclaredPNs renamed
           let ff = map (\b -> getFreeVars [b]) $ hsBinds renamed
           return (r,rg,ff)
-      -- ((res,resg,_fff),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((res,resg,_fff),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((res,resg,_fff),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((res,resg,_fff),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- (showGhcQual _fff) `shouldBe` ""
 
@@ -523,8 +524,8 @@ spec = do
           let b = head $ drop 4 $ hsBinds renamed
           rg <- hsFreeAndDeclaredPNs [b]
           return (b,rg)
-      -- ((bb,resg),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((bb,resg),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((bb,resg),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((bb,resg),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
 
       (showGhcQual bb) `shouldBe` "FreeAndDeclared.Declare.unD (FreeAndDeclared.Declare.B y) = y"
@@ -551,8 +552,8 @@ spec = do
           let b = head $ drop 3 $ hsBinds renamed
           rg <- hsFreeAndDeclaredPNs [b]
           return (b,rg)
-      -- ((bb,resg),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((bb,resg),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((bb,resg),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((bb,resg),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual bb) `shouldBe` "FreeAndDeclared.Declare.unF (a FreeAndDeclared.Declare.:| b)\n  = (a, b)"
       -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""
@@ -578,8 +579,8 @@ spec = do
           let b = head $ drop 0 $ hsBinds renamed
           rg <- hsFreeAndDeclaredPNs [b]
           return (b,rg)
-      -- ((bb,resg),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((bb,resg),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((bb,resg),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((bb,resg),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
 
       (showGhcQual bb) `shouldBe` "FreeAndDeclared.DeclareRec.unR2\n  (FreeAndDeclared.DeclareRec.RCon {FreeAndDeclared.DeclareRec.r1 = a})\n  = a"
@@ -604,8 +605,8 @@ spec = do
         comp = do
           r <- hsFreeAndDeclaredPNs renamed
           return r
-      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- Free Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[]"
@@ -627,8 +628,8 @@ spec = do
           -- let r = hsFreeAndDeclaredPNs decl
           r <- hsFreeAndDeclaredPNs [decl]
           return (r,decl)
-      -- ((res,d),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((res,d),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((res,d),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((res,d),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual d) `shouldBe` "DupDef.Dd1.ff y\n  = y GHC.Num.+ zz\n  where\n      zz = 1"
       -- (SYB.showData SYB.Renamer 0 d) `shouldBe` ""
@@ -652,8 +653,8 @@ spec = do
           -- r <- hsFreeAndDeclaredPNs renamed
           r <- hsFreeAndDeclaredPNs $ hsBinds renamed
           return r
-      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- Declared Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
@@ -675,8 +676,8 @@ spec = do
           r <- hsFreeAndDeclaredPNs renamed
           -- r <- hsFreeAndDeclaredPNs $ hsBinds renamed
           return r
-      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- Declared Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
@@ -708,8 +709,8 @@ spec = do
           r <- hsFreeAndDeclaredPNs grhss
           -- r <- hsFreeAndDeclaredPNs $ hsBinds renamed
           return r
-      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
 
       -- Declared Vars
@@ -758,8 +759,8 @@ spec = do
         comp = do
           r <- hsVisiblePNs tup tl1
           return r
-      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual $ res) `shouldBe` "[]"
 
@@ -784,8 +785,8 @@ spec = do
          r <- hsVisiblePNs tl1 decl
          -- let r2 = hsVisiblePNsOld tl1 decl
          return (r)
-      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual res ) `shouldBe` "[z, ll]"
       -- (showGhcQual res2 ) `shouldBe` "[z, ll]"
@@ -806,8 +807,8 @@ spec = do
         comp = do
           r <- hsVisiblePNs tl1 rhs
           return r
-      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((res),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual res) `shouldBe` "[ll]"
 
@@ -828,8 +829,8 @@ spec = do
           let fvs = map (\b -> (showGhcQual b,getFreeVars [b])) (hsBinds renamed)
           let dvs = getDeclaredVars $ hsBinds renamed
           return (tl1,r,fvs,dvs)
-      -- ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t }
+      ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t }
 
       (showGhcQual tl) `shouldBe` "modu"
       -- (showGhcQual f) `shouldBe` ""
@@ -882,8 +883,8 @@ spec = do
           fds' <- hsVisibleDs e $  head $ hsBinds binds
           -- let fds'o = hsVisiblePNsOld e $  head $ hsBinds binds
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe` "DN [a, b, GHC.Num.+]"
 
@@ -906,8 +907,8 @@ spec = do
         comp = do
           fds' <- hsVisibleDs e $  head $ hsBinds binds
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe` "DN [x]"
 
@@ -930,8 +931,8 @@ spec = do
           fds' <- hsVisibleDs e rhs
           ffds <- hsFreeAndDeclaredGhc rhs
           return (fds',ffds)
-      -- ((fds,_fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((fds,_fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show _fds) `shouldBe` "(FN [IdIn5.x, GHC.Num.+, y, z],DN [])"
       (show fds) `shouldBe` "DN [GHC.Num.+, y, z]"
@@ -951,7 +952,7 @@ spec = do
           fds' <- hsVisibleDs n renamed
           ffds <- hsFreeAndDeclaredGhc renamed
           return (fds',ffds)
-      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show _fds) `shouldBe` "(FN [:, GHC.Num.+, GHC.Real.^, [], Renaming.D1.Leaf,\n"
                             ++" Renaming.D1.Branch, GHC.Base.++],DN [Renaming.D1.sumSquares,"
@@ -980,8 +981,8 @@ spec = do
         comp = do
           fds' <- hsFreeAndDeclaredGhc $  head $ hsBinds binds
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe` "(FN [GHC.Num.+],DN [Visible.Simple.params])"
 
@@ -1007,8 +1008,8 @@ spec = do
         comp = do
           fds' <- hsFreeAndDeclaredGhc $ lpat
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe` "(FN [Visible.Simple.B],DN [x])"
 
@@ -1027,8 +1028,8 @@ spec = do
         comp = do
           fds' <- hsFreeAndDeclaredGhc $ decls
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe`
             "(FN [GHC.List.head, GHC.Base.$, GHC.List.zip],"++
@@ -1053,8 +1054,8 @@ spec = do
         comp = do
           fds' <- hsFreeAndDeclaredGhc $ binds
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe`
             "(FN [FreeAndDeclared.Binders.gfromJust,"++
@@ -1084,8 +1085,8 @@ spec = do
         comp = do
           fds' <- hsFreeAndDeclaredGhc renamed
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe`
             "(FN [System.IO.putStrLn, TH.Printf.pr],"++
@@ -1171,13 +1172,13 @@ spec = do
           let Just (GHC.L _ n) = locToName (17, 5) renamed
           topLevel <- isTopLevelPN n
           return (n,topLevel)
-      -- ((nf,tl),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((nf,tl),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nf,tl),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nf,tl),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual nf) `shouldBe` "ff"
       tl `shouldBe` False
 
     it "returns True if the name is defined at the top level of the module" $ do
-      (t, toks,tgt) <- parsedFileDd1Ghc
+      (t, toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
           renamed <- getRefactRenamed
@@ -1185,8 +1186,8 @@ spec = do
           topLevel <- isTopLevelPN n
           return (n,topLevel)
 
-      -- ((nf,tl),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((nf,tl),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nf,tl),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nf,tl),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual nf) `shouldBe` "DupDef.Dd1.ff"
       tl `shouldBe` True
 
@@ -1228,7 +1229,7 @@ spec = do
     it "returns 4 element tuples for in scope names" $ do
       pending -- "is this still needed?"
       {-
-      ((inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
+      ((inscopes, _renamed, _parsed), _toks) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let info = inScopeInfo inscopes
       (show $ head info) `shouldBe` "foo"
       -- (show $ info) `shouldBe` "foo"
@@ -1240,7 +1241,7 @@ spec = do
     it "True if the identifier is in scope and unqualified" $ do
       pending -- "needed?"
       {-
-      ((inscopes, _renamed, _parsed), _toks) <- parsedFileDd1Ghc
+      ((inscopes, _renamed, _parsed), _toks) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let info = inScopeInfo inscopes
       (show $ head info) `shouldBe` "foo"
       -}
@@ -1260,7 +1261,7 @@ spec = do
          res3 <- isInScopeAndUnqualifiedGhc "nonexistent" Nothing
          return (res1,res2,res3,ctx)
       -- ((r1,r2,r3,_c),_s) <- ct $ runRefactGhcState comp tgt
-      ((r1,r2,r3,_c),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r1,r2,r3,_c),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- (showGhcQual c) `shouldBe` "[*DupDef.Dd1]"
       r1 `shouldBe` True
       r2 `shouldBe` True
@@ -1271,7 +1272,7 @@ spec = do
       let
         comp = do
          -- (t,toks) <- parseSourceFileTest  "./ScopeAndQual.hs"
-         putParsedModule t toks
+         putParsedModule t
          renamed <- getRefactRenamed
 
          logm $ "renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
@@ -1287,7 +1288,7 @@ spec = do
          return (res1,res2,names,names2,sumSquares,ssUnqual,ctx)
       -- ((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcStateLog comp True
       -- ((r1,r2,ns,ns2,ss,ssu,_c),_s) <- ct $ runRefactGhcState comp
-      ((r1,r2,ns,ns2,ss,ssu,_c),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r1,r2,ns,ns2,ss,ssu,_c),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- (showGhcQual c) `shouldBe` "[*ScopeAndQual]"
       (prettyprint ss) `shouldBe` "sumSquares"
@@ -1313,8 +1314,8 @@ spec = do
          name3 <- mkNewGhcName (Just (GHC.nameModule topLevel)) "baz"
 
          return (name1,name2,name3)
-      -- ((n1,n2,n3),_s) <- ct $ runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((n1,n2,n3),_s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((n1,n2,n3),_s) <- ct $ runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((n1,n2,n3),_s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       GHC.getOccString n1 `shouldBe` "foo"
       showGhcQual n1 `shouldBe` "foo"
@@ -1362,8 +1363,8 @@ spec = do
          newBinding <- duplicateDecl declsr renamed n newName2
 
          return newBinding
-      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "DupDef.Dd1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
       -- (show $ toksFromState s) `shouldBe` ""
@@ -1391,8 +1392,8 @@ spec = do
 
          -- return newBinding
          return (funBinding,declsToDup,newBinding)
-      -- ((fb,dd,newb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((fb,dd,newb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((fb,dd,newb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fb,dd,newb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "ff"
       (showGhcQual dd) `shouldBe` "[ff = 15]"
@@ -1420,8 +1421,8 @@ spec = do
          newBinding <- addParamsToDecls declsr n [newName2] True
 
          return newBinding
-      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "MoveDef.Md1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
@@ -1443,8 +1444,8 @@ spec = do
          newBinding <- addParamsToDecls declsr n [newName] True
 
          return newBinding
-      -- (_nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "AddParams1.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n foo = 3\n\n "
@@ -1468,8 +1469,8 @@ spec = do
          newBinding <- addParamsToDecls declsr n [newName1,newName2] True
 
          return newBinding
-      -- (_nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "AddParams1.foo"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\n sq  0 = 0\n sq  z = z^2\n\n foo = 3\n\n "
@@ -1481,7 +1482,7 @@ spec = do
 
   describe "addActualParamsToRhs" $ do
     it "adds a parameter to the rhs of a declaration, and updates the token stream" $ do
-      (t, toks, tgt) <- parsedFileLiftD1Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./LiftToToplevel/D1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
@@ -1497,8 +1498,8 @@ spec = do
          newBinding <- addActualParamsToRhs True n [newName2] decl
 
          return newBinding
-      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "sq"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
@@ -1509,7 +1510,7 @@ spec = do
     -- --------------------
 
     it "adds parameters to a complex rhs of a declaration, and updates the token stream" $ do
-      (t, toks,tgt) <- parsedFileLiftWhereIn7Ghc
+      (t, toks,tgt) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn7.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
@@ -1526,8 +1527,8 @@ spec = do
          newBinding <- addActualParamsToRhs True n [newName1,newName2,newName3] decl
 
          return newBinding
-      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "addthree"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module LiftToToplevel.WhereIn7 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'addthree' defined in 'fun'.\n--This example aims to test adding parenthese.\n\n\nfun x y z =inc (addthree x1 y1 z1)\n       where inc a =a +1\n             addthree=x+y+z\n"
@@ -1551,8 +1552,8 @@ spec = do
          let parsed' = replaceBinds parsed newDecls
          putRefactParsed parsed' mempty
          return newDecls
-      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
-      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
@@ -1572,8 +1573,8 @@ spec = do
          (newDecls,_removedDecl,_removedSig) <- rmDecl n True parsed
          putRefactParsed newDecls mempty
          return newDecls
-      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
-      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
@@ -1599,8 +1600,8 @@ spec = do
          putRefactParsed parsed' mempty
 
          return newDecls
-      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftToToplevel.LetIn1 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'sq' in 'sumSquares'\n--This example aims to test lifting a definition from a let clause to top level,\n--and the elimination of the keywords 'let' and 'in'\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                  in sq x + sq y\n                       where pow=2\n\nanotherFun 0 y = sq y\n     where sq x = x^2\n"
@@ -1626,8 +1627,8 @@ spec = do
          putRefactParsed parsed' mempty
 
          return newDecls
-      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       -- putStrLn $ "anntree\n" ++ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "pow"
@@ -1649,8 +1650,8 @@ spec = do
          putRefactParsed parsed' mempty
 
          return parsed'
-      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       -- putStrLn $ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "Demote.WhereIn3.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
@@ -1673,8 +1674,8 @@ spec = do
          (renamed',sigRemoved) <- rmTypeSig n parsed
          putRefactParsed renamed' mempty
          return (renamed',sigRemoved)
-      ((_nb,os),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((_nb,os),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((_nb,os),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((_nb,os),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       -- putStrLn $ "anntree\n" ++ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
@@ -1697,8 +1698,8 @@ spec = do
          putRefactParsed parsed2 mempty
 
          return parsed2
-      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       putStrLn $ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "Demote.WhereIn3.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
@@ -1718,8 +1719,8 @@ spec = do
          (renamed',_removedSig) <- rmTypeSig n parsed
          putRefactParsed renamed' mempty
          return renamed'
-      -- (_nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
@@ -1738,7 +1739,7 @@ spec = do
          (renamed',_removedSig) <- rmTypeSig b parsed
          putRefactParsed renamed' mempty
          return renamed'
-      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- putStrLn $ showAnnDataFromState s
       (showGhcQual b) `shouldBe` "TypeSigs.b"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TypeSigs where\n\nsq,anotherFun :: Int -> Int\nsq 0 = 0\nsq z = z^2\n\nanotherFun x = x^2\n\na,b,c::Int->Integer->Char\n\na x y = undefined\nb x y = undefined\nc x y = undefined\n\n"
@@ -1756,7 +1757,7 @@ spec = do
          (renamed',removedSig) <- rmTypeSig n parsed
          putRefactParsed renamed' mempty
          return (renamed',removedSig)
-      ((_nb,os),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((_nb,os),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "TypeSigs.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TypeSigs where\n\nsq,anotherFun :: Int -> Int\nsq 0 = 0\nsq z = z^2\n\nanotherFun x = x^2\n\na,b,c::Int->Integer->Char\n\na x y = undefined\nb x y = undefined\nc x y = undefined\n\n"
       (sourceFromState s) `shouldBe` "module TypeSigs where\n\nanotherFun :: Int -> Int\nsq 0 = 0\nsq z = z^2\n\nanotherFun x = x^2\n\na,b,c::Int->Integer->Char\n\na x y = undefined\nb x y = undefined\nc x y = undefined\n\n"
@@ -1774,8 +1775,8 @@ spec = do
          let (Just (GHC.L ss _)) = removedSig
          oldSigToks <- getToksForSpan ss
          return (renamed',removedSig,oldSigToks)
-      -- ((nb,os,ot),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((nb,os,ot),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t toks }
+      -- ((nb,os,ot),s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t }
+      ((nb,os,ot),s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule t }
       (showGhcQual n) `shouldBe` "tup"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftToToplevel.PatBindIn1 where\n\n --A definition can be lifted from a where or let into the surrounding binding group.\n --Lifting a definition widens the scope of the definition.\n\n --In this example, lift 'tup' defined in 'foo'\n --This example aims to test renaming and the lifting of type signatures.\n\n main :: Int\n main = foo 3\n\n foo :: Int -> Int\n foo x = h + t + (snd tup)\n       where\n       h :: Int\n       t :: Int\n       tup :: (Int,Int)\n       tup@(h,t) = head $ zip [1..10] [3..15]\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
@@ -1788,7 +1789,7 @@ spec = do
 
   describe "addDecl" $ do
     it "adds a top level declaration without a type signature, in default pos" $ do
-      (t, toks, tgt) <- parsedFileMd1Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
          renamed <- getRefactRenamed
@@ -1798,8 +1799,8 @@ spec = do
          newDecls <- addDecl renamed Nothing (newDecl,[],Nothing) True
 
          return newDecls
-      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
@@ -1810,7 +1811,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a top level declaration with a type signature" $ do
-      (t, toks, tgt) <- parsedFileMd1Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
          renamed <- getRefactRenamed
@@ -1833,8 +1834,8 @@ spec = do
          -- newDecls <- addDecl renamed Nothing (newDecl,Nothing,Nothing) True
 
          return (hSig,intName,newDecls)
-      -- ((_hs,iname,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((_hs,iname,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((_hs,iname,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((_hs,iname,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (showGhcQual iname) `shouldBe` "GHC.Types.Int"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
@@ -1845,7 +1846,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a top level declaration after a specified one" $ do
-      (t, toks, tgt) <- parsedFileMd1Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
          renamed <- getRefactRenamed
@@ -1856,8 +1857,8 @@ spec = do
          newDecls <- addDecl renamed (Just n) (newDecl,[],Nothing) True
 
          return (n,newDecls)
-      -- ((n,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((n,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((n,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((n,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
@@ -1868,7 +1869,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a top level declaration with a type signature after a specified one" $ do
-      (t, toks, tgt) <- parsedFileMd1Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
          renamed <- getRefactRenamed
@@ -1885,8 +1886,8 @@ spec = do
          newDecls <- addDecl renamed (Just n) (newDecl,[sig],Nothing) True
 
          return (n,newDecls)
-      -- ((n,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((n,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((n,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((n,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
@@ -1897,7 +1898,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a local declaration without a type signature 1" $ do
-      (t, toks, tgt) <- parsedFileMd1Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
 
@@ -1913,8 +1914,8 @@ spec = do
          newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
 
          return (tlDecls,newDecls)
-      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x"
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
@@ -1925,7 +1926,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a local declaration with a type signature" $ do
-      (t, toks, tgt) <- parsedFileMd1Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
 
@@ -1947,8 +1948,8 @@ spec = do
          newDecls <- addDecl tlDecls Nothing (newDecl,[sig],Nothing) False
 
          return (tlDecls,newDecls)
-      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x"
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
@@ -1959,7 +1960,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a local declaration with a where clause" $ do
-      (t, toks, tgt) <- parsedFileDemoteGhc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Demote.hs"
       let
         comp = do
 
@@ -1975,8 +1976,8 @@ spec = do
          newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
 
          return (tlDecls,newDecls)
-      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
       -- (showToks $ take 30 $ toks) `shouldBe` ""
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
@@ -1989,7 +1990,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a local declaration to an existing one" $ do
-      (t, toks, tgt) <- parsedFileMd2Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md2.hs"
       let
         comp = do
 
@@ -2005,8 +2006,8 @@ spec = do
          newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
 
          return (tlDecls,newDecls)
-      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md2 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x * b\n   where\n     b = 3\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
@@ -2016,7 +2017,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a local declaration with a type signature to an existing one" $ do
-      (t, toks, tgt) <- parsedFileMd2Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md2.hs"
       let
         comp = do
 
@@ -2039,8 +2040,8 @@ spec = do
          newDecls <- addDecl tlDecls Nothing (newDecl,[sig],Nothing) False
 
          return (tlDecls,newDecls)
-      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "MoveDef.Md2.toplevel x\n  = MoveDef.Md2.c GHC.Num.* x GHC.Num.* b\n  where\n      b = 3"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md2 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x * b\n   where\n     b = 3\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
@@ -2051,7 +2052,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a local decl with type signature to an existing one, with a comment" $ do
-      (t, toks, tgt) <- parsedFileWhereIn3Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn3.hs"
       let
         comp = do
          renamed <- getRefactRenamed
@@ -2070,8 +2071,8 @@ spec = do
          newDecls <- addDecl tlDecls Nothing (sqDecl,[sqSig],Nothing) False
 
          return (sqSig,tlDecls,newDecls)
-      -- ((sigs,tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((sigs,tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((sigs,tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((sigs,tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual sigs) `shouldBe` "Demote.WhereIn3.sq ::\n  GHC.Types.Int -> GHC.Types.Int -> GHC.Types.Int"
       (showGhcQual tl) `shouldBe` "Demote.WhereIn3.sumSquares x y\n  = Demote.WhereIn3.sq p x GHC.Num.+ Demote.WhereIn3.sq p y\n  where\n      p = 2"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n --A definition can be demoted to the local 'where' binding of a friend declaration,\n --if it is only used by this friend declaration.\n\n --Demoting a definition narrows down the scope of the definition.\n --In this example, demote the top level 'sq' to 'sumSquares'\n --In this case (there are multi matches), the parameters are not folded after demoting.\n\n sumSquares x y = sq p x + sq p y\n          where p=2  {-There is a comment-}\n\n sq :: Int -> Int -> Int\n sq pow 0 = 0\n sq pow z = z^pow  --there is a comment\n\n anotherFun 0 y = sq y\n      where  sq x = x^2\n\n "
@@ -2083,7 +2084,7 @@ spec = do
     -- -------------------------------------------
 
     it "adds a local decl with type signature to an existing one with a comment using toks (original)" $ do
-      (t, toks, tgt) <- parsedFileWhereIn3Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn3.hs"
       let
         comp = do
 
@@ -2108,8 +2109,8 @@ spec = do
          return (sqSig,tlDecls,newDecls,toksToAdd)
          -- return (sqSig,tlDecls,newDecls,sigToks')
 
-      -- ((sigs,tl,nb,_tta),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((sigs,tl,nb,_tta),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((sigs,tl,nb,_tta),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((sigs,tl,nb,_tta),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- "" `shouldBe` "this test hangs on accessing sigToks. investigate"
 
@@ -2127,7 +2128,7 @@ spec = do
 
   describe "renamePN" $ do
     it "replaces a Name with another, updating tokens 1" $ do
-      (t, toks, tgt) <- parsedFileDd1Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -2145,8 +2146,8 @@ spec = do
          return (new,newName)
       let
 
-      ((nb,nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,nn),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       (showGhcQual (n,nn)) `shouldBe` "(DupDef.Dd1.toplevel, bar2)"
       -- error (show $ annsFromState s)
       (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
@@ -2177,8 +2178,8 @@ spec = do
          return (new,newName)
       let
 
-      ((nb,nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       (showGhcQual (n,nn)) `shouldBe` "(p, p_1)"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
       (sourceFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p_1 x + sq p_1 y\n         where p_1=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
@@ -2209,8 +2210,8 @@ spec = do
          return (new,newName)
       let
 
-      ((nb,nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       (showGhcQual (n,nn)) `shouldBe` "(TokenTest.foo, bar2)"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nfoo x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
       (sourceFromState s) `shouldBe` "module TokenTest where\n\n-- Test new style token manager\n\nbob a b = x\n  where x = 3\n\nbib a b = x\n  where\n    x = 3\n\n\nbab a b =\n  let bar = 3\n  in     b + bar -- ^trailing comment\n\n\n-- leading comment\nbar2 x y =\n  do c <- getChar\n     return c\n\n\n\n\n"
@@ -2220,7 +2221,7 @@ spec = do
     -- ---------------------------------
 
     it "replace a Name with another in limited scope, updating tokens 2" $ do
-      (t,toks, tgt) <- parsedFileTokenTestGhc
+      (t,toks, tgt) <- ct $ parsedFileGhc "./TokenTest.hs"
       -- let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -2247,7 +2248,7 @@ spec = do
 
          return (new,newName)
 
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- (show tfo) `shouldBe` ""
       (showGhcQual n) `shouldBe` "TokenTest.foo"
@@ -2260,7 +2261,7 @@ spec = do
     ------------------------------------
 
     it "replaces a name in a data declaration too" $ do
-      (t, toks, tgt) <- parsedFileRenamingField1
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/Field1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -2277,8 +2278,8 @@ spec = do
          return (new,newName)
       let
 
-      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "Field1.pointx"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((5,18),(5,25),\"pointx1\")]"
@@ -2290,7 +2291,7 @@ spec = do
     ------------------------------------
 
     it "replaces a name in a type signature too" $ do
-      (t, toks, tgt) <- parsedFileRenamingField1
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/Field1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -2307,8 +2308,8 @@ spec = do
          return (new,newName)
       let
 
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "Field1.Point"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((5,6),(5,14),\"NewPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx p * pointx p +\n                  pointy p * pointy p)\n\n"
@@ -2334,8 +2335,8 @@ spec = do
          return (new,newName)
       let
 
-      -- ((nb,_nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,_nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "LocToName.sumSquares"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((20,1),(20,9),\"newPoint\")]"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nsumSquares (x:xs) = x ^2 + sumSquares xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nsumSquares [] = 0\n"
@@ -2363,8 +2364,8 @@ spec = do
 
          return (new,newName)
 
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,_nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,_nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       -- putStrLn $ "annotated parsed':" ++ showAnnDataFromState s
       -- putStrLn $ "annotated anns':" ++ showGhc (annsFromState s)
       (showGhcQual n) `shouldBe` "LocToName.sumSquares"
@@ -2393,7 +2394,7 @@ spec = do
 
          return (new,newName)
 
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- (showGhcQual n) `shouldBe` "list"
       -- (showGhcQual $ retrieveTokensPpr $ fromJust $ layoutFromState s) `shouldBe` ""
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((8,7),(8,9),\"ls\")]"
@@ -2406,7 +2407,7 @@ spec = do
     ------------------------------------
 
     it "does not qualify a name in an import hiding clause" $ do
-      (t,toks,tgt) <- parsedFileScopeAndQual
+      (t,toks,tgt) <- ct $ parsedFileGhc "./ScopeAndQual.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
@@ -2422,8 +2423,8 @@ spec = do
 
          return (new,newName)
 
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,_nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,_nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "Data.Foldable.sum"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((4,24),(4,29),\"mySum\")]"
@@ -2435,7 +2436,7 @@ spec = do
     ------------------------------------
 
     it "does not qualify the subject of a type signature" $ do
-      (t,toks, tgt) <- parsedFileRenamingC7
+      (t,toks, tgt) <- ct $ parsedFileGhc "./Renaming/C7.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
@@ -2445,15 +2446,14 @@ spec = do
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
          newName <- mkNewGhcName (Just modu) "myNewFringe"
-         -- new <- renamePN n newName True renamed
-         new <- renamePN' n newName True parsed
 
+         new <- renamePN' n newName True parsed
          putRefactParsed new mempty
 
          return (new,newName)
 
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,_nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,_nn),s) <- ct $ runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "Renaming.C7.myFringe"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.C7(myFringe)  where\n\nimport Renaming.D7\n\nmyFringe:: Tree a -> [a]\nmyFringe (Leaf x ) = [x]\nmyFringe (Branch left right) = myFringe left ++ fringe right\n\n\n\n\n"
@@ -2480,7 +2480,7 @@ spec = do
 
          return (new,newName)
 
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "list"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly list = case list of  (1:xs) -> 1\n--There is a comment\n                           (2:xs)\n                             | x < 10    -> 4  where  x = last xs\n                           otherwise -> 12\n\n"
@@ -2509,8 +2509,8 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "list"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((8,7),(8,17),\"listlonger\")]"
@@ -2541,8 +2541,8 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "ioFun"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,8),(7,10),\"io\")]"
@@ -2555,7 +2555,7 @@ spec = do
     ------------------------------------
 
     it "realigns toks in a do for a longer name" $ do
-      (t, toks, tgt) <- parsedFileLayoutIn4
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/LayoutIn4.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -2572,8 +2572,8 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "ioFun"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,8),(7,17),\"ioFunLong\")]"
@@ -2584,7 +2584,7 @@ spec = do
     ------------------------------------
 
     it "realigns toks in a where for a shorter name" $ do
-      (t, toks, tgt) <- parsedFileLayoutIn1
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/LayoutIn1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -2601,8 +2601,8 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "sq"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,17),(7,18),\"q\")]"
@@ -2631,7 +2631,7 @@ spec = do
 
          return (new,newName)
 
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "sq"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((7,17),(7,23),\"square\")]"
@@ -2643,7 +2643,7 @@ spec = do
     ------------------------------------
 
     it "realigns toks in a let/in for a shorter name" $ do
-      (t, toks, tgt) <- parsedFileLayoutLet1
+      (t, toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/LayoutLet1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -2660,8 +2660,8 @@ spec = do
 
          return (new,newName)
 
-      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "xxx"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((6,5),(6,6),\"x\")]"
@@ -2689,8 +2689,8 @@ spec = do
 
          return (new,newName)
 
-      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "xxx"
       -- (showToks $ [newNameTok False l nn]) `shouldBe` "[((6,5),(6,12),\"xxxlong\")]"
@@ -2720,8 +2720,8 @@ spec = do
 
          return (new,newName)
 
-      ((nb,nn),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((nb,nn),s) <- ct $ runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((nb,nn),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,nn),s) <- ct $ runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual (n,nn)) `shouldBe` "(xxx, xxxlong)"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module LayoutLet2 where\n\n-- Simple let expression, rename xxx to something longer or shorter\n-- and the let/in layout should adjust accordingly\n-- In this case the tokens for xxx + a + b should also shift out\n\nfoo xxx = let a = 1\n              b = 2 in xxx + a + b\n\n"
@@ -2749,8 +2749,8 @@ spec = do
 
          return (new,newName)
 
-      ((_nb,nn),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((_nb,nn),s) <- ct $ runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((_nb,nn),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((_nb,nn),s) <- ct $ runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual (n,nn)) `shouldBe` "(Renaming.RenameInExportedType.NT, NewType)"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.RenameInExportedType\n  (\n  MyType (NT)\n  ) where\n\ndata MyType = MT Int | NT\n\n\n"
@@ -2772,8 +2772,8 @@ spec = do
          return ()
       let
 
-      -- (_,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      (_,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- (_,s) <- ct $ runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      (_,s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "Renaming.C7.myFringe"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Renaming.C7(myFringe)  where\n\n import Renaming.D7\n\n myFringe:: Tree a -> [a]\n myFringe (Leaf x ) = [x]\n myFringe (Branch left right) = myFringe left ++ fringe right\n\n\n\n\n "
@@ -2805,7 +2805,7 @@ spec = do
 
          return (res,res2,duplicatedDecls,ln)
       -- ((r,r2,d,_l),_s) <- ct $ runRefactGhcState comp
-      ((r,r2,d,_l),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r,r2,d,_l),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       (showGhcQual _l) `shouldBe` "DupDef.Dd1.toplevel"
       ("1" ++ show r) `shouldBe` "1True"
@@ -2836,7 +2836,7 @@ spec = do
 
          return (res,res2,duplicatedDecls,ln)
       -- ((r,r2,d,_l),_s) <- ct $ runRefactGhcState comp
-      ((r,r2,d,_l),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r,r2,d,_l),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual d) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n"++
                              "          GHC.Base.return (ss GHC.Num.+ q) }]"
       (showGhcQual _l) `shouldBe` "ss"
@@ -2868,7 +2868,7 @@ spec = do
 
          return (res,duplicatedDecls,ln)
       -- ((r,d,_l),_s) <- ct $ runRefactGhcState comp
-      ((r,d,_l),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r,d,_l),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       -- (show l) `shouldBe` "foo"
       -- (show r) `shouldBe` "foo"
@@ -2925,8 +2925,7 @@ spec = do
 
   describe "modIsExported" $ do
     it "Returns True if the module is explicitly exported" $ do
-      -- ((_,_renamed,parsed), _toks) <- parsedFileDeclareGhc
-      (t, _toks,tgt) <- parsedFileDeclareGhc
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let renamed = fromJust $ GHC.tm_renamed_source t
       let (Just (modName,_)) = getModuleName parsed
@@ -2934,8 +2933,7 @@ spec = do
       (modIsExported modName renamed) `shouldBe` True
 
     it "Returns True if the module is exported by default" $ do
-      -- ((_,_renamed,parsed), _toks) <- parsedFileDeclare1Ghc
-      (t, _toks, tgt) <- parsedFileDeclare1Ghc
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let renamed = fromJust $ GHC.tm_renamed_source t
       let (Just (modName,_)) = getModuleName parsed
@@ -2943,8 +2941,7 @@ spec = do
       (modIsExported modName renamed) `shouldBe` True
 
     it "Returns False if the module is explicitly not exported" $ do
-      -- ((_,_renamed,parsed), _toks) <- parsedFileDeclare2Ghc
-      (t, _toks, tgt) <- parsedFileDeclare2Ghc
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare2.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let renamed = fromJust $ GHC.tm_renamed_source t
       let (Just (modName,_)) = getModuleName parsed
@@ -2955,7 +2952,7 @@ spec = do
 
   describe "isExported" $ do
     it "Returns True if a GHC.Name is exported" $ do
-      (t, toks, tgt) <- parsedFileRenamingB1
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/B1.hs"
 
       let
         comp = do
@@ -2971,8 +2968,8 @@ spec = do
          exSumSquares <- isExported sumSquares
 
          return (myFringe,exMyFring,sumSquares,exSumSquares)
-      -- ((mf,emf,ss,ess),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t toks }
-      ((mf,emf,ss,ess),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((mf,emf,ss,ess),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((mf,emf,ss,ess),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual mf) `shouldBe` "Renaming.B1.myFringe"
       emf `shouldBe` True
@@ -3007,7 +3004,7 @@ spec = do
 
          return (res,toks,renamed2,toks2)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1 toks1 }) testOptions
+      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
       (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1 hiding (n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
     ------------------------------------
@@ -3038,7 +3035,7 @@ spec = do
 
          return (res,toks,renamed2,toks2)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1 toks1 }) testOptions
+      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
       (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd3 where\n\n import DupDef.Dd1 hiding (dd,n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
   -- ---------------------------------------------
@@ -3059,7 +3056,7 @@ spec = do
 
       -- ((r,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }
       -- ((r,n1,n2),_s) <- ct $ runRefactGhcState comp
-      ((r,n1,n2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r,n1,n2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (GHC.getOccString n2) `shouldBe` "zip"
       (showGhcQual n1) `shouldBe` "GHC.List.zip"
@@ -3083,7 +3080,7 @@ spec = do
           return (res,namep,name,n)
       -- ((r,np,n1,n2),s) <- runRefactGhc comp $ initialState { rsTokenStream = toks }
       -- ((r,np,n1,n2),_s) <- ct $ runRefactGhcState comp
-      ((r,np,n1,n2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r,np,n1,n2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (myShow np) `shouldBe` "Qual:G:gshow"
       (myShow $ GHC.getRdrName n1) `shouldBe` "Exact:Data.Generics.Text.gshow"
@@ -3173,7 +3170,7 @@ spec = do
           return (res,n,name)
 
       -- (((d,_t),n1,_n2),_s) <- ct $ runRefactGhcState comp
-      (((d,_t),n1,_n2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      (((d,_t),n1,_n2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- (((d,t),n1,n2),s) <- runRefactGhcStateLog comp Debug
       (showGhcQual n1) `shouldBe` "MoveDef.Md1.tlFunc"
       (showGhcQual d) `shouldBe` "[MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x]"
@@ -3206,7 +3203,7 @@ This function is not used and has been removed
 
   describe "rmQualifier" $ do
     it "Removes the qualifiers from a list of identifiers in a given syntax phrase" $ do
-      (t, toks, tgt) <- parsedFileWhereIn3Ghc
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn3.hs"
       let
         comp = do
           renamed <- getRefactRenamed
@@ -3218,8 +3215,8 @@ This function is not used and has been removed
           res <- rmQualifier [sq] sqDecl
           return (res,sqDecl,sq)
 
-      -- ((r,d,n1),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t toks }
-      ((r,d,n1),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      -- ((r,d,n1),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule t }
+      ((r,d,n1),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n1) `shouldBe` "Demote.WhereIn3.sq"
       (showGhcQual d) `shouldBe` "Demote.WhereIn3.sq pow 0 = 0\nDemote.WhereIn3.sq pow z = z GHC.Real.^ pow"
       (showGhcQual r) `shouldBe` "sq pow 0 = 0\nsq pow z = z GHC.Real.^ pow"
@@ -3249,7 +3246,7 @@ This function is not used and has been removed
           return (res,decls,tl,name)
 
       -- ((r,d,n1,n2),_s) <- ct $ runRefactGhcState comp
-      ((r,d,n1,n2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r,d,n1,n2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n1) `shouldBe` "MoveDef.Demote.toplevel"
       (showGhcQual n2) `shouldBe` "MoveDef.Demote.c"
       (showGhcQual d) `shouldBe` "[MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x]"
@@ -3274,7 +3271,7 @@ This function is not used and has been removed
           return (decls',decls,tl,name)
 
       -- ((r,d,n1,n2),s) <- ct $ runRefactGhcState comp
-      ((r,d,n1,n2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r,d,n1,n2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n1) `shouldBe` "Demote.WhereIn4.sumSquares"
       (showGhcQual n2) `shouldBe` "p"
       (showGhcQual d) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n   where\n       p = 2]"
@@ -3298,7 +3295,7 @@ This function is not used and has been removed
           return (decls',decls,tl,name)
 
       -- ((r,d,n1,n2),s) <- ct $ runRefactGhcState comp
-      ((r,d,n1,n2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r,d,n1,n2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n1) `shouldBe` "Demote.WhereIn4.sumSquares"
       (showGhcQual n2) `shouldBe` "p"
       (showGhcQual d) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n   where\n       p = 2]"
@@ -3338,7 +3335,7 @@ This function is not used and has been removed
 
          return (res,toks,renamed2,toks2)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1\n import Data.List\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
     -- ---------------------------------
@@ -3358,7 +3355,7 @@ This function is not used and has been removed
 
          return (res,toks,renamed1,toks)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (GHC.showRichTokenStream t) `shouldBe` "module Simplest where\n import Data.List\n\n simple x = x\n "
 
     -- ---------------------------------
@@ -3378,7 +3375,7 @@ This function is not used and has been removed
 
          return (res,toks,renamed1,toks)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List"
 
     -- ---------------------------------
@@ -3399,7 +3396,7 @@ This function is not used and has been removed
 
          return (res,renamed1,toks)
       -- ((_r,_r2,_tk2),s) <- ct $ runRefactGhcState comp
-      ((_r,_r2,_tk2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((_r,_r2,_tk2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (sourceFromState s) `shouldBe` "module Empty where\nimport Data.List"
 
@@ -3423,7 +3420,7 @@ This function is not used and has been removed
 
          return (res,toks,renamed1,toks)
       -- ((_r,_t,_r2,_tk2),s) <- ct $ runRefactGhcState comp
-      ((_r,_t,_r2,_tk2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((_r,_t,_r2,_tk2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- This is the correct behavior. If the import doesn't have an import list, creating
       -- one for an item effectively reduces the imported interface.
@@ -3464,12 +3461,11 @@ This function is not used and has been removed
          itemName <- mkNewGhcName Nothing "isJust"
 
          res  <- addItemsToImport modName renamed1 [itemName]
-         toks <- fetchToks
 
-         return (res,toks,renamed1,toks)
-      -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      (GHC.showRichTokenStream t) `shouldBe` "module SelectivelyImports where\n\n import Data.Maybe (fromJust,isJust)\n\n __ = id\n "
+         return (res,renamed1,toks)
+      -- ((_r,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
+      ((_r,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (GHC.showRichTokenStream toks) `shouldBe` "module SelectivelyImports where\n\n import Data.Maybe (fromJust,isJust)\n\n __ = id\n "
 
 {- -- test after properly inserting conditional identifier
     it "Add an item to an import entry with existing items, passing existing conditional identifier." $ do
@@ -3512,7 +3508,7 @@ This function is not used and has been removed
 
   describe "hsValBinds" $ do
     it "returns ValBinds for RenamedSource" $ do
-      (t,_toks,_) <- parsedFileLiftOneD1Ghc
+      (t,_toks,_) <- ct $ parsedFileGhc "./LiftOneLevel/D1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let vb = hsValBinds renamed
       (showGhcQual vb) `shouldBe` "LiftOneLevel.D1.sumSquares (x : xs)\n  = sq x GHC.Num.+ LiftOneLevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftOneLevel.D1.sumSquares [] = 0\nLiftOneLevel.D1.main = LiftOneLevel.D1.sumSquares [1 .. 4]"
@@ -3520,7 +3516,7 @@ This function is not used and has been removed
     -- ---------------------------------
 
     it "returns ValBinds for (HsGroup Name)" $ do
-      (t,_toks,_) <- parsedFileLiftOneD1Ghc
+      (t,_toks,_) <- ct $ parsedFileGhc "./LiftOneLevel/D1.hs"
       let (g,_,_,_) = fromJust $ GHC.tm_renamed_source t
       let vb = hsValBinds g
       (showGhcQual vb) `shouldBe` "LiftOneLevel.D1.sumSquares (x : xs)\n  = sq x GHC.Num.+ LiftOneLevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftOneLevel.D1.sumSquares [] = 0\nLiftOneLevel.D1.main = LiftOneLevel.D1.sumSquares [1 .. 4]"
@@ -3549,7 +3545,7 @@ This function is not used and has been removed
 
   describe "isFieldName" $ do
     it "returns True if a Name is a field name" $ do
-      (t,_toks,_) <- parsedFileRenamingField3
+      (t,_toks,_) <- ct $ parsedFileGhc "./Renaming/Field3.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let Just (GHC.L _ nf) = locToName (10,21) renamed
       let Just (GHC.L _ n) = locToName (10,1) renamed
@@ -3564,7 +3560,7 @@ This function is not used and has been removed
 
   describe "name predicates" $ do
     it "classifies names" $ do
-      (t,_toks,_) <- parsedFileCon
+      (t,_toks,_) <- ct $ parsedFileGhc "./Con.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let Just (GHC.L _ n1) = locToName (3,6) renamed
       let Just (GHC.L _ n2) = locToName (3,12) renamed
@@ -3625,8 +3621,8 @@ This function is not used and has been removed
               (Just name) = locToName    (5,1) renamed
           nname <- rdrName2Name rdr
           return (rdr,name,nname)
-      ((r,n,nn),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((r,n,nn),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((r,n,nn),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((r,n,nn),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       -- (showGhcQual (r,nn,GHC.nameUnique nn)) `shouldBe` ""
       (showGhcQual (r,n,nn)) `shouldBe` "(bob, TokenTest.bob, TokenTest.bob)"
@@ -3644,14 +3640,13 @@ This function is not used and has been removed
               (Just name) = locToName    (14,7) renamed
           nname <- rdrName2Name rdr
           return (rdr,name,nname)
-      ((r,n,nn),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- ((r,n,nn),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t toks }) testOptions
+      ((r,n,nn),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((r,n,nn),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       -- (showGhcQual (r,nn,GHC.nameUnique nn)) `shouldBe` ""
       (showGhcQual (r,n,nn)) `shouldBe` "(bar, bar, bar)"
 
   -- ---------------------------------------
-
 
 myShow :: GHC.RdrName -> String
 myShow n = case n of
@@ -3661,74 +3656,8 @@ myShow n = case n of
   GHC.Exact en   -> ("Exact:" ++ (showGhcQual en))
 
 
-
 -- ---------------------------------------------------------------------
 -- Helper functions
-
--- parsedFileCon :: IO (ParseResult,[PosToken])
-parsedFileCon = ct $ parsedFileGhc "./Con.hs"
-
--- parsedFileRenamingField3 :: IO (ParseResult,[PosToken])
-parsedFileRenamingField3 = ct $ parsedFileGhc "./Renaming/Field3.hs"
-
--- parsedFileRenamingC7 :: IO (ParseResult,[PosToken])
-parsedFileRenamingC7 = ct $ parsedFileGhc "./Renaming/C7.hs"
-
--- parsedFileDd1Ghc :: IO (ParseResult,[PosToken])
-parsedFileDd1Ghc = ct $ parsedFileGhc "./DupDef/Dd1.hs"
-
--- parsedFileDeclareGhc :: IO (ParseResult,[PosToken])
-parsedFileDeclareGhc = ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
-
--- parsedFileDeclare1Ghc :: IO (ParseResult,[PosToken])
-parsedFileDeclare1Ghc = ct $ parsedFileGhc "./FreeAndDeclared/Declare1.hs"
-
--- parsedFileDeclare2Ghc :: IO (ParseResult,[PosToken])
-parsedFileDeclare2Ghc = ct $ parsedFileGhc "./FreeAndDeclared/Declare2.hs"
-
--- parsedFileDemoteGhc :: IO (ParseResult,[PosToken])
-parsedFileDemoteGhc = ct $ parsedFileGhc "./MoveDef/Demote.hs"
-
--- parsedFileMd1Ghc :: IO (ParseResult,[PosToken])
-parsedFileMd1Ghc = ct $ parsedFileGhc "./MoveDef/Md1.hs"
-
--- parsedFileMd2Ghc :: IO (ParseResult,[PosToken])
-parsedFileMd2Ghc = ct $ parsedFileGhc "./MoveDef/Md2.hs"
-
--- parsedFileLiftD1Ghc :: IO (ParseResult,[PosToken])
-parsedFileLiftD1Ghc = ct $ parsedFileGhc "./LiftToToplevel/D1.hs"
-
--- parsedFileLiftOneD1Ghc :: IO (ParseResult,[PosToken])
-parsedFileLiftOneD1Ghc = ct $ parsedFileGhc "./LiftOneLevel/D1.hs"
-
--- parsedFileLiftWhereIn7Ghc :: IO (ParseResult,[PosToken])
-parsedFileLiftWhereIn7Ghc = ct $ parsedFileGhc "./LiftToToplevel/WhereIn7.hs"
-
-
--- parsedFileWhereIn3Ghc :: IO (ParseResult,[PosToken])
-parsedFileWhereIn3Ghc = ct $ parsedFileGhc "./Demote/WhereIn3.hs"
-
-
--- parsedFileTokenTestGhc :: IO (ParseResult,[PosToken])
-parsedFileTokenTestGhc = ct $ parsedFileGhc "./TokenTest.hs"
-
--- parsedFileRenamingField1 :: IO (ParseResult, [PosToken])
-parsedFileRenamingField1 = ct $ parsedFileGhc "./Renaming/Field1.hs"
-
--- parsedFileRenamingB1 :: IO (ParseResult, [PosToken])
-parsedFileRenamingB1 = ct $ parsedFileGhc "./Renaming/B1.hs"
-
--- parsedFileScopeAndQual :: IO (ParseResult, [PosToken])
-parsedFileScopeAndQual = ct $ parsedFileGhc "./ScopeAndQual.hs"
-
--- parsedFileLayoutLet1 :: IO (ParseResult, [PosToken])
-parsedFileLayoutLet1 = ct $ parsedFileGhc "./TypeUtils/LayoutLet1.hs"
-
--- parsedFileLayoutIn1 :: IO (ParseResult, [PosToken])
-parsedFileLayoutIn1 = ct $ parsedFileGhc "./Renaming/LayoutIn1.hs"
-
--- parsedFileLayoutIn4 :: IO (ParseResult, [PosToken])
-parsedFileLayoutIn4 = ct $ parsedFileGhc "./Renaming/LayoutIn4.hs"
 
 -- ----------------------------------------------------
 -- EOF

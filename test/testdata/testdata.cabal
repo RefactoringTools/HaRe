@@ -42,6 +42,7 @@ Executable a5
 
 Executable c7
   Main-Is: Renaming/C7.hs
+  Other-Modules : Renaming.D7
   Build-Depends:          base >= 4.0  && < 4.9
                         , syb
 

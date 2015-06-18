@@ -37,6 +37,7 @@ import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Internal (gmSetLogLevel,GmLogLevel(..))
 
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.GhcModuleGraph
@@ -198,25 +199,18 @@ getModuleDetails modSum = do
       p <- GHC.parseModule modSum
       t <- GHC.typecheckModule p
 
-      -- GHC.setContext [GHC.IIModule (GHC.moduleName $ GHC.ms_mod modSum)]
       setGhcContext modSum
 
-      -- Use the workaround to get the tokens, the existing one does
-      -- not return tokens for CPP processed files.
-      -- tokens <- GHC.getRichTokenStream (GHC.ms_mod modSum)
-      tokens <- getRichTokenStreamWA (GHC.ms_mod modSum)
       mtm <- gets rsModule
       case mtm of
         Just tm -> if ((rsStreamModified tm == RefacUnmodifed)
-                      && True
-                         {- ((GHC.mkFastString $ fileNameFromModSummary modSum) ==
-                          (fileNameFromTok $ ghead "getModuleDetails" tokens)) -})
+                      && True)
                      then return ()
                      else if rsStreamModified tm == RefacUnmodifed
-                            then putParsedModule t tokens
+                            then putParsedModule t
                             else error $ "getModuleDetails: trying to load a module without finishing with active one."
 
-        Nothing -> putParsedModule t tokens
+        Nothing -> putParsedModule t
 
       return ()
 
@@ -231,9 +225,9 @@ parseSourceFileGhc targetFile = do
       GHC.setTargets [target]
       void $ GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
      -}
-      -- logm $ "parseSourceFileGhc:about to loadModuleGraphGhc for" ++ (show targetFile)
+      logm $ "parseSourceFileGhc:about to loadModuleGraphGhc for" ++ (show targetFile)
       loadModuleGraphGhc (Just [targetFile])
-      -- logm $ "parseSourceFileGhc:loadModuleGraphGhc done"
+      logm $ "parseSourceFileGhc:loadModuleGraphGhc done"
 
       mm <- getModuleMaybe targetFile
       case mm of
@@ -260,19 +254,20 @@ runRefacSession ::
 runRefacSession settings opt targets comp = do
   let
     initialState = RefSt
-        { rsSettings = settings
-        , rsUniqState = 1
-        , rsSrcSpanCol = 1
-        , rsFlags = RefFlags False
-        , rsStorage = StorageNone
-        , rsGraph = []
-        , rsModuleGraph = []
+        { rsSettings      = settings
+        , rsUniqState     = 1
+        , rsSrcSpanCol    = 1
+        , rsFlags         = RefFlags False
+        , rsStorage       = StorageNone
+        , rsGraph         = []
+        , rsModuleGraph   = []
         , rsCurrentTarget = Nothing
-        , rsModule = Nothing
+        , rsModule        = Nothing
         }
 
-    comp' = initGhcSession (rsetImportPaths settings) >> comp
-  (refactoredMods,_s) <- runRefactGhc comp targets initialState opt
+    comp' = initGhcSession >> comp
+    -- comp' = gmSetLogLevel GmError >> comp
+  (refactoredMods,_s) <- runRefactGhc comp' targets initialState opt
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)
   writeRefactoredFiles verbosity refactoredMods
@@ -332,15 +327,6 @@ refactDone rs = any (\((_,d),_) -> d == RefacModified) rs
 modifiedFiles :: [ApplyRefacResult] -> [String]
 modifiedFiles refactResult = map (\((s,_),_) -> s)
                            $ filter (\((_,b),_) -> b == RefacModified) refactResult
-
--- ---------------------------------------------------------------------
-
-fileNameFromModSummary :: GHC.ModSummary -> FilePath
-fileNameFromModSummary modSummary = fileName
-  where
-    -- TODO: what if we are loading a compiled only client and do not
-    -- have the original source?
-    Just fileName = GHC.ml_hs_file (GHC.ms_location modSummary)
 
 -- ---------------------------------------------------------------------
 
@@ -462,12 +448,6 @@ clientModsAndFiles m = do
         where
           mg = getModulesAsGraph False ms Nothing
           rg = GHC.transposeG mg
-          {-
-          modNode = gfromJust ("clientModsAndFiles:" ++ (showGhc (GHC.ms_mod modsum,target,mg)))
-                  $ find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
-          clientMods = filter (\msum' -> not (mycomp msum' modsum))
-                     $ map summaryNodeSummary $ GHC.reachableG rg modNode
-          -}
           maybeModNode = find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
           clientMods = case maybeModNode of
                          Nothing -> []

@@ -61,6 +61,7 @@ import System.FilePath.Posix
 import System.Log.Logger
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 -- Monad transformer stuff
 import Control.Monad.Trans.Control ( control, liftBaseOp, liftBaseOp_)
@@ -105,7 +106,7 @@ data RefactStashId = Stash !String deriving (Show,Eq,Ord)
 
 data RefactModule = RefMod
         { rsTypecheckedMod  :: !GHC.TypecheckedModule
-        , rsOrigTokenStream :: ![PosToken]         -- ^Original Token stream for the current module
+        -- , rsOrigTokenStream :: ![PosToken]         -- ^Original Token stream for the current module
         , rsNameMap         :: NameMap
           -- ^ Mapping from the names in the ParsedSource to the renamed
           -- versions. Note: No strict mark, can be computed lazily.
@@ -184,12 +185,7 @@ instance Show StateStorage where
 -- ---------------------------------------------------------------------
 -- StateT and GhcT stack
 
--- type RefactGhc a = GHC.GhcT (StateT RefactState IO) a
--- type RefactGhc a = GhcModT (StateT RefactState IO) a
--- type RefactGhc a = GM.GmlT (GhcModT (StateT RefactState IO)) a
 newtype RefactGhc a = RefactGhc
-    -- { unRefactGhc :: GM.GmlT (GhcModT (StateT RefactState IO)) a
-    -- { unRefactGhc :: GhcModT (StateT RefactState (GM.GmlT IO)) a
     { unRefactGhc :: GM.GmlT (StateT RefactState IO) a
     } deriving ( Functor
                , Applicative
@@ -209,13 +205,20 @@ newtype RefactGhc a = RefactGhc
 runRefactGhc ::
   RefactGhc a -> Targets -> RefactState -> Options -> IO (a, RefactState)
 runRefactGhc comp targets initState opt = do
-    ((merr,_log),s) <- runStateT (runGhcModT opt (GM.runGmlT targets (unRefactGhc comp))) initState
+    ((merr,_log),s) <- runStateT (runGhcModT opt (GM.runGmlT' targets setDynFlags (unRefactGhc comp))) initState
     case merr of
       Left err -> error (show err)
       Right a  -> return (a,s)
 
+setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
+setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
 
 -- ---------------------------------------------------------------------
+
+instance GM.GmLog RefactGhc where
+    gmlJournal v = RefactGhc (GM.gmlJournal v)
+    gmlHistory = RefactGhc GM.gmlHistory
+    gmlClear   = RefactGhc GM.gmlClear
 
 instance GM.MonadIO (StateT RefactState IO) where
   liftIO = liftIO
@@ -261,8 +264,8 @@ instance ExceptionMonad (StateT RefactState IO) where
 
 -- | Initialise the GHC session, when starting a refactoring.
 --   This should never be called directly.
-initGhcSession :: [FilePath] -> RefactGhc ()
-initGhcSession _importDirs = do
+initGhcSession :: RefactGhc ()
+initGhcSession = do
     logm $ "initGhcSession:entered"
     settings <- getRefacSettings
     df <- GHC.getSessionDynFlags
@@ -275,9 +278,7 @@ initGhcSession _importDirs = do
     logm $ "initGhcSession:cr=" ++ show cr
     case cradleCabalFile cr of
       Just cabalFile -> do
-        -- targets <- liftIO $ cabalAllTargets cabal
         targets <- getCabalAllTargets cr cabalFile
-        -- liftIO $ warningM "HaRe" $ "initGhcSession:targets=" ++ show targets
         logm $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
@@ -312,11 +313,30 @@ initGhcSession _importDirs = do
     return ()
 
 -- ---------------------------------------------------------------------
+
+-- cabalOpts :: Cradle -> GhcModT m [String]
+cabalComponents :: Cradle -> RefactGhc [String]
+cabalComponents crdl = RefactGhc (GmlT $ cabalOpts crdl)
+  where
+    cabalOpts :: Cradle -> GhcModT (StateT RefactState IO) [String]
+    cabalOpts Cradle{..} = do
+        let zipMap f l = l `zip` (f `map` l)
+
+        comps <- mapM (resolveEntrypoint crdl) =<< getComponents
+        mcs <- cached cradleRootDir resolvedComponentsCache comps
+
+        -- let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
+        liftIO $ putStrLn $ "cabalOpts:mcs=" ++ show mcs
+        return []
+
+-- ---------------------------------------------------------------------
+
 {-
-myCabalDebug :: IOish m => GhcModT m [String]
+myCabalDebug :: (IOish m,GmLog m,GmEnv m) => GhcModT m [String]
+-- myCabalDebug :: RefactGhc [String]
 myCabalDebug = do
     crdl@Cradle {..} <- cradle
-    mcs <- resolveGmComponents Nothing =<< mapM (resolveEntrypoint crdl) =<< getComponents
+    mcs <- lift $ resolveGmComponents Nothing =<< mapM (resolveEntrypoint crdl) =<< getComponents
     let entrypoints = Map.map gmcEntrypoints mcs
     --     graphs      = Map.map gmcHomeModuleGraph mcs
     --     opts        = Map.map gmcGhcOpts mcs
@@ -348,7 +368,8 @@ debugInfo = do
 -}
 getCabalAllTargets :: Cradle -> FilePath -> RefactGhc ([FilePath],[FilePath],[FilePath],[FilePath])
 getCabalAllTargets cr cabalFile = do
-   undefined
+   v <- cabalComponents cr
+   assert False undefined
 {-
    currentDir <- liftIO getCurrentDirectory
    -- let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
@@ -457,9 +478,8 @@ loadModuleGraphGhc maybeTargetFiles = do
       ctargetFiles <- liftIO $ mapM canonMaybe targetFiles
 
       settings <- get
-      put $ settings { -- rsGraph = (rsGraph settings) ++ [(targetFiles,cgraph)]
-                       rsGraph = (rsGraph settings) ++ [(ctargetFiles,cgraph)]
-                     -- , rsModuleGraph = (rsModuleGraph settings) ++ [(targetFiles,graph)]
+      put $ settings { 
+                       rsGraph       = (rsGraph settings)       ++ [(ctargetFiles,cgraph)]
                      , rsModuleGraph = (rsModuleGraph settings) ++ [(ctargetFiles,graph)]
                      , rsCurrentTarget = maybeTargetFiles
                      }

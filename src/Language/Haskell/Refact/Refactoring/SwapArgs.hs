@@ -16,7 +16,7 @@ swapArgs settings opts args
   = do let fileName = args!!0
            row = (read (args!!1)::Int)
            col = (read (args!!2)::Int)
-       runRefacSession settings opts (comp fileName (row,col))
+       runRefacSession settings opts [Left fileName] (comp fileName (row,col))
 
 
 comp :: String -> SimpPos

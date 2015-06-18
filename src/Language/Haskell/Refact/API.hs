@@ -55,7 +55,7 @@ module Language.Haskell.Refact.API
 
        -- , fetchToksFinal
        -- , fetchLinesFinal
-       , fetchOrigToks
+       -- , fetchOrigToks
        , fetchToks -- Deprecated
        , getTypecheckedModule
        , RefacResult(..)

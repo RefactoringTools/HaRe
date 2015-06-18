@@ -33,22 +33,24 @@ module TestUtils
        ) where
 
 
-import qualified DynFlags      as GHC
+-- import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Name          as GHC
 -- import qualified Outputable    as GHC
 import qualified Unique        as GHC
 
+import Control.Monad.State
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GhcMod
+import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Utils
 import Numeric
@@ -57,7 +59,7 @@ import System.Log.Handler.Simple
 import System.Log.Logger
 
 import qualified Data.Map as Map
-import Control.Monad.IO.Class
+-- import Control.Monad.IO.Class
 
 -- ---------------------------------------------------------------------
 
@@ -134,6 +136,16 @@ parseSourceFileTest fileName = do
   toks <- fetchOrigToks
   absFileName <- liftIO $ canonicalizePath fileName
   return (p,toks,[Left absFileName])
+
+-- ---------------------------------------------------------------------
+
+fetchOrigToks :: RefactGhc [PosToken]
+fetchOrigToks = do
+  mtm <- gets rsModule
+  case mtm of
+    Nothing  -> return []
+    Just tm -> getRichTokenStreamWA $ GHC.ms_mod $ GHC.pm_mod_summary
+                                    $ GHC.tm_parsed_module $ rsTypecheckedMod tm
 
 -- ---------------------------------------------------------------------
 

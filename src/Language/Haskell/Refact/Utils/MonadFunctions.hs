@@ -15,7 +15,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        fetchAnnsFinal
        --  fetchLinesFinal
-       , fetchOrigToks
+       -- , fetchOrigToks
        , fetchToks -- Deprecated
        , getTypecheckedModule
        , getRefactStreamModified
@@ -50,9 +50,11 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        -- * Utility
        , nameSybQuery
+       , fileNameFromModSummary
 
        -- * For use by the tests only
        , initRefactModule
+       , initTokenCacheLayout
        ) where
 
 import Control.Monad.State
@@ -98,12 +100,12 @@ fetchAnnsFinal = do
   let anns = (tkCache $ rsTokenCache tm) Map.! mainTid
   return anns
 
--- |fetch the pristine token stream
-fetchOrigToks :: RefactGhc [PosToken]
-fetchOrigToks = do
-  logm "fetchOrigToks"
-  Just tm <- gets rsModule
-  return $ rsOrigTokenStream tm
+-- -- |fetch the pristine token stream
+-- fetchOrigToks :: RefactGhc [PosToken]
+-- fetchOrigToks = do
+--   logm "fetchOrigToks"
+--   Just tm <- gets rsModule
+--   return $ rsOrigTokenStream tm
 
 -- |Get the current tokens for a given GHC.SrcSpan.
 getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
@@ -219,10 +221,10 @@ modifyAnns tk f = tk'
                                    (tkCache tk) }
 
 putParsedModule
-  :: GHC.TypecheckedModule -> [PosToken] -> RefactGhc ()
-putParsedModule tm toks = do
+  :: GHC.TypecheckedModule -> RefactGhc ()
+putParsedModule tm = do
   st <- get
-  put $ st { rsModule = initRefactModule tm toks }
+  put $ st { rsModule = initRefactModule tm }
 
 clearParsedModule :: RefactGhc ()
 clearParsedModule = do
@@ -281,8 +283,19 @@ getRefactFileName = do
   mtm <- gets rsModule
   case mtm of
     Nothing  -> return Nothing
-    Just _tm -> do toks <- fetchOrigToks
-                   return $ Just (GHC.unpackFS $ fileNameFromTok $ ghead "getRefactFileName" toks)
+    -- Just tm -> do toks <- fetchOrigToks
+    --                return $ Just (GHC.unpackFS $ fileNameFromTok $ ghead "getRefactFileName" toks)
+    Just tm -> return $ Just (fileNameFromModSummary $ GHC.pm_mod_summary
+                              $ GHC.tm_parsed_module $ rsTypecheckedMod tm)
+
+-- ---------------------------------------------------------------------
+
+fileNameFromModSummary :: GHC.ModSummary -> FilePath
+fileNameFromModSummary modSummary = fileName
+  where
+    -- TODO: what if we are loading a compiled only client and do not
+    -- have the original source?
+    Just fileName = GHC.ml_hs_file (GHC.ms_location modSummary)
 
 -- ---------------------------------------------------------------------
 
@@ -340,10 +353,9 @@ getStateStorage = do
 -- ---------------------------------------------------------------------
 
 initRefactModule
-  :: GHC.TypecheckedModule -> [PosToken] -> Maybe RefactModule
-initRefactModule tm toks
+  :: GHC.TypecheckedModule -> Maybe RefactModule
+initRefactModule tm
   = Just (RefMod { rsTypecheckedMod = tm
-                 , rsOrigTokenStream = toks
                  , rsNameMap = initRdrNameMap tm
                  , rsTokenCache = initTokenCacheLayout (relativiseApiAnns
                                     (GHC.pm_parsed_source $ GHC.tm_parsed_module tm)
