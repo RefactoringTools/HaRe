@@ -32,6 +32,7 @@ module Language.Haskell.Refact.Utils.Monad
        , loadModuleGraphGhc
        , ensureTargetLoaded
        , canonicalizeGraph
+       , canonicalizeModSummary
 
        , logm
        ) where
@@ -43,6 +44,7 @@ import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
 import qualified HscTypes      as GHC
 
+import Control.Arrow
 import Control.Applicative
 import Control.Monad.State
 --import Data.Time.Clock
@@ -51,7 +53,7 @@ import Exception
 import Language.Haskell.GhcMod
 import qualified Language.Haskell.GhcMod.Internal as GM
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
-import Language.Haskell.Refact.Utils.Cabal
+-- import Language.Haskell.Refact.Utils.Cabal
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
@@ -156,7 +158,7 @@ When HaRe needs a new SrcSpan, for this, it generates it from this
 field, to ensure uniqueness.
 -}
 
-type TargetModule = ([FilePath], GHC.ModSummary)
+type TargetModule = ([FilePath], (Maybe FilePath,GHC.ModSummary))
 
 type TargetGraph = ([FilePath],[(Maybe FilePath, GHC.ModSummary)])
 
@@ -314,122 +316,48 @@ initGhcSession = do
 
 -- ---------------------------------------------------------------------
 
--- cabalOpts :: Cradle -> GhcModT m [String]
-cabalComponents :: Cradle -> RefactGhc [String]
-cabalComponents crdl = RefactGhc (GmlT $ cabalOpts crdl)
+-- | Extracting all 'Module' 'FilePath's for libraries, executables,
+-- tests and benchmarks.
+cabalAllTargets :: Cradle -> RefactGhc ([String],[String],[String],[String])
+cabalAllTargets crdl = RefactGhc (GmlT $ cabalOpts crdl)
   where
-    cabalOpts :: Cradle -> GhcModT (StateT RefactState IO) [String]
+    -- Note: This runs inside ghc-mod's GmlT monad
+    cabalOpts :: Cradle -> GhcModT (StateT RefactState IO) ([String],[String],[String],[String])
     cabalOpts Cradle{..} = do
-        let zipMap f l = l `zip` (f `map` l)
-
         comps <- mapM (resolveEntrypoint crdl) =<< getComponents
         mcs <- cached cradleRootDir resolvedComponentsCache comps
+        --mcs:: (Map.Map ChComponentName (GmComponent GMCResolved (Set.Set ModulePath)))
 
-        -- let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
-        liftIO $ putStrLn $ "cabalOpts:mcs=" ++ show mcs
-        return []
+        let entrypoints = Map.toList $ Map.map gmcEntrypoints mcs
+            -- graphs      = Map.map gmcHomeModuleGraph mcs
+            isExe (ChExeName _,_)     = True
+            isExe _                   = False
+            isLib (ChLibName,_)       = True
+            isLib _                   = False
+            isTest (ChTestName _,_)   = True
+            isTest _                  = False
+            isBench (ChBenchName _,_) = True
+            isBench _                 = False
+            getTgts :: (ChComponentName,Set.Set ModulePath) -> [String]
+            getTgts (_,mps) = map mpPath $ Set.toList mps
+            -- exeTargets' :: [(ChComponentName,Set.Set ModulePath)]
+
+            exeTargets   = concatMap getTgts $ filter isExe entrypoints
+            libTargets   = concatMap getTgts $ filter isLib entrypoints
+            testTargets  = concatMap getTgts $ filter isTest entrypoints
+            benchTargets = concatMap getTgts $ filter isBench entrypoints
+        -- liftIO $ putStrLn $ "cabalOpts:mcs=" ++ show mcs
+        -- liftIO $ putStrLn $ "cabalOpts:entrypoints=" ++ show entrypoints
+        -- liftIO $ putStrLn $ "cabalOpts:graphs=" ++ show graphs
+        return (libTargets,exeTargets,testTargets,benchTargets)
 
 -- ---------------------------------------------------------------------
 
-{-
-myCabalDebug :: (IOish m,GmLog m,GmEnv m) => GhcModT m [String]
--- myCabalDebug :: RefactGhc [String]
-myCabalDebug = do
-    crdl@Cradle {..} <- cradle
-    mcs <- lift $ resolveGmComponents Nothing =<< mapM (resolveEntrypoint crdl) =<< getComponents
-    let entrypoints = Map.map gmcEntrypoints mcs
-    --     graphs      = Map.map gmcHomeModuleGraph mcs
-    --     opts        = Map.map gmcGhcOpts mcs
-    --     srcOpts     = Map.map gmcGhcSrcOpts mcs
-
-    -- return $
-    --      [ "Cabal file:           " ++ show cradleCabalFile
-    --      , "Cabal entrypoints:\n"       ++ render (nest 4 $
-    --           mapDoc gmComponentNameDoc smpDoc entrypoints)
-    --      , "Cabal components:\n"        ++ render (nest 4 $
-    --           mapDoc gmComponentNameDoc graphDoc graphs)
-    --      , "GHC Cabal options:\n"       ++ render (nest 4 $
-    --           mapDoc gmComponentNameDoc (fsep . map text) opts)
-    --      , "GHC search path options:\n" ++ render (nest 4 $
-    --           mapDoc gmComponentNameDoc (fsep . map text) srcOpts)
-    --      ]
-    return []
--}
--- ---------------------------------------------------------------------
-{-
-Working out the monad from ghc-mod
-
-debugInfo :: IOish m => GhcModT m String
-debugInfo = do
-    Options {..} <- options
-    Cradle {..} <- cradle
-
-
--}
 getCabalAllTargets :: Cradle -> FilePath -> RefactGhc ([FilePath],[FilePath],[FilePath],[FilePath])
 getCabalAllTargets cr cabalFile = do
-   v <- cabalComponents cr
-   assert False undefined
-{-
-   currentDir <- liftIO getCurrentDirectory
-   -- let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
-   let cabalDir = cradleRootDir cr
+   (libs,exes,tests,benches) <- cabalAllTargets cr
+   return (libs,exes,tests,benches)
 
-   liftIO $ setCurrentDirectory cabalDir
-
-   mcs <- resolveGmComponents Nothing =<< mapM (resolveEntrypoint cr) =<< getComponents
-   let entrypoints = Map.map gmcEntrypoints mcs
-       -- graphs      = Map.map gmcHomeModuleGraph mcs
-       -- opts        = Map.map gmcGhcOpts mcs
-       -- srcOpts     = Map.map gmcGhcSrcOpts mcs
--}
-
-{-
-   pkgDesc <- parseCabalFile cr cabalFile
-   (libs,exes,tests,benches) <- liftIO $ cabalAllTargets pkgDesc
-   liftIO $ setCurrentDirectory currentDir
-
-   let libs'    = filter (\l -> not (isPrefixOf "Paths_" l)) libs
-       exes'    = addCabalDir exes
-       tests'   = addCabalDir tests
-       benches' = addCabalDir benches
-
-       addCabalDir ts = map (\t -> combine cabalDir t) ts
--}
-   let libs' = [""]
-       exes' = [""]
-       tests' = [""]
-       benches' = [""]
-   return (libs',exes',tests',benches')
-
- {-
-getCabalAllTargets :: Cradle -> FilePath -> RefactGhc ([FilePath],[FilePath],[FilePath],[FilePath])
-getCabalAllTargets cr cabalFile = do
-   currentDir <- liftIO getCurrentDirectory
-   -- let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
-   let cabalDir = cradleRootDir cr
-
-   liftIO $ setCurrentDirectory cabalDir
-
-   mcs <- resolveGmComponents Nothing =<< mapM (resolveEntrypoint cr) =<< getComponents
-   let entrypoints = Map.map gmcEntrypoints mcs
-       graphs      = Map.map gmcHomeModuleGraph mcs
-       opts        = Map.map gmcGhcOpts mcs
-       srcOpts     = Map.map gmcGhcSrcOpts mcs
-
-   pkgDesc <- parseCabalFile cr cabalFile
-   (libs,exes,tests,benches) <- liftIO $ cabalAllTargets pkgDesc
-   liftIO $ setCurrentDirectory currentDir
-
-   let libs'    = filter (\l -> not (isPrefixOf "Paths_" l)) libs
-       exes'    = addCabalDir exes
-       tests'   = addCabalDir tests
-       benches' = addCabalDir benches
-
-       addCabalDir ts = map (\t -> combine cabalDir t) ts
-
-   return (libs',exes',tests',benches')
--}
 {-
 getCabalAllTargets :: Cradle -> FilePath -> RefactGhc ([FilePath],[FilePath],[FilePath],[FilePath])
 getCabalAllTargets cr cabalFile = do
@@ -459,10 +387,19 @@ getCabalAllTargets cr cabalFile = do
 loadModuleGraphGhc ::
   Maybe [FilePath] -> RefactGhc ()
 loadModuleGraphGhc maybeTargetFiles = do
-  -- currentDir <- liftIO getCurrentDirectory
+  currentDir <- liftIO getCurrentDirectory
   -- liftIO $ warningM "HaRe" $ "loadModuleGraphGhc:maybeTargetFiles=" ++ show (maybeTargetFiles,currentDir)
   case maybeTargetFiles of
     Just targetFiles -> do
+      ---- from ghc-mod Target
+      crdl <- cradle
+      opts <- getTargetGhcOptions crdl (Set.fromList $ map Left targetFiles)
+      let opts' = opts ++ ["-O0"] --  ++ ghcUserOptions
+
+      initGmlSession opts' $
+          setModeSimple >>> setEmptyLogger >>> return -- >>> mdf
+
+      ----------------------------------
       loadTarget targetFiles
       -- setTargetFiles [targetFile]
       -- void $ GHC.load GHC.LoadAllTargets
@@ -478,9 +415,9 @@ loadModuleGraphGhc maybeTargetFiles = do
       ctargetFiles <- liftIO $ mapM canonMaybe targetFiles
 
       settings <- get
-      put $ settings { 
-                       rsGraph       = (rsGraph settings)       ++ [(ctargetFiles,cgraph)]
-                     , rsModuleGraph = (rsModuleGraph settings) ++ [(ctargetFiles,graph)]
+      put $ settings {
+                       rsGraph         = (rsGraph settings)       ++ [(ctargetFiles,cgraph)]
+                     , rsModuleGraph   = (rsModuleGraph settings) ++ [(ctargetFiles,graph)]
                      , rsCurrentTarget = maybeTargetFiles
                      }
 
@@ -493,25 +430,35 @@ loadModuleGraphGhc maybeTargetFiles = do
 
 -- ---------------------------------------------------------------------
 
+initGmlSession :: [GHCOption] -> (GHC.DynFlags -> GHC.Ghc GHC.DynFlags) -> RefactGhc ()
+initGmlSession opts mdf = RefactGhc (GmlT $ initSession opts mdf)
+
+getTargetGhcOptions :: Cradle -> Set.Set (Either FilePath GHC.ModuleName)
+                  -> RefactGhc [GHCOption]
+getTargetGhcOptions crdl mfns
+  = RefactGhc (GmlT $ targetGhcOptions crdl mfns)
+
+-- ---------------------------------------------------------------------
+loadTarget :: [FilePath] -> RefactGhc ()
+loadTarget targetFiles = RefactGhc (loadTargets targetFiles)
+{-
 loadTarget :: [FilePath] -> RefactGhc ()
 loadTarget targetFiles = do
   let
     guessOne :: FilePath -> RefactGhc GHC.Target
     guessOne f = GHC.guessTarget f Nothing
   targets <- mapM guessOne targetFiles
+  -- ++AZ++: Use ghc-mod loading process here?
   GHC.setTargets targets
-
-  -- setTargetFiles targetFiles
-  -- checkSlowAndSet
   void $ GHC.load GHC.LoadAllTargets
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Make sure the given file is the currently loaded target, and load
 -- it if not. Assumes that all the module graphs had been generated
 -- before, so these are not updated.
 ensureTargetLoaded :: TargetModule -> RefactGhc GHC.ModSummary
-ensureTargetLoaded (target,modSum) = do
+ensureTargetLoaded (target,(_,modSum)) = do
   settings <- get
   let currentTarget = rsCurrentTarget settings
   if currentTarget == Just target
@@ -527,7 +474,7 @@ ensureTargetLoaded (target,modSum) = do
 -- ---------------------------------------------------------------------
 
 canonicalizeGraph ::
-  [GHC.ModSummary] -> RefactGhc [(Maybe (FilePath), GHC.ModSummary)]
+  [GHC.ModSummary] -> RefactGhc [(Maybe FilePath, GHC.ModSummary)]
 canonicalizeGraph graph = do
   let mm = map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
       canon ((Just fp),m) = do
@@ -536,6 +483,19 @@ canonicalizeGraph graph = do
       canon (Nothing,m)  = return (Nothing,m)
 
   mm' <- mapM (liftIO . canon) mm
+
+  return mm'
+
+canonicalizeModSummary ::
+  GHC.ModSummary -> RefactGhc (Maybe FilePath, GHC.ModSummary)
+canonicalizeModSummary modSum = do
+  let modSum'  = (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) modSum
+      canon ((Just fp),m) = do
+        fp' <- canonicalizePath fp
+        return $ (Just fp',m)
+      canon (Nothing,m)  = return (Nothing,m)
+
+  mm' <- liftIO $ canon modSum'
 
   return mm'
 

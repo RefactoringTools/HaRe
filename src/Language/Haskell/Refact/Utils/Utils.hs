@@ -86,10 +86,10 @@ getModuleMaybe fileName = do
   -- graph <- GHC.getModuleGraph
   -- cgraph <- liftIO $ canonicalizeGraph graph
 
-  -- logm $ "getModuleMaybe: [mfn]=" ++ show (map (\(mfn,_ms) -> mfn) cgraph)
+  logm $ "getModuleMaybe: [mfn]=" ++ show (map (\(mfn,_ms) -> mfn) cgraph)
 
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
-  -- logm $ "getModuleMaybe: mm=" ++ show mm
+  logm $ "getModuleMaybe: mm=" ++ show mm
 
   case mm of
     [] -> return Nothing
@@ -119,6 +119,7 @@ getModuleGhc targetFile = do
   -- TODO: consult cached store of multiple module graphs, one for
   --       each main file.
   mTarget <- identifyTargetModule targetFile
+  logm $ "getModuleGhc:mTarget=" ++ show mTarget
   case mTarget of
     Nothing -> return ()
     Just tm -> do
@@ -137,18 +138,22 @@ identifyTargetModule targetFile = do
   currentDirectory <- liftIO getCurrentDirectory
   target1 <- liftIO $ canonicalizePath targetFile
   target2 <- liftIO $ canonicalizePath (combine currentDirectory targetFile)
-  -- logm $ "identifyTargetModule:(targetFile,target1,target2)=" ++ show (targetFile,target1,target2)
-  graphs <- gets rsModuleGraph
+  logm $ "identifyTargetModule:(targetFile,target1,target2)=" ++ show (targetFile,target1,target2)
+  -- graphs <- gets rsModuleGraph
+  graphs <- gets rsGraph
+  -- let graphs = concatMap (\(_,cg) -> cg) cgraphs
 
-  -- logm $ "identifyTargetModule:graphs=" ++ show graphs
+  logm $ "identifyTargetModule:graphs=" ++ show graphs
+  -- logm $ "identifyTargetModule:locations=" ++ show (map GHC.ms_location $ concatMap snd graphs)
 
   let ff = catMaybes $ map (findInTarget target1 target2) graphs
-  -- logm $ "identifyTargetModule:ff=" ++ show ff
+  logm $ "identifyTargetModule:ff=" ++ show ff
   case ff of
     [] -> return Nothing
     ms -> return (Just (ghead ("identifyTargetModule:" ++ (show ms)) ms))
 
-findInTarget :: FilePath -> FilePath -> ([FilePath],GHC.ModuleGraph) -> Maybe TargetModule
+findInTarget :: FilePath -> FilePath -> ([FilePath],[(Maybe FilePath,GHC.ModSummary)])
+             -> Maybe TargetModule
 findInTarget f1 f2 (fps,graph) = r'
   where
     -- We also need to process the case where it is a main file for an exe.
@@ -161,16 +166,18 @@ findInTarget f1 f2 (fps,graph) = r'
            ms -> if x == f1 || x == f2 then Just (fps,ghead "findInTarget" ms)
                                       else Nothing
       _  -> Nothing
-    isMainModSummary ms = (show $ GHC.ms_mod ms) == "Main"
+    isMainModSummary (_,ms) = (show $ GHC.ms_mod ms) == "Main"
 
     r = case filter (compModFiles f1 f2) graph of
           [] -> Nothing
           ms -> Just (fps,ghead "findInTarget.2" ms)
-    compModFiles :: FilePath-> FilePath -> GHC.ModSummary -> Bool
-    compModFiles fileName1 fileName2 ms =
+    compModFiles :: FilePath-> FilePath -> (Maybe FilePath,GHC.ModSummary) -> Bool
+    compModFiles fileName1 fileName2 (mfp,ms) =
       case GHC.ml_hs_file $ GHC.ms_location ms of
         Nothing -> False
         Just fn -> fn == fileName1 || fn == fileName2
+                   || mfp == Just fileName1
+                   || mfp == Just fileName2
 
     r' = listToMaybe $ catMaybes [r,re]
 
@@ -181,9 +188,9 @@ findInTarget f1 f2 (fps,graph) = r'
 -- target is the currently loaded one
 
 activateModule :: TargetModule -> RefactGhc GHC.ModSummary
-activateModule (target, modSum) = do
+activateModule tm@(target, (_,modSum)) = do
   logm $ "activateModule:" ++ show (target,GHC.ms_mod modSum)
-  newModSum <- ensureTargetLoaded (target,modSum)
+  newModSum <- ensureTargetLoaded tm
   getModuleDetails newModSum
   return newModSum
 
@@ -196,23 +203,26 @@ activateModule (target, modSum) = do
 -- it does
 getModuleDetails :: GHC.ModSummary -> RefactGhc ()
 getModuleDetails modSum = do
-      p <- GHC.parseModule modSum
-      t <- GHC.typecheckModule p
+  logm $ "getModuleDetails:modSum=" ++ show modSum
+  p <- GHC.parseModule modSum
+  t <- GHC.typecheckModule p
 
-      setGhcContext modSum
+  logm $ "getModuleDetails:setting context.."
+  setGhcContext modSum
+  logm $ "getModuleDetails:context set"
 
-      mtm <- gets rsModule
-      case mtm of
-        Just tm -> if ((rsStreamModified tm == RefacUnmodifed)
-                      && True)
-                     then return ()
-                     else if rsStreamModified tm == RefacUnmodifed
-                            then putParsedModule t
-                            else error $ "getModuleDetails: trying to load a module without finishing with active one."
+  mtm <- gets rsModule
+  case mtm of
+    Just tm -> if ((rsStreamModified tm == RefacUnmodifed)
+                  && True)
+                 then return ()
+                 else if rsStreamModified tm == RefacUnmodifed
+                        then putParsedModule t
+                        else error $ "getModuleDetails: trying to load a module without finishing with active one."
 
-        Nothing -> putParsedModule t
+    Nothing -> putParsedModule t
 
-      return ()
+  return ()
 
 -- ---------------------------------------------------------------------
 
@@ -436,7 +446,7 @@ writeRefactoredFiles verbosity files
 
 -- TODO: deal with an anonymous main module, by taking Maybe GHC.ModuleName
 clientModsAndFiles
-  :: GHC.ModuleName -> RefactGhc [([FilePath],GHC.ModSummary)]
+  :: GHC.ModuleName -> RefactGhc [TargetModule]
 clientModsAndFiles m = do
   modsum <- GHC.getModSummary m
 
@@ -462,10 +472,13 @@ clientModsAndFiles m = do
         = if (show $ GHC.ms_mod mg1) == "Main" || (show $ GHC.ms_mod mg2) == "Main"
             then False
             else mycomp mg1 mg2
-
+      cms (fps,ms) = do
+        ms' <- canonicalizeModSummary ms
+        return (fps,ms')
   logm $ "clientModsAndFiles:clients=" ++ show clients
   logm $ "clientModsAndFiles:clients'=" ++ show clients'
-  return clients'
+  clients'' <- mapM cms clients'
+  return clients''
 
 -- TODO : find decent name and place for this.
 mycomp :: GHC.ModSummary -> GHC.ModSummary -> Bool

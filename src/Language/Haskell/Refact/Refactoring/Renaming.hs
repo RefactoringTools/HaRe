@@ -214,8 +214,8 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
 
 
 renameInClientMod :: GHC.Name -> String -> GHC.Name -> TargetModule
- -> RefactGhc [ApplyRefacResult]
-renameInClientMod oldPN newName newNameGhc targetModule@(_,modSummary) = do
+                  -> RefactGhc [ApplyRefacResult]
+renameInClientMod oldPN newName newNameGhc targetModule@(_,(_,modSummary)) = do
       logm $ "renameInClientMod:(oldPN,newNameGhc,modSummary)=" ++ (showGhc (oldPN,newNameGhc,targetModule)) -- ++AZ++
       void $ activateModule targetModule
       {- ++AZ++ debug stuff -}
