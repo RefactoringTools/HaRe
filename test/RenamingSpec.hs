@@ -26,10 +26,10 @@ spec = do
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "Renaming/D1.hs"
-                   , "Renaming/C1.hs"
+     r' `shouldBe` [ "./Renaming/D1.hs"
+                   , "./Renaming/C1.hs"
                    , "Renaming/A1.hs"
-                   , "Renaming/B1.hs"
+                   , "./Renaming/B1.hs"
                    ]
 
      diffD <- ct $ compareFiles "./Renaming/D1.hs.expected"
@@ -56,10 +56,10 @@ spec = do
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "Renaming/D2.hs"
-                   , "Renaming/C2.hs"
+     r' `shouldBe` [ "./Renaming/D2.hs"
+                   , "./Renaming/C2.hs"
                    , "Renaming/A2.hs"
-                   , "Renaming/B2.hs"
+                   , "./Renaming/B2.hs"
                    ]
 
      diffD <- ct $  compareFiles "./Renaming/D2.hs.expected"
@@ -87,10 +87,10 @@ spec = do
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "Renaming/D3.hs"
-                   , "Renaming/C3.hs"
+     r' `shouldBe` [ "./Renaming/D3.hs"
+                   , "./Renaming/C3.hs"
                    , "Renaming/A3.hs"
-                   , "Renaming/B3.hs"
+                   , "./Renaming/B3.hs"
                    ]
 
      diffD <- ct $ compareFiles "./Renaming/D3.hs.expected"
@@ -118,10 +118,10 @@ spec = do
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "Renaming/D4.hs"
-                   , "Renaming/C4.hs"
+     r' `shouldBe` [ "./Renaming/D4.hs"
+                   , "./Renaming/C4.hs"
                    , "Renaming/A4.hs"
-                   , "Renaming/B4.hs"
+                   , "./Renaming/B4.hs"
                   ]
 
      diffD <- ct $ compareFiles "./Renaming/D4.hs.expected"
@@ -150,10 +150,10 @@ spec = do
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "Renaming/D5.hs"
-                   , "Renaming/C5.hs"
+     r' `shouldBe` [ "./Renaming/D5.hs"
+                   , "./Renaming/C5.hs"
                    , "Renaming/A5.hs"
-                   , "Renaming/B5.hs"
+                   , "./Renaming/B5.hs"
                    ]
 
      diffD <- ct $ compareFiles "./Renaming/D5.hs.expected"
@@ -181,7 +181,7 @@ spec = do
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "Renaming/D7.hs"
+     r' `shouldBe` [ "./Renaming/D7.hs"
                    , "Renaming/C7.hs"
                    ]
 
@@ -457,7 +457,7 @@ spec = do
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` ["Renaming/QualServer.hs",
+     r' `shouldBe` ["./Renaming/QualServer.hs",
                     "Renaming/QualClient.hs"
                   ]
 

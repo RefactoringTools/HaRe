@@ -397,7 +397,7 @@ loadModuleGraphGhc maybeTargetFiles = do
       let opts' = opts ++ ["-O0"] --  ++ ghcUserOptions
 
       initGmlSession opts' $
-          setModeSimple >>> setEmptyLogger >>> return -- >>> mdf
+          setModeSimple >>> setEmptyLogger >>> setDynFlags -- return -- >>> mdf
 
       ----------------------------------
       loadTarget targetFiles
