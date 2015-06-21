@@ -12,6 +12,7 @@ Executable foo
 
 Executable m
   Main-Is: M.hs
+  Hs-Source-Dirs:       .
   Build-Depends:          base >= 4.0  && < 4.9
                         , syb
 

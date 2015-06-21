@@ -41,7 +41,7 @@ spec = do
 
   describe "locToExp on ParsedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
-      (t, _toks,_) <- parsedFileBGhc
+      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just expr) = locToExp (7,7) (7,43) parsed :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
@@ -50,7 +50,7 @@ spec = do
 
     it "finds the largest leftmost expression contained in a given region #2" $ do
       -- ((_, _, mod), toks) <- parsedFileBGhc
-      (t, _toks,_) <- parsedFileBGhc
+      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just expr) = locToExp (7,7) (7,41) modu :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
@@ -59,7 +59,7 @@ spec = do
 
     it "finds the largest leftmost expression in RenamedSource" $ do
       -- ((_, renamed, _), toks) <- parsedFileBGhc
-      (t, _toks,_) <- parsedFileBGhc
+      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let (Just expr) = locToExp (7,7) (7,41) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
@@ -69,7 +69,7 @@ spec = do
   describe "locToExp on RenamedSource" $ do
     it "finds the largest leftmost expression contained in a given region #1" $ do
       -- ((_, Just renamed, _), toks) <- parsedFileBGhc
-      (t, _toks,_) <- parsedFileBGhc
+      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let (Just expr) = locToExp (7,7) (7,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
@@ -112,7 +112,7 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"test/testdata/cabal/cabal1/src/Foo/Bar.hs\","++
+      (show r') `shouldBe` "[\"src/Foo/Bar.hs\","++
                             "\"test/testdata/cabal/cabal1/src/main.hs\"]"
 
 
@@ -144,9 +144,9 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"test/testdata/cabal/cabal2/src/Foo/Bar.hs\","++
-                            "\"test/testdata/cabal/cabal2/src/main2.hs\","++
-                            "\"test/testdata/cabal/cabal2/src/main1.hs\"]"
+      (show r') `shouldBe` "[\"src/Foo/Bar.hs\","++
+                            "\"test/testdata/cabal/cabal2/src/main1.hs\","++
+                            "\"test/testdata/cabal/cabal2/src/main2.hs\"]"
 
   -- -----------------------------------
 
@@ -315,7 +315,7 @@ spec = do
   describe "getModuleName" $ do
     it "returns a string for the module name if there is one" $ do
       -- modInfo@((_, _, mod), toks) <- parsedFileBGhc
-      (t, _toks,_) <- parsedFileBGhc
+      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just (_modname,modNameStr)) = getModuleName modu
@@ -344,29 +344,31 @@ spec = do
 
     it "gets modules which directly or indirectly import a module #1" $ do
       -- TODO: harvest this commonality
-      (t, toks,tgt) <- ct $ parsedFileGhc "./M.hs"
+      -- (t, toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
          -- (_p,_toks) <- parseSourceFileTest "./M.hs"  -- Load the main file first
+         loadModuleGraphGhc $ Just ["./M.hs"]
+         -- getModuleGhc "./M3.hs"
          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          return g
-      -- (mg,_s) <- ct $ runRefactGhcState comp
-      (mg,_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      -- (mg,_s) <- ct $ runRefactGhcStateLog comp Debug
-      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[M2, M3, Main, Main]"
+      (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
+      -- (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialLogOnState testOptions
+      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[M2, M3, Main]"
 
     ------------------------------------
 
     it "gets modules which directly or indirectly import a module #2" $ do
-      (t,toks,tgt) <- parsedFileGhc "./M.hs"
+      -- (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
          -- (_p,_toks) <- parseSourceFileTest "./M.hs" -- Load the main file first
+         loadModuleGraphGhc $ Just ["./M.hs"]
+         getModuleGhc "./M3.hs"
          g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          return g
-      -- (mg,_s) <- ct $ runRefactGhcState comp
-      (mg,_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[Main, Main]"
+      (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
+      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[Main]"
 
     ------------------------------------
 
@@ -375,22 +377,21 @@ spec = do
       -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
       setCurrentDirectory "./test/testdata/cabal/cabal2"
       -- d <- getCurrentDirectory
-      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
-      cradle <- findCradle
+      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
+      -- cradle <- findCradle
       -- (show cradle) `shouldBe` ""
       -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
 
-      (t,toks,tgt) <- parsedFileGhc "./src/main1.hs"
       let
         comp = do
-         initGhcSession []
-         -- initGhcSession cradle (rsetImportPaths logSettings)
+         initGhcSession
          -- getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
          g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
          return g
       -- (mg,_s) <- runRefactGhcState comp
-      (mg,_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[Main, Main, Main, Main]"
+      -- (mg,_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (mg,_s) <- runRefactGhc comp [Left "./src/main1.hs"] (initialState { rsModule = Nothing }) testOptions
+      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[Main, Main]"
 
       setCurrentDirectory currentDir
 
@@ -401,26 +402,27 @@ spec = do
       pending  -- "write this test"
 
     it "gets modules which are directly or indirectly imported by a module #1" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
+      -- (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
          -- (_p,_toks) <- parseFileMGhc -- Load the main file first
          g <- serverModsAndFiles $ GHC.mkModuleName "S1"
          return g
       -- (mg,_s) <- ct $ runRefactGhcState comp
-      (mg,_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
+      -- (mg,_s) <- ct $ runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       showGhc (map GHC.ms_mod mg) `shouldBe` "[]"
 
     it "gets modules which are directly or indirectly imported by a module #2" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./M3.hs"
+      -- (t,toks,tgt) <- ct $ parsedFileGhc "./M3.hs"
       let
         comp = do
          -- (_p,_toks) <- parseFileMGhc -- Load the main file first
          g <- serverModsAndFiles $ GHC.mkModuleName "M3"
          return g
       -- (mg,_s) <- ct $ runRefactGhcState comp
-      (mg,_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      showGhc (map GHC.ms_mod mg) `shouldBe` "[main:M2, main:S1]"
+      (mg,_s) <- ct $ runRefactGhc comp [Left "./M3.hs"] initialState testOptions
+      showGhc (map GHC.ms_mod mg) `shouldBe` "[M2, S1]"
 
 
   -- -------------------------------------------------------------------
@@ -456,71 +458,64 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "getModuleGhc" $ do
-    it "retrieves a module from an existing module graph" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
+    it "retrieves a module from an existing module graph #1" $ do
+      -- (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
           loadModuleGraphGhc $ Just ["./M.hs"]
-          getModuleGhc "./test/testdata/S1.hs"
+          -- getModuleGhc "./test/testdata/S1.hs"
+          getModuleGhc "./S1.hs"
           pr <- getTypecheckedModule
-          toks <- fetchOrigToks
           g <- clientModsAndFiles $ GHC.mkModuleName "S1"
 
-          return ((pr,toks),g)
+          return (pr,g)
 
-      -- (( ( (t,_)), mg ), _s) <- ct $ runRefactGhcState comp
-      (( ( (t,_)), mg ), _s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ( (t, mg), _s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:M2, main:M3, main:Main]"
+      (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
+      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[M2, M3, Main]"
 
     -- ---------------------------------
 
     it "loads the module and dependents if no existing module graph" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./S1.hs"
+      -- (t,toks,tgt) <- ct $ parsedFileGhc "./S1.hs"
       let
         comp = do
           getModuleGhc "./S1.hs"
           pr <- getTypecheckedModule
-          toks <- fetchOrigToks
           g <- clientModsAndFiles $ GHC.mkModuleName "S1"
 
-          return ((pr,toks),g)
-      -- (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
-      -- (( ( (t,_)), mg ), _s) <- ct $ runRefactGhcState comp
-      (( ( (t,_)), mg ), _s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+          return (pr,g)
+      ((t, mg ), _s) <- ct $ runRefactGhc comp [Left "./S1.hs"] initialState testOptions
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      (show $ getModuleName parsed) `shouldBe` "Just (S1,\"S1\")"
-      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[]"
+      (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
+      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[]"
 
     -- ---------------------------------
 
     it "retrieves a module from an existing module graph #2" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/DupDef/Dd2.hs"
+      -- (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/DupDef/Dd2.hs"
       let
         comp = do
-          loadModuleGraphGhc $ Just ["./test/testdata/DupDef/Dd2.hs"]
-          getModuleGhc "./test/testdata/DupDef/Dd1.hs"
+          loadModuleGraphGhc $ Just ["./DupDef/Dd2.hs"]
+          getModuleGhc "./DupDef/Dd1.hs"
           pr <- getTypecheckedModule
-          toks <- fetchOrigToks
           g <- clientModsAndFiles $ GHC.mkModuleName "DupDef.Dd1"
 
-          return ((pr,toks),g)
-      -- (( ( ((_,_,parsed),_)), mg ), _s) <- runRefactGhcState comp
-      -- (( ( (t,_)), mg ), _s) <- runRefactGhcState comp
-      (( ( (t,_)), mg ), _s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+          return (pr,g)
+      ((t, mg), _s) <- ct $ runRefactGhc comp [Left "DupDef/Dd2.hs"] initialState testOptions
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      (show $ getModuleName parsed) `shouldBe` "Just (DupDef.Dd1,\"DupDef.Dd1\")"
-      showGhc (map (GHC.ms_mod . snd) mg) `shouldBe` "[main:DupDef.Dd2]"
+      (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"DupDef.Dd1\",\"DupDef.Dd1\")"
+      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[DupDef.Dd2]"
 
 
   -- -------------------------------------------------------------------
 
   describe "runRefactGhc" $ do
     it "contains a State monad" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/TypeUtils/B.hs"
+      -- (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/TypeUtils/B.hs"
       let
        comp = do
         s <- get
@@ -534,11 +529,11 @@ spec = do
         return (show gs)
 
       -- (_,s) <- runRefactGhcState comp
-      (_,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      (_,s) <- ct $ runRefactGhc comp [Left "TypeUtils/B.hs"] (initialState { rsModule = Nothing }) testOptions
       (rsUniqState s) `shouldBe` 100
 
     it "contains the GhcT monad" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/TypeUtils/B.hs"
+      -- (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/TypeUtils/B.hs"
       let
        comp = do
         s <- get
@@ -552,12 +547,9 @@ spec = do
         return (show gs)
 
       -- (r,_) <- runRefactGhcState comp
-      (r,_) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
-      r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, interpreted )\""
-                  ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, interpreted )\"]")
-      -- r `shouldBe` ("[\"TypeUtils.B      ( test/testdata/TypeUtils/B.hs, nothing )\""
-      --             ++",\"TypeUtils.C      ( test/testdata/TypeUtils/C.hs, nothing )\"]")
-
+      (r,_) <- ct $ runRefactGhc comp [Left "TypeUtils/B.hs"] (initialState { rsModule = Nothing }) testOptions
+      r `shouldBe` ("[\"TypeUtils.B      ( TypeUtils/B.hs, nothing )\","
+                   ++"\"TypeUtils.C      ( TypeUtils/C.hs, nothing )\"]")
 
   -- -------------------------------------------------------------------
 
@@ -574,7 +566,7 @@ spec = do
 
           return (v1,v2,v3)
       -- ((v1',v2',v3'), _s) <- runRefactGhcState comp
-      ((v1',v2',v3'), _s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((v1',v2',v3'), _s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show (v1',v2',v3')) `shouldBe` "(False,False,True)"
 

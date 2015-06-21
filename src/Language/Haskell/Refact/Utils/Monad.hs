@@ -280,7 +280,8 @@ initGhcSession = do
     logm $ "initGhcSession:cr=" ++ show cr
     case cradleCabalFile cr of
       Just cabalFile -> do
-        targets <- getCabalAllTargets cr cabalFile
+        -- targets <- getCabalAllTargets cr cabalFile
+        targets <- cabalAllTargets cr
         logm $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
@@ -329,7 +330,6 @@ cabalAllTargets crdl = RefactGhc (GmlT $ cabalOpts crdl)
         --mcs:: (Map.Map ChComponentName (GmComponent GMCResolved (Set.Set ModulePath)))
 
         let entrypoints = Map.toList $ Map.map gmcEntrypoints mcs
-            -- graphs      = Map.map gmcHomeModuleGraph mcs
             isExe (ChExeName _,_)     = True
             isExe _                   = False
             isLib (ChLibName,_)       = True
@@ -353,36 +353,6 @@ cabalAllTargets crdl = RefactGhc (GmlT $ cabalOpts crdl)
 
 -- ---------------------------------------------------------------------
 
-getCabalAllTargets :: Cradle -> FilePath -> RefactGhc ([FilePath],[FilePath],[FilePath],[FilePath])
-getCabalAllTargets cr cabalFile = do
-   (libs,exes,tests,benches) <- cabalAllTargets cr
-   return (libs,exes,tests,benches)
-
-{-
-getCabalAllTargets :: Cradle -> FilePath -> RefactGhc ([FilePath],[FilePath],[FilePath],[FilePath])
-getCabalAllTargets cr cabalFile = do
-   currentDir <- liftIO getCurrentDirectory
-   -- let cabalDir = gfromJust "getCabalAllTargets" (cradleCabalDir cradle)
-   let cabalDir = cradleRootDir cr
-
-   liftIO $ setCurrentDirectory cabalDir
-
-   pkgDesc <- parseCabalFile cr cabalFile
-   (libs,exes,tests,benches) <- liftIO $ cabalAllTargets pkgDesc
-   liftIO $ setCurrentDirectory currentDir
-
-   let libs'    = filter (\l -> not (isPrefixOf "Paths_" l)) libs
-       exes'    = addCabalDir exes
-       tests'   = addCabalDir tests
-       benches' = addCabalDir benches
-
-       addCabalDir ts = map (\t -> combine cabalDir t) ts
-
-   return (libs',exes',tests',benches')
--}
-
--- ---------------------------------------------------------------------
-
 -- | Load a module graph into the GHC session, starting from main
 loadModuleGraphGhc ::
   Maybe [FilePath] -> RefactGhc ()
@@ -397,12 +367,10 @@ loadModuleGraphGhc maybeTargetFiles = do
       let opts' = opts ++ ["-O0"] --  ++ ghcUserOptions
 
       initGmlSession opts' $
-          setModeSimple >>> setEmptyLogger >>> setDynFlags -- return -- >>> mdf
-
+          setModeSimple >>> setEmptyLogger >>> setDynFlags
       ----------------------------------
+
       loadTarget targetFiles
-      -- setTargetFiles [targetFile]
-      -- void $ GHC.load GHC.LoadAllTargets
 
       graph <- GHC.getModuleGraph
       cgraph <- canonicalizeGraph graph
@@ -476,6 +444,7 @@ ensureTargetLoaded (target,(_,modSum)) = do
 canonicalizeGraph ::
   [GHC.ModSummary] -> RefactGhc [(Maybe FilePath, GHC.ModSummary)]
 canonicalizeGraph graph = do
+  {-
   let mm = map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
       canon ((Just fp),m) = do
         fp' <- canonicalizePath fp
@@ -483,7 +452,8 @@ canonicalizeGraph graph = do
       canon (Nothing,m)  = return (Nothing,m)
 
   mm' <- mapM (liftIO . canon) mm
-
+  -}
+  mm' <- mapM canonicalizeModSummary graph
   return mm'
 
 canonicalizeModSummary ::
