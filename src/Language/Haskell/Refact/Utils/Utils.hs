@@ -1,10 +1,11 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UndecidableInstances #-} -- for GHC.DataId
 
 module Language.Haskell.Refact.Utils.Utils
@@ -26,38 +27,45 @@ module Language.Haskell.Refact.Utils.Utils
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
+
+       -- * For testing
+       , initGhcSession
        ) where
 
 import Control.Monad.State
-
 import Data.List
 import Data.Maybe
-
+import Distribution.Helper
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
-
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal (gmSetLogLevel,GmLogLevel(..))
-
-import Language.Haskell.Refact.Utils.GhcBugWorkArounds
+import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
+import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
--- import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Variables
-
 import System.Directory
 import System.FilePath.Posix
+import System.Log.Logger
+import qualified Data.Generics as SYB
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 import qualified Digraph       as GHC
---import qualified FastString    as GHC
-import qualified GHC
-import qualified Outputable    as GHC
+import qualified DynFlags      as GHC
+import qualified GHC           as GHC
+import qualified GHC.Paths     as GHC
+import qualified GhcMonad      as GHC
+import qualified HscTypes      as GHC
+import qualified GHC           as GHC
 
-import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
+import qualified Language.Haskell.GhcMod.Internal as GM
+import qualified Outputable    as GHC
 
 -- import Debug.Trace
 
@@ -275,7 +283,7 @@ runRefacSession settings opt targets comp = do
         , rsModule        = Nothing
         }
 
-    comp' = initGhcSession >> comp
+    comp' = initGhcSession targets >> comp
     -- comp' = gmSetLogLevel GmError >> comp
   (refactoredMods,_s) <- runRefactGhc comp' targets initialState opt
 
@@ -337,6 +345,113 @@ refactDone rs = any (\((_,d),_) -> d == RefacModified) rs
 modifiedFiles :: [ApplyRefacResult] -> [String]
 modifiedFiles refactResult = map (\((s,_),_) -> s)
                            $ filter (\((_,b),_) -> b == RefacModified) refactResult
+-- ---------------------------------------------------------------------
+
+-- | Initialise the GHC session, when starting a refactoring.
+--   This should never be called directly.
+initGhcSession :: Targets -> RefactGhc ()
+initGhcSession tgts = do
+    logm $ "initGhcSession:entered with tgts:" ++ show tgts
+    settings <- getRefacSettings
+    df <- GHC.getSessionDynFlags
+    let df2 = GHC.gopt_set df GHC.Opt_KeepRawTokenStream
+    void $ GHC.setSessionDynFlags df2
+
+    -- liftIO $ putStrLn "initGhcSession:entered (IO)"
+    logm $ "initGhcSession:entered2"
+    cr <- cradle
+    logm $ "initGhcSession:cr=" ++ show cr
+    case cradleCabalFile cr of
+      Just cabalFile -> do
+        -- targets <- getCabalAllTargets cr cabalFile
+        targets <- cabalAllTargets cr
+        logm $ "initGhcSession:targets=" ++ show targets
+
+        -- TODO: Cannot load multiple main modules, must try to load
+        -- each main module and retrieve its module graph, and then
+        -- set the targets to this superset.
+
+        let targets' = getEnabledTargets settings targets
+
+        case targets' of
+          ([],[]) -> return ()
+          (libTgts,exeTgts) -> do
+                     -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show (libTgts,exeTgts))
+                     logm $ "initGhcSession:(libTgts,exeTgts)=" ++ (show (libTgts,exeTgts))
+                     -- setTargetFiles tgts
+                     -- void $ GHC.load GHC.LoadAllTargets
+
+                     mapM_ loadModuleGraphGhc $ map (\t -> Just [t]) exeTgts
+
+                     -- Load the library last, most likely in context
+                     case libTgts of
+                       [] -> return ()
+                       _ -> loadModuleGraphGhc (Just libTgts)
+
+                     -- moduleGraph <- gets rsModuleGraph
+                     -- logm $ "initGhcSession:rsModuleGraph=" ++ (show moduleGraph)
+
+      Nothing -> do
+          let maybeMainFile = rsetMainFile settings
+          loadModuleGraphGhc maybeMainFile
+          return()
+    -- load the first target is specified
+    case tgts of
+      [] -> return ()
+      _ -> case head tgts of
+             Left filename -> getModuleGhc filename
+             Right modname -> getModuleGhc (GHC.moduleNameString modname)
+
+    return ()
+
+-- ---------------------------------------------------------------------
+
+-- | Extracting all 'Module' 'FilePath's for libraries, executables,
+-- tests and benchmarks.
+cabalAllTargets :: Cradle -> RefactGhc ([String],[String],[String],[String])
+cabalAllTargets crdl = RefactGhc (GmlT $ cabalOpts crdl)
+  where
+    -- Note: This runs inside ghc-mod's GmlT monad
+    cabalOpts :: Cradle -> GhcModT (StateT RefactState IO) ([String],[String],[String],[String])
+    cabalOpts Cradle{..} = do
+        comps <- mapM (resolveEntrypoint crdl) =<< getComponents
+        mcs <- cached cradleRootDir resolvedComponentsCache comps
+        --mcs:: (Map.Map ChComponentName (GmComponent GMCResolved (Set.Set ModulePath)))
+
+        let entrypoints = Map.toList $ Map.map gmcEntrypoints mcs
+            isExe (ChExeName _,_)     = True
+            isExe _                   = False
+            isLib (ChLibName,_)       = True
+            isLib _                   = False
+            isTest (ChTestName _,_)   = True
+            isTest _                  = False
+            isBench (ChBenchName _,_) = True
+            isBench _                 = False
+            getTgts :: (ChComponentName,Set.Set ModulePath) -> [String]
+            getTgts (_,mps) = map mpPath $ Set.toList mps
+            -- exeTargets' :: [(ChComponentName,Set.Set ModulePath)]
+
+            exeTargets   = concatMap getTgts $ filter isExe entrypoints
+            libTargets   = concatMap getTgts $ filter isLib entrypoints
+            testTargets  = concatMap getTgts $ filter isTest entrypoints
+            benchTargets = concatMap getTgts $ filter isBench entrypoints
+        -- liftIO $ putStrLn $ "cabalOpts:mcs=" ++ show mcs
+        -- liftIO $ putStrLn $ "cabalOpts:entrypoints=" ++ show entrypoints
+        -- liftIO $ putStrLn $ "cabalOpts:graphs=" ++ show graphs
+        return (libTargets,exeTargets,testTargets,benchTargets)
+
+-- ---------------------------------------------------------------------
+
+getEnabledTargets :: RefactSettings -> ([FilePath],[FilePath],[FilePath],[FilePath]) -> ([FilePath],[FilePath])
+getEnabledTargets settings (libt,exet,testt,bencht) = (targetsLib,targetsExe)
+  where
+    (libEnabled, exeEnabled, testEnabled, benchEnabled) = rsetEnabledTargets settings
+    targetsLib = on libEnabled libt
+    targetsExe = on exeEnabled exet
+              ++ on testEnabled testt
+              ++ on benchEnabled bencht
+
+    on flag xs = if flag then xs else []
 
 -- ---------------------------------------------------------------------
 
@@ -473,8 +588,8 @@ clientModsAndFiles m = do
             then False
             else mycomp mg1 mg2
       cms (fps,ms) = do
-        ms' <- canonicalizeModSummary ms
-        return (fps,ms')
+        ms1 <- canonicalizeModSummary ms
+        return (fps,ms1)
   logm $ "clientModsAndFiles:clients=" ++ show clients
   logm $ "clientModsAndFiles:clients'=" ++ show clients'
   clients'' <- mapM cms clients'

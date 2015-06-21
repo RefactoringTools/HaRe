@@ -22,12 +22,12 @@ module Language.Haskell.Refact.Utils.Monad
        , StateStorage(..)
 
        -- The GHC Monad
-       , RefactGhc
+       , RefactGhc(..)
        , runRefactGhc
        , getRefacSettings
        , defaultSettings
        , logSettings
-       , initGhcSession
+       -- , initGhcSession
 
        , loadModuleGraphGhc
        , ensureTargetLoaded
@@ -264,95 +264,6 @@ instance ExceptionMonad (StateT RefactState IO) where
 
 -- ---------------------------------------------------------------------
 
--- | Initialise the GHC session, when starting a refactoring.
---   This should never be called directly.
-initGhcSession :: RefactGhc ()
-initGhcSession = do
-    logm $ "initGhcSession:entered"
-    settings <- getRefacSettings
-    df <- GHC.getSessionDynFlags
-    let df2 = GHC.gopt_set df GHC.Opt_KeepRawTokenStream
-    void $ GHC.setSessionDynFlags df2
-
-    -- liftIO $ putStrLn "initGhcSession:entered (IO)"
-    logm $ "initGhcSession:entered2"
-    cr <- cradle
-    logm $ "initGhcSession:cr=" ++ show cr
-    case cradleCabalFile cr of
-      Just cabalFile -> do
-        -- targets <- getCabalAllTargets cr cabalFile
-        targets <- cabalAllTargets cr
-        logm $ "initGhcSession:targets=" ++ show targets
-
-        -- TODO: Cannot load multiple main modules, must try to load
-        -- each main module and retrieve its module graph, and then
-        -- set the targets to this superset.
-
-        let targets' = getEnabledTargets settings targets
-
-        case targets' of
-          ([],[]) -> return ()
-          (libTgts,exeTgts) -> do
-                     -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show (libTgts,exeTgts))
-                     logm $ "initGhcSession:(libTgts,exeTgts)=" ++ (show (libTgts,exeTgts))
-                     -- setTargetFiles tgts
-                     -- void $ GHC.load GHC.LoadAllTargets
-
-                     mapM_ loadModuleGraphGhc $ map (\t -> Just [t]) exeTgts
-
-                     -- Load the library last, most likely in context
-                     case libTgts of
-                       [] -> return ()
-                       _ -> loadModuleGraphGhc (Just libTgts)
-
-                     -- moduleGraph <- gets rsModuleGraph
-                     -- logm $ "initGhcSession:rsModuleGraph=" ++ (show moduleGraph)
-
-      Nothing -> do
-          let maybeMainFile = rsetMainFile settings
-          loadModuleGraphGhc maybeMainFile
-          return()
-
-    return ()
-
--- ---------------------------------------------------------------------
-
--- | Extracting all 'Module' 'FilePath's for libraries, executables,
--- tests and benchmarks.
-cabalAllTargets :: Cradle -> RefactGhc ([String],[String],[String],[String])
-cabalAllTargets crdl = RefactGhc (GmlT $ cabalOpts crdl)
-  where
-    -- Note: This runs inside ghc-mod's GmlT monad
-    cabalOpts :: Cradle -> GhcModT (StateT RefactState IO) ([String],[String],[String],[String])
-    cabalOpts Cradle{..} = do
-        comps <- mapM (resolveEntrypoint crdl) =<< getComponents
-        mcs <- cached cradleRootDir resolvedComponentsCache comps
-        --mcs:: (Map.Map ChComponentName (GmComponent GMCResolved (Set.Set ModulePath)))
-
-        let entrypoints = Map.toList $ Map.map gmcEntrypoints mcs
-            isExe (ChExeName _,_)     = True
-            isExe _                   = False
-            isLib (ChLibName,_)       = True
-            isLib _                   = False
-            isTest (ChTestName _,_)   = True
-            isTest _                  = False
-            isBench (ChBenchName _,_) = True
-            isBench _                 = False
-            getTgts :: (ChComponentName,Set.Set ModulePath) -> [String]
-            getTgts (_,mps) = map mpPath $ Set.toList mps
-            -- exeTargets' :: [(ChComponentName,Set.Set ModulePath)]
-
-            exeTargets   = concatMap getTgts $ filter isExe entrypoints
-            libTargets   = concatMap getTgts $ filter isLib entrypoints
-            testTargets  = concatMap getTgts $ filter isTest entrypoints
-            benchTargets = concatMap getTgts $ filter isBench entrypoints
-        -- liftIO $ putStrLn $ "cabalOpts:mcs=" ++ show mcs
-        -- liftIO $ putStrLn $ "cabalOpts:entrypoints=" ++ show entrypoints
-        -- liftIO $ putStrLn $ "cabalOpts:graphs=" ++ show graphs
-        return (libTargets,exeTargets,testTargets,benchTargets)
-
--- ---------------------------------------------------------------------
-
 -- | Load a module graph into the GHC session, starting from main
 loadModuleGraphGhc ::
   Maybe [FilePath] -> RefactGhc ()
@@ -475,20 +386,6 @@ getRefacSettings :: RefactGhc RefactSettings
 getRefacSettings = do
   s <- get
   return (rsSettings s)
-
--- ---------------------------------------------------------------------
-
-getEnabledTargets :: RefactSettings -> ([FilePath],[FilePath],[FilePath],[FilePath]) -> ([FilePath],[FilePath])
-getEnabledTargets settings (libt,exet,testt,bencht) = (targetsLib,targetsExe)
-  where
-    (libEnabled, exeEnabled, testEnabled, benchEnabled) = rsetEnabledTargets settings
-    targetsLib = on libEnabled libt
-    targetsExe = on exeEnabled exet
-              ++ on testEnabled testt
-              ++ on benchEnabled bencht
-
-    on flag xs = if flag then xs else []
-
 
 -- ---------------------------------------------------------------------
 

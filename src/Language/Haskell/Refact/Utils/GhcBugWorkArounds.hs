@@ -29,7 +29,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Language.Haskell.GHC.ExactPrint.Types
-import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TypeSyn
 
 -- ---------------------------------------------------------------------
 

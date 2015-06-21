@@ -16,15 +16,15 @@ import Data.Maybe
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GHC.ExactPrint.Types
 
-import Language.Haskell.GhcMod
+-- import Language.Haskell.GhcMod
 
 import Language.Haskell.Refact.Refactoring.Renaming
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
+-- import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 
@@ -99,7 +99,7 @@ spec = do
       setCurrentDirectory "./test/testdata/cabal/cabal1"
       -- d <- getCurrentDirectory
       -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
-      cradle <- findCradle
+      -- cradle <- findCradle
       -- (show cradle) `shouldBe` ""
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False)
@@ -125,7 +125,7 @@ spec = do
       setCurrentDirectory "./test/testdata/cabal/cabal2"
       -- d <- getCurrentDirectory
       -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
-      cradle <- findCradle
+      -- cradle <- findCradle
       -- (show cradle) `shouldBe` ""
       -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
 
@@ -157,7 +157,7 @@ spec = do
       setCurrentDirectory "./test/testdata/cabal/cabal3"
       -- d <- getCurrentDirectory
       -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal3"
-      cradle <- findCradle
+      -- cradle <- findCradle
       -- (show cradle) `shouldBe` ""
       -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal3"
 
@@ -384,7 +384,7 @@ spec = do
 
       let
         comp = do
-         initGhcSession
+         initGhcSession [Left "./src/main1.hs"]
          -- getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
          g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
          return g
@@ -555,7 +555,7 @@ spec = do
 
   describe "RefactFlags" $ do
     it "puts the RefactDone flag through its paces" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
       let
         comp = do
           v1 <- getRefactDone
@@ -577,8 +577,8 @@ spec = do
 -- bFileName :: GHC.FastString
 -- bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
 
-parsedFileBGhc :: IO (ParseResult,[PosToken],Targets)
-parsedFileBGhc = ct $ parsedFileGhc "./TypeUtils/B.hs"
+-- parsedFileBGhc :: IO (ParseResult,[PosToken],Targets)
+-- parsedFileBGhc = ct $ parsedFileGhc "./TypeUtils/B.hs"
 
 -- parsedFileMGhc :: IO (ParseResult,[PosToken],Targets)
 -- parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
@@ -588,10 +588,10 @@ parsedFileBGhc = ct $ parsedFileGhc "./TypeUtils/B.hs"
 --   where
 --     fileName = "./test/testdata/TypeUtils/B.hs"
 
-parseFileMGhc :: RefactGhc (ParseResult, [PosToken],Targets)
-parseFileMGhc = parseSourceFileTest fileName
-  where
-    fileName = "./M.hs"
+-- parseFileMGhc :: RefactGhc (ParseResult, [PosToken],Targets)
+-- parseFileMGhc = parseSourceFileTest fileName
+--   where
+--     fileName = "./M.hs"
 
 
 parsedFileNoMod :: IO (ParseResult,[PosToken],Targets)

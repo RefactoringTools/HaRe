@@ -17,7 +17,7 @@ module Language.Haskell.Refact.API
        , getRefacSettings
        , defaultSettings
        , logSettings
-       , initGhcSession
+       -- , initGhcSession
 
        , loadModuleGraphGhc
        , ensureTargetLoaded

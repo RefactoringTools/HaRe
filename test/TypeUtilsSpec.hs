@@ -2951,8 +2951,8 @@ spec = do
   -- ---------------------------------------------
 
   describe "isExported" $ do
-    it "Returns True if a GHC.Name is exported" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/B1.hs"
+    it "returns True if a GHC.Name is exported" $ do
+      -- (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/B1.hs"
 
       let
         comp = do
@@ -2968,8 +2968,7 @@ spec = do
          exSumSquares <- isExported sumSquares
 
          return (myFringe,exMyFring,sumSquares,exSumSquares)
-      -- ((mf,emf,ss,ess),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
-      ((mf,emf,ss,ess),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((mf,emf,ss,ess),_s) <- ct $ runRefactGhc comp [Left "./Renaming/B1.hs"] initialState testOptions
 
       (showGhcQual mf) `shouldBe` "Renaming.B1.myFringe"
       emf `shouldBe` True
