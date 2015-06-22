@@ -97,8 +97,7 @@ parsedFileGhc fileName = do
     comp = do
        res <- parseSourceFileTest fileName
        return res
-  (parseResult,_s) <- runRefactGhcStateLog comp [Left fileName] Normal
-  -- (parseResult,_s) <- runRefactGhcState comp
+  (parseResult,_s) <- runRefactGhcStateLog comp fileName Normal
   return parseResult
 
 -- ---------------------------------------------------------------------
@@ -112,7 +111,7 @@ parsedFileGhcCd path fileName = do
        return res
     newDir = setCurrentDirectory path
     oldDir _ = setCurrentDirectory old
-  (parseResult,_s) <- GHC.gbracket newDir oldDir $ \_ -> runRefactGhcState comp [Left fileName]
+  (parseResult,_s) <- GHC.gbracket newDir oldDir $ \_ -> runRefactGhcState comp fileName
   return parseResult
 
 -- ---------------------------------------------------------------------
@@ -183,35 +182,33 @@ mkTokenCache :: a -> TokenCache a
 mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 
 -- ---------------------------------------------------------------------
-{-
-getTestDynFlags :: IO GHC.DynFlags
-getTestDynFlags = do
-  (df,_) <- runTestGhc $ GHC.getSessionDynFlags
-  return df
--}
--- ---------------------------------------------------------------------
 
-runLogTestGhc :: RefactGhc a -> Targets -> IO (a, RefactState)
-runLogTestGhc comp targets = do
-   res <- runRefactGhc comp targets initialLogOnState testOptions
-   return res
+runTestInternal :: RefactGhc a -> FilePath -> RefactState -> Options
+                -> IO (a, RefactState)
+runTestInternal comp fileName state opts =
+  runRefactGhc (initGhcSession [Left fileName] >> comp) [Left fileName] state opts
 
 -- ---------------------------------------------------------------------
 
-runTestGhc :: RefactGhc a -> Targets -> IO (a, RefactState)
-runTestGhc comp targets = do
-   res <- runRefactGhc comp targets initialState testOptions
-   return res
+runLogTestGhc :: RefactGhc a -> FilePath -> IO (a, RefactState)
+runLogTestGhc comp fileName =
+   runTestInternal comp fileName initialLogOnState testOptions
 
 -- ---------------------------------------------------------------------
 
-runRefactGhcState :: RefactGhc t -> Targets -> IO (t, RefactState)
-runRefactGhcState comp targets = runRefactGhcStateLog comp targets Normal
+runTestGhc :: RefactGhc a -> FilePath -> IO (a, RefactState)
+runTestGhc comp fileName = do
+   runTestInternal comp fileName initialState testOptions
 
 -- ---------------------------------------------------------------------
 
-runRefactGhcStateLog :: RefactGhc t -> Targets -> VerboseLevel -> IO (t, RefactState)
-runRefactGhcStateLog comp targets logOn  = do
+runRefactGhcState :: RefactGhc t -> FilePath -> IO (t, RefactState)
+runRefactGhcState comp fileName = runRefactGhcStateLog comp fileName Normal
+
+-- ---------------------------------------------------------------------
+
+runRefactGhcStateLog :: RefactGhc t -> FilePath -> VerboseLevel -> IO (t, RefactState)
+runRefactGhcStateLog comp fileName logOn  = do
   let
      initState = RefSt
         { rsSettings = defaultTestSettings { rsetVerboseLevel = logOn }
@@ -224,11 +221,7 @@ runRefactGhcStateLog comp targets logOn  = do
         , rsCurrentTarget = Nothing
         , rsModule = Nothing
         }
-  -- putStrLn "runRefactGhcStateLog:about to runRefactGhc"
-  -- (r,s) <- runRefactGhc (initGhcSession (rsetImportPaths defaultTestSettings) >>
-  --                                               paramcomp) initState testOptions
-  (r,s) <- runRefactGhc comp targets initState testOptions
-  return (r,s)
+  runTestInternal comp fileName initState testOptions
 
 -- ---------------------------------------------------------------------
 
@@ -239,22 +232,7 @@ testOptions = defaultOptions
 
 testCradle :: Cradle
 testCradle = Cradle "./test/testdata/" "./test/testdata/" "/tmp" Nothing []
-{-
 
--- | The environment where this library is used.
-data Cradle = Cradle {
-  -- | The directory where this library is executed.
-    cradleCurrentDir :: FilePath
-  -- | The project root directory.
-  , cradleRootDir    :: FilePath
-  -- | Per-Project temporary directory
-  , cradleTempDir    :: FilePath
-  -- | The file name of the found cabal file.
-  , cradleCabalFile  :: Maybe FilePath
-  -- | Package database stack
-  , cradlePkgDbStack  :: [GhcPkgDb]
-  } deriving (Eq, Show)
--}
 -- ---------------------------------------------------------------------
 
 defaultTestSettings :: RefactSettings

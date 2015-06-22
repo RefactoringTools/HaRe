@@ -4,11 +4,19 @@ Author: Alan Zimmerman
 Maintainer: Alan Zimmerman
 Cabal-Version: >= 1.8
 Build-Type: Simple
+
 Executable foo
   Main-Is: TokenTest.hs
   Build-Depends:          base >= 4.0  && < 4.9
                         , syb
 
+Executable dd2
+  Main-Is: DupDef/Dd2.hs
+  Build-Depends:          base >= 4.0  && < 4.9
+                        , syb
+Executable dd3
+  Main-Is: DupDef/Dd3.hs
+  Build-Depends:          base >= 4.0  && < 4.9
 
 Executable m
   Main-Is: M.hs

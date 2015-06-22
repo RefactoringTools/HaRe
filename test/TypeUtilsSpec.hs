@@ -13,8 +13,8 @@ import qualified Module     as GHC
 
 import Data.Maybe
 
-import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Types
+-- import Language.Haskell.GHC.ExactPrint
+-- import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.Refact.Utils.Binds
@@ -22,7 +22,7 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
@@ -412,7 +412,7 @@ spec = do
   describe "hsFreeAndDeclaredPNs" $ do
 
     it "finds declared in type class definitions" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
       -- (SYB.showData SYB.Renamer 0 $ hsTyDecls renamed) `shouldBe` ""
@@ -439,7 +439,7 @@ spec = do
     -- ---------------------------------
 
     it "finds declared HsVar" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -515,7 +515,7 @@ spec = do
     -- ---------------------------------
 
     it "finds free and declared in a single bind PrefixCon" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -543,7 +543,7 @@ spec = do
     -- ---------------------------------
 
     it "finds free and declared in a single bind InfixCon" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -570,7 +570,7 @@ spec = do
     -- ---------------------------------
 
     it "finds free and declared in a single bind RecCon" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareRec.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareRec.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -598,7 +598,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "hsFreeAndDeclaredPNs simplest" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
       let
@@ -617,7 +617,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "finds free and declared in a single bind #2" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tup = getName "DupDef.Dd1.ff" renamed
@@ -645,7 +645,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "finds free and declared at the top level 1" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn1.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let
@@ -668,7 +668,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "finds free and declared at the top level 2" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./Renaming/IdIn3.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./Renaming/IdIn3.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let
@@ -694,7 +694,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "finds free and declared in a GRHSs" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./LiftOneLevel/LetIn2.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./LiftOneLevel/LetIn2.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tup = getName "LiftOneLevel.LetIn2.sumSquares" renamed
@@ -749,7 +749,7 @@ spec = do
     -- ---------------------------------
 
     it "returns [] if e does not occur in t" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tl1  = locToExp (4,13) (4,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
@@ -767,7 +767,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "returns visible vars if e does occur in t #1" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -794,7 +794,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "returns visible vars if e does occur in t #2" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
@@ -864,7 +864,7 @@ spec = do
 
   describe "hsVisibleDs" $ do
     it "finds function arguments visible in RHS 1" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -891,7 +891,7 @@ spec = do
     -- -----------------------------------
 
     it "finds function arguments visible in RHS 2" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -916,7 +916,7 @@ spec = do
     -- -----------------------------------
 
     it "finds visible vars inside a function" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -940,7 +940,7 @@ spec = do
     -- -----------------------------------
 
     it "finds visible vars inside a data declaration" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./Renaming/D1.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Renaming/D1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -965,7 +965,7 @@ spec = do
 
   describe "hsFreeAndDeclaredGhc" $ do
     it "finds function arguments visible in RHS fd" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -989,7 +989,7 @@ spec = do
     -- -----------------------------------
 
     it "finds function arguments and free vars visible in RHS" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -1016,7 +1016,7 @@ spec = do
     -- -----------------------------------
 
     it "finds imported functions used in the rhs" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -1039,7 +1039,7 @@ spec = do
     -- -----------------------------------
 
     it "finds free vars in HsWithBndrs" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Binders.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Binders.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -1074,7 +1074,7 @@ spec = do
     -- -----------------------------------
 
     it "finds free vars in TH files" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./TH/Main.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./TH/Main.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
@@ -1165,7 +1165,7 @@ spec = do
 
   describe "isTopLevelPN" $ do
     it "returns False if the name is not defined at the top level of the module" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
           renamed <- getRefactRenamed
@@ -1178,7 +1178,7 @@ spec = do
       tl `shouldBe` False
 
     it "returns True if the name is defined at the top level of the module" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
           renamed <- getRefactRenamed
@@ -1252,7 +1252,7 @@ spec = do
 
   describe "isInScopeAndUnqualifiedGhc" $ do
     it "True if the identifier is in scope and unqualified" $ do
-      (t,toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          ctx <- GHC.getContext
@@ -1267,8 +1267,10 @@ spec = do
       r2 `shouldBe` True
       r3 `shouldBe` False
 
+    -- ---------------------------------
+
     it "Requires qualification on name clash with an import" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc  "./ScopeAndQual.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc  "./ScopeAndQual.hs"
       let
         comp = do
          -- (t,toks) <- parseSourceFileTest  "./ScopeAndQual.hs"
@@ -1303,7 +1305,7 @@ spec = do
 
   describe "mkNewGhcName" $ do
     it "Creates a new GHC.Name" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          renamed <- getRefactRenamed
@@ -1333,13 +1335,13 @@ spec = do
 
   describe "prettyprint" $ do
     it "Prints a GHC.Name ready for parsing into tokens" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      -- (_t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          name1 <- mkNewGhcName Nothing "foo"
          name2 <- mkNewGhcName Nothing "bar"
          return (name1,name2)
-      ((n1,n2),_s) <- ct $ runRefactGhcState comp tgt
+      ((n1,n2),_s) <- ct $ runRefactGhcState comp "./DupDef/Dd1.hs"
       GHC.getOccString n1 `shouldBe` "foo"
       showGhcQual n1 `shouldBe` "foo"
       GHC.getOccString n2 `shouldBe` "bar"
@@ -1482,7 +1484,7 @@ spec = do
 
   describe "addActualParamsToRhs" $ do
     it "adds a parameter to the rhs of a declaration, and updates the token stream" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./LiftToToplevel/D1.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./LiftToToplevel/D1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
@@ -1510,7 +1512,7 @@ spec = do
     -- --------------------
 
     it "adds parameters to a complex rhs of a declaration, and updates the token stream" $ do
-      (t, toks,tgt) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn7.hs"
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn7.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let declsr = hsBinds renamed
@@ -1981,7 +1983,7 @@ spec = do
       (showGhcQual tl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
       -- (showToks $ take 30 $ toks) `shouldBe` ""
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Demote where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n -- c,d :: Integer\n c = 7\n d = 9\n\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Demote where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\n-- c,d :: Integer\nc = 7\nd = 9\n\n\n"
       -- (drawTreeCompact $ fromJust $ layoutFromState s) `shouldBe` ""
       -- (showGhcQual $ pprFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module MoveDef.Demote where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n    where\n       nn = nn2\n    \n\n-- c,d :: Integer\nc = 7\nd = 9\n\n\n"
@@ -2128,60 +2130,54 @@ spec = do
 
   describe "renamePN" $ do
     it "replaces a Name with another, updating tokens 1" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-      -- let declsr = hsBinds renamed
-      -- let declsr = hsBinds parsed
-      -- (showGhcQual declsr) `shouldBe` ""
-      let Just (GHC.L _l n) = locToName (3, 1) renamed
       let
         comp = do
+         parsed <- getRefactParsed
+         renamed <- getRefactRenamed
+         let Just (GHC.L _l n') = locToName (3, 1) renamed
          newName <- mkNewGhcName Nothing "bar2"
-         -- new <- renamePN n newName False (last declsr)
-         -- new <- renamePN' n newName False (last declsr)
-         new <- renamePN' n newName False parsed
+         new <- renamePN' n' newName False parsed
          putRefactParsed new mempty
-         return (new,newName)
+         return (new,newName,n')
       let
 
-      ((nb,nn),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      ((nb,nn,n),s) <- ct $ runTestGhc comp "./DupDef/Dd1.hs"
       (showGhcQual (n,nn)) `shouldBe` "(DupDef.Dd1.toplevel, bar2)"
       -- error (show $ annsFromState s)
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
       (sourceFromState s) `shouldBe` "module DupDef.Dd1 where\n\nbar2 :: Integer -> Integer\nbar2 x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
       (showGhcQual nb) `shouldBe` "module DupDef.Dd1 where\nbar2 :: Integer -> Integer\nbar2 x = c * x\nc, d :: Integer\nc = 7\nd = 9\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h, t)\n  = head $ zip [1 .. 10] [3 .. ff]\n  where\n      ff :: Int\n      ff = 15\ndata D = A | B String | C\nff y\n  = y + zz\n  where\n      zz = 1\nl z = let ll = 34 in ll + z\ndd q\n  = do { let ss = 5;\n         return (ss + q) }"
 
     -- -----------------------------------------------------------------
 
     it "replaces a Name with another, updating tokens 2" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
+      -- (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
 
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      -- let declsr = hsBinds renamed
-      let declsr = hsBinds parsed
-      let decl = head $ drop 0 declsr
-      (showGhcQual decl) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      p = 2"
+      -- let declsr = hsBinds parsed
+      -- let decl = head $ drop 0 declsr
 
-      let Just (GHC.L _l n) = locToName (11, 21) renamed
+      -- let Just (GHC.L _l n) = locToName (11, 21) renamed
       let
         comp = do
+         renamed <- getRefactRenamed
+         parsed <- getRefactParsed
+         let declsr = hsBinds parsed
+         let decl = head $ drop 0 declsr
+         let Just (GHC.L _l n') = locToName (11, 21) renamed
          newName <- mkNewGhcName Nothing "p_1"
          -- new <- renamePN n newName False decl
-         new <- renamePN' n newName False decl
+         new <- renamePN' n' newName False decl
          let parsed' = replaceBinds parsed (new:tail declsr)
          putRefactParsed parsed' mempty
-         return (new,newName)
+         return (new,newName,decl,n')
       let
-
-      ((nb,nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((nb,nn,d,n),s) <- ct $ runTestGhc comp "./Demote/WhereIn4.hs"
+      (showGhcQual d) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      p = 2"
       (showGhcQual (n,nn)) `shouldBe` "(p, p_1)"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
+      -- (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
       (sourceFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p_1 x + sq p_1 y\n         where p_1=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
       (showGhcQual nb) `shouldBe` "sumSquares x y\n  = sq p_1 x + sq p_1 y\n  where\n      p_1 = 2"
 
@@ -2786,7 +2782,7 @@ spec = do
 
   describe "findEntity" $ do
     it "returns true if a (Located) Name is part of a HsBind 1" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          -- (t, toks) <- parseSourceFileTest "./DupDef/Dd1.hs"
@@ -2814,7 +2810,7 @@ spec = do
     -- ---------------------------------
 
     it "returns true if a (Located) Name is part of a HsBind 2" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          -- (t, toks) <- parseSourceFileTest "./DupDef/Dd1.hs"
@@ -2847,7 +2843,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "returns false if a syntax phrase is not part of another" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          -- (t, toks) <- parseSourceFileTest "./DupDef/Dd1.hs"
@@ -2925,7 +2921,7 @@ spec = do
 
   describe "modIsExported" $ do
     it "Returns True if the module is explicitly exported" $ do
-      (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
+      (t, _toks, _tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let renamed = fromJust $ GHC.tm_renamed_source t
       let (Just (modName,_)) = getModuleName parsed
@@ -2933,7 +2929,7 @@ spec = do
       (modIsExported modName renamed) `shouldBe` True
 
     it "Returns True if the module is exported by default" $ do
-      (t, _toks, tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare1.hs"
+      (t, _toks, _tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let renamed = fromJust $ GHC.tm_renamed_source t
       let (Just (modName,_)) = getModuleName parsed
@@ -2941,7 +2937,7 @@ spec = do
       (modIsExported modName renamed) `shouldBe` True
 
     it "Returns False if the module is explicitly not exported" $ do
-      (t, _toks, tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare2.hs"
+      (t, _toks, _tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare2.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let renamed = fromJust $ GHC.tm_renamed_source t
       let (Just (modName,_)) = getModuleName parsed
@@ -2978,8 +2974,8 @@ spec = do
   -- ---------------------------------------------
 
   describe "addHiding" $ do
-    it "Add a hiding entry to the imports with no existing hiding" $ do
-      (t1, toks1, tgt1) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+    it "add a hiding entry to the imports with no existing hiding" $ do
+      (t1, _toks1, tgt1) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          -- (t1,_toks1)  <- parseSourceFileTest "./DupDef/Dd1.hs"
@@ -2999,17 +2995,15 @@ spec = do
          n1   <- mkNewGhcName Nothing "n1"
          n2   <- mkNewGhcName Nothing "n2"
          res  <- addHiding modName renamed2 [n1,n2]
-         toks <- fetchToks
 
-         return (res,toks,renamed2,toks2)
-      -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
-      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1 hiding (n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
+         return (res,renamed2,toks2)
+      ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
+      (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1 hiding (n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
 
     ------------------------------------
 
-    it "Adds a hiding entry to the imports with an existing hiding" $ do
-      (t1, toks1, tgt1) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+    it "adds a hiding entry to the imports with an existing hiding" $ do
+      (t1, _toks1, tgt1) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
 
@@ -3030,18 +3024,17 @@ spec = do
          n1   <- mkNewGhcName Nothing "n1"
          n2   <- mkNewGhcName Nothing "n2"
          res  <- addHiding modName renamed2 [n1,n2]
-         toks <- fetchToks
 
-         return (res,toks,renamed2,toks2)
+         return (res,renamed2,toks2)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
-      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd3 where\n\n import DupDef.Dd1 hiding (dd,n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
+      ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
+      (sourceFromState s) `shouldBe` "module DupDef.Dd3 where\n\nimport DupDef.Dd1 hiding (dd,n1,n2)\n\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
 
   -- ---------------------------------------------
 
   describe "usedWithoutQualR" $ do
     it "Returns True if the identifier is used unqualified" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
           -- (t, toks) <- parseSourceFileTest "./DupDef/Dd1.hs"
@@ -3064,7 +3057,7 @@ spec = do
     -- ---------------------------------
 
     it "Returns False if the identifier is used qualified" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let
         comp = do
           -- (t, toks) <- parseSourceFileTest "./FreeAndDeclared/Declare.hs"
@@ -3104,7 +3097,7 @@ spec = do
   describe "causeNameClashInExports" $ do
     it "Returns True if there is a clash" $ do
 
-      (t, _toks, tgt) <- ct $ parsedFileGhc "./Renaming/ConflictExport.hs"
+      (t, _toks, _tgt) <- ct $ parsedFileGhc "./Renaming/ConflictExport.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -3129,7 +3122,7 @@ spec = do
       res `shouldBe` True
 
     it "Returns False if there is no clash" $ do
-      (t, _toks, tgt) <- ct $ parsedFileGhc "./Renaming/ConflictExport.hs"
+      (t, _toks, _tgt) <- ct $ parsedFileGhc "./Renaming/ConflictExport.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -3227,7 +3220,7 @@ This function is not used and has been removed
 
   describe "usedByRhs" $ do
     it "Returns True if a given identifier is used in the RHS of a syntax element" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Demote.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Demote.hs"
       let
         comp = do
           -- (t, toks) <- parseSourceFileTest "./MoveDef/Demote.hs"
@@ -3255,7 +3248,7 @@ This function is not used and has been removed
 
   describe "autoRenameLocalVar" $ do
     it "renames an identifier if it is used, no token update" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
       let
         comp = do
           -- (t, toks) <- parseSourceFileTest "./Demote/WhereIn4.hs"
@@ -3277,9 +3270,10 @@ This function is not used and has been removed
       (showGhcQual r) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n   where\n       p_1 = 2]"
       (sourceFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
 
+    -- ---------------------------------
 
     it "renames an identifier if it is used and updates tokens" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
       let
         comp = do
           -- (t, toks) <- parseSourceFileTest "./Demote/WhereIn4.hs"
@@ -3312,8 +3306,8 @@ This function is not used and has been removed
   -- ---------------------------------------
 
   describe "addImportDecl" $ do
-    it "Add an import entry to a module with already existing, non conflicting imports and other declarations." $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+    it "adds an import entry to a module with already existing, non conflicting imports and other declarations" $ do
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
 
@@ -3330,17 +3324,15 @@ This function is not used and has been removed
          -- n1   <- mkNewGhcName Nothing "n1"
          -- n2   <- mkNewGhcName Nothing "n2"
          res  <- addImportDecl renamed2 listModName Nothing False False False Nothing False []
-         toks <- fetchToks
 
-         return (res,toks,renamed2,toks2)
-      -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (GHC.showRichTokenStream t) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1\n import Data.List\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
+         return (res,renamed2,toks2)
+      ((_r,_r2,_tk2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\nimport DupDef.Dd1\nimport Data.List\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
 
     -- ---------------------------------
 
     it "adds an import entry to a module with some declaration, but no explicit imports." $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/Simplest.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/Simplest.hs"
       let
         comp = do
 
@@ -3350,17 +3342,16 @@ This function is not used and has been removed
 
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False []
-         toks <- fetchToks
 
-         return (res,toks,renamed1,toks)
+         return (res,renamed1)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (GHC.showRichTokenStream t) `shouldBe` "module Simplest where\n import Data.List\n\n simple x = x\n "
+      ((_r,_r2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (sourceFromState s) `shouldBe` "module Simplest where\n import Data.List\n\n simple x = x\n "
 
     -- ---------------------------------
 
     it "adds an import entry to a module with explicit imports, but no declarations." $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/JustImports.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/JustImports.hs"
       let
         comp = do
 
@@ -3370,17 +3361,15 @@ This function is not used and has been removed
 
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False []
-         toks <- fetchToks
 
-         return (res,toks,renamed1,toks)
-      -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,t,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List"
+         return (res,renamed1)
+      ((_r,_r2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (sourceFromState s) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List"
 
     -- ---------------------------------
 
     it "adds an import entry to a module with no declarations and no explicit imports" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/Empty.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/Empty.hs"
       let
         comp = do
 
@@ -3393,9 +3382,8 @@ This function is not used and has been removed
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False []
 
-         return (res,renamed1,toks)
-      -- ((_r,_r2,_tk2),s) <- ct $ runRefactGhcState comp
-      ((_r,_r2,_tk2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+         return (res,renamed1)
+      ((_r,_r2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (sourceFromState s) `shouldBe` "module Empty where\nimport Data.List"
 
@@ -3404,7 +3392,7 @@ This function is not used and has been removed
 
   describe "addItemsToImport" $ do
     it "adds an item to an import entry with no items" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/JustImports.hs"
+      (t,_toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/JustImports.hs"
       let
         comp = do
          -- (t1,_toks1)  <- parseSourceFileTest "./TypeUtils/JustImports.hs"
@@ -3610,7 +3598,7 @@ This function is not used and has been removed
   describe "rdrName2Name" $ do
 
     it "finds a Name for a top-level RdrName" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./TokenTest.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./TokenTest.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -3629,7 +3617,7 @@ This function is not used and has been removed
     -- ---------------------------------
 
     it "finds a Name for a local RdrName" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./TokenTest.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./TokenTest.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
