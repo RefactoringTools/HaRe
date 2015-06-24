@@ -45,12 +45,12 @@ import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 import System.Directory
 import System.FilePath.Posix
-import System.Log.Logger
+-- import System.Log.Logger
 import qualified Data.Generics as SYB
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -58,13 +58,13 @@ import qualified Data.Set as Set
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
-import qualified GHC.Paths     as GHC
-import qualified GhcMonad      as GHC
-import qualified HscTypes      as GHC
-import qualified GHC           as GHC
+-- import qualified GHC.Paths     as GHC
+-- import qualified GhcMonad      as GHC
+-- import qualified HscTypes      as GHC
+-- import qualified GHC           as GHC
 
 import qualified GHC.SYB.Utils as SYB
-import qualified Language.Haskell.GhcMod.Internal as GM
+-- import qualified Language.Haskell.GhcMod.Internal as GM
 import qualified Outputable    as GHC
 
 -- import Debug.Trace
@@ -278,6 +278,7 @@ runRefacSession settings opt targets comp = do
         , rsFlags         = RefFlags False
         , rsStorage       = StorageNone
         , rsGraph         = []
+        , rsCabalGraph    = []
         , rsModuleGraph   = []
         , rsCurrentTarget = Nothing
         , rsModule        = Nothing
@@ -362,9 +363,8 @@ initGhcSession tgts = do
     cr <- cradle
     logm $ "initGhcSession:cr=" ++ show cr
     case cradleCabalFile cr of
-      Just cabalFile -> do
-        -- targets <- getCabalAllTargets cr cabalFile
-        targets <- cabalAllTargets cr
+      Just _ -> do
+        (cabalGraph,targets) <- cabalAllTargets cr
         logm $ "initGhcSession:targets=" ++ show targets
 
         -- TODO: Cannot load multiple main modules, must try to load
@@ -381,6 +381,7 @@ initGhcSession tgts = do
                      -- setTargetFiles tgts
                      -- void $ GHC.load GHC.LoadAllTargets
 
+                     -- AZ: carry on here, store cabalGraph instead of loadModuleGraphGhc
                      mapM_ loadModuleGraphGhc $ map (\t -> Just [t]) exeTgts
 
                      -- Load the library last, most likely in context
@@ -408,17 +409,23 @@ initGhcSession tgts = do
 
 -- | Extracting all 'Module' 'FilePath's for libraries, executables,
 -- tests and benchmarks.
-cabalAllTargets :: Cradle -> RefactGhc ([String],[String],[String],[String])
+cabalAllTargets :: Cradle -> RefactGhc (CabalGraph,([String],[String],[String],[String]))
 cabalAllTargets crdl = RefactGhc (GmlT $ cabalOpts crdl)
   where
     -- Note: This runs inside ghc-mod's GmlT monad
-    cabalOpts :: Cradle -> GhcModT (StateT RefactState IO) ([String],[String],[String],[String])
+    cabalOpts :: Cradle -> GhcModT (StateT RefactState IO) (CabalGraph,([String],[String],[String],[String]))
     cabalOpts Cradle{..} = do
         comps <- mapM (resolveEntrypoint crdl) =<< getComponents
         mcs <- cached cradleRootDir resolvedComponentsCache comps
-        --mcs:: (Map.Map ChComponentName (GmComponent GMCResolved (Set.Set ModulePath)))
 
-        let entrypoints = Map.toList $ Map.map gmcEntrypoints mcs
+        let
+            -- foo :: Map.Map ChComponentName (Set.Set ModulePath)
+            -- foo = Map.map gmcEntrypoints mcs
+
+            -- bar :: Map.Map ChComponentName GmModuleGraph
+            -- bar = Map.map gmcHomeModuleGraph mcs
+
+            entries = Map.toList $ Map.map gmcEntrypoints mcs
             isExe (ChExeName _,_)     = True
             isExe _                   = False
             isLib (ChLibName,_)       = True
@@ -429,16 +436,12 @@ cabalAllTargets crdl = RefactGhc (GmlT $ cabalOpts crdl)
             isBench _                 = False
             getTgts :: (ChComponentName,Set.Set ModulePath) -> [String]
             getTgts (_,mps) = map mpPath $ Set.toList mps
-            -- exeTargets' :: [(ChComponentName,Set.Set ModulePath)]
 
-            exeTargets   = concatMap getTgts $ filter isExe entrypoints
-            libTargets   = concatMap getTgts $ filter isLib entrypoints
-            testTargets  = concatMap getTgts $ filter isTest entrypoints
-            benchTargets = concatMap getTgts $ filter isBench entrypoints
-        -- liftIO $ putStrLn $ "cabalOpts:mcs=" ++ show mcs
-        -- liftIO $ putStrLn $ "cabalOpts:entrypoints=" ++ show entrypoints
-        -- liftIO $ putStrLn $ "cabalOpts:graphs=" ++ show graphs
-        return (libTargets,exeTargets,testTargets,benchTargets)
+            exeTargets   = concatMap getTgts $ filter isExe entries
+            libTargets   = concatMap getTgts $ filter isLib entries
+            testTargets  = concatMap getTgts $ filter isTest entries
+            benchTargets = concatMap getTgts $ filter isBench entries
+        return (mcs,(libTargets,exeTargets,testTargets,benchTargets))
 
 -- ---------------------------------------------------------------------
 

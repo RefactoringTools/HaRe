@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -17,6 +18,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactModule(..)
        , TargetModule
        , Targets
+       , CabalGraph(..)
        , RefactStashId(..)
        , RefactFlags(..)
        , StateStorage(..)
@@ -139,7 +141,8 @@ data RefactState = RefSt
         , rsFlags      :: !RefactFlags -- ^ Flags for controlling generic traversals
         , rsStorage    :: !StateStorage -- ^Temporary storage of values
                                       -- while refactoring takes place
-        , rsGraph         :: ![TargetGraph]
+        , rsGraph         :: ![TargetGraph] -- TODO:deprecate this in favour of rsCabalGraph
+        , rsCabalGraph    :: ![CabalGraph]
         , rsModuleGraph   :: ![([FilePath],GHC.ModuleGraph)]
         , rsCurrentTarget :: !(Maybe [FilePath])
         , rsModule        :: !(Maybe RefactModule) -- ^The current module being refactored
@@ -161,6 +164,9 @@ field, to ensure uniqueness.
 type TargetModule = ([FilePath], (Maybe FilePath,GHC.ModSummary))
 
 type TargetGraph = ([FilePath],[(Maybe FilePath, GHC.ModSummary)])
+
+-- The CabalGraph comes directly from ghc-mod
+type CabalGraph = Map.Map ChComponentName (GM.GmComponent GMCResolved (Set.Set ModulePath))
 
 type Targets = [Either FilePath GHC.ModuleName]
 

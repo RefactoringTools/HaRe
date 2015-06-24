@@ -156,6 +156,7 @@ initialState = RefSt
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
   , rsGraph = []
+  , rsCabalGraph = []
   , rsModuleGraph = []
   , rsCurrentTarget = Nothing
   , rsModule = Nothing
@@ -171,6 +172,7 @@ initialLogOnState = RefSt
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
   , rsGraph = []
+  , rsCabalGraph = []
   , rsModuleGraph = []
   , rsCurrentTarget = Nothing
   , rsModule = Nothing
@@ -185,8 +187,8 @@ mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 
 runTestInternal :: RefactGhc a -> FilePath -> RefactState -> Options
                 -> IO (a, RefactState)
-runTestInternal comp fileName state opts =
-  runRefactGhc (initGhcSession [Left fileName] >> comp) [Left fileName] state opts
+runTestInternal comp fileName st opts =
+  runRefactGhc (initGhcSession [Left fileName] >> comp) [Left fileName] st opts
 
 -- ---------------------------------------------------------------------
 
@@ -217,6 +219,7 @@ runRefactGhcStateLog comp fileName logOn  = do
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
         , rsGraph = []
+        , rsCabalGraph = []
         , rsModuleGraph = []
         , rsCurrentTarget = Nothing
         , rsModule = Nothing
