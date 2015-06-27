@@ -353,6 +353,7 @@ modifiedFiles refactResult = map (\((s,_),_) -> s)
 initGhcSession :: Targets -> RefactGhc ()
 initGhcSession tgts = do
     logm $ "initGhcSession:entered with tgts:" ++ show tgts
+    {-
     settings <- getRefacSettings
     df <- GHC.getSessionDynFlags
     let df2 = GHC.gopt_set df GHC.Opt_KeepRawTokenStream
@@ -396,6 +397,7 @@ initGhcSession tgts = do
           let maybeMainFile = rsetMainFile settings
           loadModuleGraphGhc maybeMainFile
           return()
+    -}
     -- load the first target is specified
     case tgts of
       [] -> return ()

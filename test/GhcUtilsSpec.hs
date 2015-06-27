@@ -14,9 +14,9 @@ import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcUtils
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Variables
 
@@ -53,7 +53,7 @@ spec = do
     -- ---------------------------------
 
     it "Finds a GHC.Name at top level only" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./test/testdata/DupDef/Dd1.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          -- (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
@@ -86,11 +86,11 @@ spec = do
 
          return (res,res2,resx,resx2,duplicatedDecls,g,g2,ln,lx)
       -- ((r,r2,rx,rx2,d,gg,gg2,_l,_x),_s) <- runRefactGhcState comp
-      ((r,r2,rx,rx2,d,gg,gg2,_l,_x),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      ((r,r2,rx,rx2,d,gg,gg2,_l,_x),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- (SYB.showData SYB.Renamer 0 d) `shouldBe` ""
 
-      (showGhc d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
-      (showGhc _l) `shouldBe` "DupDef.Dd1.toplevel"
+      (showGhcQual d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
+      (showGhcQual _l) `shouldBe` "DupDef.Dd1.toplevel"
       (showGhc _x) `shouldBe` "x"
       (show gg) `shouldBe` "[[\"-10\"],[\"-10\"]]"
       (show gg2) `shouldBe` "[[\"found\"],[\"-10\"]]"

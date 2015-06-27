@@ -29,7 +29,6 @@ module Language.Haskell.Refact.Utils.Monad
        , getRefacSettings
        , defaultSettings
        , logSettings
-       -- , initGhcSession
 
        , loadModuleGraphGhc
        , ensureTargetLoaded
@@ -52,7 +51,7 @@ import Control.Monad.State
 --import Data.Time.Clock
 import Distribution.Helper
 import Exception
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod          as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 -- import Language.Haskell.Refact.Utils.Cabal
@@ -79,7 +78,7 @@ data RefactSettings = RefSet
         { rsetGhcOpts      :: ![String]
         , rsetImportPaths :: ![FilePath]
         , rsetExpandSplice :: Bool
-        , rsetLineSeparator :: LineSeparator
+        , rsetLineSeparator :: GM.LineSeparator
         , rsetMainFile     :: Maybe [FilePath]
         , rsetCheckTokenUtilsInvariant :: !Bool
         , rsetVerboseLevel :: !VerboseLevel
@@ -93,7 +92,7 @@ defaultSettings = RefSet
     { rsetGhcOpts = []
     , rsetImportPaths = []
     , rsetExpandSplice = False
-    , rsetLineSeparator = LineSeparator "\0"
+    , rsetLineSeparator = GM.LineSeparator "\0"
     , rsetMainFile = Nothing
     , rsetCheckTokenUtilsInvariant = False
     , rsetVerboseLevel = Normal
@@ -211,9 +210,9 @@ newtype RefactGhc a = RefactGhc
 -- ---------------------------------------------------------------------
 
 runRefactGhc ::
-  RefactGhc a -> Targets -> RefactState -> Options -> IO (a, RefactState)
+  RefactGhc a -> Targets -> RefactState -> GM.Options -> IO (a, RefactState)
 runRefactGhc comp targets initState opt = do
-    ((merr,_log),s) <- runStateT (runGhcModT opt (GM.runGmlT' targets setDynFlags (unRefactGhc comp))) initState
+    ((merr,_log),s) <- runStateT (GM.runGhcModT opt (GM.runGmlT' targets setDynFlags (unRefactGhc comp))) initState
     case merr of
       Left err -> error (show err)
       Right a  -> return (a,s)
@@ -225,8 +224,8 @@ setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
 
 instance GM.GmLog RefactGhc where
     gmlJournal v = RefactGhc (GM.gmlJournal v)
-    gmlHistory = RefactGhc GM.gmlHistory
-    gmlClear   = RefactGhc GM.gmlClear
+    gmlHistory   = RefactGhc GM.gmlHistory
+    gmlClear     = RefactGhc GM.gmlClear
 
 instance GM.MonadIO (StateT RefactState IO) where
   liftIO = liftIO
@@ -318,7 +317,7 @@ loadModuleGraphGhc maybeTargetFiles = do
 initGmlSession :: [GHCOption] -> (GHC.DynFlags -> GHC.Ghc GHC.DynFlags) -> RefactGhc ()
 initGmlSession opts mdf = RefactGhc (GmlT $ initSession opts mdf)
 
-getTargetGhcOptions :: Cradle -> Set.Set (Either FilePath GHC.ModuleName)
+getTargetGhcOptions :: GM.Cradle -> Set.Set (Either FilePath GHC.ModuleName)
                   -> RefactGhc [GHCOption]
 getTargetGhcOptions crdl mfns
   = RefactGhc (GmlT $ targetGhcOptions crdl mfns)

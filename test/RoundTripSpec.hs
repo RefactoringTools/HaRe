@@ -52,14 +52,14 @@ spec = do
       diff `shouldBe` []
 
     -- ---------------------------------
-
+{-
     it "roundtrips Zipper.hs" $ do
       r <- cdAndDo "/home/alanz/tmp/hackage/syz-0.2.0.0/" $ roundTrip defaultTestSettings testOptions "./Data/Generics/Zipper.hs"
       r `shouldBe` ["./Data/Generics/Zipper.hs"]
       diff <- compareFiles "/home/alanz/tmp/hackage/syz-0.2.0.0/Data/Generics/Zipper.refactored.hs"
                            "/home/alanz/tmp/hackage/syz-0.2.0.0/Data/Generics/Zipper.hs"
       diff `shouldBe` []
-
+-}
     -- ---------------------------------
 -- ---------------------------------------------------------------------
 -- Helper functions

@@ -473,6 +473,7 @@ spec = do
                    "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
                    "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
                    "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
+                   "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++ -- ++AZ++ addition
                    "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
                    "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
                    "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
@@ -1700,8 +1701,8 @@ spec = do
          putRefactParsed parsed2 mempty
 
          return parsed2
-      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       putStrLn $ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "Demote.WhereIn3.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
@@ -2142,6 +2143,7 @@ spec = do
       let
 
       ((nb,nn,n),s) <- ct $ runTestGhc comp "./DupDef/Dd1.hs"
+      -- ((nb,nn,n),s) <- ct $ runLogTestGhc comp "./DupDef/Dd1.hs"
       (showGhcQual (n,nn)) `shouldBe` "(DupDef.Dd1.toplevel, bar2)"
       -- error (show $ annsFromState s)
       (sourceFromState s) `shouldBe` "module DupDef.Dd1 where\n\nbar2 :: Integer -> Integer\nbar2 x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"

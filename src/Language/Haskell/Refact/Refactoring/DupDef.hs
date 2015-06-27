@@ -184,7 +184,7 @@ findNewPName name renamed = gfromJust "findNewPName" res
 -- the client module.
 refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> TargetModule
                     -> RefactGhc ApplyRefacResult
-refactorInClientMod oldPN serverModName newPName targetModule@(_,modSummary)
+refactorInClientMod oldPN serverModName newPName targetModule@(_,(_,modSummary))
   = do
        logm ("refactorInClientMod: (serverModName,newPName)=" ++ (showGhc (serverModName,newPName))) -- ++AZ++ debug
        void $ activateModule targetModule

@@ -394,7 +394,7 @@ addParamsToParent  pn params t = do
 -- client module.
 liftingInClientMod :: GHC.ModuleName -> [GHC.Name] -> TargetModule
   -> RefactGhc [ApplyRefacResult]
-liftingInClientMod serverModName pns targetModule@(_,modSummary) = do
+liftingInClientMod serverModName pns targetModule@(_,(_,modSummary)) = do
        void $ activateModule targetModule
        renamed <- getRefactRenamed
        -- logm $ "liftingInClientMod:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
@@ -1156,7 +1156,7 @@ demote' modName (GHC.L _ pn) = do
 demotingInClientMod ::
   [GHC.Name] -> TargetModule
   -> RefactGhc ApplyRefacResult
-demotingInClientMod pns targetModule@(_,modSummary) = do
+demotingInClientMod pns targetModule@(_,(_,modSummary)) = do
   void $ activateModule targetModule
   (refactoredMod,_) <- applyRefac (doDemotingInClientMod pns (GHC.ms_mod modSummary)) RSAlreadyLoaded
   return refactoredMod

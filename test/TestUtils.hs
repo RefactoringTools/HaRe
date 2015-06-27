@@ -46,11 +46,11 @@ import Exception
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod          as GM
+import qualified Language.Haskell.GhcMod.Internal as GM
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Utils
 import Numeric
@@ -185,10 +185,11 @@ mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 
 -- ---------------------------------------------------------------------
 
-runTestInternal :: RefactGhc a -> FilePath -> RefactState -> Options
+runTestInternal :: RefactGhc a -> FilePath -> RefactState -> GM.Options
                 -> IO (a, RefactState)
 runTestInternal comp fileName st opts =
   runRefactGhc (initGhcSession [Left fileName] >> comp) [Left fileName] st opts
+  -- runRefactGhc comp [Left fileName] st opts
 
 -- ---------------------------------------------------------------------
 
@@ -228,13 +229,13 @@ runRefactGhcStateLog comp fileName logOn  = do
 
 -- ---------------------------------------------------------------------
 
-testOptions :: Options
-testOptions = defaultOptions
+testOptions :: GM.Options
+testOptions = GM.defaultOptions { GM.logLevel = GM.GmError }
 
 -- ---------------------------------------------------------------------
 
-testCradle :: Cradle
-testCradle = Cradle "./test/testdata/" "./test/testdata/" "/tmp" Nothing []
+testCradle :: GM.Cradle
+testCradle = GM.Cradle "./test/testdata/" "./test/testdata/" "/tmp" Nothing []
 
 -- ---------------------------------------------------------------------
 
