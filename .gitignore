@@ -437,3 +437,4 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/D3.hs.parsed_out
 /test/testdata/Renaming/Main2.hs.parsed_out
 /test/testdata/Renaming/RenameInExportedType2.hs.parsed_out
+/.stack-work/

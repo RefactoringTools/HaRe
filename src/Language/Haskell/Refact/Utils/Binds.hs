@@ -84,11 +84,16 @@ declsFromBinds (GHC.ValBindsOut _ _) = error "declsFromBinds:ValBindsOut"
 
 -- ---------------------------------------------------------------------
 
-
+getValBindSigs :: GHC.HsValBinds GHC.RdrName -> [GHC.LSig GHC.RdrName]
+getValBindSigs binds = case binds of
+    GHC.ValBindsIn  _ sigs -> sigs
+    GHC.ValBindsOut _ sigs -> []
+{-
 getValBindSigs :: GHC.HsValBinds GHC.Name -> [GHC.LSig GHC.Name]
 getValBindSigs binds = case binds of
     GHC.ValBindsIn  _ sigs -> sigs
     GHC.ValBindsOut _ sigs -> sigs
+-}
 
 emptyValBinds :: GHC.HsValBinds name
 emptyValBinds = GHC.ValBindsIn (GHC.listToBag []) []

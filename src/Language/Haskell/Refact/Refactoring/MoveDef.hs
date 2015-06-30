@@ -1505,10 +1505,10 @@ doDemoting' t pn = do
 --PROBLEM: TYPE SIGNATURE SHOULD BE CHANGED.
 --- TEST THIS FUNCTION!!!
 foldParams :: [GHC.Name]             -- ^The (list?) function name being demoted
-           -> GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)     -- ^The RHS of the place to receive the demoted decls
-           -> [GHC.LHsBind GHC.Name] -- ^Binds of original top level entiity, including src and dst
-           -> GHC.LHsBind GHC.Name   -- ^The decls being demoted
-           -> [GHC.LSig GHC.Name]    -- ^Signatures being demoted, if any
+           -> GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)     -- ^The RHS of the place to receive the demoted decls
+           -> [GHC.LHsBind GHC.RdrName] -- ^Binds of original top level entiity, including src and dst
+           -> GHC.LHsBind GHC.RdrName   -- ^The decls being demoted
+           -> [GHC.LSig GHC.RdrName]    -- ^Signatures being demoted, if any
            -> Maybe [PosToken]          -- ^Tokens if provided
            -> RefactGhc (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
 foldParams pns ((GHC.Match mfn pats mt rhs)::GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) _decls demotedDecls dsig dtoks
@@ -1579,8 +1579,8 @@ foldParams pns ((GHC.Match mfn pats mt rhs)::GHC.Match GHC.Name (GHC.LHsExpr GHC
        foldInDemotedDecls :: [GHC.Name]  -- ^The (list?) of names to be demoted
                           -> [GHC.Name]  -- ^Any names that clash
                           -> [(GHC.Name, GHC.HsExpr GHC.Name)] -- ^Parameter substitutions required
-                          -> [GHC.LHsBind GHC.Name] -- ^Binds of original top level entiity, including src and dst
-                          -> RefactGhc [GHC.LHsBind GHC.Name]
+                          -> [GHC.LHsBind GHC.RdrName] -- ^Binds of original top level entiity, including src and dst
+                          -> RefactGhc [GHC.LHsBind GHC.RdrName]
        foldInDemotedDecls  pns' clashedNames subst decls
           = SYB.everywhereMStaged SYB.Renamer (SYB.mkM worker) decls
           where

@@ -1,0 +1,27 @@
+flags: {}
+packages:
+- '.'
+# - test/testdata/
+# - test/testdata/cabal/cabal3/
+# - test/testdata/cabal/cabal1/
+# - test/testdata/cabal/cabal2/
+# - ../ghc-mod
+- location:
+    git: git@github.com:alanz/ghc-mod
+    commit: 526714aed7592c6d548ce38e9935bef0a984217b
+- location:
+    git: git@github.com:alanz/ghc-exactprint
+    commit: b36bf21659cac048cf3e7d215b1a2c0de4bf1158
+- location:
+    git: git@github.com:mpickering/refact
+    commit: 07fa5ff2ae554dcaf9ad93c04e195259be5dddd0
+extra-deps:
+- Strafunski-StrategyLib-5.0.0.8
+- cabal-helper-0.3.6.0
+- rosezipper-0.2
+- syz-0.2.0.0
+# - ghc-7.10.1.20150612
+# resolver: nightly-2015-06-16
+resolver: nightly-2015-06-25
+# Use system GHC, must be a 7.10.2 rc or later.
+system-ghc: true

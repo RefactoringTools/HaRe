@@ -129,7 +129,7 @@ import Data.Maybe
 import Exception
 
 import Language.Haskell.Refact.Utils.Binds
-import Language.Haskell.Refact.Utils.ExactPrint
+import Language.Haskell.Refact.Utils.ExactPrint hiding (runTransform,logTr,Transform)
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -139,6 +139,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 
+import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
@@ -951,62 +952,62 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (HsValBinds t GHC.Name)
+addDecl:: (HsValBinds t GHC.RdrName)
         => t              -- ^The AST to be updated
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
                           -- identifier's definition.
-        -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
+        -> (GHC.LHsBind GHC.RdrName, [GHC.LSig GHC.RdrName], Maybe Anns)
              -- ^ The declaration with optional signatures to be added,
-             -- in both AST and Token stream format (optional). If
-             -- signature and tokens provided, the tokens should
-             -- include the signature too
+             -- together with optional Annotations.
         -> Bool              -- ^ True means the declaration is a
                              -- toplevel declaration.
         -> RefactGhc t
 
-addDecl parent pn (decl, msig, declToks) topLevel
+addDecl parent pn (decl, msig, declAnns) topLevel
  = if isJust pn
-     then appendDecl parent (gfromJust "addDecl" pn) (decl, msig, declToks)
+     then appendDecl parent (gfromJust "addDecl" pn) (decl, msig, declAnns)
      else if topLevel
-            then addTopLevelDecl (decl, msig, declToks) parent
-            else addLocalDecl parent (decl,msig,declToks)
+            then addTopLevelDecl (decl, msig, declAnns) parent
+            else addLocalDecl parent (decl,msig,declAnns)
  where
 
   -- ^Add a definition to the beginning of the definition declaration
-  -- list, but after the data type declarations if there is any. The
-  -- definition will be pretty-printed if its token stream is not
-  -- provided.
-  addTopLevelDecl :: (HsValBinds t GHC.Name)
-       => (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
+  -- list, but after the data type declarations if there is any.
+  addTopLevelDecl :: (HsValBinds t GHC.RdrName)
+       => (GHC.LHsBind GHC.RdrName, [GHC.LSig GHC.RdrName], Maybe Anns)
        -> t -> RefactGhc t
-  addTopLevelDecl (newDecl, maybeSig, _maybeDeclToks) parent'
+  addTopLevelDecl (newDecl, maybeSig, maybeDeclAnns) parent'
     = do let binds = hsValBinds parent'
              decls = hsBinds parent'
              (decls1,decls2) = break (\x->isFunOrPatBindR x {- was || isTypeSig x -}) decls
 
-         -- newToks <- makeNewToks (newDecl,maybeSig,maybeDeclToks)
-         -- logm $ "addTopLevelDecl:newToks=" ++ (show newToks)
+         case maybeDeclAnns of
+           Nothing -> return ()
+           Just declAnns -> do
+             let declAnns' = setPrecedingLines declAnns newDecl 2
+             logm $ "addDecl.addTopLevelDecl:TODO: annotations attached to ValD, needs to be on the underlying bind"
+             logm $ "addDecl.addTopLevelDecl:declAnns'=" ++ show declAnns'
+             addRefactAnns declAnns'
 
-         let Just _sspan = if (emptyList decls2)
-                            then getSrcSpan (glast "addTopLevelDecl" decls1)
-                            else getSrcSpan (ghead "addTopLevelDecl" decls2)
+         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[newDecl]++decls2)) (maybeSig++(getValBindSigs binds))))
 
-         -- decl' <- putDeclToksAfterSpan sspan newDecl (PlaceOffset 2 0 2) newToks
-         let decl' = newDecl
-
-         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
-
-  appendDecl :: (HsValBinds t GHC.Name)
+  appendDecl :: (HsValBinds t GHC.RdrName)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
-      -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken]) -- ^declaration and maybe sig/tokens
+      -> (GHC.LHsBind GHC.RdrName, [GHC.LSig GHC.RdrName], Maybe Anns) -- ^declaration and maybe sig/tokens
       -> RefactGhc t -- ^updated AST
-  appendDecl parent' pn' (newDecl, maybeSig, _declToks')
+  appendDecl parent' pn' (newDecl, maybeSig, _declAnns')
     = do let binds = hsValBinds parent'
          -- logm $ "appendDecl:declToks=" ++ (show declToks')
          -- newToks <- makeNewToks (newDecl,maybeSig,declToks')
          -- logm $ "appendDecl:newToks=" ++ (show newToks)
+
+         nameMap <- getRefactNameMap
+         let
+            -- (before,after) = break (defines pn') decls -- Need to handle the case that 'after' is empty?
+            (before,after) = break (definesRdr nameMap pn') decls -- Need to handle the case that 'after' is empty?
+
 
          let Just _sspan = getSrcSpan $ ghead "appendDecl" after
          -- decl' <- putDeclToksAfterSpan sspan newDecl (PlaceOffset 2 0 2) newToks
@@ -1022,13 +1023,12 @@ addDecl parent pn (decl, msig, declToks) topLevel
          return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
       where
         decls = hsBinds parent'
-        (before,after) = break (defines pn') decls -- Need to handle the case that 'after' is empty?
 
 
-  addLocalDecl :: (HsValBinds t GHC.Name)
-               => t -> (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
+  addLocalDecl :: (HsValBinds t GHC.RdrName)
+               => t -> (GHC.LHsBind GHC.RdrName, [GHC.LSig GHC.RdrName], Maybe Anns)
                -> RefactGhc t
-  addLocalDecl parent' (newFun, maybeSig, _newFunToks)
+  addLocalDecl parent' (newFun, maybeSig, _newAnns)
     =do
         let binds = hsValBinds parent'
 
@@ -1747,9 +1747,9 @@ renamePN' oldPN newName useQual t = do
           -- A RdrName Can have a number of constructors, which are used to
           -- index the annotations associated with it. Make sure the annotation
           -- lines up.
-          an <- get
+          an <- getAnnsT
           let new = (GHC.L l nn)
-          put $ replaceAnnKey an old new
+          putAnnsT $ replaceAnnKey an old new
 
           return new
     rename _ x = return x
@@ -1792,9 +1792,9 @@ renamePN' oldPN newName useQual t = do
           -- logTr $ "renamePN:renameLIE.IEVar at :" ++ (showGhc l)
           let new = newNameCalc useQual' n
 
-          an <- get
+          an <- getAnnsT
           let newn = (GHC.L ln new)
-          put $ replaceAnnKey an old newn
+          putAnnsT $ replaceAnnKey an old newn
 
           return (GHC.L l (GHC.IEVar (GHC.L ln new)))
 
@@ -1804,9 +1804,9 @@ renamePN' oldPN newName useQual t = do
           -- logTr $ "renamePN:renameLIE.IEThingAbs at :" ++ (showGhc l)
           let new = newNameCalc useQual' n
 
-          an <- get
+          an <- getAnnsT
           let newn = (GHC.L ln new)
-          put $ replaceAnnKey an old newn
+          putAnnsT $ replaceAnnKey an old newn
 
           return (GHC.L l (GHC.IEThingAbs (GHC.L ln new)))
 
@@ -1816,9 +1816,9 @@ renamePN' oldPN newName useQual t = do
           -- logTr $ "renamePN:renameLIE.IEThingAll at :" ++ (showGhc l)
           let new = newNameCalc useQual' n
 
-          an <- get
+          an <- getAnnsT
           let newn = (GHC.L ln new)
-          put $ replaceAnnKey an old newn
+          putAnnsT $ replaceAnnKey an old newn
 
           return (GHC.L l (GHC.IEThingAll (GHC.L ln new)))
 
@@ -1831,9 +1831,9 @@ renamePN' oldPN newName useQual t = do
              logTr $ "renamePN:renameLIE.IEThingWith at :" ++ (showGhc l)
              let new = newNameCalc useQual' n
 
-             an <- get
+             an <- getAnnsT
              let newn = (GHC.L ln new)
-             put $ replaceAnnKey an old newn
+             putAnnsT $ replaceAnnKey an old newn
 
              return (GHC.L ln new)
            else return old
@@ -1877,9 +1877,9 @@ renamePN' oldPN newName useQual t = do
                     -- A RdrName Can have a number of constructors, which are used to
                     -- index the annotations associated with it. Make sure the annotation
                     -- lines up.
-                    an <- get
+                    an <- getAnnsT
                     let new = (GHC.L lmn newNameUnqual)
-                    put $ replaceAnnKey an old new
+                    putAnnsT $ replaceAnnKey an old new
 
                     return (GHC.L lm (GHC.Match (Just (new,f)) pats typ grhss))
                   Nothing -> return lmatch
@@ -1920,7 +1920,7 @@ renamePN' oldPN newName useQual t = do
                   `SYB.extM` (renameFunBind useQual)
                    ) t')
   ans <- getRefactAnns
-  let (t',ans',logOut) = runTransform ans (renameTransform useQual t)
+  let (t',(ans',_),logOut) = runTransform ans (renameTransform useQual t)
 
   logm $ "renamePN':transform:\n" ++ unlines logOut
   setRefactAnns ans'
