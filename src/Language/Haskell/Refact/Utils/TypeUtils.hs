@@ -973,7 +973,7 @@ addDecl parent pn (decl, msig, declAnns) topLevel
  where
 
   -- ^Add a definition to the beginning of the definition declaration
-  -- list, but after the data type declarations if there is any.
+  -- list, but after the data type declarations if there are any.
   addTopLevelDecl :: (HsValBinds t GHC.RdrName)
        => (GHC.LHsBind GHC.RdrName, [GHC.LSig GHC.RdrName], Maybe Anns)
        -> t -> RefactGhc t
@@ -986,7 +986,6 @@ addDecl parent pn (decl, msig, declAnns) topLevel
            Nothing -> return ()
            Just declAnns -> do
              let declAnns' = setPrecedingLines declAnns newDecl 2
-             logm $ "addDecl.addTopLevelDecl:TODO: annotations attached to ValD, needs to be on the underlying bind"
              logm $ "addDecl.addTopLevelDecl:declAnns'=" ++ show declAnns'
              addRefactAnns declAnns'
 
@@ -1054,25 +1053,6 @@ addDecl parent pn (decl, msig, declAnns) topLevel
         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun']))) (maybeSig++(getValBindSigs binds))))
     where
          localDecls = hsBinds parent'
-
-{-
-         -- TODO: where tokens are passed in, first normalise them to
-         -- the left column before adding in the where clause part
-         newSource = if (emptyList localDecls)
-                       then "where\n"++ concatMap (\l-> "   "++l++"\n") (lines newFun')
-                       else ("" ++ newFun'++"\n")
-           where
-            newFun' = unlines $ stripLeadingSpaces $ lines $ sigStr ++ newFunBody
-            newFunBody = case newFunToks of
-                           Just ts -> unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts
-                           Nothing -> prettyprint newFun
-
-            sigStr  = case newFunToks of
-                        Just _ts -> ""
-                        Nothing -> if (emptyList maybeSig)
-                                     then ""
-                                     else (intercalate "\n" $ map prettyprint maybeSig) ++ "\n"
--}
 
 -- ---------------------------------------------------------------------
 

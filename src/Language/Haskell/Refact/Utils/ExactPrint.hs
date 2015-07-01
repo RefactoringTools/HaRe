@@ -11,11 +11,10 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , setOffsets
   , setOffset
   , setLocatedOffsets
-  , setLocatedAnns
+  -- , setLocatedAnns
   , deleteAnnotation
   , setLocatedDp
   , extractAnnsEP
-  , mergeAnns
   , deleteAnnotations
   , replace
   , replaceAnnKey
@@ -25,24 +24,21 @@ module Language.Haskell.Refact.Utils.ExactPrint
 
   -- * Operations
   , transferEntryDP
-  , adjustAnnOffset
+  -- , adjustAnnOffset
 
-  -- * TransForm
-  , Transform
-  , runTransform
-  , logTr
   ) where
 
 import qualified FastString    as GHC
-import qualified GHC
+import qualified GHC           as GHC
 
 import qualified Data.Generics as SYB
 --import qualified GHC.SYB.Utils as SYB
 
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.Types
+import Language.Haskell.GHC.ExactPrint.Transform hiding (uniqueSrcSpan,isUniqueSrcSpan)
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.Types
 
 import Control.Monad.RWS
 import Data.List
@@ -279,9 +275,6 @@ deleteAnnotation :: AnnKey -> KeywordId -> Anns -> Anns
 deleteAnnotation k kw (anns,sks) =
   (Map.adjust (\(s@Ann{annsDP}) -> s { annsDP = filter (\x -> fst x /= kw) annsDP}) k anns,sks)
 
-mergeAnns :: Anns -> Anns -> Anns
-mergeAnns (anns1,sks1) (anns2,sks2) = (Map.unionWith (<>) anns1 anns2,Map.union sks1 sks2)
-
 deleteAnnotations :: [(AnnKey, KeywordId)] -> Anns -> Anns
 deleteAnnotations vs anne = foldr (uncurry deleteAnnotation) anne vs
 
@@ -326,14 +319,3 @@ getOriginalPos ann la@(GHC.L ss _) kw =
     Nothing -> ((0,0),DP (0,0))
     Just dp@(DP (ro,co)) -> ((ro + srcSpanStartLine ss, co + srcSpanStartColumn ss),dp)
 
--- ---------------------------------------------------------------------
-
--- | Monad type for updating the AST and managing the annotations at the same
--- time. The W state is used to generate logging information if required.
-type Transform a = RWS () [String] Anns a
-
-runTransform :: Anns ->Transform a -> (a,Anns,[String])
-runTransform ans f = runRWS f () ans
-
-logTr :: String -> Transform ()
-logTr str = tell [str]

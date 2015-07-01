@@ -48,6 +48,9 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , setStateStorage
        , getStateStorage
 
+       -- * Parsing source
+       , parseDeclWithAnns
+
        -- * Utility
        , nameSybQuery
        , fileNameFromModSummary
@@ -63,11 +66,13 @@ import Data.Maybe
 
 import qualified FastString    as GHC
 import qualified GHC           as GHC
+import qualified GhcMonad      as GHC
 
 import qualified Data.Generics as SYB
 -- import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GHC.ExactPrint.Types (showGhc,PosToken)
 
@@ -467,3 +472,12 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
        return ()
 -}
 -- EOF
+
+-- ---------------------------------------------------------------------
+
+parseDeclWithAnns :: String -> RefactGhc (GHC.LHsDecl GHC.RdrName)
+parseDeclWithAnns src = do
+  let label = "<interactive"
+  (decl, anns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df label parseDecl src)
+  addRefactAnns anns
+  return decl
