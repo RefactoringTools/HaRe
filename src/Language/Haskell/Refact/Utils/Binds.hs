@@ -40,7 +40,13 @@
 --------------------------------------------------------------------------------
 module Language.Haskell.Refact.Utils.Binds
    (
-     hsBinds
+     HsDecls(..)
+   , wrapDecl
+   , wrapSig
+   , decl2Sig
+   , decl2Bind
+
+   , hsBinds
    , replaceBinds
    , getValBindSigs
    , emptyValBinds
@@ -58,6 +64,39 @@ import qualified SrcLoc        as GHC
 
 import Data.Generics
 
+-- ---------------------------------------------------------------------
+
+class (Data t) => HsDecls t where
+
+    -- | Return the HsDecls that are directly enclosed in the
+    -- given syntax phrase. They are always returned in the wrapped HsDecl form,
+    -- even if orginating in local decls.
+    hsDecls :: t -> [GHC.LHsDecl GHC.RdrName]
+
+    -- | Replace the directly enclosed decl list by the given
+    --  decl list.
+    replaceDecls :: t -> [GHC.LHsDecl GHC.RdrName] -> t
+
+wrapDecl :: GHC.LHsBind name -> GHC.LHsDecl name
+wrapDecl (GHC.L l d) = GHC.L l (GHC.ValD d)
+
+wrapSig :: GHC.LSig name -> GHC.LHsDecl name
+wrapSig (GHC.L l d) = GHC.L l (GHC.SigD d)
+
+decl2Sig :: GHC.LHsDecl name -> [GHC.LSig name]
+decl2Sig (GHC.L l (GHC.SigD s)) = [GHC.L l s]
+decl2Sig _                      = []
+
+decl2Bind :: GHC.LHsDecl name -> [GHC.LHsBind name]
+decl2Bind (GHC.L l (GHC.ValD s)) = [GHC.L l s]
+decl2Bind _                      = []
+
+instance HsDecls GHC.ParsedSource where
+  hsDecls (GHC.L _ (GHC.HsModule _mn _exps _imps decls _ _)) = decls
+  replaceDecls (GHC.L l (GHC.HsModule mn exps imps _decls deps haddocks)) decls
+    = (GHC.L l (GHC.HsModule mn exps imps decls deps haddocks))
+
+-- =====================================================================
 -- ---------------------------------------------------------------------
 
 bindsFromDecls :: [GHC.LHsDecl name] -> GHC.HsValBinds name

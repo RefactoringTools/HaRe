@@ -124,6 +124,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
 import Control.Monad.State
 import Data.Char
+import Data.Foldable
 import Data.List
 import Data.Maybe
 import Exception
@@ -952,12 +953,12 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (HsValBinds t GHC.RdrName)
+addDecl:: (HsValBinds t GHC.RdrName,HsDecls t)
         => t              -- ^The AST to be updated
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
                           -- identifier's definition.
-        -> (GHC.LHsBind GHC.RdrName, [GHC.LSig GHC.RdrName], Maybe Anns)
+        -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns)
              -- ^ The declaration with optional signatures to be added,
              -- together with optional Annotations.
         -> Bool              -- ^ True means the declaration is a
@@ -974,27 +975,36 @@ addDecl parent pn (decl, msig, declAnns) topLevel
 
   -- ^Add a definition to the beginning of the definition declaration
   -- list, but after the data type declarations if there are any.
-  addTopLevelDecl :: (HsValBinds t GHC.RdrName)
-       => (GHC.LHsBind GHC.RdrName, [GHC.LSig GHC.RdrName], Maybe Anns)
+  addTopLevelDecl :: (HsDecls t)
+       => (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns)
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig, maybeDeclAnns) parent'
-    = do let binds = hsValBinds parent'
-             decls = hsBinds parent'
-             (decls1,decls2) = break (\x->isFunOrPatBindR x {- was || isTypeSig x -}) decls
+    = do let
+             decls = hsDecls parent'
+             -- binds = concatMap decl2Bind decls
+             -- sigs  = concatMap decl2Sig decls
+             -- (decls1,decls2) = break (\x->isFunOrPatBindR x {- was || isTypeSig x -}) decls
 
          case maybeDeclAnns of
            Nothing -> return ()
            Just declAnns -> do
              let declAnns' = setPrecedingLines declAnns newDecl 2
-             logm $ "addDecl.addTopLevelDecl:declAnns'=" ++ show declAnns'
-             addRefactAnns declAnns'
+             let declAnns2 = case maybeSig of
+                   Nothing -> setPrecedingLines declAnns newDecl 2
+                   Just s  -> setPrecedingLines ans newDecl 1
+                     where
+                       ans = setPrecedingLines declAnns' s 2
 
-         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[newDecl]++decls2)) (maybeSig++(getValBindSigs binds))))
+             logm $ "addDecl.addTopLevelDecl:declAnns'=" ++ show declAnns2
+             addRefactAnns declAnns2
+
+         -- return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[newDecl]++decls2)) (maybeSig++(getValBindSigs binds))))
+         return (replaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls))
 
   appendDecl :: (HsValBinds t GHC.RdrName)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
-      -> (GHC.LHsBind GHC.RdrName, [GHC.LSig GHC.RdrName], Maybe Anns) -- ^declaration and maybe sig/tokens
+      -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns) -- ^declaration and maybe sig/tokens
       -> RefactGhc t -- ^updated AST
   appendDecl parent' pn' (newDecl, maybeSig, _declAnns')
     = do let binds = hsValBinds parent'
@@ -1019,13 +1029,13 @@ addDecl parent pn (decl, msig, declAnns) topLevel
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
          -}
-         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (maybeSig++(getValBindSigs binds))))
+         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (toList maybeSig++(getValBindSigs binds))))
       where
         decls = hsBinds parent'
 
 
   addLocalDecl :: (HsValBinds t GHC.RdrName)
-               => t -> (GHC.LHsBind GHC.RdrName, [GHC.LSig GHC.RdrName], Maybe Anns)
+               => t -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns)
                -> RefactGhc t
   addLocalDecl parent' (newFun, maybeSig, _newAnns)
     =do
@@ -1050,7 +1060,7 @@ addDecl parent pn (decl, msig, declAnns) topLevel
             void $ addToksAfterPos (startLoc,endLoc) (PlaceAbsCol (rowIndent+1) prevCol 2) newToks
 -}
 
-        return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun']))) (maybeSig++(getValBindSigs binds))))
+        return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun']))) (toList maybeSig++(getValBindSigs binds))))
     where
          localDecls = hsBinds parent'
 
