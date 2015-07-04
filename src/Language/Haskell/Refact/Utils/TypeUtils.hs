@@ -998,25 +998,20 @@ addDecl parent pn (decl, msig, declAnns) topLevel
              logm $ "addDecl.addTopLevelDecl:declAnns'=" ++ show declAnns2
              addRefactAnns declAnns2
 
-         -- return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[newDecl]++decls2)) (maybeSig++(getValBindSigs binds))))
          return (replaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls))
 
-  appendDecl :: (HsValBinds t GHC.RdrName)
+  appendDecl :: (HsValBinds t GHC.RdrName,HsDecls t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
       -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns) -- ^declaration and maybe sig/tokens
       -> RefactGhc t -- ^updated AST
   appendDecl parent' pn' (newDecl, maybeSig, _declAnns')
-    = do let binds = hsValBinds parent'
-         -- logm $ "appendDecl:declToks=" ++ (show declToks')
-         -- newToks <- makeNewToks (newDecl,maybeSig,declToks')
-         -- logm $ "appendDecl:newToks=" ++ (show newToks)
+    = do let -- binds = hsValBinds parent'
+             decls = hsDecls parent'
 
          nameMap <- getRefactNameMap
          let
-            -- (before,after) = break (defines pn') decls -- Need to handle the case that 'after' is empty?
-            (before,after) = break (definesRdr nameMap pn') decls -- Need to handle the case that 'after' is empty?
-
+            (before,after) = break (definesDeclRdr nameMap pn') decls -- Need to handle the case that 'after' is empty?
 
          let Just _sspan = getSrcSpan $ ghead "appendDecl" after
          let decl' = newDecl
@@ -1028,9 +1023,8 @@ addDecl parent pn (decl, msig, declAnns) topLevel
            Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
            Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
          -}
-         return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (toList maybeSig++(getValBindSigs binds))))
-      where
-        decls = hsBinds parent'
+         -- return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (toList maybeSig++(getValBindSigs binds))))
+         return (replaceDecls parent' ((map wrapSig $ toList maybeSig)++decls1++[wrapDecl newDecl]++decls2))
 
 
   addLocalDecl :: (HsValBinds t GHC.RdrName)
