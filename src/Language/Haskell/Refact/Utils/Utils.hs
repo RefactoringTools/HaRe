@@ -624,9 +624,3 @@ serverModsAndFiles m = do
   return serverMods
 
 -- ---------------------------------------------------------------------
-
-{-
-instance (Show GHC.ModuleName) where
-  show = GHC.moduleNameString
--}
--- ---------------------------------------------------------------------

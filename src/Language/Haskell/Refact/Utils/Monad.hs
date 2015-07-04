@@ -44,6 +44,7 @@ import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
 import qualified HscTypes      as GHC
+import qualified Outputable    as GHC
 
 import Control.Arrow
 import Control.Applicative
@@ -58,7 +59,7 @@ import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Internal.Types
 import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger

@@ -30,6 +30,7 @@ module TestUtils
        , ct
        , pwd
        , cd
+       , parseToAnnotated
        ) where
 
 
@@ -44,7 +45,8 @@ import Control.Monad.State
 import Data.Algorithm.Diff
 import Exception
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Annotate
+import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import qualified Language.Haskell.GhcMod          as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
@@ -337,6 +339,21 @@ mkTestGhcName u maybeMod name = n
 
 nullSrcSpan :: GHC.SrcSpan
 nullSrcSpan = GHC.UnhelpfulSpan $ GHC.mkFastString "HaRe nullSrcSpan"
+
+-- ---------------------------------------------------------------------
+
+parseToAnnotated :: (Show a, Annotate ast)
+                 => GHC.DynFlags
+                 -> FilePath
+                 -> (GHC.DynFlags -> FilePath -> String -> Either a (Anns, GHC.Located ast))
+                 -- -> Parser
+                 -> String
+                 -> (GHC.Located ast, Anns)
+parseToAnnotated df fp parser src = (ast,anns)
+  where
+    (anns, ast) = case (parser df fp src) of
+                            Right xs -> xs
+                            Left err -> error (show err)
 
 -- ---------------------------------------------------------------------
 

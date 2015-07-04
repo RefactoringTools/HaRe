@@ -72,9 +72,11 @@ import qualified Data.Generics as SYB
 -- import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Internal.Types
+import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.GHC.ExactPrint.Types (showGhc,PosToken)
+import Language.Haskell.GHC.ExactPrint.Types (PosToken)
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -277,7 +279,7 @@ replaceRdrName (GHC.L l newName) = do
              return r
       (parsed',anns') = runState fn anns
   logm $ "replaceRdrName:after:parsed'=" ++ showGhc parsed'
-  putRefactParsed parsed' mempty
+  putRefactParsed parsed' (Anns mempty mempty)
   setRefactAnns anns'
   return ()
 
@@ -478,6 +480,10 @@ updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
 parseDeclWithAnns :: String -> RefactGhc (GHC.LHsDecl GHC.RdrName)
 parseDeclWithAnns src = do
   let label = "<interactive"
-  (decl, anns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df label parseDecl src)
-  addRefactAnns anns
-  return decl
+  r  <- GHC.liftIO $ withDynFlags (\df -> parseDecl df label src)
+  case r of
+    Left err -> error (show err)
+    Right (anns,decl) -> do
+      addRefactAnns anns
+      return decl
+

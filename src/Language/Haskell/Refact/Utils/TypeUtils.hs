@@ -988,12 +988,12 @@ addDecl parent pn (decl, msig, declAnns) topLevel
          case maybeDeclAnns of
            Nothing -> return ()
            Just declAnns -> do
-             let declAnns' = setPrecedingLines declAnns newDecl 2
+             let declAnns' = setPrecedingLines declAnns newDecl 2 1
              let declAnns2 = case maybeSig of
-                   Nothing -> setPrecedingLines declAnns newDecl 2
-                   Just s  -> setPrecedingLines ans newDecl 1
+                   Nothing -> setPrecedingLines declAnns newDecl 2 1
+                   Just s  -> setPrecedingLines ans      newDecl 1 1
                      where
-                       ans = setPrecedingLines declAnns' s 2
+                       ans = setPrecedingLines declAnns' s 2 1
 
              logm $ "addDecl.addTopLevelDecl:declAnns'=" ++ show declAnns2
              addRefactAnns declAnns2
@@ -1019,7 +1019,6 @@ addDecl parent pn (decl, msig, declAnns) topLevel
 
 
          let Just _sspan = getSrcSpan $ ghead "appendDecl" after
-         -- decl' <- putDeclToksAfterSpan sspan newDecl (PlaceOffset 2 0 2) newToks
          let decl' = newDecl
 
          let decls1 = before ++ [ghead "appendDecl14" after]
