@@ -36,6 +36,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        -- * New ghc-exactprint interfacing
        , replaceRdrName
+       , refactReplaceDecls
 
        -- * TokenUtils API
        , getToksForSpan
@@ -78,6 +79,7 @@ import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GHC.ExactPrint.Types (PosToken)
 
+import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -282,6 +284,15 @@ replaceRdrName (GHC.L l newName) = do
   putRefactParsed parsed' (Anns mempty mempty)
   setRefactAnns anns'
   return ()
+
+-- ---------------------------------------------------------------------
+
+refactReplaceDecls :: (HasDecls a) => a -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc a
+refactReplaceDecls t decls = do
+  ans <- getRefactAnns
+  let (t',(ans',_),_) = runTransform ans (replaceDecls t decls)
+  setRefactAnns ans'
+  return t'
 
 -- ---------------------------------------------------------------------
 

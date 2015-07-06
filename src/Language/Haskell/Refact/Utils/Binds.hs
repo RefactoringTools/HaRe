@@ -101,8 +101,7 @@ instance HasDecls GHC.ParsedSource where
   hsDecls (GHC.L _ (GHC.HsModule _mn _exps _imps decls _ _)) = decls
   replaceDecls (GHC.L l (GHC.HsModule mn exps imps _decls deps haddocks)) decls
     = do
-        a1 <- getAnnsT
-        putAnnsT (captureOrder decls a1)
+        modifyAnnsT (captureOrder decls)
         return (GHC.L l (GHC.HsModule mn exps imps decls deps haddocks))
 
 -- =====================================================================

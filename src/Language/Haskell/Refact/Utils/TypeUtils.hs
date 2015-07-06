@@ -986,28 +986,17 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          setRefactAnns ans3
          logm $ "addDecl.setDeclSpacing:declAnns'=" ++ show ans3
 
+
   -- ^Add a definition to the beginning of the definition declaration
   -- list, but after the data type declarations if there are any.
   addTopLevelDecl :: (HasDecls t)
        => (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig) parent'
-    = do let
-             decls = hsDecls parent'
-
+    = do let decls = hsDecls parent'
          setDeclSpacing newDecl maybeSig
-         -- ans1 <- getRefactAnns
-         -- let ans2 = setPrecedingLines ans1 newDecl 2 1
-         --     ans3 = case maybeSig of
-         --       Nothing -> setPrecedingLines ans2 newDecl 2 1
-         --       Just s  -> setPrecedingLines ans  newDecl 1 1
-         --         where
-         --           ans = setPrecedingLines ans2 s 2 1
-         -- logm $ "addDecl.addTopLevelDecl:declAnns'=" ++ show ans3
-         ans <- getRefactAnns
-         let (t',(ans',_),_) = runTransform ans (replaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls))
-         setRefactAnns ans'
-         return t'
+         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls)
+
 
   appendDecl :: (HsValBinds t GHC.RdrName,HasDecls t)
       => t        -- ^Original AST
@@ -1024,10 +1013,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
-         ans <- getRefactAnns
-         let (t',(ans',_),_) = runTransform ans (replaceDecls parent' (decls1++(map wrapSig $ toList maybeSig)++[wrapDecl newDecl]++decls2))
-         setRefactAnns ans'
-         return t'
+         refactReplaceDecls parent' (decls1++(map wrapSig $ toList maybeSig)++[wrapDecl newDecl]++decls2)
 
 
   addLocalDecl :: (HsValBinds t GHC.RdrName)
