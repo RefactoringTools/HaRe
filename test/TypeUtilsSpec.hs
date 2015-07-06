@@ -1819,15 +1819,6 @@ spec = do
       let
         comp = do
          parsed <- getRefactParsed
-  {-
-         nn  <- mkNewGhcName Nothing "nn"
-         nn2 <- mkNewGhcName Nothing "nn2"
-         let (GHC.ValBindsOut _ vb) = hsValBinds parsed
-         let hSig = head $ drop 3 vb
-         let (GHC.L _ (GHC.TypeSig _ (GHC.L _ (GHC.HsTyVar intName)) _)) = hSig
-         let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         let sig = GHC.noLoc (GHC.TypeSig [(GHC.noLoc nn)] (GHC.noLoc (GHC.HsTyVar intName)) undefined)
--}
          ((GHC.L ld (GHC.ValD decl)),declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = 2")
          ((GHC.L ls (GHC.SigD sig)), sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
          parsed' <- addDecl parsed Nothing (GHC.L ld decl,Just (GHC.L ls sig),Just $ mergeAnns sigAnns declAnns) True
@@ -1847,7 +1838,7 @@ spec = do
       let
         comp = do
          parsed <- getRefactParsed
-         ((GHC.L l (GHC.ValD decl)),declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "a" parseDecl "nn = n2")
+         ((GHC.L l (GHC.ValD decl)),declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "a" parseDecl "nn = nn2")
          renamed <- getRefactRenamed
          let Just (GHC.L _l n) = locToName (21, 1) renamed
          parsed' <- addDecl parsed (Just n) (GHC.L l decl,Nothing,Just declAnns) True
@@ -1859,7 +1850,7 @@ spec = do
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nnn = nn2\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      (unspace $ showGhcQual nb) `shouldBe` unspace "(MoveDef.Md1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x\n MoveDef.Md1.c, MoveDef.Md1.d :: GHC.Integer.Type.Integer\n MoveDef.Md1.c = 7\n MoveDef.Md1.d = 9\n MoveDef.Md1.tup :: (GHC.Types.Int, GHC.Types.Int)\n MoveDef.Md1.h :: GHC.Types.Int\n MoveDef.Md1.t :: GHC.Types.Int\n MoveDef.Md1.tup@(MoveDef.Md1.h, MoveDef.Md1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15\n MoveDef.Md1.ff :: GHC.Types.Int -> GHC.Types.Int\n MoveDef.Md1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1\n MoveDef.Md1.l z = let ll = 34 in ll GHC.Num.+ z\n MoveDef.Md1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) }\n MoveDef.Md1.zz1 a = 1 GHC.Num.+ MoveDef.Md1.toplevel a\n MoveDef.Md1.tlFunc ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer\n MoveDef.Md1.tlFunc x = MoveDef.Md1.c GHC.Num.* x\n nn = nn2\n \n data MoveDef.Md1.D\n   = MoveDef.Md1.A | MoveDef.Md1.B GHC.Base.String | MoveDef.Md1.C,\n [import (implicit) Prelude],\n Nothing,\n Nothing)"
+      (unspace $ showGhcQual nb) `shouldBe` unspace "module MoveDef.Md1 where\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\nc, d :: Integer\nc = 7\nd = 9\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h, t)\n = head $ zip [1 .. 10] [3 .. ff]\n where\n ff :: Int\n ff = 15\ndata D = A | B String | C\nff :: Int -> Int\nff y\n = y + zz\n where\n zz = 1\nnn = nn2\nl z = let ll = 34 in ll + z\ndd q\n = do { let ss = 5;\n return (ss + q) }\nzz1 a = 1 + toplevel a\ntlFunc :: Integer -> Integer\ntlFunc x = c * x"
 
 
     -- -------------------------------------------

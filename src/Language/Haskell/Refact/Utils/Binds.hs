@@ -40,7 +40,7 @@
 --------------------------------------------------------------------------------
 module Language.Haskell.Refact.Utils.Binds
    (
-     HsDecls(..)
+     HasDecls(..)
    , wrapDecl
    , wrapSig
    , decl2Sig
@@ -53,6 +53,8 @@ module Language.Haskell.Refact.Utils.Binds
    , HsValBinds(..)
  ) where
 
+import Language.Haskell.GHC.ExactPrint.Internal.Types
+import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Types
 
@@ -63,10 +65,13 @@ import qualified Outputable    as GHC
 import qualified SrcLoc        as GHC
 
 import Data.Generics
+import Data.Ratio
+import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
 
-class (Data t) => HsDecls t where
+-- TODO: Move this class to ghc-exactprint Transform module
+class (Data t) => HasDecls t where
 
     -- | Return the HsDecls that are directly enclosed in the
     -- given syntax phrase. They are always returned in the wrapped HsDecl form,
@@ -74,8 +79,9 @@ class (Data t) => HsDecls t where
     hsDecls :: t -> [GHC.LHsDecl GHC.RdrName]
 
     -- | Replace the directly enclosed decl list by the given
-    --  decl list.
-    replaceDecls :: t -> [GHC.LHsDecl GHC.RdrName] -> t
+    --  decl list. Runs in the ghc-exactprint Transform Monad to be able to
+    --  update list order annotations.
+    replaceDecls :: t -> [GHC.LHsDecl GHC.RdrName] -> Transform t
 
 wrapDecl :: GHC.LHsBind name -> GHC.LHsDecl name
 wrapDecl (GHC.L l d) = GHC.L l (GHC.ValD d)
@@ -91,10 +97,13 @@ decl2Bind :: GHC.LHsDecl name -> [GHC.LHsBind name]
 decl2Bind (GHC.L l (GHC.ValD s)) = [GHC.L l s]
 decl2Bind _                      = []
 
-instance HsDecls GHC.ParsedSource where
+instance HasDecls GHC.ParsedSource where
   hsDecls (GHC.L _ (GHC.HsModule _mn _exps _imps decls _ _)) = decls
   replaceDecls (GHC.L l (GHC.HsModule mn exps imps _decls deps haddocks)) decls
-    = (GHC.L l (GHC.HsModule mn exps imps decls deps haddocks))
+    = do
+        a1 <- getAnnsT
+        putAnnsT (captureOrder decls a1)
+        return (GHC.L l (GHC.HsModule mn exps imps decls deps haddocks))
 
 -- =====================================================================
 -- ---------------------------------------------------------------------

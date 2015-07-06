@@ -953,7 +953,7 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (HsValBinds t GHC.RdrName,HsDecls t)
+addDecl:: (HsValBinds t GHC.RdrName,HasDecls t)
         => t              -- ^The AST to be updated
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
@@ -965,95 +965,79 @@ addDecl:: (HsValBinds t GHC.RdrName,HsDecls t)
                              -- toplevel declaration.
         -> RefactGhc t
 
-addDecl parent pn (decl, msig, declAnns) topLevel
- = if isJust pn
-     then appendDecl parent (gfromJust "addDecl" pn) (decl, msig, declAnns)
-     else if topLevel
-            then addTopLevelDecl (decl, msig, declAnns) parent
-            else addLocalDecl parent (decl,msig,declAnns)
+addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
+  case mDeclAnns of
+    Nothing -> return ()
+    Just declAnns -> addRefactAnns declAnns
+  if isJust pn
+    then appendDecl parent (gfromJust "addDecl" pn) (decl, msig)
+    else if topLevel
+           then addTopLevelDecl (decl, msig) parent
+           else addLocalDecl parent (decl,msig)
  where
+  setDeclSpacing newDecl maybeSig = do
+         ans1 <- getRefactAnns
+         let ans2 = setPrecedingLines ans1 newDecl 2 1
+             ans3 = case maybeSig of
+               Nothing -> setPrecedingLines ans2 newDecl 2 1
+               Just s  -> setPrecedingLines ans  newDecl 1 1
+                 where
+                   ans = setPrecedingLines ans2 s 2 1
+         setRefactAnns ans3
+         logm $ "addDecl.setDeclSpacing:declAnns'=" ++ show ans3
 
   -- ^Add a definition to the beginning of the definition declaration
   -- list, but after the data type declarations if there are any.
-  addTopLevelDecl :: (HsDecls t)
-       => (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns)
+  addTopLevelDecl :: (HasDecls t)
+       => (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
        -> t -> RefactGhc t
-  addTopLevelDecl (newDecl, maybeSig, maybeDeclAnns) parent'
+  addTopLevelDecl (newDecl, maybeSig) parent'
     = do let
              decls = hsDecls parent'
-             -- binds = concatMap decl2Bind decls
-             -- sigs  = concatMap decl2Sig decls
-             -- (decls1,decls2) = break (\x->isFunOrPatBindR x {- was || isTypeSig x -}) decls
 
-         case maybeDeclAnns of
-           Nothing -> return ()
-           Just declAnns -> do
-             let declAnns' = setPrecedingLines declAnns newDecl 2 1
-             let declAnns2 = case maybeSig of
-                   Nothing -> setPrecedingLines declAnns newDecl 2 1
-                   Just s  -> setPrecedingLines ans      newDecl 1 1
-                     where
-                       ans = setPrecedingLines declAnns' s 2 1
+         setDeclSpacing newDecl maybeSig
+         -- ans1 <- getRefactAnns
+         -- let ans2 = setPrecedingLines ans1 newDecl 2 1
+         --     ans3 = case maybeSig of
+         --       Nothing -> setPrecedingLines ans2 newDecl 2 1
+         --       Just s  -> setPrecedingLines ans  newDecl 1 1
+         --         where
+         --           ans = setPrecedingLines ans2 s 2 1
+         -- logm $ "addDecl.addTopLevelDecl:declAnns'=" ++ show ans3
+         ans <- getRefactAnns
+         let (t',(ans',_),_) = runTransform ans (replaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls))
+         setRefactAnns ans'
+         return t'
 
-             logm $ "addDecl.addTopLevelDecl:declAnns'=" ++ show declAnns2
-             addRefactAnns declAnns2
-
-         return (replaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls))
-
-  appendDecl :: (HsValBinds t GHC.RdrName,HsDecls t)
+  appendDecl :: (HsValBinds t GHC.RdrName,HasDecls t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
-      -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns) -- ^declaration and maybe sig/tokens
+      -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName)) -- ^declaration and maybe sig
       -> RefactGhc t -- ^updated AST
-  appendDecl parent' pn' (newDecl, maybeSig, _declAnns')
-    = do let -- binds = hsValBinds parent'
-             decls = hsDecls parent'
-
+  appendDecl parent' pn' (newDecl, maybeSig)
+    = do
+         setDeclSpacing newDecl maybeSig
          nameMap <- getRefactNameMap
          let
+            decls = hsDecls parent'
             (before,after) = break (definesDeclRdr nameMap pn') decls -- Need to handle the case that 'after' is empty?
-
-         let Just _sspan = getSrcSpan $ ghead "appendDecl" after
-         let decl' = newDecl
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
-         {-
-         case maybeSig of
-           Nothing  -> return (replaceBinds    parent (decls1++[decl']++decls2))
-           Just sig -> return (replaceValBinds parent (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (sig:(getValBindSigs binds))))
-         -}
-         -- return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag (decls1++[decl']++decls2)) (toList maybeSig++(getValBindSigs binds))))
-         return (replaceDecls parent' ((map wrapSig $ toList maybeSig)++decls1++[wrapDecl newDecl]++decls2))
+         ans <- getRefactAnns
+         let (t',(ans',_),_) = runTransform ans (replaceDecls parent' (decls1++(map wrapSig $ toList maybeSig)++[wrapDecl newDecl]++decls2))
+         setRefactAnns ans'
+         return t'
 
 
   addLocalDecl :: (HsValBinds t GHC.RdrName)
-               => t -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns)
+               => t -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
                -> RefactGhc t
-  addLocalDecl parent' (newFun, maybeSig, _newAnns)
+  addLocalDecl parent' (newFun, maybeSig)
     =do
         let binds = hsValBinds parent'
 
-        let (((_,_prevCol)),_endLoc)
-             = if (emptyList localDecls)
-                 then getStartEndLoc parent'
-                 else getStartEndLoc localDecls
-
-        -- let newToks = basicTokenise newSource
-
-        -- (newFun',_) <- addLocInfo (newFun, newToks)
-        let newFun' = newFun
-{-
-        let rowIndent = 1
-
-        if (emptyList localDecls)
-          then
-            void $ addToksAfterPos (startLoc,endLoc) (PlaceOffset rowIndent 4 2) newToks
-          else
-            void $ addToksAfterPos (startLoc,endLoc) (PlaceAbsCol (rowIndent+1) prevCol 2) newToks
--}
-
-        return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun']))) (toList maybeSig++(getValBindSigs binds))))
+        return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun]))) (toList maybeSig++(getValBindSigs binds))))
     where
          localDecls = hsBinds parent'
 
