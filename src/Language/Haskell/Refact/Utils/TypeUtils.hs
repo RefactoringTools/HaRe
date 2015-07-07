@@ -151,10 +151,7 @@ import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
--- import qualified NameSet       as GHC
--- import qualified Outputable    as GHC
 import qualified RdrName       as GHC
--- import qualified UniqSet       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHC
 
@@ -656,67 +653,6 @@ findEntity' a b = res
                  -- then Just (getStartEndLoc b == getStartEndLoc a)
                  then Just (getStartEndLoc x)
                  else Nothing
-
--- ---------------------------------------------------------------------
-
--- | Return True if the function\/pattern binding defines the
--- specified identifier.
-defines:: GHC.Name -> GHC.LHsBind GHC.Name -> Bool
-defines n (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
- = GHC.nameUnique pname == GHC.nameUnique n
-defines n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))
- = elem (GHC.nameUnique n) (map GHC.nameUnique $ hsNamess p)
-defines _ _= False
-
--- | Return True if the function\/pattern binding defines the
--- specified identifier.
-definesRdr :: NameMap -> GHC.Name -> GHC.LHsBind GHC.RdrName -> Bool
-definesRdr nameMap nin (GHC.L _ (GHC.FunBind (GHC.L ln pname) _ _ _ _ _)) =
-  case Map.lookup ln nameMap of
-    Nothing -> False
-    Just n ->  GHC.nameUnique n == GHC.nameUnique nin
-definesRdr nameMap n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _)) =
-  -- names <- map (rdrName2Name nameMap) (hsNamessRdr p)
- -- = elem n (hsNamess p)
-  elem n (map (rdrName2NamePure nameMap) (hsNamessRdr p))
-definesRdr _ _ _= False
-
--- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind
-definesDeclRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
-definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.L l d)
-definesDeclRdr _ _ _ = False
-
-
-definesP::PName->HsDeclP->Bool
-definesP pn (GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
- = PN pname == pn
-definesP pn (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _)))
- = elem pn (hsPNs p)
-definesP _ _= False
-
--- ---------------------------------------------------------------------
-
--- | Return True if the declaration defines the type signature of the
--- specified identifier.
-definesTypeSig :: GHC.Name -> GHC.LSig GHC.Name -> Bool
-definesTypeSig pn (GHC.L _ (GHC.TypeSig names _typ _)) = elem (GHC.nameUnique pn) $ map (\(GHC.L _ n)->GHC.nameUnique n) names
-definesTypeSig _  _ = False
-
--- | Return True if the declaration defines the type signature of the
--- specified identifier.
-definesTypeSigRdr :: NameMap -> GHC.Name -> GHC.Sig GHC.RdrName -> Bool
-definesTypeSigRdr nameMap pn (GHC.TypeSig names _typ _)
-  = elem (GHC.nameUnique pn) (map (GHC.nameUnique . rdrName2NamePure nameMap) names)
--- definesTypeSigRdr _ _  _ = False
-definesTypeSigRdr _ _  x = error $ "definesTypeSigRdr : got " ++ SYB.showData SYB.Parser 0 x
-
-{-
--- | Return True if the declaration defines the type signature of the specified identifier.
-isTypeSigOf :: PNT -> HsDeclP -> Bool
-isTypeSigOf pnt (TiDecorate.Dec (HsTypeSig loc is c tp))= elem pnt is
-isTypeSigOf _  _ =False
--}
-
 
 --------------------------------------------------------------------------------
 

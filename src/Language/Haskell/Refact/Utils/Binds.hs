@@ -97,12 +97,154 @@ decl2Bind :: GHC.LHsDecl name -> [GHC.LHsBind name]
 decl2Bind (GHC.L l (GHC.ValD s)) = [GHC.L l s]
 decl2Bind _                      = []
 
+-- ---------------------------------------------------------------------
+
 instance HasDecls GHC.ParsedSource where
   hsDecls (GHC.L _ (GHC.HsModule _mn _exps _imps decls _ _)) = decls
   replaceDecls (GHC.L l (GHC.HsModule mn exps imps _decls deps haddocks)) decls
     = do
         modifyAnnsT (captureOrder decls)
         return (GHC.L l (GHC.HsModule mn exps imps decls deps haddocks))
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls (GHC.MatchGroup GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
+  hsDecls (GHC.MG matches _ _ _) = hsDecls matches
+
+  replaceDecls (GHC.MG matches a r o) newDecls
+    = do
+        matches' <- (replaceDecls matches newDecls)
+        return (GHC.MG matches' a r o)
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)] where
+  hsDecls ms = concatMap (\m -> hsDecls m) ms
+
+  replaceDecls [] _        = error "empty match list in replaceDecls [GHC.LMatch GHC.Name]"
+  replaceDecls ms newDecls
+    = do
+        -- ++AZ++: TODO: this one looks dodgy
+        m' <- (replaceDecls (ghead "replaceDecls" ms) newDecls)
+        return (m':tail ms)
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
+  hsDecls m = hsDecls $ GHC.unLoc m
+
+  replaceDecls (GHC.L l m) newBinds
+    = do
+        m' <- (replaceDecls m newBinds)
+        return (GHC.L l m')
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
+  hsDecls (GHC.Match _ _ _ grhs) = hsDecls grhs
+
+  replaceDecls (GHC.Match mf p t (GHC.GRHSs rhs binds)) newBinds
+    = do
+        -- Need to throw in a fresh where clause if the binds were empty,
+        -- in the annotations.
+        {-
+        (AnnKey tests/examples/LocalDecls.hs:(3,1)-(8,11) CN "Match" NotNeeded,
+               (Ann (DP (0,0)) (ColDelta 1) DP (0,0) []
+             [((G AnnEqual),DP (0,1))
+             ,((G AnnWhere),DP (1,3))
+             ,((AnnList tests/examples/LocalDecls.hs:(5,5)-(8,11) NotNeeded),DP (0,0))
+             ])),
+        (AnnKey tests/examples/LocalDecls.hs:(5,5)-(8,11) CN "HsValBinds" NotNeeded,
+           (Ann (DP (1,0)) (ColDelta 5) DP (1,0) [] []))      ,
+        -}
+        modifyAnnsT addAnns
+        binds' <- replaceDecls binds newBinds
+        return (GHC.Match mf p t (GHC.GRHSs rhs binds'))
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
+  hsDecls (GHC.GRHSs _ lb) = hsDecls lb
+
+  replaceDecls (GHC.GRHSs rhss b) new
+    = do
+        b' <- (replaceDecls b new)
+        return (GHC.GRHSs rhss b')
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls (GHC.LHsExpr GHC.RdrName) where
+  hsDecls (GHC.L _ (GHC.HsLet decls _ex)) = hsDecls decls
+  hsDecls _                               = []
+
+  replaceDecls (GHC.L l (GHC.HsLet decls ex)) newDecls
+    = do
+        decls' <- (replaceDecls decls newDecls)
+        return (GHC.L l (GHC.HsLet decls' ex))
+  replaceDecls old _new = error $ "replaceDecls (GHC.LHsExpr GHC.RdrName) undefined for:" ++ (showGhc old)
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls (GHC.LHsBinds GHC.RdrName) where
+  hsDecls binds = hsDecls $ GHC.bagToList binds
+  replaceDecls old _new = error $ "replaceDecls (GHC.LHsBinds name) undefined for:" ++ (showGhc old)
+
+-- ---------------------------------------------------------------------
+instance HasDecls [GHC.LHsBind GHC.RdrName] where
+  hsDecls bs = map wrapDecl bs
+
+  replaceDecls bs newDecls
+    = do
+        return bs
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls (GHC.LHsBind GHC.RdrName) where
+  hsDecls (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) = hsDecls matches
+  hsDecls (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsDecls rhs
+  hsDecls (GHC.L _ (GHC.VarBind _ rhs _))           = hsDecls rhs
+  hsDecls (GHC.L _ (GHC.AbsBinds _ _ _ _ binds))    = hsDecls binds
+  hsDecls (GHC.L _ (GHC.PatSynBind _))      = error "hsDecls: PatSynBind to implement"
+
+
+  replaceDecls (GHC.L l (GHC.FunBind a b matches c d e)) newDecls
+    = do
+        matches' <- (replaceDecls matches newDecls)
+        return (GHC.L l (GHC.FunBind a b matches' c d e))
+  replaceDecls (GHC.L l (GHC.PatBind a rhs b c d)) newDecls
+    = do
+        rhs' <- (replaceDecls rhs newDecls)
+        return (GHC.L l (GHC.PatBind a rhs' b c d))
+  replaceDecls (GHC.L l (GHC.VarBind a rhs b)) newDecls
+    = do
+        rhs' <- (replaceDecls rhs newDecls)
+        return (GHC.L l (GHC.VarBind a rhs' b))
+  replaceDecls (GHC.L l (GHC.AbsBinds a b c d binds)) newDecls
+    = do
+        binds' <- (replaceDecls binds newDecls)
+        return (GHC.L l (GHC.AbsBinds a b c d binds'))
+  replaceDecls (GHC.L _ (GHC.PatSynBind _)) _ = error "replaceDecls: PatSynBind to implement"
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls (GHC.HsLocalBinds GHC.RdrName) where
+  hsDecls lb = case lb of
+    GHC.HsValBinds (GHC.ValBindsIn bs sigs) -> map wrapDecl (GHC.bagToList bs) ++ map wrapSig sigs
+    GHC.HsValBinds (GHC.ValBindsOut _ _) -> error $ "hsDecls.ValbindsOut not valid"
+    GHC.HsIPBinds _     -> []
+    GHC.EmptyLocalBinds -> []
+
+  replaceDecls (GHC.HsValBinds _b) new
+    = do
+        let decs = GHC.listToBag $ concatMap decl2Bind new
+        let sigs = concatMap decl2Sig new
+        return (GHC.HsValBinds (GHC.ValBindsIn decs sigs))
+  replaceDecls (GHC.HsIPBinds _b) _new    = error "undefined replaceDecls HsIPBinds"
+  replaceDecls (GHC.EmptyLocalBinds) new
+    = do
+        let decs = GHC.listToBag $ concatMap decl2Bind new
+        let sigs = concatMap decl2Sig new
+        return (GHC.HsValBinds (GHC.ValBindsIn decs sigs))
 
 -- =====================================================================
 -- ---------------------------------------------------------------------

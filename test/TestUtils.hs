@@ -12,6 +12,7 @@ module TestUtils
        , initialState
        , initialLogOnState
        , showAnnDataFromState
+       , exactPrintFromState
        , sourceFromState
        , annsFromState
        , defaultTestSettings
@@ -279,6 +280,17 @@ showAnnDataFromState st =
         parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module
                  $ rsTypecheckedMod tm
         r = showAnnData anns 0 parsed
+    Nothing -> []
+
+-- ---------------------------------------------------------------------
+
+exactPrintFromState :: (Annotate a) => RefactState -> GHC.Located a -> String
+exactPrintFromState st ast =
+  case rsModule st of
+    Just tm -> r
+      where
+        anns = tkCache (rsTokenCache tm) Map.! mainTid
+        r = exactPrintWithAnns ast anns
     Nothing -> []
 
 -- ---------------------------------------------------------------------

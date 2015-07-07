@@ -34,8 +34,13 @@ module Language.Haskell.Refact.Utils.Variables
   , FindEntity(..)
   , sameOccurrence
   {- ,definingDecls -}, definedPNs
+  , definingDeclsRdrNames
   , definingDeclsNames, definingDeclsNames', definingSigsNames
   , definingTyClDeclsNames
+  , defines
+  , definesRdr,definesDeclRdr
+  , definesTypeSig,definesTypeSigRdr
+  , definesP
   , allNames
   -- ,simplifyDecl
 
@@ -44,16 +49,11 @@ module Language.Haskell.Refact.Utils.Variables
   ) where
 
 import Control.Monad.State
--- import Data.Char
 import Data.List
 import Data.Maybe
 import Data.Monoid
--- import Exception
--- import Data.Generics.Uniplate.Data
 
 import Language.Haskell.Refact.Utils.Binds
--- import Language.Haskell.Refact.Utils.ExactPrint
--- import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -62,29 +62,27 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 
 import Language.Haskell.GHC.ExactPrint.Internal.Types
--- import Language.Haskell.GHC.ExactPrint.Utils
 
 
 -- Modules from GHC
 import qualified Bag           as GHC
--- import qualified FastString    as GHC
+import qualified FastString    as GHC
 import qualified GHC           as GHC
--- import qualified Module        as GHC
--- import qualified Name          as GHC
+import qualified Module        as GHC
+import qualified Name          as GHC
 import qualified NameSet       as GHC
 import qualified Outputable    as GHC
--- import qualified RdrName       as GHC
+import qualified RdrName       as GHC
 import qualified UniqSet       as GHC
--- import qualified Unique        as GHC
--- import qualified Var           as GHC
- 
+import qualified Unique        as GHC
+import qualified Var           as GHC
+
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import qualified Data.Map as Map
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib hiding (liftIO,MonadPlus,mzero)
-
 
 -- ---------------------------------------------------------------------
 
@@ -1043,6 +1041,36 @@ definedPNs  _ = []
 -- |Find those declarations(function\/pattern binding) which define
 -- the specified GHC.Names. incTypeSig indicates whether the
 -- corresponding type signature will be included.
+definingDeclsRdrNames::
+            NameMap
+            ->[GHC.Name]   -- ^ The specified identifiers.
+            ->[GHC.LHsBind GHC.RdrName] -- ^ A collection of declarations.
+            ->Bool       -- ^ True means to include the type signature.
+            ->Bool       -- ^ True means to look at the local declarations as well.
+            ->[GHC.LHsBind GHC.RdrName]  -- ^ The result.
+definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining ds
+  where
+   defining decl
+     = if recursive
+        then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
+        else defines' decl
+     where
+      defines' :: (GHC.LHsBind GHC.RdrName) -> [GHC.LHsBind GHC.RdrName]
+      defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
+        -- - |isJust (find (==(pname)) pns) = [decl']
+        | any (\n -> definesRdr nameMap n decl') pns = [decl']
+
+      defines' decl'@(GHC.L _l (GHC.PatBind p _rhs _ty _fvs _))
+        -- - |(hsNamess p) `intersect` pns /= [] = [decl']
+        | any (\n -> definesRdr nameMap n decl') pns = [decl']
+
+      defines' _ = []
+
+-- ---------------------------------------------------------------------
+
+-- |Find those declarations(function\/pattern binding) which define
+-- the specified GHC.Names. incTypeSig indicates whether the
+-- corresponding type signature will be included.
 definingDeclsNames::
             [GHC.Name]   -- ^ The specified identifiers.
             ->[GHC.LHsBind GHC.Name] -- ^ A collection of declarations.
@@ -1135,6 +1163,65 @@ definingTyClDeclsNames pns t = defining t
       defines' decl'@(GHC.L _ (GHC.ClassDecl _ (GHC.L _ pname) _ _ _ _ _ _ _ _))
         |isJust (find (==(pname)) pns) = [decl']
         | otherwise = []
+
+-- ---------------------------------------------------------------------
+
+-- | Return True if the function\/pattern binding defines the
+-- specified identifier.
+defines:: GHC.Name -> GHC.LHsBind GHC.Name -> Bool
+defines n (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
+ = GHC.nameUnique pname == GHC.nameUnique n
+defines n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))
+ = elem (GHC.nameUnique n) (map GHC.nameUnique $ hsNamess p)
+defines _ _= False
+
+-- | Return True if the function\/pattern binding defines the
+-- specified identifier.
+definesRdr :: NameMap -> GHC.Name -> GHC.LHsBind GHC.RdrName -> Bool
+definesRdr nameMap nin (GHC.L _ (GHC.FunBind (GHC.L ln pname) _ _ _ _ _)) =
+  case Map.lookup ln nameMap of
+    Nothing -> False
+    Just n ->  GHC.nameUnique n == GHC.nameUnique nin
+definesRdr nameMap n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _)) =
+  elem n (map (rdrName2NamePure nameMap) (hsNamessRdr p))
+definesRdr _ _ _= False
+
+-- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind
+definesDeclRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
+definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.L l d)
+definesDeclRdr _ _ _ = False
+
+
+definesP::PName->HsDeclP->Bool
+definesP pn (GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
+ = PN pname == pn
+definesP pn (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _)))
+ = elem pn (hsPNs p)
+definesP _ _= False
+
+-- ---------------------------------------------------------------------
+
+-- | Return True if the declaration defines the type signature of the
+-- specified identifier.
+definesTypeSig :: GHC.Name -> GHC.LSig GHC.Name -> Bool
+definesTypeSig pn (GHC.L _ (GHC.TypeSig names _typ _)) = elem (GHC.nameUnique pn) $ map (\(GHC.L _ n)->GHC.nameUnique n) names
+definesTypeSig _  _ = False
+
+-- | Return True if the declaration defines the type signature of the
+-- specified identifier.
+definesTypeSigRdr :: NameMap -> GHC.Name -> GHC.Sig GHC.RdrName -> Bool
+definesTypeSigRdr nameMap pn (GHC.TypeSig names _typ _)
+  = elem (GHC.nameUnique pn) (map (GHC.nameUnique . rdrName2NamePure nameMap) names)
+-- definesTypeSigRdr _ _  _ = False
+definesTypeSigRdr _ _  x = error $ "definesTypeSigRdr : got " ++ SYB.showData SYB.Parser 0 x
+
+{-
+-- | Return True if the declaration defines the type signature of the specified identifier.
+isTypeSigOf :: PNT -> HsDeclP -> Bool
+isTypeSigOf pnt (TiDecorate.Dec (HsTypeSig loc is c tp))= elem pnt is
+isTypeSigOf _  _ =False
+-}
+
 
 -- ---------------------------------------------------------------------
 

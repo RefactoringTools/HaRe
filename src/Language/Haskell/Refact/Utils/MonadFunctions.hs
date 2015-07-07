@@ -59,6 +59,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * For use by the tests only
        , initRefactModule
        , initTokenCacheLayout
+       , initRdrNameMap
        ) where
 
 import Control.Monad.State

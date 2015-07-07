@@ -198,6 +198,62 @@ spec = do
 
   -- -------------------------------------------------------------------
 
+  describe "definingDeclsRdrNames" $ do
+    it "returns [] if not found" $ do
+      (t, _toks,_) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let nameMap = initRdrNameMap t
+      let Just ((GHC.L _ n)) = locToName (16,6) renamed
+      let res = definingDeclsRdrNames nameMap [n] (hsBinds parsed) False False
+      showGhcQual res `shouldBe` "[]"
+
+    -- ---------------------------------
+
+    it "finds declarations at the top level" $ do
+      (t, _toks,_) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let nameMap = initRdrNameMap t
+
+      let Just (GHC.L _ n) = locToName (3,3) renamed
+      let res = definingDeclsRdrNames nameMap [n] (hsBinds parsed) False False
+      showGhcQual res `shouldBe` "[toplevel x = c * x]"
+
+    -- ---------------------------------
+
+    it "finds in a patbind" $ do
+      (t, _toks,_) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let nameMap = initRdrNameMap t
+
+      let Just (GHC.L _ n) = locToName (14,1) renamed
+      let res = definingDeclsRdrNames nameMap [n] (hsBinds parsed) False False
+      showGhcQual res `shouldBe` "[tup@(h, t)\n   = head $ zip [1 .. 10] [3 .. ff]\n   where\n       ff :: Int\n       ff = 15]"
+
+    -- ---------------------------------
+
+    it "finds recursively in sub-binds" $ do
+      {-
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      let res = definingDecls [(PN (mkRdrName "zz"))] ds False True
+      showGhcQual res `shouldBe` "[zz n = n + 1]" -- TODO: Currently fails, will come back to it
+      -}
+      pending -- "Currently fails, will come back to it"
+
+    -- ---------------------------------
+
+    it "only finds recursively in sub-binds if asked" $ do
+      {-
+      modInfo@((_, _, mod@(GHC.L l (GHC.HsModule name exps imps ds _ _))), toks) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      let res = definingDecls [(PN (mkRdrName "zz"))] ds False False
+      showGhcQual res `shouldBe` "[]"
+      -}
+      pending -- "Convert to definingDeclsNames"
+
+  -- -------------------------------------------------------------------
+
   describe "definingDeclsNames" $ do
     it "returns [] if not found" $ do
       (t, _toks,_) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
@@ -1877,35 +1933,37 @@ spec = do
 
     -- -------------------------------------------
 
-{- ++AZ++ temporary start
     it "adds a local declaration without a type signature 1" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
+         parsed <- getRefactParsed
+         ((GHC.L ld (GHC.ValD decl)),declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
 
          renamed <- getRefactRenamed
+         nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         let declsr = hsBinds renamed
-             [tlDecls] = definingDeclsNames [tl] declsr True False
+         let decls = hsBinds parsed
+             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
-         nn  <- mkNewGhcName Nothing "nn"
-         nn2 <- mkNewGhcName Nothing "nn2"
-         let newDecl = GHC.noLoc (GHC.VarBind nn (GHC.noLoc (GHC.HsVar nn2)) False)
-         newDecls <- addDecl tlDecls Nothing (newDecl,[],Nothing) False
+         parsed <- getRefactParsed
+         ((GHC.L ld (GHC.ValD decl)),declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
+         newDecl <- addDecl tlDecl Nothing (GHC.L ld decl,Nothing,Just declAnns) False
 
-         return (tlDecls,newDecls)
+         return (tlDecl,newDecl)
       -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (showGhcQual tl) `shouldBe` "MoveDef.Md1.toplevel x = MoveDef.Md1.c GHC.Num.* x"
-      -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (showGhcQual tl) `shouldBe` "toplevel x = c * x"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
+      (exactPrintFromState s nb) `shouldBe` "toplevel x = c * x\n    where\n       nn = nn2"
       (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n    where\n       nn = nn2\n    \n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (showGhcQual nb) `shouldBe` "MoveDef.Md1.toplevel x\n  = MoveDef.Md1.c GHC.Num.* x\n  where\n      nn = nn2"
 
 
     -- -------------------------------------------
 
+{- ++AZ++ temporary start
     it "adds a local declaration with a type signature" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
