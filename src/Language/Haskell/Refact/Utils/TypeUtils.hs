@@ -952,16 +952,13 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          refactReplaceDecls parent' (decls1++(map wrapSig $ toList maybeSig)++[wrapDecl newDecl]++decls2)
 
 
-  addLocalDecl :: (HsValBinds t GHC.RdrName)
+  addLocalDecl :: (HsValBinds t GHC.RdrName,HasDecls t)
                => t -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
                -> RefactGhc t
-  addLocalDecl parent' (newFun, maybeSig)
-    =do
-        let binds = hsValBinds parent'
-
-        return (replaceValBinds parent' (GHC.ValBindsIn (GHC.listToBag ((hsBinds parent' ++ [newFun]))) (toList maybeSig++(getValBindSigs binds))))
-    where
-         localDecls = hsBinds parent'
+  addLocalDecl parent' (newDecl, maybeSig)
+    = do let decls = hsDecls parent'
+         setDeclSpacing newDecl maybeSig
+         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls)
 
 -- ---------------------------------------------------------------------
 
