@@ -41,10 +41,6 @@
 module Language.Haskell.Refact.Utils.Binds
    (
      HasDecls(..)
-   , wrapDecl
-   , wrapSig
-   , decl2Sig
-   , decl2Bind
 
    , hsBinds
    , replaceBinds
@@ -54,7 +50,7 @@ module Language.Haskell.Refact.Utils.Binds
  ) where
 
 import Language.Haskell.GHC.ExactPrint.Internal.Types
-import Language.Haskell.GHC.ExactPrint.Transform
+import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Types
 
@@ -83,27 +79,13 @@ class (Data t) => HasDecls t where
     --  update list order annotations.
     replaceDecls :: t -> [GHC.LHsDecl GHC.RdrName] -> Transform t
 
-wrapDecl :: GHC.LHsBind name -> GHC.LHsDecl name
-wrapDecl (GHC.L l d) = GHC.L l (GHC.ValD d)
-
-wrapSig :: GHC.LSig name -> GHC.LHsDecl name
-wrapSig (GHC.L l d) = GHC.L l (GHC.SigD d)
-
-decl2Sig :: GHC.LHsDecl name -> [GHC.LSig name]
-decl2Sig (GHC.L l (GHC.SigD s)) = [GHC.L l s]
-decl2Sig _                      = []
-
-decl2Bind :: GHC.LHsDecl name -> [GHC.LHsBind name]
-decl2Bind (GHC.L l (GHC.ValD s)) = [GHC.L l s]
-decl2Bind _                      = []
-
 -- ---------------------------------------------------------------------
 
 instance HasDecls GHC.ParsedSource where
   hsDecls (GHC.L _ (GHC.HsModule _mn _exps _imps decls _ _)) = decls
-  replaceDecls (GHC.L l (GHC.HsModule mn exps imps _decls deps haddocks)) decls
+  replaceDecls m@(GHC.L l (GHC.HsModule mn exps imps _decls deps haddocks)) decls
     = do
-        modifyAnnsT (captureOrder decls)
+        modifyAnnsT (captureOrder m decls)
         return (GHC.L l (GHC.HsModule mn exps imps decls deps haddocks))
 
 -- ---------------------------------------------------------------------
@@ -157,7 +139,7 @@ instance HasDecls (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
         (AnnKey tests/examples/LocalDecls.hs:(5,5)-(8,11) CN "HsValBinds" NotNeeded,
            (Ann (DP (1,0)) (ColDelta 5) DP (1,0) [] []))      ,
         -}
-        modifyAnnsT addAnns
+        -- modifyAnnsT addAnns
         binds' <- replaceDecls binds newBinds
         return (GHC.Match mf p t (GHC.GRHSs rhs binds'))
 

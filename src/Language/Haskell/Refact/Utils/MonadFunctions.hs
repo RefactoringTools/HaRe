@@ -76,7 +76,7 @@ import qualified Data.Generics as SYB
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
-import Language.Haskell.GHC.ExactPrint.Transform
+import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GHC.ExactPrint.Types (PosToken)
 
@@ -282,7 +282,7 @@ replaceRdrName (GHC.L l newName) = do
              return r
       (parsed',anns') = runState fn anns
   logm $ "replaceRdrName:after:parsed'=" ++ showGhc parsed'
-  putRefactParsed parsed' (Anns mempty mempty)
+  putRefactParsed parsed' (Anns mempty)
   setRefactAnns anns'
   return ()
 

@@ -98,7 +98,7 @@ isUniqueSrcSpan ss = srcSpanStartLine ss == -1
 
 -- |Get the map of (SrcSpan,AnnConName) with empty annotations
 extractAnnsEP :: forall t. (SYB.Data t) => t -> Anns
-extractAnnsEP t = Anns (Map.fromList as) Map.empty
+extractAnnsEP t = Anns (Map.fromList as)
   where
     sts = extractSrcSpanConName t
     as :: [(AnnKey, Annotation)]
@@ -181,10 +181,10 @@ setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given annotation key/val
 setOffset :: Anns -> (AnnKey, Annotation) -> Anns
-setOffset ans (k, Ann dp col dps cs _) = case
+setOffset ans (k, Ann dp col dps cs _ so ca) = case
   Map.lookup k anne of
-    Nothing               -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs [])) ans
-    Just (Ann _ _ _ _ ks) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs ks)) ans
+    Nothing                     -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs [] so ca)) ans
+    Just (Ann _ _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs ks so ca)) ans
   where
     anne = getKeywordDeltas ans
 
@@ -206,10 +206,10 @@ setLocatedAnn aane (loc, annVal) = setAnn aane (mkKey loc,annVal)
 
 -- |Update the DeltaPos for the given annotation key/val
 setAnn :: Anns -> (AnnKey, Annotation) -> Anns
-setAnn ans (k, Ann dp col dps cs _) =
+setAnn ans (k, Ann dp col dps cs _ so ca) =
   case Map.lookup k anne of
-    Nothing               -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs [])) ans
-    Just (Ann _ _ _ _ ks) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs ks)) ans
+    Nothing                     -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs [] so ca)) ans
+    Just (Ann _ _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs ks so ca)) ans
   where
     anne = getKeywordDeltas ans
 
@@ -227,6 +227,8 @@ replace old new ans = do
                 , annTrueEntryDelta = annTrueEntryDelta oldan
                 , annPriorComments  = annPriorComments oldan
                 , annsDP            = moveAnns (annsDP oldan) (annsDP newan)
+                , annSortKey        = annSortKey oldan
+                , annCapturedSpan    = annCapturedSpan oldan
                 }
   return (modifyKeywordDeltas (\as -> Map.delete old . Map.insert new newan' $ as) ans)
 
@@ -245,7 +247,10 @@ transferEntryDP ans a b = modifyKeywordDeltas (const anns') ans
                       , annDelta          = annDelta anA
                       , annTrueEntryDelta = annTrueEntryDelta anA
                       , annPriorComments  = annPriorComments anA ++ annPriorComments anB
-                      , annsDP            = annsDP anB }
+                      , annsDP            = annsDP anB
+                      , annSortKey        = annSortKey anB
+                      , annCapturedSpan    = annCapturedSpan anB
+                      }
       return (Map.insert (mkKey b) anB' anns)
       -- return (error $ "transferEntryDP: (mkKey a,mkKey b,anA,anB,anB')" ++ showGhc (mkKey a,mkKey b,anA,anB,anB') )
     anns' = fromMaybe

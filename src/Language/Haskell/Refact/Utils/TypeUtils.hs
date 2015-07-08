@@ -140,7 +140,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 
-import Language.Haskell.GHC.ExactPrint.Transform
+import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
@@ -913,12 +913,12 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
  where
   setDeclSpacing newDecl maybeSig = do
          ans1 <- getRefactAnns
-         let ans2 = setPrecedingLines ans1 newDecl 2 1
+         let ans2 = setPrecedingLines ans1 newDecl 2 0
              ans3 = case maybeSig of
-               Nothing -> setPrecedingLines ans2 newDecl 2 1
-               Just s  -> setPrecedingLines ans  newDecl 1 1
+               Nothing -> setPrecedingLines ans2 newDecl 2 0
+               Just s  -> setPrecedingLines ans  newDecl 1 0
                  where
-                   ans = setPrecedingLines ans2 s 2 1
+                   ans = setPrecedingLines ans2 s 2 0
          setRefactAnns ans3
          logm $ "addDecl.setDeclSpacing:declAnns'=" ++ show ans3
 
