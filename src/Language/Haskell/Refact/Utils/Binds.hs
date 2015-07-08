@@ -60,6 +60,9 @@ import qualified GHC           as GHC
 import qualified Outputable    as GHC
 import qualified SrcLoc        as GHC
 
+import qualified Data.Generics as SYB
+import qualified GHC.SYB.Utils as SYB
+
 import Control.Monad
 import Data.Generics
 import Data.Ratio
@@ -112,16 +115,6 @@ instance HasDecls [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)] where
         return (m':tail ms)
 
 -- ---------------------------------------------------------------------
-{-
-instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
-  hsDecls m = hsDecls $ GHC.unLoc m
-
-  replaceDecls (GHC.L l m) newBinds
-    = do
-        m' <- (replaceDecls m newBinds)
-        return (GHC.L l m')
--}
--- ---------------------------------------------------------------------
 
 instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
   hsDecls (GHC.L l (GHC.Match _ _ _ grhs)) = hsDecls grhs
@@ -153,7 +146,9 @@ instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
                                  , annCapturedSpan   = Nothing}
             modifyKeywordDeltasT addWhere
             modifyAnnsT (captureOrderAnnKey newAnnKey newBinds)
-            modifyAnnsT (\ans -> setPrecedingLines ans (ghead "LMatch.replaceDecls" newBinds) 1 0)
+            -- modifyAnnsT (\ans -> error $ "oops:" ++ showGhc (setPrecedingLines ans (ghead "LMatch.replaceDecls" newBinds) 1 0))
+            -- modifyAnnsT (\ans -> error $ "oops:" ++ SYB.showData SYB.Parser 0 ((ghead "LMatch.replaceDecls" newBinds)))
+            modifyAnnsT (\ans -> setPrecedingLinesDecl ans (ghead "LMatch.replaceDecls" newBinds) 0)
           _ -> return ()
 
         binds' <- replaceDecls binds newBinds

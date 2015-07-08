@@ -12,6 +12,7 @@ module TestUtils
        , initialState
        , initialLogOnState
        , showAnnDataFromState
+       , showAnnDataItemFromState
        , exactPrintFromState
        , sourceFromState
        , annsFromState
@@ -44,6 +45,7 @@ import qualified Unique        as GHC
 
 import Control.Monad.State
 import Data.Algorithm.Diff
+import Data.Data
 import Exception
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Annotate
@@ -280,6 +282,17 @@ showAnnDataFromState st =
         parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module
                  $ rsTypecheckedMod tm
         r = showAnnData anns 0 parsed
+    Nothing -> []
+
+-- ---------------------------------------------------------------------
+
+showAnnDataItemFromState :: (Data a) => RefactState -> a -> String
+showAnnDataItemFromState st t =
+  case rsModule st of
+    Just tm -> r
+      where
+        anns = tkCache (rsTokenCache tm) Map.! mainTid
+        r = showAnnData anns 0 t
     Nothing -> []
 
 -- ---------------------------------------------------------------------

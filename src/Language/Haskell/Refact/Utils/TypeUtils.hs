@@ -923,17 +923,6 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          logm $ "addDecl.setDeclSpacing:declAnns'=" ++ show ans3
 
 
-  -- ^Add a definition to the beginning of the definition declaration
-  -- list, but after the data type declarations if there are any.
-  addTopLevelDecl :: (HasDecls t)
-       => (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
-       -> t -> RefactGhc t
-  addTopLevelDecl (newDecl, maybeSig) parent'
-    = do let decls = hsDecls parent'
-         setDeclSpacing newDecl maybeSig
-         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls)
-
-
   appendDecl :: (HsValBinds t GHC.RdrName,HasDecls t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
@@ -950,6 +939,17 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
          refactReplaceDecls parent' (decls1++(map wrapSig $ toList maybeSig)++[wrapDecl newDecl]++decls2)
+
+
+  -- ^Add a definition to the beginning of the definition declaration
+  -- list, but after the data type declarations if there are any.
+  addTopLevelDecl :: (HasDecls t)
+       => (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
+       -> t -> RefactGhc t
+  addTopLevelDecl (newDecl, maybeSig) parent'
+    = do let decls = hsDecls parent'
+         setDeclSpacing newDecl maybeSig
+         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls)
 
 
   addLocalDecl :: (HsValBinds t GHC.RdrName,HasDecls t)
