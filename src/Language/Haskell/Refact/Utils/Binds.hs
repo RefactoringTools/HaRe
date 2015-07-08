@@ -149,7 +149,8 @@ instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
             -- modifyAnnsT (\ans -> error $ "oops:" ++ showGhc (setPrecedingLines ans (ghead "LMatch.replaceDecls" newBinds) 1 0))
             -- modifyAnnsT (\ans -> error $ "oops:" ++ SYB.showData SYB.Parser 0 ((ghead "LMatch.replaceDecls" newBinds)))
             modifyAnnsT (\ans -> setPrecedingLinesDecl ans (ghead "LMatch.replaceDecls" newBinds) 0)
-          _ -> return ()
+          _ -> do
+            modifyAnnsT (captureOrderAnnKey (mkAnnKey m) newBinds)
 
         binds' <- replaceDecls binds newBinds
         return (GHC.L l (GHC.Match mf p t (GHC.GRHSs rhs binds')))

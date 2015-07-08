@@ -25,9 +25,12 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , putRefactRenamed
        , getRefactParsed
        , putRefactParsed
+       -- * Annotations
+       , modifyRefactAnns
        , addRefactAnns
        , setRefactAnns
        , getRefactAnns
+       -- *
        , putParsedModule
        , clearParsedModule
        , getRefactFileName

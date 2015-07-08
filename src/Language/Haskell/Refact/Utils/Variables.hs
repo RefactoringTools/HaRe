@@ -34,7 +34,7 @@ module Language.Haskell.Refact.Utils.Variables
   , FindEntity(..)
   , sameOccurrence
   {- ,definingDecls -}, definedPNs
-  , definingDeclsRdrNames
+  , definingDeclsRdrNames,definingSigsRdrNames
   , definingDeclsNames, definingDeclsNames', definingSigsNames
   , definingTyClDeclsNames
   , defines
@@ -1133,6 +1133,39 @@ definingSigsNames pns ds = def ds
 
       defines' (p::[GHC.Located GHC.Name])
         = filter (\(GHC.L _ n) -> n `elem` pns) p
+
+-- ---------------------------------------------------------------------
+
+-- |Find those type signatures for the specified GHC.Names.
+definingSigsRdrNames :: (SYB.Data t) =>
+            NameMap
+            ->[GHC.Name] -- ^ The specified identifiers.
+            ->t        -- ^ A collection of declarations.
+            ->[GHC.LSig GHC.RdrName]  -- ^ The result.
+definingSigsRdrNames nameMap pns ds = def ds
+  where
+   def decl
+     -- = SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` inSig) decl
+     = SYB.everything (++) ([]  `SYB.mkQ` inSig `SYB.extQ` inSigDecl) decl
+     where
+      inSigDecl :: GHC.LHsDecl GHC.RdrName -> [GHC.LSig GHC.RdrName]
+      inSigDecl (GHC.L l (GHC.SigD s)) = inSig (GHC.L l s)
+      inSigDecl _ = []
+
+      inSig :: (GHC.LSig GHC.RdrName) -> [GHC.LSig GHC.RdrName]
+      inSig (GHC.L l (GHC.TypeSig ns t p))
+       | defines' ns /= [] = [(GHC.L l (GHC.TypeSig (defines' ns) t p))]
+      inSig _ = []
+
+      defines' :: [GHC.Located GHC.RdrName] -> [GHC.Located GHC.RdrName]
+      defines' p
+        -- = filter (\(GHC.L _ n) -> n `elem` pns) p
+        = let
+             isDefined :: GHC.Located GHC.RdrName -> [GHC.Located GHC.RdrName]
+             isDefined ln = if (rdrName2NamePure nameMap ln) `elem` pns
+                              then [ln]
+                              else []
+          in concatMap isDefined p
 
 -- ---------------------------------------------------------------------
 

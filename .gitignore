@@ -438,3 +438,12 @@ testing/addCon/Case2.hs.temp.hs
 /test/testdata/Renaming/Main2.hs.parsed_out
 /test/testdata/Renaming/RenameInExportedType2.hs.parsed_out
 /.stack-work/
+/hcar/HaReTheHaskellRefactorer-AH.aux
+/hcar/HaReTheHaskellRefactorer-AH.fdb_latexmk
+/hcar/HaReTheHaskellRefactorer-AH.fls
+/hcar/HaReTheHaskellRefactorer-AH.log
+/hcar/HaReTheHaskellRefactorer-AH.tex~
+/Bug.hs
+/Bug1.hs
+/Bug2.hs
+/hcar/auto/HaReTheHaskellRefactorer-AH.el

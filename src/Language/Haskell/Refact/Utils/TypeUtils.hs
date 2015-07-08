@@ -911,17 +911,16 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
            then addTopLevelDecl (decl, msig) parent
            else addLocalDecl parent (decl,msig)
  where
-  setDeclSpacing newDecl maybeSig = do
+  setDeclSpacing newDecl maybeSig n = do
          ans1 <- getRefactAnns
-         let ans2 = setPrecedingLines ans1 newDecl 2 0
+         let -- ans2 = setPrecedingLines ans1 newDecl n 0
              ans3 = case maybeSig of
-               Nothing -> setPrecedingLines ans2 newDecl 2 0
-               Just s  -> setPrecedingLines ans  newDecl 1 0
+               Nothing -> setPrecedingLines ans1 newDecl n 0
+               Just s  -> setPrecedingLines ans2 newDecl 1 0
                  where
-                   ans = setPrecedingLines ans2 s 2 0
+                   ans2 = setPrecedingLines ans1 s n 0
          setRefactAnns ans3
          logm $ "addDecl.setDeclSpacing:declAnns'=" ++ show ans3
-
 
   appendDecl :: (HsValBinds t GHC.RdrName,HasDecls t)
       => t        -- ^Original AST
@@ -930,7 +929,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
       -> RefactGhc t -- ^updated AST
   appendDecl parent' pn' (newDecl, maybeSig)
     = do
-         setDeclSpacing newDecl maybeSig
+         setDeclSpacing newDecl maybeSig 2
          nameMap <- getRefactNameMap
          let
             decls = hsDecls parent'
@@ -948,7 +947,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig) parent'
     = do let decls = hsDecls parent'
-         setDeclSpacing newDecl maybeSig
+         setDeclSpacing newDecl maybeSig 2
          refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls)
 
 
@@ -957,7 +956,10 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
                -> RefactGhc t
   addLocalDecl parent' (newDecl, maybeSig)
     = do let decls = hsDecls parent'
-         setDeclSpacing newDecl maybeSig
+         setDeclSpacing newDecl maybeSig 0
+         case decls of
+           []    -> return ()
+           (d:_) -> modifyRefactAnns (\ans -> setPrecedingLinesDecl ans d 1)
          refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls)
 
 -- ---------------------------------------------------------------------
