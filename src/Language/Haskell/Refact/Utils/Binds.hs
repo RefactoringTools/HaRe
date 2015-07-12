@@ -50,7 +50,7 @@ module Language.Haskell.Refact.Utils.Binds
  ) where
 
 import Language.Haskell.GHC.ExactPrint.Internal.Types
-import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
+import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls,ghead)
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Types
 
@@ -137,13 +137,14 @@ instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
                                  , annCapturedSpan = Just (newSpan,NotNeeded)
                                  }
                       mkds2 = Map.insert (mkAnnKey m) ann1 mkds
-                      ann2 = Ann { annEntryDelta     = DP (1,0)
-                                 , annDelta          = ColDelta 4
-                                 , annTrueEntryDelta = DP (1,0)
-                                 , annPriorComments  = []
-                                 , annsDP            = []
-                                 , annSortKey        = Nothing
-                                 , annCapturedSpan   = Nothing}
+                      ann2 = Ann { annEntryDelta        = DP (1,0)
+                                 , annDelta             = ColDelta 4
+                                 , annTrueEntryDelta    = DP (1,0)
+                                 , annPriorComments     = []
+                                 , annFollowingComments = []
+                                 , annsDP               = []
+                                 , annSortKey           = Nothing
+                                 , annCapturedSpan      = Nothing}
             modifyKeywordDeltasT addWhere
             modifyAnnsT (captureOrderAnnKey newAnnKey newBinds)
             -- modifyAnnsT (\ans -> error $ "oops:" ++ showGhc (setPrecedingLines ans (ghead "LMatch.replaceDecls" newBinds) 1 0))
@@ -205,6 +206,7 @@ instance HasDecls (GHC.LHsBinds GHC.RdrName) where
   replaceDecls old _new = error $ "replaceDecls (GHC.LHsBinds name) undefined for:" ++ (showGhc old)
 
 -- ---------------------------------------------------------------------
+
 instance HasDecls [GHC.LHsBind GHC.RdrName] where
   hsDecls bs = map wrapDecl bs
 
@@ -239,6 +241,15 @@ instance HasDecls (GHC.LHsBind GHC.RdrName) where
         binds' <- (replaceDecls binds newDecls)
         return (GHC.L l (GHC.AbsBinds a b c d binds'))
   replaceDecls (GHC.L _ (GHC.PatSynBind _)) _ = error "replaceDecls: PatSynBind to implement"
+
+-- ---------------------------------------------------------------------
+
+instance HasDecls (GHC.LHsDecl GHC.RdrName) where
+  hsDecls d = [d]
+
+  replaceDecls _ [d] = return d
+  replaceDecls d []  = return d
+  replaceDecls d ds  = error $ "LHsDecl.replaceDecls:cannot replace a list"
 
 -- =====================================================================
 -- ---------------------------------------------------------------------

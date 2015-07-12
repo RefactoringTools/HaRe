@@ -1044,10 +1044,10 @@ definedPNs  _ = []
 definingDeclsRdrNames::
             NameMap
             ->[GHC.Name]   -- ^ The specified identifiers.
-            ->[GHC.LHsBind GHC.RdrName] -- ^ A collection of declarations.
+            ->[GHC.LHsDecl GHC.RdrName] -- ^ A collection of declarations.
             ->Bool       -- ^ True means to include the type signature.
             ->Bool       -- ^ True means to look at the local declarations as well.
-            ->[GHC.LHsBind GHC.RdrName]  -- ^ The result.
+            ->[GHC.LHsDecl GHC.RdrName]  -- ^ The result.
 definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining ds
   where
    defining decl
@@ -1055,14 +1055,14 @@ definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining 
         then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
         else defines' decl
      where
-      defines' :: (GHC.LHsBind GHC.RdrName) -> [GHC.LHsBind GHC.RdrName]
-      defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
+      defines' :: (GHC.LHsDecl GHC.RdrName) -> [GHC.LHsDecl GHC.RdrName]
+      defines' decl'@(GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
         -- - |isJust (find (==(pname)) pns) = [decl']
-        | any (\n -> definesRdr nameMap n decl') pns = [decl']
+        | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
-      defines' decl'@(GHC.L _l (GHC.PatBind p _rhs _ty _fvs _))
+      defines' decl'@(GHC.L _l (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _)))
         -- - |(hsNamess p) `intersect` pns /= [] = [decl']
-        | any (\n -> definesRdr nameMap n decl') pns = [decl']
+        | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
       defines' _ = []
 

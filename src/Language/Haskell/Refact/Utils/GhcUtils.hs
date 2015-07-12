@@ -277,28 +277,6 @@ transZM stage q t z
   | Z.query q z = t stage z
   | otherwise = return z
 
-#if __GLASGOW_HASKELL__ <= 708
-checkZipperStaged :: SYB.Stage -> Z.Zipper a -> Bool
-checkZipperStaged stage z
-  | isJust maybeNameSet    = checkItemStage stage (fromJust maybeNameSet)
-  | isJust maybePostTcType = checkItemStage stage (fromJust maybePostTcType)
-  | isJust maybeFixity     = checkItemStage stage (fromJust maybeFixity)
-  -- was | isJust maybeHsWithBndrs = checkItemStage stage (fromJust maybeHsWithBndrs)
-  | otherwise = False
-  where
-    maybeNameSet ::  Maybe GHC.NameSet
-    maybeNameSet = Z.getHole z
-
-    maybePostTcType :: Maybe GHC.PostTcType
-    maybePostTcType = Z.getHole z
-
-    maybeFixity :: Maybe GHC.Fixity
-    maybeFixity = Z.getHole z
-
-    -- maybeHsWithBndrs :: (Data b) => Maybe (GHC.HsWithBndrs b)
-    -- maybeHsWithBndrs = Z.getHole z
-#endif
-
 -- ---------------------------------------------------------------------
 
 -- | Climb the tree until a predicate holds
@@ -329,9 +307,6 @@ zopenStaged' :: (Typeable a)
   -> Z.Zipper a
   -> [(Z.Zipper a,b)]
 zopenStaged' stage q z
-#if __GLASGOW_HASKELL__ <= 708
-  | checkZipperStaged stage z = []
-#endif
   | isJust zq = [(z,fromJust zq)]
   | otherwise = reverse $ Z.downQ [] g z
   where

@@ -55,7 +55,6 @@ import Exception
 import qualified Language.Haskell.GhcMod          as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
--- import Language.Haskell.Refact.Utils.Cabal
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint

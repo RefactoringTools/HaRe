@@ -140,8 +140,8 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 
-import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
-import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls,ghead,gtail,gfromJust)
+import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 
@@ -889,12 +889,12 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (HsValBinds t GHC.RdrName,HasDecls t)
+addDecl:: (HasDecls t)
         => t              -- ^The AST to be updated
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
                           -- identifier's definition.
-        -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns)
+        -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns)
              -- ^ The declaration with optional signatures to be added,
              -- together with optional Annotations.
         -> Bool              -- ^ True means the declaration is a
@@ -920,12 +920,12 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
                  where
                    ans2 = setPrecedingLines ans1 s n 0
          setRefactAnns ans3
-         logm $ "addDecl.setDeclSpacing:declAnns'=" ++ show ans3
+         -- logm $ "addDecl.setDeclSpacing:declAnns'=" ++ show ans3
 
-  appendDecl :: (HsValBinds t GHC.RdrName,HasDecls t)
+  appendDecl :: (HasDecls t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
-      -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName)) -- ^declaration and maybe sig
+      -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName)) -- ^declaration and maybe sig
       -> RefactGhc t -- ^updated AST
   appendDecl parent' pn' (newDecl, maybeSig)
     = do
@@ -937,30 +937,31 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
-         refactReplaceDecls parent' (decls1++(map wrapSig $ toList maybeSig)++[wrapDecl newDecl]++decls2)
+         refactReplaceDecls parent' (decls1++(map wrapSig $ toList maybeSig)++[newDecl]++decls2)
 
 
   -- ^Add a definition to the beginning of the definition declaration
   -- list, but after the data type declarations if there are any.
   addTopLevelDecl :: (HasDecls t)
-       => (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
+       => (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig) parent'
     = do let decls = hsDecls parent'
          setDeclSpacing newDecl maybeSig 2
-         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls)
+         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
 
 
-  addLocalDecl :: (HsValBinds t GHC.RdrName,HasDecls t)
-               => t -> (GHC.LHsBind GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
+  addLocalDecl :: (HasDecls t)
+               => t -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
                -> RefactGhc t
   addLocalDecl parent' (newDecl, maybeSig)
     = do let decls = hsDecls parent'
          setDeclSpacing newDecl maybeSig 0
          case decls of
            []    -> return ()
-           (d:_) -> modifyRefactAnns (\ans -> setPrecedingLinesDecl ans d 1)
-         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [wrapDecl newDecl]++decls)
+           (d:_) -> do
+             modifyRefactAnns (\ans -> setPrecedingLinesDecl ans d 1)
+         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
 
 -- ---------------------------------------------------------------------
 

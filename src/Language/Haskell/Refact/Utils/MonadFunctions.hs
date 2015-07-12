@@ -13,9 +13,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        (
        -- * Conveniences for state access
 
-       fetchAnnsFinal
-       --  fetchLinesFinal
-       -- , fetchOrigToks
+         fetchAnnsFinal
        , fetchToks -- Deprecated
        , getTypecheckedModule
        , getRefactStreamModified
@@ -25,6 +23,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , putRefactRenamed
        , getRefactParsed
        , putRefactParsed
+
        -- * Annotations
        , modifyRefactAnns
        , addRefactAnns
@@ -40,6 +39,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * New ghc-exactprint interfacing
        , replaceRdrName
        , refactReplaceDecls
+       , refactRunTransform
 
        -- * TokenUtils API
        , getToksForSpan
@@ -59,6 +59,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , nameSybQuery
        , fileNameFromModSummary
 
+       , logDataWithAnns
+
        -- * For use by the tests only
        , initRefactModule
        , initTokenCacheLayout
@@ -67,6 +69,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
 import Control.Monad.State
 -- import Control.Exception
+import Data.List
 import Data.Maybe
 
 import qualified FastString    as GHC
@@ -79,7 +82,7 @@ import qualified Data.Generics as SYB
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
-import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
+import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls,gfromJust)
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GHC.ExactPrint.Types (PosToken)
 
@@ -99,11 +102,6 @@ import qualified Data.Map as Map
 -- |fetch the possibly modified tokens. Deprecated
 fetchToks :: RefactGhc [PosToken]
 fetchToks = do
-  Just _tm <- gets rsModule
-  -- let toks = retrieveTokensInterim $ (tkCache $ rsTokenCache tm) Map.! mainTid
-  -- logm $ "fetchToks" ++ (showToks toks)
-  logm $ "fetchToks (not showing toks"
-  -- return toks
   error $ "fetchToks no longer used"
 
 -- |fetch the final annotations
@@ -113,26 +111,9 @@ fetchAnnsFinal = do
   let anns = (tkCache $ rsTokenCache tm) Map.! mainTid
   return anns
 
--- -- |fetch the pristine token stream
--- fetchOrigToks :: RefactGhc [PosToken]
--- fetchOrigToks = do
---   logm "fetchOrigToks"
---   Just tm <- gets rsModule
---   return $ rsOrigTokenStream tm
-
 -- |Get the current tokens for a given GHC.SrcSpan.
 getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
 getToksForSpan _sspan = do
-  {-
-  st <- get
-  let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
-  let Just tm = rsModule st
-  let (tk',toks) = getTokensNoIntrosFromCache checkInv (rsTokenCache tm) (gs2ss sspan)
-  let rsModule' = Just (tm {rsTokenCache = tk'})
-  put $ st { rsModule = rsModule' }
-  logm $ "getToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
-  return toks
-  -}
   error $ "getToksForSpan no longer used"
 
 
@@ -300,6 +281,17 @@ refactReplaceDecls t decls = do
 
 -- ---------------------------------------------------------------------
 
+refactRunTransform :: Transform a -> RefactGhc a
+refactRunTransform transform = do
+  ans <- getRefactAnns
+  let (a,(ans',_),logLines) = runTransform ans transform
+  setRefactAnns ans'
+  when (not (null logLines)) $ do
+    logm $ intercalate "\n" logLines
+  return a
+
+-- ---------------------------------------------------------------------
+
 getRefactFileName :: RefactGhc (Maybe FilePath)
 getRefactFileName = do
   mtm <- gets rsModule
@@ -371,6 +363,13 @@ getStateStorage :: RefactGhc StateStorage
 getStateStorage = do
   storage <- gets rsStorage
   return storage
+
+-- ---------------------------------------------------------------------
+
+logDataWithAnns :: (SYB.Data a) => String -> a -> RefactGhc ()
+logDataWithAnns str ast = do
+  anns <- getRefactAnns
+  logm $ str ++ showAnnData anns 0 ast
 
 -- ---------------------------------------------------------------------
 
@@ -452,45 +451,6 @@ nameSybQuery checker = q
     workerLHsType _ = Nothing
 
 -- ---------------------------------------------------------------------
-{-
-updateToks :: (SYB.Data t)
-  => GHC.Located t -- ^ Old element
-  -> GHC.Located t -- ^ New element
-  -> (GHC.Located t -> [Char]) -- ^ pretty printer
-  -> Bool         -- ^ Add trailing newline if required
-  -> RefactGhc () -- ^ Updates the RefactState
-updateToks (GHC.L sspan _) newAST printFun addTrailingNl
-  = do
-       logm $ "updateToks " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan))
-       let newToks = basicTokenise (printFun newAST)
-       let newToks' = if addTrailingNl
-                       then newToks ++ [newLnToken (last newToks)]
-                       else newToks
-       void $ putToksForSpan sspan  newToks'
-       return ()
--}
--- ---------------------------------------------------------------------
-{-
-updateToksWithPos :: (SYB.Data t)
-  => (SimpPos, SimpPos) -- ^Start and end pos of old element
-  -> t             -- ^ New element
-  -> (t -> [Char]) -- ^ pretty printer
-  -> Bool          -- ^ Add trailing newline if required
-  -> RefactGhc ()  -- ^ Updates the RefactState
-updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
-  = do
-       -- newToks <- liftIO $ basicTokenise (printFun newAST)
-       let newToks = basicTokenise (printFun newAST)
-       let newToks' = if addTrailingNl
-                       then newToks ++ [newLnToken (last newToks)]
-                       else newToks
-       void $ putToksForPos (startPos,endPos) newToks'
-
-       return ()
--}
--- EOF
-
--- ---------------------------------------------------------------------
 
 parseDeclWithAnns :: String -> RefactGhc (GHC.LHsDecl GHC.RdrName)
 parseDeclWithAnns src = do
@@ -502,3 +462,4 @@ parseDeclWithAnns src = do
       addRefactAnns anns
       return decl
 
+-- EOF

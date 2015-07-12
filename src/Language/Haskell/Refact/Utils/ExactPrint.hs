@@ -11,11 +11,8 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , setOffsets
   , setOffset
   , setLocatedOffsets
-  -- , setLocatedAnns
-  -- , deleteAnnotation
   , setLocatedDp
   , extractAnnsEP
-  -- , deleteAnnotations
   , replace
   , replaceAnnKey
   , mkKey
@@ -34,7 +31,7 @@ import qualified GHC           as GHC
 import qualified Data.Generics as SYB
 --import qualified GHC.SYB.Utils as SYB
 
-import Language.Haskell.GHC.ExactPrint.Transform hiding (uniqueSrcSpan,isUniqueSrcSpan)
+import Language.Haskell.GHC.ExactPrint.Transform hiding (uniqueSrcSpan,isUniqueSrcSpan,ghead,gfromJust)
 import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Monad
@@ -181,10 +178,10 @@ setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given annotation key/val
 setOffset :: Anns -> (AnnKey, Annotation) -> Anns
-setOffset ans (k, Ann dp col dps cs _ so ca) = case
+setOffset ans (k, Ann dp col dps cs fcs _ so ca) = case
   Map.lookup k anne of
-    Nothing                     -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs [] so ca)) ans
-    Just (Ann _ _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs ks so ca)) ans
+    Nothing                       -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs fcs [] so ca)) ans
+    Just (Ann _ _ _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs fcs ks so ca)) ans
   where
     anne = getKeywordDeltas ans
 
@@ -206,10 +203,10 @@ setLocatedAnn aane (loc, annVal) = setAnn aane (mkKey loc,annVal)
 
 -- |Update the DeltaPos for the given annotation key/val
 setAnn :: Anns -> (AnnKey, Annotation) -> Anns
-setAnn ans (k, Ann dp col dps cs _ so ca) =
+setAnn ans (k, Ann dp col dps cs fcs _ so ca) =
   case Map.lookup k anne of
-    Nothing                     -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs [] so ca)) ans
-    Just (Ann _ _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs ks so ca)) ans
+    Nothing                       -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs fcs [] so ca)) ans
+    Just (Ann _ _ _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs fcs ks so ca)) ans
   where
     anne = getKeywordDeltas ans
 
@@ -222,13 +219,14 @@ replace old new ans = do
   oldan <- Map.lookup old as
   newan <- Map.lookup new as
   let newan' = Ann
-                { annEntryDelta     = annEntryDelta oldan
-                , annDelta          = annDelta oldan
-                , annTrueEntryDelta = annTrueEntryDelta oldan
-                , annPriorComments  = annPriorComments oldan
-                , annsDP            = moveAnns (annsDP oldan) (annsDP newan)
-                , annSortKey        = annSortKey oldan
-                , annCapturedSpan    = annCapturedSpan oldan
+                { annEntryDelta        = annEntryDelta oldan
+                , annDelta             = annDelta oldan
+                , annTrueEntryDelta    = annTrueEntryDelta oldan
+                , annPriorComments     = annPriorComments oldan
+                , annFollowingComments = annFollowingComments oldan
+                , annsDP               = moveAnns (annsDP oldan) (annsDP newan)
+                , annSortKey           = annSortKey oldan
+                , annCapturedSpan      = annCapturedSpan oldan
                 }
   return (modifyKeywordDeltas (\as -> Map.delete old . Map.insert new newan' $ as) ans)
 
@@ -243,13 +241,14 @@ transferEntryDP ans a b = modifyKeywordDeltas (const anns') ans
     maybeAnns = do -- Maybe monad
       anA <- Map.lookup (mkKey a) anns
       anB <- Map.lookup (mkKey b) anns
-      let anB'  = Ann { annEntryDelta     = annEntryDelta anA
-                      , annDelta          = annDelta anA
-                      , annTrueEntryDelta = annTrueEntryDelta anA
-                      , annPriorComments  = annPriorComments anA ++ annPriorComments anB
-                      , annsDP            = annsDP anB
-                      , annSortKey        = annSortKey anB
-                      , annCapturedSpan    = annCapturedSpan anB
+      let anB'  = Ann { annEntryDelta        = annEntryDelta anA
+                      , annDelta             = annDelta anA
+                      , annTrueEntryDelta    = annTrueEntryDelta anA
+                      , annPriorComments     = annPriorComments anA ++ annPriorComments anB
+                      , annFollowingComments = annFollowingComments anA ++ annFollowingComments anB
+                      , annsDP               = annsDP anB
+                      , annSortKey           = annSortKey anB
+                      , annCapturedSpan      = annCapturedSpan anB
                       }
       return (Map.insert (mkKey b) anB' anns)
       -- return (error $ "transferEntryDP: (mkKey a,mkKey b,anA,anB,anB')" ++ showGhc (mkKey a,mkKey b,anA,anB,anB') )
@@ -277,6 +276,7 @@ adjustAnnOffset (ColDelta cd) (Ann (DP (ro,co)) (ColDelta ad) kds) = Ann edp cd'
 -}
 -- ---------------------------------------------------------------------
 
+-- ++AZ++:TODO: this is a re-implementation of mkAnnKey in ghc-exactprint
 mkKey :: (SYB.Data a) => GHC.Located a -> AnnKey
 mkKey (GHC.L l s) = AnnKey l (annGetConstr s) NotNeeded
 
