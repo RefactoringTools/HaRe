@@ -963,7 +963,8 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
            []    -> return ()
            (d:_) -> do
              modifyRefactAnns (\ans -> setPrecedingLinesDecl ans d 1)
-         r <- refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
+         sigs <- refactRunTransform (mapM wrapSigT $ toList maybeSig)
+         r <- refactReplaceDecls parent' (sigs ++ [newDecl]++decls)
          return r
 
 

@@ -123,11 +123,9 @@ instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
     = do
         -- Need to throw in a fresh where clause if the binds were empty,
         -- in the annotations.
-        case binds of
+        newBinds2 <- case binds of
           GHC.EmptyLocalBinds -> do
-            newSpan <- uniqueSrcSpanT
             let
-              newAnnKey = AnnKey newSpan (CN "HsValBinds")
               addWhere mkds =
                 case Map.lookup (mkAnnKey m) mkds of
                   Nothing -> error "wtf"
@@ -136,12 +134,15 @@ instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
                       ann1 = ann { annsDP = annsDP ann ++ [(G GHC.AnnWhere,DP (1,2))]
                                  }
             modifyKeywordDeltasT addWhere
-            modifyAnnsT (captureOrderAnnKey newAnnKey newBinds)
-            modifyAnnsT (\ans -> setPrecedingLinesDecl ans (ghead "LMatch.replaceDecls" newBinds) 1)
+            newBinds' <- mapM pushDeclAnnT newBinds
+            modifyAnnsT (captureOrderAnnKey (mkAnnKey m) newBinds')
+            modifyAnnsT (\ans -> setPrecedingLinesDecl ans (ghead "LMatch.replaceDecls" newBinds') 1)
+            return newBinds'
           _ -> do
             modifyAnnsT (captureOrderAnnKey (mkAnnKey m) newBinds)
+            return newBinds
 
-        binds' <- replaceDecls binds newBinds
+        binds' <- replaceDecls binds newBinds2
         return (GHC.L l (GHC.Match mf p t (GHC.GRHSs rhs binds')))
 
 -- ---------------------------------------------------------------------
@@ -173,8 +174,10 @@ instance HasDecls (GHC.HsLocalBinds GHC.RdrName) where
 
   replaceDecls (GHC.EmptyLocalBinds) new
     = do
-        newBinds <- mapM decl2BindT new
-        newSigs  <- mapM decl2SigT  new
+        -- newBinds <- mapM decl2BindT new
+        -- newSigs  <- mapM decl2SigT  new
+        let newBinds = map decl2Bind new
+            newSigs  = map decl2Sig  new
         ans <- getAnnsT
         logTr $ "replaceDecls:newBinds=" ++ showAnnData ans 0 newBinds
         let decs = GHC.listToBag $ concat newBinds
