@@ -11,7 +11,7 @@ packages:
     commit: 526714aed7592c6d548ce38e9935bef0a984217b
 - location:
     git: git@github.com:alanz/ghc-exactprint
-    commit: b36bf21659cac048cf3e7d215b1a2c0de4bf1158
+    commit: 322f2005ae2eb2c056026a89d16c98fdd4912983
 - location:
     git: git@github.com:mpickering/refact
     commit: 07fa5ff2ae554dcaf9ad93c04e195259be5dddd0
@@ -22,6 +22,7 @@ extra-deps:
 - syz-0.2.0.0
 # - ghc-7.10.1.20150612
 # resolver: nightly-2015-06-16
-resolver: nightly-2015-06-25
+# resolver: nightly-2015-06-25
+resolver: nightly-2015-07-12
 # Use system GHC, must be a 7.10.2 rc or later.
 system-ghc: true

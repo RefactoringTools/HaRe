@@ -140,9 +140,9 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 
-import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls,ghead,gtail,gfromJust)
+import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
 import Language.Haskell.GHC.ExactPrint.Internal.Types
-import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gtail,gfromJust)
 
 
 -- Modules from GHC
@@ -151,6 +151,7 @@ import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
+import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHC
@@ -889,7 +890,7 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (HasDecls t)
+addDecl:: (HasDecls t,GHC.Outputable t)
         => t              -- ^The AST to be updated
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
@@ -911,25 +912,25 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
            then addTopLevelDecl (decl, msig) parent
            else addLocalDecl parent (decl,msig)
  where
-  setDeclSpacing newDecl maybeSig n = do
+  setDeclSpacing newDecl maybeSig n c = do
          ans1 <- getRefactAnns
-         let -- ans2 = setPrecedingLines ans1 newDecl n 0
+         let
              ans3 = case maybeSig of
-               Nothing -> setPrecedingLines ans1 newDecl n 0
-               Just s  -> setPrecedingLines ans2 newDecl 1 0
+               Nothing -> setPrecedingLines ans1 newDecl n c
+               Just s  -> setPrecedingLines ans2 newDecl 1 c
                  where
-                   ans2 = setPrecedingLines ans1 s n 0
+                   ans2 = setPrecedingLines ans1 s n c
          setRefactAnns ans3
          -- logm $ "addDecl.setDeclSpacing:declAnns'=" ++ show ans3
 
-  appendDecl :: (HasDecls t)
+  appendDecl :: (HasDecls t,GHC.Outputable t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
       -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName)) -- ^declaration and maybe sig
       -> RefactGhc t -- ^updated AST
   appendDecl parent' pn' (newDecl, maybeSig)
     = do
-         setDeclSpacing newDecl maybeSig 2
+         setDeclSpacing newDecl maybeSig 2 0
          nameMap <- getRefactNameMap
          let
             decls = hsDecls parent'
@@ -947,21 +948,24 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig) parent'
     = do let decls = hsDecls parent'
-         setDeclSpacing newDecl maybeSig 2
+         setDeclSpacing newDecl maybeSig 2 0
          refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
 
 
-  addLocalDecl :: (HasDecls t)
+  addLocalDecl :: (HasDecls t,GHC.Outputable t)
                => t -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
                -> RefactGhc t
   addLocalDecl parent' (newDecl, maybeSig)
-    = do let decls = hsDecls parent'
-         setDeclSpacing newDecl maybeSig 0
+    = do
+         let decls = hsDecls parent'
+         setDeclSpacing newDecl maybeSig 1 4
          case decls of
            []    -> return ()
            (d:_) -> do
              modifyRefactAnns (\ans -> setPrecedingLinesDecl ans d 1)
-         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
+         r <- refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
+         return r
+
 
 -- ---------------------------------------------------------------------
 
@@ -2327,19 +2331,6 @@ getSigAndToks pn t _toks
       Just sig -> Just (sig, [])
 
 
--- ---------------------------------------------------------------------
-{-
--- | Normalise a set of tokens to start at the offset of the first one
-removeToksOffset :: [PosToken] -> [PosToken]
-removeToksOffset toks = toks'
-  where
-    toks' = case toks of
-              [] -> []
-              _  -> removeOffset offset toks
-                      where
-                        (_r,c) = tokenPos $ head toks
-                        offset = c -- getIndentOffset toks (r+1,c)
--}
 -- ---------------------------------------------------------------------
 
 -- | Remove at most `offset` whitespaces from each line in the tokens

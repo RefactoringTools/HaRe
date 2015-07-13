@@ -31,9 +31,9 @@ import qualified GHC           as GHC
 import qualified Data.Generics as SYB
 --import qualified GHC.SYB.Utils as SYB
 
-import Language.Haskell.GHC.ExactPrint.Transform hiding (uniqueSrcSpan,isUniqueSrcSpan,ghead,gfromJust)
+import Language.Haskell.GHC.ExactPrint.Transform hiding (uniqueSrcSpan,isUniqueSrcSpan)
 import Language.Haskell.GHC.ExactPrint.Internal.Types
-import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gfromJust)
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.Types
 
@@ -74,7 +74,7 @@ insertUniqueSrcSpans t
 uniqueSpansOnly :: Anns -> Anns
 uniqueSpansOnly ans
   -- = (Map.filterWithKey (\(AnnKey ss _ _) _ -> isUniqueSrcSpan ss) anns,sks)
-  = modifyKeywordDeltas (\an -> Map.filterWithKey (\(AnnKey ss _ _) _ -> isUniqueSrcSpan ss) an) ans
+  = modifyKeywordDeltas (\an -> Map.filterWithKey (\(AnnKey ss _) _ -> isUniqueSrcSpan ss) an) ans
 
 -- ---------------------------------------------------------------------
 
@@ -130,7 +130,6 @@ extractSrcSpanConName  =
             then [ AnnKey
                     (ghead "extractAnns" (SYB.gmapQi 0 getSrcSpan t))
                     (SYB.gmapQi 1 getConName t)
-                    NotNeeded
                  ]
                   ++ SYB.gmapQi 1 extractSrcSpanConName t
             else concat (SYB.gmapQ extractSrcSpanConName t)
@@ -149,11 +148,11 @@ extractSrcSpanConName  =
 
 addAnnKeywords :: Anns -> AnnConName -> [(KeywordId, DeltaPos)] -> Anns
 addAnnKeywords ans conName ks =
-  modifyKeywordDeltas (Map.insert (AnnKey ss conName NotNeeded) (annNone {annsDP = ks})) ans
+  modifyKeywordDeltas (Map.insert (AnnKey ss conName) (annNone {annsDP = ks})) ans
   where
     -- First find the first srcspan having the conName
     -- MP: First in what sense?
-    AnnKey ss _ _ = ghead "addAnnKeywords" . filter (\(AnnKey _ s _) -> s == conName) $ Map.keys anns
+    AnnKey ss _ = ghead "addAnnKeywords" . filter (\(AnnKey _ s) -> s == conName) $ Map.keys anns
     anns = getKeywordDeltas ans
 
 -- ---------------------------------------------------------------------
@@ -278,7 +277,7 @@ adjustAnnOffset (ColDelta cd) (Ann (DP (ro,co)) (ColDelta ad) kds) = Ann edp cd'
 
 -- ++AZ++:TODO: this is a re-implementation of mkAnnKey in ghc-exactprint
 mkKey :: (SYB.Data a) => GHC.Located a -> AnnKey
-mkKey (GHC.L l s) = AnnKey l (annGetConstr s) NotNeeded
+mkKey (GHC.L l s) = AnnKey l (annGetConstr s)
 
 
 -- | Shift the first output annotation into the correct place
@@ -320,7 +319,7 @@ setColRec f loc = transform loc
 
 setCol :: (ColDelta -> ColDelta) -> GHC.SrcSpan -> AnnConName -> (Anns -> Anns)
 setCol f ss cn anns =
-  let key = AnnKey ss cn NotNeeded
+  let key = AnnKey ss cn
       res = \a -> Map.adjust (\s -> s { annDelta = f (annDelta s) }) key a
   in
       modifyKeywordDeltas res anns
@@ -331,7 +330,7 @@ setCol f ss cn anns =
 getOriginalPos :: (SYB.Data a) => Anns -> GHC.Located a -> KeywordId -> (Pos,DeltaPos)
 getOriginalPos ann la@(GHC.L ss _) kw =
   let
-    an = gfromJust ("getOriginalPos" ++ showGhc (ss,kw)) $ getAnnotationEP la NotNeeded ann
+    an = gfromJust ("getOriginalPos" ++ showGhc (ss,kw)) $ getAnnotationEP la ann
     mdp = lookup kw (annsDP an)
   in case mdp of
     Nothing -> ((0,0),DP (0,0))

@@ -302,7 +302,10 @@ exactPrintFromState st ast =
   case rsModule st of
     Just tm -> r
       where
-        anns = tkCache (rsTokenCache tm) Map.! mainTid
+        -- anns = tkCache (rsTokenCache tm) Map.! mainTid
+        anns = case Map.lookup mainTid (tkCache (rsTokenCache tm)) of
+          Just a -> a
+          Nothing -> error $ "exactPrintFromState:mainTid not found"
         r = exactPrintWithAnns ast anns
     Nothing -> []
 

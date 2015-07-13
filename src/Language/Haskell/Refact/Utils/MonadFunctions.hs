@@ -82,8 +82,8 @@ import qualified Data.Generics as SYB
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
-import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls,gfromJust)
-import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
+import Language.Haskell.GHC.ExactPrint.Utils hiding (gfromJust)
 import Language.Haskell.GHC.ExactPrint.Types (PosToken)
 
 import Language.Haskell.Refact.Utils.Binds
@@ -274,12 +274,14 @@ replaceRdrName (GHC.L l newName) = do
 
 refactReplaceDecls :: (HasDecls a) => a -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc a
 refactReplaceDecls t decls = do
+  refactRunTransform (replaceDecls t decls)
+  {-
   ans <- getRefactAnns
   let (t',(ans',_),_) = runTransform ans (replaceDecls t decls)
   setRefactAnns ans'
   return t'
+  -}
 
--- ---------------------------------------------------------------------
 
 refactRunTransform :: Transform a -> RefactGhc a
 refactRunTransform transform = do

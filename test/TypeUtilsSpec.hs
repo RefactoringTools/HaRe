@@ -1996,7 +1996,6 @@ spec = do
          parsed' <- addDecl parsed (Just n) (decl,Just (GHC.L ls sig),Just $ mergeAnns sigAnns declAnns) True
          putRefactParsed parsed' emptyAnns
          return (n,parsed')
-      -- ((_hs,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
       ((nn,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual nn) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
@@ -2020,19 +2019,21 @@ spec = do
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
          newDecl <- addDecl tlDecl Nothing (decl,Nothing,Just declAnns) False
+         logm $ "test:addDecl done"
 
          return (tlDecl,newDecl)
+      -- ((tl,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "toplevel x = c * x"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       -- putStrLn (showAnnDataItemFromState s nb)
-      (exactPrintFromState s nb) `shouldBe` "toplevel x = c * x\n  where\n    nn = nn2"
+      (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x\n  where\n    nn = nn2"
       (showGhcQual nb)           `shouldBe` "toplevel x\n  = c * x\n  where\n      nn = nn2"
 
 
     -- -------------------------------------------
 
-    it "adds a local declaration with a type signature" $ do
+    it "adds a local declaration with a type signature 1" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
@@ -2054,7 +2055,7 @@ spec = do
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "toplevel x = c * x"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      (exactPrintFromState s nb) `shouldBe` "toplevel x = c * x\n  where\n    nn :: Int\n    nn = nn2"
+      (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x\n  where\n    nn :: Int\n    nn = nn2"
       (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x\n  where\n      nn = nn2\n      nn :: Int"
 
     -- -------------------------------------------
@@ -2109,7 +2110,7 @@ spec = do
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "toplevel x\n  = c * x * b\n  where\n      b = 3"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md2 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x * b\n  where\n    b = 3\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      (exactPrintFromState s nb) `shouldBe` "toplevel x = c * x * b\n  where\n    nn = nn2\n    b = 3"
+      (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x * b\n  where\n    nn = nn2\n    b = 3"
       (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x * b\n  where\n      b = 3\n      nn = nn2"
 
     -- -------------------------------------------
@@ -2136,7 +2137,7 @@ spec = do
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "toplevel x\n  = c * x * b\n  where\n      b = 3"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md2 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x * b\n  where\n    b = 3\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      (exactPrintFromState s nb) `shouldBe` "toplevel x = c * x * b\n  where\n    nn :: Int\n    nn = nn2\n    b = 3"
+      (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x * b\n  where\n    nn :: Int\n    nn = nn2\n    b = 3"
       (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x * b\n  where\n      b = 3\n      nn = nn2\n      nn :: Int"
 
 
@@ -2167,8 +2168,8 @@ spec = do
          newDecl <- addDecl tlDecl Nothing (sqDecl,Just sqSig,Nothing) False
 
          return (sqSig,sqDecl,tlDecl,afDecl,newDecl)
-      ((sigs,sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      -- ((sigs,sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((sigs,sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      ((sigs,sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       putStrLn $ show (annsFromState s)
       -- putStrLn $ showAnnDataFromState s
       -- putStrLn $ showAnnDataItemFromState s sd

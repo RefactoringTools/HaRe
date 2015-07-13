@@ -38,19 +38,17 @@ import Data.Maybe
 import Distribution.Helper
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
-import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gtail,gfromJust)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 import System.Directory
 import System.FilePath.Posix
--- import System.Log.Logger
 import qualified Data.Generics as SYB
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -58,13 +56,8 @@ import qualified Data.Set as Set
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
--- import qualified GHC.Paths     as GHC
--- import qualified GhcMonad      as GHC
--- import qualified HscTypes      as GHC
--- import qualified GHC           as GHC
 
 import qualified GHC.SYB.Utils as SYB
--- import qualified Language.Haskell.GhcMod.Internal as GM
 import qualified Outputable    as GHC
 
 -- import Debug.Trace

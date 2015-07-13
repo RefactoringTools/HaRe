@@ -50,8 +50,8 @@ module Language.Haskell.Refact.Utils.Binds
  ) where
 
 import Language.Haskell.GHC.ExactPrint.Internal.Types
-import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls,ghead)
-import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
+import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead)
 import Language.Haskell.Refact.Utils.Types
 
 -- Modules from GHC
@@ -127,29 +127,17 @@ instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
           GHC.EmptyLocalBinds -> do
             newSpan <- uniqueSrcSpanT
             let
-              newAnnKey = AnnKey newSpan (CN "HsValBinds") NotNeeded
+              newAnnKey = AnnKey newSpan (CN "HsValBinds")
               addWhere mkds =
                 case Map.lookup (mkAnnKey m) mkds of
                   Nothing -> error "wtf"
-                  Just ann -> Map.insert newAnnKey ann2 mkds2
+                  Just ann -> Map.insert (mkAnnKey m) ann1 mkds
                     where
                       ann1 = ann { annsDP = annsDP ann ++ [(G GHC.AnnWhere,DP (1,2))]
-                                 , annCapturedSpan = Just (newSpan,NotNeeded)
                                  }
-                      mkds2 = Map.insert (mkAnnKey m) ann1 mkds
-                      ann2 = Ann { annEntryDelta        = DP (1,0)
-                                 , annDelta             = ColDelta 4
-                                 , annTrueEntryDelta    = DP (1,0)
-                                 , annPriorComments     = []
-                                 , annFollowingComments = []
-                                 , annsDP               = []
-                                 , annSortKey           = Nothing
-                                 , annCapturedSpan      = Nothing}
             modifyKeywordDeltasT addWhere
             modifyAnnsT (captureOrderAnnKey newAnnKey newBinds)
-            -- modifyAnnsT (\ans -> error $ "oops:" ++ showGhc (setPrecedingLines ans (ghead "LMatch.replaceDecls" newBinds) 1 0))
-            -- modifyAnnsT (\ans -> error $ "oops:" ++ SYB.showData SYB.Parser 0 ((ghead "LMatch.replaceDecls" newBinds)))
-            modifyAnnsT (\ans -> setPrecedingLinesDecl ans (ghead "LMatch.replaceDecls" newBinds) 0)
+            modifyAnnsT (\ans -> setPrecedingLinesDecl ans (ghead "LMatch.replaceDecls" newBinds) 1)
           _ -> do
             modifyAnnsT (captureOrderAnnKey (mkAnnKey m) newBinds)
 
@@ -180,11 +168,17 @@ instance HasDecls (GHC.HsLocalBinds GHC.RdrName) where
         let decs = GHC.listToBag $ concatMap decl2Bind new
         let sigs = concatMap decl2Sig new
         return (GHC.HsValBinds (GHC.ValBindsIn decs sigs))
+
   replaceDecls (GHC.HsIPBinds _b) _new    = error "undefined replaceDecls HsIPBinds"
+
   replaceDecls (GHC.EmptyLocalBinds) new
     = do
-        let decs = GHC.listToBag $ concatMap decl2Bind new
-        let sigs = concatMap decl2Sig new
+        newBinds <- mapM decl2BindT new
+        newSigs  <- mapM decl2SigT  new
+        ans <- getAnnsT
+        logTr $ "replaceDecls:newBinds=" ++ showAnnData ans 0 newBinds
+        let decs = GHC.listToBag $ concat newBinds
+        let sigs = concat newSigs
         return (GHC.HsValBinds (GHC.ValBindsIn decs sigs))
 
 -- ---------------------------------------------------------------------
@@ -245,11 +239,17 @@ instance HasDecls (GHC.LHsBind GHC.RdrName) where
 -- ---------------------------------------------------------------------
 
 instance HasDecls (GHC.LHsDecl GHC.RdrName) where
-  hsDecls d = [d]
+  hsDecls (GHC.L l (GHC.ValD d)) = hsDecls (GHC.L l d)
+  -- hsDecls (GHC.L l (GHC.SigD d)) = hsDecls (GHC.L l d)
+  hsDecls _                      = []
 
-  replaceDecls _ [d] = return d
-  replaceDecls d []  = return d
-  replaceDecls d ds  = error $ "LHsDecl.replaceDecls:cannot replace a list"
+  replaceDecls (GHC.L l (GHC.ValD d)) newDecls = do
+    (GHC.L l1 d1) <- replaceDecls (GHC.L l d) newDecls
+    return (GHC.L l1 (GHC.ValD d1))
+  -- replaceDecls (GHC.L l (GHC.SigD d)) newDecls = do
+  --   (GHC.L l1 d1) <- replaceDecls (GHC.L l d) newDecls
+  --   return (GHC.L l1 (GHC.SigD d1))
+  replaceDecls d _  = error $ "LHsDecl.replaceDecls:not implemented"
 
 -- =====================================================================
 -- ---------------------------------------------------------------------
