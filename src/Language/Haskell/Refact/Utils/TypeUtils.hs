@@ -961,8 +961,8 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          setDeclSpacing newDecl maybeSig 1 4
          case decls of
            []    -> return ()
-           (d:_) -> do
-             modifyRefactAnns (\ans -> setPrecedingLinesDecl ans d 1 0)
+           ds -> do
+             modifyRefactAnns (\ans -> setPrecedingLines ans (head ds) 1 0)
          sigs <- refactRunTransform (mapM wrapSigT $ toList maybeSig)
          r <- refactReplaceDecls parent' (sigs ++ [newDecl]++decls)
          return r
