@@ -958,12 +958,14 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
   addLocalDecl parent' (newDecl, maybeSig)
     = do
          decls <- refactRunTransform (hsDecls parent')
-         setDeclSpacing newDecl maybeSig 1 4
+         sigs  <- refactRunTransform (mapM wrapSigT $ toList maybeSig)
          case decls of
-           []    -> return ()
+           [] -> setDeclSpacing newDecl maybeSig 1 4
            ds -> do
+             DP (r,c) <- refactRunTransform (getEntryDPT (head ds))
+             logm $ "addLocalDecl:(r,c)=" ++ show (r,c)
+             setDeclSpacing newDecl (listToMaybe sigs) r c
              modifyRefactAnns (\ans -> setPrecedingLines ans (head ds) 1 0)
-         sigs <- refactRunTransform (mapM wrapSigT $ toList maybeSig)
          r <- refactReplaceDecls parent' (sigs ++ [newDecl]++decls)
          return r
 
