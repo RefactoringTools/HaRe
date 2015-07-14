@@ -76,7 +76,7 @@ class (Data t) => HasDecls t where
     -- | Return the HsDecls that are directly enclosed in the
     -- given syntax phrase. They are always returned in the wrapped HsDecl form,
     -- even if orginating in local decls.
-    hsDecls :: t -> [GHC.LHsDecl GHC.RdrName]
+    hsDecls :: t -> Transform [GHC.LHsDecl GHC.RdrName]
 
     -- | Replace the directly enclosed decl list by the given
     --  decl list. Runs in the ghc-exactprint Transform Monad to be able to
@@ -86,7 +86,7 @@ class (Data t) => HasDecls t where
 -- ---------------------------------------------------------------------
 
 instance HasDecls GHC.ParsedSource where
-  hsDecls (GHC.L _ (GHC.HsModule _mn _exps _imps decls _ _)) = decls
+  hsDecls (GHC.L _ (GHC.HsModule _mn _exps _imps decls _ _)) = return decls
   replaceDecls m@(GHC.L l (GHC.HsModule mn exps imps _decls deps haddocks)) decls
     = do
         modifyAnnsT (captureOrder m decls)
@@ -105,7 +105,9 @@ instance HasDecls (GHC.MatchGroup GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
 -- ---------------------------------------------------------------------
 
 instance HasDecls [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)] where
-  hsDecls ms = concatMap (\m -> hsDecls m) ms
+  hsDecls ms = do
+    ds <- mapM hsDecls ms
+    return (concat ds)
 
   replaceDecls [] _        = error "empty match list in replaceDecls [GHC.LMatch GHC.Name]"
   replaceDecls ms newDecls
@@ -136,11 +138,14 @@ instance HasDecls (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
             modifyKeywordDeltasT addWhere
             newBinds' <- mapM pushDeclAnnT newBinds
             modifyAnnsT (captureOrderAnnKey (mkAnnKey m) newBinds')
-            modifyAnnsT (\ans -> setPrecedingLinesDecl ans (ghead "LMatch.replaceDecls" newBinds') 1)
+            modifyAnnsT (\ans -> setPrecedingLinesDecl ans (ghead "LMatch.replaceDecls" newBinds') 1 4)
             return newBinds'
           _ -> do
-            modifyAnnsT (captureOrderAnnKey (mkAnnKey m) newBinds)
-            return newBinds
+            -- ++AZ++ TODO: move the duplicate code out of the case statement
+            newBinds' <- mapM pushDeclAnnT newBinds
+            modifyAnnsT (captureOrderAnnKey (mkAnnKey m) newBinds')
+            modifyAnnsT (\ans -> setPrecedingLinesDecl ans (ghead "LMatch.replaceDecls.2" newBinds') 1 4)
+            return newBinds'
 
         binds' <- replaceDecls binds newBinds2
         return (GHC.L l (GHC.Match mf p t (GHC.GRHSs rhs binds')))
@@ -159,10 +164,14 @@ instance HasDecls (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
 
 instance HasDecls (GHC.HsLocalBinds GHC.RdrName) where
   hsDecls lb = case lb of
-    GHC.HsValBinds (GHC.ValBindsIn bs sigs) -> map wrapDecl (GHC.bagToList bs) ++ map wrapSig sigs
+    GHC.HsValBinds (GHC.ValBindsIn bs sigs) -> do
+      bds <- mapM wrapDeclT (GHC.bagToList bs)
+      sds <- mapM wrapSigT sigs
+      -- ++AZ++ TODO: return in annotated order
+      return (bds ++ sds)
     GHC.HsValBinds (GHC.ValBindsOut _ _) -> error $ "hsDecls.ValbindsOut not valid"
-    GHC.HsIPBinds _     -> []
-    GHC.EmptyLocalBinds -> []
+    GHC.HsIPBinds _     -> return []
+    GHC.EmptyLocalBinds -> return []
 
   replaceDecls (GHC.HsValBinds _b) new
     = do
@@ -188,7 +197,7 @@ instance HasDecls (GHC.HsLocalBinds GHC.RdrName) where
 
 instance HasDecls (GHC.LHsExpr GHC.RdrName) where
   hsDecls (GHC.L _ (GHC.HsLet decls _ex)) = hsDecls decls
-  hsDecls _                               = []
+  hsDecls _                               = return []
 
   replaceDecls (GHC.L l (GHC.HsLet decls ex)) newDecls
     = do
@@ -205,7 +214,7 @@ instance HasDecls (GHC.LHsBinds GHC.RdrName) where
 -- ---------------------------------------------------------------------
 
 instance HasDecls [GHC.LHsBind GHC.RdrName] where
-  hsDecls bs = map wrapDecl bs
+  hsDecls bs = mapM wrapDeclT bs
 
   replaceDecls bs newDecls
     = do
@@ -244,7 +253,7 @@ instance HasDecls (GHC.LHsBind GHC.RdrName) where
 instance HasDecls (GHC.LHsDecl GHC.RdrName) where
   hsDecls (GHC.L l (GHC.ValD d)) = hsDecls (GHC.L l d)
   -- hsDecls (GHC.L l (GHC.SigD d)) = hsDecls (GHC.L l d)
-  hsDecls _                      = []
+  hsDecls _                      = return []
 
   replaceDecls (GHC.L l (GHC.ValD d)) newDecls = do
     (GHC.L l1 d1) <- replaceDecls (GHC.L l d) newDecls

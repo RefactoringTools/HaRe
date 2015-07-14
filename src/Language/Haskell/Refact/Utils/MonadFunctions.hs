@@ -60,6 +60,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , fileNameFromModSummary
 
        , logDataWithAnns
+       , logParsedSource
 
        -- * For use by the tests only
        , initRefactModule
@@ -372,6 +373,12 @@ logDataWithAnns :: (SYB.Data a) => String -> a -> RefactGhc ()
 logDataWithAnns str ast = do
   anns <- getRefactAnns
   logm $ str ++ showAnnData anns 0 ast
+
+-- ---------------------------------------------------------------------
+
+logParsedSource str = do
+  parsed <- getRefactParsed
+  logDataWithAnns str parsed
 
 -- ---------------------------------------------------------------------
 

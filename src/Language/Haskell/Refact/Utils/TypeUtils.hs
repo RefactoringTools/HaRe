@@ -917,7 +917,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          let
              ans3 = case maybeSig of
                Nothing -> setPrecedingLines ans1 newDecl n c
-               Just s  -> setPrecedingLines ans2 newDecl 1 c
+               Just s  -> setPrecedingLines ans2 newDecl 1 0
                  where
                    ans2 = setPrecedingLines ans1 s n c
          setRefactAnns ans3
@@ -932,8 +932,8 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
     = do
          setDeclSpacing newDecl maybeSig 2 0
          nameMap <- getRefactNameMap
+         decls <- refactRunTransform (hsDecls parent')
          let
-            decls = hsDecls parent'
             (before,after) = break (definesDeclRdr nameMap pn') decls -- Need to handle the case that 'after' is empty?
 
          let decls1 = before ++ [ghead "appendDecl14" after]
@@ -947,7 +947,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
        => (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig) parent'
-    = do let decls = hsDecls parent'
+    = do decls <- refactRunTransform (hsDecls parent')
          setDeclSpacing newDecl maybeSig 2 0
          refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
 
@@ -957,12 +957,12 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
                -> RefactGhc t
   addLocalDecl parent' (newDecl, maybeSig)
     = do
-         let decls = hsDecls parent'
+         decls <- refactRunTransform (hsDecls parent')
          setDeclSpacing newDecl maybeSig 1 4
          case decls of
            []    -> return ()
            (d:_) -> do
-             modifyRefactAnns (\ans -> setPrecedingLinesDecl ans d 1)
+             modifyRefactAnns (\ans -> setPrecedingLinesDecl ans d 1 0)
          sigs <- refactRunTransform (mapM wrapSigT $ toList maybeSig)
          r <- refactReplaceDecls parent' (sigs ++ [newDecl]++decls)
          return r

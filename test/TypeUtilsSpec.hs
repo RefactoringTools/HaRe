@@ -205,7 +205,8 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let nameMap = initRdrNameMap t
       let Just ((GHC.L _ n)) = locToName (16,6) renamed
-      let res = definingDeclsRdrNames nameMap [n] (hsDecls parsed) False False
+      let decls = GHC.hsmodDecls $ GHC.unLoc parsed
+      let res = definingDeclsRdrNames nameMap [n] decls False False
       showGhcQual res `shouldBe` "[]"
 
     -- ---------------------------------
@@ -217,7 +218,8 @@ spec = do
       let nameMap = initRdrNameMap t
 
       let Just (GHC.L _ n) = locToName (3,3) renamed
-      let res = definingDeclsRdrNames nameMap [n] (hsDecls parsed) False False
+      let decls = GHC.hsmodDecls $ GHC.unLoc parsed
+      let res = definingDeclsRdrNames nameMap [n] decls False False
       showGhcQual res `shouldBe` "[toplevel x = c * x]"
 
     -- ---------------------------------
@@ -229,7 +231,8 @@ spec = do
       let nameMap = initRdrNameMap t
 
       let Just (GHC.L _ n) = locToName (14,1) renamed
-      let res = definingDeclsRdrNames nameMap [n] (hsDecls parsed) False False
+      let decls = GHC.hsmodDecls $ GHC.unLoc parsed
+      let res = definingDeclsRdrNames nameMap [n] decls False False
       showGhcQual res `shouldBe` "[tup@(h, t)\n   = head $ zip [1 .. 10] [3 .. ff]\n   where\n       ff :: Int\n       ff = 15]"
 
     -- ---------------------------------
@@ -1977,7 +1980,6 @@ spec = do
       ((n,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nnn = nn2\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "module MoveDef.Md1 where\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\nc, d :: Integer\nc = 7\nd = 9\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h, t)\n = head $ zip [1 .. 10] [3 .. ff]\n where\n ff :: Int\n ff = 15\ndata D = A | B String | C\nff :: Int -> Int\nff y\n = y + zz\n where\n zz = 1\nnn = nn2\nl z = let ll = 34 in ll + z\ndd q\n = do { let ss = 5;\n return (ss + q) }\nzz1 a = 1 + toplevel a\ntlFunc :: Integer -> Integer\ntlFunc x = c * x"
 
@@ -2014,7 +2016,8 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         let decls = hsDecls parsed
+         decls <- refactRunTransform (hsDecls parsed)
+         let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
@@ -2043,7 +2046,8 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         let decls = hsDecls parsed
+         decls <- refactRunTransform (hsDecls parsed)
+         let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
@@ -2052,13 +2056,13 @@ spec = do
          newDecl <- addDecl tlDecl Nothing (decl,Just (GHC.L ls sig),Just $ mergeAnns sigAnns declAnns) False
 
          return (tlDecl,newDecl)
-      -- ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      ((tl,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((tl,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "toplevel x = c * x"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      putStrLn (showAnnDataItemFromState s nb)
+      -- putStrLn (showAnnDataItemFromState s nb)
       (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x\n  where\n    nn :: Int\n    nn = nn2"
-      (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x\n  where\n      nn = nn2\n      nn :: Int"
+      (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x\n  where\n      nn :: Int\n      nn = nn2"
 
     -- -------------------------------------------
 
@@ -2072,7 +2076,8 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         let decls = hsDecls parsed
+         decls <- refactRunTransform (hsDecls parsed)
+         let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
@@ -2085,7 +2090,7 @@ spec = do
       -- (showToks $ take 30 $ toks) `shouldBe` ""
       -- (showToks $ take 30 $ toksFromState s) `shouldBe` ""
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Demote where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\n-- c,d :: Integer\nc = 7\nd = 9\n\n\n"
-      (exactPrintFromState s nb) `shouldBe` "toplevel x = c * x\n  where\n    nn = nn2"
+      (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x\n  where\n    nn = nn2"
       (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x\n  where\n      nn = nn2"
 
     -- -------------------------------------------
@@ -2099,8 +2104,11 @@ spec = do
          renamed <- getRefactRenamed
          nameMap <- getRefactNameMap
 
+         logParsedSource "start"
+
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         let decls = hsDecls parsed
+         decls <- refactRunTransform (hsDecls parsed)
+         let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
@@ -2108,8 +2116,8 @@ spec = do
          newDecl <- addDecl tlDecl Nothing (decl,Nothing,Just declAnns) False
 
          return (tlDecl,newDecl)
-      -- ((tl,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
-      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((tl,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "toplevel x\n  = c * x * b\n  where\n      b = 3"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md2 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x * b\n  where\n    b = 3\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x * b\n  where\n    nn = nn2\n    b = 3"
@@ -2127,7 +2135,8 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         let decls = hsDecls parsed
+         decls <- refactRunTransform (hsDecls parsed)
+         let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
@@ -2154,8 +2163,8 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (10, 1) renamed
+         decls <- refactRunTransform (hsDecls parsed)
          let -- decls = hsBinds parsed
-             decls = hsDecls parsed
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          let Just (GHC.L _ sq) = locToName (14, 1) renamed
