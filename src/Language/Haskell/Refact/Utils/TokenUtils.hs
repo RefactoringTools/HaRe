@@ -44,12 +44,12 @@ import qualified GHC.SYB.Utils as SYB
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.TypeSyn
-
+{-
 import Language.Haskell.TokenUtils.GHC.Layout
 import Language.Haskell.TokenUtils.TokenUtils
 import Language.Haskell.TokenUtils.Types
 import Language.Haskell.TokenUtils.Utils
-
+-}
 import Data.Tree
 import qualified Data.Map as Map
 

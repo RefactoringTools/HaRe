@@ -29,4 +29,4 @@ import Language.Haskell.Refact.Refactoring.SwapArgs
 import Language.Haskell.Refact.Refactoring.DeleteDef
 import Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
 import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.TokenUtils.Types
+--import Language.Haskell.TokenUtils.Types

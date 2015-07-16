@@ -10,7 +10,7 @@ import Control.Monad
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
-import Language.Haskell.TokenUtils.GHC.Layout (newNameTok)
+--import Language.Haskell.TokenUtils.GHC.Layout (newNameTok)
 import FastString
 import Unique
 import Lexer
@@ -79,9 +79,20 @@ mkName str = GHC.mkSystemName unique occ
         occ = GHC.mkTyVarOcc str
 
 addTypeDecl :: String -> SimpPos -> GHC.TyClDecl GHC.Name -> RefactGhc ()
-addTypeDecl declStr (row,col) decl = do
+addTypeDecl declStr loc@(row,col) decl = do
   --TODO the fast strings in the srclocs should have module information
-  r@(group,id,lie,ds) <- getRefactRenamed
+  renamed@(group, _ ,_ ,_) <- getRefactRenamed
+  parsed <- getRefactParsed
+  let (modName, str) = gfromJust "Tried to get mod name" $ getModuleName parsed
+      newToks = basicTokenise declStr
+      (startLoc, endLoc) = getStartEndLoc decl
+--  error $ SYB.showData SYB.Renamer 3 decl
+--  error $ show newToks
+  void $ addToksAfterPos (startLoc,endLoc) (PlaceOffset row col 1) newToks
+
+    
+  return $ () -- (GHC.hs_tyclds group) ++ [decl]
+  {-r@(group,id,lie,ds) <- getRefactRenamed
   dflags <- getDynFlags
   let srcLoc = mkRealSrcLoc (fsLit declStr) row col
       buff = stringToStringBuffer declStr
@@ -100,7 +111,7 @@ addTypeDecl declStr (row,col) decl = do
 --      error $ show posTokens
       void $ putToksForSpan span posTokens    
       return ()
-    Lexer.PFailed _ msg -> error $ "Lexer error: " ++  (showSDoc dflags msg)
+    Lexer.PFailed _ msg -> error $ "Lexer error: " ++  (showSDoc dflags msg)-}
 
 doIntro :: GHC.Name -> GHC.HsType GHC.Name -> RefactGhc ()
 doIntro name ty = do

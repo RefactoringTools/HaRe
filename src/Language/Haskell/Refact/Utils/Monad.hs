@@ -43,9 +43,9 @@ import Data.Time.Clock
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
-import Language.Haskell.TokenUtils.Types
+--import Language.Haskell.TokenUtils.Types
 import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.TokenUtils.Utils
+--import Language.Haskell.TokenUtils.Utils
 import System.Directory
 import System.FilePath.Posix
 import System.Log.Logger
@@ -92,7 +92,7 @@ data RefactStashId = Stash !String deriving (Show,Eq,Ord)
 data RefactModule = RefMod
         { rsTypecheckedMod  :: !GHC.TypecheckedModule
         , rsOrigTokenStream :: ![PosToken]  -- ^Original Token stream for the current module
-        , rsTokenCache      :: !(TokenCache PosToken)  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
+--        , rsTokenCache      :: !(TokenCache PosToken)  -- ^Token stream for the current module, maybe modified, in SrcSpan tree form
         , rsStreamModified  :: !Bool        -- ^current module has updated the token stream
         }
 
@@ -146,8 +146,6 @@ instance GHC.MonadIO (StateT RefactState IO) where
 
 instance ExceptionMonad m => ExceptionMonad (StateT s m) where
     gcatch f h = StateT $ \s -> gcatch (runStateT f s) (\e -> runStateT (h e) s)
-    gblock = mapStateT gblock
-    gunblock = mapStateT gunblock
 
 
 instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
@@ -176,7 +174,6 @@ initGhcSession cradle importDirs = do
     let opt = Options {
                  outputStyle = PlainStyle
                  , hlintOpts = []
-                 , ghcOpts = ghcOptsDirs
                  , operators = False
                  , detailed = False
                  , qualified = False

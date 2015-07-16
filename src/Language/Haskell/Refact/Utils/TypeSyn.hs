@@ -11,6 +11,7 @@ module Language.Haskell.Refact.Utils.TypeSyn where
 import qualified GHC        as GHC
 import qualified Name       as GHC
 import qualified Outputable as GHC
+import qualified HsExpr     as GHC
 
 type HsExpP    = GHC.HsExpr GHC.RdrName
 type HsPatP    = GHC.Pat GHC.RdrName
@@ -52,9 +53,9 @@ instance Show GHC.NameSpace where
 
 instance GHC.Outputable GHC.NameSpace where
   ppr x = GHC.text $ show x
-
-instance GHC.Outputable (GHC.MatchGroup GHC.Name) where
-  ppr (GHC.MatchGroup ms _ptctyp) = GHC.text "MatchGroup" GHC.<+> GHC.ppr ms
+{-
+instance GHC.Outputable (GHC.MatchGroup GHC.Name GHC.Type) where
+  ppr mg = GHC.text "MatchGroup" GHC.<+> GHC.ppr (GHC.mg_alts mg)
 
 
 instance GHC.Outputable (GHC.Match GHC.Name) where
@@ -90,3 +91,4 @@ instance GHC.Outputable (GHC.ConDeclField GHC.Name) where
 -- type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)
 
 -- ---------------------------------------------------------------------
+-}

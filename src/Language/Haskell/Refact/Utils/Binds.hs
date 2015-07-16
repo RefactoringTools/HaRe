@@ -46,7 +46,7 @@ module Language.Haskell.Refact.Utils.Binds
 
 -- import Control.Monad.IO.Class ()
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.TokenUtils.Utils
+--import Language.Haskell.TokenUtils.Utils
 
 -- Modules from GHC
 import qualified Bag           as GHC
