@@ -394,7 +394,7 @@ import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 
-import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,glast,gtail,gfromJust)
 import Language.Haskell.GHC.ExactPrint.Types
 
 {-
