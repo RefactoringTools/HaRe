@@ -16,7 +16,7 @@ import Data.Maybe
 
 import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
-import Language.Haskell.GHC.ExactPrint.Transform hiding (hsDecls)
+import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.Refact.Utils.Binds
@@ -1771,7 +1771,7 @@ spec = do
       (showGhcQual n) `shouldBe` "pow"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.LetIn1 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' to 'sq'\n--This example also aims to test the demoting a local declaration in 'let'.\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                     pow=2\n                 in sq x + sq y\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n  "
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (sourceFromState s) `shouldBe` "module Demote.LetIn1 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' to 'sq'\n--This example also aims to test the demoting a local declaration in 'let'.\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                 in sq x + sq y\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n "
+      (sourceFromState s) `shouldBe` "module Demote.LetIn1 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' to 'sq'\n--This example also aims to test the demoting a local declaration in 'let'.\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                 in sq x + sq y\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n  "
 
     -- -----------------------------------------------------------------
 
@@ -1787,12 +1787,12 @@ spec = do
          putRefactParsed parsed' emptyAnns
 
          return parsed'
-      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       -- putStrLn $ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "Demote.WhereIn3.sq"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
-      (sourceFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\n{- foo bar -}\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
+      (sourceFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int  --there is a comment\n\n{- foo bar -}\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
 
 
   -- ---------------------------------------------
@@ -1839,7 +1839,7 @@ spec = do
       -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       putStrLn $ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "Demote.WhereIn3.sq"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\n{- foo bar -}\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
       (sourceFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
 
 
@@ -3519,7 +3519,7 @@ This function is not used and has been removed
          return (res,renamed1,toks)
       -- ((_r,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
       ((_r,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (GHC.showRichTokenStream toks) `shouldBe` "module SelectivelyImports where\n\n import Data.Maybe (fromJust,isJust)\n\n __ = id\n "
+      (GHC.showRichTokenStream toks) `shouldBe` "module SelectivelyImports where\n\nimport Data.Maybe (fromJust,isJust)\n\n__ = id\n"
 
 {- -- test after properly inserting conditional identifier
     it "Add an item to an import entry with existing items, passing existing conditional identifier." $ do

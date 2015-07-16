@@ -83,7 +83,7 @@ import qualified Data.Generics as SYB
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
-import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
+import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils hiding (gfromJust)
 import Language.Haskell.GHC.ExactPrint.Types (PosToken)
 

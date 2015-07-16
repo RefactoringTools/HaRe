@@ -40,9 +40,9 @@
 --------------------------------------------------------------------------------
 module Language.Haskell.Refact.Utils.Binds
    (
-     HasDecls(..)
+     -- HasDecls(..)
 
-   , hsBinds
+     hsBinds
    , replaceBinds
    , getValBindSigs
    , emptyValBinds
@@ -69,7 +69,7 @@ import Data.Ratio
 import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
-
+{-
 -- TODO: Move this class to ghc-exactprint Transform module
 class (Data t) => HasDecls t where
 
@@ -263,7 +263,7 @@ instance HasDecls (GHC.LHsDecl GHC.RdrName) where
   --   (GHC.L l1 d1) <- replaceDecls (GHC.L l d) newDecls
   --   return (GHC.L l1 (GHC.SigD d1))
   replaceDecls d _  = error $ "LHsDecl.replaceDecls:not implemented"
-
+-}
 -- =====================================================================
 -- ---------------------------------------------------------------------
 

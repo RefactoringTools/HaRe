@@ -140,7 +140,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 
-import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
+import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gtail,gfromJust)
 
@@ -921,7 +921,6 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
                  where
                    ans2 = setPrecedingLines ans1 s n c
          setRefactAnns ans3
-         -- logm $ "addDecl.setDeclSpacing:declAnns'=" ++ show ans3
 
   appendDecl :: (HasDecls t,GHC.Outputable t)
       => t        -- ^Original AST
@@ -963,7 +962,6 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
            [] -> setDeclSpacing newDecl maybeSig 1 4
            ds -> do
              DP (r,c) <- refactRunTransform (getEntryDPT (head ds))
-             logm $ "addLocalDecl:(r,c)=" ++ show (r,c)
              setDeclSpacing newDecl (listToMaybe sigs) r c
              modifyRefactAnns (\ans -> setPrecedingLines ans (head ds) 1 0)
          r <- refactReplaceDecls parent' (sigs ++ [newDecl]++decls)
@@ -1469,7 +1467,9 @@ rmTypeSigs pns t = do
   (t',demotedSigsMaybe) <- foldM (\(tee,ds) n -> do { (tee',d) <- rmTypeSig n tee; return (tee', ds++[d])}) (t,[]) pns
   return (t',catMaybes demotedSigsMaybe)
 
+-- ---------------------------------------------------------------------
 
+-- ++AZ++ TODO: get rid of this, rmDecl should be all we need, now that we process LHsDecl.
 -- | Remove the type signature that defines the given identifier's
 -- type from the declaration list.
 rmTypeSig :: (SYB.Data t) =>
