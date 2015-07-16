@@ -41,7 +41,7 @@ data-Dir:                       .
 extra-source-files:             ChangeLog
 
 Library
-        Build-Depends:          base >= 4.0  && < 4.8
+        Build-Depends:          base
                                 , containers
                                 , directory
 
@@ -51,9 +51,9 @@ Library
                                 , filepath
                                 , ghc
                                 , ghc-paths
-                                , ghc-prim
+                                , ghc-prim  
                                 , ghc-syb-utils
-                                , ghc-mod >= 4.1.0 && < 5
+                                , ghc-mod
                                 , mtl
                                 , old-time
                                 , pretty
@@ -64,7 +64,8 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
-                                , haskell-token-utils >= 0.0.0.6
+--                                , haskell-token-utils >= 0.0.0.6
+                                , ghc-exactprint
 
 
         GHC-Options:             -Wall
@@ -105,7 +106,7 @@ Executable ghc-hare
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
-        Build-Depends:          base >= 4.0  && < 4.8
+        Build-Depends:          base
                                 , array
                                 , containers
                                 , directory
@@ -119,7 +120,7 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 4.1.0 && < 5
+                                , ghc-mod
                                 , mtl
                                 , old-time
                                 , parsec >= 3.1.6
@@ -131,7 +132,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , haskell-token-utils >= 0.0.0.6
+--                                , haskell-token-utils >= 0.0.0.6
                                 , HaRe >= 0.7.2.3
         Extensions:      CPP
 
@@ -153,7 +154,7 @@ test-suite spec
     -- src
     test
   build-depends:
-      base        >= 4.0  && < 4.8
+      base
     , Diff >= 0.3.0
     -- , HUnit       == 1.2.*
     , HUnit
@@ -172,7 +173,7 @@ test-suite spec
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 4.1.0 && < 5
+    , ghc-mod
     , hspec
     , mtl
     , old-time

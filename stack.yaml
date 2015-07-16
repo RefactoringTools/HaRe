@@ -1,0 +1,13 @@
+flags: {}
+packages:
+- '.'
+- location: 
+    git: git@github.com:kazu-yamamoto/ghc-mod
+    commit: 4b2be9c9edbd377c3d95b6685ab53e7c5270edea
+extra-deps:
+- cabal-helper-0.3.6.0
+- Strafunski-StrategyLib-5.0.0.8
+- ghc-exactprint-0.2
+- rosezipper-0.2
+- syz-0.2.0.0
+resolver: nightly-2015-06-25
