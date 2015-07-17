@@ -11,7 +11,7 @@ packages:
     commit: 526714aed7592c6d548ce38e9935bef0a984217b
 - location:
     git: git@github.com:alanz/ghc-exactprint
-    commit: e6da805924019ce7023ed5b5c728599f4066bdcb
+    commit: f86a73649b06dbecc22640e5e4bcb73c886c8372
 - location:
     git: git@github.com:mpickering/refact
     commit:  bda394c3c5f33ca6b3e9b50edd75a52800540d20

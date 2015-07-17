@@ -946,7 +946,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
        => (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig) parent'
-    = do decls <- refactRunTransform (hsDecls parent')
+    = do decls <- liftT (hsDecls parent')
          setDeclSpacing newDecl maybeSig 2 0
          refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
 
@@ -1361,15 +1361,19 @@ rmDecl:: (SYB.Data t)
                     -- originating from the ParsedSource
     -> RefactGhc
         (t,
-        GHC.LHsBind GHC.RdrName,
+        GHC.LHsDecl GHC.RdrName,
         Maybe (GHC.LSig GHC.RdrName))  -- ^ The result and the removed declaration
-                                   -- and the possibly removed siganture
+                                       -- and the possibly removed siganture
+
 rmDecl pn incSig t = do
   logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Parser (SYB.mkM inLet) t -- top down
-  t'  <- everywhereMStaged' SYB.Parser (SYB.mkM inBinds `SYB.extM` inDecls
-                                                        `SYB.extM` inGRHSs) t2 -- top down
+  ss <- getStateStorage
+  t'  <- case ss of
+    StorageNone -> everywhereMStaged' SYB.Parser (SYB.mkM inModule
+                                                 `SYB.extM` inGRHSs) t2 -- top down
+    _ -> return t2
 
          -- applyTP (once_tdTP (failTP `adhocTP` inBinds)) t
   -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inBinds) t
@@ -1378,80 +1382,65 @@ rmDecl pn incSig t = do
                   else return (t', Nothing)
   storage <- getStateStorage
   let decl' = case storage of
-                StorageBindRdr bind -> bind
+                StorageDeclRdr decl -> decl
                 x                   -> error $ "rmDecl: unexpected value in StateStorage:" ++ (show x)
   return (t'',decl',sig')
   where
+    inModule (p:: GHC.ParsedSource)
+      = doRmDeclList p
+
     inGRHSs x@((GHC.GRHSs a localDecls)::GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-      = do
-         nameMap <- getRefactNameMap
-         let decls = hsBinds localDecls
-         if not $ emptyList (snd (break (definesRdr nameMap pn) (hsBinds localDecls)))
-           then do
-            let (_decls1, decls2) = break (definesRdr nameMap pn) decls
-                decl = ghead "rmDecl" decls2
-            decls' <- doRmDecl decl decls
-            return (GHC.GRHSs a (replaceBinds localDecls decls'))
-          else return x
-
-    inDecls x@(decls::[GHC.LHsDecl GHC.RdrName])
-      = do
-           nameMap <- getRefactNameMap
-           if not $ emptyList (snd (break (definesDeclRdr nameMap pn) decls))
-              then do
-                let (decls1, decls2) = break (definesDeclRdr nameMap pn) decls
-                    (GHC.L l (GHC.ValD d)) = ghead "rmDecl" decls2
-                    decls2' = gtail "doRmDecl 1" decls2
-                setStateStorage (StorageBindRdr (GHC.L l d))
-                return $ (decls1 ++ decls2')
-              else return x
-
-    inBinds x@(decls::[GHC.LHsBind GHC.RdrName])
-      = do
-           nameMap <- getRefactNameMap
-           if not $ emptyList (snd (break (definesRdr nameMap pn) decls))
-              then do
-                let (_decls1, decls2) = break (definesRdr nameMap pn) decls
-                    decl = ghead "rmDecl" decls2
-                doRmDecl decl decls
-              else return x
+      = doRmDeclList x
 
     inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
-    inLet x@(GHC.L ss (GHC.HsLet localDecls expr@(GHC.L _ _)))
+    inLet x@(GHC.L ss (GHC.HsLet localDecls expr))
       = do
          nameMap <- getRefactNameMap
-         if not $ emptyList (snd (break (definesRdr nameMap pn) (hsBinds localDecls)))
+         decls <- liftT $ hsDecls localDecls
+         let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
+         if not $ emptyList decls2
             then do
-              let decls = hsBinds localDecls
-              let (decls1, decls2) = break (definesRdr nameMap pn) decls
-                  decl = ghead "rmDecl" decls2
-
-              setStateStorage (StorageBindRdr decl)
+              let decl = ghead "rmDecl" decls2
+              setStateStorage (StorageDeclRdr decl)
               case length decls of
                 1 -> do -- Removing the last declaration
-                 -- logm $ "rmDecl.inLet:length decls = 1: expr=" ++ (SYB.showData SYB.Renamer 0 expr)
                  return expr
                 _ -> do
                  logm $ "rmDecl.inLet:length decls /= 1"
-                 -- drawTokenTreeDetailed "rmDecl.inLet tree"
                  let decls2' = gtail "inLet" decls2
-                 return $ (GHC.L ss (GHC.HsLet (replaceBinds localDecls (decls1 ++ decls2')) expr))
+                 decls' <- doRmDecl decl decls1 decls2
+                 localDecls' <- liftT $ replaceDecls localDecls decls'
+                 -- logDataWithAnns "inLet" (GHC.L ss (GHC.HsLet localDecls' expr))
+                 return $ (GHC.L ss (GHC.HsLet localDecls' expr))
             else return x
-
     inLet x = return x
 
+    -- ---------------------------------
 
-    doRmDecl :: GHC.LHsBind GHC.RdrName -> [GHC.LHsBind GHC.RdrName]
-                -> RefactGhc [GHC.LHsBind GHC.RdrName]
-    doRmDecl decl decls
-      =do
-          logm $ "doRmDecl:" ++ showGhc decl -- ++AZ++
+    doRmDeclList parent
+      = do
+         nameMap <- getRefactNameMap
+         decls <- liftT $ hsDecls parent
+         let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
+         if not $ emptyList decls2
+           then do
+             let decl = ghead "doRmDeclList" decls2
+             setStateStorage (StorageDeclRdr decl)
+             decls' <- doRmDecl decl decls1 decls2
+             parent' <- liftT $ replaceDecls parent decls'
+             return parent'
+           else
+             return parent
 
-          setStateStorage (StorageBindRdr decl)
+    -- ---------------------------------
 
-          nameMap <- getRefactNameMap
-          let (decls1, decls2) = break (definesRdr nameMap pn) decls
-              decls2' = gtail "doRmDecl 1" decls2
+    doRmDecl decl decls1 decls2
+      = do
+          let decls2'      = gtail "doRmDecl 1" decls2
+              declToRemove = head decls2
+          case decls2' of
+            [] -> return ()
+            _ -> liftT $ balanceComments declToRemove (head decls2')
           return $ (decls1 ++ decls2')
 
 -- ---------------------------------------------------------------------

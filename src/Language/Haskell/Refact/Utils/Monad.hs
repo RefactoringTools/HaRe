@@ -179,6 +179,7 @@ data StateStorage = StorageNone
                   | StorageBind (GHC.LHsBind GHC.Name)
                   | StorageSig  (GHC.LSig GHC.Name)
                   | StorageBindRdr (GHC.LHsBind GHC.RdrName)
+                  | StorageDeclRdr (GHC.LHsDecl GHC.RdrName)
                   | StorageSigRdr  (GHC.LSig GHC.RdrName)
 
 

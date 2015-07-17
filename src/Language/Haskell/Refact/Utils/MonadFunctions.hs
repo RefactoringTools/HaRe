@@ -40,6 +40,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , replaceRdrName
        , refactReplaceDecls
        , refactRunTransform
+       , liftT
 
        -- * TokenUtils API
        , getToksForSpan
@@ -276,13 +277,6 @@ replaceRdrName (GHC.L l newName) = do
 refactReplaceDecls :: (HasDecls a) => a -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc a
 refactReplaceDecls t decls = do
   refactRunTransform (replaceDecls t decls)
-  {-
-  ans <- getRefactAnns
-  let (t',(ans',_),_) = runTransform ans (replaceDecls t decls)
-  setRefactAnns ans'
-  return t'
-  -}
-
 
 refactRunTransform :: Transform a -> RefactGhc a
 refactRunTransform transform = do
@@ -292,6 +286,9 @@ refactRunTransform transform = do
   when (not (null logLines)) $ do
     logm $ intercalate "\n" logLines
   return a
+
+liftT :: Transform a -> RefactGhc a
+liftT = refactRunTransform
 
 -- ---------------------------------------------------------------------
 
