@@ -39,7 +39,7 @@ module Language.Haskell.Refact.Utils.Variables
   , definingTyClDeclsNames
   , defines
   , definesRdr,definesDeclRdr
-  , definesTypeSig,definesTypeSigRdr
+  , definesTypeSig,definesTypeSigRdr,definesSigDRdr
   , definesP
   , allNames
   -- ,simplifyDecl
@@ -1248,13 +1248,10 @@ definesTypeSigRdr nameMap pn (GHC.TypeSig names _typ _)
 -- definesTypeSigRdr _ _  _ = False
 definesTypeSigRdr _ _  x = error $ "definesTypeSigRdr : got " ++ SYB.showData SYB.Parser 0 x
 
-{-
--- | Return True if the declaration defines the type signature of the specified identifier.
-isTypeSigOf :: PNT -> HsDeclP -> Bool
-isTypeSigOf pnt (TiDecorate.Dec (HsTypeSig loc is c tp))= elem pnt is
-isTypeSigOf _  _ =False
--}
-
+-- |Unwraps a LHsDecl and calls definesRdr on the result if a Sig
+definesSigDRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
+definesSigDRdr nameMap nin (GHC.L l (GHC.SigD d)) = definesTypeSigRdr nameMap nin d
+definesSigDRdr _ _ _ = False
 
 -- ---------------------------------------------------------------------
 

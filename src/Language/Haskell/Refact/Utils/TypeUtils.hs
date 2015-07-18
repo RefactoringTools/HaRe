@@ -1366,7 +1366,6 @@ rmDecl:: (SYB.Data t)
                                        -- and the possibly removed siganture
 
 rmDecl pn incSig t = do
-  logm $ "rmDecl:(pn,incSig)= " ++ (showGhc (pn,incSig)) -- ++AZ++
   setStateStorage StorageNone
   t2  <- everywhereMStaged' SYB.Parser (SYB.mkM inLet) t -- top down
   ss <- getStateStorage
@@ -1386,7 +1385,7 @@ rmDecl pn incSig t = do
                 x                   -> error $ "rmDecl: unexpected value in StateStorage:" ++ (show x)
   return (t'',decl',sig')
   where
-    inModule (p:: GHC.ParsedSource)
+    inModule (p :: GHC.ParsedSource)
       = doRmDeclList p
 
     inGRHSs x@((GHC.GRHSs a localDecls)::GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
@@ -1458,7 +1457,84 @@ rmTypeSigs pns t = do
 
 -- ---------------------------------------------------------------------
 
--- ++AZ++ TODO: get rid of this, rmDecl should be all we need, now that we process LHsDecl.
+-- | Remove the type signature that defines the given identifier's
+-- type from the declaration list.
+rmTypeSig :: (SYB.Data t) =>
+         GHC.Name    -- ^ The identifier whose type signature is to be removed.
+      -> t           -- ^ The declarations
+      -> RefactGhc (t,Maybe (GHC.LSig GHC.RdrName))
+                     -- ^ The result and removed signature, if there
+                     -- was one
+                     -- NOTE: It may have originated from a SigD, it is up to the calling function to insert this if required
+rmTypeSig pn t
+  = do
+     setStateStorage StorageNone
+     -- t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inSigs `SYB.extM` inDecls) t
+     -- t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inSigs `SYB.extM` inModule) t
+     t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inGRHSs `SYB.extM` inModule) t
+     storage <- getStateStorage
+     let sig' = case storage of
+                  StorageSigRdr sig -> Just sig
+                  StorageNone       -> Nothing
+                  x -> error $ "rmTypeSig: unexpected value in StateStorage:" ++ (show x)
+     return (t',sig')
+  where
+   inModule :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
+   inModule (modu :: GHC.ParsedSource)
+      = doRmTypeSig modu
+
+   inGRHSs x@((GHC.GRHSs a localDecls) :: GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+      = doRmTypeSig x
+
+   -- ----------------------------------
+
+   doRmTypeSig :: (HasDecls t) => t -> RefactGhc t
+   doRmTypeSig parent
+     = do
+         decls <- liftT $ hsDecls parent
+         let getValDSig s@(GHC.L _ (GHC.SigD _)) = [s]
+             getValDSig _ = []
+             sigds = concatMap getValDSig decls
+
+             sigFromDecl (GHC.L _ (GHC.SigD s)) = s
+
+         nameMap <- getRefactNameMap
+         let definesSigD (GHC.L _ (GHC.SigD s)) = definesTypeSigRdr nameMap pn s
+             definesSigD _ = False
+         if not $ emptyList (snd (break (definesTypeSigRdr nameMap pn . sigFromDecl) sigds))
+            then do
+              let (decls1,decls2)= break definesSigD decls
+              let sig@(GHC.L sspan (GHC.SigD (GHC.TypeSig names typ p))) = ghead "rmTypeSig" decls2
+              if length names > 1
+                  then do
+                      let newSig = (GHC.L sspan (GHC.SigD (GHC.TypeSig (filter (\rn -> rdrName2NamePure nameMap rn /= pn) names) typ p)))
+
+                      let pnt = ghead "rmTypeSig" (filter (\rn -> rdrName2NamePure nameMap rn == pn) names)
+
+                      -- Construct the old signature, by keeping the
+                      -- signature part but discarding the other names
+                      let oldSig = (GHC.L sspan (GHC.TypeSig [pnt] typ p))
+                      setStateStorage (StorageSigRdr oldSig)
+
+                      unless (null $ tail decls2) $ do
+                        liftT $ balanceComments (head decls2) (head $ tail decls2)
+                        modifyRefactAnns (\anns -> transferEntryDP anns (head decls2) (head $ tail decls2) )
+                      parent' <- liftT $ replaceDecls parent (decls1++[newSig]++tail decls2)
+                      -- return (decls1++[newSig]++tail decls2)
+                      return parent'
+                  else do
+                      let oldSig = (GHC.L sspan (sigFromDecl sig))
+                      setStateStorage (StorageSigRdr oldSig)
+                      unless (null $ tail decls2) $ do
+                        liftT $ balanceComments (head decls2) (head $ tail decls2)
+                        modifyRefactAnns (\anns -> transferEntryDP anns (head decls2) (head $ tail decls2) )
+                      parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
+                      -- return (decls1++tail decls2)
+                      return parent'
+            else return parent
+
+-- ---------------------------------------------------------------------
+{-
 -- | Remove the type signature that defines the given identifier's
 -- type from the declaration list.
 rmTypeSig :: (SYB.Data t) =>
@@ -1545,7 +1621,7 @@ rmTypeSig pn t
                       return (decls1++tail decls2)
             else return sigs
    inSigs x = return x
-
+-}
 -- ---------------------------------------------------------------------
 
 
@@ -2364,7 +2440,7 @@ getSig pn t = maybeSig
      = let (_decls1,decls2)= break (definesTypeSig pn) sigs
            sig@(GHC.L l (GHC.TypeSig names typ ptn)) = ghead "getSigsAndToks" decls2  -- as decls2/=[], no problem with head
            sig' = if  length names > 1
-                   then (GHC.L l (GHC.TypeSig (filter (\(GHC.L _ x) -> x /= pn) names) typ ptn))
+                   then (GHC.L l (GHC.TypeSig ((filter (\(GHC.L _ x) -> x /= pn) names)) typ ptn))
                    else sig
        in [sig']
    inDecls _ = []
