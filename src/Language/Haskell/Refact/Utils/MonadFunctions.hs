@@ -74,7 +74,7 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 
-import qualified FastString    as GHC
+-- import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified GhcMonad      as GHC
 
@@ -86,11 +86,11 @@ import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils hiding (gfromJust)
-import Language.Haskell.GHC.ExactPrint.Types (PosToken)
+-- import Language.Haskell.GHC.ExactPrint.Types (PosToken)
 
-import Language.Haskell.Refact.Utils.Binds
+-- import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils
+-- import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
@@ -373,6 +373,7 @@ logDataWithAnns str ast = do
 
 -- ---------------------------------------------------------------------
 
+logParsedSource :: String -> RefactGhc ()
 logParsedSource str = do
   parsed <- getRefactParsed
   logDataWithAnns str parsed

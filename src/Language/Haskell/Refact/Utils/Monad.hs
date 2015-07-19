@@ -18,7 +18,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactModule(..)
        , TargetModule
        , Targets
-       , CabalGraph(..)
+       , CabalGraph
        , RefactStashId(..)
        , RefactFlags(..)
        , StateStorage(..)
@@ -44,7 +44,7 @@ import qualified GHC           as GHC
 import qualified GHC.Paths     as GHC
 import qualified GhcMonad      as GHC
 import qualified HscTypes      as GHC
-import qualified Outputable    as GHC
+-- import qualified Outputable    as GHC
 
 import Control.Arrow
 import Control.Applicative
@@ -55,12 +55,12 @@ import Exception
 import qualified Language.Haskell.GhcMod          as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
-import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Internal.Types
 import System.Directory
-import System.FilePath.Posix
+-- import System.FilePath.Posix
 import System.Log.Logger
 
 import qualified Data.Map as Map
@@ -165,7 +165,8 @@ type TargetModule = ([FilePath], (Maybe FilePath,GHC.ModSummary))
 type TargetGraph = ([FilePath],[(Maybe FilePath, GHC.ModSummary)])
 
 -- The CabalGraph comes directly from ghc-mod
-type CabalGraph = Map.Map ChComponentName (GM.GmComponent GMCResolved (Set.Set ModulePath))
+-- type CabalGraph = Map.Map ChComponentName (GM.GmComponent GMCResolved (Set.Set ModulePath))
+type CabalGraph = Map.Map ChComponentName (GM.GmComponent 'GMCResolved (Set.Set ModulePath))
 
 type Targets = [Either FilePath GHC.ModuleName]
 
@@ -187,6 +188,7 @@ instance Show StateStorage where
   show StorageNone         = "StorageNone"
   show (StorageBind _bind) = "(StorageBind " {- ++ (showGhc bind) -} ++ ")"
   show (StorageSig _sig)   = "(StorageSig " {- ++ (showGhc sig) -} ++ ")"
+  show (StorageDeclRdr _bind) = "(StorageDeclRdr " {- ++ (showGhc bind) -} ++ ")"
   show (StorageBindRdr _bind) = "(StorageBindRdr " {- ++ (showGhc bind) -} ++ ")"
   show (StorageSigRdr _sig)   = "(StorageSigRdr " {- ++ (showGhc sig) -} ++ ")"
 
@@ -274,7 +276,7 @@ instance ExceptionMonad (StateT RefactState IO) where
 loadModuleGraphGhc ::
   Maybe [FilePath] -> RefactGhc ()
 loadModuleGraphGhc maybeTargetFiles = do
-  currentDir <- liftIO getCurrentDirectory
+  -- currentDir <- liftIO getCurrentDirectory
   -- liftIO $ warningM "HaRe" $ "loadModuleGraphGhc:maybeTargetFiles=" ++ show (maybeTargetFiles,currentDir)
   case maybeTargetFiles of
     Just targetFiles -> do

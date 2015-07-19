@@ -50,8 +50,8 @@ module Language.Haskell.Refact.Utils.Binds
  ) where
 
 import Language.Haskell.GHC.ExactPrint.Internal.Types
-import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
-import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead)
+-- import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
+-- import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead)
 import Language.Haskell.Refact.Utils.Types
 
 -- Modules from GHC
@@ -60,13 +60,13 @@ import qualified GHC           as GHC
 import qualified Outputable    as GHC
 import qualified SrcLoc        as GHC
 
-import qualified Data.Generics as SYB
-import qualified GHC.SYB.Utils as SYB
+-- import qualified Data.Generics as SYB
+-- import qualified GHC.SYB.Utils as SYB
 
-import Control.Monad
+-- import Control.Monad
 import Data.Generics
-import Data.Ratio
-import qualified Data.Map as Map
+-- import Data.Ratio
+-- import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
 {-
@@ -293,8 +293,8 @@ declsFromBinds (GHC.ValBindsOut _ _) = error "declsFromBinds:ValBindsOut"
 
 getValBindSigs :: GHC.HsValBinds GHC.RdrName -> [GHC.LSig GHC.RdrName]
 getValBindSigs binds = case binds of
-    GHC.ValBindsIn  _ sigs -> sigs
-    GHC.ValBindsOut _ sigs -> []
+    GHC.ValBindsIn  _  sigs -> sigs
+    GHC.ValBindsOut _ _sigs -> []
 {-
 getValBindSigs :: GHC.HsValBinds GHC.Name -> [GHC.LSig GHC.Name]
 getValBindSigs binds = case binds of

@@ -130,7 +130,7 @@ import Data.Maybe
 import Exception
 
 import Language.Haskell.Refact.Utils.Binds
-import Language.Haskell.Refact.Utils.ExactPrint hiding (runTransform,logTr,Transform)
+import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -142,7 +142,7 @@ import Language.Haskell.Refact.Utils.Variables
 
 import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Internal.Types
-import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gtail,gfromJust)
+-- import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gtail,gfromJust)
 
 
 -- Modules from GHC
@@ -1385,7 +1385,7 @@ rmDecl pn incSig t = do
     inModule (p :: GHC.ParsedSource)
       = doRmDeclList p
 
-    inGRHSs x@((GHC.GRHSs a localDecls)::GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+    inGRHSs x@((GHC.GRHSs _ _localDecls)::GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
       = doRmDeclList x
 
     inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
@@ -1404,7 +1404,7 @@ rmDecl pn incSig t = do
                 _ -> do
                  logm $ "rmDecl.inLet:length decls /= 1"
                  -- let decls2' = gtail "inLet" decls2
-                 decls' <- doRmDecl decl decls1 decls2
+                 decls' <- doRmDecl decls1 decls2
                  localDecls' <- liftT $ replaceDecls localDecls decls'
                  -- logDataWithAnns "inLet" (GHC.L ss (GHC.HsLet localDecls' expr))
                  return $ (GHC.L ss (GHC.HsLet localDecls' expr))
@@ -1426,14 +1426,14 @@ rmDecl pn incSig t = do
                then do
                  let decl = ghead "doRmDeclList" decls2
                  setStateStorage (StorageDeclRdr decl)
-                 decls'  <- doRmDecl decl decls1 decls2
+                 decls'  <- doRmDecl decls1 decls2
                  parent' <- liftT $ replaceDecls parent decls'
                  return parent'
                else return parent
 
     -- ---------------------------------
 
-    doRmDecl decl decls1 decls2
+    doRmDecl decls1 decls2
       = do
           let decls2'      = gtail "doRmDecl 1" decls2
               declToRemove = head decls2
@@ -1487,15 +1487,21 @@ rmTypeSig pn t
    inModule (modu :: GHC.ParsedSource)
       = doRmTypeSig modu
 
-   inGRHSs x@((GHC.GRHSs a localDecls) :: GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+   inGRHSs x@((GHC.GRHSs _a _localDecls) :: GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
       = doRmTypeSig x
 
    -- ----------------------------------
 
    doRmTypeSig :: (HasDecls t) => t -> RefactGhc t
-   doRmTypeSig parent
-     = do
-         decls <- liftT $ hsDecls parent
+   doRmTypeSig parent = do
+     -- This has to happen regardless, else the layout does not propagate properly.
+     -- ++AZ++ TODO: Investigate why
+     decls <- liftT $ hsDecls parent
+     isDone <- getDone
+     if isDone
+       then return parent
+       else do
+         -- decls <- liftT $ hsDecls parent
          nameMap <- getRefactNameMap
          let (decls1,decls2)= break (definesSigDRdr nameMap pn) decls
          if not $ null decls2
@@ -1525,6 +1531,12 @@ rmTypeSig pn t
                       parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
                       return parent'
             else return parent
+
+   getDone = do
+     s <- getStateStorage
+     case s of
+       StorageNone -> return False
+       _           -> return True
 
 -- ---------------------------------------------------------------------
 {-
@@ -1693,11 +1705,11 @@ renamePN' oldPN newName useQual t = do
         newNameCalc' uq' _ =  if uq' then newNameQual else newNameUnqual
 
     rename :: Bool -> GHC.Located GHC.RdrName -> Transform (GHC.Located GHC.RdrName)
-    rename useQual old@(GHC.L l n)
+    rename useQual' old@(GHC.L l n)
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:rename at :" ++ showGhc l
-          let nn = newNameCalc useQual n
+          let nn = newNameCalc useQual' n
           -- A RdrName Can have a number of constructors, which are used to
           -- index the annotations associated with it. Make sure the annotation
           -- lines up.
@@ -1709,31 +1721,31 @@ renamePN' oldPN newName useQual t = do
     rename _ x = return x
 
     renameVar :: Bool -> (GHC.Located (GHC.HsExpr GHC.RdrName)) -> Transform (GHC.Located (GHC.HsExpr GHC.RdrName))
-    renameVar useQual (GHC.L l (GHC.HsVar n))
+    renameVar useQual' (GHC.L l (GHC.HsVar n))
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameVar at :" ++ (showGhc l)
-          let nn = newNameCalc useQual n
+          let nn = newNameCalc useQual' n
           return (GHC.L l (GHC.HsVar nn))
     renameVar _ x = return x
 
     -- HsTyVar {Name: Renaming.D1.Tree}))
     renameTyVar :: Bool -> (GHC.Located (GHC.HsType GHC.RdrName)) -> Transform (GHC.Located (GHC.HsType GHC.RdrName))
-    renameTyVar useQual v@(GHC.L l (GHC.HsTyVar n))
+    renameTyVar useQual' (GHC.L l (GHC.HsTyVar n))
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameTyVar at :" ++ (showGhc l)
-          let nn = newNameCalc useQual n
+          let nn = newNameCalc useQual' n
           return (GHC.L l (GHC.HsTyVar nn))
     renameTyVar _ x = return x
 
 
     renameHsTyVarBndr :: Bool -> GHC.LHsTyVarBndr GHC.RdrName -> Transform (GHC.LHsTyVarBndr GHC.RdrName)
-    renameHsTyVarBndr useQual v@(GHC.L l (GHC.UserTyVar n))
+    renameHsTyVarBndr useQual' (GHC.L l (GHC.UserTyVar n))
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameHsTyVarBndr at :" ++ (showGhc l)
-          let nn = newNameCalc useQual n
+          let nn = newNameCalc useQual' n
           return (GHC.L l (GHC.UserTyVar nn))
     renameHsTyVarBndr _ x = return x
 
@@ -1805,16 +1817,16 @@ renamePN' oldPN newName useQual t = do
     -- ---------------------------------
 
     renameLPat :: Bool -> (GHC.LPat GHC.RdrName) -> Transform (GHC.LPat GHC.RdrName)
-    renameLPat useQual (GHC.L l (GHC.VarPat n))
+    renameLPat useQual' (GHC.L l (GHC.VarPat n))
      | cond (GHC.L l n)
      = do
           logTr $ "renamePNworker:renameLPat at :" ++ (showGhc l)
-          let nn = newNameCalc useQual n
+          let nn = newNameCalc useQual' n
           return (GHC.L l (GHC.VarPat nn))
     renameLPat _ x = return x
 
     renameFunBind :: Bool -> GHC.HsBindLR GHC.RdrName GHC.RdrName -> Transform (GHC.HsBindLR GHC.RdrName GHC.RdrName)
-    renameFunBind useQual (GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick)
+    renameFunBind _useQual (GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick)
      -- | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
      | cond (GHC.L ln n) -- || (GHC.nameUnique n == GHC.nameUnique newName)
      = do -- Need to (a) rename the actual funbind name
@@ -1825,7 +1837,7 @@ renamePN' oldPN newName useQual t = do
           -- logTr $ "renamePN.renameFunBind"
           -- Now do (b)
           logTr $ "renamePN.renameFunBind.renameFunBind:starting matches"
-          let w lmatch@(GHC.L lm (GHC.Match mln pats typ grhss)) = do
+          let w lmatch@(GHC.L lm (GHC.Match mln pats typ' grhss)) = do
                 case mln of
                   Just (old@(GHC.L lmn _),f) -> do
                     -- A RdrName Can have a number of constructors, which are used to
@@ -1835,7 +1847,7 @@ renamePN' oldPN newName useQual t = do
                     let new = (GHC.L lmn newNameUnqual)
                     putAnnsT $ replaceAnnKey an old new
 
-                    return (GHC.L lm (GHC.Match (Just (new,f)) pats typ grhss))
+                    return (GHC.L lm (GHC.Match (Just (new,f)) pats typ' grhss))
                   Nothing -> return lmatch
           matches' <- mapM w matches
           logTr $ "renamePN.renameFunBind.renameFunBind.renameFunBind:matches done"
@@ -1843,7 +1855,7 @@ renamePN' oldPN newName useQual t = do
     renameFunBind _ x = return x
 
     renameImportDecl :: Bool -> (GHC.ImportDecl GHC.RdrName) -> Transform (GHC.ImportDecl GHC.RdrName)
-    renameImportDecl useQual (GHC.ImportDecl src mn mq isrc isafe iq ii ma (Just (ij,GHC.L ll ies))) = do
+    renameImportDecl _useQual (GHC.ImportDecl src mn mq isrc isafe iq ii ma (Just (ij,GHC.L ll ies))) = do
       ies' <- mapM (renameLIE False) ies
       logTr $ "renamePN'.renameImportDecl:(ies,ies')=" ++ showGhc (ies,ies')
       return (GHC.ImportDecl src mn mq isrc isafe iq ii ma (Just (ij,GHC.L ll ies')))
@@ -1860,18 +1872,18 @@ renamePN' oldPN newName useQual t = do
          return (GHC.TypeSig ns' typ' p)
     renameTypeSig _ x = return x
 
-    renameTransform useQual t' =
+    renameTransform useQual' t' =
           -- Note: bottom-up traversal (no ' at end)
             (SYB.everywhereM (
-                   SYB.mkM   (rename useQual)
-                  `SYB.extM` (renameVar useQual)
-                  `SYB.extM` (renameTyVar useQual)
-                  `SYB.extM` (renameHsTyVarBndr useQual)
-                  `SYB.extM` (renameLIE useQual)
-                  `SYB.extM` (renameLPat useQual)
-                  `SYB.extM` (renameTypeSig useQual)
-                  `SYB.extM` (renameImportDecl useQual)
-                  `SYB.extM` (renameFunBind useQual)
+                   SYB.mkM   (rename useQual')
+                  `SYB.extM` (renameVar useQual')
+                  `SYB.extM` (renameTyVar useQual')
+                  `SYB.extM` (renameHsTyVarBndr useQual')
+                  `SYB.extM` (renameLIE useQual')
+                  `SYB.extM` (renameLPat useQual')
+                  `SYB.extM` (renameTypeSig useQual')
+                  `SYB.extM` (renameImportDecl useQual')
+                  `SYB.extM` (renameFunBind useQual')
                    ) t')
   ans <- getRefactAnns
   let (t',(ans',_),logOut) = runTransform ans (renameTransform useQual t)
@@ -2110,7 +2122,7 @@ renamePNworker oldPN newName useQual t = do
           worker False ln Nothing
           -- Now do (b)
           logm $ "renamePNWorker.renameFunBind.renameFunBind:starting matches"
-          let w (GHC.L lm (GHC.Match mln pats _typ (GHC.GRHSs grhs lb))) = do
+          let w (GHC.L _lm (GHC.Match mln _pats _typ (GHC.GRHSs _grhs _lb))) = do
                 case mln of
                   Just (GHC.L lmn _,_) -> worker False lmn Nothing
                   Nothing -> return ()

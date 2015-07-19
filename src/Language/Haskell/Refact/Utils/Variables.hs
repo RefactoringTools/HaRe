@@ -66,16 +66,16 @@ import Language.Haskell.GHC.ExactPrint.Internal.Types
 
 -- Modules from GHC
 import qualified Bag           as GHC
-import qualified FastString    as GHC
+-- import qualified FastString    as GHC
 import qualified GHC           as GHC
-import qualified Module        as GHC
+-- import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified NameSet       as GHC
 import qualified Outputable    as GHC
-import qualified RdrName       as GHC
+-- import qualified RdrName       as GHC
 import qualified UniqSet       as GHC
-import qualified Unique        as GHC
-import qualified Var           as GHC
+-- import qualified Unique        as GHC
+-- import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -1056,12 +1056,10 @@ definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining 
         else defines' decl
      where
       defines' :: (GHC.LHsDecl GHC.RdrName) -> [GHC.LHsDecl GHC.RdrName]
-      defines' decl'@(GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
-        -- - |isJust (find (==(pname)) pns) = [decl']
+      defines' decl'@(GHC.L _ (GHC.ValD (GHC.FunBind _ _ _ _ _ _)))
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
-      defines' decl'@(GHC.L _l (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _)))
-        -- - |(hsNamess p) `intersect` pns /= [] = [decl']
+      defines' decl'@(GHC.L _l (GHC.ValD (GHC.PatBind _p _rhs _ty _fvs _)))
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
       defines' _ = []
@@ -1211,7 +1209,7 @@ defines _ _= False
 -- | Return True if the function\/pattern binding defines the
 -- specified identifier.
 definesRdr :: NameMap -> GHC.Name -> GHC.LHsBind GHC.RdrName -> Bool
-definesRdr nameMap nin (GHC.L _ (GHC.FunBind (GHC.L ln pname) _ _ _ _ _)) =
+definesRdr nameMap nin (GHC.L _ (GHC.FunBind (GHC.L ln _pname) _ _ _ _ _)) =
   case Map.lookup ln nameMap of
     Nothing -> False
     Just n ->  GHC.nameUnique n == GHC.nameUnique nin
@@ -1250,7 +1248,7 @@ definesTypeSigRdr _ _  x = error $ "definesTypeSigRdr : got " ++ SYB.showData SY
 
 -- |Unwraps a LHsDecl and calls definesRdr on the result if a Sig
 definesSigDRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
-definesSigDRdr nameMap nin (GHC.L l (GHC.SigD d)) = definesTypeSigRdr nameMap nin d
+definesSigDRdr nameMap nin (GHC.L _ (GHC.SigD d)) = definesTypeSigRdr nameMap nin d
 definesSigDRdr _ _ _ = False
 
 -- ---------------------------------------------------------------------

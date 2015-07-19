@@ -35,12 +35,12 @@ module Language.Haskell.Refact.Utils.Utils
 import Control.Monad.State
 import Data.List
 import Data.Maybe
-import Distribution.Helper
+-- import Distribution.Helper
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Types
+-- import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gtail,gfromJust)
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
+-- import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
@@ -50,11 +50,11 @@ import Language.Haskell.Refact.Utils.Variables
 import System.Directory
 import System.FilePath.Posix
 import qualified Data.Generics as SYB
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+-- import qualified Data.Map as Map
+-- import qualified Data.Set as Set
 
 import qualified Digraph       as GHC
-import qualified DynFlags      as GHC
+-- import qualified DynFlags      as GHC
 import qualified GHC           as GHC
 
 import qualified GHC.SYB.Utils as SYB
@@ -401,7 +401,7 @@ initGhcSession tgts = do
     return ()
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Extracting all 'Module' 'FilePath's for libraries, executables,
 -- tests and benchmarks.
 cabalAllTargets :: Cradle -> RefactGhc (CabalGraph,([String],[String],[String],[String]))
@@ -437,9 +437,9 @@ cabalAllTargets crdl = RefactGhc (GmlT $ cabalOpts crdl)
             testTargets  = concatMap getTgts $ filter isTest entries
             benchTargets = concatMap getTgts $ filter isBench entries
         return (mcs,(libTargets,exeTargets,testTargets,benchTargets))
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 getEnabledTargets :: RefactSettings -> ([FilePath],[FilePath],[FilePath],[FilePath]) -> ([FilePath],[FilePath])
 getEnabledTargets settings (libt,exet,testt,bencht) = (targetsLib,targetsExe)
   where
@@ -450,7 +450,7 @@ getEnabledTargets settings (libt,exet,testt,bencht) = (targetsLib,targetsExe)
               ++ on benchEnabled bencht
 
     on flag xs = if flag then xs else []
-
+-}
 -- ---------------------------------------------------------------------
 
 class (SYB.Data t, SYB.Data t1) => Update t t1 where

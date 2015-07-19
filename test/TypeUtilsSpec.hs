@@ -1679,7 +1679,6 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- putStrLn $ SYB.showData SYB.Parser 0 parsed
-      let declsp = hsBinds parsed
       let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
@@ -2172,11 +2171,11 @@ spec = do
          newDecl <- addDecl tlDecl Nothing (sqDecl,Just sqSig,Nothing) False
 
          return (sqSig,sqDecl,tlDecl,afDecl,newDecl)
-      -- ((sigs,sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      ((sigs,sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((sigs,_sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      ((sigs,_sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- putStrLn $ show (annsFromState s)
       -- putStrLn $ showAnnDataFromState s
-      -- putStrLn $ showAnnDataItemFromState s sd
+      -- putStrLn $ showAnnDataItemFromState s _sd
       -- putStrLn $ showAnnDataItemFromState s nb
       -- putStrLn $ showAnnDataItemFromState s aa
       (showGhcQual sigs) `shouldBe` "sq :: Int -> Int -> Int"

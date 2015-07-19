@@ -21,7 +21,6 @@ module Language.Haskell.Refact.Utils.ExactPrint
 
   -- * Operations
   , transferEntryDP
-  -- , adjustAnnOffset
 
   ) where
 
@@ -31,7 +30,7 @@ import qualified GHC           as GHC
 import qualified Data.Generics as SYB
 --import qualified GHC.SYB.Utils as SYB
 
-import Language.Haskell.GHC.ExactPrint.Transform hiding (uniqueSrcSpan,isUniqueSrcSpan)
+-- import Language.Haskell.GHC.ExactPrint.Transform hiding
 import Language.Haskell.GHC.ExactPrint.Internal.Types
 import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gfromJust)
 import Language.Haskell.Refact.Utils.Monad
@@ -179,8 +178,8 @@ setOffsets anne kvs = foldl' setOffset anne kvs
 setOffset :: Anns -> (AnnKey, Annotation) -> Anns
 setOffset ans (k, Ann dp cs fcs _ so ca) = case
   Map.lookup k anne of
-    Nothing                   -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs [] so ca)) ans
-    Just (Ann _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs ks so ca)) ans
+    Nothing                     -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs [] so  ca)) ans
+    Just (Ann _ _ _ ks so' ca') -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs ks so' ca')) ans
   where
     anne = getKeywordDeltas ans
 
@@ -192,7 +191,7 @@ setLocatedDp :: (SYB.Data a) => Anns -> (GHC.Located a, Annotation) ->  Anns
 setLocatedDp aane (loc, annVal) = setOffset aane (mkKey loc,annVal)
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Update the DeltaPos for the given annotation keys
 setLocatedAnns :: (SYB.Data a) => Anns -> [(GHC.Located a,Annotation)] -> Anns
 setLocatedAnns anne kvs = foldl' setLocatedAnn anne kvs
@@ -208,7 +207,7 @@ setAnn ans (k, Ann dp cs fcs _ so ca) =
     Just (Ann _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs ks so ca)) ans
   where
     anne = getKeywordDeltas ans
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Replaces an old expression with a new expression
@@ -227,7 +226,7 @@ replace old new ans = do
                 , annSortKey           = annSortKey oldan
                 , annCapturedSpan      = annCapturedSpan oldan
                 }
-  return (modifyKeywordDeltas (\as -> Map.delete old . Map.insert new newan' $ as) ans)
+  return (modifyKeywordDeltas (\anns -> Map.delete old . Map.insert new newan' $ anns) ans)
 
 -- ---------------------------------------------------------------------
 
@@ -257,9 +256,8 @@ transferEntryDP ans a b = modifyKeywordDeltas (const anns') ans
 
 -- ---------------------------------------------------------------------
 
-adjustAnnOffset :: ColDelta -> Annotation -> Annotation
-adjustAnnOffset cd an = an
 {-
+adjustAnnOffset :: ColDelta -> Annotation -> Annotation
 adjustAnnOffset (ColDelta cd) (Ann (DP (ro,co)) (ColDelta ad) kds) = Ann edp cd' kds'
   where
     edp = case ro of
@@ -284,6 +282,7 @@ mkKey (GHC.L l s) = AnnKey l (annGetConstr s)
 moveAnns :: [(KeywordId, DeltaPos)] -> [(KeywordId, DeltaPos)] -> [(KeywordId, DeltaPos)]
 moveAnns [] xs        = xs
 moveAnns ((_, dp): _) ((kw, _):xs) = (kw,dp) : xs
+moveAnns _ []         = []
 
 {-
 -- | Delete an annotation
