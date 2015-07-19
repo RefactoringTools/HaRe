@@ -177,10 +177,10 @@ setOffsets anne kvs = foldl' setOffset anne kvs
 
 -- |Update the DeltaPos for the given annotation key/val
 setOffset :: Anns -> (AnnKey, Annotation) -> Anns
-setOffset ans (k, Ann dp col dps cs fcs _ so ca) = case
+setOffset ans (k, Ann dp cs fcs _ so ca) = case
   Map.lookup k anne of
-    Nothing                       -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs fcs [] so ca)) ans
-    Just (Ann _ _ _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs fcs ks so ca)) ans
+    Nothing                   -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs [] so ca)) ans
+    Just (Ann _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs ks so ca)) ans
   where
     anne = getKeywordDeltas ans
 
@@ -202,10 +202,10 @@ setLocatedAnn aane (loc, annVal) = setAnn aane (mkKey loc,annVal)
 
 -- |Update the DeltaPos for the given annotation key/val
 setAnn :: Anns -> (AnnKey, Annotation) -> Anns
-setAnn ans (k, Ann dp col dps cs fcs _ so ca) =
+setAnn ans (k, Ann dp cs fcs _ so ca) =
   case Map.lookup k anne of
-    Nothing                       -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs fcs [] so ca)) ans
-    Just (Ann _ _ _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp col dps cs fcs ks so ca)) ans
+    Nothing                   -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs [] so ca)) ans
+    Just (Ann _ _ _ ks so ca) -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs ks so ca)) ans
   where
     anne = getKeywordDeltas ans
 
@@ -219,8 +219,8 @@ replace old new ans = do
   newan <- Map.lookup new as
   let newan' = Ann
                 { annEntryDelta        = annEntryDelta oldan
-                , annDelta             = annDelta oldan
-                , annTrueEntryDelta    = annTrueEntryDelta oldan
+                -- , annDelta             = annDelta oldan
+                -- , annTrueEntryDelta    = annTrueEntryDelta oldan
                 , annPriorComments     = annPriorComments oldan
                 , annFollowingComments = annFollowingComments oldan
                 , annsDP               = moveAnns (annsDP oldan) (annsDP newan)
@@ -241,8 +241,8 @@ transferEntryDP ans a b = modifyKeywordDeltas (const anns') ans
       anA <- Map.lookup (mkKey a) anns
       anB <- Map.lookup (mkKey b) anns
       let anB'  = Ann { annEntryDelta        = annEntryDelta     anA
-                      , annDelta             = annDelta          anA
-                      , annTrueEntryDelta    = annTrueEntryDelta anA
+                      -- , annDelta             = annDelta          anA
+                      -- , annTrueEntryDelta    = annTrueEntryDelta anA
                       , annPriorComments     = annPriorComments     anA ++ annPriorComments     anB
                       , annFollowingComments = annFollowingComments anA ++ annFollowingComments anB
                       , annsDP               = annsDP          anB
@@ -320,10 +320,10 @@ setColRec f loc = transform loc
 setCol :: (ColDelta -> ColDelta) -> GHC.SrcSpan -> AnnConName -> (Anns -> Anns)
 setCol f ss cn anns =
   let key = AnnKey ss cn
-      res = \a -> Map.adjust (\s -> s { annDelta = f (annDelta s) }) key a
+      -- res = \a -> Map.adjust (\s -> s { annDelta = f (annDelta s) }) key a
+      res = \a -> Map.adjust (\s -> s ) key a
   in
       modifyKeywordDeltas res anns
-
 
 -- ---------------------------------------------------------------------
 

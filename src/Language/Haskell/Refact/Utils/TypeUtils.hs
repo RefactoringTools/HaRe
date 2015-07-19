@@ -1437,9 +1437,9 @@ rmDecl pn incSig t = do
       = do
           let decls2'      = gtail "doRmDecl 1" decls2
               declToRemove = head decls2
-          case decls2' of
-            [] -> return ()
-            _ -> liftT $ balanceComments declToRemove (head decls2')
+          modifyRefactAnns (\anns -> transferEntryDP anns declToRemove (head decls2') )
+          unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
+          unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
           return $ (decls1 ++ decls2')
 
 -- ---------------------------------------------------------------------
@@ -1492,22 +1492,15 @@ rmTypeSig pn t
    doRmTypeSig parent
      = do
          decls <- liftT $ hsDecls parent
-         let getValDSig s@(GHC.L _ (GHC.SigD _)) = [s]
-             getValDSig _ = []
-             sigds = concatMap getValDSig decls
-
-             sigFromDecl (GHC.L _ (GHC.SigD s)) = s
-
          nameMap <- getRefactNameMap
-         let definesSigD (GHC.L _ (GHC.SigD s)) = definesTypeSigRdr nameMap pn s
-             definesSigD _ = False
-         if not $ emptyList (snd (break (definesTypeSigRdr nameMap pn . sigFromDecl) sigds))
+         let (decls1,decls2)= break (definesSigDRdr nameMap pn) decls
+         if not $ null decls2
             then do
-              let (decls1,decls2)= break definesSigD decls
               let sig@(GHC.L sspan (GHC.SigD (GHC.TypeSig names typ p))) = ghead "rmTypeSig" decls2
               if length names > 1
                   then do
-                      let newSig = (GHC.L sspan (GHC.SigD (GHC.TypeSig (filter (\rn -> rdrName2NamePure nameMap rn /= pn) names) typ p)))
+                      let newNames = filter (\rn -> rdrName2NamePure nameMap rn /= pn) names
+                          newSig = GHC.L sspan (GHC.SigD (GHC.TypeSig newNames typ p))
 
                       let pnt = ghead "rmTypeSig" (filter (\rn -> rdrName2NamePure nameMap rn == pn) names)
 
@@ -1517,19 +1510,19 @@ rmTypeSig pn t
                       setStateStorage (StorageSigRdr oldSig)
 
                       unless (null $ tail decls2) $ do
-                        modifyRefactAnns (\anns -> transferEntryDP anns (head decls2) (head $ tail decls2) )
+                        modifyRefactAnns (\anns -> transferEntryDP anns sig (head $ tail decls2) )
+                        liftT $ balanceComments (last decls1) sig
                         liftT $ balanceComments (head decls2) (head $ tail decls2)
                       parent' <- liftT $ replaceDecls parent (decls1++[newSig]++tail decls2)
-                      -- return (decls1++[newSig]++tail decls2)
                       return parent'
                   else do
-                      let oldSig = (GHC.L sspan (sigFromDecl sig))
+                      let oldSig = head $ decl2Sig sig
                       setStateStorage (StorageSigRdr oldSig)
                       unless (null $ tail decls2) $ do
-                        modifyRefactAnns (\anns -> transferEntryDP anns (head decls2) (head $ tail decls2) )
+                        modifyRefactAnns (\anns -> transferEntryDP anns sig (head $ tail decls2) )
+                        liftT $ balanceComments (last decls1) sig
                         liftT $ balanceComments (head decls2) (head $ tail decls2)
                       parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
-                      -- return (decls1++tail decls2)
                       return parent'
             else return parent
 

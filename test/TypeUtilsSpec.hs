@@ -1825,6 +1825,7 @@ spec = do
         comp = do
          (parsed',_removedDecl,_removedSig1) <- rmDecl n False parsed
          (parsed2,_removedSig2) <- rmTypeSig n parsed'
+         -- let parsed2 = parsed'
          putRefactParsed parsed2 emptyAnns
 
          return parsed2
