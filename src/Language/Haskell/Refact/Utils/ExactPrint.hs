@@ -240,13 +240,13 @@ transferEntryDP ans a b = modifyKeywordDeltas (const anns') ans
     maybeAnns = do -- Maybe monad
       anA <- Map.lookup (mkKey a) anns
       anB <- Map.lookup (mkKey b) anns
-      let anB'  = Ann { annEntryDelta        = annEntryDelta anA
-                      , annDelta             = annDelta anA
+      let anB'  = Ann { annEntryDelta        = annEntryDelta     anA
+                      , annDelta             = annDelta          anA
                       , annTrueEntryDelta    = annTrueEntryDelta anA
-                      , annPriorComments     = annPriorComments anA ++ annPriorComments anB
+                      , annPriorComments     = annPriorComments     anA ++ annPriorComments     anB
                       , annFollowingComments = annFollowingComments anA ++ annFollowingComments anB
-                      , annsDP               = annsDP anB
-                      , annSortKey           = annSortKey anB
+                      , annsDP               = annsDP          anB
+                      , annSortKey           = annSortKey      anB
                       , annCapturedSpan      = annCapturedSpan anB
                       }
       return (Map.insert (mkKey b) anB' anns)

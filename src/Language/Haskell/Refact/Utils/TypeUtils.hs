@@ -1517,8 +1517,8 @@ rmTypeSig pn t
                       setStateStorage (StorageSigRdr oldSig)
 
                       unless (null $ tail decls2) $ do
-                        liftT $ balanceComments (head decls2) (head $ tail decls2)
                         modifyRefactAnns (\anns -> transferEntryDP anns (head decls2) (head $ tail decls2) )
+                        liftT $ balanceComments (head decls2) (head $ tail decls2)
                       parent' <- liftT $ replaceDecls parent (decls1++[newSig]++tail decls2)
                       -- return (decls1++[newSig]++tail decls2)
                       return parent'
@@ -1526,8 +1526,8 @@ rmTypeSig pn t
                       let oldSig = (GHC.L sspan (sigFromDecl sig))
                       setStateStorage (StorageSigRdr oldSig)
                       unless (null $ tail decls2) $ do
-                        liftT $ balanceComments (head decls2) (head $ tail decls2)
                         modifyRefactAnns (\anns -> transferEntryDP anns (head decls2) (head $ tail decls2) )
+                        liftT $ balanceComments (head decls2) (head $ tail decls2)
                       parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
                       -- return (decls1++tail decls2)
                       return parent'
