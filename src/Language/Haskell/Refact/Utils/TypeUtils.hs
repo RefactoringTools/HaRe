@@ -265,7 +265,6 @@ defaultExp::HsExpP
 -- defaultExp=Exp (HsId (HsVar defaultPNT))
 defaultExp=GHC.HsVar $ mkRdrName "nothing"
 
-
 mkRdrName :: String -> GHC.RdrName
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
@@ -743,10 +742,13 @@ getName str t
 
 -- ---------------------------------------------------------------------
 
--- | Add identifiers to the export list of a module. If the second argument is like: Just p, then do the adding only if p occurs
--- in the export list, and the new identifiers are added right after p in the export list. Otherwise the new identifiers are add
--- to the beginning of the export list. In the case that the export list is emport, then if the third argument is True, then create
--- an explict export list to contain only the new identifiers, otherwise do nothing.
+-- | Add identifiers to the export list of a module. If the second argument is
+-- like: Just p, then do the adding only if p occurs in the export list, and the
+-- new identifiers are added right after p in the export list. Otherwise the new
+-- identifiers are add to the beginning of the export list. In the case that the
+-- export list is emport, then if the third argument is True, then create an
+-- explict export list to contain only the new identifiers, otherwise do
+-- nothing.
 
 addImportDecl ::
     GHC.RenamedSource
@@ -1090,26 +1092,31 @@ addItemsToImport' serverModName (g,imps,e,d) pns impType = do
 -- ---------------------------------------------------------------------
 
 addParamsToDecls::
-        [GHC.LHsBind GHC.Name] -- ^ A declaration list where the function is defined and\/or used.
-      ->GHC.Name    -- ^ The function name.
-      ->[GHC.Name]  -- ^ The parameters to be added.
-      ->Bool        -- ^ Modify the token stream or not.
-      ->RefactGhc [GHC.LHsBind GHC.Name] -- ^ The result.
+        [GHC.LHsDecl GHC.RdrName] -- ^ A declaration list where the function is defined and\/or used.
+      -> GHC.Name       -- ^ The function name.
+      -> [GHC.RdrName]  -- ^ The parameters to be added.
+      -> Bool           -- ^ Modify the token stream or not.
+      -> RefactGhc [GHC.LHsDecl GHC.RdrName] -- ^ The result.
 
 addParamsToDecls decls pn paramPNames modifyToks = do
   logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhc (pn,paramPNames,modifyToks))
   -- logm $ "addParamsToDecls: decls=" ++ (SYB.showData SYB.Renamer 0 decls)
-  if (paramPNames/=[])
-        then mapM addParamToDecl decls
+  nameMap <- getRefactNameMap
+  if (paramPNames /= [])
+        then mapM (addParamToDecl nameMap) decls
         else return decls
   where
-   addParamToDecl :: GHC.LHsBind GHC.Name -> RefactGhc (GHC.LHsBind GHC.Name)
-   addParamToDecl (GHC.L l1 (GHC.FunBind (GHC.L l2 pname) i (GHC.MG matches a ptt o) co fvs t))
-    | pname == pn
-    = do matches' <- mapM addParamtoMatch matches
-         return (GHC.L l1 (GHC.FunBind (GHC.L l2 pname) i (GHC.MG matches' a ptt o) co fvs t))
+   addParamToDecl :: NameMap -> GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
+   addParamToDecl nameMap (GHC.L l1 (GHC.ValD (GHC.FunBind lp@(GHC.L l2 pname) i (GHC.MG matches a ptt o) co fvs t)))
+    -- * | pname == pn
+    | eqRdrNamePure nameMap lp pn
+    = do
+         logm $ "addParamsToDecl.addParamToDecl entered"
+         matches' <- mapM addParamtoMatch matches
+         return (GHC.L l1 (GHC.ValD (GHC.FunBind (GHC.L l2 pname) i (GHC.MG matches' a ptt o) co fvs t)))
       where
        -- addParamtoMatch (HsMatch loc fun pats rhs  decls)
+       addParamtoMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
        addParamtoMatch (GHC.L l (GHC.Match fn pats mtyp rhs))
         = do rhs' <- addActualParamsToRhs modifyToks pn paramPNames rhs
              let pats' = map GHC.noLoc $ map pNtoPat paramPNames
@@ -1127,25 +1134,26 @@ addParamsToDecls decls pn paramPNames modifyToks = do
              return (GHC.L l (GHC.Match fn (pats'++pats) mtyp rhs'))
 
    -- addParamToDecl (TiDecorate.Dec (HsPatBind loc p rhs ds))
-   addParamToDecl (GHC.L l1 (GHC.PatBind pat@(GHC.L _l2 (GHC.VarPat p)) rhs ty fvs t))
-     | p == pn
+   addParamToDecl nameMap (GHC.L l1 (GHC.ValD (GHC.PatBind pat@(GHC.L l2 (GHC.VarPat p)) rhs ty fvs t)))
+     -- * | p == pn
+     | eqRdrNamePure nameMap (GHC.L l2 p) pn
        = do _rhs'<-addActualParamsToRhs modifyToks pn paramPNames rhs
             let pats' = map GHC.noLoc $ map pNtoPat paramPNames
             _pats'' <- if modifyToks  then do _ <- addFormalParams (Right [pat]) pats'
                                               return pats'
                                      else return pats'
             -- return (TiDecorate.Dec (HsFunBind loc [HsMatch loc (patToPNT p) pats' rhs ds]))
-            return (GHC.L l1 (GHC.PatBind pat rhs ty fvs t))
-   addParamToDecl x=return x
+            return (GHC.L l1 (GHC.ValD (GHC.PatBind pat rhs ty fvs t)))
+   addParamToDecl _ x = return x
 
 
 -- | Add tokens corresponding to the new parameters to the end of the
 -- syntax element provided
 addFormalParams
- :: Either GHC.SrcSpan [(GHC.LPat GHC.Name)] -- location: SrcSpan only
+ :: Either GHC.SrcSpan [(GHC.LPat GHC.RdrName)] -- location: SrcSpan only
                                  -- if no existing params, else list
                                  -- of current params
- -> [(GHC.LPat GHC.Name)] -- params to add
+ -> [(GHC.LPat GHC.RdrName)] -- params to add
  -> RefactGhc ()
 addFormalParams place newParams
   = do
@@ -1180,28 +1188,26 @@ addFormalParams place newParams
 -- ---------------------------------------------------------------------
 
 addActualParamsToRhs :: (SYB.Data t) =>
-                        Bool -> GHC.Name -> [GHC.Name] -> t -> RefactGhc t
+                        Bool -> GHC.Name -> [GHC.RdrName] -> t -> RefactGhc t
 addActualParamsToRhs modifyToks pn paramPNames rhs = do
+    logm $ "addActualParamsToRhs:entered:(pn,paramPNames)=" ++ showGhc (pn,paramPNames)
     -- logm $ "addActualParamsToRhs:rhs=" ++ (SYB.showData SYB.Renamer 0 $ rhs)
-
-    -- = applyTP (stop_tdTP (failTP `adhocTP` worker))
-
-    r <- applyTP (stop_tdTP (failTP `adhocTP` grhs)) rhs
-    -- r <- everywhereMStaged SYB.Renamer (SYB.mkM grhs) rhs
-    return r
-     where
+    nameMap <- getRefactNameMap
+    let
 
        -- |Limit the action to actual RHS elements
-       grhs :: (GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name)) -> RefactGhc (GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name))
+       grhs :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
        grhs (GHC.GRHSs g lb) = do
-         -- logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
+         logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
          g' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM worker) g
          return (GHC.GRHSs g' lb)
 
-       worker :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
+       worker :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
        worker oldExp@(GHC.L l2 (GHC.HsVar pname))
-        | pname == pn = do
-              -- logm $ "addActualParamsToRhs:oldExp=" ++ (SYB.showData SYB.Renamer 0 oldExp)
+        -- * | pname == pn
+        | eqRdrNamePure nameMap (GHC.L l2 pname) pn
+          = do
+              logm $ "addActualParamsToRhs:oldExp=" ++ (SYB.showData SYB.Renamer 0 oldExp)
               let newExp' = foldl addParamToExp oldExp paramPNames
               let newExp  = (GHC.L l2 (GHC.HsPar newExp'))
               -- TODO: updateToks must add a space at the end of the
@@ -1211,8 +1217,11 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
                             else return newExp
        worker x = return x
 
-       addParamToExp :: (GHC.LHsExpr GHC.Name) -> GHC.Name -> (GHC.LHsExpr GHC.Name)
+       addParamToExp :: (GHC.LHsExpr GHC.RdrName) -> GHC.RdrName -> (GHC.LHsExpr GHC.RdrName)
        addParamToExp  expr param = GHC.noLoc (GHC.HsApp expr (GHC.noLoc (GHC.HsVar param)))
+
+    r <- applyTP (stop_tdTP (failTP `adhocTP` grhs)) rhs
+    return r
 
 
 {-
@@ -2360,7 +2369,8 @@ patToPNT _ = Nothing
 
 
 -- | Compose a pattern from a pName.
-pNtoPat :: GHC.Name -> GHC.Pat GHC.Name
+-- pNtoPat :: GHC.Name -> GHC.Pat GHC.Name
+pNtoPat :: name -> GHC.Pat name
 pNtoPat pname = GHC.VarPat pname
     -- =let loc=srcLoc pname
     --  in (TiDecorate.Pat (HsPId (HsVar (PNT pname Value (N (Just loc))))))

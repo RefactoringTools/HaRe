@@ -28,6 +28,7 @@ module Language.Haskell.Refact.Utils.Variables
   , hsFDsFromInside, hsFDNamesFromInside
   , hsVisibleDs
   , rdrName2Name, rdrName2NamePure
+  , eqRdrNamePure
   , rdrName2Name'
 
   -- ** Identifiers, expressions, patterns and declarations
@@ -1223,7 +1224,7 @@ definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.
 definesDeclRdr _ _ _ = False
 
 
-definesP::PName->HsDeclP->Bool
+definesP::PName -> HsDeclP ->Bool
 definesP pn (GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
  = PN pname == pn
 definesP pn (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _)))
@@ -1724,6 +1725,10 @@ rdrName2NamePure :: NameMap -> GHC.Located GHC.RdrName -> GHC.Name
 rdrName2NamePure nameMap (GHC.L lrn _) =
   fromMaybe (error $ "rdrName2NamePure: no name found for" ++ showGhc lrn)
              (Map.lookup lrn nameMap)
+
+eqRdrNamePure :: NameMap -> GHC.Located GHC.RdrName -> GHC.Name -> Bool
+eqRdrNamePure nameMap rn n
+  = GHC.nameUnique (rdrName2NamePure nameMap rn) == GHC.nameUnique n
 
 -- ---------------------------------------------------------------------
 

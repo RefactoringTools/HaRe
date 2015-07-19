@@ -311,7 +311,7 @@ moveDecl1 :: (HsValBinds t GHC.Name)
      -- TODO: make this next parameter a single value, not a list,
      -- after module complete
   -> [GHC.Name]     -- ^ The first one is the decl to move
-  -> Maybe [GHC.LHsBind GHC.Name]
+  -> Maybe [GHC.LHsDecl GHC.RdrName]
   -> [GHC.Name]     -- ^ The signatures to remove. May be multiple if
                     --   decl being moved has a patbind.
   -> Bool           -- ^ True if moving to the top level
@@ -342,7 +342,7 @@ moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
   let maybeToksSig = []
       funToks = []
 
-  r <- addDecl t' defName (ghead "moveDecl1 2" funBinding,sigsRemoved,Just (maybeToksSig ++ funToks)) topLevel
+  r <- addDecl t' defName (ghead "moveDecl1 2" funBinding,sigsRemoved,Nothing) topLevel
 
   return r
 

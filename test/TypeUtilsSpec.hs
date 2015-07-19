@@ -1547,21 +1547,24 @@ spec = do
     it "adds parameters to a declaration, and updates the token stream" $ do
       (t, toks,tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName (3, 1) renamed
       let
         comp = do
-         _newName <- mkNewGhcName Nothing "bar"
-         newName2 <- mkNewGhcName Nothing "bar2"
-         newBinding <- addParamsToDecls declsr n [newName2] True
+         declsp <- liftT $ hsDecls parsed
+         -- newName2 <- mkNewGhcName Nothing "bar2"
+         let newName2 = mkRdrName "bar2"
+         newBinding <- addParamsToDecls declsp n [newName2] True
+         liftT $ replaceDecls parsed newBinding
 
          return newBinding
       -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
       (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "MoveDef.Md1.toplevel"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff :: Int -> Int\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n zz1 a = 1 + toplevel a\n\n -- General Comment\n -- |haddock comment\n tlFunc :: Integer -> Integer\n tlFunc x = c * x\n -- Comment at end\n\n\n "
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel bar2 x= c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (showGhcQual $ last $ init nb) `shouldBe` "MoveDef.Md1.toplevel bar2 x = MoveDef.Md1.c GHC.Num.* x"
@@ -1571,17 +1574,19 @@ spec = do
     it "adds parameters to a declaration with multiple matches" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./AddParams1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName (3, 1) renamed
       let
         comp = do
-         newName <- mkNewGhcName Nothing "pow"
-         newBinding <- addParamsToDecls declsr n [newName] True
-
+         declsp <- liftT $ hsDecls parsed
+         let newName = mkRdrName "pow"
+         newBinding <- addParamsToDecls declsp n [newName] True
+         liftT $ replaceDecls parsed newBinding
          return newBinding
-      -- (_nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
-      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "AddParams1.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\nsq  0 = 0\nsq  z = z^2\n\nfoo = 3\n\n"
@@ -1594,15 +1599,18 @@ spec = do
     it "adds parameters to a declaration with no existing ones" $ do
       (t, toks,tgt) <- ct $ parsedFileGhc "./AddParams1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName (6, 1) renamed
       let
         comp = do
-         newName1 <- mkNewGhcName Nothing "baz"
-         newName2 <- mkNewGhcName Nothing "bar"
-         newBinding <- addParamsToDecls declsr n [newName1,newName2] True
+         declsp <- liftT $ hsDecls parsed
+         let newName1 = mkRdrName "baz"
+         let newName2 = mkRdrName "bar"
+         newBinding <- addParamsToDecls declsp n [newName1,newName2] True
+         liftT $ replaceDecls parsed newBinding
 
          return newBinding
       -- (_nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
@@ -1620,6 +1628,7 @@ spec = do
     it "adds a parameter to the rhs of a declaration, and updates the token stream" $ do
       (t, _toks, tgt) <- ct $ parsedFileGhc "./LiftToToplevel/D1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let declsr = hsBinds renamed
       -- let decl@(GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [GHC.L _ (GHC.Match _ _ rhs) ] _) _ _ _)) = head declsr
@@ -1629,8 +1638,7 @@ spec = do
       let Just (GHC.L _ n) = locToName (6, 21) renamed
       let
         comp = do
-         _newName <- mkNewGhcName Nothing "bar"
-         newName2 <- mkNewGhcName Nothing "bar2"
+         let newName2 = mkRdrName "bar2"
          newBinding <- addActualParamsToRhs True n [newName2] decl
 
          return newBinding
@@ -1648,6 +1656,7 @@ spec = do
     it "adds parameters to a complex rhs of a declaration, and updates the token stream" $ do
       (t, _toks,tgt) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn7.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let declsr = hsBinds renamed
       -- let decl@(GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [GHC.L _ (GHC.Match _ _ rhs) ] _) _ _ _)) = head declsr
@@ -1657,9 +1666,9 @@ spec = do
       let Just (GHC.L _ n) = locToName (10, 17) renamed
       let
         comp = do
-         newName1 <- mkNewGhcName Nothing "x1"
-         newName2 <- mkNewGhcName Nothing "y1"
-         newName3 <- mkNewGhcName Nothing "z1"
+         let newName1 = mkRdrName "x1"
+         let newName2 = mkRdrName "y1"
+         let newName3 = mkRdrName "z1"
          newBinding <- addActualParamsToRhs True n [newName1,newName2,newName3] decl
 
          return newBinding
@@ -3373,10 +3382,12 @@ This function is not used and has been removed
 
          -- (_t1,_toks1)  <- parseSourceFileTest ".//DupDef/Dd1.hs"
          clearParsedModule
-         (t2, toks2,_) <- parseSourceFileTest "./DupDef/Dd2.hs"
+         getModuleGhc "./DupDef/Dd2.hs"
+         -- (t2, toks2,_) <- parsedFileGhc "./DupDef/Dd2.hs"
          -- clearParsedModule
          -- let renamed1 = fromJust $ GHC.tm_renamed_source t1
-         let renamed2 = fromJust $ GHC.tm_renamed_source t2
+         -- let renamed2 = fromJust $ GHC.tm_renamed_source t2
+         renamed2 <- getRefactRenamed
 
          -- let parsed1 = GHC.pm_parsed_source $ GHC.tm_parsed_module t1
 
@@ -3385,8 +3396,8 @@ This function is not used and has been removed
          -- n2   <- mkNewGhcName Nothing "n2"
          res  <- addImportDecl renamed2 listModName Nothing False False False Nothing False []
 
-         return (res,renamed2,toks2)
-      ((_r,_r2,_tk2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+         return (res,renamed2)
+      ((_r,_r2),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\nimport DupDef.Dd1\nimport Data.List\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
 
     -- ---------------------------------
