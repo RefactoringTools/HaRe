@@ -1367,13 +1367,10 @@ rmDecl:: (SYB.Data t)
 
 rmDecl pn incSig t = do
   setStateStorage StorageNone
-  t2  <- everywhereMStaged' SYB.Parser (SYB.mkM inLet) t -- top down
-  ss <- getStateStorage
-  t'  <- case ss of
-    StorageNone -> everywhereMStaged' SYB.Parser (SYB.mkM inModule
-                                                 `SYB.extM` inGRHSs) t2 -- top down
-    _ -> return t2
-
+  t' <- everywhereMStaged' SYB.Parser (SYB.mkM inModule
+                                      `SYB.extM` inLet
+                                      `SYB.extM` inGRHSs
+                                      ) t -- top down
          -- applyTP (once_tdTP (failTP `adhocTP` inBinds)) t
   -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inBinds) t
   (t'',sig') <- if incSig
@@ -1406,7 +1403,7 @@ rmDecl pn incSig t = do
                  return expr
                 _ -> do
                  logm $ "rmDecl.inLet:length decls /= 1"
-                 let decls2' = gtail "inLet" decls2
+                 -- let decls2' = gtail "inLet" decls2
                  decls' <- doRmDecl decl decls1 decls2
                  localDecls' <- liftT $ replaceDecls localDecls decls'
                  -- logDataWithAnns "inLet" (GHC.L ss (GHC.HsLet localDecls' expr))
@@ -1418,18 +1415,21 @@ rmDecl pn incSig t = do
 
     doRmDeclList parent
       = do
-         nameMap <- getRefactNameMap
-         decls <- liftT $ hsDecls parent
-         let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
-         if not $ emptyList decls2
-           then do
-             let decl = ghead "doRmDeclList" decls2
-             setStateStorage (StorageDeclRdr decl)
-             decls' <- doRmDecl decl decls1 decls2
-             parent' <- liftT $ replaceDecls parent decls'
-             return parent'
-           else
-             return parent
+         isDone <- getDone
+         if isDone
+           then return parent
+           else do
+             nameMap <- getRefactNameMap
+             decls <- liftT $ hsDecls parent
+             let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
+             if not $ emptyList decls2
+               then do
+                 let decl = ghead "doRmDeclList" decls2
+                 setStateStorage (StorageDeclRdr decl)
+                 decls'  <- doRmDecl decl decls1 decls2
+                 parent' <- liftT $ replaceDecls parent decls'
+                 return parent'
+               else return parent
 
     -- ---------------------------------
 
@@ -1437,10 +1437,16 @@ rmDecl pn incSig t = do
       = do
           let decls2'      = gtail "doRmDecl 1" decls2
               declToRemove = head decls2
-          modifyRefactAnns (\anns -> transferEntryDP anns declToRemove (head decls2') )
+          -- unless (null decls2') $ do modifyRefactAnns (\anns -> transferEntryDP anns declToRemove (head decls2') )
           unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
           unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
           return $ (decls1 ++ decls2')
+
+    getDone = do
+      s <- getStateStorage
+      case s of
+        StorageNone -> return False
+        _           -> return True
 
 -- ---------------------------------------------------------------------
 
@@ -1469,8 +1475,6 @@ rmTypeSig :: (SYB.Data t) =>
 rmTypeSig pn t
   = do
      setStateStorage StorageNone
-     -- t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inSigs `SYB.extM` inDecls) t
-     -- t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inSigs `SYB.extM` inModule) t
      t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inGRHSs `SYB.extM` inModule) t
      storage <- getStateStorage
      let sig' = case storage of
@@ -1509,10 +1513,6 @@ rmTypeSig pn t
                       let oldSig = (GHC.L sspan (GHC.TypeSig [pnt] typ p))
                       setStateStorage (StorageSigRdr oldSig)
 
-                      unless (null $ tail decls2) $ do
-                        modifyRefactAnns (\anns -> transferEntryDP anns sig (head $ tail decls2) )
-                        liftT $ balanceComments (last decls1) sig
-                        liftT $ balanceComments (head decls2) (head $ tail decls2)
                       parent' <- liftT $ replaceDecls parent (decls1++[newSig]++tail decls2)
                       return parent'
                   else do
@@ -1520,7 +1520,7 @@ rmTypeSig pn t
                       setStateStorage (StorageSigRdr oldSig)
                       unless (null $ tail decls2) $ do
                         modifyRefactAnns (\anns -> transferEntryDP anns sig (head $ tail decls2) )
-                        liftT $ balanceComments (last decls1) sig
+                        unless (null decls1) $ do liftT $ balanceComments (last decls1) sig
                         liftT $ balanceComments (head decls2) (head $ tail decls2)
                       parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
                       return parent'
