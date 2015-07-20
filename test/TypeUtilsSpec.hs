@@ -1556,18 +1556,19 @@ spec = do
          declsp <- liftT $ hsDecls parsed
          -- newName2 <- mkNewGhcName Nothing "bar2"
          let newName2 = mkRdrName "bar2"
-         newBinding <- addParamsToDecls declsp n [newName2] True
-         liftT $ replaceDecls parsed newBinding
+         declsp' <- addParamsToDecls declsp n [newName2] True
+         parsed' <- liftT $ replaceDecls parsed declsp'
+         putRefactParsed parsed' emptyAnns
 
-         return newBinding
+         return declsp'
       -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
       (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "MoveDef.Md1.toplevel"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel bar2 x= c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
-      (showGhcQual $ last $ init nb) `shouldBe` "MoveDef.Md1.toplevel bar2 x = MoveDef.Md1.c GHC.Num.* x"
+      (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel bar2 x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
+      (showGhcQual $ head $ tail nb) `shouldBe` "toplevel bar2 x = c * x"
 
     -- ---------------------------------
 
@@ -1582,16 +1583,18 @@ spec = do
         comp = do
          declsp <- liftT $ hsDecls parsed
          let newName = mkRdrName "pow"
-         newBinding <- addParamsToDecls declsp n [newName] True
-         liftT $ replaceDecls parsed newBinding
-         return newBinding
-      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+         declsp' <- addParamsToDecls declsp n [newName] True
+         parsed' <- liftT $ replaceDecls parsed declsp'
+         putRefactParsed parsed' emptyAnns
+         return declsp'
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
+      -- putStrLn $ "anntree\n" ++ showAnnDataFromState s
+      -- putStrLn $ "_nb\n" ++ showAnnDataItemFromState s _nb
       (showGhcQual n) `shouldBe` "AddParams1.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\nsq  0 = 0\nsq  z = z^2\n\nfoo = 3\n\n"
-      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (sourceFromState s) `shouldBe` "module AddParams1 where\n\nsq  pow 0= 0\nsq  pow z= z^2\n\nfoo = 3\n\n"
+      (sourceFromState s) `shouldBe` "module AddParams1 where\n\nsq pow  0 = 0\nsq pow  z = z^2\n\nfoo = 3\n\n"
       -- (showGhcQual $ last $ init nb) `shouldBe` ""
 
     -- ---------------------------------
@@ -1609,17 +1612,18 @@ spec = do
          declsp <- liftT $ hsDecls parsed
          let newName1 = mkRdrName "baz"
          let newName2 = mkRdrName "bar"
-         newBinding <- addParamsToDecls declsp n [newName1,newName2] True
-         liftT $ replaceDecls parsed newBinding
+         declsp' <- addParamsToDecls declsp n [newName1,newName2] True
+         parsed' <- liftT $ replaceDecls parsed declsp'
+         putRefactParsed parsed' emptyAnns
 
-         return newBinding
+         return declsp'
       -- (_nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
       (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "AddParams1.foo"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module AddParams1 where\n\nsq  0 = 0\nsq  z = z^2\n\nfoo = 3\n\n"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (sourceFromState s) `shouldBe` "module AddParams1 where\n\nsq  0 = 0\nsq  z = z^2\n\nfoo baz bar= 3\n\n"
+      (sourceFromState s) `shouldBe` "module AddParams1 where\n\nsq  0 = 0\nsq  z = z^2\n\nfoo baz bar = 3\n\n"
       -- (showGhcQual $ last $ init nb) `shouldBe` ""
 
   -- ---------------------------------------------

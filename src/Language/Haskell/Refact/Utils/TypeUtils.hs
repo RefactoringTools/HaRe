@@ -1099,7 +1099,7 @@ addParamsToDecls::
       -> RefactGhc [GHC.LHsDecl GHC.RdrName] -- ^ The result.
 
 addParamsToDecls decls pn paramPNames modifyToks = do
-  logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhc (pn,paramPNames,modifyToks))
+  -- logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhc (pn,paramPNames,modifyToks))
   -- logm $ "addParamsToDecls: decls=" ++ (SYB.showData SYB.Renamer 0 decls)
   nameMap <- getRefactNameMap
   if (paramPNames /= [])
@@ -1108,82 +1108,27 @@ addParamsToDecls decls pn paramPNames modifyToks = do
   where
    addParamToDecl :: NameMap -> GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
    addParamToDecl nameMap (GHC.L l1 (GHC.ValD (GHC.FunBind lp@(GHC.L l2 pname) i (GHC.MG matches a ptt o) co fvs t)))
-    -- * | pname == pn
     | eqRdrNamePure nameMap lp pn
     = do
-         logm $ "addParamsToDecl.addParamToDecl entered"
          matches' <- mapM addParamtoMatch matches
          return (GHC.L l1 (GHC.ValD (GHC.FunBind (GHC.L l2 pname) i (GHC.MG matches' a ptt o) co fvs t)))
       where
-       -- addParamtoMatch (HsMatch loc fun pats rhs  decls)
-       addParamtoMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
        addParamtoMatch (GHC.L l (GHC.Match fn pats mtyp rhs))
-        = do rhs' <- addActualParamsToRhs modifyToks pn paramPNames rhs
-             let pats' = map GHC.noLoc $ map pNtoPat paramPNames
-             _pats'' <- if modifyToks
-               then do -- TODO: What happens if pats is []
-                       -- Will only happen if there is a single match only.
-                       logm $ "addParamtoMatch:l=" ++ (showGhc l)
-                       if emptyList pats
-                         then addFormalParams (Left l2) pats'
-                         else addFormalParams (Right pats) pats'
-                       return pats'
-
-               else return pats'
-             -- return (HsMatch loc  fun  (pats'++pats)  rhs' decls)
+        = do
+             rhs' <- addActualParamsToRhs modifyToks pn paramPNames rhs
+             pats' <- liftT $ mapM addParam paramPNames
              return (GHC.L l (GHC.Match fn (pats'++pats) mtyp rhs'))
 
-   -- addParamToDecl (TiDecorate.Dec (HsPatBind loc p rhs ds))
-   addParamToDecl nameMap (GHC.L l1 (GHC.ValD (GHC.PatBind pat@(GHC.L l2 (GHC.VarPat p)) rhs ty fvs t)))
-     -- * | p == pn
-     | eqRdrNamePure nameMap (GHC.L l2 p) pn
-       = do _rhs'<-addActualParamsToRhs modifyToks pn paramPNames rhs
-            let pats' = map GHC.noLoc $ map pNtoPat paramPNames
-            _pats'' <- if modifyToks  then do _ <- addFormalParams (Right [pat]) pats'
-                                              return pats'
-                                     else return pats'
-            -- return (TiDecorate.Dec (HsFunBind loc [HsMatch loc (patToPNT p) pats' rhs ds]))
-            return (GHC.L l1 (GHC.ValD (GHC.PatBind pat rhs ty fvs t)))
+   -- TODO: The following will never match, as a PatBind only deals with complex patterns.
+   addParamToDecl _nameMap x@(GHC.L _l1 (GHC.ValD (GHC.PatBind _pat@(GHC.L _l2 (GHC.VarPat _p)) _rhs _ty _fvs _t)))
+     = return x
    addParamToDecl _ x = return x
 
-
--- | Add tokens corresponding to the new parameters to the end of the
--- syntax element provided
-addFormalParams
- :: Either GHC.SrcSpan [(GHC.LPat GHC.RdrName)] -- location: SrcSpan only
-                                 -- if no existing params, else list
-                                 -- of current params
- -> [(GHC.LPat GHC.RdrName)] -- params to add
- -> RefactGhc ()
-addFormalParams place newParams
-  = do
-       -- logm $ "addFormalParams:(place,newParams):" ++ (SYB.showData SYB.Renamer 0 (place,newParams))
-       -- newToks <- liftIO $ basicTokenise (prettyprintPatList prettyprint True newParams)
-       let _newStr = (prettyprintPatList prettyprint True newParams)
-
-       case place of
-         Left (GHC.RealSrcSpan _ss) -> do
-           -- let newToks' = tokenise (gs2ss l) 0 False newStr
-           -- let newToks = map markToken newToks'
-           -- _ <- addToksAfterSpan l PlaceAdjacent newToks
-           return ()
-         Left ss -> error $ "addFormalParams: expecting RealSrcSpan, got:" ++ (showGhc ss)
-         Right _pats -> do
-           -- let l = GHC.combineLocs (ghead "addFormalParams" pats) (glast "addFormalParams" pats)
-           -- logm $ "addFormalParams:(l,pats)=" ++ (SYB.showData SYB.Renamer 0 (l,pats))
-           -- toks <- getToksForSpan l
-
-           {-
-           let oldStr = GHC.showRichTokenStream $ rmOffsetFromToks toks
-           let combinedToks = tokenise (gs2ss $ tokenSrcSpan $ ghead "addFormalParams" toks)
-                                     0 False (newStr ++ " " ++ oldStr)
-           -}
-           -- _ <- putToksForSpan l combinedToks
-
-           return ()
-
-       -- drawTokenTree "after addFormalParams"
-       -- drawTokenTreeDetailed "after addFormalParams"
+   addParam n = do
+     newSpan <- uniqueSrcSpanT
+     let vn = (GHC.L newSpan (pNtoPat n))
+     addSimpleAnnT vn (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+     return vn
 
 -- ---------------------------------------------------------------------
 
