@@ -33,6 +33,11 @@ import Data.Maybe
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
+import Language.Haskell.GHC.ExactPrint.Internal.Types
+import Language.Haskell.GHC.ExactPrint.Parsers
+import Language.Haskell.GHC.ExactPrint.Transform
+-- import Language.Haskell.GHC.ExactPrint.Utils
+
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
 -- import Debug.Trace
@@ -248,8 +253,10 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
        -}
        liftToMod = do
          renamed <- getRefactRenamed
+         parsed <- getRefactParsed
          let declsr = hsBinds renamed
-         let (before,parent,after) = divideDecls declsr pn
+         declsp <- liftT $ hsDecls parsed
+         let (before,parent,after) = divideDecls declsp pn
          -- error ("liftToMod:(before,parent,after)=" ++ (showGhc (before,parent,after))) -- ++AZ++
          {- ++AZ++ : hsBinds does not return class or instance definitions
          when (isClassDecl $ ghead "liftToMod" parent)
@@ -257,9 +264,11 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          when (isInstDecl $ ghead "liftToMod" parent)
                $ error "Sorry, the refactorer cannot lift a definition from an instance declaration!"
          -}
-         let liftedDecls = definingDeclsNames [n] parent True True
-             declaredPns = nub $ concatMap definedPNs liftedDecls
-             liftedSigs = definingSigsNames [n] parent
+         nameMap <- getRefactNameMap
+         let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
+             -- declaredPns = nub $ concatMap definedPNs liftedDecls
+             declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
+             liftedSigs  = definingSigsRdrNames nameMap [n] parent
              mLiftedSigs = listToMaybe liftedSigs
 
          -- TODO: what about declarations between this
@@ -276,7 +285,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          -- drawTokenTree "liftToMod.a"
          -- drawTokenTreeDetailed "liftToMod.a"
 
-         if pns==[]
+         if pns == []
            then do
              -- TODO: change the order, first move the decls then add params,
              --       else the liftedDecls get mangled while still in the parent
@@ -288,13 +297,13 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              -- logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
              -- logm $ "liftToMod:(liftedDecls')=" ++ (showGhc liftedDecls')
 
-             let renamed' = replaceBinds renamed (before++parent'++after)
-                 defName  = (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))
-             void $ moveDecl1 renamed'
+             let -- renamed' = replaceBinds renamed (before++parent'++after)
+                 -- defName  = (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))
+                 defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
+             parsed' <- liftT $ replaceDecls parsed (before++parent'++after)
+             void $ moveDecl1 parsed'
                     (Just defName)
                     [GHC.unLoc pn] (Just liftedDecls') declaredPns True
-
-             -- drawTokenTree "liftToMod.b"
 
              return declaredPns
 
@@ -304,7 +313,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
 -- ---------------------------------------------------------------------
 
-moveDecl1 :: (HsValBinds t GHC.Name)
+moveDecl1 :: (HasDecls t,GHC.Outputable t)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
 
@@ -317,32 +326,19 @@ moveDecl1 :: (HsValBinds t GHC.Name)
   -> Bool           -- ^ True if moving to the top level
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
+  nameMap <- getRefactNameMap
 
   -- TODO: work with all of ns, not just the first
   let n = ghead "moveDecl1" ns
   let funBinding = case mliftedDecls of
-        Nothing -> definingDeclsNames' [n] t
+        Nothing          -> definingDeclsRdrNames' nameMap [n] t
         Just liftedDecls -> liftedDecls
 
-  -- let Just sspan = getSrcSpan funBinding
-  -- funToks <- getToksForSpan sspan
-
+  -- TODO: rmDecl can now remove the sig at the same time.
   (t'',sigsRemoved) <- rmTypeSigs sigNames t
-  (t',_declRemoved,_sigRemoved)  <- rmDecl (ghead "moveDecl3.1"  ns) False t''
+  (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
 
-  let getToksForMaybeSig (GHC.L ss _) =
-                       do
-                         sigToks <- getToksForSpan ss
-                         return sigToks
-
-  -- maybeToksSigMulti <- mapM getToksForMaybeSig
-  --                      $ sortBy (\(GHC.L s1 _) (GHC.L s2 _) -> compare (ghcSrcSpanToForestSpan s1) (ghcSrcSpanToForestSpan s2))
-  --                         sigsRemoved
-  -- let maybeToksSig = concat maybeToksSigMulti
-  let maybeToksSig = []
-      funToks = []
-
-  r <- addDecl t' defName (ghead "moveDecl1 2" funBinding,sigsRemoved,Nothing) topLevel
+  r <- addDecl t' defName (ghead "moveDecl1 2" funBinding,listToMaybe sigsRemoved,Nothing) topLevel
 
   return r
 
@@ -358,10 +354,10 @@ askRenamingMsg pns str
 
 -- |Get the subset of 'pns' that need to be renamed before lifting.
 pnsNeedRenaming :: (SYB.Data t1) =>
-  t1 -> [GHC.LHsBind GHC.Name] -> t2 -> [GHC.Name]
+  t1 -> [GHC.LHsDecl GHC.RdrName] -> t2 -> [GHC.Name]
   -> RefactGhc [GHC.Name]
 pnsNeedRenaming dest parent _liftedDecls pns
-   =do
+  = do
        r <- mapM pnsNeedRenaming' pns
        return (concat r)
   where
@@ -768,13 +764,13 @@ liftedToTopLevel pnt@(GHC.L _ pn) renamed
      else (False, [])
 
 
-addParamsToParentAndLiftedDecl :: (HsValBinds t GHC.Name,GHC.Outputable t) =>
+addParamsToParentAndLiftedDecl :: (GHC.Outputable t) =>
      GHC.Name   -- ^name of decl being lifted
   -> [GHC.Name] -- ^Declared names in parent
   -> t          -- ^parent
-  -> [GHC.LHsBind GHC.Name] -- ^decls being lifted
-  -> Maybe (GHC.LSig GHC.Name) -- ^ lifted decls signature if present
-  -> RefactGhc (t, [GHC.LHsBind GHC.Name], Maybe (GHC.LSig GHC.Name))
+  -> [GHC.LHsDecl GHC.RdrName]    -- ^decls being lifted
+  -> Maybe (GHC.LSig GHC.RdrName) -- ^ lifted decls signature if present
+  -> RefactGhc (t, [GHC.LHsDecl GHC.RdrName], Maybe (GHC.LSig GHC.RdrName))
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
   =do  (ef,_) <- hsFreeAndDeclaredPNs parent
        (lf,_) <- hsFreeAndDeclaredPNs liftedDecls

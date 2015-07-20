@@ -70,6 +70,13 @@ module Language.Haskell.Refact.API
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
+       , getRefactNameMap
+
+       -- * New ghc-exactprint interfacing
+       , replaceRdrName
+       , refactReplaceDecls
+       , refactRunTransform
+       , liftT
 
        -- ** TokenUtils API
        -- , replaceToken
@@ -290,7 +297,8 @@ module Language.Haskell.Refact.API
     ,ghcToPN,lghcToPN, expToName
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
-    {- ,definingDecls -}, definedPNs
+    {- ,definingDecls -}, definedPNs, definedPNsRdr,definedNamesRdr
+    , definingDeclsRdrNames, definingDeclsRdrNames', definingSigsRdrNames
     , definingDeclsNames, definingDeclsNames', definingSigsNames
     , definingTyClDeclsNames
     , allNames

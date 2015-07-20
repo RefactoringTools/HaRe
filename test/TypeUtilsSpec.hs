@@ -996,13 +996,127 @@ spec = do
 
   -- ---------------------------------------------------------------------
 
+  describe "hsVisibleDsRdr" $ do
+    it "Rdr:finds function arguments visible in RHS 1" $ do
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      -- let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      let Just e  = locToExp (5,11) (5,19) parsed :: (Maybe (GHC.LHsExpr GHC.RdrName))
+      (showGhcQual e) `shouldBe` "a GHC.Num.+ b"
+      -- (SYB.showData SYB.Renamer 0 e) `shouldBe` ""
+
+      let Just n = getName "Visible.Simple.params" renamed
+      -- let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+
+      -- let binds = hsValBinds [decl]
+
+      -- (SYB.showData SYB.Renamer 0 $ head $ hsBinds binds) `shouldBe` ""
+
+      let
+        comp = do
+          nameMap <- getRefactNameMap
+          declsp <- liftT $ hsDecls parsed
+          let [decl] = definingDeclsRdrNames nameMap [n] declsp False False
+          -- declsp <- liftT $ hsDecls parsed
+          fds' <- hsVisibleDsRdr nameMap e decl
+          -- fds' <- hsVisibleDsRdr nameMap e $  head $ hsBinds binds
+          return (fds')
+      ((fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+
+      (show fds) `shouldBe` "DN [a, b, GHC.Num.+]"
+
+    -- -----------------------------------
+
+    it "Rdr:finds function arguments visible in RHS 2" $ do
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just e  = locToExp (9,15) (9,17) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
+      (showGhcQual e) `shouldBe` "x"
+
+      let Just n = getName "Visible.Simple.param2" renamed
+      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+
+      let binds = hsValBinds [decl]
+
+      let
+        comp = do
+          nameMap <- getRefactNameMap
+          fds' <- hsVisibleDsRdr nameMap e $  head $ hsBinds binds
+          return (fds')
+      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+
+      (show fds) `shouldBe` "DN [x]"
+
+
+    -- -----------------------------------
+
+    it "Rdr:finds visible vars inside a function" $ do
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just rhs  = locToExp (14,6) (15,14) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
+      (showGhcQual rhs) `shouldBe` "IdIn5.x GHC.Num.+ y GHC.Num.+ z"
+      -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
+
+      let Just e = getName "IdIn5.x" renamed
+
+      let
+        comp = do
+          nameMap <- getRefactNameMap
+          fds' <- hsVisibleDsRdr nameMap e rhs
+          ffds <- hsFreeAndDeclaredGhc rhs
+          return (fds',ffds)
+      -- ((fds,_fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+
+      (show _fds) `shouldBe` "(FN [IdIn5.x, GHC.Num.+, y, z],DN [])"
+      (show fds) `shouldBe` "DN [GHC.Num.+, y, z]"
+
+    -- -----------------------------------
+
+    it "Rdr:finds visible vars inside a data declaration" $ do
+      (t,_toks,tgt) <- ct $ parsedFileGhc "./Renaming/D1.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just (GHC.L _ n) = locToName (6, 6) renamed
+      (showGhcQual n) `shouldBe` "Renaming.D1.Tree"
+
+      let
+        comp = do
+          nameMap <- getRefactNameMap
+          fds' <- hsVisibleDsRdr nameMap n renamed
+          ffds <- hsFreeAndDeclaredGhc renamed
+          return (fds',ffds)
+      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+
+      (show _fds) `shouldBe` "(FN [:, GHC.Num.+, GHC.Real.^, [], Renaming.D1.Leaf,\n"
+                            ++" Renaming.D1.Branch, GHC.Base.++],DN [Renaming.D1.sumSquares,"
+                            ++" Renaming.D1.fringe, Renaming.D1.Tree, a,\n"
+                            ++" Renaming.D1.SameOrNot, Renaming.D1.isSame, Renaming.D1.isNotSame])"
+      (show fds) `shouldBe` "DN [Renaming.D1.Tree]"
+
+
+  -- ---------------------------------------------------------------------
+
   describe "hsVisibleDs" $ do
     it "finds function arguments visible in RHS 1" $ do
       (t,_toks,tgt) <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
       (showGhcQual e) `shouldBe` "a GHC.Num.+ b"
 
       let Just n = getName "Visible.Simple.params" renamed
@@ -1017,8 +1131,8 @@ spec = do
           fds' <- hsVisibleDs e $  head $ hsBinds binds
           -- let fds'o = hsVisiblePNsOld e $  head $ hsBinds binds
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe` "DN [a, b, GHC.Num.+]"
 
