@@ -19,6 +19,9 @@ import Data.Maybe
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
+import Language.Haskell.GHC.ExactPrint.Internal.Types
+import Language.Haskell.GHC.ExactPrint.Parsers
+import Language.Haskell.GHC.ExactPrint.Transform
 
 -- ---------------------------------------------------------------------
 -- | This refactoring duplicates a definition (function binding or
@@ -208,7 +211,7 @@ refactorInClientMod oldPN serverModName newPName targetModule@(_,(_,modSummary))
                 -- refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
                 (refactoredMod,_) <- applyRefac (doDuplicatingClient serverModName [newPName]) (RSFile fileName)
                 return refactoredMod
-        else return ((fileName,RefacUnmodifed),(mempty,parsed))
+        else return ((fileName,RefacUnmodifed),(emptyAnns,parsed))
    where
      needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
      needToBeHided name exps parsed = do

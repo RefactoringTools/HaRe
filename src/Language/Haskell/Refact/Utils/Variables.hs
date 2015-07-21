@@ -26,7 +26,7 @@ module Language.Haskell.Refact.Utils.Variables
   , hsFreeAndDeclaredGhc
   , getDeclaredTypes
   , getFvs, getFreeVars, getDeclaredVars
-  , hsVisiblePNs, hsVisibleNames
+  , hsVisiblePNs, hsVisiblePNsRdr ,hsVisibleNames
   , hsFDsFromInside, hsFDNamesFromInside
   , hsVisibleDs, hsVisibleDsRdr
   , rdrName2Name, rdrName2NamePure
@@ -104,8 +104,21 @@ instance FindEntity GHC.Name where
       | n == name = Just True
     worker _ = Nothing
 
--- ---------------------------------------------------------------------
 
+-- This instance does not make sense, it will only find the specific RdrName
+-- where it was found, not any other instances of it.
+instance FindEntity (GHC.Located GHC.RdrName) where
+
+  findEntity n t = fromMaybe False res
+   where
+    res = SYB.something (Nothing `SYB.mkQ` worker) t
+
+    worker (name :: GHC.Located GHC.RdrName)
+      | sameOccurrence n name = Just True
+    worker _ = Nothing
+-- ---------------------------------------------------------------------
+{-
+-- This is not precise enough, RdrNames are ambiguous
 instance FindEntity GHC.RdrName where
 
   findEntity n t = fromMaybe False res
@@ -115,7 +128,7 @@ instance FindEntity GHC.RdrName where
     worker (name::GHC.RdrName)
       | n == name = Just True
     worker _ = Nothing
-
+-}
 -- ---------------------------------------------------------------------
 
 -- TODO: should the location be matched too in this case?
@@ -147,7 +160,7 @@ instance FindEntity (GHC.LHsExpr GHC.Name) where
 
   findEntity e t = fromMaybe False res
    where
-    res = SYB.somethingStaged SYB.Renamer Nothing (Nothing `SYB.mkQ` worker) t
+    res = SYB.something (Nothing `SYB.mkQ` worker) t
 
     worker (expr :: GHC.LHsExpr GHC.Name)
       | sameOccurrence e expr = Just True
@@ -1540,13 +1553,23 @@ hsVisibleNames:: (FindEntity t1,HsValBinds t2 GHC.Name,GHC.Outputable t1)
 hsVisibleNames e t = do
     d <- hsVisiblePNs e t
     return ((nub . map showGhc) d)
+
 ------------------------------------------------------------------------
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
+hsVisiblePNsRdr :: (FindEntity e,SYB.Data t,GHC.Outputable e)
+             => NameMap -> e -> t -> RefactGhc [GHC.Name]
+hsVisiblePNsRdr nm e t = do
+  (DN dn) <- hsVisibleDsRdr nm e t
+  return dn
 
--- TODO: Consider basing the traversal on hsDecls calls.
+------------------------------------------------------------------------
+
+-- | Given syntax phrases e and t, if e occurs in t, then return those
+-- variables which are declared in t and accessible to e, otherwise
+-- return [].
 hsVisibleDsRdr :: (FindEntity e, GHC.Outputable e,SYB.Data t)
                -- ,HasDecls t)
              => NameMap -> e -> t -> RefactGhc DeclaredNames

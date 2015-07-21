@@ -50,6 +50,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,usedWithoutQualR,isUsedInRhs
 
     -- ** Getting
+    ,findNameInRdr
     ,findPNT,findPN,findAllNameOccurences
     ,findPNs, findEntity, findEntity'
     ,findIdForName
@@ -93,7 +94,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
 
     -- ** Identifiers, expressions, patterns and declarations
-    ,ghcToPN,lghcToPN, expToName
+    ,ghcToPN,lghcToPN, expToName, expToNameRdr
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
 
@@ -2207,6 +2208,16 @@ findAllNameOccurences  name t
 
 -- ---------------------------------------------------------------------
 
+findNameInRdr :: (SYB.Data t) => NameMap -> GHC.Name -> t -> Bool
+findNameInRdr nm pn t =
+ isJust $ SYB.something (Nothing `SYB.mkQ` worker) t
+   where
+      worker (ln :: GHC.Located GHC.RdrName)
+         | GHC.nameUnique pn == GHC.nameUnique (rdrName2NamePure nm ln) = Just True
+      worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
 -- | Return True if the identifier occurs in the given syntax phrase.
 findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
 findPNT (GHC.L _ pn) = findPN pn
@@ -2296,11 +2307,17 @@ lghcToPN (GHC.L _ rdr) = PN rdr
 
 -- | If an expression consists of only one identifier then return this
 -- identifier in the GHC.Name format, otherwise return the default Name
-expToName:: GHC.Located (GHC.HsExpr GHC.Name) -> GHC.Name
+expToName:: GHC.LHsExpr GHC.Name -> GHC.Name -- TODO: Use a Maybe, rather than defaultName
 expToName (GHC.L _ (GHC.HsVar pnt)) = pnt
 expToName (GHC.L _ (GHC.HsPar e))   = expToName e
 expToName _ = defaultName
 
+-- | If an expression consists of only one identifier then return this
+-- identifier in the GHC.Name format, otherwise return the default Name
+expToNameRdr :: NameMap -> GHC.LHsExpr GHC.RdrName -> Maybe GHC.Name
+expToNameRdr nm (GHC.L l (GHC.HsVar pnt)) = Just (rdrName2NamePure nm (GHC.L l pnt))
+expToNameRdr nm (GHC.L _ (GHC.HsPar e))   = expToNameRdr nm e
+expToNameRdr _ _ = Nothing
 
 nameToString :: GHC.Name -> String
 -- nameToString name = showGhc name

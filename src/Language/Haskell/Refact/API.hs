@@ -241,7 +241,7 @@ module Language.Haskell.Refact.API
     ,getDeclaredTypes
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
-    ,hsVisiblePNs {- , hsVisiblePNsOld -}, hsVisibleNames
+    ,hsVisiblePNs, hsVisiblePNsRdr  {- , hsVisiblePNsOld -}, hsVisibleNames
     ,hsFDsFromInside, hsFDNamesFromInside
     ,hsVisibleDs
 
@@ -251,6 +251,7 @@ module Language.Haskell.Refact.API
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
     ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
     ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
+    ,findNameInRdr
     ,findPNT,findPN,findAllNameOccurences
     ,findPNs, findEntity, findEntity'
     ,sameOccurrence
@@ -294,7 +295,7 @@ module Language.Haskell.Refact.API
 
 
     -- *** Identifiers, expressions, patterns and declarations
-    ,ghcToPN,lghcToPN, expToName
+    ,ghcToPN,lghcToPN, expToName, expToNameRdr
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     {- ,definingDecls -}, definedPNs, definedPNsRdr,definedNamesRdr

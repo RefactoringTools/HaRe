@@ -1029,13 +1029,10 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      let Just e  = locToExp (9,15) (9,17) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
+      let Just e   = locToExp (9,15) (9,17) parsed  :: (Maybe (GHC.LHsExpr GHC.RdrName))
       (showGhcQual e) `shouldBe` "x"
 
       let Just n = getName "Visible.Simple.param2" renamed
-      -- let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-
-      -- let binds = hsValBinds [decl]
 
       let
         comp = do
@@ -1044,8 +1041,8 @@ spec = do
           let [decl] = definingDeclsRdrNames nameMap [n] declsp False False
           fds' <- hsVisibleDsRdr nameMap e decl
           return (fds')
-      ((fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      -- ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe` "DN [x]"
 
@@ -1057,24 +1054,26 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+      -- putStrLn $ "parsed:" ++ SYB.showData SYB.Parser 0 parsed
 
-      let Just rhs  = locToExp (14,6) (15,14) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
-      (showGhcQual rhs) `shouldBe` "IdIn5.x GHC.Num.+ y GHC.Num.+ z"
-      -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
+      let Just rhsr = locToExp (14,6) (15,14) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
+      let Just rhs  = locToExp (14,6) (15,14) parsed  :: (Maybe (GHC.LHsExpr GHC.RdrName))
+      (showGhcQual rhs) `shouldBe` "x + y + z"
 
-      let Just e = getName "IdIn5.x" renamed
+      let Just er = getName "IdIn5.x" renamed
+      let Just e  = locToRdrName (10,1) parsed
 
       let
         comp = do
           nameMap <- getRefactNameMap
           fds' <- hsVisibleDsRdr nameMap e rhs
-          ffds <- hsFreeAndDeclaredGhc rhs
+          ffds <- hsFreeAndDeclaredGhc rhsr
           return (fds',ffds)
-      -- ((fds,_fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      -- ((fds,_fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
+      (show fds)  `shouldBe` "DN [GHC.Num.+, y, z]"
       (show _fds) `shouldBe` "(FN [IdIn5.x, GHC.Num.+, y, z],DN [])"
-      (show fds) `shouldBe` "DN [GHC.Num.+, y, z]"
 
     -- -----------------------------------
 
@@ -1084,13 +1083,15 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      let Just (GHC.L _ n) = locToName (6, 6) renamed
-      (showGhcQual n) `shouldBe` "Renaming.D1.Tree"
+      -- let Just (GHC.L _ n) = locToName (6, 6) renamed
+      -- (showGhcQual n) `shouldBe` "Renaming.D1.Tree"
+      let Just ln@(GHC.L _ n) = locToRdrName (6, 6) parsed
+      (showGhcQual n) `shouldBe` "Tree"
 
       let
         comp = do
           nameMap <- getRefactNameMap
-          fds' <- hsVisibleDsRdr nameMap n renamed
+          fds' <- hsVisibleDsRdr nameMap ln parsed
           ffds <- hsFreeAndDeclaredGhc renamed
           return (fds',ffds)
       ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions

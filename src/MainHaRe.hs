@@ -113,7 +113,7 @@ main = flip catches handlers $ do
       "dupdef" -> runFunc cradle $ duplicateDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
 -}
       -- iftocase wants FilePath -> SimpPos -> SimpPos
-      "iftocase" -> runFunc cradle $ ifToCase opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
+      -- "iftocase" -> runFunc cradle $ ifToCase opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
 {-
       -- liftOneLevel wants FilePath -> SimpPos
       "liftOneLevel" -> runFunc cradle $ liftOneLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
