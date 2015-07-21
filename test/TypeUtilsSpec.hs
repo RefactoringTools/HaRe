@@ -1003,29 +1003,21 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      -- let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
       let Just e  = locToExp (5,11) (5,19) parsed :: (Maybe (GHC.LHsExpr GHC.RdrName))
-      (showGhcQual e) `shouldBe` "a GHC.Num.+ b"
+      (showGhcQual e) `shouldBe` "a + b"
       -- (SYB.showData SYB.Renamer 0 e) `shouldBe` ""
 
       let Just n = getName "Visible.Simple.params" renamed
-      -- let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-
-      -- let binds = hsValBinds [decl]
-
-      -- (SYB.showData SYB.Renamer 0 $ head $ hsBinds binds) `shouldBe` ""
 
       let
         comp = do
           nameMap <- getRefactNameMap
           declsp <- liftT $ hsDecls parsed
           let [decl] = definingDeclsRdrNames nameMap [n] declsp False False
-          -- declsp <- liftT $ hsDecls parsed
           fds' <- hsVisibleDsRdr nameMap e decl
-          -- fds' <- hsVisibleDsRdr nameMap e $  head $ hsBinds binds
           return (fds')
-      ((fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      -- ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe` "DN [a, b, GHC.Num.+]"
 
@@ -1041,17 +1033,19 @@ spec = do
       (showGhcQual e) `shouldBe` "x"
 
       let Just n = getName "Visible.Simple.param2" renamed
-      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+      -- let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
-      let binds = hsValBinds [decl]
+      -- let binds = hsValBinds [decl]
 
       let
         comp = do
           nameMap <- getRefactNameMap
-          fds' <- hsVisibleDsRdr nameMap e $  head $ hsBinds binds
+          declsp <- liftT $ hsDecls parsed
+          let [decl] = definingDeclsRdrNames nameMap [n] declsp False False
+          fds' <- hsVisibleDsRdr nameMap e decl
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      -- ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe` "DN [x]"
 
