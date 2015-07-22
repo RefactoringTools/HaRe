@@ -14,7 +14,7 @@ import qualified Module     as GHC
 
 import Data.Maybe
 
-import Language.Haskell.GHC.ExactPrint.Internal.Types
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
@@ -861,6 +861,11 @@ spec = do
       pending -- "fix the prior test"
 
   -- ---------------------------------------------------------------------
+
+
+  describe "hsFDsFromInsideRdr" $ do
+    it "does something useful" $ do
+      pending -- "Complete this"
 
   describe "hsFDsFromInside" $ do
     it "does something useful" $ do

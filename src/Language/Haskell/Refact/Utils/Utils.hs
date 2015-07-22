@@ -35,12 +35,9 @@ module Language.Haskell.Refact.Utils.Utils
 import Control.Monad.State
 import Data.List
 import Data.Maybe
--- import Distribution.Helper
 import Language.Haskell.GHC.ExactPrint
--- import Language.Haskell.GHC.ExactPrint.Types
-import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gtail,gfromJust)
+import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GhcMod
--- import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
@@ -50,11 +47,8 @@ import Language.Haskell.Refact.Utils.Variables
 import System.Directory
 import System.FilePath.Posix
 import qualified Data.Generics as SYB
--- import qualified Data.Map as Map
--- import qualified Data.Set as Set
 
 import qualified Digraph       as GHC
--- import qualified DynFlags      as GHC
 import qualified GHC           as GHC
 
 import qualified GHC.SYB.Utils as SYB
@@ -616,4 +610,3 @@ serverModsAndFiles m = do
 
   return serverMods
 
--- ---------------------------------------------------------------------

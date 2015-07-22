@@ -25,7 +25,7 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.GHC.ExactPrint.Types
--- import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 
 -- ---------------------------------------------------------------------

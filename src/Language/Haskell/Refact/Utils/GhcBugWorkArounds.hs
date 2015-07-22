@@ -4,8 +4,8 @@
 
 module Language.Haskell.Refact.Utils.GhcBugWorkArounds
     (
-    bypassGHCBug7351
-    , getRichTokenStreamWA
+    -- bypassGHCBug7351
+     getRichTokenStreamWA
     ) where
 
 import qualified Bag                   as GHC
@@ -32,7 +32,7 @@ import Language.Haskell.GHC.ExactPrint.Types
 -- import Language.Haskell.Refact.Utils.TypeSyn
 
 -- ---------------------------------------------------------------------
-
+{-
 -- http://hackage.haskell.org/trac/ghc/ticket/7351
 bypassGHCBug7351 :: [PosToken] -> [PosToken]
 bypassGHCBug7351 ts = map go ts
@@ -43,7 +43,7 @@ bypassGHCBug7351 ts = map go ts
 
    fixCol l = GHC.mkSrcSpan (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanStartLine l) ((GHC.srcSpanStartCol l) - 1))
                             (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanEndLine l) ((GHC.srcSpanEndCol l) - 1))
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Replacement for original 'getRichTokenStream' which will return

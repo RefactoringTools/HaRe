@@ -235,6 +235,7 @@ module Language.Haskell.Refact.API
     ,hsPNs -- ,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
     ,isDeclaredIn
+    ,FreeNames(..),DeclaredNames(..)
     ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
     ,hsFreeAndDeclaredPNs
     ,hsFreeAndDeclaredGhc
@@ -242,6 +243,7 @@ module Language.Haskell.Refact.API
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
     ,hsVisiblePNs, hsVisiblePNsRdr  {- , hsVisiblePNsOld -}, hsVisibleNames
+    ,hsFDsFromInsideRdr
     ,hsFDsFromInside, hsFDNamesFromInside
     ,hsVisibleDs
 
@@ -296,6 +298,7 @@ module Language.Haskell.Refact.API
 
     -- *** Identifiers, expressions, patterns and declarations
     ,ghcToPN,lghcToPN, expToName, expToNameRdr
+    ,patToNameRdr
     ,nameToString
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
     {- ,definingDecls -}, definedPNs, definedPNsRdr,definedNamesRdr
@@ -377,7 +380,8 @@ module Language.Haskell.Refact.API
   , setGhcContext
 
  -- * from `Language.Haskell.Refact.Utils.TokenUtils`
- , Positioning(..)
+  , Positioning(..)
+  , NameMap
  -- , reIndentToks
  -- , ghcSrcSpanToForestSpan
 
@@ -395,7 +399,6 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
---import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
@@ -403,12 +406,5 @@ import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 
-import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,glast,gtail,gfromJust)
-import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Utils
 
-{-
-import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.TokenUtils
-import Language.Haskell.TokenUtils.Utils
-import Language.Haskell.TokenUtils.GHC.Layout
--}

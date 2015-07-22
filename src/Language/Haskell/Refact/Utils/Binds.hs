@@ -49,9 +49,8 @@ module Language.Haskell.Refact.Utils.Binds
    , HsValBinds(..)
  ) where
 
-import Language.Haskell.GHC.ExactPrint.Internal.Types
--- import Language.Haskell.GHC.ExactPrint.Transform hiding (HasDecls,hsDecls,replaceDecls)
--- import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead)
+import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Types
 
 -- Modules from GHC

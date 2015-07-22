@@ -16,7 +16,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , replace
   , replaceAnnKey
   , mkKey
-  , setColRec
+  -- , setColRec
   , getOriginalPos
 
   -- * Operations
@@ -31,8 +31,8 @@ import qualified Data.Generics as SYB
 --import qualified GHC.SYB.Utils as SYB
 
 -- import Language.Haskell.GHC.ExactPrint.Transform hiding
-import Language.Haskell.GHC.ExactPrint.Internal.Types
-import Language.Haskell.GHC.ExactPrint.Utils hiding (ghead,gfromJust)
+import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.Types
 
@@ -73,7 +73,7 @@ insertUniqueSrcSpans t
 uniqueSpansOnly :: Anns -> Anns
 uniqueSpansOnly ans
   -- = (Map.filterWithKey (\(AnnKey ss _ _) _ -> isUniqueSrcSpan ss) anns,sks)
-  = modifyKeywordDeltas (\an -> Map.filterWithKey (\(AnnKey ss _) _ -> isUniqueSrcSpan ss) an) ans
+  = (\an -> Map.filterWithKey (\(AnnKey ss _) _ -> isUniqueSrcSpan ss) an) ans
 
 -- ---------------------------------------------------------------------
 
@@ -94,7 +94,7 @@ isUniqueSrcSpan ss = srcSpanStartLine ss == -1
 
 -- |Get the map of (SrcSpan,AnnConName) with empty annotations
 extractAnnsEP :: forall t. (SYB.Data t) => t -> Anns
-extractAnnsEP t = Anns (Map.fromList as)
+extractAnnsEP t = Map.fromList as
   where
     sts = extractSrcSpanConName t
     as :: [(AnnKey, Annotation)]
@@ -147,12 +147,12 @@ extractSrcSpanConName  =
 
 addAnnKeywords :: Anns -> AnnConName -> [(KeywordId, DeltaPos)] -> Anns
 addAnnKeywords ans conName ks =
-  modifyKeywordDeltas (Map.insert (AnnKey ss conName) (annNone {annsDP = ks})) ans
+  (Map.insert (AnnKey ss conName) (annNone {annsDP = ks})) ans
   where
     -- First find the first srcspan having the conName
     -- MP: First in what sense?
     AnnKey ss _ = ghead "addAnnKeywords" . filter (\(AnnKey _ s) -> s == conName) $ Map.keys anns
-    anns = getKeywordDeltas ans
+    anns = ans
 
 -- ---------------------------------------------------------------------
 
@@ -160,13 +160,13 @@ replaceAnnKey :: (SYB.Data old,SYB.Data new)
   => Anns -> GHC.Located old -> GHC.Located new -> Anns
 replaceAnnKey ans old new =
   case Map.lookup (mkAnnKey old) anns of
-    Nothing -> modifyKeywordDeltas (const anns ) ans
-    Just v ->  modifyKeywordDeltas (const anns') ans
+    Nothing -> (const anns ) ans
+    Just v ->  (const anns') ans
       where
         anns1 = Map.delete (mkAnnKey old) anns
         anns' = Map.insert (mkAnnKey new) v anns1
   where
-    anns = getKeywordDeltas ans
+    anns = ans
 
 
 -- ---------------------------------------------------------------------
@@ -178,10 +178,10 @@ setOffsets anne kvs = foldl' setOffset anne kvs
 setOffset :: Anns -> (AnnKey, Annotation) -> Anns
 setOffset ans (k, Ann dp cs fcs _ so ca) = case
   Map.lookup k anne of
-    Nothing                     -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs [] so  ca)) ans
-    Just (Ann _ _ _ ks so' ca') -> modifyKeywordDeltas (Map.insert k (Ann dp cs fcs ks so' ca')) ans
+    Nothing                     -> (Map.insert k (Ann dp cs fcs [] so  ca)) ans
+    Just (Ann _ _ _ ks so' ca') -> (Map.insert k (Ann dp cs fcs ks so' ca')) ans
   where
-    anne = getKeywordDeltas ans
+    anne = ans
 
 -- |Update the DeltaPos for the given annotation keys
 setLocatedOffsets :: (SYB.Data a) => Anns -> [(GHC.Located a,Annotation)] -> Anns
@@ -213,7 +213,7 @@ setAnn ans (k, Ann dp cs fcs _ so ca) =
 -- | Replaces an old expression with a new expression
 replace :: AnnKey -> AnnKey -> Anns -> Maybe Anns
 replace old new ans = do
-  let as = getKeywordDeltas ans
+  let as = ans
   oldan <- Map.lookup old as
   newan <- Map.lookup new as
   let newan' = Ann
@@ -226,16 +226,16 @@ replace old new ans = do
                 , annSortKey           = annSortKey oldan
                 , annCapturedSpan      = annCapturedSpan oldan
                 }
-  return (modifyKeywordDeltas (\anns -> Map.delete old . Map.insert new newan' $ anns) ans)
+  return ((\anns -> Map.delete old . Map.insert new newan' $ anns) ans)
 
 -- ---------------------------------------------------------------------
 
 -- |Take the annEntryDelta associated with the first item and associate it with the second.
 -- Also transfer the AnnSpanEntry value, and any comments occuring before it.
 transferEntryDP :: (SYB.Data a, SYB.Data b) => Anns -> GHC.Located a -> GHC.Located b -> Anns
-transferEntryDP ans a b = modifyKeywordDeltas (const anns') ans
+transferEntryDP ans a b = (const anns') ans
   where
-    anns = getKeywordDeltas ans
+    anns = ans
     maybeAnns = do -- Maybe monad
       anA <- Map.lookup (mkKey a) anns
       anB <- Map.lookup (mkKey b) anns
@@ -295,7 +295,7 @@ deleteAnnotations vs anne = foldr (uncurry deleteAnnotation) anne vs
 -}
 
 -- -------------------------
-
+{-
 -- | Recursively change the col offsets
 setColRec :: (SYB.Data a) => (ColDelta -> ColDelta) -> a -> (Anns -> Anns)
 setColRec f loc = transform loc
@@ -322,7 +322,8 @@ setCol f ss cn anns =
       -- res = \a -> Map.adjust (\s -> s { annDelta = f (annDelta s) }) key a
       res = \a -> Map.adjust (\s -> s ) key a
   in
-      modifyKeywordDeltas res anns
+      res anns
+-}
 
 -- ---------------------------------------------------------------------
 

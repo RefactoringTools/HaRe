@@ -12,15 +12,17 @@ module Language.Haskell.Refact.Utils.Types
        , Positioning(..)
        , NameMap
 
-       , ghead
-       , glast
-       , gtail
-       , gfromJust
+       -- , ghead
+       -- , glast
+       -- , gtail
+       -- , gfromJust
        ) where
 
 import qualified GHC      as GHC
 
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Data.Map as Map
 

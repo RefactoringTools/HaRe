@@ -33,6 +33,7 @@ module TestUtils
        , pwd
        , cd
        , parseToAnnotated
+       , ss2span
        ) where
 
 
@@ -49,7 +50,7 @@ import Data.Data
 import Exception
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Annotate
-import Language.Haskell.GHC.ExactPrint.Internal.Types
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import qualified Language.Haskell.GhcMod          as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
@@ -57,6 +58,7 @@ import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types
+import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Utils
 import Numeric
 import System.Directory
@@ -385,4 +387,8 @@ parseToAnnotated df fp parser src = (ast,anns)
 
 -- ---------------------------------------------------------------------
 
+ss2span :: GHC.SrcSpan -> (Pos,Pos)
+ss2span ss = (ss2pos ss,ss2posEnd ss)
+
+-- ---------------------------------------------------------------------
 -- EOF
