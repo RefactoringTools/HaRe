@@ -312,7 +312,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
 -- ---------------------------------------------------------------------
 
-moveDecl1 :: (HasDecls t,GHC.Outputable t)
+moveDecl1 :: (HasDecls t)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
 
@@ -636,7 +636,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                   = Just (doLiftZ candidateBinds)
                 | otherwise = Nothing
                 where
-                 
+
                  candidateBinds = map snd
                                 $ filter (\(l,_bs) -> nonEmptyList l)
                                 $ map (\bs -> (definingDeclsNames [n] (hsBinds bs) False False,bs))
@@ -743,9 +743,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 --return (before++parent'++liftedDecls''++after)
                         else askRenamingMsg pns "lifting"
 
-             worker1 :: (HsValBinds t GHC.Name,GHC.Outputable t)
+             worker1 :: (HasDecls t,GHC.Outputable t)
                 => t -- ^The destination of the lift operation
-                -> [GHC.LHsDecl GHC.Name] -- ^ list containing the decl to be
+                -> [GHC.LHsDecl GHC.RdrName] -- ^ list containing the decl to be
                                           -- lifted
                 -> GHC.Located GHC.Name -- ^ The name of the decl to be lifted
                 -> [GHC.Name] -- ^Declared variables in the destination
@@ -761,9 +761,10 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                     4. Do the move
                   -}
 
-                  =do let (_before,decl,_after)= divideDecls ds pnn
-                          liftedDecls = definingDeclsNames [n] decl True  True
-                          declaredPns = nub $ concatMap definedPNs liftedDecls
+                  =do (_before,decl,_after) <- divideDecls ds pnn
+                      nm <- getRefactNameMap
+                      let liftedDecls = definingDeclsRdrNames nm  [n] decl True  True
+                          declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
 
                       pns <- pnsNeedRenaming dest decl liftedDecls declaredPns
                       logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
@@ -780,14 +781,18 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         else askRenamingMsg pns "lifting"
 
 
-liftedToTopLevel :: GHC.Located GHC.Name -> GHC.RenamedSource -> (Bool,[GHC.Name])
-liftedToTopLevel pnt@(GHC.L _ pn) renamed
-  = if nonEmptyList (definingDeclsNames [pn] (hsBinds renamed) False True)
-     then let (_, parent,_) = divideDecls (hsBinds renamed) pnt
-              liftedDecls=definingDeclsNames [pn] (hsBinds parent) True True
-              declaredPns  = nub $ concatMap definedPNs liftedDecls
-          in (True, declaredPns)
-     else (False, [])
+liftedToTopLevel :: GHC.Located GHC.Name -> GHC.ParsedSource -> RefactGhc (Bool,[GHC.Name])
+liftedToTopLevel pnt@(GHC.L _ pn) parsed = do
+  if nonEmptyList (definingDeclsNames [pn] (hsBinds parsed) False True)
+     then do
+       nm <- getRefactNameMap
+       decls <- hsDecls parsed
+       (_, parent,_) <- divideDecls decls pnt
+       declsp <- hsDecls parent
+       let liftedDecls = definingDeclsRdrNames nm [pn] declsp True True
+           declaredPns  = nub $ concatMap (definedNamesRdr nm) liftedDecls
+       return (True, declaredPns)
+     else return (False, [])
 
 
 addParamsToParentAndLiftedDecl :: (GHC.Outputable t) =>
@@ -828,16 +833,12 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
 -- ---------------------------------------------------------------------
 
 -- TODO: perhaps move this to TypeUtils
-addParamsToSigs :: [GHC.Name] -> Maybe (GHC.LSig GHC.Name) -> RefactGhc (Maybe (GHC.LSig GHC.Name))
+addParamsToSigs :: [GHC.Name] -> Maybe (GHC.LSig GHC.RdrName) -> RefactGhc (Maybe (GHC.LSig GHC.RdrName))
 addParamsToSigs _ Nothing = return Nothing
 addParamsToSigs [] ms = return ms
 addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _) pns))) = do
   mts <- mapM getTypeForName newParams
   let ts = catMaybes mts
-  -- Note : the '::' symbol lies between the lns and the ltyp. Hence
-  --        construct a new location covering this gap, to insert the mew
-  --        params. This span has been specifically inserted into the
-  --        TokenTree when it is initially loaded.
   let ne = GHC.srcSpanEnd $ GHC.getLoc  $ glast "addParamsToSigs" lns
       ls = GHC.srcSpanStart $ lt
       replaceSpan = GHC.mkSrcSpan ne ls
@@ -845,7 +846,6 @@ addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _) pns)
   logm $ "addParamsToSigs:replaceSpan=" ++ showGhc replaceSpan
   logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
   -- let newToks = basicTokenise newStr
-  -- void $ putToksForSpan replaceSpan newToks
   let typ' = foldl addOneType ltyp ts
   sigOk <- isNewSignatureOk ts
   logm $ "addParamsToSigs:(sigOk,newStr)=" ++ show (sigOk,newStr)
@@ -853,7 +853,7 @@ addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _) pns)
     then return $ Just (GHC.L l (GHC.TypeSig lns typ' pns))
     else error $ "\nNew type signature may fail type checking: " ++ newStr ++ "\n"
   where
-    addOneType :: GHC.LHsType GHC.Name -> GHC.Type -> GHC.LHsType GHC.Name
+    addOneType :: GHC.LHsType GHC.RdrName -> GHC.Type -> GHC.LHsType GHC.RdrName
     addOneType et t = GHC.noLoc (GHC.HsFunTy (GHC.noLoc hst) et)
       where
         hst = typeToHsType t
@@ -893,8 +893,8 @@ isNewSignatureOk types = do
 
 -- TODO: perhaps move this to TypeUtils
 -- TODO: complete this
-typeToHsType :: GHC.Type -> GHC.HsType GHC.Name
-typeToHsType (GHC.TyVarTy v) = GHC.HsTyVar (Var.varName v)
+typeToHsType :: GHC.Type -> GHC.HsType GHC.RdrName
+typeToHsType (GHC.TyVarTy v)   = GHC.HsTyVar (Var.varName v)
 typeToHsType (GHC.AppTy t1 t2) = GHC.HsAppTy (GHC.noLoc $ typeToHsType t1)
                                              (GHC.noLoc $ typeToHsType t2)
 
@@ -1219,57 +1219,63 @@ doDemoting  pn = do
     where
        --1. demote from top level
        -- demoteInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
-       demoteInMod (renamed :: GHC.RenamedSource)
-         | not $ emptyList decls
-         = do
+       demoteInMod x@(parsed :: GHC.ParsedSource) = do
+         decls <- liftT $ hsDecls parsed
+         nm <- getRefactNameMap
+         if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
+           then do
               logm "MoveDef:demoteInMod" -- ++AZ++
-              demoted <- doDemoting' renamed pn
+              demoted <- doDemoting' parsed pn
               return demoted
-         where
-           decls = (definingDeclsNames [pn] (hsBinds renamed) False False)
-       demoteInMod x = return x
+           else return x
 
        --2. The demoted definition is a local decl in a match
        -- demoteInMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-       demoteInMatch (match@(GHC.Match _ _pats _mt (GHC.GRHSs _ ds))::GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
+       demoteInMatch match@(GHC.L l (GHC.Match _ _pats _mt (GHC.GRHSs _ ds))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+         decls <- liftT $ hsDecls ds
+         nm <- getRefactNameMap
          -- was | definingDecls [pn] ds False False/=[]
-         | not $ emptyList (definingDeclsNames [pn] (hsBinds ds) False False)
-         = do
+         if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
+           then do
               logm "MoveDef:demoteInMatch" -- ++AZ++
               done <- getRefactDone
               match' <- if (not done)
                 then doDemoting' match pn
                 else return match
               return match'
-       demoteInMatch  x = return x
+           else return match
 
        --3. The demoted definition is a local decl in a pattern binding
        -- demoteInPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
-       demoteInPat (pat@((GHC.PatBind _p rhs _ _ _))::GHC.HsBind GHC.Name)
+       demoteInPat x@(pat@(GHC.L l (GHC.ValD (GHC.PatBind _p rhs _ _ _)))::GHC.LHsDecl GHC.RdrName) = do
+         decls <- liftT $ hsDecls rhs
+         nm <- getRefactNameMap
          -- was | definingDecls [pn] ds False False /=[]
-         | not $ emptyList (definingDeclsNames [pn] (hsBinds rhs) False False)
-          = do
+         if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
+           then do
               logm "MoveDef:demoteInPat" -- ++AZ++
               done <- getRefactDone
               pat' <- if (not done)
                 then doDemoting' pat pn
                 else return pat
               return pat'
-       demoteInPat x = return x
+           else return x
 
        --4: The demoted definition is a local decl in a Let expression
        -- demoteInLet (letExp@(Exp (HsLet ds e))::HsExpP)
-       demoteInLet (letExp@(GHC.L _ (GHC.HsLet ds _e))::GHC.LHsExpr GHC.Name)
+       demoteInLet x@(letExp@(GHC.L _ (GHC.HsLet ds _e))::GHC.LHsExpr GHC.RdrName) = do
+         decls <- liftT $ hsDecls ds
+         nm <- getRefactNameMap
          -- was | definingDecls [pn] ds False False/=[]
-         | not $ emptyList (definingDeclsNames [pn] (hsBinds ds) False False)
-          = do
+         if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
+           then do
               logm "MoveDef:demoteInLet" -- ++AZ++
               done <- getRefactDone
               letExp' <- if (not done)
                  then doDemoting' letExp pn
                  else return letExp
               return letExp'
-       demoteInLet x = return x
+           else return x
 
        -- TODO: the rest of these cases below
 {-
@@ -1282,17 +1288,19 @@ doDemoting  pn = do
 
        --6.The demoted definition is a local decl in a Let statement.
        -- demoteInStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP]))
-       demoteInStmt (letStmt@(GHC.LetStmt binds)::GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name))
+       demoteInStmt x@(letStmt@(GHC.LetStmt binds)::GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+         decls <- liftT $ hsDecls binds
+         nm <- getRefactNameMap
          -- was | definingDecls [pn] ds False False /=[]
-         | not $ emptyList (definingDeclsNames [pn] (hsBinds binds) False False)
-          = do
+         if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
+           then do
               logm "MoveDef:demoteInStmt" -- ++AZ++
               done <- getRefactDone
               letStmt' <- if (not done)
                 then doDemoting' letStmt pn
                 else return letStmt
               return letStmt'
-       demoteInStmt x =return x
+           else return x
 
        -- TODO: the rest of these cases below
 {-
@@ -1305,27 +1313,29 @@ doDemoting  pn = do
 
 
 -- |Demote the declaration of 'pn' in the context of 't'.
-doDemoting' :: (HsValBinds t GHC.Name, UsedByRhs t) => t -> GHC.Name -> RefactGhc t
+doDemoting' :: (UsedByRhs t,HasDecls t) => t -> GHC.Name -> RefactGhc t
 doDemoting' t pn = do
-   let origDecls = hsBinds t
-       demotedDecls'= definingDeclsNames [pn] origDecls True False
-       declaredPns = nub $ concatMap definedPNs demotedDecls'
+   nm <- getRefactNameMap
+   origDecls <- liftT $ hsDecls t
+   let
+       demotedDecls'= definingDeclsRdrNames nm [pn] origDecls True False
+       declaredPns = nub $ concatMap (definedNamesRdr nm) demotedDecls'
        pnsUsed = usedByRhs t declaredPns
    logm $ "doDemoting':(pn,declaredPns)=" ++ showGhc (pn,declaredPns)
+   nm <- getRefactNameMap
    -- logm $ "doDemoting':t=" ++ (SYB.showData SYB.Renamer 0 t)
    logm $ "doDemoting':(declaredPns,pnsUsed)=" ++ showGhc (declaredPns,pnsUsed)
    r <-  if not pnsUsed -- (usedByRhs t declaredPns)
        then do
-              -- drawTokenTree "" -- ++AZ++ debug
-              let demotedDecls = definingDeclsNames [pn] (hsBinds t) True True
-              let
-                  otherBinds = (deleteFirstsBy sameBind (hsBinds t) demotedDecls)
+              dt <- liftT $ hsDecls t
+              let demotedDecls = definingDeclsRdrNames nm [pn] dt True True
+                  otherBinds = (deleteFirstsBy (sameBindRdr nm) dt demotedDecls)
                   -- uselist = uses declaredPns otherBinds
                       {- From 'hsDecls t' to 'hsDecls t \\ demotedDecls'.
                          Bug fixed 06/09/2004 to handle direct recursive function.
                        -}
                   -- uselist = concatMap (\r -> if (emptyList r) then [] else ["Used"]) $ map (\b -> uses declaredPns [b]) otherBinds
-                  xx = map (\b -> (b,uses declaredPns [b])) otherBinds
+                  xx = map (\b -> (b,uses nm declaredPns [b])) otherBinds
                   useCount = sum $ concatMap snd xx
               -- logm $ "doDemoting': uses xx=" ++ (showGhc xx)
               -- logm $ "doDemoting': uses useCount=" ++ (show useCount)
@@ -1371,10 +1381,11 @@ doDemoting' t pn = do
                             else  --duplicate demoted declarations to the right place.
                                  do
                                     logm $ "MoveDef: about to duplicateDecls"
-                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSigs (Just (demotedSigToks ++ demotedToks)) (hsBinds ds)
+                                    dds <- liftT $ hsDecls ds
+                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSigs Nothing dds
                                     logm $ "MoveDef:duplicateDecls done"
-
-                                    return (replaceBinds t' ds'')
+                                    t'' <- liftT $ replaceDecls t' ds''
+                                    return t''
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
        else error "This function can not be demoted as it is used in current level!\n"
@@ -1383,26 +1394,26 @@ doDemoting' t pn = do
 
     where
           ---find how many matches/pattern bindings use  'pn'-------
-          -- uses :: [GHC.Name] -> [GHC.LHsBind GHC.Name] -> [Int]
-          uses pns t2
+          uses :: NameMap -> [GHC.Name] -> [GHC.LHsDecl GHC.RdrName] -> [Int]
+          uses nm pns t2
                = concatMap used t2
                 where
 
-                  used :: GHC.LHsBind GHC.Name -> [Int]
-                  used (GHC.L _ (GHC.FunBind _n _ (GHC.MG matches _ _ _) _ _ _))
+                  used :: GHC.LHsDecl GHC.RdrName -> [Int]
+                  used (GHC.L _ (GHC.ValD (GHC.FunBind _n _ (GHC.MG matches _ _ _) _ _ _)))
                      = concatMap (usedInMatch pns) matches
 
-                  used (GHC.L _ (GHC.PatBind pat rhs _ _ _))
+                  used (GHC.L _ (GHC.ValD (GHC.PatBind pat rhs _ _ _)))
                     -- was | hsPNs p `intersect` pns ==[]  && any  (flip findPN pat) pns
                     | (not $ findPNs pns pat) && findPNs pns rhs
                     = [1::Int]
                   used  _ = []
 
-          usedInMatch pns (GHC.L _ (GHC.Match _ pats _ rhs))
-            -- was | isNothing (find (==pname) pns) && any  (flip findPN match) pns
-            | (not $ findPNs pns pats) && findPNs pns rhs
-             = [1::Int]
-          usedInMatch _ _ = []
+                  usedInMatch pns (GHC.L _ (GHC.Match _ pats _ rhs))
+                    -- was | isNothing (find (==pname) pns) && any  (flip findPN match) pns
+                    | (not $ findPNs pns pats) && findPNs pns rhs
+                     = [1::Int]
+                  usedInMatch _ _ = []
 
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).
@@ -1770,7 +1781,8 @@ foldParams pns (GHC.Match mfn pats mt rhs) _decls demotedDecls dsig dtoks
 
 
        getClashedNames :: NameMap -> [GHC.Name] -> [GHC.Name]
-                       -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)] -> RefactGhc [GHC.Name]
+                       -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
+                       -> RefactGhc [GHC.Name]
        getClashedNames nm oldNames newNames match
          = do  (_f,DN d) <- hsFDsFromInsideRdr nm match
                -- ds' <- mapM (flip hsVisiblePNs match) oldNames

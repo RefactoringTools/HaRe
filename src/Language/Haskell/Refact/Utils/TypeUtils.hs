@@ -52,13 +52,13 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Getting
     ,findNameInRdr
     ,findPNT,findPN,findAllNameOccurences
-    ,findPNs, findEntity, findEntity'
+    ,findPNs, findNamesRdr, findEntity, findEntity'
     ,findIdForName
     ,getTypeForName
 
     ,defines, definesP,definesTypeSig,definesTypeSigRdr
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
-    ,sameBind
+    ,sameBind,sameBindRdr
     {- ,usedByRhs -},UsedByRhs(..)
 
     -- ** Modules and files
@@ -623,9 +623,10 @@ isSimplePatBind decl = case decl of
      _ -> False
 
 -- | Return True if a declaration is a pattern binding but not a simple one.
-isComplexPatBind::GHC.LHsBind GHC.Name -> Bool
-isComplexPatBind decl = case decl of
-     (GHC.L _l (GHC.PatBind p _rhs _ty _fvs _)) -> patToPNT p /= Nothing
+isComplexPatBind::GHC.LHsBind name -> Bool
+isComplexPatBind decl
+  = case decl of
+     (GHC.L _l (GHC.PatBind (GHC.L _ (GHC.VarPat _)) _rhs _ty _fvs _)) -> True
      _ -> False
 
 -- | Return True if a declaration is a function\/pattern definition.
@@ -658,6 +659,9 @@ findEntity' a b = res
 
 --------------------------------------------------------------------------------
 
+sameBindRdr :: NameMap -> GHC.LHsDecl GHC.RdrName -> GHC.LHsDecl GHC.RdrName -> Bool
+sameBindRdr nm b1 b2 = (definedNamesRdr nm b1) == (definedNamesRdr nm b2)
+
 sameBind :: GHC.LHsBind GHC.Name -> GHC.LHsBind GHC.Name -> Bool
 sameBind b1 b2 = (definedPNs b1) == (definedPNs b2)
 
@@ -668,13 +672,97 @@ class (SYB.Data t) => UsedByRhs t where
 
     -- | Return True if any of the GHC.Name's appear in the given
     -- syntax element
-    usedByRhs:: t -> [GHC.Name] -> Bool
+    usedByRhs :: t -> [GHC.Name] -> Bool
+    usedByRhsRdr :: NameMap -> t -> [GHC.Name] -> Bool
 
 instance UsedByRhs GHC.RenamedSource where
 
-   -- Defined like this in the original
+   -- Not a meaningful question at this level
    usedByRhs _renamed _pns = False
-   -- usedByRhs renamed pns = usedByRhs (hsValBinds renamed) pns -- ++AZ++
+
+instance UsedByRhs (GHC.HsModule GHC.RdrName) where
+
+   -- Not a meaningful question at this level
+   usedByRhsRdr _ _parsed _pns = False
+
+-- -------------------------------------
+
+instance (UsedByRhs a) => UsedByRhs (GHC.Located a) where
+  usedByRhsRdr nm (GHC.L _ d) pns = usedByRhsRdr nm d pns
+
+-- -------------------------------------
+
+instance UsedByRhs (GHC.HsDecl GHC.RdrName) where
+  usedByRhsRdr nm de pns =
+   case de of
+      GHC.TyClD d       -> f d
+      GHC.InstD d       -> f d
+      GHC.DerivD d      -> f d
+      GHC.ValD d        -> f d
+      GHC.SigD d        -> f d
+      GHC.DefD d        -> f d
+      GHC.ForD d        -> f d
+      GHC.WarningD d    -> f d
+      GHC.AnnD d        -> f d
+      GHC.RuleD d       -> f d
+      GHC.VectD d       -> f d
+      GHC.SpliceD d     -> f d
+      GHC.DocD d        -> f d
+      GHC.RoleAnnotD d  -> f d
+#if __GLASGOW_HASKELL__ < 711
+      GHC.QuasiQuoteD d -> f d
+#endif
+     where
+       f d' = usedByRhsRdr nm d' pns
+
+-- -------------------------------------
+
+instance UsedByRhs (GHC.TyClDecl GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.InstDecl GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.DerivDecl GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.ForeignDecl GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.WarnDecls GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.AnnDecl GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.RoleAnnotDecl GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.HsQuasiQuote GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.DefaultDecl GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.SpliceDecl GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.VectDecl GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.RuleDecls GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs GHC.DocDecl where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.HsBind GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+instance UsedByRhs (GHC.Sig GHC.RdrName) where
+  usedByRhsRdr = assert False undefined
+
+-- -------------------------------------
 
 instance UsedByRhs (GHC.LHsBinds GHC.Name) where
   usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) $ GHC.bagToList binds
@@ -683,9 +771,18 @@ instance UsedByRhs (GHC.HsValBinds GHC.Name) where
   usedByRhs (GHC.ValBindsIn binds _sigs) pns  = usedByRhs (GHC.bagToList binds) pns
   usedByRhs (GHC.ValBindsOut binds _sigs) pns = or $ map (\(_,b) -> usedByRhs b pns) binds
 
+-- -------------------------------------
+
 instance UsedByRhs (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
   usedByRhs (GHC.Match _ _ _ (GHC.GRHSs rhs _)) pns -- = usedByRhs (hsValBinds rhs) pns
                                                  = findPNs pns rhs
+
+
+instance UsedByRhs (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
+  usedByRhsRdr nm (GHC.Match _ _ _ (GHC.GRHSs rhs _)) pns
+    = findNamesRdr nm pns rhs
+
+-- -------------------------------------
 
 instance UsedByRhs [GHC.LHsBind GHC.Name] where
   usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
@@ -697,21 +794,25 @@ instance UsedByRhs (GHC.HsBind GHC.Name) where
   usedByRhs (GHC.AbsBinds _ _ _ _ _)       _pns = False
   usedByRhs (GHC.PatSynBind _)             _pns = error "To implement: usedByRhs PaySynBind"
 
-
-instance UsedByRhs (GHC.LHsBind GHC.Name) where
-  usedByRhs (GHC.L _ bind) pns = usedByRhs bind pns
-
-instance UsedByRhs (GHC.LHsExpr GHC.Name) where
-  usedByRhs (GHC.L _ e) pns = usedByRhs e pns
+-- -------------------------------------
 
 instance UsedByRhs (GHC.HsExpr GHC.Name) where
   usedByRhs (GHC.HsLet _lb e) pns = findPNs pns e
   usedByRhs e                _pns = error $ "undefined usedByRhs:" ++ (showGhc e)
 
+instance UsedByRhs (GHC.HsExpr GHC.RdrName) where
+  usedByRhsRdr nm (GHC.HsLet _lb e) pns = findNamesRdr nm pns e
+  usedByRhsRdr _ e                 _pns = error $ "undefined usedByRhsRdr:" ++ (showGhc e)
+
+-- -------------------------------------
+
 instance UsedByRhs (GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name)) where
   usedByRhs (GHC.LetStmt lb) pns = findPNs pns lb
   usedByRhs s               _pns = error $ "undefined usedByRhs:" ++ (showGhc s)
 
+instance UsedByRhs (GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
+  usedByRhsRdr nm (GHC.LetStmt lb) pns = findNamesRdr nm pns lb
+  usedByRhsRdr _ s               _pns = error $ "undefined usedByRhsRdr:" ++ (showGhc s)
 
 --------------------------------------------------------------------------------
 
@@ -894,7 +995,7 @@ makeNewToks (decl, maybeSig, declToks) = do
 -- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (HasDecls t,GHC.Outputable t)
+addDecl:: (HasDecls t)
         => t              -- ^The AST to be updated
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
@@ -926,7 +1027,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
                    ans2 = setPrecedingLines s n c ans1
          setRefactAnns ans3
 
-  appendDecl :: (HasDecls t,GHC.Outputable t)
+  appendDecl :: (HasDecls t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
       -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName)) -- ^declaration and maybe sig
@@ -955,7 +1056,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
 
 
-  addLocalDecl :: (HasDecls t,GHC.Outputable t)
+  addLocalDecl :: (HasDecls t)
                => t -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
                -> RefactGhc t
   addLocalDecl parent' (newDecl, maybeSig)
@@ -2249,8 +2350,22 @@ findPNs pns
            | elem (GHC.nameUnique n) uns = Just True
         worker _ = Nothing
 
+-- ---------------------------------------------------------------------
+
+findNamesRdr :: (SYB.Data t) => NameMap -> [GHC.Name] -> t -> Bool
+findNamesRdr nm pns t =
+ isJust $ SYB.something (Nothing `SYB.mkQ` worker) t
+   where
+      uns = map GHC.nameUnique pns
+
+      worker (ln :: GHC.Located GHC.RdrName)
+         | elem (GHC.nameUnique (rdrName2NamePure nm ln)) uns = Just True
+      worker _ = Nothing
+
 -- | Return the type checked `GHC.Id` corresponding to the given
 -- `GHC.Name`
+
+-- ---------------------------------------------------------------------
 
 -- TODO: there has to be a simpler way, using the appropriate GHC internals
 findIdForName :: GHC.Name -> RefactGhc (Maybe GHC.Id)
@@ -2338,7 +2453,7 @@ patToName _ _ = Nothing
 
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing
-patToPNT::GHC.LPat name -> Maybe name
+patToPNT :: GHC.LPat GHC.Name -> Maybe GHC.Name
 patToPNT (GHC.L _ (GHC.VarPat n)) = Just n
 patToPNT _ = Nothing
 

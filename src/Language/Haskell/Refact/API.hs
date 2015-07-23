@@ -261,7 +261,7 @@ module Language.Haskell.Refact.API
     , getTypeForName
     ,defines, definesP,definesTypeSig -- , isTypeSigOf
     -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
-    ,sameBind
+    ,sameBind,sameBindRdr
     {- ,usedByRhs -},UsedByRhs(..)
 
     -- *** Modules and files
