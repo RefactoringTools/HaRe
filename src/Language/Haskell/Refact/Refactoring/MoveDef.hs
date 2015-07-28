@@ -20,6 +20,7 @@ import qualified FastString            as GHC
 import qualified GHC                   as GHC
 import qualified Name                  as GHC
 import qualified Outputable            as GHC
+import qualified RdrName               as GHC
 import qualified TyCon                 as GHC
 import qualified TypeRep               as GHC
 import qualified Var                   as Var
@@ -378,7 +379,7 @@ pnsNeedRenaming dest parent _liftedDecls pns
      pNtoName = showGhc
 
 
-addParamsToParent :: (HsValBinds t GHC.Name) => GHC.Name -> [GHC.RdrName] -> t -> RefactGhc t
+addParamsToParent :: (SYB.Data t) => GHC.Name -> [GHC.RdrName] -> t -> RefactGhc t
 addParamsToParent _pn [] t = return t
 addParamsToParent  pn params t = do
   logm $ "addParamsToParent:(pn,params)" ++ (showGhc (pn,params))
@@ -596,10 +597,12 @@ liftOneLevel' :: GHC.ModuleName
 
 liftOneLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
+  parsed <- getRefactParsed
+  nm <- getRefactNameMap
   if isLocalFunOrPatName n renamed
         then do
-                (refactoredMod,_) <- applyRefac (liftOneLevel'') RSAlreadyLoaded
-                let (b, pns) = liftedToTopLevel pn renamed
+                (refactoredMod,_) <- applyRefac doLiftOneLevel RSAlreadyLoaded
+                (b, pns) <- liftedToTopLevel pn parsed
                 if b &&  modIsExported modName renamed
                   then do clients<-clientModsAndFiles modName
                           -- logm $ "liftOneLevel':(clients,declPns)=" ++ (showGhc (clients,declPns))
@@ -609,16 +612,142 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
         else error "\nThe identifer is not a function/pattern name!"
 
    where
-      liftOneLevel''= do
+      doLiftOneLevel = do
+        parsed <- getRefactParsed
+        SYB.everywhereM (SYB.mkM liftToTop) parsed
+        where
+          liftToTop :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
+          liftToTop p = do
+            nm <- getRefactNameMap
+            ans <- getRefactAnns
+            declsp <- liftT $ hsDecls p
+            let
+              doOne bs = (definingDeclsRdrNames nm [n] declsbs False False,bs)
+                where
+                  (declsbs,_,_) = runTransform ans (hsDecls bs)
+
+              candidateBinds = map snd
+                             $ filter (\(l,_bs) -> nonEmptyList l)
+                             $ map doOne
+                             $ declsp
+            case candidateBinds of
+              [] -> return p
+              [b] -> doLift p [b]
+              bs -> error $ "MoveDef.doLiftOneLevel:multiple containing binds:" ++ showGhc bs
+
+      -- |Lift the sub-bind to the parent.
+      doLift parent bind = do
+        logm $ "in doLift"
+
+        let
+          wtop (p::GHC.ParsedSource) = do
+            worker p bind pn True
+{-
+          wgrhs (grhss::GHC.GRHSs GHC.RdrName  (GHC.LHsExpr GHC.RdrName)) = do
+             (_,dd) <- (hsFreeAndDeclaredPNs grhss)
+             decls <- liftT $ hsDecls ds
+             worker1 grhss decls pn dd False
+
+          wlet :: GHC.HsExpr GHC.RdrName -> RefactGhc (GHC.HsExpr GHC.RdrName)
+          wlet l@(GHC.HsLet dsl _e) = do
+            (_,dd) <- hsFreeAndDeclaredPNs dsl
+            decls <- liftT $ hsDecls ds
+            dsl' <- worker1 l decls pn dd False
+            return dsl'
+          wlet x = return x
+
+          wvalbinds (vb::GHC.HsValBinds GHC.RdrName) = do
+             (_,dd) <- (hsFreeAndDeclaredPNs vb)
+             decls <- liftT $ hsDecls ds
+             worker1 vb decls pn dd False
+-}
+        parent' <- SYB.everywhereM (SYB.mkM wtop
+                                    -- `SYB.extM` wgrhs
+                                    -- `SYB.extM` wlet
+                                    -- `SYB.extM` wvalbinds
+                                   ) parent
+
+        return parent'
+
+      -- TODO: merge worker and worker1
+      worker :: (HasDecls t,GHC.Outputable t)
+         => t -- ^The destination of the lift operation
+         -> [GHC.LHsDecl GHC.RdrName] -- ^ list containing the decl to be
+                                      -- lifted
+         -> GHC.Located GHC.Name -- ^ The name of the decl to be lifted
+         -> Bool -- ^True if lifting to the top level
+         -> RefactGhc t
+      worker dest ds pnn toToplevel
+           =do (before,parent,after) <- divideDecls ds pnn -- parent is misnomer, it is the decl to be moved
+               nm <- getRefactNameMap
+               let liftedDecls = definingDeclsRdrNames nm [n] parent True True
+                   declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
+               (_, dd) <- hsFreeAndDeclaredPNs dest
+               pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
+               logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
+               if pns==[]
+                 then do
+                         (parent',liftedDecls',_mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
+                                                              parent liftedDecls Nothing
+                         --True means the new decl will be at the same level with its parant.
+                         toMove <- refactReplaceDecls dest (before++parent'++after)
+                         dest' <- moveDecl1 toMove
+                                    (Just (ghead "worker" (definedNamesRdr nm (ghead "worker" parent'))))
+                                    [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                         return dest'
+                         --parent'<-doMoving declaredPns (ghead "worker" parent) True  paramAdded parent'
+                         --return (before++parent'++liftedDecls''++after)
+                 else askRenamingMsg pns "lifting"
+
+      worker1 :: (HasDecls t,GHC.Outputable t)
+         => t -- ^The destination of the lift operation
+         -> [GHC.LHsDecl GHC.RdrName] -- ^ list containing the decl to be
+                                   -- lifted
+         -> GHC.Located GHC.Name -- ^ The name of the decl to be lifted
+         -> [GHC.Name] -- ^Declared variables in the destination
+         -> Bool       -- ^True if lifting to the top level
+         -> RefactGhc t
+      worker1 dest ds pnn dd toToplevel
+           {-
+           Actions required
+             1. add parameters to original decls if required
+             2. add parameters to any points that call the lifted decl
+                once it is lifted
+             3. Replace the above in the AST
+             4. Do the move
+           -}
+
+           =do (_before,decl,_after) <- divideDecls ds pnn
+               nm <- getRefactNameMap
+               let liftedDecls = definingDeclsRdrNames nm  [n] decl True  True
+                   declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
+
+               pns <- pnsNeedRenaming dest decl liftedDecls declaredPns
+               logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
+               if pns==[]
+                 then do
+                         (parent',liftedDecls',_mLiftedSigs')
+                             <- addParamsToParentAndLiftedDecl n dd dest liftedDecls Nothing
+                         --True means the new decl will be at the same level with its parant.
+                         parent'' <- moveDecl1 parent' Nothing
+                                      [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                         return parent''
+                         --decl'<-doMoving declaredPns (ghead "worker" decl) True  paramAdded decl'
+                         --return (before++decl'++liftedDecls''++after)
+                 else askRenamingMsg pns "lifting"
+
+      -- -------------------------------
+{-
+      liftOneLevel'' = do
              logm $ "in liftOneLevel''"
-             renamed <- getRefactRenamed
+             parsed <- getRefactParsed
+             nm <- getRefactNameMap
+             ans <- getRefactAnns
              ztransformStagedM SYB.Parser (Nothing
-                                `SYB.mkQ`  liftToModQ
+                                `SYB.mkQ`  (liftToModQ nm ans)
                                 `SYB.extQ` liftToMatchQ'
                                 `SYB.extQ` liftToLet'
-                                -- `SYB.mkQ` liftToMatchQ
-                                -- `SYB.extQ` liftToLet
-                                    ) (Z.toZipper renamed)
+                                    ) (Z.toZipper parsed)
 
            where
              isValBinds :: GHC.HsValBinds GHC.RdrName -> Bool
@@ -631,16 +760,20 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              isHsLet (GHC.HsLet _ _) = True
              isHsLet _               = False
 
-             liftToModQ (p :: GHC.ParsedSource)
+             liftToModQ nm ans (p :: GHC.ParsedSource)
                 | nonEmptyList candidateBinds
                   = Just (doLiftZ candidateBinds)
                 | otherwise = Nothing
                 where
+                 (declsp ,_,_) = runTransform ans (hsDecls p)
+                 doOne bs = (definingDeclsRdrNames nm [n] declsbs False False,bs)
+                   where
+                     (declsbs,_,_) = runTransform ans (hsDecls bs)
 
                  candidateBinds = map snd
                                 $ filter (\(l,_bs) -> nonEmptyList l)
-                                $ map (\bs -> (definingDeclsNames [n] (hsBinds bs) False False,bs))
-                                $ (hsBinds p)
+                                $ map doOne
+                                $ declsp
 {-
              liftToModQ (p :: GHC.ParsedSource)
                 | nonEmptyList candidateBinds
@@ -667,6 +800,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                  = Just (doLiftZ ds)
                | otherwise = Nothing
              liftToLet' _ = Nothing
+
 
              doLiftZ :: (HasDecls t)
                => t -> SYB.Stage -> Z.Zipper a
@@ -779,23 +913,226 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 --decl'<-doMoving declaredPns (ghead "worker" decl) True  paramAdded decl'
                                 --return (before++decl'++liftedDecls''++after)
                         else askRenamingMsg pns "lifting"
+-}
+-- ---------------------------------------------------------------------
+{-
+liftOneLevel' :: GHC.ModuleName
+                -> GHC.Located GHC.Name
+                -> RefactGhc [ApplyRefacResult]
 
+liftOneLevel' modName pn@(GHC.L _ n) = do
+  renamed <- getRefactRenamed
+  parsed <- getRefactParsed
+  nm <- getRefactNameMap
+  if isLocalFunOrPatName n renamed
+        then do
+                (refactoredMod,_) <- applyRefac liftOneLevel'' RSAlreadyLoaded
+                (b, pns) <- liftedToTopLevel pn parsed
+                if b &&  modIsExported modName renamed
+                  then do clients<-clientModsAndFiles modName
+                          -- logm $ "liftOneLevel':(clients,declPns)=" ++ (showGhc (clients,declPns))
+                          refactoredClients <- mapM (liftingInClientMod modName pns) clients
+                          return (refactoredMod:(concat refactoredClients))
+                  else do return [refactoredMod]
+        else error "\nThe identifer is not a function/pattern name!"
+
+   where
+      liftOneLevel'' = do
+             logm $ "in liftOneLevel''"
+             parsed <- getRefactParsed
+             nm <- getRefactNameMap
+             ans <- getRefactAnns
+             ztransformStagedM SYB.Parser (Nothing
+                                `SYB.mkQ`  (liftToModQ nm ans)
+                                `SYB.extQ` liftToMatchQ'
+                                `SYB.extQ` liftToLet'
+                                -- `SYB.mkQ` liftToMatchQ
+                                -- `SYB.extQ` liftToLet
+                                    ) (Z.toZipper parsed)
+
+           where
+             isValBinds :: GHC.HsValBinds GHC.RdrName -> Bool
+             isValBinds _ = True
+
+             isGRHSs :: GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.RdrName) -> Bool
+             isGRHSs _ = True
+
+             isHsLet :: GHC.HsExpr GHC.Name -> Bool
+             isHsLet (GHC.HsLet _ _) = True
+             isHsLet _               = False
+
+             liftToModQ nm ans (p :: GHC.ParsedSource)
+                | nonEmptyList candidateBinds
+                  = Just (doLiftZ candidateBinds)
+                | otherwise = Nothing
+                where
+                 (declsp ,_,_) = runTransform ans (hsDecls p)
+                 doOne bs = (definingDeclsRdrNames nm [n] declsbs False False,bs)
+                   where
+                     (declsbs,_,_) = runTransform ans (hsDecls bs)
+
+                 candidateBinds = map snd
+                                $ filter (\(l,_bs) -> nonEmptyList l)
+                                $ map doOne
+                                $ declsp
+{-
+             liftToModQ (p :: GHC.ParsedSource)
+                | nonEmptyList candidateBinds
+                  = Just (doLiftZ candidateBinds)
+                | otherwise = Nothing
+                where
+                 candidateBinds = map snd
+                                $ filter (\(l,_bs) -> nonEmptyList l)
+                                $ map (\bs -> (definingDeclsNames [n] (hsBinds bs) False False,bs))
+                                $ (hsBinds p)
+-}
+
+             liftToMatchQ' :: (SYB.Data a) => GHC.Match GHC.RdrName  (GHC.LHsExpr GHC.RdrName) -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+             liftToMatchQ' ((GHC.Match _ _pats _mtyp (GHC.GRHSs rhs ds))::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+                 | (nonEmptyList (definingDeclsNames [n] (hsBinds  ds) False False))
+                    = Just (doLiftZ ds)
+                 | (nonEmptyList (definingDeclsNames [n] (hsBinds rhs) False False))
+                    = Just (doLiftZ rhs)
+                 | otherwise = Nothing
+
+             liftToLet' :: GHC.HsExpr GHC.RdrName -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+             liftToLet' ((GHC.HsLet ds _e)::GHC.HsExpr GHC.RdrName)
+               | nonEmptyList (definingDeclsNames [n] (hsBinds ds) False  False)
+                 = Just (doLiftZ ds)
+               | otherwise = Nothing
+             liftToLet' _ = Nothing
+
+
+             doLiftZ :: (HasDecls t)
+               => t -> SYB.Stage -> Z.Zipper a
+               -> RefactGhc (Z.Zipper a)
+             doLiftZ ds _stage z =
+                  do
+                    logm $ "in liftOneLevel''.liftToLet in ds"
+
+                    let zu = case (Z.up z) of
+                              Just zz -> fromMaybe (error "MoveDef.liftToLet.1")
+                                  $ upUntil (False `SYB.mkQ` isGRHSs
+                                                   `SYB.extQ` isHsLet
+                                                   `SYB.extQ` isValBinds)
+                                     zz
+                              Nothing -> z
+
+                    let
+                      -- wtop (ren::GHC.RenamedSource) = do
+                      --   worker ren (hsBinds ds) pn True
+                      wtop (ren::GHC.ParsedSource) = do
+                        decls <- liftT $ hsDecls ds
+                        worker ren decls pn True
+
+                      wgrhs (grhss::GHC.GRHSs GHC.RdrName  (GHC.LHsExpr GHC.RdrName)) = do
+                         (_,dd) <- (hsFreeAndDeclaredPNs grhss)
+                         decls <- liftT $ hsDecls ds
+                         worker1 grhss decls pn dd False
+
+                      wlet :: GHC.HsExpr GHC.RdrName -> RefactGhc (GHC.HsExpr GHC.RdrName)
+                      wlet l@(GHC.HsLet dsl _e) = do
+                        (_,dd) <- hsFreeAndDeclaredPNs dsl
+                        decls <- liftT $ hsDecls ds
+                        dsl' <- worker1 l decls pn dd False
+                        return dsl'
+                      wlet x = return x
+
+                      wvalbinds (vb::GHC.HsValBinds GHC.RdrName) = do
+                         (_,dd) <- (hsFreeAndDeclaredPNs vb)
+                         decls <- liftT $ hsDecls ds
+                         worker1 vb decls pn dd False
+
+                    ds' <- Z.transM (SYB.mkM wtop `SYB.extM` wgrhs
+                                     `SYB.extM` wlet `SYB.extM` wvalbinds) zu
+
+                    return ds'
+
+             -- TODO: merge worker and worker1
+             worker :: (HasDecls t,GHC.Outputable t)
+                => t -- ^The destination of the lift operation
+                -> [GHC.LHsDecl GHC.RdrName] -- ^ list containing the decl to be
+                                             -- lifted
+                -> GHC.Located GHC.Name -- ^ The name of the decl to be lifted
+                -> Bool -- ^True if lifting to the top level
+                -> RefactGhc t
+             worker dest ds pnn toToplevel
+                  =do (before,parent,after) <- divideDecls ds pnn -- parent is misnomer, it is the decl to be moved
+                      nm <- getRefactNameMap
+                      let liftedDecls = definingDeclsRdrNames nm [n] parent True True
+                          declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
+                      (_, dd) <- hsFreeAndDeclaredPNs dest
+                      pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
+                      logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
+                      if pns==[]
+                        then do
+                                (parent',liftedDecls',_mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
+                                                                     parent liftedDecls Nothing
+                                --True means the new decl will be at the same level with its parant.
+                                toMove <- refactReplaceDecls dest (before++parent'++after)
+                                dest' <- moveDecl1 toMove
+                                           (Just (ghead "worker" (definedNamesRdr nm (ghead "worker" parent'))))
+                                           [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                return dest'
+                                --parent'<-doMoving declaredPns (ghead "worker" parent) True  paramAdded parent'
+                                --return (before++parent'++liftedDecls''++after)
+                        else askRenamingMsg pns "lifting"
+
+             worker1 :: (HasDecls t,GHC.Outputable t)
+                => t -- ^The destination of the lift operation
+                -> [GHC.LHsDecl GHC.RdrName] -- ^ list containing the decl to be
+                                          -- lifted
+                -> GHC.Located GHC.Name -- ^ The name of the decl to be lifted
+                -> [GHC.Name] -- ^Declared variables in the destination
+                -> Bool       -- ^True if lifting to the top level
+                -> RefactGhc t
+             worker1 dest ds pnn dd toToplevel
+                  {-
+                  Actions required
+                    1. add parameters to original decls if required
+                    2. add parameters to any points that call the lifted decl
+                       once it is lifted
+                    3. Replace the above in the AST
+                    4. Do the move
+                  -}
+
+                  =do (_before,decl,_after) <- divideDecls ds pnn
+                      nm <- getRefactNameMap
+                      let liftedDecls = definingDeclsRdrNames nm  [n] decl True  True
+                          declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
+
+                      pns <- pnsNeedRenaming dest decl liftedDecls declaredPns
+                      logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
+                      if pns==[]
+                        then do
+                                (parent',liftedDecls',_mLiftedSigs')
+                                    <- addParamsToParentAndLiftedDecl n dd dest liftedDecls Nothing
+                                --True means the new decl will be at the same level with its parant.
+                                parent'' <- moveDecl1 parent' Nothing
+                                             [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                return parent''
+                                --decl'<-doMoving declaredPns (ghead "worker" decl) True  paramAdded decl'
+                                --return (before++decl'++liftedDecls''++after)
+                        else askRenamingMsg pns "lifting"
+-}
+-- ---------------------------------------------------------------------
 
 liftedToTopLevel :: GHC.Located GHC.Name -> GHC.ParsedSource -> RefactGhc (Bool,[GHC.Name])
 liftedToTopLevel pnt@(GHC.L _ pn) parsed = do
-  if nonEmptyList (definingDeclsNames [pn] (hsBinds parsed) False True)
+  nm <- getRefactNameMap
+  decls <- liftT $ hsDecls parsed
+  if nonEmptyList (definingDeclsRdrNames nm [pn] decls False True)
      then do
-       nm <- getRefactNameMap
-       decls <- hsDecls parsed
        (_, parent,_) <- divideDecls decls pnt
-       declsp <- hsDecls parent
+       -- declsp <- liftT $ hsDecls parent
+       let declsp = parent
        let liftedDecls = definingDeclsRdrNames nm [pn] declsp True True
            declaredPns  = nub $ concatMap (definedNamesRdr nm) liftedDecls
        return (True, declaredPns)
      else return (False, [])
 
 
-addParamsToParentAndLiftedDecl :: (GHC.Outputable t) =>
+addParamsToParentAndLiftedDecl :: (GHC.Outputable t,SYB.Data t) =>
      GHC.Name   -- ^name of decl being lifted
   -> [GHC.Name] -- ^Declared names in parent
   -> t          -- ^parent
@@ -809,12 +1146,13 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
        -- logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
 
        -- parameters to be added to pn because of lifting
-       let newParams= ((nub lf) \\ (nub ef)) \\ dd
+       let newParamsNames = ((nub lf) \\ (nub ef)) \\ dd
+           newParams = map GHC.nameRdrName newParamsNames
 
        logm $ "addParamsToParentAndLiftedDecl:(newParams,ef,lf,dd)=" ++ (showGhc (newParams,ef,lf,dd))
 
        if newParams /= []
-         then if  (any isComplexPatBind liftedDecls)
+         then if  (any isComplexPatDecl liftedDecls)
                 then error "This pattern binding cannot be lifted, as it uses some other local bindings!"
                 else do -- first remove the decls to be lifted, so they are not disturbed
                         (parent'',liftedDecls'',_msig) <- rmDecl pn False parent
@@ -823,7 +1161,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
 
                         liftedDecls' <- addParamsToDecls [liftedDecls''] pn newParams True
 
-                        mLiftedSigs' <- addParamsToSigs newParams mLiftedSigs
+                        mLiftedSigs' <- addParamsToSigs newParamsNames mLiftedSigs
 
                         logm $ "addParamsToParentAndLiftedDecl:mLiftedSigs'=" ++ showGhc mLiftedSigs'
 
@@ -894,7 +1232,7 @@ isNewSignatureOk types = do
 -- TODO: perhaps move this to TypeUtils
 -- TODO: complete this
 typeToHsType :: GHC.Type -> GHC.HsType GHC.RdrName
-typeToHsType (GHC.TyVarTy v)   = GHC.HsTyVar (Var.varName v)
+typeToHsType (GHC.TyVarTy v)   = GHC.HsTyVar (GHC.nameRdrName $ Var.varName v)
 typeToHsType (GHC.AppTy t1 t2) = GHC.HsAppTy (GHC.noLoc $ typeToHsType t1)
                                              (GHC.noLoc $ typeToHsType t2)
 
@@ -951,7 +1289,7 @@ data Type
 
 -}
 
-tyConAppToHsType :: GHC.Type -> GHC.HsType GHC.Name
+tyConAppToHsType :: GHC.Type -> GHC.HsType GHC.RdrName
 tyConAppToHsType (GHC.TyConApp tc _ts)
   | GHC.isFunTyCon tc = r "isFunTyCon"
   | GHC.isAlgTyCon tc = r "isAlgTyCon"

@@ -67,6 +67,7 @@ module Language.Haskell.Refact.API
        , getRefactParsed
        , putRefactParsed
        , addRefactAnns
+       , getRefactAnns
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
@@ -251,7 +252,7 @@ module Language.Haskell.Refact.API
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
     ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
-    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
+    ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
     ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     ,findNameInRdr
     ,findPNT,findPN,findAllNameOccurences

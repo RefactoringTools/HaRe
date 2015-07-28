@@ -46,7 +46,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
     ,isQualifiedPN, isFunOrPatName, isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
-    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR
+    ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
     ,usedWithoutQualR,isUsedInRhs
 
     -- ** Getting
@@ -623,6 +623,11 @@ isSimplePatBind decl = case decl of
      _ -> False
 
 -- | Return True if a declaration is a pattern binding but not a simple one.
+isComplexPatDecl::GHC.LHsDecl name -> Bool
+isComplexPatDecl (GHC.L l (GHC.ValD decl)) = isComplexPatBind (GHC.L l decl)
+isComplexPatDecl _ = False
+
+-- | Return True if a LHsBin is a pattern binding but not a simple one.
 isComplexPatBind::GHC.LHsBind name -> Bool
 isComplexPatBind decl
   = case decl of
