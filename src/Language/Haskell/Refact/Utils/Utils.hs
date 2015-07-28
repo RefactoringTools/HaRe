@@ -133,16 +133,15 @@ identifyTargetModule targetFile = do
   currentDirectory <- liftIO getCurrentDirectory
   target1 <- liftIO $ canonicalizePath targetFile
   target2 <- liftIO $ canonicalizePath (combine currentDirectory targetFile)
-  logm $ "identifyTargetModule:(targetFile,target1,target2)=" ++ show (targetFile,target1,target2)
+  -- logm $ "identifyTargetModule:(targetFile,target1,target2)=" ++ show (targetFile,target1,target2)
   -- graphs <- gets rsModuleGraph
   graphs <- gets rsGraph
   -- let graphs = concatMap (\(_,cg) -> cg) cgraphs
 
-  logm $ "identifyTargetModule:graphs=" ++ show graphs
-  -- logm $ "identifyTargetModule:locations=" ++ show (map GHC.ms_location $ concatMap snd graphs)
+  -- logm $ "identifyTargetModule:graphs=" ++ show graphs
 
   let ff = catMaybes $ map (findInTarget target1 target2) graphs
-  logm $ "identifyTargetModule:ff=" ++ show ff
+  -- logm $ "identifyTargetModule:ff=" ++ show ff
   case ff of
     [] -> return Nothing
     ms -> return (Just (ghead ("identifyTargetModule:" ++ (show ms)) ms))
@@ -230,9 +229,9 @@ parseSourceFileGhc targetFile = do
       GHC.setTargets [target]
       void $ GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
      -}
-      logm $ "parseSourceFileGhc:about to loadModuleGraphGhc for" ++ (show targetFile)
+      -- logm $ "parseSourceFileGhc:about to loadModuleGraphGhc for" ++ (show targetFile)
       loadModuleGraphGhc (Just [targetFile])
-      logm $ "parseSourceFileGhc:loadModuleGraphGhc done"
+      -- logm $ "parseSourceFileGhc:loadModuleGraphGhc done"
 
       mm <- getModuleMaybe targetFile
       case mm of

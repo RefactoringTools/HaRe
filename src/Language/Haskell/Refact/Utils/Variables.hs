@@ -1238,7 +1238,7 @@ definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining 
   where
    defining decl
      = if recursive
-        then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
+        then SYB.everythingStaged SYB.Parser (++) [] ([]  `SYB.mkQ` defines') decl
         else defines' decl
      where
       defines' :: (GHC.LHsDecl GHC.RdrName) -> [GHC.LHsDecl GHC.RdrName]
@@ -1577,7 +1577,7 @@ hsVisibleDsRdr :: (FindEntity e, GHC.Outputable e,SYB.Data t)
                -- ,HasDecls t)
              => NameMap -> e -> t -> RefactGhc DeclaredNames
 hsVisibleDsRdr nm e t = do
-  logm $ "hsVisibleDsRdr:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
+  -- logm $ "hsVisibleDsRdr:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
   (DN d) <- res
   return (DN (nub d))
   where
@@ -1589,6 +1589,7 @@ hsVisibleDsRdr nm e t = do
     res = (const err -- (DN [])
           `SYB.extQ` parsed
           `SYB.extQ` valbinds
+          `SYB.extQ` lhsdecls
           `SYB.extQ` lhsdecl
           `SYB.extQ` lhsbindslr
           `SYB.extQ` hsbinds
@@ -1636,6 +1637,13 @@ hsVisibleDsRdr nm e t = do
     valbinds _ = do
       logm $ "hsVisibleDsRdr nm.valbinds:not matched"
       return (DN [])
+
+    lhsdecls :: [GHC.LHsDecl GHC.RdrName] -> RefactGhc DeclaredNames
+    lhsdecls ds
+      | findEntity e ds = do
+         dfds <- mapM (declFun ( hsVisibleDsRdr nm e) ) ds
+         return $ mconcat dfds
+    lhsdecls _ = return (DN [])
 
     lhsdecl :: GHC.LHsDecl GHC.RdrName -> RefactGhc DeclaredNames
     lhsdecl de@(GHC.L l dd) = do

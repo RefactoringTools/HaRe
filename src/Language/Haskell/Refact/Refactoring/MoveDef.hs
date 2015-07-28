@@ -254,9 +254,10 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
        liftToMod = do
          renamed <- getRefactRenamed
          parsed <- getRefactParsed
-         let declsr = hsBinds renamed
+         -- let declsr = hsBinds renamed
          declsp <- liftT $ hsDecls parsed
          (before,parent,after) <- divideDecls declsp pn
+         logm $ "liftToMod:(parent)=" ++ (showGhc parent)
          -- error ("liftToMod:(before,parent,after)=" ++ (showGhc (before,parent,after))) -- ++AZ++
          {- ++AZ++ : hsBinds does not return class or instance definitions
          when (isClassDecl $ ghead "liftToMod" parent)
@@ -265,25 +266,26 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                $ error "Sorry, the refactorer cannot lift a definition from an instance declaration!"
          -}
          nameMap <- getRefactNameMap
-         let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
+         declsParent <- liftT $ hsDecls (ghead "liftToMod" parent)
+         let liftedDecls = definingDeclsRdrNames nameMap [n] declsParent True True
              -- declaredPns = nub $ concatMap definedPNs liftedDecls
              declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
              liftedSigs  = definingSigsRdrNames nameMap [n] parent
              mLiftedSigs = listToMaybe liftedSigs
 
+         logm $ "liftToMod:(liftedDecls)=" ++ (showGhc liftedDecls)
          -- TODO: what about declarations between this
          -- one and the top level that are used in this one?
 
          -- logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (showGhc (liftedDecls,declaredPns))
          -- original : pns<-pnsNeedRenaming inscps mod parent liftedDecls declaredPns
-         pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
+         -- pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
+         pns <- pnsNeedRenaming parsed parent liftedDecls declaredPns
+         logm $ "liftToMod:(pns needing renaming)=" ++ (showGhc pns)
 
          -- (_,dd) <- hsFreeAndDeclaredPNs renamed
          let dd = getDeclaredVars $ hsBinds renamed
          logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
-
-         -- drawTokenTree "liftToMod.a"
-         -- drawTokenTreeDetailed "liftToMod.a"
 
          if pns == []
            then do
@@ -358,15 +360,19 @@ pnsNeedRenaming :: (SYB.Data t1) =>
   -> RefactGhc [GHC.Name]
 pnsNeedRenaming dest parent _liftedDecls pns
   = do
+       logm $ "MoveDef.pnsNeedRenaming entered:pns=" ++ showGhc pns
        r <- mapM pnsNeedRenaming' pns
        return (concat r)
   where
      pnsNeedRenaming' pn
        = do
+            logm $ "MoveDef.pnsNeedRenaming' entered"
             nameMap <- getRefactNameMap
-            (f,d) <- hsFDsFromInside dest --f: free variable names that may be shadowed by pn
+            (FN f,DN d) <- hsFDsFromInsideRdr nameMap dest --f: free variable names that may be shadowed by pn
                                           --d: declaread variables names that may clash with pn
+            logm $ "MoveDef.pnsNeedRenaming':(f,d)=" ++ showGhc (f,d)
             vs <- hsVisiblePNsRdr nameMap pn parent  --vs: declarad variables that may shadow pn
+            logm $ "MoveDef.pnsNeedRenaming':vs=" ++ showGhc vs
             let -- inscpNames = map (\(x,_,_,_)->x) $ inScopeInfo inscps
                 vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
             -- if elem (pNtoName pn) vars  || isInScopeAndUnqualified (pNtoName pn) inscps && findEntity pn dest
