@@ -24,6 +24,7 @@ module Language.Haskell.Refact.API
        , canonicalizeGraph
 
        , logm
+       , logDataWithAnns
 
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
@@ -238,6 +239,7 @@ module Language.Haskell.Refact.API
     ,isDeclaredIn
     ,FreeNames(..),DeclaredNames(..)
     ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
+    ,hsFreeAndDeclaredRdr
     ,hsFreeAndDeclaredPNs
     ,hsFreeAndDeclaredGhc
     ,getDeclaredTypes

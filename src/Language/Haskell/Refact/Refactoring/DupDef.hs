@@ -19,7 +19,7 @@ import Data.Maybe
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
-import Language.Haskell.GHC.ExactPrint.Internal.Types
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Transform
 

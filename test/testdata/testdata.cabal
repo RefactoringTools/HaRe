@@ -65,3 +65,12 @@ Executable th
   Build-Depends:          base >= 4.0  && < 4.9
                         , syb
                         , template-haskell
+
+-- ---------------------------------------------------------------------
+
+Executable ltta1
+
+  Main-Is: LiftToToplevel/A1.hs
+  Other-Modules : LiftToToplevel.C1
+                  LiftToToplevel.D1
+  Build-Depends:          base >= 4.0  && < 4.9

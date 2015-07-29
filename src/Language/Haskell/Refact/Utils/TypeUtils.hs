@@ -1026,10 +1026,10 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          ans1 <- getRefactAnns
          let
              ans3 = case maybeSig of
-               Nothing -> setPrecedingLines newDecl n c ans1
-               Just s  -> setPrecedingLines newDecl 1 0 ans2
+               Nothing -> setPrecedingLinesDecl newDecl n c ans1
+               Just s  -> setPrecedingLinesDecl newDecl 1 0 ans2
                  where
-                   ans2 = setPrecedingLines s n c ans1
+                   ans2 = setPrecedingLinesDecl s n c ans1
          setRefactAnns ans3
 
   appendDecl :: (HasDecls t)
@@ -1039,7 +1039,8 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
       -> RefactGhc t -- ^updated AST
   appendDecl parent' pn' (newDecl, maybeSig)
     = do
-         setDeclSpacing newDecl maybeSig 2 0
+         let maybeSigDecl = fmap wrapSig maybeSig
+         setDeclSpacing newDecl maybeSigDecl 2 0
          nameMap <- getRefactNameMap
          decls <- refactRunTransform (hsDecls parent')
          let
@@ -1047,7 +1048,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
-         refactReplaceDecls parent' (decls1++(map wrapSig $ toList maybeSig)++[newDecl]++decls2)
+         refactReplaceDecls parent' (decls1++(toList maybeSigDecl)++[newDecl]++decls2)
 
 
   -- ^Add a definition to the beginning of the definition declaration
@@ -1057,8 +1058,9 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
        -> t -> RefactGhc t
   addTopLevelDecl (newDecl, maybeSig) parent'
     = do decls <- liftT (hsDecls parent')
-         setDeclSpacing newDecl maybeSig 2 0
-         refactReplaceDecls parent' ((map wrapSig $ toList maybeSig) ++ [newDecl]++decls)
+         let maybeSigDecl = fmap wrapSig maybeSig
+         setDeclSpacing newDecl maybeSigDecl 2 0
+         refactReplaceDecls parent' ((toList maybeSigDecl) ++ [newDecl]++decls)
 
 
   addLocalDecl :: (HasDecls t)
@@ -1069,7 +1071,7 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          decls <- refactRunTransform (hsDecls parent')
          sigs  <- refactRunTransform (mapM wrapSigT $ toList maybeSig)
          case decls of
-           [] -> setDeclSpacing newDecl maybeSig 1 4
+           [] -> setDeclSpacing newDecl (listToMaybe sigs) 1 4
            ds -> do
              DP (r,c) <- refactRunTransform (getEntryDPT (head ds))
              setDeclSpacing newDecl (listToMaybe sigs) r c
@@ -1257,7 +1259,7 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
        -- |Limit the action to actual RHS elements
        grhs :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
        grhs (GHC.GRHSs g lb) = do
-         logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
+         -- logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
          g' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM worker) g
          return (GHC.GRHSs g' lb)
 
@@ -1266,7 +1268,7 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
         -- * | pname == pn
         | eqRdrNamePure nameMap (GHC.L l2 pname) pn
           = do
-              logm $ "addActualParamsToRhs:oldExp=" ++ (SYB.showData SYB.Renamer 0 oldExp)
+              -- logm $ "addActualParamsToRhs:oldExp=" ++ (SYB.showData SYB.Renamer 0 oldExp)
               let newExp' = foldl addParamToExp oldExp paramPNames
               let newExp  = (GHC.L l2 (GHC.HsPar newExp'))
               -- TODO: updateToks must add a space at the end of the
@@ -1437,7 +1439,8 @@ rmDecl pn incSig t = do
   setStateStorage StorageNone
   t' <- everywhereMStaged' SYB.Parser (SYB.mkM inModule
                                       `SYB.extM` inLet
-                                      `SYB.extM` inGRHSs
+                                      `SYB.extM` inMatch
+                                      -- `SYB.extM` inPat
                                       ) t -- top down
          -- applyTP (once_tdTP (failTP `adhocTP` inBinds)) t
   -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inBinds) t
@@ -1453,7 +1456,7 @@ rmDecl pn incSig t = do
     inModule (p :: GHC.ParsedSource)
       = doRmDeclList p
 
-    inGRHSs x@((GHC.GRHSs _ _localDecls)::GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+    inMatch x@(((GHC.L _ (GHC.Match _ _ _ (GHC.GRHSs _ _localDecls)))):: (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)))
       = doRmDeclList x
 
     inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)

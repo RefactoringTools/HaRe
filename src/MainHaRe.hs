@@ -87,17 +87,10 @@ instance Exception HareError
 
 main :: IO ()
 main = flip catches handlers $ do
--- #if __GLASGOW_HASKELL__ >= 611
     hSetEncoding stdout utf8
--- #endif
-    -- currentDirectory <- getCurrentDirectory
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
     cradle <- findCradle
-    -- case (cradleCabalDir cradle) of
-    --   Nothing -> return ()
-    --   Just dir -> setCurrentDirectory dir
-    -- hPutStrLn stderr $ "cabal file=" ++ show (cradleCabalFile cradle) -- ++AZ++ debug
     let cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
         cmdArg2 = cmdArg !. 2

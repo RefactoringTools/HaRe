@@ -54,7 +54,7 @@ import Distribution.Helper
 import Exception
 import qualified Language.Haskell.GhcMod          as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
-import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
+import           Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
@@ -292,6 +292,7 @@ loadModuleGraphGhc maybeTargetFiles = do
 
       graph <- GHC.getModuleGraph
       cgraph <- canonicalizeGraph graph
+      logm $ "loadModuleGraphGhc:(maybeTargetFiles,graph)=" ++  showGhc (maybeTargetFiles,graph)
 
       let canonMaybe filepath = ghandle handler (canonicalizePath filepath)
             where
@@ -307,12 +308,25 @@ loadModuleGraphGhc maybeTargetFiles = do
                      , rsCurrentTarget = maybeTargetFiles
                      }
 
-      -- logm $ "loadModuleGraphGhc:cgraph=" ++ show (map fst cgraph)
-      -- logm $ "loadModuleGraphGhc:cgraph=" ++ showGhc graph
+      logm $ "loadModuleGraphGhc:cgraph=" ++ show (map fst cgraph)
+      logm $ "loadModuleGraphGhc:cgraph=" ++ showGhc graph
 
       return ()
     Nothing -> return ()
   return ()
+
+-- ---------------------------------------------------------------------
+
+cabalModuleGraphs :: RefactGhc [GM.GmModuleGraph]
+cabalModuleGraphs = RefactGhc (GM.GmlT doCabalModuleGraphs)
+  where
+    doCabalModuleGraphs = do
+      crdl@Cradle {..} <- GM.cradle
+
+      comps <- mapM (GM.resolveEntrypoint crdl) =<< GM.getComponents
+      mcs <- GM.cached cradleRootDir GM.resolvedComponentsCache comps
+      let graph = map GM.gmcHomeModuleGraph $ Map.elems mcs
+      return $ graph
 
 -- ---------------------------------------------------------------------
 
@@ -325,19 +339,11 @@ getTargetGhcOptions crdl mfns
   = RefactGhc (GmlT $ targetGhcOptions crdl mfns)
 
 -- ---------------------------------------------------------------------
+
+-- |Hand the loading of targets over to ghc-mod
 loadTarget :: [FilePath] -> RefactGhc ()
 loadTarget targetFiles = RefactGhc (loadTargets targetFiles)
-{-
-loadTarget :: [FilePath] -> RefactGhc ()
-loadTarget targetFiles = do
-  let
-    guessOne :: FilePath -> RefactGhc GHC.Target
-    guessOne f = GHC.guessTarget f Nothing
-  targets <- mapM guessOne targetFiles
-  -- ++AZ++: Use ghc-mod loading process here?
-  GHC.setTargets targets
-  void $ GHC.load GHC.LoadAllTargets
--}
+
 -- ---------------------------------------------------------------------
 
 -- | Make sure the given file is the currently loaded target, and load

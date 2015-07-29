@@ -291,9 +291,12 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
            then do
              -- TODO: change the order, first move the decls then add params,
              --       else the liftedDecls get mangled while still in the parent
+             logm $ "liftToMod:(pns == [])"
              (parent',liftedDecls',_mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
              -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
              --                                 else liftedDecls'
+
+             logm $ "liftToMod:(ffff)="
 
              -- drawTokenTree "liftToMod.c"
              -- logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
@@ -302,10 +305,10 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              let -- renamed' = replaceBinds renamed (before++parent'++after)
                  -- defName  = (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))
                  defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
+             logm $ "liftToMod:(defName)=" ++ (showGhc defName)
              parsed' <- liftT $ replaceDecls parsed (before++parent'++after)
-             void $ moveDecl1 parsed'
-                    (Just defName)
-                    [GHC.unLoc pn] (Just liftedDecls') declaredPns True
+             parsed2 <- moveDecl1 parsed' (Just defName) [GHC.unLoc pn] (Just liftedDecls') declaredPns True
+             putRefactParsed parsed2 emptyAnns
 
              return declaredPns
 
@@ -315,7 +318,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
 -- ---------------------------------------------------------------------
 
-moveDecl1 :: (HasDecls t)
+moveDecl1 :: (HasDecls t,SYB.Data t)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
 
@@ -328,6 +331,8 @@ moveDecl1 :: (HasDecls t)
   -> Bool           -- ^ True if moving to the top level
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
+  -- logm $ "moveDecl1:(defName,ns,sigNames,mliftedDecls)=" ++ showGhc (defName,ns,sigNames,mliftedDecls)
+  -- logm $ "moveDecl1:(topLevel,t)=" ++ SYB.showData SYB.Parser 0 (topLevel,t)
   nameMap <- getRefactNameMap
 
   -- TODO: work with all of ns, not just the first
@@ -336,12 +341,15 @@ moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
         Nothing          -> definingDeclsRdrNames' nameMap [n] t
         Just liftedDecls -> liftedDecls
 
+  -- logm $ "moveDecl1:(funBinding)=" ++ showGhc (funBinding)
   -- TODO: rmDecl can now remove the sig at the same time.
   (t'',sigsRemoved) <- rmTypeSigs sigNames t
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
+  -- logDataWithAnns "moveDecl1:(t')" t'
 
   r <- addDecl t' defName (ghead "moveDecl1 2" funBinding,listToMaybe sigsRemoved,Nothing) topLevel
 
+  -- logm $ "moveDecl1:(r)=" ++ SYB.showData SYB.Parser 0 r
   return r
 
 
@@ -1146,10 +1154,13 @@ addParamsToParentAndLiftedDecl :: (GHC.Outputable t,SYB.Data t) =>
   -> Maybe (GHC.LSig GHC.RdrName) -- ^ lifted decls signature if present
   -> RefactGhc (t, [GHC.LHsDecl GHC.RdrName], Maybe (GHC.LSig GHC.RdrName))
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
-  =do  (ef,_) <- hsFreeAndDeclaredPNs parent
-       (lf,_) <- hsFreeAndDeclaredPNs liftedDecls
+  =do
+       logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
+       nm <- getRefactNameMap
+       let (FN ef,_) = hsFreeAndDeclaredRdr nm parent
+       let (FN lf,_) = hsFreeAndDeclaredRdr nm liftedDecls
 
-       -- logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
+       logm $ "addParamsToParentAndLiftedDecl:(ef,lf)=" ++ showGhc (ef,lf)
 
        -- parameters to be added to pn because of lifting
        let newParamsNames = ((nub lf) \\ (nub ef)) \\ dd

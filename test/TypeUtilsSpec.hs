@@ -1870,6 +1870,31 @@ spec = do
 
     -- -----------------------------------
 
+    it "removes the last local decl in a where clause" $ do
+      (t, toks, tgt) <- ct $ parsedFileGhc "./RmDecl3.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      -- let declsr = hsBinds renamed
+      let declsp = hsBinds parsed
+      let Just (GHC.L _ n) = locToName (6, 5) renamed
+      let
+        comp = do
+         (parsed',_removedDecl,_removedSig) <- rmDecl n True parsed
+
+         putRefactParsed parsed' emptyAnns
+
+         return parsed'
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+
+      (showGhcQual n) `shouldBe` "zz"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module RmDecl3 where\n\n-- Remove last declaration from a where clause, where should disappear too\nff y = y + zz\n  where\n    zz = 1\n\n-- EOF\n"
+      (sourceFromState s) `shouldBe` "module RmDecl3 where\n\n-- Remove last declaration from a where clause, where should disappear too\nff y = y + zz\n\n-- EOF\n"
+
+    -- -----------------------------------
+
     it "removes the non last local decl in a let/in clause" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/LetIn1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
