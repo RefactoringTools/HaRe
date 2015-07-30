@@ -1753,12 +1753,12 @@ renamePN'::(SYB.Data t)
    ->RefactGhc t
 renamePN' oldPN newName useQual t = do
   -- logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
-  logm $ "renamePN: t=" ++ (SYB.showData SYB.Parser 0 t)
+  -- logm $ "renamePN: t=" ++ (SYB.showData SYB.Parser 0 t)
   nameMap <- getRefactNameMap
   newNameQual   <- rdrNameFromName True  newName
   newNameUnqual <- rdrNameFromName False newName
   newNameRdr    <- rdrNameFromName useQual newName
-  logm $ "renamePN: (newNameQual,newNameUnqual,newNameRdr)=" ++ showGhc (newNameQual,newNameUnqual,newNameRdr)
+  -- logm $ "renamePN: (newNameQual,newNameUnqual,newNameRdr)=" ++ showGhc (newNameQual,newNameUnqual,newNameRdr)
 
   let
     cond :: GHC.Located GHC.RdrName -> Bool

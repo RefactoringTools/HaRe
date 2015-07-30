@@ -190,8 +190,8 @@ findInTarget f1 f2 (fps,graph) = r'
 -- target is the currently loaded one
 
 activateModule :: TargetModule -> RefactGhc GHC.ModSummary
-activateModule tm@(target, (_,modSum)) = do
-  logm $ "activateModule:" ++ show (target,GHC.ms_mod modSum)
+activateModule tm@(target, (mfp,modSum)) = do
+  logm $ "activateModule:" ++ show (target,mfp,GHC.ms_mod modSum)
   newModSum <- ensureTargetLoaded tm
   getModuleDetails newModSum
   return newModSum
@@ -210,7 +210,7 @@ getModuleDetails modSum = do
   t <- GHC.typecheckModule p
 
   logm $ "getModuleDetails:setting context.."
-  setGhcContext modSum
+  -- setGhcContext modSum
   logm $ "getModuleDetails:context set"
 
   mtm <- gets rsModule
@@ -237,6 +237,8 @@ parseSourceFileGhc targetFile = do
       GHC.setTargets [target]
       void $ GHC.load GHC.LoadAllTargets -- Loads and compiles, much as calling ghc --make
      -}
+      currentDir <- liftIO getCurrentDirectory
+      logm $ "parseSourceFileGhc:currentDir=" ++ currentDir
       logm $ "parseSourceFileGhc:about to loadModuleGraphGhc for" ++ (show targetFile)
       loadModuleGraphGhc (Just [targetFile])
       logm $ "parseSourceFileGhc:loadModuleGraphGhc done"
@@ -347,9 +349,6 @@ modifiedFiles refactResult = map (\((s,_),_) -> s)
 --   This should never be called directly.
 initGhcSession :: Targets -> RefactGhc ()
 initGhcSession tgts = do
-    logm $ "initGhcSession:entered with tgts:" ++ show tgts
-    mgs <- cabalModuleGraphs
-    logm $ "initGhcSession:mgs=" ++ show mgs
     {-
     settings <- getRefacSettings
     df <- GHC.getSessionDynFlags

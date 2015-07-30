@@ -104,7 +104,6 @@ spec = do
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False)
                                      -- , rsetVerboseLevel = Debug
-                                     , rsetVerboseLevel = Debug
                                      }
 
       r <- rename settings testOptions "./src/Foo/Bar.hs" "baz1" (3, 1)
@@ -113,8 +112,8 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"src/Foo/Bar.hs\","++
-                            "\"test/testdata/cabal/cabal1/src/main.hs\"]"
+      (show r') `shouldBe` "[\"test/testdata/cabal/cabal1/src/Foo/Bar.hs\","
+                          ++"\"test/testdata/cabal/cabal1/src/main.hs\"]"
 
 
   -- -----------------------------------

@@ -288,7 +288,26 @@ loadModuleGraphGhc maybeTargetFiles = do
           setModeSimple >>> setEmptyLogger >>> setDynFlags
       ----------------------------------
 
-      loadTarget targetFiles
+      css <- cabalComponentSets
+      let css' = fmap toComponentFpSets css
+          toComponentFpSets cs = Set.fromList $ map mpPath $ Set.toList cs
+-- data ModulePath
+--   = ModulePath {mpModule :: GHC.ModuleName, mpPath :: FilePath}
+--   	-- Defined in ‘ghc-mod-0:Language.Haskell.GhcMod.Types’
+      logm $ "loadModuleGraphGhc:(css,css')=" ++  show (css,css')
+
+      targetFilesAbsolute <- liftIO $ mapM canonicalizePath targetFiles
+      -- check for targetFiles in each css, and expand the targets to the whole
+      -- set if there is any hit.
+      let fullTargets = foldl inTarget Set.empty css'
+          inTarget acc new =
+            if any (\tf -> tf `elem` new) targetFilesAbsolute
+              then Set.union acc new
+              else acc
+      logm $ "loadModuleGraphGhc:fullTargets=" ++  showGhc fullTargets
+
+      -- loadTarget targetFiles
+      loadTarget (Set.toList fullTargets)
 
       graph <- GHC.getModuleGraph
       cgraph <- canonicalizeGraph graph
@@ -317,11 +336,22 @@ loadModuleGraphGhc maybeTargetFiles = do
 
 -- ---------------------------------------------------------------------
 
+cabalComponentSets :: RefactGhc [Set.Set ModulePath]
+cabalComponentSets = do
+  mgs <- cabalModuleGraphs
+  logm $ "cabalComponentSets:mgs=" ++ show mgs
+  let
+    toSet (k,v) = Set.insert k v
+    flatten (GM.GmModuleGraph mg) = foldl Set.union Set.empty $ map toSet (Map.toList mg)
+  return $ map flatten mgs
+
+-- ---------------------------------------------------------------------
+
 cabalModuleGraphs :: RefactGhc [GM.GmModuleGraph]
 cabalModuleGraphs = RefactGhc (GM.GmlT doCabalModuleGraphs)
   where
     doCabalModuleGraphs = do
-      crdl@Cradle {..} <- GM.cradle
+      crdl@(GM.Cradle{..}) <- GM.cradle
 
       comps <- mapM (GM.resolveEntrypoint crdl) =<< GM.getComponents
       mcs <- GM.cached cradleRootDir GM.resolvedComponentsCache comps
@@ -354,7 +384,9 @@ ensureTargetLoaded (target,(_,modSum)) = do
   settings <- get
   let currentTarget = rsCurrentTarget settings
   if currentTarget == Just target
-    then return modSum
+    then do
+      logm $ "ensureTargetLoaded: not loading:" ++ show target
+      return modSum
     else do
       logm $ "ensureTargetLoaded: loading:" ++ show target
       loadTarget target

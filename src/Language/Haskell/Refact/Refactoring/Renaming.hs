@@ -104,7 +104,7 @@ comp fileName newName (row,col) = do
                logm $ "Renaming:nIsExported=" ++ show nIsExported
                if nIsExported  --no matter whether this pn is used or not.
                    then do clients <- clientModsAndFiles modName
-                           logm ("Renaming: clients=" ++ showGhc clients) -- ++AZ++ debug
+                           logm ("Renaming: clients=" ++ show clients) -- ++AZ++ debug
                            refactoredClients <- mapM (renameInClientMod n newName newNameGhc) clients
                            return $ refactoredMod:(concat refactoredClients)
                    else  return [refactoredMod]
@@ -216,7 +216,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
 renameInClientMod :: GHC.Name -> String -> GHC.Name -> TargetModule
                   -> RefactGhc [ApplyRefacResult]
 renameInClientMod oldPN newName newNameGhc targetModule@(_,(_,modSummary)) = do
-      logm $ "renameInClientMod:(oldPN,newNameGhc,modSummary)=" ++ (showGhc (oldPN,newNameGhc,targetModule)) -- ++AZ++
+      logm $ "renameInClientMod:(oldPN,newNameGhc,targetModule)=" ++ (showGhc (oldPN,newNameGhc,targetModule)) -- ++AZ++
       void $ activateModule targetModule
       {- ++AZ++ debug stuff -}
       names <- ghandle handler (GHC.parseName $ nameToString oldPN)
