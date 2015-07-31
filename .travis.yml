@@ -37,7 +37,7 @@ install:
  - travis_retry cabal update
  - |
    git clone https://github.com/alanz/ghc-exactprint.git
-   (cd ghc-exactprint && git checkout master && cabal install)
+   (cd ghc-exactprint && git checkout wip && cabal install)
  - |
    git clone https://github.com/alanz/ghc-mod.git
    (cd ghc-mod && git checkout HaRe && cabal install)
