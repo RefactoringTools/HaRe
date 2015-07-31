@@ -45,7 +45,7 @@ spec = do
         comp = do
           (r,_) <- applyRefac (setRefactStreamModified RefacModified) RSAlreadyLoaded
           return r
-      (((fn,m),(anns,mod')),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      (((fn,m),(anns,mod')),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t}) testOptions
       (show (fn,m)) `shouldBe` "(\"TokenTest.hs\",RefacModified)"
       putStrLn $ SYB.showData SYB.Parser 0 mod'
       -- let !printed = exactPrintAnnotation mod' anns
@@ -61,7 +61,7 @@ spec = do
         comp = do
           (r,_) <- applyRefac (setRefactStreamModified RefacModified) RSAlreadyLoaded
           return r
-      (((fn,m),(anns,mod')),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t toks }) testOptions
+      (((fn,m),(anns,mod')),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (show (fn,m)) `shouldBe` "(\"TokenTest.hs\",RefacModified)"
       putStrLn $ SYB.showData SYB.Parser 0 mod'
       -- let !printed = exactPrintAnnotation mod' anns

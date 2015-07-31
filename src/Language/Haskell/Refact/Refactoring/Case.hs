@@ -18,6 +18,8 @@ import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.ExactPrint
 
+import Control.Exception
+
 import qualified Data.Map as Map
 import Debug.Trace
 
@@ -72,6 +74,8 @@ reallyDoIfToCase expr p = do
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
                   -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
 ifToCaseTransform li@(GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
+  assert False undefined
+{-
   caseLoc        <- uniqueSrcSpan -- HaRe:-1:1
   trueMatchLoc   <- uniqueSrcSpan -- HaRe:-1:2
   trueLoc1       <- uniqueSrcSpan -- HaRe:-1:3
@@ -172,6 +176,7 @@ Right: HsApp
                 ]
   setRefactAnns anne3
   return ret
+-}
 ifToCaseTransform x = return x
 
 -- ---------------------------------------------------------------------

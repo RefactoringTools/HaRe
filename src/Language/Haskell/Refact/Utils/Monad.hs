@@ -294,7 +294,7 @@ loadModuleGraphGhc maybeTargetFiles = do
 -- data ModulePath
 --   = ModulePath {mpModule :: GHC.ModuleName, mpPath :: FilePath}
 --   	-- Defined in ‘ghc-mod-0:Language.Haskell.GhcMod.Types’
-      logm $ "loadModuleGraphGhc:(css,css')=" ++  show (css,css')
+      -- logm $ "loadModuleGraphGhc:(css,css')=" ++  show (css,css')
 
       targetFilesAbsolute <- liftIO $ mapM canonicalizePath targetFiles
       -- check for targetFiles in each css, and expand the targets to the whole
@@ -304,10 +304,14 @@ loadModuleGraphGhc maybeTargetFiles = do
             if any (\tf -> tf `elem` new) targetFilesAbsolute
               then Set.union acc new
               else acc
-      logm $ "loadModuleGraphGhc:fullTargets=" ++  showGhc fullTargets
+      logm $ "loadModuleGraphGhc:fullTargets=" ++  show fullTargets
+
+      let targets = if Set.null fullTargets
+                       then targetFiles
+                       else Set.toList fullTargets
 
       -- loadTarget targetFiles
-      loadTarget (Set.toList fullTargets)
+      loadTarget targets
 
       graph <- GHC.getModuleGraph
       cgraph <- canonicalizeGraph graph
@@ -339,7 +343,7 @@ loadModuleGraphGhc maybeTargetFiles = do
 cabalComponentSets :: RefactGhc [Set.Set ModulePath]
 cabalComponentSets = do
   mgs <- cabalModuleGraphs
-  logm $ "cabalComponentSets:mgs=" ++ show mgs
+  -- logm $ "cabalComponentSets:mgs=" ++ show mgs
   let
     toSet (k,v) = Set.insert k v
     flatten (GM.GmModuleGraph mg) = foldl Set.union Set.empty $ map toSet (Map.toList mg)

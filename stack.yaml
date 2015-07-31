@@ -11,22 +11,15 @@ packages:
     commit: 526714aed7592c6d548ce38e9935bef0a984217b
 - location:
     git: git@github.com:alanz/ghc-exactprint
-    commit: f86a73649b06dbecc22640e5e4bcb73c886c8372
-- location:
-    git: git@github.com:mpickering/refact
-    commit:  bda394c3c5f33ca6b3e9b50edd75a52800540d20
-- location:
-    git: git@github.com:mpickering/ghc-exactprint
-    commit: 0f34a6f1827e166d5f147aa0b816287a4f84885c
+    commit: 0b731f8eb86f1c62e325141ffc55edcbf1b1d9b4
+# - location:
+#     git: git@github.com:mpickering/refact
+#     commit:  bda394c3c5f33ca6b3e9b50edd75a52800540d20
 extra-deps:
 - Strafunski-StrategyLib-5.0.0.8
 - cabal-helper-0.3.6.0
 - rosezipper-0.2
 - syz-0.2.0.0
-# - ghc-7.10.1.20150612
-# resolver: nightly-2015-06-16
-# resolver: nightly-2015-06-25
-# resolver: nightly-2015-07-12
-resolver: nightly-2015-07-19
+resolver: nightly-2015-07-30
 # Use system GHC, must be a 7.10.2 rc or later.
 system-ghc: true

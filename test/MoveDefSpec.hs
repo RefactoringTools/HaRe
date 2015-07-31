@@ -19,10 +19,12 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "liftToTopLevel" $ do
-    it "Cannot lift a top level declaration" $ do
-     -- res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","4","1"])
-     res <- catchException (liftToTopLevel defaultTestSettings testOptions "./test/testdata/MoveDef/Md1.hs" (4,1))
+    it "cannot lift a top level declaration" $ do
+     -- res <- catchException (liftToTopLevel logTestSettings testOptions "./test/testdata/MoveDef/Md1.hs" (4,1))
+     res <- catchException (ct $ liftToTopLevel defaultTestSettings testOptions "./MoveDef/Md1.hs" (4,1))
      (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
+
+    -- ---------------------------------
 
     it "checks for name clashes" $ do
      -- res <- catchException (doLiftToTopLevel ["./test/testdata/MoveDef/Md1.hs","17","5"])
