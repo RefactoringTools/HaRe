@@ -34,6 +34,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , clearParsedModule
        , getRefactFileName
        , getRefactModule
+       , getRefactModuleName
        , getRefactNameMap
 
        -- * New ghc-exactprint interfacing
@@ -319,6 +320,13 @@ getRefactModule = do
       let t  = rsTypecheckedMod tm
       let pm = GHC.tm_parsed_module t
       return (GHC.ms_mod $ GHC.pm_mod_summary pm)
+
+-- ---------------------------------------------------------------------
+
+getRefactModuleName :: RefactGhc GHC.ModuleName
+getRefactModuleName = do
+  mod <- getRefactModule
+  return $ GHC.moduleName mod
 
 -- ---------------------------------------------------------------------
 

@@ -31,7 +31,8 @@ module Language.Haskell.Refact.Utils.Monad
        , logSettings
 
        , loadModuleGraphGhc
-       , ensureTargetLoaded
+       , loadTarget
+       -- , ensureTargetLoaded
        , canonicalizeGraph
        , canonicalizeModSummary
 
@@ -134,14 +135,17 @@ data RefactFlags = RefFlags
 -- stream, which gets updated transparently at key points.
 data RefactState = RefSt
         { rsSettings   :: !RefactSettings -- ^Session level settings
-        , rsUniqState  :: !Int -- ^ Current Unique creator value, incremented every time it is used
-        , rsSrcSpanCol :: !Int -- ^ Current SrcSpan creator value, incremented every time it is used
-        , rsFlags      :: !RefactFlags -- ^ Flags for controlling generic traversals
-        , rsStorage    :: !StateStorage -- ^Temporary storage of values
-                                      -- while refactoring takes place
-        , rsGraph         :: ![TargetGraph] -- TODO:deprecate this in favour of rsCabalGraph
-        , rsCabalGraph    :: ![CabalGraph]
-        , rsModuleGraph   :: ![([FilePath],GHC.ModuleGraph)]
+        , rsUniqState  :: !Int -- ^ Current Unique creator value, incremented
+                               -- every time it is used
+        , rsSrcSpanCol :: !Int -- ^ Current SrcSpan creator value, incremented
+                               -- every time it is used
+        , rsFlags      :: !RefactFlags -- ^ Flags for controlling generic
+                                       -- traversals
+        , rsStorage    :: !StateStorage -- ^Temporary storage of values while
+                                        -- refactoring takes place
+        -- , rsGraph         :: ![TargetGraph] -- TODO:deprecate this in favour of rsCabalGraph
+        , rsCabalGraph    :: ![CabalGraph] -- TODO:AZ: Needed?
+        , rsModuleGraph   :: ![([FilePath],GHC.ModuleGraph)] -- TODO:AZ: Needed?
         , rsCurrentTarget :: !(Maybe [FilePath])
         , rsModule        :: !(Maybe RefactModule) -- ^The current module being refactored
         } deriving (Show)
@@ -159,9 +163,14 @@ When HaRe needs a new SrcSpan, for this, it generates it from this
 field, to ensure uniqueness.
 -}
 
-type TargetModule = ([FilePath], (Maybe FilePath,GHC.ModSummary))
+-- type TargetModule = ([FilePath], (Maybe FilePath,GHC.ModSummary))
+type TargetModule = ModulePath -- From ghc-mod
+-- data ModulePath = ModulePath { mpModule :: ModuleName, mpPath :: FilePath }
 
-type TargetGraph = ([FilePath],[(Maybe FilePath, GHC.ModSummary)])
+instance GHC.Outputable TargetModule where
+  ppr t = GHC.text (show t)
+
+-- type TargetGraph = ([FilePath],[(Maybe FilePath, GHC.ModSummary)])
 
 -- The CabalGraph comes directly from ghc-mod
 -- type CabalGraph = Map.Map ChComponentName (GM.GmComponent GMCResolved (Set.Set ModulePath))
@@ -275,8 +284,6 @@ instance ExceptionMonad (StateT RefactState IO) where
 loadModuleGraphGhc ::
   Maybe [FilePath] -> RefactGhc ()
 loadModuleGraphGhc maybeTargetFiles = do
-  -- currentDir <- liftIO getCurrentDirectory
-  -- liftIO $ warningM "HaRe" $ "loadModuleGraphGhc:maybeTargetFiles=" ++ show (maybeTargetFiles,currentDir)
   case maybeTargetFiles of
     Just targetFiles -> do
       ---- from ghc-mod Target
@@ -326,8 +333,8 @@ loadModuleGraphGhc maybeTargetFiles = do
 
       settings <- get
       put $ settings {
-                       rsGraph         = (rsGraph settings)       ++ [(ctargetFiles,cgraph)]
-                     , rsModuleGraph   = (rsModuleGraph settings) ++ [(ctargetFiles,graph)]
+                       -- rsGraph         = (rsGraph settings)       ++ [(ctargetFiles,cgraph)]
+                       rsModuleGraph   = (rsModuleGraph settings) ++ [(ctargetFiles,graph)]
                      , rsCurrentTarget = maybeTargetFiles
                      }
 
@@ -379,7 +386,7 @@ loadTarget :: [FilePath] -> RefactGhc ()
 loadTarget targetFiles = RefactGhc (loadTargets targetFiles)
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Make sure the given file is the currently loaded target, and load
 -- it if not. Assumes that all the module graphs had been generated
 -- before, so these are not updated.
@@ -398,7 +405,7 @@ ensureTargetLoaded (target,(_,modSum)) = do
       graph <- GHC.getModuleGraph
       let newModSum = filter (\ms -> GHC.ms_mod modSum == GHC.ms_mod ms) graph
       return $ ghead "ensureTargetLoaded" newModSum
-
+-}
 -- ---------------------------------------------------------------------
 
 canonicalizeGraph ::

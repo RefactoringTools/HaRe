@@ -19,9 +19,9 @@ module Language.Haskell.Refact.API
        , logSettings
        -- , initGhcSession
 
-       , loadModuleGraphGhc
-       , ensureTargetLoaded
-       , canonicalizeGraph
+       -- , loadModuleGraphGhc
+       -- , ensureTargetLoaded
+       -- , canonicalizeGraph
 
        , logm
        , logDataWithAnns
@@ -29,10 +29,10 @@ module Language.Haskell.Refact.API
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
        -- ** Managing the GHC / project environment
-       -- , loadModuleGraphGhc
        , getModuleGhc
+       , getTargetGhc
        , parseSourceFileGhc
-       , activateModule
+       -- , activateModule
        , getModuleDetails
 
        -- ** The bits that do the work
@@ -43,7 +43,7 @@ module Language.Haskell.Refact.API
        , RefacSource(..)
 
        -- , update
-       , fileNameToModName
+       -- , fileNameToModName
        , fileNameFromModSummary
        , getModuleName
        , clientModsAndFiles
@@ -73,6 +73,8 @@ module Language.Haskell.Refact.API
        , clearParsedModule
        , getRefactFileName
        , getRefactNameMap
+
+       , getRefactModuleName
 
        -- * New ghc-exactprint interfacing
        , replaceRdrName

@@ -1,4 +1,4 @@
-module Language.Haskell.Refact.Refactoring.Renaming(rename) where
+module Language.Haskell.Refact.Refactoring.Renaming (rename) where
 
 import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
@@ -215,9 +215,10 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
 
 renameInClientMod :: GHC.Name -> String -> GHC.Name -> TargetModule
                   -> RefactGhc [ApplyRefacResult]
-renameInClientMod oldPN newName newNameGhc targetModule@(_,(_,modSummary)) = do
+renameInClientMod oldPN newName newNameGhc targetModule = do
       logm $ "renameInClientMod:(oldPN,newNameGhc,targetModule)=" ++ (showGhc (oldPN,newNameGhc,targetModule)) -- ++AZ++
-      void $ activateModule targetModule
+      -- void $ activateModule targetModule
+      getTargetGhc targetModule
       {- ++AZ++ debug stuff -}
       names <- ghandle handler (GHC.parseName $ nameToString oldPN)
       nameInfo <- mapM GHC.lookupName names
@@ -225,7 +226,8 @@ renameInClientMod oldPN newName newNameGhc targetModule@(_,(_,modSummary)) = do
       {- ++AZ++ debug stuff end -}
 
       renamed <- getRefactRenamed
-      let modName = GHC.moduleName $ GHC.ms_mod modSummary
+      modName <- getRefactModuleName
+      -- let modName = GHC.moduleName $ GHC.ms_mod modSummary
       -- causeNameClashInExports oldPN newName mod exps
       -- logm $ "renameInClientMod:causeNameClashInExports oldPN modName renamed=" ++ (show $ causeNameClashInExports oldPN modName renamed)
 

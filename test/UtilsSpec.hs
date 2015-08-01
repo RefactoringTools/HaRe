@@ -13,18 +13,15 @@ import Control.Exception
 import Control.Monad.State
 import Data.Maybe
 
+-- import qualified Language.Haskell.GhcMod          as GM
+import qualified Language.Haskell.GhcMod.Internal as GM
+
 import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.GHC.ExactPrint.Types
-
--- import Language.Haskell.GhcMod
-
 import Language.Haskell.Refact.Refactoring.Renaming
-import Language.Haskell.Refact.Utils.GhcBugWorkArounds
--- import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
--- import Language.Haskell.Refact.Utils.TypeSyn
+import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 
@@ -125,12 +122,10 @@ spec = do
       setCurrentDirectory "./test/testdata/cabal/cabal2"
       -- d <- getCurrentDirectory
       -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
-      -- cradle <- findCradle
-      -- (show cradle) `shouldBe` ""
-      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
                                      -- , rsetVerboseLevel = Debug
+                                     , rsetVerboseLevel = Debug
                                      }
 
       let handler = [Handler handler1]
@@ -354,7 +349,7 @@ spec = do
          return g
       (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
       -- (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialLogOnState testOptions
-      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[M2, M3, Main]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[M2, M3, Main]"
 
     ------------------------------------
 
@@ -368,7 +363,7 @@ spec = do
          g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
-      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[Main]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[Main]"
 
     ------------------------------------
 
@@ -391,7 +386,7 @@ spec = do
       -- (mg,_s) <- runRefactGhcState comp
       -- (mg,_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (mg,_s) <- runRefactGhc comp [Left "./src/main1.hs"] (initialState { rsModule = Nothing }) testOptions
-      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[Main, Main]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[Main, Main]"
 
       setCurrentDirectory currentDir
 
@@ -474,7 +469,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
-      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[M2, M3, Main]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[M2, M3, Main]"
 
     -- ---------------------------------
 
@@ -491,7 +486,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
-      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[]"
 
     -- ---------------------------------
 
@@ -508,7 +503,7 @@ spec = do
       ((t, mg), _s) <- ct $ runRefactGhc comp [Left "DupDef/Dd2.hs"] initialState testOptions
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"DupDef.Dd1\",\"DupDef.Dd1\")"
-      showGhc (map (GHC.ms_mod . snd . snd) mg) `shouldBe` "[DupDef.Dd2]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[DupDef.Dd2]"
 
 
   -- -------------------------------------------------------------------
@@ -593,7 +588,7 @@ spec = do
 --   where
 --     fileName = "./M.hs"
 
-
+parsedFileNoMod :: IO (ParseResult,[PosToken],Targets)
 parsedFileNoMod = ct $ parsedFileGhc "./NoMod.hs"
 
 

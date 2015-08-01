@@ -1,11 +1,6 @@
 flags: {}
 packages:
 - '.'
-# - test/testdata/
-# - test/testdata/cabal/cabal3/
-# - test/testdata/cabal/cabal1/
-# - test/testdata/cabal/cabal2/
-# - ../ghc-mod
 - location:
     git: git@github.com:alanz/ghc-mod
     commit: 526714aed7592c6d548ce38e9935bef0a984217b
