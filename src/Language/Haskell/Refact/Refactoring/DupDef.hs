@@ -16,6 +16,8 @@ import Control.Monad
 import Data.List
 import Data.Maybe
 
+import qualified Language.Haskell.GhcMod          as GM
+import qualified Language.Haskell.GhcMod.Internal as GM
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 
@@ -187,12 +189,14 @@ findNewPName name renamed = gfromJust "findNewPName" res
 -- the client module.
 refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> TargetModule
                     -> RefactGhc ApplyRefacResult
-refactorInClientMod oldPN serverModName newPName targetModule@(_,(_,modSummary))
+refactorInClientMod oldPN serverModName newPName targetModule
   = do
        logm ("refactorInClientMod: (serverModName,newPName)=" ++ (showGhc (serverModName,newPName))) -- ++AZ++ debug
-       void $ activateModule targetModule
+       -- void $ activateModule targetModule
+       getTargetGhc targetModule
 
-       let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
+       -- let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
+       let fileName = GM.mpPath targetModule
 {-
        -- modInfo@(t,ts) <- getModuleGhc fileName
        getModuleGhc fileName

@@ -74,6 +74,7 @@ module Language.Haskell.Refact.API
        , getRefactFileName
        , getRefactNameMap
 
+       , getRefactModule
        , getRefactModuleName
 
        -- * New ghc-exactprint interfacing

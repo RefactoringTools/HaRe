@@ -120,8 +120,7 @@ getTargetGhc (GM.ModulePath mn fp) = getModuleGhc fp
 
 -- | Once the module graph has been loaded, load the given module into
 -- the RefactGhc monad
--- TODO: relax the equality test, if the file is loaded via cabal it
--- may have a full filesystem path.
+-- TODO: rename this to something like loadModuleGhc
 getModuleGhc ::
   FilePath -> RefactGhc ()
 getModuleGhc targetFile = do
