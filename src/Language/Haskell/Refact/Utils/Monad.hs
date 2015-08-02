@@ -30,9 +30,10 @@ module Language.Haskell.Refact.Utils.Monad
        , defaultSettings
        , logSettings
 
-       , loadModuleGraphGhc
+       -- , loadModuleGraphGhc
        , loadTarget
        -- , ensureTargetLoaded
+       , cabalModuleGraphs
        , canonicalizeGraph
        , canonicalizeModSummary
 
@@ -146,7 +147,7 @@ data RefactState = RefSt
         -- , rsGraph         :: ![TargetGraph] -- TODO:deprecate this in favour of rsCabalGraph
         , rsCabalGraph    :: ![CabalGraph] -- TODO:AZ: Needed?
         , rsModuleGraph   :: ![([FilePath],GHC.ModuleGraph)] -- TODO:AZ: Needed?
-        , rsCurrentTarget :: !(Maybe [FilePath])
+        , rsCurrentTarget :: !(Maybe TargetModule) -- TODO:AZ: push this into rsModule
         , rsModule        :: !(Maybe RefactModule) -- ^The current module being refactored
         } deriving (Show)
 {-
@@ -280,6 +281,7 @@ instance ExceptionMonad (StateT RefactState IO) where
 
 -- ---------------------------------------------------------------------
 
+{-
 -- | Load a module graph into the GHC session, starting from main
 loadModuleGraphGhc ::
   Maybe [FilePath] -> RefactGhc ()
@@ -344,7 +346,7 @@ loadModuleGraphGhc maybeTargetFiles = do
       return ()
     Nothing -> return ()
   return ()
-
+-}
 -- ---------------------------------------------------------------------
 
 cabalComponentSets :: RefactGhc [Set.Set ModulePath]

@@ -16,11 +16,15 @@ module Language.Haskell.Refact.Utils.MonadFunctions
          fetchAnnsFinal
        , fetchToks -- Deprecated
        , getTypecheckedModule
+
        , getRefactStreamModified
        , setRefactStreamModified
+
        , getRefactInscopes
+
        , getRefactRenamed
        , putRefactRenamed
+
        , getRefactParsed
        , putRefactParsed
 
@@ -33,6 +37,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
+       , getRefactTargetModule
        , getRefactModule
        , getRefactModuleName
        , getRefactNameMap
@@ -287,6 +292,15 @@ refactRunTransform transform = do
 
 liftT :: Transform a -> RefactGhc a
 liftT = refactRunTransform
+
+-- ---------------------------------------------------------------------
+
+getRefactTargetModule :: RefactGhc TargetModule
+getRefactTargetModule = do
+  mt <- gets rsCurrentTarget
+  case mt of
+    Nothing -> error $ "HaRe:getRefactTargetModule:no module loaded"
+    Just t -> return t
 
 -- ---------------------------------------------------------------------
 

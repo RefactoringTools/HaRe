@@ -33,6 +33,7 @@ module Language.Haskell.Refact.Utils.Utils
        , initGhcSession
        ) where
 
+import Control.Exception
 import Control.Monad.State
 import Data.List
 import Data.Maybe
@@ -62,6 +63,7 @@ import qualified GHC.SYB.Utils as SYB
 import qualified Outputable    as GHC
 
 import qualified Data.Map      as Map
+import qualified Data.Set      as Set
 
 -- import Debug.Trace
 
@@ -222,8 +224,17 @@ getModuleDetails modSum = do
   t <- GHC.typecheckModule p
 
   logm $ "getModuleDetails:setting context.."
+  -- TODO:AZ: reinstate this, else inscope queries will fail. Or is there a better way to do those?
   -- setGhcContext modSum
   logm $ "getModuleDetails:context set"
+
+  (mfp,_modSum) <- canonicalizeModSummary modSum
+  case mfp of
+    Nothing -> error $ "HaRe:no file path for module:" ++ showGhc modSum
+    Just fp -> do
+      let targetModule = GM.ModulePath (GHC.moduleName $ GHC.ms_mod modSum) fp
+      settings <- get
+      put $ settings { rsCurrentTarget = Just targetModule }
 
   mtm <- gets rsModule
   case mtm of
@@ -255,9 +266,6 @@ parseSourceFileGhc targetFile = do
         Nothing -> error $ "HaRe:unexpected error parsing " ++ targetFile
         Just modSum -> getModuleDetails modSum
   -}
-  settings <- get
-  put $ settings { rsCurrentTarget = Just [targetFile] }
-
   loadTarget [targetFile]
   graph  <- GHC.getModuleGraph
   cgraph <- canonicalizeGraph graph
@@ -579,6 +587,43 @@ writeRefactoredFiles verbosity files
 -- module, say m, are those modules which directly or indirectly
 -- import module m.
 
+-- clientModsAndFiles :: GHC.ModuleName -> RefactGhc [TargetModule]
+clientModsAndFiles :: GM.ModulePath -> RefactGhc [TargetModule]
+clientModsAndFiles m = do
+  mgs <- cabalModuleGraphs
+  -- mgs is [Map ModulePath (Set ModulePath)]
+  --  where eack key imports the corresponding set.
+  -- There are no cycles
+
+  -- We need the reverse of this, the transitive set of values where if the
+  -- ModulePath is in the set, then the key is of interest.
+
+  -- So
+  --  Flatten the module graph, reverse the dependencies, then rebuild it
+  let
+    flattenSwap (GM.GmModuleGraph mg)
+      = concatMap (\(k,vs) -> map (\v -> (v,Set.singleton k)) (Set.elems vs)) $ Map.toList mg
+    transposed = mgs'
+      where
+        kvs = concatMap flattenSwap mgs
+        mgs' = foldl' (\acc (k,v) -> Map.insertWith Set.union k v acc) Map.empty kvs
+
+    -- transposed is a map from each module to those that import it. We need the
+    -- transitive closure of all the importers of the given module.
+    check acc k =
+      case Map.lookup k transposed of
+        Nothing -> (acc,[])
+        Just s -> (Set.union acc s, Set.toList $ s Set.\\ acc)
+    go (acc,[]) = acc
+    go (acc,c:s) = go (acc',s')
+      where
+        (acc',q) = check acc c
+        s' = nub (q ++ s)
+
+    r = go (Set.empty, [m])
+  return $ Set.toList r
+
+{-
 -- TODO: deal with an anonymous main module, by taking Maybe GHC.ModuleName
 clientModsAndFiles :: GHC.ModuleName -> RefactGhc [TargetModule]
 clientModsAndFiles m = do
@@ -615,6 +660,7 @@ clientModsAndFiles m = do
   logm $ "clientModsAndFiles:clients'=" ++ show clients'
   clients'' <- mapM cms clients'
   return clients''
+-}
 
 -- TODO : find decent name and place for this.
 mycomp :: GHC.ModSummary -> GHC.ModSummary -> Bool

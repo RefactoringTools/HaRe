@@ -72,6 +72,7 @@ module Language.Haskell.Refact.API
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
+       , getRefactTargetModule
        , getRefactNameMap
 
        , getRefactModule

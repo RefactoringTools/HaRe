@@ -42,6 +42,7 @@ comp fileName newName (row, col) = do
         getModuleGhc fileName
         renamed <- getRefactRenamed
         parsed  <- getRefactParsed
+        targetModule <- getRefactTargetModule
 
         let (Just (modName,_)) = getModuleName parsed
         let maybePn = locToName (row, col) renamed
@@ -55,7 +56,7 @@ comp fileName newName (row, col) = do
 
               if modIsExported modName renamed
                then
-                do clients <- clientModsAndFiles modName
+                do clients <- clientModsAndFiles targetModule
                    logm ("DupDef: clients=" ++ (showGhc clients)) -- ++AZ++ debug
                    refactoredClients <- mapM (refactorInClientMod (GHC.unLoc pn) modName
                                              (findNewPName newName renamed')) clients

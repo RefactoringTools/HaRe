@@ -226,6 +226,7 @@ liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
                 -> RefactGhc [ApplyRefacResult]
 liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
+  targetModule <- getRefactTargetModule
   -- logm $ "liftToTopLevel':renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
   logm $ "liftToTopLevel':pn=" ++ (showGhc pn)
   if isLocalFunOrPatName n renamed
@@ -236,7 +237,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
               -- logm $ "liftToTopLevel' applyRefac done:toks= " ++ (show (fst $ snd refactoredMod))
 
               if modIsExported modName renamed
-               then do clients <- clientModsAndFiles modName
+               then do clients <- clientModsAndFiles targetModule
                        logm $ "liftToTopLevel':(clients,declPns)=" ++ (showGhc (clients,declPns))
                        refactoredClients <- mapM (liftingInClientMod modName declPns) clients
                        return (refactoredMod:(concat refactoredClients))
@@ -615,12 +616,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
   parsed <- getRefactParsed
   nm <- getRefactNameMap
+  targetModule <- getRefactTargetModule
   if isLocalFunOrPatName n renamed
         then do
                 (refactoredMod,_) <- applyRefac doLiftOneLevel RSAlreadyLoaded
                 (b, pns) <- liftedToTopLevel pn parsed
                 if b &&  modIsExported modName renamed
-                  then do clients<-clientModsAndFiles modName
+                  then do clients<-clientModsAndFiles targetModule
                           -- logm $ "liftOneLevel':(clients,declPns)=" ++ (showGhc (clients,declPns))
                           refactoredClients <- mapM (liftingInClientMod modName pns) clients
                           return (refactoredMod:(concat refactoredClients))
@@ -1508,6 +1510,7 @@ demote' ::
   -> RefactGhc [ApplyRefacResult]
 demote' modName (GHC.L _ pn) = do
   renamed <- getRefactRenamed
+  targetModule <- getRefactTargetModule
   if isFunOrPatName pn renamed
     then do
        isTl <- isTopLevelPN pn
@@ -1519,7 +1522,7 @@ demote' modName (GHC.L _ pn) = do
                   if isTl && modIsExported modName renamed
                     then do let demotedDecls'= definingDeclsNames [pn] (hsBinds renamed) True False
                                 declaredPns  = nub $ concatMap definedPNs demotedDecls'
-                            clients <- clientModsAndFiles modName
+                            clients <- clientModsAndFiles targetModule
                             logm $ "demote':clients=" ++ (showGhc clients)
                             refactoredClients <-mapM (demotingInClientMod declaredPns) clients
                             -- return (refactoredMod:[])

@@ -72,7 +72,7 @@ Library
                                 , Cabal >= 1.22
                                 -- , uniplate
 
-        GHC-Options:             -Wall -O0
+        GHC-Options:             -Wall
 
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe
@@ -108,7 +108,7 @@ Library
 Executable ghc-hare
         Main-Is:                MainHaRe.hs
         -- Other-Modules:          Paths_HaRe
-        GHC-Options:            -Wall -O0
+        GHC-Options:            -Wall
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
@@ -153,7 +153,7 @@ test-suite spec
   type:
       exitcode-stdio-1.0
   ghc-options:
-      -O0
+      -- -O0
       -- reinstate these later  -Wall
       -- -Wall
       -- reinstate these later  -Werror

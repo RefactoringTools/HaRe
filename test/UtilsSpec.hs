@@ -81,7 +81,6 @@ spec = do
       -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let (Just expr) = locToExp (6,1) (12,1) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
 
-      -- (show $ toks) `shouldBe` "[((((1,1),(1,35)),ITblockComment \" FlexibleInstances #\"),\"{-# LANGUAGE FlexibleInstances #-}\"),((((2,1),(2,21)),ITblockComment \" CPP #\"),\"{-# LANGUAGE CPP #-}\"),((((3,1),(3,53)),ITlineComment \"-- Check that we can parse a file which requires CPP\"),\"-- Check that we can parse a file which requires CPP\"),((((4,1),(4,7)),ITmodule),\"module\"),((((4,8),(4,12)),ITconid \"BCpp\"),\"BCpp\"),((((4,13),(4,18)),ITwhere),\"where\"),((((6,1),(6,1)),ITvocurly),\"\"),((((6,1),(6,4)),ITvarid \"bob\"),\"bob\"),((((6,5),(6,7)),ITdcolon),\"::\"),((((6,8),(6,11)),ITconid \"Int\"),\"Int\"),((((6,12),(6,14)),ITrarrow),\"->\"),((((6,15),(6,18)),ITconid \"Int\"),\"Int\"),((((6,19),(6,21)),ITrarrow),\"->\"),((((6,22),(6,25)),ITconid \"Int\"),\"Int\"),((((7,1),(7,29)),ITlineComment \"#if __GLASGOW_HASKELL__ > 704\"),\"#if __GLASGOW_HASKELL__ > 704\"),((((8,1),(8,1)),ITsemi),\"\"),((((8,1),(8,4)),ITvarid \"bob\"),\"bob\"),((((8,5),(8,6)),ITvarid \"x\"),\"x\"),((((8,7),(8,8)),ITvarid \"y\"),\"y\"),((((8,9),(8,10)),ITequal),\"=\"),((((8,11),(8,12)),ITvarid \"x\"),\"x\"),((((8,13),(8,14)),ITvarsym \"+\"),\"+\"),((((8,15),(8,16)),ITvarid \"y\"),\"y\"),((((9,1),(9,5)),ITlineComment \"#else\"),\"#else\"),((((10,1),(10,1)),ITlineComment \"\"),\"\"),((((10,1),(10,4)),ITlineComment \"bob\"),\"bob\"),((((10,5),(10,6)),ITlineComment \"x\"),\"x\"),((((10,7),(10,8)),ITlineComment \"y\"),\"y\"),((((10,9),(10,10)),ITlineComment \"=\"),\"=\"),((((10,11),(10,12)),ITlineComment \"x\"),\"x\"),((((10,13),(10,14)),ITlineComment \"+\"),\"+\"),((((10,15),(10,16)),ITlineComment \"y\"),\"y\"),((((10,17),(10,18)),ITlineComment \"*\"),\"*\"),((((10,19),(10,20)),ITlineComment \"2\"),\"2\"),((((11,1),(11,6)),ITlineComment \"#endif\"),\"#endif\"),((((14,1),(14,1)),ITsemi),\"\")]"
       origStr <- readFile "./test/testdata/BCpp.hs"
       let toksStr = (GHC.showRichTokenStream toks)
       -- (show (filter (\(c,_) -> c /= B) $ getGroupedDiff (lines toksStr) (lines origStr))) `shouldBe` "[]"
@@ -109,7 +108,7 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"test/testdata/cabal/cabal1/src/Foo/Bar.hs\","
+      (show r') `shouldBe` "[\"./src/Foo/Bar.hs\","
                           ++"\"test/testdata/cabal/cabal1/src/main.hs\"]"
 
 
@@ -125,7 +124,6 @@ spec = do
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
                                      -- , rsetVerboseLevel = Debug
-                                     , rsetVerboseLevel = Debug
                                      }
 
       let handler = [Handler handler1]
@@ -139,7 +137,7 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"src/Foo/Bar.hs\","++
+      (show r') `shouldBe` "[\"./src/Foo/Bar.hs\","++
                             "\"test/testdata/cabal/cabal2/src/main1.hs\","++
                             "\"test/testdata/cabal/cabal2/src/main2.hs\"]"
 
@@ -171,7 +169,7 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"test/testdata/cabal/cabal3/src/main1.hs\"]"
+      (show r') `shouldBe` "[\"./src/main1.hs\"]"
 
 
   -- -----------------------------------
@@ -343,13 +341,16 @@ spec = do
       let
         comp = do
          -- (_p,_toks) <- parseSourceFileTest "./M.hs"  -- Load the main file first
-         loadModuleGraphGhc $ Just ["./M.hs"]
+         -- loadModuleGraphGhc $ Just ["./M.hs"]
          -- getModuleGhc "./M3.hs"
-         g <- clientModsAndFiles $ GHC.mkModuleName "S1"
+         getModuleGhc "./S1.hs"
+         tm <- getRefactTargetModule
+         -- g <- clientModsAndFiles $ GHC.mkModuleName "S1"
+         g <- clientModsAndFiles tm
          return g
       (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
       -- (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialLogOnState testOptions
-      showGhc (map GM.mpModule mg) `shouldBe` "[M2, M3, Main]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[Main, M3, M2]"
 
     ------------------------------------
 
@@ -358,9 +359,11 @@ spec = do
       let
         comp = do
          -- (_p,_toks) <- parseSourceFileTest "./M.hs" -- Load the main file first
-         loadModuleGraphGhc $ Just ["./M.hs"]
+         -- loadModuleGraphGhc $ Just ["./M.hs"]
          getModuleGhc "./M3.hs"
-         g <- clientModsAndFiles $ GHC.mkModuleName "M3"
+         tm <- getRefactTargetModule
+         -- g <- clientModsAndFiles $ GHC.mkModuleName "M3"
+         g <- clientModsAndFiles tm
          return g
       (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
       showGhc (map GM.mpModule mg) `shouldBe` "[Main]"
@@ -380,8 +383,10 @@ spec = do
       let
         comp = do
          initGhcSession [Left "./src/main1.hs"]
-         -- getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
-         g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
+         getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
+         tm <- getRefactTargetModule
+         -- g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
+         g <- clientModsAndFiles tm
          return g
       -- (mg,_s) <- runRefactGhcState comp
       -- (mg,_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -457,11 +462,13 @@ spec = do
       -- (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
-          loadModuleGraphGhc $ Just ["./M.hs"]
+          -- loadModuleGraphGhc $ Just ["./M.hs"]
           -- getModuleGhc "./test/testdata/S1.hs"
           getModuleGhc "./S1.hs"
           pr <- getTypecheckedModule
-          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
+          tm <- getRefactTargetModule
+          -- g <- clientModsAndFiles $ GHC.mkModuleName "S1"
+          g <- clientModsAndFiles tm
 
           return (pr,g)
 
@@ -469,7 +476,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
-      showGhc (map GM.mpModule mg) `shouldBe` "[M2, M3, Main]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[Main, M3, M2]"
 
     -- ---------------------------------
 
@@ -479,14 +486,16 @@ spec = do
         comp = do
           getModuleGhc "./S1.hs"
           pr <- getTypecheckedModule
-          g <- clientModsAndFiles $ GHC.mkModuleName "S1"
+          tm <- getRefactTargetModule
+          -- g <- clientModsAndFiles $ GHC.mkModuleName "S1"
+          g <- clientModsAndFiles tm
 
           return (pr,g)
       ((t, mg ), _s) <- ct $ runRefactGhc comp [Left "./S1.hs"] initialState testOptions
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
-      showGhc (map GM.mpModule mg) `shouldBe` "[]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[Main, M3, M2]"
 
     -- ---------------------------------
 
@@ -494,16 +503,18 @@ spec = do
       -- (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/DupDef/Dd2.hs"
       let
         comp = do
-          loadModuleGraphGhc $ Just ["./DupDef/Dd2.hs"]
+          -- loadModuleGraphGhc $ Just ["./DupDef/Dd2.hs"]
           getModuleGhc "./DupDef/Dd1.hs"
           pr <- getTypecheckedModule
-          g <- clientModsAndFiles $ GHC.mkModuleName "DupDef.Dd1"
+          tm <- getRefactTargetModule
+          -- g <- clientModsAndFiles $ GHC.mkModuleName "DupDef.Dd1"
+          g <- clientModsAndFiles tm
 
           return (pr,g)
       ((t, mg), _s) <- ct $ runRefactGhc comp [Left "DupDef/Dd2.hs"] initialState testOptions
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"DupDef.Dd1\",\"DupDef.Dd1\")"
-      showGhc (map GM.mpModule mg) `shouldBe` "[DupDef.Dd2]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[DupDef.Dd2, DupDef.Dd3]"
 
 
   -- -------------------------------------------------------------------

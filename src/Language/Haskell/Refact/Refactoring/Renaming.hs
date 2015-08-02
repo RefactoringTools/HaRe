@@ -59,10 +59,11 @@ comp fileName newName (row,col) = do
     getModuleGhc fileName
     renamed <- getRefactRenamed
     parsed  <- getRefactParsed
-    logm $ "comp:renamed=" ++ SYB.showData SYB.Renamer 0 renamed -- ++AZ++
+    -- logm $ "comp:renamed=" ++ SYB.showData SYB.Renamer 0 renamed -- ++AZ++
     -- logm $ "comp:parsed=" ++ (SYB.showData SYB.Parser 0 parsed) -- ++AZ++
 
     modu <- getModule
+    targetModule <- getRefactTargetModule
     -- let (Just (modName,_)) = getModuleName parsed
     let modName = case getModuleName parsed of
                     Just (mn,_) -> mn
@@ -103,7 +104,7 @@ comp fileName newName (row,col) = do
                (refactoredMod,nIsExported) <- applyRefac (doRenaming pn rdrNameStr newName newNameGhc modName) RSAlreadyLoaded
                logm $ "Renaming:nIsExported=" ++ show nIsExported
                if nIsExported  --no matter whether this pn is used or not.
-                   then do clients <- clientModsAndFiles modName
+                   then do clients <- clientModsAndFiles targetModule
                            logm ("Renaming: clients=" ++ show clients) -- ++AZ++ debug
                            refactoredClients <- mapM (renameInClientMod n newName newNameGhc) clients
                            return $ refactoredMod:(concat refactoredClients)
