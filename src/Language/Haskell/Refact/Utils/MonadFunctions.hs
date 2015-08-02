@@ -33,6 +33,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , addRefactAnns
        , setRefactAnns
        , getRefactAnns
+
        -- *
        , putParsedModule
        , clearParsedModule
@@ -281,10 +282,14 @@ refactReplaceDecls :: (HasDecls a) => a -> [GHC.LHsDecl GHC.RdrName] -> RefactGh
 refactReplaceDecls t decls = do
   refactRunTransform (replaceDecls t decls)
 
+-- |Run a transformation in the ghc-exactprint Transform monad, updating the
+-- current annotations and unique SrcSpan value.
 refactRunTransform :: Transform a -> RefactGhc a
 refactRunTransform transform = do
+  u <- gets rsUniqState
   ans <- getRefactAnns
-  let (a,(ans',_),logLines) = runTransform ans transform
+  let (a,(ans',u'),logLines) = runTransformFrom u ans transform
+  putUnique u'
   setRefactAnns ans'
   when (not (null logLines)) $ do
     logm $ intercalate "\n" logLines
@@ -292,6 +297,12 @@ refactRunTransform transform = do
 
 liftT :: Transform a -> RefactGhc a
 liftT = refactRunTransform
+
+
+putUnique :: Int -> RefactGhc ()
+putUnique u = do
+  s <- get
+  put $ s { rsUniqState = u }
 
 -- ---------------------------------------------------------------------
 

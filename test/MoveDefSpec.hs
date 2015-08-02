@@ -57,7 +57,8 @@ spec = do
      -- r <- ct $ liftToTopLevel (testSettingsMainfile "./test/testdata/LiftToToplevel/A1.hs") testOptions "./LiftToToplevel/D1.hs" (8,6)
      -- r <- ct $ liftToTopLevel defaultTestSettings testOptions "./LiftToToplevel/D1.hs" (8,6)
      r <- ct $ liftToTopLevel logTestSettings testOptions "./LiftToToplevel/D1.hs" (8,6)
-     (show r) `shouldBe` "[\"./LiftToToplevel/D1.hs\",\"./LiftToToplevel/C1.hs\"]"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"./LiftToToplevel/D1.hs\",\"LiftToToplevel/C1.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/D1.hs.expected"
                           "./test/testdata/LiftToToplevel/D1.refactored.hs"
      diff `shouldBe` []

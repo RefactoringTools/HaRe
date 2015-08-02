@@ -225,27 +225,33 @@ getModuleDetails modSum = do
 
   logm $ "getModuleDetails:setting context.."
   -- TODO:AZ: reinstate this, else inscope queries will fail. Or is there a better way to do those?
-  -- setGhcContext modSum
+  setGhcContext modSum
   logm $ "getModuleDetails:context set"
 
   (mfp,_modSum) <- canonicalizeModSummary modSum
-  case mfp of
+  newTargetModule <- case mfp of
     Nothing -> error $ "HaRe:no file path for module:" ++ showGhc modSum
-    Just fp -> do
-      let targetModule = GM.ModulePath (GHC.moduleName $ GHC.ms_mod modSum) fp
+    Just fp -> return $ GM.ModulePath (GHC.moduleName $ GHC.ms_mod modSum) fp
+
+  oldTargetModule <- gets rsCurrentTarget
+  let
+    putModule = do
+      putParsedModule t
       settings <- get
-      put $ settings { rsCurrentTarget = Just targetModule }
+      put $ settings { rsCurrentTarget = Just newTargetModule }
 
   mtm <- gets rsModule
   case mtm of
     Just tm -> if ((rsStreamModified tm == RefacUnmodifed)
-                  && True)
-                 then return ()
+                  && oldTargetModule == Just newTargetModule)
+                 then do
+                   logm $ "getModuleDetails:not calling putParsedModule for targetModule=" ++ show newTargetModule
+                   return ()
                  else if rsStreamModified tm == RefacUnmodifed
-                        then putParsedModule t
+                        then putModule
                         else error $ "getModuleDetails: trying to load a module without finishing with active one."
 
-    Nothing -> putParsedModule t
+    Nothing -> putModule
 
   return ()
 

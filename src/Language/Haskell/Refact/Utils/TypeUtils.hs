@@ -859,51 +859,37 @@ getName str t
 -- nothing.
 
 addImportDecl ::
-    GHC.RenamedSource
+    GHC.ParsedSource
     -> GHC.ModuleName
     -> Maybe GHC.FastString -- ^qualifier
     -> Bool -> Bool -> Bool
     -> Maybe String         -- ^alias
     -> Bool
-    -> [GHC.Name]
-    -> RefactGhc GHC.RenamedSource
-addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias hide idNames
+    -> [GHC.RdrName]
+    -> RefactGhc GHC.ParsedSource
+-- addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias hide idNames
+addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
   = do
-      {-
-       toks <- fetchToks
-       let toks1
-               =if length imps' > 0
-                   then let (_startLoc, endLoc) = getStartEndLoc $ last imps'
-                            toks1' = getToks ((1,1),endLoc) toks
-                        in toks1'
-                   else if not $ isEmptyGroup groupedDecls
-                          then
-                               let startLoc = fst $ startEndLocIncComments toks groupedDecls
-                                   (toks1', _toks2') = break (\t ->tokenPos t==startLoc) toks
-                               in toks1'
-                          else toks
-
-       -- drawTokenTreeDetailed "before starting"
-       logm $ "addImportDecl:toks =" ++ show toks
-       logm $ "addImportDecl:toks1=" ++ show toks1
-
-       let lastTok = ghead "addImportDecl" $ dropWhile isWhiteSpace $ reverse toks1
-       let startPos = tokenPos    lastTok
-       let endPos   = tokenPosEnd lastTok
-      -}
-       -- let newToks = basicTokenise (showGhc impDecl)
-       -- logm $ "addImportDecl:newToks=" ++ (show newToks) -- ++AZ++
-       -- void $ addToksAfterPos (startPos,endPos) (PlaceOffset 1 0 1) newToks
-       return (groupedDecls, (imp++[(mkNewLSomething impDecl)]), b, c)
+       let imp = GHC.hsmodImports p
+       impDecl <- mkImpDecl
+       newSpan <- liftT uniqueSrcSpanT
+       return (GHC.L l p { GHC.hsmodImports = (imp++[(GHC.L newSpan impDecl)])})
   where
 
      alias' = case alias of
                   Just stringName -> Just $ GHC.mkModuleName stringName
                   _               -> Nothing
 
-     impDecl = GHC.ImportDecl
+     mkImpDecl = do
+       newSpan1 <- liftT uniqueSrcSpanT
+       newSpan2 <- liftT uniqueSrcSpanT
+       newEnts <- mapM mkNewEnt idNames
+       let lNewEnts = GHC.L newSpan2 newEnts
+       logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
+       liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+       return $ GHC.ImportDecl
                         { GHC.ideclSourceSrc = Nothing
-                        , GHC.ideclName      = mkNewLModuleName modName
+                        , GHC.ideclName      = GHC.L newSpan1 modName
                         , GHC.ideclPkgQual   = pkgQual
                         , GHC.ideclSource    = source
                         , GHC.ideclSafe      = safe
@@ -914,54 +900,10 @@ addImportDecl (groupedDecls,imp, b, c) modName pkgQual source safe qualify alias
                                       (if idNames == [] && hide == False then
                                             Nothing
                                        else
-                                            (Just (hide, GHC.noLoc $ map mkNewEnt idNames)))
-                }
-     _imps' = rmPreludeImports imp
-
-     mkNewLSomething :: a -> GHC.Located a
-     mkNewLSomething a = (GHC.L l a) where
-        filename = (GHC.mkFastString "f")
-        l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
-
-
-     mkNewLModuleName :: GHC.ModuleName -> GHC.Located GHC.ModuleName
-     mkNewLModuleName moduName = mkNewLSomething moduName
+                                            (Just (hide, lNewEnts)))
+                        }
 
 -- ---------------------------------------------------------------------
-{-
-isEmptyGroup :: GHC.HsGroup id -> Bool
-isEmptyGroup x = (==0) $ sum $
-   [valds, tyclds, instds, derivds, fixds, defds, fords, warnds, annds, ruleds, vects, docs]
-  where
-    valds = size $ GHC.hs_valds x
-
-    size :: GHC.HsValBindsLR idL idR -> Int
-    size (GHC.ValBindsIn lhsBinds sigs) = (length sigs) + (length . GHC.bagToList $ lhsBinds)
-    size (GHC.ValBindsOut recFlags lsigs) = (length lsigs) + (length recFlags)
-
-    tyclds = length $ GHC.hs_tyclds x
-
-    instds = length $ GHC.hs_instds x
-
-    derivds = length $ GHC.hs_derivds x
-
-    fixds = length $ GHC.hs_fixds x
-
-    defds = length $ GHC.hs_defds x
-
-    fords = length $ GHC.hs_fords x
-
-    warnds = length $ GHC.hs_warnds x
-
-    annds = length $ GHC.hs_annds x
-
-    ruleds = length $ GHC.hs_ruleds x
-
-    vects = length $ GHC.hs_vects x
-
-    docs = length $ GHC.hs_docs x
--}
-
 
 -- | Remove ImportDecl from the imports list, commonly returned from a RenamedSource type, so it can
 -- be further processed.
@@ -1119,17 +1061,20 @@ stripLeadingSpaces xs = map (drop n) xs
 -- imports the specified module.
 addHiding::
     GHC.ModuleName       -- ^ The imported module name
-  ->GHC.RenamedSource    -- ^ The current module
-  ->[GHC.Name]           -- ^ The items to be added
-  ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
-addHiding a b c = addItemsToImport' a b c Hide
+  ->GHC.ParsedSource     -- ^ The current module
+  ->[GHC.RdrName]        -- ^ The items to be added
+  ->RefactGhc GHC.ParsedSource -- ^ The result
+addHiding a b c = do
+  logm $ "addHiding called for (module,names):" ++ showGhc (a,c)
+  addItemsToImport' a b c Hide
 
 -- | Creates a new entity for hiding a name in an ImportDecl.
-mkNewEnt :: GHC.Name -> GHC.LIE GHC.Name
-mkNewEnt pn = (GHC.L l (GHC.IEVar (GHC.L l pn)))
- where
-   filename = (GHC.mkFastString "f")
-   l = GHC.mkSrcSpan (GHC.mkSrcLoc filename 1 1) (GHC.mkSrcLoc filename 1 1)
+mkNewEnt :: GHC.RdrName -> RefactGhc (GHC.LIE GHC.RdrName)
+mkNewEnt pn = do
+  newSpan <- liftT uniqueSrcSpanT
+  let lpn = GHC.L newSpan pn
+  liftT $ addSimpleAnnT lpn (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return (GHC.L newSpan (GHC.IEVar lpn))
 
 -- | Represents the operation type we want to select on addItemsToImport'
 data ImportType = Hide     -- ^ Used for addHiding
@@ -1139,10 +1084,10 @@ data ImportType = Hide     -- ^ Used for addHiding
 --   specified module name. This function does nothing if the import declaration does not have an explicit entity list.
 addItemsToImport::
     GHC.ModuleName       -- ^ The imported module name
-  ->GHC.RenamedSource    -- ^ The current module
-  ->[GHC.Name]           -- ^ The items to be added
+  ->GHC.ParsedSource     -- ^ The current module
+  ->[GHC.RdrName]        -- ^ The items to be added
 --  ->Maybe GHC.Name       -- ^ The condition identifier.
-  ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
+  ->RefactGhc GHC.ParsedSource -- ^ The result
 addItemsToImport mn r ns = addItemsToImport' mn r ns Import
 
 -- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
@@ -1151,55 +1096,45 @@ addItemsToImport mn r ns = addItemsToImport' mn r ns Import
 --   the import declaration does not have an explicit entity list and ImportType is Import.
 addItemsToImport'::
     GHC.ModuleName       -- ^ The imported module name
-  ->GHC.RenamedSource    -- ^ The current module
-  ->[GHC.Name]           -- ^ The items to be added
+  ->GHC.ParsedSource     -- ^ The current module
+  ->[GHC.RdrName]        -- ^ The items to be added
 --  ->Maybe GHC.Name       -- ^ The condition identifier.
-  ->ImportType           -- ^ Whether to hide the names or import them. Uses special data for clarity.
-  ->RefactGhc GHC.RenamedSource -- ^ The result (with token stream updated)
-addItemsToImport' serverModName (g,imps,e,d) pns impType = do
+  ->ImportType            -- ^ Whether to hide the names or import them. Uses special data for clarity.
+  ->RefactGhc GHC.ParsedSource -- ^ The result
+-- addItemsToImport' serverModName (g,imps,e,d) pns impType = do
+addItemsToImport' serverModName (GHC.L l p) pns impType = do
+    let imps = GHC.hsmodImports p
     imps' <- mapM inImport imps
-    return (g,imps',e,d)
+    return $ GHC.L l p {GHC.hsmodImports = imps'}
   where
     isHide = case impType of
              Hide   -> True
              Import -> False
 
-    inImport :: GHC.LImportDecl GHC.Name -> RefactGhc (GHC.LImportDecl GHC.Name)
+    inImport :: GHC.LImportDecl GHC.RdrName -> RefactGhc (GHC.LImportDecl GHC.RdrName)
     inImport imp@(GHC.L _ (GHC.ImportDecl _st (GHC.L _ modName) _qualify _source _safe isQualified _isImplicit _as h))
       | serverModName == modName  && not isQualified -- && (if isJust pn then findPN (gfromJust "addItemsToImport" pn) h else True)
        = case h of
-           Nothing                          -> insertEnts imp [] True
+           Nothing                          -> insertEnts imp []   True
            Just (_isHide, (GHC.L _le ents)) -> insertEnts imp ents False
     inImport x = return x
 
     insertEnts ::
-      GHC.LImportDecl GHC.Name
-      -> [GHC.LIE GHC.Name]
-      -> Bool
-      -> RefactGhc ( GHC.LImportDecl GHC.Name )
-    insertEnts imp ents isNew =
+      GHC.LImportDecl GHC.RdrName
+      -> [GHC.LIE GHC.RdrName]
+      -> Bool -- True means there are already existing entities
+      -> RefactGhc ( GHC.LImportDecl GHC.RdrName )
+    insertEnts imp ents isNew = do
+        logm $ "addItemsToImport':insertEnts:(imp,ents,isNew):" ++ showGhc (imp,ents,isNew)
         if isNew && not isHide then return imp
         else do
-            {-
-            toks <- fetchToks
-            let (startPos,endPos) = getStartEndLoc imp
-                ((GHC.L l t),s) = ghead "addHiding" $ reverse $ getToks (startPos,endPos) toks
-                start = getGhcLoc l
-                end   = getGhcLocEnd l
-
-                beginning =
-                        if isNew then
-                            s ++ (if isHide then " hiding " else " ")++"("
-                        else ","
-                ending = if isNew then ")" else s
-             -}
-                -- newToken=mkToken t start (beginning++showEntities showGhc pns ++ending)
-                -- toks'=replaceToks toks start end [newToken]
-                -- toks'=replaceTok toks start newToken
-
-            -- void $ putToksForPos (start,end) [newToken]
-
-            return (replaceHiding imp  (Just (isHide, GHC.noLoc ((map mkNewEnt  pns)++ents))))
+            logm $ "addItemsToImport':insertEnts:doing stuff"
+            newSpan <- liftT uniqueSrcSpanT
+            newEnts <- mapM mkNewEnt pns
+            let lNewEnts = GHC.L newSpan (newEnts++ents)
+            logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
+            liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+            return (replaceHiding imp  (Just (isHide, lNewEnts)))
 
 
     replaceHiding (GHC.L l (GHC.ImportDecl st mn q src safe isQ isImp as _h)) h1 =

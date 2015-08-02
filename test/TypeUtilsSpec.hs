@@ -3198,22 +3198,31 @@ spec = do
          let renamed2 = fromJust $ GHC.tm_renamed_source t2
 
          let parsed1 = GHC.pm_parsed_source $ GHC.tm_parsed_module t1
-         -- let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
+         let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
 
          let mn = locToName (4,1) renamed1
          let (Just (GHC.L _ _n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
-         n1   <- mkNewGhcName Nothing "n1"
-         n2   <- mkNewGhcName Nothing "n2"
-         res  <- addHiding modName renamed2 [n1,n2]
+         -- n1   <- mkNewGhcName Nothing "n1"
+         -- n2   <- mkNewGhcName Nothing "n2"
+         let
+           n1 = mkRdrName "n1"
+           n2 = mkRdrName "n2"
+         -- res  <- addHiding modName renamed2 [n1,n2]
+         res  <- addHiding modName parsed2 [n1,n2]
+         putRefactParsed res emptyAnns
 
          return (res,renamed2,toks2)
-      ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
-      (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\n import DupDef.Dd1 hiding (n1,n2)\n\n\n f2 x = ff (x+1)\n\n mm = 5\n\n\n "
+      -- ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
+      ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialLogOnState { rsModule = initRefactModule t1}) testOptions
+
+      putStrLn $ showAnnDataFromState s
+      putStrLn $ showGhc $ annsFromState s
+      (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\nimport DupDef.Dd1 hiding (n1,n2)\n\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
 
     ------------------------------------
-
+{- ++AZ++ temporary start
     it "adds a hiding entry to the imports with an existing hiding" $ do
       (t1, _toks1, tgt1) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
@@ -3241,7 +3250,7 @@ spec = do
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
       ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
       (sourceFromState s) `shouldBe` "module DupDef.Dd3 where\n\nimport DupDef.Dd1 hiding (dd,n1,n2)\n\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
-
+-}
   -- ---------------------------------------------
 
   describe "usedWithoutQualR" $ do
@@ -3516,6 +3525,7 @@ This function is not used and has been removed
       (mkNewName "f" ["g","f_1","f"] 0) `shouldBe` "f_2"
 
   -- ---------------------------------------
+{- ++AZ++ temporary start
 
   describe "addImportDecl" $ do
     it "adds an import entry to a module with already existing, non conflicting imports and other declarations" $ do
@@ -3704,6 +3714,7 @@ This function is not used and has been removed
       ((_r,t,r2,tk2),s) <- ct $ runRefactGhcState comp
       (GHC.showRichTokenStream t) `shouldBe` "module SelectivelyImports where\n\n import Data.Maybe (fromJust)\n\n __ = id\n "
 -}
+++AZ++ temporary end -}
 
   -- ---------------------------------------
 

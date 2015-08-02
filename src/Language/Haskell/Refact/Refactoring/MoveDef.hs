@@ -14,7 +14,6 @@ module Language.Haskell.Refact.Refactoring.MoveDef
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
--- import qualified DynFlags      as GHC
 import qualified Exception             as GHC
 import qualified FastString            as GHC
 import qualified GHC                   as GHC
@@ -95,9 +94,8 @@ compLiftToTopLevel fileName (row,col) = do
       let (Just (modName,_)) = getModuleName parsed
       let maybePn = locToName (row, col) renamed
       case maybePn of
-        Just pn ->  do
-            liftToTopLevel' modName pn
-        _       ->  error "\nInvalid cursor position!\n"
+        Just pn -> liftToTopLevel' modName pn
+        _       -> error "\nInvalid cursor position!\n"
 
 
 -- ---------------------------------------------------------------------
@@ -407,9 +405,11 @@ addParamsToParent  pn params t = do
 liftingInClientMod :: GHC.ModuleName -> [GHC.Name] -> TargetModule
   -> RefactGhc [ApplyRefacResult]
 liftingInClientMod serverModName pns targetModule = do
+       logm $ "liftingInClientMod:targetModule=" ++ (show targetModule)
        -- void $ activateModule targetModule
        getTargetGhc targetModule
        renamed <- getRefactRenamed
+       parsed <- getRefactParsed
        -- logm $ "liftingInClientMod:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        -- let clientModule = GHC.ms_mod modSummary
        clientModule <- getRefactModule
@@ -421,11 +421,12 @@ liftingInClientMod serverModName pns targetModule = do
        if isJust modNames
         then do
              pns' <- namesNeedToBeHided clientModule (gfromJust "liftingInClientMod" modNames) pns
+             let pnsRdr' = map GHC.nameRdrName pns'
              logm $ "liftingInClientMod:pns'=" ++ (showGhc pns')
              -- in if pns' /= []
              if (nonEmptyList pns')
                  -- then do <-runStateT (addHiding serverModName mod pns') ((ts,unmodified),(-1000,0))
-                 then do (refactoredMod,_) <- applyRefac (addHiding serverModName renamed pns') RSAlreadyLoaded
+                 then do (refactoredMod,_) <- applyRefac (addHiding serverModName parsed pnsRdr') RSAlreadyLoaded
                          return [refactoredMod]
                  else return []
         else return []
