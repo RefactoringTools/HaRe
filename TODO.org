@@ -133,3 +133,7 @@
 *** TODO Currently WarningD decls are discarded in the renamer. Bring them through.
 *** TODO Bring mfn through the renamer - #9988
       https://ghc.haskell.org/trac/ghc/ticket/9988
+* Todos
+** TODO Turn the GHC annotation test checker into a library utility       <2015-07-17 Fri 11:01>
+ 
+
