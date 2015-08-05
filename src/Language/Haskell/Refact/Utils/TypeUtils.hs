@@ -45,7 +45,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
     ,isQualifiedPN, isFunOrPatName, isTypeSig
-    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind
+    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,isSimplePatDecl
     ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
     ,usedWithoutQualR,isUsedInRhs
 
@@ -617,6 +617,13 @@ isPatBindR _=False
 
 -- | Return True if a declaration is a pattern binding which only
 -- defines a variable value.
+isSimplePatDecl :: (GHC.DataId t) => GHC.LHsDecl t-> Bool
+isSimplePatDecl decl = case decl of
+     (GHC.L _l (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _))) -> hsPNs p /= []
+     _ -> False
+
+-- | Return True if a declaration is a pattern binding which only
+-- defines a variable value.
 isSimplePatBind :: (GHC.DataId t) => GHC.LHsBind t-> Bool
 isSimplePatBind decl = case decl of
      (GHC.L _l (GHC.PatBind p _rhs _ty _fvs _)) -> hsPNs p /= []
@@ -1127,7 +1134,7 @@ addItemsToImport' serverModName (GHC.L l p) pns impType = do
     insertEnts imp ents isNew = do
         logm $ "addItemsToImport':insertEnts:(imp,ents,isNew):" ++ showGhc (imp,ents,isNew)
         if isNew && not isHide then return imp
-        else do
+         else do
             logm $ "addItemsToImport':insertEnts:doing stuff"
             newSpan <- liftT uniqueSrcSpanT
             newEnts <- mapM mkNewEnt pns

@@ -71,75 +71,103 @@ doDuplicating :: GHC.Located GHC.Name -> String
               -> RefactGhc ()
 doDuplicating pn newName = do
    inscopes <- getRefactInscopes
-   renamed  <- getRefactRenamed
-   reallyDoDuplicating pn newName inscopes renamed
+   reallyDoDuplicating pn newName inscopes
 
 
 reallyDoDuplicating :: GHC.Located GHC.Name -> String
-              -> InScopes -> GHC.RenamedSource
+              -> InScopes
               -> RefactGhc ()
-reallyDoDuplicating pn newName inscopes renamed = do
-
-   renamed' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM dupInMod
+reallyDoDuplicating pn newName inscopes = do
+   parsed <- getRefactParsed
+   parsed' <- SYB.everywhereMStaged SYB.Renamer (
+                                   SYB.mkM   dupInModule
                                   `SYB.extM` dupInMatch
                                   `SYB.extM` dupInPat
                                   `SYB.extM` dupInLet
                                   `SYB.extM` dupInLetStmt
-                                 ) renamed
-   putRefactRenamed renamed'
+                                 ) parsed
+   putRefactParsed parsed' emptyAnns
    return ()
 
         where
         --1. The definition to be duplicated is at top level.
         -- dupInMod :: (GHC.HsGroup GHC.Name)-> RefactGhc (GHC.HsGroup GHC.Name)
-        dupInMod (grp :: (GHC.HsGroup GHC.Name))
-          | not $ emptyList (findFunOrPatBind pn (hsBinds grp)) = doDuplicating' inscopes grp pn
-        dupInMod grp = return grp
+        -- dupInMod (grp :: (GHC.HsGroup GHC.Name))
+        --   | not $ emptyList (findFunOrPatBind pn (hsBinds grp)) = doDuplicating' inscopes grp pn
+        -- dupInMod grp = return grp
+        dupInModule :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
+        dupInModule p
+          = do
+              declsp <- liftT $ hsDecls p
+              nm <- getRefactNameMap
+              if not $ emptyList (findFunOrPatBind nm pn declsp)
+                then doDuplicating' p pn
+                else return p
 
         --2. The definition to be duplicated is a local declaration in a match
-        dupInMatch (match@(GHC.Match _ _pats _typ rhs)::GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
-          | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes match pn
-        dupInMatch match = return match
+        dupInMatch (match::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+          = do
+              nm <- getRefactNameMap
+              -- declsp <- liftT $ hsDecls rhs
+              declsp <- liftT $ hsDecls match
+              if not $ emptyList (findFunOrPatBind nm pn declsp)
+                then doDuplicating' match pn
+                else return match
 
         --3. The definition to be duplicated is a local declaration in a pattern binding
-        dupInPat (pat@(GHC.PatBind _p rhs _typ _fvs _) :: GHC.HsBind GHC.Name)
-          | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes pat pn
-        dupInPat pat = return pat
+        dupInPat (pat@(GHC.L _ (GHC.PatBind _p rhs _typ _fvs _)) :: GHC.LHsBind GHC.RdrName)
+          = doDuplicating' pat pn
+        --   | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes pat pn
+        -- dupInPat pat = return pat
 
         --4: The defintion to be duplicated is a local decl in a Let expression
-        dupInLet (letExp@(GHC.HsLet ds _e):: GHC.HsExpr GHC.Name)
-          | not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letExp pn
-        dupInLet letExp = return letExp
+        dupInLet (letExp@(GHC.L _ (GHC.HsLet ds _e)):: GHC.LHsExpr GHC.RdrName)
+          = doDuplicating' letExp pn
+        --   | not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letExp pn
+        -- dupInLet letExp = return letExp
 
         --5. The definition to be duplicated is a local decl in a case alternative.
         -- Note: The local declarations in a case alternative are covered in #2 above.
 
         --6.The definition to be duplicated is a local decl in a Let statement.
-        dupInLetStmt (letStmt@(GHC.LetStmt ds):: GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name))
+        dupInLetStmt (letStmt@(GHC.LetStmt ds):: GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+          = doDuplicating' letStmt pn
            -- was |findFunOrPatBind pn ds /=[]=doDuplicating' inscps letStmt pn
-           |not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letStmt pn
-        dupInLetStmt letStmt = return letStmt
+        --    |not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letStmt pn
+        -- dupInLetStmt letStmt = return letStmt
 
 
         -- findFunOrPatBind :: (SYB.Data t) => GHC.Located GHC.Name -> t -> [GHC.LHsBind GHC.Name]
-        findFunOrPatBind (GHC.L _ n) ds = filter (\d->isFunBindR d || isSimplePatBind d) $ definingDeclsNames [n] ds True False
+        findFunOrPatBind nm (GHC.L _ n) ds = filter (\d->isFunBindP d || isSimplePatDecl d) $ definingDeclsRdrNames nm [n] ds True False
 
 
-        doDuplicating' :: (HsValBinds t GHC.Name) => InScopes -> t -> GHC.Located GHC.Name
-                       -> RefactGhc (t)
-        doDuplicating' _inscps parentr ln@(GHC.L _ n)
-           = do let
-                    declsr = hsBinds parentr
+        doDuplicating' :: (HasDecls t) => t -> GHC.Located GHC.Name -> RefactGhc t
+        doDuplicating' t ln = do
+          declsp <- liftT $ hsDecls t
+          nm <- getRefactNameMap
+          if not $ emptyList (findFunOrPatBind nm pn declsp)
+            then doDuplicating' t pn
+            else return t
 
-                    duplicatedDecls = definingDeclsNames [n] declsr True False
+
+        doDuplicating'' :: (HasDecls t) => t -> GHC.Located GHC.Name
+                       -> RefactGhc t
+        doDuplicating'' parentr ln@(GHC.L _ n)
+           = do
+                declsp <- liftT $ hsDecls parentr
+                nm <- getRefactNameMap
+                let
+                    -- declsr = hsBinds parentr
+
+                    duplicatedDecls = definingDeclsRdrNames nm [n] declsp True False
                     -- (after,before)  = break (definesP pn) (reverse declsp)
 
                 (f,d) <- hsFDNamesFromInside parentr
                     --f: names that might be shadowd by the new name,
                     --d: names that might clash with the new name
 
-                dv <- hsVisibleNames ln declsr --dv: names may shadow new name
-                let vars        = nub (f `union` d `union` dv)
+                dv <- hsVisiblePNsRdr nm ln declsp --dv: names may shadow new name
+                let vars        = nub (f `union` d `union` map showGhc dv)
 
                 newNameGhc <- mkNewGhcName Nothing newName
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow
@@ -151,10 +179,12 @@ reallyDoDuplicating pn newName inscopes renamed = do
                 if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls)
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
-                   else do newBinding <- duplicateDecl declsr parentr n newNameGhc
+                   else do newBinding <- duplicateDecl declsp parentr n newNameGhc
                            -- let newDecls = replaceDecls declsr (declsr ++ newBinding)
-                           let newDecls = replaceBinds declsr (declsr ++ newBinding)
-                           return $ replaceBinds parentr newDecls
+                           -- let newDecls = replaceBinds declsr (declsr ++ newBinding)
+                           -- return $ replaceBinds parentr newDecls
+                           parentr' <- liftT $ replaceDecls parentr (declsp ++ newBinding)
+                           return parentr'
 
 
 
@@ -227,9 +257,9 @@ refactorInClientMod oldPN serverModName newPName targetModule
 doDuplicatingClient :: GHC.ModuleName -> [GHC.Name]
               -> RefactGhc ()
 doDuplicatingClient serverModName newPNames = do
-  renamed  <- getRefactRenamed
-  renamed' <- addHiding serverModName renamed newPNames
-  putRefactRenamed renamed'
+  parsed  <- getRefactParsed
+  parsed' <- addHiding serverModName parsed (map GHC.nameRdrName newPNames)
+  putRefactParsed parsed' emptyAnns
   return ()
 
 
