@@ -635,11 +635,11 @@ isComplexPatBind decl
      _ -> False
 
 -- | Return True if a declaration is a function\/pattern definition.
-isFunOrPatBindP::HsDeclP->Bool
+isFunOrPatBindP :: HsDeclP -> Bool
 isFunOrPatBindP decl = isFunBindP decl || isPatBindP decl
 
 -- | Return True if a declaration is a function\/pattern definition.
-isFunOrPatBindR::GHC.LHsBind t -> Bool
+isFunOrPatBindR :: GHC.LHsBind t -> Bool
 isFunOrPatBindR decl = isFunBindR decl || isPatBindR decl
 
 -- ---------------------------------------------------------------------
@@ -1304,55 +1304,33 @@ Original : sq x + sumSquares xs
 -- | Duplicate a function\/pattern binding declaration under a new name
 -- right after the original one. Also updates the token stream.
 duplicateDecl :: (SYB.Data t) =>
-  [GHC.LHsBind GHC.Name]  -- ^ The declaration list
-  ->t                     -- ^ Any signatures are in here
-  ->GHC.Name              -- ^ The identifier whose definition is to be duplicated
-  ->GHC.Name              -- ^ The new name (possibly qualified)
-  ->RefactGhc [GHC.LHsBind GHC.Name]  -- ^ The result
+  -- ++AZ++ TODO: generalise the first param to 'HasDecls t'
+  [GHC.LHsDecl GHC.RdrName]  -- ^ The declaration list
+  ->t                   -- ^ Any signatures are in here
+  ->GHC.Name            -- ^ The identifier whose definition is to be duplicated
+  ->GHC.Name            -- ^ The new name (possibly qualified)
+  ->RefactGhc [GHC.LHsDecl GHC.RdrName]  -- ^ The result
 duplicateDecl decls sigs n newFunName
  = do
-      let Just sspan = getSrcSpan funBinding
-      -- toks <- getToksForSpan sspan
-      -- lay <- getLayoutForSpan sspan
+     nm <- getRefactNameMap
+     let
+       declsToDup = definingDeclsRdrNames nm [n] decls True False
+       funBinding = filter isFunOrPatBindP declsToDup     --get the fun binding.
+       typeSig    = definingSigsRdrNames nm [n] sigs
+     let Just sspan = getSrcSpan funBinding
 
-      _ <- case typeSig of
+     _ <- case typeSig of
          [] -> return sspan
          _  -> do
-          -- let Just sspanSig = getSrcSpan typeSig
-          -- toksSig <- getToksForSpan sspanSig
-          -- laySig  <- getLayoutForSpan sspanSig
-
-          {-
-          let colStart  = tokenCol $ ghead "duplicateDecl.sig"
-                    $ dropWhile isWhiteSpace toksSig
-          -}
-
-          -- typeSig'  <- putDeclToksAfterSpan sspan (ghead "duplicateDecl" typeSig) (PlaceAbsCol 2 colStart 0) toksSig
           _typeSig'' <- renamePN n newFunName False typeSig
 
           let [(GHC.L sspanSig' _)] = typeSig
 
           return sspanSig'
-      {-
-      let rowOffset = case typeSig of
-                        [] -> 2
-                        _  -> 1
-      -}
+     funBinding'' <- renamePN n newFunName False funBinding
 
-      {-
-      let colStart  = tokenCol $ ghead "duplicateDecl.decl"
-                    $ dropWhile isWhiteSpace toks
-      -}
-
-      -- funBinding'  <- putDeclToksAfterSpan newSpan (ghead "duplicateDecl" funBinding) (PlaceAbsCol rowOffset colStart 2) toks
-      funBinding'' <- renamePN n newFunName False funBinding
-
-      -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
-      return funBinding''
-     where
-       declsToDup = definingDeclsNames [n] decls True False -- ++AZ++ should recursive be set true?
-       funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
-       typeSig = definingSigsNames [n] sigs
+     -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
+     return funBinding''
 
 -- ---------------------------------------------------------------------
 

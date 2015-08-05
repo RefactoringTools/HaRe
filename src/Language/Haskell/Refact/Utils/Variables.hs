@@ -1259,8 +1259,8 @@ definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining 
 -- ---------------------------------------------------------------------
 
 -- |Find those declarations(function\/pattern binding) which define
--- the specified GHC.Names. incTypeSig indicates whether the
--- corresponding type signature will be included.
+-- the specified GHC.Names. incTypeSig indicates whether the corresponding type
+-- signature will be included.
 definingDeclsRdrNames' :: (SYB.Data t)
             => NameMap
             -> [GHC.Name]   -- ^ The specified identifiers.

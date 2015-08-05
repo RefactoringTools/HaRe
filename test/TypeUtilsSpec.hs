@@ -1065,7 +1065,7 @@ spec = do
       let Just rhs  = locToExp (14,6) (15,14) parsed  :: (Maybe (GHC.LHsExpr GHC.RdrName))
       (showGhcQual rhs) `shouldBe` "x + y + z"
 
-      let Just er = getName "IdIn5.x" renamed
+      -- let Just er = getName "IdIn5.x" renamed
       let Just e  = locToRdrName (10,1) parsed
 
       let
@@ -1604,20 +1604,20 @@ spec = do
       (t, toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = hsBinds renamed
+      -- let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName (3, 1) renamed
       let
         comp = do
-         _newName <- mkNewGhcName Nothing "bar"
+         parsed <- getRefactParsed
+         declsp <- liftT $ hsDecls parsed
          newName2 <- mkNewGhcName Nothing "bar2"
-         newBinding <- duplicateDecl declsr renamed n newName2
+         newBinding <- duplicateDecl declsp renamed n newName2
 
          return newBinding
       -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
       (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "DupDef.Dd1.toplevel"
-      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\n toplevel :: Integer -> Integer\n toplevel x = c * x\n\n c,d :: Integer\n c = 7\n d = 9\n\n -- Pattern bind\n tup :: (Int, Int)\n h :: Int\n t :: Int\n tup@(h,t) = head $ zip [1..10] [3..ff]\n   where\n     ff :: Int\n     ff = 15\n\n data D = A | B String | C\n\n ff y = y + zz\n   where\n     zz = 1\n\n l z =\n   let\n     ll = 34\n   in ll + z\n\n dd q = do\n   let ss = 5\n   return (ss + q)\n\n "
-      -- (show $ toksFromState s) `shouldBe` ""
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
       (sourceFromState s) `shouldBe` "module DupDef.Dd1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nbar2 :: Integer -> Integer\nbar2 x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\n"
       (showGhcQual nb) `shouldBe` "[bar2 x = DupDef.Dd1.c GHC.Num.* x]"
 
@@ -1627,18 +1627,22 @@ spec = do
       (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      let declsr = hsBinds renamed
+      -- let declsr = hsBinds renamed
       let Just (GHC.L _l n) = locToName (17, 6) renamed
       (showGhcQual n) `shouldBe` "ff"
       let
         comp = do
+         parsed <- getRefactParsed
+         declsp <- liftT $ hsDecls parsed
+
          newName2 <- mkNewGhcName Nothing "gg"
 
+         nm <- getRefactNameMap
          let
-           declsToDup = definingDeclsNames [n] declsr True True
-           funBinding = filter isFunOrPatBindR declsToDup     --get the fun binding.
+           declsToDup = definingDeclsRdrNames nm [n] declsp True True
+           funBinding = filter isFunOrPatBindP declsToDup     --get the fun binding.
 
-         newBinding <- duplicateDecl declsToDup renamed n newName2
+         newBinding <- duplicateDecl declsToDup parsed n newName2
 
          -- return newBinding
          return (funBinding,declsToDup,newBinding)
@@ -1663,7 +1667,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let declsr = hsBinds renamed
+      -- let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName (3, 1) renamed
       let
         comp = do
@@ -1691,7 +1695,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let declsr = hsBinds renamed
+      -- let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName (3, 1) renamed
       let
         comp = do
@@ -1719,7 +1723,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      let declsr = hsBinds renamed
+      -- let declsr = hsBinds renamed
       let Just (GHC.L _ n) = locToName (6, 1) renamed
       let
         comp = do
@@ -1746,7 +1750,7 @@ spec = do
     it "adds a parameter to the rhs of a declaration, and updates the token stream" $ do
       (t, _toks, tgt) <- ct $ parsedFileGhc "./LiftToToplevel/D1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let declsr = hsBinds renamed
       -- let decl@(GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [GHC.L _ (GHC.Match _ _ rhs) ] _) _ _ _)) = head declsr
@@ -1774,7 +1778,7 @@ spec = do
     it "adds parameters to a complex rhs of a declaration, and updates the token stream" $ do
       (t, _toks,tgt) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn7.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let declsr = hsBinds renamed
       -- let decl@(GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [GHC.L _ (GHC.Match _ _ rhs) ] _) _ _ _)) = head declsr
@@ -1877,7 +1881,7 @@ spec = do
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
       -- let declsr = hsBinds renamed
-      let declsp = hsBinds parsed
+      -- let declsp = hsBinds parsed
       let Just (GHC.L _ n) = locToName (6, 5) renamed
       let
         comp = do
@@ -3222,7 +3226,7 @@ spec = do
       (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\nimport DupDef.Dd1 hiding (n1,n2)\n\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
 
     ------------------------------------
-{- ++AZ++ temporary start
+
     it "adds a hiding entry to the imports with an existing hiding" $ do
       (t1, _toks1, tgt1) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
@@ -3236,21 +3240,22 @@ spec = do
          let renamed2 = fromJust $ GHC.tm_renamed_source t2
 
          let parsed1 = GHC.pm_parsed_source $ GHC.tm_parsed_module t1
-         -- let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
+         let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
 
          let mn = locToName (4,1) renamed1
          let (Just (GHC.L _ _n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
-         n1   <- mkNewGhcName Nothing "n1"
-         n2   <- mkNewGhcName Nothing "n2"
-         res  <- addHiding modName renamed2 [n1,n2]
+         let
+           n1 = mkRdrName "n1"
+           n2 = mkRdrName "n2"
+         res  <- addHiding modName parsed2 [n1,n2]
 
          return (res,renamed2,toks2)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
       ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
       (sourceFromState s) `shouldBe` "module DupDef.Dd3 where\n\nimport DupDef.Dd1 hiding (dd,n1,n2)\n\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
--}
+
   -- ---------------------------------------------
 
   describe "usedWithoutQualR" $ do
@@ -3525,7 +3530,6 @@ This function is not used and has been removed
       (mkNewName "f" ["g","f_1","f"] 0) `shouldBe` "f_2"
 
   -- ---------------------------------------
-{- ++AZ++ temporary start
 
   describe "addImportDecl" $ do
     it "adds an import entry to a module with already existing, non conflicting imports and other declarations" $ do
@@ -3541,13 +3545,14 @@ This function is not used and has been removed
          -- let renamed1 = fromJust $ GHC.tm_renamed_source t1
          -- let renamed2 = fromJust $ GHC.tm_renamed_source t2
          renamed2 <- getRefactRenamed
+         parsed2 <- getRefactParsed
 
          -- let parsed1 = GHC.pm_parsed_source $ GHC.tm_parsed_module t1
 
          let listModName  = GHC.mkModuleName "Data.List"
          -- n1   <- mkNewGhcName Nothing "n1"
          -- n2   <- mkNewGhcName Nothing "n2"
-         res  <- addImportDecl renamed2 listModName Nothing False False False Nothing False []
+         res  <- addImportDecl parsed2 listModName Nothing False False False Nothing False []
 
          return (res,renamed2)
       ((_r,_r2),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -3563,9 +3568,10 @@ This function is not used and has been removed
          -- (t1,_toks1)  <- parseSourceFileTest "./TypeUtils/Simplest.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t
+         parsed <- getRefactParsed
 
          let listModName  = GHC.mkModuleName "Data.List"
-         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False []
+         res  <- addImportDecl parsed listModName Nothing False False False Nothing False []
 
          return (res,renamed1)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
@@ -3582,9 +3588,10 @@ This function is not used and has been removed
          -- (t1,_toks1)  <- parseSourceFileTest "./TypeUtils/JustImports.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t
+         parsed <- getRefactParsed
 
          let listModName  = GHC.mkModuleName "Data.List"
-         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False []
+         res  <- addImportDecl parsed listModName Nothing False False False Nothing False []
 
          return (res,renamed1)
       ((_r,_r2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -3600,11 +3607,12 @@ This function is not used and has been removed
          -- (t1,toks1)  <- parseSourceFileTest "./TypeUtils/Empty.hs"
          -- putParsedModule t1 toks1
          renamed1 <- getRefactRenamed
+         parsed <- getRefactParsed
 
          -- let renamed1 = fromJust $ GHC.tm_renamed_source t1
 
          let listModName  = GHC.mkModuleName "Data.List"
-         res  <- addImportDecl renamed1 listModName Nothing False False False Nothing False []
+         res  <- addImportDecl parsed listModName Nothing False False False Nothing False []
 
          return (res,renamed1)
       ((_r,_r2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -3622,11 +3630,13 @@ This function is not used and has been removed
          -- (t1,_toks1)  <- parseSourceFileTest "./TypeUtils/JustImports.hs"
          -- clearParsedModule
          let renamed1 = fromJust $ GHC.tm_renamed_source t
+         parsed <- getRefactParsed
 
          let modName  = GHC.mkModuleName "Data.Maybe"
-         itemName <- mkNewGhcName Nothing "fromJust"
+         -- itemName <- mkNewGhcName Nothing "fromJust"
+         let  itemName = mkRdrName "fromJust"
 
-         res  <- addItemsToImport modName renamed1 [itemName]
+         res  <- addItemsToImport modName parsed [itemName]
          toks <- fetchToks
 
          return (res,toks,renamed1,toks)
@@ -3661,17 +3671,20 @@ This function is not used and has been removed
       (GHC.showRichTokenStream t) `shouldBe` "module JustImports where\n\n import Data.Maybe (fromJust,isJust)\n "
 -}
 
+    -- ---------------------------------
     it "adds an item to an import entry with existing items." $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/SelectivelyImports.hs"
       let
         comp = do
          -- (t1,_toks1)  <- parseSourceFileTest "./TypeUtils/SelectivelyImports.hs"
          let renamed1 = fromJust $ GHC.tm_renamed_source t
+         parsed <-getRefactParsed
 
          let modName  = GHC.mkModuleName "Data.Maybe"
-         itemName <- mkNewGhcName Nothing "isJust"
+         -- itemName <- mkNewGhcName Nothing "isJust"
+         let  itemName = mkRdrName "fromJust"
 
-         res  <- addItemsToImport modName renamed1 [itemName]
+         res  <- addItemsToImport modName parsed [itemName]
 
          return (res,renamed1,toks)
       -- ((_r,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
@@ -3714,7 +3727,6 @@ This function is not used and has been removed
       ((_r,t,r2,tk2),s) <- ct $ runRefactGhcState comp
       (GHC.showRichTokenStream t) `shouldBe` "module SelectivelyImports where\n\n import Data.Maybe (fromJust)\n\n __ = id\n "
 -}
-++AZ++ temporary end -}
 
   -- ---------------------------------------
 
