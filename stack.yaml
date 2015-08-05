@@ -4,12 +4,11 @@ packages:
 - location:
     git: https://github.com/alanz/ghc-mod.git
     commit: 526714aed7592c6d548ce38e9935bef0a984217b
+  extra-dep: true
 - location:
     git: https://github.com/alanz/ghc-exactprint.git
     commit: 4750d72267add9cb4bdee4ebc7ce8233ac4444ee
-# - location:
-#     git: git@github.com:mpickering/refact
-#     commit:  bda394c3c5f33ca6b3e9b50edd75a52800540d20
+  extra-dep: true
 extra-deps:
 - Strafunski-StrategyLib-5.0.0.8
 - cabal-helper-0.3.6.0
