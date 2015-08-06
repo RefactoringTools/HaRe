@@ -11,6 +11,7 @@ addons:
     packages:
     - libgmp-dev
     - cabal-install-1.22
+    - ghc-7.10.1
     sources:
     - hvr-ghc
 
