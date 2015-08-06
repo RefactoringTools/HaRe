@@ -12,7 +12,7 @@ addons:
     - hvr-ghc
     packages:
     - libgmp-dev
-    - cabal-1.22
+    - cabal-install-1.22
 
 before_install:
   # stack
