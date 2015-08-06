@@ -17,11 +17,12 @@ addons:
 
 before_install:
   # Work around the libexec path problem as per https://github.com/DanielG/cabal-helper/issues/7
-  - export OLDPATH=$PATH
-  - export PATH=/opt/ghc/7.10.1/bin:$PATH
-  - cabal-1.22 update
-  - cabal-1.22 install cabal-helper
-  - export PATH=$OLDPATH # stack must install 7.10.2
+  # - export OLDPATH=$PATH
+  # - export PATH=/opt/ghc/7.10.1/bin:$PATH
+  # - cabal-1.22 update
+  # - cabal-1.22 install cabal-helper
+  # - export PATH=$OLDPATH # stack must install 7.10.2
+  export PATH=~/.cabal/libexec:$PATH
   # stack
   - mkdir -p ~/.local/bin
   - export PATH=~/.local/bin:$PATH
