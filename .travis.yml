@@ -5,6 +5,8 @@ cache:
   directories:
   - $HOME/.stack
   - $HOME/.cabal
+  sources:
+    - hvr-ghc
 
 addons:
   apt:
