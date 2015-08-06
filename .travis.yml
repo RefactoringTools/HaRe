@@ -1,25 +1,20 @@
 # Based on https://github.com/commercialhaskell/stack/wiki/Travis
 
 sudo: false # Use new caching docker based infrastructure
-# cache:
-#   directories:
-#   - $HOME/.stack
-#   - $HOME/.cabal
+cache:
+  directories:
+  - $HOME/.stack
+  - $HOME/.cabal
 
 addons:
   apt:
+    sources:
+    - hvr-ghc
     packages:
     - libgmp-dev
+    - cabal-1.22
 
 before_install:
-  # Work around the libexec path problem as per https://github.com/DanielG/cabal-helper/issues/7
-  # - export OLDPATH=$PATH
-  # - export PATH=/opt/ghc/7.10.1/bin:$PATH
-  # - cabal-1.22 update
-  # - cabal-1.22 install cabal-helper
-  # - export PATH=$OLDPATH # stack must install 7.10.2
-  - mkdir -p ~/.cabal/libexec
-  - export PATH=~/.cabal/libexec/:$PATH
   # stack
   - mkdir -p ~/.local/bin
   - export PATH=~/.local/bin:$PATH
@@ -31,8 +26,12 @@ before_install:
 install:
   - ./travis_long stack --no-terminal setup
   - ./travis_long stack --no-terminal test --only-snapshot
-  - ls .stack-work/logs/
-  - cat .stack-work/logs/cabal-helper-0.3.6.0.log
+  # Work around the libexec path problem as per https://github.com/DanielG/cabal-helper/issues/7
+  - export OLDPATH=$PATH
+  - export PATH=~/.stack/programs/x86_64-linux/ghc-7.10.2/bin:$PATH
+  - cabal-1.22 update
+  - cabal-1.22 install cabal-helper
+  - export PATH=~/.cabal/libexec:$OLDPATH
 
 script:
   - stack --no-terminal test
