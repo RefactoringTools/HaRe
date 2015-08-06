@@ -5,14 +5,14 @@ cache:
   directories:
   - $HOME/.stack
   - $HOME/.cabal
-  sources:
-    - hvr-ghc
 
 addons:
   apt:
     packages:
     - libgmp-dev
     - cabal-install-1.22
+  sources:
+    - hvr-ghc
 
 before_install:
   # stack
