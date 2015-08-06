@@ -22,7 +22,7 @@ before_install:
   # - cabal-1.22 update
   # - cabal-1.22 install cabal-helper
   # - export PATH=$OLDPATH # stack must install 7.10.2
-  export PATH=~/.cabal/libexec:$PATH
+  - export PATH=~/.cabal/libexec:$PATH
   # stack
   - mkdir -p ~/.local/bin
   - export PATH=~/.local/bin:$PATH
