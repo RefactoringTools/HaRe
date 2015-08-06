@@ -35,7 +35,6 @@ before_install:
 install:
   - ./travis_long stack --no-terminal setup
   - ./travis_long stack --no-terminal test --only-snapshot
-  - cat .stack-work/logs/cabal-helper-*.log 
 
 script:
   - stack --no-terminal test
