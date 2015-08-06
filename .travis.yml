@@ -10,10 +10,6 @@ addons:
   apt:
     packages:
     - libgmp-dev
-    - cabal-install-1.22
-    - ghc-7.10.1
-    sources:
-    - hvr-ghc
 
 before_install:
   # Work around the libexec path problem as per https://github.com/DanielG/cabal-helper/issues/7
@@ -23,7 +19,7 @@ before_install:
   # - cabal-1.22 install cabal-helper
   # - export PATH=$OLDPATH # stack must install 7.10.2
   - mkdir -p ~/.cabal/libexec
-  - export PATH=~/.cabal/libexec:$PATH
+  - export PATH=~/.cabal/libexec/:$PATH
   # stack
   - mkdir -p ~/.local/bin
   - export PATH=~/.local/bin:$PATH
@@ -35,6 +31,7 @@ before_install:
 install:
   - ./travis_long stack --no-terminal setup
   - ./travis_long stack --no-terminal test --only-snapshot
+  - cat .stack-work/logs/cabal-helper-0.3.6.0.log
 
 script:
   - stack --no-terminal test
