@@ -24,7 +24,7 @@ before_install:
   # Work around the libexec path problem as per https://github.com/DanielG/cabal-helper/issues/7
   - export PATH=/opt/ghc/7.10.1/bin:$PATH
   - cabal-1.22 update
-  - cabal-1.22 install cabal-wrapper
+  - cabal-1.22 install cabal-helper
   # ghc
   # - export PATH=/opt/ghc/7.10.2/bin:$PATH
 
