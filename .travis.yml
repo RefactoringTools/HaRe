@@ -22,6 +22,7 @@ before_install:
   # - cabal-1.22 update
   # - cabal-1.22 install cabal-helper
   # - export PATH=$OLDPATH # stack must install 7.10.2
+  - mkdir -p ~/.cabal/libexec
   - export PATH=~/.cabal/libexec:$PATH
   # stack
   - mkdir -p ~/.local/bin
@@ -34,6 +35,7 @@ before_install:
 install:
   - ./travis_long stack --no-terminal setup
   - ./travis_long stack --no-terminal test --only-snapshot
+  - cat .stack-work/logs/cabal-helper-*.log 
 
 script:
   - stack --no-terminal test
