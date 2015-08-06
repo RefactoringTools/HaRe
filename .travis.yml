@@ -4,11 +4,13 @@ sudo: false # Use new caching docker based infrastructure
 cache:
   directories:
   - $HOME/.stack
+  - $HOME/.cabal
 
 addons:
   apt:
     packages:
     - libgmp-dev
+    - cabal-install-1.22
 
 before_install:
   # stack
@@ -16,6 +18,9 @@ before_install:
   - export PATH=~/.local/bin:$PATH
   - travis_retry curl -L https://github.com/commercialhaskell/stack/releases/download/v0.1.2.0/stack-0.1.2.0-x86_64-linux.gz | gunzip > ~/.local/bin/stack
   - chmod a+x ~/.local/bin/stack
+  # Work around the libexec path problem as per https://github.com/DanielG/cabal-helper/issues/7
+  - cabal-1.22 update
+  - cabal-1.22 install cabal-wrapper
   # ghc
   # - export PATH=/opt/ghc/7.10.2/bin:$PATH
 
