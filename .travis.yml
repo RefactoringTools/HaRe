@@ -1,6 +1,7 @@
 # Based on https://github.com/commercialhaskell/stack/wiki/Travis
 
 sudo: false # Use new caching docker based infrastructure
+
 cache:
   directories:
   - $HOME/.stack
@@ -34,17 +35,17 @@ install:
   - cabal-1.22 update
   - cabal-1.22 install cabal-helper
   # original
- - cabal --version
- - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
- - travis_retry cabal update
- - |
-   git clone https://github.com/alanz/ghc-exactprint.git
-   (cd ghc-exactprint && git checkout wip && cabal install)
- - |
-   git clone https://github.com/alanz/ghc-mod.git
-   (cd ghc-mod && git checkout HaRe && cabal install)
- - pwd
- - cabal install --dependencies-only --enable-tests
+  - cabal --version
+  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+  - travis_retry cabal update
+  - |
+    git clone https://github.com/alanz/ghc-exactprint.git
+    (cd ghc-exactprint && git checkout wip && cabal install)
+  - |
+    git clone https://github.com/alanz/ghc-mod.git
+    (cd ghc-mod && git checkout HaRe && cabal install)
+  - pwd
+  - cabal install --dependencies-only --enable-tests
 
 script:
  # - stack --no-terminal test
