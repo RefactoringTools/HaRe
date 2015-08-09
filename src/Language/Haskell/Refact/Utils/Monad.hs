@@ -32,7 +32,6 @@ module Language.Haskell.Refact.Utils.Monad
 
        -- , loadModuleGraphGhc
        , loadTarget
-       -- , ensureTargetLoaded
        , cabalModuleGraphs
        , canonicalizeGraph
        , canonicalizeModSummary
