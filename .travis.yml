@@ -30,13 +30,13 @@ before_install:
 
 install:
   - ./travis_long stack --no-terminal setup
-  # - ./travis_long stack --no-terminal test --only-snapshot
+  - ./travis_long stack --no-terminal test --only-snapshot
   # Work around the libexec path problem as per https://github.com/DanielG/cabal-helper/issues/7
   - export PATH=~/.stack/programs/x86_64-linux/ghc-7.10.2/bin:$PATH
   - cabal-1.22 update
-  - cabal-1.22 install cabal-helper
-  - which cabal-1.22
-  - which cabal
+  # - cabal-1.22 install cabal-helper
+  # - which cabal-1.22
+  # - which cabal
   # original
   # - cabal --version
   # - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
