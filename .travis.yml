@@ -35,25 +35,25 @@ install:
   - cabal-1.22 update
   - cabal-1.22 install cabal-helper
   # original
-  - cabal --version
+  - cabal-1.22 --version
   - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
-  - travis_retry cabal update
+  - travis_retry cabal-1.22 update
   - |
     git clone https://github.com/alanz/ghc-exactprint.git
-    (cd ghc-exactprint && git checkout wip && cabal install)
+    (cd ghc-exactprint && git checkout wip && cabal-1.22 install)
   - |
     git clone https://github.com/alanz/ghc-mod.git
-    (cd ghc-mod && git checkout HaRe && cabal install)
+    (cd ghc-mod && git checkout HaRe && cabal-1.22 install)
   - pwd
-  - cabal install --dependencies-only --enable-tests
+  - cabal-1.22 install --dependencies-only --enable-tests
 
 script:
  # - stack --no-terminal test
- - cabal configure --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
- - cabal build   # this builds all libraries and executables (including tests/benchmarks)
- - cabal test --show-details=streaming
- - cabal check
- - cabal sdist   # tests that a source-distribution can be generated
+ - cabal-1.22 configure --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
+ - cabal-1.22 build   # this builds all libraries and executables (including tests/benchmarks)
+ - cabal-1.22 test --show-details=streaming
+ - cabal-1.22 check
+ - cabal-1.22 sdist   # tests that a source-distribution can be generated
 
 # Here starts the actual work to be performed for the package under
 # test; any command which exits with a non-zero exit code causes the
