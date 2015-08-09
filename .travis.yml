@@ -13,6 +13,8 @@ addons:
     packages:
     - libgmp-dev
     - cabal-install-1.22
+    - happy-1.19.4
+    - alex-3.1.3
 
 before_install:
   # stack
@@ -22,20 +24,35 @@ before_install:
   - chmod a+x ~/.local/bin/stack
   # ghc
   # - export PATH=/opt/ghc/7.10.2/bin:$PATH
+  - export PATH=/opt/alex/3.1.3/bin:/opt/happy/1.19.4/bin:/opt/cabal/1.22/bin/cabal:$PATH
 
 install:
   - ./travis_long stack --no-terminal setup
-  - ./travis_long stack --no-terminal test --only-snapshot
+  # - ./travis_long stack --no-terminal test --only-snapshot
   # Work around the libexec path problem as per https://github.com/DanielG/cabal-helper/issues/7
-  - export OLDPATH=$PATH
   - export PATH=~/.stack/programs/x86_64-linux/ghc-7.10.2/bin:$PATH
   - cabal-1.22 update
   - cabal-1.22 install cabal-helper
-  - export PATH=~/.cabal/libexec:$OLDPATH
+  # original
+ - cabal --version
+ - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+ - travis_retry cabal update
+ - |
+   git clone https://github.com/alanz/ghc-exactprint.git
+   (cd ghc-exactprint && git checkout wip && cabal install)
+ - |
+   git clone https://github.com/alanz/ghc-mod.git
+   (cd ghc-mod && git checkout HaRe && cabal install)
+ - pwd
+ - cabal install --dependencies-only --enable-tests
 
 script:
-  - stack --no-terminal test
-
+ # - stack --no-terminal test
+ - cabal configure --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
+ - cabal build   # this builds all libraries and executables (including tests/benchmarks)
+ - cabal test --show-details=streaming
+ - cabal check
+ - cabal sdist   # tests that a source-distribution can be generated
 
 # Here starts the actual work to be performed for the package under
 # test; any command which exits with a non-zero exit code causes the
