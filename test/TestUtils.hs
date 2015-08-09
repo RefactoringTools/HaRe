@@ -242,7 +242,7 @@ testOptions = GM.defaultOptions { GM.logLevel = GM.GmError }
 -- ---------------------------------------------------------------------
 
 testCradle :: GM.Cradle
-testCradle = GM.Cradle "./test/testdata/" "./test/testdata/" "/tmp" Nothing []
+testCradle = GM.Cradle "./test/testdata/" "./test/testdata/" "/tmp" Nothing
 
 -- ---------------------------------------------------------------------
 
