@@ -7,11 +7,11 @@ import qualified GHC.SYB.Utils         as SYB
 import qualified Name                  as GHC
 import qualified GHC
 
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 -- TODO: replace args with specific parameters
-swapArgs :: RefactSettings -> Options -> [String] -> IO [FilePath]
+swapArgs :: RefactSettings -> GM.Options -> [String] -> IO [FilePath]
 swapArgs settings opts args
   = do let fileName = args!!0
            row = (read (args!!1)::Int)

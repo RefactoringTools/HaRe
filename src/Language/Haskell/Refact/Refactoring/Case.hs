@@ -7,7 +7,7 @@ import qualified GHC.SYB.Utils         as SYB
 import qualified BasicTypes    as GHC
 import qualified GHC           as GHC
 
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -26,7 +26,7 @@ import Debug.Trace
 -- ---------------------------------------------------------------------
 
 -- | Convert an if expression to a case expression
-ifToCase :: RefactSettings -> Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
+ifToCase :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
 ifToCase settings opts fileName beginPos endPos =
   runRefacSession settings opts [Left fileName] (comp fileName beginPos endPos)
 

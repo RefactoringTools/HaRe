@@ -546,28 +546,29 @@ spec = do
 
     it "finds declared in type class definitions" $ do
       (t,_toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
-      -- (SYB.showData SYB.Renamer 0 $ hsTyDecls renamed) `shouldBe` ""
+      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- putStrLn $ "\nparsed:\n" ++ (SYB.showData SYB.Parser 0 parsed)
 
       let
         comp = do
-          let tds = nub $ concatMap getDeclaredTypes $ concat $ hsTyDecls renamed
+          parsed <- getRefactParsed
+          decls <- liftT $ hsDecls parsed
+          tdss <- mapM getDeclaredTypesRdr decls
+          let tds = nub $ concat tdss
           return (tds)
-      -- ((res),_s) <- runRefactGhc comp $ initialState { rsModule = initialStateRefactModule t toks }
       ((res),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (res)) `shouldBe`
-          "[(FreeAndDeclared.DeclareTypes.XList, (8, 13)),\n"++
-          " (FreeAndDeclared.DeclareTypes.Foo, (21, 6)),\n"++
-          " (FreeAndDeclared.DeclareTypes.X, (19, 6)),\n"++
+          "[(FreeAndDeclared.DeclareTypes.XList, (8, 1)),\n"++
+          " (FreeAndDeclared.DeclareTypes.X, (19, 1)),\n"++
           " (FreeAndDeclared.DeclareTypes.Y, (19, 10)),\n"++
           " (FreeAndDeclared.DeclareTypes.Z, (19, 22)),\n"++
           " (FreeAndDeclared.DeclareTypes.W, (19, 26)),\n"++
-          " (FreeAndDeclared.DeclareTypes.Bar, (23, 7)),\n"++
+          " (FreeAndDeclared.DeclareTypes.Foo, (21, 1)),\n"++
+          " (FreeAndDeclared.DeclareTypes.Bar, (23, 1)),\n"++
           " (FreeAndDeclared.DeclareTypes.doBar, (27, 3)),\n"++
-          " (FreeAndDeclared.DeclareTypes.BarVar, (24, 8)),\n"++
-          " (FreeAndDeclared.DeclareTypes.BarData, (25, 8))]"
+          " (FreeAndDeclared.DeclareTypes.BarVar, (24, 3)),\n"++
+          " (FreeAndDeclared.DeclareTypes.BarData, (25, 3))]"
 
     -- ---------------------------------
 

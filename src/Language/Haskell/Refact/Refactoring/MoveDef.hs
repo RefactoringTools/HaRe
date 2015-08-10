@@ -30,7 +30,7 @@ import qualified Data.Generics.Zipper as Z
 import Data.List
 import Data.Maybe
 
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types
@@ -79,7 +79,7 @@ the following six contexts:
 -}
 
 -- | Lift a definition to the top level
-liftToTopLevel :: RefactSettings -> Options -> FilePath -> SimpPos -> IO [FilePath]
+liftToTopLevel :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 liftToTopLevel settings opts fileName (row,col) =
   runRefacSession settings opts [Left fileName] (compLiftToTopLevel fileName (row,col))
 
@@ -101,7 +101,7 @@ compLiftToTopLevel fileName (row,col) = do
 -- ---------------------------------------------------------------------
 
 -- | Move a definition one level up from where it is now
-liftOneLevel :: RefactSettings -> Options -> FilePath -> SimpPos -> IO [FilePath]
+liftOneLevel :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 liftOneLevel settings opts fileName (row,col) =
   runRefacSession settings opts [Left fileName] (compLiftOneLevel fileName (row,col))
 
@@ -134,7 +134,7 @@ compLiftOneLevel fileName (row,col) = do
 -- ---------------------------------------------------------------------
 
 -- | Move a definition one level down
-demote :: RefactSettings -> Options -> FilePath -> SimpPos -> IO [FilePath]
+demote :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 demote settings opts fileName (row,col) =
   runRefacSession settings opts [Left fileName] (compDemote fileName (row,col))
 

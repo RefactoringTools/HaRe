@@ -33,18 +33,14 @@ module Language.Haskell.Refact.Utils.Utils
        , initGhcSession
        ) where
 
-import Control.Exception
 import Control.Monad.State
 import Data.List
-import Data.Maybe
 
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
 
--- import Language.Haskell.GhcMod
-import qualified Language.Haskell.GhcMod          as GM
-import qualified Language.Haskell.GhcMod.Internal as GM
--- import           Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
+import qualified Language.Haskell.GhcMod          as GM (Options(..))
+import qualified Language.Haskell.GhcMod.Internal as GM (ModulePath(..),GmModuleGraph(..))
 
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -116,7 +112,7 @@ getModuleName (GHC.L _ modn) =
 -- ---------------------------------------------------------------------
 
 getTargetGhc :: TargetModule -> RefactGhc ()
-getTargetGhc (GM.ModulePath mn fp) = getModuleGhc fp
+getTargetGhc (GM.ModulePath _mn fp) = getModuleGhc fp
 
 -- ---------------------------------------------------------------------
 

@@ -5,15 +5,13 @@ module Language.Haskell.Refact.Refactoring.RoundTrip(roundTrip) where
 
 -- import qualified GHC           as GHC
 
--- import Control.Monad
--- import Control.Monad.IO.Class
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 -- ---------------------------------------------------------------------
 
 -- | Roundtrip the source code, to check that the infrastructure is solid
-roundTrip :: RefactSettings -> Options -> FilePath -> IO [FilePath]
+roundTrip :: RefactSettings -> GM.Options -> FilePath -> IO [FilePath]
 roundTrip settings opts fileName =
   runRefacSession settings opts [Left fileName] (comp fileName)
 

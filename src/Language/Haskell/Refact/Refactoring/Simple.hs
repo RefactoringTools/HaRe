@@ -6,7 +6,7 @@ import qualified Data.Generics         as SYB
 
 import qualified GHC           as GHC
 
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 -- To be moved into HaRe API
@@ -22,7 +22,7 @@ import Debug.Trace
 -- ---------------------------------------------------------------------
 
 -- | Convert an if expression to a case expression
-removeBracket :: RefactSettings -> Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
+removeBracket :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
 removeBracket settings opts fileName beginPos endPos =
   let applied = (:[]) . fst <$> applyRefac
                   (removeBracketTransform fileName beginPos endPos)

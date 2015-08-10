@@ -26,6 +26,7 @@ module Language.Haskell.Refact.Utils.Variables
   , hsFreeAndDeclaredPNs
   , hsFreeAndDeclaredGhc
   , getDeclaredTypes
+  , getDeclaredTypesRdr
   , getFvs, getFreeVars, getDeclaredVars
   , hsVisiblePNs, hsVisiblePNsRdr ,hsVisibleNames
   , hsFDsFromInsideRdr
@@ -562,6 +563,7 @@ hsFreeAndDeclaredGhc t = do
   where
     res = (const err
           `SYB.extQ` renamed
+          `SYB.extQ` parsed
           `SYB.extQ` lhsbind
           `SYB.extQ` hsbind
           `SYB.extQ` lhsbinds
@@ -596,6 +598,14 @@ hsFreeAndDeclaredGhc t = do
           `SYB.extQ` hsrecordbinds
           `SYB.extQ` hsrecordbind
           ) t
+
+    parsed :: GHC.ParsedSource ->  RefactGhc (FreeNames,DeclaredNames)
+    parsed p = do
+      gfds <- hsFreeAndDeclaredGhc $ GHC.hs_valds g
+      let tds = concatMap getDeclaredTypes $ concatMap GHC.group_tyclds (GHC.hs_tyclds g)
+      return $ gfds <> (FN [],DN tds)
+
+    -- -----------------------
 
     renamed :: GHC.RenamedSource ->  RefactGhc (FreeNames,DeclaredNames)
     renamed (g,_i,_e,_d) = do
@@ -1183,6 +1193,47 @@ ClassDecl
 -- ---------------------------------------------------------------------
 
 -- |Get the names of all types declared in the given declaration
+-- getDeclaredTypesRdr :: GHC.LTyClDecl GHC.RdrName -> RefactGhc [GHC.Name]
+getDeclaredTypesRdr :: GHC.LHsDecl GHC.RdrName -> RefactGhc [GHC.Name]
+getDeclaredTypesRdr decl = do
+  nm <- getRefactNameMap
+  let
+    getMsn meths = do
+      ds <- liftT $ hsDecls meths
+      return (getDeclaredVarsRdr nm ds)
+  case decl of
+    (GHC.L _ (GHC.TyClD (GHC.FamDecl (GHC.FamilyDecl _ ln _ _)))) -> return [rdrName2NamePure nm ln]
+    (GHC.L _ (GHC.TyClD (GHC.SynDecl ln  _ _ _))) -> return [rdrName2NamePure nm ln]
+    (GHC.L _ (GHC.TyClD (GHC.DataDecl ln _ defn _))) -> do
+      let dds = concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
+      let ddns = map (rdrName2NamePure nm) dds
+      return $ [rdrName2NamePure nm ln] ++ ddns
+
+    (GHC.L _ (GHC.TyClD (GHC.ClassDecl _ ln _vars _fds sigs meths ats _atdefs _ _fvs))) -> do
+      msn <- getMsn meths
+      let fds = map (GHC.fdLName . GHC.unLoc) ats
+          fds' = map (rdrName2NamePure nm) fds
+      return $ nub $ [rdrName2NamePure nm ln] ++ ssn ++ msn ++ fds' -- ++ asn
+      where
+        getLSig :: GHC.LSig GHC.RdrName -> [GHC.Name]
+        getLSig (GHC.L _ (GHC.TypeSig ns _ _)) = map (rdrName2NamePure nm) ns
+        getLSig (GHC.L _ (GHC.GenericSig ns _)) = map (rdrName2NamePure nm) ns
+        getLSig (GHC.L _ (GHC.IdSig _n)) = []
+        getLSig (GHC.L _ (GHC.InlineSig ln2 _)) = [rdrName2NamePure nm ln2]
+        getLSig (GHC.L _ (GHC.SpecSig ln2 _ _)) = [rdrName2NamePure nm ln2]
+        getLSig (GHC.L _ (GHC.SpecInstSig _ _)) = []
+        getLSig (GHC.L _ (GHC.FixSig _)) = []
+        getLSig (GHC.L _ (GHC.PatSynSig _ _ _ _ _)) = error "To implement: getLSig PatSynSig"
+        getLSig (GHC.L _ (GHC.MinimalSig _ _)) = error "To implement: getLSig PatSynSig"
+
+        ssn = concatMap getLSig sigs
+        -- msn = getDeclaredVars $ hsBinds meths
+
+    (GHC.L _ (GHC.TyClD x)) -> error $ "getDeclaredTypesRdr:Not processing TyClD:" ++ showGhc x
+    _ -> return []
+
+
+-- |Get the names of all types declared in the given declaration
 getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
 getDeclaredTypes (GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ (GHC.L _ n) _ _))) = [n]
 getDeclaredTypes (GHC.L _ (GHC.SynDecl (GHC.L _ n)  _ _ _)) = [n]
@@ -1516,6 +1567,15 @@ hsNamessRdr t = nub $ fromMaybe [] r
      inName = nameSybQuery checker
 
 -- ---------------------------------------------------------------------
+
+
+getDeclaredVarsRdr :: NameMap -> [GHC.LHsDecl GHC.RdrName] -> [GHC.Name]
+getDeclaredVarsRdr nm bs = concatMap vars bs
+  where
+      vars :: (GHC.LHsDecl GHC.RdrName) -> [GHC.Name]
+      vars (GHC.L _ (GHC.ValD (GHC.FunBind ln _ _ _ _fvs _)))   = [rdrName2NamePure nm ln]
+      vars (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _))) = (hsNamess p)
+      vars _ = []
 
 getDeclaredVars :: [GHC.LHsBind GHC.Name] -> [GHC.Name]
 getDeclaredVars bs = concatMap vars bs
@@ -1905,11 +1965,11 @@ hsVisibleDs e t = do
     renamed (g,_i,_ex,_d)
       | findEntity e g = do
          dfds <- hsVisibleDs e $ GHC.hs_valds g
-         logm $ "hsVisibleDs.renamedSource:valds done"
+         -- logm $ "hsVisibleDs.renamedSource:valds done"
          tfds <- hsVisibleDs e $ GHC.hs_tyclds g
-         logm $ "hsVisibleDs.renamedSource:tyclds done"
+         -- logm $ "hsVisibleDs.renamedSource:tyclds done"
          ifds <- hsVisibleDs e $ GHC.hs_instds g
-         logm $ "hsVisibleDs.renamedSource:instds done"
+         -- logm $ "hsVisibleDs.renamedSource:instds done"
          return $ dfds <> tfds <> ifds
     renamed _ = return (DN [])
 
@@ -1921,13 +1981,13 @@ hsVisibleDs e t = do
           return $ mconcat fdss <> mconcat fdsb
     valbinds vb@(GHC.ValBindsOut binds sigs)
       | findEntity e vb = do
-          logm $ "hsVisibleDs.valbinds:ValBindsOut"
+          -- logm $ "hsVisibleDs.valbinds:ValBindsOut"
           fdsb <- mapM (hsVisibleDs e) $ map snd binds
           fdss <- mapM (hsVisibleDs e) sigs
           return $ mconcat fdss <> mconcat fdsb
 
     valbinds _ = do
-      logm $ "hsVisibleDs.valbinds:not matched"
+      -- logm $ "hsVisibleDs.valbinds:not matched"
       return (DN [])
 
     lhsbindslr :: GHC.LHsBindsLR GHC.Name GHC.Name -> RefactGhc DeclaredNames
@@ -1946,7 +2006,7 @@ hsVisibleDs e t = do
     hsbind ((GHC.L _ (GHC.FunBind _n _ (GHC.MG matches _ _ _) _ _ _)))
       | findEntity e matches = do
           fds <- mapM (hsVisibleDs e) matches
-          logm $ "hsVisibleDs.hsbind:fds=" ++ show fds
+          -- logm $ "hsVisibleDs.hsbind:fds=" ++ show fds
           return $ mconcat fds
     hsbind _ = return (DN [])
 
@@ -1961,12 +2021,12 @@ hsVisibleDs e t = do
     lmatch :: (GHC.LMatch GHC.Name (GHC.LHsExpr GHC.Name)) -> RefactGhc DeclaredNames
     lmatch (GHC.L _ (GHC.Match _fn pats _mtyp rhs))
       | findEntity e pats = do
-           logm $ "hsVisibleDs.lmatch:in pats="
+           -- logm $ "hsVisibleDs.lmatch:in pats="
            return (DN []) -- TODO: extend this
       | findEntity e rhs = do
-           logm $ "hsVisibleDs.lmatch:doing rhs"
+           -- logm $ "hsVisibleDs.lmatch:doing rhs"
            ( pf,pd) <- hsFreeAndDeclaredGhc pats
-           logm $ "hsVisibleDs.lmatch:(pf,pd)=" ++ (show (pf,pd))
+           -- logm $ "hsVisibleDs.lmatch:(pf,pd)=" ++ (show (pf,pd))
            (    rd) <- hsVisibleDs e rhs
            return (pd <> rd)
     lmatch _ =return  (DN [])
@@ -1974,19 +2034,19 @@ hsVisibleDs e t = do
     grhss :: (GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.Name)) -> RefactGhc DeclaredNames
     grhss (GHC.GRHSs guardedRhss lstmts)
       | findEntity e guardedRhss = do
-          logm "hsVisibleDs.grhss:about to do grhss"
+          -- logm "hsVisibleDs.grhss:about to do grhss"
           fds <- mapM (hsVisibleDs e) guardedRhss
-          logm "hsVisibleDs.grhss:grhss done"
+          -- logm "hsVisibleDs.grhss:grhss done"
           return $ mconcat fds
       | findEntity e lstmts = do
-          logm "hsVisibleDs.grhss:about to do lstmts"
+          -- logm "hsVisibleDs.grhss:about to do lstmts"
           hsVisibleDs e lstmts
     grhss _ = return (DN [])
 
     lgrhs :: GHC.LGRHS GHC.Name (GHC.LHsExpr GHC.Name) -> RefactGhc DeclaredNames
     lgrhs (GHC.L _ (GHC.GRHS guards ex))
-      | findEntity e guards = logm "hsVisibleDs.lgrhs.guards" >> hsVisibleDs e guards
-      | findEntity e ex     = logm "hsVisibleDs.lgrhs.ex" >> hsVisibleDs e ex
+      | findEntity e guards = hsVisibleDs e guards
+      | findEntity e ex     = hsVisibleDs e ex
     lgrhs _ = return (DN [])
 
 
@@ -2001,10 +2061,10 @@ hsVisibleDs e t = do
 
     lexpr expr
       | findEntity e expr = do
-        logm $ "hsVisibleDs.lexpr.(e,expr):" ++ (showGhc (e,expr))
+        -- logm $ "hsVisibleDs.lexpr.(e,expr):" ++ (showGhc (e,expr))
         (FN efs,_)         <- hsFreeAndDeclaredGhc expr
         (FN _eefs,DN eeds) <- hsFreeAndDeclaredGhc e
-        logm $ "hsVisibleDs.lexpr done"
+        -- logm $ "hsVisibleDs.lexpr done"
         -- return (DN e1fs <> DN eofs <> DN e2fs)
         return (DN (efs \\ eeds))
 
@@ -2036,7 +2096,7 @@ hsVisibleDs e t = do
     tycldecls :: [GHC.LTyClDecl GHC.Name] -> RefactGhc DeclaredNames
     tycldecls tcds
       | findEntity e tcds = do
-        logm $ "hsVisibleDs.tycldecls"
+        -- logm $ "hsVisibleDs.tycldecls"
         fds <- mapM (hsVisibleDs e) tcds
         return $ mconcat fds
     tycldecls _ = return (DN [])
@@ -2044,7 +2104,7 @@ hsVisibleDs e t = do
     tycldecl :: GHC.LTyClDecl GHC.Name -> RefactGhc DeclaredNames
     tycldecl tcd
       | findEntity e tcd = do
-        logm $ "hsVisibleDs.tycldecl"
+        -- logm $ "hsVisibleDs.tycldecl"
         (_,ds) <- hsFreeAndDeclaredGhc tcd
         return ds
     tycldecl _ = return (DN [])
@@ -2082,7 +2142,7 @@ hsVisibleDs e t = do
         = return (DN [])
     lhstype (GHC.L _ (GHC.HsFunTy{})) = return (DN [])
     lhstype ty = do
-      logm $ "lshtype: TypeUtils 1588" ++ SYB.showData SYB.Renamer 0 ty
+      -- logm $ "lshtype: TypeUtils 1588" ++ SYB.showData SYB.Renamer 0 ty
       return (DN [])
 
     -- -----------------------

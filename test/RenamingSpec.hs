@@ -8,8 +8,6 @@ import TestUtils
 
 import System.Directory
 
--- import Language.Haskell.GhcMod
-
 -- ---------------------------------------------------------------------
 
 main :: IO ()

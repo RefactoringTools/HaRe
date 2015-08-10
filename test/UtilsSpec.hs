@@ -13,8 +13,7 @@ import Control.Exception
 import Control.Monad.State
 import Data.Maybe
 
--- import qualified Language.Haskell.GhcMod          as GM
-import qualified Language.Haskell.GhcMod.Internal as GM
+import qualified Language.Haskell.GhcMod.Internal as GM (mpModule)
 
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Refactoring.Renaming

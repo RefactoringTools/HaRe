@@ -892,7 +892,7 @@ addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
        newSpan2 <- liftT uniqueSrcSpanT
        newEnts <- mapM mkNewEnt idNames
        let lNewEnts = GHC.L newSpan2 newEnts
-       logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
+       -- logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
        liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
        return $ GHC.ImportDecl
                         { GHC.ideclSourceSrc = Nothing
@@ -1028,8 +1028,8 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
          r <- refactReplaceDecls parent' (sigs ++ [newDecl]++decls)
          return r
 
-  wrapDecl :: GHC.LHsBind name -> GHC.LHsDecl name
-  wrapDecl (GHC.L l d) = GHC.L l (GHC.ValD d)
+  -- wrapDecl :: GHC.LHsBind name -> GHC.LHsDecl name
+  -- wrapDecl (GHC.L l d) = GHC.L l (GHC.ValD d)
 
   wrapSig :: GHC.LSig name -> GHC.LHsDecl name
   wrapSig (GHC.L l d) = GHC.L l (GHC.SigD d)
@@ -1144,8 +1144,8 @@ addItemsToImport' serverModName (GHC.L l p) pns impType = do
             return (replaceHiding imp  (Just (isHide, lNewEnts)))
 
 
-    replaceHiding (GHC.L l (GHC.ImportDecl st mn q src safe isQ isImp as _h)) h1 =
-                  (GHC.L l (GHC.ImportDecl st mn q src safe isQ isImp as h1))
+    replaceHiding (GHC.L l1 (GHC.ImportDecl st mn q src safe isQ isImp as _h)) h1 =
+                  (GHC.L l1 (GHC.ImportDecl st mn q src safe isQ isImp as h1))
 
 -- ---------------------------------------------------------------------
 
@@ -1171,11 +1171,11 @@ addParamsToDecls decls pn paramPNames modifyToks = do
          matches' <- mapM addParamtoMatch matches
          return (GHC.L l1 (GHC.ValD (GHC.FunBind (GHC.L l2 pname) i (GHC.MG matches' a ptt o) co fvs t)))
       where
-       addParamtoMatch (GHC.L l (GHC.Match fn pats mtyp rhs))
+       addParamtoMatch (GHC.L l (GHC.Match fn1 pats mtyp rhs))
         = do
              rhs' <- addActualParamsToRhs modifyToks pn paramPNames rhs
              pats' <- liftT $ mapM addParam paramPNames
-             return (GHC.L l (GHC.Match fn (pats'++pats) mtyp rhs'))
+             return (GHC.L l (GHC.Match fn1 (pats'++pats) mtyp rhs'))
 
    -- TODO: The following will never match, as a PatBind only deals with complex patterns.
    addParamToDecl _nameMap x@(GHC.L _l1 (GHC.ValD (GHC.PatBind _pat@(GHC.L _l2 (GHC.VarPat _p)) _rhs _ty _fvs _t)))
@@ -2377,7 +2377,7 @@ nameToString name = showGhcQual name
 -- identifier, otherwise return Nothing
 patToNameRdr :: NameMap -> GHC.LPat GHC.RdrName -> Maybe GHC.Name
 patToNameRdr nm (GHC.L l (GHC.VarPat n)) = Just (rdrName2NamePure nm (GHC.L l n))
-patToName _ _ = Nothing
+patToNameRdr _ _ = Nothing
 
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing

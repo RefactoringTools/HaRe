@@ -16,9 +16,8 @@ import Control.Monad
 import Data.List
 import Data.Maybe
 
-import qualified Language.Haskell.GhcMod          as GM
-import qualified Language.Haskell.GhcMod.Internal as GM
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod as GM (Options(..))
+import Language.Haskell.GhcMod.Internal as GM (mpPath)
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types
@@ -29,7 +28,7 @@ import Language.Haskell.GHC.ExactPrint.Transform
 -- | This refactoring duplicates a definition (function binding or
 -- simple pattern binding) at the same level with a new name provided by
 -- the user. The new name should not cause name clash/capture.
-duplicateDef :: RefactSettings -> Options -> FilePath -> String -> SimpPos -> IO [FilePath]
+duplicateDef :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 duplicateDef settings opts fileName newName (row,col) =
   runRefacSession settings opts [Left fileName] (comp fileName newName (row,col))
 

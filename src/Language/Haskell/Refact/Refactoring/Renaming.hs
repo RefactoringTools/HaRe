@@ -12,7 +12,7 @@ import Control.Monad
 import Data.List
 import Exception
 
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 
@@ -46,7 +46,7 @@ modules.
 -}
 
 -- | Rename the given identifier.
-rename :: RefactSettings -> Options
+rename :: RefactSettings -> GM.Options
    -> FilePath -> String -> SimpPos
    -> IO [FilePath]
 rename settings opts fileName newName (row,col) =
