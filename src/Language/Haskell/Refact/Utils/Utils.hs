@@ -434,44 +434,6 @@ initGhcSession tgts = do
 
 -- ---------------------------------------------------------------------
 {-
--- | Extracting all 'Module' 'FilePath's for libraries, executables,
--- tests and benchmarks.
-cabalAllTargets :: Cradle -> RefactGhc (CabalGraph,([String],[String],[String],[String]))
-cabalAllTargets crdl = RefactGhc (GmlT $ cabalOpts crdl)
-  where
-    -- Note: This runs inside ghc-mod's GmlT monad
-    cabalOpts :: Cradle -> GhcModT (StateT RefactState IO) (CabalGraph,([String],[String],[String],[String]))
-    cabalOpts Cradle{..} = do
-        comps <- mapM (resolveEntrypoint crdl) =<< getComponents
-        mcs <- cached cradleRootDir resolvedComponentsCache comps
-
-        let
-            -- foo :: Map.Map ChComponentName (Set.Set ModulePath)
-            -- foo = Map.map gmcEntrypoints mcs
-
-            -- bar :: Map.Map ChComponentName GmModuleGraph
-            -- bar = Map.map gmcHomeModuleGraph mcs
-
-            entries = Map.toList $ Map.map gmcEntrypoints mcs
-            isExe (ChExeName _,_)     = True
-            isExe _                   = False
-            isLib (ChLibName,_)       = True
-            isLib _                   = False
-            isTest (ChTestName _,_)   = True
-            isTest _                  = False
-            isBench (ChBenchName _,_) = True
-            isBench _                 = False
-            getTgts :: (ChComponentName,Set.Set ModulePath) -> [String]
-            getTgts (_,mps) = map mpPath $ Set.toList mps
-
-            exeTargets   = concatMap getTgts $ filter isExe entries
-            libTargets   = concatMap getTgts $ filter isLib entries
-            testTargets  = concatMap getTgts $ filter isTest entries
-            benchTargets = concatMap getTgts $ filter isBench entries
-        return (mcs,(libTargets,exeTargets,testTargets,benchTargets))
--}
--- ---------------------------------------------------------------------
-{-
 getEnabledTargets :: RefactSettings -> ([FilePath],[FilePath],[FilePath],[FilePath]) -> ([FilePath],[FilePath])
 getEnabledTargets settings (libt,exet,testt,bencht) = (targetsLib,targetsExe)
   where

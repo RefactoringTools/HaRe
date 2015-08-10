@@ -3,7 +3,7 @@ packages:
 - '.'
 - location:
     git: https://github.com/alanz/ghc-mod.git
-    commit: fa30fa85fc136a14ff3d6fa4331f260e5d3fe4c3
+    commit: a8168ca28ae3a552cc111d2db70ef218886c180f
   extra-dep: true
 - location:
     git: https://github.com/alanz/ghc-exactprint.git
