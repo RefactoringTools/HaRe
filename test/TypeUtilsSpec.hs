@@ -643,20 +643,6 @@ spec = do
                    "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
                    "(FreeAndDeclared.Declare.ff, (36, 1))]"
 
-{-
-                   "[(FreeAndDeclared.Declare.ff, (36, 1)),\n "++
-                   "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
-                   "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
-                   "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
-                   "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
-                   "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++ -- ++AZ++ addition
-                   "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
-                   "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
-                   "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
-                   "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
-                   "(FreeAndDeclared.Declare.toplevel, (6, 1))]"
--}
-
       -- ---------------------
       -- GHC version
       -- Free Vars
@@ -1103,15 +1089,17 @@ spec = do
       (t,_toks,tgt) <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
       -- putStrLn $ "parsed:" ++ SYB.showData SYB.Parser 0 parsed
 
       let Just rhsr = locToExp (14,6) (15,14) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
       let Just rhs  = locToExp (14,6) (15,14) parsed  :: (Maybe (GHC.LHsExpr GHC.RdrName))
       (showGhcQual rhs) `shouldBe` "x + y + z"
+      -- putStrLn $ "\nrhs:\n" ++ SYB.showData SYB.Parser 0 rhs
 
       -- let Just er = getName "IdIn5.x" renamed
-      let Just e  = locToRdrName (10,1) parsed
+      let Just e  = locToRdrName (14,7) parsed
+      (showGhcQual e) `shouldBe` "x"
+      (SYB.showData SYB.Parser 0 e) `shouldBe` "\n(L {Renaming/IdIn5.hs:14:7} \n (Unqual {OccName: x}))"
 
       let
         comp = do
@@ -1119,11 +1107,11 @@ spec = do
           fds' <- hsVisibleDsRdr nameMap e rhs
           ffds <- hsFreeAndDeclaredGhc rhsr
           return (fds',ffds)
-      -- ((fds,_fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      -- ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
-      (show fds)  `shouldBe` "DN [GHC.Num.+, y, z]"
       (show _fds) `shouldBe` "(FN [IdIn5.x, GHC.Num.+, y, z],DN [])"
+      (show fds)  `shouldBe` "DN [GHC.Num.+, y, z]"
 
     -- -----------------------------------
 

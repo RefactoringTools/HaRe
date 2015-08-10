@@ -1644,7 +1644,6 @@ hsVisiblePNsRdr nm e t = do
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
 hsVisibleDsRdr :: (FindEntity e, GHC.Outputable e,SYB.Data t)
-               -- ,HasDecls t)
              => NameMap -> e -> t -> RefactGhc DeclaredNames
 hsVisibleDsRdr nm e t = do
   -- logm $ "hsVisibleDsRdr:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
@@ -1798,15 +1797,18 @@ hsVisibleDsRdr nm e t = do
     lgrhs :: GHC.LGRHS GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc DeclaredNames
     lgrhs (GHC.L _ (GHC.GRHS guards ex))
       | findEntity e guards = logm "hsVisibleDsRdr nm.lgrhs.guards" >> hsVisibleDsRdr nm e guards
-      | findEntity e ex     = logm "hsVisibleDsRdr nm.lgrhs.ex" >> hsVisibleDsRdr nm e ex
+      | findEntity e ex     = logm "hsVisibleDsRdr nm.lgrhs.ex"     >> hsVisibleDsRdr nm e ex
     lgrhs _ = return (DN [])
 
 
     lexpr :: GHC.LHsExpr GHC.RdrName -> RefactGhc DeclaredNames
     lexpr (GHC.L l (GHC.HsVar n))
-      | findEntity e n  = return (DN [rdrName2NamePure nm (GHC.L l n)])
+      | findEntity e n  = do
+        logm $ "hsVisibleDsRdr.lexpr.HsVar entity found"
+        return (DN [rdrName2NamePure nm (GHC.L l n)])
     lexpr (GHC.L _ (GHC.HsLet lbinds expr))
       | findEntity e lbinds || findEntity e expr  = do
+        logm $ "hsVisibleDsRdr.lexpr.HsLet entity found"
         let (_,lds) = hsFreeAndDeclaredRdr nm lbinds
         let (_,eds) = hsFreeAndDeclaredRdr nm expr
         return $ lds <> eds
@@ -1820,7 +1822,9 @@ hsVisibleDsRdr nm e t = do
         -- return (DN e1fs <> DN eofs <> DN e2fs)
         return (DN (efs \\ eeds))
 
-    lexpr _ = return (DN [])
+    lexpr x = do
+      logm $ "hsVisibleDsRdr.lexpr:miss for:" ++ SYB.showData SYB.Parser 0 x
+      return (DN [])
 
     -- ---------------------------------
 
