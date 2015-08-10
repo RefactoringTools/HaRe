@@ -280,8 +280,6 @@ hsFreeAndDeclaredRdr' nm t = do
           -- hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
 
    where
-
-
           hsFreeAndDeclared' :: Maybe (FreeNames,DeclaredNames)
           hsFreeAndDeclared' = applyTU (stop_tdTU (failTU
                                                       `adhocTU` expr
@@ -330,6 +328,10 @@ hsFreeAndDeclaredRdr' nm t = do
 
 
           -- pat --
+          pattern (GHC.L _ (GHC.AsPat ln pat)) = do
+            let (f,DN d) = fromMaybe mempty $ hsFreeAndDeclaredRdr' nm pat
+            return (f,DN (rdrName2NamePure nm ln:d))
+
           pattern (GHC.L l (GHC.VarPat n))
             = return (FN [],DN [rdrName2NamePure nm (GHC.L l n)])
           -- It seems all the GHC pattern match syntax elements end up

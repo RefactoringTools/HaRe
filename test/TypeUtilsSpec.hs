@@ -579,16 +579,20 @@ spec = do
 
       let
         comp = do
+          parsed <- getRefactParsed
+          nm <- getRefactNameMap
+          let rr = hsFreeAndDeclaredRdr nm parsed
           let r = hsFreeAndDeclaredPNsOld renamed
           rg <- hsFreeAndDeclaredPNs renamed
-          let ff = map (\b -> getFreeVars [b]) $ hsBinds renamed
-          return (r,rg,ff)
-      -- ((res,resg,_fff),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      ((res,resg,_fff),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+          -- let ff = map (\b -> getFreeVars [b]) $ hsBinds renamed
+          return (r,rg,rr)
+      -- ((res,resg,rrr),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      ((res,resg,(FN fr,DN dr)),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- (showGhcQual _fff) `shouldBe` ""
 
-      -- Free Vars
+      -- ---------------------
+      -- Free Vars - renamed
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe`
                    "[(Data.Generics.Text.gshow, (-1, -1)),\n "++
                    "(System.IO.getChar, (-1, -1)), "++
@@ -600,7 +604,7 @@ spec = do
                    "(GHC.Num.fromInteger, (-1, -1)), "++
                    "(GHC.Num.*, (-1, -1))]"
 
-      -- Declared Vars
+      -- Declared Vars - renamed
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
                    "[(FreeAndDeclared.Declare.ff, (36, 1)),\n "++
                    "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
@@ -614,6 +618,46 @@ spec = do
                    "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
                    "(FreeAndDeclared.Declare.toplevel, (6, 1))]"
 
+      -- ---------------------
+      -- Free Vars - parsed
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) fr) `shouldBe`
+                   "[(GHC.Num.*, (-1, -1)), "++
+                   "(GHC.Base.$, (-1, -1)),\n "++
+                   "(GHC.List.head, (-1, -1)), "++
+                   "(GHC.List.zip, (-1, -1)),\n "++
+                   "(System.IO.getChar, (-1, -1)), "++
+                   "(System.IO.putStrLn, (-1, -1)),\n "++
+                   "(Data.Generics.Text.gshow, (-1, -1))]"
+
+      -- Declared Vars - parsed
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) dr) `shouldBe`
+                   "[(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
+                   "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
+                   "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
+                   "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++
+                   "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
+                   "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
+                   "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
+                   "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
+                   "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
+                   "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
+                   "(FreeAndDeclared.Declare.ff, (36, 1))]"
+
+{-
+                   "[(FreeAndDeclared.Declare.ff, (36, 1)),\n "++
+                   "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
+                   "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
+                   "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
+                   "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
+                   "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++ -- ++AZ++ addition
+                   "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
+                   "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
+                   "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
+                   "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
+                   "(FreeAndDeclared.Declare.toplevel, (6, 1))]"
+-}
+
+      -- ---------------------
       -- GHC version
       -- Free Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
