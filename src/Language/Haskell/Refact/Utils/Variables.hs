@@ -466,6 +466,10 @@ hsFreeAndDeclaredPNs' t = do
 
 
           -- pat --
+          pattern (GHC.AsPat (GHC.L _ n) pat) = do
+            (f,d) <- hsFreeAndDeclaredPNs' pat
+            return (f,n:d)
+
           pattern (GHC.VarPat n) = return ([],[n])
           -- It seems all the GHC pattern match syntax elements end up
           -- with GHC.VarPat
@@ -563,7 +567,6 @@ hsFreeAndDeclaredGhc t = do
   where
     res = (const err
           `SYB.extQ` renamed
-          `SYB.extQ` parsed
           `SYB.extQ` lhsbind
           `SYB.extQ` hsbind
           `SYB.extQ` lhsbinds
@@ -599,19 +602,15 @@ hsFreeAndDeclaredGhc t = do
           `SYB.extQ` hsrecordbind
           ) t
 
-    parsed :: GHC.ParsedSource ->  RefactGhc (FreeNames,DeclaredNames)
-    parsed p = do
-      gfds <- hsFreeAndDeclaredGhc $ GHC.hs_valds g
-      let tds = concatMap getDeclaredTypes $ concatMap GHC.group_tyclds (GHC.hs_tyclds g)
-      return $ gfds <> (FN [],DN tds)
-
     -- -----------------------
 
     renamed :: GHC.RenamedSource ->  RefactGhc (FreeNames,DeclaredNames)
     renamed (g,_i,_e,_d) = do
-      gfds <- hsFreeAndDeclaredGhc $ GHC.hs_valds g
+      (FN gf,DN gd) <- hsFreeAndDeclaredGhc $ GHC.hs_valds g
       let tds = concatMap getDeclaredTypes $ concatMap GHC.group_tyclds (GHC.hs_tyclds g)
-      return $ gfds <> (FN [],DN tds)
+      logm $ "hsFreeAndDeclaredGhc.renamed:(gf,gd,tds)=" ++ showGhc (gf,gd,tds)
+      -- return $ gfds <> (FN [],DN tds)
+      return $ (FN (gf \\ tds), DN (gd++tds))
 
     -- -----------------------
 
@@ -781,8 +780,10 @@ hsFreeAndDeclaredGhc t = do
     ltydecl (GHC.L _ (GHC.FamDecl fd)) = hsFreeAndDeclaredGhc fd
     ltydecl (GHC.L _ (GHC.SynDecl (GHC.L _ n) _bndrs _rhs fvs))
         = return (FN (GHC.nameSetElems fvs),DN [n])
-    ltydecl (GHC.L _ (GHC.DataDecl (GHC.L _ n) _bndrs _defn fvs))
-        = return (FN (GHC.nameSetElems fvs),DN [n])
+    ltydecl (GHC.L _ (GHC.DataDecl (GHC.L _ n) _bndrs defn fvs)) = do
+        let dds = map GHC.unLoc $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
+        logm $ "hsFreeAndDeclaredGhc.ltydecl:(n,dds)" ++ showGhc (n,dds)
+        return (FN (GHC.nameSetElems fvs),DN (n:dds))
     ltydecl (GHC.L _ (GHC.ClassDecl _ctx (GHC.L _ n) _tyvars
                      _fds _sigs meths ats atds _docs fvs)) = do
        -- logm $ "hsFreeAndDeclaredGhc.ltydecl.ClassDecl.meths"
@@ -1237,7 +1238,8 @@ getDeclaredTypesRdr decl = do
 getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
 getDeclaredTypes (GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ (GHC.L _ n) _ _))) = [n]
 getDeclaredTypes (GHC.L _ (GHC.SynDecl (GHC.L _ n)  _ _ _)) = [n]
-getDeclaredTypes (GHC.L _ (GHC.DataDecl (GHC.L _ n) _ _ _)) = [n] -- ++?
+getDeclaredTypes (GHC.L _ (GHC.DataDecl (GHC.L _ n) _ defn _)) = n:dds
+  where dds = map GHC.unLoc $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
 getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths _ats _atdefs _ _fvs))
   = nub $ [n] ++ ssn ++ msn -- ++ asn
   where

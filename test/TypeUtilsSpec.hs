@@ -575,7 +575,7 @@ spec = do
     it "finds declared HsVar" $ do
       (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+      -- putStrLn $ "\nrenamed:\n" ++ (SYB.showData SYB.Renamer 0 renamed)
 
       let
         comp = do
@@ -583,7 +583,7 @@ spec = do
           rg <- hsFreeAndDeclaredPNs renamed
           let ff = map (\b -> getFreeVars [b]) $ hsBinds renamed
           return (r,rg,ff)
-      -- ((res,resg,_fff),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      -- ((res,resg,_fff),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       ((res,resg,_fff),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- (showGhcQual _fff) `shouldBe` ""
@@ -639,11 +639,11 @@ spec = do
                    "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
                    "(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
                    "(GHC.Types.Int, (-1, -1)), (GHC.Integer.Type.Integer, (-1, -1)),\n "++
-                   "(FreeAndDeclared.Declare.D, (18, 6)),\n "++
+                   "(FreeAndDeclared.Declare.D, (18, 1)),\n "++
                    "(FreeAndDeclared.Declare.A, (18, 10)),\n "++
                    "(FreeAndDeclared.Declare.B, (18, 14)),\n "++
                    "(FreeAndDeclared.Declare.C, (18, 25)),\n "++
-                   "(FreeAndDeclared.Declare.F, (25, 6)),\n "++
+                   "(FreeAndDeclared.Declare.F, (25, 1)),\n "++
                    "(FreeAndDeclared.Declare.G, (25, 10)),\n "++
                    "(FreeAndDeclared.Declare.:|, (25, 14))]"
 
