@@ -1229,21 +1229,22 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
     -- logm $ "addActualParamsToRhs:rhs=" ++ (SYB.showData SYB.Renamer 0 $ rhs)
     nameMap <- getRefactNameMap
     let
-
        -- |Limit the action to actual RHS elements
        grhs :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
        grhs (GHC.GRHSs g lb) = do
-         -- logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
+         logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
          g' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM worker) g
          return (GHC.GRHSs g' lb)
 
-       worker :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
+       worker :: (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
        worker oldExp@(GHC.L l2 (GHC.HsVar pname))
         -- * | pname == pn
         | eqRdrNamePure nameMap (GHC.L l2 pname) pn
           = do
               -- logm $ "addActualParamsToRhs:oldExp=" ++ (SYB.showData SYB.Renamer 0 oldExp)
-              let newExp' = foldl addParamToExp oldExp paramPNames
+              -- let newExp' = foldl addParamToExp oldExp paramPNames
+              newExp' <- liftT $ foldlM addParamToExp oldExp paramPNames
+
               let newExp  = (GHC.L l2 (GHC.HsPar newExp'))
               -- TODO: updateToks must add a space at the end of the
               --       new exp
@@ -1252,8 +1253,11 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
                             else return newExp
        worker x = return x
 
-       addParamToExp :: (GHC.LHsExpr GHC.RdrName) -> GHC.RdrName -> (GHC.LHsExpr GHC.RdrName)
-       addParamToExp  expr param = GHC.noLoc (GHC.HsApp expr (GHC.noLoc (GHC.HsVar param)))
+       addParamToExp :: (GHC.LHsExpr GHC.RdrName) -> GHC.RdrName -> Transform (GHC.LHsExpr GHC.RdrName)
+       addParamToExp  expr param = do
+         ss1 <- uniqueSrcSpanT
+         ss2 <- uniqueSrcSpanT
+         return $ GHC.L ss1 (GHC.HsApp expr (GHC.L ss2 (GHC.HsVar param)))
 
     r <- applyTP (stop_tdTP (failTP `adhocTP` grhs)) rhs
     return r

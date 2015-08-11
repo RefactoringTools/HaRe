@@ -1369,10 +1369,10 @@ spec = do
 
       let
         comp = do
+          getModuleGhc "./TH/Main.hs"
           fds' <- hsFreeAndDeclaredGhc renamed
           return (fds')
-      -- ((fds),_s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
-      ((fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((fds),_s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe`
             "(FN [System.IO.putStrLn, TH.Printf.pr],"++
@@ -1803,11 +1803,10 @@ spec = do
          newBinding <- addActualParamsToRhs True n [newName2] decl
 
          return newBinding
-      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
-      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-
+      -- (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      putStrLn $ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "sq"
-      -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (showGhcQual nb) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = (sq bar2) x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
 
       (sourceFromState s) `shouldBe` "module LiftToToplevel.D1 where\n\n{-lift 'sq' to top level. This refactoring\n  affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = (sq bar2)x + sumSquares xs\n  where\n     sq x = x ^ pow\n     pow =2\n\nsumSquares [] = 0\n\nmain = sumSquares [1..4]\n\n\n"

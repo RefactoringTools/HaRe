@@ -399,21 +399,16 @@ hsFreeAndDeclaredRdr' nm t = do
           ltydecl :: GHC.LTyClDecl GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
 
           ltydecl (GHC.L _ (GHC.FamDecl fd)) = hsFreeAndDeclaredRdr' nm fd
-          ltydecl (GHC.L _ (GHC.SynDecl ln _bndrs _rhs fvs))
+          ltydecl (GHC.L _ (GHC.SynDecl ln _bndrs _rhs _fvs))
               = return (FN [],DN [rdrName2NamePure nm ln])
-          ltydecl (GHC.L _ (GHC.DataDecl ln _bndrs defn fvs)) = do
+          ltydecl (GHC.L _ (GHC.DataDecl ln _bndrs defn _fvs)) = do
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
-              -- logm $ "hsFreeAndDeclaredRdr'.ltydecl:(n,dds)" ++ showGhc (n,dds)
               return (FN [],DN (rdrName2NamePure nm ln:dds))
           ltydecl (GHC.L _ (GHC.ClassDecl _ctx ln _tyvars
-                           _fds _sigs meths ats atds _docs fvs)) = do
-             -- logm $ "hsFreeAndDeclaredRdr'.ltydecl.ClassDecl.meths"
+                           _fds _sigs meths ats atds _docs _fvs)) = do
              (_,md) <- hsFreeAndDeclaredRdr' nm meths
-             -- logm $ "hsFreeAndDeclaredRdr'.ltydecl.ClassDecl.ats"
              (_,ad) <- hsFreeAndDeclaredRdr' nm ats
-             -- logm $ "hsFreeAndDeclaredRdr'.ltydecl.ClassDecl.atds"
              (_,atd) <- hsFreeAndDeclaredRdr' nm atds
-             -- logm $ "hsFreeAndDeclaredRdr'.ltydecl.ClassDecl.done"
              return (FN [],DN [rdrName2NamePure nm ln] <> md <> ad <> atd)
 
           ------------------------------
