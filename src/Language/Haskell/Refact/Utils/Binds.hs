@@ -49,9 +49,9 @@ module Language.Haskell.Refact.Utils.Binds
    , HsValBinds(..)
  ) where
 
-import Language.Haskell.GHC.ExactPrint.Types
+-- import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.Refact.Utils.Types
+-- import Language.Haskell.Refact.Utils.Types
 
 -- Modules from GHC
 import qualified Bag           as GHC

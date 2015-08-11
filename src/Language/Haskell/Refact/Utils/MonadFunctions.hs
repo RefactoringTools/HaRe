@@ -91,7 +91,7 @@ import qualified Data.Generics as SYB
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
-import Language.Haskell.GHC.ExactPrint.Transform
+-- import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -350,8 +350,8 @@ getRefactModule = do
 
 getRefactModuleName :: RefactGhc GHC.ModuleName
 getRefactModuleName = do
-  mod <- getRefactModule
-  return $ GHC.moduleName mod
+  modu <- getRefactModule
+  return $ GHC.moduleName modu
 
 -- ---------------------------------------------------------------------
 

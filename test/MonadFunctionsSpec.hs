@@ -2,19 +2,19 @@ module MonadFunctionsSpec (main, spec) where
 
 import           Test.Hspec
 
-import TestUtils
+-- import TestUtils
 
-import qualified GHC        as GHC
+-- import qualified GHC        as GHC
 
-import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.GHC.ExactPrint.Types
+-- import Language.Haskell.GHC.ExactPrint.Utils
+-- import Language.Haskell.GHC.ExactPrint.Types
 
-import Language.Haskell.Refact.Utils.Binds
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.Refact.Utils.TypeUtils
+-- import Language.Haskell.Refact.Utils.Binds
+-- import Language.Haskell.Refact.Utils.GhcVersionSpecific
+-- import Language.Haskell.Refact.Utils.Monad
+-- import Language.Haskell.Refact.Utils.MonadFunctions
+-- import Language.Haskell.Refact.Utils.TypeSyn
+-- import Language.Haskell.Refact.Utils.TypeUtils
 
 -- import Language.Haskell.TokenUtils.DualTree
 
@@ -33,6 +33,6 @@ spec = do
 
 -- ---------------------------------------------------------------------
 
-parsedFileLayoutIn2 :: IO (ParseResult, [PosToken],Targets)
-parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
+-- parsedFileLayoutIn2 :: IO (ParseResult, [PosToken],Targets)
+-- parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
 

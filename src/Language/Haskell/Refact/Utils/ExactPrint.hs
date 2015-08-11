@@ -34,7 +34,7 @@ import qualified Data.Generics as SYB
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.Types
+-- import Language.Haskell.Refact.Utils.Types
 
 import Control.Monad.RWS
 import Data.List

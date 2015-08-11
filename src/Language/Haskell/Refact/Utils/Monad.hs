@@ -52,8 +52,8 @@ import Control.Monad.State
 --import Data.Time.Clock
 import Distribution.Helper
 import Exception
-import qualified Language.Haskell.GhcMod          as GM (LineSeparator(..),Options(..),runGhcModT,Cradle(..))
-import qualified Language.Haskell.GhcMod.Internal as GM (GmLog,MonadIO(..),loadTargets,GmlT(..),GHCOption,GmModuleGraph(..),ModulePath(..),gmlGetSession,gmlSetSession,gmlClear,gmlHistory,gmlJournal,runGmlT',GmEnv(..),GmComponent(..),GmComponentType(..),cabalModuleGraphs)
+import qualified Language.Haskell.GhcMod          as GM (LineSeparator(..),Options(..),runGhcModT)
+import qualified Language.Haskell.GhcMod.Internal as GM (GmLog,MonadIO(..),loadTargets,GmlT(..),GmModuleGraph(..),ModulePath(..),gmlGetSession,gmlSetSession,gmlClear,gmlHistory,gmlJournal,runGmlT',GmEnv(..),GmComponent(..),GmComponentType(..),cabalModuleGraphs)
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils

@@ -8,8 +8,8 @@ import qualified GHC        as GHC
 
 import Data.Maybe
 
-import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.GHC.ExactPrint.Types
+-- import Language.Haskell.GHC.ExactPrint.Utils
+-- import Language.Haskell.GHC.ExactPrint.Types
 
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.LocUtils

@@ -153,7 +153,7 @@ import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
-import qualified Outputable    as GHC
+-- import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHC
@@ -691,20 +691,24 @@ instance UsedByRhs GHC.RenamedSource where
 
    -- Not a meaningful question at this level
    usedByRhs _renamed _pns = False
+   usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsModule GHC.RdrName) where
 
    -- Not a meaningful question at this level
    usedByRhsRdr _ _parsed _pns = False
+   usedByRhs _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance (UsedByRhs a) => UsedByRhs (GHC.Located a) where
   usedByRhsRdr nm (GHC.L _ d) pns = usedByRhsRdr nm d pns
+  usedByRhs _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.HsDecl GHC.RdrName) where
+  usedByRhs _ _ = assert False undefined
   usedByRhsRdr nm de pns =
    case de of
       GHC.TyClD d       -> f d
@@ -731,73 +735,94 @@ instance UsedByRhs (GHC.HsDecl GHC.RdrName) where
 
 instance UsedByRhs (GHC.TyClDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.InstDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.DerivDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.ForeignDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.WarnDecls GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.AnnDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.RoleAnnotDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsQuasiQuote GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.DefaultDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.SpliceDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.VectDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.RuleDecls GHC.RdrName) where
+  usedByRhs _ _ = assert False undefined
   usedByRhsRdr = assert False undefined
 
 instance UsedByRhs GHC.DocDecl where
+  usedByRhs _ _ = assert False undefined
   usedByRhsRdr = assert False undefined
 
 instance UsedByRhs (GHC.HsBind GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.Sig GHC.RdrName) where
   usedByRhsRdr = assert False undefined
+  usedByRhs _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.LHsBinds GHC.Name) where
   usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) $ GHC.bagToList binds
+  usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsValBinds GHC.Name) where
   usedByRhs (GHC.ValBindsIn binds _sigs) pns  = usedByRhs (GHC.bagToList binds) pns
   usedByRhs (GHC.ValBindsOut binds _sigs) pns = or $ map (\(_,b) -> usedByRhs b pns) binds
+  usedByRhsRdr _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
   usedByRhs (GHC.Match _ _ _ (GHC.GRHSs rhs _)) pns -- = usedByRhs (hsValBinds rhs) pns
                                                  = findPNs pns rhs
+  usedByRhsRdr _ _ = assert False undefined
 
 
 instance UsedByRhs (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
   usedByRhsRdr nm (GHC.Match _ _ _ (GHC.GRHSs rhs _)) pns
     = findNamesRdr nm pns rhs
 
+  usedByRhs _ _ = assert False undefined
+
 -- -------------------------------------
 
 instance UsedByRhs [GHC.LHsBind GHC.Name] where
   usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
+  usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsBind GHC.Name) where
   usedByRhs (GHC.FunBind _ _ matches _ _ _) pns = findPNs pns matches
@@ -805,26 +830,31 @@ instance UsedByRhs (GHC.HsBind GHC.Name) where
   usedByRhs (GHC.VarBind _ rhs _)           pns = findPNs pns rhs
   usedByRhs (GHC.AbsBinds _ _ _ _ _)       _pns = False
   usedByRhs (GHC.PatSynBind _)             _pns = error "To implement: usedByRhs PaySynBind"
+  usedByRhsRdr _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.HsExpr GHC.Name) where
   usedByRhs (GHC.HsLet _lb e) pns = findPNs pns e
   usedByRhs e                _pns = error $ "undefined usedByRhs:" ++ (showGhc e)
+  usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsExpr GHC.RdrName) where
   usedByRhsRdr nm (GHC.HsLet _lb e) pns = findNamesRdr nm pns e
   usedByRhsRdr _ e                 _pns = error $ "undefined usedByRhsRdr:" ++ (showGhc e)
+  usedByRhs _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name)) where
   usedByRhs (GHC.LetStmt lb) pns = findPNs pns lb
   usedByRhs s               _pns = error $ "undefined usedByRhs:" ++ (showGhc s)
+  usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
   usedByRhsRdr nm (GHC.LetStmt lb) pns = findNamesRdr nm pns lb
   usedByRhsRdr _ s               _pns = error $ "undefined usedByRhsRdr:" ++ (showGhc s)
+  usedByRhs _ _ = assert False undefined
 
 --------------------------------------------------------------------------------
 
@@ -911,7 +941,7 @@ addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
                         }
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Remove ImportDecl from the imports list, commonly returned from a RenamedSource type, so it can
 -- be further processed.
 --rmPreludeImports :: [GHC.Located (GHC.ImportDecl GHC.Name)] -> [GHC.Located (GHC.ImportDecl GHC.Name)]
@@ -920,7 +950,7 @@ rmPreludeImports ::
   -> [GHC.Located (GHC.ImportDecl GHC.Name)]
 rmPreludeImports = filter isPrelude where
             isPrelude = (/="Prelude") . GHC.moduleNameString . GHC.unLoc . GHC.ideclName . GHC.unLoc
-
+-}
 
 -- ---------------------------------------------------------------------
 {-

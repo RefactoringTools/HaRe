@@ -21,8 +21,8 @@ module Language.Haskell.Refact.Utils.Types
 import qualified GHC      as GHC
 
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Types
-import Language.Haskell.GHC.ExactPrint.Utils
+-- import Language.Haskell.GHC.ExactPrint.Types
+-- import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Data.Map as Map
 
@@ -84,7 +84,7 @@ type NameMap = Map.Map GHC.SrcSpan GHC.Name
 
 -- ---------------------------------------------------------------------
 -- Putting these here for the time being, to avoid import loops
-
+{-}
 ghead :: String -> [a] -> a
 ghead  info []    = error $ "ghead "++info++" []"
 ghead _info (h:_) = h
@@ -100,3 +100,4 @@ gtail _info h    = tail h
 gfromJust :: [Char] -> Maybe a -> a
 gfromJust _info (Just h) = h
 gfromJust  info Nothing = error $ "gfromJust " ++ info ++ " Nothing"
+-}
