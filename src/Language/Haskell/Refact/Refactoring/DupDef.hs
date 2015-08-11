@@ -178,10 +178,8 @@ reallyDoDuplicating pn newName inscopes = do
                 if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls)
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
-                   else do newBinding <- duplicateDecl declsp parentr n newNameGhc
-                           -- let newDecls = replaceDecls declsr (declsr ++ newBinding)
-                           -- let newDecls = replaceBinds declsr (declsr ++ newBinding)
-                           -- return $ replaceBinds parentr newDecls
+                   else do newBinding <- duplicateDecl declsp n newNameGhc
+                   -- else do newBinding <- duplicateDecl declsp parentr n newNameGhc
                            parentr' <- liftT $ replaceDecls parentr (declsp ++ newBinding)
                            return parentr'
 

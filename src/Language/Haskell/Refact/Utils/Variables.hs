@@ -113,6 +113,16 @@ instance FindEntity GHC.Name where
 -- where it was found, not any other instances of it.
 instance FindEntity (GHC.Located GHC.RdrName) where
 
+  findEntity ln t =
+    case SYB.something (nameSybQuery checkRdr) t of
+      Nothing -> False
+      _       -> True
+    where
+      checkRdr :: GHC.Located GHC.RdrName -> Maybe Bool
+      checkRdr n
+        | sameOccurrence n ln = Just True
+        | otherwise = Nothing
+{-
   findEntity n t = fromMaybe False res
    where
     res = SYB.something (Nothing `SYB.mkQ` worker) t
@@ -120,6 +130,8 @@ instance FindEntity (GHC.Located GHC.RdrName) where
     worker (name :: GHC.Located GHC.RdrName)
       | sameOccurrence n name = Just True
     worker _ = Nothing
+-}
+
 -- ---------------------------------------------------------------------
 {-
 -- This is not precise enough, RdrNames are ambiguous
@@ -289,6 +301,7 @@ hsFreeAndDeclaredRdr' nm t = do
                                                       `adhocTU` match
                                                       `adhocTU` stmts
                                                       `adhocTU` rhs
+                                                      `adhocTU` ltydecl
                                                        )) t
 
           -- expr --
@@ -381,6 +394,29 @@ hsFreeAndDeclaredRdr' nm t = do
 
           stmts _ = mzero
 
+          -- tycldecls -----------------
+
+          ltydecl :: GHC.LTyClDecl GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
+
+          ltydecl (GHC.L _ (GHC.FamDecl fd)) = hsFreeAndDeclaredRdr' nm fd
+          ltydecl (GHC.L _ (GHC.SynDecl ln _bndrs _rhs fvs))
+              = return (FN [],DN [rdrName2NamePure nm ln])
+          ltydecl (GHC.L _ (GHC.DataDecl ln _bndrs defn fvs)) = do
+              let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
+              -- logm $ "hsFreeAndDeclaredRdr'.ltydecl:(n,dds)" ++ showGhc (n,dds)
+              return (FN [],DN (rdrName2NamePure nm ln:dds))
+          ltydecl (GHC.L _ (GHC.ClassDecl _ctx ln _tyvars
+                           _fds _sigs meths ats atds _docs fvs)) = do
+             -- logm $ "hsFreeAndDeclaredRdr'.ltydecl.ClassDecl.meths"
+             (_,md) <- hsFreeAndDeclaredRdr' nm meths
+             -- logm $ "hsFreeAndDeclaredRdr'.ltydecl.ClassDecl.ats"
+             (_,ad) <- hsFreeAndDeclaredRdr' nm ats
+             -- logm $ "hsFreeAndDeclaredRdr'.ltydecl.ClassDecl.atds"
+             (_,atd) <- hsFreeAndDeclaredRdr' nm atds
+             -- logm $ "hsFreeAndDeclaredRdr'.ltydecl.ClassDecl.done"
+             return (FN [],DN [rdrName2NamePure nm ln] <> md <> ad <> atd)
+
+          ------------------------------
 
           addFree :: GHC.Name -> (FreeNames,DeclaredNames)
                   -> Maybe (FreeNames,DeclaredNames)
@@ -1231,8 +1267,7 @@ getDeclaredTypesRdr (GHC.L _ (GHC.TyClD decl)) = do
 
         ssn = concatMap getLSig sigs
         -- msn = getDeclaredVars $ hsBinds meths
-getDeclaredTypesRdr x =
-   error $ "getDeclaredTypesRdr:Not processing TyClD:" ++ showGhc x
+getDeclaredTypesRdr _ = return []
 
 -- |Get the names of all types declared in the given declaration
 getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
@@ -1847,16 +1882,18 @@ hsVisibleDsRdr nm e t = do
     tycldecls :: [GHC.LTyClDecl GHC.RdrName] -> RefactGhc DeclaredNames
     tycldecls tcds
       | findEntity e tcds = do
-        logm $ "hsVisibleDsRdr nm.tycldecls"
+        logm $ "hsVisibleDsRdr.tycldecls"
         fds <- mapM (hsVisibleDsRdr nm e) tcds
+        logm $ "hsVisibleDsRdr.tycldecls done"
         return $ mconcat fds
     tycldecls _ = return (DN [])
 
     tycldecl :: GHC.LTyClDecl GHC.RdrName -> RefactGhc DeclaredNames
     tycldecl tcd
       | findEntity e tcd = do
-        logm $ "hsVisibleDsRdr nm.tycldecl"
+        logm $ "hsVisibleDsRdr.tycldecl"
         let (_,ds) = hsFreeAndDeclaredRdr nm tcd
+        logm $ "hsVisibleDsRdr.tycldecl done"
         return ds
     tycldecl _ = return (DN [])
 

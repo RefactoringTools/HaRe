@@ -230,6 +230,8 @@ isInScopeAndUnqualifiedGhc n maybeExising = do
       logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show e)
       return []
 
+-- ---------------------------------------------------------------------
+
 inScopeNames :: String         -- ^ The identifier name.
              -> RefactGhc [GHC.Name] -- ^ The result.
 inScopeNames n = do
@@ -1339,34 +1341,22 @@ Original : sq x + sumSquares xs
 -- ---------------------------------------------------------------------
 
 -- | Duplicate a function\/pattern binding declaration under a new name
--- right after the original one. Also updates the token stream.
-duplicateDecl :: (SYB.Data t) =>
-  -- ++AZ++ TODO: generalise the first param to 'HasDecls t'
-  [GHC.LHsDecl GHC.RdrName]  -- ^ The declaration list
-  ->t                   -- ^ Any signatures are in here
+-- right after the original one.
+duplicateDecl ::
+    [GHC.LHsDecl GHC.RdrName] -- ^ decls to be updated, containing the original decl (and sig)
   ->GHC.Name            -- ^ The identifier whose definition is to be duplicated
   ->GHC.Name            -- ^ The new name (possibly qualified)
   ->RefactGhc [GHC.LHsDecl GHC.RdrName]  -- ^ The result
-duplicateDecl decls sigs n newFunName
+duplicateDecl decls n newFunName
  = do
+     -- decls <- liftT $ hsDecls t
      nm <- getRefactNameMap
      let
        declsToDup = definingDeclsRdrNames nm [n] decls True False
        funBinding = filter isFunOrPatBindP declsToDup     --get the fun binding.
-       typeSig    = definingSigsRdrNames nm [n] sigs
-     let Just sspan = getSrcSpan funBinding
-
-     _ <- case typeSig of
-         [] -> return sspan
-         _  -> do
-          _typeSig'' <- renamePN n newFunName False typeSig
-
-          let [(GHC.L sspanSig' _)] = typeSig
-
-          return sspanSig'
+       typeSig    = definingSigsRdrNames nm [n] decls
      funBinding'' <- renamePN n newFunName False funBinding
 
-     -- return (typeSig'++funBinding') -- ++AZ++ TODO: reinstate this
      return funBinding''
 
 -- ---------------------------------------------------------------------

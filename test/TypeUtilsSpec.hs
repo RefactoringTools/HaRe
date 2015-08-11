@@ -542,7 +542,7 @@ spec = do
 
   -- -------------------------------------------------------------------
 
-  describe "hsFreeAndDeclaredPNs" $ do
+  describe "hsFreeAndDeclaredXXXX" $ do
 
     it "finds declared in type class definitions" $ do
       (t,_toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
@@ -1107,11 +1107,11 @@ spec = do
           fds' <- hsVisibleDsRdr nameMap e rhs
           ffds <- hsFreeAndDeclaredGhc rhsr
           return (fds',ffds)
-      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      -- ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((fds,_fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show _fds) `shouldBe` "(FN [IdIn5.x, GHC.Num.+, y, z],DN [])"
-      (show fds)  `shouldBe` "DN [GHC.Num.+, y, z]"
+      (show fds)  `shouldBe` "DN [GHC.Num.+, IdIn5.x, y, z]"
 
     -- -----------------------------------
 
@@ -1119,12 +1119,13 @@ spec = do
       (t,_toks,tgt) <- ct $ parsedFileGhc "./Renaming/D1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+      -- putStrLn $ "\nparsed:\n" ++ SYB.showData SYB.Parser 0 parsed
 
       -- let Just (GHC.L _ n) = locToName (6, 6) renamed
       -- (showGhcQual n) `shouldBe` "Renaming.D1.Tree"
-      let Just ln@(GHC.L _ n) = locToRdrName (6, 6) parsed
-      (showGhcQual n) `shouldBe` "Tree"
+      let Just ln = locToRdrName (6, 6) parsed
+      (showGhcQual ln) `shouldBe` "Tree"
+      (SYB.showData SYB.Parser 0 ln) `shouldBe` "\n(L {Renaming/D1.hs:6:6-9} \n (Unqual {OccName: Tree}))"
 
       let
         comp = do
@@ -1133,12 +1134,14 @@ spec = do
           ffds <- hsFreeAndDeclaredGhc renamed
           return (fds',ffds)
       ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((fds,_fds),_s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
-      (show _fds) `shouldBe` "(FN [:, GHC.Num.+, GHC.Real.^, [], Renaming.D1.Leaf,\n"
-                            ++" Renaming.D1.Branch, GHC.Base.++],DN [Renaming.D1.sumSquares,"
-                            ++" Renaming.D1.fringe, Renaming.D1.Tree, a,\n"
-                            ++" Renaming.D1.SameOrNot, Renaming.D1.isSame, Renaming.D1.isNotSame])"
-      (show fds) `shouldBe` "DN [Renaming.D1.Tree]"
+      (show _fds) `shouldBe` "(FN [:, GHC.Num.+, GHC.Real.^, [], GHC.Base.++],"++
+                              "DN [Renaming.D1.sumSquares, Renaming.D1.fringe, Renaming.D1.Tree, a,\n"++
+                              " Renaming.D1.Leaf, Renaming.D1.Branch, Renaming.D1.SameOrNot,\n"++
+                              " Renaming.D1.isSame, Renaming.D1.isNotSame])"
+      -- (show fds) `shouldBe` "DN [Renaming.D1.Tree]"
+      (show fds) `shouldBe` "DN [Renaming.D1.Tree, Renaming.D1.Leaf, Renaming.D1.Branch]"
 
 
   -- ---------------------------------------------------------------------
@@ -1235,11 +1238,12 @@ spec = do
           return (fds',ffds)
       ((fds,_fds),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
-      (show _fds) `shouldBe` "(FN [:, GHC.Num.+, GHC.Real.^, [], Renaming.D1.Leaf,\n"
-                            ++" Renaming.D1.Branch, GHC.Base.++],DN [Renaming.D1.sumSquares,"
-                            ++" Renaming.D1.fringe, Renaming.D1.Tree, a,\n"
-                            ++" Renaming.D1.SameOrNot, Renaming.D1.isSame, Renaming.D1.isNotSame])"
-      (show fds) `shouldBe` "DN [Renaming.D1.Tree]"
+      (show _fds) `shouldBe` "(FN [:, GHC.Num.+, GHC.Real.^, [], GHC.Base.++],"++
+                             "DN [Renaming.D1.sumSquares, Renaming.D1.fringe, Renaming.D1.Tree, a,\n "++
+                                 "Renaming.D1.Leaf, Renaming.D1.Branch, Renaming.D1.SameOrNot,\n "++
+                                 "Renaming.D1.isSame, Renaming.D1.isNotSame])"
+      -- (show fds) `shouldBe` "DN [Renaming.D1.Tree]"
+      (show fds) `shouldBe` "DN [Renaming.D1.Tree, Renaming.D1.Leaf, Renaming.D1.Branch]"
 
 
   -- ---------------------------------------------------------------------
@@ -1346,10 +1350,11 @@ spec = do
             " FreeAndDeclared.Binders.getOccName,"++
             " GHC.Classes.==,"++
             " name,\n"++
-            " Data.Maybe.Just,"++
-            " Data.Maybe.Nothing,\n"++
+            " GHC.Base.Just,"++
+            " GHC.Base.Nothing,\n"++
             " FreeAndDeclared.Binders.somethingStaged,\n"++
-            " FreeAndDeclared.Binders.Renamer, renamed],"++
+            " FreeAndDeclared.Binders.Renamer,"++
+            " renamed],"++
             "DN [worker, res])"
 
     -- -----------------------------------
@@ -1536,13 +1541,13 @@ spec = do
       (t,_toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
+         getModuleGhc "./DupDef/Dd1.hs"
          ctx <- GHC.getContext
          res1 <- isInScopeAndUnqualifiedGhc "c" Nothing
          res2 <- isInScopeAndUnqualifiedGhc "DupDef.Dd1.c" Nothing
          res3 <- isInScopeAndUnqualifiedGhc "nonexistent" Nothing
          return (res1,res2,res3,ctx)
-      -- ((r1,r2,r3,_c),_s) <- ct $ runRefactGhcState comp tgt
-      ((r1,r2,r3,_c),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((r1,r2,r3,_c),_s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = Nothing }) testOptions
       -- (showGhcQual c) `shouldBe` "[*DupDef.Dd1]"
       r1 `shouldBe` True
       r2 `shouldBe` True
@@ -1550,11 +1555,11 @@ spec = do
 
     -- ---------------------------------
 
-    it "Requires qualification on name clash with an import" $ do
+    it "requires qualification on name clash with an import" $ do
       (t, _toks,tgt) <- ct $ parsedFileGhc  "./ScopeAndQual.hs"
       let
         comp = do
-         -- (t,toks) <- parseSourceFileTest  "./ScopeAndQual.hs"
+         getModuleGhc "./ScopeAndQual.hs"
          putParsedModule t
          renamed <- getRefactRenamed
 
@@ -1571,7 +1576,7 @@ spec = do
          return (res1,res2,names,names2,sumSquares,ssUnqual,ctx)
       -- ((r1,r2,ns,ns2,ss,ssu,c),_s) <- runRefactGhcStateLog comp True
       -- ((r1,r2,ns,ns2,ss,ssu,_c),_s) <- ct $ runRefactGhcState comp
-      ((r1,r2,ns,ns2,ss,ssu,_c),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((r1,r2,ns,ns2,ss,ssu,_c),_s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- (showGhcQual c) `shouldBe` "[*ScopeAndQual]"
       (prettyprint ss) `shouldBe` "sumSquares"
@@ -1633,7 +1638,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "duplicateDecl" $ do
-    it "duplicates a RenamedSource bind, and updates the token stream" $ do
+    it "duplicates a bind only" $ do
       (t, toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
@@ -1644,7 +1649,7 @@ spec = do
          parsed <- getRefactParsed
          declsp <- liftT $ hsDecls parsed
          newName2 <- mkNewGhcName Nothing "bar2"
-         newBinding <- duplicateDecl declsp renamed n newName2
+         newBinding <- duplicateDecl declsp n newName2
 
          return newBinding
       -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
@@ -1675,7 +1680,8 @@ spec = do
            declsToDup = definingDeclsRdrNames nm [n] declsp True True
            funBinding = filter isFunOrPatBindP declsToDup     --get the fun binding.
 
-         newBinding <- duplicateDecl declsToDup parsed n newName2
+         -- newBinding <- duplicateDecl declsToDup parsed n newName2
+         newBinding <- duplicateDecl declsp n newName2
 
          -- return newBinding
          return (funBinding,declsToDup,newBinding)

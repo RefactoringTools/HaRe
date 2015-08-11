@@ -453,7 +453,7 @@ nameSybQuery :: (SYB.Typeable a, SYB.Typeable t)
              => (GHC.Located a -> Maybe r) -> t -> Maybe r
 nameSybQuery checker = q
   where
-    q = Nothing `SYB.mkQ` worker
+    q = Nothing `SYB.mkQ`  worker
                 `SYB.extQ` workerBind
                 `SYB.extQ` workerExpr
                 `SYB.extQ` workerLIE
