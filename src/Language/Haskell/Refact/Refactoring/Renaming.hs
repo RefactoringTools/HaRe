@@ -93,7 +93,7 @@ comp fileName newName (row,col) = do
                             Nothing -> modName
 
            -- TODO: why do we have this restriction?
-           unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ show defineMod ++
+           unless (defineMod == modName ) ( error ("This identifier is defined in module " ++ GHC.moduleNameString defineMod ++
                                          ", please do renaming in that module!"))
            logm $ "Renaming.comp:(isMainModule modu,pn)=" ++ (showGhcQual (isMainModule modu,pn))
            if isMainModule modu && showGhcQual pn == "Main.main"
@@ -237,8 +237,8 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
       --    client mod, in which case it must be qualified
       -- 2. Is the new name module imported qualified, and so needs to
       --    be qualified in the replacement, according to the import
-      isInScopeUnqual <- isInScopeAndUnqualifiedGhc (nameToString oldPN) Nothing
-      isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName Nothing
+      isInScopeUnqual    <- isInScopeAndUnqualifiedGhc (nameToString oldPN) Nothing
+      isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName              Nothing
       logm $ "renameInClientMod: (isInScopeAndUnqual,isInScopeUnqualNew)=" ++ (show (isInScopeUnqual,isInScopeUnqualNew)) -- ++AZ++
       -- if  qualifier == []  --this name is not imported, but it maybe used in the import list
       -- if isInScopeUnqual
@@ -263,7 +263,7 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
      refactRenameSimple old newStr new useQual = do
        qualifyTopLevelVar newStr
        renamed <- getRefactRenamed
-       logm $ "renameInClientMod.refactRename:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
+       -- logm $ "renameInClientMod.refactRename:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        parsed <- getRefactParsed
        -- void $ renamePN old new useQual renamed
        parsed' <- renamePN' old new useQual parsed

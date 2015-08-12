@@ -4,3 +4,4 @@
 main = putStrLn "hello"
 
 baz x = x ^ 2
+

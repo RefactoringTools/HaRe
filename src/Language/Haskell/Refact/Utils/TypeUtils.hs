@@ -219,8 +219,7 @@ isInScopeAndUnqualifiedGhc n maybeExising = do
   logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
   let nameList = case maybeExising of
                   Nothing -> names
-                  -- Just n' -> filter (\x -> (GHC.nameUnique x) /= (GHC.nameUnique n')) names
-                  Just n' -> filter (\x -> (showGhc x) /= (showGhc n')) names
+                  Just n' -> filter (\x -> (showGhcQual x) /= (showGhcQual n')) names
   logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (show n) ++ ":" ++  (showGhc nameList)
   return $ nameList /= []
 
