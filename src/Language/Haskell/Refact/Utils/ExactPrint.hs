@@ -18,10 +18,6 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , mkKey
   -- , setColRec
   , getOriginalPos
-
-  -- * Operations
-  , transferEntryDP
-
   ) where
 
 import qualified FastString    as GHC
@@ -229,7 +225,7 @@ replace old new ans = do
   return ((\anns -> Map.delete old . Map.insert new newan' $ anns) ans)
 
 -- ---------------------------------------------------------------------
-
+{- migrated to ghc-exactPrint
 -- |Take the annEntryDelta associated with the first item and associate it with the second.
 -- Also transfer the AnnSpanEntry value, and any comments occuring before it.
 transferEntryDP :: (SYB.Data a, SYB.Data b) => Anns -> GHC.Located a -> GHC.Located b -> Anns
@@ -240,8 +236,6 @@ transferEntryDP ans a b = (const anns') ans
       anA <- Map.lookup (mkKey a) anns
       anB <- Map.lookup (mkKey b) anns
       let anB'  = Ann { annEntryDelta        = annEntryDelta     anA
-                      -- , annDelta             = annDelta          anA
-                      -- , annTrueEntryDelta    = annTrueEntryDelta anA
                       , annPriorComments     = annPriorComments     anA ++ annPriorComments     anB
                       , annFollowingComments = annFollowingComments anA ++ annFollowingComments anB
                       , annsDP               = annsDP          anB
@@ -249,11 +243,10 @@ transferEntryDP ans a b = (const anns') ans
                       , annCapturedSpan      = annCapturedSpan anB
                       }
       return (Map.insert (mkKey b) anB' anns)
-      -- return (error $ "transferEntryDP: (mkKey a,mkKey b,anA,anB,anB')" ++ showGhc (mkKey a,mkKey b,anA,anB,anB') )
     anns' = fromMaybe
               (error $ "transferEntryDP: lookup failed (a,b)=" ++ show (mkKey a,mkKey b))
               maybeAnns
-
+-}
 -- ---------------------------------------------------------------------
 
 {-

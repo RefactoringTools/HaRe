@@ -1538,7 +1538,7 @@ spec = do
 
   describe "isInScopeAndUnqualifiedGhc" $ do
     it "True if the identifier is in scope and unqualified" $ do
-      (t,_toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      (_t,_toks,tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          getModuleGhc "./DupDef/Dd1.hs"
@@ -1786,58 +1786,54 @@ spec = do
   -- ---------------------------------------------
 
   describe "addActualParamsToRhs" $ do
-    it "adds a parameter to the rhs of a declaration, and updates the token stream" $ do
+    it "adds a parameter to the rhs of a declaration" $ do
       (t, _toks, tgt) <- ct $ parsedFileGhc "./LiftToToplevel/D1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let declsr = hsBinds renamed
-      -- let decl@(GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [GHC.L _ (GHC.Match _ _ rhs) ] _) _ _ _)) = head declsr
-      let decl = head declsr
-      (showGhcQual decl) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = sq x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
-      -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
       let Just (GHC.L _ n) = locToName (6, 21) renamed
       let
         comp = do
+         parsed <- getRefactParsed
+         declsp <- liftT $ hsDecls parsed
+         let decl = head declsp
          let newName2 = mkRdrName "bar2"
          newBinding <- addActualParamsToRhs True n [newName2] decl
 
-         return newBinding
-      -- (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      putStrLn $ showAnnDataFromState s
+         return (newBinding,decl)
+      ((nb,decl'),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,decl'),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      -- putStrLn $ showAnnDataFromState s
+      (showGhcQual decl') `shouldBe` "sumSquares (x : xs)\n  = sq x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
       (showGhcQual n) `shouldBe` "sq"
-      (showGhcQual nb) `shouldBe` "LiftToToplevel.D1.sumSquares (x : xs)\n  = (sq bar2) x GHC.Num.+ LiftToToplevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftToToplevel.D1.sumSquares [] = 0"
-
-      (sourceFromState s) `shouldBe` "module LiftToToplevel.D1 where\n\n{-lift 'sq' to top level. This refactoring\n  affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = (sq bar2)x + sumSquares xs\n  where\n     sq x = x ^ pow\n     pow =2\n\nsumSquares [] = 0\n\nmain = sumSquares [1..4]\n\n\n"
+      (showGhcQual nb) `shouldBe` "sumSquares (x : xs)\n  = (sq bar2) x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
+      (exactPrintFromState s nb) `shouldBe` "sumSquares (x : xs)\n  = (sq bar2) x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
 
     -- --------------------
 
-    it "adds parameters to a complex rhs of a declaration, and updates the token stream" $ do
+    it "adds parameters to a complex rhs of a declaration" $ do
       (t, _toks,tgt) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn7.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let declsr = hsBinds renamed
-      -- let decl@(GHC.L _ (GHC.FunBind _ _ (GHC.MatchGroup [GHC.L _ (GHC.Match _ _ rhs) ] _) _ _ _)) = head declsr
-      let decl = head declsr
-      (showGhcQual decl) `shouldBe` "LiftToToplevel.WhereIn7.fun x y z\n  = inc addthree\n  where\n      inc a = a GHC.Num.+ 1\n      addthree = x GHC.Num.+ y GHC.Num.+ z"
-      -- (SYB.showData SYB.Renamer 0 rhs) `shouldBe` ""
       let Just (GHC.L _ n) = locToName (10, 17) renamed
       let
         comp = do
+         parsed <- getRefactParsed
+         declsp <- liftT $ hsDecls parsed
+         let decl = head declsp
+
          let newName1 = mkRdrName "x1"
          let newName2 = mkRdrName "y1"
          let newName3 = mkRdrName "z1"
          newBinding <- addActualParamsToRhs True n [newName1,newName2,newName3] decl
 
-         return newBinding
-      -- (nb,s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
-      (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+         return (newBinding,decl)
+      -- ((nb,decl'),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
+      ((nb,decl'),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (showGhcQual decl') `shouldBe` "fun x y z\n  = inc addthree\n  where\n      inc a = a + 1\n      addthree = x + y + z"
       (showGhcQual n) `shouldBe` "addthree"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
-      (sourceFromState s) `shouldBe` "module LiftToToplevel.WhereIn7 where\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'addthree' defined in 'fun'.\n--This example aims to test adding parenthese.\n\n\nfun x y z =inc (addthree x1 y1 z1)\n       where inc a =a +1\n             addthree=x+y+z\n"
-      (showGhcQual nb) `shouldBe` "LiftToToplevel.WhereIn7.fun x y z\n  = inc (addthree x1 y1 z1)\n  where\n      inc a = a GHC.Num.+ 1\n      addthree = x GHC.Num.+ y GHC.Num.+ z"
+      (showGhcQual nb) `shouldBe` "fun x y z\n  = inc (addthree x1 y1 z1)\n  where\n      inc a = a + 1\n      addthree = x + y + z"
+      (exactPrintFromState s nb) `shouldBe` "fun x y z\n  = inc (addthree x1 y1 z1)\n  where\n      inc a = a + 1\n      addthree = x + y + z"
 
 
   -- ---------------------------------------------
@@ -1934,6 +1930,31 @@ spec = do
       (showGhcQual n) `shouldBe` "zz"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module RmDecl3 where\n\n-- Remove last declaration from a where clause, where should disappear too\nff y = y + zz\n  where\n    zz = 1\n\n-- EOF\n"
       (sourceFromState s) `shouldBe` "module RmDecl3 where\n\n-- Remove last declaration from a where clause, where should disappear too\nff y = y + zz\n\n-- EOF\n"
+
+    -- -----------------------------------
+
+    it "removes the first local decl in a where clause" $ do
+      (t, toks, tgt) <- ct $ parsedFileGhc "./RmDecl4.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      -- let declsr = hsBinds renamed
+      -- let declsp = hsBinds parsed
+      let Just (GHC.L _ n) = locToName (7, 5) renamed
+      let
+        comp = do
+         (parsed',_removedDecl,_removedSig) <- rmDecl n True parsed
+
+         putRefactParsed parsed' emptyAnns
+
+         return parsed'
+      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+
+      (showGhcQual n) `shouldBe` "zz"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "{-# LANGUAGE FlexibleContexts #-}\nmodule RmDecl4 where\n\n-- Remove first declaration from a where clause, rest should still be indented\nff y = y + zz ++ xx\n  where\n    zz = 1\n    xx = 2\n\n-- EOF\n"
+      (sourceFromState s) `shouldBe` "{-# LANGUAGE FlexibleContexts #-}\nmodule RmDecl4 where\n\n-- Remove first declaration from a where clause, rest should still be indented\nff y = y + zz ++ xx\n  where\n    xx = 2\n\n-- EOF\n"
 
     -- -----------------------------------
 

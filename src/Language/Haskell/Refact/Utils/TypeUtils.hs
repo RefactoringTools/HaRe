@@ -1231,7 +1231,7 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
        -- |Limit the action to actual RHS elements
        grhs :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
        grhs (GHC.GRHSs g lb) = do
-         logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
+         -- logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
          g' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM worker) g
          return (GHC.GRHSs g' lb)
 
@@ -1244,18 +1244,16 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
               -- let newExp' = foldl addParamToExp oldExp paramPNames
               newExp' <- liftT $ foldlM addParamToExp oldExp paramPNames
 
+              -- ++AZ++:TODO: Add Anns for HsPar
               let newExp  = (GHC.L l2 (GHC.HsPar newExp'))
-              -- TODO: updateToks must add a space at the end of the
-              --       new exp
-              if modifyToks then do -- _ <- updateToks oldExp newExp prettyprint False
-                                    return newExp
-                            else return newExp
+              return newExp
        worker x = return x
 
        addParamToExp :: (GHC.LHsExpr GHC.RdrName) -> GHC.RdrName -> Transform (GHC.LHsExpr GHC.RdrName)
        addParamToExp  expr param = do
          ss1 <- uniqueSrcSpanT
          ss2 <- uniqueSrcSpanT
+         -- ++AZ++:TODO: Add Anns for HsVar etc
          return $ GHC.L ss1 (GHC.HsApp expr (GHC.L ss2 (GHC.HsVar param)))
 
     r <- applyTP (stop_tdTP (failTP `adhocTP` grhs)) rhs
@@ -1416,7 +1414,7 @@ rmDecl pn incSig t = do
                 1 -> do -- Removing the last declaration
                  return expr
                 _ -> do
-                 logm $ "rmDecl.inLet:length decls /= 1"
+                 -- logm $ "rmDecl.inLet:length decls /= 1"
                  -- let decls2' = gtail "inLet" decls2
                  decls' <- doRmDecl decls1 decls2
                  localDecls' <- liftT $ replaceDecls localDecls decls'
@@ -1454,6 +1452,7 @@ rmDecl pn incSig t = do
           -- unless (null decls2') $ do modifyRefactAnns (\anns -> transferEntryDP anns declToRemove (head decls2') )
           unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
           unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
+          when   (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
           return $ (decls1 ++ decls2')
 
     getDone = do

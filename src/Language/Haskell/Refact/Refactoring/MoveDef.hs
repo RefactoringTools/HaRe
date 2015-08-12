@@ -295,6 +295,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
              --                                 else liftedDecls'
 
+             -- logDataWithAnns "liftToMod.liftToToplevel':parent'" parent'
              logm $ "liftToMod:(ffff)="
 
              -- drawTokenTree "liftToMod.c"
