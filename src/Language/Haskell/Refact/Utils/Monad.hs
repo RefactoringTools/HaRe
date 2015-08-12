@@ -52,8 +52,8 @@ import Control.Monad.State
 --import Data.Time.Clock
 import Distribution.Helper
 import Exception
-import qualified Language.Haskell.GhcMod          as GM (LineSeparator(..),Options(..),runGhcModT)
-import qualified Language.Haskell.GhcMod.Internal as GM (GmLog,MonadIO(..),loadTargets,GmlT(..),GmModuleGraph(..),ModulePath(..),gmlGetSession,gmlSetSession,gmlClear,gmlHistory,gmlJournal,runGmlT',GmEnv(..),GmComponent(..),GmComponentType(..),cabalModuleGraphs)
+import qualified Language.Haskell.GhcMod          as GM (LineSeparator(..),Options(..),IOish,GhcModT,runGhcModT)
+import qualified Language.Haskell.GhcMod.Internal as GM (GmLog,MonadIO(..),loadTargets,GmlT(..),GmModuleGraph(..),ModulePath(..),gmlGetSession,gmlSetSession,gmlClear,gmlHistory,gmlJournal,runGmlT',GmEnv(..),GmComponent(..),GmComponentType(..),cabalResolvedComponents)
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
@@ -358,19 +358,14 @@ cabalComponentSets = do
 -- ---------------------------------------------------------------------
 
 cabalModuleGraphs :: RefactGhc [GM.GmModuleGraph]
-cabalModuleGraphs = RefactGhc (GM.GmlT GM.cabalModuleGraphs)
-{-
+-- cabalModuleGraphs = RefactGhc (GM.GmlT GM.cabalModuleGraphs)
 cabalModuleGraphs = RefactGhc (GM.GmlT doCabalModuleGraphs)
   where
-    doCabalModuleGraphs :: _
+    doCabalModuleGraphs :: (GM.IOish m) => GM.GhcModT m [GM.GmModuleGraph]
     doCabalModuleGraphs = do
-      crdl@(GM.Cradle{..}) <- GM.cradle
-
-      comps <- mapM (GM.resolveEntrypoint crdl) =<< GM.getComponents
-      mcs <- GM.cached cradleRootDir GM.resolvedComponentsCache comps
+      mcs <- GM.cabalResolvedComponents
       let graph = map GM.gmcHomeModuleGraph $ Map.elems mcs
       return $ graph
--}
 
 -- ---------------------------------------------------------------------
 
