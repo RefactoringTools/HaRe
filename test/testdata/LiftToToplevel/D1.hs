@@ -4,10 +4,10 @@ module LiftToToplevel.D1 where
   affects module 'D1' and 'C1' -}
 
 sumSquares (x:xs) = sq x + sumSquares xs
-  where 
+  where
      sq x = x ^ pow
-     pow =2 
- 
+     pow =2
+
 sumSquares [] = 0
 
 main = sumSquares [1..4]

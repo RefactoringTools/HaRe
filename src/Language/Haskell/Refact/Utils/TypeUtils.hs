@@ -1184,10 +1184,9 @@ addParamsToDecls::
         [GHC.LHsDecl GHC.RdrName] -- ^ A declaration list where the function is defined and\/or used.
       -> GHC.Name       -- ^ The function name.
       -> [GHC.RdrName]  -- ^ The parameters to be added.
-      -> Bool           -- ^ Modify the token stream or not.
       -> RefactGhc [GHC.LHsDecl GHC.RdrName] -- ^ The result.
 
-addParamsToDecls decls pn paramPNames modifyToks = do
+addParamsToDecls decls pn paramPNames = do
   -- logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhc (pn,paramPNames,modifyToks))
   -- logm $ "addParamsToDecls: decls=" ++ (SYB.showData SYB.Renamer 0 decls)
   nameMap <- getRefactNameMap
@@ -1204,7 +1203,7 @@ addParamsToDecls decls pn paramPNames modifyToks = do
       where
        addParamtoMatch (GHC.L l (GHC.Match fn1 pats mtyp rhs))
         = do
-             rhs' <- addActualParamsToRhs modifyToks pn paramPNames rhs
+             rhs' <- addActualParamsToRhs pn paramPNames rhs
              pats' <- liftT $ mapM addParam paramPNames
              return (GHC.L l (GHC.Match fn1 (pats'++pats) mtyp rhs'))
 
@@ -1222,17 +1221,19 @@ addParamsToDecls decls pn paramPNames modifyToks = do
 -- ---------------------------------------------------------------------
 
 addActualParamsToRhs :: (SYB.Data t) =>
-                        Bool -> GHC.Name -> [GHC.RdrName] -> t -> RefactGhc t
-addActualParamsToRhs modifyToks pn paramPNames rhs = do
+                        GHC.Name -> [GHC.RdrName] -> t -> RefactGhc t
+addActualParamsToRhs pn paramPNames rhs = do
     logm $ "addActualParamsToRhs:entered:(pn,paramPNames)=" ++ showGhc (pn,paramPNames)
-    -- logm $ "addActualParamsToRhs:rhs=" ++ (SYB.showData SYB.Renamer 0 $ rhs)
+    -- logDataWithAnns "addActualParamsToRhs:rhs=" rhs
+    -- logAnns         "addActualParamsToRhs:rhs anns="
     nameMap <- getRefactNameMap
     let
        -- |Limit the action to actual RHS elements
        grhs :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
        grhs (GHC.GRHSs g lb) = do
-         -- logm $ "addActualParamsToRhs.grhs:g=" ++ (SYB.showData SYB.Renamer 0 g)
+         -- logDataWithAnns "addActualParamsToRhs.grhs:g=" g
          g' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM worker) g
+         -- logDataWithAnns "addActualParamsToRhs.grhs:g'=" g'
          return (GHC.GRHSs g' lb)
 
        worker :: (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
@@ -1240,26 +1241,89 @@ addActualParamsToRhs modifyToks pn paramPNames rhs = do
         -- * | pname == pn
         | eqRdrNamePure nameMap (GHC.L l2 pname) pn
           = do
-              -- logm $ "addActualParamsToRhs:oldExp=" ++ (SYB.showData SYB.Renamer 0 oldExp)
+              -- logm $ "addActualParamsToRhs:oldExp=" ++ (SYB.showData SYB.Parser 0 oldExp)
+              -- logAnns "addActualParamsToRhs:newExp anns="
               -- let newExp' = foldl addParamToExp oldExp paramPNames
               newExp' <- liftT $ foldlM addParamToExp oldExp paramPNames
+              -- newExp' <- foldlM (liftT . addParamToExp) oldExp paramPNames
 
-              -- ++AZ++:TODO: Add Anns for HsPar
-              let newExp  = (GHC.L l2 (GHC.HsPar newExp'))
+              l2' <- liftT $ uniqueSrcSpanT
+              let newExp  = (GHC.L l2' (GHC.HsPar newExp'))
+              liftT $ addSimpleAnnT newExp (DP (0,0)) [(G GHC.AnnOpenP,DP (0,0)),(G GHC.AnnCloseP,DP (0,0))]
+              -- logm $ "addActualParamsToRhs:newExp=" ++ (SYB.showData SYB.Parser 0 newExp)
+              -- logAnns "addActualParamsToRhs:newExp anns="
               return newExp
        worker x = return x
 
        addParamToExp :: (GHC.LHsExpr GHC.RdrName) -> GHC.RdrName -> Transform (GHC.LHsExpr GHC.RdrName)
-       addParamToExp  expr param = do
+       addParamToExp expr param = do
          ss1 <- uniqueSrcSpanT
          ss2 <- uniqueSrcSpanT
-         -- ++AZ++:TODO: Add Anns for HsVar etc
-         return $ GHC.L ss1 (GHC.HsApp expr (GHC.L ss2 (GHC.HsVar param)))
+         let var   = GHC.L ss2 (GHC.HsVar param)
+         let expr' = GHC.L ss1 (GHC.HsApp expr var)
+         addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
+         addSimpleAnnT expr' (DP (0,0)) []
+         return expr'
 
     r <- applyTP (stop_tdTP (failTP `adhocTP` grhs)) rhs
     return r
 
+{-
 
+The code
+
+    sumSqu (x:xs) = (sq bar2) x + sumSquares xs
+
+results in
+
+          (GRHSs 
+           [
+            ({ LiftToToplevel/D1.hs:(13,15)-(15,16) }
+             Just (Ann (DP (0,-1)) [] [] [] Nothing Nothing)
+             (GRHS 
+              [] 
+              ({ LiftToToplevel/D1.hs:13:17-43 }
+               Just (Ann (DP (0,1)) [] [] [] Nothing Nothing)
+               (OpApp 
+                ({ LiftToToplevel/D1.hs:13:17-27 }
+                 Just (Ann (DP (0,0)) [] [] [] Nothing Nothing)
+                 (HsApp 
+                  ({ LiftToToplevel/D1.hs:13:17-25 }
+                   Just (Ann (DP (0,0)) [] [] [((G AnnOpenP),DP (0,0)),((G AnnCloseP),DP (0,0))] Nothing Nothing)
+                   (HsPar 
+                    ({ LiftToToplevel/D1.hs:13:18-24 }
+                     Just (Ann (DP (0,0)) [] [] [] Nothing Nothing)
+                     (HsApp 
+                      ({ LiftToToplevel/D1.hs:13:18-19 }
+                       Just (Ann (DP (0,0)) [] [] [((G AnnVal),DP (0,0))] Nothing Nothing)
+                       (HsVar 
+                        (Unqual {OccName: sq}))) 
+                      ({ LiftToToplevel/D1.hs:13:21-24 }
+                       Just (Ann (DP (0,1)) [] [] [((G AnnVal),DP (0,0))] Nothing Nothing)
+                       (HsVar 
+                        (Unqual {OccName: bar2}))))))) 
+                  ({ LiftToToplevel/D1.hs:13:27 }
+                   Just (Ann (DP (0,1)) [] [] [((G AnnVal),DP (0,0))] Nothing Nothing)
+                   (HsVar 
+                    (Unqual {OccName: x}))))) 
+                ({ LiftToToplevel/D1.hs:13:29 }
+                 Just (Ann (DP (0,1)) [] [] [((G AnnVal),DP (0,0))] Nothing Nothing)
+                 (HsVar 
+                  (Unqual {OccName: +}))) 
+                (PlaceHolder) 
+                ({ LiftToToplevel/D1.hs:13:31-43 }
+                 Just (Ann (DP (0,1)) [] [] [] Nothing Nothing)
+                 (HsApp 
+                  ({ LiftToToplevel/D1.hs:13:31-40 }
+                   Just (Ann (DP (0,0)) [] [] [((G AnnVal),DP (0,0))] Nothing Nothing)
+                   (HsVar 
+                    (Unqual {OccName: sumSquares}))) 
+                  ({ LiftToToplevel/D1.hs:13:42-43 }
+                   Just (Ann (DP (0,1)) [] [] [((G AnnVal),DP (0,0))] Nothing Nothing)
+                   (HsVar 
+                    (Unqual {OccName: xs})))))))))] 
+
+-}
 {-
 Required end result : (sq pow) x + sumSquares xs
 

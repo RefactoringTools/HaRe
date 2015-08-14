@@ -1,20 +1,18 @@
 flags: {}
 packages:
 - '.'
-- location:
-    git: https://github.com/alanz/ghc-mod.git
-    commit: 4a05941738bf908eecc5c2ac336c884ef325d0fa
-  extra-dep: true
+# - location:
+#     git: https://github.com/alanz/ghc-mod.git
+#     commit: 10025440f1b086ba42fa4c2c8b0d38fa68fa037b
+#   extra-dep: true
 - location:
     git: https://github.com/alanz/ghc-exactprint.git
-    commit: f33827f2d9afdd5a19bf18b1fa2edbb2975114af
+    commit: 2341f03ecef20211e6c2a55c29a9df3c2cbb139a
   extra-dep: true
 extra-deps:
 - Strafunski-StrategyLib-5.0.0.8
-- cabal-helper-0.4.0.0
+- cabal-helper-0.5.1.0
+- ghc-mod-5.3.0.0
 - rosezipper-0.2
 - syz-0.2.0.0
-# resolver: nightly-2015-07-30
-resolver: nightly-2015-08-06
-# Use system GHC, must be a 7.10.2 rc or later.
-# system-ghc: true
+resolver: lts-3.0

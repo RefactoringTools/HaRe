@@ -13,6 +13,7 @@ module TestUtils
        , initialLogOnState
        , showAnnDataFromState
        , showAnnDataItemFromState
+       , showAnnsFromState
        , exactPrintFromState
        , sourceFromState
        , annsFromState
@@ -52,7 +53,7 @@ import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Annotate
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
-import qualified Language.Haskell.GhcMod          as GM (Options(..),defaultOptions,Cradle(..),logLevel)
+import qualified Language.Haskell.GhcMod          as GM (Options(..),defaultOptions,Cradle(..),ProjectType(..),logLevel)
 import qualified Language.Haskell.GhcMod.Internal as GM (GmLogLevel(..))
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.Monad
@@ -242,7 +243,7 @@ testOptions = GM.defaultOptions { GM.logLevel = GM.GmError }
 -- ---------------------------------------------------------------------
 
 testCradle :: GM.Cradle
-testCradle = GM.Cradle "./test/testdata/" "./test/testdata/" "/tmp" Nothing
+testCradle = GM.Cradle GM.CabalProject "./test/testdata/" "./test/testdata/" "/tmp" Nothing
 
 -- ---------------------------------------------------------------------
 
@@ -295,6 +296,17 @@ showAnnDataItemFromState st t =
       where
         anns = tkCache (rsTokenCache tm) Map.! mainTid
         r = showAnnData anns 0 t
+    Nothing -> []
+
+-- ---------------------------------------------------------------------
+
+showAnnsFromState :: RefactState -> String
+showAnnsFromState st =
+  case rsModule st of
+    Just tm -> r
+      where
+        anns = tkCache (rsTokenCache tm) Map.! mainTid
+        r = showGhc anns
     Nothing -> []
 
 -- ---------------------------------------------------------------------

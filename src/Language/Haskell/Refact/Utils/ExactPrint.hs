@@ -34,7 +34,6 @@ import Language.Haskell.Refact.Utils.Monad
 
 import Control.Monad.RWS
 import Data.List
-import Data.Maybe
 
 import qualified Data.Map as Map
 

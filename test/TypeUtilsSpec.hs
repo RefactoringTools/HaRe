@@ -1701,7 +1701,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "addParamsToDecl" $ do
-    it "adds parameters to a declaration, and updates the token stream" $ do
+    it "adds parameters to a declaration" $ do
       (t, toks,tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -1713,7 +1713,7 @@ spec = do
          declsp <- liftT $ hsDecls parsed
          -- newName2 <- mkNewGhcName Nothing "bar2"
          let newName2 = mkRdrName "bar2"
-         declsp' <- addParamsToDecls declsp n [newName2] True
+         declsp' <- addParamsToDecls declsp n [newName2]
          parsed' <- liftT $ replaceDecls parsed declsp'
          putRefactParsed parsed' emptyAnns
 
@@ -1740,7 +1740,7 @@ spec = do
         comp = do
          declsp <- liftT $ hsDecls parsed
          let newName = mkRdrName "pow"
-         declsp' <- addParamsToDecls declsp n [newName] True
+         declsp' <- addParamsToDecls declsp n [newName]
          parsed' <- liftT $ replaceDecls parsed declsp'
          putRefactParsed parsed' emptyAnns
          return declsp'
@@ -1769,7 +1769,7 @@ spec = do
          declsp <- liftT $ hsDecls parsed
          let newName1 = mkRdrName "baz"
          let newName2 = mkRdrName "bar"
-         declsp' <- addParamsToDecls declsp n [newName1,newName2] True
+         declsp' <- addParamsToDecls declsp n [newName1,newName2]
          parsed' <- liftT $ replaceDecls parsed declsp'
          putRefactParsed parsed' emptyAnns
 
@@ -1797,16 +1797,18 @@ spec = do
          declsp <- liftT $ hsDecls parsed
          let decl = head declsp
          let newName2 = mkRdrName "bar2"
-         newBinding <- addActualParamsToRhs True n [newName2] decl
+         newBinding <- addActualParamsToRhs n [newName2] decl
 
          return (newBinding,decl)
       ((nb,decl'),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- ((nb,decl'),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       -- putStrLn $ showAnnDataFromState s
+      -- putStrLn $ "\n:nb:\n" ++ showAnnDataItemFromState s nb
+      -- putStrLn $ "\nanns:\n" ++ showAnnsFromState s
       (showGhcQual decl') `shouldBe` "sumSquares (x : xs)\n  = sq x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
       (showGhcQual n) `shouldBe` "sq"
       (showGhcQual nb) `shouldBe` "sumSquares (x : xs)\n  = (sq bar2) x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
-      (exactPrintFromState s nb) `shouldBe` "sumSquares (x : xs)\n  = (sq bar2) x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
+      (exactPrintFromState s nb) `shouldBe` "\n\n{-lift 'sq' to top level. This refactoring\n  affects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = (sq bar2) x + sumSquares xs\n  where\n     sq x = x ^ pow\n     pow =2\n\nsumSquares [] = 0"
 
     -- --------------------
 
@@ -1824,7 +1826,7 @@ spec = do
          let newName1 = mkRdrName "x1"
          let newName2 = mkRdrName "y1"
          let newName3 = mkRdrName "z1"
-         newBinding <- addActualParamsToRhs True n [newName1,newName2,newName3] decl
+         newBinding <- addActualParamsToRhs n [newName1,newName2,newName3] decl
 
          return (newBinding,decl)
       -- ((nb,decl'),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
@@ -1833,7 +1835,7 @@ spec = do
       (showGhcQual n) `shouldBe` "addthree"
       -- (showToks $ take 20 $ toksFromState s) `shouldBe` ""
       (showGhcQual nb) `shouldBe` "fun x y z\n  = inc (addthree x1 y1 z1)\n  where\n      inc a = a + 1\n      addthree = x + y + z"
-      (exactPrintFromState s nb) `shouldBe` "fun x y z\n  = inc (addthree x1 y1 z1)\n  where\n      inc a = a + 1\n      addthree = x + y + z"
+      (exactPrintFromState s nb) `shouldBe` "\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'addthree' defined in 'fun'.\n--This example aims to test adding parenthese.\n\n\nfun x y z =inc( addthree x1 y1 z1)\n       where inc a =a +1\n             addthree=x+y+z"
 
 
   -- ---------------------------------------------
@@ -3277,11 +3279,11 @@ spec = do
          putRefactParsed res emptyAnns
 
          return (res,renamed2,toks2)
-      -- ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
-      ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialLogOnState { rsModule = initRefactModule t1}) testOptions
+      ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialState { rsModule = initRefactModule t1}) testOptions
+      -- ((_r,_r2,_tk2),s) <- ct $ runRefactGhc comp tgt1 (initialLogOnState { rsModule = initRefactModule t1}) testOptions
 
-      putStrLn $ showAnnDataFromState s
-      putStrLn $ showGhc $ annsFromState s
+      -- putStrLn $ showAnnDataFromState s
+      -- putStrLn $ showGhc $ annsFromState s
       (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\nimport DupDef.Dd1 hiding (n1,n2)\n\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
 
     ------------------------------------

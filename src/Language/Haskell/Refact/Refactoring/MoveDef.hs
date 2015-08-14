@@ -397,7 +397,7 @@ addParamsToParent :: (SYB.Data t) => GHC.Name -> [GHC.RdrName] -> t -> RefactGhc
 addParamsToParent _pn [] t = return t
 addParamsToParent  pn params t = do
   logm $ "addParamsToParent:(pn,params)" ++ (showGhc (pn,params))
-  addActualParamsToRhs True pn params t
+  addActualParamsToRhs pn params t
 
 
 -- |Do refactoring in the client module. that is to hide the identifer
@@ -1182,7 +1182,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
 
                         parent' <- addParamsToParent pn newParams parent''
 
-                        liftedDecls' <- addParamsToDecls [liftedDecls''] pn newParams True
+                        liftedDecls' <- addParamsToDecls [liftedDecls''] pn newParams
 
                         mLiftedSigs' <- addParamsToSigs newParamsNames mLiftedSigs
 
