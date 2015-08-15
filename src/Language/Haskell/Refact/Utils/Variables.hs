@@ -1324,20 +1324,24 @@ definingDeclsRdrNames::
             ->Bool       -- ^ True means to look at the local declarations as well.
             ->[GHC.LHsDecl GHC.RdrName]  -- ^ The result.
 definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining ds
+-- ++AZ++:TODO: now we are processing decls again, reinstate incTypeSig function
   where
    defining decl
      = if recursive
-        then SYB.everythingStaged SYB.Parser (++) [] ([]  `SYB.mkQ` defines') decl
-        else defines' decl
+        then SYB.everythingStaged SYB.Parser (++) [] ([]  `SYB.mkQ` definesDecl `SYB.extQ` definesBind)  decl
+        else definesDecl decl
      where
-      defines' :: (GHC.LHsDecl GHC.RdrName) -> [GHC.LHsDecl GHC.RdrName]
-      defines' decl'@(GHC.L _ (GHC.ValD (GHC.FunBind _ _ _ _ _ _)))
+      definesDecl :: (GHC.LHsDecl GHC.RdrName) -> [GHC.LHsDecl GHC.RdrName]
+      definesDecl decl'@(GHC.L _ (GHC.ValD (GHC.FunBind _ _ _ _ _ _)))
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
-      defines' decl'@(GHC.L _l (GHC.ValD (GHC.PatBind _p _rhs _ty _fvs _)))
+      definesDecl decl'@(GHC.L _l (GHC.ValD (GHC.PatBind _p _rhs _ty _fvs _)))
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
-      defines' _ = []
+      definesDecl _ = []
+
+      definesBind :: (GHC.LHsBind GHC.RdrName) -> [GHC.LHsDecl GHC.RdrName]
+      definesBind (GHC.L l b) = definesDecl (GHC.L l (GHC.ValD b))
 
 -- ---------------------------------------------------------------------
 

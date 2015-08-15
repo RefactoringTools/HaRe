@@ -223,6 +223,22 @@ spec = do
 
     -- ---------------------------------
 
+    it "finds declarations not at the top level" $ do
+      (t, _toks,_) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn6.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let nameMap = initRdrNameMap t
+
+      let Just (GHC.L _ n) = locToName (13,29) renamed
+      let decls = GHC.hsmodDecls $ GHC.unLoc parsed
+      -- putStrLn $ "decls=" ++ showGhc decls
+      -- putStrLn $ "decls=" ++ SYB.showData SYB.Parser 0 decls
+      let res = definingDeclsRdrNames nameMap [n] decls False True
+      showGhcQual n `shouldBe` "pow"
+      showGhcQual res `shouldBe` "[pow = 2]"
+
+    -- ---------------------------------
+
     it "finds in a patbind" $ do
       (t, _toks,_) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t

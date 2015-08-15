@@ -131,7 +131,7 @@ spec = do
 
     it "liftToTopLevel WhereIn7 12 14" $ do
      r <- liftToTopLevel defaultTestSettings testOptions "./test/testdata/LiftToToplevel/WhereIn7.hs" (12,14)
-     -- r <- liftToTopLevel logTestSettings  testOptions    Nothing "./test/testdata/LiftToToplevel/WhereIn7.hs" (12,14)
+     -- r <- liftToTopLevel logTestSettings testOptions "./test/testdata/LiftToToplevel/WhereIn7.hs" (12,14)
      (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/WhereIn7.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/WhereIn7.hs.expected"
                           "./test/testdata/LiftToToplevel/WhereIn7.refactored.hs"
