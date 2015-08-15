@@ -266,6 +266,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          -}
          nameMap <- getRefactNameMap
          declsParent <- liftT $ hsDecls (ghead "liftToMod" parent)
+         logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
          let liftedDecls = definingDeclsRdrNames nameMap [n] declsParent True True
              -- declaredPns = nub $ concatMap definedPNs liftedDecls
              declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
@@ -297,6 +298,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
              -- logDataWithAnns "liftToMod.liftToToplevel':parent'" parent'
              logm $ "liftToMod:(ffff)="
+             logm $ "liftToMod:(liftedDecls')=" ++ showGhc liftedDecls'
 
              -- drawTokenTree "liftToMod.c"
              -- logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
@@ -331,7 +333,7 @@ moveDecl1 :: (HasDecls t,SYB.Data t)
   -> Bool           -- ^ True if moving to the top level
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
-  -- logm $ "moveDecl1:(defName,ns,sigNames,mliftedDecls)=" ++ showGhc (defName,ns,sigNames,mliftedDecls)
+  logm $ "moveDecl1:(defName,ns,sigNames,mliftedDecls)=" ++ showGhc (defName,ns,sigNames,mliftedDecls)
   -- logm $ "moveDecl1:(topLevel,t)=" ++ SYB.showData SYB.Parser 0 (topLevel,t)
   nameMap <- getRefactNameMap
 
@@ -1162,6 +1164,7 @@ addParamsToParentAndLiftedDecl :: (GHC.Outputable t,SYB.Data t) =>
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
   =do
        logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
+       logm $ "addParamsToParentAndLiftedDecl:liftedDecls=" ++ (showGhc liftedDecls)
        nm <- getRefactNameMap
        let (FN ef,_) = hsFreeAndDeclaredRdr nm parent
        let (FN lf,_) = hsFreeAndDeclaredRdr nm liftedDecls

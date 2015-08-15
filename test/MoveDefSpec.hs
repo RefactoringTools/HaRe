@@ -73,9 +73,9 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D2 C2 A2 8 6" $ do
-     r <- liftToTopLevel (testSettingsMainfile "./test/testdata/LiftToToplevel/A2.hs") testOptions "./test/testdata/LiftToToplevel/D2.hs" (8,6)
-     -- r <- liftToTopLevel (logTestSettingsMainfile "./test/testdata/LiftToToplevel/A2.hs") testOptions "./test/testdata/LiftToToplevel/D2.hs" (8,6)
-     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/D2.hs\",\"./test/testdata/LiftToToplevel/C2.hs\"]"
+     r <- ct $ liftToTopLevel defaultTestSettings testOptions "./LiftToToplevel/D2.hs" (8,6)
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"./LiftToToplevel/D2.hs\",\"LiftToToplevel/C2.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/D2.hs.expected"
                           "./test/testdata/LiftToToplevel/D2.refactored.hs"
      diff `shouldBe` []
@@ -91,9 +91,9 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D3 C3 A3 8 6" $ do
-     r <- liftToTopLevel (testSettingsMainfile "./test/testdata/LiftToToplevel/A3.hs") testOptions "./test/testdata/LiftToToplevel/D3.hs" (8,6)
-     -- r <- liftToTopLevel logTestSettings  testOptions    (Just "./test/testdata/LiftToToplevel/A3.hs") "./test/testdata/LiftToToplevel/D3.hs" (8,6)
-     (show r) `shouldBe` "[\"./test/testdata/LiftToToplevel/D3.hs\"]"
+     r <- liftToTopLevel defaultTestSettings testOptions "./test/testdata/LiftToToplevel/D3.hs" (8,6)
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"./test/testdata/LiftToToplevel/D3.hs\"]"
      diff <- compareFiles "./test/testdata/LiftToToplevel/D3.hs.expected"
                           "./test/testdata/LiftToToplevel/D3.refactored.hs"
      diff `shouldBe` []
