@@ -921,7 +921,7 @@ addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
      mkImpDecl = do
        newSpan1 <- liftT uniqueSrcSpanT
        newSpan2 <- liftT uniqueSrcSpanT
-       newEnts <- mapM mkNewEnt idNames
+       newEnts <- mkNewEntList idNames
        let lNewEnts = GHC.L newSpan2 newEnts
        -- logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
        liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
@@ -1098,20 +1098,36 @@ stripLeadingSpaces xs = map (drop n) xs
 -- | add items to the hiding list of an import declaration which
 -- imports the specified module.
 addHiding::
-    GHC.ModuleName       -- ^ The imported module name
-  ->GHC.ParsedSource     -- ^ The current module
-  ->[GHC.RdrName]        -- ^ The items to be added
-  ->RefactGhc GHC.ParsedSource -- ^ The result
-addHiding a b c = do
-  logm $ "addHiding called for (module,names):" ++ showGhc (a,c)
-  addItemsToImport' a b c Hide
+     GHC.ModuleName       -- ^ The imported module name
+  -> GHC.ParsedSource     -- ^ The current module
+  -> [GHC.RdrName]        -- ^ The items to be added
+  -> RefactGhc GHC.ParsedSource -- ^ The result
+addHiding mn p ns = do
+  logm $ "addHiding called for (module,names):" ++ showGhc (mn,ns)
+  p' <- addItemsToImport' mn p ns Hide
+  putRefactParsed p' emptyAnns
+  return p'
+
+-- --------------------------------------------------------------------
+
+-- | Creates a new entity list for hiding a name in an ImportDecl.
+mkNewEntList :: [GHC.RdrName] -> RefactGhc [GHC.LIE GHC.RdrName]
+mkNewEntList idNames = do
+  case idNames of
+    [] -> return []
+    _ -> do
+      newEntsInit <- mapM (mkNewEnt True) (init idNames)
+      newEntsLast <- mkNewEnt False (last idNames)
+      return (newEntsInit ++ [newEntsLast])
 
 -- | Creates a new entity for hiding a name in an ImportDecl.
-mkNewEnt :: GHC.RdrName -> RefactGhc (GHC.LIE GHC.RdrName)
-mkNewEnt pn = do
+mkNewEnt :: Bool -> GHC.RdrName -> RefactGhc (GHC.LIE GHC.RdrName)
+mkNewEnt addCommaAnn pn = do
   newSpan <- liftT uniqueSrcSpanT
   let lpn = GHC.L newSpan pn
-  liftT $ addSimpleAnnT lpn (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  if addCommaAnn
+    then liftT $ addSimpleAnnT lpn (DP (0,0)) [((G GHC.AnnVal),DP (0,0)),((G GHC.AnnComma),DP (0,0))]
+    else liftT $ addSimpleAnnT lpn (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
   return (GHC.L newSpan (GHC.IEVar lpn))
 
 -- | Represents the operation type we want to select on addItemsToImport'
@@ -1133,13 +1149,12 @@ addItemsToImport mn r ns = addItemsToImport' mn r ns Import
 --   list. If it is Import, they will be added to the explicit import entries. This function does nothing if
 --   the import declaration does not have an explicit entity list and ImportType is Import.
 addItemsToImport'::
-    GHC.ModuleName       -- ^ The imported module name
-  ->GHC.ParsedSource     -- ^ The current module
-  ->[GHC.RdrName]        -- ^ The items to be added
+     GHC.ModuleName       -- ^ The imported module name
+  -> GHC.ParsedSource     -- ^ The current module
+  -> [GHC.RdrName]        -- ^ The items to be added
 --  ->Maybe GHC.Name       -- ^ The condition identifier.
-  ->ImportType            -- ^ Whether to hide the names or import them. Uses special data for clarity.
-  ->RefactGhc GHC.ParsedSource -- ^ The result
--- addItemsToImport' serverModName (g,imps,e,d) pns impType = do
+  -> ImportType           -- ^ Whether to hide the names or import them. Uses special data for clarity.
+  -> RefactGhc GHC.ParsedSource -- ^ The result
 addItemsToImport' serverModName (GHC.L l p) pns impType = do
     let imps = GHC.hsmodImports p
     imps' <- mapM inImport imps
@@ -1168,10 +1183,11 @@ addItemsToImport' serverModName (GHC.L l p) pns impType = do
          else do
             logm $ "addItemsToImport':insertEnts:doing stuff"
             newSpan <- liftT uniqueSrcSpanT
-            newEnts <- mapM mkNewEnt pns
-            let lNewEnts = GHC.L newSpan (newEnts++ents)
+            newEnts <- mkNewEntList pns
+            let lNewEnts = GHC.L newSpan (ents++newEnts)
             logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
             liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+            when (not (null ents)) $ do liftT (addTrailingCommaT (last ents))
             return (replaceHiding imp  (Just (isHide, lNewEnts)))
 
 

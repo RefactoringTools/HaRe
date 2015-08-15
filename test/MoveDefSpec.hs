@@ -54,7 +54,6 @@ spec = do
     -- ---------------------------------
 
     it "liftToTopLevel D1 C1 A1 8 6" $ do
-     -- r <- ct $ liftToTopLevel (testSettingsMainfile "./test/testdata/LiftToToplevel/A1.hs") testOptions "./LiftToToplevel/D1.hs" (8,6)
      r <- ct $ liftToTopLevel defaultTestSettings testOptions "./LiftToToplevel/D1.hs" (8,6)
      -- r <- ct $ liftToTopLevel logTestSettings testOptions "./LiftToToplevel/D1.hs" (8,6)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r

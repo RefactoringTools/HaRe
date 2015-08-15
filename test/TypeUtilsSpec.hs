@@ -3269,12 +3269,9 @@ spec = do
          let (Just (GHC.L _ _n)) = mn
 
          let Just (modName,_) = getModuleName parsed1
-         -- n1   <- mkNewGhcName Nothing "n1"
-         -- n2   <- mkNewGhcName Nothing "n2"
          let
            n1 = mkRdrName "n1"
            n2 = mkRdrName "n2"
-         -- res  <- addHiding modName renamed2 [n1,n2]
          res  <- addHiding modName parsed2 [n1,n2]
          putRefactParsed res emptyAnns
 
